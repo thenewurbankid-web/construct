@@ -214,7 +214,8 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
     const tool = typeof req?.tool === 'string' && req.tool ? req.tool : '(none)';
     const args = traceArgs(req?.args);
     if (!r.ok) {
-      tr.record({ kind: 'refusal', by: String(by), tool, stepId: null, args, source: sourceOf(r.code), code: String(r.code), sentence: r.sentence, rules: [], files: [], fixes: [] });
+      const no = /** @type {{code: any, sentence: string}} */ (/** @type {any} */ (r));
+      tr.record({ kind: 'refusal', by: String(by), tool, stepId: null, args, source: sourceOf(no.code), code: String(no.code), sentence: no.sentence, rules: [], files: [], fixes: [] });
       return r;
     }
     const fixOf = typeof args.fixOf === 'string' ? args.fixOf : null;
@@ -285,8 +286,9 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
     const r = await runNextInner(by, stepId);
     if (!tr) return r;
     if (!r.ok) {
+      const no = /** @type {{code: any, sentence: string}} */ (/** @type {any} */ (r));
       const tool = before?.steps.find((s) => s.id === stepId)?.tool ?? '(plan)';
-      tr.record({ kind: 'refusal', by: String(by), tool, stepId: typeof stepId === 'string' ? stepId : null, source: sourceOf(r.code), code: String(r.code), sentence: r.sentence, rules: [], files: [], fixes: [] });
+      tr.record({ kind: 'refusal', by: String(by), tool, stepId: typeof stepId === 'string' ? stepId : null, source: sourceOf(no.code), code: String(no.code), sentence: no.sentence, rules: [], files: [], fixes: [] });
       return r;
     }
     for (const s of r.steps.filter((x) => open.has(x.id) && x.state !== 'waiting' && x.state !== 'ready')) {

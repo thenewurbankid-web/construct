@@ -129,7 +129,10 @@ function jsonSchemaOf(required, o) {
   return { type: 'object', properties, required: Object.entries(required).filter(([, t]) => t !== 'optString').map(([k]) => k), additionalProperties: false };
 }
 
-/** cl1 -- every line.* plan tool as the spec describes it: name, read/write, one sentence, JSON Schema of its args. */
+/**
+ * cl1 -- every line.* plan tool as the spec describes it: name, read/write, one sentence, JSON Schema of its args.
+ * @returns {{name: string, kind: string, describe: string, args: any}[]}
+ */
 export function lineToolSpecs() {
   return Object.keys(SCHEMAS).map((name) => ({
     name, kind: name === 'line.project' ? 'read' : 'write', describe: DESCRIBE[name], args: SCHEMAS[name].jsonSchema(),
@@ -170,8 +173,18 @@ function importSchema(fields) {
     mode: (v) => v === 'move' || v === 'wrap',
   };
   const loose = objectSchema({}, { change: true });
+  const IMPORT_JSON = {
+    string: { type: 'string', minLength: 1 }, optString: { type: 'string', minLength: 1 },
+    strings: { type: 'array', items: { type: 'string', minLength: 1 } }, optBool: { type: 'boolean' }, mode: { enum: ['move', 'wrap'] },
+  };
   return Object.freeze({
     fields: Object.keys(fields),
+    /** cl1: the import step's JSON Schema (its fields plus the plan-only expect, retry and fixOf), for the spec. */
+    jsonSchema: () => {
+      const plan = loose.jsonSchema();
+      const properties = { ...Object.fromEntries(Object.entries(fields).map(([k, t]) => [k, { ...IMPORT_JSON[t] }])), ...plan.properties };
+      return { type: 'object', properties, required: Object.entries(fields).filter(([, t]) => t !== 'optString' && t !== 'optBool').map(([k]) => k), additionalProperties: false };
+    },
     safeParse(value) {
       const v = value ?? {};
       if (!isObj(v)) return failed([], 'must be an object');
@@ -446,7 +459,7 @@ export function createLinePlanRegistry({ root, ops = REAL_PLAN_OPS, commands = n
  */
 export async function constructCommandTools() {
   const [{ createCommandRegistry }, { registerBuiltinCommands }, { commandPlanRegistry }] = await Promise.all([
-    import('@line/construct-core/command-registry'), import('@line/construct-core/builtin-commands'), import('../../core/plan-registry.mjs'),
+    import('@line/construct-core/command-registry'), import('@line/construct-core/builtin-commands'), import('@line/construct-core/plan-registry'),
   ]);
   const commands = createCommandRegistry();
   registerBuiltinCommands(commands);

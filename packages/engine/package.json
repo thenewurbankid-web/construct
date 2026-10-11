@@ -50,7 +50,11 @@
     "./line/model": "./line/model.mjs",
     "./rule-change-impact": "./rule-change-impact.mjs",
     "./ts-file-move": "./tsFileMove.mjs",
-    "./test-attributes": "./testAttributes.mjs"
+    "./test-attributes": "./testAttributes.mjs",
+    "./line/contract": "./line/contract.mjs",
+    "./line/trace": "./line/trace.mjs",
+    "./line/miss-detector": "./line/missDetector.mjs",
+    "./line/context-picker": "./line/contextPicker.mjs"
   },
   "files": [
     "*.mjs",

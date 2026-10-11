@@ -827,7 +827,11 @@ export const PLAN_REFUSAL_CODES = Object.freeze(['UNKNOWN_TOOL', 'BAD_ARGS', 'NO
  * @property {boolean} ambiguous   More candidates tied at the cut than fit.
  */
 
-/** @param {any} s @returns {asserts s is LineSpec} */
+/**
+ * Throws unless s is a LineSpec (format, version and every topic).
+ * @param {any} s
+ * @returns {asserts s is LineSpec}
+ */
 export function assertLineSpec(s) {
   if (s?.format !== SPEC_FORMAT) fail('spec.format', `must be ${SPEC_FORMAT}`);
   if (!/^sha256:[0-9a-f]{16}$/.test(String(s.version))) fail('spec.version', 'must be "sha256:" and 16 hex digits');
@@ -836,7 +840,12 @@ export function assertLineSpec(s) {
   for (const k of Object.keys(s.topics)) if (!SPEC_TOPICS.includes(k)) fail(`spec.topics.${k}`, `is not a topic (${SPEC_TOPICS.join(', ')})`);
 }
 
-/** @param {any} e @param {string} [where] @returns {asserts e is TraceEvent} */
+/**
+ * Throws unless e is a TraceEvent (version 1, a known kind and that kind's fields).
+ * @param {any} e
+ * @param {string} [where] Where the event sits, for the error.
+ * @returns {asserts e is TraceEvent}
+ */
 export function assertTraceEvent(e, where = 'trace event') {
   if (e?.v !== 1) fail(`${where}.v`, 'must be 1');
   str(e.trace, `${where}.trace`); str(e.at, `${where}.at`); str(e.by, `${where}.by`); str(e.tool, `${where}.tool`);
@@ -852,7 +861,11 @@ export function assertTraceEvent(e, where = 'trace event') {
   if (e.kind === 'outcome' && (typeof e.ok !== 'boolean' || !Number.isInteger(e.passed) || !Number.isInteger(e.total))) fail(where, 'an outcome has ok, passed and total');
 }
 
-/** @param {any} p @returns {asserts p is ContextPick} */
+/**
+ * Throws unless p is a ContextPick (items, files and rules).
+ * @param {any} p
+ * @returns {asserts p is ContextPick}
+ */
 export function assertContextPick(p) {
   if (!Array.isArray(p?.items) || !Array.isArray(p.files) || !Array.isArray(p.rules)) fail('pick', 'has items, files and rules');
   for (const f of p.files) { str(f.file, 'pick.files[].file'); sentence(f.why, `pick ${f.file}.why`); sentence(f.summary?.sentence, `pick ${f.file}.summary`); str(f.summary.via, `pick ${f.file}.summary.via`); }

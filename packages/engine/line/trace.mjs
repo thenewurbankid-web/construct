@@ -12,7 +12,11 @@ import { writeLineState } from '../transactionalWriter.mjs';
 import { lineStateDir } from './workspace.mjs';
 
 const CUT = 200;
-/** The request as the trace keeps it: long strings cut, plan-only fields (expect, retry) dropped. */
+/**
+ * The request as the trace keeps it: long strings cut, plan-only fields (expect, retry) dropped.
+ * @param {any} args A step's args.
+ * @returns {Record<string, any>}
+ */
 export function traceArgs(args) {
   const out = {};
   for (const [k, v] of Object.entries(args && typeof args === 'object' ? args : {})) {
@@ -22,7 +26,12 @@ export function traceArgs(args) {
   return out;
 }
 
-/** A new trace id: the session, the start time and a short random part, safe as a file name. */
+/**
+ * A new trace id: the session, the start time and a short random part, safe as a file name.
+ * @param {string} [sessionId]
+ * @param {Date} [now]
+ * @returns {string}
+ */
 export function newTraceId(sessionId = 'ses', now = new Date()) {
   return `${sessionId}-${now.toISOString().replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z')}-${crypto.randomBytes(3).toString('hex')}`;
 }
@@ -58,6 +67,7 @@ function sink(id, put, now) {
  * The project's session trace for one plan-service lifetime.
  * @param {string} root
  * @param {{id?: string, sessionId?: string, now?: () => Date}} [o]
+ * @returns The trace: its id, record(event) and the problem sentence when it cannot write.
  */
 export function createSessionTrace(root, { id, sessionId = 'ses', now = () => new Date() } = {}) {
   const stateDir = lineStateDir(root);
@@ -67,7 +77,11 @@ export function createSessionTrace(root, { id, sessionId = 'ses', now = () => ne
   return Object.assign(s, { file });
 }
 
-/** A trace kept in memory (the mock; tests and a disabled trace). */
+/**
+ * A trace kept in memory (the mock; tests and a disabled trace).
+ * @param {{id?: string, now?: () => Date}} [o]
+ * @returns The trace, with its events kept in memory.
+ */
 export function createMemoryTrace({ id = 'mem', now = () => new Date() } = {}) {
   /** @type {import('./contract.mjs').TraceEvent[]} */
   const events = [];
@@ -98,12 +112,17 @@ export function readTraces(root) {
 // ------------------------------------------------------------------------------------------------- from plan results
 const asSentence = (s) => { const t = String(s ?? '').trim().replace(/\s+/g, ' '); const c = t.charAt(0).toUpperCase() + t.slice(1); return /[.?!]$/.test(c) ? c : `${c || 'Refused'}.`; };
 
-/** Which source a refusal code belongs to. */
+/**
+ * Which source a refusal code belongs to.
+ * @param {any} code A refusal code.
+ * @returns {'plan' | 'construct'}
+ */
 export const sourceOf = (code) => (PLAN_REFUSAL_CODES.includes(String(code)) ? 'plan' : 'construct');
 
 /**
  * The refusal event for a step whose run Construct refused (a needs-fix / needs-you step result).
  * @param {any} step A PlanStepView that ran.
+ * @returns {any} The refusal event (without `by`).
  */
 export function refusalOfStep(step) {
   const r = step.result ?? {};
@@ -119,7 +138,13 @@ export function refusalOfStep(step) {
   };
 }
 
-/** Which offered fix a new step is (same tool and args as one of the refused step's fix options), or null. */
+/**
+ * Which offered fix a new step is (same tool and args as one of the refused step's fix options), or null.
+ * @param {any} refused The refused step.
+ * @param {string} tool The new step's tool.
+ * @param {any} args The new step's args.
+ * @returns {any} The matching fix option, or null.
+ */
 export function matchFix(refused, tool, args) {
   const req = traceArgs(args); delete req.fixOf;
   for (const o of refused?.result?.options ?? []) {

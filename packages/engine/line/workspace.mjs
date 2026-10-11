@@ -102,7 +102,11 @@ export function setWorkspace(root, { folder } = /** @type {any} */ ({})) {
   return { root, folder: next, readOnly: true };
 }
 
-/** cl1 -- the project's Line state folder (root-relative, `line` by default), where traces and drafted issues live. */
+/**
+ * cl1 -- the project's Line state folder (root-relative, `line` by default), where traces and drafted issues live.
+ * @param {string} root The project root.
+ * @returns {string}
+ */
 export function lineStateDir(root) {
   return workspaceFile(root).replace(/\/workspace\.json$/, '');
 }

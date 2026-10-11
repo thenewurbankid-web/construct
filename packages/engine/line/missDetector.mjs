@@ -10,10 +10,18 @@ import { lineStateDir } from './workspace.mjs';
 import { pickContext } from './contextPicker.mjs';
 import { sliceSpec } from './spec.mjs';
 
-/** A refusal's signature: what recurs. */
+/**
+ * A refusal's signature: what recurs.
+ * @param {any} e A refusal trace event.
+ * @returns {string} tool|code|rules.
+ */
 export const signatureOf = (e) => `${e.tool}|${e.code}|${[...(e.rules ?? [])].sort().join(',')}`;
 const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
-/** "once", "twice", "3 times". */
+/**
+ * "once", "twice", "3 times".
+ * @param {number} n
+ * @returns {string}
+ */
 export const times = (n) => (n === 1 ? 'once' : n === 2 ? 'twice' : `${n} times`);
 /** What a plan tool does, in plain words (the tool name stays as the technical detail). */
 export const TOOL_WORDS = Object.freeze({
@@ -21,13 +29,18 @@ export const TOOL_WORDS = Object.freeze({
   'line.fix': 'Applying a typed fix', 'line.setFragment': 'Editing a code fragment', 'line.setBase': 'Setting a base link',
   'line.moveFile': 'Moving a file', 'line.createLayout': 'Creating the Line layout', 'line.leaveAsIs': 'Leaving a step as it is', 'line.project': 'Reading the project',
 });
-/** "Editing a code fragment (line.setFragment)". */
+/**
+ * "Editing a code fragment (line.setFragment)".
+ * @param {string} tool A plan tool name.
+ * @returns {string}
+ */
 export const toolWords = (tool) => (TOOL_WORDS[tool] ? `${TOOL_WORDS[tool]} (${tool})` : `Running ${tool}`);
 
 /**
  * Group the Construct refusals of `events` and say which recur with no working typed fix.
  * @param {import('./contract.mjs').TraceEvent[]} events
  * @param {{threshold?: number}} [o]
+ * @returns The misses and a summary.
  */
 export function detectMisses(events, { threshold = 2 } = {}) {
   const key = (e) => `${e.trace}#${e.stepId}`;
@@ -63,7 +76,11 @@ export function detectMisses(events, { threshold = 2 } = {}) {
   return misses.sort((a, b) => Number(b.frameworkIssue) - Number(a.frameworkIssue) || b.count - a.count || a.signature.localeCompare(b.signature));
 }
 
-/** The draft's file id: readable, stable for the same signature. */
+/**
+ * The draft's file id: readable, stable for the same signature.
+ * @param {string} signature A refusal signature (signatureOf).
+ * @returns {string}
+ */
 export function draftId(signature) {
   const [tool, code, rules] = signature.split('|');
   const words = `${tool.replace(/^line\./, '')}-${rules || code}`.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 50);
@@ -102,6 +119,7 @@ function testFor(miss) {
  * Line picked and the test the case becomes.
  * @param {ReturnType<typeof detectMisses>[number]} miss
  * @param {{context?: import('./contract.mjs').ContextPick, spec?: import('./contract.mjs').LineSpec}} [o]
+ * @returns {string} The issue as markdown.
  */
 export function issueMarkdown(miss, { context, spec } = {}) {
   const m = miss.minimal;

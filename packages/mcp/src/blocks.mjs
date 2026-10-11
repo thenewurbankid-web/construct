@@ -480,6 +480,9 @@ let specOnce = null;
 /**
  * `line_spec`: Line's versioned spec, generated from its code, one topic at a time (the whole spec is larger than one
  * call returns). No topic: the version and the topics with their sizes. Reads Construct's own sources; writes nothing.
+ * @param {any} _ctx The MCP server context (unused).
+ * @param {{topic?: string, id?: string}} [args]
+ * @returns {Promise<any>} The topic list, or one topic's slice.
  */
 export async function lineSpec(_ctx, { topic, id } = {}) {
   const { buildLineSpec, sliceSpec } = await import('@line/construct-engine/line/spec');

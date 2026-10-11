@@ -50,7 +50,13 @@ export const staticSummarizer = Object.freeze({
   },
 });
 
-/** Relative imports of a code file, resolved to root-relative files that exist. */
+/**
+ * Relative imports of a code file, resolved to root-relative files that exist.
+ * @param {string} root The project root.
+ * @param {string} file The root-relative code file.
+ * @param {string | null} [text] Its source (read from disk by default).
+ * @returns {string[]}
+ */
 export function importsOf(root, file, text = read(root, file)) {
   if (text === null) return [];
   const out = new Set();
@@ -123,6 +129,7 @@ export async function pickContext(root, { miss, events = [] }, { limit = 6, summ
     } catch { /* jev is down: the static order stands */ }
   }
 
+  /** @type {{id: string, kind: 'rule'|'fixture'|'feature-item'|'library-item'|'plan-step', why: string}[]} */
   const items = [];
   for (const c of chosen) {
     const it = byFile.get(c.file);

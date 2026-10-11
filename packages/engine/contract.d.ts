@@ -6,6 +6,8 @@
 export * as impact from './impact.mjs';
 /** `@line/construct-engine/line/plan-service` */
 export * as linePlanService from './line/planService.mjs';
+/** `@line/construct-engine/line/spec` */
+export * as lineSpec from './line/spec.mjs';
 /** `@line/construct-engine/transactional-writer` */
 export * as transactionalWriter from './transactionalWriter.mjs';
 /** `@line/construct-engine/envelope` */
@@ -84,3 +86,11 @@ export * as ruleChangeImpact from './rule-change-impact.mjs';
 export * as tsFileMove from './tsFileMove.mjs';
 /** `@line/construct-engine/test-attributes` */
 export * as testAttributes from './testAttributes.mjs';
+/** `@line/construct-engine/line/contract` */
+export * as lineContract from './line/contract.mjs';
+/** `@line/construct-engine/line/trace` */
+export * as lineTrace from './line/trace.mjs';
+/** `@line/construct-engine/line/miss-detector` */
+export * as lineMissDetector from './line/missDetector.mjs';
+/** `@line/construct-engine/line/context-picker` */
+export * as lineContextPicker from './line/contextPicker.mjs';

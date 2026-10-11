@@ -31,9 +31,11 @@ async function cockpitSession(t, dir) {
   t.after(() => server.close());
   await new Promise((r) => server.once('listening', r));
   const base = `http://127.0.0.1:${/** @type {any} */ (server.address()).port}/api/line`;
-  const post = async (p, body) => (await fetch(`${base}${p}`, { method: 'POST', headers: { 'content-type': 'application/json', origin: ORIGIN }, body: JSON.stringify(body) })).json();
+  // Approving and running are the person's: the page's Origin plus the approval token GET /plan hands the page.
+  const first = await (await fetch(`${base}/plan`)).json();
+  const post = async (p, body) => (await fetch(`${base}${p}`, { method: 'POST', headers: { 'content-type': 'application/json', origin: ORIGIN, 'x-line-approval': first.approvalToken }, body: JSON.stringify(body) })).json();
   // What the last session left needing you is left as it is first (Leave as it is, Approve), as the owner would.
-  for (const s of (await (await fetch(`${base}/plan`)).json()).steps.filter((x) => x.state === 'needs-fix' || x.state === 'needs-you')) {
+  for (const s of first.steps.filter((x) => x.state === 'needs-fix' || x.state === 'needs-you')) {
     const leave = await post('/plan/step', { tool: 'line.leaveAsIs', args: { stepId: s.id } });
     await post('/plan/approve', { stepId: leave.stepId });
     await post('/plan/run', { stepId: leave.stepId });

@@ -25,7 +25,11 @@ export const SPEC_MODULES = Object.freeze([
   { module: 'mcp', what: 'the MCP server agents drive Line through', dir: 'packages/mcp/src', match: /\.mjs$/ },
 ]);
 
-/** A source file's contract: its leading comment (joined, cut to 400 characters) and its exported names. */
+/**
+ * A source file's contract: its leading comment (joined, cut to 400 characters) and its exported names.
+ * @param {string} file Absolute path of the source file.
+ * @returns {{header: string, exports: string[]}}
+ */
 export function moduleContract(file) {
   const text = fs.readFileSync(file, 'utf8');
   const head = [];
@@ -44,8 +48,8 @@ export function moduleContract(file) {
 /** Real sources, overridable so a test can add a rule or a command and watch the spec change. */
 async function realSources() {
   const [{ catalogRules }, { LINE_RULES, ITEM_KINDS, KIND_LAYER, FEATURE_FILES, LIBRARY_FILES, SHARED_CONCERNS }, { createCommandRegistry }, { registerBuiltinCommands }, { READ_COMMANDS, NEVER_OFFERED, commandToolName }] = await Promise.all([
-    import('../../core/rules-catalog.mjs'), import('../../core/profiles/line/contract.mjs'), import('../../core/command-registry.mjs'),
-    import('../../core/builtin-commands.mjs'), import('../../core/plan-registry.mjs'),
+    import('@line/construct-core/rules-catalog'), import('@line/construct-core/profiles/line/contract'), import('@line/construct-core/command-registry'),
+    import('@line/construct-core/builtin-commands'), import('@line/construct-core/plan-registry'),
   ]);
   const registry = createCommandRegistry();
   registerBuiltinCommands(registry);
@@ -112,6 +116,7 @@ export async function buildLineSpec({ sources = {}, repo = REPO } = {}) {
  * @param {import('./contract.mjs').LineSpec} spec
  * @param {string} topic One of SPEC_TOPICS.
  * @param {string} [id]
+ * @returns {any} The slice.
  */
 export function sliceSpec(spec, topic, id) {
   if (!SPEC_TOPICS.includes(topic)) throw new Error(`"${topic}" is not a spec topic; the topics are ${SPEC_TOPICS.join(', ')}.`);
