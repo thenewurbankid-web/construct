@@ -3,6 +3,7 @@
 // land. It keeps the contract's rules: plans are pure, applyChange is the only thing that changes
 // state, a NEW cross-feature import is refused with a LINE-DIR finding (old problems never block), and every message is a sentence.
 import { LineOpError } from './contract.mjs';
+import { mockFragmentsOf, mockHash } from './mockFragments.mjs';
 
 const LIB = 'library';
 const FEAT = 'features';
@@ -15,7 +16,7 @@ export const MOCK_FILES = Object.freeze({
   'library/pages/ListPage.tsx': 'export default function ListPage(props: { title: string }) { return <main><h1>{props.title}</h1></main>; }\n',
   'features/orders/spec.md': '# Orders\n',
   'features/orders/components/OrderButton.tsx': "// @line-base components/Button\nimport { Button } from '../../../library/components/Button';\nexport function OrderButton() { return <Button label=\"Order\" />; }\n",
-  'features/orders/pages/OrdersPage.tsx': "// @line-base pages/ListPage\nimport ListPage from '../../../library/pages/ListPage';\nexport default function OrdersPage() { return <ListPage title=\"Orders\" />; }\n",
+  'features/orders/pages/OrdersPage.tsx': "// @line-base pages/ListPage\nimport ListPage from '../../../library/pages/ListPage';\nexport default function OrdersPage() { return <ListPage title=\"Orders\" onMore={() => alert('More orders')} />; }\n",
   'features/billing/spec.md': '# Billing\n',
   'features/billing/pages/InvoicesPage.tsx': "// @line-base pages/ListPage\nimport ListPage from '../../../library/pages/ListPage';\nimport { OrderButton } from '../../orders/components/OrderButton';\nexport default function InvoicesPage() { return <ListPage title=\"Invoices\" />; }\n",
 });
@@ -132,6 +133,24 @@ export function createMockLineOps({ files: initial = MOCK_FILES } = {}) {
       if (fix.step.tool === 'line.promote') return this.applyChange(root, this.planPromote(root, /** @type {any} */ (fix.step.args)));
       const { file, libraryId } = /** @type {any} */ (fix.step.args);
       return this.applyChange(root, { summary: `Bases ${nameOf(file)} on the library ${libraryId.split('/')[1]}.`, files: [{ path: file, content: `// @line-base ${libraryId}\n${files[file]}` }] });
+    },
+    /** @returns {import('./contract.mjs').FragmentList} */
+    listFragments(_root, file) {
+      if (files[file] === undefined) throw new LineOpError(`There is no file "${file}" in this project.`, 'UNKNOWN_ITEM');
+      return { file, contentHash: mockHash(files[file]), fragments: mockFragmentsOf(files[file], file) };
+    },
+    /** @returns {import('./contract.mjs').StagedChange} */
+    planSetFragment(_root, { file, fragmentId, code, contentHash } = /** @type {any} */ ({})) {
+      if (files[file] === undefined) throw new LineOpError(`There is no file "${file}" in this project.`, 'UNKNOWN_ITEM');
+      const src = files[file];
+      if (contentHash !== mockHash(src)) throw new LineOpError('This file changed since you opened the code; reload it and try again.', 'STALE');
+      const frag = mockFragmentsOf(src, file).find((f) => f.id === fragmentId);
+      if (!frag) throw new LineOpError('That piece of code is no longer there; reload the page and pick it again.', 'UNKNOWN_ITEM');
+      const count = (re) => (String(code).match(re) || []).length;
+      if (typeof code !== 'string' || !code.trim() || /[{}]/.test(code) || count(/\(/g) !== count(/\)/g)) {
+        throw new LineOpError('This code is not a single valid expression, so nothing was saved.', 'BAD_CODE', 'The mock checks only for balanced round brackets and no curly braces.');
+      }
+      return { summary: `Changes the code for "${frag.label}" in ${nameOf(file)}.`, files: [{ path: file, content: src.slice(0, frag.range.start) + code + src.slice(frag.range.end) }] };
     },
     /** @returns {import('./contract.mjs').ApplyResult} */
     applyChange(_root, change) {

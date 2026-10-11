@@ -111,6 +111,29 @@
 /** @typedef {{featureItemId: string}} PromoteRequest */
 /** @typedef {{file: string, nodeId: string, prop: string, kind: 'string'|'number'|'boolean'|'expression', value: string|number|boolean}} SetPropRequest */
 
+/** @typedef {'prop-expression'|'handler'|'condition'|'style'} FragmentKind */
+
+/**
+ * One fragment of code a person can edit in place (cx1, packages/engine/line/fragments.mjs): a prop's value
+ * expression, an event handler, a condition or a style value, never the whole file.
+ * @typedef {object} CodeFragment
+ * @property {string} id         Stable for the source it came from, e.g. "handler:n0:onClick"; pass it to SetFragmentRequest.
+ * @property {string} file       Root-relative path.
+ * @property {FragmentKind} kind
+ * @property {string} label      Plain English, e.g. "What happens when Save is clicked".
+ * @property {string} code       The fragment's source text exactly as written.
+ * @property {{start: number, end: number}} range  UTF-16 offsets in the file, [start, end).
+ * @property {string} contentHash sha256 of the whole file the range was computed from.
+ * @property {string} nodeId     The page-tree part ("n0", ...) the fragment sits on (page-tree ids).
+ */
+
+/**
+ * GET /api/line/fragments?file=: every editable fragment of one library or feature code file.
+ * @typedef {{file: string, contentHash: string, fragments: CodeFragment[]}} FragmentList
+ */
+
+/** POST /api/line/fragment: replace only that fragment's range with `code`. @typedef {{file: string, fragmentId: string, code: string, contentHash: string}} SetFragmentRequest */
+
 /**
  * The operations (implemented by model.mjs, ops.mjs and pageProp.mjs; faked by mock.mjs). Every plan
  * function is pure: it reads the project and returns a StagedChange, or throws a LineOpError.
@@ -119,6 +142,8 @@
  * @property {(root: string, req: BaseOnRequest) => StagedChange} planBaseOn
  * @property {(root: string, req: PromoteRequest) => StagedChange} planPromote
  * @property {(root: string, req: SetPropRequest) => StagedChange} planSetProp
+ * @property {(root: string, file: string) => FragmentList} listFragments
+ * @property {(root: string, req: SetFragmentRequest) => StagedChange} planSetFragment
  * @property {(root: string, change: StagedChange) => ApplyResult} applyChange
  * @property {(root: string, req: FixRequest) => ApplyResult} applyFix  Re-derive the finding by key, plan its fix, applyChange (fixes.mjs).
  */
@@ -142,10 +167,14 @@
  *   | {ok: false, code: string, sentence: string, detail?: string, props?: RenderProp[]}} RenderResult
  */
 
-/** A refused request (bad name, unknown item, name taken). `sentence` is shown as is. */
+/** A refused request (bad name, unknown item, name taken). `sentence` is shown as is; `detail` (optional) is the
+ * technical reason (a parser or type-checker message) for a collapsed Details. */
 export class LineOpError extends Error {
-  /** @param {string} sentence @param {string} code */
-  constructor(sentence, code) { super(sentence); this.name = 'LineOpError'; this.sentence = sentence; this.code = code; }
+  /** @param {string} sentence @param {string} code @param {string} [detail] */
+  constructor(sentence, code, detail) {
+    super(sentence); this.name = 'LineOpError'; this.sentence = sentence; this.code = code;
+    if (detail !== undefined) this.detail = detail;
+  }
 }
 
 /**
@@ -160,12 +189,15 @@ export const LINE_API = Object.freeze([
   { method: 'POST', path: '/api/line/page-prop', request: 'SetPropRequest', response: 'ApplyResult' },
   { method: 'GET', path: '/api/line/render', request: 'file, props (query)', response: 'RenderResult' },
   { method: 'POST', path: '/api/line/fix', request: 'FixRequest', response: 'ApplyResult' },
+  { method: 'GET', path: '/api/line/fragments', request: 'file (query)', response: 'FragmentList' },
+  { method: 'POST', path: '/api/line/fragment', request: 'SetFragmentRequest', response: 'ApplyResult' },
 ]);
 
 export const LINE_FIX_TOOLS = Object.freeze(['line.setBase', 'line.promote', 'line.baseOn', 'line.moveFile', 'line.createLayout']);
 
 export const LINE_KINDS = Object.freeze(['components', 'pages', 'workflows', 'fixtures']);
 export const LEVELS = Object.freeze(['atom', 'molecule', 'organism']);
+export const FRAGMENT_KINDS = Object.freeze(['prop-expression', 'handler', 'condition', 'style']);
 
 // ---------------------------------------------------------------------------------------------
 // Runtime shape checks: the contract tests run them over the mock and every real implementation.
@@ -256,4 +288,26 @@ export function assertApplyResult(r) {
   if (r.ok && r.findings.some((f) => f.severity === 'error')) fail('result', 'a landed change carries no error findings');
   if (!r.ok && r.files.length) fail('result.files', 'a refused change wrote nothing');
   r.findings.forEach((x, k) => assertFinding(x, `result.findings[${k}]`));
+}
+
+/** @param {any} l @returns {asserts l is FragmentList} */
+export function assertFragmentList(l) {
+  str(l?.file, 'fragments.file');
+  str(l.contentHash, 'fragments.contentHash');
+  if (!Array.isArray(l.fragments)) fail('fragments.fragments', 'must be an array');
+  const ids = new Set();
+  l.fragments.forEach((f, i) => {
+    const w = `fragments.fragments[${i}]`;
+    str(f.id, `${w}.id`);
+    if (ids.has(f.id)) fail(`${w}.id`, 'must be unique');
+    ids.add(f.id);
+    if (f.file !== l.file) fail(`${w}.file`, 'must equal the list\'s file');
+    if (!FRAGMENT_KINDS.includes(f.kind)) fail(`${w}.kind`, 'unknown kind');
+    str(f.label, `${w}.label`);
+    if (/[.?!]$/.test(f.label)) fail(`${w}.label`, 'is a label, not a sentence');
+    str(f.code, `${w}.code`);
+    if (!Number.isInteger(f.range?.start) || !Number.isInteger(f.range?.end) || f.range.start < 0 || f.range.end - f.range.start !== f.code.length) fail(`${w}.range`, 'must span exactly the code');
+    if (f.contentHash !== l.contentHash) fail(`${w}.contentHash`, 'must equal the list\'s hash');
+    str(f.nodeId, `${w}.nodeId`);
+  });
 }

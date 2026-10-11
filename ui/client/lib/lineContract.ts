@@ -70,8 +70,28 @@ export type LineProject = {
 /** The outcome of a change through Construct's writer; a refusal is `ok: false` with one sentence. */
 export type ApplyResult = { ok: boolean; sentence: string; files: string[]; findings: LineFinding[] };
 
-/** A LineOpError as the server sends it (HTTP 400). */
-export type LineRefusal = { ok: false; sentence: string; code: string };
+/** A LineOpError as the server sends it (HTTP 400); `detail` is the technical reason (a parser or type message) for Details. */
+export type LineRefusal = { ok: false; sentence: string; code: string; detail?: string };
+
+/** cx1: one fragment of code a person edits in place (a prop's value, a handler, a condition, a style value). */
+export type FragmentKind = 'prop-expression' | 'handler' | 'condition' | 'style';
+export type CodeFragment = {
+  /** Stable for the source it came from; pass it to SetFragmentRequest.fragmentId. */
+  id: string;
+  file: string;
+  kind: FragmentKind;
+  /** Plain English, e.g. "What happens when Save is clicked". */
+  label: string;
+  code: string;
+  range: { start: number; end: number };
+  contentHash: string;
+  /** The page-tree part it sits on ("n0", ...). */
+  nodeId: string;
+};
+/** GET /api/line/fragments?file=. */
+export type FragmentList = { file: string; contentHash: string; fragments: CodeFragment[] };
+/** POST /api/line/fragment. */
+export type SetFragmentRequest = { file: string; fragmentId: string; code: string; contentHash: string };
 
 export type BaseOnRequest = { libraryId: string; feature: string; name: string };
 export type PromoteRequest = { featureItemId: string };
@@ -117,4 +137,6 @@ export type LineHttp = {
   promote: (req: PromoteRequest) => Promise<ApplyResult | LineRefusal>;
   render: (file: string, props?: string) => Promise<RenderResult>;
   fix: (req: FixRequest) => Promise<ApplyResult | LineRefusal>;
+  getFragments: (file: string) => Promise<FragmentList | LineRefusal>;
+  setFragment: (req: SetFragmentRequest) => Promise<ApplyResult | LineRefusal>;
 };

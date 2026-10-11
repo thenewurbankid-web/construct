@@ -3,7 +3,7 @@
 // (a Save on Pages, an Apply on a fix) shows on every other until the tab reloads. Import it only dynamically, when
 // mock mode is on, so it is never part of the normal screens' code.
 import { createMockLineOps } from '../../../packages/engine/line/mock.mjs';
-import type { ApplyResult, FixRequest, LineProject, LineRefusal, SetPropRequest } from './lineContract';
+import type { ApplyResult, FixRequest, FragmentList, LineProject, LineRefusal, SetFragmentRequest, SetPropRequest } from './lineContract';
 
 export type MockLineOps = {
   files: () => Record<string, string>;
@@ -11,19 +11,22 @@ export type MockLineOps = {
   planSetProp: (root: string, req: SetPropRequest) => unknown;
   applyChange: (root: string, change: unknown) => ApplyResult;
   applyFix: (root: string, req: FixRequest) => ApplyResult;
+  listFragments: (root: string, file: string) => FragmentList;
+  planSetFragment: (root: string, req: SetFragmentRequest) => unknown;
 };
 
 export const MOCK_ROOT = '/mock';
 
 export const mockLineOps = createMockLineOps() as unknown as MockLineOps;
 
-/** Runs one mock write; a LineOpError becomes the same {ok: false, sentence, code} the server sends with a 400. */
-export function mockWrite(run: () => ApplyResult): ApplyResult | LineRefusal {
+/** Runs one mock call; a LineOpError becomes the same {ok: false, sentence, code, detail?} the server sends with a
+ * 400. Anything else is rethrown. */
+export function mockWrite<T>(run: () => T): T | LineRefusal {
   try {
     return run();
   } catch (e) {
-    const err = e as { name?: string; sentence?: string; code?: string };
-    if (err.name === 'LineOpError' && err.sentence) return { ok: false, sentence: err.sentence, code: err.code ?? 'REFUSED' };
+    const err = e as { name?: string; sentence?: string; code?: string; detail?: string };
+    if (err.name === 'LineOpError' && err.sentence) return { ok: false, sentence: err.sentence, code: err.code ?? 'REFUSED', ...(err.detail ? { detail: err.detail } : {}) };
     throw e;
   }
 }
