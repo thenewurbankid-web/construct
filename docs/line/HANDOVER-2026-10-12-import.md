@@ -11,7 +11,7 @@
 Import a feature from a target app by reading its routes and files. Build a logic map and characterization tests, fit the existing logic into Line's blocks (page, component, workflow, fixture, usecase, service, domain), and import step by step until no logic unit is missed and every test passes. The first real case is max-ai-ui `/opportunity`.
 
 ## What the end-to-end run showed
-The run was on a clone. Driver: `<scratch>/opp-e2e/run.mjs`; to reproduce it, copy the agent route test in `test/line-import-agent.test.mjs`.
+The run was on a clone. Driver: `~/Repositories/construct-old-copies/opp-e2e-2026-10-12/run.mjs` (plus log.jsonl); to reproduce it, copy the agent route test in `test/line-import-agent.test.mjs`.
 - `start` took 29 min.
 - Route family `/opportunity` gave 7 routes, but the closure was 187 files: 15,152 units, 1,603 blocks, 840 steps, and 250 units that no rule placed.
 - 1,252 characterization tests were generated, and all passed before any move. Unit coverage was 1,748 of 15,152.
