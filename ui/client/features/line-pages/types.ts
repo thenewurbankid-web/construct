@@ -48,6 +48,9 @@ export type LinePagesView = {
   /** cx1: save one fragment's code; a refusal stays next to that fragment's editor. */
   saveFragment: (fragment: CodeFragment, code: string) => void;
   fragmentOutcome: FragmentOutcome | null;
+  /** ca2: the last fix applied from a page's problem (line-fix), shown at the top until the next one. */
+  fixNotice: ApplyResult | null;
+  fixApplied: (result: ApplyResult) => void;
 };
 
 /** Everything the Line Pages API offers the screen (real server or the contract's mock). */

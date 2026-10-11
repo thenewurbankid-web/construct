@@ -29,7 +29,7 @@ function LineComponentsScreen() {
   // cp1: Base on and Promote add a plan step; the Plan panel's Approve runs it, then the project is read again.
   const plan = useLinePlan(onLanded);
   const notice = plan.lastRun?.apply ?? null;
-  const controls = useLineChanges(features, plan.addStep, notice);
+  const controls = useLineChanges(features, plan.addStep, notice, onLanded);
   return <LineScreenSwitch screen={screen} fallback={<ComponentsController />} controls={controls} panel={<LinePlanController plan={plan} />} />;
 }
 
