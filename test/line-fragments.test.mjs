@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import os from 'node:os';
+import { makeTempDir } from '../test-utils/tmpdir.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { listFragments, planSetFragment, fragmentsOf } from '../packages/engine/line/fragments.mjs';
@@ -15,7 +15,7 @@ const ORDERS = 'features/orders/pages/OrdersPage.tsx';
 const CARD = 'features/orders/components/OrderCard.tsx';
 
 function copy() {
-  const dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'line-frag-')));
+  const dir = fs.realpathSync(makeTempDir('line-frag-'));
   fs.cpSync(SAMPLE, dir, { recursive: true });
   return dir;
 }

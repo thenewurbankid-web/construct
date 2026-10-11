@@ -38,3 +38,13 @@
 .lp-outcome p { margin: 0; }
 .lp-outcome--ok { background: var(--success-soft); }
 .lp-outcome--refused { background: var(--danger-soft); }
+
+/* cx1: "Edit code" on a part -- just one fragment of code, never the whole file. */
+.lp-code { display: flex; flex-direction: column; gap: var(--sp-2); align-items: flex-start; }
+.lp-code-toggle { min-height: 28px; }
+.lp-code-panel { display: flex; flex-direction: column; gap: var(--sp-3); width: 100%; }
+.lp-fragment { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; }
+.lp-fragment-label { font-weight: 600; }
+.lp-fragment-code { width: 100%; box-sizing: border-box; font-family: var(--mono); font-size: var(--fs-sm); background: var(--surface-0); color: var(--text); border: 1px solid var(--border); border-radius: var(--r-sm); padding: var(--sp-1) var(--sp-2); resize: vertical; tab-size: 2; }
+.lp-fragment-actions { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
+.lp-fragment-detail { margin: var(--sp-1) 0 0; font-family: var(--mono); font-size: var(--fs-xs); white-space: pre-wrap; overflow-wrap: anywhere; }
