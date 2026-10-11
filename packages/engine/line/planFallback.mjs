@@ -19,6 +19,7 @@ const sentence = (s) => { const t = String(s).trim().replace(/\s+/g, ' '); const
 /**
  * The file writer @mx/plan's createFileWriter is, in plain Node: atomic (tmp + rename) and logged.
  * @param {string} root The project root.
+ * @returns The plan writer.
  */
 export function createAtomicPlanWriter(root) {
   const dir = path.join(root, 'line', 'plans');
@@ -59,6 +60,7 @@ const canRun = (s) => s === 'draft' || s === 'approved' || s === 'running';
  * The static plan API.
  * @param {{registry: import('../../line-links/contracts').PlanRegistry, writer: ReturnType<typeof createAtomicPlanWriter>,
  *   now?: () => string, newId?: () => string}} o
+ * @returns The plan API, the same shape as @mx/plan's.
  */
 export function createStaticPlanApi(o) {
   const now = o.now ?? (() => new Date().toISOString());

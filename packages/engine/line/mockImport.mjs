@@ -62,7 +62,10 @@ function planOf(answers = {}) {
   return { folder: FOLDER, summary: `Brings 6 items of ${FOLDER} into Line in ${steps.length} steps: ${lib} to the library and ${6 - lib} to feature alerts; nothing outside ${FOLDER} changes.`, steps };
 }
 
-/** A fresh mock of the import API (each instance remembers whether it applied). */
+/**
+ * A fresh mock of the import API (each instance remembers whether it applied).
+ * @returns {any} The mock import API.
+ */
 export function createMockImport() {
   let applied = false;
   return {

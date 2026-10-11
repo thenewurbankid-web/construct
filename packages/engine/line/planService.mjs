@@ -52,7 +52,14 @@ function resolverOf(plan, step) {
 }
 const needsYou = (plan, s) => s.status === 'done' && s.result?.needsYou === true && !resolverOf(plan, s);
 
-/** A step as Cockpit shows it: state, one sentence, the gap before it runs. */
+/**
+ * A step as Cockpit shows it: state, one sentence, the gap before it runs.
+ * @param {string} root The project root.
+ * @param {any} plan The plan the step belongs to.
+ * @param {any} s The step.
+ * @param {any} [ops] The Line ops (real by default).
+ * @returns {any} The step view.
+ */
 export function stepView(root, plan, s, ops = REAL_PLAN_OPS) {
   const open = s.status === 'planned' || s.status === 'approved';
   const gap = open && CHANGE_TOOLS[s.tool] ? gapOf(root, s.tool, s.args, ops) : [];
@@ -78,9 +85,11 @@ export function stepView(root, plan, s, ops = REAL_PLAN_OPS) {
 }
 
 /**
+ * The plan service for one project: the session plan Cockpit and agents share, over @mx/plan when linked, else the static store.
  * @param {{root: string, ops?: typeof REAL_PLAN_OPS, afterSave?: (root: string, file: string) => unknown,
  *   commands?: any, load?: (o: {root: string, registry: any}) => Promise<{api: any, store: {linked: boolean, sentence: string}}>,
  *   linkOptions?: object}} o `commands`: the construct.* registry (default: Construct's built-in commands; null for none).
+ * @returns The plan service.
  */
 export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, commands, load = loadPlanApi, linkOptions }) {
   /** @type {Promise<{api: any, store: {linked: boolean, sentence: string}, registry: any}> | null} */

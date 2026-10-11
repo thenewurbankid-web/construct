@@ -65,7 +65,11 @@ function checkFolder(projectRoot, folder) {
   return f;
 }
 
-/** The folders worth importing: every folder (to depth 4) holding code, with its code-file count, largest first. */
+/**
+ * The folders worth importing: every folder (to depth 4) holding code, with its code-file count, sorted by path.
+ * @param {string} projectRoot The project to scan.
+ * @returns {{sourceRoot: string, folders: {path: string, files: number}[]}} The project's absolute root and its code folders.
+ */
 export function listImportFolders(projectRoot) {
   const counts = new Map();
   for (const rel of listFiles(projectRoot)) {

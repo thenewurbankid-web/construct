@@ -35,7 +35,11 @@ export const STARTER_LIBRARY = Object.freeze({
   'library/fixtures/item.json': '{\n  "id": "item-1",\n  "name": "First item"\n}\n',
 });
 
-/** One plain sentence for a name that cannot be a project folder, or null. */
+/**
+ * One plain sentence for a name that cannot be a project folder, or null.
+ * @param {any} name The proposed project name.
+ * @returns {string | null}
+ */
 export function projectNameProblem(name) {
   if (typeof name !== 'string' || name.trim() === '') return 'Give the project a name.';
   const n = name.trim();
@@ -45,7 +49,11 @@ export function projectNameProblem(name) {
   return null;
 }
 
-/** One plain sentence for a name that cannot be a feature, or null. */
+/**
+ * One plain sentence for a name that cannot be a feature, or null.
+ * @param {any} name The proposed feature name.
+ * @returns {string | null}
+ */
 export function featureNameProblem(name) {
   if (typeof name !== 'string' || name.trim() === '') return 'Name the first feature, for example "catalog".';
   const n = name.trim();

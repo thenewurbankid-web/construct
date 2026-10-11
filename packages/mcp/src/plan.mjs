@@ -21,17 +21,31 @@ function answer(r) {
   return r;
 }
 
-/** `plan_status`: the session's current plan, each step with its state, sentence, gap and checks. */
+/**
+ * `plan_status`: the session's current plan, each step with its state, sentence, gap and checks.
+ * @param {any} ctx The MCP server context (its root).
+ * @returns {Promise<any>} The plan view.
+ */
 export async function planStatus(ctx) {
   return answer(await (await serviceOf(ctx)).view());
 }
 
-/** `plan_add_step`: add one step (a change is planned first and refused in one sentence when it cannot be made). */
+/**
+ * `plan_add_step`: add one step (a change is planned first and refused in one sentence when it cannot be made).
+ * @param {any} ctx The MCP server context (its root).
+ * @param {{tool: string, args?: object, why?: string}} args The step to add.
+ * @returns {Promise<any>} The plan view with the new step.
+ */
 export async function planAddStep(ctx, args) {
   return answer(await (await serviceOf(ctx)).addStep({ tool: args.tool, args: args.args ?? {}, why: args.why }, 'agent'));
 }
 
-/** `plan_run_next`: run exactly one ready step; a write runs only after a person approved it in Cockpit. */
+/**
+ * `plan_run_next`: run exactly one ready step; a write runs only after a person approved it in Cockpit.
+ * @param {any} ctx The MCP server context (its root).
+ * @param {{stepId?: string}} args Optionally the step to run.
+ * @returns {Promise<any>} The plan view after the run.
+ */
 export async function planRunNext(ctx, args) {
   return answer(await (await serviceOf(ctx)).runNext('agent', args.stepId));
 }

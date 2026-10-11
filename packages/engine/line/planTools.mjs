@@ -44,12 +44,23 @@ export const CHANGE_TOOLS = Object.freeze({
 /** Change tools planned only when they run: an import step builds on the steps before it (the library item a feature
  * item is based on is moved there by an earlier step), so it cannot be planned, or its gap worked out, ahead. */
 export const DEFERRED_TOOLS = Object.freeze(['line.import.mark', 'line.import.toLibrary', 'line.import.toFeature']);
+/**
+ * Whether a tool's change is planned in its own folder (an import step) rather than at the project root.
+ * @param {string} tool The tool name.
+ * @returns {boolean}
+ */
 export const isDeferred = (tool) => DEFERRED_TOOLS.includes(tool);
 
 /** A root-relative folder inside the project (no leading slash, no "." or ".." parts). */
 const isFolder = (v) => typeof v === 'string' && v.length > 0 && !v.startsWith('/') && !v.endsWith('/') && !v.split('/').some((x) => x === '' || x === '.' || x === '..');
 
-/** Where a tool's change is planned and written: the import folder for an import step, else the project root. */
+/**
+ * Where a tool's change is planned and written: the import folder for an import step, else the project root.
+ * @param {string} root The project root.
+ * @param {string} tool The tool name.
+ * @param {any} args The step's args.
+ * @returns {string}
+ */
 export function rootOf(root, tool, args) {
   if (!isDeferred(tool)) return root;
   if (!isFolder(args?.folder)) throw new LineOpError('The import folder must be a folder inside the project.', 'BAD_FOLDER');
@@ -180,12 +191,21 @@ const DESCRIBE = Object.freeze({
 });
 
 // ------------------------------------------------------------------------------------------------- gap and checks
-/** The change args without the plan-only fields. */
+/**
+ * The change args without the plan-only fields.
+ * @param {any} args The step's args.
+ * @returns {any} The change request.
+ */
 export const requestOf = (args) => { const { expect: _e, retry: _r, fixOf: _f, ...req } = args ?? {}; return req; };
 const base = (p) => path.basename(p);
 const readOrNull = (root, rel) => { try { return fs.readFileSync(path.join(root, rel), 'utf8'); } catch { return null; } };
 
-/** Per planned file: already as planned (present: the content, or gone for a delete) or not yet (missing). */
+/**
+ * Per planned file: already as planned (present: the content, or gone for a delete) or not yet (missing).
+ * @param {string} root The project root.
+ * @param {any} staged The planned change.
+ * @returns {{path: string, state: string}[]}
+ */
 export function fileStates(root, staged) {
   return staged.files.map((f) => ({ path: f.path, state: readOrNull(root, f.path) === f.content ? 'present' : 'missing' }));
 }
@@ -221,6 +241,11 @@ const lower = (s) => String(s).charAt(0).toLowerCase() + String(s).slice(1);
 /**
  * After a write: each expected check, run. `validate` passes when the writer landed the change (it blocks every
  * NEW problem of the line profile); `file` re-reads every planned file. Kinds Line cannot run yet fail honestly.
+ * @param {string} root The project root.
+ * @param {any[]} expect The expected checks.
+ * @param {any} staged The planned change.
+ * @param {any} apply The writer's result.
+ * @returns {any[]} One result per check.
  */
 export function runChecks(root, expect, staged, apply) {
   return expect.map((c) => {
@@ -245,6 +270,10 @@ export function runChecks(root, expect, staged, apply) {
  * The typed fixes of a refused change's findings, worked out on the project as the change would leave it (the
  * findings only exist there): a scratch copy of the project (no node_modules, no .git) with the change written,
  * removed afterwards. Never throws; on any trouble the findings come back as they are.
+ * @param {string} root The project root.
+ * @param {any} staged The refused change.
+ * @param {any[]} findings Its findings.
+ * @returns {any[]} The findings with their fixes.
  */
 export function fixesAsProposed(root, staged, findings) {
   let scratch = null;
@@ -267,6 +296,10 @@ export function fixesAsProposed(root, staged, findings) {
 /**
  * Run one change tool: plan (pure), narrow to the files not already there, apply through the writer, check.
  * Never throws for a refusal: the step's result records it and says the step needs the person.
+ * @param {string} projectRoot The project root.
+ * @param {string} tool The change tool.
+ * @param {any} args The step's args.
+ * @param {any} [ops] The Line ops (real by default).
  * @returns {import('./contract.mjs').LineStepResult}
  */
 export function runChange(projectRoot, tool, args, ops = REAL_PLAN_OPS) {
@@ -334,6 +367,7 @@ export function runChange(projectRoot, tool, args, ops = REAL_PLAN_OPS) {
 /**
  * The Line tools for one project root.
  * @param {{root: string, ops?: typeof REAL_PLAN_OPS, afterSave?: (root: string, file: string) => unknown}} o
+ * @returns The line.* tools, each with name, kind, schema, describe and run.
  */
 export function lineTools({ root, ops = REAL_PLAN_OPS, afterSave }) {
   const run = {
@@ -378,7 +412,10 @@ export function createLinePlanRegistry({ root, ops = REAL_PLAN_OPS, commands = n
   };
 }
 
-/** Construct's commands as plan tools (construct.validate, ...), loaded on demand (the CLI's registry is large). */
+/**
+ * Construct's commands as plan tools (construct.validate, ...), loaded on demand (the CLI's registry is large).
+ * @returns {Promise<any>} The construct.* plan registry.
+ */
 export async function constructCommandTools() {
   const [{ createCommandRegistry }, { registerBuiltinCommands }, { commandPlanRegistry }] = await Promise.all([
     import('@line/construct-core/command-registry'), import('../../core/builtin-commands.mjs'), import('../../core/plan-registry.mjs'),
@@ -390,6 +427,10 @@ export async function constructCommandTools() {
 
 /**
  * Plan a change tool's step without writing (to word it and to refuse a bad request before it joins the plan).
+ * @param {string} root The project root.
+ * @param {string} tool The change tool.
+ * @param {any} args The step's args.
+ * @param {any} [ops] The Line ops (real by default).
  * @returns {import('./contract.mjs').StagedChange} Throws a LineOpError for a refusal.
  */
 export function previewStep(root, tool, args, ops = REAL_PLAN_OPS) {

@@ -544,7 +544,11 @@ export function assertLineWorkspace(w) {
   if (w.readOnly !== true) fail('workspace.readOnly', 'must be true');
 }
 
-/** @param {any} r @returns {asserts r is NewLineProjectResult} */
+/**
+ * Throws unless r is a NewLineProjectResult (an ApplyResult plus the new project's folder, null when not created).
+ * @param {any} r
+ * @returns {asserts r is NewLineProjectResult}
+ */
 export function assertNewLineProjectResult(r) {
   /** @type {any} */
   const x = r;
@@ -599,14 +603,23 @@ export function assertLineFeatureDetail(d) {
   d.findings.forEach((x, k) => assertFinding(x, `feature.findings[${k}]`));
 }
 
-/** @param {any} c @param {string} [where] */
+/**
+ * Throws unless c is a plan check (id, one sentence, a known kind).
+ * @param {any} c
+ * @param {string} [where] Where in the value the check sits, for the error.
+ * @returns {void}
+ */
 export function assertPlanCheck(c, where = 'check') {
   str(c?.id, `${where}.id`);
   sentence(c.sentence, `${where}.sentence`);
   if (!CHECK_KINDS.includes(c.kind)) fail(`${where}.kind`, `must be one of ${CHECK_KINDS.join(', ')}`);
 }
 
-/** @param {any} r @returns {asserts r is LineStepResult} */
+/**
+ * Throws unless r is a LineStepResult (apply result, checks, counts and options that agree).
+ * @param {any} r
+ * @returns {asserts r is LineStepResult}
+ */
 export function assertLineStepResult(r) {
   assertApplyResult(r?.apply);
   if (!Array.isArray(r.checks)) fail('stepResult.checks', 'must be an array');
@@ -617,7 +630,11 @@ export function assertLineStepResult(r) {
   sentence(r.sentence, 'stepResult.sentence');
 }
 
-/** @param {any} v @returns {asserts v is PlanView} */
+/**
+ * Throws unless v is a PlanView (session, steps with state, sentence and gap, store status).
+ * @param {any} v
+ * @returns {asserts v is PlanView}
+ */
 export function assertPlanView(v) {
   if (v?.ok !== true) fail('plan.ok', 'must be true');
   str(v.sessionId, 'plan.sessionId');
@@ -634,7 +651,11 @@ export function assertPlanView(v) {
 
 const relPath = (v, where) => { str(v, where); if (v.startsWith('/') || v.split('/').includes('..')) fail(where, 'must be project-relative and stay inside the project'); };
 
-/** @param {any} s @returns {asserts s is ImportScan} */
+/**
+ * Throws unless s is an ImportScan (found items, questions, unchanged files and routes, all inside the folder).
+ * @param {any} s
+ * @returns {asserts s is ImportScan}
+ */
 export function assertImportScan(s) {
   str(s?.sourceRoot, 'scan.sourceRoot');
   relPath(s.folder, 'scan.folder');
@@ -667,7 +688,11 @@ export function assertImportScan(s) {
   s.unchanged.forEach((u, i) => { relPath(u.file, `scan.unchanged[${i}].file`); sentence(u.sentence, `scan.unchanged[${i}].sentence`); });
 }
 
-/** @param {any} p @returns {asserts p is ImportPlan} */
+/**
+ * Throws unless p is an ImportPlan (unique import steps, each naming the plan's folder).
+ * @param {any} p
+ * @returns {asserts p is ImportPlan}
+ */
 export function assertImportPlan(p) {
   relPath(p?.folder, 'plan.folder');
   sentence(p.summary, 'plan.summary');
@@ -684,7 +709,11 @@ export function assertImportPlan(p) {
   });
 }
 
-/** @param {any} r @returns {asserts r is ImportApplyResult} */
+/**
+ * Throws unless r is an ImportApplyResult (an ApplyResult plus one sentence per step).
+ * @param {any} r
+ * @returns {asserts r is ImportApplyResult}
+ */
 export function assertImportApplyResult(r) {
   /** @type {any} */
   const x = r;
