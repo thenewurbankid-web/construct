@@ -92,6 +92,8 @@ import { createLineImportRouter } from './lineImportApi.mjs';
 import { createLineNewProjectRouter } from './lineNewProjectApi.mjs';
 import { createLineToolGate } from './lineToolGate.mjs';
 import { createLinePlanService } from '../../../packages/engine/line/planService.mjs';
+import { createLineAiRouter } from './lineAiApi.mjs';
+import { stepModel } from '../../../packages/core/ai-profiles.mjs';
 import { createStoryBridgeRouter } from './storyBridgeApi.mjs';
 import { createNotesRouter } from './notesApi.mjs';
 import { openNotesStore } from './notesStore.mjs';
@@ -389,7 +391,8 @@ app.post('/api/create', async (req, res) => {
     findRoot: containedProjectRoot,
     inProcess: (args) => runCapturing(() => create(withDir(args))),
     llmProvider: () => getSettings().llmProviders.createFill,
-    llmModel: () => getSettings().llmModels.createFill,
+    // cu2: no model picked in Settings -> the step profile's model (Line's 1.5B), not llm.mjs's 7B.
+    llmModel: () => getSettings().llmModels.createFill ?? stepModel('cockpit.createFill'),
   });
   res.status(status).json(body);
 });
@@ -431,7 +434,7 @@ app.post('/api/import', async (req, res) => {
     // An explicit `llm` provider name (direct API use) still wins; the UI sends `useLlm: true` instead and the
     // provider comes from Settings.importFill.
     llmProvider: () => getSettings().llmProviders.importFill,
-    llmModel: () => getSettings().llmModels.importFill,
+    llmModel: () => getSettings().llmModels.importFill ?? stepModel('cockpit.importFill'),
   });
   res.status(status).json(body);
 });
@@ -1316,6 +1319,9 @@ app.use('/api/line', createLineRenderRouter({
     return root ? { ok: true, root } : { ok: false, error: 'No project is open; pick a project first.' };
   },
 }));
+
+// cu2: every AI step's profile (model, reply cap, ladder, static fallback), read-only for Settings.
+app.use('/api/line', createLineAiRouter());
 
 // #386: the Picker's "propose selectors as a diff to story.md" (design section 9.7). Below the session gate
 // like every other `/api` route; the client names a feature and a story.md must already exist for it.

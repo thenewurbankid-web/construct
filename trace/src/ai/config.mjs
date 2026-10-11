@@ -59,9 +59,24 @@ function clean(l) {
   return out;
 }
 
+// cu2: Line's one set of per-step profiles (packages/core/ai-profiles.json, steps "trace.<task>") holds each task's
+// default model (the 1.5B); ai.config.json and an example's ai.json only override it. Trace run on its own (no Construct
+// checkout beside it) keeps the built-in DEFAULT.
+export const PROFILES_FILE = path.join(root, "..", "packages", "core", "ai-profiles.json");
+export function profileLayer(file = PROFILES_FILE) {
+  const data = readJson(file);
+  const tasks = {};
+  for (const p of Array.isArray(data.profiles) ? data.profiles : []) {
+    const task = typeof p?.step === "string" && p.step.startsWith("trace.") ? p.step.slice(6) : null;
+    // Only a profile that names its own model becomes a task entry, so an ai.config.json "default" still reaches the rest.
+    if (task && TASKS.includes(task) && p.provider === "ollama" && typeof p.model === "string") tasks[task] = { provider: "ollama", model: p.model };
+  }
+  return typeof data.defaultModel === "string" ? { default: { provider: "ollama", model: data.defaultModel }, tasks } : { tasks };
+}
+
 export function loadAiConfig({ dir, overrides = {}, trusted = false } = {}) {
   const file = readJson(path.join(root, "ai.config.json"));
-  const layers = [file, dir ? readJson(path.join(dir, "ai.json")) : {}];
+  const layers = [profileLayer(), file, dir ? readJson(path.join(dir, "ai.json")) : {}];
   if (trusted) layers.push(overrides);
   const cfg = { default: { ...DEFAULT }, tasks: {}, allowedModels: {}, keyHosts: [] };
   for (const l of layers) {

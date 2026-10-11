@@ -1,0 +1,59 @@
+{
+  "$comment": "cu2: Line's ONE set of per-step AI profiles (contract: StepProfile in packages/engine/line/contract.mjs). Cockpit's LLM capabilities (ui/server settings llmProviders), Trace's AI tasks (trace/ai.config.json now holds only overrides) and the @mx/reason pairs all read their model, reply cap and ladder from here. Static always runs first; a model rung is on only where measured to help; every step falls back to static. Local models only: nothing here pulls or stops a model.",
+  "defaultModel": "qwen2.5-coder:1.5b",
+  "profiles": [
+    {
+      "step": "construct.chooser",
+      "label": "Suggests the next step a developer most likely wants from the steps on offer.",
+      "kind": "decide",
+      "provider": "ollama",
+      "maxTokens": 800,
+      "source": "construct",
+      "guidance": "Pick the next step a developer most likely wants from the offered steps.",
+      "question": "Which step does the developer most likely want next?",
+      "ladder": { "static": { "target": 1 }, "options": { "on": true, "target": 0.6 }, "review": { "on": false, "target": 0.7 }, "measured": null }
+    },
+    {
+      "step": "construct.fix",
+      "label": "After Construct refuses a change, picks which of its typed fixes to try next.",
+      "kind": "decide",
+      "provider": "ollama",
+      "maxTokens": 800,
+      "source": "construct",
+      "guidance": "Construct refused the change; pick the typed fix that resolves the refusal. The first fix is Construct's recommended one.",
+      "question": "Which fix resolves the refusal?",
+      "ladder": { "static": { "target": 1 }, "options": { "on": true, "target": 0.8 }, "review": { "on": false, "target": 0.7 }, "measured": "2026-10-11 qwen2.5-coder:1.5b: no feedback 6/10, refusal sentence 8/10, sentence and typed fixes 9/10" }
+    },
+    {
+      "step": "trace.choose",
+      "label": "Picks where one part of a page gets its data from, citing a fact that settles it.",
+      "kind": "decide",
+      "provider": "ollama",
+      "maxTokens": 120,
+      "source": "trace",
+      "guidance": "Pick the option the cited facts support; never static text.",
+      "question": "Which option do the facts support?",
+      "ladder": { "static": { "target": 1 }, "options": { "on": true, "target": 0.6 }, "review": { "on": false, "target": 0.7 }, "measured": null }
+    },
+    {
+      "step": "trace.pick-fields",
+      "label": "Picks the API fields that feed one part of a page.",
+      "kind": "decide",
+      "provider": "ollama",
+      "maxTokens": 150,
+      "source": "trace",
+      "guidance": "Pick every field the cited facts support.",
+      "question": "Which fields feed this part?",
+      "ladder": { "static": { "target": 1 }, "options": { "on": false, "target": 0.6 }, "review": { "on": false, "target": 0.7 }, "measured": null }
+    },
+    { "step": "trace.draft-body", "label": "Writes one expression for a placeholder, kept only when it reproduces the design's examples.", "kind": "draft", "provider": "ollama", "maxTokens": 100, "source": "trace", "ladder": { "static": { "target": 1 }, "options": { "on": false, "target": 0.6 }, "review": { "on": false, "target": 0.7 }, "measured": null } },
+    { "step": "trace.explain", "label": "Puts an open item in plain words for the run summary, checked against its facts.", "kind": "draft", "provider": "ollama", "maxTokens": 220, "source": "trace", "ladder": { "static": { "target": 1 }, "options": { "on": false, "target": 0.6 }, "review": { "on": false, "target": 0.7 }, "measured": null } },
+    { "step": "trace.mail", "label": "Rewrites a team email on request; every draft is fact-checked and never sent by itself.", "kind": "draft", "provider": "ollama", "maxTokens": 600, "source": "trace", "ladder": { "static": { "target": 1 }, "options": { "on": false, "target": 0.6 }, "review": { "on": false, "target": 0.7 }, "measured": null } },
+    { "step": "trace.part-chat", "label": "Answers questions about one part in the Part inspector, fact-checked and never applied by itself.", "kind": "draft", "provider": "ollama", "maxTokens": 400, "source": "trace", "ladder": { "static": { "target": 1 }, "options": { "on": false, "target": 0.6 }, "review": { "on": false, "target": 0.7 }, "measured": null } },
+    { "step": "trace.generate-sample", "label": "Proposes one sample value for a contract field that has no example.", "kind": "draft", "provider": "ollama", "maxTokens": 80, "source": "trace", "ladder": { "static": { "target": 1 }, "options": { "on": false, "target": 0.6 }, "review": { "on": false, "target": 0.7 }, "measured": null } },
+    { "step": "trace.draft-story", "label": "Proposes a page story with a goal and acceptance points, never saved by itself.", "kind": "draft", "provider": "ollama", "maxTokens": 400, "source": "trace", "ladder": { "static": { "target": 1 }, "options": { "on": false, "target": 0.6 }, "review": { "on": false, "target": 0.7 }, "measured": null } },
+    { "step": "cockpit.importFill", "label": "Fills one imported file's gaps, shown as a diff you approve.", "kind": "draft", "provider": "ollama", "maxTokens": 800, "source": "cockpit", "ladder": { "static": { "target": 1 }, "options": { "on": false, "target": 0.6 }, "review": { "on": false, "target": 0.7 }, "measured": null } },
+    { "step": "cockpit.createFill", "label": "Fills a newly created unit's body, shown as a diff you approve.", "kind": "draft", "provider": "ollama", "maxTokens": 800, "source": "cockpit", "ladder": { "static": { "target": 1 }, "options": { "on": false, "target": 0.6 }, "review": { "on": false, "target": 0.7 }, "measured": null } },
+    { "step": "cockpit.planAnalysis", "label": "Analyses a whole feature for import with a hosted model you choose; it never runs on a local model.", "kind": "draft", "provider": "hosted", "model": null, "maxTokens": 800, "source": "cockpit", "ladder": { "static": { "target": 1 }, "options": { "on": false, "target": 0.6 }, "review": { "on": false, "target": 0.7 }, "measured": null } }
+  ]
+}

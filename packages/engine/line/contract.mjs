@@ -6,6 +6,7 @@
 //   T2 ops        planBaseOn, planPromote, applyChange packages/engine/line/ops.mjs
 //   T3 page prop  planSetProp                          packages/engine/line/pageProp.mjs
 //   cu6 workspace readWorkspace, setWorkspace            packages/engine/line/workspace.mjs
+//   cu2 AI layer  stepProfile, decide, decideUntilAccepted packages/core/ai-profiles.mjs, packages/core/line-decide.mjs
 //   T4 server     LINE_API routes                      ui/server/src/lineApi.mjs (mounted at /api/line)
 //   T5/T6 UI      ui/client/features/line-* through services/LineApi.ts (a typed mirror of LINE_API)
 //
@@ -477,6 +478,65 @@ export const PLAN_PROTOCOL = Object.freeze([
   'A retry that passes no more checks than the try before it stops instead of looping.',
 ]);
 
+/**
+ * cu2: one AI step's profile. Cockpit's LLM capabilities, Trace's AI tasks and the @mx/reason pairs are ONE set of these
+ * (packages/core/ai-profiles.json). Static runs first; `ladder` says which model rungs are on (reason's ladder shape).
+ * @typedef {object} StepProfile
+ * @property {string} step        Stable id "<app>.<task>", e.g. "construct.chooser", "trace.choose", "cockpit.importFill".
+ * @property {string} label       Plain English: what the step does, one sentence.
+ * @property {'decide'|'draft'} kind  decide: pick one of closed options (static, Qwen suggests, jev decides, Qwen gives the reasons); draft: Qwen writes text that static checks.
+ * @property {'ollama'|'hosted'} provider  ollama: a local model; hosted: a hosted model the person configures (never local).
+ * @property {string|null} model  The model the step uses; the local default is qwen2.5-coder:1.5b. Null only for a hosted step.
+ * @property {string} modelFrom   Plain English: where the model comes from ("Line's default", "trace/ai.config.json").
+ * @property {number} maxTokens   The reply cap for the step's model (Qwen's proposer reads it; 800 for plan steps).
+ * @property {'static'} fallback  When the model is down or not linked, the static path answers and says so.
+ * @property {{static: {target: number}, options: {on: boolean, target: number}, review: {on: boolean, target: number}, measured: string|null}} ladder
+ * @property {'cockpit'|'trace'|'construct'} source  Which app's step it is.
+ * @property {string} [guidance]  Optional extra guidance for Qwen (ai-profiles.json; not shown in Settings).
+ * @property {string} [question]  Optional wording of the pick question for jev (ai-profiles.json; not shown in Settings).
+ */
+
+/**
+ * cu2: Construct's standard feedback to any AI step: the refusal sentence and its typed fixes (the LineFinding's
+ * sentence and fixes, or an ApplyResult's sentence and its findings' fixes).
+ * @typedef {{sentence: string, fixes: {id: string, sentence: string, rank: number}[]}} Refusal
+ */
+
+/**
+ * cu2: what decide(step, options, context) answers. `via` names who decided: static (the checks or their order), jev (it
+ * picked among the checked options), model (Qwen's suggestion stood because jev was not available). `reasons` are full
+ * plain-English sentences (Qwen's reason when it gave one); `attribution` is what a decision trace records. With
+ * `context.refusal`, the options ARE the refusal's typed fixes and `feedback` is true.
+ * @typedef {object} DecideResult
+ * @property {string} step
+ * @property {string|null} choice      An option id that passed the checks, or null (nothing passed: ask the person).
+ * @property {string|null} runnerUp
+ * @property {'static'|'jev'|'model'} via
+ * @property {'single'|'order'|'jev'|'model'|'none'} by
+ * @property {string[]} reasons
+ * @property {boolean} lowConfidence  jev and Qwen disagreed, or nothing passed: with Auto off, ask the person.
+ * @property {boolean} feedback        The options were Construct's typed fixes for a refusal.
+ * @property {{step: string, provider: '@mx/reason'|'static', decider: 'static'|'jev'|'qwen', model: string|null, version: string, fellBackFrom: 'jev'|'reason'|null, note: string|null}} attribution
+ */
+
+/**
+ * cu2: decideUntilAccepted(step, options, context, {apply, score}): decide, apply the choice through Construct; on a
+ * refusal decide again with {refusal sentence, typed fixes} as the options; stop when it lands, or when a round does not
+ * improve the score (then ONE question for the person).
+ * @typedef {object} DecideLoopResult
+ * @property {'accepted'|'ask'} outcome
+ * @property {{decision: DecideResult, ok: boolean, score: number, refusal: Refusal|null}[]} rounds
+ * @property {{sentence: string, options: {id: string, sentence: string}[]}|null} question  Set exactly when outcome is ask.
+ */
+
+/**
+ * cu2: GET /api/line/ai-profiles, the read-only Settings view of every AI step.
+ * @typedef {object} AiProfiles
+ * @property {string} defaultModel   qwen2.5-coder:1.5b.
+ * @property {StepProfile[]} profiles
+ * @property {{linked: boolean, sentence: string}} reason  Whether @mx/reason (jev and the ladder) is linked, in one sentence.
+ */
+
 /** A refused request (bad name, unknown item, name taken). `sentence` is shown as is; `detail` (optional) is the
  * technical reason (a parser or type-checker message) for a collapsed Details. */
 export class LineOpError extends Error {
@@ -554,6 +614,7 @@ export const LINE_API = Object.freeze([
   { method: 'POST', path: '/api/line/import/plan', request: 'ImportPlanRequest', response: 'ImportPlan' },
   { method: 'POST', path: '/api/line/new-project', request: 'NewLineProjectRequest', response: 'NewLineProjectResult' },
   { method: 'GET', path: '/api/line/tools', request: null, response: 'ToolList' },
+  { method: 'GET', path: '/api/line/ai-profiles', request: null, response: 'AiProfiles' },
 ]);
 
 /** The tools an import plan's steps name (plan-ready: each produces a StagedChange for applyChange). */
@@ -564,6 +625,10 @@ export const LINE_FIX_TOOLS = Object.freeze(['line.setBase', 'line.promote', 'li
 export const LINE_KINDS = Object.freeze(['components', 'pages', 'workflows', 'fixtures']);
 export const LEVELS = Object.freeze(['atom', 'molecule', 'organism']);
 export const FRAGMENT_KINDS = Object.freeze(['prop-expression', 'handler', 'condition', 'style']);
+/** cu2: the local model every AI step uses unless its profile names another. */
+export const DEFAULT_STEP_MODEL = 'qwen2.5-coder:1.5b';
+export const DECIDE_VIA = Object.freeze(['static', 'jev', 'model']);
+export const DECIDE_BY = Object.freeze(['single', 'order', 'jev', 'model', 'none']);
 
 // ---------------------------------------------------------------------------------------------
 // Runtime shape checks: the contract tests run them over the mock and every real implementation.
@@ -1101,4 +1166,111 @@ export function assertLineWorkflowList(l) {
   l.workflows.forEach((w, i) => { assertLineWorkflow(w, `workflows.workflows[${i}]`); if (w.kind !== 'feature' || w.feature !== l.feature) fail(`workflows.workflows[${i}]`, 'must be a workflow of this feature'); });
   l.library.forEach((w, i) => { assertLineWorkflow(w, `workflows.library[${i}]`); if (w.kind !== 'library') fail(`workflows.library[${i}]`, 'must be a library workflow'); });
   l.notMachines.forEach((n, i) => { str(n.id, `workflows.notMachines[${i}].id`); str(n.file, `workflows.notMachines[${i}].file`); sentence(n.sentence, `workflows.notMachines[${i}].sentence`); });
+}
+
+// cu2 ------------------------------------------------------------------------------------------
+const rate = (v, where) => (typeof v === 'number' && v >= 0 && v <= 1) || fail(where, 'must be a number from 0 to 1');
+const STEP_ID = /^[a-z]+\.[A-Za-z][\w-]*$/;
+
+/**
+ * cu2: throws unless p is a StepProfile.
+ * @param {any} p
+ * @param {string} [where]
+ * @returns {asserts p is StepProfile}
+ */
+export function assertStepProfile(p, where = 'profile') {
+  str(p?.step, `${where}.step`);
+  if (!STEP_ID.test(p.step)) fail(`${where}.step`, `must look like "<app>.<task>": ${JSON.stringify(p.step)}`);
+  sentence(p.label, `${where}.label`);
+  if (!['decide', 'draft'].includes(p.kind)) fail(`${where}.kind`, 'must be decide or draft');
+  if (!['ollama', 'hosted'].includes(p.provider)) fail(`${where}.provider`, 'must be ollama or hosted');
+  if (p.provider === 'ollama') str(p.model, `${where}.model`);
+  else if (p.model !== null && typeof p.model !== 'string') fail(`${where}.model`, 'must be a string or null');
+  str(p.modelFrom, `${where}.modelFrom`);
+  if (!Number.isInteger(p.maxTokens) || p.maxTokens < 1 || p.maxTokens > 32768) fail(`${where}.maxTokens`, 'must be a whole number from 1 to 32768');
+  if (p.fallback !== 'static') fail(`${where}.fallback`, 'must be static');
+  const l = p.ladder;
+  if (!l || typeof l !== 'object') fail(`${where}.ladder`, 'must be an object');
+  rate(l.static?.target, `${where}.ladder.static.target`);
+  for (const k of ['options', 'review']) {
+    if (typeof l[k]?.on !== 'boolean') fail(`${where}.ladder.${k}.on`, 'must be a boolean');
+    rate(l[k].target, `${where}.ladder.${k}.target`);
+  }
+  if (l.measured !== null && typeof l.measured !== 'string') fail(`${where}.ladder.measured`, 'must be a string or null');
+  if (p.kind === 'draft' && l.options.on) fail(`${where}.ladder.options.on`, 'a draft step has no options for jev to pick from');
+  if (p.provider === 'hosted' && l.options.on) fail(`${where}.ladder.options.on`, 'jev is a local model; a hosted step cannot turn it on');
+  if (!['cockpit', 'trace', 'construct'].includes(p.source)) fail(`${where}.source`, 'must be cockpit, trace or construct');
+}
+
+/**
+ * cu2: throws unless r is a DecideResult (its choice one of the offered ids, when known).
+ * @param {any} r
+ * @param {string[]} [optionIds] The ids that were offered, when known.
+ * @returns {asserts r is DecideResult}
+ */
+export function assertDecideResult(r, optionIds) {
+  str(r?.step, 'decide.step');
+  if (r.choice !== null) str(r.choice, 'decide.choice');
+  if (r.runnerUp !== null) str(r.runnerUp, 'decide.runnerUp');
+  if (r.choice !== null && r.runnerUp === r.choice) fail('decide.runnerUp', 'must differ from the choice');
+  if (optionIds && r.choice !== null && !optionIds.includes(r.choice)) fail('decide.choice', `must be one of the offered options: ${JSON.stringify(r.choice)}`);
+  if (!DECIDE_VIA.includes(r.via)) fail('decide.via', 'must be static, jev or model');
+  if (!DECIDE_BY.includes(r.by)) fail('decide.by', 'must be single, order, jev, model or none');
+  if ((r.choice === null) !== (r.by === 'none')) fail('decide.by', 'is none exactly when nothing was chosen');
+  if ((r.via === 'jev') !== (r.by === 'jev')) fail('decide.via', 'is jev exactly when by is jev');
+  if ((r.via === 'model') !== (r.by === 'model')) fail('decide.via', 'is model exactly when by is model');
+  if (!Array.isArray(r.reasons) || !r.reasons.length) fail('decide.reasons', 'must hold at least one sentence');
+  r.reasons.forEach((x, i) => sentence(x, `decide.reasons[${i}]`));
+  if (typeof r.lowConfidence !== 'boolean') fail('decide.lowConfidence', 'must be a boolean');
+  if (typeof r.feedback !== 'boolean') fail('decide.feedback', 'must be a boolean');
+  const a = r.attribution;
+  if (!a || a.step !== r.step) fail('decide.attribution.step', 'must equal the step');
+  if (!['@mx/reason', 'static'].includes(a.provider)) fail('decide.attribution.provider', 'must be @mx/reason or static');
+  if (!['static', 'jev', 'qwen'].includes(a.decider)) fail('decide.attribution.decider', 'must be static, jev or qwen');
+  if ((a.decider === 'jev') !== (r.via === 'jev') || (a.decider === 'qwen') !== (r.via === 'model')) fail('decide.attribution.decider', 'must match via');
+  if (a.model !== null) str(a.model, 'decide.attribution.model');
+  str(a.version, 'decide.attribution.version');
+  if (a.fellBackFrom !== null && !['jev', 'reason'].includes(a.fellBackFrom)) fail('decide.attribution.fellBackFrom', 'must be jev, reason or null');
+  if (a.note !== null) sentence(a.note, 'decide.attribution.note');
+  if (a.fellBackFrom !== null && a.note === null) fail('decide.attribution.note', 'a fallback says why in one sentence');
+}
+
+/**
+ * cu2: throws unless x is a DecideLoopResult.
+ * @param {any} x
+ * @returns {asserts x is DecideLoopResult}
+ */
+export function assertDecideLoopResult(x) {
+  if (!['accepted', 'ask'].includes(x?.outcome)) fail('loop.outcome', 'must be accepted or ask');
+  if (!Array.isArray(x.rounds) || !x.rounds.length) fail('loop.rounds', 'must hold at least one round');
+  x.rounds.forEach((r, i) => {
+    assertDecideResult(r.decision);
+    if (typeof r.ok !== 'boolean' || typeof r.score !== 'number') fail(`loop.rounds[${i}]`, 'ok must be a boolean and score a number');
+    if (i > 0 && !r.decision.feedback) fail(`loop.rounds[${i}].decision.feedback`, 'a retry decides over the refusal\'s typed fixes');
+  });
+  const last = x.rounds.at(-1);
+  if ((x.outcome === 'accepted') !== last.ok) fail('loop.outcome', 'is accepted exactly when the last round landed');
+  if ((x.outcome === 'ask') !== (x.question !== null)) fail('loop.question', 'is set exactly when the outcome is ask');
+  if (x.question) {
+    sentence(x.question.sentence, 'loop.question.sentence');
+    if (!Array.isArray(x.question.options)) fail('loop.question.options', 'must be an array');
+  }
+}
+
+/**
+ * cu2: throws unless x is AiProfiles (GET /api/line/ai-profiles).
+ * @param {any} x
+ * @returns {asserts x is AiProfiles}
+ */
+export function assertAiProfiles(x) {
+  str(x?.defaultModel, 'aiProfiles.defaultModel');
+  if (!Array.isArray(x.profiles) || !x.profiles.length) fail('aiProfiles.profiles', 'must be a non-empty array');
+  const seen = new Set();
+  x.profiles.forEach((p, i) => {
+    assertStepProfile(p, `aiProfiles.profiles[${i}]`);
+    if (seen.has(p.step)) fail(`aiProfiles.profiles[${i}].step`, 'must be unique');
+    seen.add(p.step);
+  });
+  if (typeof x.reason?.linked !== 'boolean') fail('aiProfiles.reason.linked', 'must be a boolean');
+  sentence(x.reason.sentence, 'aiProfiles.reason.sentence');
 }

@@ -67,6 +67,7 @@ export const TOOL_ENTRIES = Object.freeze(/** @type {any[]} */ ([
   { id: 'line.spec', kind: 'read', writes: null, inputSchema: fieldsSchema([], ['topic', 'id']), outputSchema: 'LineSpec', sentence: 'Reads Line\'s versioned spec, generated from its code, one topic at a time.', surfaces: { mcp: 'line_spec' } },
   // cu7: mounted at its own path before the gate (it needs no open project); a person starts a new project folder.
   { id: 'line.newProject', kind: 'write', writes: 'project', inputSchema: fieldsSchema(['name', 'feature'], [], { open: true }), outputSchema: 'NewLineProjectResult', sentence: 'Starts a new Line project in a folder of the workspace and opens it.', personOnly: true, surfaces: { http: http('POST', '/new-project') } },
+  { id: 'line.aiProfiles', kind: 'read', writes: null, inputSchema: NONE, outputSchema: 'AiProfiles', sentence: 'Reads every AI step\'s profile: its model, how it decides and its static fallback.', surfaces: { http: http('GET', '/ai-profiles') } },
   // Line's own state: written atomically by its store and logged, without asking.
   { id: 'line.setWorkspace', kind: 'write', writes: 'line', inputSchema: fieldsSchema(['folder']), outputSchema: 'LineWorkspace', sentence: 'Sets the one folder Line may change; everything outside it stays read-only.', controlId: 'workspace-folder', surfaces: { http: http('POST', '/workspace') } },
   // Project writes: only ever a plan step (approval per step, or Auto).

@@ -3,6 +3,7 @@
 import { DirectoryBrowserController } from '@/features/directory-browser';
 import { ConnectRemoteController, GithubConnectionController } from '@/features/clone';
 import { AutoCommitSettingsController } from '@/features/git-session';
+import { AiStepsController } from '@/features/ai-steps';
 import { useSettings } from '../hooks/useSettings';
 import { SettingsPage } from '../pages/SettingsPage';
 
@@ -17,5 +18,5 @@ export function SettingsController() {
   ) : null;
   // Commit-on-save's controls (#283) are another feature's controller, composed here as a second
   // slot for the same reason the picker is: settings stays unaware of how git is configured.
-  return <SettingsPage {...settings} picker={picker} gitSession={<AutoCommitSettingsController />} remote={<ConnectRemoteController />} github={<GithubConnectionController />} />;
+  return <SettingsPage {...settings} picker={picker} gitSession={<AutoCommitSettingsController />} remote={<ConnectRemoteController />} github={<GithubConnectionController />} aiSteps={<AiStepsController />} />;
 }
