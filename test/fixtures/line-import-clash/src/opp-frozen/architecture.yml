@@ -1,0 +1,5 @@
+# The library's pages are frozen here, so the import's step that moves a page into the library is refused late.
+version: 1
+preset: line
+frozen:
+  - library/pages/**
