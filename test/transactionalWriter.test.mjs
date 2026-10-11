@@ -106,3 +106,25 @@ test('commit() cleans up its shadow temp directory whether it commits or aborts'
   const after = fs.readdirSync(os.tmpdir()).filter((f) => f.startsWith('construct-txn-'));
   assert.deepEqual(after, before, 'no construct-txn-* shadow dirs should be left behind');
 });
+
+test('deleteFile() stages a delete: the shadow copy validates without the file, and disk loses it only when commit passes', () => {
+  const dir = tmpProject();
+  const rel = 'features/checkout/domain/Old.ts';
+  fs.writeFileSync(path.join(dir, rel), 'export const Old = 1;\n');
+  const seen = [];
+  const keep = createTransaction(dir);
+  keep.deleteFile(rel);
+  assert.equal(keep.readFile(rel), undefined);
+  assert.deepEqual(keep.pendingFiles(), [rel]);
+  const refused = keep.commit({ validate: (shadow) => { seen.push(fs.existsSync(path.join(shadow, rel))); return { ok: false, violations: [] }; } });
+  assert.equal(refused.committed, false);
+  assert.deepEqual(seen, [false], 'the shadow copy no longer has the file');
+  assert.equal(fs.existsSync(path.join(dir, rel)), true, 'a refused delete leaves the file in place');
+
+  const txn = createTransaction(dir);
+  txn.deleteFile(rel);
+  txn.writeFile('features/checkout/domain/New.ts', 'export const New = 1;\n');
+  assert.equal(txn.commit({ validate: () => ({ ok: true, violations: [] }) }).committed, true);
+  assert.equal(fs.existsSync(path.join(dir, rel)), false);
+  assert.equal(fs.existsSync(path.join(dir, 'features/checkout/domain/New.ts')), true);
+});

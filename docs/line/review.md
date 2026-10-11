@@ -55,3 +55,29 @@ Added in review (bugs found and fixed while merging):
    `node packages/cli/construct.mjs validate --profile line --dir packages/core/profiles/line/fixtures/LINE-DIR`
    Expect: two LINE-DIR errors, each a plain-English sentence saying which feature imports which and to promote the item to the library.
 3. Try any other folder under `fixtures/` (LINE-BASE, LINE-OWNER, ...) and read the messages: each should tell you what is wrong and how to fix it without other docs.
+
+## Contract for the parallel tasks (T0, done)
+
+`packages/engine/line/contract.mjs` fixes the shapes; `mock.mjs` fakes them. `test/line-contract.test.mjs` (6 tests):
+1. The project view lists library items with their level (atom, molecule, organism) and which features use them, and each feature item with its base link, status and findings.
+2. "Base on" plans one new feature file that starts with its base link; planning writes nothing; applying it lands it and the library item shows one more user.
+3. Refusals are one sentence and change nothing; a cross-feature import is refused with LINE-DIR and "Nothing was saved: ...".
+4. Promote moves a feature item into the library and repoints its users, so the cross-feature finding disappears.
+5. Setting a prop plans one edited page and lands it.
+6. The shape checks reject what Cockpit must never show (no full stop, paths outside the project, a refused change that still wrote files).
+
+Gap: these run on the mock; each real task repeats them on real files.
+
+## T3: set one prop on a page (done; you see it in Hour 6)
+
+`test/line-page-prop.test.mjs` (8 tests):
+1. Replacing a text prop changes only that prop; planning writes nothing.
+2. A new prop is added after the last one; the rest of the file is byte-identical.
+3. Numbers, true/false, code expressions and text with quotes are written correctly, nothing else changes.
+4. On a tag spread over several lines, the new prop gets its own line, indented like its neighbours.
+5. Every refusal (missing page, path escape, unknown part, bad prop name, wrong value type, an expression that tries to sneak in another prop) gets the right code and one sentence.
+6. The page tree the Pages screen shows has the same part ids as Cockpit's existing page editor.
+7. For every part and several tricky values, the edit keeps every part id and changes no byte outside that tag.
+8. (added in review) A Line project that keeps its code under `src/` works; before the fix every page there was refused.
+
+Gaps: does not check the prop is one the component declares; library pages are not editable here (feature pages only).
