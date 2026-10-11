@@ -43,12 +43,13 @@ test('eval: the corpus scores at or above its recorded floor, with no structure-
   assert.match(table, /split: heldout/);
   assert.match(table, /held-out paraphrases/);
   for (const fam of ['base-on', 'via-library', 'promote', 'set-prop', 'set-fragment', 'fix', 'set-base', 'feature-flow', 'new-feature', 'unknown']) assert.ok(rep.byFamily[fam], fam);
-  // Floors recorded 2026-10-11 (docs/line/review.md "System 1 drafter"); raise them as the drafter improves, never lower.
-  assert.ok(rep.bySplit.dev.recall >= 0.83, `dev recall ${rep.bySplit.dev.recall}`);
-  assert.ok(rep.bySplit.heldout.recall >= 0.9, `held-out project recall ${rep.bySplit.heldout.recall}`);
-  assert.ok(rep.overall.precision >= 0.95, `precision ${rep.overall.precision}`);
-  assert.ok(rep.overall.preferredOk >= 0.85, `preferred ${rep.overall.preferredOk}`);
-  assert.ok(rep.overall.labels >= 0.85, `labels ${rep.overall.labels}`);
-  assert.ok(rep.overall.safeDefer >= 0.85, `deferred when wrong ${rep.overall.safeDefer}`);
+  // Floors recorded 2026-10-11 (docs/line/review.md "System 1 drafter"), raised the same day by "System 1 accuracy"
+  // (everyday verbs, ask vs invent, refuse vs ask, handler templates): raise them as the drafter improves, never lower.
+  assert.ok(rep.bySplit.dev.recall >= 0.9, `dev recall ${rep.bySplit.dev.recall}`);
+  assert.ok(rep.bySplit.heldout.recall >= 1, `held-out project recall ${rep.bySplit.heldout.recall}`);
+  assert.ok(rep.overall.precision >= 0.958, `precision ${rep.overall.precision}`);
+  assert.ok(rep.overall.preferredOk >= 0.927, `preferred ${rep.overall.preferredOk}`);
+  assert.ok(rep.overall.labels >= 0.927, `labels ${rep.overall.labels}`);
+  assert.ok(rep.overall.safeDefer >= 1, `deferred when wrong ${rep.overall.safeDefer}`);
   assert.equal(rep.overall.hashMiss, 0);
 });

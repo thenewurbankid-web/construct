@@ -175,6 +175,86 @@ test('records: a stored transition holds slots, deltas and hashes but no name fr
   assert.equal(again.routes.find((r) => r.id === 'base-on:ui:L1>F1').retrieved, true);
 });
 
+test('System 1 accuracy: everyday verbs and phrases from the shared lexicon (needs, clear, titled, has no base; fix it)', () => {
+  const needs = draft(copy(), 'orders needs a Badge');
+  assert.equal(needs.labels.intent.id, 'add.component');
+  assert.deepEqual(boundRoute(needs, needs.recommended).steps[0].args, { libraryId: 'components/Badge', feature: 'orders', name: 'OrdersBadge' });
+  const clear = draft(copy(), 'Clear the reported problem on InvoicesPage.');
+  assert.equal(clear.labels.intent.id, 'fix.problem');
+  assert.equal(clear.questions.length, 0, '"reported" is everyday English, not a project word');
+  const titled = draft(copy(), 'OrdersPage should be titled "Open orders".');
+  assertDraft(titled, CATALOG);
+  assert.equal(titled.labels.intent.id, 'update.prop');
+  assert.deepEqual(boundRoute(titled, titled.recommended).steps[0].args, { file: 'features/orders/pages/OrdersPage.tsx', nodeId: 'n0', prop: 'title', kind: 'string', value: 'Open orders' });
+  const noBase = draft(copy(), 'InvoiceCard has no base; fix it.');
+  assert.equal(noBase.labels.intent.id, 'fix.problem');
+  // The everyday lexicon is curated and static: well formed, never a project word.
+  assertLexicon(LEXICON, Object.keys(OBJECTS));
+  assert.ok(LEXICON.everyday.grammar.includes('titled') && LEXICON.everyday.verbs.add.includes('needs'));
+});
+
+test('System 1 accuracy: no name given -> one closed question (the made-up name is the suggested answer); no library item -> which one', () => {
+  const d = draft(copy(), 'Add a badge to the orders feature');
+  assertDraft(d, CATALOG);
+  assert.equal(d.defer.to, 'ask');
+  assert.equal(d.defer.about, 'name');
+  assert.equal(d.defer.sentence, 'What should the new Badge in orders be called? Line suggests OrdersBadge.');
+  assert.deepEqual(d.defer.choices, [d.recommended], 'the checked route with the suggested name is the one-click answer');
+  const named = draft(copy(), 'Make StatusBadge in orders, based on Badge.');
+  assert.equal(named.defer.to, null, 'a name given: nothing to ask');
+  const part = draft(copy(), 'Add a part to billing.');
+  assert.equal(part.defer.to, 'ask');
+  assert.equal(part.defer.about, 'library');
+  assert.equal(part.defer.sentence, 'Which library item should the new component of billing be based on?');
+  assert.ok(part.defer.choices.length >= 2);
+});
+
+test('System 1 accuracy: refuse vs ask -- an unknown target nothing resolves is drafted as asked and refused by Construct; a near miss asks', () => {
+  const feature = draft(copy(), 'Make StatusBadge in archive, based on Badge.');
+  assertDraft(feature, CATALOG);
+  assert.equal(feature.recommended, null);
+  assert.equal(feature.routes[0].status, 'refused');
+  assert.equal(feature.routes[0].refusal.code, 'UNKNOWN_FEATURE');
+  assert.equal(feature.defer.to, null);
+  assert.match(feature.defer.sentence, /^Construct refuses this as asked: .*archive/);
+  const item = draft(copy(), 'Make StatusTooltip in orders, based on Tooltip.');
+  assert.equal(item.recommended, null);
+  assert.equal(item.routes[0].refusal.code, 'UNKNOWN_ITEM');
+  assert.deepEqual(boundRoute(item, item.routes[0].id).steps[0].args, { libraryId: 'components/Tooltip', feature: 'orders', name: 'StatusTooltip' });
+  const taken = draft(copy(), 'Make another OrderButton in orders, based on Button.');
+  assert.equal(taken.routes[0].refusal.code, 'NAME_TAKEN');
+  const typo = draft(copy(), 'put a badge on the ordrs screen');
+  assert.equal(typo.defer.to, 'ask');
+  assert.match(typo.defer.sentence, /^Did you mean/);
+  assert.ok(typo.routes.every((r) => r.status !== 'refused'), 'a near miss is a question, never a refusal');
+});
+
+test('System 1 accuracy: handler templates write the common shapes (log); anything else needs code and is never faked', () => {
+  const log = draft(copy(), 'On OrdersPage, the show-more action should log "More orders".');
+  assertDraft(log, CATALOG);
+  assert.equal(log.labels.intent.id, 'update.handler');
+  const r = log.routes.find((x) => x.id === log.recommended);
+  assert.equal(r.status, 'ok');
+  assert.deepEqual(boundRoute(log, r.id).steps[0].args.code, '() => console.log("More orders")');
+  const other = draft(copy(), 'When OrdersPage asks for more, email the boss.');
+  assert.ok(other.routes.every((x) => x.status === 'needs-model' || x.template !== 'set-fragment' || x.invented.length), 'no made-up handler code');
+  assert.ok(!other.routes.some((x) => x.status === 'ok' && x.template === 'set-fragment'));
+});
+
+test('System 1 accuracy: a strong precedent (same slots, nearly the same words) supplies the intent and its routes, preferred first', () => {
+  const a = copy();
+  const rec = {
+    v: 1, request: 'let <feature:F1> show <component:C1> which lives in <feature:F2>', slots: { C1: { kind: 'component' } }, intent: 'promote.component', from: null,
+    routeId: 'p1', template: 'promote', steps: [{ tool: 'line.promote', args: { featureItemId: '<C1>' } }], expect: [{ noNewFindings: true }], delta: [], to: null, approved: true, group: 'g1', preferred: true, unpredicted: true,
+  };
+  const d = draft(a, 'Let billing show OrderButton, which lives in orders.', { records: [rec] });
+  assertDraft(d, CATALOG);
+  assert.equal(d.labels.intent.id, 'promote.component');
+  assert.deepEqual(boundRoute(d, d.recommended).steps, [{ tool: 'line.promote', args: { featureItemId: 'orders/components/OrderButton' } }]);
+  const none = draft(a, 'Let billing show OrderButton, which lives in orders.', { records: [{ ...rec, approved: false }] });
+  assert.notEqual(none.labels.intent.id === 'promote.component' && none.routes[0]?.retrieved, true, 'an unapproved record is never a precedent');
+});
+
 test('grammar: the committed JSON Schema and GBNF are current, and every drafted route validates against the schema', async () => {
   const g = await generateGrammar();
   assert.equal(fs.readFileSync(GRAMMAR_FILES.schema, 'utf8'), g.schema, 'run node packages/engine/line/drafter/grammar.mjs --write');
