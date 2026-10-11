@@ -111,6 +111,20 @@
 /** @typedef {{featureItemId: string}} PromoteRequest */
 /** @typedef {{file: string, nodeId: string, prop: string, kind: 'string'|'number'|'boolean'|'expression', value: string|number|boolean}} SetPropRequest */
 
+/**
+ * POST /api/line/new-project: start a new Line project (newProject.mjs). `parentDir` is an existing folder inside the
+ * Cockpit workspace (absolute, or relative to the workspace root; "" is the workspace root itself); `name` is the new
+ * folder (one segment: letters, digits, "-", "_" and inner dots); `firstFeature` the one empty feature it starts with.
+ * Needs no open project; on success the server opens the new one.
+ * @typedef {{parentDir: string, name: string, firstFeature: string}} NewLineProjectRequest
+ */
+
+/**
+ * What creating a Line project answers: the ApplyResult of the starter files (written through the writer into the new
+ * folder, gated by the Line validate profile), plus the new folder's absolute path (null when refused; nothing is kept).
+ * @typedef {ApplyResult & {dir: string|null}} NewLineProjectResult
+ */
+
 /** @typedef {'prop-expression'|'handler'|'condition'|'style'} FragmentKind */
 
 /**
@@ -147,6 +161,8 @@
  * @property {(root: string, req: SetFragmentRequest) => StagedChange} planSetFragment
  * @property {(root: string, change: StagedChange) => ApplyResult} applyChange
  * @property {(root: string, req: FixRequest) => ApplyResult} applyFix  Re-derive the finding by key, plan its fix, applyChange (fixes.mjs).
+ * @property {(req: NewLineProjectRequest) => StagedChange} planNewLineProject  The starter files, root-relative to the new folder (pure).
+ * @property {(parentDir: string, req: NewLineProjectRequest) => NewLineProjectResult} createLineProject  Make `<parentDir>/<name>` and apply the plan there; throws LineOpError BAD_NAME, BAD_FEATURE, NO_PARENT or NAME_TAKEN, writing nothing.
  */
 
 /**
@@ -208,6 +224,7 @@ export const LINE_API = Object.freeze([
   { method: 'POST', path: '/api/line/fix', request: 'FixRequest', response: 'ApplyResult' },
   { method: 'GET', path: '/api/line/fragments', request: 'file (query)', response: 'FragmentList' },
   { method: 'POST', path: '/api/line/fragment', request: 'SetFragmentRequest', response: 'ApplyResult' },
+  { method: 'POST', path: '/api/line/new-project', request: 'NewLineProjectRequest', response: 'NewLineProjectResult' },
 ]);
 
 export const LINE_FIX_TOOLS = Object.freeze(['line.setBase', 'line.promote', 'line.baseOn', 'line.moveFile', 'line.createLayout']);
@@ -305,6 +322,13 @@ export function assertApplyResult(r) {
   if (r.ok && r.findings.some((f) => f.severity === 'error')) fail('result', 'a landed change carries no error findings');
   if (!r.ok && r.files.length) fail('result.files', 'a refused change wrote nothing');
   r.findings.forEach((x, k) => assertFinding(x, `result.findings[${k}]`));
+}
+
+/** @param {any} r @returns {asserts r is NewLineProjectResult} */
+export function assertNewLineProjectResult(r) {
+  assertApplyResult(r);
+  if (r.ok) str(r.dir, 'result.dir');
+  else if (r.dir !== null) fail('result.dir', 'is null when the project was not created');
 }
 
 /** @param {any} d @returns {asserts d is LineFeatureDetail} */

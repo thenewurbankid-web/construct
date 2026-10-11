@@ -8,6 +8,8 @@ import { mockFragmentsOf, mockHash } from './mockFragments.mjs';
 
 const LIB = 'library';
 const FEAT = 'features';
+/** Folder names the mock treats as already taken in any parent folder. */
+const TAKEN = new Set(['taken']);
 
 /** The sample project's files (root-relative path -> source), the same shape as examples/line-sample. */
 export const MOCK_FILES = Object.freeze({
@@ -69,6 +71,8 @@ function levelOf(files, file) {
 export function createMockLineOps({ files: initial = MOCK_FILES } = {}) {
   /** @type {Record<string, string>} */
   const files = { ...initial };
+  /** Projects made by createLineProject (absolute dir -> files). */
+  const projects = new Map();
 
   /** @returns {import('./contract.mjs').LineProject} */
   function readLineProject() {
@@ -184,6 +188,32 @@ export function createMockLineOps({ files: initial = MOCK_FILES } = {}) {
       }
       return { summary: `Changes the code for "${frag.label}" in ${nameOf(file)}.`, files: [{ path: file, content: src.slice(0, frag.range.start) + code + src.slice(frag.range.end) }] };
     },
+    /** A new Line project's starter files (cu7; the real one is newProject.mjs): a smaller starter library. */
+    planNewLineProject(req) {
+      const name = typeof req?.name === 'string' ? req.name.trim() : '';
+      const feature = typeof req?.firstFeature === 'string' ? req.firstFeature.trim() : '';
+      if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(name) || name.includes('..')) throw new LineOpError(`"${name}" is not a project name: a name is one folder, without slashes or "..".`, 'BAD_NAME');
+      if (!/^[A-Za-z0-9][A-Za-z0-9_-]*$/.test(feature)) throw new LineOpError(`"${feature}" is not a feature name; use letters, digits, "-" and "_", starting with a letter or digit.`, 'BAD_FEATURE');
+      return {
+        summary: `Creates the Line project ${name} with a starter library and the empty feature ${feature}.`,
+        files: [
+          { path: 'architecture.yml', content: 'version: 1\npreset: line\n' },
+          { path: `${LIB}/components/Button.tsx`, content: MOCK_FILES[`${LIB}/components/Button.tsx`] },
+          { path: `${FEAT}/${feature}/spec.md`, content: `# ${feature}\n\n## Story 1\n\n- Describe one thing a person can do in ${feature}.\n` },
+          { path: `${FEAT}/${feature}/pages/.gitkeep`, content: '' },
+        ],
+      };
+    },
+    /** @returns {import('./contract.mjs').NewLineProjectResult} */
+    createLineProject(parentDir, req) {
+      const staged = this.planNewLineProject(req);
+      const dir = `${parentDir.replace(/\/+$/, '')}/${req.name.trim()}`;
+      if (projects.has(dir) || TAKEN.has(req.name.trim())) throw new LineOpError(`There is already something called "${req.name.trim()}" in that folder; choose another name.`, 'NAME_TAKEN');
+      projects.set(dir, Object.fromEntries(staged.files.map((f) => [f.path, f.content ?? ''])));
+      return { ok: true, sentence: `Created the Line project ${req.name.trim()} with the empty feature ${req.firstFeature.trim()}.`, files: staged.files.map((f) => f.path), findings: [], dir };
+    },
+    /** The mock's created projects (absolute dir -> files), for tests. */
+    projects: () => Object.fromEntries([...projects].map(([d, f]) => [d, { ...f }])),
     /** @returns {import('./contract.mjs').ApplyResult} */
     applyChange(_root, change) {
       const next = { ...files };
