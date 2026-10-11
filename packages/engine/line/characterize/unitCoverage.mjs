@@ -146,6 +146,16 @@ export function locateUnitSpans(appRoot, units) {
           if (fns.length) span.fnStarts = fns.map((f) => startOf(f, sf));
         }
       }
+      let fnNode = node.parent;
+      while (fnNode && !ts.isFunctionLike(fnNode) && !ts.isSourceFile(fnNode)) fnNode = fnNode.parent;
+      span.text = normText(node, sf).slice(0, 400);
+      // a top-level function nothing in its file calls and nothing exports: dead code
+      let top = node;
+      while (top.parent && !ts.isSourceFile(top.parent)) top = top.parent;
+      const topName = ts.isFunctionDeclaration(top) ? top.name?.text : ts.isVariableStatement(top) ? top.declarationList.declarations[0]?.name.getText(sf) : null;
+      const exported = Boolean(top.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword));
+      if (topName && !exported && (sf.text.match(new RegExp(`\\b${topName}\\b`, 'g')) ?? []).length === 1) span.dead = topName;
+      span.context = fnNode && !ts.isSourceFile(fnNode) ? normText(fnNode, sf).slice(0, 1600) : '';
       out.set(u, { ...u, fingerprint: u.fingerprint ?? fingerprintOf(u.kind, u.fn, normText(node, sf)), span });
     }
   }
@@ -273,13 +283,33 @@ export function unitVerdict(unit, fc) {
   }
 }
 
+const LAYOUT = /getBoundingClientRect|offsetTop|offsetLeft|offsetHeight|offsetWidth|scrollHeight|scrollTop|clientHeight|clientWidth|getComputedStyle|innerHeight|elementFromPoint/;
+
+/**
+ * Why a unit is likely out of reach in jest's jsdom, from its code: dead code, a server-only path, a layout measurement (jsdom lays
+ * nothing out), a guard on a DOM ref that is always attached while mounted, or a constant condition. `not-reached` when
+ * none applies: a test could reach it and the search did not.
+ * @param {{span: {text?: string, context?: string, dead?: string}|null}} u A located unit.
+ * @returns {{cause: 'dead'|'no-window'|'layout'|'ref-guard'|'constant'|'not-reached', note: string}}
+ */
+export function causeOf(u) {
+  const text = u.span?.text ?? '';
+  const ctx = u.span?.context ?? '';
+  if (u.span?.dead) return { cause: 'dead', note: `${u.span.dead} is never called or exported in its file (dead code).` };
+  if (/typeof window\s*[!=]==?\s*'undefined'/.test(text)) return { cause: 'no-window', note: 'It depends on running without a window (server rendering); jest\'s jsdom always has one.' };
+  if (/^if \(!\w*[Rr]ef\.current\)|^if \(!\w+Ref\.current\b/.test(text)) return { cause: 'ref-guard', note: 'It guards a DOM ref that React has always attached while the component is mounted.' };
+  if (LAYOUT.test(text) || (ctx.length < 1500 && LAYOUT.test(ctx))) return { cause: 'layout', note: 'Its function measures layout (sizes, offsets, scroll), which jsdom does not compute.' };
+  if (/^if \([A-Z][A-Z0-9_]+ &&|^[A-Z][A-Z0-9_]+ \?/.test(text)) return { cause: 'constant', note: 'Its condition is a module constant.' };
+  return { cause: 'not-reached', note: '' };
+}
+
 /**
  * @typedef {object} UnitCoverage
  * @property {string[]} covered Fingerprints of the covered units.
  * @property {string[]} uncovered Fingerprints of the uncovered units (not waived).
  * @property {{fingerprint: string, by: 'owner', why: string}[]} waived
  * @property {Record<string, {covered: number, total: number}>} byKind
- * @property {{fingerprint: string, id: string, kind: string, file: string, line: number, why: string}[]} details Each uncovered unit with its reason.
+ * @property {{fingerprint: string, id: string, kind: string, file: string, line: number, cause: string, why: string}[]} details Each uncovered unit with its reason (see causeOf).
  */
 
 /**
@@ -311,7 +341,8 @@ export function unitCoverage(map, coverageJson, opts = {}) {
     if (v.covered) { covered.push(u.fingerprint); byKind[u.kind].covered++; continue; }
     if (waivedSet.has(u.fingerprint)) continue;
     uncovered.push(u.fingerprint);
-    details.push({ fingerprint: u.fingerprint, id: u.id, kind: u.kind, file: u.file, line: u.line, why: v.why });
+    const c = causeOf(u);
+    details.push({ fingerprint: u.fingerprint, id: u.id, kind: u.kind, file: u.file, line: u.line, cause: c.cause, why: c.note ? `${v.why} ${c.note}` : v.why });
   }
   return { covered, uncovered, waived, byKind, details };
 }

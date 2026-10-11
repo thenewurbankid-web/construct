@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 import { characterize, generateCharacterizationTests, unitCoverage, locateUnitSpans, analyzeClosure, pathnameOfEntry, runJest, CHAR_DIR } from '../packages/engine/line/characterize.mjs';
 import { lockedText, json, scenarioTitle, isGenerated } from '../packages/engine/line/characterize/emit.mjs';
+import { causeOf } from '../packages/engine/line/characterize/unitCoverage.mjs';
 import { GENERATED_MARKER } from '../packages/engine/testGenerator.mjs';
 
 const FIXTURE = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures/line-char-app');
@@ -115,6 +116,11 @@ test('characterize: unitCoverage maps istanbul counters onto units, with one rea
   assert.equal(why['src/lib/price.ts#seatsFor:branch:1'], 'No test reached this case.');
   assert.equal(why['src/app/shop/Shop.tsx#Shop:branch:1'], 'Its file was not loaded by any characterization test.');
   assert.deepEqual(uc.byKind.export, { covered: 1, total: 2 });
+  assert.ok(uc.details.every((d) => d.cause === 'not-reached'));
+  // causes a test in jsdom cannot change are named
+  assert.equal(causeOf({ span: { text: "if (typeof window === 'undefined') return null;" } }).cause, 'no-window');
+  assert.equal(causeOf({ span: { text: 'if (!wrapperRef.current) return;' } }).cause, 'ref-guard');
+  assert.equal(causeOf({ span: { text: 'if (range > best)', context: 'function f(el) { const range = el.scrollHeight - el.clientHeight; }' } }).cause, 'layout');
   // an owner waiver takes a unit out of `uncovered`
   const waived = [{ fingerprint: fp('src/lib/price.ts#seatsFor:export:1'), by: 'owner', why: 'dead code, deleted next' }];
   const uc2 = unitCoverage({ root: FIXTURE, units: located }, cov, { waived });

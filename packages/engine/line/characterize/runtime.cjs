@@ -254,6 +254,28 @@ function polyfill() {
     window.PointerEvent = PE;
     global.PointerEvent = PE;
   }
+  // jsdom's selector engine fails on selectors browsers accept: escaped characters in class names (Tailwind's
+  // `.group\\/name`) and `:scope` on an element whose class has such characters; on that error, retry in a form it reads
+  const classAttr = (sel) => sel.replace(/\.((?:[\w-]|\\.)+)/g, (m, tok) => (tok.includes('\\') ? `[class~="${tok.replace(/\\(.)/g, '$1')}"]` : m));
+  for (const proto of [window.Element.prototype, window.Document.prototype, window.DocumentFragment.prototype]) {
+    for (const name of ['querySelector', 'querySelectorAll', 'matches', 'closest']) {
+      const orig = proto[name];
+      if (typeof orig !== 'function') continue;
+      proto[name] = function (sel, ...rest) {
+        try { return orig.call(this, sel, ...rest); } catch (e) {
+          if (typeof sel !== 'string') throw e;
+          if (sel.includes(':scope') && this.setAttribute) {
+            // jsdom rewrites `:scope` with the element's own class names and fails on characters like `/`; mark the
+            // element instead, as the browser's `:scope` refers to it
+            this.setAttribute('data-line-scope', '');
+            try { return orig.call(this, sel.split(':scope').join('[data-line-scope]'), ...rest); } finally { this.removeAttribute('data-line-scope'); }
+          }
+          if (!sel.includes('\\')) throw e;
+          return orig.call(this, classAttr(sel), ...rest);
+        }
+      };
+    }
+  }
   const EP = window.Element.prototype;
   if (!EP.scrollIntoView) EP.scrollIntoView = noop;
   if (!EP.hasPointerCapture) { EP.hasPointerCapture = () => false; EP.setPointerCapture = noop; EP.releasePointerCapture = noop; }
@@ -314,6 +336,10 @@ function beforeEachScenario(env) {
     S.restore.push(() => { console[c] = orig; });
   }
   try { window.localStorage.clear(); window.sessionStorage.clear(); } catch (e) { /* no storage */ }
+  // an error thrown inside an event listener is behaviour: recorded, not a crash of the test
+  const onError = (e) => { recordEffect('uncaught', [String((e.error && e.error.message) || e.message || '')]); e.preventDefault(); };
+  window.addEventListener('error', onError);
+  S.restore.push(() => window.removeEventListener('error', onError));
   wrapMethod(window.Storage.prototype, 'setItem', 'storage.setItem');
   wrapMethod(window.Storage.prototype, 'removeItem', 'storage.removeItem');
   wrapMethod(window.Storage.prototype, 'clear', 'storage.clear');
@@ -347,6 +373,18 @@ const KEYS = ['Enter', 'Escape', 'ArrowDown', 'ArrowUp', 'Tab', ' ', 'Backspace'
 
 const norm = (s) => String(s || '').replace(/\s+/g, ' ').trim();
 
+const srcKeys = new WeakMap();
+/** Which handler this is in the source (the same arrow on every card has the same text), for exploring each once. */
+function srcKey(fn) {
+  if (srcKeys.has(fn)) return srcKeys.get(fn);
+  const text = Function.prototype.toString.call(fn);
+  let h = 0;
+  for (let i = 0; i < text.length; i++) h = (Math.imul(h, 31) + text.charCodeAt(i)) | 0;
+  const k = `${fn.name || 'fn'}#${(h >>> 0).toString(36)}`;
+  srcKeys.set(fn, k);
+  return k;
+}
+
 function sigOf(el, ev) {
   if (el === window) return `${ev}|window`;
   if (el === document) return `${ev}|document`;
@@ -362,7 +400,7 @@ function targets() {
     const pk = Object.keys(el).find((k) => k.startsWith('__reactProps$'));
     if (!pk) continue;
     const props = el[pk] || {};
-    for (const name of Object.keys(props)) if (EVENTS[name] && typeof props[name] === 'function') out.push({ el, ev: name });
+    for (const name of Object.keys(props)) if (EVENTS[name] && typeof props[name] === 'function') out.push({ el, ev: name, src: srcKey(props[name]) });
   }
   for (const o of S.observers) if (o.el && o.el.isConnected) out.push({ el: o.el, ev: o.kind === 'intersect' ? 'intersect' : 'resize', ob: o.ob });
   const seenWin = new Set();
@@ -404,7 +442,8 @@ async function fire(t, step) {
     const type = step.ev.slice(4);
     const init = /^key/.test(type) ? { key: step.v || 'Escape', bubbles: true } : { bubbles: true };
     const E = /^key/.test(type) ? KeyboardEvent : /^(mouse|click|pointer)/.test(type) ? MouseEvent : Event;
-    await act(async () => { el.dispatchEvent(new E(type, init)); });
+    // dispatched from the body so it bubbles to document and window listeners with an element as its target
+    await act(async () => { document.body.dispatchEvent(new E(type, init)); });
     return;
   }
   const kind = EVENTS[step.ev];
@@ -473,7 +512,10 @@ function setScenarioState(sc) {
 async function applyStep(ctx, step) {
   const { act } = RTL;
   if (step.ev === 'tick') {
-    await act(async () => { jest.advanceTimersByTime(step.v || 5000); await Promise.resolve(); });
+    const ms = step.v || 5000;
+    // a long wait moves the clock without running every frame and interval in between
+    if (ms > 60000) jest.setSystemTime(Date.now() + ms);
+    await act(async () => { jest.advanceTimersByTime(Math.min(ms, 60000)); await Promise.resolve(); });
     return true;
   }
   if (step.ev === 'hook') {
@@ -858,6 +900,12 @@ function stepFor(sm, input, t, n) {
   return step;
 }
 
+/** A target's kind for breadth-first exploration: event, tag, label and the handler's source; never the (data-dependent) text. */
+function coarseOf(t) {
+  const [ev, tag, label] = t.sig.split('|');
+  return t.src ? `${ev}|${tag}|${label}|${t.src}` : `${ev}|${tag}|${label}`;
+}
+
 function explorer(sm, input, fired) {
   return (ctx) => {
     const sub = input.subject;
@@ -883,9 +931,9 @@ function explorer(sm, input, fired) {
     if (r < 0.25 && sub.kind === 'component' && sub.props) return { ev: 'props', props: sm.mut(encode(ctx.props), sub.props, 'props') };
     const all = targets();
     if (!all.length) return null;
-    const fresh = all.filter((t) => !fired.has(t.sig));
+    const fresh = all.filter((t) => !fired.has(coarseOf(t)));
     const t = fresh.length && sm.chance(0.7) ? sm.pick(fresh) : sm.pick(all);
-    fired.add(t.sig);
+    fired.add(coarseOf(t));
     return stepFor(sm, input, t, all.filter((x) => x.sig === t.sig).indexOf(t));
   };
 }
@@ -901,19 +949,25 @@ function stripFns(v) {
 async function fuzz(input, getSubject, outFile) {
   const fs = require('fs');
   const sm = sampler(input);
-  const seen = new Set();
-  const corpus = [];
-  const fired = new Set();
-  const known = new Set();
-  const frontier = [];
+  // a search runs in rounds (one jest process each, so memory starts fresh); a later round resumes from this state
+  const prev = input.resume || {};
+  const seen = new Set(prev.seen || []);
+  const corpus = prev.corpus || [];
+  const fired = new Set(prev.fired || []);
+  const known = new Set(prev.known || []);
+  const frontier = prev.frontier || [];
+  const reachedBefore = seen.size;
   input.inputValues = [...new Set([...(input.pools.numbers || []).slice(0, 40).map(String), '', '0', '50', '100', '150', '-5', 'abc', '12.5', ...(input.pools.strings || []).slice(0, 40)])];
   input.keyValues = [...new Set([...KEYS, ...((input.pools.byKey || {}).key || []).filter((k) => typeof k === 'string')])];
+  // a target's kind, for breadth-first exploration: its event, tag and label, not its (data-dependent) text
   const onTargets = (sc, prefix) => {
     const all = targets();
     all.forEach((t, i) => {
-      if (known.has(t.sig)) return;
-      known.add(t.sig);
-      frontier.push({ base: { ...JSON.parse(JSON.stringify(sc)), steps: JSON.parse(JSON.stringify(prefix)) }, t: { ev: t.ev, sig: t.sig }, n: all.slice(0, i).filter((x) => x.sig === t.sig).length });
+      const key = coarseOf(t);
+      if (known.has(key) || frontier.length >= 150) return;
+      known.add(key);
+      // the scenario's inputs are shared, not copied (every later use clones before changing them)
+      frontier.push({ key, base: { ...sc, steps: prefix.slice() }, t: { ev: t.ev, sig: t.sig }, n: all.slice(0, i).filter((x) => x.sig === t.sig).length });
     });
   };
   const started = Date.now();
@@ -929,9 +983,9 @@ async function fuzz(input, getSubject, outFile) {
     else if (frontier.length && sm.chance(0.6)) {
       // breadth first: act on a target no scenario has acted on yet, from the state that showed it
       const f = frontier.shift();
-      sc = f.base;
+      sc = { ...f.base, steps: f.base.steps.slice() };
       sc.steps.push(stepFor(sm, input, f.t, f.n));
-      fired.add(f.t.sig);
+      fired.add(f.key);
       count = sm.pick([0, 0, 1, 2]);
     } else if (corpus.length && sm.chance(0.65)) sc = mutateScenario(sm, input, sm.pick(corpus).sc);
     else sc = genScenario(sm, input);
@@ -963,7 +1017,9 @@ async function fuzz(input, getSubject, outFile) {
     chosen.push(c.sc);
     if (chosen.length >= (input.maxTests || 60)) break;
   }
-  fs.writeFileSync(outFile, JSON.stringify({ subject: input.subject.id, runs, kept: corpus.length, reached: seen.size, scenarios: chosen }));
+  const stoppedBy = idle >= maxIdle ? 'idle' : 'budget';
+  fs.writeFileSync(`${outFile}.state.json`, JSON.stringify({ seen: [...seen], corpus, fired: [...fired], known: [...known], frontier, runs: (prev.runs || 0) + runs }));
+  fs.writeFileSync(outFile, JSON.stringify({ subject: input.subject.id, runs: (prev.runs || 0) + runs, kept: corpus.length, reached: seen.size, gained: seen.size - reachedBefore, stoppedBy, explored: fired.size, frontierLeft: frontier.length, firedKeys: process.env.LINE_CHAR_DEBUG ? [...fired] : undefined, scenarios: chosen }));
 }
 
 /** Second probe run: the chosen scenarios in test order, each observed and its counters located in the source. */

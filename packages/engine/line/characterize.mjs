@@ -52,6 +52,7 @@ export { CHAR_DIR } from './characterize/emit.mjs';
  * @property {number} [componentBudgetMs] Search time per component or hook subject (default 60 s).
  * @property {number} [maxTests] Most tests kept per subject (default 60).
  * @property {number} [maxIdle] Stop a subject's search after this many runs in a row reach nothing new (default 1500 pure, 2500 others).
+ * @property {number} [roundMs] Longest search round per subject in one jest process (default 45 s); later rounds resume.
  * @property {number} [seed] Sampling seed (default 7).
  * @property {string} [workDir] Folder for the probes' input and output (default a fresh temp folder).
  * @property {string} [dir] App-relative folder for the tests (default the route entry's folder).
@@ -94,7 +95,8 @@ export function runJest(appRoot, testFiles, o) {
   const r = spawnSync(bin.endsWith('.js') ? process.execPath : bin, bin.endsWith('.js') ? [bin, ...args] : args, {
     cwd: appRoot,
     encoding: 'utf8',
-    env: { ...process.env, CI: '1', LINE_CHAR_DIR: o.workDir, ...(o.env ?? {}) },
+    // a search over a large page keeps many renders' worth of state; give each worker room (two workers on a 15 GB box)
+    env: { ...process.env, CI: '1', LINE_CHAR_DIR: o.workDir, NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --max-old-space-size=4096`.trim(), ...(o.env ?? {}) },
     timeout: o.timeoutMs ?? 3_600_000,
     maxBuffer: 256 * 1024 * 1024,
   });
@@ -185,21 +187,41 @@ export async function characterize(appRoot, closure, map, opts = {}) {
   const probeRel = (s, mode) => posix(path.join(charRel, PROBE_DIR, `${s.id}.${mode}.test.tsx`));
   const files = [[posix(path.join(charRel, RUNTIME_FILE)), runtimeText()]];
   for (const s of subjects) {
-    fs.writeFileSync(path.join(workDir, `${s.id}.fuzz.in.json`), JSON.stringify({ ...baseInput(s), budgetMs: budget(s), maxIdle: opts.maxIdle ?? (s.kind === 'pure' ? 1500 : 2500), maxTests: opts.maxTests ?? 60 }));
     files.push([probeRel(s, 'fuzz'), probeText({ analysis, appRoot, dirAbs: probeAbs, subject: s, mode: 'fuzz', timeoutMs: budget(s) + 300_000 })]);
   }
   writeOwnedTests(appRoot, charRel, files);
-  log('characterize: searching');
-  const fuzzRun = runJest(appRoot, subjects.map((s) => probeRel(s, 'fuzz')), { coverFiles, workDir, tag: 'fuzz', maxWorkers: opts.maxWorkers });
+  // the search runs in rounds of at most `roundMs` per subject, each a fresh jest process resuming the last round's
+  // state; a subject stops when a round ends because nothing new was reached for `maxIdle` runs, when a round gains
+  // nothing, or when its budget is spent
   const chosen = new Map();
   const stats = { subjects: {} };
-  for (const s of subjects) {
-    let out = null;
-    try { out = JSON.parse(fs.readFileSync(path.join(workDir, `${s.id}.fuzz.out.json`), 'utf8')); } catch { out = null; }
-    stats.subjects[s.id] = out ? { runs: out.runs, kept: out.kept, chosen: out.scenarios.length, reached: out.reached } : { error: 'the search did not finish' };
-    if (out) chosen.set(s.id, out.scenarios);
+  const spent = new Map(subjects.map((s) => [s.id, 0]));
+  const roundMs = opts.roundMs ?? 45_000;
+  let active = subjects.slice();
+  let fuzzRun = null;
+  for (let round = 0; active.length; round++) {
+    for (const s of active) {
+      const statePath = path.join(workDir, `${s.id}.fuzz.out.json.state.json`);
+      const resume = round > 0 && fs.existsSync(statePath) ? JSON.parse(fs.readFileSync(statePath, 'utf8')) : undefined;
+      const ms = Math.min(roundMs, budget(s) - spent.get(s.id));
+      spent.set(s.id, spent.get(s.id) + ms);
+      fs.writeFileSync(path.join(workDir, `${s.id}.fuzz.in.json`), JSON.stringify({ ...baseInput(s), budgetMs: ms, maxIdle: opts.maxIdle ?? (s.kind === 'pure' ? 1500 : 2500), maxTests: opts.maxTests ?? 60, seed: (opts.seed ?? 7) + round, resume }));
+    }
+    log(`characterize: searching, round ${round + 1} (${active.length} subjects)`);
+    fuzzRun = runJest(appRoot, active.map((s) => probeRel(s, 'fuzz')), { coverFiles, workDir, tag: `fuzz${round}`, maxWorkers: opts.maxWorkers });
+    const next = [];
+    for (const s of active) {
+      let out = null;
+      try { out = JSON.parse(fs.readFileSync(path.join(workDir, `${s.id}.fuzz.out.json`), 'utf8')); } catch { out = null; }
+      if (!out) { stats.subjects[s.id] ??= { error: 'the search did not finish' }; continue; }
+      fs.rmSync(path.join(workDir, `${s.id}.fuzz.out.json`), { force: true });
+      stats.subjects[s.id] = { runs: out.runs, kept: out.kept, chosen: out.scenarios.length, reached: out.reached, rounds: round + 1, stoppedBy: out.stoppedBy };
+      chosen.set(s.id, out.scenarios);
+      if (out.stoppedBy === 'budget' && out.gained > 0 && spent.get(s.id) < budget(s)) next.push(s);
+    }
+    active = next;
   }
-  if (!chosen.size) throw new Error(`The search probes did not run in ${appRoot}: ${fuzzRun.stderr.slice(-2000)}`);
+  if (!chosen.size) throw new Error(`The search probes did not run in ${appRoot}: ${fuzzRun?.stderr.slice(-2000)}`);
 
   // 3. record
   const recorded = subjects.filter((s) => chosen.get(s.id)?.length);
