@@ -1,38 +1,32 @@
 // T4 of the Line Cockpit (packages/engine/line/contract.mjs, LINE_API): the /api/line routes that read a page's
-// parts and change the project. Every change is planned by a pure engine function and written only by
-// applyChange (packages/engine/line/ops.mjs), i.e. through Construct's transactional writer with the project's
-// own validate profile as the gate. GET /api/line/project lives in the model router (lineApi.mjs).
+// parts and the one folder Line may change. A change to the project is never a route of its own: it is a step of the
+// project's plan (linePlanApi.mjs: line.setPageProp, line.baseOn, line.promote, line.fix, line.setFragment), which a
+// person approves and which lands only through applyChange. GET /api/line/project lives in lineApi.mjs.
 //
 //   GET  /page-tree?file=   readPageTree   (packages/engine/line/pageProp.mjs)
-//   POST /page-prop         planSetProp    -> applyChange
-//   POST /base-on           planBaseOn     -> applyChange
-//   POST /promote           planPromote    -> applyChange
 //   GET  /workspace         readWorkspace  (packages/engine/line/workspace.mjs; cu6)
-//   POST /workspace         setWorkspace   -> line/workspace.json through Construct's writer
-//   POST /fix               applyFix       (fixes.mjs: the finding by key, its typed fix planned -> applyChange)
+//   POST /workspace         setWorkspace   -> line/workspace.json through Construct's writer (Line's own setting,
+//                                             not a project change, so it stays a direct route)
 //   GET  /fragments?file=   listFragments  (packages/engine/line/fragments.mjs, cx1)
-//   POST /fragment          planSetFragment -> applyChange (a slow type check's errors come back as warnings)
 //
 // A LineOpError is a 400 `{ok: false, sentence, code, detail?}`; anything unexpected is a 500 with one sentence.
 import express from 'express';
 import { LineOpError } from '../../../packages/engine/line/contract.mjs';
-import { planBaseOn, planPromote, applyChange } from '../../../packages/engine/line/ops.mjs';
-import { planSetProp, readPageTree } from '../../../packages/engine/line/pageProp.mjs';
+import { readPageTree } from '../../../packages/engine/line/pageProp.mjs';
 import { readWorkspace, setWorkspace } from '../../../packages/engine/line/workspace.mjs';
-import { applyFix } from '../../../packages/engine/line/fixes.mjs';
-import { listFragments, planSetFragment } from '../../../packages/engine/line/fragments.mjs';
+import { listFragments } from '../../../packages/engine/line/fragments.mjs';
 
 /** The real operations; tests may pass their own (for example the contract's mock). */
-export const REAL_LINE_OPS = Object.freeze({ readPageTree, planSetProp, planBaseOn, planPromote, applyChange, applyFix, listFragments, planSetFragment, readWorkspace, setWorkspace });
+export const REAL_LINE_OPS = Object.freeze({ readPageTree, listFragments, readWorkspace, setWorkspace });
 
 const plain = (body) => (body && typeof body === 'object' && !Array.isArray(body) ? body : {});
 
 /**
  * @param {{getRoot: () => ({ok: true, root: string} | {ok: false, error: string}), clientOrigin?: string,
- *   afterSave?: (root: string, relPath: string) => unknown, ops?: typeof REAL_LINE_OPS}} deps
+ *   afterSave?: (root: string, relPath: string) => unknown, ops?: typeof REAL_LINE_OPS}} deps  `afterSave` is unused since the writes moved to the plan (kept so callers need no change)
  * @returns {import('express').Router}
  */
-export function createLineOpsRouter({ getRoot, clientOrigin, afterSave, ops = REAL_LINE_OPS }) {
+export function createLineOpsRouter({ getRoot, clientOrigin, ops = REAL_LINE_OPS }) {
   const router = express.Router();
   router.use((req, res, next) => {
     if (req.method === 'POST') {
@@ -55,28 +49,10 @@ export function createLineOpsRouter({ getRoot, clientOrigin, afterSave, ops = RE
       return res.status(500).json({ ok: false, sentence: 'Cockpit could not do that; nothing was changed.', code: 'INTERNAL' });
     }
   };
-  /** Plan, then apply through the writer; after a landed change, run the usual after-save hook per file. */
-  const change = (plan) => handle((root, req) => {
-    const staged = plan(root, plain(req.body));
-    const result = ops.applyChange(root, staged);
-    if (result.ok && afterSave) for (const f of result.files) afterSave(root, f);
-    // A plan may carry warnings that must not block (a type check too slow to gate the save): shown after it lands.
-    if (result.ok && Array.isArray(staged?.warnings) && staged.warnings.length) return { ...result, findings: [...result.findings, ...staged.warnings] };
-    return result;
-  });
   router.get('/page-tree', handle((root, req) => ops.readPageTree(root, typeof req.query.file === 'string' ? req.query.file : '')));
-  router.post('/page-prop', change((root, body) => ops.planSetProp(root, body)));
-  router.post('/base-on', change((root, body) => ops.planBaseOn(root, body)));
-  router.post('/promote', change((root, body) => ops.planPromote(root, body)));
   // cu6: the one folder Line may change; everything outside it stays read-only (applyChange refuses it).
   router.get('/workspace', handle((root) => ops.readWorkspace(root)));
   router.post('/workspace', handle((root, req) => ops.setWorkspace(root, /** @type {any} */ (plain(req.body)))));
-  router.post('/fix', handle((root, req) => {
-    const result = ops.applyFix(root, /** @type {any} */ (plain(req.body)));
-    if (result.ok && afterSave) for (const f of result.files) afterSave(root, f);
-    return result;
-  }));
   router.get('/fragments', handle((root, req) => ops.listFragments(root, typeof req.query.file === 'string' ? req.query.file : '')));
-  router.post('/fragment', change((root, body) => ops.planSetFragment(root, body)));
   return router;
 }

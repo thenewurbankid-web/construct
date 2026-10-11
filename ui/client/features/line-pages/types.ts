@@ -1,5 +1,5 @@
 // The Pages screen's own view models. The Line contract's shapes come from the one shared mirror (lib/lineContract.ts, lib/lineHttp.ts).
-import type { CodeFragment, FeatureItem, LineFinding, LineHttp, PropValueKind } from '@/lib/lineContract';
+import type { ApplyResult, CodeFragment, FeatureItem, LineFinding, LineHttp, LineRefusal, PlanStepRequest, PropValueKind, SetFragmentRequest, SetPropRequest } from '@/lib/lineContract';
 
 export type * from '@/lib/lineContract';
 
@@ -48,7 +48,21 @@ export type LinePagesView = {
   /** cx1: save one fragment's code; a refusal stays next to that fragment's editor. */
   saveFragment: (fragment: CodeFragment, code: string) => void;
   fragmentOutcome: FragmentOutcome | null;
+  /** ca2: the last fix applied from a page's problem (line-fix), shown at the top until the next one. */
+  fixNotice: ApplyResult | null;
+  fixApplied: (result: ApplyResult) => void;
 };
 
-/** Everything the Line Pages API offers the screen (real server or the contract's mock). */
-export type LinePagesApi = Pick<LineHttp, 'getProject' | 'getPageTree' | 'setPageProp' | 'getFragments' | 'setFragment'>;
+/** Everything the Line Pages API offers the screen (real server or the contract's mock). The two writes answer an
+ * ApplyResult: on the server they add a plan step (services/LinePagesApi.ts withPlan), in mock mode they write the mock. */
+export type LinePagesApi = Pick<LineHttp, 'getProject' | 'getPageTree' | 'getFragments'> & {
+  setPageProp: (req: SetPropRequest) => Promise<ApplyResult | LineRefusal>;
+  setFragment: (req: SetFragmentRequest) => Promise<ApplyResult | LineRefusal>;
+};
+
+/** cp1: what the Pages screen needs from the project's plan (the Plan panel's useLinePlan). */
+export type LinePagesPlan = {
+  addStep: (req: PlanStepRequest) => Promise<{ ok: boolean; sentence: string; code?: string; detail?: string }>;
+  /** The step the person last ran here, with its ApplyResult when it was a change. */
+  lastRun: { stepId: string; apply: ApplyResult | null; sentence: string } | null;
+};

@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { gotoCockpit } from './support/cockpit.js';
 import { openProject } from './support/browseProject.js';
 import { runAxe, isBlocking, format } from './support/axe.js';
+import { failOnConsoleErrors, refusalOf } from './support/consoleGuard.js';
 
 // Line cx1 -- spot code editing in the browser without the whole file, on the real /api/line routes over a copy of
 // examples/line-sample. OrdersPage passes a handler to ListPage (onMore={() => console.log('Show more orders')});
@@ -22,6 +23,8 @@ const listPagePart = (page) => page.locator('[data-testid="lp-part"][data-part="
 const handler = (page) => listPagePart(page).locator('[data-testid="lp-fragment"][data-kind="handler"]');
 
 test.describe.serial('Line spot code editing (Line sample project, real server)', () => {
+  // Code that does not parse is refused by the plan on purpose.
+  failOnConsoleErrors(test, { allow: [refusalOf('/api/line/plan/step')] });
   let base;
   let restore;
   const read = (rel) => fs.readFileSync(path.join(base, rel), 'utf8');
@@ -73,16 +76,26 @@ test.describe.serial('Line spot code editing (Line sample project, real server)'
     expect(read(ORDERS)).toBe(before);
   });
 
-  test('a handler that would import another feature is refused by the Line rules, and nothing is written', async ({ page }) => {
+  test('a handler that would import another feature: Construct refuses the plan step, nothing is written, and the Plan panel offers its typed fixes', async ({ page }) => {
     const before = read(ORDERS);
     const form = await openEditor(page);
     await form.getByLabel(LABEL).fill("() => import('../../billing/pages/InvoicesPage')");
     await form.getByRole('button', { name: 'Save' }).click();
-    const refusal = form.getByTestId('lp-fragment-refusal');
-    await expect(refusal.locator('p')).toHaveText(/^Nothing was saved: feature "orders" imports "\.\.\/\.\.\/billing\/pages\/InvoicesPage" from feature "billing"/);
-    await refusal.getByText('Details').click();
-    await expect(refusal.getByTestId('lp-fragment-detail')).toContainText(`LINE-DIR ${ORDERS}`);
+    // cp1: Save code adds a plan step; the Line rules run when the approved step runs.
+    await expect(page.getByTestId('lp-outcome')).toHaveText(/^Waiting for your approval: Changes the code for /);
+    const plan = page.getByTestId('line-plan');
+    await plan.getByRole('button', { name: /^Approve step/ }).first().click();
+    const step = plan.getByTestId('plan-step').first();
+    await expect(step).toHaveAttribute('data-state', 'needs-fix');
+    await expect(step.getByTestId('plan-step-fixes')).toContainText('Move InvoicesPage.tsx from feature billing into the library');
+    await expect(step.getByRole('button', { name: 'Apply recommended fix' })).toBeVisible();
+    await expect(step.getByTestId('plan-step-failing')).toContainText(/Validate found a new problem: feature "orders" imports "\.\.\/\.\.\/billing\/pages\/InvoicesPage" from feature "billing"/);
+    await expect(step.getByRole('button', { name: 'Try again' })).toBeVisible();
+    await expect(step.getByRole('button', { name: 'Leave as it is' })).toBeVisible();
+    await expect(page.getByTestId('lp-outcome')).toHaveText(/^Nothing was saved: feature "orders" imports/);
     expect(read(ORDERS)).toBe(before);
+    await step.getByRole('button', { name: 'Leave as it is' }).click();
+    await expect(plan.getByTestId('plan-step').nth(1)).toHaveAttribute('data-state', 'done');
   });
 
   test('a good edit lands with "Saved. ..." and changes only the handler\'s bytes on disk', async ({ page }) => {
@@ -91,6 +104,9 @@ test.describe.serial('Line spot code editing (Line sample project, real server)'
     const form = await openEditor(page);
     await form.getByLabel(LABEL).fill(NEW);
     await form.getByRole('button', { name: 'Save' }).click();
+    await expect(page.getByTestId('lp-outcome')).toHaveText(`Waiting for your approval: Changes the code for "${LABEL}" in OrdersPage.`);
+    expect(read(ORDERS)).toBe(before);
+    await page.getByTestId('line-plan').getByRole('button', { name: /^Approve step/ }).first().click();
     await expect(page.getByTestId('lp-outcome')).toHaveText(`Saved. Changes the code for "${LABEL}" in OrdersPage.`);
     expect(read(ORDERS)).toBe(before.replace(OLD, NEW));
     await listPagePart(page).getByRole('button', { name: 'Edit code' }).click();

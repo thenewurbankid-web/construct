@@ -1,13 +1,16 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useUrlSelection } from '@/features/list-browser';
+import { useLineFixNotice } from '@/features/line-fix';
+import { useShellDrawer } from '@/features/shell';
 import { featureNames, featureSummary } from '../domain/FeatureList';
 import { pageParts, withFragments } from '../domain/PageParts';
 import { featurePages, findPage } from '../domain/PageRows';
 import { saveCodeFragment } from '../workflows/SaveFragmentFlow';
 import { savePageProp } from '../workflows/SavePropFlow';
-import type { CodeFragment, FragmentOutcome, LinePagesApi, LinePagesView, LineProject, PagePart, PartProp, PartsState, SaveOutcome } from '../types';
+import { saveOutcome } from '../domain/SaveOutcome';
+import type { CodeFragment, FragmentOutcome, LinePagesApi, LinePagesPlan, LinePagesView, LineProject, PagePart, PartProp, PartsState, SaveOutcome } from '../types';
 
 const UNREADABLE: PartsState = { phase: 'error', sentence: 'The parts of this page could not be read, so try again.' };
 
@@ -15,7 +18,7 @@ const UNREADABLE: PartsState = { phase: 'error', sentence: 'The parts of this pa
  * rows of that feature, the chosen page's parts, and Save. After every save the project and the page's parts are
  * read again (node ids can shift), so what the screen shows is what is on disk, saved or refused. With no Line
  * project (still loading, or not a Line project) it holds nothing. */
-export function useLinePages(project: LineProject | null, api: LinePagesApi | null, reloadProject: () => Promise<void>): LinePagesView & { ready: boolean } {
+export function useLinePages(project: LineProject | null, api: LinePagesApi | null, reloadProject: () => Promise<void>, landed: LinePagesPlan['lastRun'] = null): LinePagesView & { ready: boolean } {
   const featureSel = useUrlSelection('feature');
   const pageSel = useUrlSelection('page');
   const features = useMemo(() => (project ? featureNames(project).map((name) => ({ name, summary: featureSummary(project, name) })) : []), [project]);
@@ -31,6 +34,7 @@ export function useLinePages(project: LineProject | null, api: LinePagesApi | nu
   const [revision, setRevision] = useState(0);
 
   const [fragmentOutcome, setFragmentOutcome] = useState<FragmentOutcome | null>(null);
+  const { revalidate } = useShellDrawer();
 
   const readParts = useCallback(
     async (f: string) => {
@@ -57,6 +61,24 @@ export function useLinePages(project: LineProject | null, api: LinePagesApi | nu
     setParts({ phase: 'loading' });
     void readParts(file);
   }, [file, readParts]);
+
+  // cp1: a Save only adds a plan step; once the person approved and it ran, read everything again (node ids, ranges and
+  // hashes may have moved) and show what happened.
+  const landedId = landed?.stepId ?? null;
+  const landedRef = useRef(landed);
+  landedRef.current = landed;
+  useEffect(() => {
+    const run = landedRef.current;
+    if (!landedId || !run || !file) return;
+    void (async () => {
+      await reloadProject();
+      await readParts(file);
+      if (run.apply) setOutcome(saveOutcome(run.apply));
+      setRevision((r) => r + 1);
+    })();
+    // Only a newly run step triggers this; the file and readers are read through the latest render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [landedId]);
 
   const { select: selectFeature } = featureSel;
   const { select: selectPage } = pageSel;
@@ -103,8 +125,17 @@ export function useLinePages(project: LineProject | null, api: LinePagesApi | nu
     [api, file, readParts, reloadProject],
   );
 
+  // ca2: a fix applied from a page's problem. Its sentence stays at the top; a landed one re-reads the project (the
+  // problem leaves its row), the open page's parts, and re-runs validate (Diagnostics, status bar).
+  const afterFix = useCallback(async () => {
+    await reloadProject();
+    if (file) await readParts(file);
+    revalidate();
+  }, [file, readParts, reloadProject, revalidate]);
+  const { notice: fixNotice, onResult: fixApplied } = useLineFixNotice(afterFix);
+
   return {
     ready: featureSel.ready && pageSel.ready, features, feature, chooseFeature, pages, page, choosePage: selectPage, parts, save, saving, revision, outcome,
-    saveFragment, fragmentOutcome,
+    saveFragment, fragmentOutcome, fixNotice, fixApplied,
   };
 }

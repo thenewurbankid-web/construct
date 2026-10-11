@@ -915,14 +915,8 @@ export async function validate(args) {
   let report = violations;
   if (format === 'json' && profile === 'line' && violations.some((v) => String(v.rule).startsWith('LINE-'))) {
     // ca2: each LINE-* problem carries its typed fixes (packages/engine/line/fixes.mjs), so an agent can correct itself.
-    const { fixContext, fixesFor, findingKey } = await import('@line/construct-engine/line/fixes');
-    const { toFinding } = await import('@line/construct-engine/line/model');
-    const ctx = fixContext(root);
-    report = violations.map((v) => {
-      if (!String(v.rule).startsWith('LINE-')) return v;
-      const f = toFinding(v);
-      return { ...v, key: findingKey(f), fixes: fixesFor(root, f, ctx) };
-    });
+    const { withViolationFixes } = await import('@line/construct-engine/line/fixes');
+    report = withViolationFixes(root, violations);
   }
   console.log(formatReport(report, { format }));
   if (!ok) setExitCode(exitCodeForViolations(violations));

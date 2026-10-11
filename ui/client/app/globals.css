@@ -47,6 +47,10 @@ body {
   color: var(--muted);
   font-size: 0.9rem;
 }
+/* A long path in a hint (the workspace on the Open-a-project screen) wraps instead of scrolling a phone sideways. */
+.hint code {
+  overflow-wrap: anywhere;
+}
 
 /* Features stage actions (#370): the retired Dashboard's four forms, opened one at a time in the stage.
  * Tokens only; the forms themselves keep their own .command-form look. */

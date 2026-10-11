@@ -3,8 +3,10 @@
 // tests reuse the assert* shape checks on real projects.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { assertLineFeatureDetail, assertLineProject, assertStagedChange, assertApplyResult, assertFinding, assertFragmentList, assertLineWorkspace, LineOpError, LINE_API } from '../packages/engine/line/contract.mjs';
+import { assertLineFeatureDetail, assertLineProject, assertStagedChange, assertApplyResult, assertFinding, assertFragmentList, assertLineWorkspace, assertNewLineProjectResult, LineOpError, LINE_API } from '../packages/engine/line/contract.mjs';
 import { createMockLineOps, MOCK_FILES } from '../packages/engine/line/mock.mjs';
+import { createMockImport } from '../packages/engine/line/mockImport.mjs';
+import { assertImportScan, assertImportPlan, assertImportApplyResult, IMPORT_TOOLS } from '../packages/engine/line/contract.mjs';
 
 const ROOT = '/mock';
 
@@ -73,7 +75,7 @@ test('contract: the shape checks reject what Cockpit must never show', () => {
   assert.throws(() => assertFinding({ sentence: 'no full stop', rule: 'X', severity: 'error', file: 'a', line: 1 }), /full sentence/);
   assert.throws(() => assertStagedChange({ summary: 'Escapes.', files: [{ path: '../x', content: '' }] }), /inside the project/);
   assert.throws(() => assertApplyResult({ ok: false, sentence: 'Refused.', files: ['a'], findings: [] }), /wrote nothing/);
-  assert.deepEqual(LINE_API.map((r) => `${r.method} ${r.path}`), ['GET /api/line/project', 'GET /api/line/page-tree', 'POST /api/line/base-on', 'POST /api/line/promote', 'POST /api/line/page-prop', 'GET /api/line/render', 'GET /api/line/feature', 'GET /api/line/workspace', 'POST /api/line/workspace', 'POST /api/line/fix', 'GET /api/line/fragments', 'POST /api/line/fragment']);
+  assert.deepEqual(LINE_API.map((r) => `${r.method} ${r.path}`), ['GET /api/line/project', 'GET /api/line/page-tree', 'GET /api/line/render', 'GET /api/line/feature', 'GET /api/line/workspace', 'POST /api/line/workspace', 'GET /api/line/fragments', 'GET /api/line/plan', 'POST /api/line/plan/step', 'POST /api/line/plan/approve', 'POST /api/line/plan/run', 'GET /api/line/import/folders', 'POST /api/line/import/scan', 'POST /api/line/import/plan', 'POST /api/line/new-project']);
   assert.throws(() => assertLineWorkspace({ root: '/p', folder: '../x', readOnly: true }), /inside the project/);
 });
 
@@ -148,4 +150,41 @@ test('contract: fragments list the code a person can edit in place, and a fragme
   const fresh = ops.listFragments(ROOT, file);
   assert.throws(() => ops.planSetFragment(ROOT, { file, fragmentId: frag.id, code: '() => alert(', contentHash: fresh.contentHash }), (e) => e.code === 'BAD_CODE' && /\.$/.test(e.sentence) && typeof e.detail === 'string');
   assert.throws(() => assertFragmentList({ ...fresh, fragments: [{ ...fresh.fragments[0], label: 'A sentence.' }] }), /label/);
+});
+
+test('contract: import scan proposes in plain English and asks only where two rules disagree; the plan follows the answer', () => {
+  const imp = createMockImport();
+  const scan = imp.scan({ folder: 'src/alerts' });
+  assertImportScan(scan);
+  assert.deepEqual(scan.questions.map((q) => q.id), ['generic-name:src/alerts/components/Table.tsx']);
+  assert.deepEqual(scan.found.filter((f) => f.confidence === 'ask').map((f) => f.name), ['Table']);
+  const plan = imp.plan({ folder: 'src/alerts', answers: {} });
+  assertImportPlan(plan);
+  assert.ok(plan.steps.every((s) => IMPORT_TOOLS.includes(s.tool)));
+  const asFeature = imp.plan({ folder: 'src/alerts', answers: { 'generic-name:src/alerts/components/Table.tsx': 'feature:alerts' } });
+  assertImportPlan(asFeature);
+  assert.ok(asFeature.steps.some((s) => s.id.endsWith('feature-Table')) && !plan.steps.some((s) => s.id.endsWith('feature-Table')));
+  const r = imp.apply({ folder: 'src/alerts', answers: {} });
+  assertImportApplyResult(r);
+  assert.equal(r.ok, true);
+  assert.throws(() => imp.scan({ folder: '../elsewhere' }), (e) => e instanceof LineOpError && e.code === 'BAD_FOLDER');
+  assert.throws(() => assertImportScan({ ...scan, found: [{ ...scan.found[0], file: 'src/App.tsx' }] }), /inside the folder/);
+  assert.throws(() => assertImportPlan({ ...plan, steps: [{ ...plan.steps[0], tool: 'fs.writeFile' }] }), /must be one of/);
+});
+
+test('contract: a new Line project is planned purely, created in one new folder, and refused in one sentence', () => {
+  const ops = createMockLineOps();
+  const change = ops.planNewLineProject({ parentDir: '', name: 'shop', firstFeature: 'catalog' });
+  assertStagedChange(change);
+  assert.ok(change.files.some((f) => f.path === 'architecture.yml' && /preset: line/.test(f.content)));
+  assert.ok(change.files.some((f) => f.path === 'features/catalog/spec.md' && /## Story 1\n\n- /.test(f.content)));
+  assert.deepEqual(ops.projects(), {}, 'planning writes nothing');
+  const r = ops.createLineProject('/ws', { parentDir: '', name: 'shop', firstFeature: 'catalog' });
+  assertNewLineProjectResult(r);
+  assert.equal(r.dir, '/ws/shop');
+  for (const [req, code] of [[{ name: '../x', firstFeature: 'a' }, 'BAD_NAME'], [{ name: 'shop', firstFeature: 'a' }, 'NAME_TAKEN'], [{ name: 'taken', firstFeature: 'a' }, 'NAME_TAKEN'], [{ name: 'ok', firstFeature: 'a/b' }, 'BAD_FEATURE']]) {
+    assert.throws(() => ops.createLineProject('/ws', { parentDir: '', ...req }), (e) => e instanceof LineOpError && e.code === code && /^\S.*[.?!]$/.test(e.sentence), code);
+  }
+  assert.deepEqual(Object.keys(ops.projects()), ['/ws/shop'], 'a refusal creates nothing');
+  assert.throws(() => assertNewLineProjectResult({ ok: false, sentence: 'Refused.', files: [], findings: [], dir: '/x' }), /null/);
 });

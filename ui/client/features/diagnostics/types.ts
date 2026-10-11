@@ -1,3 +1,7 @@
+import type { ApplyResult, LineFinding, LineFix } from '@/lib/lineContract';
+
+export type { ApplyResult } from '@/lib/lineContract';
+
 export type Severity = 'error' | 'warning' | 'info';
 
 /** One rule violation as `construct validate` reports it (ui/server GET /api/validate). */
@@ -10,6 +14,10 @@ export type Violation = {
   message: string;
   why?: string;
   suggestedFix?: string;
+  /** ca2: a LINE-* problem's handle for a line.fix plan step. */
+  key?: string;
+  /** ca2: a LINE-* problem's typed fixes, recommended first. */
+  fixes?: LineFix[];
 };
 
 export type SeverityCounts = { error: number; warning: number; info: number; total: number };
@@ -57,6 +65,8 @@ export type DiagnosticRow = {
   ariaLabel: string;
   why?: string;
   fix?: string;
+  /** Set for a Line problem with typed fixes: the row offers them with Apply (line-fix). */
+  lineFinding: LineFinding | null;
 };
 
 export type DiagnosticsViewModel = {
@@ -75,6 +85,10 @@ export type DiagnosticsViewProps = {
   onRun: () => void;
   /** Called when a row that points at a page file is chosen. */
   onOpenPage: (target: PageTarget, line: number) => void;
+  /** The last fix applied from a row ("Saved. ..." / "Nothing was saved: ..."). */
+  fixNotice: ApplyResult | null;
+  /** Called with the answer of a fix applied from a row. */
+  onFixed: (result: ApplyResult) => void;
 };
 
 export type LogRow = { id: number; time: string; source: string; level: LogLevel; text: string };

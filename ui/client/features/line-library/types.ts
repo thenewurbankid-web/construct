@@ -1,18 +1,25 @@
 // The view models and service surface of the Components screen. The Line contract's shapes come from the one shared
 // mirror (lib/lineContract.ts, lib/lineHttp.ts).
-import type { ApplyResult, BaseOnRequest, Level, LineFinding, LineProject, PromoteRequest } from '@/lib/lineContract';
+import type { ApplyResult, BaseOnRequest, Level, LineFinding, LineProject, PlanStepRequest, PromoteRequest } from '@/lib/lineContract';
 
 export type * from '@/lib/lineContract';
 
 /** What the service answers: the project, or one sentence saying why not. */
 export type LineProjectResult = { ok: true; project: LineProject } | { ok: false; sentence: string };
 
-/** The service's surface, so the real API and its mock are interchangeable. */
+/** The service's surface, so the real API and its mock are interchangeable. Changes are plan steps (AddPlanStep). */
 export type LineApi = {
   getLineProject: () => Promise<LineProjectResult>;
+};
+
+/** The contract mock's direct changes (services/LineApi.mock.ts, tests only: no server, no plan). */
+export type MockLineChanges = {
   baseOn: (req: BaseOnRequest) => Promise<ApplyResult>;
   promote: (req: PromoteRequest) => Promise<ApplyResult>;
 };
+
+/** Adds a step to the project's plan (the Plan panel's addStep): the step's sentence, or the refusal. */
+export type AddPlanStep = (req: PlanStepRequest) => Promise<{ ok: boolean; sentence: string }>;
 
 /** The one change being prepared or sent: a new feature item based on a library card, or a promotion. */
 export type ChangeState =
@@ -42,6 +49,8 @@ export type ChangeControls = {
   openPromote: (featureItemId: string, name: string) => void;
   cancel: () => void;
   submit: () => void;
+  /** A fix applied from a problem's fix panel (line-fix): its sentence becomes the notice; a landed one re-reads the project. */
+  fixApplied: (result: ApplyResult) => void;
 };
 
 // ---- View models -------------------------------------------------------------------------------

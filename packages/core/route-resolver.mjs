@@ -99,8 +99,27 @@ export function findRouteEntryFile(routeFolder) {
   );
 }
 
+/** JSONC -> JSON: drop // and block comments outside strings (a glob like "**\/*.ts" is a string, not a comment), and trailing commas. */
 function stripJsonComments(raw) {
-  return raw.replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
+  let out = '';
+  for (let i = 0; i < raw.length; i += 1) {
+    const c = raw[i];
+    if (c === '"') {
+      let j = i + 1;
+      while (j < raw.length && raw[j] !== '"') j += raw[j] === '\\' ? 2 : 1;
+      out += raw.slice(i, j + 1);
+      i = j;
+    } else if (c === '/' && raw[i + 1] === '/') {
+      while (i < raw.length && raw[i] !== '\n') i += 1;
+      out += '\n';
+    } else if (c === '/' && raw[i + 1] === '*') {
+      const end = raw.indexOf('*/', i + 2);
+      i = end === -1 ? raw.length : end + 1;
+    } else {
+      out += c;
+    }
+  }
+  return out.replace(/,(\s*[}\]])/g, '$1');
 }
 
 /** Read `@/*`-style path aliases from the nearest tsconfig.json/jsconfig.json

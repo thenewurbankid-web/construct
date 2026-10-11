@@ -1,6 +1,6 @@
 import type { ApplyResult, CodeFragment, LineRefusal, PagePart, PartProp, SaveOutcome, SetFragmentRequest, SetPropRequest } from '../types';
 
-/** The request POST /api/line/page-prop takes for one prop change. */
+/** The args of a line.setPageProp plan step for one prop change. */
 export function setPropRequest(file: string, part: PagePart, prop: PartProp, value: string | number | boolean): SetPropRequest {
   return { file, nodeId: part.nodeId, prop: prop.name, kind: prop.kind, value };
 }

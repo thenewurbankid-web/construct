@@ -392,15 +392,9 @@ function writeRefusal(root, e, files) {
   return message;
 }
 
-/**
- * Apply a staged change: the ONLY Line operation that writes. Every file is staged in one transaction and
- * committed through the project's validate profile; when that refuses, nothing lands.
- * @param {string} root Project root.
- * @param {import('./contract.mjs').StagedChange} change The change from a plan function.
- * Files outside the project's workspace folder (workspace.mjs) are refused first, with code OUTSIDE_WORKSPACE.
- * @returns {import('./contract.mjs').ApplyResult} `Saved. <summary>` with the files, or `Nothing was saved: ...` with the findings.
- */
-export function applyChange(root, change) {
+/** The checks every change passes before the writer sees it: its shape, every path inside the project, every file
+ * inside the workspace folder. Null when it may go on, else the refusal (an ApplyResult with ok false). */
+function preflight(root, change) {
   const refuse = (s, findings = []) => ({ ok: false, sentence: `Nothing was saved: ${lowerFirst(asSentence(s))}`, files: [], findings });
   try { assertStagedChange(change); } catch (e) { return refuse(`The change is not in the expected shape (${/** @type {Error} */ (e).message.replace(/[.?!]$/, '')}).`); }
   for (const f of change.files) {
@@ -422,6 +416,21 @@ export function applyChange(root, change) {
       code: 'OUTSIDE_WORKSPACE',
     };
   }
+  return null;
+}
+
+/**
+ * Apply a staged change: the ONLY Line operation that writes. Every file is staged in one transaction and
+ * committed through the project's validate profile; when that refuses, nothing lands.
+ * @param {string} root Project root.
+ * @param {import('./contract.mjs').StagedChange} change The change from a plan function.
+ * Files outside the project's workspace folder (workspace.mjs) are refused first, with code OUTSIDE_WORKSPACE.
+ * @returns {import('./contract.mjs').ApplyResult} `Saved. <summary>` with the files, or `Nothing was saved: ...` with the findings.
+ */
+export function applyChange(root, change) {
+  const refused = preflight(root, change);
+  if (refused) return refused;
+  const refuse = (s, findings = []) => ({ ok: false, sentence: `Nothing was saved: ${lowerFirst(asSentence(s))}`, files: [], findings });
   const txn = createTransaction(root);
   let result;
   try {
@@ -439,4 +448,33 @@ export function applyChange(root, change) {
     return refuse(first ? first.sentence : 'The project checks refused the change.', findings);
   }
   return { ok: true, sentence: `Saved. ${change.summary}`, files: [...new Set(change.files.map((f) => f.path))], findings: [] };
+}
+
+/**
+ * Would the writer land this change now? The same checks as applyChange (shape, paths, workspace, and the project's
+ * validate profile on a shadow copy, refusing only NEW problems), but nothing is ever committed. Used to re-check a
+ * step after its fix landed (planService), without writing.
+ * @param {string} root @param {import('./contract.mjs').StagedChange} change
+ * @returns {{ok: boolean, sentence: string, findings: import('./contract.mjs').LineFinding[]}}
+ */
+export function checkChange(root, change) {
+  const refused = preflight(root, change);
+  if (refused) return { ok: false, sentence: refused.sentence, findings: refused.findings };
+  const txn = createTransaction(root);
+  /** @type {{violations: any[], ok: boolean} | null} */
+  let verdict = null;
+  try {
+    for (const f of change.files) {
+      if (f.content === null) txn.deleteFile(f.path); else txn.writeFile(f.path, f.content);
+    }
+    txn.commit({ validate: (shadow, ctx) => { verdict = onlyNewProblems(root)(shadow, ctx); return { violations: [], ok: false }; } });
+  } catch (e) {
+    if (!verdict) return { ok: false, sentence: `Nothing would be saved: ${lowerFirst(asSentence(writeRefusal(root, e, change.files.map((f) => f.path))))}`, findings: [] };
+  } finally {
+    txn.reset();
+  }
+  const v = /** @type {{violations: any[], ok: boolean}} */ (verdict ?? { violations: [], ok: false });
+  const findings = v.violations.map(toFinding);
+  const first = findings.find((x) => x.severity === 'error');
+  return v.ok ? { ok: true, sentence: 'The change would land now.', findings } : { ok: false, sentence: `Nothing would be saved: ${lowerFirst(first ? first.sentence : 'The project checks refuse the change.')}`, findings };
 }

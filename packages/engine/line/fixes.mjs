@@ -38,7 +38,7 @@ const itemName = (rel) => { const b = stripExt(posix.basename(rel)); return b ==
 const exists = (root, rel) => fs.existsSync(path.join(root, rel));
 
 /**
- * The stable handle of a finding for POST /api/line/fix.
+ * The stable handle of a finding for a line.fix plan step.
  * @param {{rule: string, file: string, line: number}} f
  * @returns {string} "<rule>|<file>|<line>"
  */
@@ -274,6 +274,24 @@ export function withFixes(root, findings) {
 }
 
 /**
+ * Raw validate violations with each LINE-* one carrying its key and fixes (one context for the batch); others are
+ * returned as they are. The one place `construct validate --format json` and Cockpit's GET /api/validate attach them.
+ * @template {{rule: string, file?: string, line?: number, message?: string, severity?: string}} V
+ * @param {string} root
+ * @param {V[]} violations
+ * @returns {(V & {key?: string, fixes?: import('./contract.mjs').LineFix[]})[]}
+ */
+export function withViolationFixes(root, violations) {
+  if (!violations.some((v) => String(v.rule).startsWith('LINE-'))) return violations;
+  const ctx = fixContext(root);
+  return violations.map((v) => {
+    if (!String(v.rule).startsWith('LINE-')) return v;
+    const f = toFinding(/** @type {any} */ (v));
+    return { ...v, key: findingKey(f), fixes: fixesFor(root, f, ctx) };
+  });
+}
+
+/**
  * Plan one fix step (the tool -> planner table). Pure.
  * @param {string} root
  * @param {{tool: string, args: Record<string, any>}} step
@@ -306,14 +324,26 @@ export function planFix(root, finding, fixId) {
 }
 
 /**
- * POST /api/line/fix: find the finding by key in the current validate result, plan its fix, apply it through the writer.
+ * applyFix (CLI and mock mode; Cockpit uses the line.fix plan step): find the finding by key in the current validate result, plan its fix, apply it through the writer.
  * @param {string} root
  * @param {import('./contract.mjs').FixRequest} req
  * @returns {import('./contract.mjs').ApplyResult}
  * @throws {LineOpError} UNKNOWN_FINDING, UNKNOWN_FIX or NO_STEP.
  */
-export function applyFix(root, { findingKey: key, fixId } = /** @type {any} */ ({})) {
+export function applyFix(root, req = /** @type {any} */ ({})) {
+  return applyChange(root, planFixByKey(root, req));
+}
+
+/**
+ * cp1: the plan half of applyFix (the `line.fix` plan tool): find the finding by key in the current
+ * validate result and plan its fix, without writing. Pure.
+ * @param {string} root
+ * @param {import('./contract.mjs').FixRequest} req
+ * @returns {import('./contract.mjs').StagedChange}
+ * @throws {LineOpError} UNKNOWN_FINDING, UNKNOWN_FIX or NO_STEP.
+ */
+export function planFixByKey(root, { findingKey: key, fixId } = /** @type {any} */ ({})) {
   const finding = validateLine(root).violations.map(toFinding).find((f) => findingKey(f) === key);
   if (!finding) throw new LineOpError('That problem is no longer reported; reload the project to see what is left.', 'UNKNOWN_FINDING');
-  return applyChange(root, planFix(root, finding, String(fixId ?? '')));
+  return planFix(root, finding, String(fixId ?? ''));
 }

@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { gotoCockpit } from './support/cockpit.js';
 import { openProject } from './support/browseProject.js';
 import { runAxe, isBlocking, format } from './support/axe.js';
+import { failOnConsoleErrors } from './support/consoleGuard.js';
 
 // Line hour 1: open the sample Line project (examples/line-sample, `preset: line`) in Cockpit and read its two
 // planted Line errors in the Diagnostics panel: the plain-English sentence first, the rule id and file:line inside
@@ -28,6 +29,7 @@ const PLANTED = [
 ];
 
 test.describe('Line errors in plain English (Line sample project)', () => {
+  failOnConsoleErrors(test);
   let base;
   let restore;
 

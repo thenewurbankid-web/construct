@@ -1,4 +1,4 @@
-import type { PageRow } from '../types';
+import type { ApplyResult, PageRow } from '../types';
 import { FindingItem } from './FindingItem';
 import { PageReadOnlyTag } from './PageReadOnlyTag';
 
@@ -8,10 +8,12 @@ type PageListProps = {
   onChoose: (id: string) => void;
   /** Line cu6: pages outside this folder get a quiet "Read-only" tag (null or '' tags nothing). */
   workspaceFolder?: string | null;
+  /** Called with the answer of a fix applied from one of the findings. */
+  onFix: (result: ApplyResult) => void;
 };
 
 /** The pages of one feature: name, library base (or the problem with it), status, and findings. */
-export function PageList({ pages, current, onChoose, workspaceFolder = null }: PageListProps) {
+export function PageList({ pages, current, onChoose, workspaceFolder = null, onFix }: PageListProps) {
   if (pages.length === 0) return <p className="hint">This feature has no pages yet.</p>;
   return (
     <ul className="lp-pages" aria-label="Pages in this feature">
@@ -32,7 +34,7 @@ export function PageList({ pages, current, onChoose, workspaceFolder = null }: P
           {p.findings.length > 0 && (
             <ul className="lp-findings" aria-label={`What needs attention in ${p.name}`}>
               {p.findings.map((f, i) => (
-                <FindingItem key={`${f.rule}-${f.line}-${i}`} finding={f} />
+                <FindingItem key={`${f.rule}-${f.line}-${i}`} finding={f} onFix={onFix} />
               ))}
             </ul>
           )}

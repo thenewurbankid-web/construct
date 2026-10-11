@@ -86,7 +86,10 @@ import { validateArchitecture } from '../../../packages/core/architecture-enforc
 import { createComponentsRouter } from './componentsApi.mjs';
 import { createLineRouter } from './lineApi.mjs';
 import { createLineOpsRouter } from './lineOpsApi.mjs';
+import { createLinePlanRouter } from './linePlanApi.mjs';
 import { createLineRenderRouter } from './lineRenderApi.mjs';
+import { createLineImportRouter } from './lineImportApi.mjs';
+import { createLineNewProjectRouter } from './lineNewProjectApi.mjs';
 import { createStoryBridgeRouter } from './storyBridgeApi.mjs';
 import { createNotesRouter } from './notesApi.mjs';
 import { openNotesStore } from './notesStore.mjs';
@@ -1239,6 +1242,13 @@ app.use('/api/components', createComponentsRouter({
   },
 }));
 
+// cu7 (Line Cockpit): start a new Line project in a folder of the caller's workspace and open it. Needs no open
+// project, so it sits before the /api/line routers that do; the starter files land through Construct's writer.
+app.use('/api/line/new-project', createLineNewProjectRouter({
+  clientOrigin: CLIENT_ORIGIN,
+  getWorkspaceRoot: workspaceRoot,
+  openProject: (dir) => applySettings({ projectDir: dir }),
+}));
 // Line: the read-only Line view of a `preset: line` project (packages/engine/line/contract.mjs LINE_API).
 app.use('/api/line', createLineRouter({
   getRoot: () => {
@@ -1249,6 +1259,28 @@ app.use('/api/line', createLineRouter({
 // T4 (Line Cockpit): a page's parts and the Line changes (set a prop, base on a library item, promote), each written
 // only through Construct's writer with the project's own validate profile as the gate (lineOpsApi.mjs).
 app.use('/api/line', createLineOpsRouter({
+  clientOrigin: CLIENT_ORIGIN,
+  afterSave,
+  getRoot: () => {
+    const root = containedProjectRoot(getProjectDir());
+    return root ? { ok: true, root } : { ok: false, error: 'No project is open; pick a project first.' };
+  },
+}));
+
+// cp1 (Line Cockpit): every Line action as a step of the open project's plan (line/plans/); a person approves each
+// write, then it runs through the same writer (linePlanApi.mjs, packages/engine/line/planService.mjs).
+app.use('/api/line', createLinePlanRouter({
+  clientOrigin: CLIENT_ORIGIN,
+  afterSave,
+  getRoot: () => {
+    const root = containedProjectRoot(getProjectDir());
+    return root ? { ok: true, root } : { ok: false, error: 'No project is open; pick a project first.' };
+  },
+}));
+
+// ci1 (Line Import): bring one folder of the open project into Line; the rest of the project is only read, and every write
+// is a plan step landed by Construct's writer with the folder as its root (lineImportApi.mjs).
+app.use('/api/line', createLineImportRouter({
   clientOrigin: CLIENT_ORIGIN,
   afterSave,
   getRoot: () => {

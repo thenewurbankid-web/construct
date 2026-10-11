@@ -103,3 +103,17 @@ test('an unknown project.execution.mode is a 400 naming the value; origin and mi
   assert.equal((await handleValidateForProject({ ...base, origin: 'http://evil.example', projectDir: dir })).status, 403);
   assert.equal((await handleValidateForProject({ ...base, projectDir: null })).status, 400);
 });
+
+test('ca2: on a Line project every LINE-* problem carries its key and typed fixes, so a Diagnostics row can offer Apply', () => {
+  const dir = makeTempDir('validate-line-');
+  fs.cpSync(path.resolve(import.meta.dirname, '../../../examples/line-sample'), dir, { recursive: true });
+  const r = handleValidate({ ...base, projectDir: dir, findRoot: () => dir, log: createLogBuffer() });
+  assert.equal(r.status, 200);
+  const line = r.body.violations.filter((x) => x.rule.startsWith('LINE-'));
+  assert.equal(line.length, 2, 'the two planted problems');
+  const missingBase = line.find((x) => x.rule === 'LINE-BASE');
+  assert.equal(missingBase.key, 'LINE-BASE|features/billing/components/InvoiceCard.tsx|1');
+  assert.match(missingBase.fixes[0].sentence, /^Base InvoiceCard\.tsx on the library component Card/);
+  assert.equal(line.find((x) => x.rule === 'LINE-DIR').fixes[0].step.tool, 'line.promote');
+  assert.equal(r.body.violations.some((x) => !x.rule.startsWith('LINE-') && 'fixes' in x), false, 'other rules carry no fixes');
+});

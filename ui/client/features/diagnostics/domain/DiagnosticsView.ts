@@ -8,6 +8,12 @@ export function severityLabel(severity: Severity): string {
   return severity === 'error' ? 'Error' : severity === 'warning' ? 'Warning' : 'Note';
 }
 
+/** A Line problem with typed fixes as the finding the fix panel takes; null for every other row. */
+export function lineFindingOf(v: Violation): DiagnosticRow['lineFinding'] {
+  if (!Array.isArray(v.fixes) || v.fixes.length === 0) return null;
+  return { sentence: v.message, rule: v.rule, severity: v.severity, file: v.file, line: v.line, key: v.key ?? `${v.rule}|${v.file}|${v.line}`, fixes: v.fixes };
+}
+
 function rowFor(v: Violation, i: number): DiagnosticRow {
   const target = pageTarget(v.file);
   const label = severityLabel(v.severity);
@@ -23,6 +29,7 @@ function rowFor(v: Violation, i: number): DiagnosticRow {
     ariaLabel: `${label}: ${v.message}${target ? ' Opens in the Pages editor.' : ''}`,
     why: v.why,
     fix: v.suggestedFix,
+    lineFinding: lineFindingOf(v),
   };
 }
 

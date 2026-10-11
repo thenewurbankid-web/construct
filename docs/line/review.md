@@ -213,7 +213,20 @@ Gaps: without Morpheus linked, only the one-sentence "no picture" note and the p
 
 UAT: Components → Button card → "Preview Button" → change label to "Buy now". Expect the picture to update.
 
-## ca2: every Line problem carries a fix you (or an agent) can apply (engine done; screen next)
+## ca2 screen: Apply a fix where Cockpit shows the problem (awaiting UAT)
+
+Tests: `ui/e2e/tests/line-fix.spec.js` (3, real server, clicks counted), `features/line-fix/domain/LineFix.spec.mjs` (4), `lib/lineMockOps.spec.mjs` (2), one new Diagnostics view test, one new `/api/validate` server test.
+1. Components: InvoiceCard's problem shows "Base InvoiceCard.tsx on the library component Card, which it already uses." with Apply; one click saves it ("Saved."), the problem leaves the row, the status bar drops to 1 problem, the file gains its base line. Accessibility clean.
+2. Pages: InvoicesPage's cross-feature import shows "Move OrderButton.tsx from feature orders into the library…" with Apply; one click saves, the page reads "Fine", the status bar says no problems, OrderButton is in the library.
+3. Diagnostics: on a fresh sample, open the drawer and Apply on the LINE-BASE row (two clicks); "Saved." shows above the list and only the LINE-DIR row is left.
+4. Panel states (unit): recommended first, others under "Other ways to fix"; advice-only shows the sentence with "Do this by hand", no button; every answer reads "Saved. …" or "Nothing was saved: …"; a double click sends one request; a refusal stays next to the fixes.
+5. Mock mode (`?line=mock`): Apply works on the tab's one in-memory project, shared with the Pages screen.
+
+Gaps: no screen offers "Other ways to fix" on the sample (each planted problem has one fix; covered by the unit test). A fix applied from Diagnostics does not re-read a Line screen already open behind the drawer (reopen it). The Components screen has no mock mode.
+
+UAT: open the sample, Components → InvoiceCard → Apply (expect "Saved." and 1 problem); Pages → billing → InvoicesPage → Apply (expect "Fine", no problems).
+
+## ca2: every Line problem carries a fix you (or an agent) can apply (engine done; screen above)
 
 Tests: `test/line-fixes.test.mjs` (each on a fresh copy of the sample with one planted problem), plus contract and server tests.
 1. Missing base: exactly one fix ("Base InvoiceCard on the library Card, which it already uses"); applying it writes the base line, the problem goes away, nothing new appears.
@@ -227,9 +240,9 @@ Tests: `test/line-fixes.test.mjs` (each on a fresh copy of the sample with one p
 9. `construct validate --profile line --format json` carries each problem's key and fixes, so any agent can correct itself.
 10. The Cockpit project view carries the fixes too.
 
-Gaps (advice only, you fix by hand): direct file writes, own copies of shared modules, a route claimed by two features, framework `app/**/page.tsx` routes, broken JSON, stray folders, a file loose in features/, importing a whole feature folder, promoting a name the library already has. Not yet on screen: an "Apply fix" button (next step, running). Also found: `construct validate <path>` ignores the path; use `--dir`.
+Gaps (advice only, you fix by hand): direct file writes, own copies of shared modules, a route claimed by two features, framework `app/**/page.tsx` routes, broken JSON, stray folders, a file loose in features/, importing a whole feature folder, promoting a name the library already has. Also found: `construct validate <path>` ignores the path; use `--dir`.
 
-UAT: after the "Apply fix" screen lands (two clicks: open the problem, Apply).
+UAT: see "ca2 screen" above.
 
 ## cx1: edit one piece of code in place (awaiting UAT)
 
@@ -307,6 +320,8 @@ Plan: `docs/line/server-split.md`.
 
 Gaps: empty folders made before a disk error are left behind; LINE-MODULE does not yet check `ui/` reaching into `packages/`; memory, plan-store and registry fallbacks are not done. On this repo LINE-MODULE reported 216 errors (each package lacks a typed contract; engine and core reach into other packages 205 times); fixed below.
 
+No UAT (nothing visible).
+
 ### LINE-MODULE fix-all (merged d6c80f91, 1f4a324b)
 Every package (ast, core, engine, mcp, cli, studio) now has a typed contract, a mock and its own tests, and no package reaches inside another: 227 deep imports now go through named `exports` entries. LINE-MODULE on this repo: 233 → 0; every other Line rule has exactly the findings it had before (WRITER 532, OWNER 80, SHARED 24, LAYOUT 1). Two tools keep it that way: `packages/tools/line-module/fix-imports.mjs` (adds the export and rewrites the import; `--dry-run` previews) and `contracts.mjs --check` (a generated contract out of step with `exports`).
 Tests, in plain words:
@@ -320,3 +335,22 @@ Known gaps: engine and core import each other and core imports ast without listi
 1. In the repo, run `node packages/cli/construct.mjs validate --dir . --profile line`.
 2. Expect no LINE-MODULE lines in the output (the other rules still list their known findings).
 3. Run `node packages/cli/construct.mjs validate --dir examples/line-sample --profile line`: exactly the 2 planted findings.
+
+## ci1: Import one folder of an existing app (partial migration, awaiting UAT)
+
+Tests: `test/line-import.test.mjs` (8), import cases in `test/line-contract.test.mjs`, `ui/server/src/lineImportApi.test.mjs` (3), `ui/client/features/line-import/domain/ImportView.spec.mjs` (3), `ui/e2e/tests/line-import.spec.js` (3, real server, axe).
+1. On `examples/import-sample`, folder `src/alerts`: the scan finds 2 pages, 3 components and a fixture, reads the routes `/alerts` and `/alerts/:id` from `App.tsx`, and leaves the hook and the types file as they are, each with a sentence.
+2. SeverityBadge goes to the library (both pages use it), AlertRow to feature `alerts` (one page), the pages to feature `alerts`.
+3. Exactly one question: Table (a general UI name, but only one page uses it); the recommended answer is first and the plan follows the answer.
+4. The plan is plan-ready steps (`line.import.mark`, `line.import.toLibrary`, `line.import.toFeature`, each tool + args + sentence); planning writes nothing.
+5. Apply lands every step through the writer with the folder as its root; every file outside the folder is byte-for-byte the same.
+6. `construct validate --profile line --dir src/alerts` shows no new errors after the import.
+7. A folder outside the project, a step reaching outside the folder, and a second apply are each refused in one sentence.
+8. The mock (`?line=mock`) says exactly what the engine says (a test keeps them equal).
+Browser: pick the folder, read the proposals (paths under Details), one-click answer, plan, Apply; a bad folder is one sentence; accessibility clean.
+
+How it decides: a feature item is based on the library item it renders when there is one; otherwise its full code goes to the library and the feature gets a thin item based on it (Line's library/feature pattern). A file that code outside the folder imports keeps a one-line re-export at its old path, so the app runs unchanged. Layer findings the imported code already has (a page calling a hook) are recorded as named exceptions in the folder's `architecture.yml`, the to-do list for bringing it to the pattern; LINE-* rules are never excepted.
+
+Gaps: full migration into a new Line app, and importing a single item (next priority); React hooks stay in place (a Line workflow has no React); two items with the same name are refused at the second step; the re-export files at old page paths keep their "orphan page" finding until the app's routes point at the feature pages (that edit is outside the folder); an app needs an `architecture.yml` at its root before Cockpit can open it (max-ai-ui has none).
+
+UAT (cu7, max-ai-ui on a copy): open the copy in Cockpit (add `version: 1` as `architecture.yml` first), go to `/import`, folder `src/subframe-pages/Inbox`, Read folder, Show the plan, Apply. Expect InboxPage in feature `inbox` served at `/:locale/inbox`, and `src/app/...` unchanged.

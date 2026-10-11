@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { gotoCockpit } from './support/cockpit.js';
 import { makeBrowseProject, openProject } from './support/browseProject.js';
 import { runAxe, isBlocking, format } from './support/axe.js';
+import { failOnConsoleErrors } from './support/consoleGuard.js';
 
 // Line hour 2: Components -> Library for a `preset: line` project (examples/line-sample): the library's components
 // as cards grouped Atoms / Molecules / Organisms with how many feature components are based on each, then each
@@ -19,6 +20,7 @@ const card = (page, name) => page.getByTestId('ll-card').filter({ has: page.getB
 const featureRow = (page, name) => page.getByTestId('ll-feature-row').filter({ has: page.getByText(name, { exact: true }) });
 
 test.describe.serial('Line Components library (Line sample project)', () => {
+  failOnConsoleErrors(test);
   let base;
   let restore;
 
@@ -38,7 +40,7 @@ test.describe.serial('Line Components library (Line sample project)', () => {
     await expect(page.getByTestId('ll-total')).toHaveText('4');
 
     // Groups in order, each with its cards.
-    await expect(page.getByRole('heading', { level: 2 })).toHaveText([/^Atoms/, /^Molecules/, /^Organisms/, /^Feature components/]);
+    await expect(page.getByRole('heading', { level: 2 })).toHaveText([/^Plan/, /^Atoms/, /^Molecules/, /^Organisms/, /^Feature components/]);
     await expect(group(page, 'atom').getByTestId('ll-card')).toHaveCount(2);
     await expect(group(page, 'molecule').getByTestId('ll-card')).toHaveCount(1);
     await expect(group(page, 'organism').getByTestId('ll-card')).toHaveCount(1);
@@ -107,6 +109,7 @@ test.describe.serial('Line Components library (Line sample project)', () => {
 });
 
 test.describe.serial('Components screen for a non-Line project is unchanged', () => {
+  failOnConsoleErrors(test);
   let project;
   let restore;
   test.beforeAll(async () => {

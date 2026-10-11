@@ -15,11 +15,11 @@ test('#449: editing the name or framework clears a previous refusal', () => {
   assert.equal(formStateOf(actor.getSnapshot()).error, 'already exists');
 
   actor.send({ type: 'SET_NAME', name: 'demo' });
-  assert.deepEqual(formStateOf(actor.getSnapshot()), { name: 'demo', framework: 'nextjs', creating: false, error: null });
+  assert.deepEqual(formStateOf(actor.getSnapshot()), { name: 'demo', framework: 'nextjs', firstFeature: '', parentDir: '', creating: false, error: null });
 
   actor.send({ type: 'REFUSED', error: 'again' });
   actor.send({ type: 'SET_FRAMEWORK', framework: 'react-spa' });
-  assert.deepEqual(formStateOf(actor.getSnapshot()), { name: 'demo', framework: 'react-spa', creating: false, error: null });
+  assert.deepEqual(formStateOf(actor.getSnapshot()), { name: 'demo', framework: 'react-spa', firstFeature: '', parentDir: '', creating: false, error: null });
 });
 
 test('#449: starting creation flips "creating" until a refusal sends it back to editing', () => {
@@ -42,4 +42,15 @@ test('#449: the server accepting the request reaches the final "created" state',
   actor.send({ type: 'CREATED' });
   assert.equal(actor.getSnapshot().status, 'done');
   assert.equal(formStateOf(actor.getSnapshot()).creating, false);
+});
+
+test('cu7: a Line project also takes a first feature and a folder; editing either clears a refusal', () => {
+  const actor = createActor(newProjectMachine).start();
+  actor.send({ type: 'SET_FRAMEWORK', framework: 'line' });
+  actor.send({ type: 'START' });
+  actor.send({ type: 'REFUSED', error: 'taken' });
+  actor.send({ type: 'SET_FEATURE', firstFeature: 'catalog' });
+  assert.equal(formStateOf(actor.getSnapshot()).error, null);
+  actor.send({ type: 'SET_PARENT', parentDir: 'clients' });
+  assert.deepEqual(formStateOf(actor.getSnapshot()), { name: '', framework: 'line', firstFeature: 'catalog', parentDir: 'clients', creating: false, error: null });
 });

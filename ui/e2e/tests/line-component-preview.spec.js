@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { gotoCockpit } from './support/cockpit.js';
 import { openProject } from './support/browseProject.js';
 import { runAxe, isBlocking, format } from './support/axe.js';
+import { failOnConsoleErrors, refusalOf } from './support/consoleGuard.js';
 
 // Line Cockpit T7 (owner's win 3): "click a library component and see it rendered with its props". A copy of
 // examples/line-sample is opened in the real server; /components/preview?file= renders the library Button alone through
@@ -17,6 +18,8 @@ const API = process.env.E2E_API_BASE || 'http://localhost:4000';
 const BUTTON = 'library/components/Button.tsx';
 
 test.describe('Line component preview (Line sample project)', () => {
+  // A file outside library/components is refused on purpose.
+  failOnConsoleErrors(test, { allow: [refusalOf('/api/line/render')] });
   let base;
   let restore;
 

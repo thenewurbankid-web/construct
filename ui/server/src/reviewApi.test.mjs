@@ -208,16 +208,20 @@ test('the repository is never taken from the client: extra path parameters are i
   });
 });
 
-test('no project, or a directory that is not a git repository, is a plain 400', async () => {
+test('no project is a plain 400; a project that is not a git repository yet is a quiet 200 with no branches and one sentence', async () => {
   await withStack({ repo: null }, async ({ json }) => {
     const r = await json('GET', '/api/review/branches');
     assert.equal(r.status, 400);
     assert.match(r.body.error, /Pick a project/);
   });
+  // cu7: a new Line project opens before it is a git repository; Review must not answer it with errors.
   await withStack({ repo: makeTempDir('construct-review-nogit-') }, async ({ json }) => {
     const r = await json('GET', '/api/review/branches');
-    assert.equal(r.status, 400);
-    assert.match(r.body.error, /not inside a git repository/);
+    assert.equal(r.status, 200);
+    assert.deepEqual([r.body.ok, r.body.base, r.body.branches, r.body.refs, r.body.hasRemote], [true, null, [], [], false]);
+    assert.equal(r.body.sentence, 'This project is not a git repository yet.');
+    const change = await json('GET', '/api/review/change?base=main&head=x');
+    assert.equal(change.status, 400, 'reading one change still needs a repository');
   });
 });
 

@@ -1,0 +1,24 @@
+/* Line Plan panel (Components and Pages screens). Prefix lpl-. Tokens only (app/tokens.css). */
+.lpl { display: flex; flex-direction: column; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3); border: 1px solid var(--border-subtle); border-radius: var(--r-md); background: var(--surface-1); min-width: 0; }
+.lpl-head { margin: 0; font-size: var(--fs-md); display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--sp-2); }
+.lpl-head small { font-size: var(--fs-sm); font-weight: 400; color: var(--text-muted); }
+.lpl-hint { margin: 0; color: var(--text-muted); font-size: var(--fs-sm); }
+.lpl-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-2); max-height: 22rem; overflow: auto; }
+.lpl-step { display: flex; flex-direction: column; gap: var(--sp-1); padding: var(--sp-2); border: 1px solid var(--border-subtle); border-radius: var(--r-sm); background: var(--surface-2); min-width: 0; }
+.lpl-step[data-state='waiting'] { border-color: var(--accent); }
+.lpl-step[data-state='needs-you'], .lpl-step[data-state='failed'] { border-color: var(--danger); }
+.lpl-state { font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); }
+.lpl-sentence { margin: 0; overflow-wrap: anywhere; }
+.lpl-lines { margin: 0; padding-left: var(--sp-4); font-size: var(--fs-sm); }
+.lpl-actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.lpl-btn { min-height: 28px; padding: 0 var(--sp-3); border: 1px solid var(--border-strong); border-radius: var(--r-sm); background: var(--surface-1); color: var(--text); font-size: var(--fs-sm); cursor: pointer; }
+.lpl-btn:hover:not(:disabled) { background: var(--surface-3); }
+.lpl-btn:disabled { opacity: 0.5; cursor: default; }
+.lpl-btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.lpl-btn--primary { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); font-weight: 600; }
+.lpl-tech { font-size: var(--fs-sm); color: var(--text-muted); }
+.lpl-tech > summary { cursor: pointer; width: max-content; min-height: 24px; line-height: 24px; padding-inline: 2px; }
+.lpl-tech > summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.lpl-tech code { font-family: var(--mono); overflow-wrap: anywhere; display: block; }
+.lpl-recheck { margin: 0; font-size: var(--fs-sm); padding: var(--sp-1) var(--sp-2); border-left: 3px solid var(--accent); background: var(--accent-soft); color: var(--text); }
+.lpl-error { margin: 0; font-size: var(--fs-sm); padding: var(--sp-1) var(--sp-2); border-left: 3px solid var(--danger); background: var(--danger-soft); }

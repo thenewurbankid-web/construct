@@ -1,0 +1,4 @@
+[
+  { "id": "a1", "title": "Price above contract", "severity": 3, "read": false },
+  { "id": "a2", "title": "Clause missing", "severity": 2, "read": true }
+]

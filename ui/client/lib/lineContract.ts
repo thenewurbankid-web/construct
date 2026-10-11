@@ -13,7 +13,7 @@ export type LineFinding = {
   severity: 'error' | 'warning' | 'info';
   file: string;
   line: number;
-  /** "<rule>|<file>|<line>": the handle POST /api/line/fix takes. */
+  /** "<rule>|<file>|<line>": the handle a line.fix plan step takes. */
   key?: string;
   /** Typed fixes, recommended first (rank 1); LINE-* findings only. */
   fixes?: LineFix[];
@@ -30,7 +30,7 @@ export type LineFix = {
   step: { tool: LineFixTool; args: Record<string, unknown> } | null;
 };
 
-/** POST /api/line/fix. */
+/** The args of a line.fix plan step. */
 export type FixRequest = { findingKey: string; fixId: string };
 
 /** A library item (complete and usable on its own). */
@@ -98,6 +98,11 @@ export type FragmentList = { file: string; contentHash: string; fragments: CodeF
 /** POST /api/line/fragment. */
 export type SetFragmentRequest = { file: string; fragmentId: string; code: string; contentHash: string };
 
+/** POST /api/line/new-project (cu7): `parentDir` is a folder of the workspace ("" is the workspace itself). */
+export type NewLineProjectRequest = { parentDir: string; name: string; firstFeature: string };
+/** The starter files' ApplyResult, the new folder (null when refused) and, once opened, the settings of the open project. */
+export type NewLineProjectResult = ApplyResult & { dir: string | null; project?: { projectDir?: string | null } };
+
 export type BaseOnRequest = { libraryId: string; feature: string; name: string };
 export type PromoteRequest = { featureItemId: string };
 export type PropValueKind = 'string' | 'number' | 'boolean' | 'expression';
@@ -143,20 +148,106 @@ export type LineFeatureDetail = {
   spec: { file: string; stories: SpecStory[] } | null;
   findings: LineFinding[];
 };
+/** cp1: Line actions as plan steps (contract.mjs PlanView). A check that defines a step's "done". */
+export type PlanCheckKind = 'validate' | 'types' | 'tests' | 'file' | 'spec';
+export type PlanCheck = { id: string; sentence: string; kind: PlanCheckKind };
+/** Before a step runs: one expected output, already there or not. */
+export type GapItem = { checkId: string; state: 'present' | 'partial' | 'missing'; sentence: string };
+/** After a step runs: one check's outcome. */
+export type CheckResult = { checkId: string; ok: boolean; sentence: string };
+/** A `fix` comes from Construct's refusal (a finding's typed fix): `step` applies it, null for advice; rank 1 is `recommended`. */
+export type StepOption = { id: 'retry' | 'leave' | 'fix'; sentence: string; fixId?: string; recommended?: boolean; step?: { tool: string; args: Record<string, unknown> } | null };
+/** What a line.* change step records when it ran. */
+export type LineStepResult = {
+  apply: ApplyResult;
+  checks: CheckResult[];
+  passed: number;
+  total: number;
+  needsYou: boolean;
+  options: StepOption[];
+  stopped: boolean;
+  sentence: string;
+};
+export type PlanStepState = 'waiting' | 'ready' | 'running' | 'done' | 'needs-you' | 'needs-fix' | 'failed' | 'skipped';
+export type PlanStepView = {
+  id: string;
+  n: number;
+  tool: string;
+  args: Record<string, unknown>;
+  why: string;
+  kind: 'read' | 'write';
+  state: PlanStepState;
+  sentence: string;
+  gap: GapItem[];
+  result: LineStepResult | Record<string, unknown> | null;
+  error: string | null;
+};
+/** GET /api/line/plan and every plan write. */
+export type PlanView = {
+  ok: true;
+  sessionId: string;
+  planId: string | null;
+  version: number | null;
+  status: string | null;
+  steps: PlanStepView[];
+  store: { linked: boolean; sentence: string };
+  message?: string;
+  /** POST /api/line/plan/step only: the step just added. */
+  stepId?: string;
+  /** POST /api/line/plan/run after a fix step landed: the step it fixed plans clean again (waits for approval) or not. */
+  recheck?: string;
+  /** GET /api/line/plan only: the token the page sends back as x-line-approval to approve or run (only a person does). */
+  approvalToken?: string;
+};
+export type PlanStepRequest = { tool: string; args?: Record<string, unknown>; why?: string };
+/** Import (ci1): one folder of the open project brought into Line; only that folder is ever written. */
+export type ImportTarget = 'library' | 'feature';
+export type ImportFound = {
+  file: string;
+  kind: LineKind;
+  name: string;
+  proposal: { target: ImportTarget; feature?: string; base?: string; level?: Level; route?: string; sentence: string };
+  confidence: 'sure' | 'ask';
+  rules: string[];
+  usedBy: string[];
+};
+export type ImportQuestion = { id: string; file: string; sentence: string; options: { id: string; sentence: string }[]; recommended: string };
+/** POST /api/line/import/scan. */
+export type ImportScan = {
+  sourceRoot: string;
+  folder: string;
+  found: ImportFound[];
+  questions: ImportQuestion[];
+  unchanged: { file: string; sentence: string }[];
+  routes: string[];
+};
+export type ImportStepTool = 'line.import.mark' | 'line.import.toLibrary' | 'line.import.toFeature';
+export type ImportStep = { id: string; tool: ImportStepTool; args: Record<string, unknown>; sentence: string };
+/** POST /api/line/import/plan. */
+export type ImportPlan = { folder: string; summary: string; steps: ImportStep[] };
+/** POST /api/line/import/apply: an ApplyResult plus how each step went. */
+export type ImportApplyResult = ApplyResult & { steps: { id: string; ok: boolean; sentence: string }[] };
+export type ImportFolders = { sourceRoot: string; folders: { path: string; files: number }[] };
+export type ImportScanRequest = { folder: string };
+export type ImportPlanRequest = { folder: string; answers: Record<string, string> };
 
 /** Every LINE_API route, as the client calls it. Bodies come back as the server sent them, refusals included; each
  * screen turns them into what it shows. A network failure rejects. */
 export type LineHttp = {
   getProject: () => Promise<LineProject | LineRefusal>;
   getPageTree: (file: string) => Promise<LinePageTree | LineRefusal>;
-  setPageProp: (req: SetPropRequest) => Promise<ApplyResult | LineRefusal>;
-  baseOn: (req: BaseOnRequest) => Promise<ApplyResult | LineRefusal>;
-  promote: (req: PromoteRequest) => Promise<ApplyResult | LineRefusal>;
   render: (file: string, props?: string) => Promise<RenderResult>;
   getFeature: (name: string) => Promise<LineFeatureDetail | LineRefusal>;
   getWorkspace: () => Promise<LineWorkspace | LineRefusal>;
   setWorkspace: (req: WorkspaceRequest) => Promise<LineWorkspace | LineRefusal>;
-  fix: (req: FixRequest) => Promise<ApplyResult | LineRefusal>;
+  getPlan: () => Promise<PlanView | LineRefusal>;
+  addPlanStep: (req: PlanStepRequest) => Promise<PlanView | LineRefusal>;
+  /** One step, or several with one click (Import). Sends the page's approval token (x-line-approval). */
+  approvePlanStep: (stepId: string | string[]) => Promise<PlanView | LineRefusal>;
+  runPlan: (stepId?: string) => Promise<PlanView | LineRefusal>;
   getFragments: (file: string) => Promise<FragmentList | LineRefusal>;
-  setFragment: (req: SetFragmentRequest) => Promise<ApplyResult | LineRefusal>;
+  importFolders: () => Promise<ImportFolders | LineRefusal>;
+  importScan: (req: ImportScanRequest) => Promise<ImportScan | LineRefusal>;
+  importPlan: (req: ImportPlanRequest) => Promise<ImportPlan | LineRefusal>;
+  newProject: (req: NewLineProjectRequest) => Promise<NewLineProjectResult | LineRefusal>;
 };

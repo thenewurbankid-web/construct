@@ -143,3 +143,14 @@ test('statusTexts covers every text statusText produces, for the status bar to s
   assert.equal(new Set(texts).size, texts.length, 'no duplicates to render invisibly');
   assert.ok(texts.some((t) => /\d{3} problems/.test(t)), 'sized for a 3-digit count');
 });
+
+test('ca2: a Line row with typed fixes carries the finding the fix panel takes; other rows carry none', () => {
+  const fix = { id: 'LINE-DIR/promote', sentence: 'Move OrderButton.tsx into the library.', rank: 1, step: { tool: 'line.promote', args: {} } };
+  const line = { rule: 'LINE-DIR', module: 'architecture', severity: 'error', file: 'features/billing/pages/InvoicesPage.tsx', line: 4, message: 'Feature "billing" imports from feature "orders".', key: 'LINE-DIR|features/billing/pages/InvoicesPage.tsx|4', fixes: [fix] };
+  const view = buildDiagnosticsView({ ...initialDiagnostics, status: 'ready', violations: [line, v('warning')], total: 2, durationMs: 1 });
+  const lineRow = view.rows.find((r) => r.rule === 'LINE-DIR');
+  assert.deepEqual(lineRow.lineFinding, { sentence: line.message, rule: 'LINE-DIR', severity: 'error', file: line.file, line: 4, key: line.key, fixes: [fix] });
+  assert.equal(view.rows.find((r) => r.rule === 'R').lineFinding, null);
+  const noFixes = buildDiagnosticsView({ ...initialDiagnostics, status: 'ready', violations: [{ ...line, fixes: [] }], total: 1, durationMs: 1 });
+  assert.equal(noFixes.rows[0].lineFinding, null, 'an empty fix list shows no panel');
+});
