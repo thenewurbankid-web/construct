@@ -1,0 +1,18 @@
+/* Line component preview. Prefix lr-. Tokens only (app/tokens.css). */
+.lr { display: flex; flex-direction: column; gap: var(--sp-2); min-width: 0; }
+.lr-frame { width: 100%; min-height: 160px; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--preview-bg); }
+.lr-note { margin: 0; padding: var(--sp-2) var(--sp-3); border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface-1); display: flex; flex-direction: column; gap: var(--sp-1); }
+.lr-note p { margin: 0; }
+.lr-note--refused { background: var(--danger-soft); }
+.lr-details summary { cursor: pointer; color: var(--text-muted); width: fit-content; min-height: 24px; }
+.lr-details p { font-family: var(--mono); font-size: var(--fs-sm); overflow-wrap: anywhere; }
+.lr-title { margin: 0; font-size: var(--fs-sm); font-weight: 600; }
+.lr-props { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-1); }
+.lr-prop { display: grid; grid-template-columns: minmax(80px, auto) minmax(60px, auto) minmax(0, 1fr); align-items: center; gap: var(--sp-2); }
+.lr-prop-name { font-family: var(--mono); font-weight: 600; }
+.lr-prop-type, .lr-prop-value { font-size: var(--fs-sm); color: var(--text-muted); overflow-wrap: anywhere; }
+.lr-prop input[type='text'], .lr-prop input[type='number'] { min-width: 0; min-height: 28px; background: var(--surface-0); color: var(--text); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 2px var(--sp-2); font: inherit; }
+.lr-prop input[type='checkbox'] { justify-self: start; }
+.lr-page { max-width: 760px; }
+.lr-page h1 { margin: 0; font-size: 20px; line-height: 1.3; }
+.lr-file { margin: 0; font-family: var(--mono); font-size: var(--fs-sm); color: var(--text-muted); }
