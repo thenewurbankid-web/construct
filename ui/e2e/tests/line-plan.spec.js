@@ -91,7 +91,7 @@ test.describe.serial('Line: the Plan panel (Line sample project)', () => {
     const needs = plan.getByTestId('plan-step').first();
     await expect(needs).toHaveAttribute('data-state', 'needs-you');
     await expect(needs.getByTestId('plan-step-sentence')).toHaveText(/^This needs you: 0 of 2 checks passed\./);
-    await expect(needs.getByTestId('plan-step-failing')).toContainText('PlanCard.tsx is not as planned.');
+    await expect(needs.getByTestId('plan-step-failing')).toContainText('The planned files were not written, because the change could not be planned.');
     expect(fs.readFileSync(file, 'utf8')).toBe(theirs);
 
     await needs.getByRole('button', { name: 'Try again' }).click();
