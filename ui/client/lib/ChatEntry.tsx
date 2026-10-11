@@ -39,7 +39,7 @@ function Picks({ message, onPick, busy }: { message: ChatMessage; onPick: ChatEn
   if (!message.pick) return null;
   const pick = (it: ChatItem) => (
     <li key={it.id}>
-      <button type="button" className="ln-pick" data-testid="ln-pick" data-item={it.id} disabled={busy} onClick={() => onPick(message.id, it.id)}>
+      <button type="button" className="ln-pick" data-testid="ln-pick" data-item={it.id} data-line-control={it.control} data-line-target={it.control ? it.id : undefined} disabled={busy} onClick={() => onPick(message.id, it.id)}>
         <span className="ln-pick-top">
           <span className="ln-pick-name">{it.name}</span>
           <ItemStatus item={it} />

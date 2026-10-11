@@ -21,6 +21,10 @@ fs.mkdirSync(WORKSPACE, { recursive: true });
 process.env.E2E_WORKSPACE_ROOT = WORKSPACE;
 process.env.E2E_UAT_WORKSPACE = WORKSPACE;
 process.env.E2E_STATE_DIR = STATE_DIR;
+// Train Line's walk works on a training root of its own (seeded from the repo's line/train), never the committed cases.
+const TRAIN_ROOT = path.join(SANDBOX, 'train');
+fs.mkdirSync(TRAIN_ROOT, { recursive: true });
+process.env.E2E_TRAIN_ROOT = TRAIN_ROOT;
 
 const SERVER_PORT = Number(process.env.E2E_SERVER_PORT) || 4000;
 const CLIENT_ORIGIN = `http://localhost:${Number(process.env.E2E_CLIENT_PORT) || 3000}`;
@@ -37,8 +41,9 @@ export default {
     {
       ...base.webServer[0],
       reuseExistingServer: false,
-      // LINE_DRAFTER=1: the System 1 drafter's walk needs its routes on (off by default in Cockpit).
-      env: { PORT: String(SERVER_PORT), UI_CLIENT_ORIGIN: CLIENT_ORIGIN, CONSTRUCT_STATE_DIR: STATE_DIR, CONSTRUCT_WORKSPACE_ROOT: WORKSPACE, LINE_DRAFTER: '1' },
+      // LINE_DRAFTER=1: the System 1 drafter's walk needs its routes on (off by default in Cockpit). LINE_TRAIN_ROOT:
+      // Train Line's walk saves into the sandbox.
+      env: { PORT: String(SERVER_PORT), UI_CLIENT_ORIGIN: CLIENT_ORIGIN, CONSTRUCT_STATE_DIR: STATE_DIR, CONSTRUCT_WORKSPACE_ROOT: WORKSPACE, LINE_DRAFTER: '1', LINE_TRAIN_ROOT: TRAIN_ROOT },
     },
     { ...base.webServer[1], reuseExistingServer: false },
   ],

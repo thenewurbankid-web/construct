@@ -15,8 +15,9 @@ export type ChatOption = { id: string; label: string; sentence: string; effect: 
 /** The status of an item, in Trace's vocabulary: fit (all fine), wait (needs an answer), gap (something is wrong). */
 export type ChatTone = 'fit' | 'wait' | 'gap';
 
-/** One pickable thing inside a message (a feature, a library item, a fix). `id` is stable. */
-export type ChatItem = { id: string; name: string; text: string; status?: { tone: ChatTone; label: string } };
+/** One pickable thing inside a message (a feature, a library item, a fix). `id` is stable. `control` (cg1/ct1): the
+ * Trace control id the pick button carries as data-line-control (its target is the item's id). */
+export type ChatItem = { id: string; name: string; text: string; status?: { tone: ChatTone; label: string }; control?: string };
 
 /** A message. `text` is plain English (one or more sentences); `details` are the technical lines (rule, file:line,
  * tool call) shown only under a collapsed Details; `pick` is a list of items the person can pick from this message;

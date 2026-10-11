@@ -55,7 +55,7 @@ test.describe.serial('Line: a fix for a refused change applies in one approval (
     await first.getByRole('button', { name: 'Apply recommended fix' }).click();
     const fix = plan.locator('[data-testid="plan-step"]').first();
     await expect(fix).toHaveAttribute('data-state', 'done');
-    await expect(fix.getByTestId('plan-step-sentence')).toHaveText('Saved. Moves OrderButton.tsx to components/ and points its one user at the new place, and in the same step moves OrderButton.tsx to features/billing/components/ and points its one user at the new place.');
+    await expect(fix.getByTestId('plan-step-sentence')).toHaveText('Saved: Moves OrderButton.tsx to components/ and points its one user at the new place, and in the same step moves OrderButton.tsx to features/billing/components/ and points its one user at the new place.');
     await fix.getByText('Details', { exact: true }).click();
     await expect(fix.getByTestId('plan-step-call')).toContainText('line.amend(');
     await expect(plan.locator('[data-testid="plan-step"]').last().getByTestId('plan-step-sentence')).toHaveText('Saved together with its fix in step 2.');

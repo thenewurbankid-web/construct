@@ -8,7 +8,7 @@ const plural = (n: number, one: string, many: string) => (n === 1 ? `1 ${one}` :
 export function listIntro(project: LineProject): ChatMessage {
   const n = project.features.length;
   if (n === 0) return { id: 'intro', from: 'line', text: 'This project has no features yet. Choose what to do below.' };
-  return { id: 'intro', from: 'line', text: `Your project has ${plural(n, 'feature', 'features')}. Pick one to open it, or choose what to do below.`, pick: { label: 'Features', items: featureItems(project) } };
+  return { id: 'intro', from: 'line', text: `Your project has ${plural(n, 'feature', 'features')}. Pick one to open it, or choose what to do below.`, pick: { label: 'Features', items: featureItems(project).map((i) => ({ ...i, control: 'features.card' })) } };
 }
 
 /** "What is missing?" for the whole project: features that need attention, features with no spec. */

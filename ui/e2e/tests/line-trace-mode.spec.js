@@ -105,7 +105,7 @@ test.describe.serial('Line: Auto and Trace modes (Line sample project)', () => {
     await expect(page.getByTestId('auto-cursor')).toHaveCount(0);
     const step = page.getByTestId('plan-step').first();
     await expect(step).toHaveAttribute('data-state', 'done');
-    await expect(step.getByTestId('plan-step-sentence')).toHaveText('Saved. Creates QuietBadge in feature orders, based on the library Badge.');
+    await expect(step.getByTestId('plan-step-sentence')).toHaveText('Saved: Creates QuietBadge in feature orders, based on the library Badge.');
     expect(fs.existsSync(file('QuietBadge'))).toBe(true);
     const saved = JSON.parse(fs.readFileSync(path.join(base, 'line/plans/ses-cockpit.json'), 'utf8'));
     expect(saved.plans[0].steps.at(-1)).toMatchObject({ tool: 'line.baseOn', status: 'done', approval: 'given' });
