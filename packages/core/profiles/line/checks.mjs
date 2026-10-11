@@ -39,12 +39,30 @@ export function resolveLayout(root, line) {
 }
 
 /**
+ * Whether `root` or a folder above it holds `.git` (a folder, or a file as in a linked worktree or submodule).
+ * @param {string} root
+ * @returns {boolean}
+ */
+function hasGitAbove(root) {
+  let dir = path.resolve(root);
+  for (;;) {
+    if (fs.existsSync(path.join(dir, '.git'))) return true;
+    const up = path.dirname(dir);
+    if (up === dir) return false;
+    dir = up;
+  }
+}
+
+/**
  * The files git sees under `root` (tracked plus untracked, minus .gitignore'd), root-relative; null when `root` is
  * not inside a git work tree, git is missing, or git lists nothing (so the caller walks the disk instead).
  * @param {string} root Project root.
  * @returns {string[]|null} Root-relative paths, unfiltered.
  */
 export function gitVisibleFiles(root) {
+  // No `.git` in the root or any folder above it (a scratch copy in the temp folder): not a work tree, so no git
+  // process is spawned (spawning one per check made drafting in scratch copies several times slower).
+  if (!process.env.GIT_DIR && !process.env.GIT_WORK_TREE && !hasGitAbove(root)) return null;
   const r = spawnSync('git', ['ls-files', '-co', '--exclude-standard', '-z'], { cwd: root, encoding: 'utf8', maxBuffer: 256 * 1024 * 1024 });
   if (r.error || r.status !== 0 || typeof r.stdout !== 'string') return null;
   const files = r.stdout.split('\0').filter(Boolean);
