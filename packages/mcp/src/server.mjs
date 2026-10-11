@@ -8,6 +8,7 @@ import * as z from 'zod/v4';
 import { LIMITS, ToolError, createTokenBucket, DEFAULT_RATE_PER_MINUTE } from './limits.mjs';
 import { openRoot, createScrubber } from './guard.mjs';
 import * as blocks from './blocks.mjs';
+import * as plan from './plan.mjs';
 
 const PACKAGE = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
 
@@ -96,7 +97,43 @@ export const TOOLS = Object.freeze([
   },
 ]);
 
-const INSTRUCTIONS = 'Construct blocks, read-only and plan-only. Start with requirement_parse, then placement_place (answer its closed questions and call again), then plan_validate. summarize and validate describe the project before you read files. Every tool is bounded and path-free; none writes. A plan preview is applied through the Cockpit\'s per-diff approval, never here.';
+/**
+ * cp1 -- the plan tools: the agent drives the project's Line plan session (the one Cockpit shows), adding steps and
+ * running the next approved one. They are not read-only (a step joins the plan file; an approved step writes through
+ * Construct's writer), and none approves: only a person approves a write, in Cockpit.
+ */
+export const PLAN_TOOLS = Object.freeze([
+  {
+    name: 'plan_status',
+    title: 'Read the Line plan',
+    description: 'The project\'s current Line plan (the one Cockpit shows): each step with its state (waiting for approval, ready, done, needs you), one sentence, what is already there before it runs, and its checks after. Reads only.',
+    inputSchema: z.object({}),
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    run: plan.planStatus,
+  },
+  {
+    name: 'plan_add_step',
+    title: 'Add a step to the Line plan',
+    description: 'Add one step to the project\'s Line plan: tool line.baseOn, line.promote, line.setPageProp (writes, so a person must approve it in Cockpit), line.project (read), or a construct.* command. A change is planned first and refused in one sentence when it cannot be made. Writes no project file.',
+    inputSchema: z.object({
+      tool: z.string().min(3).max(60).regex(/^[a-z][\w]*(\.[a-zA-Z][\w]*)+$/).describe('A tool name, for example line.baseOn.'),
+      args: z.record(z.string(), z.unknown()).optional().describe('The tool\'s arguments, for example {"libraryId": "components/Badge", "feature": "orders", "name": "StatusBadge"}.'),
+      why: z.string().min(3).max(400).optional().describe('One plain-English sentence; a change is worded by its own plan when left out.'),
+    }),
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+    run: plan.planAddStep,
+  },
+  {
+    name: 'plan_run_next',
+    title: 'Run the next approved step',
+    description: 'Run exactly one ready step of the Line plan. A write step runs only after a person approved it in Cockpit; a step whose checks failed stops the plan until the person decides. The result says what happened in one sentence.',
+    inputSchema: z.object({ stepId: z.string().min(1).max(80).optional().describe('A step id; the next ready step when left out.') }),
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+    run: plan.planRunNext,
+  },
+]);
+
+const INSTRUCTIONS = 'Construct blocks, read-only and plan-only. Start with requirement_parse, then placement_place (answer its closed questions and call again), then plan_validate. summarize and validate describe the project before you read files. Every tool is bounded and path-free; none writes. A plan preview is applied through the Cockpit\'s per-diff approval, never here. To change a Line project, add a step with plan_add_step, ask the user to approve it in Cockpit, then plan_run_next; plan_status shows the plan.';
 
 /** A server class whose own errors (input the schema refused, an unexpected throw) come out typed, like every other refusal. */
 class ConstructMcpServer extends McpServer {
@@ -163,8 +200,8 @@ export function createConstructMcpServer(options = {}) {
     return fail(invalid ? 'INVALID_INPUT' : 'TOOL_FAILED', invalid ? message.replace(/^Input validation error: /i, '') : 'The tool could not answer.');
   });
 
-  for (const tool of TOOLS) {
-    server.registerTool(tool.name, { title: tool.title, description: tool.description, inputSchema: tool.inputSchema, annotations: { title: tool.title, ...READ_ONLY } }, async (args) => {
+  for (const tool of [...TOOLS, ...PLAN_TOOLS]) {
+    server.registerTool(tool.name, { title: tool.title, description: tool.description, inputSchema: tool.inputSchema, annotations: { title: tool.title, ...(/** @type {any} */ (tool).annotations ?? READ_ONLY) } }, async (args) => {
       const taken = bucket.take();
       if (!taken.ok) return fail('RATE_LIMITED', `More than ${bucket.capacity} calls a minute. Try again in ${taken.retryAfterSeconds} seconds.`, { retryAfterSeconds: taken.retryAfterSeconds });
       try {

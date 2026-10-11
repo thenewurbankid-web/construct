@@ -45,13 +45,27 @@ with `isError: true`. Results are bounded (lists have fixed maximums and say `tr
 The intended order: `requirement_parse`, then `placement_place` (answer the closed questions in `answers`, call again with the same
 text), then `plan_validate` on any plan the model wrote itself. `summarize` and `validate` describe the project before a file is read.
 
+## Plan tools (Line, cp1)
+
+Three more tools let an agent drive the project's Line plan, the same session Cockpit shows (`line/plans/ses-cockpit.json`, through
+`@line/construct-engine`'s plan service: `@mx/plan` when linked, Line's built-in plan store otherwise).
+
+| Tool | What it does | Example call |
+| --- | --- | --- |
+| `plan_status` | The current plan: each step's state (waiting for approval, ready, done, needs you), sentence, what is already there, and its checks. Read-only. | `{}` |
+| `plan_add_step` | Adds one step. A change (`line.baseOn`, `line.promote`, `line.setPageProp`) is planned first and refused in one sentence (`PLAN_REFUSED`, the plan's code in `reason`) when it cannot be made. | `{ "tool": "line.baseOn", "args": { "libraryId": "components/Badge", "feature": "orders", "name": "StatusBadge" } }` |
+| `plan_run_next` | Runs exactly one ready step. A write runs only after a person approved it in Cockpit; a step whose checks failed stops the plan until the person decides. | `{}` |
+
+There is no approve tool: only a person approves a write. These two tools are not read-only: a step joins the plan file, and an approved
+step writes through Construct's transactional writer (inside the engine; this package's source still writes nothing itself).
+
 ## Safety model
 
 - **One root, fixed at startup.** No tool takes a path. A feature is a name (`../x`, `/etc`, `a/b` are refused as `PATH_OUTSIDE_ROOT`).
   A plan naming a path outside the project (an absolute path, `~`, `..` in a step's files or path arguments) is refused before it is checked.
   Before a tool reads the project, the tree is walked once for links: a symlink whose real path leaves the root refuses the call
   (`PATH_OUTSIDE_ROOT`), so nothing is read through it. Startup refuses a root that is not a directory, `/` or the home directory.
-- **Nothing writes.** No file is created, changed or removed, no plan is applied, no command is run, no network is used. A test hashes the
+- **Nothing writes (except the plan tools above).** No file is created, changed or removed, no plan is applied, no command is run, no network is used. A test hashes the
   project and the state directory before and after every tool and a second test scans the source for any write, process or network API.
 - **The one read outside the root**: `traces_stats` reads this project's own trace file in the per-user state directory
   (`CONSTRUCT_STATE_DIR`), read-only, and returns counts only: never a record, a path or a question text.
