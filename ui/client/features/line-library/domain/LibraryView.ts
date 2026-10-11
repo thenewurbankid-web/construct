@@ -6,7 +6,12 @@ import { libraryGroups } from './LibraryGroups.ts';
 
 export function buildLibraryView(project: LineProject): LibraryView {
   const groups = libraryGroups(project);
-  return { total: groups.reduce((n, g) => n + g.cards.length, 0), groups, features: featureSections(project) };
+  return {
+    total: groups.reduce((n, g) => n + g.cards.length, 0),
+    groups,
+    features: featureSections(project),
+    featureNames: project.features.map((f) => f.name).sort(),
+  };
 }
 
 /** What the Components screen shows for a load state: a loading note, today's screen (not a Line project, or the

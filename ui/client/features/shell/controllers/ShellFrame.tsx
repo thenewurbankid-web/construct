@@ -122,7 +122,7 @@ export function ShellFrame({ children, route, project, model, theme, userMenu }:
     navigate('/review');
   }, [select, navigate]);
   const { showDrawerTab } = useDrawerActions(toggle, select);
-  const drawerApi = useMemo(() => ({ openProcesses: () => showDrawerTab('processes'), openLogs: () => showDrawerTab('logs') }), [showDrawerTab]);
+  const drawerApi = useMemo(() => ({ openProcesses: () => showDrawerTab('processes'), openLogs: () => showDrawerTab('logs'), revalidate: diagnostics.run }), [showDrawerTab, diagnostics.run]);
   const { setPane } = narrow;
   const stageApi = useMemo(() => ({ showStage: () => setPane('mid') }), [setPane]);
   const toolsApi = useMemo(() => ({ showTool: (id: string) => { toggle('right', true); select('tools', id); setPane('right'); } }), [toggle, select, setPane]);
