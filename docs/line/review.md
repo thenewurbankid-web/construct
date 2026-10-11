@@ -291,7 +291,7 @@ UAT (fresh sample):
 2. Badge → Base on this → orders → Create: saves.
 3. Same with billing: "Nothing was saved: … it stays read-only." and no new file under features/billing.
 
-## cm1: no single point of failure (merged; 5 Trace failures wait for your decision)
+## cm1: no single point of failure (merged; LINE-MODULE now 0 on this repo; 5 Trace tests quarantined)
 
 Full suite (each file in its own process group): before 5,479 pass / 21 fail; after 5,511 pass / 5 fail (all Trace, see below).
 Real bugs fixed: a wrong-case import (works on macOS, breaks on Linux) is now repaired; `ps` reporting 0 KB for an exiting process no longer fails the benchmark.
@@ -305,6 +305,18 @@ New tests:
 5. Cockpit down (no server, network blocked): `validate --profile line` and `create feature` still work from the command line.
 Plan: `docs/line/server-split.md`.
 
-Gaps: empty folders made before a disk error are left behind; LINE-MODULE does not yet check `ui/` reaching into `packages/`; memory, plan-store and registry fallbacks are not done. On this repo LINE-MODULE reports 216 errors (each package lacks a typed contract; engine and core reach into other packages 205 times).
+Gaps: empty folders made before a disk error are left behind; LINE-MODULE does not yet check `ui/` reaching into `packages/`; memory, plan-store and registry fallbacks are not done. On this repo LINE-MODULE reported 216 errors (each package lacks a typed contract; engine and core reach into other packages 205 times); fixed below.
 
-No UAT (nothing visible).
+### LINE-MODULE fix-all (merged d6c80f91, 1f4a324b)
+Every package (ast, core, engine, mcp, cli, studio) now has a typed contract, a mock and its own tests, and no package reaches inside another: 227 deep imports now go through named `exports` entries. LINE-MODULE on this repo: 233 → 0; every other Line rule has exactly the findings it had before (WRITER 532, OWNER 80, SHARED 24, LAYOUT 1). Two tools keep it that way: `packages/tools/line-module/fix-imports.mjs` (adds the export and rewrites the import; `--dry-run` previews) and `contracts.mjs --check` (a generated contract out of step with `exports`).
+Tests, in plain words:
+1. A generated contract that no longer matches the package's `exports`, or an `exports` entry pointing at a missing file, fails the build (`test/line-module-contracts.test.mjs`).
+2. Each new mock has the same names and result shapes as the real package (ast, cli, mcp, studio mock tests).
+3. A package missing its contract, mock and tests now shows all three problems, not just the first: the validator used to merge them because they shared one spot (`test/line-profile.test.mjs`).
+4. Worktrees now use their own copy of every workspace package; before, `@construct/ast` silently ran main's code.
+Known gaps: engine and core import each other and core imports ast without listing them as dependencies; engine's published file list leaves out `line/`. Both were there before; left alone to keep the lockfile unchanged.
+
+### UAT (CLI, 1 minute)
+1. In the repo, run `node packages/cli/construct.mjs validate --dir . --profile line`.
+2. Expect no LINE-MODULE lines in the output (the other rules still list their known findings).
+3. Run `node packages/cli/construct.mjs validate --dir examples/line-sample --profile line`: exactly the 2 planted findings.
