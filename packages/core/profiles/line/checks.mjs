@@ -172,7 +172,7 @@ export function checkLayout(project) {
   for (const e of feats || []) {
     const rel = `${layout.features}/${e.name}`;
     if (!e.isDirectory()) {
-      hit(rel, `The file "${rel}" sits directly in the features folder; every feature file belongs inside a feature folder ${layout.features}/<name>/.`);
+      hit(rel, `The file "${rel}" sits directly in the features folder; every feature file belongs inside a feature folder, so move it into ${layout.features}/<name>/.`);
       continue;
     }
     for (const c of read(rel) || []) {
