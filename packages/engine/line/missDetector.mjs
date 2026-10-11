@@ -13,6 +13,16 @@ import { sliceSpec } from './spec.mjs';
 /** A refusal's signature: what recurs. */
 export const signatureOf = (e) => `${e.tool}|${e.code}|${[...(e.rules ?? [])].sort().join(',')}`;
 const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+/** "once", "twice", "3 times". */
+export const times = (n) => (n === 1 ? 'once' : n === 2 ? 'twice' : `${n} times`);
+/** What a plan tool does, in plain words (the tool name stays as the technical detail). */
+export const TOOL_WORDS = Object.freeze({
+  'line.baseOn': 'Basing a new item on the library', 'line.promote': 'Promoting an item to the library', 'line.setPageProp': 'Setting a page prop',
+  'line.fix': 'Applying a typed fix', 'line.setFragment': 'Editing a code fragment', 'line.setBase': 'Setting a base link',
+  'line.moveFile': 'Moving a file', 'line.createLayout': 'Creating the Line layout', 'line.leaveAsIs': 'Leaving a step as it is', 'line.project': 'Reading the project',
+});
+/** "Editing a code fragment (line.setFragment)". */
+export const toolWords = (tool) => (TOOL_WORDS[tool] ? `${TOOL_WORDS[tool]} (${tool})` : `Running ${tool}`);
 
 /**
  * Group the Construct refusals of `events` and say which recur with no working typed fix.
@@ -39,8 +49,8 @@ export function detectMisses(events, { threshold = 2 } = {}) {
     const working = passed.length > 0;
     const traces = new Set(refusals.map((r) => r.trace)).size;
     const recurs = refusals.length >= threshold;
-    const reason = !offered ? `Construct refused this ${plural(refusals.length, 'time')} and never offered a typed fix that can run as a step.`
-      : !tried.length ? `Construct offered typed fixes ${plural(refusals.length, 'time')}, but none was tried, so none is known to work.`
+    const reason = !offered ? `Construct refused this ${times(refusals.length)} and never offered a typed fix that can run as a step.`
+      : !tried.length ? `Construct offered typed fixes ${times(refusals.length)}, but none was tried, so none is known to work.`
         : !working ? `Every typed fix or retry tried (${tried.length}) was refused again or failed its checks.`
           : `A typed fix worked (${passed.map((t) => t.fixId ?? t.step.tool).join(', ')}).`;
     const minimal = [...refusals].sort((a, b) => a.files.length - b.files.length || JSON.stringify(a.args ?? {}).length - JSON.stringify(b.args ?? {}).length || a.seq - b.seq)[0];
@@ -97,7 +107,7 @@ export function issueMarkdown(miss, { context, spec } = {}) {
   const m = miss.minimal;
   const what = miss.rules.length ? miss.rules.join(', ') : miss.code;
   const lines = [
-    `# [Framework] ${miss.tool} is refused with ${what} and no typed fix works`,
+    `# [Framework] ${toolWords(miss.tool)} is refused with ${what} and no typed fix works`,
     '',
     '> Draft only: Line wrote this from the session traces and did not file it. A maintainer reviews it and files it by hand.',
     '',

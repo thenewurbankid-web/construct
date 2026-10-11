@@ -37,7 +37,7 @@ export async function lineCommand(args) {
     const threshold = Number(flag(rest, '--threshold') ?? 2);
     if (!Number.isInteger(threshold) || threshold < 1) throw usage('--threshold must be a whole number from 1.');
     const { readTraces } = await import('../engine/line/trace.mjs');
-    const { detectMisses, draftFrameworkIssues } = await import('../engine/line/missDetector.mjs');
+    const { detectMisses, draftFrameworkIssues, times, toolWords } = await import('../engine/line/missDetector.mjs');
     const { events, files, skipped } = readTraces(root);
     const misses = detectMisses(events, { threshold });
     let drafts = [];
@@ -52,7 +52,7 @@ export async function lineCommand(args) {
     if (!files.length) { console.log('There are no session traces in this project yet; they appear once a plan step is added in Cockpit or through MCP.'); return; }
     const issues = misses.filter((m) => m.frameworkIssue);
     console.log(`Read ${files.length} session trace${files.length === 1 ? '' : 's'}: ${misses.length} kind${misses.length === 1 ? '' : 's'} of refusal, ${issues.length} that recur${issues.length === 1 ? 's' : ''} with no working typed fix.`);
-    for (const m of misses) console.log(`- ${m.frameworkIssue ? 'Framework issue' : m.working ? 'Fixed by a typed fix' : 'Seen'}: ${m.tool} refused with ${m.rules.join(', ') || m.code}, ${m.count} time${m.count === 1 ? '' : 's'}. ${m.reason}`);
+    for (const m of misses) console.log(`- ${m.frameworkIssue ? 'Framework issue' : m.working ? 'Fixed by a typed fix' : 'Not a pattern yet'}: ${toolWords(m.tool)} was refused ${times(m.count)} (${m.rules.join(', ') || m.code}). ${m.reason}`);
     if (skipped) console.log(`${skipped} trace line${skipped === 1 ? ' was' : 's were'} unreadable and skipped.`);
     if (drafts.length) for (const d of drafts) console.log(`Drafted (not filed): ${d.file}`);
     else if (rest.includes('--draft')) console.log('Nothing to draft: no refusal recurs without a working typed fix.');
@@ -63,12 +63,13 @@ export async function lineCommand(args) {
     const root = rootOf(rest);
     const { readTraces } = await import('../engine/line/trace.mjs');
     const { pickContext } = await import('../engine/line/contextPicker.mjs');
+    const { toolWords } = await import('../engine/line/missDetector.mjs');
     const { events } = readTraces(root);
     const miss = [...events].reverse().find((e) => e.kind === 'refusal' && e.source === 'construct');
     if (!miss) { console.log('There is no refusal by Construct in this project\'s session traces, so there is no context to pick.'); return; }
     const pick = await pickContext(root, { miss, events });
     if (rest.includes('--json')) { console.log(JSON.stringify({ ok: true, miss: { trace: miss.trace, seq: miss.seq, tool: miss.tool, sentence: miss.sentence }, ...pick }, null, 2)); return; }
-    console.log(`The latest refusal: ${miss.tool}. ${miss.sentence}`);
+    console.log(`The latest refusal, ${toolWords(miss.tool).charAt(0).toLowerCase()}${toolWords(miss.tool).slice(1)}: ${miss.sentence}`);
     console.log(`Line picked ${pick.files.length} file${pick.files.length === 1 ? '' : 's'} (${pick.via === 'jev' ? 'jev chose among tied candidates' : 'static order'}):`);
     for (const f of pick.files) console.log(`- ${f.file}: ${f.why} ${f.summary.sentence}`);
     if (pick.rules.length) console.log(`Rules: ${pick.rules.join(', ')}.`);

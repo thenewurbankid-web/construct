@@ -149,12 +149,12 @@ test('misses: once is not a pattern; twice with no working fix is a framework is
   const twice = [...once, refusalEv('t2', 1, 's1')];
   const m = detectMisses(twice)[0];
   assert.deepEqual([m.count, m.traces, m.recurs, m.working, m.frameworkIssue], [2, 2, true, false, true]);
-  assert.equal(m.reason, 'Construct offered typed fixes 2 times, but none was tried, so none is known to work.');
+  assert.equal(m.reason, 'Construct offered typed fixes twice, but none was tried, so none is known to work.');
   const fixed = [...twice, ev('t2', 2, { kind: 'step', tool: 'line.promote', stepId: 's2', fixOf: 's1' }), ev('t2', 3, { kind: 'fix-picked', tool: 'line.promote', stepId: 's2', fixOf: 's1', fixId: 'LINE-DIR/promote' }), ev('t2', 4, { kind: 'outcome', tool: 'line.promote', stepId: 's2', ok: true, passed: 2, total: 2 })];
   const w = detectMisses(fixed)[0];
   assert.deepEqual([w.working, w.frameworkIssue, w.reason], [true, false, 'A typed fix worked (LINE-DIR/promote).']);
   const none = detectMisses([refusalEv('t1', 1, 's1', { fixes: [] }), refusalEv('t1', 2, 's2', { fixes: [] })])[0];
-  assert.equal(none.reason, 'Construct refused this 2 times and never offered a typed fix that can run as a step.');
+  assert.equal(none.reason, 'Construct refused this twice and never offered a typed fix that can run as a step.');
   assert.equal(detectMisses([refusalEv('t1', 1, null, { source: 'plan', code: 'BAD_ARGS' }), refusalEv('t1', 2, null, { source: 'plan', code: 'BAD_ARGS' })]).length, 0, 'plan-protocol refusals are not framework misses');
 });
 
@@ -206,7 +206,7 @@ test('draft: two real sessions with the same miss draft one markdown issue per s
   assert.ok(drafts.every((d) => /^line\/issues\/[a-z0-9-]+-[0-9a-f]{6}\.md$/.test(d.file)));
   assert.deepEqual(outsideState(tree(dir)), before, 'only the Line state folder changed');
   const md = fs.readFileSync(path.join(dir, drafts.find((d) => d.miss.tool === 'line.setFragment').file), 'utf8');
-  for (const h of ['# [Framework] line.setFragment is refused with LINE-DIR and no typed fix works', '> Draft only: Line wrote this from the session traces and did not file it.', '## Story', '## What recurred', '## Minimal case', '## Context Line picked (static)', '## The test this case becomes']) assert.ok(md.includes(h), h);
+  for (const h of ['# [Framework] Editing a code fragment (line.setFragment) is refused with LINE-DIR and no typed fix works', '> Draft only: Line wrote this from the session traces and did not file it.', '## Story', '## What recurred', '## Minimal case', '## Context Line picked (static)', '## The test this case becomes']) assert.ok(md.includes(h), h);
   assert.match(md, /- 2 refusals in 2 traces, signature `line\.setFragment\|NEEDS_FIX\|LINE-DIR`\./);
   assert.match(md, /Every typed fix or retry tried \(2\) was refused again or failed its checks\./);
   assert.match(md, /Tried: LINE-DIR\/promote \(did not pass\); LINE-DIR\/promote \(did not pass\)\./);
