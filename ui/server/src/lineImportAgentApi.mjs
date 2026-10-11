@@ -12,7 +12,7 @@
 //
 // A refusal is a 400 `{ok: false, sentence, code}`; anything unexpected is a 500 with one sentence.
 import express from 'express';
-import { createImportAgent } from '../../../packages/engine/line/importAgent.mjs';
+import { createImportAgentOnDisk } from '../../../packages/engine/line/importAgentDisk.mjs';
 import { folderProblem, folderRootOf } from '../../../packages/engine/line/importTools.mjs';
 import { verifyImport, lineBaseline } from '../../../packages/engine/line/importVerify.mjs';
 import { createReasonProvider } from '../../../packages/core/reason-provider.mjs';
@@ -31,7 +31,7 @@ export function createLineImportAgentRouter({ getRoot, clientOrigin, planService
   const forFolder = agentFor ?? ((root, folder) => {
     const key = `${root}\u0000${folder}`;
     if (!agents.has(key)) {
-      agents.set(key, createImportAgent({ root, folder, planService: planServiceFor(root), reason, verify: verifyImport, baseline: lineBaseline }));
+      agents.set(key, createImportAgentOnDisk({ root, folder, planService: planServiceFor(root), reason, verify: verifyImport, baseline: lineBaseline }));
     }
     return agents.get(key);
   });

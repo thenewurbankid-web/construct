@@ -13,6 +13,7 @@ import { fileURLToPath } from 'node:url';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 import { assertImportAgentView, assertImportPlanFile, IMPORT_PLAN_FILE, LINE_PLAN_TOOLS } from '../packages/engine/line/contract.mjs';
 import { createImportAgent, nextState, decideWith, MAX_ROUNDS } from '../packages/engine/line/importAgent.mjs';
+import { createImportAgentOnDisk } from '../packages/engine/line/importAgentDisk.mjs';
 import { createMockImportAgentService, createMockPlanService, createMemoryStore } from '../packages/engine/line/mockImportAgent.mjs';
 import { createMockImport } from '../packages/engine/line/mockImport.mjs';
 import { createLinePlanService } from '../packages/engine/line/planService.mjs';
@@ -229,7 +230,7 @@ test('real: on a copy of import-sample, the agent plans, waits for the person, l
   const dir = sampleCopy();
   const outside = hashes(dir, FOLDER);
   const planService = createLinePlanService({ root: dir, commands: null });
-  const agent = createImportAgent({ root: dir, folder: FOLDER, planService, verify: verifyImport, baseline: lineBaseline });
+  const agent = createImportAgentOnDisk({ root: dir, folder: FOLDER, planService, verify: verifyImport, baseline: lineBaseline });
   let v = await agent.start('ui');
   assert.equal(v.state, 'review');
   const file = path.join(dir, FOLDER, IMPORT_PLAN_FILE);
@@ -262,7 +263,7 @@ test('real: on a copy of import-sample, the agent plans, waits for the person, l
 test('real: a step that cannot be made (an edited base that does not exist) asks one question; "leave" skips it and the rest lands', async () => {
   const dir = sampleCopy();
   const planService = createLinePlanService({ root: dir, commands: null });
-  const agent = createImportAgent({ root: dir, folder: FOLDER, planService, verify: verifyImport, baseline: lineBaseline });
+  const agent = createImportAgentOnDisk({ root: dir, folder: FOLDER, planService, verify: verifyImport, baseline: lineBaseline });
   await agent.start('ui');
   await agent.editStep('ui', { action: 'edit', stepId: 'import-8-feature-AlertRow', args: { base: 'components/Nope' } });
   let v = await agent.editStep('ui', { action: 'approve-all' });
@@ -284,7 +285,7 @@ test('real: a copy of max-ai-ui (when present) imports src/subframe-pages/Inbox;
   fs.writeFileSync(path.join(dir, 'architecture.yml'), 'version: 1\n');
   const folder = 'src/subframe-pages/Inbox';
   const planService = createLinePlanService({ root: dir, commands: null });
-  const agent = createImportAgent({ root: dir, folder, planService, verify: verifyImport, baseline: lineBaseline });
+  const agent = createImportAgentOnDisk({ root: dir, folder, planService, verify: verifyImport, baseline: lineBaseline });
   let v = await agent.start('ui');
   assert.equal(v.state, 'review');
   v = await agent.editStep('ui', { action: 'approve-all' });

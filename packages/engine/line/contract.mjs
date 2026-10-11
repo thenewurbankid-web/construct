@@ -764,6 +764,12 @@ export const IMPORT_EDITABLE = Object.freeze({
   'line.import.toFeature': Object.freeze(['name', 'feature', 'base']),
 });
 export const IMPORT_PLAN_FILE = 'line/import-plan.json';
+/** Why `folder` is not a folder inside the project (relative, no "." or ".." parts), or null. */
+export function importFolderProblem(folder) {
+  if (typeof folder !== 'string' || !folder) return 'must name the import folder';
+  if (folder.startsWith('/') || folder.includes('\\') || folder.split('/').some((p) => p === '..' || p === '.' || p === '')) return 'must be a folder inside the project, like src/alerts';
+  return null;
+}
 const CHANGE_ACTIONS = ['start', 'state', 'decide', 'edit', 'skip', 'unskip', 'move', 'approve', 'approve-all', 'add-step', 'answer', 'pause', 'resume', 'verify'];
 
 /** @param {any} w @param {string} where */

@@ -18,15 +18,11 @@
 // Correction loop (owner, 11 Oct): a refused step's sentence and typed fixes go back into the decision (jev picks,
 // usually the top fix), the fix runs, the step is tried again; when a round does not pass more checks than the one
 // before (cp1's `stopped`), or after MAX_ROUNDS, the process stops and asks the person ONE question.
-import fs from 'node:fs';
-import path from 'node:path';
+//
+// This module is pure (no Node imports), so Cockpit's mock mode runs the same process in the browser; the disk version
+// (the file store, the real scan and plan) is importAgentDisk.mjs.
 import { createMachine, getNextSnapshot } from 'xstate';
-import { IMPORT_AGENT_STAGES, IMPORT_EDITABLE, IMPORT_PLAN_FILE, LEVELS, LineOpError, assertImportPlanFile } from './contract.mjs';
-import { scanImport, planImport } from './import.mjs';
-import { createTransaction } from '../transactionalWriter.mjs';
-import { aggregateValidation } from '../../core/registry.mjs';
-import { enforcersForRoot } from '../../core/profiles/index.mjs';
-import { folderRootOf, folderProblem } from './importTools.mjs';
+import { IMPORT_AGENT_STAGES, IMPORT_EDITABLE, LEVELS, LineOpError, assertImportPlanFile, importFolderProblem } from './contract.mjs';
 
 /** Fix rounds per step before the agent asks the person, even when each round improved. */
 export const MAX_ROUNDS = 3;
@@ -59,44 +55,6 @@ export function nextState(state, event) {
 const lower = (s) => String(s).charAt(0).toLowerCase() + String(s).slice(1);
 const asSentence = (s) => { const t = String(s ?? '').trim().replace(/\s+/g, ' '); return /[.?!]$/.test(t) ? t : `${t}.`; };
 const refusal = (code, sentence) => ({ ok: /** @type {const} */ (false), code, sentence: asSentence(sentence) });
-
-/**
- * The default store: read the file; write it through Construct's transactional writer with the folder as root. The
- * writer's check compares the folder's problems for the plan file before and after (the same "only new problems" rule as
- * applyChange, scoped to this one data file, so a folder that is not a Line project yet can still keep its plan).
- */
-export function fileStore(root, folder) {
-  const folderRoot = () => folderRootOf(root, folder);
-  return {
-    read() {
-      try { return JSON.parse(fs.readFileSync(path.join(folderRoot(), IMPORT_PLAN_FILE), 'utf8')); } catch (e) {
-        if (/** @type {any} */ (e)?.code === 'ENOENT') return null;
-        throw e;
-      }
-    },
-    write(doc) {
-      const fr = folderRoot();
-      const key = (v) => `${v.rule}\u0000${v.file}\u0000${v.message}`;
-      const txn = createTransaction(fr);
-      try {
-        txn.writeFile(IMPORT_PLAN_FILE, `${JSON.stringify(doc, null, 2)}\n`);
-        const r = txn.commit({
-          validate: (shadow) => {
-            const files = [IMPORT_PLAN_FILE];
-            const before = new Set(aggregateValidation(fr, enforcersForRoot(fr), { files }).violations.map(key));
-            const added = aggregateValidation(shadow, enforcersForRoot(shadow), { files }).violations.filter((v) => !before.has(key(v)));
-            return { violations: added, ok: !added.some((v) => v.severity === 'error') };
-          },
-        });
-        if (!r.committed) throw new LineOpError(`The import plan could not be saved: ${lower(asSentence(r.violations.find((v) => v.severity === 'error')?.message ?? 'the checks refused it'))}`, 'NOT_SAVED');
-      } catch (e) {
-        txn.reset();
-        if (/** @type {any} */ (e)?.name === 'LineOpError') throw e;
-        throw new LineOpError('The import plan could not be saved on disk.', 'NOT_SAVED', String(/** @type {any} */ (e)?.message ?? e));
-      }
-    },
-  };
-}
 
 /** The sentence a step says, from its args (used again after an edit). */
 export function stepSentence(tool, a) {
@@ -186,15 +144,15 @@ export async function decideWith(provider, id, question, optionIds) {
  *   reason?: {suggest: (summary: any) => Promise<any>, lastNote?: () => string | null} | null,
  *   verify?: (root: string, folder: string, baseline: string[]) => Promise<{ok: boolean, checks: any[]}>,
  *   baseline?: (root: string, folder: string) => Promise<string[]> | string[],
- *   importOps?: {scan: (root: string, folder: string) => any, plan: (root: string, folder: string, answers: Record<string, string>) => any},
- *   store?: {read: () => any, write: (doc: any) => void}, now?: () => string, decider?: string}} o
+ *   importOps: {scan: (root: string, folder: string) => any, plan: (root: string, folder: string, answers: Record<string, string>) => any},
+ *   store: {read: () => any, write: (doc: any) => void}, checkFolder?: () => void, now?: () => string, decider?: string}} o
+ *   `importOps` and `store` are the disk ones in importAgentDisk.mjs (createImportAgentOnDisk), in-memory ones in the mock.
  */
 export function createImportAgent(o) {
   const { root, folder, planService: svc } = o;
-  const bad = folderProblem(folder);
+  const bad = importFolderProblem(folder);
   if (bad) throw new LineOpError(`The import folder ${bad}.`, 'BAD_FOLDER');
-  const store = o.store ?? fileStore(root, folder);
-  const importOps = o.importOps ?? { scan: scanImport, plan: planImport };
+  const { store, importOps } = o;
   const now = o.now ?? (() => new Date().toISOString());
   const decider = o.decider ?? (o.reason ? 'Decisions go through @mx/reason; when it is not linked, Line takes the recommended option.' : 'Line takes the recommended option for each decision (no decision module is set up).');
   let queue = Promise.resolve();
@@ -395,7 +353,7 @@ export function createImportAgent(o) {
     start: (by = 'ui') => serial(async () => {
       const had = load();
       if (had) return view(had, 'This import has already started; here it is');
-      if (!o.store) folderRootOf(root, folder);
+      if (o.checkFolder) o.checkFolder();
       const doc = newDoc(folder);
       record(doc, by, 'start', `Started the import of ${folder}`);
       await run(doc, by);

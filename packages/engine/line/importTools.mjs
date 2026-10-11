@@ -10,7 +10,7 @@
 // line.import.fix step, so the fix also runs inside the folder.
 import fs from 'node:fs';
 import path from 'node:path';
-import { IMPORT_TOOLS, LINE_FIX_TOOLS, LineOpError } from './contract.mjs';
+import { IMPORT_TOOLS, LINE_FIX_TOOLS, LineOpError, importFolderProblem } from './contract.mjs';
 import { planImportStep } from './import.mjs';
 import { REAL_PLAN_OPS, runChange } from './planTools.mjs';
 
@@ -26,12 +26,8 @@ const ARGS = Object.freeze({
   'line.import.fix': ['tool', 'args'],
 });
 
-/** A folder inside the project: relative, no "..", not the project itself. */
-export function folderProblem(folder) {
-  if (typeof folder !== 'string' || !folder) return 'must name the import folder';
-  if (folder.startsWith('/') || folder.includes('\\') || folder.split('/').some((p) => p === '..' || p === '.' || p === '')) return 'must be a folder inside the project, like src/alerts';
-  return null;
-}
+/** A folder inside the project: relative, no "..", not the project itself (contract.mjs importFolderProblem). */
+export const folderProblem = importFolderProblem;
 
 function schemaOf(tool) {
   const allowed = new Set(['folder', ...ARGS[tool], ...PLAN_ONLY]);
