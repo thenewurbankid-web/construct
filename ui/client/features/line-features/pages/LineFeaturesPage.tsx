@@ -28,7 +28,6 @@ export function LineFeaturesPage({ view, chat, plan }: LineFeaturesPageProps) {
         footer={plan}
       >
         <header className="lf-head">
-          <p className="ln-eyebrow">Feature</p>
           <h1 className="lf-title">{feature}</h1>
           <p className="ln-muted">A feature owns its pages, components, workflows and fixtures; each one is based on one item from your library.</p>
         </header>

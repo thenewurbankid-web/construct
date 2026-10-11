@@ -5,7 +5,7 @@
 .lf .hint { margin: 0; color: var(--ln-muted); }
 .lf-head { display: grid; gap: 4px; }
 .lf-title { font-size: 1.75rem; line-height: 1.15; letter-spacing: -0.02em; font-weight: 650; }
-.lf-eyebrow { display: none; }
+.lf-eyebrow { font-size: 0.8125rem; font-weight: 650; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ln-accent); }
 .lf-detail { display: grid; gap: var(--ln-s3); min-width: 0; }
 .lf-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--ln-s3); align-items: start; }
 @media (max-width: 1200px) { .lf-layout { grid-template-columns: minmax(0, 1fr); } }

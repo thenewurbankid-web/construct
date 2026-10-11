@@ -15,7 +15,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SAMPLE = path.resolve(__dirname, '../../../examples/line-sample');
 const API = process.env.E2E_API_BASE || 'http://localhost:4000';
 
-const cards = (page) => page.getByRole('list', { name: 'Features' }).getByTestId('lf-feature');
+const cards = (page) => page.getByRole('list', { name: 'Features', exact: true }).getByTestId('ln-pick');
 const item = (page, name) => page.locator(`[data-testid="lf-item"][data-item="${name}"]`);
 const point = (page, id) => page.locator(`[data-testid="lf-point"][data-point="${id}"]`);
 

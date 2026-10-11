@@ -49,6 +49,15 @@ export function useFeatureChat(view: LineFeaturesView, addStep: AddPlanStep): Fe
     const r = await addStep({ tool, args });
     setBusy(false);
     say(stepAnswer(r, call(tool, args), id('step')));
+    return r;
+  };
+
+  /** Two clicks: Add from the library, then the library item. The new item takes the suggested name; only when that
+   * name is refused (taken, or not a valid name) does the chat ask for another one. */
+  const addBasedOn = async (libraryId: string, name: string) => {
+    if (!feature) return;
+    const r = await runStep('line.baseOn', { libraryId, feature, name });
+    if (!r.ok && (r.code === 'NAME_TAKEN' || r.code === 'BAD_NAME')) setAsk(nameAsk(libraryId, feature));
   };
 
   const onOption = (optionId: string) => {
@@ -81,7 +90,7 @@ export function useFeatureChat(view: LineFeaturesView, addStep: AddPlanStep): Fe
     if (purpose === 'base' && feature) {
       const libName = project?.library.find((l) => l.id === itemId)?.name ?? itemId;
       say(you(`Base it on ${libName}`));
-      return setAsk(nameAsk(itemId, feature));
+      return void addBasedOn(itemId, nameAsk(itemId, feature).suggestion);
     }
     if (purpose === 'fix') {
       const step = fixStep(itemId);
@@ -94,7 +103,7 @@ export function useFeatureChat(view: LineFeaturesView, addStep: AddPlanStep): Fe
     if (!feature || !askId.startsWith('name:')) return;
     setAsk(null);
     say(you(`Call it ${text}`));
-    void runStep('line.baseOn', { libraryId: askId.slice('name:'.length), feature, name: text });
+    void addBasedOn(askId.slice('name:'.length), text);
   };
 
   const intro = feature ? itemIntro(feature) : project ? listIntro(project) : null;
