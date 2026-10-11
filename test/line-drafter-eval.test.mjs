@@ -51,5 +51,8 @@ test('eval: the corpus scores at or above its recorded floor, with no structure-
   assert.ok(rep.overall.preferredOk >= 0.927, `preferred ${rep.overall.preferredOk}`);
   assert.ok(rep.overall.labels >= 0.927, `labels ${rep.overall.labels}`);
   assert.ok(rep.overall.safeDefer >= 1, `deferred when wrong ${rep.overall.safeDefer}`);
+  // "Defer right" floor, restored (owner, 2026-10-11): a request that names no item asks one question with the invented
+  // name as the one-click answer, and the corpus golds say so (Train Line's gold wins). 84% before, 91% now.
+  assert.ok(rep.overall.deferOk >= 0.909, `defer right ${rep.overall.deferOk}`);
   assert.equal(rep.overall.hashMiss, 0);
 });
