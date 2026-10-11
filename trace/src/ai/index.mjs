@@ -36,7 +36,13 @@ import { evalExpression } from "./safe-eval.mjs";
 const MAX_PROMPT_FACTS = 4;
 const MAX_PROMPT_CHARS = 1200;
 
-export function createAi({ dir, spec, source, matched, overrides = {}, trusted = false, provider = null, onLog = null, useCache = true }) {
+// `decide` (cu2): Line's decide(step, options, context) from packages/core/line-decide.mjs; null turns jev off. Left out, it is
+// loaded from the Construct checkout beside Trace, except when a test provider is injected (then no jev, no real model).
+export function createAi({ dir, spec, source, matched, overrides = {}, trusted = false, provider = null, onLog = null, useCache = true, decide = undefined }) {
+  let decideLoad = null;
+  const fake = () => Boolean(provider || cfg.default.fn || Object.values(cfg.tasks).some((t) => t?.fn));
+  const decider = () => (decideLoad ??= decide !== undefined ? Promise.resolve(decide) : fake() ? Promise.resolve(null)
+    : import(new URL("../../../packages/core/line-decide.mjs", import.meta.url).href).then((m) => m.decide, () => null));
   const cfg = loadAiConfig({ dir, overrides, trusted });
   const facts = loadFacts({ dir, spec, source });
   const story = loadStory(dir);
@@ -217,10 +223,28 @@ export function createAi({ dir, spec, source, matched, overrides = {}, trusted =
       : picks.some((n) => opts[n - 1].value?.static) ? "it picked “static text”, which the AI may not choose"
       : null;
     if (why) { r.done({ ok: false, text: `skipped — ${why}` }); stats.skipped++; return null; }
+    // cu2: Qwen suggested (its pick, with the cited fact as the reason); jev decides among the options the AI may take
+    // (never "static text"), through Line's one AI layer. jev agreeing keeps Qwen's pick and reason; jev disagreeing
+    // leaves the question to the person; jev not running (or no Construct beside Trace) keeps Qwen's checked pick.
+    let decided = null;
+    if (!multi) {
+      const decide = await decider();
+      if (decide) {
+        decided = await decide("trace.choose", opts.map((o, i) => ({ id: String(i + 1), label: o.label, enabled: !o.value?.static })), {
+          question: q.text, facts: shown, suggestion: { option: String(picks[0]), reason: `Fact ${fact} settles it: ${evidence}` },
+        }).catch(() => null);
+        if (decided?.lowConfidence) {
+          r.done({ ok: false, text: `skipped — ${decided.reasons[0]} → left for you` });
+          stats.skipped++;
+          return null;
+        }
+      }
+    }
     stats.answered++;
     const chosen = picks.map((n) => opts[n - 1]);
-    r.done({ ok: true, text: `accepted → ${chosen.map((o) => o.label).join(" + ")} (cited: “${evidence}”)` });
-    decisions[q.id] = { task, model: r.model, evidence, answer: chosen.map((o) => o.label).join(" + "), criterion: matchCriterion(part, story)?.id ?? null };
+    const by = decided ? ` [${decided.via === "jev" ? "jev agreed" : decided.attribution.note ?? `decided by ${decided.via}`}]` : "";
+    r.done({ ok: true, text: `accepted → ${chosen.map((o) => o.label).join(" + ")} (cited: “${evidence}”)${by}` });
+    decisions[q.id] = { task, model: r.model, evidence, answer: chosen.map((o) => o.label).join(" + "), criterion: matchCriterion(part, story)?.id ?? null, ...(decided ? { via: decided.via, attribution: decided.attribution } : {}) };
     return multi ? chosen : chosen[0];
   }
 
