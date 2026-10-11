@@ -1,11 +1,13 @@
+import type { ReactNode } from 'react';
 import { ChangeNotice } from '../components/ChangeNotice';
 import { FeatureComponents } from '../components/FeatureComponents';
 import { LibraryCards } from '../components/LibraryCards';
 import type { ChangeControls, LibraryView } from '../types';
 
 /** The Components screen of a Line project: the library as cards by level, then each feature's own components
- * with their base links (mock: docs/design components-library, Library tab), and the last change's sentence. */
-export function LineLibraryPage({ view, controls }: { view: LibraryView; controls: ChangeControls }) {
+ * with their base links (mock: docs/design components-library, Library tab), the Plan panel (each change waits there for
+ * approval) and the sentence of the last change that ran. */
+export function LineLibraryPage({ view, controls, panel }: { view: LibraryView; controls: ChangeControls; panel: ReactNode }) {
   return (
     <div className="ll-stage" data-testid="line-library">
       <header className="ll-head">
@@ -15,6 +17,7 @@ export function LineLibraryPage({ view, controls }: { view: LibraryView; control
           Every library component, sorted by how it is built. <span data-testid="ll-total">{view.total}</span> in the library.
         </p>
       </header>
+      {panel}
       <ChangeNotice notice={controls.notice} />
       {view.groups.length ? (
         <LibraryCards groups={view.groups} controls={controls} />
