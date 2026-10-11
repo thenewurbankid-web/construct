@@ -179,6 +179,11 @@
  * @property {(root: string, req: FixRequest) => ApplyResult} applyFix  Re-derive the finding by key, plan its fix, applyChange (fixes.mjs).
  * @property {(req: NewLineProjectRequest) => StagedChange} planNewLineProject  The starter files, root-relative to the new folder (pure).
  * @property {(parentDir: string, req: NewLineProjectRequest) => NewLineProjectResult} createLineProject  Make `<parentDir>/<name>` and apply the plan there; throws LineOpError BAD_NAME, BAD_FEATURE, NO_PARENT or NAME_TAKEN, writing nothing.
+ * @property {(root: string, feature: string) => LineWorkflowList} readLineWorkflows  cw1 (workflows.mjs)
+ * @property {(root: string, req: BaseWorkflowOnRequest) => StagedChange} planBaseWorkflowOn
+ * @property {(root: string, req: SetWorkflowRoleRequest) => StagedChange} planSetWorkflowRole
+ * @property {(root: string, req: AddWorkflowTransitionRequest) => StagedChange} planAddWorkflowTransition
+ * @property {(root: string, req: RemoveWorkflowTransitionRequest) => StagedChange} planRemoveWorkflowTransition
  */
 
 /**
@@ -213,6 +218,78 @@
  * @property {{sentences: string[], via: 'static'}} summary
  * @property {{file: string, stories: {id: string, text: string, points: {id: string, text: string, covered: boolean, by: string[]}[]}[]}|null} spec  Null when the feature has no spec.md.
  * @property {LineFinding[]} findings  Every finding inside the feature's folder.
+ */
+
+/**
+ * cw1 -- Line workflows: state machines between pages, used like primitives (packages/engine/line/workflows.mjs; the
+ * words in workflowWords.mjs). A LIBRARY workflow is a complete xstate machine in `<library>/workflows/` with
+ * `export const roles = { <state>: '<what that page is for>' }`: each role is a state that a page fills. A FEATURE
+ * workflow (`<features>/<f>/workflows/<name>.ts`) is based on one library workflow (`// @line-base workflows/<name>`):
+ * a copy of its machine with `export const pages = { <role>: '<PageName>' | null }` naming which page of the feature
+ * fills each role, plus only the transitions the feature adds. States are pages (a filled role) or steps; triggers are
+ * a page's events; actions go to a state (navigate), call a service or set a part's state.
+ *
+ * One action of a transition (an xstate parameterised action `{type, params}`; anything else is `other`).
+ * @typedef {{kind: 'callService', service: string} | {kind: 'setPartState', part: string, state: string} | {kind: 'other', name: string}} LineWorkflowAction
+ *
+ * A role of a workflow: a state a page fills.
+ * @typedef {object} LineWorkflowRole
+ * @property {string} id       The state's name, e.g. "list".
+ * @property {string} says     What the page is for, as the library wrote it, e.g. "The page that lists the items".
+ * @property {string|null} page The feature page that fills it (its name, e.g. "OrdersPage"); null when not chosen (always null in the library).
+ * @property {boolean} pageOk  False when `page` names no page of the feature.
+ *
+ * @typedef {object} LineWorkflowState
+ * @property {string} id       The state's path, e.g. "list" or "checkout.paying".
+ * @property {string} label    Plain English: the page that fills it, "the list page" when not chosen yet, or the step's name.
+ * @property {string|null} role
+ * @property {string|null} page
+ * @property {boolean} initial
+ * @property {boolean} final
+ *
+ * One transition as a When -> Do card.
+ * @typedef {object} LineWorkflowTransition
+ * @property {string} id       "<from>|<event>" (unique per machine for plain `on` transitions).
+ * @property {string} from
+ * @property {string} event
+ * @property {string|null} to  The target state's path; null for a transition that stays.
+ * @property {LineWorkflowAction[]} actions
+ * @property {'library'|'feature'} origin  `library`: it is in the library workflow (or this IS the library); `feature`: the feature added it.
+ * @property {boolean} removable  Only a feature's own transitions can be removed.
+ * @property {string} when     "When OrdersPage sends OPEN."
+ * @property {string} do       "Go to OrderDetailPage."
+ *
+ * @typedef {object} LineWorkflow
+ * @property {string} id        "workflows/<name>" (library) or "<feature>/workflows/<name>" (feature), as the project's item ids.
+ * @property {'library'|'feature'} kind
+ * @property {string} name
+ * @property {string} file      Root-relative.
+ * @property {string|null} feature
+ * @property {{value: string|null, libraryId: string|null}|null} base  Feature workflows only.
+ * @property {string} machineId
+ * @property {string|null} initial
+ * @property {LineWorkflowRole[]} roles
+ * @property {LineWorkflowState[]} states
+ * @property {LineWorkflowTransition[]} transitions
+ * @property {string[]} summary  Plain-English sentences (static, no model).
+ * @property {{feature: string, file: string}[]} usedBy  Library workflows: the feature workflows based on it.
+ *
+ * GET /api/line/workflows?feature=<name>: the feature's workflows, the library's workflows to base one on, the
+ * feature's pages (to fill roles) and every workflow file Cockpit cannot draw (not a plain xstate machine), each with
+ * one sentence. Unknown feature: LineOpError UNKNOWN_ITEM (400).
+ * @typedef {object} LineWorkflowList
+ * @property {string} feature
+ * @property {LineWorkflow[]} workflows
+ * @property {LineWorkflow[]} library
+ * @property {string[]} pages   The feature's page names.
+ * @property {{id: string, file: string, sentence: string}[]} notMachines
+ *
+ * Requests of the workflow plan tools (all are write steps a person approves in the Plan panel):
+ * @typedef {{libraryId: string, feature: string, name: string}} BaseWorkflowOnRequest  line.baseWorkflowOn
+ * @typedef {{file: string, role: string, page: string}} SetWorkflowRoleRequest  line.setWorkflowRole ('' clears the role)
+ * @typedef {{file: string, from: string, event: string, to: string, service?: string, part?: string, partState?: string}} AddWorkflowTransitionRequest  line.addWorkflowTransition
+ * @typedef {{file: string, from: string, event: string}} RemoveWorkflowTransitionRequest  line.removeWorkflowTransition (a feature's own transitions only)
+ * Promoting a feature workflow to the library is line.promote (PromoteRequest), as for every other kind.
  */
 
 /**
@@ -303,6 +380,10 @@ export const LINE_PLAN_TOOLS = Object.freeze([
   { name: 'line.import.toLibrary', kind: 'write', request: '{folder, from, kind, name, level?, keepShim?}' },
   { name: 'line.import.toFeature', kind: 'write', request: '{folder, mode, from?, kind, name, feature, base, keepShim?, route?}' },
   { name: 'line.amend', kind: 'write', request: '{change: {tool, args}, fix: {tool, args}} or {change, fixes: [{tool, args}, ...]}' },
+  { name: 'line.baseWorkflowOn', kind: 'write', request: 'BaseWorkflowOnRequest' },
+  { name: 'line.setWorkflowRole', kind: 'write', request: 'SetWorkflowRoleRequest' },
+  { name: 'line.addWorkflowTransition', kind: 'write', request: 'AddWorkflowTransitionRequest' },
+  { name: 'line.removeWorkflowTransition', kind: 'write', request: 'RemoveWorkflowTransitionRequest' },
   { name: 'line.leaveAsIs', kind: 'write', request: '{stepId}' },
   { name: 'line.project', kind: 'read', request: '{}' },
 ]);
@@ -420,6 +501,7 @@ export const LINE_API = Object.freeze([
   // cp1: every change to the project is a plan step (line.baseOn, line.promote, line.setPageProp, line.fix, line.setFragment,
   // line.import.*); approve and run need the Cockpit page's Origin and the x-line-approval token GET /plan hands it.
   { method: 'GET', path: '/api/line/plan', request: null, response: 'PlanView & {approvalToken}' },
+  { method: 'GET', path: '/api/line/workflows', request: 'feature (query)', response: 'LineWorkflowList' },
   { method: 'POST', path: '/api/line/plan/step', request: 'PlanStepRequest', response: 'PlanView & {stepId}' },
   { method: 'POST', path: '/api/line/plan/approve', request: '{stepId} | {stepIds}', response: 'PlanView' },
   { method: 'POST', path: '/api/line/plan/run', request: '{stepId?}', response: 'PlanView' },
@@ -878,4 +960,58 @@ export function assertContextPick(p) {
   for (const f of p.files) { str(f.file, 'pick.files[].file'); sentence(f.why, `pick ${f.file}.why`); sentence(f.summary?.sentence, `pick ${f.file}.summary`); str(f.summary.via, `pick ${f.file}.summary.via`); }
   for (let i = 1; i < p.files.length; i += 1) if (p.files[i].score > p.files[i - 1].score) fail('pick.files', 'must be ranked by score');
   if (!['static', 'jev'].includes(p.via)) fail('pick.via', 'must be static or jev');
+export const WORKFLOW_ACTION_KINDS = Object.freeze(['callService', 'setPartState', 'other']);
+
+/**
+ * Throw a TypeError naming the bad field unless `w` is a LineWorkflow: ids by kind, roles and transitions on its own
+ * states, only a feature's own transitions removable, every When and Do a sentence.
+ * @param {any} w The value to check.
+ * @param {string} [where] Where it sits, for the error message.
+ * @returns {void}
+ */
+export function assertLineWorkflow(w, where = 'workflow') {
+  str(w?.id, `${where}.id`); str(w.name, `${where}.name`); str(w.file, `${where}.file`); str(w.machineId, `${where}.machineId`);
+  if (!['library', 'feature'].includes(w.kind)) fail(`${where}.kind`, 'must be library or feature');
+  if (w.kind === 'library' ? w.id !== `workflows/${w.name}` || w.feature !== null || w.base !== null : w.id !== `${w.feature}/workflows/${w.name}` || !w.base) {
+    fail(`${where}.id`, 'a library workflow is "workflows/<name>" with no feature or base; a feature workflow is "<feature>/workflows/<name>" with a base');
+  }
+  const states = new Set();
+  w.states.forEach((s, i) => { str(s.id, `${where}.states[${i}].id`); str(s.label, `${where}.states[${i}].label`); states.add(s.id); });
+  if (w.initial !== null && !states.has(w.initial)) fail(`${where}.initial`, 'must name one of its states');
+  w.roles.forEach((r, i) => {
+    const v = `${where}.roles[${i}]`;
+    if (!states.has(r.id)) fail(`${v}.id`, 'a role is one of its states');
+    str(r.says, `${v}.says`);
+    if (w.kind === 'library' && r.page !== null) fail(`${v}.page`, 'a library role has no page');
+    if (typeof r.pageOk !== 'boolean') fail(`${v}.pageOk`, 'must be a boolean');
+  });
+  const ids = new Set();
+  w.transitions.forEach((t, i) => {
+    const v = `${where}.transitions[${i}]`;
+    if (t.id !== `${t.from}|${t.event}`) fail(`${v}.id`, 'must be "<from>|<event>"');
+    if (ids.has(t.id)) fail(`${v}.id`, 'must be unique');
+    ids.add(t.id);
+    if (!states.has(t.from) || (t.to !== null && !states.has(t.to))) fail(v, 'from and to must name its states');
+    if (!['library', 'feature'].includes(t.origin)) fail(`${v}.origin`, 'must be library or feature');
+    if (t.removable !== (t.origin === 'feature' && w.kind === 'feature')) fail(`${v}.removable`, 'only a feature\'s own transitions can be removed');
+    t.actions.forEach((a, k) => { if (!WORKFLOW_ACTION_KINDS.includes(a?.kind)) fail(`${v}.actions[${k}].kind`, `must be one of ${WORKFLOW_ACTION_KINDS.join(', ')}`); });
+    sentence(t.when, `${v}.when`); sentence(t.do, `${v}.do`);
+  });
+  if (!Array.isArray(w.summary) || !w.summary.length) fail(`${where}.summary`, 'must have at least one sentence');
+  w.summary.forEach((x, i) => sentence(x, `${where}.summary[${i}]`));
+  if (!Array.isArray(w.usedBy)) fail(`${where}.usedBy`, 'must be an array');
+}
+
+/**
+ * Throw a TypeError naming the bad field unless `l` is a LineWorkflowList: the feature's own workflows, library ones,
+ * the feature's pages and the files Cockpit cannot draw, each with a sentence.
+ * @param {any} l The value to check.
+ * @returns {asserts l is LineWorkflowList}
+ */
+export function assertLineWorkflowList(l) {
+  str(l?.feature, 'workflows.feature');
+  for (const k of ['workflows', 'library', 'pages', 'notMachines']) if (!Array.isArray(l[k])) fail(`workflows.${k}`, 'must be an array');
+  l.workflows.forEach((w, i) => { assertLineWorkflow(w, `workflows.workflows[${i}]`); if (w.kind !== 'feature' || w.feature !== l.feature) fail(`workflows.workflows[${i}]`, 'must be a workflow of this feature'); });
+  l.library.forEach((w, i) => { assertLineWorkflow(w, `workflows.library[${i}]`); if (w.kind !== 'library') fail(`workflows.library[${i}]`, 'must be a library workflow'); });
+  l.notMachines.forEach((n, i) => { str(n.id, `workflows.notMachines[${i}].id`); str(n.file, `workflows.notMachines[${i}].file`); sentence(n.sentence, `workflows.notMachines[${i}].sentence`); });
 }

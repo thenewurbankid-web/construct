@@ -13,6 +13,8 @@
 //                     folder as the writer's root, so nothing outside that folder can be written
 //   line.amend        write  {change, fix}   a refused change plus one fix of it whose file only that change creates,
 //                                            planned together (fixes.mjs planAmended) and applied as ONE change
+//   line.baseWorkflowOn, line.setWorkflowRole, line.addWorkflowTransition, line.removeWorkflowTransition
+//                     write  cw1 workflows (workflows.mjs) + applyChange
 //   line.leaveAsIs    write  {stepId}        -> a person's "carry on" after a step that needs them (writes nothing)
 //   line.project      read   {}              -> readLineProject
 //
@@ -30,9 +32,10 @@ import { planSetProp } from './pageProp.mjs';
 import { readLineProject } from './model.mjs';
 import { planFixByKey, planStep, withFixes, planAmended, amendFixes, onScratch } from './fixes.mjs';
 import { planSetFragment } from './fragments.mjs';
+import { planBaseWorkflowOn, planSetWorkflowRole, planAddWorkflowTransition, planRemoveWorkflowTransition } from './workflows.mjs';
 
 /** The real operations (tests pass the contract's mock instead). */
-export const REAL_PLAN_OPS = Object.freeze({ planBaseOn, planPromote, planSetProp, planFixByKey, planSetFragment, planStep, planAmended, planImportStep, applyChange, checkChange, readLineProject });
+export const REAL_PLAN_OPS = Object.freeze({ planBaseOn, planPromote, planSetProp, planFixByKey, planSetFragment, planStep, planAmended, planImportStep, applyChange, checkChange, readLineProject, planBaseWorkflowOn, planSetWorkflowRole, planAddWorkflowTransition, planRemoveWorkflowTransition });
 
 /** The write tools that plan a StagedChange, and the op that plans it (`planStep` takes {tool, args}). */
 export const CHANGE_TOOLS = Object.freeze({
@@ -41,6 +44,9 @@ export const CHANGE_TOOLS = Object.freeze({
   'line.setBase': 'planStep', 'line.moveFile': 'planStep', 'line.createLayout': 'planStep',
   'line.amend': 'planAmended',
   'line.import.mark': 'planImportStep', 'line.import.toLibrary': 'planImportStep', 'line.import.toFeature': 'planImportStep',
+  // cw1 workflows (workflows.mjs); promoting a workflow is line.promote like every other kind
+  'line.baseWorkflowOn': 'planBaseWorkflowOn', 'line.setWorkflowRole': 'planSetWorkflowRole',
+  'line.addWorkflowTransition': 'planAddWorkflowTransition', 'line.removeWorkflowTransition': 'planRemoveWorkflowTransition',
 });
 
 /** Change tools planned only when they run: an import step builds on the steps before it (the library item a feature
@@ -234,6 +240,10 @@ const SCHEMAS = Object.freeze({
   'line.import.toLibrary': importSchema({ folder: 'string', from: 'string', kind: 'string', name: 'string', level: 'optString', keepShim: 'optBool' }),
   'line.import.toFeature': importSchema({ folder: 'string', mode: 'mode', from: 'optString', kind: 'string', name: 'string', feature: 'string', base: 'string', keepShim: 'optBool', route: 'optString' }),
   'line.amend': objectSchema({ change: 'step', fix: 'optStep', fixes: 'optSteps' }, { change: true }),
+  'line.baseWorkflowOn': objectSchema({ libraryId: 'string', feature: 'string', name: 'string' }, { change: true }),
+  'line.setWorkflowRole': objectSchema({ file: 'string', role: 'string', page: 'anyString' }, { change: true }),
+  'line.addWorkflowTransition': objectSchema({ file: 'string', from: 'string', event: 'string', to: 'string', service: 'optString', part: 'optString', partState: 'optString' }, { change: true }),
+  'line.removeWorkflowTransition': objectSchema({ file: 'string', from: 'string', event: 'string' }, { change: true }),
   'line.leaveAsIs': objectSchema({ stepId: 'string' }),
   'line.project': objectSchema({}),
 });
@@ -251,6 +261,10 @@ const DESCRIBE = Object.freeze({
   'line.import.toLibrary': 'Import: moves one item of the import folder into its library, through the checked writer.',
   'line.import.toFeature': 'Import: moves one item into a feature of the import folder, or adds it based on its library copy, through the checked writer.',
   'line.amend': 'Applies a change Construct refused together with one typed fix of it, as one change, through the checked writer (for a fix whose file only that change creates).',
+  'line.baseWorkflowOn': 'Creates a feature workflow based on one library workflow (a copy of its state machine, its pages not chosen yet), through the checked writer.',
+  'line.setWorkflowRole': 'Chooses which page of the feature fills one role of a feature workflow (empty page clears it), through the checked writer.',
+  'line.addWorkflowTransition': 'Adds a When -> Do transition to a feature workflow: when a state gets an event, optionally call a service or set a part\'s state, then go to a state; through the checked writer.',
+  'line.removeWorkflowTransition': 'Removes a transition a feature added to its workflow (the library workflow\'s stay), through the checked writer.',
   'line.leaveAsIs': 'Records that a person chose to carry on after a step that needed them; writes nothing.',
   'line.project': 'Reads the Line view of the project: library, features, items and findings.',
 });

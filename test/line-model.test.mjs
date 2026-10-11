@@ -30,7 +30,7 @@ test('model: the Line sample passes the contract, with levels, base counts and i
   assertLineProject(p);
   assert.equal(p.isLine, true);
   assert.deepEqual(levelsOf(p), { Badge: 'atom', Button: 'atom', Card: 'molecule', DataTable: 'organism' });
-  assert.deepEqual(usedByCount(p), { 'components/Badge': 0, 'components/Button': 1, 'components/Card': 1, 'components/DataTable': 0, 'fixtures/user': 0, 'pages/ListPage': 2, 'workflows/checkout': 1 });
+  assert.deepEqual(usedByCount(p), { 'components/Badge': 0, 'components/Button': 1, 'components/Card': 1, 'components/DataTable': 0, 'fixtures/user': 0, 'pages/ListPage': 2, 'workflows/checkout': 1, 'workflows/createConfirm': 0, 'workflows/listDetail': 0, 'workflows/signInGate': 0, 'workflows/wizard': 0 });
   assert.deepEqual(p.library.find((l) => l.id === 'components/Button').usedBy, [{ feature: 'orders', file: 'features/orders/components/OrderButton.tsx' }]);
   assert.deepEqual(p.findings.map((f) => `${f.rule} ${f.file}:${f.line}`).sort(), ['LINE-BASE features/billing/components/InvoiceCard.tsx:1', 'LINE-DIR features/billing/pages/InvoicesPage.tsx:4']);
   const billing = p.features.find((f) => f.name === 'billing');

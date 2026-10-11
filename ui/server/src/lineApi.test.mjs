@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 import express from 'express';
 import { SESSION_COOKIE, createAuth, resolveAuthConfig, signValue } from './auth.mjs';
 import { createLineRouter } from './lineApi.mjs';
-import { assertLineFeatureDetail, assertLineProject, LineOpError } from '../../../packages/engine/line/contract.mjs';
+import { assertLineFeatureDetail, assertLineProject, assertLineWorkflowList, LineOpError } from '../../../packages/engine/line/contract.mjs';
 import { createMockLineOps } from '../../../packages/engine/line/mock.mjs';
 import { app as realApp, auth as realAuth } from './index.mjs';
 
@@ -19,12 +19,12 @@ const ENV = { CONSTRUCT_AUTH: 'required', CONSTRUCT_AUTH_TEST_USER: 'e2e-user', 
 const cookie = () => `${SESSION_COOKIE}=${encodeURIComponent(signValue({ login: 'e2e-user', exp: Date.now() + 60_000 }, SECRET))}`;
 const SAMPLE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../examples/line-sample');
 
-async function withStack({ getRoot, readProject, readFeature }, fn) {
+async function withStack({ getRoot, readProject, readFeature, readWorkflows }, fn) {
   const auth = createAuth(resolveAuthConfig(ENV, { host: '127.0.0.1', clientOrigin: ORIGIN }));
   const app = express();
   auth.mountRoutes(app);
   app.use('/api', auth.requireSession);
-  app.use('/api/line', createLineRouter({ getRoot, ...(readProject ? { readProject } : {}), ...(readFeature ? { readFeature } : {}) }));
+  app.use('/api/line', createLineRouter({ getRoot, ...(readProject ? { readProject } : {}), ...(readFeature ? { readFeature } : {}), ...(readWorkflows ? { readWorkflows } : {}) }));
   const server = http.createServer(app);
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   const get = async (p, withCookie = true) => {
@@ -108,5 +108,25 @@ test('GET /api/line/feature refuses a missing or unknown name with one sentence'
   });
   await withStack({ getRoot: () => ({ ok: true, root: '/x' }), readFeature: () => { throw new Error('boom'); } }, async (get) => {
     assert.deepEqual(await get('/api/line/feature?name=a'), { status: 500, body: { ok: false, code: 'READ_FAILED', sentence: 'Cockpit could not read this feature.' } });
+  });
+});
+
+test('GET /api/line/workflows answers the feature\'s workflows (mock and the real sample); a bad or unknown feature is one sentence', async () => {
+  const mock = createMockLineOps();
+  await withStack({ getRoot: () => ({ ok: true, root: '/mock' }), readWorkflows: mock.readLineWorkflows }, async (get) => {
+    const r = await get('/api/line/workflows?feature=orders');
+    assert.equal(r.status, 200);
+    assertLineWorkflowList(r.body);
+    assert.equal((await get('/api/line/workflows?feature=orders', false)).status, 401);
+    const bad = await get('/api/line/workflows');
+    assert.deepEqual([bad.status, bad.body.code, bad.body.sentence], [400, 'BAD_REQUEST', 'Name the feature whose workflows to show, for example ?feature=orders.']);
+    const unknown = await get('/api/line/workflows?feature=nope');
+    assert.deepEqual([unknown.status, unknown.body.code], [400, 'UNKNOWN_ITEM']);
+  });
+  await withStack({ getRoot: () => ({ ok: true, root: SAMPLE }) }, async (get) => {
+    const r = await get('/api/line/workflows?feature=orders');
+    assert.equal(r.status, 200);
+    assertLineWorkflowList(r.body);
+    assert.deepEqual(r.body.library.map((w) => w.name).sort(), ['createConfirm', 'listDetail', 'signInGate', 'wizard']);
   });
 });

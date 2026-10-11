@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useUrlSelection } from '@/features/list-browser';
 import { featureCards } from '../domain/FeatureCards';
 import { loadLineFeaturesApi } from '../services/LineFeaturesApi';
 import { loadFeature } from '../workflows/LoadFeature';
-import type { DetailState, LineFeaturesApi, LineFeaturesView, LineProject } from '../types';
+import type { DetailState, FeatureTab, LineFeaturesApi, LineFeaturesView, LineProject } from '../types';
 
 type ProjectState = { phase: 'loading' } | { phase: 'not-line' } | { phase: 'line'; project: LineProject; api: LineFeaturesApi };
 
@@ -43,6 +43,10 @@ export function useLineFeatures(): { phase: 'loading' | 'line' | 'not-line'; vie
   const features = useMemo(() => (project ? featureCards(project) : []), [project]);
   const feature = selection.value && features.some((f) => f.name === selection.value) ? selection.value : null;
   const [detail, setDetail] = useState<DetailState>({ phase: 'idle' });
+  const tabSelection = useUrlSelection('view');
+  const tab: FeatureTab = tabSelection.value === 'workflows' ? 'workflows' : 'overview';
+  const selectTab = tabSelection.select;
+  const chooseTab = useCallback((next: FeatureTab) => selectTab(next === 'workflows' ? 'workflows' : null), [selectTab]);
 
   useEffect(() => {
     if (!api || !feature) {
@@ -60,5 +64,5 @@ export function useLineFeatures(): { phase: 'loading' | 'line' | 'not-line'; vie
   }, [api, feature]);
 
   const phase = state.phase === 'line' && !selection.ready ? 'loading' : state.phase;
-  return { phase, view: { features, feature, choose: selection.select, detail } };
+  return { phase, view: { features, feature, choose: selection.select, detail, tab, chooseTab } };
 }
