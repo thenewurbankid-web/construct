@@ -8,14 +8,20 @@
 // `commit: true`, refused with 409 if architecture.yml changed on disk since it was loaded), and
 // the same "never write an invalid file" gate #761 built (validateArchitectureConfig) instead of
 // architecture-enforcer's per-source-file checks, which don't apply to architecture.yml itself.
+//
+// Every edit is made in place on the user's file (packages/core/yaml-edit.mjs): comments, blank lines and
+// key order survive, and only the edited values change. The save goes through Construct's writer
+// (a transaction whose validate step is that same validateArchitectureConfig gate, run on the shadow copy).
 import crypto from 'node:crypto';
 import express from 'express';
 import fs from 'node:fs';
 import path from 'node:path';
 import yaml from 'js-yaml';
+import { createTransaction } from '@line/construct-engine/transactional-writer';
 import { listRules } from '../../../packages/core/rules-catalog.mjs';
 import { DEFAULT_RULES, FRAMEWORKS, loadConfig } from '../../../packages/core/config.mjs';
 import { validateArchitectureConfig } from '../../../packages/core/validate-architecture-config.mjs';
+import { editYamlDocument, parseYamlDocument, YamlEditError } from '../../../packages/core/yaml-edit.mjs';
 
 /** @returns {{status:number, body:object}} */
 export const rulesIndex = (root) => {
@@ -67,6 +73,49 @@ function parseRaw(text) {
   return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
 }
 
+const badYaml = (e) => err(422, 'BAD_YAML', e.message, { line: e.line, col: e.col });
+
+/** The 422 BAD_YAML refusal (with line and column) when the current architecture.yml does not parse, else null.
+ * Checked before any writer reads the current values, so a broken file is named, never a 500. */
+function yamlError(text) {
+  try {
+    parseYamlDocument(text, 'architecture.yml');
+    return null;
+  } catch (e) {
+    if (e instanceof YamlEditError) return badYaml(e);
+    throw e;
+  }
+}
+
+/** The one save path every writer below shares. Applies `edits` to `before` in place (comments and key order
+ * kept), then either returns the preview (`commit` false: nothing written) or, after the contentHash check,
+ * writes through Construct's writer with validateArchitectureConfig (#761) as the transaction's validate step,
+ * so an invalid file never reaches disk. A malformed architecture.yml is refused (422 BAD_YAML) with its line
+ * and column. `onSaved` builds the extra body fields of a successful commit. */
+function saveArchitecture(root, before, edits, { commit, contentHash }, { preview = {}, onSaved }) {
+  let after;
+  try {
+    after = editYamlDocument(before, edits, { label: 'architecture.yml' });
+  } catch (e) {
+    if (e instanceof YamlEditError) return badYaml(e);
+    throw e;
+  }
+  if (commit !== true) {
+    return { status: 200, body: { ok: true, before, after, contentHash: hashOf(before), changed: true, ...preview } };
+  }
+  if (contentHash !== hashOf(before)) return err(409, 'CHANGED_ON_DISK', 'architecture.yml changed on disk since it was loaded; re-read it and redo the edit.');
+  const txn = createTransaction(root);
+  txn.writeFile('architecture.yml', after);
+  const result = txn.commit({
+    validate: (shadow) => {
+      const { valid, errors } = validateArchitectureConfig(parseRaw(fs.readFileSync(archPath(shadow), 'utf8')));
+      return { ok: valid, violations: errors };
+    },
+  });
+  if (!result.committed) return err(422, 'INVALID', 'That change would produce an invalid architecture.yml.', { errors: result.violations });
+  return { status: 200, body: { ok: true, contentHash: hashOf(after), ...onSaved() } };
+}
+
 /** Preview (`commit` false: nothing written, returns before/after text) or save (`commit` true) one
  * rule's severity override. Unknown rule ids and invalid severities are refused before anything is
  * computed; the proposed whole-file result is re-validated through validateArchitectureConfig (#761)
@@ -76,17 +125,11 @@ export function ruleSeveritySave(root, body) {
   if (typeof ruleId !== 'string' || !DEFAULT_RULES[ruleId]) return err(400, 'BAD_RULE', 'Unknown rule id.');
   if (!VALID_SEVERITIES.has(severity)) return err(400, 'BAD_SEVERITY', "severity must be 'error', 'warning' or 'off'.");
   const before = readRaw(root);
-  const proposed = parseRaw(before);
-  proposed.rules = { ...(proposed.rules || {}), [ruleId]: severity };
-  if (commit !== true) {
-    return { status: 200, body: { ok: true, before, after: yaml.dump(proposed), contentHash: hashOf(before), changed: true } };
-  }
-  if (contentHash !== hashOf(before)) return err(409, 'CHANGED_ON_DISK', 'architecture.yml changed on disk since it was loaded; re-read it and redo the edit.');
-  const { valid, errors } = validateArchitectureConfig(proposed);
-  if (!valid) return err(422, 'INVALID', 'That change would produce an invalid architecture.yml.', { errors });
-  const after = yaml.dump(proposed);
-  fs.writeFileSync(archPath(root), after);
-  return { status: 200, body: { ok: true, ruleId, severity, contentHash: hashOf(after), rules: listRules(root) } };
+  const unreadable = yamlError(before);
+  if (unreadable) return unreadable;
+  return saveArchitecture(root, before, [{ op: 'set', path: ['rules', ruleId], value: severity }], { commit, contentHash }, {
+    onSaved: () => ({ ruleId, severity, rules: listRules(root) }),
+  });
 }
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -101,8 +144,10 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 export function ruleExceptionSave(root, body) {
   const { action, contentHash, commit } = body ?? {};
   const before = readRaw(root);
-  const proposed = parseRaw(before);
-  const exceptions = [...(proposed.exceptions || [])];
+  const unreadable = yamlError(before);
+  if (unreadable) return unreadable;
+  const exceptions = parseRaw(before).exceptions;
+  let edit;
 
   if (action === 'add') {
     const { path: glob, rule, expires, reason } = body;
@@ -111,25 +156,15 @@ export function ruleExceptionSave(root, body) {
     if (expires !== undefined && expires !== null && expires !== '' && !DATE_RE.test(expires)) {
       return err(400, 'BAD_EXPIRES', 'expires must be an ISO date (YYYY-MM-DD) or omitted.');
     }
-    exceptions.push({ path: glob, rule, ...(expires ? { expires } : {}), ...(reason ? { reason } : {}) });
+    edit = { op: 'push', path: ['exceptions'], value: { path: glob, rule, ...(expires ? { expires } : {}), ...(reason ? { reason } : {}) } };
   } else if (action === 'remove') {
     const { index } = body;
-    if (typeof index !== 'number' || !exceptions[index]) return err(400, 'BAD_INDEX', 'That exception no longer exists at that index.');
-    exceptions.splice(index, 1);
+    if (typeof index !== 'number' || !Array.isArray(exceptions) || !exceptions[index]) return err(400, 'BAD_INDEX', 'That exception no longer exists at that index.');
+    edit = { op: 'delete', path: ['exceptions', index] };
   } else {
     return err(400, 'BAD_ACTION', "action must be 'add' or 'remove'.");
   }
-  proposed.exceptions = exceptions;
-
-  if (commit !== true) {
-    return { status: 200, body: { ok: true, before, after: yaml.dump(proposed), contentHash: hashOf(before), changed: true } };
-  }
-  if (contentHash !== hashOf(before)) return err(409, 'CHANGED_ON_DISK', 'architecture.yml changed on disk since it was loaded; re-read it and redo the edit.');
-  const { valid, errors } = validateArchitectureConfig(proposed);
-  if (!valid) return err(422, 'INVALID', 'That change would produce an invalid architecture.yml.', { errors });
-  const after = yaml.dump(proposed);
-  fs.writeFileSync(archPath(root), after);
-  return { status: 200, body: { ok: true, contentHash: hashOf(after), exceptions: readExceptions(root) } };
+  return saveArchitecture(root, before, [edit], { commit, contentHash }, { onSaved: () => ({ exceptions: readExceptions(root) }) });
 }
 
 const GLOB_FIELDS = new Set(['nonLayer', 'frozen']);
@@ -142,31 +177,23 @@ export function globListSave(root, body) {
   const { field, action, contentHash, commit } = body ?? {};
   if (!GLOB_FIELDS.has(field)) return err(400, 'BAD_FIELD', "field must be 'nonLayer' or 'frozen'.");
   const before = readRaw(root);
-  const proposed = parseRaw(before);
-  const globs = [...(proposed[field] || [])];
+  const unreadable = yamlError(before);
+  if (unreadable) return unreadable;
+  const globs = parseRaw(before)[field];
+  let edit;
 
   if (action === 'add') {
     const { glob } = body;
     if (typeof glob !== 'string' || !glob.trim()) return err(400, 'BAD_GLOB', 'glob is required.');
-    globs.push(glob);
+    edit = { op: 'push', path: [field], value: glob };
   } else if (action === 'remove') {
     const { index } = body;
-    if (typeof index !== 'number' || globs[index] === undefined) return err(400, 'BAD_INDEX', 'That entry no longer exists at that index.');
-    globs.splice(index, 1);
+    if (typeof index !== 'number' || !Array.isArray(globs) || globs[index] === undefined) return err(400, 'BAD_INDEX', 'That entry no longer exists at that index.');
+    edit = { op: 'delete', path: [field, index] };
   } else {
     return err(400, 'BAD_ACTION', "action must be 'add' or 'remove'.");
   }
-  proposed[field] = globs;
-
-  if (commit !== true) {
-    return { status: 200, body: { ok: true, before, after: yaml.dump(proposed), contentHash: hashOf(before), changed: true } };
-  }
-  if (contentHash !== hashOf(before)) return err(409, 'CHANGED_ON_DISK', 'architecture.yml changed on disk since it was loaded; re-read it and redo the edit.');
-  const { valid, errors } = validateArchitectureConfig(proposed);
-  if (!valid) return err(422, 'INVALID', 'That change would produce an invalid architecture.yml.', { errors });
-  const after = yaml.dump(proposed);
-  fs.writeFileSync(archPath(root), after);
-  return { status: 200, body: { ok: true, contentHash: hashOf(after), [field]: loadConfig(root)[field] } };
+  return saveArchitecture(root, before, [edit], { commit, contentHash }, { onSaved: () => ({ [field]: loadConfig(root)[field] }) });
 }
 
 /** Preview or save `features.root` and/or `project.framework` (the route adapter) -- #395 slice 5.
@@ -183,20 +210,17 @@ export function projectSettingsSave(root, body) {
     return err(400, 'BAD_FRAMEWORK', `framework must be one of: ${FRAMEWORKS.join(', ')}.`);
   }
   const before = readRaw(root);
-  const proposed = parseRaw(before);
-  if (featuresRoot !== undefined) proposed.features = { ...(proposed.features || {}), root: featuresRoot };
-  if (framework !== undefined) proposed.project = { ...(proposed.project || {}), framework };
-
-  if (commit !== true) {
-    return { status: 200, body: { ok: true, before, after: yaml.dump(proposed), contentHash: hashOf(before), changed: true } };
-  }
-  if (contentHash !== hashOf(before)) return err(409, 'CHANGED_ON_DISK', 'architecture.yml changed on disk since it was loaded; re-read it and redo the edit.');
-  const { valid, errors } = validateArchitectureConfig(proposed);
-  if (!valid) return err(422, 'INVALID', 'That change would produce an invalid architecture.yml.', { errors });
-  const after = yaml.dump(proposed);
-  fs.writeFileSync(archPath(root), after);
-  const config = loadConfig(root);
-  return { status: 200, body: { ok: true, contentHash: hashOf(after), project: { framework: config.project.framework, featuresRoot: config.features.root } } };
+  const unreadable = yamlError(before);
+  if (unreadable) return unreadable;
+  const edits = [];
+  if (featuresRoot !== undefined) edits.push({ op: 'set', path: ['features', 'root'], value: featuresRoot });
+  if (framework !== undefined) edits.push({ op: 'set', path: ['project', 'framework'], value: framework });
+  return saveArchitecture(root, before, edits, { commit, contentHash }, {
+    onSaved: () => {
+      const config = loadConfig(root);
+      return { project: { framework: config.project.framework, featuresRoot: config.features.root } };
+    },
+  });
 }
 
 /** The one named preset today (#395 slice 6, `docs/design/rules-envelopes.md` open question 3):
@@ -217,24 +241,21 @@ export function presetApply(root, body) {
   const { preset, contentHash, commit } = body ?? {};
   if (typeof preset !== 'string' || !PRESETS[preset]) return err(400, 'BAD_PRESET', `preset must be one of: ${Object.keys(PRESETS).join(', ')}.`);
   const before = readRaw(root);
-  const proposed = parseRaw(before);
-  const current = { ...(proposed.rules || {}) };
+  const unreadable = yamlError(before);
+  if (unreadable) return unreadable;
+  const current = { ...(parseRaw(before).rules || {}) };
   const target = PRESETS[preset];
   const changes = Object.entries(target)
     .filter(([ruleId, severity]) => (current[ruleId] ?? DEFAULT_RULES[ruleId].severity) !== severity)
     .map(([ruleId, severity]) => ({ ruleId, before: current[ruleId] ?? DEFAULT_RULES[ruleId].severity, after: severity }));
-  proposed.rules = { ...current, ...target };
-  proposed.preset = preset;
-
-  if (commit !== true) {
-    return { status: 200, body: { ok: true, before, after: yaml.dump(proposed), contentHash: hashOf(before), changed: changes.length > 0, changes } };
-  }
-  if (contentHash !== hashOf(before)) return err(409, 'CHANGED_ON_DISK', 'architecture.yml changed on disk since it was loaded; re-read it and redo the edit.');
-  const { valid, errors } = validateArchitectureConfig(proposed);
-  if (!valid) return err(422, 'INVALID', 'That change would produce an invalid architecture.yml.', { errors });
-  const after = yaml.dump(proposed);
-  fs.writeFileSync(archPath(root), after);
-  return { status: 200, body: { ok: true, preset, changes, contentHash: hashOf(after), rules: listRules(root) } };
+  const edits = [
+    ...Object.entries(target).map(([ruleId, severity]) => ({ op: 'set', path: ['rules', ruleId], value: severity })),
+    { op: 'set', path: ['preset'], value: preset },
+  ];
+  return saveArchitecture(root, before, edits, { commit, contentHash }, {
+    preview: { changed: changes.length > 0, changes },
+    onSaved: () => ({ preset, changes, rules: listRules(root) }),
+  });
 }
 
 /** @param {{getRoot: () => {ok:true, root:string} | {ok:false, error:string}, clientOrigin?: string, afterSave?: (root:string, rel:string) => unknown}} deps */
