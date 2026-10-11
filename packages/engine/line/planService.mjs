@@ -141,6 +141,15 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
       return parsed.success ? null : refusal('BAD_ARGS', `The arguments do not fit ${tool}: ${parsed.error.issues.map((i) => `${i.path.join('.') || 'args'} ${i.message}`).join('; ')}`);
     };
     if (!args.retry) { const bad = badArgs(); if (bad) return bad; }
+    // A change is planned (pure) before it joins the plan: a refusal is one sentence and starts nothing.
+    if (CHANGE_TOOLS[tool] && !args.retry) {
+      try {
+        why = why ?? previewStep(root, tool, args, ops).summary;
+      } catch (e) {
+        if (/** @type {any} */ (e)?.name === 'LineOpError') return refusal(/** @type {any} */ (e).code, /** @type {any} */ (e).sentence);
+        throw e;
+      }
+    }
     const has = await ensurePlan(api, by);
     if (!has.ok) return fromPlan(has);
     const plan = has.plan;
@@ -157,18 +166,7 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
       if (!of || !needsYou(plan, of)) return refusal('NOTHING_TO_LEAVE', `Step ${args.stepId} does not need you, so there is nothing to leave as it is`);
       why = why ?? `Carry on without fixing step ${of.n}.`;
     }
-    if (CHANGE_TOOLS[tool]) {
-      if (!args.retry) {
-        try {
-          const staged = previewStep(/** @type {any} */ (root), tool, args, ops);
-          why = why ?? staged.summary;
-        } catch (e) {
-          if (/** @type {any} */ (e)?.name === 'LineOpError') return refusal(/** @type {any} */ (e).code, /** @type {any} */ (e).sentence);
-          throw e;
-        }
-      }
-      if (!args.expect) args.expect = DEFAULT_EXPECT.map((c) => ({ ...c }));
-    }
+    if (CHANGE_TOOLS[tool] && !args.expect) args.expect = DEFAULT_EXPECT.map((c) => ({ ...c }));
     const r = await withVersion(api, plan.id, (p) => api.plan_add_step({ planId: p.id, version: p.version, by, step: { tool, args, why: why ?? `Run ${tool}.` } }));
     if (!r.ok) return fromPlan(r);
     const added = r.plan.steps[r.plan.steps.length - 1];
