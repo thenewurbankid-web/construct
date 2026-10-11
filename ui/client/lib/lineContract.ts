@@ -83,6 +83,54 @@ export type RenderResult =
   | { ok: true; html: string; props: RenderProp[]; via: 'morpheus' | 'construct-preview' }
   | { ok: false; code: string; sentence: string; detail?: string; props?: RenderProp[] };
 
+/** cp1: Line actions as plan steps (contract.mjs PlanView). A check that defines a step's "done". */
+export type PlanCheckKind = 'validate' | 'types' | 'tests' | 'file' | 'spec';
+export type PlanCheck = { id: string; sentence: string; kind: PlanCheckKind };
+/** Before a step runs: one expected output, already there or not. */
+export type GapItem = { checkId: string; state: 'present' | 'partial' | 'missing'; sentence: string };
+/** After a step runs: one check's outcome. */
+export type CheckResult = { checkId: string; ok: boolean; sentence: string };
+export type StepOption = { id: 'retry' | 'leave' | 'fix'; sentence: string };
+/** What a line.* change step records when it ran. */
+export type LineStepResult = {
+  apply: ApplyResult;
+  checks: CheckResult[];
+  passed: number;
+  total: number;
+  needsYou: boolean;
+  options: StepOption[];
+  stopped: boolean;
+  sentence: string;
+};
+export type PlanStepState = 'waiting' | 'ready' | 'running' | 'done' | 'needs-you' | 'failed' | 'skipped';
+export type PlanStepView = {
+  id: string;
+  n: number;
+  tool: string;
+  args: Record<string, unknown>;
+  why: string;
+  kind: 'read' | 'write';
+  state: PlanStepState;
+  sentence: string;
+  gap: GapItem[];
+  result: LineStepResult | Record<string, unknown> | null;
+  error: string | null;
+};
+/** GET /api/line/plan and every plan write. */
+export type PlanView = {
+  ok: true;
+  sessionId: string;
+  planId: string | null;
+  version: number | null;
+  status: string | null;
+  steps: PlanStepView[];
+  store: { linked: boolean; sentence: string };
+  message?: string;
+  /** POST /api/line/plan/step only: the step just added. */
+  stepId?: string;
+};
+export type PlanStepRequest = { tool: string; args?: Record<string, unknown>; why?: string };
+
 /** Every LINE_API route, as the client calls it. Bodies come back as the server sent them, refusals included; each
  * screen turns them into what it shows. A network failure rejects. */
 export type LineHttp = {
@@ -92,4 +140,8 @@ export type LineHttp = {
   baseOn: (req: BaseOnRequest) => Promise<ApplyResult | LineRefusal>;
   promote: (req: PromoteRequest) => Promise<ApplyResult | LineRefusal>;
   render: (file: string, props?: string) => Promise<RenderResult>;
+  getPlan: () => Promise<PlanView | LineRefusal>;
+  addPlanStep: (req: PlanStepRequest) => Promise<PlanView | LineRefusal>;
+  approvePlanStep: (stepId: string) => Promise<PlanView | LineRefusal>;
+  runPlan: (stepId?: string) => Promise<PlanView | LineRefusal>;
 };
