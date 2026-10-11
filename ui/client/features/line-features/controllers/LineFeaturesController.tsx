@@ -1,17 +1,35 @@
 'use client';
 
-import type { ReactNode } from 'react';
-import { LineWorkflowsController } from '@/features/line-workflows';
+import type { ReactElement, ReactNode } from 'react';
+import { LinePlanController, useLinePlan } from '@/features/line-plan';
 import { LineTraceController } from '@/features/line-trace';
+import { LineWorkflowsController } from '@/features/line-workflows';
+import { isLineMock } from '@/lib/lineMode';
+import { useFeatureChat } from '../hooks/useFeatureChat';
 import { useLineFeatures } from '../hooks/useLineFeatures';
+import { FeaturesScreenPage } from '../pages/FeaturesScreenPage';
 import { FeaturesSwitchPage } from '../pages/FeaturesSwitchPage';
+import { mockAddStep } from '../services/LineFeaturesApi';
+import type { LineFeaturesView } from '../types';
 
-/** The Features screen's feature part (`/`, `/plan`): a Line project gets the Line Features view (pick a feature, see
- * its items by kind, the Auto summary and its spec coverage, and its Workflows tab with the Plan panel); any other
- * project gets `fallback`, today's feature list and details, untouched. Mounted inside the Features stage, below its
- * project gate. */
-export function LineFeaturesController({ fallback }: { fallback: ReactNode }) {
-  const { phase, view } = useLineFeatures();
+type Screen = ReactElement<{ stage?: ReactNode }>;
+
+/** A Line project's Features screen. The plan and the chat's state live here, above the route's screen (and its
+ * project gate), so a re-render or remount of the screen never loses the conversation. The open feature's Workflows tab
+ * (cw1) and the Trace bar (cg1/ct1) sit in it too. */
+function LineScreen({ view, screen }: { view: LineFeaturesView; screen: Screen }) {
+  const plan = useLinePlan(view.reload);
+  const chat = useFeatureChat(view, isLineMock() ? mockAddStep : plan.addStep);
   const workflows = view.feature && view.tab === 'workflows' ? <LineWorkflowsController key={view.feature} feature={view.feature} /> : null;
-  return <FeaturesSwitchPage phase={phase} view={view} fallback={fallback} workflows={workflows} trace={<LineTraceController screen="features" />} />;
+  const stage = <FeaturesSwitchPage view={view} chat={chat} plan={<LinePlanController plan={plan} />} workflows={workflows} trace={<LineTraceController screen="features" steps={plan.steps} />} />;
+  return <FeaturesScreenPage phase="line" screen={screen} stage={stage} />;
+}
+
+/** cd1: the Features screen (`/`, `/plan`). `screen` is the route's Features screen element (it takes a `stage` prop):
+ * a Line project gets the Line chat as its stage (Features as a full-screen chat; a picked feature opens its page with
+ * the chat beside it); while the project is read the screen stays as it is, and any other project also gets one line
+ * offering Import. */
+export function LineFeaturesController({ screen }: { screen: Screen }) {
+  const { phase, view } = useLineFeatures();
+  return <FeaturesScreenPage phase={phase} screen={screen} line={<LineScreen view={view} screen={screen} />} />;
 }

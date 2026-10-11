@@ -1,22 +1,39 @@
 import type { ReactNode } from 'react';
-import { FeatureCardList } from '../components/FeatureCardList';
+import { ChatEntry } from '@/lib/ChatEntry';
 import { FeatureDetailPanel } from '../components/FeatureDetailPanel';
 import '../components/line-features.css';
-import type { LineFeaturesView } from '../types';
+import type { FeatureChatView, LineFeaturesView } from '../types';
 
-/** The Features view of a Line project: every feature with "All fine" or "Needs attention"; the chosen one with its
- * items by kind (base, status, findings), the Auto summary and how much of its spec is covered. */
-export function LineFeaturesPage({ view, workflows = null, trace }: { view: LineFeaturesView; workflows?: ReactNode; trace?: ReactNode }) {
-  const { features, feature, choose, detail, tab, chooseTab } = view;
+type LineFeaturesPageProps = { view: LineFeaturesView; chat: FeatureChatView; plan?: ReactNode; workflows?: ReactNode; trace?: ReactNode };
+
+/** cd1: the Features screen of a Line project, in Line style. It opens as a full-screen chat (create, open, what is
+ * missing, import, explain); picking a feature opens its page (items by kind, Auto summary, spec coverage) and the chat
+ * moves to a side panel with that feature's options, the Plan panel under it. */
+export function LineFeaturesPage({ view, chat, plan, workflows = null, trace = null }: LineFeaturesPageProps) {
+  const { feature, detail, tab, chooseTab } = view;
   return (
-    <section className="lf" data-testid="line-features" aria-labelledby="lf-title">
-      <div>
-        <h2 id="lf-title">Your features</h2>
-        <p className="hint">A feature owns its pages, components, workflows and fixtures; each one is based on one item from your library.</p>
-      </div>
+    <div className="lf" data-testid="line-features">
       {trace}
-      <FeatureCardList features={features} current={feature} onChoose={choose} />
-      <FeatureDetailPanel feature={feature} detail={detail} tab={tab} onTab={chooseTab} workflows={workflows} />
-    </section>
+      <ChatEntry
+        title={feature ? `Ask about ${feature}` : 'Features'}
+        testId="lf-chat-entry"
+        selected={feature}
+        options={chat.options}
+        messages={chat.messages}
+        ask={chat.ask}
+        busy={chat.busy}
+        onOption={chat.onOption}
+        onPick={chat.onPick}
+        onAnswer={chat.onAnswer}
+        onCancelAsk={chat.onCancelAsk}
+        footer={plan}
+      >
+        <header className="lf-head">
+          <h1 className="lf-title">{feature}</h1>
+          <p className="ln-muted">A feature owns its pages, components, workflows and fixtures; each one is based on one item from your library.</p>
+        </header>
+        <FeatureDetailPanel feature={feature} detail={detail} tab={tab} onTab={chooseTab} workflows={workflows} />
+      </ChatEntry>
+    </div>
   );
 }

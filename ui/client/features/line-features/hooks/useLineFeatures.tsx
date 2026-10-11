@@ -11,7 +11,7 @@ type ProjectState = { phase: 'loading' } | { phase: 'not-line' } | { phase: 'lin
 
 /** Reads the open project's Line view once. A project that is not a Line project, or a server with no /api/line
  * routes, is "not-line": the caller keeps today's Features screen. */
-function useLineFeaturesProject(): ProjectState {
+function useLineFeaturesProject(revision: number): ProjectState {
   const [state, setState] = useState<ProjectState>({ phase: 'loading' });
   useEffect(() => {
     let live = true;
@@ -28,7 +28,7 @@ function useLineFeaturesProject(): ProjectState {
     return () => {
       live = false;
     };
-  }, []);
+  }, [revision]);
   return state;
 }
 
@@ -36,7 +36,9 @@ function useLineFeaturesProject(): ProjectState {
  * project, the feature list and the chosen feature's detail (kept in the URL as ?feature=, the same parameter the
  * Pages screen reads, so a link carries the choice between screens). */
 export function useLineFeatures(): { phase: 'loading' | 'line' | 'not-line'; view: LineFeaturesView } {
-  const state = useLineFeaturesProject();
+  const [revision, setRevision] = useState(0);
+  const reload = useCallback(() => setRevision((n) => n + 1), []);
+  const state = useLineFeaturesProject(revision);
   const selection = useUrlSelection('feature');
   const project = state.phase === 'line' ? state.project : null;
   const api = state.phase === 'line' ? state.api : null;
@@ -61,8 +63,8 @@ export function useLineFeatures(): { phase: 'loading' | 'line' | 'not-line'; vie
     return () => {
       live = false;
     };
-  }, [api, feature]);
+  }, [api, feature, revision]);
 
   const phase = state.phase === 'line' && !selection.ready ? 'loading' : state.phase;
-  return { phase, view: { features, feature, choose: selection.select, detail, tab, chooseTab } };
+  return { phase, view: { features, feature, choose: selection.select, detail, tab, chooseTab, project, reload } };
 }

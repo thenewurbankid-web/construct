@@ -9,3 +9,8 @@ export async function loadLineFeaturesApi(): Promise<LineFeaturesApi> {
   const { mockLineFeaturesApi } = await import('./LineFeaturesApi.mock');
   return mockLineFeaturesApi;
 }
+
+/** Line mock mode has no plan on a server, so a change cannot be added as a step; it says so in one sentence. */
+export async function mockAddStep(): Promise<{ ok: false; sentence: string; code: string }> {
+  return { ok: false, sentence: 'Changes are not saved in mock mode; open the project on the server to add plan steps.', code: 'MOCK_MODE' };
+}

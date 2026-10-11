@@ -16,7 +16,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SAMPLE = path.resolve(__dirname, '../../../examples/line-sample');
 const API = process.env.E2E_API_BASE || 'http://localhost:4000';
 
-const cards = (page) => page.getByRole('list', { name: 'Features' }).getByTestId('lf-feature');
+const cards = (page) => page.getByRole('list', { name: 'Features', exact: true }).getByTestId('ln-pick');
 const item = (page, name) => page.locator(`[data-testid="lf-item"][data-item="${name}"]`);
 const point = (page, id) => page.locator(`[data-testid="lf-point"][data-point="${id}"]`);
 
@@ -109,6 +109,8 @@ test.describe.serial('Line Features screen (Line sample project, real server)', 
   test('Line Features on the contract mock (?line=mock) still lists features and one feature\'s detail', async ({ page }) => {
     await gotoCockpit(page, '/?line=mock&feature=orders');
     await expect(page.getByTestId('lf-coverage')).toHaveText('1 of 2 acceptance points are covered.', { timeout: 30_000 });
+    // cd1: with a feature open the chat is a side panel; "All features" brings the list back.
+    await page.locator('[data-option-id="feature.back"]').click();
     await expect(cards(page)).toHaveText([/^billing/, /^orders/]);
   });
 });

@@ -10,10 +10,19 @@ export type PlanPageProps = {
   stageActions?: ReactNode;
   /** The chosen feature's details (Features screen, #431), composed in by the route beside the actions. */
   featureDetail?: ReactNode;
+  /** cd1: a Line project's stage (the Features chat), shown in place of the heading, actions and impact. */
+  stage?: ReactNode;
 };
 
 // Presentation-only: the stage of the Features screen is the impact report, under the stage actions. The notes and the plan sit in the panes.
-export function PlanPage({ contextError, impact, stageActions, featureDetail }: PlanPageProps) {
+export function PlanPage({ contextError, impact, stageActions, featureDetail, stage }: PlanPageProps) {
+  if (stage) {
+    return (
+      <div className="pl-stage pl-stage--line" data-testid="plan-stage">
+        {stage}
+      </div>
+    );
+  }
   return (
     <div className="pl-stage" data-testid="plan-stage">
       <h1 className="pl-h1">Features</h1>

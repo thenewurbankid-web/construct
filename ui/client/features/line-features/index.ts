@@ -8,3 +8,6 @@ export * from './controllers/LineFeaturesController';
 
 /** The Line Features screen's state (feature list, chosen feature, its detail), for reuse or tests. */
 export * from './hooks/useLineFeatures';
+
+/** cd1: the Features chat (options, messages, picks, the name question; create and fix add plan steps). */
+export * from './hooks/useFeatureChat';
