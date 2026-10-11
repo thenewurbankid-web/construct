@@ -12,7 +12,7 @@
 // Nothing here writes a project file: a step's write happens only when the plan runner calls the registry
 // (planTools.mjs -> applyChange -> Construct's transactional writer).
 import { importLinked } from '../../line-links/index.mjs';
-import { summarize } from '../../summarize/index.mjs';
+import { summarize } from '@line/summarize';
 import { CHANGE_TOOLS, DEFAULT_EXPECT, REAL_PLAN_OPS, createLinePlanRegistry, constructCommandTools, gapOf, previewStep } from './planTools.mjs';
 import { createAtomicPlanWriter, createStaticPlanApi } from './planFallback.mjs';
 

@@ -1,9 +1,9 @@
 // cs1 -- the summarizer's contract: the sentence rules, the Summary shape and the mock.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { SENTENCE_RULES, SUMMARY_KINDS, SMITH_CONNECTORS, assertSummary } from '../packages/summarize/contract.mjs';
-import { checkSentence, rawIds, slotTokens, slotWords } from '../packages/summarize/check.mjs';
-import { createMockSummarizer } from '../packages/summarize/mock.mjs';
+import { SENTENCE_RULES, SUMMARY_KINDS, SMITH_CONNECTORS, assertSummary } from '../contract.mjs';
+import { checkSentence, rawIds, slotTokens, slotWords } from '../check.mjs';
+import { createMockSummarizer } from '../mock.mjs';
 
 const rulesOf = (s) => checkSentence(s).problems.map((p) => p.rule);
 

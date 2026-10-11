@@ -4,8 +4,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
 import os from 'node:os';
-import { summarize, plainSentence, checkSentence, SMITH_CONNECTORS } from '../packages/summarize/index.mjs';
-import { smithConnectors, smithLinks, summarizeCode } from '../packages/summarize/links.mjs';
+import { summarize, plainSentence, checkSentence, SMITH_CONNECTORS } from '../index.mjs';
+import { smithConnectors, smithLinks, summarizeCode } from '../links.mjs';
 
 const missingEnv = { ...process.env, SMITH_SOURCE_DIR: path.join(os.tmpdir(), 'no-smith-here'), ATOMIC_CODEMOD_SOURCE_DIR: path.join(os.tmpdir(), 'no-codemod-here') };
 const label = (s, l) => s.details.filter((d) => d.label === l).map((d) => d.text);

@@ -6,12 +6,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { makeTempDir } from '../test-utils/tmpdir.mjs';
-import { assertMissRecord, assertStaticShare } from '../packages/rule-factory/contract.mjs';
-import { missesFromFindings, missesFromPlanDoc, readPlanMisses, staticShare } from '../packages/rule-factory/collect.mjs';
-import { createLinePlanService } from '../packages/engine/line/planService.mjs';
+import { makeTempDir } from '../../../test-utils/tmpdir.mjs';
+import { assertMissRecord, assertStaticShare } from '../contract.mjs';
+import { missesFromFindings, missesFromPlanDoc, readPlanMisses, staticShare } from '../collect.mjs';
+import { createLinePlanService } from '@line/construct-engine/line/plan-service';
 
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 const SAMPLE = path.join(ROOT, 'examples/line-sample');
 const SCRIPT = path.join(ROOT, 'packages/rule-factory/static-share.mjs');
 const copy = () => { const dir = makeTempDir('line-rf-'); fs.cpSync(SAMPLE, dir, { recursive: true }); return dir; };

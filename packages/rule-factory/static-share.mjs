@@ -22,7 +22,7 @@ async function findingsOf() {
     return list.map((v) => ({ rule: v.rule, file: v.file, line: v.line ?? 1, key: v.key, fixes: v.fixes }));
   }
   try {
-    const { lineFindings } = await import('../engine/line/model.mjs');
+    const { lineFindings } = await import('@line/construct-engine/line/model');
     return lineFindings(root);
   } catch (e) {
     console.error(`Validate could not run on ${root} (${String(/** @type {any} */ (e)?.message ?? e).split('\n')[0]}), so only plan feedback is counted.`);

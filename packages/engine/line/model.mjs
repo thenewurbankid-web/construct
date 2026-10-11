@@ -17,7 +17,7 @@ import {
 } from '../../core/profiles/line/checks.mjs';
 import { LEVELS } from './contract.mjs';
 import { withFixes } from './fixes.mjs';
-import { summarize } from '../../summarize/index.mjs';
+import { summarize } from '@line/summarize';
 
 const posix = path.posix;
 const LEVEL_PRAGMA = /@line-level\s+(atom|molecule|organism)\b/;

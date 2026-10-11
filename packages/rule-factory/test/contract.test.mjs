@@ -1,8 +1,8 @@
 // cs2 (scaffold) -- the rule factory's contract: the miss record and the static share, with the mock.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { MISS_SOURCES, COLLECTED_SOURCES, assertMissRecord, assertStaticShare } from '../packages/rule-factory/contract.mjs';
-import { MOCK_MISSES, createMockMissCollector } from '../packages/rule-factory/mock.mjs';
+import { MISS_SOURCES, COLLECTED_SOURCES, assertMissRecord, assertStaticShare } from '../contract.mjs';
+import { MOCK_MISSES, createMockMissCollector } from '../mock.mjs';
 
 test('contract: four miss sources, two collected today; every mock record is a valid miss record', () => {
   assert.deepEqual([...MISS_SOURCES], ['plan', 'validate', 'decision-trace', 'reason-ledger']);

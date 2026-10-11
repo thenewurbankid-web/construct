@@ -5,6 +5,9 @@
   "type": "module",
   "license": "MIT",
   "private": true,
+  "dependencies": {
+    "@line/construct-engine": "^0.9.0"
+  },
   "bin": {
     "line-static-share": "./static-share.mjs"
   },

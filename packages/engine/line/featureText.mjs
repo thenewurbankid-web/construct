@@ -2,7 +2,7 @@
 // sentences, the spec.md parser and the static coverage match. No fs, no model: the real reader (feature.mjs) and the
 // contract's mock (mock.mjs, which also runs in the browser) both build their LineFeatureDetail from these.
 import { LINE_KINDS } from './contract.mjs';
-import { summarize } from '../../summarize/index.mjs';
+import { summarize } from '@line/summarize';
 
 /** Kind -> [singular, plural] as a person says it. */
 const NOUNS = { pages: ['page', 'pages'], components: ['component', 'components'], workflows: ['workflow', 'workflows'], fixtures: ['fixture', 'fixtures'] };
