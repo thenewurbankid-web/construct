@@ -73,18 +73,23 @@ export function rawIds(s) {
 const FULL = /^["'(]?[A-Z0-9][\s\S]*[.?!]["')]?$/;
 
 /**
- * Does one sentence pass the rules?
+ * Does one sentence pass the rules? `names` are item and feature names as the person wrote them: they are names,
+ * not slots (orderCheckout), and a sentence may start with one (orders has 1 page.).
  * @param {string} sentence
+ * @param {{names?: string[]}} [options]
  * @returns {import('./contract.mjs').SentenceCheck}
  */
-export function checkSentence(sentence) {
+export function checkSentence(sentence, { names = [] } = {}) {
   /** @type {import('./contract.mjs').SentenceProblem[]} */
   const problems = [];
   const s = String(sentence ?? '').trim();
-  if (!FULL.test(s) || s.split(/\s+/).length < 2) problems.push({ rule: 'SENT-FULL', sentence: 'It is not a full sentence: start with a capital letter, use at least two words and end with a full stop.' });
+  // A sentence may start with the name of an item or a feature as the person wrote it ("orders has 1 page.").
+  const named = names.find((n) => s.startsWith(n) && /^[\s,:;'"]/.test(s.slice(n.length)));
+  const lead = named ? `X${s.slice(named.length)}` : s;
+  if (!FULL.test(lead) || s.split(/\s+/).length < 2) problems.push({ rule: 'SENT-FULL', sentence: 'It is not a full sentence: start with a capital letter, use at least two words and end with a full stop.' });
   const ids = rawIds(s);
   if (ids.length) problems.push({ rule: 'SENT-ID', sentence: `It names ${ids.length === 1 ? 'a raw id' : 'raw ids'} (${ids.join(', ')}); move ${ids.length === 1 ? 'it' : 'them'} under Details.` });
-  const slots = slotTokens(s);
+  const slots = slotTokens(s).filter((w) => !names.includes(w));
   if (slots.length) problems.push({ rule: 'SENT-SLOT', sentence: `It uses slot names (${slots.join(', ')}); write them as words, for example "${slotWords(slots[0])}".` });
   return { ok: problems.length === 0, problems };
 }

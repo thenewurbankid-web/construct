@@ -1,0 +1,13 @@
+{
+  "$comment": "cs1: atomic-codemod's to-english step (code in the atomic pattern -> English, no model), linked from its own git repo like links.json (no source copy). The folder is $ATOMIC_CODEMOD_SOURCE_DIR, else `default`. `commit` pins its HEAD; bump with `node packages/line-links/link.mjs --pin` after checking the change.",
+  "source": {
+    "repo": "atomic-codemod",
+    "branch": "master",
+    "env": "ATOMIC_CODEMOD_SOURCE_DIR",
+    "default": "~/Desktop/atomic-codemod",
+    "commit": "885b32e6c7105eab317ae9f1e5e6ae9643da010b"
+  },
+  "links": {
+    "@smith/to-english": { "path": ".", "entry": "to-english.js", "what": "atomic-codemod's to-english step" }
+  }
+}
