@@ -14,6 +14,8 @@ export * as lineToolRegistry from './line/toolRegistry.mjs';
 export * as lineImportAgent from './line/importAgentDisk.mjs';
 /** `@line/construct-engine/line/import-verify` */
 export * as lineImportVerify from './line/importVerify.mjs';
+/** `@line/construct-engine/line/characterize` */
+export * as lineCharacterize from './line/characterize.mjs';
 /** `@line/construct-engine/line/drafter` */
 export * as lineDrafter from './line/drafter/index.mjs';
 /** `@line/construct-engine/line/drafter/plan-draft` */
