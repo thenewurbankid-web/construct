@@ -1,7 +1,7 @@
 // Line Cockpit mock (contract.mjs): an in-memory LineOps over a small fixed project, so the server
 // router (T4) and the screens (T5, T6) can be built and tested before the real model and operations
 // land. It keeps the contract's rules: plans are pure, applyChange is the only thing that changes
-// state, a cross-feature import is refused with a LINE-DIR finding, and every message is a sentence.
+// state, a NEW cross-feature import is refused with a LINE-DIR finding (old problems never block), and every message is a sentence.
 import { LineOpError } from './contract.mjs';
 
 const LIB = 'library';
@@ -119,7 +119,10 @@ export function createMockLineOps({ files: initial = MOCK_FILES } = {}) {
       const next = { ...files };
       for (const f of change.files) { if (f.content === null) delete next[f.path]; else next[f.path] = f.content; }
       const touched = new Set(change.files.map((f) => f.path));
-      const findings = findingsOf(next).filter((x) => touched.has(x.file));
+      // Like the real writer (ops.mjs onlyNewProblems): only problems the change adds block it; old ones stay.
+      const key = (x) => `${x.rule}|${x.file}|${x.sentence}`;
+      const before = new Set(findingsOf(files).map(key));
+      const findings = findingsOf(next).filter((x) => touched.has(x.file) && !before.has(key(x)));
       if (findings.some((x) => x.severity === 'error')) {
         return { ok: false, sentence: `Nothing was saved: ${findings[0].sentence.charAt(0).toLowerCase()}${findings[0].sentence.slice(1)}`, files: [], findings };
       }

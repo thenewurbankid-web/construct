@@ -61,19 +61,24 @@ test('coerceValue: an input string becomes the prop kind, and a bad number is re
   assert.equal(coerceValue('string', 'Orders 2'), 'Orders 2');
 });
 
-test('save round trip on the contract mock: a title saves; the refused page stays unchanged', () => {
+test('save round trip on the contract mock: a title saves, even on a page with an old problem; a new cross-feature import is refused', () => {
   const ops = createMockLineOps();
   const tree = treeFromSource(ops.files()['features/orders/pages/OrdersPage.tsx']);
   const [part] = pageParts(tree);
   const ok = ops.applyChange('/m', ops.planSetProp('/m', setPropRequest('features/orders/pages/OrdersPage.tsx', part, part.props[0], 'All orders')));
   assertApplyResult(ok);
   assert.deepEqual(saveOutcome(ok), { ok: true, sentence: 'Saved. Sets title to "All orders" on the page OrdersPage.', findings: [] });
-  const file = 'features/billing/pages/InvoicesPage.tsx';
+  // InvoicesPage already imports from orders (LINE-DIR); only NEW problems block, so a title edit lands.
+  const invoices = ops.applyChange('/m', ops.planSetProp('/m', { file: 'features/billing/pages/InvoicesPage.tsx', nodeId: 'n0', prop: 'title', kind: 'string', value: 'Bills' }));
+  assert.equal(saveOutcome(invoices).ok, true);
+  // A change that adds a cross-feature import to OrdersPage is refused and leaves it as it was.
+  const file = 'features/orders/pages/OrdersPage.tsx';
   const before = ops.files()[file];
-  const refused = ops.applyChange('/m', ops.planSetProp('/m', { file, nodeId: 'n0', prop: 'title', kind: 'string', value: 'Bills' }));
+  const content = before.replace("import ListPage", "import { InvoicesPage } from '../../billing/pages/InvoicesPage';\nimport ListPage");
+  const refused = ops.applyChange('/m', { summary: 'Adds an import.', files: [{ path: file, content }] });
   const out = saveOutcome(refused);
   assert.equal(out.ok, false);
-  assert.match(out.sentence, /^Nothing was saved: feature "billing" imports from feature "orders"/);
+  assert.match(out.sentence, /^Nothing was saved: feature "orders" imports from feature "billing"/);
   assert.equal(out.findings[0].rule, 'LINE-DIR');
   assert.equal(ops.files()[file], before);
 });
