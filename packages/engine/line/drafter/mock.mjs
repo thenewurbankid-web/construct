@@ -20,7 +20,7 @@ export function createMockDrafter() {
       const delta = [{ op: 'add-node', node: '<F1>/components/<N1>', kind: 'components', layer: 'ui', area: 'feature', feature: '<F1>' }, { op: 'add-edge', type: 'base', from: '<F1>/components/<N1>', to: '<L1>' }];
       return {
         request: String(request).trim() ? 'add a <library:L1> to <feature:F1>' : '',
-        slots: { F1: { kind: 'feature', layers: ['ui'] }, L1: { kind: 'library', itemKind: 'components', role: 'atom' }, N1: { kind: 'name', isNew: true } },
+        slots: { F1: { kind: 'feature', layers: ['ui'] }, L1: { kind: 'library', itemKind: 'components', role: 'atom' }, N1: { kind: 'new', isNew: true } },
         labels: { intent: { id: 'add.component', confidence: 0.9 }, alternatives: [], inCatalog: true, target: 'F1', layers: [{ layer: 'ui', confidence: 0.9 }, { layer: 'library', confidence: 0.3 }], via: 'rules' },
         from: { project: 'p0', feature: 'f0', layers: {} },
         routes: [

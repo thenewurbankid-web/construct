@@ -51,10 +51,10 @@ export const ROUTE_STATUS = Object.freeze(['ok', 'refused', 'wrong-shape', 'fail
 
 /** Slot kinds: what a typed slot in a delexicalized request or a slot-form arg stands for. */
 export const SLOT_KINDS = Object.freeze({
-  F: 'feature', P: 'page', C: 'component', W: 'workflow', X: 'fixture', L: 'library', A: 'prop', V: 'value', N: 'name', K: 'code', R: 'problem', T: 'part', G: 'fragment', H: 'hash',
+  F: 'feature', P: 'page', C: 'component', W: 'workflow', X: 'fixture', L: 'library', A: 'prop', S: 'variable', V: 'value', N: 'new', K: 'code', R: 'problem', T: 'part', G: 'fragment', U: 'unknown',
 });
 /** A slot reference inside a stored string: <F1>, <C1.file>, or as written in a request <feature:F1>. */
-export const SLOT_REF = /<([A-Z])(\d+)(?:\.([a-zA-Z]+))?>/g;
+export const SLOT_REF = /<([A-Z])(\d+)(?:\.([a-zA-Z][a-zA-Z0-9]*))?>/g;
 export const REQUEST_SLOT = /<([a-z-]+):([A-Z]\d+)>/g;
 
 /**
@@ -72,6 +72,8 @@ export const TEMPLATES = Object.freeze({
   'fix-all': { tools: ['line.fix'], intents: ['fix.problem'] },
   'create-layout': { tools: ['line.createLayout'], intents: ['add.layout'] },
   'new-feature': { tools: ['line.baseOn'], intents: ['add.feature'] },
+  /** Two single-layer routes on different layers, run one after the other (multi-layer intents only). */
+  combo: { tools: [], intents: [] },
 });
 
 /**
