@@ -438,6 +438,8 @@ export const LINE_PLAN_TOOLS = Object.freeze([
   { name: 'line.removeWorkflowTransition', kind: 'write', request: 'RemoveWorkflowTransitionRequest' },
   { name: 'line.leaveAsIs', kind: 'write', request: '{stepId}' },
   { name: 'line.import.fix', kind: 'write', request: '{folder, tool, args} (ci2: a typed fix run inside the import folder)' },
+  { name: 'line.import.save', kind: 'write', request: '{folder} (iv2: save the folder before an import, so it can be undone)' },
+  { name: 'line.import.undo', kind: 'write', request: '{folder} (iv2: put the folder back as line.import.save saved it)' },
   { name: 'line.project', kind: 'read', request: '{}' },
 ]);
 export const CHECK_KINDS = Object.freeze(['validate', 'types', 'tests', 'file', 'spec']);

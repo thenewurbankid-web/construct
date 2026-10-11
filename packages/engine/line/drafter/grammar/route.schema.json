@@ -724,6 +724,58 @@
                 }
               }
             }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "tool",
+              "args"
+            ],
+            "properties": {
+              "tool": {
+                "const": "line.import.save"
+              },
+              "args": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "folder"
+                ],
+                "properties": {
+                  "folder": {
+                    "type": "string",
+                    "pattern": "^((components|pages|workflows|fixtures)/)?<[A-Z][0-9]{1,3}(\\.[a-zA-Z][a-zA-Z0-9]{0,15})?>$"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "tool",
+              "args"
+            ],
+            "properties": {
+              "tool": {
+                "const": "line.import.undo"
+              },
+              "args": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "folder"
+                ],
+                "properties": {
+                  "folder": {
+                    "type": "string",
+                    "pattern": "^((components|pages|workflows|fixtures)/)?<[A-Z][0-9]{1,3}(\\.[a-zA-Z][a-zA-Z0-9]{0,15})?>$"
+                  }
+                }
+              }
+            }
           }
         ]
       }

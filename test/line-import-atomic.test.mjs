@@ -179,3 +179,36 @@ test('all-or-nothing, plan steps: the Import agent saves the folder first; when 
   assert.equal(saved.undo, 'undone');
   assert.ok(saved.changes.some((c) => c.action === 'undo'));
 });
+
+test('all-or-nothing, Cockpit Apply through the plan: line.import.save first; after a late refusal, leave it and line.import.undo puts every file back', async () => {
+  const dir = copy();
+  fs.writeFileSync(path.join(dir, 'architecture.yml'), 'version: 1\n');
+  const before = hashes(dir);
+  const svc = createLinePlanService({ root: dir, commands: null });
+  /** One step as Cockpit runs it: added, approved by the person's click, run. */
+  const run = async (tool, args) => {
+    const added = await svc.addStep({ tool, args }, 'ui');
+    assert.equal(added.ok, true, added.sentence);
+    assert.equal((await svc.approve(added.stepId, 'ui')).ok, true);
+    const r = await svc.runNext('ui', added.stepId);
+    return r.steps.find((s) => s.id === added.stepId);
+  };
+  assert.equal((await run('line.import.save', { folder: FROZEN })).state, 'done');
+  const plan = planImport(dir, FROZEN, {});
+  let refused = null;
+  for (const s of plan.steps) {
+    const ran = await run(s.tool, s.args);
+    if (ran.state !== 'done') { refused = ran; break; }
+  }
+  assert.ok(refused, 'a later step is refused');
+  assert.ok(fs.existsSync(path.join(dir, FROZEN, 'library/components/Badge.tsx')), 'earlier steps landed');
+  assert.equal((await run('line.leaveAsIs', { stepId: refused.id })).state, 'done');
+  const undo = await run('line.import.undo', { folder: FROZEN });
+  assert.equal(undo.state, 'done', undo.sentence);
+  const lineState = (f) => f.startsWith('line/') || f.startsWith(`${FROZEN}/line/`);
+  assert.deepEqual(Object.fromEntries(Object.entries(hashes(dir)).filter(([f]) => !lineState(f))), before, 'every file is back, byte for byte');
+  assert.deepEqual(folders(path.join(dir, FROZEN)).filter((d) => d !== 'line' && !d.startsWith('line/')), ['components', 'hooks', 'pages']);
+  const again = await run('line.import.undo', { folder: FROZEN });
+  assert.equal(again.state, 'needs-you', 'a second undo has no saved copy: one sentence, nothing changed');
+  assert.match(again.sentence, /no saved copy/);
+});
