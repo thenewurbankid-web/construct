@@ -15,6 +15,7 @@
 // person-only tool (plan.approve) refuses an agent. Nothing here writes a project file.
 import fs from 'node:fs';
 import path from 'node:path';
+import { createTransaction } from '../transactionalWriter.mjs';
 import { LINE_PLAN_TOOLS, assertToolEntry } from './contract.mjs';
 
 // ------------------------------------------------------------------------------------------------- schemas
@@ -47,7 +48,7 @@ const NONE = fieldsSchema([]);
 const http = (method, p) => ({ method, path: `/api/line${p}` });
 
 /** @type {readonly import('./contract.mjs').ToolEntry[]} */
-export const TOOL_ENTRIES = Object.freeze([
+export const TOOL_ENTRIES = Object.freeze(/** @type {any[]} */ ([
   // Line reads (Cockpit routes; line.project is also a plan step).
   { id: 'line.project', kind: 'read', writes: null, inputSchema: NONE, outputSchema: 'LineProject', sentence: 'Reads the Line view of the project: library, features, items and findings.', surfaces: { http: http('GET', '/project'), plan: true } },
   { id: 'line.feature', kind: 'read', writes: null, inputSchema: fieldsSchema(['name']), outputSchema: 'LineFeatureDetail', sentence: 'Reads one feature: its items by kind, a summary and how much of its spec is covered.', surfaces: { http: http('GET', '/feature') } },
@@ -92,7 +93,7 @@ export const TOOL_ENTRIES = Object.freeze([
   { id: 'gatelm.fill', kind: 'write', writes: 'line', inputSchema: fieldsSchema(['draftId', 'gapKey'], ['value']), outputSchema: 'GateLM Draft', sentence: 'Records one answer for one gap of a draft.', controlId: 'gatelm-option', surfaces: { gatelm: true, studio: true } },
   { id: 'gatelm.answer', kind: 'write', writes: 'line', inputSchema: fieldsSchema(['questionId'], ['optionIndex', 'value']), outputSchema: 'GateLM Draft', sentence: 'Answers one of a draft\'s questions.', surfaces: { gatelm: true, studio: true } },
   { id: 'gatelm.setAuto', kind: 'write', writes: 'line', inputSchema: fieldsSchema(['draftId', 'auto']), outputSchema: 'GateLM Draft', sentence: 'Turns a draft\'s Auto setting on or off.', surfaces: { gatelm: true, studio: true } },
-].map((e) => Object.freeze({ ...e, surfaces: Object.freeze(e.surfaces) })));
+]).map((e) => Object.freeze({ ...e, surfaces: Object.freeze(e.surfaces) })));
 
 for (const e of TOOL_ENTRIES) assertToolEntry(e);
 // The plan's own tool list (cp1, contract.mjs LINE_PLAN_TOOLS) must agree with the catalog, kind for kind.
@@ -104,7 +105,7 @@ for (const t of LINE_PLAN_TOOLS) {
 /**
  * Construct's commands as entries (construct.validate, ...), from a PlanRegistry over the CLI commands
  * (packages/core/plan-registry.mjs commandPlanRegistry). A write command changes project files, so it is a plan step.
- * @param {{list: () => {name: string, kind: 'read'|'write', schema: any, describe: string}[]}} commands
+ * @param {{list: () => any[]}} commands
  * @returns {import('./contract.mjs').ToolEntry[]}
  */
 export function commandEntries(commands) {
@@ -123,7 +124,7 @@ export function allEntries(extra = []) {
   return all;
 }
 
-/** @param {string} id @param {import('./contract.mjs').ToolEntry[]} [entries] */
+/** @param {string} id @param {readonly import('./contract.mjs').ToolEntry[]} [entries] */
 export const entryById = (id, entries = TOOL_ENTRIES) => entries.find((e) => e.id === id) ?? null;
 /** The entries a Cockpit route resolves to (exactly one when the route is known). @param {string} method @param {string} fullPath */
 export const entriesForRoute = (method, fullPath) => TOOL_ENTRIES.filter((e) => e.surfaces.http && e.surfaces.http.method === method && e.surfaces.http.path === fullPath);
@@ -144,12 +145,17 @@ export function toolView(e) {
 // ------------------------------------------------------------------------------------------------- the log
 /** Where Line's own-state writes are logged, one JSON line each. */
 export const toolLogFile = (root) => path.join(root, 'line', 'log', 'tools.jsonl');
-/** Append one entry (tool, who, ok; never the arguments, which may hold code). Never throws. */
+/** Append one entry (tool, who, ok; never the arguments, which may hold code) through Construct's writer, atomically.
+ * Never throws: a log that cannot be written never stops the change. */
 export function logToolWrite(root, { tool, by, ok }) {
   try {
-    fs.mkdirSync(path.dirname(toolLogFile(root)), { recursive: true });
-    fs.appendFileSync(toolLogFile(root), `${JSON.stringify({ at: new Date().toISOString(), tool, by, ok })}\n`, 'utf8');
-  } catch { /* a log that cannot be written never stops the change */ }
+    const file = toolLogFile(root);
+    let before = '';
+    try { before = fs.readFileSync(file, 'utf8'); } catch { /* first entry */ }
+    const txn = createTransaction(root);
+    txn.writeFile(file, `${before}${JSON.stringify({ at: new Date().toISOString(), tool, by, ok })}\n`);
+    try { txn.commit({ validate: () => ({ violations: [], ok: true }) }); } catch { txn.reset(); }
+  } catch { /* see above */ }
 }
 
 // ------------------------------------------------------------------------------------------------- dispatch
@@ -193,7 +199,7 @@ export async function realLineOps() {
 /**
  * The registry for one project.
  * @param {{root: string, planService: {view: Function, addStep: Function, approve: Function, runNext: Function},
- *   handlers?: Record<string, (args: any) => unknown>, commands?: {list: Function, call: Function} | null,
+ *   handlers?: Record<string, (args: any) => unknown>, commands?: {list: () => any[], call: (name: string, args: any) => Promise<any>} | null,
  *   gatelm?: {name: string, kind: string, run: (args: any) => Promise<unknown>}[] | null,
  *   blocks?: Record<string, (args: any) => unknown>}} o
  *   `handlers`: lineHandlers(root, ops). `commands`: the construct.* PlanRegistry. `gatelm`: @mx/plan gatelmTools(api)
@@ -201,7 +207,7 @@ export async function realLineOps() {
  */
 export function createToolRegistry({ root, planService, handlers = {}, commands = null, gatelm = null, blocks = {} }) {
   const entries = allEntries(commands ? commandEntries(commands) : []);
-  /** @type {Record<string, (args: any) => unknown>} */
+  /** @type {Record<string, (args: any, by?: string) => unknown>} */
   const direct = {
     ...handlers,
     ...blocks,
@@ -227,7 +233,7 @@ export function createToolRegistry({ root, planService, handlers = {}, commands 
     const e = entryById(id, entries);
     if (!e) return refuse(id, 'UNKNOWN_TOOL', `There is no tool named ${id || '(none)'}`);
     const parsed = e.inputSchema.safeParse(args ?? {});
-    if (!parsed.success) return refuse(id, 'BAD_ARGS', `The arguments do not fit ${id}: ${parsed.error.issues.map((i) => `${i.path.join('.') || 'args'} ${i.message}`).join('; ')}`);
+    if (!parsed.success) return refuse(id, 'BAD_ARGS', `The arguments do not fit ${id}: ${/** @type {any} */ (parsed).error.issues.map((i) => `${i.path.join('.') || 'args'} ${i.message}`).join('; ')}`);
     if (e.personOnly && isAgent(by)) return refuse(id, 'PERSON_ONLY', `Only a person can do this, in Cockpit; an agent cannot (${id})`);
     const run = direct[id];
     // A project write, or any write with no direct handler, only ever becomes a plan step.
