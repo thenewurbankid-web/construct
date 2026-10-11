@@ -385,7 +385,7 @@ export function createLinePlanRegistry({ root, ops = REAL_PLAN_OPS, commands = n
 /** Construct's commands as plan tools (construct.validate, ...), loaded on demand (the CLI's registry is large). */
 export async function constructCommandTools() {
   const [{ createCommandRegistry }, { registerBuiltinCommands }, { commandPlanRegistry }] = await Promise.all([
-    import('@line/construct-core/command-registry'), import('@line/construct-core/builtin-commands'), import('../../core/plan-registry.mjs'),
+    import('@line/construct-core/command-registry'), import('@line/construct-core/builtin-commands'), import('@line/construct-core/plan-registry'),
   ]);
   const commands = createCommandRegistry();
   registerBuiltinCommands(commands);

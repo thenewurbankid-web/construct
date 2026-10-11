@@ -44,7 +44,7 @@ export function moduleContract(file) {
 /** Real sources, overridable so a test can add a rule or a command and watch the spec change. */
 async function realSources() {
   const [{ catalogRules }, { LINE_RULES, ITEM_KINDS, KIND_LAYER, FEATURE_FILES, LIBRARY_FILES, SHARED_CONCERNS }, { createCommandRegistry }, { registerBuiltinCommands }, { READ_COMMANDS, NEVER_OFFERED, commandToolName }] = await Promise.all([
-    import('@line/construct-core/rules-catalog'), import('@line/construct-core/profiles/line/contract'), import('../../core/command-registry.mjs'),
+    import('@line/construct-core/rules-catalog'), import('@line/construct-core/profiles/line/contract'), import('@line/construct-core/command-registry'),
     import('@line/construct-core/builtin-commands'), import('@line/construct-core/plan-registry'),
   ]);
   const registry = createCommandRegistry();
