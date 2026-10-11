@@ -98,6 +98,25 @@
  * @property {(root: string, change: StagedChange) => ApplyResult} applyChange
  */
 
+/**
+ * One prop of a rendered component (T7, packages/engine/line/renderComponent.mjs): its react-docgen type, the kind
+ * Cockpit edits it as, and the value used (a sample, a fixture value or the person's); null when it has none.
+ * @typedef {object} RenderProp
+ * @property {string} name
+ * @property {string} type     As written in the source, e.g. "string", "number", "'primary' | 'ghost'".
+ * @property {'string'|'number'|'boolean'|'other'} kind
+ * @property {string|number|boolean|null|unknown} value
+ */
+
+/**
+ * GET /api/line/render?file=<root-relative <library>/components file>&props=<JSON object>: one library component
+ * rendered alone to a themed HTML document (pure read). A refusal (path outside `<library>/components`, bad props)
+ * is HTTP 400; no renderer (`NO_RENDERER`, the Morpheus link is down) or a failed render (`RENDER_FAILED`) is 200
+ * with `ok: false`, the sentence, the technical reason under `detail`, and the props still listed.
+ * @typedef {{ok: true, html: string, props: RenderProp[], via: 'morpheus'|'construct-preview'}
+ *   | {ok: false, code: string, sentence: string, detail?: string, props?: RenderProp[]}} RenderResult
+ */
+
 /** A refused request (bad name, unknown item, name taken). `sentence` is shown as is. */
 export class LineOpError extends Error {
   /** @param {string} sentence @param {string} code */
@@ -114,6 +133,7 @@ export const LINE_API = Object.freeze([
   { method: 'POST', path: '/api/line/base-on', request: 'BaseOnRequest', response: 'ApplyResult' },
   { method: 'POST', path: '/api/line/promote', request: 'PromoteRequest', response: 'ApplyResult' },
   { method: 'POST', path: '/api/line/page-prop', request: 'SetPropRequest', response: 'ApplyResult' },
+  { method: 'GET', path: '/api/line/render', request: 'file, props (query)', response: 'RenderResult' },
 ]);
 
 export const LINE_KINDS = Object.freeze(['components', 'pages', 'workflows', 'fixtures']);

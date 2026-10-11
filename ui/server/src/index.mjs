@@ -86,6 +86,7 @@ import { validateArchitecture } from '../../../packages/core/architecture-enforc
 import { createComponentsRouter } from './componentsApi.mjs';
 import { createLineRouter } from './lineApi.mjs';
 import { createLineOpsRouter } from './lineOpsApi.mjs';
+import { createLineRenderRouter } from './lineRenderApi.mjs';
 import { createStoryBridgeRouter } from './storyBridgeApi.mjs';
 import { createNotesRouter } from './notesApi.mjs';
 import { openNotesStore } from './notesStore.mjs';
@@ -1250,6 +1251,14 @@ app.use('/api/line', createLineRouter({
 app.use('/api/line', createLineOpsRouter({
   clientOrigin: CLIENT_ORIGIN,
   afterSave,
+  getRoot: () => {
+    const root = containedProjectRoot(getProjectDir());
+    return root ? { ok: true, root } : { ok: false, error: 'No project is open; pick a project first.' };
+  },
+}));
+
+// T7 (Line Cockpit): one library component rendered alone with its props (Morpheus's isolated render; a pure read).
+app.use('/api/line', createLineRenderRouter({
   getRoot: () => {
     const root = containedProjectRoot(getProjectDir());
     return root ? { ok: true, root } : { ok: false, error: 'No project is open; pick a project first.' };
