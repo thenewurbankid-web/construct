@@ -143,6 +143,54 @@ export type LineFeatureDetail = {
   spec: { file: string; stories: SpecStory[] } | null;
   findings: LineFinding[];
 };
+/** cp1: Line actions as plan steps (contract.mjs PlanView). A check that defines a step's "done". */
+export type PlanCheckKind = 'validate' | 'types' | 'tests' | 'file' | 'spec';
+export type PlanCheck = { id: string; sentence: string; kind: PlanCheckKind };
+/** Before a step runs: one expected output, already there or not. */
+export type GapItem = { checkId: string; state: 'present' | 'partial' | 'missing'; sentence: string };
+/** After a step runs: one check's outcome. */
+export type CheckResult = { checkId: string; ok: boolean; sentence: string };
+/** A `fix` comes from Construct's refusal (a finding's typed fix): `step` applies it, null for advice; rank 1 is `recommended`. */
+export type StepOption = { id: 'retry' | 'leave' | 'fix'; sentence: string; fixId?: string; recommended?: boolean; step?: { tool: string; args: Record<string, unknown> } | null };
+/** What a line.* change step records when it ran. */
+export type LineStepResult = {
+  apply: ApplyResult;
+  checks: CheckResult[];
+  passed: number;
+  total: number;
+  needsYou: boolean;
+  options: StepOption[];
+  stopped: boolean;
+  sentence: string;
+};
+export type PlanStepState = 'waiting' | 'ready' | 'running' | 'done' | 'needs-you' | 'needs-fix' | 'failed' | 'skipped';
+export type PlanStepView = {
+  id: string;
+  n: number;
+  tool: string;
+  args: Record<string, unknown>;
+  why: string;
+  kind: 'read' | 'write';
+  state: PlanStepState;
+  sentence: string;
+  gap: GapItem[];
+  result: LineStepResult | Record<string, unknown> | null;
+  error: string | null;
+};
+/** GET /api/line/plan and every plan write. */
+export type PlanView = {
+  ok: true;
+  sessionId: string;
+  planId: string | null;
+  version: number | null;
+  status: string | null;
+  steps: PlanStepView[];
+  store: { linked: boolean; sentence: string };
+  message?: string;
+  /** POST /api/line/plan/step only: the step just added. */
+  stepId?: string;
+};
+export type PlanStepRequest = { tool: string; args?: Record<string, unknown>; why?: string };
 
 /** Every LINE_API route, as the client calls it. Bodies come back as the server sent them, refusals included; each
  * screen turns them into what it shows. A network failure rejects. */
@@ -156,6 +204,10 @@ export type LineHttp = {
   getFeature: (name: string) => Promise<LineFeatureDetail | LineRefusal>;
   getWorkspace: () => Promise<LineWorkspace | LineRefusal>;
   setWorkspace: (req: WorkspaceRequest) => Promise<LineWorkspace | LineRefusal>;
+  getPlan: () => Promise<PlanView | LineRefusal>;
+  addPlanStep: (req: PlanStepRequest) => Promise<PlanView | LineRefusal>;
+  approvePlanStep: (stepId: string) => Promise<PlanView | LineRefusal>;
+  runPlan: (stepId?: string) => Promise<PlanView | LineRefusal>;
   fix: (req: FixRequest) => Promise<ApplyResult | LineRefusal>;
   getFragments: (file: string) => Promise<FragmentList | LineRefusal>;
   setFragment: (req: SetFragmentRequest) => Promise<ApplyResult | LineRefusal>;
