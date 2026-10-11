@@ -38,6 +38,19 @@ test('rows: newest first; the last run is the step the person ran, once it ran, 
   assert.deepEqual(stepRow(done).files, apply.files);
 });
 
+test('rows (cs1): the summarizer\'s sentences come first; Details hold the tool call, checks, files, then its own details without repeats', () => {
+  const plain = { sentences: ['Saved: Creates StatusBadge.'], details: [{ label: 'Tool call', text: 'dup' }, { label: 'Step', text: 's3 (step 3, done)' }], via: 'static' };
+  const r = stepRow({ ...done, plain });
+  assert.deepEqual(r.sentences, ['Saved: Creates StatusBadge.']);
+  assert.deepEqual(r.details.map((d) => [d.label, d.text, d.testId]), [
+    ['Tool call', 'line.baseOn({"libraryId":"components/Badge","feature":"orders","name":"StatusBadge"})', 'plan-step-call'],
+    ['Check', 'Passed: Validate shows no new problems.', undefined],
+    ['File written', 'features/orders/components/StatusBadge.tsx', undefined],
+    ['Step', 's3 (step 3, done)', undefined],
+  ]);
+  assert.deepEqual(stepRow(waiting).sentences, ['Waiting for your approval: Creates StatusBadge.'], 'no summary from the server: the step sentence');
+});
+
 test('answers: a PlanView, a refusal sentence, or a fallback sentence', () => {
   assert.equal(toPlanAnswer(view([])).ok, true);
   assert.deepEqual(toPlanAnswer({ ok: false, sentence: 'No.', code: 'X', detail: 'TS2322' }), { ok: false, sentence: 'No.', code: 'X', detail: 'TS2322' });

@@ -60,7 +60,7 @@ for (const builtIn of [true, false]) {
     assert.equal(ran.status, 200, ran.body.sentence);
     const done = ran.body.steps.find((s) => s.id === added.body.stepId);
     assert.equal(done.state, 'done');
-    assert.match(done.sentence, /^Saved\. Creates StatusBadge/);
+    assert.match(done.sentence, /^Saved: Creates StatusBadge/);
     assert.ok(fs.existsSync(path.join(dir, BADGE_FILE)));
     assert.deepEqual(saved, [BADGE_FILE]);
   });

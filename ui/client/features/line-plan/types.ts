@@ -1,6 +1,6 @@
 // The Plan panel's view models. The plan's shapes come from the one shared mirror (lib/lineContract.ts), which follows
 // packages/engine/line/contract.mjs (PlanView).
-import type { ApplyResult, PlanStepRequest, PlanStepState, PlanView } from '@/lib/lineContract';
+import type { ApplyResult, PlainDetail, PlanStepRequest, PlanStepState, PlanView } from '@/lib/lineContract';
 
 export type * from '@/lib/lineContract';
 
@@ -30,6 +30,10 @@ export type PlanStepRow = {
   /** "Waiting for your approval", "Done", "Needs you", ... */
   stateLabel: string;
   sentence: string;
+  /** cs1: the summarizer's sentences (the step sentence when the server sent none), shown first by <PlainFirst>. */
+  sentences: string[];
+  /** cs1: everything for Details: the tool call, each check, the files written, then the summarizer's own details. */
+  details: PlainDetail[];
   /** Before it runs: "Already there: ...", "To do: ...". */
   gapLines: string[];
   /** After it ran: the failing checks, in plain English. */

@@ -126,7 +126,7 @@ export function linkStatus(options = {}) {
   });
   const linked = packages.filter((p) => p.ok).length;
   return finish(packages, head, drift, linked === packages.length
-    ? `All ${linked} Line links are ready from ${sourceDir} at commit ${short(head)}.`
+    ? `${linked === 1 ? `The ${table.source.repo} link is` : `All ${linked} Line links are`} ready from ${sourceDir} at commit ${short(head)}.`
     : `${linked} of ${packages.length} Line links are ready; the others use Construct's static path.`);
 }
 

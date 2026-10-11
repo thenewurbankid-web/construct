@@ -1,9 +1,9 @@
+import { PlainFirst } from '@/lib/PlainFirst';
 import type { PlanStepRow, StepChoice } from '../types';
 
 type Decide = { busy: boolean; onApprove: (stepId: string) => void; onChoose: (stepId: string, choice: StepChoice) => void };
 
 const line = (text: string) => <li key={text}>{text}</li>;
-const code = (text: string) => <code key={text}>{text}</code>;
 
 /** Plain-English lines under a step (what is already there, which checks failed, what a finding suggests). */
 function Lines({ label, lines, testId }: { label: string; lines: string[]; testId: string }) {
@@ -33,27 +33,21 @@ function Actions({ row, busy, onApprove, onChoose }: Decide & { row: PlanStepRow
   );
 }
 
-/** One plan step: its state and sentence first; what is already there before it runs; the failing checks and the
- * person's choices when it needs them; the tool call, each check and the files written under a collapsed Details. */
+/** One plan step: its state and sentence first (<PlainFirst>, the summarizer's words); what is already there before it
+ * runs; the failing checks and the person's choices when it needs them; the tool call, each check, the files written,
+ * the step id and the options under a collapsed Details. */
 export function PlanStep({ row, ...decide }: Decide & { row: PlanStepRow }) {
   return (
     <li className="lpl-step" data-testid="plan-step" data-state={row.state}>
       <span className="lpl-state" data-state={row.state}>
         {row.stateLabel}
       </span>
-      <p className="lpl-sentence" data-testid="plan-step-sentence">
-        {row.sentence}
-      </p>
-      <Lines label={`Before step ${row.n} runs`} lines={row.gapLines} testId="plan-step-gap" />
-      <Lines label={`Checks that failed in step ${row.n}`} lines={row.failing} testId="plan-step-failing" />
-      <Lines label={`What the findings suggest for step ${row.n}`} lines={row.fixes} testId="plan-step-fixes" />
-      <Actions row={row} {...decide} />
-      <details className="lpl-tech">
-        <summary>Details</summary>
-        <code data-testid="plan-step-call">{row.call}</code>
-        {row.checks.map(code)}
-        {row.files.map(code)}
-      </details>
+      <PlainFirst sentences={row.sentences} details={row.details} sentenceTestId="plan-step-sentence" sentenceClassName="lpl-sentence">
+        <Lines label={`Before step ${row.n} runs`} lines={row.gapLines} testId="plan-step-gap" />
+        <Lines label={`Checks that failed in step ${row.n}`} lines={row.failing} testId="plan-step-failing" />
+        <Lines label={`What the findings suggest for step ${row.n}`} lines={row.fixes} testId="plan-step-fixes" />
+        <Actions row={row} {...decide} />
+      </PlainFirst>
     </li>
   );
 }

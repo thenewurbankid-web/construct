@@ -349,6 +349,7 @@
  * @property {GapItem[]} gap      Before it runs (empty once it ran).
  * @property {LineStepResult|null} result
  * @property {string|null} error
+ * @property {import('../../summarize/contract.mjs').Summary} [plain]  cs1: the step as the summarizer says it (packages/summarize).
  *
  * GET /api/line/plan and every plan write answer this.
  * @typedef {object} PlanView

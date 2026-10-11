@@ -1,0 +1,15 @@
+{
+  "name": "@line/summarize",
+  "version": "0.1.0",
+  "description": "Line's summarizer on Smith: every user-facing sentence is made and checked here, with no model (plain English first, the technical part as details).",
+  "type": "module",
+  "license": "MIT",
+  "private": true,
+  "exports": {
+    ".": "./index.mjs",
+    "./contract": "./contract.mjs",
+    "./check": "./check.mjs",
+    "./mock": "./mock.mjs",
+    "./links": "./links.mjs"
+  }
+}

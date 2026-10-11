@@ -122,7 +122,7 @@ for (const [name, load, skip] of [['built-in store (link down)', staticLoad, fal
     assertPlanView(ran);
     const done = ran.steps.find((s) => s.id === added.stepId);
     assert.equal(done.state, 'done');
-    assert.match(done.sentence, /^Saved\. Creates StatusBadge/);
+    assert.match(done.sentence, /^Saved: Creates StatusBadge/);
     assert.equal(exists(dir, BADGE_FILE), true);
     const file = JSON.parse(fs.readFileSync(path.join(dir, `line/plans/${SESSION_ID}.json`), 'utf8'));
     assert.equal(file.plans[0].steps[0].status, 'done');
