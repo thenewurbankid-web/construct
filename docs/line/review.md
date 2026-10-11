@@ -182,3 +182,20 @@ Test: `ui/e2e/tests/line-promote.spec.js` (Playwright), plus the promote cases i
 Gaps: no undo except git; an item used through another feature's index file is not repointed.
 
 UAT (fresh sample): Components → under orders, OrderButton → Promote to library → read the sentence → Promote. Expect the green sentence, an OrderButton card under Molecules, and the status bar at "1 problem" with only the InvoiceCard sentence left.
+
+## Hours 5 and 6: Pages inside a feature, and setting one prop (awaiting UAT)
+
+Tests: `ui/e2e/tests/line-pages.spec.js` (6, Playwright, real server on a copy of the sample), `ui/client/features/line-pages` specs (24 with the other client line specs), plus T3's engine tests.
+1. Pages asks which feature first; orders shows OrdersPage "Based on ListPage", "Fine".
+2. billing's InvoicesPage shows "Needs attention" with the cross-feature sentence; rule and file:line only under Details; accessibility clean.
+3. Saving a new OrdersPage title shows "Saved. Sets title to "All orders" ..." and on disk only that prop changed.
+4. A title edit on InvoicesPage succeeds although the page has an old problem; the old problem is still shown.
+5. A save that would add a cross-feature import is refused with that reason and nothing is written (sent straight to the server: the screen cannot type code values).
+6. One check still runs the screen on the built-in mock.
+
+Gaps: only text, number and yes/no props are editable (no code values); no "View/edit code" or "Fill with AI" yet; Trace's API wiring view is not on this screen yet.
+
+### UAT (fresh sample, see "Before the Hours 3-7 UAT")
+1. Pages → pick orders → OrdersPage "Based on ListPage", "Fine".
+2. Open OrdersPage, set the title to "All orders", Save. Expect "Saved. ..." and the new value.
+3. Pick billing → InvoicesPage shows "Needs attention" with its sentence; change its title and Save: it saves, and still shows the old problem.
