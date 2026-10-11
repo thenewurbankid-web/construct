@@ -271,3 +271,40 @@ UAT (fresh sample):
 1. Features (`/`) → "Your features": billing "Needs attention", orders "All fine".
 2. Click orders → items with "Based on …", the Auto summary, "1 of 2 acceptance points are covered."
 3. Click billing → open Details on InvoicesPage's problem (LINE-DIR, `InvoicesPage.tsx:4`); click a page name → Pages opens on it.
+
+## cu6: one project switcher, one workspace folder (awaiting UAT)
+
+Tests: `test/line-workspace.test.mjs` (10, real writer on a copy of the sample), contract, server and client (3) tests, `ui/e2e/tests/line-workspace.spec.js` (2, real server).
+1. No workspace set means the whole project: nothing changes for existing projects.
+2. Setting the folder saves `line/workspace.json`; it reads back the same; setting it empty returns to the whole project.
+3. A change inside the folder saves; a change outside is refused ("Nothing was saved: <file> is outside your workspace folder <folder>; it stays read-only.") and the project is byte-for-byte unchanged.
+4. One outside file refuses the whole change; `features/orders-old` does not count as inside `features/orders`.
+5. Folders with `..`, absolute paths, `.git`, missing folders, files, and links leading out of the project are refused.
+6. A hand-edited workspace file pointing outside makes Line refuse every change.
+7. Typed fixes and code edits obey the folder too.
+Browser: the header shows "Whole project", then "/ features/orders" after choosing it; Badge and InvoiceCard show "Read-only", OrderCard does not; Base on into orders saves, into billing is refused with the sentence and no file; accessibility clean.
+
+Gaps: choosing the folder is not yet a plan step; the page reloads after choosing; the Base on form still offers features outside the folder (the save refuses them); with the folder at features/orders, Promote is refused because it writes into the library.
+
+UAT (fresh sample):
+1. Project switcher → "Change workspace folder" → features/ → Use on orders. Header shows "/ features/orders"; Badge and InvoiceCard show "Read-only".
+2. Badge → Base on this → orders → Create: saves.
+3. Same with billing: "Nothing was saved: … it stays read-only." and no new file under features/billing.
+
+## cm1: no single point of failure (merged; 5 Trace failures wait for your decision)
+
+Full suite (each file in its own process group): before 5,479 pass / 21 fail; after 5,511 pass / 5 fail (all Trace, see below).
+Real bugs fixed: a wrong-case import (works on macOS, breaks on Linux) is now repaired; `ps` reporting 0 KB for an exiting process no longer fails the benchmark.
+Stale tests updated: Node 24's test output format, benchmark minimums, a git worktree counts as the same repo, generator "golden" outputs no longer run as tests.
+Skipped with a plain reason (this Mac lacks the tool): flock and /proc/meminfo (heavy.sh), ffmpeg subtitles, studio packaging in the monorepo.
+New tests:
+1. LINE-MODULE (every package has a contract, a mock and tests; no reaching inside another package): only LINE-MODULE fires on its failing fixture, at exactly the 8 planted spots; each message says what is missing and where; adding it clears every finding.
+2. The Line validator skips gitignored files inside a git checkout, and checks every file without git.
+3. Local model down or slow: the rules answer, with one sentence saying so; a slow model is given up after 0.2 s and not waited for again.
+4. Writer refusals: a disk error puts back the files already changed; a frozen file and a disk refusal are one sentence each, and nothing lands.
+5. Cockpit down (no server, network blocked): `validate --profile line` and `create feature` still work from the command line.
+Plan: `docs/line/server-split.md`.
+
+Gaps: empty folders made before a disk error are left behind; LINE-MODULE does not yet check `ui/` reaching into `packages/`; memory, plan-store and registry fallbacks are not done. On this repo LINE-MODULE reports 216 errors (each package lacks a typed contract; engine and core reach into other packages 205 times).
+
+No UAT (nothing visible).

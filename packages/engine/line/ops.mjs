@@ -13,6 +13,7 @@ import { aggregateValidation } from '../../core/registry.mjs';
 import { enforcersForRoot } from '../../core/profiles/index.mjs';
 import { planFileMove, applyEdits } from '../tsFileMove.mjs';
 import { LineOpError, assertStagedChange } from './contract.mjs';
+import { readWorkspace, isInsideWorkspace } from './workspace.mjs';
 
 const posix = path.posix;
 const SINGULAR = { components: 'component', pages: 'page', workflows: 'workflow', fixtures: 'fixture' };
@@ -367,10 +368,36 @@ function toFinding(v) {
 }
 
 /**
+ * One plain-English sentence for a write the writer refused while staging or landing: a frozen file, or the disk
+ * itself (permissions, a full disk, a read-only mount). Paths are project-relative, never absolute.
+ * @param {string} root Project root.
+ * @param {unknown} e The error the writer threw.
+ * @param {string[]} files The change's root-relative paths (an error in the writer's shadow copy names one of them).
+ * @returns {string} The sentence (without the "Nothing was saved:" lead).
+ */
+function writeRefusal(root, e, files) {
+  const err = /** @type {any} */ (e);
+  const message = String(err?.message ?? e);
+  const rel = (abs) => {
+    if (typeof abs !== 'string' || !abs) return 'one of its files';
+    const posixAbs = abs.split(path.sep).join('/');
+    const own = files.find((f) => posixAbs.endsWith(`/${f}`));
+    if (own) return own;
+    const r = path.relative(root, abs).split(path.sep).join('/');
+    return r.startsWith('..') ? 'one of its files' : r;
+  };
+  const frozen = /Refusing to [a-z ]+ "([^"]+)": it matches the frozen glob "([^"]+)"/.exec(message);
+  if (frozen) return `${rel(frozen[1])} is frozen (it matches "${frozen[2]}" in architecture.yml), so Construct may not change it; wrap it from a controller instead.`;
+  if (typeof err?.code === 'string' && /^E[A-Z]+$/.test(err.code)) return `the disk refused to write ${rel(err.path)} (${err.code}), and every file this change had already written was put back.`;
+  return message;
+}
+
+/**
  * Apply a staged change: the ONLY Line operation that writes. Every file is staged in one transaction and
  * committed through the project's validate profile; when that refuses, nothing lands.
  * @param {string} root Project root.
  * @param {import('./contract.mjs').StagedChange} change The change from a plan function.
+ * Files outside the project's workspace folder (workspace.mjs) are refused first, with code OUTSIDE_WORKSPACE.
  * @returns {import('./contract.mjs').ApplyResult} `Saved. <summary>` with the files, or `Nothing was saved: ...` with the findings.
  */
 export function applyChange(root, change) {
@@ -379,6 +406,21 @@ export function applyChange(root, change) {
   for (const f of change.files) {
     const why = outsideReason(root, f.path);
     if (why) return refuse(why);
+  }
+  // cu6: Line changes only the workspace folder; everything outside it stays read-only (no workspace = whole project).
+  let workspace;
+  try { workspace = readWorkspace(root); } catch (e) {
+    return { ...refuse(/** @type {any} */ (e).sentence ?? 'The workspace folder cannot be read.'), code: 'BAD_WORKSPACE' };
+  }
+  const outside = change.files.find((f) => !isInsideWorkspace(workspace.folder, f.path));
+  if (outside) {
+    return {
+      ok: false,
+      sentence: `Nothing was saved: ${outside.path} is outside your workspace folder ${workspace.folder}; it stays read-only.`,
+      files: [],
+      findings: [{ sentence: `${outside.path} is outside your workspace folder ${workspace.folder}; change the workspace folder to edit it.`, rule: 'OUTSIDE_WORKSPACE', severity: 'error', file: outside.path, line: 1 }],
+      code: 'OUTSIDE_WORKSPACE',
+    };
   }
   const txn = createTransaction(root);
   let result;
@@ -389,7 +431,7 @@ export function applyChange(root, change) {
     result = txn.commit({ validate: onlyNewProblems(root) });
   } catch (e) {
     txn.reset();
-    return refuse(/** @type {Error} */ (e).message);
+    return refuse(writeRefusal(root, e, change.files.map((f) => f.path)));
   }
   if (!result.committed) {
     const findings = result.violations.map(toFinding).sort((a, b) => (a.severity === 'error' ? 0 : 1) - (b.severity === 'error' ? 0 : 1));

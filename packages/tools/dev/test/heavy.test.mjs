@@ -31,6 +31,14 @@ function sandbox(extraEnv = {}) {
   return { dir, tmp, env };
 }
 
+// The flock path and the free-RAM wait only exist where `flock` and /proc/meminfo do (Linux). macOS has
+// neither: heavy.sh takes the mkdir lock and skips the RAM check there, which the #686 tests below cover.
+const HAVE_FLOCK = spawnSync('flock', ['-h']).error?.code !== 'ENOENT';
+const onlyWithFlock = { skip: HAVE_FLOCK ? false : 'flock is not installed here (macOS has none); the mkdir-lock tests below cover this machine' };
+const onlyWithMeminfo = {
+  skip: HAVE_FLOCK && fs.existsSync('/proc/meminfo') ? false : 'no /proc/meminfo or flock here (macOS), so heavy.sh runs without the free-RAM wait and there is nothing to time out',
+};
+
 const run = (args, env) => spawnSync('bash', [HEAVY, ...args], { env, encoding: 'utf8', timeout: 30_000 });
 
 /** A pid that certainly refers to no live process: a child that has already exited. */
@@ -140,7 +148,7 @@ test('the holder file names the pid, the start time and the command while the jo
   assert.equal(fs.existsSync(holder), false, 'holder file removed on exit');
 });
 
-test('a lock held by another process: gives up after CONSTRUCT_HEAVY_LOCK_WAIT_SEC with exit 75 and the holder named', async () => {
+test('a lock held by another process: gives up after CONSTRUCT_HEAVY_LOCK_WAIT_SEC with exit 75 and the holder named', onlyWithFlock, async () => {
   const { env } = sandbox({ CONSTRUCT_HEAVY_LOCK_WAIT_SEC: '1' });
   fs.writeFileSync(`${env.CONSTRUCT_HEAVY_LOCK}.holder`, 'pid 424242 since 2026-01-01T00:00:00Z: sleep forever\n');
   // `flock <file> <cmd>` holds the lock for the life of <cmd>.
@@ -163,7 +171,7 @@ test('a lock held by another process: gives up after CONSTRUCT_HEAVY_LOCK_WAIT_S
   }
 });
 
-test('the RAM wait is bounded and the lock is released while waiting and after giving up', () => {
+test('the RAM wait is bounded and the lock is released while waiting and after giving up', onlyWithMeminfo, () => {
   const { env } = sandbox({ CONSTRUCT_MIN_FREE_MB: '999999999', CONSTRUCT_HEAVY_RAM_WAIT_SEC: '1' });
   const started = Date.now();
   const r = run(['sh', '-c', 'echo must-not-run'], env);

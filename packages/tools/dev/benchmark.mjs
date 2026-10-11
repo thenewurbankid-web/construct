@@ -155,7 +155,8 @@ export function measureCli(args, { timeoutMs = 120_000, env = process.env } = {}
     const sampler = gnu ? null : setInterval(() => {
       const r = spawnSync('ps', ['-o', 'rss=', '-p', String(child.pid)], { encoding: 'utf8' });
       const kb = Number.parseInt(r.stdout, 10);
-      if (Number.isFinite(kb)) peakKb = Math.max(peakKb ?? 0, kb);
+      // 0 is what ps prints for a process that is exiting (a zombie has no resident set): not a measurement.
+      if (Number.isFinite(kb) && kb > 0) peakKb = Math.max(peakKb ?? 0, kb);
     }, 10);
     const timer = setTimeout(() => child.kill('SIGKILL'), timeoutMs);
     child.on('close', (code) => {

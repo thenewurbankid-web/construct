@@ -14,11 +14,15 @@ type ProjectPathPickerProps = {
   onOpen: (path: string) => void;
   onChoose: (path: string) => void;
   onClose: () => void;
+  /** Replaces the default hint (the Cockpit's workspace-folder picker says what the folder is for). */
+  hint?: string;
+  /** The section's accessible name; defaults to "Pick from your project". */
+  label?: string;
 };
 
-export function ProjectPathPicker({ tree, crumbs, expects, loading, error, canChooseEntry, hintFor, onOpen, onChoose, onClose }: ProjectPathPickerProps) {
+export function ProjectPathPicker({ tree, crumbs, expects, loading, error, canChooseEntry, hintFor, onOpen, onChoose, onClose, hint, label = 'Pick from your project' }: ProjectPathPickerProps) {
   return (
-    <section className="project-picker" aria-label="Pick from your project" data-testid="project-picker">
+    <section className="project-picker" aria-label={label} data-testid="project-picker">
       <header className="project-picker__head">
         <nav aria-label="Location" className="project-picker__crumbs">
           <button type="button" className="project-picker__crumb" onClick={() => onOpen('')}>project</button>
@@ -32,7 +36,7 @@ export function ProjectPathPicker({ tree, crumbs, expects, loading, error, canCh
         <Button type="button" onClick={onClose}>Close</Button>
       </header>
       <p className="hint">
-        {expects === 'route' ? 'Pick a route folder (it has a page file) or a page/controller file.' : 'Pick the folder that holds your app routes.'} Only your open project is shown.
+        {hint ?? (expects === 'route' ? 'Pick a route folder (it has a page file) or a page/controller file.' : 'Pick the folder that holds your app routes.')} Only your open project is shown.
       </p>
       {error && <p role="alert" className="project-picker__error">{error}</p>}
       {loading && <p className="hint">Loading…</p>}

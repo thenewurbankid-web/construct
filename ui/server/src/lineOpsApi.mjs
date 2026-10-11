@@ -7,6 +7,8 @@
 //   POST /page-prop         planSetProp    -> applyChange
 //   POST /base-on           planBaseOn     -> applyChange
 //   POST /promote           planPromote    -> applyChange
+//   GET  /workspace         readWorkspace  (packages/engine/line/workspace.mjs; cu6)
+//   POST /workspace         setWorkspace   -> line/workspace.json through Construct's writer
 //   POST /fix               applyFix       (fixes.mjs: the finding by key, its typed fix planned -> applyChange)
 //   GET  /fragments?file=   listFragments  (packages/engine/line/fragments.mjs, cx1)
 //   POST /fragment          planSetFragment -> applyChange (a slow type check's errors come back as warnings)
@@ -16,11 +18,12 @@ import express from 'express';
 import { LineOpError } from '../../../packages/engine/line/contract.mjs';
 import { planBaseOn, planPromote, applyChange } from '../../../packages/engine/line/ops.mjs';
 import { planSetProp, readPageTree } from '../../../packages/engine/line/pageProp.mjs';
+import { readWorkspace, setWorkspace } from '../../../packages/engine/line/workspace.mjs';
 import { applyFix } from '../../../packages/engine/line/fixes.mjs';
 import { listFragments, planSetFragment } from '../../../packages/engine/line/fragments.mjs';
 
 /** The real operations; tests may pass their own (for example the contract's mock). */
-export const REAL_LINE_OPS = Object.freeze({ readPageTree, planSetProp, planBaseOn, planPromote, applyChange, applyFix, listFragments, planSetFragment });
+export const REAL_LINE_OPS = Object.freeze({ readPageTree, planSetProp, planBaseOn, planPromote, applyChange, applyFix, listFragments, planSetFragment, readWorkspace, setWorkspace });
 
 const plain = (body) => (body && typeof body === 'object' && !Array.isArray(body) ? body : {});
 
@@ -65,6 +68,9 @@ export function createLineOpsRouter({ getRoot, clientOrigin, afterSave, ops = RE
   router.post('/page-prop', change((root, body) => ops.planSetProp(root, body)));
   router.post('/base-on', change((root, body) => ops.planBaseOn(root, body)));
   router.post('/promote', change((root, body) => ops.planPromote(root, body)));
+  // cu6: the one folder Line may change; everything outside it stays read-only (applyChange refuses it).
+  router.get('/workspace', handle((root) => ops.readWorkspace(root)));
+  router.post('/workspace', handle((root, req) => ops.setWorkspace(root, /** @type {any} */ (plain(req.body)))));
   router.post('/fix', handle((root, req) => {
     const result = ops.applyFix(root, /** @type {any} */ (plain(req.body)));
     if (result.ok && afterSave) for (const f of result.files) afterSave(root, f);

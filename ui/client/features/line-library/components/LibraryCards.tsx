@@ -1,6 +1,7 @@
 import type { ChangeControls, LibraryCard, LibraryGroup } from '../types';
 import { BaseOnForm } from './BaseOnForm';
 import { CardPreview } from './CardPreview';
+import { ReadOnlyTag } from './ReadOnlyTag';
 
 function Card({ card, controls }: { card: LibraryCard; controls: ChangeControls }) {
   const open = (controls.change.status === 'base-on' || controls.change.status === 'base-on-saving') && controls.change.libraryId === card.id;
@@ -12,6 +13,7 @@ function Card({ card, controls }: { card: LibraryCard; controls: ChangeControls 
         <span className={card.usedByCount ? 'll-chip ll-chip--accent' : 'll-chip'} data-testid="ll-used-by">
           {card.usedByText}
         </span>
+        <ReadOnlyTag show={card.readOnly} />
       </span>
       {open ? (
         <BaseOnForm controls={controls} libraryName={card.name} />

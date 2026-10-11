@@ -27,8 +27,10 @@ const LOCK_YML = 'frozen:\n  - features/*/tests/generated/**\nnonLayer:\n  - fea
 const BASE_YML = 'version: 1\npreset: strict-nextjs\nproject:\n  framework: nextjs\nfeatures:\n  root: features\n';
 const LAYERS = ['controllers', 'workflows', 'hooks', 'domain', 'services', 'pages', 'components'];
 
+// Generated Playwright specs are stored as `<name>.spec.ts.golden`: under test/, a plain .spec.ts is picked up and
+// run by `node --test`'s default globs, where `@playwright/test` cannot run and every golden file failed.
 function golden(name, actual) {
-  const file = path.join(GOLDEN, name);
+  const file = path.join(GOLDEN, name.endsWith('.ts') ? `${name}.golden` : name);
   if (process.env.UPDATE_GOLDEN) { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, actual); }
   assert.equal(actual, fs.readFileSync(file, 'utf8'), `golden mismatch: ${name} (UPDATE_GOLDEN=1 to regenerate after an intentional change)`);
 }

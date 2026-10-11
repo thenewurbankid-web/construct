@@ -1,6 +1,6 @@
 import { test, before, after, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { execFile, spawn } from 'node:child_process';
+import { execFile, execFileSync, spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -135,7 +135,10 @@ describe('repoRoot policy', () => {
   test('the configured repoRoot is a real git checkout on this machine', () => {
     const r = resolveRepoRoot(cfg);
     assert.equal(r.problem, null, `${r.root} must exist and hold a .git`);
-    assert.equal(r.root, findRepoRoot(HERE), 'the configured path should be the repo this config lives in');
+    // A git worktree of the repo (where agents often run) is the same repo: compare main checkouts, not the
+    // worktree's own folder, which can never be the configured path.
+    const mainCheckout = (dir) => path.dirname(execFileSync('git', ['-C', dir, 'rev-parse', '--path-format=absolute', '--git-common-dir'], { encoding: 'utf8' }).trim());
+    assert.equal(fs.realpathSync(mainCheckout(r.root)), fs.realpathSync(mainCheckout(findRepoRoot(HERE))), 'the configured path should be the repo this config lives in');
   });
 
   test('strict-local refuses a path from another host, and says how to proceed', () => {

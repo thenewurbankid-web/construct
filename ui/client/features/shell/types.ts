@@ -165,6 +165,10 @@ export type ProjectSwitcherProps = {
   error?: string | null;
   /** #365: closes the open project (the Cockpit then shows "Open a project"). */
   onCloseProject?: () => void;
+  /** Line cu6: the project's workspace folder beside its name ("Whole project" or the folder); null shows none. */
+  workspace?: string | null;
+  /** Line cu6: the workspace folder and "Change workspace folder" (components/WorkspaceFolderBox), atop the popover. */
+  workspaceBox?: ReactNode;
 };
 
 export type ActivityBarProps = {

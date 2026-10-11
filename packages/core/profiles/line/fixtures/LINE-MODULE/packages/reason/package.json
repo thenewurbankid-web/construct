@@ -1,0 +1,1 @@
+{"name": "@mx/reason", "private": true, "exports": {".": "./decide.js", "./contract": "./contract.d.ts"}}

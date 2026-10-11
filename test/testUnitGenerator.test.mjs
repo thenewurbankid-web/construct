@@ -97,7 +97,7 @@ function runGenerated(dir, feature, name) {
   fs.symlinkSync(path.join(REPO, 'node_modules'), path.join(out, 'node_modules'));
   const env = { ...process.env };
   delete env.NODE_TEST_CONTEXT; // otherwise node's runner sees a nested `--test` and skips the file
-  const r = spawnSync(process.execPath, ['--test', file], { encoding: 'utf8', env });
+  const r = spawnSync(process.execPath, ['--test', '--test-reporter=tap', file], { encoding: 'utf8', env });
   return { status: r.status, out: r.stdout + r.stderr };
 }
 

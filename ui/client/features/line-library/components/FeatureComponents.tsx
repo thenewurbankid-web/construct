@@ -1,5 +1,6 @@
 import type { ChangeControls, FeatureComponentRow, FeatureSection } from '../types';
 import { PromoteConfirm } from './PromoteConfirm';
+import { ReadOnlyTag } from './ReadOnlyTag';
 
 function Row({ row, controls }: { row: FeatureComponentRow; controls: ChangeControls }) {
   const open = (controls.change.status === 'promote' || controls.change.status === 'promote-saving') && controls.change.featureItemId === row.id;
@@ -9,6 +10,7 @@ function Row({ row, controls }: { row: FeatureComponentRow; controls: ChangeCont
       <span className={row.linked ? 'll-chip ll-chip--accent' : 'll-chip ll-chip--warn'} data-testid="ll-base">
         {row.baseText}
       </span>
+      <ReadOnlyTag show={row.readOnly} />
       {row.findings.map((x) => (
         <p key={`${x.rule}:${x.line}`} className="ll-finding">
           {x.sentence}

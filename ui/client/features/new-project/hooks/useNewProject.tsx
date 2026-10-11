@@ -12,12 +12,26 @@ import type { NewProjectFramework } from '../types';
  * `onCreated` (the Open-a-project screen opens it, as it does for a clone). */
 export function useNewProject(onCreated: (dir: string) => void) {
   const actor = useMemo(() => createActor(newProjectMachine).start(), []);
+  // useSyncExternalStore needs the same object back until the machine changes, else React re-renders forever.
+  const read = useMemo(() => {
+    let snapshot: ReturnType<typeof actor.getSnapshot> | null = null;
+    let form: ReturnType<typeof formStateOf> | null = null;
+    return () => {
+      const next = actor.getSnapshot();
+      if (next !== snapshot || form === null) {
+        snapshot = next;
+        form = formStateOf(next);
+      }
+      return form;
+    };
+  }, [actor]);
   const state = useSyncExternalStore(
     useCallback((onChange) => {
       const sub = actor.subscribe(onChange);
       return () => sub.unsubscribe();
     }, [actor]),
-    () => formStateOf(actor.getSnapshot()),
+    read,
+    read,
   );
 
   const create = useCallback(async () => {
