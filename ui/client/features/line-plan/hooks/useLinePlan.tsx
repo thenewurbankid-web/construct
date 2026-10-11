@@ -1,7 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { changeResult, lastRun, planRows } from '../domain/PlanRows';
+import { planRows } from '../domain/PlanRows';
+import { changeResult, lastRun } from '../domain/PlanResult';
 import { linePlanApi } from '../services/LinePlanApi';
 import { approveAndRun, chooseAndRun } from '../workflows/ApproveFlow';
 import type { LinePlanApi, PlanAnswer, PlanControls, PlanStepRequest, PlanView, StepChoice } from '../types';
@@ -48,7 +49,7 @@ export function useLinePlan(onLanded: () => void, api: LinePlanApi = linePlanApi
       take(a);
       if (!a.ok) {
         setError(null);
-        return { ok: false, sentence: a.sentence };
+        return a;
       }
       const step = a.view.steps.find((s) => s.id === a.view.stepId);
       return { ok: true, sentence: step ? step.sentence : 'The step was added to the plan.' };

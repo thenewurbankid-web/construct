@@ -5,7 +5,10 @@ import type { ApplyResult, PlanStepRequest, PlanStepState, PlanView } from '@/li
 export type * from '@/lib/lineContract';
 
 /** What a plan call answers on the screen: the plan, or one sentence saying why not. */
-export type PlanAnswer = { ok: true; view: PlanView } | { ok: false; sentence: string };
+export type PlanAnswer = { ok: true; view: PlanView } | { ok: false; sentence: string; code?: string; detail?: string };
+
+/** What adding a step answers a screen: the step's sentence, or the refusal (with its code and technical detail). */
+export type StepAdded = { ok: boolean; sentence: string; code?: string; detail?: string };
 
 /** The service's surface, so the real API and a test double are interchangeable. */
 export type LinePlanApi = {
@@ -51,7 +54,7 @@ export type PlanControls = {
   busy: boolean;
   lastRun: LastRun | null;
   /** Adds a step and answers its sentence ("Waiting for your approval: ...") or the refusal. */
-  addStep: (req: PlanStepRequest) => Promise<{ ok: boolean; sentence: string }>;
+  addStep: (req: PlanStepRequest) => Promise<StepAdded>;
   approve: (stepId: string) => void;
   choose: (stepId: string, choice: StepChoice['id']) => void;
   refresh: () => void;

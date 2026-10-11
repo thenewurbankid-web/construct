@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { callText, lastRun, planRows, stepRow, toPlanAnswer } from './PlanRows.ts';
+import { planRows, stepRow } from './PlanRows.ts';
+import { lastRun } from './PlanResult.ts';
+import { toPlanAnswer } from './PlanAnswer.ts';
 import { approveAndRun, chooseAndRun, choiceStep } from '../workflows/ApproveFlow.ts';
 
 const apply = { ok: true, sentence: 'Saved. Creates StatusBadge in feature orders, based on the library Badge.', files: ['features/orders/components/StatusBadge.tsx'], findings: [] };
@@ -16,7 +18,7 @@ test('rows: a waiting step can be approved and says what is still to do; the too
   const r = stepRow(waiting);
   assert.deepEqual([r.stateLabel, r.canApprove, r.gapLines, r.choices], ['Waiting for your approval', true, ['To do: write StatusBadge.tsx.'], []]);
   assert.equal(r.call, 'line.baseOn({"libraryId":"components/Badge","feature":"orders","name":"StatusBadge"})');
-  assert.equal(callText({ tool: 'line.project', args: {} }), 'line.project({})');
+  assert.equal(stepRow({ ...waiting, tool: 'line.project', args: {} }).call, 'line.project({})');
 });
 
 test('rows: a step that needs you lists the failing checks, the suggested fixes and the two choices', () => {
@@ -37,7 +39,7 @@ test('rows: newest first; the last run is the step the person ran, once it ran, 
 
 test('answers: a PlanView, a refusal sentence, or a fallback sentence', () => {
   assert.equal(toPlanAnswer(view([])).ok, true);
-  assert.deepEqual(toPlanAnswer({ ok: false, sentence: 'No.', code: 'X' }), { ok: false, sentence: 'No.' });
+  assert.deepEqual(toPlanAnswer({ ok: false, sentence: 'No.', code: 'X', detail: 'TS2322' }), { ok: false, sentence: 'No.', code: 'X', detail: 'TS2322' });
   assert.deepEqual(toPlanAnswer(null), { ok: false, sentence: 'Cockpit could not read the plan; nothing was changed.' });
 });
 

@@ -1,5 +1,5 @@
 // The Pages screen's own view models. The Line contract's shapes come from the one shared mirror (lib/lineContract.ts, lib/lineHttp.ts).
-import type { CodeFragment, FeatureItem, LineFinding, LineHttp, PropValueKind } from '@/lib/lineContract';
+import type { ApplyResult, CodeFragment, FeatureItem, LineFinding, LineHttp, PlanStepRequest, PropValueKind } from '@/lib/lineContract';
 
 export type * from '@/lib/lineContract';
 
@@ -50,3 +50,10 @@ export type LinePagesView = {
 
 /** Everything the Line Pages API offers the screen (real server or the contract's mock). */
 export type LinePagesApi = Pick<LineHttp, 'getProject' | 'getPageTree' | 'setPageProp' | 'getFragments' | 'setFragment'>;
+
+/** cp1: what the Pages screen needs from the project's plan (the Plan panel's useLinePlan). */
+export type LinePagesPlan = {
+  addStep: (req: PlanStepRequest) => Promise<{ ok: boolean; sentence: string; code?: string; detail?: string }>;
+  /** The step the person last ran here, with its ApplyResult when it was a change. */
+  lastRun: { stepId: string; apply: ApplyResult | null; sentence: string } | null;
+};

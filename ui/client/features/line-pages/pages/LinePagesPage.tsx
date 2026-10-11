@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { FeaturePicker } from '../components/FeaturePicker';
 import { PageList } from '../components/PageList';
 import { PartsPanel } from '../components/PartsPanel';
@@ -6,7 +7,7 @@ import type { LinePagesView } from '../types';
 
 /** The Pages screen of a Line project: pick a feature, see its pages (base, status, findings), pick a page to
  * change one prop of one of its parts, or one piece of code on it ("Edit code"), and Save it through the checked writer. */
-export function LinePagesPage({ view }: { view: LinePagesView }) {
+export function LinePagesPage({ view, panel }: { view: LinePagesView; panel?: ReactNode }) {
   const { features, feature, chooseFeature, pages, page, choosePage, parts, save, saving, revision, outcome, saveFragment, fragmentOutcome } = view;
   return (
     <div className="page page--screen lp" data-testid="line-pages">
@@ -15,6 +16,7 @@ export function LinePagesPage({ view }: { view: LinePagesView }) {
         <h1>Pages</h1>
         <p className="hint">Every page belongs to one feature and is based on one page from your library.</p>
       </div>
+      {panel}
       <section aria-labelledby="lp-feature-q">
         <h2 id="lp-feature-q">Which feature?</h2>
         <FeaturePicker features={features} current={feature} onChoose={chooseFeature} />

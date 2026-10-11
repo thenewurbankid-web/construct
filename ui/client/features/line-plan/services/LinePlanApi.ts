@@ -1,5 +1,5 @@
 import { lineHttp } from '@/lib/lineHttp';
-import { toPlanAnswer } from '../domain/PlanRows';
+import { toPlanAnswer } from '../domain/PlanAnswer';
 import type { LinePlanApi, PlanAnswer } from '../types';
 
 // The Plan panel's use of the shared LINE_API mirror (lib/lineHttp.ts): GET /api/line/plan and the three plan writes.

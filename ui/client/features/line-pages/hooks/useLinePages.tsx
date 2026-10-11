@@ -1,13 +1,14 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useUrlSelection } from '@/features/list-browser';
 import { featureNames, featureSummary } from '../domain/FeatureList';
 import { pageParts, withFragments } from '../domain/PageParts';
 import { featurePages, findPage } from '../domain/PageRows';
 import { saveCodeFragment } from '../workflows/SaveFragmentFlow';
 import { savePageProp } from '../workflows/SavePropFlow';
-import type { CodeFragment, FragmentOutcome, LinePagesApi, LinePagesView, LineProject, PagePart, PartProp, PartsState, SaveOutcome } from '../types';
+import { saveOutcome } from '../domain/SaveOutcome';
+import type { CodeFragment, FragmentOutcome, LinePagesApi, LinePagesPlan, LinePagesView, LineProject, PagePart, PartProp, PartsState, SaveOutcome } from '../types';
 
 const UNREADABLE: PartsState = { phase: 'error', sentence: 'The parts of this page could not be read, so try again.' };
 
@@ -15,7 +16,7 @@ const UNREADABLE: PartsState = { phase: 'error', sentence: 'The parts of this pa
  * rows of that feature, the chosen page's parts, and Save. After every save the project and the page's parts are
  * read again (node ids can shift), so what the screen shows is what is on disk, saved or refused. With no Line
  * project (still loading, or not a Line project) it holds nothing. */
-export function useLinePages(project: LineProject | null, api: LinePagesApi | null, reloadProject: () => Promise<void>): LinePagesView & { ready: boolean } {
+export function useLinePages(project: LineProject | null, api: LinePagesApi | null, reloadProject: () => Promise<void>, landed: LinePagesPlan['lastRun'] = null): LinePagesView & { ready: boolean } {
   const featureSel = useUrlSelection('feature');
   const pageSel = useUrlSelection('page');
   const features = useMemo(() => (project ? featureNames(project).map((name) => ({ name, summary: featureSummary(project, name) })) : []), [project]);
@@ -57,6 +58,24 @@ export function useLinePages(project: LineProject | null, api: LinePagesApi | nu
     setParts({ phase: 'loading' });
     void readParts(file);
   }, [file, readParts]);
+
+  // cp1: a Save only adds a plan step; once the person approved and it ran, read everything again (node ids, ranges and
+  // hashes may have moved) and show what happened.
+  const landedId = landed?.stepId ?? null;
+  const landedRef = useRef(landed);
+  landedRef.current = landed;
+  useEffect(() => {
+    const run = landedRef.current;
+    if (!landedId || !run || !file) return;
+    void (async () => {
+      await reloadProject();
+      await readParts(file);
+      setOutcome(saveOutcome(run.apply ?? { ok: false, sentence: run.sentence, files: [], findings: [] }));
+      setRevision((r) => r + 1);
+    })();
+    // Only a newly run step triggers this; the file and readers are read through the latest render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [landedId]);
 
   const { select: selectFeature } = featureSel;
   const { select: selectPage } = pageSel;

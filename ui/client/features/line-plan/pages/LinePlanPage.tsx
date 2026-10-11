@@ -1,4 +1,5 @@
-import { PlanEmpty, PlanError } from '../components/PlanNotes';
+import { PlanEmpty } from '../components/PlanEmpty';
+import { PlanError } from '../components/PlanError';
 import { PlanStep } from '../components/PlanStep';
 import '../components/line-plan.css';
 import type { PlanControls, PlanStepRow } from '../types';

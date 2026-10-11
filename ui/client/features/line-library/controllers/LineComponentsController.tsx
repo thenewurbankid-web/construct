@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo } from 'react';
 import { ComponentsController } from '@/features/component-docs';
+import { LinePlanController, useLinePlan } from '@/features/line-plan';
 import { ProjectGateController } from '@/features/project-gate';
 import { useShellDrawer } from '@/features/shell';
 import '../components/line-library.css';
@@ -22,8 +23,11 @@ function LineComponentsScreen() {
     refresh();
     revalidate();
   }, [refresh, revalidate]);
-  const controls = useLineChanges(features, onLanded);
-  return <LineScreenSwitch screen={screen} fallback={<ComponentsController />} controls={controls} />;
+  // cp1: Base on and Promote add a plan step; the Plan panel's Approve runs it, then the project is read again.
+  const plan = useLinePlan(onLanded);
+  const notice = plan.lastRun?.apply ?? null;
+  const controls = useLineChanges(features, plan.addStep, notice);
+  return <LineScreenSwitch screen={screen} fallback={<ComponentsController />} controls={controls} panel={<LinePlanController plan={plan} />} />;
 }
 
 /** The Components screen (`/components`): a `preset: line` project gets its library as cards by level ("Base on

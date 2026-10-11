@@ -1,6 +1,6 @@
 // The view models and service surface of the Components screen. The Line contract's shapes come from the one shared
 // mirror (lib/lineContract.ts, lib/lineHttp.ts).
-import type { ApplyResult, BaseOnRequest, Level, LineFinding, LineProject, PromoteRequest } from '@/lib/lineContract';
+import type { ApplyResult, BaseOnRequest, Level, LineFinding, LineProject, PlanStepRequest, PromoteRequest } from '@/lib/lineContract';
 
 export type * from '@/lib/lineContract';
 
@@ -13,6 +13,9 @@ export type LineApi = {
   baseOn: (req: BaseOnRequest) => Promise<ApplyResult>;
   promote: (req: PromoteRequest) => Promise<ApplyResult>;
 };
+
+/** Adds a step to the project's plan (the Plan panel's addStep): the step's sentence, or the refusal. */
+export type AddPlanStep = (req: PlanStepRequest) => Promise<{ ok: boolean; sentence: string }>;
 
 /** The one change being prepared or sent: a new feature item based on a library card, or a promotion. */
 export type ChangeState =
