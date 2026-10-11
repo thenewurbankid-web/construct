@@ -14,7 +14,7 @@
 // with its exact-range source editor (workflowEditor.mjs); `roles` / `pages` are plain object literals read from the AST.
 import fs from 'node:fs';
 import path from 'node:path';
-import { parseToAst, walkAst } from '../../ast/index.mjs';
+import { parseToAst, walkAst } from '@construct/ast';
 import { analyzeMachines } from '../workflowExtractor.mjs';
 import { editWorkflow } from '../workflowEditor.mjs';
 import { LineOpError } from './contract.mjs';

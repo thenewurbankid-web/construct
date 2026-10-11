@@ -960,6 +960,8 @@ export function assertContextPick(p) {
   for (const f of p.files) { str(f.file, 'pick.files[].file'); sentence(f.why, `pick ${f.file}.why`); sentence(f.summary?.sentence, `pick ${f.file}.summary`); str(f.summary.via, `pick ${f.file}.summary.via`); }
   for (let i = 1; i < p.files.length; i += 1) if (p.files[i].score > p.files[i - 1].score) fail('pick.files', 'must be ranked by score');
   if (!['static', 'jev'].includes(p.via)) fail('pick.via', 'must be static or jev');
+}
+
 export const WORKFLOW_ACTION_KINDS = Object.freeze(['callService', 'setPartState', 'other']);
 
 /**
