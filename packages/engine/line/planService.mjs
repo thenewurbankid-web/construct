@@ -7,12 +7,15 @@
 //   addStep(req, by)        a step {tool, args, why?}; a change tool is planned first (a refusal never joins the plan),
 //                           worded by its StagedChange summary and given the default checks (`expect`)
 //   approve(stepId, by)     only a person approves a write (the plan store refuses an agent)
-//   runNext(by, stepId?)    runs exactly one ready (approved) step; refuses while a step needs the person
+//   runNext(by, stepId?)    runs exactly one ready (approved) step; refuses while a step needs the person. When the
+//                           step was a fix for a refused step (args.fixOf) and it landed, the refused step is re-checked
+//                           (planned again and dry-run through the writer, nothing written): if it would land now, a
+//                           retry of it joins the plan, waiting for the person's approval (owner decision c, 11 Oct)
 //
 // Nothing here writes a project file: a step's write happens only when the plan runner calls the registry
 // (planTools.mjs -> applyChange -> Construct's transactional writer).
 import { importLinked } from '../../line-links/index.mjs';
-import { CHANGE_TOOLS, DEFAULT_EXPECT, REAL_PLAN_OPS, createLinePlanRegistry, constructCommandTools, gapOf, previewStep } from './planTools.mjs';
+import { CHANGE_TOOLS, DEFAULT_EXPECT, REAL_PLAN_OPS, createLinePlanRegistry, constructCommandTools, gapOf, isDeferred, previewStep, rootOf } from './planTools.mjs';
 import { createAtomicPlanWriter, createStaticPlanApi } from './planFallback.mjs';
 
 /** One session per open project, for now. */
@@ -135,14 +138,17 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
     let args = req?.args && typeof req.args === 'object' && !Array.isArray(req.args) ? { .../** @type {any} */ (req.args) } : {};
     let why = typeof req?.why === 'string' && req.why.trim() ? req.why.trim() : null;
     const spec = registry.list().find((t) => t.name === tool);
-    if (!spec) return refusal('UNKNOWN_TOOL', tool ? `There is no tool named ${tool}; the Line tools are line.baseOn, line.promote, line.setPageProp, line.fix, line.setFragment, line.setBase, line.moveFile, line.createLayout, line.leaveAsIs and line.project` : 'Name the tool the step runs');
+    if (!spec) return refusal('UNKNOWN_TOOL', tool ? `There is no tool named ${tool}; the Line tools are ${registry.list().filter((t) => t.name.startsWith('line.')).map((t) => t.name).join(', ')}` : 'Name the tool the step runs');
     const badArgs = () => {
       const parsed = spec.schema.safeParse(args);
       return parsed.success ? null : refusal('BAD_ARGS', `The arguments do not fit ${tool}: ${parsed.error.issues.map((i) => `${i.path.join('.') || 'args'} ${i.message}`).join('; ')}`);
     };
     if (!args.retry) { const bad = badArgs(); if (bad) return bad; }
     // A change is planned (pure) before it joins the plan: a refusal is one sentence and starts nothing.
-    if (CHANGE_TOOLS[tool] && !args.retry) {
+    // An import step builds on the steps before it, so it is planned when it runs; only its folder is checked now.
+    if (isDeferred(tool) && !args.retry) {
+      try { rootOf(root, tool, args); } catch (e) { return refusal(/** @type {any} */ (e).code ?? 'BAD_FOLDER', /** @type {any} */ (e).sentence ?? 'The import folder must be inside the project'); }
+    } else if (CHANGE_TOOLS[tool] && !args.retry) {
       try {
         why = why ?? previewStep(root, tool, args, ops).summary;
       } catch (e) {
@@ -202,8 +208,36 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
     const resolves = next && ((next.args?.retry && next.args.retry.of === blocked?.id) || next.args?.fixOf === blocked?.id || (next.tool === 'line.leaveAsIs' && next.args?.stepId === blocked?.id));
     if (blocked && !resolves) return refusal('NEEDS_YOU', `Step ${blocked.n} needs you first: ${lower(asSentence(blocked.result.sentence))} Add one of its fixes with args.fixOf "${blocked.id}", try it again, or ask the person to leave it as it is`);
     const r = await withVersion(api, plan.id, (p) => api.plan_run_next({ planId: p.id, version: p.version, by, ...(nextId ? { stepId: nextId } : {}) }));
-    return r.ok ? view(r.message) : fromPlan(r);
+    if (!r.ok) return fromPlan(r);
+    const recheck = next?.args?.fixOf ? await recheckAfterFix(api, String(next.args.fixOf), next.id, by) : null;
+    return view(recheck ?? r.message);
   });
+
+  /**
+   * After a fix step (args.fixOf) ran: if it landed, plan the step it fixed again and dry-run it through the writer
+   * (nothing written). If it would land now, add a retry of it, waiting for the person's approval; otherwise the
+   * step keeps needing a fix. Returns the sentence for the plan's message, or null when there is nothing to say.
+   */
+  async function recheckAfterFix(api, ofId, fixId, by) {
+    const plan = await current(api);
+    const fix = plan?.steps.find((s) => s.id === fixId);
+    const of = plan?.steps.find((s) => s.id === ofId);
+    if (!plan || !fix || !of || fix.status !== 'done' || !fix.result?.apply?.ok || !needsYou(plan, of) || !CHANGE_TOOLS[of.tool]) return null;
+    const req = Object.fromEntries(Object.entries(of.args ?? {}).filter(([k]) => !['expect', 'retry', 'fixOf'].includes(k)));
+    let verdict;
+    try {
+      const staged = previewStep(root, of.tool, req, ops);
+      verdict = typeof ops.checkChange === 'function' ? ops.checkChange(rootOf(root, of.tool, req), staged) : { ok: true, sentence: '' };
+    } catch (e) {
+      verdict = { ok: false, sentence: /** @type {any} */ (e)?.sentence ?? 'it can no longer be planned.' };
+    }
+    if (!verdict.ok) return `The fix landed, but step ${of.n} still cannot land: ${lower(asSentence(String(verdict.sentence).replace(/^Nothing would be saved: /, '')))}`;
+    if (of.result?.stopped) return `The fix landed; step ${of.n} would land now, but it was stopped after a retry, so add it again yourself.`;
+    const args = { ...of.args, retry: { of: of.id, passed: of.result.passed } };
+    const r = await withVersion(api, plan.id, (p) => api.plan_add_step({ planId: p.id, version: p.version, by, step: { tool: of.tool, args, why: `Try step ${of.n} again: ${lower(of.why)}` } }));
+    if (!r.ok) return `The fix landed; step ${of.n} would land now, but it could not be added again: ${lower(asSentence(r.reason ?? 'the plan refused it'))}`;
+    return `The fix landed, and step ${of.n} plans clean now: it waits for your approval again.`;
+  }
 
   return { view: () => serial(() => view()), addStep, approve, runNext, store: async () => (await init()).store };
 }

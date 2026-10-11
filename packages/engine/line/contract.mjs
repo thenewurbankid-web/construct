@@ -291,6 +291,9 @@ export const LINE_PLAN_TOOLS = Object.freeze([
   { name: 'line.setBase', kind: 'write', request: '{file, libraryId}' },
   { name: 'line.moveFile', kind: 'write', request: '{from, to, base?}' },
   { name: 'line.createLayout', kind: 'write', request: '{}' },
+  { name: 'line.import.mark', kind: 'write', request: '{folder, features}' },
+  { name: 'line.import.toLibrary', kind: 'write', request: '{folder, from, kind, name, level?, keepShim?}' },
+  { name: 'line.import.toFeature', kind: 'write', request: '{folder, mode, from?, kind, name, feature, base, keepShim?, route?}' },
   { name: 'line.leaveAsIs', kind: 'write', request: '{stepId}' },
   { name: 'line.project', kind: 'read', request: '{}' },
 ]);

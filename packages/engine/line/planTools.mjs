@@ -8,6 +8,9 @@
 //   line.fix          write  FixRequest      -> planFixByKey (a finding's typed fix, fixes.mjs) + applyChange
 //   line.setFragment  write  SetFragmentRequest -> planSetFragment (fragments.mjs) + applyChange
 //   line.setBase, line.moveFile, line.createLayout   write   the fix steps themselves (fixes.mjs planStep) + applyChange
+//   line.import.mark, line.import.toLibrary, line.import.toFeature   write   ci1 Import's steps (import.mjs
+//                     planImportStep): planned only when they run (each builds on the step before) with the import
+//                     folder as the writer's root, so nothing outside that folder can be written
 //   line.leaveAsIs    write  {stepId}        -> a person's "carry on" after a step that needs them (writes nothing)
 //   line.project      read   {}              -> readLineProject
 //
@@ -20,25 +23,45 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { CHECK_KINDS, LineOpError } from './contract.mjs';
-import { planBaseOn, planPromote, applyChange } from './ops.mjs';
+import { planBaseOn, planPromote, applyChange, checkChange } from './ops.mjs';
+import { planImportStep } from './import.mjs';
 import { planSetProp } from './pageProp.mjs';
 import { readLineProject } from './model.mjs';
 import { planFixByKey, planStep, withFixes } from './fixes.mjs';
 import { planSetFragment } from './fragments.mjs';
 
 /** The real operations (tests pass the contract's mock instead). */
-export const REAL_PLAN_OPS = Object.freeze({ planBaseOn, planPromote, planSetProp, planFixByKey, planSetFragment, planStep, applyChange, readLineProject });
+export const REAL_PLAN_OPS = Object.freeze({ planBaseOn, planPromote, planSetProp, planFixByKey, planSetFragment, planStep, planImportStep, applyChange, checkChange, readLineProject });
 
 /** The write tools that plan a StagedChange, and the op that plans it (`planStep` takes {tool, args}). */
 export const CHANGE_TOOLS = Object.freeze({
   'line.baseOn': 'planBaseOn', 'line.promote': 'planPromote', 'line.setPageProp': 'planSetProp',
   'line.fix': 'planFixByKey', 'line.setFragment': 'planSetFragment',
   'line.setBase': 'planStep', 'line.moveFile': 'planStep', 'line.createLayout': 'planStep',
+  'line.import.mark': 'planImportStep', 'line.import.toLibrary': 'planImportStep', 'line.import.toFeature': 'planImportStep',
 });
+
+/** Change tools planned only when they run: an import step builds on the steps before it (the library item a feature
+ * item is based on is moved there by an earlier step), so it cannot be planned, or its gap worked out, ahead. */
+export const DEFERRED_TOOLS = Object.freeze(['line.import.mark', 'line.import.toLibrary', 'line.import.toFeature']);
+export const isDeferred = (tool) => DEFERRED_TOOLS.includes(tool);
+
+/** A root-relative folder inside the project (no leading slash, no "." or ".." parts). */
+const isFolder = (v) => typeof v === 'string' && v.length > 0 && !v.startsWith('/') && !v.endsWith('/') && !v.split('/').some((x) => x === '' || x === '.' || x === '..');
+
+/** Where a tool's change is planned and written: the import folder for an import step, else the project root. */
+export function rootOf(root, tool, args) {
+  if (!isDeferred(tool)) return root;
+  if (!isFolder(args?.folder)) throw new LineOpError('The import folder must be a folder inside the project.', 'BAD_FOLDER');
+  const at = path.join(root, String(args.folder));
+  if (!fs.existsSync(at)) throw new LineOpError(`There is no folder ${args.folder} in this project.`, 'BAD_FOLDER');
+  return at;
+}
 
 /** Plan a change tool's request with `ops` (pure; throws a LineOpError for a refusal). */
 function planWith(ops, root, tool, req) {
   const opName = CHANGE_TOOLS[tool];
+  if (opName === 'planImportStep') return ops.planImportStep(rootOf(root, tool, req), { id: tool, tool, args: req });
   return opName === 'planStep' ? ops.planStep(root, { tool, args: req }) : ops[opName](root, req);
 }
 
@@ -99,6 +122,31 @@ function objectSchema(required, o = {}) {
   });
 }
 
+/** An import step's args (import.mjs planImport's steps): the fields listed, plus `expect`, `retry` and `fixOf`. */
+function importSchema(fields) {
+  const IMPORT_TYPES = {
+    string: TYPES.string, optString: TYPES.optString,
+    strings: (v) => Array.isArray(v) && v.every((x) => typeof x === 'string' && x.length > 0),
+    optBool: (v) => v === undefined || typeof v === 'boolean',
+    mode: (v) => v === 'move' || v === 'wrap',
+  };
+  const loose = objectSchema({}, { change: true });
+  return Object.freeze({
+    fields: Object.keys(fields),
+    safeParse(value) {
+      const v = value ?? {};
+      if (!isObj(v)) return failed([], 'must be an object');
+      const extra = Object.keys(v).find((k) => !(k in fields) && !['expect', 'retry', 'fixOf'].includes(k));
+      if (extra) return failed([extra], 'is not an argument of this tool');
+      for (const [k, t] of Object.entries(fields)) if (!IMPORT_TYPES[t](v[k])) return failed([k], t === 'strings' ? 'must be a list of names' : t === 'optBool' ? 'must be true or false' : t === 'mode' ? 'must be move or wrap' : 'must be a non-empty string');
+      if (!isFolder(v.folder)) return failed(['folder'], 'must be a folder inside the project');
+      const { folder: _f, features: _x, from: _a, kind: _k, name: _n, level: _l, keepShim: _s, mode: _m, feature: _e, base: _b, route: _r, ...rest } = v;
+      const r = loose.safeParse(rest);
+      return r.success ? { success: /** @type {const} */ (true), data: { ...v } } : r;
+    },
+  });
+}
+
 const SCHEMAS = Object.freeze({
   'line.baseOn': objectSchema({ libraryId: 'string', feature: 'string', name: 'string' }, { change: true }),
   'line.promote': objectSchema({ featureItemId: 'string' }, { change: true }),
@@ -108,6 +156,9 @@ const SCHEMAS = Object.freeze({
   'line.setBase': objectSchema({ file: 'string', libraryId: 'string' }, { change: true }),
   'line.moveFile': objectSchema({ from: 'string', to: 'string', base: 'optString' }, { change: true }),
   'line.createLayout': objectSchema({}, { change: true }),
+  'line.import.mark': importSchema({ folder: 'string', features: 'strings' }),
+  'line.import.toLibrary': importSchema({ folder: 'string', from: 'string', kind: 'string', name: 'string', level: 'optString', keepShim: 'optBool' }),
+  'line.import.toFeature': importSchema({ folder: 'string', mode: 'mode', from: 'optString', kind: 'string', name: 'string', feature: 'string', base: 'string', keepShim: 'optBool', route: 'optString' }),
   'line.leaveAsIs': objectSchema({ stepId: 'string' }),
   'line.project': objectSchema({}),
 });
@@ -121,6 +172,9 @@ const DESCRIBE = Object.freeze({
   'line.setBase': 'Points a feature item\'s base link at one library item, through the checked writer.',
   'line.moveFile': 'Moves a file and re-points every import of it, through the checked writer.',
   'line.createLayout': 'Creates the library folder so the project is laid out as Line, through the checked writer.',
+  'line.import.mark': 'Import: marks a folder as a Line folder (architecture.yml, library, feature specs), through the checked writer.',
+  'line.import.toLibrary': 'Import: moves one item of the import folder into its library, through the checked writer.',
+  'line.import.toFeature': 'Import: moves one item into a feature of the import folder, or adds it based on its library copy, through the checked writer.',
   'line.leaveAsIs': 'Records that a person chose to carry on after a step that needed them; writes nothing.',
   'line.project': 'Reads the Line view of the project: library, features, items and findings.',
 });
@@ -145,6 +199,7 @@ export function gapOf(root, tool, args, ops = REAL_PLAN_OPS) {
   const opName = CHANGE_TOOLS[tool];
   if (!opName) return [];
   const expect = Array.isArray(args?.expect) ? args.expect : DEFAULT_EXPECT;
+  if (isDeferred(tool)) return expect.map((c) => ({ checkId: c.id, state: /** @type {const} */ ('missing'), sentence: `To do when it runs (it builds on the steps before it): ${lower(c.sentence)}` }));
   let staged;
   try { staged = planWith(ops, root, tool, requestOf(args)); } catch (e) {
     const s = /** @type {any} */ (e)?.sentence ?? 'This change can no longer be planned.';
@@ -214,14 +269,19 @@ export function fixesAsProposed(root, staged, findings) {
  * Never throws for a refusal: the step's result records it and says the step needs the person.
  * @returns {import('./contract.mjs').LineStepResult}
  */
-export function runChange(root, tool, args, ops = REAL_PLAN_OPS) {
+export function runChange(projectRoot, tool, args, ops = REAL_PLAN_OPS) {
   const expect = Array.isArray(args?.expect) ? args.expect : DEFAULT_EXPECT;
+  // An import step plans and writes inside its folder (the writer's root), and reports project-relative paths.
+  let root = projectRoot;
+  const folder = isDeferred(tool) ? String(args?.folder ?? '') : '';
+  const prefixed = (r) => (folder ? { ...r, files: r.files.map((f) => `${folder}/${f}`), findings: r.findings.map((x) => ({ ...x, file: x.file === '.' ? folder : `${folder}/${x.file}` })) } : r);
   /** @type {import('./contract.mjs').StagedChange | null} */
   let staged = null;
   /** @type {import('./contract.mjs').ApplyResult} */
   let apply;
   try {
-    staged = planWith(ops, root, tool, requestOf(args));
+    root = rootOf(projectRoot, tool, args);
+    staged = planWith(ops, projectRoot, tool, requestOf(args));
   } catch (e) {
     if (!(e instanceof LineOpError) && /** @type {any} */ (e)?.name !== 'LineOpError') throw e;
     apply = { ok: false, sentence: `Nothing was saved: ${lower(/** @type {any} */ (e).sentence)}`, files: [], findings: [] };
@@ -235,6 +295,7 @@ export function runChange(root, tool, args, ops = REAL_PLAN_OPS) {
     apply = { .../** @type {any} */ (apply), findings: fixesAsProposed(root, staged, /** @type {any} */ (apply).findings) };
   }
   const checks = runChecks(root, expect, staged, /** @type {any} */ (apply));
+  apply = prefixed(/** @type {any} */ (apply));
   const passed = checks.filter((c) => c.ok).length;
   const total = checks.length;
   const needsYou = passed < total;

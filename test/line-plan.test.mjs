@@ -32,7 +32,8 @@ test('registry: one registry lists the line tools and the construct commands, wi
   const kinds = Object.fromEntries(reg.list().map((t) => [t.name, t.kind]));
   assert.deepEqual(kinds, {
     'line.baseOn': 'write', 'line.promote': 'write', 'line.setPageProp': 'write', 'line.fix': 'write', 'line.setFragment': 'write',
-    'line.setBase': 'write', 'line.moveFile': 'write', 'line.createLayout': 'write', 'line.leaveAsIs': 'write', 'line.project': 'read', 'construct.validate': 'read',
+    'line.setBase': 'write', 'line.moveFile': 'write', 'line.createLayout': 'write', 'line.import.mark': 'write', 'line.import.toLibrary': 'write', 'line.import.toFeature': 'write',
+    'line.leaveAsIs': 'write', 'line.project': 'read', 'construct.validate': 'read',
   });
   assert.deepEqual(LINE_PLAN_TOOLS.map((t) => t.name).sort(), reg.list().filter((t) => t.name.startsWith('line.')).map((t) => t.name).sort(), 'the contract lists every line tool');
   await assert.rejects(reg.call('line.baseOn', { libraryId: 'components/Badge' }), /got arguments it cannot use: feature/);
