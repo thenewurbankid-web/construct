@@ -311,8 +311,20 @@ export function planFix(root, finding, fixId) {
  * @returns {import('./contract.mjs').ApplyResult}
  * @throws {LineOpError} UNKNOWN_FINDING, UNKNOWN_FIX or NO_STEP.
  */
-export function applyFix(root, { findingKey: key, fixId } = /** @type {any} */ ({})) {
+export function applyFix(root, req = /** @type {any} */ ({})) {
+  return applyChange(root, planFixByKey(root, req));
+}
+
+/**
+ * cp1: the plan half of POST /api/line/fix (the `line.fix` plan tool): find the finding by key in the current
+ * validate result and plan its fix, without writing. Pure.
+ * @param {string} root
+ * @param {import('./contract.mjs').FixRequest} req
+ * @returns {import('./contract.mjs').StagedChange}
+ * @throws {LineOpError} UNKNOWN_FINDING, UNKNOWN_FIX or NO_STEP.
+ */
+export function planFixByKey(root, { findingKey: key, fixId } = /** @type {any} */ ({})) {
   const finding = validateLine(root).violations.map(toFinding).find((f) => findingKey(f) === key);
   if (!finding) throw new LineOpError('That problem is no longer reported; reload the project to see what is left.', 'UNKNOWN_FINDING');
-  return applyChange(root, planFix(root, finding, String(fixId ?? '')));
+  return planFix(root, finding, String(fixId ?? ''));
 }
