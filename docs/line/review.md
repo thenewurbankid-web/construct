@@ -56,7 +56,11 @@ How the merge decided where two steps disagreed (the later step's intent, unless
 8. The Plan panel asks for the plan only on a Line project, and `GET /api/line/plan` with no project open is an empty plan with one sentence (no 400 while a project opens).
 9. Walk rule kept strict, with one named exception: Playwright's Chromium logs "Blocked script execution in about:srcdoc" for any sandboxed static frame as it attaches (checked with a bare `<iframe sandbox="" srcdoc="<p>static</p>">`); the preview frame runs no scripts and holds none.
 
-Not finished at the time of writing: __PENDING__
+10. System 1 is one module per concern: the drafter and Train Line use the expressions' `expr.mjs`, `facts.mjs` and `structure.mjs`, one intent catalog and one domain map (mirrors deleted, the 552 seed cases re-verified with none dropped; see "System 1 reconcile"). Plan records (`line/records/plans.jsonl`) and drafter transitions (`line/drafter/transitions.jsonl`) stay two files with shared slots and hashes. Train Line's exports no longer start with "train" (the no-training guard, #647); its MCP tool names `train_*` stay.
+
+Final run on the combined tree (11 Oct): browser batch `ui/e2e/line-batch.sh`: 74 line-* specs, 3 New Line project, 3 drafter, 4 Train Line, 33 UAT walks, all passed (cu2's walk re-run after a wait fix); `heavy.sh npm test`: 5948 tests, 0 failed (48 skipped, 4 todo).
+
+Open with you: the cd1 look (question above); Train Line keeps HTTP routes and MCP tools named `train_*` (labelling cases for the drafter, nothing trains here), say if #647 should cover those names too; the old Firefox processes (pid 24425...) were left alone.
 
 ## Pre-UAT walks: run these before every owner UAT
 

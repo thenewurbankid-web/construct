@@ -27,6 +27,7 @@ test('cu2 UAT: Settings lists every AI step in plain English, 1.5B by default, e
 
   // Every step reads as plain sentences: what it does, its model, how it decides and falls back.
   const steps = panel.getByTestId('ai-step');
+  await expect(steps.first()).toBeVisible({ timeout: 30_000 }); // the profiles arrive a moment after the panel
   expect(await steps.count()).toBeGreaterThanOrEqual(10);
   for (const s of await steps.all()) {
     const label = (await s.locator('.ais-label').innerText()).trim();
