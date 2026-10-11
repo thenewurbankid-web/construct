@@ -82,6 +82,10 @@ test.describe.serial('Line Pages screen (Line sample project, real server)', () 
     await expect(save).toBeDisabled();
     await prop.getByLabel('title').fill('All orders');
     await save.click();
+    // cp1: Save adds a plan step; nothing is written until the person approves it in the Plan panel.
+    await expect(page.getByTestId('lp-outcome')).toHaveText('Waiting for your approval: Sets title to "All orders" on ListPage in the page OrdersPage.');
+    expect(read(ORDERS)).toBe(before);
+    await page.getByTestId('line-plan').getByRole('button', { name: /^Approve step/ }).first().click();
     await expect(page.getByTestId('lp-outcome')).toHaveText('Saved. Sets title to "All orders" on ListPage in the page OrdersPage.');
     await expect(titleProp(page).getByTestId('lp-prop-now')).toHaveText('Now: All orders');
     await expect(titleProp(page).getByLabel('title')).toHaveValue('All orders');
@@ -95,6 +99,8 @@ test.describe.serial('Line Pages screen (Line sample project, real server)', () 
     await expect(prop.getByTestId('lp-prop-now')).toHaveText('Now: Invoices', { timeout: 30_000 });
     await prop.getByLabel('title').fill('Bills');
     await prop.getByRole('button', { name: 'Save' }).click();
+    await expect(page.getByTestId('lp-outcome')).toHaveText(/^Waiting for your approval: Sets title to "Bills"/);
+    await page.getByTestId('line-plan').getByRole('button', { name: /^Approve step/ }).first().click();
     await expect(page.getByTestId('lp-outcome')).toHaveText('Saved. Sets title to "Bills" on ListPage in the page InvoicesPage.');
     await expect(titleProp(page).getByTestId('lp-prop-now')).toHaveText('Now: Bills');
     expect(read(INVOICES)).toContain('<ListPage title="Bills" />');

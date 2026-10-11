@@ -73,16 +73,24 @@ test.describe.serial('Line spot code editing (Line sample project, real server)'
     expect(read(ORDERS)).toBe(before);
   });
 
-  test('a handler that would import another feature is refused by the Line rules, and nothing is written', async ({ page }) => {
+  test('a handler that would import another feature: the plan step fails its validate check, nothing is written, and the Plan panel asks you', async ({ page }) => {
     const before = read(ORDERS);
     const form = await openEditor(page);
     await form.getByLabel(LABEL).fill("() => import('../../billing/pages/InvoicesPage')");
     await form.getByRole('button', { name: 'Save' }).click();
-    const refusal = form.getByTestId('lp-fragment-refusal');
-    await expect(refusal.locator('p')).toHaveText(/^Nothing was saved: feature "orders" imports "\.\.\/\.\.\/billing\/pages\/InvoicesPage" from feature "billing"/);
-    await refusal.getByText('Details').click();
-    await expect(refusal.getByTestId('lp-fragment-detail')).toContainText(`LINE-DIR ${ORDERS}`);
+    // cp1: Save code adds a plan step; the Line rules run when the approved step runs.
+    await expect(page.getByTestId('lp-outcome')).toHaveText(/^Waiting for your approval: Changes the code for /);
+    const plan = page.getByTestId('line-plan');
+    await plan.getByRole('button', { name: /^Approve step/ }).first().click();
+    const step = plan.getByTestId('plan-step').first();
+    await expect(step).toHaveAttribute('data-state', 'needs-you');
+    await expect(step.getByTestId('plan-step-failing')).toContainText(/Validate found a new problem: feature "orders" imports "\.\.\/\.\.\/billing\/pages\/InvoicesPage" from feature "billing"/);
+    await expect(step.getByRole('button', { name: 'Try again' })).toBeVisible();
+    await expect(step.getByRole('button', { name: 'Leave as it is' })).toBeVisible();
+    await expect(page.getByTestId('lp-outcome')).toHaveText(/^Nothing was saved: feature "orders" imports/);
     expect(read(ORDERS)).toBe(before);
+    await step.getByRole('button', { name: 'Leave as it is' }).click();
+    await expect(plan.getByTestId('plan-step').nth(1)).toHaveAttribute('data-state', 'done');
   });
 
   test('a good edit lands with "Saved. ..." and changes only the handler\'s bytes on disk', async ({ page }) => {
@@ -91,6 +99,9 @@ test.describe.serial('Line spot code editing (Line sample project, real server)'
     const form = await openEditor(page);
     await form.getByLabel(LABEL).fill(NEW);
     await form.getByRole('button', { name: 'Save' }).click();
+    await expect(page.getByTestId('lp-outcome')).toHaveText(`Waiting for your approval: Changes the code for "${LABEL}" in OrdersPage.`);
+    expect(read(ORDERS)).toBe(before);
+    await page.getByTestId('line-plan').getByRole('button', { name: /^Approve step/ }).first().click();
     await expect(page.getByTestId('lp-outcome')).toHaveText(`Saved. Changes the code for "${LABEL}" in OrdersPage.`);
     expect(read(ORDERS)).toBe(before.replace(OLD, NEW));
     await listPagePart(page).getByRole('button', { name: 'Edit code' }).click();

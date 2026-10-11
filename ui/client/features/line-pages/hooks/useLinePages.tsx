@@ -70,7 +70,7 @@ export function useLinePages(project: LineProject | null, api: LinePagesApi | nu
     void (async () => {
       await reloadProject();
       await readParts(file);
-      setOutcome(saveOutcome(run.apply ?? { ok: false, sentence: run.sentence, files: [], findings: [] }));
+      if (run.apply) setOutcome(saveOutcome(run.apply));
       setRevision((r) => r + 1);
     })();
     // Only a newly run step triggers this; the file and readers are read through the latest render.
