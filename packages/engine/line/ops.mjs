@@ -87,7 +87,7 @@ function wrapperSource({ libraryId, kind, name, dest, libFile, libName, libSrc }
   const binding = form === 'default' ? local : local === libName ? `{ ${libName} }` : `{ ${libName} as ${local} }`;
   const typed = ['.tsx', '.ts', '.mts', '.cts'].includes(posix.extname(dest));
   return typed
-    ? `${head}import type { ComponentProps } from 'react';\nimport ${binding} from '${spec}';\n\nexport function ${name}(props: ComponentProps<typeof ${local}>) {\n  return <${local} {...props} />;\n}\n`
+    ? `${head}import type { ComponentProps } from 'react';\nimport ${binding} from '${spec}';\n\nexport function ${name}(props: ComponentProps<typeof ${local}> & object) {\n  return <${local} {...props} />;\n}\n`
     : `${head}import ${binding} from '${spec}';\n\nexport function ${name}(props) {\n  return <${local} {...props} />;\n}\n`;
 }
 

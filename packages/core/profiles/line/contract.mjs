@@ -56,7 +56,7 @@ export const NON_ITEM_FILE = /(^index\.[cm]?[jt]sx?$)|(\.(test|spec|stories)\.[c
 
 /** Default `line.writerExempt`: tests may create scratch files; everything else goes through the writer. */
 export const DEFAULT_WRITER_EXEMPT = Object.freeze([
-  '**/*.test.*', '**/*.spec.*', '**/test/**', '**/tests/**', '**/__tests__/**', '**/e2e/**',
+  '**/*.test.*', '**/*.spec.*', '**/test/**', '**/tests/**', '**/__tests__/**', '**/e2e/**', '**/__line_characterization__/**',
 ]);
 
 /** fs functions that change the file system (node:fs, node:fs/promises, callback and Sync forms). */

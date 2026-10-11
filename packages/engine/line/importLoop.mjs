@@ -111,7 +111,9 @@ export async function measure(ops, { root, folder, logic }) {
   const fit = await ops.load('fit');
   const blocks = blocksOf(fit);
   const waived = waivedSet(logic);
-  const units = map.units.map((u) => ({ fingerprint: u.fingerprint, id: u.id, kind: u.kind, fn: u.fn, file: u.file, block: blocks.get(keyOf(u)) ?? null, tested: passing.has(u.fingerprint), waived: waived.has(u.fingerprint) }));
+  // The units to keep are the app's: logic the import itself adds (Line's thin feature items) is not measured.
+  const added = baseline ? new Set(diff.added) : new Set();
+  const units = map.units.filter((u) => !added.has(u)).map((u) => ({ fingerprint: u.fingerprint, id: u.id, kind: u.kind, fn: u.fn, file: u.file, block: blocks.get(keyOf(u)) ?? null, tested: passing.has(u.fingerprint), waived: waived.has(u.fingerprint) }));
   return { map, diff, tests, behaviour, units, fit, blocks };
 }
 

@@ -16,7 +16,9 @@ import {
 const posix = path.posix;
 const SINGULAR = KIND_SINGULAR;
 /** Folder names that hold tests, test data or examples rather than the app; LINE-OWNER skips pages in them. */
-const TEST_DATA_SEGMENTS = new Set(['test', 'tests', '__tests__', 'e2e', 'fixtures', '__fixtures__', 'mocks', '__mocks__', 'examples']);
+// `__line_characterization__`: the characterization tests and their runtime Line generates for an import (engine
+// line/characterize.mjs CHAR_DIR).
+const TEST_DATA_SEGMENTS = new Set(['test', 'tests', '__tests__', 'e2e', 'fixtures', '__fixtures__', 'mocks', '__mocks__', 'examples', '__line_characterization__']);
 
 const isDir = (abs) => { try { return fs.statSync(abs).isDirectory(); } catch { return false; } };
 const isCode = (rel) => CODE_EXTENSIONS.includes(posix.extname(rel));

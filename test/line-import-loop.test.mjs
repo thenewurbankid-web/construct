@@ -13,7 +13,7 @@ import { fileURLToPath } from 'node:url';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 import { assertImportAgentView, assertImportPlanFile, IMPORT_PLAN_FILE } from '../packages/engine/line/contract.mjs';
 import { createImportAgent } from '../packages/engine/line/importAgent.mjs';
-import { fileStore, createImportAgentOnDisk } from '../packages/engine/line/importAgentDisk.mjs';
+import { fileStore, createImportAgentOnDisk, snapshotFolder, rollbackFolder } from '../packages/engine/line/importAgentDisk.mjs';
 import { createLogicOnDisk, readRouteFamily, buildLogicMap } from '../packages/engine/line/importLoopDisk.mjs';
 import { compareLogicMaps } from '../packages/engine/line/logicMap.mjs';
 import { createMockLogic } from '../packages/engine/line/importLoopMock.mjs';
@@ -67,7 +67,7 @@ const logicOf = (dir) => createLogicOnDisk(dir, FOLDER, {
 });
 
 /** The agent on the fixture: real loop ops on disk, a plan service that performs the step on disk when it runs. */
-function fixtureAgent(dir, { drop = false } = {}) {
+function fixtureAgent(dir, { drop = false, undo = false } = {}) {
   const planService = createMockPlanService({ refuse: () => false });
   const runNext = planService.runNext;
   planService.runNext = async (by, id) => {
@@ -77,7 +77,7 @@ function fixtureAgent(dir, { drop = false } = {}) {
     return r;
   };
   const importOps = { scan: () => ({ found: [], questions: [] }), plan: () => ({ steps: [STEP], summary: 'Brings total into Line in 1 step.' }) };
-  const agent = createImportAgent({ root: dir, folder: FOLDER, planService, store: fileStore(dir, FOLDER), importOps, logic: logicOf(dir) });
+  const agent = createImportAgent({ root: dir, folder: FOLDER, planService, store: fileStore(dir, FOLDER), importOps, logic: logicOf(dir), ...(undo ? { snapshot: snapshotFolder, rollback: rollbackFolder } : {}) });
   return { agent, planService };
 }
 
@@ -160,6 +160,25 @@ test('a step that keeps every unit continues to done; a step that drops a branch
   v = await b.agent.answer('ui', v.waiting.question.id, 'recheck');
   assert.equal(v.state, 'done', v.sentence);
   assert.equal(v.logic.steps.at(-1).status, 'ok');
+});
+
+test('iv2-bugs undo with the loop: a step the loop stops can undo the whole import; the folder is back byte for byte', async () => {
+  const dir = fixtureApp();
+  const before = fs.readFileSync(path.join(dir, FOLDER, 'total.mjs'), 'utf8');
+  const { agent, planService } = fixtureAgent(dir, { drop: true, undo: true });
+  await agent.start('ui');
+  let v = await agent.editStep('ui', { action: 'approve-all' });
+  v = await approveAlong(agent, planService, v);
+  assert.equal(v.waiting.question.id, 'loop:import-1-lib-total');
+  assert.deepEqual(v.waiting.question.options.map((o) => o.id), ['fix:1', 'recheck', 'undo', 'waive']);
+  assert.equal(v.waiting.question.options[2].sentence, `Undo the import: put ${FOLDER} back as it was before it started (1 step landed).`);
+  v = await agent.answer('ui', 'loop:import-1-lib-total', 'undo');
+  assert.equal(v.state, 'done', v.sentence);
+  assert.equal(v.sentence, `Undone: ${FOLDER} is back as it was before the import; nothing of it stayed.`);
+  assert.equal(fs.readFileSync(path.join(dir, FOLDER, 'total.mjs'), 'utf8'), before);
+  assert.equal(fs.existsSync(path.join(dir, FOLDER, 'library')), false, 'what the step wrote is gone');
+  assert.ok(fs.existsSync(path.join(dir, FOLDER, 'line/logic-map.json')), 'Line\'s own state stays');
+  assertImportPlanFile(JSON.parse(fs.readFileSync(path.join(dir, FOLDER, IMPORT_PLAN_FILE), 'utf8')));
 });
 
 test('waivers: an agent\'s waiver is refused and changes nothing; the owner\'s waiver lets the step through', async () => {

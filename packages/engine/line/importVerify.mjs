@@ -38,16 +38,31 @@ function runValidate(folderRoot) {
 const keyOf = (e) => `${e.rule} ${e.at.replace(/:\d+$/, '')}`;
 
 /**
- * The folder's Line problems before the import, as "RULE file" (the baseline verify compares against).
+ * The folder's problems before the import (the baseline verify compares against): its Line problems as "RULE file", and
+ * its type errors as "TS<code> <message>" (no path: a moved file keeps its old errors, and those are not the import's).
  * @param {any} projectRoot
  * @param {any} folder
- * @returns {any}
+ * @returns {Promise<string[]>}
  */
-export function lineBaseline(projectRoot, folder) {
+export async function lineBaseline(projectRoot, folder) {
   // Before the import the folder has no architecture.yml of its own, so validate may name files from the project root
   // (it found the project's config); after the import they are folder-relative. Keys are kept folder-relative.
   const inFolder = (e) => ({ ...e, at: e.at.startsWith(`${folder}/`) ? e.at.slice(folder.length + 1) : e.at });
-  return [...new Set(runValidate(path.join(projectRoot, folder)).errors.map(inFolder).map(keyOf))].sort();
+  const rules = runValidate(path.join(projectRoot, folder)).errors.map(inFolder).map(keyOf);
+  const types = (await folderTypeErrors(projectRoot, folder)).errors.map(typeKeyOf);
+  return [...new Set([...rules, ...types])].sort();
+}
+
+const typeKeyOf = (e) => `TS${e.code} ${e.message}`;
+
+/** The type errors inside the folder (the project's own tsc through the shared type-check), or why none could be read. */
+async function folderTypeErrors(projectRoot, folder) {
+  if (!fs.existsSync(path.join(projectRoot, 'tsconfig.json'))) return { status: 'no-config', errors: [] };
+  const r = /** @type {any} */ (await runTypesCheck(projectRoot, { timeoutMs: TIMEOUT, limit: Number.MAX_SAFE_INTEGER }));
+  if (r.status !== 'pass' && r.status !== 'type-errors') return { status: r.status, statement: r.statement, errors: [] };
+  const errors = (r.files ?? []).filter((f) => String(f.file).replace(/\\/g, '/').startsWith(`${folder}/`))
+    .flatMap((f) => f.errors.map((e) => ({ file: f.file, line: e.line, code: e.code, message: e.message })));
+  return { status: r.status, errors };
 }
 
 /**
@@ -68,29 +83,32 @@ export function checkValidate(folderRoot, baseline = []) {
 }
 
 /**
- * The project's types, errors inside the folder only. Reuses the shared type-check (packages/engine/verifyRunner.mjs
- * runTypesCheck: the project's own tsc, bounded, read-only) and its classifier (packages/core/verify.mjs
- * classifyTypeErrors) instead of a second tsc runner of its own.
+ * The project's types, errors inside the folder only, and only those the folder did not have before the import (the
+ * baseline's "TS<code> <message>" keys). Reuses the shared type-check (packages/engine/verifyRunner.mjs runTypesCheck:
+ * the project's own tsc, bounded, read-only) and its classifier (packages/core/verify.mjs classifyTypeErrors) instead of
+ * a second tsc runner of its own.
  * @param {any} projectRoot
  * @param {any} folder
+ * @param {string[]} [baseline] lineBaseline's keys.
  * @returns {Promise<any>}
  */
-export async function checkTypes(projectRoot, folder) {
-  if (!fs.existsSync(path.join(projectRoot, 'tsconfig.json'))) return { id: 'types', state: 'skipped', sentence: 'Types were not checked: the project has no tsconfig.json.' };
-  const r = /** @type {any} */ (await runTypesCheck(projectRoot, { timeoutMs: TIMEOUT, limit: Number.MAX_SAFE_INTEGER }));
-  if (r.status === 'tool-missing') return { id: 'types', state: 'skipped', sentence: 'Types were not checked: TypeScript is not installed in the project (run npm install there first).' };
-  if (r.status === 'no-config') return { id: 'types', state: 'skipped', sentence: 'Types were not checked: the project has no tsconfig.json.' };
-  if (r.status !== 'pass' && r.status !== 'type-errors') return { id: 'types', state: 'skipped', sentence: 'Types could not be checked in time.', detail: String(r.statement ?? '') };
-  const inFolder = (r.files ?? []).filter((f) => String(f.file).replace(/\\/g, '/').startsWith(`${folder}/`))
-    .flatMap((f) => f.errors.map((e) => ({ file: f.file, line: e.line, code: e.code, message: e.message })));
-  if (!inFolder.length) return { id: 'types', state: 'pass', sentence: `The types check out in ${folder}.` };
+export async function checkTypes(projectRoot, folder, baseline = []) {
+  const t = await folderTypeErrors(projectRoot, folder);
+  if (t.status === 'tool-missing') return { id: 'types', state: 'skipped', sentence: 'Types were not checked: TypeScript is not installed in the project (run npm install there first).' };
+  if (t.status === 'no-config') return { id: 'types', state: 'skipped', sentence: 'Types were not checked: the project has no tsconfig.json.' };
+  if (t.status !== 'pass' && t.status !== 'type-errors') return { id: 'types', state: 'skipped', sentence: 'Types could not be checked in time.', detail: String(t.statement ?? '') };
+  const old = new Set(baseline);
+  const inFolder = t.errors.filter((e) => !old.has(typeKeyOf(e)));
+  const keptNote = t.errors.length > inFolder.length ? ` ${t.errors.length - inFolder.length} type error${t.errors.length - inFolder.length === 1 ? ' was' : 's were'} already there before the import.` : '';
+  if (!inFolder.length) return { id: 'types', state: 'pass', sentence: `The types check out in ${folder}.${keptNote}` };
   const c = classifyTypeErrors(inFolder);
   return { id: 'types', state: 'fail', sentence: `The type checker finds ${inFolder.length} error${inFolder.length === 1 ? '' : 's'} in ${folder}.`, detail: [c.statement, ...c.files.flatMap((f) => f.errors.map((e) => `${f.file}:${e.line} ${e.code} ${e.message}`))].join('\n') };
 }
 
 function testFiles(dir, out = []) {
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
-    if (e.name === 'node_modules' || e.name.startsWith('.')) continue;
+    // Line's generated characterization tests are the char-tests check's (runCharTests), not the folder's own tests.
+    if (e.name === 'node_modules' || e.name.startsWith('.') || e.name === '__line_characterization__') continue;
     const abs = path.join(dir, e.name);
     if (e.isDirectory()) testFiles(abs, out);
     else if (/\.(test|spec)\.(m?js|tsx?)$/.test(e.name)) out.push(abs);
@@ -125,7 +143,7 @@ export function checkTests(projectRoot, folder) {
  * @returns {Promise<any>}
  */
 export async function verifyImport(projectRoot, folder, baseline = []) {
-  const checks = [checkValidate(path.join(projectRoot, folder), baseline), await checkTypes(projectRoot, folder), checkTests(projectRoot, folder)];
+  const checks = [checkValidate(path.join(projectRoot, folder), baseline), await checkTypes(projectRoot, folder, baseline), checkTests(projectRoot, folder)];
   return { ok: !checks.some((c) => c.state === 'fail'), checks };
 }
 

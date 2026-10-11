@@ -24,6 +24,7 @@ import { folderRootOf } from './importUndo.mjs';
 import { buildLogicMap, compareLogicMaps, writeLogicMap, readLogicMap } from './logicMap.mjs';
 import { readRouteFamily } from './importV2/route.mjs';
 import { fitLogic, planFitSteps } from './importV2/fit.mjs';
+import { appDependsOn } from './importV2/extract.mjs';
 import { FIT_FILE, assertFitProposal } from './importV2/contract.mjs';
 import { characterize, CHAR_DIR } from './characterize.mjs';
 import { runCharTests, checkBehaviour, testRunnerOf } from './importVerify.mjs';
@@ -125,7 +126,11 @@ export function createLogicOnDisk(root, folder, o = {}) {
       const c = { appRoot: root, routes: closure?.routes ?? [], files: closure?.files ?? [], external: closure?.external ?? [] };
       const proposal = fitLogic(map, c, { feature: feature(closure) });
       assertFitProposal(proposal, map.units.map((u) => u.fingerprint));
-      const { steps, skipped } = planFitSteps(proposal, { folder: f, closure: c });
+      const planned = planFitSteps(proposal, { folder: f, closure: c });
+      // A workflow needs xstate in the app: without it the step is left for a person, said once here, not refused later.
+      const noXstate = !appDependsOn(path.join(root, f), 'xstate');
+      const steps = planned.steps.filter((s) => !(noXstate && s.tool === 'line.import.extractWorkflow'));
+      const skipped = [...planned.skipped, ...planned.steps.filter((s) => !steps.includes(s)).map((s) => ({ block: s.blocks[0], sentence: `${s.args.name} stays where it is: the app does not depend on xstate, so a Line workflow would not compile in it.` }))];
       return { proposal, steps, skipped };
     },
     characterize: async (_r, f, closure, map) => {

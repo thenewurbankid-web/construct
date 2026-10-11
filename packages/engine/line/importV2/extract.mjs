@@ -526,6 +526,17 @@ export function planSplit(root, { from, component, name, to }) {
 // ------------------------------------------------------------------------------------------------- workflow
 
 /** The app's package.json at or above the folder (read only), or null. */
+/**
+ * True when the app (the nearest package.json from `root` up) depends on `name` (dependencies, dev or peer).
+ * @param {string} root
+ * @param {string} name
+ * @returns {boolean}
+ */
+export function appDependsOn(root, name) {
+  const pkg = appPackage(root);
+  return Boolean({ ...(pkg?.dependencies ?? {}), ...(pkg?.devDependencies ?? {}), ...(pkg?.peerDependencies ?? {}) }[name]);
+}
+
 function appPackage(root) {
   let dir = path.resolve(root);
   for (;;) {
@@ -580,9 +591,7 @@ function readFlow(sf, fn) {
  */
 export function planWorkflow(root, { from, component, name, feature }, layout) {
   const src = readCode(root, from);
-  const pkg = appPackage(root);
-  const deps = { ...(pkg?.dependencies ?? {}), ...(pkg?.devDependencies ?? {}), ...(pkg?.peerDependencies ?? {}) };
-  if (!deps.xstate) throw new LineOpError('The app does not depend on xstate, so a Line workflow would not compile in it; add xstate to its package.json first, then run this step again.', 'NO_XSTATE');
+  if (!appDependsOn(root, 'xstate')) throw new LineOpError('The app does not depend on xstate, so a Line workflow would not compile in it; add xstate to its package.json first, then run this step again.', 'NO_XSTATE');
   const sf = parse(from, src);
   const found = findComponent(sf, String(component ?? ''));
   if (!found?.fn) throw new LineOpError(`There is no component ${component} in ${posix.basename(from)}; name one of its components.`, 'UNKNOWN_ITEM');

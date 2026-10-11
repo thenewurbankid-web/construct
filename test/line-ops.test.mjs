@@ -58,7 +58,7 @@ test('ops: base-on plans one wrapped feature file and writes nothing; applying i
   const src = change.files[0].content;
   assert.match(src, /^\/\/ @line-base components\/Button\n/);
   assert.match(src, /import \{ Button \} from '\.\.\/\.\.\/\.\.\/library\/components\/Button';/);
-  assert.match(src, /export function PayButton\(props: ComponentProps<typeof Button>\) \{\n {2}return <Button \{\.\.\.props\} \/>;/);
+  assert.match(src, /export function PayButton\(props: ComponentProps<typeof Button> & object\) \{\n {2}return <Button \{\.\.\.props\} \/>;/);
   assert.deepEqual(snapshot(dir), before, 'planning writes nothing');
 
   const r = applyChange(dir, change);
