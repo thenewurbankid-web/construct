@@ -20,7 +20,7 @@ export function PageList({ pages, current, onChoose, workspaceFolder = null, onF
       {pages.map((p) => (
         <li key={p.id} className="lp-page" data-testid="lp-page" data-page={p.name} aria-current={current === p.id ? 'true' : undefined}>
           <div className="lp-page-head">
-            <button type="button" className="lp-page-open" onClick={() => onChoose(p.id)} aria-pressed={current === p.id}>
+            <button type="button" className="lp-page-open" data-line-control="pages.page" data-line-target={p.name} onClick={() => onChoose(p.id)} aria-pressed={current === p.id}>
               {p.name}
             </button>
             <span className={`lp-chip ${p.status === 'ok' ? 'lp-chip--ok' : 'lp-chip--problem'}`} data-testid="lp-page-status">

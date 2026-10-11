@@ -16,7 +16,7 @@ export function BaseOnForm({ controls, libraryName }: { controls: ChangeControls
     <form className="ll-form" aria-label={`Base a new component on ${libraryName}`} onSubmit={onSubmit} data-testid="ll-base-on-form">
       <label className="ll-field">
         <span>Feature</span>
-        <select value={change.feature} onChange={(e) => controls.setFeature(e.target.value)} disabled={saving}>
+        <select data-line-control="components.baseOnFeature" data-line-target={libraryName} value={change.feature} onChange={(e) => controls.setFeature(e.target.value)} disabled={saving}>
           {controls.features.map((f) => (
             <option key={f} value={f}>
               {f}
@@ -26,7 +26,7 @@ export function BaseOnForm({ controls, libraryName }: { controls: ChangeControls
       </label>
       <label className="ll-field">
         <span>Name</span>
-        <input value={change.name} onChange={(e) => controls.setName(e.target.value)} disabled={saving} spellCheck={false} />
+        <input data-line-control="components.baseOnName" data-line-target={libraryName} value={change.name} onChange={(e) => controls.setName(e.target.value)} disabled={saving} spellCheck={false} />
       </label>
       {error && (
         <p className="ll-error" role="alert">
@@ -34,7 +34,7 @@ export function BaseOnForm({ controls, libraryName }: { controls: ChangeControls
         </p>
       )}
       <span className="ll-actions">
-        <button type="submit" className="ll-btn ll-btn--primary" disabled={saving}>
+        <button type="submit" className="ll-btn ll-btn--primary" disabled={saving} data-line-control="components.baseOnCreate" data-line-target={libraryName}>
           {saving ? 'Creating...' : 'Create'}
         </button>
         <button type="button" className="ll-btn" onClick={controls.cancel} disabled={saving}>

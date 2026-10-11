@@ -21,7 +21,7 @@ function Row({ row, controls }: { row: FeatureComponentRow; controls: ChangeCont
       {open ? (
         <PromoteConfirm controls={controls} text={row.promoteText} />
       ) : (
-        <button type="button" className="ll-btn" aria-label={`Promote to library: ${row.name}`} onClick={() => controls.openPromote(row.id, row.name)}>
+        <button type="button" className="ll-btn" aria-label={`Promote to library: ${row.name}`} data-line-control="components.promote" data-line-target={row.name} onClick={() => controls.openPromote(row.id, row.name)}>
           Promote to library
         </button>
       )}

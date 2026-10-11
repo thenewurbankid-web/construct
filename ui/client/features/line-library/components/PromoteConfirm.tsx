@@ -15,7 +15,7 @@ export function PromoteConfirm({ controls, text }: { controls: ChangeControls; t
         </p>
       )}
       <span className="ll-actions">
-        <button type="button" className="ll-btn ll-btn--primary" onClick={controls.submit} disabled={saving}>
+        <button type="button" className="ll-btn ll-btn--primary" onClick={controls.submit} disabled={saving} data-line-control="components.promoteConfirm" data-line-target={change.name}>
           {saving ? 'Promoting...' : 'Promote'}
         </button>
         <button type="button" className="ll-btn" onClick={controls.cancel} disabled={saving}>

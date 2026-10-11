@@ -39,7 +39,7 @@ export function FragmentEditor({ children }: FragmentEditorProps) {
   const panelId = useId();
   return (
     <div className="lp-code" data-testid="lp-code">
-      <button type="button" className="ui-button lp-code-toggle" aria-expanded={open} aria-controls={panelId} onClick={() => setOpen(!open)} data-testid="lp-code-toggle">
+      <button type="button" className="ui-button lp-code-toggle" aria-expanded={open} aria-controls={panelId} onClick={() => setOpen(!open)} data-testid="lp-code-toggle" data-line-control="pages.codeToggle">
         {toggleLabel(open)}
       </button>
       <div id={panelId} className="lp-code-panel" hidden={!open}>
@@ -72,7 +72,7 @@ export function FragmentForm({ fragment, busy, refusal, onSave }: FragmentFormPr
       </label>
       <textarea id={id} className="lp-fragment-code" value={code} rows={rows} spellCheck={false} autoCapitalize="off" autoCorrect="off" onChange={(e) => setCode(e.target.value)} />
       <div className="lp-fragment-actions">
-        <button type="submit" className="ui-button ui-button--primary" disabled={busy || !changed}>
+        <button type="submit" className="ui-button ui-button--primary" disabled={busy || !changed} data-line-control="pages.fragmentSave">
           {saveLabel(busy)}
         </button>
         <button type="button" className="ui-button" hidden={!changed} onClick={() => setCode(fragment.code)} disabled={busy}>

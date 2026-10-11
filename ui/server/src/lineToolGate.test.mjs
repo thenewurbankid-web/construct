@@ -18,6 +18,7 @@ import { createLineRenderRouter } from './lineRenderApi.mjs';
 import { createLineToolGate } from './lineToolGate.mjs';
 import { createLineImportRouter } from './lineImportApi.mjs';
 import { createLineAiRouter } from './lineAiApi.mjs';
+import { createLineTraceRouter } from './lineTraceApi.mjs';
 
 const SAMPLE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../examples/line-sample');
 const NO_LINK = { env: { ...process.env, LINE_SOURCE_DIR: path.join(makeTempDir('no-source-'), 'nope') } };
@@ -29,7 +30,7 @@ function routesOf(router) {
   return router.stack.filter((l) => l.route).flatMap((l) => Object.keys(l.route.methods).map((m) => `${m.toUpperCase()} /api/line${l.route.path}`));
 }
 const noRoot = () => ({ ok: false, error: 'No project.' });
-const ALL_ROUTERS = () => [createLineRouter({ getRoot: noRoot }), createLineOpsRouter({ getRoot: noRoot }), createLinePlanRouter({ getRoot: noRoot }), createLineRenderRouter({ getRoot: noRoot }), createLineImportRouter({ getRoot: noRoot }), createLineAiRouter(), createLineToolGate({ getRoot: noRoot })];
+const ALL_ROUTERS = () => [createLineRouter({ getRoot: noRoot }), createLineOpsRouter({ getRoot: noRoot }), createLinePlanRouter({ getRoot: noRoot }), createLineRenderRouter({ getRoot: noRoot }), createLineImportRouter({ getRoot: noRoot }), createLineAiRouter(), createLineTraceRouter({ getRoot: noRoot }), createLineToolGate({ getRoot: noRoot })];
 /** cu7's new-project router is mounted at its own path, /api/line/new-project, before the gate (it needs no open project). */
 const MOUNTED_APART = ['POST /api/line/new-project'];
 function sampleCopy() {
@@ -84,5 +85,5 @@ test('Cockpit gate (real sample, built-in plan store): POST /base-on is gone, a 
   assert.equal((await unknown.json()).sentence, 'Line has no tool at POST /api/line/delete-everything.');
   const tools = await (await fetch(`${base}/tools`)).json();
   assertToolList(tools);
-  assert.ok(tools.tools.find((x) => x.id === 'line.baseOn' && x.kind === 'write' && x.writes === 'project' && x.controlId === 'base-on'));
+  assert.ok(tools.tools.find((x) => x.id === 'line.baseOn' && x.kind === 'write' && x.writes === 'project' && x.controlId === 'components.baseOn'));
 });

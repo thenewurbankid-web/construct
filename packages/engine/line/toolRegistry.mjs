@@ -17,6 +17,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createTransaction } from '../transactionalWriter.mjs';
 import { LINE_PLAN_TOOLS, assertToolEntry } from './contract.mjs';
+import { LINE_CONTROLS } from './controls.mjs';
 
 // ------------------------------------------------------------------------------------------------- schemas
 const failed = (p, message) => ({ success: /** @type {const} */ (false), error: { issues: [{ path: p, message }] } });
@@ -94,6 +95,8 @@ export const TOOL_ENTRIES = Object.freeze(/** @type {any[]} */ ([
   { id: 'plan.addStep', kind: 'write', writes: 'line', inputSchema: fieldsSchema(['tool'], ['args', 'why']), outputSchema: 'PlanView & {stepId}', sentence: 'Adds one step to the project\'s plan; a change waits there for approval.', surfaces: { http: http('POST', '/plan/step'), mcp: 'plan_add_step' } },
   { id: 'plan.approve', kind: 'write', writes: 'line', inputSchema: fieldsSchema(['stepId']), outputSchema: 'PlanView', sentence: 'A person approves one step of the plan.', controlId: 'plan-approve', personOnly: true, surfaces: { http: http('POST', '/plan/approve') } },
   { id: 'plan.runNext', kind: 'write', writes: 'line', inputSchema: fieldsSchema([], ['stepId']), outputSchema: 'PlanView', sentence: 'Runs exactly one ready step; a change runs only after a person approved it.', surfaces: { http: http('POST', '/plan/run'), mcp: 'plan_run_next' } },
+  { id: 'plan.retry', kind: 'write', writes: 'line', inputSchema: fieldsSchema(['stepId']), outputSchema: 'PlanView & {stepId}', sentence: 'A person tries a step that needs them again, as a new step.', personOnly: true, surfaces: {} },
+  { id: 'line.trace', kind: 'read', writes: null, inputSchema: fieldsSchema([], ['request', 'steps']), outputSchema: 'TraceMatch', sentence: 'Says which tools a request or the plan\'s open steps need, and which controls do them; plans and writes nothing.', surfaces: { http: http('POST', '/trace') } },
   // construct-mcp's read-only blocks.
   { id: 'blocks.requirementParse', kind: 'read', writes: null, inputSchema: fieldsSchema(['text']), outputSchema: 'RequirementCard', sentence: 'Reads one plain-English requirement into a requirement card.', surfaces: { mcp: 'requirement_parse' } },
   { id: 'blocks.placementPlace', kind: 'read', writes: null, inputSchema: fieldsSchema(['text'], ['answers']), outputSchema: 'Placement', sentence: 'Places a requirement in the project\'s layers and previews its plan.', surfaces: { mcp: 'placement_place' } },
@@ -112,7 +115,11 @@ export const TOOL_ENTRIES = Object.freeze(/** @type {any[]} */ ([
   { id: 'gatelm.fill', kind: 'write', writes: 'line', inputSchema: fieldsSchema(['draftId', 'gapKey'], ['value']), outputSchema: 'GateLM Draft', sentence: 'Records one answer for one gap of a draft.', controlId: 'gatelm-option', surfaces: { gatelm: true, studio: true } },
   { id: 'gatelm.answer', kind: 'write', writes: 'line', inputSchema: fieldsSchema(['questionId'], ['optionIndex', 'value']), outputSchema: 'GateLM Draft', sentence: 'Answers one of a draft\'s questions.', surfaces: { gatelm: true, studio: true } },
   { id: 'gatelm.setAuto', kind: 'write', writes: 'line', inputSchema: fieldsSchema(['draftId', 'auto']), outputSchema: 'GateLM Draft', sentence: 'Turns a draft\'s Auto setting on or off.', surfaces: { gatelm: true, studio: true } },
-]).map((e) => Object.freeze({ ...e, surfaces: Object.freeze(e.surfaces) })));
+]).map((e) => {
+  // cg1/ct1: the control Trace lights for a tool comes from the one control registry (controls.mjs), first control first.
+  const c = LINE_CONTROLS.find((x) => x.toolId === e.id);
+  return Object.freeze({ ...e, ...(c ? { controlId: c.controlId } : {}), surfaces: Object.freeze(e.surfaces) });
+}));
 
 for (const e of TOOL_ENTRIES) assertToolEntry(e);
 // The plan's own tool list (cp1, contract.mjs LINE_PLAN_TOOLS) must agree with the catalog, kind for kind.

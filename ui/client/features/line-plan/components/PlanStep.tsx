@@ -5,6 +5,11 @@ type Decide = { busy: boolean; onApprove: (stepId: string) => void; onChoose: (s
 
 const line = (text: string) => <li key={text}>{text}</li>;
 
+/** cg1: the control id Trace lights for a choice (one control registry, packages/engine/line/controls.mjs). */
+const CHOICE_CONTROL: Record<StepChoice['id'], string> = { retry: 'plan.retry', leave: 'plan.leave', fix: 'plan.fix' };
+const choiceControl = (c: StepChoice) => CHOICE_CONTROL[c.id];
+const code = (text: string) => <code key={text}>{text}</code>;
+
 /** Plain-English lines under a step (what is already there, which checks failed, what a finding suggests). */
 function Lines({ label, lines, testId }: { label: string; lines: string[]; testId: string }) {
   if (!lines.length) return null;
@@ -18,7 +23,7 @@ function Lines({ label, lines, testId }: { label: string; lines: string[]; testI
 /** Approve for a step waiting on the person; Try again / Leave as it is for a step that needs them. */
 function Actions({ row, busy, onApprove, onChoose }: Decide & { row: PlanStepRow }) {
   const choice = (c: StepChoice) => (
-    <button key={c.key} type="button" className={c.label === 'Apply recommended fix' ? 'lpl-btn lpl-btn--primary' : 'lpl-btn'} title={c.sentence} onClick={() => onChoose(row.id, c)} disabled={busy}>
+    <button key={c.key} type="button" className={c.label === 'Apply recommended fix' ? 'lpl-btn lpl-btn--primary' : 'lpl-btn'} title={c.sentence} data-line-control={choiceControl(c)} data-line-target={String(row.n)} onClick={() => onChoose(row.id, c)} disabled={busy}>
       {c.label}
     </button>
   );
@@ -26,7 +31,7 @@ function Actions({ row, busy, onApprove, onChoose }: Decide & { row: PlanStepRow
   if (!row.canApprove) return <span className="lpl-actions">{row.choices.map(choice)}</span>;
   return (
     <span className="lpl-actions">
-      <button type="button" className="lpl-btn lpl-btn--primary" aria-label={`Approve step ${row.n}`} onClick={() => onApprove(row.id)} disabled={busy}>
+      <button type="button" className="lpl-btn lpl-btn--primary" aria-label={`Approve step ${row.n}`} data-line-control="plan.approve" data-line-target={String(row.n)} onClick={() => onApprove(row.id)} disabled={busy}>
         Approve
       </button>
     </span>

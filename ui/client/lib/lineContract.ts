@@ -295,6 +295,32 @@ export type ToolView = {
 /** GET /api/line/tools. */
 export type ToolList = { ok: true; tools: ToolView[] };
 
+/** cg1/ct1: Trace (contract.mjs LineControl, AutoAction, TraceMatch). One control registry; the DOM carries
+ * data-line-control (and data-line-target for the item a control acts on). */
+export type LineScreen = 'components' | 'pages' | 'features' | 'plan';
+export type LineControl = { controlId: string; toolId: string; screen: LineScreen; label: string };
+export type AutoAction = { kind: 'click' | 'type' | 'select' | 'approve'; controlId: string; target: string | null; value?: string; caption: string };
+export type TraceTool = {
+  toolId: string;
+  from: 'request' | 'step';
+  stepId: string | null;
+  args: Record<string, unknown>;
+  sentence: string;
+  controls: { controlId: string; target: string | null; screen: LineScreen; label: string }[];
+  script: AutoAction[];
+  missing: string | null;
+};
+export type TraceRequest = { request?: string; steps?: { id: string; n?: number; tool: string; state: string }[] };
+export type TraceMatch = {
+  ok: true;
+  request: string;
+  tools: TraceTool[];
+  alternatives: string[];
+  choice: { options: string[]; picked: string; via: 'static' | 'jev'; sentence: string } | null;
+  via: 'static' | 'jev';
+  sentence: string;
+};
+
 /** Every LINE_API route, as the client calls it. Bodies come back as the server sent them, refusals included; each
  * screen turns them into what it shows. A network failure rejects. */
 export type LineHttp = {
@@ -317,6 +343,7 @@ export type LineHttp = {
   importPlan: (req: ImportPlanRequest) => Promise<ImportPlan | LineRefusal>;
   newProject: (req: NewLineProjectRequest) => Promise<NewLineProjectResult | LineRefusal>;
   getAiProfiles: () => Promise<AiProfiles | LineRefusal>;
+  trace: (req: TraceRequest) => Promise<TraceMatch | LineRefusal>;
 };
 
 /** cu2: one AI step's profile (Cockpit, Trace and Construct steps are one set; contract.mjs StepProfile). */

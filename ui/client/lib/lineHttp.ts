@@ -52,4 +52,5 @@ export const lineHttp: LineHttp = {
   importPlan: (req) => postJson('/api/line/import/plan', req),
   newProject: (req) => postJson('/api/line/new-project', req),
   getAiProfiles: () => getJson('/api/line/ai-profiles'),
+  trace: (req) => postJson('/api/line/trace', req),
 };

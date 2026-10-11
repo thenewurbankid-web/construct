@@ -94,6 +94,7 @@ import { createLineToolGate } from './lineToolGate.mjs';
 import { createLinePlanService } from '../../../packages/engine/line/planService.mjs';
 import { createLineAiRouter } from './lineAiApi.mjs';
 import { stepModel } from '../../../packages/core/ai-profiles.mjs';
+import { createLineTraceRouter } from './lineTraceApi.mjs';
 import { createStoryBridgeRouter } from './storyBridgeApi.mjs';
 import { createNotesRouter } from './notesApi.mjs';
 import { openNotesStore } from './notesStore.mjs';
@@ -1306,6 +1307,15 @@ app.use('/api/line', createLinePlanRouter({
 app.use('/api/line', createLineImportRouter({
   clientOrigin: CLIENT_ORIGIN,
   afterSave,
+  getRoot: () => {
+    const root = containedProjectRoot(getProjectDir());
+    return root ? { ok: true, root } : { ok: false, error: 'No project is open; pick a project first.' };
+  },
+}));
+
+// cg1 (Line Cockpit): Trace mode's "which controls do this?" for a request and the plan's open steps (a pure read).
+app.use('/api/line', createLineTraceRouter({
+  clientOrigin: CLIENT_ORIGIN,
   getRoot: () => {
     const root = containedProjectRoot(getProjectDir());
     return root ? { ok: true, root } : { ok: false, error: 'No project is open; pick a project first.' };

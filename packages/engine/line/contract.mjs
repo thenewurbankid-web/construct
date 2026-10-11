@@ -537,6 +537,67 @@ export const PLAN_PROTOCOL = Object.freeze([
  * @property {{linked: boolean, sentence: string}} reason  Whether @mx/reason (jev and the ladder) is linked, in one sentence.
  */
 
+/**
+ * cg1 -- Trace highlighting. ONE control registry: every Cockpit control that triggers a tool is registered with that
+ * tool, and the DOM carries its id as `data-line-control` (and the item it acts on as `data-line-target`). cu3 adds an
+ * optional `controlId` to each tool of the one tool registry (@mx/plan); this registry is the control side of that same
+ * link (packages/engine/line/controls.mjs LINE_CONTROLS), never a second tool registry.
+ *
+ * @typedef {'components'|'pages'|'features'|'plan'} LineScreen  'plan' is the Plan panel, shown on Components and Pages.
+ *
+ * @typedef {object} LineControl
+ * @property {string} controlId  Stable, "<screen>.<name>", e.g. "components.baseOn".
+ * @property {string} toolId     The tool it triggers: a plan tool (LINE_PLAN_TOOLS) or a plan action (PLAN_ACTION_TOOLS).
+ * @property {LineScreen} screen
+ * @property {string} label      What the person sees on it, e.g. "Base on this".
+ *
+ * One scripted move of Auto (ct1): the simulated cursor goes to the control and does `kind`; `caption` says it in
+ * plain English. `approve` is the Approve button: Auto stops there for the person unless they let Auto approve in
+ * this session. The change itself always runs through the plan runner (the control's own handler adds the step).
+ * @typedef {object} AutoAction
+ * @property {'click'|'type'|'select'|'approve'} kind
+ * @property {string} controlId
+ * @property {string|null} target
+ * @property {string} [value]    For type and select.
+ * @property {string} caption    One sentence.
+ *
+ * A tool the request or a plan step needs, with the controls that do it.
+ * @typedef {object} TraceTool
+ * @property {string} toolId
+ * @property {'request'|'step'} from
+ * @property {string|null} stepId
+ * @property {Record<string, unknown>} args   What static read from the request (may be partial).
+ * @property {string} sentence   E.g. "Base a new component on Badge."
+ * @property {{controlId: string, target: string|null, screen: LineScreen, label: string}[]} controls  In the order a person uses them (screen and label from the registry).
+ * @property {AutoAction[]} script   Auto's moves for it (empty when Auto cannot fill it in).
+ * @property {string|null} missing   What Auto still needs from the person, one sentence, or null.
+ *
+ * POST /api/line/trace {request?, steps?} answers this (a pure read: nothing is planned or written).
+ * @typedef {{request?: string, steps?: {id: string, n?: number, tool: string, args?: Record<string, unknown>, state: string}[]}} TraceRequest
+ * @typedef {object} TraceMatch
+ * @property {true} ok
+ * @property {string} request
+ * @property {TraceTool[]} tools        The picked request tool first, then the open plan steps' tools.
+ * @property {string[]} alternatives    Other tools the request could mean (not lit).
+ * @property {{options: string[], picked: string, via: 'static'|'jev', sentence: string}|null} choice  Set when several tools fit the request.
+ * @property {'static'|'jev'} via
+ * @property {string} sentence          One sentence for the Trace bar.
+ */
+
+/** The Cockpit screens a control can sit on, and where each one is. */
+export const LINE_SCREENS = Object.freeze([
+  Object.freeze({ id: 'components', label: 'Components', href: '/components' }),
+  Object.freeze({ id: 'pages', label: 'Pages', href: '/pages' }),
+  Object.freeze({ id: 'features', label: 'Features', href: '/' }),
+  Object.freeze({ id: 'plan', label: 'Plan panel', href: '/components' }),
+]);
+/** The plan actions a control can trigger besides the plan tools (a person's decisions on a step). */
+export const PLAN_ACTION_TOOLS = Object.freeze([
+  { name: 'plan.approve', kind: 'person', request: '{stepId}' },
+  { name: 'plan.retry', kind: 'person', request: '{stepId}' },
+]);
+export const AUTO_ACTION_KINDS = Object.freeze(['click', 'type', 'select', 'approve']);
+
 /** A refused request (bad name, unknown item, name taken). `sentence` is shown as is; `detail` (optional) is the
  * technical reason (a parser or type-checker message) for a collapsed Details. */
 export class LineOpError extends Error {
@@ -615,6 +676,7 @@ export const LINE_API = Object.freeze([
   { method: 'POST', path: '/api/line/new-project', request: 'NewLineProjectRequest', response: 'NewLineProjectResult' },
   { method: 'GET', path: '/api/line/tools', request: null, response: 'ToolList' },
   { method: 'GET', path: '/api/line/ai-profiles', request: null, response: 'AiProfiles' },
+  { method: 'POST', path: '/api/line/trace', request: 'TraceRequest', response: 'TraceMatch' },
 ]);
 
 /** The tools an import plan's steps name (plan-ready: each produces a StagedChange for applyChange). */
@@ -1273,4 +1335,83 @@ export function assertAiProfiles(x) {
   });
   if (typeof x.reason?.linked !== 'boolean') fail('aiProfiles.reason.linked', 'must be a boolean');
   sentence(x.reason.sentence, 'aiProfiles.reason.sentence');
+}
+const SCREEN_IDS = ['components', 'pages', 'features', 'plan'];
+const TOOL_IDS = () => [...LINE_PLAN_TOOLS, ...PLAN_ACTION_TOOLS].map((t) => t.name);
+
+/**
+ * cg1: throws unless c is a LineControl ("<screen>.<name>" id on its screen, a known tool, a label not a sentence).
+ * @param {any} c
+ * @param {string} [where]
+ * @returns {asserts c is LineControl}
+ */
+export function assertLineControl(c, where = 'control') {
+  str(c?.controlId, `${where}.controlId`);
+  if (!/^[a-z]+\.[A-Za-z]+$/.test(c.controlId)) fail(`${where}.controlId`, 'must be "<screen>.<name>"');
+  if (!SCREEN_IDS.includes(c.screen)) fail(`${where}.screen`, `must be one of ${SCREEN_IDS.join(', ')}`);
+  if (c.controlId.split('.')[0] !== c.screen) fail(`${where}.controlId`, 'must start with its screen');
+  if (!TOOL_IDS().includes(c.toolId)) fail(`${where}.toolId`, `must be a plan tool or plan action, not ${c.toolId}`);
+  str(c.label, `${where}.label`);
+  if (/[.?!]$/.test(c.label)) fail(`${where}.label`, 'is a label, not a sentence');
+}
+
+/**
+ * cg1: throws unless list is the control registry (non-empty, every control valid, ids unique).
+ * @param {any} list
+ * @returns {asserts list is LineControl[]}
+ */
+export function assertControlRegistry(list) {
+  if (!Array.isArray(list) || !list.length) fail('controls', 'must be a non-empty array');
+  const ids = new Set();
+  list.forEach((c, i) => {
+    assertLineControl(c, `controls[${i}]`);
+    if (ids.has(c.controlId)) fail(`controls[${i}].controlId`, 'must be unique: one registry, one entry per control');
+    ids.add(c.controlId);
+  });
+}
+
+/**
+ * ct1: throws unless a is one of Auto's moves (kind, control, target, value for type and select, a caption).
+ * @param {any} a
+ * @param {string} [where]
+ * @returns {asserts a is AutoAction}
+ */
+export function assertAutoAction(a, where = 'action') {
+  if (!AUTO_ACTION_KINDS.includes(a?.kind)) fail(`${where}.kind`, `must be one of ${AUTO_ACTION_KINDS.join(', ')}`);
+  str(a.controlId, `${where}.controlId`);
+  if (a.target !== null && typeof a.target !== 'string') fail(`${where}.target`, 'must be a string or null');
+  if ((a.kind === 'type' || a.kind === 'select') && typeof a.value !== 'string') fail(`${where}.value`, 'type and select carry a value');
+  sentence(a.caption, `${where}.caption`);
+}
+
+/**
+ * cg1: throws unless m is a TraceMatch (POST /api/line/trace).
+ * @param {any} m
+ * @returns {asserts m is TraceMatch}
+ */
+export function assertTraceMatch(m) {
+  if (m?.ok !== true) fail('trace.ok', 'must be true');
+  if (typeof m.request !== 'string') fail('trace.request', 'must be a string');
+  if (!['static', 'jev'].includes(m.via)) fail('trace.via', 'must be static or jev');
+  sentence(m.sentence, 'trace.sentence');
+  if (!Array.isArray(m.tools) || !Array.isArray(m.alternatives)) fail('trace.tools', 'tools and alternatives must be arrays');
+  m.tools.forEach((t, i) => {
+    const w = `trace.tools[${i}]`;
+    if (!TOOL_IDS().includes(t.toolId)) fail(`${w}.toolId`, 'unknown tool');
+    if (!['request', 'step'].includes(t.from)) fail(`${w}.from`, 'must be request or step');
+    if ((t.from === 'step') !== (typeof t.stepId === 'string')) fail(`${w}.stepId`, 'a step tool names its step, a request tool does not');
+    sentence(t.sentence, `${w}.sentence`);
+    if (!Array.isArray(t.controls)) fail(`${w}.controls`, 'must be an array');
+    t.controls.forEach((c, j) => { str(c.controlId, `${w}.controls[${j}].controlId`); if (!SCREEN_IDS.includes(c.screen)) fail(`${w}.controls[${j}].screen`, 'unknown screen'); str(c.label, `${w}.controls[${j}].label`); });
+    if (!Array.isArray(t.script)) fail(`${w}.script`, 'must be an array');
+    t.script.forEach((a, j) => assertAutoAction(a, `${w}.script[${j}]`));
+    if (t.missing !== null) sentence(t.missing, `${w}.missing`);
+  });
+  if (m.choice !== null) {
+    if (!Array.isArray(m.choice?.options) || m.choice.options.length < 2) fail('trace.choice.options', 'a choice has at least two options');
+    if (!m.choice.options.includes(m.choice.picked)) fail('trace.choice.picked', 'must be one of the options');
+    if (!['static', 'jev'].includes(m.choice.via)) fail('trace.choice.via', 'must be static or jev');
+    if (m.choice.via !== m.via) fail('trace.via', 'must equal the choice\'s via');
+    sentence(m.choice.sentence, 'trace.choice.sentence');
+  }
 }

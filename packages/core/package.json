@@ -77,7 +77,8 @@
     "./type-check": "./type-check.mjs",
     "./verify": "./verify.mjs",
     "./plan-registry": "./plan-registry.mjs",
-    "./rules-catalog": "./rules-catalog.mjs"
+    "./rules-catalog": "./rules-catalog.mjs",
+    "./reason-provider": "./reason-provider.mjs"
   },
   "files": [
     "*.mjs",

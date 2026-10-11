@@ -18,7 +18,7 @@ function Card({ card, controls }: { card: LibraryCard; controls: ChangeControls 
       {open ? (
         <BaseOnForm controls={controls} libraryName={card.name} />
       ) : (
-        <button type="button" className="ll-btn" aria-label={`Base on this: ${card.name}`} onClick={() => controls.openBaseOn(card.id, card.name)} disabled={!controls.features.length}>
+        <button type="button" className="ll-btn" aria-label={`Base on this: ${card.name}`} data-line-control="components.baseOn" data-line-target={card.name} onClick={() => controls.openBaseOn(card.id, card.name)} disabled={!controls.features.length}>
           Base on this
         </button>
       )}

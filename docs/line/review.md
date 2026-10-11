@@ -510,3 +510,38 @@ UAT (no project needed):
 1. Open http://localhost:3000, click your profile (top right), click Settings.
 2. Scroll to "AI steps": every step says what it does, "Model: qwen2.5-coder:1.5b (Line's default)" (plan analysis: "The hosted model you choose") and how it falls back to static.
 3. Open Details on "Suggests the next step…": "Step id: construct.chooser", "Reply cap: 800 tokens" and its ladder.
+## cg1: Trace lights up the controls for what you ask (awaiting UAT)
+
+One control registry (`packages/engine/line/controls.mjs`): each Cockpit control is registered with the tool it triggers, its screen and its label, and carries `data-line-control` (plus `data-line-target` for the item it acts on). cu3's optional `controlId` on each tool is mocked in `MOCK_TOOLS` until the one tool registry lands. `POST /api/line/trace` maps the request (static words, names resolved against the project) and the plan's open steps to tools, then to controls. When several tools fit, jev picks with a cloze through @mx/reason; if either is down, the static order stands and Details says "Decided by: static".
+Tests: `test/line-trace.test.mjs` (21), `ui/server/src/lineTraceApi.test.mjs` (2), `ui/client/features/line-trace/domain/LineTrace.spec.mjs` (10), Playwright `ui/e2e/tests/line-highlight.spec.js` (5), owner walk `ui/e2e/uat/cg1.spec.js`.
+1. The registry is one list with unique ids. Every control names a known tool and screen and has a short label. The mock tool list is cp1's plan tools plus Approve and Try again, and each tool's control triggers that tool.
+2. Eleven common requests light the expected controls in order (base on, create from, promote, change a title, set a label, edit code, fix, approve, show features, leave as is, try again).
+3. Names in the request fill the steps ("Badge", "orders", "StatusBadge", "OrdersPage", "title", "My orders"). If a name is missing, Trace says in one sentence what it still needs.
+4. A waiting step lights its Approve, a step that needs you lights its choices, and a done step lights nothing.
+5. Several tools fit: without jev the static order picks one, and with jev (mocked) jev picks and `via` records "jev". If jev is unreachable or @mx/reason is missing or broken, the static pick stays.
+6. Every registered control is on a real control in the Cockpit source, and every `data-line-control` in the source is registered.
+7. Browser: Badge's "Base on this" lights up (not Button's), and the Feature, Name and Create fields light up when the form opens. Approve on a waiting step lights up, and turning Trace off clears everything. A page change asked on Components shows "Go to Pages: …", and there the orders card, OrdersPage, the title field and Save light up. On Features, the feature cards and the billing findings light up. A tie is explained in one sentence, and an unknown request says which words work. Accessibility is clean.
+
+Gaps: the static request rules are English keyword rules (12 tools), not embeddings. Fix steps light "What needs attention" and the Plan panel, not ca2's Apply-fix screen (not merged here). The Plan panel is reached from Features by a link to Components. jev runs with random weights unless trained, so with jev running the pick in a tie is noise.
+
+UAT (fresh sample):
+1. Open Components and click **Trace**. Type `Base a new StatusBadge on Badge in orders`: Badge's "Base on this" gets an outline.
+2. Click it: Feature, Name and Create get an outline too.
+3. Type `Change the title of OrdersPage to My orders`, then click "Go to Pages: …". The orders card has an outline; click it, and OrdersPage has an outline.
+
+## ct1: Auto and Trace, Line's two modes (awaiting UAT)
+
+Trace alone lights the controls and you act. Auto plus Trace: a simulated cursor goes to each control, then clicks or types, with one caption per move. You can pause, take one step, go on, stop or change the speed, and replay a run from "Earlier runs". Auto alone makes the same moves with no cursor. Auto works the real controls, so the change is a plan step: Auto stops at Approve and waits for you, unless you tick "Let Auto approve in this session" (off by default, and it ends when the tab closes). The server's rule that only a person approves is unchanged.
+Tests: client spec (Auto's run states, captions, speed, history, settings), Playwright `ui/e2e/tests/line-trace-mode.spec.js` (5), owner walk `ui/e2e/uat/ct1.spec.js`.
+1. Trace alone: the controls light up and there is no Auto button.
+2. Auto plus Trace: the cursor shows and the captions follow the moves ("Type the name ShowBadge."). Auto stops at "Waiting for you: click Approve…" and nothing is written. You click Approve, the file is written, and the caption says the plan runner ran it.
+3. Pause, then One step moves once and stays paused. Stop ends the run. Replay plays the moves again with "Replay: …", ends with "Replay finished; nothing was changed." and adds no plan step.
+4. Auto alone with "Let Auto approve in this session" ticked: no cursor, the step runs and is saved, and the plan file records the approval as given.
+5. A page change asked on Components goes to Pages, picks the feature and the page, types the new title, clicks Save and waits at Approve. The page file is unchanged until you approve.
+
+Gaps: Auto plays the request's first tool only, with scripts for base on, promote, set a prop, approve and open a feature. Edit code and fixes are Trace-only (the caption says so). Replay skips controls that are no longer on screen. The cursor follows the page layout and does not move if a control is hidden in a closed panel.
+
+UAT (fresh sample):
+1. Open Components and click **Trace** and **Auto**. Type `Base a new StatusBadge on Badge in orders`.
+2. Click **Show me and do it**. The cursor opens Badge's form, chooses orders, types the name and clicks Create, with a caption for each move. It stops at "Waiting for you: click Approve…".
+3. Click **Approve** in the Plan panel: "You approved it…", and StatusBadge.tsx exists. To try Auto alone, turn Trace off, tick "Let Auto approve in this session", type `Base a new PaidBadge on Badge in orders` and click **Do it**.
