@@ -76,7 +76,7 @@
   align-self: auto;
   width: 100%;
   display: grid;
-  grid-template-columns: 76px 92px minmax(0, 1fr) minmax(0, 1.3fr);
+  grid-template-columns: 76px minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--sp-3);
   padding: var(--sp-1) var(--sp-3);
@@ -104,16 +104,19 @@
 .dg-sev--warning { background: var(--warn-soft); border-color: var(--warn); }
 .dg-sev--info { background: var(--neutral-soft); }
 .dg-rule { font-family: var(--mono); font-size: var(--fs-sm); color: var(--text-muted); }
-.dg-msg { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.dg-file { font-family: var(--mono); font-size: var(--fs-sm); color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: rtl; text-align: left; }
-.dg-row[data-page='true'] .dg-file { color: var(--accent); }
-.dg-detail { padding: var(--sp-1) var(--sp-3) var(--sp-2) calc(76px + 92px + var(--sp-3) * 3); color: var(--text-muted); font-size: var(--fs-sm); }
+.dg-msg { overflow-wrap: anywhere; }
+.dg-open { font-size: var(--fs-sm); color: var(--accent); }
+.dg-file { font-family: var(--mono); font-size: var(--fs-sm); color: var(--text-muted); overflow-wrap: anywhere; }
+.dg-tech { padding: 0 var(--sp-3) var(--sp-1) calc(76px + var(--sp-3) * 2); font-size: var(--fs-sm); color: var(--text-muted); }
+.dg-tech > summary { cursor: pointer; width: max-content; min-height: 24px; line-height: 24px; padding-inline: 2px; }
+.dg-tech > summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.dg-detail { padding: var(--sp-1) var(--sp-3) var(--sp-2) calc(76px + var(--sp-3) * 2); color: var(--text-muted); font-size: var(--fs-sm); }
 .dg-detail p { margin: 2px 0; }
 .dg-detail strong { color: var(--text); }
 @media (max-width: 900px) {
   .dg-row { grid-template-columns: 70px minmax(0, 1fr); }
-  .dg-rule, .dg-file { display: none; }
-  .dg-detail { padding-left: var(--sp-3); }
+  .dg-open { display: none; }
+  .dg-detail, .dg-tech { padding-left: var(--sp-3); }
 }
 
 .dg-log { list-style: none; margin: 0; padding: var(--sp-1) 0; font-family: var(--mono); font-size: var(--fs-sm); }

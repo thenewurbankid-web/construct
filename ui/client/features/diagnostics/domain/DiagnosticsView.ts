@@ -20,7 +20,7 @@ function rowFor(v: Violation, i: number): DiagnosticRow {
     location: `${v.file}:${v.line}`,
     target,
     line: v.line,
-    ariaLabel: `${label} ${v.rule}: ${v.message} ${v.file} line ${v.line}${target ? '. Opens in the Pages editor' : ''}`,
+    ariaLabel: `${label}: ${v.message}${target ? ' Opens in the Pages editor.' : ''}`,
     why: v.why,
     fix: v.suggestedFix,
   };

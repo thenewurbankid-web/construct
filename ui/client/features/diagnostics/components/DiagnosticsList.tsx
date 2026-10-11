@@ -2,7 +2,8 @@ import { useState } from 'react';
 import type { DiagnosticsViewProps } from '../types';
 
 /** Validation results in plain language: a summary line, then one row per
- * problem (severity, rule, message, file:line). A row for a page file opens it
+ * problem (severity and the plain-English message). The rule id and file:line
+ * sit under a collapsed "Details" disclosure. A row for a page file opens it
  * in the Pages editor; any other row expands to say why and how to fix it. */
 export function DiagnosticsList({ view, onRun, onOpenPage }: DiagnosticsViewProps) {
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -54,7 +55,7 @@ export function DiagnosticsList({ view, onRun, onOpenPage }: DiagnosticsViewProp
         {view.rows.map((row) => {
           const open = expanded === row.key;
           return (
-            <li key={row.key} className="dg-item">
+            <li key={row.key} className="dg-item" data-testid="diagnostic-item">
               <button
                 type="button"
                 className="dg-row"
@@ -65,9 +66,8 @@ export function DiagnosticsList({ view, onRun, onOpenPage }: DiagnosticsViewProp
                 onClick={() => (row.target ? onOpenPage(row.target, row.line) : setExpanded(open ? null : row.key))}
               >
                 <span className={`dg-sev dg-sev--${row.severity}`}>{row.severityLabel}</span>
-                <span className="dg-rule">{row.rule}</span>
                 <span className="dg-msg">{row.message}</span>
-                <span className="dg-file">{row.location}</span>
+                {row.target && <span className="dg-open">Open page</span>}
               </button>
               {open && !row.target && (
                 <div className="dg-detail">
@@ -75,6 +75,11 @@ export function DiagnosticsList({ view, onRun, onOpenPage }: DiagnosticsViewProp
                   {row.fix && <p><strong>Fix:</strong> {row.fix}</p>}
                 </div>
               )}
+              {/* Plain English first; the rule id and file:line wait behind a collapsed disclosure (LINE.md). */}
+              <details className="dg-tech" data-testid="diagnostic-details">
+                <summary>Details</summary>
+                <span className="dg-rule">{row.rule}</span> <span className="dg-file">{row.location}</span>
+              </details>
             </li>
           );
         })}
