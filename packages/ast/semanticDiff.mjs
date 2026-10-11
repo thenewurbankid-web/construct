@@ -227,3 +227,87 @@ export function semanticDiff(beforeSource, afterSource) {
   const operations = SEMANTIC_DIFF_OPERATIONS.filter((op) => ops.has(op) && op !== 'changed');
   return { verdict: 'same-behaviour', operations };
 }
+
+// ------------------------------------------------------------------------------------------- path-mapped (Line Import v2)
+const CODE_EXT = /\.(?:[cm]?[jt]sx?)$/;
+/** A posix path with `.` and `..` resolved, no leading `./`. */
+function joinPosix(dir, rel) {
+  const out = [];
+  for (const part of `${dir}/${rel}`.split('/')) {
+    if (!part || part === '.') continue;
+    if (part === '..') out.pop();
+    else out.push(part);
+  }
+  return out.join('/');
+}
+/** A module path without its code extension and without a trailing `/index`. */
+const moduleKey = (p) => p.replace(CODE_EXT, '').replace(/\/index$/, '');
+
+/**
+ * Every module specifier in `source` (static imports, re-exports, dynamic `import()` and `require()`), with the range of
+ * its string literal. A parse failure yields none.
+ *
+ * @param {string} source The source text.
+ * @returns {{ value: string, start: number, end: number }[]} The specifiers, in source order.
+ */
+export function moduleSpecifiers(source) {
+  let ast;
+  try { ast = parseToAst(source); } catch { return []; }
+  const out = [];
+  const take = (lit) => { if (lit && lit.type === 'Literal' && typeof lit.value === 'string' && Array.isArray(lit.range)) out.push({ value: lit.value, start: lit.range[0], end: lit.range[1] }); };
+  const visit = (n) => {
+    if (!n || typeof n !== 'object') return;
+    if (Array.isArray(n)) { n.forEach(visit); return; }
+    if (n.type === 'ImportDeclaration' || n.type === 'ExportAllDeclaration' || (n.type === 'ExportNamedDeclaration' && n.source)) take(n.source);
+    else if (n.type === 'ImportExpression') take(n.source);
+    else if (n.type === 'CallExpression' && n.callee?.type === 'Identifier' && n.callee.name === 'require' && n.arguments?.length === 1) take(n.arguments[0]);
+    for (const k of Object.keys(n)) if (!META_KEYS.has(k) && k !== 'type') visit(n[k]);
+  };
+  visit(ast.body);
+  return out.sort((a, b) => a.start - b.start);
+}
+
+/**
+ * `source` with every relative module specifier replaced by the module it points at, as a project path mapped through
+ * `moves` (old module path -> new module path, both without extension): `'./Table'` in `src/a/Page.tsx` and
+ * `'../../library/components/Table'` in its moved copy both read `"@module:src/a/library/components/Table"` once
+ * `src/a/Table` -> `src/a/library/components/Table` is in `moves`. Bare and aliased specifiers are kept as they are.
+ *
+ * @param {string} source The source text.
+ * @param {string} file The project-relative path of the file the source belongs to.
+ * @param {Record<string, string>} [moves] Old module path -> new module path (extension and `/index` optional).
+ * @returns {string} The source with relative specifiers normalized.
+ *
+ * @example
+ * normalizeSpecifiers("import T from './Table';", 'src/a/Page.tsx', { 'src/a/Table': 'src/a/lib/Table' });
+ * // => 'import T from "@module:src/a/lib/Table";'
+ */
+export function normalizeSpecifiers(source, file, moves = {}) {
+  const map = new Map(Object.entries(moves).map(([k, v]) => [moduleKey(k), moduleKey(v)]));
+  const dir = String(file).split('/').slice(0, -1).join('/');
+  let out = source;
+  for (const s of moduleSpecifiers(source).reverse()) {
+    if (!s.value.startsWith('.')) continue;
+    const at = moduleKey(joinPosix(dir, s.value));
+    out = `${out.slice(0, s.start)}${JSON.stringify(`@module:${map.get(at) ?? at}`)}${out.slice(s.end)}`;
+  }
+  return out;
+}
+
+/**
+ * `semanticDiff` for a file that moved (Line Import v2): the old file at `beforeFile` against the new one at `afterFile`,
+ * with both sides' relative import specifiers normalized to the module they point at through `moves`, so a moved file
+ * whose imports the move rewrote is not read as `changed`.
+ *
+ * @param {string} beforeSource The source at its old path.
+ * @param {string} afterSource The source at its new path.
+ * @param {{ beforeFile: string, afterFile: string, moves?: Record<string, string> }} at Both paths (project-relative) and every move of the import.
+ * @returns {{ verdict: 'same-behaviour'|'changed'|'cant-tell', operations: string[], reason?: string }} As `semanticDiff`.
+ *
+ * @example
+ * semanticDiffMapped("import T from './T'; export const a = T;", "import T from '../lib/T'; export const a = T;",
+ *   { beforeFile: 'src/x/a.ts', afterFile: 'src/x/f/a.ts', moves: { 'src/x/T': 'src/x/lib/T' } }).verdict; // => 'same-behaviour'
+ */
+export function semanticDiffMapped(beforeSource, afterSource, { beforeFile, afterFile, moves = {} }) {
+  return semanticDiff(normalizeSpecifiers(beforeSource, beforeFile, moves), normalizeSpecifiers(afterSource, afterFile, moves));
+}

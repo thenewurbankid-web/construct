@@ -683,13 +683,33 @@ export const AUTO_ACTION_KINDS = Object.freeze(['click', 'type', 'select', 'appr
  *   question?: {id: string, sentence: string, options: {id: string, sentence: string}[], recommended: string}}} ImportWaiting
  *
  * The verify stage: validate --profile line on the folder, types (tsc), tests. A check Line cannot run says why (skipped).
- * @typedef {{id: 'validate'|'types'|'tests', state: 'pass'|'fail'|'skipped', sentence: string, detail?: string}} ImportVerifyCheck
+ * @typedef {{id: 'validate'|'types'|'tests'|'char-tests'|'logic-map'|'behaviour'|'coverage', state: 'pass'|'fail'|'skipped', sentence: string, detail?: string}} ImportVerifyCheck
+ *
+ * Line Import v2 shapes (docs/line/import-v2/CONTRACT.md; branch iv2-map owns them in line/importV2/contract.mjs, these
+ * mirror it until the merge).
+ * @typedef {{id: string, fingerprint: string, kind: string, file: string, fn: string, line: number, detail: string}} LogicUnit
+ * @typedef {{root: string, files: string[], units: LogicUnit[], counts: Record<string, number>}} LogicMap
+ * @typedef {{kept: LogicUnit[], moved: {from: LogicUnit, to: LogicUnit}[], missing: LogicUnit[], changed: {before: LogicUnit, after: LogicUnit, sentence: string}[], added: LogicUnit[]}} MapDiff
+ * @typedef {{appRoot: string, routes: {route: string, entry: string}[], files: string[], external: string[]}} RouteClosure
+ * @typedef {{file: string, runner: string, kind: 'pure'|'render'|'interaction'|'machine', unitFingerprints: string[], title: string}} CharTest
+ * @typedef {{fingerprint: string, by: 'owner', why: string, at?: string}} UnitWaiver
+ * @typedef {{covered: number, uncovered: number, waived: number, total: number}} UnitCoverageCounts
+ * One checked import step (importLoop.mjs loopState). The maps are kept by reference (units, counts, hash) so a record
+ * stays fixed-size; the full baseline map is <folder>/line/logic-map.json.
+ * @typedef {{step: string, n: number, at: string, tool: string, mapBefore: {units: number, hash: string}, mapAfter: {units: number, hash: string},
+ *   diff: {kept: number, moved: number, added: number, changed: number, missingCount: number, missing: any[]}, tests: {passed: number, failed: number, total: number, state: string},
+ *   coverage: UnitCoverageCounts, behaviour: {from: string, to: string, verdict: string}[], checks: {id: string, state: string, sentence: string}[],
+ *   status: 'ok'|'stopped', sentence: string, fixes: any[]}} ImportLoopState
+ * The import plan file's loop record.
+ * @typedef {{route: string|null, closure: {routes: any[], files: string[], external: string[]}|null, map: {units: number, counts: Record<string, number>, hash: string}|null,
+ *   tests: CharTest[], baselineTests: any, waivers: UnitWaiver[], loop: ImportLoopState[], last: any, pending?: any}} ImportLogic
  *
  * `<folder>/line/import-plan.json`.
  * @typedef {object} ImportPlanFile
  * @property {1} version
  * @property {string} folder
- * @property {'scan'|'classify'|'plan'|'review'|'execute'|'verify'|'done'} state
+ * @property {'scan'|'map'|'characterize'|'classify'|'plan'|'review'|'execute'|'verify'|'done'} state
+ * @property {ImportLogic} [logic]  Line Import v2: the route, the baseline map, the characterization tests, the owner's waivers and one ImportLoopState per checked step.
  * @property {boolean} paused
  * @property {ImportWaiting|null} waiting
  * @property {{file: string, name: string, kind: LineKind, target: 'library'|'feature', feature?: string}[]} found
@@ -704,7 +724,7 @@ export const AUTO_ACTION_KINDS = Object.freeze(['click', 'type', 'select', 'appr
  * @typedef {object} ImportAgentView
  * @property {true} ok
  * @property {string} folder
- * @property {'idle'|'scan'|'classify'|'plan'|'review'|'execute'|'verify'|'done'} state  idle: no import-plan.json yet.
+ * @property {'idle'|'scan'|'map'|'characterize'|'classify'|'plan'|'review'|'execute'|'verify'|'done'} state  idle: no import-plan.json yet.
  * @property {boolean} paused
  * @property {ImportWaiting|null} waiting
  * @property {{id: string, label: string, status: 'done'|'current'|'todo'}[]} stages
@@ -713,6 +733,7 @@ export const AUTO_ACTION_KINDS = Object.freeze(['click', 'type', 'select', 'appr
  * @property {ImportDecision[]} decisions
  * @property {ImportChange[]} changes
  * @property {{ok: boolean, checks: ImportVerifyCheck[]}|null} verify
+ * @property {any} [logic]     Line Import v2 (importLoop.mjs logicView): the map count, coverage, per-step diffs and "N of M logic units kept", in plain English.
  * @property {string} decider   One sentence: who decides (reason linked, or the static order).
  *
  * POST /api/line/import-agent/step: change one plan step (before it runs). `to` is the new 0-based index for `move`.
@@ -799,7 +820,7 @@ export const LINE_API = Object.freeze([
   { method: 'GET', path: '/api/line/ai-profiles', request: null, response: 'AiProfiles' },
   { method: 'POST', path: '/api/line/trace', request: 'TraceRequest', response: 'TraceMatch' },
   { method: 'GET', path: '/api/line/import-agent', request: 'folder (query)', response: 'ImportAgentView' },
-  { method: 'POST', path: '/api/line/import-agent/start', request: '{folder}', response: 'ImportAgentView' },
+  { method: 'POST', path: '/api/line/import-agent/start', request: '{folder, route?}', response: 'ImportAgentView' },
   { method: 'POST', path: '/api/line/import-agent/resume', request: '{folder}', response: 'ImportAgentView' },
   { method: 'POST', path: '/api/line/import-agent/pause', request: '{folder}', response: 'ImportAgentView' },
   { method: 'POST', path: '/api/line/import-agent/step', request: 'ImportStepEdit', response: 'ImportAgentView' },
@@ -1549,9 +1570,9 @@ export function assertTraceMatch(m) {
 }
 
 // --------------------------------------------------------------------------------------------- ci2 import agent
-export const IMPORT_AGENT_STATES = Object.freeze(['scan', 'classify', 'plan', 'review', 'execute', 'verify', 'done']);
+export const IMPORT_AGENT_STATES = Object.freeze(['scan', 'map', 'characterize', 'classify', 'plan', 'review', 'execute', 'verify', 'done']);
 export const IMPORT_AGENT_STAGES = Object.freeze([
-  { id: 'scan', label: 'Read the folder' }, { id: 'classify', label: 'Sort the items' }, { id: 'plan', label: 'Write the plan' },
+  { id: 'scan', label: 'Read the folder' }, { id: 'map', label: 'Map the logic' }, { id: 'characterize', label: 'Pin it with tests' }, { id: 'classify', label: 'Sort the items' }, { id: 'plan', label: 'Write the plan' },
   { id: 'review', label: 'Review' }, { id: 'execute', label: 'Make the changes' }, { id: 'verify', label: 'Check everything' }, { id: 'done', label: 'Done' },
 ]);
 /** The args a person or agent may change on an import plan step, per tool (everything else is fixed by the scan). */
@@ -1571,7 +1592,9 @@ export function importFolderProblem(folder) {
   if (folder.startsWith('/') || folder.includes('\\') || folder.split('/').some((p) => p === '..' || p === '.' || p === '')) return 'must be a folder inside the project, like src/alerts';
   return null;
 }
-const CHANGE_ACTIONS = ['start', 'state', 'decide', 'edit', 'skip', 'unskip', 'move', 'approve', 'approve-all', 'add-step', 'answer', 'pause', 'resume', 'verify'];
+const CHANGE_ACTIONS = ['start', 'state', 'decide', 'edit', 'skip', 'unskip', 'move', 'approve', 'approve-all', 'add-step', 'answer', 'pause', 'resume', 'verify', 'map', 'characterize', 'loop', 'waive'];
+/** The verify stage's checks: ci2's three, and Line Import v2's loop checks (importLoop.mjs LOOP_CHECKS). */
+export const IMPORT_VERIFY_CHECKS = Object.freeze(['validate', 'types', 'tests', 'char-tests', 'logic-map', 'behaviour', 'coverage']);
 
 /** @param {any} w @param {string} where */
 function assertWaiting(w, where) {
@@ -1616,11 +1639,25 @@ function assertVerify(v, where) {
   if (v === null) return;
   if (typeof v?.ok !== 'boolean' || !Array.isArray(v.checks)) fail(where, 'must be {ok, checks}');
   v.checks.forEach((c, i) => {
-    if (!['validate', 'types', 'tests'].includes(c.id)) fail(`${where}.checks[${i}].id`, 'must be validate, types or tests');
+    if (!IMPORT_VERIFY_CHECKS.includes(c.id)) fail(`${where}.checks[${i}].id`, `must be one of ${IMPORT_VERIFY_CHECKS.join(', ')}`);
     if (!['pass', 'fail', 'skipped'].includes(c.state)) fail(`${where}.checks[${i}].state`, 'must be pass, fail or skipped');
     sentence(c.sentence, `${where}.checks[${i}].sentence`);
   });
   if (v.ok && v.checks.some((c) => c.state === 'fail')) fail(where, 'ok only when no check fails');
+}
+
+/** @param {any} l @param {string} where */
+function assertLogic(l, where) {
+  if (l === undefined || l === null) return;
+  if (typeof l !== 'object' || !Array.isArray(l.waivers) || !Array.isArray(l.loop) || !Array.isArray(l.tests)) fail(where, 'must be {route, closure, map, tests, baselineTests, waivers, loop, last}');
+  if (l.route !== null && (typeof l.route !== 'string' || !l.route.startsWith('/'))) fail(`${where}.route`, 'must be null or a route like /alerts');
+  // Only a person waives a unit: every waiver is the owner's.
+  l.waivers.forEach((w, i) => { str(w?.fingerprint, `${where}.waivers[${i}].fingerprint`); if (w.by !== 'owner') fail(`${where}.waivers[${i}].by`, 'must be owner (an agent never waives)'); sentence(w.why, `${where}.waivers[${i}].why`); });
+  l.loop.forEach((st, i) => {
+    str(st?.step, `${where}.loop[${i}].step`);
+    if (!['ok', 'stopped'].includes(st.status)) fail(`${where}.loop[${i}].status`, 'must be ok or stopped');
+    sentence(st.sentence, `${where}.loop[${i}].sentence`);
+  });
 }
 
 /**
@@ -1648,6 +1685,7 @@ export function assertImportPlanFile(p) {
   p.changes.forEach((c, i) => { assertChange(c, `importPlan.changes[${i}]`); if (c.n !== i + 1) fail(`importPlan.changes[${i}].n`, 'must count up by one'); });
   if (!p.cursor || !['step', 'fix', 'retry', 'leave', 'refresh', null].includes(p.cursor.phase)) fail('importPlan.cursor', 'must be {pending, origin, phase}');
   assertVerify(p.verify, 'importPlan.verify');
+  assertLogic(p.logic, 'importPlan.logic');
   if (p.state === 'done' && p.steps.some((s) => s.review !== 'skipped' && !['done', 'left'].includes(s.run))) fail('importPlan.state', 'done only when every step ran or was left');
 }
 
@@ -1669,6 +1707,7 @@ export function assertImportAgentView(v) {
   v.steps.forEach((s, i) => assertAgentStep(s, v.folder, `agent.steps[${i}]`));
   v.changes.forEach((c, i) => assertChange(c, `agent.changes[${i}]`));
   assertVerify(v.verify, 'agent.verify');
+  if (v.logic !== undefined && v.logic !== null) { sentence(v.logic.sentence, 'agent.logic.sentence'); sentence(v.logic.keptSentence, 'agent.logic.keptSentence'); }
 }
 
 // ---------------------------------------------------------------------------------------------

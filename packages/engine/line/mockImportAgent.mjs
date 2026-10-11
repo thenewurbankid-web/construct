@@ -4,10 +4,13 @@
 //   - the plan service is a small in-memory cp1 plan (createMockPlanService: waiting -> approve -> run, needs-fix, fixOf,
 //     retry with `stopped`, leaveAsIs), with one planted refusal: the first run of the step for AlertRow's feature item
 //     is refused with one typed fix (the fix lands, the retry passes), so the correction loop shows in mock mode;
-//   - the store keeps the file in memory; verify passes validate and says why types and tests did not run.
+//   - the store keeps the file in memory; verify passes validate and says why types and tests did not run;
+//   - the Line Import v2 loop runs on importLoopStandIns.mjs createMockLogic: a fixed logic map of src/alerts whose units
+//     move with each landed step, three characterization tests that pass (o.logic replaces it, e.g. to plant a lost unit).
 import { LineOpError } from './contract.mjs';
 import { createImportAgent } from './importAgent.mjs';
 import { createMockImport } from './mockImport.mjs';
+import { createMockLogic } from './importLoopStandIns.mjs';
 
 const lower = (s) => String(s).charAt(0).toLowerCase() + String(s).slice(1);
 
@@ -94,7 +97,7 @@ export function createMockImportAgentService(o = {}) {
     if (folder !== 'src/alerts') throw new LineOpError(`The project has no folder "${folder}"; pick one of its folders.`, 'BAD_FOLDER');
     if (!agents.has(folder)) {
       agents.set(folder, createImportAgent({
-        root: '/mock/import-sample', folder, planService, store: createMemoryStore(), reason: o.reason ?? null,
+        root: '/mock/import-sample', folder, planService, store: createMemoryStore(), reason: o.reason ?? null, logic: 'logic' in o ? o.logic : createMockLogic(),
         importOps: { scan: (_r, f) => ops.scan({ folder: f }), plan: (_r, f, answers) => ops.plan({ folder: f, answers }) },
         now: () => new Date(Date.UTC(2026, 9, 11, 9, 0, clock++)).toISOString(),
         verify: async () => ({ ok: true, checks: [

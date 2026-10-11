@@ -212,6 +212,101 @@ export function createPlanRecorder(root, { ops, now = () => new Date(), write } 
   return self;
 }
 
+// ------------------------------------------------------------------------------------------------- import loop
+/**
+ * One ImportLoopState (importLoop.mjs loopState) delexicalized like a plan record: function names become <name:Nn>,
+ * files, blocks and step ids <value:Vn>, quoted code <code:Cn>, and the sentences carry the slots; fingerprints, kinds,
+ * counts and hashes stay (they hold no project word). Throws when a project word would leak.
+ * @param {any} state
+ * @param {Date} at
+ * @returns {any}
+ */
+export function slotLoopState(state, at) {
+  const slotter = createSlotter(null);
+  const paths = new Set([state.step]);
+  const fns = new Set();
+  for (const u of state.diff?.missing ?? []) { paths.add(u.file); if (u.block) paths.add(u.block); fns.add(u.fn); }
+  for (const b of state.behaviour ?? []) { paths.add(b.from); paths.add(b.to); }
+  for (const f of state.fixes ?? []) { if (f.block) paths.add(f.block); if (f.file) paths.add(f.file); }
+  const fnNames = [...fns].filter((f) => !/^<.*>$/.test(f)).map((f) => f.replace(/^on:/, ''));
+  slotter.learnArgs(Object.fromEntries(fnNames.map((f, i) => [`f${i}`, f])));
+  const pathList = [...paths].filter((p) => typeof p === 'string' && p).sort((a, b) => b.length - a.length);
+  const v = (p) => (typeof p === 'string' && p ? slotter.slot('value', p) : p);
+  const fnSlot = (f) => (/^<.*>$/.test(f) ? f : f.startsWith('on:') ? `on:${slotter.text(f.slice(3))}` : slotter.text(f));
+  const sentence = (s) => {
+    let out = String(s ?? '').replace(/"[^"]*"/g, (m) => slotter.slot('code', m.slice(1, -1)));
+    for (const p of pathList) out = out.split(p).join(v(p));
+    return slotter.text(out, { free: true });
+  };
+  const rec = {
+    v: 1, kind: 'import-loop', at: at.toISOString(), step: v(state.step), n: state.n, tool: state.tool,
+    mapBefore: state.mapBefore, mapAfter: state.mapAfter,
+    diff: {
+      kept: state.diff.kept, moved: state.diff.moved, added: state.diff.added, changed: state.diff.changed, missingCount: state.diff.missingCount,
+      missing: (state.diff.missing ?? []).map((u) => ({ fingerprint: u.fingerprint, kind: u.kind, fn: fnSlot(u.fn), file: v(u.file), block: v(u.block), detail: slotter.slot('code', u.detail), waived: u.waived })),
+    },
+    tests: state.tests, coverage: state.coverage,
+    behaviour: (state.behaviour ?? []).map((b) => ({ from: v(b.from), to: v(b.to), verdict: b.verdict })),
+    checks: (state.checks ?? []).map((c) => ({ id: c.id, state: c.state, sentence: sentence(c.sentence) })),
+    status: state.status, sentence: sentence(state.sentence),
+    fixes: (state.fixes ?? []).map((f) => ({ id: f.id, ...(f.ownerOnly ? { ownerOnly: true } : {}), ...(f.fingerprint ? { fingerprint: f.fingerprint } : {}), ...(f.block ? { block: v(f.block) } : {}), sentence: sentence(f.sentence) })),
+    slots: {},
+  };
+  rec.slots = slotter.slots();
+  const words = [...fnNames, ...pathList.flatMap((p) => p.split('/').map((s) => s.replace(/\.[^.]+$/, '')))].filter((w) => /[A-Za-z]{3,}/.test(w) && !STRUCTURE_WORDS.has(w.toLowerCase()) && !/^(src|app|lib|import|components|pages|features|library|hooks|utils)$/i.test(w));
+  const leak = projectWordIn({ ...rec, slots: {} }, words);
+  if (leak) throw new Error(`it would hold the project name "${leak}"`);
+  return rec;
+}
+
+/**
+ * The import loop's recorder: each checked import step appends its ImportLoopState, slotted, to
+ * `<state>/records/import-loop.jsonl` (beside the plan records, through the same writer). A record that cannot be
+ * written never stops the import; `problem` says why.
+ * @param {string} root
+ * @param {{now?: () => Date, write?: (line: string) => void}} [o]
+ * @returns {{file: string, problem: string|null, record: (state: any) => any}}
+ */
+export function createImportLoopRecorder(root, { now = () => new Date(), write } = {}) {
+  const stateDir = lineStateDir(root);
+  const file = `${stateDir}/records/import-loop.jsonl`;
+  const put = write ?? ((line) => { writeLineState(root, file, line, { append: true, stateDir }); });
+  const self = {
+    file,
+    problem: /** @type {string|null} */ (null),
+    /** @param {any} state */
+    record(state) {
+      try {
+        const rec = slotLoopState(state, now());
+        put(`${JSON.stringify(rec)}\n`);
+        self.problem = null;
+        return rec;
+      } catch (err) {
+        self.problem = `The import loop record could not be written: ${String(/** @type {any} */ (err)?.message ?? err)}`;
+        return null;
+      }
+    },
+  };
+  return self;
+}
+
+/**
+ * Every import loop record of a project (lines that do not parse are skipped and counted).
+ * @param {string} root
+ * @returns {{records: any[], skipped: number, file: string}}
+ */
+export function readImportLoopRecords(root) {
+  const file = `${lineStateDir(root)}/records/import-loop.jsonl`;
+  let text = '';
+  try { text = fs.readFileSync(path.join(root, file), 'utf8'); } catch { return { records: [], skipped: 0, file }; }
+  const records = []; let skipped = 0;
+  for (const line of text.split('\n')) {
+    if (!line.trim()) continue;
+    try { const r = JSON.parse(line); if (r?.kind !== 'import-loop') throw new Error('not a loop record'); records.push(r); } catch { skipped += 1; }
+  }
+  return { records, skipped, file };
+}
+
 /**
  * Every plan record of a project. Lines that do not parse or do not fit the contract are skipped and counted.
  * @param {string} root

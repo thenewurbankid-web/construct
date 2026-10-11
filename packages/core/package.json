@@ -77,6 +77,7 @@
     "./backend-routes": "./backend-routes.mjs",
     "./type-check": "./type-check.mjs",
     "./verify": "./verify.mjs",
+    "./check-change": "./check-change.mjs",
     "./plan-registry": "./plan-registry.mjs",
     "./rules-catalog": "./rules-catalog.mjs",
     "./reason-provider": "./reason-provider.mjs"

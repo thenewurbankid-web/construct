@@ -272,7 +272,8 @@ function readFolder(projectRoot, folder) {
   const files = listFiles(projectRoot);
   const graph = importGraph(projectRoot, files);
   const routes = readRoutes(projectRoot, graph);
-  const inFolder = files.filter((f) => f.startsWith(`${folder}/`));
+  // <folder>/line/ is Line's own state (the import plan, the logic map and its baseline), never app content to bring in.
+  const inFolder = files.filter((f) => f.startsWith(`${folder}/`) && !f.startsWith(`${folder}/line/`));
   const routeOf = new Map();
   for (const r of routes) if (!routeOf.has(r.file)) routeOf.set(r.file, r.path);
   const routeEntries = new Set(routes.map((r) => r.entry));

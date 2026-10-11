@@ -6,7 +6,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { semanticDiff } from '@construct/ast/semantic-diff';
+import { semanticDiff, semanticDiffMapped, normalizeSpecifiers } from '@construct/ast/semantic-diff';
 import { pureExportEquivalence } from '@construct/ast/pure-export-equivalence';
 import { defineBlock, emptyScope } from './block-contract.mjs';
 import { ConstructError, EXIT_CODES } from './diagnostics.mjs';
@@ -60,6 +60,52 @@ export function checkChangeForFile(root, filePath, options = {}) {
   // (a rename/reorder/reformat) has no logic difference to catch a counter-example for, so it's omitted
   // rather than reported as an always-empty section.
   if (verdict === 'changed') document.propertyCheck = pureExportEquivalence(beforeSource, afterSource);
+  return document;
+}
+
+/**
+ * Whether every pure export the edit touched was proven equivalent by fast-check (and none was skipped).
+ * @param {{ checked: { verdict: string }[], skipped: object[] }} pc A `pureExportEquivalence` result.
+ * @returns {boolean} `true` only when at least one export was checked, all are equivalent and none was skipped.
+ */
+const allEquivalent = (pc) => pc.checked.length > 0 && pc.skipped.length === 0 && pc.checked.every((c) => c.verdict === 'equivalent');
+
+/**
+ * The change check for a file that MOVED (Line Import v2): its content at the old path (`beforeSource`, else git `ref`)
+ * against the working-tree file at the new path, through `semanticDiffMapped` so the imports the move rewrote are read
+ * as the same modules (`moves`: old module path -> new module path, every move of the import). When the AST differs,
+ * the pure exports decide: if fast-check proves every touched pure export equivalent, it is `same-behaviour`
+ * (operation `equivalent`); a counter-example keeps it `changed`, with the example in `propertyCheck`.
+ *
+ * @param {string} root Project root.
+ * @param {string} fromPath Root-relative path before the move.
+ * @param {string} toPath Root-relative path after the move.
+ * @param {{ ref?: string, beforeSource?: string, moves?: Record<string, string> }} [options] `beforeSource` wins over `ref` (default `HEAD`).
+ * @returns {{ file: string, from: string, verdict: 'same-behaviour'|'changed'|'cant-tell', operations: string[], reason?: string, propertyCheck?: { checked: object[], skipped: object[] } }}
+ * @throws {ConstructError} USAGE_ERROR when the file at `toPath` does not exist.
+ *
+ * @example
+ * checkChangeForMove(root, 'src/a/total.ts', 'src/a/library/domain/total.ts', { moves: { 'src/a/total': 'src/a/library/domain/total' } });
+ * // => { file: 'src/a/library/domain/total.ts', from: 'src/a/total.ts', verdict: 'same-behaviour', operations: [] }
+ */
+export function checkChangeForMove(root, fromPath, toPath, options = {}) {
+  const rel = (p) => (path.isAbsolute(p) ? path.relative(root, p) : p).split(path.sep).join('/');
+  const from = rel(fromPath);
+  const to = rel(toPath);
+  const abs = path.join(root, to);
+  if (!fs.existsSync(abs)) throw new ConstructError(`No such file: ${to}`, { exitCode: EXIT_CODES.USAGE_ERROR });
+  const afterSource = fs.readFileSync(abs, 'utf8');
+  const beforeSource = typeof options.beforeSource === 'string' ? options.beforeSource : readAtRef(root, from, options.ref);
+  if (beforeSource === null) return { file: to, from, verdict: 'cant-tell', operations: [], reason: `not present at ${options.ref || 'HEAD'} (new file)` };
+  const moves = options.moves ?? {};
+  const { verdict, operations, reason } = semanticDiffMapped(beforeSource, afterSource, { beforeFile: from, afterFile: to, moves });
+  const document = { file: to, from, verdict, operations };
+  if (reason) document.reason = reason;
+  if (verdict === 'changed') {
+    const propertyCheck = pureExportEquivalence(normalizeSpecifiers(beforeSource, from, moves), normalizeSpecifiers(afterSource, to, moves));
+    document.propertyCheck = propertyCheck;
+    if (allEquivalent(propertyCheck)) { document.verdict = 'same-behaviour'; document.operations = ['equivalent']; }
+  }
   return document;
 }
 
