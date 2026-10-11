@@ -84,6 +84,7 @@ import { handleResearch } from './researchApi.mjs';
 import { handleCreate, handleRefactor, handleImport } from './writeVerbsApi.mjs';
 import { validateArchitecture } from '../../../packages/core/architecture-enforcer.mjs';
 import { createComponentsRouter } from './componentsApi.mjs';
+import { createLineRouter } from './lineApi.mjs';
 import { createStoryBridgeRouter } from './storyBridgeApi.mjs';
 import { createNotesRouter } from './notesApi.mjs';
 import { openNotesStore } from './notesStore.mjs';
@@ -1233,6 +1234,14 @@ app.use('/api/components', createComponentsRouter({
   getRoot: () => {
     const root = containedProjectRoot(getProjectDir());
     return root ? { ok: true, root } : { ok: false, error: 'No Construct project found for the current project directory. Pick a project first.' };
+  },
+}));
+
+// Line: the read-only Line view of a `preset: line` project (packages/engine/line/contract.mjs LINE_API).
+app.use('/api/line', createLineRouter({
+  getRoot: () => {
+    const root = containedProjectRoot(getProjectDir());
+    return root ? { ok: true, root } : { ok: false, error: 'No project is open; pick a project first.' };
   },
 }));
 

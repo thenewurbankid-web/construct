@@ -1,0 +1,30 @@
+/* Line Components screen (library cards by level). Prefix ll-. Tokens only (app/tokens.css). */
+.main:has(.ll-stage) { max-width: none; padding: 0; }
+.ll-stage { padding: var(--sp-3) var(--sp-4) var(--sp-4); min-width: 0; display: flex; flex-direction: column; gap: var(--sp-4); }
+.ll-head { display: flex; flex-direction: column; gap: 2px; }
+.ll-eyebrow { margin: 0; font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); }
+.ll-h1 { margin: 0; font-size: var(--fs-lg); }
+.ll-hint { margin: 0; color: var(--text-muted); font-size: var(--fs-sm); }
+.ll-group { display: flex; flex-direction: column; gap: var(--sp-2); min-width: 0; }
+.ll-level-head { margin: 0; font-size: var(--fs-md); display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--sp-2); }
+.ll-level-head small { font-size: var(--fs-sm); font-weight: 400; color: var(--text-muted); }
+.ll-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr)); gap: var(--sp-2); }
+.ll-card, .ll-feature-row {
+  display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0;
+  padding: var(--sp-2) var(--sp-3); border: 1px solid var(--border-subtle); border-radius: var(--r-md); background: var(--surface-2);
+}
+.ll-card-title { font-weight: 600; overflow-wrap: anywhere; }
+.ll-row { display: flex; flex-wrap: wrap; gap: var(--sp-1); }
+.ll-chip { display: inline-flex; align-items: center; padding: 0 var(--sp-2); min-height: 22px; border: 1px solid var(--border-strong); border-radius: 999px; font-size: var(--fs-xs); color: var(--text); width: max-content; max-width: 100%; overflow-wrap: anywhere; }
+.ll-chip--accent { border-color: var(--accent); background: var(--accent-soft); }
+.ll-chip--warn { border-color: var(--warn); background: var(--warn-soft); }
+.ll-feature { display: flex; flex-direction: column; gap: var(--sp-1); }
+.ll-feature-head { margin: 0; font-size: var(--fs-sm); text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); }
+.ll-feature-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr)); gap: var(--sp-2); }
+.ll-feature-row[data-problem='true'] { border-color: var(--danger); }
+.ll-finding { margin: 0; font-size: var(--fs-sm); }
+.ll-tech { font-size: var(--fs-sm); color: var(--text-muted); }
+.ll-tech > summary { cursor: pointer; width: max-content; min-height: 24px; line-height: 24px; padding-inline: 2px; }
+.ll-tech > summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.ll-tech code { font-family: var(--mono); overflow-wrap: anywhere; display: block; }
+.ll-tech-line { display: block; }
