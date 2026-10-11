@@ -35,8 +35,12 @@ export function stableHash(text) {
   return `${pass(0x811c9dc5)}${pass(0x050c5d1f ^ s.length)}`;
 }
 
-/** Whitespace collapsed, so formatting never changes a fingerprint. */
-export const normalizeText = (text) => String(text ?? '').replace(/\s+/g, ' ').trim();
+/**
+ * Whitespace collapsed, so formatting never changes a fingerprint.
+ * @param {unknown} text
+ * @returns {string}
+ */
+export function normalizeText(text) { return String(text ?? '').replace(/\s+/g, ' ').trim(); }
 
 /**
  * LogicUnit.fingerprint: kind, enclosing function (through the rename table) and normalized text; `n` tells identical

@@ -49,7 +49,11 @@ export function blockOfFile(folder, file) {
   return /^(library\/[^/]+\/.+|features\/[^/]+\/[^/]+\/.+)$/.test(rel) ? rel : null;
 }
 
-/** The empty logic record of an import plan file. */
+/**
+ * The empty logic record of an import plan file (contract.mjs ImportLogic).
+ * @param {string|null|undefined} route The route that seeds the map, or none (the folder alone).
+ * @returns {any}
+ */
 export function newLogic(route) {
   return { route: route ?? null, closure: null, map: null, tests: [], baselineTests: null, waivers: [], loop: [], last: null };
 }
@@ -114,7 +118,8 @@ export function loopChecks(m, logic, { at, folder }) {
     const turned = m.diff.changed.filter((c) => !waived.has(c.before.fingerprint));
     const total = m.diff.kept.length + m.diff.moved.length + m.diff.missing.length + m.diff.changed.length;
     if (r.ok) {
-      checks.push({ id: 'logic-map', state: 'pass', sentence: end(`${m.diff.kept.length + m.diff.moved.length} of ${plural(total, 'logic unit')} kept (${m.diff.moved.length} moved)${waived.size ? `; the owner waived ${waived.size}` : ''}`), expr: IMPORT_LOOP_EXPRS['logic-map'], fixes: [] });
+      const accepted = missing.length + changed.length;
+      checks.push({ id: 'logic-map', state: 'pass', sentence: end(`${m.diff.kept.length + m.diff.moved.length} of ${plural(total, 'logic unit')} kept (${m.diff.moved.length} moved)${accepted ? `; the owner waived ${accepted}` : ''}`), expr: IMPORT_LOOP_EXPRS['logic-map'], fixes: [] });
     } else {
       const firstLost = lost[0];
       const sentence = firstLost
@@ -123,7 +128,7 @@ export function loopChecks(m, logic, { at, folder }) {
       const fixes = [
         ...lost.slice(0, LOOP_LIMITS.fixes).map((u) => ({ id: 'put-back', fingerprint: u.fingerprint, block: homeOf(m.diff, u, folder), sentence: end(`Put the ${u.kind} "${String(u.detail).replace(/\s+/g, ' ').slice(0, 60)}" of ${u.fn} back into ${homeOf(m.diff, u, folder)}`) })),
         ...turned.slice(0, LOOP_LIMITS.fixes).map((c) => ({ id: 'put-back', fingerprint: c.before.fingerprint, block: blockOfFile(folder, c.after.file) ?? c.after.file, sentence: end(`Put the old ${c.before.kind} "${String(c.before.detail).replace(/\s+/g, ' ').slice(0, 60)}" of ${c.before.fn} back`) })),
-        { id: 'waive', ownerOnly: true, fingerprints: [...lost, ...turned.map((c) => c.before)].map((u) => u.fingerprint), sentence: end(`Waive ${lost.length + turned.length === 1 ? 'it' : `these ${lost.length + turned.length}`}: the owner accepts the change (owner only)`) },
+        { id: 'waive', ownerOnly: true, fingerprints: [...lost, ...turned.map((c) => c.before)].map((u) => u.fingerprint), sentence: end(lost.length + turned.length === 1 ? `Waive it: you accept that this logic is ${lost.length ? 'gone' : 'changed'} (owner only)` : `Waive these ${lost.length + turned.length}: you accept that this logic is ${turned.length ? 'gone or changed' : 'gone'} (owner only)`) },
       ];
       checks.push({ id: 'logic-map', state: 'fail', sentence: end(sentence), detail: [...lost.slice(0, LOOP_LIMITS.units).map((u) => `missing ${u.id} ${u.fingerprint}`), ...turned.slice(0, LOOP_LIMITS.units).map((c) => `changed ${c.before.id} -> ${c.after.id}`), ...r.failed.map((f) => f.sentence)].join('\n'), expr: IMPORT_LOOP_EXPRS['logic-map'], fixes });
     }
@@ -218,8 +223,9 @@ export function loopQuestion(id, failing, sentence) {
   const waivable = failing.length > 0 && failing.every((c) => c.fixes.some((f) => f.id === 'waive'));
   const options = [{ id: 'recheck', sentence: recheck }];
   if (waivable) {
-    const n = failing.flatMap((c) => c.fixes.filter((f) => f.id === 'waive').flatMap((f) => f.fingerprints)).length;
-    options.push({ id: 'waive', sentence: end(`Waive ${n === 1 ? 'it' : `these ${n}`}: you accept the change (owner only)`) });
+    const waives = failing.flatMap((c) => c.fixes.filter((f) => f.id === 'waive'));
+    const n = waives.flatMap((f) => f.fingerprints).length;
+    options.push({ id: 'waive', sentence: waives.length === 1 ? waives[0].sentence : end(`Waive all ${n}: you accept these changes (owner only)`) });
   }
   return { id, sentence: end(sentence), options, recommended: 'recheck' };
 }
