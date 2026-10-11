@@ -388,24 +388,20 @@ export class LineOpError extends Error {
 export const LINE_API = Object.freeze([
   { method: 'GET', path: '/api/line/project', request: null, response: 'LineProject' },
   { method: 'GET', path: '/api/line/page-tree', request: 'file (query)', response: 'PageTree (pageProp.mjs)' },
-  { method: 'POST', path: '/api/line/base-on', request: 'BaseOnRequest', response: 'ApplyResult' },
-  { method: 'POST', path: '/api/line/promote', request: 'PromoteRequest', response: 'ApplyResult' },
-  { method: 'POST', path: '/api/line/page-prop', request: 'SetPropRequest', response: 'ApplyResult' },
   { method: 'GET', path: '/api/line/render', request: 'file, props (query)', response: 'RenderResult' },
   { method: 'GET', path: '/api/line/feature', request: 'name (query)', response: 'LineFeatureDetail' },
   { method: 'GET', path: '/api/line/workspace', request: null, response: 'LineWorkspace' },
   { method: 'POST', path: '/api/line/workspace', request: 'WorkspaceRequest', response: 'LineWorkspace' },
-  { method: 'POST', path: '/api/line/fix', request: 'FixRequest', response: 'ApplyResult' },
   { method: 'GET', path: '/api/line/fragments', request: 'file (query)', response: 'FragmentList' },
-  { method: 'POST', path: '/api/line/fragment', request: 'SetFragmentRequest', response: 'ApplyResult' },
-  { method: 'GET', path: '/api/line/plan', request: null, response: 'PlanView' },
+  // cp1: every change to the project is a plan step (line.baseOn, line.promote, line.setPageProp, line.fix, line.setFragment,
+  // line.import.*); approve and run need the Cockpit page's Origin and the x-line-approval token GET /plan hands it.
+  { method: 'GET', path: '/api/line/plan', request: null, response: 'PlanView & {approvalToken}' },
   { method: 'POST', path: '/api/line/plan/step', request: 'PlanStepRequest', response: 'PlanView & {stepId}' },
-  { method: 'POST', path: '/api/line/plan/approve', request: '{stepId}', response: 'PlanView' },
+  { method: 'POST', path: '/api/line/plan/approve', request: '{stepId} | {stepIds}', response: 'PlanView' },
   { method: 'POST', path: '/api/line/plan/run', request: '{stepId?}', response: 'PlanView' },
   { method: 'GET', path: '/api/line/import/folders', request: null, response: '{sourceRoot, folders: {path, files}[]}' },
   { method: 'POST', path: '/api/line/import/scan', request: 'ImportScanRequest', response: 'ImportScan' },
   { method: 'POST', path: '/api/line/import/plan', request: 'ImportPlanRequest', response: 'ImportPlan' },
-  { method: 'POST', path: '/api/line/import/apply', request: 'ImportPlanRequest', response: 'ImportApplyResult' },
   { method: 'POST', path: '/api/line/new-project', request: 'NewLineProjectRequest', response: 'NewLineProjectResult' },
 ]);
 

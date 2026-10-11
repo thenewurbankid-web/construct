@@ -28,9 +28,15 @@ async function serve(t, { builtIn = false, saved = [] } = {}) {
   t.after(() => server.close());
   await new Promise((r) => server.once('listening', r));
   const base = `http://127.0.0.1:${/** @type {any} */ (server.address()).port}/api/line`;
-  const post = async (p, body, headers = {}) => { const r = await fetch(`${base}${p}`, { method: 'POST', headers: { 'content-type': 'application/json', origin: ORIGIN, ...headers }, body: JSON.stringify(body) }); return { status: r.status, body: await r.json() }; };
   const get = async () => (await fetch(`${base}/plan`)).json();
-  return { dir, post, get, saved };
+  const token = (await get()).approvalToken;
+  // The Cockpit page: its Origin and the approval token GET /plan handed it (headers may drop or replace them).
+  const post = async (p, body, headers = {}) => {
+    const h = Object.fromEntries(Object.entries({ 'content-type': 'application/json', origin: ORIGIN, 'x-line-approval': token, ...headers }).filter(([, v]) => v !== null));
+    const r = await fetch(`${base}${p}`, { method: 'POST', headers: h, body: JSON.stringify(body) });
+    return { status: r.status, body: await r.json() };
+  };
+  return { dir, post, get, saved, token };
 }
 
 for (const builtIn of [true, false]) {
@@ -70,4 +76,28 @@ test('plan routes: refusals are one sentence with a code and change nothing', as
   assert.equal(foreign.status, 403);
   assert.equal((await get()).steps.length, 0);
   assert.equal(fs.existsSync(path.join(dir, 'line/plans')), false, 'a refused step starts no plan');
+});
+
+test('only a person in Cockpit approves or runs: no Origin, or a missing or wrong approval token, is a 403 sentence and approves nothing', async (t) => {
+  const { dir, post, get, token } = await serve(t, { builtIn: true });
+  assert.match(token, /^[0-9a-f]{48}$/, 'GET /plan hands the page a random approval token');
+  const added = await post('/plan/step', { tool: 'line.baseOn', args: { libraryId: 'components/Badge', feature: 'orders', name: 'StatusBadge' } }, { 'x-line-approval': null });
+  assert.equal(added.status, 200, 'adding a step needs no approval');
+  const noOrigin = await post('/plan/approve', { stepId: added.body.stepId }, { origin: null });
+  assert.deepEqual([noOrigin.status, noOrigin.body.code], [403, 'NOT_COCKPIT']);
+  assert.match(noOrigin.body.sentence, /^Only a person in Cockpit can approve or run a plan step/);
+  const noToken = await post('/plan/approve', { stepId: added.body.stepId }, { 'x-line-approval': null });
+  assert.deepEqual([noToken.status, noToken.body.code], [403, 'NO_APPROVAL']);
+  const wrong = await post('/plan/approve', { stepId: added.body.stepId }, { 'x-line-approval': 'f'.repeat(48) });
+  assert.deepEqual([wrong.status, wrong.body.code], [403, 'NO_APPROVAL']);
+  const run = await post('/plan/run', {}, { origin: null });
+  assert.equal(run.status, 403);
+  assert.equal((await get()).steps[0].state, 'waiting', 'nothing was approved');
+  assert.equal(fs.existsSync(path.join(dir, BADGE_FILE)), false);
+  // The Cockpit page (Origin + token) approves, and approves several steps with one click.
+  const second = await post('/plan/step', { tool: 'line.baseOn', args: { libraryId: 'components/Badge', feature: 'orders', name: 'PaidBadge' } });
+  const both = await post('/plan/approve', { stepIds: [added.body.stepId, second.body.stepId] });
+  assert.equal(both.status, 200, both.body.sentence);
+  assert.deepEqual(both.body.steps.map((s) => s.state), ['ready', 'ready']);
+  assert.equal((await post('/plan/approve', { stepIds: [] })).body.code, 'BAD_ARGS');
 });

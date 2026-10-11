@@ -85,6 +85,14 @@ export function createReviewRouter({ getRoot, jobs, plans = { list: () => [], re
   });
 
   router.get('/branches', (req, res) => {
+    // A project that is not a git repository yet (a new Line project, say) has no branches: say so quietly, not as an error.
+    const open = getRoot();
+    if (open.ok) {
+      const probe = localBranches.list(open.root);
+      if (!probe.ok && probe.code === 'NOT_A_GIT_REPO') {
+        return res.json({ ok: true, source: { id: localBranches.id, label: localBranches.label }, base: null, current: null, refs: [], branches: [], hasRemote: false, sentence: 'This project is not a git repository yet.' });
+      }
+    }
     const l = load();
     if (!l.ok) return res.status(l.status).json(l.body);
     const { listing } = l;

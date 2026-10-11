@@ -290,6 +290,9 @@ export function runChange(projectRoot, tool, args, ops = REAL_PLAN_OPS) {
     const todo = fileStates(root, staged).filter((f) => f.state !== 'present').map((f) => f.path);
     const narrowed = { ...staged, files: staged.files.filter((f) => todo.includes(f.path)) };
     apply = narrowed.files.length ? ops.applyChange(root, narrowed) : { ok: true, sentence: `Nothing to save: ${lower(staged.summary.replace(/[.?!]$/, ''))} is already there.`, files: [], findings: [] };
+    // A plan may carry warnings that must not block (a type check too slow to gate the save): shown after it lands.
+    const warnings = /** @type {any} */ (staged).warnings;
+    if (/** @type {any} */ (apply).ok && Array.isArray(warnings) && warnings.length) apply = { .../** @type {any} */ (apply), findings: [.../** @type {any} */ (apply).findings, ...warnings] };
   }
   if (!/** @type {any} */ (apply).ok && /** @type {any} */ (apply).findings.length && staged) {
     apply = { .../** @type {any} */ (apply), findings: fixesAsProposed(root, staged, /** @type {any} */ (apply).findings) };

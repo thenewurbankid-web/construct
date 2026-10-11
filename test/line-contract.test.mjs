@@ -75,7 +75,7 @@ test('contract: the shape checks reject what Cockpit must never show', () => {
   assert.throws(() => assertFinding({ sentence: 'no full stop', rule: 'X', severity: 'error', file: 'a', line: 1 }), /full sentence/);
   assert.throws(() => assertStagedChange({ summary: 'Escapes.', files: [{ path: '../x', content: '' }] }), /inside the project/);
   assert.throws(() => assertApplyResult({ ok: false, sentence: 'Refused.', files: ['a'], findings: [] }), /wrote nothing/);
-  assert.deepEqual(LINE_API.map((r) => `${r.method} ${r.path}`), ['GET /api/line/project', 'GET /api/line/page-tree', 'POST /api/line/base-on', 'POST /api/line/promote', 'POST /api/line/page-prop', 'GET /api/line/render', 'GET /api/line/feature', 'GET /api/line/workspace', 'POST /api/line/workspace', 'POST /api/line/fix', 'GET /api/line/fragments', 'POST /api/line/fragment', 'GET /api/line/plan', 'POST /api/line/plan/step', 'POST /api/line/plan/approve', 'POST /api/line/plan/run', 'GET /api/line/import/folders', 'POST /api/line/import/scan', 'POST /api/line/import/plan', 'POST /api/line/import/apply', 'POST /api/line/new-project']);
+  assert.deepEqual(LINE_API.map((r) => `${r.method} ${r.path}`), ['GET /api/line/project', 'GET /api/line/page-tree', 'GET /api/line/render', 'GET /api/line/feature', 'GET /api/line/workspace', 'POST /api/line/workspace', 'GET /api/line/fragments', 'GET /api/line/plan', 'POST /api/line/plan/step', 'POST /api/line/plan/approve', 'POST /api/line/plan/run', 'GET /api/line/import/folders', 'POST /api/line/import/scan', 'POST /api/line/import/plan', 'POST /api/line/new-project']);
   assert.throws(() => assertLineWorkspace({ root: '/p', folder: '../x', readOnly: true }), /inside the project/);
 });
 

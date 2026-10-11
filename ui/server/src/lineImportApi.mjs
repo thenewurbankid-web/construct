@@ -5,20 +5,21 @@
 //   GET  /import/folders   listImportFolders   the project's folders that hold code
 //   POST /import/scan      scanImport          {folder} -> ImportScan (pure read, no model)
 //   POST /import/plan      planImport          {folder, answers} -> ImportPlan (plan-ready steps, nothing written)
-//   POST /import/apply     applyImport         {folder, answers} -> ImportApplyResult (the plan is recomputed here, never
-//                                              taken from the client, so the client cannot send its own steps)
+//
+// Applying is not a route here: Cockpit adds the ImportPlan's steps to the project's plan (/api/line/plan, the
+// line.import.* tools of the one registry, planTools.mjs), the person approves them with one click, and each runs
+// through applyChange with the folder as the writer's root, so a step can never write outside its folder.
 //
 // A LineOpError is a 400 `{ok: false, sentence, code}`; anything unexpected is a 500 with one sentence.
 import express from 'express';
 import { LineOpError } from '../../../packages/engine/line/contract.mjs';
-import { listImportFolders, scanImport, planImport, applyImport } from '../../../packages/engine/line/import.mjs';
+import { listImportFolders, scanImport, planImport } from '../../../packages/engine/line/import.mjs';
 
 /** The real import operations; tests may pass the contract's mock (mockImport.mjs createMockImport) instead. */
 export const REAL_IMPORT_OPS = Object.freeze({
   folders: (root) => listImportFolders(root),
   scan: (root, { folder }) => scanImport(root, folder),
   plan: (root, { folder, answers }) => planImport(root, folder, answers),
-  apply: (root, { folder, answers }) => applyImport(root, folder, answers),
 });
 
 const plain = (body) => (body && typeof body === 'object' && !Array.isArray(body) ? body : {});
@@ -26,10 +27,10 @@ const answersOf = (a) => Object.fromEntries(Object.entries(plain(a)).filter(([k,
 
 /**
  * @param {{getRoot: () => ({ok: true, root: string} | {ok: false, error: string}), clientOrigin?: string,
- *   afterSave?: (root: string, relPath: string) => unknown, ops?: typeof REAL_IMPORT_OPS}} deps
+ *   afterSave?: (root: string, relPath: string) => unknown, ops?: typeof REAL_IMPORT_OPS}} deps  `afterSave` is unused since applying moved to the plan
  * @returns {import('express').Router}
  */
-export function createLineImportRouter({ getRoot, clientOrigin, afterSave, ops = REAL_IMPORT_OPS }) {
+export function createLineImportRouter({ getRoot, clientOrigin, ops = REAL_IMPORT_OPS }) {
   const router = express.Router();
   router.use('/import', (req, res, next) => {
     if (req.method === 'POST') {
@@ -55,10 +56,5 @@ export function createLineImportRouter({ getRoot, clientOrigin, afterSave, ops =
   router.get('/import/folders', handle((root) => ops.folders(root)));
   router.post('/import/scan', handle((root, body) => ops.scan(root, { folder: folderOf(body) })));
   router.post('/import/plan', handle((root, body) => ops.plan(root, { folder: folderOf(body), answers: answersOf(body.answers) })));
-  router.post('/import/apply', handle((root, body) => {
-    const result = ops.apply(root, { folder: folderOf(body), answers: answersOf(body.answers) });
-    if (afterSave) for (const f of [...(result.files ?? []), ...(result.landed ?? [])]) afterSave(root, f);
-    return result;
-  }));
   return router;
 }
