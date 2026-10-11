@@ -89,6 +89,8 @@ import { createLineOpsRouter } from './lineOpsApi.mjs';
 import { createLinePlanRouter } from './linePlanApi.mjs';
 import { createLineRenderRouter } from './lineRenderApi.mjs';
 import { createLineImportRouter } from './lineImportApi.mjs';
+import { createLineImportAgentRouter } from './lineImportAgentApi.mjs';
+import { createLinePlanService } from '../../../packages/engine/line/planService.mjs';
 import { createStoryBridgeRouter } from './storyBridgeApi.mjs';
 import { createNotesRouter } from './notesApi.mjs';
 import { openNotesStore } from './notesStore.mjs';
@@ -1261,9 +1263,16 @@ app.use('/api/line', createLineOpsRouter({
 
 // cp1 (Line Cockpit): every Line action as a step of the open project's plan (line/plans/); a person approves each
 // write, then it runs through the same writer (linePlanApi.mjs, packages/engine/line/planService.mjs).
+// ci2: ONE plan service per project, shared with the Import agent (it executes only by adding steps to this plan).
+const linePlanServices = new Map();
+const linePlanServiceFor = (root) => {
+  if (!linePlanServices.has(root)) linePlanServices.set(root, createLinePlanService({ root, afterSave }));
+  return linePlanServices.get(root);
+};
 app.use('/api/line', createLinePlanRouter({
   clientOrigin: CLIENT_ORIGIN,
   afterSave,
+  serviceFor: linePlanServiceFor,
   getRoot: () => {
     const root = containedProjectRoot(getProjectDir());
     return root ? { ok: true, root } : { ok: false, error: 'No project is open; pick a project first.' };
@@ -1275,6 +1284,17 @@ app.use('/api/line', createLinePlanRouter({
 app.use('/api/line', createLineImportRouter({
   clientOrigin: CLIENT_ORIGIN,
   afterSave,
+  getRoot: () => {
+    const root = containedProjectRoot(getProjectDir());
+    return root ? { ok: true, root } : { ok: false, error: 'No project is open; pick a project first.' };
+  },
+}));
+
+// ci2 (Line Import agent): the Import process (scan, classify, plan, review, execute, verify) for one folder, kept in
+// <folder>/line/import-plan.json; it executes only through the plan above (lineImportAgentApi.mjs).
+app.use('/api/line', createLineImportAgentRouter({
+  clientOrigin: CLIENT_ORIGIN,
+  planServiceFor: linePlanServiceFor,
   getRoot: () => {
     const root = containedProjectRoot(getProjectDir());
     return root ? { ok: true, root } : { ok: false, error: 'No project is open; pick a project first.' };
