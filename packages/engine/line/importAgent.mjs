@@ -1,6 +1,14 @@
 // ci2 -- the Import agent: one agent in Import mode, run as a fixed typed process (an xstate machine):
 //
-//   scan -> classify -> plan -> review -> execute -> verify -> done
+//   scan -> map -> characterize -> classify -> plan -> review -> execute -> verify -> done
+//
+// Line Import v2 (docs/line/import-v2/CONTRACT.md): the input is a folder, or a route (its RouteClosure seeds the map) with
+// the folder the import writes into. `map` builds the logic map of the unmodified app; `characterize` writes the
+// characterization tests and runs them in the app's own runner, and every one must pass before anything moves. After each
+// import plan step lands (a person approved it), the loop (importLoop.mjs) rebuilds the map, diffs it, runs the tests and
+// checks the moved files' behaviour; it goes on only when every check passes, else it stops with one sentence plus typed
+// fixes and asks. Each checked step leaves an ImportLoopState in the file and in the plan records (slotted). Only a person
+// can waive a lost unit; an agent's waiver is refused.
 //
 // Its whole state is ONE file inside the chosen folder, `<folder>/line/import-plan.json` (contract.mjs ImportPlanFile),
 // written only through Construct's writer (applyChange with the folder as root). So the process can be paused and
@@ -30,6 +38,8 @@
 // (the file store, the real scan and plan) is importAgentDisk.mjs.
 import { createMachine, getNextSnapshot } from 'xstate';
 import { IMPORT_AGENT_STAGES, IMPORT_EDITABLE, LEVELS, LineOpError, assertImportPlanFile, importFolderProblem } from './contract.mjs';
+import { newLogic, measure, loopChecks, loopState, loopQuestion, addWaivers, logicView, LOOP_LIMITS } from './importLoop.mjs';
+import { mapSummary } from './importLoopStandIns.mjs';
 
 /** Fix rounds per step before the agent asks the person, even when each round improved. */
 export const MAX_ROUNDS = 3;
@@ -40,7 +50,9 @@ export const importMachine = createMachine({
   id: 'line-import',
   initial: 'scan',
   states: {
-    scan: { on: { SCANNED: 'classify' } },
+    scan: { on: { SCANNED: 'map' } },
+    map: { on: { MAPPED: 'characterize' } },
+    characterize: { on: { CHARACTERIZED: 'classify' } },
     classify: { on: { CLASSIFIED: 'plan' } },
     plan: { on: { PLANNED: 'review' } },
     review: { on: { REVIEWED: 'execute' } },
@@ -98,8 +110,8 @@ function checkEdit(tool, patch) {
   }
 }
 
-function newDoc(folder) {
-  return { version: 1, folder, state: 'scan', paused: false, waiting: null, found: [], answers: {}, decisions: [], steps: [], cursor: { pending: null, origin: null, phase: null }, verify: null, changes: [] };
+function newDoc(folder, route) {
+  return { version: 1, folder, logic: newLogic(route), state: 'scan', paused: false, waiting: null, found: [], answers: {}, decisions: [], steps: [], cursor: { pending: null, origin: null, phase: null }, verify: null, changes: [] };
 }
 
 /** Where the process is, in one sentence. */
@@ -139,6 +151,7 @@ export function agentView(folder, doc, decider) {
     decisions: doc ? doc.decisions : [],
     changes: doc ? doc.changes.slice(-100) : [],
     verify: doc ? doc.verify : null,
+    logic: doc ? logicView(doc.logic) : null,
     decider,
   };
 }
@@ -165,7 +178,7 @@ export async function decideWith(provider, id, question, optionIds) {
 // ------------------------------------------------------------------------------------------------- the agent
 /**
  * The Import agent for one folder of one project.
- * @param {{root: string, folder: string, planService: {view: () => Promise<any>, addStep: (req: any, by: string) => Promise<any>, approve: (id: string, by: string) => Promise<any>, runNext: (by: string, id?: string) => Promise<any>}, reason?: {suggest: (summary: any) => Promise<any>, lastNote?: () => string | null} | null, verify?: (root: string, folder: string, baseline: string[]) => Promise<{ok: boolean, checks: any[]}>, baseline?: (root: string, folder: string) => Promise<string[]> | string[], importOps: {scan: (root: string, folder: string) => any, plan: (root: string, folder: string, answers: Record<string, string>) => any}, store: {read: () => any, write: (doc: any) => void}, checkFolder?: () => void, snapshot?: (root: string, folder: string) => unknown, rollback?: (root: string, folder: string) => {ok: boolean, sentence: string, files: string[]} | Promise<{ok: boolean, sentence: string, files: string[]}>, now?: () => string, decider?: string}} o `importOps` and `store` are the disk ones in importAgentDisk.mjs (createImportAgentOnDisk), in-memory ones in the mock.
+ * @param {{root: string, folder: string, planService: {view: () => Promise<any>, addStep: (req: any, by: string) => Promise<any>, approve: (id: string, by: string) => Promise<any>, runNext: (by: string, id?: string) => Promise<any>}, reason?: {suggest: (summary: any) => Promise<any>, lastNote?: () => string | null} | null, verify?: (root: string, folder: string, baseline: string[]) => Promise<{ok: boolean, checks: any[]}>, baseline?: (root: string, folder: string) => Promise<string[]> | string[], importOps: {scan: (root: string, folder: string) => any, plan: (root: string, folder: string, answers: Record<string, string>) => any}, store: {read: () => any, write: (doc: any) => void}, logic?: any, checkFolder?: () => void, snapshot?: (root: string, folder: string) => unknown, rollback?: (root: string, folder: string) => {ok: boolean, sentence: string, files: string[]} | Promise<{ok: boolean, sentence: string, files: string[]}>, now?: () => string, decider?: string}} o `importOps` and `store` are the disk ones in importAgentDisk.mjs (createImportAgentOnDisk), in-memory ones in the mock. `logic` is the import loop's ops (importLoop.mjs): importLoopDisk.mjs createLogicOnDisk on disk, importLoopStandIns.mjs createMockLogic in the mock; without it the map, characterize and loop checks say they are not set up and pass through.
  * @returns {any}
  */
 export function createImportAgent(o) {
@@ -204,6 +217,64 @@ export function createImportAgent(o) {
       for: 'answer', stepId: step.id, sentence: asSentence(`${step.args.name ?? 'This step'} needs you: ${lower(asSentence(why))}`),
       question: { id: `step:${step.id}`, sentence: `What should Line do with ${step.args.name ?? 'this step'}?`, options, recommended: options[0].id },
     };
+  }
+
+  // ----------------------------------------------------------------------------------------------- the loop (v2)
+  const looping = (doc) => Boolean(o.logic && doc.logic?.map);
+
+  /** After a step landed: rebuild the map, diff it, run the tests, check behaviour; keep and record the ImportLoopState. */
+  async function checkStep(doc, step, by) {
+    const m = await measure(o.logic, { root, folder, logic: doc.logic });
+    const checks = loopChecks(m, doc.logic, { at: 'step', folder });
+    const n = doc.steps.indexOf(step) + 1;
+    const before = doc.logic.loop.at(-1)?.mapAfter ?? doc.logic.map;
+    const state = loopState({ step, n, at: now(), before, m, checks, logic: doc.logic });
+    doc.logic.loop.push(state);
+    if (doc.logic.loop.length > LOOP_LIMITS.states) doc.logic.loop.splice(0, doc.logic.loop.length - LOOP_LIMITS.states);
+    doc.logic.last = { kept: m.diff.kept.length + m.diff.moved.length, missing: state.diff.missing.filter((u) => !u.waived), coverage: state.coverage, tests: state.tests };
+    try { o.logic.record?.(state); } catch { /* a record that cannot be written never stops the import */ }
+    const failing = checks.filter((c) => c.state === 'fail');
+    record(doc, 'line', 'loop', state.status === 'ok' ? `checked step ${n}: ${lower(state.sentence)}` : `stopped after step ${n}: ${lower(state.sentence)}`, step.id);
+    if (failing.length) {
+      doc.logic.pending = { at: 'step', stepId: step.id, checks: failing };
+      doc.waiting = { for: 'answer', stepId: step.id, sentence: asSentence(`Step ${n} stopped the import: ${lower(state.sentence)}`), question: loopQuestion(`loop:${step.id}`, failing, `What should Line do about step ${n}?`) };
+    } else doc.logic.pending = null;
+    return state;
+  }
+
+  /** Map the unmodified app (the folder, or the route's closure) and keep it as the baseline. */
+  async function mapStage(doc) {
+    if (!o.logic) { record(doc, 'line', 'map', 'no logic map is set up for this import, so its units are not checked'); return; }
+    const closure = await o.logic.closure(root, folder, doc.logic.route);
+    const map = await o.logic.buildMap(root, folder, closure);
+    await o.logic.save('logic-map', map);
+    await o.logic.save('baseline', { files: map.files });
+    doc.logic.closure = { routes: closure.routes ?? [], files: closure.files ?? [], external: closure.external ?? [] };
+    doc.logic.map = mapSummary(map);
+    const files = doc.logic.closure.files.length;
+    record(doc, 'line', 'map', `mapped ${map.units.length} logic unit${map.units.length === 1 ? '' : 's'} in ${files} file${files === 1 ? '' : 's'}${doc.logic.route ? ` of route ${doc.logic.route}` : ''}`);
+  }
+
+  /** Characterization tests on the unmodified app: written once, and every one must pass before anything moves. */
+  async function characterizeStage(doc) {
+    if (!looping(doc)) { record(doc, 'line', 'characterize', 'no characterization tests are set up for this import'); return true; }
+    if (!doc.logic.baselineTests) {
+      const map = await o.logic.load('logic-map');
+      const c = await o.logic.characterize(root, folder, doc.logic.closure, map ?? { units: [] });
+      doc.logic.tests = c.tests;
+    }
+    const t = await o.logic.runTests(root, folder, doc.logic.tests);
+    doc.logic.baselineTests = { state: t.state, passed: t.passed, failed: t.failed, total: t.total, sentence: asSentence(t.sentence) };
+    if (t.state === 'fail') {
+      doc.logic.pending = { at: 'characterize', failures: t.failures ?? [] };
+      doc.waiting = {
+        for: 'answer', sentence: asSentence(`${t.failed} of ${t.total} characterization tests fail on the app before anything moved, so they cannot prove its behaviour is kept${t.failures?.[0] ? `; the first: ${t.failures[0].title}` : ''}`),
+        question: { id: 'characterize', sentence: 'What should Line do about the failing tests?', options: [{ id: 'recheck', sentence: 'Fix the tests (or the app), then run them again.' }, { id: 'waive', sentence: 'Carry on without the failing tests: you accept that they prove nothing (owner only).' }], recommended: 'recheck' },
+      };
+      return false;
+    }
+    record(doc, 'line', 'characterize', t.state === 'skipped' ? lower(asSentence(t.sentence)) : `ran ${t.total} characterization test${t.total === 1 ? '' : 's'} on the unmodified app: all pass`);
+    return true;
   }
 
   /** Add one cp1 plan step; a person-driven request approves the steps the person asked for. */
@@ -287,6 +358,12 @@ export function createImportAgent(o) {
       }
       else { step.run = 'done'; step.outcome = asSentence(ps.sentence); }
       doc.cursor = { pending: null, origin: null, phase: null };
+      // The step landed: the loop checks it before anything else moves.
+      if (step.run === 'done' && looping(doc)) {
+        o.logic.stepLanded?.(step.tool, step.args);
+        const st = await checkStep(doc, step, by);
+        if (st.status === 'stopped') return 'wait';
+      }
       return 'more';
     }
     if (ps.state === 'needs-fix' || ps.state === 'needs-you') {
@@ -325,6 +402,13 @@ export function createImportAgent(o) {
         doc.questions = scan.questions;
         record(doc, 'agent', 'state', `read ${folder}: ${scan.found.length} item${scan.found.length === 1 ? '' : 's'}, ${scan.questions.length} open question${scan.questions.length === 1 ? '' : 's'}`);
         go(doc, by, 'SCANNED');
+      } else if (doc.state === 'map') {
+        doc.logic ??= newLogic(null);
+        await mapStage(doc);
+        go(doc, by, 'MAPPED');
+      } else if (doc.state === 'characterize') {
+        if (!await characterizeStage(doc)) return;
+        go(doc, by, 'CHARACTERIZED');
       } else if (doc.state === 'classify') {
         for (const q of doc.questions ?? []) {
           if (doc.answers[q.id]) continue;
@@ -352,14 +436,30 @@ export function createImportAgent(o) {
         if (await executeOnce(doc, by, answered) === 'wait') return;
         answered = false;
       } else if (doc.state === 'verify') {
-        const v = o.verify ? await o.verify(root, folder, doc.baseline ?? []) : { ok: true, checks: [{ id: 'validate', state: 'skipped', sentence: 'No checks are set up for this import.' }] };
+        const base = o.verify ? await o.verify(root, folder, doc.baseline ?? []) : { ok: true, checks: [{ id: 'validate', state: 'skipped', sentence: 'No checks are set up for this import.' }] };
+        // Line Import v2: the loop's checks once more, now with unit coverage (every unit has a block and a test, or a waiver).
+        let logicFailing = [];
+        let extra = [];
+        if (looping(doc)) {
+          const m = await measure(o.logic, { root, folder, logic: doc.logic });
+          const lc = loopChecks(m, doc.logic, { at: 'verify', folder });
+          const st = loopState({ step: { id: 'verify', tool: 'verify', sentence: 'Check everything', args: { folder } }, n: doc.steps.length + 1, at: now(), before: doc.logic.loop.at(-1)?.mapAfter ?? doc.logic.map, m, checks: lc, logic: doc.logic });
+          doc.logic.last = { kept: m.diff.kept.length + m.diff.moved.length, missing: st.diff.missing.filter((u) => !u.waived), coverage: st.coverage, tests: st.tests };
+          logicFailing = lc.filter((c) => c.state === 'fail');
+          doc.logic.pending = logicFailing.length ? { at: 'verify', checks: logicFailing } : null;
+          extra = lc.map((c) => ({ id: c.id, state: c.state, sentence: c.sentence, ...(c.detail ? { detail: c.detail } : {}) }));
+        }
+        const checks = [...base.checks, ...extra];
+        const v = { ok: !checks.some((c) => c.state === 'fail'), checks };
         doc.verify = v;
         record(doc, 'line', 'verify', v.ok ? 'checked the folder: every check passed (or says why it could not run)' : `checked the folder: some checks fail: ${v.checks.filter((c) => c.state === 'fail').map((c) => c.id).join(', ')}`);
         if (!v.ok) {
-          doc.waiting = {
-            for: 'answer', sentence: asSentence(`The checks found problems: ${lower(v.checks.find((c) => c.state === 'fail').sentence)}`),
-            question: { id: 'verify', sentence: 'The import landed, but some checks fail. What now?', options: [{ id: 'verify-again', sentence: 'Check again (after you fixed something).' }, { id: 'finish', sentence: 'Finish the import anyway; the problems stay listed.' }], recommended: 'verify-again' },
-          };
+          const first = v.checks.find((c) => c.state === 'fail');
+          // Lost or untested logic is never finished "anyway": it is put back, tested, or waived by the owner.
+          const question = logicFailing.length
+            ? (() => { const q = loopQuestion('verify', logicFailing, 'The import landed, but some checks fail. What now?'); return { ...q, options: q.options.map((x) => (x.id === 'recheck' ? { ...x, id: 'verify-again' } : x)), recommended: 'verify-again' }; })()
+            : { id: 'verify', sentence: 'The import landed, but some checks fail. What now?', options: [{ id: 'verify-again', sentence: 'Check again (after you fixed something).' }, { id: 'finish', sentence: 'Finish the import anyway; the problems stay listed.' }], recommended: 'verify-again' };
+          doc.waiting = { for: 'answer', sentence: asSentence(`The checks found problems: ${lower(first.sentence)}`), question };
           return;
         }
         go(doc, by, 'VERIFIED');
@@ -378,12 +478,15 @@ export function createImportAgent(o) {
     /** The process as it stands (no file is written). */
     view: () => serial(async () => view(load())),
 
-    /** Start (scan, classify, plan) and stop at the review. An import already started is shown as it is. */
-    start: (by = 'ui') => serial(async () => {
+    /** Start (scan, map, characterize, classify, plan) and stop at the review. An import already started is shown as it
+     * is. `opts.route` seeds the logic map with a route's closure (the folder is still where the import writes). */
+    start: (by = 'ui', opts = {}) => serial(async () => {
       const had = load();
       if (had) return view(had, 'This import has already started; here it is');
       if (o.checkFolder) o.checkFolder();
-      const doc = newDoc(folder);
+      const route = typeof opts?.route === 'string' && opts.route.trim() ? opts.route.trim() : null;
+      if (route && !o.logic) return refusal('NO_LOGIC', 'A route needs the logic map, which is not set up for this import; start it with the folder alone');
+      const doc = newDoc(folder, route);
       record(doc, by, 'start', `started the import of ${folder}`);
       await run(doc, by);
       save(doc);
@@ -464,7 +567,42 @@ export function createImportAgent(o) {
       const q = doc.waiting?.for === 'answer' ? doc.waiting.question : null;
       if (!q || q.id !== questionId) return refusal('NO_QUESTION', 'There is no such question open right now');
       if (!q.options.some((x) => x.id === optionId)) return refusal('BAD_OPTION', `Pick one of the options: ${q.options.map((x) => x.id).join(', ')}`);
+      // Only a person waives: an agent's waiver is refused and changes nothing.
+      if (optionId === 'waive' && by !== 'ui') return refusal('OWNER_ONLY', 'Only a person can waive a logic unit; an agent never can. Ask the owner to decide in Cockpit');
       record(doc, by, 'answer', `answered "${q.sentence.replace(/[.?!]$/, '')}": ${lower(q.options.find((x) => x.id === optionId).sentence)}`, doc.waiting.stepId);
+      if (q.id === 'characterize') {
+        if (optionId === 'waive') {
+          const failed = new Set((doc.logic.pending?.failures ?? []).map((f) => f.file));
+          const dropped = doc.logic.tests.filter((t) => failed.has(t.file));
+          doc.logic.tests = doc.logic.tests.filter((t) => !failed.has(t.file));
+          for (const t of dropped) doc.logic.waivers.push({ fingerprint: `test:${t.file}`, by: 'owner', why: asSentence(`The test "${t.title}" failed on the unmodified app, and the owner went on without it`), at: now() });
+          record(doc, by, 'waive', `went on without ${dropped.length} failing characterization test${dropped.length === 1 ? '' : 's'}`);
+        }
+        doc.waiting = null; doc.logic.pending = null;
+        await run(doc, by, true);
+        save(doc);
+        return view(doc);
+      }
+      if (q.id.startsWith('loop:')) {
+        const step = stepOf(doc, doc.waiting.stepId);
+        if (optionId === 'waive') {
+          const w = addWaivers(doc.logic, doc.logic.pending?.checks ?? [], by, now());
+          if (w.ok) record(doc, by, 'waive', `waived ${w.count} logic unit${w.count === 1 ? '' : 's'} after "${step.sentence.replace(/[.?!]$/, '')}"`, step.id);
+        }
+        doc.waiting = null;
+        const st = await checkStep(doc, step, by);
+        if (st.status === 'ok') await run(doc, by, true);
+        save(doc);
+        return view(doc);
+      }
+      if (q.id === 'verify' && optionId === 'waive') {
+        const w = addWaivers(doc.logic, doc.logic.pending?.checks ?? [], by, now());
+        if (w.ok) record(doc, by, 'waive', `waived ${w.count} logic unit${w.count === 1 ? '' : 's'} at the final check`);
+        doc.waiting = null;
+        await run(doc, by, true);
+        save(doc);
+        return view(doc);
+      }
       if (q.id === 'verify') {
         if (optionId === 'finish') { doc.waiting = null; go(doc, by, 'FINISHED'); save(doc); return view(doc); }
         doc.waiting = null;

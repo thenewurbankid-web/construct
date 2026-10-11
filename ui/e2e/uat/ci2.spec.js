@@ -7,7 +7,8 @@ import { gotoCockpit } from '../tests/support/cockpit.js';
 import { openProject } from '../tests/support/browseProject.js';
 
 // UAT walk for ci2 (docs/line/review.md "ci2", To try it in Cockpit), as a non-technical owner: open Import, follow the link
-// to the Import agent, type the folder, Start, Approve the plan, read the result and the checks. Only clicks and typing;
+// to the Import agent, type the folder, Start, read how much logic Line mapped, Approve the plan, waive the untested units
+// (the sample has no tests; only the owner can), read the result and the checks. Only clicks and typing;
 // the walk fails on any console error or any 4xx/5xx answer, and counts the clicks each decision takes (at most two).
 // The project is a temp copy of examples/import-sample (opened once, like picking it in the project switcher).
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -49,13 +50,21 @@ test.describe.serial('UAT ci2: the Import agent, walked as the owner', () => {
     // Plain English first: no tool names or JSON on screen until Details is opened.
     await expect(screen.getByText('tool line.import.mark', { exact: true })).toBeHidden();
     for (const text of await screen.locator('.la-sentence').allInnerTexts()) expect(text, 'a sentence on screen').toMatch(/^[A-Z0-9"].*[.?!]$/s);
+    // Line Import v2: the logic is mapped and pinned before anything moves, in plain English.
+    await expect(screen.getByTestId('la-logic-kept')).toHaveText('9 of 9 logic units kept.');
+    await expect(screen.getByTestId('la-logic-count')).toHaveText('9 logic units in 7 files.');
 
-    // 3. Approve the plan: one click, and the agent does the rest.
+    // 3. Approve the plan: one click, and the agent does the rest; every step keeps every unit.
     await screen.getByRole('button', { name: 'Approve the plan' }).click();
+    // 4. The one decision left: no unit has a test yet. Waiving it is the owner's call: one click.
+    await expect(screen.getByTestId('la-question')).toBeVisible({ timeout: 90_000 });
+    await expect(screen.getByTestId('la-sentence')).toHaveText(/^The checks found problems: 12 of 12 logic units still need a block or a test; the first: .*\.$/);
+    await screen.getByRole('button', { name: /^Waive the 12 units without a block or a test \(owner only\)\.$/ }).click();
     await expect(screen.getByTestId('la-sentence')).toHaveText('Done: 10 steps landed.', { timeout: 90_000 });
+    await expect(screen.getByTestId('la-logic-kept')).toHaveText('9 of 9 logic units kept.');
     await expect(screen.locator('[data-check="validate"]')).toContainText('finds no new problems');
 
-    // 4. The record says who did what, in sentences.
+    // 5. The record says who did what, in sentences.
     await screen.getByText(/^Every change \(/).click();
     await expect(screen.getByTestId('la-changes')).toContainText('You approved 10 steps.');
     await expect(screen.getByTestId('la-changes')).toContainText('Your agent wrote the plan:');

@@ -45,3 +45,4 @@
 .la-tech { font-size: var(--fs-sm); color: var(--text-muted); }
 .la-tech code { font-family: var(--mono); overflow-wrap: anywhere; display: block; }
 .la-link { color: var(--text); text-decoration: underline; width: max-content; }
+.la-kept { font-weight: 600; }

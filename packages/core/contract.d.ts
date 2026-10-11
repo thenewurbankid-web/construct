@@ -133,6 +133,8 @@ export * as backendRoutes from './backend-routes.mjs';
 export * as typeCheck from './type-check.mjs';
 /** `@line/construct-core/verify` */
 export * as verify from './verify.mjs';
+/** `@line/construct-core/check-change` */
+export * as checkChange from './check-change.mjs';
 /** `@line/construct-core/plan-registry` */
 export * as planRegistry from './plan-registry.mjs';
 /** `@line/construct-core/rules-catalog` */

@@ -54,8 +54,11 @@ function hashes(dir, skip) {
 
 // ------------------------------------------------------------------------------------------------- the process
 
-test('process: the xstate machine allows only scan -> classify -> plan -> review -> execute -> verify -> done', () => {
-  assert.equal(nextState('scan', 'SCANNED'), 'classify');
+test('process: the xstate machine allows only scan -> map -> characterize -> classify -> plan -> review -> execute -> verify -> done', () => {
+  assert.equal(nextState('scan', 'SCANNED'), 'map');
+  assert.equal(nextState('map', 'MAPPED'), 'characterize');
+  assert.equal(nextState('characterize', 'CHARACTERIZED'), 'classify');
+  assert.throws(() => nextState('map', 'CLASSIFIED'), /cannot go from "map"/);
   assert.equal(nextState('classify', 'CLASSIFIED'), 'plan');
   assert.equal(nextState('plan', 'PLANNED'), 'review');
   assert.equal(nextState('review', 'REVIEWED'), 'execute');
@@ -91,11 +94,12 @@ test('mock: start reads, sorts and plans the folder, then waits for the review; 
   assert.equal(v.state, 'review');
   assert.equal(v.waiting.for, 'review');
   assert.equal(v.waiting.sentence, 'Review the plan: approve its 10 steps, or edit, skip or reorder them first.');
-  assert.deepEqual(v.stages.map((s) => s.status), ['done', 'done', 'done', 'current', 'todo', 'todo', 'todo']);
+  assert.deepEqual(v.stages.map((s) => s.status), ['done', 'done', 'done', 'done', 'done', 'current', 'todo', 'todo', 'todo']);
   assert.equal(v.decisions.length, 1);
   assert.deepEqual([v.decisions[0].id, v.decisions[0].picked, v.decisions[0].by], [TABLE_Q, 'library', 'static']);
   assert.equal(svc.planService.steps.length, 0, 'nothing joins the plan before the review');
-  assert.deepEqual(v.changes.map((c) => c.action), ['start', 'state', 'state', 'decide', 'state', 'state', 'state']);
+  assert.deepEqual(v.changes.map((c) => c.action), ['start', 'state', 'state', 'map', 'state', 'characterize', 'state', 'decide', 'state', 'state', 'state']);
+  assert.equal(v.logic.keptSentence, '11 of 11 logic units kept.');
   const again = await agent.start('ui');
   assert.equal(again.message, 'This import has already started; here it is.');
 });
@@ -247,9 +251,17 @@ test('real: on a copy of import-sample, the agent plans, waits for the person, l
   assert.equal(plan.steps[0].tool, 'line.import.mark');
   assert.equal(plan.steps[0].state, 'waiting');
   v = await approveAlong(agent, planService, v);
+  // import-sample has no tests: every step kept its logic, but at verify no unit has a test, so the owner must waive them.
+  assert.equal(v.state, 'verify', v.sentence);
+  assert.match(v.waiting.sentence, /^The checks found problems: 12 of 12 logic units still need a block or a test; the first: /);
+  assert.deepEqual(v.waiting.question.options.map((x) => x.id), ['verify-again', 'waive']);
+  assert.ok(v.logic.steps.length === 10 && v.logic.steps.every((s) => s.status === 'ok' && s.missing === 0), 'every step kept every unit');
+  const refused = await agent.answer('agent', 'verify', 'waive');
+  assert.deepEqual([refused.ok, refused.code], [false, 'OWNER_ONLY'], 'an agent never waives');
+  v = await agent.answer('ui', 'verify', 'waive');
   assert.equal(v.state, 'done', v.sentence);
   assert.equal(v.sentence, 'Done: 10 steps landed.');
-  assert.deepEqual(v.verify.checks.map((c) => [c.id, c.state]), [['validate', 'pass'], ['types', 'skipped'], ['tests', 'skipped']]);
+  assert.deepEqual(v.verify.checks.map((c) => [c.id, c.state]), [['validate', 'pass'], ['types', 'skipped'], ['tests', 'skipped'], ['char-tests', 'skipped'], ['logic-map', 'pass'], ['behaviour', 'pass'], ['coverage', 'pass']]);
   assert.equal(v.verify.checks[0].sentence, 'Validate (profile line) finds no new problems in the folder. 2 problems were already there before the import.');
   assert.ok(fs.existsSync(path.join(dir, FOLDER, 'features/alerts/pages/AlertsPage.tsx')));
   assert.ok(fs.existsSync(path.join(dir, FOLDER, 'library/components/SeverityBadge.tsx')));
@@ -276,6 +288,8 @@ test('real: a step that cannot be made (an edited base that does not exist) asks
   assert.deepEqual(v.waiting.question.options.map((o) => o.id), ['undo', 'leave'], 'no typed fix: undoing the whole import comes first, leaving the step is the other choice');
   v = await agent.answer('ui', v.waiting.question.id, 'leave');
   v = await approveAlong(agent, planService, v);
+  assert.equal(v.waiting?.question?.id, 'verify', v.sentence);
+  v = await agent.answer('ui', 'verify', 'waive');
   assert.equal(v.state, 'done', v.sentence);
   assert.equal(v.steps.find((s) => s.id === 'import-8-feature-AlertRow').run, 'left');
   assert.equal(fs.existsSync(path.join(dir, FOLDER, 'features/alerts/components/AlertRow.tsx')), false);
@@ -293,8 +307,9 @@ test('real: a copy of max-ai-ui (when present) imports src/subframe-pages/Inbox;
   assert.equal(v.state, 'review');
   v = await agent.editStep('ui', { action: 'approve-all' });
   v = await approveAlong(agent, planService, v, 80);
-  // A typed fix where one is offered, else leave the step (undoing the whole import is the other choice; not this test's).
-  const pick = (q) => (q.recommended === 'undo' ? 'leave' : q.recommended);
+  // The owner answers each question: the waiver when only a waiver can finish it, else the recommended option, but
+  // leave a step rather than undo the whole import (undo is the other choice; not this test's).
+  const pick = (q) => (q.options.some((x) => x.id === 'waive') ? 'waive' : q.recommended === 'undo' ? 'leave' : q.recommended);
   for (let i = 0; i < 5 && v.waiting?.for === 'answer'; i += 1) { v = await agent.answer('ui', v.waiting.question.id, pick(v.waiting.question)); v = await approveAlong(agent, planService, v, 80); }
   assert.equal(v.state, 'done', v.sentence);
   assert.ok(fs.existsSync(path.join(dir, folder, 'features/inbox')), 'InboxPage lands in feature inbox');

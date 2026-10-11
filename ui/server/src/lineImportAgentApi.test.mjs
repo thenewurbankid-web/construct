@@ -50,7 +50,12 @@ test('start, skip one step, approve all in the review: the person\'s approval ca
   assert.equal(skipped.steps.find((s) => s.id === 'import-5-lib-Table').review, 'skipped');
   v = (await post('/import-agent/step', { folder: FOLDER, action: 'approve-all' })).body;
   assertImportAgentView(v);
-  // The person approved the review in Cockpit, so the steps they approved run; the plan panel shows them done.
+  // The person approved the review in Cockpit, so the steps they approved run, each checked by the import loop; the sample
+  // has no tests, so at verify the person (the owner) waives the untested units, and the import is done.
+  assert.equal(v.waiting?.question?.id, 'verify', v.sentence);
+  assert.ok(v.logic.steps.length === 9 && v.logic.steps.every((s) => s.status === 'ok'), 'every landed step kept its logic');
+  v = (await post('/import-agent/answer', { folder: FOLDER, questionId: 'verify', optionId: 'waive' })).body;
+  assertImportAgentView(v);
   assert.equal(v.state, 'done', v.sentence);
   assert.equal(v.steps.find((s) => s.id === 'import-5-lib-Table').run, 'todo', 'a skipped step never runs');
   const plan = (await get('/plan')).body;

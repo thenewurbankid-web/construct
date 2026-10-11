@@ -49,4 +49,30 @@ test('import over MCP: start, edit and approve the review as the agent; no write
   const status = await call('import_status', { folder: FOLDER });
   assert.equal(status.isError, false);
   assert.equal(status.body.steps.find((s) => s.id === 'import-1-mark').run, 'done');
+  // Line Import v2: the status says, in plain English, what the logic map holds and how much of it was kept.
+  assert.match(status.body.logic.sentence, /^\d+ logic units in \d+ files; \d+ of \d+ kept/);
+  assert.equal(status.body.logic.steps[0].status, 'ok');
+
+  // The person approves the rest; at verify no unit has a test, and only the owner may waive that: the agent is refused.
+  let v = status.body;
+  for (let i = 0; i < 30 && v.waiting?.for === 'approval'; i += 1) {
+    assert.equal((await person.approve(v.waiting.planStepId, 'ui')).ok, true);
+    v = (await call('import_resume', { folder: FOLDER })).body;
+  }
+  assert.equal(v.waiting?.question?.id, 'verify', v.sentence);
+  const waive = await call('import_answer', { folder: FOLDER, questionId: 'verify', optionId: 'waive' });
+  assert.equal(waive.isError, true);
+  assert.equal(waive.body.error.reason, 'OWNER_ONLY');
+});
+
+test('import over MCP: a route seeds the logic map (the route and its sub-routes, across the folder)', async (t) => {
+  const root = fs.realpathSync(makeTempDir('construct-mcp-import-route-'));
+  fs.cpSync(path.join(REPO, 'examples/import-sample'), root, { recursive: true });
+  const { client, close } = await connectInProcess({ root, ratePerMinute: 600 });
+  t.after(close);
+  const started = await callTool(client, 'import_start', { folder: FOLDER, route: '/alerts' });
+  assert.equal(started.isError, false, started.text);
+  assert.equal(started.body.state, 'review');
+  assert.equal(started.body.logic.route, '/alerts');
+  assert.match(started.body.logic.sentence, /^Route \/alerts: /);
 });

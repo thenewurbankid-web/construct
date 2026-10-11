@@ -10,7 +10,11 @@ export const LABELS = {
     order: 'The first option that passed the checks', person: 'You picked it',
   } as Record<string, string>,
   check: { pass: 'Passed', fail: 'Failed', skipped: 'Not run' } as Record<string, string>,
-  checkName: { validate: 'Line rules', types: 'Types', tests: 'Tests' } as Record<string, string>,
+  checkName: {
+    validate: 'Line rules', types: 'Types', tests: 'Tests',
+    'char-tests': 'Characterization tests', 'logic-map': 'Logic kept', behaviour: 'Same behaviour', coverage: 'Unit coverage',
+  } as Record<string, string>,
+  loop: { ok: 'Kept everything', stopped: 'Stopped' } as Record<string, string>,
 };
 
 /** The fields a step lets you change (contract.mjs IMPORT_EDITABLE), with a plain label each. */

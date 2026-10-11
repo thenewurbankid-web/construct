@@ -23,6 +23,20 @@ export const DEFAULT_CHECK_EXPRS = Object.freeze({
   files: Object.freeze({ and: [P('plan', 'staged'), { every: [P('plan', 'files'), I('asPlanned')] }] }),
 });
 
+/**
+ * Line Import v2's loop checks (importLoop.mjs), as expressions over the facts the loop measured after a step:
+ *   char-tests  {tests: {state, failed, total}}                    the characterization tests pass (or there are none yet)
+ *   logic-map   {missing: [{fingerprint, waived}], changed: [...]}  every lost or changed unit has an owner waiver
+ *   behaviour   {files: [{from, to, verdict, waived}]}             no moved file behaves differently, unless the owner waived it
+ *   coverage    {units: [{fingerprint, block, tested, waived}]}    every unit has a block and a test, or an owner waiver
+ */
+export const IMPORT_LOOP_EXPRS = Object.freeze({
+  'char-tests': Object.freeze({ or: [{ eq: [P('tests', 'state'), 'skipped'] }, { eq: [P('tests', 'failed'), 0] }] }),
+  'logic-map': Object.freeze({ and: [{ every: [P('missing'), I('waived')] }, { every: [P('changed'), I('waived')] }] }),
+  behaviour: Object.freeze({ every: [P('files'), { or: [{ ne: [I('verdict'), 'changed'] }, I('waived')] }] }),
+  coverage: Object.freeze({ every: [P('units'), { or: [I('waived'), { and: [I('block'), I('tested')] }] }] }),
+});
+
 /** The feature a feature file belongs to: the folder right under the features root. */
 const featureOfFile = (file, featuresRoot) => {
   const root = String(featuresRoot || 'features').replace(/\/+$/, '');

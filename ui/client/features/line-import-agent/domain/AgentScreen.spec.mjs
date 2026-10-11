@@ -2,9 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { canChange, mainAction, moveTargets } from './AgentRules.ts';
 import { editArgs, editValue, orderedOptions } from './AgentEdit.ts';
-import { agentScreen, isRefusal } from './AgentScreen.ts';
+import { agentScreen, isRefusal, logicModel } from './AgentScreen.ts';
 import { agentReducer, initialAgent } from '../workflows/AgentFlow.ts';
 import { createMockImportAgentService, createMockPlanService } from '../../../../../packages/engine/line/mockImportAgent.mjs';
+import { createMockLogic } from '../../../../../packages/engine/line/importLoopStandIns.mjs';
 
 const FOLDER = 'src/alerts';
 
@@ -77,4 +78,26 @@ test('the screen model: plain labels, the actions each row allows, the record in
   assert.equal(s.changes[0], 'You started the import of src/alerts.');
   assert.equal(s.decisions[0], 'Table sounds like general UI, so it could go to the library, but only one page uses it; where should it go? Put Table in the library, so every feature can use it. (Line took the recommended option.)');
   assert.equal(s.canPause, true);
+});
+
+test('the logic panel: the map count, N of M kept, coverage, each step\'s diff; a lost unit is one sentence with its Details', async () => {
+  const logic = createMockLogic({ dropOn: (tool, args) => tool === 'line.import.toLibrary' && args.name === 'Table' });
+  const svc = createMockImportAgentService({ logic, planService: createMockPlanService({ refuse: () => false }) });
+  const agent = svc.agentFor(FOLDER);
+  assert.equal(logicModel(null), null);
+  let v = await agent.start('ui');
+  let m = agentScreen(v, null).logic;
+  assert.deepEqual([m.kept, m.count, m.tests, m.coverage], ['11 of 11 logic units kept.', '11 logic units in 5 files.', '3 of 3 characterization tests pass.', null]);
+  v = await agent.editStep('ui', { action: 'approve-all' });
+  for (let i = 0; i < 20 && v.waiting?.for === 'approval'; i += 1) { await svc.planService.approve(v.waiting.planStepId, 'ui'); v = await agent.resume('ui'); }
+  const s = agentScreen(v, null);
+  m = s.logic;
+  assert.equal(m.kept, '10 of 11 logic units kept.');
+  assert.equal(m.missing.length, 1);
+  assert.equal(m.missing[0].sentence, 'The conditional render "rows.length === 0" in Table (src/alerts/components/Table.tsx) is gone.');
+  assert.match(m.missing[0].details[2], /^goes back into /);
+  assert.equal(m.steps.at(-1).line, 'Step 5: 10 kept (5 moved), 1 missing, 0 new; tests 3 of 3 pass.');
+  assert.equal(m.steps.at(-1).status, 'stopped');
+  assert.deepEqual(s.question.options.map((o) => [o.id, o.recommended]), [['recheck', true], ['waive', false]]);
+  assert.match(m.coverage, /^\d+ of 10 units have a block and a test\.$/, 'the units there are now');
 });
