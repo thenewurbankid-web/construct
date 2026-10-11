@@ -199,3 +199,58 @@ Gaps: only text, number and yes/no props are editable (no code values); no "View
 1. Pages → pick orders → OrdersPage "Based on ListPage", "Fine".
 2. Open OrdersPage, set the title to "All orders", Save. Expect "Saved. ..." and the new value.
 3. Pick billing → InvoicesPage shows "Needs attention" with its sentence; change its title and Save: it saves, and still shows the old problem.
+
+## Hour 3b: preview inside each library card (awaiting UAT)
+
+Tests: `ui/e2e/tests/line-components-library.spec.js` (Playwright, real server).
+1. Nothing renders before you open a card's "Preview <Name>" (each render bundles the component on the server).
+2. Opening Button's Preview shows its one prop (label, text) and the rendered button "Label".
+3. Typing "Buy now" re-renders the button as "Buy now".
+4. Accessibility check clean; closing the Preview removes it.
+Also: the shared client copy of the Line API (`ui/client/lib/lineContract.ts`, `lineHttp.ts`) replaced three per-screen copies; the existing Components and Pages tests still pass (behaviour unchanged).
+
+Gaps: without Morpheus linked, only the one-sentence "no picture" note and the props are shown.
+
+UAT: Components → Button card → "Preview Button" → change label to "Buy now". Expect the picture to update.
+
+## ca2: every Line problem carries a fix you (or an agent) can apply (engine done; screen next)
+
+Tests: `test/line-fixes.test.mjs` (each on a fresh copy of the sample with one planted problem), plus contract and server tests.
+1. Missing base: exactly one fix ("Base InvoiceCard on the library Card, which it already uses"); applying it writes the base line, the problem goes away, nothing new appears.
+2. Other base cases: two base links (keep one), a JSON fixture with no base (sets it); broken JSON gets advice only.
+3. Cross-feature import: one fix, promote the imported item; applying it re-points the import and clears the problem.
+4. Page outside every feature: top fix moves it into the library's pages (imports re-pointed); moving into a feature is offered too.
+5. Page in the wrong folder of a feature: moved into that feature's pages/ with a base; clears both problems.
+6. Layout: no library folder (creates it); a loose library file (moved into the right kind folder).
+7. Direct file writes and own copies of a shared module: one advice sentence each; asking to apply it is refused as "advice only".
+8. Applying by key works; an unknown problem or an unknown fix is one refusal sentence.
+9. `construct validate --profile line --format json` carries each problem's key and fixes, so any agent can correct itself.
+10. The Cockpit project view carries the fixes too.
+
+Gaps (advice only, you fix by hand): direct file writes, own copies of shared modules, a route claimed by two features, framework `app/**/page.tsx` routes, broken JSON, stray folders, a file loose in features/, importing a whole feature folder, promoting a name the library already has. Not yet on screen: an "Apply fix" button (next step, running). Also found: `construct validate <path>` ignores the path; use `--dir`.
+
+UAT: after the "Apply fix" screen lands (two clicks: open the problem, Apply).
+
+## cx1: edit one piece of code in place (awaiting UAT)
+
+Tests: `test/line-fragments.test.mjs` (10), contract and server tests, `SaveFragmentFlow.spec.mjs` (3), `ui/e2e/tests/line-fragments.spec.js` (5, real server).
+1. A page lists its handler with a plain label ("What happens when Orders asks for more"), the exact code and position.
+2. A component shows all four kinds: style, prop value, condition, handler.
+3. For every piece, the saved file differs from the original only inside that piece; planning writes nothing.
+4. A save goes through the writer ("Saved. …") and the list shows the new code.
+5. A condition that would read differently next to its neighbours is wrapped in brackets, so it stays the same condition.
+6. A file changed since you opened it is refused ("reload it and try again").
+7. Code that is not one expression, or tries to break out of its place, is refused in one sentence, with the parser message under Details; empty or unchanged code is refused too.
+8. Only code files in the library or features can be opened; paths outside the project are refused.
+9. A handler that imports another feature is refused by the Line rules and the file stays as it was.
+10. With a tsconfig, a type error is refused (TS2322 under Details); a fitting edit passes (about 1 s).
+Browser: "Edit code" shows only that piece and no other code; bad code, a cross-feature import and a type error are each refused with Details collapsed; a good edit changes only that handler on disk; accessibility clean.
+
+Sample change: `library/pages/ListPage.tsx` gained an optional `onMore` ("Show more" button) and OrdersPage passes a handler, so there is code to edit.
+
+Gaps: a plain text box (types checked on Save, not while typing); the sample has no tsconfig, so no type check runs there; a type check slower than 3 s turns into a warning after saving (untested); only code inside JSX (no `if` statements or hooks); the screen lists pieces on pages only, not on components.
+
+UAT (fresh sample):
+1. Pages → orders → OrdersPage → on ListPage click "Edit code". Expect only "What happens when Orders asks for more" with `() => console.log('Show more orders')`.
+2. Change the text to 'All orders' → Save. Expect "Saved. Changes the code for …"; only that handler changed in the file.
+3. Edit again and type `() => {` → Save. Expect "This code is not a single valid expression, so nothing was saved." with Details.

@@ -3,10 +3,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useUrlSelection } from '@/features/list-browser';
 import { featureNames, featureSummary } from '../domain/FeatureList';
-import { pageParts } from '../domain/PageParts';
+import { pageParts, withFragments } from '../domain/PageParts';
 import { featurePages, findPage } from '../domain/PageRows';
+import { saveCodeFragment } from '../workflows/SaveFragmentFlow';
 import { savePageProp } from '../workflows/SavePropFlow';
-import type { LinePagesApi, LinePagesView, LineProject, PagePart, PartProp, PartsState, SaveOutcome } from '../types';
+import type { CodeFragment, FragmentOutcome, LinePagesApi, LinePagesView, LineProject, PagePart, PartProp, PartsState, SaveOutcome } from '../types';
 
 const UNREADABLE: PartsState = { phase: 'error', sentence: 'The parts of this page could not be read, so try again.' };
 
@@ -29,12 +30,16 @@ export function useLinePages(project: LineProject | null, api: LinePagesApi | nu
   const [saving, setSaving] = useState(false);
   const [revision, setRevision] = useState(0);
 
+  const [fragmentOutcome, setFragmentOutcome] = useState<FragmentOutcome | null>(null);
+
   const readParts = useCallback(
     async (f: string) => {
       if (!api) return;
       try {
-        const tree = await api.getPageTree(f);
-        setParts(tree && 'roots' in tree && Array.isArray(tree.roots) ? { phase: 'ready', parts: pageParts(tree) } : UNREADABLE);
+        // The code fragments are extra: when they cannot be read, the parts still show, just without "Edit code".
+        const [tree, list] = await Promise.all([api.getPageTree(f), api.getFragments(f).catch(() => null)]);
+        const fragments = list && 'fragments' in list && Array.isArray(list.fragments) ? list.fragments : [];
+        setParts(tree && 'roots' in tree && Array.isArray(tree.roots) ? { phase: 'ready', parts: withFragments(pageParts(tree), fragments) } : UNREADABLE);
       } catch {
         setParts(UNREADABLE);
       }
@@ -44,6 +49,7 @@ export function useLinePages(project: LineProject | null, api: LinePagesApi | nu
 
   useEffect(() => {
     setOutcome(null);
+    setFragmentOutcome(null);
     if (!file) {
       setParts({ phase: 'idle' });
       return;
@@ -76,5 +82,29 @@ export function useLinePages(project: LineProject | null, api: LinePagesApi | nu
     [api, file, readParts, reloadProject],
   );
 
-  return { ready: featureSel.ready && pageSel.ready, features, feature, chooseFeature, pages, page, choosePage: selectPage, parts, save, saving, revision, outcome };
+  const saveFragment = useCallback(
+    async (fragment: CodeFragment, code: string) => {
+      if (!file || !api) return;
+      setSaving(true);
+      setFragmentOutcome(null);
+      const result = await saveCodeFragment(api, fragment, code);
+      if (result.ok) {
+        // Landed: read everything again (ranges and hashes moved) and show the sentence at the top.
+        await reloadProject();
+        await readParts(file);
+        setOutcome(result);
+        setRevision((r) => r + 1);
+      } else {
+        // Refused: keep the editor open with what was typed, and the reason next to it.
+        setFragmentOutcome({ fragmentId: fragment.id, outcome: result });
+      }
+      setSaving(false);
+    },
+    [api, file, readParts, reloadProject],
+  );
+
+  return {
+    ready: featureSel.ready && pageSel.ready, features, feature, chooseFeature, pages, page, choosePage: selectPage, parts, save, saving, revision, outcome,
+    saveFragment, fragmentOutcome,
+  };
 }

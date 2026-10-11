@@ -16,6 +16,7 @@ import {
   resolveLayout, loadProject, isItemFile, baseLinks, resolveBase, moduleEdges, resolveSpecifier, classify,
 } from '../../core/profiles/line/checks.mjs';
 import { LEVELS } from './contract.mjs';
+import { withFixes } from './fixes.mjs';
 
 const posix = path.posix;
 const LEVEL_PRAGMA = /@line-level\s+(atom|molecule|organism)\b/;
@@ -82,12 +83,12 @@ function libraryFileFor(target, files) {
 }
 
 /**
- * Every finding of the project's Line profile, as LineFindings.
+ * Every finding of the project's Line profile, as LineFindings, each LINE-* one with its typed fixes (fixes.mjs).
  * @param {string} root Project root.
  * @returns {import('./contract.mjs').LineFinding[]}
  */
 export function lineFindings(root) {
-  return validateLine(root).violations.map(toFinding);
+  return withFixes(root, validateLine(root).violations.map(toFinding));
 }
 
 /**

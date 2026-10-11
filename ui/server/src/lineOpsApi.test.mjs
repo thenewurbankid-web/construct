@@ -8,7 +8,8 @@ import { fileURLToPath } from 'node:url';
 import express from 'express';
 import { makeTempDir } from '../../../test-utils/tmpdir.mjs';
 import { createLineOpsRouter } from './lineOpsApi.mjs';
-import { assertApplyResult } from '../../../packages/engine/line/contract.mjs';
+import { assertApplyResult, assertFragmentList } from '../../../packages/engine/line/contract.mjs';
+import { lineFindings } from '../../../packages/engine/line/model.mjs';
 
 const SAMPLE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../examples/line-sample');
 const ORIGIN = 'http://localhost:3000';
@@ -85,4 +86,65 @@ test('with no project open, every route says so in one sentence', async (t) => {
   const res = await fetch(`http://127.0.0.1:${/** @type {any} */ (server.address()).port}/api/line/page-tree?file=x`);
   assert.equal(res.status, 400);
   assert.deepEqual(await res.json(), { ok: false, sentence: 'No project is open; pick a project first.', code: 'NO_PROJECT' });
+});
+
+test('fix: the project finding carries its fixes, POST /fix lands the top one by key, and a stale or advice-only fix is one sentence', async (t) => {
+  const { dir, post, saved } = await serve(t);
+  const finding = lineFindings(dir).find((f) => f.rule === 'LINE-BASE');
+  assert.equal(finding.fixes[0].id, 'LINE-BASE/set-base:components/Card');
+  const res = await post('/fix', { findingKey: finding.key, fixId: finding.fixes[0].id });
+  const body = await res.json();
+  assertApplyResult(body);
+  assert.equal(body.ok, true, body.sentence);
+  assert.match(read(dir, 'features/billing/components/InvoiceCard.tsx'), /^\/\/ @line-base components\/Card\n/);
+  assert.deepEqual(saved, ['features/billing/components/InvoiceCard.tsx']);
+  assert.ok(!lineFindings(dir).some((f) => f.rule === 'LINE-BASE'), 'the finding is gone');
+  const stale = await post('/fix', { findingKey: finding.key, fixId: finding.fixes[0].id });
+  assert.equal(stale.status, 400);
+  assert.equal((await stale.json()).code, 'UNKNOWN_FINDING');
+
+  fs.writeFileSync(path.join(dir, 'library/workflows/save.ts'), "import fs from 'node:fs';\nexport function save(p: string): void {\n  fs.writeFileSync(p, 'x');\n}\n");
+  const writer = lineFindings(dir).find((f) => f.rule === 'LINE-WRITER');
+  const advice = await post('/fix', { findingKey: writer.key, fixId: 'LINE-WRITER/use-writer' });
+  assert.equal(advice.status, 400);
+  const a = await advice.json();
+  assert.equal(a.code, 'NO_STEP');
+  assert.match(a.sentence, /Construct's writer/);
+});
+
+test('fragments (cx1): the list comes back, an edit lands only in its range, and refusals are one sentence with detail', async (t) => {
+  const { dir, base, post, saved } = await serve(t);
+  const file = 'features/orders/pages/OrdersPage.tsx';
+  const list = await (await fetch(`${base}/fragments?file=${encodeURIComponent(file)}`)).json();
+  assertFragmentList(list);
+  const [frag] = list.fragments;
+  assert.equal(frag.label, 'What happens when Orders asks for more');
+  const before = read(dir, file);
+
+  const bad = await post('/fragment', { file, fragmentId: frag.id, code: '() => {', contentHash: list.contentHash });
+  assert.equal(bad.status, 400);
+  const badBody = await bad.json();
+  assert.equal(badBody.code, 'BAD_CODE');
+  assert.equal(badBody.sentence, 'This code is not a single valid expression, so nothing was saved.');
+  assert.ok(badBody.detail, 'the parser message is under detail');
+
+  const dirRes = await (await post('/fragment', { file, fragmentId: frag.id, code: "() => import('../../billing/pages/InvoicesPage')", contentHash: list.contentHash })).json();
+  assertApplyResult(dirRes);
+  assert.equal(dirRes.ok, false);
+  assert.ok(dirRes.findings.some((f) => f.rule === 'LINE-DIR'));
+  assert.equal(read(dir, file), before);
+
+  const code = "() => console.log('All orders')";
+  const ok = await (await post('/fragment', { file, fragmentId: frag.id, code, contentHash: list.contentHash })).json();
+  assertApplyResult(ok);
+  assert.equal(ok.ok, true, ok.sentence);
+  assert.equal(read(dir, file), before.slice(0, frag.range.start) + code + before.slice(frag.range.end));
+  assert.deepEqual(saved, [file]);
+
+  const stale = await post('/fragment', { file, fragmentId: frag.id, code: '() => undefined', contentHash: list.contentHash });
+  assert.equal(stale.status, 400);
+  assert.equal((await stale.json()).code, 'STALE');
+  const outside = await fetch(`${base}/fragments?file=${encodeURIComponent('../outside.tsx')}`);
+  assert.equal(outside.status, 400);
+  assert.equal((await outside.json()).code, 'UNKNOWN_ITEM');
 });

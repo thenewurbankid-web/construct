@@ -224,6 +224,97 @@ export function planPromote(root, { featureItemId } = /** @type {any} */ ({})) {
 }
 
 // ---------------------------------------------------------------------------------------------
+// Fix planners (fixes.mjs): set a base link, move a file, create the library folder. Pure, like the others.
+
+/** A root-relative path that names a file inside the project (no `..`, no absolute path, no `.git`). */
+const safeRel = (rel) => typeof rel === 'string' && rel.length > 0 && !rel.includes('\\') && !path.isAbsolute(rel)
+  && !rel.split('/').some((s) => s === '..' || s === '.' || s === '' || s === '.git');
+
+/** `src` with its base links replaced by exactly one: `libraryId` (a header line in code, `"$lineBase"` first in JSON). */
+function withBase(rel, src, libraryId) {
+  if (posix.extname(rel) === '.json') {
+    const data = JSON.parse(src);
+    const body = data && typeof data === 'object' && !Array.isArray(data) ? data : { value: data };
+    const { $lineBase: _drop, ...rest } = body;
+    return `${JSON.stringify({ $lineBase: libraryId, ...rest }, null, 2)}\n`;
+  }
+  return `// @line-base ${libraryId}\n${dropBase(rel, src).replace(/^\n+/, '')}`;
+}
+
+/** The library item `libraryId` names, or a LineOpError. */
+function libraryFileOf(root, layout, libraryId) {
+  const id = String(libraryId ?? '');
+  const [kind, name, ...extra] = id.split('/');
+  const resolved = ITEM_KINDS.includes(kind) && name && !extra.length ? resolveBase(root, layout, id) : { file: undefined };
+  if (!resolved.file || NON_ITEM_FILE.test(posix.basename(resolved.file))) throw new LineOpError(`There is no library item "${id}"; pick one from the library.`, 'UNKNOWN_ITEM');
+  return { id, kind, name, file: resolved.file };
+}
+
+/**
+ * Plan rewriting a feature item's base link so it names exactly one library item: every `@line-base` link (or the
+ * fixture's `"$lineBase"`) is replaced by `libraryId`. Pure: nothing is written.
+ * @param {string} root Project root.
+ * @param {{file: string, libraryId: string}} req The feature item (root-relative) and the library item to base it on.
+ * @returns {import('./contract.mjs').StagedChange}
+ * @throws {LineOpError} UNKNOWN_ITEM, WRONG_KIND or BAD_JSON.
+ */
+export function planSetBase(root, { file, libraryId } = /** @type {any} */ ({})) {
+  const layout = layoutOf(root);
+  const rel = String(file ?? '');
+  const place = classify(rel, layout);
+  if (!safeRel(rel) || place.area !== 'feature' || !place.feature || !isItemFile({ rel, ...place }) || !fs.existsSync(path.join(root, rel))) {
+    throw new LineOpError(`There is no feature item "${rel}"; pick a file inside a feature's kind folder.`, 'UNKNOWN_ITEM');
+  }
+  const lib = libraryFileOf(root, layout, libraryId);
+  if (lib.kind !== place.kind) throw new LineOpError(`A feature ${SINGULAR[place.kind]} can only be based on a library ${SINGULAR[place.kind]}, and "${lib.id}" is not one.`, 'WRONG_KIND');
+  let content;
+  try { content = withBase(rel, fs.readFileSync(path.join(root, rel), 'utf8'), lib.id); } catch { throw new LineOpError(`The fixture "${rel}" is not valid JSON, so its base cannot be set; fix its JSON first.`, 'BAD_JSON'); }
+  return { summary: `Bases ${posix.basename(rel)} on the library ${lib.name}.`, files: [{ path: rel, content }] };
+}
+
+/**
+ * Plan moving a file to a new place and re-pointing every import of it (and its own relative imports), with the
+ * TypeScript language service when the project has a tsconfig.json, else a specifier rewrite. With `base`, the moved
+ * file's base link is also set to that library item (a file that becomes a feature item needs one). Pure.
+ * @param {string} root Project root.
+ * @param {{from: string, to: string, base?: string}} req Root-relative paths, and an optional library id.
+ * @returns {import('./contract.mjs').StagedChange}
+ * @throws {LineOpError} UNKNOWN_FILE, NAME_TAKEN or UNKNOWN_ITEM.
+ */
+export function planMoveFile(root, { from, to, base } = /** @type {any} */ ({})) {
+  const layout = layoutOf(root);
+  const src = String(from ?? '');
+  const dest = String(to ?? '');
+  if (!safeRel(src) || !fs.statSync(path.join(root, src), { throwIfNoEntry: false })?.isFile()) throw new LineOpError(`There is no file "${src}" to move.`, 'UNKNOWN_FILE');
+  if (!safeRel(dest) || dest === src) throw new LineOpError(`"${dest}" is not a new place inside the project for "${src}".`, 'UNKNOWN_FILE');
+  if (fs.existsSync(path.join(root, dest))) throw new LineOpError(`"${dest}" already exists; pick another name or place.`, 'NAME_TAKEN');
+  const lib = base ? libraryFileOf(root, layout, base) : null;
+  const edited = (CODE_EXTENSIONS.includes(posix.extname(src)) ? tsMove(root, src, dest) : null) ?? regexMove(root, layout, src, dest);
+  let moved = edited.get(src);
+  if (lib) {
+    try { moved = withBase(dest, moved, lib.id); } catch { throw new LineOpError(`The fixture "${src}" is not valid JSON, so its base cannot be set; fix its JSON first.`, 'BAD_JSON'); }
+  }
+  edited.delete(src);
+  const users = [...edited.keys()].sort();
+  const tail = users.length ? ` and points its ${users.length === 1 ? 'one user' : `${users.length} users`} at the new place` : '';
+  const based = lib ? `, based on the library ${lib.name},` : '';
+  return { summary: `Moves ${posix.basename(src)} to ${posix.dirname(dest)}/${based}${tail}.`.replace(/,\./, '.'), files: [{ path: dest, content: moved }, { path: src, content: null }, ...users.map((p) => ({ path: p, content: edited.get(p) }))] };
+}
+
+/**
+ * Plan creating the library folder (with a README.md, since a folder alone is not a file) so the project is laid out as Line.
+ * @param {string} root Project root.
+ * @returns {import('./contract.mjs').StagedChange}
+ * @throws {LineOpError} NAME_TAKEN when the library folder already exists.
+ */
+export function planCreateLayout(root) {
+  const layout = layoutOf(root);
+  if (fs.existsSync(path.join(root, layout.library))) throw new LineOpError(`The library folder ${layout.library}/ already exists.`, 'NAME_TAKEN');
+  const content = `# Library\n\nShared items every feature builds on: ${ITEM_KINDS.map((k) => `${k}/`).join(', ')}. Each feature lives in ${layout.features}/<name>/ and bases its items on these.\n`;
+  return { summary: `Creates the library folder ${layout.library}/, so the project is laid out as a Line project.`, files: [{ path: `${layout.library}/README.md`, content }] };
+}
+
+// ---------------------------------------------------------------------------------------------
 // applyChange
 
 /** Why `rel` cannot be written inside `root`, or null when it can (no escape by `..`, absolute path or symlink). */
