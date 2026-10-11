@@ -176,7 +176,13 @@ export type PlanStepView = {
   gap: GapItem[];
   result: LineStepResult | Record<string, unknown> | null;
   error: string | null;
+  /** cs1: the step as the summarizer says it (plain sentences first, the technical part as details). */
+  plain?: PlainSummary;
 };
+/** cs1 (packages/summarize/contract.mjs Summary): plain-English sentences that pass checkSentence, and the technical
+ * part (tool call, ids, options with confidence, reasoning, code) shown under a collapsed Details by <PlainFirst>. */
+export type SummaryDetail = { label: string; text: string };
+export type PlainSummary = { sentences: string[]; details: SummaryDetail[]; via: 'static' };
 /** GET /api/line/plan and every plan write. */
 export type PlanView = {
   ok: true;
