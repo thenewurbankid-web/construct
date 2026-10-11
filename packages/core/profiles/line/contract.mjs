@@ -26,6 +26,9 @@ export const LIBRARY_FILES = Object.freeze(['README.md']);
 /** Source files Line reads as code. JSON is read only for fixtures (base link in `$lineBase`). */
 export const CODE_EXTENSIONS = Object.freeze(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.mts', '.cts']);
 
+/** Default `line.packageRoots`: the folders whose direct children (and @scope/children) with a package.json are packages. */
+export const DEFAULT_PACKAGE_ROOTS = Object.freeze(['packages']);
+
 /** Folders never scanned: dependencies, build output, VCS, caches and test reports. */
 export const SKIP_DIRS = Object.freeze(['node_modules', '.git', '.next', 'dist', 'out', 'build', 'coverage', 'test-results', 'playwright-report', '.turbo', '.cache']);
 
@@ -91,6 +94,13 @@ export const LINE_RULES = Object.freeze({
     why: 'Every app and package uses the one shared module for each concern instead of keeping its own copy, so a fix or an improvement lands everywhere at once.',
     expected: ['an import of the shared module named in the message'],
     check: 'Outside the package that owns a concern (by its package.json name), a file that imports a library only the owner may use, contains a string only the owner may use (such as a model endpoint), or exports a function with the owner\'s signature name is a copy of that concern.',
+  },
+  'LINE-MODULE': {
+    id: 'LINE-MODULE',
+    defaultSeverity: 'error',
+    why: 'Every module has a typed contract, a mock and its own tests, and other modules use it only through its name, so any module can be swapped for its mock, tested alone and fall back when it is down.',
+    expected: ['a contract file (contract.*, types.*, a .d.ts, or package.json "types")', 'a mock (mock.*, mocks.*, *.mock.* or __mocks__/)', 'its own tests (*.test.*, *.spec.*, or a test/, tests/ or __tests__/ folder)', 'imports of another package by its name or an "exports" subpath'],
+    check: 'Each folder with a package.json directly under a line.packageRoots folder (default packages; @scope/name too) is a package: it needs a contract file at its root or in src/ (a .js contract must hold a JSDoc @typedef or @callback) or a package.json types entry naming a real file, a mock, and tests inside it; a file in a package that reaches another package by a relative path, or by a subpath its package.json "exports" does not list, is reported.',
   },
   'LINE-LAYOUT': {
     id: 'LINE-LAYOUT',
@@ -194,7 +204,7 @@ function normalizeSharedOwners(raw) {
  * (`src/` detection) are filled in by checks.mjs's resolveLayout, not here.
  *
  * @param {unknown} raw The raw `line:` value (undefined when absent).
- * @returns {{library?: string, features?: string, state: string, writers: string[], writerExempt: string[], sharedOwners: Record<string, string[]>, rules: Record<string, {severity: string}>}}
+ * @returns {{library?: string, features?: string, state: string, writers: string[], writerExempt: string[], packageRoots: string[], sharedOwners: Record<string, string[]>, rules: Record<string, {severity: string}>}}
  * @throws {ConstructError} A usage error naming the bad field.
  */
 export function normalizeLineConfig(raw) {
@@ -216,6 +226,7 @@ export function normalizeLineConfig(raw) {
     state: folder(c.state, 'state') ?? 'line',
     writers: stringList(c.writers, 'writers') ?? [],
     writerExempt: stringList(c.writerExempt, 'writerExempt') ?? [...DEFAULT_WRITER_EXEMPT],
+    packageRoots: (stringList(c.packageRoots, 'packageRoots') ?? [...DEFAULT_PACKAGE_ROOTS]).map((d) => folder(d, 'packageRoots')),
     sharedOwners: normalizeSharedOwners(c.sharedOwners),
     rules,
   };

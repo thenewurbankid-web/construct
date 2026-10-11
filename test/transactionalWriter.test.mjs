@@ -128,3 +128,47 @@ test('deleteFile() stages a delete: the shadow copy validates without the file, 
   assert.equal(fs.existsSync(path.join(dir, rel)), false);
   assert.equal(fs.existsSync(path.join(dir, 'features/checkout/domain/New.ts')), true);
 });
+
+// cm1: the disk refusing a file while the commit lands (permissions, a full disk, a read-only mount) must not leave
+// half a change behind: the files already written or deleted are put back, and the disk's own error is thrown.
+const canChmod = typeof process.getuid !== 'function' || process.getuid() !== 0;
+test('commit() puts back every file it already landed when the disk refuses a later one, then throws the disk error', { skip: canChmod ? false : 'running as root, where a read-only folder can still be written' }, () => {
+  const dir = tmpProject();
+  const locked = path.join(dir, 'features', 'checkout', 'locked');
+  fs.mkdirSync(locked);
+  fs.writeFileSync(path.join(dir, 'features/checkout/domain/A.ts'), 'export const A = 1;\n');
+  fs.writeFileSync(path.join(dir, 'features/checkout/domain/C.ts'), 'export const C = 1;\n');
+  const txn = createTransaction(dir);
+  txn.writeFile('features/checkout/domain/A.ts', 'export const A = 2;\n'); // lands first
+  txn.deleteFile('features/checkout/domain/C.ts'); // lands second
+  txn.writeFile('features/checkout/locked/B.ts', 'export const B = 1;\n'); // the disk refuses this one
+  try {
+    assert.throws(
+      () => txn.commit({ validate: () => { fs.chmodSync(locked, 0o555); return { ok: true, violations: [] }; } }),
+      (e) => /** @type {any} */ (e).code === 'EACCES',
+    );
+  } finally {
+    fs.chmodSync(locked, 0o755);
+  }
+  assert.equal(fs.readFileSync(path.join(dir, 'features/checkout/domain/A.ts'), 'utf8'), 'export const A = 1;\n', 'the edited file is back as it was');
+  assert.equal(fs.readFileSync(path.join(dir, 'features/checkout/domain/C.ts'), 'utf8'), 'export const C = 1;\n', 'the deleted file is back');
+  assert.equal(fs.existsSync(path.join(locked, 'B.ts')), false);
+  assert.deepEqual(fs.readdirSync(os.tmpdir()).filter((n) => n.startsWith(`construct-txn-${process.pid}-`)), [], 'the shadow copy is gone');
+});
+
+test('commit() never lets a shadow-copy cleanup failure replace its result: a read-only folder in the project still commits', { skip: canChmod ? false : 'running as root' }, () => {
+  const dir = tmpProject();
+  const ro = path.join(dir, 'features', 'checkout', 'frozen-dir');
+  fs.mkdirSync(ro);
+  fs.writeFileSync(path.join(ro, 'Old.ts'), 'export const Old = 1;\n');
+  fs.chmodSync(ro, 0o555); // copied read-only into the shadow, which then cannot be removed as is
+  try {
+    const txn = createTransaction(dir);
+    txn.writeFile('features/checkout/domain/New.ts', 'export const New = 1;\n');
+    assert.equal(txn.commit({ validate: () => ({ ok: true, violations: [] }) }).committed, true);
+  } finally {
+    fs.chmodSync(ro, 0o755);
+  }
+  assert.equal(fs.existsSync(path.join(dir, 'features/checkout/domain/New.ts')), true);
+  assert.deepEqual(fs.readdirSync(os.tmpdir()).filter((n) => n.startsWith(`construct-txn-${process.pid}-`)), [], 'the shadow copy is gone');
+});

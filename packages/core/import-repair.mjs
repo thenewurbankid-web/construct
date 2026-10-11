@@ -16,11 +16,37 @@ function entriesOf(dir) {
   }
 }
 
-/** Does `specifier` (relative to `fromDir`) already resolve to a file or a folder's index? */
+const isFile = (abs) => { try { return fs.statSync(abs).isFile(); } catch { return false; } };
+const isDir = (abs) => { try { return fs.statSync(abs).isDirectory(); } catch { return false; } };
+
+/**
+ * Does `specifier` (relative to `fromDir`) already resolve to a file or a folder's index, spelled with the exact case
+ * on disk? existsSync alone says yes to `ordersApi` for `OrdersApi.tsx` on a case-insensitive file system (macOS,
+ * Windows), and that import then breaks on Linux and in bundlers, so every segment is matched against the folder's
+ * real entries.
+ */
 function resolves(fromDir, specifier) {
-  const abs = path.resolve(fromDir, specifier);
-  if (EXTENSIONS.some((e) => fs.existsSync(abs + e)) || fs.existsSync(abs) && fs.statSync(abs).isFile()) return true;
-  return EXTENSIONS.some((e) => fs.existsSync(path.join(abs, `index${e}`)));
+  const parts = specifier.split('/');
+  let dir = fromDir;
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i];
+    if (part === '.' || part === '..' || part === '') {
+      dir = path.resolve(dir, part || '.');
+      continue;
+    }
+    const names = entriesOf(dir);
+    if (i === parts.length - 1) {
+      if (names.includes(part) && isFile(path.join(dir, part))) return true;
+      if (EXTENSIONS.some((e) => names.includes(part + e) && isFile(path.join(dir, part + e)))) return true;
+      if (!names.includes(part) || !isDir(path.join(dir, part))) return false;
+      const inside = entriesOf(path.join(dir, part));
+      return EXTENSIONS.some((e) => inside.includes(`index${e}`));
+    }
+    if (!names.includes(part)) return false;
+    dir = path.join(dir, part);
+  }
+  // `..`, `./` and other folder-only specifiers: the folder's index.
+  return EXTENSIONS.some((e) => entriesOf(dir).includes(`index${e}`));
 }
 
 /** Resolve `specifier` one path segment at a time, matching each segment ignoring case, and return the exact-case spelling, or null when nothing (or more than one thing) matches. */

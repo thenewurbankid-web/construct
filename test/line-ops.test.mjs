@@ -226,3 +226,47 @@ test('ops: a save is refused only for problems it adds; a page with an old probl
   assert.equal(worse.findings[0].rule, 'LINE-DIR');
   assert.deepEqual(snapshot(dir), before);
 });
+
+// ---- cm1: the writer refusing (a frozen file, the disk) -> one sentence, and nothing partial lands ---------------------------
+
+test('cm1: a frozen file is refused in one project-relative sentence, and the other file in the change does not land', () => {
+  const dir = project();
+  fs.appendFileSync(path.join(dir, 'architecture.yml'), 'frozen:\n  - features/billing/spec.md\n');
+  const before = snapshot(dir);
+  const r = applyChange(dir, {
+    summary: 'Edits two specs.',
+    files: [
+      { path: 'features/orders/spec.md', content: '# Orders, edited\n' },
+      { path: 'features/billing/spec.md', content: '# Billing, edited\n' },
+    ],
+  });
+  assertApplyResult(r);
+  assert.equal(r.ok, false);
+  assert.equal(r.sentence, 'Nothing was saved: features/billing/spec.md is frozen (it matches "features/billing/spec.md" in architecture.yml), so Construct may not change it; wrap it from a controller instead.');
+  assert.doesNotMatch(r.sentence, new RegExp(dir.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), 'no absolute path');
+  assert.deepEqual(snapshot(dir), before, 'neither file landed');
+});
+
+const canChmod = typeof process.getuid !== 'function' || process.getuid() !== 0;
+test('cm1: the disk refusing a file: one project-relative sentence, and the tree is byte-identical', { skip: canChmod ? false : 'running as root, where a read-only folder can still be written' }, () => {
+  const dir = project();
+  const before = snapshot(dir);
+  const locked = path.join(dir, 'features', 'billing', 'pages');
+  fs.chmodSync(locked, 0o555); // the folder cannot take a new file
+  let r;
+  try {
+    r = applyChange(dir, {
+      summary: 'Edits two specs.',
+      files: [
+        { path: 'features/orders/spec.md', content: '# Orders, edited\n' },
+        { path: 'features/billing/pages/ExtraPage.tsx', content: "// @line-base pages/ListPage\nexport function ExtraPage() {\n  return null;\n}\n" },
+      ],
+    });
+  } finally {
+    fs.chmodSync(locked, 0o755);
+  }
+  assertApplyResult(r);
+  assert.equal(r.ok, false);
+  assert.equal(r.sentence, 'Nothing was saved: the disk refused to write features/billing/pages/ExtraPage.tsx (EACCES), and every file this change had already written was put back.');
+  assert.deepEqual(snapshot(dir), before, 'neither file landed');
+});

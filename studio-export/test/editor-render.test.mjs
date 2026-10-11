@@ -194,9 +194,14 @@ test('renderProject without a slug names the outputs after the project (made fil
 // ---- one real render, when ffmpeg is here
 
 const FFMPEG = process.env.FFMPEG || (spawnSync('ffmpeg', ['-version']).status === 0 ? 'ffmpeg' : null);
+// Burn-in needs ffmpeg's `subtitles` filter, which only exists in builds with libass (Homebrew's default ffmpeg has none).
+const HAS_SUBTITLES_FILTER = FFMPEG ? / subtitles /.test(spawnSync(FFMPEG, ['-hide_banner', '-filters'], { encoding: 'utf8' }).stdout ?? '') : false;
 const real = { skip: FFMPEG ? false : 'ffmpeg is not installed here (set FFMPEG=/path/to/ffmpeg); the real render was skipped and only the plan and the fake-execFile runs were checked' };
+const realWithBurnIn = {
+  skip: FFMPEG && !HAS_SUBTITLES_FILTER ? 'the ffmpeg installed here has no subtitles filter (built without libass), so burn-in cannot run; set FFMPEG to a libass build to run this render' : real.skip,
+};
 
-test('a real ffmpeg render of a tiny generated clip: gap is black, subtitles are a soft track, burn-in works, audio is mixed', real, async () => {
+test('a real ffmpeg render of a tiny generated clip: gap is black, subtitles are a soft track, burn-in works, audio is mixed', realWithBurnIn, async () => {
   const ws = fs.realpathSync(makeTempDir('studio-editor-real-'));
   const run = (...a) => execFileSync(FFMPEG, ['-hide_banner', '-loglevel', 'error', '-y', ...a], { cwd: ws });
   run('-f', 'lavfi', '-i', 'testsrc=size=320x180:rate=15:duration=4', '-c:v', 'libvpx', 'demo.webm');

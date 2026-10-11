@@ -181,7 +181,7 @@ test('generateFromSpec: the generated project (workflow, state union, stubs, uni
   fs.writeFileSync(testFile, ts.transpileModule(src, { ...opts, fileName: name }).outputText.replace(/from "\.\.\/\.\.\/workflows\/([^"]+)"/, 'from "../../workflows/$1.mjs"'));
   const env = { ...process.env };
   delete env.NODE_TEST_CONTEXT; // otherwise node's runner sees a nested `--test` and skips the file
-  const ran = spawnSync(process.execPath, ['--test', testFile], { encoding: 'utf8', env });
+  const ran = spawnSync(process.execPath, ['--test', '--test-reporter=tap', testFile], { encoding: 'utf8', env });
   assert.equal(ran.status, 0, ran.stdout + ran.stderr);
   assert.match(ran.stdout, /# pass [1-9]/);
 });
