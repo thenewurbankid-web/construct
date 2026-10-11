@@ -16,7 +16,7 @@ export { LINE_RULES, LINE_RULE_IDS, normalizeLineConfig } from './contract.mjs';
 
 /** Which check produces each LINE-* rule. */
 const CHECKS = {
-  'LINE-LAYOUT': (p) => checkLayout(p),
+  'LINE-LAYOUT': (p, line) => checkLayout(p, line),
   'LINE-BASE': (p) => checkBase(p),
   'LINE-OWNER': (p) => checkOwner(p),
   'LINE-DIR': (p) => checkDirection(p),

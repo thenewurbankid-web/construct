@@ -9,7 +9,7 @@ import { walk as walkAst } from 'estree-walker';
 import { parseToAst } from '../../../ast/index.mjs';
 import { lineOf } from '../../../ast/extract.mjs';
 import {
-  ITEM_KINDS, FEATURE_FILES, LIBRARY_FILES, CODE_EXTENSIONS, SKIP_DIRS, NON_ITEM_FILE,
+  ITEM_KINDS, FEATURE_FILES, LIBRARY_FILES, CODE_EXTENSIONS, SKIP_DIRS, NON_ITEM_FILE, DEFAULT_APP_FOLDERS, DEFAULT_PACKAGE_ROOTS,
   FS_WRITE_FUNCTIONS, FS_EXTRA_WRITE_FUNCTIONS, FS_MODULES, SHARED_CONCERNS,
 } from './contract.mjs';
 
@@ -148,11 +148,38 @@ export function isItemFile(file) {
 // LINE-LAYOUT
 
 /**
- * LINE-LAYOUT: entries under the library, the features folder and each feature must be known kinds or allowed files.
+ * Whether a source file outside the library and the features is allowed where it is (LINE-LAYOUT "stray source"):
+ * files directly at the root or in src/ (config and entry files), app/config/test folders (line.appFolders, also under src/), Line's state, package roots, test
+ * and example folders, pages (LINE-OWNER's), tests, stories and type declarations.
+ * @param {string} rel Root-relative path of a code file outside the library and the features.
+ * @param {{library: string, features: string, state: string}} layout
+ * @param {{appFolders?: string[], packageRoots?: string[]}} [line] Normalized `line:` config.
+ * @returns {boolean}
+ */
+export function strayAllowed(rel, layout, line = {}) {
+  const segs = rel.split('/');
+  const dirs = segs.slice(0, -1);
+  const base = segs[segs.length - 1];
+  if (NON_ITEM_FILE.test(base) || /\.d\.[cm]?ts$/.test(base) || isPageShaped(rel)) return true;
+  if (dirs.some((d) => TEST_DATA_SEGMENTS.has(d))) return true;
+  // Code roots: the project root, src/, and the folder holding the library and the features when it is another one.
+  const own = posix.dirname(layout.library) === posix.dirname(layout.features) ? posix.dirname(layout.library) : '.';
+  const roots = [...new Set(['', 'src', own === '.' ? '' : own])];
+  const dir = dirs.join('/');
+  if (roots.includes(dir)) return true;
+  const under = (d) => rel.startsWith(`${d}/`);
+  const folders = [...(line.appFolders ?? DEFAULT_APP_FOLDERS), ...(line.packageRoots ?? DEFAULT_PACKAGE_ROOTS)];
+  return [layout.state, ...roots.flatMap((r) => folders.map((f) => (r ? `${r}/${f}` : f)))].some(under);
+}
+
+/**
+ * LINE-LAYOUT: entries under the library, the features folder and each feature must be known kinds or allowed files;
+ * once the project has either folder, a source file anywhere else (outside the app/config folders) is reported too.
  * @param {ReturnType<typeof loadProject>} project The loaded project.
+ * @param {{appFolders?: string[], packageRoots?: string[]}} [line] Normalized `line:` config.
  * @returns {{rule: string, file: string, line: number, message: string}[]} The hits.
  */
-export function checkLayout(project) {
+export function checkLayout(project, line = {}) {
   const { root, layout } = project;
   const hits = [];
   const hit = (file, message) => hits.push({ rule: 'LINE-LAYOUT', file, line: 1, message });
@@ -180,6 +207,10 @@ export function checkLayout(project) {
       if (c.isDirectory() && !ITEM_KINDS.includes(c.name)) hit(crel, `Feature "${e.name}" has a "${c.name}" folder, but a feature holds only ${kinds} plus spec.md; move these files into one of those folders or into the library.`);
       else if (!c.isDirectory() && !FEATURE_FILES.includes(c.name)) hit(crel, `Feature "${e.name}" has the file "${c.name}" at its top level, but only spec.md may sit there; move it into one of ${kinds}.`);
     }
+  }
+  for (const f of project.files) {
+    if (f.area !== 'other' || !isCode(f.rel) || strayAllowed(f.rel, layout, line)) continue;
+    hit(f.rel, `The source file "${f.rel}" is outside ${layout.library}/ and ${layout.features}/, so Line cannot check or reuse it; move it into the library or into the feature that uses it.`);
   }
   return hits;
 }

@@ -210,12 +210,50 @@ function guessKind(rel) {
   return CODE_EXTENSIONS.includes(ext) ? 'workflows' : null;
 }
 
+/** The features (and whether the library) import the root-relative file `rel`. */
+function importersOf(ctx, rel) {
+  const features = new Set();
+  let library = false;
+  for (const f of ctx.project.files) {
+    if (f.rel === rel || !CODE_EXTENSIONS.includes(posix.extname(f.rel)) || (f.area !== 'feature' && f.area !== 'library')) continue;
+    const ast = ctx.project.ast(f.rel);
+    if (ast instanceof Error) continue;
+    const hit = moduleEdges(ast).some((e) => { const t = resolveSpecifier(ctx.layout, f.rel, e.specifier); return t && (t === rel || t === stripExt(rel)); });
+    if (!hit) continue;
+    if (f.area === 'library') library = true;
+    else if (f.feature) features.add(f.feature);
+  }
+  return { features: [...features].sort(), library };
+}
+
+/** A source file outside the library and the features: into the feature that alone uses it, else the library. */
+function strayFixes(ctx, file) {
+  const name = posix.basename(file);
+  const kind = guessKind(file) ?? 'workflows';
+  const { features, library } = importersOf(ctx, file);
+  const owner = features.length === 1 && !library ? features[0] : null;
+  const inLibrary = `${ctx.layout.library}/${kind}/${name}`;
+  const toLibrary = exists(ctx.root, inLibrary) ? null : { id: `LINE-LAYOUT/stray-to-library:${kind}`, sentence: `Move ${name} into the library's ${kind}/ folder${features.length > 1 ? `, since features ${features.join(' and ')} both use it` : ''}.`, step: { tool: 'line.moveFile', args: { from: file, to: inLibrary } } };
+  let toFeature = null;
+  if (owner) {
+    const inFeature = `${ctx.layout.features}/${owner}/${kind}/${name}`;
+    const has = baseLinks(ctx.project, file).links.some((l) => resolveBase(ctx.root, ctx.layout, l.value).kind === kind);
+    const base = has ? null : importedLibraryIds(ctx, file, kind)[0] ?? null;
+    if (!exists(ctx.root, inFeature) && (has || base)) {
+      toFeature = { id: `LINE-LAYOUT/stray-to-feature:${owner}:${kind}`, sentence: `Move ${name} into feature ${owner}'s ${kind}/ folder, the only feature that uses it.`, step: { tool: 'line.moveFile', args: { from: file, to: inFeature, ...(base ? { base } : {}) } } };
+    }
+  }
+  const list = (owner ? [toFeature, toLibrary] : [toLibrary]).filter(Boolean);
+  return list.length ? ranked(list) : [none('LINE-LAYOUT/move-by-hand', `Move ${name} into the library or into the feature that uses it; Line cannot move it there because a file with that name is already in place.`)];
+}
+
 function layoutFixes(ctx, file) {
   if (file === '.') return [{ id: 'LINE-LAYOUT/create-layout', sentence: `Create the library folder ${ctx.layout.library}/ so this project is laid out as a Line project.`, rank: 1, step: { tool: 'line.createLayout', args: {} } }];
   const isDir = fs.statSync(path.join(ctx.root, file), { throwIfNoEntry: false })?.isDirectory();
   const name = posix.basename(file);
   const kinds = ITEM_KINDS.map((k) => `${k}/`).join(', ');
   if (isDir) return [none('LINE-LAYOUT/move-folder-by-hand', `Move each file in ${file}/ into one of ${kinds} and remove the folder; Line cannot tell which kind each file is.`)];
+  if (classify(file, ctx.layout).area === 'other' && CODE_EXTENSIONS.includes(posix.extname(file))) return strayFixes(ctx, file);
   const segs = file.slice(ctx.layout.features.length + 1).split('/');
   const kind = guessKind(file);
   if (file.startsWith(`${ctx.layout.library}/`)) {
