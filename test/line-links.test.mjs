@@ -4,7 +4,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import os from 'node:os';
+import { makeTempDir } from '../test-utils/tmpdir.mjs';
 import path from 'node:path';
 import { importLinked, linkStatus, readLinks } from '../packages/line-links/index.mjs';
 import { createReasonProvider } from '../packages/core/reason-provider.mjs';
@@ -16,7 +16,7 @@ const skip = status.ok ? false : status.message;
 test('link status: every package in links.json is ready at the pinned commit', { skip }, () => {
   assert.equal(status.head, readLinks().source.commit);
   assert.deepEqual(status.packages.map((p) => [p.name, p.state]), Object.keys(readLinks().links).map((n) => [n, 'ok']));
-  assert.match(status.message, /^All 4 Line links are ready/);
+  assert.match(status.message, /^All 5 Line links are ready/);
 });
 
 test('@mx/reason: loads through the link, fits the contract, and decides a pick with no model (static path)', { skip }, async () => {
@@ -37,7 +37,7 @@ test('@mx/plan: create a plan, add a step and read its status, stored in a temp 
   assert.equal(r.ok, true, r.reason);
   const viaName = await import('@mx/plan');
   assert.equal(viaName.createPlanApi, r.module.createPlanApi, '@mx/plan resolves by name once linked');
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cu1-plan-'));
+  const root = makeTempDir('cu1-plan-');
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const registry = { list: () => [{ name: 'demo.read', kind: 'read', schema: ARGV_SCHEMA, describe: 'Reads nothing.' }], call: async () => ({ read: true }) };
   const api = r.module.createPlanApi({ registry, writer: r.module.createFileWriter(root) });
@@ -63,7 +63,7 @@ test('@mx/gatelm: one static check refuses a lower-case component name with a se
 test('Morpheus render: renders one small page to a themed HTML document', { skip }, async (t) => {
   const r = await importLinked('@mx/morpheus-render');
   assert.equal(r.ok, true, r.reason);
-  const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'cu1-render-'));
+  const scratch = makeTempDir('cu1-render-');
   t.after(() => fs.rmSync(scratch, { recursive: true, force: true }));
   const html = await r.module.renderPage('export default function Page() { return <main className="p-4"><h1>Hello Line</h1></main>; }', { libraryDir: path.join(scratch, 'no-library'), scratch, title: 'Smoke' });
   assert.match(html, /^<!doctype html>/);

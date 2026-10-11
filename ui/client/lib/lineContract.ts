@@ -278,6 +278,22 @@ export type BaseWorkflowOnRequest = { libraryId: string; feature: string; name: 
 export type SetWorkflowRoleRequest = { file: string; role: string; page: string };
 export type AddWorkflowTransitionRequest = { file: string; from: string; event: string; to: string; service?: string; part?: string; partState?: string };
 export type RemoveWorkflowTransitionRequest = { file: string; from: string; event: string };
+/** cu3: one tool of the one registry (contract.mjs ToolView). A `project` write only ever becomes a plan step; a `line`
+ * write (Line's own state) runs at once and is logged. `controlId` names the Cockpit control that does the same. */
+export type ToolSurfaces = { http?: { method: 'GET' | 'POST'; path: string }; mcp?: string; plan?: boolean; gatelm?: boolean; studio?: boolean };
+export type ToolView = {
+  id: string;
+  kind: 'read' | 'write';
+  writes: 'project' | 'line' | null;
+  sentence: string;
+  outputSchema: string;
+  inputFields: string[];
+  controlId?: string;
+  personOnly?: boolean;
+  surfaces: ToolSurfaces;
+};
+/** GET /api/line/tools. */
+export type ToolList = { ok: true; tools: ToolView[] };
 
 /** Every LINE_API route, as the client calls it. Bodies come back as the server sent them, refusals included; each
  * screen turns them into what it shows. A network failure rejects. */
@@ -294,6 +310,7 @@ export type LineHttp = {
   /** One step, or several with one click (Import). Sends the page's approval token (x-line-approval). */
   approvePlanStep: (stepId: string | string[]) => Promise<PlanView | LineRefusal>;
   runPlan: (stepId?: string) => Promise<PlanView | LineRefusal>;
+  getTools: () => Promise<ToolList | LineRefusal>;
   getFragments: (file: string) => Promise<FragmentList | LineRefusal>;
   importFolders: () => Promise<ImportFolders | LineRefusal>;
   importScan: (req: ImportScanRequest) => Promise<ImportScan | LineRefusal>;

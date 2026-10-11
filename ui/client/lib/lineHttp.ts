@@ -45,6 +45,7 @@ export const lineHttp: LineHttp = {
   addPlanStep: (req) => postJson('/api/line/plan/step', req),
   approvePlanStep: (stepId) => personPost('/api/line/plan/approve', Array.isArray(stepId) ? { stepIds: stepId } : { stepId }),
   runPlan: (stepId) => personPost('/api/line/plan/run', stepId === undefined ? {} : { stepId }),
+  getTools: () => getJson('/api/line/tools'),
   getFragments: (file) => getJson(`/api/line/fragments?file=${encodeURIComponent(file)}`),
   importFolders: () => getJson('/api/line/import/folders'),
   importScan: (req) => postJson('/api/line/import/scan', req),

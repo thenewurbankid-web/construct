@@ -488,6 +488,49 @@ export class LineOpError extends Error {
 }
 
 /**
+ * cu3 -- ONE tool registry (packages/engine/line/toolRegistry.mjs). Every capability is one typed tool call that the
+ * Cockpit's /api/line routes, construct-mcp, GateLM (through @mx/plan, packages/line-links) and Studio's dispatcher all
+ * resolve from. Reads dispatch directly. A write to project files only ever becomes a plan step (it runs after a
+ * person's approval, per step, or Auto's); a write to Line's own state (line/: the plan, the workspace) is written
+ * atomically and logged (line/log/tools.jsonl) without asking. Agents stay read-only unless a write is approved.
+ *
+ * @typedef {'read'|'write'} ToolKind
+ * @typedef {'project'|'line'} ToolWrites  What a write changes: project files, or Line's own state.
+ * @typedef {{safeParse: (v: unknown) => ({success: true, data: any} | {success: false, error: {issues: {path: (string|number)[], message: string}[]}}), fields?: string[]}} ToolInputSchema
+ *
+ * @typedef {object} ToolSurfaces  Where the tool can be called from (each maps to exactly one registry entry).
+ * @property {{method: 'GET'|'POST', path: string}} [http]   A Cockpit /api/line route.
+ * @property {string} [mcp]        A construct-mcp tool name.
+ * @property {boolean} [plan]      A plan step can run it (the tool is in the plan runner's registry).
+ * @property {boolean} [gatelm]    One of GateLM's tools (@mx/plan gatelmTools).
+ * @property {boolean} [studio]    Studio's dispatcher runs it (a GateLM question's option carries it).
+ *
+ * @typedef {object} ToolEntry
+ * @property {string} id               e.g. `line.baseOn`, `plan.status`, `blocks.validate`, `gatelm.fill`, `construct.validate`.
+ * @property {ToolKind} kind
+ * @property {ToolWrites|null} writes  Null for a read.
+ * @property {ToolInputSchema} inputSchema
+ * @property {string} outputSchema     The contract shape it answers (a typedef name here or in the linked package).
+ * @property {string} sentence         Plain English: what the tool does, one sentence.
+ * @property {string} [controlId]      The Cockpit control that does the same (cg1/ct1 light it up); optional.
+ * @property {boolean} [personOnly]    Only a person may call it (plan.approve): an agent is refused.
+ * @property {ToolSurfaces} surfaces
+ *
+ * GET /api/line/tools: the registry as Cockpit and agents read it (no schemas, the input's field names instead).
+ * @typedef {{id: string, kind: ToolKind, writes: ToolWrites|null, sentence: string, outputSchema: string,
+ *   inputFields: string[], controlId?: string, personOnly?: boolean, surfaces: ToolSurfaces}} ToolView
+ * @typedef {{ok: true, tools: ToolView[]}} ToolList
+ *
+ * What dispatching a call answers: a read's (or a Line-state write's) result, or the plan step a project write became.
+ * @typedef {{ok: true, via: 'direct', id: string, result: unknown}
+ *   | {ok: true, via: 'plan', id: string, stepId: string, sentence: string, plan: PlanView}
+ *   | {ok: false, id: string, code: string, sentence: string, detail?: string}} DispatchResult
+ */
+export const TOOL_KINDS = Object.freeze(['read', 'write']);
+export const TOOL_WRITES = Object.freeze(['project', 'line']);
+export const TOOL_ID = /^[a-z][a-zA-Z0-9]*(\.[a-z][a-zA-Z0-9]*)+$/;
+
+/**
  * The HTTP API ui/server serves under /api/line. Responses are JSON; a LineOpError becomes
  * 400 `{ok: false, sentence, code}`. Every route takes the open project from the session as today.
  */
@@ -510,6 +553,7 @@ export const LINE_API = Object.freeze([
   { method: 'POST', path: '/api/line/import/scan', request: 'ImportScanRequest', response: 'ImportScan' },
   { method: 'POST', path: '/api/line/import/plan', request: 'ImportPlanRequest', response: 'ImportPlan' },
   { method: 'POST', path: '/api/line/new-project', request: 'NewLineProjectRequest', response: 'NewLineProjectResult' },
+  { method: 'GET', path: '/api/line/tools', request: null, response: 'ToolList' },
 ]);
 
 /** The tools an import plan's steps name (plan-ready: each produces a StagedChange for applyChange). */
@@ -833,6 +877,39 @@ export function assertImportApplyResult(r) {
  * @param {any} l
  * @returns {asserts l is FragmentList}
  */
+/** @param {any} e @returns {asserts e is ToolEntry} */
+export function assertToolEntry(e) {
+  const w = `tool ${e?.id ?? '?'}`;
+  if (typeof e?.id !== 'string' || !TOOL_ID.test(e.id)) fail(`${w}.id`, 'must be a dotted name like line.baseOn');
+  if (!TOOL_KINDS.includes(e.kind)) fail(`${w}.kind`, 'must be read or write');
+  if (e.kind === 'read' && e.writes !== null) fail(`${w}.writes`, 'a read writes nothing (null)');
+  if (e.kind === 'write' && !TOOL_WRITES.includes(e.writes)) fail(`${w}.writes`, 'a write says what it changes: project or line');
+  if (typeof e.inputSchema?.safeParse !== 'function') fail(`${w}.inputSchema`, 'must have safeParse');
+  str(e.outputSchema, `${w}.outputSchema`);
+  sentence(e.sentence, `${w}.sentence`);
+  if (e.controlId !== undefined) str(e.controlId, `${w}.controlId`);
+  if (!e.surfaces || typeof e.surfaces !== 'object') fail(`${w}.surfaces`, 'must be an object');
+  const h = e.surfaces.http;
+  if (h !== undefined && (!['GET', 'POST'].includes(h.method) || typeof h.path !== 'string' || !h.path.startsWith('/api/line/'))) fail(`${w}.surfaces.http`, 'must be {method, path} under /api/line/');
+  if (h?.method === 'GET' && e.kind !== 'read') fail(`${w}.surfaces.http`, 'a GET route only reads');
+  if (e.personOnly && e.surfaces.mcp) fail(`${w}.surfaces.mcp`, 'a person-only tool is never an agent tool');
+  if (e.kind === 'write' && e.writes === 'project' && e.surfaces.mcp) fail(`${w}.surfaces.mcp`, 'an agent never writes project files directly; it adds a plan step');
+}
+
+/** @param {any} l @returns {asserts l is ToolList} */
+export function assertToolList(l) {
+  if (l?.ok !== true || !Array.isArray(l.tools)) fail('tools', 'must be {ok: true, tools: [...]}');
+  const ids = new Set();
+  for (const t of l.tools) {
+    if (ids.has(t.id)) fail(`tool ${t.id}`, 'ids are unique');
+    ids.add(t.id);
+    if (!TOOL_KINDS.includes(t.kind)) fail(`tool ${t.id}.kind`, 'must be read or write');
+    sentence(t.sentence, `tool ${t.id}.sentence`);
+    if (!Array.isArray(t.inputFields)) fail(`tool ${t.id}.inputFields`, 'must be an array');
+  }
+}
+
+/** @param {any} l @returns {asserts l is FragmentList} */
 export function assertFragmentList(l) {
   str(l?.file, 'fragments.file');
   str(l.contentHash, 'fragments.contentHash');

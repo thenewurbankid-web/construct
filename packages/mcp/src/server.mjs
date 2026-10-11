@@ -9,6 +9,7 @@ import { LIMITS, ToolError, createTokenBucket, DEFAULT_RATE_PER_MINUTE } from '.
 import { openRoot, createScrubber } from './guard.mjs';
 import * as blocks from './blocks.mjs';
 import * as plan from './plan.mjs';
+import { entryForMcp } from '@line/construct-engine/line/tool-registry';
 
 const PACKAGE = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
 
@@ -211,6 +212,10 @@ export function createConstructMcpServer(options = {}) {
   });
 
   for (const tool of [...TOOLS, ...PLAN_TOOLS]) {
+    // cu3: every MCP tool is one entry of Line's tool registry; an agent never writes project files directly.
+    const entry = entryForMcp(tool.name);
+    if (!entry) throw new Error(`construct-mcp: ${tool.name} is not in Line's tool registry.`);
+    if (entry.kind === 'write' && entry.writes === 'project') throw new Error(`construct-mcp: ${tool.name} would write project files without approval.`);
     server.registerTool(tool.name, { title: tool.title, description: tool.description, inputSchema: tool.inputSchema, annotations: { title: tool.title, ...(/** @type {any} */ (tool).annotations ?? READ_ONLY) } }, async (args) => {
       const taken = bucket.take();
       if (!taken.ok) return fail('RATE_LIMITED', `More than ${bucket.capacity} calls a minute. Try again in ${taken.retryAfterSeconds} seconds.`, { retryAfterSeconds: taken.retryAfterSeconds });

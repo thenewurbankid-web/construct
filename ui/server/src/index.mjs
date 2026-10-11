@@ -90,6 +90,8 @@ import { createLinePlanRouter } from './linePlanApi.mjs';
 import { createLineRenderRouter } from './lineRenderApi.mjs';
 import { createLineImportRouter } from './lineImportApi.mjs';
 import { createLineNewProjectRouter } from './lineNewProjectApi.mjs';
+import { createLineToolGate } from './lineToolGate.mjs';
+import { createLinePlanService } from '../../../packages/engine/line/planService.mjs';
 import { createStoryBridgeRouter } from './storyBridgeApi.mjs';
 import { createNotesRouter } from './notesApi.mjs';
 import { openNotesStore } from './notesStore.mjs';
@@ -1249,6 +1251,23 @@ app.use('/api/line/new-project', createLineNewProjectRouter({
   getWorkspaceRoot: workspaceRoot,
   openProject: (dir) => applySettings({ projectDir: dir }),
 }));
+// cu3 (Line Cockpit): ONE plan service per project, shared by the tool gate and the plan routes.
+const linePlanServices = new Map();
+const linePlanServiceFor = (root) => {
+  if (!linePlanServices.has(root)) linePlanServices.set(root, createLinePlanService({ root, afterSave }));
+  return linePlanServices.get(root);
+};
+// cu3: every /api/line route resolves from the one tool registry first (lineToolGate.mjs): a read goes on to its
+// router, a write to Line's own state is logged, a write to project files only ever becomes a plan step.
+app.use('/api/line', createLineToolGate({
+  clientOrigin: CLIENT_ORIGIN,
+  planServiceFor: linePlanServiceFor,
+  getRoot: () => {
+    const root = containedProjectRoot(getProjectDir());
+    return root ? { ok: true, root } : { ok: false, error: 'No project is open; pick a project first.' };
+  },
+}));
+
 // Line: the read-only Line view of a `preset: line` project (packages/engine/line/contract.mjs LINE_API).
 app.use('/api/line', createLineRouter({
   getRoot: () => {
@@ -1272,6 +1291,7 @@ app.use('/api/line', createLineOpsRouter({
 app.use('/api/line', createLinePlanRouter({
   clientOrigin: CLIENT_ORIGIN,
   afterSave,
+  serviceFor: linePlanServiceFor,
   getRoot: () => {
     const root = containedProjectRoot(getProjectDir());
     return root ? { ok: true, root } : { ok: false, error: 'No project is open; pick a project first.' };
