@@ -4,7 +4,7 @@
 // small, safe subset of rules are covered today (banned-layer imports) --
 // every other rule has no callable fix yet, so `applyMechanicalFix` returns
 // `null` and the caller falls back to the "AI" option.
-import { parseToAst } from '../ast/parse.mjs';
+import { parseToAst } from '@construct/ast/parse';
 
 // Same regexes architecture-enforcer.mjs's detectLayerViolations uses to
 // flag these rules in the first place (PAGE-002/003/005, COMPONENT-002/003)

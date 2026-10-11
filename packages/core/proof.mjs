@@ -29,8 +29,8 @@ import { proofViews, skippedInBrowser, statesFlag } from './shape-states.mjs';
 import { dashboardProofText } from './proof-dashboard.mjs';
 import { wizardProofText } from './proof-wizard.mjs';
 import { dashboardBrowserText, detailBrowserText, formBrowserText, wizardBrowserText } from './proof-browser.mjs';
-import { GENERATED_MARKER, assertSafeDir } from '../engine/testGenerator.mjs';
-import { lit, comment } from '../engine/testSpecRender.mjs';
+import { GENERATED_MARKER, assertSafeDir } from '@line/construct-engine/test-generator';
+import { lit, comment } from '@line/construct-engine/test-spec-render';
 
 const usage = (message) => new ConstructError(message, { exitCode: EXIT_CODES.USAGE_ERROR });
 

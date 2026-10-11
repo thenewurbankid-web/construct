@@ -17,7 +17,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { loadConfig } from './config.mjs';
-import { resolveStateDir, projectKey } from '../engine/processStore.mjs';
+import { resolveStateDir, projectKey } from '@line/construct-engine/process-store';
 import { getDecisionProvider, suggest } from './decision-provider.mjs';
 import { buildTrace, buildOutcomeRecord, parseTraceLine, mergeOutcomes, serializeTrace } from './decision-trace.mjs';
 

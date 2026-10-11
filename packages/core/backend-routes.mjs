@@ -3,8 +3,8 @@
 // (`mountRoutes(app)`), so every route carries its full path, handler, middleware and `file:line`. Deterministic,
 // no model. What it cannot see statically is reported as "not detected", never guessed: a router whose
 // factory does not return an `express.Router()` variable, a computed path, a mount through a function argument.
-import { unwrapExpression } from '../../packages/ast/backendFacts.mjs';
-import { collectHttpRoutes } from '../../packages/ast/backendEffects.mjs';
+import { unwrapExpression } from '@construct/ast/backend-facts';
+import { collectHttpRoutes } from '@construct/ast/backend-effects';
 
 const MAX_DEPTH = 40;
 const ROUTERISH = /router|routes|route|api/i;

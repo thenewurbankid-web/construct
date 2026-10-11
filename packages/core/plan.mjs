@@ -31,7 +31,7 @@
 // paused/failed/done) deliberately lives in #287's process model keyed by
 // `step.id`, not in the plan.
 import path from 'node:path';
-import { validateEnvelope } from '../../packages/engine/envelope.mjs';
+import { validateEnvelope } from '@line/construct-engine/envelope';
 import { envArgIssue, ENV_SCOPES } from './env.mjs';
 import { GUARD_ACCESS, HANDLER_METHODS, STORE_SHAPES, guardArgIssue, handlerArgIssue, storeArgIssue } from './block-args.mjs';
 

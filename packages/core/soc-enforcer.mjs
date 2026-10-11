@@ -8,7 +8,7 @@ import { loadConfig, DEFAULT_RULES, DEFAULT_LAYERS } from './config.mjs';
 import { walk, rel } from './fs.mjs';
 import { makeViolation } from './diagnostics.mjs';
 import { exceptionApplies } from './exceptions.mjs';
-import { parseToAst } from '../../packages/ast/index.mjs';
+import { parseToAst } from '@construct/ast';
 import { isNonLayerPath } from './nonLayer.mjs';
 
 const ext = new Set(['.ts', '.tsx', '.js', '.jsx']);

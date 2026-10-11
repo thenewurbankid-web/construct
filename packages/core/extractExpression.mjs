@@ -30,7 +30,7 @@ import { ConstructError, EXIT_CODES } from './diagnostics.mjs';
 import { rel } from './fs.mjs';
 import { assertNotFrozen } from './frozen.mjs';
 import { pascalCase } from './generators.mjs';
-import { parseToAst, walkAst, lineOf, collectInlineJsxLogic } from '../../packages/ast/index.mjs';
+import { parseToAst, walkAst, lineOf, collectInlineJsxLogic } from '@construct/ast';
 
 const THIS_DIR = path.dirname(fileURLToPath(import.meta.url));
 // The vendored typed-contracts mechanism ships alongside this file (packages/core/typed-contracts/)

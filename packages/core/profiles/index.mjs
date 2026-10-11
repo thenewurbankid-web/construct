@@ -2,7 +2,7 @@
 // default set (packages/engine/defaultEnforcers.mjs); `line` is the Line project profile
 // (packages/core/profiles/line, docs/line-architecture.md). A project picks one with `preset:` in
 // architecture.yml; `construct validate --profile <name>` overrides it for one run.
-import { DEFAULT_ENFORCERS } from '../../engine/defaultEnforcers.mjs';
+import { DEFAULT_ENFORCERS } from '@line/construct-engine/default-enforcers';
 import { LINE_ENFORCERS } from './line/index.mjs';
 import { loadConfig } from '../config.mjs';
 import { ConstructError, EXIT_CODES } from '../diagnostics.mjs';

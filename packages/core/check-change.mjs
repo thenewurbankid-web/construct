@@ -6,8 +6,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { semanticDiff } from '../ast/semanticDiff.mjs';
-import { pureExportEquivalence } from '../ast/pureExportEquivalence.mjs';
+import { semanticDiff } from '@construct/ast/semantic-diff';
+import { pureExportEquivalence } from '@construct/ast/pure-export-equivalence';
 import { defineBlock, emptyScope } from './block-contract.mjs';
 import { ConstructError, EXIT_CODES } from './diagnostics.mjs';
 

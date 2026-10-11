@@ -36,7 +36,7 @@ import { assertFeature, featureDirOf, withDeclarations, writeOwned } from './blo
 import { GUARD_ACCESS, MAX_ROLES, ROLE_RE, guardArgIssue, rolesOf } from './block-args.mjs';
 import { EXPECT_LINES, blockProofTouches, proofHeader, writeBlockProof } from './block-proof.mjs';
 import { importLine, lines, words } from './shape-kit.mjs';
-import { lit } from '../engine/testSpecRender.mjs';
+import { lit } from '@line/construct-engine/test-spec-render';
 
 const usage = (message) => new ConstructError(message, { exitCode: EXIT_CODES.USAGE_ERROR });
 const rel = (root, abs) => path.relative(root, abs).split(path.sep).join('/');

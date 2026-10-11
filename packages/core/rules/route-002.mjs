@@ -1,6 +1,6 @@
 // #545 -- ROUTE-002, migrated from architecture-enforcer.mjs's detectLayerViolations (the
 // `layer === 'route'` branch's second check). Buffer-scope: only this file's own AST.
-import { parseToAst, collectBareIdentifierUsages } from '../../ast/index.mjs';
+import { parseToAst, collectBareIdentifierUsages } from '@construct/ast';
 
 const BANNED_NAMES = new Set(['fetch', 'useMachine', 'useActor', 'localStorage', 'sessionStorage']);
 
