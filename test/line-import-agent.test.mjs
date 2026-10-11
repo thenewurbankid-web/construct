@@ -98,7 +98,7 @@ test('mock: start reads, sorts and plans the folder, then waits for the review; 
   assert.equal(v.decisions.length, 1);
   assert.deepEqual([v.decisions[0].id, v.decisions[0].picked, v.decisions[0].by], [TABLE_Q, 'library', 'static']);
   assert.equal(svc.planService.steps.length, 0, 'nothing joins the plan before the review');
-  assert.deepEqual(v.changes.map((c) => c.action), ['start', 'state', 'state', 'map', 'state', 'characterize', 'state', 'decide', 'state', 'state', 'state']);
+  assert.deepEqual(v.changes.map((c) => c.action), ['start', 'state', 'state', 'map', 'state', 'characterize', 'state', 'decide', 'classify', 'state', 'state', 'state']);
   assert.equal(v.logic.keptSentence, '11 of 11 logic units kept.');
   const again = await agent.start('ui');
   assert.equal(again.message, 'This import has already started; here it is.');

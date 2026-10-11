@@ -280,7 +280,8 @@ function readFolder(projectRoot, folder, scope = /** @type {{only?: Set<string>,
   // again; the plan only checks new names against them (resolveClashes). Import v2: a route family reads only its own
   // closure's files, and names one feature after the route.
   const lineOwn = ['library', 'features', 'line'].map((d) => `${folder}/${d}/`);
-  const inFolder = files.filter((f) => f.startsWith(`${folder}/`) && !lineOwn.some((d) => f.startsWith(d)) && (!scope.only || scope.only.has(f)));
+  // The characterization tests Line generated (characterize.mjs CHAR_DIR) pin the app; they are never items to move.
+  const inFolder = files.filter((f) => f.startsWith(`${folder}/`) && !lineOwn.some((d) => f.startsWith(d)) && !f.split('/').includes('__line_characterization__') && (!scope.only || scope.only.has(f)));
   const routeOf = new Map();
   for (const r of routes) if (!routeOf.has(r.file)) routeOf.set(r.file, r.path);
   const routeEntries = new Set(routes.map((r) => r.entry));

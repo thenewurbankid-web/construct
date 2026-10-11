@@ -15,7 +15,8 @@ import { assertImportAgentView, assertImportPlanFile, IMPORT_PLAN_FILE } from '.
 import { createImportAgent } from '../packages/engine/line/importAgent.mjs';
 import { fileStore, createImportAgentOnDisk } from '../packages/engine/line/importAgentDisk.mjs';
 import { createLogicOnDisk, readRouteFamily, buildLogicMap } from '../packages/engine/line/importLoopDisk.mjs';
-import { compareLogicMaps, createMockLogic } from '../packages/engine/line/importLoopStandIns.mjs';
+import { compareLogicMaps } from '../packages/engine/line/logicMap.mjs';
+import { createMockLogic } from '../packages/engine/line/importLoopMock.mjs';
 import { createMockImportAgentService, createMockPlanService } from '../packages/engine/line/mockImportAgent.mjs';
 import { readImportLoopRecords } from '../packages/engine/line/records.mjs';
 import { createLinePlanService } from '../packages/engine/line/planService.mjs';
@@ -60,6 +61,11 @@ function landOnDisk(dir, { drop }) {
   fs.writeFileSync(path.join(dir, FOLDER, 'total.test.mjs'), TEST_AT('./library/workflows/total.mjs'));
 }
 
+/** The loop's real disk ops, with the app's own node:test test as its characterization test (the app has no jest). */
+const logicOf = (dir) => createLogicOnDisk(dir, FOLDER, {
+  characterizeWith: async (_root, _folder, _closure, map) => ({ tests: [{ file: `${FOLDER}/total.test.mjs`, runner: 'jest', kind: 'pure', unitFingerprints: map.units.map((u) => u.fingerprint), title: 'total.test.mjs' }], sentence: 'The app\'s own test pins total.' }),
+});
+
 /** The agent on the fixture: real loop ops on disk, a plan service that performs the step on disk when it runs. */
 function fixtureAgent(dir, { drop = false } = {}) {
   const planService = createMockPlanService({ refuse: () => false });
@@ -71,7 +77,7 @@ function fixtureAgent(dir, { drop = false } = {}) {
     return r;
   };
   const importOps = { scan: () => ({ found: [], questions: [] }), plan: () => ({ steps: [STEP], summary: 'Brings total into Line in 1 step.' }) };
-  const agent = createImportAgent({ root: dir, folder: FOLDER, planService, store: fileStore(dir, FOLDER), importOps, logic: createLogicOnDisk(dir, FOLDER) });
+  const agent = createImportAgent({ root: dir, folder: FOLDER, planService, store: fileStore(dir, FOLDER), importOps, logic: logicOf(dir) });
   return { agent, planService };
 }
 
@@ -98,7 +104,7 @@ test('map and characterize: the unmodified app is mapped and its tests pass befo
   assert.equal(v.logic.tests.state, 'pass');
   assert.equal(v.logic.keptSentence, '2 of 2 logic units kept.');
   const map = JSON.parse(fs.readFileSync(path.join(dir, FOLDER, 'line/logic-map.json'), 'utf8'));
-  assert.deepEqual(map.units.map((u) => [u.kind, u.fn, u.detail]), [['export', 'total', 'function total'], ['branch', 'total', 'if (items.length === 0)']]);
+  assert.deepEqual(map.units.map((u) => [u.kind, u.fn, u.detail]), [['export', '<module>', 'function total'], ['branch', 'total', 'if (items.length === 0)']]);
   assert.ok(JSON.parse(fs.readFileSync(path.join(dir, FOLDER, 'line/import-baseline.json'), 'utf8')).sources[`${FOLDER}/total.mjs`].includes('return null'));
 });
 
@@ -120,9 +126,13 @@ test('a step that keeps every unit continues to done; a step that drops a branch
   v = await approveAlong(b.agent, b.planService, v);
   assert.equal(v.state, 'execute', 'the loop stopped before verify');
   assert.equal(v.waiting.for, 'answer');
-  assert.equal(v.waiting.sentence, `Step 1 stopped the import: 1 logic unit went missing; the first: the branch "if (items.length === 0)" in total (${FOLDER}/total.mjs) is gone.`);
-  assert.deepEqual(v.waiting.question.options.map((o) => o.id), ['recheck', 'waive']);
-  assert.equal(v.waiting.question.options[0].sentence, `Put the branch "if (items.length === 0)" of total back into library/workflows/total, then check again.`);
+  assert.equal(v.waiting.sentence, `Step 1 stopped the import: 1 logic unit went missing; the first: the branch "if (items.length === 0)" in total (${FOLDER}/total.mjs:2) is missing after the import.`);
+  // The typed fix comes first: the extract step of the unit's FitProposal block (a domain), from where its file moved.
+  assert.deepEqual(v.waiting.question.options.map((o) => o.id), ['fix:1', 'recheck', 'waive']);
+  const typed = v.waiting.question.options[0];
+  assert.equal(typed.sentence, 'Put the branch "if (items.length === 0)" of total back: moves total of total.mjs into the domain total in the library.');
+  assert.deepEqual(typed.step, { tool: 'line.import.extractDomain', args: { folder: FOLDER, from: 'library/workflows/total.mjs', names: ['total'], name: 'total' } });
+  assert.equal(v.waiting.question.options[1].sentence, `Put the old logic of ${FOLDER}/total.mjs back into ${FOLDER}/library/workflows/total.mjs, then check again.`);
   const st = v.logic.steps[0];
   assert.equal(st.status, 'stopped');
   assert.equal(st.missing, 1);
@@ -132,6 +142,18 @@ test('a step that keeps every unit continues to done; a step that drops a branch
   // Each failing check carries its typed fixes: put the lost branch back or the owner waives it; put the file's old logic back or the owner accepts it.
   assert.deepEqual(loop.fixes.map((f) => [f.id, f.ownerOnly ?? false]), [['put-back', false], ['waive', true], ['put-back', false], ['waive', true]]);
   assert.deepEqual(loop.checks.map((c) => [c.id, c.state]), [['char-tests', 'pass'], ['logic-map', 'fail'], ['behaviour', 'fail']]);
+
+  // Picking the typed fix adds it as a plan step the person approved here; once it lands the step is checked again (the
+  // branch is still gone, so the loop asks again: moving code cannot bring back code that was lost).
+  const plannedBefore = b.planService.steps.length;
+  v = await b.agent.answer('ui', v.waiting.question.id, 'fix:1');
+  const added = b.planService.steps.slice(plannedBefore);
+  assert.deepEqual(added.map((s) => s.tool), ['line.import.extractDomain']);
+  v = await approveAlong(b.agent, b.planService, v);
+  assert.equal(v.waiting?.for, 'answer', v.sentence);
+  assert.equal(v.waiting.question.id, 'loop:import-1-lib-total');
+  assert.ok(v.changes.some((c) => c.action === 'loop' && /the put-back step landed/.test(c.sentence)));
+  assert.equal(v.logic.steps.length, 2, 'the step was checked again after the fix landed');
 
   // The person puts the branch back; "check again" re-runs the loop, it passes, and the import goes on to done.
   fs.writeFileSync(path.join(drop, FOLDER, 'library/workflows/total.mjs'), WITH_BRANCH);
@@ -187,7 +209,7 @@ test('the disk state resumes: a new agent on the same folder carries on from the
   // A new agent (a server restart): same folder, same file, the baseline map read back from <folder>/line/.
   const planService = first.planService;
   const importOps = { scan: () => { throw new Error('a resumed import does not scan again'); }, plan: () => { throw new Error('nor plan again'); } };
-  const again = createImportAgent({ root: dir, folder: FOLDER, planService, store: fileStore(dir, FOLDER), importOps, logic: createLogicOnDisk(dir, FOLDER) });
+  const again = createImportAgent({ root: dir, folder: FOLDER, planService, store: fileStore(dir, FOLDER), importOps, logic: logicOf(dir) });
   let v = await again.view();
   assert.equal(v.paused, true);
   assert.equal(v.logic.units, 2);
@@ -237,7 +259,7 @@ test('compareLogicMaps: a move is kept (moved), a lost unit is missing, an edite
   fs.writeFileSync(path.join(dir, FOLDER, 'library/workflows/total.mjs'), WITH_BRANCH.replace('items.length === 0', 'items.length < 1'));
   const edited = compareLogicMaps(before, buildLogicMap(dir, [`${FOLDER}/library/workflows/total.mjs`]));
   assert.equal(edited.changed.length, 1);
-  assert.equal(edited.changed[0].sentence, 'The branch "if (items.length === 0)" in total now reads "if (items.length < 1)".');
+  assert.equal(edited.changed[0].sentence, 'The branch in total changed from "if (items.length === 0)" to "if (items.length < 1)".');
   fs.writeFileSync(path.join(dir, FOLDER, 'library/workflows/total.mjs'), WITHOUT_BRANCH);
   assert.equal(compareLogicMaps(before, buildLogicMap(dir, [`${FOLDER}/library/workflows/total.mjs`])).missing[0].detail, 'if (items.length === 0)');
 });
@@ -252,7 +274,7 @@ test('route input: readRouteFamily reads /alerts and its sub-route; the agent st
   assert.deepEqual(closure.routes.map((r) => [r.route, r.entry]), [['/alerts', 'src/alerts/pages/AlertsPage.tsx'], ['/alerts/:id', 'src/alerts/pages/AlertDetailPage.tsx']]);
   assert.ok(closure.files.includes('src/ui/Card.tsx'), 'the closure crosses the folder: the page uses the app\'s Card');
   assert.ok(closure.files.includes('src/alerts/components/Table.tsx'));
-  assert.throws(() => readRouteFamily(dir, '/nowhere'), /The app has no route \/nowhere\./);
+  assert.throws(() => readRouteFamily(dir, '/nowhere'), /^LineOpError: The app has no route \/nowhere; its routes start with \/alerts\.$/);
   const planService = createLinePlanService({ root: dir, commands: null });
   const agent = createImportAgentOnDisk({ root: dir, folder: 'src/alerts', planService, verify: verifyImport, baseline: lineBaseline });
   const v = await agent.start('ui', { route: '/alerts' });
@@ -272,7 +294,7 @@ test('mock: a planted lost unit stops the loop in Cockpit\'s mock mode too; the 
   let v = await agent.editStep('ui', { action: 'approve-all' });
   for (let i = 0; i < 20 && v.waiting?.for === 'approval'; i += 1) { await svc.planService.approve(v.waiting.planStepId, 'ui'); v = await agent.resume('ui'); }
   assert.equal(v.waiting.question.id, 'loop:import-5-lib-Table');
-  assert.equal(v.waiting.sentence, 'Step 5 stopped the import: 1 logic unit went missing; the first: the conditional render "rows.length === 0" in Table (src/alerts/components/Table.tsx) is gone.');
+  assert.equal(v.waiting.sentence, 'Step 5 stopped the import: 1 logic unit went missing; the first: the conditional render "rows.length === 0" in Table (src/alerts/components/Table.tsx:1) is missing after the import.');
   assert.equal(v.logic.keptSentence, '10 of 11 logic units kept.');
   assert.equal(v.logic.missing.length, 1);
   logic.restore();

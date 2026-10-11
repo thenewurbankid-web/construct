@@ -19,6 +19,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { assertPlanRecord } from './contract.mjs';
+import { IMPORT_LOOP_RECORDS } from './importV2/contract.mjs';
 import { writeLineState } from '../transactionalWriter.mjs';
 import { lineStateDir } from './workspace.mjs';
 import { buildFacts, factsHash } from './facts.mjs';
@@ -249,7 +250,7 @@ export function slotLoopState(state, at) {
     behaviour: (state.behaviour ?? []).map((b) => ({ from: v(b.from), to: v(b.to), verdict: b.verdict })),
     checks: (state.checks ?? []).map((c) => ({ id: c.id, state: c.state, sentence: sentence(c.sentence) })),
     status: state.status, sentence: sentence(state.sentence),
-    fixes: (state.fixes ?? []).map((f) => ({ id: f.id, ...(f.ownerOnly ? { ownerOnly: true } : {}), ...(f.fingerprint ? { fingerprint: f.fingerprint } : {}), ...(f.block ? { block: v(f.block) } : {}), sentence: sentence(f.sentence) })),
+    fixes: (state.fixes ?? []).map((f) => ({ id: f.id, ...(f.ownerOnly ? { ownerOnly: true } : {}), ...(f.fingerprint ? { fingerprint: f.fingerprint } : {}), ...(f.block ? { block: v(f.block) } : {}), ...(f.step?.tool ? { tool: f.step.tool } : {}), sentence: sentence(f.sentence) })),
     slots: {},
   };
   rec.slots = slotter.slots();
@@ -273,7 +274,7 @@ export function slotLoopState(state, at) {
  */
 export function createImportLoopRecorder(root, { now = () => new Date(), write } = {}) {
   const stateDir = lineStateDir(root);
-  const file = `${stateDir}/records/import-loop.jsonl`;
+  const file = `${stateDir}/${IMPORT_LOOP_RECORDS}`;
   const put = write ?? ((line) => { writeLineState(root, file, line, { append: true, stateDir }); });
   const self = {
     file,
@@ -300,7 +301,7 @@ export function createImportLoopRecorder(root, { now = () => new Date(), write }
  * @returns {{records: any[], skipped: number, file: string}}
  */
 export function readImportLoopRecords(root) {
-  const file = `${lineStateDir(root)}/records/import-loop.jsonl`;
+  const file = `${lineStateDir(root)}/${IMPORT_LOOP_RECORDS}`;
   let text = '';
   try { text = fs.readFileSync(path.join(root, file), 'utf8'); } catch { return { records: [], skipped: 0, file }; }
   const records = []; let skipped = 0;

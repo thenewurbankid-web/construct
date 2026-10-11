@@ -1,14 +1,16 @@
 // ci2 -- the Import agent: one agent in Import mode, run as a fixed typed process (an xstate machine):
 //
-//   scan -> map -> characterize -> classify -> plan -> review -> execute -> verify -> done
+//   scan -> map -> characterize -> classify (fit) -> plan -> review -> execute -> verify -> done
 //
 // Line Import v2 (docs/line/import-v2/CONTRACT.md): the input is a folder, or a route (its RouteClosure seeds the map) with
 // the folder the import writes into. `map` builds the logic map of the unmodified app; `characterize` writes the
-// characterization tests and runs them in the app's own runner, and every one must pass before anything moves. After each
-// import plan step lands (a person approved it), the loop (importLoop.mjs) rebuilds the map, diffs it, runs the tests and
-// checks the moved files' behaviour; it goes on only when every check passes, else it stops with one sentence plus typed
-// fixes and asks. Each checked step leaves an ImportLoopState in the file and in the plan records (slotted). Only a person
-// can waive a lost unit; an agent's waiver is refused.
+// characterization tests and runs them in the app's own runner, and every one must pass before anything moves; `classify`
+// also fits every unit into ONE Line block (the FitProposal), and for a route the plan ends with the extract steps that
+// land those blocks. After each import plan step lands (a person approved it), the loop (importLoop.mjs) rebuilds the map,
+// diffs it, runs the tests and checks the moved files' behaviour; it goes on only when every check passes, else it stops
+// with one sentence plus typed fixes (the extract step that puts a lost unit back into its block, undo, waive) and asks.
+// Each checked step leaves an ImportLoopState in the file and in the plan records (records/import-loop.jsonl, slotted).
+// Only a person can waive a lost unit; an agent's waiver is refused.
 //
 // Its whole state is ONE file inside the chosen folder, `<folder>/line/import-plan.json` (contract.mjs ImportPlanFile),
 // written only through Construct's writer (applyChange with the folder as root). So the process can be paused and
@@ -38,8 +40,7 @@
 // (the file store, the real scan and plan) is importAgentDisk.mjs.
 import { createMachine, getNextSnapshot } from 'xstate';
 import { IMPORT_AGENT_STAGES, IMPORT_EDITABLE, LEVELS, LineOpError, assertImportPlanFile, importFolderProblem } from './contract.mjs';
-import { newLogic, measure, loopChecks, loopState, loopQuestion, addWaivers, logicView, LOOP_LIMITS } from './importLoop.mjs';
-import { mapSummary } from './importLoopStandIns.mjs';
+import { newLogic, measure, loopChecks, loopState, loopQuestion, addWaivers, logicView, mapSummary, fitSummary, fitPlanSteps, LOOP_LIMITS } from './importLoop.mjs';
 
 /** Fix rounds per step before the agent asks the person, even when each round improved. */
 export const MAX_ROUNDS = 3;
@@ -178,7 +179,7 @@ export async function decideWith(provider, id, question, optionIds) {
 // ------------------------------------------------------------------------------------------------- the agent
 /**
  * The Import agent for one folder of one project.
- * @param {{root: string, folder: string, planService: {view: () => Promise<any>, addStep: (req: any, by: string) => Promise<any>, approve: (id: string, by: string) => Promise<any>, runNext: (by: string, id?: string) => Promise<any>}, reason?: {suggest: (summary: any) => Promise<any>, lastNote?: () => string | null} | null, verify?: (root: string, folder: string, baseline: string[]) => Promise<{ok: boolean, checks: any[]}>, baseline?: (root: string, folder: string) => Promise<string[]> | string[], importOps: {scan: (root: string, folder: string) => any, plan: (root: string, folder: string, answers: Record<string, string>) => any}, store: {read: () => any, write: (doc: any) => void}, logic?: any, checkFolder?: () => void, snapshot?: (root: string, folder: string) => unknown, rollback?: (root: string, folder: string) => {ok: boolean, sentence: string, files: string[]} | Promise<{ok: boolean, sentence: string, files: string[]}>, now?: () => string, decider?: string}} o `importOps` and `store` are the disk ones in importAgentDisk.mjs (createImportAgentOnDisk), in-memory ones in the mock. `logic` is the import loop's ops (importLoop.mjs): importLoopDisk.mjs createLogicOnDisk on disk, importLoopStandIns.mjs createMockLogic in the mock; without it the map, characterize and loop checks say they are not set up and pass through.
+ * @param {{root: string, folder: string, planService: {view: () => Promise<any>, addStep: (req: any, by: string) => Promise<any>, approve: (id: string, by: string) => Promise<any>, runNext: (by: string, id?: string) => Promise<any>}, reason?: {suggest: (summary: any) => Promise<any>, lastNote?: () => string | null} | null, verify?: (root: string, folder: string, baseline: string[]) => Promise<{ok: boolean, checks: any[]}>, baseline?: (root: string, folder: string) => Promise<string[]> | string[], importOps: {scan: (root: string, folder: string) => any, plan: (root: string, folder: string, answers: Record<string, string>, target?: {route: string}) => any}, store: {read: () => any, write: (doc: any) => void}, logic?: any, checkFolder?: () => void, snapshot?: (root: string, folder: string) => unknown, rollback?: (root: string, folder: string) => {ok: boolean, sentence: string, files: string[]} | Promise<{ok: boolean, sentence: string, files: string[]}>, now?: () => string, decider?: string}} o `importOps` and `store` are the disk ones in importAgentDisk.mjs (createImportAgentOnDisk), in-memory ones in the mock. `logic` is the import loop's ops (importLoop.mjs): importLoopDisk.mjs createLogicOnDisk on disk, importLoopMock.mjs createMockLogic in the mock; without it the map, characterize and loop checks say they are not set up and pass through.
  * @returns {any}
  */
 export function createImportAgent(o) {
@@ -206,10 +207,9 @@ export function createImportAgent(o) {
   /** A question about the current step, asked once a round stopped improving (or there is nothing to try). */
   function askAboutStep(doc, step, ps, why) {
     const fixes = (ps?.result?.options ?? []).filter((x) => x.id === 'fix' && x.step);
-    const landed = doc.steps.filter((x) => x.run === 'done').length;
     const options = [
       ...fixes.map((x) => ({ id: `fix:${x.fixId}`, sentence: asSentence(x.sentence) })),
-      ...(o.rollback && doc.undo === 'saved' ? [{ id: 'undo', sentence: `Undo the import: put ${folder} back as it was before it started${landed ? ` (${landed} step${landed === 1 ? '' : 's'} landed)` : ''}.` }] : []),
+      ...(undoSentence(doc) ? [{ id: 'undo', sentence: /** @type {string} */ (undoSentence(doc)) }] : []),
       { id: 'leave', sentence: `Leave ${step.args.name ?? 'this item'} as it is and carry on with the next step.` },
     ];
     step.run = 'needs-you';
@@ -237,9 +237,26 @@ export function createImportAgent(o) {
     record(doc, 'line', 'loop', state.status === 'ok' ? `checked step ${n}: ${lower(state.sentence)}` : `stopped after step ${n}: ${lower(state.sentence)}`, step.id);
     if (failing.length) {
       doc.logic.pending = { at: 'step', stepId: step.id, checks: failing };
-      doc.waiting = { for: 'answer', stepId: step.id, sentence: asSentence(`Step ${n} stopped the import: ${lower(state.sentence)}`), question: loopQuestion(`loop:${step.id}`, failing, `What should Line do about step ${n}?`) };
+      doc.waiting = { for: 'answer', stepId: step.id, sentence: asSentence(`Step ${n} stopped the import: ${lower(state.sentence)}`), question: loopQuestion(`loop:${step.id}`, failing, `What should Line do about step ${n}?`, { undo: undoSentence(doc) }) };
     } else doc.logic.pending = null;
     return state;
+  }
+
+  /** The undo option's sentence, when the folder was saved before the first step (else none). */
+  function undoSentence(doc) {
+    if (!(o.rollback && doc.undo === 'saved')) return undefined;
+    const landed = doc.steps.filter((x) => x.run === 'done').length;
+    return `Undo the import: put ${folder} back as it was before it started${landed ? ` (${landed} step${landed === 1 ? '' : 's'} landed)` : ''}.`;
+  }
+
+  /** Fit every unit of the baseline map into ONE Line block (the FitProposal) and keep it with its extract steps. */
+  async function fitStage(doc) {
+    if (!looping(doc) || !o.logic.fit) return;
+    const map = await o.logic.load('logic-map');
+    const fit = await o.logic.fit(root, folder, doc.logic.closure, map ?? { units: [] });
+    await o.logic.save('fit', fit);
+    doc.logic.fit = fitSummary(fit.proposal, fit.steps.length);
+    record(doc, 'line', 'classify', `fitted the logic: ${lower(doc.logic.fit.sentence)}`);
   }
 
   /** Map the unmodified app (the folder, or the route's closure) and keep it as the baseline. */
@@ -292,6 +309,7 @@ export function createImportAgent(o) {
 
   /** One move of the execute stage. 'more' to keep going, 'wait' when the person (or a running step) is needed. */
   async function executeOnce(doc, by, answered) {
+    if (doc.cursor.phase === 'putback') return putBackOnce(doc, by);
     const step = current(doc);
     if (!step) { doc.cursor = { pending: null, origin: null, phase: null }; go(doc, by, 'EXECUTED'); return 'more'; }
     if (step.review !== 'approved') {
@@ -390,6 +408,51 @@ export function createImportAgent(o) {
     return 'wait';
   }
 
+  /** A typed put-back fix (the extract step of a lost unit's block) is running: once it lands, check the step again. */
+  async function putBackOnce(doc, by) {
+    const c = doc.cursor;
+    const step = stepOf(doc, c.stepId);
+    const plan = await svc.view();
+    const ps = plan.steps.find((s) => s.id === c.pending);
+    if (!ps || !step) { doc.cursor = { pending: null, origin: null, phase: null }; return 'more'; }
+    if (ps.state === 'waiting') { doc.waiting = { for: 'approval', stepId: step.id, planStepId: ps.id, sentence: asSentence(`Approve plan step ${ps.n} to go on: ${lower(ps.why)}`) }; return 'wait'; }
+    if (ps.state === 'running') { doc.waiting = null; return 'wait'; }
+    if (ps.state === 'ready') {
+      const r = await svc.runNext(by === 'ui' ? 'ui' : 'agent', ps.id);
+      if (!r.ok) { doc.cursor = { pending: null, origin: null, phase: null }; return askAgain(doc, step, r.sentence); }
+      return 'more';
+    }
+    doc.cursor = { pending: null, origin: null, phase: null };
+    if (ps.state === 'done') {
+      record(doc, 'line', 'loop', `the put-back step landed: ${lower(asSentence(ps.sentence))}`, step.id);
+      const st = await checkStep(doc, step, by);
+      return st.status === 'ok' ? 'more' : 'wait';
+    }
+    return askAgain(doc, step, `the put-back step was refused: ${lower(asSentence(ps.sentence || 'the plan step failed'))}`);
+  }
+
+  /** Ask the loop's question about a step again, with the reason the last try did not finish it. */
+  async function askAgain(doc, step, why) {
+    const st = await checkStep(doc, step, 'line');
+    if (st.status === 'ok') return 'more';
+    doc.waiting = { ...doc.waiting, sentence: asSentence(`${doc.waiting.sentence.replace(/[.?!]$/, '')}; ${why}`) };
+    return 'wait';
+  }
+
+  /** Put the folder back as it was before the import (o.rollback), mark what landed as undone and end the import. */
+  async function undoImport(doc, by, step) {
+    const r = await o.rollback(root, folder);
+    if (!r.ok) return r;
+    doc.waiting = null;
+    for (const x of doc.steps.filter((y) => y.run !== 'todo')) { x.run = 'undone'; x.outcome = `Undone: ${lower(asSentence(x.sentence))}`; }
+    doc.undo = 'undone';
+    doc.cursor = { pending: null, origin: null, phase: null };
+    if (doc.logic) doc.logic.pending = null;
+    record(doc, by, 'undo', `undid the import: ${lower(asSentence(r.sentence))}`, step?.id);
+    go(doc, by, 'UNDONE');
+    return r;
+  }
+
   /** Run the process until it needs someone, is paused, or is done. */
   async function run(doc, by, answered = false) {
     if (doc.waiting?.for === 'answer') return; // one question at a time: nothing moves until it is answered
@@ -419,11 +482,15 @@ export function createImportAgent(o) {
           record(doc, 'agent', 'decide', `decided "${q.sentence.replace(/[.?!]$/, '')}": ${lower(q.options.find((x) => x.id === d.picked)?.sentence ?? d.picked)}`);
         }
         delete doc.questions;
+        await fitStage(doc);
         go(doc, by, 'CLASSIFIED');
       } else if (doc.state === 'plan') {
-        const plan = importOps.plan(root, folder, doc.answers);
-        doc.steps = plan.steps.map((s) => ({ id: s.id, tool: s.tool, args: s.args, sentence: s.sentence, review: 'proposed', run: 'todo', planStepIds: [], rounds: 0, outcome: null, approvedBy: null }));
-        record(doc, 'agent', 'state', `wrote the plan: ${lower(plan.summary)}`);
+        const route = doc.logic?.route ?? null;
+        const plan = importOps.plan(root, folder, doc.answers, route ? { route } : undefined);
+        // A route-seeded import also lands the FitProposal's blocks: its extract steps run after Import's own moves.
+        const fitted = route && looping(doc) ? fitPlanSteps(await o.logic.load('fit'), plan.steps) : [];
+        doc.steps = [...plan.steps, ...fitted].map((s) => ({ id: s.id, tool: s.tool, args: s.args, sentence: s.sentence, review: 'proposed', run: 'todo', planStepIds: [], rounds: 0, outcome: null, approvedBy: null }));
+        record(doc, 'agent', 'state', `wrote the plan: ${lower(plan.summary)}${fitted.length ? ` Then ${fitted.length} step${fitted.length === 1 ? '' : 's'} fit the logic into its blocks.` : ''}`);
         go(doc, by, 'PLANNED');
       } else if (doc.state === 'review') {
         const open = doc.steps.filter((s) => s.review === 'proposed');
@@ -585,6 +652,24 @@ export function createImportAgent(o) {
       }
       if (q.id.startsWith('loop:')) {
         const step = stepOf(doc, doc.waiting.stepId);
+        if (optionId === 'undo') {
+          const r = await undoImport(doc, by, step);
+          if (!r.ok) doc.waiting = { ...doc.waiting, sentence: asSentence(`The undo was refused: ${lower(asSentence(r.sentence))}`) };
+          save(doc);
+          return view(doc);
+        }
+        const typed = q.options.find((x) => x.id === optionId && x.step);
+        if (typed) {
+          // The typed fix: the extract step that puts the lost unit back into its block, as a plan step the person approved here.
+          doc.decisions.push({ id: `${q.id}:${optionId}`, question: asSentence(q.sentence), options: q.options.map((x) => x.id), picked: optionId, answer: asSentence(typed.sentence), by: 'person', reason: 'The person picked it.' });
+          const r = await addPlanStep(doc, step, { tool: typed.step.tool, args: { ...typed.step.args }, why: asSentence(typed.sentence) }, by, true);
+          if (!r.ok) { doc.waiting = { ...doc.waiting, sentence: asSentence(`That fix could not be added: ${lower(asSentence(r.sentence))}`) }; save(doc); return view(doc); }
+          doc.waiting = null;
+          doc.cursor = { pending: r.stepId, origin: null, phase: 'putback', stepId: step.id };
+          await run(doc, by, true);
+          save(doc);
+          return view(doc);
+        }
         if (optionId === 'waive') {
           const w = addWaivers(doc.logic, doc.logic.pending?.checks ?? [], by, now());
           if (w.ok) record(doc, by, 'waive', `waived ${w.count} logic unit${w.count === 1 ? '' : 's'} after "${step.sentence.replace(/[.?!]$/, '')}"`, step.id);
@@ -613,14 +698,8 @@ export function createImportAgent(o) {
       const step = stepOf(doc, doc.waiting.stepId);
       const blocker = doc.cursor.origin;
       if (optionId === 'undo') {
-        const r = await o.rollback(root, folder);
-        if (!r.ok) { askAboutStep(doc, step, null, `the undo was refused: ${lower(asSentence(r.sentence))}`); save(doc); return view(doc); }
-        doc.waiting = null;
-        for (const x of doc.steps.filter((y) => y.run !== 'todo')) { x.run = 'undone'; x.outcome = `Undone: ${lower(asSentence(x.sentence))}`; }
-        doc.undo = 'undone';
-        doc.cursor = { pending: null, origin: null, phase: null };
-        record(doc, by, 'undo', `undid the import: ${lower(asSentence(r.sentence))}`, step?.id);
-        go(doc, by, 'UNDONE');
+        const r = await undoImport(doc, by, step);
+        if (!r.ok) askAboutStep(doc, step, null, `the undo was refused: ${lower(asSentence(r.sentence))}`);
         save(doc);
         return view(doc);
       }

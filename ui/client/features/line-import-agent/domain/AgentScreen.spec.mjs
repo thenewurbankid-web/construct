@@ -5,7 +5,7 @@ import { editArgs, editValue, orderedOptions } from './AgentEdit.ts';
 import { agentScreen, isRefusal, logicModel } from './AgentScreen.ts';
 import { agentReducer, initialAgent } from '../workflows/AgentFlow.ts';
 import { createMockImportAgentService, createMockPlanService } from '../../../../../packages/engine/line/mockImportAgent.mjs';
-import { createMockLogic } from '../../../../../packages/engine/line/importLoopStandIns.mjs';
+import { createMockLogic } from '../../../../../packages/engine/line/importLoopMock.mjs';
 
 const FOLDER = 'src/alerts';
 
@@ -94,7 +94,7 @@ test('the logic panel: the map count, N of M kept, coverage, each step\'s diff; 
   m = s.logic;
   assert.equal(m.kept, '10 of 11 logic units kept.');
   assert.equal(m.missing.length, 1);
-  assert.equal(m.missing[0].sentence, 'The conditional render "rows.length === 0" in Table (src/alerts/components/Table.tsx) is gone.');
+  assert.equal(m.missing[0].sentence, 'The conditional render "rows.length === 0" in Table (src/alerts/components/Table.tsx:1) is missing after the import.');
   assert.match(m.missing[0].details[2], /^goes back into /);
   assert.equal(m.steps.at(-1).line, 'Step 5: 10 kept (5 moved), 1 missing, 0 new; tests 3 of 3 pass.');
   assert.equal(m.steps.at(-1).status, 'stopped');

@@ -47,7 +47,8 @@ export function fileStore(root, folder) {
 export function createImportAgentOnDisk(o) {
   return createImportAgent({
     store: fileStore(o.root, o.folder),
-    importOps: { scan: scanImport, plan: planImport },
+    // A route-seeded import plans the route family's files (import.mjs planImport with {route, folder}).
+    importOps: { scan: scanImport, plan: (root, folder, answers, x) => planImport(root, x?.route ? { route: x.route, folder } : folder, answers) },
     logic: createLogicOnDisk(o.root, o.folder),
     checkFolder: () => folderRootOf(o.root, o.folder),
     snapshot: snapshotFolder,

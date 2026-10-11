@@ -167,11 +167,15 @@ export function runCharTests(projectRoot, folder, tests) {
   const runner = testRunnerOf(projectRoot);
   const failures = [];
   const details = [];
-  for (const t of list) {
-    if (!fs.existsSync(path.join(projectRoot, t.file))) { failures.push({ file: t.file, title: t.title }); details.push(`${t.file}: the test file is gone`); continue; }
-    const r = runOneTest(projectRoot, runner, t.file);
-    if (!r.ok) { failures.push({ file: t.file, title: t.title }); details.push(`${t.file}:\n${r.detail}`); }
+  // One run per test file (the characterizer writes many tests per file), each test of a failing file counted failed.
+  /** @type {Map<string, {ok: boolean, detail?: string}>} */
+  const byFile = new Map();
+  for (const file of new Set(list.map((t) => t.file))) {
+    if (!fs.existsSync(path.join(projectRoot, file))) { byFile.set(file, { ok: false, detail: 'the test file is gone' }); continue; }
+    byFile.set(file, runOneTest(projectRoot, runner, file));
   }
+  for (const [file, r] of byFile) if (!r.ok) details.push(`${file}:\n${r.detail}`);
+  for (const t of list) if (!byFile.get(t.file)?.ok) failures.push({ file: t.file, title: t.title });
   const failed = failures.length;
   return {
     state: failed ? 'fail' : 'pass', passed: list.length - failed, failed, total: list.length, failures,
@@ -264,7 +268,9 @@ export function checkBehaviour(projectRoot, diff, sources, folder = '') {
   Object.assign(moves, unitlessMoves(projectRoot, folder, sources, moves));
   for (const file of Object.keys(sources ?? {})) {
     if (dest.has(file) || !fs.existsSync(path.join(projectRoot, file))) continue;
-    if (fs.readFileSync(path.join(projectRoot, file), 'utf8') !== sources[file]) tried.push({ from: file, candidates: [file] });
+    // Changed in place: itself first; a file with no logic units of its own that now only points at its moved copy
+    // (a shim) is compared with that copy, the same-named file in the folder.
+    if (fs.readFileSync(path.join(projectRoot, file), 'utf8') !== sources[file]) tried.push({ from: file, candidates: [file, ...candidatesOf(file, new Map())] });
   }
   const one = (from, to) => {
     try {

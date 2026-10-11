@@ -14,6 +14,9 @@
 // (createTransaction().commit()), so the project's own validate profile gates them; every message a person
 // sees is one plain-English sentence, with rule ids and paths kept as separate fields for a Details view.
 
+import { assertImportLogic } from './importV2/contract.mjs';
+import { EXTRACT_TOOLS } from './importV2/extractTarget.mjs';
+
 /** @typedef {'components'|'pages'|'workflows'|'fixtures'|'usecases'|'services'|'domains'} LineKind */
 /** @typedef {'atom'|'molecule'|'organism'} Level */
 
@@ -694,24 +697,9 @@ export const AUTO_ACTION_KINDS = Object.freeze(['click', 'type', 'select', 'appr
  * The verify stage: validate --profile line on the folder, types (tsc), tests. A check Line cannot run says why (skipped).
  * @typedef {{id: 'validate'|'types'|'tests'|'char-tests'|'logic-map'|'behaviour'|'coverage', state: 'pass'|'fail'|'skipped', sentence: string, detail?: string}} ImportVerifyCheck
  *
- * Line Import v2 shapes (docs/line/import-v2/CONTRACT.md; branch iv2-map owns them in line/importV2/contract.mjs, these
- * mirror it until the merge).
- * @typedef {{id: string, fingerprint: string, kind: string, file: string, fn: string, line: number, detail: string}} LogicUnit
- * @typedef {{root: string, files: string[], units: LogicUnit[], counts: Record<string, number>}} LogicMap
- * @typedef {{kept: LogicUnit[], moved: {from: LogicUnit, to: LogicUnit}[], missing: LogicUnit[], changed: {before: LogicUnit, after: LogicUnit, sentence: string}[], added: LogicUnit[]}} MapDiff
- * @typedef {{appRoot: string, routes: {route: string, entry: string}[], files: string[], external: string[]}} RouteClosure
- * @typedef {{file: string, runner: string, kind: 'pure'|'render'|'interaction'|'machine', unitFingerprints: string[], title: string}} CharTest
- * @typedef {{fingerprint: string, by: 'owner', why: string, at?: string}} UnitWaiver
- * @typedef {{covered: number, uncovered: number, waived: number, total: number}} UnitCoverageCounts
- * One checked import step (importLoop.mjs loopState). The maps are kept by reference (units, counts, hash) so a record
- * stays fixed-size; the full baseline map is <folder>/line/logic-map.json.
- * @typedef {{step: string, n: number, at: string, tool: string, mapBefore: {units: number, hash: string}, mapAfter: {units: number, hash: string},
- *   diff: {kept: number, moved: number, added: number, changed: number, missingCount: number, missing: any[]}, tests: {passed: number, failed: number, total: number, state: string},
- *   coverage: UnitCoverageCounts, behaviour: {from: string, to: string, verdict: string}[], checks: {id: string, state: string, sentence: string}[],
- *   status: 'ok'|'stopped', sentence: string, fixes: any[]}} ImportLoopState
- * The import plan file's loop record.
- * @typedef {{route: string|null, closure: {routes: any[], files: string[], external: string[]}|null, map: {units: number, counts: Record<string, number>, hash: string}|null,
- *   tests: CharTest[], baselineTests: any, waivers: UnitWaiver[], loop: ImportLoopState[], last: any, pending?: any}} ImportLogic
+ * Line Import v2's shapes (LogicMap, MapDiff, CharTest, FitProposal, ImportLoopState, ImportLogic, ...) live in ONE place,
+ * line/importV2/contract.mjs.
+ * @typedef {import('./importV2/contract.mjs').ImportLogic} ImportLogic
  *
  * `<folder>/line/import-plan.json`.
  * @typedef {object} ImportPlanFile
@@ -725,7 +713,7 @@ export const AUTO_ACTION_KINDS = Object.freeze(['click', 'type', 'select', 'appr
  * @property {Record<string, string>} answers     Classify question id -> option id.
  * @property {ImportDecision[]} decisions
  * @property {ImportAgentStep[]} steps
- * @property {{pending: string|null, origin: string|null, phase: 'step'|'fix'|'retry'|'leave'|'refresh'|null}} cursor  The cp1 step being waited on.
+ * @property {{pending: string|null, origin: string|null, phase: 'step'|'fix'|'retry'|'leave'|'refresh'|'putback'|null, stepId?: string}} cursor  The cp1 step being waited on (`putback`: a loop's typed fix for import step `stepId`).
  * @property {{ok: boolean, checks: ImportVerifyCheck[]}|null} verify
  * @property {ImportChange[]} changes
  * @property {'saved'|'none'|'undone'} [undo]  Whether the folder was saved before the first step landed (so the person can
@@ -844,6 +832,8 @@ export const LINE_API = Object.freeze([
 
 /** The tools an import plan's steps name (plan-ready: each produces a StagedChange for applyChange). */
 export const IMPORT_TOOLS = Object.freeze(['line.import.mark', 'line.import.toLibrary', 'line.import.toFeature']);
+/** The tools an Import agent's step names: Import's own, and (a route-seeded import) the FitProposal's extract steps. */
+export const IMPORT_AGENT_TOOLS = Object.freeze([...IMPORT_TOOLS, ...EXTRACT_TOOLS]);
 
 export const LINE_FIX_TOOLS = Object.freeze(['line.setBase', 'line.promote', 'line.baseOn', 'line.moveFile', 'line.createLayout', 'line.amend']);
 
@@ -1603,7 +1593,7 @@ export function importFolderProblem(folder) {
   if (folder.startsWith('/') || folder.includes('\\') || folder.split('/').some((p) => p === '..' || p === '.' || p === '')) return 'must be a folder inside the project, like src/alerts';
   return null;
 }
-const CHANGE_ACTIONS = ['start', 'state', 'decide', 'edit', 'skip', 'unskip', 'move', 'approve', 'approve-all', 'add-step', 'answer', 'pause', 'resume', 'verify', 'undo', 'map', 'characterize', 'loop', 'waive'];
+const CHANGE_ACTIONS = ['start', 'state', 'decide', 'edit', 'skip', 'unskip', 'move', 'approve', 'approve-all', 'add-step', 'answer', 'pause', 'resume', 'verify', 'undo', 'map', 'characterize', 'classify', 'loop', 'waive'];
 /** The verify stage's checks: ci2's three, and Line Import v2's loop checks (importLoop.mjs LOOP_CHECKS). */
 export const IMPORT_VERIFY_CHECKS = Object.freeze(['validate', 'types', 'tests', 'char-tests', 'logic-map', 'behaviour', 'coverage']);
 
@@ -1626,7 +1616,7 @@ function assertWaiting(w, where) {
 /** @param {any} s @param {string} folder @param {string} where */
 function assertAgentStep(s, folder, where) {
   str(s?.id, `${where}.id`);
-  if (!IMPORT_TOOLS.includes(s.tool)) fail(`${where}.tool`, `must be one of ${IMPORT_TOOLS.join(', ')}`);
+  if (!IMPORT_AGENT_TOOLS.includes(s.tool)) fail(`${where}.tool`, `must be one of ${IMPORT_AGENT_TOOLS.join(', ')}`);
   if (s.args?.folder !== folder) fail(`${where}.args.folder`, 'must name the plan\'s folder');
   sentence(s.sentence, `${where}.sentence`);
   if (!['proposed', 'approved', 'skipped'].includes(s.review)) fail(`${where}.review`, 'must be proposed, approved or skipped');
@@ -1657,20 +1647,6 @@ function assertVerify(v, where) {
   if (v.ok && v.checks.some((c) => c.state === 'fail')) fail(where, 'ok only when no check fails');
 }
 
-/** @param {any} l @param {string} where */
-function assertLogic(l, where) {
-  if (l === undefined || l === null) return;
-  if (typeof l !== 'object' || !Array.isArray(l.waivers) || !Array.isArray(l.loop) || !Array.isArray(l.tests)) fail(where, 'must be {route, closure, map, tests, baselineTests, waivers, loop, last}');
-  if (l.route !== null && (typeof l.route !== 'string' || !l.route.startsWith('/'))) fail(`${where}.route`, 'must be null or a route like /alerts');
-  // Only a person waives a unit: every waiver is the owner's.
-  l.waivers.forEach((w, i) => { str(w?.fingerprint, `${where}.waivers[${i}].fingerprint`); if (w.by !== 'owner') fail(`${where}.waivers[${i}].by`, 'must be owner (an agent never waives)'); sentence(w.why, `${where}.waivers[${i}].why`); });
-  l.loop.forEach((st, i) => {
-    str(st?.step, `${where}.loop[${i}].step`);
-    if (!['ok', 'stopped'].includes(st.status)) fail(`${where}.loop[${i}].status`, 'must be ok or stopped');
-    sentence(st.sentence, `${where}.loop[${i}].sentence`);
-  });
-}
-
 /**
  * Throws unless p is a ImportPlanFile.
  * @param {any} p
@@ -1694,10 +1670,11 @@ export function assertImportPlanFile(p) {
     sentence(d.answer, `importPlan.decisions[${i}].answer`);
   });
   p.changes.forEach((c, i) => { assertChange(c, `importPlan.changes[${i}]`); if (c.n !== i + 1) fail(`importPlan.changes[${i}].n`, 'must count up by one'); });
-  if (!p.cursor || !['step', 'fix', 'retry', 'leave', 'refresh', null].includes(p.cursor.phase)) fail('importPlan.cursor', 'must be {pending, origin, phase}');
+  if (!p.cursor || !['step', 'fix', 'retry', 'leave', 'refresh', 'putback', null].includes(p.cursor.phase)) fail('importPlan.cursor', 'must be {pending, origin, phase}');
+  if (p.cursor.phase === 'putback' && typeof p.cursor.stepId !== 'string') fail('importPlan.cursor.stepId', 'must name the import step a put-back fix is for');
   assertVerify(p.verify, 'importPlan.verify');
   if (p.undo !== undefined && !['saved', 'none', 'undone'].includes(p.undo)) fail('importPlan.undo', 'must be saved, none or undone');
-  assertLogic(p.logic, 'importPlan.logic');
+  assertImportLogic(p.logic, 'importPlan.logic');
   if (p.state === 'done' && p.undo !== 'undone' && p.steps.some((s) => s.review !== 'skipped' && !['done', 'left'].includes(s.run))) fail('importPlan.state', 'done only when every step ran or was left, or the import was undone');
 }
 

@@ -5,12 +5,12 @@
 //     retry with `stopped`, leaveAsIs), with one planted refusal: the first run of the step for AlertRow's feature item
 //     is refused with one typed fix (the fix lands, the retry passes), so the correction loop shows in mock mode;
 //   - the store keeps the file in memory; verify passes validate and says why types and tests did not run;
-//   - the Line Import v2 loop runs on importLoopStandIns.mjs createMockLogic: a fixed logic map of src/alerts whose units
+//   - the Line Import v2 loop runs on importLoopMock.mjs createMockLogic: a fixed logic map of src/alerts whose units
 //     move with each landed step, three characterization tests that pass (o.logic replaces it, e.g. to plant a lost unit).
 import { LineOpError } from './contract.mjs';
 import { createImportAgent } from './importAgent.mjs';
 import { createMockImport } from './mockImport.mjs';
-import { createMockLogic } from './importLoopStandIns.mjs';
+import { createMockLogic } from './importLoopMock.mjs';
 
 const lower = (s) => String(s).charAt(0).toLowerCase() + String(s).slice(1);
 
