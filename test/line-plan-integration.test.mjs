@@ -19,13 +19,13 @@ const copyOf = (example) => { const dir = makeTempDir('line-plan-int-'); fs.cpSy
 const MISSING_LINK = { env: { ...process.env, LINE_SOURCE_DIR: path.join(makeTempDir('no-source-'), 'nope') } };
 const service = (root) => createLinePlanService({ root, commands: null, load: (o) => loadPlanApi({ ...o, linkOptions: MISSING_LINK }) });
 
-/** Every file under `dir` (but Line state: the plan store's line/plans and the session traces in line/traces) -> sha256. */
+/** Every file under `dir` (but Line state: the plan store's line/plans, the session traces in line/traces and the plan records in line/records) -> sha256. */
 function hashes(dir) {
   const out = {};
   const visit = (abs, rel) => {
     for (const e of fs.readdirSync(abs, { withFileTypes: true })) {
       const r = rel ? `${rel}/${e.name}` : e.name;
-      if (r === 'line/plans' || r === 'line/traces') continue;
+      if (r === 'line/plans' || r === 'line/traces' || r === 'line/records') continue;
       if (e.isDirectory()) visit(path.join(abs, e.name), r);
       else out[r] = crypto.createHash('sha256').update(fs.readFileSync(path.join(abs, e.name))).digest('hex');
     }

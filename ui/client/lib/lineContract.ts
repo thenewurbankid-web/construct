@@ -150,7 +150,11 @@ export type LineFeatureDetail = {
 };
 /** cp1: Line actions as plan steps (contract.mjs PlanView). A check that defines a step's "done". */
 export type PlanCheckKind = 'validate' | 'types' | 'tests' | 'file' | 'spec';
-export type PlanCheck = { id: string; sentence: string; kind: PlanCheckKind };
+/** Expressions (contract.mjs LineExpr): a check as plain JSON over the project's facts; never code. */
+export type LineExpr = null | boolean | number | string | { [op: string]: unknown };
+export type PlanCheck = { id: string; sentence: string; kind: PlanCheckKind; expr?: LineExpr };
+/** Expressions (contract.mjs ExprEvaluation): each failed part as one plain-English sentence. */
+export type ExprEvaluation = { ok: boolean; failed: { path: string; sentence: string }[] };
 /** Before a step runs: one expected output, already there or not. */
 export type GapItem = { checkId: string; state: 'present' | 'partial' | 'missing'; sentence: string };
 /** After a step runs: one check's outcome. */

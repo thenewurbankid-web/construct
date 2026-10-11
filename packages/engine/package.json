@@ -57,7 +57,13 @@
     "./line/contract": "./line/contract.mjs",
     "./line/trace": "./line/trace.mjs",
     "./line/miss-detector": "./line/missDetector.mjs",
-    "./line/context-picker": "./line/contextPicker.mjs"
+    "./line/context-picker": "./line/contextPicker.mjs",
+    "./line/expr": "./line/expr.mjs",
+    "./line/facts": "./line/facts.mjs",
+    "./line/conditions": "./line/conditions.mjs",
+    "./line/records": "./line/records.mjs",
+    "./line/structure": "./line/structure.mjs",
+    "./line/mock-facts": "./line/mockFacts.mjs"
   },
   "files": [
     "*.mjs",

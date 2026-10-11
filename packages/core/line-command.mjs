@@ -5,6 +5,9 @@
 //   construct line spec [--topic <rules|commands|plan|model|modules>] [--id <text>]   the versioned spec (JSON)
 //   construct line misses [--dir <project>] [--threshold <n>] [--draft] [--json]     recurring refusals with no working fix
 //   construct line context [--dir <project>] [--json]                                 the context Line picks for the latest miss
+//   construct line check [--dir <project>] <expr JSON> [--json]                       evaluate an expression on the project's facts
+//   construct line facts [--dir <project>]                                            the facts snapshot (JSON) expressions read
+//   construct line records [--dir <project>] [--json]                                 the plan records kept for training (logic only)
 import path from 'node:path';
 import { findProjectRoot } from './config.mjs';
 import { ConstructError, EXIT_CODES } from './diagnostics.mjs';
@@ -14,6 +17,9 @@ export const LINE_USAGE = [
   '  construct line spec [--topic rules|commands|plan|model|modules] [--id <text>]',
   '  construct line misses [--dir <project>] [--threshold <n>] [--draft] [--json]',
   '  construct line context [--dir <project>] [--json]',
+  '  construct line check [--dir <project>] \'<expression JSON>\' [--json]',
+  '  construct line facts [--dir <project>]',
+  '  construct line records [--dir <project>] [--json]',
 ].join('\n');
 
 const flag = (args, name) => { const i = args.indexOf(name); return i >= 0 && args[i + 1] && !args[i + 1].startsWith('--') ? args[i + 1] : undefined; };
@@ -77,6 +83,36 @@ export async function lineCommand(args) {
     console.log(`Line picked ${pick.files.length} file${pick.files.length === 1 ? '' : 's'} (${pick.via === 'jev' ? 'jev chose among tied candidates' : 'static order'}):`);
     for (const f of pick.files) console.log(`- ${f.file}: ${f.why} ${f.summary.sentence}`);
     if (pick.rules.length) console.log(`Rules: ${pick.rules.join(', ')}.`);
+    return;
+  }
+  if (verb === 'check' || verb === 'facts') {
+    const root = rootOf(rest);
+    const { buildFacts, summarizeFacts, factsHash } = await import('@line/construct-engine/line/facts');
+    const facts = buildFacts(root);
+    if (verb === 'facts') { console.log(JSON.stringify({ hash: factsHash(facts), ...summarizeFacts(facts) }, null, 2)); return; }
+    const dirAt = rest.indexOf('--dir');
+    const text = rest.find((a, i) => !a.startsWith('--') && i !== dirAt + 1);
+    if (!text) throw usage('Give the expression as JSON, for example \'{"exists": {"path": ["files", "features/orders/spec.md"]}}\'.');
+    let expr;
+    try { expr = JSON.parse(text); } catch { throw usage('The expression is not valid JSON.'); }
+    const { evaluate } = await import('@line/construct-engine/line/expr');
+    const r = evaluate(facts, expr);
+    if (rest.includes('--json')) console.log(JSON.stringify(r, null, 2));
+    else if (r.ok) console.log('Holds.');
+    else for (const f of r.failed) console.log(f.sentence);
+    if (!r.ok) process.exitCode = 1;
+    return;
+  }
+  if (verb === 'records') {
+    const root = rootOf(rest);
+    const { readPlanRecords } = await import('@line/construct-engine/line/records');
+    const { records, skipped, file } = readPlanRecords(root);
+    if (rest.includes('--json')) { console.log(JSON.stringify({ ok: true, file, skipped, records }, null, 2)); return; }
+    if (!records.length) { console.log(`There are no plan records in ${file} yet; one is kept each time a change step finishes.`); return; }
+    const passed = records.filter((r) => r.passed === r.checks.length).length;
+    console.log(`${records.length} plan record${records.length === 1 ? '' : 's'} in ${file}: ${passed} passed every check, ${records.filter((r) => r.repaired).length} repaired an earlier step. Names are typed slots; no project name is kept.`);
+    for (const r of records.slice(-5)) console.log(`- ${r.steps[r.step - 1].tool}: ${r.intent} (${r.passed} of ${r.checks.length} checks passed${r.approved ? ', approved by a person' : ''})`);
+    if (skipped) console.log(`${skipped} record line${skipped === 1 ? ' was' : 's were'} unreadable and skipped.`);
     return;
   }
   throw usage(verb ? `"${verb}" is not a line command.` : 'Name a line command.');

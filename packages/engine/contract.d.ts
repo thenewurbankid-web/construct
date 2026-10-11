@@ -100,3 +100,15 @@ export * as lineTrace from './line/trace.mjs';
 export * as lineMissDetector from './line/missDetector.mjs';
 /** `@line/construct-engine/line/context-picker` */
 export * as lineContextPicker from './line/contextPicker.mjs';
+/** `@line/construct-engine/line/expr` */
+export * as lineExpr from './line/expr.mjs';
+/** `@line/construct-engine/line/facts` */
+export * as lineFacts from './line/facts.mjs';
+/** `@line/construct-engine/line/conditions` */
+export * as lineConditions from './line/conditions.mjs';
+/** `@line/construct-engine/line/records` */
+export * as lineRecords from './line/records.mjs';
+/** `@line/construct-engine/line/structure` */
+export * as lineStructure from './line/structure.mjs';
+/** `@line/construct-engine/line/mock-facts` */
+export * as lineMockFacts from './line/mockFacts.mjs';

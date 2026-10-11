@@ -9,7 +9,7 @@ import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import {
   SPEC_FORMAT, SPEC_TOPICS, LINE_PLAN_TOOLS, CHECK_KINDS, PLAN_STEP_STATES, STEP_OPTION_IDS, PLAN_PROTOCOL, LINE_API,
-  LINE_FIX_TOOLS, LINE_KINDS, LEVELS, FRAGMENT_KINDS, TRACE_KINDS, PLAN_REFUSAL_CODES,
+  LINE_FIX_TOOLS, LINE_KINDS, LEVELS, FRAGMENT_KINDS, TRACE_KINDS, PLAN_REFUSAL_CODES, EXPR_JSON_SCHEMA,
 } from './contract.mjs';
 import { DEFAULT_EXPECT, lineToolSpecs } from './planTools.mjs';
 
@@ -91,7 +91,8 @@ export async function buildLineSpec({ sources = {}, repo = REPO } = {}) {
   const topics = {
     rules: [...src.catalogRules.map((r) => ({ id: r.id, module: r.module, layers: r.layers, scope: r.scope, defaultSeverity: r.defaultSeverity, why: r.why, expected: r.expected, fix: r.fix })), ...lineRules]
       .sort((a, b) => a.id.localeCompare(b.id)),
-    commands: { construct: src.commands, line: src.lineTools },
+    // The expression schema is listed once; each line tool's `expect[].expr` refers to it by its $id (one MCP call each).
+    commands: { construct: src.commands, line: src.lineTools, schemas: { [EXPR_JSON_SCHEMA.$id]: EXPR_JSON_SCHEMA } },
     plan: {
       protocol: [...PLAN_PROTOCOL], tools: LINE_PLAN_TOOLS.map((t) => ({ ...t })), stepStates: [...PLAN_STEP_STATES], optionIds: [...STEP_OPTION_IDS],
       checkKinds: [...CHECK_KINDS], defaultExpect: DEFAULT_EXPECT.map((c) => ({ ...c })), fixTools: [...LINE_FIX_TOOLS],
