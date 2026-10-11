@@ -268,5 +268,8 @@ export function copySample() {
 
 /** cp1: every change is a plan step; the owner approves it in the Plan panel (one click) and then it is saved. */
 export async function approveInPlan(page) {
-  await page.getByTestId('line-plan').getByRole('button', { name: /^Approve step/ }).first().click();
+  // The step that waits for approval (it appears in the panel a moment after Save), then its Approve.
+  const waiting = page.getByTestId('line-plan').getByTestId('plan-step').filter({ hasText: 'Waiting for your approval' });
+  await expect(waiting).toHaveCount(1, { timeout: 15_000 });
+  await waiting.getByRole('button', { name: /^Approve step/ }).click();
 }
