@@ -13,7 +13,7 @@ const route = (id, label) => ({ id, label, scope: { layers: ['components'], feat
 const filled = (id, label) => ({ id, label, touches: 'Touches components in orders.', steps: [{ tool: 'line.baseOn', args: {}, sentence: 'Make StatusBadge in orders, based on the library Badge.' }], checks: ['Validate shows no new problems.'], cost: 1, risk: 'low', outcome: 'change', preferred: id === 'a' });
 const draft = {
   request: 'Make <name:N1> in <feature:F1>, based on <library:L1>.', slots: { F1: { type: 'feature', ref: 'feature#1' }, L1: { type: 'library', ref: 'library:components#0', kind: 'components' }, N1: { type: 'name', role: 'status', of: 'L1' } },
-  intent: 'add.component', intentPhrase: 'Add a component to a feature', via: 'retrieval', confidence: 1, unknown: [], routes: [route('a', 'Inside orders only'), route('b', 'Through the library')], recommended: 'a', world: 'sample',
+  intent: 'add.component', intentPhrase: 'Add a component', via: 'retrieval', confidence: 1, unknown: [], routes: [route('a', 'Inside orders only'), route('b', 'Through the library')], recommended: 'a', world: 'sample',
   filled: { request: 'Make StatusBadge in orders, based on Badge.', routes: [filled('a', 'Inside orders only'), filled('b', 'Through the library')] }, values: { F1: 'orders', L1: 'Badge', N1: 'StatusBadge' },
 };
 const choices = {
@@ -67,7 +67,7 @@ test('route cards: valid, starred and Try it result in words; a stored case read
   assert.deepEqual(cards.map((c) => [c.id, c.valid, c.starred, c.starLabel, c.steps_n]), [['a', true, true, '★ Preferred', '1 step'], ['b', false, false, '☆ Prefer this', '1 step']]);
   assert.deepEqual(cards[0].tried.checks, [{ text: 'Fails: X.', ok: false }]);
   assert.equal(caseCards([filled('a', 'x')])[0].chip, 'Preferred');
-  const c = { id: 'tc-1', intent: 'add.component', request: draft.request, slots: draft.slots, world: { kind: 'sample' }, split: 'train', gold: { routes: draft.routes, preferred: 'a' }, labelledBy: 'claude', status: 'draft', notes: [], sample: true, filled: { request: 'Make StatusBadge in orders, based on Badge.', intentPhrase: 'Add a component to a feature', routes: draft.filled.routes, world: 'The Line sample project' } };
+  const c = { id: 'tc-1', intent: 'add.component', request: draft.request, slots: draft.slots, world: { kind: 'sample' }, split: 'train', gold: { routes: draft.routes, preferred: 'a' }, labelledBy: 'claude', status: 'draft', notes: [], sample: true, filled: { request: 'Make StatusBadge in orders, based on Badge.', intentPhrase: 'Add a component', routes: draft.filled.routes, world: 'The Line sample project' } };
   assert.deepEqual([caseView(c).by, caseView(c).canReview, caseView(c).statusLine], ['Proposed by Claude', true, '']);
   const disputed = caseView({ ...c, status: 'disputed', notes: [{ by: 'owner', text: 'Keep it in the feature.', at: 'x' }] });
   assert.deepEqual([disputed.canReview, disputed.statusLine], [false, 'You disagreed: Keep it in the feature.']);

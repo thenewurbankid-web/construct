@@ -73,10 +73,11 @@ export function verifyRoutes(root, routes, bindings, o = {}) {
       const files = new Set();
       for (const s of steps) {
         let res;
-        try { res = runChange(dir, s.tool, s.args, ops); } catch (e) { return { ...r, predicted, status: 'refused', refusal: { sentence: String(/** @type {any} */ (e)?.message ?? e), fix: null } }; }
+        try { res = runChange(dir, s.tool, s.args, ops); } catch (e) { return { ...r, predicted, status: 'refused', refusal: { sentence: String(/** @type {any} */ (e)?.message ?? e), fix: null, code: /** @type {any} */ (e)?.code ?? null, rule: null } }; }
         if (!res.apply.ok) {
           const f = res.options.find((x) => x.id === 'fix' && x.step) ?? res.options.find((x) => x.id === 'fix') ?? null;
-          return { ...r, predicted, status: 'refused', refusal: { sentence: res.apply.sentence, fix: f ? { id: f.fixId ?? 'fix', sentence: f.sentence, step: f.step ?? null } : null } };
+          const first = res.apply.findings.find((x) => x.severity === 'error') ?? res.apply.findings[0];
+          return { ...r, predicted, status: 'refused', refusal: { sentence: res.apply.sentence, fix: f ? { id: f.fixId ?? 'fix', sentence: f.sentence, step: f.step ?? null } : null, code: res.apply.code ?? null, rule: first?.rule ?? null } };
         }
         for (const x of res.apply.files) files.add(x);
       }

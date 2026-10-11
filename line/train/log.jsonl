@@ -550,3 +550,4 @@
 {"at":"2026-10-11T02:40:49.774Z","by":"claude","action":"propose","caseId":"tc-4677da226562","note":"generated and verified by packages/tools/line-train/seed.mjs"}
 {"at":"2026-10-11T02:40:49.774Z","by":"claude","action":"propose","caseId":"tc-55ee88c0bb91","note":"generated and verified by packages/tools/line-train/seed.mjs"}
 {"at":"2026-10-11T02:40:49.774Z","by":"claude","action":"propose","caseId":"tc-d13241d42cd9","note":"generated and verified by packages/tools/line-train/seed.mjs"}
+{"at":"2026-10-11T04:00:22.840Z","by":"claude","action":"reverify","note":"552 cases re-verified in scratch copies; 0 dropped"}

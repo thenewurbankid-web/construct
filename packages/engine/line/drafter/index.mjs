@@ -34,15 +34,17 @@ export function staticRank(routes) {
  * Draft every route for a request on the project at `root`.
  * @param {string} root
  * @param {string} request
- * @param {{catalog?: import('./contract.mjs').IntentEntry[], verify?: boolean, ranker?: (routes: import('./contract.mjs').Route[]) => string[], propose?: (word: string, choices: {key: string, label: string}[]) => string|null, records?: import('./contract.mjs').TransitionRecord[]|null, maxVerify?: number}} [o]
+ * @param {{catalog?: import('./contract.mjs').IntentEntry[], verify?: boolean, ranker?: (routes: import('./contract.mjs').Route[]) => string[], propose?: (word: string, choices: {key: string, label: string}[]) => string|null, records?: import('./contract.mjs').TransitionRecord[]|null, maxVerify?: number, synonyms?: Record<string, string>}} [o]
+ *   `synonyms`: confirmed synonyms kept outside the project (word -> domain-map key), e.g. Train Line's per-world ones.
  *   `ranker`: jev's ranking (ids, best first); it only orders. `records`: training records (default: the project's own).
- * @returns {import('./contract.mjs').Draft & {questions: any[], shown: {request: string}}}
+ * @returns {import('./contract.mjs').Draft & {questions: any[], shown: {request: string}, tokens: {t: string, slot?: string, kind?: string, src: string[]}[], entries: Record<string, string>}}
+ *   `tokens` and `entries` are the live normalization (they hold the request's own words: shown, never stored).
  */
 export function draft(root, request, o = {}) {
   const catalog = o.catalog ?? buildIntentCatalog(LINE_PLAN_TOOLS.map((t) => t.name));
   const project = readLineProject(root);
   const summary = factsSummary(root, project);
-  const map = buildDomainMap(root, summary);
+  const map = buildDomainMap(root, summary, { synonyms: o.synonyms });
   const n = normalize(request, map, { propose: o.propose });
   const graph = structureGraph(project, readerOf(root));
   const roles = rolesOf(graph);
@@ -93,7 +95,7 @@ export function draft(root, request, o = {}) {
           : { to: null, sentence: rec.invented.length ? 'The static drafter is confident; a rule made up the new name, which you can change or let a local model suggest.' : 'The static drafter is confident; no model is needed.' };
   return {
     request: n.text, slots: ctx.slots, labels, from, routes, dropped, recommended: rec?.id ?? null, defer, bindings,
-    questions: n.questions, shown: { request: String(request) },
+    questions: n.questions, shown: { request: String(request) }, tokens: n.tokens, entries: n.entries,
   };
 }
 

@@ -90,9 +90,11 @@ const mapFile = (summary) => `${summary.layout.state || 'line'}/domain-map.json`
  * a synonym whose target no longer exists is dropped.
  * @param {string} root
  * @param {ReturnType<typeof import('../facts.mjs').factsSummary>} summary
+ * @param {{synonyms?: Record<string, string>}} [o]  `synonyms`: more confirmed synonyms (word -> entry key), kept
+ *   elsewhere (Train Line keeps an imaginary world's synonyms in its own store).
  * @returns {DomainMap}
  */
-export function buildDomainMap(root, summary) {
+export function buildDomainMap(root, summary, o = {}) {
   /** @type {MapEntry[]} */
   const entries = [];
   const add = (key, type, value, name) => { if (!entries.some((e) => e.key === key)) entries.push({ key, type, value, forms: formsOf(name) }); };
@@ -118,6 +120,7 @@ export function buildDomainMap(root, summary) {
   /** @type {Record<string, string>} */
   let synonyms = {};
   try { synonyms = JSON.parse(fs.readFileSync(path.join(root, mapFile(summary)), 'utf8')).synonyms ?? {}; } catch { /* no saved map yet */ }
+  synonyms = { ...synonyms, ...Object.fromEntries(Object.entries(o.synonyms ?? {}).map(([w, k]) => [String(w).toLowerCase(), k])) };
   const keys = new Set(entries.map((e) => e.key));
   synonyms = Object.fromEntries(Object.entries(synonyms).filter(([, k]) => keys.has(k)).sort());
   const stamp = crypto.createHash('sha256').update(JSON.stringify(entries.map((e) => e.key))).digest('hex').slice(0, 12);
@@ -176,10 +179,11 @@ const label = (e) => (e.type === 'feature' ? `the ${e.value.name} feature` : e.t
  * @param {DomainMap} map
  * @param {{propose?: (word: string, choices: {key: string, label: string}[]) => string|null, lexicon?: boolean}} [o]
  *   `propose`: a local model's guess (an entry key) for an unknown word, shown as a one-click confirm (via "model").
- * @returns {{text: string, tokens: {t: string, slot?: string, kind?: string}[], bindings: Record<string, any>, entries: Record<string, string>, ambiguous: Record<string, string[]>, questions: {slot: string, word: string, sentence: string, choices: {key: string, label: string}[], suggested: string|null, via: 'map'|'lexicon'|'model'|'ask'}[], fully: boolean}}
+ *   Each token keeps `src`, the words of the request it stands for (as typed), so a caller can rebuild the sentence.
+ * @returns {{text: string, tokens: {t: string, slot?: string, kind?: string, src: string[]}[], bindings: Record<string, any>, entries: Record<string, string>, ambiguous: Record<string, string[]>, questions: {slot: string, word: string, sentence: string, choices: {key: string, label: string}[], suggested: string|null, via: 'map'|'lexicon'|'model'|'ask'}[], fully: boolean}}
  */
 export function normalize(request, map, o = {}) {
-  /** @type {{t: string, slot?: string, kind?: string, raw?: string}[]} */
+  /** @type {{t: string, slot?: string, kind?: string, raw?: string, src: string[]}[]} */
   const tokens = [];
   /** @type {Record<string, any>} */
   /** @type {Record<string, any>} */
@@ -198,13 +202,13 @@ export function normalize(request, map, o = {}) {
   const pieces = String(request).split(/(`[^`]*`|"[^"]*"|“[^”]*”|(?<=^|\s)'[^']*'(?=\s|$|[.,!?]))/);
   for (const piece of pieces) {
     if (!piece) continue;
-    if (/^`.*`$/s.test(piece)) { const s = slotFor('K'); bindings[s] = piece.slice(1, -1); tokens.push({ t: `<code:${s}>`, slot: s, kind: 'code' }); continue; }
-    if (/^(["“']).*(["”'])$/s.test(piece)) { const s = slotFor('V'); bindings[s] = piece.slice(1, -1); tokens.push({ t: `<value:${s}>`, slot: s, kind: 'value' }); continue; }
+    if (/^`.*`$/s.test(piece)) { const s = slotFor('K'); bindings[s] = piece.slice(1, -1); tokens.push({ t: `<code:${s}>`, slot: s, kind: 'code', src: [piece] }); continue; }
+    if (/^(["“']).*(["”'])$/s.test(piece)) { const s = slotFor('V'); bindings[s] = piece.slice(1, -1); tokens.push({ t: `<value:${s}>`, slot: s, kind: 'value', src: [piece] }); continue; }
     for (const raw of piece.split(/\s+/)) {
       const w = raw.replace(/^[^A-Za-z0-9-]+|[^A-Za-z0-9]+$/g, '');
       if (!w) continue;
-      if (/^-?\d+(\.\d+)?$/.test(w)) { const s = slotFor('V'); bindings[s] = Number(w); tokens.push({ t: `<value:${s}>`, slot: s, kind: 'value' }); continue; }
-      tokens.push({ t: w.toLowerCase(), raw: w });
+      if (/^-?\d+(\.\d+)?$/.test(w)) { const s = slotFor('V'); bindings[s] = Number(w); tokens.push({ t: `<value:${s}>`, slot: s, kind: 'value', src: [w] }); continue; }
+      tokens.push({ t: w.toLowerCase(), raw: w, src: [w] });
     }
   }
 
@@ -253,7 +257,7 @@ export function normalize(request, map, o = {}) {
         if (n === 1 && GRAMMAR.has(phrase) && !map.synonyms[phrase]) keys = [];
         if (!keys.length) continue;
         const s = useEntry(keys);
-        tokens.splice(i, n, { t: `<${typeName(s)}:${s}>`, slot: s, kind: typeName(s) });
+        tokens.splice(i, n, { t: `<${typeName(s)}:${s}>`, slot: s, kind: typeName(s), src: span.flatMap((x) => x.src) });
         break;
       }
     }
@@ -276,7 +280,7 @@ export function normalize(request, map, o = {}) {
         const s = slotFor('N');
         const words = tokens.slice(i, j + 1).map((t) => t.t);
         bindings[s] = kindAfter === 'feature' ? words.join('-') : kindAfter === 'pages' || kindAfter === 'components' ? `${words.map(pascal).join('')}${tokens[j + 1].t !== 'component' ? pascal(tokens[j + 1].t) : ''}` : words.map((w, k) => (k ? pascal(w) : w)).join('');
-        tokens.splice(i, j - i + 1, { t: `<new:${s}>`, slot: s, kind: 'new' });
+        tokens.splice(i, j - i + 1, { t: `<new:${s}>`, slot: s, kind: 'new', src: tokens.slice(i, j + 1).flatMap((x) => x.src) });
         continue;
       }
     }
@@ -284,20 +288,28 @@ export function normalize(request, map, o = {}) {
     if (/^(called|named)$/.test(prev) || (creating && article && (kindNext || kindPrev))) {
       const s = slotFor('N');
       const kind = /^(called|named)$/.test(prev) ? KIND_WORDS[tokens[i - 2]?.t ?? ''] ?? null : kindNext ?? kindPrev;
-      bindings[s] = /^(called|named)$/.test(prev) ? x.raw : kind === 'feature' ? x.t : kind === 'pages' || kind === 'components' ? `${pascal(x.t)}${kindNext && next !== 'component' ? pascal(next) : ''}` : x.t;
-      tokens[i] = { t: `<new:${s}>`, slot: s, kind: 'new' };
+      // A name typed as a name ("a FastCheckout flow") is kept as typed.
+      bindings[s] = /^(called|named)$/.test(prev) || /^[A-Z][a-z0-9]+(?:[A-Z][a-z0-9]+)+$/.test(x.raw ?? '') ? x.raw : kind === 'feature' ? x.t : kind === 'pages' || kind === 'components' ? `${pascal(x.t)}${kindNext && next !== 'component' ? pascal(next) : ''}` : x.t;
+      tokens[i] = { t: `<new:${s}>`, slot: s, kind: 'new', src: x.src };
+      continue;
+    }
+    // A name typed as one PascalCase word that names nothing here ("StatusBadge") is a NEW name, kept as typed.
+    if (/^[A-Z][a-z0-9]+(?:[A-Z][a-z0-9]+)+$/.test(x.raw ?? '')) {
+      const s = slotFor('N');
+      bindings[s] = x.raw;
+      tokens[i] = { t: `<new:${s}>`, slot: s, kind: 'new', src: x.src };
       continue;
     }
     // A weak source (a label, a route path, spec text) points at one thing: that thing's slot.
     const weak = map.weak[x.t] ?? map.weak[singular(x.t)];
     if (weak && weak.length === 1 && byKey.has(weak[0])) {
       const s = useEntry(weak);
-      tokens[i] = { t: `<${typeName(s)}:${s}>`, slot: s, kind: typeName(s) };
+      tokens[i] = { t: `<${typeName(s)}:${s}>`, slot: s, kind: typeName(s), src: x.src };
       continue;
     }
     const s = slotFor('U');
     bindings[s] = x.t;
-    tokens[i] = { t: `<unknown:${s}>`, slot: s, kind: 'unknown' };
+    tokens[i] = { t: `<unknown:${s}>`, slot: s, kind: 'unknown', src: x.src };
     const near = map.entries.map((e) => ({ e, d: Math.min(...e.forms.map((f) => distance(x.t, f))) })).filter((c) => c.d <= Math.max(1, Math.floor(x.t.length / 4))).sort((a, b) => a.d - b.d || PRIORITY[a.e.type] - PRIORITY[b.e.type]).slice(0, 3);
     let suggested = near[0]?.e.key ?? null; let via = /** @type {'map'|'lexicon'|'model'|'ask'} */ (suggested ? 'map' : 'ask');
     if (!suggested && o.lexicon !== false) { const lx = suggestFromLexicon(x.t, map); if (lx) { suggested = lx; via = 'lexicon'; } }
@@ -306,7 +318,7 @@ export function normalize(request, map, o = {}) {
     const choices = choiceKeys.filter((k) => byKey.has(k)).map((k) => ({ key: k, label: label(byKey.get(k)) }));
     questions.push({ slot: s, word: x.t, sentence: suggested ? `Did you mean ${label(byKey.get(suggested))} by "${x.t}"?` : `Which part of the project do you mean by "${x.t}"?`, choices, suggested, via });
   }
-  return { text: tokens.map((x) => x.t).join(' '), tokens: tokens.map(({ t, slot, kind }) => ({ t, ...(slot ? { slot, kind } : {}) })), bindings, entries, ambiguous, questions, fully: questions.length === 0 };
+  return { text: tokens.map((x) => x.t).join(' '), tokens: tokens.map(({ t, slot, kind, src }) => ({ t, ...(slot ? { slot, kind } : {}), src })), bindings, entries, ambiguous, questions, fully: questions.length === 0 };
 }
 
 /**

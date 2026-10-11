@@ -109,6 +109,79 @@ export function buildIntentCatalog(toolNames) {
   return out;
 }
 
+/** How each verb of the catalog reads at the start of a phrase. */
+const VERB_PHRASE = Object.freeze({ add: 'Add', update: 'Change', remove: 'Remove', rename: 'Rename', move: 'Move', promote: 'Move into the library', 'base-on': 'Base on the library', wire: 'Wire up', split: 'Split', merge: 'Merge', fix: 'Fix' });
+/** How each structural object of the catalog reads. */
+const OBJECT_PHRASE = Object.freeze({
+  variable: 'a variable', prop: 'a value on a page', handler: 'what a page does on an action', page: 'a page', component: 'a component',
+  'feature-flow': 'a feature\'s flow', workflow: 'a flow', 'workflow-step': 'a step of a flow', service: 'a service', 'data-shape': 'a data shape',
+  route: 'a route', fixture: 'sample data', test: 'a test', feature: 'a feature', 'library-item': 'a library item', layout: 'the layout', problem: 'a reported problem',
+});
+
+/**
+ * An intent id as a plain phrase: "add.component" -> "Add a component", "promote.component" -> "Move a component into
+ * the library". Unknown ids come back as they are.
+ * @param {string} id
+ * @returns {string}
+ */
+export function intentPhrase(id) {
+  const [verb, object] = String(id).split('.');
+  if (!VERB_PHRASE[verb] || !OBJECT_PHRASE[object]) return String(id);
+  if (verb === 'promote') return `Move ${OBJECT_PHRASE[object]} into the library`;
+  if (verb === 'base-on') return `Base ${OBJECT_PHRASE[object]} on the library`;
+  return `${VERB_PHRASE[verb]} ${OBJECT_PHRASE[object]}`;
+}
+
+// ------------------------------------------------------------------------------------------------ gold routes
+/** What a stored (gold) route says Line should do. */
+export const GOLD_OUTCOMES = Object.freeze(['change', 'refusal', 'question']);
+
+/**
+ * A route as a training case stores it (Train Line's gold; the drafter's Route reduced to what a person judges):
+ * slotted, never a project name. `outcome` says what Line should do: make the change, refuse it, or ask first.
+ * @typedef {object} GoldRoute
+ * @property {string} id
+ * @property {string} label      Plain English, slotted: "Inside <feature:F1> only".
+ * @property {{layers: string[], features: string[], library: boolean}} scope  What it touches (layers as Line kinds, features as slot names).
+ * @property {{tool: string, args: Record<string, unknown>}[]} steps  Slotted args ("<feature:F1>", whole or inside a string).
+ * @property {object[]} expect   Expressions of Line's one language (../contract.mjs LineExpr, its named checks), slotted.
+ * @property {number} cost       Number of steps.
+ * @property {'low'|'medium'|'high'} risk  low: one feature; medium: the library (every feature that uses it).
+ * @property {'change'|'refusal'|'question'} outcome
+ * @property {{code?: string, rule?: string, fixes?: boolean}} [refusal]  A refusal route: what Construct must say.
+ * @property {{about: string, sentence: string, tool?: string, args?: Record<string, unknown>}} [question]  A question route: what Line must ask (slotted sentence).
+ */
+
+const GOLD_SLOT = /<([a-z]+):([A-Z][A-Za-z]*\d+)>/g;
+
+/**
+ * Throws unless r is a GoldRoute whose tools are in `tools` and whose every slot is declared in `slots`.
+ * @param {any} r @param {Record<string, any>} slots @param {readonly string[]} tools @param {string} [where]
+ * @returns {void}
+ */
+export function assertGoldRoute(r, slots, tools, where = 'route') {
+  const str = (v, at) => { if (typeof v !== 'string' || !v.length) fail(at, 'must be a non-empty string'); };
+  str(r?.id, `${where}.id`);
+  str(r.label, `${where}.label`);
+  if (!GOLD_OUTCOMES.includes(r.outcome)) fail(`${where}.outcome`, 'must be change, refusal or question');
+  if (!Array.isArray(r.steps)) fail(`${where}.steps`, 'must be an array');
+  if (r.outcome === 'change' && r.steps.length === 0) fail(`${where}.steps`, 'a change route has at least one step');
+  if (r.outcome === 'question' && r.steps.length !== 0) fail(`${where}.steps`, 'a question route has no steps');
+  if (r.outcome === 'question') { str(r.question?.about, `${where}.question.about`); sentence(r.question.sentence, `${where}.question.sentence`); }
+  if (r.outcome === 'refusal' && !r.refusal?.code && !r.refusal?.rule) fail(`${where}.refusal`, 'must name the code or the rule Construct refuses with');
+  r.steps.forEach((s, i) => {
+    if (!tools.includes(s.tool)) fail(`${where}.steps[${i}].tool`, `must be one of ${tools.join(', ')}`);
+    if (!s.args || typeof s.args !== 'object') fail(`${where}.steps[${i}].args`, 'must be an object');
+  });
+  if (!Array.isArray(r.expect)) fail(`${where}.expect`, 'must be an array');
+  if (r.outcome === 'change' && r.expect.length === 0) fail(`${where}.expect`, 'a change route has at least one check');
+  r.expect.forEach((e, i) => assertExpr(e, `${where}.expect[${i}]`));
+  if (r.cost !== r.steps.length) fail(`${where}.cost`, 'is the number of steps');
+  if (!['low', 'medium', 'high'].includes(r.risk)) fail(`${where}.risk`, 'must be low, medium or high');
+  if (!r.scope || !Array.isArray(r.scope.layers) || !Array.isArray(r.scope.features) || typeof r.scope.library !== 'boolean') fail(`${where}.scope`, 'must be {layers, features, library}');
+  for (const m of JSON.stringify(r).matchAll(GOLD_SLOT)) if (!slots[m[2]]) fail(where, `uses slot ${m[2]}, which the case does not declare`);
+}
+
 // ------------------------------------------------------------------------------------------------ expressions
 // A route's `expect` and `pre` are expressions of Line's one expression language (../contract.mjs LineExpr, evaluated
 // by ../expr.mjs over ../facts.mjs buildFacts), written with its named checks (EXPR_CHECKS: hasItem, hasLibrary,
@@ -165,7 +238,7 @@ export const EDGE_TYPES = Object.freeze(['base', 'import']);
  * @property {'template'|'retrieval'|'model'} via
  * @property {number} confidence  0..1
  * @property {string} status      ROUTE_STATUS
- * @property {{sentence: string, fix: {id: string, sentence: string, step: {tool: string, args: Record<string, unknown>}|null}|null}|null} refusal
+ * @property {{sentence: string, fix: {id: string, sentence: string, step: {tool: string, args: Record<string, unknown>}|null}|null, code?: string|null, rule?: string|null}|null} refusal  `code`: Construct's refusal code; `rule`: the first error finding's rule.
  * @property {string[]} invented  Slots a rule made up (a new name); Qwen may propose better ones.
  * @property {string[]} failed    Expectation sentences that did not hold after verification.
  */

@@ -3,16 +3,20 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  TRAIN_TOOLS, INTENTS, INTENT_IDS, TRAIN_API, assertTrainCase, assertTrainRoute, assertTryResult, assertScoreboard, assertDelexicalized, slotNamesIn,
+  TRAIN_TOOLS, TRAIN_INTENTS, INTENT_IDS, TRAIN_INTENT_MAP, TRAIN_API, assertTrainCase, assertTrainRoute, assertTryResult, assertScoreboard, assertDelexicalized, slotNamesIn,
 } from '../packages/engine/line/train/contract.mjs';
 import { createMockTrainService } from '../packages/engine/line/train/mock.mjs';
 import { evaluate, describe } from '../packages/engine/line/expr.mjs';
+import { buildIntentCatalog } from '../packages/engine/line/drafter/contract.mjs';
+import { LINE_PLAN_TOOLS } from '../packages/engine/line/contract.mjs';
 
-test('train contract: only the five solid Line tools are offered, and every intent has a plain phrase and a family', () => {
+test('train contract: only the five solid Line tools are offered; the intents are the drafter catalog\'s, each with a plain phrase and a family', () => {
   assert.deepEqual(TRAIN_TOOLS, ['line.baseOn', 'line.promote', 'line.setPageProp', 'line.setFragment', 'line.fix']);
-  assert.equal(new Set(INTENT_IDS).size, INTENTS.length);
-  for (const i of INTENTS) {
-    assert.match(i.id, /^[a-z]+\.[a-z-]+$/);
+  assert.equal(new Set(INTENT_IDS).size, TRAIN_INTENTS.length);
+  const catalog = new Set(buildIntentCatalog(LINE_PLAN_TOOLS.map((t) => t.name)).map((e) => e.id));
+  for (const id of [...INTENT_IDS, ...Object.values(TRAIN_INTENT_MAP)]) assert.ok(catalog.has(id) && INTENT_IDS.includes(id), id);
+  for (const i of TRAIN_INTENTS) {
+    assert.match(i.id, /^[a-z-]+\.[a-z-]+$/);
     assert.match(i.phrase, /^[A-Z][^.]*$/);
     assert.ok([...TRAIN_TOOLS, 'none'].includes(i.family));
   }

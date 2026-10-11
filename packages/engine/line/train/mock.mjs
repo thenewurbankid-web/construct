@@ -1,7 +1,7 @@
 // Train Line mock: the service's shape in memory, no disk, no scratch copies (for the contract tests and for building
 // a client against). Same answers as the real service would give on the Line sample for its two fixed cases.
 import { LineOpError } from '../contract.mjs';
-import { INTENTS } from './contract.mjs';
+import { intentPhrase } from '../drafter/contract.mjs';
 
 const ROUTE = {
   id: 'inside', label: 'Inside <feature:F1> only', scope: { layers: ['components'], features: ['F1'], library: false },
@@ -15,7 +15,7 @@ const baseCase = (id, labelledBy) => ({
   sample: labelledBy === 'claude', verified: { routes: { inside: { ok: true, at: '2026-10-11T00:00:00.000Z' } } }, createdAt: '2026-10-11T00:00:00.000Z',
 });
 const FILLED_ROUTE = { id: 'inside', label: 'Inside orders only', touches: 'Touches components in orders.', steps: [{ tool: 'line.baseOn', args: { libraryId: 'components/Badge', feature: 'orders', name: 'StatusBadge' }, sentence: 'Make StatusBadge in orders, based on the library Badge.' }], checks: ['orders has a component StatusBadge.', 'Validate shows no new problems.'], cost: 1, risk: 'low', outcome: 'change', preferred: true };
-const view = (c) => ({ ...c, filled: { request: 'Make StatusBadge in orders, based on Badge.', intentPhrase: INTENTS[0].phrase, routes: [FILLED_ROUTE], world: 'The Line sample project' } });
+const view = (c) => ({ ...c, filled: { request: 'Make StatusBadge in orders, based on Badge.', intentPhrase: intentPhrase('add.component'), routes: [FILLED_ROUTE], world: 'The Line sample project' } });
 
 /**
  * The Train Line service in memory: one Claude case on the sample, owner-only review, a fixed draft and try.
@@ -33,7 +33,7 @@ export function createMockTrainService() {
     },
     draft: ({ request }) => {
       if (!request || request.trim().length < 3) throw new LineOpError('Type what you want Line to do, in a sentence.', 'NO_REQUEST');
-      return { request: 'Make <name:N1> in <feature:F1>, based on <library:L1>.', slots: SLOTS, intent: 'add.component', intentPhrase: INTENTS[0].phrase, via: 'template', confidence: 0.3, unknown: [], routes: [ROUTE], recommended: 'inside', world: 'sample', filled: { request: 'Make StatusBadge in orders, based on Badge.', routes: [{ ...FILLED_ROUTE, via: 'template', confidence: 0.3 }] } };
+      return { request: 'Make <name:N1> in <feature:F1>, based on <library:L1>.', slots: SLOTS, intent: 'add.component', intentPhrase: intentPhrase('add.component'), via: 'template', confidence: 0.3, unknown: [], routes: [ROUTE], recommended: 'inside', world: 'sample', filled: { request: 'Make StatusBadge in orders, based on Badge.', routes: [{ ...FILLED_ROUTE, via: 'template', confidence: 0.3 }] } };
     },
     try: () => ({ ok: true, sentence: 'It works in a scratch copy: 2 of 2 checks pass.', steps: [{ sentence: 'Created StatusBadge.', ok: true }], checks: [{ sentence: 'orders has a component StatusBadge.', ok: true }, { sentence: 'Validate shows no new problems.', ok: true }] }),
     save: (input) => { const c = { ...baseCase(`tc-mock-${cases.length}`, 'owner'), intent: input.intent }; cases.push(c); log.push({ by: 'owner', action: 'save', caseId: c.id }); return { case: view(c) }; },
@@ -50,7 +50,7 @@ export function createMockTrainService() {
       const agreed = cases.filter((c) => c.sample && c.status === 'agreed').length;
       const disagreed = cases.filter((c) => c.sample && c.status === 'disputed').length;
       const row = { cases: cases.length, heldout: 0, recall: null, precision: null, preferred: null, noRepair: null, sampled: 1, agreed, disagreed, agreement: agreed + disagreed ? agreed / (agreed + disagreed) : null };
-      return { ok: true, lastRun: null, byFamily: { 'line.baseOn': { ...row, label: 'Make from the library' } }, byIntent: { 'add.component': { ...row, label: INTENTS[0].phrase } }, total: row, sentence: 'No eval has run yet; press Run eval.' };
+      return { ok: true, lastRun: null, byFamily: { 'line.baseOn': { ...row, label: 'Make from the library' } }, byIntent: { 'add.component': { ...row, label: intentPhrase('add.component') } }, total: row, sentence: 'No eval has run yet; press Run eval.' };
     },
   };
 }

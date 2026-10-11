@@ -1,6 +1,7 @@
-// Train Line: for every intent of the catalog, its request wordings (paraphrases, slotted), the slot choices a world
-// offers, and every valid route (slotted). The generator (generate.mjs) uses all three; the drafter mirror uses the
-// wordings and routes. Nothing here names a project or domain word: names are slots (slots.mjs).
+// Train Line: for every case family, its request wordings (paraphrases, slotted), the slot choices a world offers, and
+// every valid route (slotted). The generator (generate.mjs) uses all three. Nothing here names a project or domain
+// word: names are slots (slots.mjs).
+import { TRAIN_INTENT_MAP } from './contract.mjs';
 const NO_NEW = { noNewFindings: true };
 const ROLES = ['status', 'summary', 'primary', 'compact', 'header'];
 const TEXT_ROLES = ['all', 'open', 'recent', 'my'];
@@ -40,10 +41,11 @@ function choicesOf(facts) {
 }
 
 /**
- * Every intent: request wordings, the slot sets a world offers (each a separate case), and the valid routes.
- * `variants` says which world variants the intent is generated on.
+ * Every case family: request wordings, the slot sets a world offers (each a separate case), and the valid routes.
+ * `variants` says which world variants the family is generated on. The keys are Train Line's first intent ids; each
+ * family's cases carry `intent`, the drafter catalog's id it maps to (contract.mjs TRAIN_INTENT_MAP).
  */
-export const INTENT_DEFS = Object.freeze({
+const DEFS = {
   'add.component': {
     variants: ['clean'],
     wordings: [
@@ -318,10 +320,12 @@ export const INTENT_DEFS = Object.freeze({
       return { routes: [route('ask', 'Ask which library item to start from', [], [], { outcome: 'question', features: ['F1'], question: { about: 'library', sentence: 'Which library item should the new part of <feature:F1> be based on?', tool: 'line.baseOn', args: { feature: '<feature:F1>' } } })], preferred: 'ask' };
     },
   },
-});
+};
+/** The case families, each with the drafter catalog intent its cases carry. */
+export const INTENT_DEFS = Object.freeze(Object.fromEntries(Object.entries(DEFS).map(([family, def]) => [family, Object.freeze({ ...def, intent: TRAIN_INTENT_MAP[family] })])));
 
 /**
- * The gold of one intent and wording shape, with the plan-only `layer` hints removed.
+ * The gold of one case family and wording shape, with the plan-only `layer` hints removed.
  * @param {string} intent @param {string} shape
  * @returns {{routes: any[], preferred: string}}
  */

@@ -5,9 +5,9 @@
 //   cases       packages/engine/line/train/store.mjs     line/train/cases.jsonl + log.jsonl, through Construct's writer
 //   worlds      packages/engine/line/train/corpus.mjs    imaginary Line projects (scratch only, never a real project)
 //   verify      packages/engine/line/train/verify.mjs    "Try it": a route's steps in a scratch copy, its checks
-//   drafter     packages/engine/line/train/drafterMirror.mjs   MIRROR of the drafter contract; replace on merge
+//   drafter     packages/engine/line/train/draft.mjs       the real System 1 drafter (../drafter), in case form
 //   checks      packages/engine/line/expr.mjs               Line's one expression language (named checks)
-//   intents     INTENTS below                                  MIRROR of the drafter's intent catalog; replace on merge
+//   intents     TRAIN_INTENTS below                            the drafter's one intent catalog, narrowed to the five tools
 //   server      ui/server/src/lineTrainApi.mjs           TRAIN_API under /api/line/train
 //   agents      packages/mcp/src/train.mjs               train_propose_case, train_list_cases, train_run_eval
 //
@@ -20,6 +20,9 @@
 //   typed fixes when it names a rule).
 // - Claude proposes (labelledBy 'claude', status 'draft'); only the owner moves a case to 'agreed' or 'disputed'.
 //   Every change is logged with who made it.
+
+import { LINE_PLAN_TOOLS } from '../contract.mjs';
+import { buildIntentCatalog, intentPhrase, TEMPLATES, assertGoldRoute } from '../drafter/contract.mjs';
 
 /** The five solid tools: the only ones Train Line offers. */
 export const TRAIN_TOOLS = Object.freeze(['line.baseOn', 'line.promote', 'line.setPageProp', 'line.setFragment', 'line.fix']);
@@ -35,24 +38,35 @@ export const TOOL_FAMILY_LABEL = Object.freeze({
 });
 
 /**
- * MIRROR of the drafter's closed intent catalog (verb x structural object, stable ids); replace on merge.
- * `family` is the tool family the intent's preferred route uses ('none' for a refusal or a question).
+ * The intents Train Line offers: the System 1 drafter's one intent catalog (../drafter/contract.mjs, verb x object,
+ * stable ids), narrowed to the intents a template satisfies with Train Line's five tools. `family` is the tool of that
+ * template (the scoreboard's tool family); `phrase` is the catalog's plain phrase.
  */
-export const INTENTS = Object.freeze([
-  { id: 'add.component', phrase: 'Add a component to a feature', family: 'line.baseOn' },
-  { id: 'add.page', phrase: 'Add a page to a feature', family: 'line.baseOn' },
-  { id: 'add.flow', phrase: 'Add a flow to a feature', family: 'line.baseOn' },
-  { id: 'add.sample-data', phrase: 'Add sample data to a feature', family: 'line.baseOn' },
-  { id: 'share.item', phrase: 'Share a feature\'s item with other features', family: 'line.promote' },
-  { id: 'move.item-to-library', phrase: 'Move a feature\'s item into the library', family: 'line.promote' },
-  { id: 'update.page-text', phrase: 'Change a text on a page', family: 'line.setPageProp' },
-  { id: 'update.variable', phrase: 'Update a value on a page', family: 'line.setPageProp' },
-  { id: 'update.feature-flow', phrase: 'Update what a feature\'s page does', family: 'line.setFragment' },
-  { id: 'fix.problem', phrase: 'Fix a reported problem', family: 'line.fix' },
-  { id: 'refuse.not-possible', phrase: 'Something Line must refuse', family: 'none' },
-  { id: 'ask.missing-detail', phrase: 'Something Line must ask about first', family: 'none' },
-]);
-export const INTENT_IDS = Object.freeze(INTENTS.map((i) => i.id));
+export const TRAIN_INTENTS = Object.freeze(buildIntentCatalog(LINE_PLAN_TOOLS.map((t) => t.name)).flatMap((e) => {
+  const t = e.templates.find((name) => TEMPLATES[name].tools.length && TEMPLATES[name].tools.every((x) => TRAIN_TOOLS.includes(x)));
+  return t ? [Object.freeze({ id: e.id, phrase: intentPhrase(e.id), family: TEMPLATES[t].tools.at(-1) })] : [];
+}));
+export const INTENT_IDS = Object.freeze(TRAIN_INTENTS.map((i) => i.id));
+
+/**
+ * Train Line's first, mirrored intent ids (before 2026-10-11) -> the drafter's catalog ids. A refusal or a question is
+ * an outcome of a route, not an intent: those cases keep the intent of what was asked ("Make X based on a missing
+ * library item" is still add.component).
+ */
+export const TRAIN_INTENT_MAP = Object.freeze({
+  'add.component': 'add.component',
+  'add.page': 'add.page',
+  'add.flow': 'add.workflow',
+  'add.sample-data': 'add.fixture',
+  'share.item': 'promote.component',
+  'move.item-to-library': 'promote.component',
+  'update.page-text': 'update.prop',
+  'update.variable': 'update.prop',
+  'update.feature-flow': 'update.handler',
+  'fix.problem': 'fix.problem',
+  'refuse.not-possible': 'add.component',
+  'ask.missing-detail': 'add.component',
+});
 
 /** Slot types. `ref` points into the world's facts by position; `role` is a structural word, never a domain word. */
 export const SLOT_TYPES = Object.freeze(['feature', 'library', 'item', 'name', 'text', 'number', 'fragment', 'code', 'finding', 'fix', 'missing']);
@@ -66,28 +80,14 @@ export const SLOT_TYPES = Object.freeze(['feature', 'library', 'item', 'name', '
  * @property {string} [kind]     Line kind (components, pages, workflows, fixtures) where it matters.
  * @property {string} [role]     A structural role word for a new name ("status", "summary"): the name is Role + the name of `of`.
  * @property {string} [of]       Another slot this one is derived from (a name from a library item, a fix of a finding, a fragment of an item).
+ * @property {string} [from]     A name slot only: a feature slot whose name comes first ("OrdersBadge" = orders + Badge, as the drafter names things).
  * @property {number} [rank]     A fix slot: the fix's rank among the finding's typed fixes (1 = recommended).
  * @property {string|number|boolean} [literal]  A value typed by the owner that names nothing in the facts (numbers, plain words).
  */
 
 /**
- * One step of a route, args slotted ("<feature:F1>"; a whole-arg slot or a slot inside a string).
- * @typedef {{tool: string, args: Record<string, unknown>}} TrainStep
- */
-
-/**
- * One way to do a request. `outcome` says what Line should do: make the change, refuse it, or ask first.
- * @typedef {object} TrainRoute
- * @property {string} id
- * @property {string} label      Plain English, slotted: "Inside <feature:F1> only".
- * @property {{layers: string[], features: string[], library: boolean}} scope  What it touches (features as slot names).
- * @property {TrainStep[]} steps
- * @property {object[]} expect   Expressions (Line's one expression language, ../expr.mjs; its named checks) that define done; slotted.
- * @property {number} cost       Number of steps.
- * @property {'low'|'medium'|'high'} risk  low: one feature; medium: the library (every feature that uses it).
- * @property {'change'|'refusal'|'question'} outcome
- * @property {{code?: string, rule?: string, fixes?: boolean}} [refusal]  A refusal route: what Construct must say.
- * @property {{about: string, sentence: string}} [question]  A question route: what Line must ask (slotted sentence).
+ * One way to do a request, as a case stores it: the drafter's gold route (../drafter/contract.mjs GoldRoute).
+ * @typedef {import('../drafter/contract.mjs').GoldRoute} TrainRoute
  */
 
 /**
@@ -116,8 +116,9 @@ export const SLOT_TYPES = Object.freeze(['feature', 'library', 'item', 'name', '
  */
 
 /**
- * The drafter's answer (MIRROR of the drafter contract; replace on merge).
- * @typedef {{routes: (TrainRoute & {via: 'template'|'retrieval'|'model', confidence: number})[], recommended: string|null, intent: string, via: 'template'|'retrieval'|'model', confidence: number, slots: Record<string, TrainSlot>, request: string}} TrainDraft
+ * The drafter's answer in case form (draft.mjs): the real System 1 drafter's routes over one world, as gold routes with
+ * Train slots, each with how it was found and Construct's verdict in a scratch copy (`status`, the drafter's).
+ * @typedef {{routes: (TrainRoute & {via: 'template'|'retrieval'|'model', confidence: number, status: string})[], recommended: string|null, intent: string, via: 'template'|'retrieval'|'model', confidence: number, slots: Record<string, TrainSlot>, request: string, unknown: {word: string, choices: {ref: string, name: string}[]}[]}} TrainDraft
  */
 
 /**
@@ -163,29 +164,14 @@ export function slotNamesIn(text) {
 }
 
 /**
- * Throws unless r is a TrainRoute whose every slot is declared in `slots`.
+ * Throws unless r is a TrainRoute (a gold route on Train Line's five tools) whose every slot is declared in `slots`.
  * @param {any} r @param {Record<string, any>} slots @param {string} [where]
  */
 export function assertTrainRoute(r, slots, where = 'route') {
-  str(r?.id, `${where}.id`);
-  str(r.label, `${where}.label`);
-  if (!['change', 'refusal', 'question'].includes(r.outcome)) fail(`${where}.outcome`, 'must be change, refusal or question');
-  if (!Array.isArray(r.steps)) fail(`${where}.steps`, 'must be an array');
-  if (r.outcome === 'change' && r.steps.length === 0) fail(`${where}.steps`, 'a change route has at least one step');
-  if (r.outcome === 'question' && r.steps.length !== 0) fail(`${where}.steps`, 'a question route has no steps');
-  if (r.outcome === 'question') { str(r.question?.about, `${where}.question.about`); sentence(r.question.sentence, `${where}.question.sentence`); }
-  if (r.outcome === 'refusal' && !r.refusal?.code && !r.refusal?.rule) fail(`${where}.refusal`, 'must name the code or the rule Construct refuses with');
-  r.steps.forEach((s, i) => {
-    if (!TRAIN_TOOLS.includes(s.tool)) fail(`${where}.steps[${i}].tool`, `must be one of ${TRAIN_TOOLS.join(', ')}`);
-    if (!s.args || typeof s.args !== 'object') fail(`${where}.steps[${i}].args`, 'must be an object');
-  });
-  if (!Array.isArray(r.expect)) fail(`${where}.expect`, 'must be an array');
-  if (r.outcome === 'change' && r.expect.length === 0) fail(`${where}.expect`, 'a change route has at least one check');
-  if (r.cost !== r.steps.length) fail(`${where}.cost`, 'is the number of steps');
-  if (!['low', 'medium', 'high'].includes(r.risk)) fail(`${where}.risk`, 'must be low, medium or high');
-  if (!r.scope || !Array.isArray(r.scope.layers) || !Array.isArray(r.scope.features) || typeof r.scope.library !== 'boolean') fail(`${where}.scope`, 'must be {layers, features, library}');
-  for (const name of slotNamesIn(JSON.stringify(r))) if (!slots[name]) fail(where, `uses slot ${name}, which the case does not declare`);
+  try { assertGoldRoute(r, slots, TRAIN_TOOLS, where); } catch (e) { fail(...splitWhere(String(/** @type {any} */ (e).message))); }
 }
+/** The drafter's "where why" message as Train Line's "where: why". */
+const splitWhere = (m) => { const i = m.indexOf(' '); return /** @type {[string, string]} */ ([m.slice(0, i), m.slice(i + 1)]); };
 
 /**
  * Throws unless c is a stored TrainCase (delexicalized, gold routes with a preferred one, a known intent).

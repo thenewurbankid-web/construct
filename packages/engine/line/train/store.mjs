@@ -12,6 +12,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createTransaction } from '../../transactionalWriter.mjs';
 import { LineOpError } from '../contract.mjs';
+import { TRAIN_INTENT_MAP } from './contract.mjs';
 
 /** The Construct repo's `line/` folder: the default training root (its train/cases.jsonl is the committed seed). */
 export const DEFAULT_TRAIN_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../../line');
@@ -27,6 +28,8 @@ export const mapFile = (worldKey) => `train/maps/${worldKey.replace(/[^a-z0-9-]/
 
 const read = (root, rel) => { try { return fs.readFileSync(path.join(root, rel), 'utf8'); } catch { return null; } };
 const lines = (text) => (text ?? '').split('\n').filter((l) => l.trim()).map((l) => JSON.parse(l));
+/** A case stored before 2026-10-11 names a mirrored intent id; read it with the drafter catalog's id. */
+const upgrade = (c) => (c && Object.hasOwn(TRAIN_INTENT_MAP, c.intent) && TRAIN_INTENT_MAP[c.intent] !== c.intent ? { ...c, intent: TRAIN_INTENT_MAP[c.intent] } : c);
 
 /**
  * The Train Line store over one training root.
@@ -60,7 +63,7 @@ export function createTrainStore(o = {}) {
   const store = {
     root,
     /** Every stored case. */
-    all: () => lines(read(root, CASES)),
+    all: () => lines(read(root, CASES)).map(upgrade),
     /** @param {string} id */
     get: (id) => store.all().find((c) => c.id === id) ?? null,
     /** The change log, newest last. */
@@ -77,6 +80,13 @@ export function createTrainStore(o = {}) {
         if (i >= 0) list[i] = c; else list.push(c);
       }
       commit({ [CASES]: list.map((c) => JSON.stringify(c)).join('\n') + (list.length ? '\n' : '') }, cases.map((c) => ({ at, by, action, caseId: c.id, ...(note ? { note } : {}) })));
+    },
+    /**
+     * Replace every stored case at once (a re-verification or a migration), logged as ONE action by `by`.
+     * @param {any[]} cases @param {'owner'|'claude'} by @param {string} action @param {string} [note]
+     */
+    rewrite(cases, by, action, note) {
+      commit({ [CASES]: cases.map((c) => JSON.stringify(c)).join('\n') + (cases.length ? '\n' : '') }, [{ at: now(), by, action, ...(note ? { note } : {}) }]);
     },
     /** The last eval run, or null. */
     lastEval: () => { const t = read(root, EVAL); return t ? JSON.parse(t) : null; },

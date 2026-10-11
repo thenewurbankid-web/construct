@@ -214,7 +214,7 @@ export const TRAIN_MCP_TOOLS = Object.freeze([
     inputSchema: z.object({
       world: z.string().min(3).max(40).optional().describe('"sample" (default) or an imaginary world such as "w03:clean".'),
       request: z.string().min(3).max(400).describe('The request in plain English, e.g. "Make StatusBadge in orders, based on Badge."'),
-      intent: z.string().min(3).max(60).describe('An intent id of the catalog, e.g. add.component, share.item, fix.problem.'),
+      intent: z.string().min(3).max(60).describe('An intent id of the drafter catalog, e.g. add.component, promote.component, fix.problem.'),
       routes: z.array(z.object({
         label: z.string().min(3).max(200).optional(),
         steps: z.array(z.object({ tool: z.string().min(3).max(60), args: z.record(z.string(), z.unknown()) })).min(1).max(5),

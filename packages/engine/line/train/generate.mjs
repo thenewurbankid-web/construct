@@ -1,9 +1,9 @@
 // Train Line case generator (Claude's side, owner 2026-10-11): imaginary cases over imaginary worlds (corpus.mjs) and
-// the Line sample, for every intent of the catalog, with paraphrases, refusals and questions. A case is KEPT only when
+// the Line sample, for every case family (routes.mjs INTENT_DEFS; each names its intent in the drafter's catalog), with
+// paraphrases, refusals and questions. A case is KEPT only when
 // Construct verifies every gold route (verify.mjs, in scratch copies). Cases are stored delexicalized (slots only).
 import crypto from 'node:crypto';
 import fs from 'node:fs';
-import { INTENT_IDS } from './contract.mjs';
 import { INTENT_DEFS, goldFor, fitsShape } from './routes.mjs';
 import { WORLD_IDS, isHeldOut, materialize, worldKey } from './corpus.mjs';
 import { factsOf, factsHash } from './facts.mjs';
@@ -46,8 +46,8 @@ export function candidates(world, o = {}) {
   const facts = worldFacts(world);
   const words = wordsOf(world);
   const out = [];
-  INTENT_IDS.forEach((intent, ii) => {
-    const def = INTENT_DEFS[intent];
+  Object.keys(INTENT_DEFS).forEach((family, ii) => {
+    const def = INTENT_DEFS[family];
     if (variant && !def.variants.includes(variant)) return;
     const shapes = [...new Set(def.wordings.map((w) => w.shape))];
     const shapeList = o.all ? shapes : [shapes[(n + ii) % shapes.length]];
@@ -60,10 +60,10 @@ export function candidates(world, o = {}) {
         if (!fitting.length) return;
         const picks = [fitting[(n + si + ii) % fitting.length]];
         for (const w of [...new Set(picks)]) {
-          const gold = goldFor(intent, shape);
-          const id = `tc-${hash(JSON.stringify([worldKey(world), intent, w.text, set.slots])).slice(0, 12)}`;
+          const gold = goldFor(family, shape);
+          const id = `tc-${hash(JSON.stringify([worldKey(world), family, w.text, set.slots])).slice(0, 12)}`;
           out.push({
-            id, intent, request: w.text, slots: set.slots, world,
+            id, intent: def.intent, request: w.text, slots: set.slots, world,
             split: world.kind === 'corpus' && isHeldOut(world.id) ? 'heldout' : 'train',
             factsHash: factsHash(facts), gold,
             labelledBy: 'claude', status: 'draft', notes: [], sample: inSample(id), verified: { routes: {} },
