@@ -261,13 +261,13 @@ export const LINE_API = Object.freeze([
   { method: 'POST', path: '/api/line/promote', request: 'PromoteRequest', response: 'ApplyResult' },
   { method: 'POST', path: '/api/line/page-prop', request: 'SetPropRequest', response: 'ApplyResult' },
   { method: 'GET', path: '/api/line/render', request: 'file, props (query)', response: 'RenderResult' },
+  { method: 'POST', path: '/api/line/fix', request: 'FixRequest', response: 'ApplyResult' },
+  { method: 'GET', path: '/api/line/fragments', request: 'file (query)', response: 'FragmentList' },
+  { method: 'POST', path: '/api/line/fragment', request: 'SetFragmentRequest', response: 'ApplyResult' },
   { method: 'GET', path: '/api/line/import/folders', request: null, response: '{sourceRoot, folders: {path, files}[]}' },
   { method: 'POST', path: '/api/line/import/scan', request: 'ImportScanRequest', response: 'ImportScan' },
   { method: 'POST', path: '/api/line/import/plan', request: 'ImportPlanRequest', response: 'ImportPlan' },
   { method: 'POST', path: '/api/line/import/apply', request: 'ImportPlanRequest', response: 'ImportApplyResult' },
-  { method: 'POST', path: '/api/line/fix', request: 'FixRequest', response: 'ApplyResult' },
-  { method: 'GET', path: '/api/line/fragments', request: 'file (query)', response: 'FragmentList' },
-  { method: 'POST', path: '/api/line/fragment', request: 'SetFragmentRequest', response: 'ApplyResult' },
 ]);
 
 /** The tools an import plan's steps name (plan-ready: each produces a StagedChange for applyChange). */
