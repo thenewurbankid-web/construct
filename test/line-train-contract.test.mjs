@@ -17,7 +17,7 @@ test('train contract: only the five solid Line tools are offered, and every inte
     assert.ok([...TRAIN_TOOLS, 'none'].includes(i.family));
   }
   assert.deepEqual(TRAIN_API.map((r) => `${r.method} ${r.path}`), [
-    'GET /api/line/train/worlds', 'GET /api/line/train/cases', 'GET /api/line/train/facts', 'POST /api/line/train/draft', 'POST /api/line/train/try',
+    'GET /api/line/train/worlds', 'GET /api/line/train/cases', 'GET /api/line/train/facts', 'POST /api/line/train/draft', 'POST /api/line/train/try', 'POST /api/line/train/preview', 'POST /api/line/train/route', 'POST /api/line/train/synonym',
     'POST /api/line/train/cases', 'POST /api/line/train/review', 'POST /api/line/train/eval', 'GET /api/line/train/scoreboard',
   ]);
 });

@@ -50,7 +50,11 @@ export const SAMPLE_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.ur
 
 /** World ids: w00..w39. */
 export const WORLD_IDS = Object.freeze(Array.from({ length: WORLD_COUNT }, (_, i) => `w${String(i).padStart(2, '0')}`));
-/** @param {string} id */
+/**
+ * True for a world whose cases are held out for eval (w30..w39).
+ * @param {string} id
+ * @returns {boolean}
+ */
 export const isHeldOut = (id) => Number(id.slice(1)) >= HELDOUT_FROM;
 
 /** A small deterministic generator (mulberry32) so a world id always gives the same project. */
@@ -59,12 +63,18 @@ function rng(seed) {
   return () => { a = (a + 0x6d2b79f5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 }
 const pick = (r, list, n) => { const pool = [...list]; const out = []; while (out.length < n && pool.length) out.push(pool.splice(Math.floor(r() * pool.length), 1)[0]); return out; };
+/**
+ * "show more" -> "ShowMore".
+ * @param {string} s
+ * @returns {string}
+ */
 export const pascal = (s) => String(s).split(/[^A-Za-z0-9]+/).filter(Boolean).map((w) => w[0].toUpperCase() + w.slice(1)).join('');
 const camel = (s) => { const p = pascal(s); return p[0].toLowerCase() + p.slice(1); };
 
 /**
  * The definition of one imaginary world (no files yet).
  * @param {string} id  "w00".."w39"
+ * @returns {{id: string, domain: string, features: any[], atoms: string[], molecule: string, organism: string|null, pages: string[], flows: string[], fixture: string, comps: string[], words: string[]}}
  */
 export function worldSpec(id) {
   const n = Number(String(id).slice(1));
@@ -136,7 +146,11 @@ export function worldFiles(id, variant = 'clean') {
   return files;
 }
 
-/** Every identifier and domain word of a world (for the delexicalization test and the domain map). */
+/**
+ * Every identifier and domain word of a world (for the delexicalization test and the domain map).
+ * @param {string} id
+ * @returns {string[]}
+ */
 export function worldWords(id) {
   const w = worldSpec(id);
   const files = worldFiles(id, 'cross-feature');
@@ -165,9 +179,17 @@ export function materialize(world) {
   return dir;
 }
 
-/** A world's key for caches and the API: "sample" or "w07:clean". */
+/**
+ * A world's key for caches and the API: "sample" or "w07:clean".
+ * @param {{kind: string, id?: string, variant?: string}} world
+ * @returns {string}
+ */
 export const worldKey = (world) => (world.kind === 'sample' ? 'sample' : `${world.id}:${world.variant ?? 'clean'}`);
-/** @param {string} key @returns {{kind: 'corpus', id: string, variant: string}|{kind: 'sample'}} */
+/**
+ * The world a key names; throws for an unknown world or variant.
+ * @param {string} key
+ * @returns {{kind: 'corpus', id: string, variant: string}|{kind: 'sample'}}
+ */
 export function worldOf(key) {
   if (key === 'sample') return { kind: 'sample' };
   const [id, variant = 'clean'] = String(key).split(':');

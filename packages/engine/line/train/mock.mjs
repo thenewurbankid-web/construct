@@ -17,6 +17,10 @@ const baseCase = (id, labelledBy) => ({
 const FILLED_ROUTE = { id: 'inside', label: 'Inside orders only', touches: 'Touches components in orders.', steps: [{ tool: 'line.baseOn', args: { libraryId: 'components/Badge', feature: 'orders', name: 'StatusBadge' }, sentence: 'Make StatusBadge in orders, based on the library Badge.' }], checks: ['orders has a component StatusBadge.', 'Validate shows no new problems.'], cost: 1, risk: 'low', outcome: 'change', preferred: true };
 const view = (c) => ({ ...c, filled: { request: 'Make StatusBadge in orders, based on Badge.', intentPhrase: INTENTS[0].phrase, routes: [FILLED_ROUTE], world: 'The Line sample project' } });
 
+/**
+ * The Train Line service in memory: one Claude case on the sample, owner-only review, a fixed draft and try.
+ * @returns {any}
+ */
 export function createMockTrainService() {
   const cases = [baseCase('tc-mock-claude', 'claude')];
   const log = [];

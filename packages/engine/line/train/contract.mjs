@@ -138,6 +138,9 @@ export const TRAIN_API = Object.freeze([
   { method: 'GET', path: '/api/line/train/facts', request: 'world (query)', response: 'WorldChoices' },
   { method: 'POST', path: '/api/line/train/draft', request: '{request, world}', response: 'TrainDraft & {filled}' },
   { method: 'POST', path: '/api/line/train/try', request: '{world, slots, route}', response: 'TryResult' },
+  { method: 'POST', path: '/api/line/train/preview', request: '{world, request, slots, routes, preferred}', response: '{ok, request, routes: FilledRoute[]}' },
+  { method: 'POST', path: '/api/line/train/route', request: '{world, slots, tool, args, label?}', response: '{slots, route: TrainRoute}' },
+  { method: 'POST', path: '/api/line/train/synonym', request: '{world, word, ref}', response: '{ok, sentence}' },
   { method: 'POST', path: '/api/line/train/cases', request: '{world, request, intent, slots, routes, preferred}', response: '{case: TrainCaseView}' },
   { method: 'POST', path: '/api/line/train/review', request: '{id, verdict: agree|disagree, note?}', response: '{case: TrainCaseView}' },
   { method: 'POST', path: '/api/line/train/eval', request: null, response: 'Scoreboard' },
@@ -150,7 +153,11 @@ const str = (v, where) => (typeof v === 'string' && v.length > 0) || fail(where,
 const sentence = (v, where) => { str(v, where); if (!/^\S.*[.?!]$/s.test(v)) fail(where, `must be a full sentence ending in . ? or !: ${JSON.stringify(v)}`); };
 const SLOT_RE = /<([a-z]+):([A-Z][A-Za-z]*\d+)>/g;
 
-/** The slot names a slotted string uses ("<feature:F1>" -> F1), in order of appearance. */
+/**
+ * The slot names a slotted string uses ("<feature:F1>" -> F1), in order of appearance.
+ * @param {string} text A slotted string.
+ * @returns {string[]}
+ */
 export function slotNamesIn(text) {
   return [...String(text).matchAll(SLOT_RE)].map((m) => m[2]);
 }
@@ -225,7 +232,11 @@ export function assertDelexicalized(storedLine, words) {
   }
 }
 
-/** @param {any} t @returns {asserts t is TryResult} */
+/**
+ * Throws unless t is a TryResult: ok, one sentence, and its steps and checks as sentences.
+ * @param {any} t
+ * @returns {asserts t is TryResult}
+ */
 export function assertTryResult(t) {
   if (typeof t?.ok !== 'boolean') fail('try.ok', 'must be a boolean');
   sentence(t.sentence, 'try.sentence');
@@ -234,7 +245,11 @@ export function assertTryResult(t) {
   t.checks.forEach((s, i) => sentence(s.sentence, `try.checks[${i}].sentence`));
 }
 
-/** @param {any} b @returns {asserts b is Scoreboard} */
+/**
+ * Throws unless b is a Scoreboard: rows per tool family and per intent, shares between 0 and 1 or null.
+ * @param {any} b
+ * @returns {asserts b is Scoreboard}
+ */
 export function assertScoreboard(b) {
   if (b?.ok !== true) fail('scoreboard.ok', 'must be true');
   sentence(b.sentence, 'scoreboard.sentence');

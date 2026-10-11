@@ -13,6 +13,11 @@ const hash = (s) => crypto.createHash('sha256').update(s).digest('hex');
 
 /** The facts of a world, read once from a scratch copy. */
 const factsCache = new Map();
+/**
+ * The facts of a world, read once from a scratch copy and cached.
+ * @param {any} world
+ * @returns {any}
+ */
 export function worldFacts(world) {
   const k = worldKey(world);
   if (!factsCache.has(k)) {
@@ -22,13 +27,18 @@ export function worldFacts(world) {
   return factsCache.get(k);
 }
 
-/** In the owner's review sample: a fixed 1 in 6 of Claude's cases, by id (deterministic, spread over every intent). */
+/**
+ * In the owner's review sample: a fixed 1 in 6 of Claude's cases, by id (deterministic, spread over every intent).
+ * @param {string} id
+ * @returns {boolean}
+ */
 export const inSample = (id) => parseInt(id.slice(-4), 16) % 6 === 0;
 
 /**
  * The candidate cases of one world (not verified yet).
  * @param {{kind: 'corpus', id: string, variant?: string}|{kind: 'sample'}} world
  * @param {{all?: boolean, now?: string}} [o] `all`: every shape and slot set (the sample world); otherwise one of each, rotated.
+ * @returns {any[]}
  */
 export function candidates(world, o = {}) {
   const n = world.kind === 'sample' ? 0 : Number(world.id.slice(1));
@@ -69,6 +79,7 @@ export function candidates(world, o = {}) {
 /**
  * Generate and verify. Returns the kept cases and, for the record, the dropped ones with why.
  * @param {{worlds?: any[], now?: string, onCase?: (c: any, ok: boolean) => void}} [o]
+ * @returns {{kept: any[], dropped: {id: string, intent: string, world: string, why: string[]}[]}}
  */
 export function generate(o = {}) {
   const worlds = o.worlds ?? [{ kind: 'sample' }, ...WORLD_IDS.flatMap((id) => ['clean', 'cross-feature', 'missing-base'].map((variant) => ({ kind: 'corpus', id, variant })))];

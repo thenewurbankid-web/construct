@@ -49,12 +49,20 @@ export function factsOf(root) {
   return { files, contents, library, features, findings, findingsNew: [], plan: [], fragments };
 }
 
-/** The hash a case records: what the slots were bound to (files and the Line view), not the plan. */
+/**
+ * The hash a case records: what the slots were bound to (files and the Line view), not the plan.
+ * @param {any} facts
+ * @returns {string}
+ */
 export function factsHash(facts) {
   return sha(JSON.stringify({ files: facts.files, library: facts.library.map((l) => l.id), features: facts.features.map((f) => [f.name, f.items.map((i) => [i.id, i.base])]) }));
 }
 
-/** The findings of `after` that `before` did not have (by rule and file). */
+/**
+ * The findings of `after` that `before` did not have (by rule and file).
+ * @param {any} before @param {any} after
+ * @returns {any[]}
+ */
 export function newFindings(before, after) {
   const had = new Set(before.findings.map((f) => `${f.rule}|${f.file}`));
   return after.findings.filter((f) => !had.has(`${f.rule}|${f.file}`));

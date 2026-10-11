@@ -20,14 +20,22 @@ const KIND_WORD = { components: 'components', pages: 'pages', workflows: 'flows'
 const lower = (s) => String(s).charAt(0).toLowerCase() + String(s).slice(1);
 const joinAnd = (xs) => (xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs.at(-1)}`);
 
-/** Every identifier and word a world names (what a saved case must never contain). */
+/**
+ * Every identifier and word a world names (what a saved case must never contain).
+ * @param {any} world @param {any} facts
+ * @returns {string[]}
+ */
 export function worldIdentifiers(world, facts) {
   if (world.kind === 'corpus') return worldWords(world.id);
   const names = [...facts.features.map((f) => f.name), ...facts.library.map((l) => l.name), ...facts.features.flatMap((f) => f.items.map((i) => i.name))];
   return [...new Set([...names, ...names.flatMap(splitWords)])].filter((w) => w.length >= 4 && !['page', 'pages', 'card', 'list', 'button', 'table', 'data', 'flow'].includes(w.toLowerCase()) || /[A-Z]/.test(w));
 }
 
-/** One step in plain English. */
+/**
+ * One step in plain English.
+ * @param {string} tool @param {Record<string, any>} a The filled args. @param {any} facts
+ * @returns {string}
+ */
 export function stepSentence(tool, a, facts) {
   switch (tool) {
     case 'line.baseOn': return `Make ${a.name} in ${a.feature}, based on the library ${nameOfId(a.libraryId)}.`;
@@ -45,7 +53,11 @@ export function stepSentence(tool, a, facts) {
   }
 }
 
-/** A route as the screen shows it, names filled back from the world's facts. */
+/**
+ * A route as the screen shows it, names filled back from the world's facts.
+ * @param {any} r @param {Record<string, any>} bound @param {any} facts @param {string} preferred
+ * @returns {any}
+ */
 export function routeView(r, bound, facts, preferred) {
   const steps = r.steps.map((s) => { const args = fill(s.args, bound, { asArg: true }); return { tool: s.tool, args, sentence: stepSentence(s.tool, args, facts) }; });
   const features = (r.scope?.features ?? []).map((f) => (bound[f] ? bound[f].text : f));
@@ -62,7 +74,9 @@ export function routeView(r, bound, facts, preferred) {
 }
 
 /**
+ * The Train Line service over one training root (cases, drafts, Try it, reviews, eval).
  * @param {{root?: string, seedFrom?: string, now?: () => string}} [o]
+ * @returns {any}
  */
 export function createTrainService(o = {}) {
   const store = createTrainStore(o);
@@ -351,7 +365,11 @@ const sigOf = (r, bound) => (r.outcome === 'question' ? `ask:${r.question?.about
 const familyOf = (c) => c.gold.routes.find((r) => r.id === c.gold.preferred)?.steps[0]?.tool ?? 'none';
 const familyKey = (c) => (c.gold.routes.find((r) => r.id === c.gold.preferred)?.outcome === 'change' ? familyOf(c) : 'none');
 
-/** Draft every held-out case (retrieval from the train split only) and score it against its gold. */
+/**
+ * Draft every held-out case (retrieval from the train split only) and score it against its gold.
+ * @param {any[]} cases @param {string} at
+ * @returns {{at: string, cases: any[]}}
+ */
 export function evaluateAll(cases, at) {
   const train = cases.filter((c) => c.split === 'train');
   const per = [];
@@ -385,7 +403,11 @@ function row(cases, evals) {
   };
 }
 
-/** @returns {import('./contract.mjs').Scoreboard} */
+/**
+ * The scoreboard: the last eval's numbers per family and intent, plus the live owner agreement on the sample.
+ * @param {any[]} cases @param {any} last
+ * @returns {import('./contract.mjs').Scoreboard}
+ */
 export function scoreboard(cases, last) {
   const evals = last?.cases ?? [];
   const byFamily = {};

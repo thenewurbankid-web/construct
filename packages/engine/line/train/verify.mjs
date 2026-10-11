@@ -13,7 +13,11 @@ import { evaluate, describe } from './exprMirror.mjs';
 
 const lower = (s) => String(s).charAt(0).toLowerCase() + String(s).slice(1);
 
-/** The domain words of a world (texts point at them by "word#i"); none for the sample. */
+/**
+ * The domain words of a world (texts point at them by "word#i"); none for the sample.
+ * @param {any} world
+ * @returns {string[]}
+ */
 export const wordsOf = (world) => (world.kind === 'corpus' ? worldSpec(world.id).words : []);
 
 /**

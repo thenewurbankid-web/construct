@@ -4,7 +4,11 @@
 const NO_NEW = { noNewFindings: true };
 const ROLES = ['status', 'summary', 'primary', 'compact', 'header'];
 const TEXT_ROLES = ['all', 'open', 'recent', 'my'];
-/** Wording shapes that fit a fix slot set's shape ('any' fits every shape). */
+/**
+ * Whether a wording fits a slot set's shape ('any' fits every shape).
+ * @param {{shape: string}} wording @param {string} shape
+ * @returns {boolean}
+ */
 export const fitsShape = (wording, shape) => wording.shape === 'any' || wording.shape === shape;
 const MISSING_PARTS = ['tooltip', 'carousel', 'stepper', 'slider'];
 const MISSING_FEATURES = ['archive', 'insights', 'settings'];
@@ -316,7 +320,11 @@ export const INTENT_DEFS = Object.freeze({
   },
 });
 
-/** The gold of one intent and wording shape, with the plan-only `layer` hints removed. */
+/**
+ * The gold of one intent and wording shape, with the plan-only `layer` hints removed.
+ * @param {string} intent @param {string} shape
+ * @returns {{routes: any[], preferred: string}}
+ */
 export function goldFor(intent, shape) {
   const g = INTENT_DEFS[intent].routes(shape);
   return { routes: g.routes.map(finish), preferred: g.preferred };

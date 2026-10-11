@@ -18,14 +18,21 @@ export const DEFAULT_TRAIN_ROOT = path.resolve(path.dirname(fileURLToPath(import
 export const CASES = 'train/cases.jsonl';
 export const LOG = 'train/log.jsonl';
 export const EVAL = 'train/eval.json';
+/**
+ * Where a world's confirmed synonyms are kept.
+ * @param {string} worldKey
+ * @returns {string}
+ */
 export const mapFile = (worldKey) => `train/maps/${worldKey.replace(/[^a-z0-9-]/gi, '_')}.json`;
 
 const read = (root, rel) => { try { return fs.readFileSync(path.join(root, rel), 'utf8'); } catch { return null; } };
 const lines = (text) => (text ?? '').split('\n').filter((l) => l.trim()).map((l) => JSON.parse(l));
 
 /**
+ * The Train Line store over one training root.
  * @param {{root?: string, seedFrom?: string, now?: () => string}} [o] `seedFrom`: a training root whose cases seed an
  *   empty store on first open (the committed seed), logged as Claude's proposals.
+ * @returns {any}
  */
 export function createTrainStore(o = {}) {
   const root = o.root ?? DEFAULT_TRAIN_ROOT;

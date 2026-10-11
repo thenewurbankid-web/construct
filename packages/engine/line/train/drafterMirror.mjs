@@ -32,6 +32,8 @@ const RULES = [
 /**
  * Align a request's slots to a case's: same type, same order of appearance. Slots the case derives from others (`of`)
  * keep the case's definition; a feature the request does not name follows the item it owns.
+ * @param {string} caseRequest @param {Record<string, any>} caseSlots @param {string} draftRequest @param {Record<string, any>} draftSlots
+ * @returns {Record<string, any>} The case's slots, rebound to the request.
  */
 export function alignSlots(caseRequest, caseSlots, draftRequest, draftSlots) {
   const want = order(caseRequest);
@@ -151,5 +153,9 @@ function templateSlots(text) {
   return slots;
 }
 
-/** The phrase of an intent id ("Add a page to a feature"). */
+/**
+ * The phrase of an intent id ("Add a page to a feature").
+ * @param {string} id
+ * @returns {string}
+ */
 export const intentPhrase = (id) => INTENTS.find((i) => i.id === id)?.phrase ?? id;

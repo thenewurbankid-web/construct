@@ -7,9 +7,9 @@
 //   node packages/tools/line-train/seed.mjs --shard 0/4 --out x   one quarter of the worlds into a JSONL file
 //   node packages/tools/line-train/seed.mjs --merge a b c d       store the shards' cases (replaces the stored seed)
 import fs from 'node:fs';
-import { WORLD_IDS } from '../../engine/line/train/corpus.mjs';
-import { generate } from '../../engine/line/train/generate.mjs';
-import { createTrainStore, CASES } from '../../engine/line/train/store.mjs';
+import { WORLD_IDS } from '@line/construct-engine/line/train/corpus';
+import { generate } from '@line/construct-engine/line/train/generate';
+import { createTrainStore, CASES } from '@line/construct-engine/line/train/store';
 
 const args = process.argv.slice(2);
 const opt = (name) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : undefined; };

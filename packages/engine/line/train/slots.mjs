@@ -18,7 +18,11 @@ const WHOLE_SLOT_RE = /^<([a-z]+):([A-Z][A-Za-z]*\d+)>$/;
 const nameOfId = (id) => String(id).split('/').pop();
 const baseName = (file) => String(file).split('/').pop().replace(/\.(tsx|ts|json)$/, '');
 
-/** Split an identifier into lowercase words: "OrderButton" -> ["order", "button"], "orderFlow" -> ["order", "flow"]. */
+/**
+ * Split an identifier into lowercase words: "OrderButton" -> ["order", "button"].
+ * @param {string} name
+ * @returns {string[]}
+ */
 export function splitWords(name) {
   return String(name).replace(/([a-z0-9])([A-Z])/g, '$1 $2').split(/[^A-Za-z0-9]+/).filter(Boolean).map((w) => w.toLowerCase());
 }
@@ -27,6 +31,7 @@ export function splitWords(name) {
  * Resolve every ref of a world's facts that a slot can point at.
  * @param {any} facts
  * @param {string[]} [words] The world's domain words (corpus worlds); texts point at them by "word#i".
+ * @returns {Map<string, any>}
  */
 export function refTable(facts, words = []) {
   /** @type {Map<string, {type: string, value: any, text: string, file?: string}>} */
@@ -49,7 +54,11 @@ export function refTable(facts, words = []) {
   return t;
 }
 
-/** Ref of a value in the table (the reverse lookup), or null. */
+/**
+ * Ref of a value in the table (the reverse lookup), or null.
+ * @param {Map<string, any>} table @param {string} type @param {any} value
+ * @returns {string|null}
+ */
 export function refOf(table, type, value) {
   for (const [k, v] of table) if (v.type === type && v.value === value) return k;
   return null;
@@ -145,6 +154,7 @@ function render(form, v, asArg) {
  * Fill a slotted value (string, array or object) with bound slots. A string that is exactly one slot keeps the slot's
  * type in an arg (a number stays a number).
  * @param {any} value @param {Record<string, any>} bound @param {{asArg?: boolean}} [o]
+ * @returns {any}
  */
 export function fill(value, bound, o = {}) {
   if (typeof value === 'string') {
@@ -164,6 +174,7 @@ const LETTER = { feature: 'F', library: 'L', item: 'I', name: 'N', text: 'T', nu
 /**
  * MIRROR buildDomainMap: one entry per thing the project names, with its words and the owner's confirmed synonyms.
  * @param {any} facts @param {{words?: string[], synonyms?: Record<string, string>}} [o] `synonyms`: word -> ref.
+ * @returns {{entries: {ref: string, type: string, value: any, name: string, words: string[], synonyms: string[]}[]}}
  */
 export function buildDomainMap(facts, o = {}) {
   const table = refTable(facts, o.words ?? []);
@@ -257,6 +268,7 @@ export function normalize(request, map) {
 /**
  * MIRROR denormalize: a slotted text with the names filled back from the world's facts.
  * @param {string} text @param {Record<string, any>} slots @param {any} facts @param {string[]} [words]
+ * @returns {string}
  */
 export function denormalize(text, slots, facts, words = []) {
   const b = bindSlots(slots, facts, words);
