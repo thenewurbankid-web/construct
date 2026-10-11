@@ -188,3 +188,33 @@ export function createTransaction(root) {
     },
   };
 }
+
+/**
+ * cl1 -- the atomic Line-state path: Line's own state (traces, drafted issues; `line/` by default) is not project code,
+ * so it skips the shadow validate, but it still goes through this writer and nowhere else. Only paths inside the state
+ * folder are accepted; each write is a temp file in the same folder then `rename()`, so a reader never sees half a
+ * file. `append: true` adds `content` to what is there (read, append, rename), for append-only JSONL.
+ *
+ * @param {string} root Project root.
+ * @param {string} relPath Root-relative posix path, inside `stateDir`.
+ * @param {string} content
+ * @param {{append?: boolean, stateDir?: string}} [opts] `stateDir` the project's Line state folder (default `line`).
+ * @returns {string} The root-relative path written.
+ * @throws {Error} When the path is not inside the state folder.
+ */
+export function writeLineState(root, relPath, content, { append = false, stateDir = 'line' } = {}) {
+  const rel = toPosixRel(String(relPath));
+  const dir = toPosixRel(String(stateDir)).replace(/\/+$/, '');
+  if (!dir || path.isAbsolute(rel) || rel.split('/').some((s) => s === '..' || s === '' || s === '.') || !rel.startsWith(`${dir}/`)) {
+    throw new Error(`Line state is written only inside ${dir || 'the state folder'}/, not ${rel}.`);
+  }
+  const abs = path.join(root, rel);
+  assertNotFrozen(abs);
+  fs.mkdirSync(path.dirname(abs), { recursive: true });
+  let before = '';
+  if (append) { try { before = fs.readFileSync(abs, 'utf8'); } catch (e) { if (/** @type {any} */ (e).code !== 'ENOENT') throw e; } }
+  const tmp = `${abs}.${process.pid}.${Math.random().toString(16).slice(2, 10)}.tmp`;
+  fs.writeFileSync(tmp, before + content, 'utf8');
+  fs.renameSync(tmp, abs);
+  return rel;
+}

@@ -354,3 +354,45 @@ How it decides: a feature item is based on the library item it renders when ther
 Gaps: full migration into a new Line app, and importing a single item (next priority); React hooks stay in place (a Line workflow has no React); two items with the same name are refused at the second step; the re-export files at old page paths keep their "orphan page" finding until the app's routes point at the feature pages (that edit is outside the folder); an app needs an `architecture.yml` at its root before Cockpit can open it (max-ai-ui has none).
 
 UAT (cu7, max-ai-ui on a copy): open the copy in Cockpit (add `version: 1` as `architecture.yml` first), go to `/import`, folder `src/subframe-pages/Inbox`, Read folder, Show the plan, Apply. Expect InboxPage in feature `inbox` served at `/:locale/inbox`, and `src/app/...` unchanged.
+
+## cl1: Claude and Line, part 1: the spec, session traces, picked context, drafted framework issues (awaiting UAT)
+
+What it does: Line now describes itself from its own code, and every plan session leaves a record Line can learn from.
+- `construct line spec` prints a versioned spec generated from the code: every rule (including LINE-*), every command and `line.*` plan tool with a JSON Schema of its arguments, the plan protocol, the library and feature model, and each module's header and exports. Agents read it over MCP with `line_spec`, one topic at a time.
+- Every plan session (each Cockpit server run, each MCP session) writes `line/traces/<id>.jsonl` in the project: each step, each refusal with the typed fixes Construct offered, which fix was picked, and whether it passed. It is written through a new Line-state path in Construct's writer (only inside `line/`, atomic).
+- `construct line context` hands over, for the latest refusal, exactly the related files (the refused file, what the refused code imports, its base, what imports it, fixtures) with a one-sentence summary each, plus the rule ids and plan steps. Static; when candidates tie, a picker (jev) can choose among exactly those.
+- `construct line misses` finds refusals that recur with no working typed fix; `--draft` writes each as a markdown issue in `line/issues/` with one minimal case cut from a real trace, the spec slice, the picked context and the test the case becomes. Nothing is filed.
+
+Tests: `test/line-spec.test.mjs` (7), `test/line-trace.test.mjs` (11), `ui/server/src/lineCl1Uat.test.mjs` (the UAT walk below), `packages/mcp/test/tools.test.mjs` (`line_spec`).
+1. The spec fits its contract and the same code gives the same version.
+2. Adding a rule changes the version and the rules topic, and nothing else; taking it out gives the old version back.
+3. A new command or a changed tool schema changes the version.
+4. Every `line.*` tool in the spec is the registry's tool, and its JSON Schema accepts and refuses exactly what the registry does (missing field, unknown field).
+5. The modules topic is read from the source: a new export changes it.
+6. One topic keeps the spec version, an id narrows it, every topic fits one MCP call, an unknown topic is one sentence; the CLI prints the slice and exits 2 on a bad topic.
+7. The Line-state path writes only inside `line/`, appends atomically and leaves no temp files.
+8. A real refused change (orders' page made to use billing) and its recommended fix are traced in order: step, refusal (rule LINE-DIR, the fixes offered, the recommended one marked), outcome; then the fix step, which fix was picked, its refusal and its outcome (0 of 2 checks).
+9. A landed step is step then outcome ok; a plan-protocol refusal (unknown tool) is marked as the plan's, not Construct's; long code is cut.
+10. A trace that cannot be written never stops the plan and says why in one sentence.
+11. A broken trace line is skipped and counted.
+12. The context for the real miss: OrdersPage, then InvoicesPage (the refused code imports it), then ListPage (its base), each with a static summary; the rule and both plan steps.
+13. When candidates tie at the cut jev is offered exactly those; jev down keeps the static order; another summarizer (cs1) plugs in.
+14. Once is not a pattern; twice with no working fix is a framework issue; a fix that passed is not; refusals with no typed fix at all are named as such; plan-protocol refusals never count.
+15. Property: over 200 random traces, a group is a framework issue exactly when it recurs and no fix or retry for it passed, and the case is always the smallest refusal.
+16. Two real sessions with the same miss draft one issue per kind of refusal under `line/issues/`; nothing outside `line/` changes.
+17. UAT walk: spec, two Cockpit sessions through the Plan panel's routes, `misses`, `misses --draft`, `context`; every printed line is a full sentence; validate finds nothing new because of the traces or drafts.
+
+Found by the walk: the fix Construct recommends for this refusal (promote InvoicesPage) is refused too, because InvoicesPage itself uses a feature component. That is exactly what the detector drafts as a framework issue.
+
+Gaps:
+- The context picker's summaries are the plain static ones; cs1's summarizer plugs in through the same interface when it lands.
+- jev is not wired to the picker yet (the hook is there and tested with a stand-in).
+- No Claude calls yet: Claude fixing a drafted issue through Line's plans, validate and the eval gate is the next part.
+- A fix step (args.fixOf) that passes does not mark the refused step as resolved in the plan (cp1 behaviour), so Cockpit still shows it as needing you; the detector counts the fix correctly.
+- The MCP tool list in the spec is not included (the engine does not depend on the MCP package).
+- No Cockpit screen for traces or drafts.
+
+UAT (about 5 minutes; a copy of the sample so the repo stays clean):
+1. `node packages/cli/construct.mjs line spec --topic plan`. Expect JSON with a `version` like `sha256:...` and the plan rules in plain English (for example "Only a person approves a write step, in Cockpit; an agent cannot approve.").
+2. `cp -R examples/line-sample /tmp/line-uat`, open `/tmp/line-uat` in Cockpit (`cd ui/server && npm start`, `cd ui/client && npm run dev`, http://localhost:3000). On Pages, open OrdersPage and set the "More" click handler to `() => import('../../billing/pages/InvoicesPage')`, save, then Approve it in the Plan panel. It needs a fix; click "Apply recommended fix" and Approve. It is refused again.
+3. `node packages/cli/construct.mjs line misses --dir /tmp/line-uat --threshold 1 --draft`. Expect "Read 1 session trace: ...", a "Framework issue: Editing a code fragment (line.setFragment) was refused once (LINE-DIR). ..." line, and "Drafted (not filed): line/issues/....md". Open the drafted file: a story, the minimal case, the context and a test. Then `node packages/cli/construct.mjs line context --dir /tmp/line-uat` lists the files Line would hand Claude, each with one sentence.

@@ -95,6 +95,16 @@ export const TOOLS = Object.freeze([
     inputSchema: z.object({ chooser: z.string().min(1).max(LIMITS.nameChars).optional().describe('Count only this chooser id.') }),
     run: blocks.tracesStats,
   },
+  {
+    name: 'line_spec',
+    title: 'Line spec (from its code)',
+    description: 'Line\'s versioned spec, generated from Construct\'s code: rules (every rule id, why, expected), commands (construct commands and line.* plan tools with JSON Schemas of their args), plan (the plan protocol, step states, checks, refusal codes), model (library and feature kinds, layout) and modules (each module\'s header and exports). Give a topic, and an id to narrow it (a rule id, a tool name, a module); no topic lists the topics and the version. Reads only; writes nothing.',
+    inputSchema: z.object({
+      topic: z.enum(['rules', 'commands', 'plan', 'model', 'modules']).optional().describe('The slice to read.'),
+      id: z.string().min(1).max(LIMITS.nameChars).optional().describe('Narrow the topic: a rule id (LINE-DIR), a tool or command name (line.promote, validate) or a module (line-engine, planService).'),
+    }),
+    run: blocks.lineSpec,
+  },
 ]);
 
 /**
@@ -133,7 +143,7 @@ export const PLAN_TOOLS = Object.freeze([
   },
 ]);
 
-const INSTRUCTIONS = 'Construct blocks, read-only and plan-only. Start with requirement_parse, then placement_place (answer its closed questions and call again), then plan_validate. summarize and validate describe the project before you read files. Every tool is bounded and path-free; none writes. A plan preview is applied through the Cockpit\'s per-diff approval, never here. To change a Line project, add a step with plan_add_step, ask the user to approve it in Cockpit, then plan_run_next; plan_status shows the plan.';
+const INSTRUCTIONS = 'Construct blocks, read-only and plan-only. Start with requirement_parse, then placement_place (answer its closed questions and call again), then plan_validate. summarize and validate describe the project before you read files; line_spec says what Line is (rules, tools, plan protocol), from its code. Every tool is bounded and path-free; none writes. A plan preview is applied through the Cockpit\'s per-diff approval, never here. To change a Line project, add a step with plan_add_step, ask the user to approve it in Cockpit, then plan_run_next; plan_status shows the plan.';
 
 /** A server class whose own errors (input the schema refused, an unexpected throw) come out typed, like every other refusal. */
 class ConstructMcpServer extends McpServer {
