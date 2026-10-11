@@ -7,9 +7,13 @@ export type * from '@/lib/lineContract';
 /** What the service answers: the project, or one sentence saying why not. */
 export type LineProjectResult = { ok: true; project: LineProject } | { ok: false; sentence: string };
 
-/** The service's surface, so the real API and its mock are interchangeable. */
+/** The service's surface, so the real API and its mock are interchangeable. Changes are plan steps (AddPlanStep). */
 export type LineApi = {
   getLineProject: () => Promise<LineProjectResult>;
+};
+
+/** The contract mock's direct changes (services/LineApi.mock.ts, tests only: no server, no plan). */
+export type MockLineChanges = {
   baseOn: (req: BaseOnRequest) => Promise<ApplyResult>;
   promote: (req: PromoteRequest) => Promise<ApplyResult>;
 };

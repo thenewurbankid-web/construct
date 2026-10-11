@@ -5,10 +5,13 @@ import { isLineMock } from '@/lib/lineMode';
 /** The API the screen talks to: the shared LINE_API mirror (lib/lineContract.ts, lib/lineHttp.ts) on the server, or the contract's in-memory
  * mock when Line mock mode is on. The mock is loaded only when asked for, so it is never part of the normal screen's code. */
 export async function loadLinePagesApi(): Promise<LinePagesApi> {
-  if (!isLineMock()) return lineHttp;
+  if (!isLineMock()) return { getProject: lineHttp.getProject, getPageTree: lineHttp.getPageTree, getFragments: lineHttp.getFragments, setPageProp: notPlanned, setFragment: notPlanned };
   const { mockLinePagesApi } = await import('./LinePagesApi.mock');
   return mockLinePagesApi;
 }
+
+/** On the server a save is a plan step (withPlan replaces these); this answers only if that wiring were missing. */
+const notPlanned = async () => ({ ok: false as const, sentence: 'Saving goes through the project\'s plan; reload the page and try again.', code: 'NO_PLAN' });
 
 /** What adding a plan step answers (the Plan panel's addStep). */
 type AddStep = (req: { tool: string; args: Record<string, unknown> }) => Promise<{ ok: boolean; sentence: string; code?: string; detail?: string }>;

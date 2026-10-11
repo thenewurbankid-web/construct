@@ -1,16 +1,37 @@
-import { getJson, postJson } from '@/lib/http';
-import type { LineHttp } from './lineContract';
+import { getJson, postJson, sendJson } from '@/lib/http';
+import type { LineHttp, LineRefusal, PlanView } from './lineContract';
 
 // The client's one mirror of LINE_API (packages/engine/line/contract.mjs), served by ui/server's lineApi.mjs,
 // lineOpsApi.mjs and lineRenderApi.mjs under /api/line. A refusal arrives as 400 {ok: false, sentence, code};
 // getJson/postJson read the body whatever the status, so a refusal reaches the screen as its sentence. Every Line
-// change is a plan step (cp1): add it, a person approves it, then it runs (Construct's writer on the server).
+// change is a plan step (cp1): add it, a person approves it, then it runs (Construct's writer on the server). There
+// are no direct write routes: Approve and Run carry the approval token GET /api/line/plan hands this page.
+
+/** The approval token from the last GET /api/line/plan (it changes when the server restarts). */
+let approvalToken: string | null = null;
+
+async function getPlan(): Promise<PlanView | LineRefusal> {
+  const body = await getJson<PlanView | LineRefusal>('/api/line/plan');
+  if (body && body.ok && typeof body.approvalToken === 'string') approvalToken = body.approvalToken;
+  return body;
+}
+
+/** A POST only a person makes (approve, run): with the approval token, read once when the page has none yet, and
+ * read again once when the server refuses it (it restarted, so its token changed). */
+async function personPost<T>(path: string, body: unknown): Promise<T> {
+  if (!approvalToken) await getPlan();
+  const send = () => sendJson<T>('POST', path, body, approvalToken ? { 'x-line-approval': approvalToken } : {});
+  let r = await send();
+  if (r.status === 403 && (r.body as { code?: string })?.code === 'NO_APPROVAL') {
+    await getPlan();
+    r = await send();
+  }
+  return r.body;
+}
+
 export const lineHttp: LineHttp = {
   getProject: () => getJson('/api/line/project'),
   getPageTree: (file) => getJson(`/api/line/page-tree?file=${encodeURIComponent(file)}`),
-  setPageProp: (req) => postJson('/api/line/page-prop', req),
-  baseOn: (req) => postJson('/api/line/base-on', req),
-  promote: (req) => postJson('/api/line/promote', req),
   render: (file, props) => {
     const q = new URLSearchParams({ file });
     if (props !== undefined) q.set('props', props);
@@ -19,16 +40,13 @@ export const lineHttp: LineHttp = {
   getFeature: (name) => getJson(`/api/line/feature?name=${encodeURIComponent(name)}`),
   getWorkspace: () => getJson('/api/line/workspace'),
   setWorkspace: (req) => postJson('/api/line/workspace', req),
-  getPlan: () => getJson('/api/line/plan'),
+  getPlan,
   addPlanStep: (req) => postJson('/api/line/plan/step', req),
-  approvePlanStep: (stepId) => postJson('/api/line/plan/approve', { stepId }),
-  runPlan: (stepId) => postJson('/api/line/plan/run', stepId === undefined ? {} : { stepId }),
-  fix: (req) => postJson('/api/line/fix', req),
+  approvePlanStep: (stepId) => personPost('/api/line/plan/approve', Array.isArray(stepId) ? { stepIds: stepId } : { stepId }),
+  runPlan: (stepId) => personPost('/api/line/plan/run', stepId === undefined ? {} : { stepId }),
   getFragments: (file) => getJson(`/api/line/fragments?file=${encodeURIComponent(file)}`),
-  setFragment: (req) => postJson('/api/line/fragment', req),
   importFolders: () => getJson('/api/line/import/folders'),
   importScan: (req) => postJson('/api/line/import/scan', req),
   importPlan: (req) => postJson('/api/line/import/plan', req),
-  importApply: (req) => postJson('/api/line/import/apply', req),
   newProject: (req) => postJson('/api/line/new-project', req),
 };

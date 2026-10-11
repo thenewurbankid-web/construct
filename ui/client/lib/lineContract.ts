@@ -13,7 +13,7 @@ export type LineFinding = {
   severity: 'error' | 'warning' | 'info';
   file: string;
   line: number;
-  /** "<rule>|<file>|<line>": the handle POST /api/line/fix takes. */
+  /** "<rule>|<file>|<line>": the handle a line.fix plan step takes. */
   key?: string;
   /** Typed fixes, recommended first (rank 1); LINE-* findings only. */
   fixes?: LineFix[];
@@ -30,7 +30,7 @@ export type LineFix = {
   step: { tool: LineFixTool; args: Record<string, unknown> } | null;
 };
 
-/** POST /api/line/fix. */
+/** The args of a line.fix plan step. */
 export type FixRequest = { findingKey: string; fixId: string };
 
 /** A library item (complete and usable on its own). */
@@ -194,6 +194,8 @@ export type PlanView = {
   message?: string;
   /** POST /api/line/plan/step only: the step just added. */
   stepId?: string;
+  /** GET /api/line/plan only: the token the page sends back as x-line-approval to approve or run (only a person does). */
+  approvalToken?: string;
 };
 export type PlanStepRequest = { tool: string; args?: Record<string, unknown>; why?: string };
 /** Import (ci1): one folder of the open project brought into Line; only that folder is ever written. */
@@ -232,23 +234,18 @@ export type ImportPlanRequest = { folder: string; answers: Record<string, string
 export type LineHttp = {
   getProject: () => Promise<LineProject | LineRefusal>;
   getPageTree: (file: string) => Promise<LinePageTree | LineRefusal>;
-  setPageProp: (req: SetPropRequest) => Promise<ApplyResult | LineRefusal>;
-  baseOn: (req: BaseOnRequest) => Promise<ApplyResult | LineRefusal>;
-  promote: (req: PromoteRequest) => Promise<ApplyResult | LineRefusal>;
   render: (file: string, props?: string) => Promise<RenderResult>;
   getFeature: (name: string) => Promise<LineFeatureDetail | LineRefusal>;
   getWorkspace: () => Promise<LineWorkspace | LineRefusal>;
   setWorkspace: (req: WorkspaceRequest) => Promise<LineWorkspace | LineRefusal>;
   getPlan: () => Promise<PlanView | LineRefusal>;
   addPlanStep: (req: PlanStepRequest) => Promise<PlanView | LineRefusal>;
-  approvePlanStep: (stepId: string) => Promise<PlanView | LineRefusal>;
+  /** One step, or several with one click (Import). Sends the page's approval token (x-line-approval). */
+  approvePlanStep: (stepId: string | string[]) => Promise<PlanView | LineRefusal>;
   runPlan: (stepId?: string) => Promise<PlanView | LineRefusal>;
-  fix: (req: FixRequest) => Promise<ApplyResult | LineRefusal>;
   getFragments: (file: string) => Promise<FragmentList | LineRefusal>;
-  setFragment: (req: SetFragmentRequest) => Promise<ApplyResult | LineRefusal>;
   importFolders: () => Promise<ImportFolders | LineRefusal>;
   importScan: (req: ImportScanRequest) => Promise<ImportScan | LineRefusal>;
   importPlan: (req: ImportPlanRequest) => Promise<ImportPlan | LineRefusal>;
-  importApply: (req: ImportPlanRequest) => Promise<ImportApplyResult | LineRefusal>;
   newProject: (req: NewLineProjectRequest) => Promise<NewLineProjectResult | LineRefusal>;
 };

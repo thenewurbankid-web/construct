@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { onLinePlanChanged } from '@/lib/linePlanRun';
 import { planRows } from '../domain/PlanRows';
 import { changeResult, lastRun } from '../domain/PlanResult';
 import { linePlanApi } from '../services/LinePlanApi';
@@ -36,6 +37,8 @@ export function useLinePlan(onLanded: () => void, api: LinePlanApi = linePlanApi
     void api.getPlan().then((a) => take(a));
   }, [api, take]);
   useEffect(() => refresh(), [refresh]);
+  // A screen ran plan steps itself (Apply recommended fix, Import's Apply): show them here as they are now.
+  useEffect(() => onLinePlanChanged(refresh), [refresh]);
   /** After a refusal: show the plan as it is now, keeping the refusal's sentence. */
   const reread = useCallback(() => {
     void api.getPlan().then((g) => {

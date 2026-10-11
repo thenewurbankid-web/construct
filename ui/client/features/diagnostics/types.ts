@@ -14,7 +14,7 @@ export type Violation = {
   message: string;
   why?: string;
   suggestedFix?: string;
-  /** ca2: a LINE-* problem's handle for POST /api/line/fix. */
+  /** ca2: a LINE-* problem's handle for a line.fix plan step. */
   key?: string;
   /** ca2: a LINE-* problem's typed fixes, recommended first. */
   fixes?: LineFix[];

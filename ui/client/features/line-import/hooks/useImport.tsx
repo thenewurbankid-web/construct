@@ -8,7 +8,8 @@ import { importReducer, initialImport } from '../workflows/ImportFlow';
 import type { ImportApi, ImportControls } from '../types';
 
 /** The Import flow against the server (or the mock in Line mock mode): folders on open, then scan, answers, plan and
- * apply, one call at a time. Every write happens on the server through Construct's writer, inside the chosen folder. */
+ * apply, one call at a time. Apply adds the plan's steps to the project's plan and runs them after the click's one
+ * approval; every write happens on the server through Construct's writer, inside the chosen folder. */
 export function useImport(given?: ImportApi): ImportControls {
   const [state, dispatch] = useReducer(importReducer, initialImport);
   const [api, setApi] = useState<ImportApi | null>(given ?? null);
@@ -51,9 +52,9 @@ export function useImport(given?: ImportApi): ImportControls {
     call((a) => a.importPlan({ folder, answers }), (body) => dispatch({ type: 'PLANNED', plan: body as never }));
   }, [call]);
   const apply = useCallback(() => {
-    const { folder, answers } = current.current;
+    const { folder, answers, plan: shown } = current.current;
     dispatch({ type: 'APPLY' });
-    call((a) => a.importApply({ folder, answers }), (body) => dispatch({ type: 'APPLIED', result: body as never }));
+    call((a) => a.importApply({ folder, answers }, shown?.steps ?? []), (body) => dispatch({ type: 'APPLIED', result: body as never }));
   }, [call]);
 
   const view = useMemo(() => importView(state), [state]);

@@ -3,7 +3,7 @@
 // through it shows in its next read. Not imported by the app.
 import { createMockLineOps } from '../../../../../packages/engine/line/mock.mjs';
 import { toApplyResult } from '../domain/ChangeText.ts';
-import type { ApplyResult, LineApi, LineProject } from '../types.ts';
+import type { ApplyResult, LineApi, LineProject, MockLineChanges } from '../types.ts';
 
 /** The contract mock's project, as GET /api/line/project would answer it. */
 export function mockLineProject(): LineProject {
@@ -11,7 +11,7 @@ export function mockLineProject(): LineProject {
 }
 
 /** A LineApi over one mock project, or one whose read is refused with `fail`. */
-export function createMockLineApi({ fail }: { fail?: string } = {}): LineApi {
+export function createMockLineApi({ fail }: { fail?: string } = {}): LineApi & MockLineChanges {
   const ops = createMockLineOps();
   const change = async (plan: () => { summary: string; files: { path: string; content: string | null }[] }): Promise<ApplyResult> => {
     try {

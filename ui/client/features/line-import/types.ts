@@ -1,12 +1,15 @@
-import type { LineHttp } from '@/lib/lineContract';
+import type { ImportPlanRequest, LineHttp, LineRefusal } from '@/lib/lineContract';
 
 export type {
   ImportApplyResult, ImportFolders, ImportFound, ImportPlan, ImportQuestion, ImportScan, ImportStep, LineRefusal,
 } from '@/lib/lineContract';
-import type { ImportApplyResult, ImportFolders, ImportFound, ImportPlan, ImportScan } from '@/lib/lineContract';
+import type { ImportApplyResult, ImportFolders, ImportFound, ImportPlan, ImportScan, ImportStep } from '@/lib/lineContract';
 
-/** The routes the Import screen calls (a slice of the shared LINE_API mirror). */
-export type ImportApi = Pick<LineHttp, 'importFolders' | 'importScan' | 'importPlan' | 'importApply'>;
+/** The routes the Import screen calls (a slice of the shared LINE_API mirror), and Apply: the plan's steps added to the
+ * project's plan, approved by the click and run (services/ImportApi.ts), or the mock's apply in Line mock mode. */
+export type ImportApi = Pick<LineHttp, 'importFolders' | 'importScan' | 'importPlan'> & {
+  importApply: (req: ImportPlanRequest, steps: ImportStep[]) => Promise<ImportApplyResult | LineRefusal>;
+};
 
 /** A question's id -> the option id picked (missing: the recommended one). */
 export type ImportAnswers = Record<string, string>;

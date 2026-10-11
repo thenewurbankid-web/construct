@@ -24,7 +24,7 @@
  * @property {'error'|'warning'|'info'} severity
  * @property {string} file      Root-relative path.
  * @property {number} line      1-based.
- * @property {string} [key]     Stable handle for POST /api/line/fix: "<rule>|<file>|<line>" (fixes.mjs findingKey).
+ * @property {string} [key]     Stable handle for a line.fix plan step: "<rule>|<file>|<line>" (fixes.mjs findingKey).
  * @property {LineFix[]} [fixes] Typed fixes (fixes.mjs fixesFor), recommended first; absent on findings that are not LINE-*.
  */
 
@@ -358,7 +358,7 @@ export const CHECK_KINDS = Object.freeze(['validate', 'types', 'tests', 'file', 
  */
 
 /**
- * POST /api/line/import/apply {folder, answers}: the plan run step by step through applyChange; it stops at the first
+ * applyImport {folder, answers} (CLI and mock mode; Cockpit adds the steps to the plan): the plan run step by step through applyChange; it stops at the first
  * refused step (steps already landed stay landed, each one was checked on its own).
  * @typedef {object} ImportApplyResult
  * @property {boolean} ok

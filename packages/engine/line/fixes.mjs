@@ -38,7 +38,7 @@ const itemName = (rel) => { const b = stripExt(posix.basename(rel)); return b ==
 const exists = (root, rel) => fs.existsSync(path.join(root, rel));
 
 /**
- * The stable handle of a finding for POST /api/line/fix.
+ * The stable handle of a finding for a line.fix plan step.
  * @param {{rule: string, file: string, line: number}} f
  * @returns {string} "<rule>|<file>|<line>"
  */
@@ -323,7 +323,7 @@ export function planFix(root, finding, fixId) {
 }
 
 /**
- * POST /api/line/fix: find the finding by key in the current validate result, plan its fix, apply it through the writer.
+ * applyFix (CLI and mock mode; Cockpit uses the line.fix plan step): find the finding by key in the current validate result, plan its fix, apply it through the writer.
  * @param {string} root
  * @param {import('./contract.mjs').FixRequest} req
  * @returns {import('./contract.mjs').ApplyResult}
@@ -334,7 +334,7 @@ export function applyFix(root, req = /** @type {any} */ ({})) {
 }
 
 /**
- * cp1: the plan half of POST /api/line/fix (the `line.fix` plan tool): find the finding by key in the current
+ * cp1: the plan half of applyFix (the `line.fix` plan tool): find the finding by key in the current
  * validate result and plan its fix, without writing. Pure.
  * @param {string} root
  * @param {import('./contract.mjs').FixRequest} req

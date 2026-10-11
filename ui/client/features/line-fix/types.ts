@@ -16,7 +16,7 @@ export type FixState = { phase: 'idle' } | { phase: 'applying'; fixId: string } 
 
 export type FixEvent = { type: 'APPLY'; fixId: string } | { type: 'DONE'; result: ApplyResult };
 
-/** What the panel calls to apply a fix (the server's POST /api/line/fix, or the mock in mock mode). Never rejects. */
+/** What the panel calls to apply a fix (a line.fix plan step approved by the click, or the mock in mock mode). Never rejects. */
 export type LineFixApi = { fix: (req: FixRequest) => Promise<ApplyResult> };
 
 /** Everything the panel renders and does. */
