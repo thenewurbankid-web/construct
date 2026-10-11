@@ -8,6 +8,8 @@
 //   line.fix          write  FixRequest      -> planFixByKey (a finding's typed fix, fixes.mjs) + applyChange
 //   line.setFragment  write  SetFragmentRequest -> planSetFragment (fragments.mjs) + applyChange
 //   line.setBase, line.moveFile, line.createLayout   write   the fix steps themselves (fixes.mjs planStep) + applyChange
+//   line.baseWorkflowOn, line.setWorkflowRole, line.addWorkflowTransition, line.removeWorkflowTransition
+//                     write  cw1 workflows (workflows.mjs) + applyChange
 //   line.leaveAsIs    write  {stepId}        -> a person's "carry on" after a step that needs them (writes nothing)
 //   line.project      read   {}              -> readLineProject
 //
@@ -25,15 +27,19 @@ import { planSetProp } from './pageProp.mjs';
 import { readLineProject } from './model.mjs';
 import { planFixByKey, planStep, withFixes } from './fixes.mjs';
 import { planSetFragment } from './fragments.mjs';
+import { planBaseWorkflowOn, planSetWorkflowRole, planAddWorkflowTransition, planRemoveWorkflowTransition } from './workflows.mjs';
 
 /** The real operations (tests pass the contract's mock instead). */
-export const REAL_PLAN_OPS = Object.freeze({ planBaseOn, planPromote, planSetProp, planFixByKey, planSetFragment, planStep, applyChange, readLineProject });
+export const REAL_PLAN_OPS = Object.freeze({ planBaseOn, planPromote, planSetProp, planFixByKey, planSetFragment, planStep, applyChange, readLineProject, planBaseWorkflowOn, planSetWorkflowRole, planAddWorkflowTransition, planRemoveWorkflowTransition });
 
 /** The write tools that plan a StagedChange, and the op that plans it (`planStep` takes {tool, args}). */
 export const CHANGE_TOOLS = Object.freeze({
   'line.baseOn': 'planBaseOn', 'line.promote': 'planPromote', 'line.setPageProp': 'planSetProp',
   'line.fix': 'planFixByKey', 'line.setFragment': 'planSetFragment',
   'line.setBase': 'planStep', 'line.moveFile': 'planStep', 'line.createLayout': 'planStep',
+  // cw1 workflows (workflows.mjs); promoting a workflow is line.promote like every other kind
+  'line.baseWorkflowOn': 'planBaseWorkflowOn', 'line.setWorkflowRole': 'planSetWorkflowRole',
+  'line.addWorkflowTransition': 'planAddWorkflowTransition', 'line.removeWorkflowTransition': 'planRemoveWorkflowTransition',
 });
 
 /** Plan a change tool's request with `ops` (pure; throws a LineOpError for a refusal). */
@@ -108,6 +114,10 @@ const SCHEMAS = Object.freeze({
   'line.setBase': objectSchema({ file: 'string', libraryId: 'string' }, { change: true }),
   'line.moveFile': objectSchema({ from: 'string', to: 'string', base: 'optString' }, { change: true }),
   'line.createLayout': objectSchema({}, { change: true }),
+  'line.baseWorkflowOn': objectSchema({ libraryId: 'string', feature: 'string', name: 'string' }, { change: true }),
+  'line.setWorkflowRole': objectSchema({ file: 'string', role: 'string', page: 'anyString' }, { change: true }),
+  'line.addWorkflowTransition': objectSchema({ file: 'string', from: 'string', event: 'string', to: 'string', service: 'optString', part: 'optString', partState: 'optString' }, { change: true }),
+  'line.removeWorkflowTransition': objectSchema({ file: 'string', from: 'string', event: 'string' }, { change: true }),
   'line.leaveAsIs': objectSchema({ stepId: 'string' }),
   'line.project': objectSchema({}),
 });
@@ -121,6 +131,10 @@ const DESCRIBE = Object.freeze({
   'line.setBase': 'Points a feature item\'s base link at one library item, through the checked writer.',
   'line.moveFile': 'Moves a file and re-points every import of it, through the checked writer.',
   'line.createLayout': 'Creates the library folder so the project is laid out as Line, through the checked writer.',
+  'line.baseWorkflowOn': 'Creates a feature workflow based on one library workflow (a copy of its state machine, its pages not chosen yet), through the checked writer.',
+  'line.setWorkflowRole': 'Chooses which page of the feature fills one role of a feature workflow (empty page clears it), through the checked writer.',
+  'line.addWorkflowTransition': 'Adds a When -> Do transition to a feature workflow: when a state gets an event, optionally call a service or set a part\'s state, then go to a state; through the checked writer.',
+  'line.removeWorkflowTransition': 'Removes a transition a feature added to its workflow (the library workflow\'s stay), through the checked writer.',
   'line.leaveAsIs': 'Records that a person chose to carry on after a step that needed them; writes nothing.',
   'line.project': 'Reads the Line view of the project: library, features, items and findings.',
 });
