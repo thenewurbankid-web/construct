@@ -135,3 +135,5 @@ export * as planRegistry from './plan-registry.mjs';
 export * as rulesCatalog from './rules-catalog.mjs';
 /** `@line/construct-core/file-lock` */
 export * as fileLock from './file-lock.mjs';
+/** `@line/construct-core/yaml-edit` */
+export * as yamlEdit from './yaml-edit.mjs';

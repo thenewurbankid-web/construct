@@ -78,6 +78,27 @@ test('mergeStoryValues refuses a url with no existing source entry', () => {
   assert.throws(() => mergeStoryValues(STORY, { url: 'https://example.com/not-added-yet', values: { title: 'x' } }), StoryFrontMatterError);
 });
 
+test('mergeStorySource keeps every front-matter comment and the key order; only the edited selector changes', () => {
+  const story = `---
+# Ticket links, picked by hand
+title: Refund a delivered order
+sources:
+  - url: https://acme.atlassian.net/browse/STORE-142 # the main ticket
+    parse:
+      title: h1.title # stable id
+      description: div.description
+owner: payments
+---
+## Notes
+Written by hand.
+`;
+  const { after, changed } = mergeStorySource(story, { url: 'https://acme.atlassian.net/browse/STORE-142', parse: { title: 'h1.title', description: 'div.summary' } });
+  assert.equal(changed, true);
+  assert.equal(after, story.replace('      description: div.description', '      description: div.summary'));
+  const withValues = mergeStoryValues(after, { url: 'https://acme.atlassian.net/browse/STORE-142', values: { title: 'Refund' } }).after;
+  assert.equal(withValues, after.replace('      description: div.summary\n', '      description: div.summary\n    values:\n      title: Refund\n'));
+});
+
 test('mergeStoryValues rejects a missing url or values', () => {
   assert.throws(() => mergeStoryValues(STORY, { url: '', values: { a: 'b' } }), StoryFrontMatterError);
   assert.throws(() => mergeStoryValues(STORY, { url: 'https://x', values: null }), StoryFrontMatterError);

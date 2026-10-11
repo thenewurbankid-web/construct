@@ -33,6 +33,7 @@ import { parseToAst, walkAst } from '@construct/ast';
 import { createTransaction } from '../transactionalWriter.mjs';
 import { aggregateValidation } from '@line/construct-core/registry';
 import { enforcersForRoot } from '@line/construct-core/profiles';
+import { editYamlDocument } from '@line/construct-core/yaml-edit';
 
 const posix = path.posix;
 const SPECIFIER = /(\bfrom\s+|\bimport\s*\(\s*|\brequire\s*\(\s*|^\s*import\s+)(['"])([^'"\n]+)\2/gm;
@@ -552,9 +553,10 @@ function withCarriedExceptions(root, change, moved, from) {
   const rules = [...new Set(found.filter((v) => v.file === moved && v.severity === 'error' && !String(v.rule).startsWith('LINE-')).map((v) => String(v.rule)))].sort();
   if (!rules.length) return change;
   const yml = change.files.find((x) => x.path === 'architecture.yml')?.content ?? fs.readFileSync(path.join(root, 'architecture.yml'), 'utf8');
-  const head = /^exceptions:\s*$/m.test(yml) ? yml.replace(/\n*$/, '\n') : `${yml.replace(/\n*$/, '\n')}exceptions:\n`;
-  const entry = `  - path: ${moved}\n    rules: [${rules.join(', ')}]\n    reason: Imported from ${from}; Line brings it to the pattern step by step.\n`;
-  return { ...change, files: [...change.files.filter((x) => x.path !== 'architecture.yml'), { path: 'architecture.yml', content: head + entry }] };
+  const entry = { path: moved, rules, reason: `Imported from ${from}; Line brings it to the pattern step by step.` };
+  // In place, so the person's comments and key order stay, and the entry lands in `exceptions:` wherever that key sits.
+  const content = editYamlDocument(yml, [{ op: 'push', path: ['exceptions'], value: entry, inlineLists: true }], { label: 'architecture.yml' });
+  return { ...change, files: [...change.files.filter((x) => x.path !== 'architecture.yml'), { path: 'architecture.yml', content }] };
 }
 
 const libPath = (args) =>`library/${args.kind}/${args.name}${posix.extname(String(args.from))}`;

@@ -25,6 +25,7 @@ import yaml from 'js-yaml';
 import { loadConfig } from './config.mjs';
 import { ConstructError, EXIT_CODES } from './diagnostics.mjs';
 import { isNonLayerPath } from './nonLayer.mjs';
+import { splitFrontMatter } from './yaml-edit.mjs';
 
 /** The glob a project declares as `nonLayer:` so a story.md at a feature root is not an unrecognized file (SOC-001). */
 export const STORY_GLOB = 'features/*/story.md';
@@ -131,13 +132,12 @@ function parseBlockContent(content) {
  * parseStory('---\nsources: []\n---\n<!-- construct:tool-begin fetchedAt=x sourceHash=y blockHash=z -->\n# T\n<!-- construct:tool-end -->\n\n## Notes\n').tool.title; // => 'T'
  */
 export function parseStory(text) {
-  let rest = text ?? '';
   let sources = [];
-  const fmMatch = /^---\n([\s\S]*?)\n---\n?/.exec(rest);
-  if (fmMatch) {
-    rest = rest.slice(fmMatch[0].length);
+  const fm = splitFrontMatter(text);
+  let rest = fm.body;
+  if (fm.frontMatter !== null) {
     try {
-      const parsed = yaml.load(fmMatch[1]);
+      const parsed = yaml.load(fm.frontMatter);
       if (parsed && Array.isArray(parsed.sources)) sources = parsed.sources;
     } catch { /* malformed front matter: sources stays [], the block/user text below is still readable */ }
   }
@@ -234,8 +234,7 @@ export function writeStorySnapshot(existingText, fetched) {
   }
 
   const block = renderToolBlock({ fetchedAt: fetched.fetchedAt, sourceHash, title: fetched.title ?? '', description: fetched.description ?? '', status: fetched.status ?? '', acceptance });
-  const frontMatterMatch = /^---\n[\s\S]*?\n---\n?/.exec(existingText ?? '');
-  const frontMatter = frontMatterMatch ? frontMatterMatch[0] : '';
+  const frontMatter = splitFrontMatter(existingText).block;
   const userText = parsed.userText ?? '';
   const text = `${frontMatter}${block}${userText ? `\n${userText}` : ''}`;
   return { conflict: false, changed: true, text, acceptance };

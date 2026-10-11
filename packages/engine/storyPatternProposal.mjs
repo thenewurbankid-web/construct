@@ -8,10 +8,10 @@
 // Every selector is validated the SAME way a hand-written or picker-proposed selector is (storySelectors.mjs,
 // #384/9.6b) before anything is merged: an invalid selector refuses the WHOLE proposal (nothing written), so a
 // model can never smuggle an unsafe selector past validation just because it arrived from an AI call instead of a
-// human. The front-matter merge itself intentionally mirrors `ui/server/src/storyFrontMatter.mjs`'s
-// `mergeStorySource` (small, deterministic, cheaper to keep in sync by eye than to couple the engine to a UI
-// package for, same precedent `storyBridgeApi.mjs` states for its own selector-validation duplication).
+// human. The front-matter merge is the same in-place edit `ui/server/src/storyFrontMatter.mjs`'s `mergeStorySource`
+// makes, through the shared @line/construct-core/yaml-edit split and edit (comments and key order kept).
 import yaml from 'js-yaml';
+import { editFrontMatter, splitFrontMatter, YamlEditError } from '@line/construct-core/yaml-edit';
 import { validateParseSpec, SelectorError } from './storySelectors.mjs';
 
 /** A model-proposed `{url, parse}` pattern was refused: an invalid selector, or a malformed proposal shape. */
@@ -27,21 +27,19 @@ export class PatternProposalError extends Error {
   }
 }
 
-const FRONT_MATTER = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/;
-
-function readFrontMatter(text) {
-  const m = FRONT_MATTER.exec(text ?? '');
-  if (!m) return { frontMatter: {}, body: text ?? '' };
+/** Check the front matter parses and is a mapping, as PatternProposalError('BAD_FRONT_MATTER') when not. */
+function checkFrontMatter(text) {
+  const { frontMatter: raw } = splitFrontMatter(text);
+  if (raw === null) return;
   let frontMatter;
   try {
-    frontMatter = yaml.load(m[1]) || {};
+    frontMatter = yaml.load(raw) || {};
   } catch (e) {
     throw new PatternProposalError('BAD_FRONT_MATTER', `story.md front matter is not valid YAML: ${e.message}`);
   }
   if (typeof frontMatter !== 'object' || Array.isArray(frontMatter)) {
     throw new PatternProposalError('BAD_FRONT_MATTER', 'story.md front matter must be a mapping.');
   }
-  return { frontMatter, body: text.slice(m[0].length) };
 }
 
 /**
@@ -72,12 +70,17 @@ export function proposePattern(existingText, { url, parse } = {}) {
   if (Object.keys(selectors).length === 0) throw new PatternProposalError('EMPTY_PROPOSAL', 'The proposal has no fields.');
 
   const before = existingText ?? '';
-  const { frontMatter, body } = readFrontMatter(before);
-  const sources = Array.isArray(frontMatter.sources) ? frontMatter.sources.slice() : [];
-  const idx = sources.findIndex((s) => s && s.url === url);
-  const nextEntry = { url, parse };
-  const nextSources = idx === -1 ? [...sources, nextEntry] : sources.map((s, i) => (i === idx ? { ...s, parse } : s));
-  const nextFrontMatter = { ...frontMatter, sources: nextSources };
-  const after = `---\n${yaml.dump(nextFrontMatter, { lineWidth: -1 }).trimEnd()}\n---\n${body}`;
+  checkFrontMatter(before);
+  let after;
+  try {
+    after = editFrontMatter(before, (data) => {
+      const idx = Array.isArray(data?.sources) ? data.sources.findIndex((s) => s && s.url === url) : -1;
+      if (idx === -1) return [{ op: 'push', path: ['sources'], value: { url, parse } }];
+      return [{ op: 'set', path: ['sources', idx, 'parse'], value: parse }];
+    }, { label: 'story.md front matter' });
+  } catch (e) {
+    if (e instanceof YamlEditError) throw new PatternProposalError('BAD_FRONT_MATTER', e.message);
+    throw e;
+  }
   return { before, after, changed: before !== after, selectors };
 }

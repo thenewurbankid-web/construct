@@ -252,3 +252,63 @@ test('presetApply commit writes the reset severities and is refused (409) on a s
   const page001 = rulesIndex(dir).body.rules.find((r) => r.id === 'PAGE-001');
   assert.equal(page001.severity, page001.defaultSeverity);
 });
+
+// Editing a rule used to rewrite architecture.yml with yaml.dump, deleting every comment and reordering keys.
+
+const COMMENTED = `# Team rules: ask the platform channel before loosening any of these.
+version: 1
+
+# Our own order: features first, then rules
+features:
+  root: src/features # moved in 2026
+
+rules:
+  PAGE-001: error # pages stay thin
+  DOMAIN-002: warning
+
+exceptions:
+  - path: legacy/**
+    rule: PAGE-001
+    reason: "old code" # until the rewrite
+`;
+
+test('ruleSeveritySave keeps every comment and the key order of architecture.yml; only the edited value changes', () => {
+  const dir = makeTempDir('rules-api-comments-');
+  const file = path.join(dir, 'architecture.yml');
+  fs.writeFileSync(file, COMMENTED);
+  const preview = ruleSeveritySave(dir, { ruleId: 'PAGE-001', severity: 'warning' });
+  const expected = COMMENTED.replace('  PAGE-001: error # pages stay thin', '  PAGE-001: warning # pages stay thin');
+  assert.equal(preview.body.after, expected);
+  const saved = ruleSeveritySave(dir, { ruleId: 'PAGE-001', severity: 'warning', contentHash: preview.body.contentHash, commit: true });
+  assert.equal(saved.status, 200);
+  assert.equal(fs.readFileSync(file, 'utf8'), expected);
+  assert.equal(saved.body.contentHash, hashOf(expected));
+});
+
+test('ruleExceptionSave and projectSettingsSave keep comments too, editing only their own lines', () => {
+  const dir = makeTempDir('rules-api-comments-2-');
+  const file = path.join(dir, 'architecture.yml');
+  fs.writeFileSync(file, COMMENTED);
+  const added = ruleExceptionSave(dir, { action: 'add', path: 'app/old/**', rule: 'DOMAIN-002', contentHash: hashOf(COMMENTED), commit: true });
+  assert.equal(added.status, 200);
+  const afterAdd = `${COMMENTED}  - path: app/old/**\n    rule: DOMAIN-002\n`;
+  assert.equal(fs.readFileSync(file, 'utf8'), afterAdd);
+  const moved = projectSettingsSave(dir, { featuresRoot: 'app/features', contentHash: hashOf(afterAdd), commit: true });
+  assert.equal(moved.status, 200);
+  assert.equal(fs.readFileSync(file, 'utf8'), afterAdd.replace('  root: src/features # moved in 2026', '  root: app/features # moved in 2026'));
+});
+
+test('a malformed architecture.yml is refused (422 BAD_YAML) with its line and column, and left as it was', () => {
+  const dir = makeTempDir('rules-api-bad-yaml-');
+  const file = path.join(dir, 'architecture.yml');
+  const bad = 'version: 1\nrules: [PAGE-001\n';
+  fs.writeFileSync(file, bad);
+  const out = ruleSeveritySave(dir, { ruleId: 'PAGE-001', severity: 'off', contentHash: hashOf(bad), commit: true });
+  assert.equal(out.status, 422);
+  assert.equal(out.body.code, 'BAD_YAML');
+  assert.equal(typeof out.body.line, 'number');
+  assert.match(out.body.error, /line \d+, column \d+/);
+  assert.equal(ruleExceptionSave(dir, { action: 'remove', index: 0 }).body.code, 'BAD_YAML');
+  assert.equal(presetApply(dir, { preset: 'strict-nextjs' }).body.code, 'BAD_YAML');
+  assert.equal(fs.readFileSync(file, 'utf8'), bad);
+});

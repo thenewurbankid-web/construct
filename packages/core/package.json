@@ -80,6 +80,7 @@
     "./plan-registry": "./plan-registry.mjs",
     "./rules-catalog": "./rules-catalog.mjs",
     "./file-lock": "./file-lock.mjs",
+    "./yaml-edit": "./yaml-edit.mjs",
     "./reason-provider": "./reason-provider.mjs"
   },
   "files": [
@@ -95,7 +96,8 @@
     "diff": "^9.0.0",
     "js-yaml": "^4.3.2",
     "minimatch": "^10.0.1",
-    "proper-lockfile": "^4.1.2"
+    "proper-lockfile": "^4.1.2",
+    "yaml": "^2.9.1"
   },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com",
