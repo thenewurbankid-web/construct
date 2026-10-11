@@ -120,3 +120,22 @@ Gaps: one older drawer test about the empty Processes tab fails; it covers tabs 
    Open http://localhost:3000.
 2. Open the project `line-sample` from the project picker. The status bar says "validate: 2 problems". Click it.
 3. Diagnostics shows two rows, each a sentence: one says billing imports from orders and to promote that item to the library; the other says InvoiceCard has no library base. Click "Details" under each: LINE-DIR at features/billing/pages/InvoicesPage.tsx:4 and LINE-BASE at features/billing/components/InvoiceCard.tsx:1.
+
+## Hour 2: Components, the Line library as cards (awaiting UAT)
+
+Tests: `test/line-model.test.mjs` (9), `ui/server/src/lineApi.test.mjs` (5), `ui/client/features/line-library/domain/LibraryView.spec.mjs` (6), `ui/e2e/tests/line-components-library.spec.js` (2, Playwright, run for real).
+1. The sample's library reads correctly: Badge and Button are atoms, Card a molecule, DataTable an organism; "used by" counts are right; exactly the two planted problems show.
+2. A complete Line project reads with no problems and every feature item linked to its base; a non-Line project is not treated as one.
+3. A broken base link keeps what was written and counts for no library item.
+4. Level rule: no library imports = atom; only atoms = molecule; anything else (or an import loop) = organism; a written level wins.
+5. The project route needs a signed-in session, answers with the real model, and every failure is one sentence.
+6. Cards are grouped and ordered Atoms, Molecules, Organisms; pages are not cards; "Used by" and "Based on" read correctly.
+7. In the browser: the sample shows the groups and each card's level and use count; billing's InvoiceCard shows its problem sentence, rule id only under Details; accessibility clean.
+8. A non-Line project's Components screen is unchanged (and the old 20 Components tests still pass).
+
+Gaps: no previews on cards yet (Hour 3), no search or filters; components written as a folder with index.tsx are not listed; a non-Line project's Components screen shows "Reading the project" for a moment first.
+
+### UAT
+1. Start Cockpit with the sample as in Hour 1 and open `line-sample`.
+2. Click Components. Expect "Your component library": Atoms (Badge, not used yet; Button, used by 1), Molecules (Card, used by 1), Organisms (DataTable, not used yet).
+3. Under "Feature components": billing's InvoiceCard says "No library base yet" with its sentence (Details shows LINE-BASE); orders shows OrderButton "Based on Button" and OrderCard "Based on Card". Open any non-Line project: its Components screen is as before.
