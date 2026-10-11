@@ -51,7 +51,7 @@ test('plan over MCP: the agent adds Base on, cannot run or approve it; after the
   assert.equal(ran.isError, false, ran.text);
   const done = ran.body.steps.find((s) => s.id === added.body.stepId);
   assert.equal(done.state, 'done');
-  assert.match(done.sentence, /^Saved\. Creates StatusBadge/);
+  assert.match(done.sentence, /^Saved: Creates StatusBadge/);
   assert.deepEqual(done.result.checks.map((c) => c.ok), [true, true]);
   assert.ok(fs.existsSync(path.join(root, BADGE_FILE)));
   const seen = await person.view();

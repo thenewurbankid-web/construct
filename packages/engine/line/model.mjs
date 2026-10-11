@@ -17,6 +17,7 @@ import {
 } from '../../core/profiles/line/checks.mjs';
 import { LEVELS } from './contract.mjs';
 import { withFixes } from './fixes.mjs';
+import { summarize } from '../../summarize/index.mjs';
 
 const posix = path.posix;
 const LEVEL_PRAGMA = /@line-level\s+(atom|molecule|organism)\b/;
@@ -41,7 +42,11 @@ const asSentence = (s) => { const t = String(s || 'This file breaks a Line rule.
  */
 export function toFinding(v) {
   const severity = v.severity === 'error' || v.severity === 'warning' ? v.severity : 'info';
-  return { sentence: asSentence(v.message), rule: v.rule, severity, file: v.file || '.', line: Number.isInteger(v.line) && v.line > 0 ? v.line : 1 };
+  const file = v.file || '.';
+  const line = Number.isInteger(v.line) && v.line > 0 ? v.line : 1;
+  // cs1: the sentence a person reads is made and checked by the one summarizer (the rule id and file:line stay fields).
+  const sentence = summarize({ kind: 'finding', finding: { sentence: asSentence(v.message), rule: v.rule, file, line } }).sentences.join(' ');
+  return { sentence, rule: v.rule, severity, file, line };
 }
 
 /**

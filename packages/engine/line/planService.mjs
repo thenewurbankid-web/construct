@@ -12,6 +12,7 @@
 // Nothing here writes a project file: a step's write happens only when the plan runner calls the registry
 // (planTools.mjs -> applyChange -> Construct's transactional writer).
 import { importLinked } from '../../line-links/index.mjs';
+import { summarize } from '../../summarize/index.mjs';
 import { CHANGE_TOOLS, DEFAULT_EXPECT, REAL_PLAN_OPS, createLinePlanRegistry, constructCommandTools, gapOf, previewStep } from './planTools.mjs';
 import { createAtomicPlanWriter, createStaticPlanApi } from './planFallback.mjs';
 
@@ -70,7 +71,10 @@ export function stepView(root, plan, s, ops = REAL_PLAN_OPS) {
           : r && typeof r.command === 'string' ? `Ran construct ${r.command}, which ended with exit code ${r.exitCode}.` : `Done: ${s.why}`;
     }
   }
-  return { id: s.id, n: s.n, tool: s.tool, args: s.args, why: s.why, kind: s.kind, state, sentence, gap, result: s.status === 'done' ? s.result ?? null : null, error: s.error ?? null };
+  const result = s.status === 'done' ? s.result ?? null : null;
+  // cs1: the step's words are made and checked by the one summarizer; the tool call, ids and options are its details.
+  const plain = summarize({ kind: 'plan-step', step: { id: s.id, n: s.n, tool: s.tool, args: s.args, state, sentence, result } });
+  return { id: s.id, n: s.n, tool: s.tool, args: s.args, why: s.why, kind: s.kind, state, sentence: plain.sentences.join(' '), gap, result, error: s.error ?? null, plain };
 }
 
 /**

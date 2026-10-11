@@ -56,7 +56,8 @@ const SLOTISH = /^[a-z]+(?:[A-Z][a-z0-9]*)+$|^[a-z]+(?:_[a-z0-9]+)+$/;
  * @returns {string[]}
  */
 export function slotTokens(s) {
-  return String(s).split(/\s+/).filter((w) => !isPathish(w)).map((w) => w.replace(/^[("'`]+|[.,;:!?)"'`]+$/g, '')).filter((w) => SLOTISH.test(w));
+  // A quoted word is a name the sentence quotes on purpose ("useLinePages"), not a slot.
+  return String(s).split(/\s+/).filter((w) => !isPathish(w) && !/^\(?["'`]/.test(w)).map((w) => w.replace(/^[("'`]+|[.,;:!?)"'`]+$/g, '')).filter((w) => SLOTISH.test(w));
 }
 
 /**

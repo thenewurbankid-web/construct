@@ -54,7 +54,15 @@ export const splitSentences = (text) => String(text ?? '').trim().split(/(?<!\b(
 function plainParagraph(texts, names = []) {
   const sentences = [];
   const ids = [];
-  for (const t of texts) for (const part of splitSentences(t)) {
+  // A one-word fragment ("Saved.") leads the sentence after it ("Saved: Creates StatusBadge ..."), the way
+  // "Waiting for your approval: ..." reads, instead of standing alone as a fragment.
+  const parts = texts.flatMap(splitSentences).reduce((acc, part) => {
+    const prev = acc[acc.length - 1];
+    if (prev !== undefined && /^\S+[.!]$/.test(prev)) acc[acc.length - 1] = `${prev.slice(0, -1)}: ${part}`;
+    else acc.push(part);
+    return acc;
+  }, /** @type {string[]} */ ([]));
+  for (const part of parts) {
     const p = plainSentence(part, names);
     sentences.push(p.sentence);
     ids.push(...p.ids);

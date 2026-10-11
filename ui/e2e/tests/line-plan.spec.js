@@ -67,7 +67,7 @@ test.describe.serial('Line: the Plan panel (Line sample project)', () => {
 
     await step.getByRole('button', { name: 'Approve step 1' }).click();
     await expect(step).toHaveAttribute('data-state', 'done');
-    await expect(step.getByTestId('plan-step-sentence')).toHaveText('Saved. Creates StatusBadge in feature orders, based on the library Badge.');
+    await expect(step.getByTestId('plan-step-sentence')).toHaveText('Saved: Creates StatusBadge in feature orders, based on the library Badge.');
     await expect(page.getByTestId('ll-notice')).toContainText('Saved. Creates StatusBadge');
     expect(fs.readFileSync(file, 'utf8').split('\n')[0]).toBe('// @line-base components/Badge');
     const saved = JSON.parse(fs.readFileSync(planFile, 'utf8'));
