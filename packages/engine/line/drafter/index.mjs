@@ -47,9 +47,10 @@ export function staticRank(routes) {
  * Draft every route for a request on the project at `root`.
  * @param {string} root
  * @param {string} request
- * @param {{catalog?: import('./contract.mjs').IntentEntry[], verify?: boolean, ranker?: (routes: import('./contract.mjs').Route[]) => string[], propose?: (word: string, choices: {key: string, label: string}[]) => string|null, records?: import('./contract.mjs').TransitionRecord[]|null, maxVerify?: number, synonyms?: Record<string, string>}} [o]
+ * @param {{catalog?: import('./contract.mjs').IntentEntry[], verify?: boolean, ranker?: (routes: import('./contract.mjs').Route[]) => string[], propose?: (word: string, choices: {key: string, label: string}[]) => string|null, records?: import('./contract.mjs').TransitionRecord[]|null, precedents?: import('./contract.mjs').TransitionRecord[], maxVerify?: number, synonyms?: Record<string, string>}} [o]
  *   `synonyms`: confirmed synonyms kept outside the project (word -> domain-map key), e.g. Train Line's per-world ones.
  *   `ranker`: jev's ranking (ids, best first); it only orders. `records`: training records (default: the project's own).
+ *   `precedents`: more approved records after them (Cockpit passes Train Line's slotted precedents, retrieval.mjs trainPrecedents).
  * @returns {import('./contract.mjs').Draft & {questions: any[], shown: {request: string}, tokens: {t: string, slot?: string, kind?: string, src: string[]}[], entries: Record<string, string>}}
  *   `tokens` and `entries` are the live normalization (they hold the request's own words: shown, never stored).
  */
@@ -62,7 +63,7 @@ export function draft(root, request, o = {}) {
   const graph = structureGraph(project, readerOf(root));
   const roles = rolesOf(graph);
   const slots = slotShapes(n.bindings, n.entries, summary, roles);
-  const records = o.records ?? readRecords(root, summary);
+  const records = [...(o.records ?? readRecords(root, summary)), ...(o.precedents ?? [])];
   // A strong precedent (an approved request with the same slots, worded nearly the same) says what kind of change this
   // is, even when the rules cannot tell or tell otherwise.
   const prec = precedent(records, { request: n.text });

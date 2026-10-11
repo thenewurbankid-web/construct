@@ -16,6 +16,8 @@ import { readLineProject } from '../packages/engine/line/model.mjs';
 import { buildDomainMap, normalize, FUNCTION_WORDS, splitWords } from '../packages/engine/line/drafter/domainMap.mjs';
 import { structureGraph, readerOf, hashesOf } from '../packages/engine/line/structure.mjs';
 import { verifyRoutes } from '../packages/engine/line/drafter/verify.mjs';
+import { trainPrecedents } from '../packages/engine/line/drafter/retrieval.mjs';
+import { createPlanDrafter } from '../packages/engine/line/drafter/planDraft.mjs';
 import { LEXICON, assertLexicon, suggestFromLexicon } from '../packages/engine/line/drafter/lexicon.mjs';
 import { generateGrammar, GRAMMAR_FILES } from '../packages/engine/line/drafter/grammar.mjs';
 
@@ -273,4 +275,44 @@ test('grammar: the committed JSON Schema and GBNF are current, and every drafted
   assert.equal(validate({ intent: 'add.component', steps: [{ tool: 'line.deleteEverything', args: {} }], expect: [{ noNewFindings: true }] }), false, 'only real tools');
   assert.equal(validate({ intent: 'add.component', steps: [{ tool: 'line.baseOn', args: { libraryId: 'components/Badge', feature: 'orders', name: 'X' } }], expect: [{ noNewFindings: true }] }), false, 'names are slots, never the project\'s words');
   for (const t of LINE_PLAN_TOOLS.filter((x) => x.kind === 'write' && x.name !== 'line.leaveAsIs')) assert.ok(g.gbnf.includes(`"\\"${t.name}\\""`), t.name);
+});
+
+// Owner decision (2026-10-11): Train Line's verified, undisputed, slotted precedents may rank routes on a real project.
+test('Train precedents on a real project: the Cockpit drafter ranks by one, every route stays checked, and no domain word crosses over', async () => {
+  const precedents = trainPrecedents();
+  assert.ok(precedents.length > 100, `the committed index feeds the drafter (${precedents.length} records)`);
+  const dir = copy();
+  const request = 'Let billing show OrderButton, which lives in orders.';
+  const without = draft(dir, request, { records: [], precedents: [] });
+  assert.equal(without.recommended, null, 'no rule reads this wording');
+  // The Cockpit drafter (planDraft.mjs) passes the precedents by default.
+  const steps = [];
+  const drafter = createPlanDrafter({ root: dir, enabled: true, record: false, plan: { addStep: async (s) => { steps.push(s); return { ok: true, stepId: `s${steps.length}` }; }, view: async () => ({}) } });
+  const v = await drafter.draft(request);
+  assert.equal(v.intent.id, 'promote.component', 'a precedent says what kind of change this is');
+  assert.ok(v.routes.some((r) => r.via === 'retrieval'), 'the precedent\'s own route is offered too');
+  const rec = v.routes.find((r) => r.id === v.recommended);
+  assert.deepEqual(rec.steps, [{ tool: 'line.promote', args: { featureItemId: 'orders/components/OrderButton' } }]);
+  assert.equal(rec.status, 'ok', 'Construct checked it on a copy');
+  assert.equal((await drafter.addRoute(request, rec.id, 'ui')).added.length, 1, 'it joins the plan as a step a person approves');
+  // No word of an imaginary world: every name a route binds is this project's, and the precedents hold slots only.
+  const s = factsSummary(dir, readLineProject(dir));
+  const names = new Set(JSON.stringify(s).match(/[A-Za-z][\w-]*/g));
+  for (const r of v.routes) for (const st of r.steps) for (const val of Object.values(st.args)) for (const w of String(val).match(/[A-Za-z][\w-]*/g) ?? []) assert.ok(names.has(w), `${w} in ${r.id} comes from the project`);
+  const ids = [...s.features.map((f) => f.name), ...s.features.flatMap((f) => f.items.map((i) => i.name)), ...s.library.map((l) => l.name)];
+  for (const p of precedents) assertNoIdentifiers(p, ids);
+});
+
+test('Train precedents: a disputed case, an unapproved record or a word in a step never feeds a real project', () => {
+  const dir = makeTempDir('line-drafter-index-');
+  const rec = (extra) => ({ v: 1, request: 'promote <component:C1>', intent: 'promote.component', from: null, routeId: 'train:x:a', template: 'promote', to: null, approved: true, group: 'x', preferred: true, outcome: 'change', source: 'train', agreed: false, slots: { C1: { kind: 'component' } }, steps: [{ tool: 'line.promote', args: { featureItemId: '<C1>' } }], expect: [], delta: [], ...extra });
+  const file = path.join(dir, 'retrieval-index.json');
+  fs.writeFileSync(file, JSON.stringify({ v: 1, cases: {
+    'tc-ok:draft': [rec({})],
+    'tc-disputed:disputed': [rec({ routeId: 'train:d:a' })],
+    'tc-word:draft': [rec({ routeId: 'train:w:a', steps: [{ tool: 'line.promote', args: { featureItemId: 'parts/components/Gear' } }] })],
+    'tc-unapproved:draft': [rec({ routeId: 'train:u:a', approved: false })],
+  } }));
+  assert.deepEqual(trainPrecedents(file).map((r) => r.routeId), ['train:x:a']);
+  assert.deepEqual(trainPrecedents(path.join(dir, 'missing.json')), [], 'no index: no precedents, the drafter works as before');
 });

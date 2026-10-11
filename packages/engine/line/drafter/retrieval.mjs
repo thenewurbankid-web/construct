@@ -7,6 +7,7 @@
 // with the request and its slot shapes. Both use the same structure hashes (../structure.mjs).
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { writeLineState } from '../../transactionalWriter.mjs';
 import { LineOpError } from '../contract.mjs';
 import { SLOT_REF } from './contract.mjs';
@@ -77,7 +78,7 @@ const jaccard = (a, b) => { const x = tokens(a); const y = tokens(b); const inte
 export function nearest(records, q) {
   let best = null;
   for (const r of records) {
-    if (!r.approved || r.intent !== q.intent) continue;
+    if (!r.approved || r.intent !== q.intent || !r.steps?.length) continue; // a question precedent has no route to repeat
     const layers = Object.keys(q.from.layers ?? {}).filter((l) => r.from?.layers?.[l] === q.from.layers[l]).length;
     const score = (r.from?.feature && r.from.feature === q.from.feature ? 2 : 0) + layers * 0.5 + jaccard(r.request, q.request);
     if (!best || score > best.score) best = { record: r, score };
@@ -103,6 +104,35 @@ export function routeFromRecord(record, slots, score) {
     via: 'retrieval', confidence: Math.round(Math.min(0.9, 0.4 + score / 4) * 100) / 100, status: 'unverified', refusal: null, invented: [], failed: [],
     ...(/** @type {any} */ (record).unpredicted ? { unpredicted: true } : {}),
   };
+}
+
+/** Train Line's committed retrieval index (the Construct checkout's line/train/retrieval-index.json). */
+export const TRAIN_INDEX = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../../line/train/retrieval-index.json');
+
+/** A step arg in slots only: a slot ref (`<F1>`, `<C1.base>`), a path of kind folders and slot refs, or a plain flag. */
+const slotOnly = (v) => typeof v !== 'string' || /^(<[A-Z]\d+(\.\w+)?>|components|pages|workflows|fixtures|usecases|services|domains)(\/(<[A-Z]\d+(\.\w+)?>|components|pages|workflows|fixtures|usecases|services|domains))*$/.test(v);
+
+/**
+ * Train Line's precedents for a REAL project's draft (owner, 2026-10-11): the committed index's records of verified,
+ * undisputed train-split cases, in slots only. They may rank routes; every route is still checked by Construct and
+ * approved by a person. A disputed case never feeds it, and a record holding anything but slots (a request word that
+ * is not grammar, a step arg that is not a slot) is dropped, so no word of an imaginary world reaches a project.
+ * @param {string} [file] The index (default TRAIN_INDEX).
+ * @returns {import('./contract.mjs').TransitionRecord[]}
+ */
+export function trainPrecedents(file = TRAIN_INDEX) {
+  let cases = {};
+  try { cases = JSON.parse(fs.readFileSync(file, 'utf8')).cases ?? {}; } catch { return []; }
+  const out = [];
+  for (const [key, recs] of Object.entries(cases)) {
+    if (/:disputed$/.test(key) || !Array.isArray(recs)) continue;
+    for (const r of recs) {
+      if (r?.source !== 'train' || r.approved !== true) continue;
+      if (!(r.steps ?? []).every((s) => Object.values(s.args ?? {}).every(slotOnly))) continue;
+      out.push(r);
+    }
+  }
+  return out;
 }
 
 /** The slots a slotted request names, as a sorted signature ("<feature:F1> <library:L1>"). */

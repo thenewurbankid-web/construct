@@ -2,12 +2,14 @@
 // they want, the drafter lists every route (verified by Construct in a scratch copy), the person picks one, and its
 // steps join the plan through planService.addStep like any other step. A person still approves every write; the
 // drafter itself writes nothing to the project's code. Picking a route records one delexicalized transition (and an
-// answered "Did you mean ...?" one synonym) in the project's Line state, through Construct's writer.
+// answered "Did you mean ...?" one synonym) in the project's Line state, through Construct's writer. Train Line's
+// verified, undisputed, slotted precedents (line/train/retrieval-index.json) may rank the routes (owner, 2026-10-11);
+// Construct still checks every route and a person approves it.
 import { readLineProject } from '../model.mjs';
 import { draft as staticDraft, boundRoute } from './index.mjs';
 import { factsSummary } from '../facts.mjs';
 import { addSynonym } from './domainMap.mjs';
-import { toRecord, appendRecord } from './retrieval.mjs';
+import { toRecord, appendRecord, trainPrecedents } from './retrieval.mjs';
 
 /**
  * Whether the drafter is on (LINE_DRAFTER=1 or "on").
@@ -47,7 +49,7 @@ function routeView(d, r) {
  *   draftFn?: (root: string, request: string) => any, record?: boolean}} o
  * @returns {{status: () => {ok: true, on: boolean}, draft: (request: unknown) => Promise<any>, addRoute: (request: unknown, routeId: unknown, by: string, from?: unknown) => Promise<any>, answer: (word: unknown, key: unknown) => Promise<any>}}
  */
-export function createPlanDrafter({ root, plan, enabled = drafterEnabled(), draftFn = (r, q) => staticDraft(r, q), record = true }) {
+export function createPlanDrafter({ root, plan, enabled = drafterEnabled(), draftFn = (r, q) => staticDraft(r, q, { precedents: trainPrecedents() }), record = true }) {
   const cache = new Map();
   const off = () => refusal('DRAFTER_OFF', 'The drafter is off; start the server with LINE_DRAFTER=1 to turn it on.');
   const asRequest = (q) => (typeof q === 'string' ? q.trim().slice(0, 500) : '');
