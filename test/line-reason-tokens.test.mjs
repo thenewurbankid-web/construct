@@ -76,3 +76,41 @@ test('real @mx/reason: its Qwen proposer sends max_tokens 800, not 200, and a lo
   assert.equal(out.options.length, 5);
   assert.deepEqual(JSON.parse(out.options[4])[0].tool, 'line.moveFile');
 });
+
+// Live walk (opt-in: CONSTRUCT_LIVE_QWEN=1, the local Ollama with qwen2.5-coder:1.5b): the same request for five JSON
+// plans, through @mx/reason's own proposer (200 tokens) and through Construct's (800).
+const live = process.env.CONSTRUCT_LIVE_QWEN === '1' && !reasonUp ? false : 'set CONSTRUCT_LIVE_QWEN=1 with a local qwen2.5-coder:1.5b to run';
+test('live Qwen: five JSON plans are cut off at 200 tokens and come back whole at 800', { skip: live, timeout: 180_000 }, async (t) => {
+  const R = (await importLinked('@mx/reason')).module;
+  const MODEL = 'qwen2.5-coder:1.5b';
+  const [defined] = Object.values(R.defineProfiles([{
+    pairId: 'line.plan.step', stepId: 'line.plan', maxOptions: 5, proposeRetries: 0, jevFrame: 'line-plan',
+    qwenGuidance: 'Propose plans for a Line project. A plan is a JSON array of steps {"tool": ..., "args": {...}} using only line.moveFile {from, to} and line.setBase {file, libraryId}. Each option value is one complete JSON array, no prose.',
+    review: { enabled: false, maxRounds: 1 }, success: 'The plan passes.', plan: { version: '1', questions: [{ id: 'pick', kind: 'pick', note: 'Which plan.' }] },
+  }]));
+  const profile = { ...defined, models: { suggest: MODEL, pick: MODEL, review: MODEL } };
+  const render = () => [
+    'Request: move features/orders/components/OrderButton.tsx into library/components/OrderButton.tsx, base features/billing/components/InvoiceCard.tsx on components/Card,',
+    'move features/billing/pages/InvoicesPage.tsx into library/pages/InvoicesPage.tsx, base features/orders/components/OrderCard.tsx on components/Card,',
+    'move features/orders/workflows/orderCheckout.ts into library/workflows/orderCheckout.ts and base features/orders/pages/OrdersPage.tsx on pages/ListPage.',
+    'Offer five different plans (different step orders). Each plan is a JSON array with all six steps, every step written out with its tool and full paths.',
+  ].join(' ');
+  /** A fetch that records how each reply ended (finish_reason, completion tokens). */
+  const spy = (log) => async (url, init) => {
+    const r = await fetch(url, init);
+    if (!String(url).includes('/chat/completions')) return r;
+    const body = await r.clone().json().catch(() => ({}));
+    log.push({ finish: body.choices?.[0]?.finish_reason, tokens: body.usage?.completion_tokens });
+    return r;
+  };
+  const rawLog = []; const cappedLog = [];
+  const raw = await R.createQwenProposer({ render, fetch: spy(rawLog) }).propose('q', [], profile, []).then(() => 'whole', (e) => String(e?.message ?? e));
+  const capped = await createCappedQwenProposer(R, { render, fetch: spy(cappedLog), env: {} }).propose('q', [], profile, []);
+  // What the cap decides is whether the reply JSON is whole; what is inside each option is the model's quality.
+  assert.equal(cappedLog[0].finish, 'stop', 'at 800 the model finished its reply');
+  assert.ok(capped.options.length >= 1, `at 800 the reply parses: ${JSON.stringify(capped.options)}`);
+  t.diagnostic(`reply at 800: ${cappedLog[0].tokens} tokens (${cappedLog[0].finish}); at 200: ${rawLog[0]?.finish}`);
+  if (cappedLog[0].tokens <= 200) { t.skip(`the model needed only ${cappedLog[0].tokens} tokens this time, so 200 would have been enough`); return; }
+  assert.equal(rawLog[0].finish, 'length', `the same reply needs ${cappedLog[0].tokens} tokens, so at 200 it is cut off`);
+  assert.notEqual(raw, 'whole', 'a cut-off reply does not parse');
+});

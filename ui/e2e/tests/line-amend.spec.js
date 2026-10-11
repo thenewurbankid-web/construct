@@ -71,3 +71,56 @@ test.describe.serial('Line: a fix for a refused change applies in one approval (
     expect(project.findings.map((f) => `${f.rule} ${f.file}`)).toEqual(['LINE-BASE features/billing/components/InvoiceCard.tsx']);
   });
 });
+
+// cl1, walked in the browser: OrdersPage's handler imports billing's InvoicesPage (LINE-DIR). Promoting InvoicesPage
+// alone would be refused too (it uses orders' OrderButton), so the recommended fix is the chain: OrderButton first,
+// then InvoicesPage, with the code edit, in one step and one Approve.
+test.describe.serial('Line: the recommended fix is one that lands (cl1, Line sample project)', () => {
+  let base;
+  let restore;
+  const LABEL = 'What happens when Orders asks for more';
+  const ORDERS = 'features/orders/pages/OrdersPage.tsx';
+  const listPagePart = (page) => page.locator('[data-testid="lp-part"][data-part="ListPage"]');
+
+  test.beforeAll(async () => {
+    base = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'line-sample-')));
+    fs.cpSync(SAMPLE, base, { recursive: true });
+    restore = await openProject(API, base);
+  });
+  test.afterAll(async () => {
+    await restore?.();
+    if (base) fs.rmSync(base, { recursive: true, force: true });
+  });
+
+  test('importing InvoicesPage into OrdersPage needs a fix; the chained fix lands with one Approve', async ({ page, request }) => {
+    await gotoCockpit(page, '/pages?feature=orders&page=orders%2Fpages%2FOrdersPage');
+    const toggle = listPagePart(page).getByRole('button', { name: 'Edit code' });
+    await expect(toggle).toBeVisible({ timeout: 30_000 });
+    await toggle.click();
+    const form = listPagePart(page).locator('[data-testid="lp-fragment"][data-kind="handler"]');
+    await form.getByLabel(LABEL).fill("() => import('../../billing/pages/InvoicesPage')");
+    await form.getByRole('button', { name: 'Save' }).click();
+    const plan = page.getByTestId('line-plan');
+    await plan.getByRole('button', { name: 'Approve step 1' }).click();
+
+    const first = plan.locator('[data-testid="plan-step"]').last();
+    await expect(first).toHaveAttribute('data-state', 'needs-fix');
+    await expect(first.getByTestId('plan-step-fixes')).toContainText('First move OrderButton into the library, because InvoicesPage uses it; then move InvoicesPage.tsx from feature billing into the library');
+    await first.getByRole('button', { name: 'Apply recommended fix' }).click();
+
+    const fix = plan.locator('[data-testid="plan-step"]').first();
+    await expect(fix).toHaveAttribute('data-state', 'waiting');
+    await fix.getByRole('button', { name: 'Approve step 2' }).click();
+    await expect(fix).toHaveAttribute('data-state', 'done');
+    await expect(plan.locator('[data-testid="plan-step"]').last()).toHaveAttribute('data-state', 'done');
+    await expect(plan.locator('[data-testid="plan-step"]').last().getByTestId('plan-step-sentence')).toHaveText('Saved together with its fix in step 2.');
+
+    expect(exists(base, 'library/components/OrderButton.tsx') && exists(base, 'library/pages/InvoicesPage.tsx')).toBe(true);
+    expect(fs.readFileSync(path.join(base, ORDERS), 'utf8')).toContain('library/pages/InvoicesPage');
+    const project = await (await request.get(`${API}/api/line/project`)).json();
+    expect(project.findings.map((f) => `${f.rule} ${f.file}`)).toEqual(['LINE-BASE features/billing/components/InvoiceCard.tsx']);
+
+    const found = await runAxe(page, { include: '[data-testid="line-plan"]' });
+    expect(found.filter(isBlocking), format(found.filter(isBlocking))).toEqual([]);
+  });
+});
