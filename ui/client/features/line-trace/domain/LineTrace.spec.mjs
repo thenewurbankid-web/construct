@@ -1,7 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { hrefFor, idleSentence, isOnScreen, lightsFor, screenOfControl, stepsForTrace } from './TraceLights.ts';
-import { DEFAULT_SETTINGS, advance, approvedByPerson, delayFor, isActive, parseSettings, pauseRun, resumeRun, shouldMove, startRun, stepRun, stopRun, waitForApproval, withHistory } from './AutoRun.ts';
+import { idleSentence, lightsFor, stepsForTrace } from './TraceLights.ts';
+import { SCREENS, isOnScreen, screenOfControl } from './TraceScreens.ts';
+import { RUN, advance, startRun } from './AutoRun.ts';
+import { delayFor, isActive, shouldMove } from './AutoStatus.ts';
+import { runButtons } from './AutoView.ts';
+import { findingsOf } from './TraceFindings.ts';
+import { DEFAULT_SETTINGS, parseSettings, withHistory } from './TraceSettings.ts';
 import { toTraceAnswer } from './TraceAnswer.ts';
 import { createMockTraceApi } from '../services/LineTraceApi.mock.ts';
 
@@ -41,7 +46,7 @@ test('screens: the Plan panel is on Components and Pages, not Features; control 
   assert.equal(isOnScreen('plan', 'pages'), true);
   assert.equal(isOnScreen('plan', 'features'), false);
   assert.equal(screenOfControl('pages.propSave'), 'pages');
-  assert.equal(hrefFor('features'), '/');
+  assert.equal(SCREENS.features.href, '/');
   assert.equal(idleSentence(false, false), 'Trace and Auto are off.');
 });
 
@@ -56,22 +61,22 @@ test('Auto: play, pause, one step, go on, wait at Approve, the person approves',
   assert.equal(r.status, 'playing');
   assert.equal(r.caption, 'Open "Base on this" on the Button card.');
   assert.equal(shouldMove(r), true);
-  r = pauseRun(r);
+  r = RUN.pause(r);
   assert.equal(r.status, 'paused');
   assert.equal(shouldMove(r), false);
   assert.match(r.caption, /^Paused\. Next: open "Base on this"/);
-  r = stepRun(r);
+  r = RUN.step(r);
   assert.equal(shouldMove(r), true);
   r = advance(r);
   assert.deepEqual([r.index, r.status, r.stepping], [1, 'paused', false]);
-  r = resumeRun(r);
+  r = RUN.resume(r);
   r = advance(advance(advance(r)));
   assert.equal(r.script[r.index].kind, 'approve');
-  r = waitForApproval(r);
+  r = RUN.waitForApproval(r);
   assert.equal(r.status, 'waiting');
   assert.equal(isActive(r), true);
   assert.match(r.caption, /^Waiting for you: click Approve/);
-  r = approvedByPerson(r);
+  r = RUN.approvedByPerson(r);
   assert.equal(r.status, 'done');
   assert.equal(isActive(r), false);
 });
@@ -82,7 +87,7 @@ test('Auto: a replay says it changes nothing; stop ends it; speed sets the pace;
   assert.match(r.caption, /^Replay: /);
   r = advance(advance(advance(r)));
   assert.equal(r.caption, 'Replay finished; nothing was changed.');
-  assert.equal(stopRun(startRun('r3', 'x', m.tools[0].script, false)).status, 'stopped');
+  assert.equal(RUN.stop(startRun('r3', 'x', m.tools[0].script, false)).status, 'stopped');
   assert.equal(delayFor(2, true), 450);
   assert.equal(delayFor(0.5, true), 1800);
   assert.equal(delayFor(1, false), 40);
@@ -102,4 +107,18 @@ test('settings: history keeps ten newest; unreadable storage falls back; Auto ap
 test('answer: a refusal or a silent body is one sentence', () => {
   assert.deepEqual(toTraceAnswer({ ok: false, sentence: 'The request must be text.' }), { ok: false, sentence: 'The request must be text.' });
   assert.deepEqual(toTraceAnswer(null), { ok: false, sentence: 'Trace could not read that request.' });
+});
+
+test('view: the Trace bar lines and the Auto buttons follow the match and the run', async () => {
+  const m = await matchOf('Move OrderButton into the library');
+  const f = findingsOf(m, lightsFor(m, 'features'), true);
+  assert.match(f.choice, /^Several tools fit; Line took "promote a feature component to the library"/);
+  assert.equal(f.litHere, null);
+  assert.deepEqual(f.elsewhere.map((l) => l.text), ['Go to Components: Promote to library, Promote light up there.', 'Go to the Plan panel on Components: Approve light up there.']);
+  assert.equal(f.details.at(-1), 'Decided by: static; also possible: line.moveFile');
+  assert.deepEqual(findingsOf(m, lightsFor(m, 'features'), false).elsewhere, []);
+  const r = startRun('r', 'x', m.tools[0].script, true);
+  assert.deepEqual(runButtons(r).map((b) => b.label), ['Pause', 'Stop']);
+  assert.deepEqual(runButtons(RUN.pause(r)).map((b) => b.label), ['Go on', 'One step', 'Stop']);
+  assert.deepEqual(runButtons(RUN.stop(r)), []);
 });

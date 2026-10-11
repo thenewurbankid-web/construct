@@ -1,7 +1,7 @@
 'use client';
 
 import { useSyncExternalStore } from 'react';
-import { DEFAULT_SETTINGS, parseSettings } from '../domain/AutoRun';
+import { DEFAULT_SETTINGS, parseSettings } from '../domain/TraceSettings';
 import type { TraceSettings } from '../types';
 
 // Trace and Auto settings for this browser tab (sessionStorage): the modes, the request, the person's "let Auto

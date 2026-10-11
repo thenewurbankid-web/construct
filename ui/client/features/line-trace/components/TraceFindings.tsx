@@ -1,47 +1,49 @@
 import Link from 'next/link';
-import type { TraceLights, TraceMatch } from '../types';
+import type { FindingsView } from '../types';
 
-const item = (text: string, i: number) => <li key={`${text}-${i}`}>{text}</li>;
+/** One plain line of the Trace bar, or nothing. */
+function Note({ text, testId }: { text: string | null; testId: string }) {
+  if (!text) return null;
+  return (
+    <p className="ltr-hint" data-testid={testId}>
+      {text}
+    </p>
+  );
+}
 
-/** What Trace found: which controls are lit here, a link to each other screen with lit controls, what Auto still needs,
- * and (under Details) the tools and whether static or jev decided. */
-export function TraceFindings({ match, lights, showLights }: { match: TraceMatch | null; lights: TraceLights; showLights: boolean }) {
-  if (!match) return null;
-  const first = match.tools[0];
+const linkItem = (l: FindingsView['elsewhere'][number]) => (
+  <li key={l.key}>
+    <Link href={l.href} className="ltr-link" data-testid="trace-elsewhere">
+      {l.text}
+    </Link>
+  </li>
+);
+
+/** A link to each other screen with lit controls. */
+function Elsewhere({ links }: { links: FindingsView['elsewhere'] }) {
+  if (!links.length) return null;
+  return (
+    <ul className="ltr-links" aria-label="Lit on other screens">
+      {links.map(linkItem)}
+    </ul>
+  );
+}
+
+const detail = (text: string) => <li key={text}>{text}</li>;
+
+/** What Trace found: how a tie was decided, what is lit here, links to other screens, what Auto still needs, and
+ * (under Details) the tools and whether static or jev decided. */
+export function TraceFindings({ findings }: { findings: FindingsView }) {
+  if (!findings.details.length) return null;
   return (
     <div className="ltr-findings">
-      {match.choice && (
-        <p className="ltr-hint" data-testid="trace-choice">
-          {match.choice.sentence}
-        </p>
-      )}
-      {showLights && lights.here.length > 0 && (
-        <p className="ltr-hint" data-testid="trace-lit-here">
-          Lit here: {lights.here.map((c) => c.label).join(', ')}.
-        </p>
-      )}
-      {showLights && lights.elsewhere.length > 0 && (
-        <ul className="ltr-links" aria-label="Lit on other screens">
-          {lights.elsewhere.map((l) => (
-            <li key={l.screen}>
-              <Link href={l.href} className="ltr-link" data-testid="trace-elsewhere">
-                Go to {l.title}: {l.labels.join(', ')} light up there.
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
-      {first?.missing && first.from === 'request' && (
-        <p className="ltr-hint" data-testid="trace-missing">
-          {first.missing}
-        </p>
-      )}
+      <Note text={findings.choice} testId="trace-choice" />
+      <Note text={findings.litHere} testId="trace-lit-here" />
+      <Elsewhere links={findings.elsewhere} />
+      <Note text={findings.missing} testId="trace-missing" />
       <details className="ltr-tech">
         <summary>Details</summary>
-        <ul>
-          {match.tools.map((t, i) => item(`${t.toolId}${t.stepId ? ` (step ${t.stepId})` : ''}: ${t.controls.map((c) => c.controlId).join(', ')}`, i))}
-          {item(`Decided by: ${match.via}${match.alternatives.length ? `; also possible: ${match.alternatives.join(', ')}` : ''}`, -1)}
-        </ul>
+        <ul>{findings.details.map(detail)}</ul>
       </details>
     </div>
   );

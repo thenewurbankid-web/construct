@@ -66,6 +66,18 @@ export type TraceSettings = {
   run: RunState | null;
 };
 
+/** The Trace bar's lines about a match (domain/TraceFindings.ts). */
+export type FindingsView = {
+  choice: string | null;
+  litHere: string | null;
+  elsewhere: { href: string; key: string; text: string }[];
+  missing: string | null;
+  details: string[];
+};
+
+/** One of Auto's run buttons. */
+export type AutoButton = { id: 'pause' | 'resume' | 'step' | 'stop'; label: string };
+
 /** Everything the Trace bar shows and does. */
 export type TraceView = {
   settings: TraceSettings;
@@ -74,16 +86,21 @@ export type TraceView = {
   error: string | null;
   sentence: string;
   cursor: { x: number; y: number } | null;
+  findings: FindingsView;
+  /** A run is going (or waiting at Approve). */
+  active: boolean;
+  /** The request has a script Auto can play. */
+  canRun: boolean;
+  runLabel: string;
+  speeds: { value: number; label: string }[];
+  buttons: AutoButton[];
+  press: (id: AutoButton['id']) => void;
   setTrace: (on: boolean) => void;
   setAuto: (on: boolean) => void;
   setRequest: (text: string) => void;
   setAutoApprove: (on: boolean) => void;
   setSpeed: (speed: number) => void;
   run: () => void;
-  pause: () => void;
-  resume: () => void;
-  step: () => void;
-  stop: () => void;
   replay: (runId: string) => void;
 };
 

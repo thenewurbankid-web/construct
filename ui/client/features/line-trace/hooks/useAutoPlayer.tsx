@@ -2,8 +2,9 @@
 
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { advance, approvedByPerson, delayFor, shouldMove, stopRun, waitForApproval } from '../domain/AutoRun';
-import { hrefFor, isOnScreen, screenOfControl } from '../domain/TraceLights';
+import { RUN, advance } from '../domain/AutoRun';
+import { delayFor, shouldMove } from '../domain/AutoStatus';
+import { SCREENS, isOnScreen, screenOfControl } from '../domain/TraceScreens';
 import { centreOf, perform, waitForControl } from '../workflows/AutoActions';
 import type { RunState, TraceScreen, TraceSettings } from '../types';
 import { updateTraceSettings } from './useTraceSettings';
@@ -29,15 +30,15 @@ export function useAutoPlayer(screen: TraceScreen, settings: TraceSettings): { x
       if (!action) return setRun(advance);
       const where = screenOfControl(action.controlId);
       if (!isOnScreen(where, screen)) {
-        router.push(hrefFor(where));
+        router.push(SCREENS[where].href);
         return;
       }
-      const el = await waitForControl(action, 10_000, () => cancelled);
+      const el = await waitForControl(action, run.replay ? 2_000 : 10_000, () => cancelled);
       if (cancelled) return;
       if (!el) {
         if (run.replay) return setRun(advance);
         return setRun((r) =>
-          stopRun(
+          RUN.stop(
             r,
             `Auto stopped: the next control is not on this screen. Do the rest yourself: ${action.caption.charAt(0).toLowerCase()}${action.caption.slice(1)}`,
           ),
@@ -53,7 +54,7 @@ export function useAutoPlayer(screen: TraceScreen, settings: TraceSettings): { x
         if (cancelled) return;
       }
       if (run.replay) return setRun(advance);
-      if (action.kind === 'approve' && !autoApprove) return setRun(waitForApproval);
+      if (action.kind === 'approve' && !autoApprove) return setRun(RUN.waitForApproval);
       perform(el, action);
       await sleep(delayFor(speed, run.show) / 2);
       if (!cancelled) setRun(advance);
@@ -71,7 +72,7 @@ export function useAutoPlayer(screen: TraceScreen, settings: TraceSettings): { x
     if (!waiting) return;
     let cancelled = false;
     let el: HTMLElement | null = null;
-    const done = () => setRun(approvedByPerson);
+    const done = () => setRun(RUN.approvedByPerson);
     void waitForControl(waiting, 60_000, () => cancelled).then((found) => {
       if (cancelled || !found) return;
       el = found;
