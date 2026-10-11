@@ -4,6 +4,27 @@ One section per step. For each: what the tests prove (plain English), known gaps
 check it yourself. A step is done only after your UAT passes; until then it is "awaiting UAT".
 Branch: `work/2026-09-23` in `~/Repositories/construct` (local only, not pushed).
 
+## Pre-UAT walks: run these before every owner UAT
+
+Each UAT how-to below has a scripted walk under `ui/e2e/uat/` (one spec per step: New project, ca1, Hours 1, 2, 3/3b,
+4, 5-6, 7, cx1, cf1, cu6). A walk starts from a fresh copy of `examples/line-sample` in its own temp workspace, opens
+it from the project picker, clicks and types as you would, and fails on any console error, React warning, 4xx/5xx
+answer, Next.js error overlay, serious accessibility finding, or a screen that runs off the page at 1280px or 375px
+(screenshots of both widths land in `ui/e2e/test-results-uat/`). Run all of them (about 2 minutes):
+
+```bash
+cd ui/e2e && E2E_CLIENT_PORT=3371 E2E_SERVER_PORT=4371 ../../packages/tools/dev/heavy.sh npx playwright test -c playwright.uat.config.js --workers=1
+```
+
+## New project form (fixed 11 Oct, ec00e35f; awaiting UAT)
+
+Typing in the New project form used to freeze the page (React re-rendered forever). Walk: `ui/e2e/uat/new-project.uat.spec.js`.
+
+UAT: open Cockpit with no project open (project switcher → Close project). Under "New project", type `my shop`:
+every letter stays and the hint says "A project name has no spaces. Use "-" or "_" instead."; Create and open stays
+off. Change it to `my-shop` → Create and open. Expect the project to open (the switcher reads "my-shop") with no
+error on screen. Gap: "Starts as" offers Next.js or a React single-page app; there is no "Line project" choice yet.
+
 ## ca1: Construct enforces the Line architecture (merged, awaiting UAT)
 
 Test file: `test/line-profile.test.mjs` (29 tests, all pass). Run it:
@@ -53,7 +74,7 @@ Added in review (bugs found and fixed while merging):
    Expect: no findings, exit 0.
 2. Run a failing example:
    `node packages/cli/construct.mjs validate --profile line --dir packages/core/profiles/line/fixtures/LINE-DIR`
-   Expect: two LINE-DIR errors, each a plain-English sentence saying which feature imports which and to promote the item to the library.
+   Expect: two LINE-DIR errors and exit 1, each a plain-English sentence: billing imports OrderButton from orders ("promote that item to library/ and import it from there"), and the library's Button imports from orders ("the library must not depend on any feature, so move what it needs into the library").
 3. Try any other folder under `fixtures/` (LINE-BASE, LINE-OWNER, ...) and read the messages: each should tell you what is wrong and how to fix it without other docs.
 
 ## Contract for the parallel tasks (T0, done)
@@ -211,7 +232,7 @@ Also: the shared client copy of the Line API (`ui/client/lib/lineContract.ts`, `
 
 Gaps: without Morpheus linked, only the one-sentence "no picture" note and the props are shown.
 
-UAT: Components → Button card → "Preview Button" → change label to "Buy now". Expect the picture to update.
+UAT: Components → Button card → "Preview Button" → change label to "Buy now". Expect the blue button to read "Buy now" within a moment. (The sample Button carries its own inline style: Morpheus does not build Tailwind utility classes, so a class-only button showed as plain text.)
 
 ## ca2: every Line problem carries a fix you (or an agent) can apply (engine done; screen next)
 
@@ -284,12 +305,12 @@ Tests: `test/line-workspace.test.mjs` (10, real writer on a copy of the sample),
 7. Typed fixes and code edits obey the folder too.
 Browser: the header shows "Whole project", then "/ features/orders" after choosing it; Badge and InvoiceCard show "Read-only", OrderCard does not; Base on into orders saves, into billing is refused with the sentence and no file; accessibility clean.
 
-Gaps: choosing the folder is not yet a plan step; the page reloads after choosing; the Base on form still offers features outside the folder (the save refuses them); with the folder at features/orders, Promote is refused because it writes into the library.
+Gaps: choosing the folder is not yet a plan step; the page reloads after choosing; the Base on form offers only features inside the folder (pre-UAT fix; the server still refuses anything outside); with the folder at features/orders, Promote is refused because it writes into the library.
 
 UAT (fresh sample):
-1. Project switcher → "Change workspace folder" → features/ → Use on orders. Header shows "/ features/orders"; Badge and InvoiceCard show "Read-only".
+1. Project switcher (top left, "line-sample / Whole project") → "Change workspace folder" → features/ → "Use" beside orders/. Header shows "/ features/orders"; Badge and InvoiceCard show "Read-only".
 2. Badge → Base on this → orders → Create: saves.
-3. Same with billing: "Nothing was saved: … it stays read-only." and no new file under features/billing.
+3. Badge → Base on this again: the Feature list offers only orders (billing is read-only); Cancel. Then under billing, InvoiceCard → Promote to library → Promote: "Nothing was saved: … is outside your workspace folder features/orders; it stays read-only." and nothing changes on disk.
 
 ## cm1: no single point of failure (merged; 5 Trace failures wait for your decision)
 
