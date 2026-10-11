@@ -23,7 +23,31 @@
  * @property {'error'|'warning'|'info'} severity
  * @property {string} file      Root-relative path.
  * @property {number} line      1-based.
+ * @property {string} [key]     Stable handle for POST /api/line/fix: "<rule>|<file>|<line>" (fixes.mjs findingKey).
+ * @property {LineFix[]} [fixes] Typed fixes (fixes.mjs fixesFor), recommended first; absent on findings that are not LINE-*.
  */
+
+/**
+ * The Line tools a fix step may call (each one is a pure planner returning a StagedChange; fixes.mjs planStep):
+ *   line.setBase      {file, libraryId}          rewrite the item's base link (the line-base header, or "$lineBase" in JSON) to one library item
+ *   line.promote      PromoteRequest             move a feature item into the library and re-point its users (ops.mjs planPromote)
+ *   line.baseOn       BaseOnRequest              create a feature item based on a library item (ops.mjs planBaseOn)
+ *   line.moveFile     {from, to, base?}          move a file, re-pointing every import; `base` also writes its line-base header
+ *   line.createLayout {}                         create the library folder (library/README.md) so the project is laid out as Line
+ * @typedef {'line.setBase'|'line.promote'|'line.baseOn'|'line.moveFile'|'line.createLayout'} LineFixTool
+ */
+
+/**
+ * One typed fix for a finding: what it will do in plain English, and the plan step that does it. `step` is null when
+ * no safe mechanical fix exists; the sentence then says what to do instead.
+ * @typedef {object} LineFix
+ * @property {string} id        Stable for the same finding on the same files, e.g. "LINE-DIR/promote" or "LINE-BASE/set-base:components/Card".
+ * @property {string} sentence  Plain English: what applying it will do.
+ * @property {number} rank      1 is the recommended ("likely") fix; fixes come sorted by rank.
+ * @property {{tool: LineFixTool, args: Record<string, unknown>}|null} step
+ */
+
+/** @typedef {{findingKey: string, fixId: string}} FixRequest */
 
 /**
  * A library item (complete and usable on its own).
@@ -96,6 +120,7 @@
  * @property {(root: string, req: PromoteRequest) => StagedChange} planPromote
  * @property {(root: string, req: SetPropRequest) => StagedChange} planSetProp
  * @property {(root: string, change: StagedChange) => ApplyResult} applyChange
+ * @property {(root: string, req: FixRequest) => ApplyResult} applyFix  Re-derive the finding by key, plan its fix, applyChange (fixes.mjs).
  */
 
 /**
@@ -134,7 +159,10 @@ export const LINE_API = Object.freeze([
   { method: 'POST', path: '/api/line/promote', request: 'PromoteRequest', response: 'ApplyResult' },
   { method: 'POST', path: '/api/line/page-prop', request: 'SetPropRequest', response: 'ApplyResult' },
   { method: 'GET', path: '/api/line/render', request: 'file, props (query)', response: 'RenderResult' },
+  { method: 'POST', path: '/api/line/fix', request: 'FixRequest', response: 'ApplyResult' },
 ]);
+
+export const LINE_FIX_TOOLS = Object.freeze(['line.setBase', 'line.promote', 'line.baseOn', 'line.moveFile', 'line.createLayout']);
 
 export const LINE_KINDS = Object.freeze(['components', 'pages', 'workflows', 'fixtures']);
 export const LEVELS = Object.freeze(['atom', 'molecule', 'organism']);
@@ -153,6 +181,28 @@ export function assertFinding(f, where = 'finding') {
   if (!['error', 'warning', 'info'].includes(f.severity)) fail(`${where}.severity`, 'must be error, warning or info');
   str(f.file, `${where}.file`);
   if (!Number.isInteger(f.line) || f.line < 1) fail(`${where}.line`, 'must be a 1-based integer');
+  if (f.key !== undefined) str(f.key, `${where}.key`);
+  if (f.fixes !== undefined) {
+    if (!Array.isArray(f.fixes)) fail(`${where}.fixes`, 'must be an array');
+    const ids = new Set();
+    f.fixes.forEach((x, i) => {
+      assertFix(x, `${where}.fixes[${i}]`);
+      if (ids.has(x.id)) fail(`${where}.fixes[${i}].id`, 'must be unique within the finding');
+      ids.add(x.id);
+      if (i > 0 && x.rank < f.fixes[i - 1].rank) fail(`${where}.fixes`, 'must be sorted by rank, recommended first');
+    });
+  }
+}
+
+/** @param {any} x @param {string} where */
+export function assertFix(x, where = 'fix') {
+  str(x?.id, `${where}.id`);
+  sentence(x.sentence, `${where}.sentence`);
+  if (typeof x.rank !== 'number' || !Number.isFinite(x.rank) || x.rank < 1) fail(`${where}.rank`, 'must be a number from 1');
+  if (x.step !== null) {
+    if (!LINE_FIX_TOOLS.includes(x.step?.tool)) fail(`${where}.step.tool`, `must be one of ${LINE_FIX_TOOLS.join(', ')}`);
+    if (!x.step.args || typeof x.step.args !== 'object' || Array.isArray(x.step.args)) fail(`${where}.step.args`, 'must be an object');
+  }
 }
 
 /** @param {any} p @returns {asserts p is LineProject} */

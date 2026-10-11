@@ -9,6 +9,7 @@ import express from 'express';
 import { makeTempDir } from '../../../test-utils/tmpdir.mjs';
 import { createLineOpsRouter } from './lineOpsApi.mjs';
 import { assertApplyResult } from '../../../packages/engine/line/contract.mjs';
+import { lineFindings } from '../../../packages/engine/line/model.mjs';
 
 const SAMPLE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../examples/line-sample');
 const ORIGIN = 'http://localhost:3000';
@@ -85,4 +86,28 @@ test('with no project open, every route says so in one sentence', async (t) => {
   const res = await fetch(`http://127.0.0.1:${/** @type {any} */ (server.address()).port}/api/line/page-tree?file=x`);
   assert.equal(res.status, 400);
   assert.deepEqual(await res.json(), { ok: false, sentence: 'No project is open; pick a project first.', code: 'NO_PROJECT' });
+});
+
+test('fix: the project finding carries its fixes, POST /fix lands the top one by key, and a stale or advice-only fix is one sentence', async (t) => {
+  const { dir, post, saved } = await serve(t);
+  const finding = lineFindings(dir).find((f) => f.rule === 'LINE-BASE');
+  assert.equal(finding.fixes[0].id, 'LINE-BASE/set-base:components/Card');
+  const res = await post('/fix', { findingKey: finding.key, fixId: finding.fixes[0].id });
+  const body = await res.json();
+  assertApplyResult(body);
+  assert.equal(body.ok, true, body.sentence);
+  assert.match(read(dir, 'features/billing/components/InvoiceCard.tsx'), /^\/\/ @line-base components\/Card\n/);
+  assert.deepEqual(saved, ['features/billing/components/InvoiceCard.tsx']);
+  assert.ok(!lineFindings(dir).some((f) => f.rule === 'LINE-BASE'), 'the finding is gone');
+  const stale = await post('/fix', { findingKey: finding.key, fixId: finding.fixes[0].id });
+  assert.equal(stale.status, 400);
+  assert.equal((await stale.json()).code, 'UNKNOWN_FINDING');
+
+  fs.writeFileSync(path.join(dir, 'library/workflows/save.ts'), "import fs from 'node:fs';\nexport function save(p: string): void {\n  fs.writeFileSync(p, 'x');\n}\n");
+  const writer = lineFindings(dir).find((f) => f.rule === 'LINE-WRITER');
+  const advice = await post('/fix', { findingKey: writer.key, fixId: 'LINE-WRITER/use-writer' });
+  assert.equal(advice.status, 400);
+  const a = await advice.json();
+  assert.equal(a.code, 'NO_STEP');
+  assert.match(a.sentence, /Construct's writer/);
 });

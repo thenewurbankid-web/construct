@@ -37,10 +37,18 @@ function findingsOf(files) {
     src.split('\n').forEach((text, i) => {
       const other = text.match(/from '\.\.\/\.\.\/([^/.]+)\//);
       if (other && other[1] !== m[1]) {
-        out.push({ sentence: `Feature "${m[1]}" imports from feature "${other[1]}"; a feature may use only the library, so promote that item to ${LIB}/ and import it from there.`, rule: 'LINE-DIR', severity: 'error', file, line: i + 1 });
+        const imported = text.match(/from '\.\.\/\.\.\/([^/]+)\/(components|pages|workflows|fixtures)\/(\w+)'/);
+        const fixes = imported ? [{ id: 'LINE-DIR/promote', sentence: `Move ${imported[3]} from feature ${imported[1]} into the library and point every import at the library copy.`, rank: 1, step: { tool: 'line.promote', args: { featureItemId: `${imported[1]}/${imported[2]}/${imported[3]}` } } }] : [];
+        out.push({ sentence: `Feature "${m[1]}" imports from feature "${other[1]}"; a feature may use only the library, so promote that item to ${LIB}/ and import it from there.`, rule: 'LINE-DIR', severity: 'error', file, line: i + 1, key: `LINE-DIR|${file}|${i + 1}`, fixes });
       }
     });
-    if (!baseOf(src)) out.push({ sentence: `The feature item "${file}" has no library base; add one "@line-base ${m[2]}/<Name>" comment naming the library item it is based on.`, rule: 'LINE-BASE', severity: 'error', file, line: 1 });
+    if (!baseOf(src)) {
+      const lib = (src.match(new RegExp(`from '(?:\\.\\./)+${LIB}/${m[2]}/(\\w+)'`)) || [])[1];
+      const fixes = lib
+        ? [{ id: `LINE-BASE/set-base:${m[2]}/${lib}`, sentence: `Base ${nameOf(file)} on the library ${lib}, which it already uses.`, rank: 1, step: { tool: 'line.setBase', args: { file, libraryId: `${m[2]}/${lib}` } } }]
+        : [{ id: 'LINE-BASE/create-library-item', sentence: `Create a library item for ${nameOf(file)} to be based on first.`, rank: 1, step: null }];
+      out.push({ sentence: `The feature item "${file}" has no library base; add one "@line-base ${m[2]}/<Name>" comment naming the library item it is based on.`, rule: 'LINE-BASE', severity: 'error', file, line: 1, key: `LINE-BASE|${file}|1`, fixes });
+    }
   }
   return out;
 }
@@ -114,15 +122,26 @@ export function createMockLineOps({ files: initial = MOCK_FILES } = {}) {
       if (!re.test(files[file])) throw new LineOpError(`This part has no ${prop} to change.`, 'UNKNOWN_PROP');
       return { summary: `Sets ${prop} to "${value}" on the page ${nameOf(file)}.`, files: [{ path: file, content: files[file].replace(re, `${prop}="${value}"`) }] };
     },
+    /** Like fixes.mjs applyFix: find the finding by key, plan its fix (promote or set-base), apply it. */
+    applyFix(root, { findingKey, fixId }) {
+      const finding = findingsOf(files).find((x) => x.key === findingKey);
+      if (!finding) throw new LineOpError('That problem is no longer reported; reload the project to see what is left.', 'UNKNOWN_FINDING');
+      const fix = (finding.fixes || []).find((x) => x.id === fixId);
+      if (!fix) throw new LineOpError('That fix no longer applies to this problem; reload the project and pick again.', 'UNKNOWN_FIX');
+      if (!fix.step) throw new LineOpError(fix.sentence, 'NO_STEP');
+      if (fix.step.tool === 'line.promote') return this.applyChange(root, this.planPromote(root, /** @type {any} */ (fix.step.args)));
+      const { file, libraryId } = /** @type {any} */ (fix.step.args);
+      return this.applyChange(root, { summary: `Bases ${nameOf(file)} on the library ${libraryId.split('/')[1]}.`, files: [{ path: file, content: `// @line-base ${libraryId}\n${files[file]}` }] });
+    },
     /** @returns {import('./contract.mjs').ApplyResult} */
     applyChange(_root, change) {
       const next = { ...files };
       for (const f of change.files) { if (f.content === null) delete next[f.path]; else next[f.path] = f.content; }
       const touched = new Set(change.files.map((f) => f.path));
       // Like the real writer (ops.mjs onlyNewProblems): only problems the change adds block it; old ones stay.
-      const key = (x) => `${x.rule}|${x.file}|${x.sentence}`;
-      const before = new Set(findingsOf(files).map(key));
-      const findings = findingsOf(next).filter((x) => touched.has(x.file) && !before.has(key(x)));
+      const sameProblem = (x) => `${x.rule}|${x.file}|${x.sentence}`;
+      const before = new Set(findingsOf(files).map(sameProblem));
+      const findings = findingsOf(next).filter((x) => touched.has(x.file) && !before.has(sameProblem(x)));
       if (findings.some((x) => x.severity === 'error')) {
         return { ok: false, sentence: `Nothing was saved: ${findings[0].sentence.charAt(0).toLowerCase()}${findings[0].sentence.slice(1)}`, files: [], findings };
       }

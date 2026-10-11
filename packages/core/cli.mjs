@@ -912,7 +912,18 @@ export async function validate(args) {
   const { violations, ok } = aggregateValidation(root, enforcersForProfile(profile));
   const fi = args.indexOf('--format');
   const format = fi >= 0 && args[fi + 1] === 'json' ? 'json' : 'text';
-  console.log(formatReport(violations, { format }));
+  let report = violations;
+  if (format === 'json' && profile === 'line' && violations.some((v) => String(v.rule).startsWith('LINE-'))) {
+    // ca2: each LINE-* problem carries its typed fixes (packages/engine/line/fixes.mjs), so an agent can correct itself.
+    const { fixContext, fixesFor, findingKey } = await import('../../packages/engine/line/fixes.mjs');
+    const ctx = fixContext(root);
+    report = violations.map((v) => {
+      if (!String(v.rule).startsWith('LINE-')) return v;
+      const f = { sentence: v.message, rule: v.rule, severity: v.severity, file: v.file || '.', line: Number.isInteger(v.line) && v.line > 0 ? v.line : 1 };
+      return { ...v, key: findingKey(f), fixes: fixesFor(root, f, ctx) };
+    });
+  }
+  console.log(formatReport(report, { format }));
   if (!ok) setExitCode(exitCodeForViolations(violations));
 }
 

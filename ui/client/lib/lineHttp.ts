@@ -16,4 +16,5 @@ export const lineHttp: LineHttp = {
     if (props !== undefined) q.set('props', props);
     return getJson(`/api/line/render?${q.toString()}`);
   },
+  fix: (req) => postJson('/api/line/fix', req),
 };
