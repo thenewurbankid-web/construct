@@ -28,6 +28,9 @@ async function scan(page, { include, exclude = [] }) {
 }
 
 export async function runAxe(page, opts = {}) {
+  // Let finite CSS transitions and animations end first: axe reads computed colors, and text still fading in reads as
+  // low contrast (seen on Features right after it opens). Bounded: an endless animation never blocks the scan.
+  await page.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running' || a.effect?.getComputedTiming?.().iterations === Infinity), null, { timeout: 3000 }).catch(() => {});
   const found = await scan(page, opts);
   // Accepted false positive: the narrow layout has a fixed bottom pane bar that
   // covers content below the fold until it is scrolled up; axe evaluates

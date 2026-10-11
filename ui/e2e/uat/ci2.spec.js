@@ -58,8 +58,8 @@ test.describe.serial('UAT ci2: the Import agent, walked as the owner', () => {
     await screen.getByRole('button', { name: 'Approve the plan' }).click();
     // 4. The one decision left: no unit has a test yet. Waiving it is the owner's call: one click.
     await expect(screen.getByTestId('la-question')).toBeVisible({ timeout: 90_000 });
-    await expect(screen.getByTestId('la-sentence')).toHaveText(/^The checks found problems: 12 of 12 logic units still need a block or a test; the first: .*\.$/);
-    await screen.getByRole('button', { name: /^Waive the 12 units without a block or a test \(owner only\)\.$/ }).click();
+    await expect(screen.getByTestId('la-sentence')).toHaveText(/^The checks found problems: 9 of 9 logic units still need a block or a test; the first: .*\.$/);
+    await screen.getByRole('button', { name: /^Waive the 9 units without a block or a test \(owner only\)\.$/ }).click();
     await expect(screen.getByTestId('la-sentence')).toHaveText('Done: 10 steps landed.', { timeout: 90_000 });
     await expect(screen.getByTestId('la-logic-kept')).toHaveText('9 of 9 logic units kept.');
     await expect(screen.locator('[data-check="validate"]')).toContainText('finds no new problems');
