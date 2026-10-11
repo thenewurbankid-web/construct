@@ -381,7 +381,7 @@ export const CHECK_KINDS = Object.freeze(['validate', 'types', 'tests', 'file', 
  * @typedef {{n: number, at: string, by: 'ui'|'agent'|'line', action: 'start'|'state'|'decide'|'edit'|'skip'|'unskip'|'move'|'approve'|'approve-all'|'add-step'|'answer'|'pause'|'resume'|'verify', stepId?: string, sentence: string}} ImportChange
  *
  * One decision the agent took (a classify question or a fix to try), and who took it.
- * @typedef {{id: string, question: string, options: string[], picked: string, by: 'static'|'single'|'order'|'jev'|'person', reason: string}} ImportDecision
+ * @typedef {{id: string, question: string, options: string[], picked: string, answer: string, by: 'static'|'single'|'order'|'jev'|'person', reason: string}} ImportDecision
  *
  * What the process waits for. `approval`: a person approves cp1 plan step `planStepId` (Plan panel or Import agent).
  * `review`: the plan steps are approved (a person, or the person's coding agent over MCP). `answer`: one question.
@@ -838,6 +838,7 @@ export function assertImportPlanFile(p) {
     if (!d.options.includes(d.picked)) fail(`importPlan.decisions[${i}].picked`, 'must be one of its options');
     if (!['static', 'single', 'order', 'jev', 'person'].includes(d.by)) fail(`importPlan.decisions[${i}].by`, 'unknown decider');
     sentence(d.reason, `importPlan.decisions[${i}].reason`);
+    sentence(d.answer, `importPlan.decisions[${i}].answer`);
   });
   p.changes.forEach((c, i) => { assertChange(c, `importPlan.changes[${i}]`); if (c.n !== i + 1) fail(`importPlan.changes[${i}].n`, 'must count up by one'); });
   if (!p.cursor || !['step', 'fix', 'retry', 'leave', 'refresh', null].includes(p.cursor.phase)) fail('importPlan.cursor', 'must be {pending, origin, phase}');

@@ -74,7 +74,7 @@ test('the screen model: plain labels, the actions each row allows, the record in
   assert.deepEqual([s.rows[1].skipLabel, s.rows[1].canApprove, s.rows[1].up, s.rows[1].down], ['Skip', true, null, 2]);
   assert.equal(s.rows[2].editing, true);
   assert.deepEqual(s.rows[2].fields.map((f) => [f.key, f.value]), [['name', 'AlertRow'], ['level', '']]);
-  assert.equal(s.changes[0], 'You: Started the import of src/alerts.');
-  assert.match(s.decisions[0], /Line took the recommended option: library\./);
+  assert.equal(s.changes[0], 'You started the import of src/alerts.');
+  assert.equal(s.decisions[0], 'Table sounds like general UI, so it could go to the library, but only one page uses it; where should it go? Put Table in the library, so every feature can use it. (Line took the recommended option.)');
   assert.equal(s.canPause, true);
 });

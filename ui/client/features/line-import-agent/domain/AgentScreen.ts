@@ -40,8 +40,8 @@ export function agentScreen(view: ImportAgentView | null, editing: string | null
     rows: view ? view.steps.map((s, i) => rowOf(view, s, i, editing)) : [],
     checks: (view?.verify?.checks ?? []).map((c) => ({ id: c.id, state: c.state, label: `${LABELS.checkName[c.id]}: ${LABELS.check[c.state]}`, sentence: c.sentence, details: c.detail ? c.detail.split('\n') : [] })),
     decider: started && view ? view.decider : null,
-    decisions: (view?.decisions ?? []).map((d) => `${d.question} ${LABELS.decider[d.by] ?? d.by}: ${d.picked}. ${d.reason}`),
-    changes: started && view ? view.changes.map((c) => `${LABELS.who[c.by] ?? c.by}: ${c.sentence}`) : [],
+    decisions: (view?.decisions ?? []).map((d) => `${d.question} ${d.answer} (${LABELS.decider[d.by] ?? d.by}.)`),
+    changes: started && view ? view.changes.map((c) => `${LABELS.who[c.by] ?? c.by} ${c.sentence}`) : [],
   };
 }
 

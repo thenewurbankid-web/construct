@@ -108,12 +108,12 @@ test('mock: edit, skip, reorder and approve are recorded with who did it; a bad 
   const edited = v.steps.find((s) => s.id === 'import-8-feature-AlertRow');
   assert.equal(edited.sentence, 'Adds AlertLine to feature alerts, based on the library AlertRow.');
   assert.equal(v.changes.at(-1).by, 'agent');
-  assert.equal(v.changes.at(-1).sentence, 'Your agent changed "Adds AlertRow to feature alerts, based on the library AlertRow" to "Adds AlertLine to feature alerts, based on the library AlertRow"; it needs approval again.');
+  assert.equal(v.changes.at(-1).sentence, 'changed "Adds AlertRow to feature alerts, based on the library AlertRow" to "Adds AlertLine to feature alerts, based on the library AlertRow"; it needs approval again.');
   v = await agent.editStep('ui', { action: 'skip', stepId: 'import-5-lib-Table' });
   assert.equal(v.steps.find((s) => s.id === 'import-5-lib-Table').review, 'skipped');
   v = await agent.editStep('ui', { action: 'move', stepId: 'import-10-feature-AlertsPage', to: 1 });
   assert.equal(v.steps[1].id, 'import-10-feature-AlertsPage');
-  assert.equal(v.changes.at(-1).sentence, 'You moved "Adds AlertsPage to feature alerts, based on the library AlertsPage, serving /alerts" from place 10 to 2.');
+  assert.equal(v.changes.at(-1).sentence, 'moved "Adds AlertsPage to feature alerts, based on the library AlertsPage, serving /alerts" from place 10 to 2.');
   for (const [edit, code] of [
     [{ action: 'skip', stepId: 'import-1-mark' }, 'NEEDED'],
     [{ action: 'move', stepId: 'import-3-lib-AlertRow', to: 0 }, 'BAD_MOVE'],
@@ -199,7 +199,7 @@ test('mock: pause is kept in the file; a new agent on the same file resumes wher
   v = await a2.resume('ui');
   assert.equal(v.paused, false);
   assert.equal(v.state, 'done');
-  assert.deepEqual(store.peek().changes.filter((c) => c.action === 'pause' || c.action === 'resume').map((c) => c.sentence), ['Paused at review.', 'Resumed at review.']);
+  assert.deepEqual(store.peek().changes.filter((c) => c.action === 'pause' || c.action === 'resume').map((c) => c.sentence), ['paused at review.', 'resumed at review.']);
 });
 
 test('reason: with @mx/reason and jev up, jev picks the Table answer (and the plan follows it); with reason failing, the static order decides', async () => {

@@ -162,7 +162,7 @@ export function createImportAgent(o) {
   const go = (doc, by, event) => {
     const from = doc.state;
     doc.state = nextState(doc.state, event);
-    record(doc, by === 'ui' || by === 'agent' ? by : 'line', 'state', `Moved from ${from} to ${doc.state}`);
+    record(doc, 'line', 'state', `moved from ${from} to ${doc.state}`);
   };
   const save = (doc) => { assertImportPlanFile(doc); store.write(doc); };
   const view = (doc, message) => ({ ...agentView(folder, doc, decider), ...(message ? { message: asSentence(message) } : {}) });
@@ -189,10 +189,10 @@ export function createImportAgent(o) {
     const r = await svc.addStep(req, 'agent');
     if (!r.ok) return r;
     step.planStepIds.push(r.stepId);
-    record(doc, 'agent', 'add-step', `Added plan step for ${step.args.name ?? step.id}: ${lower(asSentence(r.steps.find((s) => s.id === r.stepId)?.why ?? req.tool))}`, step.id);
+    record(doc, 'agent', 'add-step', `added a plan step for ${step.args.name ?? step.id}: ${lower(asSentence(r.steps.find((s) => s.id === r.stepId)?.why ?? req.tool))}`, step.id);
     if (approveAsPerson && by === 'ui') {
       const a = await svc.approve(r.stepId, 'ui');
-      if (a.ok) record(doc, 'ui', 'approve', `You approved the plan step for ${step.args.name ?? step.id}`, step.id);
+      if (a.ok) record(doc, 'ui', 'approve', `approved the plan step for ${step.args.name ?? step.id}`, step.id);
     }
     return r;
   }
@@ -270,8 +270,8 @@ export function createImportAgent(o) {
       // The refusal and its typed fixes go back into the decision; jev (or the static order) picks one.
       const ids = [...fixes].sort((a, b) => Number(b.recommended === true) - Number(a.recommended === true)).map((x) => x.fixId);
       const d = await decideWith(o.reason, `fix:${ps.id}`, `${ps.sentence} Which fix should Line try?`, ids);
-      doc.decisions.push({ id: `fix:${ps.id}`, question: asSentence(`Which fix for ${step.args.name ?? step.id}?`), options: ids, picked: d.picked, by: d.by, reason: d.reason });
-      record(doc, 'agent', 'decide', `Picked the fix "${fixes.find((x) => x.fixId === d.picked).sentence.replace(/[.?!]$/, '')}" for ${step.args.name ?? step.id} (${d.by})`, step.id);
+      doc.decisions.push({ id: `fix:${ps.id}`, question: asSentence(`Which fix for ${step.args.name ?? step.id}?`), options: ids, picked: d.picked, answer: asSentence(fixes.find((x) => x.fixId === d.picked).sentence), by: d.by, reason: d.reason });
+      record(doc, 'agent', 'decide', `picked the fix "${fixes.find((x) => x.fixId === d.picked).sentence.replace(/[.?!]$/, '')}" for ${step.args.name ?? step.id} (${d.by})`, step.id);
       const fix = fixes.find((x) => x.fixId === d.picked);
       const r = await addPlanStep(doc, step, { tool: fix.step.tool, args: { ...fix.step.args, fixOf: ps.id }, why: asSentence(`Fix for ${step.args.name ?? step.id}: ${lower(fix.sentence)}`) }, by, answered);
       if (!r.ok) { askAboutStep(doc, step, ps, r.sentence); return 'wait'; }
@@ -294,7 +294,7 @@ export function createImportAgent(o) {
         doc.baseline = o.baseline ? await o.baseline(root, folder) : [];
         doc.found = scan.found.map((f) => ({ file: f.file, name: f.name, kind: f.kind, target: f.proposal.target, ...(f.proposal.feature ? { feature: f.proposal.feature } : {}) }));
         doc.questions = scan.questions;
-        record(doc, 'agent', 'state', `Read ${folder}: ${scan.found.length} item${scan.found.length === 1 ? '' : 's'}, ${scan.questions.length} open question${scan.questions.length === 1 ? '' : 's'}`);
+        record(doc, 'agent', 'state', `read ${folder}: ${scan.found.length} item${scan.found.length === 1 ? '' : 's'}, ${scan.questions.length} open question${scan.questions.length === 1 ? '' : 's'}`);
         go(doc, by, 'SCANNED');
       } else if (doc.state === 'classify') {
         for (const q of doc.questions ?? []) {
@@ -302,15 +302,15 @@ export function createImportAgent(o) {
           const ids = [q.recommended, ...q.options.map((x) => x.id).filter((x) => x !== q.recommended)];
           const d = await decideWith(o.reason, q.id, q.sentence, ids);
           doc.answers[q.id] = d.picked;
-          doc.decisions.push({ id: q.id, question: asSentence(q.sentence), options: ids, picked: d.picked, by: d.by, reason: d.reason });
-          record(doc, 'agent', 'decide', `${q.sentence.replace(/[.?!]$/, '')}: ${lower(q.options.find((x) => x.id === d.picked)?.sentence ?? d.picked)}`);
+          doc.decisions.push({ id: q.id, question: asSentence(q.sentence), options: ids, picked: d.picked, answer: asSentence(q.options.find((x) => x.id === d.picked)?.sentence ?? d.picked), by: d.by, reason: d.reason });
+          record(doc, 'agent', 'decide', `decided "${q.sentence.replace(/[.?!]$/, '')}": ${lower(q.options.find((x) => x.id === d.picked)?.sentence ?? d.picked)}`);
         }
         delete doc.questions;
         go(doc, by, 'CLASSIFIED');
       } else if (doc.state === 'plan') {
         const plan = importOps.plan(root, folder, doc.answers);
         doc.steps = plan.steps.map((s) => ({ id: s.id, tool: s.tool, args: s.args, sentence: s.sentence, review: 'proposed', run: 'todo', planStepIds: [], rounds: 0, outcome: null, approvedBy: null }));
-        record(doc, 'agent', 'state', `Wrote the plan: ${plan.summary}`);
+        record(doc, 'agent', 'state', `wrote the plan: ${lower(plan.summary)}`);
         go(doc, by, 'PLANNED');
       } else if (doc.state === 'review') {
         const open = doc.steps.filter((s) => s.review === 'proposed');
@@ -325,7 +325,7 @@ export function createImportAgent(o) {
       } else if (doc.state === 'verify') {
         const v = o.verify ? await o.verify(root, folder, doc.baseline ?? []) : { ok: true, checks: [{ id: 'validate', state: 'skipped', sentence: 'No checks are set up for this import.' }] };
         doc.verify = v;
-        record(doc, 'line', 'verify', v.ok ? 'Every check passed (or says why it could not run)' : `Some checks fail: ${v.checks.filter((c) => c.state === 'fail').map((c) => c.id).join(', ')}`);
+        record(doc, 'line', 'verify', v.ok ? 'checked the folder: every check passed (or says why it could not run)' : `checked the folder: some checks fail: ${v.checks.filter((c) => c.state === 'fail').map((c) => c.id).join(', ')}`);
         if (!v.ok) {
           doc.waiting = {
             for: 'answer', sentence: asSentence(`The checks found problems: ${lower(v.checks.find((c) => c.state === 'fail').sentence)}`),
@@ -355,7 +355,7 @@ export function createImportAgent(o) {
       if (had) return view(had, 'This import has already started; here it is');
       if (o.checkFolder) o.checkFolder();
       const doc = newDoc(folder);
-      record(doc, by, 'start', `Started the import of ${folder}`);
+      record(doc, by, 'start', `started the import of ${folder}`);
       await run(doc, by);
       save(doc);
       return view(doc);
@@ -364,14 +364,14 @@ export function createImportAgent(o) {
     pause: (by = 'ui') => withDoc(async (doc) => {
       if (doc.paused) return view(doc, 'It is already paused');
       doc.paused = true;
-      record(doc, by, 'pause', `Paused at ${doc.state}`);
+      record(doc, by, 'pause', `paused at ${doc.state}`);
       save(doc);
       return view(doc);
     }),
 
     /** Carry on: unpause and run until the process needs someone again. */
     resume: (by = 'ui') => withDoc(async (doc) => {
-      if (doc.paused) { doc.paused = false; record(doc, by, 'resume', `Resumed at ${doc.state}`); }
+      if (doc.paused) { doc.paused = false; record(doc, by, 'resume', `resumed at ${doc.state}`); }
       if (doc.waiting?.for === 'answer') return view(doc, 'Answer the question first');
       await run(doc, by);
       save(doc);
@@ -386,7 +386,7 @@ export function createImportAgent(o) {
         const open = doc.steps.filter((s) => s.review === 'proposed');
         if (!open.length) return refusal('NOTHING_TO_APPROVE', 'Every step is already approved or skipped');
         for (const s of open) { s.review = 'approved'; s.approvedBy = by === 'ui' ? 'ui' : 'agent'; }
-        record(doc, by, 'approve-all', `${by === 'ui' ? 'You' : 'Your agent'} approved ${open.length} step${open.length === 1 ? '' : 's'}`);
+        record(doc, by, 'approve-all', `approved ${open.length} step${open.length === 1 ? '' : 's'}`);
         if (!doc.paused && doc.waiting?.for !== 'answer') await run(doc, by);
         save(doc);
         return view(doc);
@@ -394,18 +394,17 @@ export function createImportAgent(o) {
       const step = stepOf(doc, edit?.stepId);
       if (!step) return refusal('UNKNOWN_STEP', `There is no step ${edit?.stepId ?? ''} in this import plan`);
       const frozen = step.run !== 'todo';
-      const who = by === 'ui' ? 'You' : 'Your agent';
       if (action === 'approve') {
         if (step.review === 'approved') return refusal('ALREADY', 'This step is already approved');
         if (step.review === 'skipped') return refusal('SKIPPED', 'This step is skipped; bring it back first');
         step.review = 'approved'; step.approvedBy = by === 'ui' ? 'ui' : 'agent';
-        record(doc, by, 'approve', `${who} approved: ${lower(step.sentence)}`, step.id);
+        record(doc, by, 'approve', `approved "${step.sentence.replace(/[.?!]$/, '')}"`, step.id);
       } else if (action === 'skip' || action === 'unskip') {
         if (frozen) return refusal('ALREADY_RAN', 'This step has already started, so it cannot be skipped now');
         if (action === 'skip' && step.tool === 'line.import.mark') return refusal('NEEDED', 'The first step marks the folder as Line, and every other step needs it, so it cannot be skipped');
         step.review = action === 'skip' ? 'skipped' : 'proposed';
         step.approvedBy = null;
-        record(doc, by, action, `${who} ${action === 'skip' ? 'skipped' : 'brought back'}: ${lower(step.sentence)}`, step.id);
+        record(doc, by, action, `${action === 'skip' ? 'skipped' : 'brought back'} "${step.sentence.replace(/[.?!]$/, '')}"`, step.id);
       } else if (action === 'edit') {
         if (frozen) return refusal('ALREADY_RAN', 'This step has already started, so it cannot be changed now');
         try { checkEdit(step.tool, edit.args); } catch (e) { return refusal(/** @type {any} */ (e).code, /** @type {any} */ (e).sentence); }
@@ -413,7 +412,7 @@ export function createImportAgent(o) {
         step.args = { ...step.args, ...edit.args, folder: doc.folder };
         step.sentence = stepSentence(step.tool, step.args);
         step.review = 'proposed'; step.approvedBy = null;
-        record(doc, by, 'edit', `${who} changed "${before.replace(/[.?!]$/, '')}" to "${step.sentence.replace(/[.?!]$/, '')}"; it needs approval again`, step.id);
+        record(doc, by, 'edit', `changed "${before.replace(/[.?!]$/, '')}" to "${step.sentence.replace(/[.?!]$/, '')}"; it needs approval again`, step.id);
       } else if (action === 'move') {
         const from = doc.steps.indexOf(step);
         const to = Number(edit.to);
@@ -422,7 +421,7 @@ export function createImportAgent(o) {
         if (step.tool === 'line.import.mark' || to < firstOpen || firstOpen < 0) return refusal('BAD_MOVE', 'A step can only move among the steps that have not run, after the first step that marks the folder');
         doc.steps.splice(from, 1);
         doc.steps.splice(to, 0, step);
-        record(doc, by, 'move', `${who} moved "${step.sentence.replace(/[.?!]$/, '')}" from place ${from + 1} to ${to + 1}`, step.id);
+        record(doc, by, 'move', `moved "${step.sentence.replace(/[.?!]$/, '')}" from place ${from + 1} to ${to + 1}`, step.id);
       } else return refusal('BAD_ACTION', 'The action is one of edit, skip, unskip, move, approve or approve-all');
       if (doc.state === 'execute' && step.review !== 'approved' && current(doc)?.id === step.id) doc.waiting = null;
       if (!doc.paused && doc.waiting?.for !== 'answer' && doc.waiting?.for !== 'approval') await run(doc, by);
@@ -435,7 +434,7 @@ export function createImportAgent(o) {
       const q = doc.waiting?.for === 'answer' ? doc.waiting.question : null;
       if (!q || q.id !== questionId) return refusal('NO_QUESTION', 'There is no such question open right now');
       if (!q.options.some((x) => x.id === optionId)) return refusal('BAD_OPTION', `Pick one of the options: ${q.options.map((x) => x.id).join(', ')}`);
-      record(doc, by, 'answer', `${by === 'ui' ? 'You' : 'Your agent'} answered "${q.sentence.replace(/[.?!]$/, '')}": ${lower(q.options.find((x) => x.id === optionId).sentence)}`, doc.waiting.stepId);
+      record(doc, by, 'answer', `answered "${q.sentence.replace(/[.?!]$/, '')}": ${lower(q.options.find((x) => x.id === optionId).sentence)}`, doc.waiting.stepId);
       if (q.id === 'verify') {
         if (optionId === 'finish') { doc.waiting = null; go(doc, by, 'FINISHED'); save(doc); return view(doc); }
         doc.waiting = null;
@@ -462,7 +461,7 @@ export function createImportAgent(o) {
       } else {
         const fix = (bps?.result?.options ?? []).find((x) => x.id === 'fix' && x.step && `fix:${x.fixId}` === optionId);
         if (!fix) { askAboutStep(doc, step, bps, 'that fix no longer applies'); save(doc); return view(doc); }
-        doc.decisions.push({ id: `fix:${blocker}:person`, question: asSentence(`Which fix for ${step.args.name ?? step.id}?`), options: [fix.fixId], picked: fix.fixId, by: 'person', reason: 'The person picked it.' });
+        doc.decisions.push({ id: `fix:${blocker}:person`, question: asSentence(`Which fix for ${step.args.name ?? step.id}?`), options: [fix.fixId], picked: fix.fixId, answer: asSentence(fix.sentence), by: 'person', reason: 'The person picked it.' });
         const r = await addPlanStep(doc, step, { tool: fix.step.tool, args: { ...fix.step.args, fixOf: blocker } }, by, true);
         if (!r.ok) { askAboutStep(doc, step, bps, r.sentence); save(doc); return view(doc); }
         step.run = 'running';

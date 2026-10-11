@@ -237,7 +237,7 @@ export type ImportAgentStep = {
   approvedBy?: 'ui' | 'agent' | null;
 };
 export type ImportChange = { n: number; at: string; by: 'ui' | 'agent' | 'line'; action: string; stepId?: string; sentence: string };
-export type ImportDecision = { id: string; question: string; options: string[]; picked: string; by: 'static' | 'single' | 'order' | 'jev' | 'person'; reason: string };
+export type ImportDecision = { id: string; question: string; options: string[]; picked: string; answer: string; by: 'static' | 'single' | 'order' | 'jev' | 'person'; reason: string };
 export type ImportAgentQuestion = { id: string; sentence: string; options: { id: string; sentence: string }[]; recommended: string };
 export type ImportWaiting = { for: 'review' | 'approval' | 'answer'; sentence: string; stepId?: string; planStepId?: string; question?: ImportAgentQuestion };
 export type ImportVerifyCheck = { id: 'validate' | 'types' | 'tests'; state: 'pass' | 'fail' | 'skipped'; sentence: string; detail?: string };
