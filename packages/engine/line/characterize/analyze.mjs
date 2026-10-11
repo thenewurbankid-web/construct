@@ -320,7 +320,17 @@ function mineLiterals(sf, checker, pools) {
     ts.forEachChild(n, scoped);
   };
   scoped(sf);
-  for (const [name, keys] of aliases) for (const key of keys) for (const v of pools.byKey[name] ?? []) addKey(key, v);
+  // `const { status: recomputeStatus } = useX()`: what `recomputeStatus` is compared with is what `status` should hold
+  const bindings = (n) => {
+    if (ts.isBindingElement(n) && ts.isIdentifier(n.name)) {
+      const prop = n.propertyName && (ts.isIdentifier(n.propertyName) || ts.isStringLiteralLike(n.propertyName)) ? n.propertyName.text : null;
+      if (prop && prop !== n.name.text) alias(n.name.text, prop);
+    }
+    ts.forEachChild(n, bindings);
+  };
+  bindings(sf);
+  // follow chains (`current` -> `recomputeStatus` -> `status`)
+  for (let pass = 0; pass < 3; pass++) for (const [name, keys] of aliases) for (const key of keys) for (const v of pools.byKey[name] ?? []) addKey(key, v);
 }
 
 /**
@@ -342,10 +352,20 @@ function endpointResponseTypes(sf, checker) {
         }
       }
       if (name) out.set(name, checker.getTypeFromTypeNode(n.typeArguments[0]));
+      // a config factory (`function makeConfig(base, endpoint) { ... endpoint, builder.query<T>() }`): its calls name the endpoints
+      for (let p = n.parent; p; p = p.parent) if (ts.isFunctionDeclaration(p) && p.name) { factories.set(p.name.text, checker.getTypeFromTypeNode(n.typeArguments[0])); break; }
     }
     ts.forEachChild(n, visit);
   };
+  const factories = new Map();
   visit(sf);
+  const calls = (n) => {
+    if (ts.isCallExpression(n) && ts.isIdentifier(n.expression) && factories.has(n.expression.text)) {
+      for (const a of n.arguments) if (ts.isStringLiteralLike(a) && !out.has(a.text)) out.set(a.text, factories.get(n.expression.text));
+    }
+    ts.forEachChild(n, calls);
+  };
+  calls(sf);
   return out;
 }
 

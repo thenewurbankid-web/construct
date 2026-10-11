@@ -286,11 +286,11 @@ export function unitVerdict(unit, fc) {
 const LAYOUT = /getBoundingClientRect|offsetTop|offsetLeft|offsetHeight|offsetWidth|scrollHeight|scrollTop|clientHeight|clientWidth|getComputedStyle|innerHeight|elementFromPoint/;
 
 /**
- * Why a unit is likely out of reach in jest's jsdom, from its code: dead code, a server-only path, a layout measurement (jsdom lays
+ * Why a unit is likely out of reach in jest's jsdom, from its code: dead code, a server-only path, a lookup in the component's own fixed markup, a layout measurement (jsdom lays
  * nothing out), a guard on a DOM ref that is always attached while mounted, or a constant condition. `not-reached` when
  * none applies: a test could reach it and the search did not.
  * @param {{span: {text?: string, context?: string, dead?: string}|null}} u A located unit.
- * @returns {{cause: 'dead'|'no-window'|'layout'|'ref-guard'|'constant'|'not-reached', note: string}}
+ * @returns {{cause: 'dead'|'no-window'|'ref-guard'|'dom-query'|'layout'|'constant'|'not-reached', note: string}}
  */
 export function causeOf(u) {
   const text = u.span?.text ?? '';
@@ -298,6 +298,8 @@ export function causeOf(u) {
   if (u.span?.dead) return { cause: 'dead', note: `${u.span.dead} is never called or exported in its file (dead code).` };
   if (/typeof window\s*[!=]==?\s*'undefined'/.test(text)) return { cause: 'no-window', note: 'It depends on running without a window (server rendering); jest\'s jsdom always has one.' };
   if (/^if \(!\w*[Rr]ef\.current\)|^if \(!\w+Ref\.current\b/.test(text)) return { cause: 'ref-guard', note: 'It guards a DOM ref that React has always attached while the component is mounted.' };
+  const tested = text.match(/^if \(!?(\w+)\)/)?.[1];
+  if (tested && new RegExp(`\\b${tested}\\s*=\\s*[^;]*querySelector`).test(ctx)) return { cause: 'dom-query', note: `${tested} is looked up in the component's own rendered markup, and no input the search tried changed whether it is there.` };
   if (LAYOUT.test(text) || (ctx.length < 1500 && LAYOUT.test(ctx))) return { cause: 'layout', note: 'Its function measures layout (sizes, offsets, scroll), which jsdom does not compute.' };
   if (/^if \([A-Z][A-Z0-9_]+ &&|^[A-Z][A-Z0-9_]+ \?/.test(text)) return { cause: 'constant', note: 'Its condition is a module constant.' };
   return { cause: 'not-reached', note: '' };

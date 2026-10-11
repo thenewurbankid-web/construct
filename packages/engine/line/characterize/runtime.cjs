@@ -699,6 +699,8 @@ function sampler(input) {
   function str(key) {
     const kp = (pools.byKey[key] || []).filter((x) => typeof x === 'string');
     const r = rng();
+    // two literals joined: reaches `t.includes('a') && t.includes('b')`
+    if (kp.length > 1 && r < 0.12) return `${pick(kp)} ${pick(kp)}`;
     if (kp.length && r < 0.5) return pick(kp);
     if (key && /(^id$|Id$|_id$|ids?$)/.test(key) && r < 0.75) { const v = dyn.ids.length && chance(0.5) ? pick(dyn.ids) : `id-${1 + Math.floor(rng() * 4)}`; dyn.ids.push(v); return v; }
     if (pools.strings.length && r < 0.8) return pick(pools.strings);
@@ -878,7 +880,7 @@ function mutateScenario(sm, input, base) {
     else delete sc[what][k];
   }
   if (what === 'steps') sc.steps = sc.steps.slice(0, Math.floor(sm.rng() * (sc.steps.length + 1)));
-  else if (sm.chance(0.5)) sc.steps = sc.steps.slice(0, Math.floor(sm.rng() * (sc.steps.length + 1)));
+  else if (sm.chance(0.15)) sc.steps = sc.steps.slice(0, Math.floor(sm.rng() * (sc.steps.length + 1)));
   return sc;
 }
 
@@ -987,7 +989,13 @@ async function fuzz(input, getSubject, outFile) {
       sc.steps.push(stepFor(sm, input, f.t, f.n));
       fired.add(f.key);
       count = sm.pick([0, 0, 1, 2]);
-    } else if (corpus.length && sm.chance(0.65)) sc = mutateScenario(sm, input, sm.pick(corpus).sc);
+    } else if (corpus.length && sm.chance(0.65)) {
+      // havoc: one to four changes at once, so a decision needing two inputs to agree can still be reached
+      // newer finds first: they are the deepest flows reached so far
+      const parent = sm.chance(0.5) ? corpus[corpus.length - 1 - Math.floor(sm.rng() * Math.min(20, corpus.length))] : sm.pick(corpus);
+      sc = mutateScenario(sm, input, parent.sc);
+      for (let k = sm.pick([0, 0, 1, 2, 3]); k > 0; k--) sc = mutateScenario(sm, input, sc);
+    }
     else sc = genScenario(sm, input);
     const explore = input.subject.kind === 'pure' ? null : { count, next: explorer(sm, input, fired), onTargets };
     beforeEachScenario(input.envRuntime);

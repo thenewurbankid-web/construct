@@ -50,8 +50,9 @@ export { CHAR_DIR } from './characterize/emit.mjs';
  * @typedef {object} CharacterizeOptions
  * @property {number} [budgetMs] Search time per subject (default 20 s; components get `componentBudgetMs`).
  * @property {number} [componentBudgetMs] Search time per component or hook subject (default 60 s).
- * @property {number} [maxTests] Most tests kept per subject (default 60).
- * @property {number} [maxIdle] Stop a subject's search after this many runs in a row reach nothing new (default 1500 pure, 2500 others).
+ * @property {number} [maxTests] Most tests kept per subject (default 150).
+ * @property {string} [resumeFrom] The workDir of an earlier run: its search state is continued instead of starting over.
+ * @property {number} [maxIdle] Stop a subject's search after this many runs in a row reach nothing new (default 3000 pure, 2500 others).
  * @property {number} [roundMs] Longest search round per subject in one jest process (default 45 s); later rounds resume.
  * @property {number} [seed] Sampling seed (default 7).
  * @property {string} [workDir] Folder for the probes' input and output (default a fresh temp folder).
@@ -196,16 +197,19 @@ export async function characterize(appRoot, closure, map, opts = {}) {
   const chosen = new Map();
   const stats = { subjects: {} };
   const spent = new Map(subjects.map((s) => [s.id, 0]));
-  const roundMs = opts.roundMs ?? 45_000;
+  const roundMs = new Map(subjects.map((s) => [s.id, opts.roundMs ?? 45_000]));
   let active = subjects.slice();
   let fuzzRun = null;
   for (let round = 0; active.length; round++) {
     for (const s of active) {
       const statePath = path.join(workDir, `${s.id}.fuzz.out.json.state.json`);
-      const resume = round > 0 && fs.existsSync(statePath) ? JSON.parse(fs.readFileSync(statePath, 'utf8')) : undefined;
-      const ms = Math.min(roundMs, budget(s) - spent.get(s.id));
+      // round 0 may continue an earlier characterization's search (`resumeFrom`, its workDir): iterating accumulates
+      const earlier = round === 0 && opts.resumeFrom ? path.join(opts.resumeFrom, `${s.id}.fuzz.out.json.state.json`) : null;
+      const from = round > 0 ? statePath : earlier;
+      const resume = from && fs.existsSync(from) ? JSON.parse(fs.readFileSync(from, 'utf8')) : undefined;
+      const ms = Math.min(roundMs.get(s.id), budget(s) - spent.get(s.id));
       spent.set(s.id, spent.get(s.id) + ms);
-      fs.writeFileSync(path.join(workDir, `${s.id}.fuzz.in.json`), JSON.stringify({ ...baseInput(s), budgetMs: ms, maxIdle: opts.maxIdle ?? (s.kind === 'pure' ? 1500 : 2500), maxTests: opts.maxTests ?? 60, seed: (opts.seed ?? 7) + round, resume }));
+      fs.writeFileSync(path.join(workDir, `${s.id}.fuzz.in.json`), JSON.stringify({ ...baseInput(s), budgetMs: ms, maxIdle: opts.maxIdle ?? (s.kind === 'pure' ? 3000 : 2500), maxTests: opts.maxTests ?? 150, seed: (opts.seed ?? 7) + round, resume }));
     }
     log(`characterize: searching, round ${round + 1} (${active.length} subjects)`);
     fuzzRun = runJest(appRoot, active.map((s) => probeRel(s, 'fuzz')), { coverFiles, workDir, tag: `fuzz${round}`, maxWorkers: opts.maxWorkers });
@@ -213,7 +217,12 @@ export async function characterize(appRoot, closure, map, opts = {}) {
     for (const s of active) {
       let out = null;
       try { out = JSON.parse(fs.readFileSync(path.join(workDir, `${s.id}.fuzz.out.json`), 'utf8')); } catch { out = null; }
-      if (!out) { stats.subjects[s.id] ??= { error: 'the search did not finish' }; continue; }
+      if (!out) {
+        // a round that ran out of memory is retried once more with half the time, from the last saved state
+        stats.subjects[s.id] ??= { error: 'the search did not finish' };
+        if (roundMs.get(s.id) > 10_000 && spent.get(s.id) < budget(s)) { roundMs.set(s.id, roundMs.get(s.id) / 2); next.push(s); }
+        continue;
+      }
       fs.rmSync(path.join(workDir, `${s.id}.fuzz.out.json`), { force: true });
       stats.subjects[s.id] = { runs: out.runs, kept: out.kept, chosen: out.scenarios.length, reached: out.reached, rounds: round + 1, stoppedBy: out.stoppedBy };
       chosen.set(s.id, out.scenarios);
