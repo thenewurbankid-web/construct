@@ -8,7 +8,7 @@ import { openProject } from './support/browseProject.js';
 import { runAxe, isBlocking, format } from './support/axe.js';
 
 // Line hour 4: "Base on this" on a library card of the Line sample. Pick a feature and a name, Create: the server
-// writes the new feature component through Construct's writer (POST /api/line/base-on), the page says what happened
+// adds a plan step (POST /api/line/plan/step); Approve in the Plan panel writes it through Construct's writer, the page says what happened
 // in one sentence, and the card's "used by" count goes up. A name that is taken is refused in one sentence.
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SAMPLE = path.resolve(__dirname, '../../../examples/line-sample');
@@ -48,8 +48,13 @@ test.describe.serial('Line: Base on this (Line sample project)', () => {
     expect(found.filter(isBlocking), format(found.filter(isBlocking))).toEqual([]);
 
     await form.getByRole('button', { name: 'Create' }).click();
-    await expect(page.getByTestId('ll-notice')).toContainText('Saved. Creates StatusBadge in feature orders, based on the library Badge.');
+    // cp1: Create adds a plan step; nothing is written until the person approves it in the Plan panel.
     await expect(form).toHaveCount(0);
+    const plan = page.getByTestId('line-plan');
+    await expect(plan.getByTestId('plan-step').first()).toContainText('Waiting for your approval: Creates StatusBadge in feature orders, based on the library Badge.');
+    expect(fs.existsSync(path.join(base, 'features/orders/components/StatusBadge.tsx'))).toBe(false);
+    await plan.getByRole('button', { name: /^Approve step/ }).first().click();
+    await expect(page.getByTestId('ll-notice')).toContainText('Saved. Creates StatusBadge in feature orders, based on the library Badge.');
     await expect(badge.getByTestId('ll-used-by')).toHaveText('Used by 1 feature component');
     await expect(featureRow(page, 'StatusBadge').getByTestId('ll-base')).toHaveText('Based on Badge');
 
