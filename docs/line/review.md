@@ -308,3 +308,26 @@ Plan: `docs/line/server-split.md`.
 Gaps: empty folders made before a disk error are left behind; LINE-MODULE does not yet check `ui/` reaching into `packages/`; memory, plan-store and registry fallbacks are not done. On this repo LINE-MODULE reports 216 errors (each package lacks a typed contract; engine and core reach into other packages 205 times).
 
 No UAT (nothing visible).
+
+## cu3: one tool registry (awaiting UAT)
+
+Every capability is one typed tool call in `packages/engine/line/toolRegistry.mjs` (contract: `ToolEntry` in `contract.mjs`: id, read or write, what a write changes, input and output shape, one sentence, optional `controlId` for cg1/ct1). Cockpit's `/api/line` routes, construct-mcp's 11 tools, the plan runner's tools (line.* and construct.*), GateLM's 8 tools (`@mx/plan` gatelmTools) and Studio's dispatcher (`studio/src/dispatch.ts`, now linked as `@mx/studio-dispatch`) all resolve from it. `GET /api/line/tools` lists it.
+Rule: a read runs at once. A change to project files only ever becomes a plan step that waits for your approval (an agent's too). A change to Line's own state (the plan, the workspace folder, GateLM drafts) runs at once, is written by its own store and is logged to `line/log/tools.jsonl`. Only a person approves.
+
+Tests: `test/line-tool-registry.test.mjs` (8), `ui/server/src/lineToolGate.test.mjs` (2), `ui/e2e/tests/line-tools.spec.js` (1, real server), UAT walk `ui/e2e/uat/cu3.spec.js` (2, browser only).
+1. Every entry is typed and has one sentence; ids are unique; a write must say what it changes; a GET route only reads; an agent tool never writes project files.
+2. Every `/api/line` route the server declares maps to exactly one entry, and every route in the registry exists.
+3. Every construct-mcp tool maps to exactly one entry; it is read-only exactly when the entry reads; none writes project files; none approves.
+4. Every tool the plan runner can call (line.* and every construct.* command) is one entry of the same kind.
+5. GateLM's real tool list equals the registry's gatelm.* entries, kind for kind; a GateLM answer runs at once and is logged; a mismatched GateLM tool is refused. With GateLM not bound, a gatelm call is one sentence and the rest works.
+6. Studio's own dispatcher runs registry handlers: Base on from a chip becomes a waiting step and nothing is written; an agent's approve is refused.
+7. No write without approval: Base on by an agent or a person only waits; running it before approval is refused; an agent's approve is refused; after a person approves, an agent may run it and it lands.
+8. Setting the workspace (real writer) is saved at once, logged, and adds no plan step.
+9. Real server: POST /base-on answers "Waiting for your approval: ..." and writes nothing; the Plan panel shows the waiting step; an unknown /api/line route is a 404 sentence.
+
+Gaps: the old direct write routes still exist, but now only add a plan step (the integrator removes them); Studio's own code is unchanged (it can take `studioHandlers(registry)`, wiring it in Studio is Studio's step); construct-mcp's blocks run in construct-mcp only (`dispatch` of a blocks.* tool elsewhere says so); GateLM drafts count as Line's own state (no approval), say if they should wait for approval instead; plain-words and chat dispatch arrive with their own steps.
+
+UAT (fresh sample):
+1. Components → Badge → Base on this → orders, name StatusBadge → Create. The Plan panel shows "Waiting for your approval: Creates StatusBadge in feature orders, based on the library Badge."; no file yet.
+2. Approve step 1: "Saved. ..." and StatusBadge appears under orders.
+3. Project switcher → Change workspace folder → features/ → Use features/orders: the header shows the folder at once, and the Plan panel gets no new step.
