@@ -1,51 +1,11 @@
-// Typed mirror of the Line Cockpit contract (packages/engine/line/contract.mjs) as the client reads it from
-// GET /api/line/project, plus the view models this feature renders. Change the contract first, then here.
+// The view models and service surface of the Components screen. The Line contract's shapes come from the one shared
+// mirror (lib/lineContract.ts, lib/lineHttp.ts).
+import type { ApplyResult, BaseOnRequest, Level, LineFinding, LineProject, PromoteRequest } from '@/lib/lineContract';
 
-export type LineKind = 'components' | 'pages' | 'workflows' | 'fixtures';
-export type Level = 'atom' | 'molecule' | 'organism';
-
-/** One finding: the plain-English sentence first, the technical part separate (for a Details view). */
-export type LineFinding = { sentence: string; rule: string; severity: 'error' | 'warning' | 'info'; file: string; line: number };
-
-export type LibraryItem = {
-  id: string;
-  kind: LineKind;
-  name: string;
-  file: string;
-  /** Components only. */
-  level?: Level;
-  usedBy: { feature: string; file: string }[];
-};
-
-export type FeatureItem = {
-  id: string;
-  kind: LineKind;
-  name: string;
-  feature: string;
-  file: string;
-  base: { value: string | null; libraryId: string | null };
-  status: 'ok' | 'problem';
-  findings: LineFinding[];
-};
-
-export type LineFeature = { name: string; spec: string | null; items: FeatureItem[] };
-
-export type LineProject = {
-  isLine: boolean;
-  layout: { library: string; features: string; state: string };
-  library: LibraryItem[];
-  features: LineFeature[];
-  findings: LineFinding[];
-};
+export type * from '@/lib/lineContract';
 
 /** What the service answers: the project, or one sentence saying why not. */
 export type LineProjectResult = { ok: true; project: LineProject } | { ok: false; sentence: string };
-
-/** The outcome of a change through Construct's writer (contract ApplyResult); a refusal is `ok: false` with one sentence. */
-export type ApplyResult = { ok: boolean; sentence: string; files: string[]; findings: LineFinding[] };
-
-export type BaseOnRequest = { libraryId: string; feature: string; name: string };
-export type PromoteRequest = { featureItemId: string };
 
 /** The service's surface, so the real API and its mock are interchangeable. */
 export type LineApi = {

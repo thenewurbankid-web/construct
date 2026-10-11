@@ -70,6 +70,40 @@ test.describe.serial('Line Components library (Line sample project)', () => {
     const found = await runAxe(page, { include: '[data-testid="line-library"]' });
     expect(found.filter(isBlocking), format(found.filter(isBlocking))).toEqual([]);
   });
+
+  test('a library card\'s Preview renders that component alone with its props; changing a prop renders it again', async ({ page }) => {
+    test.setTimeout(90_000); // the first render bundles the component with esbuild
+    const BUTTON = 'library/components/Button.tsx';
+    const answer = await (await fetch(`${API}/api/line/render?file=${encodeURIComponent(BUTTON)}`)).json().catch(() => null);
+    await gotoCockpit(page, '/components');
+    const button = card(page, 'Button');
+    await expect(button).toBeVisible({ timeout: 30_000 });
+    // Nothing renders until the person opens the preview.
+    await expect(page.getByTestId('line-component-preview')).toHaveCount(0);
+    await button.getByText('Preview Button', { exact: true }).click();
+    const panel = button.getByTestId('line-component-preview');
+    await expect(panel).toBeVisible();
+    const props = panel.getByRole('list', { name: 'Props of Button' });
+    await expect(props.getByTestId('lr-prop')).toHaveCount(1, { timeout: 30_000 });
+    const label = props.locator('[data-prop="label"]');
+    await expect(label).toContainText('string');
+
+    if (answer?.code === 'NO_RENDERER') {
+      // No Morpheus link on this machine: one sentence instead of a picture, and the card still works.
+      await expect(panel.getByTestId('lr-no-picture')).toContainText('There is no picture of Button');
+    } else {
+      const inside = page.frameLocator('[data-testid="ll-card"] [data-testid="lr-frame"]');
+      await expect(inside.getByRole('button', { name: 'Label' })).toBeVisible({ timeout: 30_000 });
+      await label.getByLabel('label').fill('Buy now');
+      await expect(inside.getByRole('button', { name: 'Buy now' })).toBeVisible({ timeout: 15_000 });
+    }
+    const found = await runAxe(page, { include: '[data-testid="line-library"]', exclude: ['[data-testid="lr-frame"]'] });
+    expect(found.filter(isBlocking), format(found.filter(isBlocking))).toEqual([]);
+
+    // Closing it takes the preview away again.
+    await button.getByText('Preview Button', { exact: true }).click();
+    await expect(page.getByTestId('line-component-preview')).toHaveCount(0);
+  });
 });
 
 test.describe.serial('Components screen for a non-Line project is unchanged', () => {

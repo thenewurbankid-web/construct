@@ -1,14 +1,8 @@
-// A typed mirror of GET /api/line/render's response (RenderResult in packages/engine/line/contract.mjs).
-// The contract is the source of truth: change a shape there first, then here.
+// The preview's own view models. The shapes of GET /api/line/render (RenderResult, RenderProp) come from the one
+// shared Line mirror (lib/lineContract.ts, lib/lineHttp.ts).
+import type { RenderProp } from '@/lib/lineContract';
 
-export type RenderPropKind = 'string' | 'number' | 'boolean' | 'other';
-
-/** One prop of the rendered component: its type as written, the kind it is edited as, and the value used. */
-export type RenderProp = { name: string; type: string; kind: RenderPropKind; value: unknown };
-
-export type RenderResult =
-  | { ok: true; html: string; props: RenderProp[]; via: 'morpheus' | 'construct-preview' }
-  | { ok: false; code: string; sentence: string; detail?: string; props?: RenderProp[] };
+export type { RenderProp, RenderPropKind, RenderResult } from '@/lib/lineContract';
 
 /** A value the person typed or ticked, as sent to the server. */
 export type PropValue = string | number | boolean;
