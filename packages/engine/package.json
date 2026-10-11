@@ -9,6 +9,8 @@
   },
   "exports": {
     "./impact": "./impact.mjs",
+    "./line/plan-service": "./line/planService.mjs",
+    "./line/spec": "./line/spec.mjs",
     "./transactional-writer": "./transactionalWriter.mjs",
     "./envelope": "./envelope.mjs",
     "./pipeline": "./pipeline.mjs",

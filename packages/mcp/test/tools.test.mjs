@@ -12,7 +12,7 @@ import { LIMITS } from '../src/limits.mjs';
 import { TOOLS } from '../src/server.mjs';
 import { makeProject, connectInProcess, callTool, hashTree } from '../test-utils/harness.mjs';
 
-const NAMES = ['requirement_parse', 'placement_place', 'plan_validate', 'decide', 'summarize', 'validate', 'machine_capabilities', 'traces_stats'];
+const NAMES = ['requirement_parse', 'placement_place', 'plan_validate', 'decide', 'summarize', 'validate', 'machine_capabilities', 'traces_stats', 'line_spec'];
 const SENTENCE = 'A user wants to see a list of products';
 
 const stateDir = makeTempDir('construct-mcp-state-');
@@ -30,14 +30,15 @@ after(async () => {
 });
 const call = (name, args) => callTool(session.client, name, args);
 
-test('the tool list is exactly the eight read-only tools, each with a JSON schema and no path argument', async () => {
+test('the tool list is the nine read-only tools plus the three plan tools (no approve), each with a JSON schema and no path argument', async () => {
   const { tools } = await session.client.listTools();
-  assert.deepEqual(tools.map((t) => t.name), NAMES);
+  assert.deepEqual(tools.map((t) => t.name), [...NAMES, 'plan_status', 'plan_add_step', 'plan_run_next']);
   assert.deepEqual(TOOLS.map((t) => t.name), NAMES);
   for (const tool of tools) {
     assert.equal(tool.inputSchema.type, 'object', tool.name);
     assert.ok(tool.description.length > 40 && tool.description.length < 600, `${tool.name} has a description a model can decide on`);
-    assert.deepEqual([tool.annotations.readOnlyHint, tool.annotations.destructiveHint, tool.annotations.openWorldHint], [true, false, false], `${tool.name} is annotated read-only`);
+    const readOnly = !['plan_add_step', 'plan_run_next'].includes(tool.name);
+    assert.deepEqual([tool.annotations.readOnlyHint, tool.annotations.destructiveHint, tool.annotations.openWorldHint], [readOnly, false, false], `${tool.name} is annotated ${readOnly ? 'read-only' : 'not read-only, not destructive'}`);
     for (const key of Object.keys(tool.inputSchema.properties ?? {})) assert.doesNotMatch(key, /^(root|projectRoot|project_root|path|dir|directory|file|cwd)$/i, `${tool.name} takes no path: ${key}`);
   }
 });
@@ -433,4 +434,21 @@ test('placement_place: how a screen shows its states (#622) is a closed offer, q
   const refused = await call('placement_place', { text: SENTENCE, answers: [shape, { id: 'q-states', option: 'hidden' }] });
   assert.equal(refused.isError, true);
   assert.equal(refused.body.error.code, 'PLAN_REFUSED');
+}));
+
+test('line_spec (cl1): no topic lists the topics and the version; a topic is one slice under the output cap; an id narrows it', () => withOwnSession(async (call) => {
+  const index = await call('line_spec', {});
+  assert.equal(index.isError, false, index.text);
+  assert.match(index.body.version, /^sha256:[0-9a-f]{16}$/);
+  assert.deepEqual(index.body.topics.map((t) => t.name), ['rules', 'commands', 'plan', 'model', 'modules']);
+  const rules = await call('line_spec', { topic: 'rules' });
+  assert.equal(rules.isError, false, rules.text);
+  assert.equal(rules.body.version, index.body.version, 'a slice carries the whole spec\'s version');
+  assert.ok(rules.body.topics.rules.some((r) => r.id === 'LINE-DIR'));
+  const one = await call('line_spec', { topic: 'commands', id: 'line.promote' });
+  assert.deepEqual(one.body.topics.commands.line.map((t) => t.name), ['line.promote']);
+  assert.deepEqual(one.body.topics.commands.line[0].args.required, ['featureItemId']);
+  const bad = await call('line_spec', { topic: 'nope' });
+  assert.equal(bad.isError, true);
+  assert.equal(bad.body.error.code, 'INVALID_INPUT');
 }));

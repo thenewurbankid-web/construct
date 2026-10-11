@@ -1,0 +1,362 @@
+// cp1 -- the Line operations as @mx/plan tools, merged with Construct's commands (packages/core/plan-registry.mjs)
+// into ONE registry: { list(), call(name, args) } (packages/line-links/contracts.d.ts PlanRegistry). Only the plan
+// runner calls `call`; Cockpit and agents add steps and approve/run them through the plan API (planService.mjs).
+//
+//   line.baseOn       write  BaseOnRequest   -> planBaseOn  + applyChange
+//   line.promote      write  PromoteRequest  -> planPromote + applyChange
+//   line.setPageProp  write  SetPropRequest  -> planSetProp + applyChange
+//   line.fix          write  FixRequest      -> planFixByKey (a finding's typed fix, fixes.mjs) + applyChange
+//   line.setFragment  write  SetFragmentRequest -> planSetFragment (fragments.mjs) + applyChange
+//   line.setBase, line.moveFile, line.createLayout   write   the fix steps themselves (fixes.mjs planStep) + applyChange
+//   line.leaveAsIs    write  {stepId}        -> a person's "carry on" after a step that needs them (writes nothing)
+//   line.project      read   {}              -> readLineProject
+//
+// Correction loop (owner, 11 Oct): every write step carries `expect` (the checks that define done; defaults below),
+// `gapOf` says per expected output whether it is already there before the step runs (present / partial / missing),
+// and the step narrows itself to the files not already there. After the write its checks run and are recorded on
+// the step's result; a failed check makes the step "needs you" with options. A retry that passes no more checks than
+// the try before it stops (`stopped`) instead of looping. Every write still goes only through applyChange.
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { CHECK_KINDS, LineOpError } from './contract.mjs';
+import { planBaseOn, planPromote, applyChange } from './ops.mjs';
+import { planSetProp } from './pageProp.mjs';
+import { readLineProject } from './model.mjs';
+import { planFixByKey, planStep, withFixes } from './fixes.mjs';
+import { planSetFragment } from './fragments.mjs';
+
+/** The real operations (tests pass the contract's mock instead). */
+export const REAL_PLAN_OPS = Object.freeze({ planBaseOn, planPromote, planSetProp, planFixByKey, planSetFragment, planStep, applyChange, readLineProject });
+
+/** The write tools that plan a StagedChange, and the op that plans it (`planStep` takes {tool, args}). */
+export const CHANGE_TOOLS = Object.freeze({
+  'line.baseOn': 'planBaseOn', 'line.promote': 'planPromote', 'line.setPageProp': 'planSetProp',
+  'line.fix': 'planFixByKey', 'line.setFragment': 'planSetFragment',
+  'line.setBase': 'planStep', 'line.moveFile': 'planStep', 'line.createLayout': 'planStep',
+});
+
+/** Plan a change tool's request with `ops` (pure; throws a LineOpError for a refusal). */
+function planWith(ops, root, tool, req) {
+  const opName = CHANGE_TOOLS[tool];
+  return opName === 'planStep' ? ops.planStep(root, { tool, args: req }) : ops[opName](root, req);
+}
+
+/** The checks every change tool expects unless the step names its own. */
+export const DEFAULT_EXPECT = Object.freeze([
+  Object.freeze({ id: 'validate', sentence: 'Validate (profile line) shows no new problems.', kind: 'validate' }),
+  Object.freeze({ id: 'files', sentence: 'The planned files exist with the planned content.', kind: 'file' }),
+]);
+
+// ------------------------------------------------------------------------------------------------- schemas
+const failed = (p, message) => ({ success: /** @type {const} */ (false), error: { issues: [{ path: p, message }] } });
+const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
+const TYPES = {
+  string: (v) => typeof v === 'string' && v.length > 0,
+  anyString: (v) => typeof v === 'string',
+  optString: (v) => v === undefined || (typeof v === 'string' && v.length > 0),
+  scalar: (v) => ['string', 'number', 'boolean'].includes(typeof v),
+  propKind: (v) => ['string', 'number', 'boolean', 'expression'].includes(v),
+};
+
+/** `expect`: a list of {id, sentence, kind}. */
+function checkExpect(v) {
+  if (!Array.isArray(v) || v.length === 0 || v.length > 10) return 'must be a list of 1 to 10 checks';
+  for (const c of v) {
+    if (!isObj(c) || typeof c.id !== 'string' || !c.id || typeof c.sentence !== 'string' || !/^\S.*[.?!]$/.test(c.sentence) || !CHECK_KINDS.includes(c.kind)) {
+      return `must hold checks like {"id": "files", "sentence": "The file exists.", "kind": "file"} (kinds: ${CHECK_KINDS.join(', ')})`;
+    }
+  }
+  return null;
+}
+/** `retry`: {of: <step id>, passed?: number}. */
+function checkRetry(v) {
+  if (!isObj(v) || typeof v.of !== 'string' || !v.of) return 'must be {"of": "<step id>"}';
+  if (v.passed !== undefined && !Number.isInteger(v.passed)) return 'passed must be a whole number';
+  return null;
+}
+
+/** JSON Schema for each field type of objectSchema (cl1 spec). */
+const JSON_TYPES = Object.freeze({
+  string: { type: 'string', minLength: 1 },
+  anyString: { type: 'string' },
+  optString: { type: 'string', minLength: 1 },
+  scalar: { type: ['string', 'number', 'boolean'] },
+  propKind: { enum: ['string', 'number', 'boolean', 'expression'] },
+});
+/** The JSON Schema an objectSchema accepts: its fields, plus `expect`, `retry` and `fixOf` on a change tool. */
+function jsonSchemaOf(required, o) {
+  const properties = Object.fromEntries(Object.entries(required).map(([k, t]) => [k, { ...JSON_TYPES[t] }]));
+  if (o.change) {
+    properties.expect = { type: 'array', minItems: 1, maxItems: 10, items: { type: 'object', required: ['id', 'sentence', 'kind'], properties: { id: { type: 'string' }, sentence: { type: 'string' }, kind: { enum: [...CHECK_KINDS] } } } };
+    properties.retry = { type: 'object', required: ['of'], properties: { of: { type: 'string' }, passed: { type: 'integer' } } };
+    properties.fixOf = { type: 'string', minLength: 1, description: 'The id of the refused step this step fixes.' };
+  }
+  return { type: 'object', properties, required: Object.entries(required).filter(([, t]) => t !== 'optString').map(([k]) => k), additionalProperties: false };
+}
+
+/** cl1 -- every line.* plan tool as the spec describes it: name, read/write, one sentence, JSON Schema of its args. */
+export function lineToolSpecs() {
+  return Object.keys(SCHEMAS).map((name) => ({
+    name, kind: name === 'line.project' ? 'read' : 'write', describe: DESCRIBE[name], args: SCHEMAS[name].jsonSchema(),
+  }));
+}
+
+/**
+ * A SchemaLike (safeParse only) over required and optional fields; unknown fields are refused.
+ * @param {Record<string, keyof typeof TYPES>} required
+ * @param {{change?: boolean}} [o] `change` also allows `expect` and `retry`.
+ */
+function objectSchema(required, o = {}) {
+  return Object.freeze({
+    fields: Object.keys(required),
+    /** cl1: the field types and plan-only fields, so the spec can describe the schema from this code. */
+    jsonSchema: () => jsonSchemaOf(required, o),
+    safeParse(value) {
+      const v = value ?? {};
+      if (!isObj(v)) return failed([], 'must be an object');
+      const allowed = new Set([...Object.keys(required), ...(o.change ? ['expect', 'retry', 'fixOf'] : [])]);
+      const extra = Object.keys(v).find((k) => !allowed.has(k));
+      if (extra) return failed([extra], 'is not an argument of this tool');
+      for (const [k, t] of Object.entries(required)) if (!TYPES[t](v[k])) return failed([k], t === 'scalar' ? 'must be a string, number or boolean' : t === 'propKind' ? 'must be string, number, boolean or expression' : t === 'anyString' ? 'must be a string' : 'must be a non-empty string');
+      if (v.expect !== undefined) { const why = checkExpect(v.expect); if (why) return failed(['expect'], why); }
+      if (v.retry !== undefined) { const why = checkRetry(v.retry); if (why) return failed(['retry'], why); }
+      if (v.fixOf !== undefined && (typeof v.fixOf !== 'string' || !v.fixOf)) return failed(['fixOf'], 'must be the id of the step this fix is for');
+      return { success: /** @type {const} */ (true), data: { ...v } };
+    },
+  });
+}
+
+const SCHEMAS = Object.freeze({
+  'line.baseOn': objectSchema({ libraryId: 'string', feature: 'string', name: 'string' }, { change: true }),
+  'line.promote': objectSchema({ featureItemId: 'string' }, { change: true }),
+  'line.setPageProp': objectSchema({ file: 'string', nodeId: 'string', prop: 'string', kind: 'propKind', value: 'scalar' }, { change: true }),
+  'line.fix': objectSchema({ findingKey: 'string', fixId: 'string' }, { change: true }),
+  'line.setFragment': objectSchema({ file: 'string', fragmentId: 'string', code: 'anyString', contentHash: 'string' }, { change: true }),
+  'line.setBase': objectSchema({ file: 'string', libraryId: 'string' }, { change: true }),
+  'line.moveFile': objectSchema({ from: 'string', to: 'string', base: 'optString' }, { change: true }),
+  'line.createLayout': objectSchema({}, { change: true }),
+  'line.leaveAsIs': objectSchema({ stepId: 'string' }),
+  'line.project': objectSchema({}),
+});
+
+const DESCRIBE = Object.freeze({
+  'line.baseOn': 'Creates a feature component based on one library item, through Construct\'s checked writer.',
+  'line.promote': 'Moves a feature item into the library and points its users at the library copy, through the checked writer.',
+  'line.setPageProp': 'Sets one prop of one part of a feature page, through the checked writer.',
+  'line.fix': 'Applies one typed fix of a finding (by its key and fix id), through the checked writer.',
+  'line.setFragment': 'Replaces one code fragment of a file (spot code editing), through the checked writer.',
+  'line.setBase': 'Points a feature item\'s base link at one library item, through the checked writer.',
+  'line.moveFile': 'Moves a file and re-points every import of it, through the checked writer.',
+  'line.createLayout': 'Creates the library folder so the project is laid out as Line, through the checked writer.',
+  'line.leaveAsIs': 'Records that a person chose to carry on after a step that needed them; writes nothing.',
+  'line.project': 'Reads the Line view of the project: library, features, items and findings.',
+});
+
+// ------------------------------------------------------------------------------------------------- gap and checks
+/** The change args without the plan-only fields. */
+export const requestOf = (args) => { const { expect: _e, retry: _r, fixOf: _f, ...req } = args ?? {}; return req; };
+const base = (p) => path.basename(p);
+const readOrNull = (root, rel) => { try { return fs.readFileSync(path.join(root, rel), 'utf8'); } catch { return null; } };
+
+/** Per planned file: already as planned (present: the content, or gone for a delete) or not yet (missing). */
+export function fileStates(root, staged) {
+  return staged.files.map((f) => ({ path: f.path, state: readOrNull(root, f.path) === f.content ? 'present' : 'missing' }));
+}
+
+/**
+ * Before a step runs: for each expected output, whether it is already there. Pure read.
+ * @param {string} root @param {string} tool @param {Record<string, unknown>} args @param {typeof REAL_PLAN_OPS} [ops]
+ * @returns {import('./contract.mjs').GapItem[]}
+ */
+export function gapOf(root, tool, args, ops = REAL_PLAN_OPS) {
+  const opName = CHANGE_TOOLS[tool];
+  if (!opName) return [];
+  const expect = Array.isArray(args?.expect) ? args.expect : DEFAULT_EXPECT;
+  let staged;
+  try { staged = planWith(ops, root, tool, requestOf(args)); } catch (e) {
+    const s = /** @type {any} */ (e)?.sentence ?? 'This change can no longer be planned.';
+    return expect.map((c) => ({ checkId: c.id, state: /** @type {const} */ ('missing'), sentence: `To do: ${lower(c.sentence)} It cannot run as it stands: ${lower(s)}` }));
+  }
+  const files = fileStates(root, staged);
+  return expect.map((c) => {
+    if (c.kind !== 'file') return { checkId: c.id, state: /** @type {const} */ ('missing'), sentence: `To do: ${lower(c.sentence)}` };
+    const present = files.filter((f) => f.state === 'present');
+    if (present.length === files.length) return { checkId: c.id, state: /** @type {const} */ ('present'), sentence: `Already there: ${files.map((f) => base(f.path)).join(', ')} as planned.` };
+    if (present.length) {
+      return { checkId: c.id, state: /** @type {const} */ ('partial'), sentence: `Already there: ${present.map((f) => base(f.path)).join(', ')}; to do: ${files.filter((f) => f.state !== 'present').map((f) => base(f.path)).join(', ')}.` };
+    }
+    return { checkId: c.id, state: /** @type {const} */ ('missing'), sentence: `To do: write ${files.map((f) => base(f.path)).join(', ')}.` };
+  });
+}
+const lower = (s) => String(s).charAt(0).toLowerCase() + String(s).slice(1);
+
+/**
+ * After a write: each expected check, run. `validate` passes when the writer landed the change (it blocks every
+ * NEW problem of the line profile); `file` re-reads every planned file. Kinds Line cannot run yet fail honestly.
+ */
+export function runChecks(root, expect, staged, apply) {
+  return expect.map((c) => {
+    if (c.kind === 'validate') {
+      if (apply.ok) return { checkId: c.id, ok: true, sentence: 'Validate shows no new problems.' };
+      const first = apply.findings.find((f) => f.severity === 'error');
+      return { checkId: c.id, ok: false, sentence: first ? `Validate found a new problem: ${lower(first.sentence)}` : `Not checked, because nothing was saved: ${lower(apply.sentence.replace(/^Nothing was saved: /, ''))}` };
+    }
+    if (c.kind === 'file') {
+      if (!staged) return { checkId: c.id, ok: false, sentence: 'The planned files were not written, because the change could not be planned.' };
+      const wrong = fileStates(root, staged).filter((f) => f.state !== 'present');
+      if (!wrong.length) return { checkId: c.id, ok: true, sentence: `${staged.files.length === 1 ? 'The planned file is' : `All ${staged.files.length} planned files are`} there as planned.` };
+      const names = wrong.map((f) => base(f.path));
+      const shown = new Set(names).size === names.length ? names : wrong.map((f) => f.path);
+      return { checkId: c.id, ok: false, sentence: `${shown.join(', ')} ${wrong.length === 1 ? 'is' : 'are'} not as planned.` };
+    }
+    return { checkId: c.id, ok: false, sentence: `Line cannot run ${c.kind} checks for a step yet, so "${c.sentence.replace(/[.?!]$/, '')}" is not confirmed.` };
+  });
+}
+
+/**
+ * The typed fixes of a refused change's findings, worked out on the project as the change would leave it (the
+ * findings only exist there): a scratch copy of the project (no node_modules, no .git) with the change written,
+ * removed afterwards. Never throws; on any trouble the findings come back as they are.
+ */
+export function fixesAsProposed(root, staged, findings) {
+  let scratch = null;
+  try {
+    scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'construct-line-fixes-'));
+    fs.cpSync(root, scratch, { recursive: true, filter: (src) => !/[\\/](node_modules|\.git)([\\/]|$)/.test(path.relative(root, src) ? `/${path.relative(root, src)}` : '') });
+    for (const f of staged.files) {
+      const abs = path.join(scratch, f.path);
+      if (f.content === null) fs.rmSync(abs, { force: true });
+      else { fs.mkdirSync(path.dirname(abs), { recursive: true }); fs.writeFileSync(abs, f.content); }
+    }
+    return withFixes(scratch, findings);
+  } catch {
+    return findings;
+  } finally {
+    if (scratch) fs.rmSync(scratch, { recursive: true, force: true });
+  }
+}
+
+/**
+ * Run one change tool: plan (pure), narrow to the files not already there, apply through the writer, check.
+ * Never throws for a refusal: the step's result records it and says the step needs the person.
+ * @returns {import('./contract.mjs').LineStepResult}
+ */
+export function runChange(root, tool, args, ops = REAL_PLAN_OPS) {
+  const expect = Array.isArray(args?.expect) ? args.expect : DEFAULT_EXPECT;
+  /** @type {import('./contract.mjs').StagedChange | null} */
+  let staged = null;
+  /** @type {import('./contract.mjs').ApplyResult} */
+  let apply;
+  try {
+    staged = planWith(ops, root, tool, requestOf(args));
+  } catch (e) {
+    if (!(e instanceof LineOpError) && /** @type {any} */ (e)?.name !== 'LineOpError') throw e;
+    apply = { ok: false, sentence: `Nothing was saved: ${lower(/** @type {any} */ (e).sentence)}`, files: [], findings: [] };
+  }
+  if (staged) {
+    const todo = fileStates(root, staged).filter((f) => f.state !== 'present').map((f) => f.path);
+    const narrowed = { ...staged, files: staged.files.filter((f) => todo.includes(f.path)) };
+    apply = narrowed.files.length ? ops.applyChange(root, narrowed) : { ok: true, sentence: `Nothing to save: ${lower(staged.summary.replace(/[.?!]$/, ''))} is already there.`, files: [], findings: [] };
+  }
+  if (!/** @type {any} */ (apply).ok && /** @type {any} */ (apply).findings.length && staged) {
+    apply = { .../** @type {any} */ (apply), findings: fixesAsProposed(root, staged, /** @type {any} */ (apply).findings) };
+  }
+  const checks = runChecks(root, expect, staged, /** @type {any} */ (apply));
+  const passed = checks.filter((c) => c.ok).length;
+  const total = checks.length;
+  const needsYou = passed < total;
+  const prior = args?.retry && Number.isInteger(args.retry.passed) ? Number(args.retry.passed) : null;
+  const stopped = needsYou && prior !== null && passed <= prior;
+  /** @type {import('./contract.mjs').StepOption[]} */
+  const options = [];
+  if (needsYou) {
+    // Construct's refusal is the source of truth: each new error's typed fixes (fixes.mjs, rank 1 recommended) become
+    // the next step options, as plan steps a person (one click) or an agent (plan_add_step with args.fixOf) can add.
+    for (const f of /** @type {any} */ (apply).findings.filter((x) => x.severity === 'error').slice(0, 3)) {
+      const fixes = Array.isArray(f.fixes) ? f.fixes : [];
+      if (!fixes.length) options.push({ id: 'fix', sentence: f.sentence });
+      for (const x of fixes.slice(0, 3)) {
+        options.push(x.step
+          ? { id: 'fix', fixId: x.id, sentence: x.sentence, recommended: x.rank === 1, step: { tool: x.step.tool, args: { ...x.step.args } } }
+          : { id: 'fix', fixId: x.id, sentence: x.sentence, recommended: false, step: null });
+      }
+    }
+    if (!stopped) options.push({ id: 'retry', sentence: 'Try this step again.' });
+    options.push({ id: 'leave', sentence: 'Leave it as it is and carry on.' });
+  }
+  const failing = checks.filter((c) => !c.ok).map((c) => c.sentence);
+  const sentence = !needsYou
+    ? /** @type {any} */ (apply).sentence
+    : stopped
+      ? `Trying again passed ${passed} of ${total} checks, no more than before, so Line stopped and needs you: ${lower(failing.join(' '))}`
+      : `This needs you: ${passed} of ${total} checks passed. ${failing.join(' ')}`;
+  return { apply: /** @type {any} */ (apply), checks, passed, total, needsYou, options, stopped, sentence };
+}
+
+// ------------------------------------------------------------------------------------------------- registry
+/**
+ * The Line tools for one project root.
+ * @param {{root: string, ops?: typeof REAL_PLAN_OPS, afterSave?: (root: string, file: string) => unknown}} o
+ */
+export function lineTools({ root, ops = REAL_PLAN_OPS, afterSave }) {
+  const run = {
+    ...Object.fromEntries(Object.keys(CHANGE_TOOLS).map((tool) => [tool, async (a) => runChange(root, tool, a, ops)])),
+    'line.leaveAsIs': async (a) => ({ left: a.stepId, sentence: 'Carried on; the step was left as it is.' }),
+    'line.project': async () => ops.readLineProject(root),
+  };
+  return Object.keys(run).map((name) => ({
+    name,
+    kind: /** @type {'read'|'write'} */ (name === 'line.project' ? 'read' : 'write'),
+    schema: SCHEMAS[name],
+    describe: DESCRIBE[name],
+    async run(args) {
+      const r = await run[name](args);
+      if (afterSave && r && r.apply?.ok) for (const f of r.apply.files) afterSave(root, f);
+      return r;
+    },
+  }));
+}
+
+/**
+ * ONE registry: the line.* tools plus Construct's commands (construct.*), as @mx/plan's runner sees it.
+ * @param {{root: string, ops?: typeof REAL_PLAN_OPS, commands?: import('../../line-links/contracts').PlanRegistry | null,
+ *   afterSave?: (root: string, file: string) => unknown}} o `commands` defaults to none; pass `await constructCommandTools()`.
+ * @returns {import('../../line-links/contracts').PlanRegistry}
+ */
+export function createLinePlanRegistry({ root, ops = REAL_PLAN_OPS, commands = null, afterSave }) {
+  const own = lineTools({ root, ops, afterSave });
+  const byName = new Map(own.map((t) => [t.name, t]));
+  return {
+    list: () => [...own.map(({ name, kind, schema, describe }) => ({ name, kind, schema, describe })), ...(commands ? commands.list() : [])],
+    async call(name, args) {
+      const t = byName.get(name);
+      if (!t) {
+        if (commands && commands.list().some((c) => c.name === name)) return commands.call(name, args);
+        throw new Error(`There is no tool named ${name}.`);
+      }
+      const parsed = t.schema.safeParse(args ?? {});
+      if (!parsed.success) throw new Error(`${name} got arguments it cannot use: ${parsed.error.issues.map((i) => `${i.path.join('.') || 'args'} ${i.message}`).join('; ')}.`);
+      return t.run(parsed.data);
+    },
+  };
+}
+
+/** Construct's commands as plan tools (construct.validate, ...), loaded on demand (the CLI's registry is large). */
+export async function constructCommandTools() {
+  const [{ createCommandRegistry }, { registerBuiltinCommands }, { commandPlanRegistry }] = await Promise.all([
+    import('../../core/command-registry.mjs'), import('../../core/builtin-commands.mjs'), import('../../core/plan-registry.mjs'),
+  ]);
+  const commands = createCommandRegistry();
+  registerBuiltinCommands(commands);
+  return commandPlanRegistry(commands);
+}
+
+/**
+ * Plan a change tool's step without writing (to word it and to refuse a bad request before it joins the plan).
+ * @returns {import('./contract.mjs').StagedChange} Throws a LineOpError for a refusal.
+ */
+export function previewStep(root, tool, args, ops = REAL_PLAN_OPS) {
+  if (!CHANGE_TOOLS[tool]) throw new LineOpError(`${tool} does not plan a change.`, 'NOT_A_CHANGE');
+  return planWith(ops, root, tool, requestOf(args));
+}

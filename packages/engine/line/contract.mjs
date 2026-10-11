@@ -197,6 +197,102 @@
  * @property {{file: string, stories: {id: string, text: string, points: {id: string, text: string, covered: boolean, by: string[]}[]}[]}|null} spec  Null when the feature has no spec.md.
  * @property {LineFinding[]} findings  Every finding inside the feature's folder.
  */
+/**
+ * cp1 -- Line actions as plan steps (@mx/plan, packages/engine/line/planTools.mjs + planService.mjs). Every Cockpit
+ * change (Base on, Promote, set a page prop) is a write step in the open project's plan session
+ * (`<root>/line/plans/<sessionId>.json`); only a person approves a write, and only an approved step runs.
+ *
+ * One expected output of a step: the checks that define "done".
+ * @typedef {object} PlanCheck
+ * @property {string} id
+ * @property {string} sentence  Plain English, e.g. "Validate (profile line) shows no new problems."
+ * @property {'validate'|'types'|'tests'|'file'|'spec'} kind
+ *
+ * Before a step runs: one expected output, already there or not.
+ * @typedef {object} GapItem
+ * @property {string} checkId
+ * @property {'present'|'partial'|'missing'} state
+ * @property {string} sentence
+ *
+ * After a step runs: one check's outcome.
+ * @typedef {object} CheckResult
+ * @property {string} checkId
+ * @property {boolean} ok
+ * @property {string} sentence
+ *
+ * What a person may do when a step needs them.
+ * A `fix` option comes from a refusal's findings (fixes.mjs typed fixes): `step` is the plan step that applies it (add it
+ * with args.fixOf = the step's id), null for advice only; `recommended` marks rank 1.
+ * @typedef {{id: 'retry'|'leave'|'fix', sentence: string, fixId?: string, recommended?: boolean, step?: {tool: string, args: Record<string, unknown>}|null}} StepOption
+ *
+ * The result a line.* write step records on its plan step.
+ * @typedef {object} LineStepResult
+ * @property {ApplyResult} apply     What the writer did (narrowed to the files not already there).
+ * @property {CheckResult[]} checks
+ * @property {number} passed
+ * @property {number} total
+ * @property {boolean} needsYou      A check failed: the person decides (options), nothing loops on its own.
+ * @property {StepOption[]} options
+ * @property {boolean} stopped       A retry passed no more checks than the try before it, so Line stopped retrying.
+ * @property {string} sentence       One sentence for the Plan panel.
+ *
+ * A plan step as Cockpit shows it (the @mx/plan step plus Construct's words).
+ * @typedef {object} PlanStepView
+ * @property {string} id
+ * @property {number} n
+ * @property {string} tool
+ * @property {Record<string, unknown>} args
+ * @property {string} why
+ * @property {'read'|'write'} kind
+ * @property {'waiting'|'ready'|'running'|'done'|'needs-you'|'needs-fix'|'failed'|'skipped'} state  needs-fix: Construct refused the change; its findings' typed fixes are the options
+ * @property {string} sentence    E.g. "Waiting for your approval: Creates StatusBadge in feature orders, ...".
+ * @property {GapItem[]} gap      Before it runs (empty once it ran).
+ * @property {LineStepResult|null} result
+ * @property {string|null} error
+ *
+ * GET /api/line/plan and every plan write answer this.
+ * @typedef {object} PlanView
+ * @property {true} ok
+ * @property {string} sessionId
+ * @property {string|null} planId
+ * @property {number|null} version
+ * @property {string|null} status
+ * @property {PlanStepView[]} steps
+ * @property {{linked: boolean, sentence: string}} store  Whether @mx/plan is linked or Line uses its built-in plan store.
+ * @property {string} [message]
+ *
+ * @typedef {{tool: string, args?: Record<string, unknown>, why?: string}} PlanStepRequest
+ */
+
+/** The plan tools Line adds to the one registry (beside the construct.* commands). */
+export const LINE_PLAN_TOOLS = Object.freeze([
+  { name: 'line.baseOn', kind: 'write', request: 'BaseOnRequest' },
+  { name: 'line.promote', kind: 'write', request: 'PromoteRequest' },
+  { name: 'line.setPageProp', kind: 'write', request: 'SetPropRequest' },
+  { name: 'line.fix', kind: 'write', request: 'FixRequest' },
+  { name: 'line.setFragment', kind: 'write', request: 'SetFragmentRequest' },
+  { name: 'line.setBase', kind: 'write', request: '{file, libraryId}' },
+  { name: 'line.moveFile', kind: 'write', request: '{from, to, base?}' },
+  { name: 'line.createLayout', kind: 'write', request: '{}' },
+  { name: 'line.leaveAsIs', kind: 'write', request: '{stepId}' },
+  { name: 'line.project', kind: 'read', request: '{}' },
+]);
+export const CHECK_KINDS = Object.freeze(['validate', 'types', 'tests', 'file', 'spec']);
+/** A plan step's states as Cockpit shows them (PlanStepView.state). */
+export const PLAN_STEP_STATES = Object.freeze(['waiting', 'ready', 'running', 'done', 'needs-you', 'needs-fix', 'failed', 'skipped']);
+/** What a person may do when a step needs them (StepOption.id). */
+export const STEP_OPTION_IDS = Object.freeze(['retry', 'leave', 'fix']);
+/** The plan protocol in plain English (cl1 spec, plan topic); planService.mjs enforces each sentence. */
+export const PLAN_PROTOCOL = Object.freeze([
+  'Every action, clicked or typed, is a step in the project\'s plan session; agents add steps only through the plan API.',
+  'A change step is planned before it joins the plan, and a request Construct cannot make is refused in one sentence.',
+  'Only a person approves a write step, in Cockpit; an agent cannot approve.',
+  'Only an approved step runs, one at a time, and every write goes through Construct\'s transactional writer.',
+  'After a step runs its checks decide done; a failed check makes the step need the person, with options.',
+  'When Construct refuses a change, its findings\' typed fixes are the options; add one with args.fixOf set to the refused step.',
+  'While a step needs the person, only its fix, its retry or leaving it as it is may run.',
+  'A retry that passes no more checks than the try before it stops instead of looping.',
+]);
 
 /** A refused request (bad name, unknown item, name taken). `sentence` is shown as is; `detail` (optional) is the
  * technical reason (a parser or type-checker message) for a collapsed Details. */
@@ -225,6 +321,10 @@ export const LINE_API = Object.freeze([
   { method: 'POST', path: '/api/line/fix', request: 'FixRequest', response: 'ApplyResult' },
   { method: 'GET', path: '/api/line/fragments', request: 'file (query)', response: 'FragmentList' },
   { method: 'POST', path: '/api/line/fragment', request: 'SetFragmentRequest', response: 'ApplyResult' },
+  { method: 'GET', path: '/api/line/plan', request: null, response: 'PlanView' },
+  { method: 'POST', path: '/api/line/plan/step', request: 'PlanStepRequest', response: 'PlanView & {stepId}' },
+  { method: 'POST', path: '/api/line/plan/approve', request: '{stepId}', response: 'PlanView' },
+  { method: 'POST', path: '/api/line/plan/run', request: '{stepId?}', response: 'PlanView' },
 ]);
 
 export const LINE_FIX_TOOLS = Object.freeze(['line.setBase', 'line.promote', 'line.baseOn', 'line.moveFile', 'line.createLayout']);
@@ -406,6 +506,39 @@ export function assertLineFeatureDetail(d) {
   d.findings.forEach((x, k) => assertFinding(x, `feature.findings[${k}]`));
 }
 
+/** @param {any} c @param {string} [where] */
+export function assertPlanCheck(c, where = 'check') {
+  str(c?.id, `${where}.id`);
+  sentence(c.sentence, `${where}.sentence`);
+  if (!CHECK_KINDS.includes(c.kind)) fail(`${where}.kind`, `must be one of ${CHECK_KINDS.join(', ')}`);
+}
+
+/** @param {any} r @returns {asserts r is LineStepResult} */
+export function assertLineStepResult(r) {
+  assertApplyResult(r?.apply);
+  if (!Array.isArray(r.checks)) fail('stepResult.checks', 'must be an array');
+  r.checks.forEach((c, i) => { str(c.checkId, `stepResult.checks[${i}].checkId`); if (typeof c.ok !== 'boolean') fail(`stepResult.checks[${i}].ok`, 'must be a boolean'); sentence(c.sentence, `stepResult.checks[${i}].sentence`); });
+  if (r.passed !== r.checks.filter((c) => c.ok).length || r.total !== r.checks.length) fail('stepResult.passed', 'must count the passing checks');
+  if (r.needsYou !== r.passed < r.total) fail('stepResult.needsYou', 'is true exactly when a check failed');
+  if (r.needsYou && !r.options.length) fail('stepResult.options', 'a step that needs you offers options');
+  sentence(r.sentence, 'stepResult.sentence');
+}
+
+/** @param {any} v @returns {asserts v is PlanView} */
+export function assertPlanView(v) {
+  if (v?.ok !== true) fail('plan.ok', 'must be true');
+  str(v.sessionId, 'plan.sessionId');
+  if (!Array.isArray(v.steps)) fail('plan.steps', 'must be an array');
+  if (typeof v.store?.linked !== 'boolean') fail('plan.store.linked', 'must be a boolean');
+  sentence(v.store.sentence, 'plan.store.sentence');
+  for (const s of v.steps) {
+    str(s.id, 'step.id'); str(s.tool, 'step.tool'); sentence(s.sentence, `step ${s.id}.sentence`);
+    if (!PLAN_STEP_STATES.includes(s.state)) fail(`step ${s.id}.state`, 'unknown state');
+    for (const g of s.gap) { if (!['present', 'partial', 'missing'].includes(g.state)) fail(`step ${s.id}.gap`, 'unknown state'); sentence(g.sentence, `step ${s.id}.gap.sentence`); }
+    if (s.result && s.kind === 'write' && s.tool !== 'line.leaveAsIs' && s.tool.startsWith('line.')) assertLineStepResult(s.result);
+  }
+}
+
 /**
  * Throws unless l is a FragmentList (file, content hash, labelled fragments).
  * @param {any} l
@@ -430,4 +563,100 @@ export function assertFragmentList(l) {
     if (f.contentHash !== l.contentHash) fail(`${w}.contentHash`, 'must equal the list\'s hash');
     str(f.nodeId, `${w}.nodeId`);
   });
+}
+
+// ---------------------------------------------------------------------------------------------
+// cl1 -- Claude and Line: Line describes itself from its code (spec.mjs), every plan session leaves a typed local
+// trace (trace.mjs, `<root>/line/traces/<traceId>.jsonl`, written through lineState.mjs), Line picks the context for a
+// miss statically (contextPicker.mjs) and drafts a framework issue for a refusal that recurs with no working typed fix
+// (missDetector.mjs, `<root>/line/issues/<id>.md`; never filed).
+
+/** The spec's own format version; bump it when a topic's shape changes (its content hash is `version`). */
+export const SPEC_FORMAT = 1;
+/** The spec's topics, the slices `line_spec` serves. */
+export const SPEC_TOPICS = Object.freeze(['rules', 'commands', 'plan', 'model', 'modules']);
+
+/**
+ * `construct line spec` and the MCP tool `line_spec`: what Line is, generated from its code, never hand-written.
+ * @typedef {object} LineSpec
+ * @property {1} format          SPEC_FORMAT.
+ * @property {string} version    "sha256:<16 hex>" of all topics; changes exactly when a topic's content changes.
+ * @property {string} construct  The Construct engine's package version.
+ * @property {Partial<Record<'rules'|'commands'|'plan'|'model'|'modules', unknown>>} topics  All topics, or one slice.
+ */
+
+/** The kinds of trace event. */
+export const TRACE_KINDS = Object.freeze(['step', 'refusal', 'fix-picked', 'outcome']);
+/** Plan-protocol refusals (the plan said no, not Construct's rules); every other code is Construct's. */
+export const PLAN_REFUSAL_CODES = Object.freeze(['UNKNOWN_TOOL', 'BAD_ARGS', 'NO_PLAN', 'NEEDS_YOU', 'NOTHING_TO_FIX', 'NOT_RETRYABLE', 'STOPPED', 'NOTHING_TO_LEAVE']);
+
+/**
+ * One line of a session trace (append-only JSONL). Construct's refusal plus its typed fixes is the feedback for every
+ * step, so a refusal records the fixes offered, a `fix-picked` which one was taken, and an `outcome` whether it passed.
+ * @typedef {object} TraceEvent
+ * @property {1} v
+ * @property {string} trace        The trace id (one per plan-service lifetime: a Cockpit server run or an MCP session).
+ * @property {number} seq          1, 2, ... within the trace.
+ * @property {string} at           ISO time.
+ * @property {'step'|'refusal'|'fix-picked'|'outcome'} kind
+ * @property {string} by           Who asked: ui, agent, ...
+ * @property {string} tool         The plan tool, e.g. line.setFragment.
+ * @property {string|null} stepId  The plan step (null for a request refused before it joined the plan).
+ * @property {Record<string, unknown>} [args]   step / refusal: the request (long strings cut to 200 characters).
+ * @property {string|null} [fixOf] step / fix-picked: the refused step this step fixes.
+ * @property {string|null} [retryOf] step: the step this tries again.
+ * @property {'construct'|'plan'} [source]  refusal: Construct's rules or the plan protocol.
+ * @property {string} [code]       refusal: a stable id ("NEEDS_FIX" when a run was refused with findings).
+ * @property {string} [sentence]   refusal / outcome: the plain-English sentence.
+ * @property {string[]} [rules]    refusal: rule ids of the error findings.
+ * @property {string[]} [files]    refusal: files the findings point at.
+ * @property {{fixId: string|null, tool: string|null, recommended: boolean}[]} [fixes]  refusal: the typed fixes offered.
+ * @property {string|null} [fixId] fix-picked: which offered fix (null when the step matched none).
+ * @property {boolean} [ok]        outcome: every check passed.
+ * @property {number} [passed]
+ * @property {number} [total]
+ * @property {string} [state]      outcome: the step's state after it ran.
+ */
+
+/**
+ * What Line hands Claude for one miss: exactly these items and files, each with a summary; Claude does not search.
+ * @typedef {object} ContextPick
+ * @property {{id: string, kind: 'feature-item'|'library-item'|'fixture'|'rule'|'plan-step', why: string}[]} items
+ * @property {{file: string, why: string, score: number, summary: {sentence: string, via: string}}[]} files  Ranked.
+ * @property {string[]} rules      Rule ids involved.
+ * @property {'static'|'jev'} via  Who chose among tied candidates (static order unless a picker was given).
+ * @property {boolean} ambiguous   More candidates tied at the cut than fit.
+ */
+
+/** @param {any} s @returns {asserts s is LineSpec} */
+export function assertLineSpec(s) {
+  if (s?.format !== SPEC_FORMAT) fail('spec.format', `must be ${SPEC_FORMAT}`);
+  if (!/^sha256:[0-9a-f]{16}$/.test(String(s.version))) fail('spec.version', 'must be "sha256:" and 16 hex digits');
+  str(s.construct, 'spec.construct');
+  if (!s.topics || typeof s.topics !== 'object') fail('spec.topics', 'must be an object');
+  for (const k of Object.keys(s.topics)) if (!SPEC_TOPICS.includes(k)) fail(`spec.topics.${k}`, `is not a topic (${SPEC_TOPICS.join(', ')})`);
+}
+
+/** @param {any} e @param {string} [where] @returns {asserts e is TraceEvent} */
+export function assertTraceEvent(e, where = 'trace event') {
+  if (e?.v !== 1) fail(`${where}.v`, 'must be 1');
+  str(e.trace, `${where}.trace`); str(e.at, `${where}.at`); str(e.by, `${where}.by`); str(e.tool, `${where}.tool`);
+  if (!Number.isInteger(e.seq) || e.seq < 1) fail(`${where}.seq`, 'must be a whole number from 1');
+  if (!TRACE_KINDS.includes(e.kind)) fail(`${where}.kind`, `must be one of ${TRACE_KINDS.join(', ')}`);
+  if (e.stepId !== null && typeof e.stepId !== 'string') fail(`${where}.stepId`, 'must be a string or null');
+  if (e.kind === 'refusal') {
+    if (!['construct', 'plan'].includes(e.source)) fail(`${where}.source`, 'must be construct or plan');
+    str(e.code, `${where}.code`); sentence(e.sentence, `${where}.sentence`);
+    if (!Array.isArray(e.rules) || !Array.isArray(e.files) || !Array.isArray(e.fixes)) fail(where, 'a refusal lists rules, files and fixes');
+  }
+  if (e.kind === 'fix-picked') str(e.fixOf, `${where}.fixOf`);
+  if (e.kind === 'outcome' && (typeof e.ok !== 'boolean' || !Number.isInteger(e.passed) || !Number.isInteger(e.total))) fail(where, 'an outcome has ok, passed and total');
+}
+
+/** @param {any} p @returns {asserts p is ContextPick} */
+export function assertContextPick(p) {
+  if (!Array.isArray(p?.items) || !Array.isArray(p.files) || !Array.isArray(p.rules)) fail('pick', 'has items, files and rules');
+  for (const f of p.files) { str(f.file, 'pick.files[].file'); sentence(f.why, `pick ${f.file}.why`); sentence(f.summary?.sentence, `pick ${f.file}.summary`); str(f.summary.via, `pick ${f.file}.summary.via`); }
+  for (let i = 1; i < p.files.length; i += 1) if (p.files[i].score > p.files[i - 1].score) fail('pick.files', 'must be ranked by score');
+  if (!['static', 'jev'].includes(p.via)) fail('pick.via', 'must be static or jev');
 }
