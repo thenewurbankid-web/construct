@@ -87,6 +87,7 @@ import { createComponentsRouter } from './componentsApi.mjs';
 import { createLineRouter } from './lineApi.mjs';
 import { createLineOpsRouter } from './lineOpsApi.mjs';
 import { createLineRenderRouter } from './lineRenderApi.mjs';
+import { createLineNewProjectRouter } from './lineNewProjectApi.mjs';
 import { createStoryBridgeRouter } from './storyBridgeApi.mjs';
 import { createNotesRouter } from './notesApi.mjs';
 import { openNotesStore } from './notesStore.mjs';
@@ -1239,6 +1240,13 @@ app.use('/api/components', createComponentsRouter({
   },
 }));
 
+// cu7 (Line Cockpit): start a new Line project in a folder of the caller's workspace and open it. Needs no open
+// project, so it sits before the /api/line routers that do; the starter files land through Construct's writer.
+app.use('/api/line/new-project', createLineNewProjectRouter({
+  clientOrigin: CLIENT_ORIGIN,
+  getWorkspaceRoot: workspaceRoot,
+  openProject: (dir) => applySettings({ projectDir: dir }),
+}));
 // Line: the read-only Line view of a `preset: line` project (packages/engine/line/contract.mjs LINE_API).
 app.use('/api/line', createLineRouter({
   getRoot: () => {
