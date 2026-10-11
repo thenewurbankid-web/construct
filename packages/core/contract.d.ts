@@ -133,3 +133,5 @@ export * as verify from './verify.mjs';
 export * as planRegistry from './plan-registry.mjs';
 /** `@line/construct-core/rules-catalog` */
 export * as rulesCatalog from './rules-catalog.mjs';
+/** `@line/construct-core/file-lock` */
+export * as fileLock from './file-lock.mjs';
