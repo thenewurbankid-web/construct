@@ -11,7 +11,12 @@ import type { ShellLayoutProps } from '../types';
  * `focus` is the shell standing down (#456): the rail, top bar, drawer and status
  * bar are not rendered and the side panes are hidden, so the stage owns the
  * viewport. The panes stay mounted behind `hidden` — a screen must not lose what
- * is in its Tools tabs just because the app was looked at full screen. */
+ * is in its Tools tabs just because the app was looked at full screen.
+ *
+ * Both layouts render the same root and `.sh-body` element, and the stage carries `key="mid"` in both, so crossing
+ * the 900px breakpoint (a phone turned, a window narrowed, the first paint on a phone) keeps the screen mounted.
+ * Without the key the stage sits at a different child slot in each layout and React remounted the whole screen:
+ * it re-read its project (the Pages screen fell back to "Opening Pages") and lost what the person had picked. */
 export function ShellLayout({ layout, limits, onResize, onTogglePane, narrow = false, narrowPane = 'mid', onNarrowPane, runBadge, focus = false, top, rail, left, mid, right, drawer, status }: ShellLayoutProps) {
   if (narrow) {
     // Narrow (< 900px): one pane at a time, Browser / Stage / Tools / Run (#376). Inactive panes
@@ -25,7 +30,7 @@ export function ShellLayout({ layout, limits, onResize, onTogglePane, narrow = f
           <aside id="sh-pane-left" data-pane="left" tabIndex={-1} aria-label="Left panel: Browse" className="sh-pane sh-left" hidden={focus || narrowPane !== 'left'}>
             {left}
           </aside>
-          <div id="sh-mid" data-pane="mid" tabIndex={-1} className="sh-mid" hidden={!focus && narrowPane !== 'mid'}>
+          <div key="mid" id="sh-mid" data-pane="mid" tabIndex={-1} className="sh-mid" hidden={!focus && narrowPane !== 'mid'}>
             {mid}
           </div>
           <aside id="sh-pane-right" data-pane="right" tabIndex={-1} aria-label="Right panel: Inspect" className="sh-pane sh-right" hidden={focus || narrowPane !== 'right'}>
@@ -72,7 +77,7 @@ export function ShellLayout({ layout, limits, onResize, onTogglePane, narrow = f
             onToggle={() => onTogglePane('left')}
           />
         )}
-        <div id="sh-mid" data-pane="mid" tabIndex={-1} className="sh-mid">
+        <div key="mid" id="sh-mid" data-pane="mid" tabIndex={-1} className="sh-mid">
           {mid}
         </div>
         {layout.right.open && (
