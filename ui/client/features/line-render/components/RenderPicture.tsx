@@ -1,4 +1,5 @@
 import { LoadingState } from '@/features/states';
+import { staticHtml } from '../domain/RenderHtml';
 import type { LineRenderState } from '../types';
 
 type RenderPictureProps = { name: string; state: LineRenderState };
@@ -7,7 +8,7 @@ type RenderPictureProps = { name: string; state: LineRenderState };
  * is none (the technical reason under a collapsed Details), or the refusal. */
 export function RenderPicture({ name, state }: RenderPictureProps) {
   if (state.phase === 'loading') return <LoadingState size="inline" label={`Rendering ${name}`} />;
-  if (state.phase === 'shown') return <iframe className="lr-frame" title={`${name} rendered alone`} sandbox="" srcDoc={state.html} data-testid="lr-frame" />;
+  if (state.phase === 'shown') return <iframe className="lr-frame" title={`${name} rendered alone`} sandbox="" srcDoc={staticHtml(state.html)} data-testid="lr-frame" />;
   if (state.phase === 'refused') {
     return (
       <p className="lr-note lr-note--refused" role="alert" data-testid="lr-refused">

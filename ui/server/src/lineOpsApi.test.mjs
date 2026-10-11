@@ -128,8 +128,10 @@ test('workspace: GET says the whole project until one is set; POST sets features
   assert.equal(w.folder, 'features/orders');
   assert.equal((await (await fetch(`${base}/workspace`)).json()).folder, 'features/orders');
   assert.deepEqual(JSON.parse(read(dir, 'line/workspace.json')), { folder: 'features/orders' });
-  const refused = (await change('line.baseOn', { libraryId: 'components/Badge', feature: 'billing', name: 'PaidBadge' })).apply;
-  assertApplyResult(refused);
+  // Outside the workspace a change never joins the plan: refused when it is added, in the writer's own sentence.
+  const refusedAdd = await change('line.baseOn', { libraryId: 'components/Badge', feature: 'billing', name: 'PaidBadge' });
+  assert.equal(refusedAdd.status, 400);
+  const refused = refusedAdd.body;
   assert.equal(refused.code, 'OUTSIDE_WORKSPACE');
   assert.equal(refused.sentence, 'Nothing was saved: features/billing/components/PaidBadge.tsx is outside your workspace folder features/orders; it stays read-only.');
   assert.equal(fs.existsSync(path.join(dir, 'features/billing/components/PaidBadge.tsx')), false);

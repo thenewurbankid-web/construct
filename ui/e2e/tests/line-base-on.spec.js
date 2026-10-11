@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { gotoCockpit } from './support/cockpit.js';
 import { openProject } from './support/browseProject.js';
 import { runAxe, isBlocking, format } from './support/axe.js';
-import { failOnConsoleErrors } from './support/consoleGuard.js';
+import { failOnConsoleErrors, refusalOf } from './support/consoleGuard.js';
 
 // Line hour 4: "Base on this" on a library card of the Line sample. Pick a feature and a name, Create: the server
 // adds a plan step (POST /api/line/plan/step); Approve in the Plan panel writes it through Construct's writer, the page says what happened
@@ -19,7 +19,8 @@ const card = (page, name) => page.getByTestId('ll-card').filter({ has: page.getB
 const featureRow = (page, name) => page.getByTestId('ll-feature-row').filter({ has: page.getByText(name, { exact: true }) });
 
 test.describe.serial('Line: Base on this (Line sample project)', () => {
-  failOnConsoleErrors(test);
+  // A taken name is refused by the plan on purpose.
+  failOnConsoleErrors(test, { allow: [refusalOf('/api/line/plan/step')] });
   let base;
   let restore;
 

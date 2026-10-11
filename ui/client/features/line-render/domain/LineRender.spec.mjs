@@ -41,3 +41,9 @@ test('rows show the typed input once there is one, else the value used; the name
   const rows = propRows([label, count], { count: '7x' });
   assert.deepEqual(rows.map((r) => r.input), ['Label', '7x']);
 });
+
+test('the frame gets the document without scripts (it runs none; left in, each logs a blocked-script error)', async () => {
+  const { staticHtml } = await import('./RenderHtml.ts');
+  assert.equal(staticHtml('<div>Hi</div><script type="module">x()</script><SCRIPT src="a.js"></SCRIPT><script src="b.js"/>'), '<div>Hi</div>');
+  assert.equal(staticHtml('<p>no scripts</p>'), '<p>no scripts</p>');
+});

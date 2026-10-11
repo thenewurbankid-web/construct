@@ -17,6 +17,7 @@
 import { importLinked } from '../../line-links/index.mjs';
 import { CHANGE_TOOLS, DEFAULT_EXPECT, REAL_PLAN_OPS, createLinePlanRegistry, constructCommandTools, gapOf, isDeferred, previewStep, rootOf } from './planTools.mjs';
 import { createAtomicPlanWriter, createStaticPlanApi } from './planFallback.mjs';
+import { isInsideWorkspace, readWorkspace } from './workspace.mjs';
 
 /** One session per open project, for now. */
 export const SESSION_ID = 'ses-cockpit';
@@ -150,7 +151,13 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
       try { rootOf(root, tool, args); } catch (e) { return refusal(/** @type {any} */ (e).code ?? 'BAD_FOLDER', /** @type {any} */ (e).sentence ?? 'The import folder must be inside the project'); }
     } else if (CHANGE_TOOLS[tool] && !args.retry) {
       try {
-        why = why ?? previewStep(root, tool, args, ops).summary;
+        const staged = previewStep(root, tool, args, ops);
+        why = why ?? staged.summary;
+        // cu6: a change outside the workspace folder can never land, so it never joins the plan (one sentence, as the writer says it).
+        let folder = '';
+        try { folder = readWorkspace(root).folder; } catch { folder = ''; }
+        const outside = folder ? staged.files.find((f) => !isInsideWorkspace(folder, f.path)) : null;
+        if (outside) return refusal('OUTSIDE_WORKSPACE', `Nothing was saved: ${outside.path} is outside your workspace folder ${folder}; it stays read-only.`);
       } catch (e) {
         if (/** @type {any} */ (e)?.name === 'LineOpError') {
           const r = refusal(/** @type {any} */ (e).code, /** @type {any} */ (e).sentence);
