@@ -1,4 +1,4 @@
-// Line mock mode, shared by every Line screen: the screen runs on the contract's mock (packages/engine/line/mock.mjs)
+// Line mock mode, shared by every Line screen: the screen runs on the contract's mock (packages/engine/line/mock*.mjs)
 // instead of the server. On with NEXT_PUBLIC_LINE_MOCK=1 at build time, or for one browser tab by opening any Cockpit
 // URL with ?line=mock (kept for the tab's session; ?line=real turns it off).
 const KEY = 'cockpit.line-mock';

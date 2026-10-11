@@ -321,3 +321,21 @@ Plan: `docs/line/server-split.md`.
 Gaps: empty folders made before a disk error are left behind; LINE-MODULE does not yet check `ui/` reaching into `packages/`; memory, plan-store and registry fallbacks are not done. On this repo LINE-MODULE reports 216 errors (each package lacks a typed contract; engine and core reach into other packages 205 times).
 
 No UAT (nothing visible).
+## ci1: Import one folder of an existing app (partial migration, awaiting UAT)
+
+Tests: `test/line-import.test.mjs` (8), import cases in `test/line-contract.test.mjs`, `ui/server/src/lineImportApi.test.mjs` (3), `ui/client/features/line-import/domain/ImportView.spec.mjs` (3), `ui/e2e/tests/line-import.spec.js` (3, real server, axe).
+1. On `examples/import-sample`, folder `src/alerts`: the scan finds 2 pages, 3 components and a fixture, reads the routes `/alerts` and `/alerts/:id` from `App.tsx`, and leaves the hook and the types file as they are, each with a sentence.
+2. SeverityBadge goes to the library (both pages use it), AlertRow to feature `alerts` (one page), the pages to feature `alerts`.
+3. Exactly one question: Table (a general UI name, but only one page uses it); the recommended answer is first and the plan follows the answer.
+4. The plan is plan-ready steps (`line.import.mark`, `line.import.toLibrary`, `line.import.toFeature`, each tool + args + sentence); planning writes nothing.
+5. Apply lands every step through the writer with the folder as its root; every file outside the folder is byte-for-byte the same.
+6. `construct validate --profile line --dir src/alerts` shows no new errors after the import.
+7. A folder outside the project, a step reaching outside the folder, and a second apply are each refused in one sentence.
+8. The mock (`?line=mock`) says exactly what the engine says (a test keeps them equal).
+Browser: pick the folder, read the proposals (paths under Details), one-click answer, plan, Apply; a bad folder is one sentence; accessibility clean.
+
+How it decides: a feature item is based on the library item it renders when there is one; otherwise its full code goes to the library and the feature gets a thin item based on it (Line's library/feature pattern). A file that code outside the folder imports keeps a one-line re-export at its old path, so the app runs unchanged. Layer findings the imported code already has (a page calling a hook) are recorded as named exceptions in the folder's `architecture.yml`, the to-do list for bringing it to the pattern; LINE-* rules are never excepted.
+
+Gaps: full migration into a new Line app, and importing a single item (next priority); React hooks stay in place (a Line workflow has no React); two items with the same name are refused at the second step; the re-export files at old page paths keep their "orphan page" finding until the app's routes point at the feature pages (that edit is outside the folder); an app needs an `architecture.yml` at its root before Cockpit can open it (max-ai-ui has none).
+
+UAT (cu7, max-ai-ui on a copy): open the copy in Cockpit (add `version: 1` as `architecture.yml` first), go to `/import`, folder `src/subframe-pages/Inbox`, Read folder, Show the plan, Apply. Expect InboxPage in feature `inbox` served at `/:locale/inbox`, and `src/app/...` unchanged.
