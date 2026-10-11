@@ -8,12 +8,17 @@ const stop = (s) => (/[.?!]$/.test(s) ? s : `${s}.`);
 const plural = (n, one, many = `${one}s`) => `${n === 1 ? 'one' : n} ${n === 1 ? one : many}`;
 const list = (xs) => (xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`);
 
-/** The key that says whether a feature's transition is the library's: from, event and target. */
+/**
+ * The key that says whether a feature's transition is the library's: from, event and target.
+ * @param {{from: string, event: string, target: string|null}} t A transition.
+ * @returns {string} "<from>|<event>|<target>".
+ */
 export const transitionKey = (t) => `${t.from}|${t.event}|${t.target ?? ''}`;
 
 /**
  * One action in words, e.g. "call the cancelOrder service", "set OrderCard to loading".
- * @param {import('./contract.mjs').LineWorkflowAction} a
+ * @param {import('./contract.mjs').LineWorkflowAction} a The action.
+ * @returns {string} Lower-case words, no full stop.
  */
 export function actionWords(a) {
   if (a.kind === 'callService') return `call the ${a.service} service`;
@@ -63,6 +68,7 @@ export function describeWorkflow(raw) {
   }));
   const baseKeys = raw.baseTransitions ? new Set(raw.baseTransitions.map(transitionKey)) : null;
   const seen = new Set();
+  /** @type {import('./contract.mjs').LineWorkflowTransition[]} */
   const transitions = [];
   for (const t of machine.transitions) {
     const id = `${t.from}|${t.event}`;
@@ -74,7 +80,7 @@ export function describeWorkflow(raw) {
     const doing = t.actions.map(actionWords);
     if (t.target && t.target !== t.from) doing.push(`go to ${place(t.target)}`);
     transitions.push({
-      id, from: t.from, event: t.event, to: t.target ?? null, actions: t.actions, origin, removable: origin === 'feature' && kind === 'feature',
+      id, from: t.from, event: t.event, to: t.target ?? null, actions: t.actions, origin: /** @type {'library'|'feature'} */ (origin), removable: origin === 'feature' && kind === 'feature',
       when: stop(`When ${who}`), do: doing.length ? stop(upper(doing.join(', then '))) : 'Stay where it is.',
     });
   }
@@ -110,7 +116,12 @@ export function describeWorkflow(raw) {
   };
 }
 
-/** One sentence for a change step adding a transition: "Adds to orderBrowse: when OrdersPage sends CANCEL, ...". */
+/**
+ * One sentence for a change step adding a transition: "Adds to orderBrowse: when OrdersPage sends CANCEL, ...".
+ * @param {string} name The workflow's name.
+ * @param {{when: string, do: string}} card The new transition's When -> Do card.
+ * @returns {string} The sentence.
+ */
 export function addTransitionSummary(name, card) {
   return `Adds to ${name}: ${card.when.replace(/\.$/, '').replace(/^When/, 'when')}, ${card.do.charAt(0).toLowerCase()}${card.do.slice(1)}`;
 }

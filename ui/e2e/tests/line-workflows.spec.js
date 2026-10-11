@@ -113,7 +113,9 @@ test.describe.serial('Line workflows (Features > Workflows, Line sample project,
 
   test('a When -> Do the workflow already has is refused in one sentence, with the reason under Details, and joins no plan', async ({ page }) => {
     await gotoCockpit(page, URL);
-    const before = await plan(page).getByTestId('plan-step').count();
+    // The three steps approved so far (start, choose a page, add a When -> Do), once the plan has loaded.
+    const before = 3;
+    await expect(plan(page).getByTestId('plan-step')).toHaveCount(before, { timeout: 30_000 });
     const form = page.getByRole('form', { name: 'Add a When and Do' });
     await form.getByLabel('Event').fill('OPEN', { timeout: 30_000 });
     await form.getByRole('button', { name: 'Add to plan' }).click();

@@ -36,7 +36,11 @@ const q = (s) => `'${String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`;
 const actionSrc = (a) => (a.kind === 'callService' ? `{ type: 'callService', params: { service: ${q(a.service)} } }`
   : a.kind === 'setPartState' ? `{ type: 'setPartState', params: { part: ${q(a.part)}, state: ${q(a.state)} } }` : q(a.name));
 
-/** A workflow's source, as a real file would hold it. @param {MockWorkflow} w */
+/**
+ * A workflow's source, as a real file would hold it.
+ * @param {MockWorkflow} w The workflow as data.
+ * @returns {string} The source text.
+ */
 export function renderWorkflow(w) {
   const head = w.base ? `// @line-base ${w.base}\n` : '';
   const obj = (o) => `{\n${Object.entries(o).map(([k, v]) => `  ${k}: ${v === null ? 'null' : q(v)},`).join('\n')}\n}`;
@@ -51,7 +55,8 @@ export function renderWorkflow(w) {
 
 /**
  * The workflow operations over the mock's `files` (shared with mock.mjs, which calls `landed` after every change).
- * @param {{files: Record<string, string>, project: () => import('./contract.mjs').LineProject}} o
+ * @param {{files: Record<string, string>, project: () => import('./contract.mjs').LineProject}} o The mock's files and its project view.
+ * @returns {any} `landed(change)` plus readLineWorkflows and the four workflow plans.
  */
 export function createMockWorkflows({ files, project }) {
   /** @type {Map<string, MockWorkflow>} file -> workflow */

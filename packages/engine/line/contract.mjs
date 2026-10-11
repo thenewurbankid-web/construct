@@ -618,7 +618,13 @@ export function assertFragmentList(l) {
 
 export const WORKFLOW_ACTION_KINDS = Object.freeze(['callService', 'setPartState', 'other']);
 
-/** @param {any} w @param {string} [where] */
+/**
+ * Throw a TypeError naming the bad field unless `w` is a LineWorkflow: ids by kind, roles and transitions on its own
+ * states, only a feature's own transitions removable, every When and Do a sentence.
+ * @param {any} w The value to check.
+ * @param {string} [where] Where it sits, for the error message.
+ * @returns {void}
+ */
 export function assertLineWorkflow(w, where = 'workflow') {
   str(w?.id, `${where}.id`); str(w.name, `${where}.name`); str(w.file, `${where}.file`); str(w.machineId, `${where}.machineId`);
   if (!['library', 'feature'].includes(w.kind)) fail(`${where}.kind`, 'must be library or feature');
@@ -652,7 +658,12 @@ export function assertLineWorkflow(w, where = 'workflow') {
   if (!Array.isArray(w.usedBy)) fail(`${where}.usedBy`, 'must be an array');
 }
 
-/** @param {any} l @returns {asserts l is LineWorkflowList} */
+/**
+ * Throw a TypeError naming the bad field unless `l` is a LineWorkflowList: the feature's own workflows, library ones,
+ * the feature's pages and the files Cockpit cannot draw, each with a sentence.
+ * @param {any} l The value to check.
+ * @returns {asserts l is LineWorkflowList}
+ */
 export function assertLineWorkflowList(l) {
   str(l?.feature, 'workflows.feature');
   for (const k of ['workflows', 'library', 'pages', 'notMachines']) if (!Array.isArray(l[k])) fail(`workflows.${k}`, 'must be an array');

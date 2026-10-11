@@ -38,6 +38,9 @@ const unwrap = (n) => (n && (n.type === 'TSAsExpression' || n.type === 'TSSatisf
 
 /**
  * `export const <name> = { key: 'value' | null, ... }` in `source`: its entries and the nodes to edit them.
+ * @param {string} source The file's source.
+ * @param {string} name The constant's name, e.g. "roles" or "pages".
+ * @param {any} [ast] The parsed source, when already parsed.
  * @returns {{obj: any, entries: Map<string, {value: string|null|undefined, node: any}>}|null}
  */
 export function constObject(source, name, ast = parseToAst(source)) {
@@ -84,6 +87,8 @@ function actionsOf(value) {
 /**
  * The first exported xstate machine of a workflow file, as plain data (states, `on` transitions with their actions),
  * or a sentence saying why Cockpit cannot draw it.
+ * @param {string} source The workflow file's source.
+ * @returns {any} `{ok: true, index, exportName, machine, raw}` or `{ok: false, sentence}`.
  */
 export function readMachine(source) {
   const { machines, error } = analyzeMachines(source);
@@ -203,6 +208,7 @@ export function planBaseWorkflowOn(root, req = /** @type {any} */ ({})) {
   const m = readMachine(libSrc);
   if (!m.ok) throw new LineOpError(`The library workflow ${lib.name} is not an xstate machine Cockpit can copy: ${m.sentence.charAt(0).toLowerCase()}${m.sentence.slice(1)}`, 'NOT_A_MACHINE');
   const ast = parseToAst(libSrc);
+  /** @type {any} */
   let init = null;
   let imports = [];
   walkAst(ast, {
@@ -269,8 +275,8 @@ export function planAddWorkflowTransition(root, req = /** @type {any} */ ({})) {
   if (!EVENT.test(String(event ?? ''))) throw new LineOpError(`"${event ?? ''}" is not an event name; use a word such as CANCEL.`, 'BAD_EVENT');
   const states = w.m.machine.states.map((s) => s.path);
   for (const s of [from, to]) if (!states.includes(s)) throw new LineOpError(`The workflow ${w.item.name} has no step "${s}"; pick one of ${states.join(', ')}.`, 'UNKNOWN_STATE');
-  const extra = actionsText(req);
-  const added = editWorkflow(w.source, { machine: w.m.index, op: 'addTransition', from, event, target: to });
+  const extra = actionsText(/** @type {any} */ (req));
+  const added = /** @type {any} */ (editWorkflow(w.source, /** @type {any} */ ({ machine: w.m.index, op: 'addTransition', from, event, target: to })));
   if (!added.ok) throw new LineOpError(asSentence(added.error), 'BAD_TRANSITION');
   let content = added.source;
   if (extra.length) {
@@ -296,7 +302,7 @@ export function planRemoveWorkflowTransition(root, { file, from, event } = /** @
   const t = view?.transitions.find((x) => x.id === `${from}|${event}`);
   if (!t) throw new LineOpError(`The workflow ${w.item.name} has no transition ${event} from ${from}.`, 'UNKNOWN_TRANSITION');
   if (!t.removable) throw new LineOpError(`The transition ${event} from ${from} comes from the library workflow, so it stays; a feature only removes what it added.`, 'LIBRARY_TRANSITION');
-  const out = editWorkflow(w.source, { machine: w.m.index, op: 'removeTransition', from, event });
+  const out = /** @type {any} */ (editWorkflow(w.source, /** @type {any} */ ({ machine: w.m.index, op: 'removeTransition', from, event })));
   if (!out.ok) throw new LineOpError(asSentence(out.error), 'BAD_TRANSITION');
   return { summary: `Removes from ${w.item.name}: ${t.when.replace(/\.$/, '').replace(/^When/, 'when')}.`, files: [{ path: w.item.file, content: out.source }] };
 }

@@ -308,3 +308,25 @@ Plan: `docs/line/server-split.md`.
 Gaps: empty folders made before a disk error are left behind; LINE-MODULE does not yet check `ui/` reaching into `packages/`; memory, plan-store and registry fallbacks are not done. On this repo LINE-MODULE reports 216 errors (each package lacks a typed contract; engine and core reach into other packages 205 times).
 
 No UAT (nothing visible).
+
+## cw1: feature workflows, state machines between pages (awaiting UAT)
+
+What it is: the library holds four complete workflows (xstate machines in `examples/line-sample/library/workflows`): wizard (step by step), listDetail (list then detail), createConfirm (create then confirm), signInGate (sign-in gate). Each names its roles: the states a page fills. A feature workflow is a copy of one library workflow with a `@line-base` link to it, a `pages` object saying which of the feature's pages fills each role, and only the transitions the feature adds. Every change is a plan step you approve in the Plan panel; the file is written only by Construct's writer.
+
+Tests: `test/line-workflows.test.mjs` (10: the same story on the contract mock and on a copy of the sample), contract and server tests (+1 each), client (4), `ui/e2e/tests/line-workflows.spec.js` (7, real server), UAT walk `ui/e2e/uat/cw1.spec.js`.
+1. The library offers 4 workflows, each with its roles and When → Do sentences ("When the list page sends OPEN. Go to the detail page."); checkout (plain functions) is listed as one Cockpit cannot draw, with the reason.
+2. Base on listDetail creates `features/orders/workflows/<name>.ts` with `// @line-base workflows/listDetail`, a copy of the machine and every role "not chosen yet"; the library item then says orders uses it.
+3. Choosing OrdersPage for the list role changes only that value; the states and cards then say "OrdersPage" instead of "the list page".
+4. Adding "when the detail page sends CANCEL, call cancelOrder, then go to the list" writes an xstate transition with a `callService` action; it is marked "Added for orders" and can be removed; the library's transitions cannot.
+5. The generated file passes `validate --profile line`, and xstate actually runs it (OPEN goes to detail, CANCEL calls the service and goes back).
+6. Move to the library is the usual Promote: the workflow leaves the feature and is offered from the library, its pages becoming roles.
+7. Refusals are one sentence with a code, and nothing is planned: an unknown page ("There is no page InvoicesPage in orders; pick one of its pages (OrdersPage)."), unknown role or state, an event already handled, a library workflow edited directly, a library transition removed, a bad name, a name taken.
+8. The four plan tools (line.baseWorkflowOn, line.setWorkflowRole, line.addWorkflowTransition, line.removeWorkflowTransition) are in the contract and the one registry, so agents drive them through the plan API too.
+Browser: Features → orders → Workflows tab; each change shows "Waiting for your approval: … Approve it in the Plan panel."; Approve writes it and the diagram, cards and summary update; a refused When → Do shows its sentence with the code under Details and adds no step; accessibility clean.
+
+Gaps: the state diagram and When → Do cards are this tab's own (Behaviour and Events, which they should share, do not exist yet); a feature workflow is a copy, so a later change to the library workflow does not flow into it (the summary says when the feature lost a library transition, not when the library gained one); only plain `on` transitions are shown as cards (guarded or delayed ones are not); the trigger is any event name, not yet picked from the page's own events; promoting keeps the first feature's page names in the library copy's `pages` object.
+
+UAT (fresh sample):
+1. Features (`/`) → click orders → Workflows tab: "orders has no workflows yet", four library workflows below.
+2. On listDetail click "Use in orders", then Approve in the Plan panel: ordersListDetail appears with its state diagram and two "From the library" cards.
+3. Under Pages pick OrdersPage for "list", then Approve: the diagram and the first card now say OrdersPage. Optional: add When detail sends CANCEL, go to the list, service cancelOrder → Add to plan → Approve: a card "Added for orders" appears.
