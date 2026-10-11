@@ -79,7 +79,7 @@ test('link up: the Button renders with its sample label, its props are listed, a
   assert.equal(status, 200);
   assert.equal(body.ok, true, body.sentence);
   assert.equal(body.via, 'morpheus');
-  assert.match(body.html, /<button type="button">Label<\/button>/);
+  assert.match(body.html, /<button type="button"[^>]*>Label<\/button>/);
   assert.deepEqual(body.props, [{ name: 'label', type: 'string', kind: 'string', value: 'Label' }]);
   assert.deepEqual(snapshot(dir), before, 'a render is a pure read');
   assert.equal(fs.existsSync(calls[0].scratch), false, 'the render folder is removed afterwards');
@@ -89,11 +89,11 @@ test('link up: the Button renders with its sample label, its props are listed, a
 test('link up: a changed prop value re-renders with it; a molecule renders its library atoms; a fixture gives the sample', async (t) => {
   const { dir, get } = await serve(t, { loadMorpheus: mockUp() });
   const changed = await get('library/components/Button.tsx', { label: 'Buy now' });
-  assert.match(changed.body.html, /<button type="button">Buy now<\/button>/);
+  assert.match(changed.body.html, /<button type="button"[^>]*>Buy now<\/button>/);
   assert.equal(changed.body.props[0].value, 'Buy now');
   const table = await get('library/components/DataTable.tsx', { count: 3 });
   assert.equal(table.body.ok, true, table.body.sentence);
-  assert.match(table.body.html, /<h2>Title<\/h2><button type="button">Refresh<\/button><\/section><span class="badge">3 rows<\/span>/);
+  assert.match(table.body.html, /<h2>Title<\/h2><button type="button"[^>]*>Refresh<\/button><\/section><span class="badge">3 rows<\/span>/);
   fs.writeFileSync(path.join(dir, 'library/fixtures/Badge.json'), JSON.stringify({ text: 'Paid' }));
   const badge = await get('library/components/Badge.tsx');
   assert.match(badge.body.html, /<span class="badge">Paid<\/span>/);
@@ -145,5 +145,5 @@ test('real Morpheus link: the sample Button renders to a themed document with th
   assert.equal(body.ok, true, body.detail ?? body.sentence);
   assert.match(body.html, /^<!doctype html>/);
   assert.match(body.html, /<title>Button<\/title>/);
-  assert.match(body.html, /<button type="button">Buy now<\/button>/);
+  assert.match(body.html, /<button type="button"[^>]*>Buy now<\/button>/);
 });

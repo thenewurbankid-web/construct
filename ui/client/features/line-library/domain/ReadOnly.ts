@@ -18,3 +18,16 @@ export function markReadOnly(view: LibraryView, folder: string | null): LibraryV
 export function screenWithWorkspace(screen: LineScreen, folder: string | null): LineScreen {
   return screen.kind === 'line' ? { kind: 'line', view: markReadOnly(screen.view, folder) } : screen;
 }
+
+/** The features "Base on this" may write into: those whose components folder lies inside `folder` (or every feature
+ * for the whole project). Offering a feature outside the folder only led to a refusal (pre-UAT cu6: the form opened on
+ * billing while the folder was features/orders). A feature's folder is read from its rows; with none, `features/`. */
+export function writableFeatures(view: LibraryView, folder: string | null): string[] {
+  if (!folder) return view.featureNames;
+  const rootOf = (name: string) => {
+    const file = view.features.find((f) => f.name === name)?.rows[0]?.file;
+    const at = file ? file.indexOf(`/${name}/`) : -1;
+    return at >= 0 ? `${file!.slice(0, at)}/${name}` : `features/${name}`;
+  };
+  return view.featureNames.filter((name) => isInWorkspace(folder, `${rootOf(name)}/components/New.tsx`));
+}

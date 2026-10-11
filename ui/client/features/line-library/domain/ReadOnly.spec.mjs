@@ -1,7 +1,7 @@
 // Line cu6: the Components screen tags cards and feature rows outside the workspace folder "Read-only".
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { markReadOnly, screenWithWorkspace } from './ReadOnly.ts';
+import { markReadOnly, screenWithWorkspace, writableFeatures } from './ReadOnly.ts';
 import { buildLibraryView } from './LibraryView.ts';
 import { mockLineProject } from '../services/LineApi.mock.ts';
 import { isInWorkspace, workspaceLabel } from '../../../lib/lineWorkspacePaths.ts';
@@ -30,4 +30,13 @@ test('read-only: a folder that only shares a prefix is outside, and the label sa
   assert.equal(isInWorkspace('features/orders', 'features/orders/X.tsx'), true);
   assert.equal(workspaceLabel(''), 'Whole project');
   assert.equal(workspaceLabel('features/orders'), 'features/orders');
+});
+
+test('writable features: Base on offers only features inside the workspace folder (all of them for the whole project)', () => {
+  const v = view();
+  assert.deepEqual(writableFeatures(v, ''), v.featureNames);
+  assert.deepEqual(writableFeatures(v, null), v.featureNames);
+  assert.deepEqual(writableFeatures(v, 'features/orders'), ['orders']);
+  assert.deepEqual(writableFeatures(v, 'features'), v.featureNames);
+  assert.deepEqual(writableFeatures(v, 'library'), []);
 });

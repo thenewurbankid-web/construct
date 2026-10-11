@@ -195,7 +195,8 @@ button.sh-pill:hover { background: var(--surface-3); }
   max-width: 340px;
 }
 .sh-project-btn:hover { background: var(--surface-3); }
-.sh-project-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* The project name wins the room: the workspace-folder tag beside it gives way first (pre-UAT: "line-sa… / Whole pr…"). */
+.sh-project-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 0 0 auto; max-width: 100%; }
 .sh-popover {
   position: absolute;
   top: calc(100% + 6px);
@@ -488,7 +489,7 @@ kbd {
     white-space: nowrap;
   }
   .sh-pill { padding: 0 8px; }
-  .sh-project-btn { max-width: 168px; }
+  .sh-project-btn { max-width: 260px; }
   .sh-palette-trigger { width: min(280px, 20vw); }
 }
 
@@ -496,7 +497,7 @@ kbd {
   .sh-hints { display: none; }
   .sh-top { gap: var(--sp-2); padding: 0 var(--sp-2); }
   .sh-brand { margin-right: 0; }
-  .sh-project-btn { max-width: 96px; }
+  .sh-project-btn { max-width: 120px; }
   /* Pane toggles and the processes pill are redundant here (the bottom tab bar
    * switches panes; the drawer is not shown in one-pane mode). */
   .sh-toggle, [data-testid='pill-processes'], [data-testid='toggle-drawer'] { display: none; }
@@ -607,7 +608,7 @@ kbd {
 .sh-root--focus .main { flex: 1; min-width: 0; max-width: none; padding: 0; }
 
 /* Line cu6: the project's workspace folder beside its name, and its box in the switcher popover. */
-.sh-project-ws { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: var(--fs-sm, 0.85em); max-width: 120px; }
+.sh-project-ws { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: var(--fs-sm, 0.85em); max-width: 120px; flex: 0 1000 auto; min-width: 0; }
 .sh-project-ws::before { content: '/ '; }
 .sh-project-wsbox { display: flex; flex-direction: column; gap: var(--sp-2, 8px); padding-bottom: var(--sp-3, 12px); margin-bottom: var(--sp-3, 12px); border-bottom: 1px solid var(--border); }
 .sh-project-wshead { margin: 0; font-size: var(--fs-md, 1em); font-weight: 600; }
