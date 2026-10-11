@@ -26,7 +26,7 @@ const CLIENT_ORIGIN = `http://localhost:${Number(process.env.E2E_CLIENT_PORT) ||
 export default {
   ...base,
   testIgnore: [],
-  testMatch: /(workspace|project-gate|new-project)\.spec\.js/,
+  testMatch: /(^|[\\/])(workspace|project-gate|new-project)\.spec\.js/, // anchored: line-workspace.spec.js runs in the main config
   timeout: 60_000,
   webServer: [
     {

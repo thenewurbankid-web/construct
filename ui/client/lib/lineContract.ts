@@ -68,7 +68,12 @@ export type LineProject = {
 };
 
 /** The outcome of a change through Construct's writer; a refusal is `ok: false` with one sentence. */
-export type ApplyResult = { ok: boolean; sentence: string; files: string[]; findings: LineFinding[] };
+export type ApplyResult = { ok: boolean; sentence: string; files: string[]; findings: LineFinding[]; code?: string };
+
+/** GET/POST /api/line/workspace (cu6): the one folder of the project Line may change ('' = the whole project);
+ * everything outside it is read-only, and a change touching it is refused with code OUTSIDE_WORKSPACE. */
+export type LineWorkspace = { root: string; folder: string; readOnly: true };
+export type WorkspaceRequest = { folder: string };
 
 /** A LineOpError as the server sends it (HTTP 400); `detail` is the technical reason (a parser or type message) for Details. */
 export type LineRefusal = { ok: false; sentence: string; code: string; detail?: string };
@@ -149,6 +154,8 @@ export type LineHttp = {
   promote: (req: PromoteRequest) => Promise<ApplyResult | LineRefusal>;
   render: (file: string, props?: string) => Promise<RenderResult>;
   getFeature: (name: string) => Promise<LineFeatureDetail | LineRefusal>;
+  getWorkspace: () => Promise<LineWorkspace | LineRefusal>;
+  setWorkspace: (req: WorkspaceRequest) => Promise<LineWorkspace | LineRefusal>;
   fix: (req: FixRequest) => Promise<ApplyResult | LineRefusal>;
   getFragments: (file: string) => Promise<FragmentList | LineRefusal>;
   setFragment: (req: SetFragmentRequest) => Promise<ApplyResult | LineRefusal>;

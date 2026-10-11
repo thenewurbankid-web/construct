@@ -18,6 +18,7 @@
 .lp-page-head { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
 .lp-page-open { font: inherit; font-weight: 600; color: var(--text); background: none; border: 0; padding: var(--sp-1) 0; min-height: 24px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
 .lp-chip { font-size: var(--fs-xs); padding: 2px var(--sp-2); border-radius: 999px; border: 1px solid var(--border); }
+.lp-chip--quiet { color: var(--muted); border-style: dashed; }
 .lp-chip--ok { background: var(--success-soft); color: var(--text); }
 .lp-chip--problem { background: var(--danger-soft); color: var(--text); }
 .lp-base { margin: 0; font-size: var(--fs-sm); color: var(--text-muted); }

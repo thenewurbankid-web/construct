@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import express from 'express';
 import { makeTempDir } from '../../../test-utils/tmpdir.mjs';
 import { createLineOpsRouter } from './lineOpsApi.mjs';
-import { assertApplyResult, assertFragmentList } from '../../../packages/engine/line/contract.mjs';
+import { assertApplyResult, assertFragmentList, assertLineWorkspace } from '../../../packages/engine/line/contract.mjs';
 import { lineFindings } from '../../../packages/engine/line/model.mjs';
 
 const SAMPLE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../examples/line-sample');
@@ -86,6 +86,35 @@ test('with no project open, every route says so in one sentence', async (t) => {
   const res = await fetch(`http://127.0.0.1:${/** @type {any} */ (server.address()).port}/api/line/page-tree?file=x`);
   assert.equal(res.status, 400);
   assert.deepEqual(await res.json(), { ok: false, sentence: 'No project is open; pick a project first.', code: 'NO_PROJECT' });
+});
+
+test('workspace: GET says the whole project until one is set; POST sets features/orders, base-on into billing is refused in one sentence, into orders lands', async (t) => {
+  const { dir, base, post } = await serve(t);
+  const w0 = await (await fetch(`${base}/workspace`)).json();
+  assertLineWorkspace(w0);
+  assert.equal(w0.folder, '');
+  const w = await (await post('/workspace', { folder: 'features/orders' })).json();
+  assertLineWorkspace(w);
+  assert.equal(w.folder, 'features/orders');
+  assert.equal((await (await fetch(`${base}/workspace`)).json()).folder, 'features/orders');
+  assert.deepEqual(JSON.parse(read(dir, 'line/workspace.json')), { folder: 'features/orders' });
+  const refused = await (await post('/base-on', { libraryId: 'components/Badge', feature: 'billing', name: 'PaidBadge' })).json();
+  assertApplyResult(refused);
+  assert.equal(refused.code, 'OUTSIDE_WORKSPACE');
+  assert.equal(refused.sentence, 'Nothing was saved: features/billing/components/PaidBadge.tsx is outside your workspace folder features/orders; it stays read-only.');
+  assert.equal(fs.existsSync(path.join(dir, 'features/billing/components/PaidBadge.tsx')), false);
+  const landed = await (await post('/base-on', { libraryId: 'components/Badge', feature: 'orders', name: 'StatusBadge' })).json();
+  assert.equal(landed.ok, true, landed.sentence);
+});
+
+test('workspace: a folder outside the project is a 400 with one sentence, and nothing is stored', async (t) => {
+  const { dir, post } = await serve(t);
+  const res = await post('/workspace', { folder: '../../outside' });
+  assert.equal(res.status, 400);
+  const body = await res.json();
+  assert.equal(body.code, 'BAD_FOLDER');
+  assert.match(body.sentence, /^".*" is not a folder inside the project; pick one from the project's folders\.$/);
+  assert.equal(fs.existsSync(path.join(dir, 'line/workspace.json')), false);
 });
 
 test('fix: the project finding carries its fixes, POST /fix lands the top one by key, and a stale or advice-only fix is one sentence', async (t) => {

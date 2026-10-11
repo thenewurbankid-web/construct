@@ -43,6 +43,8 @@ export type LinePagesView = {
   saving: boolean;
   revision: number;
   outcome: SaveOutcome | null;
+  /** Line cu6: the project's workspace folder ('' = whole project, null = not read); pages outside it are read-only. */
+  workspaceFolder?: string | null;
   /** cx1: save one fragment's code; a refusal stays next to that fragment's editor. */
   saveFragment: (fragment: CodeFragment, code: string) => void;
   fragmentOutcome: FragmentOutcome | null;

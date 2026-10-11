@@ -5,6 +5,7 @@
 //   T1 model      readLineProject, lineFindings        packages/engine/line/model.mjs
 //   T2 ops        planBaseOn, planPromote, applyChange packages/engine/line/ops.mjs
 //   T3 page prop  planSetProp                          packages/engine/line/pageProp.mjs
+//   cu6 workspace readWorkspace, setWorkspace            packages/engine/line/workspace.mjs
 //   T4 server     LINE_API routes                      ui/server/src/lineApi.mjs (mounted at /api/line)
 //   T5/T6 UI      ui/client/features/line-* through services/LineApi.ts (a typed mirror of LINE_API)
 //
@@ -104,11 +105,23 @@
  * @property {string} sentence    One plain-English sentence for the person, success or refusal.
  * @property {string[]} files     The files written (empty when refused).
  * @property {LineFinding[]} findings  Why it was refused (empty when it landed).
+ * @property {string} [code]      A refusal's stable id when it is not a validate finding, e.g. "OUTSIDE_WORKSPACE".
+ */
+
+/**
+ * The one folder of a project Line may change (cu6). Everything outside it is read-only: applyChange refuses any
+ * staged file outside it with code OUTSIDE_WORKSPACE. Stored in the project's `<state>/workspace.json` (Line's own
+ * state, `line/` by default); no file means the whole project.
+ * @typedef {object} LineWorkspace
+ * @property {string} root       The project root (absolute).
+ * @property {string} folder     Root-relative posix folder, no trailing slash; '' = the whole project.
+ * @property {true} readOnly     Always true: everything outside `folder` is read-only for Line.
  */
 
 /** Requests of the write operations. */
 /** @typedef {{libraryId: string, feature: string, name: string}} BaseOnRequest */
 /** @typedef {{featureItemId: string}} PromoteRequest */
+/** @typedef {{folder: string}} WorkspaceRequest */
 /** @typedef {{file: string, nodeId: string, prop: string, kind: 'string'|'number'|'boolean'|'expression', value: string|number|boolean}} SetPropRequest */
 
 /** @typedef {'prop-expression'|'handler'|'condition'|'style'} FragmentKind */
@@ -146,6 +159,8 @@
  * @property {(root: string, file: string) => FragmentList} listFragments
  * @property {(root: string, req: SetFragmentRequest) => StagedChange} planSetFragment
  * @property {(root: string, change: StagedChange) => ApplyResult} applyChange
+ * @property {(root: string) => LineWorkspace} readWorkspace
+ * @property {(root: string, req: WorkspaceRequest) => LineWorkspace} setWorkspace
  * @property {(root: string, req: FixRequest) => ApplyResult} applyFix  Re-derive the finding by key, plan its fix, applyChange (fixes.mjs).
  */
 
@@ -205,6 +220,8 @@ export const LINE_API = Object.freeze([
   { method: 'POST', path: '/api/line/page-prop', request: 'SetPropRequest', response: 'ApplyResult' },
   { method: 'GET', path: '/api/line/render', request: 'file, props (query)', response: 'RenderResult' },
   { method: 'GET', path: '/api/line/feature', request: 'name (query)', response: 'LineFeatureDetail' },
+  { method: 'GET', path: '/api/line/workspace', request: null, response: 'LineWorkspace' },
+  { method: 'POST', path: '/api/line/workspace', request: 'WorkspaceRequest', response: 'LineWorkspace' },
   { method: 'POST', path: '/api/line/fix', request: 'FixRequest', response: 'ApplyResult' },
   { method: 'GET', path: '/api/line/fragments', request: 'file (query)', response: 'FragmentList' },
   { method: 'POST', path: '/api/line/fragment', request: 'SetFragmentRequest', response: 'ApplyResult' },
@@ -305,6 +322,17 @@ export function assertApplyResult(r) {
   if (r.ok && r.findings.some((f) => f.severity === 'error')) fail('result', 'a landed change carries no error findings');
   if (!r.ok && r.files.length) fail('result.files', 'a refused change wrote nothing');
   r.findings.forEach((x, k) => assertFinding(x, `result.findings[${k}]`));
+  if (r.code !== undefined) str(r.code, 'result.code');
+}
+
+/** @param {any} w @returns {asserts w is LineWorkspace} */
+export function assertLineWorkspace(w) {
+  str(w?.root, 'workspace.root');
+  if (typeof w.folder !== 'string') fail('workspace.folder', 'must be a string');
+  if (w.folder !== '' && (w.folder.startsWith('/') || w.folder.endsWith('/') || w.folder.split('/').some((s) => s === '' || s === '.' || s === '..'))) {
+    fail('workspace.folder', 'must be a root-relative folder inside the project, or \'\' for the whole project');
+  }
+  if (w.readOnly !== true) fail('workspace.readOnly', 'must be true');
 }
 
 /** @param {any} d @returns {asserts d is LineFeatureDetail} */
