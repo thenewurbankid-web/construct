@@ -1,5 +1,6 @@
 'use client';
 
+import { LineDraftController } from '@/features/line-draft';
 import { LinePlanController, useLinePlan } from '@/features/line-plan';
 import { PagesEditorController } from '@/features/pages-editor';
 import { usePagesScreen } from '../hooks/usePagesScreen';
@@ -12,5 +13,5 @@ const NOTHING = () => {};
 export function PagesScreenController() {
   const plan = useLinePlan(NOTHING);
   const { phase, view } = usePagesScreen(plan);
-  return <PagesScreenPage phase={phase} view={view} fallback={<PagesEditorController />} panel={<LinePlanController plan={plan} />} />;
+  return <PagesScreenPage phase={phase} view={view} fallback={<PagesEditorController />} panel={<><LineDraftController onAdded={plan.refresh} /><LinePlanController plan={plan} /></>} />;
 }
