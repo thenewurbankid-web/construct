@@ -1,0 +1,129 @@
+/* cd1: Line style, Trace's demo style as Cockpit design tokens (source: trace/src/ui/demo-tokens.css and demo.css).
+ * Every token is prefixed --ln- so it restyles only the screens that opt in with the .ln class; the Cockpit frame (top
+ * bar, navigation, panes) keeps app/tokens.css. Themes follow Cockpit's switch: <html data-theme="dark|light">, dark by
+ * default. Light is Trace's warm "paper" (never stark white); dark is a warm charcoal. Status colours are Trace's
+ * vocabulary: fit (all fine), wait (needs an answer, calm amber), gap (something is wrong), tie, stub.
+ * Contrast is checked by lib/lineStyle.spec.mjs (text 4.5:1, status and control borders 3:1), in both themes.
+ * Type scale (rem): 13 caption / 15 body / 17 lead / 20 heading / 28 title. Spacing on an 8px grid. */
+:root,
+:root[data-theme='dark'] {
+  --ln-bg: #171613;
+  --ln-surface: #1f1e1a;
+  --ln-surface-2: #272520;
+  --ln-text: #ece8de;
+  --ln-muted: #a39d8f;
+  --ln-border: #363329;
+  --ln-border-strong: #7d7764;
+  --ln-accent: #8d9bff;
+  --ln-on-accent: #12131f;
+  --ln-fit: #5cc38a;
+  --ln-wait: #fbbf24;
+  --ln-gap: #ff8b7c;
+  --ln-tie: #efb45b;
+  --ln-stub: #b8a0ff;
+  --ln-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.3);
+  --ln-shadow-lg: 0 2px 4px rgba(0, 0, 0, 0.35), 0 24px 56px rgba(0, 0, 0, 0.5);
+}
+:root[data-theme='light'] {
+  --ln-bg: #f3efe6;
+  --ln-surface: #faf7f0;
+  --ln-surface-2: #efeadf;
+  --ln-text: #29251e;
+  --ln-muted: #6b655a;
+  --ln-border: #ddd6c7;
+  --ln-border-strong: #877d67;
+  --ln-accent: #3d4fd1;
+  --ln-on-accent: #fbfaf6;
+  --ln-fit: #2b8a57;
+  --ln-wait: #8a5300;
+  --ln-gap: #c4453a;
+  --ln-tie: #9a6008;
+  --ln-stub: #7550cf;
+  --ln-shadow: 0 1px 2px rgba(41, 37, 30, 0.06), 0 8px 24px rgba(41, 37, 30, 0.07);
+  --ln-shadow-lg: 0 2px 4px rgba(41, 37, 30, 0.08), 0 24px 56px rgba(41, 37, 30, 0.14);
+}
+:root {
+  --ln-font: Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  --ln-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+  --ln-s1: 0.5rem;
+  --ln-s2: 1rem;
+  --ln-s3: 1.5rem;
+  --ln-s4: 2rem;
+  --ln-r1: 8px;
+  --ln-r2: 12px;
+  --ln-r3: 16px;
+  --ln-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+/* ---------- scope: a screen in Line style ---------- */
+.ln { background: var(--ln-bg); color: var(--ln-text); font: 400 0.9375rem/1.5 var(--ln-font); font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased; }
+.ln h1, .ln h2, .ln h3, .ln p { margin: 0; }
+.ln a { color: var(--ln-accent); }
+.ln :focus-visible { outline: 2px solid var(--ln-accent); outline-offset: 2px; }
+.ln-eyebrow { font-size: 0.8125rem; font-weight: 650; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ln-accent); }
+.ln-label { font-size: 0.8125rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ln-muted); }
+.ln-muted { color: var(--ln-muted); font-size: 0.875rem; }
+.ln-card { background: var(--ln-surface); border: 1px solid var(--ln-border); border-radius: var(--ln-r2); padding: var(--ln-s2); display: grid; gap: var(--ln-s1); min-width: 0; }
+
+/* ---------- buttons ---------- */
+.ln-btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--ln-s1); height: 40px; padding: 0 var(--ln-s2); border-radius: var(--ln-r1); border: 1px solid var(--ln-border-strong); background: var(--ln-surface); color: var(--ln-text); font: 600 0.9375rem/1 var(--ln-font); cursor: pointer; white-space: nowrap; transition: background 0.15s var(--ln-ease), border-color 0.15s var(--ln-ease), transform 0.1s var(--ln-ease); }
+.ln-btn:hover:not(:disabled) { background: var(--ln-surface-2); border-color: var(--ln-muted); }
+.ln-btn:active:not(:disabled) { transform: translateY(1px); }
+.ln-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.ln-btn--primary { background: var(--ln-accent); border-color: var(--ln-accent); color: var(--ln-on-accent); }
+.ln-btn--primary:hover:not(:disabled) { background: color-mix(in srgb, var(--ln-accent) 88%, var(--ln-text)); border-color: transparent; }
+.ln-btn--ghost { background: transparent; border-color: transparent; color: var(--ln-muted); }
+.ln-btn--sm { height: 32px; padding: 0 12px; font-size: 0.8125rem; }
+
+/* ---------- status chip (Trace's .kind / .tagpill): text stays --ln-text, the colour is the dot ---------- */
+.ln-chip { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px 2px 8px; border-radius: 999px; font-size: 0.75rem; font-weight: 650; color: var(--ln-text); background: var(--ln-surface-2); width: fit-content; white-space: nowrap; }
+.ln-chip::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--ln-muted); }
+.ln-chip[data-tone='fit']::before { background: var(--ln-fit); }
+.ln-chip[data-tone='wait']::before { background: var(--ln-wait); }
+.ln-chip[data-tone='gap']::before { background: var(--ln-gap); }
+
+/* ---------- collapsed technical details ---------- */
+.ln-details { color: var(--ln-muted); font-size: 0.8125rem; }
+.ln-details > summary { cursor: pointer; width: fit-content; min-height: 24px; line-height: 24px; font-weight: 600; }
+.ln-details ul { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 2px; }
+.ln-details li, .ln-details code { font: 0.75rem/1.5 var(--ln-mono); overflow-wrap: anywhere; }
+
+/* ---------- chat entry (lib/ChatEntry.tsx) ---------- */
+.ln-chat-entry { display: grid; gap: var(--ln-s3); min-height: calc(100dvh - 140px); padding: var(--ln-s3); border-radius: var(--ln-r3); min-width: 0; }
+.ln-chat-entry[data-layout='full'] { grid-template-columns: minmax(0, 760px); justify-content: center; align-content: start; }
+.ln-chat-entry[data-layout='side'] { grid-template-columns: minmax(0, 1fr) minmax(300px, 380px); align-items: start; }
+@media (max-width: 900px) { .ln-chat-entry[data-layout='side'] { grid-template-columns: minmax(0, 1fr); } }
+.ln-ce-page { min-width: 0; display: grid; gap: var(--ln-s3); animation: ln-rise 0.25s var(--ln-ease) both; }
+.ln-ce-chat { display: grid; gap: var(--ln-s2); align-content: start; min-width: 0; }
+.ln-chat-entry[data-layout='side'] .ln-ce-chat { position: sticky; top: var(--ln-s2); padding: var(--ln-s2); background: var(--ln-surface); border: 1px solid var(--ln-border); border-radius: var(--ln-r3); box-shadow: var(--ln-shadow); max-height: calc(100dvh - 120px); overflow: auto; }
+.ln-ce-title { font-size: 1.75rem; line-height: 1.15; letter-spacing: -0.02em; font-weight: 650; }
+.ln-chat-entry[data-layout='side'] .ln-ce-title { font-size: 1.0625rem; letter-spacing: -0.01em; }
+.ln-ce-log { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--ln-s2); }
+.ln-msg { display: grid; gap: var(--ln-s1); max-width: 100%; animation: ln-rise 0.2s var(--ln-ease) both; }
+.ln-msg[data-from='line'] { background: var(--ln-surface); border: 1px solid var(--ln-border); border-left: 4px solid var(--ln-accent); border-radius: var(--ln-r3); padding: 14px var(--ln-s2); box-shadow: var(--ln-shadow); }
+.ln-msg[data-tone='refusal'] { border-left-color: var(--ln-wait); }
+.ln-msg[data-from='you'] { justify-self: end; background: var(--ln-surface-2); border-radius: var(--ln-r3) var(--ln-r3) 4px var(--ln-r3); padding: 8px 14px; font-weight: 600; }
+.ln-chat-entry[data-layout='side'] .ln-msg[data-from='line'] { box-shadow: none; background: var(--ln-bg); }
+.ln-msg-text { line-height: 1.5; }
+.ln-picks { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--ln-s1); grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+.ln-chat-entry[data-layout='side'] .ln-picks { grid-template-columns: minmax(0, 1fr); }
+.ln-pick { width: 100%; height: 100%; text-align: left; display: grid; gap: 6px; padding: 12px 14px; background: var(--ln-bg); border: 1px solid var(--ln-border-strong); border-radius: var(--ln-r2); color: var(--ln-text); font: inherit; cursor: pointer; transition: border-color 0.15s var(--ln-ease), background 0.15s var(--ln-ease), transform 0.1s var(--ln-ease); }
+.ln-pick:hover:not(:disabled) { border-color: var(--ln-accent); background: color-mix(in srgb, var(--ln-accent) 6%, var(--ln-bg)); }
+.ln-pick:active:not(:disabled) { transform: translateY(1px); }
+.ln-pick-top { display: flex; align-items: center; gap: var(--ln-s1); flex-wrap: wrap; }
+.ln-pick-name { font-weight: 650; font-size: 1rem; }
+.ln-pick-text { color: var(--ln-muted); font-size: 0.8125rem; }
+/* option chips (Trace's .opt): the predefined things to do */
+.ln-opts { display: flex; flex-wrap: wrap; gap: var(--ln-s1); }
+.ln-opt { display: grid; gap: 2px; text-align: left; min-height: 44px; padding: 8px 14px; background: var(--ln-surface); border: 1px solid var(--ln-border-strong); border-radius: var(--ln-r2); color: var(--ln-text); font: 600 0.9375rem/1.3 var(--ln-font); cursor: pointer; transition: border-color 0.15s var(--ln-ease), background 0.15s var(--ln-ease); }
+.ln-opt:hover:not(:disabled) { border-color: var(--ln-accent); background: color-mix(in srgb, var(--ln-accent) 6%, var(--ln-surface)); }
+.ln-opt:disabled { opacity: 0.55; cursor: not-allowed; }
+.ln-opt small { font-weight: 450; font-size: 0.8125rem; color: var(--ln-muted); }
+.ln-opt[data-effect='plan'] { border-style: dashed; }
+.ln-chat-entry[data-layout='side'] .ln-opt small { display: none; }
+.ln-ask { display: grid; gap: var(--ln-s1); }
+.ln-ask label { font-weight: 600; }
+.ln-ask-row { display: flex; gap: var(--ln-s1); flex-wrap: wrap; }
+.ln-txt { flex: 1 1 160px; min-width: 0; height: 40px; padding: 0 12px; border-radius: var(--ln-r1); border: 1px solid var(--ln-border-strong); background: var(--ln-bg); color: var(--ln-text); font: 500 0.9375rem var(--ln-mono); }
+.ln-txt:focus-visible { outline-offset: 0; border-color: var(--ln-accent); }
+@keyframes ln-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }

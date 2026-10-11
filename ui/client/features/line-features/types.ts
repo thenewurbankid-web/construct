@@ -1,7 +1,9 @@
 // The Features screen's own view models. The Line contract's shapes come from the one shared mirror (lib/lineContract.ts, lib/lineHttp.ts).
-import type { LineFeatureDetail, LineFinding, LineHttp, LineKind, SpecStory } from '@/lib/lineContract';
+import type { LineFeatureDetail, LineFinding, LineHttp, LineKind, LineProject, SpecStory } from '@/lib/lineContract';
 
 export type * from '@/lib/lineContract';
+export type * from '@/lib/lineChat';
+import type { ChatAsk, ChatMessage, ChatOption } from '@/lib/lineChat';
 
 /** One feature in the list: its name, "All fine" or "Needs attention", and one line about its items. */
 export type FeatureCard = { name: string; ok: boolean; status: string; text: string };
@@ -35,7 +37,26 @@ export type LineFeaturesView = {
   feature: string | null;
   choose: (name: string | null) => void;
   detail: DetailState;
+  /** The project as last read (null until read), for the chat's answers. */
+  project: LineProject | null;
+  /** Reads the project and the open feature again (after a plan step wrote files). */
+  reload: () => void;
 };
 
 /** Everything the Line Features API offers the screen (real server or the contract's mock). */
 export type LineFeaturesApi = Pick<LineHttp, 'getProject' | 'getFeature'>;
+
+/** cd1: the Features chat as the screen renders it (lib/ChatEntry.tsx props, built by useFeatureChat). */
+export type FeatureChatView = {
+  options: ChatOption[];
+  messages: ChatMessage[];
+  ask: ChatAsk | null;
+  busy: boolean;
+  onOption: (optionId: string) => void;
+  onPick: (messageId: string, itemId: string) => void;
+  onAnswer: (askId: string, text: string) => void;
+  onCancelAsk: () => void;
+};
+
+/** What adding a plan step answers (the Plan panel's addStep, features/line-plan). */
+export type AddPlanStep = (req: { tool: string; args: Record<string, unknown> }) => Promise<{ ok: boolean; sentence: string; code?: string; detail?: string }>;

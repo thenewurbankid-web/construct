@@ -1,42 +1,47 @@
-/* Line Features view (inside the Features stage). Prefix lf-. Tokens only (app/tokens.css). */
-.lf { display: flex; flex-direction: column; gap: var(--sp-3); min-width: 0; }
-.lf h2 { margin: 0; font-size: 17px; }
-.lf h3 { margin: 0 0 var(--sp-1); font-size: var(--fs-sm); text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); }
-.lf .hint { margin: 0; }
-.lf-eyebrow { margin: 0 0 var(--sp-2); font-size: var(--fs-sm); color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; }
-.lf-cards { list-style: none; margin: 0; padding: 0 0 2px; display: flex; gap: var(--sp-2); overflow-x: auto; }
-.lf-cards > li { flex: 0 0 200px; display: flex; }
-.lf-card { flex: 1; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; text-align: left; padding: var(--sp-2) var(--sp-3); min-height: 44px; border-radius: var(--r-md); border: 1px solid var(--border); background: var(--surface-1); color: var(--text); font: inherit; cursor: pointer; }
-.lf-card:hover { background: var(--hover); }
-.lf-card:focus-visible, .lf-item-name:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
-.lf-card[aria-pressed='true'] { border-color: var(--accent); background: var(--accent-soft); }
-.lf-card-title { font-weight: 600; }
-.lf-card-text { font-size: var(--fs-sm); color: var(--text-muted); }
-.lf-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--sp-4); align-items: start; }
-@media (max-width: 900px) { .lf-layout { grid-template-columns: minmax(0, 1fr); } }
-.lf-groups, .lf-side { display: flex; flex-direction: column; gap: var(--sp-3); min-width: 0; }
-.lf-items, .lf-findings, .lf-points { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-2); }
-.lf-item { padding: var(--sp-2) var(--sp-3); border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface-1); display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; }
-.lf-item-head { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
-.lf-item-name { font-weight: 600; color: var(--text); min-height: 24px; display: inline-flex; align-items: center; }
-a.lf-item-name { text-decoration: underline; text-underline-offset: 3px; }
-.lf-chip { font-size: var(--fs-xs); padding: 2px var(--sp-2); border-radius: 999px; border: 1px solid var(--border); color: var(--text); width: fit-content; }
-.lf-chip--ok { background: var(--success-soft); }
-.lf-chip--problem { background: var(--danger-soft); }
-.lf-chip--todo { background: var(--surface-0); }
-.lf-base { margin: 0; font-size: var(--fs-sm); color: var(--text-muted); }
-.lf-base--problem { color: var(--text); }
-.lf-finding { display: flex; flex-direction: column; gap: 2px; padding-left: var(--sp-2); border-left: 2px solid var(--warn); font-size: var(--fs-sm); overflow-wrap: anywhere; }
-.lf-finding--error { border-left-color: var(--danger); }
-.lf-details summary { cursor: pointer; color: var(--text-muted); width: fit-content; min-height: 24px; font-size: var(--fs-sm); }
-.lf-details dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px var(--sp-2); margin: var(--sp-1) 0 0; font-family: var(--mono); font-size: var(--fs-sm); overflow-wrap: anywhere; }
-.lf-details dt { color: var(--text-muted); font-family: var(--font); }
-.lf-details dd { margin: 0; }
-.lf-panel { padding: var(--sp-2) var(--sp-3); border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface-1); display: flex; flex-direction: column; gap: var(--sp-2); }
+/* Line Features (cd1): Trace's style through the Line tokens (lib/line-style.css, --ln-*). Prefix lf-. The chat entry
+ * itself is styled by lib/line-style.css; this file styles the open feature's page beside it. */
+.lf { min-width: 0; }
+.lf h3 { margin: 0 0 var(--ln-s1); font-size: 0.8125rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ln-muted); }
+.lf .hint { margin: 0; color: var(--ln-muted); }
+.lf-head { display: grid; gap: 4px; }
+.lf-title { font-size: 1.75rem; line-height: 1.15; letter-spacing: -0.02em; font-weight: 650; }
+.lf-eyebrow { display: none; }
+.lf-detail { display: grid; gap: var(--ln-s3); min-width: 0; }
+.lf-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--ln-s3); align-items: start; }
+@media (max-width: 1200px) { .lf-layout { grid-template-columns: minmax(0, 1fr); } }
+.lf-groups, .lf-side { display: grid; gap: var(--ln-s3); min-width: 0; }
+.lf-items, .lf-findings, .lf-points { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--ln-s1); }
+.lf-item { padding: 12px var(--ln-s2); border: 1px solid var(--ln-border); border-radius: var(--ln-r2); background: var(--ln-surface); display: grid; gap: 6px; min-width: 0; box-shadow: var(--ln-shadow); }
+.lf-item-head { display: flex; align-items: center; gap: var(--ln-s1); flex-wrap: wrap; }
+.lf-item-name { font-weight: 650; font-size: 1rem; color: var(--ln-text); min-height: 24px; display: inline-flex; align-items: center; }
+.ln a.lf-item-name { color: var(--ln-text); text-decoration: underline; text-decoration-color: var(--ln-accent); text-underline-offset: 3px; }
+/* the item and spec chips: Trace's pill, the tone as a dot */
+.lf-chip { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px 2px 8px; border-radius: 999px; font-size: 0.75rem; font-weight: 650; color: var(--ln-text); background: var(--ln-surface-2); width: fit-content; white-space: nowrap; }
+.lf-chip::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--ln-muted); }
+.lf-chip--ok::before { background: var(--ln-fit); }
+.lf-chip--problem::before { background: var(--ln-gap); }
+.lf-chip--todo::before { background: var(--ln-wait); }
+.lf-base { margin: 0; font-size: 0.875rem; color: var(--ln-muted); }
+.lf-base--problem { color: var(--ln-text); }
+.lf-finding { display: grid; gap: 2px; padding-left: var(--ln-s1); border-left: 3px solid var(--ln-wait); font-size: 0.875rem; overflow-wrap: anywhere; }
+.lf-finding--error { border-left-color: var(--ln-gap); }
+.lf-details { color: var(--ln-muted); font-size: 0.8125rem; }
+.lf-details summary { cursor: pointer; width: fit-content; min-height: 24px; font-weight: 600; }
+.lf-details dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px var(--ln-s1); margin: 4px 0 0; font: 0.75rem/1.5 var(--ln-mono); overflow-wrap: anywhere; }
+.lf-details dt { font-family: var(--ln-font); }
+.lf-details dd { margin: 0; color: var(--ln-text); }
+.lf-panel { padding: var(--ln-s2); border: 1px solid var(--ln-border); border-radius: var(--ln-r3); background: var(--ln-surface); display: grid; gap: var(--ln-s1); box-shadow: var(--ln-shadow); }
 .lf-panel p { margin: 0; }
-.lf-summary-text { line-height: 1.5; }
-.lf-muted { color: var(--text-muted); font-size: var(--fs-sm); }
-.lf-story { display: flex; flex-direction: column; gap: var(--sp-1); }
-.lf-story-text { font-weight: 600; }
-.lf-point { display: flex; flex-direction: column; gap: 2px; font-size: var(--fs-sm); }
-.lf-error { margin: 0; padding: var(--sp-2) var(--sp-3); border-radius: var(--r-md); background: var(--danger-soft); }
+.lf-summary-text { line-height: 1.55; }
+.lf-muted { color: var(--ln-muted); font-size: 0.8125rem; }
+.lf-story { display: grid; gap: var(--ln-s1); }
+.lf-story-text { font-weight: 650; }
+.lf-point { display: grid; gap: 4px; font-size: 0.875rem; }
+.lf-error { margin: 0; padding: 12px var(--ln-s2); border-radius: var(--ln-r2); border: 1px solid var(--ln-border); border-left: 4px solid var(--ln-gap); background: var(--ln-surface); }
+/* the Plan panel (features/line-plan) under the side chat keeps its own layout; here it takes the Line surfaces */
+.lf .lpl { background: var(--ln-bg); border-color: var(--ln-border); border-radius: var(--ln-r2); color: var(--ln-text); }
+.lf .lpl-step { background: var(--ln-surface); border-color: var(--ln-border); border-radius: var(--ln-r1); }
+.lf .lpl-step[data-state='waiting'] { border-color: var(--ln-accent); }
+.lf .lpl-hint, .lf .lpl-head small, .lf .lpl-state, .lf .lpl-tech { color: var(--ln-muted); }
+.lf .lpl-btn { border-color: var(--ln-border-strong); background: var(--ln-surface); color: var(--ln-text); border-radius: var(--ln-r1); min-height: 32px; }
+.lf .lpl-btn--primary { background: var(--ln-accent); border-color: var(--ln-accent); color: var(--ln-on-accent); }

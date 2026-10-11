@@ -55,7 +55,7 @@ export type ChatEntryProps = {
 };
 
 const OPTION_ID = /^[a-z][a-z0-9-]*(\.[a-z][a-z0-9-]*)+$/;
-const SENTENCE = /^[A-Z0-9"].*[.?!]$/s;
+const SENTENCE = /^[A-Za-z0-9"][\s\S]*[.?!]$/;
 
 /** The contract's checks for a set of options: stable dotted ids ("features.open"), unique, a label, a full sentence,
  * a known effect, and a disabled reason that is itself a sentence. Answers the problems in plain English (none: []). */

@@ -15,7 +15,7 @@ import { usePlanScreen } from '../hooks/usePlanScreen';
 import { PlanPage } from '../pages/PlanPage';
 import { planShellTabs } from '../pages/PlanShellTabs';
 
-function PlanScreen({ stageActions, featureDetail }: { stageActions?: ReactNode; featureDetail?: ReactNode }) {
+function PlanScreen({ stageActions, featureDetail, stage }: { stageActions?: ReactNode; featureDetail?: ReactNode; stage?: ReactNode }) {
   const drawer = useShellDrawer();
   const s = usePlanScreen(drawer.openProcesses);
   const { state } = s;
@@ -53,15 +53,15 @@ function PlanScreen({ stageActions, featureDetail }: { stageActions?: ReactNode;
   const storyTab = useMemo(() => storyShellTab(), []);
   useRegisterShellTab('browser', storyTab);
   const view = state.impact ? buildImpactView(state.impact, state.impactSeeds) : null;
-  return <PlanPage contextError={state.contextError} impact={{ status: state.impactStatus, error: state.impactError, view }} stageActions={stageActions} featureDetail={featureDetail} />;
+  return <PlanPage contextError={state.contextError} impact={{ status: state.impactStatus, error: state.impactError, view }} stageActions={stageActions} featureDetail={featureDetail} stage={stage} />;
 }
 
 /** The Features screen (`/`, also `/plan`): notes, impact, plan, and the stage actions the route composes in. Nothing here
  * calls a model, and nothing runs until you press Run plan. */
-export function PlanController({ stageActions, featureDetail }: { stageActions?: ReactNode; featureDetail?: ReactNode } = {}) {
+export function PlanController({ stageActions, featureDetail, stage }: { stageActions?: ReactNode; featureDetail?: ReactNode; stage?: ReactNode } = {}) {
   return (
     <ProjectGateController>
-      <PlanScreen stageActions={stageActions} featureDetail={featureDetail} />
+      <PlanScreen stageActions={stageActions} featureDetail={featureDetail} stage={stage} />
     </ProjectGateController>
   );
 }
