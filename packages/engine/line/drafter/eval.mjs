@@ -16,9 +16,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readLineProject } from '../model.mjs';
-import { factsSummary } from './facts.mjs';
-import { splitWords } from './domainMap.mjs';
-import { bind } from './expr.mjs';
+import { factsSummary } from '../facts.mjs';
+import { splitWords, bind } from './domainMap.mjs';
 import { draft, boundRoute } from './index.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));

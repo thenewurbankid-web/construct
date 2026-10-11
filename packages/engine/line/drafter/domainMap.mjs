@@ -14,7 +14,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { createTransaction } from '../../transactionalWriter.mjs';
 import { LineOpError } from '../contract.mjs';
-import { KIND_LAYER, REQUEST_SLOT } from './contract.mjs';
+import { KIND_LAYER, REQUEST_SLOT, SLOT_REF } from './contract.mjs';
 import { suggestFromLexicon } from './lexicon.mjs';
 
 /** Words that carry function, not domain: kept as they are in the normalized request. */
@@ -89,7 +89,7 @@ const mapFile = (summary) => `${summary.layout.state || 'line'}/domain-map.json`
  * Build the domain map from the project's code (deterministic). Saved synonyms are merged in when `root` has a map file;
  * a synonym whose target no longer exists is dropped.
  * @param {string} root
- * @param {ReturnType<typeof import('./facts.mjs').factsSummary>} summary
+ * @param {ReturnType<typeof import('../facts.mjs').factsSummary>} summary
  * @returns {DomainMap}
  */
 export function buildDomainMap(root, summary) {
@@ -127,7 +127,7 @@ export function buildDomainMap(root, summary) {
 /**
  * Save the map (with its synonyms) inside the project, through Construct's writer.
  * @param {string} root
- * @param {ReturnType<typeof import('./facts.mjs').factsSummary>} summary
+ * @param {ReturnType<typeof import('../facts.mjs').factsSummary>} summary
  * @param {DomainMap} map
  * @returns {string} The root-relative file written.
  */
@@ -144,7 +144,7 @@ export function saveDomainMap(root, summary, map) {
 /**
  * Store a confirmed synonym (a person answered "Did you mean ...?") in the project's map, through the writer.
  * @param {string} root
- * @param {ReturnType<typeof import('./facts.mjs').factsSummary>} summary
+ * @param {ReturnType<typeof import('../facts.mjs').factsSummary>} summary
  * @param {string} word
  * @param {string} key  A map entry key, e.g. "feature:orders".
  * @returns {DomainMap}
@@ -329,7 +329,7 @@ export function denormalize(text, bindings) {
  * @param {Record<string, any>} bindings
  * @param {Record<string, string>} entryOf  slot -> map entry key
  * @param {{features: {name: string, items: {id: string, kind: string}[]}[]}} summary
- * @param {Map<string, string>} roles  node id -> role (structure.mjs rolesOf)
+ * @param {Map<string, string>} roles  node id -> role (../structure.mjs rolesOf)
  * @returns {Record<string, import('./contract.mjs').SlotShape>}
  */
 export function slotShapes(bindings, entryOf, summary, roles) {
@@ -356,4 +356,42 @@ export function slotShapes(bindings, entryOf, summary, roles) {
     void entryOf;
   }
   return out;
+}
+
+// ------------------------------------------------------------------------------------------------ slot binding
+// Stored forms (route steps, expressions, deltas) hold slot refs (<F1>, <C1.file>, components/<C1.name>); bind() fills
+// the project's names only to show or apply a route, never to store it.
+
+/**
+ * Replace slot refs in every string of a value with their bindings. A string that is exactly one ref takes the bound
+ * value as it is (a number stays a number); a ref inside a longer string is spliced in as text.
+ * @template T
+ * @param {T} value
+ * @param {Record<string, any>} bindings  Slot id -> value or {field: value}.
+ * @returns {T}
+ */
+export function bind(value, bindings) {
+  const look = (letter, n, field) => {
+    const b = bindings[`${letter}${n}`];
+    if (b === undefined) return undefined;
+    if (field) return b && typeof b === 'object' ? b[field] : undefined;
+    return b && typeof b === 'object' && 'id' in b ? b.id : b;
+  };
+  if (typeof value === 'string') {
+    const whole = /^<([A-Z])(\d+)(?:\.([a-zA-Z][a-zA-Z0-9]*))?>$/.exec(value);
+    if (whole) { const v = look(whole[1], whole[2], whole[3]); return /** @type {any} */ (v === undefined ? value : v); }
+    return /** @type {any} */ (value.replace(SLOT_REF, (m, l, n, f) => { const v = look(l, n, f); return v === undefined ? m : String(v); }));
+  }
+  if (Array.isArray(value)) return /** @type {any} */ (value.map((v) => bind(v, bindings)));
+  if (value && typeof value === 'object') return /** @type {any} */ (Object.fromEntries(Object.entries(value).map(([k, v]) => [k, bind(v, bindings)])));
+  return value;
+}
+
+/**
+ * Whether a value still holds an unbound slot ref.
+ * @param {unknown} value
+ * @returns {boolean}
+ */
+export function hasSlots(value) {
+  return /<[A-Z]\d+(?:\.[a-zA-Z][a-zA-Z0-9]*)?>/.test(JSON.stringify(value));
 }

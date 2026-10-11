@@ -17,7 +17,7 @@ export function createMockDrafter() {
     /** @returns {any} */
     draft(request) {
       const add = { tool: 'line.baseOn', args: { libraryId: '<L1>', feature: '<F1>', name: '<N1>' } };
-      const expect = [{ itemExists: { feature: '<F1>', kind: 'components', name: '<N1>' } }, { noNewFindings: true }];
+      const expect = [{ hasItem: '<F1>/components/<N1>' }, { noNewFindings: true }];
       const delta = [{ op: 'add-node', node: '<F1>/components/<N1>', kind: 'components', layer: 'ui', area: 'feature', feature: '<F1>' }, { op: 'add-edge', type: 'base', from: '<F1>/components/<N1>', to: '<L1>' }];
       return {
         request: String(request).trim() ? 'add a <library:L1> to <feature:F1>' : '',

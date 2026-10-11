@@ -15,7 +15,7 @@ import { assertPlanRecord } from './contract.mjs';
 import { writeLineState } from '../transactionalWriter.mjs';
 import { lineStateDir } from './workspace.mjs';
 import { buildFacts, factsHash } from './facts.mjs';
-import { structureOf, structureDelta } from './structure.mjs';
+import { structureOf, structureDelta, readerOf } from './structure.mjs';
 import { requestOf } from './planTools.mjs';
 
 /** Words that are Line's own structure, never a domain term (and the words slots are made of). */
@@ -149,7 +149,7 @@ export function createPlanRecorder(root, { ops, now = () => new Date(), write } 
     snapshot() {
       const facts = buildFacts(root, { ops });
       const project = facts.project();
-      return { facts, project, hash: factsHash(facts), structure: structureOf(project) };
+      return { facts, project, hash: factsHash(facts), structure: structureOf(project, readerOf(root)) };
     },
     /**
      * Append the record of one finished step.
@@ -175,7 +175,7 @@ export function createPlanRecorder(root, { ops, now = () => new Date(), write } 
           intent: slotter.text(intent ?? plan.request ?? plan.goal ?? '', { free: true }),
           facts: before.hash,
           before: slottedHashes(before.structure, slotter),
-          after: slottedHashes(structureOf(after), slotter),
+          after: slottedHashes(structureOf(after, readerOf(root)), slotter),
           delta: structureDelta(before.project, after, (type, name, attrs) => slotter.slot(type, name, attrs)),
           steps: upto.map((s) => ({ tool: s.tool, args: slotter.args(requestOf(s.args)) })),
           step: upto.findIndex((s) => s.id === step.id) + 1,

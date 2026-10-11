@@ -1691,6 +1691,10 @@ export function assertImportAgentView(v) {
  *   count              {"count": e}                      length of a list or text, number of fields of an object
  *   every / some       {"every"|"some": [<list>, <predicate over item>]}
  *   in                 {"in": [needle, haystack]}        list member, substring, or object field name
+ *   a named check      one operator that says a common check in one word (EXPR_CHECKS below): hasItem, hasLibrary,
+ *                      basedOn, fileExists, fileContains, propIs, noNewFindings, noFinding, refused. Each reads fixed
+ *                      facts paths and has its own plain-English sentence; route templates, Train Line cases and the
+ *                      drafter's grammar use them, so stored checks stay readable.
  * Limits: EXPR_LIMITS. Hashes are plain strings, so `eq` compares them (post: a feature's structure hash equals a
  * predicted one).
  * @typedef {null|boolean|number|string|{[op: string]: any}} LineExpr
@@ -1717,7 +1721,9 @@ export function assertImportAgentView(v) {
  * @property {Record<string, {spec: boolean, items: {id: string, kind: string, name: string, file: string, base: string|null, status: string, findings: number}[]}>} features  By feature name.
  * @property {{key: string, rule: string, severity: string, file: string, fixIds: string[]}[]} findings
  * @property {{key: string, rule: string, severity: string, file: string}[]} findingsNew  New errors the last write met (empty before a write).
- * @property {{tool: string, staged: boolean, applied: boolean|null, files: {path: string, asPlanned: boolean}[]}|null} plan  The step being checked.
+ * @property {{tool: string, staged: boolean, applied: boolean|null, files: {path: string, asPlanned: boolean}[], refusal?: {code: string|null, rule: string|null, fixes: boolean}|null}|null} plan  The step being checked; `refusal` says how Construct refused it (the `refused` check).
+ * @property {Record<string, string>} [contents]  Lazy and never enumerated (so never summarized or stored): file text by path (the `fileContains` check).
+ * @property {Record<string, {nodeId: string, tag: string, props: Record<string, unknown>}[]>} [parts]  Lazy and never enumerated: page parts by page file (the `propIs` check).
  * @property {StructureHashes} structure
  * @property {{files: number, findings: number}} truncated  How many entries the caps left out.
  *
@@ -1742,8 +1748,25 @@ export function assertImportAgentView(v) {
  * @property {Record<string, string>} slots  Slot -> what it stands for in logic terms (its kind, never the name).
  */
 
-/** Every operator of the language. */
-export const EXPR_OPS = Object.freeze(['lit', 'path', 'item', 'eq', 'ne', 'lt', 'le', 'gt', 'ge', 'and', 'or', 'not', 'exists', 'count', 'every', 'some', 'in']);
+/** The core operators of the language. */
+export const EXPR_CORE_OPS = Object.freeze(['lit', 'path', 'item', 'eq', 'ne', 'lt', 'le', 'gt', 'ge', 'and', 'or', 'not', 'exists', 'count', 'every', 'some', 'in']);
+/**
+ * The named checks: one operator each for a check routes make all the time, over fixed facts paths. Their arguments
+ * are texts (slot refs before binding, the project's ids after), so a stored check reads like what it means.
+ */
+export const EXPR_CHECKS = Object.freeze({
+  hasItem: 'the feature item with this id ("<feature>/<kind>/<Name>") exists (features.<feature>.items)',
+  hasLibrary: 'the library item with this id ("<kind>/<Name>") exists (library.<id>)',
+  basedOn: '[item id, library id]: the item\'s base link is that library item',
+  fileExists: 'the root-relative file exists (files.<path>)',
+  fileContains: '[path, text]: the file exists and its text contains the text (contents.<path>)',
+  propIs: '{file, nodeId, prop, value}: one part of a page has that prop value (parts.<file>)',
+  noNewFindings: 'true: the change added no finding (findingsNew is empty)',
+  noFinding: '{rule?, file?, key?}: no finding matches (a key also matches its rule on its file)',
+  refused: '{code?, rule?, fixes?}: Construct refused the step that way (plan.refusal)',
+});
+/** Every operator of the language: the core and the named checks. */
+export const EXPR_OPS = Object.freeze([...EXPR_CORE_OPS, ...Object.keys(EXPR_CHECKS)]);
 /** The language's limits. */
 export const EXPR_LIMITS = Object.freeze({ depth: 24, nodes: 400, segments: 16, string: 2000, operands: 100 });
 /** The facts snapshot's caps (fixed size). */
@@ -1774,6 +1797,25 @@ const pathProblem = (segs, at, op) => {
   return null;
 };
 
+const text = (v) => typeof v === 'string' && v.length > 0 && v.length <= EXPR_LIMITS.string;
+const scalar = (v) => v === null || typeof v === 'boolean' || (typeof v === 'number' && Number.isFinite(v)) || (typeof v === 'string' && v.length <= EXPR_LIMITS.string);
+const onlyKeys = (a, keys) => isPlain(a) && Object.keys(a).every((k) => keys.includes(k));
+/** Why a named check's argument is wrong, in one sentence, or null. */
+function checkProblem(op, a, at) {
+  const want = {
+    hasItem: [text(a), 'an item id, like "orders/components/StatusBadge"'],
+    hasLibrary: [text(a), 'a library id, like "components/Badge"'],
+    fileExists: [text(a), 'a root-relative file path'],
+    basedOn: [Array.isArray(a) && a.length === 2 && a.every(text), 'two texts: [item id, library id]'],
+    fileContains: [Array.isArray(a) && a.length === 2 && a.every(text), 'two texts: [file path, text]'],
+    propIs: [onlyKeys(a, ['file', 'nodeId', 'prop', 'value']) && text(a.file) && text(a.nodeId) && text(a.prop) && 'value' in a && scalar(a.value), '{file, nodeId, prop, value}'],
+    noNewFindings: [a === true, 'true'],
+    noFinding: [onlyKeys(a, ['rule', 'file', 'key']) && Object.keys(a).length > 0 && Object.values(a).every(text), '{rule?, file?, key?} with at least one of them'],
+    refused: [onlyKeys(a, ['code', 'rule', 'fixes']) && ['code', 'rule'].every((k) => !(k in a) || text(a[k])) && (!('fixes' in a) || typeof a.fixes === 'boolean'), '{code?, rule?, fixes?}'],
+  }[op];
+  return want[0] ? null : `In ${at}, "${op}" takes ${want[1]}.`;
+}
+
 /**
  * Why `expr` is not a valid expression, in one sentence, or null when it is.
  * @param {unknown} expr
@@ -1801,6 +1843,7 @@ export function exprProblem(expr) {
     if (op === 'path') return pathProblem(a, at, op);
     if (op === 'item') return inItem ? pathProblem(a, at, op) : `In ${at}, "item" only means something inside every or some.`;
     if (op === 'not' || op === 'count') return walk(a, at, depth + 1, inItem);
+    if (Object.hasOwn(EXPR_CHECKS, op)) return checkProblem(op, a, at);
     if (op === 'exists') {
       if (!isPlain(a) || Object.keys(a).length !== 1 || !(('path' in a) || ('item' in a))) return `In ${at}, exists takes a path, like {"exists": {"path": ["files", "a.tsx"]}}.`;
       return walk(a, at, depth + 1, inItem);
@@ -1829,6 +1872,19 @@ export function assertExpr(e) {
   if (why) throw new TypeError(why);
 }
 
+const TEXT = { type: 'string', minLength: 1 };
+const SCALAR = { type: ['string', 'number', 'boolean', 'null'] };
+/** The argument schema of each named check. */
+const CHECK_SCHEMAS = Object.freeze({
+  hasItem: TEXT, hasLibrary: TEXT, fileExists: TEXT,
+  basedOn: { type: 'array', minItems: 2, maxItems: 2, items: TEXT },
+  fileContains: { type: 'array', minItems: 2, maxItems: 2, items: TEXT },
+  propIs: { type: 'object', additionalProperties: false, required: ['file', 'nodeId', 'prop', 'value'], properties: { file: TEXT, nodeId: TEXT, prop: TEXT, value: SCALAR } },
+  noNewFindings: { const: true },
+  noFinding: { type: 'object', additionalProperties: false, minProperties: 1, properties: { rule: TEXT, file: TEXT, key: TEXT } },
+  refused: { type: 'object', additionalProperties: false, properties: { code: TEXT, rule: TEXT, fixes: { type: 'boolean' } } },
+});
+
 /** The JSON Schema of an expression (exprProblem also checks depth, size and where `item` may appear). */
 export const EXPR_JSON_SCHEMA = Object.freeze({
   $id: 'line/expr.schema.json',
@@ -1838,7 +1894,7 @@ export const EXPR_JSON_SCHEMA = Object.freeze({
     {
       type: 'object', minProperties: 1, maxProperties: 1, additionalProperties: false,
       properties: Object.fromEntries(EXPR_OPS.map((op) => [op,
-        op === 'path' || op === 'item' ? { type: 'array', maxItems: EXPR_LIMITS.segments, items: { oneOf: [{ type: 'string', minLength: 1 }, { type: 'integer', minimum: 0 }] } }
+        Object.hasOwn(CHECK_SCHEMAS, op) ? CHECK_SCHEMAS[op] : op === 'path' || op === 'item' ? { type: 'array', maxItems: EXPR_LIMITS.segments, items: { oneOf: [{ type: 'string', minLength: 1 }, { type: 'integer', minimum: 0 }] } }
           : op === 'lit' ? {}
             : op === 'not' || op === 'count' || op === 'exists' ? { $ref: 'line/expr.schema.json' }
               : { type: 'array', minItems: 1, maxItems: EXPR_LIMITS.operands, items: { $ref: 'line/expr.schema.json' } }])),

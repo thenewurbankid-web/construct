@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { runEval, formatReport, DEFAULT_CORPUS, REPO_ROOT, resolveSelector, lexicalize, stepsMatch } from '../packages/engine/line/drafter/eval.mjs';
-import { factsSummary } from '../packages/engine/line/drafter/facts.mjs';
+import { factsSummary } from '../packages/engine/line/facts.mjs';
 import { splitWords, FUNCTION_WORDS } from '../packages/engine/line/drafter/domainMap.mjs';
 import { assertNoIdentifiers } from '../packages/engine/line/drafter/contract.mjs';
 

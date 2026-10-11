@@ -5,14 +5,13 @@
 import { readLineProject } from '../model.mjs';
 import { LINE_PLAN_TOOLS } from '../contract.mjs';
 import { buildIntentCatalog } from './contract.mjs';
-import { factsSummary } from './facts.mjs';
-import { buildDomainMap, normalize, slotShapes } from './domainMap.mjs';
+import { factsSummary } from '../facts.mjs';
+import { structureGraph, readerOf, hashesOf, rolesOf } from '../structure.mjs';
+import { buildDomainMap, normalize, slotShapes, bind } from './domainMap.mjs';
 import { classify } from './classify.mjs';
 import { enumerateRoutes } from './templates.mjs';
 import { verifyRoutes } from './verify.mjs';
-import { structureOf, hashesOf, rolesOf } from './structure.mjs';
 import { readRecords, nearest, routeFromRecord } from './retrieval.mjs';
-import { bind } from './expr.mjs';
 
 export { normalize, denormalize, buildDomainMap, addSynonym, saveDomainMap } from './domainMap.mjs';
 export { toRecord, appendRecord, readRecords } from './retrieval.mjs';
@@ -45,7 +44,7 @@ export function draft(root, request, o = {}) {
   const summary = factsSummary(root, project);
   const map = buildDomainMap(root, summary);
   const n = normalize(request, map, { propose: o.propose });
-  const graph = structureOf(root, project);
+  const graph = structureGraph(project, readerOf(root));
   const roles = rolesOf(graph);
   const slots = slotShapes(n.bindings, n.entries, summary, roles);
   const labels = classify(n, slots, catalog);

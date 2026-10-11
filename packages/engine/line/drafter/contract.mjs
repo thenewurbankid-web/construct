@@ -14,6 +14,7 @@
 //
 // The drafter only drafts. Line's writer and checks decide what lands, and a person approves every write step.
 // Stored records hold slots, kinds, roles, layers, tools, expressions, deltas and hashes: never a project's names.
+import { exprProblem } from '../contract.mjs';
 
 /** Verbs of the intent catalog (owner list, plus fix for a finding's typed fix). */
 export const VERBS = Object.freeze(['add', 'update', 'remove', 'rename', 'move', 'promote', 'base-on', 'wire', 'split', 'merge', 'fix']);
@@ -44,7 +45,7 @@ export const OBJECTS = Object.freeze({
 export const LAYERS = Object.freeze(['ui', 'workflow', 'data', 'api', 'library']);
 /** Line kinds per layer (the library layer holds every kind; api has none yet). */
 export const LAYER_KINDS = Object.freeze({ ui: ['pages', 'components'], workflow: ['workflows'], data: ['fixtures'], api: [], library: ['components', 'pages', 'workflows', 'fixtures'] });
-export const KIND_LAYER = Object.freeze({ pages: 'ui', components: 'ui', workflows: 'workflow', fixtures: 'data' });
+export { KIND_LAYER } from '../structure.mjs';
 export const SCOPES = Object.freeze(['feature', 'library', 'cross-feature']);
 export const VIA = Object.freeze(['template', 'retrieval', 'model']);
 export const ROUTE_STATUS = Object.freeze(['ok', 'refused', 'wrong-shape', 'failed', 'needs-model', 'unverified']);
@@ -108,35 +109,10 @@ export function buildIntentCatalog(toolNames) {
   return out;
 }
 
-// ------------------------------------------------------------------------------------------------ expression mirror
-// MIRROR of the expression contract (built in parallel by another agent: `evaluate(facts, expr)` -> failed
-// sentences, a facts snapshot {files, library, features, findings, findingsNew, plan}). Replace on merge: keep the
-// op names below as aliases or map them. The ops are JSON objects with exactly one key.
-export const EXPR_OPS = Object.freeze({
-  all: 'every sub-expression holds ({"all": [e, ...]})',
-  any: 'at least one sub-expression holds',
-  not: 'the sub-expression does not hold',
-  fileExists: 'a root-relative file exists',
-  fileContains: '{path, text}: the file contains the text',
-  itemExists: '{feature, kind, name}: the feature has that item',
-  itemBasedOn: '{feature, kind, name, libraryId}: the item\'s base link resolves to that library item',
-  libraryHas: 'the library has that item id',
-  propIs: '{file, nodeId, prop, value}: one part of a page has that prop value',
-  findingGone: 'no finding with that key (rule|file|line) or that rule on that file',
-  noNewFindings: 'true: the change added no finding',
-});
-
-/**
- * The facts snapshot the expressions are evaluated against (mirror). `parts` (page props) is this drafter's addition.
- * @typedef {object} FactsSnapshot
- * @property {Record<string, string>} files
- * @property {string[]} library
- * @property {{name: string, items: {id: string, kind: string, name: string, file: string, base: string|null}[]}[]} features
- * @property {{key: string, rule: string, file: string, line: number}[]} findings
- * @property {{key: string, rule: string, file: string, line: number}[]} findingsNew
- * @property {unknown} plan
- * @property {Record<string, {nodeId: string, tag: string, props: Record<string, unknown>}[]>} parts
- */
+// ------------------------------------------------------------------------------------------------ expressions
+// A route's `expect` and `pre` are expressions of Line's one expression language (../contract.mjs LineExpr, evaluated
+// by ../expr.mjs over ../facts.mjs buildFacts), written with its named checks (EXPR_CHECKS: hasItem, hasLibrary,
+// basedOn, fileContains, propIs, noNewFindings, noFinding, ...) over slot refs; verify.mjs binds and evaluates them.
 
 // ------------------------------------------------------------------------------------------------ structure
 /** Closed delta ops of a route (what it does to the project's structure). */
@@ -149,8 +125,8 @@ export const EDGE_TYPES = Object.freeze(['base', 'import']);
  */
 
 /**
- * Delexicalized structure hashes (structure.mjs): names never enter; kinds, roles, layers, base links and import
- * edges do. Renaming changes nothing; adding a page changes the feature and project hashes.
+ * Delexicalized structure hashes (../structure.mjs hashesOf): names never enter; kinds, roles, layers, base links and
+ * import edges do. Renaming changes nothing; adding a page changes the feature and project hashes.
  * @typedef {{project: string, feature: string|null, layers: Record<string, string>}} StructureHashes
  */
 
@@ -180,7 +156,7 @@ export const EDGE_TYPES = Object.freeze(['base', 'import']);
  * @property {string} intent
  * @property {{layers: string[], features: string[], library: string[], scope: string}} scope
  * @property {{tool: string, args: Record<string, unknown>}[]} steps  Slot-form args.
- * @property {object[]} expect    Slot-form expressions (EXPR_OPS).
+ * @property {object[]} expect    Slot-form expressions (Line's expression language, ../contract.mjs LineExpr).
  * @property {object[]} pre       Slot-form preconditions.
  * @property {DeltaOp[]} delta
  * @property {{feature: string|null, project: string}|null} predicted  Predicted structure hashes after the route.
@@ -281,18 +257,14 @@ export function assertDraft(d, catalog) {
 }
 
 /**
- * Throws unless e is an expression built from EXPR_OPS.
+ * Throws unless e is an expression of Line's expression language (../contract.mjs exprProblem); the message says why.
  * @param {any} e
  * @param {string} [where]
  * @returns {void}
  */
 export function assertExpr(e, where = 'expr') {
-  if (!e || typeof e !== 'object' || Array.isArray(e)) fail(where, 'must be an object with one op');
-  const keys = Object.keys(e);
-  if (keys.length !== 1 || !EXPR_OPS[keys[0]]) fail(where, `must have exactly one op from ${Object.keys(EXPR_OPS).join(', ')}`);
-  const [op] = keys;
-  if (op === 'all' || op === 'any') { if (!Array.isArray(e[op])) fail(`${where}.${op}`, 'must be a list'); e[op].forEach((x, i) => assertExpr(x, `${where}.${op}[${i}]`)); }
-  if (op === 'not') assertExpr(e.not, `${where}.not`);
+  const why = exprProblem(e);
+  if (why) fail(where, `is not an expression: ${why}`);
 }
 
 /**

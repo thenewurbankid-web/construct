@@ -32,8 +32,9 @@ test('drafter contract: the mock draft passes the shape check; bad labels, route
   assert.throws(() => assertDraft({ ...d, routes: [d.routes[0], d.routes[0]] }, cat), /unique/);
   assert.throws(() => assertDraft({ ...d, recommended: 'nope' }, cat), /route id/);
   assert.throws(() => assertDraft({ ...d, routes: [{ ...d.routes[1], refusal: null }] }, cat), /says why/);
-  assert.throws(() => assertExpr({ fileExists: 'a', libraryHas: 'b' }), /exactly one op/);
-  assert.throws(() => assertExpr({ all: [{ teleport: 1 }] }), /one op/);
+  assert.throws(() => assertExpr({ fileExists: 'a', hasLibrary: 'b' }), /exactly one operator/);
+  assert.throws(() => assertExpr({ and: [{ teleport: 1 }] }), /"teleport" is not an operator/);
+  assert.throws(() => assertExpr({ basedOn: ['only one'] }), /"basedOn" takes two texts/);
 });
 
 test('drafter contract: a stored record may hold slots but never a project name', () => {

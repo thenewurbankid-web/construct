@@ -45,7 +45,7 @@ function nameSlot(ctx, invented) {
   return { slot: derive(ctx, 'N', invented, { kind: 'new', isNew: true, invented: true }), invented: true };
 }
 
-const BASE_EXPECT = (F, kind, N, L) => [{ itemExists: { feature: F, kind, name: N } }, { itemBasedOn: { feature: F, kind, name: N, libraryId: L } }, { noNewFindings: true }];
+const BASE_EXPECT = (F, kind, N, L) => [{ hasItem: `${F}/${kind}/${N}` }, { basedOn: [`${F}/${kind}/${N}`, L] }, { noNewFindings: true }];
 const BASE_DELTA = (F, kind, N, L) => [
   { op: 'add-node', node: `${F}/${kind}/${N}`, kind, layer: KIND_LAYER[kind], area: 'feature', feature: F },
   { op: 'add-edge', type: 'base', from: `${F}/${kind}/${N}`, to: L },
@@ -102,7 +102,7 @@ function viaLibrary(ctx, intent, kind) {
       label: `Move <${I}> into the library, then add <${N}> based on it to <${F}>.`,
       scope: { layers: [KIND_LAYER[kind], 'library'], features: [Fi, F], library: [], scope: 'library' },
       steps: [{ tool: 'line.promote', args: { featureItemId: `<${I}>` } }, { tool: 'line.baseOn', args: { libraryId: lib, feature: `<${F}>`, name: `<${N}>` } }],
-      expect: [{ libraryHas: lib }, ...BASE_EXPECT(`<${F}>`, kind, `<${N}>`, lib)],
+      expect: [{ hasLibrary: lib }, ...BASE_EXPECT(`<${F}>`, kind, `<${N}>`, lib)],
       delta: [{ op: 'move-node', node: `<${I}>`, to: lib, area: 'library' }, ...BASE_DELTA(`<${F}>`, kind, `<${N}>`, lib)],
       risk: `Moves <${I}> out of <${Fi}> into the library, so every feature can use it.`,
       confidence: ctx.labels.intent.confidence * 0.9, invented: invented ? [N] : [],
@@ -122,7 +122,7 @@ function promote(ctx, intent) {
       label: `Move <${I}> from <${Fi}> into the library and point its users at the library copy.`,
       scope: { layers: ['library', KIND_LAYER[b.kind]], features: [Fi], library: [], scope: 'library' },
       steps: [{ tool: 'line.promote', args: { featureItemId: `<${I}>` } }],
-      expect: [{ libraryHas: lib }, { not: { itemExists: { feature: `<${Fi}>`, kind: b.kind, name: `<${I}.name>` } } }, { noNewFindings: true }],
+      expect: [{ hasLibrary: lib }, { not: { hasItem: `<${I}>` } }, { noNewFindings: true }],
       delta: [{ op: 'move-node', node: `<${I}>`, to: lib, area: 'library' }],
       risk: `Every feature that uses <${I}> now uses the library copy.`, confidence: ctx.labels.intent.confidence,
     });
@@ -139,7 +139,7 @@ function setBase(ctx, intent) {
         id: `set-base:${KIND_LAYER[b.kind]}:${I}>${L}`, template: 'set-base', intent,
         label: `Base <${I}> on the library <${L}>.`, scope: { layers: [KIND_LAYER[b.kind]], features: [featureOfItemSlot(ctx, I)], library: [L], scope: 'feature' },
         steps: [{ tool: 'line.setBase', args: { file: `<${I}.file>`, libraryId: `<${L}>` } }],
-        expect: [{ itemBasedOn: { feature: `<${I}.feature>`, kind: b.kind, name: `<${I}.name>`, libraryId: `<${L}>` } }, { noNewFindings: true }],
+        expect: [{ basedOn: [`<${I}>`, `<${L}>`] }, { noNewFindings: true }],
         delta: [{ op: 'set-base', node: `<${I}>`, to: `<${L}>` }],
         risk: `Changes only what <${I}> is based on.`, confidence: ctx.labels.intent.confidence,
       }));
@@ -222,7 +222,7 @@ function setFragment(ctx, intent, layer) {
         id: `set-fragment:${layer}:${I}`, template: 'set-fragment', intent, label: `Change the code of <${I}>; a local model or you write the new code.`,
         scope: { layers: [layer], features: [featureOfItemSlot(ctx, I)], library: [], scope: 'feature' },
         steps: [{ tool: 'line.setFragment', args: { file: `<${I}.file>`, fragmentId: `<${G}>`, code: `<${Ks}>`, contentHash: `<${G}.hash>` } }],
-        expect: [{ fileContains: { path: `<${I}.file>`, text: `<${Ks}>` } }, { noNewFindings: true }], delta: [],
+        expect: [{ fileContains: [`<${I}.file>`, `<${Ks}>`] }, { noNewFindings: true }], delta: [],
         risk: `Changes the code of <${I}>; its checks still run.`, confidence: ctx.labels.intent.confidence * 0.4, invented: [G, Ks], status: 'needs-model',
       });
     });
@@ -236,7 +236,7 @@ function setFragment(ctx, intent, layer) {
       id: `set-fragment:${layer}:${I}.${G}`, template: 'set-fragment', intent,
       label: `Replace one piece of code in <${I}> with <${Ks}>.`, scope: { layers: [layer], features: [featureOfItemSlot(ctx, I)], library: [], scope: layer === 'workflow' ? 'feature' : 'feature' },
       steps: [{ tool: 'line.setFragment', args: { file: `<${I}.file>`, fragmentId: `<${G}>`, code: `<${Ks}>`, contentHash: `<${G}.hash>` } }],
-      expect: [{ fileContains: { path: `<${I}.file>`, text: `<${Ks}>` } }, { noNewFindings: true }],
+      expect: [{ fileContains: [`<${I}.file>`, `<${Ks}>`] }, { noNewFindings: true }],
       delta: [], risk: `Changes one piece of code in <${I}>; its checks still run.`,
       confidence: ctx.labels.intent.confidence * (K ? 1 : 0.5), invented: K ? [] : [Ks], status: K ? 'unverified' : 'needs-model',
     });
@@ -269,7 +269,7 @@ function fix(ctx, intent, all) {
     return [route({
       id: 'fix-all', template: 'fix-all', intent, label: `Apply the recommended fix of each of the ${findings.length} problems.`,
       scope: { layers: ['ui'], features: [...new Set(findings.map((x) => x.file.split('/')[1]))].map((f) => slotFor(ctx, 'F', f, { kind: 'feature' })), library: [], scope: 'cross-feature' },
-      steps, expect: [...findings.map((x) => ({ findingGone: `<${R(x)}>` })), { noNewFindings: true }], delta: deltas.every(Boolean) ? deltas.flat() : [],
+      steps, expect: [...findings.map((x) => ({ noFinding: { key: `<${R(x)}>` } })), { noNewFindings: true }], delta: deltas.every(Boolean) ? deltas.flat() : [],
       risk: 'Touches every feature with a problem.', confidence: ctx.labels.intent.confidence,
     })];
   }
@@ -283,7 +283,7 @@ function fix(ctx, intent, all) {
         id: `fix:${r}:${i + 1}`, template: 'fix', intent, label: `Fix the ${x.rule} problem with its ${i === 0 ? 'recommended' : `option ${i + 1}`} fix.`,
         scope: { layers: [KIND_LAYER[ctx.summary.features.flatMap((f) => f.items).find((it) => it.file === x.file)?.kind] ?? 'ui'], features: [], library: [], scope: y.step.tool === 'line.promote' ? 'library' : 'feature' },
         steps: [{ tool: 'line.fix', args: { findingKey: `<${r}>`, fixId: `<${r}.fix${i + 1}>` } }],
-        expect: [{ findingGone: `<${r}>` }, { noNewFindings: true }], delta: d ?? [],
+        expect: [{ noFinding: { key: `<${r}>` } }, { noNewFindings: true }], delta: d ?? [],
         risk: y.step.tool === 'line.promote' ? 'Moves an item into the library, so other features use the library copy.' : 'Changes only the file with the problem.',
         confidence: ctx.labels.intent.confidence * (i === 0 ? 1 : 0.6) * (ctx.words.includes('all') || ctx.words.includes('every') ? 0.6 : 1),
       }));

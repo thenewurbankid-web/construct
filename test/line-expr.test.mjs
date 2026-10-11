@@ -8,7 +8,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 import { exprProblem, assertExpr, assertExprEvaluation, assertLineFacts, EXPR_OPS, EXPR_JSON_SCHEMA, EXPR_LIMITS } from '../packages/engine/line/contract.mjs';
-import { evaluate } from '../packages/engine/line/expr.mjs';
+import { evaluate, describe } from '../packages/engine/line/expr.mjs';
 import { mockFacts } from '../packages/engine/line/mockFacts.mjs';
 import { buildFacts, summarizeFacts, factsHash } from '../packages/engine/line/facts.mjs';
 import { structureOf } from '../packages/engine/line/structure.mjs';
@@ -130,7 +130,9 @@ test('facts: built from the real sample project, fixed size, hashed; structure h
   const added = createMockLineOps({ files: { ...ops.files(), 'features/orders/components/Extra.tsx': "// @line-base components/Button\nexport function Extra() { return null; }\n" } });
   const c = structureOf(added.readLineProject('/m'));
   assert.notEqual(c.features.orders.hash, a.features.orders.hash); assert.notEqual(c.project, a.project);
-  assert.equal(c.features.orders.layers.pages, a.features.orders.layers.pages, 'other layers keep their hash');
+  assert.notEqual(c.features.orders.layers.ui, a.features.orders.layers.ui, 'a component is in the ui layer');
+  assert.equal(c.features.orders.layers.data, a.features.orders.layers.data, 'other layers keep their hash');
+  assert.equal(c.features.orders.layers.workflow, a.features.orders.layers.workflow, 'other layers keep their hash');
 });
 
 test('facts are lazy: a check on the plan alone does not read the project', () => {
@@ -186,4 +188,57 @@ test('property: evaluate never throws on a valid expression over random facts, a
     assert.equal(evaluate(facts, { not: e }).ok, !res.ok, `not flips the answer (seed ${seed}, case ${i})`);
   }
   assert.ok(valid > 2000, `most generated expressions are valid (${valid})`);
+});
+
+// --------------------------------------------------------------------------------------------- named checks
+test('named checks: the drafter\'s and Train Line\'s checks are operators of the one language, with their own sentences', () => {
+  const item = 'orders/components/OrderButton';
+  assert.equal(ok({ hasItem: item }), true);
+  assert.equal(ok({ hasLibrary: 'components/Button' }), true);
+  assert.equal(ok({ basedOn: [item, 'components/Button'] }), true);
+  assert.equal(ok({ fileExists: BUTTON }), true);
+  assert.equal(ok({ noNewFindings: true }), true);
+  assert.deepEqual(says({ hasLibrary: 'components/Tag' }), ['Expected that the library has a component Tag, but it is not there.']);
+  assert.deepEqual(says({ basedOn: [item, 'components/Card'] }), ['Expected that OrderButton is based on the library Card, but it is based on Button.']);
+  assert.deepEqual(says({ not: { hasItem: item } }), ['It should not be true that orders has a component OrderButton.']);
+  assert.deepEqual(says({ noNewFindings: true }, { ...F, findingsNew: [{ key: 'k', rule: 'LINE-DIR', severity: 'error', file: 'a' }] }), ['The change added 1 problem (LINE-DIR).']);
+  const plan = { tool: 'line.baseOn', staged: false, applied: false, files: [], refusal: { code: 'UNKNOWN_ITEM', rule: null, fixes: false } };
+  assert.equal(ok({ refused: { code: 'UNKNOWN_ITEM' } }, { ...F, plan }), true);
+  assert.deepEqual(says({ refused: { code: 'NAME_TAKEN' } }, { ...F, plan }), ['Expected that Construct refuses it because the name is taken, but it was refused for another reason (UNKNOWN_ITEM).']);
+  assert.equal(describe({ hasItem: 'orders/pages/OverviewListPage' }), 'orders has a page OverviewListPage.');
+  assert.equal(describe({ and: [{ hasItem: item }, { noNewFindings: true }] }), 'orders has a component OrderButton. Validate shows no new problems.');
+  assert.match(exprProblem({ basedOn: ['one'] }), /"basedOn" takes two texts/);
+  assert.match(exprProblem({ noFinding: {} }), /at least one/);
+  assert.match(exprProblem({ propIs: { file: 'a', nodeId: 'n0', prop: 'title', value: { x: 1 } } }), /"propIs" takes/);
+});
+
+test('named checks: file text and page parts are lazy views of the real facts, never summarized', () => {
+  const facts = buildFacts(SAMPLE);
+  const page = 'features/orders/pages/OrdersPage.tsx';
+  assert.ok(Object.keys(summarizeFacts(facts)).every((k) => k !== 'contents' && k !== 'parts'));
+  assert.ok(!JSON.stringify(facts).includes('"contents"'), 'never enumerated');
+  assert.equal(evaluate(facts, { fileContains: [page, 'export function OrdersPage'] }).ok, true);
+  assert.match(evaluate(facts, { fileContains: [page, 'no such text'] }).failed[0].sentence, /^Expected that OrdersPage\.tsx contains "no such text", but it does not\.$/);
+  const part = facts.parts[page][0];
+  const [prop, value] = Object.entries(part.props)[0] ?? ['title', null];
+  assert.equal(evaluate(facts, { propIs: { file: page, nodeId: part.nodeId, prop, value: /** @type {any} */ (value) } }).ok, true);
+  assert.equal(evaluate(facts, { propIs: { file: page, nodeId: part.nodeId, prop, value: 'never this' } }).ok, false);
+});
+
+test('property: named checks never throw on random facts, and not flips them', () => {
+  const r = rng(20261012);
+  const t = () => ['orders/components/OrderButton', 'components/Button', 'a', 'x.tsx', ''][Math.floor(r() * 5)] || 'b';
+  const make = [
+    () => ({ hasItem: t() }), () => ({ hasLibrary: t() }), () => ({ basedOn: [t(), t()] }), () => ({ fileExists: t() }), () => ({ fileContains: [t(), t()] }),
+    () => ({ propIs: { file: t(), nodeId: 'n0', prop: t(), value: r() < 0.5 ? t() : 3 } }), () => ({ noNewFindings: true }), () => ({ noFinding: { rule: t() } }), () => ({ refused: { code: t(), fixes: r() < 0.5 } }),
+  ];
+  for (let i = 0; i < 1000; i += 1) {
+    const facts = i % 3 === 0 ? F : randomJson(r, 0);
+    const e = make[Math.floor(r() * make.length)]();
+    assert.equal(exprProblem(e), null, JSON.stringify(e));
+    let res;
+    assert.doesNotThrow(() => { res = evaluate(facts, e); }, JSON.stringify(e));
+    assertExprEvaluation(res);
+    assert.equal(evaluate(facts, { not: e }).ok, !res.ok);
+  }
 });

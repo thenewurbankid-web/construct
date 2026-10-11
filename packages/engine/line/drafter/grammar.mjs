@@ -1,5 +1,5 @@
 // Constrained-output grammar for a future local model (owner 2026-10-11): generated from the plan registry (tool names,
-// argument names and types) and the expression language, so a model's output always parses, names only real tools and
+// argument names and types) and Line's expression language (its named checks), so a model's output always parses, names only real tools and
 // holds only slots (never a project's names). Two forms of the same grammar:
 //   grammar/route.schema.json   JSON Schema of one drafted route {intent, steps, expect} (Ollama `format`, Ajv)
 //   grammar/route.gbnf          GBNF of the same (llama.cpp --grammar-file)
@@ -7,20 +7,24 @@
 //   node packages/engine/line/drafter/grammar.mjs --write   regenerate both files (a test checks they are current)
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { EXPR_OPS } from './contract.mjs';
+import { EXPR_CHECKS } from '../contract.mjs';
 
 /** A string that is a slot ref, optionally after a kind prefix: "<F1>", "<C1.file>", "components/<C1.name>". */
 export const SLOT_STRING = '^((components|pages|workflows|fixtures)/)?<[A-Z][0-9]{1,3}(\\.[a-zA-Z][a-zA-Z0-9]{0,15})?>$';
+/** A feature item id in slot form: an item slot ("<C1>") or "<F1>/<kind>/<N1>". */
+export const ITEM_STRING = '^(<[A-Z][0-9]{1,3}>/(components|pages|workflows|fixtures)/)?<[A-Z][0-9]{1,3}(\\.[a-zA-Z][a-zA-Z0-9]{0,15})?>$';
 const KINDS = ['components', 'pages', 'workflows', 'fixtures'];
 
-/** Argument shapes of the expression ops (MIRROR of the expression contract; replace on merge). */
+/**
+ * The expressions a drafted route may hold: Line's named checks (../contract.mjs EXPR_CHECKS) in the argument shapes
+ * the drafter writes them (slot refs only), plus and / or / not. A list of types is a fixed-length tuple.
+ */
 export const EXPR_ARGS = Object.freeze({
-  fileExists: 'slot', libraryHas: 'slot', findingGone: 'slot', noNewFindings: 'true',
-  fileContains: { path: 'slot', text: 'slot' },
-  itemExists: { feature: 'slot', kind: 'kind', name: 'slot' },
-  itemBasedOn: { feature: 'slot', kind: 'kind', name: 'slot', libraryId: 'slot' },
-  propIs: { file: 'slot', nodeId: 'slot', prop: 'slot', value: 'scalar' },
+  hasItem: 'item', hasLibrary: 'slot', basedOn: ['item', 'slot'], fileExists: 'slot', fileContains: ['slot', 'slot'],
+  propIs: { file: 'slot', nodeId: 'slot', prop: 'slot', value: 'scalar' }, noNewFindings: 'true', noFinding: { key: 'slot' },
+  and: 'exprs', or: 'exprs', not: 'expr',
 });
+for (const op of Object.keys(EXPR_ARGS)) if (!['and', 'or', 'not'].includes(op) && !Object.hasOwn(EXPR_CHECKS, op)) throw new Error(`${op} is not a named check of Line's expression language`);
 
 /**
  * The argument types of one registry tool, found by probing its schema with sample values (the registry exposes
@@ -56,7 +60,8 @@ export function probeArgTypes(schema) {
 }
 
 const slotSchema = { type: 'string', pattern: SLOT_STRING };
-const typeSchema = (t0) => { const t = t0.replace(/[?]$/, ''); return (t === 'slot' ? slotSchema : t === 'kind' ? { enum: KINDS } : t === 'true' ? { const: true } : t === 'scalar' ? { anyOf: [slotSchema, { type: 'number' }, { type: 'boolean' }] } : { enum: t.slice(5).split('|') }); };
+const itemSchema = { type: 'string', pattern: ITEM_STRING };
+const typeSchema = (t0) => { const t = t0.replace(/[?]$/, ''); return (t === 'slot' ? slotSchema : t === 'item' ? itemSchema : t === 'kind' ? { enum: KINDS } : t === 'true' ? { const: true } : t === 'scalar' ? { anyOf: [slotSchema, { type: 'number' }, { type: 'boolean' }] } : { enum: t.slice(5).split('|') }); };
 
 /**
  * The JSON Schema of one drafted route, from the registry's change tools, the intent catalog and the expression ops.
@@ -72,9 +77,11 @@ export function routeSchema(tools, intents) {
       properties: { tool: { const: t.name }, args: { type: 'object', additionalProperties: false, required: Object.keys(types).filter((k) => !types[k].endsWith('?')), properties: Object.fromEntries(Object.entries(types).map(([k, v]) => [k, typeSchema(v)])) } },
     };
   });
-  const exprs = Object.keys(EXPR_OPS).map((op) => {
-    const a = EXPR_ARGS[op];
-    const value = op === 'all' || op === 'any' ? { type: 'array', minItems: 1, items: { $ref: '#/$defs/expr' } } : op === 'not' ? { $ref: '#/$defs/expr' } : typeof a === 'string' ? typeSchema(a) : { type: 'object', additionalProperties: false, required: Object.keys(a), properties: Object.fromEntries(Object.entries(a).map(([k, v]) => [k, typeSchema(v)])) };
+  const exprs = Object.entries(EXPR_ARGS).map(([op, a]) => {
+    const value = a === 'exprs' ? { type: 'array', minItems: 1, items: { $ref: '#/$defs/expr' } } : a === 'expr' ? { $ref: '#/$defs/expr' }
+      : typeof a === 'string' ? typeSchema(a)
+        : Array.isArray(a) ? { type: 'array', minItems: a.length, maxItems: a.length, prefixItems: a.map(typeSchema), items: false }
+          : { type: 'object', additionalProperties: false, required: Object.keys(a), properties: Object.fromEntries(Object.entries(a).map(([k, v]) => [k, typeSchema(v)])) };
     return { type: 'object', additionalProperties: false, required: [op], properties: { [op]: value } };
   });
   return {
@@ -105,6 +112,7 @@ export function routeGbnf(schema) {
   const field = (k, v) => `${lit(k)} ws ":" ws ${v}`;
   const obj = (pairs) => (pairs.length ? `"{" ws ${pairs.join(' ws "," ws ')} ws "}"` : '"{" ws "}"');
   const valueRule = (s) => {
+    if (s.pattern === ITEM_STRING) return 'itemstr';
     if (s.pattern) return 'slotstr';
     if (s.enum) return `( ${s.enum.map(lit).join(' | ')} )`;
     if (s.const !== undefined) return lit(s.const);
@@ -127,7 +135,7 @@ export function routeGbnf(schema) {
     const [op] = Object.keys(e.properties);
     const v = e.properties[op];
     const name = `expr-${ruleName(op)}`;
-    const body = v.$ref ? 'expr' : v.type === 'array' ? 'exprs' : v.type === 'object' ? obj(Object.entries(v.properties).map(([k, x]) => field(k, valueRule(x)))) : valueRule(v);
+    const body = v.$ref ? 'expr' : v.type === 'array' && v.prefixItems ? `"[" ws ${v.prefixItems.map(valueRule).join(' ws "," ws ')} ws "]"` : v.type === 'array' ? 'exprs' : v.type === 'object' ? obj(Object.entries(v.properties).map(([k, x]) => field(k, valueRule(x)))) : valueRule(v);
     rules.push(`${name} ::= ${obj([field(op, body)])}`);
     return name;
   });
@@ -135,6 +143,7 @@ export function routeGbnf(schema) {
   rules.push(`exprs ::= "[" ws expr ( ws "," ws expr ){0,${schema.properties.expect.maxItems - 1}} ws "]"`);
   // Bounded everywhere (a kind prefix from the closed list, short slot ids and fields), so decoding always ends.
   rules.push(`slotstr ::= "\\"" ( ( ${KINDS.map((k) => `"${k}"`).join(' | ')} ) "/" )? "<" [A-Z] [0-9]{1,3} ( "." [a-zA-Z] [a-zA-Z0-9]{0,15} )? ">" "\\""`);
+  rules.push(`itemstr ::= "\\"" ( "<" [A-Z] [0-9]{1,3} ">" "/" ( ${KINDS.map((k) => `"${k}"`).join(' | ')} ) "/" )? "<" [A-Z] [0-9]{1,3} ( "." [a-zA-Z] [a-zA-Z0-9]{0,15} )? ">" "\\""`);
   rules.push('scalar ::= slotstr | "-"? [0-9]{1,9} ( "." [0-9]{1,6} )? | "true" | "false"');
   rules.push('ws ::= [ \\t\\n]{0,8}');
   return `# Generated by packages/engine/line/drafter/grammar.mjs from the plan registry and the expression language; do not edit.\n${rules.join('\n')}\n`;

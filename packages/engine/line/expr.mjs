@@ -5,7 +5,10 @@
 //
 //   evaluate(facts, expr) -> {ok, failed: [{path, sentence}]}   each failed part as one plain-English sentence
 //   claimOf(expr)         -> a short phrase saying what the expression claims (for "None of these holds: ...")
-import { exprProblem } from './contract.mjs';
+//   describe(expr)        -> what the expression requires, as one sentence (how Cockpit and Train Line show a check)
+// The ONE expression language of Line: the System 1 drafter's routes and Train Line's cases use it too (their named
+// checks, contract.mjs EXPR_CHECKS, are evaluated here with their own sentences).
+import { exprProblem, EXPR_CHECKS } from './contract.mjs';
 
 const MISSING = undefined;
 const own = (o, k) => o !== null && typeof o === 'object' && Object.prototype.hasOwnProperty.call(o, k);
@@ -130,6 +133,7 @@ export function claimOf(e) {
   if (e === null || typeof e !== 'object') return show(e);
   const [op] = Object.keys(e); const a = e[op];
   const lbl = (x) => (x !== null && typeof x === 'object' && 'item' in x ? (x.item.length ? rest(x.item) : 'the item') : x !== null && typeof x === 'object' && 'path' in x ? pathLabel(x.path) : x !== null && typeof x === 'object' && 'count' in x ? `the number of ${lbl(x.count)}` : x !== null && typeof x === 'object' && 'lit' in x ? show(x.lit) : typeof x === 'object' && x !== null ? `(${claimOf(x)})` : show(x));
+  if (Object.hasOwn(EXPR_CHECKS, op)) return low(describe(e).replace(/[.]$/, ''));
   switch (op) {
     case 'lit': return show(a);
     case 'path': case 'item': case 'count': return lbl(e);
@@ -162,6 +166,11 @@ function test(e, ctx, want, at = '') {
     return no(`${x.label} is ${show(x.v)}, and it should not be`);
   }
   const [op] = Object.keys(e); const a = e[op]; const here = at ? `${at}.${op}` : op;
+  if (Object.hasOwn(EXPR_CHECKS, op)) {
+    const why = checkFails(ctx.facts, op, a);
+    if ((why === null) === want) return pass;
+    return no(want ? /** @type {string} */ (why) : `It should not be true that ${low(describe(e).replace(/[.]$/, ''))}`);
+  }
   if (op === 'not') return test(a, ctx, !want, here);
   if (op === 'exists') {
     const x = value(a, ctx);
@@ -232,4 +241,92 @@ export function evaluate(facts, expr) {
   if (why) return { ok: false, failed: [{ path: '', sentence: end(`This expression cannot be checked: ${low(why)}`) }] };
   const r = test(expr, { facts }, true);
   return { ok: r.ok, failed: r.ok ? [] : r.failed.length ? r.failed : [{ path: '', sentence: 'The check did not hold.' }] };
+}
+
+// ------------------------------------------------------------------------------------------------ named checks
+const nameOf = (id) => String(id).split('/').pop();
+const KIND_WORD = { components: 'component', pages: 'page', workflows: 'flow', fixtures: 'sample data' };
+const kindOf = (id) => KIND_WORD[String(id).split('/').at(-2)] ?? 'item';
+const featureOf = (id) => String(id).split('/')[0];
+const listOf = (v) => (Array.isArray(v) ? v : []);
+/** Every feature item of the facts (features keyed by name, each with its items). */
+const itemsOf = (facts) => (isPlainObj(facts?.features) ? Object.values(facts.features).flatMap((f) => listOf(isPlainObj(f) ? f.items : null)) : []).filter(isPlainObj);
+/** Lower the first word when it is an ordinary sentence start ("The library ..."), never a name ("OrderButton is ..."). */
+const lowFirst = (s) => (/^(The|Validate|No|Not|It|A|An)\b/.test(String(s)) ? String(s).charAt(0).toLowerCase() + String(s).slice(1) : String(s));
+const but = (e, reason) => `Expected that ${lowFirst(describe(e).replace(/\.$/, ''))}, but ${reason}.`;
+const REFUSAL_WHY = { UNKNOWN_ITEM: 'because the item does not exist', NAME_TAKEN: 'because the name is taken', UNKNOWN_FEATURE: 'because the feature does not exist', WRONG_KIND: 'because the kinds do not match' };
+
+/** A finding matches a noFinding check: by key (or the key's rule on the key's file), else by rule and file. */
+function findingMatches(f, a) {
+  if (!isPlainObj(f)) return false;
+  if (a.key) { const [rule, file] = String(a.key).split('|'); return f.key === a.key || (f.rule === rule && f.file === file); }
+  return (!a.rule || f.rule === a.rule) && (!a.file || f.file === a.file);
+}
+
+/** Why a named check fails on the facts (one sentence), or null when it holds. Never throws. */
+function checkFails(facts, op, a) {
+  const e = { [op]: a };
+  switch (op) {
+    case 'hasItem': return itemsOf(facts).some((i) => i.id === a) ? null : but(e, 'it is not there');
+    case 'hasLibrary': return isPlainObj(facts?.library) && own(facts.library, a) ? null : but(e, 'it is not there');
+    case 'basedOn': {
+      const it = itemsOf(facts).find((i) => i.id === a[0]);
+      if (!it) return but(e, `${nameOf(a[0])} is not there`);
+      return it.base === a[1] ? null : but(e, `it is based on ${it.base ? nameOf(it.base) : 'nothing'}`);
+    }
+    case 'fileExists': return isPlainObj(facts?.files) && own(facts.files, a) ? null : `${a} does not exist yet.`;
+    case 'fileContains': {
+      const text = isPlainObj(facts?.contents) && own(facts.contents, a[0]) ? facts.contents[a[0]] : undefined;
+      if (typeof text !== 'string') return but(e, 'the file is not there');
+      return text.includes(a[1]) ? null : but(e, 'it does not');
+    }
+    case 'propIs': {
+      const parts = isPlainObj(facts?.parts) && own(facts.parts, a.file) ? listOf(facts.parts[a.file]) : [];
+      const part = parts.find((x) => isPlainObj(x) && x.nodeId === a.nodeId);
+      if (!part) return but(e, `${a.file} has no such part`);
+      const v = isPlainObj(part.props) && own(part.props, a.prop) ? part.props[a.prop] : MISSING;
+      return same(v, a.value) ? null : but(e, `it is ${show(v)}`);
+    }
+    case 'noNewFindings': {
+      const added = listOf(facts?.findingsNew);
+      return added.length ? `The change added ${added.length} problem${added.length === 1 ? '' : 's'} (${added.map((f) => (isPlainObj(f) ? f.rule : '?')).join(', ')}).` : null;
+    }
+    case 'noFinding': return listOf(facts?.findings).some((f) => findingMatches(f, a)) ? but(e, 'it is still reported') : null;
+    case 'refused': {
+      const plan = isPlainObj(facts?.plan) ? facts.plan : null;
+      if (!plan) return 'Nothing was tried, so nothing was refused.';
+      const r = isPlainObj(plan.refusal) ? plan.refusal : null;
+      if (!r) return but(e, 'the change was made');
+      if (a.code && r.code !== a.code) return but(e, `it was refused for another reason (${r.code ?? r.rule ?? 'unknown'})`);
+      if (a.rule && r.rule !== a.rule) return but(e, `it was refused for another reason (${r.rule ?? r.code ?? 'unknown'})`);
+      if (a.fixes && !r.fixes) return but(e, 'the refusal came without a typed fix');
+      return null;
+    }
+    default: return `"${op}" is not an operator.`;
+  }
+}
+
+/**
+ * What an expression requires, as one plain-English sentence ("orders has a component StatusBadge.").
+ * @param {any} expr
+ * @returns {string}
+ */
+export function describe(expr) {
+  if (exprProblem(expr)) return 'An unknown check.';
+  if (expr === null || typeof expr !== 'object') return end(claimOf(expr));
+  const [op] = Object.keys(expr); const a = expr[op];
+  switch (op) {
+    case 'and': return a.map(describe).join(' ');
+    case 'not': return typeof a?.hasItem === 'string' ? `${featureOf(a.hasItem)} no longer has a ${kindOf(a.hasItem)} ${nameOf(a.hasItem)}.` : `Not: ${lowFirst(describe(a))}`;
+    case 'hasItem': return `${featureOf(a)} has a ${kindOf(a)} ${nameOf(a)}.`;
+    case 'hasLibrary': return `The library has a ${kindOf(`x/${a}`)} ${nameOf(a)}.`;
+    case 'basedOn': return `${nameOf(a[0])} is based on the library ${nameOf(a[1])}.`;
+    case 'fileExists': return `${a} exists.`;
+    case 'fileContains': return `${nameOf(a[0])} contains ${JSON.stringify(a[1])}.`;
+    case 'propIs': return `${a.prop} on part ${a.nodeId} of ${nameOf(a.file)} is ${show(a.value)}.`;
+    case 'noNewFindings': return 'Validate shows no new problems.';
+    case 'noFinding': return a.key ? `The ${String(a.key).split('|')[0]} problem in ${nameOf(String(a.key).split('|')[1] ?? '')} is gone.` : `No ${a.rule ?? ''} problem is reported${a.file ? ` in ${nameOf(a.file)}` : ''}.`.replace('No  problem', 'No problem');
+    case 'refused': return `Construct refuses it${a.code ? ` ${REFUSAL_WHY[a.code] ?? 'and says why'}` : ' because it would add a problem'}${a.fixes ? ', and offers a fix' : ''}.`;
+    default: return end(claimOf(expr));
+  }
 }
