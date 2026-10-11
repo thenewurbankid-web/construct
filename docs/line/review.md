@@ -199,3 +199,34 @@ Gaps: only text, number and yes/no props are editable (no code values); no "View
 1. Pages → pick orders → OrdersPage "Based on ListPage", "Fine".
 2. Open OrdersPage, set the title to "All orders", Save. Expect "Saved. ..." and the new value.
 3. Pick billing → InvoicesPage shows "Needs attention" with its sentence; change its title and Save: it saves, and still shows the old problem.
+
+## Hour 3b: preview inside each library card (awaiting UAT)
+
+Tests: `ui/e2e/tests/line-components-library.spec.js` (Playwright, real server).
+1. Nothing renders before you open a card's "Preview <Name>" (each render bundles the component on the server).
+2. Opening Button's Preview shows its one prop (label, text) and the rendered button "Label".
+3. Typing "Buy now" re-renders the button as "Buy now".
+4. Accessibility check clean; closing the Preview removes it.
+Also: the shared client copy of the Line API (`ui/client/lib/lineContract.ts`, `lineHttp.ts`) replaced three per-screen copies; the existing Components and Pages tests still pass (behaviour unchanged).
+
+Gaps: without Morpheus linked, only the one-sentence "no picture" note and the props are shown.
+
+UAT: Components → Button card → "Preview Button" → change label to "Buy now". Expect the picture to update.
+
+## ca2: every Line problem carries a fix you (or an agent) can apply (engine done; screen next)
+
+Tests: `test/line-fixes.test.mjs` (each on a fresh copy of the sample with one planted problem), plus contract and server tests.
+1. Missing base: exactly one fix ("Base InvoiceCard on the library Card, which it already uses"); applying it writes the base line, the problem goes away, nothing new appears.
+2. Other base cases: two base links (keep one), a JSON fixture with no base (sets it); broken JSON gets advice only.
+3. Cross-feature import: one fix, promote the imported item; applying it re-points the import and clears the problem.
+4. Page outside every feature: top fix moves it into the library's pages (imports re-pointed); moving into a feature is offered too.
+5. Page in the wrong folder of a feature: moved into that feature's pages/ with a base; clears both problems.
+6. Layout: no library folder (creates it); a loose library file (moved into the right kind folder).
+7. Direct file writes and own copies of a shared module: one advice sentence each; asking to apply it is refused as "advice only".
+8. Applying by key works; an unknown problem or an unknown fix is one refusal sentence.
+9. `construct validate --profile line --format json` carries each problem's key and fixes, so any agent can correct itself.
+10. The Cockpit project view carries the fixes too.
+
+Gaps (advice only, you fix by hand): direct file writes, own copies of shared modules, a route claimed by two features, framework `app/**/page.tsx` routes, broken JSON, stray folders, a file loose in features/, importing a whole feature folder, promoting a name the library already has. Not yet on screen: an "Apply fix" button (next step, running). Also found: `construct validate <path>` ignores the path; use `--dir`.
+
+UAT: after the "Apply fix" screen lands (two clicks: open the problem, Apply).
