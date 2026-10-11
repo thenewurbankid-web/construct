@@ -46,7 +46,8 @@
     "minimatch": "^10.0.1",
     "react-docgen": "^8.0.4",
     "typescript": "^5.8.3",
-    "xpath": "0.0.34"
+    "xpath": "0.0.34",
+    "yaml": "^2.9.1"
   },
   "devDependencies": {
     "@stryker-mutator/core": "^10.0.0",
