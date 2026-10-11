@@ -1,5 +1,5 @@
 // The Import flow as a state machine: pick a folder -> scanning -> scanned (answer questions) -> planning -> planned ->
-// applying -> applied. A refusal returns to the phase before the call with its sentence; changing the folder or an answer
+// applying -> applied; a late refusal waits in planned with `result.pending` until Undo or Leave. A refusal returns to the phase before the call with its sentence; changing the folder or an answer
 // drops what was planned from the old one, so Apply always runs the plan the person sees.
 import type { ImportEvent, ImportState } from '../types.ts';
 
@@ -28,7 +28,13 @@ export function importReducer(state: ImportState, event: ImportEvent): ImportSta
     case 'APPLY':
       return state.phase === 'planned' ? { ...state, phase: 'applying', error: null } : state;
     case 'APPLIED':
-      return state.phase === 'applying' ? { ...state, phase: event.result.ok ? 'applied' : 'planned', result: event.result, error: event.result.ok ? null : event.result.sentence } : state;
+      if (state.phase !== 'applying') return state;
+      if (event.result.undone) return { ...state, phase: 'planned', result: event.result, error: null };
+      return { ...state, phase: event.result.ok ? 'applied' : 'planned', result: event.result, error: event.result.ok ? null : event.result.sentence };
+    case 'UNDO':
+    case 'LEAVE':
+      // Only a refused Apply that left the person a choice (`pending`) can be undone or left.
+      return state.phase === 'planned' && state.result?.pending ? { ...state, phase: 'applying', error: null } : state;
     case 'REFUSED':
       return { ...state, phase: BEFORE[state.phase] ?? state.phase, error: event.sentence };
   }

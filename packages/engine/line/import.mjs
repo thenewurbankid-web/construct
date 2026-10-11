@@ -3,7 +3,7 @@
 //
 //   scanImport(project, folder)            what the folder holds and what Line proposes; questions only where two rules disagree
 //   planImport(project, folder, answers)   the proposals as plan-ready steps (tool + args + sentence), nothing written
-//   applyImport(project, folder, answers)  each step planned on the current disk and landed through applyChange (the writer)
+//   applyImport(project, folder, answers)  every step chained in a scratch copy, then ONE applyChange (the writer): all or nothing
 //   planImportStep(folderRoot, step)       one step -> StagedChange (what a plan runner calls; root = <project>/<folder>)
 //
 // The folder becomes a small Line project of its own (architecture.yml `preset: line`, <folder>/library,
@@ -23,10 +23,12 @@
 //              the library uses, moves into the feature based on it; any other feature item is split: its complete
 //              code goes to the library and the feature gets a thin item based on it (Line's library/feature pattern).
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { LineOpError, assertStagedChange } from './contract.mjs';
 import { planMoveFile, planBaseOn, planCreateLayout, applyChange } from './ops.mjs';
 import { listFiles } from '@line/construct-core/profiles/line/checks';
+import { WALK_SKIP_DIRS, isGitCheckout } from '@line/construct-core/fs';
 import { CODE_EXTENSIONS, NON_ITEM_FILE } from '@line/construct-core/profiles/line/contract';
 import { readPathAliases, resolveImportSpecifier, parseReactSpaRoutes } from '@line/construct-core/route-resolver';
 import { parseToAst, walkAst } from '@construct/ast';
@@ -273,7 +275,10 @@ function readFolder(projectRoot, folder) {
   const files = listFiles(projectRoot);
   const graph = importGraph(projectRoot, files);
   const routes = readRoutes(projectRoot, graph);
-  const inFolder = files.filter((f) => f.startsWith(`${folder}/`));
+  // Items already in Line's layout inside the folder (its library and features, and Line's own state) are not brought in
+  // again; the plan only checks new names against them (resolveClashes).
+  const lineOwn = ['library', 'features', 'line'].map((d) => `${folder}/${d}/`);
+  const inFolder = files.filter((f) => f.startsWith(`${folder}/`) && !lineOwn.some((d) => f.startsWith(d)));
   const routeOf = new Map();
   for (const r of routes) if (!routeOf.has(r.file)) routeOf.set(r.file, r.path);
   const routeEntries = new Set(routes.map((r) => r.entry));
@@ -300,7 +305,7 @@ function readFolder(projectRoot, folder) {
       if (!PASCAL.test(name)) { unchanged.push({ file: rel, sentence: `${base} has no capitalised component name, so it stays where it is.` }); continue; }
       const segs = rel.split('/').slice(0, -1);
       const page = segs.some(isPagesDir) || /Page$/.test(name) || routeOf.has(rel) || appRoute(rel) !== null;
-      items.push({ file: rel, kind: page ? 'pages' : 'components', name, root: main.root, src, hasDefault: ex.hasDefault, route: routeOf.get(rel) });
+      items.push({ file: rel, kind: page ? 'pages' : 'components', name, exportName: main.name === 'default' ? null : main.name, root: main.root, src, hasDefault: ex.hasDefault, route: routeOf.get(rel) });
     } else if (ex.functions && (/^use[A-Z]/.test(base) || /from\s+['"]react(-dom)?['"]/.test(src))) {
       unchanged.push({ file: rel, sentence: `${base} is a React hook, and a Line workflow holds plain logic without React, so it stays where it is for now.` });
     } else if (ex.functions) {
@@ -410,13 +415,106 @@ function decideBases(folder, items, graph) {
       if ([...(graph.importers.get(it.file) ?? [])].some((u) => libLiving.has(u))) { it.mode = 'split'; libLiving.add(it.file); changed = true; }
     }
   }
+}
+
+/** Library ids and feature bases, once every item has its final name. */
+function finishBases(items) {
   for (const it of items) {
     if (it.target === 'library') { it.libraryId = `${it.kind}/${it.name}`; if (it.kind === 'components') it.level = levelFromSize(it.src); }
     if (it.target === 'feature') it.base = it.mode === 'move' ? `components/${it.baseItem.name}` : `${it.kind}/${it.name}`;
   }
 }
 
+/** A name for an item, made from its file name: Detail-v2.tsx -> DetailV2 (components, pages), detail-v2.ts -> detailV2. */
+function nameFromFile(rel, kind) {
+  const words = stripExt(posix.basename(rel)).split(/[^A-Za-z0-9]+/).filter(Boolean);
+  const camel = words.map((w, i) => (i === 0 ? w : w.charAt(0).toUpperCase() + w.slice(1))).join('');
+  const n = kind === 'components' || kind === 'pages' ? camel.charAt(0).toUpperCase() + camel.slice(1) : camel;
+  return /^[A-Za-z]/.test(n) ? n : `${kind === 'components' || kind === 'pages' ? 'Item' : 'item'}${n}`;
+}
+
+/** Item names (no extension) already in `<dir>` on disk. */
+function namesOnDisk(dir) {
+  try { return fs.readdirSync(dir, { withFileTypes: true }).filter((e) => e.isFile()).map((e) => stripExt(e.name)); } catch { return []; }
+}
+
+const NAME_OK = { components: PASCAL, pages: PASCAL, workflows: /^[A-Za-z][A-Za-z0-9_-]*$/, fixtures: /^[A-Za-z0-9][A-Za-z0-9_-]*$/ };
+
+/**
+ * Name clashes, caught at plan time: two items of the folder that would land at the same place (library/<kind>/<Name>
+ * or features/<feature>/<kind>/<Name>), or an item that would land on an item the folder's library or features already
+ * hold. The first one (the file named after it, else by path) keeps its name; every other one gets a question whose
+ * recommended option is a unique name made from its file name (Detail-v2.tsx -> DetailV2). An answer `name:<Name>`
+ * picks another name; it must be a valid, free name. A renamed component or page keeps `exportName` (the name its file
+ * exports today), so the step renames the export too.
+ * @throws {LineOpError} BAD_NAME when an answer names an invalid or taken name.
+ */
+function resolveClashes(projectRoot, folder, items, answers) {
+  const abs = path.join(projectRoot, folder);
+  /** @type {Map<string, {file: string, existing: boolean}>} key -> who holds it */
+  const taken = new Map();
+  let features = [];
+  try { features = fs.readdirSync(path.join(abs, 'features'), { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name); } catch { features = []; }
+  for (const kind of Object.keys(KIND_ORDER)) {
+    for (const n of namesOnDisk(path.join(abs, 'library', kind))) taken.set(`library/${kind}/${n}`, { file: `${folder}/library/${kind}/${n}`, existing: true });
+    for (const f of features) for (const n of namesOnDisk(path.join(abs, 'features', f, kind))) taken.set(`features/${f}/${kind}/${n}`, { file: `${folder}/features/${f}/${kind}/${n}`, existing: true });
+  }
+  const keysOf = (it, name) => [
+    ...(it.target === 'library' || it.mode === 'split' ? [`library/${it.kind}/${name}`] : []),
+    ...(it.target === 'feature' ? [`features/${it.feature}/${it.kind}/${name}`] : []),
+  ];
+  const free = (it, name) => keysOf(it, name).every((k) => !taken.has(k));
+  // The file named after its item claims the name first; then by path.
+  const named = (it) => (stripExt(posix.basename(it.file)) === it.name ? 0 : 1);
+  for (const it of [...items].sort((a, b) => named(a) - named(b) || a.file.localeCompare(b.file))) {
+    const clash = keysOf(it, it.name).map((k) => taken.get(k)).find(Boolean);
+    if (clash) {
+      let proposed = nameFromFile(it.file, it.kind);
+      for (let n = 2; proposed === it.name || !free(it, proposed); n += 1) proposed = `${nameFromFile(it.file, it.kind)}${n}`;
+      const other = posix.basename(clash.file);
+      const mine = posix.basename(it.file);
+      const q = {
+        id: `name-clash:${it.file}`, file: it.file,
+        sentence: clash.existing
+          ? `${mine} brings ${it.name}, but the folder already has ${it.name} (${other}); what should the new one be called?`
+          : `${mine} and ${other} both bring ${it.name}, and Line can hold only one ${SINGULAR[it.kind]} called ${it.name} there; what should the one from ${mine} be called?`,
+        options: [{ id: `name:${proposed}`, sentence: `Call it ${proposed}, after its file ${mine}.` }],
+        recommended: `name:${proposed}`,
+      };
+      const answer = answers?.[q.id];
+      let chosen = proposed;
+      if (answer !== undefined && answer !== q.recommended) {
+        const n = String(answer).startsWith('name:') ? String(answer).slice('name:'.length) : '';
+        if (!NAME_OK[it.kind].test(n)) throw new LineOpError(`"${n}" cannot be the name of the ${SINGULAR[it.kind]} from ${mine}; use ${it.kind === 'components' || it.kind === 'pages' ? 'a capitalised name of letters and digits' : 'letters and digits'}, such as ${proposed}.`, 'BAD_NAME');
+        if (!free(it, n)) throw new LineOpError(`${n} is taken too, so it cannot be the name of the ${SINGULAR[it.kind]} from ${mine}; pick a free name such as ${proposed}.`, 'BAD_NAME');
+        chosen = n;
+      }
+      it.questions.push(q);
+      it.rules.push('name-clash');
+      it.clash = { with: clash.file, was: it.name, answered: answer !== undefined };
+      const holder = items.find((x) => x.file === clash.file);
+      if (holder) (holder.renamedOthers ??= []).push({ file: it.file, name: chosen });
+      it.name = chosen;
+    }
+    for (const k of keysOf(it, it.name)) taken.set(k, { file: it.file, existing: false });
+  }
+}
+
+/** What a name clash did to an item, for its sentences: '' when none. `files` names the files (plan steps do). */
+function clashNote(it, files) {
+  const own = (f) => (files ? posix.basename(f) : stripExt(posix.basename(f)));
+  const pick = it.clash && !it.clash.answered ? '; you can pick another name' : '';
+  if (it.clash && files) return ` ${own(it.clash.with)} also brings ${it.clash.was}, so this one is renamed${pick}.`;
+  if (it.clash) return ` It is called ${it.name}, because ${own(it.clash.with)} also brings ${it.clash.was}${pick}.`;
+  if (it.renamedOthers?.length) return ` ${it.renamedOthers.map((o) => `The ${it.name} from ${own(o.file)} becomes ${o.name}`).join('. ')}.`;
+  return '';
+}
+
 function proposalSentence(it) {
+  return proposalBase(it) + clashNote(it, false);
+}
+
+function proposalBase(it) {
   const used = it.pages.length >= 2 ? `${it.pages.length} pages use it` : it.pages.length === 1 ? 'only one page uses it' : 'no page uses it';
   if (it.target === 'library') {
     const lvl = it.level ? ` as ${it.level === 'atom' ? 'an' : 'a'} ${it.level}` : '';
@@ -434,6 +532,8 @@ function decide(projectRoot, folderArg, answers) {
   const { items, unchanged, routes, graph } = readFolder(projectRoot, folder);
   decideTargets(folder, items, answers);
   decideBases(folder, items, graph);
+  resolveClashes(projectRoot, folder, items, answers);
+  finishBases(items);
   return { folder, items, unchanged, routes };
 }
 
@@ -495,18 +595,23 @@ export function planImport(projectRoot, folder, answers = {}) {
   const appFolders = [...new Set(d.unchanged.map((u) => local(u.file)).filter((r) => r.includes('/')).map((r) => r.split('/')[0]))].sort();
   add('line.import.mark', { features, ...(appFolders.length ? { appFolders } : {}) }, `Marks ${f} as a Line folder, with a library and ${features.length === 1 ? `the feature ${features[0]}` : `the features ${features.join(', ')}`}${features.length ? '' : ' no features'}.`, 'mark');
   const shimNote = (it) => (it.outsideUsers.length ? ` Its old file stays as a one-line link, because ${it.outsideUsers.length === 1 ? posix.basename(it.outsideUsers[0]) : `${it.outsideUsers.length} files`} outside the folder use${it.outsideUsers.length === 1 ? 's' : ''} it.` : '');
+  // A renamed component or page renames its export too (exportName: the name its file exports today).
+  const rename = (it) => (it.clash && it.exportName && it.exportName !== it.name ? { exportName: it.exportName } : {});
+  // Where two items clash, the step names both files.
+  const what = (it) => (it.clash || it.renamedOthers?.length ? `${it.clash ? it.clash.was : it.name} from ${posix.basename(it.file)}` : it.name);
+  const as = (it) => (it.clash ? ` as ${it.name}` : '');
   for (const it of items.filter((i) => i.target === 'library' || i.mode === 'split')) {
     const lvl = it.target === 'library' && it.level ? it.level : undefined;
-    add('line.import.toLibrary', { from: local(it.file), kind: it.kind, name: it.name, ...(lvl ? { level: lvl } : {}), keepShim: it.outsideUsers.length > 0 },
-      `Moves ${it.name} into the library${lvl ? ` as ${lvl === 'atom' ? 'an' : 'a'} ${lvl}` : ''} and points its users at it.${shimNote(it)}`, `lib-${it.name}`);
+    add('line.import.toLibrary', { from: local(it.file), kind: it.kind, name: it.name, ...rename(it), ...(lvl ? { level: lvl } : {}), keepShim: it.outsideUsers.length > 0 },
+      `Moves ${what(it)} into the library${as(it)}${lvl ? ` as ${lvl === 'atom' ? 'an' : 'a'} ${lvl}` : ''} and points its users at it.${clashNote(it, true)}${shimNote(it)}`, `lib-${it.name}`);
   }
   for (const it of items.filter((i) => i.mode === 'move')) {
-    add('line.import.toFeature', { mode: 'move', from: local(it.file), kind: it.kind, name: it.name, feature: it.feature, base: it.base, keepShim: it.outsideUsers.length > 0, ...(it.route ? { route: it.route } : {}) },
-      `Moves ${it.name} into feature ${it.feature}, based on the library ${it.baseItem.name}.${shimNote(it)}`, `feature-${it.name}`);
+    add('line.import.toFeature', { mode: 'move', from: local(it.file), kind: it.kind, name: it.name, ...rename(it), feature: it.feature, base: it.base, keepShim: it.outsideUsers.length > 0, ...(it.route ? { route: it.route } : {}) },
+      `Moves ${what(it)} into feature ${it.feature}${as(it)}, based on the library ${it.baseItem.name}.${clashNote(it, true)}${shimNote(it)}`, `feature-${it.name}`);
   }
   for (const it of items.filter((i) => i.mode === 'split')) {
     add('line.import.toFeature', { mode: 'wrap', kind: it.kind, name: it.name, feature: it.feature, base: it.base, ...(it.route ? { route: it.route } : {}) },
-      `Adds ${it.name} to feature ${it.feature}, based on the library ${it.name}${it.route ? `, serving ${it.route}` : ''}.`, `feature-${it.name}`);
+      `Adds ${it.name} to feature ${it.feature}, based on the library ${it.name}${it.route ? `, serving ${it.route}` : ''}.${it.clash ? ` It is ${it.clash.was} from ${posix.basename(it.file)}, renamed because ${posix.basename(it.clash.with)} also brings ${it.clash.was}.` : ''}`, `feature-${it.name}`);
   }
   const lib = items.filter((i) => i.target === 'library').length;
   const feat = items.length - lib;
@@ -519,20 +624,93 @@ export function planImport(projectRoot, folder, answers = {}) {
 // ---------------------------------------------------------------------------------------------
 // Steps (plan-ready tools): each returns a StagedChange relative to the folder.
 
-/** A re-export left at an old path so code outside the folder keeps working. */
-function shimSource(oldRel, newRel, src) {
+/** A re-export left at an old path so code outside the folder keeps working (under its old name when it was renamed). */
+function shimSource(oldRel, newRel, src, renamed) {
   if (posix.extname(oldRel) === '.json') return src;
   let spec = posix.relative(posix.dirname(oldRel), stripExt(newRel));
   if (!spec.startsWith('.')) spec = `./${spec}`;
   const def = /export\s+default\b|export\s*\{[^}]*\bas\s+default\b/.test(src) ? `export { default } from '${spec}';\n` : '';
-  return `// Moved into Line: ${newRel}. This file stays so code outside this folder keeps working.\nexport * from '${spec}';\n${def}`;
+  // Only a named export needs its old name back; a default export keeps working through `default`.
+  const named = renamed && (new RegExp(`export\\s+(?:declare\\s+)?(?:async\\s+)?(?:function\\*?|const|let|var|class)\\s+${renamed.to}\\b`).test(src)
+    || new RegExp(`export\\s*\\{[^}]*\\b${renamed.to}\\b(?!\\s+as\\s+default)[^}]*\\}`).test(src));
+  const old = named ? `export { ${renamed.to} as ${renamed.from} } from '${spec}';\n` : '';
+  return `// Moved into Line: ${newRel}. This file stays so code outside this folder keeps working.\nexport * from '${spec}';\n${old}${def}`;
 }
 
 /** Put the shim in place of the old file's delete. */
-function withShim(change, from, to, keepShim) {
+function withShim(change, from, to, keepShim, renamed) {
   if (!keepShim) return change;
   const original = change.files.find((x) => x.path === to)?.content ?? '';
-  return { ...change, files: change.files.map((x) => (x.path === from && x.content === null ? { path: from, content: shimSource(from, to, original) } : x)) };
+  return { ...change, files: change.files.map((x) => (x.path === from && x.content === null ? { path: from, content: shimSource(from, to, original, renamed) } : x)) };
+}
+
+/** Where an identifier is a name, not a reference to the binding (a member property, an object or class key, a JSX attribute). */
+function isNameOnly(node, parent, key) {
+  if (!parent) return false;
+  if ((parent.type === 'MemberExpression' || parent.type === 'JSXMemberExpression') && key === 'property' && !parent.computed) return true;
+  if (['MethodDefinition', 'PropertyDefinition', 'TSPropertySignature', 'TSMethodSignature'].includes(parent.type) && key === 'key' && !parent.computed) return true;
+  if (parent.type === 'JSXAttribute' && key === 'name') return true;
+  if (parent.type === 'TSQualifiedName' && key === 'right') return true;
+  return false;
+}
+
+/**
+ * Rename the binding `from` to `to` in one module's source (its declaration and every reference to it), by AST ranges.
+ * An object shorthand `{ from }` keeps its key (`{ from: to }`). Null when the source cannot be parsed.
+ */
+function renameBinding(src, from, to) {
+  let ast;
+  try { ast = parseToAst(src); } catch { return null; }
+  /** @type {Map<number, {end: number, text: string}>} */
+  const edits = new Map();
+  walkAst(ast, {
+    enter(/** @type {any} */ n, /** @type {any} */ parent, /** @type {any} */ key) {
+      if ((n.type !== 'Identifier' && n.type !== 'JSXIdentifier') || n.name !== from || !n.range) return;
+      if (isNameOnly(n, parent, key)) return;
+      if (parent?.type === 'Property' && key === 'key' && !parent.computed) {
+        if (parent.shorthand) edits.set(n.range[0], { end: n.range[1], text: `${from}: ${to}` });
+        return;
+      }
+      if (parent?.type === 'Property' && key === 'value' && parent.shorthand) return; // the key above wrote both
+      if (!edits.has(n.range[0])) edits.set(n.range[0], { end: n.range[1], text: to });
+    },
+  });
+  let out = src;
+  for (const [start, e] of [...edits].sort((a, b) => b[0] - a[0])) out = out.slice(0, start) + e.text + out.slice(e.end);
+  return out;
+}
+
+/** In a user's source, imports and re-exports of the moved module (its file name is now `base`) take `to` instead of `from`, under the old local name. */
+function renameImports(src, base, from, to) {
+  const fromModule = (spec) => stripExt(posix.basename(spec)) === base || posix.basename(spec) === base;
+  const names = (list) => list.split(',').map((part) => {
+    const m = part.match(/^(\s*)(type\s+)?([A-Za-z_$][\w$]*)(\s+as\s+[A-Za-z_$][\w$]*)?(\s*)$/);
+    if (!m || m[3] !== from) return part;
+    return `${m[1]}${m[2] ?? ''}${to}${m[4] ?? ` as ${from}`}${m[5]}`;
+  }).join(',');
+  return src
+    .replace(/(\bimport\s+(?:type\s+)?(?:[A-Za-z_$][\w$]*\s*,\s*)?\{)([^}]*)(\}\s*from\s*(['"])([^'"]+)\4)/g, (all, head, list, tail, _q, spec) => (fromModule(spec) ? `${head}${names(list)}${tail}` : all))
+    .replace(/(\bexport\s+(?:type\s+)?\{)([^}]*)(\}\s*from\s*(['"])([^'"]+)\4)/g, (all, head, list, tail, _q, spec) => (fromModule(spec) ? `${head}${names(list)}${tail}` : all));
+}
+
+/**
+ * A move whose item gets a new name (a name clash at plan time): the moved file's export `exportName` becomes `name`,
+ * and every user the move already re-points imports it under the new name, keeping its own local name.
+ */
+function withRename(change, to, exportName, name) {
+  if (!exportName || exportName === name) return change;
+  return {
+    ...change,
+    files: change.files.map((x) => {
+      if (x.content === null || posix.extname(x.path) === '.json') return x;
+      if (x.path === to) {
+        const renamed = renameBinding(x.content, exportName, name);
+        if (renamed === null) throw new LineOpError(`${posix.basename(to)} could not be read as code, so ${exportName} cannot be renamed to ${name}; fix the file or pick its old name.`, 'BAD_NAME');
+        return { ...x, content: renamed };
+      }
+      return { ...x, content: renameImports(x.content, name, exportName, name) };
+    }),
+  };
 }
 
 /**
@@ -574,18 +752,21 @@ export const IMPORT_STEP_TOOLS = Object.freeze({
     if (!files.length) throw new LineOpError(`${folder} is already marked as a Line folder.`, 'NAME_TAKEN');
     return { summary: `Marks ${folder} as a Line folder.`, files };
   },
-  'line.import.toLibrary': (root, { from, kind, name, level, keepShim }) => {
+  'line.import.toLibrary': (root, { from, kind, name, exportName, level, keepShim }) => {
     const to = libPath({ from, kind, name });
-    let change = planMoveFile(root, { from, to });
+    const renamed = exportName && exportName !== name ? { from: exportName, to: name } : null;
+    let change = withRename(planMoveFile(root, { from, to }), to, exportName, name);
     if (level) change = { ...change, files: change.files.map((x) => (x.path === to ? { ...x, content: `// @line-level ${level}\n${x.content}` } : x)) };
-    change = withCarriedExceptions(root, withShim(change, from, to, keepShim), to, from);
+    change = withCarriedExceptions(root, withShim(change, from, to, keepShim, renamed), to, from);
     return { ...change, summary: `Moves ${name} into the library.` };
   },
-  'line.import.toFeature': (root, { mode, from, kind, name, feature, base, route, keepShim }) => {
+  'line.import.toFeature': (root, { mode, from, kind, name, exportName, feature, base, route, keepShim }) => {
     const addRoute = (c, p) => (route && kind === 'pages' ? { ...c, files: c.files.map((x) => (x.path === p ? { ...x, content: x.content.replace(/^(\/\/ @line-base [^\n]*\n)/, `$1// @line-route ${route}\n`) } : x)) } : c);
     if (mode === 'move') {
       const to = `features/${feature}/${kind}/${name}${posix.extname(String(from))}`;
-      const change = withCarriedExceptions(root, addRoute(withShim(planMoveFile(root, { from, to, base }), from, to, keepShim), to), to, from);
+      const renamed = exportName && exportName !== name ? { from: exportName, to: name } : null;
+      const moved = withRename(planMoveFile(root, { from, to, base }), to, exportName, name);
+      const change = withCarriedExceptions(root, addRoute(withShim(moved, from, to, keepShim, renamed), to), to, from);
       return { ...change, summary: `Moves ${name} into feature ${feature}.` };
     }
     const change = planBaseOn(root, { libraryId: base, feature, name });
@@ -608,8 +789,33 @@ export function planImportStep(folderRoot, step) {
 }
 
 /**
- * Plan and apply the import step by step: each step is planned on the current disk and lands only through applyChange
- * with the folder as the root, so nothing outside the folder can be written. Stops at the first refused step.
+ * A scratch copy of the import folder to chain the steps in: `<tmp>/<folder>` (every file of the folder, without
+ * node_modules, .next, .git or a nested checkout), with each architecture.yml from the project root down to the folder
+ * copied to the same place (so frozen globs and the project's root resolve as they do on the real folder), and a .git
+ * marker at the top so nothing above the copy is read. Returns its folder root and a cleanup.
+ */
+function scratchFolder(projectRoot, folder) {
+  const top = fs.mkdtempSync(path.join(os.tmpdir(), `construct-import-${process.pid}-`));
+  fs.mkdirSync(path.join(top, '.git'));
+  const parts = folder.split('/');
+  for (let i = 0; i < parts.length; i += 1) {
+    const rel = parts.slice(0, i).join('/');
+    const yml = path.join(projectRoot, rel, 'architecture.yml');
+    if (fs.existsSync(yml)) { fs.mkdirSync(path.join(top, rel), { recursive: true }); fs.copyFileSync(yml, path.join(top, rel, 'architecture.yml')); }
+  }
+  const src = path.join(projectRoot, folder);
+  const dest = path.join(top, folder);
+  fs.mkdirSync(dest, { recursive: true });
+  fs.cpSync(src, dest, { recursive: true, filter: (p) => !WALK_SKIP_DIRS.has(path.basename(p)) && (p === src || !isGitCheckout(p)) });
+  return { root: dest, cleanup: () => { try { fs.rmSync(top, { recursive: true, force: true }); } catch { /* left in tmp */ } } };
+}
+
+/**
+ * Plan and apply the whole import as ONE change. Every step is planned and landed through applyChange in a scratch copy
+ * of the folder, so each step sees the ones before it and is checked on its own; when every step landed there, the net
+ * result (what the folder's files are now in the copy) goes to the real folder in one applyChange, one transaction of
+ * Construct's writer, with the folder as its root. So it is all-or-nothing: when any step, or the final commit, is
+ * refused, nothing is written and the folder stays byte-identical; nothing outside the folder can be written.
  * @param {string} projectRoot
  * @param {string} folder
  * @param {Record<string, string>} [answers]
@@ -618,30 +824,54 @@ export function planImportStep(folderRoot, step) {
 export function applyImport(projectRoot, folder, answers = {}) {
   const plan = planImport(projectRoot, folder, answers);
   const root = path.join(projectRoot, plan.folder);
-  const written = [];
   const steps = [];
   const prefix = (p) => `${plan.folder}/${p}`;
+  const lower = (t) => `${t.charAt(0).toLowerCase()}${t.slice(1)}`;
+  const stopped = (step, why, findings = []) => ({
+    ok: false,
+    sentence: `Nothing was saved: Line stopped at "${step.sentence.split(/(?<=[.?!])\s/)[0].replace(/[.?!]$/, '')}", because ${lower(why.replace(/^Nothing (was|would be) saved: /, ''))}`,
+    files: [], findings, steps, .../** @type {any} */ ({ landed: [] }),
+  });
   if (!plan.steps.length) return { ok: false, sentence: `Nothing was saved: there is nothing in ${plan.folder} for Line to bring in.`, files: [], findings: [], steps };
-  for (const step of plan.steps) {
-    let change;
-    try {
-      change = planImportStep(root, step);
-    } catch (e) {
-      const s = e instanceof LineOpError || e?.name === 'LineOpError' ? e.sentence : 'Line could not plan this step.';
-      steps.push({ id: step.id, ok: false, sentence: `Not done: ${s.charAt(0).toLowerCase()}${s.slice(1)}` });
-      return { ok: false, sentence: `Stopped at "${step.sentence.replace(/[.?!]$/, '')}": ${s.charAt(0).toLowerCase()}${s.slice(1)}`, files: [], findings: [], steps, .../** @type {any} */ ({ landed: written }) };
+  const scratch = scratchFolder(projectRoot, plan.folder);
+  try {
+    const touched = new Set();
+    for (const step of plan.steps) {
+      let change;
+      try {
+        change = planImportStep(scratch.root, step);
+      } catch (e) {
+        const why = e instanceof LineOpError || /** @type {any} */ (e)?.name === 'LineOpError' ? /** @type {any} */ (e).sentence : 'Line could not plan this step.';
+        steps.push({ id: step.id, ok: false, sentence: `Not done: ${lower(why)}` });
+        return stopped(step, why);
+      }
+      const outside = change.files.find((x) => x.path.startsWith('/') || x.path.split('/').includes('..'));
+      if (outside) {
+        steps.push({ id: step.id, ok: false, sentence: `Not done: Line writes only inside ${plan.folder}, and this step would write ${outside.path}.` });
+        return stopped(step, `Line writes only inside ${plan.folder}, and this step would write ${outside.path}.`);
+      }
+      const r = applyChange(scratch.root, change);
+      steps.push({ id: step.id, ok: r.ok, sentence: r.ok ? step.sentence : r.sentence });
+      if (!r.ok) return stopped(step, r.sentence, r.findings.map((x) => ({ ...x, file: x.file === '.' ? plan.folder : prefix(x.file) })));
+      for (const f of r.files) touched.add(f);
     }
-    const outside = change.files.find((x) => x.path.startsWith('/') || x.path.split('/').includes('..'));
-    if (outside) {
-      steps.push({ id: step.id, ok: false, sentence: `Not done: Line writes only inside ${plan.folder}, and this step would write ${outside.path}.` });
-      return { ok: false, sentence: `Nothing more was saved: Line writes only inside ${plan.folder}, and a step would write ${outside.path}.`, files: [], findings: [], steps, .../** @type {any} */ ({ landed: written }) };
+    // The net change: each touched file as it is in the copy now (null where a step removed it), unless it ends as it began.
+    const files = [];
+    for (const rel of [...touched].sort()) {
+      const after = path.join(scratch.root, rel);
+      const before = path.join(root, rel);
+      const now = fs.existsSync(after) ? fs.readFileSync(after) : null;
+      const was = fs.existsSync(before) ? fs.readFileSync(before) : null;
+      if (now === null ? was === null : was !== null && now.equals(was)) continue;
+      files.push({ path: rel, content: now === null ? null : now.toString('utf8') });
     }
-    const r = applyChange(root, change);
-    steps.push({ id: step.id, ok: r.ok, sentence: r.ok ? step.sentence : r.sentence });
+    if (!files.length) return { ok: true, sentence: `Nothing to save: ${plan.folder} is already as the import would leave it.`, files: [], findings: [], steps };
+    const r = applyChange(root, { summary: plan.summary, files }, { acceptedIn: scratch.root });
     if (!r.ok) {
-      return { ok: false, sentence: `Stopped at "${step.sentence.replace(/[.?!]$/, '')}": ${r.sentence.charAt(0).toLowerCase()}${r.sentence.slice(1)}`, files: [], findings: r.findings.map((x) => ({ ...x, file: x.file === '.' ? plan.folder : prefix(x.file) })), steps, .../** @type {any} */ ({ landed: written }) };
+      return { ok: false, sentence: `Nothing was saved: every step passed on its own, but the import as a whole was refused: ${lower(r.sentence.replace(/^Nothing was saved: /, ''))}`, files: [], findings: r.findings.map((x) => ({ ...x, file: x.file === '.' ? plan.folder : prefix(x.file) })), steps, .../** @type {any} */ ({ landed: [] }) };
     }
-    written.push(...r.files.map(prefix));
+    return { ok: true, sentence: `Saved. ${plan.summary}`, files: r.files.map(prefix), findings: [], steps };
+  } finally {
+    scratch.cleanup();
   }
-  return { ok: true, sentence: `Saved. ${plan.summary}`, files: [...new Set(written)], findings: [], steps };
 }

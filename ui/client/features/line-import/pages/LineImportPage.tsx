@@ -8,7 +8,7 @@ import type { ImportControls } from '../types';
 /** /import: bring one folder of an existing app into Line (partial migration). Pick the folder, read what Line proposes,
  * answer only what it cannot decide, see the plan's steps, Apply. */
 export function LineImportPage({ controls }: { controls: ImportControls }) {
-  const { state, view, setFolder, scan, answer, plan, apply } = controls;
+  const { state, view, setFolder, scan, answer, plan, apply, undo, leave } = controls;
   return (
     <div className="li-stage" data-testid="line-import">
       <header className="li-head">
@@ -21,7 +21,7 @@ export function LineImportPage({ controls }: { controls: ImportControls }) {
       <ImportNotice result={state.result} error={state.error} />
       <ScanSection view={view} />
       <QuestionList questions={view.questions} busy={view.busy} onAnswer={answer} />
-      <PlanSection view={view} plan={state.plan} result={state.result} onPlan={plan} onApply={apply} />
+      <PlanSection view={view} plan={state.plan} result={state.result} onPlan={plan} onApply={apply} onUndo={undo} onLeave={leave} />
     </div>
   );
 }

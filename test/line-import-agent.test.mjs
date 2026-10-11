@@ -273,7 +273,7 @@ test('real: a step that cannot be made (an edited base that does not exist) asks
   v = await approveAlong(agent, planService, v);
   assert.equal(v.waiting?.for, 'answer', v.sentence);
   assert.equal(v.waiting.question.id, 'step:import-8-feature-AlertRow');
-  assert.deepEqual(v.waiting.question.options.map((o) => o.id), ['leave']);
+  assert.deepEqual(v.waiting.question.options.map((o) => o.id), ['undo', 'leave'], 'no typed fix: undoing the whole import comes first, leaving the step is the other choice');
   v = await agent.answer('ui', v.waiting.question.id, 'leave');
   v = await approveAlong(agent, planService, v);
   assert.equal(v.state, 'done', v.sentence);
@@ -293,7 +293,9 @@ test('real: a copy of max-ai-ui (when present) imports src/subframe-pages/Inbox;
   assert.equal(v.state, 'review');
   v = await agent.editStep('ui', { action: 'approve-all' });
   v = await approveAlong(agent, planService, v, 80);
-  for (let i = 0; i < 5 && v.waiting?.for === 'answer'; i += 1) { v = await agent.answer('ui', v.waiting.question.id, v.waiting.question.recommended); v = await approveAlong(agent, planService, v, 80); }
+  // A typed fix where one is offered, else leave the step (undoing the whole import is the other choice; not this test's).
+  const pick = (q) => (q.recommended === 'undo' ? 'leave' : q.recommended);
+  for (let i = 0; i < 5 && v.waiting?.for === 'answer'; i += 1) { v = await agent.answer('ui', v.waiting.question.id, pick(v.waiting.question)); v = await approveAlong(agent, planService, v, 80); }
   assert.equal(v.state, 'done', v.sentence);
   assert.ok(fs.existsSync(path.join(dir, folder, 'features/inbox')), 'InboxPage lands in feature inbox');
   assert.equal(fs.existsSync(path.join(MAX_AI_UI, 'architecture.yml')), false, 'the original is untouched');

@@ -8,9 +8,11 @@ import { createTransaction } from '../transactionalWriter.mjs';
 import { aggregateValidation } from '@line/construct-core/registry';
 import { enforcersForRoot } from '@line/construct-core/profiles';
 import { folderRootOf } from './importTools.mjs';
+import { snapshotFolder, rollbackFolder } from './importUndo.mjs';
 import { createImportAgent } from './importAgent.mjs';
 
 export { createImportAgent, nextState, decideWith, agentView, MAX_ROUNDS } from './importAgent.mjs';
+export { snapshotFolder, rollbackFolder, IMPORT_UNDO_FILE } from './importUndo.mjs';
 
 const lower = (s) => String(s).charAt(0).toLowerCase() + String(s).slice(1);
 const asSentence = (s) => { const t = String(s ?? '').trim().replace(/\s+/g, ' '); return /[.?!]$/.test(t) ? t : `${t}.`; };
@@ -64,6 +66,8 @@ export function createImportAgentOnDisk(o) {
     store: fileStore(o.root, o.folder),
     importOps: { scan: scanImport, plan: planImport },
     checkFolder: () => folderRootOf(o.root, o.folder),
+    snapshot: snapshotFolder,
+    rollback: rollbackFolder,
     ...o,
   });
 }

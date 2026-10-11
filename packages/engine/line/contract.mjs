@@ -438,6 +438,8 @@ export const LINE_PLAN_TOOLS = Object.freeze([
   { name: 'line.removeWorkflowTransition', kind: 'write', request: 'RemoveWorkflowTransitionRequest' },
   { name: 'line.leaveAsIs', kind: 'write', request: '{stepId}' },
   { name: 'line.import.fix', kind: 'write', request: '{folder, tool, args} (ci2: a typed fix run inside the import folder)' },
+  { name: 'line.import.save', kind: 'write', request: '{folder} (iv2: save the folder before an import, so it can be undone)' },
+  { name: 'line.import.undo', kind: 'write', request: '{folder} (iv2: put the folder back as line.import.save saved it)' },
   { name: 'line.project', kind: 'read', request: '{}' },
 ]);
 export const CHECK_KINDS = Object.freeze(['validate', 'types', 'tests', 'file', 'spec']);
@@ -501,14 +503,15 @@ export const CHECK_KINDS = Object.freeze(['validate', 'types', 'tests', 'file', 
  */
 
 /**
- * applyImport {folder, answers} (CLI and mock mode; Cockpit adds the steps to the plan): the plan run step by step through applyChange; it stops at the first
- * refused step (steps already landed stay landed, each one was checked on its own).
+ * applyImport {folder, answers} (CLI and mock mode; Cockpit adds the steps to the plan): every step planned and landed through applyChange
+ * in a scratch copy of the folder (each checked on its own, each seeing the ones before), then the net result lands on the real
+ * folder in ONE applyChange. All or nothing: a refused step, or a refused final commit, leaves the folder byte-identical.
  * @typedef {object} ImportApplyResult
  * @property {boolean} ok
  * @property {string} sentence
  * @property {string[]} files     Project-relative files written.
  * @property {LineFinding[]} findings  Why a step was refused (empty when every step landed).
- * @property {string[]} [landed]  Folder files the steps before a refused one already wrote.
+ * @property {string[]} [landed]  Always empty on a refusal now (kept for older callers): nothing lands unless every step does.
  * @property {{id: string, ok: boolean, sentence: string}[]} steps
  */
 
@@ -666,13 +669,13 @@ export const AUTO_ACTION_KINDS = Object.freeze(['click', 'type', 'select', 'appr
  * @property {Record<string, unknown>} args     Always includes `folder`; only the IMPORT_EDITABLE fields may change.
  * @property {string} sentence
  * @property {'proposed'|'approved'|'skipped'} review
- * @property {'todo'|'running'|'done'|'needs-you'|'left'} run   left: the person chose to leave it as it is.
+ * @property {'todo'|'running'|'done'|'needs-you'|'left'|'undone'} run   left: the person chose to leave it as it is; undone: it landed, then the person undid the whole import.
  * @property {string[]} planStepIds   The cp1 plan steps it ran as (the step, its fixes, its retries), in order.
  * @property {number} rounds          Fix rounds so far (each must pass more checks than the one before).
  * @property {string|null} outcome    One sentence once it ran.
  *
  * One recorded change to the plan or the process (who, what, when).
- * @typedef {{n: number, at: string, by: 'ui'|'agent'|'line', action: 'start'|'state'|'decide'|'edit'|'skip'|'unskip'|'move'|'approve'|'approve-all'|'add-step'|'answer'|'pause'|'resume'|'verify', stepId?: string, sentence: string}} ImportChange
+ * @typedef {{n: number, at: string, by: 'ui'|'agent'|'line', action: 'start'|'state'|'decide'|'edit'|'skip'|'unskip'|'move'|'approve'|'approve-all'|'add-step'|'answer'|'pause'|'resume'|'verify'|'undo', stepId?: string, sentence: string}} ImportChange
  *
  * One decision the agent took (a classify question or a fix to try), and who took it.
  * @typedef {{id: string, question: string, options: string[], picked: string, answer: string, by: 'static'|'single'|'order'|'jev'|'person', reason: string}} ImportDecision
@@ -699,6 +702,8 @@ export const AUTO_ACTION_KINDS = Object.freeze(['click', 'type', 'select', 'appr
  * @property {{pending: string|null, origin: string|null, phase: 'step'|'fix'|'retry'|'leave'|'refresh'|null}} cursor  The cp1 step being waited on.
  * @property {{ok: boolean, checks: ImportVerifyCheck[]}|null} verify
  * @property {ImportChange[]} changes
+ * @property {'saved'|'none'|'undone'} [undo]  Whether the folder was saved before the first step landed (so the person can
+ *   undo the whole import when a later step is refused), could not be ('none'), or the import was undone.
  *
  * GET /api/line/import-agent?folder= and every import-agent write answer this.
  * @typedef {object} ImportAgentView
@@ -1571,7 +1576,7 @@ export function importFolderProblem(folder) {
   if (folder.startsWith('/') || folder.includes('\\') || folder.split('/').some((p) => p === '..' || p === '.' || p === '')) return 'must be a folder inside the project, like src/alerts';
   return null;
 }
-const CHANGE_ACTIONS = ['start', 'state', 'decide', 'edit', 'skip', 'unskip', 'move', 'approve', 'approve-all', 'add-step', 'answer', 'pause', 'resume', 'verify'];
+const CHANGE_ACTIONS = ['start', 'state', 'decide', 'edit', 'skip', 'unskip', 'move', 'approve', 'approve-all', 'add-step', 'answer', 'pause', 'resume', 'verify', 'undo'];
 
 /** @param {any} w @param {string} where */
 function assertWaiting(w, where) {
@@ -1596,7 +1601,7 @@ function assertAgentStep(s, folder, where) {
   if (s.args?.folder !== folder) fail(`${where}.args.folder`, 'must name the plan\'s folder');
   sentence(s.sentence, `${where}.sentence`);
   if (!['proposed', 'approved', 'skipped'].includes(s.review)) fail(`${where}.review`, 'must be proposed, approved or skipped');
-  if (!['todo', 'running', 'done', 'needs-you', 'left'].includes(s.run)) fail(`${where}.run`, 'unknown run state');
+  if (!['todo', 'running', 'done', 'needs-you', 'left', 'undone'].includes(s.run)) fail(`${where}.run`, 'unknown run state');
   if (!Array.isArray(s.planStepIds)) fail(`${where}.planStepIds`, 'must be an array');
   if (!Number.isInteger(s.rounds) || s.rounds < 0) fail(`${where}.rounds`, 'must be a whole number');
   if (s.outcome !== null) sentence(s.outcome, `${where}.outcome`);
@@ -1648,7 +1653,8 @@ export function assertImportPlanFile(p) {
   p.changes.forEach((c, i) => { assertChange(c, `importPlan.changes[${i}]`); if (c.n !== i + 1) fail(`importPlan.changes[${i}].n`, 'must count up by one'); });
   if (!p.cursor || !['step', 'fix', 'retry', 'leave', 'refresh', null].includes(p.cursor.phase)) fail('importPlan.cursor', 'must be {pending, origin, phase}');
   assertVerify(p.verify, 'importPlan.verify');
-  if (p.state === 'done' && p.steps.some((s) => s.review !== 'skipped' && !['done', 'left'].includes(s.run))) fail('importPlan.state', 'done only when every step ran or was left');
+  if (p.undo !== undefined && !['saved', 'none', 'undone'].includes(p.undo)) fail('importPlan.undo', 'must be saved, none or undone');
+  if (p.state === 'done' && p.undo !== 'undone' && p.steps.some((s) => s.review !== 'skipped' && !['done', 'left'].includes(s.run))) fail('importPlan.state', 'done only when every step ran or was left, or the import was undone');
 }
 
 /**

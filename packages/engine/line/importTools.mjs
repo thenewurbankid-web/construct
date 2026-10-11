@@ -3,14 +3,16 @@
 //
 //   line.import.mark / toLibrary / toFeature   write   one ci1 import step (import.mjs IMPORT_STEP_TOOLS)
 //   line.import.fix                            write   one typed fix (fixes.mjs planStep) run inside the import folder
+//   line.import.save                           write   save the folder before the first import step (importUndo.mjs)
+//   line.import.undo                           write   put the folder back as line.import.save saved it, in one writer
+//                                                      transaction, when a later import step was refused
 //
 // Each runs with the import folder as the writer's root (`<project>/<args.folder>`), so it can never write outside the
 // folder, and records the same LineStepResult as the other change tools (planTools.mjs runChange: plan, narrow to what is
 // not there yet, applyChange, checks, the refusal's typed fixes as options). A fix option is re-worded as a
 // line.import.fix step, so the fix also runs inside the folder.
-import fs from 'node:fs';
-import path from 'node:path';
-import { IMPORT_TOOLS, LINE_FIX_TOOLS, LineOpError, importFolderProblem } from './contract.mjs';
+import { LINE_FIX_TOOLS, importFolderProblem } from './contract.mjs';
+import { folderRootOf, snapshotFolder, rollbackFolder, IMPORT_UNDO_FILE } from './importUndo.mjs';
 import { planImportStep } from './import.mjs';
 import { REAL_PLAN_OPS, runChange } from './planTools.mjs';
 
@@ -21,13 +23,31 @@ const PLAN_ONLY = ['expect', 'retry', 'fixOf'];
 /** The args each import tool takes (besides `folder` and the plan-only fields). */
 const ARGS = Object.freeze({
   'line.import.mark': ['features'],
-  'line.import.toLibrary': ['from', 'kind', 'name', 'level', 'keepShim'],
-  'line.import.toFeature': ['mode', 'from', 'kind', 'name', 'feature', 'base', 'route', 'keepShim'],
+  'line.import.toLibrary': ['from', 'kind', 'name', 'exportName', 'level', 'keepShim'],
+  'line.import.toFeature': ['mode', 'from', 'kind', 'name', 'exportName', 'feature', 'base', 'route', 'keepShim'],
   'line.import.fix': ['tool', 'args'],
 });
 
 /** A folder inside the project: relative, no "..", not the project itself (contract.mjs importFolderProblem). */
 export const folderProblem = importFolderProblem;
+export { folderRootOf };
+
+/** line.import.save / line.import.undo take only the folder. */
+function folderOnlySchema() {
+  return Object.freeze({
+    fields: ['folder'],
+    jsonSchema: () => ({ type: 'object', properties: { folder: { type: 'string', minLength: 1 } }, required: ['folder'], additionalProperties: false }),
+    safeParse(value) {
+      const v = value ?? {};
+      if (!isObj(v)) return failed([], 'must be an object');
+      const extra = Object.keys(v).find((k) => k !== 'folder');
+      if (extra) return failed([extra], 'is not an argument of this tool');
+      const bad = folderProblem(v.folder);
+      if (bad) return failed(['folder'], bad);
+      return { success: /** @type {const} */ (true), data: { folder: v.folder } };
+    },
+  });
+}
 
 function schemaOf(tool) {
   const allowed = new Set(['folder', ...ARGS[tool], ...PLAN_ONLY]);
@@ -67,21 +87,44 @@ const DESCRIBE = Object.freeze({
   'line.import.toLibrary': 'Import: moves one item of the import folder into its library and points its users at it, through the checked writer.',
   'line.import.toFeature': 'Import: moves or adds one item of the import folder into a feature, based on a library item, through the checked writer.',
   'line.import.fix': 'Import: applies one typed fix of a refused import step inside the import folder, through the checked writer.',
+  'line.import.save': 'Import: saves the import folder as it is (Line state), so the whole import can be undone if a later step is refused.',
+  'line.import.undo': 'Import: puts every file of the import folder back as line.import.save saved it, in one transaction of the writer.',
 });
 
 /**
- * The import folder's absolute root, or a LineOpError.
- * @param {any} root
- * @param {any} folder
- * @returns {any}
+ * The LineStepResult of save or undo: done, or needing the person (one failing check, "leave" as the option).
+ * @param {{ok: boolean, sentence: string, files: string[]}} r
+ * @param {string} folder
+ * @param {string} checkId
+ * @returns {import('./contract.mjs').LineStepResult}
  */
-export function folderRootOf(root, folder) {
-  const bad = folderProblem(folder);
-  if (bad) throw new LineOpError(`The import folder ${bad}.`, 'BAD_FOLDER');
-  const abs = path.resolve(root, folder);
-  if (!abs.startsWith(path.resolve(root) + path.sep)) throw new LineOpError('The import folder must be inside the project.', 'BAD_FOLDER');
-  if (!fs.existsSync(abs) || !fs.statSync(abs).isDirectory()) throw new LineOpError(`The project has no folder ${folder}.`, 'BAD_FOLDER');
-  return abs;
+function stateStepResult(r, folder, checkId) {
+  const files = r.files.map((f) => `${folder}/${f}`);
+  if (r.ok) return { apply: { ok: true, sentence: r.sentence, files, findings: [] }, checks: [], passed: 0, total: 0, needsYou: false, options: [], stopped: false, sentence: r.sentence };
+  return {
+    apply: { ok: false, sentence: `Nothing was saved: ${r.sentence.charAt(0).toLowerCase()}${r.sentence.slice(1)}`, files: [], findings: [] },
+    checks: [{ checkId, ok: false, sentence: r.sentence }], passed: 0, total: 1, needsYou: true,
+    options: [{ id: 'leave', sentence: 'Leave it as it is and carry on.' }], stopped: false, sentence: `This needs you: ${r.sentence}`,
+  };
+}
+
+/**
+ * Run line.import.save or line.import.undo on the project. Never throws for a refusal.
+ * @param {string} root Project root.
+ * @param {'line.import.save'|'line.import.undo'} tool
+ * @param {{folder: string}} args
+ * @returns {import('./contract.mjs').LineStepResult}
+ */
+export function runImportUndoTool(root, tool, { folder }) {
+  try {
+    if (tool === 'line.import.save') {
+      const { files } = snapshotFolder(root, folder);
+      return stateStepResult({ ok: true, sentence: `Saved ${folder} as it is (${files} file${files === 1 ? '' : 's'}), so the import can be undone.`, files: [IMPORT_UNDO_FILE] }, folder, 'save');
+    }
+    return stateStepResult(rollbackFolder(root, folder), folder, 'undo');
+  } catch (e) {
+    return stateStepResult({ ok: false, sentence: String(/** @type {any} */ (e)?.sentence ?? `${folder} could not be ${tool === 'line.import.save' ? 'saved' : 'put back'}.`), files: [] }, folder, tool === 'line.import.save' ? 'save' : 'undo');
+  }
 }
 
 /**
@@ -126,15 +169,16 @@ export function runImportTool(root, tool, args, ops = REAL_PLAN_OPS) {
  */
 export function importTools({ root, ops = REAL_PLAN_OPS, afterSave }) {
   // line.import.mark/toLibrary/toFeature are planTools.mjs's own change tools (the integrator's, run in the folder); this
-  // module adds only the fix step that runs inside the import folder (one module per concern).
-  return ['line.import.fix'].map((name) => ({
+  // module adds the fix step that runs inside the import folder, and the save and undo of a whole import.
+  return ['line.import.fix', 'line.import.save', 'line.import.undo'].map((name) => ({
     name,
     kind: /** @type {const} */ ('write'),
-    schema: schemaOf(name),
+    schema: name === 'line.import.fix' ? schemaOf(name) : folderOnlySchema(),
     describe: DESCRIBE[name],
     async run(args) {
-      const r = runImportTool(root, name, args, ops);
-      if (afterSave && r.apply?.ok) for (const f of r.apply.files) afterSave(root, `${args.folder}/${f}`);
+      const r = name === 'line.import.fix' ? runImportTool(root, name, args, ops) : runImportUndoTool(root, /** @type {any} */ (name), args);
+      // A fix reports folder-relative files; save and undo report project-relative ones.
+      if (afterSave && r.apply?.ok) for (const f of r.apply.files) afterSave(root, name === 'line.import.fix' ? `${args.folder}/${f}` : f);
       return r;
     },
   }));

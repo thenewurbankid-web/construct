@@ -75,7 +75,9 @@ export function createMockImport() {
     apply: ({ folder, answers = {} } = /** @type {any} */ ({})) => {
       check(folder);
       const plan = planOf(answers);
-      if (applied) return { ok: false, sentence: `Stopped at "${plan.steps[0].sentence.replace(/\.$/, '')}": ${FOLDER} is already marked as a Line folder.`, files: [], findings: [], steps: [{ id: plan.steps[0].id, ok: false, sentence: `Not done: ${FOLDER} is already marked as a Line folder.` }] };
+      // The real applyImport no longer brings in what is already in the folder's library and features, so a second
+      // apply finds nothing to bring in (and, all or nothing, writes nothing).
+      if (applied) return { ok: false, sentence: `Nothing was saved: there is nothing in ${FOLDER} for Line to bring in.`, files: [], findings: [], steps: [] };
       applied = true;
       return { ok: true, sentence: `Saved. ${plan.summary}`, files: [`${FOLDER}/architecture.yml`, `${FOLDER}/library/pages/AlertsPage.tsx`, `${FOLDER}/features/alerts/pages/AlertsPage.tsx`], findings: [], steps: plan.steps.map((s) => ({ id: s.id, ok: true, sentence: s.sentence })) };
     },

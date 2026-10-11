@@ -27,4 +27,7 @@ export const mockImportApi: ImportApi = {
   importScan: (req) => answer(() => mock.scan(req)),
   importPlan: (req) => answer(() => mock.plan(req)),
   importApply: (req) => answer(() => mock.apply(req)),
+  // The mock's apply is all or nothing and never stops halfway, so there is nothing to undo or leave.
+  importUndo: async () => ({ ok: false, sentence: 'There is nothing to undo in mock mode.', code: 'NOTHING_TO_UNDO' }),
+  importLeave: async () => ({ ok: false, sentence: 'There is nothing to leave in mock mode.', code: 'NOTHING_TO_LEAVE' }),
 };
