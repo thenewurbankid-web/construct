@@ -56,6 +56,7 @@ export function worldMap(world, synonyms = {}) {
  * becomes a Train slot (or a literal, for a prop name or a page part), the same thing always the same slot.
  * @param {any} facts The world's facts (facts.mjs factsOf).
  * @param {Record<string, any>} [slots] Train slots to add to (kept in place).
+ * @returns {{slots: Record<string, any>, add: (type: string, def: object) => string, ref: (slot: string, field: string|undefined, bindings: Record<string, any>) => string|{literal: unknown}|null, convert: (value: any, bindings: Record<string, any>) => any, name: (value: string) => string, text: (value: string) => string, feature: (name: string) => string|null, library: (id: string) => string|null, item: (id: string) => string|null}}
  */
 export function createConverter(facts, slots = {}) {
   const table = refTable(facts);
@@ -181,7 +182,10 @@ export function createConverter(facts, slots = {}) {
 export function rewriteRequest(request, n, facts, cv, map) {
   const text = String(request);
   // Missing items first, so a new name built on one ("StatusTooltip") can point at it.
-  for (const t of n.tokens) if (t.kind === 'unknown' && t.src.length === 1 && /^[A-Z][a-z]{2,}$/.test(t.src[0]) && !FUNCTION_WORDS.has(t.src[0].toLowerCase())) t.missing = cv.add('missing', { kind: 'components', role: t.src[0].toLowerCase() });
+  /** @type {Map<object, string>} token -> its missing-item slot */
+  const missing = new Map();
+  for (const t of n.tokens) if (t.kind === 'unknown' && t.src.length === 1 && /^[A-Z][a-z]{2,}$/.test(t.src[0]) && !FUNCTION_WORDS.has(t.src[0].toLowerCase())) missing.set(t, cv.add('missing', { kind: 'components', role: t.src[0].toLowerCase() }));
+  /** @type {{s: number, e: number, f: string}[]} */
   const parts = [];
   let cursor = 0;
   const kept = new Set();
@@ -190,16 +194,16 @@ export function rewriteRequest(request, n, facts, cv, map) {
     for (const piece of t.src) { const i = text.indexOf(piece, end); if (i < 0) { start = -2; break; } if (start === -1) start = i; end = i + piece.length; }
     if (start < 0) continue;
     let form = null;
-    if (t.missing) form = `<missing:${t.missing}>`;
+    if (missing.has(t)) form = `<missing:${missing.get(t)}>`;
     else if (t.kind === 'value' && typeof n.bindings[t.slot] === 'string') { const r = cv.ref(t.slot, undefined, n.bindings); form = r ? `${t.src[0][0]}${r}${t.src[0].at(-1)}` : null; }
     else if (t.kind === 'code') { const r = cv.ref(t.slot, undefined, n.bindings); form = r ? `\`${r}\`` : null; }
     else if (t.slot && t.kind !== 'unknown') { const r = cv.ref(t.slot, undefined, n.bindings); form = typeof r === 'string' ? r : null; }
-    if (t.kind === 'unknown' && !t.missing) kept.add(t.slot);
-    if (form) { parts.push([start, end, form]); }
+    if (t.kind === 'unknown' && !missing.has(t)) kept.add(t.slot);
+    if (form) parts.push({ s: start, e: end, f: form });
     cursor = end;
   }
   let out = ''; let at = 0;
-  for (const [s, e, f] of parts) { out += text.slice(at, s) + f; at = e; }
+  for (const { s, e, f } of parts) { out += text.slice(at, s) + f; at = e; }
   out += text.slice(at);
   const table = refTable(facts);
   const byKey = new Map(map.entries.map((e) => [e.key, e]));
