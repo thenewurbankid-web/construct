@@ -31,6 +31,8 @@ import { LineOpError, assertStagedChange } from '../contract.mjs';
 const posix = path.posix;
 const NAME = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
 const FEATURE = /^[a-z0-9][a-z0-9-]*$/;
+/** `text` with the first `find` replaced by `by`, taken literally (String.replace would read `$'` and `$&` in code). */
+const replaceOnce = (text, find, by) => { const i = text.indexOf(find); return i < 0 ? text : text.slice(0, i) + by + text.slice(i + find.length); };
 const stripExt = (rel) => rel.slice(0, rel.length - posix.extname(rel).length);
 
 /** The extract tools and the Line kind folder each writes into. */
@@ -284,7 +286,7 @@ export function planMoveDeclarations(root, { from, names, to, tool, typedContrac
   const rest = tops.filter((t) => !t.isImport && !moved.has(t));
   const restRefs = new Set(rest.flatMap((t) => [...t.refs]));
   // other statements (export lists, export default x, side effects) also count as the rest
-  for (const st of sf.statements) if ((ts.isExportDeclaration(st) || ts.isExportAssignment(st)) && !st.moduleSpecifier) for (const r of refsOf(st)) restRefs.add(r);
+  for (const st of sf.statements) if ((ts.isExportDeclaration(st) || ts.isExportAssignment(st)) && !(/** @type {any} */ (st)).moduleSpecifier) for (const r of refsOf(st)) restRefs.add(r);
   const imports = importsOf(sf);
   const movedRefs = new Set([...moved].flatMap((t) => [...t.refs]));
 
@@ -295,9 +297,9 @@ export function planMoveDeclarations(root, { from, names, to, tool, typedContrac
   let usesFactory = false;
   for (const t of tops.filter((x) => moved.has(x))) {
     let text = stmtText(sf, t.st);
-    if (!t.exported && needExport(t)) text = text.replace(t.st.getText(sf), `export ${t.st.getText(sf)}`);
+    if (!t.exported && needExport(t)) text = replaceOnce(text, t.st.getText(sf), `export ${t.st.getText(sf)}`);
     const wrapped = typedContracts && factory ? wrapWithFactory(sf, t, factory) : null;
-    if (wrapped) { text = text.replace(t.st.getText(sf), wrapped); usesFactory = true; }
+    if (wrapped) { text = replaceOnce(text, t.st.getText(sf), wrapped); usesFactory = true; }
     body += `${text.replace(/\s+$/, '')}\n\n`;
   }
   const kindWord = EXTRACT_KIND[tool]?.replace(/s$/, '') ?? 'item';
@@ -345,7 +347,8 @@ function wrapWithFactory(sf, t, factory) {
   if (!(ts.isArrowFunction(init) || ts.isFunctionExpression(init)) || init.parameters.length > 1) return null;
   const whole = t.st.getText(sf);
   const initText = init.getText(sf);
-  return whole.replace(initText, `${factory}('${d.name.text}', ${initText})`).replace(/^(?!export\b)/, 'export ');
+  const out = replaceOnce(whole, initText, `${factory}('${d.name.text}', ${initText})`);
+  return /^export\b/.test(out) ? out : `export ${out}`;
 }
 
 // ------------------------------------------------------------------------------------------------- targets
@@ -486,11 +489,11 @@ export function planSplit(root, { from, component, name, to }) {
   const typeImports = [...sharedTypes].flatMap((t) => t.names).filter((n) => allMovedRefs.has(n)).sort();
   // What the component file still refers to once the logic is gone (its JSX part, its props type, the other statements).
   const compRefsAfter = new Set([...restRefs, ...(param?.type ? refsOf(param.type) : []), ...tops.filter((t) => t !== compTop && !t.isImport && !moved.has(t)).flatMap((t) => [...t.refs])]);
-  for (const st of sf.statements) if ((ts.isExportDeclaration(st) || ts.isExportAssignment(st)) && !st.moduleSpecifier) for (const r of refsOf(st)) compRefsAfter.add(r);
+  for (const st of sf.statements) if ((ts.isExportDeclaration(st) || ts.isExportAssignment(st)) && !(/** @type {any} */ (st)).moduleSpecifier) for (const r of refsOf(st)) compRefsAfter.add(r);
   let movedText = '';
   for (const t of tops.filter((x) => moved.has(x))) {
     let text = stmtText(sf, t.st);
-    if (!t.exported && t.names.some((n) => compRefsAfter.has(n))) text = text.replace(t.st.getText(sf), `export ${t.st.getText(sf)}`);
+    if (!t.exported && t.names.some((n) => compRefsAfter.has(n))) text = replaceOnce(text, t.st.getText(sf), `export ${t.st.getText(sf)}`);
     movedText += `${text.replace(/\s+$/, '')}\n\n`;
   }
   const hookSrc = [

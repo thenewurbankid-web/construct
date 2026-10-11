@@ -156,3 +156,13 @@ test('each extract tool refuses in one sentence, and a refused step writes nothi
   assert.match(p.apply.sentence, /^Nothing was saved: this step cannot run as the project stands: library\/domains\/money\.ts already exists\.$/);
   assert.equal(read('utils/money.ts'), before, 'nothing written by any refused step');
 });
+
+test('moved code is copied literally: `$\'`, `$&` and `$`` in strings survive (found on the opportunity copy)', async () => {
+  const { app, read } = await shop();
+  const fn = "function price(n: number): string {\n  return `$${n}` + '$&' + \"$'\" + '$`';\n}";
+  fs.writeFileSync(path.join(app, 'src/utils/price.ts'), `${fn}\n\nexport function total(n: number): string {\n  return price(n);\n}\n`);
+  const change = planExtractStep(path.join(app, 'src'), { tool: 'line.import.extractDomain', args: { from: 'utils/price.ts', names: ['price', 'total'], name: 'price' } });
+  const moved = change.files.find((f) => f.path === 'library/domains/price.ts').content;
+  assert.ok(moved.includes(`export ${fn}`), moved);
+  assert.equal(read('utils/price.ts').includes(fn), true, 'planning writes nothing');
+});

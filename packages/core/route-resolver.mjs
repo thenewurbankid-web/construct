@@ -216,7 +216,10 @@ const IMPORT_RE = /(?:import\s+(?:type\s+)?[\s\S]*?from\s*|import\s*\()(['"])(.*
  * `entryAbsFile` via relative/aliased imports, stopping at anything
  * matching `excludes` (not included in the result, and not followed
  * further) or unresolvable (bare package imports). Returns the file list
- * including the entry file itself, in discovery order. */
+ * including the entry file itself, in discovery order.
+ * @param {string} entryAbsFile The route's entry file (absolute).
+ * @param {{aliases?: {prefix: string, target: string}[], excludes?: string[], onStop?: (what: string, why: 'excluded'|'package'|'unresolved') => void}} [o]
+ * @returns {string[]} Absolute files, the entry first. */
 export function traceRouteFiles(entryAbsFile, { aliases = [], excludes = DEFAULT_TRACE_EXCLUDES, onStop } = {}) {
   const visited = new Set();
   const queue = [path.resolve(entryAbsFile)];
