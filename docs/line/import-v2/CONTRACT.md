@@ -54,6 +54,7 @@ Agents ALWAYS work on their own clone of max-ai-ui under their scratch dir: `git
   - `kind` is one of: `branch | render-if | state | effect | derived | data | navigation | url-read | handler | toast | analytics | storage | io | export`.
   - `id` is `file#fn:kind:n` and is for display only.
   - `fingerprint` is a stable hash of the kind, the enclosing function name and the normalized AST text. Identifiers renamed by the import are mapped through the rename table. It never includes the file path, so it survives a move.
+  - Optional `anchor` (added on `iv2-map`): the normalized AST text the fingerprint was hashed from, so `compareLogicMaps(before, after, {renames})` can re-hash through a rename table given after the map was built.
 - **`LogicMap`:** `{ root, files, units, counts }`.
 - **`MapDiff`:** `{ kept, moved: [{from, to}], missing: LogicUnit[], changed: [{before, after, sentence}], added }`. Each missing unit has one sentence.
 - **`RouteClosure`:** `{ appRoot, routes: [{route, entry}], files, external }`. `external` lists the boundaries the tracer stopped at.

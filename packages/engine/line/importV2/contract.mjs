@@ -24,6 +24,8 @@
  * @property {string} fn           Enclosing named function, or "<module>".
  * @property {number} line         1-based.
  * @property {string} detail       Short readable text of the unit (at most 140 characters).
+ * @property {string} [anchor]     The normalized AST text the fingerprint was hashed from (optional; lets
+ *                                 compareLogicMaps re-hash through a rename table given after the map was built).
  */
 
 /**
@@ -191,7 +193,7 @@ export function assertMapDiff(d) {
   d.kept.forEach((u, i) => assertLogicUnit(u, `Kept unit ${i}`));
   d.added.forEach((u, i) => assertLogicUnit(u, `Added unit ${i}`));
   d.moved.forEach((m, i) => { assertLogicUnit(m?.from, `Moved unit ${i}'s from`); assertLogicUnit(m.to, `Moved unit ${i}'s to`); });
-  d.missing.forEach((u, i) => { assertLogicUnit(u, `Missing unit ${i}`); sentence(u.sentence, `Missing unit ${i}'s sentence`); });
+  d.missing.forEach((/** @type {any} */ u, i) => { sentence(u?.sentence, `Missing unit ${i}'s sentence`); assertLogicUnit(u, `Missing unit ${i}`); });
   d.changed.forEach((c, i) => {
     assertLogicUnit(c?.before, `Changed unit ${i}'s before`);
     assertLogicUnit(c.after, `Changed unit ${i}'s after`);
