@@ -21,12 +21,12 @@
 //                 a stray folder / a file in features/   none: say where its files belong
 import fs from 'node:fs';
 import path from 'node:path';
-import { loadConfig } from '../../core/config.mjs';
-import { normalizeLineConfig, ITEM_KINDS, CODE_EXTENSIONS, NON_ITEM_FILE } from '../../core/profiles/line/contract.mjs';
+import { loadConfig } from '@line/construct-core/config';
+import { normalizeLineConfig, ITEM_KINDS, CODE_EXTENSIONS, NON_ITEM_FILE } from '@line/construct-core/profiles/line/contract';
 import {
   resolveLayout, loadProject, classify, isItemFile, baseLinks, resolveBase, moduleEdges, resolveSpecifier,
-} from '../../core/profiles/line/checks.mjs';
-import { validateLine } from '../../core/profiles/line/index.mjs';
+} from '@line/construct-core/profiles/line/checks';
+import { validateLine } from '@line/construct-core/profiles/line';
 import { LineOpError } from './contract.mjs';
 import { toFinding } from './model.mjs';
 import { planBaseOn, planPromote, planSetBase, planMoveFile, planCreateLayout, applyChange } from './ops.mjs';

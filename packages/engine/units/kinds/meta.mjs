@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { DEFAULT_RULES } from '../../../core/config.mjs';
+import { DEFAULT_RULES } from '@line/construct-core/config';
 import { createContext, fileEntry, healthFrom } from '../facts.mjs';
 import { refOf } from './feature.mjs';
 

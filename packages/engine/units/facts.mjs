@@ -3,15 +3,15 @@
 // each unit-kind summarizer composes these instead of re-parsing.
 import fs from 'node:fs';
 import path from 'node:path';
-import { loadConfig } from '../../core/config.mjs';
-import { walk, rel } from '../../core/fs.mjs';
-import { loadLayerGraph, classifyFile } from '../../core/architecture-graph.mjs';
-import { readFrozenGlobs, matchFrozen } from '../../core/frozen.mjs';
-import { parseToAst, walkAst } from '../../../packages/ast/index.mjs';
-import { readPathAliases, resolveImportSpecifier } from '../../core/route-resolver.mjs';
-import { enforcersForRoot } from '../../core/profiles/index.mjs';
-import { aggregateValidation } from '../../core/registry.mjs';
-import { exceptionApplies } from '../../core/exceptions.mjs';
+import { loadConfig } from '@line/construct-core/config';
+import { walk, rel } from '@line/construct-core/fs';
+import { loadLayerGraph, classifyFile } from '@line/construct-core/architecture-graph';
+import { readFrozenGlobs, matchFrozen } from '@line/construct-core/frozen';
+import { parseToAst, walkAst } from '@construct/ast';
+import { readPathAliases, resolveImportSpecifier } from '@line/construct-core/route-resolver';
+import { enforcersForRoot } from '@line/construct-core/profiles';
+import { aggregateValidation } from '@line/construct-core/registry';
+import { exceptionApplies } from '@line/construct-core/exceptions';
 import { describeSource } from '../describeDocgen.mjs';
 import { DESCRIBE_DEFAULTS } from '../describeComponent.mjs';
 

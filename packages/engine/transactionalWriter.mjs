@@ -22,10 +22,10 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { write } from '../core/fs.mjs';
-import { assertNotFrozen } from '../core/frozen.mjs';
-import { aggregateValidation } from '../core/registry.mjs';
-import { enforcersForRoot } from '../core/profiles/index.mjs';
+import { write } from '@line/construct-core/fs';
+import { assertNotFrozen } from '@line/construct-core/frozen';
+import { aggregateValidation } from '@line/construct-core/registry';
+import { enforcersForRoot } from '@line/construct-core/profiles';
 import { affectedSet } from './scopeGate.mjs';
 
 // Mirrors packages/core/fs.mjs's walk(): these never belong in a shadow copy used for

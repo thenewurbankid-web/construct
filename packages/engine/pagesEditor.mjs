@@ -18,18 +18,18 @@ import {
   parseJsx, parseJsxTree, findParentRecord, jsxParseError, checkJsxReplacement,
   spliceNode, setAttributeText, setSpreadText, removeAttributeText, removeNodeText, swapNodesText, addChildText,
   collectComponentScopeNames, findImportOfName, declaredPropNames, insertNamedImport, insertStatementBeforeJsx,
-} from '../ast/index.mjs';
+} from '@construct/ast';
 import { buildScopeLinks, importOfTag, providerHookImports } from './scopeLinks.mjs';
 import { describeComponent } from './describeComponent.mjs';
 import { buildWrapSuggestions, findWrapHit, describeWrapHit } from './palette.mjs';
-import { loadConfig } from '../core/config.mjs';
-import { loadLayerGraph } from '../core/architecture-graph.mjs';
-import { validateArchitecture } from '../core/architecture-enforcer.mjs';
-import { validateSeparationOfConcerns } from '../core/soc-enforcer.mjs';
-import { extractExpression } from '../core/extractExpression.mjs';
-import { ConstructError } from '../core/diagnostics.mjs';
-import { walk, rel, isInside } from '../core/fs.mjs';
-import { matchGlob } from '../core/glob.mjs';
+import { loadConfig } from '@line/construct-core/config';
+import { loadLayerGraph } from '@line/construct-core/architecture-graph';
+import { validateArchitecture } from '@line/construct-core/architecture-enforcer';
+import { validateSeparationOfConcerns } from '@line/construct-core/soc-enforcer';
+import { extractExpression } from '@line/construct-core/extract-expression';
+import { ConstructError } from '@line/construct-core/diagnostics';
+import { walk, rel, isInside } from '@line/construct-core/fs';
+import { matchGlob } from '@line/construct-core/glob';
 
 const JSX_EXTENSIONS = new Set(['.jsx', '.tsx', '.js', '.ts']);
 

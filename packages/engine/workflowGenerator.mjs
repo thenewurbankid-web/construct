@@ -15,12 +15,12 @@
 // const) stays a plain template string, matching packages/core/generators.mjs's own
 // style for boilerplate that needs no real synthesis.
 import path from 'node:path';
-import { ts, printNode as print } from '../../packages/ast/index.mjs';
-import { loadConfig } from '../core/config.mjs';
+import { ts, printNode as print } from '@construct/ast';
+import { loadConfig } from '@line/construct-core/config';
 import fs from 'node:fs';
-import { write } from '../core/fs.mjs';
-import { selfCheck, pascalCase, ensureFeatureExists } from '../core/generators.mjs';
-import { ConstructError, EXIT_CODES } from '../core/diagnostics.mjs';
+import { write } from '@line/construct-core/fs';
+import { selfCheck, pascalCase, ensureFeatureExists } from '@line/construct-core/generate';
+import { ConstructError, EXIT_CODES } from '@line/construct-core/diagnostics';
 
 // A lazy view of `ts.factory`: reading it at import time would load the compiler for every importer (#657).
 const factory = new Proxy({}, { get: (_target, key) => ts.factory[key] });

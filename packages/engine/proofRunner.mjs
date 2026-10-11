@@ -17,7 +17,7 @@ import { createRequire } from 'node:module';
 import yaml from 'js-yaml';
 import { projectPaths, GENERATED_MARKER } from './testGenerator.mjs';
 import { classifyFailure } from './testRunner.mjs';
-import { proofStatus, proofSummary } from '../core/proof.mjs';
+import { proofStatus, proofSummary } from '@line/construct-core/proof';
 
 const PROOF_RE = /^[A-Za-z][A-Za-z0-9]*\.proof\.test\.ts$/;
 const RUN_TIMEOUT_MS = 60_000;

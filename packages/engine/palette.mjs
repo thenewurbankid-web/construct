@@ -14,10 +14,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createContext, isTestFile } from './units/facts.mjs';
 import { featureNames } from './units/kinds/feature.mjs';
-import { parseToAst, parseTsSource, ts, collectInlineJsxLogic, lineOf } from '../ast/index.mjs';
-import { resolveImportSpecifier } from '../core/route-resolver.mjs';
-import { hasFactoryCall } from '../core/architecture-enforcer.mjs';
-import { subjectOf } from '../core/extractExpression.mjs';
+import { parseToAst, parseTsSource, ts, collectInlineJsxLogic, lineOf } from '@construct/ast';
+import { resolveImportSpecifier } from '@line/construct-core/route-resolver';
+import { hasFactoryCall } from '@line/construct-core/architecture-enforcer';
+import { subjectOf } from '@line/construct-core/extract-expression';
 
 // Mirrors architecture-enforcer.mjs's PROVIDER_HOOK_NAME_RE exactly (#510) -- the naming convention
 // PAGE-006 relies on to let a page import a Provider hook directly.

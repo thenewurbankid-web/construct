@@ -7,10 +7,10 @@ import { fileEntry, testsFor, violationsFor, healthFrom, isTestFile, SOURCE_EXT 
 import { machinesOf } from '../machines.mjs';
 import { discoverRoutes, frameworkOf } from '../route-adapters.mjs';
 import { featureNames, refOf } from './feature.mjs';
-import { extractExports } from '../../../../packages/ast/index.mjs';
-import { extractDeclarationSource } from '../../../core/summarize.mjs';
-import { describeImplementation } from '../../../core/prose.mjs';
-import { resolveUrlToFolder, findRouteEntryFile, findReactSpaRoutesFile, parseReactSpaRoutes } from '../../../core/route-resolver.mjs';
+import { extractExports } from '@construct/ast';
+import { extractDeclarationSource } from '@line/construct-core/summarize';
+import { describeImplementation } from '@line/construct-core/prose';
+import { resolveUrlToFolder, findRouteEntryFile, findReactSpaRoutesFile, parseReactSpaRoutes } from '@line/construct-core/route-resolver';
 
 const LEVEL = { brief: 0, standard: 1, full: 2 };
 const norm = (ref) => ref.replace(/^\.\//, '').replace(/\/+$/, '');

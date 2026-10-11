@@ -17,10 +17,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { loadConfig } from '../core/config.mjs';
-import { matchFrozen } from '../core/frozen.mjs';
-import { isNonLayerPath, GENERATED_TESTS_GLOB, TESTS_GLOB } from '../core/nonLayer.mjs';
-import { ConstructError, EXIT_CODES } from '../core/diagnostics.mjs';
+import { loadConfig } from '@line/construct-core/config';
+import { matchFrozen } from '@line/construct-core/frozen';
+import { isNonLayerPath, GENERATED_TESTS_GLOB, TESTS_GLOB } from '@line/construct-core/non-layer';
+import { ConstructError, EXIT_CODES } from '@line/construct-core/diagnostics';
 import { extractMachines } from './workflowExtractor.mjs';
 import { enumerateScenarios, graphOf, branchOf, guardedSiblings } from './workflowScenarios.mjs';
 export { branchOf };

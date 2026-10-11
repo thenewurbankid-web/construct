@@ -10,10 +10,10 @@
 // Rule violations only carry a line, so they span that whole line.
 import fs from 'node:fs';
 import path from 'node:path';
-import { ts } from '../ast/lazy.mjs';
-import { validateArchitecture } from '../core/architecture-enforcer.mjs';
-import { validateSeparationOfConcerns } from '../core/soc-enforcer.mjs';
-import { mechanicalFixAvailable } from '../core/ruleFixes.mjs';
+import { ts } from '@construct/ast/lazy';
+import { validateArchitecture } from '@line/construct-core/architecture-enforcer';
+import { validateSeparationOfConcerns } from '@line/construct-core/soc-enforcer';
+import { mechanicalFixAvailable } from '@line/construct-core/rule-fixes';
 
 // Built on first use: reading `ts.*` here at import time would load the compiler for every importer (#657).
 const defaultCompilerOptions = () => ({

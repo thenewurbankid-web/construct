@@ -21,10 +21,10 @@ import path from 'node:path';
 import { describeComponent, DESCRIBE_EXTENSIONS } from './describeComponent.mjs';
 import { buildScopeLinks, importOfTag, providerHookImports } from './scopeLinks.mjs';
 import { createContext } from './units/facts.mjs';
-import { resolveImportSpecifier } from '../core/route-resolver.mjs';
-import { classifyProjectFile } from '../core/architecture-graph.mjs';
-import { parseJsx, parseJsxTree } from '../ast/index.mjs';
-import { rel } from '../core/fs.mjs';
+import { resolveImportSpecifier } from '@line/construct-core/route-resolver';
+import { classifyProjectFile } from '@line/construct-core/architecture-graph';
+import { parseJsx, parseJsxTree } from '@construct/ast';
+import { rel } from '@line/construct-core/fs';
 
 /** @type {(relPath:string, code:string, error:string) => {ok:false, path:string, code:string, error:string}} */
 const fail = (relPath, code, error) => ({ ok: false, path: relPath, code, error });

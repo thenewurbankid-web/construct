@@ -32,7 +32,7 @@
 // Deterministic: no clock, no randomness, no filesystem in instantiate.
 import fs from 'node:fs';
 import path from 'node:path';
-import { createPlan, validatePlan, formatPlanErrors, planFlow } from '../core/plan.mjs';
+import { createPlan, validatePlan, formatPlanErrors, planFlow } from '@line/construct-core/plan';
 
 export const TEMPLATE_VERSION = 1;
 export const PARAM_TYPES = Object.freeze(['identifier', 'path', 'enum']);

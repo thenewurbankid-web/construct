@@ -36,8 +36,8 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { impactFromChangedFiles } from './impact.mjs';
 import { summarizeUnit } from './unitSummary.mjs';
-import { planTouches } from '../core/plan.mjs';
-import { joinEnglishList } from '../core/prose.mjs';
+import { planTouches } from '@line/construct-core/plan';
+import { joinEnglishList } from '@line/construct-core/prose';
 
 export const SCHEMA_VERSION = 1;
 /** Zero-padding for the serial: `0007`. Wider serials are not truncated, only un-padded numbers grow. */

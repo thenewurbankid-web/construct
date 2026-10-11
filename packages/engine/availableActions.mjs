@@ -19,7 +19,7 @@
 // Pure: no clock, no filesystem, no model. `state` and the pieces of `catalog`/`projectCtx` a caller passes
 // in are computed by real blocks (buildPalette, buildWrapSuggestions, transition) elsewhere; this module
 // only shapes them into the menu.
-import { DEFAULT_LAYERS } from '../core/config.mjs';
+import { DEFAULT_LAYERS } from '@line/construct-core/config';
 import { PROCESS_EVENTS, transition } from './processMachine.mjs';
 
 /**

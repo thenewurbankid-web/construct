@@ -9,10 +9,10 @@ import {
   PagesEditorError, parsePageTree, serializeTree, buildAttributeSnippet, patchNode,
   getNodeProps, hashOf, collectComponentScopeNames,
 } from '../pagesEditor.mjs';
-import { loadConfig } from '../../core/config.mjs';
-import { normalizeLineConfig } from '../../core/profiles/line/contract.mjs';
-import { resolveLayout } from '../../core/profiles/line/checks.mjs';
-import { jsxParseError } from '../../ast/index.mjs';
+import { loadConfig } from '@line/construct-core/config';
+import { normalizeLineConfig } from '@line/construct-core/profiles/line/contract';
+import { resolveLayout } from '@line/construct-core/profiles/line/checks';
+import { jsxParseError } from '@construct/ast';
 import { LineOpError } from './contract.mjs';
 
 /** The value kinds planSetProp writes (SetPropRequest.kind). */

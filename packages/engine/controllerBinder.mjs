@@ -13,12 +13,12 @@
 // literal shape otherwise.
 import fs from 'node:fs';
 import path from 'node:path';
-import { ts, parseTsSource as parseTs, findNode } from '../../packages/ast/index.mjs';
-import { loadConfig } from '../core/config.mjs';
-import { write } from '../core/fs.mjs';
-import { selfCheck, pascalCase, ensureFeatureExists } from '../core/generators.mjs';
+import { ts, parseTsSource as parseTs, findNode } from '@construct/ast';
+import { loadConfig } from '@line/construct-core/config';
+import { write } from '@line/construct-core/fs';
+import { selfCheck, pascalCase, ensureFeatureExists } from '@line/construct-core/generate';
 import { validateEnvelope } from './envelope.mjs';
-import { ConstructError, EXIT_CODES } from '../core/diagnostics.mjs';
+import { ConstructError, EXIT_CODES } from '@line/construct-core/diagnostics';
 
 function usageError(message) {
   return new ConstructError(message, { exitCode: EXIT_CODES.USAGE_ERROR });

@@ -34,7 +34,21 @@
     "./commit-message": "./commitMessage.mjs",
     "./pr-health": "./prHealth.mjs",
     "./git-trees": "./gitTrees.mjs",
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./workflow-extractor": "./workflowExtractor.mjs",
+    "./test-generator": "./testGenerator.mjs",
+    "./test-spec-render": "./testSpecRender.mjs",
+    "./plan-template": "./planTemplate.mjs",
+    "./test-unit-generator": "./testUnitGenerator.mjs",
+    "./test-runner": "./testRunner.mjs",
+    "./proof-runner": "./proofRunner.mjs",
+    "./verify-runner": "./verifyRunner.mjs",
+    "./process-gc": "./processGc.mjs",
+    "./line/fixes": "./line/fixes.mjs",
+    "./line/model": "./line/model.mjs",
+    "./rule-change-impact": "./rule-change-impact.mjs",
+    "./ts-file-move": "./tsFileMove.mjs",
+    "./test-attributes": "./testAttributes.mjs"
   },
   "files": [
     "*.mjs",

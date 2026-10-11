@@ -18,7 +18,7 @@
 //     annotations outside a Vite project.
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { parseJsxTree, jsxNameToString } from '../../packages/ast/index.mjs';
+import { parseJsxTree, jsxNameToString } from '@construct/ast';
 
 export const CX_SRC_ATTR = 'data-cx-src';
 

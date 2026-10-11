@@ -16,11 +16,11 @@
 // kept region survive untouched.
 import fs from 'node:fs';
 import path from 'node:path';
-import { parseToAst, walkAst } from '../../packages/ast/index.mjs';
-import { loadConfig } from '../core/config.mjs';
-import { write } from '../core/fs.mjs';
-import { selfCheck, pascalCase, ensureFeatureExists } from '../core/generators.mjs';
-import { ConstructError, EXIT_CODES } from '../core/diagnostics.mjs';
+import { parseToAst, walkAst } from '@construct/ast';
+import { loadConfig } from '@line/construct-core/config';
+import { write } from '@line/construct-core/fs';
+import { selfCheck, pascalCase, ensureFeatureExists } from '@line/construct-core/generate';
+import { ConstructError, EXIT_CODES } from '@line/construct-core/diagnostics';
 import { extractMachines } from './workflowExtractor.mjs';
 import { listWorkflowSourceFiles, readWorkflowSource } from './workflowSource.mjs';
 import { assignTestIds, slotTestId, eventTestId } from './testAttributes.mjs';

@@ -19,7 +19,7 @@
 // matches `**/*.spec.ts` never runs it).
 import fs from 'node:fs';
 import path from 'node:path';
-import { ConstructError, EXIT_CODES } from '../core/diagnostics.mjs';
+import { ConstructError, EXIT_CODES } from '@line/construct-core/diagnostics';
 import { graphOf } from './workflowScenarios.mjs';
 import { readWorkflowSource } from './workflowSource.mjs';
 import { lit, comment } from './testSpecRender.mjs';

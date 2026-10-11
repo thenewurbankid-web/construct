@@ -3,11 +3,11 @@
 // packages/engine/pipeline.mjs can validate a buffered transaction against
 // exactly the same enforcers `construct validate` uses, without a circular
 // import between cli.mjs and the engine.
-import { validateArchitecture } from '../core/architecture-enforcer.mjs';
-import { validateSeparationOfConcerns } from '../core/soc-enforcer.mjs';
-import { validateReadability } from '../core/readability-enforcer.mjs';
-import { checkPublicApiDrift } from '../core/api-composer.mjs';
-import { validateLocalRules } from '../core/local-rules.mjs';
+import { validateArchitecture } from '@line/construct-core/architecture-enforcer';
+import { validateSeparationOfConcerns } from '@line/construct-core/soc-enforcer';
+import { validateReadability } from '@line/construct-core/readability-enforcer';
+import { checkPublicApiDrift } from '@line/construct-core/api-composer';
+import { validateLocalRules } from '@line/construct-core/local-rules';
 
 export const DEFAULT_ENFORCERS = [
   { name: 'architecture', validate: validateArchitecture },

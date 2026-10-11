@@ -7,13 +7,13 @@
 // Either every step's file lands on disk together, or (if the combined
 // result fails construct validate's own enforcer set) none of them do --
 // there is no partially-applied pipeline run.
-import { renderLayer } from '../core/generators.mjs';
+import { renderLayer } from '@line/construct-core/generate';
 import { createTransaction } from './transactionalWriter.mjs';
 import { createEnvelope } from './envelope.mjs';
-import { rel } from '../core/fs.mjs';
-import { loadConfig } from '../core/config.mjs';
-import { makeViolation } from '../core/diagnostics.mjs';
-import { assertFeature } from '../core/block-kit.mjs';
+import { rel } from '@line/construct-core/fs';
+import { loadConfig } from '@line/construct-core/config';
+import { makeViolation } from '@line/construct-core/diagnostics';
+import { assertFeature } from '@line/construct-core/block-kit';
 
 /** Merge freshly-committed step outputs into the envelope's `layers` map:
  * { layer: [file, file, ...] }, deduped, sorted for deterministic output. */

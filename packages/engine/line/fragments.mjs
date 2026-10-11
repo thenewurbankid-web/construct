@@ -11,12 +11,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { parsePageTree, hashOf } from '../pagesEditor.mjs';
-import { walkAst, jsxParseError } from '../../ast/index.mjs';
-import { ts } from '../../ast/lazy.mjs';
+import { walkAst, jsxParseError } from '@construct/ast';
+import { ts } from '@construct/ast/lazy';
 import { typescriptDiagnostics } from '../diagnostics.mjs';
-import { loadConfig } from '../../core/config.mjs';
-import { normalizeLineConfig, CODE_EXTENSIONS } from '../../core/profiles/line/contract.mjs';
-import { resolveLayout } from '../../core/profiles/line/checks.mjs';
+import { loadConfig } from '@line/construct-core/config';
+import { normalizeLineConfig, CODE_EXTENSIONS } from '@line/construct-core/profiles/line/contract';
+import { resolveLayout } from '@line/construct-core/profiles/line/checks';
 import { LineOpError } from './contract.mjs';
 
 /** Above this, the type check is too slow to block a save; it still runs and its result rides along (see gap note). */
