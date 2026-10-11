@@ -17,7 +17,7 @@ export function useLineProject() {
   const read = useCallback(async (api: LinePagesApi) => {
     try {
       const project = await api.getProject();
-      setState(project && project.isLine === true && Array.isArray(project.features) ? { phase: 'line', project, api } : { phase: 'not-line' });
+      setState(project && 'isLine' in project && project.isLine === true && Array.isArray(project.features) ? { phase: 'line', project, api } : { phase: 'not-line' });
     } catch {
       setState({ phase: 'not-line' });
     }

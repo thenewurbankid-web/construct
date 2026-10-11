@@ -34,7 +34,7 @@ export function useLinePages(project: LineProject | null, api: LinePagesApi | nu
       if (!api) return;
       try {
         const tree = await api.getPageTree(f);
-        setParts(Array.isArray(tree?.roots) ? { phase: 'ready', parts: pageParts(tree) } : UNREADABLE);
+        setParts(tree && 'roots' in tree && Array.isArray(tree.roots) ? { phase: 'ready', parts: pageParts(tree) } : UNREADABLE);
       } catch {
         setParts(UNREADABLE);
       }
