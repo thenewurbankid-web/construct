@@ -1,8 +1,10 @@
-import { getJson } from '@/lib/http';
-import type { LineApi, LineProject, LineProjectResult } from '../types';
+import { getJson, postJson } from '@/lib/http';
+import { toApplyResult } from '../domain/ChangeText';
+import type { ApplyResult, BaseOnRequest, LineApi, LineProject, LineProjectResult, PromoteRequest } from '../types';
 
-// GET /api/line/project (ui/server/src/lineApi.mjs, contract LINE_API). Answers the contract's LineProject, or
-// `{ok: false, sentence}` when the server refused; a network failure is one sentence too.
+// The Line API (ui/server/src/lineApi.mjs + lineOpsApi.mjs, contract LINE_API). Reads answer the contract's
+// LineProject; changes answer an ApplyResult (written only through Construct's writer on the server). A refusal or a
+// network failure is one sentence too.
 
 /** The Line view of the open project. */
 export async function getLineProject(): Promise<LineProjectResult> {
@@ -16,4 +18,18 @@ export async function getLineProject(): Promise<LineProjectResult> {
   }
 }
 
-export const lineApi: LineApi = { getLineProject };
+async function send(path: string, body: unknown): Promise<ApplyResult> {
+  try {
+    return toApplyResult(await postJson(path, body));
+  } catch {
+    return toApplyResult({ ok: false, sentence: 'The Cockpit server did not answer; nothing was changed.' });
+  }
+}
+
+/** A new feature item based on a library item (POST /api/line/base-on). */
+const baseOn = (req: BaseOnRequest) => send('/api/line/base-on', req);
+
+/** Moves a feature item into the library and re-points its users (POST /api/line/promote). */
+const promote = (req: PromoteRequest) => send('/api/line/promote', req);
+
+export const lineApi: LineApi = { getLineProject, baseOn, promote };

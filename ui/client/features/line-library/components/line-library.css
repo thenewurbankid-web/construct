@@ -28,3 +28,20 @@
 .ll-tech > summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .ll-tech code { font-family: var(--mono); overflow-wrap: anywhere; display: block; }
 .ll-tech-line { display: block; }
+.ll-btn {
+  align-self: flex-start; min-height: 28px; padding: 0 var(--sp-3); border: 1px solid var(--border-strong); border-radius: var(--r-sm);
+  background: var(--surface-1); color: var(--text); font-size: var(--fs-sm); cursor: pointer;
+}
+.ll-btn:hover:not(:disabled) { background: var(--surface-3); }
+.ll-btn:disabled { opacity: 0.5; cursor: default; }
+.ll-btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.ll-btn--primary { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); font-weight: 600; }
+.ll-btn--primary:hover:not(:disabled) { background: var(--accent); filter: brightness(1.08); }
+.ll-form { display: flex; flex-direction: column; gap: var(--sp-2); padding: var(--sp-2); border: 1px solid var(--border-subtle); border-radius: var(--r-sm); background: var(--surface-1); }
+.ll-field { display: flex; flex-direction: column; gap: 2px; font-size: var(--fs-sm); }
+.ll-field select, .ll-field input { min-height: 28px; padding: 0 var(--sp-2); border: 1px solid var(--border-strong); border-radius: var(--r-sm); background: var(--surface-0); color: var(--text); font: inherit; }
+.ll-field select:focus-visible, .ll-field input:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.ll-actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.ll-error { margin: 0; font-size: var(--fs-sm); color: var(--text); padding: var(--sp-1) var(--sp-2); border-left: 3px solid var(--danger); background: var(--danger-soft); }
+.ll-notice { display: flex; flex-direction: column; gap: var(--sp-1); padding: var(--sp-2) var(--sp-3); border: 1px solid var(--success); border-radius: var(--r-md); background: var(--success-soft); }
+.ll-notice p { margin: 0; }

@@ -41,8 +41,48 @@ export type LineProject = {
 /** What the service answers: the project, or one sentence saying why not. */
 export type LineProjectResult = { ok: true; project: LineProject } | { ok: false; sentence: string };
 
+/** The outcome of a change through Construct's writer (contract ApplyResult); a refusal is `ok: false` with one sentence. */
+export type ApplyResult = { ok: boolean; sentence: string; files: string[]; findings: LineFinding[] };
+
+export type BaseOnRequest = { libraryId: string; feature: string; name: string };
+export type PromoteRequest = { featureItemId: string };
+
 /** The service's surface, so the real API and its mock are interchangeable. */
-export type LineApi = { getLineProject: () => Promise<LineProjectResult> };
+export type LineApi = {
+  getLineProject: () => Promise<LineProjectResult>;
+  baseOn: (req: BaseOnRequest) => Promise<ApplyResult>;
+  promote: (req: PromoteRequest) => Promise<ApplyResult>;
+};
+
+/** The one change being prepared or sent: a new feature item based on a library card, or a promotion. */
+export type ChangeState =
+  | { status: 'idle' }
+  | { status: 'base-on'; libraryId: string; libraryName: string; feature: string; name: string; error: string | null }
+  | { status: 'base-on-saving'; libraryId: string; libraryName: string; feature: string; name: string }
+  | { status: 'promote'; featureItemId: string; name: string; error: string | null }
+  | { status: 'promote-saving'; featureItemId: string; name: string };
+
+export type ChangeEvent =
+  | { type: 'OPEN_BASE_ON'; libraryId: string; libraryName: string; feature: string; name: string }
+  | { type: 'SET_FEATURE'; feature: string; name: string }
+  | { type: 'SET_NAME'; name: string }
+  | { type: 'OPEN_PROMOTE'; featureItemId: string; name: string }
+  | { type: 'CANCEL' }
+  | { type: 'SUBMIT' }
+  | { type: 'DONE'; result: ApplyResult };
+
+/** What the library page needs to offer "Base on this" and "Promote to library". */
+export type ChangeControls = {
+  change: ChangeState;
+  notice: ApplyResult | null;
+  features: string[];
+  openBaseOn: (libraryId: string, libraryName: string) => void;
+  setFeature: (feature: string) => void;
+  setName: (name: string) => void;
+  openPromote: (featureItemId: string, name: string) => void;
+  cancel: () => void;
+  submit: () => void;
+};
 
 // ---- View models -------------------------------------------------------------------------------
 
@@ -67,12 +107,20 @@ export type FeatureComponentRow = {
   baseText: string;
   linked: boolean;
   problem: boolean;
+  /** What "Promote to library" will do, said before anything is written. */
+  promoteText: string;
   findings: LineFinding[];
 };
 
 export type FeatureSection = { name: string; rows: FeatureComponentRow[] };
 
-export type LibraryView = { total: number; groups: LibraryGroup[]; features: FeatureSection[] };
+export type LibraryView = {
+  total: number;
+  groups: LibraryGroup[];
+  features: FeatureSection[];
+  /** Every feature folder, for the "Base on this" picker. */
+  featureNames: string[];
+};
 
 /** What the Components screen renders for a load state (domain/LibraryView.ts screenFor). */
 export type LineScreen = { kind: 'loading' } | { kind: 'fallback' } | { kind: 'line'; view: LibraryView };
