@@ -8,7 +8,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { validateLine, LINE_RULES, LINE_RULE_IDS, normalizeLineConfig } from '../packages/core/profiles/line/index.mjs';
-import { findFsWrites, resolveSpecifier, resolveLayout, isPageShaped, moduleEdges, findSharedCopies, packageNameOf } from '../packages/core/profiles/line/checks.mjs';
+import { findFsWrites, resolveSpecifier, resolveLayout, isPageShaped, moduleEdges, findSharedCopies, packageNameOf, listFiles } from '../packages/core/profiles/line/checks.mjs';
 import { SHARED_CONCERNS } from '../packages/core/profiles/line/contract.mjs';
 import { selectProfile, enforcersForProfile, enforcersForRoot, PROFILES } from '../packages/core/profiles/index.mjs';
 import { createTransaction } from '../packages/engine/transactionalWriter.mjs';
@@ -365,4 +365,20 @@ test('LINE-MODULE: package roots, scopes, "types" entries, exports patterns and 
     'libs/use/nested/package.json': pkg('@x/nested'),
   });
   assert.deepEqual(where(validateLine(dir).violations), ['LINE-MODULE libs/ghost/package.json:1', 'LINE-MODULE libs/use/inner.js:2']);
+});
+
+test('file listing: in a git work tree gitignored files are skipped; without git every file is walked', () => {
+  const overlay = {
+    '.gitignore': 'packages/tool/vendor/\n',
+    'packages/tool/vendor/copy.js': "import fs from 'node:fs';\nfs.writeFileSync('x', 'y');\n",
+  };
+  const plain = copyFixture('passing', overlay);
+  assert.deepEqual(where(validateLine(plain).violations), ['LINE-WRITER packages/tool/vendor/copy.js:2'], 'no git: the generated copy is walked like any file');
+  const repo = copyFixture('passing', overlay);
+  const init = spawnSync('git', ['init', '-q'], { cwd: repo, encoding: 'utf8' });
+  if (init.error || init.status !== 0) return; // git is not installed here: the walk above is the whole behaviour
+  assert.deepEqual(validateLine(repo).violations, [], 'git work tree: the gitignored copy is not checked');
+  const files = listFiles(repo);
+  assert.ok(files.includes('packages/reason/decide.js') && files.includes('library/components/Button.tsx'), 'untracked files that are not ignored are still listed');
+  assert.ok(!files.some((f) => f.startsWith('packages/tool/vendor/')));
 });

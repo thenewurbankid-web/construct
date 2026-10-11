@@ -2,6 +2,7 @@
 // code, calls a model or writes to disk. Each check returns hits `{rule, file, line, message}`; index.mjs
 // turns them into diagnostics.mjs violations with the rule's severity and plain-English "why".
 import fs from 'node:fs';
+import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { minimatch } from 'minimatch';
 import { walk as walkAst } from 'estree-walker';
@@ -38,11 +39,35 @@ export function resolveLayout(root, line) {
 }
 
 /**
+ * The files git sees under `root` (tracked plus untracked, minus .gitignore'd), root-relative; null when `root` is
+ * not inside a git work tree, git is missing, or git lists nothing (so the caller walks the disk instead).
+ * @param {string} root Project root.
+ * @returns {string[]|null} Root-relative paths, unfiltered.
+ */
+export function gitVisibleFiles(root) {
+  const r = spawnSync('git', ['ls-files', '-co', '--exclude-standard', '-z'], { cwd: root, encoding: 'utf8', maxBuffer: 256 * 1024 * 1024 });
+  if (r.error || r.status !== 0 || typeof r.stdout !== 'string') return null;
+  const files = r.stdout.split('\0').filter(Boolean);
+  return files.length ? files : null;
+}
+
+/**
  * Every file under the root (posix, root-relative), skipping dependency and build folders, dot-folders and symlinks.
+ * In a git work tree, gitignored files (generated vendor copies, build output, caches) are skipped too: one
+ * `git ls-files` call lists what git sees; without git it is a plain walk.
  * @param {string} root Project root.
  * @returns {string[]} Sorted root-relative paths.
  */
 export function listFiles(root) {
+  const fromGit = gitVisibleFiles(root);
+  if (fromGit) {
+    const kept = fromGit.filter((rel) => {
+      const segs = rel.split('/');
+      if (segs.slice(0, -1).some((s) => s.startsWith('.') || SKIP_DIRS.includes(s))) return false;
+      try { return fs.lstatSync(path.join(root, rel)).isFile(); } catch { return false; } // deleted or a symlink
+    });
+    return [...new Set(kept)].sort();
+  }
   const out = [];
   const visit = (dir, relDir) => {
     let entries;
