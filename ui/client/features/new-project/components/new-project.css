@@ -33,3 +33,10 @@
 .new-project code {
   overflow-wrap: anywhere;
 }
+.new-project__row > * {
+  min-width: 0;
+}
+.new-project select,
+.new-project input {
+  max-width: 100%;
+}

@@ -3,12 +3,18 @@
 import { Button, Field, Input, Select } from '@/components/ui';
 import { FRAMEWORK_CHOICES } from '../domain/NewProjectName';
 import type { NewProjectFramework } from '../types';
+import { LineProjectFields } from './LineProjectFields';
 
 type NewProjectFormProps = {
   name: string;
   framework: NewProjectFramework;
+  /** Line only: the first feature's name and the workspace folder the project goes in. */
+  firstFeature: string;
+  parentDir: string;
   /** A plain problem with the name typed so far, or null. */
   nameProblem: string | null;
+  featureProblem: string | null;
+  parentProblem: string | null;
   /** Where the folder will be made (`<workspace>/<name>`), or null while no name is typed. */
   destination: string | null;
   canCreate: boolean;
@@ -16,12 +22,18 @@ type NewProjectFormProps = {
   error: string | null;
   onName: (v: string) => void;
   onFramework: (v: NewProjectFramework) => void;
+  onFirstFeature: (v: string) => void;
+  onParentDir: (v: string) => void;
   onCreate: () => void;
 };
 
-/** Presentation-only "New project" form for the Open-a-project screen (#445): one name, an optional starting
- * framework, the button. Making the folder, setting it up and opening it is the server's job. */
-export function NewProjectForm({ name, framework, nameProblem, destination, canCreate, creating, error, onName, onFramework, onCreate }: NewProjectFormProps) {
+/** Presentation-only "New project" form for the Open-a-project screen (#445): one name, what it starts as, the
+ * button. A Line project (cu7) also asks for its first feature and, optionally, the workspace folder it goes in.
+ * Making the folder, setting it up and opening it is the server's job. */
+export function NewProjectForm({
+  name, framework, firstFeature, parentDir, nameProblem, featureProblem, parentProblem, destination, canCreate, creating, error,
+  onName, onFramework, onFirstFeature, onParentDir, onCreate,
+}: NewProjectFormProps) {
   return (
     <section className="new-project" aria-labelledby="new-project-heading" data-testid="new-project">
       <h2 id="new-project-heading" className="new-project__heading">New project</h2>
@@ -56,6 +68,16 @@ export function NewProjectForm({ name, framework, nameProblem, destination, canC
             </Select>
           </Field>
         </div>
+        <LineProjectFields
+          show={framework === 'line'}
+          firstFeature={firstFeature}
+          parentDir={parentDir}
+          featureProblem={featureProblem}
+          parentProblem={parentProblem}
+          disabled={creating}
+          onFirstFeature={onFirstFeature}
+          onParentDir={onParentDir}
+        />
         {destination && !nameProblem && (
           <p className="hint new-project__dest" role="status" aria-live="polite" data-testid="new-project-preview">
             Will be made at <code>{destination}</code>

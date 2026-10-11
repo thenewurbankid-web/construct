@@ -8,11 +8,13 @@ import type { NewProjectFormState, NewProjectFramework } from '../types';
 export type NewProjectEvent =
   | { type: 'SET_NAME'; name: string }
   | { type: 'SET_FRAMEWORK'; framework: NewProjectFramework }
+  | { type: 'SET_FEATURE'; firstFeature: string }
+  | { type: 'SET_PARENT'; parentDir: string }
   | { type: 'START' }
   | { type: 'REFUSED'; error: string }
   | { type: 'CREATED' };
 
-export const initialNewProjectState: NewProjectFormState = { name: '', framework: 'nextjs', creating: false, error: null };
+export const initialNewProjectState: NewProjectFormState = { name: '', framework: 'nextjs', firstFeature: '', parentDir: '', creating: false, error: null };
 
 export const newProjectMachine = setup({
   types: {} as {
@@ -23,6 +25,8 @@ export const newProjectMachine = setup({
     // A new name or framework starts fresh: a refusal of the old attempt no longer applies.
     setName: assign({ name: ({ event }) => (event.type === 'SET_NAME' ? event.name : ''), error: null }),
     setFramework: assign({ framework: ({ event }) => (event.type === 'SET_FRAMEWORK' ? event.framework : 'nextjs'), error: null }),
+    setFeature: assign({ firstFeature: ({ event }) => (event.type === 'SET_FEATURE' ? event.firstFeature : ''), error: null }),
+    setParent: assign({ parentDir: ({ event }) => (event.type === 'SET_PARENT' ? event.parentDir : ''), error: null }),
     recordRefusal: assign({ error: ({ event }) => (event.type === 'REFUSED' ? event.error : null) }),
   },
 }).createMachine({
@@ -34,6 +38,8 @@ export const newProjectMachine = setup({
       on: {
         SET_NAME: { actions: 'setName' },
         SET_FRAMEWORK: { actions: 'setFramework' },
+        SET_FEATURE: { actions: 'setFeature' },
+        SET_PARENT: { actions: 'setParent' },
         START: { target: 'creating' },
       },
     },

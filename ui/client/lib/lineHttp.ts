@@ -30,4 +30,5 @@ export const lineHttp: LineHttp = {
   importScan: (req) => postJson('/api/line/import/scan', req),
   importPlan: (req) => postJson('/api/line/import/plan', req),
   importApply: (req) => postJson('/api/line/import/apply', req),
+  newProject: (req) => postJson('/api/line/new-project', req),
 };

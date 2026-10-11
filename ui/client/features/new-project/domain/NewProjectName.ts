@@ -7,6 +7,7 @@ export const MAX_PROJECT_NAME_LENGTH = 100;
 export const FRAMEWORK_CHOICES: ReadonlyArray<{ id: NewProjectFramework; label: string }> = [
   { id: 'nextjs', label: 'Next.js (default)' },
   { id: 'react-spa', label: 'React single-page app' },
+  { id: 'line', label: 'Line project' },
 ];
 
 /** A plain problem with `name` as a project name, or null (an empty name is not a problem yet, just not ready). */
@@ -28,7 +29,10 @@ export function canCreateProject(name: string, creating: boolean): boolean {
 }
 
 /** Where the project will be made, for the line under the field: `<workspace>/<name>`. */
-export function projectDestination(workspaceRoot: string | null, name: string): string {
+export function projectDestination(workspaceRoot: string | null, name: string, parentDir = ''): string {
   const n = name.trim();
-  return workspaceRoot ? `${workspaceRoot.replace(/[\\/]+$/, '')}/${n}` : n;
+  const p = parentDir.trim().replace(/^[\\/]+|[\\/]+$/g, '');
+  const root = workspaceRoot ? workspaceRoot.replace(/[\\/]+$/, '') : '';
+  if (p !== '' && workspaceRoot && parentDir.trim().startsWith(root)) return `${parentDir.trim().replace(/[\\/]+$/, '')}/${n}`;
+  return [root, p, n].filter((s) => s !== '').join('/');
 }

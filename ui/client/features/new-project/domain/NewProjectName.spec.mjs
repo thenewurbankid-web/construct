@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { canCreateProject, projectDestination, projectNameProblem } from './NewProjectName.ts';
+import { canCreateLineProject, featureNameProblem, parentDirProblem } from './LineProjectFields.ts';
 
 test('names the server would accept raise no problem', () => {
   for (const n of ['', '   ', 'shop', 'my-shop', 'my_shop', 'shop2', 'a.b', 'A1', 'x'.repeat(100)]) assert.equal(projectNameProblem(n), null, JSON.stringify(n));
@@ -26,4 +27,22 @@ test('the button is ready only for a non-empty, valid name that is not already b
 test('the destination is the workspace plus the name', () => {
   assert.equal(projectDestination('/w/user/', ' shop '), '/w/user/shop');
   assert.equal(projectDestination(null, 'shop'), 'shop');
+});
+
+test('cu7: a Line project goes in a folder of the workspace, absolute or relative', () => {
+  assert.equal(projectDestination('/w/user', 'shop', 'clients/'), '/w/user/clients/shop');
+  assert.equal(projectDestination('/w/user', 'shop', '/w/user/clients'), '/w/user/clients/shop');
+  assert.equal(projectDestination('/w/user', 'shop', ''), '/w/user/shop');
+});
+
+test('cu7: a Line project needs a good name, a good first feature and no ".." in its folder', () => {
+  assert.equal(featureNameProblem('catalog'), null);
+  assert.equal(featureNameProblem(''), null);
+  assert.match(featureNameProblem('a/b'), /letters, digits/);
+  assert.match(parentDirProblem('../x'), /inside your workspace/);
+  assert.equal(parentDirProblem('clients'), null);
+  assert.equal(canCreateLineProject('shop', 'catalog', '', false), true);
+  assert.equal(canCreateLineProject('shop', '', '', false), false);
+  assert.equal(canCreateLineProject('shop', 'catalog', '../x', false), false);
+  assert.equal(canCreateLineProject('shop', 'catalog', '', true), false);
 });
