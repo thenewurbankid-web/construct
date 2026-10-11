@@ -1,5 +1,6 @@
 import type { ChangeControls, LibraryCard, LibraryGroup } from '../types';
 import { BaseOnForm } from './BaseOnForm';
+import { CardPreview } from './CardPreview';
 
 function Card({ card, controls }: { card: LibraryCard; controls: ChangeControls }) {
   const open = (controls.change.status === 'base-on' || controls.change.status === 'base-on-saving') && controls.change.libraryId === card.id;
@@ -19,6 +20,7 @@ function Card({ card, controls }: { card: LibraryCard; controls: ChangeControls 
           Base on this
         </button>
       )}
+      <CardPreview card={card} />
       <details className="ll-tech">
         <summary>Details</summary>
         <code>{card.file}</code>
@@ -28,7 +30,8 @@ function Card({ card, controls }: { card: LibraryCard; controls: ChangeControls 
 }
 
 /** The library's components as cards, one section per level (Atoms, Molecules, Organisms). Each card: name,
- * level, how many feature components are based on it, and "Base on this"; the file path is under Details. */
+ * level, how many feature components are based on it, "Base on this", a Preview of the component rendered alone,
+ * and the file path under Details. */
 export function LibraryCards({ groups, controls }: { groups: LibraryGroup[]; controls: ChangeControls }) {
   return (
     <>

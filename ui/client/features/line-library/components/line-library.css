@@ -28,6 +28,10 @@
 .ll-tech > summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .ll-tech code { font-family: var(--mono); overflow-wrap: anywhere; display: block; }
 .ll-tech-line { display: block; }
+.ll-preview > summary { cursor: pointer; width: max-content; min-height: 24px; line-height: 24px; padding-inline: 2px; font-size: var(--fs-sm); }
+.ll-preview > summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+/* An opened preview needs room: its card takes the whole row of the grid. */
+.ll-card:has(> .ll-preview[open]) { grid-column: 1 / -1; }
 .ll-btn {
   align-self: flex-start; min-height: 28px; padding: 0 var(--sp-3); border: 1px solid var(--border-strong); border-radius: var(--r-sm);
   background: var(--surface-1); color: var(--text); font-size: var(--fs-sm); cursor: pointer;
