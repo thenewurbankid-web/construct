@@ -50,6 +50,26 @@ function copyProjectTree(root, shadowDir) {
   });
 }
 
+/** Remove the shadow copy without ever throwing: a read-only folder copied from the project is made writable first,
+ * and a copy that still cannot go is left for heavy.sh's prune (its name carries this pid). A cleanup failure must
+ * never replace the commit's own result or error. */
+function removeShadow(shadowDir) {
+  try {
+    fs.rmSync(shadowDir, { recursive: true, force: true });
+    return;
+  } catch {
+    // fall through: make it writable and try once more
+  }
+  const writable = (dir) => {
+    try { fs.chmodSync(dir, 0o755); } catch { return; }
+    let entries = [];
+    try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
+    for (const e of entries) if (e.isDirectory()) writable(path.join(dir, e.name));
+  };
+  writable(shadowDir);
+  try { fs.rmSync(shadowDir, { recursive: true, force: true }); } catch { /* left for the prune */ }
+}
+
 /**
  * Create a new transaction against `root`. Nothing under `root` is touched
  * until (and unless) `commit()` succeeds.
@@ -138,14 +158,32 @@ export function createTransaction(root) {
         const { violations, ok } = runValidate(shadowDir, { files: blastRadius.files, blastRadius });
         if (!ok) return { committed: false, violations, blastRadius };
 
-        for (const [relPath, content] of buffer) {
-          if (content === DELETED) fs.rmSync(path.join(root, relPath), { force: true });
-          else write(path.join(root, relPath), content);
+        // Land every file, or none: when the disk refuses one (permissions, a full disk, a read-only mount), every file
+        // this commit already changed is put back as it was before the error is passed on, so nothing partial lands.
+        const landed = [];
+        try {
+          for (const [relPath, content] of buffer) {
+            const abs = path.join(root, relPath);
+            const before = fs.existsSync(abs) ? fs.readFileSync(abs) : null;
+            if (content === DELETED) fs.rmSync(abs, { force: true });
+            else write(abs, content);
+            landed.push([abs, before]);
+          }
+        } catch (e) {
+          for (const [abs, before] of landed.reverse()) {
+            try {
+              if (before === null) fs.rmSync(abs, { force: true });
+              else fs.writeFileSync(abs, before);
+            } catch {
+              // best effort: the original error below is what the caller needs to see
+            }
+          }
+          throw e;
         }
         buffer.clear();
         return { committed: true, violations, blastRadius };
       } finally {
-        fs.rmSync(shadowDir, { recursive: true, force: true });
+        removeShadow(shadowDir);
       }
     },
   };

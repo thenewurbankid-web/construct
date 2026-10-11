@@ -101,12 +101,14 @@ const safeLine = (text) => {
  *   requested: string,
  *   provider: { name: string, version: string },
  *   fellBackFrom: string | null,
+ *   explanation: string | null,
  *   notes: string[],
  *   timeoutMs: number,
  *   suggest: (summary: object) => Promise<ProjectSuggestion | null>,
  * }} ProjectDecision
  * `requested` is what the setting (or the caller) asked for; `provider` is who answers now; `fellBackFrom` is set when that is
- * the rules provider because the requested one could not be used; `notes` are the lines logged so far.
+ * the rules provider because the requested one could not be used; `explanation` is one plain-English sentence for the person
+ * saying why the rules answer instead (null while the requested provider answers); `notes` are the lines logged so far.
  */
 
 /**
@@ -153,6 +155,9 @@ export async function openDecision(root, options = {}) {
   let active = rules;
   let activeName = 'rules';
   let fellBackFrom = null;
+  /** Why the rules answer instead, as one plain-English sentence (set with every fallback; the last one wins). */
+  let explanation = null;
+  const instead = 'so Line\'s built-in rules make the suggestions instead and nothing else changes.';
   if (requested === 'rules' || requested === 'off') {
     active = getDecisionProvider(requested);
     activeName = requested;
@@ -160,10 +165,12 @@ export async function openDecision(root, options = {}) {
     if (options.allowPlugins === false) {
       fellBackFrom = wanted;
       note(`decision: the plugin for provider "${wanted}" was not loaded because plugins are not enabled here (CONSTRUCT_DECISION_PLUGINS=on); the rules provider is used`);
+      explanation = `The ${wanted} model is not enabled on this server, ${instead}`;
     } else if (!(options.capabilities ?? machineAllowsModels()).available) {
       // #648: a machine below the Cockpit tier never loads a plugin (a model may sit behind it); the rules answer, and say why.
       fellBackFrom = wanted;
       note(`decision: rules only: ${(options.capabilities ?? machineAllowsModels()).reason}; the plugin for provider "${wanted}" was not loaded`);
+      explanation = `This machine runs without local models, ${instead}`;
     } else {
       const loaded = await loadDecisionPlugin(plugin, { root, expectName: requested, strict: true });
       if (loaded.ok) {
@@ -173,6 +180,7 @@ export async function openDecision(root, options = {}) {
       } else {
         fellBackFrom = wanted;
         note(`decision: the plugin for provider "${wanted}" was not used (${loaded.code}: ${loaded.message}); the rules provider is used`);
+        explanation = `The ${wanted} model could not be loaded, ${instead}`;
       }
     }
   } else if (requested && getDecisionProvider(requested)) {
@@ -181,6 +189,7 @@ export async function openDecision(root, options = {}) {
   } else if (requested) {
     fellBackFrom = wanted;
     note(`decision: no provider named "${requested}" is available (no plugin file is set in architecture.yml); the rules provider is used`);
+    explanation = `There is no model called "${requested}" in this project, ${instead}`;
   }
 
   const builtIn = activeName === 'rules' || activeName === 'off';
@@ -210,6 +219,12 @@ export async function openDecision(root, options = {}) {
     }
     if (r.status === 'bad-summary') return null;
     broken = true;
+    const seconds = `${Math.round(timeoutMs / 100) / 10} second${timeoutMs === 1000 ? '' : 's'}`;
+    explanation = r.status === 'timeout'
+      ? `The ${activeName} model did not answer within ${seconds}, ${instead}`
+      : r.status === 'invalid'
+        ? `The ${activeName} model answered with something that is not one of the options, ${instead}`
+        : `The ${activeName} model is down or failed to answer, ${instead}`;
     return fallback(summary, `failed (${r.status}${r.detail ? `: ${r.detail}` : ''})`);
   };
 
@@ -219,6 +234,10 @@ export async function openDecision(root, options = {}) {
     /** Set once the requested provider could not be used, at load time or after a failed answer. */
     get fellBackFrom() {
       return fellBackFrom ?? (broken ? activeName : null);
+    },
+    /** One plain-English sentence on why the rules answer instead of the requested model; null while it answers. */
+    get explanation() {
+      return explanation;
     },
     notes,
     timeoutMs,

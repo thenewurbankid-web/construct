@@ -4,6 +4,7 @@
 import test, { beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import http from 'node:http';
 import path from 'node:path';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 import { normalizeDecision, loadConfig, DEFAULT_DECISION } from '../packages/core/config.mjs';
@@ -286,4 +287,65 @@ test('an unknown provider name with no plugin, and an unreadable setting, fall b
   const d = await openDecision(broken);
   assert.equal(d.provider.name, 'rules');
   assert.match(d.notes[0], /architecture\.yml could not be read/);
+});
+
+// ---- cm1: the local model down or slow -> the rules answer, with one plain-English sentence on the decision ----------------
+
+const ONE_SENTENCE = /^[A-Z][^\n]*\.$/;
+const LOCAL_MODEL = (url) => pluginSource(`return fetch(${JSON.stringify(url)}, { method: 'POST', body: '{}' }).then((r) => r.json());`);
+
+test('cm1: the local model is down (nothing listens on its port): rules answer, and the decision says why in one sentence', async () => {
+  const probe = http.createServer();
+  await new Promise((resolve) => probe.listen(0, '127.0.0.1', resolve));
+  const { port } = /** @type {import('node:net').AddressInfo} */ (probe.address());
+  await new Promise((resolve) => probe.close(resolve)); // the port is closed now: a connection is refused
+  const root = project({ decision: { provider: 'jev', plugin: 'jev.mjs', timeoutMs: 2000 }, plugins: { 'jev.mjs': LOCAL_MODEL(`http://127.0.0.1:${port}/api/generate`) } });
+  const decision = await openDecision(root, { capabilities: { available: true, reason: '' } });
+  assert.equal(decision.explanation, null, 'nothing has fallen back yet');
+  const s = await decision.suggest(summary());
+  assert.deepEqual([s.option, s.provider, s.fellBackFrom], ['entity', 'rules', 'jev']);
+  assert.match(decision.notes.join('\n'), /provider "jev" failed \(error: /);
+  assert.equal(decision.explanation, 'The jev model is down or failed to answer, so Line\'s built-in rules make the suggestions instead and nothing else changes.');
+  assert.match(decision.explanation, ONE_SENTENCE);
+});
+
+test('cm1: the local model is slow (it accepts the request and never answers): rules answer after the timeout, with one sentence', async () => {
+  const sockets = new Set();
+  const silent = http.createServer(() => { /* never answers */ });
+  silent.on('connection', (c) => sockets.add(c));
+  await new Promise((resolve) => silent.listen(0, '127.0.0.1', resolve));
+  try {
+    const { port } = /** @type {import('node:net').AddressInfo} */ (silent.address());
+    const root = project({ decision: { provider: 'jev', plugin: 'jev.mjs', timeoutMs: 200 }, plugins: { 'jev.mjs': LOCAL_MODEL(`http://127.0.0.1:${port}/api/generate`) } });
+    const decision = await openDecision(root, { capabilities: { available: true, reason: '' } });
+    const started = Date.now();
+    const s = await decision.suggest(summary());
+    assert.ok(Date.now() - started < 5000, 'gave up at the timeout, not when the server does');
+    assert.deepEqual([s.option, s.provider, s.fellBackFrom], ['entity', 'rules', 'jev']);
+    assert.match(decision.notes.join('\n'), /failed \(timeout: no answer within 200 ms\)/);
+    assert.equal(decision.explanation, 'The jev model did not answer within 0.2 seconds, so Line\'s built-in rules make the suggestions instead and nothing else changes.');
+    assert.match(decision.explanation, ONE_SENTENCE);
+    const again = Date.now();
+    assert.equal((await decision.suggest(summary({ id: 'o2' }))).provider, 'rules');
+    assert.ok(Date.now() - again < 150, 'a slow model costs one timeout per request, not one per question');
+  } finally {
+    for (const c of sockets) c.destroy();
+    await new Promise((resolve) => silent.close(resolve));
+  }
+});
+
+test('cm1: every load-time fallback carries one plain-English sentence too', async () => {
+  const unknown = await openDecision(project(), { provider: 'jev' });
+  assert.equal(unknown.explanation, 'There is no model called "jev" in this project, so Line\'s built-in rules make the suggestions instead and nothing else changes.');
+  const jev = { decision: { provider: 'jev', plugin: 'jev.mjs' }, plugins: { 'jev.mjs': GOOD } };
+  const lite = await openDecision(project(jev), { capabilities: { available: false, reason: 'not enough memory' } });
+  assert.match(lite.explanation, /^This machine runs without local models, so Line's built-in rules/);
+  const hosted = await openDecision(project(jev), { allowPlugins: false });
+  assert.match(hosted.explanation, /^The jev model is not enabled on this server, /);
+  const broken = await openDecision(project({ decision: jev.decision, plugins: { 'jev.mjs': 'export default {' } }), { capabilities: { available: true, reason: '' } });
+  assert.match(broken.explanation, /^The jev model could not be loaded, /);
+  const fine = await openDecision(project(jev), { capabilities: { available: true, reason: '' } });
+  await fine.suggest(summary());
+  assert.equal(fine.explanation, null, 'no fallback, no explanation');
+  for (const d of [unknown, lite, hosted, broken]) assert.match(d.explanation, ONE_SENTENCE);
 });
