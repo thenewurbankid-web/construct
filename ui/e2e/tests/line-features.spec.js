@@ -107,6 +107,8 @@ test.describe.serial('Line Features screen (Line sample project, real server)', 
   test('Line Features on the contract mock (?line=mock) still lists features and one feature\'s detail', async ({ page }) => {
     await gotoCockpit(page, '/?line=mock&feature=orders');
     await expect(page.getByTestId('lf-coverage')).toHaveText('1 of 2 acceptance points are covered.', { timeout: 30_000 });
+    // cd1: with a feature open the chat is a side panel; "All features" brings the list back.
+    await page.locator('[data-option-id="feature.back"]').click();
     await expect(cards(page)).toHaveText([/^billing/, /^orders/]);
   });
 });

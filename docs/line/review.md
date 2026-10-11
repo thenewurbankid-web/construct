@@ -308,3 +308,42 @@ Plan: `docs/line/server-split.md`.
 Gaps: empty folders made before a disk error are left behind; LINE-MODULE does not yet check `ui/` reaching into `packages/`; memory, plan-store and registry fallbacks are not done. On this repo LINE-MODULE reports 216 errors (each package lacks a typed contract; engine and core reach into other packages 205 times).
 
 No UAT (nothing visible).
+
+## cd1: Cockpit in Trace's style, first screen: Features as a chat (awaiting UAT: please judge the look)
+
+What changed: Trace's demo style (warm paper light theme, warm charcoal dark, Inter type, 8px spacing, rounded cards,
+Fit / Wait / Gap colours) is now a set of Cockpit design tokens (`ui/client/lib/line-style.css`, every token `--ln-*`) and
+a small set of shared pieces in `ui/client/lib`: the chat entry (`ChatEntry.tsx`, contract `lineChat.ts`), message
+bubbles, option chips, status pills and a collapsed Details. Only Features uses them; every other screen is unchanged.
+Cockpit's frame (top bar, navigation, panes, theme switch) is unchanged.
+Features (Line projects only) opens as a full-screen chat with five options: Open a feature, What is missing?, Create
+something, Import an app, Explain. Picking a feature opens its page (items, Auto summary, spec coverage) and the chat
+moves to a side panel with that feature's options: What is missing?, Explain, Add from the library, Fix what is wrong,
+All features. Read options answer from the read routes; Add and Fix add a plan step, which waits for your Approve in the
+Plan panel under the chat. Nothing is written before Approve.
+
+Tests: client `lib/lineChat.spec.mjs` (2), `lib/lineStyle.spec.mjs` (5), `features/line-features/domain/FeatureChat.spec.mjs` (7);
+`ui/e2e/tests/line-chat-entry.spec.js` (8, real server); `ui/e2e/tests/line-features.spec.js` (6, updated for the chat);
+UAT walk `ui/e2e/uat/cd1.spec.js` (run with `-c playwright.uat.config.js`).
+1. Every option has a stable id (`features.open`, `feature.add`, ...), a label and a full sentence; a disabled option says why.
+2. The style tokens reach 4.5:1 for text and 3:1 for status colours and control borders on every surface, light and dark (computed from the shipped CSS).
+3. The chat's sentences: what is missing (problems, features with no spec, uncovered spec points), explain, the suggested name (OrdersButton), a fix becomes `line.fix`; a refusal keeps its sentence with the code under Details.
+4. Browser: Features opens full-screen with the five options and both features (billing "Needs attention", orders "All fine"); the old Features stage is gone for Line projects; accessibility clean in light and in dark, full-screen and side panel.
+5. What is missing / Explain / Import answer in plain English; rule and file:line only under Details; Import links to `/import`.
+6. Picking orders opens its page with "Ask about orders" beside it; Fix is disabled with "Nothing here has a fix Construct can apply."; All features goes back.
+7. Add from the library takes two clicks (Add, then the library item); it waits in the Plan; the file is not on disk until Approve, and then the new item shows on the page.
+8. A taken name is refused in one sentence (NAME_TAKEN under Details) and only then does the chat ask for another name.
+9. Fix what is wrong on billing adds the recommended fix as a `line.fix` step waiting for approval.
+10. Create something from the full-screen chat picks a feature, opens it and asks what to base the new item on.
+11. Mock mode (`?line=mock`) still reads; a change says "Changes are not saved in mock mode; ..." instead of writing.
+
+Gaps: making a brand-new feature folder is not a plan step yet (Create adds an item to an existing feature and says so);
+Import links to `/import`, which arrives with ci1 (not merged here); there is no free-text box (options only); the Plan
+panel under the chat keeps its own layout, only recoloured; Trace mode (highlighting the controls of each step) is not
+wired to the option ids yet. Two of Trace's tokens were darkened to pass contrast: the control border (light #877d67,
+dark #7d7764; Trace's own #c9c0ad reaches only 1.6:1 on paper) and the light "tie" colour (#9a6008).
+
+UAT (fresh sample; start `cd ui/server && npm start`, `cd ui/client && npm run dev`, open http://localhost:3000 with `examples/line-sample` open):
+1. Features opens as a chat. Click **What is missing?**, then **billing**: its page opens with the chat beside it.
+2. Click **Fix what is wrong**, then **Recommended fix**, then **Approve** in the Plan. Click **All features**, **orders**, **Add from the library**, **TextField**, then **Approve**: OrdersTextField appears on the page.
+3. Judge the look: press Ctrl+K, type "theme", Enter, to see the other theme. Does this style (colours, type, spacing, chat bubbles, option chips) look right for every screen? Say what to change before the rest are restyled.

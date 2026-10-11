@@ -22,6 +22,8 @@ const pick = (page, id) => page.locator(`[data-testid="ln-pick"][data-item="${id
 
 async function axeClean(page, theme) {
   await page.evaluate((t) => document.documentElement.setAttribute('data-theme', t), theme);
+  // Buttons ease their colours over 0.15s; let the theme switch finish before axe samples them.
+  await page.waitForTimeout(500);
   const found = await runAxe(page, { include: '[data-testid="line-features"]' });
   expect(found.filter(isBlocking), `${theme}: ${format(found.filter(isBlocking))}`).toEqual([]);
 }
