@@ -308,3 +308,24 @@ Plan: `docs/line/server-split.md`.
 Gaps: empty folders made before a disk error are left behind; LINE-MODULE does not yet check `ui/` reaching into `packages/`; memory, plan-store and registry fallbacks are not done. On this repo LINE-MODULE reports 216 errors (each package lacks a typed contract; engine and core reach into other packages 205 times).
 
 No UAT (nothing visible).
+
+## cu2: one AI layer, @mx/reason as Cockpit's decision provider (awaiting UAT)
+
+One set of per-step profiles (`packages/core/ai-profiles.json`, 13 steps): Cockpit's fills, Trace's 8 tasks and Construct's chooser and fix picker, each `{step, model (qwen2.5-coder:1.5b), maxTokens (800 for plan steps), fallback: static, ladder}`. One `decide(step, options, context) → {choice, via: static|jev|model, reasons, attribution}` (`packages/core/line-decide.mjs`), and `decideUntilAccepted`: a refused change is retried with Construct's refusal sentence and typed fixes as the options, and stops with one question when a round does not improve.
+Tests: `test/line-decide.test.mjs` (17), `test/line-decide-integration.test.mjs` (3, real @mx/reason, mock jev), `ui/server/src/lineAiApi.test.mjs` (4), `trace/src/ai/decide.test.mjs` (5), client (3), `ui/e2e/tests/line-ai-steps.spec.js` (2) and the UAT walk `ui/e2e/uat/cu2.spec.js`, both on the real server.
+1. Every profile passes the contract; every local step uses the 1.5B; plan analysis stays on a hosted model; Trace's `ai.config.json` can still override a task, and the profile says so.
+2. One option left by the checks is decided by static, with no model asked.
+3. With jev up, jev picks among the checked options by their plain labels; the result records jev, the model and the version.
+4. Qwen suggests and jev agrees: Qwen's reason is kept. They disagree: low confidence, and Trace leaves the question to you.
+5. Reason not linked, jev's model not running, or reason throwing: Qwen's checked pick stands, else static's order, with one sentence saying why.
+6. A refusal's typed fixes become the options, Construct's recommended fix first; a refused change retried with them lands; a round that does not improve stops with "… Which fix should Line try?" and the fixes.
+7. A project with `decision: provider: reason` gets these suggestions with no plugin file; on a machine without local models jev stays off and the line says so.
+8. Cockpit's import and create fills use the 1.5B when Settings names no model (they used the 7B).
+Browser: Settings → "AI steps" lists every step, Cockpit first: what it does, "Model: qwen2.5-coder:1.5b (Line's default)", how it decides and falls back; the step id, reply cap and ladder sit under Details; read-only; accessibility clean.
+
+Gaps: the default decision provider is still `rules` (a project opts in with `decision: provider: reason`) because the Requirement screen's 40+ tested reasons come from rules; say if reason should become the default. Trace's choose accuracy with jev on has not been re-measured on the eval set (its ladder says "measured: not yet"). Trace's own reply caps are still in its code, not read from `maxTokens`. Nothing calls `decideUntilAccepted` from a screen yet (ca2's Apply-fix screen is the first user). One new list-loop warning (no errors) in the AI steps panel, as on the other Line screens.
+
+UAT (no project needed):
+1. Open http://localhost:3000, click your profile (top right), click Settings.
+2. Scroll to "AI steps": every step says what it does, "Model: qwen2.5-coder:1.5b (Line's default)" (plan analysis: "The hosted model you choose") and how it falls back to static.
+3. Open Details on "Suggests the next step…": "Step id: construct.chooser", "Reply cap: 800 tokens" and its ladder.
