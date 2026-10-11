@@ -184,7 +184,7 @@ test('open-core boundary: no core import reaches ui/, packages/tools or any cura
     }
   }
   const planTemplate = fs.readFileSync(path.join(root, 'packages', 'engine', 'planTemplate.mjs'), 'utf8');
-  assert.deepEqual([...planTemplate.matchAll(spec)].map((m) => m[1] || m[2]).filter((s) => s.startsWith('.')).sort(), ['../core/plan.mjs']);
+  assert.deepEqual([...planTemplate.matchAll(spec)].map((m) => m[1] || m[2]).filter((s) => s.startsWith('.') || s.startsWith('@line/')).sort(), ['@line/construct-core/plan']);
   const inSrc = files.filter((p) => p.endsWith('.json') && /"templateVersion"/.test(fs.readFileSync(p, 'utf8')));
   assert.deepEqual(inSrc, [], 'a template lives under an open package: curated flows are proprietary and must load from outside core');
 });
