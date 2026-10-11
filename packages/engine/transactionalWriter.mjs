@@ -32,6 +32,9 @@ import { affectedSet } from './scopeGate.mjs';
 // validation (and copying node_modules in particular would be slow/pointless).
 const SKIP_DIRS = new Set(['node_modules', '.next', '.git']);
 
+/** The buffer value of a staged delete (deleteFile). */
+const DELETED = Symbol('deleted');
+
 function toPosixRel(relPath) {
   return relPath.split(path.sep).join('/');
 }
@@ -52,7 +55,7 @@ function copyProjectTree(root, shadowDir) {
  * until (and unless) `commit()` succeeds.
  */
 export function createTransaction(root) {
-  const buffer = new Map(); // posix-relative path -> content
+  const buffer = new Map(); // posix-relative path -> content, or DELETED for a staged delete
 
   return {
     root,
@@ -68,12 +71,21 @@ export function createTransaction(root) {
       buffer.set(toPosixRel(rel), content);
     },
 
+    /** Stage a file delete (Line promote moves a file, #T2): validated like a write, against a shadow
+     * copy without the file, and replayed onto `root` only when the commit passes. Deleting a path
+     * that does not exist is a no-op at commit. A later writeFile for the same path replaces it. */
+    deleteFile(relPath) {
+      const rel = path.isAbsolute(relPath) ? path.relative(root, relPath) : relPath;
+      assertNotFrozen(path.join(root, rel));
+      buffer.set(toPosixRel(rel), DELETED);
+    },
+
     /** Read back a staged write, or fall through to the real file on disk
      * if nothing has been staged for that path yet. Returns undefined if
      * neither exists. */
     readFile(relPath) {
       const rel = toPosixRel(path.isAbsolute(relPath) ? path.relative(root, relPath) : relPath);
-      if (buffer.has(rel)) return buffer.get(rel);
+      if (buffer.has(rel)) return buffer.get(rel) === DELETED ? undefined : buffer.get(rel);
       const abs = path.join(root, rel);
       return fs.existsSync(abs) ? fs.readFileSync(abs, 'utf8') : undefined;
     },
@@ -114,6 +126,7 @@ export function createTransaction(root) {
         const staged = [...buffer.keys()];
         for (const [relPath, content] of buffer) {
           const dest = path.join(shadowDir, relPath);
+          if (content === DELETED) { fs.rmSync(dest, { force: true }); continue; }
           fs.mkdirSync(path.dirname(dest), { recursive: true });
           fs.writeFileSync(dest, content);
         }
@@ -126,7 +139,8 @@ export function createTransaction(root) {
         if (!ok) return { committed: false, violations, blastRadius };
 
         for (const [relPath, content] of buffer) {
-          write(path.join(root, relPath), content);
+          if (content === DELETED) fs.rmSync(path.join(root, relPath), { force: true });
+          else write(path.join(root, relPath), content);
         }
         buffer.clear();
         return { committed: true, violations, blastRadius };
