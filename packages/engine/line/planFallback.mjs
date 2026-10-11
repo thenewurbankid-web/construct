@@ -4,9 +4,14 @@
 // rename, plus `writes.jsonl`), so a project moves between the two without losing its plans. Same rules: only a
 // person approves a write, every mutation takes the plan's version, one step runs at a time, each call answers
 // `{ok: true, plan, message}` or `{ok: false, code, reason}` with one plain-English sentence.
+// Every read-modify-write of a session file runs under that file's cross-process lock (@line/construct-core/file-lock):
+// the MCP server and the Cockpit server are separate processes on the same file, so an in-memory queue alone let both
+// read version N, both pass the version check, and one change was lost. Under the lock the file is read again, the
+// version checked, the change applied and written through the writer; a lock held too long is refused (`lock_timeout`).
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { withFileLock } from '@line/construct-core/file-lock';
 
 const PEOPLE = ['user', 'ui', 'chat'];
 const isPerson = (by) => PEOPLE.includes(by);
@@ -26,6 +31,8 @@ export function createAtomicPlanWriter(root) {
   const logFile = path.join(dir, 'writes.jsonl');
   const fileOf = (sid) => { if (!ID.test(sid)) throw new Error(`"${sid}" is not a session id Line can store.`); return path.join(dir, `${sid}.json`); };
   return {
+    /** The session file of `sid` (what the cross-process lock guards). */
+    fileOf,
     async read(sid) {
       try { return JSON.parse(fs.readFileSync(fileOf(sid), 'utf8')); } catch (e) { if (/** @type {any} */ (e).code === 'ENOENT') return null; throw e; }
     },
@@ -59,22 +66,29 @@ const canRun = (s) => s === 'draft' || s === 'approved' || s === 'running';
 /**
  * The static plan API.
  * @param {{registry: import('../../line-links/contracts').PlanRegistry, writer: ReturnType<typeof createAtomicPlanWriter>,
- *   now?: () => string, newId?: () => string}} o
+ *   now?: () => string, newId?: () => string, lockTimeoutMs?: number}} o `lockTimeoutMs` how long a change waits for
+ *   another process's lock on the session file before it is refused with code lock_timeout (default 10 s).
  * @returns The plan API, the same shape as @mx/plan's.
  */
 export function createStaticPlanApi(o) {
   const now = o.now ?? (() => new Date().toISOString());
   const newId = o.newId ?? (() => crypto.randomUUID().slice(0, 8));
   const sessionOf = (planId) => { const m = /^plan-([A-Za-z0-9_]+)-\d+$/.exec(planId); return m ? `ses-${m[1]}` : null; };
+  // A writer with no file (an in-memory test writer) has no other process to race, so an in-process queue serves it.
   let queue = Promise.resolve();
-  const locked = (fn) => { const run = queue.then(fn, fn); queue = run.catch(() => {}); return run; };
+  const queued = (fn) => { const run = queue.then(fn, fn); queue = run.catch(() => {}); return run; };
+  /** Run `fn` holding session `sid`'s file lock; a lock that never frees is one sentence with code lock_timeout. */
+  const locked = (sid, fn) => (typeof o.writer.fileOf !== 'function' ? queued(fn) : withFileLock(o.writer.fileOf(sid), fn, o.lockTimeoutMs === undefined ? undefined : { timeoutMs: o.lockTimeoutMs }).catch((e) => {
+    if (e?.code === 'LOCK_TIMEOUT') return refuse('lock_timeout', e.sentence);
+    throw e;
+  }));
   const notFound = (id) => refuse('not_found', `There is no plan ${id}; plan_list shows the plans.`);
   const load = async (planId) => { const sid = sessionOf(planId); const d = sid ? await o.writer.read(sid) : null; return d?.plans.find((p) => p.id === planId) ?? null; };
 
   function mutate(a, fn, check = true) {
     const sid = sessionOf(a.planId);
     if (!sid) return Promise.resolve(notFound(a.planId));
-    return locked(async () => {
+    return locked(sid, async () => {
       const doc = await o.writer.read(sid);
       const i = doc ? doc.plans.findIndex((p) => p.id === a.planId) : -1;
       if (!doc || i < 0) return notFound(a.planId);
@@ -118,14 +132,21 @@ export function createStaticPlanApi(o) {
     async plan_create(a) {
       if (!SENTENCE.test(String(a.goal ?? '').trim())) return refuse('invalid', 'The goal must be one plain-English sentence that starts with a capital letter and ends with a full stop.');
       if (a.auto && !isPerson(a.by)) return refuse('forbidden', 'Only a person can turn Auto on, so the plan was not created; leave auto out and ask the user to approve writes.');
-      return locked(async () => {
-        let prior = null; let suffix;
+      let suffix;
+      if (a.sessionId !== undefined) {
+        const m = /^ses-([A-Za-z0-9_]+)$/.exec(a.sessionId);
+        if (!m) return refuse('not_found', `There is no session ${a.sessionId}.`);
+        suffix = m[1];
+      } else suffix = newId();
+      return locked(`ses-${suffix}`, async () => {
+        let prior = null;
         if (a.sessionId !== undefined) {
-          const m = /^ses-([A-Za-z0-9_]+)$/.exec(a.sessionId);
-          prior = m ? await o.writer.read(a.sessionId) : null;
+          prior = await o.writer.read(a.sessionId);
           if (!prior) return refuse('not_found', `There is no session ${a.sessionId}.`);
-          suffix = m[1];
-        } else suffix = newId();
+        } else if (await o.writer.read(`ses-${suffix}`)) {
+          // Another process made this session after the caller looked: never overwrite it; the caller reads it again.
+          return refuse('conflict', `Session ses-${suffix} was started meanwhile; read it again and add to it.`);
+        }
         const planId = `plan-${suffix}-${(prior?.plans.length ?? 0) + 1}`;
         const title = a.title ?? a.goal.trim().replace(/[.?!]$/, '');
         const session = prior ? { ...prior.session, planId } : { id: `ses-${suffix}`, title, startedBy: a.startedBy ?? (isPerson(a.by) ? a.by : 'agent'), planId, at: now() };
@@ -208,4 +229,31 @@ export function createStaticPlanApi(o) {
       return { ok: true, plan: p, state: st, message: `The plan is ${p.status} at version ${p.version}, with ${st.counts.done + st.counts.skipped} of ${p.steps.length} steps finished.${st.waiting.map((w) => ` ${w.reason}`).join('')}` };
     },
   };
+}
+
+const PLAN_READS = new Set(['plan_get', 'plan_session', 'plan_status', 'plan_list']);
+
+/**
+ * Wrap a plan API Construct does not own (the linked @mx/plan) at the boundary Construct controls: every call that can
+ * change a plan runs under the same cross-process session-file lock the built-in store takes, so a linked process and a
+ * built-in one (or two linked ones) never interleave a read-modify-write of one session file. Reads pass through.
+ * @param {Record<string, any>} api The plan API (plan_* methods).
+ * @param {{root: string, newId: () => string, lockTimeoutMs?: number}} o `newId` the session suffix the API was given
+ *   (for plan_create without a sessionId); `lockTimeoutMs` as createStaticPlanApi's (default 10 s).
+ * @returns {Record<string, any>} The same API, its changing calls locked.
+ */
+export function lockPlanApi(api, { root, newId, lockTimeoutMs }) {
+  const fileOf = (sid) => path.join(root, 'line', 'plans', `${sid}.json`);
+  const sidOf = (a) => {
+    if (typeof a?.sessionId === 'string' && /^ses-[A-Za-z0-9_]+$/.test(a.sessionId)) return a.sessionId;
+    const m = typeof a?.planId === 'string' ? /^plan-([A-Za-z0-9_]+)-\d+$/.exec(a.planId) : null;
+    return m ? `ses-${m[1]}` : `ses-${newId()}`;
+  };
+  return Object.fromEntries(Object.entries(api).map(([name, fn]) => {
+    if (typeof fn !== 'function' || PLAN_READS.has(name)) return [name, fn];
+    return [name, (a, ...rest) => withFileLock(fileOf(sidOf(a)), () => fn.call(api, a, ...rest), lockTimeoutMs === undefined ? undefined : { timeoutMs: lockTimeoutMs }).catch((e) => {
+      if (e?.code === 'LOCK_TIMEOUT') return refuse('lock_timeout', e.sentence);
+      throw e;
+    })];
+  }));
 }

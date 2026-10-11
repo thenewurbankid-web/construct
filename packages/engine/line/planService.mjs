@@ -21,7 +21,7 @@ import { buildFacts } from './facts.mjs';
 import { checkPre, conditionsOf, expectFor } from './conditions.mjs';
 import { evaluate } from './expr.mjs';
 import { createPlanRecorder } from './records.mjs';
-import { createAtomicPlanWriter, createStaticPlanApi } from './planFallback.mjs';
+import { createAtomicPlanWriter, createStaticPlanApi, lockPlanApi } from './planFallback.mjs';
 import { isInsideWorkspace, readWorkspace } from './workspace.mjs';
 import { createSessionTrace, refusalOfStep, matchFix, sourceOf, traceArgs } from './trace.mjs';
 
@@ -29,6 +29,8 @@ import { createSessionTrace, refusalOfStep, matchFix, sourceOf, traceArgs } from
 export const SESSION_ID = 'ses-cockpit';
 const SUFFIX = 'cockpit';
 export const DEFAULT_GOAL = 'Change this project in Cockpit.';
+/** How often a versioned call is tried when another process keeps changing the plan between read and write. */
+const CONFLICT_TRIES = 8;
 
 const lower = (s) => String(s).charAt(0).toLowerCase() + String(s).slice(1);
 const asSentence = (s) => { const t = String(s ?? '').trim().replace(/\s+/g, ' '); return /[.?!]$/.test(t) ? t : `${t}.`; };
@@ -44,7 +46,7 @@ export async function loadPlanApi({ root, registry, linkOptions }) {
   const linked = await importLinked('@mx/plan', linkOptions);
   if (linked.ok && typeof linked.module.createPlanApi === 'function') {
     const m = linked.module;
-    return { api: m.createPlanApi({ registry, writer: m.createFileWriter(root), newId: () => SUFFIX }), store: { linked: true, sentence: 'Plans are kept by @mx/plan in line/plans of this project.' } };
+    return { api: lockPlanApi(m.createPlanApi({ registry, writer: m.createFileWriter(root), newId: () => SUFFIX }), { root, newId: () => SUFFIX }), store: { linked: true, sentence: 'Plans are kept by @mx/plan in line/plans of this project.' } };
   }
   return {
     api: createStaticPlanApi({ registry, writer: createAtomicPlanWriter(root), newId: () => SUFFIX }),
@@ -149,15 +151,16 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
     const ses = await api.plan_session({ sessionId: SESSION_ID });
     const startedBy = by === 'agent' ? 'agent' : 'ui';
     const r = await api.plan_create({ goal: DEFAULT_GOAL, by, startedBy, ...(ses.ok ? { sessionId: SESSION_ID } : {}) });
+    if (!r.ok && r.code === 'conflict') { const made = await current(api); if (made && made.status !== 'cancelled') return { ok: true, plan: made }; }
     return r.ok ? { ok: true, plan: r.plan } : r;
   }
 
-  /** Run a versioned plan call, reading the version again once on a conflict. */
+  /** Run a versioned plan call, reading the version again on a conflict (another process changed the plan meanwhile). */
   async function withVersion(api, planId, call) {
     let got = await api.plan_get({ planId });
     if (!got.ok) return got;
     let r = await call(got.plan);
-    if (!r.ok && r.code === 'conflict') { got = await api.plan_get({ planId }); if (got.ok) r = await call(got.plan); }
+    for (let tries = 1; tries < CONFLICT_TRIES && !r.ok && r.code === 'conflict'; tries += 1) { got = await api.plan_get({ planId }); if (!got.ok) break; r = await call(got.plan); }
     return r;
   }
 

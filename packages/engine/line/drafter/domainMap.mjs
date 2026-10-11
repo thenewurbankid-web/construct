@@ -12,7 +12,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { createTransaction } from '../../transactionalWriter.mjs';
+import { writeLineState } from '../../transactionalWriter.mjs';
 import { LineOpError } from '../contract.mjs';
 import { KIND_LAYER, REQUEST_SLOT, SLOT_REF } from './contract.mjs';
 import { suggestFromLexicon } from './lexicon.mjs';
@@ -122,7 +122,8 @@ export function buildDomainMap(root, summary, o = {}) {
 }
 
 /**
- * Save the map (with its synonyms) inside the project, through Construct's writer.
+ * Save the map (with its synonyms) in Line's state folder, through Construct's Line-state writer (writeLineState: temp
+ * file + rename; no project copy).
  * @param {string} root
  * @param {ReturnType<typeof import('../facts.mjs').factsSummary>} summary
  * @param {DomainMap} map
@@ -130,11 +131,10 @@ export function buildDomainMap(root, summary, o = {}) {
  */
 export function saveDomainMap(root, summary, map) {
   const file = mapFile(summary);
-  const txn = createTransaction(root);
-  txn.writeFile(file, `${JSON.stringify({ v: 1, stamp: map.stamp, note: 'This project\'s domain map: its own words to slots. It stays in this project and is never shared.', synonyms: map.synonyms, entries: map.entries.map((e) => ({ key: e.key, forms: e.forms })) }, null, 2)}\n`);
-  let result;
-  try { result = txn.commit({ validate: () => ({ violations: [], ok: true }) }); } catch { txn.reset(); result = { committed: false }; }
-  if (!result.committed) throw new LineOpError('The domain map could not be saved; nothing was changed.', 'WRITE_FAILED');
+  const text = `${JSON.stringify({ v: 1, stamp: map.stamp, note: 'This project\'s domain map: its own words to slots. It stays in this project and is never shared.', synonyms: map.synonyms, entries: map.entries.map((e) => ({ key: e.key, forms: e.forms })) }, null, 2)}\n`;
+  try { writeLineState(root, file, text, { stateDir: summary.layout.state || 'line' }); } catch {
+    throw new LineOpError('The domain map could not be saved; nothing was changed.', 'WRITE_FAILED');
+  }
   return file;
 }
 

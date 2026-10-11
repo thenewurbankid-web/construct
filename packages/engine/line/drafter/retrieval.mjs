@@ -2,12 +2,12 @@
 // slot shapes, intent, the structure hashes before, the route's slot-form steps, expressions and delta, the hashes
 // after, and whether a person approved it. Deltas (not whole-project hashes, which rarely repeat) are what a future
 // model learns from. Records live inside the project (<state>/drafter/transitions.jsonl) and are written only through
-// Construct's writer. They stay apart from the plan records (<state>/records/plans.jsonl, ../records.mjs): a plan record
+// Construct's Line-state writer (writeLineState, append). They stay apart from the plan records (<state>/records/plans.jsonl, ../records.mjs): a plan record
 // is one finished, approved plan step with its checks' outcomes; a transition is one drafted route a person picked,
 // with the request and its slot shapes. Both use the same structure hashes (../structure.mjs).
 import fs from 'node:fs';
 import path from 'node:path';
-import { createTransaction } from '../../transactionalWriter.mjs';
+import { writeLineState } from '../../transactionalWriter.mjs';
 import { LineOpError } from '../contract.mjs';
 import { SLOT_REF } from './contract.mjs';
 
@@ -49,7 +49,8 @@ export function readRecords(root, summary) {
 }
 
 /**
- * Append a record through Construct's writer.
+ * Append a record to Line's state through Construct's Line-state writer (writeLineState: one O_APPEND line under the
+ * file's lock, inside the state folder only; no project copy, no re-read).
  * @param {string} root
  * @param {{layout: {state: string}}} summary
  * @param {import('./contract.mjs').TransitionRecord} record
@@ -57,13 +58,9 @@ export function readRecords(root, summary) {
  */
 export function appendRecord(root, summary, record) {
   const file = recordsFile(summary);
-  let text = '';
-  try { text = fs.readFileSync(path.join(root, file), 'utf8'); } catch { /* first record */ }
-  const txn = createTransaction(root);
-  txn.writeFile(file, `${text}${JSON.stringify(record)}\n`);
-  let result;
-  try { result = txn.commit({ validate: () => ({ violations: [], ok: true }) }); } catch { txn.reset(); result = { committed: false }; }
-  if (!result.committed) throw new LineOpError('The training record could not be saved; nothing was changed.', 'WRITE_FAILED');
+  try { writeLineState(root, file, `${JSON.stringify(record)}\n`, { append: true, stateDir: summary.layout.state || 'line' }); } catch {
+    throw new LineOpError('The training record could not be saved; nothing was changed.', 'WRITE_FAILED');
+  }
   return file;
 }
 
