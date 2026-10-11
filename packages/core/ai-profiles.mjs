@@ -11,7 +11,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { DEFAULT_STEP_MODEL } from '../engine/line/contract.mjs';
 import { linkStatus } from '../line-links/index.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -21,6 +20,8 @@ export const TRACE_AI_CONFIG = path.resolve(HERE, '../../trace/ai.config.json');
 
 const readJson = (file) => { try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return null; } };
 const LINE_DEFAULT = "Line's default";
+/** The local model when ai-profiles.json names none (the contract's DEFAULT_STEP_MODEL; JSON is the source). */
+const DEFAULT_STEP_MODEL = 'qwen2.5-coder:1.5b';
 
 /**
  * Every step profile, Trace's overrides applied.
