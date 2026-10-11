@@ -57,6 +57,7 @@
     "./profiles": "./profiles/index.mjs",
     "./prose": "./prose.mjs",
     "./fs": "./fs.mjs",
+    "./mechanical-plan": "./mechanical-plan.mjs",
     "./architecture-enforcer": "./architecture-enforcer.mjs",
     "./soc-enforcer": "./soc-enforcer.mjs",
     "./readability-enforcer": "./readability-enforcer.mjs",

@@ -89,6 +89,8 @@ export * as profiles from './profiles/index.mjs';
 export * as prose from './prose.mjs';
 /** `@line/construct-core/fs` */
 export * as fs from './fs.mjs';
+/** `@line/construct-core/mechanical-plan` */
+export * as mechanicalPlan from './mechanical-plan.mjs';
 /** `@line/construct-core/architecture-enforcer` */
 export * as architectureEnforcer from './architecture-enforcer.mjs';
 /** `@line/construct-core/soc-enforcer` */
