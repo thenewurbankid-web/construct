@@ -10,7 +10,11 @@
 // labelling of the graph. `structureDelta` names items by typed slots, never by their names.
 import crypto from 'node:crypto';
 
-/** "sha256:<16 hex>" of a canonical JSON value. */
+/**
+ * "sha256:<16 hex>" of a canonical JSON value.
+ * @param {unknown} v
+ * @returns {string}
+ */
 export const hash16 = (v) => `sha256:${crypto.createHash('sha256').update(JSON.stringify(v)).digest('hex').slice(0, 16)}`;
 
 const libraryIndex = (project) => new Map((project.library ?? []).map((l) => [l.id, l]));

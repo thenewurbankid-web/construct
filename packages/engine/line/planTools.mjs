@@ -199,6 +199,7 @@ const lower = (s) => String(s).charAt(0).toLowerCase() + String(s).slice(1);
  * The facts a step's checks are evaluated against: what it planned and what the writer did, plus (read only when an
  * expression needs them) the project's facts after the write.
  * @param {string} root @param {string} tool @param {any} staged @param {any} apply @param {typeof REAL_PLAN_OPS} [ops]
+ * @returns {any} A lazy LineFacts (facts.mjs buildFacts).
  */
 export function stepFacts(root, tool, staged, apply, ops = REAL_PLAN_OPS) {
   const plan = { tool, staged: Boolean(staged), applied: Boolean(apply?.ok), files: staged ? fileStates(root, staged).map((f) => ({ path: f.path, asPlanned: f.state === 'present' })) : [] };
@@ -213,6 +214,7 @@ export function stepFacts(root, tool, staged, apply, ops = REAL_PLAN_OPS) {
  * Kinds Line cannot run yet, without an expression, fail honestly.
  * @param {string} root @param {any[]} expect @param {any} staged @param {any} apply
  * @param {{tool?: string, ops?: typeof REAL_PLAN_OPS, facts?: any}} [o]
+ * @returns {import('./contract.mjs').CheckResult[]}
  */
 export function runChecks(root, expect, staged, apply, o = {}) {
   let facts = o.facts ?? null;
@@ -270,6 +272,11 @@ export function fixesAsProposed(root, staged, findings) {
 /**
  * Run one change tool: plan (pure), narrow to the files not already there, apply through the writer, check.
  * Never throws for a refusal: the step's result records it and says the step needs the person.
+ * @param {string} root
+ * @param {string} tool
+ * @param {Record<string, any>} args The request plus the plan-only fields (expect, retry, fixOf).
+ * @param {typeof REAL_PLAN_OPS} [ops]
+ * @param {{pre?: boolean}} [o] `pre`: evaluate the tool's pre first (the registry does; a retry skips it).
  * @returns {import('./contract.mjs').LineStepResult}
  */
 export function runChange(root, tool, args, ops = REAL_PLAN_OPS, o = {}) {
@@ -388,6 +395,7 @@ export async function constructCommandTools() {
 /**
  * The tool's pre on the project as it is now: null when it holds (or the tool declares none), else one sentence.
  * @param {string} root @param {string} tool @param {Record<string, unknown>} args @param {typeof REAL_PLAN_OPS} [ops]
+ * @returns {string|null}
  */
 export function preRefusal(root, tool, args, ops = REAL_PLAN_OPS) {
   const facts = buildFacts(root, { ops });

@@ -25,7 +25,11 @@ const STRUCTURE_WORDS = new Set(['feature', 'features', 'item', 'items', 'librar
 const LOGIC_ARGS = new Set(['kind']);
 
 const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-/** The words of a name: "StatusBadge" -> status, badge; "order-items" -> order, items. */
+/**
+ * The words of a name: "StatusBadge" -> status, badge; "order-items" -> order, items.
+ * @param {string} name
+ * @returns {string[]}
+ */
 export const wordsOf = (name) => String(name).replace(/([a-z0-9])([A-Z])/g, '$1 $2').split(/[^A-Za-z0-9]+/).map((w) => w.toLowerCase()).filter((w) => w.length >= 3 && !STRUCTURE_WORDS.has(w) && !/^\d+$/.test(w));
 
 /**
@@ -33,6 +37,7 @@ export const wordsOf = (name) => String(name).replace(/([a-z0-9])([A-Z])/g, '$1 
  * slots in order of first use.
  * @param {any} project readLineProject's view (before the step)
  * @param {any[]} [extraProjects] other views to learn names from (after the step)
+ * @returns {{text: Function, args: Function, expr: Function, learnArgs: Function, slot: Function, slots: () => Record<string, string>}}
  */
 export function createSlotter(project, extraProjects = []) {
   /** name -> {type, attrs} */
@@ -130,6 +135,7 @@ const slottedHashes = (s, slotter) => ({ project: s.project, library: s.library,
  * @param {string} root
  * @param {{ops?: {readLineProject: (root: string) => any}, now?: () => Date, write?: (line: string) => void}} [o]
  *   `write` replaces the file (tests); by default each record is appended through writeLineState.
+ * @returns {{file: string, problem: string|null, snapshot: Function, record: Function}}
  */
 export function createPlanRecorder(root, { ops, now = () => new Date(), write } = {}) {
   const stateDir = lineStateDir(root);

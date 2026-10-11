@@ -29,7 +29,11 @@ const low = (s) => (nameFirst(s) ? s : s.charAt(0).toLowerCase() + s.slice(1));
 const end = (s) => { const t = cap(String(s).trim().replace(/\s+/g, ' ')); return /[.?!]$/.test(t) ? t : `${t}.`; };
 const cut = (s, n = 80) => (s.length > n ? `${s.slice(0, n - 3)}...` : s);
 
-/** A value as a reader sees it. */
+/**
+ * A value as a reader sees it.
+ * @param {unknown} v
+ * @returns {string}
+ */
 export function show(v) {
   if (v === MISSING) return 'missing';
   if (v === null) return 'empty';
@@ -42,7 +46,11 @@ export function show(v) {
 const rest = (segs) => segs.map((s) => (Number.isInteger(s) ? `item ${Number(s) + 1}` : String(s))).join(' ');
 const of = (tail, whole) => (tail.length ? `the ${rest(tail)} of ${whole}` : whole);
 
-/** A path into the facts in words: "features/orders/components/StatusBadge.tsx", "the hash of a.tsx", "feature orders". */
+/**
+ * A path into the facts in words: "features/orders/components/StatusBadge.tsx", "the hash of a.tsx", "feature orders".
+ * @param {(string|number)[]} segs
+ * @returns {string}
+ */
 export function pathLabel(segs) {
   const [head, key, ...tail] = segs;
   if (head === 'files' && key !== undefined) return of(tail, String(key));

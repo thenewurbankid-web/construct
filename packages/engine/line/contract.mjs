@@ -811,7 +811,11 @@ export function exprProblem(expr) {
   return why && why.charAt(0).toUpperCase() + why.slice(1);
 }
 
-/** @param {unknown} e @returns {asserts e is LineExpr} Throws a TypeError whose message is the one sentence. */
+/**
+ * Throws unless e is a valid expression; the TypeError's message is the one-sentence reason.
+ * @param {unknown} e
+ * @returns {asserts e is LineExpr}
+ */
 export function assertExpr(e) {
   const why = exprProblem(e);
   if (why) throw new TypeError(why);
@@ -834,14 +838,22 @@ export const EXPR_JSON_SCHEMA = Object.freeze({
   ],
 });
 
-/** @param {any} r @returns {asserts r is ExprEvaluation} */
+/**
+ * Throws unless r is an ExprEvaluation (ok exactly when nothing failed; each failure one sentence).
+ * @param {any} r
+ * @returns {asserts r is ExprEvaluation}
+ */
 export function assertExprEvaluation(r) {
   if (typeof r?.ok !== 'boolean' || !Array.isArray(r.failed)) fail('evaluation', 'has ok and failed');
   if (r.ok !== (r.failed.length === 0)) fail('evaluation.ok', 'is true exactly when nothing failed');
   r.failed.forEach((f, i) => { if (typeof f.path !== 'string') fail(`evaluation.failed[${i}].path`, 'must be a string'); sentence(f.sentence, `evaluation.failed[${i}].sentence`); });
 }
 
-/** @param {any} f @returns {asserts f is LineFacts} */
+/**
+ * Throws unless f is a LineFacts snapshot within its caps.
+ * @param {any} f
+ * @returns {asserts f is LineFacts}
+ */
 export function assertLineFacts(f) {
   if (!isPlain(f)) fail('facts', 'must be an object');
   for (const k of FACTS_FIELDS) if (!(k in f)) fail(`facts.${k}`, 'is missing');
@@ -864,7 +876,12 @@ const assertHashes = (h, where) => {
   for (const [k, v] of Object.entries(h.features)) { if (!SLOT_PATTERN.test(k)) fail(`${where}.features`, `"${k}" is not a slot`); if (!HASH16.test(String(v))) fail(`${where}.features.${k}`, 'must be a hash'); }
 };
 
-/** @param {any} r @param {string} [where] @returns {asserts r is PlanRecord} */
+/**
+ * Throws unless r is a PlanRecord whose names are all typed slots.
+ * @param {any} r
+ * @param {string} [where]
+ * @returns {asserts r is PlanRecord}
+ */
 export function assertPlanRecord(r, where = 'record') {
   if (r?.v !== 1) fail(`${where}.v`, 'must be 1');
   str(r.at, `${where}.at`);

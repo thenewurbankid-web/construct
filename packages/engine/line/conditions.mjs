@@ -83,6 +83,7 @@ export function conditionsOf(tool, args, layout) {
  * The default checks of a change step, each with its expression; the tool's post joins the `files` check.
  * @param {string} tool @param {Record<string, unknown>} args @param {{features?: string}} [layout]
  * @param {readonly {id: string, sentence: string, kind: string}[]} defaults cp1's DEFAULT_EXPECT
+ * @returns {{id: string, sentence: string, kind: string, expr?: import('./contract.mjs').LineExpr}[]}
  */
 export function expectFor(tool, args, layout, defaults) {
   const post = conditionsOf(tool, args, layout)?.post ?? null;

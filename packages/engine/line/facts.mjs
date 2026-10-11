@@ -15,7 +15,13 @@ import { structureOf, hash16 } from './structure.mjs';
 
 const SKIP = new Set(['node_modules', '.git', '.next']);
 
-/** Library and feature files: root-relative posix path -> {bytes, hash}, at most `limit`, sorted. */
+/**
+ * Library and feature files: root-relative posix path -> {bytes, hash}, at most `limit`, sorted.
+ * @param {string} root
+ * @param {string[]} dirs
+ * @param {number} [limit]
+ * @returns {{files: Record<string, {bytes: number, hash: string}>, truncated: number}}
+ */
 export function fileFacts(root, dirs, limit = FACTS_LIMITS.files) {
   const found = [];
   const walk = (rel) => {
@@ -37,7 +43,11 @@ export function fileFacts(root, dirs, limit = FACTS_LIMITS.files) {
   return { files, truncated: Math.max(0, found.length - limit) };
 }
 
-/** The facts' view of readLineProject. */
+/**
+ * The facts' view of readLineProject.
+ * @param {any} project
+ * @returns {{library: any, features: any, findings: any[], truncatedFindings: number}}
+ */
 export function projectFacts(project) {
   const library = {};
   for (const l of project.library ?? []) library[l.id] = { kind: l.kind, name: l.name, file: l.file, level: l.level ?? null, usedBy: (l.usedBy ?? []).length };
@@ -52,7 +62,11 @@ export function projectFacts(project) {
   return { library, features, findings: all.slice(0, FACTS_LIMITS.findings), truncatedFindings: Math.max(0, all.length - FACTS_LIMITS.findings) };
 }
 
-/** New error findings as the facts keep them. */
+/**
+ * New error findings as the facts keep them.
+ * @param {any[]|undefined} findings
+ * @returns {{key: string, rule: string, severity: string, file: string}[]}
+ */
 export const newFindingFacts = (findings) => (findings ?? []).filter((f) => f.severity === 'error').map((f) => ({ key: String(f.key ?? `${f.rule}|${f.file}|${f.line ?? 0}`), rule: f.rule, severity: f.severity, file: f.file }));
 
 /**
@@ -82,11 +96,19 @@ export function buildFacts(root, { ops, plan = null, findingsNew = [], project }
   return /** @type {any} */ (facts);
 }
 
-/** The facts as plain JSON (reads everything once). */
+/**
+ * The facts as plain JSON (reads everything once).
+ * @param {any} facts
+ * @returns {import('./contract.mjs').LineFacts}
+ */
 export function summarizeFacts(facts) {
   const { files, library, features, findings, findingsNew, plan, structure, truncated } = facts;
   return { files, library, features, findings, findingsNew, plan, structure, truncated };
 }
 
-/** "sha256:<16 hex>" of the facts summary. */
+/**
+ * "sha256:<16 hex>" of the facts summary.
+ * @param {any} facts
+ * @returns {string}
+ */
 export const factsHash = (facts) => hash16(summarizeFacts(facts));
