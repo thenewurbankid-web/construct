@@ -15,6 +15,13 @@
 //     and running them once approved. A person approves every write: either in the review (the person approved that
 //     exact step) or in the Plan panel / Import agent screen. An agent's own approval never approves a write.
 //
+// All or nothing (iv2-bugs): the plan steps land one by one (each is approved and checked on its own), so before the first
+// one lands the agent saves the folder as it is (`o.snapshot`, importAgentDisk.mjs: `<folder>/line/import-undo.json`
+// through the writer). When a later step is refused and cannot be fixed, the person's question offers "Undo the import"
+// (recommended when no typed fix exists): `o.rollback` puts every file of the folder back as it was, in ONE writer
+// transaction, every step that landed is marked undone and the import ends. Only Line's own state folder (`line/`, with
+// this plan file) stays. Choosing "Leave it as it is" instead keeps what landed, as the person's decision.
+//
 // Correction loop (owner, 11 Oct): a refused step's sentence and typed fixes go back into the decision (jev picks,
 // usually the top fix), the fix runs, the step is tried again; when a round does not pass more checks than the one
 // before (cp1's `stopped`), or after MAX_ROUNDS, the process stops and asks the person ONE question.
@@ -37,7 +44,7 @@ export const importMachine = createMachine({
     classify: { on: { CLASSIFIED: 'plan' } },
     plan: { on: { PLANNED: 'review' } },
     review: { on: { REVIEWED: 'execute' } },
-    execute: { on: { EXECUTED: 'verify', REOPENED: 'review' } },
+    execute: { on: { EXECUTED: 'verify', REOPENED: 'review', UNDONE: 'done' } },
     verify: { on: { VERIFIED: 'done', FINISHED: 'done' } },
     done: { type: 'final' },
   },
@@ -100,6 +107,7 @@ function whereSentence(doc) {
   if (!doc) return 'The import has not started; pick a folder and start it.';
   if (doc.paused) return `Paused at "${IMPORT_AGENT_STAGES.find((s) => s.id === doc.state)?.label}"; resume to carry on.`;
   if (doc.waiting) return doc.waiting.sentence;
+  if (doc.state === 'done' && doc.undo === 'undone') return `Undone: ${doc.folder} is back as it was before the import; nothing of it stayed.`;
   if (doc.state === 'done') {
     const left = doc.steps.filter((s) => s.run === 'left').length;
     const done = doc.steps.filter((s) => s.run === 'done').length;
@@ -185,8 +193,10 @@ export function createImportAgent(o) {
   /** A question about the current step, asked once a round stopped improving (or there is nothing to try). */
   function askAboutStep(doc, step, ps, why) {
     const fixes = (ps?.result?.options ?? []).filter((x) => x.id === 'fix' && x.step);
+    const landed = doc.steps.filter((x) => x.run === 'done').length;
     const options = [
       ...fixes.map((x) => ({ id: `fix:${x.fixId}`, sentence: asSentence(x.sentence) })),
+      ...(o.rollback && doc.undo === 'saved' ? [{ id: 'undo', sentence: `Undo the import: put ${folder} back as it was before it started${landed ? ` (${landed} step${landed === 1 ? '' : 's'} landed)` : ''}.` }] : []),
       { id: 'leave', sentence: `Leave ${step.args.name ?? 'this item'} as it is and carry on with the next step.` },
     ];
     step.run = 'needs-you';
@@ -222,6 +232,13 @@ export function createImportAgent(o) {
     // The person approved this exact step in the review, and is driving now: their approval carries to the plan step.
     const reviewedByPerson = step.approvedBy === 'ui';
     if (!c.pending) {
+      if (o.snapshot && doc.undo === undefined) {
+        // Before the first write: save the folder as it is, so a refused later step can undo the whole import.
+        const ran = doc.steps.some((x) => x.run !== 'todo' || x.planStepIds.length);
+        if (!ran) {
+          try { await o.snapshot(root, folder); doc.undo = 'saved'; } catch (e) { doc.undo = 'none'; record(doc, 'line', 'state', `could not save ${folder} for an undo: ${lower(asSentence(/** @type {any} */ (e)?.sentence ?? /** @type {any} */ (e)?.message ?? 'unknown'))}`); }
+        } else doc.undo = 'none';
+      }
       const r = await addPlanStep(doc, step, { tool: step.tool, args: { ...step.args }, why: step.sentence }, by, reviewedByPerson || answered);
       if (!r.ok) { askAboutStep(doc, step, null, r.sentence); return 'wait'; }
       step.run = 'running';
@@ -457,6 +474,18 @@ export function createImportAgent(o) {
       }
       const step = stepOf(doc, doc.waiting.stepId);
       const blocker = doc.cursor.origin;
+      if (optionId === 'undo') {
+        const r = await o.rollback(root, folder);
+        if (!r.ok) { askAboutStep(doc, step, null, `the undo was refused: ${lower(asSentence(r.sentence))}`); save(doc); return view(doc); }
+        doc.waiting = null;
+        for (const x of doc.steps.filter((y) => y.run !== 'todo')) { x.run = 'undone'; x.outcome = `Undone: ${lower(asSentence(x.sentence))}`; }
+        doc.undo = 'undone';
+        doc.cursor = { pending: null, origin: null, phase: null };
+        record(doc, by, 'undo', `undid the import: ${lower(asSentence(r.sentence))}`, step?.id);
+        go(doc, by, 'UNDONE');
+        save(doc);
+        return view(doc);
+      }
       doc.waiting = null;
       const plan = await svc.view();
       const bps = plan.steps.find((s) => s.id === blocker);
