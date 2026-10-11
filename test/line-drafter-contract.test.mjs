@@ -44,3 +44,15 @@ test('drafter contract: a stored record may hold slots but never a project name'
   assert.throws(() => assertNoIdentifiers(d, ['orders', 'Badge', 'OrdersBadge']), /project name "orders"/);
   assert.ok(bindings);
 });
+
+test('slots: plan records, drafter transitions and Train Line cases share one word splitter and one leak guard', async () => {
+  const { splitWords, projectWordIn } = await import('../packages/engine/line/slots.mjs');
+  const drafter = await import('../packages/engine/line/drafter/domainMap.mjs');
+  const train = await import('../packages/engine/line/train/slots.mjs');
+  assert.equal(drafter.splitWords, splitWords);
+  assert.equal(train.splitWords, splitWords);
+  assert.deepEqual(splitWords('OrderButton'), ['order', 'button']);
+  assert.equal(projectWordIn({ request: 'add a <library:L1> to <feature:F1>' }, ['orders', 'Badge']), null);
+  assert.equal(projectWordIn('{"text":"All Orders"}', ['orders']), 'orders');
+  assert.equal(projectWordIn('{"text":"reorders"}', ['orders']), null, 'whole words only');
+});

@@ -15,7 +15,7 @@ const WHOLE_SLOT_RE = /^<([a-z]+):([A-Z][A-Za-z]*\d+)>$/;
 const nameOfId = (id) => String(id).split('/').pop();
 const baseName = (file) => String(file).split('/').pop().replace(/\.(tsx|ts|json)$/, '');
 
-export { splitWords } from '../drafter/domainMap.mjs';
+export { splitWords } from '../slots.mjs';
 
 /**
  * Resolve every ref of a world's facts that a slot can point at.

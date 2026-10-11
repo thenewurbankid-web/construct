@@ -5,7 +5,8 @@
 // "<name:N1>" = Role + a library item's name, ...) so a case can be stored without a project or domain word.
 import fs from 'node:fs';
 import { factsSummary } from '../facts.mjs';
-import { buildDomainMap, normalize, splitWords, FUNCTION_WORDS } from '../drafter/domainMap.mjs';
+import { buildDomainMap, normalize, FUNCTION_WORDS } from '../drafter/domainMap.mjs';
+import { splitWords } from '../slots.mjs';
 import { draft as drafterDraft, boundRoute } from '../drafter/index.mjs';
 import { TRAIN_TOOLS } from './contract.mjs';
 import { materialize, worldKey, pascal } from './corpus.mjs';

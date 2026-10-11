@@ -16,6 +16,7 @@ import { createTransaction } from '../../transactionalWriter.mjs';
 import { LineOpError } from '../contract.mjs';
 import { KIND_LAYER, REQUEST_SLOT, SLOT_REF } from './contract.mjs';
 import { suggestFromLexicon } from './lexicon.mjs';
+import { splitWords } from '../slots.mjs';
 
 /** Words that carry function, not domain: kept as they are in the normalized request. */
 export const FUNCTION_WORDS = new Set(`a an the this that these those it its them they their our my your his her we you i me us
@@ -58,14 +59,7 @@ const LETTER = { feature: 'F', pages: 'P', components: 'C', workflows: 'W', fixt
 const PRIORITY = { feature: 0, item: 1, library: 2, variable: 3, prop: 4 };
 const NEW_VERBS = /^(add|create|make|new|rename|build|start|insert|put|place|call|name)$/;
 
-/**
- * Split an identifier or phrase into lowercase words (camelCase, PascalCase, kebab, snake, digits).
- * @param {string} s
- * @returns {string[]}
- */
-export function splitWords(s) {
-  return String(s).replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2').split(/[^A-Za-z0-9]+/).filter(Boolean).map((w) => w.toLowerCase());
-}
+export { splitWords } from '../slots.mjs';
 const singular = (w) => (w.endsWith('ies') ? `${w.slice(0, -3)}y` : w.endsWith('ses') ? w.slice(0, -2) : w.endsWith('s') && !w.endsWith('ss') ? w.slice(0, -1) : w);
 const plural = (w) => (w.endsWith('y') ? `${w.slice(0, -1)}ies` : w.endsWith('s') ? w : `${w}s`);
 /** The surface forms a name is recognised by: "order button", "orderbutton", with the last word singular or plural. */

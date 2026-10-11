@@ -15,6 +15,7 @@
 // The drafter only drafts. Line's writer and checks decide what lands, and a person approves every write step.
 // Stored records hold slots, kinds, roles, layers, tools, expressions, deltas and hashes: never a project's names.
 import { exprProblem } from '../contract.mjs';
+import { projectWordIn } from '../slots.mjs';
 
 /** Verbs of the intent catalog (owner list, plus fix for a finding's typed fix). */
 export const VERBS = Object.freeze(['add', 'update', 'remove', 'rename', 'move', 'promote', 'base-on', 'wire', 'split', 'merge', 'fix']);
@@ -347,10 +348,6 @@ export function assertExpr(e, where = 'expr') {
  * @returns {void}
  */
 export function assertNoIdentifiers(record, identifiers) {
-  const text = JSON.stringify(record).toLowerCase();
-  for (const id of identifiers) {
-    if (!id || id.length < 3) continue;
-    const re = new RegExp(`(^|[^a-z0-9])${id.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}([^a-z0-9]|$)`);
-    if (re.test(text)) fail('record', `holds the project name "${id}"; store slots instead`);
-  }
+  const id = projectWordIn(record, identifiers);
+  if (id) fail('record', `holds the project name "${id}"; store slots instead`);
 }

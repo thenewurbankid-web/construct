@@ -23,6 +23,7 @@
 
 import { LINE_PLAN_TOOLS } from '../contract.mjs';
 import { buildIntentCatalog, intentPhrase, TEMPLATES, assertGoldRoute } from '../drafter/contract.mjs';
+import { projectWordIn } from '../slots.mjs';
 
 /** The five solid tools: the only ones Train Line offers. */
 export const TRAIN_TOOLS = Object.freeze(['line.baseOn', 'line.promote', 'line.setPageProp', 'line.setFragment', 'line.fix']);
@@ -209,13 +210,8 @@ export function assertTrainCase(c) {
  * @param {string[]} words
  */
 export function assertDelexicalized(storedLine, words) {
-  const lowered = storedLine.toLowerCase();
-  for (const w of words) {
-    const word = w.toLowerCase();
-    if (word.length < 3) continue;
-    const re = new RegExp(`(^|[^a-z0-9])${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}([^a-z0-9]|$)`);
-    if (re.test(lowered)) fail('case', `contains the project word "${w}"; store it as a slot`);
-  }
+  const w = projectWordIn(storedLine, words);
+  if (w) fail('case', `contains the project word "${w}"; store it as a slot`);
 }
 
 /**
