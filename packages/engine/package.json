@@ -14,6 +14,7 @@
     "./line/tool-registry": "./line/toolRegistry.mjs",
     "./line/import-agent": "./line/importAgentDisk.mjs",
     "./line/import-verify": "./line/importVerify.mjs",
+    "./line/characterize": "./line/characterize.mjs",
     "./line/drafter": "./line/drafter/index.mjs",
     "./line/drafter/plan-draft": "./line/drafter/planDraft.mjs",
     "./line/drafter/eval": "./line/drafter/eval.mjs",
