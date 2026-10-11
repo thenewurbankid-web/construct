@@ -223,7 +223,7 @@ export const TRAIN_MCP_TOOLS = Object.freeze([
       note: z.string().max(400).optional(),
     }),
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
-    run: train.trainProposeCase,
+    run: train.proposeTrainingCase,
   },
   {
     name: 'train_list_cases',
@@ -235,7 +235,7 @@ export const TRAIN_MCP_TOOLS = Object.freeze([
       offset: z.number().int().min(0).max(100000).optional(),
     }),
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
-    run: train.trainListCases,
+    run: train.listTrainingCases,
   },
   {
     name: 'train_run_eval',
@@ -243,7 +243,7 @@ export const TRAIN_MCP_TOOLS = Object.freeze([
     description: 'Draft every held-out case (whole imaginary projects the drafter never learned from) and score it: share of valid routes found (recall), share of drafted routes that are valid (precision), preferred route picked, per tool family and per intent, plus the owner\'s agreement on the review sample. Saves nothing.',
     inputSchema: z.object({}),
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
-    run: train.trainRunEval,
+    run: train.runTrainingEval,
   },
 ]);
 

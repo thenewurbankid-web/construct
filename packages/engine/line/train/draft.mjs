@@ -243,7 +243,7 @@ function kindOfStep(step, facts) {
  * @param {any} r A drafter route. @param {any} d The draft. @param {ReturnType<typeof createConverter>} cv @param {any} facts
  * @returns {any}
  */
-export function trainRouteOf(r, d, cv, facts) {
+export function routeOfDraft(r, d, cv, facts) {
   if (!r.steps.every((s) => TRAIN_TOOLS.includes(s.tool)) || r.status === 'needs-model') return null;
   const bindings = r.bindings ?? d.bindings;
   const steps = cv.convert(r.steps, bindings);
@@ -280,7 +280,7 @@ export function draftInWorld(world, request, o = {}) {
   const cv = createConverter(facts);
   const map = worldMap(world, o.synonyms);
   const rw = rewriteRequest(request, { tokens: d.tokens, bindings: d.bindings, questions: d.questions }, facts, cv, map);
-  const routes = d.routes.map((r) => trainRouteOf(r, d, cv, facts)).filter(Boolean);
+  const routes = d.routes.map((r) => routeOfDraft(r, d, cv, facts)).filter(Boolean);
   const rec = routes.find((r) => r.id === d.recommended) ?? null;
   return {
     d,

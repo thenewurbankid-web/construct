@@ -32,7 +32,7 @@ const brief = (c) => ({
  * @param {any} _ctx @param {{world?: string, request: string, intent: string, routes: any[], preferred?: number, note?: string}} args
  * @returns {Promise<any>}
  */
-export async function trainProposeCase(_ctx, args) {
+export async function proposeTrainingCase(_ctx, args) {
   const svc = await serviceOf();
   try { return { ok: true, case: brief(svc.propose(args).case) }; } catch (e) { return refused(e); }
 }
@@ -42,7 +42,7 @@ export async function trainProposeCase(_ctx, args) {
  * @param {any} _ctx @param {{filter?: string, limit?: number, offset?: number}} args
  * @returns {Promise<any>}
  */
-export async function trainListCases(_ctx, args) {
+export async function listTrainingCases(_ctx, args) {
   const r = (await serviceOf()).cases({ filter: args.filter ?? 'claude', limit: args.limit ?? 10, offset: args.offset ?? 0 });
   return { ok: true, total: r.total, open: r.open, cases: r.cases.map(brief) };
 }
@@ -51,7 +51,7 @@ export async function trainListCases(_ctx, args) {
  * `train_run_eval`: draft every held-out case and score it; the numbers come back, nothing is saved.
  * @returns {Promise<any>}
  */
-export async function trainRunEval() {
+export async function runTrainingEval() {
   const svc = await serviceOf();
   const { evaluateAll, scoreboard } = await import('@line/construct-engine/line/train/service');
   const result = evaluateAll(svc.store.all(), new Date().toISOString());
