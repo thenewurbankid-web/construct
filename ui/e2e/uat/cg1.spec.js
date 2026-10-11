@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
 import { openProject } from '../tests/support/browseProject.js';
+import { waitForCockpitReady } from '../tests/support/cockpit.js';
 import { API, copySample, watchForProblems } from './support/owner.js';
 
 // cg1 UAT (docs/line/review.md "cg1", "UAT"), walked as the owner would: turn Trace on, say what you want, see the
@@ -22,6 +23,7 @@ test.describe.serial('UAT cg1: Trace highlights the controls for what you ask', 
     const watch = watchForProblems(page);
     // 1. Open Components.
     await page.goto('/components');
+    await waitForCockpitReady(page); // the owner waits for Cockpit to finish loading before typing
     const bar = page.getByRole('region', { name: 'Trace and Auto' });
     await expect(bar).toBeVisible({ timeout: 60_000 });
     // 2. Click Trace (one click) and type the request.

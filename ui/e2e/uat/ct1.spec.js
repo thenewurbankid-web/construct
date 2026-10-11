@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
 import path from 'node:path';
 import { openProject } from '../tests/support/browseProject.js';
+import { waitForCockpitReady } from '../tests/support/cockpit.js';
 import { API, copySample, watchForProblems } from './support/owner.js';
 
 // ct1 UAT (docs/line/review.md "ct1", "UAT"), walked as the owner would: Trace and Auto on, ask, watch Auto do it with
@@ -22,6 +23,7 @@ test.describe.serial('UAT ct1: Auto acts it out, you approve', () => {
   test('1-2: Trace + Auto, "Show me and do it", watch the captions, Approve yourself', async ({ page }) => {
     const watch = watchForProblems(page);
     await page.goto('/components');
+    await waitForCockpitReady(page); // the owner waits for Cockpit to finish loading before typing
     const bar = page.getByRole('region', { name: 'Trace and Auto' });
     await expect(bar).toBeVisible({ timeout: 60_000 });
     await bar.getByRole('button', { name: 'Trace' }).click();
@@ -45,6 +47,7 @@ test.describe.serial('UAT ct1: Auto acts it out, you approve', () => {
   test('3: Auto alone with "Let Auto approve in this session": one click does it', async ({ page }) => {
     const watch = watchForProblems(page);
     await page.goto('/components');
+    await waitForCockpitReady(page); // the owner waits for Cockpit to finish loading before typing
     const bar = page.getByRole('region', { name: 'Trace and Auto' });
     await expect(bar).toBeVisible({ timeout: 60_000 });
     await bar.getByRole('button', { name: 'Auto' }).click();

@@ -110,6 +110,8 @@ test.describe.serial('Line: Trace lights up the controls for a request (Line sam
     await expect(bar.getByTestId('trace-choice')).toHaveText(/^Several tools fit; (jev picked|Line took) "/);
     await bar.getByLabel('What do you want to do?').fill('Make me a sandwich');
     await expect(bar.getByTestId('trace-sentence')).toHaveText('Trace found no control for that; try words like base on, promote, change the title, edit code or fix.');
-    await expect(lit(page)).toHaveCount(0);
+    // Only the plan's waiting step (from the test above) stays lit; nothing for the request.
+    await expect(page.locator('[data-line-lit="request"]')).toHaveCount(0);
+    await expect(page.locator('[data-line-lit="step"]')).toHaveCount(1);
   });
 });
