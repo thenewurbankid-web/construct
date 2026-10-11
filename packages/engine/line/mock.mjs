@@ -3,6 +3,7 @@
 // land. It keeps the contract's rules: plans are pure, applyChange is the only thing that changes
 // state, a NEW cross-feature import is refused with a LINE-DIR finding (old problems never block), and every message is a sentence.
 import { LineOpError } from './contract.mjs';
+import { groupItems, summarySentences, parseSpec, coverSpec, testTitles } from './featureText.mjs';
 
 const LIB = 'library';
 const FEAT = 'features';
@@ -13,7 +14,7 @@ export const MOCK_FILES = Object.freeze({
   'library/components/TextField.tsx': 'export function TextField(props: { value: string }) { return <input value={props.value} />; }\n',
   'library/components/Dialog.tsx': "import { Button } from './Button';\nexport function Dialog(props: { title: string }) { return <div role=\"dialog\"><h2>{props.title}</h2><Button label=\"OK\" /></div>; }\n",
   'library/pages/ListPage.tsx': 'export default function ListPage(props: { title: string }) { return <main><h1>{props.title}</h1></main>; }\n',
-  'features/orders/spec.md': '# Orders\n',
+  'features/orders/spec.md': '# Orders\n\n## As a shopper, I want to see my orders, so that I know what I bought.\n\n- The OrdersPage lists every order.\n- A shopper can cancel an order before it ships.\n',
   'features/orders/components/OrderButton.tsx': "// @line-base components/Button\nimport { Button } from '../../../library/components/Button';\nexport function OrderButton() { return <Button label=\"Order\" />; }\n",
   'features/orders/pages/OrdersPage.tsx': "// @line-base pages/ListPage\nimport ListPage from '../../../library/pages/ListPage';\nexport default function OrdersPage() { return <ListPage title=\"Orders\" />; }\n",
   'features/billing/spec.md': '# Billing\n',
@@ -86,9 +87,40 @@ export function createMockLineOps({ files: initial = MOCK_FILES } = {}) {
     return /** @type {import('./contract.mjs').LineProject} */ ({ isLine: true, layout: { library: LIB, features: FEAT, state: 'line' }, library, features, findings });
   }
 
+  /** @returns {import('./contract.mjs').LineFeatureDetail} */
+  function readLineFeature(_root, name) {
+    const p = readLineProject();
+    const feature = p.features.find((f) => f.name === name);
+    if (!feature) throw new LineOpError(`There is no feature "${name}"; pick one from the list.`, 'UNKNOWN_ITEM');
+    const uses = new Map(feature.items.map((it) => {
+      const dir = it.file.split('/').slice(0, -1);
+      const list = [...files[it.file].matchAll(/from '(\.[^']+)'/g)].map((m) => {
+        const segs = [...dir];
+        for (const s of m[1].split('/')) { if (s === '..') segs.pop(); else if (s !== '.') segs.push(s); }
+        const target = segs.join('/');
+        const used = nameOf(target);
+        if (target.startsWith(`${LIB}/`)) return `${target.split('/')[1]}/${used}` === it.base.libraryId ? null : { name: used, area: 'library' };
+        const other = target.split('/')[1];
+        return other === name ? { name: used, area: 'same' } : { name: used, area: 'feature', feature: other };
+      }).filter(Boolean);
+      return [it.id, /** @type {any} */ (list)];
+    }));
+    const prefix = `${FEAT}/${name}/`;
+    const tests = Object.keys(files).filter((f) => f.startsWith(prefix) && /\.(test|spec)\./.test(f)).flatMap((f) => testTitles(files[f]));
+    const spec = feature.spec ? { file: feature.spec, stories: coverSpec(parseSpec(files[feature.spec]), { itemNames: feature.items.map((i) => i.name), testTitles: tests }) } : null;
+    return {
+      name,
+      items: groupItems(feature.items),
+      summary: { sentences: summarySentences(name, feature.items, new Map(p.library.map((l) => [l.id, l.name])), uses), via: 'static' },
+      spec,
+      findings: p.findings.filter((f) => f.file.startsWith(prefix)),
+    };
+  }
+
   return {
     files: () => ({ ...files }),
     readLineProject,
+    readLineFeature,
     planBaseOn(_root, { libraryId, feature, name }) {
       const lib = /** @type {import('./contract.mjs').LibraryItem|undefined} */ (readLineProject().library.find((l) => l.id === libraryId));
       if (!lib) throw new LineOpError(`There is no library item "${libraryId}"; pick one from the library.`, 'UNKNOWN_ITEM');

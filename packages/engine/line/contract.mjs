@@ -92,6 +92,7 @@
  * function is pure: it reads the project and returns a StagedChange, or throws a LineOpError.
  * @typedef {object} LineOps
  * @property {(root: string) => LineProject} readLineProject
+ * @property {(root: string, name: string) => LineFeatureDetail} readLineFeature
  * @property {(root: string, req: BaseOnRequest) => StagedChange} planBaseOn
  * @property {(root: string, req: PromoteRequest) => StagedChange} planPromote
  * @property {(root: string, req: SetPropRequest) => StagedChange} planSetProp
@@ -117,6 +118,21 @@
  *   | {ok: false, code: string, sentence: string, detail?: string, props?: RenderProp[]}} RenderResult
  */
 
+/**
+ * GET /api/line/feature?name=<feature>: one feature as the Features screen shows it (pure read; readLineFeature in
+ * packages/engine/line/feature.mjs). Items are the model's FeatureItems grouped by kind; the summary is written by
+ * static rules from the items, their bases and their imports (no model, `via: 'static'`); the spec is the feature's
+ * spec.md split into stories (a "## " heading each) and acceptance points (the list items under it), each point
+ * covered when it names a feature item or a test title of the feature (static matching), with `by` saying which.
+ * An unknown feature is a LineOpError UNKNOWN_ITEM (HTTP 400).
+ * @typedef {object} LineFeatureDetail
+ * @property {string} name
+ * @property {Record<LineKind, FeatureItem[]>} items  Every kind is present, empty when the feature has none.
+ * @property {{sentences: string[], via: 'static'}} summary
+ * @property {{file: string, stories: {id: string, text: string, points: {id: string, text: string, covered: boolean, by: string[]}[]}[]}|null} spec  Null when the feature has no spec.md.
+ * @property {LineFinding[]} findings  Every finding inside the feature's folder.
+ */
+
 /** A refused request (bad name, unknown item, name taken). `sentence` is shown as is. */
 export class LineOpError extends Error {
   /** @param {string} sentence @param {string} code */
@@ -134,6 +150,7 @@ export const LINE_API = Object.freeze([
   { method: 'POST', path: '/api/line/promote', request: 'PromoteRequest', response: 'ApplyResult' },
   { method: 'POST', path: '/api/line/page-prop', request: 'SetPropRequest', response: 'ApplyResult' },
   { method: 'GET', path: '/api/line/render', request: 'file, props (query)', response: 'RenderResult' },
+  { method: 'GET', path: '/api/line/feature', request: 'name (query)', response: 'LineFeatureDetail' },
 ]);
 
 export const LINE_KINDS = Object.freeze(['components', 'pages', 'workflows', 'fixtures']);
@@ -206,4 +223,45 @@ export function assertApplyResult(r) {
   if (r.ok && r.findings.some((f) => f.severity === 'error')) fail('result', 'a landed change carries no error findings');
   if (!r.ok && r.files.length) fail('result.files', 'a refused change wrote nothing');
   r.findings.forEach((x, k) => assertFinding(x, `result.findings[${k}]`));
+}
+
+/** @param {any} d @returns {asserts d is LineFeatureDetail} */
+export function assertLineFeatureDetail(d) {
+  str(d?.name, 'feature.name');
+  if (!d.items || typeof d.items !== 'object') fail('feature.items', 'must be an object keyed by kind');
+  for (const kind of LINE_KINDS) {
+    if (!Array.isArray(d.items[kind])) fail(`feature.items.${kind}`, 'must be an array');
+    d.items[kind].forEach((it, j) => {
+      const w = `feature.items.${kind}[${j}]`;
+      if (it.kind !== kind) fail(`${w}.kind`, `must be ${kind}`);
+      if (it.feature !== d.name) fail(`${w}.feature`, 'must equal the feature\'s name');
+      if (it.id !== `${d.name}/${kind}/${it.name}`) fail(`${w}.id`, 'must be "<feature>/<kind>/<name>"');
+      if ((it.status === 'problem') !== it.findings.length > 0) fail(`${w}.status`, 'is "problem" exactly when it has findings');
+      it.findings.forEach((x, k) => assertFinding(x, `${w}.findings[${k}]`));
+    });
+  }
+  if (Object.keys(d.items).some((k) => !LINE_KINDS.includes(k))) fail('feature.items', 'has an unknown kind');
+  if (d.summary?.via !== 'static') fail('feature.summary.via', 'must be "static"');
+  if (!Array.isArray(d.summary.sentences) || d.summary.sentences.length === 0) fail('feature.summary.sentences', 'must have at least one sentence');
+  d.summary.sentences.forEach((s, i) => sentence(s, `feature.summary.sentences[${i}]`));
+  if (d.spec !== null) {
+    str(d.spec?.file, 'feature.spec.file');
+    if (!Array.isArray(d.spec.stories)) fail('feature.spec.stories', 'must be an array');
+    const ids = new Set();
+    d.spec.stories.forEach((st, i) => {
+      const w = `feature.spec.stories[${i}]`;
+      str(st.id, `${w}.id`); str(st.text, `${w}.text`);
+      if (ids.has(st.id)) fail(`${w}.id`, 'must be unique'); ids.add(st.id);
+      if (!Array.isArray(st.points)) fail(`${w}.points`, 'must be an array');
+      st.points.forEach((pt, j) => {
+        const v = `${w}.points[${j}]`;
+        str(pt.id, `${v}.id`); str(pt.text, `${v}.text`);
+        if (ids.has(pt.id)) fail(`${v}.id`, 'must be unique'); ids.add(pt.id);
+        if (typeof pt.covered !== 'boolean' || !Array.isArray(pt.by)) fail(v, 'covered must be a boolean and by an array');
+        if (pt.covered !== pt.by.length > 0) fail(`${v}.covered`, 'is true exactly when something covers it');
+      });
+    });
+  }
+  if (!Array.isArray(d.findings)) fail('feature.findings', 'must be an array');
+  d.findings.forEach((x, k) => assertFinding(x, `feature.findings[${k}]`));
 }
