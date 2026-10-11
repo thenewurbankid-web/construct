@@ -916,10 +916,11 @@ export async function validate(args) {
   if (format === 'json' && profile === 'line' && violations.some((v) => String(v.rule).startsWith('LINE-'))) {
     // ca2: each LINE-* problem carries its typed fixes (packages/engine/line/fixes.mjs), so an agent can correct itself.
     const { fixContext, fixesFor, findingKey } = await import('../../packages/engine/line/fixes.mjs');
+    const { toFinding } = await import('../../packages/engine/line/model.mjs');
     const ctx = fixContext(root);
     report = violations.map((v) => {
       if (!String(v.rule).startsWith('LINE-')) return v;
-      const f = { sentence: v.message, rule: v.rule, severity: v.severity, file: v.file || '.', line: Number.isInteger(v.line) && v.line > 0 ? v.line : 1 };
+      const f = toFinding(v);
       return { ...v, key: findingKey(f), fixes: fixesFor(root, f, ctx) };
     });
   }

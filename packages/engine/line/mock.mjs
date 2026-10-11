@@ -38,15 +38,15 @@ function findingsOf(files) {
       const other = text.match(/from '\.\.\/\.\.\/([^/.]+)\//);
       if (other && other[1] !== m[1]) {
         const imported = text.match(/from '\.\.\/\.\.\/([^/]+)\/(components|pages|workflows|fixtures)\/(\w+)'/);
-        const fixes = imported ? [{ id: 'LINE-DIR/promote', sentence: `Move ${imported[3]} from feature ${imported[1]} into the library and point every import at the library copy.`, rank: 1, step: { tool: 'line.promote', args: { featureItemId: `${imported[1]}/${imported[2]}/${imported[3]}` } } }] : [];
+        const fixes = /** @type {import('./contract.mjs').LineFix[]} */ (imported ? [{ id: 'LINE-DIR/promote', sentence: `Move ${imported[3]} from feature ${imported[1]} into the library and point every import at the library copy.`, rank: 1, step: { tool: 'line.promote', args: { featureItemId: `${imported[1]}/${imported[2]}/${imported[3]}` } } }] : []);
         out.push({ sentence: `Feature "${m[1]}" imports from feature "${other[1]}"; a feature may use only the library, so promote that item to ${LIB}/ and import it from there.`, rule: 'LINE-DIR', severity: 'error', file, line: i + 1, key: `LINE-DIR|${file}|${i + 1}`, fixes });
       }
     });
     if (!baseOf(src)) {
       const lib = (src.match(new RegExp(`from '(?:\\.\\./)+${LIB}/${m[2]}/(\\w+)'`)) || [])[1];
-      const fixes = lib
+      const fixes = /** @type {import('./contract.mjs').LineFix[]} */ (lib
         ? [{ id: `LINE-BASE/set-base:${m[2]}/${lib}`, sentence: `Base ${nameOf(file)} on the library ${lib}, which it already uses.`, rank: 1, step: { tool: 'line.setBase', args: { file, libraryId: `${m[2]}/${lib}` } } }]
-        : [{ id: 'LINE-BASE/create-library-item', sentence: `Create a library item for ${nameOf(file)} to be based on first.`, rank: 1, step: null }];
+        : [{ id: 'LINE-BASE/create-library-item', sentence: `Create a library item for ${nameOf(file)} to be based on first.`, rank: 1, step: null }]);
       out.push({ sentence: `The feature item "${file}" has no library base; add one "@line-base ${m[2]}/<Name>" comment naming the library item it is based on.`, rule: 'LINE-BASE', severity: 'error', file, line: 1, key: `LINE-BASE|${file}|1`, fixes });
     }
   }

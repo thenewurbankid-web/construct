@@ -28,6 +28,7 @@ import {
 } from '../../core/profiles/line/checks.mjs';
 import { validateLine } from '../../core/profiles/line/index.mjs';
 import { LineOpError } from './contract.mjs';
+import { toFinding } from './model.mjs';
 import { planBaseOn, planPromote, planSetBase, planMoveFile, planCreateLayout, applyChange } from './ops.mjs';
 
 const posix = path.posix;
@@ -311,9 +312,7 @@ export function planFix(root, finding, fixId) {
  * @throws {LineOpError} UNKNOWN_FINDING, UNKNOWN_FIX or NO_STEP.
  */
 export function applyFix(root, { findingKey: key, fixId } = /** @type {any} */ ({})) {
-  const finding = validateLine(root).violations
-    .map((v) => ({ sentence: v.message, rule: v.rule, severity: v.severity, file: v.file || '.', line: Number.isInteger(v.line) && v.line > 0 ? v.line : 1 }))
-    .find((f) => findingKey(f) === key);
+  const finding = validateLine(root).violations.map(toFinding).find((f) => findingKey(f) === key);
   if (!finding) throw new LineOpError('That problem is no longer reported; reload the project to see what is left.', 'UNKNOWN_FINDING');
   return applyChange(root, planFix(root, finding, String(fixId ?? '')));
 }
