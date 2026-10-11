@@ -137,7 +137,8 @@ test('refusals: a folder outside the project, a step reaching outside the folder
   assert.throws(() => planImportStep(path.join(dir, FOLDER), step), (e) => e.name === 'LineOpError');
   assert.throws(() => planImportStep(path.join(dir, FOLDER), { ...step, tool: 'fs.writeFile' }), (e) => e.code === 'UNKNOWN_TOOL');
   assert.deepEqual(hashes(dir), all);
-  assert.equal(applyImport(dir, FOLDER, {}).ok, true);
+  const first = applyImport(dir, FOLDER, {});
+  assert.equal(first.ok, true, first.sentence);
   const again = applyImport(dir, FOLDER, {});
   assert.equal(again.ok, false);
   assert.match(again.sentence, /^[A-Z].*\.$/);

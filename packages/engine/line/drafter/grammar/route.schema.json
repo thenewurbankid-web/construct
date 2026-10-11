@@ -440,6 +440,10 @@
                     "type": "string",
                     "pattern": "^((components|pages|workflows|fixtures)/)?<[A-Z][0-9]{1,3}(\\.[a-zA-Z][a-zA-Z0-9]{0,15})?>$"
                   },
+                  "exportName": {
+                    "type": "string",
+                    "pattern": "^((components|pages|workflows|fixtures)/)?<[A-Z][0-9]{1,3}(\\.[a-zA-Z][a-zA-Z0-9]{0,15})?>$"
+                  },
                   "level": {
                     "type": "string",
                     "pattern": "^((components|pages|workflows|fixtures)/)?<[A-Z][0-9]{1,3}(\\.[a-zA-Z][a-zA-Z0-9]{0,15})?>$"
@@ -473,6 +477,7 @@
                   "from",
                   "kind",
                   "name",
+                  "exportName",
                   "feature",
                   "base",
                   "keepShim",
@@ -496,6 +501,10 @@
                     "pattern": "^((components|pages|workflows|fixtures)/)?<[A-Z][0-9]{1,3}(\\.[a-zA-Z][a-zA-Z0-9]{0,15})?>$"
                   },
                   "name": {
+                    "type": "string",
+                    "pattern": "^((components|pages|workflows|fixtures)/)?<[A-Z][0-9]{1,3}(\\.[a-zA-Z][a-zA-Z0-9]{0,15})?>$"
+                  },
+                  "exportName": {
                     "type": "string",
                     "pattern": "^((components|pages|workflows|fixtures)/)?<[A-Z][0-9]{1,3}(\\.[a-zA-Z][a-zA-Z0-9]{0,15})?>$"
                   },

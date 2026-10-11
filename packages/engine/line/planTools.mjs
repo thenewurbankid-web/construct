@@ -232,7 +232,7 @@ function importSchema(fields) {
       if (extra) return failed([extra], 'is not an argument of this tool');
       for (const [k, t] of Object.entries(fields)) if (!IMPORT_TYPES[t](v[k])) return failed([k], t === 'strings' ? 'must be a list of names' : t === 'optBool' ? 'must be true or false' : t === 'mode' ? 'must be move or wrap' : 'must be a non-empty string');
       if (!isFolder(v.folder)) return failed(['folder'], 'must be a folder inside the project');
-      const { folder: _f, features: _x, appFolders: _p, from: _a, kind: _k, name: _n, level: _l, keepShim: _s, mode: _m, feature: _e, base: _b, route: _r, ...rest } = v;
+      const { folder: _f, features: _x, appFolders: _p, from: _a, kind: _k, name: _n, exportName: _en, level: _l, keepShim: _s, mode: _m, feature: _e, base: _b, route: _r, ...rest } = v;
       const r = loose.safeParse(rest);
       return r.success ? { success: /** @type {const} */ (true), data: { ...v } } : r;
     },
@@ -249,8 +249,8 @@ const SCHEMAS = Object.freeze({
   'line.moveFile': objectSchema({ from: 'string', to: 'string', base: 'optString' }, { change: true }),
   'line.createLayout': objectSchema({}, { change: true }),
   'line.import.mark': importSchema({ folder: 'string', features: 'strings', appFolders: 'optStrings' }),
-  'line.import.toLibrary': importSchema({ folder: 'string', from: 'string', kind: 'string', name: 'string', level: 'optString', keepShim: 'optBool' }),
-  'line.import.toFeature': importSchema({ folder: 'string', mode: 'mode', from: 'optString', kind: 'string', name: 'string', feature: 'string', base: 'string', keepShim: 'optBool', route: 'optString' }),
+  'line.import.toLibrary': importSchema({ folder: 'string', from: 'string', kind: 'string', name: 'string', exportName: 'optString', level: 'optString', keepShim: 'optBool' }),
+  'line.import.toFeature': importSchema({ folder: 'string', mode: 'mode', from: 'optString', kind: 'string', name: 'string', exportName: 'optString', feature: 'string', base: 'string', keepShim: 'optBool', route: 'optString' }),
   'line.amend': objectSchema({ change: 'step', fix: 'optStep', fixes: 'optSteps' }, { change: true }),
   'line.baseWorkflowOn': objectSchema({ libraryId: 'string', feature: 'string', name: 'string' }, { change: true }),
   'line.setWorkflowRole': objectSchema({ file: 'string', role: 'string', page: 'anyString' }, { change: true }),

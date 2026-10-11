@@ -21,8 +21,8 @@ const PLAN_ONLY = ['expect', 'retry', 'fixOf'];
 /** The args each import tool takes (besides `folder` and the plan-only fields). */
 const ARGS = Object.freeze({
   'line.import.mark': ['features'],
-  'line.import.toLibrary': ['from', 'kind', 'name', 'level', 'keepShim'],
-  'line.import.toFeature': ['mode', 'from', 'kind', 'name', 'feature', 'base', 'route', 'keepShim'],
+  'line.import.toLibrary': ['from', 'kind', 'name', 'exportName', 'level', 'keepShim'],
+  'line.import.toFeature': ['mode', 'from', 'kind', 'name', 'exportName', 'feature', 'base', 'route', 'keepShim'],
   'line.import.fix': ['tool', 'args'],
 });
 

@@ -425,9 +425,13 @@ function preflight(root, change) {
  * @param {string} root Project root.
  * @param {import('./contract.mjs').StagedChange} change The change from a plan function.
  * Files outside the project's workspace folder (workspace.mjs) are refused first, with code OUTSIDE_WORKSPACE.
+ * @param {{acceptedIn?: string}} [opts] `acceptedIn`: a folder whose problems count as already accepted, instead of
+ *   `root` as it is now. Import's all-or-nothing apply (import.mjs applyImport) chains its steps in a scratch copy, each
+ *   checked by this function there, and lands the net result in one change: that commit refuses only problems the
+ *   scratch copy (the end of the checked chain) does not have.
  * @returns {import('./contract.mjs').ApplyResult} `Saved. <summary>` with the files, or `Nothing was saved: ...` with the findings.
  */
-export function applyChange(root, change) {
+export function applyChange(root, change, { acceptedIn } = {}) {
   const refused = preflight(root, change);
   if (refused) return refused;
   const refuse = (s, findings = []) => ({ ok: false, sentence: `Nothing was saved: ${lowerFirst(asSentence(s))}`, files: [], findings });
@@ -437,7 +441,7 @@ export function applyChange(root, change) {
     for (const f of change.files) {
       if (f.content === null) txn.deleteFile(f.path); else txn.writeFile(f.path, f.content);
     }
-    result = txn.commit({ validate: onlyNewProblems(root) });
+    result = txn.commit({ validate: onlyNewProblems(acceptedIn ?? root) });
   } catch (e) {
     txn.reset();
     return refuse(writeRefusal(root, e, change.files.map((f) => f.path)));
