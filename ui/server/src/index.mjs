@@ -86,6 +86,7 @@ import { validateArchitecture } from '../../../packages/core/architecture-enforc
 import { createComponentsRouter } from './componentsApi.mjs';
 import { createLineRouter } from './lineApi.mjs';
 import { createLineOpsRouter } from './lineOpsApi.mjs';
+import { createLinePlanRouter } from './linePlanApi.mjs';
 import { createLineRenderRouter } from './lineRenderApi.mjs';
 import { createStoryBridgeRouter } from './storyBridgeApi.mjs';
 import { createNotesRouter } from './notesApi.mjs';
@@ -1249,6 +1250,17 @@ app.use('/api/line', createLineRouter({
 // T4 (Line Cockpit): a page's parts and the Line changes (set a prop, base on a library item, promote), each written
 // only through Construct's writer with the project's own validate profile as the gate (lineOpsApi.mjs).
 app.use('/api/line', createLineOpsRouter({
+  clientOrigin: CLIENT_ORIGIN,
+  afterSave,
+  getRoot: () => {
+    const root = containedProjectRoot(getProjectDir());
+    return root ? { ok: true, root } : { ok: false, error: 'No project is open; pick a project first.' };
+  },
+}));
+
+// cp1 (Line Cockpit): every Line action as a step of the open project's plan (line/plans/); a person approves each
+// write, then it runs through the same writer (linePlanApi.mjs, packages/engine/line/planService.mjs).
+app.use('/api/line', createLinePlanRouter({
   clientOrigin: CLIENT_ORIGIN,
   afterSave,
   getRoot: () => {
