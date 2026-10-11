@@ -207,6 +207,7 @@
  * @property {string} id
  * @property {string} sentence  Plain English, e.g. "Validate (profile line) shows no new problems."
  * @property {'validate'|'types'|'tests'|'file'|'spec'} kind
+ * @property {LineExpr} [expr]  The check as a machine-checkable expression over the facts (see LineExpr below).
  *
  * Before a step runs: one expected output, already there or not.
  * @typedef {object} GapItem
@@ -511,6 +512,7 @@ export function assertPlanCheck(c, where = 'check') {
   str(c?.id, `${where}.id`);
   sentence(c.sentence, `${where}.sentence`);
   if (!CHECK_KINDS.includes(c.kind)) fail(`${where}.kind`, `must be one of ${CHECK_KINDS.join(', ')}`);
+  if (c.expr !== undefined) { const why = exprProblem(c.expr); if (why) fail(`${where}.expr`, why); }
 }
 
 /** @param {any} r @returns {asserts r is LineStepResult} */
@@ -659,4 +661,226 @@ export function assertContextPick(p) {
   for (const f of p.files) { str(f.file, 'pick.files[].file'); sentence(f.why, `pick ${f.file}.why`); sentence(f.summary?.sentence, `pick ${f.file}.summary`); str(f.summary.via, `pick ${f.file}.summary.via`); }
   for (let i = 1; i < p.files.length; i += 1) if (p.files[i].score > p.files[i - 1].score) fail('pick.files', 'must be ranked by score');
   if (!['static', 'jev'].includes(p.via)) fail('pick.via', 'must be static or jev');
+}
+
+// ---------------------------------------------------------------------------------------------
+// Expressions (System 1 groundwork) -- a step's expected output as a machine-checkable JSON expression, evaluated
+// against a fixed-size facts snapshot of the project (facts.mjs), never by code: no eval, no code strings, no
+// functions, and a path reads only a value's own JSON fields. expr.mjs evaluates; conditions.mjs gives each line.* tool
+// its `pre` (evaluated before the step runs; a failure refuses it in one sentence) and `post` (part of its checks);
+// records.mjs appends one training record per finished step: logic only, project names replaced by typed slots.
+// Steps are transitions between structure states: the facts carry a delexicalized structure hash per project, feature
+// and layer (structure.mjs), and a record stores the hashes before and after plus the structural delta.
+
+/**
+ * The expression language. A node is exactly one of:
+ *   a literal          "text" | 3 | true | null | {"lit": <any JSON>}
+ *   a path             {"path": ["files", "features/orders/components/StatusBadge.tsx", "hash"]}  into the facts
+ *   an item path       {"item": ["name"]}  into the element `every` / `some` is looking at ({"item": []} is the element)
+ *   a comparison       {"eq"|"ne"|"lt"|"le"|"gt"|"ge": [a, b]}
+ *   logic              {"and": [e, ...]} | {"or": [e, ...]} | {"not": e}
+ *   exists             {"exists": <path or item path>}   the value is there (not missing, not null)
+ *   count              {"count": e}                      length of a list or text, number of fields of an object
+ *   every / some       {"every"|"some": [<list>, <predicate over item>]}
+ *   in                 {"in": [needle, haystack]}        list member, substring, or object field name
+ * Limits: EXPR_LIMITS. Hashes are plain strings, so `eq` compares them (post: a feature's structure hash equals a
+ * predicted one).
+ * @typedef {null|boolean|number|string|{[op: string]: any}} LineExpr
+ *
+ * @typedef {object} ExprFailure
+ * @property {string} path      Where in the expression, e.g. "and[1].exists" ("" for the root).
+ * @property {string} sentence  Plain English: "features/orders/components/StatusBadge.tsx does not exist yet."
+ *
+ * @typedef {object} ExprEvaluation
+ * @property {boolean} ok
+ * @property {ExprFailure[]} failed  Empty exactly when ok.
+ *
+ * Delexicalized structure hashes ("sha256:<16 hex>"): kinds, roles (component level), layers, base links, import
+ * edges between items, with every name a slot; two projects that differ only in names hash the same.
+ * @typedef {object} StructureHashes
+ * @property {string} project
+ * @property {Record<string, {hash: string, layers: Record<string, string>}>} features  By feature name (live facts only).
+ * @property {string} library
+ *
+ * The facts snapshot: what the project is, statically, in a fixed-size summary (capped lists, counts not content).
+ * @typedef {object} LineFacts
+ * @property {Record<string, {bytes: number, hash: string}>} files   Library and feature files (hash: sha256 hex, as fragments use).
+ * @property {Record<string, {kind: string, name: string, file: string, level: string|null, usedBy: number}>} library  By item id.
+ * @property {Record<string, {spec: boolean, items: {id: string, kind: string, name: string, file: string, base: string|null, status: string, findings: number}[]}>} features  By feature name.
+ * @property {{key: string, rule: string, severity: string, file: string, fixIds: string[]}[]} findings
+ * @property {{key: string, rule: string, severity: string, file: string}[]} findingsNew  New errors the last write met (empty before a write).
+ * @property {{tool: string, staged: boolean, applied: boolean|null, files: {path: string, asPlanned: boolean}[]}|null} plan  The step being checked.
+ * @property {StructureHashes} structure
+ * @property {{files: number, findings: number}} truncated  How many entries the caps left out.
+ *
+ * One training record per finished step (append-only JSONL, `<state>/records/plans.jsonl`). Logic only: every project
+ * name (feature, item, library id, file, finding key, argument value) is a typed slot like "<feature:F1>" or
+ * "<item:I2 kind=components>", exprs are stored over the slots, and the live plan keeps the real names.
+ * @typedef {object} PlanRecord
+ * @property {1} v
+ * @property {string} at
+ * @property {string} intent        The plan's goal, slotted.
+ * @property {string} facts         "sha256:<16 hex>" of the facts summary before the step ran.
+ * @property {{project: string, library: string, features: Record<string, string>}} before  Structure hashes (feature keys slotted).
+ * @property {{project: string, library: string, features: Record<string, string>}} after
+ * @property {{added: string[], removed: string[], changed: string[]}} delta  Structural delta as slotted item lines, e.g. "<feature:F1>/components/<item:I1 kind=components> base=<lib:L1>".
+ * @property {{tool: string, args: Record<string, unknown>}[]} steps  The plan's steps up to this one, slotted.
+ * @property {number} step          Which of `steps` finished (1-based).
+ * @property {{id: string, kind: string, expr: LineExpr|null, ok: boolean}[]} checks
+ * @property {number} passed
+ * @property {{expr: LineExpr|null, ok: boolean}|null} pre
+ * @property {boolean} approved     A person approved the step.
+ * @property {boolean} repaired     The step is a retry or a fix of a step that needed the person.
+ * @property {Record<string, string>} slots  Slot -> what it stands for in logic terms (its kind, never the name).
+ */
+
+/** Every operator of the language. */
+export const EXPR_OPS = Object.freeze(['lit', 'path', 'item', 'eq', 'ne', 'lt', 'le', 'gt', 'ge', 'and', 'or', 'not', 'exists', 'count', 'every', 'some', 'in']);
+/** The language's limits. */
+export const EXPR_LIMITS = Object.freeze({ depth: 24, nodes: 400, segments: 16, string: 2000, operands: 100 });
+/** The facts snapshot's caps (fixed size). */
+export const FACTS_LIMITS = Object.freeze({ files: 2000, findings: 500 });
+/** The facts snapshot's top-level fields. */
+export const FACTS_FIELDS = Object.freeze(['files', 'library', 'features', 'findings', 'findingsNew', 'plan', 'structure', 'truncated']);
+/** A slot in a training record: <kind:Xn attr=value ...>. */
+export const SLOT_PATTERN = /^<[a-z]+:[A-Z]\d+( [a-z]+=[A-Za-z0-9_-]+)*>$/;
+const HASH16 = /^sha256:[0-9a-f]{16}$/;
+
+const COMPARE = new Set(['eq', 'ne', 'lt', 'le', 'gt', 'ge']);
+const isPlain = (v) => v !== null && typeof v === 'object' && !Array.isArray(v) && Object.getPrototypeOf(v) === Object.prototype;
+/** Plain JSON only: no functions, dates, class instances, undefined or non-finite numbers. */
+const isJson = (v, d) => {
+  if (d > EXPR_LIMITS.depth) return false;
+  if (v === null || typeof v === 'string' || typeof v === 'boolean') return true;
+  if (typeof v === 'number') return Number.isFinite(v);
+  if (Array.isArray(v)) return v.every((x) => isJson(x, d + 1));
+  return isPlain(v) && Object.values(v).every((x) => isJson(x, d + 1));
+};
+const pathProblem = (segs, at, op) => {
+  if (!Array.isArray(segs)) return `In ${at}, "${op}" takes a list of names, like {"${op}": ["files", "a.tsx"]}.`;
+  if (segs.length > EXPR_LIMITS.segments) return `In ${at}, a path has at most ${EXPR_LIMITS.segments} parts.`;
+  if (op === 'path' && segs.length === 0) return `In ${at}, a path names at least one part, like ["files"].`;
+  for (const s of segs) {
+    if (!(typeof s === 'string' && s.length > 0 && s.length <= EXPR_LIMITS.string) && !(Number.isInteger(s) && s >= 0)) return `In ${at}, each part of a path is a name or a list position (a whole number from 0).`;
+  }
+  return null;
+};
+
+/**
+ * Why `expr` is not a valid expression, in one sentence, or null when it is.
+ * @param {unknown} expr
+ * @returns {string|null}
+ */
+export function exprProblem(expr) {
+  let nodes = 0;
+  /** @returns {string|null} */
+  const walk = (e, where, depth, inItem) => {
+    nodes += 1;
+    const here = where ? `In ${where}, ` : '';
+    if (nodes > EXPR_LIMITS.nodes) return `The expression has more than ${EXPR_LIMITS.nodes} parts; split it into several checks.`;
+    if (depth > EXPR_LIMITS.depth) return `The expression nests deeper than ${EXPR_LIMITS.depth} levels.`;
+    if (e === null || typeof e === 'boolean') return null;
+    if (typeof e === 'number') return Number.isFinite(e) ? null : `${here}a number must be finite.`;
+    if (typeof e === 'string') return e.length <= EXPR_LIMITS.string ? null : `${here}a text is at most ${EXPR_LIMITS.string} characters.`;
+    if (typeof e === 'function') return `${here}a function is not an expression; expressions are plain JSON.`;
+    if (Array.isArray(e)) return `${here}a bare list is not an expression; write {"lit": [...]} for a list value.`;
+    if (!isPlain(e)) return `${here}only plain JSON values are expressions.`;
+    const keys = Object.keys(e);
+    if (keys.length !== 1) return `${here}an expression object has exactly one operator, not ${keys.length ? keys.join(', ') : 'none'}.`;
+    const [op] = keys; const a = e[op]; const at = where ? `${where}.${op}` : op;
+    if (!EXPR_OPS.includes(op)) return `${here}"${op}" is not an operator; use one of ${EXPR_OPS.join(', ')}.`;
+    if (op === 'lit') return isJson(a, 0) && JSON.stringify(a).length <= EXPR_LIMITS.string * 4 ? null : `In ${at}, a literal must be plain JSON.`;
+    if (op === 'path') return pathProblem(a, at, op);
+    if (op === 'item') return inItem ? pathProblem(a, at, op) : `In ${at}, "item" only means something inside every or some.`;
+    if (op === 'not' || op === 'count') return walk(a, at, depth + 1, inItem);
+    if (op === 'exists') {
+      if (!isPlain(a) || Object.keys(a).length !== 1 || !(('path' in a) || ('item' in a))) return `In ${at}, exists takes a path, like {"exists": {"path": ["files", "a.tsx"]}}.`;
+      return walk(a, at, depth + 1, inItem);
+    }
+    if (!Array.isArray(a)) return `In ${at}, "${op}" takes a list of expressions.`;
+    if (a.length > EXPR_LIMITS.operands) return `In ${at}, "${op}" takes at most ${EXPR_LIMITS.operands} expressions.`;
+    if ((COMPARE.has(op) || op === 'in' || op === 'every' || op === 'some') && a.length !== 2) return `In ${at}, "${op}" takes exactly two expressions.`;
+    if ((op === 'and' || op === 'or') && a.length === 0) return `In ${at}, "${op}" takes at least one expression.`;
+    for (let i = 0; i < a.length; i += 1) {
+      const why = walk(a[i], `${at}[${i}]`, depth + 1, (op === 'every' || op === 'some') && i === 1 ? true : inItem);
+      if (why) return why;
+    }
+    return null;
+  };
+  const why = walk(expr, '', 0, false);
+  return why && why.charAt(0).toUpperCase() + why.slice(1);
+}
+
+/** @param {unknown} e @returns {asserts e is LineExpr} Throws a TypeError whose message is the one sentence. */
+export function assertExpr(e) {
+  const why = exprProblem(e);
+  if (why) throw new TypeError(why);
+}
+
+/** The JSON Schema of an expression (exprProblem also checks depth, size and where `item` may appear). */
+export const EXPR_JSON_SCHEMA = Object.freeze({
+  $id: 'line/expr.schema.json',
+  description: 'A Line expression: a literal or an object with exactly one operator (packages/engine/line/contract.mjs LineExpr).',
+  oneOf: [
+    { type: ['string', 'number', 'boolean', 'null'] },
+    {
+      type: 'object', minProperties: 1, maxProperties: 1, additionalProperties: false,
+      properties: Object.fromEntries(EXPR_OPS.map((op) => [op,
+        op === 'path' || op === 'item' ? { type: 'array', maxItems: EXPR_LIMITS.segments, items: { oneOf: [{ type: 'string', minLength: 1 }, { type: 'integer', minimum: 0 }] } }
+          : op === 'lit' ? {}
+            : op === 'not' || op === 'count' || op === 'exists' ? { $ref: 'line/expr.schema.json' }
+              : { type: 'array', minItems: 1, maxItems: EXPR_LIMITS.operands, items: { $ref: 'line/expr.schema.json' } }])),
+    },
+  ],
+});
+
+/** @param {any} r @returns {asserts r is ExprEvaluation} */
+export function assertExprEvaluation(r) {
+  if (typeof r?.ok !== 'boolean' || !Array.isArray(r.failed)) fail('evaluation', 'has ok and failed');
+  if (r.ok !== (r.failed.length === 0)) fail('evaluation.ok', 'is true exactly when nothing failed');
+  r.failed.forEach((f, i) => { if (typeof f.path !== 'string') fail(`evaluation.failed[${i}].path`, 'must be a string'); sentence(f.sentence, `evaluation.failed[${i}].sentence`); });
+}
+
+/** @param {any} f @returns {asserts f is LineFacts} */
+export function assertLineFacts(f) {
+  if (!isPlain(f)) fail('facts', 'must be an object');
+  for (const k of FACTS_FIELDS) if (!(k in f)) fail(`facts.${k}`, 'is missing');
+  if (!isPlain(f.files) || !isPlain(f.library) || !isPlain(f.features)) fail('facts', 'files, library and features are objects');
+  if (Object.keys(f.files).length > FACTS_LIMITS.files) fail('facts.files', `holds at most ${FACTS_LIMITS.files} files`);
+  for (const [p, v] of Object.entries(f.files)) if (!Number.isInteger(v?.bytes) || !/^[0-9a-f]{64}$/.test(String(v.hash))) fail(`facts.files[${p}]`, 'has bytes and a sha256 hash');
+  if (!Array.isArray(f.findings) || f.findings.length > FACTS_LIMITS.findings) fail('facts.findings', `must be a list of at most ${FACTS_LIMITS.findings}`);
+  for (const x of f.findings) { str(x.key, 'facts.findings[].key'); str(x.rule, 'facts.findings[].rule'); if (!Array.isArray(x.fixIds)) fail('facts.findings[].fixIds', 'must be a list'); }
+  if (!Array.isArray(f.findingsNew)) fail('facts.findingsNew', 'must be a list');
+  for (const [n, feat] of Object.entries(f.features)) if (typeof feat?.spec !== 'boolean' || !Array.isArray(feat.items)) fail(`facts.features.${n}`, 'has spec and items');
+  if (f.plan !== null && (typeof f.plan?.tool !== 'string' || typeof f.plan.staged !== 'boolean' || !Array.isArray(f.plan.files))) fail('facts.plan', 'is null or {tool, staged, applied, files}');
+  const s = f.structure;
+  if (!HASH16.test(String(s?.project)) || !HASH16.test(String(s.library)) || !isPlain(s.features)) fail('facts.structure', 'has project, library and features hashes');
+  for (const [n, h] of Object.entries(s.features)) if (!HASH16.test(String(h?.hash)) || !isPlain(h.layers)) fail(`facts.structure.features.${n}`, 'has a hash and layer hashes');
+  if (!Number.isInteger(f.truncated?.files) || !Number.isInteger(f.truncated?.findings)) fail('facts.truncated', 'counts files and findings left out');
+}
+
+const assertHashes = (h, where) => {
+  if (!HASH16.test(String(h?.project)) || !HASH16.test(String(h.library)) || !isPlain(h.features)) fail(where, 'has project, library and features hashes');
+  for (const [k, v] of Object.entries(h.features)) { if (!SLOT_PATTERN.test(k)) fail(`${where}.features`, `"${k}" is not a slot`); if (!HASH16.test(String(v))) fail(`${where}.features.${k}`, 'must be a hash'); }
+};
+
+/** @param {any} r @param {string} [where] @returns {asserts r is PlanRecord} */
+export function assertPlanRecord(r, where = 'record') {
+  if (r?.v !== 1) fail(`${where}.v`, 'must be 1');
+  str(r.at, `${where}.at`);
+  if (typeof r.intent !== 'string') fail(`${where}.intent`, 'must be a string');
+  if (!HASH16.test(String(r.facts))) fail(`${where}.facts`, 'must be "sha256:" and 16 hex digits');
+  assertHashes(r.before, `${where}.before`); assertHashes(r.after, `${where}.after`);
+  if (!Array.isArray(r.delta?.added) || !Array.isArray(r.delta.removed) || !Array.isArray(r.delta.changed)) fail(`${where}.delta`, 'has added, removed and changed');
+  if (!Array.isArray(r.steps) || !r.steps.length) fail(`${where}.steps`, 'must list the plan steps');
+  r.steps.forEach((s, i) => { str(s?.tool, `${where}.steps[${i}].tool`); if (!isPlain(s.args)) fail(`${where}.steps[${i}].args`, 'must be an object'); });
+  if (!Number.isInteger(r.step) || r.step < 1 || r.step > r.steps.length) fail(`${where}.step`, 'must point into steps');
+  if (!Array.isArray(r.checks)) fail(`${where}.checks`, 'must be a list');
+  r.checks.forEach((c, i) => { str(c.id, `${where}.checks[${i}].id`); if (typeof c.ok !== 'boolean') fail(`${where}.checks[${i}].ok`, 'must be a boolean'); if (c.expr !== null) assertExpr(c.expr); });
+  if (r.passed !== r.checks.filter((c) => c.ok).length) fail(`${where}.passed`, 'must count the passing checks');
+  if (r.pre !== null && typeof r.pre?.ok !== 'boolean') fail(`${where}.pre`, 'is null or {expr, ok}');
+  if (typeof r.approved !== 'boolean') fail(`${where}.approved`, 'must be a boolean');
+  if (typeof r.repaired !== 'boolean') fail(`${where}.repaired`, 'must be a boolean');
+  if (!isPlain(r.slots)) fail(`${where}.slots`, 'must be an object');
+  for (const k of Object.keys(r.slots)) if (!SLOT_PATTERN.test(k)) fail(`${where}.slots`, `"${k}" is not a slot`);
 }
