@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Line wave 4 browser batch (merge train): every line-* spec under its config, then every UAT walk. One config at a time,
-# one pair of servers each, --workers=1. Usage: ui/e2e/.line-batch.sh [spec filter...]
+# Line browser batch: every line-* spec under its config, then every UAT walk. One config at a time,
+# one pair of servers each, --workers=1. Usage: ui/e2e/line-batch.sh [spec filter...]
 set -u
 cd "$(dirname "$0")"
 export E2E_CLIENT_PORT=${E2E_CLIENT_PORT:-3391} E2E_SERVER_PORT=${E2E_SERVER_PORT:-4391}
