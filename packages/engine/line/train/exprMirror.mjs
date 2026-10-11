@@ -82,6 +82,7 @@ const kindOf = (id) => KIND_WORD[String(id).split('/').at(-2)] ?? 'item';
 export function describe(expr) {
   if (!expr || typeof expr !== 'object') return 'An unknown check.';
   if (Array.isArray(expr.all)) return expr.all.map(describe).join(' ');
+  if ('not' in expr && typeof expr.not?.hasItem === 'string') return `${featureOf(expr.not.hasItem)} no longer has a ${kindOf(expr.not.hasItem)} ${nameOf(expr.not.hasItem)}.`;
   if ('not' in expr) return `Not: ${lower(describe(expr.not))}`;
   if (typeof expr.hasItem === 'string') return `${featureOf(expr.hasItem)} has a ${kindOf(expr.hasItem)} ${nameOf(expr.hasItem)}.`;
   if (typeof expr.hasLibrary === 'string') return `The library has a ${kindOf(`x/${expr.hasLibrary}`)} ${nameOf(expr.hasLibrary)}.`;

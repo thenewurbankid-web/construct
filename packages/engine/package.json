@@ -10,6 +10,8 @@
   "exports": {
     "./impact": "./impact.mjs",
     "./line/plan-service": "./line/planService.mjs",
+    "./line/train/service": "./line/train/service.mjs",
+    "./line/train/contract": "./line/train/contract.mjs",
     "./transactional-writer": "./transactionalWriter.mjs",
     "./envelope": "./envelope.mjs",
     "./pipeline": "./pipeline.mjs",
