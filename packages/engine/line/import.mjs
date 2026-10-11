@@ -157,7 +157,7 @@ function readRoutes(projectRoot, graph) {
 /** True when the AST subtree holds JSX. */
 function hasJsx(node) {
   let found = false;
-  walkAst(node, { enter(n) { if (n.type === 'JSXElement' || n.type === 'JSXFragment') { found = true; this.skip(); } } });
+  walkAst(node, { enter(/** @type {any} */ n) { if (n.type === 'JSXElement' || n.type === 'JSXFragment') { found = true; this.skip(); } } });
   return found;
 }
 
@@ -165,7 +165,7 @@ function hasJsx(node) {
 function rootTag(fn) {
   let tag = null;
   walkAst(fn.body ?? fn, {
-    enter(n) {
+    enter(/** @type {any} */ n) {
       if (tag) return this.skip();
       const ret = n.type === 'ReturnStatement' ? n.argument : (n === fn.body && n.type === 'JSXElement' ? n : null);
       const el = ret?.type === 'ParenthesizedExpression' ? ret.expression : ret;
@@ -593,7 +593,7 @@ export const IMPORT_STEP_TOOLS = Object.freeze({
 export function planImportStep(folderRoot, step) {
   const tool = IMPORT_STEP_TOOLS[step?.tool];
   if (!tool) throw new LineOpError(`"${step?.tool}" is not an import step Line knows.`, 'UNKNOWN_TOOL');
-  const change = tool(folderRoot, step.args ?? {});
+  const change = tool(folderRoot, /** @type {any} */ (step.args ?? {}));
   assertStagedChange(change);
   return change;
 }
@@ -620,17 +620,17 @@ export function applyImport(projectRoot, folder, answers = {}) {
     } catch (e) {
       const s = e instanceof LineOpError || e?.name === 'LineOpError' ? e.sentence : 'Line could not plan this step.';
       steps.push({ id: step.id, ok: false, sentence: `Not done: ${s.charAt(0).toLowerCase()}${s.slice(1)}` });
-      return { ok: false, sentence: `Stopped at "${step.sentence.replace(/[.?!]$/, '')}": ${s.charAt(0).toLowerCase()}${s.slice(1)}`, files: [], findings: [], steps, landed: written };
+      return { ok: false, sentence: `Stopped at "${step.sentence.replace(/[.?!]$/, '')}": ${s.charAt(0).toLowerCase()}${s.slice(1)}`, files: [], findings: [], steps, .../** @type {any} */ ({ landed: written }) };
     }
     const outside = change.files.find((x) => x.path.startsWith('/') || x.path.split('/').includes('..'));
     if (outside) {
       steps.push({ id: step.id, ok: false, sentence: `Not done: Line writes only inside ${plan.folder}, and this step would write ${outside.path}.` });
-      return { ok: false, sentence: `Nothing more was saved: Line writes only inside ${plan.folder}, and a step would write ${outside.path}.`, files: [], findings: [], steps, landed: written };
+      return { ok: false, sentence: `Nothing more was saved: Line writes only inside ${plan.folder}, and a step would write ${outside.path}.`, files: [], findings: [], steps, .../** @type {any} */ ({ landed: written }) };
     }
     const r = applyChange(root, change);
     steps.push({ id: step.id, ok: r.ok, sentence: r.ok ? step.sentence : r.sentence });
     if (!r.ok) {
-      return { ok: false, sentence: `Stopped at "${step.sentence.replace(/[.?!]$/, '')}": ${r.sentence.charAt(0).toLowerCase()}${r.sentence.slice(1)}`, files: [], findings: r.findings.map((x) => ({ ...x, file: x.file === '.' ? plan.folder : prefix(x.file) })), steps, landed: written };
+      return { ok: false, sentence: `Stopped at "${step.sentence.replace(/[.?!]$/, '')}": ${r.sentence.charAt(0).toLowerCase()}${r.sentence.slice(1)}`, files: [], findings: r.findings.map((x) => ({ ...x, file: x.file === '.' ? plan.folder : prefix(x.file) })), steps, .../** @type {any} */ ({ landed: written }) };
     }
     written.push(...r.files.map(prefix));
   }

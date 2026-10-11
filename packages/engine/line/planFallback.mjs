@@ -95,7 +95,7 @@ export function createStaticPlanApi(o) {
     const spec = o.registry.list().find((t) => t.name === input.tool);
     if (!spec) return refuse('invalid', `There is no tool named ${input.tool}, so nothing changed.`);
     const parsed = spec.schema.safeParse(input.args ?? {});
-    if (!parsed.success) return refuse('invalid', `The arguments do not fit ${input.tool}: ${parsed.error.issues.map((x) => `${x.path.join('.') || 'args'} ${x.message}`).join('; ')}.`);
+    if (!parsed.success) return refuse('invalid', `The arguments do not fit ${input.tool}: ${/** @type {any} */ (parsed).error.issues.map((x) => `${x.path.join('.') || 'args'} ${x.message}`).join('; ')}.`);
     if (input.kind !== undefined && input.kind !== spec.kind) return refuse('invalid', `The tool ${input.tool} is marked ${spec.kind}, but the step says ${input.kind}.`);
     if (typeof input.why !== 'string' || !SENTENCE.test(input.why.trim())) return refuse('invalid', "The step's why must be one plain-English sentence that starts with a capital letter and ends with a full stop.");
     let k = p.steps.length + 1; while (p.steps.some((s) => s.id === `s${k}`)) k += 1;
@@ -184,9 +184,11 @@ export function createStaticPlanApi(o) {
         picked = structuredClone(ready);
         return { change: `Started step ${ready.n} (${ready.tool}): ${ready.why}` };
       });
-      if (!started.ok || !picked) return started;
+      if (!/** @type {any} */ (started).ok || !picked) return started;
+      /** @type {any} */
+      const pick = picked;
       let result; let error;
-      try { result = await o.registry.call(picked.tool, picked.args); result = result === undefined ? null : JSON.parse(JSON.stringify(result)); } catch (e) { error = sentence(`The tool ${picked.tool} failed: ${e instanceof Error ? e.message : String(e)}`); }
+      try { result = await o.registry.call(pick.tool, pick.args); result = result === undefined ? null : JSON.parse(JSON.stringify(result)); } catch (e) { error = sentence(`The tool ${pick.tool} failed: ${e instanceof Error ? e.message : String(e)}`); }
       return mutate({ planId: a.planId, version: 0, by: 'line' }, (p) => {
         const s = p.steps.find((x) => x.id === picked.id);
         if (!s) return refuse('state', `Step ${picked.id} disappeared while it ran.`);

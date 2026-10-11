@@ -285,7 +285,7 @@ export function withViolationFixes(root, violations) {
   const ctx = fixContext(root);
   return violations.map((v) => {
     if (!String(v.rule).startsWith('LINE-')) return v;
-    const f = toFinding(v);
+    const f = toFinding(/** @type {any} */ (v));
     return { ...v, key: findingKey(f), fixes: fixesFor(root, f, ctx) };
   });
 }

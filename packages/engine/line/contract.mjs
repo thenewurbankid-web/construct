@@ -537,9 +537,12 @@ export function assertLineWorkspace(w) {
 
 /** @param {any} r @returns {asserts r is NewLineProjectResult} */
 export function assertNewLineProjectResult(r) {
-  assertApplyResult(r);
-  if (r.ok) str(r.dir, 'result.dir');
-  else if (r.dir !== null) fail('result.dir', 'is null when the project was not created');
+  /** @type {any} */
+  const x = r;
+  assertApplyResult(x);
+  const y = /** @type {any} */ (r);
+  if (y.ok) str(y.dir, 'result.dir');
+  else if (y.dir !== null) fail('result.dir', 'is null when the project was not created');
 }
 
 /** @param {any} d @returns {asserts d is LineFeatureDetail} */
@@ -670,10 +673,13 @@ export function assertImportPlan(p) {
 
 /** @param {any} r @returns {asserts r is ImportApplyResult} */
 export function assertImportApplyResult(r) {
-  assertApplyResult(r);
-  if (!Array.isArray(r.steps)) fail('result.steps', 'must be an array');
-  r.steps.forEach((st, i) => { str(st.id, `result.steps[${i}].id`); sentence(st.sentence, `result.steps[${i}].sentence`); });
-  if (r.ok && r.steps.some((st) => !st.ok)) fail('result', 'ok only when every step landed');
+  /** @type {any} */
+  const x = r;
+  assertApplyResult(x);
+  const y = /** @type {any} */ (r);
+  if (!Array.isArray(y.steps)) fail('result.steps', 'must be an array');
+  y.steps.forEach((st, i) => { str(st.id, `result.steps[${i}].id`); sentence(st.sentence, `result.steps[${i}].sentence`); });
+  if (y.ok && y.steps.some((st) => !st.ok)) fail('result', 'ok only when every step landed');
 }
 /** @param {any} l @returns {asserts l is FragmentList} */
 export function assertFragmentList(l) {

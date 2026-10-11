@@ -222,7 +222,7 @@ export function createMockLineOps({ files: initial = MOCK_FILES } = {}) {
       return { ok: true, sentence: `Created the Line project ${req.name.trim()} with the empty feature ${req.firstFeature.trim()}.`, files: staged.files.map((f) => f.path), findings: [], dir };
     },
     /** The mock's created projects (absolute dir -> files), for tests. */
-    projects: () => Object.fromEntries([...projects].map(([d, f]) => [d, { ...f }])),
+    .../** @type {any} */ ({ projects: () => Object.fromEntries([...projects].map(([d, f]) => [d, { ...f }])) }),
     /** @returns {import('./contract.mjs').ApplyResult} */
     applyChange(_root, change) {
       const outside = change.files.find((x) => folder && x.path !== folder && !x.path.startsWith(`${folder}/`));
