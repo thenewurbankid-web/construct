@@ -25,7 +25,10 @@ const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
 /**
  * A SchemaLike over named fields: `required` must be present (non-empty strings unless typed otherwise), `optional`
  * may be, anything else is refused. Values are typed loosely here; the surface or the op checks them in full.
- * @param {string[]} required @param {string[]} [optional] @param {{open?: boolean}} [o] `open` lets unknown fields through.
+ * @param {string[]} required
+ * @param {string[]} [optional]
+ * @param {{open?: boolean}} [o] `open` lets unknown fields through.
+ * @returns The schema (fields and safeParse).
  */
 export function fieldsSchema(required, optional = [], o = {}) {
   const allowed = new Set([...required, ...optional]);
@@ -61,6 +64,9 @@ export const TOOL_ENTRIES = Object.freeze(/** @type {any[]} */ ([
   { id: 'line.import.folders', kind: 'read', writes: null, inputSchema: NONE, outputSchema: 'ImportFolders', sentence: 'Lists the folders of the open project worth importing.', surfaces: { http: http('GET', '/import/folders') } },
   { id: 'line.import.scan', kind: 'read', writes: null, inputSchema: fieldsSchema(['folder']), outputSchema: 'ImportScan', sentence: 'Reads one folder and says what Line proposes for each item in it; writes nothing.', surfaces: { http: http('POST', '/import/scan') } },
   { id: 'line.import.plan', kind: 'read', writes: null, inputSchema: fieldsSchema(['folder'], ['answers']), outputSchema: 'ImportPlan', sentence: 'Turns an import scan and its answers into plan steps; writes nothing.', surfaces: { http: http('POST', '/import/plan') } },
+  { id: 'line.spec', kind: 'read', writes: null, inputSchema: fieldsSchema([], ['topic', 'id']), outputSchema: 'LineSpec', sentence: 'Reads Line\'s versioned spec, generated from its code, one topic at a time.', surfaces: { mcp: 'line_spec' } },
+  // cu7: mounted at its own path before the gate (it needs no open project); a person starts a new project folder.
+  { id: 'line.newProject', kind: 'write', writes: 'project', inputSchema: fieldsSchema(['name', 'feature'], [], { open: true }), outputSchema: 'NewLineProjectResult', sentence: 'Starts a new Line project in a folder of the workspace and opens it.', personOnly: true, surfaces: { http: http('POST', '/new-project') } },
   // Line's own state: written atomically by its store and logged, without asking.
   { id: 'line.setWorkspace', kind: 'write', writes: 'line', inputSchema: fieldsSchema(['folder']), outputSchema: 'LineWorkspace', sentence: 'Sets the one folder Line may change; everything outside it stays read-only.', controlId: 'workspace-folder', surfaces: { http: http('POST', '/workspace') } },
   // Project writes: only ever a plan step (approval per step, or Auto).
@@ -128,7 +134,11 @@ export function commandEntries(commands) {
   });
 }
 
-/** Every entry: the catalog plus the given extra entries (e.g. commandEntries), ids unique. */
+/**
+ * Every entry: the catalog plus the given extra entries (e.g. commandEntries), ids unique.
+ * @param {import('./contract.mjs').ToolEntry[]} [extra]
+ * @returns {import('./contract.mjs').ToolEntry[]}
+ */
 export function allEntries(extra = []) {
   const all = [...TOOL_ENTRIES, ...extra];
   const seen = new Set();
@@ -136,16 +146,45 @@ export function allEntries(extra = []) {
   return all;
 }
 
-/** @param {string} id @param {readonly import('./contract.mjs').ToolEntry[]} [entries] */
+/**
+ * The entry with this id, or null.
+ * @param {string} id
+ * @param {readonly import('./contract.mjs').ToolEntry[]} [entries]
+ * @returns {import('./contract.mjs').ToolEntry | null}
+ */
 export const entryById = (id, entries = TOOL_ENTRIES) => entries.find((e) => e.id === id) ?? null;
-/** The entries a Cockpit route resolves to (exactly one when the route is known). @param {string} method @param {string} fullPath */
+/**
+ * The entries a Cockpit route resolves to (exactly one when the route is known).
+ * @param {string} method
+ * @param {string} fullPath
+ * @returns {import('./contract.mjs').ToolEntry[]}
+ */
 export const entriesForRoute = (method, fullPath) => TOOL_ENTRIES.filter((e) => e.surfaces.http && e.surfaces.http.method === method && e.surfaces.http.path === fullPath);
+/**
+ * The one entry a Cockpit route resolves to, or null.
+ * @param {string} method
+ * @param {string} fullPath
+ * @returns {import('./contract.mjs').ToolEntry | null}
+ */
 export const entryForRoute = (method, fullPath) => { const m = entriesForRoute(method, fullPath); return m.length === 1 ? m[0] : null; };
-/** The entries a construct-mcp tool resolves to. @param {string} name */
+/**
+ * The entries a construct-mcp tool resolves to.
+ * @param {string} name
+ * @returns {import('./contract.mjs').ToolEntry[]}
+ */
 export const entriesForMcp = (name) => TOOL_ENTRIES.filter((e) => e.surfaces.mcp === name);
+/**
+ * The one entry a construct-mcp tool resolves to, or null.
+ * @param {string} name
+ * @returns {import('./contract.mjs').ToolEntry | null}
+ */
 export const entryForMcp = (name) => { const m = entriesForMcp(name); return m.length === 1 ? m[0] : null; };
 
-/** One entry as GET /api/line/tools shows it. @returns {import('./contract.mjs').ToolView} */
+/**
+ * One entry as GET /api/line/tools shows it.
+ * @param {import('./contract.mjs').ToolEntry} e
+ * @returns {import('./contract.mjs').ToolView}
+ */
 export function toolView(e) {
   return {
     id: e.id, kind: e.kind, writes: e.writes, sentence: e.sentence, outputSchema: e.outputSchema,
@@ -155,10 +194,19 @@ export function toolView(e) {
 }
 
 // ------------------------------------------------------------------------------------------------- the log
-/** Where Line's own-state writes are logged, one JSON line each. */
+/**
+ * Where Line's own-state writes are logged, one JSON line each.
+ * @param {string} root The project root.
+ * @returns {string}
+ */
 export const toolLogFile = (root) => path.join(root, 'line', 'log', 'tools.jsonl');
-/** Append one entry (tool, who, ok; never the arguments, which may hold code) through Construct's writer, atomically.
- * Never throws: a log that cannot be written never stops the change. */
+/**
+ * Append one entry (tool, who, ok; never the arguments, which may hold code) through Construct's writer, atomically.
+ * Never throws: a log that cannot be written never stops the change.
+ * @param {string} root The project root.
+ * @param {{tool: string, by: string, ok: boolean}} entry
+ * @returns {void}
+ */
 export function logToolWrite(root, { tool, by, ok }) {
   try {
     const file = toolLogFile(root);
@@ -196,7 +244,10 @@ export function lineHandlers(root, ops) {
   };
 }
 
-/** The real Line operations, loaded on demand (the render pulls in Morpheus's loader). */
+/**
+ * The real Line operations, loaded on demand (the render pulls in Morpheus's loader).
+ * @returns {Promise<any>} The ops lineHandlers takes.
+ */
 export async function realLineOps() {
   const [model, feature, pageProp, fragments, workspace, render] = await Promise.all([
     import('./model.mjs'), import('./feature.mjs'), import('./pageProp.mjs'), import('./fragments.mjs'), import('./workspace.mjs'), import('./renderComponent.mjs'),
@@ -216,6 +267,7 @@ export async function realLineOps() {
  *   blocks?: Record<string, (args: any) => unknown>}} o
  *   `handlers`: lineHandlers(root, ops). `commands`: the construct.* PlanRegistry. `gatelm`: @mx/plan gatelmTools(api)
  *   (each must match its catalog entry, kind for kind). `blocks`: construct-mcp's block handlers by entry id.
+ * @returns The registry: entries, list and dispatch.
  */
 export function createToolRegistry({ root, planService, handlers = {}, commands = null, gatelm = null, blocks = {} }) {
   const entries = allEntries(commands ? commandEntries(commands) : []);

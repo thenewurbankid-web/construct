@@ -644,6 +644,7 @@ export function checkShared(project, line) {
     for (const concern of SHARED_CONCERNS) {
       const owners = [...concern.owners, ...(line.sharedOwners[concern.id] || [])];
       if (pkg && owners.includes(pkg)) continue;
+      if (concern.ownerFiles?.includes(file.rel)) continue;
       for (const c of findSharedCopies(ast, concern)) {
         hits.push({ rule: 'LINE-SHARED', concern: concern.id, file: file.rel, line: c.line, message: `"${file.rel}" keeps its own copy of ${concern.concern} (it ${c.what}); use the shared module ${concern.module} instead.` });
       }

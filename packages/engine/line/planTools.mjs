@@ -32,6 +32,10 @@ import { planSetProp } from './pageProp.mjs';
 import { readLineProject } from './model.mjs';
 import { planFixByKey, planStep, withFixes, planAmended, amendFixes, onScratch } from './fixes.mjs';
 import { planSetFragment } from './fragments.mjs';
+import { entryById } from './toolRegistry.mjs';
+
+/** The one catalog's entry for a plan tool (toolRegistry.mjs); a tool the catalog does not list cannot be registered. */
+const catalogEntry = (name) => { const e = entryById(name); if (!e || !e.surfaces.plan) throw new Error(`The tool registry has no plan tool ${name}.`); return e; };
 import { planBaseWorkflowOn, planSetWorkflowRole, planAddWorkflowTransition, planRemoveWorkflowTransition } from './workflows.mjs';
 
 /** The real operations (tests pass the contract's mock instead). */
@@ -453,9 +457,11 @@ export function lineTools({ root, ops = REAL_PLAN_OPS, afterSave }) {
     'line.leaveAsIs': async (a) => ({ left: a.stepId, sentence: 'Carried on; the step was left as it is.' }),
     'line.project': async () => ops.readLineProject(root),
   };
+  // Owner decision (cu3): toolRegistry.mjs is Line's one tool catalog; these handlers register into @mx/plan's
+  // registry (createLinePlanRegistry -> createPlanApi) only for tools the catalog lists, with the catalog's kind.
   return Object.keys(run).map((name) => ({
     name,
-    kind: /** @type {'read'|'write'} */ (name === 'line.project' ? 'read' : 'write'),
+    kind: /** @type {'read'|'write'} */ (catalogEntry(name).kind),
     schema: SCHEMAS[name],
     describe: DESCRIBE[name],
     async run(args) {

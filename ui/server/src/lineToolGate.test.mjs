@@ -16,6 +16,7 @@ import { createLineOpsRouter } from './lineOpsApi.mjs';
 import { createLinePlanRouter } from './linePlanApi.mjs';
 import { createLineRenderRouter } from './lineRenderApi.mjs';
 import { createLineToolGate } from './lineToolGate.mjs';
+import { createLineImportRouter } from './lineImportApi.mjs';
 
 const SAMPLE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../examples/line-sample');
 const NO_LINK = { env: { ...process.env, LINE_SOURCE_DIR: path.join(makeTempDir('no-source-'), 'nope') } };
@@ -27,7 +28,9 @@ function routesOf(router) {
   return router.stack.filter((l) => l.route).flatMap((l) => Object.keys(l.route.methods).map((m) => `${m.toUpperCase()} /api/line${l.route.path}`));
 }
 const noRoot = () => ({ ok: false, error: 'No project.' });
-const ALL_ROUTERS = () => [createLineRouter({ getRoot: noRoot }), createLineOpsRouter({ getRoot: noRoot }), createLinePlanRouter({ getRoot: noRoot }), createLineRenderRouter({ getRoot: noRoot }), createLineToolGate({ getRoot: noRoot })];
+const ALL_ROUTERS = () => [createLineRouter({ getRoot: noRoot }), createLineOpsRouter({ getRoot: noRoot }), createLinePlanRouter({ getRoot: noRoot }), createLineRenderRouter({ getRoot: noRoot }), createLineImportRouter({ getRoot: noRoot }), createLineToolGate({ getRoot: noRoot })];
+/** cu7's new-project router is mounted at its own path, /api/line/new-project, before the gate (it needs no open project). */
+const MOUNTED_APART = ['POST /api/line/new-project'];
 function sampleCopy() {
   const dir = makeTempDir('construct-line-gate-');
   fs.cpSync(SAMPLE, dir, { recursive: true });
@@ -36,7 +39,7 @@ function sampleCopy() {
 const builtInPlan = (root) => createLinePlanService({ root, commands: null, load: (o) => loadPlanApi({ ...o, linkOptions: NO_LINK }) });
 
 test('Cockpit: every /api/line route maps to exactly one registry entry, and every route in the registry exists', () => {
-  const declared = [...new Set(ALL_ROUTERS().flatMap(routesOf))].sort();
+  const declared = [...new Set([...ALL_ROUTERS().flatMap(routesOf), ...MOUNTED_APART])].sort();
   assert.deepEqual(declared, LINE_API.map((r) => `${r.method} ${r.path}`).sort(), 'the routers serve exactly LINE_API');
   for (const route of declared) {
     const [method, p] = route.split(' ');
@@ -46,7 +49,7 @@ test('Cockpit: every /api/line route maps to exactly one registry entry, and eve
   assert.deepEqual(inRegistry, declared);
 });
 
-test('Cockpit gate (real sample, built-in plan store): POST /base-on becomes a waiting step and writes nothing; the workspace write is logged; an unknown route is a 404 sentence; /tools lists the registry', async (t) => {
+test('Cockpit gate (real sample, built-in plan store): POST /base-on is gone, a plan step waits and writes nothing; the workspace write is logged; an unknown route is a 404 sentence; /tools lists the registry', async (t) => {
   const root = sampleCopy();
   const svc = builtInPlan(root);
   const app = express();
@@ -61,14 +64,15 @@ test('Cockpit gate (real sample, built-in plan store): POST /base-on becomes a w
   const base = `http://127.0.0.1:${/** @type {any} */ (server.address()).port}/api/line`;
   const post = async (p, body) => { const r = await fetch(`${base}${p}`, { method: 'POST', headers: { 'content-type': 'application/json', origin: ORIGIN }, body: JSON.stringify(body) }); return { status: r.status, body: await r.json() }; };
 
-  const planned = await post('/base-on', { libraryId: 'components/Badge', feature: 'orders', name: 'StatusBadge' });
+  // The direct write routes are gone (integrator): a project change is only ever a plan step, added through /plan/step.
+  assert.equal((await post('/base-on', { libraryId: 'components/Badge', feature: 'orders', name: 'StatusBadge' })).status, 404);
+  const planned = await post('/plan/step', { tool: 'line.baseOn', args: { libraryId: 'components/Badge', feature: 'orders', name: 'StatusBadge' } });
   assert.equal(planned.status, 200);
-  assert.match(planned.body.sentence, /^Waiting for your approval: /);
-  assert.deepEqual([planned.body.files, planned.body.findings], [[], []]);
   assert.equal(fs.existsSync(path.join(root, BADGE)), false, 'nothing written before Approve');
   const plan = await (await fetch(`${base}/plan`)).json();
   assert.deepEqual(plan.steps.map((s) => [s.tool, s.state]), [['line.baseOn', 'waiting']]);
-  assert.equal(plan.steps[0].id, planned.body.planned.stepId);
+  assert.equal(plan.steps[0].id, planned.body.stepId);
+  assert.match(fs.readFileSync(toolLogFile(root), 'utf8'), /"tool":"plan.addStep"/);
 
   const ws = await post('/workspace', { folder: 'features/orders' });
   assert.equal(ws.status, 200);

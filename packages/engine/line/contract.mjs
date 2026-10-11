@@ -873,11 +873,10 @@ export function assertImportApplyResult(r) {
   if (y.ok && y.steps.some((st) => !st.ok)) fail('result', 'ok only when every step landed');
 }
 /**
- * Throws unless l is a FragmentList (file, content hash, labelled fragments).
- * @param {any} l
- * @returns {asserts l is FragmentList}
+ * Throws unless e is a ToolEntry (dotted id, kind, what it writes, input schema, surfaces that fit its kind).
+ * @param {any} e
+ * @returns {asserts e is ToolEntry}
  */
-/** @param {any} e @returns {asserts e is ToolEntry} */
 export function assertToolEntry(e) {
   const w = `tool ${e?.id ?? '?'}`;
   if (typeof e?.id !== 'string' || !TOOL_ID.test(e.id)) fail(`${w}.id`, 'must be a dotted name like line.baseOn');
@@ -896,7 +895,11 @@ export function assertToolEntry(e) {
   if (e.kind === 'write' && e.writes === 'project' && e.surfaces.mcp) fail(`${w}.surfaces.mcp`, 'an agent never writes project files directly; it adds a plan step');
 }
 
-/** @param {any} l @returns {asserts l is ToolList} */
+/**
+ * Throws unless l is a ToolList (GET /api/line/tools: unique ids, each a ToolView).
+ * @param {any} l
+ * @returns {asserts l is ToolList}
+ */
 export function assertToolList(l) {
   if (l?.ok !== true || !Array.isArray(l.tools)) fail('tools', 'must be {ok: true, tools: [...]}');
   const ids = new Set();
@@ -909,7 +912,11 @@ export function assertToolList(l) {
   }
 }
 
-/** @param {any} l @returns {asserts l is FragmentList} */
+/**
+ * Throws unless l is a FragmentList (file, content hash, labelled fragments).
+ * @param {any} l
+ * @returns {asserts l is FragmentList}
+ */
 export function assertFragmentList(l) {
   str(l?.file, 'fragments.file');
   str(l.contentHash, 'fragments.contentHash');

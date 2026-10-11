@@ -123,7 +123,7 @@ export const LINE_RULES = Object.freeze({
  * The shared module for each concern (LINE-SHARED). `owners` are package.json names allowed to do the
  * work; `imports`, `strings` and `declares` are the static signals of a copy elsewhere. File writes are
  * a shared concern too, checked by LINE-WRITER. Each project can add owners with `line.sharedOwners`.
- * @type {ReadonlyArray<{id: string, concern: string, module: string, path: string, owners: string[], imports?: string[], strings?: string[], declares?: RegExp}>}
+ * @type {ReadonlyArray<{id: string, concern: string, module: string, path: string, owners: string[], ownerFiles?: string[], imports?: string[], strings?: string[], declares?: RegExp}>}
  */
 export const SHARED_CONCERNS = Object.freeze([
   {
@@ -140,9 +140,12 @@ export const SHARED_CONCERNS = Object.freeze([
     declares: /^(createPlan|addStep|updateStep|approveStep|approvePlan|runNext|runNextStep|planStatus)$/,
   },
   {
-    id: 'registry', concern: 'the tool registry', module: '@mx/plan registry (registry.ts)',
-    path: 'vision-architect-pipeline runs/core-plan-api/packages/plan/registry.ts',
+    // Owner decision (2026-10-11): Line's one tool catalog is packages/engine/line/toolRegistry.mjs, which registers
+    // its tools into @mx/plan's registry at runtime (planTools.mjs createLinePlanRegistry -> createPlanApi).
+    id: 'registry', concern: 'the tool registry', module: 'Line\'s tool catalog (packages/engine/line/toolRegistry.mjs, registered into @mx/plan\'s registry)',
+    path: 'construct packages/engine/line/toolRegistry.mjs; vision-architect-pipeline runs/core-plan-api/packages/plan/registry.ts',
     owners: ['@mx/plan'],
+    ownerFiles: ['packages/engine/line/toolRegistry.mjs'],
     declares: /^(defineTool|createRegistry|createToolRegistry|registerTool|toolCatalog)$/,
   },
   {

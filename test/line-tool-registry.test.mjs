@@ -111,13 +111,17 @@ test('Studio: its own dispatcher (studio/src/dispatch.ts, linked) runs registry 
 test('no write without approval: every project write, by an agent or a person, only becomes a waiting plan step; only a person approves; then it lands', async () => {
   const { registry, plan } = createMockToolRegistry();
   const before = plan.files();
+  const fresh = TOOL_ENTRIES.find((x) => x.id === 'line.newProject');
+  assert.ok(fresh.personOnly && !fresh.surfaces.mcp && !fresh.surfaces.plan);
   for (const by of ['agent', 'person']) {
     const r = await registry.dispatch('line.baseOn', { libraryId: 'components/Button', feature: 'orders', name: by === 'agent' ? 'AgentButton' : 'PersonButton' }, { by });
     assert.equal(r.ok, true); assert.equal(r.via, 'plan');
     assert.match(r.sentence, /^Waiting for your approval: /);
   }
   assert.deepEqual(plan.files(), before);
-  for (const e of TOOL_ENTRIES.filter((x) => x.writes === 'project')) {
+  // line.newProject (cu7) is the one exception: it makes a NEW project folder, so there is no project plan to add a
+  // step to yet; it is person-only and never an agent tool.
+  for (const e of TOOL_ENTRIES.filter((x) => x.writes === 'project' && x.id !== 'line.newProject')) {
     assert.ok(e.surfaces.plan, `${e.id} can only run as a plan step`);
     assert.ok(!e.surfaces.mcp, `${e.id} is not an agent tool`);
   }

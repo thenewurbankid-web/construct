@@ -8,7 +8,11 @@ import { createToolRegistry, lineHandlers, entryById } from './toolRegistry.mjs'
 const ROOT = '/mock';
 const PLAN_OPS = { 'line.baseOn': 'planBaseOn', 'line.promote': 'planPromote', 'line.setPageProp': 'planSetProp', 'line.setFragment': 'planSetFragment' };
 
-/** An in-memory plan service (planService.mjs's shape: view, addStep, approve, runNext). */
+/**
+ * An in-memory plan service (planService.mjs's shape: view, addStep, approve, runNext).
+ * @param {any} [ops] The mock Line ops.
+ * @returns The mock plan service.
+ */
 export function createMockPlanService(ops = createMockLineOps()) {
   /** @type {{id: string, n: number, tool: string, args: any, why: string, kind: 'read'|'write', status: string, approval: 'needed'|'given'|'none', result: any}[]} */
   const steps = [];
@@ -55,7 +59,10 @@ export function createMockPlanService(ops = createMockLineOps()) {
   };
 }
 
-/** The registry over the mocks: `{registry, plan, ops}`. */
+/**
+ * The registry over the mocks.
+ * @returns {{registry: any, plan: any, ops: any}}
+ */
 export function createMockToolRegistry() {
   const ops = createMockLineOps();
   const plan = createMockPlanService(ops);
