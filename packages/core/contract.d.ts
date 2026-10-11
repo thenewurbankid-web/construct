@@ -115,6 +115,8 @@ export * as routeResolver from './route-resolver.mjs';
 export * as architectureGraph from './architecture-graph.mjs';
 /** `@line/construct-core/extract-expression` */
 export * as extractExpression from './extractExpression.mjs';
+/** `@line/construct-core/research/spec-to-code` */
+export * as researchSpecToCode from './research/specToCode.mjs';
 /** `@line/construct-core/glob` */
 export * as glob from './glob.mjs';
 /** `@line/construct-core/block-kit` */

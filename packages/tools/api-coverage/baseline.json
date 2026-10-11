@@ -1,6 +1,6 @@
 {
   "note": "Exported functions/classes lacking a description, @param or @returns, per file. Only ever decreases: node packages/tools/api-coverage/check.mjs --update",
-  "total": 250,
+  "total": 249,
   "files": {
     "packages/core/api-composer.mjs": 1,
     "packages/core/architecture-enforcer.mjs": 2,
@@ -23,7 +23,7 @@
     "packages/core/prose.mjs": 4,
     "packages/core/readability-enforcer.mjs": 1,
     "packages/core/repl.mjs": 1,
-    "packages/core/route-resolver.mjs": 8,
+    "packages/core/route-resolver.mjs": 7,
     "packages/core/service-generator.mjs": 4,
     "packages/core/soc-enforcer.mjs": 3,
     "packages/core/summarize.mjs": 2,

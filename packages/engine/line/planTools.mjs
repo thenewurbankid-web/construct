@@ -41,9 +41,10 @@ import { entryById } from './toolRegistry.mjs';
 const catalogEntry = (name) => { const e = entryById(name); if (!e || !e.surfaces.plan) throw new Error(`The tool registry has no plan tool ${name}.`); return e; };
 import { planBaseWorkflowOn, planSetWorkflowRole, planAddWorkflowTransition, planRemoveWorkflowTransition } from './workflows.mjs';
 import { importTools } from './importTools.mjs';
+import { planExtractStep, EXTRACT_TOOLS } from './importV2/extract.mjs';
 
 /** The real operations (tests pass the contract's mock instead). */
-export const REAL_PLAN_OPS = Object.freeze({ planBaseOn, planPromote, planSetProp, planFixByKey, planSetFragment, planStep, planAmended, planImportStep, applyChange, checkChange, readLineProject, planBaseWorkflowOn, planSetWorkflowRole, planAddWorkflowTransition, planRemoveWorkflowTransition });
+export const REAL_PLAN_OPS = Object.freeze({ planBaseOn, planPromote, planSetProp, planFixByKey, planSetFragment, planStep, planAmended, planImportStep, planExtractStep, applyChange, checkChange, readLineProject, planBaseWorkflowOn, planSetWorkflowRole, planAddWorkflowTransition, planRemoveWorkflowTransition });
 
 /** The write tools that plan a StagedChange, and the op that plans it (`planStep` takes {tool, args}). */
 export const CHANGE_TOOLS = Object.freeze({
@@ -52,6 +53,8 @@ export const CHANGE_TOOLS = Object.freeze({
   'line.setBase': 'planStep', 'line.moveFile': 'planStep', 'line.createLayout': 'planStep',
   'line.amend': 'planAmended',
   'line.import.mark': 'planImportStep', 'line.import.toLibrary': 'planImportStep', 'line.import.toFeature': 'planImportStep',
+  // Import v2 (importV2/extract.mjs): fit existing logic into Line's blocks, planned in the import folder
+  ...Object.fromEntries(EXTRACT_TOOLS.map((t) => [t, 'planExtractStep'])),
   // cw1 workflows (workflows.mjs); promoting a workflow is line.promote like every other kind
   'line.baseWorkflowOn': 'planBaseWorkflowOn', 'line.setWorkflowRole': 'planSetWorkflowRole',
   'line.addWorkflowTransition': 'planAddWorkflowTransition', 'line.removeWorkflowTransition': 'planRemoveWorkflowTransition',
@@ -59,7 +62,7 @@ export const CHANGE_TOOLS = Object.freeze({
 
 /** Change tools planned only when they run: an import step builds on the steps before it (the library item a feature
  * item is based on is moved there by an earlier step), so it cannot be planned, or its gap worked out, ahead. */
-export const DEFERRED_TOOLS = Object.freeze(['line.import.mark', 'line.import.toLibrary', 'line.import.toFeature']);
+export const DEFERRED_TOOLS = Object.freeze(['line.import.mark', 'line.import.toLibrary', 'line.import.toFeature', ...EXTRACT_TOOLS]);
 /**
  * Whether a tool's change is planned in its own folder (an import step) rather than at the project root.
  * @param {string} tool The tool name.
@@ -92,6 +95,7 @@ const MAX_AMEND_DEPTH = 3;
 function planWith(ops, root, tool, req, depth = 0) {
   const opName = CHANGE_TOOLS[tool];
   if (opName === 'planImportStep') return ops.planImportStep(rootOf(root, tool, req), { id: tool, tool, args: req });
+  if (opName === 'planExtractStep') return (ops.planExtractStep ?? planExtractStep)(rootOf(root, tool, req), { tool, args: req });
   if (opName === 'planAmended') {
     const { change, fix: one, fixes } = /** @type {any} */ (req);
     const fix = fixes ?? one;
@@ -211,11 +215,13 @@ function importSchema(fields) {
     optStrings: (v) => v === undefined || (Array.isArray(v) && v.every((x) => isFolder(x))),
     optBool: (v) => v === undefined || typeof v === 'boolean',
     mode: (v) => v === 'move' || v === 'wrap',
+    names: (v) => Array.isArray(v) && v.length > 0 && v.every((x) => typeof x === 'string' && /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(x)),
   };
   const loose = objectSchema({}, { change: true });
   const IMPORT_JSON = {
     string: { type: 'string', minLength: 1 }, optString: { type: 'string', minLength: 1 },
     strings: { type: 'array', items: { type: 'string', minLength: 1 } }, optStrings: { type: 'array', items: { type: 'string', minLength: 1 } }, optBool: { type: 'boolean' }, mode: { enum: ['move', 'wrap'] },
+    names: { type: 'array', minItems: 1, items: { type: 'string', pattern: '^[A-Za-z_$][A-Za-z0-9_$]*$' } },
   };
   return Object.freeze({
     fields: Object.keys(fields),
@@ -230,9 +236,9 @@ function importSchema(fields) {
       if (!isObj(v)) return failed([], 'must be an object');
       const extra = Object.keys(v).find((k) => !(k in fields) && !['expect', 'retry', 'fixOf'].includes(k));
       if (extra) return failed([extra], 'is not an argument of this tool');
-      for (const [k, t] of Object.entries(fields)) if (!IMPORT_TYPES[t](v[k])) return failed([k], t === 'strings' ? 'must be a list of names' : t === 'optBool' ? 'must be true or false' : t === 'mode' ? 'must be move or wrap' : 'must be a non-empty string');
+      for (const [k, t] of Object.entries(fields)) if (!IMPORT_TYPES[t](v[k])) return failed([k], t === 'strings' ? 'must be a list of names' : t === 'names' ? 'must be a list of function names' : t === 'optBool' ? 'must be true or false' : t === 'mode' ? 'must be move or wrap' : 'must be a non-empty string');
       if (!isFolder(v.folder)) return failed(['folder'], 'must be a folder inside the project');
-      const { folder: _f, features: _x, appFolders: _p, from: _a, kind: _k, name: _n, exportName: _en, level: _l, keepShim: _s, mode: _m, feature: _e, base: _b, route: _r, ...rest } = v;
+      const rest = Object.fromEntries(Object.entries(v).filter(([k]) => !(k in fields)));
       const r = loose.safeParse(rest);
       return r.success ? { success: /** @type {const} */ (true), data: { ...v } } : r;
     },
@@ -251,6 +257,11 @@ const SCHEMAS = Object.freeze({
   'line.import.mark': importSchema({ folder: 'string', features: 'strings', appFolders: 'optStrings' }),
   'line.import.toLibrary': importSchema({ folder: 'string', from: 'string', kind: 'string', name: 'string', exportName: 'optString', level: 'optString', keepShim: 'optBool' }),
   'line.import.toFeature': importSchema({ folder: 'string', mode: 'mode', from: 'optString', kind: 'string', name: 'string', exportName: 'optString', feature: 'string', base: 'string', keepShim: 'optBool', route: 'optString' }),
+  'line.import.extractService': importSchema({ folder: 'string', from: 'string', names: 'names', name: 'string', feature: 'optString', typedContracts: 'optString' }),
+  'line.import.extractDomain': importSchema({ folder: 'string', from: 'string', names: 'names', name: 'string', feature: 'optString', typedContracts: 'optString' }),
+  'line.import.extractUsecase': importSchema({ folder: 'string', from: 'string', names: 'names', name: 'string', feature: 'optString' }),
+  'line.import.splitPage': importSchema({ folder: 'string', from: 'string', component: 'string', name: 'string', feature: 'optString' }),
+  'line.import.extractWorkflow': importSchema({ folder: 'string', from: 'string', component: 'string', name: 'string', feature: 'optString' }),
   'line.amend': objectSchema({ change: 'step', fix: 'optStep', fixes: 'optSteps' }, { change: true }),
   'line.baseWorkflowOn': objectSchema({ libraryId: 'string', feature: 'string', name: 'string' }, { change: true }),
   'line.setWorkflowRole': objectSchema({ file: 'string', role: 'string', page: 'anyString' }, { change: true }),
@@ -272,6 +283,11 @@ const DESCRIBE = Object.freeze({
   'line.import.mark': 'Import: marks a folder as a Line folder (architecture.yml, library, feature specs), through the checked writer.',
   'line.import.toLibrary': 'Import: moves one item of the import folder into its library, through the checked writer.',
   'line.import.toFeature': 'Import: moves one item into a feature of the import folder, or adds it based on its library copy, through the checked writer.',
+  'line.import.extractService': 'Import v2: moves the named top-level functions of a file (data hooks, adapters) into a service of the import folder; the old file imports them back, through the checked writer.',
+  'line.import.extractDomain': 'Import v2: moves the named pure functions and rules of a file into a domain of the import folder; the old file imports them back, through the checked writer.',
+  'line.import.extractUsecase': 'Import v2: moves the named orchestration functions of a file (one user goal) into a usecase of the import folder, through the checked writer.',
+  'line.import.splitPage': 'Import v2: splits a page or component into its presentation and a use<Name> hook (a usecase) holding its logic, through the checked writer.',
+  'line.import.extractWorkflow': 'Import v2: makes an xstate workflow of the URL state and navigation of a component, in the library with the feature workflow based on it, through the checked writer.',
   'line.amend': 'Applies a change Construct refused together with one typed fix of it, as one change, through the checked writer (for a fix whose file only that change creates).',
   'line.baseWorkflowOn': 'Creates a feature workflow based on one library workflow (a copy of its state machine, its pages not chosen yet), through the checked writer.',
   'line.setWorkflowRole': 'Chooses which page of the feature fills one role of a feature workflow (empty page clears it), through the checked writer.',
@@ -556,7 +572,10 @@ export async function constructCommandTools() {
  * @returns {string|null}
  */
 export function preRefusal(root, tool, args, ops = REAL_PLAN_OPS) {
-  const facts = buildFacts(root, { ops });
+  // A step planned in the import folder (an import or extract step) is checked against the folder's own facts.
+  let at = root;
+  try { at = rootOf(root, tool, args); } catch { at = root; }
+  const facts = buildFacts(at, { ops });
   return checkPre(facts, tool, requestOf(args), facts.project()?.layout);
 }
 

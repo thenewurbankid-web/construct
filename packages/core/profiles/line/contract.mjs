@@ -4,16 +4,27 @@
 //
 // A Line project:
 //
-//   <library>/            components/ pages/ workflows/ fixtures/     (complete, usable items)
-//   <features>/<name>/    components/ pages/ workflows/ fixtures/ spec.md
+//   <library>/            components/ pages/ workflows/ fixtures/ usecases/ services/ domains/     (complete, usable items)
+//   <features>/<name>/    the same kind folders, plus spec.md
 //   line/                 plans, memory, state (Line's own state; only the writer touches it)
 //
 // <library> and <features> default to `library` and `features`, or `src/library` and `src/features`
 // when the project keeps its code under `src/`. Both can be set in architecture.yml's `line:` section.
 import { ConstructError, EXIT_CODES } from '../../diagnostics.mjs';
 
-/** The four item kinds, the same folder names in the library and in every feature. */
-export const ITEM_KINDS = Object.freeze(['components', 'pages', 'workflows', 'fixtures']);
+/**
+ * The item kinds, the same folder names in the library and in every feature. Import v2 (iv2-fit) added the three logic
+ * kinds in their minimal form: `usecases` (one user goal: data, state and navigation together), `services` (data hooks
+ * and adapters) and `domains` (pure rules and transforms). They need no library base yet (LOGIC_KINDS); the layers wave
+ * adds their full dependency rule.
+ */
+export const ITEM_KINDS = Object.freeze(['components', 'pages', 'workflows', 'fixtures', 'usecases', 'services', 'domains']);
+
+/** The logic kinds (minimal version): a feature item of these kinds needs no `@line-base` link yet. */
+export const LOGIC_KINDS = Object.freeze(['usecases', 'services', 'domains']);
+
+/** Each kind's singular name, as sentences say it. */
+export const KIND_SINGULAR = Object.freeze({ components: 'component', pages: 'page', workflows: 'workflow', fixtures: 'fixture', usecases: 'usecase', services: 'service', domains: 'domain' });
 
 /** Which existing Construct layer each kind is checked as (fixtures have no layer rules). */
 export const KIND_LAYER = Object.freeze({ components: 'component', pages: 'page', workflows: 'workflow' });
@@ -73,7 +84,7 @@ export const LINE_RULES = Object.freeze({
     defaultSeverity: 'error',
     why: 'Every feature item is based on exactly one library item of the same kind, so the library stays the single source every feature builds on.',
     expected: ['one "@line-base <kind>/<name>" link to an existing library item of the same kind'],
-    check: 'Each component, page, workflow and fixture file under a feature carries exactly one @line-base link (a comment in code, "$lineBase" in JSON) that resolves to an existing library item of the same kind; spec.md is exempt.',
+    check: 'Each component, page, workflow and fixture file under a feature carries exactly one @line-base link (a comment in code, "$lineBase" in JSON) that resolves to an existing library item of the same kind; spec.md and the logic kinds (usecases, services, domains: no base until the layers wave) are exempt.',
   },
   'LINE-OWNER': {
     id: 'LINE-OWNER',
@@ -114,7 +125,7 @@ export const LINE_RULES = Object.freeze({
     id: 'LINE-LAYOUT',
     defaultSeverity: 'error',
     why: 'A Line project keeps its items in the library and in feature folders with a fixed set of kinds, so every item can be found, linked and checked.',
-    expected: ['components/, pages/, workflows/, fixtures/ and spec.md inside a feature; the same kinds inside the library'],
+    expected: ['components/, pages/, workflows/, fixtures/, usecases/, services/, domains/ and spec.md inside a feature; the same kinds inside the library'],
     check: 'Entries directly under <library>, <features> and <features>/<name> must be one of the known kinds or allowed files; a project with neither folder is reported once. Once a project has either folder, a source file anywhere else is reported unless it sits at the project root (or directly in src/), in a line.appFolders folder (default app, config, scripts, public, types, test, tests, __tests__, e2e), in Line\'s state folder or a package root, in a test or example folder, or is a page (LINE-OWNER reports those), a test, a story or a .d.ts file.',
   },
 });
@@ -215,7 +226,7 @@ function normalizeSharedOwners(raw) {
  * (`src/` detection) are filled in by checks.mjs's resolveLayout, not here.
  *
  * @param {unknown} raw The raw `line:` value (undefined when absent).
- * @returns {{library?: string, features?: string, state: string, writers: string[], writerExempt: string[], packageRoots: string[], appFolders: string[], sharedOwners: Record<string, string[]>, rules: Record<string, {severity: string}>}}
+ * @returns {{library?: string, features?: string, state: string, writers: string[], writerExempt: string[], packageRoots: string[], appFolders: string[], sharedOwners: Record<string, string[]>, traceExcludes: string[], rules: Record<string, {severity: string}>}}
  * @throws {ConstructError} A usage error naming the bad field.
  */
 export function normalizeLineConfig(raw) {
@@ -240,6 +251,8 @@ export function normalizeLineConfig(raw) {
     packageRoots: (stringList(c.packageRoots, 'packageRoots') ?? [...DEFAULT_PACKAGE_ROOTS]).map((d) => folder(d, 'packageRoots')),
     appFolders: [...DEFAULT_APP_FOLDERS, ...(stringList(c.appFolders, 'appFolders') ?? []).map((d) => folder(d, 'appFolders'))],
     sharedOwners: normalizeSharedOwners(c.sharedOwners),
+    // Import v2: where a route trace stops in this project (path substrings); none unless set.
+    traceExcludes: stringList(c.traceExcludes, 'traceExcludes') ?? [],
     rules,
   };
 }

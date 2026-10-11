@@ -3,8 +3,9 @@
 // folder as the writer's root, so nothing outside the folder can be written (import.mjs applyImport).
 //
 //   GET  /import/folders   listImportFolders   the project's folders that hold code
-//   POST /import/scan      scanImport          {folder} -> ImportScan (pure read, no model)
-//   POST /import/plan      planImport          {folder, answers} -> ImportPlan (plan-ready steps, nothing written)
+//   POST /import/scan      scanImport          {folder} or {route, folder?} -> ImportScan (pure read, no model)
+//   POST /import/plan      planImport          {folder or route, answers} -> ImportPlan (plan-ready steps, nothing written)
+//   (Import v2: a route family seeds the import, importV2/route.mjs; it becomes one feature.)
 //
 // Applying is not a route here: Cockpit adds the ImportPlan's steps to the project's plan (/api/line/plan, the
 // line.import.* tools of the one registry, planTools.mjs), the person approves them with one click, and each runs
@@ -18,8 +19,8 @@ import { listImportFolders, scanImport, planImport } from '../../../packages/eng
 /** The real import operations; tests may pass the contract's mock (mockImport.mjs createMockImport) instead. */
 export const REAL_IMPORT_OPS = Object.freeze({
   folders: (root) => listImportFolders(root),
-  scan: (root, { folder }) => scanImport(root, folder),
-  plan: (root, { folder, answers }) => planImport(root, folder, answers),
+  scan: (root, { folder, route }) => scanImport(root, route ? { route, ...(folder ? { folder } : {}) } : folder),
+  plan: (root, { folder, route, answers }) => planImport(root, route ? { route, ...(folder ? { folder } : {}) } : folder, answers),
 });
 
 const plain = (body) => (body && typeof body === 'object' && !Array.isArray(body) ? body : {});
@@ -53,8 +54,9 @@ export function createLineImportRouter({ getRoot, clientOrigin, ops = REAL_IMPOR
     }
   };
   const folderOf = (body) => (typeof body.folder === 'string' ? body.folder : '');
+  const routeOf = (body) => (typeof body.route === 'string' && body.route ? { route: body.route } : {});
   router.get('/import/folders', handle((root) => ops.folders(root)));
-  router.post('/import/scan', handle((root, body) => ops.scan(root, { folder: folderOf(body) })));
-  router.post('/import/plan', handle((root, body) => ops.plan(root, { folder: folderOf(body), answers: answersOf(body.answers) })));
+  router.post('/import/scan', handle((root, body) => ops.scan(root, { folder: folderOf(body), ...routeOf(body) })));
+  router.post('/import/plan', handle((root, body) => ops.plan(root, { folder: folderOf(body), ...routeOf(body), answers: answersOf(body.answers) })));
   return router;
 }
