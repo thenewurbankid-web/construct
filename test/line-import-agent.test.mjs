@@ -19,6 +19,9 @@ import { createMockImport } from '../packages/engine/line/mockImport.mjs';
 import { createLinePlanService } from '../packages/engine/line/planService.mjs';
 import { createLinePlanRegistry } from '../packages/engine/line/planTools.mjs';
 import { verifyImport, lineBaseline } from '../packages/engine/line/importVerify.mjs';
+import { createLogicOnDisk } from '../packages/engine/line/importLoopDisk.mjs';
+import { readImportLoopRecords } from '../packages/engine/line/records.mjs';
+import { jestHome, linkJestHome, NO_JEST_HOME } from '../test-utils/jestHome.mjs';
 import { createReasonProvider } from '../packages/core/reason-provider.mjs';
 import { createMockReason, createMockPicker } from '../packages/line-links/mocks.mjs';
 
@@ -251,9 +254,10 @@ test('real: on a copy of import-sample, the agent plans, waits for the person, l
   assert.equal(plan.steps[0].tool, 'line.import.mark');
   assert.equal(plan.steps[0].state, 'waiting');
   v = await approveAlong(agent, planService, v);
-  // import-sample has no tests: every step kept its logic, but at verify no unit has a test, so the owner must waive them.
+  // Without jest in the app (this copy has no node_modules) Line cannot write characterization tests: every step kept
+  // its logic, but at verify no unit has a test, so the owner must waive them (with jest: the tests below, no waiver).
   assert.equal(v.state, 'verify', v.sentence);
-  assert.match(v.waiting.sentence, /^The checks found problems: 12 of 12 logic units still need a block or a test; the first: /);
+  assert.match(v.waiting.sentence, /^The checks found problems: 9 of 9 logic units still need a block or a test; the first: /);
   assert.deepEqual(v.waiting.question.options.map((x) => x.id), ['verify-again', 'waive']);
   assert.ok(v.logic.steps.length === 10 && v.logic.steps.every((s) => s.status === 'ok' && s.missing === 0), 'every step kept every unit');
   const refused = await agent.answer('agent', 'verify', 'waive');
@@ -273,6 +277,53 @@ test('real: on a copy of import-sample, the agent plans, waits for the person, l
   const after = await planService.view();
   assert.ok(after.steps.every((s) => s.state === 'done'), 'every plan step ran');
   assert.ok(after.steps.every((s) => s.tool.startsWith('line.import.')));
+});
+
+// With the app's own jest (import-sample's jest.config.cjs and devDependencies, linked from a jest home), the
+// characterizer pins src/alerts with generated tests before anything moves; they pass after every step, every unit has
+// a block (the FitProposal) and a test, and the normal flow ends without a waiver.
+const HOME = jestHome();
+const SMALL = { budgetMs: 4000, componentBudgetMs: 8000, roundMs: 8000 };
+
+test('real + jest: import-sample\'s folder import is pinned by generated characterization tests and ends without a waiver', { skip: !HOME && NO_JEST_HOME }, async () => {
+  const dir = sampleCopy();
+  linkJestHome(dir, /** @type {string} */ (HOME));
+  const planService = createLinePlanService({ root: dir, commands: null });
+  const agent = createImportAgentOnDisk({ root: dir, folder: FOLDER, planService, verify: verifyImport, baseline: lineBaseline, logic: createLogicOnDisk(dir, FOLDER, { characterize: SMALL }) });
+  let v = await agent.start('ui');
+  assert.equal(v.state, 'review', v.sentence);
+  assert.ok(v.logic.testCount >= 6, `characterization tests were written (${v.logic.testCount})`);
+  assert.equal(v.logic.tests.state, 'pass');
+  assert.match(v.logic.fit.sentence, /^The logic fits \d+ blocks of feature alerts/);
+  assert.ok(fs.readdirSync(path.join(dir, FOLDER, '__line_characterization__')).some((f) => f.endsWith('.char.test.tsx')));
+  v = await agent.editStep('ui', { action: 'approve-all' });
+  v = await approveAlong(agent, planService, v);
+  assert.equal(v.state, 'done', v.sentence);
+  assert.equal(v.sentence, 'Done: 10 steps landed.');
+  assert.ok(v.logic.steps.every((s) => s.status === 'ok' && s.tests.state === 'pass'), 'the tests pass after every step');
+  assert.deepEqual(v.verify.checks.map((c) => [c.id, c.state]), [['validate', 'pass'], ['types', 'pass'], ['tests', 'skipped'], ['char-tests', 'pass'], ['logic-map', 'pass'], ['behaviour', 'pass'], ['coverage', 'pass']]);
+  assert.equal(v.logic.waivers.length, 0, 'no waiver');
+  assert.ok(!v.changes.some((c) => c.action === 'waive'));
+});
+
+test('real + jest: a route import (/alerts) also lands the FitProposal\'s extract steps and ends without a waiver', { skip: !HOME && NO_JEST_HOME }, async () => {
+  const dir = sampleCopy();
+  linkJestHome(dir, /** @type {string} */ (HOME));
+  const planService = createLinePlanService({ root: dir, commands: null });
+  const agent = createImportAgentOnDisk({ root: dir, folder: FOLDER, planService, verify: verifyImport, baseline: lineBaseline, logic: createLogicOnDisk(dir, FOLDER, { characterize: SMALL }) });
+  let v = await agent.start('ui', { route: '/alerts' });
+  assert.equal(v.state, 'review', v.sentence);
+  const extract = v.steps.filter((s) => s.tool.startsWith('line.import.extract'));
+  // import-sample has no xstate, so the screen flow stays for a person (said in the fit); the usecase lands.
+  assert.deepEqual(extract.map((s) => [s.tool, s.args.name]), [['line.import.extractUsecase', 'useAlerts']]);
+  v = await agent.editStep('ui', { action: 'approve-all' });
+  v = await approveAlong(agent, planService, v);
+  assert.equal(v.state, 'done', v.sentence);
+  assert.ok(fs.existsSync(path.join(dir, FOLDER, 'library/usecases/useAlerts.ts')), 'the usecase block landed');
+  assert.equal(v.verify.checks.find((c) => c.id === 'coverage').state, 'pass');
+  assert.equal(v.logic.waivers.length, 0, 'no waiver');
+  const { records } = readImportLoopRecords(dir);
+  assert.equal(records.length, v.steps.length, 'one loop record per step, in records/import-loop.jsonl');
 });
 
 test('real: a step that cannot be made (an edited base that does not exist) asks one question; "leave" skips it and the rest lands', async () => {
