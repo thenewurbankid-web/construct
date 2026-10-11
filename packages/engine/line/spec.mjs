@@ -77,6 +77,36 @@ function modulesTopic(repo) {
 
 const stable = (v) => JSON.stringify(v, (_k, x) => (x instanceof RegExp ? x.source : x));
 
+const STEP_EXTRAS_ID = 'line/step-extras.schema.json';
+const STEP_EXTRAS = ['expect', 'retry', 'fixOf'];
+
+/**
+ * The plan-step extras every write tool accepts (expect, retry, fixOf), as one schema: taken from the first tool that
+ * lists them (they are the same for every tool).
+ * @param {any[]} tools
+ * @returns {{$id: string, type: 'object', properties: Record<string, unknown>}}
+ */
+function stepExtrasSchema(tools) {
+  const props = tools.map((t) => t.args?.properties ?? {}).find((p) => STEP_EXTRAS.every((k) => k in p)) ?? {};
+  return { $id: STEP_EXTRAS_ID, type: 'object', properties: Object.fromEntries(STEP_EXTRAS.filter((k) => k in props).map((k) => [k, props[k]])) };
+}
+
+/**
+ * Each tool with its step extras replaced by a $ref into the shared schema (only where they equal the shared one).
+ * @param {any[]} tools
+ * @returns {any[]}
+ */
+function shareStepExtras(tools) {
+  const shared = stepExtrasSchema(tools).properties;
+  return tools.map((t) => {
+    const props = t.args?.properties;
+    if (!props) return t;
+    const next = { ...props };
+    for (const k of STEP_EXTRAS) if (k in next && stable(next[k]) === stable(shared[k])) next[k] = { $ref: `${STEP_EXTRAS_ID}#/properties/${k}` };
+    return { ...t, args: { ...t.args, properties: next } };
+  });
+}
+
 /**
  * Build the spec. Pure read: nothing is written.
  * @param {{sources?: Partial<Awaited<ReturnType<typeof realSources>>>, repo?: string}} [o] `sources` replace the real
@@ -91,8 +121,9 @@ export async function buildLineSpec({ sources = {}, repo = REPO } = {}) {
   const topics = {
     rules: [...src.catalogRules.map((r) => ({ id: r.id, module: r.module, layers: r.layers, scope: r.scope, defaultSeverity: r.defaultSeverity, why: r.why, expected: r.expected, fix: r.fix })), ...lineRules]
       .sort((a, b) => a.id.localeCompare(b.id)),
-    // The expression schema is listed once; each line tool's `expect[].expr` refers to it by its $id (one MCP call each).
-    commands: { construct: src.commands, line: src.lineTools, schemas: { [EXPR_JSON_SCHEMA.$id]: EXPR_JSON_SCHEMA } },
+    // The expression schema and the plan-step extras (expect, retry, fixOf) are listed once; each line tool refers to
+    // them by $id, so the topic stays one MCP call as tools are added.
+    commands: { construct: src.commands, line: shareStepExtras(src.lineTools), schemas: { [EXPR_JSON_SCHEMA.$id]: EXPR_JSON_SCHEMA, [STEP_EXTRAS_ID]: stepExtrasSchema(src.lineTools) } },
     plan: {
       protocol: [...PLAN_PROTOCOL], tools: LINE_PLAN_TOOLS.map((t) => ({ ...t })), stepStates: [...PLAN_STEP_STATES], optionIds: [...STEP_OPTION_IDS],
       checkKinds: [...CHECK_KINDS], defaultExpect: DEFAULT_EXPECT.map((c) => ({ ...c })), fixTools: [...LINE_FIX_TOOLS],
