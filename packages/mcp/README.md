@@ -59,6 +59,19 @@ Three more tools let an agent drive the project's Line plan, the same session Co
 There is no approve tool: only a person approves a write. These two tools are not read-only: a step joins the plan file, and an approved
 step writes through Construct's transactional writer (inside the engine; this package's source still writes nothing itself).
 
+## Train Line tools
+
+Three tools let Claude help train Line's drafter on the solid Line tools (Cockpit's Train Line screen is the owner's side). Cases live in
+`LINE_TRAIN_ROOT`, else the Construct repo's `line/train/`; the open project is never touched.
+
+| Tool | What it does | Example call |
+| --- | --- | --- |
+| `train_propose_case` | Adds one case as Claude's draft: a plain-English request over a world, its intent id, and every valid route as tool calls with real values. Stored without project words (slots); refused (`TRAIN_REFUSED`) when a route does not pass in a scratch copy. | `{ "request": "Make SummaryCard in orders, based on Card.", "intent": "add.component", "routes": [{ "steps": [{ "tool": "line.baseOn", "args": { "libraryId": "components/Card", "feature": "orders", "name": "SummaryCard" } }] }] }` |
+| `train_list_cases` | A page of cases with names filled in, routes as sentences, who labelled them and their status. Read-only. | `{ "filter": "claude", "limit": 5 }` |
+| `train_run_eval` | Drafts every held-out case and scores recall, precision and the preferred route per tool family and intent. Saves nothing. | `{}` |
+
+There is no agree, disagree or approve tool: only the owner moves Claude's case to agreed or disputed.
+
 ## Safety model
 
 - **One root, fixed at startup.** No tool takes a path. A feature is a name (`../x`, `/etc`, `a/b` are refused as `PATH_OUTSIDE_ROOT`).

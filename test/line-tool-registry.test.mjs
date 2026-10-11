@@ -15,7 +15,7 @@ import { createMockToolRegistry } from '../packages/engine/line/toolRegistryMock
 import { createLinePlanService, loadPlanApi } from '../packages/engine/line/planService.mjs';
 import { createLinePlanRegistry, constructCommandTools } from '../packages/engine/line/planTools.mjs';
 import { importLinked } from '../packages/line-links/index.mjs';
-import { TOOLS, PLAN_TOOLS, IMPORT_AGENT_TOOLS } from '../packages/mcp/src/server.mjs';
+import { TOOLS, PLAN_TOOLS, IMPORT_AGENT_TOOLS, TRAIN_MCP_TOOLS } from '../packages/mcp/src/server.mjs';
 
 const SAMPLE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../examples/line-sample');
 const NO_LINK = { env: { ...process.env, LINE_SOURCE_DIR: path.join(makeTempDir('no-source-'), 'nope') } };
@@ -40,7 +40,7 @@ test('contract: every registry entry is typed (id, read|write, what it writes, i
 });
 
 test('MCP: every construct-mcp tool maps to exactly one registry entry; read-only exactly when the entry reads; none writes project files; none approves', () => {
-  for (const t of [...TOOLS, ...PLAN_TOOLS, ...IMPORT_AGENT_TOOLS]) {
+  for (const t of [...TOOLS, ...PLAN_TOOLS, ...IMPORT_AGENT_TOOLS, ...TRAIN_MCP_TOOLS]) {
     const m = entriesForMcp(t.name);
     assert.equal(m.length, 1, `${t.name} maps to exactly one entry`);
     const readOnly = /** @type {any} */ (t).annotations?.readOnlyHint ?? true;
@@ -49,7 +49,7 @@ test('MCP: every construct-mcp tool maps to exactly one registry entry; read-onl
     assert.ok(!m[0].personOnly);
   }
   const mcpEntries = TOOL_ENTRIES.filter((e) => e.surfaces.mcp).map((e) => e.surfaces.mcp).sort();
-  assert.deepEqual(mcpEntries, [...TOOLS, ...PLAN_TOOLS, ...IMPORT_AGENT_TOOLS].map((t) => t.name).sort());
+  assert.deepEqual(mcpEntries, [...TOOLS, ...PLAN_TOOLS, ...IMPORT_AGENT_TOOLS, ...TRAIN_MCP_TOOLS].map((t) => t.name).sort());
 });
 
 test('plan: every tool the plan runner can call (line.* and construct.*) is one registry entry of the same kind', async () => {

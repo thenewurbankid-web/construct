@@ -453,3 +453,106 @@ export type AiProfiles = {
   profiles: StepProfile[];
   reason: { linked: boolean; sentence: string };
 };
+
+// ------------------------------------------------------------------------------------------------- Train Line
+/** Train Line (packages/engine/line/train/contract.mjs, TRAIN_API under /api/line/train). Cases are stored with slots
+ * ("<feature:F1>") instead of names; the server fills names back (`filled`) for the screen. */
+export type TrainSlot = { type: string; ref?: string; kind?: string; role?: string; of?: string; rank?: number; fixId?: string; literal?: string | number | boolean };
+export type TrainSlots = Record<string, TrainSlot>;
+export type TrainStep = { tool: string; args: Record<string, unknown> };
+export type TrainRoute = {
+  id: string;
+  label: string;
+  scope: { layers: string[]; features: string[]; library: boolean };
+  steps: TrainStep[];
+  expect: unknown[];
+  cost: number;
+  risk: 'low' | 'medium' | 'high';
+  outcome: 'change' | 'refusal' | 'question';
+  question?: { about: string; sentence: string };
+  refusal?: { code?: string; rule?: string };
+  via?: string;
+  confidence?: number;
+};
+/** A route with its names filled back. */
+export type FilledRoute = {
+  id: string;
+  label: string;
+  touches: string;
+  steps: { tool: string; args: Record<string, unknown>; sentence: string }[];
+  checks: string[];
+  cost: number;
+  risk: string;
+  outcome: string;
+  preferred: boolean;
+  sentence?: string;
+  via?: string;
+  confidence?: number;
+};
+export type TrainCaseView = {
+  id: string;
+  intent: string;
+  request: string;
+  slots: TrainSlots;
+  world: { kind: 'sample' } | { kind: 'corpus'; id: string; variant: string };
+  split: 'train' | 'heldout';
+  gold: { routes: TrainRoute[]; preferred: string };
+  labelledBy: 'owner' | 'claude';
+  status: 'draft' | 'agreed' | 'disputed';
+  notes: { by: string; text: string; at: string }[];
+  sample: boolean;
+  filled: { request: string; intentPhrase: string; routes: FilledRoute[]; world: string; sentence?: string };
+};
+export type TrainCaseList = { total: number; open: number; cases: TrainCaseView[] };
+export type TrainWorld = { key: string; label: string };
+export type TrainUnknown = { word: string; choices: { ref: string; name: string }[] };
+export type TrainDraft = {
+  request: string;
+  slots: TrainSlots;
+  intent: string;
+  intentPhrase: string;
+  via: string;
+  confidence: number;
+  unknown: TrainUnknown[];
+  routes: TrainRoute[];
+  recommended: string | null;
+  world: string;
+  filled: { request: string; routes: FilledRoute[] };
+  /** Each slot's current text (for typed values). */
+  values: Record<string, string>;
+  sentence?: string;
+};
+export type TrainChoices = {
+  world: string;
+  label: string;
+  features: { ref: string; name: string }[];
+  library: { ref: string; id: string; name: string; kind: string }[];
+  items: { ref: string; id: string; name: string; kind: string; feature: string; file: string }[];
+  findings: { ref: string; key: string; sentence: string; fixes: { id: string; sentence: string }[] }[];
+  fragments: Record<string, { id: string; kind: string; label: string }[]>;
+  tools: { name: string; label: string }[];
+  intents: { id: string; phrase: string }[];
+  map: { ref: string; type: string; name: string; words: string[]; synonyms: string[] }[];
+  suggestions: string[];
+};
+export type TrainTry = { ok: boolean; sentence: string; steps: { sentence: string; ok: boolean }[]; checks: { sentence: string; ok: boolean }[] };
+export type TrainPreview = { ok: boolean; request?: string; routes: FilledRoute[]; values?: Record<string, string>; sentence?: string };
+export type ScoreRow = { cases: number; heldout: number; recall: number | null; precision: number | null; preferred: number | null; noRepair: number | null; sampled: number; agreed: number; disagreed: number; agreement: number | null; label?: string };
+export type Scoreboard = { ok: true; lastRun: string | null; byFamily: Record<string, ScoreRow>; byIntent: Record<string, ScoreRow>; total: ScoreRow; sentence: string };
+export type TrainSaveRequest = { world: string; request: string; intent: string; slots: TrainSlots; routes: TrainRoute[]; preferred: string; note?: string };
+
+/** Every TRAIN_API route, as the client calls it (refusals come back as their sentence). */
+export type TrainHttp = {
+  worlds: () => Promise<{ worlds: TrainWorld[] } | LineRefusal>;
+  cases: (filter: string, limit: number, offset?: number) => Promise<TrainCaseList | LineRefusal>;
+  choices: (world: string) => Promise<TrainChoices | LineRefusal>;
+  draft: (request: string, world: string) => Promise<TrainDraft | LineRefusal>;
+  preview: (req: { world: string; request: string; slots: TrainSlots; routes: TrainRoute[]; preferred: string }) => Promise<TrainPreview | LineRefusal>;
+  addRoute: (req: { world: string; slots: TrainSlots; tool: string; args: Record<string, unknown>; label?: string }) => Promise<{ slots: TrainSlots; route: TrainRoute } | LineRefusal>;
+  tryRoute: (req: { world: string; slots: TrainSlots; route: TrainRoute }) => Promise<TrainTry | LineRefusal>;
+  save: (req: TrainSaveRequest) => Promise<{ case: TrainCaseView } | LineRefusal>;
+  review: (id: string, verdict: 'agree' | 'disagree', note?: string) => Promise<{ case: TrainCaseView } | LineRefusal>;
+  synonym: (world: string, word: string, ref: string) => Promise<{ ok: true; sentence: string } | LineRefusal>;
+  runEval: () => Promise<Scoreboard | LineRefusal>;
+  scoreboard: () => Promise<Scoreboard | LineRefusal>;
+};

@@ -15,6 +15,8 @@ export const TOOLS = Object.freeze([{ name: 'construct_mock', title: 'Mock tool'
 export const PLAN_TOOLS = Object.freeze([]);
 /** The Import agent's tools (ci2) as the real server lists them; the mock lists none. */
 export const IMPORT_AGENT_TOOLS = Object.freeze([]);
+/** The Train Line tools as the real server lists them; the mock lists none. */
+export const TRAIN_MCP_TOOLS = Object.freeze([]);
 
 /**
  * Arguments are taken as given: `--root <dir>` only.

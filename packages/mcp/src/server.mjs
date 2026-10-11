@@ -11,6 +11,7 @@ import * as blocks from './blocks.mjs';
 import * as plan from './plan.mjs';
 import { entryForMcp } from '@line/construct-engine/line/tool-registry';
 import * as importAgent from './importAgent.mjs';
+import * as train from './train.mjs';
 
 const PACKAGE = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
 
@@ -200,6 +201,52 @@ export const IMPORT_AGENT_TOOLS = Object.freeze([
   },
 ]);
 
+/**
+ * Train Line: Claude proposes training cases for Line's drafter, lists them and runs eval. Only `train_propose_case`
+ * changes anything (it adds one case, labelled 'claude', status 'draft', kept only when Construct verifies every route
+ * in a scratch copy); there is no approve tool: only the owner agrees or disagrees, in Cockpit's Train Line.
+ */
+export const TRAIN_MCP_TOOLS = Object.freeze([
+  {
+    name: 'train_propose_case',
+    title: 'Propose a Train Line case',
+    description: 'Propose one training case for Line\'s drafter: a plain-English request over a world ("sample" or an imaginary "w07:clean"), its intent id, and every valid route as Line tool calls with real values (line.baseOn, line.promote, line.setPageProp, line.setFragment, line.fix). Saved without project words, as Claude\'s draft for the owner to review; refused in one sentence when a route does not pass in a scratch copy.',
+    inputSchema: z.object({
+      world: z.string().min(3).max(40).optional().describe('"sample" (default) or an imaginary world such as "w03:clean".'),
+      request: z.string().min(3).max(400).describe('The request in plain English, e.g. "Make StatusBadge in orders, based on Badge."'),
+      intent: z.string().min(3).max(60).describe('An intent id of the catalog, e.g. add.component, share.item, fix.problem.'),
+      routes: z.array(z.object({
+        label: z.string().min(3).max(200).optional(),
+        steps: z.array(z.object({ tool: z.string().min(3).max(60), args: z.record(z.string(), z.unknown()) })).min(1).max(5),
+      })).min(1).max(5).describe('Every valid way to do it; each step a tool call with real values, e.g. {"tool": "line.baseOn", "args": {"libraryId": "components/Badge", "feature": "orders", "name": "StatusBadge"}}.'),
+      preferred: z.number().int().min(0).max(4).optional().describe('Which route is preferred (0-based); the first by default.'),
+      note: z.string().max(400).optional(),
+    }),
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+    run: train.trainProposeCase,
+  },
+  {
+    name: 'train_list_cases',
+    title: 'List Train Line cases',
+    description: 'A page of Train Line cases with names filled in: the request, its intent, each route as sentences and its checks, who labelled it and its status (draft, agreed, disputed with the owner\'s note). Filter: claude, sample (the owner\'s review sample), mine (the owner\'s), all. Reads only.',
+    inputSchema: z.object({
+      filter: z.enum(['claude', 'sample', 'mine', 'all']).optional(),
+      limit: z.number().int().min(1).max(20).optional(),
+      offset: z.number().int().min(0).max(100000).optional(),
+    }),
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    run: train.trainListCases,
+  },
+  {
+    name: 'train_run_eval',
+    title: 'Run the Train Line eval',
+    description: 'Draft every held-out case (whole imaginary projects the drafter never learned from) and score it: share of valid routes found (recall), share of drafted routes that are valid (precision), preferred route picked, per tool family and per intent, plus the owner\'s agreement on the review sample. Saves nothing.',
+    inputSchema: z.object({}),
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    run: train.trainRunEval,
+  },
+]);
+
 const INSTRUCTIONS = 'Construct blocks, read-only and plan-only. Start with requirement_parse, then placement_place (answer its closed questions and call again), then plan_validate. summarize and validate describe the project before you read files; line_spec says what Line is (rules, tools, plan protocol), from its code. Every tool is bounded and path-free; none writes. A plan preview is applied through the Cockpit\'s per-diff approval, never here. To change a Line project, add a step with plan_add_step, ask the user to approve it in Cockpit, then plan_run_next; plan_status shows the plan.';
 
 /** A server class whose own errors (input the schema refused, an unexpected throw) come out typed, like every other refusal. */
@@ -267,7 +314,7 @@ export function createConstructMcpServer(options = {}) {
     return fail(invalid ? 'INVALID_INPUT' : 'TOOL_FAILED', invalid ? message.replace(/^Input validation error: /i, '') : 'The tool could not answer.');
   });
 
-  for (const tool of [...TOOLS, ...PLAN_TOOLS, ...IMPORT_AGENT_TOOLS]) {
+  for (const tool of [...TOOLS, ...PLAN_TOOLS, ...IMPORT_AGENT_TOOLS, ...TRAIN_MCP_TOOLS]) {
     // cu3: every MCP tool is one entry of Line's tool registry; an agent never writes project files directly.
     const entry = entryForMcp(tool.name);
     if (!entry) throw new Error(`construct-mcp: ${tool.name} is not in Line's tool registry.`);

@@ -33,7 +33,7 @@ test('startup: initialize and list the tools in under 1 s and under 150 MB peak 
   const mb = peakRssMb(s.transport.pid);
   process.stderr.write(`# construct-mcp startup: ${ms.toFixed(0)} ms to initialize and list ${tools.length} tools, peak RSS ${mb === null ? 'n/a' : `${mb.toFixed(0)} MB`}\n`);
   await s.close();
-  assert.equal(tools.length, 17, "nine read-only block tools, three plan tools and five Import agent tools (ci2)");
+  assert.equal(tools.length, 20, "nine read-only block tools, three plan tools, five Import agent tools (ci2) and three Train Line tools");
   assert.ok(ms < TIME_LIMIT_MS, `${ms.toFixed(0)} ms is over the ${TIME_LIMIT_MS} ms limit (budget ${BUDGET_MS} ms on an idle machine)`);
   if (mb !== null) assert.ok(mb < BUDGET_RSS_MB, `${mb.toFixed(0)} MB is over the ${BUDGET_RSS_MB} MB budget`);
 });

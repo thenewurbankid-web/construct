@@ -26,7 +26,7 @@ export const SPEC_MODULES = Object.freeze([
 ]);
 
 /**
- * A source file's contract: its leading comment (joined, cut to 400 characters) and its exported names.
+ * A source file's contract: its leading comment (joined, cut to 300 characters, so the modules topic fits one MCP call) and its exported names.
  * @param {string} file Absolute path of the source file.
  * @returns {{header: string, exports: string[]}}
  */
@@ -42,7 +42,7 @@ export function moduleContract(file) {
   for (const m of text.matchAll(/^export\s+(?:async\s+)?(?:function\*?|const|let|class|interface|type)\s+([A-Za-z_$][\w$]*)/gm)) exports.add(m[1]);
   for (const m of text.matchAll(/^export\s*\{([^}]*)\}/gm)) for (const n of m[1].split(',')) { const name = n.trim().split(/\s+as\s+/).pop(); if (name) exports.add(name); }
   const header = head.join(' ').replace(/\s+/g, ' ');
-  return { header: header.length > 400 ? `${header.slice(0, 397)}...` : header, exports: [...exports].sort() };
+  return { header: header.length > 300 ? `${header.slice(0, 297)}...` : header, exports: [...exports].sort() };
 }
 
 /** Real sources, overridable so a test can add a rule or a command and watch the spec change. */

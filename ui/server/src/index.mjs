@@ -89,6 +89,7 @@ import { createLineOpsRouter } from './lineOpsApi.mjs';
 import { createLinePlanRouter } from './linePlanApi.mjs';
 import { createLineDraftRouter } from './lineDraftApi.mjs';
 import { createLinePlanService } from '@line/construct-engine/line/plan-service';
+import { createLineTrainRouter } from './lineTrainApi.mjs';
 import { createLineRenderRouter } from './lineRenderApi.mjs';
 import { createLineImportRouter } from './lineImportApi.mjs';
 import { createLineNewProjectRouter } from './lineNewProjectApi.mjs';
@@ -1346,6 +1347,11 @@ app.use('/api/line', createLineDraftRouter({
     return root ? { ok: true, root } : { ok: false, error: 'No project is open; pick a project first.' };
   },
 }));
+
+// Train Line: the owner and Claude train Line's drafter on the solid Line tools, over imaginary worlds and the Line
+// sample in scratch copies only (never the open project); cases are Line's own state (LINE_TRAIN_ROOT, else the repo's
+// line/train), written through Construct's writer (lineTrainApi.mjs, packages/engine/line/train/).
+app.use('/api/line', createLineTrainRouter({ clientOrigin: CLIENT_ORIGIN }));
 
 // T7 (Line Cockpit): one library component rendered alone with its props (Morpheus's isolated render; a pure read).
 app.use('/api/line', createLineRenderRouter({
