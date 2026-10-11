@@ -2,7 +2,7 @@
 // Changing the folder forgets the old folder's view.
 import type { AgentEvent, AgentState } from '../types.ts';
 
-export const initialAgent: AgentState = { folders: null, folder: '', view: null, busy: false, error: null, editing: null };
+export const initialAgent: AgentState = { folders: null, folder: '', route: '', view: null, busy: false, error: null, editing: null };
 
 export function agentReducer(state: AgentState, event: AgentEvent): AgentState {
   switch (event.type) {
@@ -10,6 +10,8 @@ export function agentReducer(state: AgentState, event: AgentEvent): AgentState {
       return { ...state, folders: event.folders };
     case 'SET_FOLDER':
       return state.busy ? state : { ...state, folder: event.folder, view: null, error: null, editing: null };
+    case 'SET_ROUTE':
+      return state.busy ? state : { ...state, route: event.route };
     case 'CALL':
       return { ...state, busy: true, error: null };
     case 'VIEW':

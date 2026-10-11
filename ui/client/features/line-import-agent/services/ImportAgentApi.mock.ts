@@ -8,7 +8,7 @@ import type { PlanView } from '@/lib/lineContract';
 
 type Agent = {
   view: () => Promise<ImportAgentView>;
-  start: (by: string) => Promise<ImportAgentView | LineRefusal>;
+  start: (by: string, opts?: { route?: string }) => Promise<ImportAgentView | LineRefusal>;
   resume: (by: string) => Promise<ImportAgentView | LineRefusal>;
   pause: (by: string) => Promise<ImportAgentView | LineRefusal>;
   editStep: (by: string, edit: unknown) => Promise<ImportAgentView | LineRefusal>;
@@ -31,7 +31,7 @@ async function answer<T>(fn: () => Promise<T>): Promise<T | LineRefusal> {
 export const mockImportAgentApi: ImportAgentApi = {
   importFolders: () => answer(async () => folders()),
   getImportAgent: (folder) => answer(() => service.agentFor(folder).view()),
-  startImportAgent: (folder) => answer(() => service.agentFor(folder).start('ui')),
+  startImportAgent: (folder, route) => answer(() => service.agentFor(folder).start('ui', { route })),
   resumeImportAgent: (folder) => answer(() => service.agentFor(folder).resume('ui')),
   pauseImportAgent: (folder) => answer(() => service.agentFor(folder).pause('ui')),
   editImportStep: (req) => answer(() => service.agentFor(req.folder).editStep('ui', req)),

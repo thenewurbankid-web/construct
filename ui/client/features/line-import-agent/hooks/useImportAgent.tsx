@@ -64,7 +64,8 @@ export function useImportAgent(given?: ImportAgentApi): AgentControls {
 
   const actions: AgentActions = useMemo(() => ({
     setFolder: (folder) => dispatch({ type: 'SET_FOLDER', folder }),
-    start: () => call((a, f) => a.startImportAgent(f)),
+    setRoute: (route) => dispatch({ type: 'SET_ROUTE', route }),
+    start: () => call((a, f) => a.startImportAgent(f, current.current.route.trim() || undefined)),
     runMain: () => {
       const view = current.current.view;
       const main = agentScreen(view, null).main;

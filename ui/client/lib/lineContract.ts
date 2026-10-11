@@ -325,7 +325,7 @@ export type TraceMatch = {
   sentence: string;
 };
 /** Import agent (ci2, contract.mjs ImportAgentView): the Import process for one folder, kept in <folder>/line/import-plan.json. */
-export type ImportAgentState = 'idle' | 'scan' | 'classify' | 'plan' | 'review' | 'execute' | 'verify' | 'done';
+export type ImportAgentState = 'idle' | 'scan' | 'map' | 'characterize' | 'classify' | 'plan' | 'review' | 'execute' | 'verify' | 'done';
 export type ImportAgentStep = {
   id: string;
   tool: ImportStepTool;
@@ -342,7 +342,25 @@ export type ImportChange = { n: number; at: string; by: 'ui' | 'agent' | 'line';
 export type ImportDecision = { id: string; question: string; options: string[]; picked: string; answer: string; by: 'static' | 'single' | 'order' | 'jev' | 'person'; reason: string };
 export type ImportAgentQuestion = { id: string; sentence: string; options: { id: string; sentence: string }[]; recommended: string };
 export type ImportWaiting = { for: 'review' | 'approval' | 'answer'; sentence: string; stepId?: string; planStepId?: string; question?: ImportAgentQuestion };
-export type ImportVerifyCheck = { id: 'validate' | 'types' | 'tests'; state: 'pass' | 'fail' | 'skipped'; sentence: string; detail?: string };
+export type ImportVerifyCheck = { id: 'validate' | 'types' | 'tests' | 'char-tests' | 'logic-map' | 'behaviour' | 'coverage'; state: 'pass' | 'fail' | 'skipped'; sentence: string; detail?: string };
+/** Line Import v2 (importLoop.mjs logicView): the logic map, what each checked step kept, the coverage, in plain English. */
+export type ImportMissingUnit = { fingerprint: string; id: string; kind: string; fn: string; file: string; detail: string; sentence: string; block: string; waived: boolean };
+export type ImportLoopStep = { step: string; n: number; status: 'ok' | 'stopped'; sentence: string; kept: number; moved: number; missing: number; added: number; changed: number; tests: { passed: number; failed: number; total: number; state: string } };
+export type ImportLogicView = {
+  route: string | null;
+  files: number;
+  units: number;
+  counts: Record<string, number>;
+  kept: number;
+  keptSentence: string;
+  missing: ImportMissingUnit[];
+  coverage: { covered: number; uncovered: number; waived: number; total: number } | null;
+  tests: { state: string; passed: number; failed: number; total: number; sentence?: string } | null;
+  testCount: number;
+  waivers: { fingerprint: string; by: 'owner'; why: string; at?: string }[];
+  steps: ImportLoopStep[];
+  sentence: string;
+};
 export type ImportAgentView = {
   ok: true;
   folder: string;
@@ -355,6 +373,7 @@ export type ImportAgentView = {
   decisions: ImportDecision[];
   changes: ImportChange[];
   verify: { ok: boolean; checks: ImportVerifyCheck[] } | null;
+  logic?: ImportLogicView | null;
   decider: string;
   message?: string;
 };
@@ -421,7 +440,7 @@ export type LineHttp = {
   getAiProfiles: () => Promise<AiProfiles | LineRefusal>;
   trace: (req: TraceRequest) => Promise<TraceMatch | LineRefusal>;
   getImportAgent: (folder: string) => Promise<ImportAgentView | LineRefusal>;
-  startImportAgent: (folder: string) => Promise<ImportAgentView | LineRefusal>;
+  startImportAgent: (folder: string, route?: string) => Promise<ImportAgentView | LineRefusal>;
   resumeImportAgent: (folder: string) => Promise<ImportAgentView | LineRefusal>;
   pauseImportAgent: (folder: string) => Promise<ImportAgentView | LineRefusal>;
   editImportStep: (req: ImportStepEdit) => Promise<ImportAgentView | LineRefusal>;

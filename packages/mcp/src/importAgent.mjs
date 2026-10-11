@@ -48,13 +48,13 @@ export async function importStatus(ctx, args) {
 }
 
 /**
- * `import_start`: scan, classify and plan the folder; stops at the review.
+ * `import_start`: scan, map (the folder, or `route`'s closure), characterize, classify and plan; stops at the review.
  * @param {any} ctx
  * @param {any} args
  * @returns {any}
  */
 export async function importStart(ctx, args) {
-  return answer(async () => (await agentOf(ctx, args.folder)).start('agent'));
+  return answer(async () => (await agentOf(ctx, args.folder)).start('agent', { route: args.route }));
 }
 
 /**

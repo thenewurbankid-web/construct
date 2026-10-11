@@ -156,7 +156,7 @@ export const IMPORT_AGENT_TOOLS = Object.freeze([
   {
     name: 'import_status',
     title: 'Read the Import process',
-    description: 'The Import process for one folder: its stage (scan, classify, plan, review, execute, verify, done), what it waits for (the review, a person\'s approval of a plan step, or one question), the import plan\'s steps and every recorded change. Reads only.',
+    description: 'The Import process for one folder: its stage (scan, map, characterize, classify, plan, review, execute, verify, done), what it waits for (the review, a person\'s approval of a plan step, or one question), the import plan\'s steps, every recorded change, and `logic` (Line Import v2): the logic map count, "N of M logic units kept", the coverage, the units that went missing (one sentence each) and one line per checked step, with the technical detail under each check\'s `detail`. Reads only.',
     inputSchema: z.object({ folder: FOLDER }),
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     run: importAgent.importStatus,
@@ -164,8 +164,8 @@ export const IMPORT_AGENT_TOOLS = Object.freeze([
   {
     name: 'import_start',
     title: 'Start an Import',
-    description: 'Read, sort and plan the folder with static rules (decisions through @mx/reason, else the recommended option); stops at the review. Writes only the folder\'s line/import-plan.json, through Construct\'s writer.',
-    inputSchema: z.object({ folder: FOLDER }),
+    description: 'Read the folder (or a route of the app: its files seed the logic map), map its logic, run its characterization tests on the unmodified app, then sort and plan it with static rules (decisions through @mx/reason, else the recommended option); stops at the review. After each step lands, the logic map is rebuilt and diffed and the tests run; a lost unit stops the import with one sentence and typed fixes. Writes only the folder\'s line/ (import-plan.json, logic-map.json, import-baseline.json), through Construct\'s writer.',
+    inputSchema: z.object({ folder: FOLDER, route: z.string().min(2).max(200).regex(/^\/[\w@:./[\]()-]*$/).optional().describe('A route of the app, for example /opportunity: the route and its sub-routes seed the logic map. The folder is still where the import writes.') }),
     annotations: WRITES_PLAN,
     run: importAgent.importStart,
   },
@@ -186,7 +186,7 @@ export const IMPORT_AGENT_TOOLS = Object.freeze([
   {
     name: 'import_answer',
     title: 'Answer the Import question',
-    description: 'Answer the one question the Import process asked (its id and one of its option ids, from import_status).',
+    description: 'Answer the one question the Import process asked (its id and one of its option ids, from import_status). The option "waive" (accept a lost or untested logic unit) is the owner\'s only: an agent\'s waiver is refused (OWNER_ONLY); ask the person to decide in Cockpit.',
     inputSchema: z.object({ folder: FOLDER, questionId: z.string().min(1).max(200), optionId: z.string().min(1).max(200) }),
     annotations: WRITES_PLAN,
     run: importAgent.importAnswer,

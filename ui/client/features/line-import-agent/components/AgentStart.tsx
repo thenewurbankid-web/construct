@@ -1,11 +1,14 @@
 import type { ImportFolders } from '../types';
 
-type AgentStartProps = { folders: ImportFolders | null; folder: string; busy: boolean; started: boolean; onFolder: (f: string) => void; onStart: () => void };
+type AgentStartProps = {
+  folders: ImportFolders | null; folder: string; route: string; busy: boolean; started: boolean;
+  onFolder: (f: string) => void; onRoute: (r: string) => void; onStart: () => void;
+};
 
 const option = (f: { path: string; files: number }) => <option key={f.path} value={f.path}>{`${f.files} code files`}</option>;
 
 /** The folder to bring into Line, and Start. Only that folder will be written. */
-export function AgentStart({ folders, folder, busy, started, onFolder, onStart }: AgentStartProps) {
+export function AgentStart({ folders, folder, route, busy, started, onFolder, onRoute, onStart }: AgentStartProps) {
   const label = busy ? 'Starting…' : 'Start the import';
   return (
     <form
@@ -22,7 +25,9 @@ export function AgentStart({ folders, folder, busy, started, onFolder, onStart }
         <datalist id="la-folders">{(folders?.folders ?? []).map(option)}</datalist>
         <button type="submit" className="la-btn la-btn--primary" disabled={busy || !folder.trim()} hidden={started}>{label}</button>
       </div>
-      <p className="la-hint">The agent reads the whole app, sorts what it finds, and writes a plan for you to review. It writes only inside this folder, and only the steps you approve.</p>
+      <label className="la-label" htmlFor="la-route">Route (optional)</label>
+      <input id="la-route" className="la-input" value={route} placeholder="/alerts" autoComplete="off" disabled={started} onChange={(e) => onRoute(e.target.value)} />
+      <p className="la-hint">The agent reads the whole app (or the route you name and its sub-routes), maps every piece of logic, pins it with tests, and writes a plan for you to review. It writes only inside this folder, only the steps you approve, and stops if a step loses any logic.</p>
     </form>
   );
 }

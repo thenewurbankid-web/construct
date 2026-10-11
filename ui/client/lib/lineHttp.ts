@@ -58,7 +58,7 @@ export const lineHttp: LineHttp = {
   getAiProfiles: () => getJson('/api/line/ai-profiles'),
   trace: (req) => postJson('/api/line/trace', req),
   getImportAgent: (folder) => getJson(`/api/line/import-agent?folder=${encodeURIComponent(folder)}`),
-  startImportAgent: (folder) => postJson('/api/line/import-agent/start', { folder }),
+  startImportAgent: (folder, route) => postJson('/api/line/import-agent/start', route ? { folder, route } : { folder }),
   resumeImportAgent: (folder) => postJson('/api/line/import-agent/resume', { folder }),
   pauseImportAgent: (folder) => postJson('/api/line/import-agent/pause', { folder }),
   editImportStep: (req) => postJson('/api/line/import-agent/step', req),

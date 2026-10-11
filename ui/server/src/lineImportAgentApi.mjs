@@ -4,7 +4,8 @@
 // person approves every write there (or in the review). The person drives it here as "ui"; agents drive it over MCP.
 //
 //   GET  /import-agent?folder=   the process as it stands
-//   POST /import-agent/start     {folder}                         scan, classify, plan; stops at the review
+//   POST /import-agent/start     {folder, route?}                 scan, map (folder or route), characterize, classify, plan;
+//                                                                 stops at the review
 //   POST /import-agent/resume    {folder}                         carry on until it needs someone
 //   POST /import-agent/pause     {folder}
 //   POST /import-agent/step      {folder, stepId?, action, args?, to?}   edit, skip, unskip, move, approve, approve-all
@@ -60,7 +61,7 @@ export function createLineImportAgentRouter({ getRoot, clientOrigin, planService
     }
   };
   router.get('/import-agent', handle((agent) => agent.view()));
-  router.post('/import-agent/start', handle((agent) => agent.start('ui')));
+  router.post('/import-agent/start', handle((agent, b) => agent.start('ui', { route: typeof b.route === 'string' ? b.route : undefined })));
   router.post('/import-agent/resume', handle((agent) => agent.resume('ui')));
   router.post('/import-agent/pause', handle((agent) => agent.pause('ui')));
   router.post('/import-agent/step', handle((agent, b) => agent.editStep('ui', { action: b.action, stepId: b.stepId, args: plain(b.args), to: b.to })));
