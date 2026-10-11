@@ -8,6 +8,9 @@ import { fileURLToPath } from 'node:url';
 import { planBaseOn, applyChange } from '../packages/engine/line/ops.mjs';
 import { readWorkspace, setWorkspace, workspaceFile, isInsideWorkspace } from '../packages/engine/line/workspace.mjs';
 import { assertApplyResult, assertLineWorkspace, LineOpError } from '../packages/engine/line/contract.mjs';
+import { applyFix } from '../packages/engine/line/fixes.mjs';
+import { listFragments, planSetFragment } from '../packages/engine/line/fragments.mjs';
+import { lineFindings } from '../packages/engine/line/model.mjs';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -120,4 +123,37 @@ test('workspace: a hand-edited workspace file that points outside the project ma
   assert.equal(r.ok, false);
   assert.equal(r.code, 'BAD_WORKSPACE');
   assert.deepEqual(snapshot(dir), before);
+});
+
+test('workspace: typed fixes (ca2) outside the folder are refused like any other change, and nothing is written', () => {
+  const dir = project();
+  setWorkspace(dir, { folder: 'features/orders' });
+  const before = snapshot(dir);
+  for (const rule of ['LINE-BASE', 'LINE-DIR']) {
+    const f = lineFindings(dir).find((x) => x.rule === rule);
+    assert.ok(f?.fixes?.[0]?.step, `${rule} has a typed fix`);
+    const r = applyFix(dir, { findingKey: f.key, fixId: f.fixes[0].id });
+    assertApplyResult(r);
+    assert.equal(r.code, 'OUTSIDE_WORKSPACE', `${rule}: ${r.sentence}`);
+    assert.match(r.sentence, /^Nothing was saved: .* is outside your workspace folder features\/orders; it stays read-only\.$/);
+  }
+  assert.deepEqual(snapshot(dir), before);
+});
+
+test('workspace: a code fragment edit (cx1) lands inside the folder and is refused outside it', () => {
+  const file = 'features/orders/pages/OrdersPage.tsx';
+  const edit = (dir) => {
+    const list = listFragments(dir, file);
+    return applyChange(dir, planSetFragment(dir, { file, fragmentId: list.fragments[0].id, code: "() => console.log('All orders')", contentHash: list.contentHash }));
+  };
+  const inside = project();
+  setWorkspace(inside, { folder: 'features/orders' });
+  assert.equal(edit(inside).ok, true);
+  const outside = project();
+  setWorkspace(outside, { folder: 'features/billing' });
+  const before = snapshot(outside);
+  const r = edit(outside);
+  assert.equal(r.code, 'OUTSIDE_WORKSPACE');
+  assert.equal(r.sentence, `Nothing was saved: ${file} is outside your workspace folder features/billing; it stays read-only.`);
+  assert.deepEqual(snapshot(outside), before);
 });

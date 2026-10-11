@@ -5,9 +5,9 @@ import '../components/line-pages.css';
 import type { LinePagesView } from '../types';
 
 /** The Pages screen of a Line project: pick a feature, see its pages (base, status, findings), pick a page to
- * change one prop of one of its parts and Save it through the checked writer. */
+ * change one prop of one of its parts, or one piece of code on it ("Edit code"), and Save it through the checked writer. */
 export function LinePagesPage({ view }: { view: LinePagesView }) {
-  const { features, feature, chooseFeature, pages, page, choosePage, parts, save, saving, revision, outcome, workspaceFolder } = view;
+  const { features, feature, chooseFeature, pages, page, choosePage, parts, save, saving, revision, outcome, saveFragment, fragmentOutcome, workspaceFolder } = view;
   return (
     <div className="page page--screen lp" data-testid="line-pages">
       <div>
@@ -26,7 +26,7 @@ export function LinePagesPage({ view }: { view: LinePagesView }) {
             <PageList pages={pages} current={page?.id ?? null} onChoose={choosePage} workspaceFolder={workspaceFolder ?? null} />
           </section>
           {page ? (
-            <PartsPanel pageName={page.name} parts={parts} saving={saving} revision={revision} outcome={outcome} onSave={save} />
+            <PartsPanel pageName={page.name} parts={parts} saving={saving} revision={revision} outcome={outcome} onSave={save} fragmentOutcome={fragmentOutcome} onSaveFragment={saveFragment} />
           ) : (
             <p className="hint lp-pick-hint">Pick a page to see its parts and change them.</p>
           )}
