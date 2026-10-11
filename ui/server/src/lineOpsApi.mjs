@@ -7,15 +7,18 @@
 //   POST /page-prop         planSetProp    -> applyChange
 //   POST /base-on           planBaseOn     -> applyChange
 //   POST /promote           planPromote    -> applyChange
+//   GET  /workspace         readWorkspace  (packages/engine/line/workspace.mjs; cu6)
+//   POST /workspace         setWorkspace   -> line/workspace.json through Construct's writer
 //
 // A LineOpError is a 400 `{ok: false, sentence, code}`; anything unexpected is a 500 with one sentence.
 import express from 'express';
 import { LineOpError } from '../../../packages/engine/line/contract.mjs';
 import { planBaseOn, planPromote, applyChange } from '../../../packages/engine/line/ops.mjs';
 import { planSetProp, readPageTree } from '../../../packages/engine/line/pageProp.mjs';
+import { readWorkspace, setWorkspace } from '../../../packages/engine/line/workspace.mjs';
 
 /** The real operations; tests may pass their own (for example the contract's mock). */
-export const REAL_LINE_OPS = Object.freeze({ readPageTree, planSetProp, planBaseOn, planPromote, applyChange });
+export const REAL_LINE_OPS = Object.freeze({ readPageTree, planSetProp, planBaseOn, planPromote, applyChange, readWorkspace, setWorkspace });
 
 const plain = (body) => (body && typeof body === 'object' && !Array.isArray(body) ? body : {});
 
@@ -56,5 +59,8 @@ export function createLineOpsRouter({ getRoot, clientOrigin, afterSave, ops = RE
   router.post('/page-prop', change((root, body) => ops.planSetProp(root, body)));
   router.post('/base-on', change((root, body) => ops.planBaseOn(root, body)));
   router.post('/promote', change((root, body) => ops.planPromote(root, body)));
+  // cu6: the one folder Line may change; everything outside it stays read-only (applyChange refuses it).
+  router.get('/workspace', handle((root) => ops.readWorkspace(root)));
+  router.post('/workspace', handle((root, req) => ops.setWorkspace(root, /** @type {any} */ (plain(req.body)))));
   return router;
 }
