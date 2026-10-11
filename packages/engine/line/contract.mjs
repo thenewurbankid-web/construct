@@ -226,7 +226,9 @@
  * with args.fixOf = the step's id), null for advice only; `recommended` marks rank 1.
  * When the fix names a file only the refused change creates, `step` is one `line.amend` step {change, fix}: the refused
  * change and the fix planned together and applied atomically (fixes.mjs planAmended); once it lands, the refused step
- * counts as done.
+ * counts as done. Every fix with a step was tried on a scratch copy through the writer and would land (cl1); a promote
+ * blocked by the item's own feature dependencies is offered as the chain {change, fixes: [promote the dependency, promote
+ * the item]} in one step. A fix that would be refused has step null and says why; with none left, the step is needs-you.
  * @typedef {{id: 'retry'|'leave'|'fix', sentence: string, fixId?: string, recommended?: boolean, step?: {tool: string, args: Record<string, unknown>}|null}} StepOption
  *
  * The result a line.* write step records on its plan step.
@@ -278,7 +280,7 @@ export const LINE_PLAN_TOOLS = Object.freeze([
   { name: 'line.setBase', kind: 'write', request: '{file, libraryId}' },
   { name: 'line.moveFile', kind: 'write', request: '{from, to, base?}' },
   { name: 'line.createLayout', kind: 'write', request: '{}' },
-  { name: 'line.amend', kind: 'write', request: '{change: {tool, args}, fix: {tool, args}}' },
+  { name: 'line.amend', kind: 'write', request: '{change: {tool, args}, fix: {tool, args}} or {change, fixes: [{tool, args}, ...]}' },
   { name: 'line.leaveAsIs', kind: 'write', request: '{stepId}' },
   { name: 'line.project', kind: 'read', request: '{}' },
 ]);

@@ -350,43 +350,75 @@ export function onScratch(root, staged, fn) {
   const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'construct-line-scratch-'));
   try {
     fs.cpSync(root, scratch, { recursive: true, filter: (src) => { const rel = path.relative(root, src); return !rel || !SCRATCH_SKIP.test(`/${rel}`); } });
-    for (const f of staged.files) {
-      const abs = path.join(scratch, f.path);
-      if (f.content === null) fs.rmSync(abs, { force: true });
-      else { fs.mkdirSync(path.dirname(abs), { recursive: true }); fs.writeFileSync(abs, f.content); }
-    }
+    writeInto(scratch, staged);
     return fn(scratch);
   } finally {
     fs.rmSync(scratch, { recursive: true, force: true });
   }
 }
 
+/** Write a staged change into a scratch copy (never the project). */
+function writeInto(scratch, staged) {
+  for (const f of staged.files) {
+    const abs = path.join(scratch, f.path);
+    if (f.content === null) fs.rmSync(abs, { force: true });
+    else { fs.mkdirSync(path.dirname(abs), { recursive: true }); fs.writeFileSync(abs, f.content); }
+  }
+}
+
 /** The project files a fix step works on (its `file`, the `from` of a move). */
 const stepInputs = (step) => [step?.args?.file, step?.args?.from].filter((v) => typeof v === 'string');
+const lowerFirst = (s) => s.charAt(0).toLowerCase() + s.slice(1);
+const noStop = (s) => String(s).replace(/[.?!]$/, '');
 
 /**
- * Plan a refused change and one fix of it as ONE change: the fix is planned on a scratch copy that holds the refused
- * change (where the fix's file exists), and both are merged in order, the fix winning per file. A file the refused
- * change created and the fix removed again is left out (it never existed on disk). Pure for the project.
+ * Plan a refused change and its fix (or a chain of fixes, in order) as ONE change: each fix is planned on a scratch
+ * copy that holds the refused change and the fixes before it (where its files exist), and all are merged in order,
+ * the later winning per file. A file the refused change created and a fix removed again is left out (it never
+ * existed on disk). Pure for the project.
  * @param {string} root
  * @param {import('./contract.mjs').StagedChange} first The refused change, as planned on the project.
- * @param {{tool: string, args: Record<string, any>}} fixStep A typed fix step (planStep tools).
+ * @param {{tool: string, args: Record<string, any>} | {tool: string, args: Record<string, any>}[]} fix One typed fix step (planStep tools), or several in order.
  * @returns {import('./contract.mjs').StagedChange}
- * @throws {LineOpError} When the fix cannot be planned even with the refused change in place.
+ * @throws {LineOpError} When a fix cannot be planned even with the refused change in place.
  */
-export function planAmended(root, first, fixStep) {
-  const second = onScratch(root, first, (scratch) => planStep(scratch, fixStep));
+export function planAmended(root, first, fix) {
+  const steps = Array.isArray(fix) ? fix : [fix];
+  if (!steps.length) throw new LineOpError('Name at least one fix to amend the change with.', 'BAD_ARGS');
   const merged = new Map(first.files.map((f) => [f.path, f.content]));
-  for (const f of second.files) merged.set(f.path, f.content);
+  const summaries = onScratch(root, first, (scratch) => steps.map((step) => {
+    const c = planStep(scratch, step);
+    writeInto(scratch, c);
+    for (const f of c.files) merged.set(f.path, f.content);
+    return noStop(c.summary);
+  }));
   const files = [...merged].filter(([p, c]) => c !== null || exists(root, p)).map(([p, c]) => ({ path: p, content: c }));
-  const lowerFirst = (s) => s.charAt(0).toLowerCase() + s.slice(1);
-  return { summary: `${first.summary.replace(/[.?!]$/, '')}, and in the same step ${lowerFirst(second.summary)}`, files };
+  return { summary: `${noStop(first.summary)}, and in the same step ${summaries.map(lowerFirst).join(', then ')}.`, files };
 }
 
 /**
- * The fixes of a refused change's findings, made runnable: a fix whose file only the refused change creates (or that
- * cannot be planned on the project as it is, but can with the change in place) becomes one `line.amend` step that
- * carries the refused change and the fix together, applied atomically by the writer. Other fixes stay as they are.
+ * Whether Construct's writer would accept `change`: applyChange itself, run on a scratch copy of the project (the
+ * project is never touched). The result says why not.
+ * @param {string} root @param {import('./contract.mjs').StagedChange} change
+ * @returns {import('./contract.mjs').ApplyResult}
+ */
+export function wouldLand(root, change) {
+  return onScratch(root, { summary: 'Nothing.', files: [] }, (scratch) => applyChange(scratch, change));
+}
+
+/** How many dependencies a chained promote may pull in first. */
+const MAX_CHAIN = 3;
+
+/**
+ * The fixes of a refused change's findings, checked and made runnable (cl1 + experiment fix 1):
+ *   - a fix whose file only the refused change creates (or that only plans with the change in place) becomes one
+ *     `line.amend` step carrying the refused change and the fix together, applied atomically by the writer;
+ *   - each fix is tried on a scratch copy through the writer (wouldLand); only fixes that would land keep a step and
+ *     come first, so the recommended fix (rank 1) is one that works;
+ *   - a promote blocked by the item's own feature dependencies becomes the chained fix: promote the dependencies first,
+ *     then the item, with the refused change, as one line.amend step (one approval);
+ *   - a fix that would still be refused becomes advice (step null) that says why.
+ * Only the first three error findings are worked (the ones Cockpit offers); the rest come back as they are.
  * @param {string} root
  * @param {{tool: string, args: Record<string, any>}} refused The refused change step (its request, without plan fields).
  * @param {import('./contract.mjs').StagedChange} staged The refused change as planned.
@@ -396,19 +428,65 @@ export function planAmended(root, first, fixStep) {
 export function amendFixes(root, refused, staged, findings) {
   const created = new Set(staged.files.filter((f) => f.content !== null && !exists(root, f.path)).map((f) => f.path));
   const runsAlone = (step) => { try { planStep(root, step); return true; } catch { return false; } };
-  const amendable = (step) => { try { planAmended(root, staged, step); return true; } catch { return false; } };
+  const plan = (fn) => { try { return fn(); } catch { return null; } };
+  const carry = { tool: refused.tool, args: { ...refused.args } };
+  const amendStep = (fixes) => ({ tool: 'line.amend', args: fixes.length === 1 ? { change: carry, fix: { ...fixes[0] } } : { change: carry, fixes: fixes.map((f) => ({ ...f })) } });
+  const together = (sentence) => `${noStop(sentence)}, together with the change Construct refused, in one step.`;
+
+  /** A promote that the writer refuses because the item uses other feature items: promote those first, in one step. */
+  function chain(x, attempted, land) {
+    const deps = [];
+    let change = attempted;
+    let result = land;
+    for (let i = 0; i < MAX_CHAIN && !result.ok; i += 1) {
+      const errors = result.findings.filter((f) => f.severity === 'error');
+      if (!errors.length || errors.some((f) => f.rule !== 'LINE-DIR')) return null;
+      const next = (plan(() => onScratch(root, change, (s) => withFixes(s, errors))) ?? [])
+        .flatMap((f) => f.fixes ?? []).map((f) => f.step)
+        .filter((st) => st?.tool === 'line.promote' && st.args.featureItemId !== x.step.args.featureItemId && !deps.some((d) => d.args.featureItemId === st.args.featureItemId));
+      if (!next.length) return null;
+      deps.unshift(...next);
+      change = plan(() => planAmended(root, staged, [...deps, x.step]));
+      if (!change) return null;
+      result = wouldLand(root, change);
+    }
+    if (!result.ok) return null;
+    const names = deps.map((d) => String(d.args.featureItemId).split('/').at(-1));
+    const item = String(x.step.args.featureItemId).split('/').at(-1);
+    return {
+      step: amendStep([...deps, x.step]),
+      sentence: together(`First move ${names.join(' and ')} into the library, because ${item} uses ${names.length === 1 ? 'it' : 'them'}; then ${lowerFirst(noStop(x.sentence))}`),
+    };
+  }
+
+  /** One fix as it would run: {step, sentence} when the writer would accept it, else {refusedBy}. */
+  function work(x) {
+    const amend = stepInputs(x.step).some((p) => created.has(p)) || !runsAlone(x.step);
+    const change = plan(() => (amend ? planAmended(root, staged, x.step) : planStep(root, x.step)));
+    if (!change) return { refusedBy: 'it cannot be planned on the project as it is' };
+    const land = wouldLand(root, change);
+    if (land.ok) return amend ? { step: amendStep([x.step]), sentence: together(x.sentence) } : { step: x.step, sentence: x.sentence };
+    if (x.step.tool === 'line.promote') {
+      // The chain carries the refused change too, so its first try is the change plus this promote.
+      const withChange = amend ? change : plan(() => planAmended(root, staged, x.step));
+      const chained = withChange ? chain(x, withChange, amend ? land : wouldLand(root, withChange)) : null;
+      if (chained) return chained;
+    }
+    const first = land.findings.find((f) => f.severity === 'error');
+    return { refusedBy: first ? lowerFirst(noStop(first.sentence)) : lowerFirst(noStop(land.sentence.replace(/^Nothing was saved: /, ''))) };
+  }
+
+  let worked = 0;
   return findings.map((f) => {
-    if (!Array.isArray(f.fixes) || !f.fixes.some((x) => x.step)) return f;
-    const fixes = f.fixes.map((x) => {
-      if (!x.step || x.step.tool === 'line.amend') return x;
-      const needs = stepInputs(x.step).some((p) => created.has(p)) || !runsAlone(x.step);
-      if (!needs || !amendable(x.step)) return x;
-      return {
-        ...x,
-        sentence: `${x.sentence.replace(/[.?!]$/, '')}, together with the change Construct refused, in one step.`,
-        step: { tool: 'line.amend', args: { change: { tool: refused.tool, args: { ...refused.args } }, fix: { tool: x.step.tool, args: { ...x.step.args } } } },
-      };
+    if (f.severity !== 'error' || !Array.isArray(f.fixes) || !f.fixes.some((x) => x.step) || worked >= 3) return f;
+    worked += 1;
+    const out = f.fixes.map((x) => {
+      if (!x.step || x.step.tool === 'line.amend') return { fix: x, lands: Boolean(x.step) };
+      const w = work(x);
+      return w.step ? { fix: { ...x, sentence: w.sentence, step: w.step }, lands: true }
+        : { fix: { ...x, sentence: `${noStop(x.sentence)}; Construct would refuse that too, because ${w.refusedBy}.`, step: null }, lands: false };
     });
+    const fixes = [...out.filter((o) => o.lands), ...out.filter((o) => !o.lands)].map((o, i) => ({ ...o.fix, rank: i + 1 }));
     return { ...f, fixes };
   });
 }

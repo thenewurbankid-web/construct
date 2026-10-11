@@ -212,9 +212,8 @@ test('every Line write is a plan step: a typed fix (line.fix) and a code fragmen
   assert.ok(fs.readFileSync(path.join(dir, file), 'utf8').includes('Show every order'));
 });
 
-test('a change Construct refuses needs a fix: its findings\' typed fixes are the options, and a fix step (fixOf) runs while the rest of the plan waits', async () => {
-  const dir = copy();
-  const svc = createLinePlanService({ root: dir, commands: null, load: staticLoad });
+/** cl1's case: OrdersPage's handler imports billing's InvoicesPage (LINE-DIR). */
+async function refuseInvoicesImport(dir, svc) {
   const { listFragments } = await import('../packages/engine/line/fragments.mjs');
   const file = 'features/orders/pages/OrdersPage.tsx';
   const before = fs.readFileSync(path.join(dir, file), 'utf8');
@@ -222,11 +221,22 @@ test('a change Construct refuses needs a fix: its findings\' typed fixes are the
   const added = await svc.addStep({ tool: 'line.setFragment', args: { file, fragmentId: list.fragments[0].id, code: "() => import('../../billing/pages/InvoicesPage')", contentHash: list.contentHash } }, 'ui');
   await svc.approve(added.stepId, 'ui');
   const ran = await svc.runNext('ui');
-  const step = ran.steps.find((s) => s.id === added.stepId);
+  return { added, step: ran.steps.find((s) => s.id === added.stepId), file, before };
+}
+
+test('a change Construct refuses needs a fix: the recommended fix is one that would land (cl1: promote InvoicesPage is refused itself, so the chain promotes OrderButton first), in one approval', async () => {
+  const dir = copy();
+  const svc = createLinePlanService({ root: dir, commands: null, load: staticLoad });
+  const { added, step, file, before } = await refuseInvoicesImport(dir, svc);
   assert.equal(step.state, 'needs-fix');
   assert.equal(fs.readFileSync(path.join(dir, file), 'utf8'), before, 'nothing written');
   const fix = step.result.options.find((o) => o.id === 'fix' && o.recommended);
-  assert.deepEqual(fix.step, { tool: 'line.promote', args: { featureItemId: 'billing/pages/InvoicesPage' } });
+  // Promoting InvoicesPage alone would be refused (the library page would use orders' OrderButton): the recommended fix
+  // is the chain, carried with the refused change, as one step.
+  assert.equal(fix.step.tool, 'line.amend');
+  assert.deepEqual(fix.step.args.fixes, [{ tool: 'line.promote', args: { featureItemId: 'orders/components/OrderButton' } }, { tool: 'line.promote', args: { featureItemId: 'billing/pages/InvoicesPage' } }]);
+  assert.equal(fix.step.args.change.tool, 'line.setFragment');
+  assert.match(fix.sentence, /^First move OrderButton into the library, because InvoicesPage uses it; then move InvoicesPage\.tsx from feature billing into the library .*, together with the change Construct refused, in one step\.$/);
   assert.equal(step.result.apply.findings[0].fixes[0].id, 'LINE-DIR/promote', 'the finding carries Construct\'s typed fixes');
   // An agent's unrelated step is held; the fix for it (fixOf) is not.
   assert.equal((await svc.addStep({ tool: 'line.project', args: {} }, 'agent')).ok, true);
@@ -237,11 +247,27 @@ test('a change Construct refuses needs a fix: its findings\' typed fixes are the
   assert.equal(fixStep.ok, true, fixStep.sentence);
   assert.equal((await svc.approve(fixStep.stepId, 'agent')).ok, false, 'an agent still cannot approve the fix');
   await svc.approve(fixStep.stepId, 'ui');
-  const fixed = (await svc.runNext('agent', fixStep.stepId)).steps.find((s) => s.id === fixStep.stepId);
-  // Construct refuses that fix too (InvoicesPage itself uses a feature component), and says what fixes it next:
-  // the loop goes on with Construct's own errors as the source of truth, one approved step at a time.
-  assert.equal(fixed.state, 'needs-fix', fixed.sentence);
-  assert.match(fixed.sentence, /the library must not depend on any feature/);
-  assert.ok(fixed.result.options.some((o) => o.id === 'fix' && o.step), 'the refused fix offers its own typed fixes');
-  assert.equal(fs.existsSync(path.join(dir, 'library/pages/InvoicesPage.tsx')), false, 'nothing written');
+  const after = await svc.runNext('agent', fixStep.stepId);
+  const fixed = after.steps.find((s) => s.id === fixStep.stepId);
+  assert.equal(fixed.state, 'done', fixed.sentence);
+  assert.equal(after.steps.find((s) => s.id === added.stepId).state, 'done', 'the refused change landed with its fix');
+  assert.ok(fs.existsSync(path.join(dir, 'library/pages/InvoicesPage.tsx')) && fs.existsSync(path.join(dir, 'library/components/OrderButton.tsx')));
+  assert.ok(fs.readFileSync(path.join(dir, file), 'utf8').includes('library/pages/InvoicesPage'), 'the new handler imports the library copy');
+  const { validateLine } = await import('../packages/core/profiles/line/index.mjs');
+  assert.deepEqual(validateLine(dir).violations.filter((v) => v.severity === 'error').map((v) => v.rule), ['LINE-BASE'], 'only the planted LINE-BASE is left');
+});
+
+test('cl1: when no fix would land, the step needs you, says so in one sentence, and offers no fix button', async () => {
+  const dir = copy();
+  // The library already has an OrderButton, so orders' OrderButton cannot be promoted, so InvoicesPage cannot be either.
+  fs.copyFileSync(path.join(dir, 'library/components/Button.tsx'), path.join(dir, 'library/components/OrderButton.tsx'));
+  const svc = createLinePlanService({ root: dir, commands: null, load: staticLoad });
+  const { step, file, before } = await refuseInvoicesImport(dir, svc);
+  assert.equal(step.state, 'needs-you', step.sentence);
+  assert.match(step.sentence, /^This needs you: Construct refused the change, and none of its fixes would be accepted either, so Line cannot fix it on its own\. /);
+  assert.equal(step.result.options.some((o) => o.id === 'fix' && o.step), false);
+  const promote = step.result.apply.findings[0].fixes.find((x) => x.id === 'LINE-DIR/promote');
+  assert.equal(promote.step, null);
+  assert.match(promote.sentence, /; Construct would refuse that too, because the library file "library\/pages\/InvoicesPage\.tsx" imports .* from feature "orders"; the library must not depend on any feature, .*\.$/);
+  assert.equal(fs.readFileSync(path.join(dir, file), 'utf8'), before);
 });

@@ -45,7 +45,9 @@ const MAX_AMEND_DEPTH = 3;
 function planWith(ops, root, tool, req, depth = 0) {
   const opName = CHANGE_TOOLS[tool];
   if (opName === 'planAmended') {
-    const { change, fix } = /** @type {any} */ (req);
+    const { change, fix: one, fixes } = /** @type {any} */ (req);
+    const fix = fixes ?? one;
+    if (!fix || (one && fixes)) throw new LineOpError('Name the fix to apply with the change: one step as "fix", or several in order as "fixes".', 'BAD_ARGS');
     if (depth >= MAX_AMEND_DEPTH) throw new LineOpError('This change amends too many refused changes in a row; apply them one at a time.', 'BAD_ARGS');
     if (!CHANGE_TOOLS[change?.tool]) throw new LineOpError(`"${change?.tool}" is not a Line change, so it cannot be amended.`, 'UNKNOWN_TOOL');
     const first = planWith(ops, root, change.tool, requestOf(change.args), depth + 1);
@@ -63,11 +65,14 @@ export const DEFAULT_EXPECT = Object.freeze([
 // ------------------------------------------------------------------------------------------------- schemas
 const failed = (p, message) => ({ success: /** @type {const} */ (false), error: { issues: [{ path: p, message }] } });
 const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
+const isStep = (v) => isObj(v) && typeof v.tool === 'string' && v.tool.length > 0 && (v.args === undefined || isObj(v.args));
 const TYPES = {
   string: (v) => typeof v === 'string' && v.length > 0,
   anyString: (v) => typeof v === 'string',
   optString: (v) => v === undefined || (typeof v === 'string' && v.length > 0),
-  step: (v) => isObj(v) && typeof v.tool === 'string' && v.tool.length > 0 && (v.args === undefined || isObj(v.args)),
+  step: (v) => isStep(v),
+  optStep: (v) => v === undefined || isStep(v),
+  optSteps: (v) => v === undefined || (Array.isArray(v) && v.length > 0 && v.length <= 4 && v.every(isStep)),
   scalar: (v) => ['string', 'number', 'boolean'].includes(typeof v),
   propKind: (v) => ['string', 'number', 'boolean', 'expression'].includes(v),
 };
@@ -103,7 +108,7 @@ function objectSchema(required, o = {}) {
       const allowed = new Set([...Object.keys(required), ...(o.change ? ['expect', 'retry', 'fixOf'] : [])]);
       const extra = Object.keys(v).find((k) => !allowed.has(k));
       if (extra) return failed([extra], 'is not an argument of this tool');
-      for (const [k, t] of Object.entries(required)) if (!TYPES[t](v[k])) return failed([k], t === 'scalar' ? 'must be a string, number or boolean' : t === 'propKind' ? 'must be string, number, boolean or expression' : t === 'anyString' ? 'must be a string' : t === 'step' ? 'must be a step {"tool": "line.<name>", "args": {...}}' : 'must be a non-empty string');
+      for (const [k, t] of Object.entries(required)) if (!TYPES[t](v[k])) return failed([k], t === 'scalar' ? 'must be a string, number or boolean' : t === 'propKind' ? 'must be string, number, boolean or expression' : t === 'anyString' ? 'must be a string' : t === 'step' || t === 'optStep' ? 'must be a step {"tool": "line.<name>", "args": {...}}' : t === 'optSteps' ? 'must be a list of 1 to 4 steps {"tool": "line.<name>", "args": {...}}' : 'must be a non-empty string');
       if (v.expect !== undefined) { const why = checkExpect(v.expect); if (why) return failed(['expect'], why); }
       if (v.retry !== undefined) { const why = checkRetry(v.retry); if (why) return failed(['retry'], why); }
       if (v.fixOf !== undefined && (typeof v.fixOf !== 'string' || !v.fixOf)) return failed(['fixOf'], 'must be the id of the step this fix is for');
@@ -121,7 +126,7 @@ const SCHEMAS = Object.freeze({
   'line.setBase': objectSchema({ file: 'string', libraryId: 'string' }, { change: true }),
   'line.moveFile': objectSchema({ from: 'string', to: 'string', base: 'optString' }, { change: true }),
   'line.createLayout': objectSchema({}, { change: true }),
-  'line.amend': objectSchema({ change: 'step', fix: 'step' }, { change: true }),
+  'line.amend': objectSchema({ change: 'step', fix: 'optStep', fixes: 'optSteps' }, { change: true }),
   'line.leaveAsIs': objectSchema({ stepId: 'string' }),
   'line.project': objectSchema({}),
 });
@@ -267,11 +272,15 @@ export function runChange(root, tool, args, ops = REAL_PLAN_OPS) {
     options.push({ id: 'leave', sentence: 'Leave it as it is and carry on.' });
   }
   const failing = checks.filter((c) => !c.ok).map((c) => c.sentence);
+  // cl1: Construct refused the change and none of its fixes would land either (each was tried on a scratch copy).
+  const noFixLands = needsYou && /** @type {any} */ (apply).findings.some((f) => f.severity === 'error' && Array.isArray(f.fixes) && f.fixes.length) && !options.some((o) => o.id === 'fix' && o.step);
   const sentence = !needsYou
     ? /** @type {any} */ (apply).sentence
     : stopped
       ? `Trying again passed ${passed} of ${total} checks, no more than before, so Line stopped and needs you: ${lower(failing.join(' '))}`
-      : `This needs you: ${passed} of ${total} checks passed. ${failing.join(' ')}`;
+      : noFixLands
+        ? `This needs you: Construct refused the change, and none of its fixes would be accepted either, so Line cannot fix it on its own. ${failing.join(' ')}`
+        : `This needs you: ${passed} of ${total} checks passed. ${failing.join(' ')}`;
   return { apply: /** @type {any} */ (apply), checks, passed, total, needsYou, options, stopped, sentence };
 }
 

@@ -64,7 +64,8 @@ export function stepView(root, plan, s, ops = REAL_PLAN_OPS) {
   else {
     const r = s.result;
     const by = r?.needsYou ? resolverOf(plan, s) : null;
-    if (r?.needsYou && !by) { state = r.apply && !r.apply.ok && r.apply.findings?.length ? 'needs-fix' : 'needs-you'; sentence = asSentence(r.sentence); }
+    // needs-fix: Construct refused the change and offers a fix that would land; otherwise the person decides (needs-you).
+    if (r?.needsYou && !by) { state = r.apply && !r.apply.ok && r.options?.some((o) => o.id === 'fix' && o.step) ? 'needs-fix' : 'needs-you'; sentence = asSentence(r.sentence); }
     else if (by) {
       state = 'done';
       sentence = by.tool === 'line.leaveAsIs' ? `Left as it is in step ${by.n}: ${lower(asSentence(r.sentence))}`
