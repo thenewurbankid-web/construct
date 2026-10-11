@@ -47,6 +47,11 @@ test.describe.serial('Line: Promote to library (Line sample project)', () => {
 
     await row.getByRole('button', { name: 'Promote to library: OrderButton' }).click();
     await row.getByRole('button', { name: 'Promote', exact: true }).click();
+    // cp1: Promote adds a plan step; Approve in the Plan panel runs it.
+    const plan = page.getByTestId('line-plan');
+    await expect(plan.getByTestId('plan-step').first()).toContainText('Waiting for your approval: Moves OrderButton from feature orders into the library');
+    expect(fs.existsSync(path.join(base, 'library/components/OrderButton.tsx'))).toBe(false);
+    await plan.getByRole('button', { name: /^Approve step/ }).first().click();
     await expect(page.getByTestId('ll-notice')).toContainText('Saved. Moves OrderButton from feature orders into the library');
 
     // The library now has OrderButton (it renders the atom Button, so it is a molecule); orders no longer lists it.
