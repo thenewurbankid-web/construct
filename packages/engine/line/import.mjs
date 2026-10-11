@@ -3,6 +3,9 @@
 //
 //   scanImport(project, folder)            what the folder holds and what Line proposes; questions only where two rules disagree
 //   planImport(project, folder, answers)   the proposals as plan-ready steps (tool + args + sentence), nothing written
+//   (Import v2) `folder` may also be `{route}` or `{route, folder}`: a route family (importV2/route.mjs readRouteFamily)
+//   seeds the import instead. Only the family's files are read as items, and every feature item goes to ONE feature
+//   named after the route (/opportunity -> opportunity); the folder defaults to the closure's common code folder.
 //   applyImport(project, folder, answers)  each step planned on the current disk and landed through applyChange (the writer)
 //   planImportStep(folderRoot, step)       one step -> StagedChange (what a plan runner calls; root = <project>/<folder>)
 //
@@ -29,6 +32,7 @@ import { planMoveFile, planBaseOn, planCreateLayout, applyChange } from './ops.m
 import { listFiles } from '@line/construct-core/profiles/line/checks';
 import { CODE_EXTENSIONS, NON_ITEM_FILE } from '@line/construct-core/profiles/line/contract';
 import { readPathAliases, resolveImportSpecifier, parseReactSpaRoutes } from '@line/construct-core/route-resolver';
+import { appRoute, bindingSpecifier, readRouteFamily, familyFeature, commonFolder } from './importV2/route.mjs';
 import { parseToAst, walkAst } from '@construct/ast';
 import { createTransaction } from '../transactionalWriter.mjs';
 import { aggregateValidation } from '@line/construct-core/registry';
@@ -92,8 +96,14 @@ function specifiersOf(src) {
   return [...src.matchAll(SPECIFIER)].map((m) => m[3]);
 }
 
-/** The project's import graph over its code files: file -> resolved project-relative targets (and the reverse). */
-function importGraph(projectRoot, files) {
+/**
+ * The project's import graph over its code files: file -> resolved project-relative targets, and the reverse
+ * (importers: who uses a file), plus each file's source and the path aliases used. Import v2 reads reverse users from it.
+ * @param {string} projectRoot The project (absolute).
+ * @param {string[]} files Project-relative files (non-code files are skipped).
+ * @returns {{imports: Map<string, Set<string>>, importers: Map<string, Set<string>>, sources: Map<string, string>, aliases: {prefix: string, target: string}[]}}
+ */
+export function importGraph(projectRoot, files) {
   const { aliases } = readPathAliases(projectRoot);
   const imports = new Map();
   const importers = new Map();
@@ -119,20 +129,11 @@ function importGraph(projectRoot, files) {
   return { imports, importers, sources, aliases };
 }
 
-/** Next.js app-router route of an `app/.../page.tsx` file: groups dropped, `[x]` as `:x`. */
-function appRoute(rel) {
-  const m = rel.match(/(?:^|\/)app\/(.*?)\/?page\.[cm]?[jt]sx?$/) || rel.match(/(?:^|\/)app\/()page\.[cm]?[jt]sx?$/);
-  if (!m) return null;
-  const segs = m[1].split('/').filter((s) => s && !/^\(.*\)$/.test(s) && !s.startsWith('@')).map((s) => s.replace(/^\[+\.{0,3}(.*?)\]+$/, ':$1'));
-  return `/${segs.join('/')}`;
-}
-
 /** Which file a JSX name in `src` (the file at `rel`) was imported from. */
 function bindingTarget(projectRoot, graph, rel, src, name) {
-  const re = new RegExp(`import\\s+(?:type\\s+)?(?:${name}\\b|[^;]*?\\{[^}]*\\b(?:\\w+\\s+as\\s+)?${name}\\b[^}]*\\})[^;]*?from\\s+(['"])([^'"]+)\\1`);
-  const m = src.match(re);
-  if (!m) return null;
-  const abs = resolveImportSpecifier(path.join(projectRoot, rel), m[2], graph.aliases);
+  const spec = bindingSpecifier(src, name);
+  if (!spec) return null;
+  const abs = resolveImportSpecifier(path.join(projectRoot, rel), spec, graph.aliases);
   return abs ? toRel(projectRoot, abs) : null;
 }
 
@@ -268,11 +269,12 @@ const levelFromSize = (src) => {
 };
 
 /** Read the project and classify every file in the folder (kinds, usage, routes); no decisions yet. */
-function readFolder(projectRoot, folder) {
+function readFolder(projectRoot, folder, scope = /** @type {{only?: Set<string>, family?: string}} */ ({})) {
   const files = listFiles(projectRoot);
   const graph = importGraph(projectRoot, files);
   const routes = readRoutes(projectRoot, graph);
-  const inFolder = files.filter((f) => f.startsWith(`${folder}/`));
+  // Import v2: a route family reads only its own closure's files, and names one feature after the route.
+  const inFolder = files.filter((f) => f.startsWith(`${folder}/`) && (!scope.only || scope.only.has(f)));
   const routeOf = new Map();
   for (const r of routes) if (!routeOf.has(r.file)) routeOf.set(r.file, r.path);
   const routeEntries = new Set(routes.map((r) => r.entry));
@@ -314,18 +316,19 @@ function readFolder(projectRoot, folder) {
     it.pages = [...pagesReaching(it.file, graph, isPage)].sort();
     it.usedBy = [...(graph.importers.get(it.file) ?? [])].sort();
     it.outsideUsers = it.usedBy.filter((u) => !u.startsWith(`${folder}/`));
-    it.folderFeature = folderFeature(folder, it.file);
+    it.folderFeature = scope.family ?? folderFeature(folder, it.file);
+    it.family = scope.family;
   }
   return { items, unchanged, routes, graph };
 }
 
-const pageFeatureOf = (folder, page) => (page.startsWith(`${folder}/`) ? folderFeature(folder, page) : null);
+const pageFeatureOf = (folder, page, family) => (page.startsWith(`${folder}/`) ? (family ?? folderFeature(folder, page)) : null);
 
 /** The questions two rules raise for an item, with the recommended option first. */
 function questionsFor(folder, it) {
   if (it.kind === 'pages' || it.pages.length >= 2) return [];
   const qs = [];
-  const feature = it.pages.length === 1 ? (pageFeatureOf(folder, it.pages[0]) ?? it.folderFeature) : it.folderFeature;
+  const feature = it.pages.length === 1 ? (pageFeatureOf(folder, it.pages[0], it.family) ?? it.folderFeature) : it.folderFeature;
   if (it.kind === 'components' && GENERIC_UI.includes(it.name)) {
     qs.push({
       id: `generic-name:${it.file}`, file: it.file,
@@ -337,7 +340,7 @@ function questionsFor(folder, it) {
       recommended: 'library',
     });
   } else if (it.pages.length === 1) {
-    const pf = pageFeatureOf(folder, it.pages[0]);
+    const pf = pageFeatureOf(folder, it.pages[0], it.family);
     if (pf && pf !== it.folderFeature) {
       qs.push({
         id: `one-page:${it.file}`, file: it.file,
@@ -372,10 +375,10 @@ function decideTargets(folder, items, answers) {
       it.rules.push(qs[0].id.split(':')[0], 'answer');
       it.target = answer === 'library' ? 'library' : 'feature';
       it.feature = answer.startsWith('feature:') ? answer.slice('feature:'.length) : undefined;
-    } else if (it.pages.length === 1 && pageFeatureOf(folder, it.pages[0])) {
+    } else if (it.pages.length === 1 && pageFeatureOf(folder, it.pages[0], it.family)) {
       it.rules.push('one-page');
       it.target = 'feature';
-      it.feature = pageFeatureOf(folder, it.pages[0]);
+      it.feature = pageFeatureOf(folder, it.pages[0], it.family);
     } else {
       it.rules.push('folder');
       it.target = 'feature';
@@ -427,19 +430,39 @@ function proposalSentence(it) {
   return `${it.name} goes to feature ${it.feature}${route}; its full code goes to the library and the feature gets a ${SINGULAR[it.kind]} based on it.`;
 }
 
+/**
+ * What to import: a folder (a string, or {folder}), or a route family ({route}, optionally with the folder it lands in).
+ * @param {string} projectRoot
+ * @param {string | {folder?: string, route?: string}} target
+ * @returns {{folder: string, route?: string, family?: string, only?: Set<string>}}
+ */
+function importTarget(projectRoot, target) {
+  if (typeof target === 'string') return { folder: checkFolder(projectRoot, target) };
+  const t = /** @type {any} */ (target ?? {});
+  if (typeof t.route === 'string' && t.route) {
+    const closure = readRouteFamily(projectRoot, t.route);
+    const folder = t.folder ? checkFolder(projectRoot, t.folder) : commonFolder(closure.files);
+    if (!folder) throw new LineOpError(`The files of ${t.route} sit directly in the project root, so name the folder to import them into, such as src.`, 'BAD_FOLDER');
+    return { folder, route: t.route, family: familyFeature(t.route), only: new Set(closure.files.filter((f) => f.startsWith(`${folder}/`))) };
+  }
+  if (typeof t.folder === 'string') return { folder: checkFolder(projectRoot, t.folder) };
+  throw new LineOpError('Name a folder or a route to import, such as src/alerts or /alerts.', 'BAD_FOLDER');
+}
+
 /** Scan and decide (with `answers`, recommended where none). */
-function decide(projectRoot, folderArg, answers) {
-  const folder = checkFolder(projectRoot, folderArg);
-  const { items, unchanged, routes, graph } = readFolder(projectRoot, folder);
+function decide(projectRoot, target, answers) {
+  const t = importTarget(projectRoot, target);
+  const folder = t.folder;
+  const { items, unchanged, routes, graph } = readFolder(projectRoot, folder, { only: t.only, family: t.family });
   decideTargets(folder, items, answers);
   decideBases(folder, items, graph);
-  return { folder, items, unchanged, routes };
+  return { folder, items, unchanged, routes, ...(t.route ? { route: t.route } : {}) };
 }
 
 /**
  * Scan one folder of the open project: what it holds and what Line proposes for each item (pure read, no model).
  * @param {string} projectRoot The open project (absolute).
- * @param {string} folder Project-relative folder.
+ * @param {string | {folder?: string, route?: string}} folder Project-relative folder, or (Import v2) a route family {route, folder?}.
  * @returns {import('./contract.mjs').ImportScan}
  * @throws {LineOpError} BAD_FOLDER.
  */
@@ -450,6 +473,7 @@ export function scanImport(projectRoot, folder) {
   return {
     sourceRoot: path.resolve(projectRoot),
     folder: d.folder,
+    ...(d.route ? { route: d.route } : {}),
     found: items.map((it) => ({
       file: it.file, kind: it.kind, name: it.name,
       proposal: {
@@ -476,7 +500,7 @@ export function scanImport(projectRoot, folder) {
  * The proposals as plan-ready steps. Order: mark the folder as Line; every complete item into the library (fixtures,
  * workflows, components, pages); feature items that move in on a real base; then the thin feature items over split ones.
  * @param {string} projectRoot
- * @param {string} folder
+ * @param {string | {folder?: string, route?: string}} folder A folder, or (Import v2) a route family {route, folder?}.
  * @param {Record<string, string>} [answers] Question id -> option id; the recommended option where missing.
  * @returns {import('./contract.mjs').ImportPlan}
  */
@@ -509,10 +533,11 @@ export function planImport(projectRoot, folder, answers = {}) {
   }
   const lib = items.filter((i) => i.target === 'library').length;
   const feat = items.length - lib;
+  const of = d.route ? `the route ${d.route}` : f;
   const summary = items.length
-    ? `Brings ${items.length} item${items.length === 1 ? '' : 's'} of ${f} into Line in ${steps.length} steps: ${lib} to the library and ${feat} to ${features.length === 1 ? `feature ${features[0]}` : `${features.length} features`}; nothing outside ${f} changes.`
+    ? `Brings ${items.length} item${items.length === 1 ? '' : 's'} of ${of} into Line in ${steps.length} steps: ${lib} to the library and ${feat} to ${features.length === 1 ? `feature ${features[0]}` : `${features.length} features`}; nothing outside ${f} changes.`
     : `There is nothing in ${f} for Line to bring in.`;
-  return { folder: f, summary, steps: items.length ? steps : [] };
+  return { folder: f, ...(d.route ? { route: d.route } : {}), summary, steps: items.length ? steps : [] };
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -609,7 +634,7 @@ export function planImportStep(folderRoot, step) {
  * Plan and apply the import step by step: each step is planned on the current disk and lands only through applyChange
  * with the folder as the root, so nothing outside the folder can be written. Stops at the first refused step.
  * @param {string} projectRoot
- * @param {string} folder
+ * @param {string | {folder?: string, route?: string}} folder A folder, or (Import v2) a route family {route, folder?}.
  * @param {Record<string, string>} [answers]
  * @returns {import('./contract.mjs').ImportApplyResult}
  */

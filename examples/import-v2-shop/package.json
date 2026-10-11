@@ -1,0 +1,10 @@
+{
+  "name": "import-v2-shop",
+  "private": true,
+  "description": "Line Import v2 fixture (iv2-fit): a small Next.js app whose /orders route family is imported as one feature.",
+  "dependencies": {
+    "next": "^15.0.0",
+    "react": "^19.0.0",
+    "xstate": "^5.0.0"
+  }
+}

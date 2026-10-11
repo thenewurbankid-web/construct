@@ -187,12 +187,27 @@ export function resolveImportSpecifier(fromAbsFile, specifier, aliases = []) {
 // layer, analytics, and generic cross-app context/components. Matches by
 // substring against the normalized (forward-slash) absolute path, so it's
 // robust to exactly where the project root happens to be. Callers can pass
-// their own list; this is a starting point, not a hardcoded law.
+// their own list; this is a starting point, not a hardcoded law. It is the old route wizard's
+// (`construct import`) list, kept as that wizard's default; Line Import v2 reads its own list from
+// architecture.yml (`line.traceExcludes`, see traceExcludesFor) and stops at nothing by default.
 export const DEFAULT_TRACE_EXCLUDES = ['/ui-v2/', '/ui/', '/libs/store/', '/libs/matomo', '/components/PortalLoader', '/libs/context/'];
 
 function isExcluded(absPath, excludes) {
   const normalized = absPath.split(path.sep).join('/');
   return excludes.some((ex) => normalized.includes(ex));
+}
+
+/**
+ * The excludes a route trace uses: the caller's own list when given, else the project's `line.traceExcludes`
+ * (architecture.yml, already normalized by the caller), else none. Nothing app-specific is assumed here; the old
+ * wizard passes DEFAULT_TRACE_EXCLUDES itself.
+ * @param {{excludes?: string[], configured?: string[]}} [o] `excludes` from the caller, `configured` from architecture.yml.
+ * @returns {string[]} Path substrings (forward slashes) at which the trace stops.
+ */
+export function traceExcludesFor(o = {}) {
+  if (Array.isArray(o.excludes)) return [...o.excludes];
+  if (Array.isArray(o.configured)) return [...o.configured];
+  return [];
 }
 
 const IMPORT_RE = /(?:import\s+(?:type\s+)?[\s\S]*?from\s*|import\s*\()(['"])(.*?)\1/g;
@@ -202,18 +217,24 @@ const IMPORT_RE = /(?:import\s+(?:type\s+)?[\s\S]*?from\s*|import\s*\()(['"])(.*
  * matching `excludes` (not included in the result, and not followed
  * further) or unresolvable (bare package imports). Returns the file list
  * including the entry file itself, in discovery order. */
-export function traceRouteFiles(entryAbsFile, { aliases = [], excludes = DEFAULT_TRACE_EXCLUDES } = {}) {
+export function traceRouteFiles(entryAbsFile, { aliases = [], excludes = DEFAULT_TRACE_EXCLUDES, onStop } = {}) {
   const visited = new Set();
   const queue = [path.resolve(entryAbsFile)];
+  // `onStop(what, why)` (optional) hears every boundary the trace stopped at: an excluded file ('excluded'), a bare
+  // package ('package'), or a relative/aliased import that resolves to no file ('unresolved').
+  const stop = typeof onStop === 'function' ? onStop : () => {};
   while (queue.length) {
     const file = queue.shift();
-    if (visited.has(file) || isExcluded(file, excludes)) continue;
+    if (visited.has(file)) continue;
+    if (isExcluded(file, excludes)) { stop(file, 'excluded'); continue; }
     if (!fs.existsSync(file) || !fs.statSync(file).isFile()) continue;
     visited.add(file);
     const source = fs.readFileSync(file, 'utf8');
     for (const m of source.matchAll(IMPORT_RE)) {
       const resolved = resolveImportSpecifier(file, m[2], aliases);
-      if (resolved && !visited.has(resolved) && !isExcluded(resolved, excludes)) queue.push(resolved);
+      if (!resolved) { stop(m[2], m[2].startsWith('.') || aliases.some((a) => m[2].startsWith(a.prefix)) ? 'unresolved' : 'package'); continue; }
+      if (isExcluded(resolved, excludes)) { stop(resolved, 'excluded'); continue; }
+      if (!visited.has(resolved)) queue.push(resolved);
     }
   }
   return [...visited];
