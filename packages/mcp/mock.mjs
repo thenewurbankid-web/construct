@@ -12,20 +12,48 @@ export const USAGE = 'construct-mcp (mock): Construct\'s blocks as read-only, pl
 /** The mock's one tool. */
 export const TOOLS = Object.freeze([{ name: 'construct_mock', title: 'Mock tool', description: 'Answers what the mock was given.' }]);
 
-/** Arguments are taken as given: `--root <dir>` only. @param {string[]} argv The arguments. @returns {{ root?: string, error?: string }} */
+/**
+ * Arguments are taken as given: `--root <dir>` only.
+ * @param {string[]} argv The arguments.
+ * @returns {{ root?: string, error?: string }} The root, when given.
+ */
 export function parseArgs(argv) {
   const i = argv.indexOf('--root');
   return i >= 0 && argv[i + 1] ? { root: argv[i + 1] } : {};
 }
 
-/** No containment on a mock root. @param {string} dir A folder. @returns {string} The folder. */
-export function openRoot(dir) { return dir; }
-/** @param {string} _root A folder. @returns {void} */
+/**
+ * No containment on a mock root: the folder comes back as given.
+ * @param {string} dir A folder.
+ * @returns {string} The folder.
+ */
+export function openRoot(dir) {
+  return dir;
+}
+
+/**
+ * Every mock root counts as contained; never throws.
+ * @param {string} _root A folder.
+ */
 export function assertContained(_root) {}
-/** @param {string} _root A folder. @returns {null} No escaping link. */
-export function findEscapingLink(_root) { return null; }
-/** @param {string} _root A folder. @returns {(text: string) => string} The identity scrubber. */
-export function createScrubber(_root) { return (text) => text; }
+
+/**
+ * A mock root has no link that leaves it.
+ * @param {string} _root A folder.
+ * @returns {null} No escaping link.
+ */
+export function findEscapingLink(_root) {
+  return null;
+}
+
+/**
+ * A scrubber that leaves text as it is (the real one replaces the root's absolute path).
+ * @param {string} _root A folder.
+ * @returns {(text: string) => string} The identity scrubber.
+ */
+export function createScrubber(_root) {
+  return (text) => text;
+}
 
 /**
  * A fake server: `callTool(name, args)` returns `{ content: [{ type: 'text', text }], structuredContent }` with the

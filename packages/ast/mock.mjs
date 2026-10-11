@@ -47,11 +47,23 @@ export function walkAst(ast, visitor = {}) {
   return ast;
 }
 
-/** No imports in the mock's empty programs (the real one returns each imported specifier). @param {string} [_source] The code. @returns {string[]} Always empty. */
-export function extractImports(_source) { return []; }
+/**
+ * No imports in the mock's empty programs (the real one returns each imported specifier).
+ * @param {string} [_source] The code.
+ * @returns {string[]} Always empty.
+ */
+export function extractImports(_source) {
+  return [];
+}
 
-/** No exports in the mock's empty programs (the real one returns {name, index} per export). @param {string} [_source] The code. @returns {{name: string, index: number}[]} Always empty. */
-export function extractExports(_source) { return []; }
+/**
+ * No exports in the mock's empty programs (the real one returns {name, index} per export).
+ * @param {string} [_source] The code.
+ * @returns {{name: string, index: number}[]} Always empty.
+ */
+export function extractExports(_source) {
+  return [];
+}
 
 /**
  * The 1-based line of an offset in a source, as the real one computes it.
