@@ -8,7 +8,7 @@ import { useLineWorkspace } from '@/lib/lineWorkspace';
 import '../components/line-library.css';
 import { LineScreenSwitch } from '../components/LineScreenSwitch';
 import { screenFor } from '../domain/LibraryView';
-import { screenWithWorkspace } from '../domain/ReadOnly';
+import { screenWithWorkspace, writableFeatures } from '../domain/ReadOnly';
 import { useLineChanges } from '../hooks/useLineChanges';
 import { useLineProject } from '../hooks/useLineProject';
 
@@ -19,7 +19,8 @@ function LineComponentsScreen() {
   const { revalidate } = useShellDrawer();
   const { folder } = useLineWorkspace();
   const screen = useMemo(() => screenWithWorkspace(screenFor(state), folder), [state, folder]);
-  const features = screen.kind === 'line' ? screen.view.featureNames : NO_FEATURES;
+  // Only features inside the workspace folder are offered to "Base on this" (the rest are read-only).
+  const features = useMemo(() => (screen.kind === 'line' ? writableFeatures(screen.view, folder) : NO_FEATURES), [screen, folder]);
   // After a change landed: read the project again (counts, rows) and re-run validate (Diagnostics, status bar).
   const onLanded = useCallback(() => {
     refresh();

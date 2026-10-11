@@ -75,18 +75,21 @@ test.describe.serial('Line: one workspace folder per project (Line sample projec
     await expect(page.getByTestId('ll-notice')).toContainText('Saved. Creates StatusBadge in feature orders, based on the library Badge.');
     expect(fs.existsSync(path.join(base, 'features/orders/components/StatusBadge.tsx'))).toBe(true);
 
-    // Into billing (outside the workspace): refused in one sentence, the form stays open, nothing is written.
-    const billingBefore = fs.readdirSync(path.join(base, 'features/billing/components')).sort();
+    // Billing is outside the workspace, so the form does not offer it (pre-UAT: it used to open on billing, a sure refusal).
     await badge.getByRole('button', { name: 'Base on this: Badge' }).click();
     form = badge.getByRole('form', { name: 'Base a new component on Badge' });
-    await form.getByLabel('Feature').selectOption('billing');
-    await form.getByLabel('Name').fill('PaidBadge');
-    await form.getByRole('button', { name: 'Create' }).click();
-    await expect(form.getByRole('alert')).toHaveText(
-      'Nothing was saved: features/billing/components/PaidBadge.tsx is outside your workspace folder features/orders; it stays read-only.',
-    );
-    await expect(form).toBeVisible();
-    expect(fs.existsSync(path.join(base, 'features/billing/components/PaidBadge.tsx'))).toBe(false);
+    await expect(form.getByLabel('Feature').locator('option')).toHaveText(['orders']);
+    await form.getByRole('button', { name: 'Cancel' }).click();
+
+    // A change that would write outside the folder is still refused in one sentence and writes nothing: promoting
+    // billing's InvoiceCard (it would move a read-only file into the read-only library).
+    const billingBefore = fs.readdirSync(path.join(base, 'features/billing/components')).sort();
+    const invoice = featureRow(page, 'InvoiceCard');
+    await invoice.getByRole('button', { name: 'Promote to library: InvoiceCard' }).click();
+    const confirm = invoice.getByRole('group', { name: 'Promote InvoiceCard to the library' });
+    await confirm.getByRole('button', { name: 'Promote', exact: true }).click();
+    await expect(confirm.getByRole('alert')).toHaveText(/^Nothing was saved: .* is outside your workspace folder features\/orders; it stays read-only\.$/);
+    expect(fs.existsSync(path.join(base, 'library/components/InvoiceCard.tsx'))).toBe(false);
     expect(fs.readdirSync(path.join(base, 'features/billing/components')).sort()).toEqual(billingBefore);
   });
 });
