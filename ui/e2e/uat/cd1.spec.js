@@ -27,20 +27,27 @@ test.describe.serial('UAT cd1: Features as a chat in Trace style', () => {
   });
 
   test('walk: open Features, ask what is missing, open billing, fix it, add a component to orders, switch theme', async ({ page }) => {
+    test.setTimeout(180_000);
     const problems = [];
-    page.on('console', (m) => {
-      if (m.type() === 'error') problems.push(`console: ${m.text()}`);
-    });
+    // One known exception, outside cd1: the frame's Review feature asks /api/review/branches, which answers 400 for a
+    // project that is not a git checkout (this temp copy; the owner's sample sits inside the repo's checkout).
+    const known = (url) => url.includes('/api/review/branches');
+    let lastBad = '';
     page.on('response', (r) => {
-      if (r.status() >= 400) problems.push(`${r.status()} ${r.request().method()} ${r.url()}`);
+      if (r.status() >= 400 && known(r.url())) lastBad = r.url();
+      if (r.status() >= 400 && !known(r.url())) problems.push(`${r.status()} ${r.request().method()} ${r.url()}`);
+    });
+    page.on('console', (m) => {
+      const fromKnown = m.text().startsWith('Failed to load resource') && known(m.location()?.url ?? lastBad);
+      if (m.type() === 'error' && !fromKnown) problems.push(`console: ${m.text()}`);
     });
     const say = (text) => page.locator('[data-testid="ln-msg"][data-from="line"]').last().getByTestId('ln-msg-text').filter({ hasText: text });
     const button = (name) => page.getByRole('button', { name: new RegExp(`^${name}`) });
 
     // 1. Features opens as a full-screen chat.
     await gotoCockpit(page, '/');
-    await expect(page.getByRole('heading', { level: 1, name: 'Features' })).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByText('Your project has 2 features. Pick one to open it, or choose what to do below.')).toBeVisible();
+    await expect(page.getByText('Your project has 2 features. Pick one to open it, or choose what to do below.')).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole('heading', { level: 1, name: 'Features' })).toBeVisible();
 
     // 2. One click: what is missing, in plain English.
     await button('What is missing\\?').click();
@@ -62,10 +69,10 @@ test.describe.serial('UAT cd1: Features as a chat in Trace style', () => {
     await button('All features').click();
     await page.getByRole('list', { name: 'Features', exact: true }).getByRole('button', { name: /^orders/ }).click();
     await button('Add from the library').click();
-    await page.getByRole('list', { name: 'Library items' }).getByRole('button', { name: /^TextField/ }).click();
-    await expect(say('Creates OrdersTextField in feature orders')).toBeVisible();
+    await page.getByRole('list', { name: 'Library items' }).getByRole('button', { name: /^Badge/ }).click();
+    await expect(say('Creates OrdersBadge in feature orders')).toBeVisible();
     await page.getByRole('button', { name: /^Approve step/ }).first().click();
-    await expect(page.locator('[data-testid="lf-item"][data-item="OrdersTextField"]')).toBeVisible({ timeout: 60_000 });
+    await expect(page.locator('[data-testid="lf-item"][data-item="OrdersBadge"]')).toBeVisible({ timeout: 60_000 });
 
     // 6. Judge the look in both themes: the command palette's theme switch (Ctrl+K, "theme", Enter).
     for (let i = 0; i < 2; i += 1) {

@@ -5,6 +5,7 @@ dist/
 !.claude/agents/
 .construct-test-tmp/
 ui/e2e/test-results/
+ui/e2e/test-results-uat/
 ui/e2e/playwright-report/
 
 *storybook.log

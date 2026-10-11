@@ -345,5 +345,5 @@ dark #7d7764; Trace's own #c9c0ad reaches only 1.6:1 on paper) and the light "ti
 
 UAT (fresh sample; start `cd ui/server && npm start`, `cd ui/client && npm run dev`, open http://localhost:3000 with `examples/line-sample` open):
 1. Features opens as a chat. Click **What is missing?**, then **billing**: its page opens with the chat beside it.
-2. Click **Fix what is wrong**, then **Recommended fix**, then **Approve** in the Plan. Click **All features**, **orders**, **Add from the library**, **TextField**, then **Approve**: OrdersTextField appears on the page.
+2. Click **Fix what is wrong**, then **Recommended fix**, then **Approve** in the Plan. Click **All features**, **orders**, **Add from the library**, **Badge**, then **Approve**: OrdersBadge appears on the page.
 3. Judge the look: press Ctrl+K, type "theme", Enter, to see the other theme. Does this style (colours, type, spacing, chat bubbles, option chips) look right for every screen? Say what to change before the rest are restyled.

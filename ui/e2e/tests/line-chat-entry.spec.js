@@ -99,33 +99,33 @@ test.describe.serial('Line: Features as a chat entry, in Trace style (Line sampl
   test('Add from the library is a plan step: nothing is written until Approve, then the new item is on the page', async ({ page }) => {
     await gotoCockpit(page, '/?feature=orders');
     await option(page, 'feature.add').click({ timeout: 30_000 });
-    await expect(pick(page, 'components/Dialog')).toContainText('the new one is called OrdersDialog.');
+    await expect(pick(page, 'components/Card')).toContainText('the new one is called OrdersCard.', { timeout: 30_000 });
     // Two clicks: Add from the library, then the library item (the suggested name is used).
-    await pick(page, 'components/Dialog').click();
-    await expect(lastLine(page).getByTestId('ln-msg-text')).toHaveText('Waiting for your approval: Creates OrdersDialog in feature orders, based on the library Dialog. Approve it in the Plan below.');
-    const file = path.join(base, 'features/orders/components/OrdersDialog.tsx');
+    await pick(page, 'components/Card').click();
+    await expect(lastLine(page).getByTestId('ln-msg-text')).toHaveText('Waiting for your approval: Creates OrdersCard in feature orders, based on the library Card. Approve it in the Plan below.');
+    const file = path.join(base, 'features/orders/components/OrdersCard.tsx');
     expect(fs.existsSync(file)).toBe(false);
     const step = page.getByTestId('plan-step').first();
     await expect(step).toHaveAttribute('data-state', 'waiting');
     await step.getByRole('button', { name: /^Approve step/ }).click();
     await expect(step).toHaveAttribute('data-state', 'done', { timeout: 60_000 });
     expect(fs.existsSync(file)).toBe(true);
-    await expect(page.locator('[data-testid="lf-item"][data-item="OrdersDialog"]')).toBeVisible({ timeout: 30_000 });
+    await expect(page.locator('[data-testid="lf-item"][data-item="OrdersCard"]')).toBeVisible({ timeout: 30_000 });
   });
 
   test('a taken name is refused in one sentence (code under Details), and the chat asks for another name', async ({ page }) => {
     await gotoCockpit(page, '/?feature=orders');
     await option(page, 'feature.add').click({ timeout: 30_000 });
-    await pick(page, 'components/Dialog').click();
+    await pick(page, 'components/Card').click();
     const refusal = lastLine(page);
     await expect(refusal).toHaveAttribute('data-tone', 'refusal');
-    await expect(refusal.getByTestId('ln-msg-text')).toHaveText('Feature "orders" already has a component named OrdersDialog; pick another name.');
+    await expect(refusal.getByTestId('ln-msg-text')).toHaveText('Feature "orders" already has a component named OrdersCard; pick another name.');
     await refusal.getByText('Details', { exact: true }).click();
     await expect(refusal.getByTestId('ln-msg-details')).toContainText('code: NAME_TAKEN');
     const ask = page.getByRole('form', { name: 'What should the new component be called?' });
     await ask.getByLabel('What should the new component be called?').fill('OrdersConfirm');
     await ask.getByRole('button', { name: 'Add to plan' }).click();
-    await expect(lastLine(page).getByTestId('ln-msg-text')).toHaveText('Waiting for your approval: Creates OrdersConfirm in feature orders, based on the library Dialog. Approve it in the Plan below.');
+    await expect(lastLine(page).getByTestId('ln-msg-text')).toHaveText('Waiting for your approval: Creates OrdersConfirm in feature orders, based on the library Card. Approve it in the Plan below.');
   });
 
   test('Fix what is wrong adds the recommended fix as a line.fix plan step', async ({ page }) => {

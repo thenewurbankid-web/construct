@@ -3,4 +3,4 @@
 //   E2E_CLIENT_PORT=... E2E_SERVER_PORT=... npx playwright test -c playwright.uat.config.js --workers=1
 import base from './playwright.config.js';
 
-export default { ...base, testDir: './uat', testIgnore: [] };
+export default { ...base, testDir: './uat', testIgnore: [], outputDir: './test-results-uat' };
