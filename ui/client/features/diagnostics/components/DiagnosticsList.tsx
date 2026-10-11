@@ -1,11 +1,12 @@
 import { useState } from 'react';
+import { LineFixController, LineFixNotice } from '@/features/line-fix';
 import type { DiagnosticsViewProps } from '../types';
 
 /** Validation results in plain language: a summary line, then one row per
  * problem (severity and the plain-English message). The rule id and file:line
  * sit under a collapsed "Details" disclosure. A row for a page file opens it
  * in the Pages editor; any other row expands to say why and how to fix it. */
-export function DiagnosticsList({ view, onRun, onOpenPage }: DiagnosticsViewProps) {
+export function DiagnosticsList({ view, onRun, onOpenPage, fixNotice, onFixed }: DiagnosticsViewProps) {
   const [expanded, setExpanded] = useState<string | null>(null);
 
   const toolbar = (
@@ -20,11 +21,13 @@ export function DiagnosticsList({ view, onRun, onOpenPage }: DiagnosticsViewProp
       </button>
     </div>
   );
+  const notice = <LineFixNotice result={fixNotice} />;
 
   if (view.mode === 'error') {
     return (
       <div className="dg-root">
         {toolbar}
+        {notice}
         <div className="dg-empty" role="alert" data-testid="diagnostics-error">
           <p className="dg-empty-title">Validation could not run</p>
           <p className="hint">{view.error}</p>
@@ -36,6 +39,7 @@ export function DiagnosticsList({ view, onRun, onOpenPage }: DiagnosticsViewProp
     return (
       <div className="dg-root">
         {toolbar}
+        {notice}
         <div className="dg-empty" data-testid="diagnostics-clean">
           <p className="dg-empty-title">No problems found</p>
           <p className="hint">The project follows every architecture rule Construct checks.</p>
@@ -46,6 +50,7 @@ export function DiagnosticsList({ view, onRun, onOpenPage }: DiagnosticsViewProp
   return (
     <div className="dg-root">
       {toolbar}
+      {notice}
       {view.error && (
         <p className="dg-note" role="alert">
           Last run failed: {view.error} Showing the previous result.
@@ -75,6 +80,7 @@ export function DiagnosticsList({ view, onRun, onOpenPage }: DiagnosticsViewProp
                   {row.fix && <p><strong>Fix:</strong> {row.fix}</p>}
                 </div>
               )}
+              {row.lineFinding && <LineFixController finding={row.lineFinding} onResult={onFixed} label={`How to fix: ${row.message}`} />}
               {/* Plain English first; the rule id and file:line wait behind a collapsed disclosure (LINE.md). */}
               <details className="dg-tech" data-testid="diagnostic-details">
                 <summary>Details</summary>

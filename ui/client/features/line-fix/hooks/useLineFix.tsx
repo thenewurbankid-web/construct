@@ -1,10 +1,10 @@
 'use client';
 
 import { useCallback, useMemo, useReducer, useRef } from 'react';
-import { canApply, fixOptions } from '../domain/FixOptions';
+import { fixOptions } from '../domain/FixOptions';
 import { lineFixApi } from '../services/LineFixApi';
 import { applyFixReducer, idleFix, refusalOf } from '../workflows/ApplyFix';
-import type { FixResultHandler, LineFinding, LineFix, LineFixApi, LineFixView } from '../types';
+import type { FixResultHandler, FixRow, LineFinding, LineFixApi, LineFixView } from '../types';
 
 /** One finding's fixes and Apply. Apply sends {findingKey, fixId}; the answer goes to `onResult` (the screen shows
  * its sentence and re-reads the project). Advice-only fixes are never sent. The API is injectable for tests. */
@@ -15,8 +15,8 @@ export function useLineFix(finding: LineFinding, onResult: FixResultHandler, api
   const key = finding.key ?? `${finding.rule}|${finding.file}|${finding.line}`;
 
   const apply = useCallback(
-    (fix: LineFix) => {
-      if (busy.current || !canApply(fix)) return;
+    ({ fix, applicable }: FixRow) => {
+      if (busy.current || !applicable) return;
       busy.current = true;
       dispatch({ type: 'APPLY', fixId: fix.id });
       void api.fix({ findingKey: key, fixId: fix.id }).then((result) => {

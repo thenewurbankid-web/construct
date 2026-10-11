@@ -273,6 +273,24 @@ export function withFixes(root, findings) {
 }
 
 /**
+ * Raw validate violations with each LINE-* one carrying its key and fixes (one context for the batch); others are
+ * returned as they are. The one place `construct validate --format json` and Cockpit's GET /api/validate attach them.
+ * @template {{rule: string, file?: string, line?: number, message?: string, severity?: string}} V
+ * @param {string} root
+ * @param {V[]} violations
+ * @returns {(V & {key?: string, fixes?: import('./contract.mjs').LineFix[]})[]}
+ */
+export function withViolationFixes(root, violations) {
+  if (!violations.some((v) => String(v.rule).startsWith('LINE-'))) return violations;
+  const ctx = fixContext(root);
+  return violations.map((v) => {
+    if (!String(v.rule).startsWith('LINE-')) return v;
+    const f = toFinding(v);
+    return { ...v, key: findingKey(f), fixes: fixesFor(root, f, ctx) };
+  });
+}
+
+/**
  * Plan one fix step (the tool -> planner table). Pure.
  * @param {string} root
  * @param {{tool: string, args: Record<string, any>}} step

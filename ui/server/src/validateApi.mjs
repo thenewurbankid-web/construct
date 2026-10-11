@@ -7,6 +7,7 @@ import { aggregateValidation } from '../../../packages/core/registry.mjs';
 import { enforcersForRoot } from '../../../packages/core/profiles/index.mjs';
 import { findProjectRoot, loadConfig } from '../../../packages/core/config.mjs';
 import { summarizeViolations } from '../../../packages/core/diagnostics.mjs';
+import { withViolationFixes } from '../../../packages/engine/line/fixes.mjs';
 import { serverLog } from './logBuffer.mjs';
 import { ExecutionError, resolveExecutionMode, runValidate } from './coreExecutor.mjs';
 import { runCapturing } from './commandRunner.mjs';
@@ -42,9 +43,21 @@ function reportBody({ violations, ok, durationMs, rules = {} }) {
       message: v.message,
       why: v.why,
       suggestedFix: v.suggestedFix,
+      // ca2: a LINE-* problem's handle and typed fixes, so the Diagnostics row offers Apply (POST /api/line/fix).
+      ...(v.key ? { key: v.key } : {}),
+      ...(Array.isArray(v.fixes) ? { fixes: v.fixes } : {}),
     })),
     summary: summarizeViolations(violations, rules),
   };
+}
+
+/** ca2: LINE-* violations with their key and typed fixes (fixes.mjs); a failure to work them out never hides the list. */
+function lineFixes(root, violations) {
+  try {
+    return withViolationFixes(root, violations);
+  } catch {
+    return violations;
+  }
 }
 
 /**
@@ -60,7 +73,8 @@ export function handleValidate({ origin, clientOrigin, projectDir, validate = ag
   }
   const started = now();
   try {
-    const { violations, ok } = validate(root, enforcersForRoot(root));
+    const { violations: raw, ok } = validate(root, enforcersForRoot(root));
+    const violations = lineFixes(root, raw);
     const durationMs = now() - started;
     const errors = violations.filter((v) => v.severity === 'error').length;
     log.record('validate', errors ? 'warn' : 'info', `validate: ${violations.length} violation(s), ${errors} error(s) in ${durationMs} ms`);

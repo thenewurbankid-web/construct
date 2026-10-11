@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useUrlSelection } from '@/features/list-browser';
+import { useLineFixNotice } from '@/features/line-fix';
+import { useShellDrawer } from '@/features/shell';
 import { featureNames, featureSummary } from '../domain/FeatureList';
 import { pageParts, withFragments } from '../domain/PageParts';
 import { featurePages, findPage } from '../domain/PageRows';
@@ -31,6 +33,7 @@ export function useLinePages(project: LineProject | null, api: LinePagesApi | nu
   const [revision, setRevision] = useState(0);
 
   const [fragmentOutcome, setFragmentOutcome] = useState<FragmentOutcome | null>(null);
+  const { revalidate } = useShellDrawer();
 
   const readParts = useCallback(
     async (f: string) => {
@@ -103,8 +106,17 @@ export function useLinePages(project: LineProject | null, api: LinePagesApi | nu
     [api, file, readParts, reloadProject],
   );
 
+  // ca2: a fix applied from a page's problem. Its sentence stays at the top; a landed one re-reads the project (the
+  // problem leaves its row), the open page's parts, and re-runs validate (Diagnostics, status bar).
+  const afterFix = useCallback(async () => {
+    await reloadProject();
+    if (file) await readParts(file);
+    revalidate();
+  }, [file, readParts, reloadProject, revalidate]);
+  const { notice: fixNotice, onResult: fixApplied } = useLineFixNotice(afterFix);
+
   return {
     ready: featureSel.ready && pageSel.ready, features, feature, chooseFeature, pages, page, choosePage: selectPage, parts, save, saving, revision, outcome,
-    saveFragment, fragmentOutcome,
+    saveFragment, fragmentOutcome, fixNotice, fixApplied,
   };
 }

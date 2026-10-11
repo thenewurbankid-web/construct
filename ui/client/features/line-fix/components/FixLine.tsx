@@ -1,16 +1,14 @@
-import { applyLabel, canApply } from '../domain/FixOptions';
-import type { LineFix } from '../types';
+import type { FixRow } from '../types';
 
-type FixLineProps = { fix: LineFix; applying: boolean; disabled: boolean; onApply: (fix: LineFix) => void };
+type FixLineProps = { row: FixRow; applying: boolean; disabled: boolean; onApply: (row: FixRow) => void };
 
 /** One fix: what it will do in plain English, then Apply; an advice-only fix says what to do by hand, no button. */
-export function FixLine({ fix, applying, disabled, onApply }: FixLineProps) {
-  const applicable = canApply(fix);
+export function FixLine({ row, applying, disabled, onApply }: FixLineProps) {
   return (
-    <div className="lf-line" data-testid="lf-fix" data-fix={fix.id} data-advice={applicable ? 'false' : 'true'}>
-      <p className="lf-sentence">{fix.sentence}</p>
-      {applicable ? (
-        <button type="button" className="lf-btn" aria-label={applyLabel(fix)} disabled={disabled} onClick={() => onApply(fix)}>
+    <div className="lf-line" data-testid="lf-fix" data-fix={row.fix.id} data-advice={row.applicable ? 'false' : 'true'}>
+      <p className="lf-sentence">{row.fix.sentence}</p>
+      {row.applicable ? (
+        <button type="button" className="lf-btn" aria-label={row.label} disabled={disabled} onClick={() => onApply(row)}>
           {applying ? 'Applying...' : 'Apply'}
         </button>
       ) : (

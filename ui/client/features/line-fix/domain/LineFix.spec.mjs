@@ -1,24 +1,27 @@
 // ca2 screen: the fix panel's states, from the pure parts it renders from (the panel itself only lays these out).
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { applyLabel, canApply, fixOptions, fixResult } from './FixOptions.ts';
+import { fixOptions, fixResult } from './FixOptions.ts';
 import { applyFixReducer, idleFix, refusalOf } from '../workflows/ApplyFix.ts';
 
 const setBase = { id: 'LINE-BASE/set-base:components/Card', sentence: 'Base InvoiceCard.tsx on the library component Card, which it already uses.', rank: 1, step: { tool: 'line.setBase', args: { file: 'f', libraryId: 'components/Card' } } };
 const promote = { id: 'LINE-BASE/promote', sentence: 'Move InvoiceCard.tsx into the library.', rank: 2, step: { tool: 'line.promote', args: { featureItemId: 'billing/components/InvoiceCard' } } };
 const advice = { id: 'LINE-WRITER/use-writer', sentence: 'Send the writeFileSync() call in a.ts through Construct\'s writer.', rank: 1, step: null };
 
+const fixesOf = (o) => ({ recommended: o.recommended?.fix ?? null, others: o.others.map((r) => r.fix) });
+
 test('recommended first, the rest as other ways; no fixes means nothing to show', () => {
-  assert.deepEqual(fixOptions({ fixes: [promote, setBase] }), { recommended: setBase, others: [promote] }, 'sorted by rank whatever the order');
-  assert.deepEqual(fixOptions({ fixes: [setBase] }), { recommended: setBase, others: [] }, 'one fix: no "Other ways to fix"');
+  assert.deepEqual(fixesOf(fixOptions({ fixes: [promote, setBase] })), { recommended: setBase, others: [promote] }, 'sorted by rank whatever the order');
+  assert.deepEqual(fixesOf(fixOptions({ fixes: [setBase] })), { recommended: setBase, others: [] }, 'one fix: no "Other ways to fix"');
   assert.deepEqual(fixOptions({}), { recommended: null, others: [] }, 'a finding with no fixes (not LINE-*) shows no panel');
   assert.deepEqual(fixOptions({ fixes: [] }), { recommended: null, others: [] });
 });
 
 test('a fix with a step gets Apply (named by what it does); advice only gets no button', () => {
-  assert.equal(canApply(setBase), true);
-  assert.equal(canApply(advice), false);
-  assert.equal(applyLabel(setBase), 'Apply: Base InvoiceCard.tsx on the library component Card, which it already uses.');
+  const { recommended } = fixOptions({ fixes: [setBase] });
+  assert.equal(recommended.applicable, true);
+  assert.equal(recommended.label, 'Apply: Base InvoiceCard.tsx on the library component Card, which it already uses.');
+  assert.equal(fixOptions({ fixes: [advice] }).recommended.applicable, false, 'advice only: the sentence, no Apply');
 });
 
 test('every answer says "Saved." or "Nothing was saved: ..."', () => {

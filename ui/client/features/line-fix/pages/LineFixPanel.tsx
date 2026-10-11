@@ -11,14 +11,14 @@ export function LineFixPanel({ view, label }: { view: LineFixView; label: string
   const applying = (id: string) => state.phase === 'applying' && state.fixId === id;
   return (
     <div className="lf" role="group" aria-label={label} data-testid="line-fix">
-      <FixLine fix={options.recommended} applying={applying(options.recommended.id)} disabled={busy} onApply={apply} />
+      <FixLine row={options.recommended} applying={applying(options.recommended.fix.id)} disabled={busy} onApply={apply} />
       {options.others.length > 0 && (
         <details className="lf-more" data-testid="lf-more">
           <summary>Other ways to fix ({options.others.length})</summary>
           <ul className="lf-more-list">
-            {options.others.map((fix) => (
-              <li key={fix.id}>
-                <FixLine fix={fix} applying={applying(fix.id)} disabled={busy} onApply={apply} />
+            {options.others.map((row) => (
+              <li key={row.fix.id}>
+                <FixLine row={row} applying={applying(row.fix.id)} disabled={busy} onApply={apply} />
               </li>
             ))}
           </ul>

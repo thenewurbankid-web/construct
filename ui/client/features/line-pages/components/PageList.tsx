@@ -1,14 +1,16 @@
-import type { PageRow } from '../types';
+import type { ApplyResult, PageRow } from '../types';
 import { FindingItem } from './FindingItem';
 
 type PageListProps = {
   pages: PageRow[];
   current: string | null;
   onChoose: (id: string) => void;
+  /** Called with the answer of a fix applied from one of the findings. */
+  onFix: (result: ApplyResult) => void;
 };
 
 /** The pages of one feature: name, library base (or the problem with it), status, and findings. */
-export function PageList({ pages, current, onChoose }: PageListProps) {
+export function PageList({ pages, current, onChoose, onFix }: PageListProps) {
   if (pages.length === 0) return <p className="hint">This feature has no pages yet.</p>;
   return (
     <ul className="lp-pages" aria-label="Pages in this feature">
@@ -28,7 +30,7 @@ export function PageList({ pages, current, onChoose }: PageListProps) {
           {p.findings.length > 0 && (
             <ul className="lp-findings" aria-label={`What needs attention in ${p.name}`}>
               {p.findings.map((f, i) => (
-                <FindingItem key={`${f.rule}-${f.line}-${i}`} finding={f} />
+                <FindingItem key={`${f.rule}-${f.line}-${i}`} finding={f} onFix={onFix} />
               ))}
             </ul>
           )}
