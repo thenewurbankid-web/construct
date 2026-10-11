@@ -4,6 +4,8 @@
 
 /** `@line/construct-engine/impact` */
 export * as impact from './impact.mjs';
+/** `@line/construct-engine/line/plan-service` */
+export * as linePlanService from './line/planService.mjs';
 /** `@line/construct-engine/transactional-writer` */
 export * as transactionalWriter from './transactionalWriter.mjs';
 /** `@line/construct-engine/envelope` */
