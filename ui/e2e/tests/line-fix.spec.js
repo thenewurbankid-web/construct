@@ -70,7 +70,7 @@ test.describe.serial('Line: apply a fix (Line sample project, real server)', () 
     // The click was the approval: the fix is a line.fix step of the plan, done.
     const fixStep = page.getByTestId('line-plan').getByTestId('plan-step').first();
     await expect(fixStep).toHaveAttribute('data-state', 'done');
-    await expect(fixStep.getByTestId('plan-step-sentence')).toHaveText(/^Saved\. /);
+    await expect(fixStep.getByTestId('plan-step-sentence')).toHaveText(/^Saved: /);
     await expect(row.getByTestId('ll-problem')).toHaveCount(0, { timeout: 30_000 });
     await expect(status).toContainText('1 problem', { timeout: 30_000 });
     expect(read(CARD)).toContain('@line-base components/Card');

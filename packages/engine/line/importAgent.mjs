@@ -123,7 +123,9 @@ export function agentView(folder, doc, decider) {
     state: doc ? doc.state : 'idle',
     paused: doc ? doc.paused : false,
     waiting: doc ? doc.waiting : null,
-    stages: IMPORT_AGENT_STAGES.map((s, i) => ({ id: s.id, label: s.label, status: /** @type {'done'|'current'|'todo'} */ (doc && (i < at || doc.state === 'done') ? 'done' : i === at ? 'current' : 'todo') })),
+    // Where the process is, as the screen marks it: the stages before it done, its own stage current ("Done" too, once
+    // it has finished), the ones after it still to do.
+    stages: IMPORT_AGENT_STAGES.map((s, i) => ({ id: s.id, label: s.label, status: /** @type {'done'|'current'|'todo'} */ (doc && i < at ? 'done' : doc && i === at ? 'current' : 'todo') })),
     sentence: whereSentence(doc),
     steps: doc ? doc.steps : [],
     decisions: doc ? doc.decisions : [],

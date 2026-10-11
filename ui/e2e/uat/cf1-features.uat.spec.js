@@ -5,7 +5,7 @@ import { test, expect, freshSample, openSampleFromPicker, goToScreen, expectAxeC
 // 2. Click orders -> items with "Based on ...", the Auto summary, "1 of 2 acceptance points are covered."
 // 3. Click billing -> open Details on InvoicesPage's problem (LINE-DIR, `InvoicesPage.tsx:4`); click a page name ->
 //    Pages opens on it.
-const cards = (page) => page.getByRole('list', { name: 'Features' }).getByTestId('lf-feature');
+const cards = (page) => page.getByRole('list', { name: 'Features' }).getByTestId('ln-pick');
 const item = (page, name) => page.locator(`[data-testid="lf-item"][data-item="${name}"]`);
 
 test.beforeAll(() => freshSample());

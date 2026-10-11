@@ -40,7 +40,8 @@ test.describe.serial('Line Components library (Line sample project)', () => {
     await expect(page.getByTestId('ll-total')).toHaveText('4');
 
     // Groups in order, each with its cards.
-    await expect(page.getByRole('heading', { level: 2 })).toHaveText([/^Plan/, /^Atoms/, /^Molecules/, /^Organisms/, /^Feature components/]);
+    // cg1/ct1: the Trace bar ("Line modes") sits above the Plan panel.
+    await expect(page.getByRole('heading', { level: 2 })).toHaveText([/^Line modes/, /^Plan/, /^Atoms/, /^Molecules/, /^Organisms/, /^Feature components/]);
     await expect(group(page, 'atom').getByTestId('ll-card')).toHaveCount(2);
     await expect(group(page, 'molecule').getByTestId('ll-card')).toHaveCount(1);
     await expect(group(page, 'organism').getByTestId('ll-card')).toHaveCount(1);

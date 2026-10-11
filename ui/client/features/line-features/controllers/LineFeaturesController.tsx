@@ -1,9 +1,9 @@
 'use client';
 
-import type { ReactElement, ReactNode } from 'react';
+import { useCallback, useState, type ReactElement, type ReactNode } from 'react';
 import { LinePlanController, useLinePlan } from '@/features/line-plan';
 import { LineTraceController } from '@/features/line-trace';
-import { LineWorkflowsController } from '@/features/line-workflows';
+import { LineWorkflowsTab } from '@/features/line-workflows';
 import { isLineMock } from '@/lib/lineMode';
 import { useFeatureChat } from '../hooks/useFeatureChat';
 import { useLineFeatures } from '../hooks/useLineFeatures';
@@ -18,9 +18,13 @@ type Screen = ReactElement<{ stage?: ReactNode }>;
  * project gate), so a re-render or remount of the screen never loses the conversation. The open feature's Workflows tab
  * (cw1) and the Trace bar (cg1/ct1) sit in it too. */
 function LineScreen({ view, screen }: { view: LineFeaturesView; screen: Screen }) {
-  const plan = useLinePlan(view.reload);
+  const [revision, setRevision] = useState(0);
+  const { reload } = view;
+  const landed = useCallback(() => { reload(); setRevision((r) => r + 1); }, [reload]);
+  const plan = useLinePlan(landed);
   const chat = useFeatureChat(view, isLineMock() ? mockAddStep : plan.addStep);
-  const workflows = view.feature && view.tab === 'workflows' ? <LineWorkflowsController key={view.feature} feature={view.feature} /> : null;
+  // One Plan panel per screen: the Workflows tab adds its steps to this screen's plan (the panel beside the chat).
+  const workflows = view.feature && view.tab === 'workflows' ? <LineWorkflowsTab key={view.feature} feature={view.feature} addStep={plan.addStep} revision={revision} /> : null;
   const stage = <FeaturesSwitchPage view={view} chat={chat} plan={<LinePlanController plan={plan} />} workflows={workflows} trace={<LineTraceController screen="features" steps={plan.steps} />} />;
   return <FeaturesScreenPage phase="line" screen={screen} stage={stage} />;
 }

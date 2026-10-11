@@ -30,14 +30,16 @@ test.describe.serial('Line: one tool registry (real server)', () => {
     const tools = await (await request.get(`${API}/api/line/tools`)).json();
     expect(tools.ok).toBe(true);
     const byId = Object.fromEntries(tools.tools.map((t) => [t.id, t]));
-    expect(byId['line.baseOn']).toMatchObject({ kind: 'write', writes: 'project', controlId: 'base-on' });
+    expect(byId['line.baseOn']).toMatchObject({ kind: 'write', writes: 'project', controlId: 'components.baseOn' });
     expect(byId['line.project']).toMatchObject({ kind: 'read', writes: null });
     expect(byId['plan.approve']).toMatchObject({ personOnly: true });
 
-    const res = await request.post(`${API}/api/line/base-on`, { data: { libraryId: 'components/Badge', feature: 'orders', name: 'StatusBadge' } });
+    // The direct write routes are gone (integrator): a project write is only ever a plan step.
+    expect((await request.post(`${API}/api/line/base-on`, { data: { libraryId: 'components/Badge', feature: 'orders', name: 'StatusBadge' } })).status()).toBe(404);
+    const res = await request.post(`${API}/api/line/plan/step`, { data: { tool: 'line.baseOn', args: { libraryId: 'components/Badge', feature: 'orders', name: 'StatusBadge' } } });
     const body = await res.json();
     expect(body.ok).toBe(true);
-    expect(body.sentence).toBe('Waiting for your approval: Creates StatusBadge in feature orders, based on the library Badge.');
+    expect(body.steps.find((s) => s.id === body.stepId).sentence).toBe('Waiting for your approval: Creates StatusBadge in feature orders, based on the library Badge.');
     expect(fs.existsSync(path.join(base, 'features/orders/components/StatusBadge.tsx'))).toBe(false);
 
     await gotoCockpit(page, '/components');

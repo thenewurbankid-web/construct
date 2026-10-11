@@ -31,7 +31,7 @@ test('cw1 UAT: start a workflow from the library, choose its page, add a When ->
   try {
     // 1. Open Cockpit (Features) and pick the orders feature, then its Workflows tab.
     await gotoCockpit(page, '/');
-    await click(page.getByRole('list', { name: 'Features' }).getByTestId('lf-feature').filter({ hasText: 'orders' }));
+    await click(page.getByRole('list', { name: 'Features' }).getByTestId('ln-pick').filter({ hasText: 'orders' }));
     await click(page.getByRole('tab', { name: 'Workflows' }));
     await expect(page.getByText('orders has no workflows yet. Start one from a library workflow below.')).toBeVisible({ timeout: 30_000 });
 

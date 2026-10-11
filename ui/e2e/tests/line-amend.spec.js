@@ -108,7 +108,7 @@ test.describe.serial('Line: the recommended fix is one that lands (cl1, Line sam
 
     const fix = plan.locator('[data-testid="plan-step"]').first();
     await expect(fix).toHaveAttribute('data-state', 'done');
-    await expect(fix.getByTestId('plan-step-sentence')).toHaveText(/^Saved\. Changes the code for .*, and in the same step moves OrderButton\.tsx to library\/components\/.*, then moves InvoicesPage\.tsx to library\/pages\/.*\.$/);
+    await expect(fix.getByTestId('plan-step-sentence')).toHaveText(/^Saved: Changes the code for .*, and in the same step moves OrderButton\.tsx to library\/components\/.*, then moves InvoicesPage\.tsx to library\/pages\/.*\.$/);
     await expect(plan.locator('[data-testid="plan-step"]').last()).toHaveAttribute('data-state', 'done');
     await expect(plan.locator('[data-testid="plan-step"]').last().getByTestId('plan-step-sentence')).toHaveText('Saved together with its fix in step 2.');
 

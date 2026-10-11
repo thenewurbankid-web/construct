@@ -22,7 +22,7 @@ test('new Line project: create it, land on Features, make a first change through
   await me.click(panel.getByTestId('new-project-create'));
   act.done();
   await expect(page.getByTestId('line-features')).toBeVisible({ timeout: 30_000 });
-  const card = page.getByRole('list', { name: 'Features' }).getByTestId('lf-feature');
+  const card = page.getByRole('list', { name: 'Features' }).getByTestId('ln-pick');
   await expect(card).toContainText('catalog');
   await expect(card).toContainText('All fine');
   await expectPlainEnglish(page.getByTestId('line-features'));

@@ -65,7 +65,7 @@ test.describe.serial('Line cu7: New project -> Line', () => {
     onNewProjectScreen = false;
     await expect(page.getByTestId('line-features')).toBeVisible({ timeout: 30_000 });
     await expect(page.getByRole('navigation', { name: 'Screens', exact: true }).getByRole('link', { name: 'Features' })).toHaveAttribute('aria-current', 'page');
-    const card = page.getByRole('list', { name: 'Features' }).getByTestId('lf-feature');
+    const card = page.getByRole('list', { name: 'Features' }).getByTestId('ln-pick');
     await expect(card).toHaveCount(1);
     await expect(card).toContainText('catalog');
     await expect(card).toContainText('All fine');
