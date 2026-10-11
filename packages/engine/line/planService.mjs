@@ -14,6 +14,7 @@
 import { importLinked } from '../../line-links/index.mjs';
 import { CHANGE_TOOLS, DEFAULT_EXPECT, REAL_PLAN_OPS, createLinePlanRegistry, constructCommandTools, gapOf, previewStep } from './planTools.mjs';
 import { createAtomicPlanWriter, createStaticPlanApi } from './planFallback.mjs';
+import { createSessionTrace, refusalOfStep, matchFix, sourceOf, traceArgs } from './trace.mjs';
 
 /** One session per open project, for now. */
 export const SESSION_ID = 'ses-cockpit';
@@ -76,9 +77,12 @@ export function stepView(root, plan, s, ops = REAL_PLAN_OPS) {
 /**
  * @param {{root: string, ops?: typeof REAL_PLAN_OPS, afterSave?: (root: string, file: string) => unknown,
  *   commands?: any, load?: (o: {root: string, registry: any}) => Promise<{api: any, store: {linked: boolean, sentence: string}}>,
- *   linkOptions?: object}} o `commands`: the construct.* registry (default: Construct's built-in commands; null for none).
+ *   linkOptions?: object, trace?: {id: string, record: (e: any) => any, problem: string|null} | null}} o `commands`: the
+ *   construct.* registry (default: Construct's built-in commands; null for none). `trace` (cl1): where this session's
+ *   typed trace goes (default `<state>/traces/<id>.jsonl`; null records nothing).
  */
-export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, commands, load = loadPlanApi, linkOptions }) {
+export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, commands, load = loadPlanApi, linkOptions, trace }) {
+  const tr = trace === undefined ? createSessionTrace(root, { sessionId: SESSION_ID }) : trace;
   /** @type {Promise<{api: any, store: {linked: boolean, sentence: string}, registry: any}> | null} */
   let ready = null;
   const init = () => (ready ??= (async () => {
@@ -129,7 +133,7 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
   /**
    * @param {{tool?: unknown, args?: unknown, why?: unknown}} req @param {string} by
    */
-  const addStep = (req, by) => serial(async () => {
+  const addStepInner = async (req, by) => {
     const { api, registry } = await init();
     const tool = typeof req?.tool === 'string' ? req.tool : '';
     let args = req?.args && typeof req.args === 'object' && !Array.isArray(req.args) ? { .../** @type {any} */ (req.args) } : {};
@@ -179,6 +183,23 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
     if (!r.ok) return fromPlan(r);
     const added = r.plan.steps[r.plan.steps.length - 1];
     return { ...(await view(r.message)), stepId: added.id };
+  };
+
+  /** cl1: record a step or a refusal in the session trace; with args.fixOf, also which offered fix was picked. */
+  const addStep = (req, by) => serial(async () => {
+    const r = await addStepInner(req, by);
+    if (!tr) return r;
+    const tool = typeof req?.tool === 'string' && req.tool ? req.tool : '(none)';
+    const args = traceArgs(req?.args);
+    if (!r.ok) {
+      tr.record({ kind: 'refusal', by: String(by), tool, stepId: null, args, source: sourceOf(r.code), code: String(r.code), sentence: r.sentence, rules: [], files: [], fixes: [] });
+      return r;
+    }
+    const fixOf = typeof args.fixOf === 'string' ? args.fixOf : null;
+    const retryOf = req?.args?.retry?.of ?? null;
+    tr.record({ kind: 'step', by: String(by), tool, stepId: r.stepId, args, fixOf, retryOf });
+    if (fixOf) tr.record({ kind: 'fix-picked', by: String(by), tool, stepId: r.stepId, fixOf, fixId: matchFix(r.steps.find((s) => s.id === fixOf), tool, req.args) });
+    return r;
   });
 
   const approve = (stepId, by) => serial(async () => {
@@ -190,7 +211,7 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
     return r.ok ? view(r.message) : fromPlan(r);
   });
 
-  const runNext = (by, stepId) => serial(async () => {
+  const runNextInner = async (by, stepId) => {
     const { api } = await init();
     const plan = await current(api);
     if (!plan) return refusal('NO_PLAN', 'There is no plan yet, so nothing can run');
@@ -203,7 +224,29 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
     if (blocked && !resolves) return refusal('NEEDS_YOU', `Step ${blocked.n} needs you first: ${lower(asSentence(blocked.result.sentence))} Add one of its fixes with args.fixOf "${blocked.id}", try it again, or ask the person to leave it as it is`);
     const r = await withVersion(api, plan.id, (p) => api.plan_run_next({ planId: p.id, version: p.version, by, ...(nextId ? { stepId: nextId } : {}) }));
     return r.ok ? view(r.message) : fromPlan(r);
+  };
+
+  /** cl1: record what ran (its outcome) and, when Construct refused it, the refusal with the typed fixes it offered. */
+  const runNext = (by, stepId) => serial(async () => {
+    const before = tr ? await current((await init()).api) : null;
+    const open = new Set((before?.steps ?? []).filter((s) => s.status === 'planned' || s.status === 'approved').map((s) => s.id));
+    const r = await runNextInner(by, stepId);
+    if (!tr) return r;
+    if (!r.ok) {
+      const tool = before?.steps.find((s) => s.id === stepId)?.tool ?? '(plan)';
+      tr.record({ kind: 'refusal', by: String(by), tool, stepId: typeof stepId === 'string' ? stepId : null, source: sourceOf(r.code), code: String(r.code), sentence: r.sentence, rules: [], files: [], fixes: [] });
+      return r;
+    }
+    for (const s of r.steps.filter((x) => open.has(x.id) && x.state !== 'waiting' && x.state !== 'ready')) {
+      const res = s.result && typeof s.result === 'object' ? s.result : null;
+      const ok = s.state === 'done' && res?.needsYou !== true;
+      const passed = Number.isInteger(res?.passed) ? res.passed : ok ? 1 : 0;
+      const total = Number.isInteger(res?.total) ? res.total : 1;
+      if (res && res.needsYou === true && res.apply) tr.record({ by: String(by), ...refusalOfStep(s) });
+      tr.record({ kind: 'outcome', by: String(by), tool: s.tool, stepId: s.id, ok, passed, total, state: s.state, sentence: s.sentence });
+    }
+    return r;
   });
 
-  return { view: () => serial(() => view()), addStep, approve, runNext, store: async () => (await init()).store };
+  return { view: () => serial(() => view()), addStep, approve, runNext, store: async () => (await init()).store, trace: tr };
 }

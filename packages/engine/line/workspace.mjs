@@ -92,3 +92,8 @@ export function setWorkspace(root, { folder } = /** @type {any} */ ({})) {
   if (!result.committed) throw new LineOpError('The workspace folder could not be saved; nothing was changed.', 'WRITE_FAILED');
   return { root, folder: next, readOnly: true };
 }
+
+/** cl1 -- the project's Line state folder (root-relative, `line` by default), where traces and drafted issues live. */
+export function lineStateDir(root) {
+  return workspaceFile(root).replace(/\/workspace\.json$/, '');
+}
