@@ -24,10 +24,11 @@ import path from 'node:path';
 import { ts, parseToAst } from '@construct/ast';
 import { subjectOf } from '@line/construct-core/extract-expression';
 import { listFiles } from '@line/construct-core/profiles/line/checks';
+import { findReactSpaRoutesFile } from '@line/construct-core/route-resolver';
 import { transformPristineSource } from '../../pageTransformer.mjs';
 import { importGraph } from '../import.mjs';
 import { familyFeature, commonFolder } from './route.mjs';
-import { KIND_FOLDER } from './shapes.mjs';
+import { KIND_FOLDER } from './contract.mjs';
 
 const posix = path.posix;
 const PASCAL = /^[A-Z][A-Za-z0-9]*$/;
@@ -121,11 +122,11 @@ function locate(shape, u) {
 
 /**
  * Fit every unit of a logic map into Line's blocks for one route family.
- * @param {{units: import('./shapes.mjs').LogicUnit[]} | import('./shapes.mjs').LogicUnit[]} map
- * @param {import('./shapes.mjs').RouteClosure} closure
+ * @param {{units: import('./contract.mjs').LogicUnit[]} | import('./contract.mjs').LogicUnit[]} map
+ * @param {import('./contract.mjs').RouteClosure} closure
  * @param {{feature?: string, shared?: Set<string>}} [o] `shared`: files other routes use too (default: read from the
  *   app's import graph); `feature`: the feature name (default: from the family route).
- * @returns {import('./shapes.mjs').FitProposal}
+ * @returns {import('./contract.mjs').FitProposal}
  */
 export function fitLogic(map, closure, o = {}) {
   const units = Array.isArray(map) ? map : map.units;
@@ -273,14 +274,19 @@ function presentationNote(src, component, units) {
 
 /**
  * The closure's files that code outside the family imports too (they go to the library).
- * @param {import('./shapes.mjs').RouteClosure} closure
+ * @param {import('./contract.mjs').RouteClosure} closure
  * @returns {Set<string>}
  */
 export function sharedFiles(closure) {
   const inside = new Set(closure.files);
   const graph = importGraph(closure.appRoot, listFiles(closure.appRoot));
+  // The route table (a react-spa src/App.tsx) imports every route entry only to route to it: that is not another
+  // route using the file.
+  let table = null;
+  try { table = path.relative(closure.appRoot, findReactSpaRoutesFile(closure.appRoot)).split(path.sep).join('/'); } catch { table = null; }
+  const entries = new Set(closure.routes.map((r) => r.entry));
   const out = new Set();
-  for (const f of closure.files) if ([...(graph.importers.get(f) ?? [])].some((u) => !inside.has(u))) out.add(f);
+  for (const f of closure.files) if ([...(graph.importers.get(f) ?? [])].some((u) => !inside.has(u) && !(u === table && entries.has(f)))) out.add(f);
   return out;
 }
 
@@ -290,22 +296,22 @@ export function sharedFiles(closure) {
  * The proposal as plan steps, in an order where each builds on the one before: services, domains and usecases moved
  * out of their files, then the feature's workflow (read from a component's flow), then each page's or component's logic
  * split into its hook.
- * @param {import('./shapes.mjs').FitProposal} proposal
- * @param {{folder: string, closure: import('./shapes.mjs').RouteClosure, typedContracts?: string}} o `folder`: the
+ * @param {import('./contract.mjs').FitProposal} proposal
+ * @param {{folder: string, closure: import('./contract.mjs').RouteClosure, typedContracts?: string}} o `folder`: the
  *   import folder (app-relative); block files outside it are left for a person.
- * @returns {{steps: import('./shapes.mjs').FitStep[], skipped: {block: string, sentence: string}[]}}
+ * @returns {{steps: import('./contract.mjs').FitStep[], skipped: {block: string, sentence: string}[]}}
  */
 export function planFitSteps(proposal, { folder, closure, typedContracts }) {
   const f = folder.replace(/\/+$/, '');
   const inFolder = (rel) => rel.startsWith(`${f}/`);
   const local = (rel) => rel.slice(f.length + 1);
-  /** @type {import('./shapes.mjs').FitStep[]} */
+  /** @type {import('./contract.mjs').FitStep[]} */
   const steps = [];
   const skipped = [];
   const add = (tool, args, sentence, blocks) => steps.push({ id: `fit-${steps.length + 1}`, tool, args: { folder: f, ...args }, sentence, blocks });
   const toolOf = { service: 'line.import.extractService', domain: 'line.import.extractDomain', usecase: 'line.import.extractUsecase' };
   const claimedNames = new Map();
-  for (const b of proposal.blocks.filter((x) => x.kind === 'service' || x.kind === 'domain' || (x.kind === 'usecase' && !x.name.startsWith('use')))) {
+  for (const b of proposal.blocks.filter((x) => x.kind === 'service' || x.kind === 'domain' || (x.kind === 'usecase' && !fromComponent(x)))) {
     const byFile = new Map();
     for (const fr of b.from) { const [file, name] = fr.split('#'); if (!name) continue; if (!byFile.has(file)) byFile.set(file, new Set()); byFile.get(file).add(name); }
     for (const [file, names] of byFile) {
@@ -333,7 +339,7 @@ export function planFitSteps(proposal, { folder, closure, typedContracts }) {
     add('line.import.extractWorkflow', { from: local(file), component, name: b.name, feature: proposal.feature },
       `Makes the workflow ${b.name} from ${component}'s URL state and navigation, in the library with feature ${proposal.feature}'s workflow based on it.`, [`workflow:${b.name}`]);
   }
-  for (const b of proposal.blocks.filter((x) => x.kind === 'usecase' && x.name.startsWith('use'))) {
+  for (const b of proposal.blocks.filter((x) => x.kind === 'usecase' && fromComponent(x))) {
     const fr = b.from.find((x) => x.includes('#')) ?? '';
     const [file, component] = fr.split('#');
     if (!file || !inFolder(file)) { skipped.push({ block: `usecase:${b.name}`, sentence: `${b.name}'s component is outside ${f}, so its logic stays where it is.` }); continue; }
@@ -346,6 +352,12 @@ export function planFitSteps(proposal, { folder, closure, typedContracts }) {
   return { steps, skipped };
 }
 
+/** True when a usecase block is a component's logic (its code sits in a PascalCase component: line.import.splitPage),
+ * not a hook or function of its own (line.import.extractUsecase). */
+function fromComponent(b) {
+  return b.from.some((fr) => PASCAL.test(fr.split('#')[1] ?? '') || /#default$/.test(fr));
+}
+
 /** True when `file#name` is (or is rendered by) a route entry of the closure. */
 function entryOf(closure, fr) {
   const [file] = fr.split('#');
@@ -355,7 +367,7 @@ function entryOf(closure, fr) {
 
 /**
  * The folder a route-seeded import works in: the deepest folder holding every closure file (app-relative).
- * @param {import('./shapes.mjs').RouteClosure} closure
+ * @param {import('./contract.mjs').RouteClosure} closure
  * @returns {string}
  */
 export const closureFolder = (closure) => commonFolder(closure.files);

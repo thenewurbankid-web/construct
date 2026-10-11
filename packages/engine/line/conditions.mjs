@@ -8,7 +8,7 @@
 //   expectFor(tool, args, layout?)                              the default checks with the tool's post folded in
 //   checkPre(facts, tool, args, layout?) -> null | sentence     the one-sentence refusal when pre fails
 import { evaluate } from './expr.mjs';
-import { EXTRACT_TOOLS, extractTarget } from './importV2/extract.mjs';
+import { EXTRACT_TOOLS, extractTarget } from './importV2/extractTarget.mjs';
 
 const P = (...segs) => ({ path: segs });
 const I = (...segs) => ({ item: segs });

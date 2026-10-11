@@ -13,7 +13,8 @@
 //   branch (xstate)            engine workflowExtractor.extractMachines (one unit per machine transition)
 //   branch, navigation, toast, analytics   the walk below (no detector covers them)
 //
-// The map is stored at <folder>/line/logic-map.json through the transactional writer's writeLineState.
+// The map is stored at <folder>/line/logic-map.json through the transactional writer's writeLineState. The diff
+// (compareLogicMaps) is importV2/compare.mjs, pure, re-exported here with this module's hash.
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -22,6 +23,7 @@ import { readSignals } from '@line/construct-core/mechanical-plan';
 import { extractMachines } from '../workflowExtractor.mjs';
 import { writeLineState } from '../transactionalWriter.mjs';
 import { LOGIC_UNIT_KINDS, LOGIC_MAP_FILE } from './importV2/contract.mjs';
+import { compareLogicMaps as compareMaps, fingerprintWith } from './importV2/compare.mjs';
 
 /** @typedef {import('./importV2/contract.mjs').LogicUnit} LogicUnit */
 /** @typedef {import('./importV2/contract.mjs').LogicUnitKind} LogicUnitKind */
@@ -77,10 +79,8 @@ const hash = (/** @type {string} */ s) => crypto.createHash('sha256').update(s).
  * @returns {string} 16 hex characters.
  */
 export function unitFingerprint(kind, fn, anchor, renames = {}) {
-  return hash(`${kind}\u0000${renameFn(fn, renames)}\u0000${anchor}`);
+  return fingerprintWith(hash, kind, fn, anchor, renames);
 }
-
-const renameFn = (/** @type {string} */ fn, /** @type {RenameTable} */ renames) => fn.replace(/[A-Za-z_$][\w$]*/g, (w) => renames[w] ?? w);
 
 /** Name a function node the way a person would: its own name, its variable, its property, or `on:<attr>` for an inline handler. */
 function functionName(node, parent, grand) {
@@ -283,80 +283,16 @@ export function buildLogicMap(appRoot, files, { renames = {}, read = (abs) => fs
   return { root: appRoot, files: files.map((f) => f.split(path.sep).join('/')), units, counts };
 }
 
-const KIND_WORDS = /** @type {Record<LogicUnitKind, string>} */ ({ branch: 'branch', 'render-if': 'conditional render', state: 'state', effect: 'effect', derived: 'derived value', data: 'data call', navigation: 'navigation', 'url-read': 'URL read', handler: 'event handler', toast: 'toast', analytics: 'analytics call', storage: 'storage call', io: 'network call', export: 'export' });
-const quote = (/** @type {string} */ s) => `"${s.replace(/"/g, "'")}"`;
-const tokens = (/** @type {string} */ s) => new Set(s.match(/[A-Za-z_$][\w$]*|\d+|[^\s\w]+/g) ?? []);
-function similarity(a, b) {
-  const x = tokens(a); const y = tokens(b);
-  let both = 0;
-  for (const t of x) if (y.has(t)) both++;
-  return both / (x.size + y.size - both || 1);
-}
-
 /**
- * Re-hash a map's fingerprints through a rename table (old -> new), when its units still carry their anchors.
- * @param {LogicMap} map
- * @param {RenameTable} renames
- * @returns {LogicUnit[]}
- */
-function rehash(map, renames) {
-  if (!Object.keys(renames).length) return map.units;
-  const seen = new Map();
-  return map.units.map((u) => {
-    if (u.anchor === undefined) return u;
-    const anchor = u.anchor.replace(/([IJ]):([A-Za-z_$][\w$]*)/g, (m, t, name) => `${t}:${renames[name] ?? name}`);
-    const base = unitFingerprint(u.kind, u.fn, anchor, renames);
-    const k = (seen.get(base) ?? 0) + 1;
-    seen.set(base, k);
-    return { ...u, fingerprint: k === 1 ? base : hash(`${base}#${k}`) };
-  });
-}
-
-/**
- * Compare the map before an import step with the map after it. A unit with the same fingerprint is kept (same file)
- * or moved (another file). Of the rest, a before unit and an after unit of the same kind in the same function whose
- * text is alike are one unit that changed; a before unit with no partner is missing (with one sentence), an after
- * unit with none is added. `renames` (old -> new) maps the before side's identifiers, so a renamed component keeps
- * its units.
+ * Compare the map before an import step with the map after it (importV2/compare.mjs, with this module's hash so a
+ * rename table re-hashes as buildLogicMap does). Kept, moved, changed, missing (one sentence each) and added units.
  * @param {LogicMap} before
  * @param {LogicMap} after
  * @param {{renames?: RenameTable, threshold?: number}} [options] `threshold` is the least token similarity for "changed" (default 0.3).
  * @returns {MapDiff}
  */
-export function compareLogicMaps(before, after, { renames = {}, threshold = 0.3 } = {}) {
-  const b = rehash(before, renames);
-  const byFp = new Map(after.units.map((u) => [u.fingerprint, u]));
-  /** @type {MapDiff} */
-  const diff = { kept: [], moved: [], missing: [], changed: [], added: [] };
-  const used = new Set();
-  const left = [];
-  b.forEach((u, i) => {
-    const a = byFp.get(u.fingerprint);
-    if (a && !used.has(a)) {
-      used.add(a);
-      if (a.file === u.file) diff.kept.push(a);
-      else diff.moved.push({ from: before.units[i], to: a });
-    } else left.push(i);
-  });
-  const rest = after.units.filter((u) => !used.has(u));
-  for (const i of left) {
-    const u = before.units[i];
-    const fn = renameFn(u.fn, renames);
-    let best = null; let bestScore = threshold;
-    for (const a of rest) {
-      if (used.has(a) || a.kind !== u.kind || a.fn !== fn) continue;
-      const score = similarity(u.anchor ?? u.detail, a.anchor ?? a.detail);
-      if (score >= bestScore) { best = a; bestScore = score; }
-    }
-    if (best) {
-      used.add(best);
-      diff.changed.push({ before: u, after: best, sentence: `The ${KIND_WORDS[u.kind]} in ${fn} changed from ${quote(u.detail)} to ${quote(best.detail)}.` });
-    } else {
-      diff.missing.push({ ...u, sentence: `The ${KIND_WORDS[u.kind]} ${quote(u.detail)} in ${u.fn} (${u.file}:${u.line}) is missing after the import.` });
-    }
-  }
-  diff.added = rest.filter((a) => !used.has(a));
-  return diff;
+export function compareLogicMaps(before, after, options = {}) {
+  return compareMaps(before, after, { ...options, hash });
 }
 
 /**

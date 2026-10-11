@@ -8,7 +8,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 import { readRouteFamily, listRoutes, inFamily, familyFeature, commonFolder } from '../packages/engine/line/importV2/route.mjs';
-import { assertRouteClosure } from '../packages/engine/line/importV2/shapes.mjs';
+import { assertRouteClosure } from '../packages/engine/line/importV2/contract.mjs';
 import { scanImport, planImport, importGraph } from '../packages/engine/line/import.mjs';
 import { assertImportScan, assertImportPlan } from '../packages/engine/line/contract.mjs';
 import { DEFAULT_TRACE_EXCLUDES, traceExcludesFor, traceRouteFiles, readPathAliases } from '../packages/core/route-resolver.mjs';

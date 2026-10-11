@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 import { readRouteFamily } from '../packages/engine/line/importV2/route.mjs';
 import { fitLogic, planFitSteps, sharedFiles, closureFolder } from '../packages/engine/line/importV2/fit.mjs';
-import { assertFitProposal } from '../packages/engine/line/importV2/shapes.mjs';
+import { assertFitProposal } from '../packages/engine/line/importV2/contract.mjs';
 import { createLinePlanRegistry } from '../packages/engine/line/planTools.mjs';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');

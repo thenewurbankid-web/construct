@@ -1,5 +1,6 @@
 // Fixed Import v2 values for tests and for the other iv2-* branches: a three-file map, the map after a move
-// that dropped one branch and edited one condition, their diff, a closure, a test, coverage, a fit and a loop state.
+// that dropped one branch and edited one condition, their diff, a closure, a test, coverage, a fit and a loop state
+// (one checked step, fixed-size, as importLoop.mjs loopState writes it).
 // Every value passes its assert* in contract.mjs.
 
 /** @typedef {import('./contract.mjs').LogicUnit} LogicUnit */
@@ -89,27 +90,38 @@ export const MOCK_UNIT_COVERAGE = Object.freeze({
   covered: ['3d4e5f60718293a4', '4e5f60718293a4b5'],
   uncovered: ['1b2c3d4e5f607182', '2c3d4e5f60718293', '5f60718293a4b5c6', '60718293a4b5c6d7'],
   waived: [{ fingerprint: '0a1b2c3d4e5f6071', by: /** @type {'owner'} */ ('owner'), why: 'The page export only renders the client and has no logic of its own.' }],
+  byKind: { branch: { covered: 2, total: 2 }, state: { covered: 0, total: 1 }, 'url-read': { covered: 0, total: 1 }, handler: { covered: 0, total: 1 }, export: { covered: 0, total: 1 } },
+  details: [{ fingerprint: '5f60718293a4b5c6', id: `${CLIENT}#OpportunityClient:handler:1`, kind: 'handler', file: CLIENT, line: 120, cause: 'not-rendered', why: 'The element carrying the handler never rendered in a test.' }],
 });
 
 /** Where each unit of MOCK_LOGIC_MAP goes. */
 export const MOCK_FIT_PROPOSAL = Object.freeze({
   feature: 'opportunity',
   blocks: [
-    { kind: /** @type {'service'} */ ('service'), name: 'opportunityService', units: ['60718293a4b5c6d7'], from: [ADAPTER], sentence: 'The adapter shapes API data, so it becomes a service.' },
-    { kind: /** @type {'workflow'} */ ('workflow'), name: 'opportunityFilters', units: ['1b2c3d4e5f607182', '2c3d4e5f60718293', '3d4e5f60718293a4', '4e5f60718293a4b5'], from: [CLIENT], sentence: 'The tab and category live in the URL, so they become a workflow.' },
-    { kind: /** @type {'page'} */ ('page'), name: 'Opportunity', units: ['0a1b2c3d4e5f6071', '5f60718293a4b5c6'], from: [PAGE, CLIENT], sentence: 'The route entry and its click handler become the page.' },
+    { kind: /** @type {'service'} */ ('service'), name: 'opportunityService', units: ['60718293a4b5c6d7'], from: [`${ADAPTER}#toOpportunity`], sentence: 'The adapter shapes API data, so it becomes a service.', area: /** @type {'library'} */ ('library') },
+    { kind: /** @type {'workflow'} */ ('workflow'), name: 'opportunityFilters', units: ['1b2c3d4e5f607182', '2c3d4e5f60718293', '3d4e5f60718293a4'], from: [`${CLIENT}#buildOpportunityUrlParams`, `${CLIENT}#OpportunityClient`], sentence: 'The tab and category live in the URL, so they become a workflow.', area: /** @type {'feature'} */ ('feature') },
+    { kind: /** @type {'page'} */ ('page'), name: 'Opportunity', units: ['0a1b2c3d4e5f6071', '5f60718293a4b5c6'], from: [`${PAGE}#OpportunityPage`, `${CLIENT}#OpportunityClient`], sentence: 'The route entry and its click handler become the page.', area: /** @type {'feature'} */ ('feature') },
   ],
-  unassigned: [],
+  unassigned: [{ unit: '4e5f60718293a4b5', sentence: 'buildOpportunityUrlParams in OpportunityClient.tsx is a function that none of the fitting rules claims for its branch, so a person decides where it goes.' }],
 });
 
-/** The loop after the execute step that produced MOCK_MAP_DIFF: stopped, because one unit is missing. */
+/** The loop after the import step that produced MOCK_MAP_DIFF: stopped, because one unit is missing. */
 export const MOCK_IMPORT_LOOP_STATE = Object.freeze({
-  step: /** @type {'verify'} */ ('verify'),
-  mapBefore: MOCK_LOGIC_MAP,
-  mapAfter: MOCK_LOGIC_MAP_AFTER,
-  diff: MOCK_MAP_DIFF,
-  tests: { passed: 0, failed: 1 },
-  coverage: MOCK_UNIT_COVERAGE,
+  step: 'import-3-lib-OpportunityClient',
+  n: 3,
+  at: '2026-10-11T09:00:00.000Z',
+  tool: 'line.import.toLibrary',
+  mapBefore: { units: MOCK_LOGIC_MAP.units.length, counts: MOCK_LOGIC_MAP.counts, hash: '0123456789abcdef' },
+  mapAfter: { units: MOCK_LOGIC_MAP_AFTER.units.length, counts: MOCK_LOGIC_MAP_AFTER.counts, hash: 'fedcba9876543210' },
+  diff: { kept: 2, moved: 3, added: 0, changed: 1, missingCount: 1, missing: [{ ...MOCK_MAP_DIFF.missing[0], block: 'workflow:opportunityFilters', waived: false }] },
+  tests: { passed: 0, failed: 1, total: 1, state: 'fail' },
+  coverage: { covered: 2, uncovered: 4, waived: 1, total: 7 },
+  behaviour: [{ from: CLIENT, to: MOVED_CLIENT, verdict: 'changed' }],
+  checks: [{ id: 'char-tests', state: 'fail', sentence: '1 of 1 characterization test fails.' }, { id: 'logic-map', state: 'fail', sentence: 'One logic unit went missing.' }],
   status: /** @type {'stopped'} */ ('stopped'),
   sentence: 'One branch went missing in the move, so the import stopped before the next step.',
+  fixes: [
+    { id: 'put-back', fingerprint: '3d4e5f60718293a4', block: 'workflow:opportunityFilters', step: { tool: 'line.import.extractWorkflow', args: { folder: 'src', from: 'features/opportunity/pages/OpportunityClient.tsx', component: 'OpportunityClient', name: 'opportunityFilters', feature: 'opportunity' } }, sentence: 'Put the branch "if (selectedCategory)" back: makes the workflow opportunityFilters.' },
+    { id: 'waive', ownerOnly: true, fingerprints: ['3d4e5f60718293a4'], sentence: 'Waive it: you accept that this logic is gone (owner only).' },
+  ],
 });

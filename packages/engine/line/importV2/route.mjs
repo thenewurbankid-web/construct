@@ -119,7 +119,7 @@ const packageOf = (spec) => (spec.startsWith('@') ? spec.split('/').slice(0, 2).
  * @param {string} appRoot The app (absolute).
  * @param {string} route The family route, such as /opportunity.
  * @param {{excludes?: string[]}} [o] Where the trace stops (path substrings); default: architecture.yml line.traceExcludes, else nowhere.
- * @returns {import('./shapes.mjs').RouteClosure}
+ * @returns {import('./contract.mjs').RouteClosure}
  * @throws {LineOpError} UNKNOWN_ROUTE when the app has no such route.
  */
 export function readRouteFamily(appRoot, route, o = {}) {

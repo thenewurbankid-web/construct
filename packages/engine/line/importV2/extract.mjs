@@ -27,6 +27,7 @@ import { compileWorkflow } from '../../workflowGenerator.mjs';
 import { extractHookSignature, matchSlotsToHandlers } from '../../controllerBinder.mjs';
 import { buildWorkflowDescriptor } from '@line/construct-core/research/spec-to-code';
 import { LineOpError, assertStagedChange } from '../contract.mjs';
+import { EXTRACT_KIND, extractTarget } from './extractTarget.mjs';
 
 const posix = path.posix;
 const NAME = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
@@ -35,16 +36,7 @@ const FEATURE = /^[a-z0-9][a-z0-9-]*$/;
 const replaceOnce = (text, find, by) => { const i = text.indexOf(find); return i < 0 ? text : text.slice(0, i) + by + text.slice(i + find.length); };
 const stripExt = (rel) => rel.slice(0, rel.length - posix.extname(rel).length);
 
-/** The extract tools and the Line kind folder each writes into. */
-export const EXTRACT_KIND = Object.freeze({
-  'line.import.extractService': 'services',
-  'line.import.extractDomain': 'domains',
-  'line.import.extractUsecase': 'usecases',
-  'line.import.splitPage': 'usecases',
-  'line.import.extractWorkflow': 'workflows',
-});
-/** Every extract tool's name. */
-export const EXTRACT_TOOLS = Object.freeze(Object.keys(EXTRACT_KIND));
+export { EXTRACT_KIND, EXTRACT_TOOLS, extractTarget } from './extractTarget.mjs';
 
 // ------------------------------------------------------------------------------------------------- reading
 
@@ -352,20 +344,6 @@ function wrapWithFactory(sf, t, factory) {
 }
 
 // ------------------------------------------------------------------------------------------------- targets
-
-/**
- * The folder-relative file a tool writes for a request (the library when no feature is named).
- * @param {{features?: string, library?: string} | undefined} layout The folder's layout (defaults: features, library).
- * @param {string} tool
- * @param {Record<string, any>} args
- * @returns {string}
- */
-export function extractTarget(layout, tool, args) {
-  const kind = EXTRACT_KIND[tool];
-  const area = args?.feature ? `${(layout?.features ?? 'features').replace(/\/+$/, '')}/${args.feature}` : (layout?.library ?? 'library').replace(/\/+$/, '');
-  const ext = tool === 'line.import.extractWorkflow' ? '.ts' : posix.extname(String(args?.from ?? '.ts')) || '.ts';
-  return `${area}/${kind}/${args?.name}${ext}`;
-}
 
 function checkTargetArgs(args) {
   if (!NAME.test(String(args?.name ?? ''))) throw new LineOpError(`"${args?.name ?? ''}" is not a name Line can give a file; use letters and digits, such as ordersService.`, 'BAD_NAME');
