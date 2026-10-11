@@ -93,6 +93,11 @@ export type FragmentList = { file: string; contentHash: string; fragments: CodeF
 /** POST /api/line/fragment. */
 export type SetFragmentRequest = { file: string; fragmentId: string; code: string; contentHash: string };
 
+/** POST /api/line/new-project (cu7): `parentDir` is a folder of the workspace ("" is the workspace itself). */
+export type NewLineProjectRequest = { parentDir: string; name: string; firstFeature: string };
+/** The starter files' ApplyResult, the new folder (null when refused) and, once opened, the settings of the open project. */
+export type NewLineProjectResult = ApplyResult & { dir: string | null; project?: { projectDir?: string | null } };
+
 export type BaseOnRequest = { libraryId: string; feature: string; name: string };
 export type PromoteRequest = { featureItemId: string };
 export type PropValueKind = 'string' | 'number' | 'boolean' | 'expression';
@@ -152,4 +157,5 @@ export type LineHttp = {
   fix: (req: FixRequest) => Promise<ApplyResult | LineRefusal>;
   getFragments: (file: string) => Promise<FragmentList | LineRefusal>;
   setFragment: (req: SetFragmentRequest) => Promise<ApplyResult | LineRefusal>;
+  newProject: (req: NewLineProjectRequest) => Promise<NewLineProjectResult | LineRefusal>;
 };
