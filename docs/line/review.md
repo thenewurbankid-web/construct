@@ -325,6 +325,8 @@ Tests: `test/line-tool-registry.test.mjs` (8), `ui/server/src/lineToolGate.test.
 8. Setting the workspace (real writer) is saved at once, logged, and adds no plan step.
 9. Real server: POST /base-on answers "Waiting for your approval: ..." and writes nothing; the Plan panel shows the waiting step; an unknown /api/line route is a 404 sentence.
 
+Open for you: `construct validate --profile line` flags the registry with LINE-SHARED ("use the shared module @mx/plan registry"), while cu3 asks for one registry module in Construct; say which wins (move the catalog into @mx/plan, or exempt it as the surfaces catalog that feeds @mx/plan). `ui/e2e/tests/line-workspace.spec.js` test 2 still expects Base on to save at once (written before cp1 made it a plan step); it needs an Approve click.
+
 Gaps: the old direct write routes still exist, but now only add a plan step (the integrator removes them); Studio's own code is unchanged (it can take `studioHandlers(registry)`, wiring it in Studio is Studio's step); construct-mcp's blocks run in construct-mcp only (`dispatch` of a blocks.* tool elsewhere says so); GateLM drafts count as Line's own state (no approval), say if they should wait for approval instead; plain-words and chat dispatch arrive with their own steps.
 
 UAT (fresh sample):
