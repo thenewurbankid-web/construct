@@ -418,7 +418,7 @@ export function createLinePlanRegistry({ root, ops = REAL_PLAN_OPS, commands = n
  */
 export async function constructCommandTools() {
   const [{ createCommandRegistry }, { registerBuiltinCommands }, { commandPlanRegistry }] = await Promise.all([
-    import('@line/construct-core/command-registry'), import('../../core/builtin-commands.mjs'), import('../../core/plan-registry.mjs'),
+    import('@line/construct-core/command-registry'), import('@line/construct-core/builtin-commands'), import('../../core/plan-registry.mjs'),
   ]);
   const commands = createCommandRegistry();
   registerBuiltinCommands(commands);
