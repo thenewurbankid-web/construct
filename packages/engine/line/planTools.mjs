@@ -76,6 +76,32 @@ function checkRetry(v) {
   return null;
 }
 
+/** JSON Schema for each field type of objectSchema (cl1 spec). */
+const JSON_TYPES = Object.freeze({
+  string: { type: 'string', minLength: 1 },
+  anyString: { type: 'string' },
+  optString: { type: 'string', minLength: 1 },
+  scalar: { type: ['string', 'number', 'boolean'] },
+  propKind: { enum: ['string', 'number', 'boolean', 'expression'] },
+});
+/** The JSON Schema an objectSchema accepts: its fields, plus `expect`, `retry` and `fixOf` on a change tool. */
+function jsonSchemaOf(required, o) {
+  const properties = Object.fromEntries(Object.entries(required).map(([k, t]) => [k, { ...JSON_TYPES[t] }]));
+  if (o.change) {
+    properties.expect = { type: 'array', minItems: 1, maxItems: 10, items: { type: 'object', required: ['id', 'sentence', 'kind'], properties: { id: { type: 'string' }, sentence: { type: 'string' }, kind: { enum: [...CHECK_KINDS] } } } };
+    properties.retry = { type: 'object', required: ['of'], properties: { of: { type: 'string' }, passed: { type: 'integer' } } };
+    properties.fixOf = { type: 'string', minLength: 1, description: 'The id of the refused step this step fixes.' };
+  }
+  return { type: 'object', properties, required: Object.entries(required).filter(([, t]) => t !== 'optString').map(([k]) => k), additionalProperties: false };
+}
+
+/** cl1 -- every line.* plan tool as the spec describes it: name, read/write, one sentence, JSON Schema of its args. */
+export function lineToolSpecs() {
+  return Object.keys(SCHEMAS).map((name) => ({
+    name, kind: name === 'line.project' ? 'read' : 'write', describe: DESCRIBE[name], args: SCHEMAS[name].jsonSchema(),
+  }));
+}
+
 /**
  * A SchemaLike (safeParse only) over required and optional fields; unknown fields are refused.
  * @param {Record<string, keyof typeof TYPES>} required
@@ -84,6 +110,8 @@ function checkRetry(v) {
 function objectSchema(required, o = {}) {
   return Object.freeze({
     fields: Object.keys(required),
+    /** cl1: the field types and plan-only fields, so the spec can describe the schema from this code. */
+    jsonSchema: () => jsonSchemaOf(required, o),
     safeParse(value) {
       const v = value ?? {};
       if (!isObj(v)) return failed([], 'must be an object');

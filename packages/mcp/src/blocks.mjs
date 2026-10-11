@@ -473,3 +473,20 @@ export async function tracesStats(ctx, { chooser } = {}) {
     outcomes: stats.outcomes,
   };
 }
+
+/** cl1 -- one spec per server process: the spec is generated from Construct's code, which does not change while it runs. */
+let specOnce = null;
+
+/**
+ * `line_spec`: Line's versioned spec, generated from its code, one topic at a time (the whole spec is larger than one
+ * call returns). No topic: the version and the topics with their sizes. Reads Construct's own sources; writes nothing.
+ */
+export async function lineSpec(_ctx, { topic, id } = {}) {
+  const { buildLineSpec, sliceSpec } = await import('@line/construct-engine/line/spec');
+  specOnce ??= buildLineSpec();
+  const spec = await specOnce;
+  if (!topic) {
+    return { ok: true, format: spec.format, version: spec.version, construct: spec.construct, topics: Object.entries(spec.topics).map(([name, v]) => ({ name, bytes: Buffer.byteLength(JSON.stringify(v)) })), note: 'Ask for one topic (and optionally an id) to read it.' };
+  }
+  return { ok: true, ...sliceSpec(spec, topic, id) };
+}
