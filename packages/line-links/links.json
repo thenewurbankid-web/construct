@@ -11,6 +11,7 @@
     "@mx/reason": { "path": "packages/reason", "entry": "index.ts", "what": "the AI decision ladder" },
     "@mx/plan": { "path": "packages/plan", "entry": "index.ts", "what": "the plan API and its tool registry" },
     "@mx/gatelm": { "path": "packages/gatelm", "entry": "index.ts", "what": "GateLM's drafting and static checks" },
-    "@mx/morpheus-render": { "path": "src/morpheus/render", "watch": ["src/morpheus"], "entry": "renderPage.ts", "what": "Morpheus's isolated page and component render" }
+    "@mx/morpheus-render": { "path": "src/morpheus/render", "watch": ["src/morpheus"], "entry": "renderPage.ts", "what": "Morpheus's isolated page and component render" },
+    "@mx/studio-dispatch": { "path": "studio/src", "entry": "dispatch.ts", "what": "Studio's tool dispatcher (createDispatcher); cu3 feeds it handlers from Line's tool registry" }
   }
 }

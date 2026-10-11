@@ -1,0 +1,272 @@
+// cu3 -- ONE tool registry for Line (contract: packages/engine/line/contract.mjs ToolEntry). Every capability is one
+// typed tool call; the Cockpit's /api/line routes (ui/server/src/lineToolGate.mjs), construct-mcp (packages/mcp
+// server.mjs), GateLM's tools (@mx/plan gatelmTools, through packages/line-links) and Studio's dispatcher
+// (vision-architect-pipeline studio/src/dispatch.ts createDispatcher, fed by `studioHandlers`) all resolve here.
+//
+//   TOOL_ENTRIES          the static catalog: id, kind (read|write), writes (project|line|null), input schema, output
+//                         shape, one sentence, optional controlId (cg1/ct1 light controls up by it), and its surfaces.
+//   commandEntries(reg)   Construct's commands (construct.*) as entries, from the plan registry over the CLI commands.
+//   entryForRoute / entryForMcp / entryById   the lookups each surface uses (exactly one entry each).
+//   createToolRegistry()  binds the catalog to one project: `dispatch(id, args, {by})`.
+//
+// Dispatch rule (owner, cu3): a read runs directly. A write to project files only ever becomes a plan step (planService
+// addStep); it runs after a person approves it (or Auto). A write to Line's own state (line/: the plan, the workspace,
+// GateLM drafts) runs directly, is written atomically by its own store, and is logged to line/log/tools.jsonl. A
+// person-only tool (plan.approve) refuses an agent. Nothing here writes a project file.
+import fs from 'node:fs';
+import path from 'node:path';
+import { LINE_PLAN_TOOLS, assertToolEntry } from './contract.mjs';
+
+// ------------------------------------------------------------------------------------------------- schemas
+const failed = (p, message) => ({ success: /** @type {const} */ (false), error: { issues: [{ path: p, message }] } });
+const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
+
+/**
+ * A SchemaLike over named fields: `required` must be present (non-empty strings unless typed otherwise), `optional`
+ * may be, anything else is refused. Values are typed loosely here; the surface or the op checks them in full.
+ * @param {string[]} required @param {string[]} [optional] @param {{open?: boolean}} [o] `open` lets unknown fields through.
+ */
+export function fieldsSchema(required, optional = [], o = {}) {
+  const allowed = new Set([...required, ...optional]);
+  return Object.freeze({
+    fields: [...required, ...optional],
+    safeParse(value) {
+      const v = value ?? {};
+      if (!isObj(v)) return failed([], 'must be an object');
+      if (!o.open) { const extra = Object.keys(v).find((k) => !allowed.has(k)); if (extra) return failed([extra], 'is not an argument of this tool'); }
+      const missing = required.find((k) => v[k] === undefined);
+      if (missing) return failed([missing], 'is required');
+      return { success: /** @type {const} */ (true), data: { ...v } };
+    },
+  });
+}
+const CHANGE_EXTRA = ['expect', 'retry', 'fixOf'];
+const NONE = fieldsSchema([]);
+
+// ------------------------------------------------------------------------------------------------- the catalog
+const http = (method, p) => ({ method, path: `/api/line${p}` });
+
+/** @type {readonly import('./contract.mjs').ToolEntry[]} */
+export const TOOL_ENTRIES = Object.freeze([
+  // Line reads (Cockpit routes; line.project is also a plan step).
+  { id: 'line.project', kind: 'read', writes: null, inputSchema: NONE, outputSchema: 'LineProject', sentence: 'Reads the Line view of the project: library, features, items and findings.', surfaces: { http: http('GET', '/project'), plan: true } },
+  { id: 'line.feature', kind: 'read', writes: null, inputSchema: fieldsSchema(['name']), outputSchema: 'LineFeatureDetail', sentence: 'Reads one feature: its items by kind, a summary and how much of its spec is covered.', surfaces: { http: http('GET', '/feature') } },
+  { id: 'line.pageTree', kind: 'read', writes: null, inputSchema: fieldsSchema(['file']), outputSchema: 'PageTree', sentence: 'Reads the parts of one feature page and their props.', surfaces: { http: http('GET', '/page-tree') } },
+  { id: 'line.render', kind: 'read', writes: null, inputSchema: fieldsSchema(['file'], ['props']), outputSchema: 'RenderResult', sentence: 'Renders one library component alone with its props.', surfaces: { http: http('GET', '/render') } },
+  { id: 'line.fragments', kind: 'read', writes: null, inputSchema: fieldsSchema(['file']), outputSchema: 'FragmentList', sentence: 'Lists the pieces of code in one file that can be changed on their own.', surfaces: { http: http('GET', '/fragments') } },
+  { id: 'line.workspace', kind: 'read', writes: null, inputSchema: NONE, outputSchema: 'LineWorkspace', sentence: 'Reads the one folder Line may change.', surfaces: { http: http('GET', '/workspace') } },
+  { id: 'line.tools', kind: 'read', writes: null, inputSchema: NONE, outputSchema: 'ToolList', sentence: 'Lists every tool Line offers, each marked read or write.', surfaces: { http: http('GET', '/tools') } },
+  // Line's own state: written atomically by its store and logged, without asking.
+  { id: 'line.setWorkspace', kind: 'write', writes: 'line', inputSchema: fieldsSchema(['folder']), outputSchema: 'LineWorkspace', sentence: 'Sets the one folder Line may change; everything outside it stays read-only.', controlId: 'workspace-folder', surfaces: { http: http('POST', '/workspace') } },
+  // Project writes: only ever a plan step (approval per step, or Auto).
+  { id: 'line.baseOn', kind: 'write', writes: 'project', inputSchema: fieldsSchema(['libraryId', 'feature', 'name'], CHANGE_EXTRA), outputSchema: 'LineStepResult', sentence: 'Creates a feature component based on one library item.', controlId: 'base-on', surfaces: { http: http('POST', '/base-on'), plan: true } },
+  { id: 'line.promote', kind: 'write', writes: 'project', inputSchema: fieldsSchema(['featureItemId'], CHANGE_EXTRA), outputSchema: 'LineStepResult', sentence: 'Moves a feature item into the library and points its users at the library copy.', controlId: 'promote', surfaces: { http: http('POST', '/promote'), plan: true } },
+  { id: 'line.setPageProp', kind: 'write', writes: 'project', inputSchema: fieldsSchema(['file', 'nodeId', 'prop', 'kind', 'value'], CHANGE_EXTRA), outputSchema: 'LineStepResult', sentence: 'Sets one prop of one part of a feature page.', controlId: 'page-prop-save', surfaces: { http: http('POST', '/page-prop'), plan: true } },
+  { id: 'line.fix', kind: 'write', writes: 'project', inputSchema: fieldsSchema(['findingKey', 'fixId'], CHANGE_EXTRA), outputSchema: 'LineStepResult', sentence: 'Applies one typed fix of a finding.', controlId: 'apply-fix', surfaces: { http: http('POST', '/fix'), plan: true } },
+  { id: 'line.setFragment', kind: 'write', writes: 'project', inputSchema: fieldsSchema(['file', 'fragmentId', 'code', 'contentHash'], CHANGE_EXTRA), outputSchema: 'LineStepResult', sentence: 'Replaces one piece of code in a file.', controlId: 'fragment-save', surfaces: { http: http('POST', '/fragment'), plan: true } },
+  { id: 'line.setBase', kind: 'write', writes: 'project', inputSchema: fieldsSchema(['file', 'libraryId'], CHANGE_EXTRA), outputSchema: 'LineStepResult', sentence: 'Points a feature item\'s base link at one library item.', surfaces: { plan: true } },
+  { id: 'line.moveFile', kind: 'write', writes: 'project', inputSchema: fieldsSchema(['from', 'to'], ['base', ...CHANGE_EXTRA]), outputSchema: 'LineStepResult', sentence: 'Moves a file and points every import of it at the new place.', surfaces: { plan: true } },
+  { id: 'line.createLayout', kind: 'write', writes: 'project', inputSchema: fieldsSchema([], CHANGE_EXTRA), outputSchema: 'LineStepResult', sentence: 'Creates the library folder so the project is laid out as Line.', surfaces: { plan: true } },
+  // A plan-only decision: recorded in the plan (Line's own state); it has no direct handler, so it is always a step.
+  { id: 'line.leaveAsIs', kind: 'write', writes: 'line', inputSchema: fieldsSchema(['stepId']), outputSchema: '{left, sentence}', sentence: 'Records that a person chose to carry on after a step that needed them.', controlId: 'plan-leave', surfaces: { plan: true } },
+  // The plan API itself (Line's own state, line/plans/): Cockpit routes and the agent's MCP tools.
+  { id: 'plan.status', kind: 'read', writes: null, inputSchema: NONE, outputSchema: 'PlanView', sentence: 'Reads the project\'s current plan, each step with its state.', surfaces: { http: http('GET', '/plan'), mcp: 'plan_status' } },
+  { id: 'plan.addStep', kind: 'write', writes: 'line', inputSchema: fieldsSchema(['tool'], ['args', 'why']), outputSchema: 'PlanView & {stepId}', sentence: 'Adds one step to the project\'s plan; a change waits there for approval.', surfaces: { http: http('POST', '/plan/step'), mcp: 'plan_add_step' } },
+  { id: 'plan.approve', kind: 'write', writes: 'line', inputSchema: fieldsSchema(['stepId']), outputSchema: 'PlanView', sentence: 'A person approves one step of the plan.', controlId: 'plan-approve', personOnly: true, surfaces: { http: http('POST', '/plan/approve') } },
+  { id: 'plan.runNext', kind: 'write', writes: 'line', inputSchema: fieldsSchema([], ['stepId']), outputSchema: 'PlanView', sentence: 'Runs exactly one ready step; a change runs only after a person approved it.', surfaces: { http: http('POST', '/plan/run'), mcp: 'plan_run_next' } },
+  // construct-mcp's read-only blocks.
+  { id: 'blocks.requirementParse', kind: 'read', writes: null, inputSchema: fieldsSchema(['text']), outputSchema: 'RequirementCard', sentence: 'Reads one plain-English requirement into a requirement card.', surfaces: { mcp: 'requirement_parse' } },
+  { id: 'blocks.placementPlace', kind: 'read', writes: null, inputSchema: fieldsSchema(['text'], ['answers']), outputSchema: 'Placement', sentence: 'Places a requirement in the project\'s layers and previews its plan.', surfaces: { mcp: 'placement_place' } },
+  { id: 'blocks.planValidate', kind: 'read', writes: null, inputSchema: fieldsSchema(['plan']), outputSchema: 'PlanValidation', sentence: 'Checks a plan as data against the flow registry.', surfaces: { mcp: 'plan_validate' } },
+  { id: 'blocks.decide', kind: 'read', writes: null, inputSchema: fieldsSchema([], ['summary', 'text']), outputSchema: 'Decision', sentence: 'Suggests which option to take for one question.', surfaces: { mcp: 'decide' } },
+  { id: 'blocks.summarize', kind: 'read', writes: null, inputSchema: fieldsSchema([], ['feature', 'backend']), outputSchema: 'ProjectSummary', sentence: 'Summarizes the project or one feature.', surfaces: { mcp: 'summarize' } },
+  { id: 'blocks.validate', kind: 'read', writes: null, inputSchema: fieldsSchema([], ['limit']), outputSchema: 'ValidateSummary', sentence: 'Runs construct validate and returns the counts and first findings.', surfaces: { mcp: 'validate' } },
+  { id: 'blocks.machineCapabilities', kind: 'read', writes: null, inputSchema: NONE, outputSchema: 'MachineCapabilities', sentence: 'Says what this machine\'s memory and cores allow.', surfaces: { mcp: 'machine_capabilities' } },
+  { id: 'blocks.tracesStats', kind: 'read', writes: null, inputSchema: fieldsSchema([], ['chooser']), outputSchema: 'TraceStats', sentence: 'Counts the decisions recorded for this project.', surfaces: { mcp: 'traces_stats' } },
+  // GateLM's tools (@mx/plan adapters.ts gatelmTools). Drafts are Line's own state: written by GateLM's store, logged.
+  { id: 'gatelm.find', kind: 'read', writes: null, inputSchema: fieldsSchema(['query']), outputSchema: 'GateLM FindResult', sentence: 'Finds real components in the project by words of their file and name.', surfaces: { gatelm: true, studio: true } },
+  { id: 'gatelm.get', kind: 'read', writes: null, inputSchema: fieldsSchema(['draftId']), outputSchema: 'GateLM Draft', sentence: 'Reads a saved draft with its gaps, questions and answers.', surfaces: { gatelm: true, studio: true } },
+  { id: 'gatelm.verify', kind: 'read', writes: null, inputSchema: fieldsSchema(['draftId']), outputSchema: 'GateLM VerifyResult', sentence: 'Applies a draft\'s answers in a scratch copy and verifies every site.', surfaces: { gatelm: true, studio: true } },
+  { id: 'gatelm.reasoning', kind: 'read', writes: null, inputSchema: fieldsSchema(['draftId']), outputSchema: 'GateLM Ledger', sentence: 'Reads a draft\'s reasoning ledger.', surfaces: { gatelm: true, studio: true } },
+  { id: 'gatelm.ask', kind: 'write', writes: 'line', inputSchema: fieldsSchema([], [], { open: true }), outputSchema: 'GateLM Draft', sentence: 'Drafts a new component from the project\'s own patterns and saves the draft with its gaps.', surfaces: { gatelm: true, studio: true } },
+  { id: 'gatelm.fill', kind: 'write', writes: 'line', inputSchema: fieldsSchema(['draftId', 'gapKey'], ['value']), outputSchema: 'GateLM Draft', sentence: 'Records one answer for one gap of a draft.', controlId: 'gatelm-option', surfaces: { gatelm: true, studio: true } },
+  { id: 'gatelm.answer', kind: 'write', writes: 'line', inputSchema: fieldsSchema(['questionId'], ['optionIndex', 'value']), outputSchema: 'GateLM Draft', sentence: 'Answers one of a draft\'s questions.', surfaces: { gatelm: true, studio: true } },
+  { id: 'gatelm.setAuto', kind: 'write', writes: 'line', inputSchema: fieldsSchema(['draftId', 'auto']), outputSchema: 'GateLM Draft', sentence: 'Turns a draft\'s Auto setting on or off.', surfaces: { gatelm: true, studio: true } },
+].map((e) => Object.freeze({ ...e, surfaces: Object.freeze(e.surfaces) })));
+
+for (const e of TOOL_ENTRIES) assertToolEntry(e);
+// The plan's own tool list (cp1, contract.mjs LINE_PLAN_TOOLS) must agree with the catalog, kind for kind.
+for (const t of LINE_PLAN_TOOLS) {
+  const e = TOOL_ENTRIES.find((x) => x.id === t.name);
+  if (!e || e.kind !== t.kind || !e.surfaces.plan) throw new Error(`The tool registry and the plan disagree about ${t.name}.`);
+}
+
+/**
+ * Construct's commands as entries (construct.validate, ...), from a PlanRegistry over the CLI commands
+ * (packages/core/plan-registry.mjs commandPlanRegistry). A write command changes project files, so it is a plan step.
+ * @param {{list: () => {name: string, kind: 'read'|'write', schema: any, describe: string}[]}} commands
+ * @returns {import('./contract.mjs').ToolEntry[]}
+ */
+export function commandEntries(commands) {
+  return commands.list().map((c) => {
+    const e = { id: c.name, kind: c.kind, writes: c.kind === 'write' ? /** @type {const} */ ('project') : null, inputSchema: c.schema, outputSchema: 'CommandStepResult', sentence: /[.?!]$/.test(c.describe) ? c.describe : `${c.describe}.`, surfaces: { plan: true } };
+    assertToolEntry(e);
+    return e;
+  });
+}
+
+/** Every entry: the catalog plus the given extra entries (e.g. commandEntries), ids unique. */
+export function allEntries(extra = []) {
+  const all = [...TOOL_ENTRIES, ...extra];
+  const seen = new Set();
+  for (const e of all) { if (seen.has(e.id)) throw new Error(`Two registry entries are named ${e.id}.`); seen.add(e.id); }
+  return all;
+}
+
+/** @param {string} id @param {import('./contract.mjs').ToolEntry[]} [entries] */
+export const entryById = (id, entries = TOOL_ENTRIES) => entries.find((e) => e.id === id) ?? null;
+/** The entries a Cockpit route resolves to (exactly one when the route is known). @param {string} method @param {string} fullPath */
+export const entriesForRoute = (method, fullPath) => TOOL_ENTRIES.filter((e) => e.surfaces.http && e.surfaces.http.method === method && e.surfaces.http.path === fullPath);
+export const entryForRoute = (method, fullPath) => { const m = entriesForRoute(method, fullPath); return m.length === 1 ? m[0] : null; };
+/** The entries a construct-mcp tool resolves to. @param {string} name */
+export const entriesForMcp = (name) => TOOL_ENTRIES.filter((e) => e.surfaces.mcp === name);
+export const entryForMcp = (name) => { const m = entriesForMcp(name); return m.length === 1 ? m[0] : null; };
+
+/** One entry as GET /api/line/tools shows it. @returns {import('./contract.mjs').ToolView} */
+export function toolView(e) {
+  return {
+    id: e.id, kind: e.kind, writes: e.writes, sentence: e.sentence, outputSchema: e.outputSchema,
+    inputFields: Array.isArray(e.inputSchema.fields) ? [...e.inputSchema.fields] : [],
+    ...(e.controlId ? { controlId: e.controlId } : {}), ...(e.personOnly ? { personOnly: true } : {}), surfaces: { ...e.surfaces },
+  };
+}
+
+// ------------------------------------------------------------------------------------------------- the log
+/** Where Line's own-state writes are logged, one JSON line each. */
+export const toolLogFile = (root) => path.join(root, 'line', 'log', 'tools.jsonl');
+/** Append one entry (tool, who, ok; never the arguments, which may hold code). Never throws. */
+export function logToolWrite(root, { tool, by, ok }) {
+  try {
+    fs.mkdirSync(path.dirname(toolLogFile(root)), { recursive: true });
+    fs.appendFileSync(toolLogFile(root), `${JSON.stringify({ at: new Date().toISOString(), tool, by, ok })}\n`, 'utf8');
+  } catch { /* a log that cannot be written never stops the change */ }
+}
+
+// ------------------------------------------------------------------------------------------------- dispatch
+const asSentence = (s) => { const t = String(s ?? '').trim().replace(/\s+/g, ' '); return /[.?!]$/.test(t) ? t : `${t}.`; };
+const refuse = (id, code, sentence, detail) => ({ ok: /** @type {const} */ (false), id, code, sentence: asSentence(sentence), ...(typeof detail === 'string' && detail ? { detail } : {}) });
+/** Who calls: a person (Cockpit, a Studio chip, plain words) or an agent (MCP, chat's tool calls). */
+const isAgent = (by) => by === 'agent';
+const planBy = (by) => (isAgent(by) ? 'agent' : 'ui');
+
+/**
+ * The direct handlers for the reads and Line-state writes of the catalog, over Line's operations.
+ * @param {string} root
+ * @param {{readLineProject: Function, readLineFeature: Function, readPageTree: Function, listFragments: Function,
+ *   readWorkspace: Function, setWorkspace: Function, renderLibraryComponent?: Function}} ops
+ * @returns {Record<string, (args: any) => unknown>}
+ */
+export function lineHandlers(root, ops) {
+  return {
+    'line.project': () => ops.readLineProject(root),
+    'line.feature': (a) => ops.readLineFeature(root, a.name),
+    'line.pageTree': (a) => ops.readPageTree(root, a.file),
+    'line.fragments': (a) => ops.listFragments(root, a.file),
+    'line.workspace': () => ops.readWorkspace(root),
+    'line.setWorkspace': (a) => ops.setWorkspace(root, { folder: a.folder }),
+    ...(ops.renderLibraryComponent ? { 'line.render': (a) => ops.renderLibraryComponent(root, { file: a.file, props: a.props }) } : {}),
+  };
+}
+
+/** The real Line operations, loaded on demand (the render pulls in Morpheus's loader). */
+export async function realLineOps() {
+  const [model, feature, pageProp, fragments, workspace, render] = await Promise.all([
+    import('./model.mjs'), import('./feature.mjs'), import('./pageProp.mjs'), import('./fragments.mjs'), import('./workspace.mjs'), import('./renderComponent.mjs'),
+  ]);
+  return {
+    readLineProject: model.readLineProject, readLineFeature: feature.readLineFeature, readPageTree: pageProp.readPageTree,
+    listFragments: fragments.listFragments, readWorkspace: workspace.readWorkspace, setWorkspace: workspace.setWorkspace,
+    renderLibraryComponent: render.renderLibraryComponent,
+  };
+}
+
+/**
+ * The registry for one project.
+ * @param {{root: string, planService: {view: Function, addStep: Function, approve: Function, runNext: Function},
+ *   handlers?: Record<string, (args: any) => unknown>, commands?: {list: Function, call: Function} | null,
+ *   gatelm?: {name: string, kind: string, run: (args: any) => Promise<unknown>}[] | null,
+ *   blocks?: Record<string, (args: any) => unknown>}} o
+ *   `handlers`: lineHandlers(root, ops). `commands`: the construct.* PlanRegistry. `gatelm`: @mx/plan gatelmTools(api)
+ *   (each must match its catalog entry, kind for kind). `blocks`: construct-mcp's block handlers by entry id.
+ */
+export function createToolRegistry({ root, planService, handlers = {}, commands = null, gatelm = null, blocks = {} }) {
+  const entries = allEntries(commands ? commandEntries(commands) : []);
+  /** @type {Record<string, (args: any) => unknown>} */
+  const direct = {
+    ...handlers,
+    ...blocks,
+    'line.tools': () => ({ ok: true, tools: entries.map(toolView) }),
+    'plan.status': () => planService.view(),
+    'plan.addStep': (a, by) => planService.addStep({ tool: a.tool, args: a.args, why: a.why }, planBy(by)),
+    'plan.approve': (a, by) => planService.approve(a.stepId, planBy(by)),
+    'plan.runNext': (a, by) => planService.runNext(planBy(by), a.stepId),
+  };
+  for (const t of gatelm ?? []) {
+    const e = entryById(t.name, entries);
+    if (!e || e.kind !== t.kind) throw new Error(`GateLM's tool ${t.name} does not match the tool registry.`);
+    direct[t.name] = (a) => t.run(a);
+  }
+  if (commands) for (const e of entries.filter((x) => x.id.startsWith('construct.') && x.kind === 'read')) direct[e.id] = (a) => commands.call(e.id, a);
+
+  /**
+   * Dispatch one call. Never throws for a refusal; an unexpected crash is one sentence too.
+   * @param {string} id @param {Record<string, unknown>} [args] @param {{by?: 'person'|'ui'|'agent'}} [o]
+   * @returns {Promise<import('./contract.mjs').DispatchResult>}
+   */
+  async function dispatch(id, args = {}, { by = 'person' } = {}) {
+    const e = entryById(id, entries);
+    if (!e) return refuse(id, 'UNKNOWN_TOOL', `There is no tool named ${id || '(none)'}`);
+    const parsed = e.inputSchema.safeParse(args ?? {});
+    if (!parsed.success) return refuse(id, 'BAD_ARGS', `The arguments do not fit ${id}: ${parsed.error.issues.map((i) => `${i.path.join('.') || 'args'} ${i.message}`).join('; ')}`);
+    if (e.personOnly && isAgent(by)) return refuse(id, 'PERSON_ONLY', `Only a person can do this, in Cockpit; an agent cannot (${id})`);
+    const run = direct[id];
+    // A project write, or any write with no direct handler, only ever becomes a plan step.
+    if (e.kind === 'write' && (e.writes === 'project' || !run)) {
+      if (!e.surfaces.plan) return refuse(id, 'NOT_A_STEP', `${id} cannot run here`);
+      const r = await planService.addStep({ tool: id, args: parsed.data }, planBy(by));
+      if (!r || r.ok === false) return refuse(id, r?.code ?? 'REFUSED', r?.sentence ?? 'The plan refused this step', r?.detail);
+      const step = r.steps.find((s) => s.id === r.stepId);
+      return { ok: true, via: 'plan', id, stepId: r.stepId, sentence: asSentence(step?.sentence ?? `Waiting for your approval: ${e.sentence}`), plan: r };
+    }
+    if (!run) return refuse(id, 'NOT_HERE', `${id} is not available here; ${e.surfaces.mcp ? `call ${e.surfaces.mcp} in construct-mcp` : 'it runs where it is offered'}`);
+    try {
+      const result = await run(parsed.data, by);
+      const refused = result && typeof result === 'object' && /** @type {any} */ (result).ok === false;
+      if (e.kind === 'write') logToolWrite(root, { tool: id, by: planBy(by), ok: !refused });
+      if (refused) return refuse(id, /** @type {any} */ (result).code ?? 'REFUSED', /** @type {any} */ (result).sentence ?? 'That was refused', /** @type {any} */ (result).detail);
+      return { ok: true, via: 'direct', id, result };
+    } catch (err) {
+      if (e.kind === 'write') logToolWrite(root, { tool: id, by: planBy(by), ok: false });
+      const x = /** @type {any} */ (err);
+      if (x?.name === 'LineOpError') return refuse(id, x.code, x.sentence, x.detail);
+      return refuse(id, 'FAILED', `${id} could not finish; nothing was changed`);
+    }
+  }
+
+  return { entries: () => entries, list: () => ({ ok: /** @type {const} */ (true), tools: entries.map(toolView) }), dispatch };
+}
+
+/**
+ * Studio's dispatcher handlers (studio/src/dispatch.ts `createDispatcher(handlers)`), resolved from the registry: one
+ * handler per entry, so a GateLM question's option `{tool, args}` (and later any tool) runs through `dispatch`. A chip
+ * or plain words is the person; a `tool` call is an agent. A refusal throws its sentence, as Studio expects.
+ * @param {{dispatch: Function, entries: () => import('./contract.mjs').ToolEntry[]}} registry
+ * @returns {Record<string, (args: Record<string, unknown>, meta: {channel: 'chip'|'words'|'tool'}) => Promise<unknown>>}
+ */
+export function studioHandlers(registry) {
+  return Object.fromEntries(registry.entries().map((e) => [e.id, async (args, meta) => {
+    const r = await registry.dispatch(e.id, { ...args }, { by: meta?.channel === 'tool' ? 'agent' : 'person' });
+    if (!r.ok) throw new Error(r.sentence);
+    return r;
+  }]));
+}
