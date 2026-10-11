@@ -151,3 +151,18 @@ test('page prop (property): setting a string prop on any node keeps every node i
     }
   }
 });
+
+test('a Line project that keeps its code under src/ is edited through the Line layout, not features.root', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'construct-line-src-'));
+  try {
+    fs.mkdirSync(path.join(dir, 'src'));
+    for (const d of ['library', 'features']) fs.cpSync(path.join(FIXTURE, d), path.join(dir, 'src', d), { recursive: true });
+    fs.writeFileSync(path.join(dir, 'architecture.yml'), 'version: 1\npreset: line\n');
+    const file = `src/${PAGE}`;
+    const [rootNode] = readPageTree(dir, file).roots;
+    const change = planSetProp(dir, { file, nodeId: rootNode.id, prop: 'title', kind: 'string', value: 'All orders' });
+    assertStagedChange(change);
+    assert.match(change.files[0].content, /title="All orders"/);
+    assert.throws(() => planSetProp(dir, { file: PAGE, nodeId: rootNode.id, prop: 'title', kind: 'string', value: 'x' }), (e) => e instanceof LineOpError && e.code === 'UNKNOWN_ITEM');
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});

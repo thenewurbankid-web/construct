@@ -6,9 +6,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {
-  PagesEditorError, resolvePageFile, featuresRootOf, parsePageTree, serializeTree, buildAttributeSnippet, patchNode,
+  PagesEditorError, parsePageTree, serializeTree, buildAttributeSnippet, patchNode,
   getNodeProps, hashOf, collectComponentScopeNames,
 } from '../pagesEditor.mjs';
+import { loadConfig } from '../../core/config.mjs';
+import { normalizeLineConfig } from '../../core/profiles/line/contract.mjs';
+import { resolveLayout } from '../../core/profiles/line/checks.mjs';
 import { jsxParseError } from '../../ast/index.mjs';
 import { LineOpError } from './contract.mjs';
 
@@ -50,23 +53,29 @@ const ATTR_NAME = /^[A-Za-z_$][\w$-]*(:[A-Za-z_$][\w$-]*)?$/;
  * @property {PageTreeNode[]} roots
  */
 
-/** Resolve a root-relative page path through the Pages editor's scope guard, or refuse with UNKNOWN_ITEM. */
+const PAGE_EXT = new Set(['.js', '.jsx', '.ts', '.tsx', '.mjs', '.cjs', '.mts', '.cts']);
+
+/**
+ * Resolve a root-relative feature page path, or refuse with UNKNOWN_ITEM. The features folder is the Line
+ * layout's (line.features, else src/features or features), not the Pages editor's features.root, so a Line
+ * project that keeps its code under src/ works; the path must stay inside <features>/<feature>/pages/ and
+ * its real path inside the project.
+ */
 function readPage(root, file) {
   const unknown = () => new LineOpError(`There is no page "${file}" in this project.`, 'UNKNOWN_ITEM');
-  if (typeof file !== 'string' || !file) throw unknown();
+  if (typeof file !== 'string' || !file || path.isAbsolute(file) || file.split(/[\\/]/).includes('..')) throw unknown();
+  const { features } = resolveLayout(root, normalizeLineConfig(/** @type {any} */ (loadConfig(root)).line));
   const parts = file.split('/');
-  const featuresRoot = featuresRootOf(root).replace(/\/+$/, '');
-  const rootParts = featuresRoot.split('/');
-  const head = parts.slice(0, rootParts.length).join('/');
+  const rootParts = features.split('/');
   const [feature, pagesDir, ...rest] = parts.slice(rootParts.length);
-  if (head !== featuresRoot || !feature || pagesDir !== 'pages' || rest.length === 0) throw unknown();
-  try {
-    const { absPath } = resolvePageFile(root, feature, rest.join('/'));
-    return { feature, source: fs.readFileSync(absPath, 'utf8') };
-  } catch (e) {
-    if (e instanceof PagesEditorError || e?.code === 'ENOENT') throw unknown();
-    throw e;
-  }
+  if (parts.slice(0, rootParts.length).join('/') !== features || !feature || pagesDir !== 'pages' || rest.length === 0) throw unknown();
+  if (!PAGE_EXT.has(path.extname(file))) throw unknown();
+  const abs = path.join(root, file);
+  let real;
+  try { real = fs.realpathSync(abs); } catch { throw unknown(); }
+  const realRoot = fs.realpathSync(root);
+  if (!real.startsWith(realRoot + path.sep) || !fs.statSync(real).isFile()) throw unknown();
+  return { feature, source: fs.readFileSync(real, 'utf8') };
 }
 
 /** Parse the page, or refuse: a page that does not parse has no nodes to pick. */
