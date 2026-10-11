@@ -20,6 +20,8 @@ export * as lineLogicMap from './line/logicMap.mjs';
 export * as lineImportV2Contract from './line/importV2/contract.mjs';
 /** `@line/construct-engine/line/import-v2/mock` */
 export * as lineImportV2Mock from './line/importV2/mock.mjs';
+/** `@line/construct-engine/line/characterize` */
+export * as lineCharacterize from './line/characterize.mjs';
 /** `@line/construct-engine/line/drafter` */
 export * as lineDrafter from './line/drafter/index.mjs';
 /** `@line/construct-engine/line/drafter/plan-draft` */

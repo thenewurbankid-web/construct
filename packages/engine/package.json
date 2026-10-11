@@ -17,6 +17,7 @@
     "./line/logic-map": "./line/logicMap.mjs",
     "./line/import-v2/contract": "./line/importV2/contract.mjs",
     "./line/import-v2/mock": "./line/importV2/mock.mjs",
+    "./line/characterize": "./line/characterize.mjs",
     "./line/drafter": "./line/drafter/index.mjs",
     "./line/drafter/plan-draft": "./line/drafter/planDraft.mjs",
     "./line/drafter/eval": "./line/drafter/eval.mjs",

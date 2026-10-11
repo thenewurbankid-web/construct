@@ -1,0 +1,5 @@
+{
+  "name": "line-char-fixture",
+  "private": true,
+  "description": "A tiny app for Line's characterization tests (test/line-characterize.test.mjs). Its node_modules is linked at test time to an app that has jest, ts-jest and React Testing Library."
+}
