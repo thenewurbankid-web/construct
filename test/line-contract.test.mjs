@@ -3,7 +3,7 @@
 // tests reuse the assert* shape checks on real projects.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { assertLineProject, assertStagedChange, assertApplyResult, assertFinding, assertFragmentList, LineOpError, LINE_API } from '../packages/engine/line/contract.mjs';
+import { assertLineFeatureDetail, assertLineProject, assertStagedChange, assertApplyResult, assertFinding, assertFragmentList, LineOpError, LINE_API } from '../packages/engine/line/contract.mjs';
 import { createMockLineOps, MOCK_FILES } from '../packages/engine/line/mock.mjs';
 
 const ROOT = '/mock';
@@ -73,7 +73,22 @@ test('contract: the shape checks reject what Cockpit must never show', () => {
   assert.throws(() => assertFinding({ sentence: 'no full stop', rule: 'X', severity: 'error', file: 'a', line: 1 }), /full sentence/);
   assert.throws(() => assertStagedChange({ summary: 'Escapes.', files: [{ path: '../x', content: '' }] }), /inside the project/);
   assert.throws(() => assertApplyResult({ ok: false, sentence: 'Refused.', files: ['a'], findings: [] }), /wrote nothing/);
-  assert.deepEqual(LINE_API.map((r) => `${r.method} ${r.path}`), ['GET /api/line/project', 'GET /api/line/page-tree', 'POST /api/line/base-on', 'POST /api/line/promote', 'POST /api/line/page-prop', 'GET /api/line/render', 'POST /api/line/fix', 'GET /api/line/fragments', 'POST /api/line/fragment']);
+  assert.deepEqual(LINE_API.map((r) => `${r.method} ${r.path}`), ['GET /api/line/project', 'GET /api/line/page-tree', 'POST /api/line/base-on', 'POST /api/line/promote', 'POST /api/line/page-prop', 'GET /api/line/render', 'GET /api/line/feature', 'POST /api/line/fix', 'GET /api/line/fragments', 'POST /api/line/fragment']);
+});
+
+test('contract: a feature detail groups items by kind, says what they are built on and how much of the spec is covered', () => {
+  const ops = createMockLineOps();
+  const d = ops.readLineFeature(ROOT, 'orders');
+  assertLineFeatureDetail(d);
+  assert.deepEqual(Object.fromEntries(Object.entries(d.items).map(([k, v]) => [k, v.map((i) => i.name)])), { components: ['OrderButton'], pages: ['OrdersPage'], workflows: [], fixtures: [] });
+  assert.deepEqual(d.summary, { via: 'static', sentences: ['orders has 1 page and 1 component.', 'OrdersPage is based on ListPage.', 'OrderButton is based on Button.', 'Everything in orders passes the checks.'] });
+  assert.deepEqual(d.spec.stories[0].points.map((p) => [p.id, p.covered, p.by]), [['s1.p1', true, ['OrdersPage']], ['s1.p2', false, []]]);
+  const billing = ops.readLineFeature(ROOT, 'billing');
+  assert.equal(billing.findings[0].rule, 'LINE-DIR');
+  assert.ok(billing.summary.sentences.includes('InvoicesPage uses OrderButton from feature orders, which a feature may not do.'));
+  assert.throws(() => ops.readLineFeature(ROOT, 'nope'), (e) => e instanceof LineOpError && e.code === 'UNKNOWN_ITEM');
+  assert.throws(() => assertLineFeatureDetail({ ...d, summary: { via: 'model', sentences: d.summary.sentences } }), /static/);
+  assert.throws(() => assertLineFeatureDetail({ ...d, spec: { file: 'x', stories: [{ id: 's1', text: 'S.', points: [{ id: 'p', text: 'P.', covered: true, by: [] }] }] } }), /covers it/);
 });
 
 test('contract: every mock finding carries a typed fix, and applying the top one by key clears it', () => {
