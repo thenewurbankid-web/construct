@@ -63,9 +63,10 @@ export function ShellFrame({ children, route, project, model, theme, userMenu }:
   const announcement = useProcessAnnouncer(processSummaries);
   const working = useWorking(processes.running);
   useFaviconMotion(working);
-  const gitBranches = useGitBranchCount(project.known);
   const executionMode = useExecutionMode(project.known);
   const gitSession = useGitSession();
+  // Only a git repository has branches to count; asking a plain folder is a refusal (a 400 in the console).
+  const gitBranches = useGitBranchCount(project.known && gitSession.status?.repo === true);
   const commitStatus = gitSession.status ? describeSaveState(gitSession.status).text : null;
   const registered = { browser: useShellTabs('browser'), tools: useShellTabs('tools'), drawer: useShellTabs('drawer') };
 
