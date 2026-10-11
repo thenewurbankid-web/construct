@@ -77,8 +77,12 @@ export function lexicalize(request, b) {
   });
 }
 
-const canon = (steps) => steps.map((s) => JSON.stringify({ tool: s.tool, args: Object.fromEntries(Object.entries(s.args).sort()) })).sort();
-/** Whether predicted steps (bound) match gold steps (bound; '*' or an unfilled slot = any value). */
+/**
+ * Whether predicted steps (bound) match gold steps (bound; '*' or an unfilled slot = any value), in any order.
+ * @param {{tool: string, args: Record<string, unknown>}[]} gold
+ * @param {{tool: string, args: Record<string, unknown>}[]} got
+ * @returns {boolean}
+ */
 export function stepsMatch(gold, got) {
   if (gold.length !== got.length) return false;
   const used = new Set();

@@ -546,18 +546,22 @@ export function assertLineFeatureDetail(d) {
 }
 
 /**
- * Throws unless l is a FragmentList (file, content hash, labelled fragments).
- * @param {any} l
- * @returns {asserts l is FragmentList}
+ * Throws unless c is a PlanCheck (an id, one sentence, a known kind).
+ * @param {any} c
+ * @param {string} [where]
+ * @returns {void}
  */
-/** @param {any} c @param {string} [where] */
 export function assertPlanCheck(c, where = 'check') {
   str(c?.id, `${where}.id`);
   sentence(c.sentence, `${where}.sentence`);
   if (!CHECK_KINDS.includes(c.kind)) fail(`${where}.kind`, `must be one of ${CHECK_KINDS.join(', ')}`);
 }
 
-/** @param {any} r @returns {asserts r is LineStepResult} */
+/**
+ * Throws unless r is a LineStepResult whose counts, needs-you flag and options agree with its checks.
+ * @param {any} r
+ * @returns {asserts r is LineStepResult}
+ */
 export function assertLineStepResult(r) {
   assertApplyResult(r?.apply);
   if (!Array.isArray(r.checks)) fail('stepResult.checks', 'must be an array');
@@ -568,7 +572,11 @@ export function assertLineStepResult(r) {
   sentence(r.sentence, 'stepResult.sentence');
 }
 
-/** @param {any} v @returns {asserts v is PlanView} */
+/**
+ * Throws unless v is a PlanView: known step states, plain-English sentences, valid change-step results.
+ * @param {any} v
+ * @returns {asserts v is PlanView}
+ */
 export function assertPlanView(v) {
   if (v?.ok !== true) fail('plan.ok', 'must be true');
   str(v.sessionId, 'plan.sessionId');
@@ -583,7 +591,11 @@ export function assertPlanView(v) {
   }
 }
 
-/** @param {any} l @returns {asserts l is FragmentList} */
+/**
+ * Throws unless l is a FragmentList (file, content hash, labelled fragments).
+ * @param {any} l
+ * @returns {asserts l is FragmentList}
+ */
 export function assertFragmentList(l) {
   str(l?.file, 'fragments.file');
   str(l.contentHash, 'fragments.contentHash');
