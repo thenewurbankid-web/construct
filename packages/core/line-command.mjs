@@ -24,8 +24,8 @@ const usage = (message) => new ConstructError(`${message}\n${LINE_USAGE}`, { exi
 export async function lineCommand(args) {
   const [verb, ...rest] = args;
   if (verb === 'spec') {
-    const { buildLineSpec, sliceSpec } = await import('../engine/line/spec.mjs');
-    const { SPEC_TOPICS } = await import('../engine/line/contract.mjs');
+    const { buildLineSpec, sliceSpec } = await import('@line/construct-engine/line/spec');
+    const { SPEC_TOPICS } = await import('@line/construct-engine/line/contract');
     const topic = flag(rest, '--topic');
     if (topic && !SPEC_TOPICS.includes(topic)) throw usage(`"${topic}" is not a spec topic; the topics are ${SPEC_TOPICS.join(', ')}.`);
     const spec = await buildLineSpec();
@@ -36,13 +36,13 @@ export async function lineCommand(args) {
     const root = rootOf(rest);
     const threshold = Number(flag(rest, '--threshold') ?? 2);
     if (!Number.isInteger(threshold) || threshold < 1) throw usage('--threshold must be a whole number from 1.');
-    const { readTraces } = await import('../engine/line/trace.mjs');
-    const { detectMisses, draftFrameworkIssues, times, toolWords } = await import('../engine/line/missDetector.mjs');
+    const { readTraces } = await import('@line/construct-engine/line/trace');
+    const { detectMisses, draftFrameworkIssues, times, toolWords } = await import('@line/construct-engine/line/miss-detector');
     const { events, files, skipped } = readTraces(root);
     const misses = detectMisses(events, { threshold });
     let drafts = [];
     if (rest.includes('--draft')) {
-      const { buildLineSpec } = await import('../engine/line/spec.mjs');
+      const { buildLineSpec } = await import('@line/construct-engine/line/spec');
       drafts = await draftFrameworkIssues(root, events, { threshold, spec: await buildLineSpec() });
     }
     if (rest.includes('--json')) {
@@ -61,9 +61,9 @@ export async function lineCommand(args) {
   }
   if (verb === 'context') {
     const root = rootOf(rest);
-    const { readTraces } = await import('../engine/line/trace.mjs');
-    const { pickContext } = await import('../engine/line/contextPicker.mjs');
-    const { toolWords } = await import('../engine/line/missDetector.mjs');
+    const { readTraces } = await import('@line/construct-engine/line/trace');
+    const { pickContext } = await import('@line/construct-engine/line/context-picker');
+    const { toolWords } = await import('@line/construct-engine/line/miss-detector');
     const { events } = readTraces(root);
     const miss = [...events].reverse().find((e) => e.kind === 'refusal' && e.source === 'construct');
     if (!miss) { console.log('There is no refusal by Construct in this project\'s session traces, so there is no context to pick.'); return; }

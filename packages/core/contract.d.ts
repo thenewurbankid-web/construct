@@ -127,3 +127,5 @@ export * as backendRoutes from './backend-routes.mjs';
 export * as typeCheck from './type-check.mjs';
 /** `@line/construct-core/verify` */
 export * as verify from './verify.mjs';
+/** `@line/construct-core/rules-catalog` */
+export * as rulesCatalog from './rules-catalog.mjs';
