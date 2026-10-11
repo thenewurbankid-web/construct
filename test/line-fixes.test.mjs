@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { spawnSync } from 'node:child_process';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 import { assertFinding, assertStagedChange, assertApplyResult, LineOpError } from '../packages/engine/line/contract.mjs';
 import { lineFindings, readLineProject } from '../packages/engine/line/model.mjs';
@@ -173,6 +174,15 @@ test('applyFix by key: lands the fix through the writer; an unknown key or a sta
   assertApplyResult(r);
   assert.equal(r.ok, true, r.sentence);
   assert.ok(!lineFindings(dir).some((x) => x.rule === 'LINE-DIR'));
+});
+
+test('construct validate --profile line --format json puts the key and fixes on each LINE-* problem', () => {
+  const out = spawnSync(process.execPath, [path.join(ROOT, 'packages/cli/construct.mjs'), 'validate', '--dir', SAMPLE, '--profile', 'line', '--format', 'json'], { encoding: 'utf8' }).stdout;
+  const { violations } = JSON.parse(out);
+  assert.deepEqual(violations.map((v) => `${v.key} -> ${v.fixes[0].id}`), [
+    'LINE-BASE|features/billing/components/InvoiceCard.tsx|1 -> LINE-BASE/set-base:components/Card',
+    'LINE-DIR|features/billing/pages/InvoicesPage.tsx|4 -> LINE-DIR/promote',
+  ]);
 });
 
 test('the project view carries the fixes on project findings and on the feature item they point at', () => {

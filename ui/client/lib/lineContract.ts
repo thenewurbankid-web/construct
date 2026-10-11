@@ -7,7 +7,31 @@ export type LineKind = 'components' | 'pages' | 'workflows' | 'fixtures';
 export type Level = 'atom' | 'molecule' | 'organism';
 
 /** One finding: the plain-English sentence first, the technical part separate (for a collapsed Details). */
-export type LineFinding = { sentence: string; rule: string; severity: 'error' | 'warning' | 'info'; file: string; line: number };
+export type LineFinding = {
+  sentence: string;
+  rule: string;
+  severity: 'error' | 'warning' | 'info';
+  file: string;
+  line: number;
+  /** "<rule>|<file>|<line>": the handle POST /api/line/fix takes. */
+  key?: string;
+  /** Typed fixes, recommended first (rank 1); LINE-* findings only. */
+  fixes?: LineFix[];
+};
+
+/** The Line tools a fix step calls; each is a planner whose change goes through Construct's writer. */
+export type LineFixTool = 'line.setBase' | 'line.promote' | 'line.baseOn' | 'line.moveFile' | 'line.createLayout';
+
+/** One typed fix: what it will do, in plain English, and the plan step; `step` is null when it is advice only. */
+export type LineFix = {
+  id: string;
+  sentence: string;
+  rank: number;
+  step: { tool: LineFixTool; args: Record<string, unknown> } | null;
+};
+
+/** POST /api/line/fix. */
+export type FixRequest = { findingKey: string; fixId: string };
 
 /** A library item (complete and usable on its own). */
 export type LibraryItem = {
@@ -92,4 +116,5 @@ export type LineHttp = {
   baseOn: (req: BaseOnRequest) => Promise<ApplyResult | LineRefusal>;
   promote: (req: PromoteRequest) => Promise<ApplyResult | LineRefusal>;
   render: (file: string, props?: string) => Promise<RenderResult>;
+  fix: (req: FixRequest) => Promise<ApplyResult | LineRefusal>;
 };

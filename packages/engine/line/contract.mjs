@@ -120,6 +120,7 @@
  * @property {(root: string, req: PromoteRequest) => StagedChange} planPromote
  * @property {(root: string, req: SetPropRequest) => StagedChange} planSetProp
  * @property {(root: string, change: StagedChange) => ApplyResult} applyChange
+ * @property {(root: string, req: FixRequest) => ApplyResult} applyFix  Re-derive the finding by key, plan its fix, applyChange (fixes.mjs).
  */
 
 /**
