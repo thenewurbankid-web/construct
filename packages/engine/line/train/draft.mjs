@@ -144,6 +144,8 @@ export function createConverter(facts, slots = {}) {
     if (L === 'G') { const g = fragment(b); if (!g) return null; return field === 'hash' ? `<hash:${g.I}>` : `<fragment:${g.G}>`; }
     if (L === 'T') return field === 'nodeId' ? { literal: b.nodeId } : null;
     if (L === 'A' || L === 'S') return { literal: typeof b === 'object' ? b.name ?? b.id : b };
+    // A missing feature or library item the request named (Construct refuses it): its kind and its word, as a role.
+    if (L === 'M') return `<missing:${add('missing', { kind: b.missing === 'feature' ? 'feature' : b.kind, role: String(b.name).toLowerCase() })}>`;
     return null;
   }
 
@@ -184,7 +186,10 @@ export function rewriteRequest(request, n, facts, cv, map) {
   // Missing items first, so a new name built on one ("StatusTooltip") can point at it.
   /** @type {Map<object, string>} token -> its missing-item slot */
   const missing = new Map();
-  for (const t of n.tokens) if (t.kind === 'unknown' && t.src.length === 1 && /^[A-Z][a-z]{2,}$/.test(t.src[0]) && !FUNCTION_WORDS.has(t.src[0].toLowerCase())) missing.set(t, cv.add('missing', { kind: 'components', role: t.src[0].toLowerCase() }));
+  for (const t of n.tokens) {
+    if (t.kind === 'missing') { const r = cv.ref(/** @type {string} */ (t.slot), undefined, n.bindings); if (typeof r === 'string') missing.set(t, r.slice('<missing:'.length, -1)); }
+    else if (t.kind === 'unknown' && t.src.length === 1 && /^[A-Z][a-z]{2,}$/.test(t.src[0]) && !FUNCTION_WORDS.has(t.src[0].toLowerCase())) missing.set(t, cv.add('missing', { kind: 'components', role: t.src[0].toLowerCase() }));
+  }
   /** @type {{s: number, e: number, f: string}[]} */
   const parts = [];
   let cursor = 0;

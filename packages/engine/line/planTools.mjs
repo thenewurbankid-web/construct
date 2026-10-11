@@ -433,7 +433,8 @@ export function runChange(projectRoot, tool, args, ops = REAL_PLAN_OPS, o = {}) 
     staged = planWith(ops, projectRoot, tool, requestOf(args));
   } catch (e) {
     if (!(e instanceof LineOpError) && /** @type {any} */ (e)?.name !== 'LineOpError') throw e;
-    apply = { ok: false, sentence: `Nothing was saved: ${lower(/** @type {any} */ (e).sentence)}`, files: [], findings: [] };
+    // The refusal's code (UNKNOWN_FEATURE, NAME_TAKEN, ...) travels with it, so a caller can tell why without parsing words.
+    apply = /** @type {any} */ ({ ok: false, sentence: `Nothing was saved: ${lower(/** @type {any} */ (e).sentence)}`, files: [], findings: [], code: /** @type {any} */ (e).code ?? null });
   }
   if (staged) {
     const todo = fileStates(root, staged).filter((f) => f.state !== 'present').map((f) => f.path);

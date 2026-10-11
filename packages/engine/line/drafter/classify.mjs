@@ -3,6 +3,7 @@
 // and the slots' structure. Tuned for recall: it over-includes layers, the route enumerator and Construct's
 // verification cut back. A small trained classifier can replace `classify` with the same input and output.
 import { OBJECTS } from './contract.mjs';
+import { everydayVerb, handlerShape } from './lexicon.mjs';
 
 /** @type {[string, RegExp][]} */
 const VERB_WORDS = [
@@ -60,19 +61,33 @@ export function classify(normalized, slots, catalog) {
   const has = (L) => slotIds.some((s) => s[0] === L);
   const first = (L) => slotIds.find((s) => s[0] === L) ?? null;
   const items = slotIds.filter((s) => 'PCWX'.includes(s[0]));
-  const features = slotIds.filter((s) => s[0] === 'F');
-  const lib = slotIds.filter((s) => s[0] === 'L');
+  // A missing feature or library item (named, but nothing in the project) stands where a feature or library item would.
+  const features = slotIds.filter((s) => s[0] === 'F' || (s[0] === 'M' && slots[s]?.of === 'feature'));
+  const lib = slotIds.filter((s) => s[0] === 'L' || (s[0] === 'M' && slots[s]?.of === 'library'));
 
-  // Verb: the first verb word wins; "use <item of one feature> in <another feature>" is an add.
+  // Verb: the first verb word wins; "use <item of one feature> in <another feature>" is an add. Everyday verbs from the
+  // shared lexicon ("needs", "want", "give" -> add; "clear" -> remove) count when no Line verb is there.
   let verb = null; let verbConf = 0;
   let verbWord = '';
-  for (const w of words) { const v = VERB_WORDS.find(([, re]) => re.test(w)); if (v) { verb = v[0]; verbConf = 0.5; verbWord = w; break; } }
-  // "make <a new name> ..." creates something: an add, not an update.
-  if (verb === 'update' && verbWord === 'make' && has('N')) verb = 'add';
-  if (words.includes('rename')) verb = 'rename';
-  if (!verb && (has('V') || has('K'))) { verb = 'update'; verbConf = 0.3; }
-  if ((verb === 'move' || verb === 'add') && words.includes('library') && items.length && !features.length) verb = 'promote';
+  const valued = has('V') || has('K');
+  /** A handler prop named ("onMore", said as "when more is asked for"): code for it is a handler. */
+  const handlerProp = slotIds.some((s) => s[0] === 'A' && slots[s]?.handler);
+  for (const w of words) {
+    const v = VERB_WORDS.find(([, re]) => re.test(w))?.[0] ?? everydayVerb(w);
+    if (!v || (v === 'add' && valued && !VERB_WORDS.some(([, re]) => re.test(w)))) continue;
+    verb = v; verbConf = 0.5; verbWord = w; break;
+  }
+  // "... has no base; fix it": a fix verb anywhere is the request (it names what to do about the rest).
+  if (verb !== 'fix' && words.some((w) => /^(fix|repair|resolve|solve)$/.test(w))) { verb = 'fix'; verbWord = 'fix'; verbConf = 0.5; }
+  // "make <a new name> ...", "make something new ..." create something: an add, not an update.
+  if (verb === 'update' && verbWord === 'make' && (has('N') || ((words.includes('new') || words.includes('another')) && !valued))) verb = 'add';
+  if (words.includes('rename')) verb = valued ? 'update' : 'rename';
+  if (!verb && valued) { verb = 'update'; verbConf = 0.3; }
+  // "make <item> a library item", "move <item> into the library": a promote.
+  if ((verb === 'move' || verb === 'add' || (verb === 'update' && verbWord === 'make')) && words.includes('library') && items.length && !features.length) verb = 'promote';
   if (verb === 'promote' && items.length === 0 && lib.length === 0) verb = null;
+  // "clear the problem": removing a problem is fixing it.
+  if (verb === 'remove' && words.some((w) => OBJECT_WORDS[0][1].test(w))) verb = 'fix';
 
   // Object: words first, then the slots' kinds.
   const objWords = words.map((w) => OBJECT_WORDS.find(([, re]) => re.test(w))?.[0]).filter(Boolean);
@@ -81,12 +96,16 @@ export function classify(normalized, slots, catalog) {
   const libObj = lib.length ? OBJ_OF_ITEM[slots[lib[0]]?.itemKind] : null;
   const newKind = (() => { const i = normalized.tokens.findIndex((x) => x.kind === 'new'); if (i < 0) return null; const near = [normalized.tokens[i + 1]?.t, normalized.tokens[i - 1]?.t, normalized.tokens[i - 2]?.t]; return near.map((w) => OBJECT_WORDS.find(([, re]) => re.test(w ?? ''))?.[0]).find((o) => ['page', 'component', 'workflow', 'fixture', 'feature'].includes(o)) ?? null; })();
   if (verb === 'fix' || objWords.includes('problem')) { object = 'problem'; objConf = 0.4; if (!verb) { verb = 'fix'; verbConf = 0.4; } }
-  else if (has('K')) { object = slots[items[0]]?.itemKind === 'workflows' || objWords.includes('workflow-step') ? 'workflow-step' : objWords.includes('handler') ? 'handler' : has('A') ? 'prop' : itemObj === 'workflow' ? 'workflow-step' : 'handler'; objConf = 0.4; }
+  else if (has('K')) { object = slots[items[0]]?.itemKind === 'workflows' || objWords.includes('workflow-step') ? 'workflow-step' : objWords.includes('handler') || handlerProp ? 'handler' : has('A') ? 'prop' : itemObj === 'workflow' ? 'workflow-step' : 'handler'; objConf = 0.4; }
+  // "log "..."", "go to ...", "call ...": what a handler should do (the handler templates write the code).
+  else if (words.some((w) => ['log', 'navigate', 'call'].includes(handlerShape(w) ?? '')) && (has('V') || has('S') || has('P') || has('A'))) { object = 'handler'; objConf = 0.4; if (!verb) { verb = 'update'; verbConf = 0.3; } }
   else if (has('A') || (has('V') && (itemObj === 'page' || itemObj === 'component'))) { object = 'prop'; objConf = 0.4; }
   else if (verb === 'add' && newKind === 'feature') { object = 'feature'; objConf = 0.4; }
   else if ((verb === 'add' || verb === 'base-on') && newKind && newKind !== 'feature') { object = newKind; objConf = 0.4; }
   else if ((verb === 'add' || verb === 'base-on') && libObj) { object = libObj; objConf = 0.4; }
   else if ((verb === 'add' || verb === 'base-on') && itemObj && features.length) { object = itemObj; objConf = 0.35; }
+  // "make something new for <feature>": a new part of the feature (its base is asked).
+  else if (verb === 'add' && features.length && !items.length && !lib.length && !objWords.length) { object = 'component'; objConf = 0.25; }
   else if (verb === 'promote' || verb === 'move') { object = itemObj ?? libObj ?? 'library-item'; objConf = itemObj ? 0.4 : 0.2; }
   else if (objWords.includes('feature-flow') || objWords.includes('workflow-step')) { object = objWords.includes('workflow-step') ? 'workflow-step' : 'feature-flow'; objConf = 0.35; }
   else if (objWords.includes('layout')) { object = 'layout'; objConf = 0.35; }
@@ -98,7 +117,10 @@ export function classify(normalized, slots, catalog) {
   const ids = new Set(catalog.map((e) => e.id));
   const id = verb && object ? `${verb}.${object}` : null;
   const inCatalog = id !== null && ids.has(id);
-  const confidence = inCatalog ? Math.min(1, Math.round((verbConf + objConf + (items.length || features.length || lib.length ? 0.1 : 0)) * 100) / 100) : 0;
+  // "share <item> with <another feature>": moving it into the library, or using it there through the library, are both
+  // readings; the rules are not sure which (a model or the person confirms).
+  const elsewhere = verb === 'promote' && items.length && features.some((f) => slots[f]?.kind === 'feature' && f !== slots[items[0]]?.of) && words.includes('with');
+  const confidence = inCatalog ? Math.min(1, Math.round((verbConf + objConf + (items.length || features.length || lib.length ? 0.1 : 0)) * (elsewhere ? 0.45 : 1) * 100) / 100) : 0;
   /** Alternatives: the same verb with the other objects the request points at, and add <-> base-on. */
   const alt = new Set();
   if (inCatalog) {
