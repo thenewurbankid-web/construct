@@ -117,12 +117,25 @@ test.describe.serial('Line Pages screen (Line sample project, real server)', () 
     const res = await request.post(`${API}/api/line/page-prop`, {
       data: { file: ORDERS, nodeId: listPage.id, prop: 'title', kind: 'expression', value: "String(import('../../billing/pages/InvoicesPage'))" },
     });
+    // cu3: the route only adds a plan step (a project write never lands without approval); approving and running it
+    // is where Construct's writer refuses it.
     const body = await res.json();
-    expect(body.ok).toBe(false);
+    expect(body.ok).toBe(true);
+    expect(body.sentence).toMatch(/^Waiting for your approval: /);
     expect(body.files).toEqual([]);
-    expect(body.sentence).toMatch(/^Nothing was saved: feature "orders" imports "\.\.\/\.\.\/billing\/pages\/InvoicesPage" from feature "billing"/);
-    expect(body.findings.map((f) => `${f.rule} ${f.file}`)).toContain(`LINE-DIR ${ORDERS}`);
     expect(read(ORDERS)).toBe(before);
+    const stepId = body.planned.stepId;
+    await request.post(`${API}/api/line/plan/approve`, { data: { stepId } });
+    const ran = await (await request.post(`${API}/api/line/plan/run`, { data: { stepId } })).json();
+    const step = ran.steps.find((s) => s.id === stepId);
+    expect(step.state).toBe('needs-fix');
+    expect(step.result.apply.sentence).toMatch(/^Nothing was saved: feature "orders" imports "\.\.\/\.\.\/billing\/pages\/InvoicesPage" from feature "billing"/);
+    expect(step.result.apply.findings.map((f) => `${f.rule} ${f.file}`)).toContain(`LINE-DIR ${ORDERS}`);
+    expect(read(ORDERS)).toBe(before);
+    // Leave it as it is, so the plan is not left blocked.
+    const left = await (await request.post(`${API}/api/line/plan/step`, { data: { tool: 'line.leaveAsIs', args: { stepId } } })).json();
+    await request.post(`${API}/api/line/plan/approve`, { data: { stepId: left.stepId } });
+    await request.post(`${API}/api/line/plan/run`, { data: { stepId: left.stepId } });
   });
 });
 
