@@ -44,6 +44,12 @@ test('a proposal is idempotent: proposing the identical pattern twice reports un
   assert.equal(second.changed, false);
 });
 
+test('the merge keeps front-matter comments and key order, and fills an empty `sources: []` as a block list', () => {
+  const story = '---\n# Owned by payments\nowner: payments\nsources: [] # filled by the Picker\ntitle: Refund\n---\nBody\n';
+  const { after } = proposePattern(story, { url: 'https://x/y', parse: { title: 'h1' } });
+  assert.equal(after, '---\n# Owned by payments\nowner: payments\nsources:\n  # filled by the Picker\n  - url: https://x/y\n    parse:\n      title: h1\ntitle: Refund\n---\nBody\n');
+});
+
 test('returns the validated, closed-form selector descriptors alongside the diff', () => {
   const r = proposePattern(EMPTY_STORY, { url: 'https://x/y', parse: { title: 'h1', ref: { xpath: "//h1[@id='t']" } } });
   assert.deepEqual(r.selectors.title, { kind: 'css', value: 'h1' });
