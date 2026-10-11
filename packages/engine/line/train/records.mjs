@@ -81,7 +81,7 @@ export const INDEX = 'train/retrieval-index.json';
 export const caseKey = (c) => `${c.id}:${c.status}`;
 
 /**
- * One eligible case's records (see `trainRecords`); [] when it cannot be written in slots alone.
+ * One eligible case's records (see `recordsFromTraining`); [] when it cannot be written in slots alone.
  * @param {any} c
  * @returns {any[]}
  */
@@ -124,7 +124,7 @@ export function recordsOfCase(c) {
  *   ones are added to it. Eligibility is checked first, so a held-out case is never looked up.
  * @returns {(import('../drafter/contract.mjs').TransitionRecord & {group: string, preferred: boolean, outcome: string, about?: string, source: 'train', agreed: boolean})[]}
  */
-export function trainRecords(cases, o = {}) {
+export function recordsFromTraining(cases, o = {}) {
   /** @type {any[]} */
   const out = [];
   for (const c of cases.filter(feedsRetrieval)) {

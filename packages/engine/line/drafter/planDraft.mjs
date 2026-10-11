@@ -9,7 +9,7 @@ import { readLineProject } from '../model.mjs';
 import { draft as staticDraft, boundRoute } from './index.mjs';
 import { factsSummary } from '../facts.mjs';
 import { addSynonym } from './domainMap.mjs';
-import { toRecord, appendRecord, trainPrecedents } from './retrieval.mjs';
+import { toRecord, appendRecord, precedentsFromTraining } from './retrieval.mjs';
 
 /**
  * Whether the drafter is on (LINE_DRAFTER=1 or "on").
@@ -49,7 +49,7 @@ function routeView(d, r) {
  *   draftFn?: (root: string, request: string) => any, record?: boolean}} o
  * @returns {{status: () => {ok: true, on: boolean}, draft: (request: unknown) => Promise<any>, addRoute: (request: unknown, routeId: unknown, by: string, from?: unknown) => Promise<any>, answer: (word: unknown, key: unknown) => Promise<any>}}
  */
-export function createPlanDrafter({ root, plan, enabled = drafterEnabled(), draftFn = (r, q) => staticDraft(r, q, { precedents: trainPrecedents() }), record = true }) {
+export function createPlanDrafter({ root, plan, enabled = drafterEnabled(), draftFn = (r, q) => staticDraft(r, q, { precedents: precedentsFromTraining() }), record = true }) {
   const cache = new Map();
   const off = () => refusal('DRAFTER_OFF', 'The drafter is off; start the server with LINE_DRAFTER=1 to turn it on.');
   const asRequest = (q) => (typeof q === 'string' ? q.trim().slice(0, 500) : '');

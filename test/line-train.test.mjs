@@ -17,7 +17,7 @@ import { tryRoute } from '../packages/engine/line/train/verify.mjs';
 import { normalizeRequest } from '../packages/engine/line/train/draft.mjs';
 import { createTrainService, worldIdentifiers } from '../packages/engine/line/train/service.mjs';
 import { CASES, LOG } from '../packages/engine/line/train/store.mjs';
-import { trainRecords, feedsRetrieval, indexText, memoOf, INDEX } from '../packages/engine/line/train/records.mjs';
+import { recordsFromTraining, feedsRetrieval, indexText, memoOf, INDEX } from '../packages/engine/line/train/records.mjs';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -191,7 +191,7 @@ test('owner and Claude cases: a typed request is drafted, corrected with closed 
 
 test('retrieval: Train\'s train-split cases feed the drafter\'s retrieval; no held-out case or held-out world ever leaks, and no record holds a project word', () => {
   const cases = seed.map((l) => JSON.parse(l));
-  const records = trainRecords(cases);
+  const records = recordsFromTraining(cases);
   assert.ok(records.length >= 200, `${records.length} records`);
   const byId = new Map(cases.map((c) => [c.id, c]));
   for (const r of records) {
@@ -203,7 +203,7 @@ test('retrieval: Train\'s train-split cases feed the drafter\'s retrieval; no he
   }
   // Held-out cases contribute nothing: the records are the same with or without them.
   const trainOnly = cases.filter((c) => c.split === 'train');
-  assert.deepEqual(trainRecords(trainOnly), records);
+  assert.deepEqual(recordsFromTraining(trainOnly), records);
   // Not even a held-out world's case that claims the train split and the owner's agreement, nor a disputed case.
   const held = cases.find((c) => c.split === 'heldout');
   assert.equal(feedsRetrieval({ ...held, split: 'train', status: 'agreed' }), false);
@@ -217,10 +217,10 @@ test('retrieval: Train\'s train-split cases feed the drafter\'s retrieval; no he
   assert.equal(text, indexText(cases), 'line/train/retrieval-index.json is stale: run node packages/tools/line-train/retrieval-index.mjs');
   const memo = memoOf(text);
   assert.ok([...memo.keys()].every((k) => !heldIds.has(k.split(':')[0])));
-  assert.deepEqual(trainRecords(cases, { memo }), records);
+  assert.deepEqual(recordsFromTraining(cases, { memo }), records);
   // A memo entry for a held-out case is never read: eligibility comes first.
   const poisoned = new Map(memo); poisoned.set(`${held.id}:${held.status}`, [{ poisoned: true }]);
-  assert.ok(!trainRecords(cases, { memo: poisoned }).some((r) => r.poisoned));
+  assert.ok(!recordsFromTraining(cases, { memo: poisoned }).some((r) => r.poisoned));
 });
 
 test('eval: the REAL drafter drafts every held-out case and is scored on recall, precision and the preferred route per family and intent', () => {

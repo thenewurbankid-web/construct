@@ -16,7 +16,7 @@ import { readLineProject } from '../packages/engine/line/model.mjs';
 import { buildDomainMap, normalize, FUNCTION_WORDS, splitWords } from '../packages/engine/line/drafter/domainMap.mjs';
 import { structureGraph, readerOf, hashesOf } from '../packages/engine/line/structure.mjs';
 import { verifyRoutes } from '../packages/engine/line/drafter/verify.mjs';
-import { trainPrecedents } from '../packages/engine/line/drafter/retrieval.mjs';
+import { precedentsFromTraining } from '../packages/engine/line/drafter/retrieval.mjs';
 import { createPlanDrafter } from '../packages/engine/line/drafter/planDraft.mjs';
 import { LEXICON, assertLexicon, suggestFromLexicon } from '../packages/engine/line/drafter/lexicon.mjs';
 import { generateGrammar, GRAMMAR_FILES } from '../packages/engine/line/drafter/grammar.mjs';
@@ -279,7 +279,7 @@ test('grammar: the committed JSON Schema and GBNF are current, and every drafted
 
 // Owner decision (2026-10-11): Train Line's verified, undisputed, slotted precedents may rank routes on a real project.
 test('Train precedents on a real project: the Cockpit drafter ranks by one, every route stays checked, and no domain word crosses over', async () => {
-  const precedents = trainPrecedents();
+  const precedents = precedentsFromTraining();
   assert.ok(precedents.length > 100, `the committed index feeds the drafter (${precedents.length} records)`);
   const dir = copy();
   const request = 'Let billing show OrderButton, which lives in orders.';
@@ -313,6 +313,6 @@ test('Train precedents: a disputed case, an unapproved record or a word in a ste
     'tc-word:draft': [rec({ routeId: 'train:w:a', steps: [{ tool: 'line.promote', args: { featureItemId: 'parts/components/Gear' } }] })],
     'tc-unapproved:draft': [rec({ routeId: 'train:u:a', approved: false })],
   } }));
-  assert.deepEqual(trainPrecedents(file).map((r) => r.routeId), ['train:x:a']);
-  assert.deepEqual(trainPrecedents(path.join(dir, 'missing.json')), [], 'no index: no precedents, the drafter works as before');
+  assert.deepEqual(precedentsFromTraining(file).map((r) => r.routeId), ['train:x:a']);
+  assert.deepEqual(precedentsFromTraining(path.join(dir, 'missing.json')), [], 'no index: no precedents, the drafter works as before');
 });

@@ -18,7 +18,7 @@ import { worldMap, normalizeRequest, draftInWorld } from './draft.mjs';
 import { describe } from '../expr.mjs';
 import { tryRoute, wordsOf } from './verify.mjs';
 import { createTrainStore, DEFAULT_TRAIN_ROOT } from './store.mjs';
-import { trainRecords, memoOf, INDEX } from './records.mjs';
+import { recordsFromTraining, memoOf, INDEX } from './records.mjs';
 
 const nameOfId = (id) => String(id).split('/').pop();
 const baseName = (f) => path.posix.basename(String(f)).replace(/\.(tsx|ts|json)$/, '');
@@ -101,7 +101,7 @@ export function createTrainService(o = {}) {
   const records = () => {
     const all = store.all();
     const key = crypto.createHash('sha256').update(all.map((c) => `${c.id}:${c.status}`).join('|')).digest('hex');
-    if (memo.key !== key) memo = { key, records: trainRecords(all, { memo: perCase }) };
+    if (memo.key !== key) memo = { key, records: recordsFromTraining(all, { memo: perCase }) };
     return memo.records;
   };
   const now = o.now ?? (() => new Date().toISOString());
@@ -436,13 +436,13 @@ export function evaluateCase(c, o = {}) {
 
 /**
  * Draft every held-out case with the real drafter and score it against its gold (nothing is written). The drafter's
- * retrieval reads Train Line's train-split cases (`trainRecords`) unless `records` is given.
+ * retrieval reads Train Line's train-split cases (`recordsFromTraining`) unless `records` is given.
  * @param {any[]} cases @param {string} at @param {{records?: any[]}} [o]
  * @returns {{at: string, cases: any[]}}
  */
 export function evaluateAll(cases, at, o = {}) {
   // Retrieval reads the TRAIN split only (records.mjs feedsRetrieval: never a held-out case or a held-out world).
-  const records = o.records ?? trainRecords(cases);
+  const records = o.records ?? recordsFromTraining(cases);
   const per = cases.filter((x) => x.split === 'heldout' && x.status !== 'disputed').map((c) => evaluateCase(c, { ...o, records })).filter(Boolean);
   return { at, cases: per };
 }

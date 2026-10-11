@@ -50,7 +50,7 @@ export function staticRank(routes) {
  * @param {{catalog?: import('./contract.mjs').IntentEntry[], verify?: boolean, ranker?: (routes: import('./contract.mjs').Route[]) => string[], propose?: (word: string, choices: {key: string, label: string}[]) => string|null, records?: import('./contract.mjs').TransitionRecord[]|null, precedents?: import('./contract.mjs').TransitionRecord[], maxVerify?: number, synonyms?: Record<string, string>}} [o]
  *   `synonyms`: confirmed synonyms kept outside the project (word -> domain-map key), e.g. Train Line's per-world ones.
  *   `ranker`: jev's ranking (ids, best first); it only orders. `records`: training records (default: the project's own).
- *   `precedents`: more approved records after them (Cockpit passes Train Line's slotted precedents, retrieval.mjs trainPrecedents).
+ *   `precedents`: more approved records after them (Cockpit passes Train Line's slotted precedents, retrieval.mjs precedentsFromTraining).
  * @returns {import('./contract.mjs').Draft & {questions: any[], shown: {request: string}, tokens: {t: string, slot?: string, kind?: string, src: string[]}[], entries: Record<string, string>}}
  *   `tokens` and `entries` are the live normalization (they hold the request's own words: shown, never stored).
  */

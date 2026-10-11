@@ -120,7 +120,7 @@ const slotOnly = (v) => typeof v !== 'string' || /^(<[A-Z]\d+(\.\w+)?>|component
  * @param {string} [file] The index (default TRAIN_INDEX).
  * @returns {import('./contract.mjs').TransitionRecord[]}
  */
-export function trainPrecedents(file = TRAIN_INDEX) {
+export function precedentsFromTraining(file = TRAIN_INDEX) {
   let cases = {};
   try { cases = JSON.parse(fs.readFileSync(file, 'utf8')).cases ?? {}; } catch { return []; }
   const out = [];
