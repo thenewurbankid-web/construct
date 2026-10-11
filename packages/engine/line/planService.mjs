@@ -47,9 +47,12 @@ export async function loadPlanApi({ root, registry, linkOptions }) {
   };
 }
 
-/** Who resolved a step that needed the person: a later retry of it, or a "leave as is". */
+/** A line.amend fix of `step` that landed: it carried the refused change itself, so the refused step is done. */
+const amendedBy = (s, step) => s.tool === 'line.amend' && s.args?.fixOf === step.id && s.status === 'done' && s.result?.apply?.ok === true && s.result?.needsYou !== true;
+
+/** Who resolved a step that needed the person: a later retry of it, a "leave as is", or a fix that carried it (line.amend). */
 function resolverOf(plan, step) {
-  return plan.steps.find((s) => s.n > step.n && ((s.args?.retry && s.args.retry.of === step.id) || (s.tool === 'line.leaveAsIs' && s.args?.stepId === step.id))) ?? null;
+  return plan.steps.find((s) => s.n > step.n && ((s.args?.retry && s.args.retry.of === step.id) || (s.tool === 'line.leaveAsIs' && s.args?.stepId === step.id) || amendedBy(s, step))) ?? null;
 }
 const needsYou = (plan, s) => s.status === 'done' && s.result?.needsYou === true && !resolverOf(plan, s);
 
@@ -73,8 +76,13 @@ export function stepView(root, plan, s, ops = REAL_PLAN_OPS) {
   else {
     const r = s.result;
     const by = r?.needsYou ? resolverOf(plan, s) : null;
-    if (r?.needsYou && !by) { state = r.apply && !r.apply.ok && r.apply.findings?.length ? 'needs-fix' : 'needs-you'; sentence = asSentence(r.sentence); }
-    else if (by) { state = 'done'; sentence = by.tool === 'line.leaveAsIs' ? `Left as it is in step ${by.n}: ${lower(asSentence(r.sentence))}` : `Tried again as step ${by.n}.`; }
+    // needs-fix: Construct refused the change and offers a fix that would land; otherwise the person decides (needs-you).
+    if (r?.needsYou && !by) { state = r.apply && !r.apply.ok && r.options?.some((o) => o.id === 'fix' && o.step) ? 'needs-fix' : 'needs-you'; sentence = asSentence(r.sentence); }
+    else if (by) {
+      state = 'done';
+      sentence = by.tool === 'line.leaveAsIs' ? `Left as it is in step ${by.n}: ${lower(asSentence(r.sentence))}`
+        : by.tool === 'line.amend' ? `Saved together with its fix in step ${by.n}.` : `Tried again as step ${by.n}.`;
+    }
     else {
       state = 'done';
       sentence = r && typeof r.sentence === 'string' ? asSentence(r.sentence)

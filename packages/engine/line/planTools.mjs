@@ -11,6 +11,8 @@
 //   line.import.mark, line.import.toLibrary, line.import.toFeature   write   ci1 Import's steps (import.mjs
 //                     planImportStep): planned only when they run (each builds on the step before) with the import
 //                     folder as the writer's root, so nothing outside that folder can be written
+//   line.amend        write  {change, fix}   a refused change plus one fix of it whose file only that change creates,
+//                                            planned together (fixes.mjs planAmended) and applied as ONE change
 //   line.leaveAsIs    write  {stepId}        -> a person's "carry on" after a step that needs them (writes nothing)
 //   line.project      read   {}              -> readLineProject
 //
@@ -20,24 +22,24 @@
 // the step's result; a failed check makes the step "needs you" with options. A retry that passes no more checks than
 // the try before it stops (`stopped`) instead of looping. Every write still goes only through applyChange.
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { CHECK_KINDS, LineOpError } from './contract.mjs';
 import { planBaseOn, planPromote, applyChange, checkChange } from './ops.mjs';
 import { planImportStep } from './import.mjs';
 import { planSetProp } from './pageProp.mjs';
 import { readLineProject } from './model.mjs';
-import { planFixByKey, planStep, withFixes } from './fixes.mjs';
+import { planFixByKey, planStep, withFixes, planAmended, amendFixes, onScratch } from './fixes.mjs';
 import { planSetFragment } from './fragments.mjs';
 
 /** The real operations (tests pass the contract's mock instead). */
-export const REAL_PLAN_OPS = Object.freeze({ planBaseOn, planPromote, planSetProp, planFixByKey, planSetFragment, planStep, planImportStep, applyChange, checkChange, readLineProject });
+export const REAL_PLAN_OPS = Object.freeze({ planBaseOn, planPromote, planSetProp, planFixByKey, planSetFragment, planStep, planAmended, planImportStep, applyChange, checkChange, readLineProject });
 
 /** The write tools that plan a StagedChange, and the op that plans it (`planStep` takes {tool, args}). */
 export const CHANGE_TOOLS = Object.freeze({
   'line.baseOn': 'planBaseOn', 'line.promote': 'planPromote', 'line.setPageProp': 'planSetProp',
   'line.fix': 'planFixByKey', 'line.setFragment': 'planSetFragment',
   'line.setBase': 'planStep', 'line.moveFile': 'planStep', 'line.createLayout': 'planStep',
+  'line.amend': 'planAmended',
   'line.import.mark': 'planImportStep', 'line.import.toLibrary': 'planImportStep', 'line.import.toFeature': 'planImportStep',
 });
 
@@ -69,10 +71,22 @@ export function rootOf(root, tool, args) {
   return at;
 }
 
+/** How deep a line.amend may wrap another line.amend (a refused amended change amended again). */
+const MAX_AMEND_DEPTH = 3;
+
 /** Plan a change tool's request with `ops` (pure; throws a LineOpError for a refusal). */
-function planWith(ops, root, tool, req) {
+function planWith(ops, root, tool, req, depth = 0) {
   const opName = CHANGE_TOOLS[tool];
   if (opName === 'planImportStep') return ops.planImportStep(rootOf(root, tool, req), { id: tool, tool, args: req });
+  if (opName === 'planAmended') {
+    const { change, fix: one, fixes } = /** @type {any} */ (req);
+    const fix = fixes ?? one;
+    if (!fix || (one && fixes)) throw new LineOpError('Name the fix to apply with the change: one step as "fix", or several in order as "fixes".', 'BAD_ARGS');
+    if (depth >= MAX_AMEND_DEPTH) throw new LineOpError('This change amends too many refused changes in a row; apply them one at a time.', 'BAD_ARGS');
+    if (!CHANGE_TOOLS[change?.tool]) throw new LineOpError(`"${change?.tool}" is not a Line change, so it cannot be amended.`, 'UNKNOWN_TOOL');
+    const first = planWith(ops, root, change.tool, requestOf(change.args), depth + 1);
+    return (ops.planAmended ?? planAmended)(root, first, fix);
+  }
   return opName === 'planStep' ? ops.planStep(root, { tool, args: req }) : ops[opName](root, req);
 }
 
@@ -85,10 +99,14 @@ export const DEFAULT_EXPECT = Object.freeze([
 // ------------------------------------------------------------------------------------------------- schemas
 const failed = (p, message) => ({ success: /** @type {const} */ (false), error: { issues: [{ path: p, message }] } });
 const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
+const isStep = (v) => isObj(v) && typeof v.tool === 'string' && v.tool.length > 0 && (v.args === undefined || isObj(v.args));
 const TYPES = {
   string: (v) => typeof v === 'string' && v.length > 0,
   anyString: (v) => typeof v === 'string',
   optString: (v) => v === undefined || (typeof v === 'string' && v.length > 0),
+  step: (v) => isStep(v),
+  optStep: (v) => v === undefined || isStep(v),
+  optSteps: (v) => v === undefined || (Array.isArray(v) && v.length > 0 && v.length <= 4 && v.every(isStep)),
   scalar: (v) => ['string', 'number', 'boolean'].includes(typeof v),
   propKind: (v) => ['string', 'number', 'boolean', 'expression'].includes(v),
 };
@@ -117,6 +135,9 @@ const JSON_TYPES = Object.freeze({
   optString: { type: 'string', minLength: 1 },
   scalar: { type: ['string', 'number', 'boolean'] },
   propKind: { enum: ['string', 'number', 'boolean', 'expression'] },
+  step: { type: 'object', required: ['tool'], properties: { tool: { type: 'string', minLength: 1 }, args: { type: 'object' } } },
+  optStep: { type: 'object', required: ['tool'], properties: { tool: { type: 'string', minLength: 1 }, args: { type: 'object' } } },
+  optSteps: { type: 'array', minItems: 1, maxItems: 4, items: { type: 'object', required: ['tool'], properties: { tool: { type: 'string', minLength: 1 }, args: { type: 'object' } } } },
 });
 /** The JSON Schema an objectSchema accepts: its fields, plus `expect`, `retry` and `fixOf` on a change tool. */
 function jsonSchemaOf(required, o) {
@@ -126,7 +147,7 @@ function jsonSchemaOf(required, o) {
     properties.retry = { type: 'object', required: ['of'], properties: { of: { type: 'string' }, passed: { type: 'integer' } } };
     properties.fixOf = { type: 'string', minLength: 1, description: 'The id of the refused step this step fixes.' };
   }
-  return { type: 'object', properties, required: Object.entries(required).filter(([, t]) => t !== 'optString').map(([k]) => k), additionalProperties: false };
+  return { type: 'object', properties, required: Object.entries(required).filter(([, t]) => !['optString', 'optStep', 'optSteps'].includes(t)).map(([k]) => k), additionalProperties: false };
 }
 
 /**
@@ -155,7 +176,7 @@ function objectSchema(required, o = {}) {
       const allowed = new Set([...Object.keys(required), ...(o.change ? ['expect', 'retry', 'fixOf'] : [])]);
       const extra = Object.keys(v).find((k) => !allowed.has(k));
       if (extra) return failed([extra], 'is not an argument of this tool');
-      for (const [k, t] of Object.entries(required)) if (!TYPES[t](v[k])) return failed([k], t === 'scalar' ? 'must be a string, number or boolean' : t === 'propKind' ? 'must be string, number, boolean or expression' : t === 'anyString' ? 'must be a string' : 'must be a non-empty string');
+      for (const [k, t] of Object.entries(required)) if (!TYPES[t](v[k])) return failed([k], t === 'scalar' ? 'must be a string, number or boolean' : t === 'propKind' ? 'must be string, number, boolean or expression' : t === 'anyString' ? 'must be a string' : t === 'step' || t === 'optStep' ? 'must be a step {"tool": "line.<name>", "args": {...}}' : t === 'optSteps' ? 'must be a list of 1 to 4 steps {"tool": "line.<name>", "args": {...}}' : 'must be a non-empty string');
       if (v.expect !== undefined) { const why = checkExpect(v.expect); if (why) return failed(['expect'], why); }
       if (v.retry !== undefined) { const why = checkRetry(v.retry); if (why) return failed(['retry'], why); }
       if (v.fixOf !== undefined && (typeof v.fixOf !== 'string' || !v.fixOf)) return failed(['fixOf'], 'must be the id of the step this fix is for');
@@ -211,6 +232,7 @@ const SCHEMAS = Object.freeze({
   'line.import.mark': importSchema({ folder: 'string', features: 'strings' }),
   'line.import.toLibrary': importSchema({ folder: 'string', from: 'string', kind: 'string', name: 'string', level: 'optString', keepShim: 'optBool' }),
   'line.import.toFeature': importSchema({ folder: 'string', mode: 'mode', from: 'optString', kind: 'string', name: 'string', feature: 'string', base: 'string', keepShim: 'optBool', route: 'optString' }),
+  'line.amend': objectSchema({ change: 'step', fix: 'optStep', fixes: 'optSteps' }, { change: true }),
   'line.leaveAsIs': objectSchema({ stepId: 'string' }),
   'line.project': objectSchema({}),
 });
@@ -227,6 +249,7 @@ const DESCRIBE = Object.freeze({
   'line.import.mark': 'Import: marks a folder as a Line folder (architecture.yml, library, feature specs), through the checked writer.',
   'line.import.toLibrary': 'Import: moves one item of the import folder into its library, through the checked writer.',
   'line.import.toFeature': 'Import: moves one item into a feature of the import folder, or adds it based on its library copy, through the checked writer.',
+  'line.amend': 'Applies a change Construct refused together with one typed fix of it, as one change, through the checked writer (for a fix whose file only that change creates).',
   'line.leaveAsIs': 'Records that a person chose to carry on after a step that needed them; writes nothing.',
   'line.project': 'Reads the Line view of the project: library, features, items and findings.',
 });
@@ -310,27 +333,22 @@ export function runChecks(root, expect, staged, apply) {
 /**
  * The typed fixes of a refused change's findings, worked out on the project as the change would leave it (the
  * findings only exist there): a scratch copy of the project (no node_modules, no .git) with the change written,
- * removed afterwards. Never throws; on any trouble the findings come back as they are.
+ * removed afterwards. With `refused` (the refused step's {tool, args}), a fix that only works with the change in place
+ * becomes one line.amend step. Never throws; on any trouble the findings come back as they are.
  * @param {string} root The project root.
  * @param {any} staged The refused change.
  * @param {any[]} findings Its findings.
+ * @param {{tool: string, args: any} | null} [refused] The refused step's tool and args.
  * @returns {any[]} The findings with their fixes.
  */
-export function fixesAsProposed(root, staged, findings) {
-  let scratch = null;
+export function fixesAsProposed(root, staged, findings, refused = null) {
   try {
-    scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'construct-line-fixes-'));
-    fs.cpSync(root, scratch, { recursive: true, filter: (src) => !/[\\/](node_modules|\.git)([\\/]|$)/.test(path.relative(root, src) ? `/${path.relative(root, src)}` : '') });
-    for (const f of staged.files) {
-      const abs = path.join(scratch, f.path);
-      if (f.content === null) fs.rmSync(abs, { force: true });
-      else { fs.mkdirSync(path.dirname(abs), { recursive: true }); fs.writeFileSync(abs, f.content); }
-    }
-    return withFixes(scratch, findings);
+    const withTyped = onScratch(root, staged, (scratch) => withFixes(scratch, findings));
+    // A fix that names a file only the refused change creates cannot run on its own: it becomes one line.amend step
+    // carrying the refused change and the fix together (fixes.mjs amendFixes).
+    return refused ? amendFixes(root, refused, staged, withTyped) : withTyped;
   } catch {
     return findings;
-  } finally {
-    if (scratch) fs.rmSync(scratch, { recursive: true, force: true });
   }
 }
 
@@ -369,7 +387,7 @@ export function runChange(projectRoot, tool, args, ops = REAL_PLAN_OPS) {
     if (/** @type {any} */ (apply).ok && Array.isArray(warnings) && warnings.length) apply = { .../** @type {any} */ (apply), findings: [.../** @type {any} */ (apply).findings, ...warnings] };
   }
   if (!/** @type {any} */ (apply).ok && /** @type {any} */ (apply).findings.length && staged) {
-    apply = { .../** @type {any} */ (apply), findings: fixesAsProposed(root, staged, /** @type {any} */ (apply).findings) };
+    apply = { .../** @type {any} */ (apply), findings: fixesAsProposed(root, staged, /** @type {any} */ (apply).findings, { tool, args: requestOf(args) }) };
   }
   const checks = runChecks(root, expect, staged, /** @type {any} */ (apply));
   apply = prefixed(/** @type {any} */ (apply));
@@ -396,11 +414,15 @@ export function runChange(projectRoot, tool, args, ops = REAL_PLAN_OPS) {
     options.push({ id: 'leave', sentence: 'Leave it as it is and carry on.' });
   }
   const failing = checks.filter((c) => !c.ok).map((c) => c.sentence);
+  // cl1: Construct refused the change and none of its fixes would land either (each was tried on a scratch copy).
+  const noFixLands = needsYou && /** @type {any} */ (apply).findings.some((f) => f.severity === 'error' && Array.isArray(f.fixes) && f.fixes.length) && !options.some((o) => o.id === 'fix' && o.step);
   const sentence = !needsYou
     ? /** @type {any} */ (apply).sentence
     : stopped
       ? `Trying again passed ${passed} of ${total} checks, no more than before, so Line stopped and needs you: ${lower(failing.join(' '))}`
-      : `This needs you: ${passed} of ${total} checks passed. ${failing.join(' ')}`;
+      : noFixLands
+        ? `This needs you: Construct refused the change, and none of its fixes would be accepted either, so Line cannot fix it on its own. ${failing.join(' ')}`
+        : `This needs you: ${passed} of ${total} checks passed. ${failing.join(' ')}`;
   return { apply: /** @type {any} */ (apply), checks, passed, total, needsYou, options, stopped, sentence };
 }
 

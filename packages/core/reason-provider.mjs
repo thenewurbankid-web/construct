@@ -111,3 +111,78 @@ export function registerReasonProvider(options) {
   registerDecisionProvider(REASON_PROVIDER_NAME, provider);
   return provider;
 }
+
+// ---------------------------------------------------------------------------------------------
+// Qwen's reply length (experiment fix 3)
+//
+// @mx/reason's createQwenProposer caps every reply at 200 tokens (models.ts: `engines(o, host, 200)` and
+// `maxTokens: 200` in its `ask`), with no option, which cuts a JSON plan off mid-string. Construct does not edit the
+// linked source; it passes the proposer a `fetch` (an option @mx/reason already has) that sets the request's
+// `max_tokens` to Construct's cap before it reaches the local OpenAI-compatible server. The cap is per step: a
+// pair id map, or `replyTokens` on the profile object handed to propose/review, else the adapter default, else
+// $CONSTRUCT_REASON_MAX_TOKENS, else REASON_REPLY_TOKENS.
+
+/** Default reply cap for Qwen through Construct: enough for two or three JSON plans of a few steps. */
+export const REASON_REPLY_TOKENS = 800;
+
+/**
+ * The reply cap for one profile.
+ * @param {any} profile A defined @mx/reason profile (pairId), optionally with `replyTokens`.
+ * @param {{maxTokens?: number, maxTokensByPair?: Record<string, number>}} [o]
+ * @param {Record<string, string | undefined>} [env]
+ * @returns {number}
+ */
+export function replyTokensFor(profile, o = {}, env = process.env) {
+  const ok = (n) => Number.isInteger(n) && n > 0 && n <= 32768;
+  const fromEnv = Number(env.CONSTRUCT_REASON_MAX_TOKENS);
+  for (const n of [o.maxTokensByPair?.[profile?.pairId], profile?.replyTokens, o.maxTokens, fromEnv]) if (ok(n)) return /** @type {number} */ (n);
+  return REASON_REPLY_TOKENS;
+}
+
+/**
+ * A fetch that sets `max_tokens` on every JSON request body that carries one (OpenAI-compatible chat completions).
+ * Other requests (the model list) pass through untouched.
+ * @param {number} maxTokens
+ * @param {typeof fetch} [base]
+ * @returns {typeof fetch}
+ */
+export function capReplyTokens(maxTokens, base = globalThis.fetch) {
+  return /** @type {typeof fetch} */ (async (input, init) => {
+    if (init && typeof init.body === 'string') {
+      try {
+        const body = JSON.parse(init.body);
+        if (body && typeof body === 'object' && 'max_tokens' in body) return base(input, { ...init, body: JSON.stringify({ ...body, max_tokens: maxTokens }) });
+      } catch { /* not JSON: pass through */ }
+    }
+    return base(input, init);
+  });
+}
+
+/**
+ * @mx/reason's Qwen proposer with Construct's reply cap (default REASON_REPLY_TOKENS, per step by pair id).
+ * @param {{createQwenProposer?: (o: any) => import('../line-links/contracts').ReasonProposer}} reason The linked module.
+ * @param {{render: (q: any) => string, host?: string, fetch?: typeof fetch, model?: string, maxTokens?: number, maxTokensByPair?: Record<string, number>, env?: Record<string, string | undefined>}} o
+ * @returns {import('../line-links/contracts').ReasonProposer & {replyTokens: (profile: any) => number}}
+ *
+ * @example
+ * const qwen = createCappedQwenProposer(reason, { render: (q) => q.text, maxTokensByPair: { 'line.plan.step': 1200 } });
+ * await reason.runLadder(items, { proposer: qwen, check });
+ */
+export function createCappedQwenProposer(reason, o) {
+  if (typeof reason?.createQwenProposer !== 'function') throw new Error('The linked @mx/reason has no createQwenProposer, so Qwen cannot propose.');
+  const { maxTokens, maxTokensByPair, env, fetch: base, ...rest } = o;
+  const byCap = new Map();
+  const capOf = (profile) => replyTokensFor(profile, { maxTokens, maxTokensByPair }, env);
+  const inner = (profile) => {
+    const cap = capOf(profile);
+    if (!byCap.has(cap)) byCap.set(cap, /** @type {any} */ (reason).createQwenProposer({ ...rest, fetch: capReplyTokens(cap, base ?? globalThis.fetch) }));
+    return byCap.get(cap);
+  };
+  return {
+    name: 'qwen',
+    replyTokens: capOf,
+    available: (profile) => inner(profile).available(profile),
+    propose: (q, rejected, profile, offered) => inner(profile).propose(q, rejected, profile, offered),
+    review: (q, options, picked, profile) => inner(profile).review(q, options, picked, profile),
+  };
+}

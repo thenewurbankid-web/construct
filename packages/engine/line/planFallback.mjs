@@ -165,7 +165,8 @@ export function createStaticPlanApi(o) {
       return { change: a.stepId === undefined ? `Approved ${steps.length} steps` : `Approved step ${steps[0].n} (${steps[0].tool})` };
     }),
     async plan_run_next(a) {
-      let picked;
+      /** @type {any} */
+      let picked = null;
       const started = await mutate(a, (p) => {
         if (!canRun(p.status)) return refuse('state', p.status === 'failed' ? 'A step failed; fix it with plan_update_step or skip it, then run again.' : `The plan is ${p.status}, so no step runs.`);
         const running = p.steps.find((s) => s.status === 'running');

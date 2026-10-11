@@ -29,6 +29,14 @@ export const CODE_EXTENSIONS = Object.freeze(['.ts', '.tsx', '.js', '.jsx', '.mj
 /** Default `line.packageRoots`: the folders whose direct children (and @scope/children) with a package.json are packages. */
 export const DEFAULT_PACKAGE_ROOTS = Object.freeze(['packages']);
 
+/**
+ * Default `line.appFolders`: folders (at the project root, or next to the library when the code lives under src/)
+ * that hold the app shell, config, scripts and tests rather than items. A source file outside these, the library,
+ * the features, Line's state folder and the package roots is a LINE-LAYOUT error. Files directly at the project root
+ * (or directly in src/) are config and entry files and always allowed.
+ */
+export const DEFAULT_APP_FOLDERS = Object.freeze(['app', 'config', 'scripts', 'public', 'types', 'test', 'tests', '__tests__', 'e2e']);
+
 /** Folders never scanned: dependencies, build output, VCS, caches and test reports. */
 export const SKIP_DIRS = Object.freeze(['node_modules', '.git', '.next', 'dist', 'out', 'build', 'coverage', 'test-results', 'playwright-report', '.turbo', '.cache']);
 
@@ -107,7 +115,7 @@ export const LINE_RULES = Object.freeze({
     defaultSeverity: 'error',
     why: 'A Line project keeps its items in the library and in feature folders with a fixed set of kinds, so every item can be found, linked and checked.',
     expected: ['components/, pages/, workflows/, fixtures/ and spec.md inside a feature; the same kinds inside the library'],
-    check: 'Entries directly under <library>, <features> and <features>/<name> must be one of the known kinds or allowed files; a project with neither folder is reported once.',
+    check: 'Entries directly under <library>, <features> and <features>/<name> must be one of the known kinds or allowed files; a project with neither folder is reported once. Once a project has either folder, a source file anywhere else is reported unless it sits at the project root (or directly in src/), in a line.appFolders folder (default app, config, scripts, public, types, test, tests, __tests__, e2e), in Line\'s state folder or a package root, in a test or example folder, or is a page (LINE-OWNER reports those), a test, a story or a .d.ts file.',
   },
 });
 
@@ -204,7 +212,7 @@ function normalizeSharedOwners(raw) {
  * (`src/` detection) are filled in by checks.mjs's resolveLayout, not here.
  *
  * @param {unknown} raw The raw `line:` value (undefined when absent).
- * @returns {{library?: string, features?: string, state: string, writers: string[], writerExempt: string[], packageRoots: string[], sharedOwners: Record<string, string[]>, rules: Record<string, {severity: string}>}}
+ * @returns {{library?: string, features?: string, state: string, writers: string[], writerExempt: string[], packageRoots: string[], appFolders: string[], sharedOwners: Record<string, string[]>, rules: Record<string, {severity: string}>}}
  * @throws {ConstructError} A usage error naming the bad field.
  */
 export function normalizeLineConfig(raw) {
@@ -227,6 +235,7 @@ export function normalizeLineConfig(raw) {
     writers: stringList(c.writers, 'writers') ?? [],
     writerExempt: stringList(c.writerExempt, 'writerExempt') ?? [...DEFAULT_WRITER_EXEMPT],
     packageRoots: (stringList(c.packageRoots, 'packageRoots') ?? [...DEFAULT_PACKAGE_ROOTS]).map((d) => folder(d, 'packageRoots')),
+    appFolders: [...DEFAULT_APP_FOLDERS, ...(stringList(c.appFolders, 'appFolders') ?? []).map((d) => folder(d, 'appFolders'))],
     sharedOwners: normalizeSharedOwners(c.sharedOwners),
     rules,
   };

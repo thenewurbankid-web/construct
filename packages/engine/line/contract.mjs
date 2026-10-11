@@ -35,7 +35,8 @@
  *   line.baseOn       BaseOnRequest              create a feature item based on a library item (ops.mjs planBaseOn)
  *   line.moveFile     {from, to, base?}          move a file, re-pointing every import; `base` also writes its line-base header
  *   line.createLayout {}                         create the library folder (library/README.md) so the project is laid out as Line
- * @typedef {'line.setBase'|'line.promote'|'line.baseOn'|'line.moveFile'|'line.createLayout'} LineFixTool
+ *   line.amend        {change, fix} | {change, fixes}  a refused change plus its fix (or a chain of fixes), applied as one change
+ * @typedef {'line.setBase'|'line.promote'|'line.baseOn'|'line.moveFile'|'line.createLayout'|'line.amend'} LineFixTool
  */
 
 /**
@@ -240,6 +241,11 @@
  * What a person may do when a step needs them.
  * A `fix` option comes from a refusal's findings (fixes.mjs typed fixes): `step` is the plan step that applies it (add it
  * with args.fixOf = the step's id), null for advice only; `recommended` marks rank 1.
+ * When the fix names a file only the refused change creates, `step` is one `line.amend` step {change, fix}: the refused
+ * change and the fix planned together and applied atomically (fixes.mjs planAmended); once it lands, the refused step
+ * counts as done. Every fix with a step was tried on a scratch copy through the writer and would land (cl1); a promote
+ * blocked by the item's own feature dependencies is offered as the chain {change, fixes: [promote the dependency, promote
+ * the item]} in one step. A fix that would be refused has step null and says why; with none left, the step is needs-you.
  * @typedef {{id: 'retry'|'leave'|'fix', sentence: string, fixId?: string, recommended?: boolean, step?: {tool: string, args: Record<string, unknown>}|null}} StepOption
  *
  * The result a line.* write step records on its plan step.
@@ -296,6 +302,7 @@ export const LINE_PLAN_TOOLS = Object.freeze([
   { name: 'line.import.mark', kind: 'write', request: '{folder, features}' },
   { name: 'line.import.toLibrary', kind: 'write', request: '{folder, from, kind, name, level?, keepShim?}' },
   { name: 'line.import.toFeature', kind: 'write', request: '{folder, mode, from?, kind, name, feature, base, keepShim?, route?}' },
+  { name: 'line.amend', kind: 'write', request: '{change: {tool, args}, fix: {tool, args}} or {change, fixes: [{tool, args}, ...]}' },
   { name: 'line.leaveAsIs', kind: 'write', request: '{stepId}' },
   { name: 'line.project', kind: 'read', request: '{}' },
 ]);
@@ -425,7 +432,7 @@ export const LINE_API = Object.freeze([
 /** The tools an import plan's steps name (plan-ready: each produces a StagedChange for applyChange). */
 export const IMPORT_TOOLS = Object.freeze(['line.import.mark', 'line.import.toLibrary', 'line.import.toFeature']);
 
-export const LINE_FIX_TOOLS = Object.freeze(['line.setBase', 'line.promote', 'line.baseOn', 'line.moveFile', 'line.createLayout']);
+export const LINE_FIX_TOOLS = Object.freeze(['line.setBase', 'line.promote', 'line.baseOn', 'line.moveFile', 'line.createLayout', 'line.amend']);
 
 export const LINE_KINDS = Object.freeze(['components', 'pages', 'workflows', 'fixtures']);
 export const LEVELS = Object.freeze(['atom', 'molecule', 'organism']);

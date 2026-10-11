@@ -182,6 +182,16 @@ package switches to it. File writes are checked by LINE-WRITER; the rest by LINE
   folders, `spec.md` or `README.md`. A project with neither folder gets one finding saying it is not
   laid out as a Line project yet. This rule was not in the ca1 brief; it is the static form of the
   layout above, and LINE-BASE depends on it.
+- **Stray source files (experiment fix, 11 Oct):** once the project has a library or a features
+  folder, a source file anywhere else is an error ("The source file "components/OrderButton.tsx" is
+  outside library/ and features/, so Line cannot check or reuse it; move it into the library or into
+  the feature that uses it."). Allowed: files directly at the root or in `src/` (config and entry
+  files), `line.appFolders` (default `app`, `config`, `scripts`, `public`, `types`, `test`, `tests`,
+  `__tests__`, `e2e`; also under `src/`; a project adds its own, e.g. `appFolders: [server]`), Line's
+  state folder, the package roots, test and example folders, pages (LINE-OWNER reports those), tests,
+  stories and `.d.ts` files. Typed fix: move it into the feature that alone imports it (with a base),
+  else into the library's kind folder. When the stray file only exists in a refused change (a move to
+  `components/`), the fix is one `line.amend` step that carries the change and the fix together.
 
 ### Existing layer rules that still apply
 
