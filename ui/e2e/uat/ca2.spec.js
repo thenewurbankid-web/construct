@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
 import path from 'node:path';
-import { clearWorkspace, clicker, closeProject, expectPlainEnglish, freshProject, openFromGate, screen, watchPage } from './support.js';
+import { clearWorkspace, clicker, closeProject, expectPlainEnglish, freshProject, openFromGate, screen, watchPage } from './support/uat.js';
 
 // Owner walk, ca2 (review.md "ca2 screen" UAT): open the sample, Components -> InvoiceCard -> Apply (expect "Saved." and
 // 1 problem); Pages -> billing -> InvoicesPage -> Apply (expect "Fine", no problems). Each fix is a plan step the click

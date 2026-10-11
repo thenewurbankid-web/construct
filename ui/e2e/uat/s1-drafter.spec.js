@@ -18,9 +18,8 @@ test('UAT s1-drafter: describe a change, see the ways to do it, add the recommen
   fs.cpSync(SAMPLE, base, { recursive: true });
   const restore = await openProject(API, base);
   const problems = [];
-  // Known, not this step's: the shell asks /api/review/branches of every project, and a project that is not a git
-  // repository (this temp copy) answers 400 (reported separately). Everything else must answer below 400.
-  const known = (url) => /\/api\/review\/branches$/.test(url ?? '');
+  // Every answer must be below 400 (/api/review/branches answers 200 for a project that is not a repository).
+  const known = () => false;
   page.on('console', (m) => { if (m.type() === 'error' && !known(m.location()?.url)) problems.push(`console: ${m.text()} (${m.location()?.url})`); });
   page.on('response', (r) => { if (r.status() >= 400 && !known(r.url())) problems.push(`${r.status()} ${r.url()}`); });
   try {

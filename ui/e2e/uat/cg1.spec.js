@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
 import { openProject } from '../tests/support/browseProject.js';
 import { waitForCockpitReady } from '../tests/support/cockpit.js';
-import { API, copySample, watchForProblems } from './support/owner.js';
+import { API, copySample, watchForProblems } from './support/uat.js';
 
 // cg1 UAT (docs/line/review.md "cg1", "UAT"), walked as the owner would: turn Trace on, say what you want, see the
 // controls light up here and follow the link to the screen where the rest are. Fails on any console error or 4xx/5xx.

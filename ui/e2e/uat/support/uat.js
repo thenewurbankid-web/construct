@@ -1,12 +1,13 @@
 import { test as base, expect } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runAxe, isBlocking, format } from '../../tests/support/axe.js';
 import { waitForCockpitReady } from '../../tests/support/cockpit.js';
 
-// Shared pieces of the pre-UAT walks: a fresh copy of the Line sample in the UAT workspace, opening it from the
+// The ONE helper every UAT walk shares (ui/e2e/uat). Shared pieces of the pre-UAT walks: a fresh copy of the Line sample in the UAT workspace, opening it from the
 // project picker as a person does, and a page that fails the walk on anything the owner would call broken.
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const REPO = path.resolve(HERE, '../../../..');
@@ -153,4 +154,114 @@ export async function expectLayoutFits(page, selector, testInfo, name) {
     expect(m.wide, `nothing in ${selector} runs off the right edge at ${width}px`).toEqual([]);
   }
   await page.setViewportSize({ width: 1280, height: 800 });
+}
+
+// ------------------------------------------------------------------ the integrator's walks (cp1, ca2, ci1, new project)
+/** The UAT workspace (playwright.uat.config.js sets both names to the same folder). */
+export const WS = process.env.E2E_WORKSPACE_ROOT ?? WORKSPACE;
+
+/** Copy an example into the workspace as a project of the owner's (a fresh copy per walk). */
+export function freshProject(example, name) {
+  const dir = path.join(WS, name);
+  fs.rmSync(dir, { recursive: true, force: true });
+  fs.cpSync(path.join(REPO, 'examples', example), dir, { recursive: true });
+  return dir;
+}
+
+/** Remove everything from the workspace (the walks share one narrow workspace). */
+export function clearWorkspace() {
+  for (const name of fs.readdirSync(WS)) fs.rmSync(path.join(WS, name), { recursive: true, force: true });
+}
+
+/** Console errors, page exceptions and 4xx/5xx answers, collected per walk; `allow` lists provoked ones. */
+export function watchPage(page, { allow = [] } = {}) {
+  const problems = [];
+  const ok = (line) => allow.some((re) => re.test(line));
+  page.on('console', (m) => {
+    if (m.type() !== 'error') return;
+    const line = `console: ${m.text()} ${m.location().url ?? ''}`.trim();
+    if (!ok(line)) problems.push(line);
+  });
+  page.on('pageerror', (e) => problems.push(`uncaught: ${String(e?.message ?? e)}`));
+  page.on('response', (r) => {
+    if (r.status() < 400) return;
+    const line = `http ${r.status()}: ${r.request().method()} ${r.url()}`;
+    if (!ok(line)) problems.push(line);
+  });
+  return {
+    problems,
+    check: () => expect(problems, `The page had problems:\n${problems.join('\n')}`).toEqual([]),
+  };
+}
+
+/** Every click the owner makes goes through here, so a walk can say how many one action took. */
+export function clicker() {
+  const c = {
+    count: 0,
+    async click(locator) { c.count += 1; await locator.click(); },
+    /** Start counting one action; `done()` asserts it took at most two clicks. */
+    action(name) {
+      const start = c.count;
+      return { done: () => expect(c.count - start, `"${name}" took more than two clicks`).toBeLessThanOrEqual(2) };
+    },
+  };
+  return c;
+}
+
+/** The visible text of `locator`, without closed Details, holds no rule id, file:line or tool call. */
+export async function expectPlainEnglish(locator) {
+  const text = await locator.evaluate((el) => {
+    const copy = el.cloneNode(true);
+    copy.querySelectorAll('details:not([open])').forEach((d) => { [...d.childNodes].forEach((n) => { if (n.nodeName !== 'SUMMARY') n.remove(); }); });
+    return copy.innerText ?? copy.textContent ?? '';
+  });
+  expect(text, 'technical detail outside Details').not.toMatch(/\b(LINE|SLICE|PAGE|COMPONENT)-[A-Z0-9]+\b|\.tsx?:\d+|\bline\.[a-zA-Z]+\(/);
+}
+
+/** Open a project the owner's way: from "Open a project", its row in "Your projects". */
+export async function openFromGate(page, me, name) {
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: 'Open a project' })).toBeVisible({ timeout: 30_000 });
+  const list = page.getByRole('region', { name: 'Your projects' });
+  const action = me.action(`open ${name}`);
+  await me.click(list.getByRole('button', { name: `Select ${name}` }));
+  const open = page.getByRole('button', { name: new RegExp(`^Open( ${name})?$`) });
+  if (await open.count()) await me.click(open.first());
+  await expect(page.getByTestId('project-switcher')).toContainText(name, { timeout: 30_000 });
+  action.done();
+}
+
+/** Close the open project the owner's way (project switcher, Close project). */
+export async function closeProject(page) {
+  if (!(await page.getByTestId('project-switcher').count())) return;
+  await page.getByTestId('project-switcher').click();
+  await page.getByTestId('close-project').click();
+  await expect(page.getByRole('heading', { name: 'Open a project' })).toBeVisible({ timeout: 30_000 });
+}
+
+/** The screens rail link the owner clicks to move between screens. */
+export const screen = (page, name) => page.getByRole('navigation', { name: 'Screens', exact: true }).getByRole('link', { name, exact: true });
+
+// ------------------------------------------------------------------ the cg1/ct1 walks
+// What an owner's walk must never meet: a console error or a failed request (4xx/5xx). Collected per page and
+// checked at the end of each walk, with the URL or message, so a failure says what went wrong.
+export function watchForProblems(page) {
+  const problems = [];
+  page.on('console', (m) => {
+    if (m.type() === 'error') problems.push(`console: ${m.text()}`);
+  });
+  page.on('pageerror', (e) => problems.push(`page error: ${e.message}`));
+  page.on('response', (r) => {
+    if (r.status() >= 400) problems.push(`${r.status()} ${r.request().method()} ${r.url()}`);
+  });
+  return { check: () => expect(problems, problems.join('\n')).toEqual([]) };
+}
+
+export const API = process.env.E2E_API_BASE || `http://localhost:${process.env.E2E_SERVER_PORT || 4000}`;
+
+/** A fresh copy of the Line sample (the how-to's "open examples/line-sample", without touching the original). */
+export function copySample() {
+  const dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'line-uat-')));
+  fs.cpSync(SAMPLE_SRC, dir, { recursive: true });
+  return dir;
 }

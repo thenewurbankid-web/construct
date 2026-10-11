@@ -29,9 +29,8 @@ test.describe.serial('UAT cd1: Features as a chat in Trace style', () => {
   test('walk: open Features, ask what is missing, open billing, fix it, add a component to orders, switch theme', async ({ page }) => {
     test.setTimeout(180_000);
     const problems = [];
-    // One known exception, outside cd1: the frame's Review feature asks /api/review/branches, which answers 400 for a
-    // project that is not a git checkout (this temp copy; the owner's sample sits inside the repo's checkout).
-    const known = (url) => url.includes('/api/review/branches');
+    // No exceptions: /api/review/branches answers 200 for a project that is not a repository (integrator fix).
+    const known = () => false;
     let lastBad = '';
     page.on('response', (r) => {
       if (r.status() >= 400 && known(r.url())) lastBad = r.url();

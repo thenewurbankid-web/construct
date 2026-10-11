@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
 import path from 'node:path';
-import { WS, clearWorkspace, clicker, closeProject, expectPlainEnglish, screen, watchPage } from './support.js';
+import { WS, clearWorkspace, clicker, closeProject, expectPlainEnglish, screen, watchPage } from './support/uat.js';
 
 // Owner walk, new Line project (cu7): from "Open a project", New project -> Line project, name "shop", first feature
 // "catalog" -> Create. Expect it opened on Features with catalog "All fine", then a first change through the plan:

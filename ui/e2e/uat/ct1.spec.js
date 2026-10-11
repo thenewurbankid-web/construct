@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { openProject } from '../tests/support/browseProject.js';
 import { waitForCockpitReady } from '../tests/support/cockpit.js';
-import { API, copySample, watchForProblems } from './support/owner.js';
+import { API, copySample, watchForProblems } from './support/uat.js';
 
 // ct1 UAT (docs/line/review.md "ct1", "UAT"), walked as the owner would: Trace and Auto on, ask, watch Auto do it with
 // a caption per move, Approve yourself; then Auto alone with Auto approval allowed. Fails on console errors or 4xx/5xx.
