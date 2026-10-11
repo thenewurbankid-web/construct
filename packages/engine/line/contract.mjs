@@ -198,6 +198,88 @@
  * @property {LineFinding[]} findings  Every finding inside the feature's folder.
  */
 
+/**
+ * cp1 -- Line actions as plan steps (@mx/plan, packages/engine/line/planTools.mjs + planService.mjs). Every Cockpit
+ * change (Base on, Promote, set a page prop) is a write step in the open project's plan session
+ * (`<root>/line/plans/<sessionId>.json`); only a person approves a write, and only an approved step runs.
+ *
+ * One expected output of a step: the checks that define "done".
+ * @typedef {object} PlanCheck
+ * @property {string} id
+ * @property {string} sentence  Plain English, e.g. "Validate (profile line) shows no new problems."
+ * @property {'validate'|'types'|'tests'|'file'|'spec'} kind
+ *
+ * Before a step runs: one expected output, already there or not.
+ * @typedef {object} GapItem
+ * @property {string} checkId
+ * @property {'present'|'partial'|'missing'} state
+ * @property {string} sentence
+ *
+ * After a step runs: one check's outcome.
+ * @typedef {object} CheckResult
+ * @property {string} checkId
+ * @property {boolean} ok
+ * @property {string} sentence
+ *
+ * What a person may do when a step needs them.
+ * A `fix` option comes from a refusal's findings (fixes.mjs typed fixes): `step` is the plan step that applies it (add it
+ * with args.fixOf = the step's id), null for advice only; `recommended` marks rank 1.
+ * @typedef {{id: 'retry'|'leave'|'fix', sentence: string, fixId?: string, recommended?: boolean, step?: {tool: string, args: Record<string, unknown>}|null}} StepOption
+ *
+ * The result a line.* write step records on its plan step.
+ * @typedef {object} LineStepResult
+ * @property {ApplyResult} apply     What the writer did (narrowed to the files not already there).
+ * @property {CheckResult[]} checks
+ * @property {number} passed
+ * @property {number} total
+ * @property {boolean} needsYou      A check failed: the person decides (options), nothing loops on its own.
+ * @property {StepOption[]} options
+ * @property {boolean} stopped       A retry passed no more checks than the try before it, so Line stopped retrying.
+ * @property {string} sentence       One sentence for the Plan panel.
+ *
+ * A plan step as Cockpit shows it (the @mx/plan step plus Construct's words).
+ * @typedef {object} PlanStepView
+ * @property {string} id
+ * @property {number} n
+ * @property {string} tool
+ * @property {Record<string, unknown>} args
+ * @property {string} why
+ * @property {'read'|'write'} kind
+ * @property {'waiting'|'ready'|'running'|'done'|'needs-you'|'needs-fix'|'failed'|'skipped'} state  needs-fix: Construct refused the change; its findings' typed fixes are the options
+ * @property {string} sentence    E.g. "Waiting for your approval: Creates StatusBadge in feature orders, ...".
+ * @property {GapItem[]} gap      Before it runs (empty once it ran).
+ * @property {LineStepResult|null} result
+ * @property {string|null} error
+ *
+ * GET /api/line/plan and every plan write answer this.
+ * @typedef {object} PlanView
+ * @property {true} ok
+ * @property {string} sessionId
+ * @property {string|null} planId
+ * @property {number|null} version
+ * @property {string|null} status
+ * @property {PlanStepView[]} steps
+ * @property {{linked: boolean, sentence: string}} store  Whether @mx/plan is linked or Line uses its built-in plan store.
+ * @property {string} [message]
+ *
+ * @typedef {{tool: string, args?: Record<string, unknown>, why?: string}} PlanStepRequest
+ */
+
+/** The plan tools Line adds to the one registry (beside the construct.* commands). */
+export const LINE_PLAN_TOOLS = Object.freeze([
+  { name: 'line.baseOn', kind: 'write', request: 'BaseOnRequest' },
+  { name: 'line.promote', kind: 'write', request: 'PromoteRequest' },
+  { name: 'line.setPageProp', kind: 'write', request: 'SetPropRequest' },
+  { name: 'line.fix', kind: 'write', request: 'FixRequest' },
+  { name: 'line.setFragment', kind: 'write', request: 'SetFragmentRequest' },
+  { name: 'line.setBase', kind: 'write', request: '{file, libraryId}' },
+  { name: 'line.moveFile', kind: 'write', request: '{from, to, base?}' },
+  { name: 'line.createLayout', kind: 'write', request: '{}' },
+  { name: 'line.leaveAsIs', kind: 'write', request: '{stepId}' },
+  { name: 'line.project', kind: 'read', request: '{}' },
+]);
+export const CHECK_KINDS = Object.freeze(['validate', 'types', 'tests', 'file', 'spec']);
+
 /** A refused request (bad name, unknown item, name taken). `sentence` is shown as is; `detail` (optional) is the
  * technical reason (a parser or type-checker message) for a collapsed Details. */
 export class LineOpError extends Error {
@@ -225,6 +307,10 @@ export const LINE_API = Object.freeze([
   { method: 'POST', path: '/api/line/fix', request: 'FixRequest', response: 'ApplyResult' },
   { method: 'GET', path: '/api/line/fragments', request: 'file (query)', response: 'FragmentList' },
   { method: 'POST', path: '/api/line/fragment', request: 'SetFragmentRequest', response: 'ApplyResult' },
+  { method: 'GET', path: '/api/line/plan', request: null, response: 'PlanView' },
+  { method: 'POST', path: '/api/line/plan/step', request: 'PlanStepRequest', response: 'PlanView & {stepId}' },
+  { method: 'POST', path: '/api/line/plan/approve', request: '{stepId}', response: 'PlanView' },
+  { method: 'POST', path: '/api/line/plan/run', request: '{stepId?}', response: 'PlanView' },
 ]);
 
 export const LINE_FIX_TOOLS = Object.freeze(['line.setBase', 'line.promote', 'line.baseOn', 'line.moveFile', 'line.createLayout']);
@@ -411,6 +497,40 @@ export function assertLineFeatureDetail(d) {
  * @param {any} l
  * @returns {asserts l is FragmentList}
  */
+/** @param {any} c @param {string} [where] */
+export function assertPlanCheck(c, where = 'check') {
+  str(c?.id, `${where}.id`);
+  sentence(c.sentence, `${where}.sentence`);
+  if (!CHECK_KINDS.includes(c.kind)) fail(`${where}.kind`, `must be one of ${CHECK_KINDS.join(', ')}`);
+}
+
+/** @param {any} r @returns {asserts r is LineStepResult} */
+export function assertLineStepResult(r) {
+  assertApplyResult(r?.apply);
+  if (!Array.isArray(r.checks)) fail('stepResult.checks', 'must be an array');
+  r.checks.forEach((c, i) => { str(c.checkId, `stepResult.checks[${i}].checkId`); if (typeof c.ok !== 'boolean') fail(`stepResult.checks[${i}].ok`, 'must be a boolean'); sentence(c.sentence, `stepResult.checks[${i}].sentence`); });
+  if (r.passed !== r.checks.filter((c) => c.ok).length || r.total !== r.checks.length) fail('stepResult.passed', 'must count the passing checks');
+  if (r.needsYou !== r.passed < r.total) fail('stepResult.needsYou', 'is true exactly when a check failed');
+  if (r.needsYou && !r.options.length) fail('stepResult.options', 'a step that needs you offers options');
+  sentence(r.sentence, 'stepResult.sentence');
+}
+
+/** @param {any} v @returns {asserts v is PlanView} */
+export function assertPlanView(v) {
+  if (v?.ok !== true) fail('plan.ok', 'must be true');
+  str(v.sessionId, 'plan.sessionId');
+  if (!Array.isArray(v.steps)) fail('plan.steps', 'must be an array');
+  if (typeof v.store?.linked !== 'boolean') fail('plan.store.linked', 'must be a boolean');
+  sentence(v.store.sentence, 'plan.store.sentence');
+  for (const s of v.steps) {
+    str(s.id, 'step.id'); str(s.tool, 'step.tool'); sentence(s.sentence, `step ${s.id}.sentence`);
+    if (!['waiting', 'ready', 'running', 'done', 'needs-you', 'needs-fix', 'failed', 'skipped'].includes(s.state)) fail(`step ${s.id}.state`, 'unknown state');
+    for (const g of s.gap) { if (!['present', 'partial', 'missing'].includes(g.state)) fail(`step ${s.id}.gap`, 'unknown state'); sentence(g.sentence, `step ${s.id}.gap.sentence`); }
+    if (s.result && s.kind === 'write' && s.tool !== 'line.leaveAsIs' && s.tool.startsWith('line.')) assertLineStepResult(s.result);
+  }
+}
+
+/** @param {any} l @returns {asserts l is FragmentList} */
 export function assertFragmentList(l) {
   str(l?.file, 'fragments.file');
   str(l.contentHash, 'fragments.contentHash');
