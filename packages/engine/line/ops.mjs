@@ -9,6 +9,8 @@ import { loadConfig } from '../../core/config.mjs';
 import { normalizeLineConfig, ITEM_KINDS, CODE_EXTENSIONS, NON_ITEM_FILE } from '../../core/profiles/line/contract.mjs';
 import { resolveLayout, listFiles, classify, isItemFile, resolveBase, resolveSpecifier } from '../../core/profiles/line/checks.mjs';
 import { createTransaction } from '../transactionalWriter.mjs';
+import { aggregateValidation } from '../../core/registry.mjs';
+import { enforcersForRoot } from '../../core/profiles/index.mjs';
 import { planFileMove, applyEdits } from '../tsFileMove.mjs';
 import { LineOpError, assertStagedChange } from './contract.mjs';
 
@@ -243,6 +245,25 @@ function outsideReason(root, rel) {
   return null;
 }
 
+/** One violation's identity across a change: its line can move, its rule, file and message do not. */
+const problemKey = (v) => `${v.rule}\u0000${v.file}\u0000${v.message}`;
+
+/**
+ * The commit gate for a Line change: validate the shadow copy, but refuse only problems the change ADDS.
+ * A file that already had a problem (a planted cross-feature import, say) can still get an unrelated edit;
+ * the old problem stays reported by validate, it just does not block this save.
+ * @param {string} root The real project root (the "before" state).
+ */
+function onlyNewProblems(root) {
+  return (shadow, { files }) => {
+    const after = aggregateValidation(shadow, enforcersForRoot(shadow), { files }).violations;
+    const existing = files.filter((f) => fs.existsSync(path.join(root, f)));
+    const before = new Set(existing.length ? aggregateValidation(root, enforcersForRoot(root), { files: existing }).violations.map(problemKey) : []);
+    const added = after.filter((v) => !before.has(problemKey(v)));
+    return { violations: added, ok: !added.some((v) => v.severity === 'error') };
+  };
+}
+
 /** A validate violation as Cockpit shows it. */
 function toFinding(v) {
   return {
@@ -274,7 +295,7 @@ export function applyChange(root, change) {
     for (const f of change.files) {
       if (f.content === null) txn.deleteFile(f.path); else txn.writeFile(f.path, f.content);
     }
-    result = txn.commit();
+    result = txn.commit({ validate: onlyNewProblems(root) });
   } catch (e) {
     txn.reset();
     return refuse(/** @type {Error} */ (e).message);

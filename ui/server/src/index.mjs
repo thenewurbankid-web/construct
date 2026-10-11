@@ -85,6 +85,7 @@ import { handleCreate, handleRefactor, handleImport } from './writeVerbsApi.mjs'
 import { validateArchitecture } from '../../../packages/core/architecture-enforcer.mjs';
 import { createComponentsRouter } from './componentsApi.mjs';
 import { createLineRouter } from './lineApi.mjs';
+import { createLineOpsRouter } from './lineOpsApi.mjs';
 import { createStoryBridgeRouter } from './storyBridgeApi.mjs';
 import { createNotesRouter } from './notesApi.mjs';
 import { openNotesStore } from './notesStore.mjs';
@@ -1239,6 +1240,16 @@ app.use('/api/components', createComponentsRouter({
 
 // Line: the read-only Line view of a `preset: line` project (packages/engine/line/contract.mjs LINE_API).
 app.use('/api/line', createLineRouter({
+  getRoot: () => {
+    const root = containedProjectRoot(getProjectDir());
+    return root ? { ok: true, root } : { ok: false, error: 'No project is open; pick a project first.' };
+  },
+}));
+// T4 (Line Cockpit): a page's parts and the Line changes (set a prop, base on a library item, promote), each written
+// only through Construct's writer with the project's own validate profile as the gate (lineOpsApi.mjs).
+app.use('/api/line', createLineOpsRouter({
+  clientOrigin: CLIENT_ORIGIN,
+  afterSave,
   getRoot: () => {
     const root = containedProjectRoot(getProjectDir());
     return root ? { ok: true, root } : { ok: false, error: 'No project is open; pick a project first.' };

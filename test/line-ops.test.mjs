@@ -208,3 +208,21 @@ test('ops: a write outside the project is impossible: escaping paths and links a
   assert.deepEqual(snapshot(outside), before);
   assert.equal(fs.existsSync(path.join(path.dirname(dir), 'escape.tsx')), false);
 });
+
+test('ops: a save is refused only for problems it adds; a page with an old problem can still take an unrelated edit', () => {
+  const dir = project(CROSS);
+  const page = 'features/billing/pages/InvoicesPage.tsx';
+  assert.ok(errorsOf(dir).some((v) => v.rule === 'LINE-DIR' && v.file === page), 'the page starts with a cross-feature import');
+  const src = fs.readFileSync(path.join(dir, page), 'utf8');
+  const retitle = applyChange(dir, { summary: 'Retitles the invoices page.', files: [{ path: page, content: src.replace('title="Invoices"', 'title="All invoices"') }] });
+  assertApplyResult(retitle);
+  assert.equal(retitle.ok, true, retitle.sentence);
+  assert.match(fs.readFileSync(path.join(dir, page), 'utf8'), /title="All invoices"/);
+  assert.ok(errorsOf(dir).some((v) => v.rule === 'LINE-DIR' && v.file === page), 'the old problem is still reported by validate');
+  const before = snapshot(dir);
+  const worse = applyChange(dir, { summary: 'Adds a second cross-feature import.', files: [{ path: page, content: `${fs.readFileSync(path.join(dir, page), 'utf8')}import { OrdersPage } from '../../orders/pages/OrdersPage';\nexport const More = OrdersPage;\n` }] });
+  assert.equal(worse.ok, false);
+  assert.equal(worse.findings.length, 1, 'only the new problem is reported as the reason');
+  assert.equal(worse.findings[0].rule, 'LINE-DIR');
+  assert.deepEqual(snapshot(dir), before);
+});

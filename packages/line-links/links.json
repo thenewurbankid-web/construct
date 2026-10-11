@@ -1,0 +1,16 @@
+{
+  "$comment": "Line modules Construct links from their own git repo (linked first, moved later). The source folder is $LINE_SOURCE_DIR, else `default` (~ is the home folder). `commit` pins the source's HEAD; a different HEAD is reported and not loaded unless LINE_LINKS_ALLOW_DRIFT=1. Bump it with `node packages/line-links/link.mjs --pin`.",
+  "source": {
+    "repo": "vision-architect-pipeline",
+    "branch": "core/ship",
+    "env": "LINE_SOURCE_DIR",
+    "default": "~/Repositories/vision-architect-pipeline/runs/core-ship",
+    "commit": "61eee8f3873e12a2cdf8b98caec2def131e1a672"
+  },
+  "links": {
+    "@mx/reason": { "path": "packages/reason", "entry": "index.ts", "what": "the AI decision ladder" },
+    "@mx/plan": { "path": "packages/plan", "entry": "index.ts", "what": "the plan API and its tool registry" },
+    "@mx/gatelm": { "path": "packages/gatelm", "entry": "index.ts", "what": "GateLM's drafting and static checks" },
+    "@mx/morpheus-render": { "path": "src/morpheus/render", "watch": ["src/morpheus"], "entry": "renderPage.ts", "what": "Morpheus's isolated page and component render" }
+  }
+}

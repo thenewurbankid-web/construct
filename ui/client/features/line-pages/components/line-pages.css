@@ -1,0 +1,40 @@
+/* Line Pages screen. Prefix lp-. Tokens only (app/tokens.css). */
+.lp-eyebrow { margin: 0 0 var(--sp-1); font-size: var(--fs-sm); color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; }
+.lp h1 { margin: 0; font-size: 20px; line-height: 1.3; }
+.lp .hint { margin: 0; }
+.lp-cards { list-style: none; margin: 0; padding: 0; display: flex; gap: var(--sp-2); overflow-x: auto; padding-bottom: 2px; }
+.lp-cards > li { flex: 0 0 200px; display: flex; }
+.lp-card { flex: 1; display: flex; flex-direction: column; gap: 4px; text-align: left; padding: var(--sp-2) var(--sp-3); min-height: 44px; border-radius: var(--r-md); border: 1px solid var(--border); background: var(--surface-1); color: var(--text); font: inherit; cursor: pointer; }
+.lp-card:hover { background: var(--hover); }
+.lp-card:focus-visible, .lp-page-open:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.lp-card[aria-pressed='true'] { border-color: var(--accent); background: var(--accent-soft); }
+.lp-card-title { font-weight: 600; }
+.lp-card-text { font-size: var(--fs-sm); color: var(--text-muted); }
+.lp-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--sp-4); align-items: start; }
+@media (max-width: 900px) { .lp-layout { grid-template-columns: minmax(0, 1fr); } }
+.lp-pages, .lp-part-list, .lp-findings { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-2); }
+.lp-page { padding: var(--sp-2) var(--sp-3); border: 1px solid var(--border); border-left: 3px solid var(--border); border-radius: var(--r-md); background: var(--surface-1); display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; }
+.lp-page[aria-current='true'] { border-left-color: var(--accent); background: var(--accent-soft); }
+.lp-page-head { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+.lp-page-open { font: inherit; font-weight: 600; color: var(--text); background: none; border: 0; padding: var(--sp-1) 0; min-height: 24px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.lp-chip { font-size: var(--fs-xs); padding: 2px var(--sp-2); border-radius: 999px; border: 1px solid var(--border); }
+.lp-chip--ok { background: var(--success-soft); color: var(--text); }
+.lp-chip--problem { background: var(--danger-soft); color: var(--text); }
+.lp-base { margin: 0; font-size: var(--fs-sm); color: var(--text-muted); }
+.lp-base--problem { color: var(--text); }
+.lp-finding { display: flex; flex-direction: column; gap: 2px; padding-left: var(--sp-2); border-left: 2px solid var(--warn); font-size: var(--fs-sm); overflow-wrap: anywhere; }
+.lp-finding--error { border-left-color: var(--danger); }
+.lp-details summary { cursor: pointer; color: var(--text-muted); width: fit-content; min-height: 24px; }
+.lp-details dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px var(--sp-2); margin: var(--sp-1) 0 0; font-family: var(--mono); }
+.lp-details dt { color: var(--text-muted); font-family: var(--font); }
+.lp-details dd { margin: 0; }
+.lp-parts { display: flex; flex-direction: column; gap: var(--sp-2); min-width: 0; }
+.lp-part { padding: var(--sp-2) var(--sp-3); border: 1px solid var(--border-strong); border-radius: var(--r-md); background: var(--surface-1); display: flex; flex-direction: column; gap: var(--sp-1); }
+.lp-part-name { font-family: var(--mono); font-weight: 600; }
+.lp-prop { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
+.lp-prop input[type='text'], .lp-prop input[type='number'] { flex: 1 1 140px; min-width: 0; min-height: 28px; background: var(--surface-0); color: var(--text); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 2px var(--sp-2); font: inherit; }
+.lp-now { font-size: var(--fs-sm); color: var(--text-muted); }
+.lp-outcome { padding: var(--sp-2) var(--sp-3); border-radius: var(--r-md); border: 1px solid var(--border); display: flex; flex-direction: column; gap: var(--sp-1); }
+.lp-outcome p { margin: 0; }
+.lp-outcome--ok { background: var(--success-soft); }
+.lp-outcome--refused { background: var(--danger-soft); }

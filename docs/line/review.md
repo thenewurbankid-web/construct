@@ -81,3 +81,42 @@ Gap: these run on the mock; each real task repeats them on real files.
 8. (added in review) A Line project that keeps its code under `src/` works; before the fix every page there was refused.
 
 Gaps: does not check the prop is one the component declares; library pages are not editable here (feature pages only).
+
+## T2: base on a library item, promote, and save through the writer (done; you see it in Hours 4, 6 and 7)
+
+`test/line-ops.test.mjs` (10 tests) and one new test in `test/transactionalWriter.test.mjs`:
+1. "Base on" plans one new component that wraps the library one and passes its props through; planning writes nothing; saving lands it and `construct validate --profile line` stays clean.
+2. "Base on" works for a page, a workflow and a test fixture too.
+3. Every refusal (unknown item, unknown feature, bad name, name taken, sneaky `..` paths) is one sentence and leaves the project byte-identical.
+4. A save that adds a cross-feature import is refused with LINE-DIR, and none of its files land, not even the harmless ones.
+5. Promote fixes a real cross-feature import: the item moves to the library, the old file goes, both users are repointed, and validate is clean afterwards.
+6. Promote repoints `@/features/...` imports to `@/library/...`.
+7. Promote gives the same result through TypeScript's own rename when the project has a tsconfig.
+8. Promote refuses a name the library already has; a promote that would make the library depend on a feature is refused and nothing changes.
+9. Writing outside the project is impossible (`../`, absolute paths, links that lead outside, `.git`).
+10. (added in review) A save is refused only for problems it adds: a page that already has a problem can still get an unrelated edit, and a second new problem is refused with just that problem as the reason.
+11. The writer can now delete a file as part of a checked change (needed by promote), replayed only when the check passes.
+
+Gaps: an importer that reaches the item through another feature's index file is not repointed (validate keeps reporting it); without a tsconfig, import rewriting is text-based and could touch a matching string in a comment.
+
+## Hour 1: Cockpit shows a Line project's errors in plain English (awaiting UAT)
+
+Sample project: `examples/line-sample/` (library: Button, Badge, Card, DataTable, ListPage, a checkout workflow, a user fixture; features orders and billing). Two planted errors: billing's InvoicesPage imports from the orders feature (LINE-DIR), and billing's InvoiceCard has no library base (LINE-BASE).
+
+Tests: `ui/e2e/tests/line-errors.spec.js` (Playwright, run for real), plus the existing drawer spec updated.
+1. Opening the sample shows "2 problems" in the status bar; clicking it opens Diagnostics with exactly two rows.
+2. Each row shows the full plain-English sentence; the rule id is not in the row.
+3. "Details" starts closed; opening it shows the rule id and the exact file and line.
+4. No serious accessibility problems in the list (it caught a too-small Details target, now fixed).
+5. Existing drawer test: a page row still opens the Pages editor; rule and file now checked inside Details.
+
+Gaps: one older drawer test about the empty Processes tab fails; it covers tabs this change did not touch (to confirm against the old code). The errors live in the shared Diagnostics drawer, not on a Line screen yet.
+
+### UAT
+1. Copy the sample into Cockpit's workspace and start Cockpit (two terminals, in `~/Repositories/construct`):
+   `cp -R examples/line-sample ~/workspace/line-sample`
+   `cd ui/server && npm start`
+   `cd ui/client && npm run dev`
+   Open http://localhost:3000.
+2. Open the project `line-sample` from the project picker. The status bar says "validate: 2 problems". Click it.
+3. Diagnostics shows two rows, each a sentence: one says billing imports from orders and to promote that item to the library; the other says InvoiceCard has no library base. Click "Details" under each: LINE-DIR at features/billing/pages/InvoicesPage.tsx:4 and LINE-BASE at features/billing/components/InvoiceCard.tsx:1.
