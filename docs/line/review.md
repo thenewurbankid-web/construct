@@ -4,6 +4,73 @@ One section per step. For each: what the tests prove (plain English), known gaps
 check it yourself. A step is done only after your UAT passes; until then it is "awaiting UAT".
 Branch: `work/2026-09-23` in `~/Repositories/construct` (local only, not pushed).
 
+## Import v2: fit existing logic into Line's blocks, backed by tests (11 Oct, merged on `merge-iv2`; awaiting UAT)
+
+Contract: `docs/line/import-v2/CONTRACT.md`. Merged branches: `fix-plan-lock`, `fix-yaml-comments`, `iv2-bugs`, `iv2-map`,
+`iv2-fit`, `iv2-tests`, `iv2-loop`, `line-s1-accuracy`, then reconciled into one module per concern:
+
+- **One contract**: `packages/engine/line/importV2/contract.mjs` holds every shape (fit's `area`, unassigned units with a
+  sentence, `FitStep`; the tests branch's `byKind`/`details`; the map's `anchor`; the loop's fixed-size `ImportLoopState`,
+  `ImportLogic`, `UnitWaiver`). `importV2/shapes.mjs` and the loop's mirrored typedefs are gone.
+- **The loop runs on the real modules**: `logicMap.mjs` (map), `importV2/compare.mjs` (diff, pure so mock mode runs it),
+  `characterize.mjs` (tests in the app's own jest), `importV2/route.mjs` `readRouteFamily` (the only one),
+  `importV2/fit.mjs` `fitLogic`/`planFitSteps` and the `line.import.extract*` tools. The stand-ins are deleted;
+  `importLoopMock.mjs` keeps the in-memory ops for Cockpit's mock mode.
+- **Stages**: scan -> map -> characterize -> classify (fit) -> plan -> review -> execute -> verify -> done. A route
+  import's plan ends with the FitProposal's extract steps (after Import's own moves, following each moved file; a
+  workflow is left out, said in one sentence, when the app has no xstate). Records go to `records/import-loop.jsonl`.
+- **A unit's block comes from the FitProposal**; "put it back" offers the block's extract step as a typed fix (one
+  click adds it as a plan step; once it lands the step is checked again). A stopped step also offers "Undo the import"
+  (iv2-bugs' save/undo) when the folder was saved before the first step.
+- **import-sample is pinned by generated tests**: it has its own `jest.config.cjs` and devDependencies; the characterizer
+  now handles react-router apps (router mocked virtually, route params from `useParams` and the route, values from the JSON
+  fixture). With jest installed, the folder import and the `/alerts` route import end with no waiver.
+
+Tests (plain English):
+1. Contract: every mock value passes its check; a fit that places a unit twice, an unknown area, an agent's waiver or
+   a coverage count above its total is refused in one sentence (`test/line-import-v2-contract.test.mjs`).
+2. Loop on disk (`test/line-import-loop.test.mjs`): a step that keeps every unit goes on; a step that drops a branch
+   stops with one sentence; its first option is the extract step of the unit's block (a domain), taken from where the
+   file moved; picking it adds one plan step and re-checks; "Undo the import" puts the folder back byte for byte and keeps
+   Line's own state; only a person waives.
+3. Real import-sample (`test/line-import-agent.test.mjs`): without jest the old path (the owner waives 9 untested units);
+   with a jest home linked, 8 characterization tests are written before anything moves, pass after all 10 steps, and
+   validate, types (errors that were already there are baseline), logic map, behaviour and coverage all pass: no waiver.
+   The `/alerts` route import also lands the usecase `useAlerts` in the library and leaves one loop record per step.
+4. Characterizer (`test/line-characterize.test.mjs`): react-router params come from the code, the route and the fixture.
+5. Drafter (owner decisions, 11 Oct): a request that names no item asks one question with the invented name as the
+   one-click answer, the corpus golds say so and the defer-right floor is back (91%); a real project's Cockpit draft takes
+   its kind and first route from a Train precedent, every route still checked, no world word crosses over, and a disputed
+   case never feeds it (`test/line-drafter.test.mjs`, `test/line-drafter-eval.test.mjs`).
+6. `npm test` runs `packages/tools/dev/run-tests.mjs`: node --test's own files, minus any folder with its own `.git`
+   or below a `fixtures` folder (`test/run-tests.test.mjs`; 509 files: the bare `node --test`'s 515 on this tree minus 7
+   fixture sources it ran as test files, two of which failed, plus the runner's own test).
+
+Gaps:
+- Without jest in the app, Line cannot write characterization tests: the owner still waives untested units.
+- "Put it back" with an extract step moves code into its block; it cannot bring back code that was deleted (the loop
+  then asks again, and fixing by hand or undo stays the way out).
+- A route import's extract steps run after Import's own moves; on max-ai-ui `/opportunity` (no xstate) the workflow
+  block stays for a person.
+- The Rules tab's five "previews the diff" specs fail on this tree and on the base `b7e572af` alike (pre-existing).
+- The characterizer needs a node_modules with jest, ts-jest, jsdom, React and React Testing Library
+  (`LINE_CHAR_JEST_HOME`, else `~/Repositories/max-ai-ui/node_modules`); the jest-backed tests skip with that sentence.
+
+### UAT (15 minutes): import max-ai-ui `/opportunity` on a clone
+1. Make a clone (never the original):
+   `git clone --local ~/Repositories/max-ai-ui /tmp/maxcopy && ln -s ~/Repositories/max-ai-ui/node_modules /tmp/maxcopy/node_modules && echo 'version: 1' > /tmp/maxcopy/architecture.yml`.
+2. Start Cockpit on it (`packages/tools/dev/heavy.sh npm run dev` in `ui/`, or your usual launcher) and open `/tmp/maxcopy`.
+3. Import -> Import agent. Folder `src`, Route (optional) `/opportunity`, Start the import. Expect: "N logic units in M
+   files, from route /opportunity", the fit sentence ("The logic fits K blocks of feature opportunity ..."), and the
+   characterization tests pass before anything moves (this takes a few minutes: jest runs in the clone).
+4. Approve the plan. After each step the step list shows "kept" counts; nothing should go missing. If a step stops, read
+   the one sentence: its first option is the typed fix (the extract step of the unit's block); "Undo the import" puts the
+   folder back as it was.
+5. At the end: every check passes, or the coverage check names the first unit without a test (the owner's waiver is the
+   last option). Check `src/line/import-plan.json` (`logic.loop` has one entry per step) and
+   `line/records/import-loop.jsonl` (no project word in it).
+6. `git -C /tmp/maxcopy status` shows the import's changes only inside `src`; `~/Repositories/max-ai-ui` is untouched.
+
 ## Wave 4: ready for owner UAT
 
 Every step below is merged on `work/2026-09-23` (local, not pushed). On the combined tree: the Line node tests, the tsc
