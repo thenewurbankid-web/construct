@@ -9,7 +9,7 @@ import { WORLD_IDS, isHeldOut, worldKey, worldOf, worldWords, worldSpec } from '
 import { factsHash } from './facts.mjs';
 import { worldFacts, inSample } from './generate.mjs';
 import { bindSlots, fill, buildDomainMap, normalize, refOf, refTable, splitWords } from './slots.mjs';
-import { describe } from './exprMirror.mjs';
+import { describe } from '../expr.mjs';
 import { draft as mirrorDraft, intentPhrase } from './drafterMirror.mjs';
 import { tryRoute, wordsOf } from './verify.mjs';
 import { createTrainStore } from './store.mjs';

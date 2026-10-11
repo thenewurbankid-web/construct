@@ -6,7 +6,7 @@
 //   worlds      packages/engine/line/train/corpus.mjs    imaginary Line projects (scratch only, never a real project)
 //   verify      packages/engine/line/train/verify.mjs    "Try it": a route's steps in a scratch copy, its checks
 //   drafter     packages/engine/line/train/drafterMirror.mjs   MIRROR of the drafter contract; replace on merge
-//   checks      packages/engine/line/train/exprMirror.mjs      MIRROR of the expression contract; replace on merge
+//   checks      packages/engine/line/expr.mjs               Line's one expression language (named checks)
 //   intents     INTENTS below                                  MIRROR of the drafter's intent catalog; replace on merge
 //   server      ui/server/src/lineTrainApi.mjs           TRAIN_API under /api/line/train
 //   agents      packages/mcp/src/train.mjs               train_propose_case, train_list_cases, train_run_eval
@@ -82,7 +82,7 @@ export const SLOT_TYPES = Object.freeze(['feature', 'library', 'item', 'name', '
  * @property {string} label      Plain English, slotted: "Inside <feature:F1> only".
  * @property {{layers: string[], features: string[], library: boolean}} scope  What it touches (features as slot names).
  * @property {TrainStep[]} steps
- * @property {object[]} expect   Expressions (exprMirror.mjs) that define done; slotted.
+ * @property {object[]} expect   Expressions (Line's one expression language, ../expr.mjs; its named checks) that define done; slotted.
  * @property {number} cost       Number of steps.
  * @property {'low'|'medium'|'high'} risk  low: one feature; medium: the library (every feature that uses it).
  * @property {'change'|'refusal'|'question'} outcome

@@ -6,7 +6,7 @@ import {
   TRAIN_TOOLS, INTENTS, INTENT_IDS, TRAIN_API, assertTrainCase, assertTrainRoute, assertTryResult, assertScoreboard, assertDelexicalized, slotNamesIn,
 } from '../packages/engine/line/train/contract.mjs';
 import { createMockTrainService } from '../packages/engine/line/train/mock.mjs';
-import { evaluate, describe } from '../packages/engine/line/train/exprMirror.mjs';
+import { evaluate, describe } from '../packages/engine/line/expr.mjs';
 
 test('train contract: only the five solid Line tools are offered, and every intent has a plain phrase and a family', () => {
   assert.deepEqual(TRAIN_TOOLS, ['line.baseOn', 'line.promote', 'line.setPageProp', 'line.setFragment', 'line.fix']);
@@ -65,12 +65,14 @@ test('train contract: a stored case may hold no project word; slots pass, names 
   assertDelexicalized('{"text":"reorders"}', ['orders']);
 });
 
-test('expression mirror: evaluate returns the failed sentences, [] when it passes', () => {
-  const facts = { library: [{ id: 'components/Badge' }], features: [{ name: 'orders', items: [{ id: 'orders/components/StatusBadge', base: 'components/Badge' }] }], findings: [{ rule: 'LINE-DIR', file: 'a' }], findingsNew: [], plan: [{ ok: false, code: 'UNKNOWN_ITEM' }], contents: { a: 'title="X"' } };
-  assert.deepEqual(evaluate(facts, { all: [{ hasItem: 'orders/components/StatusBadge' }, { basedOn: ['orders/components/StatusBadge', 'components/Badge'] }, { noNewFindings: true }, { fileContains: ['a', 'title="X"'] }] }), []);
-  assert.deepEqual(evaluate(facts, { hasLibrary: 'components/Tag' }), ['Expected that the library has a component Tag, but it is not there.']);
-  assert.equal(evaluate(facts, { noFinding: { rule: 'LINE-DIR' } }).length, 1);
-  assert.deepEqual(evaluate(facts, { refused: { code: 'UNKNOWN_ITEM' } }), []);
-  assert.equal(evaluate(facts, { refused: { code: 'NAME_TAKEN' } }).length, 1);
+test('expressions: Train Line\'s checks are named checks of Line\'s one expression language (failed sentences, [] when it holds)', () => {
+  const facts = { files: {}, library: { 'components/Badge': { kind: 'components' } }, features: { orders: { spec: false, items: [{ id: 'orders/components/StatusBadge', base: 'components/Badge' }] } }, findings: [{ rule: 'LINE-DIR', file: 'a', key: 'LINE-DIR|a|1' }], findingsNew: [], plan: { tool: 'line.baseOn', staged: true, applied: false, files: [], refusal: { code: 'UNKNOWN_ITEM', rule: null, fixes: false } } };
+  Object.defineProperty(facts, 'contents', { value: { a: 'title="X"' } });
+  const failed = (e) => evaluate(facts, e).failed.map((f) => f.sentence);
+  assert.deepEqual(failed({ and: [{ hasItem: 'orders/components/StatusBadge' }, { basedOn: ['orders/components/StatusBadge', 'components/Badge'] }, { noNewFindings: true }, { fileContains: ['a', 'title="X"'] }] }), []);
+  assert.deepEqual(failed({ hasLibrary: 'components/Tag' }), ['Expected that the library has a component Tag, but it is not there.']);
+  assert.equal(failed({ noFinding: { rule: 'LINE-DIR' } }).length, 1);
+  assert.deepEqual(failed({ refused: { code: 'UNKNOWN_ITEM' } }), []);
+  assert.equal(failed({ refused: { code: 'NAME_TAKEN' } }).length, 1);
   assert.equal(describe({ hasItem: 'orders/pages/OverviewListPage' }), 'orders has a page OverviewListPage.');
 });
