@@ -40,3 +40,8 @@ a.lf-item-name { text-decoration: underline; text-underline-offset: 3px; }
 .lf-story-text { font-weight: 600; }
 .lf-point { display: flex; flex-direction: column; gap: 2px; font-size: var(--fs-sm); }
 .lf-error { margin: 0; padding: var(--sp-2) var(--sp-3); border-radius: var(--r-md); background: var(--danger-soft); }
+.lf-tabs { display: flex; gap: var(--sp-1); border-bottom: 1px solid var(--border); margin-bottom: var(--sp-3); }
+.lf-tab { min-height: 36px; padding: 0 var(--sp-3); border: 0; border-bottom: 2px solid transparent; background: none; color: var(--text-muted); font: inherit; cursor: pointer; }
+.lf-tab[aria-selected='true'] { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
+.lf-tab:hover { color: var(--text); }
+.lf-tab:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }

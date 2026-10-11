@@ -35,7 +35,13 @@ export type LineFeaturesView = {
   feature: string | null;
   choose: (name: string | null) => void;
   detail: DetailState;
+  /** cw1: which tab of the chosen feature is open (kept in the URL as ?view=workflows). */
+  tab: FeatureTab;
+  chooseTab: (tab: FeatureTab) => void;
 };
+
+/** The chosen feature's tabs: what it owns (Overview) and its workflows. */
+export type FeatureTab = 'overview' | 'workflows';
 
 /** Everything the Line Features API offers the screen (real server or the contract's mock). */
 export type LineFeaturesApi = Pick<LineHttp, 'getProject' | 'getFeature'>;
