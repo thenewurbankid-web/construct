@@ -4,7 +4,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import os from 'node:os';
+import { makeTempDir } from '../test-utils/tmpdir.mjs';
 import path from 'node:path';
 import { createLineProject, planNewLineProject } from '../packages/engine/line/newProject.mjs';
 import { assertNewLineProjectResult, assertStagedChange, LineOpError } from '../packages/engine/line/contract.mjs';
@@ -14,7 +14,7 @@ import { enforcersForRoot } from '../packages/core/profiles/index.mjs';
 import { readLineProject } from '../packages/engine/line/model.mjs';
 import { readLineFeature } from '../packages/engine/line/feature.mjs';
 
-const tmp = () => fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'line-new-')));
+const tmp = () => fs.realpathSync(makeTempDir('line-new-'));
 const listAll = (dir) => fs.readdirSync(dir, { recursive: true }).map(String).sort();
 const isSentence = (s) => /^\S.*[.?!]$/s.test(s);
 
