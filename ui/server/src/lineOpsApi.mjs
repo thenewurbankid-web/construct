@@ -7,15 +7,18 @@
 //   POST /page-prop         planSetProp    -> applyChange
 //   POST /base-on           planBaseOn     -> applyChange
 //   POST /promote           planPromote    -> applyChange
+//   GET  /fragments?file=   listFragments  (packages/engine/line/fragments.mjs, cx1)
+//   POST /fragment          planSetFragment -> applyChange (a slow type check's errors come back as warnings)
 //
-// A LineOpError is a 400 `{ok: false, sentence, code}`; anything unexpected is a 500 with one sentence.
+// A LineOpError is a 400 `{ok: false, sentence, code, detail?}`; anything unexpected is a 500 with one sentence.
 import express from 'express';
 import { LineOpError } from '../../../packages/engine/line/contract.mjs';
 import { planBaseOn, planPromote, applyChange } from '../../../packages/engine/line/ops.mjs';
 import { planSetProp, readPageTree } from '../../../packages/engine/line/pageProp.mjs';
+import { listFragments, planSetFragment } from '../../../packages/engine/line/fragments.mjs';
 
 /** The real operations; tests may pass their own (for example the contract's mock). */
-export const REAL_LINE_OPS = Object.freeze({ readPageTree, planSetProp, planBaseOn, planPromote, applyChange });
+export const REAL_LINE_OPS = Object.freeze({ readPageTree, planSetProp, planBaseOn, planPromote, applyChange, listFragments, planSetFragment });
 
 const plain = (body) => (body && typeof body === 'object' && !Array.isArray(body) ? body : {});
 
@@ -41,20 +44,26 @@ export function createLineOpsRouter({ getRoot, clientOrigin, afterSave, ops = RE
       return res.json(await fn(r.root, req));
     } catch (e) {
       if (e instanceof LineOpError || /** @type {any} */ (e)?.name === 'LineOpError') {
-        return res.status(400).json({ ok: false, sentence: /** @type {any} */ (e).sentence, code: /** @type {any} */ (e).code });
+        const { sentence, code, detail } = /** @type {any} */ (e);
+        return res.status(400).json({ ok: false, sentence, code, ...(typeof detail === 'string' ? { detail } : {}) });
       }
       return res.status(500).json({ ok: false, sentence: 'Cockpit could not do that; nothing was changed.', code: 'INTERNAL' });
     }
   };
   /** Plan, then apply through the writer; after a landed change, run the usual after-save hook per file. */
   const change = (plan) => handle((root, req) => {
-    const result = ops.applyChange(root, plan(root, plain(req.body)));
+    const staged = plan(root, plain(req.body));
+    const result = ops.applyChange(root, staged);
     if (result.ok && afterSave) for (const f of result.files) afterSave(root, f);
+    // A plan may carry warnings that must not block (a type check too slow to gate the save): shown after it lands.
+    if (result.ok && Array.isArray(staged?.warnings) && staged.warnings.length) return { ...result, findings: [...result.findings, ...staged.warnings] };
     return result;
   });
   router.get('/page-tree', handle((root, req) => ops.readPageTree(root, typeof req.query.file === 'string' ? req.query.file : '')));
   router.post('/page-prop', change((root, body) => ops.planSetProp(root, body)));
   router.post('/base-on', change((root, body) => ops.planBaseOn(root, body)));
   router.post('/promote', change((root, body) => ops.planPromote(root, body)));
+  router.get('/fragments', handle((root, req) => ops.listFragments(root, typeof req.query.file === 'string' ? req.query.file : '')));
+  router.post('/fragment', change((root, body) => ops.planSetFragment(root, body)));
   return router;
 }
