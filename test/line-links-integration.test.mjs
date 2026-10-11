@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { makeTempDir } from '../test-utils/tmpdir.mjs';
 import { fileURLToPath } from 'node:url';
 import { importLinked, linkStatus } from '../packages/line-links/index.mjs';
 import { createCommandRegistry } from '../packages/core/command-registry.mjs';
@@ -21,7 +22,7 @@ async function setup(t) {
   assert.equal(plan.ok, true, plan.reason);
   const commands = createCommandRegistry();
   registerBuiltinCommands(commands);
-  const store = fs.mkdtempSync(path.join(os.tmpdir(), 'cu1-int-'));
+  const store = makeTempDir('cu1-int-');
   t.after(() => fs.rmSync(store, { recursive: true, force: true }));
   const api = plan.module.createPlanApi({ registry: commandPlanRegistry(commands), writer: plan.module.createFileWriter(store) });
   const created = await api.plan_create({ goal: 'Check the architecture of the fixtures.', by: 'user' });

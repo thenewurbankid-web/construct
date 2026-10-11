@@ -387,6 +387,7 @@ export const LINE_PLAN_TOOLS = Object.freeze([
   { name: 'line.addWorkflowTransition', kind: 'write', request: 'AddWorkflowTransitionRequest' },
   { name: 'line.removeWorkflowTransition', kind: 'write', request: 'RemoveWorkflowTransitionRequest' },
   { name: 'line.leaveAsIs', kind: 'write', request: '{stepId}' },
+  { name: 'line.import.fix', kind: 'write', request: '{folder, tool, args} (ci2: a typed fix run inside the import folder)' },
   { name: 'line.project', kind: 'read', request: '{}' },
 ]);
 export const CHECK_KINDS = Object.freeze(['validate', 'types', 'tests', 'file', 'spec']);
@@ -457,6 +458,7 @@ export const CHECK_KINDS = Object.freeze(['validate', 'types', 'tests', 'file', 
  * @property {string} sentence
  * @property {string[]} files     Project-relative files written.
  * @property {LineFinding[]} findings  Why a step was refused (empty when every step landed).
+ * @property {string[]} [landed]  Folder files the steps before a refused one already wrote.
  * @property {{id: string, ok: boolean, sentence: string}[]} steps
  */
 
@@ -598,6 +600,75 @@ export const PLAN_ACTION_TOOLS = Object.freeze([
 ]);
 export const AUTO_ACTION_KINDS = Object.freeze(['click', 'type', 'select', 'approve']);
 
+// ---------------------------------------------------------------------------------------------
+// Import agent (ci2, packages/engine/line/importAgent.mjs): one agent in Import mode, run as a fixed typed process (an
+// xstate machine): scan -> classify -> plan -> review -> execute -> verify -> done. Its whole state is ONE file inside the
+// chosen folder, `<folder>/line/import-plan.json`, written only through Construct's writer (applyChange, folder as root),
+// so it can be paused, resumed, edited by a person in Cockpit or by an agent over MCP, and every change is recorded.
+// It decides through @mx/reason (packages/core/reason-provider.mjs; static order when reason is not linked), calls only
+// registry tools, and executes ONLY by adding cp1 plan steps (line.import.*): a person still approves every write.
+
+/**
+ * One step of the import plan file (an ImportStep plus its review and run state).
+ * @typedef {object} ImportAgentStep
+ * @property {string} id
+ * @property {'line.import.mark'|'line.import.toLibrary'|'line.import.toFeature'} tool
+ * @property {Record<string, unknown>} args     Always includes `folder`; only the IMPORT_EDITABLE fields may change.
+ * @property {string} sentence
+ * @property {'proposed'|'approved'|'skipped'} review
+ * @property {'todo'|'running'|'done'|'needs-you'|'left'} run   left: the person chose to leave it as it is.
+ * @property {string[]} planStepIds   The cp1 plan steps it ran as (the step, its fixes, its retries), in order.
+ * @property {number} rounds          Fix rounds so far (each must pass more checks than the one before).
+ * @property {string|null} outcome    One sentence once it ran.
+ *
+ * One recorded change to the plan or the process (who, what, when).
+ * @typedef {{n: number, at: string, by: 'ui'|'agent'|'line', action: 'start'|'state'|'decide'|'edit'|'skip'|'unskip'|'move'|'approve'|'approve-all'|'add-step'|'answer'|'pause'|'resume'|'verify', stepId?: string, sentence: string}} ImportChange
+ *
+ * One decision the agent took (a classify question or a fix to try), and who took it.
+ * @typedef {{id: string, question: string, options: string[], picked: string, answer: string, by: 'static'|'single'|'order'|'jev'|'person', reason: string}} ImportDecision
+ *
+ * What the process waits for. `approval`: a person approves cp1 plan step `planStepId` (Plan panel or Import agent).
+ * `review`: the plan steps are approved (a person, or the person's coding agent over MCP). `answer`: one question.
+ * @typedef {{for: 'review'|'approval'|'answer', sentence: string, stepId?: string, planStepId?: string,
+ *   question?: {id: string, sentence: string, options: {id: string, sentence: string}[], recommended: string}}} ImportWaiting
+ *
+ * The verify stage: validate --profile line on the folder, types (tsc), tests. A check Line cannot run says why (skipped).
+ * @typedef {{id: 'validate'|'types'|'tests', state: 'pass'|'fail'|'skipped', sentence: string, detail?: string}} ImportVerifyCheck
+ *
+ * `<folder>/line/import-plan.json`.
+ * @typedef {object} ImportPlanFile
+ * @property {1} version
+ * @property {string} folder
+ * @property {'scan'|'classify'|'plan'|'review'|'execute'|'verify'|'done'} state
+ * @property {boolean} paused
+ * @property {ImportWaiting|null} waiting
+ * @property {{file: string, name: string, kind: LineKind, target: 'library'|'feature', feature?: string}[]} found
+ * @property {Record<string, string>} answers     Classify question id -> option id.
+ * @property {ImportDecision[]} decisions
+ * @property {ImportAgentStep[]} steps
+ * @property {{pending: string|null, origin: string|null, phase: 'step'|'fix'|'retry'|'leave'|'refresh'|null}} cursor  The cp1 step being waited on.
+ * @property {{ok: boolean, checks: ImportVerifyCheck[]}|null} verify
+ * @property {ImportChange[]} changes
+ *
+ * GET /api/line/import-agent?folder= and every import-agent write answer this.
+ * @typedef {object} ImportAgentView
+ * @property {true} ok
+ * @property {string} folder
+ * @property {'idle'|'scan'|'classify'|'plan'|'review'|'execute'|'verify'|'done'} state  idle: no import-plan.json yet.
+ * @property {boolean} paused
+ * @property {ImportWaiting|null} waiting
+ * @property {{id: string, label: string, status: 'done'|'current'|'todo'}[]} stages
+ * @property {string} sentence   Where the process is, in plain English.
+ * @property {ImportAgentStep[]} steps
+ * @property {ImportDecision[]} decisions
+ * @property {ImportChange[]} changes
+ * @property {{ok: boolean, checks: ImportVerifyCheck[]}|null} verify
+ * @property {string} decider   One sentence: who decides (reason linked, or the static order).
+ *
+ * POST /api/line/import-agent/step: change one plan step (before it runs). `to` is the new 0-based index for `move`.
+ * @typedef {{folder: string, stepId?: string, action: 'edit'|'skip'|'unskip'|'move'|'approve'|'approve-all', args?: Record<string, unknown>, to?: number}} ImportStepEdit
+ */
+
 /** A refused request (bad name, unknown item, name taken). `sentence` is shown as is; `detail` (optional) is the
  * technical reason (a parser or type-checker message) for a collapsed Details. */
 export class LineOpError extends Error {
@@ -677,6 +748,12 @@ export const LINE_API = Object.freeze([
   { method: 'GET', path: '/api/line/tools', request: null, response: 'ToolList' },
   { method: 'GET', path: '/api/line/ai-profiles', request: null, response: 'AiProfiles' },
   { method: 'POST', path: '/api/line/trace', request: 'TraceRequest', response: 'TraceMatch' },
+  { method: 'GET', path: '/api/line/import-agent', request: 'folder (query)', response: 'ImportAgentView' },
+  { method: 'POST', path: '/api/line/import-agent/start', request: '{folder}', response: 'ImportAgentView' },
+  { method: 'POST', path: '/api/line/import-agent/resume', request: '{folder}', response: 'ImportAgentView' },
+  { method: 'POST', path: '/api/line/import-agent/pause', request: '{folder}', response: 'ImportAgentView' },
+  { method: 'POST', path: '/api/line/import-agent/step', request: 'ImportStepEdit', response: 'ImportAgentView' },
+  { method: 'POST', path: '/api/line/import-agent/answer', request: '{folder, questionId, optionId}', response: 'ImportAgentView' },
 ]);
 
 /** The tools an import plan's steps name (plan-ready: each produces a StagedChange for applyChange). */
@@ -1414,4 +1491,127 @@ export function assertTraceMatch(m) {
     if (m.choice.via !== m.via) fail('trace.via', 'must equal the choice\'s via');
     sentence(m.choice.sentence, 'trace.choice.sentence');
   }
+}
+
+// --------------------------------------------------------------------------------------------- ci2 import agent
+export const IMPORT_AGENT_STATES = Object.freeze(['scan', 'classify', 'plan', 'review', 'execute', 'verify', 'done']);
+export const IMPORT_AGENT_STAGES = Object.freeze([
+  { id: 'scan', label: 'Read the folder' }, { id: 'classify', label: 'Sort the items' }, { id: 'plan', label: 'Write the plan' },
+  { id: 'review', label: 'Review' }, { id: 'execute', label: 'Make the changes' }, { id: 'verify', label: 'Check everything' }, { id: 'done', label: 'Done' },
+]);
+/** The args a person or agent may change on an import plan step, per tool (everything else is fixed by the scan). */
+export const IMPORT_EDITABLE = Object.freeze({
+  'line.import.mark': Object.freeze(['features']),
+  'line.import.toLibrary': Object.freeze(['name', 'level', 'keepShim']),
+  'line.import.toFeature': Object.freeze(['name', 'feature', 'base']),
+});
+export const IMPORT_PLAN_FILE = 'line/import-plan.json';
+/**
+ * Why `folder` is not a folder inside the project (relative, no "." or ".." parts), or null.
+ * @param {any} folder
+ * @returns {any}
+ */
+export function importFolderProblem(folder) {
+  if (typeof folder !== 'string' || !folder) return 'must name the import folder';
+  if (folder.startsWith('/') || folder.includes('\\') || folder.split('/').some((p) => p === '..' || p === '.' || p === '')) return 'must be a folder inside the project, like src/alerts';
+  return null;
+}
+const CHANGE_ACTIONS = ['start', 'state', 'decide', 'edit', 'skip', 'unskip', 'move', 'approve', 'approve-all', 'add-step', 'answer', 'pause', 'resume', 'verify'];
+
+/** @param {any} w @param {string} where */
+function assertWaiting(w, where) {
+  if (w === null) return;
+  if (!['review', 'approval', 'answer'].includes(w?.for)) fail(`${where}.for`, 'must be review, approval or answer');
+  sentence(w.sentence, `${where}.sentence`);
+  if (w.for === 'approval') str(w.planStepId, `${where}.planStepId`);
+  if (w.for === 'answer') {
+    const q = w.question;
+    str(q?.id, `${where}.question.id`);
+    sentence(q.sentence, `${where}.question.sentence`);
+    if (!Array.isArray(q.options) || q.options.length < 1) fail(`${where}.question.options`, 'must offer at least one option');
+    q.options.forEach((o, i) => { str(o.id, `${where}.question.options[${i}].id`); sentence(o.sentence, `${where}.question.options[${i}].sentence`); });
+    if (!q.options.some((o) => o.id === q.recommended)) fail(`${where}.question.recommended`, 'must be one of the options');
+  }
+}
+
+/** @param {any} s @param {string} folder @param {string} where */
+function assertAgentStep(s, folder, where) {
+  str(s?.id, `${where}.id`);
+  if (!IMPORT_TOOLS.includes(s.tool)) fail(`${where}.tool`, `must be one of ${IMPORT_TOOLS.join(', ')}`);
+  if (s.args?.folder !== folder) fail(`${where}.args.folder`, 'must name the plan\'s folder');
+  sentence(s.sentence, `${where}.sentence`);
+  if (!['proposed', 'approved', 'skipped'].includes(s.review)) fail(`${where}.review`, 'must be proposed, approved or skipped');
+  if (!['todo', 'running', 'done', 'needs-you', 'left'].includes(s.run)) fail(`${where}.run`, 'unknown run state');
+  if (!Array.isArray(s.planStepIds)) fail(`${where}.planStepIds`, 'must be an array');
+  if (!Number.isInteger(s.rounds) || s.rounds < 0) fail(`${where}.rounds`, 'must be a whole number');
+  if (s.outcome !== null) sentence(s.outcome, `${where}.outcome`);
+}
+
+/** @param {any} c @param {string} where */
+function assertChange(c, where) {
+  if (!Number.isInteger(c?.n) || c.n < 1) fail(`${where}.n`, 'must count from 1');
+  str(c.at, `${where}.at`);
+  if (!['ui', 'agent', 'line'].includes(c.by)) fail(`${where}.by`, 'must be ui, agent or line');
+  if (!CHANGE_ACTIONS.includes(c.action)) fail(`${where}.action`, 'unknown action');
+  sentence(c.sentence, `${where}.sentence`);
+}
+
+/** @param {any} v @param {string} where */
+function assertVerify(v, where) {
+  if (v === null) return;
+  if (typeof v?.ok !== 'boolean' || !Array.isArray(v.checks)) fail(where, 'must be {ok, checks}');
+  v.checks.forEach((c, i) => {
+    if (!['validate', 'types', 'tests'].includes(c.id)) fail(`${where}.checks[${i}].id`, 'must be validate, types or tests');
+    if (!['pass', 'fail', 'skipped'].includes(c.state)) fail(`${where}.checks[${i}].state`, 'must be pass, fail or skipped');
+    sentence(c.sentence, `${where}.checks[${i}].sentence`);
+  });
+  if (v.ok && v.checks.some((c) => c.state === 'fail')) fail(where, 'ok only when no check fails');
+}
+
+/**
+ * Throws unless p is a ImportPlanFile.
+ * @param {any} p
+ * @returns {asserts p is ImportPlanFile}
+ */
+export function assertImportPlanFile(p) {
+  if (p?.version !== 1) fail('importPlan.version', 'must be 1');
+  relPath(p.folder, 'importPlan.folder');
+  if (!IMPORT_AGENT_STATES.includes(p.state)) fail('importPlan.state', `must be one of ${IMPORT_AGENT_STATES.join(', ')}`);
+  if (typeof p.paused !== 'boolean') fail('importPlan.paused', 'must be true or false');
+  assertWaiting(p.waiting, 'importPlan.waiting');
+  if (!Array.isArray(p.found) || !Array.isArray(p.decisions) || !Array.isArray(p.steps) || !Array.isArray(p.changes)) fail('importPlan', 'found, decisions, steps and changes must be arrays');
+  if (!p.answers || typeof p.answers !== 'object') fail('importPlan.answers', 'must be an object');
+  const ids = new Set();
+  p.steps.forEach((s, i) => { assertAgentStep(s, p.folder, `importPlan.steps[${i}]`); if (ids.has(s.id)) fail(`importPlan.steps[${i}].id`, 'must be unique'); ids.add(s.id); });
+  p.decisions.forEach((d, i) => {
+    str(d.id, `importPlan.decisions[${i}].id`);
+    if (!d.options.includes(d.picked)) fail(`importPlan.decisions[${i}].picked`, 'must be one of its options');
+    if (!['static', 'single', 'order', 'jev', 'person'].includes(d.by)) fail(`importPlan.decisions[${i}].by`, 'unknown decider');
+    sentence(d.reason, `importPlan.decisions[${i}].reason`);
+    sentence(d.answer, `importPlan.decisions[${i}].answer`);
+  });
+  p.changes.forEach((c, i) => { assertChange(c, `importPlan.changes[${i}]`); if (c.n !== i + 1) fail(`importPlan.changes[${i}].n`, 'must count up by one'); });
+  if (!p.cursor || !['step', 'fix', 'retry', 'leave', 'refresh', null].includes(p.cursor.phase)) fail('importPlan.cursor', 'must be {pending, origin, phase}');
+  assertVerify(p.verify, 'importPlan.verify');
+  if (p.state === 'done' && p.steps.some((s) => s.review !== 'skipped' && !['done', 'left'].includes(s.run))) fail('importPlan.state', 'done only when every step ran or was left');
+}
+
+/**
+ * Throws unless v is a ImportAgentView.
+ * @param {any} v
+ * @returns {asserts v is ImportAgentView}
+ */
+export function assertImportAgentView(v) {
+  if (v?.ok !== true) fail('agent.ok', 'must be true');
+  str(v.folder, 'agent.folder');
+  if (v.state !== 'idle' && !IMPORT_AGENT_STATES.includes(v.state)) fail('agent.state', 'unknown state');
+  if (typeof v.paused !== 'boolean') fail('agent.paused', 'must be true or false');
+  assertWaiting(v.waiting, 'agent.waiting');
+  if (!Array.isArray(v.stages) || v.stages.length !== IMPORT_AGENT_STAGES.length) fail('agent.stages', 'must list every stage');
+  if (v.stages.filter((s) => s.status === 'current').length > 1) fail('agent.stages', 'at most one stage is current');
+  sentence(v.sentence, 'agent.sentence');
+  sentence(v.decider, 'agent.decider');
+  v.steps.forEach((s, i) => assertAgentStep(s, v.folder, `agent.steps[${i}]`));
+  v.changes.forEach((c, i) => assertChange(c, `agent.changes[${i}]`));
+  assertVerify(v.verify, 'agent.verify');
 }

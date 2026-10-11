@@ -49,3 +49,6 @@ export async function planAddStep(ctx, args) {
 export async function planRunNext(ctx, args) {
   return answer(await (await serviceOf(ctx)).runNext('agent', args.stepId));
 }
+
+/** ci2: the same plan service, for the Import agent's tools (importAgent.mjs). */
+export const planServiceOf = serviceOf;

@@ -12,6 +12,8 @@
     "./line/plan-service": "./line/planService.mjs",
     "./line/spec": "./line/spec.mjs",
     "./line/tool-registry": "./line/toolRegistry.mjs",
+    "./line/import-agent": "./line/importAgentDisk.mjs",
+    "./line/import-verify": "./line/importVerify.mjs",
     "./transactional-writer": "./transactionalWriter.mjs",
     "./envelope": "./envelope.mjs",
     "./pipeline": "./pipeline.mjs",

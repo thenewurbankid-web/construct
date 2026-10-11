@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { makeTempDir } from '../test-utils/tmpdir.mjs';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { importLinked, linkStatus, readLinks, readHeadCommit } from '../packages/line-links/index.mjs';
@@ -38,7 +39,7 @@ test('source folder missing: importLinked answers ok:false with the reason and n
 });
 
 test('a folder that is not a git checkout is reported as such', (t) => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'cu1-plain-'));
+  const dir = makeTempDir('cu1-plain-');
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
   assert.equal(readHeadCommit(dir), null);
   const s = linkStatus({ env: { LINE_SOURCE_DIR: dir } });
@@ -62,7 +63,7 @@ test('the source at another commit than links.json pins is not loaded unless dri
 });
 
 test('a git worktree checkout: HEAD is read from its git files (gitdir pointer, commondir, packed refs)', (t) => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'cu1-git-'));
+  const dir = makeTempDir('cu1-git-');
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
   const sha = 'a'.repeat(40);
   const main = path.join(dir, 'main-git');
@@ -103,7 +104,7 @@ test('the link step with the source missing exits 1 with plain sentences; constr
 });
 
 test('a docs-only commit in the source keeps the links on; a change to linked code switches them off', () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'construct-line-links-pin-'));
+  const dir = makeTempDir('construct-line-links-pin-');
   try {
     const git = (...args) => { const r = spawnSync('git', ['-C', dir, ...args], { encoding: 'utf8' }); assert.equal(r.status, 0, r.stderr); return r.stdout.trim(); };
     git('init', '-q');

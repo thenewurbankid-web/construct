@@ -17,6 +17,8 @@ export * as config from './config.mjs';
 export * as placement from './placement.mjs';
 /** `@line/construct-core/decision-provider` */
 export * as decisionProvider from './decision-provider.mjs';
+/** `@line/construct-core/reason-provider` */
+export * as reasonProvider from './reason-provider.mjs';
 /** `@line/construct-core/decision-plugin` */
 export * as decisionPlugin from './decision-plugin.mjs';
 /** `@line/construct-core/decision-project` */
@@ -131,5 +133,3 @@ export * as verify from './verify.mjs';
 export * as planRegistry from './plan-registry.mjs';
 /** `@line/construct-core/rules-catalog` */
 export * as rulesCatalog from './rules-catalog.mjs';
-/** `@line/construct-core/reason-provider` */
-export * as reasonProvider from './reason-provider.mjs';

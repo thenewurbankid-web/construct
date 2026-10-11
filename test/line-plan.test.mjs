@@ -32,7 +32,7 @@ test('registry: one registry lists the line tools and the construct commands, wi
   const kinds = Object.fromEntries(reg.list().map((t) => [t.name, t.kind]));
   assert.deepEqual(kinds, {
     'line.baseOn': 'write', 'line.promote': 'write', 'line.setPageProp': 'write', 'line.fix': 'write', 'line.setFragment': 'write',
-    'line.setBase': 'write', 'line.moveFile': 'write', 'line.createLayout': 'write', 'line.amend': 'write', 'line.import.mark': 'write', 'line.import.toLibrary': 'write', 'line.import.toFeature': 'write',
+    'line.setBase': 'write', 'line.moveFile': 'write', 'line.createLayout': 'write', 'line.amend': 'write', 'line.import.mark': 'write', 'line.import.toLibrary': 'write', 'line.import.toFeature': 'write', 'line.import.fix': 'write',
     'line.leaveAsIs': 'write',
     'line.baseWorkflowOn': 'write', 'line.setWorkflowRole': 'write', 'line.addWorkflowTransition': 'write', 'line.removeWorkflowTransition': 'write', 'line.project': 'read', 'construct.validate': 'read',
   });

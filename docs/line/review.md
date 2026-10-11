@@ -545,3 +545,22 @@ UAT (fresh sample):
 1. Open Components and click **Trace** and **Auto**. Type `Base a new StatusBadge on Badge in orders`.
 2. Click **Show me and do it**. The cursor opens Badge's form, chooses orders, types the name and clicks Create, with a caption for each move. It stops at "Waiting for you: click Approve…".
 3. Click **Approve** in the Plan panel: "You approved it…", and StatusBadge.tsx exists. To try Auto alone, turn Trace off, tick "Let Auto approve in this session", type `Base a new PaidBadge on Badge in orders` and click **Do it**.
+## ci2: the Import agent (a fixed process you review and approve; browser run pending at merge)
+
+Tests: `test/line-import-agent.test.mjs` (11), `ui/server/src/lineImportAgentApi.test.mjs` (3), `packages/mcp/test/importAgent.test.mjs` (1), `ui/client/features/line-import-agent/domain/AgentScreen.spec.mjs` (5), import-agent cases in `test/line-contract.test.mjs` and `test/line-plan.test.mjs`; browser: `ui/e2e/tests/line-import-agent.spec.js` (4), UAT walk `ui/e2e/uat/ci2.spec.js`.
+1. The process is a fixed xstate machine: Read the folder, Sort the items, Write the plan, Review, Make the changes, Check everything, Done; no other order is possible.
+2. Its whole state is `<folder>/line/import-plan.json`, written through Construct's writer; pause, close Cockpit, resume later (or from another agent) and it carries on where it stopped.
+3. The one open question (Table) is decided by @mx/reason when linked (jev picks; tested with the mock jev), else by the recommended option; every decision is recorded with who decided.
+4. In the review you (or your coding agent over MCP) can change, skip, reorder or approve steps; each change is recorded ("You skipped ...", "Your agent changed ..."); a bad change is one sentence and changes nothing.
+5. It writes only by adding plan steps (`line.import.*` are now in the one plan registry) that a person approves: your "Approve the plan" carries to the steps you approved; your agent's approval never approves a write (each one waits in the Plan panel).
+6. When a step is refused, its typed fixes go back into the decision (top fix first), the fix waits for your approval, then the step is tried again; when a try does not pass more checks than the one before, it stops and asks you one question (a fix, or leave it as it is).
+7. Check everything: Line rules on the folder (no NEW problems against the folder before the import; old ones are listed), types (tsc, errors inside the folder), tests in the folder; a check that cannot run says why.
+8. On a copy of max-ai-ui (`src/subframe-pages/Inbox`) the agent runs to Done; the original is untouched.
+Browser (pending): start, skip one step, Approve the plan, Done with checks; a reload shows the same import; a bad folder is one sentence; mock mode shows the fix loop with one "Approve and run" click.
+
+Gaps: the fix loop against real Construct refusals is tested on the mock only (no fixture step produces a refusal with a typed fix yet); there is no jev picker in Construct, so on a real server decisions use the static order unless one is passed in; types and tests checks are skipped on a copy without `npm install`; one cp1 plan step blocked by an unrelated step stops the import with a question.
+
+To try it in Cockpit (sample: a copy of `examples/import-sample` with `version: 1` as `architecture.yml`, opened in Cockpit):
+1. Go to `/import`, click "Or let the Import agent plan it ...", type `src/alerts`, click Start the import. Expect "Review the plan: approve its 10 steps ...".
+2. Click Skip on step 5 (Table), then Approve the plan. Expect "Done: 9 steps landed." and Checks: Line rules Passed.
+3. Open "Every change": you see your skip and approval and the agent's steps; reload the page: the same import is shown.

@@ -171,7 +171,7 @@ function rootTag(fn) {
   walkAst(fn.body ?? fn, {
     enter(/** @type {any} */ n) {
       if (tag) return this.skip();
-      const ret = n.type === 'ReturnStatement' ? n.argument : (n === fn.body && n.type === 'JSXElement' ? n : null);
+      const ret = /** @type {any} */ (n.type === 'ReturnStatement' ? n.argument : (n === fn.body && n.type === 'JSXElement' ? n : null));
       const el = ret?.type === 'ParenthesizedExpression' ? ret.expression : ret;
       if (el?.type === 'JSXElement') {
         const name = el.openingElement.name;

@@ -13,6 +13,8 @@ export const USAGE = 'construct-mcp (mock): Construct\'s blocks as read-only, pl
 export const TOOLS = Object.freeze([{ name: 'construct_mock', title: 'Mock tool', description: 'Answers what the mock was given.' }]);
 /** The plan tools (plan_status, plan_add_step, plan_run_next) as the real server lists them; the mock lists none. */
 export const PLAN_TOOLS = Object.freeze([]);
+/** The Import agent's tools (ci2) as the real server lists them; the mock lists none. */
+export const IMPORT_AGENT_TOOLS = Object.freeze([]);
 
 /**
  * Arguments are taken as given: `--root <dir>` only.

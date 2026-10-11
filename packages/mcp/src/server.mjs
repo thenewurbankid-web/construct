@@ -10,6 +10,7 @@ import { openRoot, createScrubber } from './guard.mjs';
 import * as blocks from './blocks.mjs';
 import * as plan from './plan.mjs';
 import { entryForMcp } from '@line/construct-engine/line/tool-registry';
+import * as importAgent from './importAgent.mjs';
 
 const PACKAGE = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
 
@@ -144,6 +145,61 @@ export const PLAN_TOOLS = Object.freeze([
   },
 ]);
 
+/**
+ * ci2 -- the Import agent's tools: an agent drives the Import process for one folder (read, start, review the plan, answer,
+ * resume). Its review approval never approves a write; each write is a plan step a person approves in Cockpit.
+ */
+const FOLDER = z.string().min(1).max(200).regex(/^(?!\/)(?!.*(^|\/)\.\.?(\/|$))[\w@.-]+(\/[\w@.-]+)*$/).describe('The import folder, relative to the project, for example src/alerts.');
+const WRITES_PLAN = Object.freeze({ readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false });
+export const IMPORT_AGENT_TOOLS = Object.freeze([
+  {
+    name: 'import_status',
+    title: 'Read the Import process',
+    description: 'The Import process for one folder: its stage (scan, classify, plan, review, execute, verify, done), what it waits for (the review, a person\'s approval of a plan step, or one question), the import plan\'s steps and every recorded change. Reads only.',
+    inputSchema: z.object({ folder: FOLDER }),
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    run: importAgent.importStatus,
+  },
+  {
+    name: 'import_start',
+    title: 'Start an Import',
+    description: 'Read, sort and plan the folder with static rules (decisions through @mx/reason, else the recommended option); stops at the review. Writes only the folder\'s line/import-plan.json, through Construct\'s writer.',
+    inputSchema: z.object({ folder: FOLDER }),
+    annotations: WRITES_PLAN,
+    run: importAgent.importStart,
+  },
+  {
+    name: 'import_plan_edit',
+    title: 'Edit the Import plan',
+    description: 'Review the import plan before its steps run: edit a step (only the fields it allows, e.g. name, feature, base, level), skip or bring back a step, move a step (to: 0-based place), or approve one or all steps. Your approval ends the review but never approves a write: each change still waits for a person in Cockpit. Every edit is recorded as yours.',
+    inputSchema: z.object({
+      folder: FOLDER,
+      action: z.enum(['edit', 'skip', 'unskip', 'move', 'approve', 'approve-all']),
+      stepId: z.string().min(1).max(80).optional().describe('The import plan step (not needed for approve-all).'),
+      args: z.record(z.string(), z.unknown()).optional().describe('For edit: the fields to change, for example {"feature": "inbox"}.'),
+      to: z.number().int().min(0).max(500).optional().describe('For move: the new 0-based place.'),
+    }),
+    annotations: WRITES_PLAN,
+    run: importAgent.importPlanEdit,
+  },
+  {
+    name: 'import_answer',
+    title: 'Answer the Import question',
+    description: 'Answer the one question the Import process asked (its id and one of its option ids, from import_status).',
+    inputSchema: z.object({ folder: FOLDER, questionId: z.string().min(1).max(200), optionId: z.string().min(1).max(200) }),
+    annotations: WRITES_PLAN,
+    run: importAgent.importAnswer,
+  },
+  {
+    name: 'import_resume',
+    title: 'Resume the Import',
+    description: 'Carry on until the process needs someone: it adds plan steps and runs the ones a person approved; a refused step gets its top typed fix tried, and when a round does not improve it asks one question.',
+    inputSchema: z.object({ folder: FOLDER }),
+    annotations: WRITES_PLAN,
+    run: importAgent.importResume,
+  },
+]);
+
 const INSTRUCTIONS = 'Construct blocks, read-only and plan-only. Start with requirement_parse, then placement_place (answer its closed questions and call again), then plan_validate. summarize and validate describe the project before you read files; line_spec says what Line is (rules, tools, plan protocol), from its code. Every tool is bounded and path-free; none writes. A plan preview is applied through the Cockpit\'s per-diff approval, never here. To change a Line project, add a step with plan_add_step, ask the user to approve it in Cockpit, then plan_run_next; plan_status shows the plan.';
 
 /** A server class whose own errors (input the schema refused, an unexpected throw) come out typed, like every other refusal. */
@@ -211,7 +267,7 @@ export function createConstructMcpServer(options = {}) {
     return fail(invalid ? 'INVALID_INPUT' : 'TOOL_FAILED', invalid ? message.replace(/^Input validation error: /i, '') : 'The tool could not answer.');
   });
 
-  for (const tool of [...TOOLS, ...PLAN_TOOLS]) {
+  for (const tool of [...TOOLS, ...PLAN_TOOLS, ...IMPORT_AGENT_TOOLS]) {
     // cu3: every MCP tool is one entry of Line's tool registry; an agent never writes project files directly.
     const entry = entryForMcp(tool.name);
     if (!entry) throw new Error(`construct-mcp: ${tool.name} is not in Line's tool registry.`);

@@ -37,6 +37,7 @@ import { entryById } from './toolRegistry.mjs';
 /** The one catalog's entry for a plan tool (toolRegistry.mjs); a tool the catalog does not list cannot be registered. */
 const catalogEntry = (name) => { const e = entryById(name); if (!e || !e.surfaces.plan) throw new Error(`The tool registry has no plan tool ${name}.`); return e; };
 import { planBaseWorkflowOn, planSetWorkflowRole, planAddWorkflowTransition, planRemoveWorkflowTransition } from './workflows.mjs';
+import { importTools } from './importTools.mjs';
 
 /** The real operations (tests pass the contract's mock instead). */
 export const REAL_PLAN_OPS = Object.freeze({ planBaseOn, planPromote, planSetProp, planFixByKey, planSetFragment, planStep, planAmended, planImportStep, applyChange, checkChange, readLineProject, planBaseWorkflowOn, planSetWorkflowRole, planAddWorkflowTransition, planRemoveWorkflowTransition });
@@ -165,9 +166,12 @@ function jsonSchemaOf(required, o) {
  * @returns {{name: string, kind: string, describe: string, args: any}[]}
  */
 export function lineToolSpecs() {
-  return Object.keys(SCHEMAS).map((name) => ({
+  const own = Object.keys(SCHEMAS).map((name) => ({
     name, kind: name === 'line.project' ? 'read' : 'write', describe: DESCRIBE[name], args: SCHEMAS[name].jsonSchema(),
   }));
+  // ci2's line.import.fix (importTools.mjs) is in the same registry, so the spec lists it too.
+  const fix = importTools({ root: '.' }).map((t) => ({ name: t.name, kind: t.kind, describe: t.describe, args: /** @type {any} */ (t.schema).jsonSchema() }));
+  return [...own, ...fix];
 }
 
 /**
@@ -442,7 +446,9 @@ export function runChange(projectRoot, tool, args, ops = REAL_PLAN_OPS) {
       : noFixLands
         ? `This needs you: Construct refused the change, and none of its fixes would be accepted either, so Line cannot fix it on its own. ${failing.join(' ')}`
         : `This needs you: ${passed} of ${total} checks passed. ${failing.join(' ')}`;
-  return { apply: /** @type {any} */ (apply), checks, passed, total, needsYou, options, stopped, sentence };
+  // ci2: a fix of an import step runs inside the import folder too, as one line.import.fix step (importTools.mjs).
+  const offered = folder ? options.map((o) => (o.id === 'fix' && o.step ? { ...o, step: { tool: 'line.import.fix', args: { folder, tool: o.step.tool, args: { ...o.step.args } } } } : o)) : options;
+  return { apply: /** @type {any} */ (apply), checks, passed, total, needsYou, options: offered, stopped, sentence };
 }
 
 // ------------------------------------------------------------------------------------------------- registry
@@ -479,7 +485,8 @@ export function lineTools({ root, ops = REAL_PLAN_OPS, afterSave }) {
  * @returns {import('../../line-links/contracts').PlanRegistry}
  */
 export function createLinePlanRegistry({ root, ops = REAL_PLAN_OPS, commands = null, afterSave }) {
-  const own = lineTools({ root, ops, afterSave });
+  // ci2: the Import steps (line.import.*) join the same registry, so Import executes only through plan steps.
+  const own = [...lineTools({ root, ops, afterSave }), ...importTools({ root, ops, afterSave })];
   const byName = new Map(own.map((t) => [t.name, t]));
   return {
     list: () => [...own.map(({ name, kind, schema, describe }) => ({ name, kind, schema, describe })), ...(commands ? commands.list() : [])],

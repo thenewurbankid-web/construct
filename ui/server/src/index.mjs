@@ -95,6 +95,7 @@ import { createLinePlanService } from '../../../packages/engine/line/planService
 import { createLineAiRouter } from './lineAiApi.mjs';
 import { stepModel } from '../../../packages/core/ai-profiles.mjs';
 import { createLineTraceRouter } from './lineTraceApi.mjs';
+import { createLineImportAgentRouter } from './lineImportAgentApi.mjs';
 import { createStoryBridgeRouter } from './storyBridgeApi.mjs';
 import { createNotesRouter } from './notesApi.mjs';
 import { openNotesStore } from './notesStore.mjs';
@@ -1292,6 +1293,7 @@ app.use('/api/line', createLineOpsRouter({
 
 // cp1 (Line Cockpit): every Line action as a step of the open project's plan (line/plans/); a person approves each
 // write, then it runs through the same writer (linePlanApi.mjs, packages/engine/line/planService.mjs).
+// ci2: the same ONE plan service per project (linePlanServiceFor above), shared with the Import agent.
 app.use('/api/line', createLinePlanRouter({
   clientOrigin: CLIENT_ORIGIN,
   afterSave,
@@ -1316,6 +1318,17 @@ app.use('/api/line', createLineImportRouter({
 // cg1 (Line Cockpit): Trace mode's "which controls do this?" for a request and the plan's open steps (a pure read).
 app.use('/api/line', createLineTraceRouter({
   clientOrigin: CLIENT_ORIGIN,
+  getRoot: () => {
+    const root = containedProjectRoot(getProjectDir());
+    return root ? { ok: true, root } : { ok: false, error: 'No project is open; pick a project first.' };
+  },
+}));
+
+// ci2 (Line Import agent): the Import process (scan, classify, plan, review, execute, verify) for one folder, kept in
+// <folder>/line/import-plan.json; it executes only through the plan above (lineImportAgentApi.mjs).
+app.use('/api/line', createLineImportAgentRouter({
+  clientOrigin: CLIENT_ORIGIN,
+  planServiceFor: linePlanServiceFor,
   getRoot: () => {
     const root = containedProjectRoot(getProjectDir());
     return root ? { ok: true, root } : { ok: false, error: 'No project is open; pick a project first.' };

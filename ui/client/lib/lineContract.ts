@@ -320,6 +320,43 @@ export type TraceMatch = {
   via: 'static' | 'jev';
   sentence: string;
 };
+/** Import agent (ci2, contract.mjs ImportAgentView): the Import process for one folder, kept in <folder>/line/import-plan.json. */
+export type ImportAgentState = 'idle' | 'scan' | 'classify' | 'plan' | 'review' | 'execute' | 'verify' | 'done';
+export type ImportAgentStep = {
+  id: string;
+  tool: ImportStepTool;
+  args: Record<string, unknown>;
+  sentence: string;
+  review: 'proposed' | 'approved' | 'skipped';
+  run: 'todo' | 'running' | 'done' | 'needs-you' | 'left';
+  planStepIds: string[];
+  rounds: number;
+  outcome: string | null;
+  approvedBy?: 'ui' | 'agent' | null;
+};
+export type ImportChange = { n: number; at: string; by: 'ui' | 'agent' | 'line'; action: string; stepId?: string; sentence: string };
+export type ImportDecision = { id: string; question: string; options: string[]; picked: string; answer: string; by: 'static' | 'single' | 'order' | 'jev' | 'person'; reason: string };
+export type ImportAgentQuestion = { id: string; sentence: string; options: { id: string; sentence: string }[]; recommended: string };
+export type ImportWaiting = { for: 'review' | 'approval' | 'answer'; sentence: string; stepId?: string; planStepId?: string; question?: ImportAgentQuestion };
+export type ImportVerifyCheck = { id: 'validate' | 'types' | 'tests'; state: 'pass' | 'fail' | 'skipped'; sentence: string; detail?: string };
+export type ImportAgentView = {
+  ok: true;
+  folder: string;
+  state: ImportAgentState;
+  paused: boolean;
+  waiting: ImportWaiting | null;
+  stages: { id: string; label: string; status: 'done' | 'current' | 'todo' }[];
+  sentence: string;
+  steps: ImportAgentStep[];
+  decisions: ImportDecision[];
+  changes: ImportChange[];
+  verify: { ok: boolean; checks: ImportVerifyCheck[] } | null;
+  decider: string;
+  message?: string;
+};
+export type ImportStepAction = 'edit' | 'skip' | 'unskip' | 'move' | 'approve' | 'approve-all';
+export type ImportStepEdit = { folder: string; stepId?: string; action: ImportStepAction; args?: Record<string, unknown>; to?: number };
+export type ImportAnswerRequest = { folder: string; questionId: string; optionId: string };
 
 /** Every LINE_API route, as the client calls it. Bodies come back as the server sent them, refusals included; each
  * screen turns them into what it shows. A network failure rejects. */
@@ -344,6 +381,12 @@ export type LineHttp = {
   newProject: (req: NewLineProjectRequest) => Promise<NewLineProjectResult | LineRefusal>;
   getAiProfiles: () => Promise<AiProfiles | LineRefusal>;
   trace: (req: TraceRequest) => Promise<TraceMatch | LineRefusal>;
+  getImportAgent: (folder: string) => Promise<ImportAgentView | LineRefusal>;
+  startImportAgent: (folder: string) => Promise<ImportAgentView | LineRefusal>;
+  resumeImportAgent: (folder: string) => Promise<ImportAgentView | LineRefusal>;
+  pauseImportAgent: (folder: string) => Promise<ImportAgentView | LineRefusal>;
+  editImportStep: (req: ImportStepEdit) => Promise<ImportAgentView | LineRefusal>;
+  answerImportAgent: (req: ImportAnswerRequest) => Promise<ImportAgentView | LineRefusal>;
 };
 
 /** cu2: one AI step's profile (Cockpit, Trace and Construct steps are one set; contract.mjs StepProfile). */

@@ -16,6 +16,7 @@
     "./config": "./config.mjs",
     "./placement": "./placement.mjs",
     "./decision-provider": "./decision-provider.mjs",
+    "./reason-provider": "./reason-provider.mjs",
     "./decision-plugin": "./decision-plugin.mjs",
     "./decision-project": "./decision-project.mjs",
     "./machine": "./machine.mjs",
