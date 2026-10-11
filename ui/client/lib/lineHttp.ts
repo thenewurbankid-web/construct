@@ -18,6 +18,7 @@ export const lineHttp: LineHttp = {
   },
   getFeature: (name) => getJson(`/api/line/feature?name=${encodeURIComponent(name)}`),
   getWorkspace: () => getJson('/api/line/workspace'),
+  getWorkflows: (feature) => getJson(`/api/line/workflows?feature=${encodeURIComponent(feature)}`),
   setWorkspace: (req) => postJson('/api/line/workspace', req),
   getPlan: () => getJson('/api/line/plan'),
   addPlanStep: (req) => postJson('/api/line/plan/step', req),

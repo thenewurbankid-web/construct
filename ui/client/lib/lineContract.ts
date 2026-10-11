@@ -192,6 +192,46 @@ export type PlanView = {
 };
 export type PlanStepRequest = { tool: string; args?: Record<string, unknown>; why?: string };
 
+/** cw1: Line workflows, state machines between pages (contract.mjs LineWorkflow, workflows.mjs). */
+export type LineWorkflowAction = { kind: 'callService'; service: string } | { kind: 'setPartState'; part: string; state: string } | { kind: 'other'; name: string };
+/** A role: a state a page fills (`page` is the feature page's name, null when not chosen; always null in the library). */
+export type LineWorkflowRole = { id: string; says: string; page: string | null; pageOk: boolean };
+export type LineWorkflowState = { id: string; label: string; role: string | null; page: string | null; initial: boolean; final: boolean };
+/** One transition as a When -> Do card. Only the feature's own (`origin: 'feature'`) can be removed. */
+export type LineWorkflowTransition = {
+  id: string;
+  from: string;
+  event: string;
+  to: string | null;
+  actions: LineWorkflowAction[];
+  origin: 'library' | 'feature';
+  removable: boolean;
+  when: string;
+  do: string;
+};
+export type LineWorkflow = {
+  id: string;
+  kind: 'library' | 'feature';
+  name: string;
+  file: string;
+  feature: string | null;
+  base: { value: string | null; libraryId: string | null } | null;
+  machineId: string;
+  initial: string | null;
+  roles: LineWorkflowRole[];
+  states: LineWorkflowState[];
+  transitions: LineWorkflowTransition[];
+  summary: string[];
+  usedBy: { feature: string; file: string }[];
+};
+/** GET /api/line/workflows?feature= */
+export type LineWorkflowList = { feature: string; workflows: LineWorkflow[]; library: LineWorkflow[]; pages: string[]; notMachines: { id: string; file: string; sentence: string }[] };
+/** The workflow plan tools' arguments (each is a write step a person approves in the Plan panel). */
+export type BaseWorkflowOnRequest = { libraryId: string; feature: string; name: string };
+export type SetWorkflowRoleRequest = { file: string; role: string; page: string };
+export type AddWorkflowTransitionRequest = { file: string; from: string; event: string; to: string; service?: string; part?: string; partState?: string };
+export type RemoveWorkflowTransitionRequest = { file: string; from: string; event: string };
+
 /** Every LINE_API route, as the client calls it. Bodies come back as the server sent them, refusals included; each
  * screen turns them into what it shows. A network failure rejects. */
 export type LineHttp = {
@@ -203,6 +243,7 @@ export type LineHttp = {
   render: (file: string, props?: string) => Promise<RenderResult>;
   getFeature: (name: string) => Promise<LineFeatureDetail | LineRefusal>;
   getWorkspace: () => Promise<LineWorkspace | LineRefusal>;
+  getWorkflows: (feature: string) => Promise<LineWorkflowList | LineRefusal>;
   setWorkspace: (req: WorkspaceRequest) => Promise<LineWorkspace | LineRefusal>;
   getPlan: () => Promise<PlanView | LineRefusal>;
   addPlanStep: (req: PlanStepRequest) => Promise<PlanView | LineRefusal>;

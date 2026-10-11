@@ -12,7 +12,7 @@ test('contract: the project view has the library, the features, base links and f
   const ops = createMockLineOps();
   const p = ops.readLineProject(ROOT);
   assertLineProject(p);
-  assert.deepEqual(p.library.map((l) => `${l.id}:${l.level ?? '-'}`), ['components/Button:atom', 'components/Dialog:molecule', 'components/TextField:atom', 'pages/ListPage:-']);
+  assert.deepEqual(p.library.map((l) => `${l.id}:${l.level ?? '-'}`), ['components/Button:atom', 'components/Dialog:molecule', 'components/TextField:atom', 'pages/ListPage:-', 'workflows/listDetail:-', 'workflows/wizard:-']);
   assert.deepEqual(p.library.find((l) => l.id === 'components/Button').usedBy, [{ feature: 'orders', file: 'features/orders/components/OrderButton.tsx' }]);
   const invoices = p.features.find((f) => f.name === 'billing').items[0];
   assert.equal(invoices.base.libraryId, 'pages/ListPage');
@@ -73,7 +73,7 @@ test('contract: the shape checks reject what Cockpit must never show', () => {
   assert.throws(() => assertFinding({ sentence: 'no full stop', rule: 'X', severity: 'error', file: 'a', line: 1 }), /full sentence/);
   assert.throws(() => assertStagedChange({ summary: 'Escapes.', files: [{ path: '../x', content: '' }] }), /inside the project/);
   assert.throws(() => assertApplyResult({ ok: false, sentence: 'Refused.', files: ['a'], findings: [] }), /wrote nothing/);
-  assert.deepEqual(LINE_API.map((r) => `${r.method} ${r.path}`), ['GET /api/line/project', 'GET /api/line/page-tree', 'POST /api/line/base-on', 'POST /api/line/promote', 'POST /api/line/page-prop', 'GET /api/line/render', 'GET /api/line/feature', 'GET /api/line/workspace', 'POST /api/line/workspace', 'POST /api/line/fix', 'GET /api/line/fragments', 'POST /api/line/fragment', 'GET /api/line/plan', 'POST /api/line/plan/step', 'POST /api/line/plan/approve', 'POST /api/line/plan/run']);
+  assert.deepEqual(LINE_API.map((r) => `${r.method} ${r.path}`), ['GET /api/line/project', 'GET /api/line/page-tree', 'POST /api/line/base-on', 'POST /api/line/promote', 'POST /api/line/page-prop', 'GET /api/line/render', 'GET /api/line/feature', 'GET /api/line/workspace', 'POST /api/line/workspace', 'POST /api/line/fix', 'GET /api/line/fragments', 'POST /api/line/fragment', 'GET /api/line/workflows', 'GET /api/line/plan', 'POST /api/line/plan/step', 'POST /api/line/plan/approve', 'POST /api/line/plan/run']);
   assert.throws(() => assertLineWorkspace({ root: '/p', folder: '../x', readOnly: true }), /inside the project/);
 });
 

@@ -5,6 +5,7 @@
 import { LineOpError } from './contract.mjs';
 import { groupItems, summarySentences, parseSpec, coverSpec, testTitles } from './featureText.mjs';
 import { mockFragmentsOf, mockHash } from './mockFragments.mjs';
+import { createMockWorkflows } from './mockWorkflows.mjs';
 
 const LIB = 'library';
 const FEAT = 'features';
@@ -69,6 +70,7 @@ function levelOf(files, file) {
 export function createMockLineOps({ files: initial = MOCK_FILES } = {}) {
   /** @type {Record<string, string>} */
   const files = { ...initial };
+  const { landed, ...workflowOps } = createMockWorkflows({ files, project: () => readLineProject() }); // cw1: library workflows + the four workflow plans
   let folder = ''; // cu6: the workspace folder ('' = whole project), as line/workspace.json would hold it
 
   /** @returns {import('./contract.mjs').LineProject} */
@@ -131,6 +133,7 @@ export function createMockLineOps({ files: initial = MOCK_FILES } = {}) {
     files: () => ({ ...files }),
     readLineProject,
     readLineFeature,
+    ...workflowOps,
     planBaseOn(_root, { libraryId, feature, name }) {
       const lib = /** @type {import('./contract.mjs').LibraryItem|undefined} */ (readLineProject().library.find((l) => l.id === libraryId));
       if (!lib) throw new LineOpError(`There is no library item "${libraryId}"; pick one from the library.`, 'UNKNOWN_ITEM');
@@ -212,6 +215,7 @@ export function createMockLineOps({ files: initial = MOCK_FILES } = {}) {
       }
       for (const k of Object.keys(files)) delete files[k];
       Object.assign(files, next);
+      landed(change);
       return { ok: true, sentence: `Saved. ${change.summary}`, files: [...touched], findings: [] };
     },
   };
