@@ -42,6 +42,9 @@ test('spec: a new command or a changed tool schema changes the commands topic an
   assert.notEqual((await buildLineSpec({ sources: { lineTools: tools } })).version, spec.version);
 });
 
+/** A value that fits one JSON Schema property (enum, array, boolean, object with required string fields, else a string). */
+const sample = (s) => (s.enum ? s.enum[0] : s.type === 'array' ? [sample(s.items)] : s.type === 'boolean' ? true : s.type === 'object' ? Object.fromEntries((s.required ?? []).map((k) => [k, 'x'])) : 'x');
+
 test('invariant: every line tool in the spec is the registry\'s tool, and its JSON Schema accepts and refuses what the registry does', () => {
   const reg = createLinePlanRegistry({ root: SAMPLE });
   const byName = new Map(reg.list().map((t) => [t.name, t]));
@@ -49,7 +52,7 @@ test('invariant: every line tool in the spec is the registry\'s tool, and its JS
   for (const t of spec.topics.commands.line) {
     const real = byName.get(t.name);
     assert.equal(t.kind, real.kind, t.name);
-    const full = Object.fromEntries(Object.entries(t.args.properties).filter(([k]) => !['expect', 'retry', 'fixOf'].includes(k)).map(([k, s]) => [k, s.enum ? s.enum[0] : s.type === 'array' ? ['x'] : s.type === 'boolean' ? true : 'x']));
+    const full = Object.fromEntries(Object.entries(t.args.properties).filter(([k]) => !['expect', 'retry', 'fixOf'].includes(k)).map(([k, s]) => [k, sample(s)]));
     assert.equal(real.schema.safeParse(full).success, true, `${t.name} accepts every field its schema lists`);
     for (const k of t.args.required) {
       const { [k]: _gone, ...without } = full;

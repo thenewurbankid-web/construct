@@ -159,7 +159,7 @@ export function capReplyTokens(maxTokens, base = globalThis.fetch) {
 }
 
 /**
- * @mx/reason's Qwen proposer with Construct's reply cap (default REASON_REPLY_TOKENS, per step by pair id).
+ * The Qwen proposer from the linked @mx/reason, with Construct's reply cap (default REASON_REPLY_TOKENS, per step by pair id).
  * @param {{createQwenProposer?: (o: any) => import('../line-links/contracts').ReasonProposer}} reason The linked module.
  * @param {{render: (q: any) => string, host?: string, fetch?: typeof fetch, model?: string, maxTokens?: number, maxTokensByPair?: Record<string, number>, env?: Record<string, string | undefined>}} o
  * @returns {import('../line-links/contracts').ReasonProposer & {replyTokens: (profile: any) => number}}

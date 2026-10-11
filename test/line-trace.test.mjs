@@ -35,6 +35,16 @@ async function refuseAndFix(dir, svc) {
   await svc.runNext('agent', fixStep.stepId);
   return { refusedId: added.stepId, fixId: fixStep.stepId };
 }
+/** A miss no typed fix can mend (experiment fixes: a fix that would land is chained and lands, so only this recurs): the
+ * library already has an OrderButton, so neither orders' OrderButton nor billing's InvoicesPage can be promoted. */
+async function refuseBlocked(dir, svc) {
+  fs.copyFileSync(path.join(dir, 'library/components/Button.tsx'), path.join(dir, 'library/components/OrderButton.tsx'));
+  const list = listFragments(dir, PAGE);
+  const added = await svc.addStep({ tool: 'line.setFragment', args: { file: PAGE, fragmentId: list.fragments[0].id, code: "() => import('../../billing/pages/InvoicesPage')", contentHash: list.contentHash } }, 'ui');
+  await svc.approve(added.stepId, 'ui');
+  const step = (await svc.runNext('ui')).steps.find((s) => s.id === added.stepId);
+  return { refusedId: added.stepId, step };
+}
 const tree = (dir) => {
   const out = {};
   const walk = (d) => { for (const e of fs.readdirSync(d, { withFileTypes: true })) { const p = path.join(d, e.name); if (e.isDirectory()) walk(p); else out[path.relative(dir, p)] = crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex'); } };
@@ -62,13 +72,13 @@ test('trace: a refusal records the typed fixes offered, which fix was picked and
   const { events, files, skipped } = readTraces(dir);
   assert.deepEqual([files, skipped], [[svc.trace.file], 0]);
   events.forEach((e, i) => assertTraceEvent(e, `event ${i}`));
-  assert.deepEqual(events.map((e) => `${e.kind}:${e.stepId}`), [`step:${refusedId}`, `refusal:${refusedId}`, `outcome:${refusedId}`, `step:${fixId}`, `fix-picked:${fixId}`, `refusal:${fixId}`, `outcome:${fixId}`]);
+  assert.deepEqual(events.map((e) => `${e.kind}:${e.stepId}`), [`step:${refusedId}`, `refusal:${refusedId}`, `outcome:${refusedId}`, `step:${fixId}`, `fix-picked:${fixId}`, `outcome:${fixId}`]);
   const refusal = events[1];
   assert.deepEqual([refusal.source, refusal.code, refusal.rules, refusal.files], ['construct', 'NEEDS_FIX', ['LINE-DIR'], ['features/orders/pages/OrdersPage.tsx']]);
-  assert.deepEqual(refusal.fixes.find((f) => f.recommended), { fixId: 'LINE-DIR/promote', tool: 'line.promote', recommended: true });
+  assert.deepEqual(refusal.fixes.find((f) => f.recommended), { fixId: 'LINE-DIR/promote', tool: 'line.amend', recommended: true }, 'the chain (promote OrderButton, then InvoicesPage) with the refused change, in one step');
   assert.deepEqual([events[4].fixOf, events[4].fixId], [refusedId, 'LINE-DIR/promote'], 'which offered fix the agent picked');
-  assert.deepEqual([events[6].ok, events[6].passed, events[6].total, events[6].state], [false, 0, 2, 'needs-fix'], 'and that it did not pass');
-  assert.equal(events.map((e) => e.seq).join(), '1,2,3,4,5,6,7');
+  assert.deepEqual([events[5].ok, events[5].passed, events[5].total, events[5].state], [true, 2, 2, 'done'], 'and that it passed');
+  assert.equal(events.map((e) => e.seq).join(), '1,2,3,4,5,6');
 });
 
 test('trace: a landed step is step then outcome ok; a plan-protocol refusal is source plan; long code is cut', async () => {
@@ -109,7 +119,7 @@ test('readTraces: a broken line is skipped and counted, never fatal', () => {
 test('context: Line picks the refused file, what the refused code imports, what the file imports, its base and the plan steps, each with a static summary', async () => {
   const dir = copy();
   const svc = createLinePlanService({ root: dir, commands: null, load: staticLoad });
-  await refuseAndFix(dir, svc);
+  await refuseBlocked(dir, svc);
   const { events } = readTraces(dir);
   const miss = events.find((e) => e.kind === 'refusal');
   const pick = await pickContext(dir, { miss, events });
@@ -120,7 +130,7 @@ test('context: Line picks the refused file, what the refused code imports, what 
     ['library/pages/ListPage.tsx', 3],
   ]);
   assert.equal(pick.files[0].summary.sentence, 'OrdersPage.tsx is a page of feature orders, based on library pages/ListPage, 7 lines, exporting OrdersPage.');
-  assert.deepEqual(pick.items.filter((i) => i.kind !== 'feature-item' && i.kind !== 'library-item').map((i) => `${i.kind}:${i.id}`), ['rule:LINE-DIR', `plan-step:${miss.stepId}`, `plan-step:${events.find((e) => e.kind === 'fix-picked').stepId}`]);
+  assert.deepEqual(pick.items.filter((i) => i.kind !== 'feature-item' && i.kind !== 'library-item').map((i) => `${i.kind}:${i.id}`), ['rule:LINE-DIR', `plan-step:${miss.stepId}`]);
   assert.deepEqual([pick.via, pick.ambiguous], ['static', false]);
   assert.deepEqual(importsOf(dir, 'features/billing/pages/InvoicesPage.tsx'), ['library/pages/ListPage.tsx', 'features/orders/components/OrderButton.tsx']);
 });
@@ -194,7 +204,7 @@ test('draft: two real sessions with the same miss draft one markdown issue per s
   for (let i = 0; i < 2; i += 1) {
     const d = copy();
     const svc = createLinePlanService({ root: d, commands: null, load: staticLoad });
-    await refuseAndFix(d, svc);
+    assert.equal((await refuseBlocked(d, svc)).step.state, 'needs-you');
     // Each session's trace lands in the project under test (as two Cockpit runs on one project would).
     fs.mkdirSync(path.join(dir, 'line/traces'), { recursive: true });
     fs.copyFileSync(path.join(d, svc.trace.file), path.join(dir, svc.trace.file));
@@ -202,14 +212,13 @@ test('draft: two real sessions with the same miss draft one markdown issue per s
   const before = outsideState(tree(dir));
   const { events } = readTraces(dir);
   const drafts = await draftFrameworkIssues(dir, events);
-  assert.deepEqual(drafts.map((d) => d.miss.signature).sort(), ['line.promote|NEEDS_FIX|LINE-DIR', 'line.setFragment|NEEDS_FIX|LINE-DIR']);
+  assert.deepEqual(drafts.map((d) => d.miss.signature).sort(), ['line.setFragment|NEEDS_FIX|LINE-DIR']);
   assert.ok(drafts.every((d) => /^line\/issues\/[a-z0-9-]+-[0-9a-f]{6}\.md$/.test(d.file)));
   assert.deepEqual(outsideState(tree(dir)), before, 'only the Line state folder changed');
   const md = fs.readFileSync(path.join(dir, drafts.find((d) => d.miss.tool === 'line.setFragment').file), 'utf8');
   for (const h of ['# [Framework] Editing a code fragment (line.setFragment) is refused with LINE-DIR and no typed fix works', '> Draft only: Line wrote this from the session traces and did not file it.', '## Story', '## What recurred', '## Minimal case', '## Context Line picked (static)', '## The test this case becomes']) assert.ok(md.includes(h), h);
   assert.match(md, /- 2 refusals in 2 traces, signature `line\.setFragment\|NEEDS_FIX\|LINE-DIR`\./);
-  assert.match(md, /Every typed fix or retry tried \(2\) was refused again or failed its checks\./);
-  assert.match(md, /Tried: LINE-DIR\/promote \(did not pass\); LINE-DIR\/promote \(did not pass\)\./);
+  assert.ok(md.includes('Construct refused this twice and never offered a typed fix that can run as a step.'), 'no fix of it would land');
   assert.ok(!md.includes('"fixOf"'), 'the case is the request alone');
   assert.ok(issueMarkdown(drafts[0].miss).includes("test('"), 'the case becomes a node test');
 });

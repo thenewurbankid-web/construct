@@ -21,7 +21,7 @@ const NO_LINK = { env: { ...process.env, LINE_SOURCE_DIR: path.join(makeTempDir(
 const construct = (...args) => spawnSync(process.execPath, [CLI, ...args], { encoding: 'utf8', cwd: REPO });
 const PAGE = 'features/orders/pages/OrdersPage.tsx';
 
-/** One Cockpit session on `dir`: the fragment that makes orders use billing, Approve, run; then Apply recommended fix. */
+/** One Cockpit session on `dir`: the fragment that makes orders use billing, Approve, run. It needs you: no fix lands. */
 async function cockpitSession(t, dir) {
   const app = express();
   app.use(express.json());
@@ -45,11 +45,9 @@ async function cockpitSession(t, dir) {
   await post('/plan/approve', { stepId: added.stepId });
   const ran = await post('/plan/run', { stepId: added.stepId });
   const step = ran.steps.find((s) => s.id === added.stepId);
-  assert.equal(step.state, 'needs-fix', step.sentence);
-  const fix = step.result.options.find((o) => o.id === 'fix' && o.recommended);
-  const fixStep = await post('/plan/step', { tool: fix.step.tool, args: { ...fix.step.args, fixOf: added.stepId } });
-  await post('/plan/approve', { stepId: fixStep.stepId });
-  await post('/plan/run', { stepId: fixStep.stepId });
+  // The library already has an OrderButton, so no typed fix would land: Line says so and offers no fix button.
+  assert.equal(step.state, 'needs-you', step.sentence);
+  assert.equal(step.result.options.some((o) => o.id === 'fix' && o.step), false);
   server.close();
 }
 
@@ -67,6 +65,8 @@ test('UAT cl1: spec from code, two Cockpit sessions with the same refusal, then 
   // Step 2: a copy of the sample, and the same refused change in two Cockpit sessions.
   const dir = makeTempDir('line-cl1-uat-');
   fs.cpSync(path.join(REPO, 'examples/line-sample'), dir, { recursive: true });
+  // A miss no typed fix can mend (a fix that would land is chained and lands): the library already has an OrderButton.
+  fs.copyFileSync(path.join(dir, 'library/components/Button.tsx'), path.join(dir, 'library/components/OrderButton.tsx'));
   const before = construct('validate', '--dir', dir, '--profile', 'line', '--format', 'json');
   await cockpitSession(t, dir);
   await cockpitSession(t, dir);
@@ -76,8 +76,8 @@ test('UAT cl1: spec from code, two Cockpit sessions with the same refusal, then 
   const misses = construct('line', 'misses', '--dir', dir);
   assert.equal(misses.status, 0, misses.stderr);
   const lines = sentences(misses.stdout);
-  assert.equal(lines[0], 'Read 2 session traces: 2 kinds of refusal, 2 that recur with no working typed fix.');
-  assert.ok(lines.includes('- Framework issue: Editing a code fragment (line.setFragment) was refused twice (LINE-DIR). Every typed fix or retry tried (2) was refused again or failed its checks.'), misses.stdout);
+  assert.equal(lines[0], 'Read 2 session traces: 1 kind of refusal, 1 that recurs with no working typed fix.');
+  assert.ok(lines.includes('- Framework issue: Editing a code fragment (line.setFragment) was refused twice (LINE-DIR). Construct refused this twice and never offered a typed fix that can run as a step.'), misses.stdout);
   assert.equal(lines.at(-1), 'Add --draft to write each one as a markdown issue in the project\'s line/issues folder (nothing is filed).');
   for (const l of lines) assert.ok(plain(l), `plain English: ${l}`);
 
@@ -85,7 +85,7 @@ test('UAT cl1: spec from code, two Cockpit sessions with the same refusal, then 
   const drafted = construct('line', 'misses', '--dir', dir, '--draft');
   assert.equal(drafted.status, 0, drafted.stderr);
   const files = sentences(drafted.stdout).filter((l) => l.startsWith('Drafted (not filed): ')).map((l) => l.replace('Drafted (not filed): ', ''));
-  assert.equal(files.length, 2);
+  assert.equal(files.length, 1);
   const md = fs.readFileSync(path.join(dir, files.find((f) => f.includes('setfragment'))), 'utf8');
   assert.match(md, /^# \[Framework\] Editing a code fragment \(line\.setFragment\) is refused with LINE-DIR and no typed fix works\n\n> Draft only/);
   assert.match(md, /## Spec slice \(rules\)\n- \*\*LINE-DIR\*\* \(error\): A feature uses the library and never another feature/);
@@ -95,7 +95,7 @@ test('UAT cl1: spec from code, two Cockpit sessions with the same refusal, then 
   const ctx = construct('line', 'context', '--dir', dir);
   assert.equal(ctx.status, 0, ctx.stderr);
   const c = sentences(ctx.stdout);
-  assert.match(c[0], /^The latest refusal, promoting an item to the library \(line\.promote\): This needs you: 0 of 2 checks passed\./);
+  assert.match(c[0], /^The latest refusal, editing a code fragment \(line\.setFragment\): This needs you: Construct refused the change, and none of its fixes would be accepted either, so Line cannot fix it on its own\./);
   assert.equal(c[1], 'Line picked 3 files (static order):');
   for (const l of c) assert.ok(plain(l), `plain English: ${l}`);
 

@@ -47,7 +47,7 @@ function planOf(answers = {}) {
   const tableFeature = answers[TABLE_Q] === 'feature:alerts';
   const steps = [];
   const add = (tool, args, sentence, slug) => steps.push({ id: `import-${steps.length + 1}-${slug}`, tool, args: { folder: FOLDER, ...args }, sentence });
-  add('line.import.mark', { features: ['alerts'] }, `Marks ${FOLDER} as a Line folder, with a library and the feature alerts.`, 'mark');
+  add('line.import.mark', { features: ['alerts'], appFolders: ['hooks'] }, `Marks ${FOLDER} as a Line folder, with a library and the feature alerts.`, 'mark');
   add('line.import.toLibrary', { from: 'fixtures/alerts.json', kind: 'fixtures', name: 'alerts', keepShim: false }, 'Moves alerts into the library and points its users at it.', 'lib-alerts');
   add('line.import.toLibrary', { from: 'components/AlertRow.tsx', kind: 'components', name: 'AlertRow', keepShim: false }, 'Moves AlertRow into the library and points its users at it.', 'lib-AlertRow');
   add('line.import.toLibrary', { from: 'components/SeverityBadge.tsx', kind: 'components', name: 'SeverityBadge', level: 'atom', keepShim: false }, 'Moves SeverityBadge into the library as an atom and points its users at it.', 'lib-SeverityBadge');

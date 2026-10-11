@@ -490,7 +490,9 @@ export function planImport(projectRoot, folder, answers = {}) {
   /** @type {import('./contract.mjs').ImportStep[]} */
   const steps = [];
   const add = (tool, args, sentence, slug) => steps.push({ id: `import-${steps.length + 1}-${slug}`, tool, args: { folder: f, ...args }, sentence });
-  add('line.import.mark', { features }, `Marks ${f} as a Line folder, with a library and ${features.length === 1 ? `the feature ${features[0]}` : `the features ${features.join(', ')}`}${features.length ? '' : ' no features'}.`, 'mark');
+  // Folders whose files stay where they are (hooks, types): listed as line.appFolders so LINE-LAYOUT does not report them.
+  const appFolders = [...new Set(d.unchanged.map((u) => local(u.file)).filter((r) => r.includes('/')).map((r) => r.split('/')[0]))].sort();
+  add('line.import.mark', { features, ...(appFolders.length ? { appFolders } : {}) }, `Marks ${f} as a Line folder, with a library and ${features.length === 1 ? `the feature ${features[0]}` : `the features ${features.join(', ')}`}${features.length ? '' : ' no features'}.`, 'mark');
   const shimNote = (it) => (it.outsideUsers.length ? ` Its old file stays as a one-line link, because ${it.outsideUsers.length === 1 ? posix.basename(it.outsideUsers[0]) : `${it.outsideUsers.length} files`} outside the folder use${it.outsideUsers.length === 1 ? 's' : ''} it.` : '');
   for (const it of items.filter((i) => i.target === 'library' || i.mode === 'split')) {
     const lvl = it.target === 'library' && it.level ? it.level : undefined;
@@ -559,9 +561,10 @@ const libPath = (args) =>`library/${args.kind}/${args.name}${posix.extname(Strin
 
 /** Every tool an import step can name; each is (folderRoot, args) -> StagedChange. */
 export const IMPORT_STEP_TOOLS = Object.freeze({
-  'line.import.mark': (root, { folder, features = [] }) => {
+  'line.import.mark': (root, { folder, features = [], appFolders = [] }) => {
     const files = [];
-    if (!fs.existsSync(path.join(root, 'architecture.yml'))) files.push({ path: 'architecture.yml', content: `# ${folder} was brought into Line by Import; the rest of the project is not a Line project.\nversion: 1\npreset: line\n` });
+    const keep = appFolders.length ? `line:\n  # Folders Import left in place (hooks, types): not Line items yet.\n  appFolders:\n${appFolders.map((a) => `    - ${a}\n`).join('')}` : '';
+    if (!fs.existsSync(path.join(root, 'architecture.yml'))) files.push({ path: 'architecture.yml', content: `# ${folder} was brought into Line by Import; the rest of the project is not a Line project.\nversion: 1\npreset: line\n${keep}` });
     if (!fs.existsSync(path.join(root, 'library'))) files.push(...planCreateLayout(root).files);
     for (const name of features) {
       if (!fs.existsSync(path.join(root, 'features', name, 'spec.md'))) files.push({ path: `features/${name}/spec.md`, content: `# ${name}\n\nBrought into Line from ${folder} by Import. Write what this feature does here.\n` });
