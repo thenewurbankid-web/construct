@@ -104,5 +104,34 @@ export function routeFromRecord(record, slots, score) {
     steps: record.steps, expect: record.expect, pre: [], delta: record.delta, predicted: null,
     cost: { steps: record.steps.length, files: record.steps.length, layers: 1 }, risk: 'Repeats an earlier approved change on this project\'s shape.',
     via: 'retrieval', confidence: Math.round(Math.min(0.9, 0.4 + score / 4) * 100) / 100, status: 'unverified', refusal: null, invented: [], failed: [],
+    ...(/** @type {any} */ (record).unpredicted ? { unpredicted: true } : {}),
   };
+}
+
+/** The slots a slotted request names, as a sorted signature ("<feature:F1> <library:L1>"). */
+const slotSignature = (text) => (String(text).match(/<[a-z-]+:[A-Z]\d+>/g) ?? []).sort().join(' ');
+
+/**
+ * A strong precedent: the approved records of the one earlier request (a record `group`, e.g. one Train Line case) whose
+ * slotted request names exactly the same slots and shares at least `min` of its words (Jaccard). Unlike `nearest`, it
+ * does not need the classifier's intent: an approved request worded like this one says what this one is. Ties keep a
+ * person-agreed record, then the earlier one (deterministic).
+ * @param {(import('./contract.mjs').TransitionRecord & {group?: string, agreed?: boolean})[]} records
+ * @param {{request: string}} q  The normalized request.
+ * @param {{min?: number}} [o]
+ * @returns {{score: number, intent: string, records: any[]}|null}
+ */
+export function precedent(records, q, o = {}) {
+  const min = o.min ?? 0.75;
+  const sig = slotSignature(q.request);
+  let best = null;
+  for (const r of records) {
+    if (!r.approved || slotSignature(r.request) !== sig) continue;
+    const score = jaccard(r.request, q.request);
+    if (score < min) continue;
+    if (!best || score > best.score || (score === best.score && r.agreed && !best.agreed)) best = { score, group: r.group ?? r.routeId, agreed: Boolean(r.agreed) };
+  }
+  if (!best) return null;
+  const group = records.filter((r) => (r.group ?? r.routeId) === best.group);
+  return { score: best.score, intent: group[0].intent, records: group };
 }

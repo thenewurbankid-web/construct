@@ -17,6 +17,7 @@ import { worldMap, normalizeRequest, draftInWorld } from './draft.mjs';
 import { describe } from '../expr.mjs';
 import { tryRoute, wordsOf } from './verify.mjs';
 import { createTrainStore } from './store.mjs';
+import { trainRecords } from './records.mjs';
 
 const nameOfId = (id) => String(id).split('/').pop();
 const baseName = (f) => path.posix.basename(String(f)).replace(/\.(tsx|ts|json)$/, '');
@@ -86,6 +87,14 @@ export function routeView(r, bound, facts, preferred) {
  */
 export function createTrainService(o = {}) {
   const store = createTrainStore(o);
+  /** The drafter's retrieval records from the train split (rebuilt when a case or its status changes). */
+  let memo = { key: '', records: /** @type {any[]} */ ([]) };
+  const records = () => {
+    const all = store.all();
+    const key = crypto.createHash('sha256').update(all.map((c) => `${c.id}:${c.status}`).join('|')).digest('hex');
+    if (memo.key !== key) memo = { key, records: trainRecords(all) };
+    return memo.records;
+  };
   const now = o.now ?? (() => new Date().toISOString());
 
   const synonymsOf = (world) => store.synonyms(worldKey(world));
@@ -253,7 +262,7 @@ export function createTrainService(o = {}) {
     draft({ request, world: key = 'sample' }) {
       if (typeof request !== 'string' || request.trim().length < 3) throw new LineOpError('Type what you want Line to do, in a sentence.', 'NO_REQUEST');
       const world = worldOf(key);
-      const d = draftInWorld(world, request, { synonyms: synonymsOf(world) }).train;
+      const d = draftInWorld(world, request, { synonyms: synonymsOf(world), records: records() }).train;
       const facts = worldFacts(world);
       const b = /** @type {any} */ (bindSlots(d.slots, facts, wordsOf(world)));
       const routes = b.ok ? d.routes.map((r) => ({ ...routeView(r, b.bound, facts, d.recommended), via: r.via, confidence: r.confidence })) : [];
@@ -325,7 +334,7 @@ export function createTrainService(o = {}) {
     },
     /** Eval: draft every held-out case, compare with its gold, keep the numbers. */
     runEval(by = 'owner') {
-      const result = evaluateAll(store.all(), now());
+      const result = evaluateAll(store.all(), now(), { records: records() });
       store.saveEval(result, by);
       return service.scoreboard();
     },
@@ -417,12 +426,15 @@ export function evaluateCase(c, o = {}) {
 }
 
 /**
- * Draft every held-out case with the real drafter and score it against its gold (nothing is written).
+ * Draft every held-out case with the real drafter and score it against its gold (nothing is written). The drafter's
+ * retrieval reads Train Line's train-split cases (`trainRecords`) unless `records` is given.
  * @param {any[]} cases @param {string} at @param {{records?: any[]}} [o]
  * @returns {{at: string, cases: any[]}}
  */
 export function evaluateAll(cases, at, o = {}) {
-  const per = cases.filter((x) => x.split === 'heldout' && x.status !== 'disputed').map((c) => evaluateCase(c, o)).filter(Boolean);
+  // Retrieval reads the TRAIN split only (records.mjs feedsRetrieval: never a held-out case or a held-out world).
+  const records = o.records ?? trainRecords(cases);
+  const per = cases.filter((x) => x.split === 'heldout' && x.status !== 'disputed').map((c) => evaluateCase(c, { ...o, records })).filter(Boolean);
   return { at, cases: per };
 }
 
