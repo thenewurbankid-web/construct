@@ -254,3 +254,20 @@ UAT (fresh sample):
 1. Pages → orders → OrdersPage → on ListPage click "Edit code". Expect only "What happens when Orders asks for more" with `() => console.log('Show more orders')`.
 2. Change the text to 'All orders' → Save. Expect "Saved. Changes the code for …"; only that handler changed in the file.
 3. Edit again and type `() => {` → Save. Expect "This code is not a single valid expression, so nothing was saved." with Details.
+
+## cf1: Features, a feature with everything it owns (awaiting UAT)
+
+Tests: `test/line-feature.test.mjs` (5), contract, server (+2) and client (3) tests, `ui/e2e/tests/line-features.spec.js` (6, real server).
+1. orders lists its items by kind (pages, components, workflows), each "Based on …", with the exact Auto summary sentences.
+2. The spec (`features/orders/spec.md`, 1 story, 2 acceptance points): point 1 is covered by OrdersPage, point 2 shows "Not covered yet".
+3. billing shows both planted problems on its items and in the summary ("InvoicesPage uses OrderButton from feature orders…", "InvoiceCard has no library base yet.").
+4. A test title inside the feature covers the point it names; no spec.md means no spec section.
+5. An unknown feature, or a project that is not a Line project, is one refusal sentence.
+Browser: the list ("Needs attention" / "All fine") replaces the old list for Line projects only; rule and file:line only under Details; accessibility clean; a page name opens Pages on that page, a component name opens Components; mock mode works.
+
+Gaps: coverage is name and test-title matching only (something covered by behaviour but never named shows "Not covered yet"); a component link opens Components, not that card; Line projects lose the old Browser tab inside Features (it opens on Notes); 4 new complexity warnings (no errors) from list loops, the same as the other Line screens.
+
+UAT (fresh sample):
+1. Features (`/`) → "Your features": billing "Needs attention", orders "All fine".
+2. Click orders → items with "Based on …", the Auto summary, "1 of 2 acceptance points are covered."
+3. Click billing → open Details on InvoicesPage's problem (LINE-DIR, `InvoicesPage.tsx:4`); click a page name → Pages opens on it.
