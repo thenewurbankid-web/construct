@@ -63,11 +63,13 @@ test.describe.serial('Line: the Import agent brings one folder into Line (import
     await expect(screen.locator('[data-step="import-5-lib-Table"]')).toHaveAttribute('data-review', 'skipped');
     await screen.getByRole('button', { name: 'Approve the plan' }).click();
 
-    // Every step kept every unit; at the end no unit has a test (the sample has none), and only the owner may waive that.
-    await expect(screen.getByTestId('la-sentence')).toHaveText('The checks found problems: 12 of 12 logic units still need a block or a test; the first: the export in Table (src/alerts/components/Table.tsx) has no block and no test.', { timeout: 90_000 });
+    // Every step kept every unit; the FitProposal gives each one a block, but this copy has no jest (no node_modules), so
+    // Line wrote no characterization tests and no unit has a test: only the owner may waive that. (With the app's jest the
+    // flow ends without a waiver: test/line-import-agent.test.mjs "real + jest".)
+    await expect(screen.getByTestId('la-sentence')).toHaveText('The checks found problems: 9 of 9 logic units still need a block or a test; the first: the export (src/alerts/components/Table.tsx) has no test.', { timeout: 90_000 });
     await expect(screen.getByTestId('la-logic-kept')).toHaveText('9 of 9 logic units kept.');
-    await expect(screen.getByTestId('la-logic-coverage')).toHaveText('0 of 12 units have a block and a test.');
-    await screen.getByRole('button', { name: 'Waive the 12 units without a block or a test (owner only).' }).click();
+    await expect(screen.getByTestId('la-logic-coverage')).toHaveText('0 of 9 units have a block and a test.');
+    await screen.getByRole('button', { name: 'Waive the 9 units without a block or a test (owner only).' }).click();
 
     await expect(screen.getByTestId('la-sentence')).toHaveText('Done: 9 steps landed.', { timeout: 90_000 });
     await expect(screen.locator('[data-stage="done"]')).toHaveAttribute('aria-current', 'step');
@@ -78,8 +80,8 @@ test.describe.serial('Line: the Import agent brings one folder into Line (import
     await expect(screen.locator('[data-check="logic-map"]')).toHaveAttribute('data-state', 'pass');
     await expect(screen.locator('[data-check="logic-map"]')).toContainText('9 of 9 logic units kept (6 moved).');
     await expect(screen.locator('[data-check="behaviour"]')).toHaveAttribute('data-state', 'pass');
-    await expect(screen.locator('[data-check="coverage"]')).toContainText('or the owner waived it (12)');
-    await expect(screen.getByTestId('la-logic-coverage')).toHaveText('0 of 12 units have a block and a test; the owner waived 12.');
+    await expect(screen.locator('[data-check="coverage"]')).toContainText('or the owner waived it (9)');
+    await expect(screen.getByTestId('la-logic-coverage')).toHaveText('0 of 9 units have a block and a test; the owner waived 9.');
     // Each step's diff, under a closed disclosure: nine steps, each kept everything.
     await screen.getByText(/^Each step's diff \(/).click();
     await expect(screen.getByTestId('la-logic-step')).toHaveCount(9);
@@ -88,7 +90,7 @@ test.describe.serial('Line: the Import agent brings one folder into Line (import
     await screen.getByText(/^Every change \(/).click();
     await expect(screen.getByTestId('la-changes')).toContainText('You skipped "Moves Table into the library as an atom and points its users at it".');
     await expect(screen.getByTestId('la-changes')).toContainText('You approved 9 steps.');
-    await expect(screen.getByTestId('la-changes')).toContainText('You waived 12 logic units at the final check.');
+    await expect(screen.getByTestId('la-changes')).toContainText('You waived 9 logic units at the final check.');
 
     expect(fs.existsSync(path.join(base, 'src/alerts/features/alerts/pages/AlertsPage.tsx'))).toBe(true);
     expect(fs.existsSync(path.join(base, 'src/alerts/components/Table.tsx'))).toBe(true);

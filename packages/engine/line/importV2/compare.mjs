@@ -63,7 +63,7 @@ function rehash(map, renames, hash) {
  * @param {LogicUnit} u
  * @returns {string}
  */
-export const missingSentence = (u) => `The ${LOGIC_UNIT_WORDS[u.kind] ?? u.kind} ${quote(u.detail)} in ${u.fn} (${u.file}:${u.line}) is missing after the import.`;
+export const missingSentence = (u) => `The ${LOGIC_UNIT_WORDS[u.kind] ?? u.kind} ${quote(u.detail)}${u.fn === '<module>' ? '' : ` in ${u.fn}`} (${u.file}:${u.line}) is missing after the import.`;
 
 /**
  * Compare the map before an import step with the map after it. A unit with the same fingerprint is kept (same file)

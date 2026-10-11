@@ -222,7 +222,7 @@ export function loopChecks(m, logic, { at, folder }) {
       const first = open[0];
       const why = !first.block && !first.tested ? 'no block and no test' : !first.block ? 'no block (the fit left it for a person to place)' : 'no test';
       checks.push({
-        id: 'coverage', state: 'fail', sentence: end(`${open.length} of ${plural(m.units.length, 'logic unit')} still need${open.length === 1 ? 's' : ''} a block or a test; the first: the ${LOGIC_UNIT_WORDS[first.kind] ?? first.kind} in ${first.fn} (${first.file}) has ${why}`),
+        id: 'coverage', state: 'fail', sentence: end(`${open.length} of ${plural(m.units.length, 'logic unit')} still need${open.length === 1 ? 's' : ''} a block or a test; the first: the ${LOGIC_UNIT_WORDS[first.kind] ?? first.kind}${first.fn === '<module>' ? '' : ` in ${first.fn}`} (${first.file}) has ${why}`),
         detail: open.slice(0, LOOP_LIMITS.units).map((u) => `${u.id} block=${u.block ?? 'none'} test=${u.tested ? 'yes' : 'no'}`).join('\n'), expr: IMPORT_LOOP_EXPRS.coverage,
         fixes: [{ id: 'recheck', sentence: 'Add the missing tests or blocks, then check again.' }, { id: 'waive', ownerOnly: true, fingerprints: open.map((u) => u.fingerprint), sentence: end(`Waive the ${plural(open.length, 'unit')} without a block or a test (owner only)`) }],
       });
