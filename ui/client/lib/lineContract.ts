@@ -362,6 +362,37 @@ export type ImportStepAction = 'edit' | 'skip' | 'unskip' | 'move' | 'approve' |
 export type ImportStepEdit = { folder: string; stepId?: string; action: ImportStepAction; args?: Record<string, unknown>; to?: number };
 export type ImportAnswerRequest = { folder: string; questionId: string; optionId: string };
 
+/** System 1 drafter (contract.mjs DraftView; flag LINE_DRAFTER=1): every route for a request, each tried by Construct on
+ * a copy of the project. A picked route's steps join the plan and wait for approval like any other step. */
+export type DraftRouteStatus = 'ok' | 'refused' | 'wrong-shape' | 'failed' | 'needs-model' | 'unverified';
+export type DraftRouteView = {
+  id: string;
+  label: string;
+  risk: string;
+  status: DraftRouteStatus;
+  sentence: string;
+  via: 'template' | 'retrieval' | 'model';
+  confidence: number;
+  cost: { steps: number; files: number; layers: number };
+  steps: { tool: string; args: Record<string, unknown> }[];
+  fix: { sentence: string } | null;
+};
+export type DraftQuestion = { word: string; sentence: string; choices: { key: string; label: string }[]; suggested: string | null };
+export type DraftView = {
+  ok: true;
+  on: true;
+  request: string;
+  normalized: string;
+  intent: { id: string; confidence: number; inCatalog: boolean };
+  routes: DraftRouteView[];
+  recommended: string | null;
+  defer: { to: 'qwen' | 'ask' | null; sentence: string };
+  questions: DraftQuestion[];
+  dropped: { sentence: string }[];
+};
+/** POST /api/line/plan/draft/add: the plan with the route's steps added; `next` is the step to add after the first ones ran. */
+export type DraftAdded = PlanView & { added: string[]; next: number | null; sentence: string };
+
 /** Every LINE_API route, as the client calls it. Bodies come back as the server sent them, refusals included; each
  * screen turns them into what it shows. A network failure rejects. */
 export type LineHttp = {
@@ -378,6 +409,10 @@ export type LineHttp = {
   approvePlanStep: (stepId: string | string[]) => Promise<PlanView | LineRefusal>;
   runPlan: (stepId?: string) => Promise<PlanView | LineRefusal>;
   getTools: () => Promise<ToolList | LineRefusal>;
+  getDraftStatus: () => Promise<{ ok: true; on: boolean } | LineRefusal>;
+  draft: (request: string) => Promise<DraftView | LineRefusal>;
+  addDraftRoute: (request: string, routeId: string, from?: number) => Promise<DraftAdded | LineRefusal>;
+  answerDraft: (word: string, key: string) => Promise<{ ok: true; sentence: string } | LineRefusal>;
   getFragments: (file: string) => Promise<FragmentList | LineRefusal>;
   importFolders: () => Promise<ImportFolders | LineRefusal>;
   importScan: (req: ImportScanRequest) => Promise<ImportScan | LineRefusal>;

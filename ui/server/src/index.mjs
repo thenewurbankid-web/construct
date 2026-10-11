@@ -87,11 +87,12 @@ import { createComponentsRouter } from './componentsApi.mjs';
 import { createLineRouter } from './lineApi.mjs';
 import { createLineOpsRouter } from './lineOpsApi.mjs';
 import { createLinePlanRouter } from './linePlanApi.mjs';
+import { createLineDraftRouter } from './lineDraftApi.mjs';
+import { createLinePlanService } from '@line/construct-engine/line/plan-service';
 import { createLineRenderRouter } from './lineRenderApi.mjs';
 import { createLineImportRouter } from './lineImportApi.mjs';
 import { createLineNewProjectRouter } from './lineNewProjectApi.mjs';
 import { createLineToolGate } from './lineToolGate.mjs';
-import { createLinePlanService } from '../../../packages/engine/line/planService.mjs';
 import { createLineAiRouter } from './lineAiApi.mjs';
 import { stepModel } from '../../../packages/core/ai-profiles.mjs';
 import { createLineTraceRouter } from './lineTraceApi.mjs';
@@ -1329,6 +1330,17 @@ app.use('/api/line', createLineTraceRouter({
 app.use('/api/line', createLineImportAgentRouter({
   clientOrigin: CLIENT_ORIGIN,
   planServiceFor: linePlanServiceFor,
+  getRoot: () => {
+    const root = containedProjectRoot(getProjectDir());
+    return root ? { ok: true, root } : { ok: false, error: 'No project is open; pick a project first.' };
+  },
+}));
+
+// System 1 drafter (flag LINE_DRAFTER=1, default off): a request becomes every checked route; a picked route's steps
+// join the same plan session (lineDraftApi.mjs, packages/engine/line/drafter).
+app.use('/api/line', createLineDraftRouter({
+  clientOrigin: CLIENT_ORIGIN,
+  serviceFor: linePlanServiceFor,
   getRoot: () => {
     const root = containedProjectRoot(getProjectDir());
     return root ? { ok: true, root } : { ok: false, error: 'No project is open; pick a project first.' };

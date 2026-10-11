@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo } from 'react';
 import { ComponentsController } from '@/features/component-docs';
+import { LineDraftController } from '@/features/line-draft';
 import { LinePlanController, useLinePlan } from '@/features/line-plan';
 import { LineTraceController } from '@/features/line-trace';
 import { ProjectGateController } from '@/features/project-gate';
@@ -40,6 +41,7 @@ function LineComponentsScreen() {
       panel={
         <>
           <LineTraceController screen="components" steps={plan.steps} />
+          <LineDraftController onAdded={plan.refresh} />
           <LinePlanController plan={plan} />
         </>
       }

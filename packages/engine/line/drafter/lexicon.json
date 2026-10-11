@@ -1,0 +1,1478 @@
+{
+ "v": 1,
+ "version": "2026-10-11",
+ "note": "Shared, curated general business lexicon shipped with Line. Static and versioned; never built from users' projects. Used only to suggest a slot or role for an unmatched word (one-click confirm) and to seed route ranking on a new project.",
+ "roles": [
+  "feature-flow",
+  "wizard",
+  "step",
+  "list-then-detail",
+  "gate",
+  "action",
+  "detail-page",
+  "entity",
+  "search",
+  "settings",
+  "dashboard",
+  "notification",
+  "report",
+  "component",
+  "form",
+  "list-page"
+ ],
+ "entries": [
+  {
+   "word": "cart",
+   "synonyms": [
+    "basket",
+    "bag",
+    "trolley"
+   ],
+   "role": "feature-flow",
+   "object": "feature"
+  },
+  {
+   "word": "checkout",
+   "synonyms": [
+    "check out",
+    "buy flow",
+    "purchase flow"
+   ],
+   "role": "wizard",
+   "object": "feature-flow"
+  },
+  {
+   "word": "pay",
+   "synonyms": [
+    "payment",
+    "purchase",
+    "charge"
+   ],
+   "role": "step",
+   "object": "workflow-step"
+  },
+  {
+   "word": "invoice",
+   "synonyms": [
+    "bill"
+   ],
+   "role": "list-then-detail",
+   "object": "feature"
+  },
+  {
+   "word": "order",
+   "synonyms": [
+    "purchase order"
+   ],
+   "role": "list-then-detail",
+   "object": "feature"
+  },
+  {
+   "word": "login",
+   "synonyms": [
+    "log in",
+    "sign in",
+    "signin"
+   ],
+   "role": "gate",
+   "object": "feature-flow"
+  },
+  {
+   "word": "logout",
+   "synonyms": [
+    "log out",
+    "sign out",
+    "signout"
+   ],
+   "role": "action",
+   "object": "handler"
+  },
+  {
+   "word": "signup",
+   "synonyms": [
+    "sign up",
+    "register",
+    "registration",
+    "join"
+   ],
+   "role": "wizard",
+   "object": "feature-flow"
+  },
+  {
+   "word": "profile",
+   "synonyms": [
+    "account page",
+    "my account",
+    "user page"
+   ],
+   "role": "detail-page",
+   "object": "page"
+  },
+  {
+   "word": "account",
+   "synonyms": [
+    "user account"
+   ],
+   "role": "entity",
+   "object": "feature"
+  },
+  {
+   "word": "user",
+   "synonyms": [
+    "member",
+    "client"
+   ],
+   "role": "entity",
+   "object": "data-shape"
+  },
+  {
+   "word": "search",
+   "synonyms": [
+    "find",
+    "lookup",
+    "look up"
+   ],
+   "role": "search",
+   "object": "feature-flow"
+  },
+  {
+   "word": "filter",
+   "synonyms": [
+    "refine",
+    "narrow"
+   ],
+   "role": "action",
+   "object": "handler"
+  },
+  {
+   "word": "sort",
+   "synonyms": [
+    "order by",
+    "sorting"
+   ],
+   "role": "action",
+   "object": "handler"
+  },
+  {
+   "word": "settings",
+   "synonyms": [
+    "preferences",
+    "options",
+    "config",
+    "configuration"
+   ],
+   "role": "settings",
+   "object": "page"
+  },
+  {
+   "word": "dashboard",
+   "synonyms": [
+    "overview",
+    "home screen",
+    "summary page"
+   ],
+   "role": "dashboard",
+   "object": "page"
+  },
+  {
+   "word": "notification",
+   "synonyms": [
+    "alert",
+    "notice",
+    "toast"
+   ],
+   "role": "notification",
+   "object": "component"
+  },
+  {
+   "word": "report",
+   "synonyms": [
+    "analytics",
+    "stats",
+    "statistics"
+   ],
+   "role": "report",
+   "object": "page"
+  },
+  {
+   "word": "product",
+   "synonyms": [
+    "item",
+    "article",
+    "sku"
+   ],
+   "role": "entity",
+   "object": "data-shape"
+  },
+  {
+   "word": "catalog",
+   "synonyms": [
+    "catalogue",
+    "store",
+    "shop"
+   ],
+   "role": "list-then-detail",
+   "object": "feature"
+  },
+  {
+   "word": "inventory",
+   "synonyms": [
+    "stock",
+    "warehouse"
+   ],
+   "role": "list-then-detail",
+   "object": "feature"
+  },
+  {
+   "word": "shipping",
+   "synonyms": [
+    "delivery",
+    "shipment",
+    "dispatch"
+   ],
+   "role": "step",
+   "object": "workflow-step"
+  },
+  {
+   "word": "address",
+   "synonyms": [
+    "location",
+    "postal address"
+   ],
+   "role": "form",
+   "object": "data-shape"
+  },
+  {
+   "word": "coupon",
+   "synonyms": [
+    "voucher",
+    "promo code",
+    "discount code"
+   ],
+   "role": "form",
+   "object": "component"
+  },
+  {
+   "word": "discount",
+   "synonyms": [
+    "promotion",
+    "sale",
+    "markdown"
+   ],
+   "role": "entity",
+   "object": "data-shape"
+  },
+  {
+   "word": "refund",
+   "synonyms": [
+    "reimbursement",
+    "money back"
+   ],
+   "role": "wizard",
+   "object": "feature-flow"
+  },
+  {
+   "word": "return",
+   "synonyms": [
+    "returns",
+    "send back"
+   ],
+   "role": "wizard",
+   "object": "feature-flow"
+  },
+  {
+   "word": "subscription",
+   "synonyms": [
+    "plan",
+    "membership",
+    "recurring"
+   ],
+   "role": "list-then-detail",
+   "object": "feature"
+  },
+  {
+   "word": "billing",
+   "synonyms": [
+    "payments",
+    "charges"
+   ],
+   "role": "list-then-detail",
+   "object": "feature"
+  },
+  {
+   "word": "wallet",
+   "synonyms": [
+    "balance",
+    "credit"
+   ],
+   "role": "detail-page",
+   "object": "page"
+  },
+  {
+   "word": "review",
+   "synonyms": [
+    "rating",
+    "feedback",
+    "testimonial"
+   ],
+   "role": "list-then-detail",
+   "object": "feature"
+  },
+  {
+   "word": "comment",
+   "synonyms": [
+    "reply",
+    "remark"
+   ],
+   "role": "list-then-detail",
+   "object": "component"
+  },
+  {
+   "word": "message",
+   "synonyms": [
+    "chat",
+    "inbox",
+    "conversation"
+   ],
+   "role": "list-then-detail",
+   "object": "feature"
+  },
+  {
+   "word": "email",
+   "synonyms": [
+    "mail",
+    "e-mail"
+   ],
+   "role": "form",
+   "object": "data-shape"
+  },
+  {
+   "word": "password",
+   "synonyms": [
+    "passcode",
+    "pin"
+   ],
+   "role": "form",
+   "object": "data-shape"
+  },
+  {
+   "word": "reset",
+   "synonyms": [
+    "recover",
+    "recovery",
+    "forgot"
+   ],
+   "role": "wizard",
+   "object": "feature-flow"
+  },
+  {
+   "word": "onboarding",
+   "synonyms": [
+    "welcome",
+    "getting started",
+    "tour"
+   ],
+   "role": "wizard",
+   "object": "feature-flow"
+  },
+  {
+   "word": "home",
+   "synonyms": [
+    "landing",
+    "start page",
+    "front page"
+   ],
+   "role": "dashboard",
+   "object": "page"
+  },
+  {
+   "word": "menu",
+   "synonyms": [
+    "navigation",
+    "nav",
+    "sidebar"
+   ],
+   "role": "component",
+   "object": "component"
+  },
+  {
+   "word": "header",
+   "synonyms": [
+    "top bar",
+    "app bar",
+    "banner"
+   ],
+   "role": "component",
+   "object": "component"
+  },
+  {
+   "word": "footer",
+   "synonyms": [
+    "bottom bar"
+   ],
+   "role": "component",
+   "object": "component"
+  },
+  {
+   "word": "button",
+   "synonyms": [
+    "cta",
+    "call to action"
+   ],
+   "role": "component",
+   "object": "component"
+  },
+  {
+   "word": "card",
+   "synonyms": [
+    "tile",
+    "panel"
+   ],
+   "role": "component",
+   "object": "component"
+  },
+  {
+   "word": "table",
+   "synonyms": [
+    "grid",
+    "data table",
+    "list view"
+   ],
+   "role": "list-page",
+   "object": "component"
+  },
+  {
+   "word": "list",
+   "synonyms": [
+    "listing",
+    "index"
+   ],
+   "role": "list-page",
+   "object": "page"
+  },
+  {
+   "word": "detail",
+   "synonyms": [
+    "details",
+    "detail view",
+    "show page"
+   ],
+   "role": "detail-page",
+   "object": "page"
+  },
+  {
+   "word": "form",
+   "synonyms": [
+    "input form",
+    "entry form"
+   ],
+   "role": "form",
+   "object": "component"
+  },
+  {
+   "word": "modal",
+   "synonyms": [
+    "dialog",
+    "popup",
+    "pop-up",
+    "overlay"
+   ],
+   "role": "component",
+   "object": "component"
+  },
+  {
+   "word": "badge",
+   "synonyms": [
+    "tag",
+    "label",
+    "chip",
+    "pill"
+   ],
+   "role": "component",
+   "object": "component"
+  },
+  {
+   "word": "avatar",
+   "synonyms": [
+    "profile picture",
+    "photo",
+    "picture"
+   ],
+   "role": "component",
+   "object": "component"
+  },
+  {
+   "word": "calendar",
+   "synonyms": [
+    "schedule",
+    "agenda",
+    "date picker"
+   ],
+   "role": "component",
+   "object": "component"
+  },
+  {
+   "word": "booking",
+   "synonyms": [
+    "reservation",
+    "appointment"
+   ],
+   "role": "wizard",
+   "object": "feature-flow"
+  },
+  {
+   "word": "event",
+   "synonyms": [
+    "occasion",
+    "meeting"
+   ],
+   "role": "entity",
+   "object": "data-shape"
+  },
+  {
+   "word": "ticket",
+   "synonyms": [
+    "issue",
+    "case",
+    "support request"
+   ],
+   "role": "list-then-detail",
+   "object": "feature"
+  },
+  {
+   "word": "support",
+   "synonyms": [
+    "help",
+    "help desk",
+    "customer service"
+   ],
+   "role": "list-then-detail",
+   "object": "feature"
+  },
+  {
+   "word": "faq",
+   "synonyms": [
+    "questions",
+    "help center"
+   ],
+   "role": "list-page",
+   "object": "page"
+  },
+  {
+   "word": "contact",
+   "synonyms": [
+    "contact us",
+    "get in touch"
+   ],
+   "role": "form",
+   "object": "page"
+  },
+  {
+   "word": "upload",
+   "synonyms": [
+    "attach",
+    "attachment",
+    "import file"
+   ],
+   "role": "action",
+   "object": "handler"
+  },
+  {
+   "word": "download",
+   "synonyms": [
+    "export",
+    "save file"
+   ],
+   "role": "action",
+   "object": "handler"
+  },
+  {
+   "word": "file",
+   "synonyms": [
+    "document",
+    "doc",
+    "attachment"
+   ],
+   "role": "entity",
+   "object": "data-shape"
+  },
+  {
+   "word": "image",
+   "synonyms": [
+    "photo",
+    "picture",
+    "media"
+   ],
+   "role": "entity",
+   "object": "data-shape"
+  },
+  {
+   "word": "gallery",
+   "synonyms": [
+    "album",
+    "photos"
+   ],
+   "role": "list-page",
+   "object": "page"
+  },
+  {
+   "word": "video",
+   "synonyms": [
+    "clip",
+    "movie"
+   ],
+   "role": "entity",
+   "object": "data-shape"
+  },
+  {
+   "word": "post",
+   "synonyms": [
+    "article",
+    "entry",
+    "blog post"
+   ],
+   "role": "list-then-detail",
+   "object": "feature"
+  },
+  {
+   "word": "blog",
+   "synonyms": [
+    "news",
+    "articles"
+   ],
+   "role": "list-then-detail",
+   "object": "feature"
+  },
+  {
+   "word": "feed",
+   "synonyms": [
+    "timeline",
+    "stream",
+    "activity"
+   ],
+   "role": "list-page",
+   "object": "page"
+  },
+  {
+   "word": "like",
+   "synonyms": [
+    "favourite",
+    "favorite",
+    "upvote"
+   ],
+   "role": "action",
+   "object": "handler"
+  },
+  {
+   "word": "share",
+   "synonyms": [
+    "send to",
+    "forward"
+   ],
+   "role": "action",
+   "object": "handler"
+  },
+  {
+   "word": "follow",
+   "synonyms": [
+    "subscribe to",
+    "watch"
+   ],
+   "role": "action",
+   "object": "handler"
+  },
+  {
+   "word": "friend",
+   "synonyms": [
+    "connection"
+   ],
+   "role": "entity",
+   "object": "data-shape"
+  },
+  {
+   "word": "team",
+   "synonyms": [
+    "group",
+    "organisation",
+    "organization",
+    "org"
+   ],
+   "role": "list-then-detail",
+   "object": "feature"
+  },
+  {
+   "word": "role",
+   "synonyms": [
+    "permission",
+    "access level"
+   ],
+   "role": "entity",
+   "object": "data-shape"
+  },
+  {
+   "word": "admin",
+   "synonyms": [
+    "administration",
+    "back office",
+    "backoffice"
+   ],
+   "role": "dashboard",
+   "object": "feature"
+  },
+  {
+   "word": "audit",
+   "synonyms": [
+    "log",
+    "history",
+    "activity log"
+   ],
+   "role": "list-page",
+   "object": "page"
+  },
+  {
+   "word": "status",
+   "synonyms": [
+    "state",
+    "progress"
+   ],
+   "role": "entity",
+   "object": "variable"
+  },
+  {
+   "word": "total",
+   "synonyms": [
+    "sum",
+    "amount",
+    "grand total"
+   ],
+   "role": "entity",
+   "object": "variable"
+  },
+  {
+   "word": "price",
+   "synonyms": [
+    "cost",
+    "fee",
+    "rate"
+   ],
+   "role": "entity",
+   "object": "variable"
+  },
+  {
+   "word": "quantity",
+   "synonyms": [
+    "qty",
+    "count",
+    "number of"
+   ],
+   "role": "entity",
+   "object": "variable"
+  },
+  {
+   "word": "tax",
+   "synonyms": [
+    "vat",
+    "sales tax"
+   ],
+   "role": "entity",
+   "object": "variable"
+  },
+  {
+   "word": "currency",
+   "synonyms": [
+    "money"
+   ],
+   "role": "entity",
+   "object": "variable"
+  },
+  {
+   "word": "date",
+   "synonyms": [
+    "day",
+    "time",
+    "timestamp"
+   ],
+   "role": "entity",
+   "object": "variable"
+  },
+  {
+   "word": "name",
+   "synonyms": [
+    "title",
+    "label text"
+   ],
+   "role": "entity",
+   "object": "variable"
+  },
+  {
+   "word": "description",
+   "synonyms": [
+    "summary",
+    "blurb",
+    "text"
+   ],
+   "role": "entity",
+   "object": "variable"
+  },
+  {
+   "word": "category",
+   "synonyms": [
+    "type",
+    "group",
+    "section"
+   ],
+   "role": "entity",
+   "object": "data-shape"
+  },
+  {
+   "word": "wishlist",
+   "synonyms": [
+    "wish list",
+    "saved items",
+    "favourites"
+   ],
+   "role": "list-page",
+   "object": "feature"
+  },
+  {
+   "word": "compare",
+   "synonyms": [
+    "comparison"
+   ],
+   "role": "list-page",
+   "object": "page"
+  },
+  {
+   "word": "recommendation",
+   "synonyms": [
+    "suggestions",
+    "related items"
+   ],
+   "role": "list-page",
+   "object": "component"
+  },
+  {
+   "word": "step",
+   "synonyms": [
+    "stage",
+    "phase"
+   ],
+   "role": "step",
+   "object": "workflow-step"
+  },
+  {
+   "word": "next",
+   "synonyms": [
+    "continue",
+    "forward",
+    "proceed"
+   ],
+   "role": "action",
+   "object": "workflow-step"
+  },
+  {
+   "word": "back",
+   "synonyms": [
+    "previous",
+    "go back"
+   ],
+   "role": "action",
+   "object": "workflow-step"
+  },
+  {
+   "word": "cancel",
+   "synonyms": [
+    "abort",
+    "stop",
+    "void"
+   ],
+   "role": "action",
+   "object": "workflow-step"
+  },
+  {
+   "word": "confirm",
+   "synonyms": [
+    "accept",
+    "ok"
+   ],
+   "role": "action",
+   "object": "workflow-step"
+  },
+  {
+   "word": "submit",
+   "synonyms": [
+    "send",
+    "save",
+    "post form"
+   ],
+   "role": "action",
+   "object": "handler"
+  },
+  {
+   "word": "delete",
+   "synonyms": [
+    "remove",
+    "erase",
+    "trash"
+   ],
+   "role": "action",
+   "object": "handler"
+  },
+  {
+   "word": "edit",
+   "synonyms": [
+    "modify",
+    "change",
+    "amend"
+   ],
+   "role": "action",
+   "object": "handler"
+  },
+  {
+   "word": "create",
+   "synonyms": [
+    "new",
+    "add new"
+   ],
+   "role": "action",
+   "object": "handler"
+  },
+  {
+   "word": "approve",
+   "synonyms": [
+    "sign off",
+    "authorise",
+    "authorize"
+   ],
+   "role": "step",
+   "object": "workflow-step"
+  },
+  {
+   "word": "reject",
+   "synonyms": [
+    "decline",
+    "deny"
+   ],
+   "role": "step",
+   "object": "workflow-step"
+  },
+  {
+   "word": "assign",
+   "synonyms": [
+    "allocate",
+    "hand to"
+   ],
+   "role": "action",
+   "object": "handler"
+  },
+  {
+   "word": "task",
+   "synonyms": [
+    "todo",
+    "to-do",
+    "job"
+   ],
+   "role": "list-then-detail",
+   "object": "feature"
+  },
+  {
+   "word": "project",
+   "synonyms": [
+    "workspace",
+    "board"
+   ],
+   "role": "list-then-detail",
+   "object": "feature"
+  },
+  {
+   "word": "invite",
+   "synonyms": [
+    "invitation",
+    "add member"
+   ],
+   "role": "wizard",
+   "object": "feature-flow"
+  },
+  {
+   "word": "verification",
+   "synonyms": [
+    "verify",
+    "confirm email",
+    "otp"
+   ],
+   "role": "step",
+   "object": "workflow-step"
+  },
+  {
+   "word": "security",
+   "synonyms": [
+    "two factor",
+    "2fa",
+    "mfa"
+   ],
+   "role": "settings",
+   "object": "page"
+  },
+  {
+   "word": "privacy",
+   "synonyms": [
+    "consent",
+    "cookies",
+    "gdpr"
+   ],
+   "role": "settings",
+   "object": "page"
+  },
+  {
+   "word": "language",
+   "synonyms": [
+    "locale",
+    "translation"
+   ],
+   "role": "settings",
+   "object": "variable"
+  },
+  {
+   "word": "theme",
+   "synonyms": [
+    "dark mode",
+    "appearance",
+    "colors"
+   ],
+   "role": "settings",
+   "object": "variable"
+  },
+  {
+   "word": "error",
+   "synonyms": [
+    "failure",
+    "problem message"
+   ],
+   "role": "notification",
+   "object": "component"
+  },
+  {
+   "word": "empty",
+   "synonyms": [
+    "empty state",
+    "nothing here"
+   ],
+   "role": "component",
+   "object": "component"
+  },
+  {
+   "word": "loading",
+   "synonyms": [
+    "spinner",
+    "loader",
+    "progress bar"
+   ],
+   "role": "component",
+   "object": "component"
+  },
+  {
+   "word": "pagination",
+   "synonyms": [
+    "paging",
+    "pages",
+    "load more"
+   ],
+   "role": "component",
+   "object": "component"
+  },
+  {
+   "word": "tabs",
+   "synonyms": [
+    "tab bar",
+    "sections"
+   ],
+   "role": "component",
+   "object": "component"
+  },
+  {
+   "word": "breadcrumb",
+   "synonyms": [
+    "breadcrumbs",
+    "trail"
+   ],
+   "role": "component",
+   "object": "component"
+  },
+  {
+   "word": "toolbar",
+   "synonyms": [
+    "actions bar",
+    "action bar"
+   ],
+   "role": "component",
+   "object": "component"
+  },
+  {
+   "word": "chart",
+   "synonyms": [
+    "graph",
+    "plot"
+   ],
+   "role": "component",
+   "object": "component"
+  },
+  {
+   "word": "map",
+   "synonyms": [
+    "location map",
+    "directions"
+   ],
+   "role": "component",
+   "object": "component"
+  },
+  {
+   "word": "timer",
+   "synonyms": [
+    "countdown",
+    "stopwatch"
+   ],
+   "role": "component",
+   "object": "component"
+  },
+  {
+   "word": "receipt",
+   "synonyms": [
+    "proof of purchase"
+   ],
+   "role": "detail-page",
+   "object": "page"
+  },
+  {
+   "word": "quote",
+   "synonyms": [
+    "estimate",
+    "quotation"
+   ],
+   "role": "list-then-detail",
+   "object": "feature"
+  },
+  {
+   "word": "contract",
+   "synonyms": [
+    "agreement",
+    "terms"
+   ],
+   "role": "detail-page",
+   "object": "page"
+  },
+  {
+   "word": "customer",
+   "synonyms": [
+    "client",
+    "buyer",
+    "shopper"
+   ],
+   "role": "entity",
+   "object": "data-shape"
+  },
+  {
+   "word": "supplier",
+   "synonyms": [
+    "vendor",
+    "seller",
+    "merchant"
+   ],
+   "role": "entity",
+   "object": "data-shape"
+  },
+  {
+   "word": "employee",
+   "synonyms": [
+    "staff",
+    "worker"
+   ],
+   "role": "entity",
+   "object": "data-shape"
+  },
+  {
+   "word": "payroll",
+   "synonyms": [
+    "salary",
+    "wages"
+   ],
+   "role": "list-then-detail",
+   "object": "feature"
+  },
+  {
+   "word": "expense",
+   "synonyms": [
+    "spending",
+    "cost claim"
+   ],
+   "role": "list-then-detail",
+   "object": "feature"
+  },
+  {
+   "word": "budget",
+   "synonyms": [
+    "allowance",
+    "spending limit"
+   ],
+   "role": "detail-page",
+   "object": "page"
+  },
+  {
+   "word": "transaction",
+   "synonyms": [
+    "transfer",
+    "movement"
+   ],
+   "role": "list-then-detail",
+   "object": "feature"
+  },
+  {
+   "word": "statement",
+   "synonyms": [
+    "account statement"
+   ],
+   "role": "list-page",
+   "object": "page"
+  },
+  {
+   "word": "loan",
+   "synonyms": [
+    "credit line",
+    "borrowing"
+   ],
+   "role": "wizard",
+   "object": "feature-flow"
+  },
+  {
+   "word": "course",
+   "synonyms": [
+    "class",
+    "lesson",
+    "module"
+   ],
+   "role": "list-then-detail",
+   "object": "feature"
+  },
+  {
+   "word": "quiz",
+   "synonyms": [
+    "test",
+    "exam",
+    "assessment"
+   ],
+   "role": "wizard",
+   "object": "feature-flow"
+  },
+  {
+   "word": "grade",
+   "synonyms": [
+    "score",
+    "mark",
+    "result"
+   ],
+   "role": "entity",
+   "object": "variable"
+  },
+  {
+   "word": "student",
+   "synonyms": [
+    "learner",
+    "pupil"
+   ],
+   "role": "entity",
+   "object": "data-shape"
+  },
+  {
+   "word": "patient",
+   "synonyms": [
+    "client record"
+   ],
+   "role": "entity",
+   "object": "data-shape"
+  },
+  {
+   "word": "prescription",
+   "synonyms": [
+    "medication",
+    "rx"
+   ],
+   "role": "list-then-detail",
+   "object": "feature"
+  },
+  {
+   "word": "doctor",
+   "synonyms": [
+    "clinician",
+    "physician"
+   ],
+   "role": "entity",
+   "object": "data-shape"
+  },
+  {
+   "word": "property",
+   "synonyms": [
+    "listing",
+    "real estate"
+   ],
+   "role": "list-then-detail",
+   "object": "feature"
+  },
+  {
+   "word": "rental",
+   "synonyms": [
+    "lease",
+    "hire"
+   ],
+   "role": "wizard",
+   "object": "feature-flow"
+  },
+  {
+   "word": "trip",
+   "synonyms": [
+    "journey",
+    "itinerary",
+    "travel"
+   ],
+   "role": "list-then-detail",
+   "object": "feature"
+  },
+  {
+   "word": "flight",
+   "synonyms": [
+    "plane",
+    "air ticket"
+   ],
+   "role": "entity",
+   "object": "data-shape"
+  },
+  {
+   "word": "hotel",
+   "synonyms": [
+    "stay",
+    "accommodation",
+    "room"
+   ],
+   "role": "list-then-detail",
+   "object": "feature"
+  },
+  {
+   "word": "restaurant",
+   "synonyms": [
+    "venue",
+    "place"
+   ],
+   "role": "list-then-detail",
+   "object": "feature"
+  },
+  {
+   "word": "menu item",
+   "synonyms": [
+    "dish",
+    "meal"
+   ],
+   "role": "entity",
+   "object": "data-shape"
+  },
+  {
+   "word": "delivery tracking",
+   "synonyms": [
+    "track order",
+    "tracking"
+   ],
+   "role": "detail-page",
+   "object": "page"
+  },
+  {
+   "word": "survey",
+   "synonyms": [
+    "poll",
+    "questionnaire"
+   ],
+   "role": "wizard",
+   "object": "feature-flow"
+  },
+  {
+   "word": "vote",
+   "synonyms": [
+    "ballot",
+    "poll answer"
+   ],
+   "role": "action",
+   "object": "handler"
+  },
+  {
+   "word": "donation",
+   "synonyms": [
+    "donate",
+    "gift",
+    "contribution"
+   ],
+   "role": "wizard",
+   "object": "feature-flow"
+  },
+  {
+   "word": "campaign",
+   "synonyms": [
+    "fundraiser",
+    "promotion campaign"
+   ],
+   "role": "list-then-detail",
+   "object": "feature"
+  },
+  {
+   "word": "newsletter",
+   "synonyms": [
+    "mailing list",
+    "digest"
+   ],
+   "role": "form",
+   "object": "component"
+  },
+  {
+   "word": "webhook",
+   "synonyms": [
+    "callback",
+    "integration"
+   ],
+   "role": "entity",
+   "object": "service"
+  },
+  {
+   "word": "api",
+   "synonyms": [
+    "endpoint",
+    "backend",
+    "service call"
+   ],
+   "role": "entity",
+   "object": "service"
+  },
+  {
+   "word": "sync",
+   "synonyms": [
+    "synchronise",
+    "synchronize",
+    "refresh"
+   ],
+   "role": "action",
+   "object": "service"
+  },
+  {
+   "word": "import",
+   "synonyms": [
+    "bulk upload",
+    "ingest"
+   ],
+   "role": "wizard",
+   "object": "feature-flow"
+  },
+  {
+   "word": "export data",
+   "synonyms": [
+    "data export",
+    "csv"
+   ],
+   "role": "action",
+   "object": "handler"
+  }
+ ]
+}

@@ -369,6 +369,55 @@
  * @typedef {{tool: string, args?: Record<string, unknown>, why?: string}} PlanStepRequest
  */
 
+/**
+ * System 1 drafter (packages/engine/line/drafter, flag LINE_DRAFTER=1): POST /api/line/plan/draft answers every route
+ * that can satisfy a request, each tried by Construct on a copy of the project; picking one adds its steps to the plan.
+ * @typedef {object} DraftRouteView
+ * @property {string} id
+ * @property {string} label       Plain English, the project's names filled in.
+ * @property {string} risk
+ * @property {'ok'|'refused'|'wrong-shape'|'failed'|'needs-model'|'unverified'} status
+ * @property {string} sentence    What Construct found, in one sentence.
+ * @property {'template'|'retrieval'|'model'} via
+ * @property {number} confidence
+ * @property {{steps: number, files: number, layers: number}} cost
+ * @property {{tool: string, args: Record<string, unknown>}[]} steps  For Details.
+ * @property {{sentence: string}|null} fix  A refused route's typed fix, in words.
+ *
+ * @typedef {object} DraftView
+ * @property {true} ok
+ * @property {true} on
+ * @property {string} request
+ * @property {string} normalized  The request as the classifier saw it (slots, no project words).
+ * @property {{id: string, confidence: number, inCatalog: boolean}} intent
+ * @property {DraftRouteView[]} routes  Best first.
+ * @property {string|null} recommended
+ * @property {{to: 'qwen'|'ask'|null, sentence: string}} defer
+ * @property {{word: string, sentence: string, choices: {key: string, label: string}[], suggested: string|null}[]} questions
+ * @property {{sentence: string}[]} dropped
+ */
+
+/**
+ * Throws unless v is a DraftView: plain-English sentences, closed statuses, a recommended route that is listed.
+ * @param {any} v
+ * @returns {asserts v is DraftView}
+ */
+export function assertDraftView(v) {
+  if (v?.ok !== true || v.on !== true) fail('draft.ok', 'must be true');
+  str(v.request, 'draft.request');
+  if (!Array.isArray(v.routes)) fail('draft.routes', 'must be an array');
+  const ids = new Set();
+  v.routes.forEach((r, i) => {
+    str(r.id, `draft.routes[${i}].id`); ids.add(r.id);
+    sentence(r.label, `draft.routes[${i}].label`); sentence(r.sentence, `draft.routes[${i}].sentence`); sentence(r.risk, `draft.routes[${i}].risk`);
+    if (!['ok', 'refused', 'wrong-shape', 'failed', 'needs-model', 'unverified'].includes(r.status)) fail(`draft.routes[${i}].status`, 'unknown status');
+    if (!Array.isArray(r.steps) || !r.steps.length) fail(`draft.routes[${i}].steps`, 'must list the steps');
+  });
+  if (v.recommended !== null && !ids.has(v.recommended)) fail('draft.recommended', 'must be a listed route or null');
+  sentence(v.defer?.sentence, 'draft.defer.sentence');
+  v.questions.forEach((q, i) => sentence(q.sentence, `draft.questions[${i}].sentence`));
+}
+
 /** The plan tools Line adds to the one registry (beside the construct.* commands). */
 export const LINE_PLAN_TOOLS = Object.freeze([
   { name: 'line.baseOn', kind: 'write', request: 'BaseOnRequest' },
@@ -755,6 +804,10 @@ export const LINE_API = Object.freeze([
   { method: 'POST', path: '/api/line/import-agent/pause', request: '{folder}', response: 'ImportAgentView' },
   { method: 'POST', path: '/api/line/import-agent/step', request: 'ImportStepEdit', response: 'ImportAgentView' },
   { method: 'POST', path: '/api/line/import-agent/answer', request: '{folder, questionId, optionId}', response: 'ImportAgentView' },
+  { method: 'GET', path: '/api/line/plan/draft', request: null, response: '{ok, on}' },
+  { method: 'POST', path: '/api/line/plan/draft', request: '{request}', response: 'DraftView' },
+  { method: 'POST', path: '/api/line/plan/draft/add', request: '{request, routeId, from?}', response: 'PlanView & {added, next, sentence}' },
+  { method: 'POST', path: '/api/line/plan/draft/answer', request: '{word, key}', response: '{ok, sentence}' },
 ]);
 
 /** The tools an import plan's steps name (plan-ready: each produces a StagedChange for applyChange). */

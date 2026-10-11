@@ -1,5 +1,6 @@
 'use client';
 
+import { LineDraftController } from '@/features/line-draft';
 import { LinePlanController, useLinePlan } from '@/features/line-plan';
 import { LineTraceController } from '@/features/line-trace';
 import { PagesEditorController } from '@/features/pages-editor';
@@ -21,6 +22,7 @@ export function PagesScreenController() {
       panel={
         <>
           <LineTraceController screen="pages" steps={plan.steps} />
+          <LineDraftController onAdded={plan.refresh} />
           <LinePlanController plan={plan} />
         </>
       }
