@@ -1,0 +1,42 @@
+/* Line Features view (inside the Features stage). Prefix lf-. Tokens only (app/tokens.css). */
+.lf { display: flex; flex-direction: column; gap: var(--sp-3); min-width: 0; }
+.lf h2 { margin: 0; font-size: 17px; }
+.lf h3 { margin: 0 0 var(--sp-1); font-size: var(--fs-sm); text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); }
+.lf .hint { margin: 0; }
+.lf-eyebrow { margin: 0 0 var(--sp-2); font-size: var(--fs-sm); color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; }
+.lf-cards { list-style: none; margin: 0; padding: 0 0 2px; display: flex; gap: var(--sp-2); overflow-x: auto; }
+.lf-cards > li { flex: 0 0 200px; display: flex; }
+.lf-card { flex: 1; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; text-align: left; padding: var(--sp-2) var(--sp-3); min-height: 44px; border-radius: var(--r-md); border: 1px solid var(--border); background: var(--surface-1); color: var(--text); font: inherit; cursor: pointer; }
+.lf-card:hover { background: var(--hover); }
+.lf-card:focus-visible, .lf-item-name:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.lf-card[aria-pressed='true'] { border-color: var(--accent); background: var(--accent-soft); }
+.lf-card-title { font-weight: 600; }
+.lf-card-text { font-size: var(--fs-sm); color: var(--text-muted); }
+.lf-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--sp-4); align-items: start; }
+@media (max-width: 900px) { .lf-layout { grid-template-columns: minmax(0, 1fr); } }
+.lf-groups, .lf-side { display: flex; flex-direction: column; gap: var(--sp-3); min-width: 0; }
+.lf-items, .lf-findings, .lf-points { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-2); }
+.lf-item { padding: var(--sp-2) var(--sp-3); border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface-1); display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; }
+.lf-item-head { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+.lf-item-name { font-weight: 600; color: var(--text); min-height: 24px; display: inline-flex; align-items: center; }
+a.lf-item-name { text-decoration: underline; text-underline-offset: 3px; }
+.lf-chip { font-size: var(--fs-xs); padding: 2px var(--sp-2); border-radius: 999px; border: 1px solid var(--border); color: var(--text); width: fit-content; }
+.lf-chip--ok { background: var(--success-soft); }
+.lf-chip--problem { background: var(--danger-soft); }
+.lf-chip--todo { background: var(--surface-0); }
+.lf-base { margin: 0; font-size: var(--fs-sm); color: var(--text-muted); }
+.lf-base--problem { color: var(--text); }
+.lf-finding { display: flex; flex-direction: column; gap: 2px; padding-left: var(--sp-2); border-left: 2px solid var(--warn); font-size: var(--fs-sm); overflow-wrap: anywhere; }
+.lf-finding--error { border-left-color: var(--danger); }
+.lf-details summary { cursor: pointer; color: var(--text-muted); width: fit-content; min-height: 24px; font-size: var(--fs-sm); }
+.lf-details dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px var(--sp-2); margin: var(--sp-1) 0 0; font-family: var(--mono); font-size: var(--fs-sm); overflow-wrap: anywhere; }
+.lf-details dt { color: var(--text-muted); font-family: var(--font); }
+.lf-details dd { margin: 0; }
+.lf-panel { padding: var(--sp-2) var(--sp-3); border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface-1); display: flex; flex-direction: column; gap: var(--sp-2); }
+.lf-panel p { margin: 0; }
+.lf-summary-text { line-height: 1.5; }
+.lf-muted { color: var(--text-muted); font-size: var(--fs-sm); }
+.lf-story { display: flex; flex-direction: column; gap: var(--sp-1); }
+.lf-story-text { font-weight: 600; }
+.lf-point { display: flex; flex-direction: column; gap: 2px; font-size: var(--fs-sm); }
+.lf-error { margin: 0; padding: var(--sp-2) var(--sp-3); border-radius: var(--r-md); background: var(--danger-soft); }

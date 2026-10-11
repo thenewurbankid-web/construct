@@ -16,4 +16,5 @@ export const lineHttp: LineHttp = {
     if (props !== undefined) q.set('props', props);
     return getJson(`/api/line/render?${q.toString()}`);
   },
+  getFeature: (name) => getJson(`/api/line/feature?name=${encodeURIComponent(name)}`),
 };

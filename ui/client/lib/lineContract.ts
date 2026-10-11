@@ -83,6 +83,18 @@ export type RenderResult =
   | { ok: true; html: string; props: RenderProp[]; via: 'morpheus' | 'construct-preview' }
   | { ok: false; code: string; sentence: string; detail?: string; props?: RenderProp[] };
 
+/** GET /api/line/feature?name=: one feature for the Features screen (feature.mjs readLineFeature). The summary is
+ * written by static rules (no model); a spec point is covered when it names a feature item or a test title. */
+export type SpecPoint = { id: string; text: string; covered: boolean; by: string[] };
+export type SpecStory = { id: string; text: string; points: SpecPoint[] };
+export type LineFeatureDetail = {
+  name: string;
+  items: Record<LineKind, FeatureItem[]>;
+  summary: { sentences: string[]; via: 'static' };
+  spec: { file: string; stories: SpecStory[] } | null;
+  findings: LineFinding[];
+};
+
 /** Every LINE_API route, as the client calls it. Bodies come back as the server sent them, refusals included; each
  * screen turns them into what it shows. A network failure rejects. */
 export type LineHttp = {
@@ -92,4 +104,5 @@ export type LineHttp = {
   baseOn: (req: BaseOnRequest) => Promise<ApplyResult | LineRefusal>;
   promote: (req: PromoteRequest) => Promise<ApplyResult | LineRefusal>;
   render: (file: string, props?: string) => Promise<RenderResult>;
+  getFeature: (name: string) => Promise<LineFeatureDetail | LineRefusal>;
 };
