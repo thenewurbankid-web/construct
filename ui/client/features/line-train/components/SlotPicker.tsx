@@ -25,5 +25,5 @@ function Slot({ s, setSlot }: { s: SlotChoice; setSlot: (name: string, value: st
 /** Every name the request uses, each one correctable in place. */
 export function SlotPicker({ slots, setSlot }: { slots: SlotChoice[]; setSlot: (name: string, value: string) => void }) {
   const one = (s: SlotChoice) => <Slot key={`${s.name}-${s.current}`} s={s} setSlot={setSlot} />;
-  return <div className="ltr-fields" aria-label="Names in the request">{slots.map(one)}</div>;
+  return <div className="ltr-fields" role="group" aria-label="Names in the request">{slots.map(one)}</div>;
 }

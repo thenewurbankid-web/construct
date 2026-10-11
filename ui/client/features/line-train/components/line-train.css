@@ -52,3 +52,4 @@
 .ltr-result[data-ok='false'] { border-left-color: var(--danger); background: var(--danger-soft); }
 .ltr-inline { display: inline-flex; align-items: center; gap: var(--sp-1); font-size: var(--fs-sm); }
 .ltr-chips { display: flex; flex-wrap: wrap; gap: var(--sp-1); }
+.ltr-btn--primary:hover:not(:disabled), .ltr-btn[aria-pressed='true']:hover:not(:disabled) { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); filter: brightness(1.08); }

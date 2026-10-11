@@ -6,7 +6,6 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { INTENT_IDS, assertTrainCase, assertDelexicalized, assertScoreboard, assertTryResult } from '../packages/engine/line/train/contract.mjs';
@@ -17,12 +16,13 @@ import { tryRoute } from '../packages/engine/line/train/verify.mjs';
 import { normalize, buildDomainMap } from '../packages/engine/line/train/slots.mjs';
 import { createTrainService, worldIdentifiers } from '../packages/engine/line/train/service.mjs';
 import { CASES, LOG } from '../packages/engine/line/train/store.mjs';
+import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, '..');
 const SEED = path.join(REPO, 'line');
 const seed = fs.readFileSync(path.join(SEED, CASES), 'utf8').split('\n').filter(Boolean);
-const tmp = () => fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'line-train-test-')));
+const tmp = () => makeTempDir('line-train-test-');
 const treeHash = (dir) => {
   const h = crypto.createHash('sha256');
   const walk = (d) => { for (const e of fs.readdirSync(d, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) { const p = path.join(d, e.name); if (e.isDirectory()) walk(p); else h.update(`${path.relative(dir, p)}\0${fs.readFileSync(p)}`); } };

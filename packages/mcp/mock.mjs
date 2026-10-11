@@ -11,6 +11,10 @@ export { LIMITS, ERROR_CODES, ToolError, DEFAULT_RATE_PER_MINUTE, MAX_RATE_PER_M
 export const USAGE = 'construct-mcp (mock): Construct\'s blocks as read-only, plan-only MCP tools over stdio.';
 /** The mock's one tool. */
 export const TOOLS = Object.freeze([{ name: 'construct_mock', title: 'Mock tool', description: 'Answers what the mock was given.' }]);
+/** The plan tools: none in the mock. */
+export const PLAN_TOOLS = Object.freeze([]);
+/** The Train Line tools: none in the mock. */
+export const TRAIN_MCP_TOOLS = Object.freeze([]);
 
 /**
  * Arguments are taken as given: `--root <dir>` only.

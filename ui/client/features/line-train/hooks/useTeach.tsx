@@ -8,7 +8,7 @@ import type { TeachControls, TrainChoices, TrainHttp, TrainWorld } from '../type
 import { useDraft } from './useDraft';
 import { useRouteActions } from './useRouteActions';
 
-type World = { worlds: TrainWorld[]; world: string; choose: (k: string) => void; choices: TrainChoices | null };
+type World = { worlds: TrainWorld[]; world: string; choose: (k: string) => void; choices: TrainChoices | null; reloadChoices: () => Promise<void> };
 
 /** The "Teach a new request" panel: type or pick a request, read the drafter's routes, correct them with closed
  * choices, Try each one in a scratch copy, save the case. */
@@ -27,7 +27,7 @@ export function useTeach(api: TrainHttp, w: World, onSaved: () => void, onError:
     edit: d.edit,
     intentPhrase: intents.find((i) => i.id === d.edit?.intent)?.phrase ?? '',
     intents, setIntent: d.setIntent,
-    unknown: d.meta?.unknown ?? [], meant: (word, ref) => void d.meant(word, ref),
+    unknown: d.meta?.unknown ?? [], meant: (word, ref) => void d.meant(word, ref).then(w.reloadChoices),
     slots, setSlot: (name, value) => d.setSlot(name, value, slots.find((s) => s.name === name)?.kind ?? 'pick'),
     cards, toggleValid: r.toggleValid, star: r.star, tryRoute: (id) => void r.tryRoute(id),
     tools: w.choices?.tools ?? [], fieldsFor,

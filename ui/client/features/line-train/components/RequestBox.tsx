@@ -32,7 +32,7 @@ export function RequestBox({ worlds, world, chooseWorld, suggestions, text, setT
         <input id="ltr-request-input" className="ltr-input" value={text} onChange={(e) => setText(e.target.value)} placeholder="Make StatusBadge in orders, based on Badge." />
         <button type="submit" className="ltr-btn ltr-btn--primary">Draft</button>
       </div>
-      <div className="ltr-chips" aria-label="Suggested requests">{suggestions.map(chip)}</div>
+      <div className="ltr-chips" role="group" aria-label="Suggested requests">{suggestions.map(chip)}</div>
     </form>
   );
 }

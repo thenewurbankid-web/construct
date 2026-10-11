@@ -320,3 +320,32 @@ Known gaps: engine and core import each other and core imports ast without listi
 1. In the repo, run `node packages/cli/construct.mjs validate --dir . --profile line`.
 2. Expect no LINE-MODULE lines in the output (the other rules still list their known findings).
 3. Run `node packages/cli/construct.mjs validate --dir examples/line-sample --profile line`: exactly the 2 planted findings.
+
+## Train Line: the owner and Claude train Line's drafter (awaiting UAT)
+
+One screen, `/train` (profile menu → Train Line), where you and Claude teach Line's System 1 drafter to turn a request into routes (plan steps plus checks), using only the five tested tools: Make from the library (`line.baseOn`), Move into the library (`line.promote`), Set a page value (`line.setPageProp`), Edit a piece of code (`line.setFragment`), Fix a problem (`line.fix`). Nothing here touches your project: every case lives on an imaginary project (40 generated ones: shop, clinic, school, CRM and more, each passing `validate --profile line`) or the Line sample, and every check runs in a scratch copy through Construct's writer.
+
+What is stored (`line/train/cases.jsonl`, through the writer; `line/train/log.jsonl` says who changed what): no project or domain words, only slots ("Make <name:N1> in <feature:F1>, based on <library:L1>."), the intent, the routes and their checks. The screen fills the names back. The seed: 552 cases Claude generated and Construct verified (every gold route applied in a scratch copy and its checks passed; refusals refused with their typed fix), covering all 12 intents, 168 with several valid routes; 130 cases on 10 whole projects are held out for eval; 96 are in your random review sample.
+
+Mirrors to replace at merge (marked in code): the expression language (`exprMirror.mjs`), the drafter and its intent catalog (`drafterMirror.mjs`, `INTENTS`), the domain map (`buildDomainMap/normalize/denormalize` in `slots.mjs`). Last eval with the mirror drafter: 95% of valid routes found, 93% preferred picked.
+
+Tests, in plain words:
+1. Every imaginary clean project passes the line profile; each problem variant plants exactly one problem with a fix that runs; the CLI agrees.
+2. The seed: a few hundred cases, every intent covered, several routes where a request has them, every route verified, and no saved case contains a name or domain word of its project.
+3. Whole projects are held out (w30-w39 only in eval, never learned from).
+4. Try it: a right route passes in a scratch copy, a wrong check fails with a sentence, a refusal is refused, a question really cannot run without its detail; the sample folder is byte-identical afterwards.
+5. A near-miss word ("ordrs") offers "Did you mean orders?"; the answer becomes a synonym of that project.
+6. Only you agree or disagree (Claude cannot, over MCP or the API); a disagreement keeps your note; every change is logged as owner or claude.
+7. A typed request is drafted, one feature corrected with a closed choice, saved without project words; a route that fails is refused before saving.
+8. Eval drafts every held-out case from the train split only and scores valid routes found, drafted routes valid, preferred picked, per tool family and per intent; over MCP it saves nothing.
+9. MCP: `train_propose_case` (Claude's draft, verified and delexicalized), `train_list_cases`, `train_run_eval`; no review or approve tool.
+10. Browser (`ui/e2e/tests/line-train.spec.js`, real server): review, teach, Did you mean, Run eval; accessibility clean; no console error or failed request. The owner's walk below is `ui/e2e/uat/line-train.spec.js`.
+
+Gaps: the drafter is the static mirror (retrieval + templates), not the real one; Line's kinds have no API or service layer, so "UI only / API only" routes cannot exist yet (routes span pages, components, flows, sample data and the library); a new name typed by you is kept as a role word; missing-feature refusals are drafted poorly (70% on refusals); "Add a route" offers one step per route; the sample world cannot share billing's InvoiceCard (it has no base), so that case is not in the seed.
+
+### UAT (5 minutes)
+1. Open Cockpit, profile menu → Train Line.
+2. Review 5 of Claude's cases: read each request and its routes (side by side, the preferred one starred); Agree with the ones you would do that way, Disagree with one and say why.
+3. Under "Teach a new request", click a suggested request (or type one, e.g. "Make StatusBadge in orders, based on Badge.").
+4. Correct the draft: change the feature in its list (two clicks), press Try it on a route (it says "It works in a scratch copy"), then Save as a training case.
+5. Press Run eval and read the scoreboard: per tool family, the share of valid routes found, preferred picked, and your agreement on Claude's cases.
