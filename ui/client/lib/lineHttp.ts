@@ -30,4 +30,10 @@ export const lineHttp: LineHttp = {
   importScan: (req) => postJson('/api/line/import/scan', req),
   importPlan: (req) => postJson('/api/line/import/plan', req),
   importApply: (req) => postJson('/api/line/import/apply', req),
+  getImportAgent: (folder) => getJson(`/api/line/import-agent?folder=${encodeURIComponent(folder)}`),
+  startImportAgent: (folder) => postJson('/api/line/import-agent/start', { folder }),
+  resumeImportAgent: (folder) => postJson('/api/line/import-agent/resume', { folder }),
+  pauseImportAgent: (folder) => postJson('/api/line/import-agent/pause', { folder }),
+  editImportStep: (req) => postJson('/api/line/import-agent/step', req),
+  answerImportAgent: (req) => postJson('/api/line/import-agent/answer', req),
 };

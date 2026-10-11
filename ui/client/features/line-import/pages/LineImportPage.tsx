@@ -15,6 +15,7 @@ export function LineImportPage({ controls }: { controls: ImportControls }) {
         <p className="li-eyebrow">Line</p>
         <h1 className="li-h1">Import an app</h1>
         <p className="li-hint">Bring one folder of an app that was not built with Line into Line, step by step.</p>
+        <a className="li-hint" href="/import/agent" data-testid="li-agent-link">Or let the Import agent plan it for you to review and approve, step by step.</a>
       </header>
       <FolderPicker folders={state.folders} folder={state.folder} busy={view.busy} onFolder={setFolder} onScan={scan} />
       <ImportNotice result={state.result} error={state.error} />
