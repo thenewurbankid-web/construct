@@ -101,8 +101,8 @@ const EXPECTED = {
   ],
   'LINE-MODULE': [
     'LINE-MODULE packages/@acme/bare/package.json:1',
-    'LINE-MODULE packages/@acme/bare/package.json:1',
-    'LINE-MODULE packages/@acme/bare/package.json:1',
+    'LINE-MODULE packages/@acme/bare/package.json:2',
+    'LINE-MODULE packages/@acme/bare/package.json:3',
     'LINE-MODULE packages/caller/index.js:1',
     'LINE-MODULE packages/caller/index.js:2',
     'LINE-MODULE packages/caller/index.js:5',
@@ -129,6 +129,13 @@ for (const [rule, expected] of Object.entries(EXPECTED)) {
     }
   });
 }
+
+test('LINE-MODULE: a package missing its contract, mock and tests shows all three through the validator registry, not one', async () => {
+  const { aggregateValidation } = await import('../packages/core/registry.mjs');
+  const r = aggregateValidation(path.join(FIXTURES, 'LINE-MODULE'), LINE_ENFORCERS);
+  const bare = r.violations.filter((v) => v.rule === 'LINE-MODULE' && v.file === 'packages/@acme/bare/package.json');
+  assert.deepEqual(bare.map((v) => v.message.match(/no (typed contract|mock|tests)/)?.[1]), ['typed contract', 'mock', 'tests']);
+});
 
 test('LINE-BASE messages say what is wrong and what to do', () => {
   const msgs = validateLine(path.join(FIXTURES, 'LINE-BASE')).violations.map((v) => v.message).join('\n');

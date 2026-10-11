@@ -709,7 +709,9 @@ export function checkModules(project, line) {
   const packages = findPackages(project, line.packageRoots);
   const label = (p) => (p.name ? `The package "${p.name}" (${p.dir})` : `The package in ${p.dir}`);
   for (const p of packages) {
-    const add = (message) => hits.push({ rule: 'LINE-MODULE', file: `${p.dir}/package.json`, line: 1, message });
+    // One line per package-level check (1 contract, 2 mock, 3 tests): the registry dedups and finding keys are
+    // rule|file|line, so sharing line 1 hid all but the first missing piece.
+    const add = (message, line = 1) => hits.push({ rule: 'LINE-MODULE', file: `${p.dir}/package.json`, line, message });
     const atContractSpot = (f) => !f.includes('/') || (f.startsWith('src/') && f.split('/').length === 2);
     const candidates = p.files.filter((f) => atContractSpot(f) && (CONTRACT_FILE.test(posix.basename(f)) || DTS_FILE.test(f)));
     const typed = candidates.filter((f) => !JS_FILE.test(f) || JSDOC_TYPES.test(project.source(`${p.dir}/${f}`)));
@@ -720,10 +722,10 @@ export function checkModules(project, line) {
       else add(`${label(p)} has no typed contract; add ${p.dir}/contract.d.ts (or contract.ts or types.ts in ${p.dir}/src/, or a "types" entry in its package.json naming a real file) describing what it takes and returns, so other modules can rely on it and swap it for a mock.`);
     }
     if (!p.files.some((f) => MOCK_FILE.test(posix.basename(f)) || f.split('/').includes('__mocks__'))) {
-      add(`${label(p)} has no mock; add ${p.dir}/mock.mjs (or mock.ts, or a __mocks__/ folder) exporting a stand-in with the same contract, so other modules can test without it and Line can fall back when it is down.`);
+      add(`${label(p)} has no mock; add ${p.dir}/mock.mjs (or mock.ts, or a __mocks__/ folder) exporting a stand-in with the same contract, so other modules can test without it and Line can fall back when it is down.`, 2);
     }
     if (!p.files.some((f) => TEST_FILE.test(posix.basename(f)) || f.split('/').slice(0, -1).some((s) => TEST_DIRS.has(s)))) {
-      add(`${label(p)} has no tests of its own; add them in ${p.dir}/test/ (or as *.test.* files next to its code), so it can be checked on its own.`);
+      add(`${label(p)} has no tests of its own; add them in ${p.dir}/test/ (or as *.test.* files next to its code), so it can be checked on its own.`, 3);
     }
   }
 
