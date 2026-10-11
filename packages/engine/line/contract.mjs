@@ -28,11 +28,11 @@
 /**
  * A library item (complete and usable on its own).
  * @typedef {object} LibraryItem
- * @property {string} id        "<kind>/<Name>", the value a feature item's @line-base link names.
+ * @property {string} id        "<kind>/<Name>", the value a feature item's base link (line-base pragma) names.
  * @property {LineKind} kind
  * @property {string} name
  * @property {string} file      Root-relative path.
- * @property {Level} [level]    Components only: atom (no library imports), molecule (imports atoms only), organism (anything else); an `@line-level <level>` comment overrides.
+ * @property {Level} [level]    Components only: atom (no library imports), molecule (imports atoms only), organism (anything else); a "line-level" pragma comment (at-sign line-level) overrides.
  * @property {{feature: string, file: string}[]} usedBy  Feature items based on it.
  */
 
@@ -44,7 +44,7 @@
  * @property {string} name
  * @property {string} feature
  * @property {string} file
- * @property {{value: string|null, libraryId: string|null}} base  The @line-base link as written, and the library item it resolves to (null when missing or broken).
+ * @property {{value: string|null, libraryId: string|null}} base  The base link (line-base pragma) as written, and the library item it resolves to (null when missing or broken).
  * @property {'ok'|'problem'} status  "problem" when any finding points at this file.
  * @property {LineFinding[]} findings
  */

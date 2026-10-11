@@ -34,7 +34,7 @@ export function selectProfile(root, requested) {
  * validate) calls this, so a `preset: line` project is checked by the Line rules everywhere, not
  * only by `construct validate`.
  * @param {string} root Project root.
- * @returns {ReadonlyArray<{name: string, validate: Function}>} Its enforcers.
+ * @returns {import('../registry.mjs').Enforcer[]} Its enforcers.
  */
 export function enforcersForRoot(root) {
   return enforcersForProfile(selectProfile(root));
@@ -43,8 +43,8 @@ export function enforcersForRoot(root) {
 /**
  * The enforcer list for a profile name.
  * @param {string} name A key of PROFILES.
- * @returns {ReadonlyArray<{name: string, validate: Function}>} Its enforcers (the strict-nextjs set for an unknown name).
+ * @returns {import('../registry.mjs').Enforcer[]} Its enforcers (the strict-nextjs set for an unknown name).
  */
 export function enforcersForProfile(name) {
-  return Object.hasOwn(PROFILES, name) ? PROFILES[name] : DEFAULT_ENFORCERS;
+  return /** @type {import('../registry.mjs').Enforcer[]} */ (Object.hasOwn(PROFILES, name) ? PROFILES[name] : DEFAULT_ENFORCERS);
 }

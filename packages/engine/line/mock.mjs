@@ -23,8 +23,13 @@ export const MOCK_FILES = Object.freeze({
 const nameOf = (file) => file.split('/').pop().replace(/\.[^.]+$/, '');
 const baseOf = (src) => (src.match(/@line-base\s+([^\s*]+)/) || [])[1] ?? null;
 
-/** Findings the mock "validate" reports: cross-feature imports (LINE-DIR) and missing bases (LINE-BASE). */
+/**
+ * Findings the mock "validate" reports: cross-feature imports (LINE-DIR) and missing bases (LINE-BASE).
+ * @param {Record<string, string|null>} files
+ * @returns {import('./contract.mjs').LineFinding[]}
+ */
 function findingsOf(files) {
+  /** @type {import('./contract.mjs').LineFinding[]} */
   const out = [];
   for (const [file, src] of Object.entries(files)) {
     const m = file.match(/^features\/([^/]+)\/(components|pages|workflows|fixtures)\//);
@@ -78,14 +83,14 @@ export function createMockLineOps({ files: initial = MOCK_FILES } = {}) {
         return { id: `${name}/${kind}/${nameOf(file)}`, kind, name: nameOf(file), feature: name, file, base: { value, libraryId: value && libIds.has(value) ? value : null }, status: own.length ? 'problem' : 'ok', findings: own };
       }),
     }));
-    return { isLine: true, layout: { library: LIB, features: FEAT, state: 'line' }, library, features, findings };
+    return /** @type {import('./contract.mjs').LineProject} */ ({ isLine: true, layout: { library: LIB, features: FEAT, state: 'line' }, library, features, findings });
   }
 
   return {
     files: () => ({ ...files }),
     readLineProject,
     planBaseOn(_root, { libraryId, feature, name }) {
-      const lib = readLineProject().library.find((l) => l.id === libraryId);
+      const lib = /** @type {import('./contract.mjs').LibraryItem|undefined} */ (readLineProject().library.find((l) => l.id === libraryId));
       if (!lib) throw new LineOpError(`There is no library item "${libraryId}"; pick one from the library.`, 'UNKNOWN_ITEM');
       if (!/^[A-Z][A-Za-z0-9]*$/.test(name)) throw new LineOpError(`"${name}" is not a component name; use a capitalised name such as OrderButton.`, 'BAD_NAME');
       const path = `${FEAT}/${feature}/${lib.kind}/${name}.tsx`;
@@ -109,6 +114,7 @@ export function createMockLineOps({ files: initial = MOCK_FILES } = {}) {
       if (!re.test(files[file])) throw new LineOpError(`This part has no ${prop} to change.`, 'UNKNOWN_PROP');
       return { summary: `Sets ${prop} to "${value}" on the page ${nameOf(file)}.`, files: [{ path: file, content: files[file].replace(re, `${prop}="${value}"`) }] };
     },
+    /** @returns {import('./contract.mjs').ApplyResult} */
     applyChange(_root, change) {
       const next = { ...files };
       for (const f of change.files) { if (f.content === null) delete next[f.path]; else next[f.path] = f.content; }
