@@ -32,7 +32,7 @@ export function ProjectSwitcher({ label, dir, open, onToggle, onClose, picker, e
       {open && (
         <div ref={surfaceRef} id="sh-project-popover" role="dialog" aria-label="Switch project" className="sh-popover">
           {workspaceBox}
-          <p className="hint">Pick a folder in the workspace to work on. Everything in Construct then uses that project.</p>
+          <p className="hint">To open another project, close this one or pick one below. Everything in Construct then uses that project.</p>
           {dir && onCloseProject && (
             <button type="button" className="ui-button ui-button--ghost" data-testid="close-project" onClick={onCloseProject}>
               Close project
