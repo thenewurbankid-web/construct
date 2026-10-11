@@ -12,7 +12,11 @@
 // Nothing here writes a project file: a step's write happens only when the plan runner calls the registry
 // (planTools.mjs -> applyChange -> Construct's transactional writer).
 import { importLinked } from '../../line-links/index.mjs';
-import { CHANGE_TOOLS, DEFAULT_EXPECT, REAL_PLAN_OPS, createLinePlanRegistry, constructCommandTools, gapOf, previewStep } from './planTools.mjs';
+import { CHANGE_TOOLS, DEFAULT_EXPECT, REAL_PLAN_OPS, createLinePlanRegistry, constructCommandTools, gapOf, previewStep, requestOf } from './planTools.mjs';
+import { buildFacts } from './facts.mjs';
+import { checkPre, conditionsOf, expectFor } from './conditions.mjs';
+import { evaluate } from './expr.mjs';
+import { createPlanRecorder } from './records.mjs';
 import { createAtomicPlanWriter, createStaticPlanApi } from './planFallback.mjs';
 import { createSessionTrace, refusalOfStep, matchFix, sourceOf, traceArgs } from './trace.mjs';
 
@@ -79,10 +83,12 @@ export function stepView(root, plan, s, ops = REAL_PLAN_OPS) {
  *   commands?: any, load?: (o: {root: string, registry: any}) => Promise<{api: any, store: {linked: boolean, sentence: string}}>,
  *   linkOptions?: object, trace?: {id: string, record: (e: any) => any, problem: string|null} | null}} o `commands`: the
  *   construct.* registry (default: Construct's built-in commands; null for none). `trace` (cl1): where this session's
- *   typed trace goes (default `<state>/traces/<id>.jsonl`; null records nothing).
+ *   typed trace goes (default `<state>/traces/<id>.jsonl`; null records nothing). `records` (expressions): where finished
+ *   steps' training records go (default `<state>/records/plans.jsonl`, records.mjs; null records nothing).
  */
-export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, commands, load = loadPlanApi, linkOptions, trace }) {
+export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, commands, load = loadPlanApi, linkOptions, trace, records }) {
   const tr = trace === undefined ? createSessionTrace(root, { sessionId: SESSION_ID }) : trace;
+  const rec = records === undefined ? createPlanRecorder(root, { ops }) : records;
   /** @type {Promise<{api: any, store: {linked: boolean, sentence: string}, registry: any}> | null} */
   let ready = null;
   const init = () => (ready ??= (async () => {
@@ -158,6 +164,15 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
         throw e;
       }
     }
+    // Expressions: the tool's pre must hold on the project as it is (one sentence when not), and its post joins the
+    // step's checks (expectFor). Read once per added step; a planner refusal above keeps its own sentence.
+    let layout;
+    if (CHANGE_TOOLS[tool] && !args.retry) {
+      const facts = buildFacts(root, { ops });
+      layout = facts.project()?.layout;
+      const why = checkPre(facts, tool, requestOf(args), layout);
+      if (why) return refusal('PRE_FAILED', why);
+    }
     const has = await ensurePlan(api, by);
     if (!has.ok) return fromPlan(has);
     const plan = has.plan;
@@ -178,7 +193,7 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
       if (!of || !needsYou(plan, of)) return refusal('NOTHING_TO_LEAVE', `Step ${args.stepId} does not need you, so there is nothing to leave as it is`);
       why = why ?? `Carry on without fixing step ${of.n}.`;
     }
-    if (CHANGE_TOOLS[tool] && !args.expect) args.expect = DEFAULT_EXPECT.map((c) => ({ ...c }));
+    if (CHANGE_TOOLS[tool] && !args.expect) args.expect = expectFor(tool, requestOf(args), layout, DEFAULT_EXPECT);
     const r = await withVersion(api, plan.id, (p) => api.plan_add_step({ planId: p.id, version: p.version, by, step: { tool, args, why: why ?? `Run ${tool}.` } }));
     if (!r.ok) return fromPlan(r);
     const added = r.plan.steps[r.plan.steps.length - 1];
@@ -226,11 +241,25 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
     return r.ok ? view(r.message) : fromPlan(r);
   };
 
+  /** Expressions: one training record per finished change step (records.mjs), with its pre on the state before. */
+  const recordFinished = async (state, open) => {
+    const plan = await current((await init()).api);
+    for (const s of plan?.steps ?? []) {
+      if (!open.has(s.id) || !CHANGE_TOOLS[s.tool] || s.status !== 'done') continue;
+      const c = conditionsOf(s.tool, requestOf(s.args), state.project?.layout);
+      // Cockpit's plans carry the default goal; then the step's own why is what the person asked for.
+      const intent = plan.goal === DEFAULT_GOAL ? s.why : plan.request ?? plan.goal;
+      rec.record({ plan, step: s, before: state, intent, pre: c ? { expr: c.pre, ok: evaluate(state.facts, c.pre).ok } : null });
+    }
+  };
+
   /** cl1: record what ran (its outcome) and, when Construct refused it, the refusal with the typed fixes it offered. */
   const runNext = (by, stepId) => serial(async () => {
-    const before = tr ? await current((await init()).api) : null;
+    const before = tr || rec ? await current((await init()).api) : null;
     const open = new Set((before?.steps ?? []).filter((s) => s.status === 'planned' || s.status === 'approved').map((s) => s.id));
+    const state = rec && open.size ? rec.snapshot() : null;
     const r = await runNextInner(by, stepId);
+    if (rec && state && r.ok) await recordFinished(state, open);
     if (!tr) return r;
     if (!r.ok) {
       const tool = before?.steps.find((s) => s.id === stepId)?.tool ?? '(plan)';
@@ -248,5 +277,5 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
     return r;
   });
 
-  return { view: () => serial(() => view()), addStep, approve, runNext, store: async () => (await init()).store, trace: tr };
+  return { view: () => serial(() => view()), addStep, approve, runNext, store: async () => (await init()).store, trace: tr, records: rec };
 }

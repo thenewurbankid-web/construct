@@ -19,7 +19,10 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { CHECK_KINDS, LineOpError } from './contract.mjs';
+import { CHECK_KINDS, LineOpError, EXPR_JSON_SCHEMA, exprProblem } from './contract.mjs';
+import { evaluate } from './expr.mjs';
+import { buildFacts, newFindingFacts } from './facts.mjs';
+import { DEFAULT_CHECK_EXPRS, checkPre } from './conditions.mjs';
 import { planBaseOn, planPromote, applyChange } from './ops.mjs';
 import { planSetProp } from './pageProp.mjs';
 import { readLineProject } from './model.mjs';
@@ -44,8 +47,8 @@ function planWith(ops, root, tool, req) {
 
 /** The checks every change tool expects unless the step names its own. */
 export const DEFAULT_EXPECT = Object.freeze([
-  Object.freeze({ id: 'validate', sentence: 'Validate (profile line) shows no new problems.', kind: 'validate' }),
-  Object.freeze({ id: 'files', sentence: 'The planned files exist with the planned content.', kind: 'file' }),
+  Object.freeze({ id: 'validate', sentence: 'Validate (profile line) shows no new problems.', kind: 'validate', expr: DEFAULT_CHECK_EXPRS.validate }),
+  Object.freeze({ id: 'files', sentence: 'The planned files exist with the planned content.', kind: 'file', expr: DEFAULT_CHECK_EXPRS.files }),
 ]);
 
 // ------------------------------------------------------------------------------------------------- schemas
@@ -66,6 +69,7 @@ function checkExpect(v) {
     if (!isObj(c) || typeof c.id !== 'string' || !c.id || typeof c.sentence !== 'string' || !/^\S.*[.?!]$/.test(c.sentence) || !CHECK_KINDS.includes(c.kind)) {
       return `must hold checks like {"id": "files", "sentence": "The file exists.", "kind": "file"} (kinds: ${CHECK_KINDS.join(', ')})`;
     }
+    if (c.expr !== undefined) { const why = exprProblem(c.expr); if (why) return `has a check "${c.id}" whose expression cannot be used: ${why.charAt(0).toLowerCase()}${why.slice(1).replace(/[.?!]$/, '')}`; }
   }
   return null;
 }
@@ -88,7 +92,7 @@ const JSON_TYPES = Object.freeze({
 function jsonSchemaOf(required, o) {
   const properties = Object.fromEntries(Object.entries(required).map(([k, t]) => [k, { ...JSON_TYPES[t] }]));
   if (o.change) {
-    properties.expect = { type: 'array', minItems: 1, maxItems: 10, items: { type: 'object', required: ['id', 'sentence', 'kind'], properties: { id: { type: 'string' }, sentence: { type: 'string' }, kind: { enum: [...CHECK_KINDS] } } } };
+    properties.expect = { type: 'array', minItems: 1, maxItems: 10, items: { type: 'object', required: ['id', 'sentence', 'kind'], properties: { id: { type: 'string' }, sentence: { type: 'string' }, kind: { enum: [...CHECK_KINDS] }, expr: EXPR_JSON_SCHEMA } } };
     properties.retry = { type: 'object', required: ['of'], properties: { of: { type: 'string' }, passed: { type: 'integer' } } };
     properties.fixOf = { type: 'string', minLength: 1, description: 'The id of the refused step this step fixes.' };
   }
@@ -192,26 +196,52 @@ export function gapOf(root, tool, args, ops = REAL_PLAN_OPS) {
 const lower = (s) => String(s).charAt(0).toLowerCase() + String(s).slice(1);
 
 /**
- * After a write: each expected check, run. `validate` passes when the writer landed the change (it blocks every
- * NEW problem of the line profile); `file` re-reads every planned file. Kinds Line cannot run yet fail honestly.
+ * The facts a step's checks are evaluated against: what it planned and what the writer did, plus (read only when an
+ * expression needs them) the project's facts after the write.
+ * @param {string} root @param {string} tool @param {any} staged @param {any} apply @param {typeof REAL_PLAN_OPS} [ops]
  */
-export function runChecks(root, expect, staged, apply) {
+export function stepFacts(root, tool, staged, apply, ops = REAL_PLAN_OPS) {
+  const plan = { tool, staged: Boolean(staged), applied: Boolean(apply?.ok), files: staged ? fileStates(root, staged).map((f) => ({ path: f.path, asPlanned: f.state === 'present' })) : [] };
+  return buildFacts(root, { ops, plan, findingsNew: apply?.ok ? [] : newFindingFacts(apply?.findings) });
+}
+
+/**
+ * After a write: each expected check, run. `validate` passes when the writer landed the change (it blocks every
+ * NEW problem of the line profile); `file` re-reads every planned file. A check with an `expr` is decided by its
+ * expression over the step's facts (stepFacts); for validate and file checks the sentence stays cp1's whenever the
+ * expression agrees with it (the default expressions always do), else it is the expression's own failed sentence.
+ * Kinds Line cannot run yet, without an expression, fail honestly.
+ * @param {string} root @param {any[]} expect @param {any} staged @param {any} apply
+ * @param {{tool?: string, ops?: typeof REAL_PLAN_OPS, facts?: any}} [o]
+ */
+export function runChecks(root, expect, staged, apply, o = {}) {
+  let facts = o.facts ?? null;
+  const factsNow = () => (facts ??= stepFacts(root, o.tool ?? '', staged, apply, o.ops));
   return expect.map((c) => {
-    if (c.kind === 'validate') {
-      if (apply.ok) return { checkId: c.id, ok: true, sentence: 'Validate shows no new problems.' };
-      const first = apply.findings.find((f) => f.severity === 'error');
-      return { checkId: c.id, ok: false, sentence: first ? `Validate found a new problem: ${lower(first.sentence)}` : `Not checked, because nothing was saved: ${lower(apply.sentence.replace(/^Nothing was saved: /, ''))}` };
-    }
-    if (c.kind === 'file') {
-      if (!staged) return { checkId: c.id, ok: false, sentence: 'The planned files were not written, because the change could not be planned.' };
-      const wrong = fileStates(root, staged).filter((f) => f.state !== 'present');
-      if (!wrong.length) return { checkId: c.id, ok: true, sentence: `${staged.files.length === 1 ? 'The planned file is' : `All ${staged.files.length} planned files are`} there as planned.` };
-      const names = wrong.map((f) => base(f.path));
-      const shown = new Set(names).size === names.length ? names : wrong.map((f) => f.path);
-      return { checkId: c.id, ok: false, sentence: `${shown.join(', ')} ${wrong.length === 1 ? 'is' : 'are'} not as planned.` };
-    }
-    return { checkId: c.id, ok: false, sentence: `Line cannot run ${c.kind} checks for a step yet, so "${c.sentence.replace(/[.?!]$/, '')}" is not confirmed.` };
+    const legacy = legacyCheck(root, c, staged, apply);
+    if (c.expr === undefined) return legacy;
+    const r = evaluate(factsNow(), c.expr);
+    if ((c.kind === 'validate' || c.kind === 'file') && r.ok === legacy.ok) return legacy;
+    return { checkId: c.id, ok: r.ok, sentence: r.ok ? c.sentence : r.failed.map((f) => f.sentence).join(' ') };
   });
+}
+
+/** cp1's check, as it always ran. */
+function legacyCheck(root, c, staged, apply) {
+  if (c.kind === 'validate') {
+    if (apply.ok) return { checkId: c.id, ok: true, sentence: 'Validate shows no new problems.' };
+    const first = apply.findings.find((f) => f.severity === 'error');
+    return { checkId: c.id, ok: false, sentence: first ? `Validate found a new problem: ${lower(first.sentence)}` : `Not checked, because nothing was saved: ${lower(apply.sentence.replace(/^Nothing was saved: /, ''))}` };
+  }
+  if (c.kind === 'file') {
+    if (!staged) return { checkId: c.id, ok: false, sentence: 'The planned files were not written, because the change could not be planned.' };
+    const wrong = fileStates(root, staged).filter((f) => f.state !== 'present');
+    if (!wrong.length) return { checkId: c.id, ok: true, sentence: `${staged.files.length === 1 ? 'The planned file is' : `All ${staged.files.length} planned files are`} there as planned.` };
+    const names = wrong.map((f) => base(f.path));
+    const shown = new Set(names).size === names.length ? names : wrong.map((f) => f.path);
+    return { checkId: c.id, ok: false, sentence: `${shown.join(', ')} ${wrong.length === 1 ? 'is' : 'are'} not as planned.` };
+  }
+  return { checkId: c.id, ok: false, sentence: `Line cannot run ${c.kind} checks for a step yet, so "${c.sentence.replace(/[.?!]$/, '')}" is not confirmed.` };
 }
 
 /**
@@ -242,13 +272,16 @@ export function fixesAsProposed(root, staged, findings) {
  * Never throws for a refusal: the step's result records it and says the step needs the person.
  * @returns {import('./contract.mjs').LineStepResult}
  */
-export function runChange(root, tool, args, ops = REAL_PLAN_OPS) {
+export function runChange(root, tool, args, ops = REAL_PLAN_OPS, o = {}) {
   const expect = Array.isArray(args?.expect) ? args.expect : DEFAULT_EXPECT;
+  // The tool's pre, on the project as it is now (not for a retry: that repairs a step whose pre already held).
+  const refusedByPre = o.pre && !args?.retry ? preRefusal(root, tool, args, ops) : null;
   /** @type {import('./contract.mjs').StagedChange | null} */
   let staged = null;
   /** @type {import('./contract.mjs').ApplyResult} */
   let apply;
   try {
+    if (refusedByPre) throw new LineOpError(refusedByPre, 'PRE_FAILED');
     staged = planWith(ops, root, tool, requestOf(args));
   } catch (e) {
     if (!(e instanceof LineOpError) && /** @type {any} */ (e)?.name !== 'LineOpError') throw e;
@@ -262,7 +295,7 @@ export function runChange(root, tool, args, ops = REAL_PLAN_OPS) {
   if (!/** @type {any} */ (apply).ok && /** @type {any} */ (apply).findings.length && staged) {
     apply = { .../** @type {any} */ (apply), findings: fixesAsProposed(root, staged, /** @type {any} */ (apply).findings) };
   }
-  const checks = runChecks(root, expect, staged, /** @type {any} */ (apply));
+  const checks = runChecks(root, expect, staged, /** @type {any} */ (apply), { tool, ops });
   const passed = checks.filter((c) => c.ok).length;
   const total = checks.length;
   const needsYou = passed < total;
@@ -301,7 +334,7 @@ export function runChange(root, tool, args, ops = REAL_PLAN_OPS) {
  */
 export function lineTools({ root, ops = REAL_PLAN_OPS, afterSave }) {
   const run = {
-    ...Object.fromEntries(Object.keys(CHANGE_TOOLS).map((tool) => [tool, async (a) => runChange(root, tool, a, ops)])),
+    ...Object.fromEntries(Object.keys(CHANGE_TOOLS).map((tool) => [tool, async (a) => runChange(root, tool, a, ops, { pre: true })])),
     'line.leaveAsIs': async (a) => ({ left: a.stepId, sentence: 'Carried on; the step was left as it is.' }),
     'line.project': async () => ops.readLineProject(root),
   };
@@ -350,6 +383,15 @@ export async function constructCommandTools() {
   const commands = createCommandRegistry();
   registerBuiltinCommands(commands);
   return commandPlanRegistry(commands);
+}
+
+/**
+ * The tool's pre on the project as it is now: null when it holds (or the tool declares none), else one sentence.
+ * @param {string} root @param {string} tool @param {Record<string, unknown>} args @param {typeof REAL_PLAN_OPS} [ops]
+ */
+export function preRefusal(root, tool, args, ops = REAL_PLAN_OPS) {
+  const facts = buildFacts(root, { ops });
+  return checkPre(facts, tool, requestOf(args), facts.project()?.layout);
 }
 
 /**

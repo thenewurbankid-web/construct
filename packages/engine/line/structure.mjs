@@ -59,21 +59,22 @@ export function structureOf(project) {
  * @returns {{added: string[], removed: string[], changed: string[]}}
  */
 export function structureDelta(before, after, slot) {
+  // Slots are handed out only for what changed, so a record names nothing it does not need.
   const lines = (project) => {
     const m = new Map();
-    for (const l of project.library ?? []) m.set(`lib|${l.id}`, { line: `library/${l.kind}/${slot('lib', l.id, { kind: l.kind })}`, shape: [l.kind, l.level ?? '-'] });
+    for (const l of project.library ?? []) m.set(`lib|${l.id}`, { line: () => `library/${l.kind}/${slot('lib', l.id, { kind: l.kind })}`, shape: [l.kind, l.level ?? '-'], base: null });
     for (const f of project.features ?? []) for (const i of f.items ?? []) {
       const base = i.base?.libraryId ?? null;
-      m.set(`item|${i.id}`, { line: `${slot('feature', f.name)}/${i.kind}/${slot('item', i.id, { kind: i.kind })}`, shape: [i.kind, base ? slot('lib', base, { kind: base.split('/')[0] }) : 'none'] });
+      m.set(`item|${i.id}`, { line: () => `${slot('feature', f.name)}/${i.kind}/${slot('item', i.id, { kind: i.kind })}`, shape: [i.kind, base ?? 'none'], base });
     }
     return m;
   };
   const a = lines(before); const b = lines(after);
   const out = { added: [], removed: [], changed: [] };
-  const withBase = (x) => (x.shape[1] && x.shape[1] !== '-' && x.shape[1] !== 'none' && x.line.includes('/') && !x.line.startsWith('library/') ? `${x.line} base=${x.shape[1]}` : x.line);
-  for (const [k, x] of b) if (!a.has(k)) out.added.push(withBase(x));
-  for (const [k, x] of a) if (!b.has(k)) out.removed.push(withBase(x));
-  for (const [k, x] of b) if (a.has(k) && JSON.stringify(a.get(k).shape) !== JSON.stringify(x.shape)) out.changed.push(withBase(x));
+  const show = (x) => { const line = x.line(); return x.base ? `${line} base=${slot('lib', x.base, { kind: x.base.split('/')[0] })}` : line; };
+  for (const [k, x] of b) if (!a.has(k)) out.added.push(show(x));
+  for (const [k, x] of a) if (!b.has(k)) out.removed.push(show(x));
+  for (const [k, x] of b) if (a.has(k) && JSON.stringify(a.get(k).shape) !== JSON.stringify(x.shape)) out.changed.push(show(x));
   for (const v of Object.values(out)) v.sort();
   return out;
 }

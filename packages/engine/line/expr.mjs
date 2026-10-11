@@ -207,7 +207,7 @@ function test(e, ctx, want, at = '') {
       return { ok: false, failed: [{ path: first.r.failed[0]?.path ?? here, sentence: end(`${lead}: ${first.r.failed.map((f) => low(f.sentence).replace(/[.?!]$/, '')).join('; ')}`) }] };
     }
     if (op === 'some' && want) return no(results.length ? `Nothing in ${list.label} has ${claimOf(a[1])}` : `${list.label} is empty, so nothing in it has ${claimOf(a[1])}`);
-    if (op === 'some') return no(`${elementName(good[0].el, good[0].i)} in ${list.label} has ${claimOf(a[1])}, and nothing should`);
+    if (op === 'some') return no(`In ${list.label}, ${elementName(good[0].el, good[0].i)} has ${claimOf(a[1])}, and nothing should`);
     return no(`All ${results.length} in ${list.label} have ${claimOf(a[1])}, and they should not all`);
   }
   return no(`"${op}" is not an operator`);
