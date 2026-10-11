@@ -151,6 +151,7 @@ function tsconfigInside(root, abs) {
 
 /**
  * Type errors the new source adds to the file (errors already there never block). Null when there is no tsconfig.
+ * @param {string} root @param {string} abs @param {string} before @param {string} after
  * @returns {{added: {code: string, message: string, line: number}[], ms: number}|null}
  */
 export function addedTypeErrors(root, abs, before, after) {

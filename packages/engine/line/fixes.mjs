@@ -47,6 +47,7 @@ export const findingKey = (f) => `${f.rule}|${f.file}|${f.line}`;
 /**
  * What fixesFor reads, loaded once per batch of findings.
  * @param {string} root Project root.
+ * @returns {any} The project facts fixesFor needs.
  */
 export function fixContext(root) {
   const layout = resolveLayout(root, normalizeLineConfig(/** @type {any} */ (loadConfig(root)).line));

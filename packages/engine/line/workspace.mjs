@@ -10,7 +10,11 @@ import { resolveLayout } from '@line/construct-core/profiles/line/checks';
 import { createTransaction } from '../transactionalWriter.mjs';
 import { LineOpError } from './contract.mjs';
 
-/** Root-relative path of the workspace file in a project. */
+/**
+ * Path of the workspace file in a project.
+ * @param {string} root
+ * @returns {string}
+ */
 export function workspaceFile(root) {
   let state = 'line';
   try { state = resolveLayout(root, normalizeLineConfig(/** @type {any} */ (loadConfig(root)).line)).state || 'line'; } catch { /* no architecture.yml: default */ }
@@ -46,7 +50,12 @@ export function normalizeFolder(root, folder, { mustExist = false } = {}) {
   return raw;
 }
 
-/** True when the root-relative file `rel` lies inside `folder` ('' = the whole project). */
+/**
+ * True when the root-relative file `rel` lies inside `folder` ('' = the whole project).
+ * @param {string} folder
+ * @param {string} rel
+ * @returns {boolean}
+ */
 export function isInsideWorkspace(folder, rel) {
   return folder === '' || rel === folder || rel.startsWith(`${folder}/`);
 }

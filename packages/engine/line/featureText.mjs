@@ -100,6 +100,7 @@ const escape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
  * feature whose title it contains or that contains it (words only, any case).
  * @param {ReturnType<typeof parseSpec>} stories
  * @param {{itemNames: string[], testTitles: string[]}} evidence
+ * @returns {any[]} The stories with each point marked covered and by what.
  */
 export function coverSpec(stories, { itemNames, testTitles }) {
   return stories.map((st) => ({
@@ -117,7 +118,11 @@ export function coverSpec(stories, { itemNames, testTitles }) {
   }));
 }
 
-/** Test titles in a test file's source: test('...'), it('...'), describe is not a test. */
+/**
+ * Test titles in a test file's source: test('...'), it('...'), describe is not a test.
+ * @param {string} src
+ * @returns {string[]}
+ */
 export function testTitles(src) {
   return [...String(src).matchAll(/\b(?:test|it)(?:\.\w+)*\s*\(\s*(['"`])((?:(?!\1).)+)\1/g)].map((m) => m[2]);
 }

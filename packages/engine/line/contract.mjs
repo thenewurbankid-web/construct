@@ -265,7 +265,12 @@ export function assertFinding(f, where = 'finding') {
   }
 }
 
-/** @param {any} x @param {string} where */
+/**
+ * Throws unless x is a LineFix (id, sentence, rank, a line.* step or null).
+ * @param {any} x
+ * @param {string} where
+ * @returns {void}
+ */
 export function assertFix(x, where = 'fix') {
   str(x?.id, `${where}.id`);
   sentence(x.sentence, `${where}.sentence`);
@@ -342,7 +347,11 @@ export function assertApplyResult(r) {
   if (r.code !== undefined) str(r.code, 'result.code');
 }
 
-/** @param {any} w @returns {asserts w is LineWorkspace} */
+/**
+ * Throws unless w is a LineWorkspace with a folder inside the project.
+ * @param {any} w
+ * @returns {asserts w is LineWorkspace}
+ */
 export function assertLineWorkspace(w) {
   str(w?.root, 'workspace.root');
   if (typeof w.folder !== 'string') fail('workspace.folder', 'must be a string');
@@ -352,7 +361,11 @@ export function assertLineWorkspace(w) {
   if (w.readOnly !== true) fail('workspace.readOnly', 'must be true');
 }
 
-/** @param {any} d @returns {asserts d is LineFeatureDetail} */
+/**
+ * Throws unless d is a LineFeatureDetail (items by kind, static summary, spec coverage).
+ * @param {any} d
+ * @returns {asserts d is LineFeatureDetail}
+ */
 export function assertLineFeatureDetail(d) {
   str(d?.name, 'feature.name');
   if (!d.items || typeof d.items !== 'object') fail('feature.items', 'must be an object keyed by kind');
@@ -393,7 +406,11 @@ export function assertLineFeatureDetail(d) {
   d.findings.forEach((x, k) => assertFinding(x, `feature.findings[${k}]`));
 }
 
-/** @param {any} l @returns {asserts l is FragmentList} */
+/**
+ * Throws unless l is a FragmentList (file, content hash, labelled fragments).
+ * @param {any} l
+ * @returns {asserts l is FragmentList}
+ */
 export function assertFragmentList(l) {
   str(l?.file, 'fragments.file');
   str(l.contentHash, 'fragments.contentHash');

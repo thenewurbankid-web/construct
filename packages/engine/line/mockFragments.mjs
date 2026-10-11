@@ -2,7 +2,11 @@
 // parser, so it also runs in the browser (Line mock mode). It finds `name={...}` attributes without nested braces,
 // the shape the mock writes; the real reader is fragments.mjs (typescript-estree).
 
-/** A short, stable, non-cryptographic hash (FNV-1a), enough for the mock's stale check. @param {string} s */
+/**
+ * A short, stable, non-cryptographic hash (FNV-1a), enough for the mock's stale check.
+ * @param {string} s
+ * @returns {string}
+ */
 export function mockHash(s) {
   let h = 0x811c9dc5;
   for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
@@ -15,7 +19,12 @@ function handlerLabel(name, who) {
   return event === 'click' ? `What happens when ${who} is clicked` : `What happens when ${who} asks for ${event}`;
 }
 
-/** @param {string} source @param {string} file @returns {import('./contract.mjs').CodeFragment[]} */
+/**
+ * The editable fragments the mock finds in a source file.
+ * @param {string} source
+ * @param {string} file
+ * @returns {import('./contract.mjs').CodeFragment[]}
+ */
 export function mockFragmentsOf(source, file) {
   const contentHash = mockHash(source);
   /** @type {import('./contract.mjs').CodeFragment[]} */
