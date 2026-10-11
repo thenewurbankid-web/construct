@@ -16,8 +16,8 @@ import crypto from 'node:crypto';
 import { PLAN_FLOWS, planFlow, validatePlan } from './plan.mjs';
 import { expectedFiles, DERIVED_FLOWS } from './plan-touches.mjs';
 import { defineBlock, deriveActions, emptyScope } from './block-contract.mjs';
-import { materializeCommand } from '../engine/processEngine.mjs';
-import { allowedEvents, PROCESS_EVENTS } from '../engine/processMachine.mjs';
+import { materializeCommand } from '@line/construct-engine/process-engine';
+import { allowedEvents, PROCESS_EVENTS } from '@line/construct-engine/process-machine';
 
 /** How a flow's scope is known: `empty` (read-only), `derived` (plan-touches.mjs computes the files) or `declared` (the plan step must say). */
 export const SCOPE_KINDS = Object.freeze(['empty', 'derived', 'declared']);

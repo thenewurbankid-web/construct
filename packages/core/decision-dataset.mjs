@@ -20,7 +20,7 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { resolveStateDir, projectKey } from '../engine/processStore.mjs';
+import { resolveStateDir, projectKey } from '@line/construct-engine/process-store';
 import { TRACE_VERSION, TRACE_SOURCES, OUTCOME_FIELDS, TRACE_LIMITS, validateTrace, serializeTrace } from './decision-trace.mjs';
 import { readTraces, tracesEnabled } from './decision-trace-store.mjs';
 

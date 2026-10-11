@@ -23,7 +23,7 @@ import { loadConfig } from './config.mjs';
 import { loadLayerGraph, classifyFile } from './architecture-graph.mjs';
 import { makeViolation, VALID_MODULES, ConstructError, EXIT_CODES } from './diagnostics.mjs';
 import { walk, rel, write } from './fs.mjs';
-import { lineOf } from '../ast/extract.mjs';
+import { lineOf } from '@construct/ast/extract';
 
 const FILE_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx']);
 const VALID_SCOPES = new Set(['buffer', 'project']);

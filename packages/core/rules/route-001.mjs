@@ -1,6 +1,6 @@
 // #545 -- ROUTE-001, migrated from architecture-enforcer.mjs's detectLayerViolations (the
 // `layer === 'route'` branch's first check). Buffer-scope: only this file's own import list.
-import { extractImports } from '../../ast/index.mjs';
+import { extractImports } from '@construct/ast';
 
 /** @type {import('./types.mjs').Rule} */
 export const rule = {

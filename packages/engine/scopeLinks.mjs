@@ -18,8 +18,8 @@
 import {
   parseJsx, parseJsxTree, collectScopeDeclarations, collectBareIdentifierUsages,
   findImportOfName, declaredPropNames, findTypeMembers, walkAst, parseTsSource, ts,
-} from '../../packages/ast/index.mjs';
-import { isProviderHookName, isTrackedStateHookName } from '../core/architecture-enforcer.mjs';
+} from '@construct/ast';
+import { isProviderHookName, isTrackedStateHookName } from '@line/construct-core/architecture-enforcer';
 
 /** Names from `scope` (a Set) referenced by an attribute value. */
 function referencedNames(prop, scope) {

@@ -6,8 +6,8 @@ import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { minimatch } from 'minimatch';
 import { walk as walkAst } from 'estree-walker';
-import { parseToAst } from '../../../ast/index.mjs';
-import { lineOf } from '../../../ast/extract.mjs';
+import { parseToAst } from '@construct/ast';
+import { lineOf } from '@construct/ast/extract';
 import {
   ITEM_KINDS, FEATURE_FILES, LIBRARY_FILES, CODE_EXTENSIONS, SKIP_DIRS, NON_ITEM_FILE,
   FS_WRITE_FUNCTIONS, FS_EXTRA_WRITE_FUNCTIONS, FS_MODULES, SHARED_CONCERNS,

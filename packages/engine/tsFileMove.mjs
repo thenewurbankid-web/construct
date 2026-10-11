@@ -17,7 +17,7 @@
 // project is answered from memory) and dropped when the tsconfig changes.
 import fs from 'node:fs';
 import path from 'node:path';
-import { ts } from '../ast/lazy.mjs';
+import { ts } from '@construct/ast/lazy';
 
 export const MAX_FILES = 4000;
 export const MAX_CACHED = 3;

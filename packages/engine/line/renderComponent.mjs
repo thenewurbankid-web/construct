@@ -17,9 +17,9 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { loadConfig } from '../../core/config.mjs';
-import { normalizeLineConfig } from '../../core/profiles/line/contract.mjs';
-import { resolveLayout } from '../../core/profiles/line/checks.mjs';
+import { loadConfig } from '@line/construct-core/config';
+import { normalizeLineConfig } from '@line/construct-core/profiles/line/contract';
+import { resolveLayout } from '@line/construct-core/profiles/line/checks';
 import { describeComponent } from '../describeComponent.mjs';
 import { importLinked } from '../../line-links/index.mjs';
 

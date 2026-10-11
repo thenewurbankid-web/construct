@@ -18,7 +18,7 @@ import { loadConfig } from './config.mjs';
 import { ConstructError, EXIT_CODES } from './diagnostics.mjs';
 import { hasFactoryCall } from './architecture-enforcer.mjs';
 import { walk, rel, write } from './fs.mjs';
-import { extractExports, insertNamedImport, jsxParseError, parseJsxTree, spliceNode } from '../ast/index.mjs';
+import { extractExports, insertNamedImport, jsxParseError, parseJsxTree, spliceNode } from '@construct/ast';
 
 const usage = (message) => new ConstructError(message, { exitCode: EXIT_CODES.USAGE_ERROR });
 const NAME_RE = /^[A-Z][A-Za-z0-9]*$/;

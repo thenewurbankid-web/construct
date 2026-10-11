@@ -4,9 +4,9 @@
 // (createTransaction().commit()), so the save is all-or-nothing. No file, or `folder: ''`, means the whole project.
 import fs from 'node:fs';
 import path from 'node:path';
-import { loadConfig } from '../../core/config.mjs';
-import { normalizeLineConfig } from '../../core/profiles/line/contract.mjs';
-import { resolveLayout } from '../../core/profiles/line/checks.mjs';
+import { loadConfig } from '@line/construct-core/config';
+import { normalizeLineConfig } from '@line/construct-core/profiles/line/contract';
+import { resolveLayout } from '@line/construct-core/profiles/line/checks';
 import { createTransaction } from '../transactionalWriter.mjs';
 import { LineOpError } from './contract.mjs';
 

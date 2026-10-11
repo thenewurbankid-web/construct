@@ -22,10 +22,10 @@ import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { aggregateValidation } from '../core/registry.mjs';
-import { formatReport } from '../core/diagnostics.mjs';
-import { loadConfig } from '../core/config.mjs';
-import { enforcersForRoot } from '../core/profiles/index.mjs';
+import { aggregateValidation } from '@line/construct-core/registry';
+import { formatReport } from '@line/construct-core/diagnostics';
+import { loadConfig } from '@line/construct-core/config';
+import { enforcersForRoot } from '@line/construct-core/profiles';
 
 /** Env var naming the `construct` CLI to run in `cli` mode: a path to construct.mjs (source or the built
  * packages/cli/dist/construct.mjs). Absolute, or relative to the Cockpit server's working directory. */

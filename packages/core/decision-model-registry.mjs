@@ -20,7 +20,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { resolveStateDir, projectKey } from '../engine/processStore.mjs';
+import { resolveStateDir, projectKey } from '@line/construct-engine/process-store';
 import { readTraces } from './decision-trace-store.mjs';
 import { findExport } from './decision-dataset.mjs';
 import { verifyModelBundle, MODEL_VERSION_PATTERN } from './decision-model-bundle.mjs';

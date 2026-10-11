@@ -14,7 +14,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import yaml from 'js-yaml';
-import { aggregateValidation } from '../core/registry.mjs';
+import { aggregateValidation } from '@line/construct-core/registry';
 import { DEFAULT_ENFORCERS } from './defaultEnforcers.mjs';
 
 const EXCLUDED_NAMES = new Set(['node_modules', '.git', '.next']);

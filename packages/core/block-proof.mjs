@@ -11,8 +11,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { ConstructError, EXIT_CODES } from './diagnostics.mjs';
 import { ensureTestRegions, generatedDir } from './proof.mjs';
-import { GENERATED_MARKER, assertSafeDir } from '../engine/testGenerator.mjs';
-import { comment, lit } from '../engine/testSpecRender.mjs';
+import { GENERATED_MARKER, assertSafeDir } from '@line/construct-engine/test-generator';
+import { comment, lit } from '@line/construct-engine/test-spec-render';
 
 const usage = (message) => new ConstructError(message, { exitCode: EXIT_CODES.USAGE_ERROR });
 const rel = (root, abs) => path.relative(root, abs).split(path.sep).join('/');

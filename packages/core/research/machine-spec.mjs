@@ -33,7 +33,7 @@
 // never hand-copied). That keeps @line/construct-core dependency-free and the
 // bundled CLI (#525) free of runtime file lookups.
 
-import { ts } from '../../ast/lazy.mjs';
+import { ts } from '@construct/ast/lazy';
 
 export const MACHINE_SPEC_VERSION = 1;
 export const MACHINE_SPEC_MODULE = 'machine-spec';

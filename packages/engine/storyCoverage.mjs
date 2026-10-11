@@ -5,8 +5,8 @@
 // including this -- exists only when a story.md exists for the feature; `declared: false` is not an error.
 import fs from 'node:fs';
 import path from 'node:path';
-import { loadConfig } from '../core/config.mjs';
-import { compareStory, parseStory, readStoryTags } from '../core/story.mjs';
+import { loadConfig } from '@line/construct-core/config';
+import { compareStory, parseStory, readStoryTags } from '@line/construct-core/story';
 import { readRegular } from './testClone.mjs';
 
 const NONE = { declared: false, acceptance: [], compare: null };

@@ -21,9 +21,9 @@ import { loadLayerGraph, canImport, classifyFile } from './architecture-graph.mj
 import { makeViolation, ConstructError, EXIT_CODES } from './diagnostics.mjs';
 import { walk, rel } from './fs.mjs';
 import { globToRegExp, matchGlob } from './glob.mjs';
-import { parseToAst, extractImports, extractExports, staticImportEntries, lineOf, collectCalls, collectBareIdentifierUsages, collectControlFlowNodes, collectInlineJsxLogic, computeJsxComplexity, walkAst, collectImpureDomainReferences, collectLocallyBoundNames, collectBagOfFlagsStates, collectControllerStateCalls, collectUncleanedSubscriptions, collectParamsReads, collectUntypedExportedBoundaries } from '../../packages/ast/index.mjs';
-import { extractMachines } from '../../packages/engine/workflowExtractor.mjs';
-import { findHealthIssues } from '../../packages/engine/workflowScenarios.mjs';
+import { parseToAst, extractImports, extractExports, staticImportEntries, lineOf, collectCalls, collectBareIdentifierUsages, collectControlFlowNodes, collectInlineJsxLogic, computeJsxComplexity, walkAst, collectImpureDomainReferences, collectLocallyBoundNames, collectBagOfFlagsStates, collectControllerStateCalls, collectUncleanedSubscriptions, collectParamsReads, collectUntypedExportedBoundaries } from '@construct/ast';
+import { extractMachines } from '@line/construct-engine/workflow-extractor';
+import { findHealthIssues } from '@line/construct-engine/workflow-scenarios';
 import { exceptionApplies, validateExceptionsShape, expiredExceptionViolations } from './exceptions.mjs';
 import { matchFrozen } from './frozen.mjs';
 import { isNonLayerPath } from './nonLayer.mjs';

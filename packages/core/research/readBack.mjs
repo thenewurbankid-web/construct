@@ -23,7 +23,7 @@
 //     reason, states: [{ id, req, text }], events: [...], transitions: [...], functions: [...] }],
 //     types: [{ id, text }], counts }
 
-import { narrateMachine, transitionSentence, humanize, stateLabel } from '../../engine/workflowNarrator.mjs';
+import { narrateMachine, transitionSentence, humanize, stateLabel } from '@line/construct-engine/workflow-narrator';
 
 /** The `schema` value of a read-back result, so a consumer can tell the shape and its version. */
 export const READ_BACK_SCHEMA = 'construct.machine-spec-readback.v1';

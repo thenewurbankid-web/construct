@@ -204,7 +204,7 @@ test('doctor exits 1 for an unsupported Node and still prints the report', async
 test('no network: the module imports no network module, injected probes never call fetch, and only a loopback address is ever pinged', async () => {
   const src = fs.readFileSync(path.join(ROOT, 'packages/core/machine.mjs'), 'utf8');
   const imports = [...src.matchAll(/^import .* from '([^']+)'/gm)].map((m) => m[1]);
-  assert.deepEqual(imports.sort(), ['../engine/processStore.mjs', 'node:fs', 'node:os', 'node:path']);
+  assert.deepEqual(imports.sort(), ['@line/construct-engine/process-store', 'node:fs', 'node:os', 'node:path']);
   assert.doesNotMatch(src, /node:(https?|net|dgram|dns|tls)|XMLHttpRequest|WebSocket/);
   const realFetch = globalThis.fetch;
   globalThis.fetch = () => { throw new Error('the network was used'); };

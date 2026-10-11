@@ -14,7 +14,7 @@
 // (processEngine.mjs's step commit, approvalGate.mjs's decide(), pipeline.mjs's runPipeline) decide
 // what to do with the verdict.
 import { impactFromChangedFiles } from './impact.mjs';
-import { aggregateValidation } from '../core/registry.mjs';
+import { aggregateValidation } from '@line/construct-core/registry';
 
 /** The declared file paths of a scope/touches object (`{features?, files?}`), whichever of the two
  * shapes used across the codebase: a plain string, or `{path, change}` (plan.mjs's `touches.files`).

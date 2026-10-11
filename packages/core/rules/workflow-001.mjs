@@ -1,6 +1,6 @@
 // #545 -- WORKFLOW-001, migrated from architecture-enforcer.mjs's detectLayerViolations (the
 // `layer === 'workflow'` React-import check). Buffer-scope: only this file's own static imports.
-import { parseToAst, staticImportEntries } from '../../ast/index.mjs';
+import { parseToAst, staticImportEntries } from '@construct/ast';
 import { isReactSpecifier } from './shared.mjs';
 
 /** @type {import('./types.mjs').Rule} */

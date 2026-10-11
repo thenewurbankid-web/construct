@@ -34,7 +34,7 @@ import { EXPECT_LINES, blockProofTouches, proofHeader, writeBlockProof } from '.
 import { generatedDir } from './proof.mjs';
 import { FIELD_TYPES, importLine, kebab, lines, sampleRows, words } from './shape-kit.mjs';
 import { DEFAULT_FIELDS, parseFields, singularOf } from './shapes.mjs';
-import { lit } from '../engine/testSpecRender.mjs';
+import { lit } from '@line/construct-engine/test-spec-render';
 
 const usage = (message) => new ConstructError(message, { exitCode: EXIT_CODES.USAGE_ERROR });
 const rel = (root, abs) => path.relative(root, abs).split(path.sep).join('/');

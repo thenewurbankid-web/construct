@@ -19,8 +19,8 @@ import { moveLayerFile, renameLayerFile } from './refactor.mjs';
 // #787 -- imported from import-real-files.mjs, not import.mjs, so this stays network-free
 // (import.mjs also pulls in llm.mjs for its --llm fill feature, which decision-trace never needs).
 import { existingRealFiles } from './import-real-files.mjs';
-import { compileWorkflow, compileStateUnion, STATE_UNION_MARKER } from '../engine/workflowGenerator.mjs';
-import { resolveSourceFiles } from '../engine/controllerBinder.mjs';
+import { compileWorkflow, compileStateUnion, STATE_UNION_MARKER } from '@line/construct-engine/workflow-generator';
+import { resolveSourceFiles } from '@line/construct-engine/controller-binder';
 
 const isName = (v) => typeof v === 'string' && v.trim().length > 0;
 const asList = (v) => (Array.isArray(v) ? v : typeof v === 'string' ? v.split(',') : []).map((x) => String(x).trim()).filter(Boolean);

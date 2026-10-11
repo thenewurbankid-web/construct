@@ -11,11 +11,11 @@
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
-import { runTypeCheckDetailed } from '../core/type-check.mjs';
-import { loadConfig } from '../core/config.mjs';
-import { walk } from '../core/fs.mjs';
+import { runTypeCheckDetailed } from '@line/construct-core/type-check';
+import { loadConfig } from '@line/construct-core/config';
+import { walk } from '@line/construct-core/fs';
 import { classifyFailure } from './testRunner.mjs';
-import { classifyTypeErrors, classifyBuildOutput, buildScriptOf, VERIFY_LIMITS, VERIFY_TIMEOUTS } from '../core/verify.mjs';
+import { classifyTypeErrors, classifyBuildOutput, buildScriptOf, VERIFY_LIMITS, VERIFY_TIMEOUTS } from '@line/construct-core/verify';
 
 const SAFE_ENV = ['PATH', 'HOME', 'USER', 'LANG', 'LC_ALL', 'TMPDIR', 'SystemRoot', 'APPDATA', 'npm_config_cache'];
 const FEATURE_RE = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;

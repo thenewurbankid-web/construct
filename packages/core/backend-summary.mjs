@@ -8,9 +8,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { builtinModules } from 'node:module';
-import { parseToAst } from '../../packages/ast/parse.mjs';
-import { collectBackendFacts } from '../../packages/ast/backendFacts.mjs';
-import { collectEffects, collectEnvReads } from '../../packages/ast/backendEffects.mjs';
+import { parseToAst } from '@construct/ast/parse';
+import { collectBackendFacts } from '@construct/ast/backend-facts';
+import { collectEffects, collectEnvReads } from '@construct/ast/backend-effects';
 import { findProjectRoot } from './config.mjs';
 import { ConstructError, EXIT_CODES } from './diagnostics.mjs';
 import { mapRoutes } from './backend-routes.mjs';

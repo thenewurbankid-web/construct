@@ -9,6 +9,12 @@
     "./parse": "./parse.mjs",
     "./walk": "./walk.mjs",
     "./extract": "./extract.mjs",
-    "./ts": "./tsNodes.mjs"
+    "./ts": "./tsNodes.mjs",
+    "./backend-facts": "./backendFacts.mjs",
+    "./backend-effects": "./backendEffects.mjs",
+    "./semantic-diff": "./semanticDiff.mjs",
+    "./pure-export-equivalence": "./pureExportEquivalence.mjs",
+    "./client-boundary": "./clientBoundary.mjs",
+    "./lazy": "./lazy.mjs"
   }
 }

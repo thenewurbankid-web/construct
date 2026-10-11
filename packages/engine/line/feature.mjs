@@ -4,9 +4,9 @@
 // never calls a model.
 import fs from 'node:fs';
 import path from 'node:path';
-import { loadConfig } from '../../core/config.mjs';
-import { normalizeLineConfig } from '../../core/profiles/line/contract.mjs';
-import { resolveLayout, loadProject, moduleEdges, resolveSpecifier, classify } from '../../core/profiles/line/checks.mjs';
+import { loadConfig } from '@line/construct-core/config';
+import { normalizeLineConfig } from '@line/construct-core/profiles/line/contract';
+import { resolveLayout, loadProject, moduleEdges, resolveSpecifier, classify } from '@line/construct-core/profiles/line/checks';
 import { LineOpError } from './contract.mjs';
 import { readLineProject, itemName } from './model.mjs';
 import { groupItems, summarySentences, parseSpec, coverSpec, testTitles } from './featureText.mjs';

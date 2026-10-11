@@ -5,12 +5,12 @@
 // (the Line rules for `preset: line`) gates every change and a refused change leaves the disk untouched.
 import fs from 'node:fs';
 import path from 'node:path';
-import { loadConfig } from '../../core/config.mjs';
-import { normalizeLineConfig, ITEM_KINDS, CODE_EXTENSIONS, NON_ITEM_FILE } from '../../core/profiles/line/contract.mjs';
-import { resolveLayout, listFiles, classify, isItemFile, resolveBase, resolveSpecifier } from '../../core/profiles/line/checks.mjs';
+import { loadConfig } from '@line/construct-core/config';
+import { normalizeLineConfig, ITEM_KINDS, CODE_EXTENSIONS, NON_ITEM_FILE } from '@line/construct-core/profiles/line/contract';
+import { resolveLayout, listFiles, classify, isItemFile, resolveBase, resolveSpecifier } from '@line/construct-core/profiles/line/checks';
 import { createTransaction } from '../transactionalWriter.mjs';
-import { aggregateValidation } from '../../core/registry.mjs';
-import { enforcersForRoot } from '../../core/profiles/index.mjs';
+import { aggregateValidation } from '@line/construct-core/registry';
+import { enforcersForRoot } from '@line/construct-core/profiles';
 import { planFileMove, applyEdits } from '../tsFileMove.mjs';
 import { LineOpError, assertStagedChange } from './contract.mjs';
 import { readWorkspace, isInsideWorkspace } from './workspace.mjs';

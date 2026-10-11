@@ -20,8 +20,8 @@
 // the chain that puts that file in the browser, so `exceptions:` by path work as for every rule.
 import fs from 'node:fs';
 import path from 'node:path';
-import { parseToAst } from '../../packages/ast/parse.mjs';
-import { readModuleDirective, collectModuleEdges, collectSecretEnvReads } from '../../packages/ast/clientBoundary.mjs';
+import { parseToAst } from '@construct/ast/parse';
+import { readModuleDirective, collectModuleEdges, collectSecretEnvReads } from '@construct/ast/client-boundary';
 import { classifyFile } from './architecture-graph.mjs';
 import { ConstructError, EXIT_CODES } from './diagnostics.mjs';
 import { walk, rel } from './fs.mjs';

@@ -34,12 +34,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { generateWorkflow, parseTypeString } from '../../engine/workflowGenerator.mjs';
-import { generateUnitTests, UNIT_TEST_SUFFIX } from '../../engine/testUnitGenerator.mjs';
-import { kebab } from '../../engine/testAttributes.mjs';
+import { generateWorkflow, parseTypeString } from '@line/construct-engine/workflow-generator';
+import { generateUnitTests, UNIT_TEST_SUFFIX } from '@line/construct-engine/test-unit-generator';
+import { kebab } from '@line/construct-engine/test-attributes';
 import { typeReferences } from './machine-spec.mjs';
 import { ensureTestRegions, generatedDir } from '../proof.mjs';
-import { printNode as print } from '../../ast/index.mjs';
+import { printNode as print } from '@construct/ast';
 import { loadConfig } from '../config.mjs';
 import { write, rel } from '../fs.mjs';
 import { createFeature, pascalCase, selfCheck } from '../generators.mjs';

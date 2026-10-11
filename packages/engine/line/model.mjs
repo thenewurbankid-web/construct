@@ -9,12 +9,12 @@
 //   4. else (imports a molecule, an organism, a non-component library item, or an import cycle) -> organism.
 import fs from 'node:fs';
 import path from 'node:path';
-import { loadConfig } from '../../core/config.mjs';
-import { normalizeLineConfig } from '../../core/profiles/line/contract.mjs';
-import { validateLine } from '../../core/profiles/line/index.mjs';
+import { loadConfig } from '@line/construct-core/config';
+import { normalizeLineConfig } from '@line/construct-core/profiles/line/contract';
+import { validateLine } from '@line/construct-core/profiles/line';
 import {
   resolveLayout, loadProject, isItemFile, baseLinks, resolveBase, moduleEdges, resolveSpecifier, classify,
-} from '../../core/profiles/line/checks.mjs';
+} from '@line/construct-core/profiles/line/checks';
 import { LEVELS } from './contract.mjs';
 import { withFixes } from './fixes.mjs';
 

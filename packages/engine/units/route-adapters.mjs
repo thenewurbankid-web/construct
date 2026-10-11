@@ -13,10 +13,10 @@
 // Deterministic, AST-based, no LLM. packages/core/route-resolver.mjs (the resolveRoute callers) is untouched.
 import fs from 'node:fs';
 import path from 'node:path';
-import { parseToAst, walkAst } from '../../../packages/ast/index.mjs';
-import { collectBackendFacts } from '../../../packages/ast/backendFacts.mjs';
-import { resolveImportSpecifier } from '../../core/route-resolver.mjs';
-import { mapRoutes } from '../../core/backend-routes.mjs';
+import { parseToAst, walkAst } from '@construct/ast';
+import { collectBackendFacts } from '@construct/ast/backend-facts';
+import { resolveImportSpecifier } from '@line/construct-core/route-resolver';
+import { mapRoutes } from '@line/construct-core/backend-routes';
 
 const isTest = (p) => /\.(test|spec)\./.test(p);
 const CODE_EXT = '(?:ts|tsx|js|jsx|mjs)';

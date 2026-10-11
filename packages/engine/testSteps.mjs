@@ -15,8 +15,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { parseToAst } from '../../packages/ast/index.mjs';
-import { buildDiffView } from '../core/text-diff.mjs';
+import { parseToAst } from '@construct/ast';
+import { buildDiffView } from '@line/construct-core/text-diff';
 import { GENERATED_MARKER, assertSafeDir, featureMachines } from './testGenerator.mjs';
 import { CLONE_MARKER, locate, parseLineage, readRegular } from './testClone.mjs';
 import { HELPERS, machineLine, startUrlLine, testBlockLines } from './testSpecRender.mjs';

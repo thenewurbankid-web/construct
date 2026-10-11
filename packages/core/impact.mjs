@@ -3,5 +3,5 @@
 // over the import/layer graph); this file only re-exports it so the package's
 // public surface is enumerable from packages/core/package.json's exports map
 // without reaching into a sibling workspace package directly.
-export { analyzeImpact, proposeSeedsFromText, impactFromChangedFiles, impactFromTicketText, impactApiManifest, renderImpactMarkdown } from '../engine/impact.mjs';
-export { simulateRuleChangeImpact } from '../engine/rule-change-impact.mjs';
+export { analyzeImpact, proposeSeedsFromText, impactFromChangedFiles, impactFromTicketText, impactApiManifest, renderImpactMarkdown } from '@line/construct-engine/impact';
+export { simulateRuleChangeImpact } from '@line/construct-engine/rule-change-impact';
