@@ -22,15 +22,16 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { write } from '@line/construct-core/fs';
+import { write, WALK_SKIP_DIRS, isGitCheckout } from '@line/construct-core/fs';
 import { assertNotFrozen } from '@line/construct-core/frozen';
 import { aggregateValidation } from '@line/construct-core/registry';
 import { enforcersForRoot } from '@line/construct-core/profiles';
 import { affectedSet } from './scopeGate.mjs';
 
 // Mirrors packages/core/fs.mjs's walk(): these never belong in a shadow copy used for
-// validation (and copying node_modules in particular would be slow/pointless).
-const SKIP_DIRS = new Set(['node_modules', '.next', '.git']);
+// validation (and copying node_modules in particular would be slow/pointless), and neither
+// does a nested git checkout below the root (another project, which walk() skips too).
+const SKIP_DIRS = WALK_SKIP_DIRS;
 
 /** The buffer value of a staged delete (deleteFile). */
 const DELETED = Symbol('deleted');
@@ -46,7 +47,7 @@ function copyProjectTree(root, shadowDir) {
   if (!fs.existsSync(root)) return;
   fs.cpSync(root, shadowDir, {
     recursive: true,
-    filter: (src) => !SKIP_DIRS.has(path.basename(src)),
+    filter: (src) => !SKIP_DIRS.has(path.basename(src)) && (src === root || !isGitCheckout(src)),
   });
 }
 

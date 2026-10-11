@@ -20,13 +20,33 @@ export function ensureDir(p){fs.mkdirSync(p,{recursive:true})}
  */
 export function write(p,s){assertNotFrozen(p);ensureDir(path.dirname(p));fs.writeFileSync(p,s)}
 
+/** Directory names `walk` never descends into, at any depth. */
+export const WALK_SKIP_DIRS = new Set(['node_modules', '.next', '.git']);
+
 /**
- * List every file under a directory, recursively, skipping `node_modules`, `.next` and `.git`.
+ * True when `dir` is the top of a git checkout: it holds a `.git` entry (a folder for a clone, a
+ * file for a worktree or submodule). Below its own root, `walk` treats such a folder as another
+ * project and skips it.
+ *
+ * @param {string} dir Directory path.
+ * @returns {boolean}
+ */
+export function isGitCheckout(dir){return fs.existsSync(path.join(dir,'.git'))}
+
+/**
+ * List every file under a directory, recursively, skipping `node_modules`, `.next` and `.git`,
+ * and any directory below `dir` that is another git checkout (a nested clone, worktree or
+ * submodule is a different project). Files keep depth-first, directory-entry order. Results are
+ * pushed one at a time, never spread, so a very large tree cannot overflow the call stack.
  *
  * @param {string} dir Directory to walk; a missing directory yields an empty list.
  * @returns {string[]} Absolute file paths.
  */
-export function walk(dir){let out=[]; if(!fs.existsSync(dir))return out; for(const e of fs.readdirSync(dir,{withFileTypes:true})){const p=path.join(dir,e.name); if(e.name==='node_modules'||e.name==='.next'||e.name==='.git')continue; e.isDirectory()?out.push(...walk(p)):out.push(p)} return out}
+export function walk(dir){
+  const out=[]; if(!fs.existsSync(dir))return out;
+  const visit=(d)=>{for(const e of fs.readdirSync(d,{withFileTypes:true})){if(WALK_SKIP_DIRS.has(e.name))continue; const p=path.join(d,e.name); if(!e.isDirectory()){out.push(p);continue} if(!isGitCheckout(p))visit(p)}};
+  visit(dir); return out;
+}
 
 /**
  * A project-relative path with `/` separators.

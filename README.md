@@ -745,7 +745,7 @@ construct generate domain PriceCheck --feature pricing --dir tools/construct
 construct validate --dir tools/construct
 ```
 
-`--dir` resolves the same way `cd`-ing in would — walking upward from that path to find the nearest `architecture.yml` — and every command still only ever reads or writes inside that project; nothing outside it is touched.
+`--dir` resolves the same way `cd`-ing in would — walking upward from that path to find the nearest `architecture.yml` — and every command still only ever reads or writes inside that project; nothing outside it is touched. Two limits keep that climb from changing what is validated: a `--dir` folder with no config of its own but its own `features/` folder is a project that has not been synced yet and is used as given, and the climb (from `--dir` or the current directory) stops at the top of a git checkout (a folder holding `.git`), so a nested clone or worktree never inherits the config of the repository it sits in. File walks likewise skip any nested checkout below the project root.
 
 ## Wrapping frozen, externally-authored UI (Subframe, Figma-to-code, ...)
 

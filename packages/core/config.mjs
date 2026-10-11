@@ -668,9 +668,13 @@ export function normalizeRules(userRules, defaults = DEFAULT_RULES) {
 
 /**
  * Walk up from `startDir` looking for the nearest `architecture.yml`,
- * stopping at the filesystem root. Returns the containing directory, or
- * null if none is found. Supports monorepos where a subpackage has no
- * config of its own and should inherit the parent's.
+ * stopping at the filesystem root or at the top of a git checkout (a folder
+ * holding a `.git` entry: a clone, worktree or submodule), whichever comes
+ * first; that top folder is still checked. Returns the containing directory,
+ * or null if none is found. Supports monorepos where a subpackage has no
+ * config of its own and should inherit the parent's, without letting a
+ * nested checkout (for example a worktree under `.claude/worktrees/`) inherit
+ * the config of the repository it happens to sit in.
  *
  * @param {string} startDir Directory to start from.
  * @returns {string|null} The nearest ancestor directory (or `startDir` itself) that holds an `architecture.yml`, or `null` when there is none.
@@ -683,10 +687,32 @@ export function findProjectRoot(startDir) {
   let dir = path.resolve(startDir);
   for (;;) {
     if (fs.existsSync(path.join(dir, 'architecture.yml'))) return dir;
+    if (fs.existsSync(path.join(dir, '.git'))) return null;
     const parent = path.dirname(dir);
     if (parent === dir) return null;
     dir = parent;
   }
+}
+
+/**
+ * The project root for an explicit `--dir <path>`. A folder with its own `architecture.yml`
+ * is the root. A folder with no config but its own `features/` folder is a project that has
+ * not been synced yet, so it is validated as given, never folded into a parent's config.
+ * Anything else (a subfolder of a project, such as `features/plan`) climbs like `cd`-ing in
+ * would, through `findProjectRoot`, falling back to the folder itself.
+ *
+ * @param {string} dir The `--dir` value, relative to the cwd or absolute.
+ * @returns {string} Absolute project root.
+ *
+ * @example
+ * resolveDirRoot('fixtures/architecture-invalid'); // => '<abs>/fixtures/architecture-invalid', even under a parent config
+ * resolveDirRoot('/work/app/features/plan');      // => '/work/app' when /work/app/architecture.yml exists
+ */
+export function resolveDirRoot(dir) {
+  const abs = path.resolve(dir);
+  if (fs.existsSync(path.join(abs, 'architecture.yml'))) return abs;
+  if (fs.existsSync(path.join(abs, 'features')) && fs.statSync(path.join(abs, 'features')).isDirectory()) return abs;
+  return findProjectRoot(abs) ?? abs;
 }
 
 /** Read the raw, unvalidated `rules` map from architecture.yml (or `{}` if the file is

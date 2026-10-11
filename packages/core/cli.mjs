@@ -10,7 +10,7 @@ import { generateShapeLayer, generateShapeVertical } from './shapes.mjs';
 import { ensureGeneratedDependencies } from './generated-dependencies.mjs';
 import { write, ensureDir } from './fs.mjs';
 import { scaffoldProject } from './scaffold.mjs';
-import { loadConfig, findProjectRoot, DEFAULT_RULES, NEW_PROJECT_RULE_SEVERITIES, normalizeFramework } from './config.mjs';
+import { loadConfig, findProjectRoot, resolveDirRoot, DEFAULT_RULES, NEW_PROJECT_RULE_SEVERITIES, normalizeFramework } from './config.mjs';
 import { listRules } from './rules-catalog.mjs';
 import { formatReport, exitCodeForViolations, ConstructError, EXIT_CODES, setExitCode } from './diagnostics.mjs';
 import { aggregateValidation } from './registry.mjs';
@@ -80,13 +80,12 @@ import { mutationCheckCommand } from './mutation-check.mjs';
 // support), falling back to that starting directory itself (e.g. for
 // `construct init`, or a project that hasn't been synced yet). --dir lets a
 // command target a Construct project nested in a subdirectory of a larger,
-// unrelated project without requiring the caller to `cd` into it first.
+// unrelated project without requiring the caller to `cd` into it first. A
+// --dir folder with its own features/ but no config is validated as given,
+// and the climb never leaves a git checkout (config.mjs resolveDirRoot).
 function getRoot(args = []) {
   const di = args.indexOf('--dir');
-  if (di >= 0 && args[di + 1]) {
-    const dir = path.resolve(args[di + 1]);
-    return findProjectRoot(dir) ?? dir;
-  }
+  if (di >= 0 && args[di + 1]) return resolveDirRoot(args[di + 1]);
   return findProjectRoot(process.cwd()) ?? process.cwd();
 }
 
