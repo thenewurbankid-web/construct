@@ -25,6 +25,7 @@ import { planSetProp } from './pageProp.mjs';
 import { readLineProject } from './model.mjs';
 import { planFixByKey, planStep, withFixes } from './fixes.mjs';
 import { planSetFragment } from './fragments.mjs';
+import { importTools } from './importTools.mjs';
 
 /** The real operations (tests pass the contract's mock instead). */
 export const REAL_PLAN_OPS = Object.freeze({ planBaseOn, planPromote, planSetProp, planFixByKey, planSetFragment, planStep, applyChange, readLineProject });
@@ -297,7 +298,8 @@ export function lineTools({ root, ops = REAL_PLAN_OPS, afterSave }) {
  * @returns {import('../../line-links/contracts').PlanRegistry}
  */
 export function createLinePlanRegistry({ root, ops = REAL_PLAN_OPS, commands = null, afterSave }) {
-  const own = lineTools({ root, ops, afterSave });
+  // ci2: the Import steps (line.import.*) join the same registry, so Import executes only through plan steps.
+  const own = [...lineTools({ root, ops, afterSave }), ...importTools({ root, ops, afterSave })];
   const byName = new Map(own.map((t) => [t.name, t]));
   return {
     list: () => [...own.map(({ name, kind, schema, describe }) => ({ name, kind, schema, describe })), ...(commands ? commands.list() : [])],
