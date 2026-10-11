@@ -68,6 +68,7 @@ export function sampleProps(described, fixture = null) {
   });
 }
 
+/** @param {string} sentence @param {string} code @returns {{ ok: false, code: string, sentence: string }} */
 const refusal = (sentence, code) => ({ ok: false, code, sentence });
 
 /** The project's library folder (architecture.yml's `line:` section, resolved like the Line profile does). */
@@ -115,14 +116,14 @@ function fixtureOf(root, library, name) {
 
 /** Parse the `props` query value: absent, or a JSON object of simple values. */
 export function parseGivenProps(raw) {
-  if (raw === undefined || raw === null || raw === '') return { ok: true, props: {} };
+  if (raw === undefined || raw === null || raw === '') return { ok: /** @type {const} */ (true), props: {} };
   let v;
   try { v = typeof raw === 'string' ? JSON.parse(raw) : raw; } catch { v = undefined; }
   if (!v || typeof v !== 'object' || Array.isArray(v)) return refusal('The props must be a JSON object of names and values, so nothing was rendered.', 'BAD_PROPS');
   for (const [k, x] of Object.entries(v)) {
     if (!['string', 'number', 'boolean'].includes(typeof x) && x !== null) return refusal(`The value of "${k}" must be text, a number, yes or no, so nothing was rendered.`, 'BAD_PROPS');
   }
-  return { ok: true, props: /** @type {Record<string, string|number|boolean|null>} */ (v) };
+  return { ok: /** @type {const} */ (true), props: /** @type {Record<string, string|number|boolean|null>} */ (v) };
 }
 
 /** The TSX page Morpheus renders: the component, imported by its absolute path, with the given props. */
@@ -151,9 +152,9 @@ export async function renderLibraryComponent(root, req, deps = {}) {
   const { loadMorpheus = () => importLinked('@mx/morpheus-render'), describe = describeComponent, timeoutMs = RENDER_TIMEOUT_MS, tmpDir = os.tmpdir() } = deps;
   try {
     const at = checkLibraryComponent(root, req?.file);
-    if (!at.ok) return at;
+    if (!at.ok) return /** @type {{ ok: false, code: string, sentence: string }} */ (at);
     const given = parseGivenProps(req?.props);
-    if (!given.ok) return given;
+    if (!given.ok) return /** @type {{ ok: false, code: string, sentence: string }} */ (given);
     const d = await describe(root, req.file);
     const comp = d?.ok ? (d.components.find((c) => c.name === at.name) ?? d.components[0]) : null;
     const props = sampleProps(comp?.props ?? [], fixtureOf(root, at.library, at.name));
@@ -169,7 +170,7 @@ export async function renderLibraryComponent(root, req, deps = {}) {
         ok: false,
         code: 'NO_RENDERER',
         sentence: `There is no picture of ${at.name} because Morpheus's renderer is not linked here and Construct's own preview needs the project's dev server, so only its props are listed; the rest of Cockpit works as usual.`,
-        detail: link.reason,
+        detail: /** @type {{ reason: string }} */ (link).reason,
         props,
       };
     }

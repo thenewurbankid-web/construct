@@ -5,6 +5,9 @@
 //   line.baseOn       write  BaseOnRequest   -> planBaseOn  + applyChange
 //   line.promote      write  PromoteRequest  -> planPromote + applyChange
 //   line.setPageProp  write  SetPropRequest  -> planSetProp + applyChange
+//   line.fix          write  FixRequest      -> planFixByKey (a finding's typed fix, fixes.mjs) + applyChange
+//   line.setFragment  write  SetFragmentRequest -> planSetFragment (fragments.mjs) + applyChange
+//   line.setBase, line.moveFile, line.createLayout   write   the fix steps themselves (fixes.mjs planStep) + applyChange
 //   line.leaveAsIs    write  {stepId}        -> a person's "carry on" after a step that needs them (writes nothing)
 //   line.project      read   {}              -> readLineProject
 //
@@ -19,12 +22,24 @@ import { CHECK_KINDS, LineOpError } from './contract.mjs';
 import { planBaseOn, planPromote, applyChange } from './ops.mjs';
 import { planSetProp } from './pageProp.mjs';
 import { readLineProject } from './model.mjs';
+import { planFixByKey, planStep } from './fixes.mjs';
+import { planSetFragment } from './fragments.mjs';
 
 /** The real operations (tests pass the contract's mock instead). */
-export const REAL_PLAN_OPS = Object.freeze({ planBaseOn, planPromote, planSetProp, applyChange, readLineProject });
+export const REAL_PLAN_OPS = Object.freeze({ planBaseOn, planPromote, planSetProp, planFixByKey, planSetFragment, planStep, applyChange, readLineProject });
 
-/** The write tools that plan a StagedChange, and the op that plans it. */
-export const CHANGE_TOOLS = Object.freeze({ 'line.baseOn': 'planBaseOn', 'line.promote': 'planPromote', 'line.setPageProp': 'planSetProp' });
+/** The write tools that plan a StagedChange, and the op that plans it (`planStep` takes {tool, args}). */
+export const CHANGE_TOOLS = Object.freeze({
+  'line.baseOn': 'planBaseOn', 'line.promote': 'planPromote', 'line.setPageProp': 'planSetProp',
+  'line.fix': 'planFixByKey', 'line.setFragment': 'planSetFragment',
+  'line.setBase': 'planStep', 'line.moveFile': 'planStep', 'line.createLayout': 'planStep',
+});
+
+/** Plan a change tool's request with `ops` (pure; throws a LineOpError for a refusal). */
+function planWith(ops, root, tool, req) {
+  const opName = CHANGE_TOOLS[tool];
+  return opName === 'planStep' ? ops.planStep(root, { tool, args: req }) : ops[opName](root, req);
+}
 
 /** The checks every change tool expects unless the step names its own. */
 export const DEFAULT_EXPECT = Object.freeze([
@@ -37,6 +52,8 @@ const failed = (p, message) => ({ success: /** @type {const} */ (false), error: 
 const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
 const TYPES = {
   string: (v) => typeof v === 'string' && v.length > 0,
+  anyString: (v) => typeof v === 'string',
+  optString: (v) => v === undefined || (typeof v === 'string' && v.length > 0),
   scalar: (v) => ['string', 'number', 'boolean'].includes(typeof v),
   propKind: (v) => ['string', 'number', 'boolean', 'expression'].includes(v),
 };
@@ -72,7 +89,7 @@ function objectSchema(required, o = {}) {
       const allowed = new Set([...Object.keys(required), ...(o.change ? ['expect', 'retry'] : [])]);
       const extra = Object.keys(v).find((k) => !allowed.has(k));
       if (extra) return failed([extra], 'is not an argument of this tool');
-      for (const [k, t] of Object.entries(required)) if (!TYPES[t](v[k])) return failed([k], t === 'scalar' ? 'must be a string, number or boolean' : t === 'propKind' ? 'must be string, number, boolean or expression' : 'must be a non-empty string');
+      for (const [k, t] of Object.entries(required)) if (!TYPES[t](v[k])) return failed([k], t === 'scalar' ? 'must be a string, number or boolean' : t === 'propKind' ? 'must be string, number, boolean or expression' : t === 'anyString' ? 'must be a string' : 'must be a non-empty string');
       if (v.expect !== undefined) { const why = checkExpect(v.expect); if (why) return failed(['expect'], why); }
       if (v.retry !== undefined) { const why = checkRetry(v.retry); if (why) return failed(['retry'], why); }
       return { success: /** @type {const} */ (true), data: { ...v } };
@@ -84,6 +101,11 @@ const SCHEMAS = Object.freeze({
   'line.baseOn': objectSchema({ libraryId: 'string', feature: 'string', name: 'string' }, { change: true }),
   'line.promote': objectSchema({ featureItemId: 'string' }, { change: true }),
   'line.setPageProp': objectSchema({ file: 'string', nodeId: 'string', prop: 'string', kind: 'propKind', value: 'scalar' }, { change: true }),
+  'line.fix': objectSchema({ findingKey: 'string', fixId: 'string' }, { change: true }),
+  'line.setFragment': objectSchema({ file: 'string', fragmentId: 'string', code: 'anyString', contentHash: 'string' }, { change: true }),
+  'line.setBase': objectSchema({ file: 'string', libraryId: 'string' }, { change: true }),
+  'line.moveFile': objectSchema({ from: 'string', to: 'string', base: 'optString' }, { change: true }),
+  'line.createLayout': objectSchema({}, { change: true }),
   'line.leaveAsIs': objectSchema({ stepId: 'string' }),
   'line.project': objectSchema({}),
 });
@@ -92,6 +114,11 @@ const DESCRIBE = Object.freeze({
   'line.baseOn': 'Creates a feature component based on one library item, through Construct\'s checked writer.',
   'line.promote': 'Moves a feature item into the library and points its users at the library copy, through the checked writer.',
   'line.setPageProp': 'Sets one prop of one part of a feature page, through the checked writer.',
+  'line.fix': 'Applies one typed fix of a finding (by its key and fix id), through the checked writer.',
+  'line.setFragment': 'Replaces one code fragment of a file (spot code editing), through the checked writer.',
+  'line.setBase': 'Points a feature item\'s base link at one library item, through the checked writer.',
+  'line.moveFile': 'Moves a file and re-points every import of it, through the checked writer.',
+  'line.createLayout': 'Creates the library folder so the project is laid out as Line, through the checked writer.',
   'line.leaveAsIs': 'Records that a person chose to carry on after a step that needed them; writes nothing.',
   'line.project': 'Reads the Line view of the project: library, features, items and findings.',
 });
@@ -117,7 +144,7 @@ export function gapOf(root, tool, args, ops = REAL_PLAN_OPS) {
   if (!opName) return [];
   const expect = Array.isArray(args?.expect) ? args.expect : DEFAULT_EXPECT;
   let staged;
-  try { staged = ops[opName](root, requestOf(args)); } catch (e) {
+  try { staged = planWith(ops, root, tool, requestOf(args)); } catch (e) {
     const s = /** @type {any} */ (e)?.sentence ?? 'This change can no longer be planned.';
     return expect.map((c) => ({ checkId: c.id, state: /** @type {const} */ ('missing'), sentence: `To do: ${lower(c.sentence)} It cannot run as it stands: ${lower(s)}` }));
   }
@@ -167,7 +194,7 @@ export function runChange(root, tool, args, ops = REAL_PLAN_OPS) {
   /** @type {import('./contract.mjs').ApplyResult} */
   let apply;
   try {
-    staged = ops[CHANGE_TOOLS[tool]](root, requestOf(args));
+    staged = planWith(ops, root, tool, requestOf(args));
   } catch (e) {
     if (!(e instanceof LineOpError) && /** @type {any} */ (e)?.name !== 'LineOpError') throw e;
     apply = { ok: false, sentence: `Nothing was saved: ${lower(/** @type {any} */ (e).sentence)}`, files: [], findings: [] };
@@ -206,9 +233,7 @@ export function runChange(root, tool, args, ops = REAL_PLAN_OPS) {
  */
 export function lineTools({ root, ops = REAL_PLAN_OPS, afterSave }) {
   const run = {
-    'line.baseOn': async (a) => runChange(root, 'line.baseOn', a, ops),
-    'line.promote': async (a) => runChange(root, 'line.promote', a, ops),
-    'line.setPageProp': async (a) => runChange(root, 'line.setPageProp', a, ops),
+    ...Object.fromEntries(Object.keys(CHANGE_TOOLS).map((tool) => [tool, async (a) => runChange(root, tool, a, ops)])),
     'line.leaveAsIs': async (a) => ({ left: a.stepId, sentence: 'Carried on; the step was left as it is.' }),
     'line.project': async () => ops.readLineProject(root),
   };
@@ -264,7 +289,6 @@ export async function constructCommandTools() {
  * @returns {import('./contract.mjs').StagedChange} Throws a LineOpError for a refusal.
  */
 export function previewStep(root, tool, args, ops = REAL_PLAN_OPS) {
-  const opName = CHANGE_TOOLS[tool];
-  if (!opName) throw new LineOpError(`${tool} does not plan a change.`, 'NOT_A_CHANGE');
-  return ops[opName](root, requestOf(args));
+  if (!CHANGE_TOOLS[tool]) throw new LineOpError(`${tool} does not plan a change.`, 'NOT_A_CHANGE');
+  return planWith(ops, root, tool, requestOf(args));
 }

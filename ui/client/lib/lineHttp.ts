@@ -20,4 +20,7 @@ export const lineHttp: LineHttp = {
   addPlanStep: (req) => postJson('/api/line/plan/step', req),
   approvePlanStep: (stepId) => postJson('/api/line/plan/approve', { stepId }),
   runPlan: (stepId) => postJson('/api/line/plan/run', stepId === undefined ? {} : { stepId }),
+  fix: (req) => postJson('/api/line/fix', req),
+  getFragments: (file) => getJson(`/api/line/fragments?file=${encodeURIComponent(file)}`),
+  setFragment: (req) => postJson('/api/line/fragment', req),
 };

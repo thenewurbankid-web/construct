@@ -1,4 +1,4 @@
-import type { LinePageNode, LinePageTree, PagePart, PartProp } from '../types';
+import type { CodeFragment, LinePageNode, LinePageTree, PagePart, PartProp } from '../types';
 
 function editableProps(node: LinePageNode): PartProp[] {
   const props: PartProp[] = [];
@@ -32,4 +32,12 @@ export function coerceValue(kind: PartProp['kind'], raw: string | boolean): stri
     return Number.isFinite(n) ? n : null;
   }
   return String(raw);
+}
+
+/** The parts with the code fragments that sit on each (by page-tree id); a part with none is left as it is. */
+export function withFragments(parts: PagePart[], fragments: CodeFragment[]): PagePart[] {
+  return parts.map((part) => {
+    const own = fragments.filter((f) => f.nodeId === part.nodeId);
+    return own.length ? { ...part, fragments: own } : part;
+  });
 }

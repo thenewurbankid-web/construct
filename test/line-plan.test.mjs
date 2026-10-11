@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 import { linkStatus } from '../packages/line-links/index.mjs';
 import { createMockPlanRunner } from '../packages/line-links/mocks.mjs';
-import { assertPlanView, assertLineStepResult } from '../packages/engine/line/contract.mjs';
+import { assertPlanView, assertLineStepResult, LINE_PLAN_TOOLS } from '../packages/engine/line/contract.mjs';
 import { createLinePlanRegistry, gapOf, runChange, DEFAULT_EXPECT, REAL_PLAN_OPS } from '../packages/engine/line/planTools.mjs';
 import { createLinePlanService, loadPlanApi, SESSION_ID } from '../packages/engine/line/planService.mjs';
 import { createAtomicPlanWriter, createStaticPlanApi } from '../packages/engine/line/planFallback.mjs';
@@ -30,7 +30,11 @@ test('registry: one registry lists the line tools and the construct commands, wi
   commands.register({ name: 'validate', summary: 'Validate.', handler: () => {} });
   const reg = createLinePlanRegistry({ root: copy(), commands: commandPlanRegistry(commands) });
   const kinds = Object.fromEntries(reg.list().map((t) => [t.name, t.kind]));
-  assert.deepEqual(kinds, { 'line.baseOn': 'write', 'line.promote': 'write', 'line.setPageProp': 'write', 'line.leaveAsIs': 'write', 'line.project': 'read', 'construct.validate': 'read' });
+  assert.deepEqual(kinds, {
+    'line.baseOn': 'write', 'line.promote': 'write', 'line.setPageProp': 'write', 'line.fix': 'write', 'line.setFragment': 'write',
+    'line.setBase': 'write', 'line.moveFile': 'write', 'line.createLayout': 'write', 'line.leaveAsIs': 'write', 'line.project': 'read', 'construct.validate': 'read',
+  });
+  assert.deepEqual(LINE_PLAN_TOOLS.map((t) => t.name).sort(), reg.list().filter((t) => t.name.startsWith('line.')).map((t) => t.name).sort(), 'the contract lists every line tool');
   await assert.rejects(reg.call('line.baseOn', { libraryId: 'components/Badge' }), /got arguments it cannot use: feature/);
   await assert.rejects(reg.call('line.nope', {}), /There is no tool named line\.nope\./);
   const project = await reg.call('line.project', {});
@@ -176,4 +180,34 @@ test('built-in store: same file and rules as @mx/plan (atomic write, person-only
   const run = await api.plan_run_next({ planId: c.plan.id, version: add.plan.version, by: 'agent' });
   assert.equal(run.plan.steps[0].status, 'done', 'a read step runs without approval');
   assert.deepEqual(fs.readdirSync(path.join(dir, 'line/plans')).sort(), ['ses-x.json', 'writes.jsonl']);
+});
+
+test('every Line write is a plan step: a typed fix (line.fix) and a code fragment (line.setFragment) run through the plan', async () => {
+  const dir = copy();
+  const svc = createLinePlanService({ root: dir, commands: null, load: staticLoad });
+  const { withFixes, findingKey } = await import('../packages/engine/line/fixes.mjs');
+  const { readLineProject } = await import('../packages/engine/line/model.mjs');
+  const findings = withFixes(dir, readLineProject(dir).findings);
+  const fixable = findings.find((f) => (f.fixes ?? []).some((x) => x.step));
+  assert.ok(fixable, 'the sample has a finding with a typed fix');
+  const fix = fixable.fixes.find((x) => x.step);
+  const added = await svc.addStep({ tool: 'line.fix', args: { findingKey: findingKey(fixable), fixId: fix.id } }, 'ui');
+  assert.equal(added.ok, true, added.sentence);
+  assert.match(added.steps[0].sentence, /^Waiting for your approval: /);
+  await svc.approve(added.stepId, 'ui');
+  const ran = await svc.runNext('ui');
+  assert.equal(ran.steps[0].state, 'done', ran.steps[0].sentence);
+  const { listFragments } = await import('../packages/engine/line/fragments.mjs');
+  const file = 'features/orders/pages/OrdersPage.tsx';
+  const list = listFragments(dir, file);
+  const frag = list.fragments[0];
+  assert.ok(frag, 'the sample page has a fragment');
+  const code = "() => console.log('Show every order')";
+  const f = await svc.addStep({ tool: 'line.setFragment', args: { file, fragmentId: frag.id, code, contentHash: list.contentHash } }, 'ui');
+  assert.equal(f.ok, true, f.sentence);
+  assert.equal(fs.readFileSync(path.join(dir, file), 'utf8').includes('Show every order'), false, 'nothing written before Approve');
+  await svc.approve(f.stepId, 'ui');
+  const done = (await svc.runNext('ui')).steps.find((s) => s.id === f.stepId);
+  assert.equal(done.state, 'done', done.sentence);
+  assert.ok(fs.readFileSync(path.join(dir, file), 'utf8').includes('Show every order'));
 });

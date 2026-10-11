@@ -135,7 +135,7 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
     let args = req?.args && typeof req.args === 'object' && !Array.isArray(req.args) ? { .../** @type {any} */ (req.args) } : {};
     let why = typeof req?.why === 'string' && req.why.trim() ? req.why.trim() : null;
     const spec = registry.list().find((t) => t.name === tool);
-    if (!spec) return refusal('UNKNOWN_TOOL', tool ? `There is no tool named ${tool}; the Line tools are line.baseOn, line.promote, line.setPageProp, line.leaveAsIs and line.project` : 'Name the tool the step runs');
+    if (!spec) return refusal('UNKNOWN_TOOL', tool ? `There is no tool named ${tool}; the Line tools are line.baseOn, line.promote, line.setPageProp, line.fix, line.setFragment, line.setBase, line.moveFile, line.createLayout, line.leaveAsIs and line.project` : 'Name the tool the step runs');
     const badArgs = () => {
       const parsed = spec.schema.safeParse(args);
       return parsed.success ? null : refusal('BAD_ARGS', `The arguments do not fit ${tool}: ${parsed.error.issues.map((i) => `${i.path.join('.') || 'args'} ${i.message}`).join('; ')}`);

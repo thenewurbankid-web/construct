@@ -1,4 +1,4 @@
-import type { ApplyResult, LineRefusal, PagePart, PartProp, SaveOutcome, SetPropRequest } from '../types';
+import type { ApplyResult, CodeFragment, LineRefusal, PagePart, PartProp, SaveOutcome, SetFragmentRequest, SetPropRequest } from '../types';
 
 /** The request POST /api/line/page-prop takes for one prop change. */
 export function setPropRequest(file: string, part: PagePart, prop: PartProp, value: string | number | boolean): SetPropRequest {
@@ -14,6 +14,12 @@ export function saveOutcome(res: ApplyResult | LineRefusal | null | undefined): 
   }
   const findings = 'findings' in res && Array.isArray(res.findings) ? res.findings : [];
   if (res.ok) return { ok: true, sentence: res.sentence, findings };
-  const sentence = /^Nothing was saved\b/.test(res.sentence) ? res.sentence : `Nothing was saved: ${lowerFirst(res.sentence)}`;
-  return { ok: false, sentence, findings };
+  const sentence = /^Nothing was saved\b/.test(res.sentence) || /nothing was saved\.$/.test(res.sentence) ? res.sentence : `Nothing was saved: ${lowerFirst(res.sentence)}`;
+  const detail = 'detail' in res && typeof res.detail === 'string' && res.detail ? res.detail : undefined;
+  return detail ? { ok: false, sentence, findings, detail } : { ok: false, sentence, findings };
+}
+
+/** The request POST /api/line/fragment takes: the fragment's id and the hash of the file it was read from. */
+export function setFragmentRequest(fragment: CodeFragment, code: string): SetFragmentRequest {
+  return { file: fragment.file, fragmentId: fragment.id, code, contentHash: fragment.contentHash };
 }
