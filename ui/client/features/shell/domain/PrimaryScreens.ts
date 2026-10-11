@@ -12,7 +12,7 @@ export const PRIMARY_SCREENS: PrimaryScreen[] = [
   { id: 'pages', label: 'Pages', href: '/pages', activeOn: ['/pages', '/builder'] },
   // #376: at 390px the five links do not fit at full length; Components is the only one that
   // needs a short form (design section 6). The full name stays the accessible name (aria-label).
-  { id: 'components', label: 'Components', shortLabel: 'Comp.', href: '/components', activeOn: ['/components', '/workflows'] },
+  { id: 'components', label: 'Components', shortLabel: 'Comp.', href: '/components', activeOn: ['/components', '/components/preview', '/workflows'] },
   { id: 'git', label: 'Git', href: '/review', activeOn: ['/review'] },
   { id: 'tests', label: 'Tests', href: '/tests', activeOn: ['/tests'] },
 ];

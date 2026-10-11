@@ -55,6 +55,7 @@ test('the five primary screens are Features, Pages, Components, Git, Tests, and 
   assert.equal(primaryScreenForPath('/pages').id, 'pages');
   assert.equal(primaryScreenForPath('/components').id, 'components');
   assert.equal(primaryScreenForPath('/workflows').id, 'components');
+  assert.equal(primaryScreenForPath('/components/preview').id, 'components'); // pre-UAT: the Preview page belongs to Components
   assert.equal(primaryScreenForPath('/review').id, 'git');
   assert.equal(primaryScreenForPath('/tests').id, 'tests');
   // Settings, Local model and Help live in the profile menu: no primary screen is current there.
