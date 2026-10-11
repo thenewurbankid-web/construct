@@ -39,6 +39,8 @@ export type LinePagesView = {
   saving: boolean;
   revision: number;
   outcome: SaveOutcome | null;
+  /** Line cu6: the project's workspace folder ('' = whole project, null = not read); pages outside it are read-only. */
+  workspaceFolder?: string | null;
 };
 
 /** Everything the Line Pages API offers the screen (real server or the contract's mock). */

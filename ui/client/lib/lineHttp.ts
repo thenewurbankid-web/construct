@@ -16,4 +16,6 @@ export const lineHttp: LineHttp = {
     if (props !== undefined) q.set('props', props);
     return getJson(`/api/line/render?${q.toString()}`);
   },
+  getWorkspace: () => getJson('/api/line/workspace'),
+  setWorkspace: (req) => postJson('/api/line/workspace', req),
 };

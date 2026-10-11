@@ -192,7 +192,7 @@ button.sh-pill:hover { background: var(--surface-3); }
   border-radius: var(--r-md);
   font-size: var(--fs-md);
   cursor: pointer;
-  max-width: 220px;
+  max-width: 340px;
 }
 .sh-project-btn:hover { background: var(--surface-3); }
 .sh-project-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -605,3 +605,9 @@ kbd {
 .sh-root--focus .sh-body { height: 100dvh; align-items: stretch; }
 .sh-root--focus .sh-mid { display: flex; min-height: 0; }
 .sh-root--focus .main { flex: 1; min-width: 0; max-width: none; padding: 0; }
+
+/* Line cu6: the project's workspace folder beside its name, and its box in the switcher popover. */
+.sh-project-ws { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: var(--fs-sm, 0.85em); max-width: 120px; }
+.sh-project-ws::before { content: '/ '; }
+.sh-project-wsbox { display: flex; flex-direction: column; gap: var(--sp-2, 8px); padding-bottom: var(--sp-3, 12px); margin-bottom: var(--sp-3, 12px); border-bottom: 1px solid var(--border); }
+.sh-project-wshead { margin: 0; font-size: var(--fs-md, 1em); font-weight: 600; }

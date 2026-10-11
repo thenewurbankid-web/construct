@@ -55,6 +55,8 @@ export type LibraryCard = {
   usedByCount: number;
   /** "Used by 2 feature components" / "Not used by any feature yet". */
   usedByText: string;
+  /** Line cu6: outside the project's workspace folder, so Line will not change it (domain/ReadOnly.ts). */
+  readOnly?: boolean;
 };
 
 export type LibraryGroup = { level: Level; title: string; hint: string; cards: LibraryCard[] };
@@ -70,6 +72,8 @@ export type FeatureComponentRow = {
   /** What "Promote to library" will do, said before anything is written. */
   promoteText: string;
   findings: LineFinding[];
+  /** Line cu6: outside the project's workspace folder, so Line will not change it (domain/ReadOnly.ts). */
+  readOnly?: boolean;
 };
 
 export type FeatureSection = { name: string; rows: FeatureComponentRow[] };

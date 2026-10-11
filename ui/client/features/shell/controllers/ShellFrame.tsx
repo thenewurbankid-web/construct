@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, type ReactNode } from 'react';
 import { DirectoryBrowserController } from '@/features/directory-browser';
+import { ProjectFolderPickerController } from '@/features/wizard';
 import { ApprovalsController, ProcessAnnouncer, ProcessesController, pendingApprovalCount, summariesOf, useProcessAnnouncer, useProcesses } from '@/features/processes';
 import { describeSaveState, useGitSession } from '@/features/git-session';
 import { useOpenPalette } from '@/features/command-palette';
@@ -30,9 +31,11 @@ import { useShellCommands } from '../hooks/useShellCommands';
 import { useShellNavigation } from '../hooks/useShellNavigation';
 import { useFaviconMotion } from '../hooks/useFaviconMotion';
 import { useWorking } from '../hooks/useWorking';
+import { useWorkspaceSwitch } from '../hooks/useWorkspaceSwitch';
 import type { useTheme } from '../hooks/useTheme';
 import { ProjectInfoPanel } from '../components/ProjectInfoPanel';
 import { ProjectSwitcher } from '../components/ProjectSwitcher';
+import { WorkspaceFolderBox } from '../components/WorkspaceFolderBox';
 import { ShellPage } from '../pages/ShellPage';
 import type { ModelStatus, ShellRegion, ShellTab } from '../types';
 
@@ -135,8 +138,19 @@ export function ShellFrame({ children, route, project, model, theme, userMenu }:
     showDrawerTab,
   });
 
+  const ws = useWorkspaceSwitch(Boolean(project.dir));
+  const workspaceBox = ws.label && (
+    <WorkspaceFolderBox
+      folder={ws.label}
+      error={ws.error}
+      onChange={ws.startPicking}
+      picker={ws.picking ? <ProjectFolderPickerController label="Pick the workspace folder" hint="Pick the one folder Line may change, or use the whole project." onChoose={(p) => void ws.choose(p)} onClose={ws.stopPicking} /> : null}
+    />
+  );
   const projectSwitcher = (
     <ProjectSwitcher
+      workspace={ws.label}
+      workspaceBox={workspaceBox}
       label={project.label}
       dir={project.dir}
       open={project.open}

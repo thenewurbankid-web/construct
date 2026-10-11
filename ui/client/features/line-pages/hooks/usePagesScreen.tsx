@@ -1,5 +1,6 @@
 'use client';
 
+import { useLineWorkspace } from '@/lib/lineWorkspace';
 import { useLinePages } from './useLinePages';
 import { useLineProject } from './useLineProject';
 
@@ -7,6 +8,8 @@ import { useLineProject } from './useLineProject';
 export function usePagesScreen() {
   const { state, reload } = useLineProject();
   const line = state.phase === 'line' ? state : null;
-  const view = useLinePages(line?.project ?? null, line?.api ?? null, reload);
+  const pages = useLinePages(line?.project ?? null, line?.api ?? null, reload);
+  const { folder } = useLineWorkspace();
+  const view = { ...pages, workspaceFolder: folder };
   return { phase: state.phase === 'line' && !view.ready ? ('loading' as const) : state.phase, view };
 }

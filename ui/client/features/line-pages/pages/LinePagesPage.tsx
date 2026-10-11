@@ -7,7 +7,7 @@ import type { LinePagesView } from '../types';
 /** The Pages screen of a Line project: pick a feature, see its pages (base, status, findings), pick a page to
  * change one prop of one of its parts and Save it through the checked writer. */
 export function LinePagesPage({ view }: { view: LinePagesView }) {
-  const { features, feature, chooseFeature, pages, page, choosePage, parts, save, saving, revision, outcome } = view;
+  const { features, feature, chooseFeature, pages, page, choosePage, parts, save, saving, revision, outcome, workspaceFolder } = view;
   return (
     <div className="page page--screen lp" data-testid="line-pages">
       <div>
@@ -23,7 +23,7 @@ export function LinePagesPage({ view }: { view: LinePagesView }) {
         <div className="lp-layout">
           <section aria-labelledby="lp-pages-title">
             <h2 id="lp-pages-title">Pages in {feature}</h2>
-            <PageList pages={pages} current={page?.id ?? null} onChoose={choosePage} />
+            <PageList pages={pages} current={page?.id ?? null} onChoose={choosePage} workspaceFolder={workspaceFolder ?? null} />
           </section>
           {page ? (
             <PartsPanel pageName={page.name} parts={parts} saving={saving} revision={revision} outcome={outcome} onSave={save} />
