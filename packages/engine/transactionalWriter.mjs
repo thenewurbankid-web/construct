@@ -24,6 +24,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { write } from '@line/construct-core/fs';
 import { assertNotFrozen } from '@line/construct-core/frozen';
+import { withFileLockSync } from '@line/construct-core/file-lock';
 import { aggregateValidation } from '@line/construct-core/registry';
 import { enforcersForRoot } from '@line/construct-core/profiles';
 import { affectedSet } from './scopeGate.mjs';
@@ -193,7 +194,8 @@ export function createTransaction(root) {
  * cl1 -- the atomic Line-state path: Line's own state (traces, drafted issues; `line/` by default) is not project code,
  * so it skips the shadow validate, but it still goes through this writer and nowhere else. Only paths inside the state
  * folder are accepted; each write is a temp file in the same folder then `rename()`, so a reader never sees half a
- * file. `append: true` adds `content` to what is there (read, append, rename), for append-only JSONL.
+ * file. `append: true` adds `content` with one O_APPEND write under the file's cross-process lock
+ * (@line/construct-core/file-lock), for append-only JSONL: nothing is re-read or rewritten.
  *
  * @param {string} root Project root.
  * @param {string} relPath Root-relative posix path, inside `stateDir`.
@@ -211,10 +213,14 @@ export function writeLineState(root, relPath, content, { append = false, stateDi
   const abs = path.join(root, rel);
   assertNotFrozen(abs);
   fs.mkdirSync(path.dirname(abs), { recursive: true });
-  let before = '';
-  if (append) { try { before = fs.readFileSync(abs, 'utf8'); } catch (e) { if (/** @type {any} */ (e).code !== 'ENOENT') throw e; } }
+  if (append) {
+    // One O_APPEND write under the file's cross-process lock: no re-read, no rewrite, and two processes' lines never
+    // interleave or overwrite each other.
+    withFileLockSync(abs, () => { fs.appendFileSync(abs, content, { encoding: 'utf8', flag: 'a' }); }, { sentence: `Another Line process is writing ${rel}; try again.` });
+    return rel;
+  }
   const tmp = `${abs}.${process.pid}.${Math.random().toString(16).slice(2, 10)}.tmp`;
-  fs.writeFileSync(tmp, before + content, 'utf8');
+  fs.writeFileSync(tmp, content, 'utf8');
   fs.renameSync(tmp, abs);
   return rel;
 }

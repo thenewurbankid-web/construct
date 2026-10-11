@@ -13,9 +13,8 @@
 // addStep); it runs after a person approves it (or Auto). A write to Line's own state (line/: the plan, the workspace,
 // GateLM drafts) runs directly, is written atomically by its own store, and is logged to line/log/tools.jsonl. A
 // person-only tool (plan.approve) refuses an agent. Nothing here writes a project file.
-import fs from 'node:fs';
 import path from 'node:path';
-import { createTransaction } from '../transactionalWriter.mjs';
+import { writeLineState } from '../transactionalWriter.mjs';
 import { LINE_PLAN_TOOLS, assertToolEntry } from './contract.mjs';
 import { LINE_CONTROLS } from './controls.mjs';
 
@@ -239,7 +238,8 @@ export function toolView(e) {
  */
 export const toolLogFile = (root) => path.join(root, 'line', 'log', 'tools.jsonl');
 /**
- * Append one entry (tool, who, ok; never the arguments, which may hold code) through Construct's writer, atomically.
+ * Append one entry (tool, who, ok; never the arguments, which may hold code) through Construct's Line-state writer
+ * (writeLineState: one O_APPEND line under the file's lock; no project copy).
  * Never throws: a log that cannot be written never stops the change.
  * @param {string} root The project root.
  * @param {{tool: string, by: string, ok: boolean}} entry
@@ -247,12 +247,7 @@ export const toolLogFile = (root) => path.join(root, 'line', 'log', 'tools.jsonl
  */
 export function logToolWrite(root, { tool, by, ok }) {
   try {
-    const file = toolLogFile(root);
-    let before = '';
-    try { before = fs.readFileSync(file, 'utf8'); } catch { /* first entry */ }
-    const txn = createTransaction(root);
-    txn.writeFile(file, `${before}${JSON.stringify({ at: new Date().toISOString(), tool, by, ok })}\n`);
-    try { txn.commit({ validate: () => ({ violations: [], ok: true }) }); } catch { txn.reset(); }
+    writeLineState(root, 'line/log/tools.jsonl', `${JSON.stringify({ at: new Date().toISOString(), tool, by, ok })}\n`, { append: true });
   } catch { /* see above */ }
 }
 
