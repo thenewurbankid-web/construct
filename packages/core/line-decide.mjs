@@ -123,21 +123,22 @@ export function createDecider(setup = {}) {
           pickers.set(step, picker);
         }
       }
-      if (!picker) return withoutJev({ fellBackFrom: 'jev', note: 'jev is turned off here, so Line decided without it' });
       const defined = reason.defineProfiles([pair])[pair.pairId];
-      const up = await Promise.resolve(picker.available(defined)).catch(() => false);
-      if (!up) return withoutJev({ fellBackFrom: 'jev', note: `The local model for jev (${profile.model}) is not running, so Line decided without it` });
+      const up = picker ? await Promise.resolve(picker.available(defined)).catch(() => false) : false;
+      const noJev = picker ? `The local model for jev (${profile.model}) is not running, so Line decided without it` : 'jev is turned off here, so Line decided without it';
       // jev reads the options' plain labels; the ids map back. Labels must be unique, else the ids are shown.
       const labels = checked.map((o) => o.label);
       const values = new Set(labels).size === labels.length ? labels : ids;
       const toId = (v) => ids[values.indexOf(v)] ?? null;
       const q = { question, facts: context.facts ?? [], refusal: feedback ? one(context.refusal.sentence) : null };
+      // With jev down or off, the ladder still runs (static through reason) and its order stands.
       const run = await reason.runLadder([{ key: step, q, profile: defined, options: values }], {
-        picker,
+        ...(up ? { picker } : {}),
         check: (_q, v) => (values.includes(v) ? null : `${quote(v)} is not one of the checked options.`),
       });
       const c = run.choices?.[0];
       const picked = c ? toId(c.picked) : null;
+      if (!up) return withoutJev({ fellBackFrom: 'jev', note: noJev, reasonUsed: true });
       if (!c || picked === null || c.by === 'none') return withoutJev({ fellBackFrom: 'jev', note: 'jev gave no answer, so Line decided without it', reasonUsed: true });
       if (c.by === 'single') return result(picked, 'static', 'single', ['It is the only option that passed the checks.'], { reasonUsed: true });
       if (c.by !== 'jev') return withoutJev({ fellBackFrom: 'jev', note: 'jev was not asked, so Line decided without it', reasonUsed: true });
