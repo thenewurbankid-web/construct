@@ -19,7 +19,13 @@
 //                 a file at the top of the library       line.moveFile into the kind it looks like
 //                 a code file at the top of a feature    line.moveFile into the feature's kind folder (with a base) or the library
 //                 a stray folder / a file in features/   none: say where its files belong
+//                 a source file outside library/, features/ and the app/config folders
+//                                                        line.moveFile into the owning feature's kind folder (the feature that imports it), else the library
+//
+// A refused change's fix that names a file only that change creates cannot run on its own: amendFixes turns it into
+// one `line.amend` step {change, fix} (planAmended: both planned in order, merged, applied atomically by applyChange).
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { loadConfig } from '../../core/config.mjs';
 import { normalizeLineConfig, ITEM_KINDS, CODE_EXTENSIONS, NON_ITEM_FILE } from '../../core/profiles/line/contract.mjs';
@@ -287,6 +293,86 @@ export function planStep(root, step) {
     case 'line.createLayout': return planCreateLayout(root);
     default: throw new LineOpError(`"${step?.tool}" is not a Line tool.`, 'UNKNOWN_TOOL');
   }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Amended changes: a fix for a refused change that names a file only that change creates
+
+const SCRATCH_SKIP = /[\\/](node_modules|\.git)([\\/]|$)/;
+
+/**
+ * Run `fn` on a scratch copy of the project (no node_modules, no .git) with `staged` written into it, then remove the
+ * copy. The project itself is never touched; this is how the findings and fixes of a change that was not saved are
+ * worked out.
+ * @template T
+ * @param {string} root @param {import('./contract.mjs').StagedChange} staged @param {(scratch: string) => T} fn
+ * @returns {T}
+ */
+export function onScratch(root, staged, fn) {
+  const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'construct-line-scratch-'));
+  try {
+    fs.cpSync(root, scratch, { recursive: true, filter: (src) => { const rel = path.relative(root, src); return !rel || !SCRATCH_SKIP.test(`/${rel}`); } });
+    for (const f of staged.files) {
+      const abs = path.join(scratch, f.path);
+      if (f.content === null) fs.rmSync(abs, { force: true });
+      else { fs.mkdirSync(path.dirname(abs), { recursive: true }); fs.writeFileSync(abs, f.content); }
+    }
+    return fn(scratch);
+  } finally {
+    fs.rmSync(scratch, { recursive: true, force: true });
+  }
+}
+
+/** The project files a fix step works on (its `file`, the `from` of a move). */
+const stepInputs = (step) => [step?.args?.file, step?.args?.from].filter((v) => typeof v === 'string');
+
+/**
+ * Plan a refused change and one fix of it as ONE change: the fix is planned on a scratch copy that holds the refused
+ * change (where the fix's file exists), and both are merged in order, the fix winning per file. A file the refused
+ * change created and the fix removed again is left out (it never existed on disk). Pure for the project.
+ * @param {string} root
+ * @param {import('./contract.mjs').StagedChange} first The refused change, as planned on the project.
+ * @param {{tool: string, args: Record<string, any>}} fixStep A typed fix step (planStep tools).
+ * @returns {import('./contract.mjs').StagedChange}
+ * @throws {LineOpError} When the fix cannot be planned even with the refused change in place.
+ */
+export function planAmended(root, first, fixStep) {
+  const second = onScratch(root, first, (scratch) => planStep(scratch, fixStep));
+  const merged = new Map(first.files.map((f) => [f.path, f.content]));
+  for (const f of second.files) merged.set(f.path, f.content);
+  const files = [...merged].filter(([p, c]) => c !== null || exists(root, p)).map(([p, c]) => ({ path: p, content: c }));
+  const lowerFirst = (s) => s.charAt(0).toLowerCase() + s.slice(1);
+  return { summary: `${first.summary.replace(/[.?!]$/, '')}, and in the same step ${lowerFirst(second.summary)}`, files };
+}
+
+/**
+ * The fixes of a refused change's findings, made runnable: a fix whose file only the refused change creates (or that
+ * cannot be planned on the project as it is, but can with the change in place) becomes one `line.amend` step that
+ * carries the refused change and the fix together, applied atomically by the writer. Other fixes stay as they are.
+ * @param {string} root
+ * @param {{tool: string, args: Record<string, any>}} refused The refused change step (its request, without plan fields).
+ * @param {import('./contract.mjs').StagedChange} staged The refused change as planned.
+ * @param {import('./contract.mjs').LineFinding[]} findings With fixes (worked out on the scratch copy).
+ * @returns {import('./contract.mjs').LineFinding[]}
+ */
+export function amendFixes(root, refused, staged, findings) {
+  const created = new Set(staged.files.filter((f) => f.content !== null && !exists(root, f.path)).map((f) => f.path));
+  const runsAlone = (step) => { try { planStep(root, step); return true; } catch { return false; } };
+  const amendable = (step) => { try { planAmended(root, staged, step); return true; } catch { return false; } };
+  return findings.map((f) => {
+    if (!Array.isArray(f.fixes) || !f.fixes.some((x) => x.step)) return f;
+    const fixes = f.fixes.map((x) => {
+      if (!x.step || x.step.tool === 'line.amend') return x;
+      const needs = stepInputs(x.step).some((p) => created.has(p)) || !runsAlone(x.step);
+      if (!needs || !amendable(x.step)) return x;
+      return {
+        ...x,
+        sentence: `${x.sentence.replace(/[.?!]$/, '')}, together with the change Construct refused, in one step.`,
+        step: { tool: 'line.amend', args: { change: { tool: refused.tool, args: { ...refused.args } }, fix: { tool: x.step.tool, args: { ...x.step.args } } } },
+      };
+    });
+    return { ...f, fixes };
+  });
 }
 
 /**

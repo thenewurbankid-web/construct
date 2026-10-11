@@ -224,6 +224,9 @@
  * What a person may do when a step needs them.
  * A `fix` option comes from a refusal's findings (fixes.mjs typed fixes): `step` is the plan step that applies it (add it
  * with args.fixOf = the step's id), null for advice only; `recommended` marks rank 1.
+ * When the fix names a file only the refused change creates, `step` is one `line.amend` step {change, fix}: the refused
+ * change and the fix planned together and applied atomically (fixes.mjs planAmended); once it lands, the refused step
+ * counts as done.
  * @typedef {{id: 'retry'|'leave'|'fix', sentence: string, fixId?: string, recommended?: boolean, step?: {tool: string, args: Record<string, unknown>}|null}} StepOption
  *
  * The result a line.* write step records on its plan step.
@@ -275,6 +278,7 @@ export const LINE_PLAN_TOOLS = Object.freeze([
   { name: 'line.setBase', kind: 'write', request: '{file, libraryId}' },
   { name: 'line.moveFile', kind: 'write', request: '{from, to, base?}' },
   { name: 'line.createLayout', kind: 'write', request: '{}' },
+  { name: 'line.amend', kind: 'write', request: '{change: {tool, args}, fix: {tool, args}}' },
   { name: 'line.leaveAsIs', kind: 'write', request: '{stepId}' },
   { name: 'line.project', kind: 'read', request: '{}' },
 ]);

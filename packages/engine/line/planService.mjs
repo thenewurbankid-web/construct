@@ -42,9 +42,12 @@ export async function loadPlanApi({ root, registry, linkOptions }) {
   };
 }
 
-/** Who resolved a step that needed the person: a later retry of it, or a "leave as is". */
+/** A line.amend fix of `step` that landed: it carried the refused change itself, so the refused step is done. */
+const amendedBy = (s, step) => s.tool === 'line.amend' && s.args?.fixOf === step.id && s.status === 'done' && s.result?.apply?.ok === true && s.result?.needsYou !== true;
+
+/** Who resolved a step that needed the person: a later retry of it, a "leave as is", or a fix that carried it (line.amend). */
 function resolverOf(plan, step) {
-  return plan.steps.find((s) => s.n > step.n && ((s.args?.retry && s.args.retry.of === step.id) || (s.tool === 'line.leaveAsIs' && s.args?.stepId === step.id))) ?? null;
+  return plan.steps.find((s) => s.n > step.n && ((s.args?.retry && s.args.retry.of === step.id) || (s.tool === 'line.leaveAsIs' && s.args?.stepId === step.id) || amendedBy(s, step))) ?? null;
 }
 const needsYou = (plan, s) => s.status === 'done' && s.result?.needsYou === true && !resolverOf(plan, s);
 
@@ -62,7 +65,11 @@ export function stepView(root, plan, s, ops = REAL_PLAN_OPS) {
     const r = s.result;
     const by = r?.needsYou ? resolverOf(plan, s) : null;
     if (r?.needsYou && !by) { state = r.apply && !r.apply.ok && r.apply.findings?.length ? 'needs-fix' : 'needs-you'; sentence = asSentence(r.sentence); }
-    else if (by) { state = 'done'; sentence = by.tool === 'line.leaveAsIs' ? `Left as it is in step ${by.n}: ${lower(asSentence(r.sentence))}` : `Tried again as step ${by.n}.`; }
+    else if (by) {
+      state = 'done';
+      sentence = by.tool === 'line.leaveAsIs' ? `Left as it is in step ${by.n}: ${lower(asSentence(r.sentence))}`
+        : by.tool === 'line.amend' ? `Saved together with its fix in step ${by.n}.` : `Tried again as step ${by.n}.`;
+    }
     else {
       state = 'done';
       sentence = r && typeof r.sentence === 'string' ? asSentence(r.sentence)
@@ -135,7 +142,7 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
     let args = req?.args && typeof req.args === 'object' && !Array.isArray(req.args) ? { .../** @type {any} */ (req.args) } : {};
     let why = typeof req?.why === 'string' && req.why.trim() ? req.why.trim() : null;
     const spec = registry.list().find((t) => t.name === tool);
-    if (!spec) return refusal('UNKNOWN_TOOL', tool ? `There is no tool named ${tool}; the Line tools are line.baseOn, line.promote, line.setPageProp, line.fix, line.setFragment, line.setBase, line.moveFile, line.createLayout, line.leaveAsIs and line.project` : 'Name the tool the step runs');
+    if (!spec) return refusal('UNKNOWN_TOOL', tool ? `There is no tool named ${tool}; the Line tools are line.baseOn, line.promote, line.setPageProp, line.fix, line.setFragment, line.setBase, line.moveFile, line.createLayout, line.amend, line.leaveAsIs and line.project` : 'Name the tool the step runs');
     const badArgs = () => {
       const parsed = spec.schema.safeParse(args);
       return parsed.success ? null : refusal('BAD_ARGS', `The arguments do not fit ${tool}: ${parsed.error.issues.map((i) => `${i.path.join('.') || 'args'} ${i.message}`).join('; ')}`);

@@ -8,6 +8,8 @@
 //   line.fix          write  FixRequest      -> planFixByKey (a finding's typed fix, fixes.mjs) + applyChange
 //   line.setFragment  write  SetFragmentRequest -> planSetFragment (fragments.mjs) + applyChange
 //   line.setBase, line.moveFile, line.createLayout   write   the fix steps themselves (fixes.mjs planStep) + applyChange
+//   line.amend        write  {change, fix}   a refused change plus one fix of it whose file only that change creates,
+//                                            planned together (fixes.mjs planAmended) and applied as ONE change
 //   line.leaveAsIs    write  {stepId}        -> a person's "carry on" after a step that needs them (writes nothing)
 //   line.project      read   {}              -> readLineProject
 //
@@ -17,28 +19,38 @@
 // the step's result; a failed check makes the step "needs you" with options. A retry that passes no more checks than
 // the try before it stops (`stopped`) instead of looping. Every write still goes only through applyChange.
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { CHECK_KINDS, LineOpError } from './contract.mjs';
 import { planBaseOn, planPromote, applyChange } from './ops.mjs';
 import { planSetProp } from './pageProp.mjs';
 import { readLineProject } from './model.mjs';
-import { planFixByKey, planStep, withFixes } from './fixes.mjs';
+import { planFixByKey, planStep, withFixes, planAmended, amendFixes, onScratch } from './fixes.mjs';
 import { planSetFragment } from './fragments.mjs';
 
 /** The real operations (tests pass the contract's mock instead). */
-export const REAL_PLAN_OPS = Object.freeze({ planBaseOn, planPromote, planSetProp, planFixByKey, planSetFragment, planStep, applyChange, readLineProject });
+export const REAL_PLAN_OPS = Object.freeze({ planBaseOn, planPromote, planSetProp, planFixByKey, planSetFragment, planStep, planAmended, applyChange, readLineProject });
 
 /** The write tools that plan a StagedChange, and the op that plans it (`planStep` takes {tool, args}). */
 export const CHANGE_TOOLS = Object.freeze({
   'line.baseOn': 'planBaseOn', 'line.promote': 'planPromote', 'line.setPageProp': 'planSetProp',
   'line.fix': 'planFixByKey', 'line.setFragment': 'planSetFragment',
   'line.setBase': 'planStep', 'line.moveFile': 'planStep', 'line.createLayout': 'planStep',
+  'line.amend': 'planAmended',
 });
 
+/** How deep a line.amend may wrap another line.amend (a refused amended change amended again). */
+const MAX_AMEND_DEPTH = 3;
+
 /** Plan a change tool's request with `ops` (pure; throws a LineOpError for a refusal). */
-function planWith(ops, root, tool, req) {
+function planWith(ops, root, tool, req, depth = 0) {
   const opName = CHANGE_TOOLS[tool];
+  if (opName === 'planAmended') {
+    const { change, fix } = /** @type {any} */ (req);
+    if (depth >= MAX_AMEND_DEPTH) throw new LineOpError('This change amends too many refused changes in a row; apply them one at a time.', 'BAD_ARGS');
+    if (!CHANGE_TOOLS[change?.tool]) throw new LineOpError(`"${change?.tool}" is not a Line change, so it cannot be amended.`, 'UNKNOWN_TOOL');
+    const first = planWith(ops, root, change.tool, requestOf(change.args), depth + 1);
+    return (ops.planAmended ?? planAmended)(root, first, fix);
+  }
   return opName === 'planStep' ? ops.planStep(root, { tool, args: req }) : ops[opName](root, req);
 }
 
@@ -55,6 +67,7 @@ const TYPES = {
   string: (v) => typeof v === 'string' && v.length > 0,
   anyString: (v) => typeof v === 'string',
   optString: (v) => v === undefined || (typeof v === 'string' && v.length > 0),
+  step: (v) => isObj(v) && typeof v.tool === 'string' && v.tool.length > 0 && (v.args === undefined || isObj(v.args)),
   scalar: (v) => ['string', 'number', 'boolean'].includes(typeof v),
   propKind: (v) => ['string', 'number', 'boolean', 'expression'].includes(v),
 };
@@ -90,7 +103,7 @@ function objectSchema(required, o = {}) {
       const allowed = new Set([...Object.keys(required), ...(o.change ? ['expect', 'retry', 'fixOf'] : [])]);
       const extra = Object.keys(v).find((k) => !allowed.has(k));
       if (extra) return failed([extra], 'is not an argument of this tool');
-      for (const [k, t] of Object.entries(required)) if (!TYPES[t](v[k])) return failed([k], t === 'scalar' ? 'must be a string, number or boolean' : t === 'propKind' ? 'must be string, number, boolean or expression' : t === 'anyString' ? 'must be a string' : 'must be a non-empty string');
+      for (const [k, t] of Object.entries(required)) if (!TYPES[t](v[k])) return failed([k], t === 'scalar' ? 'must be a string, number or boolean' : t === 'propKind' ? 'must be string, number, boolean or expression' : t === 'anyString' ? 'must be a string' : t === 'step' ? 'must be a step {"tool": "line.<name>", "args": {...}}' : 'must be a non-empty string');
       if (v.expect !== undefined) { const why = checkExpect(v.expect); if (why) return failed(['expect'], why); }
       if (v.retry !== undefined) { const why = checkRetry(v.retry); if (why) return failed(['retry'], why); }
       if (v.fixOf !== undefined && (typeof v.fixOf !== 'string' || !v.fixOf)) return failed(['fixOf'], 'must be the id of the step this fix is for');
@@ -108,6 +121,7 @@ const SCHEMAS = Object.freeze({
   'line.setBase': objectSchema({ file: 'string', libraryId: 'string' }, { change: true }),
   'line.moveFile': objectSchema({ from: 'string', to: 'string', base: 'optString' }, { change: true }),
   'line.createLayout': objectSchema({}, { change: true }),
+  'line.amend': objectSchema({ change: 'step', fix: 'step' }, { change: true }),
   'line.leaveAsIs': objectSchema({ stepId: 'string' }),
   'line.project': objectSchema({}),
 });
@@ -121,6 +135,7 @@ const DESCRIBE = Object.freeze({
   'line.setBase': 'Points a feature item\'s base link at one library item, through the checked writer.',
   'line.moveFile': 'Moves a file and re-points every import of it, through the checked writer.',
   'line.createLayout': 'Creates the library folder so the project is laid out as Line, through the checked writer.',
+  'line.amend': 'Applies a change Construct refused together with one typed fix of it, as one change, through the checked writer (for a fix whose file only that change creates).',
   'line.leaveAsIs': 'Records that a person chose to carry on after a step that needed them; writes nothing.',
   'line.project': 'Reads the Line view of the project: library, features, items and findings.',
 });
@@ -189,23 +204,17 @@ export function runChecks(root, expect, staged, apply) {
 /**
  * The typed fixes of a refused change's findings, worked out on the project as the change would leave it (the
  * findings only exist there): a scratch copy of the project (no node_modules, no .git) with the change written,
- * removed afterwards. Never throws; on any trouble the findings come back as they are.
+ * removed afterwards. With `refused` (the refused step's {tool, args}), a fix that only works with the change in place
+ * becomes one line.amend step. Never throws; on any trouble the findings come back as they are.
  */
-export function fixesAsProposed(root, staged, findings) {
-  let scratch = null;
+export function fixesAsProposed(root, staged, findings, refused = null) {
   try {
-    scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'construct-line-fixes-'));
-    fs.cpSync(root, scratch, { recursive: true, filter: (src) => !/[\\/](node_modules|\.git)([\\/]|$)/.test(path.relative(root, src) ? `/${path.relative(root, src)}` : '') });
-    for (const f of staged.files) {
-      const abs = path.join(scratch, f.path);
-      if (f.content === null) fs.rmSync(abs, { force: true });
-      else { fs.mkdirSync(path.dirname(abs), { recursive: true }); fs.writeFileSync(abs, f.content); }
-    }
-    return withFixes(scratch, findings);
+    const withTyped = onScratch(root, staged, (scratch) => withFixes(scratch, findings));
+    // A fix that names a file only the refused change creates cannot run on its own: it becomes one line.amend step
+    // carrying the refused change and the fix together (fixes.mjs amendFixes).
+    return refused ? amendFixes(root, refused, staged, withTyped) : withTyped;
   } catch {
     return findings;
-  } finally {
-    if (scratch) fs.rmSync(scratch, { recursive: true, force: true });
   }
 }
 
@@ -232,7 +241,7 @@ export function runChange(root, tool, args, ops = REAL_PLAN_OPS) {
     apply = narrowed.files.length ? ops.applyChange(root, narrowed) : { ok: true, sentence: `Nothing to save: ${lower(staged.summary.replace(/[.?!]$/, ''))} is already there.`, files: [], findings: [] };
   }
   if (!/** @type {any} */ (apply).ok && /** @type {any} */ (apply).findings.length && staged) {
-    apply = { .../** @type {any} */ (apply), findings: fixesAsProposed(root, staged, /** @type {any} */ (apply).findings) };
+    apply = { .../** @type {any} */ (apply), findings: fixesAsProposed(root, staged, /** @type {any} */ (apply).findings, { tool, args: requestOf(args) }) };
   }
   const checks = runChecks(root, expect, staged, /** @type {any} */ (apply));
   const passed = checks.filter((c) => c.ok).length;
