@@ -134,7 +134,8 @@ export type PlanCheck = { id: string; sentence: string; kind: PlanCheckKind };
 export type GapItem = { checkId: string; state: 'present' | 'partial' | 'missing'; sentence: string };
 /** After a step runs: one check's outcome. */
 export type CheckResult = { checkId: string; ok: boolean; sentence: string };
-export type StepOption = { id: 'retry' | 'leave' | 'fix'; sentence: string };
+/** A `fix` comes from Construct's refusal (a finding's typed fix): `step` applies it, null for advice; rank 1 is `recommended`. */
+export type StepOption = { id: 'retry' | 'leave' | 'fix'; sentence: string; fixId?: string; recommended?: boolean; step?: { tool: string; args: Record<string, unknown> } | null };
 /** What a line.* change step records when it ran. */
 export type LineStepResult = {
   apply: ApplyResult;
@@ -146,7 +147,7 @@ export type LineStepResult = {
   stopped: boolean;
   sentence: string;
 };
-export type PlanStepState = 'waiting' | 'ready' | 'running' | 'done' | 'needs-you' | 'failed' | 'skipped';
+export type PlanStepState = 'waiting' | 'ready' | 'running' | 'done' | 'needs-you' | 'needs-fix' | 'failed' | 'skipped';
 export type PlanStepView = {
   id: string;
   n: number;

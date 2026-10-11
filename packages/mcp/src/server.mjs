@@ -114,7 +114,7 @@ export const PLAN_TOOLS = Object.freeze([
   {
     name: 'plan_add_step',
     title: 'Add a step to the Line plan',
-    description: 'Add one step to the project\'s Line plan: tool line.baseOn, line.promote, line.setPageProp (writes, so a person must approve it in Cockpit), line.project (read), or a construct.* command. A change is planned first and refused in one sentence when it cannot be made. Writes no project file.',
+    description: 'Add one step to the project\'s Line plan: tool line.baseOn, line.promote, line.setPageProp (writes, so a person must approve it in Cockpit), line.project (read), or a construct.* command. A change is planned first and refused in one sentence when it cannot be made. To apply a fix that plan_status offers for a step that needs one, add its step with args.fixOf set to that step id. Writes no project file.',
     inputSchema: z.object({
       tool: z.string().min(3).max(60).regex(/^[a-z][\w]*(\.[a-zA-Z][\w]*)+$/).describe('A tool name, for example line.baseOn.'),
       args: z.record(z.string(), z.unknown()).optional().describe('The tool\'s arguments, for example {"libraryId": "components/Badge", "feature": "orders", "name": "StatusBadge"}.'),

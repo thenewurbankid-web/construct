@@ -19,7 +19,8 @@ export type LinePlanApi = {
 };
 
 /** One choice offered when a step needs the person. */
-export type StepChoice = { id: 'retry' | 'leave'; label: string; sentence: string };
+/** One choice offered when a step needs the person; a fix carries the plan step that applies it. */
+export type StepChoice = { key: string; id: 'retry' | 'leave' | 'fix'; label: string; sentence: string; step?: { tool: string; args: Record<string, unknown> } };
 
 /** One step as the panel shows it: the sentence first, the technical part (tool call, checks, files) for Details. */
 export type PlanStepRow = {
@@ -33,7 +34,7 @@ export type PlanStepRow = {
   gapLines: string[];
   /** After it ran: the failing checks, in plain English. */
   failing: string[];
-  /** Fixes the findings suggest (plain English; no typed fix exists yet). */
+  /** What Construct's findings suggest: every fix in plain English (advice-only ones included). */
   fixes: string[];
   choices: StepChoice[];
   canApprove: boolean;
@@ -56,6 +57,6 @@ export type PlanControls = {
   /** Adds a step and answers its sentence ("Waiting for your approval: ...") or the refusal. */
   addStep: (req: PlanStepRequest) => Promise<StepAdded>;
   approve: (stepId: string) => void;
-  choose: (stepId: string, choice: StepChoice['id']) => void;
+  choose: (stepId: string, choice: StepChoice) => void;
   refresh: () => void;
 };

@@ -61,7 +61,7 @@ export function stepView(root, plan, s, ops = REAL_PLAN_OPS) {
   else {
     const r = s.result;
     const by = r?.needsYou ? resolverOf(plan, s) : null;
-    if (r?.needsYou && !by) { state = 'needs-you'; sentence = asSentence(r.sentence); }
+    if (r?.needsYou && !by) { state = r.apply && !r.apply.ok && r.apply.findings?.length ? 'needs-fix' : 'needs-you'; sentence = asSentence(r.sentence); }
     else if (by) { state = 'done'; sentence = by.tool === 'line.leaveAsIs' ? `Left as it is in step ${by.n}: ${lower(asSentence(r.sentence))}` : `Tried again as step ${by.n}.`; }
     else {
       state = 'done';
@@ -157,6 +157,10 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
     const has = await ensurePlan(api, by);
     if (!has.ok) return fromPlan(has);
     const plan = has.plan;
+    if (args.fixOf) {
+      const of = plan.steps.find((s) => s.id === args.fixOf);
+      if (!of || !needsYou(plan, of)) return refusal('NOTHING_TO_FIX', `Step ${args.fixOf} does not need a fix, so this step cannot be added for it`);
+    }
     if (args.retry) {
       const of = plan.steps.find((s) => s.id === args.retry.of);
       if (!of || of.tool !== tool || !needsYou(plan, of)) return refusal('NOT_RETRYABLE', `Step ${args.retry.of} is not a ${tool} step that needs you, so it cannot be tried again`);
@@ -194,8 +198,9 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
     const nextId = typeof stepId === 'string' && stepId ? stepId : st.ok ? st.state?.next : null;
     const next = plan.steps.find((s) => s.id === nextId);
     const blocked = plan.steps.find((s) => needsYou(plan, s));
-    const resolves = next && ((next.args?.retry && next.args.retry.of === blocked?.id) || (next.tool === 'line.leaveAsIs' && next.args?.stepId === blocked?.id));
-    if (blocked && !resolves) return refusal('NEEDS_YOU', `Step ${blocked.n} needs you first: ${lower(asSentence(blocked.result.sentence))}`);
+    // While a step needs the person, only what answers it runs: a retry of it, a fix for it (args.fixOf), or "leave as is".
+    const resolves = next && ((next.args?.retry && next.args.retry.of === blocked?.id) || next.args?.fixOf === blocked?.id || (next.tool === 'line.leaveAsIs' && next.args?.stepId === blocked?.id));
+    if (blocked && !resolves) return refusal('NEEDS_YOU', `Step ${blocked.n} needs you first: ${lower(asSentence(blocked.result.sentence))} Add one of its fixes with args.fixOf "${blocked.id}", try it again, or ask the person to leave it as it is`);
     const r = await withVersion(api, plan.id, (p) => api.plan_run_next({ planId: p.id, version: p.version, by, ...(nextId ? { stepId: nextId } : {}) }));
     return r.ok ? view(r.message) : fromPlan(r);
   });

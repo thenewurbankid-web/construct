@@ -17,12 +17,13 @@
 // the step's result; a failed check makes the step "needs you" with options. A retry that passes no more checks than
 // the try before it stops (`stopped`) instead of looping. Every write still goes only through applyChange.
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { CHECK_KINDS, LineOpError } from './contract.mjs';
 import { planBaseOn, planPromote, applyChange } from './ops.mjs';
 import { planSetProp } from './pageProp.mjs';
 import { readLineProject } from './model.mjs';
-import { planFixByKey, planStep } from './fixes.mjs';
+import { planFixByKey, planStep, withFixes } from './fixes.mjs';
 import { planSetFragment } from './fragments.mjs';
 
 /** The real operations (tests pass the contract's mock instead). */
@@ -86,12 +87,13 @@ function objectSchema(required, o = {}) {
     safeParse(value) {
       const v = value ?? {};
       if (!isObj(v)) return failed([], 'must be an object');
-      const allowed = new Set([...Object.keys(required), ...(o.change ? ['expect', 'retry'] : [])]);
+      const allowed = new Set([...Object.keys(required), ...(o.change ? ['expect', 'retry', 'fixOf'] : [])]);
       const extra = Object.keys(v).find((k) => !allowed.has(k));
       if (extra) return failed([extra], 'is not an argument of this tool');
       for (const [k, t] of Object.entries(required)) if (!TYPES[t](v[k])) return failed([k], t === 'scalar' ? 'must be a string, number or boolean' : t === 'propKind' ? 'must be string, number, boolean or expression' : t === 'anyString' ? 'must be a string' : 'must be a non-empty string');
       if (v.expect !== undefined) { const why = checkExpect(v.expect); if (why) return failed(['expect'], why); }
       if (v.retry !== undefined) { const why = checkRetry(v.retry); if (why) return failed(['retry'], why); }
+      if (v.fixOf !== undefined && (typeof v.fixOf !== 'string' || !v.fixOf)) return failed(['fixOf'], 'must be the id of the step this fix is for');
       return { success: /** @type {const} */ (true), data: { ...v } };
     },
   });
@@ -125,7 +127,7 @@ const DESCRIBE = Object.freeze({
 
 // ------------------------------------------------------------------------------------------------- gap and checks
 /** The change args without the plan-only fields. */
-export const requestOf = (args) => { const { expect: _e, retry: _r, ...req } = args ?? {}; return req; };
+export const requestOf = (args) => { const { expect: _e, retry: _r, fixOf: _f, ...req } = args ?? {}; return req; };
 const base = (p) => path.basename(p);
 const readOrNull = (root, rel) => { try { return fs.readFileSync(path.join(root, rel), 'utf8'); } catch { return null; } };
 
@@ -176,10 +178,35 @@ export function runChecks(root, expect, staged, apply) {
       if (!staged) return { checkId: c.id, ok: false, sentence: 'The planned files were not written, because the change could not be planned.' };
       const wrong = fileStates(root, staged).filter((f) => f.state !== 'present');
       if (!wrong.length) return { checkId: c.id, ok: true, sentence: `${staged.files.length === 1 ? 'The planned file is' : `All ${staged.files.length} planned files are`} there as planned.` };
-      return { checkId: c.id, ok: false, sentence: `${wrong.map((f) => base(f.path)).join(', ')} ${wrong.length === 1 ? 'is' : 'are'} not as planned.` };
+      const names = wrong.map((f) => base(f.path));
+      const shown = new Set(names).size === names.length ? names : wrong.map((f) => f.path);
+      return { checkId: c.id, ok: false, sentence: `${shown.join(', ')} ${wrong.length === 1 ? 'is' : 'are'} not as planned.` };
     }
     return { checkId: c.id, ok: false, sentence: `Line cannot run ${c.kind} checks for a step yet, so "${c.sentence.replace(/[.?!]$/, '')}" is not confirmed.` };
   });
+}
+
+/**
+ * The typed fixes of a refused change's findings, worked out on the project as the change would leave it (the
+ * findings only exist there): a scratch copy of the project (no node_modules, no .git) with the change written,
+ * removed afterwards. Never throws; on any trouble the findings come back as they are.
+ */
+export function fixesAsProposed(root, staged, findings) {
+  let scratch = null;
+  try {
+    scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'construct-line-fixes-'));
+    fs.cpSync(root, scratch, { recursive: true, filter: (src) => !/[\\/](node_modules|\.git)([\\/]|$)/.test(path.relative(root, src) ? `/${path.relative(root, src)}` : '') });
+    for (const f of staged.files) {
+      const abs = path.join(scratch, f.path);
+      if (f.content === null) fs.rmSync(abs, { force: true });
+      else { fs.mkdirSync(path.dirname(abs), { recursive: true }); fs.writeFileSync(abs, f.content); }
+    }
+    return withFixes(scratch, findings);
+  } catch {
+    return findings;
+  } finally {
+    if (scratch) fs.rmSync(scratch, { recursive: true, force: true });
+  }
 }
 
 /**
@@ -204,6 +231,9 @@ export function runChange(root, tool, args, ops = REAL_PLAN_OPS) {
     const narrowed = { ...staged, files: staged.files.filter((f) => todo.includes(f.path)) };
     apply = narrowed.files.length ? ops.applyChange(root, narrowed) : { ok: true, sentence: `Nothing to save: ${lower(staged.summary.replace(/[.?!]$/, ''))} is already there.`, files: [], findings: [] };
   }
+  if (!/** @type {any} */ (apply).ok && /** @type {any} */ (apply).findings.length && staged) {
+    apply = { .../** @type {any} */ (apply), findings: fixesAsProposed(root, staged, /** @type {any} */ (apply).findings) };
+  }
   const checks = runChecks(root, expect, staged, /** @type {any} */ (apply));
   const passed = checks.filter((c) => c.ok).length;
   const total = checks.length;
@@ -213,7 +243,17 @@ export function runChange(root, tool, args, ops = REAL_PLAN_OPS) {
   /** @type {import('./contract.mjs').StepOption[]} */
   const options = [];
   if (needsYou) {
-    for (const f of /** @type {any} */ (apply).findings.filter((x) => x.severity === 'error').slice(0, 3)) options.push({ id: 'fix', sentence: f.sentence });
+    // Construct's refusal is the source of truth: each new error's typed fixes (fixes.mjs, rank 1 recommended) become
+    // the next step options, as plan steps a person (one click) or an agent (plan_add_step with args.fixOf) can add.
+    for (const f of /** @type {any} */ (apply).findings.filter((x) => x.severity === 'error').slice(0, 3)) {
+      const fixes = Array.isArray(f.fixes) ? f.fixes : [];
+      if (!fixes.length) options.push({ id: 'fix', sentence: f.sentence });
+      for (const x of fixes.slice(0, 3)) {
+        options.push(x.step
+          ? { id: 'fix', fixId: x.id, sentence: x.sentence, recommended: x.rank === 1, step: { tool: x.step.tool, args: { ...x.step.args } } }
+          : { id: 'fix', fixId: x.id, sentence: x.sentence, recommended: false, step: null });
+      }
+    }
     if (!stopped) options.push({ id: 'retry', sentence: 'Try this step again.' });
     options.push({ id: 'leave', sentence: 'Leave it as it is and carry on.' });
   }

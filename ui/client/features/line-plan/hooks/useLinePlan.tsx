@@ -70,7 +70,7 @@ export function useLinePlan(onLanded: () => void, api: LinePlanApi = linePlanApi
   );
 
   const choose = useCallback(
-    (stepId: string, choice: StepChoice['id']) => {
+    (stepId: string, choice: StepChoice) => {
       const tool = view?.steps.find((s) => s.id === stepId)?.tool ?? '';
       setBusy(true);
       void chooseAndRun(api, tool, stepId, choice).then((a) => {

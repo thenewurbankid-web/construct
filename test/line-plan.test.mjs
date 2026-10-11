@@ -211,3 +211,37 @@ test('every Line write is a plan step: a typed fix (line.fix) and a code fragmen
   assert.equal(done.state, 'done', done.sentence);
   assert.ok(fs.readFileSync(path.join(dir, file), 'utf8').includes('Show every order'));
 });
+
+test('a change Construct refuses needs a fix: its findings\' typed fixes are the options, and a fix step (fixOf) runs while the rest of the plan waits', async () => {
+  const dir = copy();
+  const svc = createLinePlanService({ root: dir, commands: null, load: staticLoad });
+  const { listFragments } = await import('../packages/engine/line/fragments.mjs');
+  const file = 'features/orders/pages/OrdersPage.tsx';
+  const before = fs.readFileSync(path.join(dir, file), 'utf8');
+  const list = listFragments(dir, file);
+  const added = await svc.addStep({ tool: 'line.setFragment', args: { file, fragmentId: list.fragments[0].id, code: "() => import('../../billing/pages/InvoicesPage')", contentHash: list.contentHash } }, 'ui');
+  await svc.approve(added.stepId, 'ui');
+  const ran = await svc.runNext('ui');
+  const step = ran.steps.find((s) => s.id === added.stepId);
+  assert.equal(step.state, 'needs-fix');
+  assert.equal(fs.readFileSync(path.join(dir, file), 'utf8'), before, 'nothing written');
+  const fix = step.result.options.find((o) => o.id === 'fix' && o.recommended);
+  assert.deepEqual(fix.step, { tool: 'line.promote', args: { featureItemId: 'billing/pages/InvoicesPage' } });
+  assert.equal(step.result.apply.findings[0].fixes[0].id, 'LINE-DIR/promote', 'the finding carries Construct\'s typed fixes');
+  // An agent's unrelated step is held; the fix for it (fixOf) is not.
+  assert.equal((await svc.addStep({ tool: 'line.project', args: {} }, 'agent')).ok, true);
+  const held = await svc.runNext('agent');
+  assert.equal(held.code, 'NEEDS_YOU');
+  assert.match(held.sentence, /Add one of its fixes with args\.fixOf/);
+  const fixStep = await svc.addStep({ tool: fix.step.tool, args: { ...fix.step.args, fixOf: added.stepId } }, 'agent');
+  assert.equal(fixStep.ok, true, fixStep.sentence);
+  assert.equal((await svc.approve(fixStep.stepId, 'agent')).ok, false, 'an agent still cannot approve the fix');
+  await svc.approve(fixStep.stepId, 'ui');
+  const fixed = (await svc.runNext('agent', fixStep.stepId)).steps.find((s) => s.id === fixStep.stepId);
+  // Construct refuses that fix too (InvoicesPage itself uses a feature component), and says what fixes it next:
+  // the loop goes on with Construct's own errors as the source of truth, one approved step at a time.
+  assert.equal(fixed.state, 'needs-fix', fixed.sentence);
+  assert.match(fixed.sentence, /the library must not depend on any feature/);
+  assert.ok(fixed.result.options.some((o) => o.id === 'fix' && o.step), 'the refused fix offers its own typed fixes');
+  assert.equal(fs.existsSync(path.join(dir, 'library/pages/InvoicesPage.tsx')), false, 'nothing written');
+});

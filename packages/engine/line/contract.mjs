@@ -191,7 +191,9 @@
  * @property {string} sentence
  *
  * What a person may do when a step needs them.
- * @typedef {{id: 'retry'|'leave'|'fix', sentence: string}} StepOption
+ * A `fix` option comes from a refusal's findings (fixes.mjs typed fixes): `step` is the plan step that applies it (add it
+ * with args.fixOf = the step's id), null for advice only; `recommended` marks rank 1.
+ * @typedef {{id: 'retry'|'leave'|'fix', sentence: string, fixId?: string, recommended?: boolean, step?: {tool: string, args: Record<string, unknown>}|null}} StepOption
  *
  * The result a line.* write step records on its plan step.
  * @typedef {object} LineStepResult
@@ -212,7 +214,7 @@
  * @property {Record<string, unknown>} args
  * @property {string} why
  * @property {'read'|'write'} kind
- * @property {'waiting'|'ready'|'running'|'done'|'needs-you'|'failed'|'skipped'} state
+ * @property {'waiting'|'ready'|'running'|'done'|'needs-you'|'needs-fix'|'failed'|'skipped'} state  needs-fix: Construct refused the change; its findings' typed fixes are the options
  * @property {string} sentence    E.g. "Waiting for your approval: Creates StatusBadge in feature orders, ...".
  * @property {GapItem[]} gap      Before it runs (empty once it ran).
  * @property {LineStepResult|null} result
@@ -401,7 +403,7 @@ export function assertPlanView(v) {
   sentence(v.store.sentence, 'plan.store.sentence');
   for (const s of v.steps) {
     str(s.id, 'step.id'); str(s.tool, 'step.tool'); sentence(s.sentence, `step ${s.id}.sentence`);
-    if (!['waiting', 'ready', 'running', 'done', 'needs-you', 'failed', 'skipped'].includes(s.state)) fail(`step ${s.id}.state`, 'unknown state');
+    if (!['waiting', 'ready', 'running', 'done', 'needs-you', 'needs-fix', 'failed', 'skipped'].includes(s.state)) fail(`step ${s.id}.state`, 'unknown state');
     for (const g of s.gap) { if (!['present', 'partial', 'missing'].includes(g.state)) fail(`step ${s.id}.gap`, 'unknown state'); sentence(g.sentence, `step ${s.id}.gap.sentence`); }
     if (s.result && s.kind === 'write' && s.tool !== 'line.leaveAsIs' && s.tool.startsWith('line.')) assertLineStepResult(s.result);
   }

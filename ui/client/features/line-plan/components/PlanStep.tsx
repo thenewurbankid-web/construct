@@ -1,6 +1,6 @@
 import type { PlanStepRow, StepChoice } from '../types';
 
-type Decide = { busy: boolean; onApprove: (stepId: string) => void; onChoose: (stepId: string, choice: StepChoice['id']) => void };
+type Decide = { busy: boolean; onApprove: (stepId: string) => void; onChoose: (stepId: string, choice: StepChoice) => void };
 
 const line = (text: string) => <li key={text}>{text}</li>;
 const code = (text: string) => <code key={text}>{text}</code>;
@@ -18,7 +18,7 @@ function Lines({ label, lines, testId }: { label: string; lines: string[]; testI
 /** Approve for a step waiting on the person; Try again / Leave as it is for a step that needs them. */
 function Actions({ row, busy, onApprove, onChoose }: Decide & { row: PlanStepRow }) {
   const choice = (c: StepChoice) => (
-    <button key={c.id} type="button" className="lpl-btn" title={c.sentence} onClick={() => onChoose(row.id, c.id)} disabled={busy}>
+    <button key={c.key} type="button" className={c.label === 'Apply recommended fix' ? 'lpl-btn lpl-btn--primary' : 'lpl-btn'} title={c.sentence} onClick={() => onChoose(row.id, c)} disabled={busy}>
       {c.label}
     </button>
   );

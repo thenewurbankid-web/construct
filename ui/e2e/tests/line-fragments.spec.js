@@ -73,7 +73,7 @@ test.describe.serial('Line spot code editing (Line sample project, real server)'
     expect(read(ORDERS)).toBe(before);
   });
 
-  test('a handler that would import another feature: the plan step fails its validate check, nothing is written, and the Plan panel asks you', async ({ page }) => {
+  test('a handler that would import another feature: Construct refuses the plan step, nothing is written, and the Plan panel offers its typed fixes', async ({ page }) => {
     const before = read(ORDERS);
     const form = await openEditor(page);
     await form.getByLabel(LABEL).fill("() => import('../../billing/pages/InvoicesPage')");
@@ -83,7 +83,9 @@ test.describe.serial('Line spot code editing (Line sample project, real server)'
     const plan = page.getByTestId('line-plan');
     await plan.getByRole('button', { name: /^Approve step/ }).first().click();
     const step = plan.getByTestId('plan-step').first();
-    await expect(step).toHaveAttribute('data-state', 'needs-you');
+    await expect(step).toHaveAttribute('data-state', 'needs-fix');
+    await expect(step.getByTestId('plan-step-fixes')).toContainText('Move InvoicesPage.tsx from feature billing into the library');
+    await expect(step.getByRole('button', { name: 'Apply recommended fix' })).toBeVisible();
     await expect(step.getByTestId('plan-step-failing')).toContainText(/Validate found a new problem: feature "orders" imports "\.\.\/\.\.\/billing\/pages\/InvoicesPage" from feature "billing"/);
     await expect(step.getByRole('button', { name: 'Try again' })).toBeVisible();
     await expect(step.getByRole('button', { name: 'Leave as it is' })).toBeVisible();

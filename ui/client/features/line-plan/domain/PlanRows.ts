@@ -1,6 +1,6 @@
 // Pure (DOMAIN-001): a PlanView as the rows the Plan panel shows.
 import { changeResult } from './PlanResult.ts';
-import type { PlanStepRow, PlanStepView, PlanView, StepChoice } from '../types.ts';
+import type { LineStepResult, PlanStepRow, PlanStepView, PlanView, StepChoice } from '../types.ts';
 
 const LABELS: Record<PlanStepView['state'], string> = {
   waiting: 'Waiting for your approval',
@@ -8,23 +8,33 @@ const LABELS: Record<PlanStepView['state'], string> = {
   running: 'Running',
   done: 'Done',
   'needs-you': 'Needs you',
+  'needs-fix': 'Needs a fix',
   failed: 'Failed',
   skipped: 'Skipped',
 };
 
-const CHOICE_LABELS: Record<StepChoice['id'], string> = { retry: 'Try again', leave: 'Leave as it is' };
+const CHOICE_LABELS: Record<'retry' | 'leave', string> = { retry: 'Try again', leave: 'Leave as it is' };
+
+/** The person's choices on a step that needs them: Construct's fixes that can run (the recommended one first, as
+ * "Apply recommended fix"), then Try again and Leave as it is. */
+function choicesOf(r: LineStepResult): StepChoice[] {
+  const fixes = r.options.filter((o) => o.id === 'fix' && o.step).sort((a, b) => Number(Boolean(b.recommended)) - Number(Boolean(a.recommended)));
+  const fixChoices: StepChoice[] = fixes.map((o, i) => ({ key: `fix:${o.fixId ?? i}`, id: 'fix', label: o.recommended ? 'Apply recommended fix' : `Apply fix ${i + 1}`, sentence: o.sentence, step: o.step ?? undefined }));
+  const rest: StepChoice[] = r.options.filter((o) => o.id === 'retry' || o.id === 'leave').map((o) => ({ key: o.id, id: o.id, label: CHOICE_LABELS[o.id as 'retry' | 'leave'], sentence: o.sentence }));
+  return [...fixChoices, ...rest];
+}
 
 /** The tool call as one line for Details, without the plan-only fields (expect, retry). */
 function callText(step: Pick<PlanStepView, 'tool' | 'args'>): string {
-  const { expect: _e, retry: _r, ...args } = step.args ?? {};
+  const { expect: _e, retry: _r, fixOf: _f, ...args } = step.args ?? {};
   return `${step.tool}(${JSON.stringify(args)})`;
 }
 
 /** One step's row. */
 export function stepRow(step: PlanStepView): PlanStepRow {
   const r = changeResult(step);
-  const needsYou = step.state === 'needs-you';
-  const choices: StepChoice[] = needsYou && r ? r.options.filter((o) => o.id !== 'fix').map((o) => ({ id: o.id as StepChoice['id'], label: CHOICE_LABELS[o.id as StepChoice['id']], sentence: o.sentence })) : [];
+  const needsYou = step.state === 'needs-you' || step.state === 'needs-fix';
+  const choices: StepChoice[] = needsYou && r ? choicesOf(r) : [];
   return {
     id: step.id,
     n: step.n,
