@@ -13,6 +13,7 @@ import { aggregateValidation } from '../../core/registry.mjs';
 import { enforcersForRoot } from '../../core/profiles/index.mjs';
 import { planFileMove, applyEdits } from '../tsFileMove.mjs';
 import { LineOpError, assertStagedChange } from './contract.mjs';
+import { readWorkspace, isInsideWorkspace } from './workspace.mjs';
 
 const posix = path.posix;
 const SINGULAR = { components: 'component', pages: 'page', workflows: 'workflow', fixtures: 'fixture' };
@@ -280,6 +281,7 @@ function toFinding(v) {
  * committed through the project's validate profile; when that refuses, nothing lands.
  * @param {string} root Project root.
  * @param {import('./contract.mjs').StagedChange} change The change from a plan function.
+ * Files outside the project's workspace folder (workspace.mjs) are refused first, with code OUTSIDE_WORKSPACE.
  * @returns {import('./contract.mjs').ApplyResult} `Saved. <summary>` with the files, or `Nothing was saved: ...` with the findings.
  */
 export function applyChange(root, change) {
@@ -288,6 +290,21 @@ export function applyChange(root, change) {
   for (const f of change.files) {
     const why = outsideReason(root, f.path);
     if (why) return refuse(why);
+  }
+  // cu6: Line changes only the workspace folder; everything outside it stays read-only (no workspace = whole project).
+  let workspace;
+  try { workspace = readWorkspace(root); } catch (e) {
+    return { ...refuse(/** @type {any} */ (e).sentence ?? 'The workspace folder cannot be read.'), code: 'BAD_WORKSPACE' };
+  }
+  const outside = change.files.find((f) => !isInsideWorkspace(workspace.folder, f.path));
+  if (outside) {
+    return {
+      ok: false,
+      sentence: `Nothing was saved: ${outside.path} is outside your workspace folder ${workspace.folder}; it stays read-only.`,
+      files: [],
+      findings: [{ sentence: `${outside.path} is outside your workspace folder ${workspace.folder}; change the workspace folder to edit it.`, rule: 'OUTSIDE_WORKSPACE', severity: 'error', file: outside.path, line: 1 }],
+      code: 'OUTSIDE_WORKSPACE',
+    };
   }
   const txn = createTransaction(root);
   let result;

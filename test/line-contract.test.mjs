@@ -3,7 +3,7 @@
 // tests reuse the assert* shape checks on real projects.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { assertLineProject, assertStagedChange, assertApplyResult, assertFinding, LineOpError, LINE_API } from '../packages/engine/line/contract.mjs';
+import { assertLineProject, assertStagedChange, assertApplyResult, assertFinding, assertLineWorkspace, LineOpError, LINE_API } from '../packages/engine/line/contract.mjs';
 import { createMockLineOps } from '../packages/engine/line/mock.mjs';
 
 const ROOT = '/mock';
@@ -73,5 +73,25 @@ test('contract: the shape checks reject what Cockpit must never show', () => {
   assert.throws(() => assertFinding({ sentence: 'no full stop', rule: 'X', severity: 'error', file: 'a', line: 1 }), /full sentence/);
   assert.throws(() => assertStagedChange({ summary: 'Escapes.', files: [{ path: '../x', content: '' }] }), /inside the project/);
   assert.throws(() => assertApplyResult({ ok: false, sentence: 'Refused.', files: ['a'], findings: [] }), /wrote nothing/);
-  assert.deepEqual(LINE_API.map((r) => `${r.method} ${r.path}`), ['GET /api/line/project', 'GET /api/line/page-tree', 'POST /api/line/base-on', 'POST /api/line/promote', 'POST /api/line/page-prop', 'GET /api/line/render']);
+  assert.deepEqual(LINE_API.map((r) => `${r.method} ${r.path}`), ['GET /api/line/project', 'GET /api/line/page-tree', 'POST /api/line/base-on', 'POST /api/line/promote', 'POST /api/line/page-prop', 'GET /api/line/render', 'GET /api/line/workspace', 'POST /api/line/workspace']);
+  assert.throws(() => assertLineWorkspace({ root: '/p', folder: '../x', readOnly: true }), /inside the project/);
+});
+
+test('contract: the workspace folder defaults to the whole project; set to one feature, changes outside it are refused in one sentence', () => {
+  const ops = createMockLineOps();
+  const w0 = ops.readWorkspace(ROOT);
+  assertLineWorkspace(w0);
+  assert.equal(w0.folder, '');
+  const w = ops.setWorkspace(ROOT, { folder: 'features/orders' });
+  assertLineWorkspace(w);
+  assert.equal(ops.readWorkspace(ROOT).folder, 'features/orders');
+  const before = ops.files();
+  const r = ops.applyChange(ROOT, ops.planBaseOn(ROOT, { libraryId: 'components/Button', feature: 'billing', name: 'PayButton' }));
+  assertApplyResult(r);
+  assert.equal(r.ok, false);
+  assert.equal(r.code, 'OUTSIDE_WORKSPACE');
+  assert.equal(r.sentence, 'Nothing was saved: features/billing/components/PayButton.tsx is outside your workspace folder features/orders; it stays read-only.');
+  assert.deepEqual(ops.files(), before);
+  assert.equal(ops.applyChange(ROOT, ops.planBaseOn(ROOT, { libraryId: 'components/Button', feature: 'orders', name: 'BuyButton' })).ok, true);
+  assert.throws(() => ops.setWorkspace(ROOT, { folder: '../outside' }), (e) => e instanceof LineOpError && e.code === 'BAD_FOLDER');
 });

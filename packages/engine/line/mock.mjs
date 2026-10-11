@@ -59,6 +59,7 @@ function levelOf(files, file) {
 export function createMockLineOps({ files: initial = MOCK_FILES } = {}) {
   /** @type {Record<string, string>} */
   const files = { ...initial };
+  let folder = ''; // cu6: the workspace folder ('' = whole project), as line/workspace.json would hold it
 
   /** @returns {import('./contract.mjs').LineProject} */
   function readLineProject() {
@@ -114,8 +115,21 @@ export function createMockLineOps({ files: initial = MOCK_FILES } = {}) {
       if (!re.test(files[file])) throw new LineOpError(`This part has no ${prop} to change.`, 'UNKNOWN_PROP');
       return { summary: `Sets ${prop} to "${value}" on the page ${nameOf(file)}.`, files: [{ path: file, content: files[file].replace(re, `${prop}="${value}"`) }] };
     },
+    readWorkspace(root) { return { root, folder, readOnly: true }; },
+    setWorkspace(root, { folder: next }) {
+      const f = String(next ?? '').replace(/\/+$/, '');
+      if (f.split('/').some((s) => s === '..' || s === '.') || f.startsWith('/')) throw new LineOpError(`"${next}" is not a folder inside the project; pick one from the project's folders.`, 'BAD_FOLDER');
+      if (f && !Object.keys(files).some((p) => p.startsWith(`${f}/`))) throw new LineOpError(`There is no folder "${f}" in the project; pick an existing folder.`, 'BAD_FOLDER');
+      folder = f;
+      return { root, folder, readOnly: true };
+    },
     /** @returns {import('./contract.mjs').ApplyResult} */
     applyChange(_root, change) {
+      const outside = change.files.find((x) => folder && x.path !== folder && !x.path.startsWith(`${folder}/`));
+      if (outside) {
+        return { ok: false, sentence: `Nothing was saved: ${outside.path} is outside your workspace folder ${folder}; it stays read-only.`, files: [], code: 'OUTSIDE_WORKSPACE',
+          findings: [{ sentence: `${outside.path} is outside your workspace folder ${folder}; change the workspace folder to edit it.`, rule: 'OUTSIDE_WORKSPACE', severity: 'error', file: outside.path, line: 1 }] };
+      }
       const next = { ...files };
       for (const f of change.files) { if (f.content === null) delete next[f.path]; else next[f.path] = f.content; }
       const touched = new Set(change.files.map((f) => f.path));
