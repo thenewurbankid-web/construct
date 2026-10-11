@@ -30,14 +30,14 @@ after(async () => {
 });
 const call = (name, args) => callTool(session.client, name, args);
 
-test('the tool list is the eight read-only tools plus the three plan tools (no approve), each with a JSON schema and no path argument', async () => {
+test('the tool list is the eight read-only tools plus the three plan tools and the three Train Line tools (no approve), each with a JSON schema and no path argument', async () => {
   const { tools } = await session.client.listTools();
-  assert.deepEqual(tools.map((t) => t.name), [...NAMES, 'plan_status', 'plan_add_step', 'plan_run_next']);
+  assert.deepEqual(tools.map((t) => t.name), [...NAMES, 'plan_status', 'plan_add_step', 'plan_run_next', 'train_propose_case', 'train_list_cases', 'train_run_eval']);
   assert.deepEqual(TOOLS.map((t) => t.name), NAMES);
   for (const tool of tools) {
     assert.equal(tool.inputSchema.type, 'object', tool.name);
     assert.ok(tool.description.length > 40 && tool.description.length < 600, `${tool.name} has a description a model can decide on`);
-    const readOnly = !['plan_add_step', 'plan_run_next'].includes(tool.name);
+    const readOnly = !['plan_add_step', 'plan_run_next', 'train_propose_case'].includes(tool.name);
     assert.deepEqual([tool.annotations.readOnlyHint, tool.annotations.destructiveHint, tool.annotations.openWorldHint], [readOnly, false, false], `${tool.name} is annotated ${readOnly ? 'read-only' : 'not read-only, not destructive'}`);
     for (const key of Object.keys(tool.inputSchema.properties ?? {})) assert.doesNotMatch(key, /^(root|projectRoot|project_root|path|dir|directory|file|cwd)$/i, `${tool.name} takes no path: ${key}`);
   }
