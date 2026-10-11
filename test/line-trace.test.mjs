@@ -3,6 +3,7 @@
 // lighting their controls, and Auto's scripts (which stop at Approve).
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { assertControlRegistry, assertTraceMatch, assertLineControl, LINE_API, LINE_PLAN_TOOLS, PLAN_ACTION_TOOLS } from '../packages/engine/line/contract.mjs';
@@ -42,7 +43,7 @@ const COMMON = [
   ['Change the title of OrdersPage to My orders', 'line.setPageProp', ['pages.feature:orders', 'pages.page:OrdersPage', 'pages.propInput:title', 'pages.propSave:title', 'plan.approve']],
   ['Set the label prop on the orders page', 'line.setPageProp', ['pages.feature:orders', 'pages.page:OrdersPage', 'pages.propInput:label', 'pages.propSave:label', 'plan.approve']],
   ['Edit the code of what happens when More is clicked on OrdersPage', 'line.setFragment', ['pages.feature:orders', 'pages.page:OrdersPage', 'pages.codeToggle:OrdersPage', 'pages.fragmentSave:OrdersPage', 'plan.approve']],
-  ['Fix the problem in billing', 'line.fix', ['features.finding:billing', 'plan.fix', 'plan.approve']],
+  ['Fix the problem in billing', 'line.fix', ['features.finding', 'plan.fix', 'plan.approve']],
   ['Approve the waiting step', 'plan.approve', ['plan.approve']],
   ['Show me the features', 'line.project', ['features.card']],
   ['Leave it as it is', 'line.leaveAsIs', ['plan.leave']],
@@ -140,4 +141,12 @@ test('mock project: the client\'s mock mode maps the same way', async () => {
   const mock = createMockLineOps().readLineProject('/mock');
   const m = await traceMatch({ request: 'Promote OrderButton to the library' }, { project: mock });
   assert.deepEqual(m.tools[0].args, { featureItemId: 'orders/components/OrderButton' });
+});
+
+test('the Cockpit carries every registered control: data-line-control on the real buttons, menus and panels', () => {
+  const dir = path.join(ROOT, 'ui/client/features');
+  const src = fs.readdirSync(dir, { recursive: true }).filter((f) => /\.tsx$/.test(f)).map((f) => fs.readFileSync(path.join(dir, f), 'utf8')).join('\n');
+  for (const c of LINE_CONTROLS) assert.ok(src.includes(`data-line-control="${c.controlId}"`) || src.includes(`'${c.controlId}'`), `${c.controlId} is not on any control`);
+  const used = [...src.matchAll(/data-line-control="([^"]+)"/g)].map((m) => m[1]);
+  for (const id of used) assert.ok(controlById(id), `${id} is on a control but not in the registry`);
 });

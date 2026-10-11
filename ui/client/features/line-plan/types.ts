@@ -1,6 +1,6 @@
 // The Plan panel's view models. The plan's shapes come from the one shared mirror (lib/lineContract.ts), which follows
 // packages/engine/line/contract.mjs (PlanView).
-import type { ApplyResult, PlanStepRequest, PlanStepState, PlanView } from '@/lib/lineContract';
+import type { ApplyResult, PlanStepRequest, PlanStepState, PlanStepView, PlanView } from '@/lib/lineContract';
 
 export type * from '@/lib/lineContract';
 
@@ -50,6 +50,8 @@ export type LastRun = { stepId: string; tool: string; apply: ApplyResult | null;
 /** Everything a screen needs from the plan: the rows, adding a step, and the person's decisions. */
 export type PlanControls = {
   rows: PlanStepRow[];
+  /** The plan's steps as the server sent them (Trace lights the controls of the open ones, cg1). */
+  steps: PlanStepView[];
   storeSentence: string;
   error: string | null;
   busy: boolean;

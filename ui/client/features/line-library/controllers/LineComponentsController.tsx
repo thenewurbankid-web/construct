@@ -3,6 +3,7 @@
 import { useCallback, useMemo } from 'react';
 import { ComponentsController } from '@/features/component-docs';
 import { LinePlanController, useLinePlan } from '@/features/line-plan';
+import { LineTraceController } from '@/features/line-trace';
 import { ProjectGateController } from '@/features/project-gate';
 import { useShellDrawer } from '@/features/shell';
 import { useLineWorkspace } from '@/lib/lineWorkspace';
@@ -30,7 +31,19 @@ function LineComponentsScreen() {
   const plan = useLinePlan(onLanded);
   const notice = plan.lastRun?.apply ?? null;
   const controls = useLineChanges(features, plan.addStep, notice);
-  return <LineScreenSwitch screen={screen} fallback={<ComponentsController />} controls={controls} panel={<LinePlanController plan={plan} />} />;
+  return (
+    <LineScreenSwitch
+      screen={screen}
+      fallback={<ComponentsController />}
+      controls={controls}
+      panel={
+        <>
+          <LineTraceController screen="components" steps={plan.steps} />
+          <LinePlanController plan={plan} />
+        </>
+      }
+    />
+  );
 }
 
 /** The Components screen (`/components`): a `preset: line` project gets its library as cards by level ("Base on

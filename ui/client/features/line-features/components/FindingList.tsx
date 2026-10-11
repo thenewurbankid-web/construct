@@ -7,7 +7,7 @@ export function FindingList({ name, findings }: { name: string; findings: LineFi
   return (
     <ul className="lf-findings" aria-label={`What needs attention in ${name}`}>
       {findings.map((f, i) => (
-        <li key={`${f.rule}-${f.line}-${i}`} className={`lf-finding lf-finding--${f.severity}`} data-testid="lf-finding">
+        <li key={`${f.rule}-${f.line}-${i}`} className={`lf-finding lf-finding--${f.severity}`} data-testid="lf-finding" data-line-control="features.finding">
           <span>{f.sentence}</span>
           <details className="lf-details">
             <summary>Details</summary>

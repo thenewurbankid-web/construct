@@ -10,7 +10,7 @@
 // Pure and synchronous except `traceMatch` (async only for `decide`); no Node imports, so Cockpit's mock mode uses it.
 // Nothing here plans or writes: a change still happens only when the person (or Auto, driving the real controls)
 // adds a plan step and the plan runner runs it after Approve.
-import { LINE_CONTROLS, TOOL_PATHS } from './controls.mjs';
+import { LINE_CONTROLS, TOOL_PATHS, controlById } from './controls.mjs';
 
 const RULES = Object.freeze([
   { toolId: 'line.baseOn', any: [/\bbased?\b.*\bon\b/, /\bnew component\b/, /\b(create|make|add)\b.*\b(component|from|like)\b/, /\bcopy of\b/, /\breus/] },
@@ -109,7 +109,7 @@ function targetFor(controlId, args) {
   switch (controlId) {
     case 'components.baseOn': case 'components.baseOnFeature': case 'components.baseOnName': case 'components.baseOnCreate': return nameOf(args.libraryId);
     case 'components.promote': case 'components.promoteConfirm': return nameOf(args.featureItemId);
-    case 'pages.feature': case 'features.card': case 'features.finding': return args.feature ?? null;
+    case 'pages.feature': case 'features.card': return args.feature ?? null;
     case 'pages.page': case 'pages.codeToggle': case 'pages.fragmentSave': return args.page ?? null;
     case 'pages.propInput': case 'pages.propSave': return args.prop ?? null;
     case 'plan.approve': case 'plan.retry': case 'plan.leave': case 'plan.fix': return args.n === undefined ? null : String(args.n);
@@ -175,7 +175,10 @@ function toolSentence(toolId, a) {
  */
 export function toolEntry(toolId, from, args, stepId = null) {
   const path = TOOL_PATHS[toolId] ?? LINE_CONTROLS.filter((c) => c.toolId === toolId).map((c) => c.controlId);
-  const controls = path.map((controlId) => ({ controlId, target: targetFor(controlId, args) }));
+  const controls = path.map((controlId) => {
+    const c = /** @type {import('./contract.mjs').LineControl} */ (controlById(controlId));
+    return { controlId, target: targetFor(controlId, args), screen: c.screen, label: c.label };
+  });
   if (from === 'step') {
     const n = args.n;
     const approve = { kind: 'approve', controlId: 'plan.approve', target: String(n), caption: `Approve step ${n}; it runs through the plan runner.` };

@@ -9,7 +9,7 @@ export function FeatureCardList({ features, current, onChoose }: FeatureCardList
     <ul className="lf-cards" aria-label="Features">
       {features.map((f) => (
         <li key={f.name}>
-          <button type="button" className="lf-card" aria-pressed={current === f.name} onClick={() => onChoose(f.name)} data-testid="lf-feature" data-feature={f.name}>
+          <button type="button" className="lf-card" aria-pressed={current === f.name} onClick={() => onChoose(f.name)} data-testid="lf-feature" data-feature={f.name} data-line-control="features.card" data-line-target={f.name}>
             <span className="lf-card-title">{f.name}</span>
             <span className={`lf-chip lf-chip--${f.ok ? 'ok' : 'problem'}`} data-testid="lf-feature-status">
               {f.status}

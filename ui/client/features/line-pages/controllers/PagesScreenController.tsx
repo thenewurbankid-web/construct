@@ -1,6 +1,7 @@
 'use client';
 
 import { LinePlanController, useLinePlan } from '@/features/line-plan';
+import { LineTraceController } from '@/features/line-trace';
 import { PagesEditorController } from '@/features/pages-editor';
 import { usePagesScreen } from '../hooks/usePagesScreen';
 import { PagesScreenPage } from '../pages/PagesScreenPage';
@@ -12,5 +13,17 @@ const NOTHING = () => {};
 export function PagesScreenController() {
   const plan = useLinePlan(NOTHING);
   const { phase, view } = usePagesScreen(plan);
-  return <PagesScreenPage phase={phase} view={view} fallback={<PagesEditorController />} panel={<LinePlanController plan={plan} />} />;
+  return (
+    <PagesScreenPage
+      phase={phase}
+      view={view}
+      fallback={<PagesEditorController />}
+      panel={
+        <>
+          <LineTraceController screen="pages" steps={plan.steps} />
+          <LinePlanController plan={plan} />
+        </>
+      }
+    />
+  );
 }

@@ -28,11 +28,11 @@ export function LinePropRow({ prop, busy, onSave }: LinePropRowProps) {
         {prop.name}
       </label>
       {prop.kind === 'boolean' ? (
-        <input id={id} type="checkbox" checked={Boolean(value)} onChange={(e) => setValue(e.target.checked)} />
+        <input id={id} data-line-control="pages.propInput" data-line-target={prop.name} type="checkbox" checked={Boolean(value)} onChange={(e) => setValue(e.target.checked)} />
       ) : (
-        <input id={id} type={prop.kind === 'number' ? 'number' : 'text'} value={String(value)} onChange={(e) => setValue(e.target.value)} />
+        <input id={id} data-line-control="pages.propInput" data-line-target={prop.name} type={prop.kind === 'number' ? 'number' : 'text'} value={String(value)} onChange={(e) => setValue(e.target.value)} />
       )}
-      <button type="submit" className="ui-button ui-button--primary" disabled={busy || !changed}>
+      <button type="submit" className="ui-button ui-button--primary" disabled={busy || !changed} data-line-control="pages.propSave" data-line-target={prop.name}>
         {busy ? 'Saving' : 'Save'}
       </button>
       <span className="lp-now" data-testid="lp-prop-now">

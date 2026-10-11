@@ -311,7 +311,7 @@ export const CHECK_KINDS = Object.freeze(['validate', 'types', 'tests', 'file', 
  * @property {string|null} stepId
  * @property {Record<string, unknown>} args   What static read from the request (may be partial).
  * @property {string} sentence   E.g. "Base a new component on Badge."
- * @property {{controlId: string, target: string|null}[]} controls  In the order a person uses them.
+ * @property {{controlId: string, target: string|null, screen: LineScreen, label: string}[]} controls  In the order a person uses them (screen and label from the registry).
  * @property {AutoAction[]} script   Auto's moves for it (empty when Auto cannot fill it in).
  * @property {string|null} missing   What Auto still needs from the person, one sentence, or null.
  *
@@ -644,7 +644,7 @@ export function assertTraceMatch(m) {
     if ((t.from === 'step') !== (typeof t.stepId === 'string')) fail(`${w}.stepId`, 'a step tool names its step, a request tool does not');
     sentence(t.sentence, `${w}.sentence`);
     if (!Array.isArray(t.controls)) fail(`${w}.controls`, 'must be an array');
-    t.controls.forEach((c, j) => str(c.controlId, `${w}.controls[${j}].controlId`));
+    t.controls.forEach((c, j) => { str(c.controlId, `${w}.controls[${j}].controlId`); if (!SCREEN_IDS.includes(c.screen)) fail(`${w}.controls[${j}].screen`, 'unknown screen'); str(c.label, `${w}.controls[${j}].label`); });
     if (!Array.isArray(t.script)) fail(`${w}.script`, 'must be an array');
     t.script.forEach((a, j) => assertAutoAction(a, `${w}.script[${j}]`));
     if (t.missing !== null) sentence(t.missing, `${w}.missing`);

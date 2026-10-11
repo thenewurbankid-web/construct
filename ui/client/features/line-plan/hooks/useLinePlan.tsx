@@ -5,7 +5,9 @@ import { planRows } from '../domain/PlanRows';
 import { changeResult, lastRun } from '../domain/PlanResult';
 import { linePlanApi } from '../services/LinePlanApi';
 import { approveAndRun, chooseAndRun } from '../workflows/ApproveFlow';
-import type { LinePlanApi, PlanAnswer, PlanControls, PlanStepRequest, PlanView, StepChoice } from '../types';
+import type { LinePlanApi, PlanAnswer, PlanControls, PlanStepRequest, PlanStepView, PlanView, StepChoice } from '../types';
+
+const NO_STEPS: PlanStepView[] = [];
 
 /** The open project's plan (GET /api/line/plan) and the person's part in it: a Line action adds a step, Approve runs
  * it, and a step that needs the person offers Try again or Leave as it is. `onLanded` runs after a step wrote files
@@ -84,7 +86,7 @@ export function useLinePlan(onLanded: () => void, api: LinePlanApi = linePlanApi
   );
 
   return useMemo(
-    () => ({ rows: planRows(view), storeSentence: view?.store.sentence ?? '', error, busy, lastRun: lastRun(view, ranId), addStep, approve, choose, refresh }),
+    () => ({ rows: planRows(view), steps: view?.steps ?? NO_STEPS, storeSentence: view?.store.sentence ?? '', error, busy, lastRun: lastRun(view, ranId), addStep, approve, choose, refresh }),
     [view, ranId, error, busy, addStep, approve, choose, refresh],
   );
 }

@@ -1,0 +1,183 @@
+/* Line Trace and Auto (cg1, ct1). Prefix ltr-. Tokens only (app/tokens.css). Lit controls are marked by
+   data-line-lit on the registered control itself (data-line-control), wherever it is in Cockpit. */
+.ltr {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  background: var(--surface-1);
+  min-width: 0;
+}
+.ltr-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.ltr-head {
+  margin: 0;
+  font-size: var(--fs-md);
+}
+.ltr-toggles {
+  display: inline-flex;
+  gap: var(--sp-1);
+}
+.ltr-toggle {
+  min-height: 28px;
+  padding: 0 var(--sp-3);
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface-1);
+  color: var(--text);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+.ltr-toggle[aria-pressed='true'] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-fg);
+  font-weight: 600;
+}
+.ltr-toggle:focus-visible,
+.ltr-btn:focus-visible,
+.ltr-link:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.ltr-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  flex: 1 1 18rem;
+  min-width: 0;
+  font-size: var(--fs-sm);
+}
+.ltr-field input {
+  min-height: 30px;
+  padding: 0 var(--sp-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  color: var(--text);
+}
+.ltr-sentence {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.ltr-hint {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  overflow-wrap: anywhere;
+}
+.ltr-links {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+.ltr-link {
+  color: var(--accent);
+  font-size: var(--fs-sm);
+}
+.ltr-btn {
+  min-height: 28px;
+  padding: 0 var(--sp-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-sm);
+  background: var(--surface-1);
+  color: var(--text);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+.ltr-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.ltr-btn--primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-fg);
+  font-weight: 600;
+}
+.ltr-check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  font-size: var(--fs-sm);
+}
+.ltr-auto,
+.ltr-run,
+.ltr-findings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+.ltr-caption {
+  margin: 0;
+  padding: var(--sp-1) var(--sp-2);
+  border-left: 3px solid var(--accent);
+  background: var(--surface-2);
+}
+.ltr-history {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+.ltr-history li {
+  display: flex;
+  gap: var(--sp-2);
+  align-items: center;
+  justify-content: space-between;
+}
+.ltr-tech {
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+.ltr-tech > summary {
+  cursor: pointer;
+  width: max-content;
+  min-height: 24px;
+  line-height: 24px;
+}
+.ltr-tech ul {
+  margin: 0;
+  padding-left: var(--sp-4);
+  font-family: var(--mono);
+  overflow-wrap: anywhere;
+}
+.ltr-cursor {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 1000;
+  pointer-events: none;
+  transition-property: transform;
+  transition-timing-function: ease-in-out;
+}
+.ltr-cursor svg {
+  fill: var(--text);
+  stroke: var(--surface-1);
+  stroke-width: 1;
+  filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.5));
+}
+[data-line-lit] {
+  outline: 2px solid var(--accent) !important;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+[data-line-lit='step'] {
+  outline-style: dashed !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ltr-cursor {
+    transition: none;
+  }
+}

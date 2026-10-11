@@ -1,6 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import { LineTraceController } from '@/features/line-trace';
 import { useLineFeatures } from '../hooks/useLineFeatures';
 import { FeaturesSwitchPage } from '../pages/FeaturesSwitchPage';
 
@@ -9,5 +10,5 @@ import { FeaturesSwitchPage } from '../pages/FeaturesSwitchPage';
  * and details, untouched. Mounted inside the Features stage, below its project gate. */
 export function LineFeaturesController({ fallback }: { fallback: ReactNode }) {
   const { phase, view } = useLineFeatures();
-  return <FeaturesSwitchPage phase={phase} view={view} fallback={fallback} />;
+  return <FeaturesSwitchPage phase={phase} view={view} fallback={fallback} trace={<LineTraceController screen="features" />} />;
 }
