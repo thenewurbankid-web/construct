@@ -57,6 +57,19 @@ export function useImport(given?: ImportApi): ImportControls {
     call((a) => a.importApply({ folder, answers }, shown), (body) => dispatch({ type: 'APPLIED', result: body as never }));
   }, [call]);
 
+  const undo = useCallback(() => {
+    const { folder, result } = current.current;
+    if (!result?.pending) return;
+    dispatch({ type: 'UNDO' });
+    call((a) => a.importUndo(folder, result), (body) => dispatch({ type: 'APPLIED', result: body as never }));
+  }, [call]);
+  const leave = useCallback(() => {
+    const { folder, result, plan: shown } = current.current;
+    if (!result?.pending) return;
+    dispatch({ type: 'LEAVE' });
+    call((a) => a.importLeave(folder, result, shown), (body) => dispatch({ type: 'APPLIED', result: body as never }));
+  }, [call]);
+
   const view = useMemo(() => importView(state), [state]);
-  return useMemo(() => ({ state, view, setFolder, scan, answer, plan, apply }), [state, view, setFolder, scan, answer, plan, apply]);
+  return useMemo(() => ({ state, view, setFolder, scan, answer, plan, apply, undo, leave }), [state, view, setFolder, scan, answer, plan, apply, undo, leave]);
 }

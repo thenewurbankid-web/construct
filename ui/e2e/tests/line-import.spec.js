@@ -70,9 +70,11 @@ test.describe.serial('Line: Import one folder of an existing app (import sample)
     await screen.getByRole('button', { name: 'Apply' }).click();
     await expect(screen.getByTestId('li-notice')).toContainText('Saved. Brings 6 items of src/alerts into Line', { timeout: 60_000 });
     await expect(screen.locator('[data-testid="li-step"][data-state="done"]')).toHaveCount(11);
-    // Apply was the person's one approval: the 11 import steps are steps of the project's plan, all done.
+    // Apply was the person's one approval: line.import.save (so a refused import can be undone), then the 11 import
+    // steps, all steps of the project's plan, all done.
     const plan = await (await request.get(`${API}/api/line/plan`)).json();
-    expect(plan.steps.map((st) => [st.tool.split('.').slice(0, 2).join('.'), st.state])).toEqual(Array.from({ length: 11 }, () => ['line.import', 'done']));
+    expect(plan.steps[0].tool).toBe('line.import.save');
+    expect(plan.steps.map((st) => [st.tool.split('.').slice(0, 2).join('.'), st.state])).toEqual(Array.from({ length: 12 }, () => ['line.import', 'done']));
     expect(fs.readFileSync(path.join(base, 'src/alerts/features/alerts/components/Table.tsx'), 'utf8')).toMatch(/^\/\/ @line-base components\/Table\n/);
     expect(fs.readFileSync(path.join(base, 'src/alerts/features/alerts/pages/AlertsPage.tsx'), 'utf8')).toContain('// @line-route /alerts');
     expect(read(base, 'src/App.tsx').equals(app)).toBe(true);

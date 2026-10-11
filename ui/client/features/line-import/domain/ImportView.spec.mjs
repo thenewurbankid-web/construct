@@ -46,3 +46,15 @@ test('the flow: scan -> answer -> plan -> apply; an answer drops the old plan; a
   assert.ok(isRefusal({ ok: false, sentence: 'No.', code: 'X' }));
   assert.ok(!isRefusal({ ok: false, sentence: 'Stopped.', steps: [] }), 'a refused apply is an answer, not a refusal');
 });
+
+test('a late refusal waits for Undo or Leave; Undo ends with the folder back and no error', () => {
+  const planned = { ...initialImport, phase: 'planned', folder: 'src/opp', plan: mock.plan({ folder: 'src/alerts', answers: {} }) };
+  const refused = { ok: false, sentence: 'Stopped at "x": no.', files: [], findings: [], steps: [], pending: { planStepId: 'p3', rest: [], landed: 2 } };
+  let s = importReducer(importReducer(planned, { type: 'APPLY' }), { type: 'APPLIED', result: refused });
+  assert.deepEqual([s.phase, s.error], ['planned', 'Stopped at "x": no.']);
+  assert.equal(importReducer(planned, { type: 'UNDO' }), planned, 'nothing to undo without a pending refusal');
+  s = importReducer(s, { type: 'UNDO' });
+  assert.equal(s.phase, 'applying');
+  s = importReducer(s, { type: 'APPLIED', result: { ok: false, undone: true, sentence: 'Undone: src/opp is back.', files: [], findings: [], steps: [] } });
+  assert.deepEqual([s.phase, s.error, s.result.undone], ['planned', null, true]);
+});

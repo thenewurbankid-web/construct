@@ -1,4 +1,4 @@
-import type { ImportApplyResult } from '../types';
+import type { ImportApplyOutcome, ImportApplyResult } from '../types';
 import { TechDetails } from './TechDetails';
 
 function Landed({ result }: { result: ImportApplyResult }) {
@@ -20,12 +20,23 @@ function Refused({ sentence, result }: { sentence: string; result: ImportApplyRe
   );
 }
 
-/** The outcome of Apply, or the sentence of the last refused call; always rendered as a live region. */
-export function ImportNotice({ result, error }: { result: ImportApplyResult | null; error: string | null }) {
+function Undone({ result }: { result: ImportApplyResult }) {
+  return (
+    <div className="li-notice" data-testid="li-undone">
+      <p>{result.sentence}</p>
+      <TechDetails summary="Details" lines={result.files} />
+    </div>
+  );
+}
+
+/** The outcome of Apply (or of its Undo), or the sentence of the last refused call; always rendered as a live region. */
+export function ImportNotice({ result, error }: { result: ImportApplyOutcome | null; error: string | null }) {
   const landed = result?.ok ? result : null;
+  const undone = result?.undone ? result : null;
   return (
     <div className="li-notice-slot" role="status" aria-live="polite">
       {landed && <Landed result={landed} />}
+      {undone && <Undone result={undone} />}
       {error && <Refused sentence={error} result={result} />}
     </div>
   );
