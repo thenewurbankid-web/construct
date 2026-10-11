@@ -11,11 +11,11 @@ if (cmd === '--version' || cmd === '-v') {
   process.exit(0);
 }
 
-const { EXIT_CODES, ConstructError } = await import('../core/diagnostics.mjs');
-const { USAGE } = await import('../core/usage.mjs');
-const { createCommandRegistry } = await import('../core/command-registry.mjs');
-const { registerBuiltinCommands } = await import('../core/builtin-commands.mjs');
-const { discoverPluginCommands } = await import('../core/plugin-commands.mjs');
+const { EXIT_CODES, ConstructError } = await import('@line/construct-core/diagnostics');
+const { USAGE } = await import('@line/construct-core/usage');
+const { createCommandRegistry } = await import('@line/construct-core/command-registry');
+const { registerBuiltinCommands } = await import('@line/construct-core/builtin-commands');
+const { discoverPluginCommands } = await import('@line/construct-core/plugin-commands');
 
 // #700: a command registry replaces the old hand-written if-chain. Built-in commands
 // (packages/core/cli.mjs, via builtin-commands.mjs) and an installed package's own commands (its
