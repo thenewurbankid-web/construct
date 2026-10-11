@@ -620,3 +620,114 @@ export function parseFailures(project) {
   }
   return out;
 }
+
+// ---------------------------------------------------------------------------------------------
+// LINE-MODULE
+
+const CONTRACT_FILE = /^(contract|types)\.[cm]?[jt]sx?$/;
+const DTS_FILE = /\.d\.[cm]?ts$/;
+const JS_FILE = /\.[cm]?jsx?$/;
+const JSDOC_TYPES = /@(typedef|callback)\b/;
+const MOCK_FILE = /(^mocks?\.[^/]+$)|(\.mock\.[^/]+$)/;
+const TEST_FILE = /\.(test|spec)\.[^/]+$/;
+const TEST_DIRS = new Set(['test', 'tests', '__tests__']);
+
+/**
+ * The packages of a project: every folder with a package.json directly under a package root, or under an @scope folder there.
+ * @param {ReturnType<typeof loadProject>} project The loaded project.
+ * @param {string[]} packageRoots Root-relative folders (line.packageRoots).
+ * @returns {{dir: string, name: string|null, pkg: any, files: string[]}[]} Each package with its root-relative folder, name, parsed package.json and files (relative to the package).
+ */
+export function findPackages(project, packageRoots) {
+  const out = [];
+  const isPkgJson = (rest) => /^[^/@][^/]*\/package\.json$/.test(rest) || /^@[^/]+\/[^/]+\/package\.json$/.test(rest);
+  for (const root of packageRoots) {
+    for (const f of project.files) {
+      if (!f.rel.startsWith(`${root}/`) || !isPkgJson(f.rel.slice(root.length + 1))) continue;
+      const dir = posix.dirname(f.rel);
+      let pkg = null;
+      try { pkg = JSON.parse(project.source(f.rel)); } catch { pkg = null; }
+      out.push({ dir, name: pkg && typeof pkg.name === 'string' ? pkg.name : null, pkg, files: [] });
+    }
+  }
+  const byDir = new Map(out.map((p) => [p.dir, p]));
+  for (const f of project.files) {
+    const segs = f.rel.split('/');
+    for (let i = segs.length - 1; i > 0; i--) {
+      const p = byDir.get(segs.slice(0, i).join('/'));
+      if (p) { p.files.push(segs.slice(i).join('/')); break; }
+    }
+  }
+  return out;
+}
+
+/** Whether `sub` ("./x/y") is listed by a package.json "exports" value (exact keys, folder keys and one-star patterns). */
+function exportsAllows(exportsField, sub) {
+  if (!exportsField || typeof exportsField !== 'object' || Array.isArray(exportsField)) return false;
+  return Object.keys(exportsField).some((k) => {
+    if (!k.startsWith('.')) return false;
+    if (k === sub) return true;
+    const star = k.indexOf('*');
+    if (star < 0) return k.endsWith('/') && sub.startsWith(k);
+    return sub.length >= k.length - 1 && sub.startsWith(k.slice(0, star)) && sub.endsWith(k.slice(star + 1));
+  });
+}
+
+/**
+ * LINE-MODULE: every package has a typed contract, a mock and its own tests, and other packages reach it only by name.
+ * @param {ReturnType<typeof loadProject>} project The loaded project.
+ * @param {{packageRoots: string[], writerExempt: string[]}} line Normalized `line:` config.
+ * @returns {{rule: string, file: string, line: number, message: string}[]} The hits.
+ */
+export function checkModules(project, line) {
+  const hits = [];
+  const packages = findPackages(project, line.packageRoots);
+  const label = (p) => (p.name ? `The package "${p.name}" (${p.dir})` : `The package in ${p.dir}`);
+  for (const p of packages) {
+    const add = (message) => hits.push({ rule: 'LINE-MODULE', file: `${p.dir}/package.json`, line: 1, message });
+    const atContractSpot = (f) => !f.includes('/') || (f.startsWith('src/') && f.split('/').length === 2);
+    const candidates = p.files.filter((f) => atContractSpot(f) && (CONTRACT_FILE.test(posix.basename(f)) || DTS_FILE.test(f)));
+    const typed = candidates.filter((f) => !JS_FILE.test(f) || JSDOC_TYPES.test(project.source(`${p.dir}/${f}`)));
+    const declared = [p.pkg?.types, p.pkg?.typings].filter((t) => typeof t === 'string').map((t) => posix.normalize(t.replace(/^\.\//, '')));
+    if (!typed.length && !declared.some((t) => p.files.includes(t))) {
+      const untyped = candidates.filter((f) => JS_FILE.test(f));
+      if (untyped.length) add(`${label(p)} has ${untyped.map((f) => `${p.dir}/${f}`).join(' and ')} but no JSDoc @typedef or @callback in it, so it does not describe a typed contract; add the types of what the package takes and returns there, or add ${p.dir}/contract.d.ts.`);
+      else add(`${label(p)} has no typed contract; add ${p.dir}/contract.d.ts (or contract.ts or types.ts in ${p.dir}/src/, or a "types" entry in its package.json naming a real file) describing what it takes and returns, so other modules can rely on it and swap it for a mock.`);
+    }
+    if (!p.files.some((f) => MOCK_FILE.test(posix.basename(f)) || f.split('/').includes('__mocks__'))) {
+      add(`${label(p)} has no mock; add ${p.dir}/mock.mjs (or mock.ts, or a __mocks__/ folder) exporting a stand-in with the same contract, so other modules can test without it and Line can fall back when it is down.`);
+    }
+    if (!p.files.some((f) => TEST_FILE.test(posix.basename(f)) || f.split('/').slice(0, -1).some((s) => TEST_DIRS.has(s)))) {
+      add(`${label(p)} has no tests of its own; add them in ${p.dir}/test/ (or as *.test.* files next to its code), so it can be checked on its own.`);
+    }
+  }
+
+  const byName = new Map(packages.filter((p) => p.name).map((p) => [p.name, p]));
+  const ownerOf = (rel) => packages.find((p) => rel === p.dir || rel.startsWith(`${p.dir}/`));
+  for (const p of packages) {
+    for (const f of p.files) {
+      const rel = `${p.dir}/${f}`;
+      // Tests (line.writerExempt) may reach into what they test, as LINE-WRITER and LINE-SHARED allow them.
+      if (!isCode(rel) || matchesAny(rel, line.writerExempt)) continue;
+      const ast = project.ast(rel);
+      if (ast instanceof Error) continue;
+      for (const e of moduleEdges(ast)) {
+        const spec = e.specifier;
+        if (spec.startsWith('.')) {
+          const other = ownerOf(posix.normalize(posix.join(posix.dirname(rel), spec)));
+          if (!other || other === p) continue;
+          const how = other.name ? `import it by its name "${other.name}" (or a subpath its package.json "exports" lists)` : `give ${other.dir}/package.json a name and import the package by that name`;
+          hits.push({ rule: 'LINE-MODULE', file: rel, line: e.line, message: `"${rel}" imports "${spec}", a path into the package in ${other.dir}; ${how}, so that package can change its insides or be swapped for its mock.` });
+          continue;
+        }
+        const name = spec.startsWith('@') ? spec.split('/').slice(0, 2).join('/') : spec.split('/')[0];
+        const other = byName.get(name);
+        if (!other || other === p || spec === name) continue;
+        const sub = `.${spec.slice(name.length)}`;
+        if (exportsAllows(other.pkg?.exports, sub)) continue;
+        hits.push({ rule: 'LINE-MODULE', file: rel, line: e.line, message: `"${rel}" imports "${spec}", a file inside ${name} that its package.json "exports" does not list; import "${name}" itself, or add "${sub}" to the "exports" of ${other.dir}/package.json if it is meant to be public.` });
+      }
+    }
+  }
+  return hits;
+}

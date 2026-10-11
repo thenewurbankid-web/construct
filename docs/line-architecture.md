@@ -143,6 +143,21 @@ file and says what to do.
   re-implementations, not an algorithm rewritten under other names. A copy found by review is added
   to the concern's `declares` or `strings` in `contract.mjs` (`SHARED_CONCERNS`).
 
+### LINE-MODULE
+
+- **Message (why):** Every module has a typed contract, a mock and its own tests, and other modules
+  use it only through its name, so any module can be swapped for its mock, tested alone and fall back
+  when it is down.
+- **Check:** a package is a folder with a `package.json` directly under a `line.packageRoots` folder
+  (default `packages`; `@scope/name` too). Each package needs (a) a typed contract: `contract.*`,
+  `types.*` or a `.d.ts` at its root or in `src/` (a `.js`/`.mjs` contract must hold a JSDoc
+  `@typedef` or `@callback`), or a `types`/`typings` entry in its package.json naming a real file;
+  (b) a mock: `mock.*`, `mocks.*`, `*.mock.*` or a `__mocks__/` folder; (c) its own tests:
+  `*.test.*`, `*.spec.*`, or a `test/`, `tests/` or `__tests__/` folder inside it. Each missing piece
+  is one finding on `<package>/package.json` line 1. (d) A file in a package that imports another
+  package by a relative path, or by a subpath that package's `exports` does not list, is reported at
+  the import; tests (`line.writerExempt`) may reach into what they test.
+
 ## Shared modules
 
 The owner's rule: the best module from each app becomes the shared one, and every other app and

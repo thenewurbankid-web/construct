@@ -35,8 +35,8 @@ function copyFixture(name, overlay = {}) {
 
 const where = (vs) => vs.map((v) => `${v.rule} ${v.file}:${v.line}`).sort();
 
-test('contract: six LINE rules, each with a one-sentence why and how it is checked', () => {
-  assert.deepEqual([...LINE_RULE_IDS].sort(), ['LINE-BASE', 'LINE-DIR', 'LINE-LAYOUT', 'LINE-OWNER', 'LINE-SHARED', 'LINE-WRITER']);
+test('contract: seven LINE rules, each with a one-sentence why and how it is checked', () => {
+  assert.deepEqual([...LINE_RULE_IDS].sort(), ['LINE-BASE', 'LINE-DIR', 'LINE-LAYOUT', 'LINE-MODULE', 'LINE-OWNER', 'LINE-SHARED', 'LINE-WRITER']);
   for (const id of LINE_RULE_IDS) {
     const r = LINE_RULES[id];
     assert.equal(r.id, id);
@@ -52,6 +52,11 @@ test('contract: line config defaults and plain-English usage errors', () => {
   assert.deepEqual(c.writers, []);
   assert.ok(c.writerExempt.includes('**/*.test.*'));
   assert.equal(c.rules['LINE-WRITER'].severity, 'error');
+  assert.equal(c.rules['LINE-MODULE'].severity, 'error');
+  assert.deepEqual(c.packageRoots, ['packages']);
+  assert.deepEqual(normalizeLineConfig({ packageRoots: ['libs/', './modules'] }).packageRoots, ['libs', 'modules']);
+  assert.throws(() => normalizeLineConfig({ packageRoots: 'packages' }), /must be a list of path patterns/);
+  assert.throws(() => normalizeLineConfig({ packageRoots: ['../elsewhere'] }), /folder path inside the project/);
   assert.equal(normalizeLineConfig({ rules: { 'LINE-WRITER': 'warning' } }).rules['LINE-WRITER'].severity, 'warning');
   assert.throws(() => normalizeLineConfig({ rules: { 'LINE-NOPE': 'error' } }), (e) => e instanceof ConstructError && /is not a Line rule/.test(e.message));
   assert.throws(() => normalizeLineConfig({ rules: { 'LINE-BASE': 'loud' } }), /must be error, warning, info or off/);
@@ -93,6 +98,16 @@ const EXPECTED = {
     'LINE-SHARED packages/tool/ask.js:1',
     'LINE-SHARED packages/tool/ask.js:5',
     'LINE-SHARED packages/tool/tools.js:1',
+  ],
+  'LINE-MODULE': [
+    'LINE-MODULE packages/@acme/bare/package.json:1',
+    'LINE-MODULE packages/@acme/bare/package.json:1',
+    'LINE-MODULE packages/@acme/bare/package.json:1',
+    'LINE-MODULE packages/caller/index.js:1',
+    'LINE-MODULE packages/caller/index.js:2',
+    'LINE-MODULE packages/caller/index.js:5',
+    'LINE-MODULE packages/jsdoc/package.json:1',
+    'LINE-MODULE packages/notyped/package.json:1',
   ],
   'LINE-LAYOUT': [
     'LINE-LAYOUT features/orders/notes.txt:1',
@@ -226,6 +241,9 @@ test('LINE-SHARED: each concern names the module that wins and its signals; owne
   assert.equal(packageNameOf(path.join(FIXTURES, 'passing'), 'packages/reason/decide.js', new Map()), '@mx/reason');
   const dir = copyFixture('LINE-SHARED');
   fs.writeFileSync(path.join(dir, 'packages', 'tool', 'package.json'), '{"name":"tool"}\n');
+  // a package now needs a contract and a mock too (LINE-MODULE); its tests/ folder is already there
+  fs.writeFileSync(path.join(dir, 'packages', 'tool', 'contract.d.ts'), 'export declare function ask(q: string): Promise<string>;\n');
+  fs.writeFileSync(path.join(dir, 'packages', 'tool', 'mock.js'), 'export const ask = async () => "";\n');
   fs.writeFileSync(path.join(dir, 'architecture.yml'), 'version: 1\npreset: line\nline:\n  writers: ["packages/writer/**"]\n  sharedOwners:\n    ai: [tool]\n');
   assert.deepEqual(where(validateLine(dir).violations), ['LINE-SHARED packages/tool/tools.js:1']);
   assert.throws(() => normalizeLineConfig({ sharedOwners: { cooking: ['x'] } }), /is not a shared concern/);
@@ -298,4 +316,53 @@ test('the writer gate checks a preset: line project with the Line rules, not onl
   assert.equal(r.committed, false);
   assert.ok(r.violations.some((v) => v.rule === 'LINE-DIR'), JSON.stringify(r.violations.map((v) => v.rule)));
   assert.equal(fs.existsSync(path.join(dir, 'features/billing/pages/Cross.tsx')), false);
+});
+
+test('LINE-MODULE messages say which piece is missing and where to add it', () => {
+  const msgs = validateLine(path.join(FIXTURES, 'LINE-MODULE')).violations.map((v) => v.message);
+  const bare = msgs.filter((m) => m.includes('"@acme/bare"'));
+  assert.equal(bare.length, 3);
+  assert.ok(bare.some((m) => /has no typed contract; add packages\/@acme\/bare\/contract\.d\.ts/.test(m)));
+  assert.ok(bare.some((m) => /has no mock; add packages\/@acme\/bare\/mock\.mjs/.test(m)));
+  assert.ok(bare.some((m) => /has no tests of its own; add them in packages\/@acme\/bare\/test\//.test(m)));
+  assert.ok(msgs.some((m) => /packages\/jsdoc\/contract\.js but no JSDoc @typedef or @callback/.test(m)));
+  assert.ok(msgs.some((m) => /imports "\.\.\/reason\/decide\.js", a path into the package in packages\/reason; import it by its name "@mx\/reason"/.test(m)));
+  assert.ok(msgs.some((m) => /add "\.\/decide\.js" to the "exports" of packages\/reason\/package\.json/.test(m)));
+});
+
+test('LINE-MODULE: adding what each message asks for clears every finding', () => {
+  const dir = copyFixture('LINE-MODULE', {
+    'packages/@acme/bare/contract.d.ts': 'export declare const bare: boolean;\n',
+    'packages/@acme/bare/mock.mjs': 'export const bare = false;\n',
+    'packages/@acme/bare/test/bare.test.mjs': 'import { bare } from "../index.js";\nexport const ok = bare;\n',
+    'packages/jsdoc/contract.js': '/** @typedef {{ version: number }} Info */\nexport const VERSION = 1;\n',
+    'packages/notyped/src/types.ts': 'export type Ping = () => string;\n',
+    'packages/caller/index.js': 'import { decide } from "@mx/reason";\nimport "@mx/reason/contract";\nimport { ping } from "@mx/notyped";\nexport const call = (p) => decide(p) ?? ping();\n',
+  });
+  assert.deepEqual(where(validateLine(dir).violations), []);
+});
+
+test('LINE-MODULE: package roots, scopes, "types" entries, exports patterns and tests', () => {
+  const pkg = (name, extra = {}) => JSON.stringify({ name, private: true, ...extra });
+  const dir = copyFixture('passing', {
+    'architecture.yml': 'version: 1\npreset: line\nline:\n  writers:\n    - packages/writer/**\n  packageRoots:\n    - packages\n    - libs\n',
+    // a "types" entry naming a file that does not exist does not count
+    'libs/ghost/package.json': pkg('@x/ghost', { types: './missing.d.ts' }),
+    'libs/ghost/mock.ts': 'export {};\n',
+    'libs/ghost/ghost.test.ts': 'export {};\n',
+    // exports patterns allow matching subpaths only; a test file may reach into what it tests
+    'libs/lib/package.json': pkg('@x/lib', { exports: { '.': './index.js', './feature/*': './src/feature/*.js' } }),
+    'libs/lib/index.d.ts': 'export {};\n',
+    'libs/lib/lib.mock.js': 'export {};\n',
+    'libs/lib/tests/lib.spec.js': 'import "../../use/inner.js";\n',
+    'libs/use/package.json': pkg('@x/use'),
+    'libs/use/types.ts': 'export {};\n',
+    'libs/use/__mocks__/use.js': 'export {};\n',
+    'libs/use/use.spec.ts': 'import "@x/lib/src/internal.js";\n',
+    'libs/use/inner.js': 'import "@x/lib/feature/a";\nimport "@x/lib/src/internal.js";\nimport "@x/lib";\n',
+    // folders without a package.json, and packages nested deeper than one level (or one scope), are not checked
+    'libs/plain/index.js': 'export {};\n',
+    'libs/use/nested/package.json': pkg('@x/nested'),
+  });
+  assert.deepEqual(where(validateLine(dir).violations), ['LINE-MODULE libs/ghost/package.json:1', 'LINE-MODULE libs/use/inner.js:2']);
 });
