@@ -15,7 +15,7 @@ import crypto from 'node:crypto';
 import { writeLineState } from '../../transactionalWriter.mjs';
 import { LineOpError } from '../contract.mjs';
 import { KIND_LAYER, REQUEST_SLOT, SLOT_REF } from './contract.mjs';
-import { suggestFromLexicon } from './lexicon.mjs';
+import { suggestFromLexicon, EVERYDAY_GRAMMAR, EVERYDAY_PHRASES } from './lexicon.mjs';
 import { splitWords } from '../slots.mjs';
 
 /** Words that carry function, not domain: kept as they are in the normalized request. */
@@ -57,7 +57,10 @@ third last one two three true false yes again next existing current whole when`.
 const KIND_WORDS = { page: 'pages', pages: 'pages', screen: 'pages', view: 'pages', component: 'components', button: 'components', card: 'components', widget: 'components', workflow: 'workflows', flow: 'workflows', fixture: 'fixtures', feature: 'feature' };
 const LETTER = { feature: 'F', pages: 'P', components: 'C', workflows: 'W', fixtures: 'X', library: 'L', prop: 'A', variable: 'S' };
 const PRIORITY = { feature: 0, item: 1, library: 2, variable: 3, prop: 4 };
-const NEW_VERBS = /^(add|create|make|new|rename|build|start|insert|put|place|call|name)$/;
+const NEW_VERBS = /^(add|create|make|new|rename|build|start|insert|put|place|call|name|need|needs|want|wants|give|gives)$/;
+/** Where an unknown word that nothing resolves names a missing feature or library item (Construct then refuses it). */
+const FEATURE_PREP = /^(in|to|for|into|inside)$/;
+const LIBRARY_AFTER = /^(based|built|basing|shaped)$/;
 
 export { splitWords } from '../slots.mjs';
 const singular = (w) => (w.endsWith('ies') ? `${w.slice(0, -3)}y` : w.endsWith('ses') ? w.slice(0, -2) : w.endsWith('s') && !w.endsWith('ss') ? w.slice(0, -1) : w);
@@ -163,6 +166,20 @@ function distance(a, b) {
 }
 
 const pascal = (w) => w.charAt(0).toUpperCase() + w.slice(1);
+
+/**
+ * Whether the unknown word at tokens[i] stands where a request names its target: a feature ("in archive", "to
+ * archive") or a library item ("based on Tooltip", "from Tooltip", "a Carousel called ..."); null elsewhere.
+ * @param {{t: string}[]} tokens @param {number} i
+ * @returns {'feature'|'library'|null}
+ */
+function missingRole(tokens, i) {
+  const prev = tokens[i - 1]?.t ?? ''; const prev2 = tokens[i - 2]?.t ?? ''; const next = tokens[i + 1]?.t ?? '';
+  if ((prev === 'on' && LIBRARY_AFTER.test(prev2)) || prev === 'from' || (prev === 'like' && LIBRARY_AFTER.test(prev2))) return 'library';
+  if (/^(a|an)$/.test(prev) && /^(called|named|to|in|for|into)$/.test(next)) return 'library';
+  if (FEATURE_PREP.test(prev) && !KIND_WORDS[next]) return 'feature';
+  return null;
+}
 const label = (e) => (e.type === 'feature' ? `the ${e.value.name} feature` : e.type === 'library' ? `the library ${e.value.name}` : e.type === 'item' ? `${e.value.name} in ${e.value.feature}` : e.value.name);
 
 /**
@@ -257,12 +274,29 @@ export function normalize(request, map, o = {}) {
     }
   }
 
+  // 2b. Everyday phrases for a library prop or handler ("per page" -> size, "titled" -> title): rewritten, then looked
+  //     up in the project map like any phrase (a project without that prop leaves the words as they are).
+  for (let i = 0; i < tokens.length; i++) {
+    if (tokens[i].slot) continue;
+    const p = EVERYDAY_PHRASES.find((x) => x.say.every((w, k) => tokens[i + k] && !tokens[i + k].slot && tokens[i + k].t === w));
+    if (!p) continue;
+    const span = tokens.slice(i, i + p.say.length);
+    const keys = formIndex.get(p.means.join(' ')) ?? formIndex.get(p.means.join(''));
+    if (keys) {
+      const s = useEntry(keys);
+      tokens.splice(i, p.say.length, { t: `<${typeName(s)}:${s}>`, slot: s, kind: typeName(s), src: span.flatMap((x) => x.src) });
+    } else {
+      tokens.splice(i, p.say.length, ...p.means.map((w, k) => ({ t: w, raw: w, src: k ? [] : span.flatMap((x) => x.src) })));
+      i += p.means.length - 1;
+    }
+  }
+
   // 3. What is left: function words stay; a noun next to a kind word under an add/rename verb is a NEW name; else unknown.
   const verbFirst = tokens.find((x) => !x.slot && FUNCTION_WORDS.has(x.t))?.t ?? '';
   const creating = NEW_VERBS.test(verbFirst) || tokens.some((x) => /^(called|named)$/.test(x.t));
   for (let i = 0; i < tokens.length; i++) {
     const x = tokens[i];
-    if (x.slot || FUNCTION_WORDS.has(x.t)) continue;
+    if (x.slot || FUNCTION_WORDS.has(x.t) || EVERYDAY_GRAMMAR.has(x.t)) continue;
     const prev = tokens[i - 1]?.t ?? ''; const next = tokens[i + 1]?.t ?? '';
     const kindNext = KIND_WORDS[next]; const kindPrev = KIND_WORDS[prev];
     // "a refund page", "a new waiting room page": an article before the words marks something new; "the X page" is existing.
@@ -301,12 +335,25 @@ export function normalize(request, map, o = {}) {
       tokens[i] = { t: `<${typeName(s)}:${s}>`, slot: s, kind: typeName(s), src: x.src };
       continue;
     }
-    const s = slotFor('U');
-    bindings[s] = x.t;
-    tokens[i] = { t: `<unknown:${s}>`, slot: s, kind: 'unknown', src: x.src };
     const near = map.entries.map((e) => ({ e, d: Math.min(...e.forms.map((f) => distance(x.t, f))) })).filter((c) => c.d <= Math.max(1, Math.floor(x.t.length / 4))).sort((a, b) => a.d - b.d || PRIORITY[a.e.type] - PRIORITY[b.e.type]).slice(0, 3);
     let suggested = near[0]?.e.key ?? null; let via = /** @type {'map'|'lexicon'|'model'|'ask'} */ (suggested ? 'map' : 'ask');
     if (!suggested && o.lexicon !== false) { const lx = suggestFromLexicon(x.t, map); if (lx) { suggested = lx; via = 'lexicon'; } }
+    // Refusal semantics: a word in a target place ("in archive", "based on Tooltip", "a Carousel called ...") that
+    // neither the project map nor the lexicon resolves names a MISSING feature or library item. It is drafted as asked
+    // and Construct refuses it with its own sentence; a near miss stays a closed "Did you mean" question.
+    const missing = !suggested && creating ? missingRole(tokens, i) : null;
+    if (missing) {
+      const s = slotFor('M');
+      const raw = x.raw ?? x.t;
+      const kind = missing === 'library' ? KIND_WORDS[next] ?? KIND_WORDS[prev] ?? 'components' : 'feature';
+      const name = missing === 'feature' ? x.t : kind === 'fixtures' || kind === 'workflows' ? raw : pascal(raw);
+      bindings[s] = missing === 'feature' ? { id: name, name, missing: 'feature' } : { id: `${kind}/${name}`, name, kind: kind === 'feature' ? 'components' : kind, missing: 'library' };
+      tokens[i] = { t: `<missing:${s}>`, slot: s, kind: 'missing', src: x.src };
+      continue;
+    }
+    const s = slotFor('U');
+    bindings[s] = x.t;
+    tokens[i] = { t: `<unknown:${s}>`, slot: s, kind: 'unknown', src: x.src };
     const choiceKeys = [...new Set([...(suggested ? [suggested] : []), ...near.map((c) => c.e.key), ...map.entries.filter((e) => e.type === 'feature').map((e) => e.key)])].slice(0, 4);
     if (!suggested && o.propose) { const m = o.propose(x.t, choiceKeys.map((k) => ({ key: k, label: label(byKey.get(k)) }))); if (m && byKey.has(m)) { suggested = m; via = 'model'; } }
     const choices = choiceKeys.filter((k) => byKey.has(k)).map((k) => ({ key: k, label: label(byKey.get(k)) }));
@@ -352,12 +399,13 @@ export function slotShapes(bindings, entryOf, summary, roles) {
       out[s] = { kind: 'feature', layers: [...new Set(items.map((i) => KIND_LAYER[i.kind]))].sort(), roles: [...new Set(items.map((i) => roles.get(i.id)).filter(Boolean))].sort(), counts };
     } else if ('PCWX'.includes(L)) out[s] = { kind: { P: 'page', C: 'component', W: 'workflow', X: 'fixture' }[L], area: 'feature', itemKind: b.kind, layer: KIND_LAYER[b.kind], role: roles.get(b.id) ?? 'unbased', ...(featureSlot[b.feature] ? { of: featureSlot[b.feature] } : {}) };
     else if (L === 'L') out[s] = { kind: 'library', area: 'library', itemKind: b.kind, layer: 'library', role: roles.get(b.id) ?? 'atom' };
-    else if (L === 'A') out[s] = { kind: 'prop' };
+    else if (L === 'A') out[s] = { kind: 'prop', ...(/^on[A-Z]/.test(String(b?.name ?? '')) ? { handler: true } : {}) };
     else if (L === 'S') out[s] = { kind: 'variable', ...(featureSlot[b.feature] ? { of: featureSlot[b.feature] } : {}) };
     else if (L === 'V') out[s] = { kind: 'value', valueType: typeof b };
     else if (L === 'N') out[s] = { kind: 'new', isNew: true };
     else if (L === 'K') out[s] = { kind: 'code' };
     else if (L === 'U') out[s] = { kind: 'unknown' };
+    else if (L === 'M') out[s] = { kind: 'missing', of: b.missing, ...(b.kind ? { itemKind: b.kind } : {}) };
     else out[s] = { kind: ({ R: 'problem', T: 'part', G: 'fragment' })[L] ?? 'other' };
     void entryOf;
   }

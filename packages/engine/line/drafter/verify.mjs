@@ -38,6 +38,7 @@ function featureOf(route, bindings) {
  * @returns {{feature: string|null, project: string}|null}
  */
 export function predictHashes(graph, route, bindings) {
+  if (!Array.isArray(route.delta) || /** @type {any} */ (route).unpredicted) return null;
   const delta = bind(route.delta, bindings);
   if (hasSlots(delta)) return null;
   const h = hashesOf(applyDelta(graph, delta), featureOf(route, bindings));

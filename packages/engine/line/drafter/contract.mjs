@@ -54,6 +54,7 @@ export const ROUTE_STATUS = Object.freeze(['ok', 'refused', 'wrong-shape', 'fail
 /** Slot kinds: what a typed slot in a delexicalized request or a slot-form arg stands for. */
 export const SLOT_KINDS = Object.freeze({
   F: 'feature', P: 'page', C: 'component', W: 'workflow', X: 'fixture', L: 'library', A: 'prop', S: 'variable', V: 'value', N: 'new', K: 'code', R: 'problem', T: 'part', G: 'fragment', U: 'unknown',
+  M: 'missing',
 });
 /** A slot reference inside a stored string: <F1>, <C1.file>, or as written in a request <feature:F1>. */
 export const SLOT_REF = /<([A-Z])(\d+)(?:\.([a-zA-Z][a-zA-Z0-9]*))?>/g;
@@ -207,7 +208,7 @@ export const EDGE_TYPES = Object.freeze(['base', 'import']);
 // ------------------------------------------------------------------------------------------------ shapes
 /**
  * A slot's structure (stored), never its name.
- * @typedef {{kind: string, area?: 'feature'|'library', itemKind?: string, layer?: string, role?: string, of?: string, layers?: string[], roles?: string[], counts?: Record<string, number>, valueType?: string, isNew?: boolean}} SlotShape
+ * @typedef {{kind: string, area?: 'feature'|'library', itemKind?: string, layer?: string, role?: string, of?: string, layers?: string[], roles?: string[], counts?: Record<string, number>, valueType?: string, isNew?: boolean, handler?: boolean}} SlotShape
  */
 
 /**
@@ -218,7 +219,7 @@ export const EDGE_TYPES = Object.freeze(['base', 'import']);
  * @property {boolean} inCatalog
  * @property {string|null} target                            The main slot (e.g. "F1"), or null.
  * @property {{layer: string, confidence: number}[]} layers  Candidate layers, tuned for recall.
- * @property {'rules'|'model'} via
+ * @property {'rules'|'model'|'retrieval'} via  `retrieval`: a strong precedent (an approved request like this one) set the intent.
  */
 
 /**
@@ -254,7 +255,8 @@ export const EDGE_TYPES = Object.freeze(['base', 'import']);
  * @property {Route[]} routes
  * @property {{id: string, sentence: string}[]} dropped
  * @property {string|null} recommended
- * @property {{to: 'qwen'|'ask'|null, sentence: string}} defer
+ * @property {{to: 'qwen'|'ask'|null, sentence: string, about?: string, choices?: string[]}} defer  `about` and `choices`: a closed
+ *   question the drafter asks itself (no name or no library item given): its choices are the checked routes that answer it.
  * @property {Record<string, unknown>} bindings
  */
 

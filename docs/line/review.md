@@ -887,8 +887,58 @@ UAT (5 minutes):
 4. `node packages/cli/construct.mjs line check --dir examples/line-sample '{"hasItem": "orders/components/OrderButton"}'` prints "Holds."; `'{"hasLibrary": "components/Tag"}'` prints one sentence saying the library has no component Tag.
 
 Next steps (not built):
-- Feed Train's agreed cases to the drafter's retrieval (as transitions) so training actually changes what the drafter drafts, then rerun the eval.
-- Teach the classifier the verbs the misses show ("clear", "titled", "lives in"), each with a case, and raise the floors.
+- (Done 11 Oct, "System 1 accuracy": Train's train-split cases feed the drafter's retrieval; the everyday verbs are in the shared lexicon; floors raised.)
+
+## System 1 accuracy: rules, retrieval and templates raise the drafter on Train's held-out eval (11 Oct, branch `line-s1-accuracy`; awaiting UAT)
+
+No model was trained: every gain is a rule, a template, a lexicon entry or retrieval, and the classifier still sees only slots. Fixes were chosen from TRAIN-split failures only (a leave-one-world-out run over the 422 train cases); the held-out score was read once, at the end.
+
+Eval before -> after:
+
+| Train held-out (130 cases, worlds w30-w39) | recall | precision | preferred |
+|---|---|---|---|
+| all | 38% -> 96% | 39% -> 91% | 40% -> 100% |
+| Make from the library (`line.baseOn`) | | -> 100% | 61% -> 100% |
+| Move into the library (`line.promote`) | | -> 100% | 45% -> 100% |
+| Set a page value (`line.setPageProp`) | | -> 100% | 40% -> 100% |
+| Edit a piece of code (`line.setFragment`) | | -> 100% | 0% -> 100% |
+| Fix a problem (`line.fix`) | -> 75% | -> 75% | 38% -> 100% |
+| Refuse or ask (`none`) | -> 100% | -> 69% | 0% -> 100% |
+
+Drafter's own eval (`node packages/engine/line/drafter/eval.mjs`, 55 cases): recall 86% -> 93%, precision 96% -> 96%, preferred 86% -> 93%, labels 86% -> 93%, checks pass with no repair 75% -> 82%, deferred when wrong 88% -> 100%, hash misses 0. "Defer right" fell 84% -> 64% on purpose: see "Ask vs invent" below.
+
+What each fix contributed (train split, leave-one-world-out, preferred picked): before 37%; the rules and templates (fixes 2-5) 94%; with retrieval (fix 1) 99%.
+1. **Retrieval from Train** (`train/records.mjs`, `drafter/retrieval.mjs` `precedent`): each eligible Train case is normalized by the drafter's own domain map of its world and its gold routes are rewritten to the drafter's slot refs (`<F1>`, `<C1.base>`, `<F1>/components/<N1>`), the same slotted transition index the drafter already read. A strong precedent (an approved request with the same slots and at least 75% of the same words) sets the intent and ranks its preferred route first; a precedent refused as asked is the answer; a precedent that asked asks. Promote 66% -> 98% ("Let <F2> show <I1>, which lives in <F1>", "<F2> should use <I1> from <F1> too": Train's convention is the promote, which no rule would guess). Only train-split cases on train worlds that Construct verified and nobody disputed feed it; Train Line reads the committed index `line/train/retrieval-index.json` (`node packages/tools/line-train/retrieval-index.mjs`, `--check`) and builds only cases it does not hold. The seed's cases are Claude's verified drafts (no owner agreement yet); an agreed case wins a tie, a disputed one never feeds.
+2. **Everyday verbs and phrases** (`lexicon.json` `everyday`, static and curated): grammar words that never become a question ("built", "starting", "lives", "reported", "own"), phrases for a library prop or handler ("per page"/"at a time" -> size, "titled"/"heading" -> title, "asks for more"/"show-more action" -> onMore), everyday verbs ("needs", "want", "give" -> add, "clear" -> remove; clearing a problem is a fix; "fix it" anywhere is a fix). Set a page value 32% -> 98%; Fix 50% -> 100%; Make from the library 54% -> 99% (with the two combined templates: base-on then promote for "reusable"/"other features will want it", and a page plus the component it shows).
+3. **Ask vs invent**: a base-on route that must make up the name (or guess the library item) now asks one closed question ("What should the new Badge in orders be called? Line suggests OrdersBadge."; "Which library item should the new component of billing be based on?"). The choices are the checked routes, so one click (Add to plan) accepts the suggestion. The drafter's own corpus was written when inventing was right (its base-on golds say "no question"), so its "defer right" column drops; its route, preferred and label scores do not.
+4. **Ask vs refuse** (the rule, `domainMap.mjs` `missingRole`): an unknown word in a target place ("in archive", "to archive", "based on Tooltip", "from Tooltip", "a Carousel called ...") that neither the project map nor the shared lexicon resolves (no near miss, no lexicon suggestion) names a MISSING feature or library item (`<missing:M1>`). It is drafted as asked, Construct refuses it with its own sentence and code (UNKNOWN_FEATURE, UNKNOWN_ITEM; "another <item>" keeps the item's name, NAME_TAKEN), nothing is recommended, and the draft says "Construct refuses this as asked: ...". A near miss ("ordrs") is still one "Did you mean" question, and an unknown word anywhere else still asks. Refuse or ask 1% -> 99%.
+5. **Handler templates** (`templates.mjs` `handlerCode`): log a text (`() => console.log("...")`), navigate to a page's route or a quoted path, call a function of the same file, set a state of the same file. Anything else stays "needs code" (a model or the person writes it); nothing is faked. Edit a piece of code 0% -> 100%.
+
+Speed: Line's checks no longer start a `git ls-files` process in a folder outside any git work tree (every scratch copy), which was 80% of a draft's time: 30 Train drafts 21.7s -> 4.0s, so Run eval over the 130 held-out cases fits the scoreboard's minute again (`packages/core/profiles/line/checks.mjs`).
+
+Tests (all pass: `node --test test/line-*.test.mjs ui/server/src/line*.test.mjs packages/mcp/test/*.test.mjs`, 440 tests; tsc ratchet 594; api-coverage green; `fix-imports --dry-run` 0 findings; Playwright `playwright.line-drafter.config.js` on ports 3383/4383: 4 passed. `playwright.line-train.config.js`: before the speed fix 3 passed and the scoreboard spec timed out at its 60s Run eval (the UAT walk after it then met a busy server); the rerun after the speed fix is still owed, blocked by another session's stuck heavy-job lock):
+1. Everyday verbs and phrases: "orders needs a Badge" adds; "Clear the reported problem on InvoicesPage." is a fix with no question; "should be titled" sets the title; "has no base; fix it" is a fix; the everyday lexicon is well formed (`test/line-drafter.test.mjs`).
+2. No name given: one closed question whose choice is the checked route; no library item: which one; a name given: nothing to ask.
+3. Refuse vs ask: a missing feature (UNKNOWN_FEATURE), a missing library item (UNKNOWN_ITEM) and a taken name (NAME_TAKEN) are refused by Construct and nothing is recommended; "ordrs" is a question, never a refusal.
+4. Handler: "the show-more action should log ..." writes `() => console.log("...")` and passes Construct; "email the boss" gets no made-up code.
+5. A strong precedent sets the intent and its route comes first; an unapproved record is never a precedent.
+6. **Leakage** (`test/line-train.test.mjs`): every record comes from a train case on a train world; the records are identical with or without the held-out cases; a held-out world's case that claims the train split and the owner's agreement, a disputed case and a held-out case are all refused; no record holds a word of its world (the shared leak guard also drops one, e.g. a feature called "parts" that reads as grammar); the committed index is current and holds no held-out case; a poisoned index entry for a held-out case is never read.
+7. Floors raised to the new real numbers: Train held-out 96/91/100 plus 100% preferred per family; drafter eval dev recall 0.9, held-out project recall 1, precision 0.958, preferred and labels 0.927, deferred when wrong 1.
+
+Gaps:
+- Fix-family recall and precision 75%: Train's gold also lists the raw promote of the cross-feature item, which the request does not name (no slot to retrieve it by), and the drafter shows every typed fix.
+- Refuse or ask precision 69%: when Line asks, it still shows the checked routes (they are the question's choices); Train's gold has only the question.
+- The Cockpit drafter on a real project does not read Train's records yet (only Train Line and its eval do); wiring it means choosing whether imaginary-world precedents may rank routes on a user's project.
+- Cockpit shows the closed name or library question as a note above the route cards, not as buttons of its own.
+- Retrieved routes skip the structure-hash prediction (they carry no delta); Construct's write and the checks still run.
+- The drafter's own corpus still expects invented names without a question (see 3); the owner decides whether its golds follow Train's.
+- "Share <item> with <feature>" is now marked unsure (defers to a model) because the two corpora disagree on its preferred route.
+
+### UAT (5 minutes)
+1. `node packages/engine/line/drafter/eval.mjs`: the first row reads 93% route recall, 96% precision, 93% preferred, 0 hash misses.
+2. Open Cockpit, profile menu -> Train Line, press Run eval: the sentence reads about 96% of the valid routes found and 100% picked the preferred one.
+3. Under "Teach a new request" on the Line sample, type `Let billing show OrderButton, which lives in orders.` and press Draft: the kind of request reads "Move a component into the library" (set by a precedent from Train's cases) and the first route is "Move OrderButton from orders into the library.", the second "Make OrderButton in billing, based on the library Button.". Then `Make StatusBadge in archive, based on Badge.`: the one route reads "Changes nothing: Construct refuses it." (there is no archive feature).
+4. With the drafter on (`LINE_DRAFTER=1`), in Components -> "Describe a change": `add a badge to the orders feature` shows the note "What should the new Badge in orders be called? Line suggests OrdersBadge." above the checked route; `On OrdersPage, the show-more action should log "More orders".` gives a checked route whose Details show `() => console.log("More orders")`.
 
 ## Train Line: the owner and Claude train Line's drafter (awaiting UAT)
 

@@ -4,6 +4,7 @@
 // the facts summary, and adds DERIVED slots (a page part T, a fragment G, a problem R, an invented name N) to the
 // bindings when a route needs one. Construct's verification (verify.mjs) then keeps, marks or drops each route.
 import { KIND_LAYER } from './contract.mjs';
+import { handlerShape } from './lexicon.mjs';
 
 const SINGULAR = { components: 'component', pages: 'page', workflows: 'workflow', fixtures: 'fixture' };
 const OBJ_KIND = { component: 'components', page: 'pages', workflow: 'workflows', fixture: 'fixtures' };
@@ -62,29 +63,82 @@ function route(r) {
 
 // ------------------------------------------------------------------------------------------------ the templates
 /** base-on: a new feature item based on a library item, inside one feature. */
+/** Words that say the new item is for every feature ("reusable", "other features will want it too"). */
+const LIBRARY_WORDS = /^(reusable|everywhere|shared|common|global)$/;
+const wantsLibrary = (ctx) => ctx.words.some((w) => LIBRARY_WORDS.test(w)) || ctx.words.join(' ').includes('other features');
+
 function baseOn(ctx, intent, kind) {
-  const F = ctx.labels.target && ctx.labels.target[0] === 'F' ? ctx.labels.target : slotsOf(ctx, 'F').at(-1);
+  const t = ctx.labels.target;
+  // The feature: the target, or a MISSING feature the request names (Construct refuses it with its own sentence).
+  const F = t && (t[0] === 'F' || (t[0] === 'M' && ctx.slots[t]?.of === 'feature')) ? t : slotsOf(ctx, 'F').at(-1);
   if (!F || !kind) return [];
-  const named = slotsOf(ctx, 'L').filter((s) => ctx.bindings[s].kind === kind);
+  const missingLib = slotsOf(ctx, 'M').filter((s) => ctx.slots[s]?.of === 'library' && ctx.bindings[s].kind === kind);
+  const named = [...slotsOf(ctx, 'L').filter((s) => ctx.bindings[s].kind === kind), ...missingLib];
   // An item of another feature named in the request: its base is the library item to build on.
   const fromItems = slotsOf(ctx, ({ pages: 'P', components: 'C', workflows: 'W', fixtures: 'X' })[kind])
     .map((s) => ctx.bindings[s]).filter((b) => b.feature !== ctx.bindings[F] && b.base).map((b) => ctx.summary.library.find((l) => l.id === b.base)).filter(Boolean).map((l) => libSlot(ctx, l));
   const candidates = named.length ? named : fromItems.length ? fromItems : ctx.summary.library.filter((l) => l.kind === kind).slice(0, 3).map((l) => libSlot(ctx, l));
-  return candidates.map((L, i) => {
+  const guessed = !named.length && !fromItems.length;
+  // "another <item of this feature>": the name asked for is that item's own name (Construct refuses a taken name).
+  const another = ctx.words.includes('another') ? slotsOf(ctx, ({ pages: 'P', components: 'C', workflows: 'W', fixtures: 'X' })[kind]).find((s) => ctx.bindings[s].feature === ctx.bindings[F]) : null;
+  const out = [];
+  candidates.forEach((L, i) => {
     const lib = ctx.bindings[L];
-    const { slot: N, invented } = nameSlot(ctx, `${pascal(ctx.bindings[F])}${pascal(lib.name)}`);
-    const guessed = !named.length && !fromItems.length;
-    return route({
+    const given = another ? { slot: `${another}.name`, invented: false } : nameSlot(ctx, `${pascal(ctx.bindings[F].name ?? ctx.bindings[F])}${pascal(lib.name)}`);
+    const { slot: N, invented } = given;
+    const parts = kind === 'pages' && !guessed ? slotsOf(ctx, 'L').filter((s) => ctx.bindings[s].kind === 'components') : [];
+    const showsPart = parts.length > 0 && ctx.words.some((w) => /^(shows?|showing|with)$/.test(w));
+    // When the request also asks for the library (or a part on the page), the one-step route is the lesser reading.
+    const lesser = !guessed && (wantsLibrary(ctx) || showsPart) ? 0.85 : 1;
+    const confidence = Math.max(0.05, ctx.labels.intent.confidence * lesser * (guessed ? 0.6 - i * 0.1 : fromItems.length && !named.length ? 0.7 : 1) * (invented ? 0.9 : 1));
+    const fuller = Math.max(0.05, ctx.labels.intent.confidence * (invented ? 0.9 : 1));
+    // Ask vs invent: a request that gives no name (or no library item) gets one closed question; the invented name
+    // (or each guessed library item) is the suggested answer, and the route stays checked so one click accepts it.
+    const ask = guessed
+      ? { about: 'library', sentence: `Which library item should the new ${SINGULAR[kind]} of <${F}> be based on?` }
+      : invented ? { about: 'name', sentence: `What should the new <${L}> in <${F}> be called? Line suggests <${N}>.` } : null;
+    const single = route({
       id: `base-on:${KIND_LAYER[kind]}:${L}>${F}`, template: 'base-on', intent,
       label: `Add a new ${SINGULAR[kind]} <${N}> to <${F}>, based on the library <${L}>.`,
       scope: { layers: [KIND_LAYER[kind]], features: [F], library: [L], scope: 'feature' },
       steps: [{ tool: 'line.baseOn', args: { libraryId: `<${L}>`, feature: `<${F}>`, name: `<${N}>` } }],
       expect: BASE_EXPECT(`<${F}>`, kind, `<${N}>`, `<${L}>`), delta: BASE_DELTA(`<${F}>`, kind, `<${N}>`, `<${L}>`),
       risk: `Changes only <${F}>; the library and other features stay as they are.`,
-      confidence: Math.max(0.05, ctx.labels.intent.confidence * (guessed ? 0.6 - i * 0.1 : fromItems.length && !named.length ? 0.7 : 1) * (invented ? 0.9 : 1)),
-      invented: invented ? [N] : [],
+      confidence, invented: invented ? [N] : [], ...(ask ? { ask } : {}),
     });
+    out.push(single);
+    if (guessed) return;
+    // "a reusable ...", "other features will want it too": make it in the feature, then move it into the library.
+    if (wantsLibrary(ctx)) {
+      const item = `<${F}>/${kind}/<${N}>`;
+      out.push(route({
+        id: `base-on-promote:${KIND_LAYER[kind]}:${L}>${F}`, template: 'base-on', intent,
+        label: `Add a new ${SINGULAR[kind]} <${N}> to <${F}>, based on the library <${L}>, then move it into the library.`,
+        scope: { layers: [KIND_LAYER[kind], 'library'], features: [F], library: [L], scope: 'library' },
+        steps: [...single.steps, { tool: 'line.promote', args: { featureItemId: item } }],
+        expect: [{ hasLibrary: `${kind}/<${N}>` }, { noNewFindings: true }],
+        delta: [...single.delta, { op: 'move-node', node: item, to: `${kind}/<${N}>`, area: 'library' }],
+        risk: 'Adds the new item to the library, so every feature can use it.', confidence: fuller, invented: single.invented,
+      }));
+    }
+    // "a page ... that shows a <component>": the page, and the component it shows, both in the feature.
+    for (const L2 of parts.slice(0, 1)) {
+      const pageName = String(ctx.bindings[N] ?? '');
+      const role = pageName.endsWith(lib.name) && pageName !== lib.name ? pageName.slice(0, -lib.name.length) : pascal(ctx.bindings[F].name ?? ctx.bindings[F]);
+      const N2 = derive(ctx, 'N', `${role}${pascal(ctx.bindings[L2].name)}`, { kind: 'new', isNew: true, invented: true });
+      out.push(route({
+        id: `base-on-part:ui:${L}+${L2}>${F}`, template: 'base-on', intent,
+        label: `Add a new page <${N}> to <${F}> based on the library <${L}>, and a new component <${N2}> based on <${L2}>.`,
+        scope: { layers: ['ui'], features: [F], library: [L, L2], scope: 'feature' },
+        steps: [...single.steps, { tool: 'line.baseOn', args: { libraryId: `<${L2}>`, feature: `<${F}>`, name: `<${N2}>` } }],
+        expect: [...BASE_EXPECT(`<${F}>`, kind, `<${N}>`, `<${L}>`).slice(0, 2), ...BASE_EXPECT(`<${F}>`, 'components', `<${N2}>`, `<${L2}>`)],
+        delta: [...single.delta, ...BASE_DELTA(`<${F}>`, 'components', `<${N2}>`, `<${L2}>`)],
+        risk: `Changes only <${F}>; the library and other features stay as they are.`,
+        confidence: showsPart ? fuller : confidence * 0.8, invented: [...single.invented, N2],
+      }));
+    }
   });
+  return out;
 }
 
 /** via-library: promote another feature's item into the library, then base a new item on it in the target feature. */
@@ -194,12 +248,36 @@ function setProp(ctx, intent, { needValue = true } = {}) {
 }
 
 /** set-fragment: replace one code fragment (a handler, a prop expression) of a feature file. */
+/**
+ * The handler code a request describes, for the common handler shapes only (shared lexicon `everyday.handlers`): log a
+ * text, navigate to a page's route (or a quoted path), call a function of the same file, set a state of the same file.
+ * Anything else is null: a model or the person writes that code (the route stays "needs code"), nothing is faked.
+ * @param {Ctx} ctx @param {{id: string, file: string}} item The item whose handler changes.
+ * @returns {{code: string, shape: string}|null}
+ */
+export function handlerCode(ctx, item) {
+  const shapes = new Set(ctx.words.map((w) => handlerShape(w)).filter(Boolean));
+  const V = slotsOf(ctx, 'V').map((s) => ctx.bindings[s]).find((v) => typeof v === 'string');
+  const vars = slotsOf(ctx, 'S').map((s) => ctx.bindings[s]).filter((b) => b && b.item === item.id);
+  if (shapes.has('log') && V !== undefined) return { code: `() => console.log(${JSON.stringify(V)})`, shape: 'log' };
+  if (shapes.has('navigate')) {
+    const page = slotsOf(ctx, 'P').map((s) => ctx.bindings[s]).find((b) => b.id !== item.id);
+    const to = page ? ctx.summary.routes.find((r) => r.item === page.id)?.path : typeof V === 'string' && V.startsWith('/') ? V : null;
+    if (to) return { code: `() => window.location.assign(${JSON.stringify(to)})`, shape: 'navigate' };
+  }
+  if (shapes.has('set') && vars.length && V !== undefined) return { code: `() => set${pascal(vars[0].name)}(${JSON.stringify(V)})`, shape: 'set' };
+  if (shapes.has('call') && vars.length) return { code: `() => ${vars[0].name}()`, shape: 'call' };
+  return null;
+}
+
 function setFragment(ctx, intent, layer) {
   const K = slotsOf(ctx, 'K')[0];
   const A = slotsOf(ctx, 'A')[0];
   const want = A ? ctx.bindings[A].name : null;
-  // Without code in the request only a flow change offers code routes (a model writes the code); a prop change does not.
-  if (!K && !/[.](feature-flow|workflow|workflow-step|variable)$/.test(intent)) return [];
+  const described = !K && /[.]handler$/.test(intent) && ctx.words.some((w) => handlerShape(w));
+  // Without code in the request only a flow change (a model writes the code) or a handler the request describes in one
+  // of the common shapes offers code routes; a prop change does not.
+  if (!K && !described && !/[.](feature-flow|workflow|workflow-step|variable)$/.test(intent)) return [];
   const all = ctx.summary.features.flatMap((f) => f.items);
   const libIds = new Set(slotsOf(ctx, 'L').map((s) => ctx.bindings[s].id));
   const itemIds = new Set([...['P', 'C', 'W', 'X'].flatMap((L) => slotsOf(ctx, L)).map((s) => ctx.bindings[s].id), ...all.filter((i) => libIds.has(i.base)).map((i) => i.id)]);
@@ -231,14 +309,15 @@ function setFragment(ctx, intent, layer) {
     const item = ctx.summary.features.flatMap((f) => f.items).find((i) => i.id === g.item);
     const I = itemSlot(ctx, item);
     const G = slotFor(ctx, 'G', { id: g.id, hash: g.contentHash }, { kind: 'fragment', of: I });
-    const Ks = K ?? derive(ctx, 'K', undefined, { kind: 'code', invented: true });
+    const made = !K && g.kind === 'handler' ? handlerCode(ctx, item) : null;
+    const Ks = K ?? (made ? derive(ctx, 'K', made.code, { kind: 'code', template: made.shape }) : derive(ctx, 'K', undefined, { kind: 'code', invented: true }));
     return route({
       id: `set-fragment:${layer}:${I}.${G}`, template: 'set-fragment', intent,
       label: `Replace one piece of code in <${I}> with <${Ks}>.`, scope: { layers: [layer], features: [featureOfItemSlot(ctx, I)], library: [], scope: layer === 'workflow' ? 'feature' : 'feature' },
       steps: [{ tool: 'line.setFragment', args: { file: `<${I}.file>`, fragmentId: `<${G}>`, code: `<${Ks}>`, contentHash: `<${G}.hash>` } }],
       expect: [{ fileContains: [`<${I}.file>`, `<${Ks}>`] }, { noNewFindings: true }],
       delta: [], risk: `Changes one piece of code in <${I}>; its checks still run.`,
-      confidence: ctx.labels.intent.confidence * (K ? 1 : 0.5), invented: K ? [] : [Ks], status: K ? 'unverified' : 'needs-model',
+      confidence: ctx.labels.intent.confidence * (K || made ? 1 : 0.5), invented: K || made ? [] : [Ks], status: K || made ? 'unverified' : 'needs-model',
     });
   });
 }

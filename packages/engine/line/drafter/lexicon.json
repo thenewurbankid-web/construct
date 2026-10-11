@@ -1474,5 +1474,153 @@
    "role": "action",
    "object": "handler"
   }
- ]
+ ],
+ "everyday": {
+  "note": "Everyday English that names no project thing (curated, static, never built from projects). grammar: words that never become a slot or a question. phrases: what a person says for a Line prop or handler of the library (the project map then resolves it, or not). verbs: everyday verbs for an intent verb. handlers: what a handler should do, for the handler templates (log, navigate, call, set state); anything else needs code.",
+  "grammar": [
+   "built",
+   "building",
+   "builds",
+   "starting",
+   "starts",
+   "started",
+   "shaped",
+   "shape",
+   "own",
+   "showing",
+   "shown",
+   "lives",
+   "live",
+   "living",
+   "reported",
+   "report",
+   "useful",
+   "asks",
+   "asking",
+   "instead",
+   "action",
+   "actions",
+   "across",
+   "others",
+   "will",
+   "cannot",
+   "into",
+   "titled",
+   "heading",
+   "headline",
+   "caption",
+   "per",
+   "time",
+   "times",
+   "clean",
+   "cleaning",
+   "missing",
+   "top",
+   "kept",
+   "lets",
+   "sure",
+   "got",
+   "way",
+   "well",
+   "able",
+   "certain",
+   "already",
+   "still",
+   "yet",
+   "reusable",
+   "too",
+   "besides",
+   "whenever",
+   "log",
+   "logs",
+   "print",
+   "prints",
+   "navigate",
+   "navigates",
+   "redirect",
+   "goes",
+   "went",
+   "trigger",
+   "triggers"
+  ],
+  "phrases": [
+   {
+    "say": [
+     "per page",
+     "at a time",
+     "page size",
+     "rows per page",
+     "items per page"
+    ],
+    "means": "size"
+   },
+   {
+    "say": [
+     "titled",
+     "heading",
+     "headline",
+     "caption",
+     "header"
+    ],
+    "means": "title"
+   },
+   {
+    "say": [
+     "show-more action",
+     "show more action",
+     "show-more",
+     "asks for more",
+     "ask for more",
+     "load more",
+     "more button",
+     "when more is asked for"
+    ],
+    "means": "on more"
+   }
+  ],
+  "verbs": {
+   "add": [
+    "need",
+    "needs",
+    "want",
+    "wants",
+    "give",
+    "gives"
+   ],
+   "remove": [
+    "clear",
+    "clean"
+   ],
+   "promote": [
+    "reusable"
+   ]
+  },
+  "handlers": {
+   "log": [
+    "log",
+    "logs",
+    "print",
+    "prints"
+   ],
+   "navigate": [
+    "navigate",
+    "navigates",
+    "redirect",
+    "go",
+    "goes"
+   ],
+   "call": [
+    "call",
+    "calls",
+    "trigger",
+    "triggers",
+    "run",
+    "runs"
+   ],
+   "set": [
+    "set",
+    "sets"
+   ]
+  }
+ }
 }

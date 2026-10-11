@@ -2,10 +2,14 @@
 // versioned, never built from users' projects. Used only to (a) suggest the slot for an unmatched word as a one-click
 // confirm ("Did you mean the checkout flow?") and (b) seed route ranking on a new project. The classifier never sees
 // its words either: it only turns an unknown word into a suggestion that a person confirms.
+// Its `everyday` part (System 1 accuracy, 2026-10-11) is everyday English that names no project thing: grammar words
+// that never become a slot or a question, phrases for a Line library prop or handler ("per page" -> size, "titled" ->
+// title), everyday verbs ("needs" -> add, "clear" -> remove) and the handler shapes the templates write (log,
+// navigate, call, set). Curated and static like the rest; never built from projects.
 import fs from 'node:fs';
 
 const FILE = new URL('./lexicon.json', import.meta.url);
-/** @type {{v: number, version: string, roles: string[], entries: {word: string, synonyms: string[], role: string, object: string}[]}} */
+/** @type {{v: number, version: string, roles: string[], entries: {word: string, synonyms: string[], role: string, object: string}[], everyday?: {grammar: string[], phrases: {say: string[], means: string}[], verbs: Record<string, string[]>, handlers: Record<string, string[]>}}} */
 export const LEXICON = Object.freeze(JSON.parse(fs.readFileSync(FILE, 'utf8')));
 
 const singular = (w) => (w.endsWith('ies') ? `${w.slice(0, -3)}y` : w.endsWith('s') && !w.endsWith('ss') ? w.slice(0, -1) : w);
@@ -27,6 +31,46 @@ export function assertLexicon(lx, objects) {
     if (!objects.includes(e.object)) throw new TypeError(`lexicon object "${e.object}" of "${e.word}" is not a catalog object`);
   }
   for (const e of lx.entries) for (const s of e.synonyms) if (s !== e.word && words.has(s)) throw new TypeError(`lexicon synonym "${s}" of "${e.word}" is itself a lexicon word`);
+  const ev = lx.everyday;
+  if (!ev) return;
+  const lower = (w, where) => { if (!/^[a-z][a-z -]*$/.test(w)) throw new TypeError(`everyday ${where} "${w}" must be lowercase words`); };
+  for (const w of ev.grammar) lower(w, 'grammar word');
+  for (const p of ev.phrases) { lower(p.means, 'phrase meaning'); for (const s of p.say) lower(s, 'phrase'); }
+  for (const [verb, ws] of Object.entries(ev.verbs)) { if (!['add', 'remove', 'promote', 'update', 'fix'].includes(verb)) throw new TypeError(`everyday verb "${verb}" is not an intent verb`); for (const w of ws) lower(w, 'verb'); }
+  for (const [shape, ws] of Object.entries(ev.handlers)) { if (!HANDLER_SHAPES.includes(shape)) throw new TypeError(`everyday handler "${shape}" is not a handler shape`); for (const w of ws) lower(w, 'handler word'); }
+}
+
+/** The handler shapes the static templates write (templates.mjs handlerCode); anything else needs code. */
+export const HANDLER_SHAPES = Object.freeze(['log', 'navigate', 'call', 'set']);
+const EVERYDAY = LEXICON.everyday ?? { grammar: [], phrases: [], verbs: {}, handlers: {} };
+
+/** Everyday words that name no project thing: never a slot, never a question. */
+export const EVERYDAY_GRAMMAR = Object.freeze(new Set(EVERYDAY.grammar));
+
+/**
+ * The everyday phrases, longest first: each said form (as lowercase words) and the words it means.
+ * @type {readonly {say: string[], means: string[]}[]}
+ */
+export const EVERYDAY_PHRASES = Object.freeze(EVERYDAY.phrases.flatMap((p) => p.say.map((s) => ({ say: s.split(/\s+/), means: p.means.split(/\s+/) }))).sort((a, b) => b.say.length - a.say.length));
+
+/**
+ * The intent verb an everyday verb stands for ("needs" -> add, "clear" -> remove), or null.
+ * @param {string} word
+ * @returns {string|null}
+ */
+export function everydayVerb(word) {
+  const w = String(word).toLowerCase();
+  return Object.entries(EVERYDAY.verbs).find(([, ws]) => ws.includes(w))?.[0] ?? null;
+}
+
+/**
+ * The handler shape a word asks for ("log" -> log, "navigate" -> navigate), or null.
+ * @param {string} word
+ * @returns {string|null}
+ */
+export function handlerShape(word) {
+  const w = String(word).toLowerCase();
+  return Object.entries(EVERYDAY.handlers).find(([, ws]) => ws.includes(w))?.[0] ?? null;
 }
 
 /**

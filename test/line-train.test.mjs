@@ -17,6 +17,7 @@ import { tryRoute } from '../packages/engine/line/train/verify.mjs';
 import { normalizeRequest } from '../packages/engine/line/train/draft.mjs';
 import { createTrainService, worldIdentifiers } from '../packages/engine/line/train/service.mjs';
 import { CASES, LOG } from '../packages/engine/line/train/store.mjs';
+import { trainRecords, feedsRetrieval, indexText, memoOf, INDEX } from '../packages/engine/line/train/records.mjs';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -25,7 +26,9 @@ const SEED = path.join(REPO, 'line');
 const seed = fs.readFileSync(path.join(SEED, CASES), 'utf8').split('\n').filter(Boolean);
 const tmp = () => makeTempDir('line-train-test-');
 /** Train eval floors on the real drafter (see the eval test). */
-const FLOORS = Object.freeze({ recall: 0.38, precision: 0.38, preferred: 0.4 });
+const FLOORS = Object.freeze({ recall: 0.96, precision: 0.91, preferred: 1 });
+/** Per tool family (preferred picked), measured with "System 1 accuracy" (docs/line/review.md). */
+const FAMILY_FLOORS = Object.freeze({ 'line.baseOn': 1, 'line.promote': 1, 'line.setPageProp': 1, 'line.setFragment': 1, 'line.fix': 1, none: 1 });
 const treeHash = (dir) => {
   const h = crypto.createHash('sha256');
   const walk = (d) => { for (const e of fs.readdirSync(d, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) { const p = path.join(d, e.name); if (e.isDirectory()) walk(p); else h.update(`${path.relative(dir, p)}\0${fs.readFileSync(p)}`); } };
@@ -186,6 +189,40 @@ test('owner and Claude cases: a typed request is drafted, corrected with closed 
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 
+test('retrieval: Train\'s train-split cases feed the drafter\'s retrieval; no held-out case or held-out world ever leaks, and no record holds a project word', () => {
+  const cases = seed.map((l) => JSON.parse(l));
+  const records = trainRecords(cases);
+  assert.ok(records.length >= 200, `${records.length} records`);
+  const byId = new Map(cases.map((c) => [c.id, c]));
+  for (const r of records) {
+    const c = byId.get(r.group);
+    assert.equal(c.split, 'train', `${r.group} is a train case`);
+    assert.ok(!(c.world.kind === 'corpus' && isHeldOut(c.world.id)), `${r.group} is not on a held-out world`);
+    assert.equal(r.approved, true);
+    assertDelexicalized(JSON.stringify(r), worldIdentifiers(c.world, worldFacts(c.world)));
+  }
+  // Held-out cases contribute nothing: the records are the same with or without them.
+  const trainOnly = cases.filter((c) => c.split === 'train');
+  assert.deepEqual(trainRecords(trainOnly), records);
+  // Not even a held-out world's case that claims the train split and the owner's agreement, nor a disputed case.
+  const held = cases.find((c) => c.split === 'heldout');
+  assert.equal(feedsRetrieval({ ...held, split: 'train', status: 'agreed' }), false);
+  assert.equal(feedsRetrieval({ ...trainOnly[0], status: 'disputed' }), false);
+  assert.equal(feedsRetrieval({ ...trainOnly[0], split: 'heldout' }), false);
+  // No held-out request reaches the index as a held-out case: every record's case id is a train case's.
+  const heldIds = new Set(cases.filter((c) => c.split === 'heldout').map((c) => c.id));
+  assert.ok(records.every((r) => !heldIds.has(r.group) && !heldIds.has(String(r.routeId).split(':')[1])));
+  // The committed index (what Train Line reads first) is current, holds only train cases, and gives the same records.
+  const text = fs.readFileSync(path.join(SEED, INDEX), 'utf8');
+  assert.equal(text, indexText(cases), 'line/train/retrieval-index.json is stale: run node packages/tools/line-train/retrieval-index.mjs');
+  const memo = memoOf(text);
+  assert.ok([...memo.keys()].every((k) => !heldIds.has(k.split(':')[0])));
+  assert.deepEqual(trainRecords(cases, { memo }), records);
+  // A memo entry for a held-out case is never read: eligibility comes first.
+  const poisoned = new Map(memo); poisoned.set(`${held.id}:${held.status}`, [{ poisoned: true }]);
+  assert.ok(!trainRecords(cases, { memo: poisoned }).some((r) => r.poisoned));
+});
+
 test('eval: the REAL drafter drafts every held-out case and is scored on recall, precision and the preferred route per family and intent', () => {
   const root = tmp();
   try {
@@ -197,11 +234,15 @@ test('eval: the REAL drafter drafts every held-out case and is scored on recall,
     assert.ok(sb.lastRun);
     assert.ok(sb.total.heldout >= 50);
     // Floors measured 2026-10-11 when Train Line first scored the real drafter (docs/line/review.md "System 1
-    // reconcile"): the honest numbers, not the mirror's. Raise them as the drafter improves, never lower them.
+    // reconcile", 38/38/40), raised by "System 1 accuracy" (retrieval from the train split, everyday verbs, ask vs
+    // invent, refuse vs ask, handler templates). Raise them as the drafter improves, never lower them.
     assert.ok(sb.total.recall >= FLOORS.recall, `recall ${sb.total.recall}`);
     assert.ok(sb.total.precision >= FLOORS.precision, `precision ${sb.total.precision}`);
     assert.ok(sb.total.preferred >= FLOORS.preferred, `preferred ${sb.total.preferred}`);
-    for (const fam of ['line.baseOn', 'line.promote', 'line.setPageProp', 'line.setFragment', 'line.fix', 'none']) assert.ok(sb.byFamily[fam]?.heldout > 0, fam);
+    for (const fam of ['line.baseOn', 'line.promote', 'line.setPageProp', 'line.setFragment', 'line.fix', 'none']) {
+      assert.ok(sb.byFamily[fam]?.heldout > 0, fam);
+      assert.ok(sb.byFamily[fam].preferred >= FAMILY_FLOORS[fam], `${fam} preferred ${sb.byFamily[fam].preferred}`);
+    }
     for (const i of new Set(svc.store.all().map((c) => c.intent))) assert.ok(sb.byIntent[i], i);
     assert.equal(svc.store.log().at(-1).action, 'eval');
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
