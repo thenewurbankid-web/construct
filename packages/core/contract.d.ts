@@ -129,3 +129,5 @@ export * as typeCheck from './type-check.mjs';
 export * as verify from './verify.mjs';
 /** `@line/construct-core/rules-catalog` */
 export * as rulesCatalog from './rules-catalog.mjs';
+/** `@line/construct-core/plan-registry` */
+export * as planRegistry from './plan-registry.mjs';
