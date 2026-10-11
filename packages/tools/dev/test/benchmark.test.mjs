@@ -97,6 +97,9 @@ test('measureCli runs the real CLI cold and reports time and peak memory (or nul
   const r = await measureCli(['--version']);
   assert.equal(r.exitCode, 0);
   assert.ok(r.ms > 0 && r.ms < 30_000);
-  assert.ok(r.rssMb === null || (r.rssMb > 5 && r.rssMb < 2000));
   assert.match(r.method, /^(gnu-time|ps-sampling)$/);
+  // GNU time reports the true peak; `ps` sampling every 10 ms is only a lower bound, and on a loaded machine its one sample
+  // of a 40 ms `--version` can land while Node is still starting (a couple of MB), so only its upper bound is meaningful.
+  const floorMb = r.method === 'gnu-time' ? 5 : 0;
+  assert.ok(r.rssMb === null || (r.rssMb > floorMb && r.rssMb < 2000), `rssMb ${r.rssMb} via ${r.method}`);
 });

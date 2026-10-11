@@ -20,7 +20,11 @@ import { LEVELS } from './contract.mjs';
 const posix = path.posix;
 const LEVEL_PRAGMA = /@line-level\s+(atom|molecule|organism)\b/;
 
-/** An item's name: the file name without extension, or its folder's name for an index file. */
+/**
+ * An item's name: the file name without extension, or its folder's name for an index file.
+ * @param {string} rel The item's root-relative POSIX path.
+ * @returns {string} The name, e.g. "Button" for components/Button/index.tsx.
+ */
 export function itemName(rel) {
   const base = posix.basename(rel).replace(/\.[^.]+$/, '');
   return base === 'index' ? posix.basename(posix.dirname(rel)) : base;

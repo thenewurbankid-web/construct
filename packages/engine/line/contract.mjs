@@ -146,7 +146,12 @@ const fail = (where, what) => { throw new TypeError(`${where}: ${what}`); };
 const str = (v, where) => (typeof v === 'string' && v.length > 0) || fail(where, 'must be a non-empty string');
 const sentence = (v, where) => { str(v, where); if (!/^\S.*[.?!]$/s.test(v)) fail(where, `must be a full sentence ending in . ? or !: ${JSON.stringify(v)}`); };
 
-/** @param {any} f @param {string} where */
+/**
+ * Throw a TypeError naming the bad field unless `f` is a Finding: a full sentence, a rule id, a severity, a file and a 1-based line.
+ * @param {any} f The value to check.
+ * @param {string} [where] Where it sits, for the error message.
+ * @returns {void}
+ */
 export function assertFinding(f, where = 'finding') {
   sentence(f?.sentence, `${where}.sentence`);
   str(f.rule, `${where}.rule`);
@@ -155,7 +160,11 @@ export function assertFinding(f, where = 'finding') {
   if (!Number.isInteger(f.line) || f.line < 1) fail(`${where}.line`, 'must be a 1-based integer');
 }
 
-/** @param {any} p @returns {asserts p is LineProject} */
+/**
+ * Throw a TypeError naming the bad field unless `p` is a LineProject: library ids, feature items, bases and findings all consistent.
+ * @param {any} p The value to check.
+ * @returns {asserts p is LineProject}
+ */
 export function assertLineProject(p) {
   if (typeof p?.isLine !== 'boolean') fail('project.isLine', 'must be a boolean');
   for (const k of ['library', 'features', 'state']) str(p.layout?.[k], `project.layout.${k}`);
@@ -187,7 +196,11 @@ export function assertLineProject(p) {
   p.findings.forEach((x, k) => assertFinding(x, `project.findings[${k}]`));
 }
 
-/** @param {any} c @returns {asserts c is StagedChange} */
+/**
+ * Throw a TypeError naming the bad field unless `c` is a StagedChange: a sentence summary and at least one root-relative file.
+ * @param {any} c The value to check.
+ * @returns {asserts c is StagedChange}
+ */
 export function assertStagedChange(c) {
   sentence(c?.summary, 'change.summary');
   if (!Array.isArray(c.files) || c.files.length === 0) fail('change.files', 'must list at least one file');
@@ -198,7 +211,11 @@ export function assertStagedChange(c) {
   }
 }
 
-/** @param {any} r @returns {asserts r is ApplyResult} */
+/**
+ * Throw a TypeError naming the bad field unless `r` is an ApplyResult; a refused change must have written nothing.
+ * @param {any} r The value to check.
+ * @returns {asserts r is ApplyResult}
+ */
 export function assertApplyResult(r) {
   if (typeof r?.ok !== 'boolean') fail('result.ok', 'must be a boolean');
   sentence(r.sentence, 'result.sentence');

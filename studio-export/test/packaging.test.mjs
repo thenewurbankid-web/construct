@@ -9,11 +9,16 @@ import { makeTempDir } from './support/tmpdir.mjs';
 import { DEFAULT_SOURCE, PACKAGE_ROOT, PackError, declaredDependencies, listVendorable, scanFile, vendorMedia } from '../scripts/pack.mjs';
 
 const pkg = JSON.parse(fs.readFileSync(path.join(PACKAGE_ROOT, 'package.json'), 'utf8'));
-const rootPkg = JSON.parse(fs.readFileSync(path.join(PACKAGE_ROOT, '..', '..', 'package.json'), 'utf8'));
-const cliPkg = JSON.parse(fs.readFileSync(path.join(PACKAGE_ROOT, '..', 'cli', 'package.json'), 'utf8'));
+// studio-export/ is the standalone copy of packages/studio: outside the monorepo there is no repository package.json,
+// packages/cli or packages/tools/media next to it, so the checks that read those run from packages/studio instead.
+const IN_MONOREPO = fs.existsSync(path.join(PACKAGE_ROOT, '..', 'cli', 'package.json')) && fs.existsSync(DEFAULT_SOURCE);
+const inMonorepo = { skip: IN_MONOREPO ? false : 'this is the standalone studio-export copy, not packages/studio inside the monorepo; packages/studio/test/packaging.test.mjs runs this check there' };
+const readJson = (f) => JSON.parse(fs.readFileSync(f, 'utf8'));
+const rootPkg = IN_MONOREPO ? readJson(path.join(PACKAGE_ROOT, '..', '..', 'package.json')) : null;
+const cliPkg = IN_MONOREPO ? readJson(path.join(PACKAGE_ROOT, '..', 'cli', 'package.json')) : null;
 const write = (dir, rel, text) => { const f = path.join(dir, rel); fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, text); return f; };
 
-test('package.json: name, version, bin, engines, private registry, dependencies', () => {
+test('package.json: name, version, bin, engines, private registry, dependencies', inMonorepo, () => {
   assert.equal(pkg.name, '@line/studio');
   assert.equal(pkg.version, rootPkg.version, 'versioned with the repository');
   assert.equal(pkg.version, cliPkg.version, 'versioned like packages/cli');
@@ -32,7 +37,7 @@ test('package.json: name, version, bin, engines, private registry, dependencies'
   for (const f of ['README.md', 'LICENSE']) assert.ok(fs.existsSync(path.join(PACKAGE_ROOT, f)), f);
 });
 
-test('the dependencies are exactly the bare packages the vendored media tools import (plus playwright for recording)', () => {
+test('the dependencies are exactly the bare packages the vendored media tools import (plus playwright for recording)', inMonorepo, () => {
   const imported = new Set();
   for (const f of listVendorable(DEFAULT_SOURCE).filter((x) => x.endsWith('.mjs'))) {
     const text = fs.readFileSync(path.join(DEFAULT_SOURCE, f), 'utf8');
@@ -42,7 +47,7 @@ test('the dependencies are exactly the bare packages the vendored media tools im
   for (const d of imported) assert.ok(declaredDependencies().has(d), `${d} declared`);
 });
 
-test('files whitelist: only bin, src, vendor, README and LICENSE ship; `npm pack --dry-run` lists the vendored media and nothing else', () => {
+test('files whitelist: only bin, src, vendor, README and LICENSE ship; `npm pack --dry-run` lists the vendored media and nothing else', inMonorepo, () => {
   assert.deepEqual(pkg.files, ['bin', 'src', 'vendor', 'README.md', 'LICENSE']);
   const v = spawnSync(process.execPath, [path.join(PACKAGE_ROOT, 'scripts', 'pack.mjs'), '--vendor-only'], { encoding: 'utf8' });
   assert.equal(v.status, 0, v.stderr);
@@ -77,7 +82,7 @@ test('vendorMedia copies *.mjs/*.sh/*.py, skips node_modules, caches and tests, 
   vendorMedia({ sourceDir: src, vendorDir: out, allowedDeps: new Set() }); // idempotent: a second run replaces the copy
 });
 
-test('the real packages/tools/media vendors clean and stays where it is', () => {
+test('the real packages/tools/media vendors clean and stays where it is', inMonorepo, () => {
   const out = makeTempDir('studio-real-');
   const before = listVendorable(DEFAULT_SOURCE);
   assert.ok(before.length >= 12 && before.includes('lib.mjs') && before.includes('add-audio.sh') && before.includes('clone_voice.py'));
@@ -119,7 +124,7 @@ test('escape detection: undeclared packages, absolute paths, dynamic imports and
   assert.equal(scan('a/b/deep2.mjs', "const p = path.join(HERE, '..', '..', '..');\n").length, 1, 'one more than the depth escapes');
 });
 
-test('the marker in packages/tools/media/lib.mjs is the only escape, and removing it fails the pack (the check sees the real file)', () => {
+test('the marker in packages/tools/media/lib.mjs is the only escape, and removing it fails the pack (the check sees the real file)', inMonorepo, () => {
   const src = makeTempDir('studio-lib-src-');
   const out = makeTempDir('studio-lib-out-');
   const lib = fs.readFileSync(path.join(DEFAULT_SOURCE, 'lib.mjs'), 'utf8');
@@ -128,7 +133,7 @@ test('the marker in packages/tools/media/lib.mjs is the only escape, and removin
   assert.throws(() => vendorMedia({ sourceDir: src, vendorDir: out, allowedDeps: new Set(['subtitle']) }), /lib\.mjs:\d+: climbs 3 directories up/);
 });
 
-test('packages/tools/media honours STUDIO_ROOT and STUDIO_VIDEO_DIR, so a vendored copy never derives paths from its own location', () => {
+test('packages/tools/media honours STUDIO_ROOT and STUDIO_VIDEO_DIR, so a vendored copy never derives paths from its own location', inMonorepo, () => {
   const ws = makeTempDir('studio-ws-');
   const code = "import('" + new URL('../../tools/media/lib.mjs', import.meta.url).href + "').then((m) => console.log(JSON.stringify({ REPO: m.REPO, VIDEO_DIR: m.VIDEO_DIR, CLIP_CACHE: m.CLIP_CACHE })))";
   const run = (env) => JSON.parse(spawnSync(process.execPath, ['-e', code], { env: { ...process.env, STUDIO_ROOT: '', STUDIO_VIDEO_DIR: '', ...env }, encoding: 'utf8' }).stdout);

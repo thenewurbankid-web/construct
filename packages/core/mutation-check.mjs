@@ -46,8 +46,11 @@ export function summarizeMutantResults(mutantResults) {
 
 // Lazily imported -- @stryker-mutator/core is a real dependency for the `run` path, but tests inject
 // their own `runStryker` so the suite never pays for an actual mutation run.
+// The specifier is held in a variable so type-checking does not depend on whether this optional, heavy dependency
+// happens to be installed on the machine (tsc reports a missing module for a literal specifier).
+const STRYKER_MODULE = '@stryker-mutator/core';
 async function defaultRunStryker(cliOptions) {
-  const { Stryker } = await import('@stryker-mutator/core');
+  const { Stryker } = await import(STRYKER_MODULE);
   return new Stryker(cliOptions).runMutationTest();
 }
 

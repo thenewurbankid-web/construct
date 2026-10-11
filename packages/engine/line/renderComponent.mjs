@@ -35,7 +35,12 @@ const textFor = (name) => {
   return words ? words[0].toUpperCase() + words.slice(1) : 'Text';
 };
 
-/** The sample value for one described prop, or null when its type has no simple sample. */
+/**
+ * The sample value for one described prop, or null when its type has no simple sample.
+ * @param {string} name The prop's name (a string prop's sample is its name as words).
+ * @param {string} type The prop's declared type text.
+ * @returns {string | number | boolean | null} The sample.
+ */
 export function sampleValue(name, type) {
   const t = String(type ?? '').trim();
   if (t === 'string') return textFor(name);
@@ -46,7 +51,11 @@ export function sampleValue(name, type) {
   return null;
 }
 
-/** The value kind the Cockpit edits it as. */
+/**
+ * The value kind the Cockpit edits it as.
+ * @param {string} type The prop's declared type text.
+ * @returns {'string' | 'number' | 'boolean' | 'other'} The editor kind.
+ */
 export function valueKind(type) {
   const t = String(type ?? '').trim();
   if (t === 'number') return 'number';
@@ -68,7 +77,8 @@ export function sampleProps(described, fixture = null) {
   });
 }
 
-const refusal = (sentence, code) => ({ ok: false, code, sentence });
+/** @param {string} sentence @param {string} code @returns {{ok: false, code: string, sentence: string}} */
+const refusal = (sentence, code) => ({ ok: /** @type {false} */ (false), code, sentence });
 
 /** The project's library folder (architecture.yml's `line:` section, resolved like the Line profile does). */
 function libraryOf(root) {
@@ -81,6 +91,8 @@ function libraryOf(root) {
 
 /**
  * Check `file` is a component source file inside `<library>/components` of `root`, symlinks included.
+ * @param {string} root The project root.
+ * @param {unknown} file The requested root-relative path.
  * @returns {{ok: true, abs: string, name: string, library: string} | {ok: false, code: string, sentence: string}}
  */
 export function checkLibraryComponent(root, file) {
@@ -113,7 +125,11 @@ function fixtureOf(root, library, name) {
   }
 }
 
-/** Parse the `props` query value: absent, or a JSON object of simple values. */
+/**
+ * Parse the `props` query value: absent, or a JSON object of simple values.
+ * @param {unknown} raw The query value (a JSON string) or an already-parsed object.
+ * @returns {{ok: true, props: Record<string, string|number|boolean|null>} | {ok: false, code: string, sentence: string}} The props or a refusal.
+ */
 export function parseGivenProps(raw) {
   if (raw === undefined || raw === null || raw === '') return { ok: true, props: {} };
   let v;
@@ -125,7 +141,13 @@ export function parseGivenProps(raw) {
   return { ok: true, props: /** @type {Record<string, string|number|boolean|null>} */ (v) };
 }
 
-/** The TSX page Morpheus renders: the component, imported by its absolute path, with the given props. */
+/**
+ * The TSX page Morpheus renders: the component, imported by its absolute path, with the given props.
+ * @param {string} abs The component's absolute path.
+ * @param {string} name The component's export name.
+ * @param {Record<string, unknown>} props The props to render with.
+ * @returns {string} The page source.
+ */
 export function previewPageSource(abs, name, props) {
   return [
     `import * as M from ${JSON.stringify(abs)};`,
@@ -151,9 +173,9 @@ export async function renderLibraryComponent(root, req, deps = {}) {
   const { loadMorpheus = () => importLinked('@mx/morpheus-render'), describe = describeComponent, timeoutMs = RENDER_TIMEOUT_MS, tmpDir = os.tmpdir() } = deps;
   try {
     const at = checkLibraryComponent(root, req?.file);
-    if (!at.ok) return at;
+    if (at.ok === false) return at;
     const given = parseGivenProps(req?.props);
-    if (!given.ok) return given;
+    if (given.ok === false) return given;
     const d = await describe(root, req.file);
     const comp = d?.ok ? (d.components.find((c) => c.name === at.name) ?? d.components[0]) : null;
     const props = sampleProps(comp?.props ?? [], fixtureOf(root, at.library, at.name));
@@ -164,7 +186,7 @@ export async function renderLibraryComponent(root, req, deps = {}) {
     }
     const values = Object.fromEntries(props.filter((p) => p.value !== null && p.value !== undefined).map((p) => [p.name, p.value]));
     const link = await loadMorpheus();
-    if (!link.ok) {
+    if (link.ok === false) {
       return {
         ok: false,
         code: 'NO_RENDERER',
