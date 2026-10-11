@@ -43,13 +43,17 @@ test.describe('Cockpit drawer and command palette (#249)', () => {
     await expect(tab.getByLabel(/Diagnostics$/)).toBeVisible({ timeout: 20_000 }); // badge appears once the run finishes
     const rows = drawer.getByTestId('diagnostic-row');
     await expect(rows.first()).toBeVisible();
-    const pageRow = rows.filter({ hasText: 'PAGE-006' });
-    await expect(pageRow).toContainText('features/demo/pages/DemoPage.tsx:1');
+    // The rule id and file:line sit in each row's collapsed "Details" disclosure, not in the row itself.
+    const items = drawer.getByTestId('diagnostic-item');
+    const pageItem = items.filter({ hasText: 'PAGE-006' });
+    await expect(pageItem.getByTestId('diagnostic-details')).toContainText('features/demo/pages/DemoPage.tsx:1');
+    const pageRow = pageItem.getByTestId('diagnostic-row');
     await expect(drawer.getByText(/\d+ errors?/).first()).toBeVisible();
     // A non-page row expands to say why and how to fix it.
-    await rows.filter({ hasText: 'SLICE-001' }).click();
+    const sliceRow = items.filter({ hasText: 'SLICE-001' }).getByTestId('diagnostic-row');
+    await sliceRow.click();
     await expect(drawer.getByText('Why:')).toBeVisible();
-    await rows.filter({ hasText: 'SLICE-001' }).click();
+    await sliceRow.click();
     await expect(page.getByTestId('status-validate')).toContainText(/problem/);
     await page.screenshot({ path: path.join(SHOTS, 'shell-diagnostics-dark.png') });
 
