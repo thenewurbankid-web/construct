@@ -42,6 +42,8 @@ export type ChangeControls = {
   openPromote: (featureItemId: string, name: string) => void;
   cancel: () => void;
   submit: () => void;
+  /** A fix applied from a problem's fix panel (line-fix): its sentence becomes the notice; a landed one re-reads the project. */
+  fixApplied: (result: ApplyResult) => void;
 };
 
 // ---- View models -------------------------------------------------------------------------------

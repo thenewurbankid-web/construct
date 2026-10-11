@@ -41,9 +41,16 @@ export function useLineChanges(features: string[], onLanded: () => void, api: Li
     dispatch({ type: 'OPEN_PROMOTE', featureItemId, name });
   }, []);
   const cancel = useCallback(() => dispatch({ type: 'CANCEL' }), []);
+  const fixApplied = useCallback(
+    (result: ApplyResult) => {
+      setNotice(result);
+      if (result.ok) onLanded();
+    },
+    [onLanded],
+  );
 
   return useMemo(
-    () => ({ change, notice, features, openBaseOn, setFeature, setName, openPromote, cancel, submit }),
-    [change, notice, features, openBaseOn, setFeature, setName, openPromote, cancel, submit],
+    () => ({ change, notice, features, openBaseOn, setFeature, setName, openPromote, cancel, submit, fixApplied }),
+    [change, notice, features, openBaseOn, setFeature, setName, openPromote, cancel, submit, fixApplied],
   );
 }

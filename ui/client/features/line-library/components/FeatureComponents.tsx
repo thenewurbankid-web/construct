@@ -1,3 +1,4 @@
+import { LineFixController } from '@/features/line-fix';
 import type { ChangeControls, FeatureComponentRow, FeatureSection } from '../types';
 import { PromoteConfirm } from './PromoteConfirm';
 
@@ -10,9 +11,10 @@ function Row({ row, controls }: { row: FeatureComponentRow; controls: ChangeCont
         {row.baseText}
       </span>
       {row.findings.map((x) => (
-        <p key={`${x.rule}:${x.line}`} className="ll-finding">
-          {x.sentence}
-        </p>
+        <div key={`${x.rule}:${x.line}`} className="ll-problem" data-testid="ll-problem">
+          <p className="ll-finding">{x.sentence}</p>
+          <LineFixController finding={x} onResult={controls.fixApplied} label={`How to fix it: ${row.name}`} />
+        </div>
       ))}
       {open ? (
         <PromoteConfirm controls={controls} text={row.promoteText} />
