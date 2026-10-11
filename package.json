@@ -23,7 +23,7 @@
     "node": ">=20"
   },
   "scripts": {
-    "test": "node --test",
+    "test": "node packages/tools/dev/run-tests.mjs",
     "build": "tsc --noEmit",
     "build:cli": "npm run build --workspace=packages/cli",
     "lint": "eslint .",
