@@ -363,3 +363,64 @@ UAT (about 5 minutes; a copy of the sample so the repo stays clean):
 1. `node packages/cli/construct.mjs line spec --topic plan`. Expect JSON with a `version` like `sha256:...` and the plan rules in plain English (for example "Only a person approves a write step, in Cockpit; an agent cannot approve.").
 2. `cp -R examples/line-sample /tmp/line-uat`, open `/tmp/line-uat` in Cockpit (`cd ui/server && npm start`, `cd ui/client && npm run dev`, http://localhost:3000). On Pages, open OrdersPage and set the "More" click handler to `() => import('../../billing/pages/InvoicesPage')`, save, then Approve it in the Plan panel. It needs a fix; click "Apply recommended fix" and Approve. It is refused again.
 3. `node packages/cli/construct.mjs line misses --dir /tmp/line-uat --threshold 1 --draft`. Expect "Read 1 session trace: ...", a "Framework issue: Editing a code fragment (line.setFragment) was refused once (LINE-DIR). ..." line, and "Drafted (not filed): line/issues/....md". Open the drafted file: a story, the minimal case, the context and a test. Then `node packages/cli/construct.mjs line context --dir /tmp/line-uat` lists the files Line would hand Claude, each with one sentence.
+
+## Expressions (System 1 groundwork): expected output as checkable expressions (awaiting UAT)
+
+What it does: a step's expected output is now a small JSON expression over a fixed-size facts snapshot of the project, never code. Each check of a plan step carries one (`expr`); each `line.*` tool (`baseOn`, `promote`, `setPageProp`, `setFragment`, `fix`) declares a `pre` (must hold before it runs; when it does not, the step is refused in one sentence and nothing runs) and a `post` (part of its checks). Every finished change step leaves one training record under `line/records/plans.jsonl`, with logic only: every project name is a typed slot.
+
+- Language and evaluator: `packages/engine/line/contract.mjs` (LineExpr, `exprProblem`/`assertExpr`, `EXPR_JSON_SCHEMA`, LineFacts, PlanRecord), `packages/engine/line/expr.mjs` (`evaluate(facts, expr)` -> `{ok, failed: [{path, sentence}]}`). Operators: literals, `path`, `item`, `eq ne lt le gt ge`, `and or not`, `exists`, `count`, `every some`, `in`.
+- Facts: `packages/engine/line/facts.mjs` (`{files, library, features, findings, findingsNew, plan, structure, truncated}`, read lazily, capped at 2000 files and 500 findings); mock in `mockFacts.mjs`.
+- Structure hashes: `packages/engine/line/structure.mjs`. Delexicalized `sha256:` hashes per project, library, feature and layer (kinds, component levels, base links, import edges to library items; no names), and the structural delta of a step as slotted lines.
+- Pre and post: `packages/engine/line/conditions.mjs`. cp1's two default checks are `DEFAULT_CHECK_EXPRS`.
+- Records: `packages/engine/line/records.mjs`, appended through `writeLineState` (cl1's atomic Line-state path).
+- CLI: `construct line check --dir <project> '<expr JSON>'`, `construct line facts --dir <project>`, `construct line records --dir <project>`.
+
+Decisions to review:
+- The post rides on the `files` check (its expression is `and(files expression, post)`), so a step still has the same two checks and cp1's counts ("0 of 2 checks passed") stay as they were. When the post fails but the files are there, the check fails with the post's sentence. Making the post its own third check is a small change, but it would change the counts in cp1's tests and spec.
+- The pre is evaluated after the planner when a step is added, so a request the planner refuses keeps the planner's own sentence. When a step runs, the pre comes first (a retry skips it). In practice the pre adds a refusal mostly at run time, when the project changed after the step was added.
+- The structure hash follows the shape the drafter's canonical hash describes, but the drafter's own function is not here yet. Flow states and transitions are not read yet, and edges are typed by the kind and level of their target. When the canonical hash lands, swap `structureOf` for it.
+
+Tests: `test/line-expr.test.mjs` (11) and `test/line-expr-plan.test.mjs` (9), all pass, plus the Playwright walk `ui/e2e/tests/uat/expressions.spec.js` (2, real server). Run:
+
+```bash
+node --test test/line-expr.test.mjs test/line-expr-plan.test.mjs
+```
+
+1. The mock facts fit the LineFacts contract, and the JSON Schema lists every operator.
+2. Literals are themselves, a path reads the facts, a missing path is missing, and a list position is a whole number.
+3. Comparisons work on numbers and texts. Mixed types never order, and `eq` compares JSON deeply.
+4. `and`, `or`, `not`, `exists` and `count` work on lists, texts and objects; a missing value counts 0.
+5. `every`, `some` and `in` work over lists with item paths; `in` also works for texts and object fields; a missing list proves nothing.
+6. Bad expressions are refused in one sentence (unknown operator, wrong arity, two operators, a bare list, `item` outside every/some, bad paths, a function, a Date, too long, too deep). `evaluate` answers with that sentence instead of throwing.
+7. No code runs: a code string is just text, a path cannot reach `constructor` or `__proto__`, `in` sees only own fields, and a function inside a literal is refused.
+8. Sentences: each failed part is one plain-English sentence that says what is actually so, for example "features/orders/components/StatusBadge.tsx does not exist yet.". `and` lists every failing part, `or` says none holds, and `every` names the first item that fails.
+9. Facts come from the real sample, within their caps, and are hashed; the same project hashes the same. Renaming every feature and item keeps every structure hash; adding an item changes its feature's hash and the project's, and other layers keep theirs.
+10. Facts are lazy: a check on the plan alone does not read the project, and the project is read once.
+11. Property test: 3000 random expressions over random facts (seeded; set `LINE_EXPR_SEED` to replay one run). `evaluate` never throws on a valid expression, always answers within the contract, and `not` flips the answer.
+12. cp1's two default checks carry expressions, and every outcome and sentence is exactly what it was without them. Four cases: a change that lands, a change the planner refuses, a change validate refuses, and a change that is already there.
+13. All five tools declare a valid pre and post. The pre holds for a good request and refuses a bad one in one sentence. The spec describes `expr` on a check.
+14. After a step runs, its post holds, and the step's `files` check carries it (still two checks).
+15. Post as a check: a planner that writes the wrong file passes cp1's file check but fails the post, with the post's sentence. Without the post it would have passed.
+16. Pre refusal: a request whose pre fails is refused (`PRE_FAILED`) in one sentence and never joins the plan. If the project changes after a step is added, the pre refuses it when it runs, nothing is written, and the registry itself refuses the same way.
+17. Records: each finished step appends one readable record. A record holds the structure hashes before and after (they differ, and one record's "after" is the next record's "before"), the slotted delta, the steps, the checks with their expressions, the pre, the approval and whether the step repaired an earlier one.
+18. Records hold logic only: no name from the project's facts appears in the JSONL, nor any word of one, nor the code or the content hash. The live plan keeps the real names.
+19. Slots: the same name gets the same slot within a record, an item id and its name share one, and an intent loses each word of a project name.
+20. CLI: `line check` prints each failed part as a sentence and exits 1, or prints "Holds."; a bad expression gets one sentence; `line records` summarises without names.
+21. Playwright walk (real server, clicks only): Base on, then Approve. The step is done, and its record has two checks with expressions and none of the project's names.
+22. Playwright walk: a step whose library item is removed before Approve shows "... cannot run as the project stands: library item components/Card does not exist yet." in the Plan panel and writes nothing. "Leave as it is" clears it, and there are no console errors or 4xx/5xx responses (except Cockpit's known review-branches 400 on a project that is not a repository).
+
+Gaps:
+- Only five tools declare pre and post; `setBase`, `moveFile` and `createLayout` do not yet.
+- The Plan panel shows a failed check's sentence, but not the expression itself (no Details row for `expr` yet).
+- The api-coverage ratchet still counts undocumented exports. They are inherited from the cp1 and cl1 branches (planTools, trace, missDetector, spec, planFallback, workspace, mcp plan); the new modules are fully documented.
+
+Next steps (not built now):
+- Wire expressions into Qwen and jev: filter candidate steps by `pre`, verify by `post`, and send only the failed parts (their sentences) back to Qwen.
+- The template-based System 1 drafter: request -> plan steps plus expected-output expressions, checked and repaired against these records.
+- Train a small model on `line/records/plans.jsonl` (slotted, logic only).
+- Swap `structureOf` for the drafter's canonical structure hash, and add flow states and transitions.
+
+UAT (about 3 minutes):
+1. `node packages/cli/construct.mjs line check --dir examples/line-sample '{"exists": {"path": ["files", "features/orders/components/StatusBadge.tsx"]}}'`. Expect one line, "features/orders/components/StatusBadge.tsx does not exist yet.". Then try `'{"foo": 1}'` and expect one sentence saying "foo" is not an operator.
+2. Copy the sample (`cp -R examples/line-sample /tmp/line-expr`), open `/tmp/line-expr` in Cockpit (`cd ui/server && npm start`, `cd ui/client && npm run dev`, http://localhost:3000). On Components, Base on Badge as StatusBadge in orders, then Approve. Then Base on Card as ExprCard, delete `/tmp/line-expr/library/components/Card.tsx`, reload, and Approve. The Plan panel shows the step needs you: "... cannot run as the project stands: library item components/Card does not exist yet.", and no ExprCard file appears.
+3. `node packages/cli/construct.mjs line records --dir /tmp/line-expr`. Expect "2 plan records in line/records/plans.jsonl: 1 passed every check, ..." (the refused step is a record too, with its failed checks). Open that file: names appear only as slots like `<feature:F1>` and `<item:I1 kind=components>`.
