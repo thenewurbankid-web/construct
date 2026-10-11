@@ -16,4 +16,6 @@ export const lineHttp: LineHttp = {
     if (props !== undefined) q.set('props', props);
     return getJson(`/api/line/render?${q.toString()}`);
   },
+  getFragments: (file) => getJson(`/api/line/fragments?file=${encodeURIComponent(file)}`),
+  setFragment: (req) => postJson('/api/line/fragment', req),
 };

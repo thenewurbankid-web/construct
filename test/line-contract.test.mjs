@@ -3,7 +3,7 @@
 // tests reuse the assert* shape checks on real projects.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { assertLineProject, assertStagedChange, assertApplyResult, assertFinding, LineOpError, LINE_API } from '../packages/engine/line/contract.mjs';
+import { assertLineProject, assertStagedChange, assertApplyResult, assertFinding, assertFragmentList, LineOpError, LINE_API } from '../packages/engine/line/contract.mjs';
 import { createMockLineOps } from '../packages/engine/line/mock.mjs';
 
 const ROOT = '/mock';
@@ -73,5 +73,27 @@ test('contract: the shape checks reject what Cockpit must never show', () => {
   assert.throws(() => assertFinding({ sentence: 'no full stop', rule: 'X', severity: 'error', file: 'a', line: 1 }), /full sentence/);
   assert.throws(() => assertStagedChange({ summary: 'Escapes.', files: [{ path: '../x', content: '' }] }), /inside the project/);
   assert.throws(() => assertApplyResult({ ok: false, sentence: 'Refused.', files: ['a'], findings: [] }), /wrote nothing/);
-  assert.deepEqual(LINE_API.map((r) => `${r.method} ${r.path}`), ['GET /api/line/project', 'GET /api/line/page-tree', 'POST /api/line/base-on', 'POST /api/line/promote', 'POST /api/line/page-prop', 'GET /api/line/render']);
+  assert.deepEqual(LINE_API.map((r) => `${r.method} ${r.path}`), ['GET /api/line/project', 'GET /api/line/page-tree', 'POST /api/line/base-on', 'POST /api/line/promote', 'POST /api/line/page-prop', 'GET /api/line/render', 'GET /api/line/fragments', 'POST /api/line/fragment']);
+});
+
+test('contract: fragments list the code a person can edit in place, and a fragment edit changes only its range', () => {
+  const ops = createMockLineOps();
+  const file = 'features/orders/pages/OrdersPage.tsx';
+  const list = ops.listFragments(ROOT, file);
+  assertFragmentList(list);
+  const frag = list.fragments.find((f) => f.kind === 'handler');
+  assert.ok(frag, 'the onMore handler is a fragment');
+  assert.equal(frag.label, 'What happens when ListPage asks for more');
+  const before = ops.files()[file];
+  const code = "() => alert('All orders')";
+  const change = ops.planSetFragment(ROOT, { file, fragmentId: frag.id, code, contentHash: list.contentHash });
+  assertStagedChange(change);
+  const after = change.files[0].content;
+  assert.equal(after.slice(0, frag.range.start), before.slice(0, frag.range.start));
+  assert.equal(after.slice(frag.range.start + code.length), before.slice(frag.range.end));
+  assert.equal(ops.applyChange(ROOT, change).ok, true);
+  assert.throws(() => ops.planSetFragment(ROOT, { file, fragmentId: frag.id, code: '() => 1', contentHash: list.contentHash }), (e) => e instanceof LineOpError && e.code === 'STALE');
+  const fresh = ops.listFragments(ROOT, file);
+  assert.throws(() => ops.planSetFragment(ROOT, { file, fragmentId: frag.id, code: '() => alert(', contentHash: fresh.contentHash }), (e) => e.code === 'BAD_CODE' && /\.$/.test(e.sentence) && typeof e.detail === 'string');
+  assert.throws(() => assertFragmentList({ ...fresh, fragments: [{ ...fresh.fragments[0], label: 'A sentence.' }] }), /label/);
 });
