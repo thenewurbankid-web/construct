@@ -27,8 +27,9 @@ const PATTERNS = [
  * @returns {string[]} Root-relative, sorted.
  */
 export function testFiles(root = ROOT) {
-  // Like node's glob: no dot folders or dot files.
-  return walk(root).map((f) => rel(root, f)).filter((f) => !f.split('/').some((s) => s.startsWith('.')) && PATTERNS.some((p) => p.test(f))).sort();
+  // Like node's glob: no dot folders or dot files. Unlike it, no `fixtures` folder: `test/**/*.ts` would run a test
+  // fixture's .ts source as a test file (two fixtures that import what is not there failed the suite).
+  return walk(root).map((f) => rel(root, f)).filter((f) => !f.split('/').some((s) => s.startsWith('.') || s === 'fixtures') && PATTERNS.some((p) => p.test(f))).sort();
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
