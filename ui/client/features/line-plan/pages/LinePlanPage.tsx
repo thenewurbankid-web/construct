@@ -1,5 +1,6 @@
 import { PlanEmpty } from '../components/PlanEmpty';
 import { PlanError } from '../components/PlanError';
+import { PlanRecheck } from '../components/PlanRecheck';
 import { PlanStep } from '../components/PlanStep';
 import '../components/line-plan.css';
 import type { PlanControls, PlanStepRow } from '../types';
@@ -15,6 +16,7 @@ export function LinePlanPage({ plan }: { plan: PlanControls }) {
         Plan <small>Each change waits for your approval.</small>
       </h2>
       <PlanError sentence={plan.error} />
+      <PlanRecheck sentence={plan.recheck} />
       <PlanEmpty empty={!plan.rows.length} />
       <ol className="lpl-steps" aria-label="Plan steps">
         {plan.rows.map(step)}

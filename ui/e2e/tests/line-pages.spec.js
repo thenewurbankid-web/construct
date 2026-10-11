@@ -6,6 +6,8 @@ import { fileURLToPath } from 'node:url';
 import { gotoCockpit } from './support/cockpit.js';
 import { openProject } from './support/browseProject.js';
 import { runAxe, isBlocking, format } from './support/axe.js';
+import { failOnConsoleErrors } from './support/consoleGuard.js';
+import { planChange } from './support/linePlan.js';
 
 // Line hours 5+6 -- the Pages screen of a Line project, on the real /api/line routes over a copy of examples/line-sample.
 // The sample has two features: orders (OrdersPage, based on ListPage, fine) and billing (InvoicesPage, based on ListPage,
@@ -22,6 +24,7 @@ const pageRow = (page, name) => page.locator(`[data-testid="lp-page"][data-page=
 const titleProp = (page) => page.locator('[data-testid="lp-part"][data-part="ListPage"] [data-testid="lp-prop"][data-prop="title"]');
 
 test.describe.serial('Line Pages screen (Line sample project, real server)', () => {
+  failOnConsoleErrors(test);
   let base;
   let restore;
   const read = (rel) => fs.readFileSync(path.join(base, rel), 'utf8');
@@ -109,15 +112,15 @@ test.describe.serial('Line Pages screen (Line sample project, real server)', () 
   });
 
   test('a save that would add a cross-feature import is refused with the reason, and nothing is written', async ({ request }) => {
-    // The Pages screen offers only text, number and on/off values, so it cannot add an import; the same route it saves
+    // The Pages screen offers only text, number and on/off values, so it cannot add an import; the same plan tool it saves
     // through takes an expression, and a dynamic import() of another feature is exactly a new LINE-DIR problem.
     const before = read(ORDERS);
     const tree = await (await request.get(`${API}/api/line/page-tree?file=${encodeURIComponent(ORDERS)}`)).json();
     const listPage = tree.roots.flatMap(function all(n) { return [n, ...n.children.flatMap(all)]; }).find((n) => n.tag === 'ListPage');
-    const res = await request.post(`${API}/api/line/page-prop`, {
-      data: { file: ORDERS, nodeId: listPage.id, prop: 'title', kind: 'expression', value: "String(import('../../billing/pages/InvoicesPage'))" },
-    });
-    const body = await res.json();
+    // A change is a plan step (the direct page-prop route is gone): add it, approve it as Cockpit does, run it.
+    const ran = await planChange(request, API, 'line.setPageProp', { file: ORDERS, nodeId: listPage.id, prop: 'title', kind: 'expression', value: "String(import('../../billing/pages/InvoicesPage'))" });
+    expect(ran.step.state).toBe('needs-fix');
+    const body = ran.apply;
     expect(body.ok).toBe(false);
     expect(body.files).toEqual([]);
     expect(body.sentence).toMatch(/^Nothing was saved: feature "orders" imports "\.\.\/\.\.\/billing\/pages\/InvoicesPage" from feature "billing"/);

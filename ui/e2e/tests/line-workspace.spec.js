@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { gotoCockpit } from './support/cockpit.js';
 import { openProject } from './support/browseProject.js';
 import { runAxe, isBlocking, format } from './support/axe.js';
+import { failOnConsoleErrors } from './support/consoleGuard.js';
 
 // Line cu6: one project switcher in the Cockpit header shows the open project and its workspace folder; "Change
 // workspace folder" picks a folder inside the project (stored in line/workspace.json). Line then changes only that
@@ -19,6 +20,7 @@ const card = (page, name) => page.getByTestId('ll-card').filter({ has: page.getB
 const featureRow = (page, name) => page.getByTestId('ll-feature-row').filter({ has: page.getByText(name, { exact: true }) });
 
 test.describe.serial('Line: one workspace folder per project (Line sample project)', () => {
+  failOnConsoleErrors(test);
   let base;
   let restore;
 

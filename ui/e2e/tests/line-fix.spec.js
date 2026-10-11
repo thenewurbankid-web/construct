@@ -6,9 +6,10 @@ import { fileURLToPath } from 'node:url';
 import { gotoCockpit } from './support/cockpit.js';
 import { openProject } from './support/browseProject.js';
 import { runAxe, isBlocking, format } from './support/axe.js';
+import { failOnConsoleErrors } from './support/consoleGuard.js';
 
-// Line ca2 (screen): where Cockpit shows a Line problem, its recommended fix is one sentence with Apply (POST
-// /api/line/fix, written through Construct's writer). The sample has two planted problems: InvoiceCard has no library
+// Line ca2 (screen): where Cockpit shows a Line problem, its recommended fix is one sentence with Apply (a line.fix
+// plan step the click approves and runs, written through Construct's writer; it shows in the Plan panel as done). The sample has two planted problems: InvoiceCard has no library
 // base (LINE-BASE) and InvoicesPage imports orders' OrderButton (LINE-DIR). Each is fixed in at most two clicks, from the
 // Components screen, the Pages screen and the Diagnostics drawer; the clicks are counted.
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -32,6 +33,7 @@ async function expectNoBlockingAxe(page, include) {
 }
 
 test.describe.serial('Line: apply a fix (Line sample project, real server)', () => {
+  failOnConsoleErrors(test);
   let base;
   let restore;
   const read = (rel) => fs.readFileSync(path.join(base, rel), 'utf8');
@@ -65,6 +67,10 @@ test.describe.serial('Line: apply a fix (Line sample project, real server)', () 
 
     await me.click(fix.getByRole('button', { name: /^Apply: Base InvoiceCard\.tsx on the library component Card/ }));
     await expect(page.getByTestId('ll-notice')).toContainText('Saved.');
+    // The click was the approval: the fix is a line.fix step of the plan, done.
+    const fixStep = page.getByTestId('line-plan').getByTestId('plan-step').first();
+    await expect(fixStep).toHaveAttribute('data-state', 'done');
+    await expect(fixStep.getByTestId('plan-step-sentence')).toHaveText(/^Saved\. /);
     await expect(row.getByTestId('ll-problem')).toHaveCount(0, { timeout: 30_000 });
     await expect(status).toContainText('1 problem', { timeout: 30_000 });
     expect(read(CARD)).toContain('@line-base components/Card');
@@ -85,6 +91,7 @@ test.describe.serial('Line: apply a fix (Line sample project, real server)', () 
 
     await me.click(fix.getByRole('button', { name: /^Apply: Move OrderButton\.tsx/ }));
     await expect(page.getByTestId('line-pages').getByTestId('lf-notice')).toContainText('Saved.');
+    await expect(page.getByTestId('line-plan').getByTestId('plan-step').first()).toHaveAttribute('data-state', 'done');
     await expect(row.getByTestId('lp-page-status')).toHaveText('Fine', { timeout: 30_000 });
     await expect(row.getByTestId('line-fix')).toHaveCount(0);
     await expect(status).toContainText('no problems', { timeout: 30_000 });

@@ -277,6 +277,8 @@
  * @property {PlanStepView[]} steps
  * @property {{linked: boolean, sentence: string}} store  Whether @mx/plan is linked or Line uses its built-in plan store.
  * @property {string} [message]
+ * @property {string} [recheck]  POST /plan/run after a fix step (args.fixOf) landed: whether the step it fixed plans clean
+ *   now (then a retry of it waits for approval) or still cannot land, in one sentence.
  *
  * @typedef {{tool: string, args?: Record<string, unknown>, why?: string}} PlanStepRequest
  */

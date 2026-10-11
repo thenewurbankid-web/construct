@@ -210,7 +210,8 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
     const r = await withVersion(api, plan.id, (p) => api.plan_run_next({ planId: p.id, version: p.version, by, ...(nextId ? { stepId: nextId } : {}) }));
     if (!r.ok) return fromPlan(r);
     const recheck = next?.args?.fixOf ? await recheckAfterFix(api, String(next.args.fixOf), next.id, by) : null;
-    return view(recheck ?? r.message);
+    const out = await view(r.message);
+    return recheck ? { ...out, recheck } : out;
   });
 
   /**

@@ -52,6 +52,8 @@ export type PlanControls = {
   rows: PlanStepRow[];
   storeSentence: string;
   error: string | null;
+  /** After a fix landed: whether the step it fixed waits for approval again (one sentence), else null. */
+  recheck: string | null;
   busy: boolean;
   lastRun: LastRun | null;
   /** Adds a step and answers its sentence ("Waiting for your approval: ...") or the refusal. */

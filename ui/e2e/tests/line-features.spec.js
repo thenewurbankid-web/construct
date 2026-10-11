@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { gotoCockpit } from './support/cockpit.js';
 import { openProject } from './support/browseProject.js';
 import { runAxe, isBlocking, format } from './support/axe.js';
+import { failOnConsoleErrors } from './support/consoleGuard.js';
 
 // Line cf1 -- the Features screen of a Line project (`/`), on the real /api/line routes over a copy of
 // examples/line-sample. orders: OrdersPage, OrderButton, OrderCard, orderCheckout, all based on library items, and a
@@ -20,6 +21,7 @@ const item = (page, name) => page.locator(`[data-testid="lf-item"][data-item="${
 const point = (page, id) => page.locator(`[data-testid="lf-point"][data-point="${id}"]`);
 
 test.describe.serial('Line Features screen (Line sample project, real server)', () => {
+  failOnConsoleErrors(test);
   let base;
   let restore;
 

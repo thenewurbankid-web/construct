@@ -194,6 +194,8 @@ export type PlanView = {
   message?: string;
   /** POST /api/line/plan/step only: the step just added. */
   stepId?: string;
+  /** POST /api/line/plan/run after a fix step landed: the step it fixed plans clean again (waits for approval) or not. */
+  recheck?: string;
   /** GET /api/line/plan only: the token the page sends back as x-line-approval to approve or run (only a person does). */
   approvalToken?: string;
 };

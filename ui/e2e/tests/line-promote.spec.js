@@ -6,9 +6,10 @@ import { fileURLToPath } from 'node:url';
 import { gotoCockpit } from './support/cockpit.js';
 import { openProject } from './support/browseProject.js';
 import { runAxe, isBlocking, format } from './support/axe.js';
+import { failOnConsoleErrors } from './support/consoleGuard.js';
 
 // Line hour 7: "Promote to library" on a feature component of the Line sample. Promoting orders' OrderButton moves it
-// into the library and re-points billing's InvoicesPage at the library copy (POST /api/line/promote, written through
+// into the library and re-points billing's InvoicesPage at the library copy (a line.promote plan step, written through
 // Construct's writer), so the planted cross-feature import (LINE-DIR) disappears from Diagnostics.
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SAMPLE = path.resolve(__dirname, '../../../examples/line-sample');
@@ -17,6 +18,7 @@ const API = process.env.E2E_API_BASE || 'http://localhost:4000';
 const featureRow = (page, name) => page.getByTestId('ll-feature-row').filter({ has: page.getByText(name, { exact: true }) });
 
 test.describe.serial('Line: Promote to library (Line sample project)', () => {
+  failOnConsoleErrors(test);
   let base;
   let restore;
 

@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { gotoCockpit } from './support/cockpit.js';
 import { openProject } from './support/browseProject.js';
 import { runAxe, isBlocking, format } from './support/axe.js';
+import { failOnConsoleErrors } from './support/consoleGuard.js';
 
 // Line cx1 -- spot code editing in the browser without the whole file, on the real /api/line routes over a copy of
 // examples/line-sample. OrdersPage passes a handler to ListPage (onMore={() => console.log('Show more orders')});
@@ -22,6 +23,7 @@ const listPagePart = (page) => page.locator('[data-testid="lp-part"][data-part="
 const handler = (page) => listPagePart(page).locator('[data-testid="lp-fragment"][data-kind="handler"]');
 
 test.describe.serial('Line spot code editing (Line sample project, real server)', () => {
+  failOnConsoleErrors(test);
   let base;
   let restore;
   const read = (rel) => fs.readFileSync(path.join(base, rel), 'utf8');

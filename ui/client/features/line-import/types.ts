@@ -3,12 +3,12 @@ import type { ImportPlanRequest, LineHttp, LineRefusal } from '@/lib/lineContrac
 export type {
   ImportApplyResult, ImportFolders, ImportFound, ImportPlan, ImportQuestion, ImportScan, ImportStep, LineRefusal,
 } from '@/lib/lineContract';
-import type { ImportApplyResult, ImportFolders, ImportFound, ImportPlan, ImportScan, ImportStep } from '@/lib/lineContract';
+import type { ImportApplyResult, ImportFolders, ImportFound, ImportPlan, ImportScan } from '@/lib/lineContract';
 
 /** The routes the Import screen calls (a slice of the shared LINE_API mirror), and Apply: the plan's steps added to the
  * project's plan, approved by the click and run (services/ImportApi.ts), or the mock's apply in Line mock mode. */
 export type ImportApi = Pick<LineHttp, 'importFolders' | 'importScan' | 'importPlan'> & {
-  importApply: (req: ImportPlanRequest, steps: ImportStep[]) => Promise<ImportApplyResult | LineRefusal>;
+  importApply: (req: ImportPlanRequest, plan: ImportPlan | null) => Promise<ImportApplyResult | LineRefusal>;
 };
 
 /** A question's id -> the option id picked (missing: the recommended one). */

@@ -20,4 +20,5 @@
 .lpl-tech > summary { cursor: pointer; width: max-content; min-height: 24px; line-height: 24px; padding-inline: 2px; }
 .lpl-tech > summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .lpl-tech code { font-family: var(--mono); overflow-wrap: anywhere; display: block; }
+.lpl-recheck { margin: 0; font-size: var(--fs-sm); padding: var(--sp-1) var(--sp-2); border-left: 3px solid var(--accent); background: var(--accent-soft); color: var(--text); }
 .lpl-error { margin: 0; font-size: var(--fs-sm); padding: var(--sp-1) var(--sp-2); border-left: 3px solid var(--danger); background: var(--danger-soft); }

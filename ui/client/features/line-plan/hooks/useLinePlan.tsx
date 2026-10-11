@@ -14,6 +14,7 @@ import type { LinePlanApi, PlanAnswer, PlanControls, PlanStepRequest, PlanView, 
 export function useLinePlan(onLanded: () => void, api: LinePlanApi = linePlanApi): PlanControls {
   const [view, setView] = useState<PlanView | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [recheck, setRecheck] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   /** The step the person ran on this screen, for the screen's own notice (an old plan's last step is not news). */
   const [ranId, setRanId] = useState<string | null>(null);
@@ -27,6 +28,7 @@ export function useLinePlan(onLanded: () => void, api: LinePlanApi = linePlanApi
     }
     setError(null);
     setView(answer.view);
+    if (ranStep) setRecheck(answer.view.recheck ?? null);
     const step = ranStep ? answer.view.steps.find((s) => s.id === ranStep) : undefined;
     if (step) setRanId(step.id);
     const r = step ? changeResult(step) : null;
@@ -87,7 +89,7 @@ export function useLinePlan(onLanded: () => void, api: LinePlanApi = linePlanApi
   );
 
   return useMemo(
-    () => ({ rows: planRows(view), storeSentence: view?.store.sentence ?? '', error, busy, lastRun: lastRun(view, ranId), addStep, approve, choose, refresh }),
-    [view, ranId, error, busy, addStep, approve, choose, refresh],
+    () => ({ rows: planRows(view), storeSentence: view?.store.sentence ?? '', error, recheck, busy, lastRun: lastRun(view, ranId), addStep, approve, choose, refresh }),
+    [view, ranId, error, recheck, busy, addStep, approve, choose, refresh],
   );
 }

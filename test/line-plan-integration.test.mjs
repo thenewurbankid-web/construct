@@ -56,7 +56,7 @@ test('(c) a refused step whose fix landed plans clean again and waits for the pe
   const fixStep = await svc.addStep({ tool: fix.step.tool, args: { ...fix.step.args, fixOf: added.stepId } }, 'ui');
   await svc.approve(fixStep.stepId, 'ui');
   const after = await svc.runNext('ui', fixStep.stepId);
-  assert.equal(after.message, 'The fix landed, and step 1 plans clean now: it waits for your approval again.');
+  assert.equal(after.recheck, 'The fix landed, and step 1 plans clean now: it waits for your approval again.');
   assert.deepEqual(after.steps.map((s) => [s.n, s.state]), [[1, 'done'], [2, 'done'], [3, 'waiting']]);
   assert.equal(after.steps[0].sentence, 'Tried again as step 3.');
   assert.match(after.steps[2].sentence, /^Waiting for your approval: Try step 1 again: moves InvoicesPage/);
@@ -79,7 +79,7 @@ test('(c) a fix that lands but does not clear the refusal leaves the step needin
   const fixStep = await svc.addStep({ tool: fix.step.tool, args: { ...fix.step.args, fixOf: added.stepId } }, 'ui');
   await svc.approve(fixStep.stepId, 'ui');
   const after = await svc.runNext('ui', fixStep.stepId);
-  assert.match(after.message, /^The fix landed, but step 1 still cannot land: feature "orders" imports/);
+  assert.match(after.recheck, /^The fix landed, but step 1 still cannot land: feature "orders" imports/);
   assert.deepEqual(after.steps.map((s) => [s.n, s.state]), [[1, 'needs-fix'], [2, 'done']]);
 });
 

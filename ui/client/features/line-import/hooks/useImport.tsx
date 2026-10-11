@@ -54,7 +54,7 @@ export function useImport(given?: ImportApi): ImportControls {
   const apply = useCallback(() => {
     const { folder, answers, plan: shown } = current.current;
     dispatch({ type: 'APPLY' });
-    call((a) => a.importApply({ folder, answers }, shown?.steps ?? []), (body) => dispatch({ type: 'APPLIED', result: body as never }));
+    call((a) => a.importApply({ folder, answers }, shown), (body) => dispatch({ type: 'APPLIED', result: body as never }));
   }, [call]);
 
   const view = useMemo(() => importView(state), [state]);
