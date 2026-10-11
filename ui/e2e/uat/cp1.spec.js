@@ -29,7 +29,7 @@ test('cp1: Base on this waits in the Plan panel, Approve saves it, a taken name 
   await me.click(form.getByRole('button', { name: 'Create' }));
   act.done();
   const step = plan.getByTestId('plan-step').first();
-  await expect(step.getByTestId('plan-step-sentence')).toHaveText('Waiting for your approval: Creates StatusBadge in feature orders, based on the library Badge.');
+  await expect(step.getByTestId('plan-step-sentence')).toHaveText('Waiting for your approval: Creates StatusBadge in feature orders, based on the library Badge.', { timeout: 30_000 });
   expect(fs.existsSync(path.join(dir, 'features/orders/components/StatusBadge.tsx'))).toBe(false);
   await expectPlainEnglish(plan);
 

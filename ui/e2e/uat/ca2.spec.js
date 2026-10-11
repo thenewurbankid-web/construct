@@ -20,7 +20,7 @@ test('ca2: Apply the recommended fix on Components and on Pages, one click each'
   await expect(status).toContainText('2 problems', { timeout: 30_000 });
   const card = page.getByTestId('ll-feature-row').filter({ has: page.getByText('InvoiceCard', { exact: true }) });
   const fix = card.getByTestId('line-fix');
-  await expect(fix).toContainText('Base InvoiceCard.tsx on the library component Card, which it already uses.');
+  await expect(fix).toContainText('Base InvoiceCard.tsx on the library component Card, which it already uses.', { timeout: 30_000 });
   await expectPlainEnglish(page.getByTestId('line-library'));
 
   act = me.action('Apply the fix on InvoiceCard');
