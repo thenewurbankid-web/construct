@@ -65,6 +65,12 @@ export function createLinePlanRouter({ getRoot, clientOrigin, afterSave, service
       return res.status(500).json({ ok: false, sentence: 'Cockpit could not do that with the plan; nothing was changed.', code: 'INTERNAL' });
     }
   };
+  // Reading the plan while no project is open (the page asks as a project opens or closes) is not an error: an empty
+  // plan that says so in one sentence. Adding, approving and running still refuse with NO_PROJECT.
+  router.get('/plan', (req, res, next) => {
+    if (getRoot().ok) return next();
+    return res.json({ ok: true, sessionId: 'none', planId: null, version: 0, status: 'none', steps: [], store: { linked: false, sentence: 'No project is open, so there is no plan yet.' } });
+  });
   router.get('/plan', handle(async (svc) => { const v = await svc.view(); return v.ok ? { ...v, approvalToken } : v; }));
   router.post('/plan/step', handle((svc, body) => svc.addStep({ tool: body.tool, args: body.args, why: body.why }, 'ui')));
   router.post('/plan/approve', personOnly, handle(async (svc, body) => {

@@ -189,7 +189,7 @@ Tests: `ui/client/features/line-library/domain/LineChange.spec.mjs` (4) and `ui/
 
 Gaps: no name check while typing (the server's sentence is the check); only components get this action.
 
-UAT: Components → Badge card → Base on this → Feature "orders", Name "StatusBadge" → Create. Expect the green sentence, "Used by 1 feature component" on Badge and StatusBadge "Based on Badge" under orders. Then try Button with orders / OrderButton: one refusal sentence, nothing changes.
+UAT: Components → Badge card → Base on this → Feature "orders", Name "StatusBadge" → Create, then Approve step 1 in the Plan panel (since cp1 every change waits there). Expect the green sentence, "Used by 1 feature component" on Badge and StatusBadge "Based on Badge" under orders. Then try Button with orders / OrderButton: one refusal sentence, nothing changes.
 
 ## Hour 7: Promote to library (awaiting UAT)
 
@@ -202,7 +202,7 @@ Test: `ui/e2e/tests/line-promote.spec.js` (Playwright), plus the promote cases i
 
 Gaps: no undo except git; an item used through another feature's index file is not repointed.
 
-UAT (fresh sample): Components → under orders, OrderButton → Promote to library → read the sentence → Promote. Expect the green sentence, an OrderButton card under Molecules, and the status bar at "1 problem" with only the InvoiceCard sentence left.
+UAT (fresh sample): Components → under orders, OrderButton → Promote to library → read the sentence → Promote → Approve in the Plan panel. Expect the green sentence, an OrderButton card under Molecules, and the status bar at "1 problem" with only the InvoiceCard sentence left.
 
 ## Hours 5 and 6: Pages inside a feature, and setting one prop (awaiting UAT)
 
@@ -218,8 +218,8 @@ Gaps: only text, number and yes/no props are editable (no code values); no "View
 
 ### UAT (fresh sample, see "Before the Hours 3-7 UAT")
 1. Pages → pick orders → OrdersPage "Based on ListPage", "Fine".
-2. Open OrdersPage, set the title to "All orders", Save. Expect "Saved. ..." and the new value.
-3. Pick billing → InvoicesPage shows "Needs attention" with its sentence; change its title and Save: it saves, and still shows the old problem.
+2. Open OrdersPage, set the title to "All orders", Save, then Approve in the Plan panel (Save + Approve, two clicks). Expect "Saved. ..." and the new value.
+3. Pick billing → InvoicesPage shows "Needs attention" with its sentence; change its title, Save and Approve: it saves, and still shows the old problem.
 
 ## Hour 3b: preview inside each library card (awaiting UAT)
 
@@ -286,7 +286,7 @@ Gaps: a plain text box (types checked on Save, not while typing); the sample has
 
 UAT (fresh sample):
 1. Pages → orders → OrdersPage → on ListPage click "Edit code". Expect only "What happens when Orders asks for more" with `() => console.log('Show more orders')`.
-2. Change the text to 'All orders' → Save. Expect "Saved. Changes the code for …"; only that handler changed in the file.
+2. Change the text to 'All orders' → Save → Approve in the Plan panel. Expect "Saved. Changes the code for …"; only that handler changed in the file.
 3. Edit again and type `() => {` → Save. Expect "This code is not a single valid expression, so nothing was saved." with Details.
 
 ## cf1: Features, a feature with everything it owns (awaiting UAT)
@@ -302,9 +302,9 @@ Browser: the list ("Needs attention" / "All fine") replaces the old list for Lin
 Gaps: coverage is name and test-title matching only (something covered by behaviour but never named shows "Not covered yet"); a component link opens Components, not that card; Line projects lose the old Browser tab inside Features (it opens on Notes); 4 new complexity warnings (no errors) from list loops, the same as the other Line screens.
 
 UAT (fresh sample):
-1. Features (`/`) → "Your features": billing "Needs attention", orders "All fine".
-2. Click orders → items with "Based on …", the Auto summary, "1 of 2 acceptance points are covered."
-3. Click billing → open Details on InvoicesPage's problem (LINE-DIR, `InvoicesPage.tsx:4`); click a page name → Pages opens on it.
+1. Features (`/`) opens as a chat (cd1); its first message lists the features: billing "Needs attention", orders "All fine".
+2. Click orders in that list → the feature page (chat beside it) with items "Based on …", the Auto summary, "1 of 2 acceptance points are covered."
+3. Click "All features", then billing in the chat's list → open Details on InvoicesPage's problem (LINE-DIR, `InvoicesPage.tsx:4`); click a page name → Pages opens on it.
 
 ## cu6: one project switcher, one workspace folder (awaiting UAT)
 
@@ -322,7 +322,7 @@ Gaps: choosing the folder is not yet a plan step; the page reloads after choosin
 
 UAT (fresh sample):
 1. Project switcher (top left, "line-sample / Whole project") → "Change workspace folder" → features/ → "Use" beside orders/. Header shows "/ features/orders"; Badge and InvoiceCard show "Read-only".
-2. Badge → Base on this → orders → Create: saves.
+2. Badge → Base on this → orders → Create → Approve in the Plan panel: saves.
 3. Badge → Base on this again: the Feature list offers only orders (billing is read-only); Cancel. Then under billing, InvoiceCard → Promote to library → Promote: "Nothing was saved: … is outside your workspace folder features/orders; it stays read-only." and nothing changes on disk.
 
 ## cm1: no single point of failure (merged; LINE-MODULE now 0 on this repo; 5 Trace tests quarantined)

@@ -56,7 +56,8 @@ test.describe.serial('UAT ct1: Auto acts it out, you approve', () => {
     await expect(bar.getByRole('status').first()).toHaveText(/^Base a new PaidBadge/);
     await bar.getByRole('button', { name: 'Do it' }).click();
     await expect(bar.getByTestId('auto-caption')).toHaveText('Auto finished; the plan shows what ran.', { timeout: 30_000 });
-    expect(fs.existsSync(path.join(base, 'features/orders/components/PaidBadge.tsx'))).toBe(true);
+    // The approved step runs through the plan runner after Auto's last move; the file lands a moment later.
+    await expect.poll(() => fs.existsSync(path.join(base, 'features/orders/components/PaidBadge.tsx')), { timeout: 30_000 }).toBe(true);
     watch.check();
   });
 });

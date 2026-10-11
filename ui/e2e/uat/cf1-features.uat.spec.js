@@ -26,6 +26,8 @@ test('cf1: a feature with everything it owns, its summary and spec coverage', as
   await expectAxeClean(page, '[data-testid="line-features"]');
   await expectLayoutFits(page, '[data-testid="line-features"]', testInfo, 'feature-orders');
 
+  // cd1: the open feature's chat offers "All features" to go back to the list.
+  await page.locator('[data-option-id="feature.back"]').click();
   await cards(page).filter({ hasText: 'billing' }).click();
   const finding = item(page, 'InvoicesPage').getByTestId('lf-finding');
   await finding.getByText('Details').click();

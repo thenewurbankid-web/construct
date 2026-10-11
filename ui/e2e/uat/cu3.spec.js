@@ -55,7 +55,7 @@ test.describe.serial('UAT cu3: one tool registry, project writes wait for approv
     expect(fs.existsSync(file), 'nothing is written before I approve').toBe(false);
 
     await step.getByRole('button', { name: 'Approve step 1' }).click();
-    await expect(step.getByTestId('plan-step-sentence')).toHaveText('Saved. Creates StatusBadge in feature orders, based on the library Badge.');
+    await expect(step.getByTestId('plan-step-sentence')).toHaveText('Saved: Creates StatusBadge in feature orders, based on the library Badge.');
     expect(fs.existsSync(file)).toBe(true);
   });
 

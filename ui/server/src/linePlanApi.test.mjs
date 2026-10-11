@@ -101,3 +101,20 @@ test('only a person in Cockpit approves or runs: no Origin, or a missing or wron
   assert.deepEqual(both.body.steps.map((s) => s.state), ['ready', 'ready']);
   assert.equal((await post('/plan/approve', { stepIds: [] })).body.code, 'BAD_ARGS');
 });
+
+test('no project open: reading the plan is an empty plan with one sentence (200, the page never logs a 400); a write still refuses', async (t) => {
+  const app = express();
+  app.use(express.json());
+  app.use('/api/line', createLinePlanRouter({ clientOrigin: ORIGIN, getRoot: () => ({ ok: false, error: 'No project is open; pick a project first.' }) }));
+  const server = app.listen(0);
+  t.after(() => server.close());
+  await new Promise((r) => server.once('listening', r));
+  const base = `http://127.0.0.1:${/** @type {any} */ (server.address()).port}/api/line`;
+  const r = await fetch(`${base}/plan`);
+  assert.equal(r.status, 200);
+  const v = await r.json();
+  assertPlanView(v);
+  assert.deepEqual([v.steps, v.store.sentence], [[], 'No project is open, so there is no plan yet.']);
+  const add = await fetch(`${base}/plan/step`, { method: 'POST', headers: { 'content-type': 'application/json', origin: ORIGIN }, body: JSON.stringify({ tool: 'line.project' }) });
+  assert.deepEqual([add.status, (await add.json()).code], [400, 'NO_PROJECT']);
+});

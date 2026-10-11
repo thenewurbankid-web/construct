@@ -77,8 +77,14 @@ const optionText = (o) => `${o.id}: ${o.sentence}${typeof o.confidence === 'numb
 /** The plan-only fields a tool call does not show (planTools requestOf). */
 const requestOf = (args) => { const { expect: _e, retry: _r, fixOf: _f, ...req } = args ?? {}; return req; };
 
+/** The names a step's arguments give (an item, a workflow, a file's base name): kept as written, like a feature's. */
+const argNames = (args) => Object.values(requestOf(args) ?? {})
+  .flatMap((v) => (typeof v === 'string' ? [v, v.split('/').pop().replace(/\.[a-z]+$/, '')] : []))
+  .filter((w) => /^[A-Za-z][A-Za-z0-9]*$/.test(w));
+
 function planStep({ step }) {
-  const { sentences, ids } = plainParagraph([step.sentence]);
+  const names = argNames(step.args);
+  const { sentences, ids } = plainParagraph([step.sentence], names);
   const r = step.result && typeof step.result === 'object' ? step.result : null;
   const details = [
     { label: 'Tool call', text: `${step.tool}(${json(requestOf(step.args))})` },
@@ -88,7 +94,7 @@ function planStep({ step }) {
     ...(r && Array.isArray(r.options) ? r.options.map((o) => ({ label: 'Option', text: optionText({ id: o.fixId ?? o.id, sentence: o.sentence, recommended: o.recommended }) })) : []),
     ...idsDetail(ids),
   ];
-  return { sentences, details };
+  return { sentences, details, names };
 }
 
 function finding({ finding: f }) {
@@ -160,7 +166,7 @@ export function summarize(input) {
   const out = make
     ? make(/** @type {any} */ (input))
     : { sentences: ['Line cannot put this into words yet; it is under Details.'], details: [{ label: 'Input', text: json(input) }] };
-  const names = input?.kind === 'feature' ? [input.name, ...(input.names ?? [])] : [];
+  const names = input?.kind === 'feature' ? [input.name, ...(input.names ?? [])] : /** @type {any} */ (out).names ?? [];
   return assertSummary({ sentences: out.sentences, details: out.details, via: 'static' }, (t) => checkSentence(t, { names }));
 }
 

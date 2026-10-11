@@ -47,8 +47,8 @@ const NOISE = [
   /WebSocket connection to .* failed: WebSocket is closed before the connection is established/,
   /\[Fast Refresh\]/,
   /\[HMR\]/,
-  // axe-core tries to inject itself into the preview's sandboxed frame (sandbox="" runs no scripts, by design); the
-  // rendered component itself carries no script. Only the accessibility check causes this line.
+  // Playwright's Chromium logs this for ANY sandboxed frame without allow-scripts as it attaches, even a static <p>
+  // (checked with a bare sandboxed srcdoc frame); the preview's frame runs no scripts on purpose and holds none.
   /Blocked script execution in 'about:srcdoc' because the document's frame is sandboxed/,
 ];
 
@@ -176,7 +176,7 @@ export function clearWorkspace() {
 /** Console errors, page exceptions and 4xx/5xx answers, collected per walk; `allow` lists provoked ones. */
 export function watchPage(page, { allow = [] } = {}) {
   const problems = [];
-  const ok = (line) => allow.some((re) => re.test(line));
+  const ok = (line) => [...NOISE, ...allow].some((re) => re.test(line));
   page.on('console', (m) => {
     if (m.type() !== 'error') return;
     const line = `console: ${m.text()} ${m.location().url ?? ''}`.trim();
@@ -248,7 +248,7 @@ export const screen = (page, name) => page.getByRole('navigation', { name: 'Scre
 export function watchForProblems(page) {
   const problems = [];
   page.on('console', (m) => {
-    if (m.type() === 'error') problems.push(`console: ${m.text()}`);
+    if (m.type() === 'error' && !NOISE.some((r) => r.test(m.text()))) problems.push(`console: ${m.text()}`);
   });
   page.on('pageerror', (e) => problems.push(`page error: ${e.message}`));
   page.on('response', (r) => {

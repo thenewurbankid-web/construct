@@ -89,3 +89,9 @@ test('fallback: with Smith and atomic-codemod missing, one plain sentence each a
   assert.deepEqual(s.sentences, ['This code is not put into words because atomic-codemod is not linked; the code and the reason are under Details.']);
   assert.match(label(s, 'Why')[0], /@smith\/to-english is not linked because the source folder/);
 });
+
+test('a plan step keeps the names its arguments give as written (a workflow name is not split into words)', () => {
+  const sentence = 'Waiting for your approval: Creates the workflow ordersListDetail in feature orders, based on the library workflow listDetail.';
+  const out = summarize({ kind: 'plan-step', step: { id: 's1', n: 1, tool: 'line.baseWorkflowOn', args: { libraryId: 'workflows/listDetail', feature: 'orders', name: 'ordersListDetail' }, state: 'waiting', sentence, result: null } });
+  assert.equal(out.sentences.join(' '), sentence);
+});
