@@ -308,3 +308,36 @@ Plan: `docs/line/server-split.md`.
 Gaps: empty folders made before a disk error are left behind; LINE-MODULE does not yet check `ui/` reaching into `packages/`; memory, plan-store and registry fallbacks are not done. On this repo LINE-MODULE reports 216 errors (each package lacks a typed contract; engine and core reach into other packages 205 times).
 
 No UAT (nothing visible).
+
+## cs1: plain English first, made by one summarizer on Smith (awaiting UAT)
+
+Smith (`~/Desktop/smith`, commit f70eecf) and atomic-codemod (`~/Desktop/atomic-codemod`, commit 885b32e) were already git repos; they are linked like cu1's packages (`packages/line-links/smith.json`, `atomic-codemod.json`: pinned commit, no copy). `node packages/line-links/link.mjs --load` now lists them too.
+The summarizer is `packages/summarize`: `summarize(input)` gives plain sentences plus the technical part as details, with no model. `checkSentence` holds the rules: a full sentence, no raw ids (step, session or rule ids, hashes, tool names), slot names as words (libraryId → "library item"). Item and feature names stay as written.
+Now routed through it: plan step sentences (with the tool call, step id, checks, files and options as details), finding sentences, the feature summary. In Cockpit, the Plan panel's steps use the shared `<PlainFirst>` (`ui/client/lib/PlainFirst.tsx`).
+One visible change: a finished step now reads "Saved: Creates StatusBadge …" instead of "Saved. Creates …", because "Saved." alone is not a full sentence.
+
+Tests: `test/line-summarize-contract.test.mjs` (7), `test/line-summarize.test.mjs` (9), a client row test, `ui/e2e/tests/line-plain-first.spec.js` (2, real server), the UAT walk `ui/e2e/uat/cs1.spec.js`.
+1. Good sentences pass the rules; a lower-case start, a one-word fragment, a raw id or a slot name each fail, and the reason is said in plain English.
+2. Each kind (plan step, finding, feature, status, a message from Oracle, Trace, GateLM or the reasoning log, code) gives sentences that pass the rules, with the technical part (options with confidence, the reasoning, code) as details.
+3. With Smith linked, a Smith chain (`order.is().paid()`, `order.will().ship()`) reads "If order is paid, order will ship." through to-english. Smith's connector words match the summarizer's list.
+4. With Smith or atomic-codemod missing: one sentence each, and everything else keeps working.
+5. Browser: the step sentence comes first and passes the rules; the tool call and step id appear only after opening Details; after Approve, the checks and the file written are under Details.
+
+Gaps: the Features and Pages screens still use their own sentence-plus-Details markup (same look, not yet `<PlainFirst>`); Oracle, Trace, GateLM and the reasoning log are supported by the summarizer but not yet routed through it (they live on other branches); there is no chat screen on this branch yet; file paths are allowed in sentences. GateLM's model input is untouched (nothing here feeds a model).
+
+UAT (fresh sample):
+1. Components → Badge → Base on this → feature orders, name StatusBadge → Create. The Plan panel says "Waiting for your approval: Creates StatusBadge in feature orders, based on the library Badge." Nothing technical is shown.
+2. Open Details under the step: the tool call and the step id are there. Click Approve: the step says "Saved: Creates StatusBadge …"; Details now lists the checks and the file written.
+3. Features → orders: the summary reads as full sentences.
+
+## cs2 (scaffold): the static rule factory's miss collector (no UAT)
+
+`packages/rule-factory`. The contract defines a miss record: who decided (static code, a person, an agent or a model), whether static code missed, what it chose and what was finally chosen, and an empty label for jev to fill later. A collector reads the project's plans (`line/plans/*.json`) and validate's findings into miss records. `node packages/rule-factory/static-share.mjs --dir <project>` prints the share of decisions static code made, per step. No Claude or model calls.
+
+Tests: `test/line-rule-factory-contract.test.mjs` (3), `test/line-rule-factory.test.mjs` (4).
+1. A step that passed its checks counts for static code. A step that needed the person, failed, or was added by jev or Qwen counts as a miss. A fix the person picked counts for static code only if static code ranked it first.
+2. A finding with a typed fix ranked first counts for static code; one without a typed fix is a miss.
+3. The share comes per step and for all steps, as a count, a percentage and a sentence.
+4. On a copy of the sample, one approved Base on step plus the two planted findings give "line.baseOn: Static code decided 1 of 1 (100%)". A broken plan file is skipped, and findings can also come from a saved JSON file.
+
+Gaps (scaffold): decision traces and the reason ledger are in the contract but have no collector; jev labelling, rule proposals and the held-out accuracy gate are not built.
