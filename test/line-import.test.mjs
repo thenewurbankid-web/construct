@@ -127,6 +127,19 @@ test('apply with the other answer: Table becomes a feature item based on its lib
   assert.match(fs.readFileSync(path.join(dir, FOLDER, 'features/alerts/components/Table.tsx'), 'utf8'), /^\/\/ @line-base components\/Table\n/);
 });
 
+test('carried exceptions are added in place: the folder\'s own architecture.yml keeps its comments and keys, even with exceptions: not last', () => {
+  const dir = copy();
+  const yml = path.join(dir, FOLDER, 'architecture.yml');
+  const own = '# Our notes on this folder\nversion: 1\npreset: line\nexceptions:\n  - path: legacy/**\n    rule: PAGE-001 # until the rewrite\nline:\n  # Left in place on purpose\n  appFolders:\n    - hooks\n';
+  fs.writeFileSync(yml, own);
+  const r = applyImport(dir, FOLDER, {});
+  assert.equal(r.ok, true, r.sentence);
+  const after = fs.readFileSync(yml, 'utf8');
+  assert.ok(after.startsWith('# Our notes on this folder\nversion: 1\npreset: line\nexceptions:\n  - path: legacy/**\n    rule: PAGE-001 # until the rewrite\n  - path: library/pages/'), after);
+  assert.ok(after.endsWith('\nline:\n  # Left in place on purpose\n  appFolders:\n    - hooks\n'), after);
+  assert.match(after, /\n {4}rules: \[PAGE-006\]\n {4}reason: Imported from pages\/AlertsPage\.tsx; Line brings it to the pattern step by step\.\n/);
+});
+
 test('refusals: a folder outside the project, a step reaching outside the folder, and a second apply are one sentence and change nothing', () => {
   const dir = copy();
   for (const folder of ['../x', '/etc', '', 'src/nope']) {
