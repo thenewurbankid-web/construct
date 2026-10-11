@@ -22,4 +22,5 @@ export const lineHttp: LineHttp = {
   fix: (req) => postJson('/api/line/fix', req),
   getFragments: (file) => getJson(`/api/line/fragments?file=${encodeURIComponent(file)}`),
   setFragment: (req) => postJson('/api/line/fragment', req),
+  getAiProfiles: () => getJson('/api/line/ai-profiles'),
 };

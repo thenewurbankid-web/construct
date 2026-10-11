@@ -159,4 +159,31 @@ export type LineHttp = {
   fix: (req: FixRequest) => Promise<ApplyResult | LineRefusal>;
   getFragments: (file: string) => Promise<FragmentList | LineRefusal>;
   setFragment: (req: SetFragmentRequest) => Promise<ApplyResult | LineRefusal>;
+  getAiProfiles: () => Promise<AiProfiles | LineRefusal>;
+};
+
+/** cu2: one AI step's profile (Cockpit, Trace and Construct steps are one set; contract.mjs StepProfile). */
+export type StepProfile = {
+  step: string;
+  label: string;
+  kind: 'decide' | 'draft';
+  provider: 'ollama' | 'hosted';
+  model: string | null;
+  modelFrom: string;
+  maxTokens: number;
+  fallback: 'static';
+  ladder: {
+    static: { target: number };
+    options: { on: boolean; target: number };
+    review: { on: boolean; target: number };
+    measured: string | null;
+  };
+  source: 'cockpit' | 'trace' | 'construct';
+};
+
+/** cu2: GET /api/line/ai-profiles. */
+export type AiProfiles = {
+  defaultModel: string;
+  profiles: StepProfile[];
+  reason: { linked: boolean; sentence: string };
 };

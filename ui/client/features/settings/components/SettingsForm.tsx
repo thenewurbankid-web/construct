@@ -42,7 +42,7 @@ function ModelField({ capability, value, onChange }: { capability: LlmCapability
       id={`llm-model-${capability}`}
       type="text"
       value={draft}
-      placeholder="— the provider's own default —"
+      placeholder="— Line's default (qwen2.5-coder:1.5b) —"
       spellCheck={false}
       onChange={(e) => setDraft(e.target.value)}
       onBlur={() => {
@@ -121,7 +121,7 @@ export function SettingsForm({
           {llmProviders[capability] === 'ollama' && (
             <Field
               label={`${label}: which installed model`}
-              hint="An installed Ollama model's own name (see the Local Model screen), or leave it blank to use that provider's built-in default."
+              hint="An installed Ollama model's own name (see the Local Model screen), or leave it blank to use Line's default for this step (listed under AI steps below)."
             >
               <ModelField capability={capability} value={llmModels[capability]} onChange={(value) => setLlmModel(capability, value)} />
             </Field>
