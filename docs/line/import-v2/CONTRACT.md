@@ -49,7 +49,7 @@ Agents ALWAYS work on their own clone of max-ai-ui under their scratch dir: `git
      - every unit has a block and a test (or an owner waiver);
      - a path-mapped `check-change` + `semanticDiff` (old path → new path, specifiers normalized).
 
-## Shapes (JSDoc in `packages/engine/line/importV2/contract.mjs`, with a mock in `mock.mjs`)
+## Shapes (JSDoc in `packages/engine/line/importV2/contract.mjs`, the ONE place they live since the merge; a mock in `mock.mjs`)
 - **`LogicUnit`:** `{ id, fingerprint, kind, file, fn, line, detail }`.
   - `kind` is one of: `branch | render-if | state | effect | derived | data | navigation | url-read | handler | toast | analytics | storage | io | export`.
   - `id` is `file#fn:kind:n` and is for display only.
@@ -59,8 +59,8 @@ Agents ALWAYS work on their own clone of max-ai-ui under their scratch dir: `git
 - **`MapDiff`:** `{ kept, moved: [{from, to}], missing: LogicUnit[], changed: [{before, after, sentence}], added }`. Each missing unit has one sentence.
 - **`RouteClosure`:** `{ appRoot, routes: [{route, entry}], files, external }`. `external` lists the boundaries the tracer stopped at.
 - **`CharTest`:** `{ file, runner: 'jest', kind: 'pure'|'render'|'interaction'|'machine', unitFingerprints, title }`.
-- **`UnitCoverage`:** `{ covered, uncovered, waived: [{fingerprint, by: 'owner', why}] }`.
-- **`FitProposal`:** `{ feature, blocks: [{ kind, name, units, from, sentence }], unassigned }`.
+- **`UnitCoverage`:** `{ covered, uncovered, waived: [{fingerprint, by: 'owner', why, at?}], byKind?, details? }`. `byKind`: `{kind: {covered, total}}`; `details`: each uncovered unit with its cause and one sentence (iv2-tests).
+- **`FitProposal`:** `{ feature, blocks: [{ kind, name, units, from, sentence, area? }], unassigned: [{unit, sentence}] }`. `area` is `feature | library` (library when other routes use the code); `from` is `file#name` or `file`; a unit no rule claims is listed with one sentence for a person. `FitStep` (planFitSteps): `{ id, tool: line.import.extract*, args, sentence, blocks }`.
   - `kind` is one of: `page | component | workflow | fixture | usecase | service | domain`.
   - Fitting rules, in order:
     1. Data hooks and adapters → service.
@@ -69,7 +69,7 @@ Agents ALWAYS work on their own clone of max-ai-ui under their scratch dir: `git
     4. Screen-flow, URL state and navigation between views → workflow.
     5. JSX with its render-ifs and handlers → component or page.
     6. Sample data → fixture.
-- **`ImportLoopState`:** `{ step, mapBefore, mapAfter, diff, tests: {passed, failed}, coverage, status: 'ok'|'stopped', sentence }`.
+- **`ImportLoopState`** (one checked step, fixed-size; reconciled to what the loop writes): `{ step, n, at, tool, mapBefore, mapAfter: {units, counts, hash}, diff: {kept, moved, added, changed, missingCount, missing}, tests: {passed, failed, total, state}, coverage: {covered, uncovered, waived, total}, behaviour, checks, status: 'ok'|'stopped', sentence, fixes }`. A `put-back` fix carries `step`, the extract tool of the unit's FitProposal block. The plan file keeps them in `ImportLogic` (`{route, closure, map, fit, tests, baselineTests, waivers, loop, last}`); the records go to `records/import-loop.jsonl`.
 
 ## Invariants
 - Every write goes through Construct's writer. `applyImport` is all-or-nothing: a refused run leaves the target byte-identical.
