@@ -57,6 +57,22 @@ test.describe('Cockpit top bar (#245)', () => {
     await expect(page).toHaveURL(/\/tests$/);
   });
 
+  test('crossing the narrow breakpoint keeps the screen mounted, in both directions (pre-UAT Hours 5-6 at 375px)', async ({ page }) => {
+    // The wide and narrow layouts used to put the stage at different child slots, so React remounted the whole screen
+    // on a resize: the Pages screen re-read its project and sat on "Opening Pages" past the walk's 15s.
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto('/pages');
+    const stage = page.locator('#sh-mid');
+    await expect(stage).toBeVisible({ timeout: 30_000 });
+    await page.evaluate(() => { window.__stageBefore = document.querySelector('#sh-mid'); });
+    await page.setViewportSize({ width: 375, height: 812 });
+    await expect(page.locator('[data-narrow="true"]')).toHaveCount(1);
+    expect(await page.evaluate(() => document.querySelector('#sh-mid') === window.__stageBefore)).toBe(true);
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await expect(page.locator('[data-narrow="true"]')).toHaveCount(0);
+    expect(await page.evaluate(() => document.querySelector('#sh-mid') === window.__stageBefore)).toBe(true);
+  });
+
   test('every former Screens-tab target is still reachable: top bar, profile menu or palette (#370)', async ({ page }) => {
     await page.goto('/settings');
     // The Browser pane's Screens tab is gone; nothing in the pane lists screens any more.
