@@ -48,7 +48,7 @@ export const SENTENCE_RULES = Object.freeze([
  *
  * @typedef {{kind: 'plan-step', step: {id: string, n: number, tool: string, args?: Record<string, unknown>, state: string, sentence: string, result?: any}}} PlanStepInput
  * @typedef {{kind: 'finding', finding: {sentence: string, rule: string, severity?: string, file: string, line: number, key?: string, fixes?: {id: string, sentence: string, rank?: number}[]}}} FindingInput
- * @typedef {{kind: 'feature', name: string, sentences: string[], names?: string[]}} `names`: item names, kept as written FeatureInput
+ * @typedef {{kind: 'feature', name: string, sentences: string[], names?: string[]}} FeatureInput  `names`: item names, kept as written.
  * @typedef {{kind: 'status', text: string, details?: SummaryDetail[]}} StatusInput
  * @typedef {{kind: 'message', from: 'oracle'|'trace'|'gatelm'|'reasoning'|'line', text: string, details?: SummaryDetail[], options?: SummaryOption[], reasoning?: string}} MessageInput
  * to-english's output for one function (atomic-codemod toEnglish): a title and one English line per statement.
