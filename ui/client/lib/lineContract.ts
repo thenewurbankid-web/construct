@@ -191,6 +191,36 @@ export type PlanView = {
   stepId?: string;
 };
 export type PlanStepRequest = { tool: string; args?: Record<string, unknown>; why?: string };
+/** Import (ci1): one folder of the open project brought into Line; only that folder is ever written. */
+export type ImportTarget = 'library' | 'feature';
+export type ImportFound = {
+  file: string;
+  kind: LineKind;
+  name: string;
+  proposal: { target: ImportTarget; feature?: string; base?: string; level?: Level; route?: string; sentence: string };
+  confidence: 'sure' | 'ask';
+  rules: string[];
+  usedBy: string[];
+};
+export type ImportQuestion = { id: string; file: string; sentence: string; options: { id: string; sentence: string }[]; recommended: string };
+/** POST /api/line/import/scan. */
+export type ImportScan = {
+  sourceRoot: string;
+  folder: string;
+  found: ImportFound[];
+  questions: ImportQuestion[];
+  unchanged: { file: string; sentence: string }[];
+  routes: string[];
+};
+export type ImportStepTool = 'line.import.mark' | 'line.import.toLibrary' | 'line.import.toFeature';
+export type ImportStep = { id: string; tool: ImportStepTool; args: Record<string, unknown>; sentence: string };
+/** POST /api/line/import/plan. */
+export type ImportPlan = { folder: string; summary: string; steps: ImportStep[] };
+/** POST /api/line/import/apply: an ApplyResult plus how each step went. */
+export type ImportApplyResult = ApplyResult & { steps: { id: string; ok: boolean; sentence: string }[] };
+export type ImportFolders = { sourceRoot: string; folders: { path: string; files: number }[] };
+export type ImportScanRequest = { folder: string };
+export type ImportPlanRequest = { folder: string; answers: Record<string, string> };
 
 /** Every LINE_API route, as the client calls it. Bodies come back as the server sent them, refusals included; each
  * screen turns them into what it shows. A network failure rejects. */
@@ -211,4 +241,8 @@ export type LineHttp = {
   fix: (req: FixRequest) => Promise<ApplyResult | LineRefusal>;
   getFragments: (file: string) => Promise<FragmentList | LineRefusal>;
   setFragment: (req: SetFragmentRequest) => Promise<ApplyResult | LineRefusal>;
+  importFolders: () => Promise<ImportFolders | LineRefusal>;
+  importScan: (req: ImportScanRequest) => Promise<ImportScan | LineRefusal>;
+  importPlan: (req: ImportPlanRequest) => Promise<ImportPlan | LineRefusal>;
+  importApply: (req: ImportPlanRequest) => Promise<ImportApplyResult | LineRefusal>;
 };

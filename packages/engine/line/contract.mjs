@@ -198,6 +198,7 @@
  * @property {LineFinding[]} findings  Every finding inside the feature's folder.
  */
 
+/**
  * cp1 -- Line actions as plan steps (@mx/plan, packages/engine/line/planTools.mjs + planService.mjs). Every Cockpit
  * change (Base on, Promote, set a page prop) is a write step in the open project's plan session
  * (`<root>/line/plans/<sessionId>.json`); only a person approves a write, and only an approved step runs.
@@ -278,6 +279,78 @@ export const LINE_PLAN_TOOLS = Object.freeze([
   { name: 'line.project', kind: 'read', request: '{}' },
 ]);
 export const CHECK_KINDS = Object.freeze(['validate', 'types', 'tests', 'file', 'spec']);
+// ---------------------------------------------------------------------------------------------
+// Import (ci1, packages/engine/line/import.mjs): bring one folder of an app not built with Line into Line's layout.
+// Partial migration: the open project is the source; only the chosen folder is ever written (it becomes a small Line
+// project of its own: architecture.yml with `preset: line`, <folder>/library, <folder>/features/<name>); the rest of
+// the project is read (to see who uses what and which routes serve which page) and never changed.
+
+/**
+ * One item the scan found inside the folder, with what Line proposes for it.
+ * @typedef {object} ImportFound
+ * @property {string} file        Project-relative path (where it is today).
+ * @property {LineKind} kind
+ * @property {string} name        The item's name (its main export, else the file name).
+ * @property {{target: 'library'|'feature', feature?: string, base?: string, level?: Level, route?: string, sentence: string}} proposal
+ *   `feature` and `base` for a feature item (`base` is the library id it will be based on); `level` for a library
+ *   component; `route` for a page an app route serves. `sentence` says it all in plain English.
+ * @property {'sure'|'ask'} confidence  "ask" when two static rules disagree; the matching question says how.
+ * @property {string[]} rules     The static rules that decided it (ids for a Details view, e.g. "used-by-pages").
+ * @property {string[]} usedBy    Project-relative files that import it (inside and outside the folder).
+ */
+
+/**
+ * A question the scan cannot decide by itself (two rules disagree). Options are closed, with stable ids.
+ * @typedef {object} ImportQuestion
+ * @property {string} id          Stable: "<rule>:<file>".
+ * @property {string} file        The item it is about.
+ * @property {string} sentence    The question in plain English.
+ * @property {{id: string, sentence: string}[]} options
+ * @property {string} recommended An option id (listed first).
+ */
+
+/**
+ * POST /api/line/import/scan {folder}: what Line found in the folder and proposes (pure read, no model).
+ * @typedef {object} ImportScan
+ * @property {string} sourceRoot  The open project (absolute).
+ * @property {string} folder      Project-relative folder that will be written.
+ * @property {ImportFound[]} found
+ * @property {ImportQuestion[]} questions
+ * @property {{file: string, sentence: string}[]} unchanged  Files in the folder that stay as they are (types, constants, tests).
+ * @property {string[]} routes    Every route Line read in the project, as "<path> -> <file>" (Details).
+ */
+
+/**
+ * One plan-ready step: a Line operation that produces a StagedChange, applied through applyChange. Import steps run
+ * with the folder as the root (`<project>/<args.folder>`), so a step can never write outside it.
+ * @typedef {object} ImportStep
+ * @property {string} id          Stable: "import-<n>-<slug>".
+ * @property {'line.import.mark'|'line.import.toLibrary'|'line.import.toFeature'} tool
+ * @property {Record<string, unknown>} args  JSON; always includes `folder`.
+ * @property {string} sentence    What the step does, in plain English.
+ */
+
+/**
+ * POST /api/line/import/plan {folder, answers}: the proposals turned into steps (pure, nothing written).
+ * @typedef {object} ImportPlan
+ * @property {string} folder
+ * @property {string} summary     One sentence.
+ * @property {ImportStep[]} steps
+ */
+
+/**
+ * POST /api/line/import/apply {folder, answers}: the plan run step by step through applyChange; it stops at the first
+ * refused step (steps already landed stay landed, each one was checked on its own).
+ * @typedef {object} ImportApplyResult
+ * @property {boolean} ok
+ * @property {string} sentence
+ * @property {string[]} files     Project-relative files written.
+ * @property {LineFinding[]} findings  Why a step was refused (empty when every step landed).
+ * @property {{id: string, ok: boolean, sentence: string}[]} steps
+ */
+
+/** @typedef {{folder: string}} ImportScanRequest */
+/** @typedef {{folder: string, answers?: Record<string, string>}} ImportPlanRequest */
 
 /** A refused request (bad name, unknown item, name taken). `sentence` is shown as is; `detail` (optional) is the
  * technical reason (a parser or type-checker message) for a collapsed Details. */
@@ -310,7 +383,14 @@ export const LINE_API = Object.freeze([
   { method: 'POST', path: '/api/line/plan/step', request: 'PlanStepRequest', response: 'PlanView & {stepId}' },
   { method: 'POST', path: '/api/line/plan/approve', request: '{stepId}', response: 'PlanView' },
   { method: 'POST', path: '/api/line/plan/run', request: '{stepId?}', response: 'PlanView' },
+  { method: 'GET', path: '/api/line/import/folders', request: null, response: '{sourceRoot, folders: {path, files}[]}' },
+  { method: 'POST', path: '/api/line/import/scan', request: 'ImportScanRequest', response: 'ImportScan' },
+  { method: 'POST', path: '/api/line/import/plan', request: 'ImportPlanRequest', response: 'ImportPlan' },
+  { method: 'POST', path: '/api/line/import/apply', request: 'ImportPlanRequest', response: 'ImportApplyResult' },
 ]);
+
+/** The tools an import plan's steps name (plan-ready: each produces a StagedChange for applyChange). */
+export const IMPORT_TOOLS = Object.freeze(['line.import.mark', 'line.import.toLibrary', 'line.import.toFeature']);
 
 export const LINE_FIX_TOOLS = Object.freeze(['line.setBase', 'line.promote', 'line.baseOn', 'line.moveFile', 'line.createLayout']);
 
@@ -511,6 +591,65 @@ export function assertPlanView(v) {
   }
 }
 
+const relPath = (v, where) => { str(v, where); if (v.startsWith('/') || v.split('/').includes('..')) fail(where, 'must be project-relative and stay inside the project'); };
+
+/** @param {any} s @returns {asserts s is ImportScan} */
+export function assertImportScan(s) {
+  str(s?.sourceRoot, 'scan.sourceRoot');
+  relPath(s.folder, 'scan.folder');
+  if (!Array.isArray(s.found) || !Array.isArray(s.questions) || !Array.isArray(s.unchanged) || !Array.isArray(s.routes)) fail('scan', 'found, questions, unchanged and routes must be arrays');
+  const qFiles = new Set();
+  s.questions.forEach((q, i) => {
+    const w = `scan.questions[${i}]`;
+    str(q.id, `${w}.id`);
+    relPath(q.file, `${w}.file`);
+    sentence(q.sentence, `${w}.sentence`);
+    if (!Array.isArray(q.options) || q.options.length < 2) fail(`${w}.options`, 'a question offers at least two options');
+    q.options.forEach((o, j) => { str(o.id, `${w}.options[${j}].id`); sentence(o.sentence, `${w}.options[${j}].sentence`); });
+    if (q.options[0].id !== q.recommended) fail(`${w}.recommended`, 'must be the first option');
+    qFiles.add(q.file);
+  });
+  s.found.forEach((f, i) => {
+    const w = `scan.found[${i}]`;
+    relPath(f.file, w + '.file');
+    if (!f.file.startsWith(`${s.folder}/`)) fail(`${w}.file`, 'must be inside the folder');
+    if (!LINE_KINDS.includes(f.kind)) fail(`${w}.kind`, 'unknown kind');
+    str(f.name, `${w}.name`);
+    const p = f.proposal;
+    if (!['library', 'feature'].includes(p?.target)) fail(`${w}.proposal.target`, 'must be library or feature');
+    if (p.target === 'feature') { str(p.feature, `${w}.proposal.feature`); str(p.base, `${w}.proposal.base`); }
+    sentence(p.sentence, `${w}.proposal.sentence`);
+    if (!['sure', 'ask'].includes(f.confidence)) fail(`${w}.confidence`, 'must be sure or ask');
+    if ((f.confidence === 'ask') !== qFiles.has(f.file)) fail(`${w}.confidence`, 'is "ask" exactly when a question is about it');
+    if (!Array.isArray(f.rules) || !Array.isArray(f.usedBy)) fail(w, 'rules and usedBy must be arrays');
+  });
+  s.unchanged.forEach((u, i) => { relPath(u.file, `scan.unchanged[${i}].file`); sentence(u.sentence, `scan.unchanged[${i}].sentence`); });
+}
+
+/** @param {any} p @returns {asserts p is ImportPlan} */
+export function assertImportPlan(p) {
+  relPath(p?.folder, 'plan.folder');
+  sentence(p.summary, 'plan.summary');
+  if (!Array.isArray(p.steps)) fail('plan.steps', 'must be an array');
+  const ids = new Set();
+  p.steps.forEach((st, i) => {
+    const w = `plan.steps[${i}]`;
+    str(st.id, `${w}.id`);
+    if (ids.has(st.id)) fail(`${w}.id`, 'must be unique');
+    ids.add(st.id);
+    if (!IMPORT_TOOLS.includes(st.tool)) fail(`${w}.tool`, `must be one of ${IMPORT_TOOLS.join(', ')}`);
+    if (st.args?.folder !== p.folder) fail(`${w}.args.folder`, 'must name the plan\'s folder');
+    sentence(st.sentence, `${w}.sentence`);
+  });
+}
+
+/** @param {any} r @returns {asserts r is ImportApplyResult} */
+export function assertImportApplyResult(r) {
+  assertApplyResult(r);
+  if (!Array.isArray(r.steps)) fail('result.steps', 'must be an array');
+  r.steps.forEach((st, i) => { str(st.id, `result.steps[${i}].id`); sentence(st.sentence, `result.steps[${i}].sentence`); });
+  if (r.ok && r.steps.some((st) => !st.ok)) fail('result', 'ok only when every step landed');
+}
 /** @param {any} l @returns {asserts l is FragmentList} */
 export function assertFragmentList(l) {
   str(l?.file, 'fragments.file');
