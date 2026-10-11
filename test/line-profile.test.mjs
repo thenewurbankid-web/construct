@@ -110,8 +110,8 @@ const EXPECTED = {
     'LINE-MODULE packages/notyped/package.json:1',
   ],
   'LINE-LAYOUT': [
+    'LINE-LAYOUT features/orders/helpers:1',
     'LINE-LAYOUT features/orders/notes.txt:1',
-    'LINE-LAYOUT features/orders/services:1',
     'LINE-LAYOUT features/stray.ts:1',
     'LINE-LAYOUT library/hooks:1',
   ],

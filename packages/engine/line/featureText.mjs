@@ -5,10 +5,13 @@ import { LINE_KINDS } from './contract.mjs';
 import { summarize } from '@line/summarize';
 
 /** Kind -> [singular, plural] as a person says it. */
-const NOUNS = { pages: ['page', 'pages'], components: ['component', 'components'], workflows: ['workflow', 'workflows'], fixtures: ['fixture', 'fixtures'] };
+const NOUNS = { pages: ['page', 'pages'], components: ['component', 'components'], workflows: ['workflow', 'workflows'], fixtures: ['fixture', 'fixtures'],
+  usecases: ['usecase', 'usecases'], services: ['service', 'services'], domains: ['domain', 'domains'] };
 /** The order the summary and the screen list kinds in. */
-export const KIND_ORDER = Object.freeze(['pages', 'components', 'workflows', 'fixtures']);
+export const KIND_ORDER = Object.freeze(['pages', 'components', 'workflows', 'fixtures', 'usecases', 'services', 'domains']);
 
+/** The logic kinds (iv2-fit, minimal): they need no library base yet. */
+const LOGIC = ['usecases', 'services', 'domains'];
 const count = (n, [one, many]) => `${n} ${n === 1 ? one : many}`;
 const listing = (parts) => (parts.length <= 1 ? parts.join('') : `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`);
 
@@ -47,6 +50,7 @@ export function summarySentences(name, items, libraryNames, uses) {
       const { value, libraryId } = it.base;
       if (libraryId) out.push(`${it.name} is based on ${libraryNames.get(libraryId) ?? libraryId.split('/').pop()}.`);
       else if (value) out.push(`${it.name} names "${value}" as its base, but the library has no such item.`);
+      else if (LOGIC.includes(k)) out.push(`${it.name} is a ${NOUNS[k][0]} of ${name}.`);
       else out.push(`${it.name} has no library base yet.`);
       for (const u of uses.get(it.id) ?? []) {
         if (u.area === 'library') out.push(`${it.name} also uses ${u.name} from the library.`);

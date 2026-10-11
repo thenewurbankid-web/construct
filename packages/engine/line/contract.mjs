@@ -14,7 +14,7 @@
 // (createTransaction().commit()), so the project's own validate profile gates them; every message a person
 // sees is one plain-English sentence, with rule ids and paths kept as separate fields for a Details view.
 
-/** @typedef {'components'|'pages'|'workflows'|'fixtures'} LineKind */
+/** @typedef {'components'|'pages'|'workflows'|'fixtures'|'usecases'|'services'|'domains'} LineKind */
 /** @typedef {'atom'|'molecule'|'organism'} Level */
 
 /**
@@ -438,6 +438,12 @@ export const LINE_PLAN_TOOLS = Object.freeze([
   { name: 'line.removeWorkflowTransition', kind: 'write', request: 'RemoveWorkflowTransitionRequest' },
   { name: 'line.leaveAsIs', kind: 'write', request: '{stepId}' },
   { name: 'line.import.fix', kind: 'write', request: '{folder, tool, args} (ci2: a typed fix run inside the import folder)' },
+  // Import v2 (iv2-fit, importV2/extract.mjs): fit existing logic into Line's blocks, inside the import folder.
+  { name: 'line.import.extractService', kind: 'write', request: '{folder, from, names, name, feature?, typedContracts?}' },
+  { name: 'line.import.extractDomain', kind: 'write', request: '{folder, from, names, name, feature?, typedContracts?}' },
+  { name: 'line.import.extractUsecase', kind: 'write', request: '{folder, from, names, name, feature?}' },
+  { name: 'line.import.splitPage', kind: 'write', request: '{folder, from, component, name, feature?}' },
+  { name: 'line.import.extractWorkflow', kind: 'write', request: '{folder, from, component, name, feature?}' },
   { name: 'line.project', kind: 'read', request: '{}' },
 ]);
 export const CHECK_KINDS = Object.freeze(['validate', 'types', 'tests', 'file', 'spec']);
@@ -815,7 +821,7 @@ export const IMPORT_TOOLS = Object.freeze(['line.import.mark', 'line.import.toLi
 
 export const LINE_FIX_TOOLS = Object.freeze(['line.setBase', 'line.promote', 'line.baseOn', 'line.moveFile', 'line.createLayout', 'line.amend']);
 
-export const LINE_KINDS = Object.freeze(['components', 'pages', 'workflows', 'fixtures']);
+export const LINE_KINDS = Object.freeze(['components', 'pages', 'workflows', 'fixtures', 'usecases', 'services', 'domains']);
 export const LEVELS = Object.freeze(['atom', 'molecule', 'organism']);
 export const FRAGMENT_KINDS = Object.freeze(['prop-expression', 'handler', 'condition', 'style']);
 /** cu2: the local model every AI step uses unless its profile names another. */

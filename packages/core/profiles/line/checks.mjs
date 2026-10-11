@@ -9,12 +9,12 @@ import { walk as walkAst } from 'estree-walker';
 import { parseToAst } from '@construct/ast';
 import { lineOf } from '@construct/ast/extract';
 import {
-  ITEM_KINDS, FEATURE_FILES, LIBRARY_FILES, CODE_EXTENSIONS, SKIP_DIRS, NON_ITEM_FILE, DEFAULT_APP_FOLDERS, DEFAULT_PACKAGE_ROOTS,
+  ITEM_KINDS, LOGIC_KINDS, KIND_SINGULAR, FEATURE_FILES, LIBRARY_FILES, CODE_EXTENSIONS, SKIP_DIRS, NON_ITEM_FILE, DEFAULT_APP_FOLDERS, DEFAULT_PACKAGE_ROOTS,
   FS_WRITE_FUNCTIONS, FS_EXTRA_WRITE_FUNCTIONS, FS_MODULES, SHARED_CONCERNS,
 } from './contract.mjs';
 
 const posix = path.posix;
-const SINGULAR = { components: 'component', pages: 'page', workflows: 'workflow', fixtures: 'fixture' };
+const SINGULAR = KIND_SINGULAR;
 /** Folder names that hold tests, test data or examples rather than the app; LINE-OWNER skips pages in them. */
 const TEST_DATA_SEGMENTS = new Set(['test', 'tests', '__tests__', 'e2e', 'fixtures', '__fixtures__', 'mocks', '__mocks__', 'examples']);
 
@@ -283,7 +283,7 @@ export function checkBase(project) {
   const { root, layout } = project;
   const hits = [];
   for (const file of project.files) {
-    if (file.area !== 'feature' || !isItemFile(file)) continue;
+    if (file.area !== 'feature' || !isItemFile(file) || LOGIC_KINDS.includes(String(file.kind))) continue;
     const what = `feature ${SINGULAR[file.kind]}`;
     const isJson = posix.extname(file.rel) === '.json';
     const { links, invalid } = baseLinks(project, file.rel);

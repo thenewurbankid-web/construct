@@ -29,7 +29,7 @@ import crypto from 'node:crypto';
 export const hash16 = (v) => `sha256:${crypto.createHash('sha256').update(JSON.stringify(v)).digest('hex').slice(0, 16)}`;
 
 /** Line kind -> layer. The library layer holds every kind; api has no kind yet. */
-export const KIND_LAYER = Object.freeze({ pages: 'ui', components: 'ui', workflows: 'workflow', fixtures: 'data' });
+export const KIND_LAYER = Object.freeze({ pages: 'ui', components: 'ui', workflows: 'workflow', fixtures: 'data', usecases: 'workflow', services: 'data', domains: 'data' });
 /** The layers a feature's hashes are given for. */
 export const FEATURE_LAYERS = Object.freeze(['ui', 'workflow', 'data']);
 
