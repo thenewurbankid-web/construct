@@ -110,6 +110,7 @@ export class LineOpError extends Error {
  */
 export const LINE_API = Object.freeze([
   { method: 'GET', path: '/api/line/project', request: null, response: 'LineProject' },
+  { method: 'GET', path: '/api/line/page-tree', request: 'file (query)', response: 'PageTree (pageProp.mjs)' },
   { method: 'POST', path: '/api/line/base-on', request: 'BaseOnRequest', response: 'ApplyResult' },
   { method: 'POST', path: '/api/line/promote', request: 'PromoteRequest', response: 'ApplyResult' },
   { method: 'POST', path: '/api/line/page-prop', request: 'SetPropRequest', response: 'ApplyResult' },
