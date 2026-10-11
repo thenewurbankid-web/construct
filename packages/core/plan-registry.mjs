@@ -75,7 +75,7 @@ const firstLine = (s) => String(s ?? '').split('\n').map((l) => l.trim()).find(B
 const asSentence = (s) => { const t = firstLine(s).replace(/\s+/g, ' '); return /[.?!]$/.test(t) ? t : `${t}.`; };
 
 /**
- * @mx/plan's registry over a Construct command registry.
+ * The tool registry @mx/plan's runner calls, built over a Construct command registry.
  *
  * @param {{ resolve: (name: string) => any, list: () => any[] }} commands A `createCommandRegistry()` with commands registered.
  * @param {{ only?: string[], read?: readonly string[] }} [options] `only` limits the commands offered; `read` replaces READ_COMMANDS.
