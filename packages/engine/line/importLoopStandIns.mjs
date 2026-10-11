@@ -62,6 +62,7 @@ export function unitFingerprint(kind, fn, text, n = 1) {
  */
 export function mapSummary(map) {
   const units = Array.isArray(map?.units) ? map.units : [];
+  /** @type {Record<string, number>} */
   const counts = {};
   for (const u of units) counts[u.kind] = (counts[u.kind] ?? 0) + 1;
   return { units: units.length, counts, hash: stableHash(units.map((u) => u.fingerprint).sort().join(',')) };

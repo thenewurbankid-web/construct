@@ -208,6 +208,7 @@ function filesUnder(projectRoot, folder) {
  * @returns {Record<string, string>}
  */
 function unitlessMoves(projectRoot, folder, sources, known) {
+  /** @type {Record<string, string>} */
   const out = {};
   let here = null;
   for (const [file, source] of Object.entries(sources ?? {})) {

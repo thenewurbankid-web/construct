@@ -96,6 +96,7 @@ function homeOf(diff, u, folder) {
  */
 export function loopChecks(m, logic, { at, folder }) {
   const waived = waivedSet(logic);
+  /** @type {any[]} */
   const checks = [];
   const run = (id, facts) => evaluate(facts, IMPORT_LOOP_EXPRS[id]);
   // 1. Characterization tests, in the app's own runner.

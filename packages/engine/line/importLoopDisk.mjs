@@ -136,6 +136,7 @@ export function readRouteFamily(root, route) {
 }
 
 // ------------------------------------------------------------------------------------------------- map [iv2-map]
+/** @type {[RegExp, string][]} */
 const CALLS = [
   [/^use(State|Reducer)$/, 'state'], [/^use(Effect|LayoutEffect)$/, 'effect'], [/^use(Memo|Callback)$/, 'derived'], [/^use\w+(Query|Mutation)$/, 'data'],
   [/router\.(push|replace|back|refresh)|^navigate$|URLSearchParams/, 'navigation'], [/searchParams\.get|params\.get/, 'url-read'],
@@ -253,7 +254,7 @@ export function characterize(root, closure, map, runner) {
     }
     if (!hit.size) continue;
     const rel = toRel(root, abs);
-    tests.push({ file: rel, runner, kind: /render|screen\.|@testing-library/.test(source) ? 'render' : 'pure', unitFingerprints: map.units.filter((u) => hit.has(u.file)).map((u) => u.fingerprint), title: path.basename(rel) });
+    tests.push({ file: rel, runner, kind: /** @type {'render'|'pure'} */ (/render|screen\.|@testing-library/.test(source) ? 'render' : 'pure'), unitFingerprints: map.units.filter((u) => hit.has(u.file)).map((u) => u.fingerprint), title: path.basename(rel) });
   }
   return tests;
 }
