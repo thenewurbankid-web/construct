@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { makeTempDir } from '../test-utils/tmpdir.mjs';
 import { fileURLToPath } from 'node:url';
 import { planSetProp, readPageTree } from '../packages/engine/line/pageProp.mjs';
 import { assertStagedChange, LineOpError } from '../packages/engine/line/contract.mjs';
@@ -38,7 +39,7 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
 `;
 
 function tempProject() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'construct-line-page-prop-'));
+  const dir = makeTempDir('construct-line-page-prop-');
   fs.cpSync(FIXTURE, dir, { recursive: true });
   fs.writeFileSync(path.join(dir, RICH), RICH_SOURCE);
   test.after(() => fs.rmSync(dir, { recursive: true, force: true }));
@@ -153,7 +154,7 @@ test('page prop (property): setting a string prop on any node keeps every node i
 });
 
 test('a Line project that keeps its code under src/ is edited through the Line layout, not features.root', () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'construct-line-src-'));
+  const dir = makeTempDir('construct-line-src-');
   try {
     fs.mkdirSync(path.join(dir, 'src'));
     for (const d of ['library', 'features']) fs.cpSync(path.join(FIXTURE, d), path.join(dir, 'src', d), { recursive: true });

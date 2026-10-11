@@ -107,7 +107,7 @@ export function agentView(folder, doc, decider) {
     state: doc ? doc.state : 'idle',
     paused: doc ? doc.paused : false,
     waiting: doc ? doc.waiting : null,
-    stages: IMPORT_AGENT_STAGES.map((s, i) => ({ id: s.id, label: s.label, status: /** @type {const} */ (doc && (i < at || doc.state === 'done') ? 'done' : i === at ? 'current' : 'todo') })),
+    stages: IMPORT_AGENT_STAGES.map((s, i) => ({ id: s.id, label: s.label, status: /** @type {'done'|'current'|'todo'} */ (doc && (i < at || doc.state === 'done') ? 'done' : i === at ? 'current' : 'todo') })),
     sentence: whereSentence(doc),
     steps: doc ? doc.steps : [],
     decisions: doc ? doc.decisions : [],

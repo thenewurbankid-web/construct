@@ -88,7 +88,7 @@ export function runImportTool(root, tool, args, ops = REAL_PLAN_OPS) {
     r = runChange(folderRoot, inner, { ...innerArgs, ...(args.retry ? { retry: args.retry } : {}) }, ops);
   } else {
     // runChange plans through ops.planStep for the moveFile tool; the import step is planned there instead, on the folder.
-    const importOps = { ...ops, planStep: (fr, step) => planImportStep(fr, { id: 'run', tool, args: step.args }) };
+    const importOps = { ...ops, planStep: (fr, step) => planImportStep(fr, /** @type {any} */ ({ id: 'run', tool, args: step.args })) };
     const { expect, retry, fixOf: _f, ...req } = /** @type {any} */ (args);
     r = runChange(folderRoot, 'line.moveFile', { ...req, ...(expect ? { expect } : {}), ...(retry ? { retry } : {}) }, importOps);
   }

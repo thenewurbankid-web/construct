@@ -350,6 +350,7 @@ export const CHECK_KINDS = Object.freeze(['validate', 'types', 'tests', 'file', 
  * @property {string} sentence
  * @property {string[]} files     Project-relative files written.
  * @property {LineFinding[]} findings  Why a step was refused (empty when every step landed).
+ * @property {string[]} [landed]  Folder files the steps before a refused one already wrote.
  * @property {{id: string, ok: boolean, sentence: string}[]} steps
  */
 
@@ -725,9 +726,10 @@ export function assertImportPlan(p) {
 /** @param {any} r @returns {asserts r is ImportApplyResult} */
 export function assertImportApplyResult(r) {
   assertApplyResult(r);
-  if (!Array.isArray(r.steps)) fail('result.steps', 'must be an array');
-  r.steps.forEach((st, i) => { str(st.id, `result.steps[${i}].id`); sentence(st.sentence, `result.steps[${i}].sentence`); });
-  if (r.ok && r.steps.some((st) => !st.ok)) fail('result', 'ok only when every step landed');
+  const steps = /** @type {any} */ (r).steps;
+  if (!Array.isArray(steps)) fail('result.steps', 'must be an array');
+  steps.forEach((st, i) => { str(st.id, `result.steps[${i}].id`); sentence(st.sentence, `result.steps[${i}].sentence`); });
+  if (r.ok && steps.some((st) => !st.ok)) fail('result', 'ok only when every step landed');
 }
 /** @param {any} l @returns {asserts l is FragmentList} */
 export function assertFragmentList(l) {

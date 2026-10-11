@@ -95,7 +95,7 @@ export function createStaticPlanApi(o) {
     const spec = o.registry.list().find((t) => t.name === input.tool);
     if (!spec) return refuse('invalid', `There is no tool named ${input.tool}, so nothing changed.`);
     const parsed = spec.schema.safeParse(input.args ?? {});
-    if (!parsed.success) return refuse('invalid', `The arguments do not fit ${input.tool}: ${parsed.error.issues.map((x) => `${x.path.join('.') || 'args'} ${x.message}`).join('; ')}.`);
+    if (!parsed.success) return refuse('invalid', `The arguments do not fit ${input.tool}: ${/** @type {any} */ (parsed).error.issues.map((x) => `${x.path.join('.') || 'args'} ${x.message}`).join('; ')}.`);
     if (input.kind !== undefined && input.kind !== spec.kind) return refuse('invalid', `The tool ${input.tool} is marked ${spec.kind}, but the step says ${input.kind}.`);
     if (typeof input.why !== 'string' || !SENTENCE.test(input.why.trim())) return refuse('invalid', "The step's why must be one plain-English sentence that starts with a capital letter and ends with a full stop.");
     let k = p.steps.length + 1; while (p.steps.some((s) => s.id === `s${k}`)) k += 1;
@@ -163,7 +163,9 @@ export function createStaticPlanApi(o) {
       return { change: a.stepId === undefined ? `Approved ${steps.length} steps` : `Approved step ${steps[0].n} (${steps[0].tool})` };
     }),
     async plan_run_next(a) {
+      /** @type {any} */
       let picked;
+      /** @type {any} */
       const started = await mutate(a, (p) => {
         if (!canRun(p.status)) return refuse('state', p.status === 'failed' ? 'A step failed; fix it with plan_update_step or skip it, then run again.' : `The plan is ${p.status}, so no step runs.`);
         const running = p.steps.find((s) => s.status === 'running');

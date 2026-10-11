@@ -157,7 +157,7 @@ function readRoutes(projectRoot, graph) {
 /** True when the AST subtree holds JSX. */
 function hasJsx(node) {
   let found = false;
-  walkAst(node, { enter(n) { if (n.type === 'JSXElement' || n.type === 'JSXFragment') { found = true; this.skip(); } } });
+  walkAst(node, { enter(/** @type {any} */ n) { if (n.type === 'JSXElement' || n.type === 'JSXFragment') { found = true; this.skip(); } } });
   return found;
 }
 
@@ -165,9 +165,9 @@ function hasJsx(node) {
 function rootTag(fn) {
   let tag = null;
   walkAst(fn.body ?? fn, {
-    enter(n) {
+    enter(/** @type {any} */ n) {
       if (tag) return this.skip();
-      const ret = n.type === 'ReturnStatement' ? n.argument : (n === fn.body && n.type === 'JSXElement' ? n : null);
+      const ret = /** @type {any} */ (n.type === 'ReturnStatement' ? n.argument : (n === fn.body && n.type === 'JSXElement' ? n : null));
       const el = ret?.type === 'ParenthesizedExpression' ? ret.expression : ret;
       if (el?.type === 'JSXElement') {
         const name = el.openingElement.name;
@@ -593,7 +593,7 @@ export const IMPORT_STEP_TOOLS = Object.freeze({
 export function planImportStep(folderRoot, step) {
   const tool = IMPORT_STEP_TOOLS[step?.tool];
   if (!tool) throw new LineOpError(`"${step?.tool}" is not an import step Line knows.`, 'UNKNOWN_TOOL');
-  const change = tool(folderRoot, step.args ?? {});
+  const change = tool(folderRoot, /** @type {any} */ (step.args ?? {}));
   assertStagedChange(change);
   return change;
 }
