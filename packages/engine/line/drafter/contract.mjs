@@ -1,0 +1,309 @@
+// System 1 drafter contract (owner 2026-10-11): for every request, Line's own structured form, never code or files.
+//
+//   request + facts summary
+//     -> delexicalize   names from the project become typed slots ("update <feature:F1> flow"); domain words never stored
+//     -> classify       closed labels only: intent id from INTENT_CATALOG (verb x structural object), target slot,
+//                       candidate layers with confidence; static rules now, a small trained classifier later (same shape)
+//     -> enumerate      every sensible route (layer combination x scope) from the tool templates, each with plan steps
+//                       (registry tool calls with slot-form args), expected-output expressions, a structural delta and
+//                       its predicted structure hashes
+//     -> verify         Construct applies each route in a scratch copy (applyChange), evaluates the expressions and
+//                       hashes the result; refused routes carry Construct's sentence and typed fix; a hash mismatch is
+//                       a miss
+//     -> rank           static order now; jev only ranks (a `ranker` hook); the person picks
+//
+// The drafter only drafts. Line's writer and checks decide what lands, and a person approves every write step.
+// Stored records hold slots, kinds, roles, layers, tools, expressions, deltas and hashes: never a project's names.
+
+/** Verbs of the intent catalog (owner list, plus fix for a finding's typed fix). */
+export const VERBS = Object.freeze(['add', 'update', 'remove', 'rename', 'move', 'promote', 'base-on', 'wire', 'split', 'merge', 'fix']);
+
+/**
+ * Structural objects of the intent catalog and the layers each lives in. Layers: ui (pages, components), workflow,
+ * data (fixtures), api (services; Line has no such layer yet, so api routes are dropped with a sentence), library.
+ */
+export const OBJECTS = Object.freeze({
+  variable: ['ui', 'workflow'],
+  prop: ['ui'],
+  handler: ['ui'],
+  page: ['ui'],
+  component: ['ui'],
+  'feature-flow': ['ui', 'workflow', 'api', 'library'],
+  workflow: ['workflow'],
+  'workflow-step': ['workflow'],
+  service: ['api'],
+  'data-shape': ['data', 'api'],
+  route: ['ui'],
+  fixture: ['data'],
+  test: ['ui', 'workflow'],
+  feature: ['ui', 'workflow', 'data'],
+  'library-item': ['library'],
+  layout: ['library'],
+  problem: ['ui', 'workflow', 'data', 'library'],
+});
+export const LAYERS = Object.freeze(['ui', 'workflow', 'data', 'api', 'library']);
+/** Line kinds per layer (the library layer holds every kind; api has none yet). */
+export const LAYER_KINDS = Object.freeze({ ui: ['pages', 'components'], workflow: ['workflows'], data: ['fixtures'], api: [], library: ['components', 'pages', 'workflows', 'fixtures'] });
+export const KIND_LAYER = Object.freeze({ pages: 'ui', components: 'ui', workflows: 'workflow', fixtures: 'data' });
+export const SCOPES = Object.freeze(['feature', 'library', 'cross-feature']);
+export const VIA = Object.freeze(['template', 'retrieval', 'model']);
+export const ROUTE_STATUS = Object.freeze(['ok', 'refused', 'wrong-shape', 'failed', 'needs-model', 'unverified']);
+
+/** Slot kinds: what a typed slot in a delexicalized request or a slot-form arg stands for. */
+export const SLOT_KINDS = Object.freeze({
+  F: 'feature', P: 'page', C: 'component', W: 'workflow', X: 'fixture', L: 'library', A: 'prop', V: 'value', N: 'name', K: 'code', R: 'problem', T: 'part', G: 'fragment', H: 'hash',
+});
+/** A slot reference inside a stored string: <F1>, <C1.file>, or as written in a request <feature:F1>. */
+export const SLOT_REF = /<([A-Z])(\d+)(?:\.([a-zA-Z]+))?>/g;
+export const REQUEST_SLOT = /<([a-z-]+):([A-Z]\d+)>/g;
+
+/**
+ * Tool templates: what each can satisfy (intent ids) and which registry tools it calls. The catalog below is generated
+ * from these plus the registry, so a template whose tool is missing never appears.
+ */
+export const TEMPLATES = Object.freeze({
+  'base-on': { tools: ['line.baseOn'], intents: ['add.component', 'add.page', 'add.workflow', 'add.fixture', 'base-on.component', 'base-on.page', 'base-on.workflow', 'base-on.fixture', 'base-on.library-item', 'add.feature-flow'] },
+  'via-library': { tools: ['line.promote', 'line.baseOn'], intents: ['add.component', 'add.page', 'add.workflow', 'add.fixture', 'base-on.component', 'base-on.page', 'wire.component'] },
+  promote: { tools: ['line.promote'], intents: ['promote.component', 'promote.page', 'promote.workflow', 'promote.fixture', 'move.library-item', 'move.component', 'move.page'] },
+  'set-base': { tools: ['line.setBase'], intents: ['base-on.component', 'base-on.page', 'base-on.workflow', 'base-on.fixture', 'wire.component'] },
+  'set-prop': { tools: ['line.setPageProp'], intents: ['update.prop', 'update.page', 'update.component', 'update.feature-flow', 'rename.prop'] },
+  'set-fragment': { tools: ['line.setFragment'], intents: ['update.handler', 'update.variable', 'update.workflow-step', 'update.workflow', 'update.feature-flow', 'update.prop', 'wire.handler'] },
+  fix: { tools: ['line.fix'], intents: ['fix.problem'] },
+  'fix-all': { tools: ['line.fix'], intents: ['fix.problem'] },
+  'create-layout': { tools: ['line.createLayout'], intents: ['add.layout'] },
+  'new-feature': { tools: ['line.baseOn'], intents: ['add.feature'] },
+});
+
+/**
+ * One entry of the intent catalog.
+ * @typedef {object} IntentEntry
+ * @property {string} id         Stable, e.g. "update.feature-flow".
+ * @property {string} verb
+ * @property {string} object
+ * @property {string[]} layers   Where the object lives.
+ * @property {string[]} templates  The templates that can satisfy it ([] = known operation, no static route yet: Qwen or ask).
+ * @property {string[]} tools
+ */
+
+/**
+ * The intent catalog: every verb x structural object, with the templates (and so the registry tools) that satisfy
+ * it. Generated, never hand-listed.
+ * @param {string[]} toolNames The registry's tool names (registry.list().map((t) => t.name)).
+ * @returns {IntentEntry[]}
+ */
+export function buildIntentCatalog(toolNames) {
+  const have = new Set(toolNames);
+  const usable = Object.entries(TEMPLATES).filter(([, t]) => t.tools.every((x) => have.has(x)));
+  const out = [];
+  for (const verb of VERBS) {
+    for (const [object, layers] of Object.entries(OBJECTS)) {
+      const id = `${verb}.${object}`;
+      const templates = usable.filter(([, t]) => t.intents.includes(id)).map(([name]) => name);
+      const tools = [...new Set(templates.flatMap((n) => TEMPLATES[n].tools))];
+      out.push({ id, verb, object, layers: [...layers], templates, tools });
+    }
+  }
+  return out;
+}
+
+// ------------------------------------------------------------------------------------------------ expression mirror
+// MIRROR of the expression contract (built in parallel by another agent: `evaluate(facts, expr)` -> failed
+// sentences, a facts snapshot {files, library, features, findings, findingsNew, plan}). Replace on merge: keep the
+// op names below as aliases or map them. The ops are JSON objects with exactly one key.
+export const EXPR_OPS = Object.freeze({
+  all: 'every sub-expression holds ({"all": [e, ...]})',
+  any: 'at least one sub-expression holds',
+  not: 'the sub-expression does not hold',
+  fileExists: 'a root-relative file exists',
+  fileContains: '{path, text}: the file contains the text',
+  itemExists: '{feature, kind, name}: the feature has that item',
+  itemBasedOn: '{feature, kind, name, libraryId}: the item\'s base link resolves to that library item',
+  libraryHas: 'the library has that item id',
+  propIs: '{file, nodeId, prop, value}: one part of a page has that prop value',
+  findingGone: 'no finding with that key (rule|file|line) or that rule on that file',
+  noNewFindings: 'true: the change added no finding',
+});
+
+/**
+ * The facts snapshot the expressions are evaluated against (mirror). `parts` (page props) is this drafter's addition.
+ * @typedef {object} FactsSnapshot
+ * @property {Record<string, string>} files
+ * @property {string[]} library
+ * @property {{name: string, items: {id: string, kind: string, name: string, file: string, base: string|null}[]}[]} features
+ * @property {{key: string, rule: string, file: string, line: number}[]} findings
+ * @property {{key: string, rule: string, file: string, line: number}[]} findingsNew
+ * @property {unknown} plan
+ * @property {Record<string, {nodeId: string, tag: string, props: Record<string, unknown>}[]>} parts
+ */
+
+// ------------------------------------------------------------------------------------------------ structure
+/** Closed delta ops of a route (what it does to the project's structure). */
+export const DELTA_OPS = Object.freeze(['add-node', 'remove-node', 'move-node', 'add-edge', 'remove-edge', 'set-base', 'add-flow-state', 'remove-flow-state', 'add-flow-transition', 'remove-flow-transition']);
+export const EDGE_TYPES = Object.freeze(['base', 'import']);
+
+/**
+ * One structural delta op, slot form. `node`/`from`/`to` are slot refs ("<F1>/components/<N1>", "<L1>", "<C1>").
+ * @typedef {{op: string, node?: string, kind?: string, layer?: string, area?: 'feature'|'library', feature?: string, from?: string, to?: string, type?: string}} DeltaOp
+ */
+
+/**
+ * Delexicalized structure hashes (structure.mjs): names never enter; kinds, roles, layers, base links and import
+ * edges do. Renaming changes nothing; adding a page changes the feature and project hashes.
+ * @typedef {{project: string, feature: string|null, layers: Record<string, string>}} StructureHashes
+ */
+
+// ------------------------------------------------------------------------------------------------ shapes
+/**
+ * A slot's structure (stored), never its name.
+ * @typedef {{kind: string, area?: 'feature'|'library', itemKind?: string, layer?: string, role?: string, of?: string, layers?: string[], roles?: string[], counts?: Record<string, number>, valueType?: string, isNew?: boolean}} SlotShape
+ */
+
+/**
+ * Closed labels from the classifier (static rules now).
+ * @typedef {object} Labels
+ * @property {{id: string, confidence: number}} intent       An INTENT_CATALOG id, or "unknown".
+ * @property {{id: string, confidence: number}[]} alternatives Other intent ids, best first.
+ * @property {boolean} inCatalog
+ * @property {string|null} target                            The main slot (e.g. "F1"), or null.
+ * @property {{layer: string, confidence: number}[]} layers  Candidate layers, tuned for recall.
+ * @property {'rules'|'model'} via
+ */
+
+/**
+ * One route: a way to satisfy the request.
+ * @typedef {object} Route
+ * @property {string} id          Stable for the same request shape, e.g. "base-on:ui:L1>F1".
+ * @property {string} template
+ * @property {string} label       Plain English in slot form, e.g. "Add a component based on <L1> to <F1>.".
+ * @property {string} intent
+ * @property {{layers: string[], features: string[], library: string[], scope: string}} scope
+ * @property {{tool: string, args: Record<string, unknown>}[]} steps  Slot-form args.
+ * @property {object[]} expect    Slot-form expressions (EXPR_OPS).
+ * @property {object[]} pre       Slot-form preconditions.
+ * @property {DeltaOp[]} delta
+ * @property {{feature: string|null, project: string}|null} predicted  Predicted structure hashes after the route.
+ * @property {{steps: number, files: number, layers: number}} cost
+ * @property {string} risk        One sentence.
+ * @property {'template'|'retrieval'|'model'} via
+ * @property {number} confidence  0..1
+ * @property {string} status      ROUTE_STATUS
+ * @property {{sentence: string, fix: {id: string, sentence: string, step: {tool: string, args: Record<string, unknown>}|null}|null}|null} refusal
+ * @property {string[]} invented  Slots a rule made up (a new name); Qwen may propose better ones.
+ * @property {string[]} failed    Expectation sentences that did not hold after verification.
+ */
+
+/**
+ * What draft() returns. `bindings` maps slots to the project's names; it is shown and applied, never stored.
+ * @typedef {object} Draft
+ * @property {string} request     Delexicalized.
+ * @property {Record<string, SlotShape>} slots
+ * @property {Labels} labels
+ * @property {StructureHashes} from
+ * @property {Route[]} routes
+ * @property {{id: string, sentence: string}[]} dropped
+ * @property {string|null} recommended
+ * @property {{to: 'qwen'|'ask'|null, sentence: string}} defer
+ * @property {Record<string, unknown>} bindings
+ */
+
+/**
+ * A stored training record: one transition, delexicalized (no names of the project).
+ * @typedef {object} TransitionRecord
+ * @property {1} v
+ * @property {string} request
+ * @property {Record<string, SlotShape>} slots
+ * @property {string} intent
+ * @property {StructureHashes} from
+ * @property {string} routeId
+ * @property {string} template
+ * @property {{tool: string, args: Record<string, unknown>}[]} steps
+ * @property {object[]} expect
+ * @property {DeltaOp[]} delta
+ * @property {{feature: string|null, project: string}|null} to
+ * @property {boolean} approved
+ */
+
+// ------------------------------------------------------------------------------------------------ checks
+const fail = (where, why) => { throw new TypeError(`${where} ${why}`); };
+const sentence = (s, where) => { if (typeof s !== 'string' || !/^\S.*[.?!]$/s.test(s)) fail(where, 'must be one full sentence'); };
+const unit = (n, where) => { if (typeof n !== 'number' || !(n >= 0 && n <= 1)) fail(where, 'must be a number from 0 to 1'); };
+
+/**
+ * Throws unless l is Labels with closed values.
+ * @param {any} l
+ * @param {IntentEntry[]} catalog
+ * @returns {void}
+ */
+export function assertLabels(l, catalog) {
+  const ids = new Set(catalog.map((e) => e.id));
+  if (l?.intent?.id !== 'unknown' && !ids.has(l?.intent?.id)) fail('labels.intent.id', 'must be a catalog id or "unknown"');
+  unit(l.intent.confidence, 'labels.intent.confidence');
+  if (l.inCatalog !== (l.intent.id !== 'unknown')) fail('labels.inCatalog', 'is true exactly when the intent is in the catalog');
+  if (!Array.isArray(l.alternatives) || l.alternatives.some((a) => !ids.has(a.id))) fail('labels.alternatives', 'must be catalog ids');
+  if (!Array.isArray(l.layers) || l.layers.some((x) => !LAYERS.includes(x.layer))) fail('labels.layers', `must be layers from ${LAYERS.join(', ')}`);
+  l.layers.forEach((x, i) => unit(x.confidence, `labels.layers[${i}].confidence`));
+  if (l.target !== null && !/^[A-Z]\d+$/.test(l.target)) fail('labels.target', 'must be a slot id like F1 or null');
+}
+
+/**
+ * Throws unless d is a Draft: closed values, stable route ids, plain-English sentences, a recommended route that exists.
+ * @param {any} d
+ * @param {IntentEntry[]} catalog
+ * @returns {void}
+ */
+export function assertDraft(d, catalog) {
+  if (typeof d?.request !== 'string') fail('draft.request', 'must be a string');
+  assertLabels(d.labels, catalog);
+  if (!Array.isArray(d.routes)) fail('draft.routes', 'must be an array');
+  const seen = new Set();
+  d.routes.forEach((r, i) => {
+    const w = `draft.routes[${i}]`;
+    if (typeof r.id !== 'string' || !r.id || seen.has(r.id)) fail(`${w}.id`, 'must be a unique non-empty string'); seen.add(r.id);
+    if (!TEMPLATES[r.template]) fail(`${w}.template`, 'must be a template name');
+    sentence(r.label, `${w}.label`); sentence(r.risk, `${w}.risk`);
+    if (!VIA.includes(r.via)) fail(`${w}.via`, `must be one of ${VIA.join(', ')}`);
+    if (!ROUTE_STATUS.includes(r.status)) fail(`${w}.status`, `must be one of ${ROUTE_STATUS.join(', ')}`);
+    unit(r.confidence, `${w}.confidence`);
+    if (!Array.isArray(r.steps) || !r.steps.length) fail(`${w}.steps`, 'must have at least one step');
+    r.steps.forEach((s, j) => { if (typeof s.tool !== 'string' || !s.args || typeof s.args !== 'object') fail(`${w}.steps[${j}]`, 'must be {tool, args}'); });
+    if (!Array.isArray(r.expect) || !r.expect.length) fail(`${w}.expect`, 'must have at least one expression');
+    r.expect.forEach((e, j) => assertExpr(e, `${w}.expect[${j}]`));
+    if (!Array.isArray(r.delta) || r.delta.some((o) => !DELTA_OPS.includes(o.op))) fail(`${w}.delta`, 'must hold closed delta ops');
+    if (r.status === 'refused') { if (!r.refusal) fail(`${w}.refusal`, 'a refused route says why'); sentence(r.refusal.sentence, `${w}.refusal.sentence`); }
+    for (const k of ['steps', 'files', 'layers']) if (!Number.isInteger(r.cost?.[k])) fail(`${w}.cost.${k}`, 'must be a whole number');
+  });
+  d.dropped.forEach((x, i) => sentence(x.sentence, `draft.dropped[${i}].sentence`));
+  if (d.recommended !== null && !seen.has(d.recommended)) fail('draft.recommended', 'must be a route id or null');
+  if (![null, 'qwen', 'ask'].includes(d.defer?.to)) fail('draft.defer.to', 'must be null, "qwen" or "ask"');
+  sentence(d.defer.sentence, 'draft.defer.sentence');
+}
+
+/**
+ * Throws unless e is an expression built from EXPR_OPS.
+ * @param {any} e
+ * @param {string} [where]
+ * @returns {void}
+ */
+export function assertExpr(e, where = 'expr') {
+  if (!e || typeof e !== 'object' || Array.isArray(e)) fail(where, 'must be an object with one op');
+  const keys = Object.keys(e);
+  if (keys.length !== 1 || !EXPR_OPS[keys[0]]) fail(where, `must have exactly one op from ${Object.keys(EXPR_OPS).join(', ')}`);
+  const [op] = keys;
+  if (op === 'all' || op === 'any') { if (!Array.isArray(e[op])) fail(`${where}.${op}`, 'must be a list'); e[op].forEach((x, i) => assertExpr(x, `${where}.${op}[${i}]`)); }
+  if (op === 'not') assertExpr(e.not, `${where}.not`);
+}
+
+/**
+ * Throws if a stored record holds any of the given project identifiers (the delexicalization guarantee).
+ * @param {unknown} record
+ * @param {string[]} identifiers Every name from the project's facts (feature, item, library, prop names).
+ * @returns {void}
+ */
+export function assertNoIdentifiers(record, identifiers) {
+  const text = JSON.stringify(record).toLowerCase();
+  for (const id of identifiers) {
+    if (!id || id.length < 3) continue;
+    const re = new RegExp(`(^|[^a-z0-9])${id.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}([^a-z0-9]|$)`);
+    if (re.test(text)) fail('record', `holds the project name "${id}"; store slots instead`);
+  }
+}
