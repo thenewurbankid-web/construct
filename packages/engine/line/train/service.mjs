@@ -252,7 +252,7 @@ export function createTrainService(o = {}) {
       const b = bindSlots(d.slots, facts, wordsOf(world));
       const routes = b.ok ? d.routes.map((r) => ({ ...routeView(r, b.bound, facts, d.recommended), via: r.via, confidence: r.confidence })) : [];
       return {
-        ...d, world: key, intentPhrase: intentPhrase(d.intent), routes: d.routes, filled: { routes, request: b.ok ? fill(d.request, b.bound) : request },
+        ...d, world: key, intentPhrase: intentPhrase(d.intent), routes: d.routes, filled: { routes, request: b.ok ? fill(d.request, b.bound) : request }, values: b.ok ? textsOf(b.bound) : {},
         ...(b.ok ? {} : { sentence: `The draft needs a correction first: ${lower(b.sentence)}` }),
       };
     },
@@ -262,7 +262,7 @@ export function createTrainService(o = {}) {
       const facts = worldFacts(world);
       const b = bindSlots(slots, facts, wordsOf(world));
       if (!b.ok) return { ok: false, sentence: `This does not fit the project yet: ${lower(b.sentence)}`, routes: [] };
-      return { ok: true, request: request ? fill(request, b.bound) : '', routes: routes.map((r) => routeView(r, b.bound, facts, preferred)) };
+      return { ok: true, request: request ? fill(request, b.bound) : '', routes: routes.map((r) => routeView(r, b.bound, facts, preferred)), values: textsOf(b.bound) };
     },
     /** A route the person adds with closed choices (tool + values from the lists). */
     addRoute({ world: key = 'sample', slots, tool, args, label }) {
@@ -275,7 +275,8 @@ export function createTrainService(o = {}) {
     /** The owner saves a case (agreed): the routes marked valid, the starred one preferred. */
     save(input) {
       if (!INTENT_IDS.includes(input?.intent)) throw new LineOpError('Pick what kind of request this is.', 'NO_INTENT');
-      return { case: storeCase({ ...input, world: worldOf(input.world ?? 'sample') }, 'owner') };
+      const world = worldOf(input.world ?? 'sample');
+      return { case: storeCase({ ...input, world, slots: normalizeLiterals(input.slots ?? {}, mapOf(world)) }, 'owner') };
     },
     /**
      * Claude proposes a case: a plain-English request over a world and its routes as tool calls with real values.
@@ -327,6 +328,24 @@ export function createTrainService(o = {}) {
     view,
   };
   return service;
+}
+
+/** Each bound slot's text, for the screen's inputs. */
+const textsOf = (bound) => Object.fromEntries(Object.entries(bound).map(([k, v]) => [k, String(v.text)]));
+
+/** A name or text the owner typed is stored as slots too (a library item's or feature's name inside it becomes `of`). */
+function normalizeLiterals(slots, map) {
+  const out = JSON.parse(JSON.stringify(slots));
+  for (const [k, s] of Object.entries(slots)) {
+    if (typeof s.literal !== 'string' || !['name', 'text'].includes(s.type)) continue;
+    const n = normalize(s.type === 'text' ? `"${s.literal}"` : s.literal, map);
+    const m = n.request.match(/<(?:name|text):([A-Z]\d+)>/);
+    if (!m || n.slots[m[1]].type !== s.type) continue;
+    const def = { ...n.slots[m[1]] };
+    if (def.of) def.of = `${mergeInto({ request: `<x:${def.of}>`, slots: { [def.of]: n.slots[def.of] } }, out).match(/<x:([A-Z]\d+)>/)[1]}`;
+    out[k] = def;
+  }
+  return out;
 }
 
 /** A normalized text's slots merged into `slots` (same definition = same slot); the text renamed to match. */

@@ -60,7 +60,7 @@ test('the five primary screens are Features, Pages, Components, Git, Tests, and 
   // Settings, Local model and Help live in the profile menu: no primary screen is current there.
   for (const p of ['/settings', '/ollama', '/help', '/states']) assert.equal(primaryScreenForPath(p), null, p);
   // Every route a former nav entry pointed at is either owned by a screen or a profile-menu page.
-  const profile = new Set(['/settings', '/ollama', '/help']);
+  const profile = new Set(['/settings', '/ollama', '/help', '/train']);
   for (const s of SCREENS) for (const r of s.activeOn) assert.ok(primaryScreenForPath(r) || profile.has(r), r);
 });
 
@@ -74,7 +74,7 @@ test('the palette offers Go to <screen> for the five screens once, and keeps the
 });
 
 test('the palette-only screens are Notes (#596), Requirement (#642), Debug (LIN-82), Break down into functions (#748), the Import Wizard, Settings, Local Model and Help plus the routes a primary screen also owns', () => {
-  assert.deepEqual(SCREENS.map((s) => s.label), ['Notes', 'Requirement', 'Debug', 'Break down into functions', 'Import Wizard', 'Pages Editor', 'Page Builder', 'Workflows', 'Tests', 'Local Model', 'Settings', 'Help']);
+  assert.deepEqual(SCREENS.map((s) => s.label), ['Notes', 'Requirement', 'Debug', 'Break down into functions', 'Import Wizard', 'Pages Editor', 'Page Builder', 'Workflows', 'Tests', 'Train Line', 'Local Model', 'Settings', 'Help']);
   assert.equal(isScreenActive(SCREENS.find((s) => s.label === 'Settings'), '/settings'), true);
   assert.equal(isScreenActive(SCREENS.find((s) => s.label === 'Settings'), '/help'), false);
   assert.ok(!SCREENS.some((s) => s.label === 'Dashboard'), 'the Dashboard is retired');
