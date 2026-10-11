@@ -183,6 +183,8 @@ export type PlanStepView = {
  * part (tool call, ids, options with confidence, reasoning, code) shown under a collapsed Details by <PlainFirst>. */
 export type SummaryDetail = { label: string; text: string };
 export type PlainSummary = { sentences: string[]; details: SummaryDetail[]; via: 'static' };
+/** One technical line under <PlainFirst>'s Details; `testId` lets a screen keep its own handle on it. */
+export type PlainDetail = SummaryDetail & { testId?: string };
 /** GET /api/line/plan and every plan write. */
 export type PlanView = {
   ok: true;

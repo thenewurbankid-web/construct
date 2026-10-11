@@ -1,6 +1,6 @@
 // Pure (DOMAIN-001): a PlanView as the rows the Plan panel shows.
 import { changeResult } from './PlanResult.ts';
-import type { LineStepResult, PlanStepRow, PlanStepView, PlanView, StepChoice } from '../types.ts';
+import type { LineStepResult, PlainDetail, PlanStepRow, PlanStepView, PlanView, StepChoice } from '../types.ts';
 
 const LABELS: Record<PlanStepView['state'], string> = {
   waiting: 'Waiting for your approval',
@@ -35,20 +35,31 @@ export function stepRow(step: PlanStepView): PlanStepRow {
   const r = changeResult(step);
   const needsYou = step.state === 'needs-you' || step.state === 'needs-fix';
   const choices: StepChoice[] = needsYou && r ? choicesOf(r) : [];
+  const call = callText(step);
+  const checks = r ? r.checks.map((c) => `${c.ok ? 'Passed' : 'Failed'}: ${c.sentence}`) : [];
+  const files = r ? r.apply.files : [];
+  const own: PlainDetail[] = [
+    { label: 'Tool call', text: call, testId: 'plan-step-call' },
+    ...checks.map((text) => ({ label: 'Check', text })),
+    ...files.map((text) => ({ label: 'File written', text })),
+  ];
+  const seen = new Set(own.map((d) => d.label));
   return {
     id: step.id,
     n: step.n,
     state: step.state,
     stateLabel: LABELS[step.state],
     sentence: step.sentence,
+    sentences: step.plain?.sentences ?? [step.sentence],
+    details: [...own, ...(step.plain?.details ?? []).filter((d) => !seen.has(d.label))],
     gapLines: step.gap.map((g) => g.sentence),
     failing: needsYou && r ? r.checks.filter((c) => !c.ok).map((c) => c.sentence) : [],
     fixes: needsYou && r ? r.options.filter((o) => o.id === 'fix').map((o) => o.sentence) : [],
     choices,
     canApprove: step.state === 'waiting',
-    call: callText(step),
-    checks: r ? r.checks.map((c) => `${c.ok ? 'Passed' : 'Failed'}: ${c.sentence}`) : [],
-    files: r ? r.apply.files : [],
+    call,
+    checks,
+    files,
   };
 }
 

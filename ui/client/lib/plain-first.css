@@ -1,0 +1,10 @@
+/* cs1: <PlainFirst> -- plain sentences first, the technical part under a collapsed Details. */
+.pf-sentence { margin: 0; overflow-wrap: anywhere; }
+.pf-tech { font-size: var(--fs-sm); color: var(--text-muted); }
+.pf-tech > summary { cursor: pointer; width: max-content; min-height: 24px; line-height: 24px; padding-inline: 2px; }
+.pf-tech > summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.pf-list { margin: var(--sp-1) 0 0; display: grid; gap: 2px; }
+.pf-row { display: grid; grid-template-columns: minmax(6rem, max-content) minmax(0, 1fr); gap: var(--sp-2); }
+.pf-row dt { color: var(--text-muted); }
+.pf-row dd { margin: 0; min-width: 0; }
+.pf-row code { font-family: var(--mono); overflow-wrap: anywhere; }
