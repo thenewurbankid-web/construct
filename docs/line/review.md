@@ -320,3 +320,83 @@ Known gaps: engine and core import each other and core imports ast without listi
 1. In the repo, run `node packages/cli/construct.mjs validate --dir . --profile line`.
 2. Expect no LINE-MODULE lines in the output (the other rules still list their known findings).
 3. Run `node packages/cli/construct.mjs validate --dir examples/line-sample --profile line`: exactly the 2 planted findings.
+
+## System 1 drafter (awaiting UAT; flag `LINE_DRAFTER=1`, default off)
+
+For every request, Line drafts its own structured form, never code or files: every route that can satisfy it, each as plan steps (registry tool calls) plus the expected-output expressions that define done. Construct then tries each route on a scratch copy of the project (through `applyChange`, so its writer and rules decide), evaluates the expressions, and checks the result's structure against what the route predicted. The person picks a route; its steps join the plan and still wait for approval. Code: `packages/engine/line/drafter/` (contract, mock, domain map, lexicon, classifier, templates, verify, structure hashes, records, grammar, eval); server `ui/server/src/lineDraftApi.mjs`; Cockpit `ui/client/features/line-draft` (the "Describe a change" box beside the Plan panel).
+
+How a request flows:
+1. **Domain map** (per project, static, kept in `line/domain-map.json`, never shared): every project word (feature, item, library, prop and variable names, UI labels, route paths, spec text) becomes a typed slot, so "use OrderButton in billing" reaches the classifier as `use <component:C1> in <feature:F1>`. An unknown word is one closed question ("Did you mean the orders feature by "ordrs"?"); the answer is stored as a synonym. Order: project map, then the shared lexicon (`lexicon.json`, 154 curated business words, only suggests), then an optional local model (`propose` hook), then the question. A noun after "a"/"new" next to a kind word under add/create becomes a NEW-name slot.
+2. **Classifier** (static rules now, same input and output for a small trained one later): closed labels only. Intent from the generated catalog (11 verbs x 17 structural objects, stable ids like `update.feature-flow`, each entry naming the templates that satisfy it), the target slot, and candidate layers with confidence, tuned for recall.
+3. **Route enumerator**: templates (base on, via the library, promote, set base, set a prop, set a fragment, apply a fix, fix all, start a feature, create layout, combined layers) produce every sensible route with slot-form steps, expressions, a structural delta, cost and a risk sentence. Layers Line cannot change yet (API/service) are dropped with a sentence; ambiguous words give a route per candidate.
+4. **Construct verification** in a scratch copy: refused routes keep Construct's sentence and typed fix; expressions are evaluated; the structure hash after the change must equal the predicted one (a mismatch is a recorded miss, "held back").
+5. **Rank**: static (checked first, then confidence, then cost); jev plugs in as `ranker` and only orders. Defer: a question when a word is unknown or the intent is not in the catalog; "qwen" when the best route needs code or a value the request does not give.
+
+Structure hashes (`structure.mjs`): project, feature and layer hashes over kinds, roles (atom/molecule/organism, page, flow, data, "on:<base role>"), base links and import edges, with names left out. Renaming changes nothing; adding a page changes the feature and project hash. Records (`line/drafter/transitions.jsonl`, written through the writer when a person adds a route) store the transition: normalized request, slot shapes, intent, hashes before, steps, expressions, delta, hashes after; never a project name. Retrieval finds the nearest approved transition by intent, feature/layer hash and wording.
+
+Expression contract: the drafter codes against a local MIRROR of the parallel expression agent's contract (`contract.mjs` EXPR_OPS, `expr.mjs evaluate`, `facts.mjs factsSnapshot`, records path); marked "replace on merge".
+
+### Eval (`node packages/engine/line/drafter/eval.mjs`)
+The harness takes any delexicalized corpus of {project dir, request, gold route set, preferred route, gold labels}; the requests and fills hold slots and structural selectors only, so a generated corpus of imaginary projects plugs in unchanged. Ground truth was written before the harness first ran: 43 cases on `examples/line-sample` (dev) and 12 on `examples/line-heldout-clinic`, a whole project the templates were not designed on; 17 cases are paraphrases held out from template design.
+
+| group | n | normalized | labels (intent / layers / target) | route recall | precision | preferred | checks pass, no repair | defer right | deferred when wrong | hash misses |
+|---|---|---|---|---|---|---|---|---|---|---|
+| all | 55 | 91% | 86% (86% / 98% / 96%) | 86% | 96% | 86% | 75% | 84% | 88% | 0 |
+| dev project | 43 | 88% | 84% | 84% | 95% | 84% | 72% | 81% | 86% | 0 |
+| held-out project | 12 | 100% | 92% | 92% | 100% | 92% | 83% | 92% | 100% | 0 |
+| held-out paraphrases | 17 | 77% | 53% | 53% | 88% | 53% | 47% | 47% | 88% | 0 |
+| base-on | 16 | 94% | 75% | 75% | 100% | 75% | 75% | 75% | 100% | 0 |
+| via-library | 5 | 100% | 60% | 60% | 80% | 60% | 80% | 80% | 50% | 0 |
+| promote | 6 | 100% | 83% | 83% | 83% | 83% | 83% | 83% | 100% | 0 |
+| set-prop | 6 | 100% | 100% | 83% | 100% | 83% | 83% | 83% | 100% | 0 |
+| set-fragment | 5 | 80% | 100% | 100% | 100% | 100% | 100% | 80% | - | 0 |
+| fix | 7 | 86% | 100% | 100% | 100% | 100% | 100% | 86% | - | 0 |
+| set-base | 3 | 100% | 67% | 100% | 100% | 100% | 100% | 100% | - | 0 |
+| feature-flow | 3 | 100% | 100% | 100% | 91% | 100% | 0% (needs code by design) | 100% | - | 0 |
+| new-feature | 2 | 100% | 100% | 100% | 100% | 100% | 0% (refused by design) | 100% | - | 0 |
+| unknown | 2 | 0% | 100% | 100% | 100% | 100% | - | 100% | - | 0 |
+
+Reading it: "checks pass, no repair" is the share of drafts whose recommended route passed Construct's checks and the structure-hash check with no repair. Every miss in labels and recall is a held-out paraphrase with a verb the rules do not know ("I want", "give", "needs", "should also show", "share with", "make reusable", "should say"); "deferred when wrong" says the drafter handed over (question or model) in 88% of the cases where its recommendation was wrong. No verified route ever missed its predicted structure. Floors are pinned in `test/line-drafter-eval.test.mjs` (raise only).
+
+Constrained decoding: the grammar (`grammar/route.schema.json`, `grammar/route.gbnf`, generated from the registry and the expression ops) was run once on the already-installed `qwen2.5-coder:1.5b` through llama.cpp (`eval/constrained-demo.mjs`, no download). After bounding lists, kind prefixes and slot ids, the output parses, validates against the schema, names only real tools and holds only slots; the untrained model picked the wrong intent and repeated a step, which is what fine-tuning is for. (Ollama's own `format` path stopped with "token repeat limit reached" on the first, unbounded grammar.)
+
+### What the tests prove
+`test/line-drafter-contract.test.mjs` (3), `test/line-drafter.test.mjs` (12), `test/line-drafter-eval.test.mjs` (3), `ui/server/src/lineDraftApi.test.mjs` (4), `ui/client/features/line-draft/domain/RouteCards.spec.mjs` (2), `ui/e2e/tests/line-drafter.spec.js` (3), `ui/e2e/uat/s1-drafter.spec.js` (1).
+1. The intent catalog is every verb x object, generated from the registry; a template whose tool is missing disappears; the mock draft passes the shape checks; bad labels, duplicate routes and unknown expression ops are refused.
+2. A stored draft or record holds slots, never a project name; the check catches one that does.
+3. Renaming a feature, an item and a library item leaves every structure hash unchanged; adding a page changes the feature, project and ui-layer hash and not the workflow layer.
+4. The same request normalizes identically twice (training and use); after renaming a feature, the model's input (normalized text, slot shapes, labels) is unchanged and only the bindings differ.
+5. No word outside Line's function vocabulary reaches the classifier; NEW names, values and code become slots ("a refund page" -> RefundPage).
+6. An unknown word is one closed question with how it was suggested (map, lexicon, model, ask); the answer is saved in the project's map through the writer and used next time.
+7. The shared lexicon is well formed (154 words, closed roles, no synonym that is another word) and only suggests.
+8. "Add a badge to the orders feature" gives one checked route whose predicted hash equals the real one, bound to the project's names, and drafting writes nothing.
+9. "use OrderButton in billing" lists both routes (via the library, recommended; or a new item on the same base).
+10. "update checkout flow" lists the ui, workflow and combined routes, each needing code, and drops the API layer with a sentence.
+11. A refused route keeps Construct's own sentence; a request outside the catalog defers to a question.
+12. A route whose delta does not match what Construct wrote is marked wrong-shape.
+13. A recorded transition is found again by retrieval for a similar request.
+14. The committed grammar files are current; every drafted route validates against the schema; an unknown tool or a project word in an argument is rejected; the GBNF names every write tool.
+15. The corpus holds no project names; selectors, lexicalizing and wildcard step matching work; the corpus scores at or above its floors with no hash miss.
+16. Server: off by default (404 with one sentence); on, a draft lists checked routes, Add puts a waiting step in the plan, Approve writes it, and the record has no names; a two-step route adds what can be planned now and says when to add the rest; a refused route is a 400 sentence; an answered question is remembered.
+17. Cockpit: route cards (recommended, refused with its fix, needs input), Details hold the tool calls; answering a question re-drafts.
+18. Browser (real server): the recommended route is first, Details are collapsed, Add to plan makes a waiting step, Approve writes the file (axe clean); a refused route has no Add button; one click answers a question.
+19. Pre-UAT walk: type, Enter, Add to plan, Approve (two clicks), no console error and no 4xx/5xx, every sentence plain English.
+
+### Known gaps
+- Line has no tool that creates a feature folder, so "start a feature" routes are always refused by Construct (shown with its sentence).
+- Workflow files have no editable fragments yet, so workflow routes always need code from a model or the person; flow states and transitions are not in the structure hash yet (cw1).
+- Rule-based verbs miss everyday phrasing (see held-out paraphrases); the misses defer instead of guessing.
+- A two-step route (via the library) adds its second step only after the first ran ("Add the rest").
+- The pre-UAT walk ignores the shell's `/api/review/branches` 400 on a project that is not a git repository (not this step's; reported).
+- The api-coverage ratchet still reports doc gaps in cp1's `planTools.mjs`, `planService.mjs`, `planFallback.mjs` and `packages/mcp/src/plan.mjs` (not changed here).
+
+### UAT (Cockpit, 3 steps)
+1. Start the server with the drafter on: `cd ui/server && LINE_DRAFTER=1 npm start`; then `cd ui/client && npm run dev`; open http://localhost:3000 and open a copy of `examples/line-sample` (`cp -R examples/line-sample ~/workspace/`).
+2. Go to Components. In "Describe a change", type `add a badge to the orders feature` and press Enter: the first card reads "Recommended · Checked: Add a new component OrdersBadge to orders, based on the library Badge." Try `use OrderButton in billing` (two ways, via the library first) and `put a badge on the ordrs screen` (one "Did you mean the orders feature?" click).
+3. Click Add to plan on the recommended card, then Approve in the Plan panel: `features/orders/components/OrdersBadge.tsx` appears; `line/drafter/transitions.jsonl` has one line with slots and hashes but no project names.
+
+### Next steps (not built)
+- Fine-tune a small local Qwen on (normalized request + slot shapes + structure hashes) -> one route (steps + expressions) under the grammar, once there are hundreds of real approved transitions per tool family; also a small classifier for the closed labels. Train on deltas and labels, never whole-project hashes.
+- Misses feed back as training cases: every wrong-shape, refused-after-pick or deferred request becomes an imaginary-project case (im1-im3 generator), labelled with catalog ids.
+- Local models only, never pulled by Line; jev ranks routes once its accuracy beats the static order on this eval; the model is only asked to fill a hole (a name, a value, code) or to label an unknown request.
+- Replace the expression mirror with the real expression contract on merge and point records at its path.
