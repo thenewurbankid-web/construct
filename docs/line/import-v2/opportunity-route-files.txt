@@ -1,0 +1,14 @@
+src/app/[locale]/(with-max-topbar)/(with-sidebar)/(with-default-scroll)/opportunity/page.tsx
+src/app/[locale]/(with-max-topbar)/(with-sidebar)/(with-default-scroll)/opportunity/OpportunityClient.tsx
+src/components/MaxToast.tsx
+src/hooks/useCategoryLifecycleStatus.ts
+src/subframe-pages/Opportunity/Opportunity.tsx
+src/types/onboarding.ts
+src/types/opportunity.ts
+src/components/OpportunityCard.tsx
+src/components/OpportunityStack.tsx
+src/components/InfiniteScrollIndicator.tsx
+src/components/icons/CategoryFolderIcon.tsx
+src/utils/categorySearchDisplay.ts
+src/validations/AdminValidations.ts
+src/libs/adapters/opportunityAdapter.ts
