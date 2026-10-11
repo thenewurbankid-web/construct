@@ -102,7 +102,7 @@ export function loopChecks(m, logic, { at, folder }) {
     checks.push(t.state === 'skipped'
       ? { id: 'char-tests', state: 'skipped', sentence: end(t.sentence || 'There are no characterization tests yet, so behaviour is checked by the logic map only'), expr: IMPORT_LOOP_EXPRS['char-tests'], fixes: [] }
       : r.ok
-        ? { id: 'char-tests', state: 'pass', sentence: end(`The ${plural(t.total, 'characterization test')} pass`), expr: IMPORT_LOOP_EXPRS['char-tests'], fixes: [] }
+        ? { id: 'char-tests', state: 'pass', sentence: end(t.total === 1 ? 'The characterization test passes' : `The ${t.total} characterization tests pass`), expr: IMPORT_LOOP_EXPRS['char-tests'], fixes: [] }
         : { id: 'char-tests', state: 'fail', sentence: end(`${t.failed} of ${plural(t.total, 'characterization test')} fail${first ? `; the first: ${first.title}` : ''}`), detail: [...r.failed.map((f) => f.sentence), ...(t.detail ? [t.detail] : [])].join('\n'), expr: IMPORT_LOOP_EXPRS['char-tests'], fixes: [{ id: 'recheck', sentence: 'Fix the code so the tests pass again, then check again.' }] });
   }
   // 2. The logic map: nothing missing, nothing changed, unless the owner waived it.
@@ -211,7 +211,9 @@ export function loopState({ step, n, at, before, m, checks, logic }) {
  * @returns {{id: string, sentence: string, options: {id: string, sentence: string}[], recommended: string}}
  */
 export function loopQuestion(id, failing, sentence) {
-  const putBack = failing.flatMap((c) => c.fixes).filter((f) => f.id === 'put-back');
+  // One put-back per block: a lost unit and its file's changed behaviour are the same piece of work.
+  const putBack = [];
+  for (const f of failing.flatMap((c) => c.fixes).filter((x) => x.id === 'put-back')) if (!putBack.some((p) => (p.block ?? p.sentence) === (f.block ?? f.sentence))) putBack.push(f);
   const recheck = putBack.length === 1 ? end(`${putBack[0].sentence.replace(/[.?!]$/, '')}, then check again`) : putBack.length ? end(`Put the ${putBack.length} lost pieces back (listed under Details), then check again`) : end(failing.flatMap((c) => c.fixes).find((f) => f.id === 'recheck')?.sentence ?? 'Check again');
   const waivable = failing.length > 0 && failing.every((c) => c.fixes.some((f) => f.id === 'waive'));
   const options = [{ id: 'recheck', sentence: recheck }];

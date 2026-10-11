@@ -254,7 +254,11 @@ export function slotLoopState(state, at) {
   };
   rec.slots = slotter.slots();
   const words = [...fnNames, ...pathList.flatMap((p) => p.split('/').map((s) => s.replace(/\.[^.]+$/, '')))].filter((w) => /[A-Za-z]{3,}/.test(w) && !STRUCTURE_WORDS.has(w.toLowerCase()) && !/^(src|app|lib|import|components|pages|features|library|hooks|utils)$/i.test(w));
-  const leak = projectWordIn({ ...rec, slots: {} }, words);
+  // The guard reads the stored values (field names such as "total" are the record's own structure, not project words).
+  const values = [];
+  const collect = (x) => { if (typeof x === 'string') values.push(x); else if (Array.isArray(x)) x.forEach(collect); else if (x && typeof x === 'object') Object.values(x).forEach(collect); };
+  collect({ ...rec, slots: {} });
+  const leak = projectWordIn(values.join('\n'), words);
   if (leak) throw new Error(`it would hold the project name "${leak}"`);
   return rec;
 }
