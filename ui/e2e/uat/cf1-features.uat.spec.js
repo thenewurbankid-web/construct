@@ -13,7 +13,8 @@ test.beforeAll(() => freshSample());
 test('cf1: a feature with everything it owns, its summary and spec coverage', async ({ page }, testInfo) => {
   await openSampleFromPicker(page);
   await goToScreen(page, 'Features');
-  await expect(page.getByRole('heading', { name: 'Your features' })).toBeVisible({ timeout: 30_000 });
+  // cd1: Features opens as a full-screen chat; its first message lists the features with their status.
+  await expect(page.getByTestId('lf-chat-entry')).toBeVisible({ timeout: 30_000 });
   await expect(cards(page).filter({ hasText: 'billing' })).toContainText('Needs attention');
   await expect(cards(page).filter({ hasText: 'orders' })).toContainText('All fine');
   await expectLayoutFits(page, '[data-testid="line-features"]', testInfo, 'features');

@@ -33,7 +33,7 @@ test.describe.serial('cs1 UAT: plain English first', () => {
   let restore;
 
   test.beforeAll(async () => {
-    base = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'line-sample-uat-')));
+    base = fs.realpathSync(fs.mkdtempSync(path.join(process.env.E2E_WORKSPACE_ROOT ?? os.tmpdir(), 'line-sample-uat-')));
     fs.cpSync(SAMPLE, base, { recursive: true });
     restore = await openProject(API, base);
   });

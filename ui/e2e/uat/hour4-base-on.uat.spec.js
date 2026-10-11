@@ -1,4 +1,4 @@
-import { test, expect, freshSample, openSampleFromPicker, goToScreen, expectAxeClean } from './support/uat.js';
+import { test, expect, freshSample, openSampleFromPicker, goToScreen, expectAxeClean, approveInPlan } from './support/uat.js';
 
 // UAT Hour 4 (docs/line/review.md): Components -> Badge card -> Base on this -> Feature "orders", Name "StatusBadge"
 // -> Create: the green sentence, "Used by 1 feature component" on Badge, StatusBadge "Based on Badge" under orders.
@@ -19,6 +19,8 @@ test('Hour 4: Base on this creates StatusBadge in orders; a taken name is refuse
   await form.getByLabel('Name').fill('StatusBadge');
   await expectAxeClean(page, '[data-testid="line-library"]');
   await form.getByRole('button', { name: 'Create' }).click();
+  // cp1: the change waits in the Plan panel; one click on Approve saves it.
+  await approveInPlan(page);
   await expect(page.getByTestId('ll-notice')).toContainText('Saved. Creates StatusBadge in feature orders, based on the library Badge.');
   await expect(badge.getByTestId('ll-used-by')).toHaveText('Used by 1 feature component');
   await expect(featureRow(page, 'StatusBadge').getByTestId('ll-base')).toHaveText('Based on Badge');

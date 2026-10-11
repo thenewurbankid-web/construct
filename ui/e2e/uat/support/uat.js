@@ -261,7 +261,12 @@ export const API = process.env.E2E_API_BASE || `http://localhost:${process.env.E
 
 /** A fresh copy of the Line sample (the how-to's "open examples/line-sample", without touching the original). */
 export function copySample() {
-  const dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'line-uat-')));
+  const dir = fs.realpathSync(fs.mkdtempSync(path.join(process.env.E2E_WORKSPACE_ROOT ?? os.tmpdir(), 'line-uat-')));
   fs.cpSync(SAMPLE_SRC, dir, { recursive: true });
   return dir;
+}
+
+/** cp1: every change is a plan step; the owner approves it in the Plan panel (one click) and then it is saved. */
+export async function approveInPlan(page) {
+  await page.getByTestId('line-plan').getByRole('button', { name: /^Approve step/ }).first().click();
 }

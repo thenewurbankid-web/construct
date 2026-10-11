@@ -14,7 +14,7 @@ const SAMPLE = path.resolve(__dirname, '../../../examples/line-sample');
 const API = process.env.E2E_API_BASE || 'http://localhost:4000';
 
 test('UAT s1-drafter: describe a change, see the ways to do it, add the recommended one, approve it', async ({ page }) => {
-  const base = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'line-sample-')));
+  const base = fs.realpathSync(fs.mkdtempSync(path.join(process.env.E2E_WORKSPACE_ROOT ?? os.tmpdir(), 'line-sample-')));
   fs.cpSync(SAMPLE, base, { recursive: true });
   const restore = await openProject(API, base);
   const problems = [];

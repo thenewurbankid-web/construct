@@ -12,8 +12,9 @@ const NO_STEPS: PlanStepView[] = [];
 
 /** The open project's plan (GET /api/line/plan) and the person's part in it: a Line action adds a step, Approve runs
  * it, and a step that needs the person offers Try again or Leave as it is. `onLanded` runs after a step wrote files
- * (re-read the project, re-run validate). */
-export function useLinePlan(onLanded: () => void, api: LinePlanApi = linePlanApi): PlanControls {
+ * (re-read the project, re-run validate). `enabled`: false while the open project is not (yet) a Line project, so the
+ * panel asks nothing of /api/line/plan (it would only answer that there is no Line project). */
+export function useLinePlan(onLanded: () => void, api: LinePlanApi = linePlanApi, enabled = true): PlanControls {
   const [view, setView] = useState<PlanView | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [recheck, setRecheck] = useState<string | null>(null);
@@ -38,11 +39,12 @@ export function useLinePlan(onLanded: () => void, api: LinePlanApi = linePlanApi
   }, []);
 
   const refresh = useCallback(() => {
+    if (!enabled) return;
     void api.getPlan().then((a) => take(a));
-  }, [api, take]);
+  }, [api, take, enabled]);
   useEffect(() => refresh(), [refresh]);
   // A screen ran plan steps itself (Apply recommended fix, Import's Apply): show them here as they are now.
-  useEffect(() => onLinePlanChanged(refresh), [refresh]);
+  useEffect(() => (enabled ? onLinePlanChanged(refresh) : undefined), [refresh, enabled]);
   /** After a refusal: show the plan as it is now, keeping the refusal's sentence. */
   const reread = useCallback(() => {
     void api.getPlan().then((g) => {

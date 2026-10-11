@@ -1,4 +1,4 @@
-import { test, expect, freshSample, openSampleFromPicker, goToScreen, expectAxeClean, expectLayoutFits } from './support/uat.js';
+import { test, expect, freshSample, openSampleFromPicker, goToScreen, expectAxeClean, expectLayoutFits, approveInPlan } from './support/uat.js';
 
 // UAT cx1 (docs/line/review.md, fresh sample):
 // 1. Pages -> orders -> OrdersPage -> on ListPage click "Edit code": only "What happens when Orders asks for more"
@@ -37,6 +37,8 @@ test('cx1: edit one handler in place; bad code is refused in one sentence', asyn
   if (!(await form.getByLabel(LABEL).isVisible())) form = await openEditCode(page);
   await form.getByLabel(LABEL).fill(NEW);
   await form.getByRole('button', { name: 'Save' }).click();
+  // cp1: the change waits in the Plan panel; one click on Approve saves it.
+  await approveInPlan(page);
   await expect(page.getByTestId('lp-outcome')).toHaveText(`Saved. Changes the code for "${LABEL}" in OrdersPage.`);
   expect(sample.read(ORDERS)).toBe(before.replace(OLD, NEW));
 

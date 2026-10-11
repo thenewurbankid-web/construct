@@ -17,7 +17,7 @@ test.describe.serial('UAT cd1: Features as a chat in Trace style', () => {
   let base;
   let restore;
   test.beforeAll(async () => {
-    base = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'line-sample-')));
+    base = fs.realpathSync(fs.mkdtempSync(path.join(process.env.E2E_WORKSPACE_ROOT ?? os.tmpdir(), 'line-sample-')));
     fs.cpSync(SAMPLE, base, { recursive: true });
     restore = await openProject(API, base);
   });

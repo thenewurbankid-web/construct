@@ -20,7 +20,7 @@ test.describe.serial('UAT cu3: one tool registry, project writes wait for approv
   const problems = [];
 
   test.beforeAll(async () => {
-    base = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'uat-cu3-')));
+    base = fs.realpathSync(fs.mkdtempSync(path.join(process.env.E2E_WORKSPACE_ROOT ?? os.tmpdir(), 'uat-cu3-')));
     fs.cpSync(SAMPLE, base, { recursive: true });
     restore = await openProject(API, base);
   });

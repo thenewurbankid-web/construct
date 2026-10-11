@@ -1,4 +1,4 @@
-import { test, expect, freshSample, openSampleFromPicker, goToScreen, expectAxeClean, expectLayoutFits } from './support/uat.js';
+import { test, expect, freshSample, openSampleFromPicker, goToScreen, expectAxeClean, expectLayoutFits, approveInPlan } from './support/uat.js';
 
 // UAT Hours 5 and 6 (docs/line/review.md, fresh sample):
 // 1. Pages -> pick orders -> OrdersPage "Based on ListPage", "Fine".
@@ -24,6 +24,8 @@ test('Hours 5-6: pages inside a feature, and setting one prop', async ({ page },
   await orders.getByRole('button', { name: 'OrdersPage' }).click();
   await titleProp(page).getByLabel('title').fill('All orders');
   await titleProp(page).getByRole('button', { name: 'Save' }).click();
+  // cp1: the change waits in the Plan panel; one click on Approve saves it.
+  await approveInPlan(page);
   await expect(page.getByTestId('lp-outcome')).toHaveText(/^Saved\. /);
   await expect(titleProp(page).getByTestId('lp-prop-now')).toHaveText('Now: All orders');
   expect(sample.read('features/orders/pages/OrdersPage.tsx')).toContain('title="All orders"');
@@ -37,6 +39,8 @@ test('Hours 5-6: pages inside a feature, and setting one prop', async ({ page },
   await invoices.getByRole('button', { name: 'InvoicesPage' }).click();
   await titleProp(page).getByLabel('title').fill('Bills');
   await titleProp(page).getByRole('button', { name: 'Save' }).click();
+  // cp1: the change waits in the Plan panel; one click on Approve saves it.
+  await approveInPlan(page);
   await expect(page.getByTestId('lp-outcome')).toHaveText(/^Saved\. /);
   await expect(pageRow(page, 'InvoicesPage').getByTestId('lp-page-status')).toHaveText('Needs attention');
 });

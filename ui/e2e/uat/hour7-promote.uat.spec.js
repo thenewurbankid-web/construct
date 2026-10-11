@@ -1,4 +1,4 @@
-import { test, expect, freshSample, openSampleFromPicker, goToScreen, expectAxeClean } from './support/uat.js';
+import { test, expect, freshSample, openSampleFromPicker, goToScreen, expectAxeClean, approveInPlan } from './support/uat.js';
 
 // UAT Hour 7 (docs/line/review.md, fresh sample): Components -> under orders, OrderButton -> Promote to library ->
 // read the sentence -> Promote: the green sentence, an OrderButton card under Molecules, and the status bar at
@@ -18,6 +18,8 @@ test('Hour 7: Promote OrderButton to the library clears the cross-feature proble
   await expect(confirm).toContainText('This moves OrderButton into library/');
   await expectAxeClean(page, '[data-testid="line-library"]');
   await confirm.getByRole('button', { name: 'Promote', exact: true }).click();
+  // cp1: the change waits in the Plan panel; one click on Approve saves it.
+  await approveInPlan(page);
   await expect(page.getByTestId('ll-notice')).toContainText('Saved. Moves OrderButton from feature orders into the library');
   await expect(page.getByTestId('ll-group-molecule').getByTestId('ll-card').filter({ has: page.getByText('OrderButton', { exact: true }) })).toBeVisible();
   await expect(featureRow(page, 'OrderButton')).toHaveCount(0);

@@ -33,7 +33,7 @@ test('ca2: Apply the recommended fix on Components and on Pages, one click each'
 
   act = me.action('go to Pages, billing');
   await me.click(screen(page, 'Pages'));
-  await me.click(page.getByRole('button', { name: 'billing', exact: true }));
+  await me.click(page.getByRole('list', { name: 'Features' }).getByRole('button').filter({ hasText: 'billing' }));
   act.done();
   const row = page.locator('[data-testid="lp-page"][data-page="InvoicesPage"]');
   await expect(row.getByTestId('lp-page-status')).toHaveText('Needs attention', { timeout: 30_000 });

@@ -30,7 +30,7 @@ function LineComponentsScreen() {
     revalidate();
   }, [refresh, revalidate]);
   // cp1: Base on and Promote add a plan step; the Plan panel's Approve runs it, then the project is read again.
-  const plan = useLinePlan(onLanded);
+  const plan = useLinePlan(onLanded, undefined, screen.kind === 'line');
   const notice = plan.lastRun?.apply ?? null;
   const controls = useLineChanges(features, plan.addStep, notice, onLanded);
   return (

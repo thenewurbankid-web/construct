@@ -15,7 +15,7 @@ const API = process.env.E2E_API_BASE || 'http://localhost:4000';
 
 test('cw1 UAT: start a workflow from the library, choose its page, add a When -> Do, each approved in the Plan panel', async ({ page }) => {
   test.setTimeout(120_000);
-  const base = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'line-sample-')));
+  const base = fs.realpathSync(fs.mkdtempSync(path.join(process.env.E2E_WORKSPACE_ROOT ?? os.tmpdir(), 'line-sample-')));
   fs.cpSync(SAMPLE, base, { recursive: true });
   const restore = await openProject(API, base);
   const problems = [];
@@ -38,7 +38,7 @@ test('cw1 UAT: start a workflow from the library, choose its page, add a When ->
     // 2. Start "list then detail" from the library: one click, then Approve (two clicks for the decision).
     clicks = 0;
     await click(page.getByRole('button', { name: 'Use listDetail in orders' }));
-    await expect(page.getByRole('status')).toContainText('Waiting for your approval: Creates the workflow ordersListDetail in feature orders');
+    await expect(page.getByTestId('line-workflows').getByRole('status')).toContainText('Waiting for your approval: Creates the workflow ordersListDetail in feature orders');
     await approve();
     expect(clicks).toBeLessThanOrEqual(2);
     await expect(page.getByText('0 of 2 pages are chosen; still to choose: list and detail.', { exact: false })).toBeVisible({ timeout: 30_000 });
@@ -48,7 +48,7 @@ test('cw1 UAT: start a workflow from the library, choose its page, add a When ->
     clicks = 0;
     await page.getByLabel(/^list\s+The page that lists the items$/).selectOption('OrdersPage');
     clicks += 1;
-    await expect(page.getByRole('status')).toContainText('Chooses OrdersPage for the list page');
+    await expect(page.getByTestId('line-workflows').getByRole('status')).toContainText('Chooses OrdersPage for the list page');
     await approve();
     expect(clicks).toBeLessThanOrEqual(2);
     await expect(page.getByText('When OrdersPage sends OPEN.', { exact: false }).first()).toBeAttached();
@@ -60,7 +60,7 @@ test('cw1 UAT: start a workflow from the library, choose its page, add a When ->
     await form.getByLabel('Go to').selectOption('list');
     await form.getByLabel('Service to call').fill('cancelOrder');
     await click(form.getByRole('button', { name: 'Add to plan' }));
-    await expect(page.getByRole('status')).toContainText('call the cancelOrder service, then go to OrdersPage');
+    await expect(page.getByTestId('line-workflows').getByRole('status')).toContainText('call the cancelOrder service, then go to OrdersPage');
     await approve();
     const own = page.locator('[data-testid="lw-card"][data-transition="detail|CANCEL"]');
     await expect(own).toContainText('Call the cancelOrder service, then go to OrdersPage.');

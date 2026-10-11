@@ -19,7 +19,7 @@ test.describe.serial('UAT ci2: the Import agent, walked as the owner', () => {
   let restore;
 
   test.beforeAll(async () => {
-    base = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'uat-ci2-')));
+    base = fs.realpathSync(fs.mkdtempSync(path.join(process.env.E2E_WORKSPACE_ROOT ?? os.tmpdir(), 'uat-ci2-')));
     fs.cpSync(SAMPLE, base, { recursive: true });
     fs.writeFileSync(path.join(base, 'architecture.yml'), 'version: 1\n');
     restore = await openProject(API, base);

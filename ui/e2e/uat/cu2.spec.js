@@ -1,5 +1,12 @@
 import { test, expect } from '@playwright/test';
 import { gotoCockpit } from '../tests/support/cockpit.js';
+import { openProject } from '../tests/support/browseProject.js';
+import { API, copySample } from './support/uat.js';
+
+// The UAT workspace starts with no project open ("Open a project"); Settings sits in the shell, so open a copy first.
+let restore;
+test.beforeAll(async () => { restore = await openProject(API, copySample()); });
+test.afterAll(async () => { await restore?.(); });
 
 // UAT walk for cu2 (docs/line/review.md "cu2"), as the owner does it: open the Cockpit, open the profile menu, open
 // Settings, read the AI steps, open one step's Details. Only clicks; no API calls. Fails on any console error or any
@@ -26,7 +33,7 @@ test('cu2 UAT: Settings lists every AI step in plain English, 1.5B by default, e
     const how = (await s.locator('.ais-how').innerText()).trim();
     expect(label).toMatch(/^[A-Z].*\.$/);
     expect(how).toMatch(/^[A-Z].*\.$/);
-    expect(how).toMatch(/static|nothing runs/);
+    expect(how).toMatch(/static|nothing runs/i);
     await expect(s.getByTestId('ai-step-model')).toHaveText(/^Model: (qwen2\.5-coder:1\.5b \(Line's default\)|The hosted model you choose)$/);
   }
   await expect(panel.getByTestId('ai-steps-status')).toHaveText(/\.$/);

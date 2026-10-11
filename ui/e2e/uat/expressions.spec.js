@@ -32,7 +32,7 @@ test.describe.serial('UAT: expressions decide a step (Line sample project)', () 
   const problems = [];
 
   test.beforeAll(async () => {
-    base = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'line-expr-uat-')));
+    base = fs.realpathSync(fs.mkdtempSync(path.join(process.env.E2E_WORKSPACE_ROOT ?? os.tmpdir(), 'line-expr-uat-')));
     fs.cpSync(SAMPLE, base, { recursive: true });
     restore = await openProject(API, base);
   });
@@ -53,7 +53,7 @@ test.describe.serial('UAT: expressions decide a step (Line sample project)', () 
     const step = plan.getByTestId('plan-step').first();
     await step.getByRole('button', { name: 'Approve step 1' }).click();
     await expect(step).toHaveAttribute('data-state', 'done', { timeout: 30_000 });
-    await expect(step.getByTestId('plan-step-sentence')).toHaveText('Saved. Creates StatusBadge in feature orders, based on the library Badge.');
+    await expect(step.getByTestId('plan-step-sentence')).toHaveText('Saved: Creates StatusBadge in feature orders, based on the library Badge.');
     const records = fs.readFileSync(path.join(base, 'line/records/plans.jsonl'), 'utf8').trim().split('\n').map((l) => JSON.parse(l));
     expect(records).toHaveLength(1);
     expect(records[0]).toMatchObject({ approved: true, repaired: false, passed: 2 });

@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { test, expect, freshSample, openSampleFromPicker, goToScreen, expectAxeClean, expectLayoutFits } from './support/uat.js';
+import { test, expect, freshSample, openSampleFromPicker, goToScreen, expectAxeClean, expectLayoutFits, approveInPlan } from './support/uat.js';
 
 // UAT cu6 (docs/line/review.md, fresh sample):
 // 1. Project switcher -> "Change workspace folder" -> features/ -> Use on orders. Header shows "/ features/orders";
@@ -37,6 +37,8 @@ test('cu6: one workspace folder; outside it stays read-only', async ({ page }, t
   await form.getByLabel('Feature').selectOption('orders');
   await form.getByLabel('Name').fill('StatusBadge');
   await form.getByRole('button', { name: 'Create' }).click();
+  // cp1: the change waits in the Plan panel; one click on Approve saves it.
+  await approveInPlan(page);
   await expect(page.getByTestId('ll-notice')).toContainText('Saved.');
   expect(sample.exists('features/orders/components/StatusBadge.tsx')).toBe(true);
 
