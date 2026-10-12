@@ -3,12 +3,10 @@
 // source repo, no model). Every result passes the contract's assert* checks (packages/engine/line/contract.mjs).
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { assertStepProfile, assertDecideResult, assertAiProfiles, DEFAULT_STEP_MODEL } from '../packages/engine/line/contract.mjs';
+import { assertStepProfile, assertDecideResult, assertAiProfiles, DEFAULT_STEP_MODEL, ownModelStep } from '../packages/engine/line/contract.mjs';
 import { listStepProfiles, stepProfile, stepModel, stepOn, stepWin, reasonPairOf, readAiProfiles } from '../packages/core/ai-profiles.mjs';
 import { createDecider } from '../packages/core/line-decide.mjs';
 
-/** #892 / #903: the request readers (jev, scikit-learn, spaCy, NLI) answer closed labels with their own small models, not the 1.5B picker. */
-const CLOSED_READERS = /^construct\.intent(-|$)/;
 import { createMockDecide, profilesWithOn } from '../packages/core/line-decide-mock.mjs';
 import { createMockReason, createMockPicker } from '../packages/line-links/mocks.mjs';
 
@@ -23,8 +21,13 @@ test('profiles: one set covers Cockpit, Trace and Construct steps, each passing 
   for (const s of ['construct.chooser', 'construct.fix', 'construct.repair', 'trace.choose', 'trace.pick-fields', 'trace.draft-body', 'cockpit.importFill', 'cockpit.createFill']) assert.ok(steps.includes(s), s);
   assert.equal(DEFAULT_STEP_MODEL, 'qwen2.5-coder:1.5b');
   // The one exception: memory embeddings need an embedding model (construct.memory-embed, off and unmeasured).
-  for (const p of all.filter((x) => x.provider === 'ollama' && x.step !== 'construct.memory-embed' && !CLOSED_READERS.test(x.step))) assert.equal(p.model, DEFAULT_STEP_MODEL, p.step);
+  for (const p of all.filter((x) => x.provider === 'ollama' && x.step !== 'construct.memory-embed' && !ownModelStep(x.step))) assert.equal(p.model, DEFAULT_STEP_MODEL, p.step);
   assert.equal(stepModel('construct.memory-embed', { traceConfig: null }), 'nomic-embed-text');
+  // #892 / #903 (owner): the request readers name their own model; the rule is the contract's ownModelStep, nothing else.
+  assert.equal(stepModel('construct.intent', { traceConfig: null }), 'open-jev');
+  for (const p of all.filter((x) => ownModelStep(x.step))) assert.notEqual(p.model, DEFAULT_STEP_MODEL, p.step);
+  assert.deepEqual([ownModelStep('construct.intent'), ownModelStep('construct.intent-nli'), ownModelStep('construct.intentional'), ownModelStep('construct.chooser')], [true, true, false, false]);
+  assert.throws(() => assertAiProfiles({ ...readAiProfiles({ traceConfig: null, status: () => ({ ok: true, packages: [] }) }), profiles: [{ ...stepProfile('construct.chooser'), model: 'qwen3:4b', modelFrom: 'chosen for this step' }] }), /only a request reader/);
   // im2 (owner, 12 Oct): the repair loop on the 1.5B, no reason field, up to 4 attempts (variant A, review.md).
   assert.deepEqual([stepProfile('construct.repair').reason, stepProfile('construct.repair').maxAttempts], [false, 4]);
   assert.equal(stepModel('construct.chooser', { traceConfig: null }), DEFAULT_STEP_MODEL);
@@ -60,7 +63,7 @@ test('profiles: the contract refuses a step that is on without a measured win, a
   const embed = stepProfile('construct.memory-embed', { traceConfig: null });
   assert.doesNotThrow(() => assertStepProfile(embed));
   assert.throws(() => assertStepProfile({ ...embed, provider: 'hosted', model: null }), /local embedding model/);
-  assert.ok(!listStepProfiles({ traceConfig: null }).some((p) => p.kind === 'decide' && !CLOSED_READERS.test(p.step) && p.model !== DEFAULT_STEP_MODEL), 'every decide step runs the picker model');
+  assert.ok(!listStepProfiles({ traceConfig: null }).some((p) => p.kind === 'decide' && !ownModelStep(p.step) && p.model !== DEFAULT_STEP_MODEL), 'every decide step runs the picker model');
   assert.throws(() => stepProfile('nope.step'), /no profile/);
 });
 

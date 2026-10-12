@@ -1087,6 +1087,14 @@ export const LEVELS = Object.freeze(['atom', 'molecule', 'organism']);
 export const FRAGMENT_KINDS = Object.freeze(['prop-expression', 'handler', 'condition', 'style']);
 /** cu2: the local model every AI step uses unless its profile names another. */
 export const DEFAULT_STEP_MODEL = 'qwen2.5-coder:1.5b';
+/**
+ * #892 / #903 (owner, 12 Oct): the steps that read a request into closed labels name their own small model
+ * (construct.intent: jev; construct.intent-*: the beam's NLP arms). Every other decide step runs DEFAULT_STEP_MODEL,
+ * the one picker, unless trace/ai.config.json overrides it. Their switches stay off until a measured win.
+ * @param {string} step
+ * @returns {boolean}
+ */
+export const ownModelStep = (step) => /^construct\.intent(-|$)/.test(step);
 export const DECIDE_VIA = Object.freeze(['static', 'middleware', 'jev']);
 export const DECIDE_BY = Object.freeze(['single', 'order', 'memory', 'middleware', 'jev', 'none']);
 /** Who decided, on the one ladder (static -> middleware -> picker -> Construct verify -> person). */
@@ -1772,6 +1780,9 @@ export function assertAiProfiles(x) {
   const seen = new Set();
   x.profiles.forEach((p, i) => {
     assertStepProfile(p, `aiProfiles.profiles[${i}]`);
+    if (p.kind === 'decide' && p.provider === 'ollama' && p.model !== x.defaultModel && !ownModelStep(p.step) && p.modelFrom !== 'trace/ai.config.json') {
+      fail(`aiProfiles.profiles[${i}].model`, `a decide step runs the picker (${x.defaultModel}); only a request reader (construct.intent*) names its own model`);
+    }
     if (seen.has(p.step)) fail(`aiProfiles.profiles[${i}].step`, 'must be unique');
     seen.add(p.step);
   });

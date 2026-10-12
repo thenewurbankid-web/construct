@@ -71,9 +71,11 @@
     },
     {
       "step": "construct.intent",
-      "label": "Reads what kind of change a request asks for (intent, object, target, layers) (the picker is jev, trace/tools/jev); off, the static rules decide and jev's labels are only logged beside them, never used until it beats them.",
+      "label": "Reads what kind of change a request asks for (intent, object, target, layers) with its own model, jev (trace/tools/jev); off, the static rules decide and jev's labels are only logged beside them, never used until it beats them.",
       "kind": "decide",
       "provider": "ollama",
+      "model": "open-jev",
+      "modelFrom": "jev, this step's own model (trace/tools/jev), not the 1.5B picker",
       "maxTokens": 1,
       "source": "construct",
       "question": "Which closed label fits the request?",

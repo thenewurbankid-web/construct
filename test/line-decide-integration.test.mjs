@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { importLinked } from '../packages/line-links/index.mjs';
 import { createDecider } from '../packages/core/line-decide.mjs';
 import { createMockPicker } from '../packages/line-links/mocks.mjs';
-import { assertDecideResult } from '../packages/engine/line/contract.mjs';
+import { assertDecideResult, ownModelStep, DEFAULT_STEP_MODEL } from '../packages/engine/line/contract.mjs';
 import { profilesWithOn } from '../packages/core/line-decide-mock.mjs';
 
 const linked = await importLinked('@mx/reason');
@@ -14,9 +14,11 @@ const real = async () => ({ module: linked.module, note: null });
 
 test('real @mx/reason: every profile converts to a valid reason pair', { skip }, async () => {
   const { listStepProfiles, reasonPairOf } = await import('../packages/core/ai-profiles.mjs');
-  const pairs = listStepProfiles({ traceConfig: null }).filter((p) => p.kind === 'decide').map(reasonPairOf);
+  const decide = listStepProfiles({ traceConfig: null }).filter((p) => p.kind === 'decide');
+  const pairs = decide.map(reasonPairOf);
   const defined = linked.module.defineProfiles(pairs);
-  for (const p of pairs) assert.equal(defined[p.pairId].models.pick, 'qwen2.5-coder:1.5b');
+  // #892 / #903 (owner): a request reader (construct.intent*) keeps its own model; every other decide step runs the 1.5B picker.
+  decide.forEach((p, i) => assert.equal(defined[pairs[i].pairId].models.pick, ownModelStep(p.step) ? p.model : DEFAULT_STEP_MODEL, p.step));
 });
 
 test('real @mx/reason: jev (mocked) decides among the checked options of a step that is on; one option is static', { skip }, async () => {
