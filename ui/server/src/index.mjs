@@ -22,7 +22,6 @@ import { listProjectTree } from './projectTree.mjs';
 import { getSettings, updateSettings, getBrowseRoots, getProjectDir, preloadProject } from './settings.mjs';
 import { handleBrowse } from './dirBrowse.mjs';
 import { runCapturing, withDir } from './commandRunner.mjs';
-import { attachWizardSocket } from './wizardSocket.mjs';
 import { createProcessesService } from './processesService.mjs';
 import { createProcessesRouter } from './processesApi.mjs';
 import { createDevServerService } from './devServer.mjs';
@@ -1510,14 +1509,13 @@ function isEntrypoint() {
  * exercise the real route table (and the real gate) without a listener. */
 export { app, auth };
 
-/** Build the HTTP server with the wizard WebSocket attached. The socket
+/** Build the HTTP server with the processes WebSocket attached. The socket
  * gets the same `auth` object the REST gate uses, so it can never be the
  * more permissive of the two. */
 export function createUiServer() {
   const server = http.createServer(app);
-  attachWizardSocket(server, '/ws/wizard', CLIENT_ORIGIN, auth);
   attachProcessesSocket(server, processesService, '/ws/processes', CLIENT_ORIGIN, auth);
-  refuseUnknownUpgrades(server, ['/ws/wizard', '/ws/processes']);
+  refuseUnknownUpgrades(server, ['/ws/processes']);
   return server;
 }
 

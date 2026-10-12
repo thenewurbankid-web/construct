@@ -12,7 +12,7 @@ import { fileURLToPath } from 'node:url';
 //
 //   1. Logged out, the app is unusable — the login screen replaces the
 //      Cockpit, and, far more importantly, the API itself refuses: a
-//      direct fetch to /api/* returns 401 and the wizard WebSocket upgrade
+//      direct fetch to /api/* returns 401 and the processes WebSocket upgrade
 //      is rejected. A UI-only gate would pass a screenshot test and still
 //      leave the server open, so the API assertions are the real ones here.
 //   2. Logged in, the same requests succeed and the account appears in the
@@ -61,10 +61,10 @@ async function decideStatus(page, id) {
   );
 }
 
-/** Attempt the wizard WebSocket upgrade from the page and report whether it
+/** Attempt the processes WebSocket upgrade from the page and report whether it
  * opened. A refused upgrade surfaces to a browser as an error/close, never
  * as an open. */
-async function wsOpens(page, wsPath = '/ws/wizard') {
+async function wsOpens(page, wsPath = '/ws/processes') {
   return page.evaluate(
     ([api, wsPath]) =>
       new Promise((resolve) => {
@@ -187,7 +187,7 @@ test.describe('#278 GitHub login gate', () => {
   });
 
   test('a direct navigation to any screen still lands on the login screen', async ({ page }) => {
-    for (const route of ['/', '/settings', '/wizard', '/pages']) {
+    for (const route of ['/', '/settings', '/pages']) {
       await page.goto(route);
       await expect(page.getByTestId('login-screen')).toBeVisible();
     }

@@ -74,13 +74,14 @@ for (const [name, width, height] of [['phone-390', 390, 844], ['tablet-768', 768
     });
 
     test('a screen keeps its state while you look at another pane (panes stay mounted)', async ({ page }) => {
-      await page.goto('/wizard');
+      await page.goto('/help');
       const bar = page.getByRole('tablist', { name: 'Panes' });
-      const seed = page.getByPlaceholder('/v2/home');
-      await seed.fill('/v2/keep-me');
+      const tutorials = page.locator('details#tutorials');
+      await tutorials.locator('summary').click();
+      await expect(tutorials).toHaveAttribute('open', '');
       await bar.getByRole('tab', { name: 'Inspect' }).click();
       await bar.getByRole('tab', { name: 'Stage' }).click();
-      await expect(seed).toHaveValue('/v2/keep-me');
+      await expect(tutorials).toHaveAttribute('open', '');
     });
 
     test('light theme: same layout, screenshots for review', async ({ page }) => {

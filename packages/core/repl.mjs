@@ -1,10 +1,7 @@
 // Interactive front-end over the exact same functions packages/cli/construct.mjs
 // dispatches to for a one-shot invocation — no new command logic lives
 // here, only line-reading, tokenizing, help text, and a `cd`/`pwd`
-// convenience so a session doesn't need --dir on every line. (`import
-// --route`'s wizard is a deliberately standalone command, not part of this
-// file — it manages its own input, so it isn't safe to nest inside this
-// loop's own stdin consumption; see cli.mjs's `runImportRouteWizard`.)
+// convenience so a session doesn't need --dir on every line.
 import path from 'node:path';
 import { init, feature, generate, sync, validate, summarize, doctor, create, refactor, research, importCommand } from './cli.mjs';
 import { findProjectRoot } from './config.mjs';
@@ -166,28 +163,7 @@ export const HELP_TOPICS = {
       Example: import --plan plan.json --llm claude
 
   Always review LLM-written output (diff against the source) before
-  trusting it — run "validate" right after either way.
-
-  import --route <path>  [standalone command — run directly, not in repl]
-      The guided, whole-feature form. <path> is a real router route — a URL
-      like /v2/home, or the folder that owns its page.tsx — and seeds the
-      first one; it then loops asking for as many more as the old feature
-      actually spans (e.g. /v2/home and /v2/home/details — one combined
-      analysis call covers all of them together, not one call each). Each
-      route is traced through its real import graph (page -> Client ->
-      hooks/components, stopping at known external boundaries) rather than
-      reading a hand-picked directory; a URL-style route needs to know
-      where your app/ directory is, asked once and reused for the rest of
-      the session. It auto-creates the destination feature if it doesn't
-      exist yet (never touches it if it already does), shows you the
-      proposed plan, and only scaffolds anything once you approve it. After
-      building, it immediately runs validate and tells you exactly what's
-      left — a TODO(import) count to fill in, or a reminder to review
-      LLM-written output. It manages its own input, so run
-      "construct import --route <path>" directly from your shell — not
-      typed inside this REPL, which is already reading its own input.
-      Example: construct import --route /v2/home
-      Example: construct import --route ../src/old-feature/routes/home`,
+  trusting it — run "validate" right after either way.`,
 
   init: `init [dir]
       Bootstrap a brand-new Construct project at <dir> (default: cwd):
@@ -298,10 +274,6 @@ Capabilities:
   research ...   read-only: summarize a feature, explain its workflows, compute a change's impact, or check environment/tooling
   import   ...   scaffold layers for an existing, non-Construct file + a breadcrumb to it
 
-Note: "construct import --route <path>" (the interactive, whole-feature
-wizard) is a standalone command — run it directly from your shell, not from
-inside this REPL. See "help import" for why.
-
 Flat commands (unchanged): init, feature, generate, sync, validate, summarize, doctor
 
 Topics: ${TOPIC_ORDER.join(', ')}`;
@@ -389,8 +361,6 @@ export async function startRepl({ input = process.stdin, output = process.stdout
         }
       } else if (cmd === 'pwd') {
         console.log(process.cwd());
-      } else if (cmd === 'import' && args[0] === '--route') {
-        console.log('Run "construct import --route <path>" directly from your shell, not from inside this REPL — see "help import".');
       } else if (COMMANDS[cmd]) {
         await COMMANDS[cmd](args);
         const next = suggestNext(cmd, args);

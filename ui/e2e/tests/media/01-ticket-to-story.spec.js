@@ -102,7 +102,6 @@ test('episode 1: one example, end to end', async ({ page }) => {
     await expect(page.locator('#llm-createFill')).toBeVisible();
     await caption(page, CAPTIONS.settings);
     await page.locator('#llm-createFill').selectOption('ollama');
-    await expect(page.locator('#llm-planAnalysis option[value="ollama"]')).toHaveCount(0);
     await pause(page, 1500);
     await page.getByRole('button', { name: 'Save settings' }).click();
     await expect(page.locator('.status-ok')).toBeVisible();

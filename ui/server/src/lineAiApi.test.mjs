@@ -76,7 +76,6 @@ test('im1: GET /api/line/misses is the miss report: plan feedback of the open pr
 test("Cockpit's fills use the step profile's model (the 1.5B) when Settings names none", () => {
   assert.equal(stepModel('cockpit.importFill'), 'qwen2.5-coder:1.5b');
   assert.equal(stepModel('cockpit.createFill'), 'qwen2.5-coder:1.5b');
-  assert.equal(stepModel('cockpit.planAnalysis'), null);
 });
 
 test('decision: provider: reason is no longer built in (the reason adapter is gone): the rules provider answers and says why', async (t) => {

@@ -5,14 +5,11 @@
 // project directory is intentionally NOT auto-reopened (#365 decision) —
 // only offered back as "Reopen <name>" from `last-project.json`.
 //
-// Per-capability, not one global provider (#100/Epic 6.4): the framework
-// has (at least) two distinct classes of LLM call — small, scoped
+// Per-capability, not one global provider (#100/Epic 6.4): small, scoped
 // "execution" fills (`import`'s per-file fill = importFill; `create`/
-// `generate`'s optional fill, #101 = createFill) vs. the single
-// whole-feature "plan analysis" call in `construct import --route`
-// (planAnalysis). #96's design explicitly allows execution-class calls to
-// route to a local model (Ollama) while planAnalysis must always stay on a
-// real hosted model — never Ollama, not even as a user choice. Every value
+// `generate`'s optional fill, #101 = createFill). The whole-feature "plan
+// analysis" capability (planAnalysis) went with the retired route wizard; a
+// stored planAnalysis value is dropped on read. Every value
 // is validated against the *real* `PROVIDERS` map in src/llm.mjs (not a
 // UI-side copy), so the settings screen's dropdowns can never drift from
 // what the core CLI actually supports.
@@ -28,13 +25,7 @@ import { containInWorkspace, containOrNull, currentLogin, normalizeLogin, relati
 // reused here rather than a second copy, so the two screens can never silently accept different things.
 import { MAX_MODEL_CHARS, MODEL_RE } from './blockSettingsStore.mjs';
 
-// The one hard guardrail from #96: planAnalysis is the whole-feature deep-
-// analysis call and must never be delegated to a local model, no matter
-// what a user requests via the API — enforced here, not just left to the
-// UI dropdown omitting the option.
-const PLAN_ANALYSIS_FORBIDDEN_PROVIDERS = new Set(['ollama']);
-
-const CAPABILITIES = ['importFill', 'createFill', 'planAnalysis'];
+const CAPABILITIES = ['importFill', 'createFill'];
 
 const defaultProvider = Object.keys(PROVIDERS)[0] || null;
 
@@ -57,12 +48,12 @@ const shared = {
   preloadedProject: null,
 };
 
-const defaultLlmProviders = () => ({ importFill: defaultProvider, createFill: defaultProvider, planAnalysis: defaultProvider });
+const defaultLlmProviders = () => ({ importFill: defaultProvider, createFill: defaultProvider });
 
 // #471: no default model per capability -- null means "the provider's own built-in default"
 // (DEFAULT_OLLAMA_MODEL for ollama; the other providers ignore this entirely), exactly the
 // behaviour before this setting existed, until a person picks an installed model explicitly.
-const defaultLlmModels = () => ({ importFill: null, createFill: null, planAnalysis: null });
+const defaultLlmModels = () => ({ importFill: null, createFill: null });
 
 /** login key -> { projectDir, lastProject, llmProviders, llmModels, fellBackFrom }. */
 const userStates = new Map();
@@ -89,11 +80,8 @@ function userState() {
   return entry;
 }
 
-function availableProvidersFor(capability) {
-  const all = Object.keys(PROVIDERS);
-  return capability === 'planAnalysis'
-    ? all.filter((p) => !PLAN_ANALYSIS_FORBIDDEN_PROVIDERS.has(p))
-    : all;
+function availableProvidersFor() {
+  return Object.keys(PROVIDERS);
 }
 
 /** The only root the directory picker may browse (#223, #365): the workspace. Not configurable by a client. */
@@ -158,15 +146,14 @@ const settingsFile = () => settingsFilePath(currentLogin());
 
 /** Keep only capability/value pairs that are still valid against the REAL `PROVIDERS` map (not a
  * cached copy), so a settings.json written by an older build that allowed a provider since removed
- * — or hand-edited — can never resurrect it. Also re-enforces the #96 planAnalysis guardrail, in
- * case a file predates it. Invalid or missing entries are left out and the default fills them in. */
+ * — or hand-edited — can never resurrect it. A retired capability (planAnalysis) is dropped. Invalid or missing
+ * entries are left out and the default fills them in. */
 function validatedLlmProviders(raw) {
   const out = {};
   if (!raw || typeof raw !== 'object') return out;
   for (const capability of CAPABILITIES) {
     const value = raw[capability];
     if (typeof value !== 'string' || !PROVIDERS[value]) continue;
-    if (capability === 'planAnalysis' && PLAN_ANALYSIS_FORBIDDEN_PROVIDERS.has(value)) continue;
     out[capability] = value;
   }
   return out;
@@ -288,19 +275,11 @@ export function getSettings() {
 }
 
 /** Validate and apply one capability's provider value. Throws (does not
- * silently ignore) on an unknown provider, or on `planAnalysis` given a
- * provider in PLAN_ANALYSIS_FORBIDDEN_PROVIDERS — this is the actual
- * enforcement point for #96's "planAnalysis never routes to a local model"
- * guardrail, not just a UI-side omission. */
+ * silently ignore) on an unknown provider. */
 function applyCapabilityProvider(capability, value) {
   if (value === undefined || value === null || value === '') return;
   if (!PROVIDERS[value]) {
     throw new Error(`Unknown LLM provider "${value}". Available: ${Object.keys(PROVIDERS).join(', ')}`);
-  }
-  if (capability === 'planAnalysis' && PLAN_ANALYSIS_FORBIDDEN_PROVIDERS.has(value)) {
-    throw new Error(
-      `"${value}" cannot be used for planAnalysis — the whole-feature plan-analysis call is deliberately Claude/hosted-model-only (see epic #96) and never delegated to a local model, even by explicit request.`,
-    );
   }
   const llmProviders = userLlmProviders();
   llmProviders[capability] = value;
@@ -346,7 +325,7 @@ export function updateSettings({ projectDir, closeProject, llmProviders, llmProv
     }
   }
   // Backward-compatible single-field input: treated as setting importFill
-  // only (the old field's closest analog), never planAnalysis/createFill —
+  // only (the old field's closest analog), never createFill —
   // an old client posting the legacy shape must not silently widen its own
   // scope to capabilities it never knew existed.
   if (llmProvider !== undefined && llmProvider !== null && llmProvider !== '') {

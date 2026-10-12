@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import { gotoCockpit, setTheme } from './support/cockpit.js';
 
 // The Cockpit's top-bar logo is a processing indicator (owner request, 2026-09-24): it is still until the framework is doing
-// work (a command, the Import Wizard, a Process; here a real background validate that the shell starts on open), moves while
+// work (a command, a Process; here a real background validate that the shell starts on open), moves while
 // it is, and goes still again a moment after. Under reduced motion it never moves. The motion is CSS keyframes over our own
 // inline SVG (no animation library), and the state the component publishes on the wrapper (`data-motion`) drives them.
 // #455 is where the marks and their keyframes come from.

@@ -28,7 +28,7 @@ test('rail state: only the exact word collapsed collapses; garbage is expanded',
 test('shell mode: unknown loads, a project opens the shell, none gates everything but the profile-menu pages', () => {
   assert.equal(shellMode(false, null, '/'), 'loading');
   assert.equal(shellMode(true, '/ws/shop', '/pages'), 'full');
-  for (const p of ['/', '/plan', '/pages', '/tests', '/workflows', '/review', '/wizard', '/dashboard', '/states']) assert.equal(shellMode(true, null, p), 'gate', p);
+  for (const p of ['/', '/plan', '/pages', '/tests', '/workflows', '/review', '/dashboard', '/states']) assert.equal(shellMode(true, null, p), 'gate', p);
   for (const p of ['/settings', '/ollama', '/help']) assert.equal(shellMode(true, null, p), 'page', p);
   assert.equal(isProjectFreeRoute('/settingsx'), false);
 });

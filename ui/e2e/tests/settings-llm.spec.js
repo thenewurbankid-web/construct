@@ -113,18 +113,6 @@ test.describe.serial('#109 Settings LLM providers are consumed, opt-in per run',
     await page.screenshot({ path: path.join(SCREENSHOTS_DIR, 'settings-llm-import-ollama.png'), fullPage: true });
   });
 
-  test('planAnalysis can never be ollama: API rejects it and the Settings dropdown does not offer it', async ({ page, request }) => {
-    const res = await request.post(`${API}/api/settings`, { data: { llmProviders: { planAnalysis: 'ollama' } } });
-    expect(res.status()).toBeGreaterThanOrEqual(400);
-    await page.goto('/settings');
-    const options = await page.locator('#llm-planAnalysis option').allTextContents();
-    expect(options.join(' ')).not.toContain('ollama');
-    const importOptions = await page.locator('#llm-importFill option').allTextContents();
-    expect(importOptions.join(' ')).toContain('ollama');
-    await expect(page.getByText('Writes the ported logic when you ask for it on an import')).toBeVisible();
-    await page.screenshot({ path: path.join(SCREENSHOTS_DIR, 'settings-llm-settings-page.png'), fullPage: true });
-  });
-
   test('#471: the per-capability model field appears only for ollama, and a saved choice round-trips', async ({ page, request }) => {
     await setProviders(request, { importFill: 'ollama', createFill: 'claude' });
     await page.goto('/settings');
@@ -141,31 +129,4 @@ test.describe.serial('#109 Settings LLM providers are consumed, opt-in per run',
     await page.screenshot({ path: path.join(SCREENSHOTS_DIR, 'settings-llm-model-field.png'), fullPage: true });
   });
 
-  test('Wizard: analysis on planAnalysis (claude), per-file fill on Settings importFill (ollama)', async ({ page, request }) => {
-    const s = await request.post(`${API}/api/settings`, { data: { projectDir, llmProviders: { planAnalysis: 'claude', importFill: 'ollama' } } });
-    expect(s.ok()).toBeTruthy();
-    await page.goto('/wizard');
-    await expect(page.locator('h1')).toHaveText('Import Route Wizard');
-    await page.getByPlaceholder('/v2/home').fill(routeDir);
-    await page.getByRole('button', { name: 'Start wizard session' }).click();
-    const answer = async (text) => {
-      const input = page.locator('.chat-input input');
-      await expect(input).toBeVisible({ timeout: 120_000 });
-      if (text) await input.fill(text);
-      await page.getByRole('button', { name: 'Send' }).click();
-    };
-    await expect(page.locator('.chat-question').last()).toContainText('Destination feature');
-    await answer('wizpricing');
-    await expect(page.locator('.chat-question').last()).toContainText('Another route to include');
-    await answer('');
-    await expect(page.locator('.chat-question').last()).toContainText('LLM also write the ported logic');
-    await answer('y');
-    await expect(page.locator('.chat-question').last()).toContainText('Approve this plan', { timeout: 180_000 });
-    await expect(page.locator('.chat')).toContainText('Analyzing via "claude"');
-    await answer('y');
-    await expect(page.locator('.chat')).toContainText('via "ollama"', { timeout: 240_000 });
-    await expect(page.locator('.chat-system').last()).toContainText('Session finished', { timeout: 60_000 });
-    await page.locator('.chat').evaluate((el) => { el.scrollTop = el.scrollHeight; });
-    await page.screenshot({ path: path.join(SCREENSHOTS_DIR, 'settings-llm-wizard.png'), fullPage: true });
-  });
 });

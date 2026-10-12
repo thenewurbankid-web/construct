@@ -168,11 +168,6 @@ const EVERY_FLOW_STEPS = [
     touches: touching('checkout', 'features/checkout/hooks/useTotals.ts', 'create', 'hook'),
   },
   {
-    id: 's-import-route', title: 'Walk the /checkout route import wizard', flow: 'import.route', executor: 'user',
-    args: { route: '/checkout' }, dependsOn: ['s-feature'],
-    touches: { features: ['checkout'], files: [] },
-  },
-  {
     id: 's-summarize-unit', title: 'Summarise the checkout feature', flow: 'summarize.unit', executor: 'deterministic',
     args: { ref: 'feature:checkout', kind: 'feature', detail: 'full', include: ['layers', 'health'], format: 'json' },
     dependsOn: ['s-controller'],
@@ -397,7 +392,6 @@ test('planToCommand reproduces the documented CLI usage line for each command sh
   assert.deepEqual(cmd('refactor.rename'), ['refactor', 'rename', 'Totals', 'CartTotals', '--feature', 'checkout', '--layer', 'domain']);
   assert.deepEqual(cmd('import.unit'), ['import', 'Coupon', '--feature', 'checkout', '--layers', 'domain', '--from', 'legacy/checkout/coupon.ts', '--llm', 'ollama']);
   assert.deepEqual(cmd('import.plan'), ['import', '--plan', '{{plan}}']);
-  assert.deepEqual(cmd('import.route'), ['import', '--route', '/checkout']);
   assert.deepEqual(cmd('summarize.unit'), ['summarize', 'feature:checkout', '--kind', 'feature', '--detail', 'full', '--include', 'layers,health', '--format', 'json']);
   assert.deepEqual(cmd('summarize.list'), ['summarize', '--list', '--kind', 'feature']);
   assert.deepEqual(cmd('summarize.usage'), ['summarize', '--usage']);

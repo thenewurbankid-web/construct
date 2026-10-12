@@ -143,12 +143,6 @@ export const BLOCK_DOCS = Object.freeze({
       args: { plan: { feature: 'checkout', units: [{ name: 'Cart', layers: ['domain', 'service'], from: 'legacy/cart.js' }, { name: 'Checkout', layers: ['domain'], from: 'legacy/checkout.js' }] } },
     },
   },
-  'import.route': {
-    purpose: 'A guided wizard that imports a whole page route; a person drives it.',
-    reads: 'The route\'s page and everything it imports.',
-    writes: 'The feature built from the plan you approve in the wizard.',
-    example: { title: 'Import the checkout route', args: { route: '/checkout' } },
-  },
   'summarize.unit': {
     purpose: 'Summarise one unit (its purpose, exports and neighbours) without a model.',
     reads: 'The unit\'s files.',

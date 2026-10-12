@@ -75,8 +75,7 @@ test.describe.serial('Demo #149 (UI) -- project-gate: not-a-project -> initializ
 
 // -----------------------------------------------------------------------
 // #150 -- Settings: project directory switching + per-capability LLM
-// provider configuration (ui/client/features/settings), including the
-// live guardrail that rejects "ollama" for planAnalysis.
+// provider configuration (ui/client/features/settings).
 // -----------------------------------------------------------------------
 test.describe.serial('Demo #150 (UI) -- Settings: project directory + per-capability LLM config', () => {
   let originalSettings;
@@ -139,33 +138,5 @@ test.describe.serial('Demo #150 (UI) -- Settings: project directory + per-capabi
     await expect(page.locator('#llm-importFill')).toHaveValue('ollama');
     await expect(page.locator('#llm-createFill')).toHaveValue('ollama');
     await page.screenshot({ path: path.join(SCREENSHOTS_DIR, '150-3-settings-ollama-selected.png'), fullPage: true });
-  });
-
-  test('4. planAnalysis has no Ollama option in the UI, and a direct attempt to set it is rejected live', async ({ page, request }) => {
-    await page.goto('/settings');
-
-    // Guardrail, layer 1: the dropdown itself never offers the forbidden
-    // option -- a user cannot pick 'ollama' for planAnalysis through
-    // normal interaction at all.
-    await expect(page.locator('#llm-planAnalysis option', { hasText: 'ollama' })).toHaveCount(0);
-
-    // Guardrail, layer 2 (the real, hard-enforced one, per epic #96): even
-    // a direct API request attempting it is rejected server-side -- not
-    // just hidden client-side. Real HTTP call against the real running
-    // ui/server, no mocking.
-    const res = await request.post(`${API_BASE}/api/settings`, {
-      data: { llmProviders: { planAnalysis: 'ollama' } },
-    });
-    expect(res.status()).toBe(400);
-    const body = await res.json();
-    expect(body.ok).toBe(false);
-    expect(body.error).toContain('cannot be used for planAnalysis');
-    console.log(`\nPOST /api/settings {llmProviders:{planAnalysis:"ollama"}} -> HTTP ${res.status()}\n${JSON.stringify(body)}`);
-
-    // Confirm the rejected write left no trace: reloading Settings still
-    // shows planAnalysis at whatever it was, never 'ollama'.
-    await page.reload();
-    await expect(page.locator('#llm-planAnalysis')).not.toHaveValue('ollama');
-    await page.screenshot({ path: path.join(SCREENSHOTS_DIR, '150-4-settings-plananalysis-ollama-rejected.png'), fullPage: true });
   });
 });

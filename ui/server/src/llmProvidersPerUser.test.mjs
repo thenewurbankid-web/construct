@@ -62,8 +62,8 @@ test('a single-user / no-session setup (auth off) behaves exactly as before: one
 });
 
 test('login case does not split provider state: Frank and frank are one user', () => {
-  as('Frank', () => updateSettings({ llmProviders: { planAnalysis: 'claude' } }));
-  assert.equal(as('frank', () => getSettings().llmProviders.planAnalysis), 'claude');
+  as('Frank', () => updateSettings({ llmProviders: { createFill: 'ollama' } }));
+  assert.equal(as('frank', () => getSettings().llmProviders.createFill), 'ollama');
 });
 
 test('the legacy single-field llmProvider still only ever touches importFill, per login', () => {
@@ -74,8 +74,8 @@ test('the legacy single-field llmProvider still only ever touches importFill, pe
   assert.notEqual(as('henry', () => getSettings().llmProviders.importFill), 'ollama');
 });
 
-test('planAnalysis still refuses ollama, per login, and leaves that login\'s state unchanged', () => {
-  assert.throws(() => as('ivan', () => updateSettings({ llmProviders: { planAnalysis: 'ollama' } })), /planAnalysis/);
-  const s = as('ivan', () => getSettings());
-  assert.notEqual(s.llmProviders.planAnalysis, 'ollama');
+test('an unknown provider is refused per login and leaves that login\'s state unchanged', () => {
+  const before = as('ivan', () => getSettings().llmProviders.importFill);
+  assert.throws(() => as('ivan', () => updateSettings({ llmProviders: { importFill: 'gpt-nope' } })), /Unknown LLM provider/);
+  assert.equal(as('ivan', () => getSettings().llmProviders.importFill), before);
 });

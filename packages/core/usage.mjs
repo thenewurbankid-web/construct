@@ -89,7 +89,6 @@ Four capabilities, one CLI:
   construct template ...   (named, reusable, parameterised plans: instantiate prints a concrete plan.v1; a small starter set ships and is used by default, or point --templates <dir> or CONSTRUCT_TEMPLATES_DIR at a project's own curated set)
   construct import <name> --feature <feature> --layers <l1,l2,...> --from <path> [--llm <provider> | --format json] [--dir <path>]
   construct import --plan <path> [--llm <provider> | --format json] [--dir <path>]
-  construct import --route <path>  (standalone interactive wizard, run directly — not inside repl)
 
 'construct import' scaffolds the requested layers and drops a TODO(import)
 comment in each pointing at the source file, then by default stops there —
@@ -114,21 +113,6 @@ only changes what ends up inside the file(s) that were already going to be
 created. Omit --llm and every generated file is the exact same plain
 template stub as before. Locating files, scaffolding, and deciding feature
 shape never involve an LLM either way.
-
-'construct import --route <path>' is the guided, whole-feature form. <path>
-is a real router route — a URL like /v2/home, or the folder that owns its
-page.tsx — and seeds the first one; it then asks for as many more as the
-old feature actually spans (e.g. /v2/home and /v2/home/details), traces
-each one's real import graph (page -> Client -> hooks/components, stopping
-at known external boundaries) rather than reading a hand-picked directory,
-auto-creates the destination feature if it doesn't exist yet (never touches
-it if it does), analyzes everything with ONE combined "claude" call, shows
-you the plan, and on approval builds it, then immediately runs validate and
-tells you exactly what's left — a TODO(import) count to fill in, or a
-reminder to review LLM-written output. A URL-style route needs to know
-where your app/ directory is; it asks once and reuses it for every further
-route this session. It manages its own input, so run it directly from your
-shell — not typed inside 'construct repl', which is already reading input.
 
 Each of the above has a flat equivalent (unchanged, still supported):
 

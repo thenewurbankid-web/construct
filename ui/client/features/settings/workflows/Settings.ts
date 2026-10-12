@@ -29,8 +29,8 @@ export type SettingsAction =
 export const initialSettingsState: SettingsState = {
   settings: null,
   projectDirInput: '',
-  llmProviders: { importFill: '', createFill: '', planAnalysis: '' },
-  llmModels: { importFill: null, createFill: null, planAnalysis: null },
+  llmProviders: { importFill: '', createFill: '' },
+  llmModels: { importFill: null, createFill: null },
   status: null,
   loadError: null,
   pickerOpen: false,

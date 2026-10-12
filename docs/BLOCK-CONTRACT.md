@@ -74,7 +74,6 @@ a `local-model` path, `view-code` (mechanical) and `edit-code` (free) on writing
 | `create.handler` | derived | run, view-code, edit-code, do-by-hand | a Next.js route handler: `app/api/<x>/route.ts`, its domain unit (`to<Name>Http`: ready 200, invalid 400, not-allowed 405, error 500) and, without `--service`, an in-memory service (`create`), the feature's `types.ts` and barrel (`modify`) and the locked proof; a react-spa project derives nothing and is refused with the reason (#625) |
 | `import.unit` | derived | run, fill-with-ai, view-code, edit-code, do-by-hand | pins what is written, not what a model generates (#610) |
 | `import.plan` | declared | run, fill-with-ai, view-code, edit-code, do-by-hand | union of its units' files |
-| `import.route` | declared | view-code, edit-code, do-by-hand | interactive wizard, user only: no `run` |
 | `summarize.unit` | empty | run | |
 | `summarize.list` | empty | run | |
 | `summarize.usage` | empty | run | |

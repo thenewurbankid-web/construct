@@ -78,11 +78,11 @@ test('definition: args are checked by validatePlan itself (missing, unknown, wro
 });
 
 test('definition: a writer whose files cannot be derived must declare touches, and they must be a valid scope', () => {
-  // import.route is a guided, human-only wizard: plan-touches.mjs can never derive its files from arguments
-  // alone, unlike refactor.move, which was this test's example until it joined DERIVED_FLOWS in #610 and
-  // broke this assertion. Assert the premise instead of assuming a flow id stays 'declared' forever.
-  assert.equal(flowScopeKind('import.route'), 'declared');
-  const mv = { id: 'b', label: 'Import a route', flow: 'import.route', args: { route: '/checkout' } };
+  // import.plan runs a plan a model or person wrote: plan-touches.mjs can never derive its files from arguments
+  // alone, unlike refactor.move, which was this test's example until it joined DERIVED_FLOWS in #610 (and the
+  // retired import.route after it). Assert the premise instead of assuming a flow id stays 'declared' forever.
+  assert.equal(flowScopeKind('import.plan'), 'declared');
+  const mv = { id: 'b', label: 'Import the legacy cart', flow: 'import.plan', args: { plan: { feature: 'cart', units: [{ name: 'Cart', layers: ['domain'], from: 'legacy/cart.js' }] } } };
   assert.deepEqual(codes(validateChooser(spec({ options: [featureOpt('a', 'a'), mv] }))), ['CHOOSER_OPTION_TOUCHES_REQUIRED']);
   const touches = { features: ['cart'], files: [{ path: 'features/cart/domain/Cart.domain.ts', change: 'modify' }] };
   assert.equal(validateChooser(spec({ options: [featureOpt('a', 'a'), { ...mv, touches }] })).valid, true);

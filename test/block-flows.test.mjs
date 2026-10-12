@@ -97,7 +97,6 @@ test('actions follow executors: read-only flows offer Run only; model path only 
   const st = { args: {}, root: '/x' };
   assert.deepEqual(ids(flowBlocks().validate.actions(st)), ['run']);
   assert.deepEqual(ids(flowBlocks()['refactor.move'].actions(st)), ['run', 'view-code', 'edit-code', 'do-by-hand']);
-  assert.deepEqual(ids(flowBlocks()['import.route'].actions(st)), ['view-code', 'edit-code', 'do-by-hand']);
   assert.deepEqual(ids(flowBlocks()['manual.task'].actions(st)), ['do-by-hand']);
   for (const [id, flow] of Object.entries(PLAN_FLOWS)) {
     assert.equal(ids(flowBlocks()[id].actions(st)).includes('fill-with-ai'), flow.executors.includes('local-model'), id);

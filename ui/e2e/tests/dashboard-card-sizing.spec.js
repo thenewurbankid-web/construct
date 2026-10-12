@@ -65,7 +65,7 @@ test.describe('Dashboard card sizing (#163)', () => {
     await expect(page.getByRole('heading', { name: 'Refactor', level: 3 })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Research', level: 3 })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Import an existing file', level: 3 })).toBeVisible();
-    // The Import card's redirect is a link to the wizard, not prose.
-    await expect(more.getByRole('link', { name: 'Import Wizard' })).toHaveAttribute('href', '/wizard');
+    // The Import card's redirect is a link to the Import agent, not prose.
+    await expect(more.getByRole('link', { name: 'Import agent' })).toHaveAttribute('href', '/import/agent');
   });
 });
