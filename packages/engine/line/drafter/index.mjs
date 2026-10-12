@@ -9,6 +9,7 @@ import { factsSummary } from '../facts.mjs';
 import { structureGraph, readerOf, hashesOf, rolesOf } from '../structure.mjs';
 import { buildDomainMap, normalize, slotShapes, bind } from './domainMap.mjs';
 import { classify } from './classify.mjs';
+import { runIntentShadow } from './shadow.mjs';
 import { enumerateRoutes } from './templates.mjs';
 import { verifyRoutes } from './verify.mjs';
 import { readRecords, nearest, routeFromRecord, precedent } from './retrieval.mjs';
@@ -49,11 +50,13 @@ export function staticRank(routes) {
  * Draft every route for a request on the project at `root`.
  * @param {string} root
  * @param {string} request
- * @param {{catalog?: import('./contract.mjs').IntentEntry[], verify?: boolean, records?: import('./contract.mjs').TransitionRecord[]|null, precedents?: import('./contract.mjs').TransitionRecord[], maxVerify?: number, memory?: any, synonyms?: Record<string, string>}} [o]
+ * @param {{catalog?: import('./contract.mjs').IntentEntry[], verify?: boolean, shadow?: false|{force?: boolean, choose?: any, baseUrl?: string, timeoutMs?: number}, records?: import('./contract.mjs').TransitionRecord[]|null, precedents?: import('./contract.mjs').TransitionRecord[], maxVerify?: number, memory?: any, synonyms?: Record<string, string>}} [o]
  *   `synonyms`: confirmed synonyms kept outside the project (word -> domain-map key), e.g. Train Line's per-world ones.
  *   `records`: training records (default: the project's own).
  *   `memory`: this project's memory (memory/store.mjs); the person's consistent past picks move a checked route first.
  *   `precedents`: more approved records after them (Cockpit passes Train Line's slotted precedents, retrieval.mjs precedentsFromTraining).
+ *   `shadow` (#892): false skips the jev intent shadow; an object is passed to it (`force`, `choose`, `baseUrl`). The shadow runs
+ *   only when the project's construct.intent shadow switch is on (or `force`), in the background, and never changes the labels.
  * @returns {import('./contract.mjs').Draft & {atoms: import('@line/atoms/contract').AtomMatch[], questions: any[], shown: {request: string}, tokens: {t: string, slot?: string, kind?: string, src: string[]}[], entries: Record<string, string>}}
  *   `tokens` and `entries` are the live normalization (they hold the request's own words: shown, never stored).
  */
@@ -74,6 +77,8 @@ export function draft(root, request, o = {}) {
   if (prec && prec.intent !== labels.intent.id && catalog.some((e) => e.id === prec.intent)) {
     labels = { ...labels, intent: { id: prec.intent, confidence: Math.max(0.6, labels.intent.confidence) }, inCatalog: true, alternatives: [], via: /** @type {any} */ ('retrieval') };
   }
+  // #892: jev answers the same closed questions in shadow (logged, never used while its switch is off).
+  if (o.shadow !== false) runIntentShadow(root, { normalized: n, slots, catalog, labels, stateDir: summary.layout.state || 'line' }, o.shadow || {});
   const bindings = { ...n.bindings };
   const targetFeature = labels.target && labels.target[0] === 'F' ? bindings[labels.target] : labels.target && bindings[labels.target]?.feature ? bindings[labels.target].feature : null;
   const from = hashesOf(graph, targetFeature ?? null);

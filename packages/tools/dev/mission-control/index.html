@@ -77,6 +77,17 @@ tr.row.turnhl td { background: #16304a; }
 .tl i.landed { background: var(--green); } .tl i.ok { background: #2b6b8f; } .tl i.refused { background: var(--amber); }
 .tl i.error { background: var(--red); } .tl i.not-landed { background: #ff7a45; } .tl i.idle { background: #39434f; } .tl i.finish { background: var(--violet); }
 .tl i:hover { outline: 1px solid #fff; }
+/* plan / jev (#892) */
+.pj { font: 11px/1.4 var(--mono); }
+.pj .req { color: #e8f1fa; margin-bottom: 4px; word-break: break-word; }
+.pj table { width: 100%; border-collapse: collapse; margin: 4px 0; }
+.pj th, .pj td { text-align: left; padding: 1px 4px; border-bottom: 1px solid var(--line); vertical-align: top; word-break: break-word; }
+.pj th { color: var(--dim); font-weight: 400; }
+.pj .fork { color: var(--amber); font-weight: 700; }
+.pj details { margin-left: 10px; border-left: 1px solid var(--line2); padding-left: 6px; }
+.pj summary { cursor: pointer; }
+.pj summary .st { color: var(--dim); }
+.pj .ok { color: var(--green); } .pj .ask { color: var(--amber); } .pj .missing { color: var(--red); } .pj .placeholder { color: var(--violet); } .pj .skip { color: var(--faint); }
 .legend { display: flex; gap: 10px; flex-wrap: wrap; font: 10px var(--mono); color: var(--dim); margin-top: 3px; }
 .legend b { display: inline-block; width: 8px; height: 8px; margin-right: 3px; vertical-align: -1px; }
 /* filters */
@@ -202,6 +213,10 @@ mark { background: #6b5500; color: #fff3c2; }
     </section>
   </div>
   <div class="col">
+    <section class="panel" aria-label="Plan and jev">
+      <div class="ph">Plan / jev <span class="sub" id="pjSub">ask.mjs + intent shadow</span></div>
+      <div class="pb pj" id="planJev"><div class="empty">no ask yet: node trace/tools/jev/ask.mjs "&lt;request&gt;"</div></div>
+    </section>
     <section class="panel" aria-label="Machine">
       <div class="ph">Machine <span class="sub" id="machSub"></span></div>
       <div class="pb" id="machine"><div class="empty">no data yet</div></div>
@@ -570,6 +585,56 @@ function addEvent(e, backlog = false) {
 
 setInterval(() => { if (S.summary) renderSummary(); renderWorktrees(); }, 5000);
 connect();
+
+// ------------------------------------------------------------ plan / jev (#892): the latest ask as a Trace path, the
+// intent shadow and the latest eval-intent table. Polls /api/plan-jev (plan-jev.mjs reads the files).
+const pjClosed = new Set();
+const pjVal = (v) => Array.isArray(v) ? (v.join('+') || '-') : (v ?? '-');
+const pjConf = (c) => c == null ? '' : ` (${Number(c).toFixed(2)})`;
+function pjNode(n) {
+  const d = n.decision;
+  const dec = d ? ` <span class="st">static ${esc(d.static)} | jev ${d.jev ? esc(d.jev.pick) + pjConf(d.jev.confidence) : '-'}</span>${d.fork ? ` <span class="fork">FORK ${esc(d.fork)}</span>` : ''}` : n.sub ? ` <span class="st">${esc(n.sub)}</span>` : '';
+  const head = `<span class="${esc(n.state)}">${esc(n.title)}</span>${n.candidate ? ` [${esc(n.candidate)}]` : ''}${dec}`;
+  if (!n.children?.length) return `<div>${head}</div>`;
+  return `<details data-id="${esc(n.id)}"${pjClosed.has(n.id) ? '' : ' open'}><summary>${head}</summary>${n.children.map(pjNode).join('')}</details>`;
+}
+function renderPlanJev(p) {
+  const el = $('planJev');
+  el.querySelectorAll('details').forEach((x) => { if (x.open) pjClosed.delete(x.dataset.id); else pjClosed.add(x.dataset.id); });
+  const h = [];
+  const a = p.ask;
+  if (a) {
+    const forks = (a.labels?.forks?.length || 0) + (a.shadow || []).filter((x) => x.fork).length;
+    $('pjSub').textContent = `${p.askTotal} asks · ${forks} forks in the latest · shadow ${p.shadow.total} (${p.project})`;
+    h.push(`<div class="req">${esc(a.request)}</div><div class="muted">${esc(a.normalized)} · ${esc(a.project)} · ${a.at ? hms(Date.parse(a.at)) : ''}</div>`);
+    h.push('<table><tr><th>label</th><th>static</th><th>jev</th><th></th></tr>');
+    for (const k of ['intent', 'object', 'slot', 'layers']) {
+      const f = (a.labels.forks || []).find((x) => x.label === k);
+      const c = a.labels.jevConfidence ? (k === 'layers' ? Math.min(...Object.values(a.labels.jevConfidence.layers)) : a.labels.jevConfidence[k]) : null;
+      h.push(`<tr><td>${k}</td><td>${esc(pjVal(a.labels.static?.[k]))}</td><td>${a.labels.jev ? esc(pjVal(a.labels.jev[k])) + pjConf(c) : 'jev off'}</td><td>${f ? `<span class="fork">FORK</span>` : ''}</td></tr>`);
+    }
+    h.push('</table>');
+    if (a.plan?.route) h.push(`<div>route <b>${esc(a.plan.route.id)}</b> [${esc(a.plan.route.status)}] ${esc(a.plan.route.label)}</div>`);
+    else h.push(`<div class="muted">no route: ${esc(a.plan?.defer)}</div>`);
+    for (const pg of a.path || []) h.push(`<div style="margin-top:4px">${esc(pg.page)} <span class="muted">${esc(pg.file)}</span></div>${pg.parts.map(pjNode).join('') || '<div class="muted">no dynamic part or action</div>'}`);
+    if (!(a.path || []).length) h.push(`<div class="muted">${esc(a.pathNote || 'no page in this request')}</div>`);
+  } else h.push('<div class="empty">no ask yet: node trace/tools/jev/ask.mjs "&lt;request&gt;"</div>');
+  const e = p.eval;
+  if (e && !e.error) {
+    h.push(`<div style="margin-top:6px" class="muted">eval-intent ${e.at ? new Date(e.at).toISOString().slice(0, 16).replace('T', ' ') : ''} · ${e.rows} gold · jev ${esc(e.jev)}</div>`);
+    for (const [name, t] of Object.entries(e.tables || {})) {
+      h.push(`<table><tr><th>${esc(name)}</th><th>static</th><th>jev</th></tr>`);
+      for (const [k, l] of [['intent', 'intent'], ['object', 'object'], ['slot', 'slot'], ['layersExact', 'layers exact'], ['layersF1', 'layers F1']]) h.push(`<tr><td>${l}</td><td>${t.static[k] ?? '—'}${t.static[k] != null ? '%' : ''}</td><td>${t.jev[k] ?? '—'}${t.jev[k] != null ? '%' : ''}</td></tr>`);
+      h.push(`<tr><td>forks</td><td colspan="2">${t.forks.answered ? `${t.forks.forkRate}% of rows · gold in fork ${t.forks.containsGold}% · rescues ${t.forks.rescues}` : 'jev did not answer'}</td></tr></table>`);
+    }
+  } else h.push(`<div class="muted" style="margin-top:6px">${e?.error ? esc(e.error) : 'no eval yet: node trace/tools/jev/eval-intent.mjs'}</div>`);
+  el.innerHTML = h.join('');
+}
+async function pollPlanJev() {
+  try { const r = await fetch('/api/plan-jev', { cache: 'no-store' }); if (r.ok) renderPlanJev(await r.json()); } catch { /* server restarting */ }
+}
+pollPlanJev();
+setInterval(pollPlanJev, 3000);
 </script>
 <script src="/ctx/view.js"></script>
 </body>

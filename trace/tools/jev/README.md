@@ -47,3 +47,96 @@ node tools/jev/eval-context.mjs --runs pilot-qwen-7b-r2 --scores tools/jev/weigh
 - Features use only what exists before the next action (the attempted step, its outcome, the model's output for it, the line); the next action is used only for the label.
 - Weights (16 MB each) go to `weights/`, which is gitignored.
 - Since #886, calls.jsonl keeps what the model was shown (`result.shown`, the fixes with why/effect/context) and every candidate context line with its static score (`result.context`), so fix steps and context lines are candidates from now on; runs before #886 keep only the summary fields.
+
+## Testing and training the plan algorithm (#891, #892; jev intent in shadow, OFF by default)
+
+Line's drafter reads every request into closed labels: an **intent** id from the catalog (`verb.object`,
+packages/engine/line/drafter/contract.mjs buildIntentCatalog), its **object**, the target **slot** and the **layers**
+it touches. The static rules (drafter/classify.mjs) decide. jev answers the same closed questions beside them
+(drafter/classifyJev.mjs, through the `jev` provider), is logged, and is never used until it beats static on the eval.
+
+### The loop (run from the repo root)
+
+```bash
+(cd trace && npm run jev)                                             # 0. once: jev on :8765 (random weights until trained)
+node trace/tools/jev/ask.mjs "add a Button to the orders page"        # 1. ask: the plan as a Trace path, static vs jev
+node trace/tools/jev/intent-label.mjs from-last --intent add.component --slot page:OrdersPage --layers ui   # 2. label it (or --yes)
+node trace/tools/jev/eval-intent.mjs --seed 0                         # 3. eval: static vs jev -> reports/intent-eval.md
+node trace/tools/jev/build-intent-data.mjs --seed 0 && packages/tools/dev/heavy.sh trace/tools/jev/.venv/bin/python trace/tools/jev/train_intent.py   # 4. train
+(cd trace && tools/jev/.venv/bin/python tools/jev/serve.py --weights tools/jev/weights/intent.pt) # then
+node trace/tools/jev/eval-intent.mjs --seed 0                         # 5. eval with the trained weights
+```
+
+Mission Control (`npm run mc`) shows the latest ask's path and the latest eval table in its **Plan / jev** panel.
+`--no-jev` runs ask or eval static-only; `--jev-url` points at another jev. Keep the same `--seed` for build-intent-data
+and eval-intent: it fixes which rows are held out.
+
+**ask.mjs** runs the real drafter (`draft`: normalize, classify, enumerate, verify, rank) and prints:
+the labels (static | jev with confidence | FORK), the recommended route with its plan steps, and the **Trace path**
+of the target page: `page part -> dynamic? -> api | computed -> controller -> hook -> provider -> service -> contract`.
+Each node shows its decision (per layer stub first: `existing stub (complete it) | existing fn (map/reuse) | create`),
+the matched id in `[...]`, the static pick, jev's pick + confidence and FORK. A decision with no static logic yet reads
+`undecided` (hook, provider, service today). `--json` emits the same structure (nodes use Trace's tree fields
+`title, sub, state, layer, kind` plus `decision`, trace/tools/jev/tracePath.mjs). Every ask appends
+`{request, labels, path, shadow, ...}` to `data/ask-log.jsonl` (gitignored).
+
+**intent-label.mjs**: `add "<request>"` / `from-last` print static's guess and the request's slots, then save with
+`--yes` (accept the guess) or with the labels you correct (`--intent`, `--slot kind:name|none`, `--layers a,b`,
+`--uncertain "why"`); on a terminal with no flags it asks each label (Enter keeps static's guess). `edit <id>`,
+`rm <id>`, `list [--intent x]` (count per intent, and intents with a template but no gold row).
+
+### Report columns (eval-intent)
+
+| column | meaning |
+|---|---|
+| intent / object / slot (exact) | share of gold rows where the predictor's value equals the gold value |
+| layers (exact set) | the predicted layer set equals the gold set (static over-includes by design, so this is low) |
+| layers (micro F1) | F1 over all (row, layer) pairs: the fair layer score for a recall-tuned predictor |
+| static n / jev n | rows each predictor answered (jev 0 when it is not running) |
+| all / held-out | every gold row / the rows the seeded split keeps out of training (judge jev on held-out) |
+| Forks | rows where jev differs from static on a label or is under the gate (`JEV_MIN_CONFIDENCE`, 0.5) |
+| a fork held the gold value | of the forked labels, how often gold was static's or jev's value (beam-rescue proxy) |
+| beam rescues | forked labels where static was wrong and jev right (what a beam opening both would win) |
+| Top confusions | most frequent `gold -> predicted` pairs per predictor (layers listed apart) |
+
+### Gold labels (`data/intent-gold.jsonl`)
+
+`{id, project, request, gold: {intent, object, slot, layers}, source: "hand"|"requester", uncertain?, from?}`.
+`slot` is `"<slot kind>:<name>"` in the project's words (`page:OrdersPage`, `feature:orders`, `null` for none);
+`layers` are the layers the change writes into. The gold block is never shown to the drafter, jev or a grader.
+The starter set is 80 rows: 47 from the drafter corpus (`from: "drafter corpus <id>"`) and 33 by hand, covering every
+intent that has a template (31) plus remove, rename, test and service; 11 are marked `uncertain`. A Requester (#894)
+writes the same shape with `source: "requester"`.
+
+### Fork records (for the beam, #893)
+
+Each shadow record (`<project>/line/drafter/jev-shadow.jsonl`, written when the project's shadow switch is on) and
+each ask carries `forks: [{label, static, jev, confidence, reason: "disagree"|"low-confidence"|"both"}]`; path
+decisions carry `{decision: "path.<node>", node, static, jev, confidence, fork}`. A beam opens one run per distinct
+value of a forked label and lets Construct's verification pick. The shadow log is slot form (`page:P1`, the
+normalized request), like the drafter's other records.
+
+### Switches
+
+- **Shadow** (log only): the project's `line/ai-profiles.json` `{"v":1,"steps":{"construct.intent":{"shadow":true}}}`
+  or `LINE_JEV_SHADOW=1`. Then `draft()` asks jev in the background (4 s timeout) and logs; nothing else changes.
+  `"gate": 0.6` there overrides the fork gate. Off by default: no network call, nothing written.
+- **Use jev's labels**: step `construct.intent` in packages/core/ai-profiles.json ships `on: false, measured: null`.
+  Once eval-intent shows jev beating static on held-out rows, set `ladder.options.on: true` and write the measurement
+  in `ladder.measured` (date, gold size, held-out static vs jev per label); a project can then switch it per project
+  (`steps["construct.intent"].on`). Both are required (stepOnFor). Today only async callers use jev's labels
+  (`pickLabels` in drafter/shadow.mjs, used by ask.mjs); `draft()` is synchronous, so wiring the switch into Cockpit's
+  drafting call is the step after the win.
+
+### Where the plan path's other closed choices are decided (#895)
+
+| choice | static decision today | jev shadow |
+|---|---|---|
+| intent / object / slot / layers | drafter/classify.mjs `classify` | drafter/index.mjs `draft` -> `runIntentShadow` (shadow.mjs), and ask.mjs |
+| dynamic? (part has data or an action) | pageBinding.mjs `readPageBinding` (PartData.kind, interactions) | tracePath.mjs `shadowPath` (ask.mjs only) |
+| api vs computed | bound endpoint / interaction resolution / recommended typed fix (pageBinding.mjs `fixesFor`) | tracePath.mjs `shadowPath` |
+| which home for an unresolved action | typed fixes, rank 1 recommended (pageBinding.mjs `fixesFor`) | tracePath.mjs `shadowPath` (`path.home`) |
+| controller: stub / fn / create | interaction handler none / stub / function (Trace interactions.mjs `handlerStub`) | tracePath.mjs `shadowPath` |
+| contract: map / create | the endpoint is in the page's API contract | tracePath.mjs `shadowPath` |
+| hook, provider, service: stub / fn / create | none anywhere (shown `undecided`) | jev asked, logged against `undecided` |
+| which candidate field (Trace matcher) | trace/src/match.mjs `cheapest` + ask.mjs `orderByNameEvidence` | no shadow hook added: jev can already answer it as the `choose` task (`--ai-task choose=jev:open-jev`, trace/src/ask.mjs `resolveQuestions` -> `ai(q)`), but nothing logs it beside static yet |

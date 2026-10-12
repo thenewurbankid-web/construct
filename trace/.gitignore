@@ -24,3 +24,7 @@ __pycache__/
 *.p12
 id_rsa*
 tools/jev/weights/
+# #892: the owner's local intent loop (asks, derived training rows, eval reports)
+tools/jev/data/ask-log.jsonl
+tools/jev/data/intent-train.jsonl
+tools/jev/reports/
