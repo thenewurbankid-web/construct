@@ -59,6 +59,7 @@ export async function propose(o) {
     else drafts = draftTrainSplit(cases, { limit: o.limit });
   }
   const records = [...plan, ...missesFromFindings(f.findings), ...traces.records, ...ledger.records, ...missesFromDrafts(drafts)];
+  /** @type {Record<string, {total: number, misses: number}>} */
   const bySource = {};
   for (const r of records) { const s = bySource[r.source] ?? { total: 0, misses: 0 }; s.total += 1; s.misses += r.miss ? 1 : 0; bySource[r.source] = s; }
   let items = labelItemsOf(records);
@@ -100,7 +101,7 @@ export function apply(o) {
   const doc = readJson(path.join(o.root, FACTORY_FILES.proposals));
   const report = readJson(path.join(o.root, FACTORY_FILES.gate));
   const c = choose(doc?.proposals ?? [], report, o.ids);
-  if (!c.ok) return { ok: false, sentence: c.sentence, files: [] };
+  if (c.ok === false) return { ok: false, sentence: c.sentence, files: [] };
   const r = applyProposals(c.chosen, { checkout: o.checkout ?? CHECKOUT, by: o.by });
   return { ok: r.committed, sentence: r.sentence, files: r.files };
 }

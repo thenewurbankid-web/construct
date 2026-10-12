@@ -92,7 +92,7 @@ export const FACTORY_FILES = Object.freeze({
  * @property {'lexicon'|'fix-ranking'} target
  * @property {any} change                The data merged into the rule file (lexicon: a mergeLexicon addition; fix-ranking: {rule, prefer, over}).
  * @property {string[]} evidence         Label item ids it came from.
- * @property {{kind: 'train-cases', caseIds: string[]}|{kind: 'fix-items', items: {options: string[], chosen: string|null, correct: string}[]}} test
+ * @property {{kind: 'train-cases', caseIds: string[]}|{kind: 'fix-items', items: {id: string, options: string[], chosen: string|null, correct: string, heldOut: boolean}[]}} test
  * @property {string} sentence
  *
  * @typedef {{recall: number|null, precision: number|null, preferred: number|null, n: number}} HeldOutScore
