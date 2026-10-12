@@ -38,3 +38,16 @@ The vision-architect-pipeline repo, `packages/gatelm/` on its core-ship line (al
 - Data and the BPE vocabulary in `runs/gatelm/data/` (`bpe.json`, `meta.json`).
 
 Step 1 reuses the training loop and checkpointing. Line-1's tokenizer is a closed vocabulary rather than BPE, so the BPE serves only the English encoder.
+
+## Data sources (owner, 2026-10-12): permissive OSS libraries only, no apps
+- **(a) UI:** Radix, React Aria, Headless UI, Ark, shadcn/ui, Mantine, Chakra, MUI. These become piece descriptors carrying role, states, events and composition.
+- **(b) Functionality:** react-hook-form, zod/valibot, TanStack Query and Table, xstate/zustand, react-router, date-fns. These become functional roles, e.g. form.submit, query.loading, list.paginate, flow.step.
+- **(c) Synthetic worlds:** built from these real parts under Line's rules, verified by Construct, plus planted-mistake refusal and fix cases.
+
+Rules:
+- Each release ships its licence list.
+- The corpus holds descriptors only, enforced by a leak guard on the corpus.
+- Held-out sets are split both by library and by world.
+- Real imports (for example max-ai-ui and contact-manager-ui) are used only to measure misses and improve the generator, never as training data.
+
+These sources feed sprint steps 2 (descriptors) and 3 (data engine). Before any library goes into the corpus, check that its licence is permissive (MIT, Apache-2.0, ISC or BSD) and record it in that release's list.
