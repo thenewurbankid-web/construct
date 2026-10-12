@@ -3,8 +3,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
+import { makeTempDir } from '../../../test-utils/tmpdir.mjs';
 import { scoreRows, summarize, renderMarkdown, metrics } from './eval-intent.mjs';
 import { run } from './intent-label.mjs';
 import { ask } from './ask.mjs';
@@ -20,7 +20,7 @@ const GOLD = [
 ];
 /** A deterministic jev: always the first option, confidence by question. */
 const firstJev = async ({ structured }) => ({ text: JSON.stringify({ choice: 1, fact: 1 }), confidence: structured.question.includes('layer') ? 0.3 : 0.7 });
-const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'jev-intent-'));
+const tmp = () => makeTempDir('jev-intent-');
 
 test('the seeded gold file is valid and covers every intent that has a template', () => {
   const rows = readGold(GOLD_FILE);

@@ -2,8 +2,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
+import { makeTempDir } from '../../../../test-utils/tmpdir.mjs';
 import { lastJsonl, planJevPayload, readPlanJev, forkCount, ASK_LOG_REL, EVAL_REL, SHADOW_REL } from './plan-jev.mjs';
 
 const ask = (request, forks) => ({ at: '2026-10-12T15:00:00.000Z', request, project: 'examples/line-sample', normalized: 'x', labels: { static: { intent: 'update.prop' }, jev: null, forks: Array.from({ length: forks }, () => ({ label: 'intent' })) }, path: [], shadow: [{ fork: 'disagree' }, { fork: null }] });
@@ -31,7 +31,7 @@ test('the payload: the latest ask with its forks, earlier asks newest first, sha
 });
 
 test('readPlanJev reads the three files under a checkout and a project', () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'mc-planjev-'));
+  const root = makeTempDir('mc-planjev-');
   try {
     for (const [rel, body] of [[ASK_LOG_REL, `${JSON.stringify(ask('hi', 1))}\n`], [EVAL_REL, '{"rows":1,"tables":{}}'], [path.join('proj', SHADOW_REL), '{"forks":[]}\n']]) {
       fs.mkdirSync(path.dirname(path.join(root, rel)), { recursive: true });

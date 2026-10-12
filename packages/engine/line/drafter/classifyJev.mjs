@@ -53,7 +53,9 @@ export function jevQuestions(normalized, slots) {
  */
 async function jevChoose(o = {}) {
   try {
-    const { makeProvider } = await import('../../../../trace/src/ai/provider.mjs');
+    // A computed specifier: the engine's type check does not pull Trace's AI modules in (Trace is optional here).
+    const spec = ['..', '..', '..', '..', 'trace', 'src', 'ai', 'provider.mjs'].join('/');
+    const { makeProvider } = await import(spec);
     return makeProvider({ provider: 'jev', baseUrl: o.baseUrl ?? process.env.JEV_URL });
   } catch { return null; }
 }
@@ -84,7 +86,8 @@ const timeout = (ms) => new Promise((resolve) => { const t = setTimeout(() => re
  * @param {import('./contract.mjs').IntentEntry[]} catalog
  * @param {{choose?: (req: any) => Promise<{text: string, confidence?: number}>, baseUrl?: string, timeoutMs?: number}} [o]
  *   `choose`: a provider function (tests pass a fake); default Trace's jev provider at JEV_URL or 127.0.0.1:8765.
- * @returns {Promise<(import('./contract.mjs').Labels & {via: 'jev', confidences: {intent: number, verb: number, object: number, slot: number, layers: Record<string, number>}})|null>}
+ * @returns {Promise<any>} classify()'s Labels with `via: 'jev'` and `confidences: {intent, verb, object, slot, layers: {[layer]: number}}`,
+ *   or null.
  */
 export async function classifyJev(normalized, slots, catalog, o = {}) {
   try {

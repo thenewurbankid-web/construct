@@ -3,8 +3,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
+import { makeTempDir } from '../test-utils/tmpdir.mjs';
 import { fileURLToPath } from 'node:url';
 import { draft } from '../packages/engine/line/drafter/index.mjs';
 import { buildIntentCatalog } from '../packages/engine/line/drafter/contract.mjs';
@@ -19,7 +19,7 @@ const CATALOG = buildIntentCatalog(LINE_PLAN_TOOLS.map((t) => t.name));
 
 /** A copy of the sample project (the shadow writes into its Line state). */
 function sampleCopy() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'line-jev-'));
+  const dir = makeTempDir('line-jev-');
   fs.cpSync(SAMPLE, dir, { recursive: true });
   return dir;
 }
