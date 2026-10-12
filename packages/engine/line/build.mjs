@@ -19,6 +19,7 @@ import { LineOpError } from './contract.mjs';
 import { featureNameProblem } from './newProject.mjs';
 import { typeCheckStaged, importFixes, typeRefusal } from './typeGate.mjs';
 import { appLayoutFile, layoutFixesFor } from './shell.mjs';
+import { closestId } from '@line/construct-core/nearest';
 
 const posix = path.posix;
 const layoutOf = (root) => resolveLayout(root, normalizeLineConfig(/** @type {any} */ (loadConfig(root)).line));
@@ -43,7 +44,12 @@ function cleanRel(p) {
  */
 export function planCreateFeature(root, { name, story, points } = /** @type {any} */ ({})) {
   const problem = featureNameProblem(name);
-  if (problem) throw new LineOpError(problem, 'BAD_FEATURE');
+  if (problem) {
+    // "Did you mean <kebab-name>?": the same request with the name in the form a feature folder takes.
+    const fixed = String(name ?? '').trim().replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/^[-_]+|[-_]+$/g, '').slice(0, 40);
+    const fixes = fixed && !featureNameProblem(fixed) ? [{ id: `BAD_FEATURE/did-you-mean:${fixed}`, sentence: `Did you mean ${fixed}? Run the same step with name "${fixed}".`, step: { tool: 'line.createFeature', args: { name: fixed, story, points } } }] : [];
+    throw new LineOpError(problem, 'BAD_FEATURE', undefined, fixes);
+  }
   const n = String(name).trim();
   const s = oneLine(story);
   if (!s) throw new LineOpError('Say the feature\'s story in one sentence, for example "As a shopper, I want to browse products, so that I can find one to buy."', 'BAD_ARGS');
@@ -233,7 +239,13 @@ export function planSetCode(root, { file, code, contentHash } = /** @type {any} 
   const kind = isSpec ? null : segs[inLib ? library.split('/').length : fBase + 1];
   const okExt = isSpec ? ext === '.md' : kind === 'fixtures' ? ext === '.json' || CODE_EXTENSIONS.includes(ext) : CODE_EXTENSIONS.includes(ext);
   if (!okExt) throw where();
-  if (isSpec && !fs.existsSync(path.join(root, features, segs[fBase]))) throw new LineOpError(`There is no feature ${segs[fBase]}; create it with line.createFeature.`, 'UNKNOWN_FEATURE');
+  if (isSpec && !fs.existsSync(path.join(root, features, segs[fBase]))) {
+    let names = [];
+    try { names = fs.readdirSync(path.join(root, features), { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name); } catch { names = []; }
+    const hit = closestId(segs[fBase], names);
+    const fix = hit ? [{ id: `UNKNOWN_FEATURE/did-you-mean:${hit}`, sentence: `Did you mean ${hit}? Write ${features}/${hit}/spec.md instead.`, step: { tool: 'line.setCode', args: { file: `${features}/${hit}/spec.md`, code, ...(readOrNull(path.join(root, features, hit, 'spec.md')) !== null ? { contentHash: hashOf(/** @type {string} */ (readOrNull(path.join(root, features, hit, 'spec.md')))) } : {}) } } }] : [];
+    throw new LineOpError(`There is no feature ${segs[fBase]}; create it with line.createFeature.`, 'UNKNOWN_FEATURE', undefined, fix);
+  }
   if (typeof code !== 'string' || !code.trim()) throw new LineOpError('The code is empty; write the whole file.', 'BAD_CODE');
   if (Buffer.byteLength(code) > MAX_CODE_BYTES) throw new LineOpError(`The file is over ${MAX_CODE_BYTES / 1024} KB; split it into smaller items.`, 'BAD_CODE');
   const content = code.endsWith('\n') ? code : `${code}\n`;

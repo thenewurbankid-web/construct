@@ -236,3 +236,29 @@ test('TYPE_ERROR on line.setCode: an unresolved import is refused before it land
     await fixLands(svc, routed);
   } finally { done(); }
 });
+
+test('"Did you mean ...?": an unknown item, an unknown feature or a bad name lands through its nearest-id fix, no model (im2)', async () => {
+  const { root, done } = project();
+  try {
+    const svc = svcOf(root);
+    const refusedThenLands = async (tool, args, code, field, want) => {
+      const r = /** @type {any} */ (await svc.addStep({ tool, args, why: WHY }, 'agent'));
+      assert.equal(r.code, code, `${tool}: ${r.sentence}`);
+      assert.equal(r.fixes[0].step.args[field], want, `${tool} suggests ${want}`);
+      assert.match(r.fixes[0].sentence, /^Did you mean /);
+      return fixLands(svc, r);
+    };
+    await refusedThenLands('line.baseOn', { libraryId: 'pages/ListPag', feature: 'home', name: 'HomePage' }, 'UNKNOWN_ITEM', 'libraryId', 'pages/ListPage');
+    await refusedThenLands('line.baseOn', { libraryId: 'components/Card', feature: 'hme', name: 'HomeCard' }, 'UNKNOWN_FEATURE', 'feature', 'home');
+    await refusedThenLands('line.baseOn', { libraryId: 'components/Button', feature: 'home', name: 'buy button' }, 'BAD_NAME', 'name', 'BuyButton');
+    await refusedThenLands('line.promote', { featureItemId: 'home/components/HomeCrd' }, 'UNKNOWN_ITEM', 'featureItemId', 'home/components/HomeCard');
+    write(root, 'features/home/components/Plain.tsx', '// @line-base components/Card\nexport function Plain() { return null; }\n');
+    await refusedThenLands('line.setBase', { file: 'features/home/components/Plain.tsx', libraryId: 'components/Buton' }, 'UNKNOWN_ITEM', 'libraryId', 'components/Button');
+    await refusedThenLands('line.createFeature', { name: 'Shopping Cart', story: 'As a shopper, I want a cart, so that I can buy.', points: ['CART-1: it holds products.'] }, 'BAD_FEATURE', 'name', 'shopping-cart');
+    await refusedThenLands('line.setCode', { file: 'features/shoping-cart/spec.md', code: '# shopping-cart\n\n## As a shopper, I want a cart, so that I can buy.\n\n- CART-1: it holds products.\n- CART-2: it keeps them.\n' }, 'UNKNOWN_FEATURE', 'file', 'features/shopping-cart/spec.md');
+    // Nothing close enough: no guess.
+    const far = /** @type {any} */ (await svc.addStep({ tool: 'line.baseOn', args: { libraryId: 'pages/Zzzzzzzzzz', feature: 'home', name: 'X' }, why: WHY }, 'agent'));
+    assert.equal(far.code, 'UNKNOWN_ITEM');
+    assert.equal(far.fixes, undefined);
+  } finally { done(); }
+});

@@ -14,6 +14,7 @@
     "./block-flows": "./block-flows.mjs",
     "./chooser": "./chooser.mjs",
     "./config": "./config.mjs",
+    "./nearest": "./nearest.mjs",
     "./placement": "./placement.mjs",
     "./decision-provider": "./decision-provider.mjs",
     "./reason-provider": "./reason-provider.mjs",

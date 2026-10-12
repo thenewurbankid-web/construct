@@ -13,6 +13,7 @@ import { aggregateValidation } from '@line/construct-core/registry';
 import { enforcersForRoot } from '@line/construct-core/profiles';
 import { planFileMove, applyEdits } from '../tsFileMove.mjs';
 import { LineOpError, assertStagedChange } from './contract.mjs';
+import { closestId } from '@line/construct-core/nearest';
 import { readWorkspace, isInsideWorkspace } from './workspace.mjs';
 
 const posix = path.posix;
@@ -64,6 +65,41 @@ function itemsIn(root, layout, dir) {
 }
 
 // ---------------------------------------------------------------------------------------------
+// "Did you mean ...?" (bench-gaps, im2): an unknown id, feature or bad name carries the nearest real one as its typed
+// fix (core nearest.mjs: Levenshtein, a fixed threshold, alphabetical on a tie), so a model repairs it with no reasoning.
+
+/** Every library item id ("components/Button"), sorted. */
+function libraryIds(root, layout) {
+  return ITEM_KINDS.flatMap((k) => [...itemsIn(root, layout, `${layout.library}/${k}`).keys()].map((n) => `${k}/${n}`)).sort();
+}
+/** Every feature name, sorted. */
+function featureNames(root, layout) {
+  try { return fs.readdirSync(path.join(root, layout.features), { withFileTypes: true }).filter((e) => e.isDirectory() && FEATURE_NAME.test(e.name)).map((e) => e.name).sort(); } catch { return []; }
+}
+/** Every feature item id ("orders/components/OrderCard"), sorted. */
+function featureItemIds(root, layout) {
+  return featureNames(root, layout).flatMap((f) => ITEM_KINDS.flatMap((k) => [...itemsIn(root, layout, `${layout.features}/${f}/${k}`).keys()].map((n) => `${f}/${k}/${n}`))).sort();
+}
+/**
+ * A name in the form a kind needs: "cart page" / "cart_page" -> "CartPage" (pascal) or "cartPage".
+ * @param {unknown} raw What was asked for. @param {boolean} pascal Capitalised (components, pages).
+ * @returns {string|null}
+ */
+export function nameLike(raw, pascal) {
+  const words = String(raw ?? '').split(/[^A-Za-z0-9]+/).filter(Boolean).flatMap((w) => w.split(/(?<=[a-z0-9])(?=[A-Z])/));
+  const joined = words.map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join('').replace(/^[0-9]+/, '');
+  if (!joined) return null;
+  return pascal ? joined : joined.charAt(0).toLowerCase() + joined.slice(1);
+}
+/** One "Did you mean X?" typed fix: the same step with one argument corrected. */
+const didYouMean = (code, tool, args, field, value, what) => ({ id: `${code}/did-you-mean:${value}`, sentence: `Did you mean ${what ?? value}? Run the same step with ${field} "${value}".`, step: { tool, args: { ...args, [field]: value } } });
+/** The nearest-id fixes for an unknown value, or none. */
+function nearestFix(code, tool, args, field, known) {
+  const hit = closestId(String(args[field] ?? ''), known);
+  return hit && hit !== args[field] ? [didYouMean(code, tool, args, field, hit)] : [];
+}
+
+// ---------------------------------------------------------------------------------------------
 // planBaseOn
 
 /** The new feature item's source: the base link first, then a thin wrapper over the library item. */
@@ -106,20 +142,23 @@ export function planBaseOn(root, { libraryId, feature, name } = /** @type {any} 
   const id = String(libraryId ?? '');
   const [kind, libName, ...extra] = id.split('/');
   const resolved = ITEM_KINDS.includes(kind) && libName && !extra.length ? resolveBase(root, layout, id) : { file: undefined };
+  const req = { libraryId, feature, name };
   if (!resolved.file || NON_ITEM_FILE.test(posix.basename(resolved.file))) {
-    throw new LineOpError(`There is no library item "${id}"; pick one from the library.`, 'UNKNOWN_ITEM');
+    throw new LineOpError(`There is no library item "${id}"; pick one from the library.`, 'UNKNOWN_ITEM', undefined, nearestFix('UNKNOWN_ITEM', 'line.baseOn', req, 'libraryId', libraryIds(root, layout)));
   }
   const libFile = resolved.file;
   const f = String(feature ?? '');
   if (!FEATURE_NAME.test(f) || !fs.statSync(path.join(root, layout.features, f), { throwIfNoEntry: false })?.isDirectory()) {
-    throw new LineOpError(`There is no feature "${f}"; pick an existing feature or create its folder under ${layout.features}/ first.`, 'UNKNOWN_FEATURE');
+    throw new LineOpError(`There is no feature "${f}"; pick an existing feature or create its folder under ${layout.features}/ first.`, 'UNKNOWN_FEATURE', undefined, nearestFix('UNKNOWN_FEATURE', 'line.baseOn', req, 'feature', featureNames(root, layout)));
   }
   const n = String(name ?? '');
   const pascal = kind === 'components' || kind === 'pages';
   if (!(pascal ? PASCAL : IDENT).test(n)) {
+    const fixed = nameLike(n, pascal);
     throw new LineOpError(pascal
       ? `"${n}" is not a ${SINGULAR[kind]} name; use a capitalised name of letters and digits such as Order${libName}.`
-      : `"${n}" is not a ${SINGULAR[kind]} name; use letters and digits starting with a letter, such as order${libName.charAt(0).toUpperCase()}${libName.slice(1)}.`, 'BAD_NAME');
+      : `"${n}" is not a ${SINGULAR[kind]} name; use letters and digits starting with a letter, such as order${libName.charAt(0).toUpperCase()}${libName.slice(1)}.`, 'BAD_NAME', undefined,
+    fixed && (pascal ? PASCAL : IDENT).test(fixed) ? [didYouMean('BAD_NAME', 'line.baseOn', req, 'name', fixed)] : []);
   }
   const dir = `${layout.features}/${f}/${kind}`;
   if (itemsIn(root, layout, dir).has(n)) throw new LineOpError(`Feature "${f}" already has a ${SINGULAR[kind]} named ${n}; pick another name.`, 'NAME_TAKEN');
@@ -209,7 +248,7 @@ export function planPromote(root, { featureItemId } = /** @type {any} */ ({})) {
   const [feature, kind, name, ...extra] = id.split('/');
   const from = !extra.length && FEATURE_NAME.test(feature ?? '') && ITEM_KINDS.includes(kind) && name
     ? itemsIn(root, layout, `${layout.features}/${feature}/${kind}`).get(name) : undefined;
-  if (!from) throw new LineOpError(`There is no feature item "${id}"; pick one from a feature.`, 'UNKNOWN_ITEM');
+  if (!from) throw new LineOpError(`There is no feature item "${id}"; pick one from a feature.`, 'UNKNOWN_ITEM', undefined, nearestFix('UNKNOWN_ITEM', 'line.promote', { featureItemId }, 'featureItemId', featureItemIds(root, layout)));
   if (itemsIn(root, layout, `${layout.library}/${kind}`).has(name)) {
     throw new LineOpError(`The library already has a ${SINGULAR[kind]} named ${name}; rename the feature item before promoting it.`, 'NAME_TAKEN');
   }
@@ -242,12 +281,12 @@ function withBase(rel, src, libraryId) {
   return `// @line-base ${libraryId}\n${dropBase(rel, src).replace(/^\n+/, '')}`;
 }
 
-/** The library item `libraryId` names, or a LineOpError. */
-function libraryFileOf(root, layout, libraryId) {
+/** The library item `libraryId` names, or a LineOpError (with the nearest id as its fix when `step` is given). */
+function libraryFileOf(root, layout, libraryId, step = null) {
   const id = String(libraryId ?? '');
   const [kind, name, ...extra] = id.split('/');
   const resolved = ITEM_KINDS.includes(kind) && name && !extra.length ? resolveBase(root, layout, id) : { file: undefined };
-  if (!resolved.file || NON_ITEM_FILE.test(posix.basename(resolved.file))) throw new LineOpError(`There is no library item "${id}"; pick one from the library.`, 'UNKNOWN_ITEM');
+  if (!resolved.file || NON_ITEM_FILE.test(posix.basename(resolved.file))) throw new LineOpError(`There is no library item "${id}"; pick one from the library.`, 'UNKNOWN_ITEM', undefined, step ? nearestFix('UNKNOWN_ITEM', step.tool, step.args, step.field, libraryIds(root, layout)) : undefined);
   return { id, kind, name, file: resolved.file };
 }
 
@@ -266,7 +305,7 @@ export function planSetBase(root, { file, libraryId } = /** @type {any} */ ({}))
   if (!safeRel(rel) || place.area !== 'feature' || !place.feature || !isItemFile({ rel, ...place }) || !fs.existsSync(path.join(root, rel))) {
     throw new LineOpError(`There is no feature item "${rel}"; pick a file inside a feature's kind folder.`, 'UNKNOWN_ITEM');
   }
-  const lib = libraryFileOf(root, layout, libraryId);
+  const lib = libraryFileOf(root, layout, libraryId, { tool: 'line.setBase', args: { file, libraryId }, field: 'libraryId' });
   if (lib.kind !== place.kind) throw new LineOpError(`A feature ${SINGULAR[place.kind]} can only be based on a library ${SINGULAR[place.kind]}, and "${lib.id}" is not one.`, 'WRONG_KIND');
   let content;
   try { content = withBase(rel, fs.readFileSync(path.join(root, rel), 'utf8'), lib.id); } catch { throw new LineOpError(`The fixture "${rel}" is not valid JSON, so its base cannot be set; fix its JSON first.`, 'BAD_JSON'); }
@@ -289,7 +328,7 @@ export function planMoveFile(root, { from, to, base } = /** @type {any} */ ({}))
   if (!safeRel(src) || !fs.statSync(path.join(root, src), { throwIfNoEntry: false })?.isFile()) throw new LineOpError(`There is no file "${src}" to move.`, 'UNKNOWN_FILE');
   if (!safeRel(dest) || dest === src) throw new LineOpError(`"${dest}" is not a new place inside the project for "${src}".`, 'UNKNOWN_FILE');
   if (fs.existsSync(path.join(root, dest))) throw new LineOpError(`"${dest}" already exists; pick another name or place.`, 'NAME_TAKEN');
-  const lib = base ? libraryFileOf(root, layout, base) : null;
+  const lib = base ? libraryFileOf(root, layout, base, { tool: 'line.moveFile', args: { from, to, base }, field: 'base' }) : null;
   const edited = (CODE_EXTENSIONS.includes(posix.extname(src)) ? tsMove(root, src, dest) : null) ?? regexMove(root, layout, src, dest);
   let moved = edited.get(src);
   if (lib) {
