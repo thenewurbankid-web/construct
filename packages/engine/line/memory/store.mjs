@@ -141,6 +141,24 @@ export function createMemory(root, o = {}) {
     return true;
   }
 
+  /**
+   * Correct one record in place (the Memory tab's edit): `change` returns the new record, which must keep its id and
+   * step and pass the record's shape check. Returns the stored record, or null when there is no such record.
+   * @param {string} step @param {string} id @param {(r: MemoryRecord) => MemoryRecord} change
+   * @returns {MemoryRecord|null}
+   */
+  function update(step, id, change) {
+    const recs = records(step);
+    const i = recs.findIndex((r) => r.id === id);
+    if (i < 0) return null;
+    const next = change({ ...recs[i] });
+    try { assertMemoryRecord(next); } catch (e) { throw new LineOpError(`Line did not change this memory: ${/** @type {any} */ (e).message}`, 'BAD_RECORD'); }
+    if (next.id !== id || next.step !== step) throw new LineOpError('Line did not change this memory: a record keeps its id and step.', 'BAD_RECORD');
+    recs[i] = next;
+    rewrite(step, recs);
+    return next;
+  }
+
   /** Export every step's records (slots only, nothing of the project's names). @returns {import('./contract.mjs').MemoryExport} */
   function exportAll() {
     return { v: MEMORY_VERSION, kind: 'line-memory', steps: Object.fromEntries(Object.keys(sizes()).sort().map((s) => [s, records(s)])) };
@@ -163,7 +181,7 @@ export function createMemory(root, o = {}) {
     return { added, skipped };
   }
 
-  return { root, stateDir, records, recordOutcome, recall, prefer, sizes, forget, remove, exportAll, importAll };
+  return { root, stateDir, records, recordOutcome, recall, prefer, sizes, forget, remove, update, exportAll, importAll };
 }
 
 /** @typedef {ReturnType<typeof createMemory>} LineMemory */

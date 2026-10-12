@@ -4,12 +4,16 @@
 import { recallFrom, slotTokens } from './recall.mjs';
 
 /**
- * Whether embeddings are on (LINE_MEMORY_EMBED=1 or "on"; default off).
+ * Whether embeddings are on. The project's own switch (the Memory tab, `<state>/memory.settings.json`) decides; default
+ * off. LINE_MEMORY_EMBED overrides it either way: "1"/"on" turns it on, "0"/"off" turns it off.
  * @param {Record<string, string|undefined>} [env]
+ * @param {boolean} [setting] the project's stored switch
  * @returns {boolean}
  */
-export function embeddingsEnabled(env = process.env) {
-  return env.LINE_MEMORY_EMBED === '1' || env.LINE_MEMORY_EMBED === 'on';
+export function embeddingsEnabled(env = process.env, setting = false) {
+  if (env.LINE_MEMORY_EMBED === '1' || env.LINE_MEMORY_EMBED === 'on') return true;
+  if (env.LINE_MEMORY_EMBED === '0' || env.LINE_MEMORY_EMBED === 'off') return false;
+  return setting === true;
 }
 
 /**

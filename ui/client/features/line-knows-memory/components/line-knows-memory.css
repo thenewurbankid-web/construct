@@ -1,0 +1,36 @@
+/* "What Line knows", Memory tab (Trace's style, lib/line-style.css tokens). */
+.lkm { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.lkm-message { margin: 0; min-height: 1.4em; color: var(--ln-text); }
+.lkm-message:empty { min-height: 0; }
+.lkm-bar { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; justify-content: space-between; }
+.lkm button, .lkm select { font: inherit; color: var(--ln-text); background: var(--ln-surface); border: 1px solid var(--ln-border-strong); border-radius: 6px; padding: 4px 10px; cursor: pointer; }
+.lkm button:disabled, .lkm select:disabled { opacity: 0.6; cursor: default; }
+.lkm button:focus-visible, .lkm select:focus-visible { outline: 2px solid var(--ln-accent); outline-offset: 2px; }
+.lkm-forget { border-color: var(--ln-gap) !important; }
+.lkm-switch { display: flex; flex-direction: column; gap: 4px; max-width: 46ch; }
+.lkm-switch [role='switch'] { display: inline-flex; align-items: center; gap: 8px; align-self: flex-start; }
+.lkm-knob { width: 28px; height: 16px; border-radius: 8px; background: var(--ln-border-strong); position: relative; }
+.lkm-knob::after { content: ''; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: var(--ln-surface); transition: left 0.15s; }
+.lkm-switch [aria-checked='true'] .lkm-knob { background: var(--ln-accent); }
+.lkm-switch [aria-checked='true'] .lkm-knob::after { left: 14px; }
+.lkm-help { margin: 0; color: var(--ln-muted); font-size: 0.875rem; }
+.lkm-files { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.lkm-file { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.lkm-confirm { display: inline-flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.lkm-step { border: 1px solid var(--ln-border); border-radius: 8px; padding: 12px; background: var(--ln-surface); display: flex; flex-direction: column; gap: 8px; }
+.lkm-step-head { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: baseline; }
+.lkm-step-head h3 { margin: 0; font-size: 1rem; }
+.lkm-size { color: var(--ln-muted); }
+.lkm-step-head button { margin-left: auto; }
+.lkm-summaries { margin: 0; padding-left: 20px; }
+.lkm-records { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.lkm-record { border-top: 1px solid var(--ln-border); padding-top: 8px; display: flex; flex-direction: column; gap: 6px; }
+.lkm-what { margin: 0; }
+.lkm-when { color: var(--ln-muted); font-size: 0.875rem; }
+.lkm-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.lkm-edit { display: inline-flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.lkm-log h3 { margin: 0 0 4px; font-size: 1rem; }
+.lkm-log ul { margin: 0; padding-left: 20px; color: var(--ln-muted); }
+@media (max-width: 600px) {
+  .lkm-step-head button { margin-left: 0; }
+}

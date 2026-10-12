@@ -1,11 +1,11 @@
 'use client';
 
 import type { KnowsTabProps } from '@/lib/lineKnowsContract';
-import { MemorySoon } from '../components/MemorySoon';
-import { useMemorySoon } from '../hooks/useMemorySoon';
+import { MemoryTabPanel } from '../components/MemoryTabPanel';
+import { useMemoryTab } from '../hooks/useMemoryTab';
 
-/** The Memory tab of "What Line knows" (slot: replaced by the tab's own build). */
+/** The Memory tab of "What Line knows": what Line remembered per AI step; edit, forget, export, import, embeddings. */
 export function KnowsMemoryTab(props: KnowsTabProps) {
-  const sentence = useMemorySoon(props);
-  return <MemorySoon sentence={sentence} />;
+  const screen = useMemoryTab(props);
+  return <MemoryTabPanel screen={screen} />;
 }

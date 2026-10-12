@@ -2,9 +2,8 @@
 // entry of the one tool registry (the tool gate, lineToolGate.mjs, runs first and logs every memory write).
 //
 //   GET  /graph?focus=<node id>   GraphRead          GET /graph/changes?focus=  ChangeView      GET /graph/stats  SmartView
-//   GET  /memory/records?step=    MemoryRecordsView  GET /memory/export  im3's MemoryExport
-//   POST /memory/edit | /memory/forget-record | /memory/forget-all | /memory/import | /memory/embeddings
-//        person only (Cockpit), Line's own state; im3's GET /memory and POST /memory/forget live in lineMemoryApi.mjs
+//   The Memory tab's routes (/memory/records, export, edit, forget-record, forget-all, import, embeddings) live in
+//   lineMemoryApi.mjs beside im3's GET /memory and POST /memory/forget: person only (Cockpit), logged.
 //
 // A proposed change is NOT written here: the page adds its plan step (line.setBase, line.promote, line.fix) through the
 // plan routes, a person approves it, and Construct's writer lands it. Every failure is one sentence.
@@ -53,13 +52,7 @@ export function createLineKnowsRouter({ getRoot, clientOrigin, serviceFor, write
     return s.changes(focus);
   }, 'Cockpit could not list the proposed changes.'));
   router.get('/graph/stats', handle((s) => s.stats(), 'Cockpit could not measure this project.'));
-  // Memory's page routes (im3's GET /memory and POST /memory/forget stay in lineMemoryApi.mjs).
-  router.get('/memory/records', handle((s, _b, req) => s.records({ ...(typeof req.query.step === 'string' && req.query.step ? { step: req.query.step } : {}) }), 'Cockpit could not read what Line remembered.'));
-  router.get('/memory/export', handle((s) => s.exportMemory(), 'Cockpit could not export what Line remembered.'));
-  router.post('/memory/edit', handle((s, b) => s.edit(b), 'Cockpit could not change that memory; nothing was changed.'));
-  router.post('/memory/forget-record', handle((s, b) => s.forgetRecord(b), 'Cockpit could not forget that; nothing was changed.'));
-  router.post('/memory/forget-all', handle((s) => s.forgetAll(), 'Cockpit could not forget that; nothing was changed.'));
-  router.post('/memory/import', handle((s, b) => s.importMemory(b), 'Cockpit could not import that file; nothing was changed.'));
-  router.post('/memory/embeddings', handle((s, b) => s.setEmbeddings(b), 'Cockpit could not change the embeddings switch; nothing was changed.'));
+  // Memory's page routes live with im3's GET /memory and POST /memory/forget in lineMemoryApi.mjs, behind the same
+  // person check (the Cockpit's Origin plus the approval token).
   return router;
 }
