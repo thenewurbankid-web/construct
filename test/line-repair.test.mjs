@@ -30,14 +30,14 @@ const construct = (o) => (o.args.feature === 'orders' ? { ok: true } : { ok: fal
 test('repairLoop: the model gets only the error, the finding, the typed fixes and the option; a reason comes first; its repair is checked and lands', async () => {
   const q = mockQwen({ reason: 'The feature ordrs does not exist; orders does.', ...fixed });
   const checked = [];
-  const a = await repairLoop(OPTION, REFUSAL, { schema: optionSchema(OPTION, toolArgsSchema('line.baseOn')), propose: q.propose, check: (o) => { checked.push(o); return construct(o); } });
+  const a = await repairLoop(OPTION, REFUSAL, { reason: true, schema: optionSchema(OPTION, toolArgsSchema('line.baseOn')), propose: q.propose, check: (o) => { checked.push(o); return construct(o); } });
   assertRepairAttempt(a);
   assert.equal(a.outcome, 'repaired');
   assert.equal(a.attempts, 1);
   assert.equal(a.maxAttempts, 4, 'construct.repair maxAttempts, default 4');
   assert.deepEqual(checked, [fixed], 'the repaired option is checked again');
   assert.equal(a.tries[0].reason, 'The feature ordrs does not exist; orders does.', 'the reason is on the trace');
-  assert.equal(a.model, 'qwen2.5-coder:1.5b');
+  assert.equal(a.model, 'qwen2.5-coder:7b', 'the profile default (measured best)');
   const prompt = q.calls[0].prompt;
   assert.equal(prompt, repairPrompt(OPTION, REFUSAL));
   assert.match(prompt, /^Construct refused this change\.\nError: There is no feature "ordrs"/);
@@ -56,7 +56,7 @@ test('repairLoop: the model gets only the error, the finding, the typed fixes an
 test('repairLoop: mock Qwen lands on attempt 3; each attempt sees every earlier one with its refusal; progress sentences come in order', async () => {
   const q = mockQwen(withFeature('order', 'The feature is orders, not ordrs; trying order.'), withFeature('ordres', 'Attempt 1 was refused; trying ordres.'), withFeature('orders', 'Both were refused; the error lists orders.'));
   const progress = [];
-  const a = await repairLoop(OPTION, REFUSAL, { propose: q.propose, check: construct, onProgress: (s, n) => progress.push([n, s]) });
+  const a = await repairLoop(OPTION, REFUSAL, { reason: true, propose: q.propose, check: construct, onProgress: (s, n) => progress.push([n, s]) });
   assertRepairAttempt(a);
   assert.equal(a.outcome, 'repaired');
   assert.equal(a.attempts, 3);
@@ -116,15 +116,16 @@ test('repairLoop: Ollama not running leaves the static path unchanged and says s
   assertRepairAttempt(a);
   assert.equal(a.outcome, 'no-model');
   assert.equal(a.attempts, 0);
-  assert.equal(a.sentence, 'The local model qwen2.5-coder:1.5b is not running, so Line did not try a repair and the static path is unchanged.');
+  assert.equal(a.sentence, 'The local model qwen2.5-coder:7b is not running, so Line did not try a repair and the static path is unchanged.');
   // Ollama's structured output: the request carries the schema as `format` and the 1.5B model.
   let body = null;
   const fetchUp = async (_url, init) => { body = JSON.parse(init.body); return { ok: true, json: async () => ({ response: JSON.stringify({ reason: 'Use orders.', ...fixed }) }) }; };
   const ok = await repairLoop(OPTION, REFUSAL, { propose: (q) => ollamaPropose({ ...q, fetch: /** @type {any} */ (fetchUp) }), check: construct });
   assert.equal(ok.outcome, 'repaired');
-  assert.equal(body.model, 'qwen2.5-coder:1.5b');
+  assert.equal(body.model, 'qwen2.5-coder:7b');
   assert.equal(body.format.properties.tool.enum[0], 'line.baseOn');
-  assert.equal(body.format.properties.reason.type, 'string');
+  assert.equal(body.format.properties.reason, undefined, 'the default asks for the option only (variant C)');
+  assert.match(JSON.parse(JSON.stringify(body)).prompt, /Answer with the corrected change as JSON \{"tool", "args"\}/);
   assert.equal(body.options.temperature, 0);
 });
 

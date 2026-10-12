@@ -18,7 +18,9 @@ test('profiles: one set covers Cockpit, Trace and Construct steps, each passing 
   const steps = all.map((p) => p.step);
   for (const s of ['construct.chooser', 'construct.fix', 'trace.choose', 'trace.pick-fields', 'trace.draft-body', 'cockpit.importFill', 'cockpit.createFill', 'cockpit.planAnalysis']) assert.ok(steps.includes(s), s);
   assert.equal(DEFAULT_STEP_MODEL, 'qwen2.5-coder:1.5b');
-  for (const p of all.filter((x) => x.provider === 'ollama')) assert.equal(p.model, DEFAULT_STEP_MODEL, p.step);
+  // Every local step uses the 1.5B, except construct.repair, which measured better on the 7B (im2, review.md) and says so.
+  for (const p of all.filter((x) => x.provider === 'ollama' && x.step !== 'construct.repair')) assert.equal(p.model, DEFAULT_STEP_MODEL, p.step);
+  assert.deepEqual([stepProfile('construct.repair').model, stepProfile('construct.repair').modelFrom, stepProfile('construct.repair').reason, stepProfile('construct.repair').maxAttempts], ['qwen2.5-coder:7b', 'measured best for this step', false, 4]);
   assert.equal(stepModel('cockpit.planAnalysis', { traceConfig: null }), null, 'plan analysis stays on a hosted model');
   assert.equal(stepProfile('construct.chooser').maxTokens, 800, 'plan steps get 800 tokens');
   assert.equal(stepProfile('construct.chooser').fallback, 'static');

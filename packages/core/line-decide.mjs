@@ -280,9 +280,10 @@ function fits(v, s) {
  * @param {{tool: string, args: any}} option
  * @param {{sentence: string, rule?: string|null, code?: string|null, finding?: string|null, fixes?: {id?: string, sentence: string, step?: any}[]}} refusal
  * @param {{reason?: string, option: {tool: string, args: any}|null, refusal?: {sentence: string}|null, outcome: string}[]} [earlier]
+ * @param {{reason?: boolean}} [o] `reason: false` asks for the option only (no reason field).
  * @returns {string}
  */
-export function repairPrompt(option, refusal, earlier = []) {
+export function repairPrompt(option, refusal, earlier = [], o = {}) {
   const lines = [
     'Construct refused this change.',
     `Error: ${one(refusal.sentence)}`,
@@ -292,7 +293,9 @@ export function repairPrompt(option, refusal, earlier = []) {
   lines.push(`Change: ${JSON.stringify({ tool: option.tool, args: option.args })}`);
   earlier.forEach((t, i) => lines.push(`Attempt ${i + 1}: ${t.option ? JSON.stringify(t.option.args) : 'no valid change'} was refused too: ${one(t.refusal?.sentence ?? t.outcome)}`));
   if (earlier.length) lines.push('Do not repeat a change that was already refused.');
-  lines.push('The change above is wrong. First give a short reason (which argument is wrong and what it should be), then the corrected change, as JSON {"reason", "tool", "args"}: keep the tool, and change the argument the error names to a value the error or the fixes give.');
+  lines.push(o.reason === false
+    ? 'The change above is wrong. Answer with the corrected change as JSON {"tool", "args"}: keep the tool, and change the argument the error names to a value the error or the fixes give.'
+    : 'The change above is wrong. First give a short reason (which argument is wrong and what it should be), then the corrected change, as JSON {"reason", "tool", "args"}: keep the tool, and change the argument the error names to a value the error or the fixes give.');
   return lines.join('\n');
 }
 
@@ -342,16 +345,18 @@ function progressSentence(n, max, reason) {
  * @param {{sentence: string, rule?: string|null, code?: string|null, finding?: string|null, fixes?: any[]}} refusal Construct's refusal.
  * @param {{ schema?: any, check?: (option: {tool: string, args: any}) => Promise<{ok: boolean, refusal?: any, passed?: number}> | {ok: boolean, refusal?: any, passed?: number},
  *   propose?: (q: {prompt: string, schema: any, model: string, maxTokens: number}) => Promise<string>, profiles?: object, now?: () => number,
- *   maxAttempts?: number, onProgress?: (sentence: string, attempt: number) => void }} [o]
+ *   maxAttempts?: number, onProgress?: (sentence: string, attempt: number) => void, model?: string, reason?: boolean }} [o]
+ *   `model` and `reason` (ask for a short reason first) default to the construct.repair profile (`reason`, default true).
  *   Without `check` only one repair is proposed (outcome "proposed"): the caller checks it as a plan step.
  * @returns {Promise<import('../engine/line/contract.mjs').RepairAttempt>}
  */
 export async function repairLoop(option, refusal, o = {}) {
   const profile = /** @type {any} */ (stepProfile(REPAIR_STEP, o.profiles));
-  const model = profile.model ?? 'qwen2.5-coder:1.5b';
+  const model = o.model ?? profile.model ?? 'qwen2.5-coder:1.5b';
+  const useReason = o.reason ?? profile.reason ?? true;
   const max = o.check ? Math.max(1, Math.min(o.maxAttempts ?? profile.maxAttempts ?? 4, 8)) : 1;
   const shape = o.schema ?? optionSchema(option);
-  const schema = withReason(shape);
+  const schema = useReason ? withReason(shape) : shape;
   const now = o.now ?? Date.now;
   const t0 = now();
   const err = { sentence: sentence(refusal?.sentence ?? 'Construct refused the change.'), rule: refusal?.rule ?? null, code: refusal?.code ?? null, fixes: (refusal?.fixes ?? []).slice(0, 5).map((f) => ({ id: String(f.id ?? f.fixId ?? 'fix'), sentence: sentence(f.sentence ?? '') })) };
@@ -375,7 +380,7 @@ export async function repairLoop(option, refusal, o = {}) {
   for (let n = 1; n <= max; n++) {
     let text;
     try {
-      text = await (o.propose ?? ((q) => ollamaPropose(q)))({ prompt: repairPrompt(option, refusal, tries), schema, model, maxTokens: profile.maxTokens ?? 300 });
+      text = await (o.propose ?? ((q) => ollamaPropose(q)))({ prompt: repairPrompt(option, refusal, tries, { reason: useReason }), schema, model, maxTokens: profile.maxTokens ?? 300 });
     } catch (e) {
       if (n === 1) {
         const no = /** @type {any} */ (e)?.code === 'NO_MODEL';

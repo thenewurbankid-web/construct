@@ -20,6 +20,12 @@ import { wordsOf } from '../packages/engine/line/train/verify.mjs';
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const LIVE = process.env.CONSTRUCT_LIVE_QWEN === '1';
 const N = 20;
+/** A variant to measure: CONSTRUCT_REPAIR_MODEL, CONSTRUCT_REPAIR_REASON=0|1, CONSTRUCT_REPAIR_MAX (else the profile's). */
+const VARIANT = {
+  ...(process.env.CONSTRUCT_REPAIR_MODEL ? { model: process.env.CONSTRUCT_REPAIR_MODEL } : {}),
+  ...(process.env.CONSTRUCT_REPAIR_REASON ? { reason: process.env.CONSTRUCT_REPAIR_REASON !== '0' } : {}),
+  ...(process.env.CONSTRUCT_REPAIR_MAX ? { maxAttempts: Number(process.env.CONSTRUCT_REPAIR_MAX) } : {}),
+};
 
 /** Break one argument of a gold step, in a fixed way per tool (null when this step has nothing to break). */
 function breakStep(step, i) {
@@ -65,7 +71,7 @@ test('live: the 1.5B repairs seeded Train Line refusals, up to 4 attempts each; 
   const rows = [];
   try {
     for (const s of list) {
-      const a = await repairLoop(s.broken, s.refusal, { schema: optionSchema(s.broken, toolArgsSchema(s.broken.tool)), check: (o) => checkOnCopy(s.dir, o) });
+      const a = await repairLoop(s.broken, s.refusal, { schema: optionSchema(s.broken, toolArgsSchema(s.broken.tool)), check: (o) => checkOnCopy(s.dir, o), ...VARIANT });
       rows.push({ id: s.id, tool: s.broken.tool, outcome: a.outcome, ms: a.ms, attempts: a.attempts, first: a.tries[0]?.outcome === 'landed' });
     }
   } finally { for (const s of list) fs.rmSync(s.dir, { recursive: true, force: true }); }
@@ -74,7 +80,8 @@ test('live: the 1.5B repairs seeded Train Line refusals, up to 4 attempts each; 
   const perTool = Object.entries(rows.reduce((m, r) => ({ ...m, [r.tool]: [...(m[r.tool] ?? []), r.outcome === 'repaired'] }), {})).map(([t, xs]) => `${t} ${xs.filter(Boolean).length}/${xs.length}`).join(', ');
   const first = rows.filter((r) => r.first).length;
   const tries = rows.reduce((t, r) => t + r.attempts, 0);
-  console.log(`Live repair, up to 4 attempts: ${repaired}/${rows.length} repaired; on the first attempt alone ${first}/${rows.length}; ${tries} attempts in all.`);
+  console.log(`Variant ${JSON.stringify(VARIANT)}.`);
+  console.log(`Live repair, up to ${VARIANT.maxAttempts ?? 'the profile\'s'} attempts: ${repaired}/${rows.length} repaired; on the first attempt alone ${first}/${rows.length}; ${tries} attempts in all.`);
   console.log(`Live repair success: ${repaired}/${rows.length} (${Math.round((repaired / rows.length) * 100)}%); ${by}; per tool: ${perTool}; mean ${Math.round(rows.reduce((t, r) => t + r.ms, 0) / rows.length)} ms.`);
   assert.ok(rows.every((r) => r.outcome !== 'no-model'), 'the model answered every attempt');
 });

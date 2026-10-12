@@ -37,7 +37,8 @@ export function listStepProfiles(o = {}) {
   return data.profiles.map((raw) => {
     const p = { ...raw, fallback: 'static', ladder: { ...raw.ladder } };
     if (p.provider === 'hosted') { p.model = raw.model ?? null; p.modelFrom = 'the hosted model you choose in Settings'; }
-    else { p.model = raw.model ?? defaultModel; p.modelFrom = LINE_DEFAULT; }
+    // A step may name its own model when it measured better (construct.repair: the 7B, im2); it says so.
+    else { p.model = raw.model ?? defaultModel; p.modelFrom = raw.model ? (raw.modelFrom ?? 'chosen for this step') : LINE_DEFAULT; }
     if (p.source === 'trace' && trace) {
       const task = p.step.slice('trace.'.length);
       const own = trace.tasks?.[task];
