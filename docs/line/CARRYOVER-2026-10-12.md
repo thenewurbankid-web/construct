@@ -27,7 +27,7 @@ Start here. Read `CLAUDE.md`, `LINE.md`, then this file.
 3. open-project row: 3 items (token assert re-run, Settings menu flake, Train UAT). cs2 row at 97%: re-run its walk;
    follow-up is a token-gated Cockpit route + button for apply (designer first).
 4. How smart is it lists logic units by hash, not label (needs a stats contract change).
-5. The real flow: max-ai-ui `/opportunity` run on a clone (see below, unchanged).
+5. The real flow: max-ai-ui `/opportunity` run on a clone, with the run2.mjs script (details in e700e720).
 6. Logic verification lv2, lv4, lv7, lv8; smaller items; embeddings into an AI profile (owner decision); pipeline repo.
    Details for 5-6 are in the earlier list in git history (e700e720).
 
