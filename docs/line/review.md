@@ -657,6 +657,12 @@ Gaps:
 - The gate re-runs both evals per proposal (about a minute each); there is no batching yet.
 - `apply` runs the writer's shadow copy over the whole Construct checkout: slow, but a person runs it rarely. The full test suite still has to be run by hand after apply.
 - Phrase proposals (`everyday.phrases`) are supported by `mergeLexicon` but not generated yet.
+- `construct line spec --topic modules` is now 32,644 bytes, near its 32 KiB MCP limit (`test/line-spec.test.mjs`). The two new engine files keep a one-line header so it fits. The next file added to `packages/engine/line` will push it over; the limit or the topic needs a decision.
+- Line test run (`node --test test/line-*.test.mjs ui/server/src/line*.test.mjs packages/mcp/test packages/rule-factory/test packages/summarize/test`, under heavy machine load): 544 passed, 5 failed.
+  - The spec-size test was fixed by the item above.
+  - `line-fragments` (types) and `lineRenderApi` (link down) pass when run alone.
+  - The MCP startup budget (15 s against 10 s), `line-characterize` (jest, 283 s) and `line-import-agent` (killed after 1,123 s) are timing failures under load and were not re-run. The owner asked to stop heavy runs.
+  - The full `heavy.sh npm test` is still owed.
 
 UAT (CLI, about 5 minutes):
 1. `cp -R examples/line-sample /tmp/rf && node packages/cli/construct.mjs line rules propose --dir /tmp/rf`: "Collected 424 decisions, 5 misses by static code", the static share, and who labelled (jev if Ollama runs, else the rules, with why).

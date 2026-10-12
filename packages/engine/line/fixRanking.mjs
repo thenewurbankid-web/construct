@@ -1,3 +1,5 @@
+// cs2 -- reviewed fix-ranking rules (fix-ranking.json) from the rule factory.
+
 // cs2 -- reviewed fix-ranking rules from the static rule factory (fix-ranking.json): for findings of one rule, a fix of
 // family `prefer` ranks above a fix of family `over`. A family is the fix id up to its first ':' ("LINE-LAYOUT/
 // stray-to-feature:orders:components" -> "LINE-LAYOUT/stray-to-feature"). Rules are added only by a person through

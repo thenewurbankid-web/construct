@@ -1,3 +1,5 @@
+// cs2 -- the rule factory's overlay seam (LINE_STATIC_OVERLAY, the gate's worker only).
+
 // cs2 -- the static rule factory's overlay seam. The accuracy gate (packages/rule-factory/gate.mjs) measures a proposed
 // static rule exactly as it would ship, without writing a rule file: it starts a worker process with LINE_STATIC_OVERLAY
 // naming a JSON file {lexicon?, fixRanking?}, and the shipped rules load with the overlay merged on top (lexicon.mjs,
