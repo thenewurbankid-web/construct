@@ -64,7 +64,7 @@
   "acceptance": {
     "passed": 0,
     "total": 22,
-    "ran": false,
+    "ran": true,
     "passedIds": []
   },
   "loc": 24,
