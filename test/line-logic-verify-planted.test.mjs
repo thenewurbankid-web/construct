@@ -13,6 +13,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { assertUnitVerdict, assertLayerResult, assertStepSummary } from '../packages/engine/line/logicVerify/contract.mjs';
 import { buildUnitVerdict, verdictSentence, summarizeStep } from '../packages/engine/line/logicVerify/verdict.mjs';
 import { decideUnit, layerOrder, nextLayer } from '../packages/engine/line/logicVerify/escalation.mjs';
+import { linkStatus } from '../packages/line-links/index.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const FIX = path.join(ROOT, 'test/fixtures/logic-verify');
@@ -25,6 +26,17 @@ const todo = (step) => `step ${step}: ${STEP_NAMES[step]}`;
 /** The build steps that have landed: their acceptance tests run; the rest stay `todo`. */
 const BUILT = new Set([2, 3, 4, 5, 6]);
 const todoUnless = (step) => (BUILT.has(step) ? false : todo(step));
+// #882: a transitive effect chain (an EffectLink with a non-empty `via`) comes only from Morpheus's import scan
+// (`@mx/morpheus-import` link). With the link down (no source repo, or the source HEAD drifted from links.json's pin)
+// purity.mjs answers from classifyLocal, which has no chain, so those cases are skipped with the link's own sentence
+// (as line-logic-verify-purity does), never failed: the result would depend on another repo's HEAD, not this code.
+const LINKS = linkStatus();
+const needsMorpheus = (c) => !LINKS.ok && expected(c.name).effectChain.some((l) => l.via.length > 0);
+const acceptance = (step, c) => {
+  const t = todoUnless(step);
+  if (t) return { todo: t };
+  return needsMorpheus(c) ? { skip: `needs the Morpheus link for the transitive effect chain: ${LINKS.message}` } : {};
+};
 
 /** A later step's module; a todo test fails with one line until the step adds it. */
 async function later(file, step) {
@@ -87,7 +99,7 @@ test('planted fixtures: each changed location is exact (file, line and the text 
 // ---- acceptance: turned on by the build steps ----------------------------------------------------------------------
 
 for (const c of CASES) {
-  test(`step 2 acceptance, ${c.name}: purity and effect chain come from Morpheus's effect analysis`, { todo: todoUnless(2) }, async () => {
+  test(`step 2 acceptance, ${c.name}: purity and effect chain come from Morpheus's effect analysis`, acceptance(2, c), async () => {
     const { classifyUnit } = await later('purity.mjs', 2);
     const v = expected(c.name);
     const got = await classifyUnit({ root: roots(c).beforeRoot, file: c.before.file, fn: c.before.fn });
@@ -96,7 +108,7 @@ for (const c of CASES) {
 }
 
 for (const c of CASES) {
-  test(`step ${c.step} acceptance, ${c.name}: verifyPair gives the expected verdict`, { todo: todoUnless(c.step) }, async () => {
+  test(`step ${c.step} acceptance, ${c.name}: verifyPair gives the expected verdict`, acceptance(c.step, c), async () => {
     const { verifyPair } = await later('verifyPair.mjs', c.step);
     const v = expected(c.name);
     const got = await verifyPair({ ...roots(c), unit: v.unit, transforms: c.transforms, levels: c.levels });

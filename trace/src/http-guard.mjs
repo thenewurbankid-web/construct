@@ -114,6 +114,22 @@ export function readJsonBody(req, { limit = MAX_BODY } = {}) {
 export function sendError(res, status, message) {
   if (res.writableEnded) return;
   if (res.headersSent) { res.end(); return; }
+  const payload = JSON.stringify({ error: message });
+  const req = res.req;
+  // #882: a 413 closes the connection, but only once the rest of the upload has been drained (readJsonBody resumes
+  // the request on overflow). Closing while the client is still sending makes the kernel answer its next bytes with
+  // a RST, and the client sees ECONNRESET instead of the 413 -- reliably so for a slow (loaded) client.
+  if (status === 413 && req && !req.complete && !req.destroyed) {
+    const finish = () => {
+      if (res.writableEnded || res.headersSent || res.destroyed) return;
+      res.writeHead(status, { "content-type": "application/json", connection: "close" });
+      res.end(payload);
+    };
+    req.once("end", finish);
+    req.once("close", finish);
+    req.resume();
+    return;
+  }
   res.writeHead(status, { "content-type": "application/json", connection: status === 413 ? "close" : "keep-alive" });
-  res.end(JSON.stringify({ error: message }));
+  res.end(payload);
 }

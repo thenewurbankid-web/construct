@@ -327,7 +327,7 @@ function listen(port, tries = 10) {
     else throw err;
   });
   server.listen(port, "127.0.0.1", () => {
-    const url = `http://localhost:${port}`;
+    const url = `http://localhost:${server.address().port}`; // the bound port: `--port 0` asks the OS for a free one (#882)
     console.log(`Trace UI: ${url}`);
     if (!args.includes("--no-open")) openBrowser(url); // darwin open, linux xdg-open, Termux termux-open-url; skipped when absent (#867)
   });
