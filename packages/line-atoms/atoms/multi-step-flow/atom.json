@@ -1,0 +1,52 @@
+{
+  "v": 1,
+  "id": "multi-step-flow",
+  "role": "flow.step",
+  "title": "Multi-step flow",
+  "name": "multiStepFlow",
+  "kind": "function",
+  "english": "Walk through the steps of a flow in order, leaving a step only when its check passes.",
+  "inputs": [
+    { "name": "steps", "type": "{id: string, canLeave?: (data: D) => boolean}[]", "sentence": "The steps in order, each with its own check." },
+    { "name": "data", "type": "D", "sentence": "What the flow collects along the way." }
+  ],
+  "outputs": [
+    { "name": "currentStep", "type": "string", "sentence": "The step on screen, or done." },
+    { "name": "blocked", "type": "string | null", "sentence": "The step whose check stopped the last NEXT." },
+    { "name": "progress", "type": "number", "sentence": "How far along the flow is, from 0 to 1." },
+    { "name": "xstateConfig", "type": "MachineConfig", "sentence": "The same flow as an xstate machine config." }
+  ],
+  "states": ["first", "middle", "last", "done"],
+  "initial": "first",
+  "events": [
+    { "type": "NEXT", "sentence": "The person continues to the next step." },
+    { "type": "BACK", "sentence": "The person goes back a step." },
+    { "type": "GO_TO", "sentence": "The person jumps to a step already reached." },
+    { "type": "RESET", "sentence": "The flow starts over." }
+  ],
+  "transitions": [
+    { "from": "first", "event": "NEXT", "to": "middle" },
+    { "from": "first", "event": "NEXT", "to": "last" },
+    { "from": "first", "event": "NEXT", "to": "first" },
+    { "from": "middle", "event": "NEXT", "to": "middle" },
+    { "from": "middle", "event": "NEXT", "to": "last" },
+    { "from": "last", "event": "NEXT", "to": "done" },
+    { "from": "last", "event": "NEXT", "to": "last" },
+    { "from": "middle", "event": "BACK", "to": "first" },
+    { "from": "middle", "event": "BACK", "to": "middle" },
+    { "from": "last", "event": "BACK", "to": "middle" },
+    { "from": "last", "event": "BACK", "to": "first" },
+    { "from": "*", "event": "GO_TO", "to": "first" },
+    { "from": "*", "event": "GO_TO", "to": "middle" },
+    { "from": "*", "event": "GO_TO", "to": "last" },
+    { "from": "*", "event": "RESET", "to": "first" },
+    { "from": "*", "event": "RESET", "to": "last" }
+  ],
+  "wraps": { "library": "xstate", "license": "MIT", "concept": "createMachine with one state per step, guarded NEXT transitions, BACK, and a final state", "adapter": "The toXStateConfig helper gives the createMachine config; xstate's own assign is passed in, so the atom does not import xstate." },
+  "testKit": { "file": "multi-step-flow.test.ts", "runner": "node" },
+  "phrases": ["add a wizard", "add a multi-step form", "add a checkout flow with steps", "add next and back steps", "multi-step flow", "add a stepper"],
+  "signals": [
+    { "id": "hand-step-counter", "all": ["set(Current|Active)?Step\\(", "[Ss]tep\\s*[+-]\\s*1|[Ss]tep\\s*\\+\\+|[Ss]tep\\s*--|prev\\s*[+-]\\s*1"], "sentence": "This function moves between the steps of a flow with a counter by hand." }
+  ],
+  "composes": []
+}

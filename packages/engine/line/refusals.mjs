@@ -68,6 +68,8 @@ export const RULE_FIXES = Object.freeze({
   'LINE-LAYOUT': { typed: 'fixes.mjs: line.createLayout or line.moveFile into its kind', person: 'a stray folder: the person says which kind each file is' },
   'LINE-WRITER': { person: 'a direct file write: routing it through the writer changes behaviour, so its author decides' },
   'LINE-SHARED': { person: 'an own copy of a shared concern: replacing it with the shared module is a code change its author makes' },
+  // atoms-core: a warning (it never refuses a step); its fix names the atom and its import, and the author makes the call.
+  'LINE-ATOM': { person: 'a hand-written copy of a logic atom: calling the atom instead is a code change its author makes (the fix names the atom and its import)' },
   'LINE-MODULE': { person: 'a deep import between packages: packages/tools/line-module/fix-imports.mjs rewrites it outside the plan' },
   'PAGE-002': { typed: 'fixes.mjs: line.useViaUsecase (the workflow through a usecase of the feature)' },
   'PAGE-003': { typed: 'fixes.mjs: line.useViaUsecase (the service through a usecase of the feature)' },

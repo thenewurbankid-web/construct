@@ -13,6 +13,7 @@ import { enumerateRoutes } from './templates.mjs';
 import { verifyRoutes } from './verify.mjs';
 import { readRecords, nearest, routeFromRecord, precedent } from './retrieval.mjs';
 import { routeKey, routePhrase, draftContext } from '../memory/index.mjs';
+import { matchAtoms } from '@line/atoms';
 
 export { normalize, denormalize, buildDomainMap, addSynonym, saveDomainMap } from './domainMap.mjs';
 export { toRecord, appendRecord, readRecords } from './retrieval.mjs';
@@ -53,7 +54,7 @@ export function staticRank(routes) {
  *   `ranker`: jev's ranking (ids, best first); it only orders. `records`: training records (default: the project's own).
  *   `memory`: this project's memory (memory/store.mjs); the person's consistent past picks move a checked route first.
  *   `precedents`: more approved records after them (Cockpit passes Train Line's slotted precedents, retrieval.mjs precedentsFromTraining).
- * @returns {import('./contract.mjs').Draft & {questions: any[], shown: {request: string}, tokens: {t: string, slot?: string, kind?: string, src: string[]}[], entries: Record<string, string>}}
+ * @returns {import('./contract.mjs').Draft & {atoms: import('@line/atoms/contract').AtomMatch[], questions: any[], shown: {request: string}, tokens: {t: string, slot?: string, kind?: string, src: string[]}[], entries: Record<string, string>}}
  *   `tokens` and `entries` are the live normalization (they hold the request's own words: shown, never stored).
  */
 export function draft(root, request, o = {}) {
@@ -138,7 +139,12 @@ export function draft(root, request, o = {}) {
   //   A precedent whose preferred answer was a question asks the same (its routes stay as the closed choices).
   const precAsk = precPreferred?.outcome === 'question' ? { about: precPreferred.about ?? 'detail', sentence: PRECEDENT_ASK[precPreferred.about] ?? PRECEDENT_ASK.detail } : null;
   const ask = n.questions.length ? null : rec?.ask ?? precAsk;
-  const defer = !labels.inCatalog
+  // Logic atoms (roadmap item 2): a request that names an atom's job ("add a paginated list") routes to the atom, so the
+  // usecase or service the route writes is built on it instead of hand-written logic.
+  const atoms = matchAtoms(String(request));
+  const defer = !labels.inCatalog && atoms.length
+    ? { to: /** @type {'ask'} */ ('ask'), about: 'atom', sentence: `${atoms[0].sentence.replace(/\.$/, '')}; say which feature's usecase or service should use it.`, choices: [] }
+    : !labels.inCatalog
     ? { to: /** @type {'ask'} */ ('ask'), sentence: 'Line could not tell which kind of change this is; say what to add, change, move, promote or fix, and where.' }
     : n.questions.length
       ? { to: /** @type {'ask'} */ ('ask'), sentence: n.questions[0].sentence }
@@ -152,7 +158,7 @@ export function draft(root, request, o = {}) {
           ? { to: /** @type {'qwen'} */ ('qwen'), sentence: rec.status === 'needs-model' ? 'The best route needs a value or code that the request does not give; a local model may propose it, or you type it.' : rec.status === 'ok' ? 'Line is not sure which kind of change this is; a local model may confirm it.' : 'No route has been checked yet; a local model may propose one.' }
           : { to: null, sentence: rec.invented.length ? 'The static drafter is confident; a rule made up the new name, which you can change or let a local model suggest.' : 'The static drafter is confident; no model is needed.' };
   return {
-    request: n.text, slots: ctx.slots, labels, from, routes, dropped, recommended: rec?.id ?? null, defer, bindings,
+    request: n.text, slots: ctx.slots, labels, from, routes, dropped, recommended: rec?.id ?? null, defer, bindings, atoms,
     memory: memory ? memory.pref : null, questions: n.questions, shown: { request: String(request) }, tokens: n.tokens, entries: n.entries,
   };
 }

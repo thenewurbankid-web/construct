@@ -17,7 +17,7 @@
 import { assertImportLogic } from './importV2/contract.mjs';
 import { EXTRACT_TOOLS } from './importV2/extractTarget.mjs';
 
-/** @typedef {'components'|'pages'|'workflows'|'fixtures'|'usecases'|'services'|'domains'|'expressions'} LineKind */
+/** @typedef {'components'|'pages'|'workflows'|'fixtures'|'usecases'|'services'|'domains'|'expressions'|'atoms'} LineKind */
 /** @typedef {'atom'|'molecule'|'organism'} Level */
 
 /**
@@ -1078,7 +1078,7 @@ export const IMPORT_AGENT_TOOLS = Object.freeze([...IMPORT_TOOLS, ...EXTRACT_TOO
 
 export const LINE_FIX_TOOLS = Object.freeze(['line.setBase', 'line.promote', 'line.baseOn', 'line.moveFile', 'line.createLayout', 'line.amend', 'line.useViaUsecase', 'line.extractExpression']);
 
-export const LINE_KINDS = Object.freeze(['components', 'pages', 'workflows', 'fixtures', 'usecases', 'services', 'domains', 'expressions']);
+export const LINE_KINDS = Object.freeze(['components', 'pages', 'workflows', 'fixtures', 'usecases', 'services', 'domains', 'expressions', 'atoms']);
 export const LEVELS = Object.freeze(['atom', 'molecule', 'organism']);
 export const FRAGMENT_KINDS = Object.freeze(['prop-expression', 'handler', 'condition', 'style']);
 /** cu2: the local model every AI step uses unless its profile names another. */

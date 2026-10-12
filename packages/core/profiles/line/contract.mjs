@@ -4,7 +4,7 @@
 //
 // A Line project:
 //
-//   <library>/            components/ pages/ workflows/ fixtures/ usecases/ services/ domains/ expressions/   (complete, usable items)
+//   <library>/            components/ pages/ workflows/ fixtures/ usecases/ services/ domains/ expressions/ atoms/   (complete, usable items)
 //   <features>/<name>/    the same kind folders, plus spec.md
 //   line/                 plans, memory, state (Line's own state; only the writer touches it)
 //
@@ -16,9 +16,10 @@ import { ConstructError, EXIT_CODES } from '../../diagnostics.mjs';
  * The item kinds, the same folder names in the library and in every feature. Import v2 (iv2-fit) added the three logic
  * kinds in their minimal form: `usecases` (one user goal: data, state and navigation together), `services` (data hooks
  * and adapters) and `domains` (pure rules and transforms). They need no library base yet (LOGIC_KINDS); the layers wave
- * adds their full dependency rule.
+ * adds their full dependency rule. Roadmap item 2 added `atoms`: the project's own logic atoms (common functional logic
+ * written once with a test kit, packages/line-atoms), beside the shipped ones in @line/atoms.
  */
-export const ITEM_KINDS = Object.freeze(['components', 'pages', 'workflows', 'fixtures', 'usecases', 'services', 'domains', 'expressions']);
+export const ITEM_KINDS = Object.freeze(['components', 'pages', 'workflows', 'fixtures', 'usecases', 'services', 'domains', 'expressions', 'atoms']);
 
 /**
  * line-expressions: an expression is a pure, typed function component that renders one conditional or one loop, with
@@ -29,10 +30,13 @@ export const ITEM_KINDS = Object.freeze(['components', 'pages', 'workflows', 'fi
 export const BASE_OPTIONAL_KINDS = Object.freeze(['expressions']);
 
 /** The logic kinds (minimal version): a feature item of these kinds needs no `@line-base` link yet. */
-export const LOGIC_KINDS = Object.freeze(['usecases', 'services', 'domains']);
+export const LOGIC_KINDS = Object.freeze(['usecases', 'services', 'domains', 'atoms']);
+
+/** The kinds that may use an atom (LINE-ATOM): behaviour lives in usecases and services, which compose atoms. One list, owned by @line/atoms. */
+export { ATOM_USERS } from '@line/atoms/contract';
 
 /** Each kind's singular name, as sentences say it. */
-export const KIND_SINGULAR = Object.freeze({ components: 'component', pages: 'page', workflows: 'workflow', fixtures: 'fixture', usecases: 'usecase', services: 'service', domains: 'domain', expressions: 'expression' });
+export const KIND_SINGULAR = Object.freeze({ components: 'component', pages: 'page', workflows: 'workflow', fixtures: 'fixture', usecases: 'usecase', services: 'service', domains: 'domain', expressions: 'expression', atoms: 'atom' });
 
 /** Which existing Construct layer each kind is checked as (fixtures have no layer rules). */
 export const KIND_LAYER = Object.freeze({ components: 'component', pages: 'page', workflows: 'workflow' });
@@ -134,8 +138,15 @@ export const LINE_RULES = Object.freeze({
     id: 'LINE-LAYOUT',
     defaultSeverity: 'error',
     why: 'A Line project keeps its items in the library and in feature folders with a fixed set of kinds, so every item can be found, linked and checked.',
-    expected: ['components/, pages/, workflows/, fixtures/, usecases/, services/, domains/ and spec.md inside a feature; the same kinds inside the library'],
+    expected: ['components/, pages/, workflows/, fixtures/, usecases/, services/, domains/, expressions/, atoms/ and spec.md inside a feature; the same kinds inside the library'],
     check: 'Entries directly under <library>, <features> and <features>/<name> must be one of the known kinds or allowed files; a project with neither folder is reported once. Once a project has either folder, a source file anywhere else is reported unless it sits at the project root (or directly in src/), in a line.appFolders folder (default app, config, scripts, public, types, test, tests, __tests__, e2e), in Line\'s state folder or a package root, in a test or example folder, or is a page (LINE-OWNER reports those), a test, a story or a .d.ts file.',
+  },
+  'LINE-ATOM': {
+    id: 'LINE-ATOM',
+    defaultSeverity: 'warning',
+    why: 'Common functional logic (a validated submit, a paginated query, a multi-step flow) is written once as a tested atom and composed by usecases and services, so it is not rewritten, and re-broken, in every feature.',
+    expected: ['a call to the atom named in the message (import it from @line/atoms/<atom>)', 'atoms used from usecases and services, not directly from components or pages'],
+    check: 'Every library and feature code file (except the atoms kind itself) is read function by function; a function that matches all of an atom\'s signals (packages/line-atoms atoms/<id>/atom.json) is reported once per atom at the innermost matching function, unless the file already imports that atom; a component, page, workflow or domain file that imports an atom from @line/atoms is reported too.',
   },
 });
 

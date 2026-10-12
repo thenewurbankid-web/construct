@@ -9,7 +9,7 @@ import { exceptionApplies, validateExceptionsShape } from '../../exceptions.mjs'
 import { detectLayerViolations, layerViolationOptsFor } from '../../architecture-enforcer.mjs';
 import { LINE_RULES, LINE_RULE_IDS, KIND_LAYER, normalizeLineConfig } from './contract.mjs';
 import {
-  resolveLayout, loadProject, isItemFile, checkLayout, checkBase, checkOwner, checkDirection, checkWriter, checkShared, checkModules, matchesAny, parseFailures,
+  resolveLayout, loadProject, isItemFile, checkLayout, checkBase, checkOwner, checkDirection, checkWriter, checkShared, checkModules, checkAtoms, matchesAny, parseFailures,
 } from './checks.mjs';
 
 export { LINE_RULES, LINE_RULE_IDS, normalizeLineConfig } from './contract.mjs';
@@ -23,6 +23,7 @@ const CHECKS = {
   'LINE-WRITER': (p, line) => checkWriter(p, line),
   'LINE-SHARED': (p, line) => checkShared(p, line),
   'LINE-MODULE': (p, line) => checkModules(p, line),
+  'LINE-ATOM': (p) => checkAtoms(p),
 };
 
 /**

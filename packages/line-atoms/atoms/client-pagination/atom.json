@@ -1,0 +1,61 @@
+{
+  "v": 1,
+  "id": "client-pagination",
+  "role": "list.paginate",
+  "title": "Pagination",
+  "name": "paginate",
+  "kind": "function",
+  "english": "Split the list into pages of a fixed size and show one page at a time.",
+  "inputs": [
+    { "name": "total", "type": "number", "sentence": "How many rows the list has." },
+    { "name": "pageSize", "type": "number", "sentence": "How many rows a page shows." },
+    { "name": "pageIndex", "type": "number", "sentence": "The page to start on, counting from zero.", "optional": true }
+  ],
+  "outputs": [
+    { "name": "pageIndex", "type": "number", "sentence": "The page shown, always one that exists." },
+    { "name": "pageCount", "type": "number", "sentence": "How many pages there are." },
+    { "name": "sliceBounds", "type": "{start: number, end: number}", "sentence": "Which rows the page shows." },
+    { "name": "canNext", "type": "boolean", "sentence": "Whether there is a next page." },
+    { "name": "canPrevious", "type": "boolean", "sentence": "Whether there is a page before." }
+  ],
+  "states": ["empty", "only", "first", "middle", "last"],
+  "initial": "empty",
+  "events": [
+    { "type": "NEXT", "sentence": "The person goes to the next page." },
+    { "type": "PREVIOUS", "sentence": "The person goes back a page." },
+    { "type": "GO_TO", "sentence": "The person picks a page." },
+    { "type": "SET_PAGE_SIZE", "sentence": "The person changes how many rows a page shows." },
+    { "type": "SET_TOTAL", "sentence": "The list grew or shrank." }
+  ],
+  "transitions": [
+    { "from": "first", "event": "NEXT", "to": "middle" },
+    { "from": "first", "event": "NEXT", "to": "last" },
+    { "from": "middle", "event": "NEXT", "to": "middle" },
+    { "from": "middle", "event": "NEXT", "to": "last" },
+    { "from": "last", "event": "PREVIOUS", "to": "middle" },
+    { "from": "last", "event": "PREVIOUS", "to": "first" },
+    { "from": "middle", "event": "PREVIOUS", "to": "middle" },
+    { "from": "middle", "event": "PREVIOUS", "to": "first" },
+    { "from": "*", "event": "GO_TO", "to": "first" },
+    { "from": "*", "event": "GO_TO", "to": "middle" },
+    { "from": "*", "event": "GO_TO", "to": "last" },
+    { "from": "*", "event": "SET_PAGE_SIZE", "to": "empty" },
+    { "from": "*", "event": "SET_PAGE_SIZE", "to": "only" },
+    { "from": "*", "event": "SET_PAGE_SIZE", "to": "first" },
+    { "from": "*", "event": "SET_PAGE_SIZE", "to": "middle" },
+    { "from": "*", "event": "SET_PAGE_SIZE", "to": "last" },
+    { "from": "*", "event": "SET_TOTAL", "to": "empty" },
+    { "from": "*", "event": "SET_TOTAL", "to": "only" },
+    { "from": "*", "event": "SET_TOTAL", "to": "first" },
+    { "from": "*", "event": "SET_TOTAL", "to": "middle" },
+    { "from": "*", "event": "SET_TOTAL", "to": "last" }
+  ],
+  "wraps": { "library": "@tanstack/table", "license": "MIT", "concept": "pagination state {pageIndex, pageSize}, getPageCount, getCanNextPage, getCanPreviousPage, getPaginationRowModel", "adapter": "The state's pageIndex and pageSize are TanStack Table's pagination state as they are." },
+  "testKit": { "file": "client-pagination.test.ts", "runner": "node" },
+  "phrases": ["add pagination", "paginate the list", "split the list into pages", "show 10 per page", "add next and previous page buttons"],
+  "signals": [
+    { "id": "hand-page-slice", "all": ["\\.slice\\(", "\\b(page|pageIndex|currentPage|pageNumber)\\b"], "any": ["pageSize|perPage|PAGE_SIZE|itemsPerPage", "Math\\.ceil\\("], "sentence": "This function cuts a list into pages by hand." },
+    { "id": "hand-page-count", "all": ["Math\\.ceil\\([^)]*/\\s*(pageSize|perPage|PAGE_SIZE|itemsPerPage|limit)"], "sentence": "This function counts pages by hand." }
+  ],
+  "composes": []
+}

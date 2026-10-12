@@ -1,0 +1,38 @@
+{
+  "v": 1,
+  "id": "optimistic-update",
+  "role": "data.optimistic",
+  "title": "Optimistic update",
+  "name": "optimisticUpdate",
+  "kind": "function",
+  "english": "Show the change at once and put the old value back if saving it fails.",
+  "inputs": [
+    { "name": "value", "type": "V", "sentence": "The value on screen now." },
+    { "name": "update", "type": "(value: V) => V", "sentence": "The change to show at once." },
+    { "name": "write", "type": "(value: V) => Promise<V | void>", "sentence": "What saves the changed value." }
+  ],
+  "outputs": [
+    { "name": "value", "type": "V", "sentence": "The value to show." },
+    { "name": "snapshot", "type": "V | null", "sentence": "The last saved value, kept while a change is saving." },
+    { "name": "error", "type": "unknown", "sentence": "Why the last save failed." }
+  ],
+  "states": ["idle", "applied", "committed", "rolledBack"],
+  "initial": "idle",
+  "events": [
+    { "type": "APPLY", "sentence": "A change is shown before it is saved." },
+    { "type": "COMMIT", "sentence": "The change was saved." },
+    { "type": "ROLLBACK", "sentence": "Saving failed, so the old value comes back." }
+  ],
+  "transitions": [
+    { "from": "*", "event": "APPLY", "to": "applied" },
+    { "from": "applied", "event": "COMMIT", "to": "committed" },
+    { "from": "applied", "event": "ROLLBACK", "to": "rolledBack" }
+  ],
+  "wraps": { "library": "@tanstack/query", "license": "MIT", "concept": "useMutation onMutate (snapshot and write), onError (roll back), onSettled (confirm)", "adapter": "The write input is the mutation function; APPLY is onMutate, ROLLBACK is onError and COMMIT is onSettled with the server's answer." },
+  "testKit": { "file": "optimistic-update.test.ts", "runner": "node" },
+  "phrases": ["add an optimistic update", "update the list optimistically", "show the change before it saves", "roll back if saving fails", "optimistic toggle"],
+  "signals": [
+    { "id": "hand-rollback", "all": ["\\b(previous|prev|snapshot|backup|old)[A-Z]?\\w*", "catch"], "any": ["set\\w*\\(\\s*(previous|prev|snapshot|backup|old)\\w*\\s*\\)", "rollback|revert|rollBack"], "sentence": "This function shows a change before saving it and puts the old value back by hand." }
+  ],
+  "composes": []
+}

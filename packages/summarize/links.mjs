@@ -38,7 +38,7 @@ export function smithLinks(options = {}) {
  */
 export async function smithConnectors(options = {}) {
   const r = await importLinked('@smith/core', optionsFor('smith', options));
-  if (!r.ok) return { linked: false, words: [...SMITH_CONNECTORS], reason: r.reason };
+  if (!r.ok) return { linked: false, words: [...SMITH_CONNECTORS], reason: /** @type {any} */ (r).reason };
   const own = (C) => Object.getOwnPropertyNames(C.prototype).filter((n) => n !== 'constructor');
   return { linked: true, words: [...own(r.module.Chain), ...own(r.module.Organism)] };
 }
@@ -55,7 +55,7 @@ export async function summarizeCode(code, options = {}) {
   const { kind = 'function', ...rest } = options;
   const r = await importLinked('@smith/to-english', optionsFor('codemod', rest));
   if (!r.ok) {
-    return { sentences: ['This code is not put into words because atomic-codemod is not linked; the code and the reason are under Details.'], details: [{ label: 'Code', text: code }, { label: 'Why', text: r.reason }], via: 'static' };
+    return { sentences: ['This code is not put into words because atomic-codemod is not linked; the code and the reason are under Details.'], details: [{ label: 'Code', text: code }, { label: 'Why', text: /** @type {any} */ (r).reason }], via: 'static' };
   }
   const toEnglish = r.module.toEnglish ?? r.module.default?.toEnglish;
   let english;

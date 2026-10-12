@@ -6,12 +6,12 @@ import { summarize } from '@line/summarize';
 
 /** Kind -> [singular, plural] as a person says it. */
 const NOUNS = { pages: ['page', 'pages'], components: ['component', 'components'], workflows: ['workflow', 'workflows'], fixtures: ['fixture', 'fixtures'],
-  usecases: ['usecase', 'usecases'], services: ['service', 'services'], domains: ['domain', 'domains'], expressions: ['expression', 'expressions'] };
+  usecases: ['usecase', 'usecases'], services: ['service', 'services'], domains: ['domain', 'domains'], expressions: ['expression', 'expressions'], atoms: ['atom', 'atoms'] };
 /** The order the summary and the screen list kinds in. */
-export const KIND_ORDER = Object.freeze(['pages', 'components', 'workflows', 'fixtures', 'usecases', 'services', 'domains', 'expressions']);
+export const KIND_ORDER = Object.freeze(['pages', 'components', 'workflows', 'fixtures', 'usecases', 'services', 'domains', 'expressions', 'atoms']);
 
 /** The logic kinds (iv2-fit, minimal) need no library base yet; an expression may have none (line-expressions). */
-const LOGIC = ['usecases', 'services', 'domains', 'expressions'];
+const LOGIC = ['usecases', 'services', 'domains', 'expressions', 'atoms'];
 const count = (n, [one, many]) => `${n} ${n === 1 ? one : many}`;
 const listing = (parts) => (parts.length <= 1 ? parts.join('') : `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`);
 

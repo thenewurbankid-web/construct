@@ -1,0 +1,47 @@
+{
+  "v": 1,
+  "id": "polling",
+  "role": "query.poll",
+  "title": "Polling",
+  "name": "polling",
+  "kind": "function",
+  "english": "Load the data again after each interval until it says the work is done, waiting longer after each failure.",
+  "inputs": [
+    { "name": "interval", "type": "number", "sentence": "How many milliseconds to wait between good answers." },
+    { "name": "isDone", "type": "(data: D) => boolean", "sentence": "Whether an answer means the work is finished.", "optional": true },
+    { "name": "maxBackoff", "type": "number", "sentence": "The longest wait after failures.", "optional": true },
+    { "name": "maxFailures", "type": "number", "sentence": "How many failures in a row stop the polling.", "optional": true }
+  ],
+  "outputs": [
+    { "name": "nextDelay", "type": "number | null", "sentence": "How long to wait before the next load." },
+    { "name": "data", "type": "D | null", "sentence": "The last good answer." },
+    { "name": "status", "type": "'stopped' | 'fetching' | 'waiting' | 'backoff' | 'finished'", "sentence": "Where the polling stands." }
+  ],
+  "states": ["stopped", "fetching", "waiting", "backoff", "finished"],
+  "initial": "stopped",
+  "events": [
+    { "type": "START", "sentence": "Polling starts." },
+    { "type": "STOP", "sentence": "Polling stops." },
+    { "type": "TICK", "sentence": "The wait is over." },
+    { "type": "RESOLVE", "sentence": "A load answered." },
+    { "type": "REJECT", "sentence": "A load failed." }
+  ],
+  "transitions": [
+    { "from": "stopped", "event": "START", "to": "fetching" },
+    { "from": "finished", "event": "START", "to": "fetching" },
+    { "from": "*", "event": "STOP", "to": "stopped" },
+    { "from": "waiting", "event": "TICK", "to": "fetching" },
+    { "from": "backoff", "event": "TICK", "to": "fetching" },
+    { "from": "fetching", "event": "RESOLVE", "to": "waiting" },
+    { "from": "fetching", "event": "RESOLVE", "to": "finished" },
+    { "from": "fetching", "event": "REJECT", "to": "backoff" },
+    { "from": "fetching", "event": "REJECT", "to": "stopped" }
+  ],
+  "wraps": { "library": "@tanstack/query", "license": "MIT", "concept": "refetchInterval (a number, or false when done), enabled, retry with exponential back-off", "adapter": "The nextDelay output is what refetchInterval answers; a finished or stopped poll answers false." },
+  "testKit": { "file": "polling.test.ts", "runner": "node" },
+  "phrases": ["poll the status", "refresh every few seconds", "keep checking until it is done", "add polling", "auto refresh"],
+  "signals": [
+    { "id": "hand-interval", "all": ["setInterval\\("], "sentence": "This function loads data on a timer by hand." }
+  ],
+  "composes": []
+}

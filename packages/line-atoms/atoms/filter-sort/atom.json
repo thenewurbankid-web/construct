@@ -1,0 +1,56 @@
+{
+  "v": 1,
+  "id": "filter-sort",
+  "role": "list.filterSort",
+  "title": "Filter and sort",
+  "name": "filterSort",
+  "kind": "function",
+  "english": "Filter the list by its filters and a search, then sort it by one column.",
+  "inputs": [
+    { "name": "rows", "type": "T[]", "sentence": "The rows to show." },
+    { "name": "filters", "type": "Record<string, string | number | boolean | undefined>", "sentence": "One exact value per column; empty or all means no filter.", "optional": true },
+    { "name": "search", "type": "string", "sentence": "Text to look for, ignoring case.", "optional": true },
+    { "name": "searchFields", "type": "(keyof T)[]", "sentence": "The columns the search looks in.", "optional": true },
+    { "name": "sort", "type": "{id: string, desc: boolean} | null", "sentence": "The column to sort by and its direction.", "optional": true }
+  ],
+  "outputs": [
+    { "name": "rows", "type": "T[]", "sentence": "The rows the view shows, in order." },
+    { "name": "status", "type": "'unfiltered' | 'filtered'", "sentence": "Whether any filter or search is active." }
+  ],
+  "states": ["unfiltered", "filtered"],
+  "initial": "unfiltered",
+  "events": [
+    { "type": "SET_FILTER", "sentence": "The person picks a value for a filter." },
+    { "type": "CLEAR_FILTER", "sentence": "The person removes a filter." },
+    { "type": "SET_SEARCH", "sentence": "The person types in the search box." },
+    { "type": "SORT_BY", "sentence": "The person sorts by a column." },
+    { "type": "TOGGLE_SORT", "sentence": "The person clicks a column header to cycle its sort." },
+    { "type": "RESET", "sentence": "Every filter, the search and the sort are cleared." }
+  ],
+  "transitions": [
+    { "from": "unfiltered", "event": "SET_FILTER", "to": "filtered" },
+    { "from": "unfiltered", "event": "SET_FILTER", "to": "unfiltered" },
+    { "from": "filtered", "event": "SET_FILTER", "to": "filtered" },
+    { "from": "filtered", "event": "SET_FILTER", "to": "unfiltered" },
+    { "from": "filtered", "event": "CLEAR_FILTER", "to": "unfiltered" },
+    { "from": "filtered", "event": "CLEAR_FILTER", "to": "filtered" },
+    { "from": "unfiltered", "event": "CLEAR_FILTER", "to": "unfiltered" },
+    { "from": "unfiltered", "event": "SET_SEARCH", "to": "filtered" },
+    { "from": "unfiltered", "event": "SET_SEARCH", "to": "unfiltered" },
+    { "from": "filtered", "event": "SET_SEARCH", "to": "filtered" },
+    { "from": "filtered", "event": "SET_SEARCH", "to": "unfiltered" },
+    { "from": "unfiltered", "event": "SORT_BY", "to": "unfiltered" },
+    { "from": "filtered", "event": "SORT_BY", "to": "filtered" },
+    { "from": "unfiltered", "event": "TOGGLE_SORT", "to": "unfiltered" },
+    { "from": "filtered", "event": "TOGGLE_SORT", "to": "filtered" },
+    { "from": "*", "event": "RESET", "to": "unfiltered" }
+  ],
+  "wraps": { "library": "@tanstack/table", "license": "MIT", "concept": "columnFilters, globalFilter, sorting [{id, desc}], getFilteredRowModel, getSortedRowModel", "adapter": "The view's sort is one entry of TanStack Table's sorting state and its filters are columnFilters keyed by column id." },
+  "testKit": { "file": "filter-sort.test.ts", "runner": "node" },
+  "phrases": ["add a filter", "filter the list by category", "add a search box", "search the list by name", "sort the list", "filter and sort", "sort by price"],
+  "signals": [
+    { "id": "hand-filter-sort", "all": ["\\.filter\\(", "\\.sort\\("], "any": ["toLowerCase\\(\\)", "localeCompare\\(", "sortBy|sortKey|sortOrder|sortDir|sortOption"], "sentence": "This function filters and sorts a list by hand." },
+    { "id": "hand-search", "all": ["\\.filter\\(", "toLowerCase\\(\\)\\s*\\.\\s*includes\\("], "sentence": "This function searches a list by hand, ignoring case." }
+  ],
+  "composes": []
+}

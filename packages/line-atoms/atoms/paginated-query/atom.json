@@ -1,0 +1,59 @@
+{
+  "v": 1,
+  "id": "paginated-query",
+  "role": "query.paginate",
+  "title": "Paginated query",
+  "name": "loadPage",
+  "kind": "function",
+  "english": "Load one page of data from the server and keep the previous page on screen while the next one loads.",
+  "inputs": [
+    { "name": "load", "type": "(req: {pageIndex, pageSize, offset}) => Promise<{items: T[], total: number}>", "sentence": "What loads one page from the server." },
+    { "name": "pageSize", "type": "number", "sentence": "How many items a page holds.", "optional": true },
+    { "name": "pageIndex", "type": "number", "sentence": "The page to start on, counting from zero.", "optional": true }
+  ],
+  "outputs": [
+    { "name": "items", "type": "T[]", "sentence": "The items of the page on screen." },
+    { "name": "total", "type": "number", "sentence": "How many items the server has." },
+    { "name": "placeholder", "type": "boolean", "sentence": "Whether the items on screen are the previous page while the next one loads." },
+    { "name": "hasNextPage", "type": "boolean", "sentence": "Whether there is a next page." },
+    { "name": "status", "type": "'pending' | 'success' | 'error'", "sentence": "Where the query stands." }
+  ],
+  "states": ["pending", "success", "error"],
+  "initial": "pending",
+  "events": [
+    { "type": "FETCH", "sentence": "The page asked for starts loading." },
+    { "type": "RESOLVE", "sentence": "A page arrived." },
+    { "type": "REJECT", "sentence": "Loading a page failed." },
+    { "type": "NEXT", "sentence": "The person goes to the next page." },
+    { "type": "PREVIOUS", "sentence": "The person goes back a page." },
+    { "type": "GO_TO", "sentence": "The person picks a page." },
+    { "type": "SET_PAGE_SIZE", "sentence": "The person changes how many items a page shows." }
+  ],
+  "transitions": [
+    { "from": "pending", "event": "FETCH", "to": "pending" },
+    { "from": "success", "event": "FETCH", "to": "success" },
+    { "from": "error", "event": "FETCH", "to": "error" },
+    { "from": "pending", "event": "RESOLVE", "to": "success" },
+    { "from": "success", "event": "RESOLVE", "to": "success" },
+    { "from": "error", "event": "RESOLVE", "to": "success" },
+    { "from": "pending", "event": "REJECT", "to": "error" },
+    { "from": "success", "event": "REJECT", "to": "error" },
+    { "from": "error", "event": "REJECT", "to": "error" },
+    { "from": "success", "event": "NEXT", "to": "success" },
+    { "from": "error", "event": "NEXT", "to": "error" },
+    { "from": "success", "event": "PREVIOUS", "to": "success" },
+    { "from": "error", "event": "PREVIOUS", "to": "error" },
+    { "from": "success", "event": "GO_TO", "to": "success" },
+    { "from": "error", "event": "GO_TO", "to": "error" },
+    { "from": "pending", "event": "SET_PAGE_SIZE", "to": "pending" },
+    { "from": "success", "event": "SET_PAGE_SIZE", "to": "success" },
+    { "from": "error", "event": "SET_PAGE_SIZE", "to": "error" }
+  ],
+  "wraps": { "library": "@tanstack/query + @tanstack/table", "license": "MIT", "concept": "useQuery with placeholderData keepPreviousData and isPlaceholderData; pagination state {pageIndex, pageSize}", "adapter": "The load input is the query function; pageRequest gives the query key parts and placeholder mirrors isPlaceholderData." },
+  "testKit": { "file": "paginated-query.test.ts", "runner": "node" },
+  "phrases": ["add a paginated list", "load the list page by page", "server side pagination", "paginated query", "fetch one page at a time", "add a paginated table"],
+  "signals": [
+    { "id": "hand-paged-fetch", "all": ["\\b(page|pageIndex|currentPage|pageNumber)\\b", "\\b(fetch|axios\\.get|get\\w*|load\\w*)\\(", "\\btotal\\w*\\b"], "any": ["pageSize|perPage|limit|PAGE_SIZE", "offset"], "sentence": "This function loads data one page at a time by hand." }
+  ],
+  "composes": ["client-pagination", "async-status"]
+}

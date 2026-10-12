@@ -1,0 +1,48 @@
+{
+  "v": 1,
+  "id": "infinite-list",
+  "role": "query.infinite",
+  "title": "Infinite list",
+  "name": "loadMore",
+  "kind": "function",
+  "english": "Load the next page of items when the person reaches the end of the list, one page at a time.",
+  "inputs": [
+    { "name": "load", "type": "(cursor: string | number | null) => Promise<{items: T[], nextCursor: string | number | null}>", "sentence": "What loads the page after a cursor." }
+  ],
+  "outputs": [
+    { "name": "items", "type": "T[]", "sentence": "Every loaded item, page after page." },
+    { "name": "hasNextPage", "type": "boolean", "sentence": "Whether there is more to load." },
+    { "name": "isFetchingNextPage", "type": "boolean", "sentence": "Whether the next page is loading now." },
+    { "name": "status", "type": "'pending' | 'success' | 'error'", "sentence": "Where the list stands." }
+  ],
+  "states": ["pending", "success", "error"],
+  "initial": "pending",
+  "events": [
+    { "type": "FETCH_FIRST", "sentence": "The first page starts loading, or the list is refreshed." },
+    { "type": "FETCH_NEXT", "sentence": "The next page starts loading." },
+    { "type": "RESOLVE", "sentence": "A page arrived." },
+    { "type": "REJECT", "sentence": "Loading a page failed." },
+    { "type": "RESET", "sentence": "Every page is forgotten." }
+  ],
+  "transitions": [
+    { "from": "pending", "event": "FETCH_FIRST", "to": "pending" },
+    { "from": "success", "event": "FETCH_FIRST", "to": "pending" },
+    { "from": "error", "event": "FETCH_FIRST", "to": "pending" },
+    { "from": "success", "event": "FETCH_NEXT", "to": "success" },
+    { "from": "error", "event": "FETCH_NEXT", "to": "error" },
+    { "from": "pending", "event": "RESOLVE", "to": "success" },
+    { "from": "success", "event": "RESOLVE", "to": "success" },
+    { "from": "error", "event": "RESOLVE", "to": "success" },
+    { "from": "pending", "event": "REJECT", "to": "error" },
+    { "from": "success", "event": "REJECT", "to": "error" },
+    { "from": "error", "event": "REJECT", "to": "error" },
+    { "from": "*", "event": "RESET", "to": "pending" }
+  ],
+  "wraps": { "library": "@tanstack/query", "license": "MIT", "concept": "useInfiniteQuery: pages, getNextPageParam, hasNextPage, fetchNextPage, isFetchingNextPage", "adapter": "The load input is the query function given the page param; each page's nextCursor is what getNextPageParam answers." },
+  "testKit": { "file": "infinite-list.test.ts", "runner": "node" },
+  "phrases": ["add infinite scroll", "load more when scrolling", "add a load more button", "infinite list", "endless scrolling list"],
+  "signals": [
+    { "id": "hand-load-more", "all": ["hasMore|hasNextPage|nextCursor|loadMore|nextPage"], "any": ["IntersectionObserver", "\\.\\.\\.\\s*prev\\w*", "concat\\("], "sentence": "This function appends the next page of items by hand." }
+  ],
+  "composes": []
+}
