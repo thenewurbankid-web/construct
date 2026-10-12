@@ -120,3 +120,64 @@ export function pickLabels(staticLabels, jevLabels, sw) {
   const sure = Boolean(c) && c.intent >= sw.gate && c.slot >= sw.gate && Object.values(c.layers).every((x) => /** @type {number} */ (x) >= sw.gate);
   return sw.on && jevLabels && sure ? { labels: jevLabels, used: true } : { labels: staticLabels, used: false };
 }
+
+// ------------------------------------------------------------------------------------------------ NLP arms (#903)
+// The beam's candidate readers (trace/src/beam/arms.mjs): static classify() is the default; each other arm has its own
+// step, off and unmeasured, and runs in shadow only when switched on for a project (or LINE_ARMS_SHADOW=1 / a list).
+
+/** Each arm's step profile (packages/core/ai-profiles.json). jev reuses construct.intent. */
+export const ARM_STEPS = Object.freeze({ static: null, lr: 'construct.intent-lr', nb: 'construct.intent-nb', spacy: 'construct.intent-spacy', jev: INTENT_STEP, nli: 'construct.intent-nli' });
+export const ARMS_SHADOW_FILE = 'drafter/arms-shadow.jsonl';
+
+/**
+ * Per arm: whether it runs in shadow, and whether it is ON (its readings join static's: profile on AND a measured win).
+ * @param {string} root @param {string} [stateDir]
+ * @returns {{shadow: string[], on: string[]}}
+ */
+export function armsSwitch(root, stateDir = 'line') {
+  /** @type {Record<string, any>} */
+  let own = {};
+  try { own = JSON.parse(fs.readFileSync(path.join(root, stateDir, PROJECT_PROFILES_FILE), 'utf8'))?.steps ?? {}; } catch { /* none */ }
+  /** @type {any[]} */
+  let profiles = [];
+  try { profiles = listStepProfiles(); } catch { profiles = []; }
+  const env = process.env.LINE_ARMS_SHADOW;
+  const envList = env === '1' ? Object.keys(ARM_STEPS) : env && env !== '0' ? env.split(',').map((x) => x.trim()) : [];
+  /** @type {string[]} */
+  const shadow = [];
+  /** @type {string[]} */
+  const on = [];
+  for (const [arm, step] of Object.entries(ARM_STEPS)) {
+    if (!step) continue;
+    const p = profiles.find((x) => x.step === step);
+    const isOn = p ? stepOnFor(p, projectStepOn(root, step, stateDir)) : false;
+    if (isOn) on.push(arm);
+    if (isOn || envList.includes(arm) || (env !== '0' && own[step]?.shadow === true)) shadow.push(arm);
+  }
+  return { shadow, on };
+}
+
+/**
+ * draft()'s hook for the arms: when any arm's shadow is on, read the request with every such arm in the background and
+ * log the readings beside static's (<state>/drafter/arms-shadow.jsonl). Off by default: no import, no network call,
+ * nothing written. Returns the pending promise (draft() does not wait); never throws, never rejects.
+ * @param {string} root
+ * @param {{request: string, normalized: any, slots: Record<string, any>, bindings?: Record<string, any>, catalog: any[], labels: any, map?: any, stateDir?: string}} ctx
+ * @param {{force?: boolean, arms?: string[], post?: any, baseUrl?: string, timeoutMs?: number}} [o]
+ * @returns {Promise<any>|null}
+ */
+export function runArmsShadow(root, ctx, o = {}) {
+  const stateDir = ctx.stateDir ?? 'line';
+  const sw = armsSwitch(root, stateDir);
+  if (!sw.shadow.length && !o.force) return null;
+  // A computed specifier: the engine's type check does not pull Trace in (Trace is optional here).
+  const spec = ['..', '..', '..', '..', 'trace', 'src', 'beam', 'arms.mjs'].join('/');
+  return import(spec)
+    .then(async (m) => {
+      const res = await m.readCandidates(ctx, { ...o, arms: ['static', ...(o.arms ?? sw.shadow)], on: sw.on });
+      const record = m.armsRecord(ctx, res);
+      try { writeLineState(root, `${stateDir}/${ARMS_SHADOW_FILE}`, `${JSON.stringify(record)}\n`, { append: true, stateDir }); } catch { /* never throws */ }
+      return record;
+    })
+    .catch(() => null);
+}

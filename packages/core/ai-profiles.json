@@ -71,6 +71,54 @@
       "ladder": { "static": { "target": 1 }, "options": { "on": false, "target": 0.8 }, "measured": null }
     },
     {
+      "step": "construct.intent-lr",
+      "label": "Proposes candidate readings of a request (intent, target, layers) with a logistic regression over the normalized request; logged beside the static rules, never used until it beats them.",
+      "kind": "decide",
+      "provider": "ollama",
+      "model": "scikit-learn logistic regression",
+      "modelFrom": "trained on the intent gold labels (trace/tools/jev/train_arms.py), in jev's sidecar",
+      "maxTokens": 1,
+      "source": "construct",
+      "question": "Which readings of the request are plausible?",
+      "ladder": { "static": { "target": 1 }, "options": { "on": false, "target": 0.8 }, "measured": null }
+    },
+    {
+      "step": "construct.intent-nb",
+      "label": "Proposes candidate readings of a request (intent, target, layers) with naive Bayes over the normalized request; logged beside the static rules, never used until it beats them.",
+      "kind": "decide",
+      "provider": "ollama",
+      "model": "scikit-learn naive Bayes",
+      "modelFrom": "trained on the intent gold labels (trace/tools/jev/train_arms.py), in jev's sidecar",
+      "maxTokens": 1,
+      "source": "construct",
+      "question": "Which readings of the request are plausible?",
+      "ladder": { "static": { "target": 1 }, "options": { "on": false, "target": 0.8 }, "measured": null }
+    },
+    {
+      "step": "construct.intent-spacy",
+      "label": "Proposes candidate readings of a request from a dependency parse (verb, object, destination) with the project's names as entities; logged beside the static rules, never used until it beats them.",
+      "kind": "decide",
+      "provider": "ollama",
+      "model": "spaCy en_core_web_sm",
+      "modelFrom": "spaCy's small English model (MIT), in jev's sidecar",
+      "maxTokens": 1,
+      "source": "construct",
+      "question": "Which readings of the request are plausible?",
+      "ladder": { "static": { "target": 1 }, "options": { "on": false, "target": 0.8 }, "measured": null }
+    },
+    {
+      "step": "construct.intent-nli",
+      "label": "Proposes candidate readings of a request by zero-shot entailment over the closed labels; logged beside the static rules, never used until it beats them.",
+      "kind": "decide",
+      "provider": "ollama",
+      "model": "xtremedistil-l6-h256-zeroshot",
+      "modelFrom": "a small NLI model (MIT, 25 MB), in jev's sidecar",
+      "maxTokens": 1,
+      "source": "construct",
+      "question": "Which readings of the request are plausible?",
+      "ladder": { "static": { "target": 1 }, "options": { "on": false, "target": 0.8 }, "measured": null }
+    },
+    {
       "step": "trace.choose",
       "label": "Picks where one part of a page gets its data from, citing a fact that settles it.",
       "kind": "decide",
