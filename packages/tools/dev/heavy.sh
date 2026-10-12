@@ -12,7 +12,8 @@
 #      CONSTRUCT_HEAVY_LOCK_WAIT_SEC (default 3600: give up on the lock after this),
 #      CONSTRUCT_HEAVY_RAM_WAIT_SEC (default 1800: give up waiting for RAM after this),
 #      CONSTRUCT_HEAVY_POLL_SEC (default 15: pause between RAM checks),
-#      CONSTRUCT_HEAVY_TMP (default $TMPDIR or /tmp: where construct-* dirs are pruned).
+#      CONSTRUCT_HEAVY_TMP (default $TMPDIR or /tmp: where construct-* dirs are pruned),
+#      CONSTRUCT_HEAVY_MEMINFO / CONSTRUCT_HEAVY_VMSTAT (test overrides for the free-RAM probe).
 #
 # Exit status: the command's own; 75 (EX_TEMPFAIL) when the lock or the RAM never
 # came within the wait; 2 on usage.
@@ -153,8 +154,28 @@ if [ "$1" = "--prune-only" ]; then
   exit 0
 fi
 
+# Available RAM in MB, or nothing when this machine offers no way to tell (#854).
+#   Linux/Android: MemAvailable from /proc/meminfo.
+#   macOS (no /proc): (free + inactive + speculative) pages from `vm_stat`, times the page size
+#   its header states ("(page size of 16384 bytes)"). Inactive and speculative pages are what
+#   macOS reclaims on demand, the closest counterpart of Linux's MemAvailable.
+# Overridable for tests: CONSTRUCT_HEAVY_MEMINFO (a file read instead of /proc/meminfo) and
+# CONSTRUCT_HEAVY_VMSTAT (a command run instead of `vm_stat`).
+MEMINFO="${CONSTRUCT_HEAVY_MEMINFO:-/proc/meminfo}"
+VMSTAT="${CONSTRUCT_HEAVY_VMSTAT:-vm_stat}"
 free_mb() {
-  if [ -r /proc/meminfo ]; then awk '/MemAvailable/{print int($2/1024)}' /proc/meminfo; else echo ''; fi
+  if [ -r "$MEMINFO" ]; then
+    awk '/^MemAvailable:/{print int($2/1024); exit}' "$MEMINFO"
+    return
+  fi
+  if command -v "$VMSTAT" >/dev/null 2>&1; then
+    "$VMSTAT" 2>/dev/null | awk '
+      /page size of/ { for (i = 1; i <= NF; i++) if ($i == "of") ps = $(i + 1) + 0 }
+      /^Pages (free|inactive|speculative):/ { v = $NF; gsub(/[^0-9]/, "", v); pages += v; seen++ }
+      END { if (ps > 0 && seen > 0) printf "%d\n", pages * ps / 1048576 }'
+    return
+  fi
+  echo ''
 }
 
 [ "$HAVE_FLOCK" = 1 ] && exec 9>>"$LOCK"
@@ -171,7 +192,7 @@ while :; do
   fi
   free=$(free_mb)
   if [ -z "$free" ]; then
-    say "no /proc/meminfo here; running without the free-RAM check."
+    say "no /proc/meminfo or vm_stat here; running without the free-RAM check."
     break
   fi
   if [ "$free" -ge "$MIN_MB" ]; then break; fi
