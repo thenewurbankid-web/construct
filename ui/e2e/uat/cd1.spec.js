@@ -5,6 +5,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gotoCockpit } from '../tests/support/cockpit.js';
 import { openProject } from '../tests/support/browseProject.js';
+import { startUnderTheHood } from '../tests/support/lineModes.js';
+
+startUnderTheHood(test);
 
 // cd1 UAT walk (docs/line/review.md "cd1"): the owner's how-to, clicked through as a non-technical person would. Only
 // clicks and keys on the screen; the project is opened the way the other Line specs open it. Fails on any console

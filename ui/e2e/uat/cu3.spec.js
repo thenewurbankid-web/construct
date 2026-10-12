@@ -5,6 +5,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gotoCockpit } from '../tests/support/cockpit.js';
 import { openProject } from '../tests/support/browseProject.js';
+import { startUnderTheHood } from '../tests/support/lineModes.js';
+
+startUnderTheHood(test);
 
 // cu3 UAT walk (docs/line/review.md "cu3", To try it in Cockpit), as a non-technical owner: every Cockpit change is
 // one tool of Line's one registry. A change to project files waits in the Plan panel for your approval and nothing is

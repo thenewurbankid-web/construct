@@ -2,6 +2,9 @@ import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
 import path from 'node:path';
 import { clearWorkspace, clicker, closeProject, expectPlainEnglish, freshProject, openFromGate, screen, watchPage } from './support/uat.js';
+import { startUnderTheHood } from '../tests/support/lineModes.js';
+
+startUnderTheHood(test);
 
 // Owner walk, cp1 (every Line write is a plan step): open the Line sample, Components -> Badge -> Base on this ->
 // orders / StatusBadge -> Create; the Plan panel says it waits for approval and nothing is written; Approve saves it.

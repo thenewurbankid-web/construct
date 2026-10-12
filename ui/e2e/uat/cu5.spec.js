@@ -27,7 +27,7 @@ test('cu5 UAT on the Line sample: both bindings of a page, an action bound to th
   await goToScreen(page, 'Pages');
   await expect(page.getByRole('heading', { name: 'Which feature?' })).toBeVisible({ timeout: 30_000 });
   await pickFeature(page, 'orders');
-  await pageRow(page, 'OrdersPage').getByRole('button', { name: 'OrdersPage' }).click();
+  await pageRow(page, 'OrdersPage').getByRole('button', { name: 'OrdersPage', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'How OrdersPage is bound' })).toBeVisible({ timeout: 30_000 });
   await expect(row(page, 'ListPage').getByTestId('lp-binding-library')).toHaveText('The library page ListPage (pages/ListPage).');
   await expect(row(page, 'ListPage').getByTestId('lp-binding-action')).toHaveAttribute('data-resolution', 'unresolved');
@@ -47,7 +47,7 @@ test('cu5 UAT on the Line sample: both bindings of a page, an action bound to th
 
   // billing: OrderButton comes from another feature; bind it to the library Button (Bind, then Approve).
   await pickFeature(page, 'billing');
-  await pageRow(page, 'InvoicesPage').getByRole('button', { name: 'InvoicesPage' }).click({ timeout: 30_000 });
+  await pageRow(page, 'InvoicesPage').getByRole('button', { name: 'InvoicesPage', exact: true }).click({ timeout: 30_000 });
   const ob = row(page, 'OrderButton');
   await expect(ob.getByTestId('lp-binding-library')).toHaveText('OrderButton from the feature orders, based on the library Button.', { timeout: 30_000 });
   await ob.getByLabel('Library component').selectOption({ label: 'Button' });
@@ -88,7 +88,7 @@ test('cu5 UAT on contact-manager-ui: Trace\'s page map of a real Subframe page n
   await openSampleFromPicker(page);
   await goToScreen(page, 'Pages');
   await pickFeature(page, 'contacts');
-  await pageRow(page, 'ContactsPage').getByRole('button', { name: 'ContactsPage' }).click({ timeout: 30_000 });
+  await pageRow(page, 'ContactsPage').getByRole('button', { name: 'ContactsPage', exact: true }).click({ timeout: 30_000 });
   await expect(page.getByRole('heading', { name: 'How ContactsPage is bound' })).toBeVisible({ timeout: 30_000 });
   await expect(panel(page).getByTestId('lp-contract')).toHaveText('The API contract of contacts (openapi.json) has 4 endpoints.');
   await expect(row(page, 'TextField').getByTestId('lp-binding-library')).toHaveText('TextField comes from @/subframe/components/TextField, not from your library.');

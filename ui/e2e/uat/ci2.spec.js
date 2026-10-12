@@ -5,6 +5,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gotoCockpit } from '../tests/support/cockpit.js';
 import { openProject } from '../tests/support/browseProject.js';
+import { startUnderTheHood } from '../tests/support/lineModes.js';
+
+startUnderTheHood(test);
 
 // UAT walk for ci2 (docs/line/review.md "ci2", To try it in Cockpit), as a non-technical owner: open Import, follow the link
 // to the Import agent, type the folder, Start, read how much logic Line mapped, Approve the plan, waive the untested units

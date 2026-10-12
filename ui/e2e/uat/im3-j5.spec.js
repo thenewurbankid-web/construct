@@ -6,6 +6,9 @@ import { fileURLToPath } from 'node:url';
 import { gotoCockpit } from '../tests/support/cockpit.js';
 import { openProject } from '../tests/support/browseProject.js';
 import { runAxe, isBlocking, format } from '../tests/support/axe.js';
+import { startUnderTheHood } from '../tests/support/lineModes.js';
+
+startUnderTheHood(test);
 
 // Pre-UAT walk of docs/line/review.md "im3 + j5" (memory of past answers per step), in a real browser on the real server
 // (playwright.line-memory.config.js sets LINE_DRAFTER=1). On a copy of examples/line-sample (import-samples'

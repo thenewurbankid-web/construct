@@ -5,6 +5,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gotoCockpit } from '../tests/support/cockpit.js';
 import { openProject } from '../tests/support/browseProject.js';
+import { startUnderTheHood } from '../tests/support/lineModes.js';
+
+startUnderTheHood(test);
 
 // UAT walk, Expressions (System 1 groundwork), as a non-technical owner: in Cockpit, Base on adds a step; Approve runs
 // it and Line keeps a training record of it that holds no project name. Then a second step is added, the project

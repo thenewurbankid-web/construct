@@ -5,6 +5,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gotoCockpit } from '../tests/support/cockpit.js';
 import { openProject } from '../tests/support/browseProject.js';
+import { startUnderTheHood } from '../tests/support/lineModes.js';
+
+startUnderTheHood(test);
 
 // UAT walk for cw1 (docs/line/review.md, "cw1", To try it in Cockpit), as a non-technical owner: only clicks and
 // typing in the browser, counting the clicks each decision takes (at most two), and failing on any console error or

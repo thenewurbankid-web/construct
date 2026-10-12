@@ -43,7 +43,7 @@ export function BindingPanel({ pageName, state, busy, outcome, onBindPart, onBin
             <li data-testid="lp-coverage">{coverageSentence(state.binding)}</li>
             {state.binding.note && <li data-testid="lp-binding-note">{state.binding.note}</li>}
           </ul>
-          <div className="lp-binding-scroll">
+          <div className="lp-binding-scroll" tabIndex={0} role="region" aria-label="Bindings of this page">
             <table className="lp-binding-table" data-testid="lp-binding-table">
               <thead>
                 <tr>

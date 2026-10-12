@@ -5,6 +5,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gotoCockpit } from '../tests/support/cockpit.js';
 import { openProject } from '../tests/support/browseProject.js';
+import { startUnderTheHood } from '../tests/support/lineModes.js';
+
+startUnderTheHood(test);
 
 // Pre-UAT walk of docs/line/review.md "System 1 drafter" as a non-technical owner would do it, in a real browser on the
 // real server (playwright.line-drafter.config.js sets LINE_DRAFTER=1). Fails on any console error or 4xx/5xx answer,

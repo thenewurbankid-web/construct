@@ -5,6 +5,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gotoCockpit } from '../tests/support/cockpit.js';
 import { openProject } from '../tests/support/browseProject.js';
+import { startUnderTheHood } from '../tests/support/lineModes.js';
+
+startUnderTheHood(test);
 
 // Pre-UAT walk of docs/line/review.md "im1 + im2", as the owner does it, on the real server with the drafter on
 // (playwright.im1-im2.config.js sets LINE_DRAFTER=1). On a copy of examples/line-sample: the import sample

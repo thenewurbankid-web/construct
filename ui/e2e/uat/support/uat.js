@@ -80,6 +80,16 @@ export const test = base.extend({
       allowed.push(entry);
       return () => allowed.splice(allowed.indexOf(entry), 1);
     };
+    // Owner decision (12 Oct): Cockpit opens in Chat until the person picks a mode. The walks are for the regular
+    // screens, so each starts Under the hood, as a person who picked it once with the switch (tests/support/lineModes.js
+    // startUnderTheHood); a walk that switches modes itself keeps its own choice.
+    await page.addInitScript(() => {
+      try {
+        if (!window.localStorage.getItem('cockpit.mode')) window.localStorage.setItem('cockpit.mode', 'hood');
+      } catch {
+        // Storage blocked: the screen opens in Chat.
+      }
+    });
     await use(page);
     const overlay = await page.locator('[data-nextjs-dialog], [data-nextjs-dialog-overlay]').count().catch(() => 0);
     if (overlay) problems.push('the Next.js error overlay is showing');

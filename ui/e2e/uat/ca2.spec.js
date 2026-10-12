@@ -2,6 +2,9 @@ import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
 import path from 'node:path';
 import { clearWorkspace, clicker, closeProject, expectPlainEnglish, freshProject, openFromGate, screen, watchPage } from './support/uat.js';
+import { startUnderTheHood } from '../tests/support/lineModes.js';
+
+startUnderTheHood(test);
 
 // Owner walk, ca2 (review.md "ca2 screen" UAT): open the sample, Components -> InvoiceCard -> Apply (expect "Saved." and
 // 1 problem); Pages -> billing -> InvoicesPage -> Apply (expect "Fine", no problems). Each fix is a plan step the click

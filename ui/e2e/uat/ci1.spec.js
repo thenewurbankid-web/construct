@@ -2,6 +2,9 @@ import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
 import path from 'node:path';
 import { clearWorkspace, clicker, closeProject, expectPlainEnglish, freshProject, openFromGate, watchPage } from './support/uat.js';
+import { startUnderTheHood } from '../tests/support/lineModes.js';
+
+startUnderTheHood(test);
 
 // Owner walk, ci1 (review.md "ci1" UAT, on examples/import-sample instead of a max-ai-ui copy): open the app (it has
 // only `version: 1` as its architecture.yml), find Import from the Features screen, folder src/alerts, Read folder,

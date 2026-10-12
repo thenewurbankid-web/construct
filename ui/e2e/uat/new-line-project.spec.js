@@ -2,6 +2,9 @@ import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
 import path from 'node:path';
 import { WS, clearWorkspace, clicker, closeProject, expectPlainEnglish, screen, watchPage } from './support/uat.js';
+import { startUnderTheHood } from '../tests/support/lineModes.js';
+
+startUnderTheHood(test);
 
 // Owner walk, new Line project (cu7): from "Your projects", New project tab -> name "shop" -> Next -> Line project
 // (chosen), first feature "catalog" under More options -> Next -> Create. Expect it opened on Features with catalog "All fine", then a first change through the plan:

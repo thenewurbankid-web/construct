@@ -6,6 +6,9 @@ import { fileURLToPath } from 'node:url';
 import { gotoCockpit } from '../tests/support/cockpit.js';
 import { openProject } from '../tests/support/browseProject.js';
 import { checkSentence, splitSentences } from '../../../packages/summarize/index.mjs';
+import { startUnderTheHood } from '../tests/support/lineModes.js';
+
+startUnderTheHood(test);
 
 // cs1 owner UAT (docs/line/review.md, "cs1", "To try it in Cockpit"), walked as a non-technical owner: open the Line
 // sample, base a new component on a library item, read the Plan panel (plain English first, technical part under a
