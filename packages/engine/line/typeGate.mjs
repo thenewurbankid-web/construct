@@ -17,6 +17,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { ts } from '@construct/ast/lazy';
 import { LineOpError } from './contract.mjs';
+import { pageTitleOf } from './featureText.mjs';
 
 /** Above this the check is too slow to block a save; its errors then ride along as warnings (as setFragment does). */
 export const TYPE_GATE_BUDGET_MS = 4000;
@@ -249,6 +250,30 @@ function repoint(code, from, to) {
   return code.replace(new RegExp(`(\\bfrom\\s*|\\bimport\\s*\\(?\\s*)(['"])${esc}\\2`, 'g'), (_m, lead, q) => `${lead}${q}${to}${q}`);
 }
 
+/** #906: props a page fills with its title (the rest of the required string props get their own name). */
+const TITLE_PROPS = new Set(['title', 'heading', 'label', 'name']);
+/** The props a bare render misses: TS2741 ("Property 'title' is missing ...") and TS2739/TS2740 ("... properties from type 'X': a, b"). */
+function missingProps(errors) {
+  const out = [];
+  for (const e of errors) {
+    if (e.code === 'TS2741') { const p = /Property '([\w$]+)' is missing/.exec(e.message)?.[1]; if (p) out.push(p); }
+    if (e.code === 'TS2739' || e.code === 'TS2740') {
+      const list = /missing the following properties from type '.*': ([^\n]+)$/m.exec(e.message)?.[1] ?? '';
+      if (/ more\b/.test(list)) return [];
+      out.push(...list.split(',').map((s) => s.trim().replace(/[.]$/, '')).filter((s) => /^[\w$]+$/.test(s)));
+    }
+  }
+  return [...new Set(out)];
+}
+/** The feature a file belongs to (features/<name>/...), or null. */
+const featureOf = (layout, file) => (file.startsWith(`${layout.features}/`) ? file.slice(layout.features.length + 1).split('/')[0] : null);
+/** The spec.md of the feature `file` belongs to, or null. */
+function readSpecOf(root, layout, file) {
+  const f = featureOf(layout, file);
+  if (!f) return null;
+  try { return fs.readFileSync(path.join(root, layout.features, f, 'spec.md'), 'utf8'); } catch { return null; }
+}
+
 /**
  * Typed fixes for the type errors of one written file: an import that does not resolve (TS2307) or names an export the
  * module lacks (TS2305, TS2724) is re-pointed at the library or own-feature file that has it, as a line.setCode step
@@ -297,10 +322,27 @@ export function importFixes(root, layout, file, code, contentHash, errors) {
       let fixed = code.replace(m[0], m[0].replace(/\([\s\S]*\)$/, '()')).replace(spread, '');
       const typeImport = /^import\s+type\s*\{\s*ComponentProps\s*\}\s*from\s*['"]react['"];?[ \t]*\n/m;
       if (spreads && !/\bComponentProps\b/.test(fixed.replace(typeImport, ''))) fixed = fixed.replace(typeImport, '');
-      // Rendered bare, a library page whose props are required does not compile: no fix then (its content is the
-      // builder's to write with line.setCode), never one that line.setCode would refuse next.
+      // Rendered bare, a library page whose props are required does not compile. #906 (data-qwen3-4b-r1 call 34): the
+      // page then passes its required string props itself, the title from the feature's spec.md (pageTitleOf), each
+      // other one its own name; the fix is offered only when that compiles, never one that line.setCode would refuse.
+      let filled = null;
       const bare = spreads ? typeCheckStaged(root, [{ path: file, content: fixed }]) : null;
-      if (!bare || !bare.errors.length) out.unshift({ id: 'TYPE_ERROR/route-props', sentence: `Make ${m[1]} take no props (${spreads ? `it only passes ${m[2]} on` : `it does not use ${m[2]}`}), so its route can serve it.`, step: { tool: 'line.setCode', args: { file, code: fixed, ...(contentHash ? { contentHash } : {}) } } });
+      if (bare?.errors.length) {
+        const props = missingProps(bare.errors.filter((e) => e.file === file));
+        const tag = new RegExp(`<([A-Z][\\w$.]*)\\s*\\{\\s*\\.\\.\\.${esc}\\s*\\}\\s*/>`).exec(code)?.[1];
+        if (props.length && tag) {
+          const title = pageTitleOf(readSpecOf(root, layout, file), featureOf(layout, file) ?? m[1]);
+          const values = props.map((p) => [p, TITLE_PROPS.has(p) ? title : p.charAt(0).toUpperCase() + p.slice(1)]);
+          const attrs = values.map(([p, v]) => `${p}=${JSON.stringify(v)}`).join(' ');
+          const withProps = fixed.replace(new RegExp(`<${tag.replace(/[$.]/g, '\\$&')}\\s*/>`), `<${tag} ${attrs} />`);
+          const check = withProps !== fixed ? typeCheckStaged(root, [{ path: file, content: withProps }]) : null;
+          if (check && !check.errors.length) { fixed = withProps; filled = values; }
+        }
+      }
+      if (!bare || !bare.errors.length || filled) {
+        const how = filled ? `and pass ${filled.map(([p, v]) => `${p}="${v}"`).join(', ')} to the library page itself${filled.some(([p]) => TITLE_PROPS.has(p)) ? ' (the title from the spec)' : ''}` : `(${spreads ? `it only passes ${m[2]} on` : `it does not use ${m[2]}`})`;
+        out.unshift({ id: 'TYPE_ERROR/route-props', sentence: `Make ${m[1]} take no props ${how}, so its route can serve it.`, step: { tool: 'line.setCode', args: { file, code: fixed, ...(contentHash ? { contentHash } : {}) } } });
+      }
     }
   }
   if (out.length < 2) return out;

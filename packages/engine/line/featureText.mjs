@@ -133,3 +133,24 @@ export function coverSpec(stories, { itemNames, testTitles }) {
 export function testTitles(src) {
   return [...String(src).matchAll(/\b(?:test|it)(?:\.\w+)*\s*\(\s*(['"`])((?:(?!\1).)+)\1/g)].map((m) => m[2]);
 }
+
+const capital = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+/**
+ * #906: the title a page of a feature shows, from its spec.md alone (no model): a quoted heading or title an acceptance
+ * point names ('has the heading "Your cart"'), else the thing the first story wants ("browse and search the products,
+ * so that ..." -> "Products"), else the feature's name ("order-history" -> "Order history").
+ * @param {string|null} text The spec.md text (null when the feature has none).
+ * @param {string} feature The feature's name.
+ * @returns {string}
+ */
+export function pageTitleOf(text, feature) {
+  const stories = text ? parseSpec(text) : [];
+  for (const p of stories.flatMap((s) => s.points)) {
+    const m = /\b(?:heading|title)\s+(?:is\s+)?"([^"]{1,60})"/i.exec(p.text);
+    if (m) return m[1];
+  }
+  const want = /\bI want (?:to )?(.+?)(?:,\s*so that\b|$)/i.exec(stories[0]?.text ?? '')?.[1] ?? '';
+  const thing = /\b(?:the|all|my|your|their)\s+([a-z][a-z-]*)\s*$/i.exec(want.replace(/[.?!]$/, ''))?.[1];
+  if (thing) return capital(thing.toLowerCase());
+  return capital(String(feature).replace(/-/g, ' '));
+}

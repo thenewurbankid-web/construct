@@ -302,14 +302,18 @@ test('ROUTE_PROPS on line.addRoute: a line.baseOn wrapper served at a route is r
     assert.equal(routed.ok, true, routed.sentence);
     assert.equal((await runOne(svc)).state, 'done');
     assert.match(read(root, 'app/page.tsx'), /export \{ HomePage as default \}/);
-    // A library page whose props are required: rendered bare it would not compile, so no fix is offered (the page's
-    // content is the builder's to write), but the route is still refused.
+    // #906: a library page whose props are required: rendered bare it would not compile, so the fix passes its required
+    // string props itself (the title from the spec, the rest their own name), type-checked before it is offered.
     await addApproved(svc, 'line.baseOn', { libraryId: 'pages/ListPage', feature: 'home', name: 'ListView' });
     assert.equal((await runOne(svc)).state, 'done');
     const listed = /** @type {any} */ (await svc.addStep({ tool: 'line.addRoute', args: { route: '/list', page: 'features/home/pages/ListView.tsx' }, why: WHY }, 'agent'));
     assert.equal(listed.code, 'TYPE_ERROR');
     assert.match(listed.sentence, /ListView is served at a route \(app\/list\/page\.tsx\)/);
-    assert.equal(listed.fixes, undefined);
+    assert.equal(listed.fixes[0].id, 'TYPE_ERROR/route-props');
+    assert.equal(listed.fixes[0].step.args.file, 'features/home/pages/ListView.tsx');
+    assert.match(listed.fixes[0].step.args.code, /export function ListView\(\) \{\n {2}return <ListPage title="Home" first="First" \/>;/);
+    assert.match(listed.fixes[0].sentence, /^Make ListView take no props and pass title="Home", first="First" to the library page itself \(the title from the spec\)/);
+    await fixLands(svc, listed);
   } finally { done(); }
 });
 
