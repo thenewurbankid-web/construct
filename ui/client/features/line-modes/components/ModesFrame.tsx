@@ -1,6 +1,4 @@
-'use client';
-
-import { useEffect, useState, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { ChatEntry } from '@/lib/ChatEntry';
 import type { ChatEntryProps } from '@/lib/lineChat';
 import type { Crumb, LineMode, ModeScreenId } from '@/lib/lineModes';
@@ -20,36 +18,15 @@ type ModesFrameProps = {
   open: string | null;
   /** The screen's regular view at the current place. */
   view: ReactNode;
+  /** Under the hood: whether the chat helper is hidden, and the toggle. */
+  hidden: boolean;
+  onToggleHidden: () => void;
 };
-
-const HIDDEN_KEY = 'cockpit.mode.chatHidden';
-
-function useChatHidden(): [boolean, () => void] {
-  const [hidden, setHidden] = useState(false);
-  useEffect(() => {
-    try {
-      setHidden(window.localStorage.getItem(HIDDEN_KEY) === '1');
-    } catch {
-      // Storage blocked: the chat starts shown.
-    }
-  }, []);
-  const toggle = () =>
-    setHidden((h) => {
-      try {
-        window.localStorage.setItem(HIDDEN_KEY, h ? '0' : '1');
-      } catch {
-        // Storage blocked: the choice lasts until the tab closes.
-      }
-      return !h;
-    });
-  return [hidden, toggle];
-}
 
 /** Two modes around one screen. Chat: the breadcrumb, then a full-screen chat (lib/ChatEntry.tsx) with the screen's
  * options; once something is open, the screen's view fills the page and the chat is a side panel. Under the hood: the
  * screen's view with the same chat beside it as a helper the person can hide. */
-export function ModesFrame({ screen, mode, crumbs, onCrumb, chat, open, view }: ModesFrameProps) {
-  const [hidden, toggleHidden] = useChatHidden();
+export function ModesFrame({ screen, mode, crumbs, onCrumb, chat, open, view, hidden, onToggleHidden }: ModesFrameProps) {
   if (mode === 'chat') {
     return (
       <div className="lm" data-mode="chat" data-screen={screen} data-testid="lm-screen">
@@ -62,7 +39,7 @@ export function ModesFrame({ screen, mode, crumbs, onCrumb, chat, open, view }: 
   }
   return (
     <div className="lm" data-mode="hood" data-screen={screen} data-chat={hidden ? 'hidden' : 'shown'} data-testid="lm-screen">
-      <button type="button" className="lm-chat-toggle" data-testid="lm-chat-toggle" data-line-control="shell.chatToggle" aria-expanded={!hidden} onClick={toggleHidden}>
+      <button type="button" className="lm-chat-toggle" data-testid="lm-chat-toggle" data-line-control="shell.chatToggle" aria-expanded={!hidden} onClick={onToggleHidden}>
         {hidden ? 'Show the chat' : 'Hide the chat'}
       </button>
       <ChatEntry {...chat} selected="hood">

@@ -14,4 +14,16 @@ export * from './controllers/ScreenModesController';
 export * from './hooks/useScreenChat';
 
 /** The frame itself (switch-aware layout, breadcrumb, chat helper), for a screen that keeps its own chat (Features, cd1). */
-export * from './components/ModesFrame';
+export * from './controllers/ModesFrameController';
+
+/** A screen's mode, its default for the switch, and what a crumb does. */
+export * from './hooks/useScreenModes';
+
+/** Tells the shell's switch a screen's default mode (for a screen that renders its own frame, like Features). */
+export * from './hooks/useScreenDefault';
+
+/** Under the hood: whether the person hid the chat helper. */
+export * from './hooks/useChatHidden';
+
+/** The shapes passed between the hooks and the page. */
+export type * from './types';

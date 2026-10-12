@@ -1,20 +1,17 @@
 'use client';
 
 import { useCallback, useState, type ReactElement, type ReactNode } from 'react';
-import { useLineMode, useScreenDefault } from '@/features/line-modes';
 import { LinePlanController, useLinePlan } from '@/features/line-plan';
 import { LineTraceController } from '@/features/line-trace';
 import { LineWorkflowsTab } from '@/features/line-workflows';
 import { isLineMock } from '@/lib/lineMode';
-import { crumbTarget, crumbsOf, effectiveMode } from '@/lib/lineModes';
-import { FEATURES_MODES } from '../domain/FeaturesModes';
-import { featuresPlace } from '../domain/FeaturesPlace';
 import { useFeatureChat } from '../hooks/useFeatureChat';
+import { useFeaturesModes } from '../hooks/useFeaturesModes';
 import { useLineFeatures } from '../hooks/useLineFeatures';
 import { FeaturesScreenPage } from '../pages/FeaturesScreenPage';
 import { FeaturesSwitchPage } from '../pages/FeaturesSwitchPage';
 import { mockAddStep } from '../services/LineFeaturesApi';
-import type { Crumb, LineFeaturesView } from '../types';
+import type { LineFeaturesView } from '../types';
 
 type Screen = ReactElement<{ stage?: ReactNode }>;
 
@@ -28,19 +25,7 @@ function LineScreen({ view, screen }: { view: LineFeaturesView; screen: Screen }
   const landed = useCallback(() => { reload(); setRevision((r) => r + 1); }, [reload]);
   const plan = useLinePlan(landed);
   const chat = useFeatureChat(view, isLineMock() ? mockAddStep : plan.addStep);
-  const { stored, setMode } = useLineMode();
-  useScreenDefault(FEATURES_MODES.defaultMode);
-  const mode = effectiveMode(stored, FEATURES_MODES.defaultMode);
-  const crumbs = crumbsOf(FEATURES_MODES, featuresPlace(view.feature, view.item, view.part));
-  // A crumb: Under the hood at exactly that place (the same feature, item and part selected, the rest closed).
-  const onCrumb = (crumb: Crumb) => {
-    const target = crumbTarget(crumb);
-    const [feature, item, part] = target.place.steps.map((s) => s.id);
-    view.choose(feature ?? null);
-    if (item) view.chooseItem(item);
-    if (part) view.choosePart(part);
-    setMode(target.mode);
-  };
+  const { mode, crumbs, onCrumb } = useFeaturesModes(view);
   // One Plan panel per screen: the Workflows tab adds its steps to this screen's plan (the panel beside the chat).
   const workflows = view.feature && view.tab === 'workflows' ? <LineWorkflowsTab key={view.feature} feature={view.feature} addStep={plan.addStep} revision={revision} /> : null;
   const stage = <FeaturesSwitchPage view={view} chat={chat} plan={<LinePlanController plan={plan} />} workflows={workflows} trace={<LineTraceController screen="features" steps={plan.steps} />} mode={mode} crumbs={crumbs} onCrumb={onCrumb} />;

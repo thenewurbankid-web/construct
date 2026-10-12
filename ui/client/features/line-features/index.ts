@@ -11,3 +11,6 @@ export * from './hooks/useLineFeatures';
 
 /** cd1: the Features chat (options, messages, picks, the name question; create and fix add plan steps). */
 export * from './hooks/useFeatureChat';
+
+/** Two modes on Features: the mode, the breadcrumb and what a crumb does. */
+export * from './hooks/useFeaturesModes';

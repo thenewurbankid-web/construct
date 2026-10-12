@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { optionsAt, upOption } from '@/lib/lineModes';
-import { FEATURES_MODES, featuresAnswer, featuresIntro, featuresOptions } from '../domain/FeaturesModes';
+import { featuresAnswer, featuresIntro, featuresOptions } from '../domain/FeaturesModes';
+import { FEATURES_MODES } from '../domain/FeaturesProvider';
 import { featuresPlace } from '../domain/FeaturesPlace';
 import { fixPick, fixStep } from '../domain/FixActions';
 import { basePick, nameAsk } from '../domain/ItemActions';
@@ -137,5 +138,6 @@ export function useFeatureChat(view: LineFeaturesView, addStep: AddPlanStep): Fe
   const deep = item && data ? { ...featuresIntro(place, data), id: 'intro', from: 'line' as const } : null;
   const intro = deep ?? (feature ? itemIntro(feature) : project ? listIntro(project) : null);
   const messages = intro ? [intro, ...log] : log;
-  return { options, messages, ask, busy, onOption, onPick, onAnswer, onCancelAsk: () => setAsk(null) };
+  const title = feature ? `Ask about ${feature}` : 'Features';
+  return { title, options, messages, ask, busy, onOption, onPick, onAnswer, onCancelAsk: () => setAsk(null) };
 }

@@ -1,10 +1,9 @@
 'use client';
 
-import { useEffect, type ReactNode } from 'react';
-import { crumbTarget, effectiveMode, type Crumb, type Place, type ScreenChatProvider } from '@/lib/lineModes';
-import { ModesFrame } from '../components/ModesFrame';
-import { useLineMode } from '../hooks/useLineMode';
-import { useScreenChat } from '../hooks/useScreenChat';
+import type { ReactNode } from 'react';
+import type { Place, ScreenChatProvider } from '@/lib/lineModes';
+import { useScreenModes } from '../hooks/useScreenModes';
+import { ScreenModesPage } from '../pages/ScreenModesPage';
 
 type ScreenModesProps<D> = {
   provider: ScreenChatProvider<D>;
@@ -21,53 +20,9 @@ type ScreenModesProps<D> = {
   onPlace?: (place: Place) => void;
 };
 
-/** Tells the shell's switch which mode this screen shows until the person picks one. */
-export function useScreenDefault(mode: 'chat' | 'hood') {
-  const { setScreenDefault } = useLineMode();
-  useEffect(() => {
-    setScreenDefault(mode);
-    return () => setScreenDefault(null);
-  }, [mode, setScreenDefault]);
-}
-
-/** Two modes for one screen, driven by its provider (lib/lineModes.ts). The place lives in the URL; when the chat (or a
- * crumb) moves it, the screen's view remounts and reads the URL, so Under the hood opens exactly there. */
+/** Two modes for one screen, driven by its provider (lib/lineModes.ts): Chat (breadcrumb, full-screen chat, a pick
+ * opens the item with the chat beside it) and Under the hood (the screen with the chat as a helper). */
 export function ScreenModesController<D>({ provider, data, hood, onOption, footer, onPlace }: ScreenModesProps<D>) {
-  const { stored, setMode } = useLineMode();
-  useScreenDefault(provider.defaultMode);
-  const mode = effectiveMode(stored, provider.defaultMode);
-  const chat = useScreenChat(provider, data, onOption, onPlace);
-  const anchor = chat ? (provider.anchor?.(chat.place) ?? null) : null;
-  useEffect(() => {
-    if (!anchor) return;
-    const frame = window.requestAnimationFrame(() => {
-      document.querySelectorAll('[data-lm-open]').forEach((el) => el.removeAttribute('data-lm-open'));
-      const el = document.getElementById(anchor);
-      el?.setAttribute('data-lm-open', 'true');
-      el?.scrollIntoView({ block: 'start' });
-    });
-    return () => window.cancelAnimationFrame(frame);
-  }, [anchor, mode, chat?.navKey]);
-  if (!chat) return <>{hood}</>;
-  const onCrumb = (crumb: Crumb) => {
-    const target = crumbTarget(crumb);
-    chat.go(target.place);
-    setMode(target.mode);
-  };
-  const last = chat.place.steps.at(-1);
-  return (
-    <ModesFrame
-      screen={provider.screen}
-      mode={mode}
-      crumbs={chat.crumbs}
-      onCrumb={onCrumb}
-      chat={{ title: provider.label, testId: 'lm-chat-entry', options: chat.options, messages: chat.messages, onOption: chat.onOption, onPick: chat.onPick, footer }}
-      open={last ? last.id : null}
-      view={
-        <div key={chat.navKey} className="lm-hood-view" data-testid="lm-hood-view">
-          {hood}
-        </div>
-      }
-    />
-  );
+  const modes = useScreenModes(provider, data, onOption, onPlace);
+  return <ScreenModesPage screen={provider.screen} title={provider.label} modes={modes} footer={footer} hood={hood} />;
 }

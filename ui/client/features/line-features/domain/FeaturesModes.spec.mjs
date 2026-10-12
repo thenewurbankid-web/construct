@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createMockLineOps } from '../../../../../packages/engine/line/mock.mjs';
 import { crumbTarget, crumbsOf, optionsAt, placeFromSearch, providerProblems } from '../../../lib/lineModes.ts';
-import { FEATURES_MODES as P, featuresAnswer, featuresOptions } from './FeaturesModes.ts';
+import { featuresAnswer, featuresOptions } from './FeaturesModes.ts';
+import { FEATURES_MODES as P } from './FeaturesProvider.ts';
 import { featuresPlace } from './FeaturesPlace.ts';
 import { pageValues } from './PageValues.ts';
 

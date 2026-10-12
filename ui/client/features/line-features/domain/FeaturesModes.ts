@@ -2,7 +2,7 @@
 // as ?feature=, ?item= and ?part= ("Features › orders › OrdersPage › title"). The full-screen and feature options are
 // cd1's own (ChatOptions.ts, answered by useFeatureChat); this adds opening an item and a part, so the chat (and its
 // breadcrumb) can go one level deeper. Pure; tested by FeaturesModes.spec.mjs.
-import type { ChatAnswer, ChatOption, LineProject, Place, ScreenChatProvider } from '../types';
+import type { ChatAnswer, ChatOption, LineProject, Place } from '../types';
 import { LIST_OPTIONS, itemOptions } from './ChatOptions.ts';
 import { listIntro } from './ListAnswers.ts';
 
@@ -70,15 +70,3 @@ export function featuresIntro(place: Place, data: FeaturesModeData): ChatAnswer 
   const intro = listIntro(data.project);
   return { text: intro.text, pick: intro.pick };
 }
-
-/** The Features screen's provider (cd1's chat first: Features opens in chat mode until the person picks a mode). */
-export const FEATURES_MODES: ScreenChatProvider<FeaturesModeData> = {
-  screen: 'features',
-  label: 'Features',
-  href: '/',
-  params: ['feature', 'item', 'part'],
-  defaultMode: 'chat',
-  options: (place, data) => featuresOptions(place, data),
-  answer: featuresAnswer,
-  intro: featuresIntro,
-};

@@ -62,6 +62,8 @@ export type LineFeaturesApi = Pick<LineHttp, 'getProject' | 'getFeature'> & Part
 
 /** cd1: the Features chat as the screen renders it (lib/ChatEntry.tsx props, built by useFeatureChat). */
 export type FeatureChatView = {
+  /** The chat's heading: "Ask about <feature>", or Features. */
+  title: string;
   options: ChatOption[];
   messages: ChatMessage[];
   ask: ChatAsk | null;

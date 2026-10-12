@@ -10,3 +10,6 @@ export * from './controllers/ProjectGateController';
 /** Fetches project status and runs init-here — used by
  * ProjectGateController; exported for direct reuse/testing. */
 export * from './hooks/useProjectGate';
+
+/** Two modes on "Open a project": what the chat reads and Reopen / the sample. */
+export * from './hooks/useOpenModes';

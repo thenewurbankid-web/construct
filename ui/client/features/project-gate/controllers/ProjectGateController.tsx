@@ -2,10 +2,10 @@
 
 import type { ReactNode } from 'react';
 import { ScreenModesController } from '@/features/line-modes';
-import type { Place } from '@/lib/lineModes';
 import { CloneController } from '@/features/clone';
 import { NewProjectController } from '@/features/new-project';
 import { DirectoryBrowserController, useWorkspaceFolder } from '@/features/directory-browser';
+import { useOpenModes } from '../hooks/useOpenModes';
 import { useProjectGate } from '../hooks/useProjectGate';
 import { OPEN_MODES } from '../domain/OpenModes';
 import { ProjectGatePage } from '../pages/ProjectGatePage';
@@ -27,13 +27,8 @@ export function ProjectGateController({ children }: { children: ReactNode }) {
   const sample = useWorkspaceFolder(SAMPLE_FOLDER);
   const { status, initializing, error, loadError, opening, openError, refresh, handleInit, handleOpen } = useProjectGate();
   const samplePath = sample.state === 'found' ? sample.path : null;
-  const lastProject = status?.lastProject ?? null;
-  // Two modes: Reopen and the sample open a project at once, through the same handler as the screen's buttons.
-  const onOption = (optionId: string, _place: Place) => {
-    if (optionId === 'open.reopen' && lastProject) handleOpen(lastProject);
-    if (optionId === 'open.sample' && samplePath) handleOpen(samplePath);
-  };
-  const frameNoProject = (screen: ReactNode) => <ScreenModesController provider={OPEN_MODES} data={{ workspaceRoot: status?.workspaceRoot ?? null, lastProject, samplePath }} hood={screen} onOption={onOption} />;
+  const modes = useOpenModes(status?.workspaceRoot ?? null, status?.lastProject ?? null, samplePath, handleOpen);
+  const frameNoProject = (screen: ReactNode) => <ScreenModesController provider={OPEN_MODES} data={modes.data} hood={screen} onOption={modes.onOption} />;
   return (
     <ProjectGatePage
       status={status}

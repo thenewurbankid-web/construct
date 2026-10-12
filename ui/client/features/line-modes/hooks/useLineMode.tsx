@@ -2,7 +2,8 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useAuthSession } from '@/features/auth';
-import { effectiveMode, modeKey, parseMode, type LineMode } from '@/lib/lineModes';
+import { effectiveMode, modeKey, type LineMode } from '@/lib/lineModes';
+import { readMode, writeMode } from '../services/ModeStore';
 
 /** The person's mode (null until they pick one with the switch) and the mounted screen's default. */
 export type LineModeValue = {
@@ -16,22 +17,6 @@ export type LineModeValue = {
 const NONE: LineModeValue = { stored: null, mode: 'hood', setMode: () => {}, setScreenDefault: () => {} };
 const LineModeContext = createContext<LineModeValue>(NONE);
 
-function read(key: string): LineMode | null {
-  try {
-    return parseMode(window.localStorage.getItem(key));
-  } catch {
-    return null;
-  }
-}
-
-function write(key: string, mode: LineMode) {
-  try {
-    window.localStorage.setItem(key, mode);
-  } catch {
-    // Storage blocked: the choice lasts until the tab closes.
-  }
-}
-
 /** Two modes: the person's mode for every screen, remembered per signed-in login (one key per login in this browser;
  * a local Cockpit with no sign-in has one person). Mount once, around the shell. */
 export function LineModeProvider({ children }: { children: ReactNode }) {
@@ -39,11 +24,11 @@ export function LineModeProvider({ children }: { children: ReactNode }) {
   const key = modeKey(session?.user?.login ?? null);
   const [stored, setStored] = useState<LineMode | null>(null);
   const [screenDefault, setScreenDefault] = useState<LineMode | null>(null);
-  useEffect(() => setStored(read(key)), [key]);
+  useEffect(() => setStored(readMode(key)), [key]);
   const setMode = useCallback(
     (mode: LineMode) => {
       setStored(mode);
-      write(key, mode);
+      writeMode(key, mode);
     },
     [key],
   );

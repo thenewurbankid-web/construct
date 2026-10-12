@@ -12,6 +12,16 @@ function ItemName({ row }: { row: ItemRow }) {
   );
 }
 
+/** Two modes: the part of this item a chat pick or a breadcrumb crumb opened. */
+function OpenPart({ part }: { part: string | null }) {
+  if (!part) return null;
+  return (
+    <p className="lf-open-part" data-testid="lf-open-part">
+      Open part: {part}
+    </p>
+  );
+}
+
 /** One item: its name, its library base, its status and, when it needs attention, each finding as a sentence. `open`
  * (two modes): the item the chat or a breadcrumb opened, with its open part. */
 export function ItemRowView({ row, open = false, part = null }: { row: ItemRow; open?: boolean; part?: string | null }) {
@@ -26,11 +36,7 @@ export function ItemRowView({ row, open = false, part = null }: { row: ItemRow; 
       <p className={`lf-base${row.base.ok ? '' : ' lf-base--problem'}`} data-testid="lf-item-base">
         {row.base.text}
       </p>
-      {part ? (
-        <p className="lf-open-part" data-testid="lf-open-part">
-          Open part: {part}
-        </p>
-      ) : null}
+      <OpenPart part={part} />
       <FindingList name={row.name} findings={row.findings} />
     </li>
   );

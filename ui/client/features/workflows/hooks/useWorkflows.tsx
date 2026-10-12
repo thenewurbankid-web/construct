@@ -5,7 +5,24 @@ import { useCanvasSelection } from './useCanvasSelection';
 import { useWorkflowEditor } from './useWorkflowEditor';
 import { useWorkflowNarrative } from './useWorkflowNarrative';
 import { getWorkflowFeatures, getWorkflowFiles, getWorkflowMachines } from '../services/WorkflowsApi';
-import { initialWorkflowsState, workflowsReducer } from '../workflows/Workflows';
+import { initialWorkflowsState, workflowsReducer, type WorkflowsAction } from '../workflows/Workflows';
+
+/** Reads one workflow file's machines into the screen's state (or its error). */
+function loadMachines(dispatch: (e: WorkflowsAction) => void, feature: string, file: string) {
+  getWorkflowMachines(feature, file).then((r) => {
+    if (r.ok === false || (r.error && !r.machines)) dispatch({ type: 'FILE_ERROR', error: r.error || 'Failed to read this workflow file.' });
+    else dispatch({ type: 'FILE_LOADED', loaded: r });
+  });
+}
+
+/** Two modes: open a feature and (optionally) one of its files in one go (a chat pick or a breadcrumb crumb). */
+async function openPlace(state: { feature: string; file: string }, setFeature: (f: string) => Promise<void>, dispatch: (e: WorkflowsAction) => void, feature: string, file: string) {
+  if (feature === state.feature && file === state.file) return;
+  if (feature !== state.feature) await setFeature(feature);
+  if (!feature || !file) return;
+  dispatch({ type: 'OPEN_FILE', file });
+  loadMachines(dispatch, feature, file);
+}
 
 /** Top-level browsing state for the Workflows screen — one feature -> one
  * workflows/ file -> that file's machines, re-extracted from the real
@@ -26,26 +43,14 @@ export function useWorkflows() {
     dispatch({ type: 'FILES_LOADED', files: listing.files ?? [] });
   }
 
-  function loadFile(feature: string, file: string) {
-    getWorkflowMachines(feature, file).then((r) => {
-      if (r.ok === false || (r.error && !r.machines)) dispatch({ type: 'FILE_ERROR', error: r.error || 'Failed to read this workflow file.' });
-      else dispatch({ type: 'FILE_LOADED', loaded: r });
-    });
-  }
+  const loadFile = (feature: string, file: string) => loadMachines(dispatch, feature, file);
 
   function openFile(file: string) {
     dispatch({ type: 'OPEN_FILE', file });
     loadFile(state.feature, file);
   }
 
-  /** Two modes: open a feature and (optionally) one of its files in one go (a chat pick or a breadcrumb crumb). */
-  async function goTo(feature: string, file: string) {
-    if (feature === state.feature && file === state.file) return;
-    if (feature !== state.feature) await setFeature(feature);
-    if (!feature || !file) return;
-    dispatch({ type: 'OPEN_FILE', file });
-    loadFile(feature, file);
-  }
+  const goTo = (feature: string, file: string) => openPlace(state, setFeature, dispatch, feature, file);
 
   function reload() {
     if (state.feature && state.file) loadFile(state.feature, state.file);
