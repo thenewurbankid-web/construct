@@ -89,7 +89,7 @@ export const ID_PREFIX = Object.freeze(/** @type {Record<GraphNodeKind, string>}
   item: 'item:', unit: 'unit:', feature: 'feature:', library: 'library', route: 'route:', endpoint: 'endpoint:', field: 'field:', table: 'table:', specPoint: 'spec:', finding: 'finding:', planStep: 'step:',
 }));
 /** The attrs a node may carry (closed): an item's area, feature, Line kind and classify layers; a unit's logic kind. */
-export const NODE_ATTRS = Object.freeze(['area', 'feature', 'itemKind', 'layers', 'unitKind', 'rule', 'severity']);
+export const NODE_ATTRS = Object.freeze(['area', 'feature', 'itemKind', 'level', 'layers', 'unitKind', 'rule', 'severity']);
 /** Where the graph is stored, under Line's state folder, through writeLineState. */
 export const GRAPH_DIR = 'line/graph';
 export const GRAPH_FILES = Object.freeze({ nodes: `${GRAPH_DIR}/nodes.jsonl`, edges: `${GRAPH_DIR}/edges.jsonl`, index: `${GRAPH_DIR}/index.json` });
@@ -230,8 +230,12 @@ export function assertLineGraph(g) {
   if (g.index.counts.edges !== g.edges.length) fail("The graph index's edge count", `be ${g.edges.length}`);
 }
 
-/** One edge's identity (its ends, type and evidence). */
-export const edgeKey = (/** @type {GraphEdge} */ e) => `${e.from}\u0000${e.type}\u0000${e.to}\u0000${'test' in e.evidence ? `test:${e.evidence.test}` : `${e.evidence.file}:${e.evidence.line}`}`;
+/**
+ * One edge's identity (its ends, type and evidence).
+ * @param {GraphEdge} e
+ * @returns {string}
+ */
+export const edgeKey = (e) => `${e.from}\u0000${e.type}\u0000${e.to}\u0000${'test' in e.evidence ? `test:${e.evidence.test}` : `${e.evidence.file}:${e.evidence.line}`}`;
 
 /**
  * The counts of a node and edge list (the index's form).

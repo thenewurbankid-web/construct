@@ -8,6 +8,8 @@
 //   construct line check [--dir <project>] <expr JSON> [--json]                       evaluate an expression on the project's facts
 //   construct line facts [--dir <project>]                                            the facts snapshot (JSON) expressions read
 //   construct line records [--dir <project>] [--json]                                 the plan records kept for training (logic only)
+//   construct line graph [--dir <project>] [--json]                                   build (incrementally) and store the Line graph
+//                                                                                     (writes only <state>/graph/, through writeLineState)
 import path from 'node:path';
 import { findProjectRoot } from './config.mjs';
 import { ConstructError, EXIT_CODES } from './diagnostics.mjs';
@@ -20,6 +22,7 @@ export const LINE_USAGE = [
   '  construct line check [--dir <project>] \'<expression JSON>\' [--json]',
   '  construct line facts [--dir <project>]',
   '  construct line records [--dir <project>] [--json]',
+  '  construct line graph [--dir <project>] [--json]',
 ].join('\n');
 
 const flag = (args, name) => { const i = args.indexOf(name); return i >= 0 && args[i + 1] && !args[i + 1].startsWith('--') ? args[i + 1] : undefined; };
@@ -101,6 +104,15 @@ export async function lineCommand(args) {
     else if (r.ok) console.log('Holds.');
     else for (const f of r.failed) console.log(f.sentence);
     if (!r.ok) process.exitCode = 1;
+    return;
+  }
+  if (verb === 'graph') {
+    const root = rootOf(rest);
+    const { buildLineGraph, graphSentence, graphFiles } = await import('@line/construct-engine/line/graph');
+    const { graph, stats, written } = buildLineGraph(root);
+    const sentence = graphSentence(graph, stats);
+    if (rest.includes('--json')) { console.log(JSON.stringify({ ok: true, sentence, files: graphFiles(root), written, stats, counts: graph.index.counts }, null, 2)); return; }
+    console.log(sentence);
     return;
   }
   if (verb === 'records') {
