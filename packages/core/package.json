@@ -54,6 +54,7 @@
     "./plugin-commands": "./plugin-commands.mjs",
     "./frozen": "./frozen.mjs",
     "./registry": "./registry.mjs",
+    "./line-decide": "./line-decide.mjs",
     "./profiles": "./profiles/index.mjs",
     "./prose": "./prose.mjs",
     "./fs": "./fs.mjs",

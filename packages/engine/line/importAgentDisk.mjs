@@ -9,6 +9,7 @@ import { folderRootOf } from './importTools.mjs';
 import { snapshotFolder, rollbackFolder } from './importUndo.mjs';
 import { createImportAgent } from './importAgent.mjs';
 import { createLogicOnDisk, writeFolderFile } from './importLoopDisk.mjs';
+import { createRepairer } from './repair.mjs';
 
 export { createImportAgent, nextState, decideWith, agentView, MAX_ROUNDS } from './importAgent.mjs';
 export { snapshotFolder, rollbackFolder, IMPORT_UNDO_FILE } from './importUndo.mjs';
@@ -53,6 +54,8 @@ export function createImportAgentOnDisk(o) {
     checkFolder: () => folderRootOf(o.root, o.folder),
     snapshot: snapshotFolder,
     rollback: rollbackFolder,
+    // im2: a refused fix jev picked gets one repair by the local 1.5B (Ollama down: the person decides, as before).
+    repair: createRepairer(o.root, { where: 'import' }),
     ...o,
   });
 }

@@ -16,7 +16,7 @@ const lower = (s) => String(s).charAt(0).toLowerCase() + String(s).slice(1);
 
 /**
  * An in-memory cp1 plan service (planService.mjs shape: view, addStep, approve, runNext) for import steps.
- * @param {{refuse?: (step: any, tries: number) => boolean, stopAfterFix?: boolean}} [o] `refuse(step, tries)` plants a refusal; `stopAfterFix` makes the retry after a fix pass no more checks (so the agent must ask).
+ * @param {{refuse?: (step: any, tries: number) => boolean, refuseFix?: (step: any, tries: number) => boolean, stopAfterFix?: boolean}} [o] `refuse(step, tries)` plants a refusal; `refuseFix` refuses a fix step (im2); `stopAfterFix` makes the retry after a fix pass no more checks (so the agent must ask).
  * @returns {any}
  */
 export function createMockPlanService(o = {}) {
@@ -65,6 +65,12 @@ export function createMockPlanService(o = {}) {
         s.state = 'needs-fix'; s.sentence = s.result.sentence;
         return ok();
       }
+      if (s.tool === 'line.import.fix' && o.refuseFix?.(s, t)) {
+        // im2: a refused fix (Construct refuses the fix step itself), so the one repair shows in mock mode and tests.
+        s.result = result(0, `Construct refused the fix: the library has no ${s.args.args?.libraryId ?? 'such item'}.`, { findings: [{ sentence: 'The library item does not exist.', rule: 'LINE-BASE', severity: 'error', file: s.args.args?.file ?? '', line: 1 }] });
+        s.state = 'needs-fix'; s.sentence = s.result.sentence;
+        return ok();
+      }
       s.result = s.tool === 'line.leaveAsIs' ? { left: s.args.stepId, sentence: 'Carried on; the step was left as it is.' } : result(2, `Saved. ${s.why}`);
       s.state = 'done'; s.sentence = s.result.sentence;
       if (o.stopAfterFix && s.tool === 'line.import.fix') tries.set('line.import.toFeature:AlertRow', 0);
@@ -97,7 +103,7 @@ export function createMockImportAgentService(o = {}) {
     if (folder !== 'src/alerts') throw new LineOpError(`The project has no folder "${folder}"; pick one of its folders.`, 'BAD_FOLDER');
     if (!agents.has(folder)) {
       agents.set(folder, createImportAgent({
-        root: '/mock/import-sample', folder, planService, store: createMemoryStore(), reason: o.reason ?? null, logic: 'logic' in o ? o.logic : createMockLogic(),
+        root: '/mock/import-sample', folder, planService, store: createMemoryStore(), reason: o.reason ?? null, repair: o.repair ?? null, logic: 'logic' in o ? o.logic : createMockLogic(),
         importOps: { scan: (_r, f) => ops.scan({ folder: f }), plan: (_r, f, answers) => ops.plan({ folder: f, answers }) },
         now: () => new Date(Date.UTC(2026, 9, 11, 9, 0, clock++)).toISOString(),
         verify: async () => ({ ok: true, checks: [

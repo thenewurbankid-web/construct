@@ -169,11 +169,15 @@ export function createDecider(setup = {}) {
    * @param {{ apply: (choice: string, decision: any) => Promise<{ ok: boolean, refusal?: { sentence: string, fixes: any[] } | null, score?: number }> | { ok: boolean, refusal?: any, score?: number }, maxRounds?: number }} run
    *   `apply` runs the choice (as a plan step, through Construct's writer) and answers ok, or the refusal with its typed
    *   fixes; `score` (higher is better; default 1 for ok, else minus the number of fixes left) decides "improved".
+   *   im2: with `optionOf(id)` (the option as a plan step {tool, args}) and `applyOption(option)` (apply a repaired
+   *   option the same way), a refused option Qwen or jev chose gets ONE repair by the local model (repairOnce); `repair`
+   *   passes {propose, schemaOf} through, or `false` turns it off. The attempt is kept on its round (`round.repair`).
    * @returns {Promise<import('../engine/line/contract.mjs').DecideLoopResult>}
    */
   async function decideUntilAccepted(step, options, context, run) {
     const maxRounds = Math.max(1, Math.min(run.maxRounds ?? 4, 8));
     const rounds = [];
+    let repaired = false;
     let ctx = { ...context, refusal: context?.refusal ?? null };
     let opts = options;
     for (;;) {
@@ -189,6 +193,20 @@ export function createDecider(setup = {}) {
       const prev = rounds.at(-1);
       rounds.push({ decision, ok: Boolean(r?.ok), score, refusal });
       if (r?.ok) return { outcome: 'accepted', rounds, question: null };
+      // im2: an option Qwen or jev chose was refused: the local model gets the exact error and makes ONE repair, which is
+      // applied (checked by Construct, waiting for approval like any step) once. Still refused: the person decides. The
+      // model not running leaves the static loop unchanged (the round says so).
+      const option = !repaired && run.optionOf && run.applyOption && run.repair !== false && (decision.via === 'jev' || decision.via === 'model') ? run.optionOf(decision.choice) : null;
+      if (option) {
+        repaired = true;
+        const attempt = await repairOnce(option, refusal, { ...(run.repair ?? {}), schema: run.repair?.schemaOf?.(option), check: (opt) => run.applyOption(opt, decision), profiles: setup.profiles });
+        rounds[rounds.length - 1] = { ...rounds.at(-1), repair: attempt };
+        if (attempt.outcome === 'repaired') return { outcome: 'accepted', rounds, question: null };
+        if (attempt.outcome !== 'no-model') {
+          const last = attempt.after ? { ...attempt.after, fixes: refusal.fixes ?? [] } : refusal;
+          return { outcome: 'ask', rounds, question: askQuestion(last, ctx, opts) };
+        }
+      }
       if (prev && score <= prev.score) return { outcome: 'ask', rounds, question: askQuestion(refusal, ctx, opts) };
       if (rounds.length >= maxRounds || !refusal.fixes?.length) return { outcome: 'ask', rounds, question: askQuestion(refusal, ctx, opts) };
       ctx = { ...ctx, refusal, suggestion: null };
@@ -208,6 +226,126 @@ function askQuestion(refusal, ctx, opts) {
   }
   const q = one(ctx?.question ?? 'Which option should Line take').replace(/[.?!]$/, '');
   return { sentence: `${q}?`, options: normalize(opts).map((o) => ({ id: o.id, sentence: sentence(o.label) })) };
+}
+
+// ------------------------------------------------------------------------------------------------- im2: one repair
+// When an option Qwen or jev chose fails Construct's check, the step's local model (construct.repair, the 1.5B) gets the
+// exact error -- the refusal sentence, the finding, the typed fixes -- and the option, and makes ONE repair attempt. Its
+// output is constrained to the option's schema (Ollama's `format` JSON Schema: the tool is fixed, the arguments are the
+// tool's own). The repaired option is checked again by the caller's `check` (Construct, on a copy or as a plan step that
+// still waits for approval); if it still fails, the person decides. Exactly one attempt; nothing is written here.
+
+export const REPAIR_STEP = 'construct.repair';
+const REPAIR_PLAN_ONLY = new Set(['expect', 'retry', 'fixOf']);
+
+/**
+ * The JSON Schema a repaired option must fit: the same tool, and the tool's own arguments (plan-only extras left out).
+ * @param {{tool: string}} option
+ * @param {any} [argsSchema] The tool's arguments schema (planTools.mjs lineToolSpecs); without it any object.
+ * @returns {any}
+ */
+export function optionSchema(option, argsSchema) {
+  const props = Object.fromEntries(Object.entries(argsSchema?.properties ?? {}).filter(([k]) => !REPAIR_PLAN_ONLY.has(k)));
+  const args = argsSchema ? { type: 'object', properties: props, required: (argsSchema.required ?? []).filter((k) => !REPAIR_PLAN_ONLY.has(k)), additionalProperties: false } : { type: 'object' };
+  return { type: 'object', properties: { tool: { type: 'string', enum: [option.tool] }, args }, required: ['tool', 'args'], additionalProperties: false };
+}
+
+/** Whether a value fits the (small) schema subset optionSchema emits: enum, type, required, no extra keys. */
+function fits(v, s) {
+  if (!s || typeof s !== 'object') return true;
+  if (s.enum && !s.enum.includes(v)) return false;
+  if (s.type === 'object') {
+    if (!v || typeof v !== 'object' || Array.isArray(v)) return false;
+    if ((s.required ?? []).some((k) => !(k in v))) return false;
+    if (s.additionalProperties === false && s.properties && Object.keys(v).some((k) => !(k in s.properties))) return false;
+    return Object.entries(s.properties ?? {}).every(([k, sub]) => !(k in v) || fits(v[k], sub));
+  }
+  if (s.type === 'string') return typeof v === 'string' && (s.minLength === undefined || v.length >= s.minLength);
+  if (s.type === 'integer') return Number.isInteger(v);
+  if (s.type === 'number') return typeof v === 'number';
+  if (s.type === 'boolean') return typeof v === 'boolean';
+  if (s.type === 'array') return Array.isArray(v) && (!s.items || v.every((x) => fits(x, s.items)));
+  if (Array.isArray(s.type)) return s.type.some((t) => fits(v, { ...s, type: t }));
+  return true;
+}
+
+/**
+ * The fixed repair prompt: only the error (refusal sentence, finding, typed fixes) and the option. No code, no files.
+ * @param {{tool: string, args: any}} option
+ * @param {{sentence: string, rule?: string|null, code?: string|null, finding?: string|null, fixes?: {id?: string, sentence: string, step?: any}[]}} refusal
+ * @returns {string}
+ */
+export function repairPrompt(option, refusal) {
+  const lines = [
+    'Construct refused this change.',
+    `Error: ${one(refusal.sentence)}`,
+  ];
+  if (refusal.rule || refusal.code) lines.push(`Finding: ${[refusal.rule, refusal.code].filter(Boolean).join(' ')}${refusal.finding ? `: ${one(refusal.finding)}` : ''}`);
+  (refusal.fixes ?? []).slice(0, 5).forEach((f, i) => lines.push(`Typed fix ${i + 1}: ${one(f.sentence)}${f.step ? ` ${JSON.stringify(f.step)}` : ''}`));
+  lines.push(`Change: ${JSON.stringify({ tool: option.tool, args: option.args })}`);
+  lines.push('The change above is wrong. Answer with the corrected change as JSON {"tool", "args"}: keep the tool, and change the argument the error names to a value the error or the fixes give.');
+  return lines.join('\n');
+}
+
+/**
+ * Ask a local model through Ollama, its output constrained to `schema` (Ollama's structured `format`).
+ * @param {{prompt: string, schema: any, model: string, maxTokens?: number, host?: string, fetch?: typeof fetch, timeoutMs?: number}} q
+ * @returns {Promise<string>} The model's reply (JSON text). Throws with `code: 'NO_MODEL'` when Ollama or the model is not there.
+ */
+export async function ollamaPropose(q) {
+  const host = (q.host ?? process.env.OLLAMA_HOST ?? 'http://127.0.0.1:11434').replace(/\/$/, '');
+  const f = q.fetch ?? fetch;
+  let res;
+  try {
+    res = await f(`${/^https?:/.test(host) ? host : `http://${host}`}/api/generate`, {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ model: q.model, prompt: q.prompt, format: q.schema, stream: false, options: { temperature: 0, num_predict: q.maxTokens ?? 300 } }),
+      signal: AbortSignal.timeout(q.timeoutMs ?? 60_000),
+    });
+  } catch (e) {
+    throw Object.assign(new Error(`Ollama is not running (${one(/** @type {any} */ (e)?.message ?? e).slice(0, 80)})`), { code: 'NO_MODEL' });
+  }
+  if (!res.ok) throw Object.assign(new Error(`Ollama answered ${res.status}${res.status === 404 ? `: the model ${q.model} is not installed` : ''}`), { code: 'NO_MODEL' });
+  const body = /** @type {any} */ (await res.json());
+  return String(body.response ?? '');
+}
+
+/**
+ * ONE repair of a refused option by the local model, then (with `check`) one more check by Construct.
+ * @param {{tool: string, args: Record<string, unknown>}} option The refused option (a plan step).
+ * @param {{sentence: string, rule?: string|null, code?: string|null, finding?: string|null, fixes?: any[]}} refusal Construct's refusal.
+ * @param {{ schema?: any, check?: (option: {tool: string, args: any}) => Promise<{ok: boolean, refusal?: any}> | {ok: boolean, refusal?: any},
+ *   propose?: (q: {prompt: string, schema: any, model: string, maxTokens: number}) => Promise<string>, profiles?: object, now?: () => number }} [o]
+ *   `schema`: the option's schema (optionSchema); `check`: Construct's check of the repaired option (no write before a
+ *   person approves); `propose`: the model call (default: Ollama with the construct.repair profile's model).
+ * @returns {Promise<import('../engine/line/contract.mjs').RepairAttempt>}
+ */
+export async function repairOnce(option, refusal, o = {}) {
+  const profile = stepProfile(REPAIR_STEP, o.profiles);
+  const model = profile.model ?? 'qwen2.5-coder:1.5b';
+  const schema = o.schema ?? optionSchema(option);
+  const now = o.now ?? Date.now;
+  const t0 = now();
+  const err = { sentence: sentence(refusal?.sentence ?? 'Construct refused the change.'), rule: refusal?.rule ?? null, code: refusal?.code ?? null, fixes: (refusal?.fixes ?? []).slice(0, 5).map((f) => ({ id: String(f.id ?? f.fixId ?? 'fix'), sentence: sentence(f.sentence ?? '') })) };
+  const done = (outcome, repaired, after, said) => ({ v: 1, step: REPAIR_STEP, model, attempts: 1, outcome, before: { tool: option.tool, args: option.args }, option: repaired, refusal: err, after: after ?? null, sentence: sentence(said), ms: Math.max(0, now() - t0) });
+  let text;
+  try {
+    text = await (o.propose ?? ((q) => ollamaPropose(q)))({ prompt: repairPrompt(option, refusal), schema, model, maxTokens: profile.maxTokens ?? 300 });
+  } catch (e) {
+    const no = /** @type {any} */ (e)?.code === 'NO_MODEL';
+    return { ...done('no-model', null, null, no ? `The local model ${model} is not running, so Line did not try a repair and the static path is unchanged` : `The repair could not run (${one(/** @type {any} */ (e)?.message ?? e).slice(0, 80)}), so the static path is unchanged`), attempts: 0 };
+  }
+  let parsed = null;
+  try { parsed = JSON.parse(String(text).trim().replace(/^```(?:json)?\s*|\s*```$/g, '')); } catch { parsed = null; }
+  if (!parsed || !fits(parsed, schema) || parsed.tool !== option.tool) return done('invalid', null, null, `The local model's repair did not fit the shape of a ${option.tool} step, so you decide`);
+  const repaired = { tool: option.tool, args: parsed.args };
+  if (JSON.stringify(repaired.args) === JSON.stringify(option.args)) return done('unchanged', null, null, 'The local model gave back the same change, so you decide');
+  if (!o.check) return done('proposed', repaired, null, 'The local model proposed one repair; Construct checks it before anything is written');
+  let r;
+  try { r = await o.check(repaired); } catch (e) { r = { ok: false, refusal: { sentence: one(/** @type {any} */ (e)?.message ?? e) || 'Construct refused it.' } }; }
+  if (r?.ok) return done('repaired', repaired, null, 'The local model repaired the change once from Construct\'s error, and Construct accepts it');
+  const again = r?.refusal ? { sentence: sentence(r.refusal.sentence ?? 'Construct refused it.'), rule: r.refusal.rule ?? null, code: r.refusal.code ?? null, fixes: [] } : { sentence: 'Construct refused it.', rule: null, code: null, fixes: [] };
+  return done('still-refused', repaired, again, `The local model's one repair was refused too (${again.sentence.replace(/[.!?]$/, '')}), so you decide`);
 }
 
 let shared = null;

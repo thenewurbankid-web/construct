@@ -10,6 +10,7 @@ import { draft as staticDraft, boundRoute } from './index.mjs';
 import { factsSummary } from '../facts.mjs';
 import { addSynonym } from './domainMap.mjs';
 import { toRecord, appendRecord, precedentsFromTraining } from './retrieval.mjs';
+import { createRepairer } from '../repair.mjs';
 
 /**
  * Whether the drafter is on (LINE_DRAFTER=1 or "on").
@@ -40,16 +41,45 @@ function routeView(d, r) {
   return {
     id: r.id, label: /** @type {any} */ (b).label, risk: /** @type {any} */ (b).risk, status: /** @type {any} */ (r.status), sentence, via: r.via, confidence: r.confidence,
     cost: r.cost, steps: /** @type {any} */ (b).steps, fix: r.refusal?.fix ? { sentence: r.refusal.fix.sentence } : null,
+    repair: r.repair ? { outcome: r.repair.outcome, sentence: r.repair.sentence } : null,
   };
+}
+
+/**
+ * im2: a route a model proposed (via "model") that Construct refused gets ONE repair from the exact error: the local
+ * model sees the refusal sentence, the finding and the typed fix, answers in the step's schema, and Construct checks the
+ * repaired step on a copy again. Repaired: the route is checked and can be added (a person still approves it). Still
+ * refused, or not repairable: it stays refused and the person decides. Only one-step routes; each route once.
+ * @param {any} d A draft (changed in place).
+ * @param {(option: any, refusal: any) => Promise<any>} repair createRepairer's function.
+ * @returns {Promise<any[]>} The attempts made.
+ */
+export async function repairModelRoutes(d, repair) {
+  const attempts = [];
+  for (const r of d.routes) {
+    if (r.via !== 'model' || r.repair || !['refused', 'failed'].includes(r.status)) continue;
+    const steps = /** @type {any} */ (boundRoute(d, r.id)).steps;
+    if (steps.length !== 1) continue;
+    const refusal = r.status === 'failed'
+      ? { sentence: `A check failed: ${String(r.failed?.[0] ?? 'a check did not hold')}`, rule: null, code: null, fixes: [] }
+      : { sentence: r.refusal?.sentence ?? 'Construct refused it.', rule: r.refusal?.rule ?? null, code: r.refusal?.code ?? null, fixes: r.refusal?.fix ? [{ id: r.refusal.fix.id ?? 'fix', sentence: r.refusal.fix.sentence, rank: 1, step: r.refusal.fix.step ?? null }] : [] };
+    const attempt = await repair(steps[0], refusal);
+    r.repair = attempt;
+    attempts.push(attempt);
+    if (attempt.outcome === 'repaired') Object.assign(r, { status: 'ok', steps: [attempt.option], refusal: null, failed: [] });
+  }
+  if (attempts.some((a) => a.outcome === 'repaired') && !d.recommended) d.recommended = d.routes.find((x) => x.status === 'ok')?.id ?? null;
+  return attempts;
 }
 
 /**
  * The drafter wired in front of one project's plan service.
  * @param {{root: string, plan: {addStep: (req: any, by: string) => Promise<any>, view: () => Promise<any>}, enabled?: boolean,
- *   draftFn?: (root: string, request: string) => any, record?: boolean}} o
+ *   draftFn?: (root: string, request: string) => any, record?: boolean, repair?: ((option: any, refusal: any) => Promise<any>) | false}} o
+ *   `repair` (im2): the one repair of a model's refused route (default: the local 1.5B through Ollama; false: off).
  * @returns {{status: () => {ok: true, on: boolean}, draft: (request: unknown) => Promise<any>, addRoute: (request: unknown, routeId: unknown, by: string, from?: unknown) => Promise<any>, answer: (word: unknown, key: unknown) => Promise<any>}}
  */
-export function createPlanDrafter({ root, plan, enabled = drafterEnabled(), draftFn = (r, q) => staticDraft(r, q, { precedents: precedentsFromTraining() }), record = true }) {
+export function createPlanDrafter({ root, plan, enabled = drafterEnabled(), draftFn = (r, q) => staticDraft(r, q, { precedents: precedentsFromTraining() }), record = true, repair = createRepairer(root, { where: 'drafter' }) }) {
   const cache = new Map();
   const off = () => refusal('DRAFTER_OFF', 'The drafter is off; start the server with LINE_DRAFTER=1 to turn it on.');
   const asRequest = (q) => (typeof q === 'string' ? q.trim().slice(0, 500) : '');
@@ -61,6 +91,7 @@ export function createPlanDrafter({ root, plan, enabled = drafterEnabled(), draf
     if (!request) return refusal('BAD_ARGS', 'Say what you want to change, for example "add a badge to the orders feature".');
     cache.delete(request);
     const d = get(request);
+    if (repair) await repairModelRoutes(d, repair);
     return {
       ok: true, on: true, request, normalized: d.request,
       intent: { id: d.labels.intent.id, confidence: d.labels.intent.confidence, inCatalog: d.labels.inCatalog },

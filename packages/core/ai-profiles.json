@@ -25,6 +25,16 @@
       "ladder": { "static": { "target": 1 }, "options": { "on": true, "target": 0.8 }, "review": { "on": false, "target": 0.7 }, "measured": "2026-10-11 qwen2.5-coder:1.5b: no feedback 6/10, refusal sentence 8/10, sentence and typed fixes 9/10" }
     },
     {
+      "step": "construct.repair",
+      "label": "When Construct refuses an option Qwen or jev chose, makes one repair from the exact error and its typed fixes; if Construct still refuses it, you decide.",
+      "kind": "draft",
+      "provider": "ollama",
+      "maxTokens": 300,
+      "source": "construct",
+      "guidance": "Construct refused this change. Change only what the error and its typed fixes say, and answer with the corrected change in the same shape.",
+      "ladder": { "static": { "target": 1 }, "options": { "on": false, "target": 0.6 }, "review": { "on": false, "target": 0.7 }, "measured": "2026-10-12 qwen2.5-coder:1.5b: one repair landed 7 of 20 seeded Train Line refusals (35%); 11 gave back the same change, 2 were refused again" }
+    },
+    {
       "step": "trace.choose",
       "label": "Picks where one part of a page gets its data from, citing a fact that settles it.",
       "kind": "decide",
