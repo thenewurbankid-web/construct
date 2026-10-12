@@ -225,3 +225,10 @@ This proves the logic given the layout values. Pixels and real geometry are chec
 - G's time targets met.
 
 Fixtures and expectations derived from those apps stay out of git.
+
+**Owner decisions on the contract (2026-10-12; built on `lv-contract` 9804c5b0):**
+1. Only exact layers can mark a unit "proven": canonical, round-trip, semantic-diff and Z3. A "same" result from a sampling layer gives "tested", even for a closed-set transform. The sampling layers are fast-check, isolated execution, runtime traces, the dev server and the browser.
+2. semantic-diff, Z3 and fast-check run at L0, because they don't load the app. G2 runtime traces run at L1.
+3. A canonical, round-trip or semantic-diff mismatch is decisive only when the edit claims closed-set transforms. On a hand edit, the next layer decides.
+4. Layout values come from the mined literals of both the before and after code.
+5. `UnitVerdict` also carries `transforms` (null for an edit outside the set) and `location.side`, plus the layers `none`, `round-trip`, `dev-server` and `browser`.
