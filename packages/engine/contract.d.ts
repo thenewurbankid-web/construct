@@ -6,6 +6,8 @@
 export * as impact from './impact.mjs';
 /** `@line/construct-engine/line/plan-service` */
 export * as linePlanService from './line/planService.mjs';
+/** `@line/construct-engine/line/spec-steps` */
+export * as lineSpecSteps from './line/seed/specSteps.mjs';
 /** `@line/construct-engine/line/spec` */
 export * as lineSpec from './line/spec.mjs';
 /** `@line/construct-engine/line/tool-registry` */
