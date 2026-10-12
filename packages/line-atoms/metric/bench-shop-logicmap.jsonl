@@ -1,0 +1,123 @@
+{"id":"app/layout.tsx#<module>:export:1","file":"app/layout.tsx","fn":"<module>","kind":"export","line":5,"detail":"const metadata"}
+{"id":"app/layout.tsx#<module>:export:2","file":"app/layout.tsx","fn":"<module>","kind":"export","line":7,"detail":"component RootLayout"}
+{"id":"features/cart/pages/CartPage.tsx#<module>:export:1","file":"features/cart/pages/CartPage.tsx","fn":"<module>","kind":"export","line":16,"detail":"component CartPage"}
+{"id":"features/cart/pages/CartPage.tsx#CartPage:branch:1","file":"features/cart/pages/CartPage.tsx","fn":"CartPage","kind":"branch","line":26,"detail":"if (items.length === 0)"}
+{"id":"features/cart/pages/CartPage.tsx#CartPage:handler:1","file":"features/cart/pages/CartPage.tsx","fn":"CartPage","kind":"handler","line":46,"detail":"onChange=(v) => { const n = Math.max(0, Math.floor(Number(v)) || 0); if (n === 0) removeI"}
+{"id":"features/cart/pages/CartPage.tsx#on:onChange:branch:1","file":"features/cart/pages/CartPage.tsx","fn":"on:onChange","kind":"branch","line":46,"detail":"if (n === 0)"}
+{"id":"features/cart/pages/CartPage.tsx#CartPage:handler:2","file":"features/cart/pages/CartPage.tsx","fn":"CartPage","kind":"handler","line":48,"detail":"onClick=() => removeItem(item.id)"}
+{"id":"features/catalog/pages/CatalogPage.tsx#<module>:export:1","file":"features/catalog/pages/CatalogPage.tsx","fn":"<module>","kind":"export","line":16,"detail":"component CatalogPage"}
+{"id":"features/catalog/pages/CatalogPage.tsx#CatalogPage:state:1","file":"features/catalog/pages/CatalogPage.tsx","fn":"CatalogPage","kind":"state","line":17,"detail":"[category, setCategory] = useState(\"all\")"}
+{"id":"features/catalog/pages/CatalogPage.tsx#CatalogPage:state:2","file":"features/catalog/pages/CatalogPage.tsx","fn":"CatalogPage","kind":"state","line":18,"detail":"[query, setQuery] = useState(\"\")"}
+{"id":"features/catalog/pages/CatalogPage.tsx#CatalogPage:derived:1","file":"features/catalog/pages/CatalogPage.tsx","fn":"CatalogPage","kind":"derived","line":20,"detail":"shown = useMemo, deps [category, query]"}
+{"id":"features/catalog/pages/CatalogPage.tsx#CatalogPage:handler:1","file":"features/catalog/pages/CatalogPage.tsx","fn":"CatalogPage","kind":"handler","line":26,"detail":"onValueChange=setCategory"}
+{"id":"features/catalog/pages/CatalogPage.tsx#CatalogPage:handler:2","file":"features/catalog/pages/CatalogPage.tsx","fn":"CatalogPage","kind":"handler","line":27,"detail":"onChange=setQuery"}
+{"id":"features/catalog/pages/CatalogPage.tsx#CatalogPage:branch:1","file":"features/catalog/pages/CatalogPage.tsx","fn":"CatalogPage","kind":"branch","line":33,"detail":"shown.length > 0 ? …"}
+{"id":"features/checkout/pages/CheckoutPage.tsx#<module>:export:1","file":"features/checkout/pages/CheckoutPage.tsx","fn":"<module>","kind":"export","line":23,"detail":"component CheckoutPage"}
+{"id":"features/checkout/pages/CheckoutPage.tsx#CheckoutPage:state:1","file":"features/checkout/pages/CheckoutPage.tsx","fn":"CheckoutPage","kind":"state","line":28,"detail":"[form, setForm] = useState(EMPTY)"}
+{"id":"features/checkout/pages/CheckoutPage.tsx#CheckoutPage:state:2","file":"features/checkout/pages/CheckoutPage.tsx","fn":"CheckoutPage","kind":"state","line":29,"detail":"[errors, setErrors] = useState({})"}
+{"id":"features/checkout/pages/CheckoutPage.tsx#CheckoutPage:branch:1","file":"features/checkout/pages/CheckoutPage.tsx","fn":"CheckoutPage","kind":"branch","line":37,"detail":"if (items.length === 0)"}
+{"id":"features/checkout/pages/CheckoutPage.tsx#submit:branch:1","file":"features/checkout/pages/CheckoutPage.tsx","fn":"submit","kind":"branch","line":48,"detail":"if (Object.keys(found).length > 0)"}
+{"id":"features/checkout/pages/CheckoutPage.tsx#submit:navigation:1","file":"features/checkout/pages/CheckoutPage.tsx","fn":"submit","kind":"navigation","line":50,"detail":"router.push(\"/order/confirmation\")"}
+{"id":"features/checkout/pages/CheckoutPage.tsx#CheckoutPage:handler:1","file":"features/checkout/pages/CheckoutPage.tsx","fn":"CheckoutPage","kind":"handler","line":55,"detail":"onSubmit=submit"}
+{"id":"features/checkout/pages/CheckoutPage.tsx#CheckoutPage:handler:2","file":"features/checkout/pages/CheckoutPage.tsx","fn":"CheckoutPage","kind":"handler","line":68,"detail":"onChange=field(\"fullName\")"}
+{"id":"features/checkout/pages/CheckoutPage.tsx#CheckoutPage:handler:3","file":"features/checkout/pages/CheckoutPage.tsx","fn":"CheckoutPage","kind":"handler","line":69,"detail":"onChange=field(\"email\")"}
+{"id":"features/checkout/pages/CheckoutPage.tsx#CheckoutPage:handler:4","file":"features/checkout/pages/CheckoutPage.tsx","fn":"CheckoutPage","kind":"handler","line":70,"detail":"onChange=field(\"address\")"}
+{"id":"features/checkout/pages/CheckoutPage.tsx#CheckoutPage:handler:5","file":"features/checkout/pages/CheckoutPage.tsx","fn":"CheckoutPage","kind":"handler","line":71,"detail":"onChange=field(\"city\")"}
+{"id":"features/checkout/pages/CheckoutPage.tsx#CheckoutPage:handler:6","file":"features/checkout/pages/CheckoutPage.tsx","fn":"CheckoutPage","kind":"handler","line":72,"detail":"onChange=field(\"postalCode\")"}
+{"id":"features/checkout/pages/CheckoutPage.tsx#CheckoutPage:handler:7","file":"features/checkout/pages/CheckoutPage.tsx","fn":"CheckoutPage","kind":"handler","line":73,"detail":"onCheckedChange=(v) => setForm((f) => ({ ...f, terms: v }))"}
+{"id":"features/checkout/pages/ConfirmationPage.tsx#<module>:export:1","file":"features/checkout/pages/ConfirmationPage.tsx","fn":"<module>","kind":"export","line":14,"detail":"component ConfirmationPage"}
+{"id":"features/checkout/pages/ConfirmationPage.tsx#ConfirmationPage:state:1","file":"features/checkout/pages/ConfirmationPage.tsx","fn":"ConfirmationPage","kind":"state","line":15,"detail":"[order, setOrder] = useState(null)"}
+{"id":"features/checkout/pages/ConfirmationPage.tsx#ConfirmationPage:effect:1","file":"features/checkout/pages/ConfirmationPage.tsx","fn":"ConfirmationPage","kind":"effect","line":17,"detail":"useEffect, deps []"}
+{"id":"features/checkout/pages/ConfirmationPage.tsx#ConfirmationPage:render-if:1","file":"features/checkout/pages/ConfirmationPage.tsx","fn":"ConfirmationPage","kind":"render-if","line":28,"detail":"order ? … : …"}
+{"id":"features/checkout/usecases/lastOrder.ts#<module>:export:1","file":"features/checkout/usecases/lastOrder.ts","fn":"<module>","kind":"export","line":4,"detail":"function lastOrder"}
+{"id":"features/product/pages/ProductPage.tsx#<module>:export:1","file":"features/product/pages/ProductPage.tsx","fn":"<module>","kind":"export","line":17,"detail":"component ProductPage"}
+{"id":"features/product/pages/ProductPage.tsx#ProductPage:url-read:1","file":"features/product/pages/ProductPage.tsx","fn":"ProductPage","kind":"url-read","line":19,"detail":"params.id"}
+{"id":"features/product/pages/ProductPage.tsx#ProductPage:state:1","file":"features/product/pages/ProductPage.tsx","fn":"ProductPage","kind":"state","line":21,"detail":"[quantity, setQuantity] = useState(\"1\")"}
+{"id":"features/product/pages/ProductPage.tsx#ProductPage:state:2","file":"features/product/pages/ProductPage.tsx","fn":"ProductPage","kind":"state","line":22,"detail":"[status, setStatus] = useState(\"\")"}
+{"id":"features/product/pages/ProductPage.tsx#ProductPage:branch:1","file":"features/product/pages/ProductPage.tsx","fn":"ProductPage","kind":"branch","line":29,"detail":"if (!product)"}
+{"id":"features/product/pages/ProductPage.tsx#ProductPage:handler:1","file":"features/product/pages/ProductPage.tsx","fn":"ProductPage","kind":"handler","line":40,"detail":"onChange=setQuantity"}
+{"id":"features/product/pages/ProductPage.tsx#ProductPage:handler:2","file":"features/product/pages/ProductPage.tsx","fn":"ProductPage","kind":"handler","line":41,"detail":"onClick=() => { addProductToCart(product.id, amount); setStatus(\"Added to cart\"); }"}
+{"id":"features/product/usecases/addProductToCart.ts#<module>:export:1","file":"features/product/usecases/addProductToCart.ts","fn":"<module>","kind":"export","line":4,"detail":"function addProductToCart"}
+{"id":"library/components/Button.tsx#<module>:export:1","file":"library/components/Button.tsx","fn":"<module>","kind":"export","line":22,"detail":"component Button"}
+{"id":"library/components/Button.tsx#Button:branch:1","file":"library/components/Button.tsx","fn":"Button","kind":"branch","line":23,"detail":"asChild ? …"}
+{"id":"library/components/Button.tsx#Button:branch:2","file":"library/components/Button.tsx","fn":"Button","kind":"branch","line":25,"detail":"asChild ? …"}
+{"id":"library/components/Button.tsx#Button:render-if:1","file":"library/components/Button.tsx","fn":"Button","kind":"render-if","line":26,"detail":"children ?? …"}
+{"id":"library/components/Card.tsx#<module>:export:1","file":"library/components/Card.tsx","fn":"<module>","kind":"export","line":13,"detail":"component Card"}
+{"id":"library/components/Card.tsx#Card:render-if:1","file":"library/components/Card.tsx","fn":"Card","kind":"render-if","line":16,"detail":"eyebrow ? … : …"}
+{"id":"library/components/Card.tsx#Card:render-if:2","file":"library/components/Card.tsx","fn":"Card","kind":"render-if","line":19,"detail":"footer ? … : …"}
+{"id":"library/components/CartLink.tsx#<module>:export:1","file":"library/components/CartLink.tsx","fn":"<module>","kind":"export","line":5,"detail":"component CartLink"}
+{"id":"library/components/Checkbox.tsx#<module>:export:1","file":"library/components/Checkbox.tsx","fn":"<module>","kind":"export","line":15,"detail":"component Checkbox"}
+{"id":"library/components/Checkbox.tsx#Checkbox:handler:1","file":"library/components/Checkbox.tsx","fn":"Checkbox","kind":"handler","line":20,"detail":"onCheckedChange=(v) => onCheckedChange(v === true)"}
+{"id":"library/components/Checkbox.tsx#Checkbox:branch:1","file":"library/components/Checkbox.tsx","fn":"Checkbox","kind":"branch","line":20,"detail":"error ? …"}
+{"id":"library/components/Checkbox.tsx#Checkbox:render-if:1","file":"library/components/Checkbox.tsx","fn":"Checkbox","kind":"render-if","line":25,"detail":"error ? … : …"}
+{"id":"library/components/Dialog.tsx#<module>:export:1","file":"library/components/Dialog.tsx","fn":"<module>","kind":"export","line":16,"detail":"component Dialog"}
+{"id":"library/components/Dialog.tsx#Dialog:handler:1","file":"library/components/Dialog.tsx","fn":"Dialog","kind":"handler","line":18,"detail":"onOpenChange=onOpenChange"}
+{"id":"library/components/Dialog.tsx#Dialog:render-if:1","file":"library/components/Dialog.tsx","fn":"Dialog","kind":"render-if","line":19,"detail":"trigger ? … : …"}
+{"id":"library/components/Dialog.tsx#Dialog:render-if:2","file":"library/components/Dialog.tsx","fn":"Dialog","kind":"render-if","line":24,"detail":"description ? … : …"}
+{"id":"library/components/Select.tsx#<module>:export:1","file":"library/components/Select.tsx","fn":"<module>","kind":"export","line":17,"detail":"component Select"}
+{"id":"library/components/Select.tsx#Select:handler:1","file":"library/components/Select.tsx","fn":"Select","kind":"handler","line":22,"detail":"onValueChange=onValueChange"}
+{"id":"library/components/TextField.tsx#<module>:export:1","file":"library/components/TextField.tsx","fn":"<module>","kind":"export","line":15,"detail":"component TextField"}
+{"id":"library/components/TextField.tsx#TextField:handler:1","file":"library/components/TextField.tsx","fn":"TextField","kind":"handler","line":26,"detail":"onChange=(e) => onChange?.(e.target.value)"}
+{"id":"library/components/TextField.tsx#TextField:branch:1","file":"library/components/TextField.tsx","fn":"TextField","kind":"branch","line":27,"detail":"error ? …"}
+{"id":"library/components/TextField.tsx#TextField:branch:2","file":"library/components/TextField.tsx","fn":"TextField","kind":"branch","line":28,"detail":"error ? …"}
+{"id":"library/components/TextField.tsx#TextField:render-if:1","file":"library/components/TextField.tsx","fn":"TextField","kind":"render-if","line":32,"detail":"error ? … : …"}
+{"id":"library/components/Toast.tsx#<module>:export:1","file":"library/components/Toast.tsx","fn":"<module>","kind":"export","line":11,"detail":"component ToastProvider"}
+{"id":"library/components/Toast.tsx#ToastProvider:state:1","file":"library/components/Toast.tsx","fn":"ToastProvider","kind":"state","line":12,"detail":"[notes, setNotes] = useState([])"}
+{"id":"library/components/Toast.tsx#ToastProvider:derived:1","file":"library/components/Toast.tsx","fn":"ToastProvider","kind":"derived","line":13,"detail":"show = useCallback, deps []"}
+{"id":"library/components/Toast.tsx#ToastProvider:handler:1","file":"library/components/Toast.tsx","fn":"ToastProvider","kind":"handler","line":21,"detail":"onOpenChange=(open) => { if (!open) setNotes((all) => all.filter((x) => x.id !== n.id)); }"}
+{"id":"library/components/Toast.tsx#on:onOpenChange:branch:1","file":"library/components/Toast.tsx","fn":"on:onOpenChange","kind":"branch","line":21,"detail":"if (!open)"}
+{"id":"library/components/Toast.tsx#ToastProvider:render-if:1","file":"library/components/Toast.tsx","fn":"ToastProvider","kind":"render-if","line":23,"detail":"n.description ? … : …"}
+{"id":"library/components/Toast.tsx#<module>:export:2","file":"library/components/Toast.tsx","fn":"<module>","kind":"export","line":32,"detail":"hook useToast"}
+{"id":"library/pages/DetailPage.tsx#<module>:export:1","file":"library/pages/DetailPage.tsx","fn":"<module>","kind":"export","line":12,"detail":"component DetailPage"}
+{"id":"library/pages/DetailPage.tsx#DetailPage:render-if:1","file":"library/pages/DetailPage.tsx","fn":"DetailPage","kind":"render-if","line":19,"detail":"aside ? … : …"}
+{"id":"library/pages/FormPage.tsx#<module>:export:1","file":"library/pages/FormPage.tsx","fn":"<module>","kind":"export","line":15,"detail":"component FormPage"}
+{"id":"library/pages/FormPage.tsx#FormPage:handler:1","file":"library/pages/FormPage.tsx","fn":"FormPage","kind":"handler","line":21,"detail":"onSubmit=submit"}
+{"id":"library/pages/FormPage.tsx#FormPage:render-if:1","file":"library/pages/FormPage.tsx","fn":"FormPage","kind":"render-if","line":25,"detail":"aside ? … : …"}
+{"id":"library/pages/ListPage.tsx#<module>:export:1","file":"library/pages/ListPage.tsx","fn":"<module>","kind":"export","line":13,"detail":"component ListPage"}
+{"id":"library/pages/ListPage.tsx#ListPage:render-if:1","file":"library/pages/ListPage.tsx","fn":"ListPage","kind":"render-if","line":17,"detail":"toolbar ? … : …"}
+{"id":"library/pages/ListPage.tsx#ListPage:render-if:2","file":"library/pages/ListPage.tsx","fn":"ListPage","kind":"render-if","line":18,"detail":"children ? … : …"}
+{"id":"library/services/cart.ts#<module>:export:1","file":"library/services/cart.ts","fn":"<module>","kind":"export","line":7,"detail":"function readCart"}
+{"id":"library/services/cart.ts#readCart:branch:1","file":"library/services/cart.ts","fn":"readCart","kind":"branch","line":10,"detail":"raw ? …"}
+{"id":"library/services/cart.ts#readCart:branch:2","file":"library/services/cart.ts","fn":"readCart","kind":"branch","line":11,"detail":"Array.isArray(value) ? …"}
+{"id":"library/services/cart.ts#<module>:export:2","file":"library/services/cart.ts","fn":"<module>","kind":"export","line":17,"detail":"function writeCart"}
+{"id":"library/services/cart.ts#<module>:export:3","file":"library/services/cart.ts","fn":"<module>","kind":"export","line":26,"detail":"function addToCart"}
+{"id":"library/services/cart.ts#addToCart:branch:1","file":"library/services/cart.ts","fn":"addToCart","kind":"branch","line":29,"detail":"if (hit)"}
+{"id":"library/services/cart.ts#<module>:export:4","file":"library/services/cart.ts","fn":"<module>","kind":"export","line":34,"detail":"function setQuantity"}
+{"id":"library/services/cart.ts#setQuantity:branch:1","file":"library/services/cart.ts","fn":"setQuantity","kind":"branch","line":35,"detail":"l.id === id ? …"}
+{"id":"library/services/cart.ts#<module>:export:5","file":"library/services/cart.ts","fn":"<module>","kind":"export","line":38,"detail":"function removeFromCart"}
+{"id":"library/services/cart.ts#<module>:export:6","file":"library/services/cart.ts","fn":"<module>","kind":"export","line":42,"detail":"function clearCart"}
+{"id":"library/services/cart.ts#<module>:export:7","file":"library/services/cart.ts","fn":"<module>","kind":"export","line":46,"detail":"function subscribeCart"}
+{"id":"library/services/orders.ts#<module>:export:1","file":"library/services/orders.ts","fn":"<module>","kind":"export","line":7,"detail":"function placeOrder"}
+{"id":"library/services/orders.ts#<module>:export:2","file":"library/services/orders.ts","fn":"<module>","kind":"export","line":17,"detail":"function readLastOrder"}
+{"id":"library/services/orders.ts#readLastOrder:branch:1","file":"library/services/orders.ts","fn":"readLastOrder","kind":"branch","line":20,"detail":"raw ? …"}
+{"id":"library/usecases/cartCount.ts#<module>:export:1","file":"library/usecases/cartCount.ts","fn":"<module>","kind":"export","line":6,"detail":"hook useCartCount"}
+{"id":"library/usecases/cartCount.ts#useCartCount:state:1","file":"library/usecases/cartCount.ts","fn":"useCartCount","kind":"state","line":7,"detail":"[count, setCount] = useState(0)"}
+{"id":"library/usecases/cartCount.ts#useCartCount:effect:1","file":"library/usecases/cartCount.ts","fn":"useCartCount","kind":"effect","line":8,"detail":"useEffect, deps []"}
+{"id":"library/usecases/cartItems.ts#<module>:export:1","file":"library/usecases/cartItems.ts","fn":"<module>","kind":"export","line":11,"detail":"const SHIPPING_FEE"}
+{"id":"library/usecases/cartItems.ts#<module>:export:2","file":"library/usecases/cartItems.ts","fn":"<module>","kind":"export","line":12,"detail":"const FREE_SHIPPING_FROM"}
+{"id":"library/usecases/cartItems.ts#<module>:export:3","file":"library/usecases/cartItems.ts","fn":"<module>","kind":"export","line":15,"detail":"hook useCartItems"}
+{"id":"library/usecases/cartItems.ts#useCartItems:state:1","file":"library/usecases/cartItems.ts","fn":"useCartItems","kind":"state","line":16,"detail":"[lines, setLines] = useState([])"}
+{"id":"library/usecases/cartItems.ts#useCartItems:effect:1","file":"library/usecases/cartItems.ts","fn":"useCartItems","kind":"effect","line":17,"detail":"useEffect, deps []"}
+{"id":"library/usecases/cartItems.ts#useCartItems:branch:1","file":"library/usecases/cartItems.ts","fn":"useCartItems","kind":"branch","line":25,"detail":"if (product)"}
+{"id":"library/usecases/cartItems.ts#<module>:export:4","file":"library/usecases/cartItems.ts","fn":"<module>","kind":"export","line":30,"detail":"function cartTotals"}
+{"id":"library/usecases/cartItems.ts#cartTotals:branch:1","file":"library/usecases/cartItems.ts","fn":"cartTotals","kind":"branch","line":32,"detail":"items.length === 0 || subtotal >= FREE_SHIPPING_FROM ? …"}
+{"id":"library/usecases/cartItems.ts#<module>:export:5","file":"library/usecases/cartItems.ts","fn":"<module>","kind":"export","line":36,"detail":"function updateQuantity"}
+{"id":"library/usecases/cartItems.ts#<module>:export:6","file":"library/usecases/cartItems.ts","fn":"<module>","kind":"export","line":40,"detail":"function removeItem"}
+{"id":"library/usecases/cartItems.ts#<module>:export:7","file":"library/usecases/cartItems.ts","fn":"<module>","kind":"export","line":44,"detail":"function emptyCart"}
+{"id":"library/usecases/checkout.ts#<module>:export:1","file":"library/usecases/checkout.ts","fn":"<module>","kind":"export","line":10,"detail":"function validateCheckout"}
+{"id":"library/usecases/checkout.ts#validateCheckout:branch:1","file":"library/usecases/checkout.ts","fn":"validateCheckout","kind":"branch","line":12,"detail":"if (!form.fullName.trim())"}
+{"id":"library/usecases/checkout.ts#validateCheckout:branch:2","file":"library/usecases/checkout.ts","fn":"validateCheckout","kind":"branch","line":13,"detail":"if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(form.email.trim()))"}
+{"id":"library/usecases/checkout.ts#validateCheckout:branch:3","file":"library/usecases/checkout.ts","fn":"validateCheckout","kind":"branch","line":14,"detail":"if (!form.address.trim())"}
+{"id":"library/usecases/checkout.ts#validateCheckout:branch:4","file":"library/usecases/checkout.ts","fn":"validateCheckout","kind":"branch","line":15,"detail":"if (!form.city.trim())"}
+{"id":"library/usecases/checkout.ts#validateCheckout:branch:5","file":"library/usecases/checkout.ts","fn":"validateCheckout","kind":"branch","line":16,"detail":"if (!/^\\d{5}$/.test(form.postalCode.trim()))"}
+{"id":"library/usecases/checkout.ts#validateCheckout:branch:6","file":"library/usecases/checkout.ts","fn":"validateCheckout","kind":"branch","line":17,"detail":"if (!form.terms)"}
+{"id":"library/usecases/checkout.ts#<module>:export:2","file":"library/usecases/checkout.ts","fn":"<module>","kind":"export","line":22,"detail":"function placeCheckoutOrder"}
+{"id":"library/workflows/checkout.ts#<module>:export:1","file":"library/workflows/checkout.ts","fn":"<module>","kind":"export","line":5,"detail":"const roles"}
+{"id":"library/workflows/checkout.ts#<module>:export:2","file":"library/workflows/checkout.ts","fn":"<module>","kind":"export","line":11,"detail":"const checkout"}
+{"id":"library/workflows/checkout.ts#checkout:branch:1","file":"library/workflows/checkout.ts","fn":"checkout","kind":"branch","line":11,"detail":"machine checkout: cart --CHECKOUT--> details"}
+{"id":"library/workflows/checkout.ts#checkout:branch:2","file":"library/workflows/checkout.ts","fn":"checkout","kind":"branch","line":11,"detail":"machine checkout: details --PLACE_ORDER--> confirmation"}
+{"id":"library/workflows/checkout.ts#checkout:branch:3","file":"library/workflows/checkout.ts","fn":"checkout","kind":"branch","line":11,"detail":"machine checkout: details --BACK--> cart"}
+{"id":"library/workflows/listDetail.ts#<module>:export:1","file":"library/workflows/listDetail.ts","fn":"<module>","kind":"export","line":5,"detail":"const roles"}
+{"id":"library/workflows/listDetail.ts#<module>:export:2","file":"library/workflows/listDetail.ts","fn":"<module>","kind":"export","line":10,"detail":"const listDetail"}
+{"id":"library/workflows/listDetail.ts#listDetail:branch:1","file":"library/workflows/listDetail.ts","fn":"listDetail","kind":"branch","line":10,"detail":"machine listDetail: list --OPEN--> detail"}
+{"id":"library/workflows/listDetail.ts#listDetail:branch:2","file":"library/workflows/listDetail.ts","fn":"listDetail","kind":"branch","line":10,"detail":"machine listDetail: detail --BACK--> list"}

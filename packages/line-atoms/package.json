@@ -14,6 +14,7 @@
     "./mock": "./mock.mjs",
     "./testkit": "./testkit.mjs",
     "./check": "./check.mjs",
+    "./metric": "./metric.mjs",
     "./async-status": "./atoms/async-status/index.ts",
     "./client-pagination": "./atoms/client-pagination/index.ts",
     "./csv-export": "./atoms/csv-export/index.ts",
