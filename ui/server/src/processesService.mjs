@@ -198,7 +198,9 @@ export function createProcessesService({
       // cleaned (dead-owner worktrees, orphaned bot branches, stale pending approvals); nothing is deleted on
       // the Cockpit's behalf. Best-effort and once per project per server start, same as adoptInterrupted above.
       let gcReport = null;
-      try { gcReport = gcProcesses(root, { stateDir, dryRun: true }); } catch { gcReport = null; }
+      // A sweep that could not run (the project is not a git repository, or is gone) answers
+      // { ok: false, error } with no counts; that is "no report", not a report, so it is stored as null.
+      try { const r = gcProcesses(root, { stateDir, dryRun: true }); gcReport = r?.ok ? r : null; } catch { gcReport = null; }
       entry = { store, engine, root, gate, gcReport };
       projects.set(root, entry);
     }
