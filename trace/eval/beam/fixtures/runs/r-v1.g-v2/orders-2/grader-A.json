@@ -8,7 +8,7 @@
   "rubricVersion": "v1",
   "rubricSha": "916fd46bb9a3",
   "model": "opus",
-  "temperature": 0,
+  "temperature": null,
   "temperatureEnforced": false,
   "input": {
     "requirement": "Let me mark an order as shipped from the orders list.",

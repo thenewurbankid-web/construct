@@ -39,7 +39,7 @@
           "promptVersion": "v1",
           "promptSha": "b5f0685251a5",
           "model": "opus",
-          "temperature": 0,
+          "temperature": null,
           "temperatureEnforced": false,
           "at": "2026-10-12T15:00:01.000Z",
           "mode": "fake"
@@ -54,7 +54,7 @@
           "rubricVersion": "v1",
           "rubricSha": "916fd46bb9a3",
           "model": "opus",
-          "temperature": 0,
+          "temperature": null,
           "temperatureEnforced": false,
           "at": "2026-10-12T15:00:03.000Z",
           "mode": "fake"
@@ -197,7 +197,7 @@
           "promptVersion": "v1",
           "promptSha": "b5f0685251a5",
           "model": "opus",
-          "temperature": 0,
+          "temperature": null,
           "temperatureEnforced": false,
           "at": "2026-10-12T15:00:04.000Z",
           "mode": "fake"
@@ -209,7 +209,7 @@
           "promptVersion": "v1",
           "promptSha": "b5f0685251a5",
           "model": "opus",
-          "temperature": 0,
+          "temperature": null,
           "temperatureEnforced": false,
           "at": "2026-10-12T15:00:06.000Z",
           "mode": "fake"
@@ -224,7 +224,7 @@
           "rubricVersion": "v1",
           "rubricSha": "916fd46bb9a3",
           "model": "opus",
-          "temperature": 0,
+          "temperature": null,
           "temperatureEnforced": false,
           "at": "2026-10-12T15:00:07.000Z",
           "mode": "fake"
@@ -239,7 +239,7 @@
           "rubricVersion": "v1",
           "rubricSha": "916fd46bb9a3",
           "model": "opus",
-          "temperature": 0,
+          "temperature": null,
           "temperatureEnforced": false,
           "at": "2026-10-12T15:00:08.000Z",
           "mode": "fake"
@@ -456,7 +456,7 @@
           "promptVersion": "v1",
           "promptSha": "b5f0685251a5",
           "model": "opus",
-          "temperature": 0,
+          "temperature": null,
           "temperatureEnforced": false,
           "at": "2026-10-12T15:00:09.000Z",
           "mode": "fake"
@@ -471,7 +471,7 @@
           "rubricVersion": "v1",
           "rubricSha": "916fd46bb9a3",
           "model": "opus",
-          "temperature": 0,
+          "temperature": null,
           "temperatureEnforced": false,
           "at": "2026-10-12T15:00:11.000Z",
           "mode": "fake"
@@ -594,7 +594,7 @@
           "promptVersion": "v1",
           "promptSha": "b5f0685251a5",
           "model": "opus",
-          "temperature": 0,
+          "temperature": null,
           "temperatureEnforced": false,
           "at": "2026-10-12T15:00:12.000Z",
           "mode": "fake"
@@ -609,7 +609,7 @@
           "rubricVersion": "v1",
           "rubricSha": "916fd46bb9a3",
           "model": "opus",
-          "temperature": 0,
+          "temperature": null,
           "temperatureEnforced": false,
           "at": "2026-10-12T15:00:14.000Z",
           "mode": "fake"
@@ -745,7 +745,7 @@
           "promptVersion": "v1",
           "promptSha": "b5f0685251a5",
           "model": "opus",
-          "temperature": 0,
+          "temperature": null,
           "temperatureEnforced": false,
           "at": "2026-10-12T15:00:15.000Z",
           "mode": "fake"
@@ -757,7 +757,7 @@
           "promptVersion": "v1",
           "promptSha": "b5f0685251a5",
           "model": "opus",
-          "temperature": 0,
+          "temperature": null,
           "temperatureEnforced": false,
           "at": "2026-10-12T15:00:17.000Z",
           "mode": "fake"
@@ -772,7 +772,7 @@
           "rubricVersion": "v1",
           "rubricSha": "916fd46bb9a3",
           "model": "opus",
-          "temperature": 0,
+          "temperature": null,
           "temperatureEnforced": false,
           "at": "2026-10-12T15:00:18.000Z",
           "mode": "fake"
@@ -903,7 +903,7 @@
           "promptVersion": "v1",
           "promptSha": "b5f0685251a5",
           "model": "opus",
-          "temperature": 0,
+          "temperature": null,
           "temperatureEnforced": false,
           "at": "2026-10-12T15:00:19.000Z",
           "mode": "fake"
@@ -918,7 +918,7 @@
           "rubricVersion": "v1",
           "rubricSha": "916fd46bb9a3",
           "model": "opus",
-          "temperature": 0,
+          "temperature": null,
           "temperatureEnforced": false,
           "at": "2026-10-12T15:00:21.000Z",
           "mode": "fake"

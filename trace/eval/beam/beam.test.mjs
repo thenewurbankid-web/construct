@@ -107,7 +107,7 @@ test("prompts are versioned files; every transcript records file, version, hash,
   for (const f of ["requester-write.json", "grader-A.json"]) {
     const t = JSON.parse(fs.readFileSync(path.join(dir, f), "utf8"));
     assert.equal(t.model, "opus");
-    assert.equal(t.temperature, 0);
+    assert.equal(t.temperature, null);
     assert.equal(t.temperatureEnforced, false);
     assert.match(t.promptSha, /^[0-9a-f]{12}$/);
     assert.ok(t.promptFile && t.promptVersion && t.at && t.input && typeof t.output === "string");

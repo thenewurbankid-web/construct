@@ -5,7 +5,7 @@
   "promptVersion": "v1",
   "promptSha": "b5f0685251a5",
   "model": "opus",
-  "temperature": 0,
+  "temperature": null,
   "temperatureEnforced": false,
   "input": {
     "task": "write",

@@ -8,7 +8,7 @@
   "rubricVersion": "v1",
   "rubricSha": "916fd46bb9a3",
   "model": "opus",
-  "temperature": 0,
+  "temperature": null,
   "temperatureEnforced": false,
   "input": {
     "requirement": "When I press Call on a contact, log that we called that person so I can see it later.",

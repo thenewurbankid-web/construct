@@ -10,8 +10,8 @@
 // never calls a model; "fake" takes an injected llm(system, prompt) function and records like live (tests and the
 // fixture recorder). The model is fixed to "opus"; anything else (and "fable" above all) is refused.
 //
-// Temperature: the claude CLI has no temperature flag, so `temperature` records the requested value (0) and
-// `temperatureEnforced: false` says the CLI did not apply it. Swap the provider for an API one to enforce it.
+// Temperature: Opus 5.5 takes no sampling parameters and the claude CLI has no flag, so `temperature` is null (model
+// default, the same on every call) and `temperatureEnforced: false` says nothing was set. Replay is what makes runs repeatable.
 import fs from "node:fs";
 import path from "node:path";
 import { callLlm, stripCodeFence } from "../../../packages/core/llm.mjs";
@@ -20,7 +20,9 @@ import { closedSetPlaceholders, checkGold } from "./gold.mjs";
 import { assertGraderInputClean } from "./inputs.mjs";
 
 export const MODEL = "opus";
-export const TEMPERATURE = 0;
+// Opus 5.5 rejects sampling parameters (temperature/top_p) and the claude CLI has no flag for them: the temperature is
+// fixed at the model default. Recorded as null with temperatureEnforced:false so a later API provider can set it.
+export const TEMPERATURE = null;
 
 /** Throws unless the model is exactly "opus" (the owner's rule: never fable, never a silent default). */
 export function assertModel(model) {

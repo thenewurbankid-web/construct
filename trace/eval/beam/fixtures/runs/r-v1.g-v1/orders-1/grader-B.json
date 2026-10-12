@@ -8,7 +8,7 @@
   "rubricVersion": "v1",
   "rubricSha": "916fd46bb9a3",
   "model": "opus",
-  "temperature": 0,
+  "temperature": null,
   "temperatureEnforced": false,
   "input": {
     "requirement": "Show the total value of all orders in the header next to the order count.",

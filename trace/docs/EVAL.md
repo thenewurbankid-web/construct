@@ -87,6 +87,10 @@ registerVariant({
 
 `eval/labeling/fold.mjs` folds a filled worksheet into the case's truth when the case loads: each answered part becomes `label: "independent"` (kind `gap` for `gap:*`, otherwise `match`, or `needs-answer` when the reference explainers find a tie in the data), an `unsure` part becomes uncertain (excluded), and a part the labeller left empty keeps its earlier truth. An independent label that disagrees with the earlier truth replaces it and is reported in `labelConflicts`. `node eval/labeling/fold.mjs` validates every filled worksheet. The corpus hash changes when labels change, so re-record the baseline in the same commit.
 
+## Planner eval: requester, blind grader, owner (#896)
+
+A separate harness for Line's planner (not the matcher): an Opus-Requester writes requirements with hidden gold labels, the planner answers, an Opus-Grader scores every run blind against a versioned rubric, and the owner scores the same items at `/beam`, with agreement per rubric line. Prompts, rubric, separation guarantees, commands and cost per item: `eval/beam/README.md`.
+
 ## Contract formats
 
 The contract is read in exactly one place, `readContract`/`writeContract` behind `loadCase` in `eval/adapter.mjs`, and an `openapi.json` / `.yaml` / `.yml` file in the folder is read with `readSpec` from `src/contract.mjs`: the eval uses the same loader as the pipeline, so the two can never disagree about what a contract says (there is no second OpenAPI reader). The frozen cases (`eval/cases/*/feature.json`, and the generated ones) keep the contract as `apis`, a neutral snapshot of the example bodies; when the runner writes a case's inputs for the pipeline it turns `apis` into an `openapi.json` with `src/apis-to-openapi.mjs`, so what is scored is what Trace reads. A folder without an openapi file falls back to `apis` in `feature.json`. `eval/fixtures/openapi-tiny` is the test fixture. The frozen `eval/cases/example-*` folders keep a copy of the example's contract as it was when snapshotted.
