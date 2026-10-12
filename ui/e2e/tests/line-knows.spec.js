@@ -86,6 +86,25 @@ test.describe.serial('Line: What Line knows (Line sample project)', () => {
     await expect(page.getByTestId('knows-sentence').filter({ hasText: /uses OrderButton from the library/ })).toBeVisible();
   });
 
+  test('How smart is it: the numbers of this project, each with a trend, how to improve it and the items behind it', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await gotoCockpit(page, '/knows?tab=smart');
+    const smart = page.getByTestId('knows-smart');
+    await expect(smart.getByTestId('knows-smart-sentence')).toContainText('nothing leaves it', { timeout: 60_000 });
+    await expect(smart.getByTestId('knows-metric')).toHaveCount(13);
+    // After the promote above, no feature uses another; InvoiceCard still has no base.
+    await expect(smart.locator('[data-metric="health.crossFeature"]').getByTestId('knows-metric-value')).toHaveText('0');
+    const noBase = smart.locator('[data-metric="health.noBase"]');
+    await expect(noBase.getByTestId('knows-metric-value')).toHaveText('1');
+    await expect(noBase.getByTestId('knows-metric-improve')).toContainText('Base each feature item on one library item');
+    await expect(noBase.getByTestId('knows-metric-trend')).toContainText('Trend:');
+    // No memory and no recorded run in a fresh copy: each says so in one sentence.
+    await expect(smart.locator('[data-metric="memory.effect"]').getByTestId('knows-metric-empty')).toHaveText('Line has no memory of your picks yet, so there is nothing to compare.');
+    await axeClean(page);
+    await noBase.getByTestId('knows-metric-item').first().click();
+    await expect(page.getByTestId('knows-focus')).toHaveText('InvoiceCard');
+  });
+
   test('every tab is accessible at 375 px', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 812 });
     for (const tab of ['map', 'memory', 'change', 'smart']) {

@@ -59,7 +59,7 @@ import { assertMemoryRecord, assertMemoryExport } from '../memory/contract.mjs';
  * values, oldest first; `improve` one sentence; `items` the node or plan-step ids behind it; `open` where a click goes.
  * @typedef {'coverage.tested'|'coverage.runtime'|'health.crossFeature'|'health.noBase'|'health.unresolved'|'health.duplicates'|'ai.accepted'|'ai.edited'|'ai.refused'|'ai.staticShare'|'ai.preferred'|'fixes.typed'|'memory.effect'} MetricId
  * @typedef {'coverage'|'health'|'ai'|'fixes'|'memory'} MetricGroup
- * @typedef {{id: MetricId, group: MetricGroup, label: string, value: number|null, count?: number, trend: (number|null)[], improve: string, items: string[], open: 'map'|'plan', details: string[]}} Metric
+ * @typedef {{id: MetricId, group: MetricGroup, label: string, value: number|null, count?: number, trend: (number|null)[], improve: string, items: string[], open: 'map'|'plan', details: string[], empty?: string}} Metric
  * @typedef {{ok: true, metrics: Metric[], sentence: string, local: true}} SmartView
  */
 

@@ -1,0 +1,12 @@
+/* "What Line knows", How smart is it. */
+.lks { display: flex; flex-direction: column; gap: 16px; }
+.lks > p { margin: 0; }
+.lks-group h3 { margin: 0 0 8px; font-size: 1rem; }
+.lks-cards { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+.lks-card { display: flex; flex-direction: column; gap: 4px; padding: 12px; min-width: 0; }
+.lks-label { margin: 0; font-size: 0.9rem; font-weight: 600; }
+.lks-value { margin: 0; font-size: 1.5rem; font-weight: 700; }
+.lks-empty, .lks-trend, .lks-improve { margin: 0; color: var(--ln-muted); }
+.lks-trend[data-direction='up'] { color: var(--ln-fit); }
+.lks-trend[data-direction='down'] { color: var(--ln-gap); }
+.lks-items { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px; }
