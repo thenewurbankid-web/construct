@@ -134,7 +134,9 @@ import { EXTRACT_TOOLS } from './importV2/extractTarget.mjs';
  * Cockpit workspace (absolute, or relative to the workspace root; "" is the workspace root itself); `name` is the new
  * folder (one segment: letters, digits, "-", "_" and inner dots); `firstFeature` the one empty feature it starts with.
  * Needs no open project; on success the server opens the new one.
- * @typedef {{parentDir: string, name: string, firstFeature: string}} NewLineProjectRequest
+ * `library` picks the starting library: "starter" (default, five small items) or "primitives" (the 40 canonical
+ * primitives of @line/primitives on Radix + Tailwind, with a package.json naming their dependencies).
+ * @typedef {{parentDir: string, name: string, firstFeature: string, library?: 'starter'|'primitives'}} NewLineProjectRequest
  */
 
 /**
@@ -182,7 +184,7 @@ import { EXTRACT_TOOLS } from './importV2/extractTarget.mjs';
  * @property {(root: string, req: WorkspaceRequest) => LineWorkspace} setWorkspace
  * @property {(root: string, req: FixRequest) => ApplyResult} applyFix  Re-derive the finding by key, plan its fix, applyChange (fixes.mjs).
  * @property {(req: NewLineProjectRequest) => StagedChange} planNewLineProject  The starter files, root-relative to the new folder (pure).
- * @property {(parentDir: string, req: NewLineProjectRequest) => NewLineProjectResult} createLineProject  Make `<parentDir>/<name>` and apply the plan there; throws LineOpError BAD_NAME, BAD_FEATURE, NO_PARENT or NAME_TAKEN, writing nothing.
+ * @property {(parentDir: string, req: NewLineProjectRequest) => NewLineProjectResult} createLineProject  Make `<parentDir>/<name>` and apply the plan there; throws LineOpError BAD_NAME, BAD_FEATURE, BAD_LIBRARY, NO_PARENT or NAME_TAKEN, writing nothing.
  * @property {(root: string, feature: string) => LineWorkflowList} readLineWorkflows  cw1 (workflows.mjs)
  * @property {(root: string, req: BaseWorkflowOnRequest) => StagedChange} planBaseWorkflowOn
  * @property {(root: string, req: SetWorkflowRoleRequest) => StagedChange} planSetWorkflowRole

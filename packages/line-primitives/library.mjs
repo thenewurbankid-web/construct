@@ -16,6 +16,7 @@ export const PRIMITIVE_DEPENDENCIES = Object.freeze({ 'date-fns': '^4.1.0', 'rad
  * @returns {Record<string, string>} Project-relative path -> file text, sorted by path.
  */
 export function primitiveLibraryFiles(dir = LIBRARY_DIR) {
+  /** @type {Record<string, string>} */
   const out = {};
   const visit = (abs, rel) => {
     for (const e of fs.readdirSync(abs, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {

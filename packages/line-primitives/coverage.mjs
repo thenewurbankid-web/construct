@@ -67,6 +67,7 @@ export function coverage(survey, primitives = builtPrimitives()) {
     const status = missingStates.length || missingEvents.length ? 'loss' : 'no-loss';
     return { lib: c.lib, name: c.name, cluster: c.cluster, primitive: p.name, status, missingStates, missingEvents };
   });
+  /** @type {Record<string, CoverageCount>} */
   const byLib = {};
   for (const lib of heldOut) byLib[lib] = count(rows.filter((r) => r.lib === lib));
   const tally = (items) => Object.entries(items.reduce((m, k) => ({ ...m, [k]: (m[k] ?? 0) + 1 }), {})).map(([id, n]) => ({ id, count: n })).sort((a, b) => b.count - a.count || a.id.localeCompare(b.id));

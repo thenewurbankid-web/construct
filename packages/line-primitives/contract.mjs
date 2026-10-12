@@ -21,11 +21,17 @@
  */
 
 const APG = 'https://www.w3.org/WAI/ARIA/apg/patterns/';
+/** @type {(id: string, means: string) => StateSpec} */
 const st = (id, means) => ({ id, means });
+/** @type {(id: string, prop: string, payload: string, when: string) => EventSpec} */
 const ev = (id, prop, payload, when) => ({ id, prop, payload, when });
+/** @type {(k: string, does: string) => KeySpec} */
 const key = (k, does) => ({ key: k, does });
+/** @type {(type: PropSchema['type'], extra?: Omit<PropSchema, 'type'>) => PropSchema} */
 const p = (type, extra = {}) => ({ type, ...extra });
+/** @type {(type: PropSchema['type'], extra?: Omit<PropSchema, 'type'>) => PropSchema} */
 const req = (type, extra = {}) => ({ type, required: true, ...extra });
+/** @type {(values: string[], def?: string) => PropSchema} */
 const en = (values, def) => ({ type: 'enum', values, default: def });
 
 /** Interaction states every focusable primitive styles (Tailwind `hover:`, `focus-visible:`, `active:`). */

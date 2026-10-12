@@ -82,3 +82,30 @@ test('new Line project: an existing folder is refused in one sentence and left u
     assert.deepEqual(listAll(parent), before);
   } finally { fs.rmSync(parent, { recursive: true, force: true }); }
 });
+
+test('new Line project: library "primitives" starts from the 40 Line primitives and passes the Line profile', () => {
+  const parent = tmp();
+  try {
+    const r = createLineProject(parent, { parentDir: parent, name: 'Shop', firstFeature: 'catalog', library: 'primitives' });
+    assert.equal(r.ok, true, r.sentence);
+    for (const f of ['library/components/Button.tsx', 'library/components/DatePicker.tsx', 'library/components/Table.tsx', 'library/pages/ListPage.tsx', 'library/fixtures/item.json', 'package.json']) {
+      assert.ok(fs.existsSync(path.join(r.dir, f)), f);
+    }
+    assert.equal(fs.readdirSync(path.join(r.dir, 'library/components')).filter((f) => f.endsWith('.tsx')).length, 40);
+    assert.deepEqual(Object.keys(JSON.parse(fs.readFileSync(path.join(r.dir, 'package.json'), 'utf8')).dependencies).sort(), ['date-fns', 'radix-ui', 'react', 'react-dom']);
+    // No Line rule fires; what is left are the generic component-layer warnings about list rendering (COMPONENT-005).
+    const line = validateLine(r.dir).violations;
+    assert.deepEqual(line.filter((v) => v.rule.startsWith('LINE-') || v.severity === 'error'), []);
+    assert.deepEqual([...new Set(line.map((v) => `${v.rule} ${v.severity}`))], ['COMPONENT-005 warning']);
+    const errors = aggregateValidation(r.dir, enforcersForRoot(r.dir)).violations.filter((v) => v.severity === 'error');
+    assert.deepEqual(errors, []);
+    const p = readLineProject(r.dir);
+    assert.equal(p.isLine, true);
+    assert.ok(p.library.some((l) => l.id === 'components/Combobox' && l.level === 'molecule'));
+  } finally { fs.rmSync(parent, { recursive: true, force: true }); }
+});
+
+test('new Line project: an unknown starting library is refused in one sentence', () => {
+  assert.throws(() => planNewLineProject({ parentDir: '', name: 'shop', firstFeature: 'catalog', library: /** @type {any} */ ('material') }), (e) => e instanceof LineOpError && e.code === 'BAD_LIBRARY' && isSentence(e.sentence));
+  assert.equal(planNewLineProject({ parentDir: '', name: 'shop', firstFeature: 'catalog', library: 'primitives' }).summary, 'Creates the Line project shop with the Line primitives library and the empty feature catalog.');
+});
