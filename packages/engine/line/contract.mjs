@@ -576,8 +576,10 @@ export const PLAN_PROTOCOL = Object.freeze([
  * @property {string|null} choice      An option id that passed the checks, or null (nothing passed: ask the person).
  * @property {string|null} runnerUp
  * @property {'static'|'jev'|'model'} via
- * @property {'single'|'order'|'jev'|'model'|'none'} by
+ * @property {'single'|'order'|'memory'|'jev'|'model'|'none'} by  `memory` (im3 + j5): static's order, led by the option the
+ *   person consistently picked for this step before (only among the checked options; memory never adds one).
  * @property {string[]} reasons
+ * @property {{option: string, count: number, sentence: string}|null} [memory]  What memory recalled, when it reordered the options.
  * @property {boolean} lowConfidence  jev and Qwen disagreed, or nothing passed: with Auto off, ask the person.
  * @property {boolean} feedback        The options were Construct's typed fixes for a refusal.
  * @property {{step: string, provider: '@mx/reason'|'static', decider: 'static'|'jev'|'qwen', model: string|null, version: string, fellBackFrom: 'jev'|'reason'|null, note: string|null}} attribution
@@ -843,7 +845,7 @@ export const FRAGMENT_KINDS = Object.freeze(['prop-expression', 'handler', 'cond
 /** cu2: the local model every AI step uses unless its profile names another. */
 export const DEFAULT_STEP_MODEL = 'qwen2.5-coder:1.5b';
 export const DECIDE_VIA = Object.freeze(['static', 'jev', 'model']);
-export const DECIDE_BY = Object.freeze(['single', 'order', 'jev', 'model', 'none']);
+export const DECIDE_BY = Object.freeze(['single', 'order', 'memory', 'jev', 'model', 'none']);
 
 // ---------------------------------------------------------------------------------------------
 // Runtime shape checks: the contract tests run them over the mock and every real implementation.
@@ -1431,7 +1433,7 @@ export function assertDecideResult(r, optionIds) {
   if (r.choice !== null && r.runnerUp === r.choice) fail('decide.runnerUp', 'must differ from the choice');
   if (optionIds && r.choice !== null && !optionIds.includes(r.choice)) fail('decide.choice', `must be one of the offered options: ${JSON.stringify(r.choice)}`);
   if (!DECIDE_VIA.includes(r.via)) fail('decide.via', 'must be static, jev or model');
-  if (!DECIDE_BY.includes(r.by)) fail('decide.by', 'must be single, order, jev, model or none');
+  if (!DECIDE_BY.includes(r.by)) fail('decide.by', 'must be single, order, memory, jev, model or none');
   if ((r.choice === null) !== (r.by === 'none')) fail('decide.by', 'is none exactly when nothing was chosen');
   if ((r.via === 'jev') !== (r.by === 'jev')) fail('decide.via', 'is jev exactly when by is jev');
   if ((r.via === 'model') !== (r.by === 'model')) fail('decide.via', 'is model exactly when by is model');

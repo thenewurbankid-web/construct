@@ -12,6 +12,7 @@ import { classify } from './classify.mjs';
 import { enumerateRoutes } from './templates.mjs';
 import { verifyRoutes } from './verify.mjs';
 import { readRecords, nearest, routeFromRecord, precedent } from './retrieval.mjs';
+import { routeKey, routePhrase, draftContext } from '../memory/index.mjs';
 
 export { normalize, denormalize, buildDomainMap, addSynonym, saveDomainMap } from './domainMap.mjs';
 export { toRecord, appendRecord, readRecords } from './retrieval.mjs';
@@ -47,9 +48,10 @@ export function staticRank(routes) {
  * Draft every route for a request on the project at `root`.
  * @param {string} root
  * @param {string} request
- * @param {{catalog?: import('./contract.mjs').IntentEntry[], verify?: boolean, ranker?: (routes: import('./contract.mjs').Route[]) => string[], propose?: (word: string, choices: {key: string, label: string}[]) => string|null, records?: import('./contract.mjs').TransitionRecord[]|null, precedents?: import('./contract.mjs').TransitionRecord[], maxVerify?: number, synonyms?: Record<string, string>}} [o]
+ * @param {{catalog?: import('./contract.mjs').IntentEntry[], verify?: boolean, ranker?: (routes: import('./contract.mjs').Route[]) => string[], propose?: (word: string, choices: {key: string, label: string}[]) => string|null, records?: import('./contract.mjs').TransitionRecord[]|null, precedents?: import('./contract.mjs').TransitionRecord[], maxVerify?: number, memory?: any, synonyms?: Record<string, string>}} [o]
  *   `synonyms`: confirmed synonyms kept outside the project (word -> domain-map key), e.g. Train Line's per-world ones.
  *   `ranker`: jev's ranking (ids, best first); it only orders. `records`: training records (default: the project's own).
+ *   `memory`: this project's memory (memory/store.mjs); the person's consistent past picks move a checked route first.
  *   `precedents`: more approved records after them (Cockpit passes Train Line's slotted precedents, retrieval.mjs precedentsFromTraining).
  * @returns {import('./contract.mjs').Draft & {questions: any[], shown: {request: string}, tokens: {t: string, slot?: string, kind?: string, src: string[]}[], entries: Record<string, string>}}
  *   `tokens` and `entries` are the live normalization (they hold the request's own words: shown, never stored).
@@ -122,6 +124,10 @@ export function draft(root, request, o = {}) {
   if (precPreferred?.outcome === 'refusal' && routes.some((r) => r.retrieved && r.status === 'refused')) routes = routes.filter((r) => r.retrieved);
   const order = (o.ranker ?? staticRank)(routes);
   routes = order.map((id) => routes.find((r) => r.id === id)).filter(Boolean);
+  // im3 + j5: this project's memory of the person's past picks reorders the routes Construct already checked (never adds
+  // one): after 3 consistent picks of the same kind of route for a request like this, that route comes first.
+  const memory = rememberedFirst(routes, o.memory, { labels, from, slots: ctx.slots });
+  if (memory) routes = memory.routes;
   const rec = routes.find((r) => r.status === 'ok') ?? routes.find((r) => r.status === 'needs-model' || r.status === 'unverified') ?? null;
   // Refusal semantics: the request named a feature or library item that does not exist, or a name that is taken, and
   // every route was refused: Construct's own sentence is the answer (a near miss was already a "Did you mean" question).
@@ -147,8 +153,29 @@ export function draft(root, request, o = {}) {
           : { to: null, sentence: rec.invented.length ? 'The static drafter is confident; a rule made up the new name, which you can change or let a local model suggest.' : 'The static drafter is confident; no model is needed.' };
   return {
     request: n.text, slots: ctx.slots, labels, from, routes, dropped, recommended: rec?.id ?? null, defer, bindings,
-    questions: n.questions, shown: { request: String(request) }, tokens: n.tokens, entries: n.entries,
+    memory: memory ? memory.pref : null, questions: n.questions, shown: { request: String(request) }, tokens: n.tokens, entries: n.entries,
   };
+}
+
+/**
+ * im3 + j5: the checked route the person consistently picked for requests like this, moved first (null when memory
+ * has nothing to say). Only routes with status ok are candidates; nothing is added.
+ * @param {any[]} routes Ranked routes.
+ * @param {{prefer: (step: string, ctx: any, ids: string[], o?: any) => import('../memory/contract.mjs').MemoryPreference|null}|null|undefined} memory
+ * @param {any} d The draft so far (labels, from, slots).
+ * @returns {{routes: any[], pref: import('../memory/contract.mjs').MemoryPreference & {route: string}}|null}
+ */
+export function rememberedFirst(routes, memory, d) {
+  if (!memory) return null;
+  const ok = routes.filter((r) => r.status === 'ok');
+  const keys = [...new Set(ok.map((r) => routeKey(r.id)))];
+  if (keys.length < 2) return null;
+  let pref = null;
+  try { pref = memory.prefer('drafter.route', draftContext(d), keys, { labelOf: routePhrase }); } catch { return null; }
+  const top = pref ? ok.find((r) => routeKey(r.id) === pref.option) : null;
+  if (!pref || !top) return null;
+  const marked = { ...top, memory: pref.sentence };
+  return { routes: [marked, ...routes.filter((r) => r !== top)], pref: { ...pref, route: top.id } };
 }
 
 /**

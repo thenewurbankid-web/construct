@@ -67,14 +67,23 @@ export function createDecider(setup = {}) {
   /**
    * @param {string} step A profile's step id.
    * @param {(string | { id: string, label?: string, enabled?: boolean })[]} options Closed options with stable ids (ignored with `context.refusal`).
-   * @param {{ question?: string, facts?: string[], check?: (id: string) => string | null, suggestion?: { option: string, reason?: string } | null, refusal?: { sentence: string, fixes: { id: string, sentence: string, rank: number }[] } | null, picker?: any }} [context]
+   * @param {{ question?: string, facts?: string[], check?: (id: string) => string | null, suggestion?: { option: string, reason?: string } | null, refusal?: { sentence: string, fixes: { id: string, sentence: string, rank: number }[] } | null, picker?: any, memory?: { store: { prefer: Function }, context: any } | null }} [context]
+   *   `memory` (im3 + j5): this project's memory and the recall context (slots and structure, never code); the option
+   *   the person consistently picked before leads the checked options, and the record says why. It never adds an option.
    * @returns {Promise<import('../engine/line/contract.mjs').DecideResult>}
    */
   async function decide(step, options, context = {}) {
     const profile = stepProfile(step, setup.profiles);
     const feedback = Boolean(context.refusal);
     const offered = feedback ? refusalOptions(context.refusal) : normalize(options);
-    const checked = offered.filter((o) => !context.check || context.check(o.id) === null);
+    let checked = offered.filter((o) => !context.check || context.check(o.id) === null);
+    // im3 + j5: recalled past decisions reorder the checked options (memory never adds one); a broken memory is ignored.
+    /** @type {import("../engine/line/memory/contract.mjs").MemoryPreference | null} */
+    let remembered = null;
+    if (context.memory?.store && checked.length > 1) {
+      try { remembered = context.memory.store.prefer(step, context.memory.context, checked.map((o) => o.id), { labelOf: (id) => quote(checked.find((o) => o.id === id)?.label ?? id) }); } catch { remembered = null; }
+      if (remembered) checked = [...checked.filter((o) => o.id === remembered.option), ...checked.filter((o) => o.id !== remembered.option)];
+    }
     const ids = checked.map((o) => o.id);
     const label = (id) => checked.find((o) => o.id === id)?.label ?? id;
     const sugg = context.suggestion && ids.includes(context.suggestion.option) ? context.suggestion : null;
@@ -91,6 +100,7 @@ export function createDecider(setup = {}) {
       reasons: reasons.map(sentence).filter(Boolean),
       lowConfidence: extra.lowConfidence ?? choice === null,
       feedback,
+      memory: remembered && choice === remembered.option ? { option: remembered.option, count: remembered.count, sentence: sentence(remembered.sentence) } : null,
       attribution: {
         step,
         provider: extra.reasonUsed ? '@mx/reason' : 'static',
@@ -104,7 +114,9 @@ export function createDecider(setup = {}) {
     /** Without jev: Qwen's checked suggestion stands, else static's order (the recommended fix first for feedback). */
     const withoutJev = (extra = {}) => (sugg
       ? result(sugg.option, 'model', 'model', [qwenReason], extra)
-      : result(ids[0], 'static', 'order', [feedback ? `It is the fix Construct recommends for this refusal.` : 'It came first among the checked options; no model was asked.'], extra));
+      : remembered
+        ? result(ids[0], 'static', 'memory', [remembered.sentence], extra)
+        : result(ids[0], 'static', 'order', [feedback ? `It is the fix Construct recommends for this refusal.` : 'It came first among the checked options; no model was asked.'], extra));
 
     if (!ids.length) {
       return result(null, 'static', 'none', [feedback ? 'Construct offered no fix that can run, so Line asks you.' : 'No option passed the checks, so Line asks you.'], { lowConfidence: true });
