@@ -61,7 +61,7 @@ test('the five primary screens are Features, Pages, Components, Git, Tests, and 
   // Settings, Local model and Help live in the profile menu: no primary screen is current there.
   for (const p of ['/settings', '/ollama', '/help', '/states']) assert.equal(primaryScreenForPath(p), null, p);
   // Every route a former nav entry pointed at is either owned by a screen or a profile-menu page.
-  const profile = new Set(['/settings', '/ollama', '/help', '/train']);
+  const profile = new Set(['/settings', '/ollama', '/help', '/train', '/knows']);
   for (const s of SCREENS) for (const r of s.activeOn) assert.ok(primaryScreenForPath(r) || profile.has(r), r);
 });
 

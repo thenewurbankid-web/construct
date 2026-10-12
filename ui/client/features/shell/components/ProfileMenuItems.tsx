@@ -53,6 +53,7 @@ export function ProfileMenuItems({ pathname, modelStatus, preference, onPreferen
         </div>
       </fieldset>
       {link('/train', 'Train Line', <span className="sh-user-hint">Teach Line with examples</span>, 'profile-train')}
+      {link('/knows', 'What Line knows', <span className="sh-user-hint">The map, memory and accuracy</span>, 'profile-knows')}
       {link('/help', 'Help and shortcuts', <span className="sh-user-hint">Tutorials and keys</span>, 'profile-help')}
     </>
   );
