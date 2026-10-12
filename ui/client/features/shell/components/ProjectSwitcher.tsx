@@ -27,7 +27,7 @@ export function ProjectSwitcher({ label, dir, open, onToggle, onClose, picker, e
       >
         <span className="sh-project-name">{label}</span>
         <WorkspaceFolderTag folder={workspace} />
-        <span aria-hidden="true"> ▾</span>
+        <span className="sh-project-caret" aria-hidden="true"> ▾</span>
       </button>
       {open && (
         <div ref={surfaceRef} id="sh-project-popover" role="dialog" aria-label="Switch project" className="sh-popover">
