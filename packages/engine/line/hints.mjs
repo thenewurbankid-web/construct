@@ -116,23 +116,39 @@ export const REFUSAL_HINTS = Object.freeze({
   PLAN: { rule: 'the plan changed meanwhile or refused the call: read plan status, then send the call again', example: () => ex('plan_status', {}) },
 });
 
-/** The hint for `code` (PLAN_<x> share one). */
+/**
+ * The hint for `code` (PLAN_<x> share one).
+ * @param {string} code A refusal code.
+ * @returns {any} The hint, or null.
+ */
 export const hintOf = (code) => REFUSAL_HINTS[code] ?? (String(code).startsWith('PLAN_') ? REFUSAL_HINTS.PLAN : null);
 
 function dropKeys(o, keys) { return Object.fromEntries(Object.entries(o ?? {}).filter(([k]) => !keys.includes(k))); }
 
 const clip = (s, n) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
-/** A step as a builder sends it: the tool and its args as JSON, a long string (a file's code) shortened. */
+/**
+ * A step as a builder sends it: the tool and its args as JSON, a long string (a file's code) shortened.
+ * @param {{tool: string, args?: any}} step
+ * @returns {string}
+ */
 export const stepText = (step) => `${step.tool} ${JSON.stringify(step.args ?? {}, (_k, v) => (typeof v === 'string' && v.length > 120 ? `<${v.split('\n').length} lines>` : v))}`;
 const asSentence = (s) => { const t = String(s ?? '').trim().replace(/\s+/g, ' '); return !t ? t : /[.?!]$/.test(t) ? t : `${t}.`; };
-/** The first sentence of `s` (a path's dots and "e.g." do not end one). */
+/**
+ * The first sentence of `s` (a path's dots and "e.g." do not end one).
+ * @param {unknown} s
+ * @returns {string}
+ */
 export function firstSentence(s) {
   const t = asSentence(s);
   const m = /^(.+?[.?!])\s+(?=[A-Z"(])/.exec(t);
   return m ? m[1] : t;
 }
 
-/** The value the refusal is about, as {field, value}, or null: the first hinted field the request holds. */
+/**
+ * The value the refusal is about, as {field, value}, or null: the first hinted field the request holds.
+ * @param {string} code @param {any} req The request ({tool, args, fix, answer, option, field}).
+ * @returns {{field: string, value: string} | null}
+ */
 export function badValueOf(code, req) {
   const args = req?.args && typeof req.args === 'object' ? req.args : {};
   if (code === 'UNKNOWN_TOOL') return req?.tool ? { field: 'tool', value: String(req.tool) } : null;
@@ -145,7 +161,11 @@ export function badValueOf(code, req) {
 }
 const show = (v) => clip(typeof v === 'string' ? v : JSON.stringify(v), 60);
 
-/** The field BAD_ARGS's sentence names ("The arguments do not fit line.x: points must be ..."). */
+/**
+ * The field BAD_ARGS's sentence names ("The arguments do not fit line.x: points must be ...").
+ * @param {string} sentence
+ * @returns {string|null}
+ */
 export const badArgsField = (sentence) => /: ([A-Za-z_$][\w$.]*) (?:must|is not)/.exec(String(sentence))?.[1]?.split('.')[0] ?? null;
 
 /**
@@ -155,9 +175,9 @@ export const badArgsField = (sentence) => /: ([A-Za-z_$][\w$.]*) (?:must|is not)
  * @property {{tool: string, args: any}} step The exact step choosing it adds.
  * @property {boolean} recommended
  * @property {string} [sentence]              The fix's own sentence.
- * @property {string} [why]                   #886: one sentence from the deciding rule.
- * @property {string} [effect]                #886: what choosing it does.
- * @property {string[]} [context]             #886: the minimal lines that decide it.
+ * @property {string} [why]                   One sentence from the deciding rule (#886).
+ * @property {string} [effect]                What choosing it does (#886).
+ * @property {string[]} [context]             The minimal lines that decide it (#886).
  *
  * @typedef {object} RefusalShape
  * @property {string} code
@@ -319,13 +339,21 @@ function codeFiles(root, dirs) {
   return out;
 }
 
-/** The main export of a source ("export default function X", else the first named export). */
+/**
+ * The main export of a source ("export default function X", else the first named export).
+ * @param {string} src
+ * @returns {string|null}
+ */
 export const mainExportOf = (src) => /export\s+default\s+(?:async\s+)?(?:function|class)\s+([A-Za-z_$][\w$]*)/.exec(src)?.[1]
   ?? /export\s+(?:async\s+)?(?:function|const|class)\s+([A-Za-z_$][\w$]*)/.exec(src)?.[1] ?? null;
 /** The URL an app-router entry serves: app/products/[id]/page.tsx -> /products/:id. */
 const routeOfEntry = (rel, app) => `/${rel.slice(app.length + 1).split('/').slice(0, -1).filter((s) => !/^\(.*\)$/.test(s)).map((s) => s.replace(/^\[(.+)\]$/, ':$1')).join('/')}`;
 
-/** The file a step or request is about (a page, a file, a library item), project-relative, or null. */
+/**
+ * The file a step or request is about (a page, a file, a library item), project-relative, or null.
+ * @param {any} args @param {{library: string}|null} layout
+ * @returns {string|null}
+ */
 export function targetOf(args, layout) {
   const a = args ?? {};
   if (typeof a.page === 'string') return a.page;
@@ -456,7 +484,11 @@ const LAYER_RULE = Object.freeze({ page: 'PAGE-003', component: 'COMPONENT-003',
 const KIND_TO_LAYER = Object.freeze({ pages: 'page', components: 'component', workflows: 'workflow', services: 'service', domains: 'domain', expressions: 'expression', usecases: 'usecase', fixtures: 'fixture', atoms: 'atom' });
 const BASED = new Set(['page', 'component', 'workflow', 'fixture']);
 
-/** The layer a step targets: its file's kind folder, a library id's kind, a served page; null when none. */
+/**
+ * The layer a step targets: its file's kind folder, a library id's kind, a served page; null when none.
+ * @param {string} tool @param {any} args
+ * @returns {string|null}
+ */
 export function layerOf(tool, args) {
   const a = args ?? {};
   if (tool === 'line.addRoute') return 'page';
@@ -498,7 +530,10 @@ export function rulesCard(tool, args, rules = { metadata: RULE_METADATA, default
 /** The AI step that may pick context lines (packages/core/ai-profiles.json). Off: an AI step ships off until it has a
  * measured win over static (#881 held-out r2: static P@5 0.265, jev 0.253), so static picks and jev is only logged. */
 export const HINTS_STEP = 'construct.hints';
-/** Where jev answers (trace/tools/jev/serve.py); the JEV_URL environment variable overrides it, read at each call. */
+/**
+ * Where jev answers (trace/tools/jev/serve.py); the JEV_URL environment variable overrides it, read at each call.
+ * @returns {string}
+ */
 export const jevUrl = () => process.env.JEV_URL || 'http://127.0.0.1:8765';
 /** How long a shadow call may take in all; jev never holds a builder up longer than this. */
 export const JEV_SHADOW_MS = 300;
@@ -585,5 +620,9 @@ export function renderQuestion(q, o = {}) {
   ];
 }
 
-/** The answer call for a question: {"answer": <id>, "option": <id>, "folder": <folder>}. */
+/**
+ * The answer call for a question: {"answer": <id>, "option": <id>, "folder": <folder>}.
+ * @param {string} qid @param {string} oid @param {string} [folder]
+ * @returns {string}
+ */
 export const answerCall = (qid, oid, folder) => JSON.stringify({ answer: qid, option: oid, ...(folder ? { folder } : {}) });

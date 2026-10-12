@@ -109,6 +109,8 @@ export function choicesOf(step) {
  * @param {any} [req] The request it answers ({tool, args, fix?}).
  * @param {any[]} [fixes] The choices (default: r.fixes).
  * @param {string[]} [tools] The tool names (UNKNOWN_TOOL's nearest).
+ * @param {string[]} [context] Lines about the refusal itself (#886).
+ * @param {string} [example] A correct call that beats the tool's own example (#887).
  * @returns {any}
  */
 export function shapedRefusal(r, req, fixes, tools, context, example) {
@@ -423,7 +425,7 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
     if (!r0.ok) {
       const own = Array.isArray(/** @type {any} */ (r0).fixes) ? /** @type {any} */ (r0).fixes : [];
       // A small model that sends a fix's ref or a path as the tool name ("fixes[0].step", "f1") meant the offered fix.
-      const meantFix = !own.length && r0.code === 'UNKNOWN_TOOL' && /fix|^f\d+$/i.test(String(req?.tool ?? '')) ? offeredNow() : [];
+      const meantFix = !own.length && /** @type {any} */ (r0).code === 'UNKNOWN_TOOL' && /fix|^f\d+$/i.test(String(req?.tool ?? '')) ? offeredNow() : [];
       const { registry } = await init();
       r = await say(r0, req, own.length ? own : meantFix, registry.list().map((t) => t.name).filter((n) => n.startsWith('line.') && !n.startsWith('line.import.')));
       if (!meantFix.length) offer(own);

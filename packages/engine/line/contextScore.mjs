@@ -22,7 +22,11 @@ const FIELD_SCORE = { stepId: 0.3, state: 0.25, landed: 0.15, tool: 0.15, code: 
 
 const words = (s) => new Set(String(s ?? '').toLowerCase().split(/[^a-z0-9_.<>/-]+/).filter((w) => w.length > 2));
 
-/** Jaccard overlap of two texts' words. */
+/**
+ * Jaccard overlap of two texts' words.
+ * @param {string} a @param {string} b
+ * @returns {number} In [0, 1].
+ */
 export function overlap(a, b) {
   const A = words(a); const B = words(b);
   if (!A.size || !B.size) return 0;
@@ -46,7 +50,11 @@ export function scoreLine(line, ctx = {}) {
   return Math.max(0, Math.min(1, +s.toFixed(4)));
 }
 
-/** The cap on lines shown: 5, or 15 when the same refusal repeats. */
+/**
+ * The cap on lines shown: 5, or 15 when the same refusal repeats.
+ * @param {number} [refusalRepeat]
+ * @returns {number}
+ */
 export const capFor = (refusalRepeat = 0) => (refusalRepeat >= 1 ? 15 : 5);
 
 /**
@@ -59,6 +67,6 @@ export function rankLines(lines, opts = {}) {
   const score = opts.score ?? ((l) => scoreLine(l, { attempt: opts.attempt }));
   const ranked = lines.map((l, i) => ({ ...l, score: score(l), _i: i }))
     .sort((a, b) => b.score - a.score || a._i - b._i)
-    .map(({ _i, ...l }) => l);
+    .map(({ _i, ...l }) => /** @type {L & {score: number}} */ (/** @type {unknown} */ (l)));
   return { ranked, kept: ranked.slice(0, opts.cap ?? 5) };
 }
