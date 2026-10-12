@@ -41,9 +41,11 @@ async function expectOnlyTheGate(page, route) {
   const banner = page.getByRole('banner');
   await expect(banner.getByText('Cockpit', { exact: true })).toBeVisible();
   await expect(banner.getByTestId('user-menu-trigger')).toBeVisible();
-  // Nothing else in the bar: no links, and the only button is the profile menu.
+  // Nothing else in the bar: no links, and the only buttons are the profile menu and the two-modes switch (Chat, Under
+  // the hood), which is on every screen, the gate included (owner decision, 12 Oct).
   await expect(banner.getByRole('link')).toHaveCount(0);
-  await expect(banner.getByRole('button')).toHaveCount(1);
+  await expect(banner.getByTestId('lm-switch').getByRole('button')).toHaveCount(2);
+  await expect(banner.getByRole('button')).toHaveCount(3);
 }
 
 test.describe.serial('no project: the gate (#429)', () => {
