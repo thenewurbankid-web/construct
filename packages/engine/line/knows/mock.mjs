@@ -113,7 +113,7 @@ export const MOCK_KNOWS_GRAPH = /** @type {LineGraph} */ (Object.freeze({
   index: Object.freeze({ version: GRAPH_VERSION, files: Object.fromEntries(nodes.filter((n) => n.kind === 'item').map((n) => [n.file, n.hash])), counts: countGraph(nodes, edges) }),
 }));
 
-/** @type {MemoryRecord[]} */
+/** @type {readonly MemoryRecord[]} */
 export const MOCK_MEMORY_RECORDS = Object.freeze([
   ...[1, 2, 3].map((n) => rec(n, 'drafter.route', 'use.item', 'via-library:ui:I>F', ['via-library:ui:I>F', 'base-on:ui:L>F'], 'picked', `2026-10-1${n}T09:12:00.000Z`)),
   rec(4, 'drafter.route', 'add.component', 'base-on:ui:L>F', ['base-on:ui:L>F', 'via-library:ui:C>F'], 'picked', '2026-10-12T08:40:00.000Z'),

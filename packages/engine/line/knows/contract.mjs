@@ -100,6 +100,7 @@ const strs = (v, where) => { if (!Array.isArray(v)) fail(where, 'be a list'); v.
 const sentence = (v, where) => { str(v, where); if (!/[.?!]$/.test(v)) fail(where, 'be a full sentence'); };
 
 /**
+ * Throw a one-sentence TypeError unless `r` is a GraphRead.
  * @param {any} r
  * @returns {asserts r is GraphRead}
  */
@@ -115,6 +116,7 @@ export function assertGraphRead(r) {
 }
 
 /**
+ * Throw a one-sentence TypeError unless `v` is a MemoryRecordsView (each record checked by im3's assertMemoryRecord).
  * @param {any} v
  * @returns {asserts v is MemoryRecordsView}
  */
@@ -135,6 +137,7 @@ export function assertMemoryRecordsView(v) {
 }
 
 /**
+ * Throw a one-sentence TypeError unless `v` is a ChangeView whose every step calls its kind's plan tool.
  * @param {any} v
  * @returns {asserts v is ChangeView}
  */
@@ -154,6 +157,7 @@ export function assertChangeView(v) {
 }
 
 /**
+ * Throw a one-sentence TypeError unless `v` is a SmartView (known metric ids, once each, shares from 0 to 1).
  * @param {any} v
  * @returns {asserts v is SmartView}
  */

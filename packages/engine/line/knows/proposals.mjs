@@ -19,7 +19,7 @@ const sentence = (s) => { const t = String(s).trim(); return /[.?!]$/.test(t) ? 
 
 /**
  * The proposals from findings' typed fixes, then from the item in focus.
- * @param {{findings?: FindingWithFixes[]}} project
+ * @param {{findings?: readonly any[]}} project Validate's findings (LineFinding: key, rule, file, line, fixes).
  * @param {LineGraph} graph
  * @param {string} [focus]
  * @returns {ChangeProposal[]}
@@ -36,6 +36,7 @@ export function changeProposals(project, graph, focus) {
       if (!fix.step) continue;
       const direct = KIND_OF_TOOL[fix.step.tool];
       const kind = direct ?? 'removeCrossUse';
+      /** @type {Record<string, unknown>} */
       const args = direct ? { ...(fix.step.args ?? {}) } : { findingKey: f.key, fixId: fix.id };
       const target = fix.step.tool === 'line.promote' ? `item:${args.featureItemId}` : (itemOfFile.get(f.file) ?? findingId);
       add({ id: `change:${f.key}:${fix.id}`, kind, target, finding: findingId, sentence: sentence(fix.sentence), step: { tool: CHANGE_TOOL[kind], args }, details: [`${CHANGE_TOOL[kind]} ${argsLine(args)}`, `fixes ${f.rule} ${f.file}:${f.line}`] });
