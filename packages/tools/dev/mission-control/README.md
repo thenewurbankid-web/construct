@@ -106,10 +106,18 @@ Runs from before #886 have no `result.context`: their candidates are rebuilt fro
 code and tool, bounded by `logs/hint-state.json` when present. Code: `context-view.mjs` (pure join + `/ctx/api?run=`),
 `context-view.client.js` (served as `/ctx/view.js`).
 
+### Full input / raw output (#913)
+
+When a qwen-agent turn has `logs/turn-input/<turn>.json` and `logs/turn-output/<turn>.json` (default on;
+`BENCH_LOG_TURN_IO=0` turns them off), the row detail gets a **full input / raw output** toggle: every message exactly as
+sent to Ollama (the system prompt put back from `logs/system-prompt.txt`, referenced by sha256), the options, and the raw
+response (thinking, content, native tool calls, parsed calls). Code: `turn-io.mjs` (`/turn-io/api?run=&turn=`),
+`turn-io.client.js` (served as `/turn-io/view.js`; it wraps `renderDetail`, so the hook is one script tag).
+
 ## Test
 
 ```
-node --test packages/tools/dev/mission-control/mission-control.test.mjs packages/tools/dev/mission-control/context-view.test.mjs packages/tools/dev/mission-control/plan-jev.test.mjs
+node --test packages/tools/dev/mission-control/mission-control.test.mjs packages/tools/dev/mission-control/context-view.test.mjs packages/tools/dev/mission-control/plan-jev.test.mjs packages/tools/dev/mission-control/turn-io.test.mjs
 ```
 
 The parser, join, counters, timeline and loop detector over `fixtures/runs/fixture-qwen` (record shapes copied from
