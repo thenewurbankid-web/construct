@@ -10,18 +10,14 @@
 // leave a unit unverified, never wrongly proven or changed.
 import fs from 'node:fs';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
-import { parseToAst, collectImpureDomainReferences } from '@construct/ast';
 import { canonicalCompare, canonicalUnit, unitNames } from './canonical.mjs';
 import { roundTripCompare, inBlocks } from './roundTrip.mjs';
 import { layerOrder, nextLayer, decideUnit } from './escalation.mjs';
 import { buildUnitVerdict } from './verdict.mjs';
-import { LOGIC_KIND_EFFECTS } from './contract.mjs';
-import { fileUnits } from '../logicMap.mjs';
-import { findFunction } from './z3Translate.mjs';
 import { z3Layer } from './z3Prove.mjs';
 import { fastCheckLayer, minedSeeds } from './fastCheckLayer.mjs';
 import { verifyLayoutPair } from './layoutRun.mjs';
+import { classifyUnit } from './purity.mjs';
 
 /** @typedef {import('./contract.mjs').UnitRef} UnitRef */
 /** @typedef {import('./contract.mjs').UnitVerdict} UnitVerdict */
@@ -127,40 +123,14 @@ export function pairBefore(beforeRoot, afterRoot, unit) {
   return byName.length === 1 ? byName[0] : null;
 }
 
-/** Free globals the domain-purity allowlist reports, and the effect each one is (Morpheus importScan names). */
-const GLOBAL_EFFECTS = Object.freeze(/** @type {Record<string, EffectName>} */ ({
-  window: 'dom', document: 'dom', navigator: 'dom', location: 'navigation', history: 'navigation', matchMedia: 'dom',
-  IntersectionObserver: 'dom', ResizeObserver: 'dom', MutationObserver: 'dom', requestAnimationFrame: 'dom', cancelAnimationFrame: 'dom',
-  fetch: 'fetch', XMLHttpRequest: 'fetch', WebSocket: 'fetch', localStorage: 'storage', sessionStorage: 'storage', indexedDB: 'storage',
-  setTimeout: 'timer', setInterval: 'timer', clearTimeout: 'timer', clearInterval: 'timer', queueMicrotask: 'timer',
-  Date: 'time', performance: 'time', crypto: 'random', console: 'console',
-}));
-
 /**
- * THE purity stand-in (one function; step 2 replaces it). Purity and effect chain of the unit before the step: step 2's
- * `classifyUnit` (purity.mjs, Morpheus's transitive effect analysis) as soon as that file exists; until then the
- * logic map's effect units inside the function plus the effectful globals it names (the domain-purity allowlist's free
- * references, GLOBAL_EFFECTS). No transitive chain: a call into an impure helper is not seen here, which is safe for
- * the proof layers only because z3 and fast-check refuse calls and impure bodies themselves.
+ * Purity and effect chain of the unit before the step: step 2's `classifyUnit` (purity.mjs, Morpheus's transitive
+ * effect analysis; its local fallback when the Morpheus link is down).
  * @param {{root: string, file: string, fn: string}} args
  * @returns {Promise<{purity: 'pure'|'impure', effectChain: EffectLink[]}>}
  */
-export async function classifyBefore({ root, file, fn }) {
-  const step2 = path.join(path.dirname(new URL(import.meta.url).pathname), 'purity.mjs');
-  if (fs.existsSync(step2)) return (await import(pathToFileURL(step2).href)).classifyUnit({ root, file, fn });
-  /** @type {EffectLink[]} */
-  const chain = [];
-  const add = (effect) => { if (effect && !chain.some((l) => l.effect === effect)) chain.push({ effect, via: [] }); };
-  const source = fs.readFileSync(path.join(root, file), 'utf8');
-  for (const u of fileUnits(source, file)) if (u.fn === fn) add(LOGIC_KIND_EFFECTS[u.kind]);
-  const ast = parseToAst(source);
-  const node = findFunction(ast, fn);
-  if (node) {
-    const ownNames = new Set();
-    for (const hit of collectImpureDomainReferences(/** @type {any} */ ({ ...ast, body: [node] }))) ownNames.add(hit.name);
-    for (const name of ownNames) add(GLOBAL_EFFECTS[name]);
-  }
-  return { purity: chain.length ? 'impure' : 'pure', effectChain: chain };
+export function classifyBefore({ root, file, fn }) {
+  return classifyUnit({ root, file, fn });
 }
 
 /**
