@@ -9,6 +9,7 @@
 //   renderRefusal(shape)     the plain text a builder reads (plan-cli prints it; MCP sends it as the message)
 //   whyOf / effectOf         #886: per fix, one sentence from the deciding rule, and what choosing it does (pure)
 //   rulesCard(tool, args)    #888: the 2-4 rules for a step's tool and target layer, plain English, one example each
+//   hintsJevOn / jevShadow   #890: the "jev picks context" switch (off) and jev's scores logged beside the static ones
 //   contextFor(root, o)      #886: the minimal deterministic lines that decide it, ranked by contextScore.mjs and cut
 //                            to 5 (15 when the same code repeats for the same target in this plan); reads files only
 //
@@ -20,6 +21,7 @@ import { loadConfig, DEFAULT_RULES } from '@line/construct-core/config';
 import { normalizeLineConfig, CODE_EXTENSIONS, LINE_RULES } from '@line/construct-core/profiles/line/contract';
 import { resolveLayout } from '@line/construct-core/profiles/line/checks';
 import { RULE_METADATA } from '@line/construct-core/rules-catalog';
+import { stepOnFor, stepProfile, projectStepOn } from '@line/construct-core/ai-profiles';
 import { rankLines, capFor } from './contextScore.mjs';
 
 /** How many choices the text lists (the rest are named by ref, so they stay pickable). */
@@ -487,4 +489,75 @@ export function rulesCard(tool, args, rules = { metadata: RULE_METADATA, default
   const picked = out.slice(0, 4);
   const head = `Rules for ${tool}${layer ? ` (${layer})` : ''}:`;
   return { tool, layer, rules: picked, text: picked.length ? [head, ...picked.map((r) => `- ${r.text}. Example: ${r.example}`)].join('\n') : '' };
+}
+
+// ------------------------------------------------------------------------------------------------ #890 jev shadow
+
+/** The AI step that may pick context lines (packages/core/ai-profiles.json). Off: an AI step ships off until it has a
+ * measured win over static (#881 held-out r2: static P@5 0.265, jev 0.253), so static picks and jev is only logged. */
+export const HINTS_STEP = 'construct.hints';
+/** Where jev answers (trace/tools/jev/serve.py); the JEV_URL environment variable overrides it, read at each call. */
+export const jevUrl = () => process.env.JEV_URL || 'http://127.0.0.1:8765';
+/** How long a shadow call may take in all; jev never holds a builder up longer than this. */
+export const JEV_SHADOW_MS = 300;
+
+/**
+ * Whether jev picks a project's context lines: the step's profile AND a measured win (stepOnFor), the project's own
+ * switch (`<root>/line/ai-profiles.json` {steps: {"construct.hints": {on}}}) in place of the profile's. Never throws.
+ * @param {string} root
+ * @returns {boolean}
+ */
+export function hintsJevOn(root) {
+  try { return stepOnFor(stepProfile(HINTS_STEP), projectStepOn(root, HINTS_STEP)); } catch { return false; }
+}
+
+/** Line text as the jev trainer normalises it (train_context.py norm): camelCase and path punctuation split into words. */
+const norm = (s, n = 400) => String(s ?? '').slice(0, n).replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/[/._:[\]{}()"',=<>|-]+/g, ' ');
+
+/**
+ * jev's keep-score for each candidate line (one typed Choice per line, as trained in #881), or null when jev does not
+ * answer in time. Never throws and never waits longer than `timeoutMs` in all.
+ * @param {{text: string, kind: string}[]} lines @param {{attempt?: string, code?: string, said?: string, url?: string, timeoutMs?: number, fetch?: typeof fetch}} [o]
+ * @returns {Promise<{scores: number[], ms: number} | null>}
+ */
+export async function jevScores(lines, o = {}) {
+  if (!lines.length) return { scores: [], ms: 0 };
+  const t0 = Date.now();
+  const signal = AbortSignal.timeout(o.timeoutMs ?? JEV_SHADOW_MS);
+  const get = o.fetch ?? fetch;
+  const question = { text: "Keep this context line for the builder's next step?", options: ['keep', 'drop'], key: 'keep' };
+  try {
+    const scores = await Promise.all(lines.map(async (l) => {
+      const state = { attempt: norm(o.attempt, 240), outcome: 'refused', code: o.code ?? 'none', said: norm(o.said, 200), line: { kind: l.kind, src: 'hint', text: norm(l.text) } };
+      const r = await get(`${o.url ?? jevUrl()}/choose`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ state, questions: [question] }), signal });
+      if (!r.ok) throw new Error(`jev answered ${r.status}`);
+      const a = (await r.json())?.answers?.[0];
+      const p = Array.isArray(a?.probabilities) ? a.probabilities[0] : a?.probabilities?.keep;
+      if (typeof p !== 'number') throw new Error('jev gave no keep probability');
+      return +p.toFixed(4);
+    }));
+    return { scores, ms: Date.now() - t0 };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * #890: the shadow record for a refusal's context: every candidate line with its static score and jev's (when jev
+ * answered in time), and which lines each would keep under the same cap. For calls.jsonl; nothing here changes what
+ * the builder is shown.
+ * @param {{candidates: {text: string, kind: string, score: number}[], cap: number, attempt?: string}} ctx A refusal's hintContext.
+ * @param {{code?: string, said?: string, url?: string, timeoutMs?: number, fetch?: typeof fetch}} [o]
+ * @returns {Promise<{via: 'jev', on: false, ms: number, lines: {text: string, static: number, jev: number}[], keptStatic: number[], keptJev: number[]} | {via: 'jev', on: false, unreachable: true}>}
+ */
+export async function jevShadow(ctx, o = {}) {
+  const lines = ctx.candidates ?? [];
+  const got = await jevScores(lines, { ...o, attempt: ctx.attempt });
+  if (!got) return { via: 'jev', on: false, unreachable: true };
+  const top = (key) => lines.map((l, i) => ({ i, s: key(l, i) })).sort((a, b) => b.s - a.s || a.i - b.i).slice(0, ctx.cap).map((x) => x.i);
+  return {
+    via: 'jev', on: false, ms: got.ms,
+    lines: lines.map((l, i) => ({ text: l.text, static: l.score, jev: got.scores[i] })),
+    keptStatic: top((l) => l.score), keptJev: top((_l, i) => got.scores[i]),
+  };
 }

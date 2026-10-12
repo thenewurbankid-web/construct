@@ -28,7 +28,8 @@ import { createAtomicPlanWriter, createStaticPlanApi, lockPlanApi } from './plan
 import { isInsideWorkspace, readWorkspace } from './workspace.mjs';
 import { createSessionTrace, refusalOfStep, matchFix, sourceOf, traceArgs } from './trace.mjs';
 import { memoryOf, memoryBy } from './memory/index.mjs';
-import { shapeRefusal, contextFor, withHints, badValueOf, badArgsField, targetOf, rulesCard } from './hints.mjs';
+import { shapeRefusal, contextFor, withHints, badValueOf, badArgsField, targetOf, rulesCard, hintsJevOn, jevScores } from './hints.mjs';
+import { rankLines } from './contextScore.mjs';
 
 /** One session per open project, for now. */
 export const SESSION_ID = 'ses-cockpit';
@@ -350,9 +351,19 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
     const repeat = bump(`${plan?.id ?? '-'}|${r.code}|${target}`);
     let ctx;
     try { ctx = contextFor(root, { code: r.code, tool: req?.tool, args: req?.args, fixes, detail: r.detail, plan, fields, repeat }); } catch { ctx = { lines: [], candidates: [], cap: 5, attempt: '' }; }
+    // #890: only with the project's "jev picks context" switch on (and a measured win) does jev re-rank; else static.
+    let via = 'static';
+    if (ctx.candidates.length && hintsJevOn(root)) {
+      const got = await jevScores(ctx.candidates, { attempt: ctx.attempt, code: r.code, said: r.sentence });
+      if (got) {
+        const by = new Map(ctx.candidates.map((l, i) => [l, got.scores[i]]));
+        ctx = { ...ctx, lines: rankLines(ctx.candidates, { cap: ctx.cap, score: (l) => by.get(l) ?? 0 }).kept };
+        via = 'jev';
+      }
+    }
     const hinted = withHints(fixes, { code: r.code, asked }, ctx);
     const out = shapedRefusal(r, req, hinted.fixes, tools, hinted.context);
-    return { ...out, hintContext: { cap: ctx.cap, repeat, attempt: ctx.attempt, candidates: ctx.candidates, kept: ctx.lines.map((l) => ({ text: l.text, score: l.score, ref: l.ref })) } };
+    return { ...out, hintContext: { via, cap: ctx.cap, repeat, attempt: ctx.attempt, candidates: ctx.candidates, kept: ctx.lines.map((l) => ({ text: l.text, score: l.score, ref: l.ref })) } };
   };
 
   /** The fix `want` names (a ref like "f1", or a fix id), or a refusal that lists what can be picked. */

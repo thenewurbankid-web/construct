@@ -59,6 +59,17 @@
       "ladder": { "static": { "target": 1 }, "options": { "on": false, "target": 0.8 }, "measured": null }
     },
     {
+      "step": "construct.hints",
+      "label": "Picks which context lines a builder is shown with a refusal (the picker is jev, trace/tools/jev); off, static scores pick and jev's are only logged beside them.",
+      "kind": "decide",
+      "provider": "ollama",
+      "maxTokens": 1,
+      "source": "construct",
+      "guidance": "Keep the context lines that settle the builder's next step.",
+      "question": "Keep this context line for the builder's next step?",
+      "ladder": { "static": { "target": 1 }, "options": { "on": false, "target": 0.6 }, "measured": null }
+    },
+    {
       "step": "trace.choose",
       "label": "Picks where one part of a page gets its data from, citing a fact that settles it.",
       "kind": "decide",

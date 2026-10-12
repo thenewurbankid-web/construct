@@ -208,6 +208,56 @@ test('#889: the Line builder\'s prompt has the overview and a feature index; pla
   } finally { done(); }
 });
 
+test('#890: "jev picks context" ships off; with jev up its scores are logged beside the static ones, and a slow jev never holds a call up', async () => {
+  const http = await import('node:http');
+  const { hintsJevOn, jevScores, HINTS_STEP } = await import('../packages/engine/line/hints.mjs');
+  const { stepProfile } = await import('../packages/core/ai-profiles.mjs');
+  const { createPlanCli } = await import('../bench/ecommerce/driver/plan-cli.mjs');
+  const p = stepProfile(HINTS_STEP);
+  assert.deepEqual([p.kind, p.ladder.options.on, p.ladder.measured], ['decide', false, null]);
+  const { root, done } = project();
+  // A stand-in jev (serve.py's /choose shape): keep-probability 0.9 for lines that name an export, else 0.2.
+  const seen = [];
+  const server = http.createServer((req, res) => {
+    let body = '';
+    req.on('data', (c) => { body += c; });
+    req.on('end', () => {
+      const q = JSON.parse(body); seen.push(q);
+      const keep = /exports/.test(q.state.line.text) ? 0.9 : 0.2;
+      res.setHeader('content-type', 'application/json');
+      res.end(JSON.stringify({ answers: [{ key: 'keep', choice: keep > 0.5 ? 'keep' : 'drop', probabilities: [keep, 1 - keep], confidence: 0.5 }], ms: 1 }));
+    });
+  });
+  await new Promise((r) => server.listen(0, '127.0.0.1', r));
+  const was = process.env.JEV_URL;
+  process.env.JEV_URL = `http://127.0.0.1:${/** @type {any} */ (server.address()).port}`;
+  try {
+    // The project's own switch cannot turn it on without a measured win (owner rule).
+    fs.mkdirSync(path.join(root, 'line'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'line', 'ai-profiles.json'), JSON.stringify({ v: 1, steps: { [HINTS_STEP]: { on: true } } }));
+    assert.equal(hintsJevOn(root), false);
+    fs.writeFileSync(path.join(root, 'features/home/pages/HomePage.tsx'), 'export function HomePage() { return null; }\n');
+    const log = path.join(root, '..', 'jev', 'calls.jsonl');
+    const out = await createPlanCli({ project: root, log, builder: 'test', shadowJev: true }).run('add', ['line.addRoute', JSON.stringify({ route: '/', page: 'home/HomePage' })], { why: 'Serve home.' });
+    assert.equal(out.code, 'UNKNOWN_ITEM');
+    assert.equal(out.hintContext, undefined, 'the scores are for the log, not the builder');
+    const call = fs.readFileSync(log, 'utf8').trim().split('\n').map((l) => JSON.parse(l)).at(-1);
+    assert.equal(call.result.context.via, 'static');
+    assert.equal(call.shadow.via, 'jev');
+    assert.equal(call.shadow.on, false);
+    assert.ok(call.shadow.lines.length >= 1 && call.shadow.lines.every((l) => typeof l.static === 'number' && typeof l.jev === 'number'), JSON.stringify(call.shadow));
+    assert.ok(seen.length >= 1 && seen[0].questions[0].key === 'keep' && !/\//.test(seen[0].state.line.text), 'line text is normalised like the trainer');
+    // A jev that never answers: null within the shadow budget.
+    const t0 = Date.now();
+    assert.equal(await jevScores([{ text: 'x', kind: 'status' }], { fetch: (_u, o) => new Promise((_r, rej) => o.signal.addEventListener('abort', () => rej(new Error('aborted')))), timeoutMs: 50 }), null);
+    assert.ok(Date.now() - t0 < 1000);
+  } finally {
+    if (was === undefined) delete process.env.JEV_URL; else process.env.JEV_URL = was;
+    server.close();
+    done();
+  }
+});
+
 test('#880 follow-up: bench metrics count the fixes a builder picked by id (sent, added, landed)', async () => {
   const { planStats } = await import('../bench/ecommerce/metrics.mjs');
   const parent = fs.realpathSync(makeTempDir('line-hints-metrics-'));

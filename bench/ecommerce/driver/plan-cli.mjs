@@ -31,7 +31,7 @@ import { readLineProject } from '../../../packages/engine/line/model.mjs';
 import { aggregateValidation } from '../../../packages/core/registry.mjs';
 import { enforcersForRoot } from '../../../packages/core/profiles/index.mjs';
 import { hashOf } from '../../../packages/engine/pagesEditor.mjs';
-import { rulesCard, layerOf } from '../../../packages/engine/line/hints.mjs';
+import { rulesCard, layerOf, jevShadow } from '../../../packages/engine/line/hints.mjs';
 import { SPEC_FILE, readSpec, currentFeature, sliceText } from './spec-slice.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -56,10 +56,11 @@ function inside(root, rel) {
 
 /**
  * One plan-cli session over a project folder.
- * @param {{project: string, log?: string, builder?: string, spec?: string|null}} o `spec` (#889): the SPEC.md whose
- *   current feature plan status shows (default bench/ecommerce/SPEC.md; null for none).
+ * @param {{project: string, log?: string, builder?: string, spec?: string|null, shadowJev?: boolean}} o `spec` (#889): the
+ *   SPEC.md whose current feature plan status shows (default bench/ecommerce/SPEC.md; null for none). `shadowJev` (#890):
+ *   log jev's context scores beside the static ones when jev answers in time (default on; BENCH_JEV_SHADOW=0 turns it off).
  */
-export function createPlanCli({ project, log, builder = 'unknown', spec = SPEC_FILE }) {
+export function createPlanCli({ project, log, builder = 'unknown', spec = SPEC_FILE, shadowJev = process.env.BENCH_JEV_SHADOW !== '0' }) {
   const root = fs.realpathSync(path.resolve(project));
   const logFile = log ?? path.join(here, '..', 'runs', path.basename(root), 'calls.jsonl');
   fs.mkdirSync(path.dirname(logFile), { recursive: true });
@@ -210,7 +211,10 @@ export function createPlanCli({ project, log, builder = 'unknown', spec = SPEC_F
       ...(out.spec ? { spec: out.spec } : {}),
       // Exactly what the model was shown (the text it reads; the JSON fields around it are in the tool result too).
       ...(out.ok === false || out.fixes || out.card || out.spec ? { shown: out.sentence } : {}) };
-    record({ kind: 'call', cmd, args: cmd === 'add' ? { tool: rest[0] ?? null, args: safeJson(rest[1]), why: opts.why ?? null, ...(opts.fix ? { fix: opts.fix } : {}) } : rest, ms: Date.now() - t0, result: summary });
+    // #890: with the "jev picks context" switch off (the default), jev's scores for the same lines go beside the static
+    // ones when jev answers within JEV_SHADOW_MS; the builder is shown the static pick either way.
+    const shadow = out.hintContext?.via === 'static' && out.hintContext.candidates?.length && shadowJev ? await jevShadow(out.hintContext, { code: out.code, said: out.sentence }) : null;
+    record({ kind: 'call', cmd, args: cmd === 'add' ? { tool: rest[0] ?? null, args: safeJson(rest[1]), why: opts.why ?? null, ...(opts.fix ? { fix: opts.fix } : {}) } : rest, ms: Date.now() - t0, result: summary, ...(shadow ? { shadow } : {}) });
     // The candidate lines and their scores are for the log (and jev), not for the builder.
     delete out.hintContext;
     return out;
