@@ -20,8 +20,9 @@ export const EVENT_KINDS = Object.freeze(['runOpened', 'runClosed', 'runRanked',
  * - cap:          ranked below the beam cap.
  * - duplicate:    the same plan as a run already open.
  * - won:          another run met every goal condition first (closed without fault).
+ * - forked:       the run split into its children at a fork point (closed without fault; the children carry on).
  */
-export const CLOSE_REASONS = Object.freeze(['shape', 'structural', 'precondition', 'emit', 'goal', 'cap', 'duplicate', 'won']);
+export const CLOSE_REASONS = Object.freeze(['shape', 'structural', 'precondition', 'emit', 'goal', 'cap', 'duplicate', 'won', 'forked']);
 
 /** How the beam ended: one plan for approval, one closed question, or nothing survived. */
 export const DONE_OUTCOMES = Object.freeze(['plan', 'question', 'none']);
@@ -67,7 +68,26 @@ export const DONE_OUTCOMES = Object.freeze(['plan', 'question', 'none']);
  *   | {t: 'done', outcome: 'plan'|'question'|'none', run: string|null, open: number, closed: number}} BeamEvent
  */
 
-const isNum01 = (x) => typeof x === 'number' && Number.isFinite(x) && x >= 0 && x <= 1;
+/**
+ * One plan step a winning run becomes (for approval). Same id/tool/args/sentence shape as Line's ImportStep.
+ * @typedef {object} BeamStep
+ * @property {string} id        Stable: "trace-<n>-<slug>".
+ * @property {'trace.emit'} tool
+ * @property {{feature: string, file: string, layer: string, forks: Record<string, string>}} args  `forks`: point -> pick.
+ * @property {string} sentence  What the step does, in plain English.
+ */
+
+/**
+ * What planBeam returns (and what `done` sums up).
+ * @typedef {object} BeamResult
+ * @property {'plan'|'question'|'none'} outcome
+ * @property {{run: string, steps: BeamStep[]}|null} plan       outcome "plan": the one run that met every goal.
+ * @property {BeamQuestion|null} question                       outcome "question": the surviving runs as options.
+ * @property {Record<string, {forks: ForkChoice[], reading: Reading, closed: {reason: string, detail: string}|null, score: number|null}>} runs
+ * @property {BeamEvent[]} events                               Everything streamed to events.jsonl, in order.
+ */
+
+const isNum01 =(x) => typeof x === 'number' && Number.isFinite(x) && x >= 0 && x <= 1;
 const isStr = (x) => typeof x === 'string' && x.length > 0;
 /** @param {string} where @param {string} msg @returns {never} */
 function fail(where, msg) { throw new Error(`beam contract: ${where} ${msg}`); }
