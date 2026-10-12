@@ -78,3 +78,4 @@ Reuse:
 - `LINE_CONTROLS`.
 
 Start once the open-project-simple branch has committed its ChatEntry and StreamedText changes; it edits the same files. Each screen gets a Playwright check in both modes.
+- **Breadcrumb in chat mode (owner):** chat mode always shows a breadcrumb of where you are in the UI, for example "Features › orders › OrdersPage › title". Clicking any crumb switches to Under the hood at exactly that place: the same screen, with that item selected. As the chat moves around (opens a feature, a page, a part), the breadcrumb follows. Test: in chat, open orders → OrdersPage, click the "orders" crumb, and Under the hood shows Features with orders open.
