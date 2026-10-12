@@ -59,6 +59,18 @@
       "ladder": { "static": { "target": 1 }, "options": { "on": false, "target": 0.8 }, "measured": null }
     },
     {
+      "step": "construct.intent",
+      "label": "Reads what kind of change a request asks for (intent, object, target, layers); jev answers beside the static rules and is logged, never used until it beats them.",
+      "kind": "decide",
+      "provider": "ollama",
+      "model": "open-jev",
+      "modelFrom": "jev, the one picker, on this machine",
+      "maxTokens": 1,
+      "source": "construct",
+      "question": "Which closed label fits the request?",
+      "ladder": { "static": { "target": 1 }, "options": { "on": false, "target": 0.8 }, "measured": null }
+    },
+    {
       "step": "trace.choose",
       "label": "Picks where one part of a page gets its data from, citing a fact that settles it.",
       "kind": "decide",
