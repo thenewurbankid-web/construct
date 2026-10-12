@@ -8,7 +8,7 @@
 //   LINE_PRESENTATION_JEV=off ...                                  rules only (every undecided field gets the rules' default)
 //
 // Each field is picked from closed options (FIELD_OPTIONS). Rules decide first; only a field the rules leave open goes
-// to jev (@mx/reason's decide ladder through packages/core/reason-provider.mjs). When jev is not running, the rules'
+// to Line's one decide() (its picker runs only where the step's profile is on and measured). Otherwise the rules'
 // default stands and the field is marked "rules". Every field records `by`: 'rules' or 'jev'.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -74,16 +74,19 @@ function captionRule(e) {
   return `${e.sentence.replace(/\.$/, '')}${slots}.`;
 }
 
-/** A jev picker over closed options, or null when jev is not running (then the rules' default stands). */
+/**
+ * A picker over closed options, or null (then the rules' default stands). It goes through Line's one decide()
+ * (packages/core/line-decide.mjs) under the `line.presentation` step: the profile is the only switch, so with no
+ * profile for that step, or the step off, decide() throws or answers from static and the rules' default stands.
+ */
 async function loadJev() {
   if (process.env.LINE_PRESENTATION_JEV === 'off') return null;
   try {
-    const { createReasonProvider } = await import('../../core/reason-provider.mjs');
+    const { decide } = await import('../../core/line-decide.mjs');
     const { decideWith } = await import('../../engine/line/importAgent.mjs');
-    const provider = createReasonProvider({ jev: 'auto' });
     return async (id, question, options) => {
-      const d = await decideWith(provider, id, question, options);
-      return d.by === 'jev' ? d.picked : null;
+      const d = await decideWith(decide, 'line.presentation', question, options);
+      return d.driver === 'picker' ? d.picked : null;
     };
   } catch {
     return null;

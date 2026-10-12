@@ -122,3 +122,17 @@ test('on the real Line sample: local records only (no runtime run, no memory), t
     assert.deepEqual(byId(again)['health.crossFeature'].trend, [1, 1]);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
+
+test('How smart is it lists each AI step\'s on and win from the profiles (the one switch)', () => {
+  const aiSteps = [{ step: 'construct.fix', on: true, win: 'measured 9/10 vs static 6/10' }, { step: 'trace.choose', on: false, win: 'off' }];
+  const m = byId(computeSmart({ ...INPUTS, aiSteps }))['ai.staticShare'];
+  assert.deepEqual(m.details, ['3 decided by rules, 1 by a model', 'construct.fix is on: measured 9/10 vs static 6/10', '1 of 2 AI steps are off, so static code answers them']);
+  const empty = byId(computeSmart({ ...INPUTS, decisions: null, aiSteps }))['ai.staticShare'];
+  assert.equal(empty.value, null);
+  assert.equal(empty.details.length, 2);
+  const dir = fs.realpathSync(makeTempDir('line-smart-ai-'));
+  let real;
+  try { real = readSmartInputs(dir, { nodes: [], edges: [] }).aiSteps; } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+  assert.ok(real.length > 0 && real.every((p) => typeof p.on === 'boolean' && typeof p.win === 'string'), 'read from readAiProfiles, the /api/line/ai-profiles source');
+  assert.ok(real.filter((p) => p.on).every((p) => p.win !== 'off'), 'a step that is on carries its measured win');
+});
