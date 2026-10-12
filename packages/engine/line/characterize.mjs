@@ -52,7 +52,7 @@ export { CHAR_DIR } from './characterize/emit.mjs';
 
 /**
  * @typedef {object} CharacterizeOptions
- * @property {number} [budgetMs] Search time per subject (default 10 s; components get `componentBudgetMs`; was 20 s before the speed fix, which measured the same unit coverage on max-ai-ui /opportunity).
+ * @property {number} [budgetMs] Search time per subject (default 10 s; components get `componentBudgetMs`; was 20 s before the speed fix).
  * @property {number} [componentBudgetMs] Search time per component or hook subject (default 25 s; was 60 s).
  * @property {number} [maxTests] Most tests kept per subject (default 150).
  * @property {string} [resumeFrom] The workDir of an earlier run: its search state is continued instead of starting over.
