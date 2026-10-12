@@ -102,6 +102,7 @@ function scalarFields(rows) {
 export function pagePropsOf(src, libName) {
   const sf = ts.createSourceFile('page.tsx', src, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
   const locals = new Map();
+  /** @type {import('typescript').SignatureDeclaration|null} */
   let fn = null;
   const visit = (node) => {
     if ((ts.isTypeAliasDeclaration(node) || ts.isInterfaceDeclaration(node)) && node.name) locals.set(node.name.text, node);
@@ -124,7 +125,7 @@ export function pagePropsOf(src, libName) {
   const members = ts.isTypeLiteralNode(type) || ts.isInterfaceDeclaration(type) ? type.members : null;
   if (!members) return null;
   return members.filter((m) => ts.isPropertySignature(m) && m.name && (ts.isIdentifier(m.name) || ts.isStringLiteral(m.name)))
-    .map((m) => ({ name: m.name.text, optional: Boolean(m.questionToken), type: m.type ? m.type.getText(sf) : 'unknown' }));
+    .map((m) => { const p = /** @type {import('typescript').PropertySignature} */ (m); return { name: /** @type {import('typescript').Identifier|import('typescript').StringLiteral} */ (p.name).text, optional: Boolean(p.questionToken), type: p.type ? p.type.getText(sf) : 'unknown' }; });
 }
 
 /** A value for one required prop, as JSX attribute text (`title="Orders"`), or null when there is no safe one. */
