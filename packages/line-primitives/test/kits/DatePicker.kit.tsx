@@ -29,6 +29,8 @@ export const kit: Kit = {
     disabled: { props: { disabled: true }, check: (c) => assert.equal((trigger(c) as HTMLButtonElement).disabled, true) },
     invalid: { props: { error: 'Choose a weekday.' }, check: (c) => { assert.equal(trigger(c).getAttribute('aria-invalid'), 'true'); assert.equal(c.screen.getByRole('alert').textContent, 'Choose a weekday.'); } },
     required: { props: { required: true }, check: (c) => assert.match(c.screen.getByText('(required)', { exact: false }).textContent ?? '', /\(required\)/) },
+    readOnly: { props: { readOnly: true, defaultValue: DAY }, act: (c) => c.user.click(trigger(c)), check: (c) => { assert.equal(c.screen.queryByRole('grid'), null); assert.match(trigger(c).textContent ?? '', /\(read only\)/); } },
+    loading: { props: { loading: true }, check: (c) => { assert.equal(trigger(c).getAttribute('aria-busy'), 'true'); assert.equal(c.screen.getByRole('status').textContent, 'Loading'); } },
   },
   events: {
     change: { props: { defaultValue: DAY }, act: async (c) => { await open(c); await c.user.click(c.screen.getByRole('button', { name: 'Friday 16 October 2026' })); }, expect: (calls) => assert.equal((calls[0][0] as Date).getDate(), 16) },

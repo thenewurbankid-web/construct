@@ -11,6 +11,7 @@ export const kit: Kit = {
   states: {
     default: { check: (c) => assert.equal(c.screen.queryByRole('tooltip'), null) },
     open: { props: { defaultOpen: true }, check: (c) => { const tip = c.screen.getByRole('tooltip'); assert.match(tip.textContent ?? '', /Moves it out of your inbox/); assert.ok(trigger(c).getAttribute('aria-describedby')); } },
+    disabled: { props: { disabled: true, defaultOpen: true }, check: (c) => { assert.equal(c.screen.queryByRole('tooltip'), null); assert.ok(trigger(c)); } },
   },
   events: {
     openChange: { act: (c) => c.user.tab(), expect: (calls) => assert.deepEqual(calls[0], [true]) },

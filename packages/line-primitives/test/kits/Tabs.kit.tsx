@@ -19,6 +19,7 @@ export const kit: Kit = {
     selected: { props: { defaultValue: 'items' }, check: (c) => { assert.equal(selected(c), 'Items'); assert.equal(c.screen.getByRole('tabpanel', { name: 'Items' }).textContent, 'Three items'); } },
     disabled: { props: { tabs: [...TABS, { value: 'returns', label: 'Returns', content: '-', disabled: true }] }, check: (c) => assert.equal((tab(c, 'Returns') as HTMLButtonElement).disabled, true) },
     orientation: { props: { orientation: 'vertical' }, check: (c) => assert.equal(c.screen.getByRole('tablist').getAttribute('aria-orientation'), 'vertical') },
+    value: { props: { value: 'history' }, act: (c) => c.user.click(tab(c, 'Items')), check: (c) => assert.equal(selected(c), 'History') },
   },
   events: {
     change: { act: (c) => c.user.click(tab(c, 'History')), expect: (calls) => assert.deepEqual(calls[0], ['history']) },

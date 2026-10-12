@@ -27,6 +27,9 @@ export type LinkProps = Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'children'
 export function Link({ href, children, current = false, external = false, disabled = false, variant = 'inline', asChild = false, className = '', ...rest }: LinkProps) {
   const Comp = asChild ? Slot.Root : 'a';
   const look = `rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 aria-[current=page]:font-semibold aria-disabled:cursor-not-allowed aria-disabled:opacity-50 aria-disabled:no-underline ${VARIANTS[variant]} ${className}`;
+  // asChild hands the children straight to Slot, which needs the one child element it styles.
+  let inner: ReactNode = children;
+  if (!asChild) inner = <>{children}<ExternalHint show={external} /></>;
   if (disabled) {
     return <a role="link" aria-disabled="true" data-variant={variant} className={look} {...rest}>{children}</a>;
   }
@@ -40,12 +43,12 @@ export function Link({ href, children, current = false, external = false, disabl
       className={look}
       {...rest}
     >
-      {asChild ? children : (
-        <>
-          {children}
-          {external ? <span data-part="externalIcon"><span aria-hidden="true"> ↗</span><span className="sr-only"> (opens in a new tab)</span></span> : null}
-        </>
-      )}
+      {inner}
     </Comp>
   );
+}
+
+function ExternalHint({ show }: { show: boolean }) {
+  if (!show) return null;
+  return <span data-part="externalIcon"><span aria-hidden="true"> ↗</span><span className="sr-only"> (opens in a new tab)</span></span>;
 }

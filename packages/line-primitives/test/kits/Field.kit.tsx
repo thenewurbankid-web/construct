@@ -13,6 +13,8 @@ export const kit: Kit = {
     invalid: { props: { error: 'Enter 1 to 10.', description: 'Up to 10.' }, check: (c) => { assert.equal(input(c).getAttribute('aria-invalid'), 'true'); const ids = (input(c).getAttribute('aria-describedby') ?? '').split(' '); assert.equal(ids.length, 2); assert.equal(c.screen.getByRole('alert').id, ids[1]); } },
     required: { props: { required: true }, check: (c) => assert.equal(input(c).required, true) },
     disabled: { props: { disabled: true }, check: (c) => assert.equal(input(c).disabled, true) },
+    readOnly: { props: { readOnly: true }, check: (c) => assert.equal(input(c).readOnly, true) },
+    loading: { props: { loading: true }, check: (c) => { assert.equal(c.screen.getByRole('status').textContent, 'Loading'); assert.equal(input(c).getAttribute('aria-busy'), 'true'); } },
   },
   events: {},
   keys: {},

@@ -12,6 +12,7 @@ export const kit: Kit = {
     default: { check: (c) => { assert.ok(c.screen.getByRole('list', { name: 'Checkout' })); assert.equal(item(c, 0).getAttribute('aria-current'), 'step'); } },
     current: { props: { current: 2 }, check: (c) => assert.equal(item(c, 2).getAttribute('aria-current'), 'step') },
     complete: { props: { current: 2 }, check: (c) => { assert.match(item(c, 0).textContent ?? '', /\(completed\)/); assert.equal(item(c, 0).getAttribute('data-state'), 'complete'); } },
+    value: { props: { current: 1 }, check: (c) => { assert.equal(item(c, 1).getAttribute('aria-current'), 'step'); assert.equal(item(c, 0).getAttribute('data-state'), 'complete'); assert.equal(item(c, 2).getAttribute('data-state'), 'upcoming'); } },
   },
   events: {
     change: { props: { current: 2 }, act: (c) => c.user.click(c.screen.getByRole('button', { name: /Cart/ })), expect: (calls) => assert.deepEqual(calls[0], [0]) },

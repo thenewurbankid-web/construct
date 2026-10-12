@@ -15,6 +15,7 @@ export const kit: Kit = {
     required: { props: { required: true }, check: (c) => assert.equal(input(c).required, true) },
     invalid: { props: { error: 'Enter an email address.' }, check: (c) => { assert.equal(input(c).getAttribute('aria-invalid'), 'true'); assert.equal(c.screen.getByRole('alert').textContent, 'Enter an email address.'); assert.ok(input(c).getAttribute('aria-describedby')?.includes(c.screen.getByRole('alert').id)); } },
     described: { props: { description: 'We never share it.' }, check: (c) => { const id = input(c).getAttribute('aria-describedby') ?? ''; assert.equal(document.getElementById(id)?.textContent, 'We never share it.'); } },
+    loading: { props: { loading: true }, check: (c) => { assert.equal(c.screen.getByRole('status').textContent, 'Loading'); assert.equal(document.querySelector('[aria-busy="true"]') !== null, true); } },
   },
   events: {
     change: { act: (c) => c.user.type(input(c), 'a'), expect: (calls) => assert.deepEqual(calls.at(-1), ['a']) },

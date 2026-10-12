@@ -26,6 +26,10 @@ export type DatePickerProps = {
   error?: string;
   disabled?: boolean;
   required?: boolean;
+  /** Shows the date; the calendar stays closed. */
+  readOnly?: boolean;
+  /** The date is loading: a spinner by the label, aria-busy on the trigger. */
+  loading?: boolean;
   className?: string;
 };
 
@@ -42,19 +46,19 @@ const KEY_MOVES: Record<string, (d: Date) => Date> = {
 };
 
 /** Pick a date from a calendar grid in a popover; all date maths is date-fns. */
-export function DatePicker({ label, value, defaultValue = null, onValueChange, open, onOpenChange, min, max, placeholder = 'Pick a date', format = 'PPP', description, error, disabled, required, className = '' }: DatePickerProps) {
+export function DatePicker({ label, value, defaultValue = null, onValueChange, open, onOpenChange, min, max, placeholder = 'Pick a date', format = 'PPP', description, error, disabled, required, readOnly = false, loading, className = '' }: DatePickerProps) {
   const [own, setOwn] = useState<Date | null>(defaultValue);
   const chosen = value === undefined ? own : value;
   const [ownOpen, setOwnOpen] = useState(false);
-  const isOpen = open ?? ownOpen;
-  const setOpen = (next: boolean) => { setOwnOpen(next); onOpenChange?.(next); };
+  const isOpen = !readOnly && (open ?? ownOpen);
+  const setOpen = (next: boolean) => { if (readOnly) return; setOwnOpen(next); onOpenChange?.(next); };
   const choose = (d: Date) => { setOwn(d); onValueChange?.(d); setOpen(false); };
   return (
-    <Field label={label} description={description} error={error} required={required} disabled={disabled} announceRequired className={className}>
+    <Field label={label} description={description} error={error} required={required} disabled={disabled} announceRequired loading={loading} className={className}>
       {({ required: _required, ...control }) => (
         <Popover.Root open={isOpen} onOpenChange={setOpen}>
           <Popover.Trigger {...control} aria-haspopup="dialog" className={`${INPUT_LOOK} flex h-10 items-center justify-between text-left text-sm`}>
-            <span data-part="value">{chosen ? formatDate(chosen, format) : placeholder}</span>
+            <span data-part="value">{chosen ? formatDate(chosen, format) : placeholder}<ReadOnlyHint show={readOnly} /></span>
             <span aria-hidden="true">📅</span>
           </Popover.Trigger>
           <Popover.Portal>
@@ -137,4 +141,9 @@ function DayCell({ day, month, chosen, focused, unavailable, onChoose }: DayCell
       </button>
     </td>
   );
+}
+
+function ReadOnlyHint({ show }: { show: boolean }) {
+  if (!show) return null;
+  return <span className="sr-only"> (read only)</span>;
 }

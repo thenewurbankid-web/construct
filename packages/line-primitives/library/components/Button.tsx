@@ -39,6 +39,9 @@ export function Button({ label, children, icon, variant = 'primary', size = 'md'
     onClick?.(event);
   };
   const content = children ?? label;
+  // asChild hands the content straight to Slot, which needs the one child element it styles.
+  let inner: ReactNode = content;
+  if (!asChild) inner = <ButtonInner content={content} loading={loading} icon={icon} />;
   return (
     <Comp
       type={asChild ? undefined : type}
@@ -53,12 +56,23 @@ export function Button({ label, children, icon, variant = 'primary', size = 'md'
       className={`inline-flex items-center justify-center gap-2 rounded-md font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 disabled:pointer-events-none disabled:opacity-50 data-[loading]:cursor-progress ${VARIANTS[variant]} ${SIZES[size]} ${className}`}
       {...rest}
     >
-      {asChild ? content : (
-        <>
-          {loading ? <span aria-hidden="true" data-part="spinner" className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-current border-r-transparent motion-reduce:animate-none" /> : icon ? <span aria-hidden="true" data-part="icon">{icon}</span> : null}
-          <span data-part="label">{content}</span>
-        </>
-      )}
+      {inner}
     </Comp>
   );
+}
+
+function ButtonInner({ content, loading, icon }: { content: ReactNode; loading: boolean; icon?: ReactNode }) {
+  return (
+    <>
+      <ButtonGlyph loading={loading} icon={icon} />
+      <span data-part="label">{content}</span>
+    </>
+  );
+}
+
+/** The spinner while loading, else the icon, else nothing. */
+function ButtonGlyph({ loading, icon }: { loading: boolean; icon?: ReactNode }) {
+  if (loading) return <span aria-hidden="true" data-part="spinner" className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-current border-r-transparent motion-reduce:animate-none" />;
+  if (!icon) return null;
+  return <span aria-hidden="true" data-part="icon">{icon}</span>;
 }

@@ -18,6 +18,8 @@ export type TextFieldProps = {
   disabled?: boolean;
   readOnly?: boolean;
   required?: boolean;
+  /** Its data is loading: a spinner by the label and aria-busy on the input. */
+  loading?: boolean;
   placeholder?: string;
   type?: 'text' | 'email' | 'password' | 'search' | 'tel' | 'url';
   name?: string;
@@ -26,9 +28,9 @@ export type TextFieldProps = {
 };
 
 /** A labelled single-line text input with help text and an error. */
-export function TextField({ label, value, defaultValue, onValueChange, onFocus, onBlur, description, error, disabled, readOnly, required, placeholder, type = 'text', name, size = 'md', className = '' }: TextFieldProps) {
+export function TextField({ label, value, defaultValue, onValueChange, onFocus, onBlur, description, error, disabled, readOnly, required, loading, placeholder, type = 'text', name, size = 'md', className = '' }: TextFieldProps) {
   return (
-    <Field label={label} description={description} error={error} required={required} disabled={disabled} className={className}>
+    <Field label={label} description={description} error={error} required={required} disabled={disabled} readOnly={readOnly} loading={loading} className={className}>
       {(control) => (
         <input
           {...control}
@@ -36,7 +38,6 @@ export function TextField({ label, value, defaultValue, onValueChange, onFocus, 
           name={name}
           value={value}
           defaultValue={defaultValue}
-          readOnly={readOnly}
           placeholder={placeholder}
           data-size={size}
           onChange={(e) => onValueChange?.(e.target.value)}

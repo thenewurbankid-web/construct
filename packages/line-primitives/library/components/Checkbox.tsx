@@ -1,7 +1,7 @@
 // @line-level atom
 'use client';
 import { Checkbox as RadixCheckbox, Label } from 'radix-ui';
-import { useId } from 'react';
+import { useId, useState } from 'react';
 
 export type CheckboxProps = {
   label: string;
@@ -12,25 +12,33 @@ export type CheckboxProps = {
   onCheckedChange?: (checked: boolean) => void;
   disabled?: boolean;
   required?: boolean;
+  /** Shows its state; toggles are ignored (aria-readonly). */
+  readOnly?: boolean;
   error?: string;
   name?: string;
+  /** What the form submits when it is checked. */
+  value?: string;
   className?: string;
 };
 
 /** A labelled two- or three-state check (Radix Checkbox). */
-export function Checkbox({ label, checked, defaultChecked, indeterminate = false, onCheckedChange, disabled, required, error, name, className = '' }: CheckboxProps) {
+export function Checkbox({ label, checked, defaultChecked = false, indeterminate = false, onCheckedChange, disabled, required, readOnly = false, error, name, value, className = '' }: CheckboxProps) {
   const id = useId();
+  const [own, setOwn] = useState(defaultChecked);
+  const current = checked ?? own;
   const errorId = error ? `${id}-error` : undefined;
-  const state = indeterminate ? 'indeterminate' : checked;
+  const state = indeterminate ? 'indeterminate' : current;
+  const change = (next: boolean) => { if (readOnly) return; setOwn(next); onCheckedChange?.(next); };
   return (
     <div data-part="root" className={`flex flex-col gap-1 ${className}`}>
       <div className="flex items-center gap-2">
         <RadixCheckbox.Root
           id={id}
           name={name}
+          value={value}
           checked={state}
-          defaultChecked={defaultChecked}
-          onCheckedChange={(v) => onCheckedChange?.(v === true)}
+          onCheckedChange={(v) => change(v === true)}
+          aria-readonly={readOnly || undefined}
           disabled={disabled}
           required={required}
           aria-invalid={error ? true : undefined}
@@ -41,7 +49,12 @@ export function Checkbox({ label, checked, defaultChecked, indeterminate = false
         </RadixCheckbox.Root>
         <Label.Root htmlFor={id} className="text-sm text-slate-900">{label}</Label.Root>
       </div>
-      {error ? <p id={errorId} role="alert" className="text-sm text-red-700">{error}</p> : null}
+      <CheckboxError id={errorId} text={error} />
     </div>
   );
+}
+
+function CheckboxError({ id, text }: { id?: string; text?: string }) {
+  if (!text) return null;
+  return <p id={id} role="alert" className="text-sm text-red-700">{text}</p>;
 }

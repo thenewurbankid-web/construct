@@ -18,6 +18,8 @@ export const kit: Kit = {
     disabled: { props: { disabled: true }, check: (c) => assert.equal(input(c).disabled, true) },
     invalid: { props: { error: 'Pick a city from the list.' }, check: (c) => { assert.equal(input(c).getAttribute('aria-invalid'), 'true'); assert.equal(c.screen.getByRole('alert').textContent, 'Pick a city from the list.'); } },
     required: { props: { required: true }, check: (c) => assert.equal(input(c).required, true) },
+    readOnly: { props: { readOnly: true, value: 'ber' }, act: (c) => c.user.type(input(c), 'x'), check: (c) => { assert.equal(input(c).readOnly, true); assert.equal(input(c).value, 'Berlin'); assert.equal(listbox(c), null); } },
+    loading: { props: { loading: true }, check: (c) => { assert.equal(input(c).getAttribute('aria-busy'), 'true'); assert.equal(c.screen.getByRole('status').textContent, 'Loading'); } },
   },
   events: {
     change: { act: async (c) => { await c.user.type(input(c), 'mum'); await c.user.click(c.screen.getByRole('option', { name: 'Mumbai' })); }, expect: (calls) => assert.deepEqual(calls[0], ['bom']) },

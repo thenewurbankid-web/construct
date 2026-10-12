@@ -15,6 +15,7 @@ export const kit: Kit = {
     required: { props: { required: true }, check: (c) => assert.equal(area(c).required, true) },
     invalid: { props: { error: 'Too long.' }, check: (c) => { assert.equal(area(c).getAttribute('aria-invalid'), 'true'); assert.equal(c.screen.getByRole('alert').textContent, 'Too long.'); } },
     described: { props: { description: 'Shown to the courier.' }, check: (c) => assert.equal(document.getElementById(area(c).getAttribute('aria-describedby') ?? '')?.textContent, 'Shown to the courier.') },
+    loading: { props: { loading: true }, check: (c) => { assert.equal(c.screen.getByRole('status').textContent, 'Loading'); assert.equal(document.querySelector('[aria-busy="true"]') !== null, true); } },
   },
   events: {
     change: { act: (c) => c.user.type(area(c), 'x'), expect: (calls) => assert.deepEqual(calls.at(-1), ['x']) },

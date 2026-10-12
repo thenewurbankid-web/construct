@@ -11,12 +11,15 @@ export type TooltipProps = {
   open?: boolean;
   defaultOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
+  /** Never shows (the control renders alone). */
+  disabled?: boolean;
   side?: 'top' | 'right' | 'bottom' | 'left';
   delayDuration?: number;
 };
 
 /** A short description of a control, shown on hover or focus (Radix Tooltip: role="tooltip", aria-describedby). */
-export function Tooltip({ content, children, open, defaultOpen, onOpenChange, side = 'top', delayDuration = 300 }: TooltipProps) {
+export function Tooltip({ content, children, open, defaultOpen, onOpenChange, disabled = false, side = 'top', delayDuration = 300 }: TooltipProps) {
+  if (disabled) return <>{children}</>;
   return (
     <RadixTooltip.Provider delayDuration={delayDuration}>
       <RadixTooltip.Root open={open} defaultOpen={defaultOpen} onOpenChange={onOpenChange}>

@@ -21,13 +21,17 @@ export type ComboboxProps = {
   error?: string;
   disabled?: boolean;
   required?: boolean;
+  /** Shows the chosen option; typing and the list are off. */
+  readOnly?: boolean;
+  /** Options are loading: a spinner by the label, aria-busy on the input. */
+  loading?: boolean;
   className?: string;
 };
 
 const contains = (o: ComboboxOption, text: string) => o.label.toLowerCase().includes(text.trim().toLowerCase());
 
 /** A text input that filters a list of options (WAI-ARIA combobox with list autocomplete and aria-activedescendant). */
-export function Combobox({ label, options, value, onValueChange, onInputChange, onOpenChange, placeholder, emptyText = 'No results', filter = contains, description, error, disabled, required, className = '' }: ComboboxProps) {
+export function Combobox({ label, options, value, onValueChange, onInputChange, onOpenChange, placeholder, emptyText = 'No results', filter = contains, description, error, disabled, required, readOnly = false, loading, className = '' }: ComboboxProps) {
   const listId = useId();
   const [own, setOwn] = useState<string | null>(null);
   const chosen = value === undefined ? own : value;
@@ -37,7 +41,7 @@ export function Combobox({ label, options, value, onValueChange, onInputChange, 
   const [active, setActive] = useState(0);
   const matches = useMemo(() => options.filter((o) => filter(o, text)), [options, filter, text]);
 
-  const setOpen = (next: boolean) => { if (next !== open) { setOpenState(next); onOpenChange?.(next); } };
+  const setOpen = (next: boolean) => { if (next !== open && !(next && readOnly)) { setOpenState(next); onOpenChange?.(next); } };
   const choose = (o: ComboboxOption) => {
     setOwn(o.value);
     setText(o.label);
@@ -52,7 +56,7 @@ export function Combobox({ label, options, value, onValueChange, onInputChange, 
   };
   const optionId = (i: number) => `${listId}-option-${i}`;
   return (
-    <Field label={label} description={description} error={error} required={required} disabled={disabled} className={className}>
+    <Field label={label} description={description} error={error} required={required} disabled={disabled} readOnly={readOnly} loading={loading} className={className}>
       {(control) => (
         <div className="relative">
           <input
@@ -66,7 +70,7 @@ export function Combobox({ label, options, value, onValueChange, onInputChange, 
             autoComplete="off"
             value={text}
             placeholder={placeholder}
-            onChange={(e) => { setText(e.target.value); setActive(0); setOpen(true); onInputChange?.(e.target.value); }}
+            onChange={(e) => { if (readOnly) return; setText(e.target.value); setActive(0); setOpen(true); onInputChange?.(e.target.value); }}
             onKeyDown={onKeyDown}
             onBlur={() => setOpen(false)}
             className={`${INPUT_LOOK} h-10 text-sm`}

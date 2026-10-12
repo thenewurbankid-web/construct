@@ -40,7 +40,12 @@ export function IconButton({ label, icon, variant = 'ghost', size = 'md', loadin
       className={`inline-flex items-center justify-center rounded-md transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 disabled:pointer-events-none disabled:opacity-50 ${VARIANTS[variant]} ${SIZES[size]} ${className}`}
       {...rest}
     >
-      {loading ? <span aria-hidden="true" data-part="spinner" className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-current border-r-transparent motion-reduce:animate-none" /> : <span aria-hidden="true" data-part="icon">{icon}</span>}
+      <IconGlyph loading={loading} icon={icon} />
     </button>
   );
+}
+
+function IconGlyph({ loading, icon }: { loading: boolean; icon: ReactNode }) {
+  if (loading) return <span aria-hidden="true" data-part="spinner" className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-current border-r-transparent motion-reduce:animate-none" />;
+  return <span aria-hidden="true" data-part="icon">{icon}</span>;
 }

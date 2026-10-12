@@ -6,7 +6,7 @@ import type { Ctx, Kit } from '../kit/harness';
 const ITEMS = [{ id: 'edit', label: 'Edit' }, { id: 'duplicate', label: 'Duplicate' }, { id: 'delete', label: 'Delete', danger: true }];
 const trigger = (c: Ctx) => c.screen.getByRole('button', { name: /Actions/ });
 // Radix moves focus to the first item after the menu mounts; wait for it before the next key.
-const openByKey = async (c: Ctx, k = '{Enter}') => { trigger(c).focus(); await c.user.keyboard(k); await waitFor(() => assert.equal(document.activeElement?.getAttribute('role'), 'menuitem')); };
+const openByKey = async (c: Ctx, k = '{Enter}') => { trigger(c).focus(); await c.user.keyboard(k); await waitFor(() => assert.match(document.activeElement?.getAttribute('role') ?? '', /^menuitem/)); };
 
 export const kit: Kit = {
   name: 'Menu',
@@ -15,10 +15,13 @@ export const kit: Kit = {
     default: { check: (c) => { assert.equal(trigger(c).getAttribute('aria-haspopup'), 'menu'); assert.equal(trigger(c).getAttribute('aria-expanded'), 'false'); } },
     open: { act: (c) => openByKey(c), check: (c) => { assert.ok(c.screen.getByRole('menu')); assert.equal(c.screen.getAllByRole('menuitem').length, 3); } },
     disabled: { props: { items: [...ITEMS, { id: 'archive', label: 'Archive', disabled: true }] }, act: (c) => openByKey(c), check: (c) => assert.equal(c.screen.getByRole('menuitem', { name: 'Archive' }).getAttribute('aria-disabled'), 'true') },
+    checked: { props: { items: [...ITEMS, { id: 'pin', label: 'Pinned', checked: true }] }, act: (c) => openByKey(c), check: (c) => assert.equal(c.screen.getByRole('menuitemcheckbox', { name: 'Pinned' }).getAttribute('aria-checked'), 'true') },
   },
   events: {
     select: { act: async (c) => { await openByKey(c); await c.user.click(c.screen.getByRole('menuitem', { name: 'Duplicate' })); }, expect: (calls) => assert.deepEqual(calls[0], ['duplicate']) },
     openChange: { act: (c) => openByKey(c), expect: (calls) => assert.deepEqual(calls[0], [true]) },
+    change: { props: { items: [{ id: 'pin', label: 'Pinned', checked: false }] }, act: async (c) => { await openByKey(c); await c.user.click(c.screen.getByRole('menuitemcheckbox', { name: 'Pinned' })); }, expect: (calls) => assert.deepEqual(calls[0], ['pin', true]) },
+    dismiss: { act: async (c) => { await openByKey(c); await c.user.keyboard('{Escape}'); } },
   },
   keys: {
     Enter: { props: (spy) => ({ onSelect: spy }), act: async (c) => { await openByKey(c); await c.user.keyboard('{Enter}'); }, check: (c) => assert.deepEqual(c.spy.mock.calls[0]?.arguments, ['edit']) },

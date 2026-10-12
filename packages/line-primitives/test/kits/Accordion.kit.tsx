@@ -19,6 +19,7 @@ export const kit: Kit = {
     expanded: { props: { defaultValue: ['returns'] }, check: (c) => { assert.ok(open(c, 'Returns')); assert.equal(c.screen.getByRole('region', { name: 'Returns' }).textContent, 'Free within 30 days.'); } },
     multiple: { props: { multiple: true }, act: async (c) => { await c.user.click(head(c, 'Shipping')); await c.user.click(head(c, 'Warranty')); }, check: (c) => assert.ok(open(c, 'Shipping') && open(c, 'Warranty')) },
     disabled: { props: { items: [...ITEMS, { value: 'faq', title: 'FAQ', content: '-', disabled: true }] }, check: (c) => assert.equal((head(c, 'FAQ') as HTMLButtonElement).disabled, true) },
+    value: { props: { value: ['warranty'] }, act: (c) => c.user.click(head(c, 'Shipping')), check: (c) => { assert.ok(open(c, 'Warranty')); assert.ok(!open(c, 'Shipping')); } },
   },
   events: {
     change: { act: (c) => c.user.click(head(c, 'Shipping')), expect: (calls) => assert.deepEqual(calls[0], [['shipping']]) },

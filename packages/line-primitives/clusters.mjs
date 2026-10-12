@@ -64,7 +64,7 @@ export const CLUSTERS = Object.freeze([
   { id: 'navigationMenu', role: 'navigation', apg: null, names: /^(NavigationMenu|NavigationRail|BottomNavigation|BottomNavigationAction|Navigation)$/, what: 'Site navigation with flyouts.' },
   { id: 'toolbar', role: 'toolbar', apg: `${APG}toolbar/`, names: /^(Toolbar|AppBar)$/, what: 'A row of controls.' },
   { id: 'list', role: 'list', apg: null, names: /^(List|ListItem|GridList|ListItemButton|ListItemText|ListItemIcon|ListItemAvatar|ListSubheader)$/, what: 'A list of items.' },
-  { id: 'typography', role: null, apg: null, names: /^(Text|Heading|Title|Typography|Code|Blockquote|Highlight|Mark|Em|Kbd|Quote|Strong|Prose)$/, what: 'Text styles.' },
+  { id: 'typography', role: null, apg: null, names: /^(Text|Heading|Title|Typography|Code|Blockquote|Highlight|Mark|Em|Kbd|Quote|Strong|Prose|Span)$/, what: 'Text styles.' },
   { id: 'image', role: 'img', apg: null, names: /^(Image|BackgroundImage|AspectRatio|Icon|SvgIcon|QrCode)$/, what: 'Pictures and icons.' },
   { id: 'splitter', role: 'separator', apg: `${APG}windowsplitter/`, names: /^(Splitter|Resizable|ResizablePanel)$/, what: 'Panels with a draggable divider.' },
   { id: 'timeline', role: 'list', apg: null, names: /^(Timeline|TimelineItem)$/, what: 'Events in time order.' },

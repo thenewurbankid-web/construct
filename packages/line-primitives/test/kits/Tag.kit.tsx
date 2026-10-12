@@ -17,6 +17,7 @@ export const kit: Kit = {
   events: {
     remove: { act: (c) => c.user.click(remove(c)) },
     press: { act: (c) => c.user.click(c.screen.getByRole('button', { name: 'Vegan' })) },
+    change: { props: { selected: true }, act: (c) => c.user.click(c.screen.getByRole('button', { name: 'Vegan' })), expect: (calls) => assert.deepEqual(calls[0], [false]) },
   },
   keys: {
     Backspace: removeBy('{Backspace}'),

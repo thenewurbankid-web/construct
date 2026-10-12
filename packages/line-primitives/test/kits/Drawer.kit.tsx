@@ -12,9 +12,11 @@ export const kit: Kit = {
     default: { check: (c) => assert.equal(c.screen.queryByRole('dialog'), null) },
     open: { props: { side: 'left' }, act: (c) => c.user.click(trigger(c)), check: (c) => { const d = c.screen.getByRole('dialog', { name: 'Filters' }); assert.equal(d.getAttribute('data-side'), 'left'); } },
     modal: { props: { defaultOpen: true }, check: (c) => assert.ok(c.screen.getByRole('dialog').contains(document.activeElement)) },
+    dismissible: { props: { dismissible: false, defaultOpen: true }, act: (c) => c.user.keyboard('{Escape}'), check: (c) => { assert.ok(c.screen.getByRole('dialog')); assert.equal(c.screen.queryByRole('button', { name: 'Close' }), null); } },
   },
   events: {
     openChange: { act: (c) => c.user.click(trigger(c)), expect: (calls) => assert.deepEqual(calls[0], [true]) },
+    dismiss: { props: { defaultOpen: true }, act: (c) => c.user.keyboard('{Escape}') },
   },
   keys: {
     Escape: { act: async (c) => { await c.user.click(trigger(c)); await c.user.keyboard('{Escape}'); }, check: (c) => assert.equal(c.screen.queryByRole('dialog'), null) },

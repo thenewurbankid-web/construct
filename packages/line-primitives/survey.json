@@ -1929,6 +1929,7 @@
      "Kbd",
      "Mark",
      "Quote",
+     "Span",
      "Strong",
      "Text"
     ],
@@ -1950,7 +1951,7 @@
    "parts": [
     "Group"
    ],
-   "primitive": null
+   "primitive": "Text"
   },
   {
    "id": "breadcrumbs",
@@ -2396,7 +2397,7 @@
     "default"
    ],
    "events": [
-    "openChange"
+    "dismiss"
    ],
    "parts": [
     "Description",
@@ -18529,7 +18530,7 @@
     "default"
    ],
    "events": [
-    "openChange"
+    "dismiss"
    ],
    "passThroughEvents": [],
    "props": [
@@ -24631,7 +24632,7 @@
   {
    "lib": "chakra",
    "name": "Span",
-   "cluster": null,
+   "cluster": "typography",
    "role": null,
    "parts": [],
    "states": [
@@ -25492,7 +25493,7 @@
     "dismissible"
    ],
    "events": [
-    "openChange"
+    "dismiss"
    ],
    "passThroughEvents": [],
    "props": [
@@ -26356,9 +26357,9 @@
     "ChipGroup"
    ],
    "states": [
-    "checked",
     "default",
     "multiple",
+    "selected",
     "value"
    ],
    "events": [

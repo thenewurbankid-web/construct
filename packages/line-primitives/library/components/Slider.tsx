@@ -14,12 +14,16 @@ export type SliderProps = {
   /** The user let go or finished a key press. */
   onValueCommit?: (value: number) => void;
   disabled?: boolean;
+  /** Shows the value; keys and drags are ignored (aria-readonly). */
+  readOnly?: boolean;
+  /** Shown under it (role="alert"); sets aria-invalid. */
+  error?: string;
   orientation?: 'horizontal' | 'vertical';
   className?: string;
 };
 
 /** Pick a number in a range by dragging or with the arrow keys (Radix Slider). */
-export function Slider({ label, value, defaultValue, min = 0, max = 100, step = 1, onValueChange, onValueCommit, disabled, orientation = 'horizontal', className = '' }: SliderProps) {
+export function Slider({ label, value, defaultValue, min = 0, max = 100, step = 1, onValueChange, onValueCommit, disabled, readOnly = false, error, orientation = 'horizontal', className = '' }: SliderProps) {
   const id = useId();
   const [own, setOwn] = useState(defaultValue ?? min);
   const current = value ?? own;
@@ -36,15 +40,21 @@ export function Slider({ label, value, defaultValue, min = 0, max = 100, step = 
         step={step}
         disabled={disabled}
         orientation={orientation}
-        onValueChange={([v]) => { setOwn(v); onValueChange?.(v); }}
-        onValueCommit={([v]) => onValueCommit?.(v)}
+        onValueChange={([v]) => { if (readOnly) return; setOwn(v); onValueChange?.(v); }}
+        onValueCommit={([v]) => { if (!readOnly) onValueCommit?.(v); }}
         className="relative flex touch-none select-none items-center data-[orientation=horizontal]:h-5 data-[orientation=horizontal]:w-full data-[orientation=vertical]:h-40 data-[orientation=vertical]:w-5 data-[orientation=vertical]:flex-col data-[disabled]:opacity-50"
       >
         <RadixSlider.Track data-part="track" className="relative grow overflow-hidden rounded-full bg-slate-200 data-[orientation=horizontal]:h-1.5 data-[orientation=vertical]:w-1.5">
           <RadixSlider.Range data-part="range" className="absolute bg-slate-900 data-[orientation=horizontal]:h-full data-[orientation=vertical]:w-full" />
         </RadixSlider.Track>
-        <RadixSlider.Thumb aria-labelledby={`${id}-label`} data-part="thumb" className="block h-5 w-5 rounded-full border-2 border-slate-900 bg-white hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900" />
+        <RadixSlider.Thumb aria-labelledby={`${id}-label`} aria-readonly={readOnly || undefined} aria-invalid={error ? true : undefined} aria-describedby={error ? `${id}-error` : undefined} data-part="thumb" className="block h-5 w-5 rounded-full border-2 border-slate-900 bg-white hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900" />
       </RadixSlider.Root>
+      <SliderError id={`${id}-error`} text={error} />
     </div>
   );
+}
+
+function SliderError({ id, text }: { id: string; text?: string }) {
+  if (!text) return null;
+  return <p id={id} role="alert" className="text-sm text-red-700">{text}</p>;
 }

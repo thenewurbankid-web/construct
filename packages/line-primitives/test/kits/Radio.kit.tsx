@@ -25,6 +25,7 @@ export const kit: Kit = {
     required: { props: { required: true }, check: (c) => assert.equal(group(c).getAttribute('aria-required'), 'true') },
     invalid: { props: { error: 'Choose a delivery option.' }, check: (c) => { assert.equal(group(c).getAttribute('aria-invalid'), 'true'); assert.equal(c.screen.getByRole('alert').textContent, 'Choose a delivery option.'); } },
     orientation: { props: { orientation: 'horizontal' }, check: (c) => assert.equal(group(c).getAttribute('aria-orientation'), 'horizontal') },
+    readOnly: { props: (spy) => ({ readOnly: true, defaultValue: 'standard', onValueChange: spy }), act: (c) => c.user.click(radio(c, 'Express')), check: (c) => { assert.equal(group(c).getAttribute('aria-readonly'), 'true'); assert.equal(radio(c, 'Standard').getAttribute('aria-checked'), 'true'); assert.equal(c.spy.mock.callCount(), 0); } },
   },
   events: {
     change: { act: (c) => c.user.click(radio(c, 'Pick up')), expect: (calls) => assert.deepEqual(calls[0], ['pickup']) },

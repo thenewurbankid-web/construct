@@ -8,6 +8,8 @@ export type TagProps = {
   onRemove?: () => void;
   /** Makes it a toggle (aria-pressed). */
   onPress?: () => void;
+  /** A toggle tag was pressed: its new selected value (the chip pattern). */
+  onSelectedChange?: (selected: boolean) => void;
   selected?: boolean;
   disabled?: boolean;
   variant?: 'neutral' | 'brand';
@@ -17,13 +19,14 @@ export type TagProps = {
 const VARIANTS = { neutral: 'bg-slate-100 text-slate-800', brand: 'bg-slate-900 text-white' };
 
 /** A small token that can be selected or removed. */
-export function Tag({ label, onRemove, onPress, selected = false, disabled = false, variant = 'neutral', size = 'md' }: TagProps) {
+export function Tag({ label, onRemove, onPress, onSelectedChange, selected = false, disabled = false, variant = 'neutral', size = 'md' }: TagProps) {
   const onKeyDown = (e: KeyboardEvent<HTMLElement>) => {
     if (onRemove && !disabled && (e.key === 'Backspace' || e.key === 'Delete')) { e.preventDefault(); onRemove(); }
   };
+  const press = onPress || onSelectedChange ? () => { onPress?.(); onSelectedChange?.(!selected); } : undefined;
   return (
     <span data-variant={variant} data-size={size} data-disabled={disabled ? '' : undefined} className={`inline-flex items-center gap-1 rounded-full font-medium data-[disabled]:opacity-50 ${size === 'sm' ? 'px-2 py-0.5 text-xs' : 'px-3 py-1 text-sm'} ${VARIANTS[variant]}`}>
-      <TagLabel label={label} onPress={onPress} selected={selected} disabled={disabled} onKeyDown={onKeyDown} />
+      <TagLabel label={label} onPress={press} selected={selected} disabled={disabled} onKeyDown={onKeyDown} />
       <RemoveButton label={label} show={Boolean(onRemove)} disabled={disabled} onRemove={onRemove} onKeyDown={onKeyDown} />
     </span>
   );

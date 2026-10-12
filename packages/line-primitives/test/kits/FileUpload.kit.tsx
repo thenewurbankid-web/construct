@@ -5,7 +5,7 @@ import type { Ctx, Kit } from '../kit/harness';
 
 const file = (name: string) => new File(['x'], name, { type: 'image/png' });
 const input = (c: Ctx) => c.container.querySelector('input[type="file"]') as HTMLInputElement;
-const trigger = (c: Ctx) => c.screen.getByRole('button', { name: 'Upload receipt' });
+const trigger = (c: Ctx) => c.screen.getByRole('button', { name: /^Upload receipt/ });
 const dropzone = (c: Ctx) => c.container.querySelector('[data-part="dropzone"]') as HTMLElement;
 const clicksOnInput = (c: Ctx) => { const seen: number[] = []; input(c).addEventListener('click', (e) => { e.preventDefault(); seen.push(1); }); return seen; };
 
@@ -19,6 +19,8 @@ export const kit: Kit = {
     disabled: { props: { disabled: true }, check: (c) => { assert.equal((trigger(c) as HTMLButtonElement).disabled, true); assert.equal(input(c).disabled, true); } },
     invalid: { props: { error: 'Files must be under 5 MB.' }, check: (c) => { assert.equal(input(c).getAttribute('aria-invalid'), 'true'); assert.equal(c.screen.getByRole('alert').textContent, 'Files must be under 5 MB.'); } },
     multiple: { props: { multiple: true }, act: (c) => c.user.upload(input(c), [file('a.png'), file('b.png')]), check: (c) => assert.equal(c.screen.getAllByRole('listitem').length, 2) },
+    readOnly: { props: { readOnly: true, files: [file('kept.png')] }, check: (c) => { assert.ok(c.screen.getByText('kept.png')); assert.equal(c.screen.queryByRole('button'), null); } },
+    required: { props: { required: true }, check: (c) => { assert.equal(input(c).required, true); assert.match(trigger(c).textContent ?? '', /\(required\)/); } },
   },
   events: {
     filesChange: { act: (c) => c.user.upload(input(c), file('a.png')), expect: (calls) => assert.equal((calls[0][0] as File[])[0].name, 'a.png') },

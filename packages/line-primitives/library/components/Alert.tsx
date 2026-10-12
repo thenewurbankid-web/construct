@@ -29,13 +29,23 @@ export function Alert({ title, children, variant = 'info', onDismiss, className 
       <span aria-hidden="true" data-part="icon" className="font-bold">{ICONS[variant]}</span>
       <div className="flex-1">
         <p data-part="title" className="text-sm font-semibold">{title}</p>
-        {children ? <div data-part="description" className="mt-1 text-sm">{children}</div> : null}
+        <AlertDescription content={children} />
       </div>
-      {onDismiss ? (
-        <button type="button" aria-label="Dismiss" onClick={onDismiss} className="inline-flex h-6 w-6 items-center justify-center rounded hover:bg-black/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-current">
-          <span aria-hidden="true">✕</span>
-        </button>
-      ) : null}
+      <AlertDismiss onDismiss={onDismiss} />
     </div>
+  );
+}
+
+function AlertDescription({ content }: { content?: ReactNode }) {
+  if (content === undefined || content === null) return null;
+  return <div data-part="description" className="mt-1 text-sm">{content}</div>;
+}
+
+function AlertDismiss({ onDismiss }: { onDismiss?: () => void }) {
+  if (!onDismiss) return null;
+  return (
+    <button type="button" aria-label="Dismiss" onClick={onDismiss} className="inline-flex h-6 w-6 items-center justify-center rounded hover:bg-black/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-current">
+      <span aria-hidden="true">✕</span>
+    </button>
   );
 }

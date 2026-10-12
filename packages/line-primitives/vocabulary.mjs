@@ -28,6 +28,10 @@ export const IGNORED_EVENT_KINDS = Object.freeze(['lifecycle', 'key', 'pointer',
 const CHECKED_CLUSTERS = new Set(['checkbox', 'switch', 'toggle']);
 /** Clusters where an onClose-style prop removes the item rather than closing a surface. */
 const REMOVE_CLUSTERS = new Set(['tag']);
+/** Clusters where an onClose-style prop dismisses an inline message (it has no open state to change). */
+const DISMISS_CLUSTERS = new Set(['alert']);
+/** Clusters whose "checked" boolean is a selected state (a checkable chip). */
+const SELECTED_CLUSTERS = new Set(['tag']);
 
 /** @type {[RegExp, string][]} Prop name -> canonical state id (first match wins). */
 const STATE_RULES = [
@@ -85,6 +89,7 @@ export function stateOf(prop, cluster) {
   for (const [re, id] of STATE_RULES) {
     if (!re.test(prop)) continue;
     if (id === 'selected' && cluster && CHECKED_CLUSTERS.has(cluster)) return 'checked';
+    if (id === 'checked' && cluster && SELECTED_CLUSTERS.has(cluster)) return 'selected';
     return id;
   }
   return null;
@@ -100,6 +105,7 @@ export function stateOf(prop, cluster) {
 export function eventOf(prop, cluster) {
   if (!/^on[A-Z]/.test(prop)) return null;
   if (cluster && REMOVE_CLUSTERS.has(cluster) && /^on(Close|Dismiss|Remove|Delete)$/.test(prop)) return 'remove';
+  if (cluster && DISMISS_CLUSTERS.has(cluster) && /^on(Close|Dismiss)$/.test(prop)) return 'dismiss';
   for (const [re, id] of EVENT_RULES) if (re.test(prop)) return id;
   return 'other';
 }

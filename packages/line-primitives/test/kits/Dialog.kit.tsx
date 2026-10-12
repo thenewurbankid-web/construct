@@ -12,9 +12,11 @@ export const kit: Kit = {
     default: { check: (c) => { assert.equal(c.screen.queryByRole('dialog'), null); assert.equal(trigger(c).getAttribute('aria-expanded'), 'false'); } },
     open: { act: (c) => c.user.click(trigger(c)), check: (c) => { const d = c.screen.getByRole('dialog', { name: 'Delete this order?' }); assert.ok(d.getAttribute('aria-describedby')); assert.ok(d.contains(document.activeElement)); } },
     modal: { props: { alert: true, defaultOpen: true }, check: (c) => assert.ok(c.screen.getByRole('alertdialog', { name: 'Delete this order?' })) },
+    dismissible: { props: { dismissible: false, defaultOpen: true }, act: (c) => c.user.keyboard('{Escape}'), check: (c) => { const d = c.screen.getByRole('dialog'); assert.equal(c.screen.queryByRole('button', { name: 'Close' }), null); assert.ok(d.contains(c.screen.getByRole('button', { name: 'Delete' }))); } },
   },
   events: {
     openChange: { act: (c) => c.user.click(trigger(c)), expect: (calls) => assert.deepEqual(calls[0], [true]) },
+    dismiss: { props: { defaultOpen: true }, act: (c) => c.user.keyboard('{Escape}') },
   },
   keys: {
     Escape: { act: async (c) => { await c.user.click(trigger(c)); await c.user.keyboard('{Escape}'); }, check: (c) => { assert.equal(c.screen.queryByRole('dialog'), null); assert.equal(document.activeElement, trigger(c)); } },

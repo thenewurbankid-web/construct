@@ -18,6 +18,8 @@ export const kit: Kit = {
     disabled: { props: { disabled: true }, check: (c) => assert.equal((trigger(c) as HTMLButtonElement).disabled, true) },
     required: { props: { required: true }, check: (c) => assert.equal(trigger(c).getAttribute('aria-required'), 'true') },
     invalid: { props: { error: 'Choose where we ship to.' }, check: (c) => { assert.equal(trigger(c).getAttribute('aria-invalid'), 'true'); assert.equal(c.screen.getByRole('alert').textContent, 'Choose where we ship to.'); } },
+    readOnly: { props: (spy) => ({ readOnly: true, defaultValue: 'in', onOpenChange: spy }), act: open, check: (c) => { assert.equal(trigger(c).getAttribute('aria-readonly'), 'true'); assert.equal(expanded(c), 'false'); assert.equal(c.spy.mock.callCount(), 0); } },
+    loading: { props: { loading: true }, check: (c) => { assert.equal(trigger(c).getAttribute('aria-busy'), 'true'); assert.equal(c.screen.getByRole('status').textContent, 'Loading'); } },
   },
   events: {
     change: { act: async (c) => { await open(c); await c.user.click(c.screen.getByRole('option', { name: 'India' })); }, expect: (calls) => assert.deepEqual(calls[0], ['in']) },

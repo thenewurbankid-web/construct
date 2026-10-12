@@ -16,6 +16,9 @@ export const kit: Kit = {
     default: { props: { defaultValue: 30 }, check: (c) => { assert.equal(now(c), '30'); assert.equal(thumb(c).getAttribute('aria-valuemin'), '0'); assert.equal(thumb(c).getAttribute('aria-valuemax'), '100'); } },
     disabled: { props: { disabled: true }, check: (c) => assert.ok(thumb(c).hasAttribute('data-disabled')) },
     orientation: { props: { orientation: 'vertical' }, check: (c) => assert.equal(thumb(c).getAttribute('aria-orientation'), 'vertical') },
+    readOnly: { props: { readOnly: true, defaultValue: 20 }, act: async (c) => { thumb(c).focus(); await c.user.keyboard('{ArrowRight}'); }, check: (c) => { assert.equal(thumb(c).getAttribute('aria-readonly'), 'true'); assert.equal(now(c), '20'); } },
+    value: { props: { value: 70 }, act: async (c) => { thumb(c).focus(); await c.user.keyboard('{ArrowRight}'); }, check: (c) => assert.equal(now(c), '70') },
+    invalid: { props: { error: 'Keep it under 80.' }, check: (c) => { assert.equal(thumb(c).getAttribute('aria-invalid'), 'true'); assert.equal(c.screen.getByRole('alert').textContent, 'Keep it under 80.'); } },
   },
   events: {
     change: { props: { defaultValue: 10 }, act: async (c) => { thumb(c).focus(); await c.user.keyboard('{ArrowRight}'); }, expect: (calls) => assert.deepEqual(calls[0], [11]) },

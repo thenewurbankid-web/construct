@@ -1,7 +1,7 @@
 // @line-level molecule
 'use client';
 import { Label, RadioGroup } from 'radix-ui';
-import { useId } from 'react';
+import { useId, useState } from 'react';
 
 export type RadioOption = { value: string; label: string; disabled?: boolean };
 export type RadioProps = {
@@ -13,6 +13,8 @@ export type RadioProps = {
   onValueChange?: (value: string) => void;
   disabled?: boolean;
   required?: boolean;
+  /** Shows the choice; choosing is ignored (aria-readonly). */
+  readOnly?: boolean;
   error?: string;
   orientation?: 'vertical' | 'horizontal';
   name?: string;
@@ -20,8 +22,11 @@ export type RadioProps = {
 };
 
 /** Pick exactly one of a small set of visible options (Radix RadioGroup: roving focus, arrows choose). */
-export function Radio({ label, options, value, defaultValue, onValueChange, disabled, required, error, orientation = 'vertical', name, className = '' }: RadioProps) {
+export function Radio({ label, options, value, defaultValue, onValueChange, disabled, required, readOnly = false, error, orientation = 'vertical', name, className = '' }: RadioProps) {
   const id = useId();
+  const [own, setOwn] = useState(defaultValue);
+  const current = value ?? own;
+  const change = (next: string) => { if (readOnly) return; setOwn(next); onValueChange?.(next); };
   const legendId = `${id}-legend`;
   const errorId = error ? `${id}-error` : undefined;
   return (
@@ -32,9 +37,9 @@ export function Radio({ label, options, value, defaultValue, onValueChange, disa
         aria-describedby={errorId}
         aria-invalid={error ? true : undefined}
         aria-required={required || undefined}
-        value={value}
-        defaultValue={defaultValue}
-        onValueChange={onValueChange}
+        aria-readonly={readOnly || undefined}
+        value={current ?? ''}
+        onValueChange={change}
         disabled={disabled}
         required={required}
         orientation={orientation}

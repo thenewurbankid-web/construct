@@ -18,8 +18,13 @@ export type BadgeProps = { children: ReactNode; variant?: BadgeVariant; dot?: bo
 export function Badge({ children, variant = 'neutral', dot = false, size = 'md', className = '' }: BadgeProps) {
   return (
     <span data-variant={variant} data-size={size} className={`inline-flex items-center gap-1.5 rounded-full font-medium ${size === 'sm' ? 'px-2 py-0.5 text-xs' : 'px-2.5 py-0.5 text-sm'} ${VARIANTS[variant]} ${className}`}>
-      {dot ? <span aria-hidden="true" data-part="dot" className={`h-1.5 w-1.5 rounded-full ${DOTS[variant]}`} /> : null}
+      <BadgeDot show={dot} variant={variant} />
       {children}
     </span>
   );
+}
+
+function BadgeDot({ show, variant }: { show: boolean; variant: BadgeVariant }) {
+  if (!show) return null;
+  return <span aria-hidden="true" data-part="dot" className={`h-1.5 w-1.5 rounded-full ${DOTS[variant]}`} />;
 }
