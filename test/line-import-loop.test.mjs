@@ -305,6 +305,24 @@ test('behaviour check: an importer whose @/ alias import the move re-pointed is 
   assert.notEqual(checkBehaviour(dir, diff, sources, 'src').find((r) => r.from === 'src/pages/P.tsx').verdict, 'same-behaviour');
 });
 
+// Found on the same run: two routes' client files share a copied helper; moving one of them made the logic map report
+// the other's (identical) unit as moved too, so the untouched file was compared with the moved one and read as changed.
+test('behaviour check: a file still in place and untouched is not a move, even when a twin of its logic moved', () => {
+  const dir = makeTempDir('construct-line-check-twin-');
+  const write = (rel, text) => { fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true }); fs.writeFileSync(path.join(dir, rel), text); };
+  const helper = 'function label(n: number) { return `#${n}`; }\n';
+  const a = `${helper}export function showA(n: number) { return label(n) + 'a'; }\n`;
+  const b = `${helper}export function showB(n: number) { return label(n) + 'b'; }\n`;
+  write('src/a/Client.tsx', a);
+  write('src/library/pages/Client.tsx', b);
+  const diff = { moved: [
+    { from: { file: 'src/b/Client.tsx', kind: 'function' }, to: { file: 'src/library/pages/Client.tsx' } },
+    { from: { file: 'src/a/Client.tsx', kind: 'function' }, to: { file: 'src/library/pages/Client.tsx' } },
+  ] };
+  const results = checkBehaviour(dir, diff, { 'src/a/Client.tsx': a, 'src/b/Client.tsx': b }, 'src');
+  assert.deepEqual(results.map((r) => [r.from, r.to, r.verdict]), [['src/b/Client.tsx', 'src/library/pages/Client.tsx', 'same-behaviour']]);
+});
+
 test('compareLogicMaps: a move is kept (moved), a lost unit is missing, an edited one is changed', () => {
   const dir = fixtureApp();
   const before = buildLogicMap(dir, [`${FOLDER}/total.mjs`]);

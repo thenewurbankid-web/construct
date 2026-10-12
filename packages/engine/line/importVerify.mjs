@@ -302,7 +302,10 @@ function unitlessMoves(projectRoot, folder, sources, known) {
  */
 export function checkBehaviour(projectRoot, diff, sources, folder = '') {
   const dest = new Map();
+  /** Still in place with its baseline text: a unit "moved" from it is a twin of one that moved (copied code), not a move. */
+  const untouched = (file) => { try { return typeof sources?.[file] === 'string' && fs.readFileSync(path.join(projectRoot, file), 'utf8') === sources[file]; } catch { return false; } };
   for (const m of diff?.moved ?? []) {
+    if (untouched(m.from.file)) continue;
     const c = dest.get(m.from.file) ?? new Map();
     // An export alone says little (a thin wrapper exports the same name); the logic inside says where the file went.
     c.set(m.to.file, (c.get(m.to.file) ?? 0) + (m.from.kind === 'export' ? 1 : 10));
