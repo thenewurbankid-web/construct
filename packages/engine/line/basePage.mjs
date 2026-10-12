@@ -22,10 +22,18 @@ const ID_KEYS = ['id', 'slug', 'key', 'sku', 'code'];
 const NAME_KEYS = ['name', 'title', 'label'];
 
 const words = (key) => String(key).split(/[^A-Za-z0-9]+|(?<=[a-z0-9])(?=[A-Z])/).filter(Boolean).map((w) => w.toLowerCase());
-/** "submitLabel" -> "Submit label", "products" -> "Products". */
+/**
+ * "submitLabel" -> "Submit label", "products" -> "Products".
+ * @param {string} key A camelCase, snake_case or plain key.
+ * @returns {string} The key as words, first letter capitalised.
+ */
 export const humanize = (key) => { const t = words(key).join(' '); return t.charAt(0).toUpperCase() + t.slice(1); };
 const pascal = (key) => words(key).map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join('');
-/** A plain English singular: products -> product, categories -> category, boxes -> box, news stays. */
+/**
+ * A plain English singular: products -> product, categories -> category, boxes -> box, news stays.
+ * @param {string} word A plural (or already singular) word.
+ * @returns {string} Its singular.
+ */
 export function singular(word) {
   const w = String(word);
   if (/ies$/i.test(w)) return `${w.slice(0, -3)}y`;
@@ -54,6 +62,8 @@ function mentions(text, key) {
 
 /**
  * The library's array fixtures (library/fixtures/*.json holding a non-empty array of objects).
+ * @param {string} root Project root.
+ * @param {{library: string}} layout The project layout (its library folder).
  * @returns {{stem: string, rel: string, rows: Record<string, unknown>[]}[]}
  */
 export function arrayFixtures(root, layout) {
@@ -72,8 +82,13 @@ export function arrayFixtures(root, layout) {
 /**
  * The array fixture that belongs to a feature: its name (or its singular) is the feature's name, or the spec mentions
  * it; the most mentions win, then the name. Null when none fits.
+ * @param {{stem: string, rel: string, rows: Record<string, unknown>[]}[]} fixtures From arrayFixtures.
+ * @param {string} feature The feature name.
+ * @param {string} spec The feature's spec.md text.
+ * @returns {{stem: string, rel: string, rows: Record<string, unknown>[], score: number}|null} The best fit with its score.
  */
 export function fixtureFor(fixtures, feature, spec) {
+  /** @type {{stem: string, rel: string, rows: Record<string, unknown>[], score: number}|null} */
   let best = null;
   for (const f of fixtures) {
     const forms = [f.stem, singular(f.stem)].map((x) => x.toLowerCase());
@@ -98,6 +113,9 @@ function scalarFields(rows) {
 /**
  * The props a library page declares: [{name, optional, type}] from its exported function's first parameter (an inline
  * type literal, or a type alias or interface in the same file). Null when they cannot be read; [] when it takes none.
+ * @param {string} src The library page's source.
+ * @param {string} libName Its exported page function's name.
+ * @returns {{name: string, optional: boolean, type: string}[]|null}
  */
 export function pagePropsOf(src, libName) {
   const sf = ts.createSourceFile('page.tsx', src, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
