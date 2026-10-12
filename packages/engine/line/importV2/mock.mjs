@@ -73,6 +73,7 @@ export const MOCK_ROUTE_CLOSURE = Object.freeze({
   appRoot: '/mock/app',
   routes: [{ route: '/opportunity', entry: PAGE }],
   files: [PAGE, CLIENT, ADAPTER],
+  shared: ['src/ui/components/Button.tsx'],
   external: ['@subframe/core', 'next/navigation'],
 });
 

@@ -65,7 +65,7 @@ export function createMockLogic(o = {}) {
     return { feature: folder.split('/').pop(), blocks: [...blocks.values()], unassigned: [] };
   };
   return {
-    closure: async (_root, folder, route) => ({ appRoot: '/mock/import-sample', routes: route ? [{ route, entry: `${folder}/pages/AlertsPage.tsx` }] : [], files: [...new Set(MOCK_UNITS.map((u) => `${folder}/${u[0]}`))], external: [] }),
+    closure: async (_root, folder, route) => ({ appRoot: '/mock/import-sample', routes: route ? [{ route, entry: `${folder}/pages/AlertsPage.tsx` }] : [], files: [...new Set(MOCK_UNITS.map((u) => `${folder}/${u[0]}`))], shared: [], external: [] }),
     buildMap: async (_root, folder) => { const units = unitsAt(folder); return { root: '/mock/import-sample', files: [...new Set(units.map((u) => u.file))], units, counts: mapSummary({ units }).counts }; },
     compare: async (before, after) => compareLogicMaps(before, after),
     fit: async (_root, folder) => ({ proposal: proposalOf(folder), steps: [], skipped: [] }),

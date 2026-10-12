@@ -17,7 +17,7 @@ const SHOP = path.join(REPO, 'examples/import-v2-shop');
 const CLIENT = 'src/app/[locale]/orders/OrdersClient.tsx';
 const copy = () => { const dir = makeTempDir('construct-iv2-fit-'); fs.cpSync(SHOP, dir, { recursive: true }); return dir; };
 
-/** A logic map of the shop in the prototype's shape (docs/line/import-v2/logicmap.mjs), lines found from the code. */
+/** A logic map of the shop's /orders feature files (money.ts is shared with /home, so it is never mapped) in the prototype's shape (docs/line/import-v2/logicmap.mjs), lines found from the code. */
 function shopMap(app) {
   const units = [];
   const add = (file, fn, kind, needle, detail = needle) => {
@@ -41,14 +41,11 @@ function shopMap(app) {
   add('src/hooks/useOrders.ts', 'useOrdersQuery', 'state', 'useState<');
   add('src/hooks/useOrders.ts', 'useOrdersQuery', 'effect', 'useEffect(');
   add('src/hooks/useOrders.ts', 'useOrdersQuery', 'io', 'fetch(');
-  add('src/utils/money.ts', 'formatTotal', 'export', 'export function formatTotal');
-  add('src/utils/money.ts', 'formatTotal', 'branch', 'sum > 1000 ?');
-  add('src/utils/money.ts', 'label', 'export', 'export function label');
   add('src/components/OrdersView.tsx', 'OrdersView', 'export', 'export function OrdersView');
   add('src/components/OrdersView.tsx', 'OrdersView', 'render-if', '{empty &&', 'empty'); // the prototype's detail: the left side
   add('src/components/OrdersView.tsx', 'OrdersView', 'branch', '{first ?');
   add('src/components/OrdersView.tsx', 'OrdersView', 'handler', "onClick={() => onTab('open')}");
-  add('src/utils/money.ts', '<module>', 'storage', "import type { Order }");
+  add('src/hooks/useOrders.ts', '<module>', 'storage', "import { useEffect");
   return { units };
 }
 
@@ -78,20 +75,18 @@ test('fit: every unit goes to exactly one block by the fitting rules, and the on
     'useOrdersQuery/state -> service:useOrdersQuery',
     'useOrdersQuery/effect -> service:useOrdersQuery',
     'useOrdersQuery/io -> service:useOrdersQuery',
-    'formatTotal/export -> domain:money', // 2. pure
-    'formatTotal/branch -> domain:money',
-    'label/export -> domain:money',
     'OrdersView/export -> component:OrdersView',
     'OrdersView/render-if -> component:OrdersView',
     'OrdersView/branch -> component:OrdersView',
     'OrdersView/handler -> component:OrdersView',
     '<module>/storage -> unassigned',
   ]);
-  assert.match(p.unassigned[0].sentence, /^The storage at line 1 of money\.ts runs at the top of the module, outside any function, so no block owns it yet\.$/);
-  assert.equal(p.blocks.find((b) => b.name === 'money').area, 'library', 'money.ts is used by /home too');
+  assert.match(p.unassigned[0].sentence, /^The storage at line 1 of useOrders\.ts runs at the top of the module, outside any function, so no block owns it yet\.$/);
+  assert.ok(!p.blocks.some((b) => b.name === 'money'), 'money.ts is shared with /home: referenced, never fitted');
   assert.equal(p.blocks.find((b) => b.name === 'useOrdersQuery').area, 'feature');
   assert.match(p.blocks.find((b) => b.name === 'OrdersView').sentence, /^OrdersView is a component: it renders JSX with its render-ifs and handlers \(4 units from OrdersView\.tsx\), 2 interactive slots, showing parts on empty\.$/);
-  assert.deepEqual([...sharedFiles(closure)], ['src/utils/money.ts'], 'only money.ts is imported from outside the family');
+  assert.deepEqual(closure.shared, ['src/types/order.ts', 'src/utils/money.ts']);
+  assert.deepEqual([...sharedFiles(closure)], [], 'no feature file is imported from outside the family');
 });
 
 test('fit -> plan: the proposal becomes extract steps that all land through the writer, in the import folder', async () => {
@@ -101,11 +96,10 @@ test('fit -> plan: the proposal becomes extract steps that all land through the 
   const { steps, skipped } = planFitSteps(p, { folder: closureFolder(closure), closure });
   assert.deepEqual(steps.map((s) => `${s.tool} ${s.args.from} ${s.args.name}`), [
     'line.import.extractService hooks/useOrders.ts useOrdersQuery',
-    'line.import.extractDomain utils/money.ts money',
     'line.import.extractWorkflow app/[locale]/orders/OrdersClient.tsx OrdersFlow',
     'line.import.splitPage app/[locale]/orders/OrdersClient.tsx useOrdersClient',
   ]);
-  assert.deepEqual(steps[1].args.names, ['formatTotal', 'label']);
+  assert.ok(!steps.some((st) => st.args.from === 'utils/money.ts'), 'the shared money.ts is never moved');
   assert.ok(skipped.every((s) => /[.?!]$/.test(s.sentence)));
   const reg = createLinePlanRegistry({ root: app });
   const mark = await reg.call('line.import.mark', { folder: 'src', features: [p.feature] });
@@ -115,7 +109,8 @@ test('fit -> plan: the proposal becomes extract steps that all land through the 
     assert.equal(r.apply.ok, true, `${s.id} ${s.tool}: ${r.sentence}`);
     assert.equal(r.passed, r.total, `${s.id}: ${r.sentence}`);
   }
-  for (const f of ['features/orders/services/useOrdersQuery.ts', 'library/domains/money.ts', 'library/workflows/OrdersFlow.ts', 'features/orders/workflows/OrdersFlow.ts', 'features/orders/usecases/useOrdersClient.tsx']) {
+  assert.ok(fs.existsSync(path.join(app, 'src/utils/money.ts')), 'money.ts stays where it is');
+  for (const f of ['features/orders/services/useOrdersQuery.ts', 'library/workflows/OrdersFlow.ts', 'features/orders/workflows/OrdersFlow.ts', 'features/orders/usecases/useOrdersClient.tsx']) {
     assert.ok(fs.existsSync(path.join(app, 'src', f)), f);
   }
 });

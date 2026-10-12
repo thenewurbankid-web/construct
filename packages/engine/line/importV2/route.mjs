@@ -9,6 +9,12 @@
 // The closure is traced with Construct's route resolver (route-resolver.mjs traceRouteFiles), stopping only where the
 // project says (architecture.yml `line.traceExcludes`) or the caller says; `external` lists every boundary the trace
 // stopped at (excluded files, packages, imports that resolve to no file). Pure read: nothing is written.
+//
+// Scope (the feature is what only this family uses): a traced file belongs to the feature only when no root outside
+// the family reaches it too -- another route's entry, a Next.js layout/template/loading/error/route handler outside the
+// family, or the app's middleware and instrumentation -- over the app's import graph (import.mjs importGraph). Files
+// other roots reach as well are `shared`: they stay where they are and are referenced, never imported, mapped,
+// characterized or fitted.
 import fs from 'node:fs';
 import path from 'node:path';
 import { loadConfig } from '@line/construct-core/config';
@@ -17,9 +23,17 @@ import { listFiles } from '@line/construct-core/profiles/line/checks';
 import { readPathAliases, resolveImportSpecifier, traceRouteFiles, traceExcludesFor, findReactSpaRoutesFile } from '@line/construct-core/route-resolver';
 import { readRouteTable } from '../../units/route-adapters.mjs';
 import { LineOpError } from '../contract.mjs';
+import { routeLabel } from './contract.mjs';
+
+export { routeLabel };
+import { importGraph } from '../import.mjs';
 
 const posix = path.posix;
 const PAGE_FILE = /(?:^|\/)app\/(?:.*\/)?page\.[cm]?[jt]sx?$/;
+/** Next.js app-router files that render or answer outside a page: each is a root of the app's own. */
+const APP_ROOT_FILE = /(?:^|\/)app\/(?:(.*)\/)?(?:page|layout|template|loading|error|global-error|not-found|default|route)\.[cm]?[jt]sx?$/;
+/** App-level entry files every request passes through. */
+const APP_LEVEL_FILE = /^(?:src\/)?(?:middleware|instrumentation(?:-client)?)\.[cm]?[jt]sx?$/;
 const isTest = (rel) => /\.(test|spec|stories)\.[cm]?[jt]sx?$/.test(rel) || rel.split('/').some((s) => s === '__tests__');
 const toRel = (root, abs) => path.relative(root, abs).split(path.sep).join('/');
 
@@ -115,39 +129,99 @@ function configuredExcludes(appRoot) {
 const packageOf = (spec) => (spec.startsWith('@') ? spec.split('/').slice(0, 2).join('/') : spec.split('/')[0]);
 
 /**
- * The route family as one closure: the route and its sub-routes, and every app file they import.
+ * The route family as one closure: the route and its sub-routes, and every app file they import -- in `files` when
+ * only the family reaches it, in `shared` when a root outside the family reaches it too.
  * @param {string} appRoot The app (absolute).
- * @param {string} route The family route, such as /opportunity.
- * @param {{excludes?: string[]}} [o] Where the trace stops (path substrings); default: architecture.yml line.traceExcludes, else nowhere.
+ * @param {string|string[]} route The family route, such as /opportunity, or several routes that make one feature
+ *   together though they share no prefix (['/', '/profile/:id']); each brings its sub-routes.
+ * @param {{excludes?: string[], feature?: string}} [o] `excludes`: where the trace stops (path substrings); default:
+ *   architecture.yml line.traceExcludes, else nowhere. `feature`: the feature's name (the person's); default the first
+ *   route's family name (familyFeature).
  * @returns {import('./contract.mjs').RouteClosure}
- * @throws {LineOpError} UNKNOWN_ROUTE when the app has no such route.
+ * @throws {LineOpError} UNKNOWN_ROUTE when the app has no such route; BAD_FEATURE when the name is not kebab-case.
  */
 export function readRouteFamily(appRoot, route, o = {}) {
   const root = path.resolve(appRoot);
-  const family = `/${String(route ?? '').trim().replace(/^\/+|\/+$/g, '')}`;
-  if (!/^\/[A-Za-z0-9_:\-./[\]]*$/.test(family)) throw new LineOpError(`"${route}" is not a route; name one like /orders.`, 'UNKNOWN_ROUTE');
+  const asked = (Array.isArray(route) ? route : [route]).map((r) => `/${String(r ?? '').trim().replace(/^\/+|\/+$/g, '')}`);
+  if (!asked.length) throw new LineOpError('Name a route to import, such as /orders.', 'UNKNOWN_ROUTE');
+  const bad = asked.find((f) => !/^\/[A-Za-z0-9_:\-./[\]]*$/.test(f));
+  if (bad) throw new LineOpError(`"${bad}" is not a route; name one like /orders.`, 'UNKNOWN_ROUTE');
+  const feature = o.feature ?? familyFeature(asked[0]);
+  if (!/^[a-z][a-z0-9-]*$/.test(feature)) throw new LineOpError(`"${feature}" is not a feature name; use lower-case words joined by -, such as contacts.`, 'BAD_FEATURE');
   const all = listRoutes(root);
-  const routes = all.filter((r) => inFamily(family, r.route));
-  if (!routes.length) {
+  const member = (r) => asked.some((f) => inFamily(f, r));
+  for (const family of asked) {
+    if (all.some((r) => inFamily(family, r.route))) continue;
     const tops = [...new Set(all.map((r) => withoutLeadingParams(r.route).split('/').slice(0, 2).join('/') || '/'))].slice(0, 6);
     throw new LineOpError(`The app has no route ${family}${tops.length ? `; its routes start with ${tops.join(', ')}` : ', and no routes Line can read'}.`, 'UNKNOWN_ROUTE');
   }
+  const routes = all.filter((r) => member(r.route));
   const excludes = traceExcludesFor({ excludes: o.excludes, configured: configuredExcludes(root) });
   const { aliases } = readPathAliases(root);
   const files = new Set();
+  const shared = new Set();
   const external = new Set();
   const onStop = (what, why) => {
     if (why === 'package') external.add(packageOf(what));
     else if (why === 'excluded') external.add(toRel(root, what));
     else external.add(`unresolved: ${what}`);
   };
+  const traced = new Set();
   for (const r of routes) {
     for (const abs of traceRouteFiles(path.join(root, r.entry), { aliases, excludes, onStop })) {
       const rel = toRel(root, abs);
-      if (!rel.startsWith('..')) files.add(rel);
+      if (!rel.startsWith('..')) traced.add(rel);
     }
   }
-  return { appRoot: root, routes, files: [...files].sort(), external: [...external].sort() };
+  const others = reachedOutside(root, member, routes, all, excludes);
+  for (const f of traced) (others.has(f) ? shared : files).add(f);
+  return { appRoot: root, routes, feature, files: [...files].sort(), shared: [...shared].sort(), external: [...external].sort() };
+}
+
+/**
+ * Every root of the app outside the family: the other routes' entries, Next.js app-router files (layouts, templates,
+ * loading/error states, route handlers) whose route is not in the family, and the app-level middleware and
+ * instrumentation files.
+ * @param {string[]} appFiles App-relative files.
+ * @param {(route: string) => boolean} member Whether a route belongs to the family.
+ * @param {{route: string, entry: string}[]} allRoutes
+ * @returns {string[]}
+ */
+function rootsOutside(appFiles, member, allRoutes) {
+  const roots = new Set(allRoutes.filter((r) => !member(r.route)).map((r) => r.entry));
+  for (const f of appFiles) {
+    if (isTest(f)) continue;
+    if (APP_LEVEL_FILE.test(f)) { roots.add(f); continue; }
+    if (!APP_ROOT_FILE.test(f)) continue;
+    const route = appRoute(f.replace(/[^/]+$/, 'page.tsx'));
+    if (route !== null && !member(route)) roots.add(f);
+  }
+  return [...roots];
+}
+
+/**
+ * The files any root outside the family reaches over the app's import graph (an excluded file is a boundary there too).
+ * @param {string} root
+ * @param {(route: string) => boolean} member
+ * @param {{route: string, entry: string}[]} familyRoutes
+ * @param {{route: string, entry: string}[]} allRoutes
+ * @param {string[]} excludes
+ * @returns {Set<string>}
+ */
+function reachedOutside(root, member, familyRoutes, allRoutes, excludes) {
+  const appFiles = listFiles(root);
+  const graph = importGraph(root, appFiles);
+  const own = new Set(familyRoutes.map((r) => r.entry));
+  const excluded = (rel) => excludes.some((ex) => `/${rel}`.includes(ex));
+  const seen = new Set();
+  const queue = rootsOutside(appFiles, member, allRoutes).filter((f) => !own.has(f));
+  while (queue.length) {
+    const f = /** @type {string} */ (queue.pop());
+    if (seen.has(f) || excluded(f)) continue;
+    seen.add(f);
+    for (const t of graph.imports.get(f) ?? []) if (!seen.has(t)) queue.push(t);
+  }
+  return seen;
 }
 
 /**
