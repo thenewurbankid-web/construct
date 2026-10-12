@@ -1,0 +1,97 @@
+{
+ "at": "2026-10-12",
+ "numbers": {
+  "train": {
+   "n": 130,
+   "recall": 1,
+   "precision": 0.917,
+   "preferred": 1
+  },
+  "drafter": {
+   "n": 55,
+   "recall": 0.927,
+   "precision": 0.958,
+   "preferred": 0.927
+  }
+ },
+ "misses": [
+  {
+   "id": "drafter-eval:ls-v03:line.promote + line.baseOn",
+   "source": "drafter-eval",
+   "step": "line.promote",
+   "kind": "absent",
+   "options": [],
+   "chosen": null,
+   "correct": "line.promote + line.baseOn",
+   "correctFrom": "drafter-eval",
+   "pattern": "<feature> should also show <component> -> line.promote + line.baseOn",
+   "sentence": "Line never offered the line.promote + line.baseOn route for \"<feature> should also show <component>\"."
+  },
+  {
+   "id": "drafter-eval:ls-v03:line.baseOn",
+   "source": "drafter-eval",
+   "step": "line.baseOn",
+   "kind": "absent",
+   "options": [],
+   "chosen": null,
+   "correct": "line.baseOn",
+   "correctFrom": "drafter-eval",
+   "pattern": "<feature> should also show <component> -> line.baseOn",
+   "sentence": "Line never offered the line.baseOn route for \"<feature> should also show <component>\"."
+  },
+  {
+   "id": "drafter-eval:ls-v04:line.promote + line.baseOn",
+   "source": "drafter-eval",
+   "step": "line.promote",
+   "kind": "absent",
+   "options": [
+    "line.promote (other)"
+   ],
+   "chosen": "line.promote (other)",
+   "correct": "line.promote + line.baseOn",
+   "correctFrom": "drafter-eval",
+   "pattern": "share <component> with <feature> -> line.promote + line.baseOn",
+   "sentence": "Line never offered the line.promote + line.baseOn route for \"share <component> with <feature>\"."
+  },
+  {
+   "id": "drafter-eval:ls-v04:line.baseOn",
+   "source": "drafter-eval",
+   "step": "line.baseOn",
+   "kind": "absent",
+   "options": [
+    "line.promote (other)"
+   ],
+   "chosen": "line.promote (other)",
+   "correct": "line.baseOn",
+   "correctFrom": "drafter-eval",
+   "pattern": "share <component> with <feature> -> line.baseOn",
+   "sentence": "Line never offered the line.baseOn route for \"share <component> with <feature>\"."
+  },
+  {
+   "id": "drafter-eval:ls-p04:line.promote",
+   "source": "drafter-eval",
+   "step": "line.promote",
+   "kind": "absent",
+   "options": [
+    "line.setFragment (other)"
+   ],
+   "chosen": "line.setFragment (other)",
+   "correct": "line.promote",
+   "correctFrom": "drafter-eval",
+   "pattern": "make <component> reusable across features -> line.promote",
+   "sentence": "Line never offered the line.promote route for \"make <component> reusable across features\"."
+  },
+  {
+   "id": "drafter-eval:ls-s04:line.setPageProp",
+   "source": "drafter-eval",
+   "step": "line.setPageProp",
+   "kind": "absent",
+   "options": [],
+   "chosen": null,
+   "correct": "line.setPageProp",
+   "correctFrom": "drafter-eval",
+   "pattern": "the <page> should say <value> -> line.setPageProp",
+   "sentence": "Line never offered the line.setPageProp route for \"the <page> should say <value>\"."
+  }
+ ]
+}
