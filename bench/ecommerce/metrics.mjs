@@ -162,7 +162,7 @@ function tokens(builder, usage, model) {
   const sum = (k) => turns.reduce((n, t) => n + (Number(t[k]) || 0), 0);
   const t = turns.length
     ? { input: sum('in'), output: sum('out'), cacheRead: sum('cacheRead'), cacheWrite: sum('cacheWrite'), source: turns[0].source ?? 'per-turn log' }
-    : usage ? { input: usage.input_tokens ?? 0, output: usage.output_tokens ?? 0, cacheRead: usage.cache_read_input_tokens ?? 0, cacheWrite: usage.cache_creation_input_tokens ?? 0, total: usage.total_tokens ?? null, source: usage.source ?? 'orchestrator usage totals' }
+    : usage ? { input: usage.input_tokens ?? null, output: usage.output_tokens ?? null, cacheRead: usage.cache_read_input_tokens ?? null, cacheWrite: usage.cache_creation_input_tokens ?? null, total: usage.total_tokens ?? null, source: usage.source ?? 'orchestrator usage totals' }
       : { input: null, output: null, cacheRead: null, cacheWrite: null, source: 'none recorded' };
   const total = t.total ?? (t.input === null ? null : t.input + t.output + t.cacheRead + t.cacheWrite);
   const p = PRICES.models[model];

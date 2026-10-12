@@ -14,6 +14,7 @@ case "$arm" in line) starter="$here/starter";; plain) starter="$here/starter-pla
 dir="$runs/$builder"
 if [ -e "$dir" ]; then echo "$dir already exists; move it away first" >&2; exit 1; fi
 mkdir -p "$dir/logs"
-rsync -a --exclude .next "$starter/" "$dir/project/"
+rsync -a --exclude .next --exclude node_modules "$starter/" "$dir/project/"
+if [ -d "$starter/node_modules" ]; then cp -Rc "$starter/node_modules" "$dir/project/node_modules" 2>/dev/null || cp -R "$starter/node_modules" "$dir/project/node_modules"; fi
 ( cd "$dir/project" && git init -q && git add -A && git -c user.name=bench -c user.email=bench@localhost commit -qm "starter" )
 echo "export BENCH_PROJECT=$dir/project BENCH_LOG=$dir/logs/calls.jsonl BENCH_BUILDER=$builder"

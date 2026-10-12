@@ -1,0 +1,85 @@
+{
+  "builder": "pilot-haiku",
+  "arm": "line",
+  "model": "claude-haiku",
+  "at": "2026-10-12T00:22:56.946Z",
+  "wallMs": 422519,
+  "turns": 52,
+  "tokens": {
+    "input": null,
+    "output": null,
+    "cacheRead": null,
+    "cacheWrite": null,
+    "total": 149127,
+    "source": "orchestrator subagent usage at completion (total only; no input/output/cache split reported)",
+    "costUsd": null,
+    "priceDate": "2026-10-06"
+  },
+  "tokensPerLandedStep": 4811,
+  "tokensPerPassedTest": null,
+  "plan": {
+    "added": 33,
+    "landed": 31,
+    "refusedAtRun": 2,
+    "refusedAtAdd": 3,
+    "refusedByRule": {
+      "PAGE-003": 1,
+      "COMPONENT-003": 1,
+      "add:NAME_TAKEN": 1,
+      "add:BAD_JSON": 1,
+      "add:UNKNOWN_ITEM": 1
+    },
+    "fixesApplied": 0,
+    "leftAsIs": 2,
+    "approvals": {
+      "auto": 35
+    },
+    "byTool": {
+      "line.setCode": 17,
+      "line.createFeature": 3,
+      "line.baseOn": 6,
+      "line.addRoute": 5
+    }
+  },
+  "validate": {
+    "profile": "line",
+    "errors": 0,
+    "warnings": 18,
+    "byRule": {
+      "PAGE-008": 7,
+      "PAGE-001": 4,
+      "COMPONENT-005": 6,
+      "COMPONENT-006": 1
+    }
+  },
+  "tsc": {
+    "errors": null,
+    "note": "skipped"
+  },
+  "acceptance": {
+    "passed": 0,
+    "total": 22,
+    "ran": false,
+    "passedIds": []
+  },
+  "loc": 394,
+  "filesChanged": 23,
+  "duplicates": {
+    "pairs": 0,
+    "examples": []
+  },
+  "libraryReuse": {
+    "featureItems": 6,
+    "basedOnLibrary": 6,
+    "share": 1
+  },
+  "humanInterventions": 0,
+  "directWrites": [],
+  "lineModelUse": {
+    "calls": 0,
+    "tokensIn": 0,
+    "tokensOut": 0,
+    "note": "no model call recorded in line/ (drafter off: LINE_DRAFTER unset; no jev or Qwen step ran inside Construct)"
+  },
+  "contention": null
+}

@@ -96,7 +96,9 @@ export function createPlanCli({ project, log, builder = 'unknown' }) {
       return {
         ok: true, stepId: ran.id, n: ran.n, tool: ran.tool, state: ran.state, landed: ran.state === 'done' && res.needsYou !== true,
         files: res.apply?.files ?? [], checks: res.checks ?? [], findings, options, ...(r.recheck ? { recheck: r.recheck } : {}),
-        sentence: ran.state === 'done' ? sentence(ran.sentence) : `${sentence(ran.sentence)} Add a fix with args.fixOf "${ran.id}" (one of options[].step), or add line.leaveAsIs {"stepId": "${ran.id}"} to carry on.`,
+        sentence: ran.state === 'done' ? sentence(ran.sentence)
+          : options.some((o) => o.step) ? `${sentence(ran.sentence)} Add one of options[].step with "fixOf": "${ran.id}" in its args, or add line.leaveAsIs {"stepId": "${ran.id}"} to carry on.`
+            : `${sentence(ran.sentence)} Construct offers no typed fix for this, so add line.leaveAsIs {"stepId": "${ran.id}"} and then a corrected step.`,
       };
     },
     async findings() {
