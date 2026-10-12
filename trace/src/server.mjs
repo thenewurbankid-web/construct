@@ -9,7 +9,6 @@ import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
-import { execFile } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { runPipeline } from "./pipeline.mjs";
 import { watchExample } from "./watch.mjs";
@@ -31,6 +30,7 @@ import { answerIfContractsLocked, deployDirOf } from "./deploy/contracts-lock.mj
 import { demoRoute } from "./demo-server.mjs";
 import { createInspectorRoutes } from "./inspector/routes.mjs";
 import { createPagemapRoutes } from "./pagemap-routes.mjs";
+import { openBrowser } from "./platform.mjs";
 import { checkRequest, readJsonBody, sendError, HttpError } from "./http-guard.mjs";
 import { SYSTEM as MAIL_SYSTEM, modeOf, mailMessages, parseReply, tidy, checkDraft } from "./ai/mail-chat.mjs";
 
@@ -326,7 +326,7 @@ function listen(port, tries = 10) {
   server.listen(port, "127.0.0.1", () => {
     const url = `http://localhost:${port}`;
     console.log(`Trace UI: ${url}`);
-    if (process.platform === "darwin" && !args.includes("--no-open")) execFile("open", [url]);
+    if (!args.includes("--no-open")) openBrowser(url); // darwin open, linux xdg-open, Termux termux-open-url; skipped when absent (#867)
   });
 }
 listen(basePort, args.includes("--strict-port") ? 0 : 10); // --strict-port: a deploy must own its port, never slide to the next one

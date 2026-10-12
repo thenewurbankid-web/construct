@@ -7,10 +7,11 @@
 // Dev = the last build that passed `npm test` (deploy-local.mjs watch). Stage never builds from source: it takes the
 // exact build dev is running (same folder, same hash), so what stage runs was already tested and health-checked on dev.
 // Owner decision 2026-09-28. Everything lives under deploy-stage/ (not part of the build's allow-list).
-import { execFileSync, spawn } from "node:child_process";
+import { spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { processCommandLine } from "../src/platform.mjs";
 import { compareReleaseIds } from "../src/changelog.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -27,7 +28,7 @@ const devInfo = () => { const s = readJson(path.join(devDir, "state.json")); ret
 const stageState = () => readJson(path.join(stageDir, "state.json")) ?? {};
 const stageInfo = () => { const s = stageState(); return s.current ? readJson(path.join(stageDir, s.current, "build-info.json")) : null; };
 const alive = (pid) => { try { process.kill(pid, 0); return true; } catch { return false; } };
-const ours = (pid) => { try { return execFileSync("ps", ["-p", String(pid), "-o", "command="], { encoding: "utf8" }).includes(stageDir); } catch { return false; } };
+const ours = (pid) => processCommandLine(pid).includes(stageDir); // /proc first, ps fallback (#867)
 const stable = (b) => !!b?.release && /^R\d+(\.\d+)?$/.test(b.release) && (b.tests?.fail ?? 1) === 0;
 
 async function health(hash) {

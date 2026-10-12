@@ -14,11 +14,12 @@
 import fs from "node:fs";
 import net from "node:net";
 import path from "node:path";
-import { spawn, execFileSync } from "node:child_process";
+import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { buildManifest, computeBuildInfo, isDeployable, sortedJson, STATE_FILES, carryUserContracts } from "../src/build-info.mjs";
 import { deploy, rollback, parseTestSummary, createWatchController } from "../src/deploy/deploy.mjs";
 import { copyProductionModules } from "../src/deploy/prod-modules.mjs";
+import { processCommandLine, watchSources } from "../src/platform.mjs";
 import { lockContracts } from "../src/deploy/contracts-lock.mjs";
 import { listReleases, readBuildInfo, readManifest, readState, versionsToPrune } from "../src/deploy/releases.mjs";
 import { relativeTime } from "../src/ui/build-badge.mjs";
@@ -41,7 +42,7 @@ const alive = (pid) => { try { process.kill(pid, 0); return true; } catch { retu
 // pids get reused: only treat a pid as ours when it is alive and its command line points into deploy/
 function isOurs(pid) {
   if (!pid || !alive(pid)) return false;
-  try { return execFileSync("ps", ["-p", String(pid), "-o", "command="], { encoding: "utf8" }).includes(deployDir); } catch { return false; }
+  return processCommandLine(pid).includes(deployDir); // /proc first: toybox ps (Termux) has no -o command= (#867)
 }
 const getJson = async (p, route, ms = 2000) => {
   try { const r = await fetch(`http://127.0.0.1:${p}${route}`, { signal: AbortSignal.timeout(ms) }); return r.ok ? await r.json() : null; } catch { return null; }
@@ -252,7 +253,7 @@ else if (cmd === "watch") {
     isRelevant: (rel) => isDeployable(rel.split(path.sep).join("/")),
     log: stamp,
   });
-  fs.watch(root, { recursive: true }, (_ev, file) => file && ctrl.onChange(String(file)));
+  watchSources(root, (rel) => ctrl.onChange(rel)); // source dirs only: a recursive watch over node_modules hits ENOSPC on Android (#867)
   stamp(`watching ${root} (redeploys after ${Number(opt("--quiet-ms", 20_000)) / 1000} s without changes, only when the tests pass)`);
   ctrl.settleNow(); // make sure the latest build is running right now, not only after the next edit
   process.on("SIGTERM", () => process.exit(0));
