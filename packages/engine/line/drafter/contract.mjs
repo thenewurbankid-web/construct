@@ -45,7 +45,7 @@ export const OBJECTS = Object.freeze({
 });
 export const LAYERS = Object.freeze(['ui', 'workflow', 'data', 'api', 'library']);
 /** Line kinds per layer (the library layer holds every kind; api has none yet). */
-export const LAYER_KINDS = Object.freeze({ ui: ['pages', 'components'], workflow: ['workflows'], data: ['fixtures'], api: [], library: ['components', 'pages', 'workflows', 'fixtures'] });
+export const LAYER_KINDS = Object.freeze({ ui: ['pages', 'components', 'expressions'], workflow: ['workflows'], data: ['fixtures'], api: [], library: ['components', 'pages', 'workflows', 'fixtures', 'expressions'] });
 export { KIND_LAYER } from '../structure.mjs';
 export const SCOPES = Object.freeze(['feature', 'library', 'cross-feature']);
 export const VIA = Object.freeze(['template', 'retrieval', 'model']);

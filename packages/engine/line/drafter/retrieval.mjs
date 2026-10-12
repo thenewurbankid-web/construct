@@ -110,7 +110,7 @@ export function routeFromRecord(record, slots, score) {
 export const TRAIN_INDEX = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../../line/train/retrieval-index.json');
 
 /** A step arg in slots only: a slot ref (`<F1>`, `<C1.base>`), a path of kind folders and slot refs, or a plain flag. */
-const slotOnly = (v) => typeof v !== 'string' || /^(<[A-Z]\d+(\.\w+)?>|components|pages|workflows|fixtures|usecases|services|domains)(\/(<[A-Z]\d+(\.\w+)?>|components|pages|workflows|fixtures|usecases|services|domains))*$/.test(v);
+const slotOnly = (v) => typeof v !== 'string' || /^(<[A-Z]\d+(\.\w+)?>|components|pages|workflows|fixtures|usecases|services|domains|expressions)(\/(<[A-Z]\d+(\.\w+)?>|components|pages|workflows|fixtures|usecases|services|domains|expressions))*$/.test(v);
 
 /**
  * Train Line's precedents for a REAL project's draft (owner, 2026-10-11): the committed index's records of verified,
