@@ -4,11 +4,13 @@
 import type { ChatAsk, ChatItem, ChatMessage, ChatOption } from '../../../lib/lineChat.ts';
 import type { OpenProjectIntent } from '../types.ts';
 
+/** The requests the Open-a-project chat reads itself (the screen answers them, then Auto fills the real controls).
+ * Their ids are the two-modes provider's ("open.*", OpenModes.ts). */
 export const HELPER_OPTIONS: ChatOption[] = [
-  { id: 'open-project.new', label: 'Start a new project', sentence: 'Asks for a name and fills in the New project questions.', effect: 'read' },
-  { id: 'open-project.github', label: 'Bring in from GitHub', sentence: 'Asks for the link and fills in the From GitHub questions.', effect: 'read' },
-  { id: 'open-project.list', label: 'Show my projects', sentence: 'Lists your projects; one click opens one.', effect: 'read' },
-  { id: 'open-project.explain', label: 'What is a Line project?', sentence: 'Says what a Line project starts with.', effect: 'read' },
+  { id: 'open.new', label: 'Start a new project', sentence: 'Asks for a name and fills in the New project questions.', effect: 'read' },
+  { id: 'open.github', label: 'Bring in from GitHub', sentence: 'Asks for the link and fills in the From GitHub questions.', effect: 'read' },
+  { id: 'open.list', label: 'Show my projects', sentence: 'Lists your projects; one click opens one.', effect: 'read' },
+  { id: 'open.line', label: 'What is a Line project?', sentence: 'Says what a Line project starts with.', effect: 'read' },
 ];
 
 const cards = (projects: string[]): ChatItem[] => projects.map((p) => ({ id: p, name: p, text: 'Open this project.', control: 'open-project.card' }));

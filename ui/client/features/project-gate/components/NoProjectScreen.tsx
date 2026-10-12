@@ -31,8 +31,6 @@ type NoProjectScreenProps = {
   /** The workspace's `shop` sample folder, when there is one: offered as a one-click open (same open path as the cards). */
   samplePath?: string | null;
   sampleLoading?: boolean;
-  /** The chat helper ("Ask for help"), collapsed by default. */
-  helper?: ReactNode;
 };
 
 const nameOf = (dir: string) => dir.split(/[\\/]+/).filter(Boolean).pop() ?? dir;
@@ -147,7 +145,6 @@ export function NoProjectScreen(p: NoProjectScreenProps) {
           {p.clone}
         </Panel>
         <WorkspaceDetails workspaceRoot={p.workspaceRoot} />
-        {p.helper}
       </div>
     </div>
   );

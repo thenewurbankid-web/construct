@@ -78,7 +78,7 @@ test('the chat answers in full sentences, with stable option ids and project car
   assert.equal(helperReply(read('show my projects'), PROJECTS).text, 'Here are your projects: <ProjectCard name="line-sample"/> <ProjectCard name="shop"/> <ProjectCard name="notes"/> One click opens one.');
   assert.deepEqual(helperReply(read('open nope'), PROJECTS).pick.items.map((i) => [i.id, i.control]), PROJECTS.map((p) => [p, 'open-project.card']));
   assert.equal(helperReply(read('start a new project'), PROJECTS).ask.id, 'open-project.name');
-  assert.equal(requestForOption('open-project.github'), 'bring in from GitHub');
+  assert.equal(requestForOption('open.github'), 'bring in from GitHub');
   assert.deepEqual(read(requestForAnswer('open-project.name', 'acme-store')), { kind: 'new', name: 'acme-store', framework: 'line' });
   assert.deepEqual(read(requestForAnswer('open-project.link', 'octocat/Hello-World')), { kind: 'github', link: 'octocat/Hello-World' });
 });

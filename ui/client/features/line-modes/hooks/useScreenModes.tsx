@@ -5,7 +5,7 @@ import { effectiveMode, type Crumb, type LineMode, type Place, type ScreenChatPr
 import { crumbToHood } from '../workflows/CrumbToHood';
 import { stageBlocks, stepsFromRows, type StageBlock } from '@/lib/liveStage';
 import { useLineMode } from './useLineMode';
-import { useScreenChat } from './useScreenChat';
+import { useScreenChat, type ScreenChatControl } from './useScreenChat';
 import { useScreenDefault } from './useScreenDefault';
 import type { ScreenModesView } from '../types';
 
@@ -35,11 +35,12 @@ function useAnchor(anchor: string | null, mode: LineMode, navKey: number) {
 
 /** Two modes for one screen: its mode, its chat (lib/lineModes.ts, driven by the provider) and what a crumb does
  * (Under the hood, at exactly that place). */
-export function useScreenModes<D>(provider: ScreenChatProvider<D>, data: D | null, onOption?: (optionId: string, place: Place) => void, onPlace?: (place: Place) => void): ScreenModesView {
+export function useScreenModes<D>(provider: ScreenChatProvider<D>, data: D | null, onOption?: (optionId: string, place: Place, control: ScreenChatControl & { mode: LineMode }) => void, onPlace?: (place: Place) => void, onOwnPick?: (messageId: string, itemId: string, control: ScreenChatControl & { mode: LineMode }) => void): ScreenModesView {
   const { stored, setMode } = useLineMode();
   useScreenDefault(provider.defaultMode);
   const mode = effectiveMode(stored, provider.defaultMode);
-  const chat = useScreenChat(provider, data, onOption, onPlace);
+  // The screen's own answers get the mode too (a screen that drives its view moves the chat to it in Chat mode).
+  const chat = useScreenChat(provider, data, onOption && ((id, place, c) => onOption(id, place, { ...c, mode })), onPlace, onOwnPick && ((m, item, c) => onOwnPick(m, item, { ...c, mode })));
   useAnchor(chat ? (provider.anchor?.(chat.place) ?? null) : null, mode, chat?.navKey ?? 0);
   const onCrumb = (crumb: Crumb) => crumbToHood(crumb, chat?.go, setMode);
   const blocks = chat && data !== null && mode === 'chat' ? screenBlocks(provider, chat.place, data) : NO_BLOCKS;

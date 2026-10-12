@@ -151,6 +151,16 @@ function say<D>(state: ChatState, provider: ScreenChatProvider<D>, answer: ChatA
   return { ...state, n, log: [...state.log, ...mine, { ...rest, id, from: 'line' }], opens: level ? { ...state.opens, [id]: level } : state.opens };
 }
 
+/** A screen's own answer joins the conversation (an option or a typed request the provider leaves to the screen). It
+ * opens no level: an item picked from it goes back to the screen, never into the breadcrumb. */
+export function chatAppend(state: ChatState, answer: ChatAnswer, you: string | null): ChatState {
+  const n = state.n + 1;
+  const { opens: _opens, ...rest } = answer;
+  void _opens;
+  const mine: ChatMessage[] = you ? [{ id: `you.${n}`, from: 'you', text: you }] : [];
+  return { ...state, n, log: [...state.log, ...mine, { ...rest, id: `${state.place.steps.length}.${n}`, from: 'line' }] };
+}
+
 /** The person picked an option. "<screen>.up" goes one level up; a read answer is added to the conversation. An
  * option the provider does not answer (a plan step, a navigation) leaves the state as it is: the screen runs it. */
 export function chatOption<D>(state: ChatState, provider: ScreenChatProvider<D>, data: D, optionId: string): ChatState {

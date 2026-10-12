@@ -22,7 +22,3 @@
 .ln-project-meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ln-s1); }
 .ln-project-tag { font-size: 0.75rem; color: var(--ln-muted); border: 1px solid var(--ln-border); border-radius: 999px; padding: 1px 8px; }
 
-/* The chat helper: a small "Ask for help" button; opened, a panel at the side (full width on a phone). */
-.op-help-toggle { position: fixed; right: var(--ln-s3); bottom: var(--ln-s3); z-index: 40; box-shadow: var(--ln-shadow); }
-.op-help { position: fixed; right: var(--ln-s2); bottom: var(--ln-s2); z-index: 40; width: min(420px, calc(100vw - 2 * var(--ln-s2))); max-height: calc(100dvh - 96px); overflow: auto; box-sizing: border-box; display: grid; gap: var(--ln-s1); padding: var(--ln-s2); background: var(--ln-surface); color: var(--ln-text); border: 1px solid var(--ln-border-strong); border-radius: var(--ln-r3); box-shadow: var(--ln-shadow-lg); }
-.op-help-close { justify-self: end; }

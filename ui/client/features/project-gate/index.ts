@@ -17,10 +17,8 @@ export * from './controllers/OpenProjectController';
 /** The Open-a-project screen's tab, kept in the URL. */
 export * from './hooks/useOpenProjectTab';
 
-/** The Your projects screen's chat helper, with Trace and Auto. */
-export * from './controllers/OpenProjectHelperController';
-
-/** The chat helper's state: the conversation, its options and question, and the screen's Trace matcher. */
+/** The Open-a-project chat's own answers (typed requests and the helper's options), with Trace and Auto, in the
+ * screen's two-modes chat. */
 export * from './hooks/useOpenProjectHelper';
 
 /** Two modes on "Open a project": what the chat reads and Reopen / the sample. */

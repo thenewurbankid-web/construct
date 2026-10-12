@@ -1,7 +1,9 @@
 // Two modes: the "Open a project" screen's options provider (lib/lineModes.ts). One level: the way in the person picks
 // (?section=projects | new | clone), shown beside the chat. Reopen and the sample open a project at once (the screen's
-// own handler, the same one its buttons use). Pure.
+// own handler, the same one its buttons use). The chat helper's requests (start, bring in, list, what is a Line project,
+// or typed) are the screen's too: it answers them and Auto fills the real controls (OpenProjectChat.ts). Pure.
 import type { ChatAnswer, ChatOption, Place, ScreenChatProvider } from '@/lib/lineModes';
+import { HELPER_OPTIONS } from './OpenProjectChat.ts';
 
 /** What the Open-a-project chat reads (the same facts the screen shows). */
 export type OpenModeData = { workspaceRoot: string | null; lastProject: string | null; samplePath: string | null };
@@ -16,13 +18,14 @@ const nameOf = (dir: string) => dir.split(/[\\/]+/).filter(Boolean).pop() ?? dir
 const EXPLAIN: ChatOption = { id: 'open.explain', label: 'Explain', sentence: 'What opening a project means here.', effect: 'read' };
 
 function options(place: Place, data: OpenModeData): ChatOption[] {
-  if (place.steps.length) return [EXPLAIN];
+  if (place.steps.length) return [...HELPER_OPTIONS, EXPLAIN];
   const reopen: ChatOption = { id: 'open.reopen', label: data.lastProject ? `Reopen ${nameOf(data.lastProject)}` : 'Reopen', sentence: 'Open the project you had open last time.', effect: 'navigate' };
   const sample: ChatOption = { id: 'open.sample', label: 'Try the sample shop', sentence: 'Open the small demo app in your workspace.', effect: 'navigate' };
   return [
     data.lastProject ? reopen : { ...reopen, disabled: 'There is no project you had open before.' },
     data.samplePath ? sample : { ...sample, disabled: 'Your workspace has no sample shop folder.' },
     { id: 'open.start', label: 'Start or find a project', sentence: 'Pick one of your projects, start a new one, or clone a repository.', effect: 'read' },
+    ...HELPER_OPTIONS,
     EXPLAIN,
   ];
 }

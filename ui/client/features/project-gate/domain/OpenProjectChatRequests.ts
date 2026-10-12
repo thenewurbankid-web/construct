@@ -2,10 +2,10 @@
 // the same static reading as typed text (OpenProjectRequest.ts).
 
 const OPTION_REQUESTS: Record<string, string> = {
-  'open-project.new': 'start a new project',
-  'open-project.github': 'bring in from GitHub',
-  'open-project.list': 'show my projects',
-  'open-project.explain': 'what is a Line project?',
+  'open.new': 'start a new project',
+  'open.github': 'bring in from GitHub',
+  'open.list': 'show my projects',
+  'open.line': 'what is a Line project?',
 };
 
 /** The request an option chip stands for ('' for an unknown chip). */
