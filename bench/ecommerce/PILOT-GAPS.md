@@ -113,3 +113,35 @@ alone does not check; the type gate now checks it with a virtual file per route 
 fix. Pilot 3 ran before the "Did you mean <nearest id>?" fixes (im2) landed. Tokens did not fall (155k vs 149k):
 pilot 3 built more (a feature usecase per consumer, an order service) and took three typed-fix round trips; the
 refusals that cost the builder nothing now are the ones it previously had to work around by hand.
+
+## 4. pilot-qwen-7b-r2: qwen2.5-coder:7b again, after the Q4/Q6 fixes (12 Oct)
+
+Same driver and budget as section 1 (`qwen-agent.mjs --arm line`, 200 turns / 90 minutes, num_ctx 16384), on
+`work/2026-09-23` at 547ba63b (typed fixes for Q4 and Q6 in `test/line-refusal-fixes.test.mjs`).
+
+| | |
+| --- | --- |
+| Budget | 90 minutes or 200 turns; it stopped after 51 turns and 3.9 minutes: "8 turns without a tool call" (R7) |
+| Turns | 51 (43 with a tool call, 8 without) |
+| Tokens | 334,827 in, 4,133 out (Ollama `prompt_eval_count` / `eval_count`), $0 |
+| Plan | 9 steps added, 9 landed (line.baseOn 3, line.addRoute 3, line.createFeature 2, line.setCode 1); 14 refused when added (UNKNOWN_TOOL 5, UNKNOWN_ITEM 4, BAD_ARGS 3, NAME_TAKEN 1, STALE 1); no refusal repeated more than once in a row |
+| Typed fixes | 0 applied as given. After each of 5 refusals that carried fixes it sent the literal tool name `fixes[0].step` (R1), then wrote the right step itself on the next turn from the sentence |
+| Validate | 0 errors, 10 warnings (COMPONENT-005 6, PAGE-008 3, COMPONENT-006 1; the starter's own) |
+| Acceptance | 0 of 22 (`next build` refuses all three route pages, see R2; no test ran); tsc 6 errors (2 per route, in `.next/types`) |
+| Built | catalog spec, features product and cart, pages ListPage, DetailPage, CartPage (each a bare `line.baseOn` wrapper of a library page), routes `/`, `/products/:id`, `/cart`. No page content, no cart state, no checkout |
+| Q4 | **Gone.** addRoute UNKNOWN_ITEM came up 3 times; the sentence now lists the feature pages and the model had the right path on the second turn every time (section 1: 189 retries) |
+| Q6 | **Not reached.** Its only setCode was the catalog spec.md, so the TYPE_ERROR gate never ran; Q6 is neither confirmed nor refuted by this run |
+| Verdict | Half of the owner's rule: 9 landed steps clears the bar of 3, but model-gaps are 4 of the 7 rows (R3-R6), the majority. With 0 of 22 and a stall at 4 minutes, it does not show that a 7B can build the app through Line yet; it does show the refusals no longer trap it |
+
+| # | Tag | What it tried | Tool or step, and Construct's answer | Rule / code |
+| --- | --- | --- | --- | --- |
+| R1 | harness | Apply a refusal's typed fix: `plan_add {"tool": "fixes[0].step", "args": {}}` (5 times, once after each fix-carrying refusal) | Refused: no tool of that name. plan-cli's sentence says "Add fixes[0].step (or another of fixes[].step) instead" and the prompt says the same; `plan_add` takes only tool/args/why, so a small model reads `fixes[0].step` as a tool name. A `fix` argument on plan_add (a fix id from the refusal) would make the fix pickable. It recovered each time by writing the step out from the sentence | UNKNOWN_TOOL |
+| R2 | line-gap | `line.addRoute` on pages made by `line.baseOn` (`props: ComponentProps<typeof LibraryListPage> & object`) | **Landed** 3 times; `next build` then refuses every route page ("invalid default export", props other than params/searchParams). The route-props gate (63d60925) runs only in `line.setCode`'s type check, not in `line.addRoute` or `line.baseOn`, so a wrapper served at a route lands unchecked. Haiku (section 3) rewrote its pages with setCode, so the gate caught it there | TS2344 at `next build` |
+| R3 | model-gap | `line.createFeature` with `points` as one numbered string (catalog, product, cart) | Refused with the Q1 sentence; corrected to a list on the next turn each time | BAD_ARGS |
+| R4 | model-gap | `line.createFeature` for catalog (exists), then setCode on its spec.md without a contentHash | NAME_TAKEN, then STALE; it read the file and landed the spec (did not use the NAME_TAKEN fix step) | NAME_TAKEN, STALE |
+| R5 | model-gap | `line.baseOn {"libraryId": "pages/CartPage"}` | Refused: no such library item; it picked `pages/FormPage` next | UNKNOWN_ITEM |
+| R6 | model-gap | Pages left as bare library wrappers; no setCode or setFragment on any page, no cart state | Nothing refused; the build never got to page content, which is what the acceptance tests check | – |
+| R7 | unclear | `line.createFeature` for checkout, written as text JSON with `points` as a string | The reply stopped at 94 tokens mid-string, 8 turns in a row, so no tool call parsed and the driver stopped at its idle rule with 86 minutes left. Whether Ollama's tool-call template, a stop token or the model ends the reply is not known | idle stop |
+
+Next: a plain-arm twin (`bench-arms`) would tell whether Line's 9 landed steps beat a 7B writing files directly; R1 and
+R2 are the cheapest fixes to try first (R2 alone made all three routes fail the build).

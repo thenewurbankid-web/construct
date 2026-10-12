@@ -16,6 +16,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { ts } from '@construct/ast/lazy';
+import { LineOpError } from './contract.mjs';
 
 /** Above this the check is too slow to block a save; its errors then ride along as warnings (as setFragment does). */
 export const TYPE_GATE_BUDGET_MS = 4000;
@@ -99,6 +100,9 @@ function overlayHost(options, overlay) {
   return host;
 }
 
+/** overlayHost with the staged files (root-relative {path, content}) written in. */
+const stagedHost = (root, options, files) => overlayHost(options, new Map(files.map((f) => [path.resolve(root, f.path), /** @type {string} */ (f.content)])));
+
 /** Errors of the root files of `program`, as {file, code, message, line}. */
 function errorsOf(root, program, files) {
   const out = [];
@@ -130,7 +134,8 @@ export function typeCheckStaged(root, files) {
   const changed = code.map((f) => f.path);
   const stamp = (rel) => { try { return fs.statSync(path.join(root, rel)).mtimeMs; } catch { return 0; } };
   const plain = ts.createCompilerHost(options, true);
-  const importers = importersOf(root, changed, options, plain);
+  // Resolved with the staged files written in: a new file (line.baseOn's) is imported by a route entry already there.
+  const importers = importersOf(root, changed, options, stagedHost(root, options, code));
   const key = JSON.stringify([root, code.map((f) => [f.path, f.content]), [...changed, ...importers].map((r) => [r, stamp(r)])]);
   if (cache.has(key)) return cache.get(key);
   const roots = [...changed, ...importers];
@@ -138,7 +143,7 @@ export function typeCheckStaged(root, files) {
   const overlay = new Map(code.map((f) => [path.resolve(root, f.path), /** @type {string} */ (f.content)]));
   // Next.js refuses a route page whose props are more than params and searchParams (the second pilot's next build
   // failed on it while tsc was clean): one virtual check file per route entry the change reaches, never written.
-  const checks = routeChecks(root, roots);
+  const checks = routeChecks(root, roots, new Map(code.map((f) => [f.path, /** @type {string} */ (f.content)])));
   for (const c of checks) overlay.set(path.resolve(root, c.file), c.content);
   const after = ts.createProgram({ rootNames: [...roots, ...checks.map((c) => c.file)].map((r) => path.join(root, r)), options, host: overlayHost(options, overlay), oldProgram: before });
   const old = new Map();
@@ -165,16 +170,18 @@ export function typeCheckStaged(root, files) {
 /**
  * The app-router route entries among `roots` (app/.../page.tsx), each with a virtual file that fails to type-check
  * when the page it serves takes props other than params and searchParams (Next.js's own page-props rule).
- * @param {string} root @param {string[]} roots
+ * A staged entry (line.addRoute's new app/.../page.tsx) is read as staged, not from disk.
+ * @param {string} root @param {string[]} roots @param {Map<string, string>} [staged] root-relative path -> staged content
  * @returns {{entry: string, page: string|null, file: string, content: string}[]}
  */
-function routeChecks(root, roots) {
-  return roots.filter((r) => /(^|\/)app\/(.+\/)?page\.tsx?$/.test(r)).map((entry, i) => {
+function routeChecks(root, roots, staged = new Map()) {
+  return roots.filter(isRouteEntry).map((entry, i) => {
     const dir = path.posix.dirname(entry);
-    let src = '';
-    try { src = fs.readFileSync(path.join(root, entry), 'utf8'); } catch { src = ''; }
+    let src = staged.get(entry) ?? '';
+    if (!staged.has(entry)) { try { src = fs.readFileSync(path.join(root, entry), 'utf8'); } catch { src = ''; } }
     const target = (/from\s*['"]([^'"]+)['"]/.exec(src) || [])[1];
-    const page = target && target.startsWith('.') ? roots.find((r) => noExt(r) === path.posix.normalize(path.posix.join(dir, target))) ?? null : null;
+    const base = target && target.startsWith('.') ? path.posix.normalize(path.posix.join(dir, target)) : null;
+    const page = base ? roots.find((r) => noExt(r) === base) ?? ['.tsx', '.ts'].map((x) => `${base}${x}`).find((p) => staged.has(p) || fs.existsSync(path.join(root, p))) ?? null : null;
     const file = `${dir}/__line_route_check_${i}__.ts`;
     const content = `import type * as Entry from './${path.posix.basename(entry).replace(/\.tsx?$/, '')}';\n`
       + 'type First<T> = T extends (...args: infer A) => unknown ? A[0] : never;\n'
@@ -183,6 +190,42 @@ function routeChecks(root, roots) {
       + 'export const lineRouteProps: [Extra] extends [never] ? true : Extra = true;\n';
     return { entry, page, file, content };
   });
+}
+
+/** An app-router route entry (app/.../page.tsx, src/app/... too). */
+const isRouteEntry = (rel) => /(^|\/)app\/(.+\/)?page\.tsx?$/.test(rel);
+
+/**
+ * pilot-qwen-7b-r2 R2: the route-props part of the gate, for a change that is not a whole-file write but can still
+ * leave a route serving a page with props Next.js refuses: line.addRoute (a new route entry for an existing page) and
+ * line.baseOn (a new page that a route entry already imports). Refused exactly as line.setCode refuses it (TYPE_ERROR,
+ * typeRefusal's sentence, importFixes' "take no props" fix), so a builder meets one refusal whichever tool it used. Only
+ * ROUTE_PROPS blocks here: other type errors stay line.setCode's to judge. Cheap when no route serves the change: the
+ * TypeScript programs are built only when a staged file is a route entry or a route entry imports one.
+ * @param {string} root Project root.
+ * @param {{library: string, features: string}} layout
+ * @param {{path: string, content: string|null}[]} files The staged files.
+ * @param {{file: string, code: string, contentHash?: string, then?: string}} page The page the fix rewrites: its path,
+ *   the code to fix (what is on disk for addRoute, the staged wrapper for baseOn), the hash it was read at (none for a
+ *   new file), and a sentence each fix adds after its own (addRoute: add the route again).
+ * @returns {{sentence: string, rule: string, severity: string, file: string, line: number}[]} Warnings when the check ran
+ *   past its budget (as line.setCode degrades), else none.
+ * @throws {LineOpError} TYPE_ERROR when a route would serve the page with props other than params and searchParams.
+ */
+export function refuseRouteProps(root, layout, files, page) {
+  const code = files.filter((f) => typeof f.content === 'string' && TS_EXT.test(f.path));
+  if (!code.length || !fs.existsSync(path.join(root, 'node_modules'))) return [];
+  const options = optionsOf(root);
+  if (!options) return [];
+  const changed = code.map((f) => f.path);
+  if (!changed.some(isRouteEntry) && !importersOf(root, changed, options, stagedHost(root, options, code)).some(isRouteEntry)) return [];
+  const types = typeCheckStaged(root, files);
+  const errors = (types?.errors ?? []).filter((e) => e.code === 'ROUTE_PROPS');
+  if (!types || !errors.length) return [];
+  if (types.slow) return errors.map((d) => ({ sentence: `The saved code may not compile (${d.message.replace(/[.?!]$/, '')}).`, rule: d.code, severity: 'warning', file: d.file, line: d.line }));
+  const { sentence, detail } = typeRefusal(errors);
+  const fixes = importFixes(root, layout, page.file, page.code, page.contentHash, errors.map((e) => ({ ...e, file: page.file })));
+  throw new LineOpError(sentence, 'TYPE_ERROR', detail, page.then ? fixes.map((f) => ({ ...f, sentence: `${f.sentence} ${page.then}` })) : fixes);
 }
 
 /** Code files of the library and of `feature` (the places a feature or library file may import from). */
@@ -240,13 +283,24 @@ export function importFixes(root, layout, file, code, contentHash, errors) {
       out.push({ id: `TYPE_ERROR/import:${spec}->${target}`, sentence: `Import ${path.posix.basename(noExt(target))} from ${to} (${target}) instead of "${spec}".`, step: { tool: 'line.setCode', args: { file, code: fixed, ...(contentHash ? { contentHash } : {}) } } });
     }
   }
-  // ROUTE_PROPS: a page that ignores its props (a line.baseOn wrapper's signature kept) takes none instead.
+  // ROUTE_PROPS: a page that ignores its props (a line.baseOn wrapper's signature kept) takes none instead. A bare
+  // line.baseOn wrapper only passes them on (`<Lib {...props} />`, pilot-qwen-7b-r2 R2): it takes none and renders the
+  // library page bare, and its `import type { ComponentProps }` goes when nothing else uses it.
   if (errors.some((e) => e.code === 'ROUTE_PROPS' && e.file === file)) {
     const m = /export\s+(?:default\s+)?function\s+([A-Z]\w*)\s*\(\s*([A-Za-z_$][\w$]*)\s*(?::[^)]*)?\)/.exec(code);
-    const uses = m ? (code.match(new RegExp(`(^|[^\\w$])${m[2].replace(/\$/g, '\\$')}(?![\\w$])`, 'g')) ?? []).length : 0;
-    if (m && uses === 1) {
-      const fixed = code.replace(m[0], m[0].replace(/\([\s\S]*\)$/, '()'));
-      out.unshift({ id: 'TYPE_ERROR/route-props', sentence: `Make ${m[1]} take no props (it does not use ${m[2]}), so its route can serve it.`, step: { tool: 'line.setCode', args: { file, code: fixed, ...(contentHash ? { contentHash } : {}) } } });
+    const esc = m ? m[2].replace(/\$/g, '\\$') : '';
+    const spread = new RegExp(`\\s*\\{\\s*\\.\\.\\.${esc}\\s*\\}`, 'g');
+    const spreads = m ? (code.match(spread) ?? []).length : 0;
+    const rest = m ? code.replace(m[0], '').replace(spread, '') : '';
+    const uses = m ? (rest.match(new RegExp(`(^|[^\\w$])${esc}(?![\\w$])`, 'g')) ?? []).length : 1;
+    if (m && uses === 0) {
+      let fixed = code.replace(m[0], m[0].replace(/\([\s\S]*\)$/, '()')).replace(spread, '');
+      const typeImport = /^import\s+type\s*\{\s*ComponentProps\s*\}\s*from\s*['"]react['"];?[ \t]*\n/m;
+      if (spreads && !/\bComponentProps\b/.test(fixed.replace(typeImport, ''))) fixed = fixed.replace(typeImport, '');
+      // Rendered bare, a library page whose props are required does not compile: no fix then (its content is the
+      // builder's to write with line.setCode), never one that line.setCode would refuse next.
+      const bare = spreads ? typeCheckStaged(root, [{ path: file, content: fixed }]) : null;
+      if (!bare || !bare.errors.length) out.unshift({ id: 'TYPE_ERROR/route-props', sentence: `Make ${m[1]} take no props (${spreads ? `it only passes ${m[2]} on` : `it does not use ${m[2]}`}), so its route can serve it.`, step: { tool: 'line.setCode', args: { file, code: fixed, ...(contentHash ? { contentHash } : {}) } } });
     }
   }
   if (out.length < 2) return out;

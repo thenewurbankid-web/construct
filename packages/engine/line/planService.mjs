@@ -11,6 +11,9 @@
 //                           step was a fix for a refused step (args.fixOf) and it landed, the refused step is re-checked
 //                           (planned again and dry-run through the writer, nothing written): if it would land now, a
 //                           retry of it joins the plan, waiting for the person's approval (owner decision c, 11 Oct)
+//   addStep({fix}, by)      pilot-qwen-7b-r2 R1: add one of the typed fixes the last refused add offered, by its ref
+//                           ("f1" is the recommended one) or its stable id ("TYPE_ERROR/route-props"); the fix's step
+//                           is added as if it had been sent with tool and args. The offer lives until the next add.
 //
 // Nothing here writes a project file: a step's write happens only when the plan runner calls the registry
 // (planTools.mjs -> applyChange -> Construct's transactional writer).
@@ -125,14 +128,16 @@ export function stepView(root, plan, s, ops = REAL_PLAN_OPS) {
  * The plan service for one project: the session plan Cockpit and agents share, over @mx/plan when linked, else the static store.
  * @param {{root: string, ops?: typeof REAL_PLAN_OPS, afterSave?: (root: string, file: string) => unknown,
  *   commands?: any, load?: (o: {root: string, registry: any}) => Promise<{api: any, store: {linked: boolean, sentence: string}}>,
- *   linkOptions?: object, trace?: {id: string, record: (e: any) => any, problem: string|null} | null, records?: any, memory?: any}} o `commands`: the
+ *   linkOptions?: object, trace?: {id: string, record: (e: any) => any, problem: string|null} | null, records?: any, memory?: any,
+ *   offers?: {get: () => any[] | null, set: (fixes: any[]) => void}}} o `commands`: the
  *   construct.* registry (default: Construct's built-in commands; null for none). `trace` (cl1): where this session's
  *   typed trace goes (default `<state>/traces/<id>.jsonl`; null records nothing). `records` (expressions): where finished
  *   steps' training records go (default `<state>/records/plans.jsonl`, records.mjs; null records nothing). `memory` (im3):
  *   where plan feedback is remembered per step (default memory/index.mjs memoryOf(root); null remembers nothing).
+ *   `offers` (R1): where the last refusal's typed fixes are kept between processes (default: in memory only).
  * @returns The plan service.
  */
-export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, commands, load = loadPlanApi, linkOptions, trace, records, memory }) {
+export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, commands, load = loadPlanApi, linkOptions, trace, records, memory, offers }) {
   const tr = trace === undefined ? createSessionTrace(root, { sessionId: SESSION_ID }) : trace;
   const mem = memory === undefined ? memoryOf(root) : memory;
   /** im3: remember plan feedback (best effort: a memory that cannot be saved never stops the plan). */
@@ -222,8 +227,9 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
           const r = refusal(/** @type {any} */ (e).code, /** @type {any} */ (e).sentence);
           const detail = /** @type {any} */ (e).detail;
           // bench-gaps 1: a refusal carries its typed fixes (contract.mjs RefusalFix): steps to add instead.
-          const fixes = /** @type {any} */ (e).fixes;
-          return { ...r, ...(typeof detail === 'string' && detail ? { detail } : {}), ...(Array.isArray(fixes) && fixes.length ? { fixes } : {}) };
+          // R1: each carries a short ref (f1 = rank 1) an agent sends back as {fix: "f1"} to add it.
+          const fixes = Array.isArray(/** @type {any} */ (e).fixes) ? /** @type {any[]} */ ((/** @type {any} */ (e)).fixes).map((f, i) => ({ ...f, ref: `f${i + 1}` })) : [];
+          return { ...r, ...(typeof detail === 'string' && detail ? { detail } : {}), ...(fixes.length ? { fixes } : {}) };
         }
         throw e;
       }
@@ -267,9 +273,40 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
     return { ...(await view(r.message)), stepId: added.id };
   };
 
+  // R1: the typed fixes the last refused add offered. In memory by default (Cockpit and MCP are long-lived, and a
+  // refusal writes nothing into the project); a one-shot caller (plan-cli run per call) passes `offers` to keep them.
+  /** @type {any[]} */
+  let offered = [];
+  const offer = (fixes) => {
+    offered = fixes;
+    try { offers?.set(fixes); } catch { /* best effort: the in-memory offer still answers this process */ }
+  };
+  const offeredNow = () => {
+    try { const f = offers?.get(); if (Array.isArray(f)) return f; } catch { /* none kept */ }
+    return offered;
+  };
+  /** The fix `want` names (a ref like "f1", or a fix id), or a refusal that lists what can be picked. */
+  const pickFix = (want) => {
+    const fixes = offeredNow();
+    const hit = fixes.find((f) => f.ref === want || f.id === want);
+    if (hit?.step && typeof hit.step.tool === 'string') return { ok: /** @type {const} */ (true), fix: hit };
+    if (!fixes.length) return refusal('UNKNOWN_FIX', `There is no fix ${want} to add: the last step added was not refused with fixes; add a step with its tool and args instead`);
+    const list = fixes.slice(0, 8).map((f) => `${f.ref} (${String(f.sentence ?? f.id).replace(/[.?!]$/, '')})`).join('; ');
+    return refusal('UNKNOWN_FIX', `There is no fix ${want}; the last refusal offered ${list}. Send one of those refs, for example {"fix": "${fixes[0].ref}"}`);
+  };
+
   /** cl1: record a step or a refusal in the session trace; with args.fixOf, also which offered fix was picked. */
-  const addStep = (req, by) => serial(async () => {
+  const addStep = (req0, by) => serial(async () => {
+    const want = typeof req0?.fix === 'string' && req0.fix.trim() ? req0.fix.trim() : null;
+    const picked = want ? pickFix(want) : null;
+    if (picked && !picked.ok) {
+      if (tr) tr.record({ kind: 'refusal', by: String(by), tool: '(fix)', stepId: null, args: { fix: want }, source: sourceOf(picked.code), code: String(picked.code), sentence: picked.sentence, rules: [], files: [], fixes: [] });
+      return picked;
+    }
+    // A picked fix is its step, sent as if with tool and args (a tool or args sent alongside are ignored).
+    const req = picked?.ok ? { tool: picked.fix.step.tool, args: picked.fix.step.args, why: typeof req0?.why === 'string' && req0.why.trim() ? req0.why : picked.fix.sentence } : req0;
     const r = await addStepInner(req, by);
+    offer(!r.ok && Array.isArray(/** @type {any} */ (r).fixes) ? /** @type {any} */ (r).fixes : []);
     if (!tr) return r;
     const tool = typeof req?.tool === 'string' && req.tool ? req.tool : '(none)';
     const args = traceArgs(req?.args);

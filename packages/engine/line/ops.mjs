@@ -15,6 +15,7 @@ import { planFileMove, applyEdits, readPathAliases, movedSpecifier } from '../ts
 import { LineOpError, assertStagedChange } from './contract.mjs';
 import { closestId } from '@line/construct-core/nearest';
 import { readWorkspace, isInsideWorkspace } from './workspace.mjs';
+import { refuseRouteProps } from './typeGate.mjs';
 
 const posix = path.posix;
 const SINGULAR = { components: 'component', pages: 'page', workflows: 'workflow', fixtures: 'fixture' };
@@ -169,7 +170,11 @@ export function planBaseOn(root, { libraryId, feature, name } = /** @type {any} 
   const dest = `${dir}/${n}${ext}`;
   const libSrc = fs.readFileSync(path.join(root, libFile), 'utf8');
   const content = wrapperSource({ libraryId: id, kind, name: n, dest, libFile, libName, libSrc });
-  return { summary: `Creates ${n} in feature ${f}, based on the library ${libName}.`, files: [{ path: dest, content }] };
+  const files = [{ path: dest, content }];
+  // pilot-qwen-7b-r2 R2: a new page a route entry already imports is held to the route-props rule (as line.setCode and
+  // line.addRoute are); the fix creates it taking no props.
+  const warnings = kind === 'pages' ? refuseRouteProps(root, layout, files, { file: dest, code: content }) : [];
+  return { summary: `Creates ${n} in feature ${f}, based on the library ${libName}.`, files, ...(warnings.length ? { warnings } : {}) };
 }
 
 // ---------------------------------------------------------------------------------------------
