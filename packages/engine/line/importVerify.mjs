@@ -14,6 +14,7 @@ import { classifyTypeErrors } from '@line/construct-core/verify';
 import { checkChangeForMove } from '@line/construct-core/check-change';
 import { moduleSpecifiers, semanticDiffSplit } from '@construct/ast/semantic-diff';
 import { runTypesCheck } from '../verifyRunner.mjs';
+import { readPathAliases } from '../tsFileMove.mjs';
 import { measure, loopChecks } from './importLoop.mjs';
 
 const CLI = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../cli/construct.mjs');
@@ -325,6 +326,8 @@ export function checkBehaviour(projectRoot, diff, sources, folder = '') {
   // Files with no logic units of their own (a JSON fixture, a types file) move too: an import that pointed at a file
   // that is gone now points at the one file of the same name in the folder.
   Object.assign(moves, unitlessMoves(projectRoot, folder, sources, moves));
+  // tsconfig `paths` (`@/x`): a move re-points an importer's alias specifier, which must read as the same module too
+  const aliases = readPathAliases(projectRoot);
   for (const file of Object.keys(sources ?? {})) {
     if (dest.has(file) || !fs.existsSync(path.join(projectRoot, file))) continue;
     // Changed in place: itself first; a file with no logic units of its own that now only points at its moved copy
@@ -333,7 +336,7 @@ export function checkBehaviour(projectRoot, diff, sources, folder = '') {
   }
   const one = (from, to) => {
     try {
-      const r = checkChangeForMove(projectRoot, from, to, { beforeSource: sources[from], moves });
+      const r = checkChangeForMove(projectRoot, from, to, { beforeSource: sources[from], moves, aliases });
       const diverged = /** @type {any[]} */ (r.propertyCheck?.checked ?? []).find((c) => c.verdict === 'diverged');
       return { from, to, verdict: r.verdict, ...(diverged ? { detail: `${diverged.name}(${JSON.stringify(diverged.input).slice(1, -1)}) was ${JSON.stringify(diverged.before)}, is ${JSON.stringify(diverged.after)}` } : r.reason ? { detail: r.reason } : {}) };
     } catch (e) {

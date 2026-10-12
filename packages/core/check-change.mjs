@@ -80,7 +80,7 @@ const allEquivalent = (pc) => pc.checked.length > 0 && pc.skipped.length === 0 &
  * @param {string} root Project root.
  * @param {string} fromPath Root-relative path before the move.
  * @param {string} toPath Root-relative path after the move.
- * @param {{ ref?: string, beforeSource?: string, moves?: Record<string, string> }} [options] `beforeSource` wins over `ref` (default `HEAD`).
+ * @param {{ ref?: string, beforeSource?: string, moves?: Record<string, string>, aliases?: {prefix: string, dir: string}[] }} [options] `beforeSource` wins over `ref` (default `HEAD`); `aliases` (tsconfig `paths`, project-relative dirs) map `@/x` specifiers like relative ones.
  * @returns {{ file: string, from: string, verdict: 'same-behaviour'|'changed'|'cant-tell', operations: string[], reason?: string, propertyCheck?: { checked: object[], skipped: object[] } }}
  * @throws {ConstructError} USAGE_ERROR when the file at `toPath` does not exist.
  *
@@ -98,11 +98,12 @@ export function checkChangeForMove(root, fromPath, toPath, options = {}) {
   const beforeSource = typeof options.beforeSource === 'string' ? options.beforeSource : readAtRef(root, from, options.ref);
   if (beforeSource === null) return { file: to, from, verdict: 'cant-tell', operations: [], reason: `not present at ${options.ref || 'HEAD'} (new file)` };
   const moves = options.moves ?? {};
-  const { verdict, operations, reason } = semanticDiffMapped(beforeSource, afterSource, { beforeFile: from, afterFile: to, moves });
+  const aliases = options.aliases ?? [];
+  const { verdict, operations, reason } = semanticDiffMapped(beforeSource, afterSource, { beforeFile: from, afterFile: to, moves, aliases });
   const document = { file: to, from, verdict, operations };
   if (reason) document.reason = reason;
   if (verdict === 'changed') {
-    const propertyCheck = pureExportEquivalence(normalizeSpecifiers(beforeSource, from, moves), normalizeSpecifiers(afterSource, to, moves));
+    const propertyCheck = pureExportEquivalence(normalizeSpecifiers(beforeSource, from, moves, aliases), normalizeSpecifiers(afterSource, to, moves, aliases));
     document.propertyCheck = propertyCheck;
     if (allEquivalent(propertyCheck)) { document.verdict = 'same-behaviour'; document.operations = ['equivalent']; }
   }

@@ -285,6 +285,26 @@ test('behaviour check: an extract step that splits a file (part moved, the rest 
   assert.equal(changed.verdict, 'changed');
 });
 
+// Found on a real route import (2026-10-12): moving a component re-pointed an importer's tsconfig `paths` alias
+// (`@/components/Card` -> `@/library/components/Card`); only relative specifiers were mapped, so the importer read as
+// "behaves differently" and the step stopped.
+test('behaviour check: an importer whose @/ alias import the move re-pointed is same-behaviour; another alias target is not', () => {
+  const dir = makeTempDir('construct-line-check-alias-');
+  const write = (rel, text) => { fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true }); fs.writeFileSync(path.join(dir, rel), text); };
+  write('tsconfig.json', '/* app */{\n  "compilerOptions": { "baseUrl": ".", "paths": { "@/*": ["./src/*"] } }\n}\n');
+  const card = 'export default function Card(n: number) { return n + 1; }\n';
+  const page = (spec) => `import Card from '${spec}';\nexport function show(n: number) { return Card(n) * 2; }\n`;
+  write('src/library/components/Card.tsx', card);
+  write('src/pages/P.tsx', page('@/library/components/Card'));
+  const diff = { moved: [{ from: { file: 'src/components/Card.tsx', kind: 'function' }, to: { file: 'src/library/components/Card.tsx' } }] };
+  const sources = { 'src/components/Card.tsx': card, 'src/pages/P.tsx': page('@/components/Card') };
+  const p = checkBehaviour(dir, diff, sources, 'src').find((r) => r.from === 'src/pages/P.tsx');
+  assert.deepEqual([p.to, p.verdict], ['src/pages/P.tsx', 'same-behaviour']);
+  write('src/other/Card.tsx', 'export default function Card(n: number) { return n - 1; }\n');
+  write('src/pages/P.tsx', page('@/other/Card'));
+  assert.notEqual(checkBehaviour(dir, diff, sources, 'src').find((r) => r.from === 'src/pages/P.tsx').verdict, 'same-behaviour');
+});
+
 test('compareLogicMaps: a move is kept (moved), a lost unit is missing, an edited one is changed', () => {
   const dir = fixtureApp();
   const before = buildLogicMap(dir, [`${FOLDER}/total.mjs`]);
