@@ -85,7 +85,8 @@ function sideRequest(root, file, fn) {
  * object built from an inline type literal), its mined literals (minedSeeds' byParam) and then a fixed pool: a sentinel
  * string, 0, 1, -1, a large number, '', true, false, null and an object carrying sentinels, offset by the parameter's
  * index so parameters do not move in lockstep.
- * @param {Array<string|{name: string, example?: unknown}>} params
+ * @param {Array<string|{name: string, example?: unknown, event?: string}>} params a handler's event parameter carries
+ *   `event` (the generated event's type) and gets four generated events instead of the usual pool
  * @param {{byParam?: Record<string, unknown[]>}} [seeds]
  * @returns {unknown[][]}
  */
@@ -161,6 +162,8 @@ function eventTypeOf(p) {
  * How the runner calls a unit (contract.mjs RUN_AS): a hook (`useX`) under the headless hook harness; a handler (named
  * handleX / onX, or whose first parameter is typed as an event) with a generated event as its first argument; else
  * directly.
+ * @param {string} name the unit's function name
+ * @param {{params: any[]}} node the unit's function node (its first parameter's type annotation can make it a handler)
  * @returns {import('./contract.mjs').RunAs}
  */
 export function runAsOf(name, node) {
