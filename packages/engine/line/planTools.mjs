@@ -15,6 +15,7 @@
 //                                            planned together (fixes.mjs planAmended) and applied as ONE change
 //   line.baseWorkflowOn, line.setWorkflowRole, line.addWorkflowTransition, line.removeWorkflowTransition
 //                     write  cw1 workflows (workflows.mjs) + applyChange
+//   line.bindPart, line.bindInteraction   write  cu5 page bindings (pageBinding.mjs) + applyChange
 //   line.leaveAsIs    write  {stepId}        -> a person's "carry on" after a step that needs them (writes nothing)
 //   line.project      read   {}              -> readLineProject
 //
@@ -42,10 +43,11 @@ import { entryById } from './toolRegistry.mjs';
 const catalogEntry = (name) => { const e = entryById(name); if (!e || !e.surfaces.plan) throw new Error(`The tool registry has no plan tool ${name}.`); return e; };
 import { planBaseWorkflowOn, planSetWorkflowRole, planAddWorkflowTransition, planRemoveWorkflowTransition } from './workflows.mjs';
 import { importTools } from './importTools.mjs';
+import { planBindPart, planBindInteraction } from './pageBinding.mjs';
 import { planExtractStep, EXTRACT_TOOLS } from './importV2/extract.mjs';
 
 /** The real operations (tests pass the contract's mock instead). */
-export const REAL_PLAN_OPS = Object.freeze({ planCreateFeature, planAddRoute, planSetCode, planBaseOn, planPromote, planSetProp, planFixByKey, planSetFragment, planStep, planAmended, planImportStep, planExtractStep, applyChange, checkChange, readLineProject, planBaseWorkflowOn, planSetWorkflowRole, planAddWorkflowTransition, planRemoveWorkflowTransition });
+export const REAL_PLAN_OPS = Object.freeze({ planCreateFeature, planAddRoute, planSetCode, planBaseOn, planPromote, planSetProp, planFixByKey, planSetFragment, planStep, planAmended, planImportStep, planExtractStep, applyChange, checkChange, readLineProject, planBaseWorkflowOn, planSetWorkflowRole, planAddWorkflowTransition, planRemoveWorkflowTransition, planBindPart, planBindInteraction });
 
 /** The write tools that plan a StagedChange, and the op that plans it (`planStep` takes {tool, args}). */
 export const CHANGE_TOOLS = Object.freeze({
@@ -60,6 +62,8 @@ export const CHANGE_TOOLS = Object.freeze({
   'line.baseWorkflowOn': 'planBaseWorkflowOn', 'line.setWorkflowRole': 'planSetWorkflowRole',
   'line.addWorkflowTransition': 'planAddWorkflowTransition', 'line.removeWorkflowTransition': 'planRemoveWorkflowTransition',
   'line.createFeature': 'planCreateFeature', 'line.addRoute': 'planAddRoute', 'line.setCode': 'planSetCode',
+  // cu5 page bindings (pageBinding.mjs): a part to a library component, an interaction to an endpoint, a controller or a stub
+  'line.bindPart': 'planBindPart', 'line.bindInteraction': 'planBindInteraction',
 });
 
 /** Change tools planned only when they run: an import step builds on the steps before it (the library item a feature
@@ -274,6 +278,8 @@ const SCHEMAS = Object.freeze({
   'line.createFeature': objectSchema({ name: 'string', story: 'string', points: 'strings' }, { change: true }),
   'line.addRoute': objectSchema({ route: 'string', page: 'string' }, { change: true }),
   'line.setCode': objectSchema({ file: 'string', code: 'string', contentHash: 'optString' }, { change: true }),
+  'line.bindPart': objectSchema({ file: 'string', partId: 'string', libraryId: 'string', contentHash: 'optString' }, { change: true }),
+  'line.bindInteraction': objectSchema({ file: 'string', interactionId: 'string', to: 'string', endpoint: 'optString', verb: 'optString', contentHash: 'optString' }, { change: true }),
   'line.leaveAsIs': objectSchema({ stepId: 'string' }),
   'line.project': objectSchema({}),
 });
@@ -303,6 +309,8 @@ const DESCRIBE = Object.freeze({
   'line.createFeature': 'Creates a new feature folder with its spec.md (one story and its acceptance points), through the checked writer.',
   'line.addRoute': 'Serves one feature page at a route: an app-router entry that only re-exports the page, plus the page\'s @line-route, through the checked writer.',
   'line.setCode': 'Writes the whole code of one library or feature file (or a feature\'s spec.md); an existing file needs the contentHash it was read at; through the checked writer.',
+  'line.bindPart': 'Binds one part of a feature page to a library component (Morpheus\'s side): the part becomes that component, or its import points at the library, through the checked writer.',
+  'line.bindInteraction': 'Binds one interaction of a feature page (Trace\'s side) to an endpoint of the feature\'s API contract, a controller function or a marked stub, through the checked writer.',
   'line.leaveAsIs': 'Records that a person chose to carry on after a step that needed them; writes nothing.',
   'line.project': 'Reads the Line view of the project: library, features, items and findings.',
 });

@@ -3,7 +3,7 @@
 // (a Save on Pages, an Apply on a fix) shows on every other until the tab reloads. Import it only dynamically, when
 // mock mode is on, so it is never part of the normal screens' code.
 import { createMockLineOps } from '../../../packages/engine/line/mock.mjs';
-import type { ApplyResult, FixRequest, FragmentList, LineProject, LineRefusal, SetFragmentRequest, SetPropRequest } from './lineContract';
+import type { ApplyResult, BindInteractionRequest, BindPartRequest, FixRequest, FragmentList, LinePageBinding, LineProject, LineRefusal, SetFragmentRequest, SetPropRequest } from './lineContract';
 
 export type MockLineOps = {
   files: () => Record<string, string>;
@@ -13,6 +13,9 @@ export type MockLineOps = {
   applyFix: (root: string, req: FixRequest) => ApplyResult;
   listFragments: (root: string, file: string) => FragmentList;
   planSetFragment: (root: string, req: SetFragmentRequest) => unknown;
+  readPageBinding: (root: string, file: string) => LinePageBinding;
+  planBindPart: (root: string, req: BindPartRequest) => unknown;
+  planBindInteraction: (root: string, req: BindInteractionRequest) => unknown;
 };
 
 export const MOCK_ROOT = '/mock';

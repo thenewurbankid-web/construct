@@ -226,7 +226,7 @@ export function checkLayout(project, line = {}) {
     for (const c of read(rel) || []) {
       const crel = `${rel}/${c.name}`;
       if (c.isDirectory() && !ITEM_KINDS.includes(c.name)) hit(crel, `Feature "${e.name}" has a "${c.name}" folder, but a feature holds only ${kinds} plus spec.md; move these files into one of those folders or into the library.`);
-      else if (!c.isDirectory() && !FEATURE_FILES.includes(c.name)) hit(crel, `Feature "${e.name}" has the file "${c.name}" at its top level, but only spec.md may sit there; move it into one of ${kinds}.`);
+      else if (!c.isDirectory() && !FEATURE_FILES.includes(c.name)) hit(crel, `Feature "${e.name}" has the file "${c.name}" at its top level, but only spec.md and the API contract (openapi.json) may sit there; move it into one of ${kinds}.`);
     }
   }
   for (const f of project.files) {

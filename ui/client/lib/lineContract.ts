@@ -98,6 +98,50 @@ export type FragmentList = { file: string; contentHash: string; fragments: CodeF
 /** POST /api/line/fragment. */
 export type SetFragmentRequest = { file: string; fragmentId: string; code: string; contentHash: string };
 
+// cu5: a page's two bindings (packages/engine/line/pageBinding.mjs, contract.mjs LinePageBinding). Morpheus: each part's
+// library component. Trace: each part's data, states and actions bound to the API.
+/** Morpheus's side of one part. */
+export type PartBase = { kind: 'library' | 'feature' | 'local' | 'outside' | 'html'; libraryId: string | null; from: string | null; sentence: string };
+/** Trace's side of one part: the data it shows. */
+export type PartData = { kind: 'list' | 'value' | 'input' | 'static' | 'none'; endpoint: string | null; field: string | null; sentence: string };
+/** A state of a part (shown when, disabled when, loading...), with Trace's question for Product or Design. */
+export type PartState = { id: string; kind: string; condition: string; sentence: string; team: string; requirement: string };
+export type PagePartBinding = { id: string; tag: string; depth: number; line: number; base: PartBase; data: PartData; states: PartState[]; interactions: string[] };
+export type PageInteraction = {
+  id: string;
+  partId: string;
+  prop: string | null;
+  label: string;
+  verb: string;
+  handler: 'none' | 'stub' | 'function';
+  resolution: 'api' | 'controller' | 'stub' | 'unresolved';
+  endpoint: string | null;
+  sentence: string;
+};
+/** A typed fix of an unresolved action: one plan step, recommended first (rank 1). */
+export type BindingFix = { id: string; sentence: string; rank: number; step: { tool: 'line.bindInteraction' | 'line.bindPart'; args: Record<string, unknown> } };
+export type BindingFinding = { key: string; partId: string; interactionId: string; sentence: string; fixes: BindingFix[] };
+export type ContractEndpoint = { id: string; method: string; path: string; role: string; says: string };
+/** GET /api/line/page-binding?file=. `via: 'static'` (with `note`) when Trace is down: only the library side is filled. */
+export type LinePageBinding = {
+  file: string;
+  feature: string;
+  page: string;
+  contentHash: string;
+  via: 'trace' | 'static';
+  note: string | null;
+  contract: { file: string | null; state: 'none' | 'invalid' | 'empty' | 'ok'; sentence: string; endpoints: ContractEndpoint[] };
+  parts: PagePartBinding[];
+  interactions: PageInteraction[];
+  findings: BindingFinding[];
+  coverage: { total: number; api: number; controller: number; stub: number; unresolved: number; rate: number };
+  components: { id: string; name: string }[];
+};
+/** line.bindPart: one part becomes a library component. */
+export type BindPartRequest = { file: string; partId: string; libraryId: string; contentHash?: string };
+/** line.bindInteraction: one action to an endpoint, a controller verb or a marked stub. */
+export type BindInteractionRequest = { file: string; interactionId: string; to: 'endpoint' | 'controller' | 'stub'; endpoint?: string; verb?: 'select' | 'clear'; contentHash?: string };
+
 /** POST /api/line/new-project (cu7): `parentDir` is a folder of the workspace ("" is the workspace itself). */
 export type NewLineProjectRequest = { parentDir: string; name: string; firstFeature: string };
 /** The starter files' ApplyResult, the new folder (null when refused) and, once opened, the settings of the open project. */
@@ -439,6 +483,7 @@ export type LineHttp = {
   addDraftRoute: (request: string, routeId: string, from?: number) => Promise<DraftAdded | LineRefusal>;
   answerDraft: (word: string, key: string) => Promise<{ ok: true; sentence: string } | LineRefusal>;
   getFragments: (file: string) => Promise<FragmentList | LineRefusal>;
+  getPageBinding: (file: string) => Promise<LinePageBinding | LineRefusal>;
   importFolders: () => Promise<ImportFolders | LineRefusal>;
   importScan: (req: ImportScanRequest) => Promise<ImportScan | LineRefusal>;
   importPlan: (req: ImportPlanRequest) => Promise<ImportPlan | LineRefusal>;

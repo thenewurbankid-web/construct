@@ -29,8 +29,9 @@ export const KIND_SINGULAR = Object.freeze({ components: 'component', pages: 'pa
 /** Which existing Construct layer each kind is checked as (fixtures have no layer rules). */
 export const KIND_LAYER = Object.freeze({ components: 'component', pages: 'page', workflows: 'workflow' });
 
-/** Files a feature folder may hold next to its kind folders. spec.md is the user's spec (LINE-BASE exempt). */
-export const FEATURE_FILES = Object.freeze(['spec.md', 'README.md']);
+/** Files a feature folder may hold next to its kind folders. spec.md is the user's spec (LINE-BASE exempt); openapi.json|yaml|yml
+ * is the feature's API contract, where Trace reads the endpoints a page's interactions are bound to (cu5). */
+export const FEATURE_FILES = Object.freeze(['spec.md', 'README.md', 'openapi.json', 'openapi.yaml', 'openapi.yml']);
 /** Files the library folder may hold next to its kind folders. */
 export const LIBRARY_FILES = Object.freeze(['README.md']);
 

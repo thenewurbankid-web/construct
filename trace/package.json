@@ -38,6 +38,10 @@
   "author": "",
   "license": "ISC",
   "type": "module",
+  "exports": {
+    "./pagemap": "./src/pagemap/index.mjs",
+    "./package.json": "./package.json"
+  },
   "dependencies": {
     "@babel/generator": "^8.0.6",
     "@babel/parser": "^7.29.9",

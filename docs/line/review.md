@@ -214,6 +214,106 @@ Gaps:
 4. Optional, with Ollama running: `CONSTRUCT_LIVE_QWEN=1 node --test test/line-repair-live.test.mjs` prints "Live repair,
    up to 4 attempts: 7/20 repaired ..." with the default (1.5B, no reason field).
 
+## cu5: Pages, Trace's page map and wiring next to Morpheus's component binding (12 Oct, branch `cloud-cu5`; awaiting UAT)
+
+What it is: the Pages screen (always inside a feature, picked first) now shows the chosen page's two bindings side by
+side, one row per part. Left, Morpheus: which library component the part is ("The library page ListPage", "OrderButton
+from the feature orders, based on the library Button", "TextField comes from @/subframe/components/TextField, not from
+your library"), with "Bind to library" for any part that is not one yet. Right, Trace: the data the part shows, its states
+("Disabled when loading || userAbsence.", "Shown only when openContactDrawer.") and its actions, each resolved by Trace's
+own rules to "Calls the API" (with the endpoint of the feature's contract), "On the page" (a controller), "Stub to write"
+or "Needs a home". Every action with no home is listed under the table as a finding with typed fixes, recommended first
+("Bind "More" to GET /api/orders (reload the list)."), the others under "Other ways to bind it". Every bind is a plan step
+(`line.bindPart`, `line.bindInteraction`) that waits for a person's Approve in the Plan panel; agents only add steps.
+
+How it is built:
+- Engine `packages/engine/line/pageBinding.mjs`: `readPageBinding` (GET `/api/line/page-binding?file=`), `planBindPart`,
+  `planBindInteraction`; contract shapes `LinePageBinding`, `BindPartRequest`, `BindInteractionRequest` and
+  `assertLinePageBinding` in `contract.mjs`; the mock `mockPageBinding.mjs` (no parser, so mock mode runs it in the browser).
+- Trace's engine is reused, not copied: `trace/package.json` now has `"exports": {"./pagemap": ...}` and
+  `trace/src/pagemap/index.mjs` re-exports the inventory, collapse, classify, the interaction resolver, the contract
+  matcher and `specOfFolder`. Construct imports `line-matcher/pagemap`; Trace is not an npm workspace here, so when the name
+  does not resolve, `tracePagemap.mjs` reads the same "./pagemap" entry from `trace/package.json` (never a deep path).
+  Trace gained `resolveAction` (one interaction, the loop body of `resolveInteractions`, unchanged behaviour) so a
+  component's handler prop (`onMore`) resolves by Trace's rules too, and its resolvers take a spec object as well as a
+  folder.
+- A Line feature's API contract is `features/<f>/openapi.json` (Trace's own file name). The Line profile now allows
+  `openapi.json|yaml|yml` beside `spec.md`; the sample's orders feature has one (GET/POST `/api/orders`, DELETE
+  `/api/orders/{id}`).
+- Binding an action writes Trace's own marker on the part: `data-action="reload"` (an endpoint, by its role) or
+  `"select"`/`"clear"` (a controller), or a marked stub handler `(event) => {}` when the part has no handler. Binding a
+  part renames its tag to the library component and imports it, or, when the part already has the component's name
+  (a Subframe `Button`), points that import at the library (every `Button` on the page follows).
+- Tools: `line.pageBinding` (read), `line.bindPart`, `line.bindInteraction` (plan) in the one tool registry; controls
+  `pages.bindPart`, `pages.bindInteraction` for cg1/ct1 Trace mode; request words ("bind ... to the library",
+  "bind ... action/endpoint") match them.
+- No single point of failure: when Trace's page map cannot be loaded or cannot read the page, the panel keeps Morpheus's
+  side and says so in one sentence; binding an action is then refused (NO_TRACE).
+
+Tests (plain English):
+1. Engine, `test/line-page-binding.test.mjs` (18; the first five run on the mock and on a copy of the sample):
+   OrdersPage shows ListPage from the library and its "More" action with no home, the list endpoint as the recommended
+   fix; planning writes nothing, applyChange lands it, then Trace reads "More" calls GET /api/orders; a stale page hash is
+   refused; a controller binding; a stub refused for a handler that already runs code; unknown action, endpoint or verb
+   refused in one sentence; a part becomes a library component with its import; a feature with no contract says so.
+   Real only: OrderButton bound to the library Button lands through the writer and validate adds no problem; the sample
+   with its new contract still has only the two planted findings; a page with states and buttons (Trace's contacts
+   contract): the loading and disabled states land on their parts, "Add" calls POST /api/contacts, a button with no
+   handler gets a marked stub and Trace then reads it as a stub; a Subframe `Button` import is pointed at the library and
+   a name already taken on the page is refused; Trace down: the library side stays with one sentence; Trace is loaded
+   through its package entry (and through the in-repo exports entry when the name does not resolve); the two plan tools
+   are in the contract, the registry and the controls, and a plan step lands with its checks; an agent's bind only waits
+   in the plan and an agent cannot approve it.
+2. Server, `ui/server/src/lineOpsApi.test.mjs` (+1): GET /page-binding answers both bindings; the bind joins the plan
+   ("Waiting for your approval: ..."), nothing is written before Approve, then it lands; a path outside is a 400 sentence.
+3. Client, `features/line-pages/domain/PageBinding.spec.mjs` (3): one row per part with both sides; a part not from the
+   library offers every library component; the coverage sentence; a fix becomes a plan step carrying the page hash.
+4. Browser, `ui/e2e/tests/line-page-binding.spec.js` (4, real server; ran: 4 passed): the table and the finding with its fixes, axe
+   clean; the recommended fix is one click, waits in the Plan panel, writes nothing until Approve, then "Calls the API";
+   OrderButton bound to the library Button; mock mode (`?line=mock`) shows and binds too.
+5. UAT walk `ui/e2e/uat/cu5.spec.js` (2, ran with hour56-pages: 3 passed): the sample walk below, and contact-manager-ui
+   (see UAT step 4), each decision Bind + Approve (two clicks). The stale-page refusal is covered by the engine test.
+6. Checks: targeted Line node tests 194/194 after fixes (the full line batch was cut short by the owner's load limit),
+   tsc ratchet clean for the changed files, api-coverage at baseline (249), fix-imports 0, contracts --check clean, eslint
+   clean. The `modules` spec topic header cut is now 260 characters so it still fits one MCP call (33.6 KB at 300).
+
+Gaps:
+- One action per part: a component with two handler props (`onOpen`, `onClose`) is read by its first one.
+- Trace's verbs decide "Calls the API": a button labelled "Add" counts as calling POST even when its handler only opens a
+  drawer (Trace's rule, kept as it is). Endpoints Trace gives no role (`extra`, more than one path parameter) cannot be
+  chosen as a binding.
+- The data side is read-only: a part's data comes from Trace's markers (`data-list`, `data-dyn`) and the contract's
+  example values; binding a value to a field is not a plan step yet (Trace's page map screen still does that).
+- The fixes are ranked by static rules (the list endpoint first for "more/load/show" verbs); jev does not rank them yet.
+- Binding a part does not check the library component's props against the ones the part passes (validate and types do
+  that after the change).
+- The contact-manager page is brought in by copying it into a Line feature (no Import run); its imports of the app's own
+  components stay outside the library.
+
+### cu5 — next (moved to next sprint; owner's 1-hour slice cut, 12 Oct)
+- Several actions per part (every handler prop, not only the first).
+- Binding a part's data to a contract field as a plan step (the data side is read-only in this slice).
+- jev ranking the typed fixes (static order today); a measured accuracy for the recommended fix.
+- Endpoints Trace gives no role (`extra`) as bind targets; checking the bound library component's props.
+- Trace mode (cg1/ct1): Auto scripts for `line.bindPart` / `line.bindInteraction` (they light up but Auto does not drive them).
+- contact-manager-ui brought in through the Import agent instead of a copied page; the full browser batch and `heavy.sh npm test`
+  on the combined tree.
+- Push of `cloud-cu5` (committed locally only, as the coordinator asked).
+
+### UAT (10 minutes, fresh sample)
+1. `rm -rf ~/workspace/line-sample && cp -R ~/Repositories/construct/examples/line-sample ~/workspace/`, start Cockpit,
+   open line-sample. Pages -> orders -> OrdersPage. Under "How OrdersPage is bound": ListPage "The library page ListPage";
+   on the right "Needs a home" for "More", and under "Actions with no home yet" the button "Bind "More" to GET /api/orders
+   (reload the list)."
+2. Click it, then Approve in the Plan panel (two clicks). Expect "Calls the API" next to "More" and the finding gone.
+3. Pick billing -> InvoicesPage. OrderButton reads "OrderButton from the feature orders, based on the library Button."
+   Choose Button, click "Bind to library", Approve. The row now reads "The library component Button".
+4. Optional, a real app: `git clone https://github.com/neemiassgc/contact-manager-ui /tmp/contact-manager-ui`; in the
+   sample copy make `features/contacts/` with `spec.md`, `openapi.json` (copy `trace/examples/contacts/openapi.json`) and
+   `pages/ContactsPage.tsx` = `// @line-base pages/ListPage` plus the app's `src/app/(core)/page.tsx`. Pages -> contacts
+   -> ContactsPage: the Subframe parts say "not from your library", TextField "Disabled when loading || userAbsence.",
+   Drawer "Shown only when openContactDrawer.", "Add" calls POST /api/contacts. Bind Button to the library Button.
+
 ## Import v2: fit existing logic into Line's blocks, backed by tests (11 Oct, merged on `merge-iv2`; awaiting UAT)
 
 Contract: `docs/line/import-v2/CONTRACT.md`. Merged branches: `fix-plan-lock`, `fix-yaml-comments`, `iv2-bugs`, `iv2-map`,

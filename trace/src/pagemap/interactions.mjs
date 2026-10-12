@@ -30,41 +30,67 @@ export function handlerStub(text) {
 }
 
 /**
+ * The API spec to resolve against: `exampleDir` read through readSpec (feature.json + its openapi file), or a spec
+ * object given as it is (`{apis, list, contract}`, e.g. specOfFolder for a folder with no feature.json). Null when
+ * there is no usable contract.
+ *
+ * @param {string|{apis: object[], list?: string|null, contract?: object|null}|null} from
+ * @returns {{apis: object[], list?: string|null, contract?: object|null}|null}
+ */
+export function usableSpec(from) {
+  let spec = null;
+  try { spec = from && typeof from === "object" ? from : from ? readSpec(from) : null; } catch { spec = null; }
+  return spec?.contract?.usable ? spec : null;
+}
+
+/**
+ * How ONE interaction resolves: the verb's kind (match.mjs matchAction), the contract's endpoints and the handler.
+ * resolveInteractions runs this for every interaction node; Construct's Line page binding runs it for a part whose
+ * handler is a prop of a component (`onMore`), which the inventory does not list as an interaction.
+ *
+ * @param {{verb: string, element: string, handlerText: string}} it The verb (data-action, else the label's), the tag, and the handler attribute's source ("" when none).
+ * @param {{apis: object[], list?: string|null, contract?: object|null}|null} spec A usable spec (usableSpec), or null.
+ * @returns {{verb:string, handler:"none"|"stub"|"function", resolution:"api"|"controller"|"stub"|"unresolved", detail:string, kind:string|null, endpointMissing?:boolean}}
+ */
+export function resolveAction({ verb, element, handlerText }, spec) {
+  // With or without a contract the verb's KIND is the pipeline's (match.mjs matchAction): edit/open/select and cancel/close/reset are UI-only.
+  // Without a usable contract there are no endpoints to look for, so a verb that needs one stays unresolved (nothing is claimed).
+  const h = handlerStub(handlerText);
+  let resolution, detail, endpointMissing = false;
+  const m = match({ values: [], lists: [], actions: [{ name: verb, element }], forms: [] }, spec ?? { apis: [] }).actions[0];
+  const ui = m?.kind && /no API call/.test(ACTION_KINDS[m.kind] ?? "");
+  if (m?.kind && (ui || (spec && !m.missing?.length))) {
+    resolution = ui ? "controller" : "api";
+    detail = ACTION_KINDS[m.kind];
+  } else if (m?.kind && !spec) {
+    resolution = "unresolved"; detail = `"${verb}" needs an API endpoint (${ACTION_KINDS[m.kind]}) and there is no API contract to check it against`;
+  } else if (m?.kind) {
+    resolution = "unresolved"; endpointMissing = true; detail = `"${verb}" needs an endpoint the contract lacks (${m.missing.join(", ")})`;
+  } else if (h.stub) { resolution = "stub"; detail = `a marked stub to write: ${h.why}`; }
+  else if (!spec) { resolution = "unresolved"; detail = "no API contract to resolve it against" + (h.present ? "" : " and no handler"); }
+  else { resolution = "unresolved"; detail = h.present ? `"${verb}" is not a known action and the handler is not a stub` : `"${verb}" is not a known action and there is no handler`; }
+  return { verb, handler: h.present ? (h.stub ? "stub" : "function") : "none", resolution, detail, kind: m?.kind ?? null, ...(endpointMissing ? { endpointMissing } : {}) };
+}
+
+/**
  * The interactions of a page and how each resolves.
  *
  * @param {ReturnType<typeof import("./inventory.mjs").buildInventory>} inv The inventory.
  * @param {string} source The page source.
  * @param {Object<string, {name?:string, cls:string}>} proposals Proposals by node id (the verb is the proposal's name).
- * @param {string|null} exampleDir The example folder whose contract to read, or null.
+ * @param {string|{apis: object[], list?: string|null, contract?: object|null}|null} exampleDir The example folder whose contract to read, a spec object (usableSpec), or null.
  * @returns {{id:string, line:number, label:string, verb:string, handler:"none"|"stub"|"function", resolution:"api"|"controller"|"stub"|"unresolved", detail:string, endpointMissing?:boolean}[]} In source order.
  */
 export function resolveInteractions(inv, source, proposals, exampleDir) {
-  // With or without a contract the verb's KIND is the pipeline's (match.mjs matchAction): edit/open/select and cancel/close/reset are UI-only.
-  // Without a usable contract there are no endpoints to look for, so a verb that needs one stays unresolved (nothing is claimed).
-  let spec = null;
-  try { if (exampleDir) { spec = readSpec(exampleDir); if (!spec.contract?.usable) spec = null; } } catch { spec = null; }
-  const kindSpec = spec ?? { apis: [] };
+  const spec = usableSpec(exampleDir);
   const out = [];
   for (const n of inv.nodes) {
     if (n.kind !== "interaction") continue;
     const p = proposals[n.id];
     const verb = (n.props["data-action"] && typeof n.props["data-action"] === "string" ? n.props["data-action"] : p?.name) ?? n.details.verb;
     const handlerAttr = n.spans.attrs.find((a) => /^on(Click|Submit)$/.test(a.name));
-    const h = handlerStub(handlerAttr ? source.slice(handlerAttr.start, handlerAttr.end) : "");
-    let resolution, detail, endpointMissing = false;
-    const m = match({ values: [], lists: [], actions: [{ name: verb, element: n.tag }], forms: [] }, kindSpec).actions[0];
-    const ui = m?.kind && /no API call/.test(ACTION_KINDS[m.kind] ?? "");
-    if (m?.kind && (ui || (spec && !m.missing?.length))) {
-      resolution = ui ? "controller" : "api";
-      detail = ACTION_KINDS[m.kind];
-    } else if (m?.kind && !spec) {
-      resolution = "unresolved"; detail = `"${verb}" needs an API endpoint (${ACTION_KINDS[m.kind]}) and there is no API contract to check it against`;
-    } else if (m?.kind) {
-      resolution = "unresolved"; endpointMissing = true; detail = `"${verb}" needs an endpoint the contract lacks (${m.missing.join(", ")})`;
-    } else if (h.stub) { resolution = "stub"; detail = `a marked stub to write: ${h.why}`; }
-    else if (!spec) { resolution = "unresolved"; detail = "no API contract to resolve it against" + (h.present ? "" : " and no handler"); }
-    else { resolution = "unresolved"; detail = h.present ? `"${verb}" is not a known action and the handler is not a stub` : `"${verb}" is not a known action and there is no handler`; }
-    out.push({ id: n.id, line: n.line, label: n.details.label || n.tag, verb, handler: h.present ? (h.stub ? "stub" : "function") : "none", resolution, detail, ...(endpointMissing ? { endpointMissing } : {}) });
+    const { kind: _kind, ...r } = resolveAction({ verb, element: n.tag, handlerText: handlerAttr ? source.slice(handlerAttr.start, handlerAttr.end) : "" }, spec);  
+    out.push({ id: n.id, line: n.line, label: n.details.label || n.tag, ...r });
   }
   return out;
 }

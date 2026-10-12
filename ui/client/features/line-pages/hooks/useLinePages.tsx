@@ -10,9 +10,11 @@ import { featurePages, findPage } from '../domain/PageRows';
 import { saveCodeFragment } from '../workflows/SaveFragmentFlow';
 import { savePageProp } from '../workflows/SavePropFlow';
 import { saveOutcome } from '../domain/SaveOutcome';
-import type { CodeFragment, FragmentOutcome, LinePagesApi, LinePagesPlan, LinePagesView, LineProject, PagePart, PartProp, PartsState, SaveOutcome } from '../types';
+import { bindPartRequest } from '../domain/PageBinding';
+import type { BindingFix, BindingState, BindInteractionRequest, CodeFragment, FragmentOutcome, LinePagesApi, LinePagesPlan, LinePagesView, LineProject, PagePart, PartProp, PartsState, SaveOutcome } from '../types';
 
 const UNREADABLE: PartsState = { phase: 'error', sentence: 'The parts of this page could not be read, so try again.' };
+const NO_BINDING: BindingState = { phase: 'error', sentence: 'The bindings of this page could not be read, so try again.' };
 
 /** The Line Pages screen's state: the chosen feature and page (kept in the URL as ?feature= and ?page=), the page
  * rows of that feature, the chosen page's parts, and Save. After every save the project and the page's parts are
@@ -34,6 +36,8 @@ export function useLinePages(project: LineProject | null, api: LinePagesApi | nu
   const [revision, setRevision] = useState(0);
 
   const [fragmentOutcome, setFragmentOutcome] = useState<FragmentOutcome | null>(null);
+  const [binding, setBinding] = useState<BindingState>({ phase: 'idle' });
+  const [bindOutcome, setBindOutcome] = useState<SaveOutcome | null>(null);
   const { revalidate } = useShellDrawer();
 
   const readParts = useCallback(
@@ -47,6 +51,14 @@ export function useLinePages(project: LineProject | null, api: LinePagesApi | nu
       } catch {
         setParts(UNREADABLE);
       }
+      // cu5: both bindings (Morpheus and Trace) of the page; a refusal or a silent server shows one sentence, the parts stay.
+      if (!api.getPageBinding) return;
+      try {
+        const b = await api.getPageBinding(f);
+        setBinding(b && 'parts' in b && Array.isArray(b.parts) ? { phase: 'ready', binding: b } : b && 'sentence' in b && typeof b.sentence === 'string' ? { phase: 'error', sentence: b.sentence } : NO_BINDING);
+      } catch {
+        setBinding(NO_BINDING);
+      }
     },
     [api],
   );
@@ -54,11 +66,14 @@ export function useLinePages(project: LineProject | null, api: LinePagesApi | nu
   useEffect(() => {
     setOutcome(null);
     setFragmentOutcome(null);
+    setBindOutcome(null);
     if (!file) {
       setParts({ phase: 'idle' });
+      setBinding({ phase: 'idle' });
       return;
     }
     setParts({ phase: 'loading' });
+    setBinding({ phase: 'loading' });
     void readParts(file);
   }, [file, readParts]);
 
@@ -74,6 +89,7 @@ export function useLinePages(project: LineProject | null, api: LinePagesApi | nu
       await reloadProject();
       await readParts(file);
       if (run.apply) setOutcome(saveOutcome(run.apply));
+      setBindOutcome(run.apply ? saveOutcome(run.apply) : null);
       setRevision((r) => r + 1);
     })();
     // Only a newly run step triggers this; the file and readers are read through the latest render.
@@ -125,6 +141,39 @@ export function useLinePages(project: LineProject | null, api: LinePagesApi | nu
     [api, file, readParts, reloadProject],
   );
 
+  // cu5: a bind adds a plan step (mock mode: lands at once); its sentence shows above the bindings, and the page is read
+  // again so a landed change (mock) shows straight away. After Approve, the landed-step effect above reads it again.
+  const bind = useCallback(
+    async (run: () => Promise<unknown> | undefined) => {
+      if (!file || !api) return;
+      setSaving(true);
+      let result: SaveOutcome;
+      try {
+        result = saveOutcome((await run()) as Parameters<typeof saveOutcome>[0]);
+      } catch {
+        result = saveOutcome(null);
+      }
+      await readParts(file);
+      setBindOutcome(result);
+      setRevision((r) => r + 1);
+      setSaving(false);
+    },
+    [api, file, readParts],
+  );
+  const current = binding.phase === 'ready' ? binding.binding : null;
+  const bindPart = useCallback(
+    (partId: string, libraryId: string) => {
+      if (current) void bind(() => api?.bindPart?.(bindPartRequest(current, partId, libraryId)));
+    },
+    [api, bind, current],
+  );
+  const bindAction = useCallback(
+    (fix: BindingFix) => {
+      if (current) void bind(() => api?.bindInteraction?.({ ...(fix.step.args as BindInteractionRequest), contentHash: current.contentHash }));
+    },
+    [api, bind, current],
+  );
+
   // ca2: a fix applied from a page's problem. Its sentence stays at the top; a landed one re-reads the project (the
   // problem leaves its row), the open page's parts, and re-runs validate (Diagnostics, status bar).
   const afterFix = useCallback(async () => {
@@ -136,6 +185,6 @@ export function useLinePages(project: LineProject | null, api: LinePagesApi | nu
 
   return {
     ready: featureSel.ready && pageSel.ready, features, feature, chooseFeature, pages, page, choosePage: selectPage, parts, save, saving, revision, outcome,
-    saveFragment, fragmentOutcome, fixNotice, fixApplied,
+    saveFragment, fragmentOutcome, fixNotice, fixApplied, binding, bindPart, bindAction, bindOutcome,
   };
 }

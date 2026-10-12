@@ -32,7 +32,7 @@ export const SPEC_MODULES = Object.freeze([
 export const MODULE_TOPICS = Object.freeze(['modules', 'line-modules']);
 
 /**
- * A source file's contract: its leading comment (joined, cut to 300 characters, so the modules topic fits one MCP call) and its exported names.
+ * A source file's contract: its leading comment (joined, cut to 300 characters, so each module topic fits one MCP call) and its exported names.
  * @param {string} file Absolute path of the source file.
  * @returns {{header: string, exports: string[]}}
  */

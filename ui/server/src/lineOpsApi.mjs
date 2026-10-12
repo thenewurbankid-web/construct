@@ -8,6 +8,7 @@
 //   POST /workspace         setWorkspace   -> line/workspace.json through Construct's writer (Line's own setting,
 //                                             not a project change, so it stays a direct route)
 //   GET  /fragments?file=   listFragments  (packages/engine/line/fragments.mjs, cx1)
+//   GET  /page-binding?file= readPageBinding (packages/engine/line/pageBinding.mjs, cu5): both bindings of one page
 //
 // A LineOpError is a 400 `{ok: false, sentence, code, detail?}`; anything unexpected is a 500 with one sentence.
 import express from 'express';
@@ -15,9 +16,10 @@ import { LineOpError } from '../../../packages/engine/line/contract.mjs';
 import { readPageTree } from '../../../packages/engine/line/pageProp.mjs';
 import { readWorkspace, setWorkspace } from '../../../packages/engine/line/workspace.mjs';
 import { listFragments } from '../../../packages/engine/line/fragments.mjs';
+import { readPageBinding } from '../../../packages/engine/line/pageBinding.mjs';
 
 /** The real operations; tests may pass their own (for example the contract's mock). */
-export const REAL_LINE_OPS = Object.freeze({ readPageTree, listFragments, readWorkspace, setWorkspace });
+export const REAL_LINE_OPS = Object.freeze({ readPageTree, listFragments, readWorkspace, setWorkspace, readPageBinding });
 
 const plain = (body) => (body && typeof body === 'object' && !Array.isArray(body) ? body : {});
 
@@ -54,5 +56,7 @@ export function createLineOpsRouter({ getRoot, clientOrigin, ops = REAL_LINE_OPS
   router.get('/workspace', handle((root) => ops.readWorkspace(root)));
   router.post('/workspace', handle((root, req) => ops.setWorkspace(root, /** @type {any} */ (plain(req.body)))));
   router.get('/fragments', handle((root, req) => ops.listFragments(root, typeof req.query.file === 'string' ? req.query.file : '')));
+  // cu5: Morpheus's and Trace's bindings of one page; binding a part or an action is a plan step (line.bindPart, line.bindInteraction).
+  router.get('/page-binding', handle((root, req) => ops.readPageBinding(root, typeof req.query.file === 'string' ? req.query.file : '')));
   return router;
 }

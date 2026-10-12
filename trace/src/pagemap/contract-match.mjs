@@ -14,13 +14,13 @@ const MIN_MENTION = 4;
 /**
  * Build the matcher for an example folder.
  *
- * @param {string} dir Example folder (holds feature.json and the openapi file).
+ * @param {string|{apis: object[], list?: string|null, contract?: object|null}} dir Example folder (holds feature.json and the openapi file), or a spec object (interactions.mjs usableSpec).
  * @returns {{file:string, fields:number, lookup:(text:string)=>{field:string, formatter:string, source:string}[], mentions:(text:string)=>string[]}|null}
  *   `null` when there is no usable contract (or no list with examples); then nothing is claimed.
  */
 export function contractMatcher(dir) {
   let spec;
-  try { spec = readSpec(dir); } catch { return null; }
+  try { spec = dir && typeof dir === "object" ? dir : readSpec(dir); } catch { return null; }
   if (!spec.contract?.usable) return null;
   const endpoints = findEndpoints(spec.apis, spec.list);
   const items = flatItems(endpoints);
