@@ -386,8 +386,9 @@ import { EXTRACT_TOOLS } from './importV2/extractTarget.mjs';
  * @property {{steps: number, files: number, layers: number}} cost
  * @property {{tool: string, args: Record<string, unknown>}[]} steps  For Details.
  * @property {{sentence: string}|null} fix  A refused route's typed fix, in words.
- * @property {{outcome: string, sentence: string}|null} [repair]  im2: the one repair the local model made of this route
- *   (a model's route that Construct refused), with what came of it; null when none was tried.
+ * @property {{outcome: string, sentence: string, progress: string[], tries: {n: number, reason: string, outcome: string, refusal: string|null}[]}|null} [repair]
+ *   im2: the local model's repair of this route (a model's route that Construct refused): what came of it, the live line
+ *   (one sentence per attempt, in order) and every attempt for Details; null when none was tried.
  *
  * @typedef {object} DraftView
  * @property {true} ok
@@ -555,6 +556,7 @@ export const PLAN_PROTOCOL = Object.freeze([
  * @property {string|null} model  The model the step uses; the local default is qwen2.5-coder:1.5b. Null only for a hosted step.
  * @property {string} modelFrom   Plain English: where the model comes from ("Line's default", "trace/ai.config.json").
  * @property {number} maxTokens   The reply cap for the step's model (Qwen's proposer reads it; 800 for plan steps).
+ * @property {number} [maxAttempts]  im2: how many repairs the step may try (construct.repair; default 4).
  * @property {'static'} fallback  When the model is down or not linked, the static path answers and says so.
  * @property {{static: {target: number}, options: {on: boolean, target: number}, review: {on: boolean, target: number}, measured: string|null}} ladder
  * @property {'cockpit'|'trace'|'construct'} source  Which app's step it is.
@@ -597,27 +599,40 @@ export const PLAN_PROTOCOL = Object.freeze([
  */
 
 /**
- * im2: one repair of a refused option by the local model (packages/core/line-decide.mjs repairOnce). The model gets only
- * the error (the refusal sentence, the finding, the typed fixes) and the option; its reply is constrained to the
- * option's schema; the repaired option is checked again by Construct. Exactly one attempt. Kept in the decision trace
- * (DecideLoopResult round `repair`) and, slotted, in the plan records (`records/repairs.jsonl`).
+ * im2: the local model's repair of a refused option (packages/core/line-decide.mjs repairLoop; owner, 12 Oct: up to
+ * `maxAttempts`, profile construct.repair, default 4). Each attempt gets only the error (the refusal sentence, the
+ * finding, the typed fixes), the option and every earlier attempt with its refusal; the reply is a short reason then the
+ * option, constrained to the option's schema; Construct checks each repaired option. It stops when one lands, repeats an
+ * earlier one, or passes no more checks than the last one. Kept on the decision trace (DecideLoopResult round `repair`),
+ * slotted in the plan records (`records/repairs.jsonl`); `progress` is the person's live line, one sentence per attempt.
+ * @typedef {object} RepairTry
+ * @property {number} n
+ * @property {string} reason  The model's short reason, written before the option.
+ * @property {{tool: string, args: any}|null} option  null when the reply did not fit the schema.
+ * @property {'landed'|'refused'|'invalid'|'repeat'|'unchanged'|'proposed'} outcome
+ * @property {{sentence: string, rule: string|null, code: string|null}|null} refusal  Construct's refusal of this attempt.
+ * @property {number|null} passed  Checks passed, when the check reports it.
+ *
  * @typedef {object} RepairAttempt
- * @property {1} v
+ * @property {1|2} v
  * @property {'construct.repair'} step
  * @property {string} model
- * @property {0|1} attempts  0 only when the model was not there.
- * @property {'repaired'|'still-refused'|'invalid'|'unchanged'|'no-model'|'proposed'} outcome
- *   repaired: Construct accepts the repaired option; still-refused / invalid / unchanged: the person decides; no-model: the
- *   static path is unchanged; proposed: repaired but not yet checked (the caller checks it, e.g. as a plan step).
+ * @property {number} attempts  0 only when the model was not there.
+ * @property {number} [maxAttempts]
+ * @property {'repaired'|'still-refused'|'no-better'|'repeated'|'invalid'|'unchanged'|'no-model'|'proposed'} outcome
+ *   repaired: Construct accepts an attempt; still-refused / no-better / repeated / invalid / unchanged: the person decides
+ *   (every attempt under Details); no-model: the static path is unchanged; proposed: not yet checked (the caller checks it).
  * @property {{tool: string, args: any}} before  The refused option.
- * @property {{tool: string, args: any}|null} option  The repaired option (repaired, still-refused, proposed).
- * @property {{sentence: string, rule: string|null, code: string|null, fixes: {id: string, sentence: string}[]}} refusal  What the model was given.
- * @property {{sentence: string, rule: string|null, code: string|null}|null} after  Construct's refusal of the repaired option.
+ * @property {{tool: string, args: any}|null} option  The landed or proposed option, or the last refused one.
+ * @property {{sentence: string, rule: string|null, code: string|null, fixes: {id: string, sentence: string}[]}} refusal  What the model was given first.
+ * @property {{sentence: string, rule: string|null, code: string|null}|null} after  Construct's refusal of the last attempt.
+ * @property {RepairTry[]} [tries]  Every attempt (v2).
+ * @property {string[]} [progress]  One plain sentence per attempt, in order (v2).
  * @property {string} sentence
  * @property {number} ms
  */
 
-export const REPAIR_OUTCOMES = Object.freeze(['repaired', 'still-refused', 'invalid', 'unchanged', 'no-model', 'proposed']);
+export const REPAIR_OUTCOMES = Object.freeze(['repaired', 'still-refused', 'no-better', 'repeated', 'invalid', 'unchanged', 'no-model', 'proposed']);
 
 /**
  * im2: throws unless a is a RepairAttempt.
@@ -625,14 +640,22 @@ export const REPAIR_OUTCOMES = Object.freeze(['repaired', 'still-refused', 'inva
  * @returns {asserts a is RepairAttempt}
  */
 export function assertRepairAttempt(a) {
-  if (a?.v !== 1 || a.step !== 'construct.repair') fail('repair', 'must be a v1 construct.repair attempt');
+  if (![1, 2].includes(a?.v) || a.step !== 'construct.repair') fail('repair', 'must be a construct.repair attempt');
   str(a.model, 'repair.model');
   if (!REPAIR_OUTCOMES.includes(a.outcome)) fail('repair.outcome', `must be one of ${REPAIR_OUTCOMES.join(', ')}`);
-  if (a.attempts !== (a.outcome === 'no-model' ? 0 : 1)) fail('repair.attempts', 'is exactly one, or zero when the model was not there');
+  const max = a.maxAttempts ?? 1;
+  if (a.outcome === 'no-model' ? a.attempts !== 0 : !(Number.isInteger(a.attempts) && a.attempts >= 1 && a.attempts <= max)) fail('repair.attempts', 'is between one and maxAttempts, or zero when the model was not there');
   if (!a.before || typeof a.before.tool !== 'string') fail('repair.before', 'must be the refused option');
-  if ((a.option !== null) !== ['repaired', 'still-refused', 'proposed'].includes(a.outcome)) fail('repair.option', 'is set exactly when there is a repaired option');
+  if (['repaired', 'proposed'].includes(a.outcome) && !a.option) fail('repair.option', 'is set when an attempt landed or was proposed');
+  if (['invalid', 'unchanged', 'repeated', 'no-model'].includes(a.outcome) && a.option !== null) fail('repair.option', 'is null when no attempt is left to show');
   if (a.option && a.option.tool !== a.before.tool) fail('repair.option.tool', 'a repair keeps the tool');
-  if ((a.after !== null) !== (a.outcome === 'still-refused')) fail('repair.after', 'is set exactly when the repair was refused too');
+  if (a.after !== null && !['still-refused', 'no-better'].includes(a.outcome)) fail('repair.after', 'is set only when the last attempt was refused');
+  if (a.v === 2) {
+    if (!Array.isArray(a.tries) || a.tries.length !== a.attempts) fail('repair.tries', 'lists every attempt');
+    if (!Array.isArray(a.progress) || a.progress.length !== a.attempts) fail('repair.progress', 'has one sentence per attempt');
+    a.progress.forEach((p, i) => sentence(p, `repair.progress[${i}]`));
+    if (a.tries.filter((t) => t.outcome === 'landed').length !== (a.outcome === 'repaired' ? 1 : 0)) fail('repair.tries', 'one attempt landed exactly when repaired');
+  }
   sentence(a.refusal?.sentence, 'repair.refusal.sentence');
   sentence(a.sentence, 'repair.sentence');
 }
@@ -1463,6 +1486,7 @@ export function assertStepProfile(p, where = 'profile') {
   else if (p.model !== null && typeof p.model !== 'string') fail(`${where}.model`, 'must be a string or null');
   str(p.modelFrom, `${where}.modelFrom`);
   if (!Number.isInteger(p.maxTokens) || p.maxTokens < 1 || p.maxTokens > 32768) fail(`${where}.maxTokens`, 'must be a whole number from 1 to 32768');
+  if (p.maxAttempts !== undefined && (!Number.isInteger(p.maxAttempts) || p.maxAttempts < 1 || p.maxAttempts > 8)) fail(`${where}.maxAttempts`, 'must be a whole number from 1 to 8');
   if (p.fallback !== 'static') fail(`${where}.fallback`, 'must be static');
   const l = p.ladder;
   if (!l || typeof l !== 'object') fail(`${where}.ladder`, 'must be an object');

@@ -1,4 +1,5 @@
-// im2, opt-in live run (CONSTRUCT_LIVE_QWEN=1): the real qwen2.5-coder:1.5b repairs 20 seeded refusals ONCE each.
+// im2, opt-in live run (CONSTRUCT_LIVE_QWEN=1): the real qwen2.5-coder:1.5b repairs 20 seeded refusals, up to 4 attempts
+// each (repairLoop; it also reports how many landed on the first attempt alone).
 // The refusals are seeded from Train Line's train-split cases: each case's gold step (verified by Construct) gets one
 // argument broken in a fixed way (a feature typo, a wrong library folder, a lower-case item name, a name that is not
 // PascalCase, a prop typo), Construct refuses it on a copy of the case's world, and the model gets only that refusal,
@@ -9,7 +10,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { repairOnce, optionSchema } from '../packages/core/line-decide.mjs';
+import { repairLoop, optionSchema } from '../packages/core/line-decide.mjs';
 import { checkOnCopy, toolArgsSchema } from '../packages/engine/line/repair.mjs';
 import { materialize } from '../packages/engine/line/train/corpus.mjs';
 import { factsOf } from '../packages/engine/line/train/facts.mjs';
@@ -64,13 +65,16 @@ test('live: the 1.5B repairs seeded Train Line refusals once; prints the success
   const rows = [];
   try {
     for (const s of list) {
-      const a = await repairOnce(s.broken, s.refusal, { schema: optionSchema(s.broken, toolArgsSchema(s.broken.tool)), check: (o) => checkOnCopy(s.dir, o) });
-      rows.push({ id: s.id, tool: s.broken.tool, outcome: a.outcome, ms: a.ms });
+      const a = await repairLoop(s.broken, s.refusal, { schema: optionSchema(s.broken, toolArgsSchema(s.broken.tool)), check: (o) => checkOnCopy(s.dir, o) });
+      rows.push({ id: s.id, tool: s.broken.tool, outcome: a.outcome, ms: a.ms, attempts: a.attempts, first: a.tries[0]?.outcome === 'landed' });
     }
   } finally { for (const s of list) fs.rmSync(s.dir, { recursive: true, force: true }); }
   const repaired = rows.filter((r) => r.outcome === 'repaired').length;
   const by = Object.entries(rows.reduce((m, r) => ({ ...m, [r.outcome]: (m[r.outcome] ?? 0) + 1 }), {})).map(([k, v]) => `${k} ${v}`).join(', ');
   const perTool = Object.entries(rows.reduce((m, r) => ({ ...m, [r.tool]: [...(m[r.tool] ?? []), r.outcome === 'repaired'] }), {})).map(([t, xs]) => `${t} ${xs.filter(Boolean).length}/${xs.length}`).join(', ');
+  const first = rows.filter((r) => r.first).length;
+  const tries = rows.reduce((t, r) => t + r.attempts, 0);
+  console.log(`Live repair, up to 4 attempts: ${repaired}/${rows.length} repaired; on the first attempt alone ${first}/${rows.length}; ${tries} attempts in all.`);
   console.log(`Live repair success: ${repaired}/${rows.length} (${Math.round((repaired / rows.length) * 100)}%); ${by}; per tool: ${perTool}; mean ${Math.round(rows.reduce((t, r) => t + r.ms, 0) / rows.length)} ms.`);
   assert.ok(rows.every((r) => r.outcome !== 'no-model'), 'the model answered every attempt');
 });

@@ -395,6 +395,8 @@ export type DraftRouteView = {
   cost: { steps: number; files: number; layers: number };
   steps: { tool: string; args: Record<string, unknown> }[];
   fix: { sentence: string } | null;
+  /** im2: the local model's repair of a refused model route: the outcome, the live line per attempt, every attempt. */
+  repair?: { outcome: string; sentence: string; progress: string[]; tries: { n: number; reason: string; outcome: string; refusal: string | null }[] } | null;
 };
 export type DraftQuestion = { word: string; sentence: string; choices: { key: string; label: string }[]; suggested: string | null };
 export type DraftView = {
@@ -458,6 +460,8 @@ export type StepProfile = {
   model: string | null;
   modelFrom: string;
   maxTokens: number;
+  /** im2: how many repairs the step may try (construct.repair). */
+  maxAttempts?: number;
   fallback: 'static';
   ladder: {
     static: { target: number };

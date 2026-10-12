@@ -1,7 +1,7 @@
-// im2 -- Construct's side of the one repair (packages/core/line-decide.mjs repairOnce): the schema a repaired option
+// im2 -- Construct's side of the repair loop (packages/core/line-decide.mjs repairLoop): the schema a repaired option
 // must fit (the tool's own arguments, from the one plan-tool registry), Construct's check of an option on a scratch copy
 // of the project (planned, then written only by Construct's writer in the copy; the real project is never touched), the
-// refusal in the shape repairOnce reads (sentence, finding, typed fixes), and the attempt kept slotted in the plan
+// refusal in the shape repairLoop reads (sentence, finding, typed fixes), and the attempt kept slotted in the plan
 // records folder (`<state>/records/repairs.jsonl`, through the writer's Line-state path; never a project name).
 import fs from 'node:fs';
 import { runChange, previewStep, lineToolSpecs } from './planTools.mjs';
@@ -12,7 +12,7 @@ import { projectWordIn } from './slots.mjs';
 import { lineStateDir } from './workspace.mjs';
 import { writeLineState } from '../transactionalWriter.mjs';
 import { assertRepairAttempt } from './contract.mjs';
-import { repairOnce, optionSchema } from '@line/construct-core/line-decide';
+import { repairLoop, optionSchema } from '@line/construct-core/line-decide';
 
 const PLAN_ONLY = new Set(['expect', 'retry', 'fixOf']);
 const one = (s) => String(s ?? '').replace(/\s+/g, ' ').trim();
@@ -30,7 +30,7 @@ export function toolArgsSchema(tool) {
 }
 
 /**
- * runChange's refusal as repairOnce reads it: the sentence, the first finding's rule and message, the typed fixes.
+ * runChange's refusal as repairLoop reads it: the sentence, the first finding's rule and message, the typed fixes.
  * @param {any} res A runChange result whose apply was refused.
  * @returns {{sentence: string, rule: string|null, code: string|null, finding: string|null, fixes: {id: string, sentence: string, rank: number, step: any}[]}}
  */
@@ -71,6 +71,7 @@ export function slotRepair(attempt, project, o = {}) {
   const slotter = createSlotter(project);
   slotter.learnArgs(attempt.before.args ?? {});
   if (attempt.option) slotter.learnArgs(attempt.option.args ?? {});
+  for (const t of attempt.tries ?? []) if (t.option) slotter.learnArgs(t.option.args ?? {});
   const step = (s) => (s ? { tool: s.tool, args: slotter.args(s.args ?? {}) } : null);
   const rec = {
     v: 1, kind: 'repair', at: o.at ?? new Date().toISOString(), where: o.where ?? 'decide', step: attempt.step, model: attempt.model,
@@ -78,6 +79,7 @@ export function slotRepair(attempt, project, o = {}) {
     before: step(attempt.before), option: step(attempt.option),
     refusal: { sentence: slotter.text(attempt.refusal.sentence, { free: true }), rule: attempt.refusal.rule, code: attempt.refusal.code, fixes: attempt.refusal.fixes.length },
     after: attempt.after ? { sentence: slotter.text(attempt.after.sentence, { free: true }), rule: attempt.after.rule, code: attempt.after.code } : null,
+    tries: (attempt.tries ?? []).map((t) => ({ n: t.n, reason: slotter.text(t.reason ?? '', { free: true }), option: step(t.option), outcome: t.outcome, refusal: t.refusal ? slotter.text(t.refusal.sentence, { free: true }) : null, passed: t.passed })),
     ms: attempt.ms, slots: slotter.slots(),
   };
   const leak = projectWordIn(rec, slotter.names().filter((n) => !n.includes('/')));
@@ -105,18 +107,18 @@ export function recordRepair(root, attempt, o = {}) {
 }
 
 /**
- * The one repair for a project: repairOnce with the tool's own schema, Construct's check (`check`, default on a scratch
- * copy), and the attempt kept slotted in the plan records. One call is one attempt.
+ * The repair loop for a project: repairLoop with the tool's own schema, Construct's check (`check`, default on a scratch
+ * copy of the project), up to the profile's maxAttempts, and the attempt kept slotted in the plan records.
  * @param {string} root
- * @param {{propose?: (q: any) => Promise<string>, where?: string, record?: boolean, write?: (line: string) => void}} [o]
+ * @param {{propose?: (q: any) => Promise<string>, where?: string, record?: boolean, write?: (line: string) => void, maxAttempts?: number}} [o]
  *   `propose`: the model call (tests pass a mock; default Ollama with the construct.repair profile's model).
- * @returns {(option: {tool: string, args: any}, refusal: any, c?: {check?: ((option: any) => any) | null}) => Promise<import('./contract.mjs').RepairAttempt>}
- *   `check: null` skips the check (the caller checks it as a plan step; the outcome is then "proposed").
+ * @returns {(option: {tool: string, args: any}, refusal: any, c?: {check?: ((option: any) => any) | null, onProgress?: (sentence: string, n: number) => void}) => Promise<import('./contract.mjs').RepairAttempt>}
+ *   `check: null` skips the check (one proposal; the caller checks it as a plan step); `onProgress`: one sentence per attempt.
  */
 export function createRepairer(root, o = {}) {
   return async (option, refusal, c = {}) => {
     const check = c.check === null ? undefined : c.check ?? ((x) => checkOnCopy(root, x));
-    const attempt = await repairOnce(option, refusal, { schema: optionSchema(option, toolArgsSchema(option.tool)), check, ...(o.propose ? { propose: o.propose } : {}) });
+    const attempt = await repairLoop(option, refusal, { schema: optionSchema(option, toolArgsSchema(option.tool)), check, onProgress: c.onProgress, ...(o.maxAttempts ? { maxAttempts: o.maxAttempts } : {}), ...(o.propose ? { propose: o.propose } : {}) });
     if (o.record !== false && attempt.outcome !== 'no-model') recordRepair(root, attempt, { where: o.where, write: o.write });
     return attempt;
   };

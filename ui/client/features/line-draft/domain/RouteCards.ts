@@ -24,6 +24,7 @@ export function routeCards(view: DraftView | null): RouteCard[] {
     recommended: r.id === view.recommended,
     canAdd: r.status === 'ok',
     fix: r.fix ? r.fix.sentence : null,
+    repair: r.repair ? { sentence: r.repair.sentence, progress: r.repair.progress, tries: r.repair.tries.map((t) => `Attempt ${t.n}: ${t.reason || 'no reason given'}${t.refusal ? `; Construct refused it: ${t.refusal}` : t.outcome === 'landed' ? '; Construct accepted it' : ''}`.replace(/[.!?]?$/, '.')) } : null,
     calls: r.steps.map((s) => `${s.tool} ${JSON.stringify(s.args)}`),
     how: `Found by ${HOW[r.via] ?? r.via}; ${r.cost.steps === 1 ? '1 step' : `${r.cost.steps} steps`}, ${r.cost.files === 1 ? '1 file' : `${r.cost.files} files`}; confidence ${Math.round(r.confidence * 100)}%; route ${r.id}.`,
   }));

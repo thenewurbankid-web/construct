@@ -41,14 +41,25 @@ function routeView(d, r) {
   return {
     id: r.id, label: /** @type {any} */ (b).label, risk: /** @type {any} */ (b).risk, status: /** @type {any} */ (r.status), sentence, via: r.via, confidence: r.confidence,
     cost: r.cost, steps: /** @type {any} */ (b).steps, fix: r.refusal?.fix ? { sentence: r.refusal.fix.sentence } : null,
-    repair: /** @type {any} */ (r).repair ? { outcome: /** @type {any} */ (r).repair.outcome, sentence: /** @type {any} */ (r).repair.sentence } : null,
+    repair: repairView(/** @type {any} */ (r).repair),
   };
 }
 
 /**
- * im2: a route a model proposed (via "model") that Construct refused gets ONE repair from the exact error: the local
- * model sees the refusal sentence, the finding and the typed fix, answers in the step's schema, and Construct checks the
- * repaired step on a copy again. Repaired: the route is checked and can be added (a person still approves it). Still
+ * The repair as Cockpit shows it: the outcome sentence, the live line (one sentence per attempt) and every attempt for
+ * Details.
+ * @param {any} a A RepairAttempt or undefined.
+ * @returns {{outcome: string, sentence: string, progress: string[], tries: {n: number, reason: string, outcome: string, refusal: string|null}[]}|null}
+ */
+function repairView(a) {
+  if (!a) return null;
+  return { outcome: a.outcome, sentence: a.sentence, progress: a.progress ?? [], tries: (a.tries ?? []).map((t) => ({ n: t.n, reason: t.reason, outcome: t.outcome, refusal: t.refusal?.sentence ?? null })) };
+}
+
+/**
+ * im2: a route a model proposed (via "model") that Construct refused gets the repair loop: the local model sees the
+ * refusal sentence, the finding, the typed fix and its own earlier attempts, answers a reason and the step in the step's
+ * schema, and Construct checks each repaired step on a copy (up to construct.repair's maxAttempts). Repaired: the route is checked and can be added (a person still approves it). Still
  * refused, or not repairable: it stays refused and the person decides. Only one-step routes; each route once.
  * @param {any} d A draft (changed in place).
  * @param {(option: any, refusal: any) => Promise<any>} repair createRepairer's function.

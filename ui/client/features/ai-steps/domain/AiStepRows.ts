@@ -18,7 +18,7 @@ export function aiStepRow(p: StepProfile): AiStepRow {
     how: howItWorks(p),
     details: {
       step: `Step id: ${p.step}`,
-      cap: `Reply cap: ${p.maxTokens} tokens`,
+      cap: `Reply cap: ${p.maxTokens} tokens${p.maxAttempts ? `; up to ${p.maxAttempts} tries, each learning from the last` : ''}`,
       ladder: `Ladder: static (target ${pct(l.static.target)}), options and jev ${onOff(l.options.on)} (target ${pct(l.options.target)}), whole review ${onOff(l.review.on)} (target ${pct(l.review.target)})`,
       measured: `Measured: ${l.measured ?? 'not yet'}`,
       fallback: `Fallback: ${p.fallback}`,

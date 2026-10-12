@@ -16,7 +16,7 @@ import { draft as staticDraft } from '../packages/engine/line/drafter/index.mjs'
 import { verifyRoutes } from '../packages/engine/line/drafter/verify.mjs';
 import { createLinePlanService } from '../packages/engine/line/planService.mjs';
 import { createRepairer } from '../packages/engine/line/repair.mjs';
-import { repairOnce, ollamaPropose } from '../packages/core/line-decide.mjs';
+import { repairLoop, ollamaPropose } from '../packages/core/line-decide.mjs';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -35,20 +35,30 @@ async function approveAlong(agent, planService, v, max = 40) {
   return v;
 }
 
-test('import fix loop: the fix jev picked is refused, the model repairs it once, the repaired fix waits for approval, lands, and the import ends', async () => {
+/** Construct's check of a repaired fix, mocked like the mock plan service: a fix to components/AlertRowBase lands. */
+const fixCheck = (o) => (o.args.args?.libraryId === 'components/AlertRowBase' ? { ok: true } : { ok: false, refusal: { sentence: `Construct refused the fix: the library has no ${o.args.args?.libraryId}.` } });
+const fixTo = (option, libraryId, reason) => JSON.stringify({ reason, tool: option.tool, args: { ...option.args, args: { ...option.args.args, libraryId } } });
+
+test('import fix loop: the fix jev picked is refused; the model lands on attempt 2, each attempt said in the change log; the repaired fix waits for approval, lands, and the import ends', async () => {
   const asked = [];
-  const repair = (option, refusal, c) => repairOnce(option, refusal, { check: c?.check ?? undefined, propose: async (q) => { asked.push(q.prompt); return JSON.stringify({ tool: option.tool, args: { ...option.args, args: { ...option.args.args, libraryId: 'components/AlertRowBase' } } }); } });
-  const planService = createMockPlanService({ refuseFix: (s) => s.args.args?.libraryId === 'components/AlertRow' });
+  const repair = (option, refusal, c) => repairLoop(option, refusal, { check: fixCheck, onProgress: c?.onProgress, propose: async (q) => { asked.push(q.prompt); return asked.length === 1 ? fixTo(option, 'components/Row', 'AlertRow is not in the library; trying Row.') : fixTo(option, 'components/AlertRowBase', 'Row was refused too; the base is AlertRowBase.'); } });
+  const planService = createMockPlanService({ refuseFix: (s) => s.args.args?.libraryId !== 'components/AlertRowBase' });
   const svc = createMockImportAgentService({ planService, reason: jev, repair });
   const agent = svc.agentFor(FOLDER);
   await agent.start('ui');
   let v = await agent.editStep('ui', { action: 'approve-all' });
-  // The jev-picked fix waits for the person; approve it: Construct refuses it, and the model repairs it once.
+  // The jev-picked fix waits for the person; approve it: Construct refuses it, and the model repairs it.
   v = await approveAlong(agent, planService, v, 1);
-  assert.equal(asked.length, 1, 'exactly one repair attempt');
+  assert.equal(asked.length, 2, 'two attempts: the second landed');
   assert.match(asked[0], /^Construct refused this change\.\nError: Construct refused the fix: the library has no components\/AlertRow\./);
+  assert.match(asked[1], /Attempt 1: .*components\/Row.* was refused too: Construct refused the fix: the library has no components\/Row\./);
   const d = v.decisions.find((x) => x.id.startsWith('repair:'));
   assert.deepEqual([d.picked, d.by], ['repair', 'model']);
+  assert.match(d.reason, /^Attempt 1: AlertRow is not in the library; trying Row; refused: .* Attempt 2: Row was refused too; the base is AlertRowBase\.$/);
+  const live = v.changes.map((c) => c.sentence).filter((x) => /local model to repair it|trying again/.test(x));
+  assert.equal(live.length, 2, 'one live line per attempt, in order');
+  assert.match(live[0], /\(1 of 4\)/);
+  assert.match(live[1], /\(2 of 4\)/);
   assert.equal(v.waiting.for, 'approval', 'the repaired fix waits for a person');
   const repaired = planService.steps.find((s) => s.id === v.waiting.planStepId);
   assert.equal(repaired.args.args.libraryId, 'components/AlertRowBase');
@@ -58,15 +68,28 @@ test('import fix loop: the fix jev picked is refused, the model repairs it once,
   assert.equal(v.sentence, 'Done: 10 steps landed.');
 });
 
-test('import fix loop: the repair refused too goes to the person; a statically picked fix is never repaired', async () => {
-  const repair = (option, refusal) => repairOnce(option, refusal, { propose: async () => JSON.stringify({ tool: option.tool, args: { ...option.args, args: { ...option.args.args, libraryId: 'components/Nope' } } }) });
+test('import fix loop: 4 refused attempts go to the person with every attempt listed; a repair refused when it runs asks too; a static pick is never repaired', async () => {
+  let n = 0;
+  const repair = (option, refusal, c) => repairLoop(option, refusal, { check: fixCheck, onProgress: c?.onProgress, propose: async () => { n += 1; return fixTo(option, `components/Nope${n}`, `Trying Nope${n}.`); } });
   const planService = createMockPlanService({ refuseFix: () => true });
   const agent = createMockImportAgentService({ planService, reason: jev, repair }).agentFor(FOLDER);
   await agent.start('ui');
   let v = await agent.editStep('ui', { action: 'approve-all' });
   v = await approveAlong(agent, planService, v);
+  assert.equal(n, 4);
   assert.equal(v.waiting.for, 'answer');
-  assert.match(v.waiting.sentence, /the local model's one repair of the fix was refused too: construct refused the fix: the library has no components\/Nope\./);
+  assert.match(v.waiting.sentence, /the fix Line tried was refused too/);
+  const d = v.decisions.find((x) => x.id.startsWith('repair:'));
+  assert.equal(d.picked, 'ask');
+  assert.equal((d.reason.match(/Attempt \d/g) ?? []).length, 4, 'every attempt is listed');
+  // A repair proposed without a check on a copy is checked when it runs; refused then, the person decides.
+  const proposeOnly = (option, refusal) => repairLoop(option, refusal, { propose: async () => fixTo(option, 'components/Nope', 'Trying Nope.') });
+  const p3 = createMockPlanService({ refuseFix: () => true });
+  const a3 = createMockImportAgentService({ planService: p3, reason: jev, repair: proposeOnly }).agentFor(FOLDER);
+  await a3.start('ui');
+  let x = await a3.editStep('ui', { action: 'approve-all' });
+  x = await approveAlong(a3, p3, x);
+  assert.match(x.waiting.sentence, /the local model's repair of the fix was refused too when it ran: construct refused the fix: the library has no components\/Nope\./);
   // Static order (no jev): the person decides as before, no model is asked.
   let calls = 0;
   const p2 = createMockPlanService({ refuseFix: () => true });
@@ -99,7 +122,7 @@ test('drafter: a model route Construct refused is repaired once, checked on a co
     const r = view.routes.find((x) => x.id === 'model:1');
     assert.equal(r.status, 'ok');
     assert.equal(r.repair.outcome, 'repaired');
-    assert.match(r.repair.sentence, /^The local model repaired the change once from Construct's error, and Construct accepts it\.$/);
+    assert.match(r.repair.sentence, /^The local model repaired the change from Construct's error, and Construct accepts it\.$/);
     assert.equal(records.length, 1, 'the attempt is kept in the plan records');
     assert.ok(!JSON.stringify(records[0]).includes('"orders"'), 'slotted');
     const added = await drafter.addRoute('add a badge to the orders feature', 'model:1', 'ui');

@@ -405,7 +405,7 @@ export function createImportAgent(o) {
         if (repaired) return repaired;
         askAboutStep(doc, step, null, `the fix Line tried was refused too: ${lower(ps.sentence)}`); doc.cursor = { ...c, origin: c.origin }; return 'wait';
       }
-      if (c.phase === 'repair') { askAboutStep(doc, step, null, `the local model's one repair of the fix was refused too: ${lower(ps.sentence)}`); doc.cursor = { ...c, origin: c.origin }; return 'wait'; }
+      if (c.phase === 'repair') { askAboutStep(doc, step, null, `the local model's repair of the fix was refused too when it ran: ${lower(ps.sentence)}`); doc.cursor = { ...c, origin: c.origin }; return 'wait'; }
       const result = ps.result ?? {};
       const fixes = (result.options ?? []).filter((x) => x.id === 'fix' && x.step);
       if (result.stopped) { askAboutStep(doc, step, ps, `trying again did not pass more checks than before. ${ps.sentence}`); doc.cursor = { ...c, origin: ps.id }; return 'wait'; }
@@ -429,9 +429,11 @@ export function createImportAgent(o) {
   }
 
   /**
-   * im2: one repair of a refused fix that jev picked. The model sees only the refusal sentence, the finding and the typed
-   * fixes plus the fix step; its repair joins the plan as a step that fixes the same refused step (`fixOf`), so the
-   * person still approves it and Construct checks it when it runs (cursor phase `repair`: refused again asks the person).
+   * im2: the repair loop on a refused fix that jev picked. The model sees only the refusal sentence, the finding, the
+   * typed fixes, the fix step and its own earlier attempts; each attempt is checked on a copy (up to construct.repair's
+   * maxAttempts) and said in the change log as it happens. The landed repair joins the plan as a step that fixes the same
+   * refused step (`fixOf`), so the person still approves it and Construct checks it again when it runs (cursor phase
+   * `repair`: refused again asks the person).
    * @returns {Promise<'more' | null>} 'more' when a repaired fix was added, null when the person decides as before.
    */
   async function repairFix(doc, step, ps, c, by, answered) {
@@ -442,9 +444,13 @@ export function createImportAgent(o) {
     const fixes = (ps.result?.options ?? []).filter((x) => x.id === 'fix').map((x, i) => ({ id: String(x.fixId ?? `fix${i + 1}`), sentence: x.sentence, rank: x.recommended ? 1 : i + 2, step: x.step ?? null }));
     const finding = ps.result?.findings?.[0] ?? null;
     let attempt;
-    try { attempt = await o.repair({ tool: ps.tool, args }, { sentence: ps.sentence, rule: finding?.rule ?? null, code: ps.result?.code ?? null, finding: finding?.message ?? null, fixes }, { check: null }); } catch { return null; }
-    const added = attempt.outcome === 'proposed' && attempt.option;
-    doc.decisions.push({ id: `repair:${c.origin}`, question: asSentence(`Can the local model repair the refused fix for ${step.args.name ?? step.id}?`), options: ['repair', 'ask'], picked: added ? 'repair' : 'ask', answer: asSentence(attempt.sentence), by: 'model', reason: asSentence(attempt.sentence) });
+    // Each attempt says what Line is trying, as it happens (the import's change log is the live line Cockpit shows).
+    const onProgress = (said) => record(doc, 'agent', 'decide', lower(asSentence(said)), step.id);
+    try { attempt = await o.repair({ tool: ps.tool, args }, { sentence: ps.sentence, rule: finding?.rule ?? null, code: ps.result?.code ?? null, finding: finding?.message ?? null, fixes }, { onProgress }); } catch { return null; }
+    const added = ['proposed', 'repaired'].includes(attempt.outcome) && attempt.option;
+    // Every attempt is listed with the decision (its reason and what Construct said), for the person's Details.
+    const tried = (attempt.tries ?? []).map((t) => `Attempt ${t.n}: ${String(t.reason || 'no reason given').replace(/[.!?]+$/, '')}${t.refusal ? `; refused: ${t.refusal.sentence}` : ''}`.replace(/[.!?]?$/, '.')).join(' ');
+    doc.decisions.push({ id: `repair:${c.origin}`, question: asSentence(`Can the local model repair the refused fix for ${step.args.name ?? step.id}?`), options: ['repair', 'ask'], picked: added ? 'repair' : 'ask', answer: asSentence(attempt.sentence), by: 'model', reason: asSentence(tried || attempt.sentence) });
     record(doc, 'agent', 'decide', `asked the local model to repair the refused fix: ${lower(asSentence(attempt.sentence))}`, step.id);
     if (!added) return null;
     const r = await addPlanStep(doc, step, { tool: attempt.option.tool, args: { ...attempt.option.args, fixOf: c.origin }, why: asSentence(`Repaired fix for ${step.args.name ?? step.id}, from Construct's error`) }, by, answered);

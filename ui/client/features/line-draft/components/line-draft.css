@@ -26,3 +26,5 @@
 .ldr-tech code { font-family: var(--mono); overflow-wrap: anywhere; display: block; }
 .ldr-error { margin: 0; font-size: var(--fs-sm); padding: var(--sp-1) var(--sp-2); border-left: 3px solid var(--danger); background: var(--danger-soft); }
 .ldr-notice { margin: 0; font-size: var(--fs-sm); padding: var(--sp-1) var(--sp-2); border-left: 3px solid var(--accent); }
+.ldr-repair { display: flex; flex-direction: column; gap: 2px; }
+.ldr-repair-progress { margin: 0; padding-left: var(--sp-4); font-size: var(--fs-sm); color: var(--text-muted); }

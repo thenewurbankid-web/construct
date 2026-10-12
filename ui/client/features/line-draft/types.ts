@@ -29,6 +29,8 @@ export type RouteCard = {
   /** Details: the steps as tool calls, how it was found, its cost. */
   calls: string[];
   how: string;
+  /** im2: the repair's live line (one sentence per attempt) and every attempt for Details; null when none was tried. */
+  repair: { sentence: string; progress: string[]; tries: string[] } | null;
 };
 
 /** Everything the drafter box needs. */
