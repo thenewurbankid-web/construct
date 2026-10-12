@@ -1,0 +1,1026 @@
+{
+  "setup": "r-v1.g-v2",
+  "versions": {
+    "requester": "v1",
+    "grader": "v2",
+    "rubric": "v1"
+  },
+  "mode": "fixture",
+  "createdAt": "2026-10-12T15:00:44.000Z",
+  "apps": [
+    "contacts",
+    "orders"
+  ],
+  "planner": "fixture",
+  "items": [
+    {
+      "id": "contacts-1",
+      "app": "contacts",
+      "requirement": "In the contacts table, show each person's full name, first and last name together, in the Name column.",
+      "gold": {
+        "source": "requester",
+        "intent": "update.prop",
+        "object": "prop",
+        "target": {
+          "kind": "page",
+          "name": "contacts"
+        },
+        "layers": [
+          "ui"
+        ]
+      },
+      "notes": "The Name column should join first and last from the list we already load; nothing new from the server.",
+      "goldProblems": [],
+      "transcripts": [
+        {
+          "step": "requester-write",
+          "role": "requester",
+          "promptFile": "prompts/requester.md",
+          "promptVersion": "v1",
+          "promptSha": "b5f0685251a5",
+          "model": "opus",
+          "temperature": 0,
+          "temperatureEnforced": false,
+          "at": "2026-10-12T15:00:23.000Z",
+          "mode": "fake"
+        },
+        {
+          "step": "grader-A",
+          "role": "grader",
+          "promptFile": "prompts/grader.md",
+          "promptVersion": "v2",
+          "promptSha": "5497e42ba8ba",
+          "rubricFile": "prompts/rubric.md",
+          "rubricVersion": "v1",
+          "rubricSha": "916fd46bb9a3",
+          "model": "opus",
+          "temperature": 0,
+          "temperatureEnforced": false,
+          "at": "2026-10-12T15:00:25.000Z",
+          "mode": "fake"
+        }
+      ],
+      "planner": {
+        "available": true,
+        "source": "fixture",
+        "error": null
+      },
+      "labels": {
+        "intent": "update.prop",
+        "object": "prop",
+        "target": {
+          "kind": "page",
+          "name": "contacts"
+        },
+        "layers": [
+          "ui"
+        ],
+        "by": "static"
+      },
+      "runs": [
+        {
+          "id": "run-1",
+          "labels": {
+            "intent": "update.prop",
+            "object": "prop",
+            "target": {
+              "kind": "page",
+              "name": "contacts"
+            },
+            "layers": [
+              "ui"
+            ],
+            "by": "static"
+          },
+          "path": [
+            {
+              "layer": "page-part",
+              "label": "fullName (Name cell)",
+              "decision": "dynamic",
+              "picks": null,
+              "fork": false
+            },
+            {
+              "layer": "source",
+              "label": "first + last from GET /api/contacts",
+              "decision": "computed",
+              "picks": null,
+              "fork": false
+            },
+            {
+              "layer": "controller",
+              "label": "ContactsController.rows",
+              "decision": "fn",
+              "picks": null,
+              "fork": false
+            },
+            {
+              "layer": "hook",
+              "label": "useContactName(row)",
+              "decision": "stub",
+              "picks": null,
+              "fork": false
+            },
+            {
+              "layer": "service",
+              "label": "contactsService.list",
+              "decision": "fn",
+              "picks": null,
+              "fork": false
+            },
+            {
+              "layer": "contract",
+              "label": "GET /api/contacts",
+              "decision": "fn",
+              "picks": null,
+              "fork": false
+            }
+          ],
+          "question": null
+        }
+      ],
+      "recommended": "run-1",
+      "plannerQuestion": null,
+      "requesterAnswer": null,
+      "grader": {
+        "runScores": {
+          "run-1": {
+            "blindId": "A",
+            "scores": {
+              "intent": 2,
+              "path": 3,
+              "reuse": 3,
+              "question": 2,
+              "unused": 2
+            },
+            "justification": "Computed from existing fields, completes the useContactName stub; nothing to fault.",
+            "problems": []
+          }
+        },
+        "scores": {
+          "intent": 2,
+          "path": 3,
+          "reuse": 3,
+          "question": 2,
+          "unused": 2
+        },
+        "justification": "Computed from existing fields, completes the useContactName stub; nothing to fault.",
+        "problems": [],
+        "setup": "r-v1.g-v2",
+        "rubricVersion": "v1",
+        "revealedAfterGrading": true
+      }
+    },
+    {
+      "id": "orders-1",
+      "app": "orders",
+      "requirement": "Show the total value of all orders in the header next to the order count.",
+      "gold": {
+        "source": "requester",
+        "intent": "update.prop",
+        "object": "prop",
+        "target": {
+          "kind": "page",
+          "name": "orders"
+        },
+        "layers": [
+          "ui"
+        ]
+      },
+      "notes": "Add up the totals of the orders on the page; I do not want a new report endpoint.",
+      "goldProblems": [],
+      "transcripts": [
+        {
+          "step": "requester-write",
+          "role": "requester",
+          "promptFile": "prompts/requester.md",
+          "promptVersion": "v1",
+          "promptSha": "b5f0685251a5",
+          "model": "opus",
+          "temperature": 0,
+          "temperatureEnforced": false,
+          "at": "2026-10-12T15:00:26.000Z",
+          "mode": "fake"
+        },
+        {
+          "step": "requester-answer",
+          "role": "requester",
+          "promptFile": "prompts/requester.md",
+          "promptVersion": "v1",
+          "promptSha": "b5f0685251a5",
+          "model": "opus",
+          "temperature": 0,
+          "temperatureEnforced": false,
+          "at": "2026-10-12T15:00:28.000Z",
+          "mode": "fake"
+        },
+        {
+          "step": "grader-A",
+          "role": "grader",
+          "promptFile": "prompts/grader.md",
+          "promptVersion": "v2",
+          "promptSha": "5497e42ba8ba",
+          "rubricFile": "prompts/rubric.md",
+          "rubricVersion": "v1",
+          "rubricSha": "916fd46bb9a3",
+          "model": "opus",
+          "temperature": 0,
+          "temperatureEnforced": false,
+          "at": "2026-10-12T15:00:29.000Z",
+          "mode": "fake"
+        },
+        {
+          "step": "grader-B",
+          "role": "grader",
+          "promptFile": "prompts/grader.md",
+          "promptVersion": "v2",
+          "promptSha": "5497e42ba8ba",
+          "rubricFile": "prompts/rubric.md",
+          "rubricVersion": "v1",
+          "rubricSha": "916fd46bb9a3",
+          "model": "opus",
+          "temperature": 0,
+          "temperatureEnforced": false,
+          "at": "2026-10-12T15:00:30.000Z",
+          "mode": "fake"
+        }
+      ],
+      "planner": {
+        "available": true,
+        "source": "fixture",
+        "error": null
+      },
+      "labels": {
+        "intent": "update.prop",
+        "object": "prop",
+        "target": {
+          "kind": "page",
+          "name": "orders"
+        },
+        "layers": [
+          "ui"
+        ],
+        "by": "jev"
+      },
+      "runs": [
+        {
+          "id": "run-static",
+          "labels": {
+            "intent": "update.prop",
+            "object": "prop",
+            "target": {
+              "kind": "page",
+              "name": "orders"
+            },
+            "layers": [
+              "ui",
+              "api"
+            ],
+            "by": "static"
+          },
+          "path": [
+            {
+              "layer": "page-part",
+              "label": "totalValue (header)",
+              "decision": "dynamic",
+              "picks": null,
+              "fork": false
+            },
+            {
+              "layer": "source",
+              "label": "GET /api/orders/total",
+              "decision": "api",
+              "picks": {
+                "static": "api",
+                "jev": "computed"
+              },
+              "fork": true
+            },
+            {
+              "layer": "controller",
+              "label": "OrdersController.totalValue",
+              "decision": "create",
+              "picks": null,
+              "fork": false
+            },
+            {
+              "layer": "service",
+              "label": "ordersService.total",
+              "decision": "create",
+              "picks": null,
+              "fork": false
+            },
+            {
+              "layer": "contract",
+              "label": "GET /api/orders/total",
+              "decision": "create",
+              "picks": null,
+              "fork": false
+            }
+          ],
+          "question": null
+        },
+        {
+          "id": "run-jev",
+          "labels": {
+            "intent": "update.prop",
+            "object": "prop",
+            "target": {
+              "kind": "page",
+              "name": "orders"
+            },
+            "layers": [
+              "ui"
+            ],
+            "by": "jev"
+          },
+          "path": [
+            {
+              "layer": "page-part",
+              "label": "totalValue (header)",
+              "decision": "dynamic",
+              "picks": null,
+              "fork": false
+            },
+            {
+              "layer": "source",
+              "label": "sum of orders[].total",
+              "decision": "computed",
+              "picks": {
+                "static": "api",
+                "jev": "computed"
+              },
+              "fork": true
+            },
+            {
+              "layer": "controller",
+              "label": "OrdersController.orders",
+              "decision": "fn",
+              "picks": null,
+              "fork": false
+            },
+            {
+              "layer": "hook",
+              "label": "useOrderTotals(orders)",
+              "decision": "create",
+              "picks": null,
+              "fork": false
+            },
+            {
+              "layer": "contract",
+              "label": "GET /api/orders",
+              "decision": "fn",
+              "picks": null,
+              "fork": false
+            }
+          ],
+          "question": null
+        }
+      ],
+      "recommended": "run-jev",
+      "plannerQuestion": {
+        "text": "Should the total value come from an api field or be computed from the orders on the page?",
+        "options": [
+          "an api field",
+          "computed from the orders"
+        ]
+      },
+      "requesterAnswer": {
+        "answer": "Add up the totals of the orders we already show.",
+        "option": "computed from the orders"
+      },
+      "grader": {
+        "runScores": {
+          "run-static": {
+            "blindId": "A",
+            "scores": {
+              "intent": 2,
+              "path": 0,
+              "reuse": 0,
+              "question": 2,
+              "unused": 2
+            },
+            "justification": "Routes a computable total to a new endpoint and creates three layers that the orders list already covers.",
+            "problems": []
+          },
+          "run-jev": {
+            "blindId": "B",
+            "scores": {
+              "intent": 2,
+              "path": 3,
+              "reuse": 2,
+              "question": 2,
+              "unused": 2
+            },
+            "justification": "Right computed path; creates useOrderTotals where no stub exists, fine; reuse could map the list hook.",
+            "problems": []
+          }
+        },
+        "scores": {
+          "intent": 2,
+          "path": 3,
+          "reuse": 2,
+          "question": 2,
+          "unused": 2
+        },
+        "justification": "Right computed path; creates useOrderTotals where no stub exists, fine; reuse could map the list hook.",
+        "problems": [],
+        "setup": "r-v1.g-v2",
+        "rubricVersion": "v1",
+        "revealedAfterGrading": true
+      }
+    },
+    {
+      "id": "contacts-2",
+      "app": "contacts",
+      "requirement": "When I press Call on a contact, log that we called that person so I can see it later.",
+      "gold": {
+        "source": "requester",
+        "intent": "update.handler",
+        "object": "handler",
+        "target": {
+          "kind": "page",
+          "name": "contacts"
+        },
+        "layers": [
+          "ui"
+        ]
+      },
+      "notes": "Just record the call against the contact; a log line is enough for now.",
+      "goldProblems": [],
+      "transcripts": [
+        {
+          "step": "requester-write",
+          "role": "requester",
+          "promptFile": "prompts/requester.md",
+          "promptVersion": "v1",
+          "promptSha": "b5f0685251a5",
+          "model": "opus",
+          "temperature": 0,
+          "temperatureEnforced": false,
+          "at": "2026-10-12T15:00:31.000Z",
+          "mode": "fake"
+        },
+        {
+          "step": "grader-A",
+          "role": "grader",
+          "promptFile": "prompts/grader.md",
+          "promptVersion": "v2",
+          "promptSha": "5497e42ba8ba",
+          "rubricFile": "prompts/rubric.md",
+          "rubricVersion": "v1",
+          "rubricSha": "916fd46bb9a3",
+          "model": "opus",
+          "temperature": 0,
+          "temperatureEnforced": false,
+          "at": "2026-10-12T15:00:33.000Z",
+          "mode": "fake"
+        }
+      ],
+      "planner": {
+        "available": true,
+        "source": "fixture",
+        "error": null
+      },
+      "labels": {
+        "intent": "update.handler",
+        "object": "handler",
+        "target": {
+          "kind": "page",
+          "name": "contacts"
+        },
+        "layers": [
+          "ui"
+        ],
+        "by": "static"
+      },
+      "runs": [
+        {
+          "id": "run-1",
+          "labels": {
+            "intent": "update.handler",
+            "object": "handler",
+            "target": {
+              "kind": "page",
+              "name": "contacts"
+            },
+            "layers": [
+              "ui"
+            ],
+            "by": "static"
+          },
+          "path": [
+            {
+              "layer": "page-part",
+              "label": "call (row action)",
+              "decision": "dynamic",
+              "picks": null,
+              "fork": false
+            },
+            {
+              "layer": "controller",
+              "label": "ContactsController.onCall(contact)",
+              "decision": "create",
+              "picks": null,
+              "fork": false
+            },
+            {
+              "layer": "hook",
+              "label": "useCallLog(contact, when)",
+              "decision": "create",
+              "picks": null,
+              "fork": false
+            }
+          ],
+          "question": null
+        }
+      ],
+      "recommended": "run-1",
+      "plannerQuestion": null,
+      "requesterAnswer": null,
+      "grader": {
+        "runScores": {
+          "run-1": {
+            "blindId": "A",
+            "scores": {
+              "intent": 2,
+              "path": 2,
+              "reuse": 2,
+              "question": 2,
+              "unused": 0
+            },
+            "justification": "useCallLog takes `when` and never reads it: ships a stub (unused line).",
+            "problems": []
+          }
+        },
+        "scores": {
+          "intent": 2,
+          "path": 2,
+          "reuse": 2,
+          "question": 2,
+          "unused": 0
+        },
+        "justification": "useCallLog takes `when` and never reads it: ships a stub (unused line).",
+        "problems": [],
+        "setup": "r-v1.g-v2",
+        "rubricVersion": "v1",
+        "revealedAfterGrading": true
+      }
+    },
+    {
+      "id": "orders-2",
+      "app": "orders",
+      "requirement": "Let me mark an order as shipped from the orders list.",
+      "gold": {
+        "source": "requester",
+        "intent": "add.handler",
+        "object": "handler",
+        "target": {
+          "kind": "page",
+          "name": "orders"
+        },
+        "layers": [
+          "ui",
+          "api"
+        ]
+      },
+      "notes": "A button per row that sets the order's status to Shipped on the server.",
+      "goldProblems": [],
+      "transcripts": [
+        {
+          "step": "requester-write",
+          "role": "requester",
+          "promptFile": "prompts/requester.md",
+          "promptVersion": "v1",
+          "promptSha": "b5f0685251a5",
+          "model": "opus",
+          "temperature": 0,
+          "temperatureEnforced": false,
+          "at": "2026-10-12T15:00:34.000Z",
+          "mode": "fake"
+        },
+        {
+          "step": "grader-A",
+          "role": "grader",
+          "promptFile": "prompts/grader.md",
+          "promptVersion": "v2",
+          "promptSha": "5497e42ba8ba",
+          "rubricFile": "prompts/rubric.md",
+          "rubricVersion": "v1",
+          "rubricSha": "916fd46bb9a3",
+          "model": "opus",
+          "temperature": 0,
+          "temperatureEnforced": false,
+          "at": "2026-10-12T15:00:36.000Z",
+          "mode": "fake"
+        }
+      ],
+      "planner": {
+        "available": true,
+        "source": "fixture",
+        "error": null
+      },
+      "labels": {
+        "intent": "update.prop",
+        "object": "prop",
+        "target": {
+          "kind": "page",
+          "name": "orders"
+        },
+        "layers": [
+          "ui"
+        ],
+        "by": "static"
+      },
+      "runs": [
+        {
+          "id": "run-1",
+          "labels": {
+            "intent": "update.prop",
+            "object": "prop",
+            "target": {
+              "kind": "page",
+              "name": "orders"
+            },
+            "layers": [
+              "ui"
+            ],
+            "by": "static"
+          },
+          "path": [
+            {
+              "layer": "page-part",
+              "label": "ship (row action)",
+              "decision": "dynamic",
+              "picks": null,
+              "fork": false
+            },
+            {
+              "layer": "controller",
+              "label": "OrdersController.onShip(order)",
+              "decision": "create",
+              "picks": null,
+              "fork": false
+            },
+            {
+              "layer": "provider",
+              "label": "ordersProvider.update(order)",
+              "decision": "create",
+              "picks": null,
+              "fork": false
+            },
+            {
+              "layer": "service",
+              "label": "ordersService.update(order)",
+              "decision": "create",
+              "picks": null,
+              "fork": false
+            },
+            {
+              "layer": "contract",
+              "label": "PUT /api/orders/:id",
+              "decision": "create",
+              "picks": null,
+              "fork": false
+            }
+          ],
+          "question": null
+        }
+      ],
+      "recommended": "run-1",
+      "plannerQuestion": null,
+      "requesterAnswer": null,
+      "grader": {
+        "runScores": {
+          "run-1": {
+            "blindId": "A",
+            "scores": {
+              "intent": 1,
+              "path": 2,
+              "reuse": 2,
+              "question": 1,
+              "unused": 2
+            },
+            "justification": "Reads an add of a ship action as update.prop; path is plausible but the missing status field was not asked about.",
+            "problems": []
+          }
+        },
+        "scores": {
+          "intent": 1,
+          "path": 2,
+          "reuse": 2,
+          "question": 1,
+          "unused": 2
+        },
+        "justification": "Reads an add of a ship action as update.prop; path is plausible but the missing status field was not asked about.",
+        "problems": [],
+        "setup": "r-v1.g-v2",
+        "rubricVersion": "v1",
+        "revealedAfterGrading": true
+      }
+    },
+    {
+      "id": "contacts-3",
+      "app": "contacts",
+      "requirement": "Show how many contacts there are in the page header.",
+      "gold": {
+        "source": "requester",
+        "intent": "update.prop",
+        "object": "prop",
+        "target": {
+          "kind": "page",
+          "name": "contacts"
+        },
+        "layers": [
+          "ui"
+        ]
+      },
+      "notes": "The count of the list we load; it is already in the header design.",
+      "goldProblems": [],
+      "transcripts": [
+        {
+          "step": "requester-write",
+          "role": "requester",
+          "promptFile": "prompts/requester.md",
+          "promptVersion": "v1",
+          "promptSha": "b5f0685251a5",
+          "model": "opus",
+          "temperature": 0,
+          "temperatureEnforced": false,
+          "at": "2026-10-12T15:00:37.000Z",
+          "mode": "fake"
+        },
+        {
+          "step": "requester-answer",
+          "role": "requester",
+          "promptFile": "prompts/requester.md",
+          "promptVersion": "v1",
+          "promptSha": "b5f0685251a5",
+          "model": "opus",
+          "temperature": 0,
+          "temperatureEnforced": false,
+          "at": "2026-10-12T15:00:39.000Z",
+          "mode": "fake"
+        },
+        {
+          "step": "grader-A",
+          "role": "grader",
+          "promptFile": "prompts/grader.md",
+          "promptVersion": "v2",
+          "promptSha": "5497e42ba8ba",
+          "rubricFile": "prompts/rubric.md",
+          "rubricVersion": "v1",
+          "rubricSha": "916fd46bb9a3",
+          "model": "opus",
+          "temperature": 0,
+          "temperatureEnforced": false,
+          "at": "2026-10-12T15:00:40.000Z",
+          "mode": "fake"
+        }
+      ],
+      "planner": {
+        "available": true,
+        "source": "fixture",
+        "error": null
+      },
+      "labels": {
+        "intent": "update.prop",
+        "object": "prop",
+        "target": {
+          "kind": "page",
+          "name": "contacts"
+        },
+        "layers": [
+          "ui"
+        ],
+        "by": "static"
+      },
+      "runs": [
+        {
+          "id": "run-1",
+          "labels": {
+            "intent": "update.prop",
+            "object": "prop",
+            "target": {
+              "kind": "page",
+              "name": "contacts"
+            },
+            "layers": [
+              "ui"
+            ],
+            "by": "static"
+          },
+          "path": [
+            {
+              "layer": "page-part",
+              "label": "contactCount (header)",
+              "decision": "dynamic",
+              "picks": null,
+              "fork": false
+            },
+            {
+              "layer": "source",
+              "label": "contacts.length",
+              "decision": "computed",
+              "picks": null,
+              "fork": false
+            },
+            {
+              "layer": "controller",
+              "label": "ContactsController.rows",
+              "decision": "fn",
+              "picks": null,
+              "fork": false
+            }
+          ],
+          "question": {
+            "text": "What should the contact count show?",
+            "options": []
+          }
+        }
+      ],
+      "recommended": "run-1",
+      "plannerQuestion": {
+        "text": "What should the contact count show?",
+        "options": []
+      },
+      "requesterAnswer": {
+        "answer": "The number of contacts in the list.",
+        "option": "count of the loaded contacts"
+      },
+      "grader": {
+        "runScores": {
+          "run-1": {
+            "blindId": "A",
+            "scores": {
+              "intent": 2,
+              "path": 3,
+              "reuse": 3,
+              "question": 0,
+              "unused": 2
+            },
+            "justification": "Asks an open question whose answer is already in the requirement (question line).",
+            "problems": []
+          }
+        },
+        "scores": {
+          "intent": 2,
+          "path": 3,
+          "reuse": 3,
+          "question": 0,
+          "unused": 2
+        },
+        "justification": "Asks an open question whose answer is already in the requirement (question line).",
+        "problems": [],
+        "setup": "r-v1.g-v2",
+        "rubricVersion": "v1",
+        "revealedAfterGrading": true
+      }
+    },
+    {
+      "id": "orders-3",
+      "app": "orders",
+      "requirement": "Next to the order count, show how many orders are still pending.",
+      "gold": {
+        "source": "requester",
+        "intent": "update.prop",
+        "object": "prop",
+        "target": {
+          "kind": "page",
+          "name": "orders"
+        },
+        "layers": [
+          "ui"
+        ]
+      },
+      "notes": "Count the orders whose status is Pending.",
+      "goldProblems": [],
+      "transcripts": [
+        {
+          "step": "requester-write",
+          "role": "requester",
+          "promptFile": "prompts/requester.md",
+          "promptVersion": "v1",
+          "promptSha": "b5f0685251a5",
+          "model": "opus",
+          "temperature": 0,
+          "temperatureEnforced": false,
+          "at": "2026-10-12T15:00:41.000Z",
+          "mode": "fake"
+        },
+        {
+          "step": "grader-A",
+          "role": "grader",
+          "promptFile": "prompts/grader.md",
+          "promptVersion": "v2",
+          "promptSha": "5497e42ba8ba",
+          "rubricFile": "prompts/rubric.md",
+          "rubricVersion": "v1",
+          "rubricSha": "916fd46bb9a3",
+          "model": "opus",
+          "temperature": 0,
+          "temperatureEnforced": false,
+          "at": "2026-10-12T15:00:43.000Z",
+          "mode": "fake"
+        }
+      ],
+      "planner": {
+        "available": true,
+        "source": "fixture",
+        "error": null
+      },
+      "labels": {
+        "intent": "update.prop",
+        "object": "prop",
+        "target": {
+          "kind": "page",
+          "name": "orders"
+        },
+        "layers": [
+          "ui"
+        ],
+        "by": "static"
+      },
+      "runs": [
+        {
+          "id": "run-1",
+          "labels": {
+            "intent": "update.prop",
+            "object": "prop",
+            "target": {
+              "kind": "page",
+              "name": "orders"
+            },
+            "layers": [
+              "ui"
+            ],
+            "by": "static"
+          },
+          "path": [
+            {
+              "layer": "page-part",
+              "label": "pendingCount (header)",
+              "decision": "dynamic",
+              "picks": null,
+              "fork": false
+            },
+            {
+              "layer": "source",
+              "label": "orders where status = Pending",
+              "decision": "computed",
+              "picks": null,
+              "fork": false
+            },
+            {
+              "layer": "controller",
+              "label": "OrdersController.orders",
+              "decision": "fn",
+              "picks": null,
+              "fork": false
+            },
+            {
+              "layer": "hook",
+              "label": "usePendingCount(orders)",
+              "decision": "create",
+              "picks": null,
+              "fork": false
+            }
+          ],
+          "question": null
+        }
+      ],
+      "recommended": "run-1",
+      "plannerQuestion": null,
+      "requesterAnswer": null,
+      "grader": {
+        "runScores": {
+          "run-1": {
+            "blindId": "A",
+            "scores": {
+              "intent": 2,
+              "path": 3,
+              "reuse": 2,
+              "question": 2,
+              "unused": 2
+            },
+            "justification": "Computed pending count; creates a hook where the orders hook could take a filter.",
+            "problems": []
+          }
+        },
+        "scores": {
+          "intent": 2,
+          "path": 3,
+          "reuse": 2,
+          "question": 2,
+          "unused": 2
+        },
+        "justification": "Computed pending count; creates a hook where the orders hook could take a filter.",
+        "problems": [],
+        "setup": "r-v1.g-v2",
+        "rubricVersion": "v1",
+        "revealedAfterGrading": true
+      }
+    }
+  ],
+  "calls": 15
+}

@@ -1,0 +1,184 @@
+{
+  "request": "Show the total value of all orders in the header next to the order count.",
+  "planner": "fixture",
+  "answer": {
+    "available": true,
+    "source": "fixture",
+    "labels": {
+      "intent": "update.prop",
+      "object": "prop",
+      "target": {
+        "kind": "page",
+        "name": "orders"
+      },
+      "layers": [
+        "ui"
+      ],
+      "by": "jev"
+    },
+    "path": [
+      {
+        "layer": "page-part",
+        "label": "totalValue (header)",
+        "decision": "dynamic",
+        "picks": null,
+        "fork": false
+      },
+      {
+        "layer": "source",
+        "label": "sum of orders[].total",
+        "decision": "computed",
+        "picks": {
+          "static": "api",
+          "jev": "computed"
+        },
+        "fork": true
+      },
+      {
+        "layer": "controller",
+        "label": "OrdersController.orders",
+        "decision": "fn",
+        "picks": null,
+        "fork": false
+      },
+      {
+        "layer": "hook",
+        "label": "useOrderTotals(orders)",
+        "decision": "create",
+        "picks": null,
+        "fork": false
+      },
+      {
+        "layer": "contract",
+        "label": "GET /api/orders",
+        "decision": "fn",
+        "picks": null,
+        "fork": false
+      }
+    ],
+    "question": {
+      "text": "Should the total value come from an api field or be computed from the orders on the page?",
+      "options": [
+        "an api field",
+        "computed from the orders"
+      ]
+    },
+    "runs": [
+      {
+        "id": "run-static",
+        "labels": {
+          "intent": "update.prop",
+          "object": "prop",
+          "target": {
+            "kind": "page",
+            "name": "orders"
+          },
+          "layers": [
+            "ui",
+            "api"
+          ],
+          "by": "static"
+        },
+        "path": [
+          {
+            "layer": "page-part",
+            "label": "totalValue (header)",
+            "decision": "dynamic",
+            "picks": null,
+            "fork": false
+          },
+          {
+            "layer": "source",
+            "label": "GET /api/orders/total",
+            "decision": "api",
+            "picks": {
+              "static": "api",
+              "jev": "computed"
+            },
+            "fork": true
+          },
+          {
+            "layer": "controller",
+            "label": "OrdersController.totalValue",
+            "decision": "create",
+            "picks": null,
+            "fork": false
+          },
+          {
+            "layer": "service",
+            "label": "ordersService.total",
+            "decision": "create",
+            "picks": null,
+            "fork": false
+          },
+          {
+            "layer": "contract",
+            "label": "GET /api/orders/total",
+            "decision": "create",
+            "picks": null,
+            "fork": false
+          }
+        ],
+        "question": null
+      },
+      {
+        "id": "run-jev",
+        "labels": {
+          "intent": "update.prop",
+          "object": "prop",
+          "target": {
+            "kind": "page",
+            "name": "orders"
+          },
+          "layers": [
+            "ui"
+          ],
+          "by": "jev"
+        },
+        "path": [
+          {
+            "layer": "page-part",
+            "label": "totalValue (header)",
+            "decision": "dynamic",
+            "picks": null,
+            "fork": false
+          },
+          {
+            "layer": "source",
+            "label": "sum of orders[].total",
+            "decision": "computed",
+            "picks": {
+              "static": "api",
+              "jev": "computed"
+            },
+            "fork": true
+          },
+          {
+            "layer": "controller",
+            "label": "OrdersController.orders",
+            "decision": "fn",
+            "picks": null,
+            "fork": false
+          },
+          {
+            "layer": "hook",
+            "label": "useOrderTotals(orders)",
+            "decision": "create",
+            "picks": null,
+            "fork": false
+          },
+          {
+            "layer": "contract",
+            "label": "GET /api/orders",
+            "decision": "fn",
+            "picks": null,
+            "fork": false
+          }
+        ],
+        "question": null
+      }
+    ],
+    "recommended": "run-jev"
+  },
+  "at": "2026-10-12T15:00:05.000Z"
+}

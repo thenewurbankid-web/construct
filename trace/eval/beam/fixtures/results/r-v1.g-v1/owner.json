@@ -1,0 +1,50 @@
+{
+  "contacts-1": {
+    "scores": {
+      "intent": 2,
+      "path": 3,
+      "reuse": 3,
+      "question": 2,
+      "unused": 2
+    },
+    "note": "Agree.",
+    "rubricVersion": "v1",
+    "at": "2026-10-12T15:30:00.000Z"
+  },
+  "contacts-3": {
+    "scores": {
+      "intent": 2,
+      "path": 3,
+      "reuse": 3,
+      "question": 0,
+      "unused": 2
+    },
+    "note": "The question asks what the requirement already says.",
+    "rubricVersion": "v1",
+    "at": "2026-10-12T15:30:00.000Z"
+  },
+  "orders-2": {
+    "scores": {
+      "intent": 0,
+      "path": 1,
+      "reuse": 2,
+      "question": 0,
+      "unused": 2
+    },
+    "note": "Wrong intent, and it must ask: the api has no status field.",
+    "rubricVersion": "v1",
+    "at": "2026-10-12T15:30:00.000Z"
+  },
+  "contacts-2": {
+    "scores": {
+      "intent": 2,
+      "path": 2,
+      "reuse": 2,
+      "question": 2,
+      "unused": 1
+    },
+    "note": "One unused input, not a whole stub.",
+    "rubricVersion": "v1",
+    "at": "2026-10-12T15:30:00.000Z"
+  }
+}

@@ -1,0 +1,129 @@
+{
+  "request": "In the contacts table, show each person's full name, first and last name together, in the Name column.",
+  "planner": "fixture",
+  "answer": {
+    "available": true,
+    "source": "fixture",
+    "labels": {
+      "intent": "update.prop",
+      "object": "prop",
+      "target": {
+        "kind": "page",
+        "name": "contacts"
+      },
+      "layers": [
+        "ui"
+      ],
+      "by": "static"
+    },
+    "path": [
+      {
+        "layer": "page-part",
+        "label": "fullName (Name cell)",
+        "decision": "dynamic",
+        "picks": null,
+        "fork": false
+      },
+      {
+        "layer": "source",
+        "label": "first + last from GET /api/contacts",
+        "decision": "computed",
+        "picks": null,
+        "fork": false
+      },
+      {
+        "layer": "controller",
+        "label": "ContactsController.rows",
+        "decision": "fn",
+        "picks": null,
+        "fork": false
+      },
+      {
+        "layer": "hook",
+        "label": "useContactName(row)",
+        "decision": "stub",
+        "picks": null,
+        "fork": false
+      },
+      {
+        "layer": "service",
+        "label": "contactsService.list",
+        "decision": "fn",
+        "picks": null,
+        "fork": false
+      },
+      {
+        "layer": "contract",
+        "label": "GET /api/contacts",
+        "decision": "fn",
+        "picks": null,
+        "fork": false
+      }
+    ],
+    "question": null,
+    "runs": [
+      {
+        "id": "run-1",
+        "labels": {
+          "intent": "update.prop",
+          "object": "prop",
+          "target": {
+            "kind": "page",
+            "name": "contacts"
+          },
+          "layers": [
+            "ui"
+          ],
+          "by": "static"
+        },
+        "path": [
+          {
+            "layer": "page-part",
+            "label": "fullName (Name cell)",
+            "decision": "dynamic",
+            "picks": null,
+            "fork": false
+          },
+          {
+            "layer": "source",
+            "label": "first + last from GET /api/contacts",
+            "decision": "computed",
+            "picks": null,
+            "fork": false
+          },
+          {
+            "layer": "controller",
+            "label": "ContactsController.rows",
+            "decision": "fn",
+            "picks": null,
+            "fork": false
+          },
+          {
+            "layer": "hook",
+            "label": "useContactName(row)",
+            "decision": "stub",
+            "picks": null,
+            "fork": false
+          },
+          {
+            "layer": "service",
+            "label": "contactsService.list",
+            "decision": "fn",
+            "picks": null,
+            "fork": false
+          },
+          {
+            "layer": "contract",
+            "label": "GET /api/contacts",
+            "decision": "fn",
+            "picks": null,
+            "fork": false
+          }
+        ],
+        "question": null
+      }
+    ],
+    "recommended": "run-1"
+  },
+  "at": "2026-10-12T15:00:02.000Z"
+}

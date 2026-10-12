@@ -1,0 +1,68 @@
+{
+  "step": "grader-A",
+  "role": "grader",
+  "promptFile": "prompts/grader.md",
+  "promptVersion": "v2",
+  "promptSha": "5497e42ba8ba",
+  "rubricFile": "prompts/rubric.md",
+  "rubricVersion": "v1",
+  "rubricSha": "916fd46bb9a3",
+  "model": "opus",
+  "temperature": 0,
+  "temperatureEnforced": false,
+  "input": {
+    "requirement": "Let me mark an order as shipped from the orders list.",
+    "plannerQuestion": null,
+    "ownerAnswer": null,
+    "run": {
+      "id": "A",
+      "labels": {
+        "intent": "update.prop",
+        "object": "prop",
+        "target": {
+          "kind": "page",
+          "name": "orders"
+        },
+        "layers": [
+          "ui"
+        ]
+      },
+      "path": [
+        {
+          "layer": "page-part",
+          "label": "ship (row action)",
+          "decision": "dynamic",
+          "fork": false
+        },
+        {
+          "layer": "controller",
+          "label": "OrdersController.onShip(order)",
+          "decision": "create",
+          "fork": false
+        },
+        {
+          "layer": "provider",
+          "label": "ordersProvider.update(order)",
+          "decision": "create",
+          "fork": false
+        },
+        {
+          "layer": "service",
+          "label": "ordersService.update(order)",
+          "decision": "create",
+          "fork": false
+        },
+        {
+          "layer": "contract",
+          "label": "PUT /api/orders/:id",
+          "decision": "create",
+          "fork": false
+        }
+      ],
+      "question": null
+    }
+  },
+  "output": "{\"scores\":{\"intent\":1,\"path\":2,\"reuse\":2,\"question\":1,\"unused\":2},\"justification\":\"Reads an add of a ship action as update.prop; path is plausible but the missing status field was not asked about.\"}",
+  "at": "2026-10-12T15:00:36.000Z",
+  "mode": "fake"
+}

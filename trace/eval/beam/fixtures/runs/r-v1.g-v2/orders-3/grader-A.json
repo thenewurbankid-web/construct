@@ -1,0 +1,62 @@
+{
+  "step": "grader-A",
+  "role": "grader",
+  "promptFile": "prompts/grader.md",
+  "promptVersion": "v2",
+  "promptSha": "5497e42ba8ba",
+  "rubricFile": "prompts/rubric.md",
+  "rubricVersion": "v1",
+  "rubricSha": "916fd46bb9a3",
+  "model": "opus",
+  "temperature": 0,
+  "temperatureEnforced": false,
+  "input": {
+    "requirement": "Next to the order count, show how many orders are still pending.",
+    "plannerQuestion": null,
+    "ownerAnswer": null,
+    "run": {
+      "id": "A",
+      "labels": {
+        "intent": "update.prop",
+        "object": "prop",
+        "target": {
+          "kind": "page",
+          "name": "orders"
+        },
+        "layers": [
+          "ui"
+        ]
+      },
+      "path": [
+        {
+          "layer": "page-part",
+          "label": "pendingCount (header)",
+          "decision": "dynamic",
+          "fork": false
+        },
+        {
+          "layer": "source",
+          "label": "orders where status = Pending",
+          "decision": "computed",
+          "fork": false
+        },
+        {
+          "layer": "controller",
+          "label": "OrdersController.orders",
+          "decision": "fn",
+          "fork": false
+        },
+        {
+          "layer": "hook",
+          "label": "usePendingCount(orders)",
+          "decision": "create",
+          "fork": false
+        }
+      ],
+      "question": null
+    }
+  },
+  "output": "{\"scores\":{\"intent\":2,\"path\":3,\"reuse\":2,\"question\":2,\"unused\":2},\"justification\":\"Computed pending count; creates a hook where the orders hook could take a filter.\"}",
+  "at": "2026-10-12T15:00:43.000Z",
+  "mode": "fake"
+}

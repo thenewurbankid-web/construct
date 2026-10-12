@@ -6,6 +6,9 @@ bench-log.jsonl
 **/ai-cache.json
 /deploy/
 eval/out/
+# #896 planner eval: real (and replayed) runs stay local; the committed fixtures live in eval/beam/fixtures/
+eval/beam/results/
+eval/beam/runs/
 
 # cu0 (2026-10-11): build output, runtime state, logs, secrets
 out/

@@ -1,0 +1,115 @@
+{
+  "request": "Let me mark an order as shipped from the orders list.",
+  "planner": "fixture",
+  "answer": {
+    "available": true,
+    "source": "fixture",
+    "labels": {
+      "intent": "update.prop",
+      "object": "prop",
+      "target": {
+        "kind": "page",
+        "name": "orders"
+      },
+      "layers": [
+        "ui"
+      ],
+      "by": "static"
+    },
+    "path": [
+      {
+        "layer": "page-part",
+        "label": "ship (row action)",
+        "decision": "dynamic",
+        "picks": null,
+        "fork": false
+      },
+      {
+        "layer": "controller",
+        "label": "OrdersController.onShip(order)",
+        "decision": "create",
+        "picks": null,
+        "fork": false
+      },
+      {
+        "layer": "provider",
+        "label": "ordersProvider.update(order)",
+        "decision": "create",
+        "picks": null,
+        "fork": false
+      },
+      {
+        "layer": "service",
+        "label": "ordersService.update(order)",
+        "decision": "create",
+        "picks": null,
+        "fork": false
+      },
+      {
+        "layer": "contract",
+        "label": "PUT /api/orders/:id",
+        "decision": "create",
+        "picks": null,
+        "fork": false
+      }
+    ],
+    "question": null,
+    "runs": [
+      {
+        "id": "run-1",
+        "labels": {
+          "intent": "update.prop",
+          "object": "prop",
+          "target": {
+            "kind": "page",
+            "name": "orders"
+          },
+          "layers": [
+            "ui"
+          ],
+          "by": "static"
+        },
+        "path": [
+          {
+            "layer": "page-part",
+            "label": "ship (row action)",
+            "decision": "dynamic",
+            "picks": null,
+            "fork": false
+          },
+          {
+            "layer": "controller",
+            "label": "OrdersController.onShip(order)",
+            "decision": "create",
+            "picks": null,
+            "fork": false
+          },
+          {
+            "layer": "provider",
+            "label": "ordersProvider.update(order)",
+            "decision": "create",
+            "picks": null,
+            "fork": false
+          },
+          {
+            "layer": "service",
+            "label": "ordersService.update(order)",
+            "decision": "create",
+            "picks": null,
+            "fork": false
+          },
+          {
+            "layer": "contract",
+            "label": "PUT /api/orders/:id",
+            "decision": "create",
+            "picks": null,
+            "fork": false
+          }
+        ],
+        "question": null
+      }
+    ],
+    "recommended": "run-1"
+  },
+  "at": "2026-10-12T15:00:35.000Z"
+}
