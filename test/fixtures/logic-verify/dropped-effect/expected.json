@@ -29,6 +29,7 @@
     "astPath": "saveOrder/FunctionDeclaration.body/BlockStatement.body[1]",
     "file": "src/orders/saveOrder.ts",
     "line": 6,
+    "column": 3,
     "side": "before"
   },
   "input": [

@@ -40,7 +40,7 @@ Tests:
 | A | Closed transform set, Alive2-style validation, outside edits are "tested" | `contract.mjs` `TRANSFORM_IDS`, `TRANSFORM_SOURCES`, `inClosedSet`, and the proven rule in `assertUnitVerdict`; `escalation.mjs` `isDecisive` | 3 |
 | B | Pure/impure split with the transitive effect chain | `contract.mjs` `Purity`, `EffectLink`, `EFFECT_NAMES`, `MORPHEUS_EFFECTS`, `LOGIC_KIND_EFFECTS` | 2 (`purity.mjs` `classifyUnit`) |
 | C | Layered equivalence and its outcomes, plus the round-trip check | `contract.mjs` `VERIFY_LAYERS`, `LAYER_STRENGTH`, `LayerResult`; `escalation.mjs` `LAYER_ORDER`, `decideUnit` | 3 (C1, round-trip), 6 (C3) |
-| D | Isolated execution with recording fakes and sentinels | `fakes.mjs` | 4 |
+| D | Isolated execution with recording fakes and sentinels | `fakes.mjs`; step 4: `isolatedRun.mjs`, `isolatedChild.cjs` | 4 (built; hooks and handlers wait for the hook runner) |
 | E | Layout as input | `layoutFakes.mjs`; step 5: `libDom.mjs`, `layoutFakeGen.mjs`, `layoutDom.mjs`, `layoutClock.mjs`, `layoutMedia.mjs`, `layoutRun.mjs` | 5 (built; hook closures wait for step 4's runner) |
 | F | Escalation from L0 to L3 | `escalation.mjs` `LEVELS`, `levelsFor`, `layerOrder`; `contract.mjs` `LEVEL_OF_LAYER` | 4 (L1), 8 (L2, L3) |
 | G | Speed | Not in the contract yet. Each `LayerResult` has an optional `ms` field. | 7 |
@@ -55,8 +55,14 @@ each step lands.
 - `purity.mjs`: `classifyUnit({root, file, fn})` returns `{purity, effectChain}`. This is step 2. `verifyPair.mjs`
   `classifyBefore` imports it as soon as the file exists; until then `classifyBefore` is the one stand-in.
 - `layoutRun.mjs`: `verifyLayoutPair({beforeRoot, afterRoot, unit, beforeFile?})` returns the `isolated` `LayerResult` for a
-  unit's pure layout readers. This is step 5; `verifyPair`'s `isolated` runner calls it. Step 4's effect runner joins
-  that runner (`RUNNERS.isolated` in `verifyPair.mjs`) and gives one `isolated` result per unit.
+  unit's pure layout readers. This is step 5; `verifyPair`'s `isolated` runner calls it.
+- `isolatedRun.mjs`: `isolatedPair({beforeRoot, afterRoot, before, after, seeds?, timeoutMs?})` is step 4's effect
+  runner: both sides run in one child process (`isolatedChild.cjs`: node permission model, no code generation from
+  strings, empty env, a `construct-lv-isolated-*` temp dir removed after, SIGKILL at the time limit) under the
+  recording fakes, on the same generated inputs; it returns `changed` (the input and the recorded difference),
+  `same-behaviour`, or `cant-tell` (an unfaked effect, reported and not executed; the time limit; a load failure).
+  `RUNNERS.isolated` gives one result per unit: a change from either runner decides, else a layout answer stands,
+  else the effect runner's.
 - `verifyPair.mjs`: `verifyPair({beforeRoot, afterRoot, unit, transforms, levels, blocks?})` returns
   `Promise<UnitVerdict>`. Steps 3 to 6 and step 8 build it.
 - `verifyPair.mjs`: `verifyStep({step, cases})` returns `Promise<StepSummary>`. This is step 7.
@@ -81,7 +87,7 @@ The choices, and why (each is conservative: a false "changed" only falls through
 ## verifyPair (steps 3, 5 and 6 combined)
 
 - One `RUNNERS` registry in `escalation.mjs` order: `round-trip` and `L0-canonical` (step 3), `semantic-diff` (no
-  runner), `z3` and `fast-check` (step 6, pure units), `isolated` (step 5's `verifyLayoutPair`; step 4 joins it). A
+  runner), `z3` and `fast-check` (step 6, pure units), `isolated` (step 5's `verifyLayoutPair`, then step 4's `isolatedPair`). A
   layer with no runner, or one that cannot take the unit, answers `skipped` and the walk goes on. Skipped layers never
   decide: an undecided unit is `unverified` and names the last layer that actually tried.
 - `semantic-diff` has no runner on purpose: `ast/semanticDiff` alpha-renames free names too, so on one unit a call to
@@ -113,7 +119,7 @@ pass, cold = first call in a fresh process, after about 0.1 to 0.2 s of module l
 | --- | --- | --- | --- |
 | `pure-move`, `rename`, `split` | proven, `L0-canonical` | 3 to 4 ms | 165 to 400 ms (esbuild and scope-manager load) |
 | `flipped-condition` | changed, `z3` | 7 ms | 290 ms (Z3 WASM load) |
-| `dropped-effect` | unverified (step 4 todo) | 2 ms | 160 ms |
+| `dropped-effect` | changed, `isolated` (the expected `effectChain` waits for step 2) | about 70 ms (one sandbox child) | not measured |
 | `layout-threshold` | changed, `isolated` | 300 ms | 750 ms |
 | `out-of-set` | tested, `fast-check` | 230 ms | 500 ms |
 
