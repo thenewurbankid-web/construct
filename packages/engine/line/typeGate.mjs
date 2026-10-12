@@ -127,7 +127,11 @@ export function typeCheckStaged(root, files) {
   const roots = [...changed, ...importers];
   const before = ts.createProgram({ rootNames: roots.filter((r) => fs.existsSync(path.join(root, r))).map((r) => path.join(root, r)), options, host: plain });
   const overlay = new Map(code.map((f) => [path.resolve(root, f.path), /** @type {string} */ (f.content)]));
-  const after = ts.createProgram({ rootNames: roots.map((r) => path.join(root, r)), options, host: overlayHost(options, overlay), oldProgram: before });
+  // Next.js refuses a route page whose props are more than params and searchParams (the second pilot's next build
+  // failed on it while tsc was clean): one virtual check file per route entry the change reaches, never written.
+  const checks = routeChecks(root, roots);
+  for (const c of checks) overlay.set(path.resolve(root, c.file), c.content);
+  const after = ts.createProgram({ rootNames: [...roots, ...checks.map((c) => c.file)].map((r) => path.join(root, r)), options, host: overlayHost(options, overlay), oldProgram: before });
   const old = new Map();
   for (const e of errorsOf(root, before, roots)) { const k = `${e.file}|${e.code}|${e.message}`; old.set(k, (old.get(k) ?? 0) + 1); }
   const errors = [];
@@ -135,11 +139,41 @@ export function typeCheckStaged(root, files) {
     const k = `${e.file}|${e.code}|${e.message}`;
     if (old.get(k)) old.set(k, old.get(k) - 1); else errors.push(e);
   }
+  for (const c of checks) {
+    const hit = errorsOf(root, after, [c.file])[0];
+    if (!hit) continue;
+    const keys = [...hit.message.matchAll(/"([^"]+)"/g)].map((m) => m[1]).filter((k) => k !== 'params' && k !== 'searchParams');
+    const page = c.page ?? c.entry;
+    errors.unshift({ file: page, code: 'ROUTE_PROPS', line: 1, message: `${path.posix.basename(page).replace(/\.[^.]+$/, '')} is served at a route (${c.entry}), so Next.js lets it take only params and searchParams as props, not ${keys.length ? keys.join(', ') : 'the props it declares'}` });
+  }
   const ms = Date.now() - t0;
   const out = { errors, ms, slow: ms > budgetMs(), checked: roots };
   if (cache.size >= CACHE_MAX) cache.delete(cache.keys().next().value);
   cache.set(key, out);
   return out;
+}
+
+/**
+ * The app-router route entries among `roots` (app/.../page.tsx), each with a virtual file that fails to type-check
+ * when the page it serves takes props other than params and searchParams (Next.js's own page-props rule).
+ * @param {string} root @param {string[]} roots
+ * @returns {{entry: string, page: string|null, file: string, content: string}[]}
+ */
+function routeChecks(root, roots) {
+  return roots.filter((r) => /(^|\/)app\/(.+\/)?page\.tsx?$/.test(r)).map((entry, i) => {
+    const dir = path.posix.dirname(entry);
+    let src = '';
+    try { src = fs.readFileSync(path.join(root, entry), 'utf8'); } catch { src = ''; }
+    const target = (/from\s*['"]([^'"]+)['"]/.exec(src) || [])[1];
+    const page = target && target.startsWith('.') ? roots.find((r) => noExt(r) === path.posix.normalize(path.posix.join(dir, target))) ?? null : null;
+    const file = `${dir}/__line_route_check_${i}__.ts`;
+    const content = `import type * as Entry from './${path.posix.basename(entry).replace(/\.tsx?$/, '')}';\n`
+      + 'type First<T> = T extends (...args: infer A) => unknown ? A[0] : never;\n'
+      + 'type Props = First<typeof Entry.default>;\n'
+      + "type Extra = [Props] extends [undefined] ? never : Exclude<keyof NonNullable<Props>, 'params' | 'searchParams'>;\n"
+      + 'export const lineRouteProps: [Extra] extends [never] ? true : Extra = true;\n';
+    return { entry, page, file, content };
+  });
 }
 
 /** Code files of the library and of `feature` (the places a feature or library file may import from). */
@@ -195,6 +229,15 @@ export function importFixes(root, layout, file, code, contentHash, errors) {
       const fixed = repoint(code, spec, to);
       if (fixed === code) continue;
       out.push({ id: `TYPE_ERROR/import:${spec}->${target}`, sentence: `Import ${path.posix.basename(noExt(target))} from ${to} (${target}) instead of "${spec}".`, step: { tool: 'line.setCode', args: { file, code: fixed, ...(contentHash ? { contentHash } : {}) } } });
+    }
+  }
+  // ROUTE_PROPS: a page that ignores its props (a line.baseOn wrapper's signature kept) takes none instead.
+  if (errors.some((e) => e.code === 'ROUTE_PROPS' && e.file === file)) {
+    const m = /export\s+(?:default\s+)?function\s+([A-Z]\w*)\s*\(\s*([A-Za-z_$][\w$]*)\s*(?::[^)]*)?\)/.exec(code);
+    const uses = m ? (code.match(new RegExp(`(^|[^\\w$])${m[2].replace(/\$/g, '\\$')}(?![\\w$])`, 'g')) ?? []).length : 0;
+    if (m && uses === 1) {
+      const fixed = code.replace(m[0], m[0].replace(/\([\s\S]*\)$/, '()'));
+      out.unshift({ id: 'TYPE_ERROR/route-props', sentence: `Make ${m[1]} take no props (it does not use ${m[2]}), so its route can serve it.`, step: { tool: 'line.setCode', args: { file, code: fixed, ...(contentHash ? { contentHash } : {}) } } });
     }
   }
   if (out.length < 2) return out;

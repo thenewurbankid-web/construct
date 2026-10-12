@@ -223,5 +223,16 @@ test('TYPE_ERROR on line.setCode: an unresolved import is refused before it land
     // A file with no type errors lands.
     const ok = /** @type {any} */ (await svc.addStep({ tool: 'line.setCode', args: { file: 'library/services/money.ts', code: `${src}export const zero = (): string => dollars(0);\n`, contentHash: hashOf(src) }, why: WHY }, 'agent'));
     assert.equal(ok.ok, true, ok.sentence);
+    // A page a route serves may take only params and searchParams (Next.js's rule; the second pilot's next build
+    // failed on a kept line.baseOn signature): refused, with "take no props" as the fix when it ignores them.
+    write(root, 'features/home/pages/Home.ts', 'export function Home(): string | null { return null; }\n');
+    write(root, 'app/page.ts', "export { Home as default } from '../features/home/pages/Home';\n");
+    const page = read(root, 'features/home/pages/Home.ts');
+    const routed = /** @type {any} */ (await svc.addStep({ tool: 'line.setCode', args: { file: 'features/home/pages/Home.ts', code: 'export function Home(_props: { title: string }): null { return null; }\n', contentHash: hashOf(page) }, why: WHY }, 'agent'));
+    assert.equal(routed.code, 'TYPE_ERROR');
+    assert.match(routed.sentence, /Home is served at a route \(app\/page\.ts\), so Next\.js lets it take only params and searchParams as props/);
+    assert.equal(routed.fixes[0].id, 'TYPE_ERROR/route-props');
+    assert.match(routed.fixes[0].step.args.code, /export function Home\(\): null/);
+    await fixLands(svc, routed);
   } finally { done(); }
 });
