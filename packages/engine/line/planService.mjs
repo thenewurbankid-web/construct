@@ -65,6 +65,23 @@ function resolverOf(plan, step) {
 const needsYou = (plan, s) => s.status === 'done' && s.result?.needsYou === true && !resolverOf(plan, s);
 
 /**
+ * bench-gaps 1 (pilot H4): what to do about a step that needs the person, naming a typed fix only when one exists.
+ * @param {any} step The blocked step (status done, result.needsYou).
+ * @returns {string}
+ */
+export function needsYouSentence(step) {
+  const r = step.result ?? {};
+  const head = `Step ${step.n} needs you first: ${lower(asSentence(r.sentence ?? step.why))}`;
+  const typed = (r.options ?? []).filter((o) => o.id === 'fix' && o.step);
+  const retry = (r.options ?? []).some((o) => o.id === 'retry');
+  if (typed.length) {
+    return `${head} Add ${typed.length === 1 ? 'its fix' : `one of its ${typed.length} fixes`} (options[].step) with args.fixOf "${step.id}"${retry ? ', try it again' : ''}, or leave it as it is with line.leaveAsIs {"stepId": "${step.id}"}.`;
+  }
+  const advice = (r.options ?? []).filter((o) => o.id === 'fix' && !o.step).map((o) => asSentence(o.sentence)).slice(0, 2).join(' ');
+  return `${head} Construct has no fix it can make for this, so the person decides: ${advice ? `${lower(advice)} Then ` : ''}change the request and add it again${retry ? ', try the step again' : ''}, or leave it as it is with line.leaveAsIs {"stepId": "${step.id}"}.`;
+}
+
+/**
  * A step as Cockpit shows it: state, one sentence, the gap before it runs.
  * @param {string} root The project root.
  * @param {any} plan The plan the step belongs to.
@@ -204,10 +221,9 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
         if (/** @type {any} */ (e)?.name === 'LineOpError') {
           const r = refusal(/** @type {any} */ (e).code, /** @type {any} */ (e).sentence);
           const detail = /** @type {any} */ (e).detail;
-          // cu4: a refusal may carry its typed fixes (a library component edit: "base a feature item on it").
+          // bench-gaps 1: a refusal carries its typed fixes (contract.mjs RefusalFix): steps to add instead.
           const fixes = /** @type {any} */ (e).fixes;
-          const withFixes = Array.isArray(fixes) && fixes.length ? { ...r, fixes } : r;
-          return typeof detail === 'string' && detail ? { ...withFixes, detail } : withFixes;
+          return { ...r, ...(typeof detail === 'string' && detail ? { detail } : {}), ...(Array.isArray(fixes) && fixes.length ? { fixes } : {}) };
         }
         throw e;
       }
@@ -293,12 +309,18 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
     const plan = await current(api);
     if (!plan) return refusal('NO_PLAN', 'There is no plan yet, so nothing can run');
     const st = await api.plan_status({ planId: plan.id });
-    const nextId = typeof stepId === 'string' && stepId ? stepId : st.ok ? st.state?.next : null;
-    const next = plan.steps.find((s) => s.id === nextId);
+    let nextId = typeof stepId === 'string' && stepId ? stepId : st.ok ? st.state?.next : null;
     const blocked = plan.steps.find((s) => needsYou(plan, s));
     // While a step needs the person, only what answers it runs: a retry of it, a fix for it (args.fixOf), or "leave as is".
-    const resolves = next && ((next.args?.retry && next.args.retry.of === blocked?.id) || next.args?.fixOf === blocked?.id || (next.tool === 'line.leaveAsIs' && next.args?.stepId === blocked?.id));
-    if (blocked && !resolves) return refusal('NEEDS_YOU', `Step ${blocked.n} needs you first: ${lower(asSentence(blocked.result.sentence))} Add one of its fixes with args.fixOf "${blocked.id}", try it again, or ask the person to leave it as it is`);
+    const answers = (x) => Boolean(x && blocked && ((x.args?.retry && x.args.retry.of === blocked.id) || x.args?.fixOf === blocked.id || (x.tool === 'line.leaveAsIs' && x.args?.stepId === blocked.id)));
+    // bench-gaps: a step added before the answer waits behind it; the ready answer runs first instead of refusing.
+    if (blocked && !(typeof stepId === 'string' && stepId) && !answers(plan.steps.find((s) => s.id === nextId))) {
+      const answer = plan.steps.find((s) => (s.status === 'approved' || (s.status === 'planned' && s.approval !== 'needed')) && answers(s));
+      if (answer) nextId = answer.id;
+    }
+    const next = plan.steps.find((s) => s.id === nextId);
+    const resolves = answers(next);
+    if (blocked && !resolves) return refusal('NEEDS_YOU', needsYouSentence(blocked));
     const r = await withVersion(api, plan.id, (p) => api.plan_run_next({ planId: p.id, version: p.version, by, ...(nextId ? { stepId: nextId } : {}) }));
     if (!r.ok) return fromPlan(r);
     const recheck = next?.args?.fixOf ? await recheckAfterFix(api, String(next.args.fixOf), next.id, by) : null;

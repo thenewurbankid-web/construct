@@ -1347,6 +1347,68 @@
             ],
             "properties": {
               "tool": {
+                "const": "line.setLayoutSlot"
+              },
+              "args": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "slot",
+                  "components"
+                ],
+                "properties": {
+                  "slot": {
+                    "type": "string",
+                    "pattern": "^((components|pages|workflows|fixtures)/)?<[A-Z][0-9]{1,3}(\\.[a-zA-Z][a-zA-Z0-9]{0,15})?>$"
+                  },
+                  "components": {
+                    "type": "string",
+                    "pattern": "^((components|pages|workflows|fixtures)/)?<[A-Z][0-9]{1,3}(\\.[a-zA-Z][a-zA-Z0-9]{0,15})?>$"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "tool",
+              "args"
+            ],
+            "properties": {
+              "tool": {
+                "const": "line.useViaUsecase"
+              },
+              "args": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "file",
+                  "specifier"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "pattern": "^((components|pages|workflows|fixtures)/)?<[A-Z][0-9]{1,3}(\\.[a-zA-Z][a-zA-Z0-9]{0,15})?>$"
+                  },
+                  "specifier": {
+                    "type": "string",
+                    "pattern": "^((components|pages|workflows|fixtures)/)?<[A-Z][0-9]{1,3}(\\.[a-zA-Z][a-zA-Z0-9]{0,15})?>$"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "tool",
+              "args"
+            ],
+            "properties": {
+              "tool": {
                 "const": "line.import.fix"
               },
               "args": {

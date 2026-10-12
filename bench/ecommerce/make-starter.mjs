@@ -12,6 +12,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createLineProject } from '../../packages/engine/line/newProject.mjs';
 import { applyChange } from '../../packages/engine/line/ops.mjs';
+import { appLayoutSource, renderAppLayout } from '../../packages/engine/line/shell.mjs';
 import { shellFiles, baseComponents, basePages, baseWorkflows, productsJson } from './starter-files.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -28,6 +29,10 @@ if (arm === 'line') {
   for (const [n, src] of Object.entries(baseComponents(true))) files[`library/components/${n}.tsx`] = src;
   for (const [n, src] of Object.entries(basePages('../components'))) files[`library/pages/${n}.tsx`] = src;
   for (const [n, src] of Object.entries(baseWorkflows())) files[`library/workflows/${n}.ts`] = src;
+  // bench-gaps 2: the app shell is Line's (shell.mjs): app/layout.tsx renders the library AppLayout, whose slots
+  // line.setLayoutSlot fills (a cart link on every page is one step).
+  files['library/components/AppLayout.tsx'] = appLayoutSource({ provider: { name: 'ToastProvider', from: './Toast' } });
+  files['app/layout.tsx'] = renderAppLayout(dir, { slots: {}, title: 'Shop', css: true });
   files['library/fixtures/products.json'] = productsJson();
   files['library/fixtures/item.json'] = null;
   files['README.md'] = '# bench-ecommerce (Line arm)\n\nA Line project (Next.js app router, Tailwind, Radix UI base components) for the e-commerce bench. `library/` holds the base components, pages, workflows and the product fixtures; `features/<name>/` holds one feature each, with its spec.md; `app/` holds only the root layout and route entries (`export { Page as default } from \'<feature page>\'`); `line/` is Line\'s own state.\n\nCheck it: `construct validate --dir . --profile line`. Change it only through `bench/ecommerce/driver/plan-cli.mjs`.\n';

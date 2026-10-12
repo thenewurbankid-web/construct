@@ -4,6 +4,7 @@ import yaml from 'js-yaml';
 import { ConstructError, EXIT_CODES } from './diagnostics.mjs';
 import { normalizeFrozen } from './frozen.mjs';
 import { normalizeNonLayer } from './nonLayer.mjs';
+import { closestId } from './nearest.mjs';
 
 /**
  * Validate architecture.yml's `localRules:` field (#553): a list of project-relative paths to
@@ -587,35 +588,8 @@ export const NEW_PROJECT_RULE_SEVERITIES = Object.freeze({ 'CLIENT-001': 'error'
 const VALID_SEVERITIES = new Set(['error', 'warning', 'info', 'off']);
 
 // Plain Levenshtein edit distance, used only to produce "did you mean" hints.
-function levenshtein(a, b) {
-  const m = a.length, n = b.length;
-  const dp = Array.from({ length: m + 1 }, (_, i) => [i, ...Array(n).fill(0)]);
-  for (let j = 0; j <= n; j++) dp[0][j] = j;
-  for (let i = 1; i <= m; i++) {
-    for (let j = 1; j <= n; j++) {
-      dp[i][j] = a[i - 1] === b[j - 1]
-        ? dp[i - 1][j - 1]
-        : 1 + Math.min(dp[i - 1][j - 1], dp[i - 1][j], dp[i][j - 1]);
-    }
-  }
-  return dp[m][n];
-}
-
-function closestRuleId(unknownId, knownIds) {
-  const upper = unknownId.toUpperCase();
-  let best = null;
-  let bestScore = Infinity;
-  for (const id of knownIds) {
-    // Prefer substring relationships (typo'd suffix/prefix) over raw distance.
-    const substringBonus = id.toUpperCase().includes(upper) || upper.includes(id.toUpperCase()) ? -2 : 0;
-    const score = levenshtein(upper, id.toUpperCase()) + substringBonus;
-    if (score < bestScore) {
-      bestScore = score;
-      best = id;
-    }
-  }
-  return best;
-}
+/** The nearest known rule id (nearest.mjs, shared with Line's refusals); config always suggests one. */
+const closestRuleId = (unknownId, knownIds) => closestId(unknownId, knownIds, { maxDistance: Infinity });
 
 function usageError(message) {
   return new ConstructError(message, { exitCode: EXIT_CODES.USAGE_ERROR });

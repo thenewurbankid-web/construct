@@ -37,6 +37,7 @@ import { LineOpError } from './contract.mjs';
 import { rerankFixes } from './fixRanking.mjs';
 import { toFinding } from './model.mjs';
 import { planBaseOn, planPromote, planSetBase, planMoveFile, planCreateLayout, applyChange } from './ops.mjs';
+import { planUseViaUsecase } from './build.mjs';
 
 const posix = path.posix;
 const SINGULAR = { components: 'component', pages: 'page', workflows: 'workflow', fixtures: 'fixture' };
@@ -278,7 +279,30 @@ function layoutFixes(ctx, file) {
 }
 
 /**
- * The typed fixes for one finding, recommended first (rank 1 is the "likely" one). A non-LINE-* finding gets none.
+ * bench-gaps 1: Construct's layer rules a page or component breaks by importing an application layer (pilot H2/H3:
+ * PAGE-003 on a page calling the cart service, COMPONENT-003 on a component reading the cart store). The fix is the
+ * Line way: reach it through a usecase of the same feature (or a library usecase), one line.useViaUsecase step.
+ */
+export const LAYER_IMPORT_RULES = Object.freeze(['PAGE-002', 'PAGE-003', 'PAGE-005', 'COMPONENT-003']);
+
+function layerImportFixes(ctx, file, line, rule) {
+  const ast = CODE_EXTENSIONS.includes(posix.extname(file)) ? ctx.project.ast(file) : null;
+  const edges = !ast || ast instanceof Error ? [] : moduleEdges(ast);
+  const re = { 'PAGE-002': /workflows?\//, 'PAGE-003': /services?\//, 'PAGE-005': /domain\//, 'COMPONENT-003': /(?:workflows?|services?|domain)\// }[rule];
+  const edge = edges.find((e) => e.line === line && re.test(e.specifier)) ?? edges.find((e) => re.test(e.specifier));
+  const isPage = rule.startsWith('PAGE-');
+  const props = none(`${rule}/pass-as-props`, `Pass what ${posix.basename(file)} needs from "${edge?.specifier ?? 'that module'}" in as props instead; the ${isPage ? 'page' : 'component'} then only presents it.`);
+  if (!edge) return [props];
+  const place = classify(file, ctx.layout);
+  const where = place.area === 'feature' && place.feature ? `feature ${place.feature}'s usecases/` : 'the library\'s usecases/';
+  return ranked([
+    { id: `${rule}/use-via-usecase`, sentence: `Import "${edge.specifier}" through a usecase in ${where} instead, since a ${isPage ? 'page' : 'component'} may not import application logic directly.`, step: { tool: 'line.useViaUsecase', args: { file, specifier: edge.specifier } } },
+    { ...props, step: null },
+  ]);
+}
+
+/**
+ * The typed fixes for one finding, recommended first (rank 1 is the "likely" one). A finding of a rule with no fixes gets none.
  * @param {string} root Project root.
  * @param {import('./contract.mjs').LineFinding} finding
  * @param {ReturnType<typeof fixContext>} [ctx] Reuse one context across many findings.
@@ -305,9 +329,12 @@ function staticFixesFor(finding, ctx) {
       const mod = (finding.sentence.match(/use the shared module (.+?) instead/) || [])[1] ?? 'the shared module';
       return [none('LINE-SHARED/use-shared', `Replace the copy in ${posix.basename(file)} with a call to ${mod}; Line cannot rewrite that code safely.`)];
     }
-    default: return [];
+    default: return LAYER_IMPORT_RULES.includes(rule) ? layerImportFixes(ctx, file, line, rule) : [];
   }
 }
+
+/** Whether fixesFor knows fixes for a rule (LINE-* and the layer import rules). */
+const hasFixes = (rule) => String(rule).startsWith('LINE-') || LAYER_IMPORT_RULES.includes(String(rule));
 
 /**
  * Findings with their key and fixes attached (one context for the batch).
@@ -318,7 +345,7 @@ function staticFixesFor(finding, ctx) {
 export function withFixes(root, findings) {
   let ctx = null;
   return findings.map((f) => {
-    if (!f.rule.startsWith('LINE-')) return { ...f, key: findingKey(f) };
+    if (!hasFixes(f.rule)) return { ...f, key: findingKey(f) };
     ctx ??= fixContext(root);
     return { ...f, key: findingKey(f), fixes: fixesFor(root, f, ctx) };
   });
@@ -333,10 +360,10 @@ export function withFixes(root, findings) {
  * @returns {(V & {key?: string, fixes?: import('./contract.mjs').LineFix[]})[]}
  */
 export function withViolationFixes(root, violations) {
-  if (!violations.some((v) => String(v.rule).startsWith('LINE-'))) return violations;
+  if (!violations.some((v) => hasFixes(v.rule))) return violations;
   const ctx = fixContext(root);
   return violations.map((v) => {
-    if (!String(v.rule).startsWith('LINE-')) return v;
+    if (!hasFixes(v.rule)) return v;
     const f = toFinding(/** @type {any} */ (v));
     return { ...v, key: findingKey(f), fixes: fixesFor(root, f, ctx) };
   });
@@ -355,6 +382,7 @@ export function planStep(root, step) {
     case 'line.baseOn': return planBaseOn(root, /** @type {any} */ (step.args));
     case 'line.moveFile': return planMoveFile(root, /** @type {any} */ (step.args));
     case 'line.createLayout': return planCreateLayout(root);
+    case 'line.useViaUsecase': return planUseViaUsecase(root, /** @type {any} */ (step.args));
     default: throw new LineOpError(`"${step?.tool}" is not a Line tool.`, 'UNKNOWN_TOOL');
   }
 }

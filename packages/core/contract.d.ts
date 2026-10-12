@@ -13,6 +13,8 @@ export * as blockFlows from './block-flows.mjs';
 export * as chooser from './chooser.mjs';
 /** `@line/construct-core/config` */
 export * as config from './config.mjs';
+/** `@line/construct-core/nearest` */
+export * as nearest from './nearest.mjs';
 /** `@line/construct-core/placement` */
 export * as placement from './placement.mjs';
 /** `@line/construct-core/decision-provider` */

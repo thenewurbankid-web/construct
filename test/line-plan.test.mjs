@@ -34,7 +34,7 @@ test('registry: one registry lists the line tools and the construct commands, wi
     'line.baseOn': 'write', 'line.promote': 'write', 'line.setPageProp': 'write', 'line.fix': 'write', 'line.setFragment': 'write',
     'line.setBase': 'write', 'line.moveFile': 'write', 'line.createLayout': 'write', 'line.amend': 'write', 'line.import.mark': 'write', 'line.import.toLibrary': 'write', 'line.import.toFeature': 'write', 'line.import.fix': 'write', 'line.import.save': 'write', 'line.import.undo': 'write',
     'line.import.extractService': 'write', 'line.import.extractDomain': 'write', 'line.import.extractUsecase': 'write', 'line.import.splitPage': 'write', 'line.import.extractWorkflow': 'write',
-    'line.leaveAsIs': 'write', 'line.createFeature': 'write', 'line.addRoute': 'write', 'line.setCode': 'write',
+    'line.leaveAsIs': 'write', 'line.createFeature': 'write', 'line.addRoute': 'write', 'line.setCode': 'write', 'line.setLayoutSlot': 'write', 'line.useViaUsecase': 'write',
     'line.baseWorkflowOn': 'write', 'line.setWorkflowRole': 'write', 'line.addWorkflowTransition': 'write', 'line.removeWorkflowTransition': 'write', 'line.bindPart': 'write', 'line.bindInteraction': 'write', 'line.attachComponentPrimitive': 'write', 'line.addComponentEvent': 'write', 'line.changeComponentEvent': 'write', 'line.fixComponentEvent': 'write', 'line.setComponentState': 'write', 'line.newComponent': 'write', 'line.project': 'read', 'construct.validate': 'read',
   });
   assert.deepEqual(LINE_PLAN_TOOLS.map((t) => t.name).sort(), reg.list().filter((t) => t.name.startsWith('line.')).map((t) => t.name).sort(), 'the contract lists every line tool');
@@ -245,7 +245,7 @@ test('a change Construct refuses needs a fix: the recommended fix is one that wo
   assert.equal((await svc.addStep({ tool: 'line.project', args: {} }, 'agent')).ok, true);
   const held = await svc.runNext('agent');
   assert.equal(held.code, 'NEEDS_YOU');
-  assert.match(held.sentence, /Add one of its fixes with args\.fixOf/);
+  assert.match(held.sentence, /Add (its fix|one of its \d+ fixes) \(options\[\]\.step\) with args\.fixOf/);
   const fixStep = await svc.addStep({ tool: fix.step.tool, args: { ...fix.step.args, fixOf: added.stepId } }, 'agent');
   assert.equal(fixStep.ok, true, fixStep.sentence);
   assert.equal((await svc.approve(fixStep.stepId, 'agent')).ok, false, 'an agent still cannot approve the fix');

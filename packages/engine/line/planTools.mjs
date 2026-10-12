@@ -40,6 +40,7 @@ import { readLineProject } from './model.mjs';
 import { planFixByKey, planStep, withFixes, planAmended, amendFixes, onScratch } from './fixes.mjs';
 import { planSetFragment } from './fragments.mjs';
 import { planCreateFeature, planAddRoute, planSetCode } from './build.mjs';
+import { planSetLayoutSlot } from './shell.mjs';
 import { entryById } from './toolRegistry.mjs';
 
 /** The one catalog's entry for a plan tool (toolRegistry.mjs); a tool the catalog does not list cannot be registered. */
@@ -51,7 +52,7 @@ import { COMPONENT_OPS } from './components.mjs';
 import { planExtractStep, EXTRACT_TOOLS } from './importV2/extract.mjs';
 
 /** The real operations (tests pass the contract's mock instead). */
-export const REAL_PLAN_OPS = Object.freeze({ planCreateFeature, planAddRoute, planSetCode, planBaseOn, planPromote, planSetProp, planFixByKey, planSetFragment, planStep, planAmended, planImportStep, planExtractStep, applyChange, checkChange, readLineProject, planBaseWorkflowOn, planSetWorkflowRole, planAddWorkflowTransition, planRemoveWorkflowTransition, planBindPart, planBindInteraction, ...COMPONENT_OPS });
+export const REAL_PLAN_OPS = Object.freeze({ planCreateFeature, planAddRoute, planSetCode, planSetLayoutSlot, planBaseOn, planPromote, planSetProp, planFixByKey, planSetFragment, planStep, planAmended, planImportStep, planExtractStep, applyChange, checkChange, readLineProject, planBaseWorkflowOn, planSetWorkflowRole, planAddWorkflowTransition, planRemoveWorkflowTransition, planBindPart, planBindInteraction, ...COMPONENT_OPS });
 
 /** The write tools that plan a StagedChange, and the op that plans it (`planStep` takes {tool, args}). */
 export const CHANGE_TOOLS = Object.freeze({
@@ -72,6 +73,8 @@ export const CHANGE_TOOLS = Object.freeze({
   'line.attachComponentPrimitive': 'planAttachComponentPrimitive', 'line.addComponentEvent': 'planAddComponentEvent',
   'line.changeComponentEvent': 'planChangeComponentEvent', 'line.fixComponentEvent': 'planFixComponentEvent',
   'line.setComponentState': 'planSetComponentState', 'line.newComponent': 'planNewComponent',
+  // bench-gaps: the app shell (shell.mjs) and the layer-import fix (build.mjs planUseViaUsecase, a fixes.mjs planStep tool)
+  'line.setLayoutSlot': 'planSetLayoutSlot', 'line.useViaUsecase': 'planStep',
 });
 
 /** Change tools planned only when they run: an import step builds on the steps before it (the library item a feature
@@ -303,6 +306,8 @@ const SCHEMAS = Object.freeze({
   'line.fixComponentEvent': objectSchema({ file: 'string', label: 'string', remove: 'ids', add: 'wires' }, { change: true }),
   'line.setComponentState': objectSchema({ file: 'string', ref: 'string', state: 'string' }, { change: true }),
   'line.newComponent': objectSchema({ libraryId: 'string', feature: 'string', name: 'string' }, { change: true }),
+  'line.setLayoutSlot': objectSchema({ slot: 'string', components: 'strings' }, { change: true }),
+  'line.useViaUsecase': objectSchema({ file: 'string', specifier: 'string' }, { change: true }),
   'line.leaveAsIs': objectSchema({ stepId: 'string' }),
   'line.project': objectSchema({}),
 });
@@ -340,6 +345,8 @@ const DESCRIBE = Object.freeze({
   'line.fixComponentEvent': 'Events: applies the fix Studio offers for two actions that undo each other, through the checked writer.',
   'line.setComponentState': 'States: sets the state one behaviour of a feature component is in (picked on its state graph), through the checked writer.',
   'line.newComponent': 'Creates a new feature component based on one library component, through the checked writer.',
+  'line.setLayoutSlot': 'Shows library or feature components on every page: fills one slot (header, nav or footer) of the app shell, which app/layout.tsx renders; through the checked writer.',
+  'line.useViaUsecase': 'Imports an application layer (a service, workflow or domain) into a page or component through a usecase of its feature or the library instead of directly, through the checked writer.',
   'line.leaveAsIs': 'Records that a person chose to carry on after a step that needed them; writes nothing.',
   'line.project': 'Reads the Line view of the project: library, features, items and findings.',
 });

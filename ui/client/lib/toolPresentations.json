@@ -2798,6 +2798,68 @@
         "by": "rules"
       }
     },
+    "line.setLayoutSlot": {
+      "kind": {
+        "value": "component",
+        "by": "rules"
+      },
+      "icon": {
+        "value": "block",
+        "by": "rules"
+      },
+      "overlay": {
+        "value": "ghost-after",
+        "by": "rules"
+      },
+      "states": {
+        "value": [
+          "loading",
+          "error",
+          "disabled",
+          "filled"
+        ],
+        "by": "rules"
+      },
+      "focus": {
+        "value": "self",
+        "by": "rules"
+      },
+      "caption": {
+        "value": "Fills one slot (header, nav or footer) of the app shell with library or feature components.",
+        "by": "rules"
+      }
+    },
+    "line.useViaUsecase": {
+      "kind": {
+        "value": "component",
+        "by": "rules"
+      },
+      "icon": {
+        "value": "block",
+        "by": "rules"
+      },
+      "overlay": {
+        "value": "ghost-after",
+        "by": "rules"
+      },
+      "states": {
+        "value": [
+          "loading",
+          "error",
+          "disabled",
+          "filled"
+        ],
+        "by": "rules"
+      },
+      "focus": {
+        "value": "self",
+        "by": "rules"
+      },
+      "caption": {
+        "value": "Imports an application layer through a usecase instead of directly.",
+        "by": "rules"
+      }
+    },
     "line.leaveAsIs": {
       "kind": {
         "value": "finding",

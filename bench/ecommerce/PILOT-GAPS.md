@@ -90,3 +90,26 @@ Only Haiku got far enough to hit these (Qwen stopped at the first route):
 - `planTools.mjs`: the `strings` argument type says what it wants (Q1), with a test in `test/line-build-tools.test.mjs`.
 - `plan-cli.mjs run-next`: names `options[].step` only when one exists (H4).
 - Haiku's prompt: JSON args inline (H5); the committed BUILDER-PROMPT.md never suggested `$(cat ...)`.
+
+## 3. After `bench-gaps`: Haiku again, same harness (12 Oct)
+
+Same procedure (`new-run.sh`, `print-prompt.mjs line`, a Haiku subagent with plan-cli only, 30 minutes). The prompt
+now names `line.setLayoutSlot` and says to add `fixes[0].step` when `add` refuses with fixes.
+
+| | Pilot 1 (before) | Pilot 2 (gaps 1-6) | Pilot 3 (+ route-props gate) |
+| --- | --- | --- | --- |
+| Tool uses / tokens | 52 / 149,127 | 26 / 127,951 | 50 / 155,428 |
+| Wall time | 7 min | 15 min | 20 min |
+| Steps landed | 31 of 33 | 25 of 25 | 28 of 28 |
+| Refused at add | 3 (NAME_TAKEN, BAD_JSON harness, UNKNOWN_ITEM) | 2 (NAME_TAKEN, UNKNOWN_ITEM), both passed with the fix or the sentence | 0 |
+| Refused at run | 2 (PAGE-003, COMPONENT-003), no typed fix, left as is | 1 (COMPONENT-003), typed fix applied, landed | 3 (PAGE-003 x2, COMPONENT-003), typed fix applied each time, landed |
+| Refusals left unresolved | 2 | 0 | 0 |
+| Validate | 0 errors, 18 warnings | 0 errors, 4 warnings (PAGE-001) | 0 errors, 4 warnings (PAGE-001) |
+| Cart link | copied into 5 pages | one `line.setLayoutSlot` | one `line.setLayoutSlot` |
+| Acceptance | 22/22 | **0/22**: `next build` refused every page (props kept from the line.baseOn wrapper) | **22/22** |
+
+Pilot 2 found a new Line gap: a route-served page may take only `params` and `searchParams` (Next.js's rule), which tsc
+alone does not check; the type gate now checks it with a virtual file per route entry and offers "take no props" as the
+fix. Pilot 3 ran before the "Did you mean <nearest id>?" fixes (im2) landed. Tokens did not fall (155k vs 149k):
+pilot 3 built more (a feature usecase per consumer, an order service) and took three typed-fix round trips; the
+refusals that cost the builder nothing now are the ones it previously had to work around by hand.
