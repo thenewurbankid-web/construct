@@ -5,7 +5,7 @@
     "branch": "core/ship",
     "env": "LINE_SOURCE_DIR",
     "default": "~/Repositories/vision-architect-pipeline/runs/core-ship",
-    "commit": "61eee8f3873e12a2cdf8b98caec2def131e1a672"
+    "commit": "3886a743b94f2d290564b27ab92bf1c6033ed73b"
   },
   "links": {
     "@mx/reason": { "path": "packages/reason", "entry": "index.ts", "what": "the AI decision ladder" },
