@@ -278,12 +278,14 @@ const typedProject = () => {
   return p;
 };
 
-test('ROUTE_PROPS on line.addRoute: a line.baseOn wrapper served at a route is refused as setCode refuses it, and its fix lands (pilot-qwen-7b-r2 R2)', async () => {
+/** The pass-through page line.baseOn wrote before #907 (a page taking its library page's props): hand-written now. */
+const passThrough = (lib, name) => `// @line-base pages/${lib}\nimport type { ComponentProps } from 'react';\nimport { ${lib} } from '../../../library/pages/${lib}';\n\nexport function ${name}(props: ComponentProps<typeof ${lib}> & object) {\n  return <${lib} {...props} />;\n}\n`;
+
+test('ROUTE_PROPS on line.addRoute: a pass-through page served at a route is refused as setCode refuses it, and its fix lands (pilot-qwen-7b-r2 R2)', async () => {
   const { root, done } = typedProject();
   try {
     const svc = svcOf(root);
-    await addApproved(svc, 'line.baseOn', { libraryId: 'pages/ShelfPage', feature: 'home', name: 'HomePage' });
-    assert.equal((await runOne(svc)).state, 'done');
+    write(root, 'features/home/pages/HomePage.tsx', passThrough('ShelfPage', 'HomePage'));
     const wrapper = read(root, 'features/home/pages/HomePage.tsx');
     assert.match(wrapper, /export function HomePage\(props: ComponentProps<typeof ShelfPage> & object\)/);
     const r = /** @type {any} */ (await svc.addStep({ tool: 'line.addRoute', args: { route: '/', page: 'features/home/pages/HomePage.tsx' }, why: WHY }, 'agent'));
@@ -304,8 +306,7 @@ test('ROUTE_PROPS on line.addRoute: a line.baseOn wrapper served at a route is r
     assert.match(read(root, 'app/page.tsx'), /export \{ HomePage as default \}/);
     // A library page whose props are required: rendered bare it would not compile, so no fix is offered (the page's
     // content is the builder's to write), but the route is still refused.
-    await addApproved(svc, 'line.baseOn', { libraryId: 'pages/ListPage', feature: 'home', name: 'ListView' });
-    assert.equal((await runOne(svc)).state, 'done');
+    write(root, 'features/home/pages/ListView.tsx', passThrough('ListPage', 'ListView'));
     const listed = /** @type {any} */ (await svc.addStep({ tool: 'line.addRoute', args: { route: '/list', page: 'features/home/pages/ListView.tsx' }, why: WHY }, 'agent'));
     assert.equal(listed.code, 'TYPE_ERROR');
     assert.match(listed.sentence, /ListView is served at a route \(app\/list\/page\.tsx\)/);
@@ -313,20 +314,15 @@ test('ROUTE_PROPS on line.addRoute: a line.baseOn wrapper served at a route is r
   } finally { done(); }
 });
 
-test('ROUTE_PROPS on line.baseOn: a new page that a route entry already imports is refused, its fix creates it taking no props (pilot-qwen-7b-r2 R2)', async () => {
+test('ROUTE_PROPS on line.baseOn: a new page that a route entry already imports lands, since baseOn writes it taking no props (#907; pilot-qwen-7b-r2 R2)', async () => {
   const { root, done } = typedProject();
   try {
     write(root, 'app/shelf/page.tsx', "export { ShelfView as default } from '../../features/home/pages/ShelfView';\n");
     const svc = svcOf(root);
-    const r = /** @type {any} */ (await svc.addStep({ tool: 'line.baseOn', args: { libraryId: 'pages/ShelfPage', feature: 'home', name: 'ShelfView' }, why: WHY }, 'agent'));
-    assert.equal(r.code, 'TYPE_ERROR', r.sentence);
-    assert.match(r.sentence, /ShelfView is served at a route \(app\/shelf\/page\.tsx\), so Next\.js lets it take only params and searchParams as props/);
-    assert.equal(r.fixes[0].id, 'TYPE_ERROR/route-props');
-    assert.equal(r.fixes[0].step.args.contentHash, undefined, 'the fix creates the file');
-    assert.match(r.fixes[0].step.args.code, /^\/\/ @line-base pages\/ShelfPage\n/);
-    // A page no route serves is not checked: it lands as before.
-    const free = await addApproved(svc, 'line.baseOn', { libraryId: 'pages/ShelfPage', feature: 'home', name: 'FreeShelf' });
-    assert.equal(free.ok, true, free.sentence);
+    const r = await addApproved(svc, 'line.baseOn', { libraryId: 'pages/ShelfPage', feature: 'home', name: 'ShelfView' });
+    assert.equal(r.ok, true, r.sentence);
+    assert.equal((await runOne(svc)).state, 'done');
+    assert.match(read(root, 'features/home/pages/ShelfView.tsx'), /^\/\/ @line-base pages\/ShelfPage\n[\s\S]*export function ShelfView\(\) \{/);
   } finally { done(); }
 });
 

@@ -16,6 +16,7 @@ import { LineOpError, assertStagedChange } from './contract.mjs';
 import { closestId } from '@line/construct-core/nearest';
 import { readWorkspace, isInsideWorkspace } from './workspace.mjs';
 import { refuseRouteProps } from './typeGate.mjs';
+import { basePageSource } from './basePage.mjs';
 
 const posix = path.posix;
 const SINGULAR = { components: 'component', pages: 'page', workflows: 'workflow', fixtures: 'fixture' };
@@ -106,8 +107,11 @@ function nearestFix(code, tool, args, field, known) {
 // ---------------------------------------------------------------------------------------------
 // planBaseOn
 
-/** The new feature item's source: the base link first, then a thin wrapper over the library item. */
-function wrapperSource({ libraryId, kind, name, dest, libFile, libName, libSrc }) {
+/**
+ * The new feature item's source: the base link first, then a thin wrapper over the library item (a page: a routable,
+ * data-wired page, basePage.mjs).
+ */
+function wrapperSource({ root, layout, feature, libraryId, kind, name, dest, libFile, libName, libSrc }) {
   if (kind === 'fixtures') {
     let data;
     try { data = JSON.parse(libSrc); } catch { throw new LineOpError(`The library fixture "${libraryId}" is not valid JSON, so nothing can be based on it; fix its JSON first.`, 'UNKNOWN_ITEM'); }
@@ -126,6 +130,8 @@ function wrapperSource({ libraryId, kind, name, dest, libFile, libName, libSrc }
   const local = libName === name ? `Library${libName}` : libName;
   const binding = form === 'default' ? local : local === libName ? `{ ${libName} }` : `{ ${libName} as ${local} }`;
   const typed = ['.tsx', '.ts', '.mts', '.cts'].includes(posix.extname(dest));
+  // #907: a page is written routable (no props but params) and, with a library fixture for the feature, data-wired.
+  if (kind === 'pages') return basePageSource(root, layout, { libraryId, feature, name, dest, libName, libSrc, spec, local, binding, typed });
   return typed
     ? `${head}import type { ComponentProps } from 'react';\nimport ${binding} from '${spec}';\n\nexport function ${name}(props: ComponentProps<typeof ${local}> & object) {\n  return <${local} {...props} />;\n}\n`
     : `${head}import ${binding} from '${spec}';\n\nexport function ${name}(props) {\n  return <${local} {...props} />;\n}\n`;
@@ -134,7 +140,9 @@ function wrapperSource({ libraryId, kind, name, dest, libFile, libName, libSrc }
 /**
  * Plan a new feature item based on a library item: `<features>/<feature>/<kind>/<name>.<ext>`, whose first
  * line is `// @line-base <libraryId>` (a fixture carries `"$lineBase"` instead, since JSON has no comments)
- * and which wraps the library item: a component or page renders it and passes every prop through, a
+ * and which wraps the library item: a component renders it and passes every prop through, a page renders it with
+ * its required props filled and takes none itself (with a library fixture for the feature: lists or looks up its
+ * entries, basePage.mjs), a
  * workflow re-exports it, a fixture copies its data. Pure: nothing is written.
  * @param {string} root Project root.
  * @param {import('./contract.mjs').BaseOnRequest} req The request.
@@ -169,7 +177,7 @@ export function planBaseOn(root, { libraryId, feature, name } = /** @type {any} 
   const ext = kind === 'fixtures' ? '.json' : posix.extname(libFile);
   const dest = `${dir}/${n}${ext}`;
   const libSrc = fs.readFileSync(path.join(root, libFile), 'utf8');
-  const content = wrapperSource({ libraryId: id, kind, name: n, dest, libFile, libName, libSrc });
+  const content = wrapperSource({ root, layout, feature: f, libraryId: id, kind, name: n, dest, libFile, libName, libSrc });
   const files = [{ path: dest, content }];
   // pilot-qwen-7b-r2 R2: a new page a route entry already imports is held to the route-props rule (as line.setCode and
   // line.addRoute are); the fix creates it taking no props.
