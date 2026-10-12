@@ -35,7 +35,7 @@ function AddButton({ card, busy, onAdd }: Add & { card: RouteCard }) {
 /** One route: what it does and what Construct found first; Add to plan for a checked route; the steps under Details. */
 export function DraftRoute({ card, ...add }: Add & { card: RouteCard }) {
   return (
-    <li className="ldr-route" data-testid="draft-route" data-status={card.status} data-recommended={String(card.recommended)}>
+    <li className="ldr-route" data-testid="draft-route" data-route={card.id} data-status={card.status} data-recommended={String(card.recommended)}>
       <span className="ldr-state" data-status={card.status}>
         {card.statusLabel}
       </span>

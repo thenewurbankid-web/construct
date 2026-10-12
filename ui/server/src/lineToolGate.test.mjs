@@ -18,6 +18,7 @@ import { createLineRenderRouter } from './lineRenderApi.mjs';
 import { createLineToolGate } from './lineToolGate.mjs';
 import { createLineImportRouter } from './lineImportApi.mjs';
 import { createLineAiRouter } from './lineAiApi.mjs';
+import { createLineMemoryRouter } from './lineMemoryApi.mjs';
 import { createLineTraceRouter } from './lineTraceApi.mjs';
 import { createLineImportAgentRouter } from './lineImportAgentApi.mjs';
 import { createLineDraftRouter } from './lineDraftApi.mjs';
@@ -34,7 +35,7 @@ function routesOf(router) {
   return router.stack.filter((l) => l.route).flatMap((l) => Object.keys(l.route.methods).map((m) => `${m.toUpperCase()} /api/line${l.route.path}`));
 }
 const noRoot = () => ({ ok: false, error: 'No project.' });
-const ALL_ROUTERS = () => [createLineRouter({ getRoot: noRoot }), createLineOpsRouter({ getRoot: noRoot }), createLinePlanRouter({ getRoot: noRoot }), createLineRenderRouter({ getRoot: noRoot }), createLineImportRouter({ getRoot: noRoot }), createLineAiRouter(), createLineTraceRouter({ getRoot: noRoot }), createLineImportAgentRouter({ getRoot: noRoot }), createLineDraftRouter({ getRoot: noRoot }), createLineTrainRouter(), createLineToolGate({ getRoot: noRoot })];
+const ALL_ROUTERS = () => [createLineRouter({ getRoot: noRoot }), createLineOpsRouter({ getRoot: noRoot }), createLinePlanRouter({ getRoot: noRoot }), createLineRenderRouter({ getRoot: noRoot }), createLineImportRouter({ getRoot: noRoot }), createLineAiRouter(), createLineMemoryRouter({ getRoot: noRoot, approvalToken: 'x' }), createLineTraceRouter({ getRoot: noRoot }), createLineImportAgentRouter({ getRoot: noRoot }), createLineDraftRouter({ getRoot: noRoot }), createLineTrainRouter(), createLineToolGate({ getRoot: noRoot })];
 /** cu7's new-project router is mounted at its own path, /api/line/new-project, before the gate (it needs no open project). */
 const MOUNTED_APART = ['POST /api/line/new-project'];
 function sampleCopy() {

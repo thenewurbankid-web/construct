@@ -68,6 +68,8 @@ export const TOOL_ENTRIES = Object.freeze(/** @type {any[]} */ ([
   // cu7: mounted at its own path before the gate (it needs no open project); a person starts a new project folder.
   { id: 'line.newProject', kind: 'write', writes: 'project', inputSchema: fieldsSchema(['name', 'feature'], [], { open: true }), outputSchema: 'NewLineProjectResult', sentence: 'Starts a new Line project in a folder of the workspace and opens it.', personOnly: true, surfaces: { http: http('POST', '/new-project') } },
   { id: 'line.aiProfiles', kind: 'read', writes: null, inputSchema: NONE, outputSchema: 'AiProfiles', sentence: 'Reads every AI step\'s profile: its model, how it decides and its static fallback.', surfaces: { http: http('GET', '/ai-profiles') } },
+  { id: 'line.memory', kind: 'read', writes: null, inputSchema: NONE, outputSchema: 'MemoryView', sentence: 'Reads how many past decisions Line remembers for each step of the open project.', surfaces: { http: http('GET', '/memory') } },
+  { id: 'line.memory.forget', kind: 'write', writes: 'line', inputSchema: fieldsSchema(['step']), outputSchema: 'MemoryView', sentence: 'Forgets one step\'s memory for the open project.', personOnly: true, surfaces: { http: http('POST', '/memory/forget') } },
   // ci2: the Import agent (its process file <folder>/line/import-plan.json is Line's own state; it changes project files
   // only by adding plan steps a person approves).
   { id: 'importAgent.status', kind: 'read', writes: null, inputSchema: fieldsSchema(['folder']), outputSchema: 'ImportAgentView', sentence: 'Reads the Import process for one folder: its stage, what it waits for, its plan and record.', surfaces: { http: http('GET', '/import-agent'), mcp: 'import_status' } },
