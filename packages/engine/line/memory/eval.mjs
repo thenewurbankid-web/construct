@@ -29,6 +29,7 @@ const asRecord = (pick, n) => ({
 /**
  * Run the with/without-memory eval.
  * @param {{cases?: any[], embed?: ((texts: string[]) => Promise<number[][]>)|null, limitWorlds?: number}} [o]
+ * @returns {Promise<any>} Case and world counts, preferred share without and with memory, the cases that changed, and recall quality.
  */
 export async function memoryEval(o = {}) {
   const cases = o.cases ?? createTrainStore({ root: DEFAULT_TRAIN_ROOT }).all();

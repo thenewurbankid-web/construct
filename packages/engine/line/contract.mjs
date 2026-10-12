@@ -386,6 +386,7 @@ import { EXTRACT_TOOLS } from './importV2/extractTarget.mjs';
  * @property {{steps: number, files: number, layers: number}} cost
  * @property {{tool: string, args: Record<string, unknown>}[]} steps  For Details.
  * @property {{sentence: string}|null} fix  A refused route's typed fix, in words.
+ * @property {string|null} [memory]  im3 + j5: why memory moved this route first ("Recalled from 3 past decisions: ...").
  *
  * @typedef {object} DraftView
  * @property {true} ok
@@ -398,6 +399,7 @@ import { EXTRACT_TOOLS } from './importV2/extractTarget.mjs';
  * @property {{to: 'qwen'|'ask'|null, sentence: string}} defer
  * @property {{word: string, sentence: string, choices: {key: string, label: string}[], suggested: string|null}[]} questions
  * @property {{sentence: string}[]} dropped
+ * @property {{route: string, count: number, sentence: string}|null} [memory]  im3 + j5: what memory recalled, when it moved a route first.
  */
 
 /**
@@ -819,6 +821,8 @@ export const LINE_API = Object.freeze([
   { method: 'POST', path: '/api/line/new-project', request: 'NewLineProjectRequest', response: 'NewLineProjectResult' },
   { method: 'GET', path: '/api/line/tools', request: null, response: 'ToolList' },
   { method: 'GET', path: '/api/line/ai-profiles', request: null, response: 'AiProfiles' },
+  { method: 'GET', path: '/api/line/memory', request: null, response: 'MemoryView (memory/contract.mjs)' },
+  { method: 'POST', path: '/api/line/memory/forget', request: '{step} + x-line-approval', response: 'MemoryView & {message}' },
   { method: 'POST', path: '/api/line/trace', request: 'TraceRequest', response: 'TraceMatch' },
   { method: 'GET', path: '/api/line/import-agent', request: 'folder (query)', response: 'ImportAgentView' },
   { method: 'POST', path: '/api/line/import-agent/start', request: '{folder, route?}', response: 'ImportAgentView' },

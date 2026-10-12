@@ -29,6 +29,8 @@ export type RouteCard = {
   /** Details: the steps as tool calls, how it was found, its cost. */
   calls: string[];
   how: string;
+  /** im3 + j5: why memory recommends it ("Recalled from 3 past decisions: ..."), else null. */
+  memory: string | null;
 };
 
 /** Everything the drafter box needs. */

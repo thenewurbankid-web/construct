@@ -16,6 +16,8 @@ export * as lineImportAgent from './line/importAgentDisk.mjs';
 export * as lineImportVerify from './line/importVerify.mjs';
 /** `@line/construct-engine/line/logic-map` */
 export * as lineLogicMap from './line/logicMap.mjs';
+/** `@line/construct-engine/line/memory` */
+export * as lineMemory from './line/memory/index.mjs';
 /** `@line/construct-engine/line/graph` */
 export * as lineGraph from './line/graph/build.mjs';
 /** `@line/construct-engine/line/graph/contract` */

@@ -258,6 +258,8 @@ export const EDGE_TYPES = Object.freeze(['base', 'import']);
  * @property {{to: 'qwen'|'ask'|null, sentence: string, about?: string, choices?: string[]}} defer  `about` and `choices`: a closed
  *   question the drafter asks itself (no name or no library item given): its choices are the checked routes that answer it.
  * @property {Record<string, unknown>} bindings
+ * @property {(import('../memory/contract.mjs').MemoryPreference & {route: string})|null} [memory]  im3 + j5: the person's
+ *   consistent past picks moved this checked route first (null: memory had nothing to say).
  */
 
 /**

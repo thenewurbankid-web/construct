@@ -25,6 +25,7 @@ export function routeCards(view: DraftView | null): RouteCard[] {
     canAdd: r.status === 'ok',
     fix: r.fix ? r.fix.sentence : null,
     calls: r.steps.map((s) => `${s.tool} ${JSON.stringify(s.args)}`),
+    memory: r.memory ?? null,
     how: `Found by ${HOW[r.via] ?? r.via}; ${r.cost.steps === 1 ? '1 step' : `${r.cost.steps} steps`}, ${r.cost.files === 1 ? '1 file' : `${r.cost.files} files`}; confidence ${Math.round(r.confidence * 100)}%; route ${r.id}.`,
   }));
 }

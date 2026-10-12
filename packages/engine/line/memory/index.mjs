@@ -28,6 +28,7 @@ export function memoryOf(root) {
  * Remember what happened to one proposal in this project's memory.
  * @param {string} root @param {string} step
  * @param {import('./contract.mjs').MemoryProposal} proposal @param {import('./contract.mjs').MemoryOutcome} outcome
+ * @returns {Promise<import('./contract.mjs').MemoryRecord>}
  */
 export function recordOutcome(root, step, proposal, outcome) {
   return memoryOf(root).recordOutcome(step, proposal, outcome);
@@ -36,6 +37,7 @@ export function recordOutcome(root, step, proposal, outcome) {
 /**
  * This project's past decisions of `step` like `context`.
  * @param {string} root @param {string} step @param {import('./recall.mjs').RecallContext} context @param {number} [k]
+ * @returns {(import('./contract.mjs').Recalled & {i: number})[]}
  */
 export function recall(root, step, context, k = 5) {
   return memoryOf(root).recall(step, context, k);

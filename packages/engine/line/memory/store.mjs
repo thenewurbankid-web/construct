@@ -26,7 +26,7 @@ export const LINE_VOCAB = new Set(['ui', 'workflow', 'workflows', 'data', 'libra
 /**
  * The project's names and domain words, for the leak guard (read lazily; an unreadable project has none).
  * @param {string} root
- * @returns {Promise<string[]>|string[]}
+ * @returns {Promise<string[]>}
  */
 async function readProjectWords(root) {
   try {
@@ -45,6 +45,7 @@ async function readProjectWords(root) {
  * @param {string} root The project root (its memory never leaves `<root>/<stateDir>/memory/`).
  * @param {{stateDir?: string, words?: string[], now?: () => string}} [o] `words`: the project's names and domain words
  *   for the leak guard (default: read from the project); `stateDir`: the Line state folder (default `line`).
+ * @returns The store: records, recordOutcome, recall, prefer, sizes, forget, remove, exportAll, importAll.
  */
 export function createMemory(root, o = {}) {
   const stateDir = (o.stateDir ?? 'line').replace(/\/+$/, '');

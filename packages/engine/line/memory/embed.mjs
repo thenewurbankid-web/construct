@@ -47,6 +47,7 @@ const cos = (a, b) => { let d = 0; let x = 0; let y = 0; for (let i = 0; i < a.l
  * @param {import('./recall.mjs').RecallContext} ctx @param {number} k
  * @param {(texts: string[]) => Promise<number[][]>} embed
  * @param {Map<string, number[]>} [cache] decision text -> vector
+ * @returns {Promise<(import('./contract.mjs').Recalled & {i: number})[]>}
  */
 export async function recallWithEmbeddings(records, step, ctx, k, embed, cache = new Map()) {
   try {
