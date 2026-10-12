@@ -104,11 +104,19 @@ test('isolated: a hanging unit is killed by the time limit', async () => {
 });
 
 test('isolated: the sandbox leaves no temp dir behind and time and random are fixed', async () => {
-  const leftover = () => fs.readdirSync(os.tmpdir()).filter((d) => d.startsWith('construct-lv-isolated-'));
-  const before = new Set(leftover());
-  const src = 'export function save() { return `${new Date().toISOString()} ${Math.random()}`; }';
-  assert.equal((await verify(src, src)).outcome, 'same-behaviour');
-  assert.deepEqual(leftover().filter((d) => !before.has(d)), []);
+  // A private TMPDIR (os.tmpdir() reads it per call): other test files running isolated pairs at the same time
+  // create their own construct-lv-isolated-* dirs in the shared temp dir, which this check must not see.
+  const own = fs.mkdtempSync(path.join(os.tmpdir(), 'construct-lv-isolated-test-'));
+  const saved = process.env.TMPDIR;
+  process.env.TMPDIR = own;
+  try {
+    const src = 'export function save() { return `${new Date().toISOString()} ${Math.random()}`; }';
+    assert.equal((await verify(src, src)).outcome, 'same-behaviour');
+    assert.deepEqual(fs.readdirSync(own), []);
+  } finally {
+    if (saved === undefined) delete process.env.TMPDIR; else process.env.TMPDIR = saved;
+    fs.rmSync(own, { recursive: true, force: true });
+  }
 });
 
 test('isolated: cases are deterministic and carry sentinels', () => {
