@@ -81,7 +81,152 @@
         "question": null
       }
     ],
-    "recommended": "run-1"
+    "recommended": "run-1",
+    "beam": {
+      "events": [
+        {
+          "t": "runOpened",
+          "run": "run-1",
+          "parent": null,
+          "reading": {
+            "intent": "update.handler",
+            "object": "handler",
+            "target": "F1",
+            "layers": [
+              "ui"
+            ],
+            "confidence": 0.75
+          },
+          "forks": []
+        },
+        {
+          "t": "runOpened",
+          "run": "run-2",
+          "parent": null,
+          "reading": {
+            "intent": "update.prop",
+            "object": "prop",
+            "target": "F1",
+            "layers": [
+              "ui"
+            ],
+            "confidence": 0.55
+          },
+          "forks": []
+        },
+        {
+          "t": "runOpened",
+          "run": "run-3",
+          "parent": null,
+          "reading": {
+            "intent": "add.handler",
+            "object": "handler",
+            "target": "F1",
+            "layers": [
+              "ui"
+            ],
+            "confidence": 0.5
+          },
+          "forks": []
+        },
+        {
+          "t": "runClosed",
+          "run": "run-2",
+          "reason": "goal",
+          "detail": "goal condition false: the call is never logged"
+        },
+        {
+          "t": "runClosed",
+          "run": "run-3",
+          "reason": "emit",
+          "detail": "tsc: useCallLog is not exported"
+        },
+        {
+          "t": "runRanked",
+          "run": "run-1",
+          "score": 0.7,
+          "rank": 1,
+          "why": [
+            "the Call button already has a handler"
+          ]
+        },
+        {
+          "t": "done",
+          "outcome": "plan",
+          "run": "run-1",
+          "open": 1,
+          "closed": 2,
+          "ms": 980
+        }
+      ],
+      "ms": null
+    },
+    "arms": {
+      "static": [
+        {
+          "intent": "update.prop",
+          "object": "prop",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.55
+        }
+      ],
+      "sklearn": [
+        {
+          "intent": "update.handler",
+          "object": "handler",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.6
+        }
+      ],
+      "spacy": [
+        {
+          "intent": "update.handler",
+          "object": "handler",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.5
+        }
+      ],
+      "jev": [
+        {
+          "intent": "update.handler",
+          "object": "handler",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.75
+        }
+      ],
+      "zero-shot": [
+        {
+          "intent": "add.handler",
+          "object": "handler",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.5
+        },
+        {
+          "intent": "update.handler",
+          "object": "handler",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.45
+        }
+      ]
+    }
   },
   "at": "2026-10-12T15:00:32.000Z"
 }

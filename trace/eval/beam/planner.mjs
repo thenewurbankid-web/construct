@@ -19,6 +19,10 @@ import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { BEAM_DIR } from "./prompts.mjs";
+import { foldEvents, readEvents } from "./beam-tree.mjs";
+
+/** A beam Reading as run labels (the target is a slot id). */
+const readingLabels = (r) => (r ? { intent: r.intent, object: r.object, target: { kind: "slot", name: r.target ?? "" }, layers: r.layers ?? [], by: r.by ?? r.arm ?? null } : null);
 
 export const DEFAULT_ASK = path.join(BEAM_DIR, "..", "..", "tools", "jev", "ask.mjs");
 
@@ -79,10 +83,18 @@ export function normalizePlannerOutput(raw, source) {
     path: (r.path ?? r.trace ?? r.nodes ?? []).map(normalizeNode),
     question: questionOf(r.question ?? null),
   });
-  const runs = Array.isArray(raw.runs) && raw.runs.length ? raw.runs.map(runOf) : [runOf(raw, 0)];
-  const recommended = raw.recommended != null && runs.some((r) => r.id === String(raw.recommended)) ? String(raw.recommended) : runs[0].id;
+  // The beam (#902): its events.jsonl (inline `events`, or `eventsFile`) and the arms' readings pass through; with no
+  // `runs`, the surviving runs come from the events (one per runOpened not closed), the recommended one is the winner.
+  const events = Array.isArray(raw.events) ? raw.events : Array.isArray(raw.beam?.events) ? raw.beam.events : raw.eventsFile ? readEvents(String(raw.eventsFile)).events : null;
+  const tree = events ? foldEvents(events) : null;
+  const fromTree = tree && !(Array.isArray(raw.runs) && raw.runs.length) && !raw.labels && !raw.path ? tree.runs.filter((r) => r.status !== "closed").map((r) => ({ id: r.id, labels: readingLabels(r.reading), path: raw.paths?.[r.id] ?? [] })) : null;
+  const runs = fromTree?.length ? fromTree.map(runOf) : Array.isArray(raw.runs) && raw.runs.length ? raw.runs.map(runOf) : [runOf(raw, 0)];
+  const rec = raw.recommended ?? tree?.winner;
+  const recommended = rec != null && runs.some((r) => r.id === String(rec)) ? String(rec) : runs[0].id;
   const top = runs.find((r) => r.id === recommended);
-  return { available: true, source, labels: top.labels, path: top.path, question: questionOf(raw.question) ?? top.question, runs, recommended };
+  const beamQ = tree?.question ? { text: tree.question.sentence, options: tree.question.options.map((o) => o.sentence) } : null;
+  const beam = events ? { events, ms: Number.isFinite(raw.ms) ? raw.ms : Number.isFinite(raw.beam?.ms) ? raw.beam.ms : null } : null;
+  return { available: true, source, labels: top.labels, path: top.path, question: questionOf(raw.question) ?? beamQ ?? top.question, runs, recommended, beam, arms: raw.arms ?? null };
 }
 
 /**
@@ -93,15 +105,17 @@ export function normalizePlannerOutput(raw, source) {
 export function createAskPlanner({ askPath = DEFAULT_ASK, run = spawnSync, timeoutMs = 120_000 } = {}) {
   return {
     kind: "ask",
-    ask(request) {
+    ask(request, { eventsFile } = {}) {
       if (typeof request !== "string") throw new TypeError("the planner takes the request text only");
       const fail = (error) => ({ available: false, source: "ask", error, labels: null, path: [], question: null, runs: [], recommended: null });
       if (!fs.existsSync(askPath)) return fail(`${path.relative(path.join(BEAM_DIR, "..", ".."), askPath)} is not there yet (the planner CLI is built separately); use --planner fixture`);
-      const res = run(process.execPath, [askPath, request, "--json"], { encoding: "utf8", timeout: timeoutMs, maxBuffer: 10 * 1024 * 1024 });
+      const res = run(process.execPath, [askPath, request, "--json"], { encoding: "utf8", timeout: timeoutMs, maxBuffer: 10 * 1024 * 1024, env: eventsFile ? { ...process.env, BEAM_EVENTS_FILE: eventsFile } : process.env });
       if (res.error) return fail(`ask.mjs did not run: ${res.error.message}`);
       if (res.status !== 0) return fail(`ask.mjs exited ${res.status}: ${String(res.stderr || res.stdout).slice(0, 300)}`);
       let raw;
       try { raw = JSON.parse(res.stdout); } catch { return fail("ask.mjs --json did not print JSON"); }
+      // The beam streams its events.jsonl to BEAM_EVENTS_FILE (Mission Control tails it live); read it when the JSON has none.
+      if (raw && typeof raw === "object" && !raw.events && !raw.eventsFile && eventsFile && fs.existsSync(eventsFile)) raw.eventsFile = eventsFile;
       return normalizePlannerOutput(raw, "ask");
     },
   };

@@ -178,7 +178,189 @@
         "question": null
       }
     ],
-    "recommended": "run-jev"
+    "recommended": "run-jev",
+    "beam": {
+      "events": [
+        {
+          "t": "runOpened",
+          "run": "run-static",
+          "parent": null,
+          "reading": {
+            "intent": "update.prop",
+            "object": "prop",
+            "target": "F1",
+            "layers": [
+              "ui",
+              "api"
+            ],
+            "confidence": 0.6
+          },
+          "forks": [
+            {
+              "point": "source",
+              "pick": "api",
+              "label": "from a new api field"
+            }
+          ]
+        },
+        {
+          "t": "runOpened",
+          "run": "run-jev",
+          "parent": null,
+          "reading": {
+            "intent": "update.prop",
+            "object": "prop",
+            "target": "F1",
+            "layers": [
+              "ui"
+            ],
+            "confidence": 0.8
+          },
+          "forks": [
+            {
+              "point": "source",
+              "pick": "computed",
+              "label": "computed from the orders"
+            }
+          ]
+        },
+        {
+          "t": "runOpened",
+          "run": "run-3",
+          "parent": null,
+          "reading": {
+            "intent": "add.handler",
+            "object": "handler",
+            "target": "F2",
+            "layers": [
+              "ui"
+            ],
+            "confidence": 0.45
+          },
+          "forks": []
+        },
+        {
+          "t": "runClosed",
+          "run": "run-3",
+          "reason": "precondition",
+          "detail": "an add.handler needs an action slot; the header has none"
+        },
+        {
+          "t": "runRanked",
+          "run": "run-jev",
+          "score": 0.81,
+          "rank": 1,
+          "why": [
+            "computed from fields already loaded"
+          ]
+        },
+        {
+          "t": "runRanked",
+          "run": "run-static",
+          "score": 0.55,
+          "rank": 2,
+          "why": [
+            "creates three layers"
+          ]
+        },
+        {
+          "t": "question",
+          "question": {
+            "id": "beam:orders-1",
+            "sentence": "Should the total value come from an api field or be computed from the orders on the page?",
+            "hint": "Computed first: every field it needs is already loaded (rule: reuse before create).",
+            "recommended": "run-jev",
+            "options": [
+              {
+                "id": "run-jev",
+                "sentence": "computed from the orders",
+                "effect": "adds a hook over the loaded orders"
+              },
+              {
+                "id": "run-static",
+                "sentence": "an api field",
+                "effect": "adds GET /api/orders/total and three layers"
+              }
+            ]
+          }
+        },
+        {
+          "t": "done",
+          "outcome": "question",
+          "run": "run-jev",
+          "open": 2,
+          "closed": 1,
+          "ms": 1210
+        }
+      ],
+      "ms": null
+    },
+    "arms": {
+      "static": [
+        {
+          "intent": "update.prop",
+          "object": "prop",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.6
+        }
+      ],
+      "sklearn": [
+        {
+          "intent": "update.prop",
+          "object": "prop",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.7
+        }
+      ],
+      "spacy": [
+        {
+          "intent": "update.prop",
+          "object": "prop",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.5
+        }
+      ],
+      "jev": [
+        {
+          "intent": "update.prop",
+          "object": "prop",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.8
+        }
+      ],
+      "zero-shot": [
+        {
+          "intent": "add.handler",
+          "object": "handler",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.45
+        },
+        {
+          "intent": "update.prop",
+          "object": "prop",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.4
+        }
+      ]
+    }
   },
   "at": "2026-10-12T15:00:49.000Z"
 }

@@ -87,7 +87,101 @@
         }
       }
     ],
-    "recommended": "run-1"
+    "recommended": "run-1",
+    "beam": {
+      "events": [
+        {
+          "t": "runOpened",
+          "run": "run-1",
+          "parent": null,
+          "reading": {
+            "intent": "update.prop",
+            "object": "prop",
+            "target": "F1",
+            "layers": [
+              "ui"
+            ],
+            "confidence": 0.85
+          },
+          "forks": []
+        },
+        {
+          "t": "runRanked",
+          "run": "run-1",
+          "score": 0.9,
+          "rank": 1,
+          "why": [
+            "count of the loaded list"
+          ]
+        },
+        {
+          "t": "done",
+          "outcome": "plan",
+          "run": "run-1",
+          "open": 1,
+          "closed": 0,
+          "ms": 420
+        }
+      ],
+      "ms": null
+    },
+    "arms": {
+      "static": [
+        {
+          "intent": "update.prop",
+          "object": "prop",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.85
+        }
+      ],
+      "sklearn": [
+        {
+          "intent": "update.prop",
+          "object": "prop",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.8
+        }
+      ],
+      "spacy": [
+        {
+          "intent": "update.prop",
+          "object": "prop",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.7
+        }
+      ],
+      "jev": [
+        {
+          "intent": "update.prop",
+          "object": "prop",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.9
+        }
+      ],
+      "zero-shot": [
+        {
+          "intent": "update.prop",
+          "object": "prop",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.6
+        }
+      ]
+    }
   },
   "at": "2026-10-12T15:00:16.000Z"
 }

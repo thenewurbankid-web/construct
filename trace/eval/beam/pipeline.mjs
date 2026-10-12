@@ -11,6 +11,7 @@ import path from "node:path";
 import { appView, buildRequesterWriteInput, buildRequesterAnswerInput, buildPlannerRequest, buildGraderInput, blindRuns } from "./inputs.mjs";
 import { normalizePlannerOutput, createAskPlanner, createFixturePlanner } from "./planner.mjs";
 import { createJudges } from "./judges.mjs";
+import { itemMetrics } from "./metrics.mjs";
 
 /** Spread `count` items round-robin over the apps: [["contacts", 1], ["orders", 1], ["contacts", 2], ...]. */
 export function itemSlots(apps, count) {
@@ -65,12 +66,21 @@ export async function runSetup(o) {
     earlier[app].push(w.requirement);
     const item = { id, app, requirement: w.requirement, gold: w.gold, notes: w.notes, goldProblems: w.goldProblems, transcripts: [w.transcript] };
 
-    const plan = planner.ask(buildPlannerRequest(item));
+    // The beam streams events.jsonl next to the item's transcripts (Mission Control's Beam eval panel tails it live).
+    const itemDir = path.join(runsDir, judges.setup, id);
+    const eventsFile = path.join(itemDir, "events.jsonl");
+    if (mode !== "replay") { fs.mkdirSync(itemDir, { recursive: true }); fs.rmSync(eventsFile, { force: true }); }
+    const t0 = Date.now();
+    const plan = planner.ask(buildPlannerRequest(item), mode === "replay" ? {} : { eventsFile });
+    const ms = Date.now() - t0;
     if (mode !== "replay") {
-      fs.mkdirSync(path.join(runsDir, judges.setup, id), { recursive: true });
-      fs.writeFileSync(path.join(runsDir, judges.setup, id, "planner.json"), JSON.stringify({ request: item.requirement, planner: planner.kind, answer: plan, at: now() }, null, 2) + "\n");
+      fs.writeFileSync(path.join(itemDir, "planner.json"), JSON.stringify({ request: item.requirement, planner: planner.kind, answer: plan, at: now() }, null, 2) + "\n");
+      if (plan.beam?.events && !fs.existsSync(eventsFile)) fs.writeFileSync(eventsFile, plan.beam.events.map((e) => JSON.stringify(e)).join("\n") + "\n");
     }
-    item.planner = { available: plan.available, source: plan.source, error: plan.error ?? null };
+    item.planner = { available: plan.available, source: plan.source, error: plan.error ?? null, ms: mode === "live" ? ms : null };
+    item.beam = plan.beam ?? null;
+    item.arms = plan.arms ?? null;
+    item.metrics = itemMetrics(item);
     item.labels = plan.labels;
     item.runs = plan.runs;
     item.recommended = plan.recommended;
