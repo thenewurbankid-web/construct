@@ -15,6 +15,7 @@ import os from 'node:os';
 import { execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { jsonlSplitter, joinRun, detectLoop, counters, timeline } from './bench-log.mjs';
+import { RUNS_REL, discoverRuns, pickAutoRun, isRealRun, runBanner } from './runs.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.MC_PORT ?? 4777);
@@ -78,29 +79,7 @@ function logEvent(source, level, text, extra = {}) {
 }
 
 // ---------------------------------------------------------------- bench runs
-const RUNS_REL = 'bench/ecommerce/runs';
-
-/** Every run dir (<runs>/<name> with a logs/ folder) across the main checkout and all worktrees, newest first. */
-function discoverRuns() {
-  const roots = [path.join(REPO, RUNS_REL)];
-  const wtDir = path.join(REPO, '.claude/worktrees');
-  try { for (const w of fs.readdirSync(wtDir)) roots.push(path.join(wtDir, w, RUNS_REL)); } catch { /* no worktrees */ }
-  if (process.env.MC_RUNS) roots.push(...process.env.MC_RUNS.split(':'));
-  const out = [];
-  for (const r of roots) {
-    let names = [];
-    try { names = fs.readdirSync(r); } catch { continue; }
-    for (const n of names) {
-      const logs = path.join(r, n, 'logs');
-      let mtime = 0;
-      try {
-        for (const f of fs.readdirSync(logs)) { const s = fs.statSync(path.join(logs, f)); if (s.isFile() && s.mtimeMs > mtime) mtime = s.mtimeMs; }
-      } catch { continue; }
-      out.push({ path: path.join(r, n), name: n, where: path.relative(REPO, r).split(path.sep).slice(0, 3).join('/') || '.', mtime });
-    }
-  }
-  return out.sort((a, b) => b.mtime - a.mtime);
-}
+const EXTRA_ROOTS = process.env.MC_RUNS ? process.env.MC_RUNS.split(':') : [];
 
 let runList = [];
 let autoRun = null;
@@ -188,8 +167,18 @@ function runTailer(dir) {
     return { reset, upserts, removed, console: lines };
   }
 
+  function growMtime() {
+    let m = null;
+    for (const f of [calls.file, turns.file]) { try { m = Math.max(m ?? 0, fs.statSync(f).mtimeMs); } catch { /* absent */ } }
+    return m;
+  }
+
   function summary() {
-    return { counters: counters(state.rows, state.turns, Date.now()), loop: detectLoop(state.rows), timeline: timeline(state.rows) };
+    const end = state.turns.find((t) => t?.kind === 'end');
+    // MC_RUNS extras count as fixtures even when they look like a run dir: only discovered bench runs are real.
+    const real = isRealRun(dir) && !EXTRA_ROOTS.some((r) => dir.startsWith(path.resolve(r) + path.sep));
+    const banner = runBanner({ real, growMtime: growMtime(), endAt: end?.at ?? null, stop: end?.stop ?? null, nowMs: Date.now() });
+    return { counters: counters(state.rows, state.turns, Date.now()), loop: detectLoop(state.rows), timeline: timeline(state.rows), banner };
   }
 
   /** Full detail of one row: the raw call record, its approval, the turn record (model output). */
@@ -261,7 +250,7 @@ function benchTick() {
     const sum = t.summary();
     for (const c of clients) {
       if (clientRun(c) !== dir) continue;
-      if (delta?.reset) send(c, 'bench-reset', { run: dir });
+      if (delta?.reset) send(c, 'bench-reset', { run: dir, ...runMode(dir, c.run) });
       if (delta?.upserts?.length || delta?.removed?.length) send(c, 'bench-rows', { run: dir, upserts: delta.upserts, removed: delta.removed });
       if (delta?.console?.length) send(c, 'bench-console', { run: dir, lines: delta.console });
       send(c, 'bench-summary', { run: dir, ...sum });
@@ -270,22 +259,34 @@ function benchTick() {
 }
 
 function discoverTick() {
-  runList = discoverRuns();
-  const next = runList[0]?.path ?? null;
+  runList = discoverRuns(REPO, EXTRA_ROOTS);
+  const next = pickAutoRun(runList)?.path ?? null;
   if (next !== autoRun) {
     const prev = autoRun;
     autoRun = next;
     if (next) logEvent('bench', 'info', `${prev ? 'newer run' : 'watching run'}: ${path.relative(REPO, next)}`);
     for (const c of clients) if (!c.run) sendBenchSnapshot(c);
   }
-  broadcast('runs', { auto: autoRun, runs: runList.slice(0, 40).map((r) => ({ ...r, rel: path.relative(REPO, r.path) })) });
+  broadcast('runs', runsPayload());
+}
+
+function runsPayload() {
+  const real = runList.filter((r) => r.real).slice(0, 60);
+  const extra = runList.filter((r) => !r.real).slice(0, 20);
+  return { auto: autoRun, runs: [...real, ...extra].map((r) => ({ ...r, rel: path.relative(REPO, r.path) })) };
+}
+
+/** How the page must label a run: live only when it is the auto-picked real run (staleness is judged client-side). */
+function runMode(dir, pinned) {
+  if (!dir) return { real: false, pinned };
+  return { real: isRealRun(dir), pinned: Boolean(pinned) };
 }
 
 function sendBenchSnapshot(c) {
   const dir = clientRun(c);
   if (!dir) { send(c, 'bench-reset', { run: null }); return; }
   const t = tailerFor(dir);
-  send(c, 'bench-reset', { run: dir, rel: path.relative(REPO, dir) });
+  send(c, 'bench-reset', { run: dir, rel: path.relative(REPO, dir), ...runMode(dir, c.run) });
   send(c, 'bench-rows', { run: dir, upserts: t.state.rows, removed: [] });
   send(c, 'bench-console', { run: dir, lines: t.state.console.slice(-800) });
   send(c, 'bench-summary', { run: dir, ...t.summary() });
@@ -481,7 +482,7 @@ function allowedRun(p) {
   const abs = path.resolve(p);
   if (runList.some((r) => r.path === abs)) return abs;
   if (abs.split(path.sep).join('/').includes(`/${RUNS_REL}/`) && fs.existsSync(path.join(abs, 'logs'))) return abs;
-  if (process.env.MC_RUNS && process.env.MC_RUNS.split(':').some((r) => abs.startsWith(path.resolve(r) + path.sep)) && fs.existsSync(path.join(abs, 'logs'))) return abs;
+  if (EXTRA_ROOTS.some((r) => abs.startsWith(path.resolve(r) + path.sep)) && fs.existsSync(path.join(abs, 'logs'))) return abs;
   return null;
 }
 
@@ -502,7 +503,7 @@ const server = http.createServer((req, res) => {
     clients.add(c);
     send(c, 'hello', { repo: REPO, self: SELF, branch: BRANCH, pid: process.pid, pinned: pinned ? runDir ?? `refused: ${pinned}` : null, startedAt: STARTED });
     send(c, 'events-backlog', events.slice(-300));
-    send(c, 'runs', { auto: autoRun, runs: runList.slice(0, 40).map((r) => ({ ...r, rel: path.relative(REPO, r.path) })) });
+    send(c, 'runs', runsPayload());
     sendBenchSnapshot(c);
     send(c, 'worktrees', { at: Date.now(), self: SELF, items: worktrees.map(publicWt) });
     send(c, 'commits', { branch: BRANCH, items: commitFeed });

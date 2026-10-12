@@ -20,9 +20,20 @@ Stop it with Ctrl-C (SIGINT/SIGTERM close every stream and exit).
 
 ## Panels
 
-**Bench telemetry.** Watches the newest run dir (`bench/ecommerce/runs/<name>/logs/`, newest log mtime) across the main
-checkout and every `.claude/worktrees/*`; the RUN picker or `?run=` pins one. Tails, by byte offset with `fs.watch`
-plus a 1 s poll (partial lines wait for their newline; truncation or replacement resets):
+**Bench telemetry.** Watches the newest *real* run: a dir directly under `bench/ecommerce/runs/` (main checkout or any
+`.claude/worktrees/*`), newest by its calls/turns log growth. Fixtures (anything under `mission-control/` or a
+`fixtures/` folder) and `MC_RUNS` extras are listed in the RUN picker as `FIXTURE · …` but are never auto-picked
+(`runs.mjs`). The RUN picker or `?run=` pins any listed run. A banner above the counters says what you are looking at:
+
+- `LIVE — logs growing`: calls.jsonl/turns.jsonl grew in the last 2 minutes and there is no end record.
+- `REPLAY — finished run (ended <time>[: stop reason])`: an end record, or no growth for 2 minutes.
+- `FIXTURE — not real data`: the run is a fixture or an `MC_RUNS` extra, whatever its age.
+
+Replays step through turn by turn: prev/next buttons, a turn slider, the Left/Right arrow keys, or a click on a
+timeline cell highlight that turn's rows and scroll to them ("follow tail" returns to the live end).
+
+Tails, by byte offset with `fs.watch` plus a 1 s poll (partial lines wait for their newline; truncation or replacement
+resets):
 
 - `calls.jsonl` (plan-cli.mjs / plain-cli.mjs): `{at, builder, kind: 'call', cmd, args, ms, bytes?, result: {ok, code,
   sentence, stepId, state, landed, tool, rules}}` and `{kind: 'approval', stepId, tool, approvedBy, mechanism}`.
