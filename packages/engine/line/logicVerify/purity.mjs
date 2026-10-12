@@ -18,6 +18,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import crypto from 'node:crypto';
 import { parseToAst, walkAst, collectImpureDomainReferences } from '@construct/ast';
 import { importLinked } from '../../../line-links/index.mjs';
 import { EFFECT_NAMES, MORPHEUS_EFFECTS, LOGIC_KIND_EFFECTS } from './contract.mjs';
@@ -60,11 +61,15 @@ const result = (/** @type {EffectLink[]} */ found) => {
  * @returns {{purity: Purity, effectChain: EffectLink[]}}
  */
 export function classifyLocal({ root, file, fn }) {
+  const source = fs.readFileSync(path.join(root, file), 'utf8');
+  return localOf(fileUnits(source, file), parseToAst(source), fn);
+}
+
+/** classifyLocal on parsed facts: the function's effect units plus the effectful free globals it names. */
+function localOf(units, ast, fn) {
   /** @type {EffectLink[]} */
   const found = [];
-  const source = fs.readFileSync(path.join(root, file), 'utf8');
-  for (const u of fileUnits(source, file)) if (u.fn === fn && LOGIC_KIND_EFFECTS[u.kind]) found.push({ effect: LOGIC_KIND_EFFECTS[u.kind], via: [] });
-  const ast = parseToAst(source);
+  for (const u of units) if (u.fn === fn && LOGIC_KIND_EFFECTS[u.kind]) found.push({ effect: LOGIC_KIND_EFFECTS[u.kind], via: [] });
   const node = findFunction(ast, fn);
   if (node) {
     for (const hit of collectImpureDomainReferences(/** @type {any} */ ({ ...ast, body: [node] }))) {
@@ -72,6 +77,39 @@ export function classifyLocal({ root, file, fn }) {
     }
   }
   return result(found);
+}
+
+/** classifyFile results by file and content hash (bounded; the oldest entry goes first). */
+const FILE_CACHE_MAX = 2000;
+const fileCache = new Map();
+
+/**
+ * The local purity class of every function with logic in one file, in one parse (classifyLocal per function, no
+ * transitive chain): function name -> {purity, effects (EffectName[], EFFECT_NAMES order)}. Sync and cached by the
+ * file's content, so the logic map and the graph (G1) can carry it on every unit without a measurable build cost.
+ * A file that does not parse classifies nothing (an empty map).
+ * @param {string} source
+ * @param {string} rel  Project-relative path.
+ * @returns {Map<string, {purity: Purity, effects: EffectName[]}>}
+ */
+export function classifyFile(source, rel) {
+  const key = `${rel}\0${crypto.createHash('sha1').update(source).digest('hex')}`;
+  const hit = fileCache.get(key);
+  if (hit) return hit;
+  /** @type {Map<string, {purity: Purity, effects: EffectName[]}>} */
+  const out = new Map();
+  try {
+    const units = fileUnits(source, rel);
+    const ast = parseToAst(source);
+    for (const fn of new Set(units.map((u) => u.fn))) {
+      if (fn === '<module>') continue;
+      const r = localOf(units, ast, fn);
+      out.set(fn, { purity: r.purity, effects: r.effectChain.map((l) => l.effect) });
+    }
+  } catch { /* does not parse: nothing classified */ }
+  if (fileCache.size >= FILE_CACHE_MAX) fileCache.delete(fileCache.keys().next().value);
+  fileCache.set(key, out);
+  return out;
 }
 
 /** Morpheus's scan modules, loaded once through the link; null when the link is down. */

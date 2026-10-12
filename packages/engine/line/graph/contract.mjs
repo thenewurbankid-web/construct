@@ -88,8 +88,9 @@ export const EDGE_ENDS = Object.freeze(/** @type {Record<GraphEdgeType, [GraphNo
 export const ID_PREFIX = Object.freeze(/** @type {Record<GraphNodeKind, string>} */ ({
   item: 'item:', unit: 'unit:', feature: 'feature:', library: 'library', route: 'route:', endpoint: 'endpoint:', field: 'field:', table: 'table:', specPoint: 'spec:', finding: 'finding:', planStep: 'step:',
 }));
-/** The attrs a node may carry (closed): an item's area, feature, Line kind and classify layers; a unit's logic kind. */
-export const NODE_ATTRS = Object.freeze(['area', 'feature', 'itemKind', 'level', 'layers', 'unitKind', 'rule', 'severity']);
+/** The attrs a node may carry (closed): an item's area, feature, Line kind and classify layers; a unit's logic kind and
+ * purity class (`purity` 'pure' | 'impure', `effects` its effect names: logicVerify/purity.mjs classifyFile). */
+export const NODE_ATTRS = Object.freeze(['area', 'feature', 'itemKind', 'level', 'layers', 'unitKind', 'rule', 'severity', 'purity', 'effects']);
 /** Where the graph is stored, under Line's state folder, through writeLineState. */
 export const GRAPH_DIR = 'line/graph';
 export const GRAPH_FILES = Object.freeze({ nodes: `${GRAPH_DIR}/nodes.jsonl`, edges: `${GRAPH_DIR}/edges.jsonl`, index: `${GRAPH_DIR}/index.json` });
