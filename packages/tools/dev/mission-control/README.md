@@ -91,3 +91,20 @@ node --test packages/tools/dev/mission-control/mission-control.test.mjs
 The parser, join, counters, timeline and loop detector over `fixtures/runs/fixture-qwen` (record shapes copied from
 qwen-agent.mjs and plan-cli.mjs). To see the panel without a live run:
 `MC_RUNS=packages/tools/dev/mission-control/fixtures/runs npm run mc`.
+
+## Beam eval panel (#902)
+
+The planner eval of epic #900 (fit the request into the Trace map by parallel runs), below the other panels
+(`beam-eval.mjs`, browser side `beam-eval-panel.mjs`; one hook line each in `server.mjs` and `index.html`). Per
+requirement: the beam's run tree, live while a run is going (opened, closed with its reason, the run it ended on), tailed
+from `trace/eval/beam/runs/<setup>/<item>/events.jsonl`; the arms' readings; the final question and the requester's
+answer; the Opus-Grader's score and justification; the owner's score and note (rubric buttons, saved through Trace's
+eval API); agreement. On top: the setup summary (mean per judge, agreement rate, items disagreeing by 2 or more first)
+and the deterministic metrics (NLP recall, prune accuracy, runs opened/closed, questions, tsc/condition fails, time,
+per layer and per arm with the "rescued by the beam" count). It reuses Trace's renderers (`trace/src/ui/beam.mjs`) and
+eval API (`trace/src/beam-routes.mjs`): `/beam-eval/*` and `/api/beam/*`. These are the only routes that write
+(owner grades, replay re-runs); a re-run calls Opus only when the server runs with `TRACE_BEAM_LIVE=1`.
+
+```
+node --test packages/tools/dev/mission-control/beam-eval.test.mjs
+```
