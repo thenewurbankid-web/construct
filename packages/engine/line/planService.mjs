@@ -194,7 +194,8 @@ export function stepView(root, plan, s, ops = REAL_PLAN_OPS) {
  *   commands?: any, load?: (o: {root: string, registry: any}) => Promise<{api: any, store: {linked: boolean, sentence: string}}>,
  *   linkOptions?: object, trace?: {id: string, record: (e: any) => any, problem: string|null} | null, records?: any, memory?: any,
  *   offers?: {get: () => any[] | null, set: (fixes: any[]) => void}, hintState?: {get: () => any, set: (v: any) => void},
-  *   spec?: {features: {name: string, story: string, points: {id: string, text: string}[]}[]} | (() => any) | null,
+ *   blocked?: {get: () => any, set: (v: any) => void},
+ *   spec?: {features: {name: string, story: string, points: {id: string, text: string}[]}[]} | (() => any) | null,
  *   repeats?: {get: () => any, set: (v: any) => void}, repeatAt?: number,
  *   imports?: {question: (folder: string) => Promise<any>, answer: (by: string, folder: string, qid: string, oid: string) => Promise<any>}}} o `commands`: the
  *   construct.* registry (default: Construct's built-in commands; null for none). `trace` (cl1): where this session's
@@ -203,6 +204,7 @@ export function stepView(root, plan, s, ops = REAL_PLAN_OPS) {
  *   where plan feedback is remembered per step (default memory/index.mjs memoryOf(root); null remembers nothing).
  *   `offers` (R1): where the last refusal's typed fixes are kept between processes (default: in memory only).
  *   `hintState` (#886): where the refusal counts per code and target are kept between processes (default: in memory).
+ *   `blocked` (#906): where the steps refused because of a page are kept until a setCode lands there (default: in memory).
  *   `repeats` (#912): where the identical-refused-call counts are kept between processes (default: in memory);
  *   `repeatAt`: the identical refusal that escalates (default 3, repeatGuard.mjs).
  *   `imports` (#887): the import agents an answer goes to (default: the folder's agent on disk, importAgentDisk.mjs): the
@@ -356,6 +358,7 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
       if (has(s)) continue;
       if (!CHANGE_TOOLS[s.tool] || s.args?.retry || checked >= SHOWN_CHOICES) { out.push(f); continue; }
       checked += 1;
+      /** @type {any} */
       let g;
       try { g = planGate(s.tool, plainArgs(s.args)); } catch { g = { ok: true }; }
       if (g.ok) { out.push(f); continue; }
@@ -400,7 +403,7 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
       try { rootOf(root, tool, args); } catch (e) { return refusal(/** @type {any} */ (e).code ?? 'BAD_FOLDER', /** @type {any} */ (e).sentence ?? 'The import folder must be inside the project'); }
     }
     if (CHANGE_TOOLS[tool] && !args.retry) {
-      const g = planGate(tool, args);
+      const g = /** @type {any} */ (planGate(tool, args));
       if (!g.ok) return g.refusal;
       why = why ?? g.summary;
       layout = g.layout;
@@ -506,7 +509,7 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
   const unblock = (step) => { const list = blockedNow(); if (list.some((x) => sameStep(x, step))) keepBlocked(list.filter((x) => !sameStep(x, step))); };
   /**
    * The blocked steps a landed setCode has freed, as typed fixes (recommended first), each pre-checked through the gate.
-   * @param {any} [plan] The current plan (read when not given).
+   * @param {any} [plan0] The current plan (read when not given).
    * @returns {Promise<any[]>}
    */
   const reoffers = async (plan0) => {
