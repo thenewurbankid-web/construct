@@ -143,7 +143,9 @@ test('line.setCode on app/: the layout becomes line.setLayoutSlot, a route entry
     assert.equal((await runOne(svc)).result.apply.ok, true);
     assert.deepEqual(Object.keys(parseAppLayout(read(root, 'app/layout.tsx'))?.slots ?? {}).sort(), ['footer', 'nav']);
     const bad = /** @type {any} */ (await svc.addStep({ tool: 'line.setLayoutSlot', args: { slot: 'top', components: ['library/components/CartLink.tsx'] }, why: WHY }, 'agent'));
-    assert.deepEqual(bad.fixes.map((f) => f.step.args.slot), ['header', 'nav', 'footer']);
+    // #906: each fix is pre-checked: nav and footer already show CartLink, so only header would change anything.
+    assert.deepEqual(bad.fixes.map((f) => f.step.args.slot), ['header']);
+    assert.deepEqual(bad.dropped.map((d) => d.code), ['NO_CHANGE', 'NO_CHANGE']);
     write(root, 'features/home/pages/HomePage.tsx', "// @line-base pages/ListPage\nimport { ListPage } from '../../../library/pages/ListPage';\nexport function HomePage() { return <ListPage title=\"Home\" first=\"a\" />; }\n");
     const route = /** @type {any} */ (await svc.addStep({ tool: 'line.setCode', args: { file: 'app/cart/page.tsx', code: "export { HomePage as default } from '../../features/home/pages/HomePage';\n" }, why: WHY }, 'agent'));
     assert.deepEqual(route.fixes[0].step, { tool: 'line.addRoute', args: { route: '/cart', page: 'features/home/pages/HomePage.tsx' } });
@@ -304,13 +306,18 @@ test('ROUTE_PROPS on line.addRoute: a pass-through page served at a route is ref
     assert.equal(routed.ok, true, routed.sentence);
     assert.equal((await runOne(svc)).state, 'done');
     assert.match(read(root, 'app/page.tsx'), /export \{ HomePage as default \}/);
-    // A library page whose props are required: rendered bare it would not compile, so no fix is offered (the page's
-    // content is the builder's to write), but the route is still refused.
+    // #906: a library page whose props are required: rendered bare it would not compile, so the fix passes its required
+    // string props itself (the title from the spec, the rest their own name), type-checked before it is offered.
+    // #907: line.baseOn now writes a wired page, so the pass-through shape is written directly here.
     write(root, 'features/home/pages/ListView.tsx', passThrough('ListPage', 'ListView'));
     const listed = /** @type {any} */ (await svc.addStep({ tool: 'line.addRoute', args: { route: '/list', page: 'features/home/pages/ListView.tsx' }, why: WHY }, 'agent'));
     assert.equal(listed.code, 'TYPE_ERROR');
     assert.match(listed.sentence, /ListView is served at a route \(app\/list\/page\.tsx\)/);
-    assert.equal(listed.fixes, undefined);
+    assert.equal(listed.fixes[0].id, 'TYPE_ERROR/route-props');
+    assert.equal(listed.fixes[0].step.args.file, 'features/home/pages/ListView.tsx');
+    assert.match(listed.fixes[0].step.args.code, /export function ListView\(\) \{\n {2}return <ListPage title="Home" first="First" \/>;/);
+    assert.match(listed.fixes[0].sentence, /^Make ListView take no props and pass title="Home", first="First" to the library page itself \(the title from the spec\)/);
+    await fixLands(svc, listed);
   } finally { done(); }
 });
 

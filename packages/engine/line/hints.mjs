@@ -52,6 +52,40 @@ export const TOOL_EXAMPLES = Object.freeze({
 
 const STEP_THAT_NEEDS_YOU = '<the id of the step whose state is needs-fix or needs-you>';
 
+const given = (v) => v !== undefined && v !== null && v !== '' && (typeof v !== 'object' || Array.isArray(v));
+/**
+ * #906 (data-qwen3-4b-r1 call 34): a tool's correct call with the refused request's own values (its page, route,
+ * file...) in place of the example's, so a builder is never sent to another page. `drop`: fields that held the bad value
+ * (the example's own value stays there). A file's code is never echoed back: the example's placeholder stays.
+ * @param {string} tool @param {any} args @param {string[]} [drop]
+ * @returns {{tool: string, args: any} | null}
+ */
+export function sameCall(tool, args, drop = []) {
+  const t = TOOL_EXAMPLES[tool];
+  if (!t) return null;
+  const a = args && typeof args === 'object' ? args : {};
+  return ex(tool, Object.fromEntries(Object.entries(t.args).map(([k, v]) => [k, k !== 'code' && !drop.includes(k) && given(a[k]) ? a[k] : v])));
+}
+
+/** The name a page file exports, from its path (features/catalog/pages/ListPage.tsx -> ListPage). */
+const nameOfFile = (f) => path.posix.basename(String(f)).replace(/\.[^.]+$/, '');
+/**
+ * #906: TYPE_ERROR's correct call is about the request's own file: the page a route would serve (addRoute), the page a
+ * baseOn would create, or the file a setCode sent, rewritten whole with line.setCode.
+ * @param {{tool?: string, args?: any}} req
+ * @returns {{tool: string, args: any} | null}
+ */
+function typeErrorCall(req) {
+  const a = req.args ?? {};
+  if (req.tool === 'line.addRoute' && given(a.page)) return ex('line.setCode', { file: a.page, code: `<the whole file: ${nameOfFile(a.page)} takes no props, and passes the library page the props it needs>`, contentHash: '<from read>' });
+  if (req.tool === 'line.baseOn' && given(a.feature) && given(a.name) && given(a.libraryId)) {
+    const kind = String(a.libraryId).split('/')[0];
+    return ex('line.setCode', { file: `features/${a.feature}/${kind}/${a.name}.tsx`, code: `<the whole file: // @line-base ${a.libraryId}, then ${a.name}${kind === 'pages' ? ', taking no props' : ''}>` });
+  }
+  if (given(a.file)) return ex('line.setCode', { file: a.file, code: '<the whole file, fixed where the error points>', contentHash: given(a.contentHash) ? a.contentHash : '<from read>' });
+  return null;
+}
+
 /**
  * Per code: `rule` (one clause, no full stop), `fields` (request args that may hold the bad value, first found wins),
  * `example(req)` (a correct call when the tool's own example is not the right one). Every code a builder can meet is
@@ -61,7 +95,7 @@ const STEP_THAT_NEEDS_YOU = '<the id of the step whose state is needs-fix or nee
 export const REFUSAL_HINTS = Object.freeze({
   NAME_TAKEN: { rule: 'a name or route is used once: reuse the one that exists or pick a free one', fields: ['name', 'route', 'page'] },
   UNKNOWN_ITEM: { rule: 'a step names a file or item that exists in the library or a feature', fields: ['page', 'libraryId', 'file', 'featureItemId', 'from', 'slot', 'components'] },
-  TYPE_ERROR: { rule: 'code lands only when it type-checks against the files it imports', fields: ['file', 'page'] },
+  TYPE_ERROR: { rule: 'code lands only when it type-checks against the files it imports', fields: ['file', 'page'], example: (req) => typeErrorCall(req) },
   BAD_ARGS: { rule: 'each tool takes exactly its own arguments, in the types its schema gives' },
   BAD_CODE: { rule: 'a file is saved only as whole, non-empty code that parses', fields: ['file'] },
   BAD_EVENT: { rule: 'a workflow event is a name of letters and digits', fields: ['event'] },
@@ -215,7 +249,8 @@ export function shapeRefusal(o) {
   let example = o.example ?? null;
   if (!choices.length && !example) {
     const near = code === 'UNKNOWN_TOOL' && o.tool && o.tools?.length ? closestId(String(o.tool), o.tools) : null;
-    const call = hint.example?.(req) ?? (near ? TOOL_EXAMPLES[near] ?? ex(near, {}) : null) ?? (o.tool ? TOOL_EXAMPLES[o.tool] : null) ?? (code === 'UNKNOWN_TOOL' || code === 'BAD_JSON' ? TOOL_EXAMPLES['line.addRoute'] : null);
+    // #906: the refused request's own values (minus the bad one) fill the tool's example, so it names the same page.
+    const call = hint.example?.(req) ?? (near ? TOOL_EXAMPLES[near] ?? ex(near, {}) : null) ?? (o.tool ? sameCall(o.tool, o.args, bad ? [bad.field] : []) : null) ??(code === 'UNKNOWN_TOOL' || code === 'BAD_JSON' ? TOOL_EXAMPLES['line.addRoute'] : null);
     example = call ? callText(call) : `${o.tool ?? 'line.createFeature'} ${JSON.stringify(TOOL_EXAMPLES[o.tool ?? '']?.args ?? TOOL_EXAMPLES['line.createFeature'].args)}`;
   }
   const apply = choices.length ? `To apply one, send {"fix":"${choices[0].ref}"}.` : null;
@@ -241,22 +276,40 @@ export function renderRefusal(s) {
   const out = [`Refused (${s.code}): ${s.wrong}`, `Rule: ${s.rule}.`];
   for (const c of s.context ?? []) out.push(`  ${c}`);
   if (s.choices.length) {
-    out.push(s.choices.length === 1 ? 'Choice:' : 'Choices, recommended first:');
-    let lastWhy = null;
-    for (const c of s.choices.slice(0, SHOWN_CHOICES)) {
-      out.push(`  ${c.ref}: ${stepText(c.step)}`);
-      // Minimal: a why the choice before already gave is not repeated (the structured choice keeps it).
-      if (c.why && c.why !== lastWhy) out.push(`      why: ${c.why}`);
-      lastWhy = c.why ?? null;
-      if (c.effect) out.push(`      does: ${c.effect}`);
-      for (const l of c.context ?? []) out.push(`      ${l}`);
-    }
-    if (s.choices.length > SHOWN_CHOICES) out.push(`  (${s.choices.length - SHOWN_CHOICES} more: ${s.choices.slice(SHOWN_CHOICES).map((c) => c.ref).join(', ')})`);
+    out.push(...choiceLines(s.choices));
     out.push(s.apply ?? '');
   } else if (s.example) {
     out.push(`A correct call: ${s.example}`);
   }
   return out.filter(Boolean).join('\n');
+}
+
+/** The numbered choices as a builder reads them (the first SHOWN_CHOICES; the rest named by ref). */
+function choiceLines(choices) {
+  const out = [choices.length === 1 ? 'Choice:' : 'Choices, recommended first:'];
+  let lastWhy = null;
+  for (const c of choices.slice(0, SHOWN_CHOICES)) {
+    out.push(`  ${c.ref}: ${stepText(c.step)}`);
+    // Minimal: a why the choice before already gave is not repeated (the structured choice keeps it).
+    if (c.why && c.why !== lastWhy) out.push(`      why: ${c.why}`);
+    lastWhy = c.why ?? null;
+    if (c.effect) out.push(`      does: ${c.effect}`);
+    for (const l of c.context ?? []) out.push(`      ${l}`);
+  }
+  if (choices.length > SHOWN_CHOICES) out.push(`  (${choices.length - SHOWN_CHOICES} more: ${choices.slice(SHOWN_CHOICES).map((c) => c.ref).join(', ')})`);
+  return out;
+}
+
+/**
+ * #906: the blocked steps a landed setCode freed, offered again in the refusal's shape (the first one's sentence, the
+ * numbered choices, how to apply one), for run-next and the plan view.
+ * @param {{ref: string, step: {tool: string, args: any}, sentence?: string, why?: string, effect?: string}[]} fixes Recommended first.
+ * @returns {string}
+ */
+export function renderReoffer(fixes) {
+  if (!fixes.length) return '';
+  const choices = fixes.map((f, i) => ({ ...f, ref: f.ref ?? `f${i + 1}` }));
+  return [asSentence(choices[0].sentence ?? `Now add ${choices[0].step.tool} again.`), ...choiceLines(choices), `To apply ${choices.length === 1 ? 'it' : 'one'}, send {"fix":"${choices[0].ref}"}.`].join('\n');
 }
 
 // ------------------------------------------------------------------------------------------- #886 why, effect, context
@@ -276,6 +329,7 @@ export function whyOf(fix, i, c) {
   const asked = c.asked ? `"${c.asked}"` : 'what you sent';
   const lead = i === 0 ? 'Recommended because' : 'Also possible:';
   const rule = /^(LINE-[A-Z]+|[A-Z]+-\d+)\//.exec(family)?.[1];
+  if (family.startsWith('BLOCKED/')) return `${i === 0 ? 'Recommended because' : 'Also possible:'} the page it was refused for has changed since, and it plans clean now (rule blocked-step).`;
   if (rule) return `${lead} it fixes ${rule}: ${firstClause(LINE_RULES[rule]?.why ?? 'the rule that refused it').toLowerCase()} (rule ${family}).`;
   switch (kind) {
     case 'page': return i === 0 ? `Recommended because its path is the closest feature page to ${asked} (rule nearest-page).` : 'Another feature page a route can serve (rule feature-pages).';
