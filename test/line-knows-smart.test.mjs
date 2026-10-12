@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { computeSmart, memoryReplay, smartView, readSmartInputs } from '../packages/engine/line/knows/stats.mjs';
+import { computeSmart, itemLabeler, memoryReplay, smartView, readSmartInputs } from '../packages/engine/line/knows/stats.mjs';
 import { assertSmartView, METRIC_IDS } from '../packages/engine/line/knows/contract.mjs';
 import { MOCK_KNOWS_GRAPH } from '../packages/engine/line/knows/mock.mjs';
 import { buildLineGraph } from '../packages/engine/line/graph/build.mjs';
@@ -121,6 +121,30 @@ test('on the real Line sample: local records only (no runtime run, no memory), t
     const again = smartView(root, graph);
     assert.deepEqual(byId(again)['health.crossFeature'].trend, [1, 1]);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('#856 each logic unit behind a number has a readable label (its graph label plus file:line), hash as the fallback', () => {
+  const m = byId(computeSmart(INPUTS));
+  assert.deepEqual(m['coverage.tested'].itemLabels, { 'unit:6fad22416fa70dad': 'handler in OrdersPage, OrdersPage.tsx:6' });
+  assert.deepEqual(m['coverage.runtime'].itemLabels, { 'unit:28f4fe2e81302a5a': 'handler in ListPage, ListPage.tsx:7' });
+  assert.deepEqual(m['health.noBase'].itemLabels, { 'item:billing/components/InvoiceCard': 'InvoiceCard' });
+  // A unit node with no file of its own (the real graph) takes where it sits from its PART_OF edge.
+  const bare = { ...MOCK_KNOWS_GRAPH, nodes: MOCK_KNOWS_GRAPH.nodes.map((x) => (x.kind === 'unit' ? { id: x.id, kind: x.kind, label: x.label, hash: x.hash } : x)) };
+  assert.equal(byId(computeSmart({ ...INPUTS, graph: bare }))['coverage.tested'].itemLabels['unit:6fad22416fa70dad'], 'handler in OrdersPage, OrdersPage.tsx:6');
+  // An id the graph does not know falls back to its id without the kind; a number with no graph items carries no labels.
+  assert.equal(itemLabeler(MOCK_KNOWS_GRAPH)('unit:ffffeeee00001111'), 'ffffeeee00001111');
+  assert.equal(itemLabeler(MOCK_KNOWS_GRAPH)('item:gone/pages/Gone'), 'gone/pages/Gone');
+  assert.equal(m['ai.accepted'].itemLabels, undefined);
+  assert.equal(m['health.unresolved'].itemLabels, undefined);
+});
+
+test('#856 itemLabels is additive: a view without it still fits the contract, a malformed one is refused', () => {
+  const v = computeSmart(INPUTS);
+  assertSmartView({ ...v, metrics: v.metrics.map(({ itemLabels, ...rest }) => rest) });
+  const bad = { ...v, metrics: v.metrics.map((x) => (x.id === 'coverage.tested' ? { ...x, itemLabels: { 'unit:6fad22416fa70dad': '' } } : x)) };
+  assert.throws(() => assertSmartView(bad), /itemLabels/);
+  const notAnItem = { ...v, metrics: v.metrics.map((x) => (x.id === 'coverage.tested' ? { ...x, itemLabels: { 'unit:nope': 'x' } } : x)) };
+  assert.throws(() => assertSmartView(notAnItem), /itemLabels/);
 });
 
 test('How smart is it lists each AI step\'s on and win from the profiles (the one switch)', () => {

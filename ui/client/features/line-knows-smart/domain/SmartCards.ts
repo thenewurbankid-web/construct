@@ -1,5 +1,5 @@
 // Pure (DOMAIN-001): "How smart is it" as cards a person reads: the number in words, its trend, how to improve it.
-import type { Metric, MetricCard, MetricGroup, SmartTabView, SmartView } from '@/lib/lineKnowsContract';
+import type { Metric, MetricCard, MetricGroup, MetricItemRow, SmartTabView, SmartView } from '@/lib/lineKnowsContract';
 
 export const GROUP_LABEL: Record<MetricGroup, string> = { coverage: 'Logic coverage', health: 'Graph health', ai: 'AI accuracy', fixes: 'Fixes', memory: 'Memory effect' };
 const GROUPS: MetricGroup[] = ['coverage', 'health', 'ai', 'fixes', 'memory'];
@@ -21,11 +21,24 @@ export function trendText(m: Metric): { text: string; direction: MetricCard['tre
   return { text: `${fmt(m, first)} → ${fmt(m, last)}`, direction: first === last ? 'flat' : better ? 'up' : 'down' };
 }
 
+/** The id without its kind and path ("unit:6fad…" → "6fad…", "item:billing/components/InvoiceCard" → "InvoiceCard"). */
+export const shortId = (id: string) => id.replace(/^[a-z]+:/, '').split('/').pop() ?? id;
+
+/** The items behind a Map number, each by its readable label (#856), the hash as secondary text; no label: the hash alone. */
+export function itemRows(m: Metric): MetricItemRow[] {
+  if (m.open !== 'map') return [];
+  return m.items.filter((i) => /^(item|unit|feature):/.test(i)).map((id) => {
+    const label = m.itemLabels?.[id];
+    const tail = shortId(id);
+    return label && label !== tail ? { id, label, secondary: tail } : { id, label: label ?? tail };
+  });
+}
+
 /** One number as a card. */
 export function metricCard(m: Metric): MetricCard {
   const display = m.value !== null ? `${pct(m.value)}${m.count !== undefined ? ` of ${m.count}` : ''}` : m.count !== undefined ? String(m.count) : 'No data yet';
   const t = trendText(m);
-  return { id: m.id, group: m.group, groupLabel: GROUP_LABEL[m.group], label: m.label, display, trend: t.text, trendDirection: t.direction, improve: m.improve, items: m.items, open: m.open, details: m.details, ...(m.empty ? { empty: m.empty } : {}) };
+  return { id: m.id, group: m.group, groupLabel: GROUP_LABEL[m.group], label: m.label, display, trend: t.text, trendDirection: t.direction, improve: m.improve, items: m.items, open: m.open, details: m.details, itemRows: itemRows(m), ...(m.empty ? { empty: m.empty } : {}) };
 }
 
 /** The tab: the numbers grouped, in the order a person reads them. */

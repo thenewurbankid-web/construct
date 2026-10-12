@@ -2,11 +2,9 @@ import { Details } from '@/lib/ChatEntry';
 import type { MetricCard } from '@/lib/lineKnowsContract';
 
 const ARROW = { up: 'Better', down: 'Worse', flat: 'Same', none: '' } as const;
-const short = (id: string) => id.replace(/^[a-z]+:/, '').split('/').pop() ?? id;
 
 /** One number: what it measures, the value, its trend, how to improve it, and the items behind it. */
 export function MetricCardView({ card, onShow }: { card: MetricCard; onShow: (id: string) => void }) {
-  const mapItems = card.open === 'map' ? card.items.filter((i) => /^(item|unit|feature):/.test(i)) : [];
   return (
     <li className="ln-card lks-card" data-testid="knows-metric" data-metric={card.id}>
       <h4 className="lks-label">{card.label}</h4>
@@ -17,13 +15,18 @@ export function MetricCardView({ card, onShow }: { card: MetricCard; onShow: (id
         {ARROW[card.trendDirection] ? ` (${ARROW[card.trendDirection]})` : ''}
       </p>
       <p className="lks-improve" data-testid="knows-metric-improve">How to improve it: {card.improve}</p>
-      {mapItems.length ? (
+      {card.itemRows.length ? (
         <ul className="lks-items" aria-label={`Behind ${card.label}`}>
-          {mapItems.slice(0, 6).map((id) => (
-            <li key={id}>
-              <button type="button" className="ln-btn ln-btn--sm ln-btn--ghost" data-testid="knows-metric-item" onClick={() => onShow(id)}>
-                Show {short(id)} on the Map
+          {card.itemRows.slice(0, 6).map((row) => (
+            <li key={row.id}>
+              <button type="button" className="ln-btn ln-btn--sm ln-btn--ghost" data-testid="knows-metric-item" data-item={row.id} onClick={() => onShow(row.id)}>
+                Show {row.label} on the Map
               </button>
+              {row.secondary ? (
+                <span className="lks-item-id" data-testid="knows-metric-item-id">
+                  {row.secondary}
+                </span>
+              ) : null}
             </li>
           ))}
         </ul>
