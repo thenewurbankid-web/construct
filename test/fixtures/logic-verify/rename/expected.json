@@ -1,0 +1,18 @@
+{
+  "unit": {
+    "fingerprint": "a1f0000000000002",
+    "id": "src/cart.ts#cartTotal:export:0",
+    "kind": "export",
+    "file": "src/cart.ts",
+    "fn": "cartTotal",
+    "line": 1
+  },
+  "purity": "pure",
+  "effectChain": [],
+  "status": "proven",
+  "layer": "L0-canonical",
+  "transforms": [
+    "rename"
+  ],
+  "sentence": "cartTotal (export in src/cart.ts) is proven unchanged by the canonical compare."
+}

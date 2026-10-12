@@ -1,0 +1,16 @@
+{
+  "unit": {
+    "fingerprint": "a1f0000000000007",
+    "id": "src/names.ts#fullName:export:0",
+    "kind": "export",
+    "file": "src/names.ts",
+    "fn": "fullName",
+    "line": 1
+  },
+  "purity": "pure",
+  "effectChain": [],
+  "status": "tested",
+  "layer": "fast-check",
+  "transforms": null,
+  "sentence": "fullName (export in src/names.ts) behaved the same under fast-check property runs, but it was edited outside Line's transforms, so it is tested, not proven."
+}

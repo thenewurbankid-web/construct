@@ -1,0 +1,80 @@
+{
+  "step": "planted-fixtures",
+  "counts": {
+    "proven": 3,
+    "tested": 1,
+    "unverified": 0,
+    "changed": 3,
+    "not-extracted": 0
+  },
+  "total": 7,
+  "divergences": [
+    {
+      "unit": {
+        "fingerprint": "a1f0000000000004",
+        "id": "src/age.ts#isAdult:export:0",
+        "kind": "export",
+        "file": "src/age.ts",
+        "fn": "isAdult",
+        "line": 1
+      },
+      "layer": "z3",
+      "location": {
+        "astPath": "isAdult/FunctionDeclaration.body/BlockStatement.body[0]/ReturnStatement.argument/BinaryExpression.operator",
+        "file": "src/age.ts",
+        "line": 2,
+        "column": 10
+      },
+      "input": [
+        18
+      ],
+      "sentence": "isAdult (export in src/age.ts) changed at src/age.ts:2 (BinaryExpression.operator) for input [18], found by a Z3 proof."
+    },
+    {
+      "unit": {
+        "fingerprint": "a1f0000000000005",
+        "id": "src/orders/saveOrder.ts#saveOrder:export:0",
+        "kind": "export",
+        "file": "src/orders/saveOrder.ts",
+        "fn": "saveOrder",
+        "line": 3
+      },
+      "layer": "isolated",
+      "location": {
+        "astPath": "saveOrder/FunctionDeclaration.body/BlockStatement.body[1]",
+        "file": "src/orders/saveOrder.ts",
+        "line": 6,
+        "side": "before"
+      },
+      "input": [
+        {
+          "id": "__line_0000002a_0__",
+          "total": 1
+        }
+      ],
+      "sentence": "saveOrder (export in src/orders/saveOrder.ts) changed at the old src/orders/saveOrder.ts:6 (BlockStatement.body[1]) for input [{\"id\":\"__line_0000002a_0__\",\"total\":1}], found by isolated execution."
+    },
+    {
+      "unit": {
+        "fingerprint": "a1f0000000000006",
+        "id": "src/layout/useIsCompact.ts#useIsCompact:state:0",
+        "kind": "state",
+        "file": "src/layout/useIsCompact.ts",
+        "fn": "useIsCompact",
+        "line": 4
+      },
+      "layer": "isolated",
+      "location": {
+        "astPath": "useIsCompact/FunctionDeclaration.body/BlockStatement.body[0]/VariableDeclaration.declarations[0]/VariableDeclarator.init/CallExpression.arguments[0]/ArrowFunctionExpression.body/BinaryExpression.right",
+        "file": "src/layout/useIsCompact.ts",
+        "line": 4,
+        "column": 68
+      },
+      "input": {
+        "Window.innerWidth": 640
+      },
+      "sentence": "useIsCompact (state in src/layout/useIsCompact.ts) changed at src/layout/useIsCompact.ts:4 (BinaryExpression.right) for input {\"Window.innerWidth\":640}, found by isolated execution."
+    }
+  ],
+  "sentence": "3 proven, 1 tested, 0 unverified, 3 changed."
+}

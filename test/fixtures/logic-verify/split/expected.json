@@ -1,0 +1,19 @@
+{
+  "unit": {
+    "fingerprint": "a1f0000000000003",
+    "id": "src/orders/dueLabel.ts#dueLabel:export:0",
+    "kind": "export",
+    "file": "src/orders/dueLabel.ts",
+    "fn": "dueLabel",
+    "line": 3
+  },
+  "purity": "pure",
+  "effectChain": [],
+  "status": "proven",
+  "layer": "L0-canonical",
+  "transforms": [
+    "move",
+    "repoint-imports"
+  ],
+  "sentence": "dueLabel (export in src/orders/dueLabel.ts) is proven unchanged by the canonical compare."
+}

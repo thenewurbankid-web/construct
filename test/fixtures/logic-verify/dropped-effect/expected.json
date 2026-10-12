@@ -1,0 +1,41 @@
+{
+  "unit": {
+    "fingerprint": "a1f0000000000005",
+    "id": "src/orders/saveOrder.ts#saveOrder:export:0",
+    "kind": "export",
+    "file": "src/orders/saveOrder.ts",
+    "fn": "saveOrder",
+    "line": 3
+  },
+  "purity": "impure",
+  "effectChain": [
+    {
+      "effect": "fetch",
+      "via": [
+        "src/api.ts#api"
+      ]
+    },
+    {
+      "effect": "toast",
+      "via": [
+        "src/toast.ts#toast"
+      ]
+    }
+  ],
+  "status": "changed",
+  "layer": "isolated",
+  "transforms": null,
+  "location": {
+    "astPath": "saveOrder/FunctionDeclaration.body/BlockStatement.body[1]",
+    "file": "src/orders/saveOrder.ts",
+    "line": 6,
+    "side": "before"
+  },
+  "input": [
+    {
+      "id": "__line_0000002a_0__",
+      "total": 1
+    }
+  ],
+  "sentence": "saveOrder (export in src/orders/saveOrder.ts) changed at the old src/orders/saveOrder.ts:6 (BlockStatement.body[1]) for input [{\"id\":\"__line_0000002a_0__\",\"total\":1}], found by isolated execution."
+}

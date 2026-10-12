@@ -1,0 +1,30 @@
+{
+  "unit": {
+    "fingerprint": "a1f0000000000006",
+    "id": "src/layout/useIsCompact.ts#useIsCompact:state:0",
+    "kind": "state",
+    "file": "src/layout/useIsCompact.ts",
+    "fn": "useIsCompact",
+    "line": 4
+  },
+  "purity": "impure",
+  "effectChain": [
+    {
+      "effect": "dom",
+      "via": []
+    }
+  ],
+  "status": "changed",
+  "layer": "isolated",
+  "transforms": null,
+  "location": {
+    "astPath": "useIsCompact/FunctionDeclaration.body/BlockStatement.body[0]/VariableDeclaration.declarations[0]/VariableDeclarator.init/CallExpression.arguments[0]/ArrowFunctionExpression.body/BinaryExpression.right",
+    "file": "src/layout/useIsCompact.ts",
+    "line": 4,
+    "column": 68
+  },
+  "input": {
+    "Window.innerWidth": 640
+  },
+  "sentence": "useIsCompact (state in src/layout/useIsCompact.ts) changed at src/layout/useIsCompact.ts:4 (BinaryExpression.right) for input {\"Window.innerWidth\":640}, found by isolated execution."
+}
