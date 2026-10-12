@@ -361,9 +361,9 @@ export async function devServerPair({ beforeRoot, afterRoot, before, after, rout
   if (!list.length) return done({ outcome: 'skipped', reason: `no server-rendered route reaches ${after.fn}` });
   const opts = { routes: list, seed, startupMs, requestMs, graceMs };
   const b = await runDevSide({ root: beforeRoot, fn: before.fn, ...opts });
-  if (!b.ok) return done({ outcome: b.skipped ? 'skipped' : 'cant-tell', reason: `before: ${b.reason}` });
+  if ('reason' in b) return done({ outcome: b.skipped ? 'skipped' : 'cant-tell', reason: `before: ${b.reason}` });
   const a = await runDevSide({ root: afterRoot, fn: after.fn, ...opts });
-  if (!a.ok) return done({ outcome: a.skipped ? 'skipped' : 'cant-tell', reason: `after: ${a.reason}` });
+  if ('reason' in a) return done({ outcome: a.skipped ? 'skipped' : 'cant-tell', reason: `after: ${a.reason}` });
   const coverage = { before: b.coverage, after: a.coverage };
   for (let i = 0; i < list.length; i++) {
     const [pb, pa] = [b.pages[i], a.pages[i]];
