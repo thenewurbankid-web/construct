@@ -5,6 +5,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runAxe, isBlocking, format } from './support/axe.js';
 import { setTheme } from './support/cockpit.js';
+import { startUnderTheHood } from './support/lineModes.js';
+
+// Two modes: this spec checks the screen's regular view, so it starts Under the hood (screens open in Chat by default).
+startUnderTheHood(test);
 
 // The Open-a-project screen, simple for a beginner (owner UAT 2026-10-12): projects first as cards, one tab per
 // workflow kept in the URL, a series of questions instead of a form, plain words. Real server, nothing stubbed.

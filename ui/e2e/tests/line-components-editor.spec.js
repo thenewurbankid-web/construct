@@ -6,6 +6,10 @@ import { fileURLToPath } from 'node:url';
 import { gotoCockpit } from './support/cockpit.js';
 import { openProject } from './support/browseProject.js';
 import { runAxe, isBlocking, format } from './support/axe.js';
+import { startUnderTheHood } from './support/lineModes.js';
+
+// Two modes: this spec checks the screen's regular view, so it starts Under the hood (screens open in Chat by default).
+startUnderTheHood(test);
 
 // cu4 -- the Components screen's three areas: the Library (cards and each feature's components), the Editor for the
 // open component (Behaviour, Events, States; Studio's Editor parts, linked) and New component. On the real server over

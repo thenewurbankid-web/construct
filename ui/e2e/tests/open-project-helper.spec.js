@@ -4,6 +4,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runAxe, isBlocking, format } from './support/axe.js';
+import { startUnderTheHood } from './support/lineModes.js';
+
+// Two modes: this spec checks the screen's regular view, so it starts Under the hood (screens open in Chat by default).
+startUnderTheHood(test);
 
 // The Your projects screen's chat helper with Trace and Auto (owner, 2026-10-12): plain requests fill the question
 // series through Auto's moves on the real controls, Trace lights the controls, Auto stops at Create for the person,
