@@ -198,7 +198,11 @@ function emptyPage(root, layout, p, fixtures) {
     sentence: `${page} renders ${name} with no content: it passes no children${hint}. Write ${page} with line.setCode on ${p.file}: load the items and render one per item as ${name}'s children.` };
 }
 
-/** One open item as a builder reads it: the sentence, then the exact step when there is one. */
+/**
+ * One open item as a builder reads it: the sentence, then the exact step when there is one.
+ * @param {{sentence: string, step?: {tool: string, args: any}|null}} it An open item.
+ * @returns {string}
+ */
 export const itemText = (it) => (it.step ? `${it.sentence} Step: ${it.step.tool} ${JSON.stringify(it.step.args, (_k, v) => (typeof v === 'string' && v.length > 160 ? `${v.slice(0, 157)}...` : v))}` : it.sentence);
 
 /**
