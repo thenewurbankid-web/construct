@@ -9,6 +9,7 @@
 //   checkPre(facts, tool, args, layout?) -> null | sentence     the one-sentence refusal when pre fails
 import { evaluate } from './expr.mjs';
 import { EXTRACT_TOOLS, extractTarget } from './importV2/extractTarget.mjs';
+import { expressionTarget } from './expressions.mjs';
 
 const P = (...segs) => ({ path: segs });
 const I = (...segs) => ({ item: segs });
@@ -79,6 +80,16 @@ const CONDITIONS = Object.freeze({
     pre: { some: [P('findings'), { and: [{ eq: [I('key'), findingKey] }, { in: [fixId, I('fixIds')] }] }] },
     post: { not: { some: [P('findings'), { eq: [I('key'), findingKey] }] } },
   }),
+  /**
+   * line-expressions: the page or component is there and the expression's file is not (a named request); afterwards
+   * the expression is there next to it. With no name the planner derives one, so only the file is checked.
+   */
+  'line.extractExpression': ({ file, name }, layout) => {
+    const target = name && layout ? expressionTarget({ library: layout.library ?? 'library', features: layout.features ?? 'features' }, file, name) : null;
+    return target
+      ? { pre: { and: [{ exists: P('files', file) }, { not: { exists: P('files', target) } }] }, post: { and: [{ exists: P('files', file) }, { exists: P('files', target) }] } }
+      : { pre: { exists: P('files', file) }, post: { exists: P('files', file) } };
+  },
 });
 
 /**

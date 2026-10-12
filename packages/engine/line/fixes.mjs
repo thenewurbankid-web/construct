@@ -21,6 +21,7 @@
 //                 a stray folder / a file in features/   none: say where its files belong
 //                 a source file outside library/, features/ and the app/config folders
 //                                                        line.moveFile into the owning feature's kind folder (the feature that imports it), else the library
+//   COMPONENT-005/006, PAGE-008  inline conditional or loop  line.extractExpression into a new expression (expressions.mjs)
 //
 // A refused change's fix that names a file only that change creates cannot run on its own: amendFixes turns it into
 // one `line.amend` step {change, fix} (planAmended: both planned in order, merged, applied atomically by applyChange).
@@ -37,6 +38,7 @@ import { LineOpError } from './contract.mjs';
 import { toFinding } from './model.mjs';
 import { planBaseOn, planPromote, planSetBase, planMoveFile, planCreateLayout, applyChange } from './ops.mjs';
 import { planUseViaUsecase } from './build.mjs';
+import { EXPRESSION_RULES, expressionFixes, planExtractExpression } from './expressions.mjs';
 
 const posix = path.posix;
 const SINGULAR = { components: 'component', pages: 'page', workflows: 'workflow', fixtures: 'fixture' };
@@ -322,12 +324,14 @@ export function fixesFor(root, finding, ctx = fixContext(root)) {
       const mod = (finding.sentence.match(/use the shared module (.+?) instead/) || [])[1] ?? 'the shared module';
       return [none('LINE-SHARED/use-shared', `Replace the copy in ${posix.basename(file)} with a call to ${mod}; Line cannot rewrite that code safely.`)];
     }
-    default: return LAYER_IMPORT_RULES.includes(rule) ? layerImportFixes(ctx, file, line, rule) : [];
+    default:
+      if (EXPRESSION_RULES.includes(rule)) return expressionFixes(ctx.root, file, rule);
+      return LAYER_IMPORT_RULES.includes(rule) ? layerImportFixes(ctx, file, line, rule) : [];
   }
 }
 
-/** Whether fixesFor knows fixes for a rule (LINE-* and the layer import rules). */
-const hasFixes = (rule) => String(rule).startsWith('LINE-') || LAYER_IMPORT_RULES.includes(String(rule));
+/** Whether fixesFor knows fixes for a rule (LINE-*, the layer import rules and the expression rules). */
+const hasFixes = (rule) => String(rule).startsWith('LINE-') || LAYER_IMPORT_RULES.includes(String(rule)) || EXPRESSION_RULES.includes(String(rule));
 
 /**
  * Findings with their key and fixes attached (one context for the batch).
@@ -376,6 +380,7 @@ export function planStep(root, step) {
     case 'line.moveFile': return planMoveFile(root, /** @type {any} */ (step.args));
     case 'line.createLayout': return planCreateLayout(root);
     case 'line.useViaUsecase': return planUseViaUsecase(root, /** @type {any} */ (step.args));
+    case 'line.extractExpression': return planExtractExpression(root, /** @type {any} */ (step.args));
     default: throw new LineOpError(`"${step?.tool}" is not a Line tool.`, 'UNKNOWN_TOOL');
   }
 }

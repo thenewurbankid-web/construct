@@ -15,6 +15,7 @@
 //                                            planned together (fixes.mjs planAmended) and applied as ONE change
 //   line.baseWorkflowOn, line.setWorkflowRole, line.addWorkflowTransition, line.removeWorkflowTransition
 //                     write  cw1 workflows (workflows.mjs) + applyChange
+//   line.extractExpression  write  {file, name?}  the expression warnings' typed fix (expressions.mjs), planned by fixes.mjs planStep
 //   line.leaveAsIs    write  {stepId}        -> a person's "carry on" after a step that needs them (writes nothing)
 //   line.project      read   {}              -> readLineProject
 //
@@ -63,6 +64,8 @@ export const CHANGE_TOOLS = Object.freeze({
   'line.createFeature': 'planCreateFeature', 'line.addRoute': 'planAddRoute', 'line.setCode': 'planSetCode',
   // bench-gaps: the app shell (shell.mjs) and the layer-import fix (build.mjs planUseViaUsecase, a fixes.mjs planStep tool)
   'line.setLayoutSlot': 'planSetLayoutSlot', 'line.useViaUsecase': 'planStep',
+  // line-expressions: the expression warnings' typed fix (expressions.mjs planExtractExpression, a fixes.mjs planStep tool)
+  'line.extractExpression': 'planStep',
 });
 
 /** Change tools planned only when they run: an import step builds on the steps before it (the library item a feature
@@ -279,6 +282,7 @@ const SCHEMAS = Object.freeze({
   'line.setCode': objectSchema({ file: 'string', code: 'string', contentHash: 'optString' }, { change: true }),
   'line.setLayoutSlot': objectSchema({ slot: 'string', components: 'strings' }, { change: true }),
   'line.useViaUsecase': objectSchema({ file: 'string', specifier: 'string' }, { change: true }),
+  'line.extractExpression': objectSchema({ file: 'string', name: 'optString' }, { change: true }),
   'line.leaveAsIs': objectSchema({ stepId: 'string' }),
   'line.project': objectSchema({}),
 });
@@ -310,6 +314,7 @@ const DESCRIBE = Object.freeze({
   'line.setCode': 'Writes the whole code of one library or feature file (or a feature\'s spec.md); an existing file needs the contentHash it was read at; through the checked writer.',
   'line.setLayoutSlot': 'Shows library or feature components on every page: fills one slot (header, nav or footer) of the app shell, which app/layout.tsx renders; through the checked writer.',
   'line.useViaUsecase': 'Imports an application layer (a service, workflow or domain) into a page or component through a usecase of its feature or the library instead of directly, through the checked writer.',
+  'line.extractExpression': 'Moves the first inline conditional or loop of a page or component into a new expression (a pure function component whose inputs are typed props) and renders it in its place, type-checked, through the checked writer.',
   'line.leaveAsIs': 'Records that a person chose to carry on after a step that needed them; writes nothing.',
   'line.project': 'Reads the Line view of the project: library, features, items and findings.',
 });

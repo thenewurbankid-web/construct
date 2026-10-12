@@ -93,6 +93,24 @@ export function subjectOf(node) {
   return null;
 }
 
+/**
+ * line-expressions: the name extractExpression derives for one flagged hit (`<Item>List` for a loop over `items`,
+ * `Show<Subject>` for a conditional on `isSubject`), or null when the hit has no nameable subject or the name would be a
+ * generic control-flow word (EXPR-003). Shared by `construct refactor extract-expression` and Line's
+ * `line.extractExpression` so both name the same code the same way.
+ *
+ * @param {{kind: 'conditional'|'loop', node: any}} hit One entry of collectInlineJsxLogic.
+ * @returns {string|null} The PascalCase name, or null.
+ */
+export function deriveExpressionName(hit) {
+  const subject = hit.kind === 'loop'
+    ? subjectOf(hit.node.callee.object)
+    : subjectOf(hit.node.type === 'ConditionalExpression' ? hit.node.test : hit.node.left);
+  if (!subject) return null;
+  const derived = hit.kind === 'loop' ? `${pascalWord(singularize(subject))}List` : `Show${pascalWord(stripBooleanPrefix(subject))}`;
+  return EXPR_GENERIC_NAMES.has(derived.toLowerCase()) ? null : derived;
+}
+
 function isValidPropName(name) {
   return typeof name === 'string' && /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(name) && name !== 'children';
 }
