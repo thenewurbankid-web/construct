@@ -521,7 +521,7 @@ export const LINE_PLAN_TOOLS = Object.freeze([
   { name: 'line.createLayout', kind: 'write', request: '{}' },
   { name: 'line.import.mark', kind: 'write', request: '{folder, features, appFolders?}' },
   { name: 'line.import.toLibrary', kind: 'write', request: '{folder, from, kind, name, level?, keepShim?}' },
-  { name: 'line.import.toFeature', kind: 'write', request: '{folder, mode, from?, kind, name, feature, base, keepShim?, route?}' },
+  { name: 'line.import.toFeature', kind: 'write', request: '{folder, mode, from?, kind, name, feature, base?, keepShim?, route?, entry?}' },
   { name: 'line.amend', kind: 'write', request: '{change: {tool, args}, fix: {tool, args}} or {change, fixes: [{tool, args}, ...]}' },
   { name: 'line.baseWorkflowOn', kind: 'write', request: 'BaseWorkflowOnRequest' },
   { name: 'line.setWorkflowRole', kind: 'write', request: 'SetWorkflowRoleRequest' },

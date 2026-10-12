@@ -24,7 +24,7 @@ const PLAN_ONLY = ['expect', 'retry', 'fixOf'];
 const ARGS = Object.freeze({
   'line.import.mark': ['features'],
   'line.import.toLibrary': ['from', 'kind', 'name', 'exportName', 'level', 'keepShim'],
-  'line.import.toFeature': ['mode', 'from', 'kind', 'name', 'exportName', 'feature', 'base', 'route', 'keepShim'],
+  'line.import.toFeature': ['mode', 'from', 'kind', 'name', 'exportName', 'feature', 'base', 'route', 'keepShim', 'entry'],
   'line.import.fix': ['tool', 'args'],
 });
 

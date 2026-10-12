@@ -45,6 +45,21 @@ const camel = (s) => s.replace(/[^A-Za-z0-9]+(.)?/g, (_m, c) => (c ? c.toUpperCa
 const pascal = (s) => camel(s).replace(/^[a-z]/, (c) => c.toUpperCase());
 const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
+/**
+ * The Line logic kind of a whole file of plain functions (no JSX, no React), by the fit's own rules (follow-up c):
+ * data (an adapter, api or service file, or functions that fetch: data or io units) -> services; navigation, URL state,
+ * component state or effects -> workflows; pure transforms and rules (no effect units) -> domains.
+ * @param {string} rel The file (project-relative).
+ * @param {{kind: string}[]} units Its logic-map units.
+ * @returns {'services'|'workflows'|'domains'}
+ */
+export function fileLogicKind(rel, units) {
+  const kinds = new Set(units.map((u) => u.kind));
+  if (ADAPTER_FILE.test(rel) || kinds.has('data') || kinds.has('io')) return 'services';
+  if ([...kinds].some((k) => EFFECT_KINDS.has(k) && k !== 'branch')) return 'workflows';
+  return 'domains';
+}
+
 // ------------------------------------------------------------------------------------------------- reading a file
 
 /** The prototype logic map's function naming (docs/line/import-v2/logicmap.mjs nameOf), so units find their function. */

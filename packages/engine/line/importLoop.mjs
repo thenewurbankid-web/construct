@@ -363,6 +363,9 @@ export function fitSummary(proposal, steps) {
   };
 }
 
+/** The logic-kind folder each extract tool lands in. */
+const EXTRACT_KIND = Object.freeze({ 'line.import.extractService': 'services', 'line.import.extractDomain': 'domains', 'line.import.extractUsecase': 'usecases' });
+
 /** The extension of a path (`.tsx`), or ''. */
 const extOf = (rel) => { const base = String(rel).split('/').pop() ?? ''; const i = base.lastIndexOf('.'); return i > 0 ? base.slice(i) : ''; };
 
@@ -377,8 +380,15 @@ const extOf = (rel) => { const base = String(rel).split('/').pop() ?? ''; const 
 export function fitPlanSteps(fit, planSteps) {
   /** @type {Map<string, string>} */
   const moved = new Map();
-  for (const s of planSteps) if (s.tool === 'line.import.toLibrary' && typeof s.args?.from === 'string') moved.set(s.args.from, `library/${s.args.kind}/${s.args.name}${extOf(s.args.from)}`);
-  return (fit?.steps ?? []).map((s, i) => {
+  for (const s of planSteps) {
+    if (typeof s.args?.from !== 'string') continue;
+    if (s.tool === 'line.import.toLibrary') moved.set(s.args.from, `library/${s.args.kind}/${s.args.name}${extOf(s.args.from)}`);
+    // a service or domain Import moves into a feature as it is (follow-up c)
+    else if (s.tool === 'line.import.toFeature' && s.args.mode === 'move' && !s.args.base) moved.set(s.args.from, `features/${s.args.feature}/${s.args.kind}/${s.args.name}${extOf(s.args.from)}`);
+  }
+  // A block Import already landed whole (its file moved into the same logic kind) needs no extract step.
+  const landed = (s) => { const to = moved.get(s.args.from); const kind = EXTRACT_KIND[s.tool]; return Boolean(to && kind && to.split('/').at(-2) === kind); };
+  return (fit?.steps ?? []).filter((s) => !landed(s)).map((s, i) => {
     const to = moved.get(s.args.from);
     const args = to ? (({ feature: _f, ...rest }) => ({ ...rest, from: to }))(s.args) : { ...s.args };
     const sentence = to ? s.sentence.replace(/ of feature [\w-]+/g, ' in the library').replace(/ of ([\w.[\]-]+\.[cm]?[jt]sx?) /, ` of ${to.split('/').pop()} `) : s.sentence;

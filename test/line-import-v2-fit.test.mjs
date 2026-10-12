@@ -11,6 +11,7 @@ import { readRouteFamily } from '../packages/engine/line/importV2/route.mjs';
 import { fitLogic, planFitSteps, sharedFiles, closureFolder } from '../packages/engine/line/importV2/fit.mjs';
 import { assertFitProposal } from '../packages/engine/line/importV2/contract.mjs';
 import { createLinePlanRegistry } from '../packages/engine/line/planTools.mjs';
+import { fitPlanSteps } from '../packages/engine/line/importLoop.mjs';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SHOP = path.join(REPO, 'examples/import-v2-shop');
@@ -137,4 +138,21 @@ test('fit -> plan: the proposal becomes extract steps that all land through the 
   for (const f of ['features/orders/services/useOrdersQuery.ts', 'library/workflows/OrdersFlow.ts', 'features/orders/workflows/OrdersFlow.ts', 'features/orders/usecases/useOrdersClient.tsx']) {
     assert.ok(fs.existsSync(path.join(app, 'src', f)), f);
   }
+});
+
+test('(follow-up c) fit steps follow Import\'s moves: a block Import already landed whole in its logic kind is dropped, others are re-pointed', () => {
+  const fit = { steps: [
+    { tool: 'line.import.extractService', args: { folder: 'src', from: 'adapters/ordersAdapter.ts', name: 'ordersAdapter', feature: 'orders' }, sentence: 'Moves ordersAdapter of feature orders into a service.', blocks: ['service:ordersAdapter'] },
+    { tool: 'line.import.extractDomain', args: { folder: 'src', from: 'utils/money.ts', name: 'money', names: ['formatTotal'], feature: 'orders' }, sentence: 'Moves formatTotal of money.ts into a domain of feature orders.', blocks: ['domain:money'] },
+    { tool: 'line.import.extractUsecase', args: { folder: 'src', from: 'lib/flow.ts', name: 'useFlow', feature: 'orders' }, sentence: 'Moves the flow of flow.ts into a usecase.', blocks: ['usecase:useFlow'] },
+  ] };
+  const planSteps = [
+    { tool: 'line.import.toFeature', args: { mode: 'move', from: 'adapters/ordersAdapter.ts', kind: 'services', name: 'ordersAdapter', feature: 'orders' } },
+    { tool: 'line.import.toLibrary', args: { from: 'utils/money.ts', kind: 'domains', name: 'money' } },
+    { tool: 'line.import.toFeature', args: { mode: 'move', from: 'lib/flow.ts', kind: 'workflows', name: 'flow', feature: 'orders', base: 'components/X' } },
+  ];
+  const out = fitPlanSteps(fit, planSteps);
+  assert.deepEqual(out.map((s) => `${s.tool} ${s.args.from}`), ['line.import.extractUsecase lib/flow.ts'], 'the service and the domain already landed whole; a based move is not followed');
+  const moved = fitPlanSteps({ steps: [{ ...fit.steps[1], tool: 'line.import.extractUsecase' }] }, planSteps);
+  assert.deepEqual(moved.map((s) => s.args.from), ['library/domains/money.ts'], 'a block of another kind follows the file to where Import moved it');
 });

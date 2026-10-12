@@ -12,6 +12,8 @@ import { assertRouteClosure } from '../packages/engine/line/importV2/contract.mj
 import { scanImport, planImport, applyImport, importGraph } from '../packages/engine/line/import.mjs';
 import { assertImportScan, assertImportPlan } from '../packages/engine/line/contract.mjs';
 import { DEFAULT_TRACE_EXCLUDES, traceExcludesFor, traceRouteFiles, readPathAliases } from '../packages/core/route-resolver.mjs';
+import { validateLine } from '../packages/core/profiles/line/index.mjs';
+import { createLogicOnDisk } from '../packages/engine/line/importLoopDisk.mjs';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SHOP = path.join(REPO, 'examples/import-v2-shop');
@@ -159,10 +161,62 @@ test('scanImport and planImport take {route}: only the family\'s files, every fe
   assert.match(pageStep.sentence, /Its old file stays as a one-line link, because Next\.js serves \/:locale\/orders from it\.$/);
   assert.equal(plan.steps.find((s) => s.args.from === 'components/OrdersView.tsx').args.keepShim, false, 'an imported file needs no link');
   assert.equal(applyImport(app, { route: '/orders' }).ok, true);
-  assert.match(fs.readFileSync(path.join(app, 'src/app/[locale]/orders/page.tsx'), 'utf8'), /export \{ default \} from '\.\.\/\.\.\/\.\.\/library\/pages\/OrdersPage';/);
+  // (merge-wave5, follow-up a) the link is a route entry serving the feature's page, which LINE-OWNER reads as the feature's
+  assert.match(fs.readFileSync(path.join(app, 'src/app/[locale]/orders/page.tsx'), 'utf8'), /^\/\/ Next\.js serves this route from here; the page lives in Line: features\/orders\/pages\/OrdersPage\.tsx\.\nexport \{ OrdersPage as default \} from '\.\.\/\.\.\/\.\.\/features\/orders\/pages\/OrdersPage';\n$/);
+  assert.ok(!validateLine(path.join(app, 'src')).violations.some((v) => v.rule === 'LINE-OWNER' && v.file.includes('orders/')), 'the route entries belong to feature orders (home is not imported, so its page is out of scope)');
   // A folder still works as before.
   assert.equal(scanImport(app, 'src').folder, 'src');
   assert.throws(() => scanImport(app, /** @type {any} */ ({})), /Name a folder or a route/);
+});
+
+test('(follow-up a) files Next.js finds by path and files LINE-SHARED would refuse stay in place, each said in one sentence; nothing moves them', async () => {
+  const app = copy();
+  const w = (rel, text) => { fs.mkdirSync(path.dirname(path.join(app, rel)), { recursive: true }); fs.writeFileSync(path.join(app, rel), text); };
+  w('src/app/[locale]/orders/layout.tsx', 'export default function OrdersLayout({ children }: { children: unknown }) { return children; }\n');
+  w('src/app/[locale]/orders/loading.tsx', 'export default function Loading() { return null; }\n');
+  w('src/app/api/ask/route.ts', "import { GoogleGenAI } from '@google/genai';\nexport async function POST() { return new GoogleGenAI({}).models; }\n");
+  w('src/lib/ai.ts', "import { GoogleGenAI } from '@google/genai';\nexport function ask(q: string) { return new GoogleGenAI({}).models.generateContent({ model: 'm', contents: q }); }\n");
+  w('src/middleware.ts', 'export function middleware() { return undefined; }\n');
+  const scan = scanImport(app, 'src');
+  const stays = Object.fromEntries(scan.unchanged.map((u) => [u.file, u.sentence]));
+  assert.equal(stays['src/app/[locale]/orders/layout.tsx'], 'layout.tsx stays where it is: Next.js finds it by its path, so it is never moved.');
+  assert.ok(stays['src/app/[locale]/orders/loading.tsx'] && stays['src/app/api/ask/route.ts'] && stays['src/middleware.ts']);
+  assert.equal(stays['src/lib/ai.ts'], 'ai.ts stays where it is: it imports "@google/genai", its own copy of AI decision-making, which Line would refuse with no fix it can make (use @mx/reason).');
+  const plan = planImport(app, 'src');
+  const named = JSON.stringify(plan.steps);
+  for (const f of ['layout.tsx', 'loading.tsx', 'api/ask/route.ts', 'lib/ai.ts', 'middleware.ts']) assert.ok(!named.includes(f), `no step names ${f}`);
+  // The loop's fit leaves it too: no extract step takes logic out of ai.ts, and the skipped list says why.
+  const ops = createLogicOnDisk(app, 'src', { cache: false });
+  const closure = await ops.closure(app, 'src', null);
+  const fitted = await ops.fit(app, 'src', closure, await ops.buildMap(app, 'src', closure));
+  assert.ok(!fitted.steps.some((s) => s.args.from === 'lib/ai.ts'), 'no extract step for ai.ts');
+  assert.ok(fitted.skipped.some((s) => /^ai\.ts stays where it is: it imports "@google\/genai"/.test(s.sentence)));
+  assert.equal(applyImport(app, 'src').ok, true);
+  for (const f of ['src/app/[locale]/orders/layout.tsx', 'src/app/api/ask/route.ts', 'src/lib/ai.ts', 'src/middleware.ts']) assert.ok(fs.existsSync(path.join(app, f)), `${f} is where it was`);
+});
+
+test('(follow-up c) plain functions follow the fit: data -> services, pure -> domains, never all "workflows"', () => {
+  const app = copy();
+  const w = (rel, text) => { fs.mkdirSync(path.dirname(path.join(app, rel)), { recursive: true }); fs.writeFileSync(path.join(app, rel), text); };
+  w('src/adapters/ordersAdapter.ts', "export function toRows(raw: { id: string }[]) { return raw.map((r) => r.id); }\n");
+  w('src/data/loadOrders.ts', "export async function loadOrders() { const r = await fetch('/api/orders'); return r.json(); }\n");
+  w('src/utils/sortOrders.ts', 'export function sortOrders(xs: number[]) { return [...xs].sort((a, b) => a - b); }\n');
+  const kinds = Object.fromEntries(scanImport(app, 'src').found.map((f) => [f.file, f.kind]));
+  assert.equal(kinds['src/adapters/ordersAdapter.ts'], 'services', 'an adapter file');
+  assert.equal(kinds['src/data/loadOrders.ts'], 'services', 'it fetches');
+  assert.equal(kinds['src/utils/sortOrders.ts'], 'domains', 'pure');
+  assert.equal(kinds['src/utils/money.ts'], 'domains', 'pure');
+  const plan = planImport(app, 'src');
+  assertImportPlan(plan);
+  const step = (from) => plan.steps.find((s) => s.args.from === from);
+  for (const from of ['adapters/ordersAdapter.ts', 'data/loadOrders.ts', 'utils/sortOrders.ts']) {
+    const s = step(from);
+    assert.ok(s && ['services', 'domains'].includes(s.args.kind), `${from} moves as a logic item`);
+    assert.ok(!s.args.base, `${from} has no library base`);
+    assert.ok(!plan.steps.some((x) => x.args.mode === 'wrap' && x.args.name === s.args.name), `${from} is never split into a thin item`);
+  }
+  const r = applyImport(app, 'src');
+  assert.equal(r.ok, true, r.sentence);
 });
 
 test('importGraph is exported: who uses a file (reverse users), from the project\'s imports', () => {

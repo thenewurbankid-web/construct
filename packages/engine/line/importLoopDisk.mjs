@@ -40,6 +40,7 @@ import { createImportLoopRecorder } from './records.mjs';
 import { createLineCache, createDepHasher, charSalt, hashOf } from './importV2/cache.mjs';
 import { unresolvedImports, brokenImports } from './importV2/resolve.mjs';
 import { listFiles } from '@line/construct-core/profiles/line/checks';
+import { stayInPlace } from './import.mjs';
 
 export { readRouteFamily, buildLogicMap };
 
@@ -193,8 +194,12 @@ export function createLogicOnDisk(root, folder, o = {}) {
       const planned = planFitSteps(proposal, { folder: f, closure: c });
       // A workflow needs xstate in the app: without it the step is left for a person, said once here, not refused later.
       const noXstate = !appDependsOn(path.join(root, f), 'xstate');
-      const steps = planned.steps.filter((s) => !(noXstate && s.tool === 'line.import.extractWorkflow'));
-      const skipped = [...planned.skipped, ...planned.steps.filter((s) => !steps.includes(s)).map((s) => ({ block: s.blocks[0], sentence: `${s.args.name} stays where it is: the app does not depend on xstate, so a Line workflow would not compile in it.` }))];
+      // A file Import leaves in place (follow-up a: Next.js finds it by its path, or LINE-SHARED would refuse it) is not
+      // extracted from either; the skipped list says why in one sentence.
+      const stays = (s) => { const rel = `${f}/${s.args.from}`; try { return stayInPlace(rel, fs.readFileSync(path.join(root, rel), 'utf8')); } catch { return null; } };
+      const kept = planned.steps.filter((s) => !stays(s));
+      const steps = kept.filter((s) => !(noXstate && s.tool === 'line.import.extractWorkflow'));
+      const skipped = [...planned.skipped, ...planned.steps.filter((s) => !kept.includes(s)).map((s) => ({ block: s.blocks[0], sentence: /** @type {string} */ (stays(s)) })), ...kept.filter((s) => !steps.includes(s)).map((s) => ({ block: s.blocks[0], sentence: `${s.args.name} stays where it is: the app does not depend on xstate, so a Line workflow would not compile in it.` }))];
       return { proposal, steps, skipped };
     }),
     characterize: async (_r, f, closure, map) => {

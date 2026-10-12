@@ -30,9 +30,11 @@ import os from 'node:os';
 import path from 'node:path';
 import { LineOpError, assertStagedChange } from './contract.mjs';
 import { planMoveFile, planBaseOn, planCreateLayout, applyChange } from './ops.mjs';
-import { listFiles } from '@line/construct-core/profiles/line/checks';
+import { listFiles, findSharedCopies } from '@line/construct-core/profiles/line/checks';
 import { WALK_SKIP_DIRS, isGitCheckout } from '@line/construct-core/fs';
-import { CODE_EXTENSIONS, NON_ITEM_FILE } from '@line/construct-core/profiles/line/contract';
+import { CODE_EXTENSIONS, NON_ITEM_FILE, SHARED_CONCERNS } from '@line/construct-core/profiles/line/contract';
+import { buildLogicMap } from './logicMap.mjs';
+import { fileLogicKind } from './importV2/fit.mjs';
 import { readPathAliases, resolveImportSpecifier, parseReactSpaRoutes } from '@line/construct-core/route-resolver';
 import { appRoute, bindingSpecifier, readRouteFamily, familyFeature, commonFolder, routeLabel } from './importV2/route.mjs';
 import { parseToAst, walkAst } from '@construct/ast';
@@ -51,8 +53,10 @@ export const GENERIC_UI = Object.freeze(['Accordion', 'Avatar', 'Badge', 'Breadc
 /** Folder names that say what a file is, not which feature it belongs to. */
 const KIND_DIRS = new Set(['components', 'component', 'pages', 'page', 'hooks', 'services', 'service', 'workflows', 'fixtures', 'mocks', 'data',
   'ui', 'lib', 'libs', 'utils', 'api', 'src', 'views', 'screens', 'containers', 'routes', 'app']);
-const KIND_ORDER = { fixtures: 0, workflows: 1, components: 2, pages: 3 };
-const SINGULAR = { components: 'component', pages: 'page', workflows: 'workflow', fixtures: 'fixture' };
+const KIND_ORDER = { fixtures: 0, workflows: 1, services: 1, domains: 1, components: 2, pages: 3 };
+const SINGULAR = { components: 'component', pages: 'page', workflows: 'workflow', fixtures: 'fixture', services: 'service', domains: 'domain' };
+/** The logic kinds: no library base, so a feature's one moves in as it is (never split into library + thin item). */
+const LOGIC_ITEM_KINDS = new Set(['services', 'domains']);
 const JSON_CONFIG = /(^|\/)(package|package-lock|tsconfig[^/]*|jsconfig|composer|\.?eslintrc|components)\.json$/;
 
 const stripExt = (rel) => rel.slice(0, rel.length - posix.extname(rel).length);
@@ -299,6 +303,8 @@ function readFolder(projectRoot, folder, scope = /** @type {{only?: Set<string>,
     if (!CODE_EXTENSIONS.includes(ext)) continue;
     if (NON_ITEM_FILE.test(base)) { unchanged.push({ file: rel, sentence: `${base} is a test, story or index file, so it stays where it is.` }); continue; }
     const src = graph.sources.get(rel) ?? '';
+    const stay = stayInPlace(rel, src);
+    if (stay) { unchanged.push({ file: rel, sentence: stay }); continue; }
     const ex = readExports(src);
     if (!ex) { unchanged.push({ file: rel, sentence: `${base} could not be read as code, so it stays where it is.` }); continue; }
     if (ex.components.length) {
@@ -312,7 +318,10 @@ function readFolder(projectRoot, folder, scope = /** @type {{only?: Set<string>,
     } else if (ex.functions && (/^use[A-Z]/.test(base) || /from\s+['"]react(-dom)?['"]/.test(src))) {
       unchanged.push({ file: rel, sentence: `${base} is a React hook, and a Line workflow holds plain logic without React, so it stays where it is for now.` });
     } else if (ex.functions) {
-      items.push({ file: rel, kind: 'workflows', name: stripExt(base), src, hasDefault: ex.hasDefault });
+      // Follow the fit (importV2/fit.mjs): data -> services, pure -> domains, screen flow -> workflows.
+      let units = [];
+      try { units = buildLogicMap(projectRoot, [rel]).units; } catch { units = []; }
+      items.push({ file: rel, kind: fileLogicKind(rel, units), name: stripExt(base), src, hasDefault: ex.hasDefault });
     } else {
       unchanged.push({ file: rel, sentence: `${base} holds only types or constants, so it stays where it is.` });
     }
@@ -330,7 +339,30 @@ function readFolder(projectRoot, folder, scope = /** @type {{only?: Set<string>,
 }
 
 /** A Next.js app-router file: the framework finds it by its path (page.tsx, layout.tsx, route.ts, ... under app/), nothing imports it. */
-const servedByPath = (rel) => /(?:^|\/)app\/(?:.*\/)?(?:page|layout|template|loading|error|not-found|default|route)\.[cm]?[jt]sx?$/.test(rel);
+const servedByPath = (rel) => /(?:^|\/)app\/(?:.*\/)?(?:page|layout|template|loading|error|global-error|not-found|default|route)\.[cm]?[jt]sx?$/.test(rel);
+/** Path-routed files Import leaves where they are: every app-router file but a page, and the app's middleware and
+ * instrumentation. (A page is brought in; its path keeps a one-line link to it.) */
+const FRAMEWORK_FILE = /(?:^|\/)app\/(?:.*\/)?(?:layout|template|loading|error|global-error|not-found|default|route)\.[cm]?[jt]sx?$|^(?:src\/)?(?:middleware|instrumentation(?:-client)?)\.[cm]?[jt]sx?$/;
+
+/**
+ * Why a file stays where it is at plan time, in one sentence, or null when Import may bring it in (follow-up a):
+ * a file Next.js finds by its path (other than a page), or a file LINE-SHARED would refuse inside Line with no typed
+ * fix (its own copy of a shared concern, such as an AI route that imports @google/genai).
+ * @param {string} rel Project-relative.
+ * @param {string} src Its source.
+ * @returns {string|null}
+ */
+export function stayInPlace(rel, src) {
+  const base = posix.basename(rel);
+  if (FRAMEWORK_FILE.test(rel)) return `${base} stays where it is: Next.js finds it by its path, so it is never moved.`;
+  let ast = null;
+  try { ast = parseToAst(src); } catch { return null; }
+  for (const concern of SHARED_CONCERNS) {
+    const hit = findSharedCopies(ast, concern)[0];
+    if (hit) return `${base} stays where it is: it ${hit.what}, its own copy of ${concern.concern}, which Line would refuse with no fix it can make (use ${concern.module}).`;
+  }
+  return null;
+}
 
 const pageFeatureOf = (folder, page, family) => (page.startsWith(`${folder}/`) ? (family ?? folderFeature(folder, page)) : null);
 
@@ -403,6 +435,8 @@ function decideBases(folder, items, graph) {
   const libLiving = new Set(items.filter((i) => i.target === 'library').map((i) => i.file));
   for (const it of items) {
     if (it.target !== 'feature') continue;
+    // A service or domain has no library base: it moves into its feature as it is.
+    if (LOGIC_ITEM_KINDS.has(it.kind)) { it.mode = 'move'; continue; }
     it.mode = 'split';
     if (it.kind === 'components' && it.root) {
       // The file the outermost element is imported from, resolved like the graph does.
@@ -419,7 +453,11 @@ function decideBases(folder, items, graph) {
     changed = false;
     for (const it of items) {
       if (it.target !== 'feature' || it.mode !== 'move') continue;
-      if ([...(graph.importers.get(it.file) ?? [])].some((u) => libLiving.has(u))) { it.mode = 'split'; libLiving.add(it.file); changed = true; }
+      if (![...(graph.importers.get(it.file) ?? [])].some((u) => libLiving.has(u))) continue;
+      // The library may use only the library: a logic item it uses goes there whole; any other item is split.
+      if (LOGIC_ITEM_KINDS.has(it.kind)) { it.target = 'library'; it.mode = undefined; } else it.mode = 'split';
+      libLiving.add(it.file);
+      changed = true;
     }
   }
 }
@@ -428,7 +466,7 @@ function decideBases(folder, items, graph) {
 function finishBases(items) {
   for (const it of items) {
     if (it.target === 'library') { it.libraryId = `${it.kind}/${it.name}`; if (it.kind === 'components') it.level = levelFromSize(it.src); }
-    if (it.target === 'feature') it.base = it.mode === 'move' ? `components/${it.baseItem.name}` : `${it.kind}/${it.name}`;
+    if (it.target === 'feature') it.base = LOGIC_ITEM_KINDS.has(it.kind) ? undefined : it.mode === 'move' ? `components/${it.baseItem.name}` : `${it.kind}/${it.name}`;
   }
 }
 
@@ -445,7 +483,7 @@ function namesOnDisk(dir) {
   try { return fs.readdirSync(dir, { withFileTypes: true }).filter((e) => e.isFile()).map((e) => stripExt(e.name)); } catch { return []; }
 }
 
-const NAME_OK = { components: PASCAL, pages: PASCAL, workflows: /^[A-Za-z][A-Za-z0-9_-]*$/, fixtures: /^[A-Za-z0-9][A-Za-z0-9_-]*$/ };
+const NAME_OK = { components: PASCAL, pages: PASCAL, workflows: /^[A-Za-z][A-Za-z0-9_-]*$/, services: /^[A-Za-z][A-Za-z0-9_-]*$/, domains: /^[A-Za-z][A-Za-z0-9_-]*$/, fixtures: /^[A-Za-z0-9][A-Za-z0-9_-]*$/ };
 
 /**
  * Name clashes, caught at plan time: two items of the folder that would land at the same place (library/<kind>/<Name>
@@ -529,6 +567,7 @@ function proposalBase(it) {
     return `${it.name} goes to the library${lvl}${why}.`;
   }
   const route = it.route ? `, served at ${it.route}` : '';
+  if (it.mode === 'move' && !it.baseItem) return `${it.name} goes to feature ${it.feature} as a ${SINGULAR[it.kind]}${route}.`;
   if (it.mode === 'move') return `${it.name} goes to feature ${it.feature}, based on the library ${it.baseItem.name} that it renders${route}.`;
   return `${it.name} goes to feature ${it.feature}${route}; its full code goes to the library and the feature gets a ${SINGULAR[it.kind]} based on it.`;
 }
@@ -641,12 +680,13 @@ export function planImport(projectRoot, folder, answers = {}) {
       `Moves ${what(it)} into the library${as(it)}${lvl ? ` as ${lvl === 'atom' ? 'an' : 'a'} ${lvl}` : ''} and points its users at it.${clashNote(it, true)}${shimNote(it)}`, `lib-${it.name}`);
   }
   for (const it of items.filter((i) => i.mode === 'move')) {
-    add('line.import.toFeature', { mode: 'move', from: local(it.file), kind: it.kind, name: it.name, ...rename(it), feature: it.feature, base: it.base, keepShim: keepShim(it), ...(it.route ? { route: it.route } : {}) },
-      `Moves ${what(it)} into feature ${it.feature}${as(it)}, based on the library ${it.baseItem.name}.${clashNote(it, true)}${shimNote(it)}`, `feature-${it.name}`);
+    add('line.import.toFeature', { mode: 'move', from: local(it.file), kind: it.kind, name: it.name, ...rename(it), feature: it.feature, ...(it.base ? { base: it.base } : {}), keepShim: keepShim(it), ...(it.route ? { route: it.route } : {}) },
+      `Moves ${what(it)} into feature ${it.feature}${as(it)}${it.baseItem ? `, based on the library ${it.baseItem.name}` : ` as a ${SINGULAR[it.kind]}`}.${clashNote(it, true)}${shimNote(it)}`, `feature-${it.name}`);
   }
   for (const it of items.filter((i) => i.mode === 'split')) {
-    add('line.import.toFeature', { mode: 'wrap', kind: it.kind, name: it.name, feature: it.feature, base: it.base, ...(it.route ? { route: it.route } : {}) },
-      `Adds ${it.name} to feature ${it.feature}, based on the library ${it.name}${it.route ? `, serving ${it.route}` : ''}.${it.clash ? ` It is ${it.clash.was} from ${posix.basename(it.file)}, renamed because ${posix.basename(it.clash.with)} also brings ${it.clash.was}.` : ''}`, `feature-${it.name}`);
+    const entry = it.kind === 'pages' && servedByPath(it.file) ? local(it.file) : null;
+    add('line.import.toFeature', { mode: 'wrap', kind: it.kind, name: it.name, feature: it.feature, base: it.base, ...(it.route ? { route: it.route } : {}), ...(entry ? { entry } : {}) },
+      `Adds ${it.name} to feature ${it.feature}, based on the library ${it.name}${it.route ? `, serving ${it.route}` : ''}.${it.clash ? ` It is ${it.clash.was} from ${posix.basename(it.file)}, renamed because ${posix.basename(it.clash.with)} also brings ${it.clash.was}.` : ''}${entry ? ` ${posix.basename(entry)} stays at its path and serves the feature's ${it.name}.` : ''}`, `feature-${it.name}`);
   }
   const lib = items.filter((i) => i.target === 'library').length;
   const feat = items.length - lib;
@@ -677,7 +717,16 @@ function shimSource(oldRel, newRel, src, renamed) {
 function withShim(change, from, to, keepShim, renamed) {
   if (!keepShim) return change;
   const original = change.files.find((x) => x.path === to)?.content ?? '';
-  return { ...change, files: change.files.map((x) => (x.path === from && x.content === null ? { path: from, content: shimSource(from, to, original, renamed) } : x)) };
+  // A file Next.js finds by its path keeps a route entry: only the default export, re-exported (LINE-OWNER reads it).
+  const content = servedByPath(from) && /export\s+default\b|export\s*\{[^}]*\bas\s+default\b/.test(original) ? routeEntrySource(from, to) : shimSource(from, to, original, renamed);
+  return { ...change, files: change.files.map((x) => (x.path === from && x.content === null ? { path: from, content } : x)) };
+}
+
+/** A Next.js route entry at `entryRel` that serves `pageRel`: one re-export of its default (or of `name` as default). */
+function routeEntrySource(entryRel, pageRel, name) {
+  let spec = posix.relative(posix.dirname(entryRel), stripExt(pageRel));
+  if (!spec.startsWith('.')) spec = `./${spec}`;
+  return `// Next.js serves this route from here; the page lives in Line: ${pageRel}.\nexport { ${name ? `${name} as default` : 'default'} } from '${spec}';\n`;
 }
 
 /** Where an identifier is a name, not a reference to the binding (a member property, an object or class key, a JSX attribute). */
@@ -796,7 +845,7 @@ export const IMPORT_STEP_TOOLS = Object.freeze({
     change = withCarriedExceptions(root, withShim(change, from, to, keepShim, renamed), to, from);
     return { ...change, summary: `Moves ${name} into the library.` };
   },
-  'line.import.toFeature': (root, { mode, from, kind, name, exportName, feature, base, route, keepShim }) => {
+  'line.import.toFeature': (root, { mode, from, kind, name, exportName, feature, base, route, keepShim, entry }) => {
     const addRoute = (c, p) => (route && kind === 'pages' ? { ...c, files: c.files.map((x) => (x.path === p ? { ...x, content: x.content.replace(/^(\/\/ @line-base [^\n]*\n)/, `$1// @line-route ${route}\n`) } : x)) } : c);
     if (mode === 'move') {
       const to = `features/${feature}/${kind}/${name}${posix.extname(String(from))}`;
@@ -806,7 +855,10 @@ export const IMPORT_STEP_TOOLS = Object.freeze({
       return { ...change, summary: `Moves ${name} into feature ${feature}.` };
     }
     const change = planBaseOn(root, { libraryId: base, feature, name });
-    return { ...addRoute(change, change.files[0].path), summary: `Adds ${name} to feature ${feature}, based on the library ${name}.` };
+    const page = change.files[0].path;
+    // A split page.tsx: its path stays a route entry, now serving the feature's page (which renders the library one).
+    const withEntry = entry && fs.existsSync(path.join(root, entry)) ? { ...change, files: [...change.files, { path: entry, content: routeEntrySource(entry, page, name) }] } : change;
+    return { ...addRoute(withEntry, page), summary: `Adds ${name} to feature ${feature}, based on the library ${name}.` };
   },
 });
 

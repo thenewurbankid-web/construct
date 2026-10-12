@@ -90,7 +90,7 @@ test('applyImport of folder src (tsconfig one folder up, carried into its scratc
   assert.ok(r.ok, r.sentence);
   assert.ok(!fs.existsSync(path.join(app, 'src/lib/format.ts')), 'format moved');
   const badge = fs.readFileSync(path.join(app, 'src/library/components/Badge.tsx'), 'utf8');
-  assert.match(badge, /from '@\/library\/workflows\/format'/, '`@/lib/format` (an alias outside the library) follows the move');
+  assert.match(badge, /from '@\/library\/domains\/format'/, '`@/lib/format` (an alias outside the library) follows the move, into domains: format is pure');
   assert.match(fs.readFileSync(path.join(app, 'src/library/pages/Home.tsx'), 'utf8'), /from '@\/library\/components\/Badge'/);
 });
 
