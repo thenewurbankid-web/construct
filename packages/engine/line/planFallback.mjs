@@ -23,10 +23,15 @@ const sentence = (s) => { const t = String(s).trim().replace(/\s+/g, ' '); const
 /**
  * A step's why as the plan stores it: trimmed, one line, and ended with a full stop when it has none (a missing full
  * stop alone never refuses a step). Anything else the sentence rule needs (a capital letter first) is not guessed.
- * @param {unknown} why @returns {string | null} null when there is no text.
+ * @param {unknown} why The why as sent.
+ * @returns {string | null} null when there is no text.
  */
 export const normalizeWhy = (why) => { if (typeof why !== 'string') return null; const t = why.trim().replace(/\s+/g, ' '); return !t ? null : /[.?!]$/.test(t) ? t : `${t}.`; };
-/** Which part of the sentence rule a why still breaks, as one plain-English sentence; null when it keeps it. */
+/**
+ * Which part of the sentence rule a why still breaks, as one plain-English sentence; null when it keeps it.
+ * @param {unknown} why The why as sent.
+ * @returns {string | null}
+ */
 export const whyProblem = (why) => {
   const w = normalizeWhy(why);
   if (w === null) return "The step's why is missing; say in one plain-English sentence what the step does.";
