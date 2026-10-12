@@ -49,3 +49,17 @@ Re-run `/opportunity` end to end on a fresh clone until it reaches `done` with e
 - OSS wave: zod schemas, fast-check, AST instead of regex, dagre, Express 5, parseArgs, pluralize, stable JSON, eslint-plugin-playwright, a generated client contract.
 - Nx affected and cache trial.
 - Rename the Train `train_*` routes and tools to `training_*`.
+
+## Line knowledge graph (owner, 2026-10-12): no code embeddings
+- **G1 `line-graph`:** contract and mock in `packages/engine/line/graph/`. Nodes: item, unit, route, endpoint, field, table, specPoint, finding, planStep. Edge layers:
+  - structure: unifies moduleEdges, baseLinks, classify and importGraph.
+  - static: CALLS, RENDERS, USES_HOOK and HANDLES_EVENT, via the TS checker.
+  - domain: a stub for now.
+  - process.
+  - runtime: reserved.
+  - Stored in `line/graph/`, cached by file hash and built incrementally.
+- **G2 `line-graph-runtime`:** a `module.registerHooks` / jest recorder of caller→callee with shapes only (no values), plus fetches and state writes. Its records become CALLED_AT_RUNTIME edges, and units no test reached are flagged. Integration points cover the Import v2 coverage report and Fix 2's mocks.
+- **Toward UAT 2:**
+  - G3: domain layer, from OpenAPI via `packages/core/shape-source.mjs`, the cf1 spec, and the DB schema if present.
+  - G4: context picker and symbol index on the graph, plus a Graph Details view in Cockpit.
+- **Rule:** write tests and expected outputs first. If tests fail, stop and report them to the owner.
