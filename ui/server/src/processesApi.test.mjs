@@ -304,3 +304,30 @@ test('GET /api/processes/gc serves the dry-run gc report, registered ahead of th
     server.closeAllConnections?.();
   }
 });
+
+// A project that is not a git repository (a plain folder the Cockpit opened) makes the sweep answer
+// { ok: false, error } with no counts. That must reach the client as gc: null -- the drawer's Processes tab
+// read counts.worktrees off it and the whole Cockpit crashed (found by shell-drawer-palette.spec.js).
+test('GET /api/processes/gc answers gc: null when the project is not a git repository', async () => {
+  const projectDir = makeTempDir('construct-procapi-gcnorepo-');
+  const stateDir = makeTempDir('construct-procapi-gcnorepostate-');
+  const service = createProcessesService({ getProjectDir: () => projectDir, stateDir, executeStep: gates().executeStep });
+  const auth = createAuth(resolveAuthConfig(ENV, { host: '127.0.0.1', clientOrigin: ORIGIN }));
+  const app = express();
+  app.use(express.json());
+  auth.mountRoutes(app);
+  app.use('/api', auth.requireSession);
+  app.use('/api/processes', createProcessesRouter(service));
+  const server = http.createServer(app);
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const port = server.address().port;
+  try {
+    const res = await fetch(`http://127.0.0.1:${port}/api/processes/gc`, { headers: { origin: ORIGIN, cookie: cookie() } });
+    const body = await res.json();
+    assert.equal(res.status, 200);
+    assert.deepEqual(body, { ok: true, gc: null });
+  } finally {
+    server.close();
+    server.closeAllConnections?.();
+  }
+});

@@ -197,7 +197,11 @@ button.sh-pill:hover { background: var(--surface-3); }
 }
 .sh-project-btn:hover { background: var(--surface-3); }
 /* The project name wins the room: the workspace-folder tag beside it gives way first (pre-UAT: "line-sa… / Whole pr…"). */
-.sh-project-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 0 0 auto; max-width: 100%; }
+/* The name may still shrink (ellipsis) once the tag is gone, so a name longer than the button's max-width never
+ * spills past its border (#273: shell-topbar-density.spec.js measures that). The 1000:1 shrink weights against
+ * .sh-project-ws keep the tag giving way first; the caret never shrinks. */
+.sh-project-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 0 1 auto; min-width: 0; }
+.sh-project-caret { flex: none; }
 .sh-popover {
   position: absolute;
   top: calc(100% + 6px);
