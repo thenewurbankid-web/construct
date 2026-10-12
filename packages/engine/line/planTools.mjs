@@ -36,6 +36,7 @@ import { readLineProject } from './model.mjs';
 import { planFixByKey, planStep, withFixes, planAmended, amendFixes, onScratch } from './fixes.mjs';
 import { planSetFragment } from './fragments.mjs';
 import { planCreateFeature, planAddRoute, planSetCode } from './build.mjs';
+import { planSetLayoutSlot } from './shell.mjs';
 import { entryById } from './toolRegistry.mjs';
 
 /** The one catalog's entry for a plan tool (toolRegistry.mjs); a tool the catalog does not list cannot be registered. */
@@ -45,7 +46,7 @@ import { importTools } from './importTools.mjs';
 import { planExtractStep, EXTRACT_TOOLS } from './importV2/extract.mjs';
 
 /** The real operations (tests pass the contract's mock instead). */
-export const REAL_PLAN_OPS = Object.freeze({ planCreateFeature, planAddRoute, planSetCode, planBaseOn, planPromote, planSetProp, planFixByKey, planSetFragment, planStep, planAmended, planImportStep, planExtractStep, applyChange, checkChange, readLineProject, planBaseWorkflowOn, planSetWorkflowRole, planAddWorkflowTransition, planRemoveWorkflowTransition });
+export const REAL_PLAN_OPS = Object.freeze({ planCreateFeature, planAddRoute, planSetCode, planSetLayoutSlot, planBaseOn, planPromote, planSetProp, planFixByKey, planSetFragment, planStep, planAmended, planImportStep, planExtractStep, applyChange, checkChange, readLineProject, planBaseWorkflowOn, planSetWorkflowRole, planAddWorkflowTransition, planRemoveWorkflowTransition });
 
 /** The write tools that plan a StagedChange, and the op that plans it (`planStep` takes {tool, args}). */
 export const CHANGE_TOOLS = Object.freeze({
@@ -60,6 +61,8 @@ export const CHANGE_TOOLS = Object.freeze({
   'line.baseWorkflowOn': 'planBaseWorkflowOn', 'line.setWorkflowRole': 'planSetWorkflowRole',
   'line.addWorkflowTransition': 'planAddWorkflowTransition', 'line.removeWorkflowTransition': 'planRemoveWorkflowTransition',
   'line.createFeature': 'planCreateFeature', 'line.addRoute': 'planAddRoute', 'line.setCode': 'planSetCode',
+  // bench-gaps: the app shell (shell.mjs) and the layer-import fix (build.mjs planUseViaUsecase, a fixes.mjs planStep tool)
+  'line.setLayoutSlot': 'planSetLayoutSlot', 'line.useViaUsecase': 'planStep',
 });
 
 /** Change tools planned only when they run: an import step builds on the steps before it (the library item a feature
@@ -274,6 +277,8 @@ const SCHEMAS = Object.freeze({
   'line.createFeature': objectSchema({ name: 'string', story: 'string', points: 'strings' }, { change: true }),
   'line.addRoute': objectSchema({ route: 'string', page: 'string' }, { change: true }),
   'line.setCode': objectSchema({ file: 'string', code: 'string', contentHash: 'optString' }, { change: true }),
+  'line.setLayoutSlot': objectSchema({ slot: 'string', components: 'strings' }, { change: true }),
+  'line.useViaUsecase': objectSchema({ file: 'string', specifier: 'string' }, { change: true }),
   'line.leaveAsIs': objectSchema({ stepId: 'string' }),
   'line.project': objectSchema({}),
 });
@@ -303,6 +308,8 @@ const DESCRIBE = Object.freeze({
   'line.createFeature': 'Creates a new feature folder with its spec.md (one story and its acceptance points), through the checked writer.',
   'line.addRoute': 'Serves one feature page at a route: an app-router entry that only re-exports the page, plus the page\'s @line-route, through the checked writer.',
   'line.setCode': 'Writes the whole code of one library or feature file (or a feature\'s spec.md); an existing file needs the contentHash it was read at; through the checked writer.',
+  'line.setLayoutSlot': 'Shows library or feature components on every page: fills one slot (header, nav or footer) of the app shell, which app/layout.tsx renders; through the checked writer.',
+  'line.useViaUsecase': 'Imports an application layer (a service, workflow or domain) into a page or component through a usecase of its feature or the library instead of directly, through the checked writer.',
   'line.leaveAsIs': 'Records that a person chose to carry on after a step that needed them; writes nothing.',
   'line.project': 'Reads the Line view of the project: library, features, items and findings.',
 });

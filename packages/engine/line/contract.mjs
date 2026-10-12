@@ -175,6 +175,15 @@ import { EXTRACT_TOOLS } from './importV2/extractTarget.mjs';
  *   feature page file (features/<f>/pages/<Name>.tsx). Writes the app-router entry and the page's `@line-route`.
  * @typedef {{file: string, code: string, contentHash?: string}} SetCodeRequest  The whole file (library/<kind>/...,
  *   features/<f>/<kind>/... or features/<f>/spec.md); `contentHash` (from a read) is required to replace an existing file.
+ *   The changed file and the files that import it are type-checked before it lands (TYPE_ERROR, with typed fixes).
+ * @typedef {{slot: 'header'|'nav'|'footer', components: string[]}} SetLayoutSlotRequest  The app shell (shell.mjs):
+ *   app/layout.tsx renders the library layout component (library/components/AppLayout) and fills one of its slots with
+ *   these library or feature component files, in order (each `<file>` or `<file>#<ExportName>`); [] is refused, an
+ *   existing slot is replaced.
+ * @typedef {{file: string, specifier: string}} UseViaUsecaseRequest  A page or component imports an application layer
+ *   (services/, workflows/, domain) it may not (PAGE-002/003/005, COMPONENT-003): import it through a usecase of the
+ *   same feature (or the library) instead. Writes `<area>/usecases/<name>.ts` re-exporting the module, and re-points
+ *   the import in `file`.
  */
 
 /**
@@ -467,6 +476,8 @@ export const LINE_PLAN_TOOLS = Object.freeze([
   { name: 'line.createFeature', kind: 'write', request: 'CreateFeatureRequest' },
   { name: 'line.addRoute', kind: 'write', request: 'AddRouteRequest' },
   { name: 'line.setCode', kind: 'write', request: 'SetCodeRequest' },
+  { name: 'line.setLayoutSlot', kind: 'write', request: 'SetLayoutSlotRequest' },
+  { name: 'line.useViaUsecase', kind: 'write', request: 'UseViaUsecaseRequest' },
   { name: 'line.project', kind: 'read', request: '{}' },
 ]);
 export const CHECK_KINDS = Object.freeze(['validate', 'types', 'tests', 'file', 'spec']);
@@ -757,13 +768,26 @@ export const AUTO_ACTION_KINDS = Object.freeze(['click', 'type', 'select', 'appr
  * @typedef {{folder: string, stepId?: string, action: 'edit'|'skip'|'unskip'|'move'|'approve'|'approve-all', args?: Record<string, unknown>, to?: number}} ImportStepEdit
  */
 
+/**
+ * A typed fix of a refused request (bench-gaps): the plan step that gets past the refusal, as a builder adds it. Unlike
+ * a finding's LineFix the step may name any Line plan tool (line.addRoute, line.setCode, line.baseOn, ...), since the
+ * refused request never joined the plan; it is added as a new step, with no fixOf.
+ * @typedef {object} RefusalFix
+ * @property {string} id        Stable for the same request on the same files, e.g. "UNKNOWN_ITEM/page:features/catalog/pages/ListPage.tsx".
+ * @property {string} sentence  Plain English: what adding the step will do.
+ * @property {number} rank      1 is the recommended fix.
+ * @property {{tool: string, args: Record<string, unknown>}} step
+ */
+
 /** A refused request (bad name, unknown item, name taken). `sentence` is shown as is; `detail` (optional) is the
- * technical reason (a parser or type-checker message) for a collapsed Details. */
+ * technical reason (a parser or type-checker message) for a collapsed Details; `fixes` (optional, bench-gaps) are the
+ * typed fixes (RefusalFix) that get past it, recommended first. */
 export class LineOpError extends Error {
-  /** @param {string} sentence @param {string} code @param {string} [detail] */
-  constructor(sentence, code, detail) {
+  /** @param {string} sentence @param {string} code @param {string} [detail] @param {RefusalFix[]} [fixes] */
+  constructor(sentence, code, detail, fixes) {
     super(sentence); this.name = 'LineOpError'; this.sentence = sentence; this.code = code;
     if (detail !== undefined) this.detail = detail;
+    if (Array.isArray(fixes) && fixes.length) this.fixes = fixes.map((f, i) => ({ ...f, rank: i + 1 }));
   }
 }
 
@@ -853,7 +877,7 @@ export const IMPORT_TOOLS = Object.freeze(['line.import.mark', 'line.import.toLi
 /** The tools an Import agent's step names: Import's own, and (a route-seeded import) the FitProposal's extract steps. */
 export const IMPORT_AGENT_TOOLS = Object.freeze([...IMPORT_TOOLS, ...EXTRACT_TOOLS]);
 
-export const LINE_FIX_TOOLS = Object.freeze(['line.setBase', 'line.promote', 'line.baseOn', 'line.moveFile', 'line.createLayout', 'line.amend']);
+export const LINE_FIX_TOOLS = Object.freeze(['line.setBase', 'line.promote', 'line.baseOn', 'line.moveFile', 'line.createLayout', 'line.amend', 'line.useViaUsecase']);
 
 export const LINE_KINDS = Object.freeze(['components', 'pages', 'workflows', 'fixtures', 'usecases', 'services', 'domains']);
 export const LEVELS = Object.freeze(['atom', 'molecule', 'organism']);
