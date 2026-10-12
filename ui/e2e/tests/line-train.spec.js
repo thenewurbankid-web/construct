@@ -13,6 +13,8 @@ startUnderTheHood(test);
 // one closed choice, tried in a scratch copy and saved without project words; a near-miss word is answered once and
 // becomes a synonym; Run eval fills the scoreboard. No console error, no failed request, axe clean.
 const ROOT = process.env.E2E_TRAIN_ROOT;
+// Never the repo's own line/train: the config always gives the server a temp training root (playwright.config.js).
+if (!ROOT || path.resolve(ROOT) === path.resolve(path.dirname(new URL(import.meta.url).pathname), '../../../line')) throw new Error('E2E_TRAIN_ROOT must be a temp folder, never the repo\'s line/.');
 const lines = (rel) => fs.readFileSync(path.join(ROOT, rel), 'utf8').trim().split('\n').map((l) => JSON.parse(l));
 
 test.describe.serial('Train Line', () => {

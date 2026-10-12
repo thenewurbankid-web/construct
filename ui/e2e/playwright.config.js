@@ -28,6 +28,10 @@ process.env.E2E_DEVSERVER_PORT_BASE = String(DEV_SERVER_PORT_BASE);
 // The pid in the name is what lets tools/dev/heavy.sh tell a live run's state from a dead one (#414).
 const STATE_DIR = process.env.E2E_STATE_DIR || fs.mkdtempSync(path.join(os.tmpdir(), `construct-e2e-state-${process.pid}-`));
 process.env.E2E_STATE_DIR = STATE_DIR;
+// Train Line's root (LINE_TRAIN_ROOT): a fresh temp folder, seeded by the server from the repo's line/train on first
+// open, so no spec (Train Line, a two-modes walk of its screen) ever writes the committed cases.
+const TRAIN_ROOT = process.env.E2E_TRAIN_ROOT || fs.mkdtempSync(path.join(os.tmpdir(), `construct-e2e-train-${process.pid}-`));
+process.env.E2E_TRAIN_ROOT = TRAIN_ROOT;
 
 // These tests exercise the real, rendered UI in a real browser — the gap
 // left by every prior verification pass (curl for the API, `npm run build`
@@ -73,7 +77,7 @@ export default defineConfig({
       // ui/server restricts CORS + WebSocket origin to UI_CLIENT_ORIGIN.
       // #292: process records live in a per-user state dir; a fresh one keeps the
       // ordinary suite from ever seeing a real process of the developer's own.
-      env: { PORT: String(SERVER_PORT), UI_CLIENT_ORIGIN: CLIENT_ORIGIN, CONSTRUCT_STATE_DIR: STATE_DIR, CONSTRUCT_DEV_SERVER_PORT_BASE: String(DEV_SERVER_PORT_BASE), CONSTRUCT_DECISION_PLUGINS: 'on', ...workspaceEnv() },
+      env: { PORT: String(SERVER_PORT), UI_CLIENT_ORIGIN: CLIENT_ORIGIN, CONSTRUCT_STATE_DIR: STATE_DIR, CONSTRUCT_DEV_SERVER_PORT_BASE: String(DEV_SERVER_PORT_BASE), CONSTRUCT_DECISION_PLUGINS: 'on', LINE_TRAIN_ROOT: TRAIN_ROOT, ...workspaceEnv() },
     },
     {
       command: `npx next dev -p ${CLIENT_PORT}`,
