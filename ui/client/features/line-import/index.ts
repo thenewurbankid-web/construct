@@ -8,3 +8,6 @@ export * from './controllers/LineImportController';
 
 /** The Import flow (folders, scan, answers, plan, apply) for reuse or tests. */
 export * from './hooks/useImport';
+
+/** Two modes on Import: what the chat reads and the screen's own actions it runs. */
+export * from './hooks/useImportModes';

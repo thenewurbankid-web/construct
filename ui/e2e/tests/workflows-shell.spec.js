@@ -5,6 +5,10 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { setTheme } from './support/cockpit.js';
+import { startUnderTheHood } from './support/lineModes.js';
+
+// Two modes: this spec checks the screen's regular view, so it starts Under the hood (screens open in Chat by default).
+startUnderTheHood(test);
 
 // #248 (Design: workflows-in-shell): Workflows inside the Cockpit shell. The
 // workflow list is a Browser tab, the diagram is the stage, and Narrative /

@@ -8,6 +8,10 @@ import { openProject } from './support/browseProject.js';
 import { runAxe, isBlocking, format } from './support/axe.js';
 import { failOnConsoleErrors } from './support/consoleGuard.js';
 import { planChange } from './support/linePlan.js';
+import { startUnderTheHood } from './support/lineModes.js';
+
+// Two modes: this spec checks the screen's regular view, so it starts Under the hood (screens open in Chat by default).
+startUnderTheHood(test);
 
 // Line hours 5+6 -- the Pages screen of a Line project, on the real /api/line routes over a copy of examples/line-sample.
 // The sample has two features: orders (OrdersPage, based on ListPage, fine) and billing (InvoicesPage, based on ListPage,

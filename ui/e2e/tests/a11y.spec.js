@@ -5,6 +5,10 @@ import path from 'node:path';
 import { runAxe, isBlocking, format } from './support/axe.js';
 import { gotoCockpit } from './support/cockpit.js';
 import { makeReviewRepo } from './support/reviewRepo.js';
+import { startUnderTheHood } from './support/lineModes.js';
+
+// Two modes: this spec checks the screen's regular view, so it starts Under the hood (screens open in Chat by default).
+startUnderTheHood(test);
 
 // Design #261 -- axe accessibility pass over every Cockpit screen, both themes,
 // wide (1280) and narrow (390), plus the drawer and command palette open.

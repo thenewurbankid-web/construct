@@ -6,6 +6,8 @@ import { LineTraceController } from '@/features/line-trace';
 import { LineWorkflowsTab } from '@/features/line-workflows';
 import { isLineMock } from '@/lib/lineMode';
 import { useFeatureChat } from '../hooks/useFeatureChat';
+import { useFeaturesModes } from '../hooks/useFeaturesModes';
+import { useFeaturesStage } from '../hooks/useFeaturesStage';
 import { useLineFeatures } from '../hooks/useLineFeatures';
 import { FeaturesScreenPage } from '../pages/FeaturesScreenPage';
 import { FeaturesSwitchPage } from '../pages/FeaturesSwitchPage';
@@ -16,16 +18,19 @@ type Screen = ReactElement<{ stage?: ReactNode }>;
 
 /** A Line project's Features screen. The plan and the chat's state live here, above the route's screen (and its
  * project gate), so a re-render or remount of the screen never loses the conversation. The open feature's Workflows tab
- * (cw1) and the Trace bar (cg1/ct1) sit in it too. */
+ * (cw1) and the Trace bar (cg1/ct1) sit in it too. Two modes: chat (cd1's chat first, the default until the person
+ * picks) and Under the hood (the feature cards or the open feature, with the chat as a helper). */
 function LineScreen({ view, screen }: { view: LineFeaturesView; screen: Screen }) {
   const [revision, setRevision] = useState(0);
   const { reload } = view;
   const landed = useCallback(() => { reload(); setRevision((r) => r + 1); }, [reload]);
   const plan = useLinePlan(landed);
-  const chat = useFeatureChat(view, isLineMock() ? mockAddStep : plan.addStep);
+  const { mode, crumbs, onCrumb } = useFeaturesModes(view);
+  const chat = useFeatureChat(view, isLineMock() ? mockAddStep : plan.addStep, mode);
+  const blocks = useFeaturesStage(view, plan.rows);
   // One Plan panel per screen: the Workflows tab adds its steps to this screen's plan (the panel beside the chat).
   const workflows = view.feature && view.tab === 'workflows' ? <LineWorkflowsTab key={view.feature} feature={view.feature} addStep={plan.addStep} revision={revision} /> : null;
-  const stage = <FeaturesSwitchPage view={view} chat={chat} plan={<LinePlanController plan={plan} />} workflows={workflows} trace={<LineTraceController screen="features" steps={plan.steps} />} />;
+  const stage = <FeaturesSwitchPage view={view} chat={chat} plan={<LinePlanController plan={plan} />} workflows={workflows} trace={<LineTraceController screen="features" steps={plan.steps} />} mode={mode} crumbs={crumbs} onCrumb={onCrumb} blocks={blocks} />;
   return <FeaturesScreenPage phase="line" screen={screen} stage={stage} />;
 }
 

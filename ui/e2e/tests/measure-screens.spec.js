@@ -1,5 +1,9 @@
 import { test } from '@playwright/test';
 import fs from 'node:fs';
+import { startUnderTheHood } from './support/lineModes.js';
+
+// Two modes: this spec checks the screen's regular view, so it starts Under the hood (screens open in Chat by default).
+startUnderTheHood(test);
 
 // #391 item 0: count what is actually visible on each Cockpit screen (buttons, fields, badges, hint paragraphs,
 // prose words), so a declutter change can be compared before and after. A measuring tool, not a regression test:

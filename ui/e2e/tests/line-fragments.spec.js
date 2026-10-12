@@ -7,6 +7,10 @@ import { gotoCockpit } from './support/cockpit.js';
 import { openProject } from './support/browseProject.js';
 import { runAxe, isBlocking, format } from './support/axe.js';
 import { failOnConsoleErrors, refusalOf } from './support/consoleGuard.js';
+import { startUnderTheHood } from './support/lineModes.js';
+
+// Two modes: this spec checks the screen's regular view, so it starts Under the hood (screens open in Chat by default).
+startUnderTheHood(test);
 
 // Line cx1 -- spot code editing in the browser without the whole file, on the real /api/line routes over a copy of
 // examples/line-sample. OrdersPage passes a handler to ListPage (onMore={() => console.log('Show more orders')});

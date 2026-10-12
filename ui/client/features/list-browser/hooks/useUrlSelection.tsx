@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { announcePlace } from '@/lib/urlPlace';
 import { readSelection, withSelection } from '../domain/QuerySelection';
 
 /** A selection that lives in the URL query (`?feature=billing`): read once after mount (so server and first client
@@ -18,6 +19,7 @@ export function useUrlSelection(param: string) {
       setValue(next);
       const search = withSelection(window.location.search, param, next);
       window.history.replaceState(null, '', `${window.location.pathname}${search}${window.location.hash}`);
+      announcePlace();
     },
     [param],
   );

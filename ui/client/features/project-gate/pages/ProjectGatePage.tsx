@@ -13,13 +13,17 @@ type ProjectGatePageProps = {
   onRetry: () => void;
   /** #365: the "Open a project" screen (a slot: its own controller), shown while no project is open. */
   openProject: ReactNode;
+  /** Two modes: frames the "Open a project" screen (chat or under the hood); the screen as it is by default. */
+  frameNoProject?: (screen: ReactNode) => ReactNode;
   children: ReactNode;
 };
+
+const AS_IS = (screen: ReactNode) => screen;
 
 // Presentation-only routing between the possible states
 // (PAGE-002, PAGE-003, PAGE-004, PAGE-005): no application-layer imports,
 // no literal network call.
-export function ProjectGatePage({ status, initializing, error, onInit, loadError, onRetry, openProject, children }: ProjectGatePageProps): ReactNode {
+export function ProjectGatePage({ status, initializing, error, onInit, loadError, onRetry, openProject, frameNoProject = AS_IS, children }: ProjectGatePageProps): ReactNode {
   if (!status) {
     return (
       <div className="page page--screen">
@@ -31,7 +35,7 @@ export function ProjectGatePage({ status, initializing, error, onInit, loadError
       </div>
     );
   }
-  if (status.noProject || status.projectDir === null) return openProject;
+  if (status.noProject || status.projectDir === null) return frameNoProject(openProject);
   if (!status.valid) {
     return <ProjectGateScreen status={status} initializing={initializing} error={error} onInit={onInit} />;
   }

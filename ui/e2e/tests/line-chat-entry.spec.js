@@ -84,7 +84,8 @@ test.describe.serial('Line: Features as a chat entry, in Trace style (Line sampl
     await expect(page.getByRole('heading', { level: 1, name: 'orders' })).toBeVisible();
     await expect(page.getByRole('heading', { level: 2, name: 'Ask about orders' })).toBeVisible();
     await expect(page.getByTestId('lf-item')).toHaveCount(4);
-    await expect(page.getByTestId('ln-option')).toHaveCount(5);
+    // cd1's five plus Open an item (two modes: the chat can open an item of the feature).
+    await expect(page.getByTestId('ln-option')).toHaveCount(6);
     await expect(option(page, 'feature.fix')).toBeDisabled();
     await expect(option(page, 'feature.fix')).toHaveAttribute('title', 'Nothing here has a fix Construct can apply.');
     await option(page, 'feature.missing').click();

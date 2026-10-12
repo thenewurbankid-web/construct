@@ -64,6 +64,12 @@ export const LINE_CONTROLS = Object.freeze([
   { controlId: 'open-project.bringIn', toolId: 'line.bringIn', screen: 'open-project', label: 'Bring it in' },
   { controlId: 'open-project.tabProjects', toolId: 'line.openProject', screen: 'open-project', label: 'Your projects' },
   { controlId: 'open-project.card', toolId: 'line.openProject', screen: 'open-project', label: 'Project' },
+  // The shell (two modes, on every screen): the global switch and the chat-mode breadcrumb. They only change what the
+  // person sees (a read of the project), never the project, so they trigger the read tool.
+  { controlId: 'shell.modeChat', toolId: 'line.project', screen: 'shell', label: 'Chat' },
+  { controlId: 'shell.modeHood', toolId: 'line.project', screen: 'shell', label: 'Under the hood' },
+  { controlId: 'shell.crumb', toolId: 'line.project', screen: 'shell', label: 'Breadcrumb' },
+  { controlId: 'shell.chatToggle', toolId: 'line.project', screen: 'shell', label: 'Show or hide the chat' },
 ].map((c) => Object.freeze(/** @type {import('./contract.mjs').LineControl} */ (c))));
 
 const FIX_PATH = ['features.finding', 'plan.fix', 'plan.approve'];
@@ -93,6 +99,11 @@ export const TOOL_PATHS = Object.freeze({
   'line.newProject': ['open-project.tabNew', 'open-project.name', 'open-project.nameNext', 'open-project.kind', 'open-project.kindNext', 'open-project.create'],
   'line.bringIn': ['open-project.tabGithub', 'open-project.link', 'open-project.linkNext', 'open-project.private', 'open-project.privateNext', 'open-project.bringIn'],
   'line.openProject': ['open-project.tabProjects', 'open-project.card'],
+  // Two modes: shell moves, not tools (they change only what the person sees). Keyed by the move, so Trace and Auto can
+  // light and drive them by name; no request maps to them as a tool.
+  'shell.modeChat': ['shell.modeChat'],
+  'shell.modeHood': ['shell.modeHood', 'shell.chatToggle'],
+  'shell.crumb': ['shell.crumb'],
 });
 
 /**

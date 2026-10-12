@@ -7,6 +7,10 @@ import { fileURLToPath } from 'node:url';
 import { gotoCockpit } from './support/cockpit.js';
 import { openProject } from './support/browseProject.js';
 import { runAxe, isBlocking, format } from './support/axe.js';
+import { startUnderTheHood } from './support/lineModes.js';
+
+// Two modes: this spec checks the screen's regular view, so it starts Under the hood (screens open in Chat by default).
+startUnderTheHood(test);
 
 // cw1 -- Line workflows: state machines between a feature's pages, used like primitives. On the real server over a copy
 // of examples/line-sample (library: wizard, listDetail, createConfirm, signInGate as xstate machines; checkout is plain

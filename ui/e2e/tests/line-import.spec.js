@@ -7,6 +7,10 @@ import { gotoCockpit } from './support/cockpit.js';
 import { openProject } from './support/browseProject.js';
 import { runAxe, isBlocking, format } from './support/axe.js';
 import { failOnConsoleErrors, refusalOf } from './support/consoleGuard.js';
+import { startUnderTheHood } from './support/lineModes.js';
+
+// Two modes: this spec checks the screen's regular view, so it starts Under the hood (screens open in Chat by default).
+startUnderTheHood(test);
 
 // Line ci1: Import, partial migration. On a temp copy of examples/import-sample (a plain React + TS app, no Line markers),
 // the person picks the folder src/alerts, reads what Line proposes, answers the one question (Table), sees the plan's

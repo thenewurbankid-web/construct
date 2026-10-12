@@ -1,6 +1,10 @@
 import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
 import path from 'node:path';
+import { startUnderTheHood } from './support/lineModes.js';
+
+// Two modes: this spec checks the screen's regular view, so it starts Under the hood (screens open in Chat by default).
+startUnderTheHood(test);
 
 // #223 / #568: the "Your projects" list on the Settings screen (one flat level of my own workspace). Real servers,
 // real filesystem fixture; nothing mocked.

@@ -3,6 +3,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { gotoCockpit } from './support/cockpit.js';
 import { runAxe, isBlocking, format } from './support/axe.js';
+import { startUnderTheHood } from './support/lineModes.js';
+
+// Two modes: this spec checks the screen's regular view, so it starts Under the hood (screens open in Chat by default).
+startUnderTheHood(test);
 
 // Train Line on the real server (run under playwright.line-train.config.js, which gives the server a training root of
 // its own, seeded from the repo's line/train). Claude's cases are reviewed, a typed request is drafted, corrected with

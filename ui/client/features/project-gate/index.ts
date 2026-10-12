@@ -22,3 +22,6 @@ export * from './controllers/OpenProjectHelperController';
 
 /** The chat helper's state: the conversation, its options and question, and the screen's Trace matcher. */
 export * from './hooks/useOpenProjectHelper';
+
+/** Two modes on "Open a project": what the chat reads and Reopen / the sample. */
+export * from './hooks/useOpenModes';

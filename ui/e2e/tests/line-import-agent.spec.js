@@ -6,6 +6,10 @@ import { fileURLToPath } from 'node:url';
 import { gotoCockpit } from './support/cockpit.js';
 import { openProject } from './support/browseProject.js';
 import { runAxe, isBlocking, format } from './support/axe.js';
+import { startUnderTheHood } from './support/lineModes.js';
+
+// Two modes: this spec checks the screen's regular view, so it starts Under the hood (screens open in Chat by default).
+startUnderTheHood(test);
 
 // Line ci2: the Import agent. On a temp copy of examples/import-sample, the person starts the agent on src/alerts; it reads,
 // maps the logic, runs the characterization tests (Line Import v2), sorts and plans the folder and stops at the review. The person skips one step and approves the plan; the agent runs every

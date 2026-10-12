@@ -7,6 +7,10 @@ import { gotoCockpit } from './support/cockpit.js';
 import { makeBrowseProject, openProject } from './support/browseProject.js';
 import { runAxe, isBlocking, format } from './support/axe.js';
 import { failOnConsoleErrors } from './support/consoleGuard.js';
+import { startUnderTheHood } from './support/lineModes.js';
+
+// Two modes: this spec checks the screen's regular view, so it starts Under the hood (screens open in Chat by default).
+startUnderTheHood(test);
 
 // Line hour 2: Components -> Library for a `preset: line` project (examples/line-sample): the library's components
 // as cards grouped Atoms / Molecules / Organisms with how many feature components are based on each, then each
@@ -41,7 +45,7 @@ test.describe.serial('Line Components library (Line sample project)', () => {
 
     // Groups in order, each with its cards.
     // cg1/ct1: the Trace bar ("Line modes") sits above the Plan panel.
-    await expect(page.getByRole('heading', { level: 2 })).toHaveText([/^Line modes/, /^Plan/, /^Atoms/, /^Molecules/, /^Organisms/, /^Feature components/, /^Editor/, /^New component/]);
+    await expect(page.getByTestId('line-library').getByRole('heading', { level: 2 })).toHaveText([/^Line modes/, /^Plan/, /^Atoms/, /^Molecules/, /^Organisms/, /^Feature components/, /^Editor/, /^New component/]);
     await expect(group(page, 'atom').getByTestId('ll-card')).toHaveCount(2);
     await expect(group(page, 'molecule').getByTestId('ll-card')).toHaveCount(1);
     await expect(group(page, 'organism').getByTestId('ll-card')).toHaveCount(1);

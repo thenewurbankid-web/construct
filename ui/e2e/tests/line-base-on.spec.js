@@ -7,6 +7,10 @@ import { gotoCockpit } from './support/cockpit.js';
 import { openProject } from './support/browseProject.js';
 import { runAxe, isBlocking, format } from './support/axe.js';
 import { failOnConsoleErrors, refusalOf } from './support/consoleGuard.js';
+import { startUnderTheHood } from './support/lineModes.js';
+
+// Two modes: this spec checks the screen's regular view, so it starts Under the hood (screens open in Chat by default).
+startUnderTheHood(test);
 
 // Line hour 4: "Base on this" on a library card of the Line sample. Pick a feature and a name, Create: the server
 // adds a plan step (POST /api/line/plan/step); Approve in the Plan panel writes it through Construct's writer, the page says what happened

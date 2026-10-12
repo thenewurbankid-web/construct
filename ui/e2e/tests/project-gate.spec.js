@@ -5,6 +5,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runAxe, isBlocking, format } from './support/axe.js';
 import { setTheme } from './support/cockpit.js';
+import { startUnderTheHood } from './support/lineModes.js';
+
+// Two modes: this spec checks the screen's regular view, so it starts Under the hood (screens open in Chat by default).
+startUnderTheHood(test);
 
 // #429 -- with NO project open the whole UI is blocked behind the full-screen "Open a project" gate: minimal top
 // bar (brand + profile menu), no rail, panes, drawer, status bar or palette, on every route. Settings, Local model

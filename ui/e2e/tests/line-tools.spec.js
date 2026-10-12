@@ -5,6 +5,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gotoCockpit } from './support/cockpit.js';
 import { openProject } from './support/browseProject.js';
+import { startUnderTheHood } from './support/lineModes.js';
+
+// Two modes: this spec checks the screen's regular view, so it starts Under the hood (screens open in Chat by default).
+startUnderTheHood(test);
 
 // cu3 on the real server: every /api/line route resolves from Line's one tool registry. GET /api/line/tools lists it
 // (each tool read or write, what a write changes, its controlId); a direct project-write route only adds a plan step

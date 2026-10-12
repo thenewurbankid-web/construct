@@ -1,6 +1,10 @@
 import { test, expect } from '@playwright/test';
 import { gotoCockpit } from './support/cockpit.js';
 import { runAxe, isBlocking, format } from './support/axe.js';
+import { startUnderTheHood } from './support/lineModes.js';
+
+// Two modes: this spec checks the screen's regular view, so it starts Under the hood (screens open in Chat by default).
+startUnderTheHood(test);
 
 // Line cu2: one AI layer. Settings lists every AI step (Cockpit's fills, Trace's tasks, Construct's chooser and fix
 // picker) from Line's one profile set, read-only: what the step does, its model (the 1.5B by default), how it decides

@@ -6,6 +6,10 @@ import { fileURLToPath } from 'node:url';
 import { gotoCockpit } from './support/cockpit.js';
 import { openProject } from './support/browseProject.js';
 import { runAxe, isBlocking, format } from './support/axe.js';
+import { startUnderTheHood } from './support/lineModes.js';
+
+// Two modes: this spec checks the screen's regular view, so it starts Under the hood (screens open in Chat by default).
+startUnderTheHood(test);
 
 // cg1: with Trace on, the controls that match the request and the plan's open steps light up wherever they are in
 // Cockpit (buttons, form fields, page and feature cards, the Plan panel's Approve), each found through the one control

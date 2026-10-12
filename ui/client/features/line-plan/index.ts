@@ -8,3 +8,13 @@ export * from './hooks/useLinePlan';
 
 /** The Plan panel, for the Components and Pages screens. */
 export * from './controllers/LinePlanController';
+
+/** Two modes: the Plan's chat options (PLAN_CHAT), joined to a screen's chat as "<screen>.plan.*" (withPlanOptions),
+ * and the decision a picked option names (planDecisionOn) for the screen to run. */
+export * from './domain/PlanChat';
+
+/** Two modes: a screen's chat with the Plan's options joined. */
+export * from './domain/PlanOptions';
+
+/** Two modes: runs a picked Plan option through the panel's own actions. */
+export * from './hooks/usePlanChatOptions';

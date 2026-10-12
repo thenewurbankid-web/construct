@@ -787,8 +787,9 @@ export function assertRepairAttempt(a) {
  * optional `controlId` to each tool of the one tool registry (@mx/plan); this registry is the control side of that same
  * link (packages/engine/line/controls.mjs LINE_CONTROLS), never a second tool registry.
  *
- * @typedef {'components'|'pages'|'features'|'plan'|'open-project'} LineScreen  'plan' is the Plan panel, shown on Components and Pages;
- *   'open-project' is the Your projects screen (no project open).
+ * @typedef {'components'|'pages'|'features'|'plan'|'open-project'|'shell'} LineScreen  'plan' is the Plan panel, shown on Components and Pages;
+ *   'open-project' is the Your projects screen (no project open); 'shell' is the Cockpit frame around every screen (the
+ *   two-modes switch and the chat-mode breadcrumb).
  *
  * @typedef {object} LineControl
  * @property {string} controlId  Stable, "<screen>.<name>", e.g. "components.baseOn".
@@ -836,6 +837,7 @@ export const LINE_SCREENS = Object.freeze([
   Object.freeze({ id: 'features', label: 'Features', href: '/' }),
   Object.freeze({ id: 'plan', label: 'Plan panel', href: '/components' }),
   Object.freeze({ id: 'open-project', label: 'Your projects', href: '/' }),
+  Object.freeze({ id: 'shell', label: 'Cockpit frame', href: '/' }),
 ]);
 /** The plan actions a control can trigger besides the plan tools (a person's decisions on a step). */
 export const PLAN_ACTION_TOOLS = Object.freeze([
@@ -1759,7 +1761,7 @@ export function assertAiProfiles(x) {
   if (typeof x.reason?.linked !== 'boolean') fail('aiProfiles.reason.linked', 'must be a boolean');
   sentence(x.reason.sentence, 'aiProfiles.reason.sentence');
 }
-const SCREEN_IDS = ['components', 'pages', 'features', 'plan', 'open-project'];
+const SCREEN_IDS = ['components', 'pages', 'features', 'plan', 'open-project', 'shell'];
 const TOOL_IDS = () => [...LINE_PLAN_TOOLS, ...PLAN_ACTION_TOOLS, ...OPEN_PROJECT_TOOLS, ...COMPONENT_EDITOR_TOOLS].map((t) => t.name);
 
 /**

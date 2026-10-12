@@ -2,6 +2,10 @@ import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
 import path from 'node:path';
 import { noDevBadge, shot, makeProject, cleanup, CHECKOUT_SRC } from './cockpit-fixture.mjs';
+import { startUnderTheHood } from '../support/lineModes.js';
+
+// Two modes: this spec checks the screen's regular view, so it starts Under the hood (screens open in Chat by default).
+startUnderTheHood(test);
 
 // Cockpit guide, story 5: read a workflow in plain English, then edit it.
 test.describe.serial('Cockpit demo: workflows in plain English', () => {

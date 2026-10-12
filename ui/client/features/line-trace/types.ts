@@ -5,7 +5,7 @@ import type { AutoAction, LineScreen, PlanStepView, TraceMatch, TraceRequest } f
 export type * from '@/lib/lineContract';
 
 /** The screens Trace runs on (the Plan panel sits inside Components and Pages). */
-export type TraceScreen = Exclude<LineScreen, 'plan'>;
+export type TraceScreen = Exclude<LineScreen, 'plan' | 'shell'>;
 
 /** What the trace call answers: the match, or one sentence saying why not. */
 export type TraceAnswer = { ok: true; match: TraceMatch } | { ok: false; sentence: string };
