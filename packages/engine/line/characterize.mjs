@@ -229,7 +229,15 @@ export function runJest(appRoot, testFiles, o) {
 }
 
 /** Write (or delete, content null) files under the characterization folder through Construct's transactional writer. */
-function writeOwnedTests(appRoot, charRel, files) {
+function writeOwnedTests(appRoot, charRel, all) {
+  // a file already on disk with exactly this text (or a delete of a file that is not there) needs no write
+  const same = ([rel, content]) => {
+    const abs = path.join(appRoot, rel);
+    if (content === null) return !fs.existsSync(abs);
+    try { return fs.readFileSync(abs, 'utf8') === content; } catch { return false; }
+  };
+  const files = all.filter((f) => !same(f));
+  if (!files.length) return;
   const txn = createTransaction(appRoot);
   for (const [rel, content] of files) {
     if (content === null) txn.deleteFile(rel);
@@ -439,7 +447,7 @@ export async function characterize(appRoot, closure, map, opts = {}) {
   const covKey = (s, text) => (cache && deps ? hashOf(salt, 'jest-cov', text, deps.depsHash(s.file)) : '');
   /** @type {Map<string, any>} subject id -> its locked file's cached coverage (app-relative keys) */
   const cachedCov = new Map();
-  /** @type {Map<string, {text: string, cov: any}>} subject id -> what this run measured, for the cache */
+  /** @type {Map<string, {text: string, cov: any, runtime: any[]}>} subject id -> what this run measured, for the cache */
   const ranCov = new Map();
   for (let round = 0; round < 4; round++) {
     const lockFiles = [];
