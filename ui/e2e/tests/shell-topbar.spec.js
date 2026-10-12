@@ -2,7 +2,6 @@ import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { setTheme } from './support/cockpit.js';
 import { startUnderTheHood } from './support/lineModes.js';
 
@@ -12,9 +11,8 @@ startUnderTheHood(test);
 // Design #245 — top bar: project switcher (local projects only, reuses the
 // settings project dir and the shared folder picker), the five screens (now in the left rail, #429; Features / Pages / Components / Git /
 // Tests, #369; they replaced the Explore / Plan / Build / Review modes), real status pills, and the profile menu (#368).
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const SHOTS = path.resolve(__dirname, '../screenshots');
-fs.mkdirSync(SHOTS, { recursive: true });
+// Screenshots are for site/ only (curated by demo-curator): this spec's go to a temp folder, never a tracked one.
+const SHOTS = fs.mkdtempSync(path.join(os.tmpdir(), `construct-e2e-shots-${process.pid}-`));
 const API = process.env.E2E_API_BASE || 'http://localhost:4000';
 
 test.describe('Cockpit top bar (#245)', () => {

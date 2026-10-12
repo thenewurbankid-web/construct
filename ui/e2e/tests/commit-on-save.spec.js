@@ -10,8 +10,8 @@ import { startUnderTheHood } from './support/lineModes.js';
 startUnderTheHood(test);
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const SCREENSHOTS_DIR = path.resolve(__dirname, '../screenshots');
-fs.mkdirSync(SCREENSHOTS_DIR, { recursive: true });
+// Screenshots are for site/ only (curated by demo-curator): this spec's go to a temp folder, never a tracked one.
+const SCREENSHOTS_DIR = fs.mkdtempSync(path.join(os.tmpdir(), `construct-e2e-shots-${process.pid}-`));
 
 const API_BASE = process.env.E2E_API_BASE || 'http://localhost:4000';
 
