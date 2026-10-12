@@ -1,6 +1,6 @@
 // ci2 -- the Import agent (packages/engine/line/importAgent.mjs): a fixed typed process (xstate) scan -> classify -> plan
-// -> review -> execute -> verify -> done, its state in <folder>/line/import-plan.json, decisions through @mx/reason with the
-// static order as fallback, execution only through cp1 plan steps a person approves, verify = validate --profile line +
+// -> review -> execute -> verify -> done, its state in <folder>/line/import-plan.json, decisions through Line's one
+// decide() (construct.chooser off: the static order; construct.fix: the picker when it runs), execution only through cp1 plan steps a person approves, verify = validate --profile line +
 // types + tests. First on the contract's mock (no disk), then on a temp copy of examples/import-sample with the real
 // engine, the real plan service (built-in store) and the real writer; last on a copy of max-ai-ui when it is present.
 import test from 'node:test';
@@ -22,8 +22,7 @@ import { verifyImport, lineBaseline } from '../packages/engine/line/importVerify
 import { createLogicOnDisk } from '../packages/engine/line/importLoopDisk.mjs';
 import { readImportLoopRecords } from '../packages/engine/line/records.mjs';
 import { jestHome, linkJestHome, NO_JEST_HOME } from '../test-utils/jestHome.mjs';
-import { createReasonProvider } from '../packages/core/reason-provider.mjs';
-import { createMockReason, createMockPicker } from '../packages/line-links/mocks.mjs';
+import { createMockDecide } from '../packages/core/line-decide-mock.mjs';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SAMPLE = path.join(REPO, 'examples/import-sample');
@@ -209,18 +208,20 @@ test('mock: pause is kept in the file; a new agent on the same file resumes wher
   assert.deepEqual(store.peek().changes.filter((c) => c.action === 'pause' || c.action === 'resume').map((c) => c.sentence), ['paused at review.', 'resumed at review.']);
 });
 
-test('reason: with @mx/reason and jev up, jev picks the Table answer (and the plan follows it); with reason failing, the static order decides', async () => {
-  const picker = createMockPicker(1);
-  const reason = createReasonProvider({ loadReason: async () => createMockReason(), picker });
-  const agent = createMockImportAgentService({ reason }).agentFor(FOLDER);
+test('decide: classify questions go through decide() (construct.chooser: off by default, the static order; turned on, the picker picks the Table answer and the plan follows it)', async () => {
+  const off = await createMockImportAgentService({ decide: createMockDecide({ pick: 1 }).decide }).agentFor(FOLDER).start('ui');
+  assert.deepEqual([off.decisions[0].picked, off.decisions[0].by], ['library', 'order'], 'construct.chooser ships off: the recommended option');
+  const mock = createMockDecide({ pick: 1, on: ['construct.chooser'] });
+  const agent = createMockImportAgentService({ decide: mock.decide }).agentFor(FOLDER);
   const v = await agent.start('ui');
   const d = v.decisions[0];
   assert.deepEqual([d.picked, d.by], ['feature:alerts', 'jev']);
   assert.ok(v.steps.some((s) => s.id.endsWith('feature-Table')), 'the plan keeps Table in feature alerts');
-  assert.deepEqual(picker.calls, [['library', 'feature:alerts']], 'recommended option first');
-  const broken = createReasonProvider({ loadReason: async () => createMockReason({ fail: true }) });
-  const r = await decideWith(broken, 'q', 'Which?', ['a', 'b']);
+  assert.deepEqual(mock.picker.calls[0].length, 2, 'both options reach the picker, recommended first');
+  const r = await decideWith(async () => { throw new Error('boom'); }, 'construct.chooser', 'Which?', ['a', 'b']);
   assert.deepEqual([r.picked, r.by], ['a', 'static']);
+  const fix = await decideWith(createMockDecide().decide, 'construct.fix', 'Which fix?', ['f2', 'f1'], { sentence: 'Refused.', fixes: [{ id: 'f2', sentence: 'Two.', rank: 1 }, { id: 'f1', sentence: 'One.', rank: 2 }] });
+  assert.deepEqual([fix.picked, fix.driver], ['f2', 'static'], 'construct.fix with the picker down: Construct\'s recommended fix');
   const none = await decideWith(null, 'q', 'Which?', ['a', 'b']);
   assert.equal(none.reason, 'Line took the recommended option, because no decision module answered.');
 });

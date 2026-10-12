@@ -44,8 +44,7 @@ export interface ReasonChoice {
   reasoning: string[];
 }
 
-/** @mx/reason models.ts `QwenOptions` (reduced). It has no reply-length option: its proposer caps replies at 200
- * tokens, so Construct passes a `fetch` that sets `max_tokens` (packages/core/reason-provider.mjs createCappedQwenProposer). */
+/** @mx/reason models.ts `QwenOptions` (reduced). Line does not use reason's Qwen proposer (no Qwen pick rung). */
 export interface ReasonQwenOptions<Q = unknown> {
   render(q: Q): string;
   model?: string;

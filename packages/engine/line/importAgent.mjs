@@ -19,8 +19,9 @@
 //
 // What the agent may do, and nothing more:
 //   - read the folder (import.mjs scanImport / planImport: static rules, no model);
-//   - decide through @mx/reason (packages/core/reason-provider.mjs: static order when reason is not linked, jev when a
-//     picker is given) -- classify questions and which typed fix to try when a step is refused;
+//   - decide through Line's one decide() (packages/core/line-decide.mjs, injected as `o.decide`): classify questions
+//     (step construct.chooser, off until measured: the static order) and which typed fix to try when a step is refused
+//     (step construct.fix: the picker, measured 9/10 vs 6/10 static, or Construct's recommended fix when it is down);
 //   - execute ONLY by adding cp1 plan steps (line.import.*, line.import.fix, line.leaveAsIs) to the project's plan session
 //     and running them once approved. A person approves every write: either in the review (the person approved that
 //     exact step) or in the Plan panel / Import agent screen. An agent's own approval never approves a write.
@@ -32,9 +33,11 @@
 // transaction, every step that landed is marked undone and the import ends. Only Line's own state folder (`line/`, with
 // this plan file) stays. Choosing "Leave it as it is" instead keeps what landed, as the person's decision.
 //
-// Correction loop (owner, 11 Oct): a refused step's sentence and typed fixes go back into the decision (jev picks,
-// usually the top fix), the fix runs, the step is tried again; when a round does not pass more checks than the one
-// before (cp1's `stopped`), or after MAX_ROUNDS, the process stops and asks the person ONE question.
+// Correction loop (owner, 11 Oct): a refused step's sentence and typed fixes go back into the decision (construct.fix
+// picks, usually the top fix), the fix runs, the step is tried again. A refused fix gets the repair loop (construct.repair,
+// `o.repair`): the local model repairs it from Construct's exact error, and the repaired fix is a plan step the person
+// approves. When a round does not pass more checks than the one before (cp1's `stopped`), or after MAX_ROUNDS, the
+// process stops and asks the person ONE question.
 //
 // This module is pure (no Node imports), so Cockpit's mock mode runs the same process in the browser; the disk version
 // (the file store, the real scan and plan) is importAgentDisk.mjs.
@@ -161,28 +164,34 @@ export function agentView(folder, doc, decider) {
 }
 
 // ------------------------------------------------------------------------------------------------- decisions
-const BY = { 'It is the only step that passed the checks.': 'single', 'It came first in the checked steps; no model was asked.': 'order' };
+/** The steps the import decides with (packages/core/ai-profiles.json). */
+export const CLASSIFY_STEP = 'construct.chooser';
+export const FIX_STEP = 'construct.fix';
 
 /**
- * Decide one closed question through the reason provider (packages/core/reason-provider.mjs), recommended option first.
- * @param {{suggest: (summary: any) => Promise<{option: string, reason: string} | null>, lastNote?: () => string | null}} provider
- * @returns {Promise<{picked: string, by: 'static'|'single'|'order'|'jev', reason: string}>}
+ * Decide one closed question through Line's one decide() (packages/core/line-decide.mjs), recommended option first.
+ * With `refusal`, the options are the refusal's typed fixes (step construct.fix).
+ * @param {((step: string, options: any[], context?: any) => Promise<any>) | null | undefined} decide
+ * @param {string} step The AI step (CLASSIFY_STEP or FIX_STEP).
+ * @param {string} question
+ * @param {string[]} optionIds Recommended first.
+ * @param {{sentence: string, fixes: {id: string, sentence: string, rank: number}[]} | null} [refusal]
+ * @returns {Promise<{picked: string, by: 'static'|'single'|'order'|'middleware'|'jev', driver: string, reason: string}>}
  */
-export async function decideWith(provider, id, question, optionIds) {
-  const fallback = { picked: optionIds[0], by: /** @type {const} */ ('static'), reason: 'Line took the recommended option, because no decision module answered.' };
-  if (!provider) return fallback;
-  let s = null;
-  try { s = await provider.suggest({ id, question, options: optionIds.map((o) => ({ id: o, enabled: true })), chosen: null }); } catch { return fallback; }
-  if (!s || !optionIds.includes(s.option)) return fallback;
-  const note = provider.lastNote ? provider.lastNote() : null;
-  const by = note ? 'static' : BY[s.reason] ?? 'jev';
-  return { picked: s.option, by, reason: asSentence(s.reason) };
+export async function decideWith(decide, step, question, optionIds, refusal = null) {
+  const fallback = { picked: optionIds[0], by: /** @type {const} */ ('static'), driver: 'static', reason: 'Line took the recommended option, because no decision module answered.' };
+  if (!decide) return fallback;
+  let d = null;
+  try { d = await decide(step, refusal ? [] : optionIds, refusal ? { question, refusal } : { question }); } catch { return fallback; }
+  if (!d || !optionIds.includes(d.choice)) return fallback;
+  const by = d.via === 'jev' ? 'jev' : d.via === 'middleware' ? 'middleware' : d.attribution?.fellBackFrom ? 'static' : d.by === 'single' ? 'single' : 'order';
+  return { picked: d.choice, by, driver: d.driver ?? 'static', reason: asSentence(d.reasons?.[0] ?? fallback.reason) };
 }
 
 // ------------------------------------------------------------------------------------------------- the agent
 /**
  * The Import agent for one folder of one project.
- * @param {{root: string, folder: string, planService: {view: () => Promise<any>, addStep: (req: any, by: string) => Promise<any>, approve: (id: string, by: string) => Promise<any>, runNext: (by: string, id?: string) => Promise<any>}, reason?: {suggest: (summary: any) => Promise<any>, lastNote?: () => string | null} | null, verify?: (root: string, folder: string, baseline: string[]) => Promise<{ok: boolean, checks: any[]}>, baseline?: (root: string, folder: string) => Promise<string[]> | string[], importOps: {scan: (root: string, folder: string) => any, plan: (root: string, folder: string, answers: Record<string, string>, target?: {route: string|string[], feature?: string}) => any}, store: {read: () => any, write: (doc: any) => void}, logic?: any, checkFolder?: () => void, snapshot?: (root: string, folder: string) => unknown, rollback?: (root: string, folder: string) => {ok: boolean, sentence: string, files: string[]} | Promise<{ok: boolean, sentence: string, files: string[]}>, now?: () => string, decider?: string, memory?: any, repair?: ((option: any, refusal: any, c?: any) => Promise<any>) | null}} o `memory` (im3): where plan edits are remembered (importAgentDisk.mjs passes memoryOf(root); absent or null: none). `repair` (im2): the one repair of a refused fix jev picked (importAgentDisk.mjs: the local 1.5B; absent: the person decides). `importOps` and `store` are the disk ones in importAgentDisk.mjs (createImportAgentOnDisk), in-memory ones in the mock. `logic` is the import loop's ops (importLoop.mjs): importLoopDisk.mjs createLogicOnDisk on disk, importLoopMock.mjs createMockLogic in the mock; without it the map, characterize and loop checks say they are not set up and pass through.
+ * @param {{root: string, folder: string, planService: {view: () => Promise<any>, addStep: (req: any, by: string) => Promise<any>, approve: (id: string, by: string) => Promise<any>, runNext: (by: string, id?: string) => Promise<any>}, decide?: ((step: string, options: any[], context?: any) => Promise<any>) | null, verify?: (root: string, folder: string, baseline: string[]) => Promise<{ok: boolean, checks: any[]}>, baseline?: (root: string, folder: string) => Promise<string[]> | string[], importOps: {scan: (root: string, folder: string) => any, plan: (root: string, folder: string, answers: Record<string, string>, target?: {route: string|string[], feature?: string}) => any}, store: {read: () => any, write: (doc: any) => void}, logic?: any, checkFolder?: () => void, snapshot?: (root: string, folder: string) => unknown, rollback?: (root: string, folder: string) => {ok: boolean, sentence: string, files: string[]} | Promise<{ok: boolean, sentence: string, files: string[]}>, now?: () => string, decider?: string, memory?: any, repair?: ((option: any, refusal: any, c?: any) => Promise<any>) | null}} o `memory` (im3): where plan edits are remembered (importAgentDisk.mjs passes memoryOf(root); absent or null: none). `decide`: Line's one decide() (importAgentDisk.mjs passes packages/core/line-decide.mjs decide; absent: the recommended option). `repair` (im2): the repair loop on a refused fix (importAgentDisk.mjs: createRepairer, construct.repair; absent: the person decides). `importOps` and `store` are the disk ones in importAgentDisk.mjs (createImportAgentOnDisk), in-memory ones in the mock. `logic` is the import loop's ops (importLoop.mjs): importLoopDisk.mjs createLogicOnDisk on disk, importLoopMock.mjs createMockLogic in the mock; without it the map, characterize and loop checks say they are not set up and pass through.
  * @returns {any}
  */
 export function createImportAgent(o) {
@@ -192,7 +201,7 @@ export function createImportAgent(o) {
   const { store, importOps } = o;
   const mem = o.memory ?? null;
   const now = o.now ?? (() => new Date().toISOString());
-  const decider = o.decider ?? (o.reason ? 'Decisions go through @mx/reason; when it is not linked, Line takes the recommended option.' : 'Line takes the recommended option for each decision (no decision module is set up).');
+  const decider = o.decider ?? (o.decide ? "Decisions go through Line's one decide(): static, then the picker where its step is on; otherwise Line takes the recommended option." : 'Line takes the recommended option for each decision (no decision module is set up).');
   let queue = Promise.resolve();
   const serial = (fn) => { const run = queue.then(fn, fn); queue = run.catch(() => {}); return run; };
 
@@ -403,9 +412,9 @@ export function createImportAgent(o) {
     }
     if (ps.state === 'needs-fix' || ps.state === 'needs-you') {
       if (c.phase === 'fix') {
-        // im2: the fix jev picked was refused: the local model repairs it ONCE from Construct's exact error; the repaired
-        // fix becomes a plan step (a person still approves it) and Construct checks it when it runs. Not repaired, or the
-        // model not running: the person decides, as before.
+        // im2: the fix construct.fix picked was refused: the repair loop (construct.repair) repairs it from Construct's exact
+        // error; the repaired fix becomes a plan step (a person still approves it) and Construct checks it when it runs.
+        // Not repaired, the step off, or the model not running: the person decides.
         const repaired = await repairFix(doc, step, ps, c, by, answered);
         if (repaired) return repaired;
         askAboutStep(doc, step, null, `the fix Line tried was refused too: ${lower(ps.sentence)}`); doc.cursor = { ...c, origin: c.origin }; return 'wait';
@@ -416,9 +425,10 @@ export function createImportAgent(o) {
       if (result.stopped) { askAboutStep(doc, step, ps, `trying again did not pass more checks than before. ${ps.sentence}`); doc.cursor = { ...c, origin: ps.id }; return 'wait'; }
       if (step.rounds >= MAX_ROUNDS) { askAboutStep(doc, step, ps, `${MAX_ROUNDS} rounds of fixes did not finish it. ${ps.sentence}`); doc.cursor = { ...c, origin: ps.id }; return 'wait'; }
       if (!fixes.length) { askAboutStep(doc, step, ps, ps.sentence); doc.cursor = { ...c, origin: ps.id }; return 'wait'; }
-      // The refusal and its typed fixes go back into the decision; jev (or the static order) picks one.
+      // The refusal and its typed fixes go back into the decision; construct.fix (the picker, or the static order) picks one.
       const ids = [...fixes].sort((a, b) => Number(b.recommended === true) - Number(a.recommended === true)).map((x) => x.fixId);
-      const d = await decideWith(o.reason, `fix:${ps.id}`, `${ps.sentence} Which fix should Line try?`, ids);
+      const refused = { sentence: ps.sentence || 'Construct refused the step.', fixes: ids.map((id, i) => ({ id, sentence: fixes.find((x) => x.fixId === id).sentence, rank: i + 1 })) };
+      const d = await decideWith(o.decide, FIX_STEP, `${ps.sentence} Which fix should Line try?`, ids, refused);
       doc.decisions.push({ id: `fix:${ps.id}`, question: asSentence(`Which fix for ${step.args.name ?? step.id}?`), options: ids, picked: d.picked, answer: asSentence(fixes.find((x) => x.fixId === d.picked).sentence), by: d.by, reason: d.reason });
       record(doc, 'agent', 'decide', `picked the fix "${fixes.find((x) => x.fixId === d.picked).sentence.replace(/[.?!]$/, '')}" for ${step.args.name ?? step.id} (${d.by})`, step.id);
       const fix = fixes.find((x) => x.fixId === d.picked);
@@ -434,7 +444,7 @@ export function createImportAgent(o) {
   }
 
   /**
-   * im2: the repair loop on a refused fix that jev picked. The model sees only the refusal sentence, the finding, the
+   * im2: the repair loop on a refused fix (whoever picked it: the picker or the static order). The model sees only the refusal sentence, the finding, the
    * typed fixes, the fix step and its own earlier attempts; each attempt is checked on a copy (up to construct.repair's
    * maxAttempts) and said in the change log as it happens. The landed repair joins the plan as a step that fixes the same
    * refused step (`fixOf`), so the person still approves it and Construct checks it again when it runs (cursor phase
@@ -444,7 +454,7 @@ export function createImportAgent(o) {
   async function repairFix(doc, step, ps, c, by, answered) {
     if (!o.repair) return null;
     const picked = [...doc.decisions].reverse().find((x) => x.id === `fix:${c.origin}`);
-    if (!picked || picked.by !== 'jev' || doc.decisions.some((x) => x.id === `repair:${c.origin}`)) return null;
+    if (!picked || doc.decisions.some((x) => x.id === `repair:${c.origin}`)) return null;
     const { fixOf: _f, retry: _r, expect: _e, ...args } = ps.args ?? {};
     const fixes = (ps.result?.options ?? []).filter((x) => x.id === 'fix').map((x, i) => ({ id: String(x.fixId ?? `fix${i + 1}`), sentence: x.sentence, rank: x.recommended ? 1 : i + 2, step: x.step ?? null }));
     const finding = ps.result?.findings?.[0] ?? null;
@@ -452,6 +462,8 @@ export function createImportAgent(o) {
     // Each attempt says what Line is trying, as it happens (the import's change log is the live line Cockpit shows).
     const onProgress = (said) => record(doc, 'agent', 'decide', lower(asSentence(said)), step.id);
     try { attempt = await o.repair({ tool: ps.tool, args }, { sentence: ps.sentence, rule: finding?.rule ?? null, code: ps.result?.code ?? null, finding: finding?.message ?? null, fixes }, { onProgress }); } catch { return null; }
+    // The step off (no measured win) asks no model: nothing to record, the person decides as before.
+    if (!attempt || attempt.outcome === 'off') return null;
     const added = ['proposed', 'repaired'].includes(attempt.outcome) && attempt.option;
     // Every attempt is listed with the decision (its reason and what Construct said), for the person's Details.
     const tried = (attempt.tries ?? []).map((t) => `Attempt ${t.n}: ${String(t.reason || 'no reason given').replace(/[.!?]+$/, '')}${t.refusal ? `; refused: ${t.refusal.sentence}` : ''}`.replace(/[.!?]?$/, '.')).join(' ');
@@ -532,7 +544,7 @@ export function createImportAgent(o) {
         for (const q of doc.questions ?? []) {
           if (doc.answers[q.id]) continue;
           const ids = [q.recommended, ...q.options.map((x) => x.id).filter((x) => x !== q.recommended)];
-          const d = await decideWith(o.reason, q.id, q.sentence, ids);
+          const d = await decideWith(o.decide, CLASSIFY_STEP, q.sentence, ids);
           doc.answers[q.id] = d.picked;
           doc.decisions.push({ id: q.id, question: asSentence(q.sentence), options: ids, picked: d.picked, answer: asSentence(q.options.find((x) => x.id === d.picked)?.sentence ?? d.picked), by: d.by, reason: d.reason });
           record(doc, 'agent', 'decide', `decided "${q.sentence.replace(/[.?!]$/, '')}": ${lower(q.options.find((x) => x.id === d.picked)?.sentence ?? d.picked)}`);

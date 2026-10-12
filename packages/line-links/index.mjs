@@ -10,7 +10,7 @@
 //                  node_modules, exactly as they do there.
 //
 // No single point of failure: nothing here throws for a missing or moved source. `importLinked` answers
-// `{ ok: false, reason }` and every caller keeps its static path (see reason-provider.mjs).
+// `{ ok: false, reason }` and every caller keeps its static path (see packages/core/line-decide.mjs).
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';

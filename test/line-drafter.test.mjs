@@ -95,8 +95,6 @@ test('domain map: an unknown word asks one closed question; the answer is stored
   const shop = normalize('put a badge on the shop screen', buildDomainMap(a, s));
   assert.equal(shop.questions[0].suggested, null);
   assert.equal(shop.questions[0].via, 'ask');
-  const viaModel = normalize('put a badge on the shop screen', buildDomainMap(a, s), { propose: () => 'feature:orders' });
-  assert.equal(viaModel.questions[0].via, 'model');
   addSynonym(a, s, 'shop', 'feature:orders');
   assert.ok(fs.existsSync(path.join(a, 'line/domain-map.json')));
   const again = normalize('put a badge on the shop screen', buildDomainMap(a, factsSummary(a)));

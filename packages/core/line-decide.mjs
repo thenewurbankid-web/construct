@@ -1,22 +1,25 @@
 // cu2 -- Line's one AI decision: decide(step, options, context) -> DecideResult (contract: packages/engine/line/contract.mjs).
-// Every AI decision in Cockpit, Construct and Trace goes through here, on @mx/reason's ladder:
+// Every AI decision in Cockpit, Construct and Trace goes through here, on the ONE ladder (owner rule):
 //
-//   1. static   the options through the caller's check; one left decides (`single`); none left asks the person.
-//   2. Qwen     the step's model may already have suggested one option with a reason (`context.suggestion`).
-//   3. jev      when the step's profile turns the options rung on and jev is up, jev picks among the checked options
-//               (reason's runLadder with the profile as a pair). Qwen's reason is kept when jev agrees; when jev and Qwen
-//               disagree the decision is low-confidence, so with Auto off the person is asked.
-//   Fallback   reason not linked, jev's local model not running, or anything throwing: Qwen's checked suggestion stands
-//              (`via: model`), else static's order (`via: static`), and the attribution says why in one sentence.
+//   static       the options through the caller's check; one left decides (`single`); none left asks the person.
+//   middleware   deterministic code a project or Line adds (`context.middleware`, `setup.middleware`): it may pick one of
+//                the checked options and say why; it never adds one.
+//   picker       Line-1, the one picker (jev fills that role until Line-1 ships, through @mx/reason's runLadder), only
+//                when the step's profile is on AND records a measured win over static (ai-profiles.mjs stepOn).
+//   verify       Construct checks what was decided when the caller applies it (a refusal comes back as `context.refusal`).
+//   person       anything the checks cannot settle goes to the person, one question at a time.
+//
+// No Qwen pick and no review rung. Fallback: reason not linked, the picker's model not running, or anything throwing:
+// static's order stands (`via: static`), and the attribution says why in one sentence. `driver` names who decided.
 //
 // Feedback (owner rule, LINE.md 2026-10-11): Construct's refusal plus its typed fixes is the standard feedback for every
 // AI step. `context.refusal` = {sentence, fixes} makes the typed fixes the options (Construct's recommended one first);
-// decideUntilAccepted() applies a choice, feeds a refusal back, and stops when a round does not improve (one question).
+// the step `construct.fix` picks among them, and repairLoop (below, step `construct.repair`) repairs a refused option.
 // No outside reasoning engine is in this loop. Local models only: nothing here pulls, loads or stops a model.
-import { stepProfile, reasonPairOf } from './ai-profiles.mjs';
+import { stepProfile, reasonPairOf, stepOn } from './ai-profiles.mjs';
 import { importLinked } from '../line-links/index.mjs';
 
-export const DECIDER_VERSION = 'line-decide-1';
+export const DECIDER_VERSION = 'line-decide-2';
 
 const one = (s) => String(s ?? '').replace(/\s+/g, ' ').trim();
 /** A full sentence: trimmed, one line, ending in . ? or ! */
@@ -38,7 +41,7 @@ export function refusalOptions(refusal) {
   return [...(refusal?.fixes ?? [])].filter((f) => f && f.id).sort((a, b) => (a.rank ?? 99) - (b.rank ?? 99)).map((f) => ({ id: f.id, label: one(f.sentence) || f.id, enabled: true }));
 }
 
-/** What jev and Qwen read: the question, the refusal (feedback) and the facts, never code or paths. */
+/** What the picker reads: the question, the refusal (feedback) and the facts, never code or paths. */
 function render(q) {
   const lines = [`Question: ${q.question}`];
   if (q.refusal) lines.push(`Construct refused the last change: ${q.refusal}`);
@@ -52,11 +55,19 @@ const defaultLoadReason = async () => {
 };
 
 /**
- * Line's one AI decision maker: decide() and decideUntilAccepted() on @mx/reason's ladder, static when it is down.
- * @param {{ loadReason?: () => Promise<{ module: any, note: string | null }>, jev?: 'auto' | 'off' | import('../line-links/contracts').ReasonPicker, profiles?: object }} [setup]
+ * Middleware: deterministic code that may pick one of the checked options. It gets the step, the checked options, the
+ * question, the facts and the refusal; it answers `{option, reason}` or null (pass). An answer that is not a checked
+ * option, or a throw, is ignored.
+ * @typedef {(q: {step: string, options: {id: string, label: string}[], question: string, facts: string[], refusal: any}) => ({option: string, reason?: string} | null)} DecideMiddleware
+ */
+
+/**
+ * Line's one AI decision maker on the one ladder; static when the picker is off or down.
+ * @param {{ loadReason?: () => Promise<{ module: any, note: string | null }>, jev?: 'auto' | 'off' | import('../line-links/contracts').ReasonPicker, profiles?: object, middleware?: DecideMiddleware[] }} [setup]
  *   `loadReason` defaults to the linked @mx/reason; `jev`: 'auto' builds reason's own jev over the local model (default),
- *   'off' never asks jev, or a picker object (tests pass a mock); `profiles` is passed to stepProfile (tests).
- * @returns The decider.
+ *   'off' never asks it, or a picker object (tests pass a mock); `profiles` is passed to stepProfile (tests);
+ *   `middleware` runs for every step, after the context's own.
+ * @returns {{ decide: (step: string, options: any[], context?: any) => Promise<import('../engine/line/contract.mjs').DecideResult> }}
  */
 export function createDecider(setup = {}) {
   const loadReason = setup.loadReason ?? defaultLoadReason;
@@ -67,7 +78,7 @@ export function createDecider(setup = {}) {
   /**
    * @param {string} step A profile's step id.
    * @param {(string | { id: string, label?: string, enabled?: boolean })[]} options Closed options with stable ids (ignored with `context.refusal`).
-   * @param {{ question?: string, facts?: string[], check?: (id: string) => string | null, suggestion?: { option: string, reason?: string } | null, refusal?: { sentence: string, fixes: { id: string, sentence: string, rank: number }[] } | null, picker?: any, memory?: { store: { prefer: Function }, context: any } | null }} [context]
+   * @param {{ question?: string, facts?: string[], check?: (id: string) => string | null, refusal?: { sentence: string, fixes: { id: string, sentence: string, rank: number }[] } | null, picker?: any, middleware?: DecideMiddleware[], memory?: { store: { prefer: Function }, context: any } | null }} [context]
    *   `memory` (im3 + j5): this project's memory and the recall context (slots and structure, never code); the option
    *   the person consistently picked before leads the checked options, and the record says why. It never adds an option.
    * @returns {Promise<import('../engine/line/contract.mjs').DecideResult>}
@@ -85,9 +96,6 @@ export function createDecider(setup = {}) {
       if (remembered) checked = [...checked.filter((o) => o.id === remembered.option), ...checked.filter((o) => o.id !== remembered.option)];
     }
     const ids = checked.map((o) => o.id);
-    const label = (id) => checked.find((o) => o.id === id)?.label ?? id;
-    const sugg = context.suggestion && ids.includes(context.suggestion.option) ? context.suggestion : null;
-    const qwenReason = sugg ? sentence(sugg.reason || `Qwen suggested ${quote(label(sugg.option))}`) : null;
     const question = sentence(context.question ?? (feedback ? 'Which fix resolves the refusal?' : 'Which option fits?'));
 
     /** @returns {import('../engine/line/contract.mjs').DecideResult} */
@@ -97,6 +105,7 @@ export function createDecider(setup = {}) {
       runnerUp: choice === null ? null : ids.find((x) => x !== choice) ?? null,
       via,
       by,
+      driver: choice === null ? 'person' : via === 'jev' ? 'picker' : via,
       reasons: reasons.map(sentence).filter(Boolean),
       lowConfidence: extra.lowConfidence ?? choice === null,
       feedback,
@@ -104,32 +113,38 @@ export function createDecider(setup = {}) {
       attribution: {
         step,
         provider: extra.reasonUsed ? '@mx/reason' : 'static',
-        decider: via === 'jev' ? 'jev' : via === 'model' ? 'qwen' : 'static',
-        model: via === 'static' ? null : profile.model,
+        decider: via,
+        model: via === 'jev' ? profile.model : null,
         version: DECIDER_VERSION,
         fellBackFrom: extra.fellBackFrom ?? null,
         note: extra.note ? sentence(extra.note) : null,
       },
     });
-    /** Without jev: Qwen's checked suggestion stands, else static's order (the recommended fix first for feedback). */
-    const withoutJev = (extra = {}) => (sugg
-      ? result(sugg.option, 'model', 'model', [qwenReason], extra)
-      : remembered
-        ? result(ids[0], 'static', 'memory', [remembered.sentence], extra)
-        : result(ids[0], 'static', 'order', [feedback ? `It is the fix Construct recommends for this refusal.` : 'It came first among the checked options; no model was asked.'], extra));
+    /** Static's order (the recommended fix first for feedback), led by memory when it recalled one. */
+    const staticOrder = (extra = {}) => (remembered
+      ? result(ids[0], 'static', 'memory', [remembered.sentence], extra)
+      : result(ids[0], 'static', 'order', [feedback ? 'It is the fix Construct recommends for this refusal.' : 'It came first among the checked options; no model was asked.'], extra));
 
+    // 1. static
     if (!ids.length) {
       return result(null, 'static', 'none', [feedback ? 'Construct offered no fix that can run, so Line asks you.' : 'No option passed the checks, so Line asks you.'], { lowConfidence: true });
     }
     if (ids.length === 1) {
       return result(ids[0], 'static', 'single', [feedback ? 'It is the only fix Construct offered for this refusal.' : 'It is the only option that passed the checks.']);
     }
-    if (!profile.ladder.options.on || profile.kind !== 'decide' || profile.provider !== 'ollama') return withoutJev();
+    // 2. middleware: the first that picks a checked option decides.
+    for (const mw of [...(context.middleware ?? []), ...(setup.middleware ?? [])]) {
+      let m = null;
+      try { m = mw({ step, options: checked.map(({ id, label }) => ({ id, label })), question, facts: context.facts ?? [], refusal: context.refusal ?? null }); } catch { m = null; }
+      if (m && ids.includes(m.option)) return result(m.option, 'middleware', 'middleware', [m.reason || 'Line\'s middleware picked it from the checked options']);
+    }
+    // 3. the picker: only for a decide step whose profile is on and measured.
+    if (!stepOn(profile) || profile.kind !== 'decide' || profile.provider !== 'ollama') return staticOrder();
 
     loading ??= Promise.resolve().then(loadReason).catch((e) => ({ module: null, note: `the reason module could not be loaded (${one(e?.message ?? e).slice(0, 120)})` }));
     const loaded = await loading;
     if (!loaded.module) {
-      return withoutJev({ fellBackFrom: 'reason', note: `${(loaded.note ?? 'The reason module is not linked').replace(/\.$/, '')}; Line decided without jev` });
+      return staticOrder({ fellBackFrom: 'reason', note: `${(loaded.note ?? 'The reason module is not linked').replace(/\.$/, '')}; Line decided without the picker` });
     }
     const reason = loaded.module;
     const pair = reasonPairOf(profile);
@@ -144,113 +159,41 @@ export function createDecider(setup = {}) {
       }
       const defined = reason.defineProfiles([pair])[pair.pairId];
       const up = picker ? await Promise.resolve(picker.available(defined)).catch(() => false) : false;
-      const noJev = picker ? `The local model for jev (${profile.model}) is not running, so Line decided without it` : 'jev is turned off here, so Line decided without it';
-      // jev reads the options' plain labels; the ids map back. Labels must be unique, else the ids are shown.
+      const noJev = picker ? `The local model for the picker (${profile.model}) is not running, so Line decided without it` : 'The picker is turned off here, so Line decided without it';
+      // The picker reads the options' plain labels; the ids map back. Labels must be unique, else the ids are shown.
       const labels = checked.map((o) => o.label);
       const values = new Set(labels).size === labels.length ? labels : ids;
       const toId = (v) => ids[values.indexOf(v)] ?? null;
       const q = { question, facts: context.facts ?? [], refusal: feedback ? one(context.refusal.sentence) : null };
-      // With jev down or off, the ladder still runs (static through reason) and its order stands.
+      // With the picker down or off, the ladder still runs (static through reason) and its order stands.
       const run = await reason.runLadder([{ key: step, q, profile: defined, options: values }], {
         ...(up ? { picker } : {}),
         check: (_q, v) => (values.includes(v) ? null : `${quote(v)} is not one of the checked options.`),
       });
       const c = run.choices?.[0];
       const picked = c ? toId(c.picked) : null;
-      if (!up) return withoutJev({ fellBackFrom: 'jev', note: noJev, reasonUsed: true });
-      if (!c || picked === null || c.by === 'none') return withoutJev({ fellBackFrom: 'jev', note: 'jev gave no answer, so Line decided without it', reasonUsed: true });
+      if (!up) return staticOrder({ fellBackFrom: 'jev', note: noJev, reasonUsed: true });
+      if (!c || picked === null || c.by === 'none') return staticOrder({ fellBackFrom: 'jev', note: 'The picker gave no answer, so Line decided without it', reasonUsed: true });
       if (c.by === 'single') return result(picked, 'static', 'single', ['It is the only option that passed the checks.'], { reasonUsed: true });
-      if (c.by !== 'jev') return withoutJev({ fellBackFrom: 'jev', note: 'jev was not asked, so Line decided without it', reasonUsed: true });
-      const jevSaid = (c.reasoning ?? []).filter((r) => one(r)).at(-1);
-      if (sugg && sugg.option !== picked) {
-        return result(picked, 'jev', 'jev', [`jev picked ${quote(label(picked))}, but Qwen suggested ${quote(label(sugg.option))}: ${qwenReason.replace(/\.$/, '')}`, 'They disagree, so with Auto off Line asks you'], { reasonUsed: true, lowConfidence: true });
-      }
-      const reasons = sugg ? [qwenReason, 'jev agreed with it'] : [jevSaid ?? (feedback ? 'jev picked this fix from the ones Construct offered' : 'jev picked it from the checked options')];
-      return result(picked, 'jev', 'jev', reasons, { reasonUsed: true, lowConfidence: Boolean(c.lowConfidence) });
+      if (c.by !== 'jev') return staticOrder({ fellBackFrom: 'jev', note: 'The picker was not asked, so Line decided without it', reasonUsed: true });
+      const said = (c.reasoning ?? []).filter((r) => one(r)).at(-1);
+      return result(picked, 'jev', 'jev', [said ?? (feedback ? 'The picker chose this fix from the ones Construct offered' : 'The picker chose it from the checked options')], { reasonUsed: true, lowConfidence: Boolean(c.lowConfidence) });
     } catch (e) {
-      return withoutJev({ fellBackFrom: 'reason', note: `The reason module failed (${one(e?.message ?? e).slice(0, 120)}), so Line decided without jev` });
+      return staticOrder({ fellBackFrom: 'reason', note: `The reason module failed (${one(e?.message ?? e).slice(0, 120)}), so Line decided without the picker` });
     }
   }
 
-  /**
-   * Decide, apply through Construct, and on a refusal decide again over its typed fixes; stop when it lands, when a
-   * round does not improve the score, or after `maxRounds`; then ask the person ONE question.
-   * @param {string} step
-   * @param {Parameters<typeof decide>[1]} options
-   * @param {Parameters<typeof decide>[2]} context
-   * @param {{ apply: (choice: string, decision: any) => Promise<{ ok: boolean, refusal?: { sentence: string, fixes: any[] } | null, score?: number }> | { ok: boolean, refusal?: any, score?: number }, maxRounds?: number,
-   *   optionOf?: (id: string) => { tool: string, args: any } | null, applyOption?: (option: { tool: string, args: any }, decision: any) => any,
-   *   repair?: false | { propose?: (q: any) => Promise<string>, schemaOf?: (option: { tool: string, args: any }) => any, maxAttempts?: number },
-   *   onProgress?: (sentence: string, attempt: number) => void }} run
-   *   `apply` runs the choice (as a plan step, through Construct's writer) and answers ok, or the refusal with its typed
-   *   fixes; `score` (higher is better; default 1 for ok, else minus the number of fixes left) decides "improved".
-   *   im2: with `optionOf(id)` (the option as a plan step {tool, args}) and `applyOption(option)` (apply a repaired
-   *   option the same way), a refused option Qwen or jev chose gets ONE repair by the local model (repairOnce); `repair`
-   *   passes {propose, schemaOf} through, or `false` turns it off. The attempt is kept on its round (`round.repair`).
-   * @returns {Promise<import('../engine/line/contract.mjs').DecideLoopResult>}
-   */
-  async function decideUntilAccepted(step, options, context, run) {
-    const maxRounds = Math.max(1, Math.min(run.maxRounds ?? 4, 8));
-    const rounds = [];
-    let repaired = false;
-    let ctx = { ...context, refusal: context?.refusal ?? null };
-    let opts = options;
-    for (;;) {
-      const decision = await decide(step, opts, ctx);
-      if (decision.choice === null) {
-        const refusal = ctx.refusal;
-        if (!rounds.length) rounds.push({ decision, ok: false, score: Number.NEGATIVE_INFINITY, refusal });
-        return { outcome: 'ask', rounds, question: askQuestion(refusal, ctx, opts) };
-      }
-      const r = await run.apply(decision.choice, decision);
-      const refusal = r?.ok ? null : (r?.refusal ?? { sentence: 'Construct refused the change.', fixes: [] });
-      const score = typeof r?.score === 'number' ? r.score : (r?.ok ? 1 : -(refusal.fixes?.length ?? 0) - 1);
-      const prev = rounds.at(-1);
-      rounds.push({ decision, ok: Boolean(r?.ok), score, refusal });
-      if (r?.ok) return { outcome: 'accepted', rounds, question: null };
-      // im2: an option Qwen or jev chose was refused: the local model gets the exact error and makes ONE repair, which is
-      // applied (checked by Construct, waiting for approval like any step) once. Still refused: the person decides. The
-      // model not running leaves the static loop unchanged (the round says so).
-      const option = !repaired && run.optionOf && run.applyOption && run.repair !== false && (decision.via === 'jev' || decision.via === 'model') ? run.optionOf(decision.choice) : null;
-      if (option) {
-        repaired = true;
-        const rp = run.repair || {};
-        const attempt = await repairLoop(option, refusal, { ...(rp.propose ? { propose: rp.propose } : {}), ...(rp.maxAttempts ? { maxAttempts: rp.maxAttempts } : {}), schema: rp.schemaOf?.(option), check: (opt) => run.applyOption(opt, decision), onProgress: run.onProgress, profiles: setup.profiles });
-        rounds[rounds.length - 1] = { ...rounds.at(-1), repair: attempt };
-        if (attempt.outcome === 'repaired') return { outcome: 'accepted', rounds, question: null };
-        if (attempt.outcome !== 'no-model') {
-          const last = attempt.after ? { ...attempt.after, fixes: refusal.fixes ?? [] } : refusal;
-          return { outcome: 'ask', rounds, question: askQuestion(last, ctx, opts) };
-        }
-      }
-      if (prev && score <= prev.score) return { outcome: 'ask', rounds, question: askQuestion(refusal, ctx, opts) };
-      if (rounds.length >= maxRounds || !refusal.fixes?.length) return { outcome: 'ask', rounds, question: askQuestion(refusal, ctx, opts) };
-      ctx = { ...ctx, refusal, suggestion: null };
-      opts = [];
-    }
-  }
-
-  return { decide, decideUntilAccepted };
-}
-
-/** One plain question for the person: the refusal and its fixes, or the original options. */
-function askQuestion(refusal, ctx, opts) {
-  if (refusal) {
-    const options = refusalOptions(refusal).map((o) => ({ id: o.id, sentence: sentence(o.label) }));
-    const lead = sentence(refusal.sentence).replace(/[.!]$/, '');
-    return { sentence: options.length ? `${lead}. Which fix should Line try?` : `${lead}. What should Line do instead?`, options };
-  }
-  const q = one(ctx?.question ?? 'Which option should Line take').replace(/[.?!]$/, '');
-  return { sentence: `${q}?`, options: normalize(opts).map((o) => ({ id: o.id, sentence: sentence(o.label) })) };
+  return { decide };
 }
 
 // ------------------------------------------------------------------------------------------------- im2: one repair
-// When an option Qwen or jev chose fails Construct's check, the step's local model (construct.repair, the 1.5B) gets the
-// exact error -- the refusal sentence, the finding, the typed fixes -- and the option, and repairs it (repairLoop: up to
-// maxAttempts, default 4, each seeing every earlier attempt and its refusal; owner, 12 Oct). Its
-// output is constrained to the option's schema (Ollama's `format` JSON Schema: the tool is fixed, the arguments are the
-// tool's own). The repaired option is checked again by the caller's `check` (Construct, on a copy or as a plan step that
-// still waits for approval); if it still fails, the person decides. Exactly one attempt; nothing is written here.
+// When a change fails Construct's check (and the fix construct.fix picked did not land it), the step's local model
+// (construct.repair, the 1.5B) gets the exact error -- the refusal sentence, the finding, the typed fixes -- and the
+// option, and repairs it (repairLoop: up to maxAttempts, default 4, each seeing every earlier attempt and its refusal;
+// owner, 12 Oct). It runs only while the construct.repair profile is on and measured. Its output is constrained to the
+// option's schema (Ollama's `format` JSON Schema: the tool is fixed, the arguments are the tool's own). Each repaired
+// option is checked again by the caller's `check` (Construct, on a copy); without a check, one repair is proposed and the
+// caller checks it as a plan step that still waits for approval. Still refused: the person decides. Nothing is written here.
 
 export const REPAIR_STEP = 'construct.repair';
 const REPAIR_PLAN_ONLY = new Set(['expect', 'retry', 'fixOf']);
@@ -358,13 +301,18 @@ function progressSentence(n, max, reason) {
  * @param {{ schema?: any, check?: (option: {tool: string, args: any}) => Promise<{ok: boolean, refusal?: any, passed?: number}> | {ok: boolean, refusal?: any, passed?: number},
  *   propose?: (q: {prompt: string, schema: any, model: string, maxTokens: number}) => Promise<string>, profiles?: object, now?: () => number,
  *   maxAttempts?: number, onProgress?: (sentence: string, attempt: number) => void, model?: string, reason?: boolean }} [o]
- *   `model` and `reason` (ask for a short reason first) default to the construct.repair profile (`reason`, default true).
+ *   `model` and `reason` (ask for a short reason first) default to the construct.repair profile (its `reason` is false:
+ *   measured faster and no worse without it); with neither set, a reason is asked for.
  *   Without `check` only one repair is proposed (outcome "proposed"): the caller checks it as a plan step.
  * @returns {Promise<import('../engine/line/contract.mjs').RepairAttempt>}
  */
 export async function repairLoop(option, refusal, o = {}) {
   const profile = /** @type {any} */ (stepProfile(REPAIR_STEP, o.profiles));
   const model = o.model ?? profile.model ?? 'qwen2.5-coder:1.5b';
+  // The profile is the only switch: construct.repair off (or not measured) means no model is asked and the person decides.
+  if (!stepOn(profile)) {
+    return { v: 2, step: REPAIR_STEP, model, attempts: 0, maxAttempts: 1, outcome: 'off', before: { tool: option.tool, args: option.args }, option: null, refusal: { sentence: sentence(refusal?.sentence ?? 'Construct refused the change.'), rule: refusal?.rule ?? null, code: refusal?.code ?? null, fixes: [] }, after: null, tries: [], progress: [], sentence: 'The repair step is off in its profile (no measured win), so Line did not ask a model and you decide.', ms: 0 };
+  }
   const useReason = o.reason ?? profile.reason ?? true;
   const max = o.check ? Math.max(1, Math.min(o.maxAttempts ?? profile.maxAttempts ?? 4, 8)) : 1;
   const shape = o.schema ?? optionSchema(option);
@@ -453,9 +401,10 @@ export function repairOnce(option, refusal, o = {}) {
   return repairLoop(option, refusal, { ...o, maxAttempts: 1 });
 }
 
+
 let shared = null;
 /**
- * The process's decider: linked @mx/reason, jev over the local model when it runs.
+ * The process's decider: linked @mx/reason, the picker over the local model when its step is on and it runs.
  * @param {string} step The AI step id.
  * @param {any[]} options The checked options.
  * @param {any} [context] Facts, question and an optional refusal.
@@ -464,16 +413,4 @@ let shared = null;
 export function decide(step, options, context) {
   shared ??= createDecider();
   return shared.decide(step, options, context);
-}
-/**
- * decideUntilAccepted on the process's decider.
- * @param {string} step The AI step id.
- * @param {any[]} options The checked options.
- * @param {any} context Facts, question and an optional refusal.
- * @param {any} run How to apply a choice (and score it).
- * @returns {Promise<import('../engine/line/contract.mjs').DecideLoopResult>}
- */
-export function decideUntilAccepted(step, options, context, run) {
-  shared ??= createDecider();
-  return shared.decideUntilAccepted(step, options, context, run);
 }

@@ -7,7 +7,8 @@ import fs from 'node:fs';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 import path from 'node:path';
 import { importLinked, linkStatus, readLinks } from '../packages/line-links/index.mjs';
-import { createReasonProvider } from '../packages/core/reason-provider.mjs';
+import { createDecider } from '../packages/core/line-decide.mjs';
+import { profilesWithOn } from '../packages/core/line-decide-mock.mjs';
 import { ARGV_SCHEMA } from '../packages/core/plan-registry.mjs';
 
 const status = linkStatus();
@@ -24,12 +25,11 @@ test('@mx/reason: loads through the link, fits the contract, and decides a pick 
   assert.equal(r.ok, true, r.reason);
   assert.equal(typeof r.module.runLadder, 'function');
   assert.equal(typeof r.module.defineProfiles, 'function');
-  const provider = createReasonProvider();
-  const one = await provider.suggest({ id: 'q1', question: 'Next?', options: [{ id: 'a', enabled: false }, { id: 'b', enabled: true }], chosen: null });
-  assert.deepEqual(one, { option: 'b', reason: 'It is the only step that passed the checks.', runnerUp: null });
-  const two = await provider.suggest({ id: 'q2', question: 'Next?', options: [{ id: 'a', enabled: true }, { id: 'b', enabled: true }], chosen: null });
-  assert.deepEqual(two, { option: 'a', reason: 'It came first in the checked steps; no model was asked.', runnerUp: 'b' });
-  assert.equal(provider.lastNote(), null);
+  const { decide } = createDecider({ jev: 'off', profiles: profilesWithOn(['construct.chooser']) });
+  const one = await decide('construct.chooser', [{ id: 'a', enabled: false }, { id: 'b', enabled: true }], { question: 'Next?' });
+  assert.deepEqual([one.choice, one.by, one.reasons[0]], ['b', 'single', 'It is the only option that passed the checks.']);
+  const two = await decide('construct.chooser', ['a', 'b'], { question: 'Next?' });
+  assert.deepEqual([two.choice, two.runnerUp, two.via, two.attribution.provider], ['a', 'b', 'static', '@mx/reason'], 'reason ran its ladder; the picker is off so the static order stands');
 });
 
 test('@mx/plan: create a plan, add a step and read its status, stored in a temp dir', { skip }, async (t) => {

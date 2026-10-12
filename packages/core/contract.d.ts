@@ -17,8 +17,6 @@ export * as config from './config.mjs';
 export * as placement from './placement.mjs';
 /** `@line/construct-core/decision-provider` */
 export * as decisionProvider from './decision-provider.mjs';
-/** `@line/construct-core/reason-provider` */
-export * as reasonProvider from './reason-provider.mjs';
 /** `@line/construct-core/line-decide` */
 export * as lineDecide from './line-decide.mjs';
 /** `@line/construct-core/line-decide-mock` */

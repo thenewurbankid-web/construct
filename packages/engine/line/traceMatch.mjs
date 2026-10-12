@@ -5,7 +5,7 @@
 //   readArgs(toolId, request, project)  what the request names (library item, feature, page, prop, value)
 //   toolEntry(...)                   the tool's controls (with the item each acts on) and Auto's script
 //   traceMatch({request, steps}, {project, decide})  TraceMatch (contract.mjs); `decide` picks when several tools tie
-//                                    (traceDecide.mjs: jev through @mx/reason with a cloze, static order when it is down)
+//                                    (traceDecide.mjs: Line's one decide(), construct.chooser; static order while it is off)
 //
 // Pure and synchronous except `traceMatch` (async only for `decide`); no Node imports, so Cockpit's mock mode uses it.
 // Nothing here plans or writes: a change still happens only when the person (or Auto, driving the real controls)

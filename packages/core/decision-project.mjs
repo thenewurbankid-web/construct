@@ -25,7 +25,6 @@ import { getDecisionProvider, askProvider, DEFAULT_TIMEOUT_MS } from './decision
 import { loadDecisionPlugin } from './decision-plugin.mjs';
 import { hidePaths, looksLikeSecret } from './redaction.mjs';
 import { machineAllowsModels } from './machine.mjs';
-import { registerReasonProvider, REASON_PROVIDER_NAME } from './reason-provider.mjs';
 
 const CACHE_MAX = 500;
 const answerCache = new Map();
@@ -184,13 +183,6 @@ export async function openDecision(root, options = {}) {
         explanation = `The ${wanted} model could not be loaded, ${instead}`;
       }
     }
-  } else if (requested === REASON_PROVIDER_NAME && !getDecisionProvider(requested)) {
-    // cu2: Line's one AI layer (@mx/reason through decide(), jev over the local 1.5B) is built in, not a plugin file:
-    // registered on first use, jev only where the machine can run a local model (#648); static order otherwise.
-    const caps = options.capabilities ?? machineAllowsModels();
-    active = registerReasonProvider({ jev: caps.available ? 'auto' : 'off' });
-    activeName = requested;
-    if (!caps.available) note(`decision: reason without jev: ${caps.reason}`);
   } else if (requested && getDecisionProvider(requested)) {
     active = getDecisionProvider(requested);
     activeName = requested;
