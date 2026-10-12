@@ -468,6 +468,9 @@ import { EXTRACT_TOOLS } from './importV2/extractTarget.mjs';
  * @property {string} [message]
  * @property {string} [recheck]  POST /plan/run after a fix step (args.fixOf) landed: whether the step it fixed plans clean
  *   now (then a retry of it waits for approval) or still cannot land, in one sentence.
+ * @property {import('./openWork.mjs').OpenWork & {cap: number, text: string}} [work]  #908: each feature's unfinished
+ *   work (openWork.mjs), the current feature (first with open work, spec order) and the card a builder reads.
+ * @property {string} [remain]  #908 POST /plan/run: "N open items remain; next: ..." while work is open.
  *
  * @typedef {{tool: string, args?: Record<string, unknown>, why?: string}} PlanStepRequest
  */

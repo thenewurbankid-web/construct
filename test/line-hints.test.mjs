@@ -190,20 +190,22 @@ test('#889: the Line builder\'s prompt has the overview and a feature index; pla
   assert.match(systemPrompt('plain'), /CART-3: Changing a quantity/);
   const spec = readSpec();
   assert.deepEqual(spec.features.map((f) => [f.name, f.points.length]), [['catalog', 5], ['product', 4], ['cart', 8], ['checkout', 6]]);
-  assert.equal(currentFeature(spec, [])?.name, 'catalog');
-  assert.equal(currentFeature(spec, [{ tool: 'line.createFeature', args: { name: 'cart' } }, { tool: 'line.addRoute', args: { page: 'features/home/pages/X.tsx' } }])?.name, 'cart');
+  assert.equal(currentFeature(spec, null)?.name, 'catalog');
+  // #908: the current feature is the plan view's first feature with open work, not the last one touched.
+  assert.equal(currentFeature(spec, { current: 'cart' })?.name, 'cart');
   const { root, done } = project();
   try {
     const log = path.join(root, '..', 'spec', 'calls.jsonl');
     const cli = createPlanCli({ project: root, log, builder: 'test' });
     const st = await cli.run('status');
     assert.match(st.sentence, /\nCurrent feature: catalog \(As a shopper, I want to browse/);
-    assert.match(st.sentence, /\n1\. CAT-1: The page at `\/` has the main heading "Products"/);
+    assert.match(st.sentence, /\n- CAT-1 \[open\]: The page at `\/` has the main heading "Products"/);
+    assert.match(st.sentence, /\nNext in catalog:\n1\. Feature catalog does not exist yet; create it with its story and its 5 points\. Step: line\.createFeature /);
     const other = await cli.run('status', ['checkout']);
     assert.match(other.sentence, /\nCurrent feature: checkout /);
     assert.equal((await cli.run('status', ['nope'])).code, 'NOT_FOUND');
     const calls = fs.readFileSync(log, 'utf8').trim().split('\n').map((l) => JSON.parse(l));
-    assert.deepEqual(calls[0].result.spec, { feature: 'catalog', points: ['CAT-1', 'CAT-2', 'CAT-3', 'CAT-4', 'CAT-5'] });
+    assert.deepEqual(calls[0].result.spec, { feature: 'catalog', points: ['CAT-1', 'CAT-2', 'CAT-3', 'CAT-4', 'CAT-5'], open: 1 });
     assert.match(calls[0].result.shown, /Current feature: catalog/);
   } finally { done(); }
 });

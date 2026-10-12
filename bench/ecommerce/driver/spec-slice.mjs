@@ -1,9 +1,10 @@
 // #889 -- the spec slice: a local Line-arm builder gets the app overview and a feature index in its system prompt, and
-// the current feature's acceptance points in plan status, instead of all of SPEC.md up front.
+// the current feature's acceptance points in plan answers, instead of all of SPEC.md up front. #908: the plan service
+// measures open work against this spec (openWork.mjs) and its card carries the points on every answer.
 //
 //   readSpec(file?)                 SPEC.md -> {overview, features: [{name, story, points: [{id, text}]}]}
 //   overviewWithIndex(spec)         the overview plus one line per feature (its story and its point ids)
-//   currentFeature(spec, steps)     the feature the plan works on now: the last step that names a spec feature, else the first
+//   currentFeature(spec, work)      the feature the plan works on now: the first with open work (#908), else the first
 //   sliceText(feature)              "Current feature: <name> ..." with its numbered acceptance points
 import fs from 'node:fs';
 import path from 'node:path';
@@ -39,25 +40,13 @@ export function overviewWithIndex(spec) {
     'Copy a feature\'s story and points from there into `line.createFeature`.'].join('\n');
 }
 
-const featureOfArgs = (tool, args) => {
-  const a = args ?? {};
-  if (tool === 'line.createFeature' && typeof a.name === 'string') return a.name;
-  if (typeof a.feature === 'string') return a.feature;
-  const p = String(a.file ?? a.page ?? a.featureItemId ?? '');
-  return /(?:^|\/)features\/([\w-]+)\//.exec(p)?.[1] ?? (a.featureItemId ? p.split('/')[0] : null);
-};
-
 /**
- * The feature the plan works on now: the latest step whose args name a feature of the spec, else the spec's first.
- * @param {ReturnType<typeof readSpec>} spec @param {{tool: string, args?: any}[]} steps Plan steps, oldest first.
+ * The feature the plan works on now (#908): the first feature with open work in spec order (the plan service's
+ * view().work.current, packages/engine/line/openWork.mjs), else the spec's first. Not the last feature touched.
+ * @param {ReturnType<typeof readSpec>} spec @param {{current: string|null} | null | undefined} work
  */
-export function currentFeature(spec, steps) {
-  const names = new Set(spec.features.map((f) => f.name));
-  for (const s of [...steps].reverse()) {
-    const n = featureOfArgs(s.tool, s.args);
-    if (n && names.has(n)) return spec.features.find((f) => f.name === n) ?? null;
-  }
-  return spec.features[0] ?? null;
+export function currentFeature(spec, work) {
+  return spec.features.find((f) => f.name === work?.current) ?? spec.features[0] ?? null;
 }
 
 /** The slice as the builder reads it. */

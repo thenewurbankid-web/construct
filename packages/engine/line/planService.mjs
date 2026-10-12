@@ -11,6 +11,9 @@
 //                           step was a fix for a refused step (args.fixOf) and it landed, the refused step is re-checked
 //                           (planned again and dry-run through the writer, nothing written): if it would land now, a
 //                           retry of it joins the plan, waiting for the person's approval (owner decision c, 11 Oct)
+//   view().work             #908: each feature's unfinished work (openWork.mjs), current = first feature with open work,
+//                           and its card (`work.text`: open items with exact steps, the feature's points under the #886
+//                           cap); runNext adds `remain` ("N open items remain; next: ...") while work is open
 //   addStep({fix}, by)      pilot-qwen-7b-r2 R1: add one of the typed fixes the last refused add offered, by its ref
 //                           ("f1" is the recommended one) or its stable id ("TYPE_ERROR/route-props"); the fix's step
 //                           is added as if it had been sent with tool and args. The offer lives until the next add.
@@ -29,7 +32,8 @@ import { isInsideWorkspace, readWorkspace } from './workspace.mjs';
 import { createSessionTrace, refusalOfStep, matchFix, sourceOf, traceArgs } from './trace.mjs';
 import { memoryOf, memoryBy } from './memory/index.mjs';
 import { SHOWN_CHOICES, renderReoffer, shapeRefusal, contextFor, withHints, badValueOf, badArgsField, targetOf, rulesCard, hintsJevOn, jevScores, renderQuestion, answerCall } from './hints.mjs';
-import { rankLines } from './contextScore.mjs';
+import { rankLines, capFor } from './contextScore.mjs';
+import { openWork, workText, itemText } from './openWork.mjs';
 
 /** One session per open project, for now. */
 export const SESSION_ID = 'ses-cockpit';
@@ -189,6 +193,7 @@ export function stepView(root, plan, s, ops = REAL_PLAN_OPS) {
  *   commands?: any, load?: (o: {root: string, registry: any}) => Promise<{api: any, store: {linked: boolean, sentence: string}}>,
  *   linkOptions?: object, trace?: {id: string, record: (e: any) => any, problem: string|null} | null, records?: any, memory?: any,
  *   offers?: {get: () => any[] | null, set: (fixes: any[]) => void}, hintState?: {get: () => any, set: (v: any) => void},
+  *   spec?: {features: {name: string, story: string, points: {id: string, text: string}[]}[]} | (() => any) | null,
  *   imports?: {question: (folder: string) => Promise<any>, answer: (by: string, folder: string, qid: string, oid: string) => Promise<any>}}} o `commands`: the
  *   construct.* registry (default: Construct's built-in commands; null for none). `trace` (cl1): where this session's
  *   typed trace goes (default `<state>/traces/<id>.jsonl`; null records nothing). `records` (expressions): where finished
@@ -198,9 +203,10 @@ export function stepView(root, plan, s, ops = REAL_PLAN_OPS) {
  *   `hintState` (#886): where the refusal counts per code and target are kept between processes (default: in memory).
  *   `imports` (#887): the import agents an answer goes to (default: the folder's agent on disk, importAgentDisk.mjs): the
  *   waiting question, or any scan (classify) question by id until the first import step runs.
+ *   `spec` (#908): the target spec open work is measured against (or a function returning it); default each feature's spec.md.
  * @returns The plan service.
  */
-export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, commands, load = loadPlanApi, linkOptions, trace, records, memory, offers, hintState, blocked, imports }) {
+export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, commands, load = loadPlanApi, linkOptions, trace, records, memory, offers, hintState, blocked, imports, spec }) {
   const tr = trace === undefined ? createSessionTrace(root, { sessionId: SESSION_ID }) : trace;
   const mem = memory === undefined ? memoryOf(root) : memory;
   /** im3: remember plan feedback (best effort: a memory that cannot be saved never stops the plan). */
@@ -237,13 +243,31 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
     // #906: the blocked steps a landed setCode freed (pre-checked), offered as f1.. ({"fix":"f1"} adds one).
     const again = plan && !open && blockedNow().length ? await reoffers(plan).catch(() => []) : [];
     const offerNow = again.length ? withHints(withReoffers(again, []), { code: 'BLOCKED' }).fixes : [];
+    const work = workNow();
     return {
       ok: /** @type {const} */ (true), sessionId: SESSION_ID, planId: plan?.id ?? null, version: plan?.version ?? null, status: plan?.status ?? null,
       steps: plan ? plan.steps.map((s) => stepView(root, plan, s, ops)) : [], store, ...(message ? { message: asSentence(message) } : {}),
       ...(card?.rules.length ? { next: { stepId: open.id, card } } : {}),
       ...(offerNow.length ? { offer: { fixes: offerNow, text: renderReoffer(offerNow) } } : {}),
+      ...(work ? { work } : {}),
     };
   }
+
+  /**
+   * #908: the open work as the view carries it, or null (not a Line project, no features). The points shown grow from
+   * 5 to 15 (#886 capFor) once the same first open item outlives a run-next.
+   */
+  function workNow() {
+    let w;
+    try { w = openWork(root, { spec: typeof spec === 'function' ? spec() : spec ?? null }); } catch { return null; }
+    if (!w.features.length) return null;
+    // Each run-next that ends with this item still first counts once; the first time is not a repeat.
+    const repeat = w.first ? Math.max(0, Number(seenNow()[workKey(w.first)] ?? 0) - 1) : 0;
+    return { ...w, cap: capFor(repeat), text: workText(w, { cap: capFor(repeat) }) };
+  }
+  const workKey = (it) => `work|${it.kind}|${it.feature}|${it.file ?? it.point?.id ?? ''}`;
+  /** "N open items remain; next: ..." while work is open, else null. */
+  const remainOf = (w) => (w?.count && w.first ? `${w.count} open item${w.count === 1 ? '' : 's'} remain${w.count === 1 ? 's' : ''}; next: ${itemText(w.first)}` : null);
 
   /** The plan steps join: the session's current plan, created (with the default goal) when there is none. */
   async function ensurePlan(api, by) {
@@ -697,6 +721,8 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
       }
     }
     if (rec && state && r.ok) await recordFinished(state, open);
+    // #908: while work is open, the answer says how much and what is next, not a bare ok.
+    if (r.ok && r.work?.first) { const remain = remainOf(r.work); if (remain) { bump(workKey(r.work.first)); r = { ...r, remain }; } }
     if (!tr) return r;
     if (!r.ok) {
       const no = /** @type {{code: any, sentence: string}} */ (/** @type {any} */ (r));
