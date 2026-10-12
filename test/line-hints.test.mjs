@@ -91,7 +91,9 @@ test('plan service: every refusal carries the shaped text; a fix ref sent as a t
     const picked = /** @type {any} */ (await svc.addStep({ fix: 'f1' }, 'agent'));
     assert.equal(picked.ok, true, picked.text);
     const unknown = /** @type {any} */ (await svc.addStep({ tool: 'line.addRoutes', args: {} }, 'agent'));
-    assert.match(unknown.text, /A correct call: line\.addRoute \{"route":"\/cart"/);
+    // #916: the example names this project's own page, never the hard-coded features/cart/pages/CartPage.tsx.
+    assert.match(unknown.text, /A correct call: line\.addRoute \{"route":"<the route its spec names>","page":"features\/home\/pages\/HomePage\.tsx"\}/);
+    assert.doesNotMatch(unknown.text, /CartPage/);
   } finally { done(); }
 });
 

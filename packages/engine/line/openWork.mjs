@@ -9,6 +9,9 @@
 //   workText(work, {cap})     the card a builder reads: open count, the current feature, its next items and its points
 //                             (open ones first) under the #886 adaptive cap
 //   pointLabels(text)         the quoted labels of one acceptance point ("Products", "Quantity for ")
+//   pointStep(o)              #917: the one concrete next call for an uncovered point: line.setCode on the feature page
+//                             that should show it (its real contentHash), or the line.baseOn that creates the feature's
+//                             page when it has none (pure; the spec->steps pass, #914, may reuse it)
 //
 // `spec` is the target spec ({features: [{name, story, points: [{id, text}]}]}, e.g. a SPEC.md the builder works from);
 // without one, each feature's own spec.md is the spec (featureText.mjs parseSpec), in folder order.
@@ -152,13 +155,38 @@ export function openWork(root, { spec = null } = {}) {
     open.push(.../** @type {OpenItem[]} */ (dataItems));
     for (const p of points.filter((x) => x.covered === false)) {
       const missing = p.labels.filter((l) => !hasWord(sources, l));
+      const step = pointStep({ feature: name, point: p, pages: own, libraryPages, pageAt: pageAt.get(name) ?? [] });
       open.push({ kind: 'point', feature: name, point: { id: p.id, text: p.text, labels: p.labels },
-        sentence: `${p.id} is not covered yet: no file of ${name} has ${missing.map((l) => `"${l}"`).join(', ')}.` });
+        sentence: `${p.id} is not covered yet: no file of ${name} has ${missing.map((l) => `"${l}"`).join(', ')}.`, ...(step ? { step } : {}) });
     }
     return { name, story: sp.story, exists, points, open };
   });
   const cur = features.find((f) => f.open.length) ?? null;
   return { features, current: cur?.name ?? null, count: features.reduce((n, f) => n + f.open.length, 0), first: cur?.open[0] ?? null };
+}
+
+/**
+ * #917 (pilot-qwen-7b-r4-s2 calls.jsonl:17, "CAT-2 is not covered yet" with no step): the one concrete next call for an
+ * uncovered spec point. The feature has a page: line.setCode on the page that should show it (the page serving a route
+ * the point names, else the page at the feature's spec route, else its first page), with the page's real contentHash
+ * and the point in the code placeholder. It has none: the line.baseOn that creates it (DetailPage for a route with a
+ * parameter, FormPage for a form, else ListPage; whichever the library has), named after that library page. Pure.
+ * @param {{feature: string, point: {id: string, text: string}, pages: {file: string, route: string|null, src: string}[],
+ *   libraryPages?: string[], pageAt?: string[]}} o `pages`: the feature's pages; `libraryPages`: the library's page ids
+ *   ("pages/ListPage"); `pageAt`: the routes the feature's spec puts its pages at.
+ * @returns {{tool: string, args: any} | null} Null when there is no page and no library page to base one on.
+ */
+export function pointStep({ feature, point, pages, libraryPages = [], pageAt = [] }) {
+  const named = routesIn(point.text, false);
+  const page = pages.find((p) => p.route && named.includes(p.route)) ?? pages.find((p) => p.route && pageAt.includes(p.route)) ?? pages[0] ?? null;
+  if (page) {
+    const what = point.text.length > 100 ? `${point.text.slice(0, 97)}...` : point.text;
+    return { tool: 'line.setCode', args: { file: page.file, code: `<the whole file of ${baseName(page.file)}, now also showing ${point.id}: ${what}>`, contentHash: hashOf(page.src) } };
+  }
+  const want = [...named, ...pageAt].some((r) => /:/.test(r)) ? 'pages/DetailPage' : /\b(form|field|submit|place order|checkout)\b/i.test(point.text) ? 'pages/FormPage' : 'pages/ListPage';
+  const libraryId = libraryPages.includes(want) ? want : libraryPages[0];
+  if (!libraryId) return null;
+  return { tool: 'line.baseOn', args: { libraryId, feature, name: libraryId.split('/').pop() } };
 }
 
 /** The code of every file of one feature folder (its pages, components and the rest), joined. */

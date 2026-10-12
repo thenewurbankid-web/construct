@@ -10,8 +10,16 @@
 // Logs, per turn: tokens in (prompt_eval_count) and out (eval_count), wall time, tool calls and their outcomes, to
 // <run>/logs/turns.jsonl and bench/ecommerce/results/<builder>.tokens.jsonl. Stops at the budget, when the model calls
 // `finish`, after 8 turns in a row without a tool call, or (#912) after --max-repeat-refusals (10) identical refused
-// calls in a row (stop reason "repeated refusal").
+// calls in a row (stop reason "repeated refusal"), or (#918) when the same (tool call, reply) pair comes back
+// --max-cycle-repeats (6) times within --cycle-window (20) turns, other calls between them or not (stop reason
+// "repeated cycle"; the end record names the pair and its count).
+//
+// #913: each turn's exact request to Ollama goes to <run>/logs/turn-input/<turn>.json (the messages array as sent, tool
+// results verbatim, model, options) and the raw response to logs/turn-output/<turn>.json (content, thinking, tool
+// calls, the parsed calls). The system prompt is written once to logs/system-prompt.txt and each turn-input refers to
+// it by sha256. turns.jsonl gains inputFile/outputFile (+ bytes). BENCH_LOG_TURN_IO=0 turns it off.
 import fs from 'node:fs';
+import crypto from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createPlanCli } from './plan-cli.mjs';
@@ -22,13 +30,13 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const bench = path.join(here, '..');
 
 export function flags(argv) {
-  const o = { seed: undefined, project: process.env.BENCH_PROJECT, arm: 'line', builder: '', model: 'qwen2.5-coder:7b', maxTurns: 200, maxMinutes: 90, numCtx: 16384, maxRepeatRefusals: 10, ollama: process.env.OLLAMA_HOST ?? 'http://127.0.0.1:11434', log: process.env.BENCH_LOG };
+  const o = { seed: undefined, project: process.env.BENCH_PROJECT, arm: 'line', builder: '', model: 'qwen2.5-coder:7b', maxTurns: 200, maxMinutes: 90, numCtx: 16384, maxRepeatRefusals: 10, maxCycleRepeats: 6, cycleWindow: 20, ollama: process.env.OLLAMA_HOST ?? 'http://127.0.0.1:11434', log: process.env.BENCH_LOG };
   for (let i = 0; i < argv.length; i += 1) {
     const k = argv[i]; const v = argv[i + 1];
     if (k === '--project') { o.project = v; i += 1; } else if (k === '--arm') { o.arm = v; i += 1; } else if (k === '--builder') { o.builder = v; i += 1; }
     else if (k === '--model') { o.model = v; i += 1; } else if (k === '--max-turns') { o.maxTurns = Number(v); i += 1; } else if (k === '--max-repeat-refusals') { o.maxRepeatRefusals = Number(v); i += 1; } else if (k === '--max-minutes') { o.maxMinutes = Number(v); i += 1; }
     else if (k === '--num-ctx') { o.numCtx = Number(v); i += 1; } else if (k === '--ollama') { o.ollama = v; i += 1; } else if (k === '--log') { o.log = v; i += 1; }
-    else if (k === '--seed') { o.seed = Number(v); i += 1; }
+    else if (k === '--seed') { o.seed = Number(v); i += 1; } else if (k === '--max-cycle-repeats') { o.maxCycleRepeats = Number(v); i += 1; } else if (k === '--cycle-window') { o.cycleWindow = Number(v); i += 1; }
   }
   if (!o.builder) o.builder = o.arm === 'plain' ? 'qwen-7b-plain' : 'qwen-7b';
   return o;
@@ -49,7 +57,7 @@ export const TOOLS = {
     fn('plan_run_next', 'plan-cli run-next: run the next ready step; returns whether it landed, its checks, and typed fixes when Construct refused it.'),
     fn('plan_findings', 'plan-cli findings: the library items, the features with their items, and the validate findings with keys.'),
     fn('plan_validate', 'plan-cli validate: construct validate --profile line counts and findings.'),
-    fn('plan_rules', 'plan-cli rules: the 2-4 rules a step of this tool must keep for this file, each with an example (read before you write the step).', { tool: S('A Line tool name, e.g. line.setCode'), file: S('The file the step is about, e.g. features/cart/pages/CartPage.tsx (optional)') }, ['tool']),
+    fn('plan_rules', 'plan-cli rules: the 2-4 rules a step of this tool must keep for this file, each with an example (read before you write the step).', { tool: S('A Line tool name, e.g. line.setCode'), file: S('The file the step is about, like features/<feature>/pages/<Name>.tsx (optional)') }, ['tool']),
     fn('read_file', 'plan-cli read: one project file and its contentHash (pass it to line.setCode to replace the file).', { path: S('Project-relative path') }, ['path']),
     fn('list_dir', 'plan-cli ls: the entries of one project folder.', { path: S('Project-relative folder, "." for the root') }, ['path']),
     fn('finish', 'Stop: you believe every acceptance point is done, or you cannot make more progress.', { summary: S('What you built and what is left.') }, ['summary']),
@@ -112,6 +120,48 @@ export function refusalStreak(limit = 10) {
   };
 }
 
+/**
+ * #918: the reply part of a (call, reply) pair: ok, code and the sentence with its numbers blanked, so a reply that only
+ * counts up ("refused 3 times", "The plan has 6 steps") is the same reply.
+ * @param {{ok?: boolean, code?: string|null, sentence?: string}} out
+ * @returns {string}
+ */
+export const replyKey = (out) => `${out?.ok === false ? 'refused' : 'ok'}|${out?.code ?? ''}|${String(out?.sentence ?? '').replace(/\d+/g, '#')}`;
+
+/**
+ * #918: stops a cycle the consecutive-refusal streak cannot see (pilot-qwen-7b-r4: refused setCode, plan_status, setCode
+ * spec.md, baseOn, 48 times; r4-s2: NO_CHANGE setCode and plan_status, 93 times). `see(turn, name, args, out)` records
+ * one call and its reply; `hit` is true once one (call, reply) pair has come back `limit` times within this turn and
+ * the `window` turns before it, other calls between them or not (a limit of 0 or less never stops). `pair` and `count` name the most
+ * repeated pair in the window, for the end record.
+ * @param {{limit?: number, window?: number}} [o]
+ */
+export function cycleWatch({ limit = 6, window = 20 } = {}) {
+  /** @type {{turn: number, key: string, call: string, reply: string}[]} */
+  let seen = [];
+  /** @type {{call: string, reply: string} | null} */
+  let top = null; let n = 0;
+  return {
+    see(turn, name, args, out) {
+      const call = `${name} ${canonJson(args)}`;
+      const reply = replyKey(out);
+      const key = `${call}\u0000${reply}`;
+      // Only this turn and the `window` turns before it count (a 4-call cycle's 6th round lands 20 turns after its
+      // first), so a pair that left the window is forgotten.
+      seen = [...seen.filter((x) => x.turn >= turn - window), { turn, key, call, reply }];
+      /** @type {Map<string, number>} */
+      const counts = new Map();
+      for (const x of seen) counts.set(x.key, (counts.get(x.key) ?? 0) + 1);
+      n = 0; top = null;
+      for (const x of seen) { const c = counts.get(x.key) ?? 0; if (c > n) { n = c; top = { call: x.call, reply: x.reply }; } }
+      return counts.get(key) ?? 0;
+    },
+    get count() { return n; },
+    get hit() { return limit > 0 && n >= limit; },
+    get pair() { return top; },
+  };
+}
+
 /** Tool calls the model wrote as text instead of a tool call (small models do): {"name": ..., "arguments": ...}. */
 export function textToolCalls(content) {
   const out = [];
@@ -159,16 +209,59 @@ export function toModel(out) {
   return rest;
 }
 
+const sha256 = (s) => crypto.createHash('sha256').update(s).digest('hex');
+
+/**
+ * #913: per-turn input/output files under `logDir`. Off (every method a no-op returning null) when `enabled` is false.
+ * `input(turn, body)` writes the request body as sent, with a system message whose content matches the stored prompt
+ * replaced by `{role: 'system', sha256, file}`; `output(turn, res, calls)` writes the raw response and the parsed calls.
+ * Both return `{file, bytes}` (file relative to the run's logs folder) for turns.jsonl.
+ * @param {{logDir: string, enabled?: boolean}} o
+ */
+export function createTurnIo({ logDir, enabled = process.env.BENCH_LOG_TURN_IO !== '0' }) {
+  if (!enabled) return { enabled: false, input: () => null, output: () => null };
+  /** @type {{sha256: string, file: string} | null} */
+  let sys = null;
+  const put = (rel, value) => {
+    const text = `${JSON.stringify(value, null, 1)}\n`;
+    fs.mkdirSync(path.dirname(path.join(logDir, rel)), { recursive: true });
+    fs.writeFileSync(path.join(logDir, rel), text);
+    return { file: rel, bytes: Buffer.byteLength(text) };
+  };
+  const systemRef = (content) => {
+    const h = sha256(content);
+    if (!sys) { fs.writeFileSync(path.join(logDir, 'system-prompt.txt'), content); fs.writeFileSync(path.join(logDir, 'system-prompt.sha256'), `${h}\n`); sys = { sha256: h, file: 'system-prompt.txt' }; }
+    return h === sys.sha256 ? { role: 'system', ...sys } : null;
+  };
+  return {
+    enabled: true,
+    input(turn, body) {
+      const messages = body.messages.map((m) => (m.role === 'system' && typeof m.content === 'string' ? systemRef(m.content) ?? m : m));
+      return put(`turn-input/${turn}.json`, { turn, ...body, messages });
+    },
+    output(turn, res, calls) { return put(`turn-output/${turn}.json`, { turn, response: res, parsedCalls: calls }); },
+  };
+}
+
 async function main() {
   const o = flags(process.argv.slice(2));
   if (!o.project) { console.error('Set --project or BENCH_PROJECT.'); process.exit(2); }
+  await runAgent(o);
+}
+
+/**
+ * One agent run (main() without the argv parsing), exported for tests.
+ * @param {ReturnType<typeof flags>} o
+ * @param {{resultsDir?: string}} [opts]
+ */
+export async function runAgent(o, { resultsDir = path.join(bench, 'results') } = {}) {
   const runDir = path.dirname(path.resolve(o.project));
   const logDir = path.join(runDir, 'logs');
   fs.mkdirSync(logDir, { recursive: true });
-  fs.mkdirSync(path.join(bench, 'results'), { recursive: true });
+  fs.mkdirSync(resultsDir, { recursive: true });
   const cli = o.arm === 'plain' ? createPlainCli({ project: o.project, log: o.log ?? path.join(logDir, 'calls.jsonl'), builder: o.builder }) : createPlanCli({ project: o.project, log: o.log ?? path.join(logDir, 'calls.jsonl'), builder: o.builder });
   const turnsFile = path.join(logDir, 'turns.jsonl');
-  const tokensFile = path.join(bench, 'results', `${o.builder}.tokens.jsonl`);
+  const tokensFile = path.join(resultsDir, `${o.builder}.tokens.jsonl`);
   const write = (f, e) => fs.appendFileSync(f, `${JSON.stringify(e)}\n`);
   const system = { role: 'system', content: systemPrompt(o.arm) };
   const first = { role: 'user', content: 'Start building. Use only your tools. Call finish when every acceptance point is done or you cannot make more progress.' };
@@ -178,6 +271,8 @@ async function main() {
   const deadline = t0 + o.maxMinutes * 60_000;
   let idle = 0; let stop = 'max turns'; let turn = 0;
   const streak = refusalStreak(o.maxRepeatRefusals);
+  const cycle = cycleWatch({ limit: o.maxCycleRepeats, window: o.cycleWindow });
+  const io = createTurnIo({ logDir });
   write(turnsFile, { kind: 'start', at: new Date().toISOString(), builder: o.builder, model: o.model, arm: o.arm, maxTurns: o.maxTurns, maxMinutes: o.maxMinutes, numCtx: o.numCtx, seed: o.seed ?? null });
   for (turn = 1; turn <= o.maxTurns; turn += 1) {
     if (Date.now() > deadline) { stop = 'max wall time'; break; }
@@ -186,16 +281,21 @@ async function main() {
     while (history.length && history[0].role === 'tool') history.shift();
     const started = Date.now();
     let res;
+    const sent = JSON.stringify({ model: o.model, stream: false, messages: [system, first, ...history], tools: TOOLS[o.arm], options: chatOptions(o) });
+    let input = null;
     try {
       const r = await fetch(`${o.ollama}/api/chat`, {
         method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ model: o.model, stream: false, messages: [system, first, ...history], tools: TOOLS[o.arm], options: chatOptions(o) }),
+        body: sent,
         signal: AbortSignal.timeout(Math.max(10_000, Math.min(600_000, deadline - Date.now()))),
       });
+      // #913: logged once the request is sent, parsed back from the sent text, so the file is exactly what Ollama got.
+      input = io.input(turn, JSON.parse(sent));
       res = await r.json();
       if (!r.ok) throw new Error(res?.error ?? `HTTP ${r.status}`);
     } catch (e) {
-      write(turnsFile, { kind: 'error', turn, ms: Date.now() - started, error: String(/** @type {Error} */ (e).message ?? e) });
+      const output = res !== undefined ? io.output(turn, res, []) : null;
+      write(turnsFile, { kind: 'error', turn, ms: Date.now() - started, error: String(/** @type {Error} */ (e).message ?? e), ...ioRefs(input, output) });
       stop = `model error: ${/** @type {Error} */ (e).message}`;
       break;
     }
@@ -203,6 +303,7 @@ async function main() {
     let calls = Array.isArray(msg.tool_calls) ? msg.tool_calls : [];
     const fromText = !calls.length ? textToolCalls(msg.content) : [];
     if (fromText.length) calls = fromText;
+    const output = io.output(turn, res, calls);
     const tokens = { turn, in: res.prompt_eval_count ?? 0, out: res.eval_count ?? 0, ms: Date.now() - started, evalMs: Math.round((res.eval_duration ?? 0) / 1e6), promptMs: Math.round((res.prompt_eval_duration ?? 0) / 1e6) };
     history.push({ role: 'assistant', content: msg.content ?? '', ...(msg.tool_calls ? { tool_calls: msg.tool_calls } : {}) });
     const outcomes = [];
@@ -212,19 +313,29 @@ async function main() {
       if (name === 'finish') { finished = String(args?.summary ?? ''); outcomes.push({ name, ok: true }); break; }
       const out = await callTool(cli, o.arm, name, args);
       streak.see(name, args, out);
+      cycle.see(turn, name, args, out);
       outcomes.push({ name, args: clip(JSON.stringify(args ?? {}), 400), ok: out.ok, code: out.code ?? null, sentence: out.sentence });
       history.push({ role: 'tool', content: clip(JSON.stringify(toModel(out))) });
     }
     if (!calls.length) { idle += 1; history.push({ role: 'user', content: 'Use one of your tools (or call finish).' }); } else idle = 0;
     write(tokensFile, { builder: o.builder, model: o.model, ...tokens, source: 'ollama prompt_eval_count/eval_count', at: new Date().toISOString() });
-    write(turnsFile, { kind: 'turn', ...tokens, textCalls: fromText.length > 0, calls: outcomes, said: clip(msg.content ?? '', 600) });
+    write(turnsFile, { kind: 'turn', ...tokens, textCalls: fromText.length > 0, calls: outcomes, said: clip(msg.content ?? '', 600), ...ioRefs(input, output) });
     console.log(`turn ${turn}: in ${tokens.in} out ${tokens.out} ${tokens.ms} ms; ${outcomes.map((x) => `${x.name}${x.ok ? '' : ` (${x.code})`}`).join(', ') || 'no tool call'}`);
     if (finished !== null) { stop = `finish: ${finished}`; break; }
     if (idle >= 8) { stop = '8 turns without a tool call'; break; }
     if (streak.hit) { stop = 'repeated refusal'; break; }
+    if (cycle.hit) { stop = 'repeated cycle'; break; }
   }
-  write(turnsFile, { kind: 'end', at: new Date().toISOString(), turns: Math.min(turn, o.maxTurns), wallMs: Date.now() - t0, stop, ...(stop === 'repeated refusal' ? { repeated: { times: streak.count, call: streak.call } } : {}) });
-  console.log(JSON.stringify({ builder: o.builder, turns: Math.min(turn, o.maxTurns), wallMs: Date.now() - t0, stop }));
+  write(turnsFile, { kind: 'end', at: new Date().toISOString(), turns: Math.min(turn, o.maxTurns), wallMs: Date.now() - t0, stop, ...(stop === 'repeated refusal' ? { repeated: { times: streak.count, call: streak.call } } : {}), ...(stop === 'repeated cycle' ? { cycle: { times: cycle.count, window: o.cycleWindow, ...cycle.pair } } : {}) });
+  const cycled = stop === 'repeated cycle' ? { cycle: { times: cycle.count, window: o.cycleWindow, ...cycle.pair } } : {};
+  console.log(JSON.stringify({ builder: o.builder, turns: Math.min(turn, o.maxTurns), wallMs: Date.now() - t0, stop, ...cycled }));
+  return { stop, turns: Math.min(turn, o.maxTurns), ...cycled };
 }
+
+/** turns.jsonl pointers to the turn's input/output files (#913); nothing when turn I/O logging is off. */
+const ioRefs = (input, output) => ({
+  ...(input ? { inputFile: input.file, inputBytes: input.bytes } : {}),
+  ...(output ? { outputFile: output.file, outputBytes: output.bytes } : {}),
+});
 
 if (process.argv[1] && fs.realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) await main();

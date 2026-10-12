@@ -17,6 +17,11 @@
 //   addStep({fix}, by)      pilot-qwen-7b-r2 R1: add one of the typed fixes the last refused add offered, by its ref
 //                           ("f1" is the recommended one) or its stable id ("TYPE_ERROR/route-props"); the fix's step
 //                           is added as if it had been sent with tool and args. The offer lives until the next add.
+//   #915 approved-but-unrun  open work never re-suggests a step already pending in the plan, and leads with "N approved
+//                           steps are waiting: call plan_run_next"; an add identical to a pending step is refused
+//                           DUPLICATE_STEP; a refusal whose target a pending step creates or changes says so. Both offer
+//                           run-next as f1 ({"fix":"f1"} runs the next step, step RUN_NEXT, no add)
+//   #916 examples            every refusal's correct call and every rules card names real files (hints.mjs createExampleResolver)
 //
 // Nothing here writes a project file: a step's write happens only when the plan runner calls the registry
 // (planTools.mjs -> applyChange -> Construct's transactional writer).
@@ -31,7 +36,7 @@ import { createAtomicPlanWriter, createStaticPlanApi, lockPlanApi, normalizeWhy,
 import { isInsideWorkspace, readWorkspace } from './workspace.mjs';
 import { createSessionTrace, refusalOfStep, matchFix, sourceOf, traceArgs } from './trace.mjs';
 import { memoryOf, memoryBy } from './memory/index.mjs';
-import { SHOWN_CHOICES, renderReoffer, shapeRefusal, contextFor, withHints, badValueOf, badArgsField, targetOf, rulesCard, hintsJevOn, jevScores, renderQuestion, answerCall } from './hints.mjs';
+import { SHOWN_CHOICES, RUN_NEXT, renderReoffer, shapeRefusal, contextFor, withHints, badValueOf, badArgsField, targetOf, rulesCard, hintsJevOn, jevScores, renderQuestion, answerCall, stepText, createExampleResolver, plannedFiles } from './hints.mjs';
 import { rankLines, capFor } from './contextScore.mjs';
 import { openWork, workText, itemText } from './openWork.mjs';
 import { createRepeatGuard, guardFixes, escalate } from './repeatGuard.mjs';
@@ -71,6 +76,92 @@ export function pageOfBlock(step, r) {
   if (fix) return fix.step.args.file;
   return /^(\S+\.[jt]sx?):\d+ /m.exec(String(r.detail ?? ''))?.[1] ?? null;
 }
+
+/** #915: a step that is in the plan but has not run (planned or approved). */
+const isPending = (s) => s.status === 'planned' || s.status === 'approved';
+/** #915: a pending step run-next may run now (approved, or planned with no approval needed). */
+const isReady = (s) => s.status === 'approved' || (s.status === 'planned' && s.approval !== 'needed');
+/**
+ * #915: the steps in the plan that have not run, in plan order.
+ * @param {any} plan
+ * @returns {any[]}
+ */
+const pendingSteps = (plan) => (plan?.steps ?? []).filter(isPending);
+
+/**
+ * #915: whether an open-work item is already in the plan as a pending step: the same call, or a step on the same
+ * target (a setCode on its file, the addRoute for its page, the baseOn that creates the feature's missing page, the
+ * createFeature for its feature).
+ * @param {{kind: string, feature: string, file?: string, step?: {tool: string, args: any}}} item
+ * @param {any[]} pending
+ * @returns {any|null} The pending step that covers it.
+ */
+export function stepCovering(item, pending) {
+  for (const s of pending) {
+    const a = s.args ?? {};
+    if (item.step && sameStep(s, item.step)) return s;
+    if (item.kind === 'feature' && s.tool === 'line.createFeature' && a.name === item.feature) return s;
+    if (item.kind === 'page' && s.tool === 'line.baseOn' && a.feature === item.feature && String(a.libraryId ?? '').startsWith('pages/')) return s;
+    if (item.kind === 'route' && s.tool === 'line.addRoute' && a.page === item.file) return s;
+    const target = item.step?.args?.file ?? item.file ?? null;
+    if (target && s.tool === 'line.setCode' && a.file === target && item.kind !== 'route') return s;
+    // A point whose step creates the feature's page is covered by a pending baseOn of that feature's page.
+    if (item.kind === 'point' && item.step?.tool === 'line.baseOn' && s.tool === 'line.baseOn' && a.feature === item.feature && String(a.libraryId ?? '').startsWith('pages/')) return s;
+  }
+  return null;
+}
+
+/** "step 5 line.baseOn ListPage in catalog" / "step 4 line.setCode features/catalog/spec.md": a pending step in a few words. */
+const stepGist = (s) => {
+  const a = s.args ?? {};
+  const what = a.file ?? (a.page ? `${a.route ?? ''} -> ${a.page}`.trim() : null) ?? (a.name && a.feature ? `${a.name} in ${a.feature}` : a.name) ?? null;
+  return `step ${s.n} ${s.tool}${what ? ` ${what}` : ''}`;
+};
+/**
+ * #915: "2 approved steps are waiting to run (step 4 ..., step 5 ...): call plan_run_next to land them, one per call.",
+ * or null when none is ready.
+ * @param {any} plan
+ * @returns {{count: number, steps: {id: string, n: number, tool: string}[], text: string} | null}
+ */
+function waitingOf(plan) {
+  const ready = pendingSteps(plan).filter(isReady);
+  if (!ready.length) return null;
+  const n = ready.length;
+  const list = ready.slice(0, 3).map(stepGist).join('; ') + (n > 3 ? `; ${n - 3} more` : '');
+  return { count: n, steps: ready.map((s) => ({ id: s.id, n: s.n, tool: s.tool })),
+    text: `${n} approved step${n === 1 ? ' is' : 's are'} waiting to run (${list}): call ${RUN_NEXT} to land ${n === 1 ? 'it' : 'them, one per call'}.` };
+}
+
+/**
+ * #915: the pending step a refused request waits on: one that creates or changes the file the request is about (its
+ * file, page or from), or creates its feature. Null when none.
+ * @param {any} plan @param {{tool?: string, args?: any}} req @param {string} [features]
+ * @returns {{step: any, file: string} | null}
+ */
+export function pendingDependency(plan, req, features = 'features') {
+  const a = req?.args ?? {};
+  const target = typeof a.file === 'string' ? a.file : typeof a.page === 'string' ? a.page : typeof a.from === 'string' ? a.from : null;
+  for (const s of pendingSteps(plan)) {
+    if (sameStep(s, req)) continue;
+    const makes = plannedFiles({ steps: [{ ...s, status: 'planned' }] }, features);
+    if (target && makes.includes(target)) return { step: s, file: target };
+    if (s.tool === 'line.createFeature' && typeof s.args?.name === 'string') {
+      const dir = `${features}/${s.args.name}`;
+      if ((target && target.startsWith(`${dir}/`)) || (typeof a.feature === 'string' && a.feature === s.args.name)) return { step: s, file: dir };
+    }
+  }
+  return null;
+}
+
+/** The codes a pending step cannot explain: the request itself is malformed. */
+const MALFORMED = new Set(['BAD_ARGS', 'BAD_JSON', 'UNKNOWN_TOOL', 'PLAN_INVALID', 'UNKNOWN_FIX', 'NOTHING_TO_FIX', 'NOTHING_TO_LEAVE', 'NOT_RETRYABLE', 'STOPPED']);
+
+/**
+ * #915: the run-next choice: a fix whose step is the plan tool that runs the next approved step ({"fix":"f1"} runs it).
+ * @param {any} dep The pending step this waits on. @param {string} why One sentence: why run it first.
+ * @returns {{id: string, sentence: string, step: {tool: string, args: {}}, because: string}}
+ */
+const runNextFix = (dep, why) => ({ id: `RUN_NEXT:${dep.id}`, sentence: `Run step ${dep.n} first with ${RUN_NEXT}`, step: { tool: RUN_NEXT, args: {} }, because: why });
 
 /**
  * Load the plan API for `root`: @mx/plan when linked, else the built-in store.
@@ -140,11 +231,12 @@ export function choicesOf(step) {
  * @param {string[]} [tools] The tool names (UNKNOWN_TOOL's nearest).
  * @param {string[]} [context] Lines about the refusal itself (#886).
  * @param {string} [example] A correct call that beats the tool's own example (#887).
+ * @param {((call: any, near?: string|null) => any) | null} [resolve] (#916) Makes the correct call's paths real (or drops it).
  * @returns {any}
  */
-export function shapedRefusal(r, req, fixes, tools, context, example) {
+export function shapedRefusal(r, req, fixes, tools, context, example, resolve) {
   const list = fixes ?? (Array.isArray(r.fixes) ? r.fixes : []);
-  const { text, ...hint } = shapeRefusal({ code: r.code, sentence: r.sentence, tool: req?.tool, args: req?.args, why: req?.why, fix: req?.fix, answer: req?.answer, option: req?.option, fixes: list, tools, context, example });
+  const { text, ...hint } = shapeRefusal({ code: r.code, sentence: r.sentence, tool: req?.tool, args: req?.args, why: req?.why, fix: req?.fix, answer: req?.answer, option: req?.option, fixes: list, tools, context, example, resolve });
   return { ...r, ...(list.length ? { fixes: list } : {}), hint, text };
 }
 
@@ -245,11 +337,11 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
     const plan = await current(api);
     // #888: the next open step's rules card (the 2-4 rules its tool and target layer must keep), before it runs.
     const open = plan?.steps.find((s) => s.status === 'planned' || s.status === 'approved');
-    const card = open && CHANGE_TOOLS[open.tool] ? rulesCard(open.tool, open.args) : null;
+    const card = open && CHANGE_TOOLS[open.tool] ? rulesCard(open.tool, open.args, undefined, { resolve: examplesFor(plan) }) : null;
     // #906: the blocked steps a landed setCode freed (pre-checked), offered as f1.. ({"fix":"f1"} adds one).
     const again = plan && !open && blockedNow().length ? await reoffers(plan).catch(() => []) : [];
     const offerNow = again.length ? withHints(withReoffers(again, []), { code: 'BLOCKED' }).fixes : [];
-    const work = workNow();
+    const work = workNow(plan);
     return {
       ok: /** @type {const} */ (true), sessionId: SESSION_ID, planId: plan?.id ?? null, version: plan?.version ?? null, status: plan?.status ?? null,
       steps: plan ? plan.steps.map((s) => stepView(root, plan, s, ops)) : [], store, ...(message ? { message: asSentence(message) } : {}),
@@ -261,16 +353,26 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
 
   /**
    * #908: the open work as the view carries it, or null (not a Line project, no features). The points shown grow from
-   * 5 to 15 (#886 capFor) once the same first open item outlives a run-next.
+   * 5 to 15 (#886 capFor) once the same first open item outlives a run-next. #915: an item a pending step of `plan`
+   * already covers is not offered again, and the card leads with the approved steps waiting for run-next.
+   * @param {any} [plan]
    */
-  function workNow() {
-    let w;
-    try { w = openWork(root, { spec: typeof spec === 'function' ? spec() : spec ?? null }); } catch { return null; }
-    if (!w.features.length) return null;
+  function workNow(plan) {
+    let w0;
+    try { w0 = openWork(root, { spec: typeof spec === 'function' ? spec() : spec ?? null }); } catch { return null; }
+    if (!w0.features.length) return null;
+    const pending = pendingSteps(plan);
+    const features = w0.features.map((f) => ({ ...f, open: f.open.filter((it) => !stepCovering(/** @type {any} */ (it), pending)) }));
+    const cur = features.find((f) => f.open.length) ?? null;
+    const w = { ...w0, features, current: cur?.name ?? null, count: features.reduce((n, f) => n + f.open.length, 0), first: cur?.open[0] ?? null };
+    const waiting = waitingOf(plan);
     // Each run-next that ends with this item still first counts once; the first time is not a repeat.
     const repeat = w.first ? Math.max(0, Number(seenNow()[workKey(w.first)] ?? 0) - 1) : 0;
-    return { ...w, cap: capFor(repeat), text: workText(w, { cap: capFor(repeat) }) };
+    const text = [waiting?.text, workText(w, { cap: capFor(repeat) })].filter(Boolean).join('\n');
+    return { ...w, cap: capFor(repeat), ...(waiting ? { waiting } : {}), text };
   }
+  /** #916: the example resolver for `plan` (files its pending steps create count as real). */
+  const examplesFor = (plan) => { try { return createExampleResolver(root, { planned: plannedFiles(plan) }); } catch { return null; } };
   const workKey = (it) => `work|${it.kind}|${it.feature}|${it.file ?? it.point?.id ?? ''}`;
   /** "N open items remain; next: ..." while work is open, else null. */
   const remainOf = (w) => (w?.count && w.first ? `${w.count} open item${w.count === 1 ? '' : 's'} remain${w.count === 1 ? 's' : ''}; next: ${itemText(w.first)}` : null);
@@ -428,6 +530,11 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
       if (!of || !needsYou(plan, of)) return refusal('NOTHING_TO_LEAVE', `Step ${args.stepId} does not need you, so there is nothing to leave as it is`);
       why = why ?? `Carry on without fixing step ${of.n}.`;
     }
+    // #915 (pilot-qwen-7b-r4: 99 adds, 7 distinct, 0 landed): the same call already pending is not added again.
+    const dup = !args.retry ? plan.steps.find((s) => isPending(s) && sameStep(s, { tool, args })) : null;
+    if (dup) {
+      return { ...refusal('DUPLICATE_STEP', isReady(dup) ? `Step ${dup.n} is this same call, approved and waiting to run; run it with ${RUN_NEXT} instead of adding it again` : `Step ${dup.n} is this same call and waits for your approval; approve it instead of adding it again`), dupOf: dup.id };
+    }
     if (CHANGE_TOOLS[tool] && !args.expect) args.expect = expectFor(tool, requestOf(args), layout, DEFAULT_EXPECT);
     const r = await withVersion(api, plan.id, (p) => api.plan_add_step({ planId: p.id, version: p.version, by, step: { tool, args, why: why ?? `Run ${tool}.` } }));
     if (!r.ok) return fromPlan(r);
@@ -464,7 +571,7 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
    * #885/#886: a refusal as it leaves the service: shaped (wrong, rule, choices, apply), each choice with why, effect and
    * its context lines, and `hintContext` (every candidate line with its static score, for the bench log and jev).
    */
-  const say = async (r, req, fixes0, tools) => {
+  const say = async (r, req, fixes0, tools, lead) => {
     const fixes = fixes0 ?? (Array.isArray(r.fixes) ? r.fixes : []);
     let plan = null; let fields = null;
     try {
@@ -488,7 +595,9 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
       }
     }
     const hinted = withHints(fixes, { code: r.code, asked }, ctx);
-    const out = shapedRefusal(r, req, hinted.fixes, tools, hinted.context);
+    const out0 = shapedRefusal(r, req, hinted.fixes, tools, hinted.context, undefined, examplesFor(plan)?.call ?? null);
+    // #915: a refusal a pending step explains says so first.
+    const out = lead ? { ...out0, text: `${lead}\n${out0.text}` } : out0;
     return { ...out, hintContext: { via, cap: ctx.cap, repeat, attempt: ctx.attempt, candidates: ctx.candidates, kept: ctx.lines.map((l) => ({ text: l.text, score: l.score, ref: l.ref })) } };
   };
 
@@ -587,6 +696,12 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
       // #885: the choices on offer are shown again, so the next call can pick one.
       return say(picked, { fix: want }, offeredNow());
     }
+    // #915: the run-next choice runs the next approved step instead of adding one.
+    if (picked?.ok && picked.fix.step.tool === RUN_NEXT) {
+      offer([]);
+      const ran = await runNextBody(by);
+      return ran.ok ? { ...ran, ranNext: true } : ran;
+    }
     // A picked fix is its step, sent as if with tool and args (a tool or args sent alongside are ignored).
     const req = picked?.ok ? { tool: picked.fix.step.tool, args: picked.fix.step.args, why: typeof req0?.why === 'string' && req0.why.trim() ? req0.why : picked.fix.sentence } : req0;
     const r0 = await addStepInner(req, by);
@@ -602,11 +717,22 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
       const again = (await reoffers(plan)).filter((a) => !sameStep(a.step, req));
       // #912: never the refused call; from its repeatAt-th identical refusal, the one different step leads as f1.
       const times = repeats.note(plan?.id, req, String(/** @type {any} */ (r0).code));
-      const own = guardFixes(root, req, String(/** @type {any} */ (r0).code), times, again.length ? withReoffers(again, checked.fixes) : checked.fixes, repeats.at);
+      const guarded = guardFixes(root, req, String(/** @type {any} */ (r0).code), times, again.length ? withReoffers(again, checked.fixes) : checked.fixes, repeats.at);
+      // #915: a duplicate of a pending step, or a call whose target a pending step creates or changes, leads with run-next.
+      const code0 = String(/** @type {any} */ (r0).code);
+      const dupStep = code0 === 'DUPLICATE_STEP' ? plan?.steps.find((s) => s.id === /** @type {any} */ (r0).dupOf) ?? null : null;
+      const dep = dupStep ? { step: dupStep, file: null } : !MALFORMED.has(code0) && plan ? pendingDependency(plan, req) : null;
+      const verb = (s) => (s.tool === 'line.setCode' ? 'changes' : 'creates');
+      const runFirst = dep && isReady(dep.step)
+        ? runNextFix(dep.step, dupStep ? `Recommended because step ${dep.step.n} is this same call, approved and not run yet: running it is what lands it (rule run-next).`
+          : `Recommended because step ${dep.step.n} (${dep.step.tool}), approved but not run yet, ${verb(dep.step)} ${dep.file}: run it first, then send this again (rule run-next-first).`)
+        : null;
+      const own = runFirst ? [runFirst, ...(dupStep ? [] : guarded)].map((f, i) => ({ ...f, rank: i + 1, ref: `f${i + 1}` })) : guarded;
+      const lead = dep && !dupStep ? `Step ${dep.step.n} (${stepText({ tool: dep.step.tool, args: plainArgs(dep.step.args) })}) ${verb(dep.step)} ${dep.file} and is ${isReady(dep.step) ? `approved but has not run yet: run it first with ${RUN_NEXT}, then send this again` : 'waiting for your approval: approve it, run it, then send this again'}.` : null;
       // A small model that sends a fix's ref or a path as the tool name ("fixes[0].step", "f1") meant the offered fix.
       const meantFix = !own.length && /** @type {any} */ (r0).code === 'UNKNOWN_TOOL' && /fix|^f\d+$/i.test(String(req?.tool ?? '')) ? offeredNow() : [];
-      const { fixes: _unchecked, ...bare } = /** @type {any} */ (r0);
-      r = await say(bare, req, own.length ? own : meantFix, registry.list().map((t) => t.name).filter((n) => n.startsWith('line.') && !n.startsWith('line.import.')));
+      const { fixes: _unchecked, dupOf: _dup, ...bare } = /** @type {any} */ (r0);
+      r = await say(bare, req, own.length ? own : meantFix, registry.list().map((t) => t.name).filter((n) => n.startsWith('line.') && !n.startsWith('line.import.')), lead);
       r = escalate(r, req, times, repeats.at);
       if (checked.dropped.length) r = { ...r, dropped: checked.dropped };
       if (!meantFix.length) offer(own);
@@ -715,7 +841,7 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
   };
 
   /** cl1: record what ran (its outcome) and, when Construct refused it, the refusal with the typed fixes it offered. */
-  const runNext = (by, stepId) => serial(async () => {
+  const runNextBody = async (by, stepId) => {
     const before = tr || rec ? await current((await init()).api) : null;
     const open = new Set((before?.steps ?? []).filter((s) => s.status === 'planned' || s.status === 'approved').map((s) => s.id));
     const state = rec && open.size ? rec.snapshot() : null;
@@ -757,8 +883,11 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
       tr.record({ kind: 'outcome', by: String(by), tool: s.tool, stepId: s.id, ok, passed, total, state: s.state, sentence: s.sentence });
     }
     return r;
-  });
+  };
+  const runNext = (by, stepId) => serial(() => runNextBody(by, stepId));
 
-  const service = { view: () => serial(() => view()), addStep, approve, runNext, store: async () => (await init()).store, trace: tr, records: rec };
+  /** #916: the example resolver for the current plan (plan-cli's rules cards use it). */
+  const examples = async () => { let plan = null; try { plan = await current((await init()).api); } catch { plan = null; } return examplesFor(plan); };
+  const service = { view: () => serial(() => view()), addStep, approve, runNext, examples, store: async () => (await init()).store, trace: tr, records: rec };
   return service;
 }

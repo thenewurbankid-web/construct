@@ -535,6 +535,7 @@ const server = http.createServer((req, res) => {
     res.end(JSON.stringify({ source, text: text ? String(text) : null }));
     return;
   }
+  if (u.pathname.startsWith('/turn-io/')) { import('./turn-io.mjs').then((m) => m.handleTurnIoRoute(u, res, (r) => (r ? allowedRun(r) : autoRun))).catch((e) => { res.writeHead(500); res.end(String(e)); }); return; } // #913 full input / raw output
   if (u.pathname.startsWith('/ctx/')) { handleContextRoute(u, res, (r) => (r ? allowedRun(r) : autoRun)); return; } // #899 Context / jev
   if (u.pathname === '/api/plan-jev') { res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' }); res.end(JSON.stringify(readPlanJev(SELF))); return; }
   if (u.pathname === '/api/health') { res.writeHead(200, { 'content-type': 'application/json' }); res.end(JSON.stringify({ ok: true, clients: clients.size, autoRun, tailers: tailers.size })); return; }

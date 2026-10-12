@@ -10,7 +10,9 @@
 //   whyOf / effectOf         #886: per fix, one sentence from the deciding rule, and what choosing it does (pure)
 //   renderQuestion(q)        #887: an import question in the same shape: hint, options with their effect, how to answer
 //   rulesCard(tool, args)    #888: the 2-4 rules for a step's tool and target layer, plain English, one example each
+//                            (#916: with {resolve}, each example names a real page/feature of the project, or goes)
 //   hintsJevOn / jevShadow   #890: the "jev picks context" switch (off) and jev's scores logged beside the static ones
+//   createExampleResolver    #916: makes an example's paths real for a project (or drops it); plannedFiles(plan)
 //   contextFor(root, o)      #886: the minimal deterministic lines that decide it, ranked by contextScore.mjs and cut
 //                            to 5 (15 when the same code repeats for the same target in this plan); reads files only
 //
@@ -51,6 +53,8 @@ export const TOOL_EXAMPLES = Object.freeze({
 });
 
 const STEP_THAT_NEEDS_YOU = '<the id of the step whose state is needs-fix or needs-you>';
+/** #915: the plan tool that runs the next approved step (plan-cli run-next, MCP plan_run_next); a fix may name it. */
+export const RUN_NEXT = 'plan_run_next';
 
 const given = (v) => v !== undefined && v !== null && v !== '' && (typeof v !== 'object' || Array.isArray(v));
 /**
@@ -117,7 +121,8 @@ export const REFUSAL_HINTS = Object.freeze({
   NOT_A_MACHINE: { rule: 'a workflow tool works on a workflow file Line can read', fields: ['file'] },
   NOT_LINE_LAYOUT: { rule: 'Line writes app/layout.tsx only once Line owns it' },
   NOT_RETRYABLE: { rule: 'only a step that waits for you can be tried again', example: (req) => ex(req.tool || 'line.setCode', { retry: { of: STEP_THAT_NEEDS_YOU } }) },
-  NO_CHANGE: { rule: 'a step must change its file', fields: ['file'] },
+  // #916 (pilot-qwen-7b-r4-s2): the file is right, its code is what is already there; the correct call is about the same file.
+  NO_CHANGE: { rule: 'a step must change its file', fields: ['file'], example: (req) => (given(req.args?.file) ? ex('line.setCode', { file: req.args.file, code: '<the whole file with the change you want; the code you sent is already there>', contentHash: given(req.args.contentHash) ? req.args.contentHash : '<from read>' }) : null) },
   NO_EXPORT: { rule: 'a page exports the component its route shows', fields: ['page'] },
   NO_PLAN: { rule: 'a plan starts with the first step you add', example: () => TOOL_EXAMPLES['line.createFeature'] },
   NO_ROLES: { rule: 'a workflow role is filled only when the workflow declares roles', fields: ['file'] },
@@ -142,6 +147,8 @@ export const REFUSAL_HINTS = Object.freeze({
   TOO_LATE: { rule: 'a scan question is answered before the first import step runs', fields: ['answer'] },
   BAD_OPTION: { rule: 'an answer is one of the question\'s option ids', fields: ['option'] },
   OWNER_ONLY: { rule: 'only a person can waive a logic unit', fields: ['option'] },
+  // #915: the same call is already in the plan, approved and waiting: running it is the one way on.
+  DUPLICATE_STEP: { rule: 'a step joins the plan once; an approved step lands when the next run runs it', example: () => ex(RUN_NEXT, {}) },
   // plan-cli's own (the bench driver).
   UNKNOWN_COMMAND: { rule: 'plan-cli takes one of its commands: tools, status, add, run-next, findings, validate, read, ls, rules' },
   NOT_FOUND: { rule: 'read and ls take a project-relative path that exists', example: () => ({ tool: 'read', args: { path: 'features/catalog/spec.md' } }) },
@@ -246,9 +253,11 @@ export const badArgsField = (sentence) => /: ([A-Za-z_$][\w$.]*) (?:must|is not)
 /**
  * The refusal as the builder sees it.
  * @param {{code: string, sentence: string, tool?: string, args?: any, why?: string, fix?: string, answer?: string, option?: string,
- *   fixes?: any[], tools?: string[], context?: string[], example?: string}} o `fixes`: the typed fixes (ref, step,
- *   why/effect/context when known), recommended first; `tools`: the tool names (UNKNOWN_TOOL's nearest one); `context`:
- *   refusal lines; `example`: the correct call, when the caller knows a better one than the tool's.
+ *   fixes?: any[], tools?: string[], context?: string[], example?: string, resolve?: ((call: any, near?: string|null) => any) | null}} o
+ *   `fixes`: the typed fixes (ref, step, why/effect/context when known), recommended first; `tools`: the tool names
+ *   (UNKNOWN_TOOL's nearest one); `context`: refusal lines; `example`: the correct call, when the caller knows a better
+ *   one than the tool's; `resolve` (#916, createExampleResolver's call): makes the correct call's paths real for the project,
+ *   or returns null to drop it (no "A correct call" line then).
  * @returns {RefusalShape}
  */
 export function shapeRefusal(o) {
@@ -269,7 +278,12 @@ export function shapeRefusal(o) {
     const near = code === 'UNKNOWN_TOOL' && o.tool && o.tools?.length ? closestId(String(o.tool), o.tools) : null;
     // #906: the refused request's own values (minus the bad one) fill the tool's example, so it names the same page.
     const call = hint.example?.(req) ?? (near ? TOOL_EXAMPLES[near] ?? ex(near, {}) : null) ?? (o.tool ? sameCall(o.tool, o.args, bad ? [bad.field] : []) : null) ??(code === 'UNKNOWN_TOOL' || code === 'BAD_JSON' ? TOOL_EXAMPLES['line.addRoute'] : null);
-    example = call ? callText(call) : `${o.tool ?? 'line.createFeature'} ${JSON.stringify(TOOL_EXAMPLES[o.tool ?? '']?.args ?? TOOL_EXAMPLES['line.createFeature'].args)}`;
+    const picked = call ?? ex(o.tool ?? 'line.createFeature', TOOL_EXAMPLES[o.tool ?? '']?.args ?? TOOL_EXAMPLES['line.createFeature'].args);
+    // #916: a path the project does not have is swapped for a real one of its kind (the request's own first), or the
+    // example goes; never a hard-coded page that is not there.
+    const own = typeof o.args?.file === 'string' ? o.args.file : typeof o.args?.page === 'string' ? o.args.page : typeof o.args?.feature === 'string' ? o.args.feature : null;
+    const real = o.resolve && picked && 'tool' in picked ? o.resolve(picked, own) : picked;
+    example = real ? callText(real) : null;
   }
   const apply = choices.length ? `To apply one, send {"fix":"${choices[0].ref}"}.` : null;
   const shape = { code, wrong, rule: hint.ruleOf?.(String(o.sentence ?? '')) ?? hint.rule, choices, apply, example, context: o.context ?? [] };
@@ -338,10 +352,12 @@ const base = (p) => path.posix.basename(String(p ?? '')).replace(/\.[^.]+$/, '')
 
 /**
  * Why a fix is offered, one sentence naming the rule that decided it (its id family: "UNKNOWN_ITEM/page:..." -> page).
- * @param {{id?: string|null}} fix @param {number} i Its place (0 = recommended). @param {{code: string, asked?: string|null}} c
+ * @param {{id?: string|null, because?: string}} fix @param {number} i Its place (0 = recommended). @param {{code: string, asked?: string|null}} c
  * @returns {string}
  */
 export function whyOf(fix, i, c) {
+  // #915: a fix that carries its own reason (run-next: the pending step it waits on) says that.
+  if (typeof fix.because === 'string') return fix.because;
   const id = String(fix.id ?? '');
   const family = id.split(':')[0];
   const kind = family.includes('/') ? family.split('/').slice(1).join('/') : family;
@@ -386,6 +402,7 @@ export function effectOf(step) {
     case 'line.createLayout': return 'creates the library folder';
     case 'line.amend': return 'saves the refused change together with its fix, in one step';
     case 'line.fix': return `applies fix ${a.fixId}`;
+    case RUN_NEXT: return 'runs the next approved step of the plan (nothing is added)';
     default: return a.retry?.of ? `runs step ${a.retry.of} again` : `runs ${step.tool}`;
   }
 }
@@ -512,27 +529,45 @@ export function withHints(fixes, c, ctx) {
 
 // ------------------------------------------------------------------------------------------------ #888 rules cards
 
+/** The example paths a card names when it cannot look at a project (no resolver): the shapes, as before #916. */
+const DEFAULT_PAGE = 'features/cart/pages/CartPage.tsx';
+const DEFAULT_ROUTES = Object.freeze({ [DEFAULT_PAGE]: '/cart', 'features/product/pages/DetailPage.tsx': '/products/:id' });
+/**
+ * @typedef {{file: (rel: string, near?: string|null) => (string|null), feature: (name: string, near?: string|null) => (string|null),
+ *   route: (page: string) => (string|null), exists: (rel: string) => boolean}} CardResolver
+ * @typedef {string | ((x: CardResolver, own: {file: string|null, page: string|null}) => (string|null))} CardExample
+ */
+/** No project to look at: every path is taken as it is (the card's own examples). */
+const STATIC_RESOLVER = /** @type {CardResolver} */ ({ file: (rel) => rel, feature: (name) => name, route: (page) => DEFAULT_ROUTES[page] ?? null, exists: () => true });
+const featureOfPath = (p) => /^features\/([^/]+)\//.exec(String(p))?.[1] ?? null;
+/** #916: the page a card's example names: the step's own page when real, else a real page (its feature first), else none. */
+const cardPage = (x, own, fallback = DEFAULT_PAGE) => (own.page && x.exists(own.page) ? own.page : x.file(fallback, own.page ?? own.file));
+
 /** The checks a tool's planner makes before a step joins the plan (build.mjs, typeGate.mjs), in plain English. */
+/** @type {Readonly<Record<string, {id: string, text: string, example: CardExample}[]>>} */
 const TOOL_RULES = Object.freeze({
   'line.addRoute': [
-    { id: 'route-page', text: 'A route serves one feature page file, features/<feature>/pages/<Name>.tsx', example: '{"route":"/cart","page":"features/cart/pages/CartPage.tsx"}' },
-    { id: 'route-props', text: 'The page it serves takes no props except params and searchParams', example: 'export function CartPage() { ... }' },
-    { id: 'route-once', text: 'One page serves one route, and one route has one page', example: '/products/:id -> features/product/pages/DetailPage.tsx' },
+    { id: 'route-page', text: 'A route serves one feature page file, features/<feature>/pages/<Name>.tsx', example: (x, own) => { const pg = cardPage(x, own); return pg ? JSON.stringify({ route: x.route(pg) ?? '<the route its spec names>', page: pg }) : null; } },
+    { id: 'route-props', text: 'The page it serves takes no props except params and searchParams', example: (x, own) => { const pg = cardPage(x, own); return pg ? `export function ${nameOfFile(pg)}() { ... }` : null; } },
+    { id: 'route-once', text: 'One page serves one route, and one route has one page', example: (x, own) => { const pg = cardPage(x, own, 'features/product/pages/DetailPage.tsx'); return pg ? `${x.route(pg) ?? '<its route>'} -> ${pg}` : null; } },
   ],
   'line.setCode': [
-    { id: 'contentHash', text: 'To replace a file, read it and send its contentHash; to create one, leave contentHash out', example: 'read features/cart/pages/CartPage.tsx, then line.setCode {"file": ..., "code": ..., "contentHash": "<from read>"}' },
+    { id: 'contentHash', text: 'To replace a file, read it and send its contentHash; to create one, leave contentHash out', example: (x, own) => {
+      const f = own.file && x.exists(own.file) ? own.file : x.file(DEFAULT_PAGE, own.file);
+      return `read ${f ?? 'the file'}, then line.setCode {"file": ..., "code": ..., "contentHash": "<from read>"}`;
+    } },
   ],
   'line.baseOn': [
-    { id: 'base-name', text: 'name is a capital letter then letters and digits, and the feature must exist', example: '{"libraryId":"pages/ListPage","feature":"catalog","name":"ProductListPage"}' },
+    { id: 'base-name', text: 'name is a capital letter then letters and digits, and the feature must exist', example: (x, own) => { const f = x.feature('catalog', own.file ?? own.page); return f ? JSON.stringify({ libraryId: 'pages/ListPage', feature: f, name: 'ProductListPage' }) : null; } },
   ],
   'line.createFeature': [
     { id: 'feature-name', text: 'name is lower-case words joined by hyphens', example: '"cart", "order-history"' },
     { id: 'feature-story', text: 'story is one sentence: As a <role>, I want <capability>, so that <benefit>', example: '"As a shopper, I want a cart I can change, so that I buy exactly what I want."' },
     { id: 'feature-points', text: 'points is a JSON list of strings, one acceptance point each', example: '["The page at /cart has the heading \\"Your cart\\".", "A button \\"Remove <name>\\" removes that line."]' },
-    { id: 'feature-once', text: 'A feature that exists is reused: write its spec.md with line.setCode', example: 'line.setCode {"file":"features/cart/spec.md", ...}' },
+    { id: 'feature-once', text: 'A feature that exists is reused: write its spec.md with line.setCode', example: (x) => { const f = x.file('features/cart/spec.md'); return f ? `line.setCode {"file":"${f}", ...}` : null; } },
   ],
   'line.setLayoutSlot': [
-    { id: 'slot', text: 'slot is header, nav or footer; components are component files of the library or a feature', example: '{"slot":"header","components":["features/cart/components/CartLink.tsx"]}' },
+    { id: 'slot', text: 'slot is header, nav or footer; components are component files of the library or a feature', example: (x) => { const c = x.file('features/cart/components/CartLink.tsx'); return c ? JSON.stringify({ slot: 'header', components: [c] }) : null; } },
   ],
   'line.leaveAsIs': [
     { id: 'leave', text: 'stepId names a step whose state is needs-fix or needs-you', example: '{"stepId":"s4"}' },
@@ -540,11 +575,12 @@ const TOOL_RULES = Object.freeze({
 });
 
 /** A one-line example for a framework rule (falls back to the catalog's expected shape). */
+/** @type {Readonly<Record<string, CardExample>>} */
 const RULE_EXAMPLES = Object.freeze({
   'LINE-BASE': '// @line-base pages/ListPage   (the first line of a feature page)',
   'LINE-DIR': "import { Button } from '../../../library/components/Button';   (never ../../other-feature/...)",
-  'LINE-OWNER': 'features/cart/pages/CartPage.tsx belongs to feature cart only',
-  'LINE-LAYOUT': 'features/cart/{components,pages,usecases,services,domains,expressions,fixtures}/',
+  'LINE-OWNER': (x, own) => { const pg = cardPage(x, own); return pg ? `${pg} belongs to feature ${featureOfPath(pg) ?? '<its feature>'} only` : null; },
+  'LINE-LAYOUT': 'features/<feature>/{components,pages,usecases,services,domains,expressions,fixtures}/',
   'PAGE-003': "a page imports components and usecases: import { useCart } from '../usecases/useCart';",
   'COMPONENT-003': 'take data as props: export function CartLine({ line }: { line: CartItem }) { ... }',
   'WORKFLOW-001': 'a workflow file imports no React and renders nothing',
@@ -579,24 +615,29 @@ export function layerOf(tool, args) {
  * LINE-DIR for code), then the layer's first error rule from the rule catalog (RULE_METADATA layers, DEFAULT_RULES).
  * @param {string} tool @param {any} [args] @param {{metadata?: Record<string, any>, defaults?: Record<string, any>}} [rules]
  *   The catalog (default: packages/core rules-catalog.mjs RULE_METADATA and config.mjs DEFAULT_RULES).
+ * @param {{resolve?: CardResolver | null}} [o] (#916) The project's example resolver (createExampleResolver); each example then
+ *   names a real page or feature (the step's own first), or the rule shows no example. Without one, the card's own.
  * @returns {{tool: string, layer: string|null, rules: {id: string, text: string, example: string}[], text: string}}
  */
-export function rulesCard(tool, args, rules = { metadata: RULE_METADATA, defaults: DEFAULT_RULES }) {
+export function rulesCard(tool, args, rules = { metadata: RULE_METADATA, defaults: DEFAULT_RULES }, o = {}) {
   const layer = layerOf(tool, args);
-  const out = [...(TOOL_RULES[tool] ?? [])];
-  const line = (id) => ({ id, text: firstClause(LINE_RULES[id].why), example: RULE_EXAMPLES[id] ?? LINE_RULES[id].expected[0] });
+  const x = o.resolve ?? STATIC_RESOLVER;
+  const own = { file: typeof args?.file === 'string' ? args.file : null, page: typeof args?.page === 'string' ? args.page : typeof args?.file === 'string' && /\/pages\//.test(args.file) ? args.file : null };
+  const real = (e) => (typeof e === 'function' ? e(x, own) ?? '' : e);
+  const out = [...(TOOL_RULES[tool] ?? [])].map((r) => ({ ...r, example: real(r.example) }));
+  const line = (id) => ({ id, text: firstClause(LINE_RULES[id].why), example: real(RULE_EXAMPLES[id]) || (RULE_EXAMPLES[id] ? '' : LINE_RULES[id].expected[0]) });
   const code = ['line.setCode', 'line.baseOn', 'line.newComponent', 'line.setFragment'].includes(tool) && layer !== 'spec';
   if (code && BASED.has(String(layer))) out.push(line('LINE-BASE'));
   if (tool === 'line.addRoute') out.push(line('LINE-OWNER'));
   if (code) out.push(line('LINE-DIR'));
   const lr = layer ? LAYER_RULE[layer] : null;
   if (code && lr && rules.metadata?.[lr]?.layers?.includes(layer) && rules.defaults?.[lr]?.severity === 'error') {
-    out.push({ id: lr, text: String(rules.defaults[lr].name), example: RULE_EXAMPLES[lr] ?? String(rules.metadata[lr].expected?.[0] ?? '') });
+    out.push({ id: lr, text: String(rules.defaults[lr].name), example: real(RULE_EXAMPLES[lr]) || String(rules.metadata[lr].expected?.[0] ?? '') });
   }
   if (tool === 'line.setCode' && layer === 'spec') out.push({ id: 'spec-format', text: 'A spec.md is "## <story>" then one numbered acceptance point per line', example: '## As a shopper, I want ..., so that ...\\n\\n1. CART-1: ...' });
   const picked = out.slice(0, 4);
   const head = `Rules for ${tool}${layer ? ` (${layer})` : ''}:`;
-  return { tool, layer, rules: picked, text: picked.length ? [head, ...picked.map((r) => `- ${r.text}. Example: ${r.example}`)].join('\n') : '' };
+  return { tool, layer, rules: picked, text: picked.length ? [head, ...picked.map((r) => (r.example ? `- ${r.text}. Example: ${r.example}` : `- ${r.text}.`))].join('\n') : '' };
 }
 
 // ------------------------------------------------------------------------------------------------ #890 jev shadow
@@ -671,6 +712,139 @@ export async function jevShadow(ctx, o = {}) {
     lines: lines.map((l, i) => ({ text: l.text, static: l.score, jev: got.scores[i] })),
     keptStatic: top((l) => l.score), keptJev: top((_l, i) => got.scores[i]),
   };
+}
+
+// ------------------------------------------------------------------------------------------------ #916 example paths
+
+// #916 -- examples name only real things. Bench run pilot-qwen-7b-r4-s2 looped 93 times on a NO_CHANGE setCode whose
+// "A correct call" (and the setCode rules card) named features/cart/pages/CartPage.tsx, a file that project never had:
+// the examples in hints.mjs (TOOL_EXAMPLES, TOOL_RULES) were hard-coded. This resolves an example against the project
+// it is shown for: a path that exists stays; a path that does not is swapped for one of the same kind that exists (or
+// that a pending plan step will create), the refused request's own feature first; when none fits, the example goes.
+//
+//   createExampleResolver(root, {planned})  -> {exists, file, feature, call, route}
+//     exists(rel)        the file or folder is in the project, or a pending step creates it
+//     file(rel, near?)   rel when real, else a real file of the same kind (pages, components, spec.md, ...), or null
+//     feature(name)      name when the feature exists (or a pending createFeature makes it), else a real one, or null
+//     call(call, near?)  {tool, args} with each path argument real, or null when one cannot be made real
+//     route(page)        the route a page serves (its @line-route), or null
+//
+// Placeholders ("<the whole file>", "<from read>") are never touched. Reads files only; never throws.
+
+const isPlaceholder = (v) => typeof v === 'string' && /<[^>]+>/.test(v);
+const dirsOf = (abs) => { try { return fs.readdirSync(abs, { withFileTypes: true }).filter((e) => e.isDirectory() && !e.name.startsWith('.')).map((e) => e.name).sort(); } catch { return []; } };
+const filesOf = (abs) => { try { return fs.readdirSync(abs, { withFileTypes: true }).filter((e) => e.isFile() && !e.name.startsWith('.')).map((e) => e.name).sort(); } catch { return []; } };
+
+/**
+ * The files a pending plan step will create or rewrite (line.baseOn's new item, line.setCode's file), project-relative.
+ * @param {{steps?: {tool: string, args?: any, status?: string}[]} | null | undefined} plan
+ * @param {string} [features] The features folder.
+ * @returns {string[]}
+ */
+export function plannedFiles(plan, features = 'features') {
+  const out = [];
+  for (const s of plan?.steps ?? []) {
+    if (s.status !== 'planned' && s.status !== 'approved') continue;
+    const a = s.args ?? {};
+    if ((s.tool === 'line.baseOn' || s.tool === 'line.newComponent') && typeof a.feature === 'string' && typeof a.name === 'string' && typeof a.libraryId === 'string') out.push(`${features}/${a.feature}/${String(a.libraryId).split('/')[0]}/${a.name}.tsx`);
+    else if (s.tool === 'line.createFeature' && typeof a.name === 'string') out.push(`${features}/${a.name}/spec.md`);
+    else if (typeof a.file === 'string') out.push(a.file);
+  }
+  return out;
+}
+
+/**
+ * An example resolver for one project (see the section header).
+ * @param {string} root
+ * @param {{planned?: string[]}} [o] `planned`: files pending plan steps will create (plannedFiles).
+ * @returns {CardResolver & {call: (c: {tool: string, args?: any}, near?: string|null) => ({tool: string, args: any} | null), layout: {library: string, features: string}}}
+ */
+export function createExampleResolver(root, { planned = [] } = {}) {
+  let layout = { library: 'library', features: 'features' };
+  try { layout = /** @type {any} */ (resolveLayout(root, normalizeLineConfig(/** @type {any} */ (loadConfig(root)).line))); } catch { /* the default layout */ }
+  const fdir = layout.features;
+  const plannedSet = new Set(planned);
+  const exists = (rel) => typeof rel === 'string' && rel !== '' && (plannedSet.has(rel) || fs.existsSync(path.join(root, rel)));
+  const featureOf = (rel) => (typeof rel === 'string' && rel.startsWith(`${fdir}/`) ? rel.slice(fdir.length + 1).split('/')[0] : null);
+  const features = () => [...new Set([...dirsOf(path.join(root, fdir)), ...planned.map(featureOf).filter(Boolean)])];
+  /** Real files of one kind folder (pages, components, ...) across the features, planned ones after those on disk. */
+  const ofKind = (kind) => {
+    const disk = features().flatMap((f) => filesOf(path.join(root, fdir, f, kind)).filter((n) => CODE_EXTENSIONS.includes(path.extname(n)) && !/^index\.|\.(test|spec|stories)\./.test(n)).map((n) => `${fdir}/${f}/${kind}/${n}`));
+    const later = planned.filter((p) => p.startsWith(`${fdir}/`) && p.split('/')[2] === kind && p.split('/').length === 4);
+    return [...new Set([...disk, ...later])];
+  };
+  /** The nearest real file of a list: the `near` feature's first, then the first. */
+  const pick = (list, near) => list.find((p) => near && featureOf(p) === featureOf(near)) ?? list[0] ?? null;
+
+  /**
+   * rel when it is real; else a real file of the same kind, `near`'s feature first; null when none.
+   * @param {string} rel @param {string|null} [near]
+   * @returns {string|null}
+   */
+  const file = (rel, near = null) => {
+    if (typeof rel !== 'string' || isPlaceholder(rel) || exists(rel)) return rel;
+    if (!rel.startsWith(`${fdir}/`)) return null;
+    const segs = rel.slice(fdir.length + 1).split('/');
+    if (segs.length === 2 && segs[1] === 'spec.md') return pick(features().map((f) => `${fdir}/${f}/spec.md`).filter(exists), near);
+    if (segs.length === 3) return pick(ofKind(segs[1]), near);
+    return null;
+  };
+  /**
+   * name when that feature is real; else a real feature (`near`'s first); null when the project has none.
+   * @param {string} name @param {string|null} [near]
+   * @returns {string|null}
+   */
+  const feature = (name, near = null) => {
+    const all = features();
+    if (all.includes(name)) return name;
+    const n = featureOf(near ?? '') ?? near;
+    return all.includes(String(n)) ? String(n) : all[0] ?? null;
+  };
+  /** The route a page serves (its @line-route line), or null. */
+  const route = (page) => /@line-route\s+(\S+)/.exec(readText(path.join(root, String(page))) ?? '')?.[1] ?? null;
+
+  /**
+   * A call with each path argument real (file, page, from, path, components, featureItemId, feature), `near` (the refused
+   * request's own file or feature) first; null when one cannot be made real. A route follows a swapped page.
+   * @param {{tool: string, args?: any}} c @param {string|null} [near]
+   * @returns {{tool: string, args: any} | null}
+   */
+  const call = (c, near = null) => {
+    if (!c || typeof c !== 'object' || typeof c.tool !== 'string') return null;
+    const a = { ...(c.args ?? {}) };
+    for (const k of ['file', 'page', 'from', 'path']) {
+      if (typeof a[k] !== 'string' || isPlaceholder(a[k])) continue;
+      // A file line.setCode creates (no contentHash) in a real feature is not looked up.
+      if (k === 'file' && c.tool === 'line.setCode' && !a.contentHash && featureOf(a[k]) && features().includes(String(featureOf(a[k])))) continue;
+      const real = file(a[k], near);
+      if (!real) return null;
+      if (real !== a[k] && k === 'page' && typeof a.route === 'string') a.route = route(real) ?? '<the route its spec names>';
+      a[k] = real;
+    }
+    // A file a step creates (line.moveFile's target) keeps its name, inside a feature that is real.
+    if (typeof a.to === 'string' && !isPlaceholder(a.to) && featureOf(a.to)) {
+      const f = feature(featureOf(a.to) ?? '', typeof a.from === 'string' ? a.from : near);
+      if (!f) return null;
+      a.to = `${fdir}/${f}/${a.to.slice(fdir.length + 1).split('/').slice(1).join('/')}`;
+    }
+    if (Array.isArray(a.components)) {
+      const comps = a.components.map((x) => (typeof x === 'string' ? file(x.split('#')[0], near) : x));
+      if (comps.some((x) => !x)) return null;
+      a.components = comps;
+    }
+    if (typeof a.featureItemId === 'string' && !isPlaceholder(a.featureItemId)) {
+      const real = file(`${fdir}/${a.featureItemId}.tsx`, near);
+      if (!real) return null;
+      a.featureItemId = real.slice(fdir.length + 1).replace(/\.[^.]+$/, '');
+    }
+    if (typeof a.feature === 'string' && c.tool !== 'line.createFeature') {
+      const real = feature(a.feature, near);
+      if (!real) return null;
+      a.feature = real;
+    }
+    return { ...c, args: a };
+  };
+  return { exists, file, feature, call, route, layout };
 }
 
 // ------------------------------------------------------------------------------------------------ #887 questions
