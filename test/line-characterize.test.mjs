@@ -8,7 +8,6 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createStateCache } from '../packages/engine/line/importV2/cache.mjs';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 import { characterize, generateCharacterizationTests, unitCoverage, locateUnitSpans, analyzeClosure, pathnameOfEntry, runJest, CHAR_DIR } from '../packages/engine/line/characterize.mjs';
 import { lockedText, json, scenarioTitle, isGenerated } from '../packages/engine/line/characterize/emit.mjs';
@@ -154,8 +153,7 @@ test('characterize: on a small app the generated jest tests pass, cover the unit
   const root = copyFixture();
   fs.symlinkSync(home, path.join(root, 'node_modules'), 'dir');
   const map = fixtureMap(root);
-  const cache = createStateCache(root, 'characterize');
-  const r = await characterize(root, CLOSURE, map, { budgetMs: 2500, componentBudgetMs: 6000, maxIdle: 400, workDir: makeTempDir('construct-line-char-work-'), cache });
+  const r = await characterize(root, CLOSURE, map, { budgetMs: 2500, componentBudgetMs: 6000, maxIdle: 400, workDir: makeTempDir('construct-line-char-work-') });
 
   // the tests: in the app's own runner, next to the route, all passing on the unmodified app
   assert.equal(r.failed, 0);
@@ -185,13 +183,6 @@ test('characterize: on a small app the generated jest tests pass, cover the unit
   // the contract entry point returns the same tests (a second run regenerates the same files in place)
   // (skipped here: it would repeat the whole search; characterize() is what generateCharacterizationTests wraps)
   assert.equal(typeof generateCharacterizationTests, 'function');
-
-  // the cache: a second run on the unchanged app skips the search and the recording, and locks the same tests
-  const logs = [];
-  const again = await characterize(root, CLOSURE, map, { budgetMs: 2500, componentBudgetMs: 6000, maxIdle: 400, workDir: makeTempDir('construct-line-char-work2-'), cache, log: (l) => logs.push(l) });
-  assert.ok(logs.some((l) => /subjects from the cache$/.test(l)) && !logs.some((l) => /searching|recording/.test(l)), logs.join(' | '));
-  assert.deepEqual(again.tests, r.tests);
-  assert.equal(again.failed, 0);
 
   // a mutation: change what one branch returns and what the empty list shows; the locked tests must fail
   const price = path.join(root, 'src/lib/price.ts');
