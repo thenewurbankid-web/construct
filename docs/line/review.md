@@ -151,7 +151,7 @@ stop the person decides, with every attempt listed under Details. `construct.rep
   should change every row above (and may make the 1.5B enough). Run each variant with `CONSTRUCT_LIVE_QWEN=1
   CONSTRUCT_REPAIR_MODEL=<model> CONSTRUCT_REPAIR_REASON=0|1 CONSTRUCT_REPAIR_MAX=<n> node --test
   test/line-repair-live.test.mjs`, one at a time.
-- Not re-run after this change: the Playwright walks (the machine was overloaded); `uat/cu2.spec.js` and
+- Not re-run after this change: the Playwright walks (the machine was overloaded); `tests/line-ai-steps.spec.js` (owner walk merged in from the retired uat/cu2.spec.js) and
   `uat/im1-im2.spec.js` check the repair step's label and its model (the 1.5B, Line's default).
 
 Tests (all pass): `packages/rule-factory/test/misses.test.mjs` (4), `test/line-im1.test.mjs` (3),
@@ -504,7 +504,7 @@ playwright.uat.config.js uat/cp1.spec.js`).
 | ca2 screen: Apply a fix where the problem is | Components → InvoiceCard → Apply recommended fix (one click) → 1 problem left; Pages → billing → InvoicesPage → Apply → "Fine". | `uat/ca2.spec.js`: passed |
 | ci1: Import one folder | Open a copy of `examples/import-sample`, go to `/import`, folder `src/alerts`, Read folder, answer the one question, Show the plan, Apply. Items land in `src/alerts/library` and `features/alerts`; files outside the folder are unchanged; the hook stays put (listed as `line.appFolders`, so no stray-file problem). | `uat/ci1.spec.js`: passed |
 | New Line project (cu7) | Close the project → New project → Line project, name `shop`, first feature `catalog` → Create. It opens on Features with catalog "All fine"; Components → Button → Base on this → catalog, BuyButton → Create → Approve. | `uat/new-line-project.spec.js`: passed |
-| New project form fix | No project open → New project → type `my shop`: the letters stay and the hint asks for "-" or "_"; `my-shop` → Create and open. | `uat/new-project.uat.spec.js`: passed |
+| New project form fix | No project open → New project → type `my shop`: the letters stay and the hint asks for "-" or "_"; `my-shop` → Create and open. | `tests/new-project.spec.js` (keystroke walk merged in from the retired uat/new-project.uat.spec.js): passed |
 | ca1 (CLI) | `node packages/cli/construct.mjs validate --dir examples/line-sample --profile line`: the 2 planted findings in plain English. | `uat/ca1-cli.uat.spec.js`: passed |
 | Hours 1, 2, 3, 3b, 4, 5-6, 7 | As in each Hour's section; every change is followed by Approve in the Plan panel (Save + Approve, two clicks). | `uat/hour*.uat.spec.js`: passed |
 | cx1: edit one piece of code | Pages → orders → OrdersPage → Edit code → change the handler → Save → Approve: "Saved. Changes the code for …"; `() => {` is refused in one sentence. | `uat/cx1-edit-code.uat.spec.js`: passed |
@@ -515,14 +515,14 @@ playwright.uat.config.js uat/cp1.spec.js`).
 | cw1: feature workflows | Features → orders → Workflows tab → Use listDetail → Approve; choose OrdersPage for the list page → Approve; add a When → Do → Approve. | `uat/cw1.spec.js`: passed |
 | cs1: plain English first (cs2 has no UAT) | Base a component on Badge: the plan step reads as one sentence ("Saved: …"), the tool call and checks only under Details. | `uat/cs1.spec.js`: passed |
 | cu3: one tool registry | Base on → the step waits for approval and nothing is written; Approve saves it; `GET /api/line/tools` lists every tool, read or write. | `uat/cu3.spec.js`: passed |
-| cu2: one AI layer | Profile menu → Settings → AI steps: every step in plain English, the 1.5B model by default, each with its static fallback; Details on one. | `uat/cu2.spec.js`: passed |
+| cu2: one AI layer | Profile menu → Settings → AI steps: every step in plain English, the 1.5B model by default, each with its static fallback; Details on one. | `tests/line-ai-steps.spec.js` (owner walk merged in from the retired uat/cu2.spec.js): passed |
 | cg1: Trace lights the controls | Components → Trace → type `Base a new StatusBadge on Badge in orders`: Badge's "Base on this" gets an outline; click it and Feature, Name and Create get one; a Pages request offers "Go to Pages: …". | `uat/cg1.spec.js`: passed |
 | ct1: Auto and Trace | Trace + Auto, "Show me and do it": captions, then you Approve; with "Let Auto approve in this session" one click does it. | `uat/ct1.spec.js`: passed |
 | ci2: the Import agent | Import → "Or let the Import agent plan it" → Start → review (skip one step) → Approve the plan → Done, with the record of who did what. | `uat/ci2.spec.js`: passed |
 | cd1: Cockpit in Trace's style (please judge the look) | Features opens as a full-screen chat; ask "What is missing?", open billing, fix it, add a component to orders, switch the theme. **Question for you: does the look (Trace's demo style, light and dark) feel right for Cockpit's first screen?** | `uat/cd1.spec.js`: passed |
 | Expressions (System 1 groundwork) | Base on → Approve: the step is checked by its expressions and kept as a training record with no project name (`line/records/plans.jsonl`); `construct line check|facts|records`. | `uat/expressions.spec.js`: passed |
 | System 1 drafter (`LINE_DRAFTER=1`) | Start the server with `LINE_DRAFTER=1`; Components → Describe a change → "add a badge to the orders feature" → the recommended route first → Add to plan → Approve. | `uat/s1-drafter.spec.js`: passed |
-| Train Line | Profile menu → Train Line: review 5 of Claude's cases (Agree / Disagree with a note), teach one request, Try it, Save, Run eval. | `uat/line-train.spec.js`: passed |
+| Train Line | Profile menu → Train Line: review 5 of Claude's cases (Agree / Disagree with a note), teach one request, Try it, Save, Run eval. | `tests/line-train.spec.js` (owner walk merged in from the retired uat/line-train.spec.js): passed |
 
 How the merge decided where two steps disagreed (the later step's intent, unless you had decided):
 1. Direct write routes are gone (integrator): `/api/line/base-on`, `/promote`, `/page-prop`, `/fix`, `/fragment`, `/import/apply` answer 404; every change is `/api/line/plan/step`, and Approve/Run need the Cockpit page's Origin and approval token. cu3's tool catalog lists those tools as plan-only.
@@ -555,7 +555,7 @@ cd ui/e2e && E2E_CLIENT_PORT=3371 E2E_SERVER_PORT=4371 ../../packages/tools/dev/
 
 ## New project form (fixed 11 Oct, ec00e35f; awaiting UAT)
 
-Typing in the New project form used to freeze the page (React re-rendered forever). Walk: `ui/e2e/uat/new-project.uat.spec.js`.
+Typing in the New project form used to freeze the page (React re-rendered forever). Walk: `ui/e2e/tests/new-project.spec.js` (merged from the retired uat walk).
 
 UAT: open Cockpit with no project open (project switcher → Close project). Under "New project", type `my shop`:
 every letter stays and the hint says "A project name has no spaces. Use "-" or "_" instead."; Create and open stays

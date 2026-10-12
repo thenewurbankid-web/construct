@@ -5,7 +5,8 @@ import { runAxe, isBlocking, format } from './support/axe.js';
 // Line cu2: one AI layer. Settings lists every AI step (Cockpit's fills, Trace's tasks, Construct's chooser and fix
 // picker) from Line's one profile set, read-only: what the step does, its model (the 1.5B by default), how it decides
 // (static first; the picker only where the step is on with a measured win), its win or "off", and that it falls back to
-// static. Real server, no mock, no model call.
+// static. Real server, no mock, no model call. The owner's walk (merged here from uat/cu2.spec.js): two clicks from the
+// profile menu, every step in plain sentences, one step's Details, no console error and no failed request.
 const API = process.env.E2E_API_BASE || 'http://localhost:4000';
 
 test('GET /api/line/ai-profiles answers every step with the 1.5B as the default model', async ({ request }) => {
@@ -46,4 +47,28 @@ test('Settings shows the AI steps read-only: plain English first, the model, how
 
   const found = await runAxe(page, { include: '[data-testid="ai-steps"]' });
   expect(found.filter(isBlocking), format(found.filter(isBlocking))).toEqual([]);
+});
+
+test('owner walk: two clicks from the profile menu; every step in plain sentences with its model and fallback; Details on one', async ({ page }) => {
+  const problems = [];
+  page.on('console', (m) => { if (m.type() === 'error') problems.push(`console: ${m.text()}`); });
+  page.on('response', (r) => { if (r.status() >= 400) problems.push(`${r.status()} ${r.url()}`); });
+  await gotoCockpit(page, '/');
+  await page.getByTestId('user-menu-trigger').click();
+  await page.getByTestId('profile-settings').click();
+  const panel = page.getByTestId('ai-steps');
+  await expect(panel).toBeVisible({ timeout: 30_000 });
+  const steps = panel.getByTestId('ai-step');
+  await expect(steps.first()).toBeVisible({ timeout: 30_000 });
+  expect(await steps.count()).toBeGreaterThanOrEqual(10);
+  for (const s of await steps.all()) {
+    expect((await s.locator('.ais-label').innerText()).trim()).toMatch(/^[A-Z].*\.$/);
+    expect((await s.locator('.ais-how').innerText()).trim()).toMatch(/^[A-Z].*\.$/);
+    await expect(s.getByTestId('ai-step-model')).toHaveText(/^Model: (qwen2\.5-coder:1\.5b \(Line's default\)|The hosted model you choose)$/);
+    await expect(s.getByTestId('ai-step-win')).toHaveText(/^Win over static: /);
+  }
+  const chooser = panel.locator('[data-testid="ai-step"][data-step="construct.chooser"]');
+  await chooser.getByText('Details').click();
+  await expect(chooser.getByText('Reply cap: 800 tokens')).toBeVisible();
+  expect(problems, problems.join('\n')).toEqual([]);
 });

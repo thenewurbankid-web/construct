@@ -1,4 +1,4 @@
-// Train Line specs (tests/line-train.spec.js and the owner's pre-UAT walk uat/line-train.spec.js) on the real server,
+// Train Line specs (tests/line-train.spec.js, with the owner's walk merged in) on the real server,
 // with a training root of their own (LINE_TRAIN_ROOT, seeded from the repo's line/train on first open), so a run never
 // changes the committed cases.
 //
@@ -16,7 +16,7 @@ export default {
   ...base,
   testDir: '.',
   testIgnore: [],
-  testMatch: [/tests[\\/]line-train\.spec\.js$/, /uat[\\/]line-train\.spec\.js$/],
+  testMatch: [/tests[\\/]line-train\.spec\.js$/],
   timeout: 90_000,
   webServer: [
     { ...base.webServer[0], env: { ...base.webServer[0].env, LINE_TRAIN_ROOT: process.env.E2E_TRAIN_ROOT } },
