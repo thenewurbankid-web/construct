@@ -92,14 +92,33 @@ for (const c of CASES) {
   });
 }
 
+// layout-threshold's own layer (step 5) is live below; its full verifyPair waits for the C1 compare (step 3) and the
+// isolated runner that calls the layout helper (step 4).
+const pairTodo = (c) => (c.name === 'layout-threshold' ? 'steps 3-4: verifyPair wiring (the layout layer itself is live: step 5 acceptance below)' : todo(c.step));
 for (const c of CASES) {
-  test(`step ${c.step} acceptance, ${c.name}: verifyPair gives the expected verdict`, { todo: todo(c.step) }, async () => {
+  test(`step ${c.step} acceptance, ${c.name}: verifyPair gives the expected verdict`, { todo: pairTodo(c) }, async () => {
     const { verifyPair } = await later('verifyPair.mjs', c.step);
     const v = expected(c.name);
     const got = await verifyPair({ ...roots(c), unit: v.unit, transforms: c.transforms, levels: c.levels });
     assert.deepEqual(got, v);
   });
 }
+
+test('step 5 acceptance, layout-threshold: the layout fakes find innerWidth 640 at the changed literal', async () => {
+  const { verifyLayoutPair } = await later('layoutRun.mjs', 5);
+  const c = CASES.find((x) => x.name === 'layout-threshold');
+  const v = expected('layout-threshold');
+  const { ms, ...got } = verifyLayoutPair({ ...roots(c), unit: v.unit, beforeFile: c.before.file });
+  assert.ok(typeof ms === 'number' && ms >= 0);
+  assert.deepEqual(got, c.layerResults.find((r) => r.layer === 'isolated'));
+  assert.deepEqual(got.input, { 'Window.innerWidth': 640 });
+  // with the cheaper layers' answers before it, the layer decides the expected verdict
+  const results = [...c.layerResults.filter((r) => r.layer !== 'isolated'), got];
+  const built = buildUnitVerdict({ unit: v.unit, purity: v.purity, effectChain: v.effectChain, transforms: c.transforms, ...decideUnit({ results, transforms: c.transforms }) });
+  assert.deepEqual(built, v);
+  assert.equal(built.status, 'changed');
+  assert.deepEqual(built.location, v.location);
+});
 
 test('step 3 acceptance: an extracted unit that sits in no atom or block is reported not-extracted', { todo: todo(3) }, async () => {
   const { verifyPair } = await later('verifyPair.mjs', 3);
