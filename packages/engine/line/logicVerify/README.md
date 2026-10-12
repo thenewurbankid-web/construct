@@ -44,7 +44,7 @@ Tests:
 | A | Closed transform set, Alive2-style validation, outside edits are "tested" | `contract.mjs` `TRANSFORM_IDS`, `TRANSFORM_SOURCES`, `inClosedSet`, and the proven rule in `assertUnitVerdict`; `escalation.mjs` `isDecisive` | 3 |
 | B | Pure/impure split with the transitive effect chain | `contract.mjs` `Purity`, `EffectLink`, `EFFECT_NAMES`, `MORPHEUS_EFFECTS`, `LOGIC_KIND_EFFECTS` | 2 (`purity.mjs` `classifyUnit`) |
 | C | Layered equivalence and its outcomes, plus the round-trip check | `contract.mjs` `VERIFY_LAYERS`, `LAYER_STRENGTH`, `LayerResult`; `escalation.mjs` `LAYER_ORDER`, `decideUnit` | 3 (C1, round-trip), 6 (C3) |
-| D | Isolated execution with recording fakes and sentinels | `fakes.mjs`; step 4: `isolatedRun.mjs`, `isolatedChild.cjs` | 4 (built; hooks and handlers wait for the hook runner) |
+| D | Isolated execution with recording fakes and sentinels | `fakes.mjs`; step 4: `isolatedRun.mjs`, `isolatedChild.cjs` | 4 (built, with hooks, handlers and V8 branch coverage, #877) |
 | E | Layout as input | `layoutFakes.mjs`; step 5: `libDom.mjs`, `layoutFakeGen.mjs`, `layoutDom.mjs`, `layoutClock.mjs`, `layoutMedia.mjs`, `layoutRun.mjs` | 5 (built; hook closures wait for step 4's runner) |
 | F | Escalation from L0 to L3 | `escalation.mjs` `LEVELS`, `levelsFor`, `layerOrder`; `contract.mjs` `LEVEL_OF_LAYER` | 4 (L1), 8 (L2, L3) |
 | G | Speed | Not in the contract yet. Each `LayerResult` has an optional `ms` field. | 7 |
@@ -65,6 +65,15 @@ each step lands.
   strings, empty env, a `construct-lv-isolated-*` temp dir removed after, SIGKILL at the time limit) under the
   recording fakes, on the same generated inputs; it returns `changed` (the input and the recorded difference),
   `same-behaviour`, or `cant-tell` (an unfaked effect, reported and not executed; the time limit; a load failure).
+  A unit runs as one of `RUN_AS` (`runAsOf`): `function` (called directly), `hook` (`useX`: the headless hook harness
+  behind the `react` module, render-free: slots by call order, setters and dispatches record `state.<slot>` /
+  `reducer.<slot>` transitions and re-render, effects run when their deps change and clean up at unmount; each function
+  the hook returns is called with the case's arguments, and the hook's last result is compared by value), or `handler`
+  (`handleX` / `onX`, or a first parameter typed as a React event: a generated synthetic event per case, whose
+  `preventDefault` / `stopPropagation` record a `dom` effect). The result carries `runAs` and `coverage`: V8 branch
+  coverage per side over every case (node:inspector Profiler precise coverage, in the child with `--allow-inspector`;
+  `unavailable` on a node without that flag), level `full`, `partial` or `low` (`COVERAGE_LEVELS`; under `LOW_COVERAGE`
+  on a side the reason says so).
   `RUNNERS.isolated` gives one result per unit: a change from either runner decides, else a layout answer stands,
   else the effect runner's.
 - `verifyPair.mjs`: `verifyPair({beforeRoot, afterRoot, unit, transforms, levels, blocks?})` returns

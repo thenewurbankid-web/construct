@@ -147,14 +147,159 @@ function createFakes(env) {
     });
     return new Proxy({ __esModule: true }, { get: (t, prop) => (prop in t || typeof prop === 'symbol' ? t[prop] : spy(String(prop))) });
   };
-  return { effects, transitions, notFaked, refuse, clock, random, storage, fetch, MODULES, analytics, consoleFake, spyModule };
+  return { rec, effects, transitions, notFaked, refuse, clock, random, storage, fetch, MODULES, analytics, consoleFake, spyModule };
 }
 
 const SPY_EFFECTS = [[/api|http|client|fetch|request/, 'fetch'], [/toast|notif|snack/, 'toast'], [/analytic|track|telemetry/, 'analytics'], [/router|navigat|history/, 'navigation'], [/store|dispatch|slice|redux/, 'store'], [/storage|cache/, 'storage']];
+/** A hook that keeps setting state on every render stops here and throws TooManyRendersError (on both sides alike). */
+const MAX_RENDERS = 25;
+
+class TooManyRendersError extends Error { constructor() { super(`more than ${MAX_RENDERS} renders`); this.name = 'TooManyRendersError'; } }
+
+const depsChanged = (prev, next) => !prev || !next || prev.length !== next.length || next.some((d, i) => !Object.is(d, prev[i]));
+
+/**
+ * The headless hook runner (spec D: "hooks run in a headless hook runner, a no-op React renderer"): a render-free
+ * harness behind the `react` module. Hook slots are kept by call order as React does; a state setter or reducer
+ * dispatch records a state transition (`state.<slot>` / `reducer.<slot>`, action names only) and schedules a re-render;
+ * effects run after each render when their deps change, and their cleanups run before the next run and at unmount.
+ */
+function createHookHarness(f) {
+  const slots = [];
+  let i = 0;
+  let dirty = false;
+  let pending = [];
+  const transition = (key, action) => f.transitions.push({ seq: f.transitions.length, key, ...(action ? { action } : {}) });
+  const slot = (init) => { const k = i++; if (!(k in slots)) slots[k] = init(); return [k, slots[k]]; };
+  const effect = (fn, deps) => {
+    const [, s] = slot(() => ({ deps: undefined, cleanup: undefined, fn: undefined, fresh: true }));
+    if (s.fresh || depsChanged(s.deps, deps)) { s.fresh = false; s.deps = deps; s.fn = fn; pending.push(s); }
+  };
+  const useReducer = (reducer, initArg, initFn) => {
+    const [k, s] = slot(() => {
+      const st = { value: initFn ? initFn(initArg) : initArg };
+      st.dispatch = (action) => {
+        transition(`reducer.${k}`, action && typeof action === 'object' && typeof action.type === 'string' && /^[\w./:-]+$/.test(action.type) ? action.type : 'dispatch');
+        const next = reducer(st.value, action);
+        if (!Object.is(next, st.value)) { st.value = next; dirty = true; }
+      };
+      return st;
+    });
+    return [s.value, s.dispatch];
+  };
+  const useState = (init) => {
+    const [k, s] = slot(() => {
+      const st = { value: typeof init === 'function' ? init() : init };
+      st.set = (v) => {
+        transition(`state.${k}`, 'set');
+        const next = typeof v === 'function' ? v(st.value) : v;
+        if (!Object.is(next, st.value)) { st.value = next; dirty = true; }
+      };
+      return st;
+    });
+    return [s.value, s.set];
+  };
+  const memo = (fn, deps) => { const [, s] = slot(() => ({ deps: undefined, value: undefined, fresh: true })); if (s.fresh || depsChanged(s.deps, deps)) { s.fresh = false; s.deps = deps; s.value = fn(); } return s.value; };
+  const react = {
+    __esModule: true,
+    useState, useReducer,
+    useEffect: effect, useLayoutEffect: effect, useInsertionEffect: effect,
+    useMemo: memo,
+    useCallback: (fn, deps) => memo(() => fn, deps),
+    useRef: (init) => slot(() => ({ current: init }))[1],
+    useContext: (ctx) => (ctx && typeof ctx === 'object' ? ctx._currentValue : undefined),
+    createContext: (value) => ({ _currentValue: value, Provider: 'Provider', Consumer: 'Consumer' }),
+    useId: () => `line-id-${slot(() => 0)[0]}`,
+    useTransition: () => [false, (cb) => cb()],
+    useDeferredValue: (v) => v,
+    useSyncExternalStore: (_subscribe, getSnapshot) => getSnapshot(),
+    useImperativeHandle: () => {},
+    useDebugValue: () => {},
+    memo: (c) => c, forwardRef: (c) => c, Fragment: 'Fragment',
+    createElement: (type, props, ...children) => ({ $$typeof: 'element', type: typeof type === 'string' ? type : 'component', props: { ...props, children } }),
+  };
+  react.default = react;
+  const flush = () => {
+    const run = pending;
+    pending = [];
+    for (const s of run) {
+      if (typeof s.cleanup === 'function') s.cleanup();
+      s.cleanup = s.fn();
+    }
+  };
+  return {
+    module: react,
+    /** Render until no state changes (each render runs the effects whose deps changed); returns the last result. */
+    render(unit, args) {
+      let out;
+      let renders = 0;
+      do {
+        if (++renders > MAX_RENDERS) throw new TooManyRendersError();
+        dirty = false;
+        i = 0;
+        pending = [];
+        out = unit(...args);
+        flush();
+      } while (dirty);
+      return out;
+    },
+    unmount() { for (const s of slots) if (s && typeof s.cleanup === 'function') { const c = s.cleanup; s.cleanup = undefined; c(); } },
+  };
+}
+
+/**
+ * The synthetic event a handler unit gets (spec D: "handlers get fake events"): a React-style event of the type its
+ * annotation names, with a target whose value, checked state and key vary per case; preventDefault and stopPropagation
+ * record a dom effect.
+ */
+function syntheticEvent(f, desc, env) {
+  const v = Number(desc.variant) || 0;
+  const value = [`__line_${(env.seed >>> 0).toString(16).padStart(8, '0')}_${300 + v}__`, '', '0', 'a b'][v % 4];
+  const target = { value, checked: v % 2 === 0, name: 'field', id: 'field', type: 'text', dataset: {}, files: [] };
+  const ev = {
+    type: String(desc.__lineEvent), target, currentTarget: target, key: ['Enter', 'Escape', 'a', 'Tab'][v % 4], code: '', button: 0,
+    clientX: 0, clientY: 0, deltaY: 0, shiftKey: false, ctrlKey: false, metaKey: false, altKey: false, defaultPrevented: false, nativeEvent: {},
+    preventDefault() { f.rec('dom', 'event.preventDefault'); ev.defaultPrevented = true; },
+    stopPropagation() { f.rec('dom', 'event.stopPropagation'); },
+    persist() {},
+  };
+  return ev;
+}
+
+/**
+ * V8 block coverage of the unit for one run: every range V8 reports inside the unit's source text, as
+ * [start, end, count] with offsets from the unit's start (so runs of the same side line up). V8 leaves out a block
+ * whose count equals its parent's, so isolatedRun.mjs reads a block missing from a run at its innermost reported holder.
+ * @returns {Array<[number, number, number]>}
+ */
+function unitRanges(scripts, url, from, to) {
+  return scripts.filter((s) => s.url === url).flatMap((s) => s.functions.flatMap((fn) => fn.ranges))
+    .filter((r) => r.startOffset >= from && r.endOffset <= to).map((r) => [r.startOffset - from, r.endOffset - from, r.count]);
+}
+
+/** The in-process inspector session for coverage, or null when the permission model does not allow it. */
+function coverageSession() {
+  try {
+    const inspector = require('node:inspector');
+    const s = new inspector.Session();
+    s.connect();
+    const post = (m, p) => new Promise((res, rej) => s.post(m, p, (e, r) => (e ? rej(e) : res(r))));
+    return { post };
+  } catch {
+    return null;
+  }
+}
+
+let runId = 0;
 
 /** Run the unit once under fresh fakes. */
-async function runOnce(side, args, env) {
+async function runOnce(side, args, env, cov) {
   const f = createFakes(env);
+  const harness = createHookHarness(f);
+  f.MODULES.react = harness.module;
+  const url = `${side.entry}#${++runId}`;
+  let unitSpan = null;
+  if (cov) await cov.post('Profiler.takePreciseCoverage');
   const sandbox = {};
   const unfaked = ['process', 'require', 'module', 'Buffer', 'WebSocket', 'XMLHttpRequest', 'EventSource', 'indexedDB', 'navigator', 'window', 'document', 'location', 'history', 'Worker', 'setImmediate', 'importScripts'];
   for (const name of unfaked) Object.defineProperty(sandbox, name, { get: () => f.refuse(name), configurable: false });
@@ -184,36 +329,76 @@ async function runOnce(side, args, env) {
       if (Object.prototype.hasOwnProperty.call(f.MODULES, spec)) return f.MODULES[spec];
       return f.refuse(`import ${spec}`);
     };
-    vm.runInContext(`(function (exports, require, module) {${code}\n})`, ctx, { filename: file })(mod.exports, req, mod);
+    const wrapped = `(function (exports, require, module) {${code}\n})`;
+    vm.runInContext(wrapped, ctx, { filename: file === side.entry ? url : file })(mod.exports, req, mod);
+    if (file === side.entry && typeof mod.exports.__lineUnit === 'function') {
+      const at = wrapped.indexOf(Function.prototype.toString.call(mod.exports.__lineUnit));
+      unitSpan = at < 0 ? [0, wrapped.length] : [at, at + Function.prototype.toString.call(mod.exports.__lineUnit).length];
+    }
     return mod.exports;
   };
+  // a handler's generated event is made here, inside the run, so its preventDefault records into this run's fakes
+  const callArgs = args.map((a) => (a && typeof a === 'object' && typeof a.__lineEvent === 'string' ? syntheticEvent(f, a, env) : a));
+  const settle = async () => { f.clock.runAll(); await new Promise((r) => setImmediate(r)); f.clock.runAll(); };
   let output;
   let thrown = null;
   try {
     const unit = load(side.entry).__lineUnit;
     if (typeof unit !== 'function') throw new TypeError(`${side.fn} is not a function`);
-    output = unit(...args);
-    if (output && typeof output.then === 'function') output = await output;
-    f.clock.runAll();
-    await new Promise((r) => setImmediate(r));
-    f.clock.runAll();
+    if (side.runAs === 'hook') {
+      // render and settle, then call each function the hook returns (its handlers) with the case's arguments, settle
+      // and re-render after each, then unmount: what the hook returns last is the output
+      output = harness.render(unit, callArgs);
+      await settle();
+      output = harness.render(unit, callArgs);
+      const calls = typeof output === 'function' ? [[]] : output && typeof output === 'object' ? Object.keys(output).sort().filter((k) => typeof output[k] === 'function').map((k) => [k]) : [];
+      for (const [k] of calls) {
+        const fn = k === undefined ? output : output[k];
+        const r = fn(...callArgs);
+        if (r && typeof r.then === 'function') await r;
+        await settle();
+        output = harness.render(unit, callArgs);
+      }
+      harness.unmount();
+      await settle();
+    } else {
+      output = unit(...callArgs);
+      if (output && typeof output.then === 'function') output = await output;
+      await settle();
+    }
   } catch (e) {
     thrown = e && typeof e.name === 'string' && /^[A-Z]\w*$/.test(e.name) ? e.name : 'Error';
   }
-  const value = output === null || ['boolean', 'number', 'string'].includes(typeof output) ? output : undefined;
+  let ranges = null;
+  if (cov && unitSpan) ranges = unitRanges((await cov.post('Profiler.takePreciseCoverage')).result, url, unitSpan[0], unitSpan[1]);
+  // a hook's object result is compared by value too, with each function as fn
+  const plain = (o) => { try { return JSON.parse(JSON.stringify(o, (_k, v) => (typeof v === 'function' ? 'fn' : v))); } catch { return undefined; } };
+  const value = output === null || ['boolean', 'number', 'string'].includes(typeof output) ? output : side.runAs === 'hook' && !thrown ? plain(output) : undefined;
+  const inner = ranges ? ranges.filter(([a, b]) => !(a === 0 && b === unitSpan[1] - unitSpan[0])) : null;
+  const branches = inner ? { covered: inner.filter((r) => r[2] > 0).length, total: inner.length } : undefined;
   return {
-    run: { inputs: args.map((a) => shapeOf(a)), output: thrown ? 'undefined' : shapeOf(output), thrown, effects: f.effects, transitions: f.transitions, sentinels: findSentinels(json(output) + f.effects.flatMap((e) => e.sentinels).map((s) => `__line_${s}__`).join(' ')) },
+    run: {
+      inputs: callArgs.map((a, k) => (a !== args[k] ? 'event' : shapeOf(a))), output: thrown ? 'undefined' : shapeOf(output), thrown, effects: f.effects, transitions: f.transitions,
+      sentinels: findSentinels(json(output) + f.effects.flatMap((e) => e.sentinels).map((s) => `__line_${s}__`).join(' ')), ...(branches ? { branches } : {}),
+    },
     value: typeof value === 'number' && !Number.isFinite(value) ? String(value) : value,
     notFaked: [...f.notFaked].sort(),
+    ranges,
+    span: unitSpan ? unitSpan[1] - unitSpan[0] : null,
   };
 }
 
 async function main() {
   const req = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'request.json'), 'utf8'));
-  const out = { before: [], after: [] };
+  const cov = req.coverage ? coverageSession() : null;
+  if (cov) {
+    await cov.post('Profiler.enable');
+    await cov.post('Profiler.startPreciseCoverage', { callCount: true, detailed: true });
+  }
+  const out = { before: [], after: [], coverage: Boolean(cov) };
   for (const args of req.cases) {
-    out.before.push(await runOnce(req.before, args, req.env));
-    out.after.push(await runOnce(req.after, args, req.env));
+    out.before.push(await runOnce(req.before, args, req.env, cov));
+    out.after.push(await runOnce(req.after, args, req.env, cov));
   }
   process.stdout.write(`${JSON.stringify(out)}\n`);
 }
