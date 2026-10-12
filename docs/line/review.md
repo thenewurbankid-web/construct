@@ -95,6 +95,17 @@ start Cockpit (`cd ui/server && npm start`, `cd ui/client && npm run dev`) and o
 5. New component: Based on Disclosure, Feature billing, Name InvoiceFaq → **Create component** → **Approve**.
    InvoiceFaq appears under billing.
 
+### cu4 — next (moved to next sprint, not built now)
+- Write the working copy into the component's code (Morpheus's build from `ComponentApiEdits`), so the preview runs
+  the When → Do; today `<Name>.behaviour.json` is the record.
+- Live current state from a running preview's port events (Studio's `live.ts`), not only the saved state.
+- Auto scripts for the cu4 tools (Trace already lights their controls), and chat-mode hooks once ChatEntry lands.
+- A contract mock of the cu4 ops in `mock.mjs`; components written as a folder or with imported props types.
+- ui/client architecture findings on the new feature (COMPONENT-003/005/006, SLICE-001), like the other Line screens.
+- Faster plan runs under load: on this box (load average 50–60 from parallel agents) a plan run took up to 21 s and a
+  `GET /plan` up to 33 s; the spec now waits for each run to finish (6/6 green once load dropped; earlier runs timed out).
+- contact-manager-ui as the UAT project once Import makes it a Line project.
+
 ## Import v2: fit existing logic into Line's blocks, backed by tests (11 Oct, merged on `merge-iv2`; awaiting UAT)
 
 Contract: `docs/line/import-v2/CONTRACT.md`. Merged branches: `fix-plan-lock`, `fix-yaml-comments`, `iv2-bugs`, `iv2-map`,
