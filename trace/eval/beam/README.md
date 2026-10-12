@@ -35,6 +35,9 @@ judges.mjs      the ONE module that calls Opus (packages/core/llm.mjs callLlm, p
 inputs.mjs      what each judge may see          gold.mjs      closed sets, gold check, label match
 planner.mjs     planner adapter (ask.mjs-backed + fixture)   pipeline.mjs  one run of a setup (runSetup, runAndSave)
 agreement.mjs   per-line/overall agreement, summary, review order   store.mjs  results files, owner grades, the UI view
+beam-tree.mjs   the beam's run tree folded from events.jsonl (trace/src/beam/contract.mjs events; bad lines -> problems)
+metrics.mjs     deterministic metrics per item / layer / arm (#902): NLP recall, prune accuracy and why, runs opened /
+                closed, questions, tsc / condition fails, time, arm accuracy, rescued by the beam (no judge, no model)
 run.mjs report.mjs                              CLIs
 fixtures/record.mjs                             re-records the committed fixtures with a scripted judge (no model)
 fixtures/{planner.json,runs/,results/}          three recorded setups: r-v1.g-v1, r-v1.g-v2 (rubric v1), r-v1.g-v3 (rubric v2)
