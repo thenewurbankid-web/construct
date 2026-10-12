@@ -43,6 +43,10 @@ export function TopBar({
         title="Search screens and run commands (Ctrl K)"
         onClick={onOpenPalette}
       >
+        <svg className="sh-palette-icon" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+          <circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor" strokeWidth="1.6" />
+          <path d="M10.5 10.5 14 14" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+        </svg>
         <span>Search screens or run a command...</span>
         <kbd>Ctrl K</kbd>
       </button>

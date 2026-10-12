@@ -38,6 +38,7 @@
 .sh-brand, .sh-pill, .sh-icon-btn, .sh-project, .sh-project-btn, .sh-user { flex: none; }
 .sh-brand { display: inline-flex; align-items: center; gap: var(--sp-2); font-weight: 600; font-size: var(--fs-md, 0.95rem); letter-spacing: 0.22em; text-transform: uppercase; margin-right: var(--sp-2); }
 .sh-brand svg { flex: none; }
+.sh-palette-icon { display: none; flex: none; }
 .sh-spacer { flex: 1 1 0; min-width: 0; }
 
 /* The five primary screens: the left rail (ActivityBar). The current one is marked by weight and an edge bar,
@@ -514,14 +515,19 @@ kbd {
 @media (max-width: 520px) {
   .sh-palette-trigger { width: auto; flex: 0 1 auto; min-width: 0; padding: 0 var(--sp-2); }
   .sh-palette-trigger span, .sh-palette-trigger kbd { display: none; }
-  .sh-palette-trigger::before { content: 'Search'; font-size: var(--fs-sm); }
-  .sh-spacer { flex: 0 0 0; }
+  /* Only the magnifier at phone width (its name, "Open command palette", stays for screen readers), so the project
+   * name keeps the room the Chat | Under the hood switch takes. */
+  .sh-palette-trigger .sh-palette-icon { display: block; }
+  /* An empty spacer still takes a gap; the row needs those 16px at 375. */
+  .sh-spacer { display: none; }
   /* The local-model status is also in the profile menu (Local model row), so the phone bar drops its dot. */
   [data-testid='pill-model'] { display: none; }
   /* Two modes put the Chat | Under the hood switch in this row too: the brand keeps its mark (the word stays for
-   * screen readers) and the project name truncates sooner, so the row still fits 375 px with no sideways scroll. */
+   * screen readers) and Search is a magnifier, so the row fits 375 px with no sideways scroll and the name reads whole. */
   .sh-brand > span:last-child { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
-  .sh-project-btn { max-width: 88px; }
+  /* The whole project name (it read "line-sa… / Whole pr…"); the scope stays in the switcher's popover. */
+  .sh-project-btn { max-width: 104px; }
+  .sh-project-btn .sh-project-ws { display: none; }
 }
 
 /* ---- signed-in account (#278) ---------------------------------------- *
