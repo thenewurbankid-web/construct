@@ -82,6 +82,10 @@ streaming.
 `/` the page, `/events` the SSE stream (`?run=`), `/api/row?id=&run=` one row's full detail, `/api/prompt?run=`,
 `/api/health`. Only discovered run dirs (or dirs under `bench/ecommerce/runs/` or `MC_RUNS`) are readable.
 
+A row's detail also shows, when calls.jsonl has them (#886-#890): "What the model was shown" (`result.shown`: the
+refusal with its choices, why, effect and context, a rules card, a spec slice), the context lines with their static
+scores (`result.context`), and jev's shadow scores beside them (`shadow`; jev is off and only logged).
+
 ## Test
 
 ```

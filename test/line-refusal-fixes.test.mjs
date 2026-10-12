@@ -172,7 +172,8 @@ test('PAGE-003 and COMPONENT-003: the fix reaches the service through a usecase,
     await addApproved(svc, 'line.setCode', { file: 'library/services/other.ts', code: 'export const x = 1;\n' });
     const blocked = /** @type {any} */ (await svc.runNext('agent'));
     assert.equal(blocked.code, 'NEEDS_YOU');
-    assert.match(blocked.sentence, /Add its fix \(options\[\]\.step\) with args\.fixOf "s1"/);
+    assert.match(blocked.sentence, /Add its fix \(send \{"fix":"f1"\}; f1 is the recommended one\)/);
+    assert.doesNotMatch(blocked.text, /options\[|fixes\[/);
     await addApproved(svc, opt.step.tool, { ...opt.step.args, fixOf: ran.id });
     ran = await runOne(svc);
     assert.equal(ran.result.apply.ok, true, ran.sentence);
@@ -197,7 +198,7 @@ test('PAGE-003 and COMPONENT-003: the fix reaches the service through a usecase,
 
 test('needs-you sentence: names the typed fix only when one exists, else says plainly what the person decides (H4)', () => {
   const step = (options) => ({ id: 's3', n: 3, why: 'Change it.', result: { sentence: 'This needs you: 0 of 2 checks passed.', options } });
-  assert.match(needsYouSentence(step([{ id: 'fix', step: { tool: 'line.promote', args: {} } }, { id: 'retry' }])), /Add its fix \(options\[\]\.step\) with args\.fixOf "s3", try it again, or leave it as it is/);
+  assert.match(needsYouSentence(step([{ id: 'fix', step: { tool: 'line.promote', args: {} } }, { id: 'retry' }])), /Add its fix \(send \{"fix":"f1"\}; f1 is the recommended one\), try it again, or leave it as it is/);
   const none = needsYouSentence(step([{ id: 'fix', sentence: 'Pass it in as props instead.', step: null }, { id: 'leave' }]));
   assert.doesNotMatch(none, /fixOf/);
   assert.match(none, /Construct has no fix it can make for this, so the person decides: pass it in as props instead\. Then change the request and add it again, or leave it as it is with line\.leaveAsIs \{"stepId": "s3"\}\./);
@@ -360,7 +361,7 @@ test('a typed fix is added by its ref or id ({fix: "f1"}); an unknown ref is ref
   } finally { done(); }
 });
 
-test('plan-cli: a refusal lists each choice with its id and exact step, says how to send one, and calls.jsonl keeps the fixes (R1, owner shape)', async () => {
+test('plan-cli: a refusal lists each choice with its id and exact step, says how to send one, and calls.jsonl keeps the fixes (R1, #885 owner shape)', async () => {
   const { root, done } = project();
   const { createPlanCli } = await import('../bench/ecommerce/driver/plan-cli.mjs');
   try {
@@ -372,15 +373,21 @@ test('plan-cli: a refusal lists each choice with its id and exact step, says how
     assert.equal(out.ok, false);
     assert.equal(out.code, 'UNKNOWN_ITEM');
     const lines = out.sentence.split('\n');
-    assert.match(lines[0], /^Refused \(UNKNOWN_ITEM\): "home\/HomePage" is not a feature page file\. A route serves a file like features\/<feature>\/pages\/<Name>\.tsx/);
-    assert.equal(lines[1], 'Pick one and send its id:');
+    assert.equal(lines[0], 'Refused (UNKNOWN_ITEM): "home/HomePage" is not a feature page file.');
+    assert.match(lines[1], /^Rule: /);
+    assert.equal(lines[2], 'Choices, recommended first:');
     for (const f of out.fixes) {
-      const line = lines.find((l) => l.startsWith(`  ${f.ref}${f.recommended ? ' (recommended)' : ''}: `));
+      const line = lines.find((l) => l.startsWith(`  ${f.ref}: `));
       assert.ok(line, `${f.ref} is listed: ${out.sentence}`);
       assert.ok(line.includes(`${f.step.tool} ${JSON.stringify(f.step.args)}`), `${f.ref} shows its exact step: ${line}`);
     }
-    assert.match(lines[2], /^ {2}f1 \(recommended\): line\.addRoute \{"route":"\/","page":"features\/home\/pages\/HomePage\.tsx"\}/);
-    assert.equal(lines.at(-1), 'To use one, send {"fix":"f1"}.');
+    assert.match(lines[3], /^ {2}f1: line\.addRoute \{"route":"\/","page":"features\/home\/pages\/HomePage\.tsx"\}/);
+    assert.equal(out.fixes[0].recommended, true);
+    // #888: the first add of a tool and layer also shows its rules card, after the refusal.
+    const apply = lines.indexOf('To apply one, send {"fix":"f1"}.');
+    assert.ok(apply > 3, out.sentence);
+    assert.equal(lines[apply + 1], 'Rules for line.addRoute (page):');
+    assert.match(lines[apply + 2], /^- A route serves one feature page file, .*\. Example: /);
     assert.doesNotMatch(out.sentence, /fixes\[/);
     const call = fs.readFileSync(log, 'utf8').trim().split('\n').map((l) => JSON.parse(l)).filter((e) => e.kind === 'call').at(-1);
     assert.deepEqual(call.result.fixes.map((f) => [f.ref, f.id, f.step, f.recommended]), out.fixes.map((f) => [f.ref, f.id, f.step, f.recommended === true]));

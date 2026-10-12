@@ -36,7 +36,7 @@ test('plan over MCP: the agent adds Base on, cannot run or approve it; after the
   const early = await call('plan_run_next', {});
   assert.equal(early.isError, true);
   assert.equal(early.body.error.code, 'PLAN_REFUSED');
-  assert.match(early.body.error.message, /waits for a person to approve it\.$/);
+  assert.match(early.body.error.message, /waits for a person to approve it\.\nRule: /);
   assert.equal(fs.existsSync(path.join(root, BADGE_FILE)), false, 'nothing is written before a person approves');
 
   const refused = await call('plan_add_step', { tool: 'line.baseOn', args: { ...BADGE, name: 'OrderButton' } });
@@ -56,4 +56,21 @@ test('plan over MCP: the agent adds Base on, cannot run or approve it; after the
   assert.ok(fs.existsSync(path.join(root, BADGE_FILE)));
   const seen = await person.view();
   assert.equal(seen.steps.find((s) => s.id === added.body.stepId).state, 'done', 'Cockpit sees the step the agent ran');
+});
+
+test('plan over MCP: a refusal lists its choices by ref; plan_add_step {fix: "f1"} adds the recommended one (#880, #885)', async (t) => {
+  const root = fs.realpathSync(makeTempDir('construct-mcp-plan-fix-'));
+  fs.cpSync(path.join(REPO, 'examples/line-sample'), root, { recursive: true });
+  const { client, close } = await connectInProcess({ root, ratePerMinute: 600 });
+  t.after(close);
+  const call = (name, args) => callTool(client, name, args);
+  const refused = await call('plan_add_step', { tool: 'line.baseOn', args: { ...BADGE, libraryId: 'components/Badg' } });
+  assert.equal(refused.isError, true);
+  assert.equal(refused.body.error.reason, 'UNKNOWN_ITEM');
+  assert.match(refused.body.error.message, /^Refused \(UNKNOWN_ITEM\): .*"components\/Badg".*\nRule: .*\nTo apply one, send \{"fix":"f1"\}\.$/);
+  assert.match(refused.body.error.text, /\n {2}f1: line\.baseOn \{"libraryId":"components\/Badge"/);
+  assert.equal(refused.body.error.fixes[0].ref, 'f1');
+  const picked = await call('plan_add_step', { fix: 'f1' });
+  assert.equal(picked.isError, false, picked.text);
+  assert.equal(picked.body.steps.find((s) => s.id === picked.body.stepId).args.libraryId, 'components/Badge');
 });

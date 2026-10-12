@@ -91,7 +91,7 @@ function duplicates(project, files) {
 }
 
 /** The plan as it ended: steps added, landed, refused (by rule), fixes applied. */
-function planStats(project, calls) {
+export function planStats(project, calls) {
   const doc = readJson(path.join(project, 'line', 'plans', 'ses-cockpit.json'));
   const steps = (doc?.plans ?? []).flatMap((p) => p.steps ?? []);
   const isLanded = (s) => s.status === 'done' && s.result?.needsYou !== true && (s.result?.apply ? s.result.apply.ok === true : true);
@@ -112,9 +112,13 @@ function planStats(project, calls) {
   for (const c of refusedAdd) bump(`add:${c.result.code ?? 'REFUSED'}`);
   const fixes = changes.filter((s) => (s.args?.fixOf || s.tool === 'line.fix' || s.tool === 'line.amend') && isLanded(s)).length;
   const landedFiles = new Set(changes.filter(isLanded).flatMap((s) => s.result?.apply?.files ?? []));
+  // R1 (#880): fixes the builder picked by their id (add --fix f1, plan_add {"fix": ...}): sent, joined the plan, landed.
+  const byId = calls.filter((c) => c.kind === 'call' && c.cmd === 'add' && c.args?.fix);
+  const joined = byId.filter((c) => c.result?.ok && c.result.stepId);
+  const fixesById = { sent: byId.length, added: joined.length, landed: joined.filter((c) => changes.some((s) => s.id === c.result.stepId && isLanded(s))).length };
   return {
     added: changes.length, landed: changes.filter(isLanded).length, refusedAtRun: refusedRun.length, refusedAtAdd: refusedAdd.length,
-    refusedByRule: byRule, fixesApplied: fixes, leftAsIs: steps.filter((s) => s.tool === 'line.leaveAsIs').length,
+    refusedByRule: byRule, fixesApplied: fixes, fixesById, leftAsIs: steps.filter((s) => s.tool === 'line.leaveAsIs').length,
     approvals: { auto: calls.filter((c) => c.kind === 'approval' && c.approvedBy === 'auto').length },
     byTool: changes.filter(isLanded).reduce((m, s) => ({ ...m, [s.tool]: (m[s.tool] ?? 0) + 1 }), {}),
     landedFiles: [...landedFiles],
@@ -245,10 +249,10 @@ function report() {
   for (const r of rows) L.push(`| ${r.builder} | ${r.model ?? '–'} | ${fmt(r.tokens.input)} | ${fmt(r.tokens.output)} | ${fmt(r.tokens.cacheRead)} | ${fmt(r.tokens.cacheWrite)} | ${fmt(r.tokens.total)} | ${fmt(r.tokensPerLandedStep)} | ${fmt(r.tokensPerPassedTest)} | ${usd(r.tokens.costUsd)} | ${mins(r.wallMs)} |`);
   L.push('', 'Line\'s own model use during each build (drafter, jev, Qwen inside Construct), kept apart from the builder\'s tokens:', '', '| Builder | Calls | Tokens in | Tokens out | Note |', '| --- | ---: | ---: | ---: | --- |');
   for (const r of rows.filter((x) => x.lineModelUse)) L.push(`| ${r.builder} | ${r.lineModelUse.calls} | ${r.lineModelUse.tokensIn} | ${r.lineModelUse.tokensOut} | ${r.lineModelUse.note} |`);
-  L.push('', '## Outcome', '', '| Builder | Arm | Acceptance | Turns | Steps added | Landed | Refused (add / run) | Fixes | Validate errors / warnings | tsc errors | LOC | Duplicate pairs | Library reuse | Human interventions |', '| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |');
+  L.push('', '## Outcome', '', '| Builder | Arm | Acceptance | Turns | Steps added | Landed | Refused (add / run) | Fixes (by id: sent / landed) | Validate errors / warnings | tsc errors | LOC | Duplicate pairs | Library reuse | Human interventions |', '| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |');
   for (const r of rows) {
     const p = r.plan;
-    L.push(`| ${r.builder} | ${r.arm} | ${r.acceptance.passed}/${r.acceptance.total} | ${fmt(r.turns)} | ${p ? p.added : 'n/a'} | ${p ? p.landed : 'n/a'} | ${p ? `${p.refusedAtAdd} / ${p.refusedAtRun}` : 'n/a'} | ${p ? p.fixesApplied : 'n/a'} | ${r.validate.errors} / ${r.validate.warnings} | ${fmt(r.tsc.errors)} | ${r.loc} | ${r.duplicates.pairs} | ${r.libraryReuse?.share ?? 'n/a'} | ${r.humanInterventions} |`);
+    L.push(`| ${r.builder} | ${r.arm} | ${r.acceptance.passed}/${r.acceptance.total} | ${fmt(r.turns)} | ${p ? p.added : 'n/a'} | ${p ? p.landed : 'n/a'} | ${p ? `${p.refusedAtAdd} / ${p.refusedAtRun}` : 'n/a'} | ${p ? `${p.fixesApplied} (${p.fixesById ? `${p.fixesById.sent} / ${p.fixesById.landed}` : 'n/a'})` : 'n/a'} | ${r.validate.errors} / ${r.validate.warnings} | ${fmt(r.tsc.errors)} | ${r.loc} | ${r.duplicates.pairs} | ${r.libraryReuse?.share ?? 'n/a'} | ${r.humanInterventions} |`);
   }
   const refusals = rows.filter((r) => r.plan && Object.keys(r.plan.refusedByRule).length);
   if (refusals.length) {
@@ -278,7 +282,9 @@ function report() {
   console.log(JSON.stringify({ ok: true, file: 'RESULTS.md', builders: rows.length }));
 }
 
-const o = flags(process.argv.slice(2));
-if (o._[0] === 'collect') await collect(o);
-else if (o._[0] === 'report') report();
-else { console.error('usage: metrics.mjs collect --builder <id> --arm line|plain|ui --run <dir> [...] | report'); process.exit(2); }
+if (process.argv[1] && fs.realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const o = flags(process.argv.slice(2));
+  if (o._[0] === 'collect') await collect(o);
+  else if (o._[0] === 'report') report();
+  else { console.error('usage: metrics.mjs collect --builder <id> --arm line|plain|ui --run <dir> [...] | report'); process.exit(2); }
+}

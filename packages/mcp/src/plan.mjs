@@ -15,9 +15,17 @@ async function serviceOf(ctx) {
   return services.get(ctx);
 }
 
-/** A refusal as a typed tool error with the plan's sentence; the plan's own code rides along. */
+/** A refusal as a typed tool error: its plain text (#885: what was wrong, the rule, the choices by ref or a correct
+ * call); the plan's own code and the choices' refs and steps ride along, so {"fix": "f1"} can be sent back. */
 function answer(r) {
-  if (r && r.ok === false) throw new ToolError('PLAN_REFUSED', String(r.sentence), { reason: String(r.code) });
+  if (r && r.ok === false) {
+    const fixes = Array.isArray(r.fixes) ? r.fixes.slice(0, 8).map((f) => ({ ref: f.ref, step: f.step, ...(f.why ? { why: f.why } : {}) })) : [];
+    // The message is capped (400 characters), so it says what was wrong, the rule and how to apply a choice; the
+    // whole text (choices with why, effect and context) and the choices themselves ride along.
+    const h = r.hint;
+    const message = h ? [`Refused (${r.code}): ${h.wrong}`, `Rule: ${h.rule}.`, h.apply ?? (h.example ? `A correct call: ${h.example}` : '')].filter(Boolean).join('\n') : String(r.sentence);
+    throw new ToolError('PLAN_REFUSED', message, { reason: String(r.code), ...(fixes.length ? { fixes } : {}), ...(r.text ? { text: String(r.text) } : {}) });
+  }
   return r;
 }
 
@@ -33,11 +41,14 @@ export async function planStatus(ctx) {
 /**
  * `plan_add_step`: add one step (a change is planned first and refused in one sentence when it cannot be made).
  * @param {any} ctx The MCP server context (its root).
- * @param {{tool: string, args?: object, why?: string}} args The step to add.
+ * @param {{tool?: string, args?: object, why?: string, fix?: string, answer?: string, option?: string, folder?: string}} args
+ *   The step to add; or `fix`: a choice the last refusal offered (its ref, f1 = recommended, or its id), added in place
+ *   of tool and args (#880); or `answer` + `option` + `folder`: an answer to the folder's open import question (#887).
  * @returns {Promise<any>} The plan view with the new step.
  */
 export async function planAddStep(ctx, args) {
-  return answer(await (await serviceOf(ctx)).addStep({ tool: args.tool, args: args.args ?? {}, why: args.why }, 'agent'));
+  const req = args.answer ? { answer: args.answer, option: args.option, folder: args.folder } : args.fix ? { fix: args.fix, why: args.why } : { tool: args.tool, args: args.args ?? {}, why: args.why };
+  return answer(await (await serviceOf(ctx)).addStep(req, 'agent'));
 }
 
 /**

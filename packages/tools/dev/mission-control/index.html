@@ -472,6 +472,11 @@ function renderDetail(d) {
   const c = d.call;
   blk('Tool call (calls.jsonl args)', c ? { cmd: c.cmd, ...(c.cmd === 'add' ? { tool: c.args?.tool, why: c.args?.why, args: c.args?.args } : { args: c.args }), ...(c.bytes != null ? { bytes: c.bytes } : {}) } : d.outcome ? { name: d.outcome.name, args: unclip(d.outcome.args) } : null);
   blk('Tool result', c ? { ms: c.ms, ...c.result } : d.outcome ? d.outcome : d.row.status === 'idle' ? { result: 'the model made no tool call this turn' } : null);
+  // #886-#890: exactly what the model read (refusal, choices with why/effect/context, rules card, spec slice), the
+  // context lines with their static scores, and jev's shadow scores beside them.
+  if (c?.result?.shown) blk('What the model was shown', c.result.shown, true);
+  if (c?.result?.context) blk(`Context lines (picked by ${c.result.context.via ?? 'static'}, cap ${c.result.context.cap}${c.result.context.repeat ? `, repeat ${c.result.context.repeat}` : ''})`, (c.result.context.candidates || []).map((l) => `${l.score?.toFixed?.(2) ?? '-'}  ${l.ref ? `[${l.ref}] ` : ''}${l.text}`).join('\n'), true);
+  if (c?.shadow) blk('jev shadow (off: logged only)', c.shadow.unreachable ? 'jev did not answer in time' : c.shadow.lines.map((l, i) => `static ${l.static.toFixed(2)}  jev ${l.jev.toFixed(2)}  ${c.shadow.keptStatic.includes(i) ? 'S' : ' '}${c.shadow.keptJev.includes(i) ? 'J' : ' '}  ${l.text}`).join('\n'), true);
   if (d.turn) {
     blk('Model output (turns.jsonl said, clipped at 600 chars by qwen-agent)', d.turn.error ?? (d.turn.said || '(no text: the model answered with native tool calls only)'), true);
     blk('Turn', { turn: d.turn.turn, tokensIn: d.turn.in, tokensOut: d.turn.out, wallMs: d.turn.ms, evalMs: d.turn.evalMs, promptMs: d.turn.promptMs, textCalls: d.turn.textCalls, callsThisTurn: (d.turn.calls || []).map((o) => `${o.name}${o.ok ? '' : ` (${o.code})`}`) });

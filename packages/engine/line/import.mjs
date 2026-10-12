@@ -375,9 +375,11 @@ function questionsFor(folder, it) {
     qs.push({
       id: `generic-name:${it.file}`, file: it.file,
       sentence: `${it.name} sounds like general UI, so it could go to the library, but ${it.pages.length ? 'only one page uses it' : 'no page uses it yet'}; where should it go?`,
+      // #887: why the recommended option (the deciding rule) and what each option does.
+      hint: `Recommended because ${it.name} is a general UI name, and the library is where every feature can use it (rule generic-name).`,
       options: [
-        { id: 'library', sentence: `Put ${it.name} in the library, so every feature can use it.` },
-        { id: `feature:${feature}`, sentence: `Keep ${it.name} in feature ${feature}, where it is used.` },
+        { id: 'library', sentence: `Put ${it.name} in the library, so every feature can use it.`, effect: `${it.name} becomes library/${it.kind}/${it.name}; the files that import it are pointed at the library copy` },
+        { id: `feature:${feature}`, sentence: `Keep ${it.name} in feature ${feature}, where it is used.`, effect: `${it.name} becomes features/${feature}/${it.kind}/${it.name}, based on a library copy` },
       ],
       recommended: 'library',
     });
@@ -387,9 +389,10 @@ function questionsFor(folder, it) {
       qs.push({
         id: `one-page:${it.file}`, file: it.file,
         sentence: `${it.name} sits in the ${it.folderFeature} folder, but only a page of feature ${pf} uses it; which feature should own it?`,
+        hint: `Recommended because the only page that uses ${it.name} is in feature ${pf} (rule used-by-pages).`,
         options: [
-          { id: `feature:${pf}`, sentence: `Feature ${pf}, where its only page is.` },
-          { id: `feature:${it.folderFeature}`, sentence: `Feature ${it.folderFeature}, after its folder.` },
+          { id: `feature:${pf}`, sentence: `Feature ${pf}, where its only page is.`, effect: `${it.name} becomes features/${pf}/${it.kind}/${it.name}, next to the page that uses it` },
+          { id: `feature:${it.folderFeature}`, sentence: `Feature ${it.folderFeature}, after its folder.`, effect: `${it.name} becomes features/${it.folderFeature}/${it.kind}/${it.name}, where its folder is` },
         ],
         recommended: `feature:${pf}`,
       });
@@ -523,7 +526,8 @@ function resolveClashes(projectRoot, folder, items, answers) {
         sentence: clash.existing
           ? `${mine} brings ${it.name}, but the folder already has ${it.name} (${other}); what should the new one be called?`
           : `${mine} and ${other} both bring ${it.name}, and Line can hold only one ${SINGULAR[it.kind]} called ${it.name} there; what should the one from ${mine} be called?`,
-        options: [{ id: `name:${proposed}`, sentence: `Call it ${proposed}, after its file ${mine}.` }],
+        hint: `Recommended because ${proposed} comes from its own file name, ${mine}, and no other item has it (rule name-clash).`,
+        options: [{ id: `name:${proposed}`, sentence: `Call it ${proposed}, after its file ${mine}.`, effect: `the ${SINGULAR[it.kind]} from ${mine} is called ${proposed}, and its users are pointed at that name` }],
         recommended: `name:${proposed}`,
       };
       const answer = answers?.[q.id];

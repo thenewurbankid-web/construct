@@ -3,7 +3,8 @@
 // for one project folder, in Auto mode. Every call is recorded (calls.jsonl); every output is JSON plus one sentence.
 //
 //   plan-cli.mjs tools                               the plan tools a builder may add, each with its JSON Schema
-//   plan-cli.mjs status                              the session plan: each step's state and sentence
+//   plan-cli.mjs status [feature]                    the session plan: each step's state and sentence, and (#889) the
+//                                                    current feature's acceptance points from SPEC.md (or that feature's)
 //   plan-cli.mjs add <tool> '<json-args>' --why "…"  add one step; a write is approved by Auto (ct1, see below)
 //   plan-cli.mjs add --fix <ref> [--why "…"]        add a typed fix the last refused add offered (f1 = recommended)
 //   plan-cli.mjs run-next                            run exactly one ready step; returns its checks and typed fixes
@@ -11,6 +12,7 @@
 //   plan-cli.mjs validate                            construct validate --profile line: counts and the findings
 //   plan-cli.mjs read <path>                         one project file with its contentHash (for line.setCode)
 //   plan-cli.mjs ls [dir]                            the entries of one project folder
+//   plan-cli.mjs rules <tool> [file]                 #888: the 2-4 rules a step of that tool and layer must keep
 //
 // Project and log: --project <dir> (or BENCH_PROJECT), --log <file> (or BENCH_LOG; default
 // bench/ecommerce/runs/<project folder name>/calls.jsonl), --builder <id> (or BENCH_BUILDER).
@@ -29,6 +31,8 @@ import { readLineProject } from '../../../packages/engine/line/model.mjs';
 import { aggregateValidation } from '../../../packages/core/registry.mjs';
 import { enforcersForRoot } from '../../../packages/core/profiles/index.mjs';
 import { hashOf } from '../../../packages/engine/pagesEditor.mjs';
+import { rulesCard, layerOf, jevShadow } from '../../../packages/engine/line/hints.mjs';
+import { SPEC_FILE, readSpec, currentFeature, sliceText } from './spec-slice.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 /** Tools a builder may add (Import's tools are for bringing an existing app in, not for building one). */
@@ -38,29 +42,9 @@ const MAX_READ = 64 * 1024;
 
 /** One plain sentence (or, for a refusal with choices, plain lines: spaces collapse inside a line, indents stay). */
 const sentence = (s) => {
-  const t = String(s ?? '').trim().split('\n').map((l) => l.replace(/(\S)[ \t]+/g, '$1 ').replace(/^[ \t]+/, (m) => (m.length ? '  ' : '')).trimEnd()).filter(Boolean).join('\n');
-  return /[.?!]$/.test(t) ? t : `${t}.`;
+  const t = String(s ?? '').trim().split('\n').map((l) => l.replace(/(\S)[ \t]+/g, '$1 ').trimEnd()).filter(Boolean).join('\n');
+  return /[.?!}\]]$/.test(t) ? t : `${t}.`;
 };
-
-/** A step as a reader sends it: the tool and its args as JSON, a long string value (a file's code) shortened. */
-const stepText = (step) => `${step.tool} ${JSON.stringify(step.args ?? {}, (_k, v) => (typeof v === 'string' && v.length > 120 ? `<${v.split('\n').length} lines>` : v))}`;
-const SHOWN_FIXES = 8;
-
-/**
- * pilot-qwen-7b-r2 R1 (owner's shape): a refusal with typed fixes is self-contained. What was wrong and the rule (the
- * planner's sentence), then each choice with its ref and the exact step it sends, recommended first, then the one way
- * to apply it. Nothing to dereference: no JSON paths.
- * @param {string} code @param {string} said The planner's sentence.
- * @param {{ref: string, sentence?: string, step: {tool: string, args?: object}, recommended?: boolean}[]} fixes
- * @returns {string}
- */
-export function refusalText(code, said, fixes) {
-  const head = `Refused (${code}): ${sentence(said)}`;
-  if (!fixes.length) return head;
-  const lines = fixes.slice(0, SHOWN_FIXES).map((f) => `  ${f.ref}${f.recommended ? ' (recommended)' : ''}: ${stepText(f.step)}${f.sentence ? ` (${String(f.sentence).replace(/[.?!]$/, '')})` : ''}`);
-  if (fixes.length > SHOWN_FIXES) lines.push(`  ... and ${fixes.length - SHOWN_FIXES} more, ${fixes[SHOWN_FIXES].ref} to ${fixes.at(-1)?.ref}`);
-  return [head, 'Pick one and send its id:', ...lines, `To use one, send {"fix":"${fixes[0].ref}"}.`].join('\n');
-}
 
 /** A project-relative path that stays inside the project, or null. */
 function inside(root, rel) {
@@ -72,9 +56,11 @@ function inside(root, rel) {
 
 /**
  * One plan-cli session over a project folder.
- * @param {{project: string, log?: string, builder?: string}} o
+ * @param {{project: string, log?: string, builder?: string, spec?: string|null, shadowJev?: boolean}} o `spec` (#889): the
+ *   SPEC.md whose current feature plan status shows (default bench/ecommerce/SPEC.md; null for none). `shadowJev` (#890):
+ *   log jev's context scores beside the static ones when jev answers in time (default on; BENCH_JEV_SHADOW=0 turns it off).
  */
-export function createPlanCli({ project, log, builder = 'unknown' }) {
+export function createPlanCli({ project, log, builder = 'unknown', spec = SPEC_FILE, shadowJev = process.env.BENCH_JEV_SHADOW !== '0' }) {
   const root = fs.realpathSync(path.resolve(project));
   const logFile = log ?? path.join(here, '..', 'runs', path.basename(root), 'calls.jsonl');
   fs.mkdirSync(path.dirname(logFile), { recursive: true });
@@ -85,7 +71,25 @@ export function createPlanCli({ project, log, builder = 'unknown' }) {
     get: () => { try { return JSON.parse(fs.readFileSync(offersFile, 'utf8')).fixes; } catch { return null; } },
     set: (fixes) => { fs.writeFileSync(offersFile, `${JSON.stringify({ fixes })}\n`); },
   };
-  const svc = createLinePlanService({ root, offers });
+  // #886: the refusal counts per code and target (the context cap grows on a repeat), kept the same way.
+  const hintFile = path.join(path.dirname(logFile), 'hint-state.json');
+  const hintState = {
+    get: () => { try { return JSON.parse(fs.readFileSync(hintFile, 'utf8')); } catch { return null; } },
+    set: (v) => { fs.writeFileSync(hintFile, `${JSON.stringify(v)}\n`); },
+  };
+  const svc = createLinePlanService({ root, offers, hintState });
+  // #888: a rules card is shown with the first add of each tool and layer (and on request: rules <tool> [file]).
+  const cardsFile = path.join(path.dirname(logFile), 'cards-shown.json');
+  const firstCard = (tool, args) => {
+    const card = rulesCard(tool, args);
+    if (!card.rules.length) return null;
+    const key = `${tool}|${layerOf(tool, args) ?? '-'}`;
+    let shown = [];
+    try { shown = JSON.parse(fs.readFileSync(cardsFile, 'utf8')); } catch { shown = []; }
+    if (shown.includes(key)) return null;
+    try { fs.writeFileSync(cardsFile, `${JSON.stringify([...shown, key])}\n`); } catch { /* best effort */ }
+    return card;
+  };
   const record = (e) => fs.appendFileSync(logFile, `${JSON.stringify({ at: new Date().toISOString(), builder, ...e })}\n`);
   const brief = (s) => ({ id: s.id, n: s.n, tool: s.tool, state: s.state, sentence: s.sentence });
 
@@ -94,12 +98,18 @@ export function createPlanCli({ project, log, builder = 'unknown' }) {
       const tools = lineToolSpecs().filter((t) => BUILDER_TOOLS.includes(t.name)).map((t) => ({ name: t.name, kind: t.kind, describe: t.describe, args: t.args }));
       return { ok: true, tools, sentence: `There are ${tools.length} plan tools; add one with: add <tool> '<json-args>' --why "<one sentence>".` };
     },
-    async status() {
+    async status(feature) {
       const v = await svc.view();
+      let sp = null;
+      try { sp = spec ? readSpec(spec) : null; } catch { sp = null; }
+      const f = sp ? (feature ? sp.features.find((x) => x.name === feature) : currentFeature(sp, v.steps)) ?? null : null;
+      if (feature && sp && !f) return { ok: false, code: 'NOT_FOUND', sentence: `There is no feature ${feature} in the spec; its features are ${sp.features.map((x) => x.name).join(', ')}.` };
       const steps = v.steps.map(brief);
       const counts = steps.reduce((c, s) => ({ ...c, [s.state]: (c[s.state] ?? 0) + 1 }), {});
       const open = steps.find((s) => s.state === 'needs-fix' || s.state === 'needs-you');
-      return { ok: true, planId: v.planId, counts, steps, sentence: open ? `Step ${open.n} needs a fix first: ${open.sentence}` : `The plan has ${steps.length} steps.` };
+      const card = /** @type {any} */ (v).next?.card ?? null;
+      return { ok: true, planId: v.planId, counts, steps, ...(card ? { card } : {}), ...(f ? { spec: { feature: f.name, points: f.points.map((p) => p.id) } } : {}),
+        sentence: [open ? `Step ${open.n} needs a fix first: ${open.sentence}` : `The plan has ${steps.length} steps.`, card?.text, sliceText(f)].filter(Boolean).join('\n') };
     },
     async add(tool, json, why, fix) {
       let args;
@@ -107,25 +117,29 @@ export function createPlanCli({ project, log, builder = 'unknown' }) {
       else { try { args = json ? JSON.parse(json) : {}; } catch (e) { return { ok: false, code: 'BAD_JSON', sentence: `The arguments are not JSON: ${/** @type {Error} */ (e).message}` }; } }
       const r = /** @type {any} */ (await svc.addStep(fix ? { fix, why } : { tool, args, why }, 'agent'));
       if (!r.ok) {
-        // A refusal with typed fixes: each has a ref (f1 is the recommended one); `add --fix f1` (plan_add {"fix": "f1"})
-        // adds its step. Writing the step out (add <tool> '<args>') still works.
-        const fixes = Array.isArray(r.fixes) ? r.fixes.map((f) => ({ ref: f.ref, id: f.id, sentence: f.sentence, step: f.step, ...(f.rank === 1 ? { recommended: true } : {}) })) : [];
-        return { ok: false, code: r.code, sentence: fixes.length ? refusalText(r.code, r.sentence, fixes) : r.sentence, ...(r.detail ? { detail: r.detail } : {}), ...(fixes.length ? { fixes } : {}) };
+        // #885: the plan service shapes every refusal (hints.mjs): what was wrong, the rule, the choices with their refs
+        // (f1 is the recommended one; `add --fix f1`, plan_add {"fix": "f1"}) or a correct call. Writing the step out
+        // (add <tool> '<args>') still works.
+        const fixes = Array.isArray(r.fixes) ? r.fixes.map((f, i) => ({ ref: f.ref, id: f.id, sentence: f.sentence, step: f.step, ...(i === 0 ? { recommended: true } : {}), ...(f.why ? { why: f.why } : {}), ...(f.effect ? { effect: f.effect } : {}), ...(f.context?.length ? { context: f.context } : {}) })) : [];
+        const card = !fix && tool && BUILDER_TOOLS.includes(tool) ? firstCard(tool, args) : null;
+        return { ok: false, code: r.code, sentence: [r.text ?? r.sentence, card?.text].filter(Boolean).join('\n'), ...(r.detail ? { detail: r.detail } : {}), ...(fixes.length ? { fixes } : {}), ...(r.hintContext ? { hintContext: r.hintContext } : {}), ...(card ? { card } : {}) };
       }
       const step = r.steps.find((s) => s.id === r.stepId);
+      const card = step ? firstCard(step.tool, step.args) : null;
+      const withCard = (o) => (card ? { ...o, sentence: `${o.sentence}\n${card.text}`, card } : o);
       if (step?.state === 'waiting') {
         const a = /** @type {any} */ (await svc.approve(r.stepId, 'ui'));
         if (!a.ok) return { ok: false, code: a.code, sentence: `The step joined the plan, but Auto could not approve it: ${a.sentence}`, stepId: r.stepId };
         record({ kind: 'approval', stepId: r.stepId, tool: step.tool, ...(fix ? { fix } : {}), approvedBy: 'auto', mechanism: 'ct1 Let Auto approve in this session' });
-        return { ok: true, stepId: r.stepId, state: 'ready', approvedBy: 'auto', sentence: `Step ${step.n} joined the plan and Auto approved it; run-next lands it.` };
+        return withCard({ ok: true, stepId: r.stepId, state: 'ready', approvedBy: 'auto', sentence: `Step ${step.n} joined the plan and Auto approved it; run-next lands it.` });
       }
-      return { ok: true, stepId: r.stepId, state: step?.state ?? null, sentence: `Step ${step?.n} joined the plan: ${step?.sentence ?? ''}` };
+      return withCard({ ok: true, stepId: r.stepId, state: step?.state ?? null, sentence: `Step ${step?.n} joined the plan: ${step?.sentence ?? ''}` });
     },
     async 'run-next'() {
       const before = await svc.view();
       const open = new Set(before.steps.filter((s) => s.state === 'ready' || s.state === 'waiting').map((s) => s.id));
       const r = /** @type {any} */ (await svc.runNext('agent'));
-      if (!r.ok) return { ok: false, code: r.code, sentence: r.sentence };
+      if (!r.ok) return { ok: false, code: r.code, sentence: r.text ?? r.sentence, ...(Array.isArray(r.fixes) && r.fixes.length ? { fixes: r.fixes.map((f, i) => ({ ref: f.ref, id: f.id, sentence: f.sentence, step: f.step, ...(i === 0 ? { recommended: true } : {}), why: f.why, effect: f.effect, ...(f.context ? { context: f.context } : {}) })) } : {}), ...(r.hintContext ? { hintContext: r.hintContext } : {}) };
       const ran = r.steps.find((s) => open.has(s.id) && s.state !== 'ready' && s.state !== 'waiting');
       if (!ran) return { ok: true, sentence: sentence(r.message ?? 'Nothing ran.') };
       const res = ran.result ?? {};
@@ -134,9 +148,9 @@ export function createPlanCli({ project, log, builder = 'unknown' }) {
       return {
         ok: true, stepId: ran.id, n: ran.n, tool: ran.tool, state: ran.state, landed: ran.state === 'done' && res.needsYou !== true,
         files: res.apply?.files ?? [], checks: res.checks ?? [], findings, options, ...(r.recheck ? { recheck: r.recheck } : {}),
-        sentence: ran.state === 'done' ? sentence(ran.sentence)
-          : options.some((o) => o.step) ? `${sentence(ran.sentence)} Add one of options[].step with "fixOf": "${ran.id}" in its args, or add line.leaveAsIs {"stepId": "${ran.id}"} to carry on.`
-            : `${sentence(ran.sentence)} Construct offers no typed fix for this, so add line.leaveAsIs {"stepId": "${ran.id}"} and then a corrected step.`,
+        // #885: a step that needs a fix offers its choices like a refused add (r.needs: refs f1.., {"fix": "f1"}).
+        ...(r.needs?.stepId === ran.id ? { fixes: r.needs.fixes.map((f, i) => ({ ref: f.ref, id: f.id, sentence: f.sentence, step: f.step, ...(i === 0 ? { recommended: true } : {}), why: f.why, effect: f.effect, ...(f.context ? { context: f.context } : {}) })), hintContext: r.needs.hintContext } : {}),
+        sentence: r.needs?.stepId === ran.id ? r.needs.text : sentence(ran.sentence),
       };
     },
     async findings() {
@@ -157,6 +171,11 @@ export function createPlanCli({ project, log, builder = 'unknown' }) {
       const content = fs.readFileSync(abs, 'utf8');
       if (content.length > MAX_READ) return { ok: false, code: 'TOO_BIG', sentence: `${rel} is over 64 KB.` };
       return { ok: true, path: path.relative(root, abs), contentHash: hashOf(content), content, sentence: `Read ${path.relative(root, abs)} (${content.split('\n').length} lines); pass contentHash to line.setCode to replace it.` };
+    },
+    async rules(tool, file) {
+      if (!BUILDER_TOOLS.includes(String(tool))) return { ok: false, code: 'UNKNOWN_TOOL', sentence: `There is no plan tool ${tool ?? ''}; use one of ${BUILDER_TOOLS.filter((t) => t.startsWith('line.')).slice(0, 12).join(', ')}, ...` };
+      const card = rulesCard(String(tool), file ? { file, page: file } : {});
+      return { ok: true, card, sentence: card.text || `Line has no rules card for ${tool}.` };
     },
     async ls(rel = '.') {
       const abs = inside(root, rel);
@@ -184,9 +203,20 @@ export function createPlanCli({ project, log, builder = 'unknown' }) {
     out.sentence = sentence(out.sentence);
     const summary = { ok: out.ok, code: out.code ?? null, sentence: out.sentence, stepId: out.stepId ?? null, state: out.state ?? null, landed: out.landed ?? null, tool: out.tool ?? (cmd === 'add' ? rest[0] : null), rules: (out.findings ?? []).filter((f) => f.severity === 'error').map((f) => f.rule),
       // What the builder was offered, so calls.jsonl (and Mission Control) show the choices next to what it sent.
-      ...(Array.isArray(out.fixes) && out.fixes.length ? { fixes: out.fixes.map((f) => ({ ref: f.ref, id: f.id, sentence: f.sentence, step: f.step, recommended: f.recommended === true })) } : {}),
-      ...(Array.isArray(out.options) && out.options.some((o) => o.step) ? { options: out.options } : {}) };
-    record({ kind: 'call', cmd, args: cmd === 'add' ? { tool: rest[0] ?? null, args: safeJson(rest[1]), why: opts.why ?? null, ...(opts.fix ? { fix: opts.fix } : {}) } : rest, ms: Date.now() - t0, result: summary });
+      // #886: and why, what each does, the context lines and every candidate line with its static score (jev's data).
+      ...(Array.isArray(out.fixes) && out.fixes.length ? { fixes: out.fixes.map((f) => ({ ref: f.ref, id: f.id, sentence: f.sentence, step: f.step, recommended: f.recommended === true, ...(f.why ? { why: f.why } : {}), ...(f.effect ? { effect: f.effect } : {}), ...(f.context ? { context: f.context } : {}) })) } : {}),
+      ...(Array.isArray(out.options) && out.options.some((o) => o.step) ? { options: out.options } : {}),
+      ...(out.hintContext ? { context: out.hintContext } : {}),
+      ...(out.card ? { card: { tool: out.card.tool, layer: out.card.layer, rules: out.card.rules.map((x) => x.id) } } : {}),
+      ...(out.spec ? { spec: out.spec } : {}),
+      // Exactly what the model was shown (the text it reads; the JSON fields around it are in the tool result too).
+      ...(out.ok === false || out.fixes || out.card || out.spec ? { shown: out.sentence } : {}) };
+    // #890: with the "jev picks context" switch off (the default), jev's scores for the same lines go beside the static
+    // ones when jev answers within JEV_SHADOW_MS; the builder is shown the static pick either way.
+    const shadow = out.hintContext?.via === 'static' && out.hintContext.candidates?.length && shadowJev ? await jevShadow(out.hintContext, { code: out.code, said: out.sentence }) : null;
+    record({ kind: 'call', cmd, args: cmd === 'add' ? { tool: rest[0] ?? null, args: safeJson(rest[1]), why: opts.why ?? null, ...(opts.fix ? { fix: opts.fix } : {}) } : rest, ms: Date.now() - t0, result: summary, ...(shadow ? { shadow } : {}) });
+    // The candidate lines and their scores are for the log (and jev), not for the builder.
+    delete out.hintContext;
     return out;
   }
   return { run, root, logFile };
@@ -213,7 +243,7 @@ export function parseArgv(argv) {
 if (process.argv[1] && fs.realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const o = parseArgv(process.argv.slice(2));
   if (!o.project || !o.cmd) {
-    console.log(JSON.stringify({ ok: false, sentence: 'Usage: plan-cli.mjs --project <dir> <tools|status|add|run-next|findings|validate|read|ls> [...] (or set BENCH_PROJECT).' }));
+    console.log(JSON.stringify({ ok: false, sentence: 'Usage: plan-cli.mjs --project <dir> <tools|status|add|run-next|findings|validate|read|ls|rules> [...] (or set BENCH_PROJECT).' }));
     process.exit(2);
   }
   const cli = createPlanCli({ project: o.project, log: o.log, builder: o.builder });

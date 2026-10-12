@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // The local builder: an agent loop over Ollama /api/chat with tool calling (default qwen2.5-coder:7b). Its tools are
 // exactly the arm's CLI commands (plan-cli.mjs for Line, plain-cli.mjs for the control arm), called in-process, so it
-// has the same single write path as the Claude builders. Same system prompt (BUILDER-PROMPT*.md, with SPEC.md in it).
+// has the same single write path as the Claude builders. Same system prompt (BUILDER-PROMPT*.md), with SPEC.md in it
+// for the plain arm; the Line arm gets the overview and a feature index, and each feature's points in plan status (#889).
 //
 //   node bench/ecommerce/driver/qwen-agent.mjs --project <dir> [--arm line|plain] [--builder qwen-7b]
 //        [--model qwen2.5-coder:7b] [--max-turns 200] [--max-minutes 90] [--num-ctx 16384] [--ollama http://127.0.0.1:11434]
@@ -14,6 +15,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createPlanCli } from './plan-cli.mjs';
 import { createPlainCli } from './plain-cli.mjs';
+import { readSpec, overviewWithIndex } from './spec-slice.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const bench = path.join(here, '..');
@@ -37,11 +39,12 @@ const S = (description) => ({ type: 'string', description });
 export const TOOLS = {
   line: [
     fn('plan_tools', 'plan-cli tools: list the Line plan tools you can add, each with its JSON Schema.'),
-    fn('plan_status', 'plan-cli status: the plan, each step with its state and sentence.'),
+    fn('plan_status', 'plan-cli status: the plan, each step with its state and sentence, and the acceptance points of the feature you are working on.', { feature: S('Another feature whose acceptance points you want, e.g. cart (optional)') }),
     fn('plan_add', 'plan-cli add: add one plan step, either {tool, args, why} or {fix} to add a typed fix the last refusal offered. Auto approves it when Construct planned it clean; then call plan_run_next to land it.', { tool: S('A Line tool name, e.g. line.setCode (leave out when you send fix)'), args: { type: 'object', description: 'The tool arguments, as its JSON Schema says (leave out when you send fix)' }, why: S('One plain-English sentence: why this step.'), fix: S('The ref of a fix the last refused plan_add offered, e.g. "f1" (its recommended fix); adds that fix\'s step instead of tool and args') }, ['why']),
     fn('plan_run_next', 'plan-cli run-next: run the next ready step; returns whether it landed, its checks, and typed fixes when Construct refused it.'),
     fn('plan_findings', 'plan-cli findings: the library items, the features with their items, and the validate findings with keys.'),
     fn('plan_validate', 'plan-cli validate: construct validate --profile line counts and findings.'),
+    fn('plan_rules', 'plan-cli rules: the 2-4 rules a step of this tool must keep for this file, each with an example (read before you write the step).', { tool: S('A Line tool name, e.g. line.setCode'), file: S('The file the step is about, e.g. features/cart/pages/CartPage.tsx (optional)') }, ['tool']),
     fn('read_file', 'plan-cli read: one project file and its contentHash (pass it to line.setCode to replace the file).', { path: S('Project-relative path') }, ['path']),
     fn('list_dir', 'plan-cli ls: the entries of one project folder.', { path: S('Project-relative folder, "." for the root') }, ['path']),
     fn('finish', 'Stop: you believe every acceptance point is done, or you cannot make more progress.', { summary: S('What you built and what is left.') }, ['summary']),
@@ -61,13 +64,14 @@ async function callTool(cli, arm, name, a) {
   const args = a && typeof a === 'object' ? a : {};
   if (arm === 'line') {
     if (name === 'plan_tools') return cli.run('tools');
-    if (name === 'plan_status') return cli.run('status');
+    if (name === 'plan_status') return cli.run('status', typeof args.feature === 'string' && args.feature ? [args.feature] : []);
     if (name === 'plan_add') return cli.run('add', [String(args.tool ?? ''), JSON.stringify(typeof args.args === 'string' ? safeParse(args.args) : args.args ?? {})], { why: typeof args.why === 'string' ? args.why : undefined, fix: typeof args.fix === 'string' && args.fix.trim() ? args.fix.trim() : undefined });
     if (name === 'plan_run_next') return cli.run('run-next');
     if (name === 'plan_findings') return cli.run('findings');
     if (name === 'plan_validate') return cli.run('validate');
     if (name === 'read_file') return cli.run('read', [String(args.path ?? '')]);
     if (name === 'list_dir') return cli.run('ls', [String(args.path ?? '.')]);
+    if (name === 'plan_rules') return cli.run('rules', [String(args.tool ?? ''), ...(typeof args.file === 'string' && args.file ? [args.file] : [])]);
   } else {
     if (name === 'list_dir') return cli.run('ls', [String(args.path ?? '.')]);
     if (name === 'tree') return cli.run('tree', [String(args.path ?? '.')]);
@@ -100,13 +104,31 @@ export function textToolCalls(content) {
   return out;
 }
 
-/** The system prompt: the arm's BUILDER-PROMPT with SPEC.md in place of {{SPEC}}. */
+/**
+ * The system prompt: the arm's BUILDER-PROMPT with the spec in place of {{SPEC}}: all of SPEC.md for the plain arm; for
+ * the Line arm (#889) the overview and a feature index only, since plan status carries the current feature's points.
+ */
 export function systemPrompt(arm) {
   const prompt = fs.readFileSync(path.join(bench, arm === 'plain' ? 'BUILDER-PROMPT-PLAIN.md' : 'BUILDER-PROMPT.md'), 'utf8');
-  return prompt.slice(prompt.indexOf('\n---\n') + 5).replace('{{SPEC}}', fs.readFileSync(path.join(bench, 'SPEC.md'), 'utf8'));
+  const spec = arm === 'plain' ? fs.readFileSync(path.join(bench, 'SPEC.md'), 'utf8') : overviewWithIndex(readSpec(path.join(bench, 'SPEC.md')));
+  return prompt.slice(prompt.indexOf('\n---\n') + 5).replace('{{SPEC}}', spec);
 }
 
 const clip = (s, n = 6000) => (s.length > n ? `${s.slice(0, n)}\n…(${s.length - n} more characters cut)` : s);
+
+/**
+ * #886-#889: what the model reads of a CLI answer: minimal. A shaped refusal (or a step that needs a fix) already lists
+ * every choice with its exact step in `sentence`, and a rules card or a spec slice is in `sentence` too, so the
+ * structured copies behind them are left out (calls.jsonl keeps them).
+ * @param {any} out
+ * @returns {any}
+ */
+export function toModel(out) {
+  if (!out || typeof out !== 'object') return out;
+  const { card: _card, spec: _spec, ...rest } = out;
+  if (Array.isArray(rest.fixes) && /To apply one, send \{"fix":/.test(String(rest.sentence ?? ''))) delete rest.fixes;
+  return rest;
+}
 
 async function main() {
   const o = flags(process.argv.slice(2));
@@ -160,7 +182,7 @@ async function main() {
       if (name === 'finish') { finished = String(args?.summary ?? ''); outcomes.push({ name, ok: true }); break; }
       const out = await callTool(cli, o.arm, name, args);
       outcomes.push({ name, args: clip(JSON.stringify(args ?? {}), 400), ok: out.ok, code: out.code ?? null, sentence: out.sentence });
-      history.push({ role: 'tool', content: clip(JSON.stringify(out)) });
+      history.push({ role: 'tool', content: clip(JSON.stringify(toModel(out))) });
     }
     if (!calls.length) { idle += 1; history.push({ role: 'user', content: 'Use one of your tools (or call finish).' }); } else idle = 0;
     write(tokensFile, { builder: o.builder, model: o.model, ...tokens, source: 'ollama prompt_eval_count/eval_count', at: new Date().toISOString() });
