@@ -32,6 +32,7 @@ import { FIT_FILE, assertFitProposal } from './importV2/contract.mjs';
 import { characterize, CHAR_DIR } from './characterize.mjs';
 import { runCharTests, checkBehaviour, testRunnerOf } from './importVerify.mjs';
 import { createImportLoopRecorder } from './records.mjs';
+import { createStateCache } from './importV2/cache.mjs';
 
 export { readRouteFamily, buildLogicMap };
 
@@ -128,7 +129,7 @@ export function createLogicOnDisk(root, folder, o = {}) {
   return {
     closure: async (_r, f, route) => (route ? readRouteFamily(root, route) : { appRoot: root, routes: [], files: folderCodeFiles(root, f), shared: [], external: [] }),
     // The map now: the closure's files that are still there, and where moved files land.
-    buildMap: async (_r, f, closure) => buildLogicMap(root, codeFiles(root, [...(closure?.files ?? []), ...landing(f, closure)])),
+    buildMap: async (_r, f, closure) => buildLogicMap(root, codeFiles(root, [...(closure?.files ?? []), ...landing(f, closure)]), { cache: createStateCache(fr(), 'logic-units') }),
     compare: async (before, after) => compareLogicMaps(before, after),
     fit: async (_r, f, closure, map) => {
       const c = { appRoot: root, routes: closure?.routes ?? [], files: closure?.files ?? [], shared: closure?.shared ?? [], external: closure?.external ?? [] };
@@ -147,7 +148,7 @@ export function createLogicOnDisk(root, folder, o = {}) {
         return { tests: [], sentence: 'The app has no jest installed, so Line cannot write characterization tests in its own runner; behaviour is checked by the logic map and the behaviour check.' };
       }
       const c = { files: codeFiles(root, closure?.files ?? folderCodeFiles(root, f)), routes: closure?.routes ?? [] };
-      const r = await characterize(root, c, map, { dir: f, ...(o.characterize ?? {}) });
+      const r = await characterize(root, c, map, { dir: f, cache: createStateCache(fr(), 'characterize'), ...(o.characterize ?? {}) });
       const dropped = r.dropped.length ? ` ${r.dropped.length} did not reproduce on a second run and were dropped.` : '';
       return { tests: r.tests, coverage: r.coverage, sentence: `Line wrote ${r.tests.length} characterization test${r.tests.length === 1 ? '' : 's'} in ${r.files.length - 1} file${r.files.length === 2 ? '' : 's'} (jest), covering ${r.coverage.covered.length} of ${map.units.length} logic units.${dropped}` };
     },

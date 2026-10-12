@@ -24,6 +24,7 @@ import { extractMachines } from '../workflowExtractor.mjs';
 import { writeLineState } from '../transactionalWriter.mjs';
 import { LOGIC_UNIT_KINDS, LOGIC_MAP_FILE } from './importV2/contract.mjs';
 import { compareLogicMaps as compareMaps, fingerprintWith } from './importV2/compare.mjs';
+import { contentKey } from './importV2/cache.mjs';
 
 /** @typedef {import('./importV2/contract.mjs').LogicUnit} LogicUnit */
 /** @typedef {import('./importV2/contract.mjs').LogicUnitKind} LogicUnitKind */
@@ -253,22 +254,38 @@ export function fileUnits(source, rel, renames = {}) {
   return [...units.sort((a, b) => a.start - b.start), ...machineUnits];
 }
 
+/** Bump when fileUnits' output changes, so cached units of an older detector are not reused. */
+const UNITS_VERSION = 'logic-units/1';
+
+/** fileUnits through the cache: keyed by the file's content, its path and the rename table. */
+function cachedFileUnits(source, rel, renames, cache) {
+  if (!cache) return fileUnits(source, rel, renames);
+  const key = contentKey(UNITS_VERSION, rel, renames, source);
+  const hit = cache.get(key);
+  if (Array.isArray(hit)) return hit;
+  const units = fileUnits(source, rel, renames);
+  cache.set(key, units);
+  return units;
+}
+
 /**
  * Build the logic map of `files` (app-root-relative) under `appRoot`. Fingerprints that collide within the map (the
  * same logic twice in one function) are made unique by their order: the second gets `#2` hashed in, and so on.
  * @param {string} appRoot
  * @param {string[]} files
- * @param {{renames?: RenameTable, read?: (abs: string) => string}} [options] `renames` maps identifiers before hashing; `read` replaces fs (tests).
+ * @param {{renames?: RenameTable, read?: (abs: string) => string, cache?: {get: (key: string) => any, set: (key: string, value: unknown) => void}}} [options]
+ *   `renames` maps identifiers before hashing; `read` replaces fs (tests); `cache` keeps each file's units by its content
+ *   hash (importV2/cache.mjs createStateCache), so an unchanged file is not parsed again.
  * @returns {LogicMap}
  */
-export function buildLogicMap(appRoot, files, { renames = {}, read = (abs) => fs.readFileSync(abs, 'utf8') } = {}) {
+export function buildLogicMap(appRoot, files, { renames = {}, read = (abs) => fs.readFileSync(abs, 'utf8'), cache } = {}) {
   /** @type {LogicUnit[]} */
   const units = [];
   const seen = new Map();
   for (const file of files) {
     const rel = file.split(path.sep).join('/');
     const counters = new Map();
-    for (const u of fileUnits(read(path.join(appRoot, rel)), rel, renames)) {
+    for (const u of cachedFileUnits(read(path.join(appRoot, rel)), rel, renames, cache)) {
       const base = unitFingerprint(u.kind, u.fn, u.anchor, renames);
       const k = (seen.get(base) ?? 0) + 1;
       seen.set(base, k);

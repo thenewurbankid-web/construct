@@ -31,6 +31,7 @@ import { createTransaction } from '../transactionalWriter.mjs';
 import { analyzeClosure } from './characterize/analyze.mjs';
 import { CHAR_DIR, PROBE_DIR, RUNTIME_FILE, runtimeText, probeText, lockedText, scenarioTitle, testKind, isGenerated } from './characterize/emit.mjs';
 import { locateUnitSpans, unitCoverage, unitsTouched } from './characterize/unitCoverage.mjs';
+import { contentKey } from './importV2/cache.mjs';
 
 export { unitCoverage, locateUnitSpans, unitsTouched, fingerprintOf, unitVerdict } from './characterize/unitCoverage.mjs';
 export { analyzeClosure, pathnameOfEntry } from './characterize/analyze.mjs';
@@ -60,7 +61,14 @@ export { CHAR_DIR } from './characterize/emit.mjs';
  * @property {(subject: object) => boolean} [only] Characterize only the subjects this accepts.
  * @property {(line: string) => void} [log]
  * @property {number} [maxWorkers] Jest workers (default 2).
+ * @property {{get: (key: string) => any, set: (key: string, value: unknown) => void}} [cache] Keeps each subject's
+ *   searched scenarios and recorded results by the content hash of the closure's files and the subject's inputs
+ *   (importV2/cache.mjs createStateCache): a subject whose inputs did not change skips its search and its recording.
+ *   The locked tests are always run again (step 5), so a cached result is still proven on the app as it is.
  */
+
+/** Bump when the search, the recording or the probes change what they produce, so older cached results are not reused. */
+const CHAR_CACHE_VERSION = 'characterize/1';
 
 const posix = (p) => p.split(path.sep).join('/');
 
@@ -187,11 +195,6 @@ export async function characterize(appRoot, closure, map, opts = {}) {
 
   // 2. search
   const probeRel = (s, mode) => posix(path.join(charRel, PROBE_DIR, `${s.id}.${mode}.test.tsx`));
-  const files = [[posix(path.join(charRel, RUNTIME_FILE)), runtimeText()]];
-  for (const s of subjects) {
-    files.push([probeRel(s, 'fuzz'), probeText({ analysis, appRoot, dirAbs: probeAbs, subject: s, mode: 'fuzz', timeoutMs: budget(s) + 300_000 })]);
-  }
-  writeOwnedTests(appRoot, charRel, files);
   // the search runs in rounds of at most `roundMs` per subject, each a fresh jest process resuming the last round's
   // state; a subject stops when a round ends because nothing new was reached for `maxIdle` runs, when a round gains
   // nothing, or when its budget is spent
@@ -199,7 +202,25 @@ export async function characterize(appRoot, closure, map, opts = {}) {
   const stats = { subjects: {} };
   const spent = new Map(subjects.map((s) => [s.id, 0]));
   const roundMs = new Map(subjects.map((s) => [s.id, opts.roundMs ?? 45_000]));
-  let active = subjects.slice();
+  // The cache key of a subject: every closure file's content, the subject's search input and the search options.
+  const cache = opts.cache ?? null;
+  const closureHash = cache ? contentKey(CHAR_CACHE_VERSION, ...coverFiles.map((f) => { try { return `${f}\u0000${fs.readFileSync(path.join(appRoot, f), 'utf8')}`; } catch { return `${f}\u0000`; } })) : '';
+  const opt = { budgetMs: opts.budgetMs, componentBudgetMs: opts.componentBudgetMs, maxTests: opts.maxTests, maxIdle: opts.maxIdle, roundMs: opts.roundMs, seed: opts.seed, charRel };
+  const keyOf = (s) => contentKey(CHAR_CACHE_VERSION, closureHash, opt, runtimeText(), baseInput(s), probeText({ analysis, appRoot, dirAbs: probeAbs, subject: s, mode: 'record', timeoutMs: 1_800_000 }));
+  const hits = new Map();
+  if (cache && !opts.resumeFrom) {
+    for (const s of subjects) {
+      const hit = cache.get(keyOf(s));
+      if (hit && Array.isArray(hit.scenarios)) { hits.set(s.id, hit); chosen.set(s.id, hit.scenarios); stats.subjects[s.id] = { ...(hit.stats ?? {}), cached: true }; }
+    }
+    if (hits.size) log(`characterize: ${hits.size} of ${subjects.length} subjects from the cache`);
+  }
+  let active = subjects.filter((s) => !hits.has(s.id));
+  const files = [[posix(path.join(charRel, RUNTIME_FILE)), runtimeText()]];
+  for (const s of active) {
+    files.push([probeRel(s, 'fuzz'), probeText({ analysis, appRoot, dirAbs: probeAbs, subject: s, mode: 'fuzz', timeoutMs: budget(s) + 300_000 })]);
+  }
+  writeOwnedTests(appRoot, charRel, files);
   let fuzzRun = null;
   for (let round = 0; active.length; round++) {
     for (const s of active) {
@@ -231,24 +252,30 @@ export async function characterize(appRoot, closure, map, opts = {}) {
     }
     active = next;
   }
-  if (!chosen.size) throw new Error(`The search probes did not run in ${appRoot}: ${fuzzRun?.stderr.slice(-2000)}`);
+  if (!chosen.size) throw new Error(`The search probes did not run in ${appRoot}: ${fuzzRun?.stderr.slice(-2000) ?? 'no subject was searched'}`);
 
   // 3. record
   const recorded = subjects.filter((s) => chosen.get(s.id)?.length);
+  const toRecord = recorded.filter((s) => !hits.get(s.id)?.record);
   const recFiles = [];
-  for (const s of recorded) {
+  for (const s of toRecord) {
     fs.writeFileSync(path.join(workDir, `${s.id}.record.in.json`), JSON.stringify({ ...baseInput(s), scenarios: chosen.get(s.id) }));
     recFiles.push([probeRel(s, 'record'), probeText({ analysis, appRoot, dirAbs: probeAbs, subject: s, mode: 'record', timeoutMs: 1_800_000 })]);
   }
-  writeOwnedTests(appRoot, charRel, recFiles);
-  log('characterize: recording');
-  runJest(appRoot, recorded.map((s) => probeRel(s, 'record')), { coverFiles, workDir, tag: 'record', maxWorkers: opts.maxWorkers });
+  if (toRecord.length) {
+    writeOwnedTests(appRoot, charRel, recFiles);
+    log('characterize: recording');
+    runJest(appRoot, toRecord.map((s) => probeRel(s, 'record')), { coverFiles, workDir, tag: 'record', maxWorkers: opts.maxWorkers });
+  }
 
   // 4. lock
   const cases = new Map();
   for (const s of recorded) {
-    let out = null;
-    try { out = JSON.parse(fs.readFileSync(path.join(workDir, `${s.id}.record.out.json`), 'utf8')); } catch { out = null; }
+    let out = hits.get(s.id)?.record ?? null;
+    if (!out) {
+      try { out = JSON.parse(fs.readFileSync(path.join(workDir, `${s.id}.record.out.json`), 'utf8')); } catch { out = null; }
+      if (out && cache) cache.set(keyOf(s), { scenarios: chosen.get(s.id), stats: stats.subjects[s.id], record: out });
+    }
     if (!out) continue;
     const list = [];
     chosen.get(s.id).forEach((sc, i) => {
@@ -260,7 +287,7 @@ export async function characterize(appRoot, closure, map, opts = {}) {
     if (list.length) cases.set(s.id, list);
   }
   const lockedRel = (s) => posix(path.join(charRel, `${s.id}.char.test.tsx`));
-  const cleanup = [...subjects.map((s) => [probeRel(s, 'fuzz'), null]), ...recorded.map((s) => [probeRel(s, 'record'), null])];
+  const cleanup = [...subjects.filter((s) => !hits.has(s.id)).map((s) => [probeRel(s, 'fuzz'), null]), ...toRecord.map((s) => [probeRel(s, 'record'), null])];
   const dropped = [];
   let final = null;
   for (let round = 0; round < 4; round++) {
