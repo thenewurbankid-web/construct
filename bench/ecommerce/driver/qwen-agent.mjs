@@ -117,14 +117,16 @@ export function systemPrompt(arm) {
 const clip = (s, n = 6000) => (s.length > n ? `${s.slice(0, n)}\n…(${s.length - n} more characters cut)` : s);
 
 /**
- * #886: what the model reads of a CLI answer. A shaped refusal (or a step that needs a fix) already lists every choice
- * with its exact step in `sentence`, so the `fixes` array behind it is left out (calls.jsonl keeps it): minimal.
+ * #886-#889: what the model reads of a CLI answer: minimal. A shaped refusal (or a step that needs a fix) already lists
+ * every choice with its exact step in `sentence`, and a rules card or a spec slice is in `sentence` too, so the
+ * structured copies behind them are left out (calls.jsonl keeps them).
  * @param {any} out
  * @returns {any}
  */
 export function toModel(out) {
-  if (!out || !Array.isArray(out.fixes) || !/To apply one, send \{"fix":/.test(String(out.sentence ?? ''))) return out;
-  const { fixes: _fixes, ...rest } = out;
+  if (!out || typeof out !== 'object') return out;
+  const { card: _card, spec: _spec, ...rest } = out;
+  if (Array.isArray(rest.fixes) && /To apply one, send \{"fix":/.test(String(rest.sentence ?? ''))) delete rest.fixes;
   return rest;
 }
 
