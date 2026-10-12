@@ -4,7 +4,7 @@
 //   * a foreign browser Origin is refused (403); the route refuses to run when the session gate did not (401);
 //   * `parentDir` is contained in the caller's workspace (workspace.mjs contain: real path, must exist, must be a
 //     folder, symlinks resolved), so the new folder is always inside the allowed workspace root;
-//   * the name and the first feature are checked by the engine (newProject.mjs) before anything is made; the folder
+//   * the name, the first feature and the starting library (`library`: starter, the default, or primitives) are checked by the engine (newProject.mjs) before anything is made; the folder
 //     is made non-recursively and the starter files land only through Construct's writer (applyChange), gated by
 //     the Line validate profile; a refusal leaves nothing behind.
 import express from 'express';
@@ -51,7 +51,7 @@ export function createLineNewProjectRouter({ clientOrigin, getWorkspaceRoot, ope
     }
     let result;
     try {
-      result = ops.createLineProject(parent, { parentDir, name: body.name, firstFeature: body.firstFeature });
+      result = ops.createLineProject(parent, { parentDir, name: body.name, firstFeature: body.firstFeature, ...(body.library === undefined ? {} : { library: body.library }) });
     } catch (e) {
       if (e instanceof LineOpError || /** @type {any} */ (e)?.name === 'LineOpError') {
         const { sentence, code } = /** @type {any} */ (e);
