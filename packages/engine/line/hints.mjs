@@ -7,9 +7,18 @@
 //   TOOL_EXAMPLES            one correct call per builder tool (the example a no-fix refusal shows)
 //   shapeRefusal(o)          {code, sentence, tool, args, fixes} -> {wrong, rule, choices | example, apply, text}
 //   renderRefusal(shape)     the plain text a builder reads (plan-cli prints it; MCP sends it as the message)
+//   whyOf / effectOf         #886: per fix, one sentence from the deciding rule, and what choosing it does (pure)
+//   contextFor(root, o)      #886: the minimal deterministic lines that decide it, ranked by contextScore.mjs and cut
+//                            to 5 (15 when the same code repeats for the same target in this plan); reads files only
 //
-// Pure: no I/O. The plan service (planService.mjs) shapes every refusal it returns; plan-cli and MCP only print it.
+// The plan service (planService.mjs) shapes every refusal it returns; plan-cli and MCP only print it.
+import fs from 'node:fs';
+import path from 'node:path';
 import { closestId } from '@line/construct-core/nearest';
+import { loadConfig } from '@line/construct-core/config';
+import { normalizeLineConfig, CODE_EXTENSIONS, LINE_RULES } from '@line/construct-core/profiles/line/contract';
+import { resolveLayout } from '@line/construct-core/profiles/line/checks';
+import { rankLines, capFor } from './contextScore.mjs';
 
 /** How many choices the text lists (the rest are named by ref, so they stay pickable). */
 export const SHOWN_CHOICES = 4;
@@ -206,9 +215,12 @@ export function renderRefusal(s) {
   for (const c of s.context ?? []) out.push(`  ${c}`);
   if (s.choices.length) {
     out.push(s.choices.length === 1 ? 'Choice:' : 'Choices, recommended first:');
+    let lastWhy = null;
     for (const c of s.choices.slice(0, SHOWN_CHOICES)) {
       out.push(`  ${c.ref}: ${stepText(c.step)}`);
-      if (c.why) out.push(`      why: ${c.why}`);
+      // Minimal: a why the choice before already gave is not repeated (the structured choice keeps it).
+      if (c.why && c.why !== lastWhy) out.push(`      why: ${c.why}`);
+      lastWhy = c.why ?? null;
       if (c.effect) out.push(`      does: ${c.effect}`);
       for (const l of c.context ?? []) out.push(`      ${l}`);
     }
@@ -218,4 +230,174 @@ export function renderRefusal(s) {
     out.push(`A correct call: ${s.example}`);
   }
   return out.filter(Boolean).join('\n');
+}
+
+// ------------------------------------------------------------------------------------------- #886 why, effect, context
+
+const firstClause = (s) => String(s ?? '').split(/[,;:]| so /)[0].replace(/[.?!]$/, '').trim();
+const base = (p) => path.posix.basename(String(p ?? '')).replace(/\.[^.]+$/, '');
+
+/**
+ * Why a fix is offered, one sentence naming the rule that decided it (its id family: "UNKNOWN_ITEM/page:..." -> page).
+ * @param {{id?: string|null}} fix @param {number} i Its place (0 = recommended). @param {{code: string, asked?: string|null}} c
+ * @returns {string}
+ */
+export function whyOf(fix, i, c) {
+  const id = String(fix.id ?? '');
+  const family = id.split(':')[0];
+  const kind = family.includes('/') ? family.split('/').slice(1).join('/') : family;
+  const asked = c.asked ? `"${c.asked}"` : 'what you sent';
+  const lead = i === 0 ? 'Recommended because' : 'Also possible:';
+  const rule = /^(LINE-[A-Z]+|[A-Z]+-\d+)\//.exec(family)?.[1];
+  if (rule) return `${lead} it fixes ${rule}: ${firstClause(LINE_RULES[rule]?.why ?? 'the rule that refused it').toLowerCase()} (rule ${family}).`;
+  switch (kind) {
+    case 'page': return i === 0 ? `Recommended because its path is the closest feature page to ${asked} (rule nearest-page).` : 'Another feature page a route can serve (rule feature-pages).';
+    case 'base-on': return `${lead} there is no feature page for it yet, so this makes one from a library page (rule base-on-library).`;
+    case 'did-you-mean': return i === 0 ? `Recommended because it is the nearest valid name to ${asked} (rule did-you-mean).` : `A near name to ${asked} (rule did-you-mean).`;
+    case 'use-existing': return 'Recommended because that feature exists already; its spec.md takes this story and these points (rule use-existing).';
+    case 'route-props': return 'Recommended because a page a route serves may take only params and searchParams (rule route-props).';
+    case 'import': return `${lead} that file has the export the import misses (rule resolve-import).`;
+    case 'slot': case 'layout-slot': return `${lead} the layout's slots take components and this one fits (rule layout-slots).`;
+    case 'retry': return 'Tries the same step again; worth it only after something it needed has changed (rule retry).';
+    case 'leave': return 'Goes on without this step; the plan runs the next one (rule leave-as-is).';
+    default: return i === 0 ? `Recommended: Line ranks it first for ${c.code} (rule ${family || c.code}).` : `Option ${i + 1} for ${c.code} (rule ${family || c.code}).`;
+  }
+}
+
+/**
+ * What choosing a step does, in a few words (static: from the step alone, nothing planned).
+ * @param {{tool: string, args?: any}} step
+ * @returns {string}
+ */
+export function effectOf(step) {
+  const a = step.args ?? {};
+  switch (step.tool) {
+    case 'line.addRoute': return `writes the route entry for ${a.route}, which shows ${base(a.page)}`;
+    case 'line.setCode': return `${a.contentHash ? 'replaces' : 'creates'} ${a.file}`;
+    case 'line.baseOn': case 'line.newComponent': case 'line.baseWorkflowOn': return `creates ${a.name} in feature ${a.feature}, based on the library's ${a.libraryId}`;
+    case 'line.createFeature': return `creates feature ${a.name} with its spec.md`;
+    case 'line.setLayoutSlot': return `shows ${(a.components ?? []).map(base).join(', ')} in the ${a.slot} slot of every page`;
+    case 'line.leaveAsIs': return `marks step ${a.stepId} as left as it is, so the plan goes on`;
+    case 'line.useViaUsecase': return `puts a usecase in front of ${a.specifier} and points ${base(a.file)} at it`;
+    case 'line.promote': return `moves ${a.featureItemId} into the library and points its users at the library copy`;
+    case 'line.setBase': return `points ${base(a.file)}'s @line-base at ${a.libraryId}`;
+    case 'line.moveFile': return `moves ${a.from} to ${a.to} and re-points its imports`;
+    case 'line.extractExpression': return `moves the inline conditional or loop of ${base(a.file)} into a typed expression`;
+    case 'line.createLayout': return 'creates the library folder';
+    case 'line.amend': return 'saves the refused change together with its fix, in one step';
+    case 'line.fix': return `applies fix ${a.fixId}`;
+    default: return a.retry?.of ? `runs step ${a.retry.of} again` : `runs ${step.tool}`;
+  }
+}
+
+const layoutOf = (root) => {
+  try { return resolveLayout(root, normalizeLineConfig(/** @type {any} */ (loadConfig(root)).line)); } catch { return { library: 'library', features: 'features' }; }
+};
+const readText = (abs) => { try { return fs.readFileSync(abs, 'utf8'); } catch { return null; } };
+const MAX_FILES = 600;
+
+/** The code files under the library, the features and the app router (bounded), project-relative. */
+function codeFiles(root, dirs) {
+  const out = [];
+  const walk = (rel) => {
+    if (out.length >= MAX_FILES) return;
+    let es = [];
+    try { es = fs.readdirSync(path.join(root, rel), { withFileTypes: true }); } catch { return; }
+    for (const e of es) {
+      if (e.name.startsWith('.') || e.name === 'node_modules') continue;
+      const r = `${rel}/${e.name}`;
+      if (e.isDirectory()) walk(r); else if (CODE_EXTENSIONS.includes(path.extname(e.name))) out.push(r);
+    }
+  };
+  for (const d of dirs) walk(d);
+  return out;
+}
+
+/** The main export of a source ("export default function X", else the first named export). */
+export const mainExportOf = (src) => /export\s+default\s+(?:async\s+)?(?:function|class)\s+([A-Za-z_$][\w$]*)/.exec(src)?.[1]
+  ?? /export\s+(?:async\s+)?(?:function|const|class)\s+([A-Za-z_$][\w$]*)/.exec(src)?.[1] ?? null;
+/** The URL an app-router entry serves: app/products/[id]/page.tsx -> /products/:id. */
+const routeOfEntry = (rel, app) => `/${rel.slice(app.length + 1).split('/').slice(0, -1).filter((s) => !/^\(.*\)$/.test(s)).map((s) => s.replace(/^\[(.+)\]$/, ':$1')).join('/')}`;
+
+/** The file a step or request is about (a page, a file, a library item), project-relative, or null. */
+export function targetOf(args, layout) {
+  const a = args ?? {};
+  if (typeof a.page === 'string') return a.page;
+  if (typeof a.file === 'string') return a.file;
+  if (typeof a.from === 'string') return a.from;
+  if (typeof a.libraryId === 'string' && layout) return `${layout.library}/${a.libraryId}.tsx`;
+  return null;
+}
+
+/**
+ * The context lines of a refusal: deterministic facts Line already has, each about the request or one choice (ref),
+ * ranked by the static context scorer and cut to the cap.
+ * @param {string} root
+ * @param {{code: string, tool?: string, args?: any, fixes?: any[], detail?: string|null, plan?: any, fields?: string[]|null, repeat?: number,
+ *   score?: (line: any) => number}} o `repeat`: how often this code was refused for this target before in this plan.
+ *   `score`: a scorer in place of the static one (#890: jev, only when its switch is on).
+ * @returns {{lines: {text: string, kind: string, keys: string[], ref: string|null, score: number}[], candidates: {text: string, kind: string, keys: string[], ref: string|null}[], cap: number, attempt: string}}
+ */
+export function contextFor(root, o) {
+  const layout = layoutOf(root);
+  const app = fs.existsSync(path.join(root, 'src', 'app')) ? 'src/app' : 'app';
+  /** @type {{text: string, kind: string, keys: string[], ref: string|null}[]} */
+  const lines = [];
+  const add = (text, kind, keys, ref = null) => { if (!lines.some((l) => l.text === text)) lines.push({ text, kind, keys: keys.filter(Boolean), ref }); };
+  /** @type {string[] | null} */
+  let files = null;
+  const all = () => (files ??= codeFiles(root, [layout.library, layout.features, app]));
+  const about = (rel, ref) => {
+    if (!rel) return;
+    const src = readText(path.join(root, rel));
+    if (src === null) return;
+    const exp = mainExportOf(src);
+    const b = /@line-base\s+([\w/-]+)/.exec(src)?.[1];
+    add(`${rel} exports ${exp ?? 'nothing'}${b ? `, based on ${b}` : ''}`, 'refusal-path', [rel, exp], ref);
+    const name = base(rel);
+    const imports = new RegExp(`from\\s+['"][^'"]*/${name.replace(/[$]/g, '\\$')}(?:\\.[jt]sx?)?['"]`);
+    const users = all().filter((f) => f !== rel && imports.test(readText(path.join(root, f)) ?? ''));
+    const entry = users.find((f) => f.startsWith(`${app}/`) && /\/(page|layout)\.[jt]sx?$/.test(f));
+    if (entry) add(`${name} is served at ${routeOfEntry(entry, app)} (${entry})`, 'refusal-path', [entry, routeOfEntry(entry, app)], ref);
+    const others = users.filter((f) => f !== entry).slice(0, 3);
+    if (others.length) add(`${name} is imported by ${others.join(', ')}`, 'refusal-path', others, ref);
+  };
+  const fixes = (o.fixes ?? []).slice(0, SHOWN_CHOICES);
+  about(targetOf(o.args, layout), null);
+  for (const f of fixes) about(targetOf(f.step?.args, layout), f.ref ?? null);
+  // A type error: the failing line +-2 of the code that was sent (or of the file on disk).
+  const first = /^(\S+):(\d+) (TS\d+) (.+)$/m.exec(String(o.detail ?? ''));
+  if (first) {
+    const [, file, n, tsCode, msg] = first;
+    const sent = typeof o.args?.code === 'string' && (!o.args.file || file.endsWith(String(o.args.file)) || String(o.args.file).endsWith(file));
+    const code = sent ? o.args.code : readText(path.join(root, file));
+    if (code) {
+      const at = Number(n);
+      const win = code.split('\n').map((l, i) => ({ n: i + 1, l })).filter((x) => Math.abs(x.n - at) <= 2).map((x) => `${x.n === at ? '>' : ' '}${x.n}| ${x.l}`);
+      add(`${file}:${at} ${tsCode} ${msg.slice(0, 160)}\n${win.join('\n')}`, 'fix', [file, tsCode]);
+    }
+  }
+  if (o.fields?.length && o.code === 'BAD_ARGS') add(`${o.tool} takes ${o.fields.join(', ')}`, 'fix', o.fields);
+  if (o.code === 'STALE' && typeof o.args?.file === 'string' && fs.existsSync(path.join(root, o.args.file))) add(`${o.args.file} exists: read it, then send its contentHash`, 'fix', [o.args.file, 'contentHash']);
+  const last = o.plan?.steps?.at(-1);
+  if (last) add(`it follows step ${last.n}: ${stepText({ tool: last.tool, args: dropKeys(last.args, ['expect', 'retry', 'fixOf', 'code']) })} (${last.status})`, 'status', [last.id, last.tool]);
+  const cap = capFor(o.repeat ?? 0);
+  const attempt = o.tool ? stepText({ tool: o.tool, args: o.args ?? {} }) : '';
+  const { ranked, kept } = rankLines(lines, { attempt, cap, ...(o.score ? { score: o.score } : {}) });
+  return { lines: kept, candidates: ranked, cap, attempt };
+}
+
+/**
+ * #886: the fixes with why and effect (pure), and the context lines split between them and the refusal.
+ * @param {any[]} fixes @param {{code: string, asked?: string|null}} c @param {{lines: {text: string, ref: string|null}[]}} [ctx]
+ * @returns {{fixes: any[], context: string[]}}
+ */
+export function withHints(fixes, c, ctx) {
+  const kept = ctx?.lines ?? [];
+  const out = fixes.map((f, i) => {
+    const mine = kept.filter((l) => l.ref && l.ref === f.ref).map((l) => l.text);
+    return { ...f, why: whyOf(f, i, c), effect: effectOf(f.step), ...(mine.length ? { context: mine } : {}) };
+  });
+  const refs = new Set(out.map((f) => f.ref));
+  return { fixes: out, context: kept.filter((l) => !l.ref || !refs.has(l.ref)).map((l) => l.text) };
 }

@@ -65,7 +65,13 @@ export function createPlanCli({ project, log, builder = 'unknown' }) {
     get: () => { try { return JSON.parse(fs.readFileSync(offersFile, 'utf8')).fixes; } catch { return null; } },
     set: (fixes) => { fs.writeFileSync(offersFile, `${JSON.stringify({ fixes })}\n`); },
   };
-  const svc = createLinePlanService({ root, offers });
+  // #886: the refusal counts per code and target (the context cap grows on a repeat), kept the same way.
+  const hintFile = path.join(path.dirname(logFile), 'hint-state.json');
+  const hintState = {
+    get: () => { try { return JSON.parse(fs.readFileSync(hintFile, 'utf8')); } catch { return null; } },
+    set: (v) => { fs.writeFileSync(hintFile, `${JSON.stringify(v)}\n`); },
+  };
+  const svc = createLinePlanService({ root, offers, hintState });
   const record = (e) => fs.appendFileSync(logFile, `${JSON.stringify({ at: new Date().toISOString(), builder, ...e })}\n`);
   const brief = (s) => ({ id: s.id, n: s.n, tool: s.tool, state: s.state, sentence: s.sentence });
 
@@ -91,7 +97,7 @@ export function createPlanCli({ project, log, builder = 'unknown' }) {
         // (f1 is the recommended one; `add --fix f1`, plan_add {"fix": "f1"}) or a correct call. Writing the step out
         // (add <tool> '<args>') still works.
         const fixes = Array.isArray(r.fixes) ? r.fixes.map((f, i) => ({ ref: f.ref, id: f.id, sentence: f.sentence, step: f.step, ...(i === 0 ? { recommended: true } : {}), ...(f.why ? { why: f.why } : {}), ...(f.effect ? { effect: f.effect } : {}), ...(f.context?.length ? { context: f.context } : {}) })) : [];
-        return { ok: false, code: r.code, sentence: r.text ?? r.sentence, ...(r.detail ? { detail: r.detail } : {}), ...(fixes.length ? { fixes } : {}) };
+        return { ok: false, code: r.code, sentence: r.text ?? r.sentence, ...(r.detail ? { detail: r.detail } : {}), ...(fixes.length ? { fixes } : {}), ...(r.hintContext ? { hintContext: r.hintContext } : {}) };
       }
       const step = r.steps.find((s) => s.id === r.stepId);
       if (step?.state === 'waiting') {
@@ -106,7 +112,7 @@ export function createPlanCli({ project, log, builder = 'unknown' }) {
       const before = await svc.view();
       const open = new Set(before.steps.filter((s) => s.state === 'ready' || s.state === 'waiting').map((s) => s.id));
       const r = /** @type {any} */ (await svc.runNext('agent'));
-      if (!r.ok) return { ok: false, code: r.code, sentence: r.text ?? r.sentence, ...(Array.isArray(r.fixes) && r.fixes.length ? { fixes: r.fixes.map((f) => ({ ref: f.ref, id: f.id, sentence: f.sentence, step: f.step })) } : {}) };
+      if (!r.ok) return { ok: false, code: r.code, sentence: r.text ?? r.sentence, ...(Array.isArray(r.fixes) && r.fixes.length ? { fixes: r.fixes.map((f, i) => ({ ref: f.ref, id: f.id, sentence: f.sentence, step: f.step, ...(i === 0 ? { recommended: true } : {}), why: f.why, effect: f.effect, ...(f.context ? { context: f.context } : {}) })) } : {}), ...(r.hintContext ? { hintContext: r.hintContext } : {}) };
       const ran = r.steps.find((s) => open.has(s.id) && s.state !== 'ready' && s.state !== 'waiting');
       if (!ran) return { ok: true, sentence: sentence(r.message ?? 'Nothing ran.') };
       const res = ran.result ?? {};
@@ -116,7 +122,7 @@ export function createPlanCli({ project, log, builder = 'unknown' }) {
         ok: true, stepId: ran.id, n: ran.n, tool: ran.tool, state: ran.state, landed: ran.state === 'done' && res.needsYou !== true,
         files: res.apply?.files ?? [], checks: res.checks ?? [], findings, options, ...(r.recheck ? { recheck: r.recheck } : {}),
         // #885: a step that needs a fix offers its choices like a refused add (r.needs: refs f1.., {"fix": "f1"}).
-        ...(r.needs?.stepId === ran.id ? { fixes: r.needs.fixes.map((f) => ({ ref: f.ref, id: f.id, sentence: f.sentence, step: f.step })) } : {}),
+        ...(r.needs?.stepId === ran.id ? { fixes: r.needs.fixes.map((f, i) => ({ ref: f.ref, id: f.id, sentence: f.sentence, step: f.step, ...(i === 0 ? { recommended: true } : {}), why: f.why, effect: f.effect, ...(f.context ? { context: f.context } : {}) })), hintContext: r.needs.hintContext } : {}),
         sentence: r.needs?.stepId === ran.id ? r.needs.text : sentence(ran.sentence),
       };
     },
@@ -165,9 +171,15 @@ export function createPlanCli({ project, log, builder = 'unknown' }) {
     out.sentence = sentence(out.sentence);
     const summary = { ok: out.ok, code: out.code ?? null, sentence: out.sentence, stepId: out.stepId ?? null, state: out.state ?? null, landed: out.landed ?? null, tool: out.tool ?? (cmd === 'add' ? rest[0] : null), rules: (out.findings ?? []).filter((f) => f.severity === 'error').map((f) => f.rule),
       // What the builder was offered, so calls.jsonl (and Mission Control) show the choices next to what it sent.
-      ...(Array.isArray(out.fixes) && out.fixes.length ? { fixes: out.fixes.map((f) => ({ ref: f.ref, id: f.id, sentence: f.sentence, step: f.step, recommended: f.recommended === true })) } : {}),
-      ...(Array.isArray(out.options) && out.options.some((o) => o.step) ? { options: out.options } : {}) };
+      // #886: and why, what each does, the context lines and every candidate line with its static score (jev's data).
+      ...(Array.isArray(out.fixes) && out.fixes.length ? { fixes: out.fixes.map((f) => ({ ref: f.ref, id: f.id, sentence: f.sentence, step: f.step, recommended: f.recommended === true, ...(f.why ? { why: f.why } : {}), ...(f.effect ? { effect: f.effect } : {}), ...(f.context ? { context: f.context } : {}) })) } : {}),
+      ...(Array.isArray(out.options) && out.options.some((o) => o.step) ? { options: out.options } : {}),
+      ...(out.hintContext ? { context: out.hintContext } : {}),
+      // Exactly what the model was shown (the text it reads; the JSON fields around it are in the tool result too).
+      ...(out.ok === false || out.fixes ? { shown: out.sentence } : {}) };
     record({ kind: 'call', cmd, args: cmd === 'add' ? { tool: rest[0] ?? null, args: safeJson(rest[1]), why: opts.why ?? null, ...(opts.fix ? { fix: opts.fix } : {}) } : rest, ms: Date.now() - t0, result: summary });
+    // The candidate lines and their scores are for the log (and jev), not for the builder.
+    delete out.hintContext;
     return out;
   }
   return { run, root, logFile };

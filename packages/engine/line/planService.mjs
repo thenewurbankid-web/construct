@@ -28,7 +28,7 @@ import { createAtomicPlanWriter, createStaticPlanApi, lockPlanApi } from './plan
 import { isInsideWorkspace, readWorkspace } from './workspace.mjs';
 import { createSessionTrace, refusalOfStep, matchFix, sourceOf, traceArgs } from './trace.mjs';
 import { memoryOf, memoryBy } from './memory/index.mjs';
-import { shapeRefusal } from './hints.mjs';
+import { shapeRefusal, contextFor, withHints, badValueOf, badArgsField, targetOf } from './hints.mjs';
 
 /** One session per open project, for now. */
 export const SESSION_ID = 'ses-cockpit';
@@ -110,9 +110,9 @@ export function choicesOf(step) {
  * @param {string[]} [tools] The tool names (UNKNOWN_TOOL's nearest).
  * @returns {any}
  */
-export function shapedRefusal(r, req, fixes, tools) {
+export function shapedRefusal(r, req, fixes, tools, context) {
   const list = fixes ?? (Array.isArray(r.fixes) ? r.fixes : []);
-  const { text, ...hint } = shapeRefusal({ code: r.code, sentence: r.sentence, tool: req?.tool, args: req?.args, fix: req?.fix, answer: req?.answer, option: req?.option, fixes: list, tools });
+  const { text, ...hint } = shapeRefusal({ code: r.code, sentence: r.sentence, tool: req?.tool, args: req?.args, fix: req?.fix, answer: req?.answer, option: req?.option, fixes: list, tools, context });
   return { ...r, ...(list.length ? { fixes: list } : {}), hint, text };
 }
 
@@ -161,15 +161,16 @@ export function stepView(root, plan, s, ops = REAL_PLAN_OPS) {
  * @param {{root: string, ops?: typeof REAL_PLAN_OPS, afterSave?: (root: string, file: string) => unknown,
  *   commands?: any, load?: (o: {root: string, registry: any}) => Promise<{api: any, store: {linked: boolean, sentence: string}}>,
  *   linkOptions?: object, trace?: {id: string, record: (e: any) => any, problem: string|null} | null, records?: any, memory?: any,
- *   offers?: {get: () => any[] | null, set: (fixes: any[]) => void}}} o `commands`: the
+ *   offers?: {get: () => any[] | null, set: (fixes: any[]) => void}, hintState?: {get: () => any, set: (v: any) => void}}} o `commands`: the
  *   construct.* registry (default: Construct's built-in commands; null for none). `trace` (cl1): where this session's
  *   typed trace goes (default `<state>/traces/<id>.jsonl`; null records nothing). `records` (expressions): where finished
  *   steps' training records go (default `<state>/records/plans.jsonl`, records.mjs; null records nothing). `memory` (im3):
  *   where plan feedback is remembered per step (default memory/index.mjs memoryOf(root); null remembers nothing).
  *   `offers` (R1): where the last refusal's typed fixes are kept between processes (default: in memory only).
+ *   `hintState` (#886): where the refusal counts per code and target are kept between processes (default: in memory).
  * @returns The plan service.
  */
-export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, commands, load = loadPlanApi, linkOptions, trace, records, memory, offers }) {
+export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, commands, load = loadPlanApi, linkOptions, trace, records, memory, offers, hintState }) {
   const tr = trace === undefined ? createSessionTrace(root, { sessionId: SESSION_ID }) : trace;
   const mem = memory === undefined ? memoryOf(root) : memory;
   /** im3: remember plan feedback (best effort: a memory that cannot be saved never stops the plan). */
@@ -317,6 +318,39 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
     try { const f = offers?.get(); if (Array.isArray(f)) return f; } catch { /* none kept */ }
     return offered;
   };
+  // #886: how often each code was refused for each target in this plan (the context cap grows from 5 to 15 on a repeat).
+  /** @type {Record<string, number>} */
+  let seen = {};
+  const seenNow = () => { try { const v = hintState?.get(); if (v && typeof v === 'object') return v; } catch { /* none kept */ } return seen; };
+  const bump = (key) => {
+    const s = { ...seenNow() };
+    const n = s[key] ?? 0;
+    s[key] = n + 1; seen = s;
+    try { hintState?.set(s); } catch { /* best effort */ }
+    return n;
+  };
+  /**
+   * #885/#886: a refusal as it leaves the service: shaped (wrong, rule, choices, apply), each choice with why, effect and
+   * its context lines, and `hintContext` (every candidate line with its static score, for the bench log and jev).
+   */
+  const say = async (r, req, fixes0, tools) => {
+    const fixes = fixes0 ?? (Array.isArray(r.fixes) ? r.fixes : []);
+    let plan = null; let fields = null;
+    try {
+      const { api, registry } = await init();
+      plan = await current(api);
+      fields = registry.list().find((t) => t.name === req?.tool)?.schema?.fields ?? null;
+    } catch { /* context is best effort */ }
+    const asked = badValueOf(r.code, { ...req, field: r.code === 'BAD_ARGS' ? badArgsField(r.sentence) : null })?.value ?? null;
+    const target = targetOf(req?.args, null) ?? asked ?? req?.tool ?? '-';
+    const repeat = bump(`${plan?.id ?? '-'}|${r.code}|${target}`);
+    let ctx;
+    try { ctx = contextFor(root, { code: r.code, tool: req?.tool, args: req?.args, fixes, detail: r.detail, plan, fields, repeat }); } catch { ctx = { lines: [], candidates: [], cap: 5, attempt: '' }; }
+    const hinted = withHints(fixes, { code: r.code, asked }, ctx);
+    const out = shapedRefusal(r, req, hinted.fixes, tools, hinted.context);
+    return { ...out, hintContext: { cap: ctx.cap, repeat, attempt: ctx.attempt, candidates: ctx.candidates, kept: ctx.lines.map((l) => ({ text: l.text, score: l.score, ref: l.ref })) } };
+  };
+
   /** The fix `want` names (a ref like "f1", or a fix id), or a refusal that lists what can be picked. */
   const pickFix = (want) => {
     const fixes = offeredNow();
@@ -334,7 +368,7 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
     if (picked && !picked.ok) {
       if (tr) tr.record({ kind: 'refusal', by: String(by), tool: '(fix)', stepId: null, args: { fix: want }, source: sourceOf(picked.code), code: String(picked.code), sentence: picked.sentence, rules: [], files: [], fixes: [] });
       // #885: the choices on offer are shown again, so the next call can pick one.
-      return shapedRefusal(picked, { fix: want }, offeredNow());
+      return say(picked, { fix: want }, offeredNow());
     }
     // A picked fix is its step, sent as if with tool and args (a tool or args sent alongside are ignored).
     const req = picked?.ok ? { tool: picked.fix.step.tool, args: picked.fix.step.args, why: typeof req0?.why === 'string' && req0.why.trim() ? req0.why : picked.fix.sentence } : req0;
@@ -345,7 +379,7 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
       // A small model that sends a fix's ref or a path as the tool name ("fixes[0].step", "f1") meant the offered fix.
       const meantFix = !own.length && r0.code === 'UNKNOWN_TOOL' && /fix|^f\d+$/i.test(String(req?.tool ?? '')) ? offeredNow() : [];
       const { registry } = await init();
-      r = shapedRefusal(r0, req, own.length ? own : meantFix, registry.list().map((t) => t.name).filter((n) => n.startsWith('line.') && !n.startsWith('line.import.')));
+      r = await say(r0, req, own.length ? own : meantFix, registry.list().map((t) => t.name).filter((n) => n.startsWith('line.') && !n.startsWith('line.import.')));
       if (!meantFix.length) offer(own);
     } else offer([]);
     if (!tr) return r;
@@ -372,20 +406,20 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
   const approve = (stepId, by) => serial(async () => {
     const { api } = await init();
     const plan = await current(api);
-    if (!plan) return shapedRefusal(refusal('NO_PLAN', 'There is no plan yet, so there is nothing to approve'));
-    if (typeof stepId !== 'string' || !stepId) return shapedRefusal(refusal('BAD_ARGS', 'Name the step to approve'), { tool: 'line.leaveAsIs', args: {} });
+    if (!plan) return say(refusal('NO_PLAN', 'There is no plan yet, so there is nothing to approve'));
+    if (typeof stepId !== 'string' || !stepId) return say(refusal('BAD_ARGS', 'Name the step to approve'), { tool: 'line.leaveAsIs', args: {} });
     const r = await withVersion(api, plan.id, (p) => api.plan_approve({ planId: p.id, version: p.version, by, stepId }));
     if (r.ok) {
       const tool = plan.steps.find((s) => s.id === stepId)?.tool;
       if (tool) remember('plan.step', { intent: tool, options: [tool], proposed: tool }, { kind: 'approved', chosen: tool, by: memoryBy(String(by)) });
     }
-    return r.ok ? view(r.message) : shapedRefusal(fromPlan(r));
+    return r.ok ? view(r.message) : say(fromPlan(r));
   });
 
   const runNextInner = async (by, stepId) => {
     const { api } = await init();
     const plan = await current(api);
-    if (!plan) return shapedRefusal(refusal('NO_PLAN', 'There is no plan yet, so nothing can run'));
+    if (!plan) return say(refusal('NO_PLAN', 'There is no plan yet, so nothing can run'));
     const st = await api.plan_status({ planId: plan.id });
     let nextId = typeof stepId === 'string' && stepId ? stepId : st.ok ? st.state?.next : null;
     const blocked = plan.steps.find((s) => needsYou(plan, s));
@@ -401,10 +435,10 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
     if (blocked && !resolves) {
       const choices = choicesOf(blocked);
       offer(choices);
-      return shapedRefusal(refusal('NEEDS_YOU', needsYouSentence(blocked)), { tool: blocked.tool, args: {} }, choices);
+      return say(refusal('NEEDS_YOU', needsYouSentence(blocked)), { tool: blocked.tool, args: {} }, choices);
     }
     const r = await withVersion(api, plan.id, (p) => api.plan_run_next({ planId: p.id, version: p.version, by, ...(nextId ? { stepId: nextId } : {}) }));
-    if (!r.ok) return shapedRefusal(fromPlan(r));
+    if (!r.ok) return say(fromPlan(r));
     const recheck = next?.args?.fixOf ? await recheckAfterFix(api, String(next.args.fixOf), next.id, by) : null;
     const out = await view(r.message);
     return recheck ? { ...out, recheck } : out;
@@ -460,8 +494,8 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
     if (stuck) {
       const choices = choicesOf(stuck);
       offer(choices);
-      const { text, ...hint } = shapeRefusal({ code: stuck.state === 'needs-fix' ? 'NEEDS_FIX' : 'NEEDS_YOU', sentence: stuck.sentence, tool: stuck.tool, args: stuck.args, fixes: choices });
-      r = { ...r0, needs: { stepId: stuck.id, fixes: choices, hint, text } };
+      const said = await say({ ok: false, code: stuck.state === 'needs-fix' ? 'NEEDS_FIX' : 'NEEDS_YOU', sentence: stuck.sentence, detail: stuck.result?.apply?.detail ?? null }, { tool: stuck.tool, args: stuck.args }, choices);
+      r = { ...r0, needs: { stepId: stuck.id, fixes: said.fixes, hint: said.hint, text: said.text, hintContext: said.hintContext } };
     }
     if (rec && state && r.ok) await recordFinished(state, open);
     if (!tr) return r;

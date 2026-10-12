@@ -108,6 +108,18 @@ export function systemPrompt(arm) {
 
 const clip = (s, n = 6000) => (s.length > n ? `${s.slice(0, n)}\n…(${s.length - n} more characters cut)` : s);
 
+/**
+ * #886: what the model reads of a CLI answer. A shaped refusal (or a step that needs a fix) already lists every choice
+ * with its exact step in `sentence`, so the `fixes` array behind it is left out (calls.jsonl keeps it): minimal.
+ * @param {any} out
+ * @returns {any}
+ */
+export function toModel(out) {
+  if (!out || !Array.isArray(out.fixes) || !/To apply one, send \{"fix":/.test(String(out.sentence ?? ''))) return out;
+  const { fixes: _fixes, ...rest } = out;
+  return rest;
+}
+
 async function main() {
   const o = flags(process.argv.slice(2));
   if (!o.project) { console.error('Set --project or BENCH_PROJECT.'); process.exit(2); }
@@ -160,7 +172,7 @@ async function main() {
       if (name === 'finish') { finished = String(args?.summary ?? ''); outcomes.push({ name, ok: true }); break; }
       const out = await callTool(cli, o.arm, name, args);
       outcomes.push({ name, args: clip(JSON.stringify(args ?? {}), 400), ok: out.ok, code: out.code ?? null, sentence: out.sentence });
-      history.push({ role: 'tool', content: clip(JSON.stringify(out)) });
+      history.push({ role: 'tool', content: clip(JSON.stringify(toModel(out))) });
     }
     if (!calls.length) { idle += 1; history.push({ role: 'user', content: 'Use one of your tools (or call finish).' }); } else idle = 0;
     write(tokensFile, { builder: o.builder, model: o.model, ...tokens, source: 'ollama prompt_eval_count/eval_count', at: new Date().toISOString() });

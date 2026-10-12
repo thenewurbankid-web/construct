@@ -94,3 +94,46 @@ test('plan service: every refusal carries the shaped text; a fix ref sent as a t
     assert.match(unknown.text, /A correct call: line\.addRoute \{"route":"\/cart"/);
   } finally { done(); }
 });
+
+test('#886: every fix says why and what it does; context is deterministic, at most 5 lines, 15 when the same refusal repeats', async () => {
+  const { root, done } = project();
+  try {
+    fs.writeFileSync(path.join(root, 'features/home/pages/HomePage.tsx'), '// @line-base pages/ListPage\nexport function HomePage() { return null; }\n');
+    fs.writeFileSync(path.join(root, 'features/home/pages/AboutPage.tsx'), 'export function AboutPage() { return null; }\n');
+    const svc = svcOf(root);
+    const req = { tool: 'line.addRoute', args: { route: '/', page: 'home/HomePage' }, why: 'Serve home.' };
+    const r = /** @type {any} */ (await svc.addStep(req, 'agent'));
+    assert.equal(r.code, 'UNKNOWN_ITEM');
+    for (const [i, f] of r.fixes.entries()) {
+      assert.match(f.why, /\(rule [\w/-]+\)\.$/, `${f.ref} why names its rule`);
+      assert.match(f.effect, /^writes the route entry for \/, which shows /);
+      if (i === 0) assert.match(f.why, /^Recommended because its path is the closest feature page to "home\/HomePage"/);
+    }
+    assert.ok(r.fixes[0].context.includes('features/home/pages/HomePage.tsx exports HomePage, based on pages/ListPage'), JSON.stringify(r.fixes[0].context));
+    assert.equal(r.hintContext.cap, 5);
+    assert.ok(r.hintContext.kept.length <= 5);
+    assert.match(r.text, /\n {6}does: writes the route entry for \/, which shows HomePage\n/);
+    const again = /** @type {any} */ (await svc.addStep(req, 'agent'));
+    assert.equal(again.hintContext.cap, 15);
+    assert.equal(again.hintContext.repeat, 1);
+    // The same request on the same files gives the same lines (deterministic).
+    assert.deepEqual(again.hintContext.candidates, r.hintContext.candidates);
+  } finally { done(); }
+});
+
+test('#886: a type error shows the failing line +-2 of the code that was sent', async () => {
+  process.env.LINE_TYPE_GATE_BUDGET_MS ??= '60000';
+  const { root, done } = project();
+  try {
+    fs.writeFileSync(path.join(root, 'tsconfig.json'), JSON.stringify({ compilerOptions: { strict: true, module: 'esnext', moduleResolution: 'bundler', target: 'es2020', noEmit: true, skipLibCheck: true, types: [] } }));
+    fs.mkdirSync(path.join(root, 'node_modules'));
+    const code = '// one\n// two\nexport const price = (c: number): string => c;\n// four\n// five\n';
+    const r = /** @type {any} */ (await svcOf(root).addStep({ tool: 'line.setCode', args: { file: 'features/home/services/price.ts', code }, why: 'Price.' }, 'agent'));
+    assert.equal(r.code, 'TYPE_ERROR', r.text);
+    const win = r.hint.context.find((l) => /TS2322/.test(l)) ?? r.fixes?.flatMap((f) => f.context ?? []).find((l) => /TS2322/.test(l));
+    assert.ok(win, r.text);
+    assert.match(win, /^features\/home\/services\/price\.ts:3 TS2322 /);
+    assert.match(win, /\n 1\| \/\/ one\n 2\| \/\/ two\n>3\| export const price/);
+    assert.match(win, /\n 5\| \/\/ five$/);
+  } finally { done(); }
+});
