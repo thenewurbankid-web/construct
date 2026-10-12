@@ -27,15 +27,27 @@ Start here. Read `CLAUDE.md`, `LINE.md`, then this file.
   with sub-issues #862-#869, #862/#865/#866/#867/#869 fixed.
 - Walks: cs2 and the CLI walks pass 4/4; open-project token assert passes; Train spec 5/5.
 
+## Update (2026-10-12, 16:10): work/2026-09-23 at 0d042c41, pushed to `private` only
+- Done: item 1 (og/lv7-transforms hand-merged, exportName and purity both kept; c6723cb2); #875 per-file renames
+  in the loop compare (c0995118), so the real flow can resume past step 14; Mission Control (#878, `npm run mc`);
+  tsc ratchet back to 471; og-wave tests on makeTempDir (eslint 0 errors). Full suite: 6,702 pass, 1 known flake
+  (#882). Closed: #853 #854 #856-#861 #865-#867 #869-#873 #875 #876 #878.
+- Not pushed to `origin` (public): owner call (rule below).
+
 ## Open, in order
-1. og/lv7-transforms (c62032af transforms -> proven, bb6ce58e purity into logic map and G1) conflicts with #856's
-   exportName in packages/engine/line/logicMap.mjs and graph/build.mjs (both sides additive); merge it by hand.
-2. Real flow (item 5): reaches step 14 of 67 after #858 and #872; step 14 is #875 (renamed component reads as
-   missing + added; per-file renames recommended). Clone kept at /tmp/construct-realflow-142056.
-3. Pipeline repo: fast-forward core/ship (runs/core-ship, 61eee8f) to line-merge-pipeline 3886a74, then
-   `node packages/line-links/link.mjs --pin`, then the link tests.
-4. Settings-menu flake (cold dev-server compile, not a race), Train UAT walk, lv4 hook runner + V8 coverage, lv8.
-5. Designer: Cockpit library selector on New project (#873); token-gated apply route for cs2; Memory-tab copy.
+1. ~~og/lv7-transforms merge~~ done (c6723cb2).
+2. Owner: #877 (og/lv4-hooks d2573340, hook runner + handler events + V8 coverage, 144/144 logic tests) needs
+   `--allow-inspector` in the sandboxed child; merge or drop coverage.
+3. Pipeline repo: fast-forward core/ship (runs/core-ship, 61eee8f) to line-merge-pipeline 3886a74 (clean ff), then
+   `node packages/line-links/link.mjs --pin`, bump links.json, link tests. Refused by the auto-mode classifier in
+   the og run; the owner runs or allows it. Unblocks tracker rows j3, j4, ac1, pr3, tc2, pipeline-merge.
+4. Real flow (item 5): resume from step 14 on the kept clone now that #875 is in.
+5. lv7 per-step loop checks; lv8 (L2 dev server, L3 browser, proof run on clones).
+6. Android: #863 (Playwright on Android, needs a decision), #864 (Next SWC wasm), #868 (media without
+   onnxruntime-node), #862 leftovers (Termux:Boot, pagefind, phone-sized CONSTRUCT_MIN_FREE_MB).
+7. Settings-menu flake (owner pick: warm routes / prod build / accept); load flakes #882.
+8. Designer: Cockpit library selector on New project; token-gated apply route for cs2; Memory-tab copy.
+9. CLAUDE.md "Dogfood the UI" still says Vite SPA; ui/client is Next.js 15 (owner edits CLAUDE.md).
 
 ## Rules that bite
 - **Never push to the public repo** (thenewurbankid-web/construct): the work branch has max-ai-ui-derived content. Cloud work goes only to `private`. Ask the owner before any public push.
