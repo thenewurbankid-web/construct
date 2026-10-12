@@ -31,3 +31,9 @@ tools/jev/weights/
 tools/jev/data/ask-log.jsonl
 tools/jev/data/intent-train.jsonl
 tools/jev/reports/
+tools/jev/.venv
+tools/jev/open-jev
+tools/jev/models
+tools/jev/models/
+tools/jev/data/arms-train.jsonl
+.pytest_cache/

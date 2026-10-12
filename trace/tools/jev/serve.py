@@ -3,7 +3,9 @@
 
   POST /choose  {"state": {...}, "questions": [{"key": "q1", "text": "...", "options": ["a", "b"]}, ...]}
              -> {"answers": [{"key", "choice", "probabilities", "confidence"}], "ms": 1.2}
-  GET  /health -> {"ok": true, "weights": "random (seed 0)" | "<file>", "tokenizer": "<version>"}
+  POST /choose  {"arm": "lr"|"nb"|"spacy"|"nli", ...}  -> the NLP arms (arms.py, #903): the same closed-choice endpoint,
+             answered by scikit-learn, spaCy or a small NLI model instead of open-jev (no "arm", or "jev": open-jev)
+  GET  /health -> {"ok": true, "weights": "random (seed 0)" | "<file>", "tokenizer": "<version>", "arms": {"lr": bool, ...}}
 
 IMPORTANT: open-jev ships with RANDOM weights. It is an architecture, not a trained model, so its answers are
 noise until it is trained. With random weights the answers are deterministic (fixed seed) but meaningless, and
@@ -15,6 +17,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(HERE, "open-jev"))
+sys.path.insert(0, HERE)
 
 import torch
 from open_jev.main import Choice
@@ -24,7 +27,13 @@ ap = argparse.ArgumentParser()
 ap.add_argument("--port", type=int, default=8765)
 ap.add_argument("--seed", type=int, default=0)
 ap.add_argument("--weights", default="")
+ap.add_argument("--arms-weights", default="", help="sklearn arms (train_arms.py); default weights/arms-sklearn.joblib")
+ap.add_argument("--nli-model", default="", help="NLI arm model dir; default models/xtremedistil-zeroshot")
 args = ap.parse_args()
+
+from arms import Arms, DEFAULT_NLI, DEFAULT_SKLEARN  # noqa: E402
+
+ARMS = Arms(args.arms_weights or DEFAULT_SKLEARN, args.nli_model or DEFAULT_NLI)
 
 torch.manual_seed(args.seed)
 model = new_model()  # shared config + tokenizer (jev_tokenizer.py)
@@ -57,7 +66,7 @@ class H(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_GET(self):
-        self._send(200, {"ok": True, "weights": WEIGHTS, "tokenizer": TOKENIZER}) if self.path == "/health" else self._send(404, {"error": "not found"})
+        self._send(200, {"ok": True, "weights": WEIGHTS, "tokenizer": TOKENIZER, "arms": ARMS.health()}) if self.path == "/health" else self._send(404, {"error": "not found"})
 
     def do_POST(self):
         if self.path != "/choose":
@@ -65,7 +74,13 @@ class H(BaseHTTPRequestHandler):
         try:
             n = int(self.headers.get("content-length", 0))
             req = json.loads(self.rfile.read(n) or b"{}")
-            self._send(200, answer(req.get("state", {}), req["questions"]))
+            arm = req.get("arm") or "jev"
+            if arm == "jev":
+                self._send(200, answer(req.get("state", {}), req["questions"]))
+            else:
+                t0 = time.perf_counter()
+                out = ARMS.answer(arm, req)
+                self._send(200, {**out, "arm": arm, "ms": round((time.perf_counter() - t0) * 1000, 2)})
         except Exception as e:  # a bad request must not kill the server
             self._send(400, {"error": str(e)})
 

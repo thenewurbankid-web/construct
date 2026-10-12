@@ -9,7 +9,7 @@ import { factsSummary } from '../facts.mjs';
 import { structureGraph, readerOf, hashesOf, rolesOf } from '../structure.mjs';
 import { buildDomainMap, normalize, slotShapes, bind } from './domainMap.mjs';
 import { classify } from './classify.mjs';
-import { runIntentShadow } from './shadow.mjs';
+import { runIntentShadow, runArmsShadow } from './shadow.mjs';
 import { enumerateRoutes } from './templates.mjs';
 import { verifyRoutes } from './verify.mjs';
 import { readRecords, nearest, routeFromRecord, precedent } from './retrieval.mjs';
@@ -79,6 +79,8 @@ export function draft(root, request, o = {}) {
   }
   // #892: jev answers the same closed questions in shadow (logged, never used while its switch is off).
   if (o.shadow !== false) runIntentShadow(root, { normalized: n, slots, catalog, labels, stateDir: summary.layout.state || 'line' }, o.shadow || {});
+  // #903: the beam's NLP arms read the same request in shadow (each arm has its own switch; all off by default).
+  if (o.shadow !== false) runArmsShadow(root, { request, normalized: n, slots, bindings: n.bindings, catalog, labels, map, stateDir: summary.layout.state || 'line' }, o.shadow || {});
   const bindings = { ...n.bindings };
   const targetFeature = labels.target && labels.target[0] === 'F' ? bindings[labels.target] : labels.target && bindings[labels.target]?.feature ? bindings[labels.target].feature : null;
   const from = hashesOf(graph, targetFeature ?? null);

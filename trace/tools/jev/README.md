@@ -140,3 +140,44 @@ normalized request), like the drafter's other records.
 | contract: map / create | the endpoint is in the page's API contract | tracePath.mjs `shadowPath` |
 | hook, provider, service: stub / fn / create | none anywhere (shown `undecided`) | jev asked, logged against `undecided` |
 | which candidate field (Trace matcher) | trace/src/match.mjs `cheapest` + ask.mjs `orderByNameEvidence` | no shadow hook added: jev can already answer it as the `choose` task (`--ai-task choose=jev:open-jev`, trace/src/ask.mjs `resolveQuestions` -> `ai(q)`), but nothing logs it beside static yet |
+
+## NLP arms: candidate readings for the beam (#903, part of #900; static default, every other arm in shadow, OFF)
+
+The beam opens one run per plausible **reading** of a request: a closed tuple `{intent, object, target, layers}` plus
+confidence (`Reading`, trace/src/beam/contract.mjs; a list of them is the top-k form of `classify()`).
+trace/src/beam/arms.mjs `readCandidates(ctx)` asks every arm for a small, recall-first set (k = 4):
+
+| arm | what it reads | step (packages/core/ai-profiles.json) |
+|---|---|---|
+| static | drafter `classify()` -> `toReadings` (its intent + alternatives) | always on (the default) |
+| lr / nb | scikit-learn logistic regression / naive Bayes over the normalized request (slot tokens + slot shapes, never names); a pairwise ranker picks the target slot | `construct.intent-lr` / `-nb` |
+| spacy | en_core_web_sm dependency parse; an EntityRuler built from the domain map (`buildDomainMap`) merges each project name into one token first; the root verb, then its object, then the rest are fed to `classify()`; a `to / on / in / into / for` object picks the target | `construct.intent-spacy` |
+| jev | open-jev's full distribution per closed question (`/choose` probabilities), its epistemic confidence as the gate | `construct.intent` |
+| nli | zero-shot entailment, one hypothesis per closed option (verb, object, slot, layers multi-label), MoritzLaurer/xtremedistil-l6-h256-zeroshot-v1.1-all-33 (MIT, 13M params, 25 MB) | `construct.intent-nli` |
+
+Every Python arm runs in the jev sidecar (`serve.py`): the same `POST /choose`, with `"arm": "lr"|"nb"|"spacy"|"nli"`
+(arms.py; no `arm` = open-jev). `GET /health` lists which arms have their model. Dependencies:
+`requirements-arms.txt` (permissive licenses, pinned), `python -m spacy download en_core_web_sm`, `fetch_arms_models.py`.
+
+- **Default unchanged**: the readings the beam opens are static's plus those of arms whose step is ON (profile on AND a
+  measured win, `stepOnFor`). Every arm step ships `on: false, measured: null`.
+- **Forks, never guesses**: a label where the arms' best readings disagree, or an arm under the gate (0.5; jev: its
+  epistemic confidence), is a fork `{label, values: {arm: value}, reason, low}`. `forks` covers the active arms,
+  `shadowForks` every arm that answered.
+- **Shadow log**: a project's `line/ai-profiles.json` `{"v":1,"steps":{"construct.intent-lr":{"shadow":true}}}` (per arm)
+  or `LINE_ARMS_SHADOW=1` (all) / `=lr,nli`: `draft()` reads the request with those arms in the background and appends
+  `{v, at, decision: "readings", request, static, arms: {arm: {readings, confidence}|null}, forks, gate, used}` to
+  `<state>/drafter/arms-shadow.jsonl` (slot form; the nli arm sees the names, the log never does). Off: no import, no call.
+
+```bash
+node trace/tools/jev/build-arms-data.mjs --seed 0                                         # gold -> data/arms-train.jsonl
+packages/tools/dev/heavy.sh trace/tools/jev/.venv/bin/python trace/tools/jev/train_arms.py # train split only -> weights/arms-sklearn.joblib
+(cd trace && tools/jev/.venv/bin/python tools/jev/serve.py)                              # jev + the arms on :8765
+node trace/tools/jev/eval-intent.mjs --seed 0                                             # + "Beam arms" tables (--arms static,lr,... | --no-arms)
+trace/tools/jev/.venv/bin/python -m pytest trace/tools/jev/test_arms.py; node --test trace/src/beam/arms.test.mjs
+```
+
+eval-intent's **Beam arms** tables: per arm, the labels of its best reading (as above) and **gold among candidates**:
+the share of rows where one of its readings has the gold intent, the gold intent and slot, and the full gold tuple
+(layers as a superset); `union (all arms)` is the same over every arm's readings (what a beam opening all of them could
+reach). An arm earns its switch only by beating static on held-out rows.

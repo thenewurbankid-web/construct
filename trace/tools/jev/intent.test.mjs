@@ -9,6 +9,7 @@ import { scoreRows, summarize, renderMarkdown, metrics } from './eval-intent.mjs
 import { run } from './intent-label.mjs';
 import { ask } from './ask.mjs';
 import { trainRow } from './build-intent-data.mjs';
+import { armsRow } from './build-arms-data.mjs';
 import { readGold, splitOf, GOLD_FILE, CATALOG } from './intentGold.mjs';
 import { staticPagePath, renderAsk, STUB, FN, UNDECIDED } from './tracePath.mjs';
 
@@ -144,4 +145,31 @@ test('training rows carry the provider\'s exact questions and the gold option in
   assert.equal(q['layer:ui'].gold, 0);
   assert.equal(q['layer:api'].gold, 1);
   assert.equal(trainRow(GOLD[3], 0).questions.find((x) => x.key === 'verb').gold, null, 'unknown intent: no verb target');
+});
+
+test('#903 arms rows: slot-form tokens (no names), the gold slot as a slot id, the eval split', () => {
+  const row = armsRow(GOLD[0], 0);
+  assert.equal(row.split, splitOf('f-001', 0));
+  assert.match(row.gold.slot, /^P\d$/);
+  assert.equal(row.read.slots[row.gold.slot].kind, 'page');
+  assert.ok(!JSON.stringify(row.read).includes('Invoices') && !JSON.stringify(row.read).includes('"src"'));
+  assert.equal(armsRow(GOLD[2], 0).gold.slot, null);
+});
+
+test('#903 eval-intent per arm: best-reading labels and gold-among-candidates recall, union over arms', async () => {
+  // A fake sidecar: the lr arm answers add.page first and fix.problem second (recall, not top-1); nli is down.
+  const post = async (body) => {
+    if (body.arm !== 'lr') throw new Error('down');
+    return { answers: body.questions.map((q) => ({ key: q.key, probabilities: Object.fromEntries(q.options.map((o) => [o, o === 'fix.problem' ? 0.4 : o === 'add.page' ? 0.6 : q.options[0] === o ? 0.5 : 0])) })) };
+  };
+  const rows = await scoreRows(GOLD, { jev: false, seed: 7, arms: ['static', 'lr', 'nli'], post });
+  const s = summarize(rows, { seed: 7, jev: 'off' });
+  const all = /** @type {any} */ (s.arms).all;
+  assert.equal(all.static.n, 4);
+  assert.equal(all.nli.n, 0, 'an arm that did not answer has n=0');
+  assert.equal(all.lr.n, 4);
+  assert.equal(all.lr.intent, 0, 'lr top-1 is add.page everywhere');
+  assert.equal(all.lr.recallIntent, 25, 'fix.problem is among lr readings: the one fix row');
+  assert.ok(all.union.recallIntent >= all.static.recallIntent);
+  assert.match(renderMarkdown(s), /\| union \(all arms\) \| 4 \|/);
 });
