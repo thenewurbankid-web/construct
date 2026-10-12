@@ -16,8 +16,8 @@ export function RecentClones({ rows, onOpen, onPull, onForget }: RecentClonesPro
   if (rows.length === 0) return null;
   return (
     <section className="clone-recent" aria-labelledby="clone-recent-heading" data-testid="clone-recent">
-      <h3 id="clone-recent-heading" className="clone-recent__title">Recent clones</h3>
-      <p className="hint">On this browser. Pull latest brings a copy up to date without changing your own work; for a private repository fill in the access token above first.</p>
+      <h3 id="clone-recent-heading" className="clone-recent__title">Brought in before</h3>
+      <p className="hint">On this browser. Pull latest brings a copy up to date without changing your own work.</p>
       <ul className="clone-recent__list">
         {rows.map((r) => (
           <li key={r.id} className="clone-recent__item" data-testid="clone-recent-row">

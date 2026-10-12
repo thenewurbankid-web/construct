@@ -18,3 +18,9 @@ export * from './hooks/useDirectoryLoader';
 
 /** Finds a folder by name directly inside the workspace (the "Try the sample shop" shortcut). */
 export * from './hooks/useWorkspaceFolder';
+
+/** The projects as cards (the Open-a-project screen): name, one status word, a framework tag when it helps. */
+export * from './pages/ProjectCardsPage';
+
+/** The workspace's projects as cards, with how many there are. */
+export * from './hooks/useProjectCards';

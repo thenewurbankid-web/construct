@@ -49,32 +49,33 @@ test.describe.serial('#365 workspace boundary', () => {
     expect(settings.workspaceRoot).toBe(WS);
 
     await page.goto('/');
-    await expect(page.getByRole('heading', { name: 'Open a project' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Your projects', level: 1 })).toBeVisible();
     // #429: with no project the whole UI is blocked behind the gate: no project switcher, no rail.
     await expect(page.getByTestId('project-switcher')).toHaveCount(0);
     await expect(page.getByRole('navigation', { name: 'Screens', exact: true })).toHaveCount(0);
     // One prompt on other screens too, not a per-screen error.
     for (const route of ['/wizard', '/pages', '/workflows', '/plan', '/review', '/tests']) {
       await page.goto(route);
-      await expect(page.getByRole('heading', { name: 'Open a project' }), route).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Your projects', level: 1 }), route).toBeVisible();
     }
     await page.goto('/');
-    // #568: the picker is a flat "Your projects" list of my workspace: no breadcrumb, no way up, and a hint.
+    // #568: the projects are a flat "Your projects" set of cards from my workspace: no breadcrumb, no way up.
     const picker = page.getByRole('region', { name: 'Your projects' });
     await expect(picker.getByTestId('dir-picker-crumbs')).toHaveCount(0);
     await expect(picker.getByRole('button', { name: 'Up one level' })).toHaveCount(0);
-    await expect(picker.getByRole('button', { name: 'Select shop' })).toBeVisible();
-    await expect(picker.locator('li', { hasText: 'shop' }).getByText('Construct project', { exact: true })).toBeVisible();
-    await expect(page.getByTestId('no-project')).toContainText('git clone');
-    await expect(page.getByTestId('no-project')).toContainText(WS);
+    await expect(picker.getByRole('button', { name: 'Open shop', exact: true })).toBeVisible();
+    await expect(picker.getByRole('button', { name: 'Open shop', exact: true }).getByTestId('project-card-status')).toHaveText('Ready');
+    // Plain words on the first screen; the workspace folder sits under Details.
+    for (const jargon of ['Construct project', 'repository', 'single-page app', 'clone', 'token']) await expect(page.getByTestId('no-project')).not.toContainText(jargon, { ignoreCase: true, useInnerText: true });
+    await expect(page.getByTestId('workspace-details')).toContainText(WS);
     await page.screenshot({ path: path.join(SHOTS, '365-1-open-a-project.png'), fullPage: true });
   });
 
   test('the picker never lists a symlink that leaves the workspace, nor anything above it', async ({ page }) => {
     await page.goto('/');
     const picker = page.getByRole('region', { name: 'Your projects' });
-    await expect(picker.getByRole('button', { name: 'Select notes' })).toBeVisible();
-    await expect(picker.locator('li', { hasText: 'notes' })).toContainText('not a Construct project yet');
+    await expect(picker.getByRole('button', { name: 'Open notes', exact: true })).toBeVisible();
+    await expect(picker.getByRole('button', { name: 'Open notes', exact: true }).getByTestId('project-card-status')).toHaveText('Needs setup');
     await expect(picker.getByText('link-to-outside')).toHaveCount(0);
     await expect(picker.getByText('link-to-project')).toHaveCount(0);
     await expect(picker.getByText('outside')).toHaveCount(0);
@@ -145,7 +146,7 @@ test.describe.serial('#365 workspace boundary', () => {
   test('opening a project inside the workspace works from the picker; it can be closed and reopened', async ({ page }) => {
     await page.goto('/');
     const picker = page.getByRole('region', { name: 'Your projects' });
-    await picker.getByRole('button', { name: 'Select shop' }).click();
+    await picker.getByRole('button', { name: 'Open shop', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Features', level: 1 })).toBeVisible();
     await expect(page.getByTestId('project-switcher')).toContainText('shop');
     await page.screenshot({ path: path.join(SHOTS, '365-2-project-open.png'), fullPage: true });
@@ -153,7 +154,7 @@ test.describe.serial('#365 workspace boundary', () => {
     // Close it from the header: back to the prompt, with the closed project offered (never auto-opened).
     await page.getByTestId('project-switcher').click();
     await page.getByTestId('close-project').click();
-    await expect(page.getByRole('heading', { name: 'Open a project' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Your projects', level: 1 })).toBeVisible();
     await expect(page.getByTestId('project-switcher')).toHaveCount(0);
     const reopen = page.getByTestId('reopen-project');
     await expect(reopen).toHaveText('Reopen shop');

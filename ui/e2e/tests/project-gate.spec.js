@@ -25,7 +25,7 @@ const clearWorkspace = () => {
 };
 
 async function expectOnlyTheGate(page, route) {
-  await expect(page.getByRole('heading', { name: 'Open a project' }), route).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Your projects', level: 1 }), route).toBeVisible();
   await expect(page.getByTestId('shell-gate'), route).toBeVisible();
   await expect(page.getByRole('navigation', { name: 'Screens', exact: true }), route).toHaveCount(0);
   await expect(page.getByTestId('screens-rail'), route).toHaveCount(0);
@@ -91,7 +91,7 @@ test.describe.serial('no project: the gate (#429)', () => {
       await expect(page.getByTestId('shell-gate')).toBeVisible();
       await expect(page.getByTestId('screens-rail')).toHaveCount(0);
       await expect(page.locator('[data-pane="right"]')).toHaveCount(0);
-      await expect(page.getByRole('heading', { name: 'Open a project' })).toHaveCount(0);
+      await expect(page.getByRole('heading', { name: 'Your projects', level: 1 })).toHaveCount(0);
     }
     // And back to the gate from the brand-less route.
     await page.goto('/pages');
@@ -137,7 +137,7 @@ test.describe.serial('no project: the gate (#429)', () => {
     fs.symlinkSync(outside, path.join(WS, 'shop'));
     try {
       await page.goto('/');
-      await expect(page.getByRole('heading', { name: 'Open a project' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Your projects', level: 1 })).toBeVisible();
       await expect(page.getByTestId('open-sample-shop')).toHaveCount(0);
     } finally {
       fs.rmSync(outside, { recursive: true, force: true });

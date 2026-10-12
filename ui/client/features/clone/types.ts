@@ -102,3 +102,6 @@ export type GithubPanelView = {
   summary: string;
   login: string | null;
 };
+
+/** The "From GitHub" questions, one at a time: the link, is it private, then a last look and "Bring it in". */
+export type CloneStep = 'link' | 'private' | 'confirm';

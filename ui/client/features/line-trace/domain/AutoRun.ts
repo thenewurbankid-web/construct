@@ -5,6 +5,13 @@ import type { AutoAction, RunState } from '../types.ts';
 
 const lowerFirst = (s: string) => s.charAt(0).toLowerCase() + s.slice(1);
 
+/** What Auto says while it waits for the person: at the plan's Approve, the plan sentence; elsewhere (Create, Bring it
+ * in, a question only the person answers) the move's own caption. */
+function waitingCaption(action: AutoAction | undefined): string {
+  if (!action || action.controlId === 'plan.approve') return 'Waiting for you: click Approve to run the change. Auto does not approve unless you let it in this session.';
+  return `Waiting for you: ${lowerFirst(action.caption)}`;
+}
+
 /** A new run of `script`. */
 export function startRun(runId: string, request: string, script: AutoAction[], show: boolean, replay = false): RunState {
   const first = script[0];
@@ -27,7 +34,12 @@ export const RUN = {
   step: (run: RunState): RunState => (run.status === 'paused' ? { ...run, stepping: true, caption: run.script[run.index]?.caption ?? run.caption } : run),
   stop: (run: RunState, caption = 'Auto stopped; nothing more will be clicked.'): RunState => ({ ...run, status: 'stopped', stepping: false, caption }),
   /** At Approve without the person's leave: Auto waits for them to click it. */
-  waitForApproval: (run: RunState): RunState => ({ ...run, status: 'waiting', stepping: false, caption: 'Waiting for you: click Approve to run the change. Auto does not approve unless you let it in this session.' }),
-  /** The person clicked Approve while Auto waited. */
-  approvedByPerson: (run: RunState): RunState => ({ ...run, index: run.index + 1, status: 'done', caption: 'You approved it; the plan runner runs the change.' }),
+  waitForApproval: (run: RunState): RunState => ({ ...run, status: 'waiting', stepping: false, caption: waitingCaption(run.script[run.index]) }),
+  /** The person clicked Approve (or answered the question Auto waited at): the run goes on with its next move, if any. */
+  approvedByPerson: (run: RunState): RunState => {
+    const index = run.index + 1;
+    const next = run.script[index];
+    if (next) return { ...run, index, status: 'playing', stepping: false, caption: next.caption };
+    return { ...run, index, status: 'done', caption: 'You approved it; the plan runner runs the change.' };
+  },
 };

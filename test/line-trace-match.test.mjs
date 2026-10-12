@@ -148,8 +148,8 @@ test('mock project: the client\'s mock mode maps the same way', async () => {
 
 test('the Cockpit carries every registered control: data-line-control on the real buttons, menus and panels', () => {
   const dir = path.join(ROOT, 'ui/client/features');
-  const src = fs.readdirSync(dir, { recursive: true }).filter((f) => /\.tsx$/.test(f)).map((f) => fs.readFileSync(path.join(dir, f), 'utf8')).join('\n');
+  const src = fs.readdirSync(dir, { recursive: true }).filter((f) => /\.tsx?$/.test(f)).map((f) => fs.readFileSync(path.join(dir, f), 'utf8')).join('\n');
   for (const c of LINE_CONTROLS) assert.ok(src.includes(`data-line-control="${c.controlId}"`) || src.includes(`'${c.controlId}'`), `${c.controlId} is not on any control`);
-  const used = [...src.matchAll(/data-line-control="([^"]+)"/g)].map((m) => m[1]);
+  const used = [...src.matchAll(/data-line-control="([^"$]+)"/g)].map((m) => m[1]);
   for (const id of used) assert.ok(controlById(id), `${id} is on a control but not in the registry`);
 });

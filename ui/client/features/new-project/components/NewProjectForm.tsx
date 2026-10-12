@@ -1,11 +1,15 @@
 'use client';
 
-import { Button, Field, Input, Select } from '@/components/ui';
-import { FRAMEWORK_CHOICES } from '../domain/NewProjectName';
-import type { NewProjectFramework } from '../types';
-import { LineProjectFields } from './LineProjectFields';
+import { MoreOptions, QuestionSeries, type QuestionStepInfo } from '@/lib/QuestionSeries';
+import type { NewProjectFramework, NewProjectStep } from '../types';
+
+type Kind = { id: NewProjectFramework; label: string; sentence: string };
 
 type NewProjectFormProps = {
+  /** The questions (name, kind, create) and the kinds of project, the first recommended. */
+  steps: ReadonlyArray<QuestionStepInfo>;
+  kinds: ReadonlyArray<Kind>;
+  step: NewProjectStep;
   name: string;
   framework: NewProjectFramework;
   /** Line only: the first feature's name and the workspace folder the project goes in. */
@@ -17,83 +21,133 @@ type NewProjectFormProps = {
   parentProblem: string | null;
   /** Where the folder will be made (`<workspace>/<name>`), or null while no name is typed. */
   destination: string | null;
-  canCreate: boolean;
+  /** May Next (or Create) be pressed on the question on screen? */
+  canNext: boolean;
   creating: boolean;
   error: string | null;
   onName: (v: string) => void;
   onFramework: (v: NewProjectFramework) => void;
   onFirstFeature: (v: string) => void;
   onParentDir: (v: string) => void;
+  onNext: () => void;
+  onBack: () => void;
   onCreate: () => void;
 };
 
-/** Presentation-only "New project" form for the Open-a-project screen (#445): one name, what it starts as, the
- * button. A Line project (cu7) also asks for its first feature and, optionally, the workspace folder it goes in.
- * Making the folder, setting it up and opening it is the server's job. */
-export function NewProjectForm({
-  name, framework, firstFeature, parentDir, nameProblem, featureProblem, parentProblem, destination, canCreate, creating, error,
-  onName, onFramework, onFirstFeature, onParentDir, onCreate,
-}: NewProjectFormProps) {
+const seriesProps = (p: NewProjectFormProps) => ({ name: 'New project', steps: [...p.steps], current: p.step, busy: p.creating, canNext: p.canNext, error: p.error, errorTestId: 'new-project-error', testId: 'new-project-q' });
+
+function NameStep(p: NewProjectFormProps) {
   return (
-    <section className="new-project" aria-labelledby="new-project-heading" data-testid="new-project">
-      <h2 id="new-project-heading" className="new-project__heading">New project</h2>
-      <p className="hint">Start from nothing: give it a name and Construct makes an empty folder in your workspace, sets it up and opens it. No terminal needed.</p>
-      <form
-        className="new-project__form"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (canCreate) onCreate();
-        }}
-      >
-        <div className="new-project__row">
-          <Field label="Project name" hint={nameProblem ?? 'Letters, digits, "-" and "_".'}>
-            <Input
-              type="text"
-              autoComplete="off"
-              autoCapitalize="off"
-              spellCheck={false}
-              placeholder="my-app"
-              value={name}
-              disabled={creating}
-              aria-invalid={nameProblem ? true : undefined}
-              onChange={(e) => onName(e.target.value)}
-              data-testid="new-project-name"
-            />
-          </Field>
-          <Field label="Starts as">
-            <Select value={framework} disabled={creating} onChange={(e) => onFramework(e.target.value as NewProjectFramework)} data-testid="new-project-framework">
-              {FRAMEWORK_CHOICES.map((f) => (
-                <option key={f.id} value={f.id}>{f.label}</option>
-              ))}
-            </Select>
-          </Field>
-        </div>
-        <LineProjectFields
-          show={framework === 'line'}
-          firstFeature={firstFeature}
-          parentDir={parentDir}
-          featureProblem={featureProblem}
-          parentProblem={parentProblem}
-          disabled={creating}
-          onFirstFeature={onFirstFeature}
-          onParentDir={onParentDir}
-        />
-        {destination && !nameProblem && (
-          <p className="hint new-project__dest" role="status" aria-live="polite" data-testid="new-project-preview">
-            Will be made at <code>{destination}</code>
-          </p>
-        )}
-        <div className="new-project__actions">
-          <Button type="submit" disabled={!canCreate} data-testid="new-project-create">
-            {creating ? 'Creating…' : 'Create and open'}
-          </Button>
-        </div>
-      </form>
-      {error && (
-        <p className="status-error" role="alert" data-testid="new-project-error">
-          {error}
-        </p>
-      )}
+    <QuestionSeries {...seriesProps(p)} question="What should we call it?" inputId="new-project-name" hint={p.nameProblem ?? 'Letters, digits, "-" and "_". For example my-shop.'} nextLabel="Next" nextTestId="new-project-next" nextControl={'open-project.nameNext'} onNext={p.onNext}>
+      <input id="new-project-name" className="ln-q-input" type="text" autoComplete="off" autoCapitalize="off" spellCheck={false} placeholder="my-shop" value={p.name} disabled={p.creating} aria-invalid={p.nameProblem ? true : undefined} onChange={(e) => p.onName(e.target.value)} data-testid="new-project-name" data-line-control="open-project.name" />
+    </QuestionSeries>
+  );
+}
+
+function Recommended({ show }: { show?: boolean }) {
+  if (!show) return null;
+  return (
+    <span className="ln-chip" data-tone="fit">
+      Recommended
+    </span>
+  );
+}
+
+function StartsWith({ framework, firstFeature }: { framework: NewProjectFramework; firstFeature: string }) {
+  if (framework !== 'line') return null;
+  return <span className="ln-muted">It starts with one empty part called {firstFeature.trim()}.</span>;
+}
+
+function KindChoice({ kind, p, recommended }: { kind: Kind; p: NewProjectFormProps; recommended?: boolean }) {
+  return (
+    <label className="ln-q-choice" data-testid={`new-project-kind-${kind.id}`}>
+      <span className="ln-q-choice-top">
+        <input type="radio" name="new-project-kind" value={kind.id} checked={p.framework === kind.id} disabled={p.creating} onChange={() => p.onFramework(kind.id)} data-line-control={recommended ? 'open-project.kind' : undefined} />
+        {kind.label}
+        <Recommended show={recommended} />
+      </span>
+      <small>{kind.sentence}</small>
+    </label>
+  );
+}
+
+function LineMore(p: NewProjectFormProps) {
+  if (p.framework !== 'line') return null;
+  return (
+    <>
+      <label className="ln-q-field">
+        <span>First part of the app</span>
+        <input className="ln-q-input ln-q-input--sm" type="text" autoComplete="off" autoCapitalize="off" spellCheck={false} placeholder="home" value={p.firstFeature} disabled={p.creating} aria-invalid={p.featureProblem ? true : undefined} onChange={(e) => p.onFirstFeature(e.target.value)} data-testid="new-project-feature" />
+        <small>{p.featureProblem ?? 'What the app does first, for example "catalog".'}</small>
+      </label>
+      <label className="ln-q-field">
+        <span>Put it in a folder</span>
+        <input className="ln-q-input ln-q-input--sm" type="text" autoComplete="off" autoCapitalize="off" spellCheck={false} placeholder="(your workspace)" value={p.parentDir} disabled={p.creating} aria-invalid={p.parentProblem ? true : undefined} onChange={(e) => p.onParentDir(e.target.value)} data-testid="new-project-parent" />
+        <small>{p.parentProblem ?? 'Leave empty to put it straight in your workspace.'}</small>
+      </label>
+    </>
+  );
+}
+
+function KindStep(p: NewProjectFormProps) {
+  const [recommended, ...others] = p.kinds;
+  const open = p.framework !== recommended.id || p.featureProblem !== null || p.parentProblem !== null;
+  const other = (k: Kind) => <KindChoice key={k.id} kind={k} p={p} />;
+  const more = (
+    <MoreOptions testId="new-project-more" open={open || undefined}>
+      <fieldset className="ln-q-choices" aria-label="Other kinds">
+        {others.map(other)}
+      </fieldset>
+      <LineMore {...p} />
+    </MoreOptions>
+  );
+  return (
+    <QuestionSeries {...seriesProps(p)} question="What kind of project?" nextLabel="Next" nextTestId="new-project-next" nextControl={'open-project.kindNext'} onNext={p.onNext} onBack={p.onBack} more={more}>
+      <fieldset className="ln-q-choices" aria-label="Kind of project" data-testid="new-project-framework">
+        <KindChoice kind={recommended} p={p} recommended />
+      </fieldset>
+    </QuestionSeries>
+  );
+}
+
+function Destination({ destination }: { destination: string | null }) {
+  if (!destination) return null;
+  return (
+    <details className="ln-details">
+      <summary>Details</summary>
+      <p data-testid="new-project-preview">
+        Will be made at <code>{destination}</code>
+      </p>
+    </details>
+  );
+}
+
+function ConfirmStep(p: NewProjectFormProps) {
+  const kind = p.kinds.find((k) => k.id === p.framework)?.label ?? p.framework;
+  return (
+    <QuestionSeries {...seriesProps(p)} question="Ready to create it?" nextLabel={p.creating ? 'Creating…' : 'Create'} nextTestId="new-project-create" nextControl={'open-project.create'} onNext={p.onCreate} onBack={p.onBack}>
+      <div className="ln-q-summary" data-testid="new-project-summary">
+        <span>
+          <strong>{p.name.trim()}</strong>, a {kind}.
+        </span>
+        <StartsWith framework={p.framework} firstFeature={p.firstFeature} />
+      </div>
+      <Destination destination={p.destination} />
+    </QuestionSeries>
+  );
+}
+
+const STEP_VIEWS = { name: NameStep, kind: KindStep, confirm: ConfirmStep } as const;
+
+/** Presentation-only "New project" question series for the Open-a-project screen (#445, cu7): 1) the name, 2) what kind
+ * (a Line project, recommended and chosen to start with; the others and a Line project's first feature and folder sit
+ * under More options), 3) a last look and Create. Making the folder, setting it up and opening it is the server's job;
+ * a refusal shows on the question it belongs to. */
+export function NewProjectForm(p: NewProjectFormProps) {
+  const Step = STEP_VIEWS[p.step];
+  return (
+    <section className="new-project-q" aria-label="New project" data-testid="new-project">
+      <Step {...p} />
     </section>
   );
 }

@@ -92,7 +92,7 @@ test('episode 1, part 1: meet the page', async ({ page }) => {
     // 1. Sign in, open the sample shop (now carrying the new static page).
     await caption(page, CAPTIONS.signIn);
     await page.getByTestId('login-test-user').click();
-    await expect(page.getByRole('heading', { name: 'Open a project' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Your projects', level: 1 })).toBeVisible();
     await caption(page, CAPTIONS.gate);
     await page.getByTestId('open-sample-shop').click();
     await expect(rail(page)).toBeVisible();

@@ -1,10 +1,12 @@
 'use client';
 
 import { branchProblem, folderNameProblem, tokenProblem } from '../domain/CloneFieldHints';
-import { buildRecentRows, readCloneForm } from '../domain/CloneFormView';
-import { buildJobView } from '../domain/CloneJobView';
+import { buildRecentRows, cloneTarget, readCloneForm } from '../domain/CloneFormView';
+import { CLONE_STEPS } from '../domain/CloneSteps';
+import { buildJobView, isLiveJob } from '../domain/CloneJobView';
 import { effectiveAuthMode, githubPanelView } from '../domain/GithubConnection';
 import { pickedRepo, repoOptions } from '../domain/GithubRepoPick';
+import { canLeaveCloneStep } from '../domain/CloneStepRules';
 import { reposHint } from '../domain/GithubRepoPages';
 import { useClone } from '../hooks/useClone';
 import { useGithubConnection } from '../hooks/useGithubConnection';
@@ -12,7 +14,7 @@ import { useRecentClones } from '../hooks/useRecentClones';
 import { ClonePage } from '../pages/ClonePage';
 import { RecentClonesPage } from '../pages/RecentClonesPage';
 
-/** The "Clone a repository" form, with the recent clones of this browser. `onCloned` receives the absolute folder
+/** The "From GitHub" question series (it clones a repository), with the recent clones of this browser. `onCloned` receives the absolute folder
  * of a finished clone (and of a recent one that is opened); the caller (the Open-a-project screen) opens it.
  * #638: when the server has a GitHub connection set up, a private repository can use the person's GitHub login
  * (the default once connected, with a picker of their repositories) instead of the pasted token. */
@@ -23,14 +25,23 @@ export function CloneController({ onCloned, workspaceRoot = null }: { onCloned: 
   const { input, name, token, starting, job, error } = c.state;
   const reading = readCloneForm(input, c.state.branch);
   const mode = effectiveAuthMode(gh.state.status, c.state.authChoice);
+  const working = starting || isLiveJob(job);
   return (
     <ClonePage
+      steps={CLONE_STEPS}
+      {...cloneTarget(workspaceRoot, name, input, reading.preview)}
+      working={working}
+      step={c.state.step}
+      isPrivate={c.state.isPrivate}
+      canNext={canLeaveCloneStep(c.state.step, c.state, working)}
+      onPrivate={c.setPrivate}
+      onNext={c.next}
+      onBack={c.back}
       input={input}
       name={name}
       branch={reading.branch}
       inputProblem={reading.inputProblem}
       preview={reading.preview}
-      workspaceRoot={workspaceRoot}
       folderProblem={folderNameProblem(name)}
       branchProblem={branchProblem(reading.branch)}
       auth={{

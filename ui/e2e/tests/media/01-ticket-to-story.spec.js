@@ -90,7 +90,7 @@ test('episode 1: one example, end to end', async ({ page }) => {
     await page.getByTestId('login-test-user').click();
 
     // 2. The gate.
-    await expect(page.getByRole('heading', { name: 'Open a project' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Your projects', level: 1 })).toBeVisible();
     await caption(page, CAPTIONS.gate);
     await page.getByTestId('open-sample-shop').click();
     await expect(rail(page)).toBeVisible();

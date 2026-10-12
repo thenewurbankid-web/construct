@@ -6,7 +6,7 @@ import { canCreateProject } from '../domain/NewProjectName';
 import { canCreateLineProject } from '../domain/LineProjectFields';
 import { createLineProject, createProject } from '../services/NewProjectApi';
 import { formStateOf, newProjectMachine } from '../workflows/NewProject';
-import type { NewProjectFramework } from '../types';
+import type { NewProjectFramework, NewProjectStep } from '../types';
 
 /** The New project form: ask the server for a folder with this name and hand the new project's folder to
  * `onCreated` (the Open-a-project screen opens it, as it does for a clone). */
@@ -53,6 +53,9 @@ export function useNewProject(onCreated: (dir: string) => void) {
     setFramework: (framework: NewProjectFramework) => actor.send({ type: 'SET_FRAMEWORK', framework }),
     setFirstFeature: (firstFeature: string) => actor.send({ type: 'SET_FEATURE', firstFeature }),
     setParentDir: (parentDir: string) => actor.send({ type: 'SET_PARENT', parentDir }),
+    next: () => actor.send({ type: 'NEXT' }),
+    back: () => actor.send({ type: 'BACK' }),
+    goTo: (step: NewProjectStep) => actor.send({ type: 'GO', step }),
     create,
   };
 }

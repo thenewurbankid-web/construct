@@ -3,6 +3,7 @@
 // moves to a side panel with that item's options. Plain English first; technical detail sits in a collapsed Details.
 // The component that renders this contract is lib/ChatEntry.tsx; the style is lib/line-style.css (Trace's demo style).
 import type { ReactNode } from 'react';
+import type { StreamElements } from './StreamedText';
 
 /** What an option does when picked. `read` answers from a read route (open, what is missing, explain); `plan` adds a
  * plan step the person approves (create, fix); `navigate` opens another screen (import). */
@@ -53,6 +54,12 @@ export type ChatEntryProps = {
   footer?: ReactNode;
   children?: ReactNode;
   testId?: string;
+  /** A free request box under the options (a screen's chat helper), cleared once sent; answered through onAnswer. */
+  input?: ChatAsk | null;
+  /** Overrides the layout `selected` implies: 'panel' is a compact chat in a side panel (no page beside it). */
+  layout?: 'full' | 'side' | 'panel';
+  /** The screen's components for the whitelisted Line elements an answer may embed (lib/streamedTextTags.ts). */
+  elements?: StreamElements;
 };
 
 const OPTION_ID = /^[a-z][a-z0-9-]*(\.[a-z][a-z0-9-]*)+$/;

@@ -1,4 +1,5 @@
 import { useId } from 'react';
+import { StreamedText } from '@/lib/StreamedText';
 import type { TraceView } from '../types';
 import { AutoControls } from './AutoControls';
 import { TraceFindings } from './TraceFindings';
@@ -22,9 +23,9 @@ export function TraceBody({ view }: { view: TraceView }) {
           data-testid="trace-request"
         />
       </label>
-      <p className="ltr-sentence" role="status" data-testid="trace-sentence">
-        {view.sentence}
-      </p>
+      <div className="ltr-sentence" role="status">
+        <StreamedText text={view.sentence} testId="trace-sentence" />
+      </div>
       <TraceFindings findings={view.findings} />
       <AutoControls view={view} />
     </>

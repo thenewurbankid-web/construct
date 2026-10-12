@@ -3,22 +3,30 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { WS, clearWorkspace, clicker, closeProject, expectPlainEnglish, screen, watchPage } from './support/uat.js';
 
-// Owner walk, new Line project (cu7): from "Open a project", New project -> Line project, name "shop", first feature
-// "catalog" -> Create. Expect it opened on Features with catalog "All fine", then a first change through the plan:
+// Owner walk, new Line project (cu7): from "Your projects", New project tab -> name "shop" -> Next -> Line project
+// (chosen), first feature "catalog" under More options -> Next -> Create. Expect it opened on Features with catalog "All fine", then a first change through the plan:
 // Components -> Button -> Base on this -> catalog / BuyButton -> Create -> Approve.
 test('new Line project: create it, land on Features, make a first change through the plan', async ({ page }) => {
   clearWorkspace();
   const watch = watchPage(page);
   const me = clicker();
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Open a project' })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole('heading', { name: 'Your projects', level: 1 })).toBeVisible({ timeout: 30_000 });
   const panel = page.getByTestId('new-project');
-  await panel.getByTestId('new-project-framework').selectOption('line');
+  // A fresh workspace opens on the New project tab.
+  await expect(page.getByRole('tab', { name: 'New project' })).toHaveAttribute('aria-selected', 'true');
   await panel.getByTestId('new-project-name').fill('shop');
+  let act = me.action('Next');
+  await me.click(panel.getByTestId('new-project-next'));
+  act.done();
+  await panel.getByTestId('new-project-more').locator('summary').click();
   await panel.getByTestId('new-project-feature').fill('catalog');
   await expectPlainEnglish(panel);
+  act = me.action('Next');
+  await me.click(panel.getByTestId('new-project-next'));
+  act.done();
 
-  let act = me.action('Create');
+  act = me.action('Create');
   await me.click(panel.getByTestId('new-project-create'));
   act.done();
   await expect(page.getByTestId('line-features')).toBeVisible({ timeout: 30_000 });

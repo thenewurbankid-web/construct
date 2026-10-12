@@ -1,0 +1,28 @@
+/* The Open-a-project screen (features/project-gate NoProjectScreen, directory-browser ProjectCards) in Line style
+   (lib/line-style.css, --ln-* tokens). Prefix op- / ln-project-. */
+.op { display: grid; gap: var(--ln-s3); width: 100%; max-width: 960px; margin: 0 auto; padding: var(--ln-s3); border-radius: var(--ln-r3); box-sizing: border-box; min-width: 0; }
+.op-head { display: grid; gap: 4px; }
+.op-title { font-size: 1.75rem; line-height: 1.15; letter-spacing: -0.02em; font-weight: 650; }
+.op-panel { display: grid; gap: var(--ln-s2); min-width: 0; }
+.op-panel[hidden] { display: none; }
+.op-shortcuts { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ln-s2); }
+.op-sample { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--ln-s1); }
+.op-empty { display: grid; gap: var(--ln-s2); justify-items: start; padding: var(--ln-s3); border: 1px dashed var(--ln-border-strong); border-radius: var(--ln-r3); }
+.op-empty p { font-size: 1.0625rem; }
+.op-details code { overflow-wrap: anywhere; }
+@media (max-width: 600px) { .op { padding: var(--ln-s2); } }
+
+.ln-projects { display: grid; gap: var(--ln-s2); min-width: 0; }
+.ln-projects-grid { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--ln-s2); grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+.ln-project-card { width: 100%; height: 100%; min-height: 96px; display: grid; align-content: space-between; gap: var(--ln-s1); text-align: left; padding: var(--ln-s2); background: var(--ln-surface); border: 1px solid var(--ln-border-strong); border-radius: var(--ln-r2); color: var(--ln-text); font: inherit; cursor: pointer; transition: border-color 0.15s var(--ln-ease), background 0.15s var(--ln-ease), transform 0.1s var(--ln-ease); }
+.ln-project-card:hover:not(:disabled) { border-color: var(--ln-accent); background: color-mix(in srgb, var(--ln-accent) 6%, var(--ln-surface)); }
+.ln-project-card:active:not(:disabled) { transform: translateY(1px); }
+.ln-project-card:disabled { opacity: 0.55; cursor: progress; }
+.ln-project-name { font-weight: 650; font-size: 1.0625rem; overflow-wrap: anywhere; }
+.ln-project-meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ln-s1); }
+.ln-project-tag { font-size: 0.75rem; color: var(--ln-muted); border: 1px solid var(--ln-border); border-radius: 999px; padding: 1px 8px; }
+
+/* The chat helper: a small "Ask for help" button; opened, a panel at the side (full width on a phone). */
+.op-help-toggle { position: fixed; right: var(--ln-s3); bottom: var(--ln-s3); z-index: 40; box-shadow: var(--ln-shadow); }
+.op-help { position: fixed; right: var(--ln-s2); bottom: var(--ln-s2); z-index: 40; width: min(420px, calc(100vw - 2 * var(--ln-s2))); max-height: calc(100dvh - 96px); overflow: auto; box-sizing: border-box; display: grid; gap: var(--ln-s1); padding: var(--ln-s2); background: var(--ln-surface); color: var(--ln-text); border: 1px solid var(--ln-border-strong); border-radius: var(--ln-r3); box-shadow: var(--ln-shadow-lg); }
+.op-help-close { justify-self: end; }
