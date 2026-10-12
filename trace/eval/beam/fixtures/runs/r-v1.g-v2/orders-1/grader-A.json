@@ -1,0 +1,79 @@
+{
+  "step": "grader-A",
+  "role": "grader",
+  "promptFile": "prompts/grader.md",
+  "promptVersion": "v2",
+  "promptSha": "5497e42ba8ba",
+  "rubricFile": "prompts/rubric.md",
+  "rubricVersion": "v1",
+  "rubricSha": "916fd46bb9a3",
+  "model": "opus",
+  "temperature": null,
+  "temperatureEnforced": false,
+  "input": {
+    "requirement": "Show the total value of all orders in the header next to the order count.",
+    "plannerQuestion": {
+      "text": "Should the total value come from an api field or be computed from the orders on the page?",
+      "options": [
+        "an api field",
+        "computed from the orders"
+      ]
+    },
+    "ownerAnswer": "Add up the totals of the orders we already show.",
+    "run": {
+      "id": "A",
+      "labels": {
+        "intent": "update.prop",
+        "object": "prop",
+        "target": {
+          "kind": "page",
+          "name": "orders"
+        },
+        "layers": [
+          "ui",
+          "api"
+        ]
+      },
+      "path": [
+        {
+          "layer": "page-part",
+          "label": "totalValue (header)",
+          "decision": "dynamic",
+          "fork": false
+        },
+        {
+          "layer": "source",
+          "label": "GET /api/orders/total",
+          "decision": "api",
+          "picks": {
+            "static": "api",
+            "jev": "computed"
+          },
+          "fork": true
+        },
+        {
+          "layer": "controller",
+          "label": "OrdersController.totalValue",
+          "decision": "create",
+          "fork": false
+        },
+        {
+          "layer": "service",
+          "label": "ordersService.total",
+          "decision": "create",
+          "fork": false
+        },
+        {
+          "layer": "contract",
+          "label": "GET /api/orders/total",
+          "decision": "create",
+          "fork": false
+        }
+      ],
+      "question": null
+    }
+  },
+  "output": "{\"scores\":{\"intent\":2,\"path\":0,\"reuse\":0,\"question\":2,\"unused\":2},\"justification\":\"Routes a computable total to a new endpoint and creates three layers that the orders list already covers.\"}",
+  "at": "2026-10-12T15:00:29.000Z",
+  "mode": "fake"
+}

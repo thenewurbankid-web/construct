@@ -1,0 +1,298 @@
+{
+  "In the contacts table, show each person's full name, first and last name together, in the Name column.": {
+    "labels": {
+      "intent": "update.prop",
+      "object": "prop",
+      "target": {
+        "kind": "page",
+        "name": "contacts"
+      },
+      "layers": [
+        "ui"
+      ],
+      "by": "static"
+    },
+    "path": [
+      {
+        "layer": "page-part",
+        "label": "fullName (Name cell)",
+        "decision": "dynamic"
+      },
+      {
+        "layer": "source",
+        "label": "first + last from GET /api/contacts",
+        "decision": "computed"
+      },
+      {
+        "layer": "controller",
+        "label": "ContactsController.rows",
+        "decision": "fn"
+      },
+      {
+        "layer": "hook",
+        "label": "useContactName(row)",
+        "decision": "stub"
+      },
+      {
+        "layer": "service",
+        "label": "contactsService.list",
+        "decision": "fn"
+      },
+      {
+        "layer": "contract",
+        "label": "GET /api/contacts",
+        "decision": "fn"
+      }
+    ]
+  },
+  "Show the total value of all orders in the header next to the order count.": {
+    "runs": [
+      {
+        "id": "run-static",
+        "labels": {
+          "intent": "update.prop",
+          "object": "prop",
+          "target": {
+            "kind": "page",
+            "name": "orders"
+          },
+          "layers": [
+            "ui",
+            "api"
+          ],
+          "by": "static"
+        },
+        "path": [
+          {
+            "layer": "page-part",
+            "label": "totalValue (header)",
+            "decision": "dynamic"
+          },
+          {
+            "layer": "source",
+            "label": "GET /api/orders/total",
+            "decision": "api",
+            "picks": {
+              "static": "api",
+              "jev": "computed"
+            },
+            "fork": true
+          },
+          {
+            "layer": "controller",
+            "label": "OrdersController.totalValue",
+            "decision": "create"
+          },
+          {
+            "layer": "service",
+            "label": "ordersService.total",
+            "decision": "create"
+          },
+          {
+            "layer": "contract",
+            "label": "GET /api/orders/total",
+            "decision": "create"
+          }
+        ]
+      },
+      {
+        "id": "run-jev",
+        "labels": {
+          "intent": "update.prop",
+          "object": "prop",
+          "target": {
+            "kind": "page",
+            "name": "orders"
+          },
+          "layers": [
+            "ui"
+          ],
+          "by": "jev"
+        },
+        "path": [
+          {
+            "layer": "page-part",
+            "label": "totalValue (header)",
+            "decision": "dynamic"
+          },
+          {
+            "layer": "source",
+            "label": "sum of orders[].total",
+            "decision": "computed",
+            "picks": {
+              "static": "api",
+              "jev": "computed"
+            },
+            "fork": true
+          },
+          {
+            "layer": "controller",
+            "label": "OrdersController.orders",
+            "decision": "fn"
+          },
+          {
+            "layer": "hook",
+            "label": "useOrderTotals(orders)",
+            "decision": "create"
+          },
+          {
+            "layer": "contract",
+            "label": "GET /api/orders",
+            "decision": "fn"
+          }
+        ]
+      }
+    ],
+    "recommended": "run-jev",
+    "question": {
+      "text": "Should the total value come from an api field or be computed from the orders on the page?",
+      "options": [
+        "an api field",
+        "computed from the orders"
+      ]
+    }
+  },
+  "When I press Call on a contact, log that we called that person so I can see it later.": {
+    "labels": {
+      "intent": "update.handler",
+      "object": "handler",
+      "target": {
+        "kind": "page",
+        "name": "contacts"
+      },
+      "layers": [
+        "ui"
+      ],
+      "by": "static"
+    },
+    "path": [
+      {
+        "layer": "page-part",
+        "label": "call (row action)",
+        "decision": "dynamic"
+      },
+      {
+        "layer": "controller",
+        "label": "ContactsController.onCall(contact)",
+        "decision": "create"
+      },
+      {
+        "layer": "hook",
+        "label": "useCallLog(contact, when)",
+        "decision": "create"
+      }
+    ]
+  },
+  "Let me mark an order as shipped from the orders list.": {
+    "labels": {
+      "intent": "update.prop",
+      "object": "prop",
+      "target": {
+        "kind": "page",
+        "name": "orders"
+      },
+      "layers": [
+        "ui"
+      ],
+      "by": "static"
+    },
+    "path": [
+      {
+        "layer": "page-part",
+        "label": "ship (row action)",
+        "decision": "dynamic"
+      },
+      {
+        "layer": "controller",
+        "label": "OrdersController.onShip(order)",
+        "decision": "create"
+      },
+      {
+        "layer": "provider",
+        "label": "ordersProvider.update(order)",
+        "decision": "create"
+      },
+      {
+        "layer": "service",
+        "label": "ordersService.update(order)",
+        "decision": "create"
+      },
+      {
+        "layer": "contract",
+        "label": "PUT /api/orders/:id",
+        "decision": "create"
+      }
+    ]
+  },
+  "Show how many contacts there are in the page header.": {
+    "labels": {
+      "intent": "update.prop",
+      "object": "prop",
+      "target": {
+        "kind": "page",
+        "name": "contacts"
+      },
+      "layers": [
+        "ui"
+      ],
+      "by": "static"
+    },
+    "path": [
+      {
+        "layer": "page-part",
+        "label": "contactCount (header)",
+        "decision": "dynamic"
+      },
+      {
+        "layer": "source",
+        "label": "contacts.length",
+        "decision": "computed"
+      },
+      {
+        "layer": "controller",
+        "label": "ContactsController.rows",
+        "decision": "fn"
+      }
+    ],
+    "question": {
+      "text": "What should the contact count show?",
+      "options": []
+    }
+  },
+  "Next to the order count, show how many orders are still pending.": {
+    "labels": {
+      "intent": "update.prop",
+      "object": "prop",
+      "target": {
+        "kind": "page",
+        "name": "orders"
+      },
+      "layers": [
+        "ui"
+      ],
+      "by": "static"
+    },
+    "path": [
+      {
+        "layer": "page-part",
+        "label": "pendingCount (header)",
+        "decision": "dynamic"
+      },
+      {
+        "layer": "source",
+        "label": "orders where status = Pending",
+        "decision": "computed"
+      },
+      {
+        "layer": "controller",
+        "label": "OrdersController.orders",
+        "decision": "fn"
+      },
+      {
+        "layer": "hook",
+        "label": "usePendingCount(orders)",
+        "decision": "create"
+      }
+    ]
+  }
+}

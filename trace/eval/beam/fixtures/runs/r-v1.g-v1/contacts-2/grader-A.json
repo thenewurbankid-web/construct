@@ -1,0 +1,56 @@
+{
+  "step": "grader-A",
+  "role": "grader",
+  "promptFile": "prompts/archive/grader.v1.md",
+  "promptVersion": "v1",
+  "promptSha": "02a943359243",
+  "rubricFile": "prompts/rubric.md",
+  "rubricVersion": "v1",
+  "rubricSha": "916fd46bb9a3",
+  "model": "opus",
+  "temperature": null,
+  "temperatureEnforced": false,
+  "input": {
+    "requirement": "When I press Call on a contact, log that we called that person so I can see it later.",
+    "plannerQuestion": null,
+    "ownerAnswer": null,
+    "run": {
+      "id": "A",
+      "labels": {
+        "intent": "update.handler",
+        "object": "handler",
+        "target": {
+          "kind": "page",
+          "name": "contacts"
+        },
+        "layers": [
+          "ui"
+        ]
+      },
+      "path": [
+        {
+          "layer": "page-part",
+          "label": "call (row action)",
+          "decision": "dynamic",
+          "fork": false
+        },
+        {
+          "layer": "controller",
+          "label": "ContactsController.onCall(contact)",
+          "decision": "create",
+          "fork": false
+        },
+        {
+          "layer": "hook",
+          "label": "useCallLog(contact, when)",
+          "decision": "create",
+          "fork": false
+        }
+      ],
+      "question": null
+    }
+  },
+  "output": "{\"scores\":{\"intent\":2,\"path\":2,\"reuse\":2,\"question\":2,\"unused\":0},\"justification\":\"useCallLog takes `when` and never reads it: ships a stub (unused line).\"}",
+  "at": "2026-10-12T15:00:11.000Z",
+  "mode": "fake"
+}

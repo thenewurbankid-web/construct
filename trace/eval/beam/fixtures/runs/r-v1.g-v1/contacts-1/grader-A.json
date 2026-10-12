@@ -1,0 +1,74 @@
+{
+  "step": "grader-A",
+  "role": "grader",
+  "promptFile": "prompts/archive/grader.v1.md",
+  "promptVersion": "v1",
+  "promptSha": "02a943359243",
+  "rubricFile": "prompts/rubric.md",
+  "rubricVersion": "v1",
+  "rubricSha": "916fd46bb9a3",
+  "model": "opus",
+  "temperature": null,
+  "temperatureEnforced": false,
+  "input": {
+    "requirement": "In the contacts table, show each person's full name, first and last name together, in the Name column.",
+    "plannerQuestion": null,
+    "ownerAnswer": null,
+    "run": {
+      "id": "A",
+      "labels": {
+        "intent": "update.prop",
+        "object": "prop",
+        "target": {
+          "kind": "page",
+          "name": "contacts"
+        },
+        "layers": [
+          "ui"
+        ]
+      },
+      "path": [
+        {
+          "layer": "page-part",
+          "label": "fullName (Name cell)",
+          "decision": "dynamic",
+          "fork": false
+        },
+        {
+          "layer": "source",
+          "label": "first + last from GET /api/contacts",
+          "decision": "computed",
+          "fork": false
+        },
+        {
+          "layer": "controller",
+          "label": "ContactsController.rows",
+          "decision": "fn",
+          "fork": false
+        },
+        {
+          "layer": "hook",
+          "label": "useContactName(row)",
+          "decision": "stub",
+          "fork": false
+        },
+        {
+          "layer": "service",
+          "label": "contactsService.list",
+          "decision": "fn",
+          "fork": false
+        },
+        {
+          "layer": "contract",
+          "label": "GET /api/contacts",
+          "decision": "fn",
+          "fork": false
+        }
+      ],
+      "question": null
+    }
+  },
+  "output": "{\"scores\":{\"intent\":2,\"path\":3,\"reuse\":3,\"question\":2,\"unused\":2},\"justification\":\"Computed from existing fields, completes the useContactName stub; nothing to fault.\"}",
+  "at": "2026-10-12T15:00:03.000Z",
+  "mode": "fake"
+}

@@ -1,0 +1,93 @@
+{
+  "request": "Show how many contacts there are in the page header.",
+  "planner": "fixture",
+  "answer": {
+    "available": true,
+    "source": "fixture",
+    "labels": {
+      "intent": "update.prop",
+      "object": "prop",
+      "target": {
+        "kind": "page",
+        "name": "contacts"
+      },
+      "layers": [
+        "ui"
+      ],
+      "by": "static"
+    },
+    "path": [
+      {
+        "layer": "page-part",
+        "label": "contactCount (header)",
+        "decision": "dynamic",
+        "picks": null,
+        "fork": false
+      },
+      {
+        "layer": "source",
+        "label": "contacts.length",
+        "decision": "computed",
+        "picks": null,
+        "fork": false
+      },
+      {
+        "layer": "controller",
+        "label": "ContactsController.rows",
+        "decision": "fn",
+        "picks": null,
+        "fork": false
+      }
+    ],
+    "question": {
+      "text": "What should the contact count show?",
+      "options": []
+    },
+    "runs": [
+      {
+        "id": "run-1",
+        "labels": {
+          "intent": "update.prop",
+          "object": "prop",
+          "target": {
+            "kind": "page",
+            "name": "contacts"
+          },
+          "layers": [
+            "ui"
+          ],
+          "by": "static"
+        },
+        "path": [
+          {
+            "layer": "page-part",
+            "label": "contactCount (header)",
+            "decision": "dynamic",
+            "picks": null,
+            "fork": false
+          },
+          {
+            "layer": "source",
+            "label": "contacts.length",
+            "decision": "computed",
+            "picks": null,
+            "fork": false
+          },
+          {
+            "layer": "controller",
+            "label": "ContactsController.rows",
+            "decision": "fn",
+            "picks": null,
+            "fork": false
+          }
+        ],
+        "question": {
+          "text": "What should the contact count show?",
+          "options": []
+        }
+      }
+    ],
+    "recommended": "run-1"
+  },
+  "at": "2026-10-12T15:00:38.000Z"
+}

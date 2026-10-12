@@ -30,6 +30,7 @@ import { answerIfContractsLocked, deployDirOf } from "./deploy/contracts-lock.mj
 import { demoRoute } from "./demo-server.mjs";
 import { createInspectorRoutes } from "./inspector/routes.mjs";
 import { createPagemapRoutes } from "./pagemap-routes.mjs";
+import { createBeamRoutes } from "./beam-routes.mjs";
 import { openBrowser } from "./platform.mjs";
 import { checkRequest, readJsonBody, sendError, HttpError } from "./http-guard.mjs";
 import { SYSTEM as MAIL_SYSTEM, modeOf, mailMessages, parseReply, tidy, checkDraft } from "./ai/mail-chat.mjs";
@@ -45,6 +46,7 @@ const inspectorRoute = createInspectorRoutes({ examplesDir, outRoot }); // the P
 // subframeDir is always the real checkout's subframe-app/ (never examplesDir's, which can be a test's temp copy with no
 // node_modules) — the real Subframe component library only exists under root/subframe-app, same as /api/preview below.
 const pagemapRoute = createPagemapRoutes({ examplesDir, subframeDir: path.join(root, "subframe-app") }); // the Page map (src/pagemap-routes.mjs)
+const beamRoute = createBeamRoutes({ examplesDir }); // #896 the planner eval page (src/beam-routes.mjs)
 const buildCtx = createBuildContext({ root, getPort: () => server.address()?.port ?? null });
 
 const listExamples = () =>
@@ -160,6 +162,7 @@ async function handle(req, res) {
   if (await demoRoute(req, res, url, { examplesDir, readBody, json, file, runs })) return;
   if (await inspectorRoute(req, res, url, { readBody, json, file })) return; // /inspector/*.mjs|css, /api/parts, /api/part*, /api/suggest
   if (await pagemapRoute(req, res, url, { readBody, json, file })) return; // /pagemap, /pagemap/*, /api/pagemap*
+  if (await beamRoute(req, res, url, { readBody, json, file })) return; // /beam, /ui/beam.mjs, /api/beam/*
   if (p === "/studio") return file(res, path.join(here, "ui", "index.html"), "text/html; charset=utf-8");
   if (p === "/ai/mail-chat.mjs") return file(res, path.join(here, "ai", "mail-chat.mjs"), "text/javascript");
   if (p === "/theme.css") { res.writeHead(200, { "content-type": "text/css; charset=utf-8", "cache-control": "no-store", "access-control-allow-origin": "*" }); return res.end(THEME_CSS); }

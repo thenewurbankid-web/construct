@@ -1,0 +1,81 @@
+{
+  "step": "requester-write",
+  "role": "requester",
+  "promptFile": "prompts/requester.md",
+  "promptVersion": "v1",
+  "promptSha": "b5f0685251a5",
+  "model": "opus",
+  "temperature": null,
+  "temperatureEnforced": false,
+  "input": {
+    "task": "write",
+    "app": {
+      "name": "contacts",
+      "route": "/contacts",
+      "about": "Build it yourself: a joined name, a value the controller provides, a value from an endpoint that doesn't exist yet, and your own button handler.",
+      "page": "// Designed page (static, as exported from the design tool).\n// Mark the dynamic parts:  data-dyn=\"name\"  ·  data-list=\"name\"  ·  data-action=\"verb\"\nexport default function DesignedPage() {\n  return (\n    <main className=\"page\">\n      <header className=\"header\">\n        <h1>Contacts</h1>\n        <p className=\"meta\">\n          <span data-dyn=\"contactCount\">3</span>\n          {\" contacts · directory updated \"}\n          <span data-dyn=\"directoryUpdated\">26 Sep 2026</span>\n        </p>\n      </header>\n\n      <form className=\"card form\" data-action=\"save\">\n        <input name=\"first\" placeholder=\"First name\" required />\n        <input name=\"last\" placeholder=\"Last name\" required />\n        <input name=\"email\" placeholder=\"Email\" required />\n        <input name=\"city\" placeholder=\"City\" required />\n        <button type=\"submit\" className=\"primary\">Save</button>\n        <button type=\"button\" data-action=\"cancel\">Cancel</button>\n      </form>\n\n      <table className=\"card table\">\n        <thead>\n          <tr>\n            <th>Name</th>\n            <th>Initials</th>\n            <th>Email</th>\n            <th>City</th>\n            <th></th>\n          </tr>\n        </thead>\n        <tbody data-list=\"contacts\">\n          <tr>\n            <td data-dyn=\"fullName\">Lena Kumar</td>\n            <td data-dyn=\"initials\">LK</td>\n            <td data-dyn=\"email\">lena@example.com</td>\n            <td data-dyn=\"city\">Pune</td>\n            <td className=\"actions\">\n              <button data-action=\"edit\">Edit</button>\n              <button data-action=\"call\">Call</button>\n              <button data-action=\"delete\" className=\"danger\">Delete</button>\n            </td>\n          </tr>\n          <tr>\n            <td data-dyn=\"fullName\">Arjun Rao</td>\n            <td data-dyn=\"initials\">AR</td>\n            <td data-dyn=\"email\">arjun@example.com</td>\n            <td data-dyn=\"city\">Delhi</td>\n            <td className=\"actions\">\n              <button data-action=\"edit\">Edit</button>\n              <button data-action=\"call\">Call</button>\n              <button data-action=\"delete\" className=\"danger\">Delete</button>\n            </td>\n          </tr>\n          <tr>\n            <td data-dyn=\"fullName\">Mia Shah</td>\n            <td data-dyn=\"initials\">MS</td>\n            <td data-dyn=\"email\">mia@example.com</td>\n            <td data-dyn=\"city\">Mumbai</td>\n            <td className=\"actions\">\n              <button data-action=\"edit\">Edit</button>\n              <button data-action=\"call\">Call</button>\n              <button data-action=\"delete\" className=\"danger\">Delete</button>\n            </td>\n          </tr>\n        </tbody>\n      </table>\n    </main>\n  );\n}\n",
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/api/contacts",
+          "response": [
+            {
+              "id": 1,
+              "first": "Lena",
+              "last": "Kumar",
+              "email": "lena@example.com",
+              "city": "Pune"
+            }
+          ]
+        },
+        {
+          "method": "POST",
+          "path": "/api/contacts",
+          "request": {
+            "first": "Ravi",
+            "last": "Nair",
+            "email": "ravi@example.com",
+            "city": "Chennai"
+          },
+          "response": {
+            "id": 4,
+            "first": "Ravi",
+            "last": "Nair",
+            "email": "ravi@example.com",
+            "city": "Chennai"
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/api/contacts/:id",
+          "request": {
+            "first": "Ravi",
+            "last": "Nair",
+            "email": "ravi@example.com",
+            "city": "Pune"
+          },
+          "response": {
+            "id": 1,
+            "first": "Lena",
+            "last": "Kumar",
+            "email": "lena@example.com",
+            "city": "Pune"
+          }
+        },
+        {
+          "method": "DELETE",
+          "path": "/api/contacts/:id"
+        }
+      ],
+      "story": "# Contacts — requirements\n\n## Goal\n\nAs someone browsing contacts, I want to see each contact's full name, initials and when the directory was last updated, and be able to start a call, so that I can quickly reach the right person.\n\n## Acceptance criteria\n\n- The Name column shows the contact's first name and last name together, separated by a space.\n- Initials are the first letter of the first name followed by the first letter of the last name, in capitals.\n- The header shows when the directory was last updated; the backend will add an endpoint for this later.\n- The Call button starts a phone call with a handler of our own; the backend has no call API.\n"
+    },
+    "index": 3,
+    "earlier": [
+      "In the contacts table, show each person's full name, first and last name together, in the Name column.",
+      "When I press Call on a contact, log that we called that person so I can see it later."
+    ]
+  },
+  "output": "{\"requirement\":\"Show how many contacts there are in the page header.\",\"notes\":\"The count of the list we load; it is already in the header design.\",\"gold\":{\"intent\":\"update.prop\",\"object\":\"prop\",\"target\":{\"kind\":\"page\",\"name\":\"contacts\"},\"layers\":[\"ui\"]}}",
+  "at": "2026-10-12T15:00:37.000Z",
+  "mode": "fake"
+}

@@ -1,0 +1,87 @@
+{
+  "request": "When I press Call on a contact, log that we called that person so I can see it later.",
+  "planner": "fixture",
+  "answer": {
+    "available": true,
+    "source": "fixture",
+    "labels": {
+      "intent": "update.handler",
+      "object": "handler",
+      "target": {
+        "kind": "page",
+        "name": "contacts"
+      },
+      "layers": [
+        "ui"
+      ],
+      "by": "static"
+    },
+    "path": [
+      {
+        "layer": "page-part",
+        "label": "call (row action)",
+        "decision": "dynamic",
+        "picks": null,
+        "fork": false
+      },
+      {
+        "layer": "controller",
+        "label": "ContactsController.onCall(contact)",
+        "decision": "create",
+        "picks": null,
+        "fork": false
+      },
+      {
+        "layer": "hook",
+        "label": "useCallLog(contact, when)",
+        "decision": "create",
+        "picks": null,
+        "fork": false
+      }
+    ],
+    "question": null,
+    "runs": [
+      {
+        "id": "run-1",
+        "labels": {
+          "intent": "update.handler",
+          "object": "handler",
+          "target": {
+            "kind": "page",
+            "name": "contacts"
+          },
+          "layers": [
+            "ui"
+          ],
+          "by": "static"
+        },
+        "path": [
+          {
+            "layer": "page-part",
+            "label": "call (row action)",
+            "decision": "dynamic",
+            "picks": null,
+            "fork": false
+          },
+          {
+            "layer": "controller",
+            "label": "ContactsController.onCall(contact)",
+            "decision": "create",
+            "picks": null,
+            "fork": false
+          },
+          {
+            "layer": "hook",
+            "label": "useCallLog(contact, when)",
+            "decision": "create",
+            "picks": null,
+            "fork": false
+          }
+        ],
+        "question": null
+      }
+    ],
+    "recommended": "run-1"
+  },
+  "at": "2026-10-12T15:00:10.000Z"
+}
