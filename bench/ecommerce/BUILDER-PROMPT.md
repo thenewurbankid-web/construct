@@ -54,21 +54,22 @@ editor on the project. Every call is recorded; a direct write counts as a human 
 - `line.addRoute {route, page}`: serve a feature page at a route (`"/"`, `"/cart"`, `"/products/:id"`).
 - `line.setLayoutSlot {slot, components}`: show library or feature components on every page, in the app shell's
   `header`, `nav` or `footer` slot.
-- When `add` refuses a step, its answer lists the choices, each with an id and the exact step it adds, the
-  recommended one first:
+- When Line refuses a step, it says what was wrong, the rule, and the choices, each with an id and the exact step it
+  adds, the recommended one first:
 
   ```
-  Refused (UNKNOWN_ITEM): "catalog/ListPage" is not a feature page file. ...
-  Pick one and send its id:
-    f1 (recommended): line.addRoute {"route":"/","page":"features/catalog/pages/ListPage.tsx"}
+  Refused (UNKNOWN_ITEM): "catalog/ListPage" is not a feature page file.
+  Rule: a step names a file or item that exists in the library or a feature.
+  Choices, recommended first:
+    f1: line.addRoute {"route":"/","page":"features/catalog/pages/ListPage.tsx"}
     f2: line.addRoute {"route":"/","page":"features/product/pages/DetailPage.tsx"}
-  To use one, send {"fix":"f1"}.
+  To apply one, send {"fix":"f1"}.
   ```
 
   Send the id you pick: `add --fix f1` (a tool call: `plan_add {"fix": "f1", "why": "..."}`). You may also write the
-  step out yourself as a normal `add`.
-- When `run-next` says a step needs a fix, add one of its `options[].step` with `"fixOf": "<step id>"` in the args, or
-  add `line.leaveAsIs {"stepId": "<step id>"}` to carry on without it. The plan does not run other steps until you do.
+  step out yourself as a normal `add`. When there is nothing to pick, it ends with "A correct call: ..." instead.
+- When `run-next` says a step needs a fix, its answer lists the choices the same way (its fixes, a retry, and leaving
+  it as it is); send `{"fix": "f1"}`. The plan does not run other steps until you do.
 
 Work in small steps: add one step, run it, read what Construct says, correct, go on. Client components need
 `'use client';` as their first statement after the `// @line-` comment lines.

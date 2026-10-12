@@ -15,9 +15,13 @@ async function serviceOf(ctx) {
   return services.get(ctx);
 }
 
-/** A refusal as a typed tool error with the plan's sentence; the plan's own code rides along. */
+/** A refusal as a typed tool error: its plain text (#885: what was wrong, the rule, the choices by ref or a correct
+ * call); the plan's own code and the choices' refs and steps ride along, so {"fix": "f1"} can be sent back. */
 function answer(r) {
-  if (r && r.ok === false) throw new ToolError('PLAN_REFUSED', String(r.sentence), { reason: String(r.code) });
+  if (r && r.ok === false) {
+    const fixes = Array.isArray(r.fixes) ? r.fixes.slice(0, 8).map((f) => ({ ref: f.ref, step: f.step })) : [];
+    throw new ToolError('PLAN_REFUSED', String(r.text ?? r.sentence), { reason: String(r.code), ...(fixes.length ? { fixes } : {}) });
+  }
   return r;
 }
 

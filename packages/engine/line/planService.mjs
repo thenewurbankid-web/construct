@@ -28,6 +28,7 @@ import { createAtomicPlanWriter, createStaticPlanApi, lockPlanApi } from './plan
 import { isInsideWorkspace, readWorkspace } from './workspace.mjs';
 import { createSessionTrace, refusalOfStep, matchFix, sourceOf, traceArgs } from './trace.mjs';
 import { memoryOf, memoryBy } from './memory/index.mjs';
+import { shapeRefusal } from './hints.mjs';
 
 /** One session per open project, for now. */
 export const SESSION_ID = 'ses-cockpit';
@@ -78,10 +79,41 @@ export function needsYouSentence(step) {
   const typed = (r.options ?? []).filter((o) => o.id === 'fix' && o.step);
   const retry = (r.options ?? []).some((o) => o.id === 'retry');
   if (typed.length) {
-    return `${head} Add ${typed.length === 1 ? 'its fix' : `one of its ${typed.length} fixes`} (options[].step) with args.fixOf "${step.id}"${retry ? ', try it again' : ''}, or leave it as it is with line.leaveAsIs {"stepId": "${step.id}"}.`;
+    return `${head} Add ${typed.length === 1 ? 'its fix' : `one of its ${typed.length} fixes`} (send {"fix":"f1"}; f1 is the recommended one)${retry ? ', try it again' : ''}, or leave it as it is with line.leaveAsIs {"stepId": "${step.id}"}.`;
   }
   const advice = (r.options ?? []).filter((o) => o.id === 'fix' && !o.step).map((o) => asSentence(o.sentence)).slice(0, 2).join(' ');
   return `${head} Construct has no fix it can make for this, so the person decides: ${advice ? `${lower(advice)} Then ` : ''}change the request and add it again${retry ? ', try the step again' : ''}, or leave it as it is with line.leaveAsIs {"stepId": "${step.id}"}.`;
+}
+
+/**
+ * #885: what a builder may send for a step that needs it, as typed fixes (recommended first): each fix Construct
+ * offered (with fixOf set), a retry when one is on offer, and leaving it as it is. Each gets a ref (f1..) like a
+ * refused add's fixes, so {"fix": "f1"} adds it.
+ * @param {any} step The step that needs the person.
+ * @returns {{id: string, sentence: string, step: {tool: string, args: any}, rank: number, ref: string}[]}
+ */
+export function choicesOf(step) {
+  const opts = step?.result?.options ?? [];
+  const out = opts.filter((o) => o.id === 'fix' && o.step && typeof o.step.tool === 'string')
+    .map((o) => ({ id: String(o.fixId ?? `fix:${o.step.tool}`), sentence: asSentence(o.sentence ?? `Add ${o.step.tool}.`), step: { tool: o.step.tool, args: { ...o.step.args, fixOf: step.id } } }));
+  if (opts.some((o) => o.id === 'retry') && !step.result?.stopped) out.push({ id: 'retry', sentence: `Try step ${step.n} again.`, step: { tool: step.tool, args: { retry: { of: step.id } } } });
+  out.push({ id: 'leave', sentence: `Leave step ${step.n} as it is and go on.`, step: { tool: 'line.leaveAsIs', args: { stepId: step.id } } });
+  return out.map((f, i) => ({ ...f, rank: i + 1, ref: `f${i + 1}` }));
+}
+
+/**
+ * #885: a refusal as every caller returns it: the planner's `sentence` stays, `text` is what a builder reads (wrong,
+ * rule, choices or a correct call, how to apply) and `hint` its parts (hints.mjs shapeRefusal).
+ * @param {any} r The refusal {ok: false, code, sentence, fixes?}.
+ * @param {any} [req] The request it answers ({tool, args, fix?}).
+ * @param {any[]} [fixes] The choices (default: r.fixes).
+ * @param {string[]} [tools] The tool names (UNKNOWN_TOOL's nearest).
+ * @returns {any}
+ */
+export function shapedRefusal(r, req, fixes, tools) {
+  const list = fixes ?? (Array.isArray(r.fixes) ? r.fixes : []);
+  const { text, ...hint } = shapeRefusal({ code: r.code, sentence: r.sentence, tool: req?.tool, args: req?.args, fix: req?.fix, answer: req?.answer, option: req?.option, fixes: list, tools });
+  return { ...r, ...(list.length ? { fixes: list } : {}), hint, text };
 }
 
 /**
@@ -301,12 +333,21 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
     const picked = want ? pickFix(want) : null;
     if (picked && !picked.ok) {
       if (tr) tr.record({ kind: 'refusal', by: String(by), tool: '(fix)', stepId: null, args: { fix: want }, source: sourceOf(picked.code), code: String(picked.code), sentence: picked.sentence, rules: [], files: [], fixes: [] });
-      return picked;
+      // #885: the choices on offer are shown again, so the next call can pick one.
+      return shapedRefusal(picked, { fix: want }, offeredNow());
     }
     // A picked fix is its step, sent as if with tool and args (a tool or args sent alongside are ignored).
     const req = picked?.ok ? { tool: picked.fix.step.tool, args: picked.fix.step.args, why: typeof req0?.why === 'string' && req0.why.trim() ? req0.why : picked.fix.sentence } : req0;
-    const r = await addStepInner(req, by);
-    offer(!r.ok && Array.isArray(/** @type {any} */ (r).fixes) ? /** @type {any} */ (r).fixes : []);
+    const r0 = await addStepInner(req, by);
+    let r = r0;
+    if (!r0.ok) {
+      const own = Array.isArray(/** @type {any} */ (r0).fixes) ? /** @type {any} */ (r0).fixes : [];
+      // A small model that sends a fix's ref or a path as the tool name ("fixes[0].step", "f1") meant the offered fix.
+      const meantFix = !own.length && r0.code === 'UNKNOWN_TOOL' && /fix|^f\d+$/i.test(String(req?.tool ?? '')) ? offeredNow() : [];
+      const { registry } = await init();
+      r = shapedRefusal(r0, req, own.length ? own : meantFix, registry.list().map((t) => t.name).filter((n) => n.startsWith('line.') && !n.startsWith('line.import.')));
+      if (!meantFix.length) offer(own);
+    } else offer([]);
     if (!tr) return r;
     const tool = typeof req?.tool === 'string' && req.tool ? req.tool : '(none)';
     const args = traceArgs(req?.args);
@@ -331,20 +372,20 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
   const approve = (stepId, by) => serial(async () => {
     const { api } = await init();
     const plan = await current(api);
-    if (!plan) return refusal('NO_PLAN', 'There is no plan yet, so there is nothing to approve');
-    if (typeof stepId !== 'string' || !stepId) return refusal('BAD_ARGS', 'Name the step to approve');
+    if (!plan) return shapedRefusal(refusal('NO_PLAN', 'There is no plan yet, so there is nothing to approve'));
+    if (typeof stepId !== 'string' || !stepId) return shapedRefusal(refusal('BAD_ARGS', 'Name the step to approve'), { tool: 'line.leaveAsIs', args: {} });
     const r = await withVersion(api, plan.id, (p) => api.plan_approve({ planId: p.id, version: p.version, by, stepId }));
     if (r.ok) {
       const tool = plan.steps.find((s) => s.id === stepId)?.tool;
       if (tool) remember('plan.step', { intent: tool, options: [tool], proposed: tool }, { kind: 'approved', chosen: tool, by: memoryBy(String(by)) });
     }
-    return r.ok ? view(r.message) : fromPlan(r);
+    return r.ok ? view(r.message) : shapedRefusal(fromPlan(r));
   });
 
   const runNextInner = async (by, stepId) => {
     const { api } = await init();
     const plan = await current(api);
-    if (!plan) return refusal('NO_PLAN', 'There is no plan yet, so nothing can run');
+    if (!plan) return shapedRefusal(refusal('NO_PLAN', 'There is no plan yet, so nothing can run'));
     const st = await api.plan_status({ planId: plan.id });
     let nextId = typeof stepId === 'string' && stepId ? stepId : st.ok ? st.state?.next : null;
     const blocked = plan.steps.find((s) => needsYou(plan, s));
@@ -357,9 +398,13 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
     }
     const next = plan.steps.find((s) => s.id === nextId);
     const resolves = answers(next);
-    if (blocked && !resolves) return refusal('NEEDS_YOU', needsYouSentence(blocked));
+    if (blocked && !resolves) {
+      const choices = choicesOf(blocked);
+      offer(choices);
+      return shapedRefusal(refusal('NEEDS_YOU', needsYouSentence(blocked)), { tool: blocked.tool, args: {} }, choices);
+    }
     const r = await withVersion(api, plan.id, (p) => api.plan_run_next({ planId: p.id, version: p.version, by, ...(nextId ? { stepId: nextId } : {}) }));
-    if (!r.ok) return fromPlan(r);
+    if (!r.ok) return shapedRefusal(fromPlan(r));
     const recheck = next?.args?.fixOf ? await recheckAfterFix(api, String(next.args.fixOf), next.id, by) : null;
     const out = await view(r.message);
     return recheck ? { ...out, recheck } : out;
@@ -408,7 +453,16 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
     const before = tr || rec ? await current((await init()).api) : null;
     const open = new Set((before?.steps ?? []).filter((s) => s.status === 'planned' || s.status === 'approved').map((s) => s.id));
     const state = rec && open.size ? rec.snapshot() : null;
-    const r = await runNextInner(by, stepId);
+    const r0 = await runNextInner(by, stepId);
+    // #885: a step Construct refused when it ran offers its choices like a refused add: {"fix": "f1"} adds one.
+    let r = r0;
+    const stuck = r0.ok ? r0.steps.find((s) => open.has(s.id) && (s.state === 'needs-fix' || s.state === 'needs-you')) : null;
+    if (stuck) {
+      const choices = choicesOf(stuck);
+      offer(choices);
+      const { text, ...hint } = shapeRefusal({ code: stuck.state === 'needs-fix' ? 'NEEDS_FIX' : 'NEEDS_YOU', sentence: stuck.sentence, tool: stuck.tool, args: stuck.args, fixes: choices });
+      r = { ...r0, needs: { stepId: stuck.id, fixes: choices, hint, text } };
+    }
     if (rec && state && r.ok) await recordFinished(state, open);
     if (!tr) return r;
     if (!r.ok) {

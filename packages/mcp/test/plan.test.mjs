@@ -36,7 +36,7 @@ test('plan over MCP: the agent adds Base on, cannot run or approve it; after the
   const early = await call('plan_run_next', {});
   assert.equal(early.isError, true);
   assert.equal(early.body.error.code, 'PLAN_REFUSED');
-  assert.match(early.body.error.message, /waits for a person to approve it\.$/);
+  assert.match(early.body.error.message, /waits for a person to approve it\.\nRule: /);
   assert.equal(fs.existsSync(path.join(root, BADGE_FILE)), false, 'nothing is written before a person approves');
 
   const refused = await call('plan_add_step', { tool: 'line.baseOn', args: { ...BADGE, name: 'OrderButton' } });

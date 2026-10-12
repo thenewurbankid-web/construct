@@ -245,7 +245,8 @@ test('a change Construct refuses needs a fix: the recommended fix is one that wo
   assert.equal((await svc.addStep({ tool: 'line.project', args: {} }, 'agent')).ok, true);
   const held = await svc.runNext('agent');
   assert.equal(held.code, 'NEEDS_YOU');
-  assert.match(held.sentence, /Add (its fix|one of its \d+ fixes) \(options\[\]\.step\) with args\.fixOf/);
+  assert.match(held.sentence, /Add (its fix|one of its \d+ fixes) \(send \{"fix":"f1"\}; f1 is the recommended one\)/);
+  assert.match(held.text, /\n {2}f1: .*"fixOf"/);
   const fixStep = await svc.addStep({ tool: fix.step.tool, args: { ...fix.step.args, fixOf: added.stepId } }, 'agent');
   assert.equal(fixStep.ok, true, fixStep.sentence);
   assert.equal((await svc.approve(fixStep.stepId, 'agent')).ok, false, 'an agent still cannot approve the fix');

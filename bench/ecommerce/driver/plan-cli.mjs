@@ -38,29 +38,9 @@ const MAX_READ = 64 * 1024;
 
 /** One plain sentence (or, for a refusal with choices, plain lines: spaces collapse inside a line, indents stay). */
 const sentence = (s) => {
-  const t = String(s ?? '').trim().split('\n').map((l) => l.replace(/(\S)[ \t]+/g, '$1 ').replace(/^[ \t]+/, (m) => (m.length ? '  ' : '')).trimEnd()).filter(Boolean).join('\n');
-  return /[.?!]$/.test(t) ? t : `${t}.`;
+  const t = String(s ?? '').trim().split('\n').map((l) => l.replace(/(\S)[ \t]+/g, '$1 ').trimEnd()).filter(Boolean).join('\n');
+  return /[.?!}\]]$/.test(t) ? t : `${t}.`;
 };
-
-/** A step as a reader sends it: the tool and its args as JSON, a long string value (a file's code) shortened. */
-const stepText = (step) => `${step.tool} ${JSON.stringify(step.args ?? {}, (_k, v) => (typeof v === 'string' && v.length > 120 ? `<${v.split('\n').length} lines>` : v))}`;
-const SHOWN_FIXES = 8;
-
-/**
- * pilot-qwen-7b-r2 R1 (owner's shape): a refusal with typed fixes is self-contained. What was wrong and the rule (the
- * planner's sentence), then each choice with its ref and the exact step it sends, recommended first, then the one way
- * to apply it. Nothing to dereference: no JSON paths.
- * @param {string} code @param {string} said The planner's sentence.
- * @param {{ref: string, sentence?: string, step: {tool: string, args?: object}, recommended?: boolean}[]} fixes
- * @returns {string}
- */
-export function refusalText(code, said, fixes) {
-  const head = `Refused (${code}): ${sentence(said)}`;
-  if (!fixes.length) return head;
-  const lines = fixes.slice(0, SHOWN_FIXES).map((f) => `  ${f.ref}${f.recommended ? ' (recommended)' : ''}: ${stepText(f.step)}${f.sentence ? ` (${String(f.sentence).replace(/[.?!]$/, '')})` : ''}`);
-  if (fixes.length > SHOWN_FIXES) lines.push(`  ... and ${fixes.length - SHOWN_FIXES} more, ${fixes[SHOWN_FIXES].ref} to ${fixes.at(-1)?.ref}`);
-  return [head, 'Pick one and send its id:', ...lines, `To use one, send {"fix":"${fixes[0].ref}"}.`].join('\n');
-}
 
 /** A project-relative path that stays inside the project, or null. */
 function inside(root, rel) {
@@ -107,10 +87,11 @@ export function createPlanCli({ project, log, builder = 'unknown' }) {
       else { try { args = json ? JSON.parse(json) : {}; } catch (e) { return { ok: false, code: 'BAD_JSON', sentence: `The arguments are not JSON: ${/** @type {Error} */ (e).message}` }; } }
       const r = /** @type {any} */ (await svc.addStep(fix ? { fix, why } : { tool, args, why }, 'agent'));
       if (!r.ok) {
-        // A refusal with typed fixes: each has a ref (f1 is the recommended one); `add --fix f1` (plan_add {"fix": "f1"})
-        // adds its step. Writing the step out (add <tool> '<args>') still works.
-        const fixes = Array.isArray(r.fixes) ? r.fixes.map((f) => ({ ref: f.ref, id: f.id, sentence: f.sentence, step: f.step, ...(f.rank === 1 ? { recommended: true } : {}) })) : [];
-        return { ok: false, code: r.code, sentence: fixes.length ? refusalText(r.code, r.sentence, fixes) : r.sentence, ...(r.detail ? { detail: r.detail } : {}), ...(fixes.length ? { fixes } : {}) };
+        // #885: the plan service shapes every refusal (hints.mjs): what was wrong, the rule, the choices with their refs
+        // (f1 is the recommended one; `add --fix f1`, plan_add {"fix": "f1"}) or a correct call. Writing the step out
+        // (add <tool> '<args>') still works.
+        const fixes = Array.isArray(r.fixes) ? r.fixes.map((f, i) => ({ ref: f.ref, id: f.id, sentence: f.sentence, step: f.step, ...(i === 0 ? { recommended: true } : {}), ...(f.why ? { why: f.why } : {}), ...(f.effect ? { effect: f.effect } : {}), ...(f.context?.length ? { context: f.context } : {}) })) : [];
+        return { ok: false, code: r.code, sentence: r.text ?? r.sentence, ...(r.detail ? { detail: r.detail } : {}), ...(fixes.length ? { fixes } : {}) };
       }
       const step = r.steps.find((s) => s.id === r.stepId);
       if (step?.state === 'waiting') {
@@ -125,7 +106,7 @@ export function createPlanCli({ project, log, builder = 'unknown' }) {
       const before = await svc.view();
       const open = new Set(before.steps.filter((s) => s.state === 'ready' || s.state === 'waiting').map((s) => s.id));
       const r = /** @type {any} */ (await svc.runNext('agent'));
-      if (!r.ok) return { ok: false, code: r.code, sentence: r.sentence };
+      if (!r.ok) return { ok: false, code: r.code, sentence: r.text ?? r.sentence, ...(Array.isArray(r.fixes) && r.fixes.length ? { fixes: r.fixes.map((f) => ({ ref: f.ref, id: f.id, sentence: f.sentence, step: f.step })) } : {}) };
       const ran = r.steps.find((s) => open.has(s.id) && s.state !== 'ready' && s.state !== 'waiting');
       if (!ran) return { ok: true, sentence: sentence(r.message ?? 'Nothing ran.') };
       const res = ran.result ?? {};
@@ -134,9 +115,9 @@ export function createPlanCli({ project, log, builder = 'unknown' }) {
       return {
         ok: true, stepId: ran.id, n: ran.n, tool: ran.tool, state: ran.state, landed: ran.state === 'done' && res.needsYou !== true,
         files: res.apply?.files ?? [], checks: res.checks ?? [], findings, options, ...(r.recheck ? { recheck: r.recheck } : {}),
-        sentence: ran.state === 'done' ? sentence(ran.sentence)
-          : options.some((o) => o.step) ? `${sentence(ran.sentence)} Add one of options[].step with "fixOf": "${ran.id}" in its args, or add line.leaveAsIs {"stepId": "${ran.id}"} to carry on.`
-            : `${sentence(ran.sentence)} Construct offers no typed fix for this, so add line.leaveAsIs {"stepId": "${ran.id}"} and then a corrected step.`,
+        // #885: a step that needs a fix offers its choices like a refused add (r.needs: refs f1.., {"fix": "f1"}).
+        ...(r.needs?.stepId === ran.id ? { fixes: r.needs.fixes.map((f) => ({ ref: f.ref, id: f.id, sentence: f.sentence, step: f.step })) } : {}),
+        sentence: r.needs?.stepId === ran.id ? r.needs.text : sentence(ran.sentence),
       };
     },
     async findings() {
