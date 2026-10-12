@@ -11,7 +11,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { classifyTypeErrors } from '@line/construct-core/verify';
 import { checkChangeForMove } from '@line/construct-core/check-change';
-import { moduleSpecifiers } from '@construct/ast/semantic-diff';
+import { moduleSpecifiers, semanticDiffSplit } from '@construct/ast/semantic-diff';
 import { runTypesCheck } from '../verifyRunner.mjs';
 import { measure, loopChecks } from './importLoop.mjs';
 
@@ -299,6 +299,13 @@ export function checkBehaviour(projectRoot, diff, sources, folder = '') {
       return { from, to, verdict: /** @type {const} */ ('cant-tell'), detail: String(/** @type {any} */ (e)?.message ?? e) };
     }
   };
+  // A split (an extract step moved some of a file's logic into a file of its own and left the rest): the old file's
+  // declarations now live in it and in `to` together, and the old module is still there for its other users.
+  const split = (from, to) => {
+    const read = (f) => fs.readFileSync(path.join(projectRoot, f), 'utf8');
+    const r = semanticDiffSplit(sources[from], [read(from), read(to)]);
+    return { from, to, verdict: r.verdict, ...(r.reason ? { detail: r.reason } : {}) };
+  };
   // The first candidate that behaves the same is where the file went (a thin wrapper beside it is new code, not the move).
   return tried.filter((t) => typeof sources?.[t.from] === 'string').map(({ from, candidates }) => {
     let first = null;
@@ -307,6 +314,10 @@ export function checkBehaviour(projectRoot, diff, sources, folder = '') {
       const r = one(from, to);
       first ??= r;
       if (r.verdict === 'same-behaviour') return r;
+      if (to !== from && fs.existsSync(path.join(projectRoot, from))) {
+        const s = split(from, to);
+        if (s.verdict === 'same-behaviour') { moves[moduleOf(from)] = moduleOf(from); return s; }
+      }
     }
     moves[moduleOf(from)] = moduleOf(first.to);
     return first;

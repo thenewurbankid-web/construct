@@ -20,7 +20,7 @@ import { createMockLogic } from '../packages/engine/line/importLoopMock.mjs';
 import { createMockImportAgentService, createMockPlanService } from '../packages/engine/line/mockImportAgent.mjs';
 import { readImportLoopRecords } from '../packages/engine/line/records.mjs';
 import { createLinePlanService } from '../packages/engine/line/planService.mjs';
-import { verifyImport, lineBaseline } from '../packages/engine/line/importVerify.mjs';
+import { verifyImport, lineBaseline, checkBehaviour } from '../packages/engine/line/importVerify.mjs';
 import { checkChangeForMove } from '../packages/core/check-change.mjs';
 import { semanticDiffMapped } from '../packages/ast/semanticDiff.mjs';
 
@@ -267,6 +267,22 @@ test('path-mapped check-change: a moved pure function whose imports were rewritt
   write('src/calc/library/domain/add.ts', 'export const add = (a: number, b: number) => b + a;\n');
   const equivalent = checkChangeForMove(dir, 'src/calc/add.ts', 'src/calc/library/domain/add.ts', { beforeSource: 'export const add = (a: number, b: number) => a + b;\n', moves: {} });
   assert.deepEqual([equivalent.verdict, equivalent.operations], ['same-behaviour', ['equivalent']]);
+});
+
+// Found on contact-manager-ui (2026-10-12): extractService moved fetchData out of hooks.ts, which keeps its hooks; the
+// whole old hooks.ts was compared with the new fetchData.ts alone and the step stopped as "behaves differently".
+test('behaviour check: an extract step that splits a file (part moved, the rest stays) is same-behaviour; a body changed on the way is not', () => {
+  const dir = makeTempDir('construct-line-check-split-');
+  const write = (rel, text) => { fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true }); fs.writeFileSync(path.join(dir, rel), text); };
+  const before = "import { useState } from 'react';\nexport function useThing() { const [d, setD] = useState(null); fetchData('/x', setD); return d; }\nfunction fetchData(url, set) { fetch(url).then((r) => r.json()).then(set); }\n";
+  write('src/app/hooks.ts', "import { useState } from 'react';\nimport { fetchData } from '../features/home/services/fetchData';\nexport function useThing() { const [d, setD] = useState(null); fetchData('/x', setD); return d; }\n");
+  write('src/features/home/services/fetchData.ts', '// Line Import (line.import.extractService): moved here from app/hooks.ts.\n\nexport function fetchData(url, set) { fetch(url).then((r) => r.json()).then(set); }\n');
+  const diff = { moved: [{ from: { file: 'src/app/hooks.ts', kind: 'io' }, to: { file: 'src/features/home/services/fetchData.ts' } }] };
+  const [same] = checkBehaviour(dir, diff, { 'src/app/hooks.ts': before }, 'src');
+  assert.deepEqual([same.from, same.to, same.verdict], ['src/app/hooks.ts', 'src/features/home/services/fetchData.ts', 'same-behaviour']);
+  write('src/features/home/services/fetchData.ts', 'export function fetchData(url, set) { fetch(url).then((r) => r.text()).then(set); }\n');
+  const [changed] = checkBehaviour(dir, diff, { 'src/app/hooks.ts': before }, 'src');
+  assert.equal(changed.verdict, 'changed');
 });
 
 test('compareLogicMaps: a move is kept (moved), a lost unit is missing, an edited one is changed', () => {
