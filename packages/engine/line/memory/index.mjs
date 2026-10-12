@@ -78,12 +78,4 @@ export function draftContext(d) {
   return { intent: d.labels.intent.id, structure: d.from?.feature ?? d.from?.project ?? null, slots, neighbourhood };
 }
 
-/** Plan feedback (planService and the Import agent's edits) -> the memory outcome kind. */
-export const PLAN_EVENT_KIND = Object.freeze({ approve: 'approved', 'approve-all': 'approved', skip: 'skipped', move: 'reordered', edit: 'edited', refusal: 'refused', 'fix-picked': 'fix-picked' });
-
-/**
- * Who did it, as memory says it ('ui' is a person in Cockpit; anything else is an agent; 'line' is Line itself).
- * @param {string} by
- * @returns {'person'|'agent'|'line'}
- */
-export const memoryBy = (by) => (by === 'ui' || by === 'owner' || by === 'person' ? 'person' : by === 'line' ? 'line' : 'agent');
+// PLAN_EVENT_KIND and memoryBy live in contract.mjs (pure, so the Import agent can use them in a browser bundle).

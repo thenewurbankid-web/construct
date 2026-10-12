@@ -10,6 +10,7 @@ import { snapshotFolder, rollbackFolder } from './importUndo.mjs';
 import { createImportAgent } from './importAgent.mjs';
 import { createLogicOnDisk, writeFolderFile } from './importLoopDisk.mjs';
 import { createRepairer } from './repair.mjs';
+import { memoryOf } from './memory/index.mjs';
 
 export { createImportAgent, nextState, decideWith, agentView, MAX_ROUNDS } from './importAgent.mjs';
 export { snapshotFolder, rollbackFolder, IMPORT_UNDO_FILE } from './importUndo.mjs';
@@ -78,6 +79,8 @@ export function createImportAgentOnDisk(o) {
     rollback: rollbackFolder,
     // im2: a refused fix jev picked gets one repair by the local 1.5B (Ollama down: the person decides, as before).
     repair: createRepairer(o.root, { where: 'import' }),
+    // im3: plan edits are remembered in the project's memory (the browser mock has none).
+    memory: memoryOf(o.root),
     ...o,
   });
 }

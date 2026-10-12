@@ -138,3 +138,13 @@ export function assertMemoryExport(x) {
     recs.forEach((r) => { assertMemoryRecord(r); if (r.step !== step) fail(`Memory record ${r.id}`, `belong to ${step}`); });
   }
 }
+
+/** Plan feedback (planService and the Import agent's edits) -> the memory outcome kind. */
+export const PLAN_EVENT_KIND = Object.freeze({ approve: 'approved', 'approve-all': 'approved', skip: 'skipped', move: 'reordered', edit: 'edited', refusal: 'refused', 'fix-picked': 'fix-picked' });
+
+/**
+ * Who did it, as memory says it ('ui' is a person in Cockpit; anything else is an agent; 'line' is Line itself).
+ * @param {string} by
+ * @returns {'person'|'agent'|'line'}
+ */
+export const memoryBy = (by) => (by === 'ui' || by === 'owner' || by === 'person' ? 'person' : by === 'line' ? 'line' : 'agent');
