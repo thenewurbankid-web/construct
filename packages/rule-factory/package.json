@@ -1,11 +1,12 @@
 {
   "name": "@line/rule-factory",
   "version": "0.1.0",
-  "description": "Line's static rule factory (scaffold): collects where static code missed, from plan feedback and validate findings, and reports the share of decisions static code made per step. No model calls.",
+  "description": "Line's static rule factory: collects where static code missed (plan feedback, validate findings, decision traces, the reason ledger, the drafter on Train Line's train split), labels the misses (jev, else rules; a person or Claude offline), proposes static rules and keeps only those that pass the held-out accuracy gate. Applied by a person, through Construct's writer.",
   "type": "module",
   "license": "MIT",
   "private": true,
   "dependencies": {
+    "@line/construct-core": "^0.9.0",
     "@line/construct-engine": "^0.9.0"
   },
   "bin": {
@@ -14,6 +15,12 @@
   "exports": {
     "./contract": "./contract.mjs",
     "./mock": "./mock.mjs",
-    "./collect": "./collect.mjs"
+    "./collect": "./collect.mjs",
+    "./label": "./label.mjs",
+    "./propose": "./propose.mjs",
+    "./gate": "./gate.mjs",
+    "./apply": "./apply.mjs",
+    "./factory": "./factory.mjs",
+    "./drafter-misses": "./drafter-misses.mjs"
   }
 }

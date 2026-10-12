@@ -1,0 +1,4 @@
+{
+  "note": "cs2: the static rules the rule factory proposed, the accuracy gate passed and a person applied (construct line rules apply), each with its own test case. Written only through Construct's writer; packages/rule-factory/test/applied.test.mjs keeps re-checking that every one is still in its rule file.",
+  "proposals": []
+}

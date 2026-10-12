@@ -25,6 +25,17 @@
       "ladder": { "static": { "target": 1 }, "options": { "on": true, "target": 0.8 }, "review": { "on": false, "target": 0.7 }, "measured": "2026-10-11 qwen2.5-coder:1.5b: no feedback 6/10, refusal sentence 8/10, sentence and typed fixes 9/10" }
     },
     {
+      "step": "construct.label-miss",
+      "label": "Labels where static code missed, offline: picks the right option for each miss, or none fits, so new static rules can be proposed.",
+      "kind": "decide",
+      "provider": "ollama",
+      "maxTokens": 800,
+      "source": "construct",
+      "guidance": "Static code missed this decision. Pick the option that was right, or none fits when no option is right.",
+      "question": "Which option was right?",
+      "ladder": { "static": { "target": 1 }, "options": { "on": true, "target": 0.8 }, "review": { "on": false, "target": 0.7 }, "measured": null }
+    },
+    {
       "step": "trace.choose",
       "label": "Picks where one part of a page gets its data from, citing a fact that settles it.",
       "kind": "decide",
