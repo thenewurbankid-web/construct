@@ -32,7 +32,7 @@ const call = (name, args) => callTool(session.client, name, args);
 
 test('the tool list is the nine read-only tools plus the three plan tools, the Import agent and Train Line tools (no approve), each with a JSON schema and no path argument', async () => {
   const { tools } = await session.client.listTools();
-  assert.deepEqual(tools.map((t) => t.name), [...NAMES, 'plan_status', 'plan_add_step', 'plan_run_next', 'import_status', 'import_start', 'import_plan_edit', 'import_answer', 'import_resume', 'train_propose_case', 'train_list_cases', 'train_run_eval']); // ci2 Import agent, Train Line
+  assert.deepEqual(tools.map((t) => t.name), [...NAMES, 'plan_status', 'plan_seed', 'plan_add_step', 'plan_run_next', 'import_status', 'import_start', 'import_plan_edit', 'import_answer', 'import_resume', 'train_propose_case', 'train_list_cases', 'train_run_eval']); // ci2 Import agent, Train Line
   assert.deepEqual(TOOLS.map((t) => t.name), NAMES);
   for (const tool of tools) {
     assert.equal(tool.inputSchema.type, 'object', tool.name);

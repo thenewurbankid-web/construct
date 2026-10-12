@@ -6,6 +6,11 @@
 //
 //   node bench/ecommerce/driver/qwen-agent.mjs --project <dir> [--arm line|plain] [--builder qwen-7b]
 //        [--model qwen2.5-coder:7b] [--max-turns 200] [--max-minutes 90] [--num-ctx 16384] [--seed <n>] [--ollama http://127.0.0.1:11434]
+//        [--seed-plan]
+//
+// --seed-plan (#914, Line arm, off by default): before the model's first turn, plan-cli `seed` adds and runs the steps a
+// block can decide from SPEC.md (features, wired pages, routes; specSteps.mjs), so the model starts from a routed, wired
+// app and fills the gaps. What was seeded is in calls.jsonl ({kind: "seed"}), turns.jsonl and the first message.
 //
 // Logs, per turn: tokens in (prompt_eval_count) and out (eval_count), wall time, tool calls and their outcomes, to
 // <run>/logs/turns.jsonl and bench/ecommerce/results/<builder>.tokens.jsonl. Stops at the budget, when the model calls
@@ -22,13 +27,13 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const bench = path.join(here, '..');
 
 export function flags(argv) {
-  const o = { seed: undefined, project: process.env.BENCH_PROJECT, arm: 'line', builder: '', model: 'qwen2.5-coder:7b', maxTurns: 200, maxMinutes: 90, numCtx: 16384, maxRepeatRefusals: 10, ollama: process.env.OLLAMA_HOST ?? 'http://127.0.0.1:11434', log: process.env.BENCH_LOG };
+  const o = { seed: undefined, seedPlan: false, project: process.env.BENCH_PROJECT, arm: 'line', builder: '', model: 'qwen2.5-coder:7b', maxTurns: 200, maxMinutes: 90, numCtx: 16384, maxRepeatRefusals: 10, ollama: process.env.OLLAMA_HOST ?? 'http://127.0.0.1:11434', log: process.env.BENCH_LOG };
   for (let i = 0; i < argv.length; i += 1) {
     const k = argv[i]; const v = argv[i + 1];
     if (k === '--project') { o.project = v; i += 1; } else if (k === '--arm') { o.arm = v; i += 1; } else if (k === '--builder') { o.builder = v; i += 1; }
     else if (k === '--model') { o.model = v; i += 1; } else if (k === '--max-turns') { o.maxTurns = Number(v); i += 1; } else if (k === '--max-repeat-refusals') { o.maxRepeatRefusals = Number(v); i += 1; } else if (k === '--max-minutes') { o.maxMinutes = Number(v); i += 1; }
     else if (k === '--num-ctx') { o.numCtx = Number(v); i += 1; } else if (k === '--ollama') { o.ollama = v; i += 1; } else if (k === '--log') { o.log = v; i += 1; }
-    else if (k === '--seed') { o.seed = Number(v); i += 1; }
+    else if (k === '--seed') { o.seed = Number(v); i += 1; } else if (k === '--seed-plan') o.seedPlan = true;
   }
   if (!o.builder) o.builder = o.arm === 'plain' ? 'qwen-7b-plain' : 'qwen-7b';
   return o;
@@ -159,6 +164,19 @@ export function toModel(out) {
   return rest;
 }
 
+/**
+ * #914: run plan-cli `seed` and say what it did in the model's first message: the seeded steps landed (or where it
+ * stopped) and the open work that is left, so the model starts from the routed, wired app.
+ * @param {{run: (cmd: string, rest?: string[]) => Promise<any>}} cli A plan-cli session.
+ * @returns {Promise<{ok: boolean, code?: string, steps: any[], sentence: string, content: string}>}
+ */
+export async function seedFirst(cli) {
+  const out = await cli.run('seed');
+  const content = ['Line already ran the steps a block can decide from the spec; continue from there.', out.sentence,
+    'Start building the rest. Use only your tools. Call finish when every acceptance point is done or you cannot make more progress.'].join('\n');
+  return { ok: out.ok === true, ...(out.code ? { code: out.code } : {}), steps: out.steps ?? [], sentence: String(out.sentence ?? ''), content };
+}
+
 async function main() {
   const o = flags(process.argv.slice(2));
   if (!o.project) { console.error('Set --project or BENCH_PROJECT.'); process.exit(2); }
@@ -172,6 +190,12 @@ async function main() {
   const write = (f, e) => fs.appendFileSync(f, `${JSON.stringify(e)}\n`);
   const system = { role: 'system', content: systemPrompt(o.arm) };
   const first = { role: 'user', content: 'Start building. Use only your tools. Call finish when every acceptance point is done or you cannot make more progress.' };
+  if (o.seedPlan && o.arm === 'line') {
+    const seeded = await seedFirst(/** @type {any} */ (cli));
+    write(turnsFile, { kind: 'seed', at: new Date().toISOString(), ok: seeded.ok, code: seeded.code ?? null, landed: (seeded.steps ?? []).filter((s) => s.landed).length, steps: (seeded.steps ?? []).map((s) => ({ tool: s.tool, landed: s.landed, point: s.point ?? null })) });
+    first.content = seeded.content;
+    console.log(`seed: ${seeded.sentence.split('\n')[0]}`);
+  }
   /** @type {any[]} */
   let history = [];
   const t0 = Date.now();

@@ -11,7 +11,7 @@ export { LIMITS, ERROR_CODES, ToolError, DEFAULT_RATE_PER_MINUTE, MAX_RATE_PER_M
 export const USAGE = 'construct-mcp (mock): Construct\'s blocks as read-only, plan-only MCP tools over stdio.';
 /** The mock's one tool. */
 export const TOOLS = Object.freeze([{ name: 'construct_mock', title: 'Mock tool', description: 'Answers what the mock was given.' }]);
-/** The plan tools (plan_status, plan_add_step, plan_run_next) as the real server lists them; the mock lists none. */
+/** The plan tools (plan_status, plan_seed, plan_add_step, plan_run_next) as the real server lists them; the mock lists none. */
 export const PLAN_TOOLS = Object.freeze([]);
 /** The Import agent's tools (ci2) as the real server lists them; the mock lists none. */
 export const IMPORT_AGENT_TOOLS = Object.freeze([]);

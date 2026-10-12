@@ -131,8 +131,13 @@ function newPageFixes(root, asked) {
   }))).slice(0, 6);
 }
 
-/** The library page a new page is based on: a route with a parameter or a "Detail" name -> detail, a form-ish name -> form, else list. */
-function baseRank(route, name) {
+/**
+ * The library page a new page is based on: a route with a parameter or a "Detail" name -> detail, a form-ish name -> form,
+ * else list. #914: specSteps.mjs picks a seeded page's base with it.
+ * @param {string} route The route the page is served at. @param {string} name The page's name.
+ * @returns {(id: string) => number} A rank for a library page id ("pages/DetailPage"): 0 fits, 1 does not.
+ */
+export function baseRank(route, name) {
   const want = /[:[]/.test(String(route)) || /Detail/.test(name) ? 'Detail' : /Form|Edit|New|Create|Checkout/.test(name) ? 'Form' : 'List';
   return (id) => (id.split('/')[1].startsWith(want) ? 0 : 1);
 }
