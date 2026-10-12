@@ -4,14 +4,18 @@ import { useCallback, useEffect, useReducer, type Dispatch } from 'react';
 import { describeError } from '@/features/states';
 import { fetchProjectStatus, initProject, openProject } from '../services/ProjectGate';
 import { initialProjectGateState, projectGateReducer, type ProjectGateAction } from '../workflows/ProjectGate';
+import { searchAfterOpen } from '../domain/OpenProjectTabUrl';
 
 /** #365: open a folder from the workspace. On success the page reloads, so every screen (and the top-bar
- * switcher and per-project layout memory) re-reads the new project, exactly as the top-bar switcher does. */
+ * switcher and per-project layout memory) re-reads the new project, exactly as the top-bar switcher does. The reload
+ * leaves the Open-a-project screen's own place (`?section=`, `?tab=`) out of the address. */
 async function openFolder(dispatch: Dispatch<ProjectGateAction>, dir: string) {
   dispatch({ type: 'OPEN_START' });
   const result = await openProject(dir);
-  if (result.ok) window.location.reload();
-  else dispatch({ type: 'OPEN_ERROR', error: result.error });
+  if (!result.ok) return dispatch({ type: 'OPEN_ERROR', error: result.error });
+  const search = searchAfterOpen(window.location.search);
+  if (search === window.location.search) window.location.reload();
+  else window.location.replace(`${window.location.pathname}${search}${window.location.hash}`);
 }
 
 /** Fetches project status once on mount and exposes the init-here and open-a-project actions —

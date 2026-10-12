@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { OPEN_PROJECT_TABS, tabForKey } from './OpenProjectTabs.ts';
-import { searchWithTab, shownTab, tabFromSearch } from './OpenProjectTabUrl.ts';
+import { searchAfterOpen, searchWithTab, shownTab, tabFromSearch } from './OpenProjectTabUrl.ts';
 
 test('one tab per workflow, in plain words', () => {
   assert.deepEqual(OPEN_PROJECT_TABS.map((t) => t.label), ['Your projects', 'New project', 'From GitHub']);
@@ -14,6 +14,13 @@ test('the tab sits in the URL; an unknown one is ignored and the rest of the que
   assert.equal(tabFromSearch(''), null);
   assert.equal(searchWithTab('?x=1', 'new'), '?x=1&tab=new');
   assert.equal(searchWithTab('?tab=new', 'projects'), '?tab=projects');
+});
+
+test('once a project opens, the Open-a-project screen\'s own place leaves the address; the rest stays', () => {
+  assert.equal(searchAfterOpen('?section=projects'), '');
+  assert.equal(searchAfterOpen('?tab=new&section=new'), '');
+  assert.equal(searchAfterOpen('?section=projects&feature=orders'), '?feature=orders');
+  assert.equal(searchAfterOpen(''), '');
 });
 
 test('with none chosen: Your projects when there are projects (or while loading), New project when there are none', () => {

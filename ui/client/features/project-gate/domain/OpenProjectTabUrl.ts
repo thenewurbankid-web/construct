@@ -24,3 +24,13 @@ export function searchWithTab(search: string, tab: OpenProjectTab): string {
   q.set('tab', tab);
   return `?${q.toString()}`;
 }
+
+/** The query string once a project opens: the Open-a-project screen's own places (`tab`, and Chat mode's `section`)
+ * dropped, the rest kept, so the screen the project opens on does not carry "Your projects" in its address. */
+export function searchAfterOpen(search: string): string {
+  const q = new URLSearchParams(search);
+  q.delete('tab');
+  q.delete('section');
+  const rest = q.toString();
+  return rest ? `?${rest}` : '';
+}
