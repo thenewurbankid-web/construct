@@ -104,7 +104,8 @@ export const REFUSAL_HINTS = Object.freeze({
   UNKNOWN_TOOL: { rule: 'a step uses one of the Line tools by its exact name', fields: ['tool'] },
   WRONG_KIND: { rule: 'each tool works on one kind of item', fields: ['file'] },
   // D3 (#887): import questions answered through the plan API.
-  NO_QUESTION: { rule: 'answer only the question the import is asking now, by its id', fields: ['answer'] },
+  NO_QUESTION: { rule: 'answer the question the import is asking now, or one of its scan questions, by its id', fields: ['answer'] },
+  TOO_LATE: { rule: 'a scan question is answered before the first import step runs', fields: ['answer'] },
   BAD_OPTION: { rule: 'an answer is one of the question\'s option ids', fields: ['option'] },
   OWNER_ONLY: { rule: 'only a person can waive a logic unit', fields: ['option'] },
   // plan-cli's own (the bench driver).
@@ -153,7 +154,7 @@ export function badValueOf(code, req) {
   const args = req?.args && typeof req.args === 'object' ? req.args : {};
   if (code === 'UNKNOWN_TOOL') return req?.tool ? { field: 'tool', value: String(req.tool) } : null;
   if (code === 'UNKNOWN_FIX' && req?.fix) return { field: 'fix', value: String(req.fix) };
-  if ((code === 'NO_QUESTION' || code === 'BAD_OPTION') && req?.answer) return code === 'NO_QUESTION' ? { field: 'answer', value: String(req.answer) } : { field: 'option', value: String(req.option ?? '') };
+  if ((code === 'NO_QUESTION' || code === 'BAD_OPTION' || code === 'TOO_LATE') && req?.answer) return code !== 'BAD_OPTION' ? { field: 'answer', value: String(req.answer) } : { field: 'option', value: String(req.option ?? '') };
   if (code === 'NOT_RETRYABLE' && args.retry?.of) return { field: 'retry.of', value: String(args.retry.of) };
   if (code === 'BAD_ARGS' && req?.field && req.field in args) return { field: req.field, value: show(args[req.field]) };
   for (const f of hintOf(code)?.fields ?? []) if (args[f] !== undefined && args[f] !== '') return { field: f, value: show(args[f]) };

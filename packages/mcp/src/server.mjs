@@ -131,7 +131,7 @@ export const PLAN_TOOLS = Object.freeze([
     inputSchema: z.object({
       tool: z.string().min(3).max(60).regex(/^[a-z][\w]*(\.[a-zA-Z][\w]*)+$/).optional().describe('A tool name, for example line.baseOn (leave out when you send fix).'),
       fix: z.string().min(1).max(200).optional().describe('The ref (f1 is the recommended one) or id of a choice the last refusal offered; adds its step instead of tool and args.'),
-      answer: z.string().min(1).max(300).optional().describe('An import question\'s id (import_status shows the open one), answered with option, in the same shape as a fix.'),
+      answer: z.string().min(1).max(300).optional().describe('An import question\'s id, answered with option, in the same shape as a fix: the open one, or a scan question (its id in import_status decisions) until the first import step runs.'),
       option: z.string().min(1).max(200).optional().describe('With answer: one of the question\'s option ids.'),
       folder: z.string().min(1).max(200).optional().describe('With answer: the import folder the question belongs to, for example src/alerts.'),
       args: z.record(z.string(), z.unknown()).optional().describe('The tool\'s arguments, for example {"libraryId": "components/Badge", "feature": "orders", "name": "StatusBadge"}.'),
@@ -190,7 +190,7 @@ export const IMPORT_AGENT_TOOLS = Object.freeze([
   {
     name: 'import_answer',
     title: 'Answer the Import question',
-    description: 'Answer the one question the Import process asked (its id and one of its option ids, from import_status). The option "waive" (accept a lost or untested logic unit) is the owner\'s only: an agent\'s waiver is refused (OWNER_ONLY); ask the person to decide in Cockpit.',
+    description: 'Answer the one question the Import process asked, or a scan question by id until the first import step runs (its id and one of its option ids, from import_status). The option "waive" (accept a lost or untested logic unit) is the owner\'s only: an agent\'s waiver is refused (OWNER_ONLY); ask the person to decide in Cockpit.',
     inputSchema: z.object({ folder: FOLDER, questionId: z.string().min(1).max(200), optionId: z.string().min(1).max(200) }),
     annotations: WRITES_PLAN,
     run: importAgent.importAnswer,

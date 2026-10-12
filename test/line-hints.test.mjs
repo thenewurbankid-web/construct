@@ -13,14 +13,14 @@ import { PLAN_REFUSAL_CODES } from '../packages/engine/line/contract.mjs';
 import { REFUSAL_HINTS, TOOL_EXAMPLES, hintOf, shapeRefusal, stepText } from '../packages/engine/line/hints.mjs';
 
 /** Every code: the builder modules' (refusals.mjs), the plan protocol's, the plan service's and a plan store's. */
-const CODES = [...new Set([...Object.keys(REFUSAL_FIXES), ...PLAN_REFUSAL_CODES, 'NEEDS_FIX', 'NO_QUESTION', 'BAD_OPTION', 'PLAN_CONFLICT'])].sort();
+const CODES = [...new Set([...Object.keys(REFUSAL_FIXES), ...PLAN_REFUSAL_CODES, 'NEEDS_FIX', 'NO_QUESTION', 'BAD_OPTION', 'TOO_LATE', 'PLAN_CONFLICT'])].sort();
 const BAD = 'zz-bad-value';
 const STEPS = [{ tool: 'line.addRoute', args: { route: '/', page: 'features/home/pages/HomePage.tsx' } }, { tool: 'line.leaveAsIs', args: { stepId: 's1' } }];
 /** A request that carries the bad value in every field the code's hint names. */
 const reqFor = (code) => {
   const fields = hintOf(code)?.fields ?? ['file'];
   const args = Object.fromEntries(fields.map((f) => [f, BAD]));
-  return code === 'UNKNOWN_TOOL' ? { tool: BAD, args: {} } : code === 'UNKNOWN_FIX' ? { fix: BAD } : code === 'NO_QUESTION' ? { answer: BAD } : code === 'BAD_OPTION' ? { answer: 'q1', option: BAD }
+  return code === 'UNKNOWN_TOOL' ? { tool: BAD, args: {} } : code === 'UNKNOWN_FIX' ? { fix: BAD } : code === 'NO_QUESTION' || code === 'TOO_LATE' ? { answer: BAD } : code === 'BAD_OPTION' ? { answer: 'q1', option: BAD }
     : code === 'NOT_RETRYABLE' ? { tool: 'line.setCode', args: { retry: { of: BAD } } } : code === 'BAD_ARGS' ? { tool: 'line.createFeature', args: { points: BAD } } : { tool: 'line.setCode', args };
 };
 const sentenceFor = (code) => (code === 'BAD_ARGS' ? 'The arguments do not fit line.createFeature: points must be a JSON list.' : 'Line could not do this. The second sentence says more.');
@@ -308,6 +308,74 @@ test('#887: an import question carries a hint and each option\'s effect, and is 
     assert.ok(scan.questions.length >= 1);
     for (const x of scan.questions) { assert.match(x.hint, /\(rule [\w-]+\)\.$/); for (const o of x.options) assert.ok(o.effect, o.id); }
   } finally { fs.rmSync(parent, { recursive: true, force: true }); }
+});
+
+test('#887 follow-up: a scan question is answered by id through the plan API; unanswered, decide()\'s pick stands; who answered is recorded', async () => {
+  const { createMockImportAgentService } = await import('../packages/engine/line/mockImportAgent.mjs');
+  const { assertImportAgentView } = await import('../packages/engine/line/contract.mjs');
+  const FOLDER = 'src/alerts';
+  const TABLE_Q = `generic-name:${FOLDER}/components/Table.tsx`;
+  const { agentFor } = createMockImportAgentService();
+  const agent = agentFor(FOLDER);
+  // The same wiring as the plan service's default (the folder's agent): the waiting question, else the first scan question.
+  const imports = {
+    question: async () => (await agent.view()).waiting?.question ?? (await agent.questions())[0] ?? null,
+    answer: async (by, _folder, qid, oid) => agent.answer(by, qid, oid),
+  };
+  const tableSteps = (v) => v.steps.filter((x) => x.args.name === 'Table').map((x) => x.tool);
+  const { root, done } = project();
+  try {
+    const svc = createLinePlanService({ root, commands: null, trace: null, records: null, imports });
+    // Before the import starts there is nothing to answer.
+    assert.equal((await agent.questions()).length, 0);
+    // Unanswered: decide()'s pick (no picker set up: the static order, the recommended option) stands, attributed to the rules.
+    let v = await agent.start('ui');
+    assertImportAgentView(v);
+    assert.equal(v.state, 'review');
+    const ruled = v.decisions.find((d) => d.id === TABLE_Q);
+    assert.deepEqual([ruled.picked, ruled.by, ruled.answeredBy], ['library', 'static', 'rules']);
+    assert.deepEqual(tableSteps(v), ['line.import.toLibrary']);
+    const qs = await agent.questions();
+    assert.deepEqual(qs.map((q) => [q.id, q.picked, q.answeredBy]), [[TABLE_Q, 'library', 'rules']]);
+    // Unknown question id: refused in the plain shape, with the scan question and the correct answer call.
+    const wrong = /** @type {any} */ (await svc.addStep({ answer: 'generic-name:nope', option: 'library', folder: FOLDER }, 'agent'));
+    assert.equal(wrong.code, 'NO_QUESTION');
+    assert.match(wrong.text, /^Refused \(NO_QUESTION\): There is no such question open right now \(you sent answer "generic-name:nope"\)\.\nRule: /);
+    assert.match(wrong.text, /\n {2}Question \(generic-name:src\/alerts\/components\/Table\.tsx\): /);
+    assert.match(wrong.text, /\nA correct call: \{"answer":"generic-name:src\/alerts\/components\/Table\.tsx","option":"library","folder":"src\/alerts"\}$/);
+    // Unknown option id: refused, quoting it; nothing changes.
+    const bad = /** @type {any} */ (await svc.addStep({ answer: TABLE_Q, option: 'feature:nowhere', folder: FOLDER }, 'agent'));
+    assert.equal(bad.code, 'BAD_OPTION');
+    assert.match(bad.text, /\(you sent option "feature:nowhere"\)/);
+    assert.match(bad.text, /Pick one of the options: library, feature:alerts/);
+    assert.deepEqual(tableSteps(await agent.view()), ['line.import.toLibrary']);
+    // Approve one step that the answer will not change: its review survives the rewrite.
+    v = await agent.editStep('ui', { action: 'approve', stepId: v.steps[0].id });
+    // The agent's answer by id changes the proposal: Table stays in feature alerts (a library copy plus the feature item).
+    const ok = /** @type {any} */ (await svc.addStep({ answer: TABLE_Q, option: 'feature:alerts', folder: FOLDER }, 'agent'));
+    assert.equal(ok.ok, true, ok.text);
+    v = ok.import;
+    assertImportAgentView(v);
+    assert.deepEqual(tableSteps(v), ['line.import.toLibrary', 'line.import.toFeature']);
+    assert.equal(v.steps.find((x) => x.args.name === 'Table' && x.tool === 'line.import.toLibrary').args.level, undefined);
+    assert.equal(v.steps[0].review, 'approved');
+    assert.equal(v.waiting.for, 'review');
+    const answered = v.decisions.find((d) => d.id === TABLE_Q);
+    assert.deepEqual([answered.picked, answered.by, answered.answeredBy], ['feature:alerts', 'agent', 'agent']);
+    assert.equal(v.decisions.filter((d) => d.id === TABLE_Q).length, 1);
+    assert.ok(v.changes.some((c) => c.by === 'agent' && c.action === 'answer'));
+    // The owner answers the same way (Cockpit, by "ui"), and is recorded as the owner.
+    v = await agent.answer('ui', TABLE_Q, 'library');
+    assert.deepEqual(tableSteps(v), ['line.import.toLibrary']);
+    assert.deepEqual([v.decisions.find((d) => d.id === TABLE_Q).answeredBy, v.decisions.find((d) => d.id === TABLE_Q).by], ['owner', 'person']);
+    // Once a step runs, the plan is no longer rewritten: refused (TOO_LATE).
+    v = await agent.editStep('ui', { action: 'approve-all' });
+    assert.equal(v.state, 'execute');
+    const late = /** @type {any} */ (await svc.addStep({ answer: TABLE_Q, option: 'feature:alerts', folder: FOLDER }, 'agent'));
+    assert.equal(late.code, 'TOO_LATE', late.text);
+    assert.match(late.text, /^Refused \(TOO_LATE\): /);
+    assert.deepEqual(await agent.questions(), []);
+  } finally { done(); }
 });
 
 test('#880 follow-up: bench metrics count the fixes a builder picked by id (sent, added, landed)', async () => {

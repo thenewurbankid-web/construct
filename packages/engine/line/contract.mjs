@@ -601,7 +601,9 @@ export const CHECK_KINDS = Object.freeze(['validate', 'types', 'tests', 'file', 
  * @property {string} hint        #887: why the recommended option, one sentence naming the deciding rule ("rule used-by-pages").
  * @property {{id: string, sentence: string, effect: string}[]} options  `effect`: what choosing it does.
  * @property {string} recommended An option id (listed first). An agent answers by id through the plan API, in the same
- *   shape as a fix: {"answer": <id>, "option": <option id>} (planService addStep, with the import `folder`).
+ *   shape as a fix: {"answer": <id>, "option": <option id>} (planService addStep, with the import `folder`). A scan
+ *   question stays answerable until the first plan step runs; unanswered, decide()'s pick stands (rules-only fallback),
+ *   and the decision records who answered (ImportDecision.answeredBy).
  */
 
 /**
@@ -896,7 +898,9 @@ export const AUTO_ACTION_KINDS = Object.freeze(['click', 'type', 'select', 'appr
  * @typedef {{n: number, at: string, by: 'ui'|'agent'|'line', action: 'start'|'state'|'decide'|'edit'|'skip'|'unskip'|'move'|'approve'|'approve-all'|'add-step'|'answer'|'pause'|'resume'|'verify'|'undo', stepId?: string, sentence: string}} ImportChange
  *
  * One decision the agent took (a classify question or a fix to try), and who took it.
- * @typedef {{id: string, question: string, options: string[], picked: string, answer: string, by: 'static'|'single'|'order'|'jev'|'person'|'model', reason: string}} ImportDecision  `model` (im2): the local model's one repair of a refused fix.
+ * @typedef {{id: string, question: string, options: string[], picked: string, answer: string, by: 'static'|'single'|'order'|'jev'|'person'|'agent'|'model', answeredBy?: 'owner'|'agent'|'rules'|'model', reason: string}} ImportDecision  `model` (im2): the local model's one repair of a refused fix.
+ *   `answeredBy` (#887 follow-up, scan questions): who answered: the owner (Cockpit), an agent (plan API {answer, option, folder}),
+ *   the rules (decide()'s static pick, the fallback when nobody answered) or a model (the picker, where its step is on).
  *
  * What the process waits for. `approval`: a person approves cp1 plan step `planStepId` (Plan panel or Import agent).
  * `review`: the plan steps are approved (a person, or the person's coding agent over MCP). `answer`: one question.
@@ -1949,7 +1953,8 @@ export function assertImportPlanFile(p) {
   p.decisions.forEach((d, i) => {
     str(d.id, `importPlan.decisions[${i}].id`);
     if (!d.options.includes(d.picked)) fail(`importPlan.decisions[${i}].picked`, 'must be one of its options');
-    if (!['static', 'single', 'order', 'middleware', 'jev', 'person', 'model'].includes(d.by)) fail(`importPlan.decisions[${i}].by`, 'unknown decider');
+    if (!['static', 'single', 'order', 'middleware', 'jev', 'person', 'agent', 'model'].includes(d.by)) fail(`importPlan.decisions[${i}].by`, 'unknown decider');
+    if (d.answeredBy !== undefined && !['owner', 'agent', 'rules', 'model'].includes(d.answeredBy)) fail(`importPlan.decisions[${i}].answeredBy`, 'must be owner, agent, rules or model');
     sentence(d.reason, `importPlan.decisions[${i}].reason`);
     sentence(d.answer, `importPlan.decisions[${i}].answer`);
   });

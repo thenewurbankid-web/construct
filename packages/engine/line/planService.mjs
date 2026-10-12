@@ -172,7 +172,8 @@ export function stepView(root, plan, s, ops = REAL_PLAN_OPS) {
  *   where plan feedback is remembered per step (default memory/index.mjs memoryOf(root); null remembers nothing).
  *   `offers` (R1): where the last refusal's typed fixes are kept between processes (default: in memory only).
  *   `hintState` (#886): where the refusal counts per code and target are kept between processes (default: in memory).
- *   `imports` (#887): the import agents an answer goes to (default: the folder's agent on disk, importAgentDisk.mjs).
+ *   `imports` (#887): the import agents an answer goes to (default: the folder's agent on disk, importAgentDisk.mjs): the
+ *   waiting question, or any scan (classify) question by id until the first import step runs.
  * @returns The plan service.
  */
 export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, commands, load = loadPlanApi, linkOptions, trace, records, memory, offers, hintState, imports }) {
@@ -391,7 +392,11 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
     return agents.get(folder);
   };
   const imp = imports ?? {
-    question: async (folder) => (await (await agentOf(folder)).view())?.waiting?.question ?? null,
+    // The waiting question first, else the first scan (classify) question still answerable by id.
+    question: async (folder) => {
+      const a = await agentOf(folder);
+      return (await a.view())?.waiting?.question ?? (await a.questions())[0] ?? null;
+    },
     answer: async (by, folder, qid, oid) => (await agentOf(folder)).answer(by, qid, oid),
   };
   const answerQuestion = async (req, by) => {
