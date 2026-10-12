@@ -11,7 +11,7 @@ import { resolveLayout, listFiles, classify, isItemFile, resolveBase, resolveSpe
 import { createTransaction } from '../transactionalWriter.mjs';
 import { aggregateValidation } from '@line/construct-core/registry';
 import { enforcersForRoot } from '@line/construct-core/profiles';
-import { planFileMove, applyEdits } from '../tsFileMove.mjs';
+import { planFileMove, applyEdits, readPathAliases, movedSpecifier } from '../tsFileMove.mjs';
 import { LineOpError, assertStagedChange } from './contract.mjs';
 import { readWorkspace, isInsideWorkspace } from './workspace.mjs';
 
@@ -20,8 +20,11 @@ const SINGULAR = { components: 'component', pages: 'page', workflows: 'workflow'
 const PASCAL = /^[A-Z][A-Za-z0-9]*$/;
 const IDENT = /^[A-Za-z][A-Za-z0-9]*$/;
 const FEATURE_NAME = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
-/** Module specifiers in import/export-from/import()/require()/side-effect imports: [whole, lead, quote, spec]. */
-const SPECIFIER = /(\bfrom\s+|\bimport\s*\(\s*|\brequire\s*\(\s*|^\s*import\s+)(['"])([^'"\n]+)\2/gm;
+/**
+ * Module specifiers in import/export-from/import()/require()/side-effect imports and jest's module calls
+ * (`jest.mock('…')`, `jest.requireActual('…')`, …: a test's mocks follow a move too): [whole, lead, quote, spec].
+ */
+const SPECIFIER = /(\bfrom\s+|\bimport\s*\(\s*|\brequire\s*\(\s*|\bjest\.(?:mock|doMock|unmock|dontMock|setMock|requireActual|requireMock|createMockFromModule)\s*\(\s*|^\s*import\s+)(['"])([^'"\n]+)\2/gm;
 
 const stripExt = (rel) => rel.slice(0, rel.length - posix.extname(rel).length);
 const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -146,21 +149,38 @@ function dropBase(rel, src) {
     .replace(/^\s*\/\*\*?\s*\*\/[ \t]*\n/m, ''); // a JSDoc block left empty
 }
 
-/** Rewrite the module specifiers of `src` (the file at `rel`) with `map(spec, target)`; unchanged when it returns null. */
-function rewriteSpecifiers(layout, rel, src, map) {
+/**
+ * Rewrite the module specifiers of `src` (the file at `rel`) with `map(spec, target)`; unchanged when it returns null.
+ * A specifier outside the library and the features (a package, or another alias) goes to `orElse(spec)` when given.
+ * @param {{library: string, features: string}} layout
+ * @param {string} rel
+ * @param {string} src
+ * @param {(spec: string, target: string) => string|null} map
+ * @param {(spec: string) => string|null} [orElse]
+ * @returns {string}
+ */
+function rewriteSpecifiers(layout, rel, src, map, orElse = (_spec) => null) {
   return src.replace(SPECIFIER, (whole, lead, q, spec) => {
     const target = resolveSpecifier(layout, rel, spec);
-    const next = target === null ? null : map(spec, target);
+    const next = target === null ? orElse(spec) : map(spec, target);
     return next === null || next === spec ? whole : `${lead}${q}${next}${q}`;
   });
 }
 
-/** The regex engine for a move (no tsconfig, or TypeScript refused): own relative imports re-pointed, every importer re-pointed. */
+/**
+ * The regex engine for a move (no tsconfig at the root, or TypeScript refused): own relative imports re-pointed, every
+ * importer re-pointed. An importer that names the file through a tsconfig `paths` alias outside the library and the
+ * features (`@/libs/x`, with the tsconfig one folder above an import folder such as `src`) is re-pointed too, keeping
+ * the alias; so are jest's module calls (SPECIFIER).
+ */
 function regexMove(root, layout, from, to) {
   const files = new Map();
   const own = fs.readFileSync(path.join(root, from), 'utf8');
   files.set(from, posix.extname(from) === '.json' ? own : rewriteSpecifiers(layout, from, own, (spec, target) => (spec.startsWith('.') ? relSpec(to, target) : null)));
   const fromNoExt = stripExt(from);
+  const absRoot = path.resolve(root);
+  const aliases = readPathAliases(absRoot);
+  const abs = (rel) => path.join(absRoot, rel);
   for (const rel of listFiles(root)) {
     if (rel === from || !CODE_EXTENSIONS.includes(posix.extname(rel))) continue;
     const src = fs.readFileSync(path.join(root, rel), 'utf8');
@@ -172,7 +192,7 @@ function regexMove(root, layout, from, to) {
       const bare = spec.slice(prefix.length);
       const lib = bare.startsWith(`${layout.features}/`) ? layout.library : layout.library.replace(/^src\//, '');
       return prefix + lib + dest.slice(layout.library.length);
-    });
+    }, (spec) => movedSpecifier(absRoot, aliases, abs(rel), spec, abs(from), abs(to)));
     if (out !== src) files.set(rel, out);
   }
   return files;

@@ -140,11 +140,145 @@ export function planFileMove(root, oldAbs, newAbs) {
       if (!inside(r, file)) continue; // never an edit outside the project
       for (const t of c.textChanges) edits.push({ file, start: t.span.start, end: t.span.start + t.span.length, newText: t.newText });
     }
+    // what the rename does not see: jest's module calls and require() in TypeScript files (see CALL_SPECIFIER)
+    const aliases = readPathAliases(r);
+    const overlaps = (e) => edits.some((x) => x.file === e.file && x.start < e.end && e.start < x.end);
+    for (const file of files) {
+      let text;
+      try { text = fs.readFileSync(file, 'utf8'); } catch { continue; }
+      if (!/\b(?:jest\.|require\s*\()/.test(text)) continue;
+      const extra = file === from ? ownCallEdits(text, from, to) : callSpecifierEdits(r, aliases, file, text, from, to);
+      for (const e of extra) if (!overlaps(e)) edits.push(e);
+    }
     edits.sort((a, b) => (a.file < b.file ? -1 : a.file > b.file ? 1 : a.start - b.start));
     return { ok: true, engine: 'typescript', tsVersion: ts.version, files: [...new Set(edits.map((e) => e.file))], edits };
   } catch (e) {
     return { ok: false, reason: `TypeScript could not analyse the project (${String(e?.message || e).slice(0, 120)})` };
   }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Specifiers TypeScript's rename does not see: `jest.mock('…')` and friends (a test's module mocks), and `require('…')`
+// in a .ts/.tsx file (TypeScript tracks require only in JavaScript files). A move that leaves them behind leaves a mock
+// that no longer applies (or names a file that is gone), so the tests that pinned the old behaviour fail after a move
+// that changed nothing. Both move engines (planFileMove here, ops.mjs's regex engine) re-point them.
+
+/** The call heads whose first argument is a module specifier TypeScript's rename leaves alone. */
+export const CALL_SPECIFIER = /(?<![\w$.])((?:jest\.(?:mock|doMock|unmock|dontMock|setMock|requireActual|requireMock|createMockFromModule)|require)\s*\(\s*)(['"])([^'"\n]+)\2/g;
+
+const posixRel = (from, to) => path.relative(from, to).split(path.sep).join('/');
+
+/**
+ * The tsconfig `paths` aliases of the project `root` sits in, as folders relative to `root`: the nearest tsconfig.json
+ * at `root` or above it (the search stops at the folder that holds `.git`), wildcard patterns only (`@/*`), longest
+ * prefix first; an alias whose target is outside `root` is left out. `[]` without a tsconfig or with no paths.
+ * @param {string} root Absolute folder.
+ * @returns {{prefix: string, dir: string}[]} `dir` is root-relative and posix ('' is `root` itself).
+ */
+export function readPathAliases(root) {
+  let dir = path.resolve(root);
+  for (;;) {
+    const cfg = path.join(dir, 'tsconfig.json');
+    if (fs.existsSync(cfg)) {
+      let json = null;
+      try { json = ts.parseConfigFileTextToJson(cfg, fs.readFileSync(cfg, 'utf8')).config; } catch { json = null; }
+      const opts = json?.compilerOptions ?? {};
+      const base = path.resolve(dir, typeof opts.baseUrl === 'string' ? opts.baseUrl : '.');
+      const out = [];
+      for (const [key, targets] of Object.entries(opts.paths ?? {})) {
+        const target = Array.isArray(targets) ? targets[0] : null;
+        if (!key.endsWith('*') || typeof target !== 'string' || !target.endsWith('*')) continue;
+        const rel = posixRel(path.resolve(root), path.resolve(base, target.slice(0, -1)));
+        if (rel === '..' || rel.startsWith('../') || path.isAbsolute(rel)) continue;
+        out.push({ prefix: key.slice(0, -1), dir: rel.replace(/\/$/, '') });
+      }
+      return out.sort((a, b) => b.prefix.length - a.prefix.length);
+    }
+    if (fs.existsSync(path.join(dir, '.git'))) return [];
+    const up = path.dirname(dir);
+    if (up === dir) return [];
+    dir = up;
+  }
+}
+
+/**
+ * Where a specifier in `fileAbs` points (absolute, as written: maybe without its extension), or null for a package.
+ * @param {string} root Absolute project root.
+ * @param {{prefix: string, dir: string}[]} aliases From readPathAliases(root).
+ * @param {string} fileAbs The importing file.
+ * @param {string} spec The specifier.
+ * @returns {{abs: string, alias: {prefix: string, dir: string}|null}|null}
+ */
+export function specifierTarget(root, aliases, fileAbs, spec) {
+  if (spec.startsWith('.')) return { abs: path.resolve(path.dirname(fileAbs), spec), alias: null };
+  const alias = aliases.find((a) => spec.startsWith(a.prefix));
+  return alias ? { abs: path.resolve(root, alias.dir, spec.slice(alias.prefix.length)), alias } : null;
+}
+
+/**
+ * The specifier `spec` (in `fileAbs`) should become when `oldAbs` moves to `newAbs`, or null when it names another module.
+ * It keeps its form: relative stays relative, an alias stays that alias (relative when the new place is outside it), an
+ * extension stays written or left out, a folder import of an index file stays a folder import.
+ * @param {string} root Absolute project root.
+ * @param {{prefix: string, dir: string}[]} aliases From readPathAliases(root).
+ * @param {string} fileAbs The importing file.
+ * @param {string} spec The specifier as written.
+ * @param {string} oldAbs The moved file's place before the move.
+ * @param {string} newAbs Its place after.
+ * @returns {string|null}
+ */
+export function movedSpecifier(root, aliases, fileAbs, spec, oldAbs, newAbs) {
+  const t = specifierTarget(root, aliases, fileAbs, spec);
+  if (!t) return null;
+  const strip = (p) => p.slice(0, p.length - path.extname(p).length);
+  const isIndex = /^index$/.test(path.basename(strip(oldAbs)));
+  let dest;
+  if (t.abs === oldAbs) dest = newAbs;
+  else if (t.abs === strip(oldAbs)) dest = strip(newAbs);
+  else if (isIndex && t.abs === path.dirname(oldAbs)) dest = /^index$/.test(path.basename(strip(newAbs))) ? path.dirname(newAbs) : strip(newAbs);
+  else return null;
+  if (t.alias) {
+    const inAlias = posixRel(path.resolve(root, t.alias.dir), dest);
+    if (inAlias && !inAlias.startsWith('../')) return `${t.alias.prefix}${inAlias}`;
+  }
+  const r = posixRel(path.dirname(fileAbs), dest);
+  return r.startsWith('.') ? r : `./${r}`;
+}
+
+/**
+ * Edits for the specifiers of `jest.mock(...)` (and the other jest module calls) and `require(...)` in `source` that
+ * name the moved file, in planFileMove's edit shape.
+ * @param {string} root Absolute project root.
+ * @param {{prefix: string, dir: string}[]} aliases
+ * @param {string} fileAbs The file `source` is (its place BEFORE the move; for the moved file itself pass its new place).
+ * @param {string} source
+ * @param {string} oldAbs
+ * @param {string} newAbs
+ * @returns {{file: string, start: number, end: number, newText: string}[]}
+ */
+export function callSpecifierEdits(root, aliases, fileAbs, source, oldAbs, newAbs) {
+  const edits = [];
+  for (const m of source.matchAll(CALL_SPECIFIER)) {
+    const next = movedSpecifier(root, aliases, fileAbs, m[3], oldAbs, newAbs);
+    if (next === null || next === m[3]) continue;
+    const start = /** @type {number} */ (m.index) + m[1].length + 1;
+    edits.push({ file: fileAbs, start, end: start + m[3].length, newText: next });
+  }
+  return edits;
+}
+
+/** The moved file's own relative call specifiers, re-pointed from its new folder (edits carry its OLD path, like TypeScript's). */
+function ownCallEdits(source, oldAbs, newAbs) {
+  const edits = [];
+  for (const m of source.matchAll(CALL_SPECIFIER)) {
+    if (!m[3].startsWith('.')) continue;
+    const r = posixRel(path.dirname(newAbs), path.resolve(path.dirname(oldAbs), m[3]));
+    const next = r.startsWith('.') ? r : `./${r}`;
+    if (next === m[3]) continue;
+    const start = /** @type {number} */ (m.index) + m[1].length + 1;
+    edits.push({ file: oldAbs, start, end: start + m[3].length, newText: next });
+  }
+  return edits;
 }
 
 /** Apply `edits` (all for one file) to `source`; ranges are the ORIGINAL offsets, applied from the end so they stay valid. */
