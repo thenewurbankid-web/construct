@@ -373,10 +373,17 @@ export async function characterize(appRoot, closure, map, opts = {}) {
     log(`characterize: searching, round ${round + 1} (${active.length} subjects)`);
     fuzzRun = runJest(appRoot, active.map((s) => probeRel(s, 'fuzz')), { coverFiles, workDir, tag: `fuzz${round}`, maxWorkers: opts.maxWorkers, runner });
     const next = [];
+    const outcomes = testOutcomes(fuzzRun.results);
     for (const s of active) {
       let out = null;
       try { out = JSON.parse(fs.readFileSync(path.join(workDir, `${s.id}.fuzz.out.json`), 'utf8')); } catch { out = null; }
       if (!out) {
+        // a probe whose file did not even load (a transform or import error in the app) fails the same way every time:
+        // said once, and kept (no cases) so an unchanged subject is not searched again
+        const abs = posix(path.join(appRoot, probeRel(s, 'fuzz')));
+        const real = (() => { try { return posix(fs.realpathSync(path.join(appRoot, probeRel(s, 'fuzz')))); } catch { return abs; } })();
+        const loadError = outcomes.get(`${abs}::<suite>`) ?? outcomes.get(`${real}::<suite>`);
+        if (typeof loadError === 'string') { stats.subjects[s.id] = { notLoaded: loadError.split('\n').find((l) => l.trim())?.trim().slice(0, 300) ?? 'the probe did not load' }; continue; }
         // a round that ran out of memory is retried once more with half the time, from the last saved state
         stats.subjects[s.id] ??= { error: 'the search did not finish' };
         if (roundMs.get(s.id) > 10_000 && spent.get(s.id) < budget(s)) { roundMs.set(s.id, roundMs.get(s.id) / 2); next.push(s); }
@@ -389,7 +396,8 @@ export async function characterize(appRoot, closure, map, opts = {}) {
     }
     active = next;
   }
-  if (fresh.length && !chosen.size) throw new Error(`The search probes did not run in ${appRoot}: ${fuzzRun?.stderr.slice(-2000)}`);
+  // nothing at all to characterize (no subject searched, none reused): the probes themselves did not run
+  if (fresh.length && !chosen.size && ![...reused.values()].some((r) => r.cases?.length)) throw new Error(`The search probes did not run in ${appRoot}: ${fuzzRun?.stderr.slice(-2000)}`);
   timed('search');
 
   // 3. record
