@@ -1,6 +1,7 @@
 import { LineFixController } from '@/features/line-fix';
 import type { ChangeControls, FeatureComponentRow, FeatureSection } from '../types';
 import { PromoteConfirm } from './PromoteConfirm';
+import { OpenInEditor } from './OpenInEditor';
 import { ReadOnlyTag } from './ReadOnlyTag';
 
 function Row({ row, controls }: { row: FeatureComponentRow; controls: ChangeControls }) {
@@ -25,6 +26,7 @@ function Row({ row, controls }: { row: FeatureComponentRow; controls: ChangeCont
           Promote to library
         </button>
       )}
+      <OpenInEditor file={row.file} name={row.name} controls={controls} />
       <details className="ll-tech">
         <summary>Details</summary>
         <code>{row.file}</code>

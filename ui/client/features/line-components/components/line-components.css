@@ -1,0 +1,46 @@
+/* Line Components editor (cu4, inside the Components screen). Prefix lc-. Tokens only (app/tokens.css). */
+.lc-area { display: flex; flex-direction: column; gap: var(--sp-3); min-width: 0; }
+.lc-editor, .lc-new { display: flex; flex-direction: column; gap: var(--sp-2); padding: var(--sp-3); border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface-1); min-width: 0; }
+.lc-head { margin: 0; font-size: 17px; color: var(--text); }
+.lc-editor h4 { margin: var(--sp-2) 0 var(--sp-1); font-size: var(--fs-sm); color: var(--text-muted); }
+.lc-muted { margin: 0; color: var(--text-muted); font-size: var(--fs-sm); overflow-wrap: anywhere; }
+.lc-readonly { margin: 0; padding: var(--sp-2); border-left: 3px solid var(--border-strong); background: var(--surface-0); color: var(--text); }
+.lc-tabs { display: flex; gap: var(--sp-1); border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.lc-tab-btn { min-height: 36px; padding: 0 var(--sp-3); border: 0; border-bottom: 2px solid transparent; background: none; color: var(--text-muted); font: inherit; cursor: pointer; }
+.lc-tab-btn[aria-selected='true'] { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
+.lc-tab-btn:focus-visible, .lc-btn:focus-visible, .lc-node:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.lc-tab { display: flex; flex-direction: column; gap: var(--sp-2); padding-top: var(--sp-2); min-width: 0; }
+.lc-list, .lc-chips { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-2); }
+.lc-chips { flex-direction: row; flex-wrap: wrap; gap: var(--sp-1); }
+.lc-card { display: flex; flex-direction: column; gap: var(--sp-1); padding: var(--sp-2) var(--sp-3); border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface-0); min-width: 0; }
+.lc-card p { margin: 0; overflow-wrap: anywhere; }
+.lc-card--warn { border-left: 3px solid var(--warning, var(--accent)); }
+.lc-card-title { font-weight: 600; }
+.lc-chip { font-size: var(--fs-xs); padding: 2px var(--sp-2); border-radius: 999px; border: 1px solid var(--border); color: var(--text); width: fit-content; }
+.lc-row { display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: flex-end; }
+.lc-action { display: flex; flex-direction: column; gap: var(--sp-1); }
+.lc-kw { display: inline-block; min-width: 3em; font-size: var(--fs-xs); font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); }
+.lc-warn { color: var(--text); background: var(--surface-1); border-radius: var(--r-sm); padding: var(--sp-1) var(--sp-2); border: 1px dashed var(--border-strong); }
+.lc-form { display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: flex-end; padding: var(--sp-2) var(--sp-3); border: 1px dashed var(--border-strong); border-radius: var(--r-md); }
+.lc-field { display: flex; flex-direction: column; gap: 2px; font-size: var(--fs-sm); color: var(--text-muted); min-width: 0; max-width: 100%; }
+.lc-field select, .lc-field input { min-height: 36px; padding: 0 var(--sp-2); border: 1px solid var(--border-strong); border-radius: var(--r-sm); background: var(--surface-0); color: var(--text); font: inherit; max-width: 100%; }
+.lc-btn { min-height: 36px; padding: 0 var(--sp-3); border: 1px solid var(--border-strong); border-radius: var(--r-sm); background: var(--surface-1); color: var(--text); font: inherit; font-size: var(--fs-sm); cursor: pointer; width: fit-content; max-width: 100%; }
+.lc-btn:hover:not(:disabled) { background: var(--hover); }
+.lc-btn:disabled { opacity: .5; cursor: default; }
+.lc-btn--primary { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); font-weight: 600; }
+.lc-notice { margin: 0; padding: var(--sp-2); border-radius: var(--r-sm); background: var(--accent-soft); color: var(--text); display: flex; flex-direction: column; gap: var(--sp-1); }
+.lc-notice p { margin: 0; }
+.lc-notice--refused { background: var(--surface-0); border: 1px solid var(--border-strong); }
+.lc-details summary { cursor: pointer; color: var(--text-muted); width: fit-content; min-height: 24px; font-size: var(--fs-sm); }
+.lc-details code { font-family: var(--mono); font-size: var(--fs-sm); overflow-wrap: anywhere; }
+.lc-graph { margin: 0; }
+.lc-graph-scroll { overflow-x: auto; max-width: 100%; }
+.lc-node rect { fill: var(--surface-1); stroke: var(--border-strong); stroke-width: 1.5; }
+.lc-node[role='button'] { cursor: pointer; }
+.lc-node--current rect { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 2.5; }
+.lc-node-label { font-size: 13px; font-weight: 600; fill: var(--text); }
+.lc-node-sub { font-size: 11px; fill: var(--text-muted); }
+.lc-edge path { fill: none; stroke: var(--border-strong); stroke-width: 1.5; }
+.lc-edge text { font-size: 11px; fill: var(--text-muted); }
+.lc-arrowhead { fill: var(--border-strong); }
+.lc-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

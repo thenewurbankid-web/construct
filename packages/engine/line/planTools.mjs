@@ -16,6 +16,9 @@
 //   line.baseWorkflowOn, line.setWorkflowRole, line.addWorkflowTransition, line.removeWorkflowTransition
 //                     write  cw1 workflows (workflows.mjs) + applyChange
 //   line.bindPart, line.bindInteraction   write  cu5 page bindings (pageBinding.mjs) + applyChange
+//   line.attachComponentPrimitive, line.addComponentEvent, line.changeComponentEvent, line.fixComponentEvent,
+//   line.setComponentState, line.newComponent
+//                     write  cu4 the Components editor (components.mjs, over Studio's linked Editor parts) + applyChange
 //   line.leaveAsIs    write  {stepId}        -> a person's "carry on" after a step that needs them (writes nothing)
 //   line.project      read   {}              -> readLineProject
 //
@@ -44,10 +47,11 @@ const catalogEntry = (name) => { const e = entryById(name); if (!e || !e.surface
 import { planBaseWorkflowOn, planSetWorkflowRole, planAddWorkflowTransition, planRemoveWorkflowTransition } from './workflows.mjs';
 import { importTools } from './importTools.mjs';
 import { planBindPart, planBindInteraction } from './pageBinding.mjs';
+import { COMPONENT_OPS } from './components.mjs';
 import { planExtractStep, EXTRACT_TOOLS } from './importV2/extract.mjs';
 
 /** The real operations (tests pass the contract's mock instead). */
-export const REAL_PLAN_OPS = Object.freeze({ planCreateFeature, planAddRoute, planSetCode, planBaseOn, planPromote, planSetProp, planFixByKey, planSetFragment, planStep, planAmended, planImportStep, planExtractStep, applyChange, checkChange, readLineProject, planBaseWorkflowOn, planSetWorkflowRole, planAddWorkflowTransition, planRemoveWorkflowTransition, planBindPart, planBindInteraction });
+export const REAL_PLAN_OPS = Object.freeze({ planCreateFeature, planAddRoute, planSetCode, planBaseOn, planPromote, planSetProp, planFixByKey, planSetFragment, planStep, planAmended, planImportStep, planExtractStep, applyChange, checkChange, readLineProject, planBaseWorkflowOn, planSetWorkflowRole, planAddWorkflowTransition, planRemoveWorkflowTransition, planBindPart, planBindInteraction, ...COMPONENT_OPS });
 
 /** The write tools that plan a StagedChange, and the op that plans it (`planStep` takes {tool, args}). */
 export const CHANGE_TOOLS = Object.freeze({
@@ -64,6 +68,10 @@ export const CHANGE_TOOLS = Object.freeze({
   'line.createFeature': 'planCreateFeature', 'line.addRoute': 'planAddRoute', 'line.setCode': 'planSetCode',
   // cu5 page bindings (pageBinding.mjs): a part to a library component, an interaction to an endpoint, a controller or a stub
   'line.bindPart': 'planBindPart', 'line.bindInteraction': 'planBindInteraction',
+  // cu4 the Components editor (components.mjs); base on stays line.baseOn
+  'line.attachComponentPrimitive': 'planAttachComponentPrimitive', 'line.addComponentEvent': 'planAddComponentEvent',
+  'line.changeComponentEvent': 'planChangeComponentEvent', 'line.fixComponentEvent': 'planFixComponentEvent',
+  'line.setComponentState': 'planSetComponentState', 'line.newComponent': 'planNewComponent',
 });
 
 /** Change tools planned only when they run: an import step builds on the steps before it (the library item a feature
@@ -134,6 +142,11 @@ const TYPES = {
   scalar: (v) => ['string', 'number', 'boolean'].includes(typeof v),
   propKind: (v) => ['string', 'number', 'boolean', 'expression'].includes(v),
   strings: (v) => Array.isArray(v) && v.length > 0 && v.length <= 50 && v.every((x) => typeof x === 'string' && x.trim().length > 0),
+  // cu4: a Studio event source or action ({kind, ...}), a role mapping, a list of either (Studio's zod schemas check the rest)
+  kindObj: (v) => isObj(v) && typeof v.kind === 'string' && v.kind.length > 0,
+  optMap: (v) => v === undefined || (isObj(v) && Object.values(v).every((x) => typeof x === 'string' && x.length > 0)),
+  ids: (v) => Array.isArray(v) && v.every((x) => typeof x === 'string' && x.length > 0),
+  wires: (v) => Array.isArray(v) && v.every((x) => isObj(x)),
 };
 
 /** `expect`: a list of {id, sentence, kind}. */
@@ -165,6 +178,10 @@ const JSON_TYPES = Object.freeze({
   step: { type: 'object', required: ['tool'], properties: { tool: { type: 'string', minLength: 1 }, args: { type: 'object' } } },
   optStep: { type: 'object', required: ['tool'], properties: { tool: { type: 'string', minLength: 1 }, args: { type: 'object' } } },
   optSteps: { type: 'array', minItems: 1, maxItems: 4, items: { type: 'object', required: ['tool'], properties: { tool: { type: 'string', minLength: 1 }, args: { type: 'object' } } } },
+  kindObj: { type: 'object', required: ['kind'], properties: { kind: { type: 'string', minLength: 1 } } },
+  optMap: { type: 'object', additionalProperties: { type: 'string', minLength: 1 } },
+  ids: { type: 'array', items: { type: 'string', minLength: 1 } },
+  wires: { type: 'array', items: { type: 'object', properties: { source: { type: 'object' }, action: { type: 'object' } } } },
 });
 /** The JSON Schema an objectSchema accepts: its fields, plus `expect`, `retry` and `fixOf` on a change tool. */
 function jsonSchemaOf(required, o) {
@@ -174,7 +191,7 @@ function jsonSchemaOf(required, o) {
     properties.retry = { type: 'object', required: ['of'], properties: { of: { type: 'string' }, passed: { type: 'integer' } } };
     properties.fixOf = { type: 'string', minLength: 1, description: 'The id of the refused step this step fixes.' };
   }
-  return { type: 'object', properties, required: Object.entries(required).filter(([, t]) => !['optString', 'optStep', 'optSteps'].includes(t)).map(([k]) => k), additionalProperties: false };
+  return { type: 'object', properties, required: Object.entries(required).filter(([, t]) => !['optString', 'optStep', 'optSteps', 'optMap'].includes(t)).map(([k]) => k), additionalProperties: false };
 }
 
 /**
@@ -280,6 +297,12 @@ const SCHEMAS = Object.freeze({
   'line.setCode': objectSchema({ file: 'string', code: 'string', contentHash: 'optString' }, { change: true }),
   'line.bindPart': objectSchema({ file: 'string', partId: 'string', libraryId: 'string', contentHash: 'optString' }, { change: true }),
   'line.bindInteraction': objectSchema({ file: 'string', interactionId: 'string', to: 'string', endpoint: 'optString', verb: 'optString', contentHash: 'optString' }, { change: true }),
+  'line.attachComponentPrimitive': objectSchema({ file: 'string', primitive: 'string', mapping: 'optMap' }, { change: true }),
+  'line.addComponentEvent': objectSchema({ file: 'string', source: 'kindObj', action: 'kindObj' }, { change: true }),
+  'line.changeComponentEvent': objectSchema({ file: 'string', id: 'string', action: 'kindObj' }, { change: true }),
+  'line.fixComponentEvent': objectSchema({ file: 'string', label: 'string', remove: 'ids', add: 'wires' }, { change: true }),
+  'line.setComponentState': objectSchema({ file: 'string', ref: 'string', state: 'string' }, { change: true }),
+  'line.newComponent': objectSchema({ libraryId: 'string', feature: 'string', name: 'string' }, { change: true }),
   'line.leaveAsIs': objectSchema({ stepId: 'string' }),
   'line.project': objectSchema({}),
 });
@@ -311,6 +334,12 @@ const DESCRIBE = Object.freeze({
   'line.setCode': 'Writes the whole code of one library or feature file (or a feature\'s spec.md); an existing file needs the contentHash it was read at; through the checked writer.',
   'line.bindPart': 'Binds one part of a feature page to a library component (Morpheus\'s side): the part becomes that component, or its import points at the library, through the checked writer.',
   'line.bindInteraction': 'Binds one interaction of a feature page (Trace\'s side) to an endpoint of the feature\'s API contract, a controller function or a marked stub, through the checked writer.',
+  'line.attachComponentPrimitive': 'Behaviour: gives a feature component one of Morpheus\'s behaviours (disclosure, toggle, ...) with its roles mapped to the component\'s parts, through Studio\'s editor and the checked writer.',
+  'line.addComponentEvent': 'Events: adds one When -> Do to a feature component (what starts it, what it does), through Studio\'s editor and the checked writer.',
+  'line.changeComponentEvent': 'Events: changes what one When -> Do of a feature component does, through Studio\'s editor and the checked writer.',
+  'line.fixComponentEvent': 'Events: applies the fix Studio offers for two actions that undo each other, through the checked writer.',
+  'line.setComponentState': 'States: sets the state one behaviour of a feature component is in (picked on its state graph), through the checked writer.',
+  'line.newComponent': 'Creates a new feature component based on one library component, through the checked writer.',
   'line.leaveAsIs': 'Records that a person chose to carry on after a step that needed them; writes nothing.',
   'line.project': 'Reads the Line view of the project: library, features, items and findings.',
 });

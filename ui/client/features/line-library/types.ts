@@ -51,6 +51,9 @@ export type ChangeControls = {
   submit: () => void;
   /** A fix applied from a problem's fix panel (line-fix): its sentence becomes the notice; a landed one re-reads the project. */
   fixApplied: (result: ApplyResult) => void;
+  /** cu4: open a component (library or feature) in the Components editor; `editing` is the file it shows. */
+  openEditor?: (file: string) => void;
+  editing?: string | null;
 };
 
 // ---- View models -------------------------------------------------------------------------------

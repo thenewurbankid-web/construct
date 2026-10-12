@@ -1,14 +1,14 @@
 // The Plan panel's view models. The plan's shapes come from the one shared mirror (lib/lineContract.ts), which follows
 // packages/engine/line/contract.mjs (PlanView).
-import type { ApplyResult, PlainDetail, PlanStepRequest, PlanStepState, PlanStepView, PlanView } from '@/lib/lineContract';
+import type { ApplyResult, LineFix, PlainDetail, PlanStepRequest, PlanStepState, PlanStepView, PlanView } from '@/lib/lineContract';
 
 export type * from '@/lib/lineContract';
 
 /** What a plan call answers on the screen: the plan, or one sentence saying why not. */
-export type PlanAnswer = { ok: true; view: PlanView } | { ok: false; sentence: string; code?: string; detail?: string };
+export type PlanAnswer = { ok: true; view: PlanView } | { ok: false; sentence: string; code?: string; detail?: string; fixes?: LineFix[] };
 
 /** What adding a step answers a screen: the step's sentence, or the refusal (with its code and technical detail). */
-export type StepAdded = { ok: boolean; sentence: string; code?: string; detail?: string };
+export type StepAdded = { ok: boolean; sentence: string; code?: string; detail?: string; fixes?: LineFix[] };
 
 /** The service's surface, so the real API and a test double are interchangeable. */
 export type LinePlanApi = {
