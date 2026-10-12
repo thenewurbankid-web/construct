@@ -669,7 +669,7 @@ export const PLAN_PROTOCOL = Object.freeze([
  * @property {string} step        Stable id "<app>.<task>", e.g. "construct.chooser", "trace.choose", "cockpit.importFill".
  * @property {string} label       Plain English: what the step does, one sentence.
  * @property {'decide'|'draft'|'recall'} kind  decide: pick one of closed options (static, then middleware, then the picker); draft: a local model writes, Construct checks;
- *   recall: a local embedding model finds similar past decisions (never a picker, so never an @mx/reason pair).
+ *   recall: a local embedding model finds similar past decisions (never a picker, so never a reason pair).
  * @property {'ollama'|'hosted'} provider  ollama: a local model; hosted: a hosted model the person configures (never local).
  * @property {string|null} model  The model the step uses; the local default is qwen2.5-coder:1.5b. Null only for a hosted step.
  * @property {string} modelFrom   Plain English: where the model comes from ("Line's default", "trace/ai.config.json").
