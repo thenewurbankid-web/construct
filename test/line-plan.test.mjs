@@ -35,7 +35,7 @@ test('registry: one registry lists the line tools and the construct commands, wi
     'line.setBase': 'write', 'line.moveFile': 'write', 'line.createLayout': 'write', 'line.amend': 'write', 'line.import.mark': 'write', 'line.import.toLibrary': 'write', 'line.import.toFeature': 'write', 'line.import.fix': 'write', 'line.import.save': 'write', 'line.import.undo': 'write',
     'line.import.extractService': 'write', 'line.import.extractDomain': 'write', 'line.import.extractUsecase': 'write', 'line.import.splitPage': 'write', 'line.import.extractWorkflow': 'write',
     'line.leaveAsIs': 'write',
-    'line.baseWorkflowOn': 'write', 'line.setWorkflowRole': 'write', 'line.addWorkflowTransition': 'write', 'line.removeWorkflowTransition': 'write', 'line.project': 'read', 'construct.validate': 'read',
+    'line.baseWorkflowOn': 'write', 'line.setWorkflowRole': 'write', 'line.addWorkflowTransition': 'write', 'line.removeWorkflowTransition': 'write', 'line.bindPart': 'write', 'line.bindInteraction': 'write', 'line.project': 'read', 'construct.validate': 'read',
   });
   assert.deepEqual(LINE_PLAN_TOOLS.map((t) => t.name).sort(), reg.list().filter((t) => t.name.startsWith('line.')).map((t) => t.name).sort(), 'the contract lists every line tool');
   await assert.rejects(reg.call('line.baseOn', { libraryId: 'components/Badge' }), /got arguments it cannot use: feature/);

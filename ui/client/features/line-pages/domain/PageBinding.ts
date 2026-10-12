@@ -31,7 +31,7 @@ export function bindingRows(b: LinePageBinding): BindingRow[] {
       depth: p.depth,
       library: { sentence: p.base.sentence, bound, libraryId: p.base.libraryId },
       data: { sentence: p.data.sentence, states: p.states.map((s) => s.sentence), actions },
-      targets: bound || p.tag.includes('.') || p.tag === 'Fragment' ? [] : b.components.filter((c) => c.id !== p.base.libraryId),
+      targets: bound || p.tag.includes('.') || p.tag === 'Fragment' ? [] : b.components,
     };
   });
 }

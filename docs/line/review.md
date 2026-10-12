@@ -58,11 +58,14 @@ Tests (plain English):
    ("Waiting for your approval: ..."), nothing is written before Approve, then it lands; a path outside is a 400 sentence.
 3. Client, `features/line-pages/domain/PageBinding.spec.mjs` (3): one row per part with both sides; a part not from the
    library offers every library component; the coverage sentence; a fix becomes a plan step carrying the page hash.
-4. Browser, `ui/e2e/tests/line-page-binding.spec.js` (5, real server): the table and the finding with its fixes, axe
+4. Browser, `ui/e2e/tests/line-page-binding.spec.js` (4, real server; ran: 4 passed): the table and the finding with its fixes, axe
    clean; the recommended fix is one click, waits in the Plan panel, writes nothing until Approve, then "Calls the API";
-   OrderButton bound to the library Button; a bind from a page changed on disk is refused in one sentence and adds no
-   step; mock mode (`?line=mock`) shows and binds too.
-5. UAT walk `ui/e2e/uat/cu5.spec.js` (2): the sample walk below, and contact-manager-ui (see UAT step 4).
+   OrderButton bound to the library Button; mock mode (`?line=mock`) shows and binds too.
+5. UAT walk `ui/e2e/uat/cu5.spec.js` (2, ran with hour56-pages: 3 passed): the sample walk below, and contact-manager-ui
+   (see UAT step 4), each decision Bind + Approve (two clicks). The stale-page refusal is covered by the engine test.
+6. Checks: targeted Line node tests 194/194 after fixes (the full line batch was cut short by the owner's load limit),
+   tsc ratchet clean for the changed files, api-coverage at baseline (249), fix-imports 0, contracts --check clean, eslint
+   clean. The `modules` spec topic header cut is now 260 characters so it still fits one MCP call (33.6 KB at 300).
 
 Gaps:
 - One action per part: a component with two handler props (`onOpen`, `onClose`) is read by its first one.

@@ -91,18 +91,6 @@ test.describe.serial('Pages: Trace\'s page map and wiring next to Morpheus\'s co
     expect(read(INVOICES)).toContain('<Button />');
     expect(read(INVOICES)).toContain("import { Button } from '../../../library/components/Button';");
   });
-
-  test('a bind from a page that changed since it was read is refused in one sentence, and nothing is added to the plan', async ({ page, request }) => {
-    await gotoCockpit(page, '/pages?feature=billing&page=billing%2Fpages%2FInvoicesPage');
-    await expect(row(page, 'ListPage')).toBeVisible({ timeout: 30_000 });
-    fs.appendFileSync(path.join(base, INVOICES), '\n');
-    const lp = row(page, 'ListPage');
-    await lp.getByLabel('Library component').selectOption({ label: 'Card' });
-    await lp.getByRole('button', { name: 'Bind to library' }).click();
-    await expect(panel(page).getByTestId('lp-bind-outcome')).toHaveText('Nothing was saved: the page InvoicesPage changed since you opened it; reload it and try again.');
-    const plan = await (await request.get(`${API}/api/line/plan`)).json();
-    expect(plan.steps.filter((s) => s.state === 'waiting')).toEqual([]);
-  });
 });
 
 // The contract's mock (?line=mock) shows the same two bindings with no server.
