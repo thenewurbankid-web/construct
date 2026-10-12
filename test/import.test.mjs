@@ -6,7 +6,7 @@ import { createFeature, LAYER_CONSTRAINTS } from '../packages/core/generators.mj
 import { syncPublicApi } from '../packages/core/api-composer.mjs';
 import { aggregateValidation } from '../packages/core/registry.mjs';
 import { DEFAULT_ENFORCERS } from '../packages/engine/defaultEnforcers.mjs';
-import { importVertical, importPlan, analyzeRoute, validatePlanShape, normalizePlanLayers, autoFixViolations, buildFixPrompt, buildFixPlan } from '../packages/core/import.mjs';
+import { importVertical, importPlan, validatePlanShape, normalizePlanLayers, autoFixViolations, buildFixPrompt, buildFixPlan } from '../packages/core/import.mjs';
 import { PROVIDERS } from '../packages/core/llm.mjs';
 import { validateArchitecture } from '../packages/core/architecture-enforcer.mjs';
 import { ConstructError } from '../packages/core/diagnostics.mjs';
@@ -224,76 +224,6 @@ test('importVertical with { llm } threads through importPlan for every unit', as
   assert.equal(calls.length, 1);
 });
 
-// ---- analyzeRoute: excludes test files from the analysis -------------------
-
-test('analyzeRoute excludes .test./.spec. files from the analysis prompt', async () => {
-  const routeDir = makeTempDir('construct-import-route-');
-  fs.writeFileSync(path.join(routeDir, 'useCpoGate.ts'), 'export function useCpoGate() { return true; }\n');
-  fs.writeFileSync(path.join(routeDir, 'useCpoGate.test.ts'), 'test("gate", () => {});\n');
-  fs.writeFileSync(path.join(routeDir, 'Foo.spec.tsx'), 'test("foo", () => {});\n');
-
-  const original = PROVIDERS.claude;
-  let seenPrompt = '';
-  PROVIDERS.claude = (prompt) => {
-    seenPrompt = prompt;
-    return JSON.stringify({ feature: 'checkout', units: [{ name: 'CpoGate', layers: ['hook'], from: 'useCpoGate.ts' }] });
-  };
-  try {
-    await analyzeRoute(routeDir, 'checkout');
-  } finally {
-    PROVIDERS.claude = original;
-  }
-
-  assert.match(seenPrompt, /useCpoGate\.ts/);
-  assert.doesNotMatch(seenPrompt, /useCpoGate\.test\.ts/);
-  assert.doesNotMatch(seenPrompt, /Foo\.spec\.tsx/);
-});
-
-test('analyzeRoute warns (does not silently drop) when a file is too large for the analysis budget', async () => {
-  const routeDir = makeTempDir('construct-import-route-');
-  // Comfortably smaller real features (CPO v2's 15 files are ~189k chars
-  // total) must fit with no warning at all — only something genuinely
-  // over the budget should trigger one.
-  fs.writeFileSync(path.join(routeDir, 'Huge.ts'), `export function huge() { return "${'x'.repeat(600000)}"; }\n`);
-
-  const originalWarn = console.warn;
-  const originalClaude = PROVIDERS.claude;
-  const warnings = [];
-  console.warn = (msg) => warnings.push(msg);
-  PROVIDERS.claude = () => JSON.stringify({ feature: 'checkout', units: [{ name: 'Huge', layers: ['domain'], from: 'Huge.ts' }] });
-  try {
-    await analyzeRoute(routeDir, 'checkout');
-  } finally {
-    console.warn = originalWarn;
-    PROVIDERS.claude = originalClaude;
-  }
-
-  assert.equal(warnings.length, 1);
-  assert.match(warnings[0], /Huge\.ts/);
-});
-
-test('analyzeRoute does not warn for a realistically-sized multi-file feature', async () => {
-  const routeDir = makeTempDir('construct-import-route-');
-  // A handful of ~5k-char files — nowhere near the 500k budget.
-  for (let i = 0; i < 5; i++) {
-    fs.writeFileSync(path.join(routeDir, `File${i}.ts`), `export function f${i}() { return "${'x'.repeat(5000)}"; }\n`);
-  }
-
-  const originalWarn = console.warn;
-  const originalClaude = PROVIDERS.claude;
-  const warnings = [];
-  console.warn = (msg) => warnings.push(msg);
-  PROVIDERS.claude = () => JSON.stringify({ feature: 'checkout', units: [{ name: 'File0', layers: ['domain'], from: 'File0.ts' }] });
-  try {
-    await analyzeRoute(routeDir, 'checkout');
-  } finally {
-    console.warn = originalWarn;
-    PROVIDERS.claude = originalClaude;
-  }
-
-  assert.equal(warnings.length, 0);
-});
-
 // ---- ollama as a real end-to-end fill provider (not just llm.mjs's own
 // unit tests) — confirms import.mjs's async plumbing actually threads a
 // non-claude provider through correctly.
@@ -424,45 +354,10 @@ test('#275 importPlan builds a controller-only unit cleanly instead of failing w
   assert.deepEqual(validateArchitecture(dir).violations.filter((v) => v.severity === 'error'), []);
 });
 
-test('#275 an LLM-proposed plan with a controller but no page is repaired before it is returned', async () => {
-  const dir = tmpProject();
-  const routeDir = path.join(dir, 'route');
-  fs.mkdirSync(routeDir, { recursive: true });
-  fs.writeFileSync(path.join(routeDir, 'Products.tsx'), 'export function Products() { return null; }\n');
-
-  const originalClaude = PROVIDERS.claude;
-  const originalWarn = console.warn;
-  console.warn = () => {};
-  PROVIDERS.claude = () =>
-    JSON.stringify({ feature: 'checkout', units: [{ name: 'Products', layers: ['hook', 'controller'], from: 'Products.tsx' }] });
-  let plan;
-  try {
-    plan = await analyzeRoute(routeDir, 'checkout');
-  } finally {
-    PROVIDERS.claude = originalClaude;
-    console.warn = originalWarn;
-  }
-  assert.deepEqual(plan.units[0].layers, ['hook', 'page', 'controller']);
-  assert.deepEqual(plan.layerAdjustments, [{ unit: 'Products', added: ['page'] }]);
-});
-
-test('#275 normalising a plan does not mask an unknown layer name in the same unit', async () => {
-  const dir = tmpProject();
-  const routeDir = path.join(dir, 'route');
-  fs.mkdirSync(routeDir, { recursive: true });
-  fs.writeFileSync(path.join(routeDir, 'Products.tsx'), 'export function Products() { return null; }\n');
-
-  const originalClaude = PROVIDERS.claude;
-  const originalWarn = console.warn;
-  console.warn = () => {};
-  PROVIDERS.claude = () =>
-    JSON.stringify({ feature: 'checkout', units: [{ name: 'Products', layers: ['controller', 'widget'], from: 'Products.tsx' }] });
-  try {
-    await assert.rejects(() => analyzeRoute(routeDir, 'checkout'), /proposed unknown layer\(s\) \["widget"\]/);
-  } finally {
-    PROVIDERS.claude = originalClaude;
-    console.warn = originalWarn;
-  }
+test('#275 normalising a plan does not drop an unknown layer name in the same unit', () => {
+  const plan = { feature: 'checkout', units: [{ name: 'Products', layers: ['controller', 'widget'], from: 'Products.tsx' }] };
+  assert.deepEqual(normalizePlanLayers(plan), [{ unit: 'Products', added: ['page'] }]);
+  assert.deepEqual(plan.units[0].layers, ['page', 'controller', 'widget']);
 });
 
 test('#275 importVertical with an explicit controller-without-page --layers list is still refused', async () => {

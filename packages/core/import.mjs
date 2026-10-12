@@ -9,8 +9,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { generateVertical, LAYER_ORDER, LAYER_PREREQUISITES, LAYER_CONSTRAINTS, layerFromGeneratedFile, extractExpressionHint } from './generators.mjs';
-import { walk } from './fs.mjs';
-import { callLlm, stripCodeFence, PROVIDERS } from './llm.mjs';
+import { PROVIDERS } from './llm.mjs';
 import { requestFileText } from './llm-fill.mjs';
 import { ConstructError, EXIT_CODES } from './diagnostics.mjs';
 import { startTimer, elapsedSeconds } from './timing.mjs';
@@ -26,13 +25,6 @@ export { existingRealFiles } from './import-real-files.mjs';
 // own create/generate fill (fillGeneratedFile) needs exactly the same
 // layer-constraint text import's fill has always used. Behavior here is
 // unchanged; only where these two live moved.
-const KNOWN_LAYERS = new Set(LAYER_ORDER);
-const CODE_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx']);
-// Test files carry no portable business logic and just waste analysis
-// context (or worse, tempt the LLM into proposing a unit "from" a test) —
-// a real route directory routinely has them sitting right next to the
-// source they cover (e.g. useCpoGate.ts + useCpoGate.test.ts).
-const TEST_FILE_RE = /\.(test|spec)\.[^./]+$/;
 
 function breadcrumb(fromAbsPath, intoAbsPath) {
   const relPath = path.relative(path.dirname(intoAbsPath), fromAbsPath).split(path.sep).join('/');
@@ -488,124 +480,4 @@ export async function importPlan(root, planPath, { llm, llmOptions } = {}) {
   }
   validatePlanShape(plan, planPath);
   return executeImportPlan(root, plan, { llm, llmOptions });
-}
-
-// ~125k tokens at a conservative 4 chars/token — comfortably fits a whole
-// real feature (CPO v2's 15 files across two directories, for reference,
-// is ~189k chars total) well within a Sonnet/Opus-class context window,
-// while still bounding a truly runaway directory. The first cut of this
-// (60k chars) was too conservative in practice: it silently dropped over
-// half of CPO v2's files from the analysis with no visible warning, so
-// `analyzeRoute` below now also reports (not just quietly swallows) it if
-// this ever does get hit.
-const MAX_ANALYSIS_CHARS = 500000;
-
-function buildAnalysisPrompt(featureName, files) {
-  let budget = MAX_ANALYSIS_CHARS;
-  const included = [];
-  const omitted = [];
-  for (const f of files) {
-    if (budget <= 0) {
-      omitted.push(f.relPath);
-      continue;
-    }
-    const chunk = f.content.length > budget ? f.content.slice(0, budget) : f.content;
-    if (chunk.length < f.content.length) omitted.push(`${f.relPath} (partial)`);
-    included.push({ relPath: f.relPath, content: chunk });
-    budget -= chunk.length;
-  }
-  const fileBlocks = included
-    .map((f) => `=== ${f.relPath} ===\n${f.content}`)
-    .join('\n\n');
-  const prompt = [
-    'You are analyzing an existing, non-Construct-architecture feature so it can be imported into Construct.',
-    'Construct organizes a feature into up to 7 layers, each a folder: domain (pure functions), service (owns an external effect), workflow (a state machine, no React), hook (a React hook, name starts with "use"), component (presentation from props), page (presentation composition from props), controller (composes hooks/domain/pages for a route, no restrictions).',
-    `Decompose the files below into logical units for a Construct feature named "${featureName}". Each unit is one cohesive piece of functionality (e.g. one hook plus the pure helper it depends on) and lists which of the 7 layers it needs and which single existing file it should be ported from.`,
-    '',
-    ...(omitted.length ? ['(Some file content was truncated for length — use what is shown, note if a decision is uncertain by keeping the unit small rather than guessing.)', ''] : []),
-    fileBlocks,
-    '',
-    'Respond with ONLY a JSON object, no markdown code fences, no commentary, matching exactly this shape:',
-    `{"feature":"${featureName}","units":[{"name":"PascalCaseName","layers":["domain","hook"],"from":"relative/path/from/the/list/above"}]}`,
-    'Every "from" value must be exactly one of the file paths listed above (relative, as shown in the === headers). Use only the 7 layer names given above.',
-  ].join('\n');
-  return { prompt, omitted };
-}
-
-/** Read every code file directly under `routeDirs` (a single directory, or
- * an array of them — e.g. a feature whose hooks and pages live in two
- * separate old-code directories) and ask `llm` to propose ONE combined
- * import plan covering all of them. Returns a shape-validated plan with
- * every unit's `from` resolved to an absolute path. Never writes anything —
- * purely analysis. With more than one directory, each file's label in the
- * prompt is prefixed with its own directory's basename so same-named files
- * across directories (and the model's response) stay unambiguous; with
- * just one directory the label is the bare relative path, unchanged from
- * before this accepted more than one. */
-export async function analyzeRoute(routeDirs, featureName, { llm = 'claude', llmOptions } = {}) {
-  const dirs = (Array.isArray(routeDirs) ? routeDirs : [routeDirs]).map((d) => path.resolve(d));
-  for (const d of dirs) {
-    if (!fs.existsSync(d) || !fs.statSync(d).isDirectory()) {
-      throw new ConstructError(`Route not found or not a directory: ${d}`, { exitCode: EXIT_CODES.USAGE_ERROR });
-    }
-  }
-
-  const multi = dirs.length > 1;
-  const fileMap = new Map(); // labeled relPath -> absolute path
-  for (const routeAbs of dirs) {
-    const prefix = multi ? `${path.basename(routeAbs)}/` : '';
-    for (const abs of walk(routeAbs)) {
-      if (!CODE_EXTENSIONS.has(path.extname(abs)) || TEST_FILE_RE.test(path.basename(abs))) continue;
-      fileMap.set(`${prefix}${path.relative(routeAbs, abs).split(path.sep).join('/')}`, abs);
-    }
-  }
-  if (!fileMap.size) {
-    throw new ConstructError(
-      `No code files (${[...CODE_EXTENSIONS].join(', ')}) found under ${dirs.join(', ')}`,
-      { exitCode: EXIT_CODES.USAGE_ERROR },
-    );
-  }
-  return runAnalysis(fileMap, featureName, llm, `analysis of ${dirs.join(', ')}`, llmOptions);
-}
-
-/** Shared core: given a { label -> absolute path } map, build the prompt,
- * call the LLM, and validate the response into a plan whose every unit's
- * `from` is resolved back to a real absolute path. */
-async function runAnalysis(fileMap, featureName, llm, sourceDescription, llmOptions) {
-  const files = [...fileMap.entries()].map(([relPath, abs]) => ({ relPath, content: fs.readFileSync(abs, 'utf8') }));
-  const { prompt, omitted } = buildAnalysisPrompt(featureName, files);
-  if (omitted.length) {
-    console.warn(
-      `Warning: ${omitted.length} file(s) were too long to fit in this analysis and were left out (or partially cut): ${omitted.join(', ')}. Consider analyzing just those, or splitting the analysis.`,
-    );
-  }
-  const raw = await callLlm(llm, prompt, llmOptions);
-  let plan;
-  try {
-    plan = JSON.parse(stripCodeFence(raw));
-  } catch (e) {
-    throw new ConstructError(
-      `"${llm}" did not return valid JSON for the plan (${e.message}). Raw response started with: ${raw.slice(0, 200)}`,
-      { exitCode: EXIT_CODES.INTERNAL_ERROR },
-    );
-  }
-  validatePlanShape(plan, `${llm}'s ${sourceDescription}`);
-  for (const unit of plan.units) {
-    const unknown = unit.layers.filter((l) => !KNOWN_LAYERS.has(l));
-    if (unknown.length) {
-      throw new ConstructError(
-        `"${llm}" proposed unknown layer(s) ${JSON.stringify(unknown)} for unit "${unit.name}". Known layers: ${[...KNOWN_LAYERS].join(', ')}`,
-        { exitCode: EXIT_CODES.INTERNAL_ERROR },
-      );
-    }
-    const abs = fileMap.get(unit.from);
-    if (!abs) {
-      throw new ConstructError(
-        `"${llm}" proposed unit "${unit.name}" from "${unit.from}", which doesn't match any listed file (expected exactly one of the "=== ... ===" labels it was shown).`,
-        { exitCode: EXIT_CODES.INTERNAL_ERROR },
-      );
-    }
-    unit.from = abs;
-  }
-  return plan;
 }
