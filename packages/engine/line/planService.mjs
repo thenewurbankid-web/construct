@@ -24,7 +24,7 @@ import { buildFacts } from './facts.mjs';
 import { checkPre, conditionsOf, expectFor } from './conditions.mjs';
 import { evaluate } from './expr.mjs';
 import { createPlanRecorder } from './records.mjs';
-import { createAtomicPlanWriter, createStaticPlanApi, lockPlanApi } from './planFallback.mjs';
+import { createAtomicPlanWriter, createStaticPlanApi, lockPlanApi, normalizeWhy, whyProblem } from './planFallback.mjs';
 import { isInsideWorkspace, readWorkspace } from './workspace.mjs';
 import { createSessionTrace, refusalOfStep, matchFix, sourceOf, traceArgs } from './trace.mjs';
 import { memoryOf, memoryBy } from './memory/index.mjs';
@@ -115,7 +115,7 @@ export function choicesOf(step) {
  */
 export function shapedRefusal(r, req, fixes, tools, context, example) {
   const list = fixes ?? (Array.isArray(r.fixes) ? r.fixes : []);
-  const { text, ...hint } = shapeRefusal({ code: r.code, sentence: r.sentence, tool: req?.tool, args: req?.args, fix: req?.fix, answer: req?.answer, option: req?.option, fixes: list, tools, context, example });
+  const { text, ...hint } = shapeRefusal({ code: r.code, sentence: r.sentence, tool: req?.tool, args: req?.args, why: req?.why, fix: req?.fix, answer: req?.answer, option: req?.option, fixes: list, tools, context, example });
   return { ...r, ...(list.length ? { fixes: list } : {}), hint, text };
 }
 
@@ -244,9 +244,14 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
     const { api, registry } = await init();
     const tool = typeof req?.tool === 'string' ? req.tool : '';
     let args = req?.args && typeof req.args === 'object' && !Array.isArray(req.args) ? { .../** @type {any} */ (req.args) } : {};
-    let why = typeof req?.why === 'string' && req.why.trim() ? req.why.trim() : null;
+    // A why with no full stop is ended with one here, so neither plan store refuses a step over punctuation alone.
+    let why = normalizeWhy(req?.why);
     const spec = registry.list().find((t) => t.name === tool);
     if (!spec) return refusal('UNKNOWN_TOOL', tool ? `There is no tool named ${tool}; the Line tools are ${registry.list().filter((t) => t.name.startsWith('line.')).map((t) => t.name).join(', ')}` : 'Name the tool the step runs');
+    // Either store (@mx/plan or the built-in one) would refuse a why that breaks the sentence rule; say which part here,
+    // the same words for both, so the builder is not sent to plan_status for a malformed step.
+    const whyBad = why === null ? null : whyProblem(req.why);
+    if (whyBad) return fromPlan({ code: 'invalid', reason: whyBad });
     const badArgs = () => {
       const parsed = spec.schema.safeParse(args);
       return parsed.success ? null : refusal('BAD_ARGS', `The arguments do not fit ${tool}: ${parsed.error.issues.map((i) => `${i.path.join('.') || 'args'} ${i.message}`).join('; ')}`);

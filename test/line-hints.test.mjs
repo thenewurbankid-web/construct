@@ -13,7 +13,7 @@ import { PLAN_REFUSAL_CODES } from '../packages/engine/line/contract.mjs';
 import { REFUSAL_HINTS, TOOL_EXAMPLES, hintOf, shapeRefusal, stepText } from '../packages/engine/line/hints.mjs';
 
 /** Every code: the builder modules' (refusals.mjs), the plan protocol's, the plan service's and a plan store's. */
-const CODES = [...new Set([...Object.keys(REFUSAL_FIXES), ...PLAN_REFUSAL_CODES, 'NEEDS_FIX', 'NO_QUESTION', 'BAD_OPTION', 'TOO_LATE', 'PLAN_CONFLICT'])].sort();
+const CODES = [...new Set([...Object.keys(REFUSAL_FIXES), ...PLAN_REFUSAL_CODES, 'NEEDS_FIX', 'NO_QUESTION', 'BAD_OPTION', 'TOO_LATE', 'PLAN_CONFLICT', 'PLAN_INVALID'])].sort();
 const BAD = 'zz-bad-value';
 const STEPS = [{ tool: 'line.addRoute', args: { route: '/', page: 'features/home/pages/HomePage.tsx' } }, { tool: 'line.leaveAsIs', args: { stepId: 's1' } }];
 /** A request that carries the bad value in every field the code's hint names. */
@@ -46,7 +46,7 @@ for (const code of CODES) {
     assert.deepEqual(s.choices, []);
     assert.equal(s.apply, null);
     const call = lines.at(-1);
-    const m = /^A correct call: (?:([\w.]+) (\{.*\})|(\{.*\}))$/.exec(call);
+    const m = /^A correct call: (?:([\w.]+) (\{.*\})(?: --why "[A-Z][^"]*\.")?|(\{.*\}))$/.exec(call);
     assert.ok(m, `${code} ends with a concrete correct call: ${call}`);
     assert.doesNotThrow(() => JSON.parse(m[2] ?? m[3]), call);
     assert.doesNotMatch(s.text, NO_PATHS);
@@ -92,6 +92,25 @@ test('plan service: every refusal carries the shaped text; a fix ref sent as a t
     assert.equal(picked.ok, true, picked.text);
     const unknown = /** @type {any} */ (await svc.addStep({ tool: 'line.addRoutes', args: {} }, 'agent'));
     assert.match(unknown.text, /A correct call: line\.addRoute \{"route":"\/cart"/);
+  } finally { done(); }
+});
+
+test('a why without a full stop is ended with one, not refused; a why that breaks another sentence rule names that rule and the step mended (data-qwen3-4b-r1 calls 6, 11, 18, 40, 49)', async () => {
+  const { root, done } = project();
+  try {
+    fs.writeFileSync(path.join(root, 'features/home/pages/HomePage.tsx'), 'export function HomePage() { return null; }\n');
+    const svc = svcOf(root);
+    const page = 'features/home/pages/HomePage.tsx';
+    const ok = /** @type {any} */ (await svc.addStep({ tool: 'line.addRoute', args: { route: '/', page }, why: '  Set the home route to serve the HomePage for /  ' }, 'agent'));
+    assert.equal(ok.ok, true, ok.text ?? ok.sentence);
+    assert.equal(ok.steps.find((s) => s.id === ok.stepId).why, 'Set the home route to serve the HomePage for /.');
+    const bad = /** @type {any} */ (await svc.addStep({ tool: 'line.addRoute', args: { route: '/home', page }, why: 'serve the home page again' }, 'agent'));
+    assert.equal(bad.code, 'PLAN_INVALID');
+    const lines = bad.text.split('\n');
+    assert.match(lines[0], /^Refused \(PLAN_INVALID\): The step's why must start with a capital letter \(you sent why "serve the home page again"\)\.$/);
+    assert.equal(lines[1], "Rule: a step's why is one plain-English sentence that starts with a capital letter.");
+    assert.doesNotMatch(bad.text, /plan_status|changed meanwhile/);
+    assert.equal(lines.at(-1), `A correct call: line.addRoute {"route":"/home","page":"${page}"} --why "Serve the home page again."`);
   } finally { done(); }
 });
 

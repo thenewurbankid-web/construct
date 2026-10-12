@@ -20,6 +20,19 @@ const SENTENCE = /^[A-Z0-9"'(][^\n]*[.?!]$/;
 const ID = /^[A-Za-z0-9_-]{1,80}$/;
 const refuse = (code, reason, version) => (version === undefined ? { ok: false, code, reason } : { ok: false, code, reason, version });
 const sentence = (s) => { const t = String(s).trim().replace(/\s+/g, ' '); const c = t.charAt(0).toUpperCase() + t.slice(1); return /[.?!]$/.test(c) ? c : `${c}.`; };
+/**
+ * A step's why as the plan stores it: trimmed, one line, and ended with a full stop when it has none (a missing full
+ * stop alone never refuses a step). Anything else the sentence rule needs (a capital letter first) is not guessed.
+ * @param {unknown} why @returns {string | null} null when there is no text.
+ */
+export const normalizeWhy = (why) => { if (typeof why !== 'string') return null; const t = why.trim().replace(/\s+/g, ' '); return !t ? null : /[.?!]$/.test(t) ? t : `${t}.`; };
+/** Which part of the sentence rule a why still breaks, as one plain-English sentence; null when it keeps it. */
+export const whyProblem = (why) => {
+  const w = normalizeWhy(why);
+  if (w === null) return "The step's why is missing; say in one plain-English sentence what the step does.";
+  if (!SENTENCE.test(w)) return `The step's why must start with a capital letter (you sent why "${String(why).trim()}").`;
+  return null;
+};
 
 /**
  * The file writer @mx/plan's createFileWriter is, in plain Node: atomic (tmp + rename) and logged.
@@ -113,11 +126,12 @@ export function createStaticPlanApi(o) {
     const parsed = spec.schema.safeParse(input.args ?? {});
     if (!parsed.success) return refuse('invalid', `The arguments do not fit ${input.tool}: ${/** @type {any} */ (parsed).error.issues.map((x) => `${x.path.join('.') || 'args'} ${x.message}`).join('; ')}.`);
     if (input.kind !== undefined && input.kind !== spec.kind) return refuse('invalid', `The tool ${input.tool} is marked ${spec.kind}, but the step says ${input.kind}.`);
-    if (typeof input.why !== 'string' || !SENTENCE.test(input.why.trim())) return refuse('invalid', "The step's why must be one plain-English sentence that starts with a capital letter and ends with a full stop.");
+    const whyBad = whyProblem(input.why);
+    if (whyBad) return refuse('invalid', whyBad);
     let k = p.steps.length + 1; while (p.steps.some((s) => s.id === `s${k}`)) k += 1;
     const id = input.id ?? `s${k}`;
     if (!ID.test(id) || p.steps.some((s) => s.id === id)) return refuse('invalid', `"${id}" is not a free step id in this plan.`);
-    return { id, n: p.steps.length + 1, tool: input.tool, args: input.args ?? {}, why: input.why.trim(), kind: spec.kind, status: 'planned', approval: spec.kind === 'write' && !p.auto ? 'needed' : 'none', addedBy: addedByOf(by) };
+    return { id, n: p.steps.length + 1, tool: input.tool, args: input.args ?? {}, why: normalizeWhy(input.why), kind: spec.kind, status: 'planned', approval: spec.kind === 'write' && !p.auto ? 'needed' : 'none', addedBy: addedByOf(by) };
   }
 
   const summary = (d, p) => ({ planId: p.id, sessionId: d.session.id, title: d.session.title, goal: p.goal, status: p.status, version: p.version, steps: p.steps.length });
