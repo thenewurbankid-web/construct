@@ -11,32 +11,45 @@
 //
 // Live (Opus) runs need the server started with TRACE_BEAM_LIVE=1 AND { live: true } in the request; otherwise a run
 // is a replay of recorded transcripts and never calls a model. TRACE_BEAM_RESULTS / TRACE_BEAM_RUNS move the data.
+//
+// eval/ is loaded lazily, on the first /api/beam/* request, not imported at the top: a deploy build ships only
+// build-info.mjs's TOP_DIRS (src, examples, subframe-app), so a static import of ../eval would stop the deployed
+// server from starting at all. In a build without eval/ the API answers 503 with a sentence; the rest of the server runs.
 import fs from "node:fs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
-import { createStore, beamDirs } from "../eval/beam/store.mjs";
-import { listVersions, loadPrompt, setupId } from "../eval/beam/prompts.mjs";
-import { runAndSave } from "../eval/beam/pipeline.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const UI = { "/beam": ["ui/beam.html", "text/html; charset=utf-8"], "/ui/beam.mjs": ["ui/beam.mjs", "text/javascript"] };
 const VERSION = /^[\w-]{1,32}$/;
+export const EVAL_MISSING = "The planner eval (trace/eval/beam) is a dev tool and is not part of this build; run the server from the Trace source checkout to use /beam.";
+
+/** The eval modules this file uses, imported on first use; null when this build has no eval/beam (a deploy build). */
+export async function loadBeamEval() {
+  if (!fs.existsSync(path.join(here, "..", "eval", "beam", "store.mjs"))) return null;
+  const [store, prompts, pipeline] = await Promise.all([import("../eval/beam/store.mjs"), import("../eval/beam/prompts.mjs"), import("../eval/beam/pipeline.mjs")]);
+  return { createStore: store.createStore, beamDirs: store.beamDirs, listVersions: prompts.listVersions, loadPrompt: prompts.loadPrompt, setupId: prompts.setupId, runAndSave: pipeline.runAndSave };
+}
 
 /**
- * @param {{examplesDir: string, env?: NodeJS.ProcessEnv, run?: typeof runAndSave}} ctx
+ * @param {{examplesDir: string, env?: NodeJS.ProcessEnv, run?: Function, loadEval?: typeof loadBeamEval}} ctx
  * @returns {(req: import("node:http").IncomingMessage, res: import("node:http").ServerResponse, url: URL, h: {readBody: Function, json: Function, file: Function}) => Promise<boolean>}
  */
-export function createBeamRoutes({ examplesDir, env = process.env, run = runAndSave }) {
-  const dirs = beamDirs(env);
-  const store = createStore(dirs);
+export function createBeamRoutes({ examplesDir, env = process.env, run, loadEval = loadBeamEval }) {
   const liveAllowed = env.TRACE_BEAM_LIVE === "1";
   const jobs = new Map();
+  let ready = null; // Promise of { ev, dirs, store }, or of null when eval/ is not in this build
+  const init = () => (ready ??= loadEval().then((ev) => { if (!ev) return null; const dirs = ev.beamDirs(env); return { ev, dirs, store: ev.createStore(dirs) }; }));
 
   return async function beamRoute(req, res, url, { readBody, json, file }) {
     const p = url.pathname;
     if (UI[p]) { file(res, path.join(here, UI[p][0]), UI[p][1]); return true; }
     if (!/^\/api\/beam\//.test(p)) return false;
+    const loaded = await init();
+    if (!loaded) { json(res, 503, { error: EVAL_MISSING }); return true; }
+    const { ev, dirs, store } = loaded;
+    const { listVersions, loadPrompt, setupId } = ev;
 
     if (p === "/api/beam/setups" && req.method === "GET") {
       json(res, 200, {
@@ -72,7 +85,7 @@ export function createBeamRoutes({ examplesDir, env = process.env, run = runAndS
       const id = randomUUID();
       const job = { id, setup, status: "running", live, error: null, startedAt: new Date().toISOString() };
       jobs.set(id, job);
-      run({ requester, grader, apps, items, dryRun: !live, examplesDir, dirs, store })
+      (run ?? ev.runAndSave)({ requester, grader, apps, items, dryRun: !live, examplesDir, dirs, store })
         .then(() => { job.status = "done"; })
         .catch((e) => { job.status = "error"; job.error = e.message; });
       json(res, 202, { job: id, setup, live });

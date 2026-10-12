@@ -6,7 +6,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { createBeamRoutes } from "./beam-routes.mjs";
+import { createBeamRoutes, EVAL_MISSING } from "./beam-routes.mjs";
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const examplesDir = path.join(root, "examples");
@@ -63,4 +63,15 @@ test("re-run replays by default; a live run needs TRACE_BEAM_LIVE=1 and live:tru
   assert.equal(seen[0].dryRun, false);
   assert.deepEqual(seen[0].apps, ["contacts", "orders"], "a bad app list falls back to the setup's own apps");
   assert.equal(seen[0].items, 3);
+});
+
+test("a deploy build without eval/beam: the pages still load, the API answers 503 with a sentence, the server module imports", async () => {
+  const route = createBeamRoutes({ examplesDir, env: envIn(), loadEval: async () => null });
+  assert.match((await call(route, "GET", "/beam")).file, /ui\/beam\.html$/);
+  const r = await call(route, "GET", "/api/beam/setups");
+  assert.equal(r.code, 503);
+  assert.equal(r.body.error, EVAL_MISSING);
+  // beam-routes.mjs itself never imports ../eval at load time (a deploy build ships only src/, examples/, subframe-app/)
+  const own = fs.readFileSync(path.join(root, "src", "beam-routes.mjs"), "utf8");
+  assert.doesNotMatch(own, /^import [^\n]*\.\.\/eval\//m);
 });
