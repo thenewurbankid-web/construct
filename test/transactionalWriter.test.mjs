@@ -92,19 +92,26 @@ test('commit() with an empty transaction is a no-op success and never touches di
 });
 
 test('commit() cleans up its shadow temp directory whether it commits or aborts', () => {
+  // #882: assert on the exact shadow dirs THIS test's commits created (the validator sees each one), not on a
+  // before/after glob of os.tmpdir(): under the full suite other test files run in parallel and create and remove
+  // their own construct-txn-* dirs between the two readdir calls.
   const dir = tmpProject();
-  const before = fs.readdirSync(os.tmpdir()).filter((f) => f.startsWith('construct-txn-'));
+  const shadows = [];
+  const recording = (shadow, opts) => { shadows.push(shadow); return validateArchitecture(shadow, opts); };
 
   const ok = createTransaction(dir);
   ok.writeFile('features/checkout/domain/Total.ts', `export function Total(){ return true; }\n`);
-  ok.commit({ validate: validateArchitecture });
+  assert.equal(ok.commit({ validate: recording }).committed, true);
 
   const bad = createTransaction(dir);
   bad.writeFile('features/checkout/pages/Bad.tsx', `export function Bad(){ fetch('/'); return null; }\n`);
-  bad.commit({ validate: validateArchitecture });
+  assert.equal(bad.commit({ validate: recording }).committed, false);
 
-  const after = fs.readdirSync(os.tmpdir()).filter((f) => f.startsWith('construct-txn-'));
-  assert.deepEqual(after, before, 'no construct-txn-* shadow dirs should be left behind');
+  assert.equal(shadows.length, 2);
+  for (const shadow of shadows) {
+    assert.ok(path.basename(shadow).startsWith(`construct-txn-${process.pid}-`), shadow);
+    assert.equal(fs.existsSync(shadow), false, `shadow dir ${shadow} should be removed`);
+  }
 });
 
 test('deleteFile() stages a delete: the shadow copy validates without the file, and disk loses it only when commit passes', () => {

@@ -291,7 +291,7 @@ test("a contract with no example for the list: the code shape is generated, noth
 const upload = (base, name, text) => fetch(`${base}/api/openapi?example=${name}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ name: "openapi.json", text }) });
 function startServer(examplesDir) {
   return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, [path.join(root, "src", "server.mjs"), "--no-open", "--port", String(4300 + Math.floor(Math.random() * 500)), "--examples", examplesDir, "--out", tmp()], { stdio: ["ignore", "pipe", "inherit"] });
+    const child = spawn(process.execPath, [path.join(root, "src", "server.mjs"), "--no-open", "--port", "0", "--examples", examplesDir, "--out", tmp()], { stdio: ["ignore", "pipe", "inherit"] });
     child.stdout.on("data", (d) => { const m = String(d).match(/http:\/\/localhost:(\d+)/); if (m) resolve({ child, base: `http://127.0.0.1:${m[1]}` }); });
     child.on("error", reject);
     setTimeout(() => reject(new Error("the server did not start")), 8000).unref();

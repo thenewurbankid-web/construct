@@ -178,7 +178,8 @@ test('the RAM wait is bounded and the lock is released while waiting and after g
   assert.equal(r.status, 75, r.stderr);
   assert.ok(Date.now() - started < 15_000);
   assert.doesNotMatch(r.stdout, /must-not-run/);
-  assert.match(r.stderr, /waiting for >= 999999999 MB free RAM/);
+  // #882: no assertion on the 'waiting for ...' line: under load the first probe can already land past the 1 s
+  // deadline, and heavy.sh then gives up without a waiting line. The give-up line is printed on every path.
   assert.match(r.stderr, /gave up waiting for >= 999999999 MB free RAM after 1s .*Lock released/);
   // Another job can take the lock right away.
   assert.equal(spawnSync('flock', ['-n', env.CONSTRUCT_HEAVY_LOCK, 'true']).status, 0, 'the lock is free');
@@ -205,12 +206,21 @@ test('flock missing: still serializes two overlapping jobs (mutual exclusion via
   const log = path.join(tmp, 'order.log');
   const stamp = (label) => `echo "${label} $(date +%s%N)" >> "${log}"`;
 
-  const a = spawn('bash', [HEAVY, 'sh', '-c', `${stamp('a-start')}; sleep 0.5; ${stamp('a-end')}`], { env: noFlock });
-  await new Promise((res) => setTimeout(res, 150)); // let A actually take the lock first
-  const b = spawn('bash', [HEAVY, 'sh', '-c', `${stamp('b-start')}; ${stamp('b-end')}`], { env: noFlock });
-
+  // #882: no fixed head start. A runs only once it holds the lock, so its first stamp is proof it holds it; B is
+  // started after that, and A keeps the lock until the test writes a release file. Under load a fixed 150 ms head
+  // start was not enough and B took the lock first.
+  const release = path.join(tmp, 'release');
+  const a = spawn('bash', [HEAVY, 'sh', '-c', `${stamp('a-start')}; while [ ! -e "${release}" ]; do sleep 0.05; done; ${stamp('a-end')}`], { env: noFlock });
   const waitExit = (p) => new Promise((res) => p.on('exit', res));
-  const [codeA, codeB] = await Promise.all([waitExit(a), waitExit(b)]);
+  const exitA = waitExit(a);
+  const logHas = (label) => fs.existsSync(log) && fs.readFileSync(log, 'utf8').includes(label);
+  while (!logHas('a-start')) await new Promise((res) => setTimeout(res, 20));
+  const b = spawn('bash', [HEAVY, 'sh', '-c', `${stamp('b-start')}; ${stamp('b-end')}`], { env: noFlock });
+  const exitB = waitExit(b);
+  await new Promise((res) => setTimeout(res, 300)); // give B time to contend; correctness does not depend on it
+  assert.equal(logHas('b-start'), false, 'B must not run while A holds the lock');
+  fs.writeFileSync(release, '');
+  const [codeA, codeB] = await Promise.all([exitA, exitB]);
   assert.equal(codeA, 0);
   assert.equal(codeB, 0);
   assert.equal(fs.existsSync(`${env.CONSTRUCT_HEAVY_LOCK}.d`), false, 'lock dir cleaned up after both jobs');
@@ -292,7 +302,9 @@ test('macOS: vm_stat reporting too little free RAM makes the RAM wait time out (
   const r = run(['sh', '-c', 'echo must-not-run'], env);
   assert.equal(r.status, 75, r.stderr);
   assert.doesNotMatch(r.stdout, /must-not-run/);
-  assert.match(r.stderr, /waiting for >= 3000 MB free RAM \(have 2 MB\)/);
+  // #882: the measured value is checked on the give-up line, which every path prints; the 'waiting for' line is
+  // skipped when the first probe already lands past the 1 s deadline (full-suite load).
+  assert.match(r.stderr, /gave up waiting for >= 3000 MB free RAM after 1s \(have 2 MB\)/);
   assert.doesNotMatch(r.stderr, /without the free-RAM check/);
 });
 

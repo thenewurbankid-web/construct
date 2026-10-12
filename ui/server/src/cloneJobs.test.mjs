@@ -255,11 +255,10 @@ test('cancel really kills the whole process group of a real, hung child (grandch
   const { dir, ws } = sandbox();
   const pidFile = path.join(dir, 'grandchild.pid');
   // Stands in for `git`: makes the destination, starts a grandchild (like git-remote-https), then hangs.
-  const hung = (cmd, args, opts) => realSpawn('sh', ['-c', `mkdir -p "$1" && echo partial > "$1/x" && (sleep 60 & echo $! > "$2"; wait)`, 'sh', args[args.length - 1], pidFile], opts);
+  const hung = (cmd, args, opts) => realSpawn('sh', ['-c', `mkdir -p "$1" && echo partial > "$1/x" && (sleep 60 & echo $! > "$2.tmp" && mv "$2.tmp" "$2"; wait)`, 'sh', args[args.length - 1], pidFile], opts);
   const jobs = createCloneJobs({ getRoot: () => ws, lookup: PUBLIC, spawn: hung });
   const r = await jobs.start({ url: 'https://github.com/o/hung' });
-  for (let i = 0; i < 100 && !fs.existsSync(pidFile); i += 1) await new Promise((res) => setTimeout(res, 20));
-  const grandchild = Number(fs.readFileSync(pidFile, 'utf8'));
+  const grandchild = await readPidFile(pidFile);
   assert.ok(grandchild > 1);
   assert.equal(jobs.cancel(r.job.id).status, 200);
   await r.done;
@@ -312,8 +311,21 @@ function deadPid() {
   return r.pid;
 }
 
+/** #882: the hung fake git writes its grandchild's pid under a temp name and renames it, so once the file exists it
+ * holds the whole pid. With a plain `echo $! > file` the file is visible (empty) before the write lands; under
+ * full-suite load the test read '' -> pid 0, and `process.kill(0, 0)` signals the test's own process group, so the
+ * grandchild "never died". */
+const readPidFile = async (file) => {
+  for (let i = 0; i < 500 && !fs.existsSync(file); i += 1) await new Promise((res) => setTimeout(res, 20));
+  const pid = Number(fs.readFileSync(file, 'utf8'));
+  assert.ok(Number.isInteger(pid) && pid > 1, `grandchild pid: ${pid}`);
+  return pid;
+};
+
 const waitGone = async (pid) => {
-  for (let i = 0; i < 100; i += 1) {
+  // Polls until the pid is gone; the 10 s budget only bounds a real failure (a killed process can take a while to be
+  // reaped under load), it is not a timing assumption.
+  for (let i = 0; i < 500; i += 1) {
     try { process.kill(pid, 0); await new Promise((res) => setTimeout(res, 20)); } catch { return true; }
   }
   return false;
@@ -348,11 +360,10 @@ test('a marker beside the destination exists while git runs and is removed on ev
 test('the exit handler SIGKILLs the whole process group of every live clone (the hosted `kill 0` cannot reach a detached group)', async () => {
   const { dir, ws } = sandbox();
   const pidFile = path.join(dir, 'grandchild.pid');
-  const hung = (cmd, args, opts) => realSpawn('sh', ['-c', `mkdir -p "$1" && (sleep 60 & echo $! > "$2"; wait)`, 'sh', args[args.length - 1], pidFile], opts);
+  const hung = (cmd, args, opts) => realSpawn('sh', ['-c', `mkdir -p "$1" && (sleep 60 & echo $! > "$2.tmp" && mv "$2.tmp" "$2"; wait)`, 'sh', args[args.length - 1], pidFile], opts);
   const jobs = createCloneJobs({ getRoot: () => ws, lookup: PUBLIC, spawn: hung });
   const r = await jobs.start({ url: 'https://github.com/o/orphan' });
-  for (let i = 0; i < 100 && !fs.existsSync(pidFile); i += 1) await new Promise((res) => setTimeout(res, 20));
-  const grandchild = Number(fs.readFileSync(pidFile, 'utf8'));
+  const grandchild = await readPidFile(pidFile);
   assert.ok(liveCloneChildren() >= 1);
   for (const sig of ['SIGINT', 'SIGTERM', 'SIGHUP']) assert.ok(process.listenerCount(sig) >= 1, `${sig} handler installed`);
   assert.ok(process.listeners('exit').includes(killLiveCloneGroups), 'exit handler installed');

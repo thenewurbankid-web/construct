@@ -21,6 +21,9 @@ import { LineOpError } from './contract.mjs';
 
 /** Above this, the type check is too slow to block a save; it still runs and its result rides along (see gap note). */
 export const TYPE_CHECK_BUDGET_MS = 3000;
+// The same override the type gate reads (typeGate.mjs): a test pins it high so a loaded machine cannot flip a
+// refusal into a "too slow to block" warning (#882).
+const typeCheckBudgetMs = () => Number(process.env.LINE_TYPE_GATE_BUDGET_MS) || TYPE_CHECK_BUDGET_MS;
 
 const HANDLER_EVENTS = {
   Click: 'is clicked', DoubleClick: 'is double-clicked', Change: 'changes', Submit: 'is submitted', Input: 'gets input',
@@ -207,7 +210,7 @@ export function planSetFragment(root, { file, fragmentId, code, contentHash } = 
   if (content === null) throw new LineOpError('This code does not fit in that place, so nothing was saved.', 'BAD_CODE', lastError);
 
   const types = addedTypeErrors(root, abs, source, content);
-  const slow = Boolean(types && types.ms > TYPE_CHECK_BUDGET_MS);
+  const slow = Boolean(types && types.ms > typeCheckBudgetMs());
   if (types && types.added.length && !slow) {
     const detail = types.added.map((d) => `${d.code} at line ${d.line}: ${d.message}`).join('\n');
     throw new LineOpError(`The new code does not match the types this file expects, so nothing was saved.`, 'TYPE_ERROR', detail);

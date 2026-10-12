@@ -17,7 +17,7 @@ const events = (text) => text.split("\n").filter((l) => l.startsWith("data: ")).
 
 function startServer(examplesDir) {
   return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, [path.join(root, "src", "server.mjs"), "--no-open", "--port", String(4800 + Math.floor(Math.random() * 400)), "--examples", examplesDir, "--out", tmp()], { stdio: ["ignore", "pipe", "inherit"] });
+    const child = spawn(process.execPath, [path.join(root, "src", "server.mjs"), "--no-open", "--port", "0", /* #882: an OS-assigned port; a random 4800-5199 pick could land on 5060/5061, which fetch refuses as a "bad port" */ "--examples", examplesDir, "--out", tmp()], { stdio: ["ignore", "pipe", "inherit"] });
     child.stdout.on("data", (d) => { const m = String(d).match(/http:\/\/localhost:(\d+)/); if (m) resolve({ child, base: `http://127.0.0.1:${m[1]}` }); });
     child.on("error", reject);
     setTimeout(() => reject(new Error("the server did not start")), 8000).unref();
