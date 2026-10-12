@@ -97,7 +97,7 @@ export function joinRun(calls, turns) {
       id: `c${i}`, idx: i, at: c.at ?? null, turn, tool: callTool(c), cmd: c.cmd, args: callArgs(c), status: st.status, code: st.code,
       stepId: c.result?.stepId ?? null, rules: c.result?.rules ?? [], sentence: short(c.result?.sentence ?? '', 240),
       callMs: c.ms ?? null, modelMs: t?.ms ?? null, tokIn: null, tokOut: null, textCalls: t?.textCalls ?? null,
-      fix: Boolean(add && (add.fixOf || c.args?.tool === 'line.leaveAsIs')), approved: Boolean(c.result?.stepId && approvals.has(c.result.stepId)),
+      fix: Boolean((add && (add.fixOf || c.args?.tool === 'line.leaveAsIs')) || (c.cmd === 'add' && c.args?.fix)), approved: Boolean(c.result?.stepId && approvals.has(c.result.stepId)),
       mismatch: outcome && outcome.name && TOOL_TO_CMD[outcome.name] !== c.cmd ? outcome.name : null,
     };
   };

@@ -207,3 +207,19 @@ test('#889: the Line builder\'s prompt has the overview and a feature index; pla
     assert.match(calls[0].result.shown, /Current feature: catalog/);
   } finally { done(); }
 });
+
+test('#880 follow-up: bench metrics count the fixes a builder picked by id (sent, added, landed)', async () => {
+  const { planStats } = await import('../bench/ecommerce/metrics.mjs');
+  const parent = fs.realpathSync(makeTempDir('line-hints-metrics-'));
+  try {
+    fs.mkdirSync(path.join(parent, 'line', 'plans'), { recursive: true });
+    const landed = { id: 's2', tool: 'line.addRoute', status: 'done', args: {}, result: { apply: { ok: true, files: ['app/page.tsx'] } } };
+    fs.writeFileSync(path.join(parent, 'line', 'plans', 'ses-cockpit.json'), JSON.stringify({ plans: [{ steps: [landed] }] }));
+    const calls = [
+      { kind: 'call', cmd: 'add', args: { tool: 'line.addRoute', args: { route: '/', page: 'x' } }, result: { ok: false, code: 'UNKNOWN_ITEM' } },
+      { kind: 'call', cmd: 'add', args: { tool: null, args: {}, fix: 'f1' }, result: { ok: true, stepId: 's2' } },
+      { kind: 'call', cmd: 'add', args: { tool: null, args: {}, fix: 'f9' }, result: { ok: false, code: 'UNKNOWN_FIX' } },
+    ];
+    assert.deepEqual(planStats(parent, calls).fixesById, { sent: 2, added: 1, landed: 1 });
+  } finally { fs.rmSync(parent, { recursive: true, force: true }); }
+});
