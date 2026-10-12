@@ -25,6 +25,21 @@ const CHECKS = {
   'LINE-MODULE': (p, line) => checkModules(p, line),
 };
 
+/**
+ * bench-gaps 5: layer rules the Line profile does not run, each with the reason. They ask for `@expression` units
+ * (defineExpression in an `expressions/` layer), which a Line project has no kind for, so a builder could never satisfy
+ * them: the pilot ended with 14 of them on every list and conditional, the starter's own Radix components included.
+ * Construct's extractExpression codemod is not a usable typed fix inside Line yet: it imports Construct's in-repo
+ * typed-contracts by a path outside the project, passes only the list or condition (not the other values the JSX uses),
+ * and hoists components with no @line-base. They come back when Line has an `expressions` kind with a Line-aware
+ * extraction as their typed fix (the layers wave). Smith's pattern (pure named functions from atoms) still applies.
+ */
+export const LINE_OFF_LAYER_RULES = Object.freeze({
+  'COMPONENT-005': 'asks for an @expression unit, and a Line project has no expressions kind yet',
+  'COMPONENT-006': 'its budget counts inline branches that only an @expression unit could take out',
+  'PAGE-008': 'asks for an @expression unit, and a Line project has no expressions kind yet',
+});
+
 /** Existing Construct layer rules for every library/feature component, page and workflow. */
 function layerHits(project, config) {
   const out = [];
@@ -33,6 +48,7 @@ function layerHits(project, config) {
     if ((file.area !== 'library' && file.area !== 'feature') || !layer || !isItemFile(file) || file.rel.endsWith('.json')) continue;
     if (project.ast(file.rel) instanceof Error) continue;
     for (const desc of detectLayerViolations(layer, project.source(file.rel), layerViolationOptsFor(config, layer))) {
+      if (Object.hasOwn(LINE_OFF_LAYER_RULES, desc.rule)) continue;
       out.push({ ...desc, file: file.rel });
     }
   }
