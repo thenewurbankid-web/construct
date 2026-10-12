@@ -1,0 +1,45 @@
+{
+  "v": 1,
+  "id": "async-status",
+  "role": "query.loading",
+  "title": "Loading status",
+  "name": "loadAsync",
+  "kind": "function",
+  "english": "Load the data and say whether it is loading, loaded or failed.",
+  "inputs": [
+    { "name": "load", "type": "() => Promise<D>", "sentence": "What loads the data." },
+    { "name": "now", "type": "() => number", "sentence": "The clock that stamps when the data arrived.", "optional": true }
+  ],
+  "outputs": [
+    { "name": "status", "type": "'idle' | 'pending' | 'success' | 'error'", "sentence": "Where the load stands." },
+    { "name": "data", "type": "D | null", "sentence": "The loaded data, kept while it loads again." },
+    { "name": "error", "type": "unknown", "sentence": "Why the last load failed." },
+    { "name": "fetching", "type": "boolean", "sentence": "Whether a load is running now." }
+  ],
+  "states": ["idle", "pending", "success", "error"],
+  "initial": "idle",
+  "events": [
+    { "type": "FETCH", "sentence": "A load starts." },
+    { "type": "RESOLVE", "sentence": "The load answered with data." },
+    { "type": "REJECT", "sentence": "The load failed." },
+    { "type": "RESET", "sentence": "Everything is forgotten." }
+  ],
+  "transitions": [
+    { "from": "idle", "event": "FETCH", "to": "pending" },
+    { "from": "pending", "event": "FETCH", "to": "pending" },
+    { "from": "error", "event": "FETCH", "to": "pending" },
+    { "from": "success", "event": "FETCH", "to": "success" },
+    { "from": "pending", "event": "RESOLVE", "to": "success" },
+    { "from": "success", "event": "RESOLVE", "to": "success" },
+    { "from": "pending", "event": "REJECT", "to": "error" },
+    { "from": "success", "event": "REJECT", "to": "error" },
+    { "from": "*", "event": "RESET", "to": "idle" }
+  ],
+  "wraps": { "library": "@tanstack/query", "license": "MIT", "concept": "useQuery status (pending, error, success) and fetchStatus (fetching, idle)", "adapter": "A query function is the load input; the state's status and fetching mirror status and fetchStatus." },
+  "testKit": { "file": "async-status.test.ts", "runner": "node" },
+  "phrases": ["show a loading state", "load data with a spinner", "track loading and errors", "loading status", "show an error when loading fails"],
+  "signals": [
+    { "id": "hand-loading-flags", "all": ["set\\w*Loading\\(\\s*true\\s*\\)|set\\w*Status\\(\\s*['\"](loading|pending)['\"]\\s*\\)", "catch"], "any": ["set\\w*Error\\(", "set\\w*Status\\(\\s*['\"](error|failed)['\"]"], "sentence": "This function tracks a loading flag and an error by hand around a load." }
+  ],
+  "composes": []
+}

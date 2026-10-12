@@ -1,0 +1,47 @@
+{
+  "v": 1,
+  "id": "validated-submit",
+  "role": "form.submit",
+  "title": "Validated submit",
+  "name": "validatedSubmit",
+  "kind": "function",
+  "english": "Validate the form values against a schema and submit them only when they pass.",
+  "inputs": [
+    { "name": "schema", "type": "Schema<V, O> (safeParse)", "sentence": "The schema the values must pass, such as a zod schema." },
+    { "name": "values", "type": "V", "sentence": "The form values." },
+    { "name": "submit", "type": "(data: O) => Promise<R>", "sentence": "What sends the checked values, for example an order service." }
+  ],
+  "outputs": [
+    { "name": "status", "type": "'idle' | 'invalid' | 'submitting' | 'submitted' | 'failed'", "sentence": "Where the submit stands." },
+    { "name": "errors", "type": "Record<string, string>", "sentence": "The first message for each invalid field, keyed by its path." },
+    { "name": "result", "type": "R | null", "sentence": "What the submit answered." },
+    { "name": "error", "type": "unknown", "sentence": "Why the submit failed." }
+  ],
+  "states": ["idle", "invalid", "submitting", "submitted", "failed"],
+  "initial": "idle",
+  "events": [
+    { "type": "SUBMIT", "sentence": "The person submits the form." },
+    { "type": "RESOLVE", "sentence": "The submit succeeded." },
+    { "type": "REJECT", "sentence": "The submit failed." },
+    { "type": "EDIT", "sentence": "The person changes a value." },
+    { "type": "RESET", "sentence": "The form starts over." }
+  ],
+  "transitions": [
+    { "from": "*", "event": "SUBMIT", "to": "invalid" },
+    { "from": "*", "event": "SUBMIT", "to": "submitting" },
+    { "from": "submitting", "event": "RESOLVE", "to": "submitted" },
+    { "from": "submitting", "event": "REJECT", "to": "failed" },
+    { "from": "idle", "event": "EDIT", "to": "idle" },
+    { "from": "invalid", "event": "EDIT", "to": "invalid" },
+    { "from": "failed", "event": "EDIT", "to": "failed" },
+    { "from": "submitted", "event": "EDIT", "to": "submitted" },
+    { "from": "*", "event": "RESET", "to": "idle" }
+  ],
+  "wraps": { "library": "react-hook-form + zod", "license": "MIT", "concept": "handleSubmit with a schema resolver; formState.errors, isSubmitting, isSubmitSuccessful", "adapter": "A zod schema is the schema input as it is; a valibot safeParse plugs in through fromValibot." },
+  "testKit": { "file": "validated-submit.test.ts", "runner": "node" },
+  "phrases": ["add a validated form", "validate the form before submitting", "submit a form with validation", "add form validation", "validated submit", "checkout form with field errors"],
+  "signals": [
+    { "id": "hand-validated-submit", "all": ["[Ss]ubmit", "safeParse\\(|\\bvalidate\\w*\\(|\\b(set)?[Ee]rrors?\\b"], "any": ["set\\w*Errors?\\(", "[Ss]ubmitting", "preventDefault\\(\\)"], "sentence": "This function validates form values and submits them by hand." }
+  ],
+  "composes": []
+}

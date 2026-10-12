@@ -1,0 +1,20 @@
+{
+  "name": "@line/atoms",
+  "version": "0.1.0",
+  "description": "Line's logic atoms: common functional logic (validated submit, paginated query, multi-step flow...) written once as pure TypeScript state machines, each with a test kit that drives every state and event. Usecases and services compose them; Construct flags hand-written copies (LINE-ATOM).",
+  "type": "module",
+  "license": "MIT",
+  "private": true,
+  "exports": {
+    ".": "./index.mjs",
+    "./contract": "./contract.mjs",
+    "./mock": "./mock.mjs",
+    "./testkit": "./testkit.mjs",
+    "./async-status": "./atoms/async-status/index.ts",
+    "./client-pagination": "./atoms/client-pagination/index.ts",
+    "./filter-sort": "./atoms/filter-sort/index.ts",
+    "./multi-step-flow": "./atoms/multi-step-flow/index.ts",
+    "./paginated-query": "./atoms/paginated-query/index.ts",
+    "./validated-submit": "./atoms/validated-submit/index.ts"
+  }
+}
