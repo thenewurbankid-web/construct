@@ -30,10 +30,11 @@ test.describe.serial('Two modes: Components (Line sample project)', () => {
     if (base) fs.rmSync(base, { recursive: true, force: true });
   });
 
-  test('Under the hood is the default: the library with the chat as a helper you can hide', async ({ page }) => {
+  test('Chat is the default; Under the hood is the library with the chat as a helper you can hide', async ({ page }) => {
     await gotoCockpit(page, '/components');
-    await expect(page.getByTestId('line-library')).toBeVisible({ timeout: 30_000 });
-    await expect(lmScreen(page)).toHaveAttribute('data-mode', 'hood');
+    await expect(lmScreen(page)).toHaveAttribute('data-mode', 'chat', { timeout: 30_000 });
+    await toMode(page, 'hood');
+    await expect(page.getByTestId('line-library')).toBeVisible();
     await expect(lmScreen(page)).toHaveAttribute('data-screen', 'components');
     await expect(option(page, 'components.open-feature')).toBeVisible();
     await expectAxeClean(page);

@@ -45,7 +45,7 @@ export const PAGES_CHAT: ScreenChatProvider<LineProject> = {
   href: '/pages',
   params: ['feature', 'page'],
   // The regular screen until the person picks Chat with the shell's switch.
-  defaultMode: 'hood',
+  defaultMode: 'chat',
   labelOf: (param, id, project) => (param === 'page' ? (findPage(project, id)?.name ?? id) : id),
   options: (place) => {
     const feature = at(place, 'feature');

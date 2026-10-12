@@ -5,6 +5,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gotoCockpit } from './support/cockpit.js';
 import { openProject } from './support/browseProject.js';
+import { startUnderTheHood } from './support/lineModes.js';
+
+// Two modes: this spec checks the screen's regular view, so it starts Under the hood (screens open in Chat by default).
+startUnderTheHood(test);
 
 // ct1: Auto and Trace are Line's two modes. Trace alone lights the controls and the person acts. Auto plus Trace: a
 // simulated cursor goes to each control, clicks and types, with a caption per move; pause, one step, speed, replay.

@@ -39,7 +39,7 @@ export const TRAIN_MODES: ScreenChatProvider<TrainModeData> = {
   label: 'Train Line',
   href: '/train',
   params: ['section'],
-  defaultMode: 'hood',
+  defaultMode: 'chat',
   options,
   answer,
   intro,

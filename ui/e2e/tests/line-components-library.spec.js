@@ -7,6 +7,10 @@ import { gotoCockpit } from './support/cockpit.js';
 import { makeBrowseProject, openProject } from './support/browseProject.js';
 import { runAxe, isBlocking, format } from './support/axe.js';
 import { failOnConsoleErrors } from './support/consoleGuard.js';
+import { startUnderTheHood } from './support/lineModes.js';
+
+// Two modes: this spec checks the screen's regular view, so it starts Under the hood (screens open in Chat by default).
+startUnderTheHood(test);
 
 // Line hour 2: Components -> Library for a `preset: line` project (examples/line-sample): the library's components
 // as cards grouped Atoms / Molecules / Organisms with how many feature components are based on each, then each

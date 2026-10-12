@@ -2,6 +2,10 @@ import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { startUnderTheHood } from './support/lineModes.js';
+
+// Two modes: this spec checks the screen's regular view, so it starts Under the hood (screens open in Chat by default).
+startUnderTheHood(test);
 
 // Design #250 — the shared empty / loading / error / offline states, used
 // consistently by the migrated screens (Settings, Local Model, Dashboard, Wizard, Help).

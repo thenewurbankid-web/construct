@@ -55,7 +55,7 @@ export const IMPORT_MODES: ScreenChatProvider<ImportModeData> = {
   label: 'Import',
   href: '/import',
   params: ['folder'],
-  defaultMode: 'hood',
+  defaultMode: 'chat',
   options,
   answer,
   intro,

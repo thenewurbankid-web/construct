@@ -7,6 +7,10 @@ import { gotoCockpit } from './support/cockpit.js';
 import { openProject } from './support/browseProject.js';
 import { runAxe, isBlocking, format } from './support/axe.js';
 import { checkSentence, splitSentences } from '../../../packages/summarize/index.mjs';
+import { startUnderTheHood } from './support/lineModes.js';
+
+// Two modes: this spec checks the screen's regular view, so it starts Under the hood (screens open in Chat by default).
+startUnderTheHood(test);
 
 // cs1: every Plan panel step shows the summarizer's plain English first (<PlainFirst>), and the technical part (the
 // tool call, the step id, each check, the files written) only under a collapsed Details. Every sentence the panel

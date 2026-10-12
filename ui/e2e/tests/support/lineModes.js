@@ -25,3 +25,19 @@ export async function expectAxeClean(page) {
   const blocking = found.filter(isBlocking);
   expect(blocking, format(blocking)).toEqual([]);
 }
+
+/** Owner decision (12 Oct): every screen opens in Chat until the person picks a mode. A spec written for a screen's
+ * regular view starts Under the hood with one line after its imports: `startUnderTheHood(test);`. It stores the pick a
+ * person would make with the switch (the e2e servers have no sign-in, so the key is the local one), only when nothing
+ * is picked yet, so a test that switches modes itself keeps its own choice. */
+export function startUnderTheHood(test) {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      try {
+        if (!window.localStorage.getItem('cockpit.mode')) window.localStorage.setItem('cockpit.mode', 'hood');
+      } catch {
+        // Storage blocked: the screen opens in Chat.
+      }
+    });
+  });
+}

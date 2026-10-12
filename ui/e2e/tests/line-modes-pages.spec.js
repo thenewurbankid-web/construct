@@ -31,10 +31,11 @@ test.describe.serial('Two modes: Pages (Line sample project)', () => {
     if (base) fs.rmSync(base, { recursive: true, force: true });
   });
 
-  test('Under the hood is the default: the Pages screen with the chat as a helper', async ({ page }) => {
+  test('Chat is the default; Under the hood is the Pages screen with the chat as a helper', async ({ page }) => {
     await gotoCockpit(page, '/pages');
-    await expect(page.getByTestId('line-pages')).toBeVisible({ timeout: 30_000 });
-    await expect(lmScreen(page)).toHaveAttribute('data-mode', 'hood');
+    await expect(lmScreen(page)).toHaveAttribute('data-mode', 'chat', { timeout: 30_000 });
+    await toMode(page, 'hood');
+    await expect(page.getByTestId('line-pages')).toBeVisible();
     await expect(lmScreen(page)).toHaveAttribute('data-screen', 'pages');
     await expect(option(page, 'pages.open-feature')).toBeVisible();
     await expect(option(page, 'pages.plan.steps')).toBeVisible();

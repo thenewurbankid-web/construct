@@ -5,6 +5,10 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { compileWorkflow } from '../../../packages/engine/workflowGenerator.mjs';
+import { startUnderTheHood } from './support/lineModes.js';
+
+// Two modes: this spec checks the screen's regular view, so it starts Under the hood (screens open in Chat by default).
+startUnderTheHood(test);
 
 // #217 — dense flows must lay out without edge labels colliding, and the same
 // source must always give the same picture. Bounding boxes are read from the

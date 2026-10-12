@@ -7,7 +7,7 @@ const data = { folders: ['src/alerts', 'src/orders'], folder: '', phase: 'pick',
 const root = { screen: 'import', steps: [] };
 
 test('Import modes: the provider passes the contract; a folder opens beside the chat and its crumb lands under the hood there', () => {
-  assert.equal(P.defaultMode, 'hood');
+  assert.equal(P.defaultMode, 'chat', 'every screen opens in Chat until the person picks (owner, 12 Oct)');
   assert.deepEqual(providerProblems(P, root, data), []);
   let s = chatOption(chatStart(P, root, data), P, data, 'import.folder');
   s = chatPick(s, P, data, s.log.at(-1).id, 'src/alerts');

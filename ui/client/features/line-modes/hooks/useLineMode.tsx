@@ -8,7 +8,7 @@ import { readMode, writeMode } from '../services/ModeStore';
 /** The person's mode (null until they pick one with the switch) and the mounted screen's default. */
 export type LineModeValue = {
   stored: LineMode | null;
-  /** The mode the shell's switch shows: the person's choice, else the open screen's default, else Under the hood. */
+  /** The mode the shell's switch shows: the person's choice, else the open screen's default, else Chat (owner, 12 Oct: every screen opens in Chat until the person picks). */
   mode: LineMode;
   setMode: (mode: LineMode) => void;
   setScreenDefault: (mode: LineMode | null) => void;
@@ -32,7 +32,7 @@ export function LineModeProvider({ children }: { children: ReactNode }) {
     },
     [key],
   );
-  const value = useMemo(() => ({ stored, mode: effectiveMode(stored, screenDefault ?? 'hood'), setMode, setScreenDefault }), [stored, screenDefault, setMode]);
+  const value = useMemo(() => ({ stored, mode: effectiveMode(stored, screenDefault ?? 'chat'), setMode, setScreenDefault }), [stored, screenDefault, setMode]);
   return <LineModeContext.Provider value={value}>{children}</LineModeContext.Provider>;
 }
 

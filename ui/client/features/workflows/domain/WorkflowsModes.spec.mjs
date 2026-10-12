@@ -7,8 +7,8 @@ const data = { features: ['orders', 'billing'], featuresLoaded: true, feature: '
 const place = (...ids) => ({ screen: 'workflows', steps: ids.map((id, i) => ({ param: P.params[i], id, label: id })) });
 const lastPick = (s) => [...s.log].reverse().find((m) => m.pick);
 
-test('Workflows modes: the provider passes the contract at every level and opens under the hood', () => {
-  assert.equal(P.defaultMode, 'hood');
+test('Workflows modes: the provider passes the contract at every level and opens in Chat', () => {
+  assert.equal(P.defaultMode, 'chat', 'every screen opens in Chat until the person picks (owner, 12 Oct)');
   for (const p of [place(), place('orders'), place('orders', 'checkout.ts')]) assert.deepEqual(providerProblems(P, p, data), []);
 });
 

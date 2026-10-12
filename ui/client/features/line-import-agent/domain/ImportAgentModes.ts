@@ -48,7 +48,7 @@ export const IMPORT_AGENT_MODES: ScreenChatProvider<ImportAgentModeData> = {
   label: 'Import agent',
   href: '/import/agent',
   params: ['step'],
-  defaultMode: 'hood',
+  defaultMode: 'chat',
   options,
   answer,
   intro,

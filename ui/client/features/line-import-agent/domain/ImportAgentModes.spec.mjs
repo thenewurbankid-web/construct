@@ -8,7 +8,7 @@ const planned = { started: true, sentence: 'Review the plan: approve its 2 steps
 const root = { screen: 'import-agent', steps: [] };
 
 test('Import agent modes: the provider passes the contract; with no plan, Open a step says why it is off', () => {
-  assert.equal(P.defaultMode, 'hood');
+  assert.equal(P.defaultMode, 'chat', 'every screen opens in Chat until the person picks (owner, 12 Oct)');
   assert.deepEqual(providerProblems(P, root, none), []);
   assert.deepEqual(providerProblems(P, root, planned), []);
   assert.equal(P.options(root, none).find((o) => o.id === 'import-agent.steps').disabled, 'The agent has no plan yet; start the import beside this chat first.');

@@ -4,7 +4,7 @@ import { chatOption, chatPick, chatStart, crumbTarget, crumbsOf, providerProblem
 import { SETTINGS_MODES as P, SETTINGS_MODE_DATA as D } from './SettingsModes.ts';
 
 test('Settings modes: the provider passes the contract; a section opens beside the chat and its crumb lands under the hood there', () => {
-  assert.equal(P.defaultMode, 'hood');
+  assert.equal(P.defaultMode, 'chat', 'every screen opens in Chat until the person picks (owner, 12 Oct)');
   const root = { screen: 'settings', steps: [] };
   assert.deepEqual(providerProblems(P, root, D), []);
   let s = chatOption(chatStart(P, root, D), P, D, 'settings.open');

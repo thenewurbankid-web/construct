@@ -107,10 +107,9 @@ test.describe.serial('Two modes on every screen (Line sample project, real serve
     await expect(page.getByTestId('lf-feature')).toHaveCount(2);
   });
 
-  test('Workflows: under the hood by default; in chat, open orders and its workflow, and its crumb opens the diagram', async ({ page }) => {
+  test('Workflows: opens in Chat; open orders and its workflow, and its crumb opens the diagram', async ({ page }) => {
     await gotoCockpit(page, '/workflows');
-    await expect(screen(page)).toHaveAttribute('data-mode', 'hood', { timeout: 30_000 });
-    await toMode(page, 'chat');
+    await expect(screen(page)).toHaveAttribute('data-mode', 'chat', { timeout: 30_000 });
     await expect(crumbs(page)).toHaveText(['Workflows']);
     await expect(option(page, 'workflows.open')).toBeEnabled({ timeout: 15_000 });
     await option(page, 'workflows.open').click();
@@ -133,9 +132,7 @@ test.describe.serial('Two modes on every screen (Line sample project, real serve
 
   test('Import and the Import agent: both modes; Import\'s folder pick opens it beside the chat', async ({ page }) => {
     await gotoCockpit(page, '/import');
-    await expect(page.getByTestId('line-import')).toBeVisible({ timeout: 30_000 });
-    await expect(screen(page)).toHaveAttribute('data-mode', 'hood');
-    await toMode(page, 'chat');
+    await expect(screen(page)).toHaveAttribute('data-mode', 'chat', { timeout: 30_000 });
     await expect(crumbs(page)).toHaveText(['Import']);
     await expect(option(page, 'import.agent')).toBeVisible();
     // Offered once the project's folders are read; the sample may have none to import, and then the chat says so.
@@ -164,8 +161,7 @@ test.describe.serial('Two modes on every screen (Line sample project, real serve
 
   test('Settings and Train Line: a section crumb lands under the hood with that section marked', async ({ page }) => {
     await gotoCockpit(page, '/settings');
-    await expect(screen(page)).toHaveAttribute('data-mode', 'hood', { timeout: 30_000 });
-    await toMode(page, 'chat');
+    await expect(screen(page)).toHaveAttribute('data-mode', 'chat', { timeout: 30_000 });
     await option(page, 'settings.open').click();
     await pick(page, 'git').click();
     await expect(crumbs(page)).toHaveText(['Settings', 'Saving to git']);
@@ -176,6 +172,7 @@ test.describe.serial('Two modes on every screen (Line sample project, real serve
 
     await page.goto('/train');
     await expect(screen(page)).toHaveAttribute('data-mode', 'hood', { timeout: 30_000 });
+    // The crumb above switched to Under the hood, and that pick is remembered; back to Chat for Train.
     await toMode(page, 'chat');
     await option(page, 'train.open').click();
     await pick(page, 'teach').click();
@@ -213,9 +210,7 @@ test.describe.serial('Two modes on every screen (Line sample project, real serve
     await request.post(`${API}/api/settings`, { data: { closeProject: true } });
     try {
       await page.goto('/');
-      await expect(page.getByTestId('no-project')).toBeVisible({ timeout: 30_000 });
-      await expect(screen(page)).toHaveAttribute('data-mode', 'hood');
-      await toMode(page, 'chat');
+      await expect(screen(page)).toHaveAttribute('data-mode', 'chat', { timeout: 30_000 });
       await expect(crumbs(page)).toHaveText(['Open a project']);
       await option(page, 'open.start').click();
       await pick(page, 'new').click();

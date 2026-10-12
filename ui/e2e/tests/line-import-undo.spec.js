@@ -7,6 +7,10 @@ import { fileURLToPath } from 'node:url';
 import { gotoCockpit } from './support/cockpit.js';
 import { openProject } from './support/browseProject.js';
 import { runAxe, isBlocking, format } from './support/axe.js';
+import { startUnderTheHood } from './support/lineModes.js';
+
+// Two modes: this spec checks the screen's regular view, so it starts Under the hood (screens open in Chat by default).
+startUnderTheHood(test);
 
 // iv2-bugs: Import's Apply is all or nothing through the plan. On a temp copy of test/fixtures/line-import-clash, the
 // folder src/opp-frozen freezes library/pages/**, so the import's first steps land and a later one (a page into the

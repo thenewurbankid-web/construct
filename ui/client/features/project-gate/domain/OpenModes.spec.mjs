@@ -6,8 +6,8 @@ import { OPEN_MODES as P } from './OpenModes.ts';
 const data = { workspaceRoot: '/ws', lastProject: '/ws/shop', samplePath: null };
 const root = { screen: 'open', steps: [] };
 
-test('Open a project modes: the provider passes the contract and opens under the hood', () => {
-  assert.equal(P.defaultMode, 'hood');
+test('Open a project modes: the provider passes the contract and opens in Chat', () => {
+  assert.equal(P.defaultMode, 'chat', 'every screen opens in Chat until the person picks (owner, 12 Oct)');
   assert.deepEqual(providerProblems(P, root, data), []);
   assert.deepEqual(providerProblems(P, { screen: 'open', steps: [{ param: 'section', id: 'new', label: 'New project' }] }, data), []);
 });

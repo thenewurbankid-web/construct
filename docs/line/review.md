@@ -8,7 +8,7 @@ Branch: `work/2026-09-23` in `~/Repositories/construct` (local only, not pushed)
 
 What changed: one switch in the top bar, **Chat | Under the hood**, on every screen (also on "Open a project", where
 no project is open yet). It is remembered per person (one setting per signed-in login in this browser). Until you pick,
-each screen shows its own default: Features opens in Chat (as cd1 did), every other screen opens Under the hood.
+every screen opens in Chat (owner, 12 Oct); your pick then holds on every screen.
 - **Chat:** a full-screen chat in cd1's style with that screen's own options. Picking an item opens it, and the chat
   moves to a side panel. A breadcrumb above the chat always says where you are, for example
   "Features › orders › OrdersPage › title". Clicking any crumb switches to Under the hood at exactly that place, with

@@ -6,6 +6,10 @@ import { fileURLToPath } from 'node:url';
 import { gotoCockpit } from './support/cockpit.js';
 import { openProject } from './support/browseProject.js';
 import { runAxe, isBlocking, format } from './support/axe.js';
+import { startUnderTheHood } from './support/lineModes.js';
+
+// Two modes: this spec checks the screen's regular view, so it starts Under the hood (screens open in Chat by default).
+startUnderTheHood(test);
 
 // Experiment fixes 1 and 2, walked as the owner's UAT (docs/line/review.md "Experiment fixes"): an agent asks, through
 // the plan API, to move OrderButton to a root-level components/ folder. Construct refuses it now (LINE-LAYOUT: outside

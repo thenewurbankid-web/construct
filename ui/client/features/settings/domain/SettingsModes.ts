@@ -42,7 +42,7 @@ export const SETTINGS_MODES: ScreenChatProvider<SettingsModeData> = {
   label: 'Settings',
   href: '/settings',
   params: ['section'],
-  defaultMode: 'hood',
+  defaultMode: 'chat',
   options,
   answer,
   intro,

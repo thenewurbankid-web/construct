@@ -4,7 +4,7 @@ import { chatOption, chatPick, chatStart, crumbTarget, crumbsOf, providerProblem
 import { TRAIN_MODES as P, TRAIN_MODE_DATA as D } from './TrainModes.ts';
 
 test('Train modes: the provider passes the contract; Teach opens beside the chat and its crumb lands under the hood at the Teach panel', () => {
-  assert.equal(P.defaultMode, 'hood');
+  assert.equal(P.defaultMode, 'chat', 'every screen opens in Chat until the person picks (owner, 12 Oct)');
   const root = { screen: 'train', steps: [] };
   assert.deepEqual(providerProblems(P, root, D), []);
   let s = chatOption(chatStart(P, root, D), P, D, 'train.open');

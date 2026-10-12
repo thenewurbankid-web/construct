@@ -3,6 +3,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { runAxe, isBlocking, format } from './support/axe.js';
 import { setTheme } from './support/cockpit.js';
+import { startUnderTheHood } from './support/lineModes.js';
+
+// Two modes: this spec checks the screen's regular view, so it starts Under the hood (screens open in Chat by default).
+startUnderTheHood(test);
 
 // #445 -- "New project" on the Open-a-project screen: a name becomes an empty folder in the workspace, initialised
 // with the same `construct init` as everything else, and opened. Nothing is stubbed and no model is involved.

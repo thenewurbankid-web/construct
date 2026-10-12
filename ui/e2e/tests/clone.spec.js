@@ -5,6 +5,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runAxe, isBlocking, format } from './support/axe.js';
+import { startUnderTheHood } from './support/lineModes.js';
+
+// Two modes: this spec checks the screen's regular view, so it starts Under the hood (screens open in Chat by default).
+startUnderTheHood(test);
 
 // #330 slice A — clone a PUBLIC repository into the workspace from the "Open a project" screen, and connect a
 // local project to a remote.

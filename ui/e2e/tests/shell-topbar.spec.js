@@ -4,6 +4,10 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { setTheme } from './support/cockpit.js';
+import { startUnderTheHood } from './support/lineModes.js';
+
+// Two modes: this spec checks the screen's regular view, so it starts Under the hood (screens open in Chat by default).
+startUnderTheHood(test);
 
 // Design #245 — top bar: project switcher (local projects only, reuses the
 // settings project dir and the shared folder picker), the five screens (now in the left rail, #429; Features / Pages / Components / Git /

@@ -51,7 +51,7 @@ export const WORKFLOWS_MODES: ScreenChatProvider<WorkflowsModeData> = {
   label: 'Workflows',
   href: '/workflows',
   params: ['feature', 'file'],
-  defaultMode: 'hood',
+  defaultMode: 'chat',
   options,
   answer,
   intro,

@@ -52,7 +52,7 @@ export const PLAN_CHAT: ScreenChatProvider<PlanStepRow[]> = {
   label: 'Plan',
   href: '/components',
   params: [],
-  defaultMode: 'hood',
+  defaultMode: 'chat',
   options: (_place, rows) => [
     { id: 'plan.steps', label: 'What is in the plan?', sentence: 'Say every step of the plan and where it stands.', effect: 'read' },
     ...rows.flatMap(stepOptions),

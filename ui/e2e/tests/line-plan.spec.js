@@ -7,6 +7,10 @@ import { gotoCockpit } from './support/cockpit.js';
 import { openProject } from './support/browseProject.js';
 import { runAxe, isBlocking, format } from './support/axe.js';
 import { failOnConsoleErrors } from './support/consoleGuard.js';
+import { startUnderTheHood } from './support/lineModes.js';
+
+// Two modes: this spec checks the screen's regular view, so it starts Under the hood (screens open in Chat by default).
+startUnderTheHood(test);
 
 // cp1: every Cockpit Line action is a step of the project's plan. "Base on this" adds a step that waits in the Plan
 // panel ("Waiting for your approval: ..."), with what is already there; nothing is written before Approve; Approve runs

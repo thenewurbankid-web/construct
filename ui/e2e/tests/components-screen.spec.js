@@ -4,6 +4,10 @@ import path from 'node:path';
 import { gotoCockpit } from './support/cockpit.js';
 import { makeBrowseProject, openProject, SUMMARY_PATH, PLAIN_PATH } from './support/browseProject.js';
 import { runAxe, isBlocking, format } from './support/axe.js';
+import { startUnderTheHood } from './support/lineModes.js';
+
+// Two modes: this spec checks the screen's regular view, so it starts Under the hood (screens open in Chat by default).
+startUnderTheHood(test);
 
 // #431 + #434 -- the Components screen: the Browser lists every component of the open project; choosing one shows it
 // in the stage as documentation (name, feature, path, props read by react-docgen) with its file editable as plain

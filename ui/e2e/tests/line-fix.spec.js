@@ -7,6 +7,10 @@ import { gotoCockpit } from './support/cockpit.js';
 import { openProject } from './support/browseProject.js';
 import { runAxe, isBlocking, format } from './support/axe.js';
 import { failOnConsoleErrors } from './support/consoleGuard.js';
+import { startUnderTheHood } from './support/lineModes.js';
+
+// Two modes: this spec checks the screen's regular view, so it starts Under the hood (screens open in Chat by default).
+startUnderTheHood(test);
 
 // Line ca2 (screen): where Cockpit shows a Line problem, its recommended fix is one sentence with Apply (a line.fix
 // plan step the click approves and runs, written through Construct's writer; it shows in the Plan panel as done). The sample has two planted problems: InvoiceCard has no library

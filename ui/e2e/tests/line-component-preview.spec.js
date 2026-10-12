@@ -7,6 +7,10 @@ import { gotoCockpit } from './support/cockpit.js';
 import { openProject } from './support/browseProject.js';
 import { runAxe, isBlocking, format } from './support/axe.js';
 import { failOnConsoleErrors, refusalOf } from './support/consoleGuard.js';
+import { startUnderTheHood } from './support/lineModes.js';
+
+// Two modes: this spec checks the screen's regular view, so it starts Under the hood (screens open in Chat by default).
+startUnderTheHood(test);
 
 // Line Cockpit T7 (owner's win 3): "click a library component and see it rendered with its props". A copy of
 // examples/line-sample is opened in the real server; /components/preview?file= renders the library Button alone through

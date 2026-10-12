@@ -7,6 +7,10 @@ import { gotoCockpit } from './support/cockpit.js';
 import { openProject } from './support/browseProject.js';
 import { runAxe, isBlocking, format } from './support/axe.js';
 import { failOnConsoleErrors, refusalOf } from './support/consoleGuard.js';
+import { startUnderTheHood } from './support/lineModes.js';
+
+// Two modes: this spec checks the screen's regular view, so it starts Under the hood (screens open in Chat by default).
+startUnderTheHood(test);
 
 // Line cu6: one project switcher in the Cockpit header shows the open project and its workspace folder; "Change
 // workspace folder" picks a folder inside the project (stored in line/workspace.json). Line then changes only that

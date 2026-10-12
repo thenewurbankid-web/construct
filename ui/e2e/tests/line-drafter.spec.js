@@ -6,6 +6,10 @@ import { fileURLToPath } from 'node:url';
 import { gotoCockpit } from './support/cockpit.js';
 import { openProject } from './support/browseProject.js';
 import { runAxe, isBlocking, format } from './support/axe.js';
+import { startUnderTheHood } from './support/lineModes.js';
+
+// Two modes: this spec checks the screen's regular view, so it starts Under the hood (screens open in Chat by default).
+startUnderTheHood(test);
 
 // System 1 drafter on the real server (run with playwright.line-drafter.config.js, which sets LINE_DRAFTER=1): a request
 // becomes every route Construct checked on a copy of the project, the recommended one first; Add to plan puts its steps

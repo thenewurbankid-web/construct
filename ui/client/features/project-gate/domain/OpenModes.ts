@@ -47,7 +47,7 @@ export const OPEN_MODES: ScreenChatProvider<OpenModeData> = {
   label: 'Open a project',
   href: '/',
   params: ['section'],
-  defaultMode: 'hood',
+  defaultMode: 'chat',
   options,
   answer,
   intro,

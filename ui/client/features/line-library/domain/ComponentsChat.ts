@@ -56,7 +56,7 @@ export const COMPONENTS_CHAT: ScreenChatProvider<LibraryView> = {
   href: '/components',
   params: ['feature', 'component'],
   // The regular screen until the person picks Chat with the shell's switch.
-  defaultMode: 'hood',
+  defaultMode: 'chat',
   options: (place, view) => {
     const feature = at(place, 'feature');
     const component = at(place, 'component');

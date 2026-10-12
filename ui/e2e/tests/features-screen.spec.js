@@ -2,6 +2,10 @@ import { test, expect } from '@playwright/test';
 import { gotoCockpit } from './support/cockpit.js';
 import { makeBrowseProject, openProject, SUMMARY_PATH } from './support/browseProject.js';
 import { runAxe, isBlocking, format } from './support/axe.js';
+import { startUnderTheHood } from './support/lineModes.js';
+
+// Two modes: this spec checks the screen's regular view, so it starts Under the hood (screens open in Chat by default).
+startUnderTheHood(test);
 
 // #431 -- the Features screen: the Browser lists every feature of the open project; choosing one shows its details in
 // the stage (summary, routes, layers and files, workflows, tests). The list is a keyboard-operable listbox with a filter,
