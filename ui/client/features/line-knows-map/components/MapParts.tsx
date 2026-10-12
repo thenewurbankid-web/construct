@@ -93,7 +93,7 @@ const path = (pts: { x: number; y: number }[]) => pts.map((p, i) => `${i ? 'L' :
 export function MapSvg({ picture, onPick, label }: { picture: MapPicture; onPick: (id: string) => void; label: string }) {
   if (!picture.nodes.length) return null;
   return (
-    <div className="lkm-pic" data-testid="knows-picture">
+    <div className="lkm-pic" data-testid="knows-picture" tabIndex={0} role="group" aria-label="The picture; scroll it with the arrow keys">
       <svg viewBox={`0 0 ${picture.width} ${picture.height}`} width={picture.width} height={picture.height} role="img" aria-label={label}>
         <defs>
           <marker id="lkm-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
