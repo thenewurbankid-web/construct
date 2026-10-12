@@ -49,7 +49,9 @@ test('im1 UAT: Settings -> AI steps shows where Line missed, per step, in plain 
     for (const s of await details.locator('li').allTextContents()) { expect(s).toMatch(/^\d+ miss(es)?: ".*" needed the .* route, which Line did not offer\.$/); expect(s).not.toMatch(/OrderButton|InvoicesPage|orders|billing/); }
   }
   // im2's step is listed with the other AI steps.
-  await expect(page.locator('[data-testid="ai-step"][data-step="construct.repair"]')).toContainText('repairs it from the exact error');
+  const repair = page.locator('[data-testid="ai-step"][data-step="construct.repair"]');
+  await expect(repair).toContainText('repairs it from the exact error');
+  await expect(repair.getByTestId('ai-step-model')).toHaveText("Model: qwen2.5-coder:1.5b (Line's default)");
   expect(problems, problems.join('\n')).toEqual([]);
 });
 

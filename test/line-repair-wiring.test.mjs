@@ -141,7 +141,7 @@ test('drafter: with Ollama not running the model route stays refused, the static
   const off = await createPlanDrafter({ root: SAMPLE, plan, enabled: true, record: false, draftFn: withModelRoute, repair: false }).draft('add a badge to the orders feature');
   const r = on.routes.find((x) => x.id === 'model:1');
   assert.equal(r.status, 'refused');
-  assert.equal(r.repair.sentence, 'The local model qwen2.5-coder:7b is not running, so Line did not try a repair and the static path is unchanged.');
+  assert.equal(r.repair.sentence, 'The local model qwen2.5-coder:1.5b is not running, so Line did not try a repair and the static path is unchanged.');
   assert.deepEqual(on.routes.filter((x) => x.via !== 'model').map((x) => [x.id, x.status]), off.routes.filter((x) => x.via !== 'model').map((x) => [x.id, x.status]));
   assert.equal(on.recommended, off.recommended);
 });

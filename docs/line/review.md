@@ -92,18 +92,18 @@ stop the person decides, with every attempt listed under Details. `construct.rep
 
 - The reason field is what hurt: it cost first-attempt repairs on both models (1.5B 7 -> 4, 7B 7 -> 3). With the 1.5B the
   loop adds nothing (A equals the one-shot); with the 7B it adds one (C).
-- **Default now C**: `construct.repair` = qwen2.5-coder:7b, `reason: false`, `maxAttempts: 4` (`ai-profiles.json`;
-  Settings shows "qwen2.5-coder:7b (measured best for this step)"). It is the only step not on the 1.5B. The gain is one
-  case in 20, at about three times the latency and the 7B's memory; say if that is not worth it, and the default goes
-  back to the 1.5B with `maxAttempts: 1` (same 7/20). The reason field stays available (`reason: true`), off by default.
-  The "trying again (n of 4)" sentences are unchanged; without a reason they read "Line is trying again (2 of 4)."
+- **Default: A** (owner, 12 Oct): `construct.repair` = qwen2.5-coder:1.5b (Line's default, like every other local step),
+  `reason: false`, `maxAttempts: 4` (`ai-profiles.json`). Chosen for speed and memory over the 7B's one extra case in 20
+  (C: 8/20 at about 1 s and the 7B's memory, against 7/20 at about 0.3 s). Re-measure after `bench-gaps`' "did you mean"
+  fix merges; switch to the 7B only if it then clearly wins. The reason field stays available (`reason: true`), off by
+  default. The "trying again (n of 4)" line is unchanged; without a reason it reads "Line is trying again (2 of 4)."
 - Promote repairs stayed at 0 of 6 in every variant: those refusals give nothing to copy.
 - **Re-measure after `bench-gaps` merges**: it adds a "did you mean <nearest id>" typed fix to these refusals, which
   should change every row above (and may make the 1.5B enough). Run each variant with `CONSTRUCT_LIVE_QWEN=1
   CONSTRUCT_REPAIR_MODEL=<model> CONSTRUCT_REPAIR_REASON=0|1 CONSTRUCT_REPAIR_MAX=<n> node --test
   test/line-repair-live.test.mjs`, one at a time.
 - Not re-run after this change: the Playwright walks (the machine was overloaded); `uat/cu2.spec.js` and
-  `uat/im1-im2.spec.js` were updated for the new model text and label.
+  `uat/im1-im2.spec.js` check the repair step's label and its model (the 1.5B, Line's default).
 
 Tests (all pass): `packages/rule-factory/test/misses.test.mjs` (4), `test/line-im1.test.mjs` (3),
 `test/line-repair.test.mjs` (6), `test/line-repair-wiring.test.mjs` (4), `test/line-repair-live.test.mjs` (1, opt-in),
@@ -163,7 +163,7 @@ Gaps:
    checked route "Move OrderButton into the library directly."; Add to plan puts it in the Plan panel waiting for your
    approval, nothing is written yet.
 4. Optional, with Ollama running: `CONSTRUCT_LIVE_QWEN=1 node --test test/line-repair-live.test.mjs` prints "Live repair,
-   up to 4 attempts: 8/20 repaired ..." with the default (7B, no reason field); needs qwen2.5-coder:7b installed.
+   up to 4 attempts: 7/20 repaired ..." with the default (1.5B, no reason field).
 
 ## Import v2: fit existing logic into Line's blocks, backed by tests (11 Oct, merged on `merge-iv2`; awaiting UAT)
 

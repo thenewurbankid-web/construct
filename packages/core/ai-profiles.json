@@ -29,14 +29,12 @@
       "label": "When Construct refuses an option Qwen or jev chose, repairs it from the exact error and its typed fixes, up to 4 tries that each learn from the last; if Construct still refuses it, you decide.",
       "kind": "draft",
       "provider": "ollama",
-      "model": "qwen2.5-coder:7b",
-      "modelFrom": "measured best for this step",
       "maxTokens": 300,
       "maxAttempts": 4,
       "reason": false,
       "source": "construct",
       "guidance": "Construct refused this change. Change only what the error and its typed fixes say, and answer with the corrected change in the same shape.",
-      "ladder": { "static": { "target": 1 }, "options": { "on": false, "target": 0.6 }, "review": { "on": false, "target": 0.7 }, "measured": "2026-10-12, 20 seeded Train Line refusals: 1.5B one attempt 7/20; 1.5B loop with reason 5/20; A 1.5B loop without reason 7/20; B 7B loop with reason 4/20; C 7B loop without reason 8/20 (default: C, about 1 s each). Re-measure after the nearest-match typed fix (bench-gaps) merges." }
+      "ladder": { "static": { "target": 1 }, "options": { "on": false, "target": 0.6 }, "review": { "on": false, "target": 0.7 }, "measured": "2026-10-12, 20 seeded Train Line refusals: 1.5B one attempt 7/20; 1.5B loop with reason 5/20; A 1.5B loop without reason 7/20 (~0.3 s, the default: chosen for speed and memory, owner); B 7B loop with reason 4/20; C 7B loop without reason 8/20 (~1 s). Re-measure after the nearest-match typed fix (bench-gaps) merges; switch to the 7B only if it then clearly wins." }
     },
     {
       "step": "trace.choose",

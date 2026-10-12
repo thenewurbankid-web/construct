@@ -35,7 +35,7 @@ test('cu2 UAT: Settings lists every AI step in plain English, 1.5B by default, e
     expect(label).toMatch(/^[A-Z].*\.$/);
     expect(how).toMatch(/^[A-Z].*\.$/);
     expect(how).toMatch(/static|nothing runs/i);
-    await expect(s.getByTestId('ai-step-model')).toHaveText(/^Model: (qwen2\.5-coder:1\.5b \(Line's default\)|qwen2\.5-coder:7b \(measured best for this step\)|The hosted model you choose)$/);
+    await expect(s.getByTestId('ai-step-model')).toHaveText(/^Model: (qwen2\.5-coder:1\.5b \(Line's default\)|The hosted model you choose)$/);
   }
   await expect(panel.getByTestId('ai-steps-status')).toHaveText(/\.$/);
 
