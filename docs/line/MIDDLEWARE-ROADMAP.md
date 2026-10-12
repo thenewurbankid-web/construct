@@ -65,3 +65,9 @@ One static Cockpit page that shows all of Line's static blocks and internal fram
 - **Compare and replace:** if the person's function beats the static block on the held-out cases, offer to put it ahead of the static one for this project. Never silently.
 - Same guardrails: sandbox, slots only, tests required, proposals still checked by Construct and approved by the person. The page itself is read-only for agents.
 - Build it after `mw-ladder` merges. It uses `middleware/contract.mjs`, `sandbox.mjs`, `store.mjs` and the Settings middleware panel.
+
+## Plug in new blocks and pipelines (owner, 2026-10-12): keep it simple
+- **New blocks, not just hooks:** a person can add a whole new static block, such as a new matcher, check, descriptor or fit rule. It is a middleware with its own declared input/output schema, registered in the one tool registry as a read-only block. Same sandbox, tests and guardrails. Blocks that propose changes still go through Construct and the plan.
+- **Pipelines:** blocks compose into pipelines, e.g. "match → classify → fit → check". Pipelines run as xstate machines, which Line already uses for workflows and the Import agent, so there is no new dependency. A pipeline is a small JSON/xstate definition, shown and edited on the Line internals page as a chain of block cards.
+- **Open source if needed, no heavy orchestrator:** use what's already in the stack (xstate, plus @mx/plan for steps). Only if pipelines outgrow that, look at a small permissive DAG/pipeline library. Don't build a scheduler.
+- **Order:** after the Line internals page.
