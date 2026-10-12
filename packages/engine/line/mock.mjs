@@ -208,6 +208,7 @@ export function createMockLineOps({ files: initial = MOCK_FILES } = {}) {
       const feature = typeof req?.firstFeature === 'string' ? req.firstFeature.trim() : '';
       if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(name) || name.includes('..')) throw new LineOpError(`"${name}" is not a project name: a name is one folder, without slashes or "..".`, 'BAD_NAME');
       if (!/^[A-Za-z0-9][A-Za-z0-9_-]*$/.test(feature)) throw new LineOpError(`"${feature}" is not a feature name; use letters, digits, "-" and "_", starting with a letter or digit.`, 'BAD_FEATURE');
+      if (req.library !== undefined && !['starter', 'primitives'].includes(req.library)) throw new LineOpError(`"${req.library}" is not a starting library; choose starter or primitives.`, 'BAD_LIBRARY');
       return {
         summary: `Creates the Line project ${name} with a starter library and the empty feature ${feature}.`,
         files: [

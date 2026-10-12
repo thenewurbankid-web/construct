@@ -1,0 +1,29 @@
+{
+  "name": "@line/primitives",
+  "version": "0.1.0",
+  "description": "Line's canonical primitive library (roadmap item 1): a survey of eight permissive UI libraries as descriptors, one contract per primitive, the primitives re-implemented on Radix + Tailwind as a Line library, a test kit per primitive, and the held-out coverage metric.",
+  "type": "module",
+  "license": "MIT",
+  "private": true,
+  "exports": {
+    "./contract": "./contract.mjs",
+    "./vocabulary": "./vocabulary.mjs",
+    "./clusters": "./clusters.mjs",
+    "./coverage": "./coverage.mjs",
+    "./library": "./library.mjs",
+    "./mock": "./mock.mjs",
+    "./survey.json": "./survey.json"
+  },
+  "dependencies": {
+    "date-fns": "^4.1.0",
+    "radix-ui": "^1.4.3",
+    "react-dom": "^19.3.0"
+  },
+  "devDependencies": {
+    "@testing-library/dom": "^10.4.0",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
+    "axe-core": "^4.10.3",
+    "jsdom": "^26.1.0"
+  }
+}

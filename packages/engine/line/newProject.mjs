@@ -14,10 +14,14 @@
 //   features/<first>/spec.md    "## Story 1" with one acceptance point to fill in
 //   features/<first>/pages/.gitkeep   the empty pages folder the first page will go in
 //   line/README.md              Line's own state folder (plans, memory), written only by the writer
+// With `library: "primitives"` the library is @line/primitives' 40 canonical primitives (Radix + Tailwind, each with
+// its contract and test kit in that package) instead of the small starter, a ListPage built on them, and a package.json
+// naming the npm packages they need.
 import fs from 'node:fs';
 import path from 'node:path';
 import { LineOpError } from './contract.mjs';
 import { applyChange } from './ops.mjs';
+import { primitiveLibraryFiles, PRIMITIVE_DEPENDENCIES } from '@line/primitives/library';
 
 /** A project folder name: one segment (the Cockpit's folder-name rule: no separators, no "..", no leading dot). */
 const PROJECT_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
@@ -34,6 +38,47 @@ export const STARTER_LIBRARY = Object.freeze({
   'library/pages/ListPage.tsx': "import { Button } from '../components/Button';\nimport { Card } from '../components/Card';\n\nexport function ListPage({ title, first, onMore }: { title: string; first: string; onMore?: () => void }) {\n  return (\n    <main>\n      <h1>{title}</h1>\n      <Card title={first} action=\"Open\" />\n      <Button label=\"Show more\" onClick={onMore} />\n    </main>\n  );\n}\n",
   'library/fixtures/item.json': '{\n  "id": "item-1",\n  "name": "First item"\n}\n',
 });
+
+/** The starting libraries a new project can take. */
+export const LIBRARY_CHOICES = Object.freeze(['starter', 'primitives']);
+
+/** The primitives' list page: the starter's ListPage, built on the primitives. */
+const PRIMITIVES_LIST_PAGE = [
+  "import { Button } from '../components/Button';",
+  "import { Card } from '../components/Card';",
+  "import { Stack } from '../components/Stack';",
+  "import { Text } from '../components/Text';",
+  '',
+  'export function ListPage({ title, first, onMore }: { title: string; first: string; onMore?: () => void }) {',
+  '  return (',
+  '    <main>',
+  '      <Stack gap="4">',
+  '        <Text as="h1">{title}</Text>',
+  '        <Card title={first} />',
+  '        <Button label="Show more" onClick={onMore} />',
+  '      </Stack>',
+  '    </main>',
+  '  );',
+  '}',
+  '',
+].join('\n');
+
+/**
+ * The library files a new project starts with.
+ * @param {string} name The project name (for package.json).
+ * @param {string} library The chosen library (LIBRARY_CHOICES).
+ * @returns {Record<string, string>} Root-relative path -> file text.
+ */
+function libraryFiles(name, library) {
+  if (library !== 'primitives') return { ...STARTER_LIBRARY };
+  const pkg = { name: name.toLowerCase(), private: true, dependencies: { ...PRIMITIVE_DEPENDENCIES } };
+  return {
+    ...primitiveLibraryFiles(),
+    'library/pages/ListPage.tsx': PRIMITIVES_LIST_PAGE,
+    'library/fixtures/item.json': STARTER_LIBRARY['library/fixtures/item.json'],
+    'package.json': `${JSON.stringify(pkg, null, 2)}\n`,
+  };
+}
 
 /**
  * One plain sentence for a name that cannot be a project folder, or null.
@@ -72,18 +117,20 @@ export function planNewLineProject(req) {
   if (nameProblem) throw new LineOpError(nameProblem, 'BAD_NAME');
   const featureProblem = featureNameProblem(req?.firstFeature);
   if (featureProblem) throw new LineOpError(featureProblem, 'BAD_FEATURE');
+  const library = req.library ?? 'starter';
+  if (!LIBRARY_CHOICES.includes(library)) throw new LineOpError(`"${library}" is not a starting library; choose ${LIBRARY_CHOICES.join(' or ')}.`, 'BAD_LIBRARY');
   const name = req.name.trim();
   const feature = req.firstFeature.trim();
   const files = {
     'architecture.yml': 'version: 1\npreset: line\n',
     'README.md': `# ${name}\n\nA Line project. \`library/\` holds the shared items every feature builds on; \`features/<name>/\` holds one feature each, with its spec.md; \`line/\` is Line's own state.\n\nCheck it: \`construct validate --profile line\`.\n`,
-    ...STARTER_LIBRARY,
+    ...libraryFiles(name, library),
     [`features/${feature}/spec.md`]: `# ${feature}\n\n## Story 1\n\n- Describe one thing a person can do in ${feature}.\n`,
     [`features/${feature}/pages/.gitkeep`]: '',
     'line/README.md': "# Line state\n\nLine's own plans and memory for this project. Only Construct's writer changes this folder.\n",
   };
   return {
-    summary: `Creates the Line project ${name} with a starter library and the empty feature ${feature}.`,
+    summary: `Creates the Line project ${name} with ${library === 'primitives' ? 'the Line primitives library' : 'a starter library'} and the empty feature ${feature}.`,
     files: Object.entries(files).map(([p, content]) => ({ path: p, content })),
   };
 }

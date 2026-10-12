@@ -41,7 +41,7 @@
   "testKit": { "file": "validated-submit.test.ts", "runner": "node" },
   "phrases": ["add a validated form", "validate the form before submitting", "submit a form with validation", "add form validation", "validated submit", "checkout form with field errors"],
   "signals": [
-    { "id": "hand-validated-submit", "all": ["[Ss]ubmit", "safeParse\\(|\\bvalidate\\w*\\(|\\b(set)?[Ee]rrors?\\b"], "any": ["set\\w*Errors?\\(", "[Ss]ubmitting", "preventDefault\\(\\)"], "sentence": "This function validates form values and submits them by hand." }
+    { "id": "hand-validated-submit", "all": ["[Ss]ubmit", "safeParse\\(|\\bvalidate\\w*\\(|\\bset[Ee]rrors?\\(|\\b[Ee]rrors\\b"], "any": ["set\\w*Errors?\\(", "[Ss]ubmitting", "preventDefault\\(\\)"], "sentence": "This function validates form values and submits them by hand." }
   ],
   "composes": []
 }

@@ -13,6 +13,7 @@
 //   construct line graph [--dir <project>] [--json]                                   build (incrementally) and store the Line graph
 //                                                                                     (writes only <state>/graph/, through writeLineState)
 //   construct line rules propose|gate|apply [--dir <project>] ...                     the static rule factory (cs2, packages/rule-factory)
+//   construct line primitives coverage [--json]                                       held-out library components the primitives cover with no loss
 import path from 'node:path';
 import { findProjectRoot } from './config.mjs';
 import { ConstructError, EXIT_CODES } from './diagnostics.mjs';
@@ -29,6 +30,7 @@ export const LINE_USAGE = [
   '  construct line rules propose [--dir <project>] [--ledger <dir>] [--labels <jsonl>] [--limit <n>] [--no-jev] [--no-drafter] [--json]',
   '  construct line rules gate [--dir <project>] [--json]',
   '  construct line rules apply [--dir <project>] [--id <proposal id>]... [--json]',
+  '  construct line primitives coverage [--json]',
 ].join('\n');
 
 const flag = (args, name) => { const i = args.indexOf(name); return i >= 0 && args[i + 1] && !args[i + 1].startsWith('--') ? args[i + 1] : undefined; };
@@ -139,6 +141,15 @@ export async function lineCommand(args) {
     return;
   }
   if (verb === 'rules') { await rulesCommand(rest); return; }
+  if (verb === 'primitives') {
+    // Roadmap item 1's per-release metric (@line/primitives coverage.mjs): read-only, from the shipped survey.json.
+    if (rest[0] !== 'coverage') throw usage(rest[0] ? `"${rest[0]}" is not a primitives command; the only one is coverage.` : 'Name a primitives command: coverage.');
+    const { coverage, coverageLines, loadSurvey } = await import('@line/primitives/coverage');
+    const report = coverage(loadSurvey());
+    if (rest.includes('--json')) { const { rows, ...summary } = report; console.log(JSON.stringify({ ok: true, ...summary, rows }, null, 2)); return; }
+    for (const line of coverageLines(report)) console.log(line);
+    return;
+  }
   throw usage(verb ? `"${verb}" is not a line command.` : 'Name a line command.');
 }
 

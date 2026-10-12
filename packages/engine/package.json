@@ -96,6 +96,7 @@
   ],
   "dependencies": {
     "@line/atoms": "^0.1.0",
+    "@line/primitives": "^0.1.0",
     "@line/summarize": "^0.1.0",
     "@xstate/graph": "^3.0.4",
     "estree-walker": "^3.0.3",
