@@ -71,11 +71,9 @@
     },
     {
       "step": "construct.intent",
-      "label": "Reads what kind of change a request asks for (intent, object, target, layers); jev answers beside the static rules and is logged, never used until it beats them.",
+      "label": "Reads what kind of change a request asks for (intent, object, target, layers) (the picker is jev, trace/tools/jev); off, the static rules decide and jev's labels are only logged beside them, never used until it beats them.",
       "kind": "decide",
       "provider": "ollama",
-      "model": "open-jev",
-      "modelFrom": "jev, the one picker, on this machine",
       "maxTokens": 1,
       "source": "construct",
       "question": "Which closed label fits the request?",
