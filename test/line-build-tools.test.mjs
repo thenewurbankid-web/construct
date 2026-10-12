@@ -104,6 +104,10 @@ test('as plan steps: each lands through the writer, and a feature page without a
       const v = await svc.runNext('agent');
       return /** @type {any} */ (v).steps.find((s) => s.id === /** @type {any} */ (a).stepId);
     };
+    // Found by the bench pilot: points sent as one string got "must be a non-empty string", which it was.
+    const bad = /** @type {any} */ (await svc.addStep({ tool: 'line.createFeature', args: { name: 'x', story: 'S.', points: '1. One.' } }, 'agent'));
+    assert.equal(bad.code, 'BAD_ARGS');
+    assert.match(bad.sentence, /points must be a JSON list of 1 to 50 non-empty strings/);
     assert.equal((await run('line.createFeature', { name: 'cart', story: 'As a shopper, I want a cart, so that I can buy.', points: ['Add a product.'] })).state, 'done');
     assert.equal((await run('line.baseOn', { libraryId: 'pages/ListPage', feature: 'cart', name: 'CartPage' })).state, 'done');
     assert.equal((await run('line.addRoute', { route: '/cart', page: 'features/cart/pages/CartPage.tsx' })).state, 'done');

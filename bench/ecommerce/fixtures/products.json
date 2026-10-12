@@ -1,0 +1,14 @@
+[
+  { "id": "linen-shirt", "name": "Linen Shirt", "category": "Clothing", "price": 48.0, "description": "A breathable linen shirt with a relaxed fit.", "stock": 12 },
+  { "id": "wool-beanie", "name": "Wool Beanie", "category": "Clothing", "price": 22.0, "description": "A warm ribbed beanie knitted from merino wool.", "stock": 30 },
+  { "id": "denim-jacket", "name": "Denim Jacket", "category": "Clothing", "price": 89.0, "description": "A classic denim jacket with brass buttons.", "stock": 7 },
+  { "id": "canvas-sneakers", "name": "Canvas Sneakers", "category": "Clothing", "price": 59.5, "description": "Low-top canvas sneakers with a rubber sole.", "stock": 15 },
+  { "id": "ceramic-mug", "name": "Ceramic Mug", "category": "Home", "price": 16.0, "description": "A hand-glazed ceramic mug that holds 350 ml.", "stock": 40 },
+  { "id": "oak-cutting-board", "name": "Oak Cutting Board", "category": "Home", "price": 34.0, "description": "A solid oak cutting board with a juice groove.", "stock": 10 },
+  { "id": "linen-throw", "name": "Linen Throw", "category": "Home", "price": 64.0, "description": "A soft stonewashed linen throw blanket.", "stock": 9 },
+  { "id": "scented-candle", "name": "Scented Candle", "category": "Home", "price": 18.5, "description": "A soy wax candle scented with cedar and sage.", "stock": 25 },
+  { "id": "wireless-earbuds", "name": "Wireless Earbuds", "category": "Electronics", "price": 79.0, "description": "Bluetooth earbuds with a pocket charging case.", "stock": 20 },
+  { "id": "desk-lamp", "name": "Desk Lamp", "category": "Electronics", "price": 42.0, "description": "An LED desk lamp with three brightness levels.", "stock": 14 },
+  { "id": "portable-speaker", "name": "Portable Speaker", "category": "Electronics", "price": 55.0, "description": "A splash-proof speaker with twelve hours of play.", "stock": 11 },
+  { "id": "usb-c-charger", "name": "USB-C Charger", "category": "Electronics", "price": 25.0, "description": "A 30 W USB-C wall charger for phones and tablets.", "stock": 35 }
+]

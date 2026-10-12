@@ -1,0 +1,9 @@
+runs/
+results/*.tokens.jsonl.tmp
+acceptance/node_modules/
+acceptance/report.json
+acceptance/test-results/
+starter/node_modules/
+starter/.next/
+starter-plain/node_modules/
+starter-plain/.next/

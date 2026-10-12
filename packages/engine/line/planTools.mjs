@@ -202,7 +202,7 @@ function objectSchema(required, o = {}) {
       const allowed = new Set([...Object.keys(required), ...(o.change ? ['expect', 'retry', 'fixOf'] : [])]);
       const extra = Object.keys(v).find((k) => !allowed.has(k));
       if (extra) return failed([extra], 'is not an argument of this tool');
-      for (const [k, t] of Object.entries(required)) if (!TYPES[t](v[k])) return failed([k], t === 'scalar' ? 'must be a string, number or boolean' : t === 'propKind' ? 'must be string, number, boolean or expression' : t === 'anyString' ? 'must be a string' : t === 'step' || t === 'optStep' ? 'must be a step {"tool": "line.<name>", "args": {...}}' : t === 'optSteps' ? 'must be a list of 1 to 4 steps {"tool": "line.<name>", "args": {...}}' : 'must be a non-empty string');
+      for (const [k, t] of Object.entries(required)) if (!TYPES[t](v[k])) return failed([k], t === 'scalar' ? 'must be a string, number or boolean' : t === 'propKind' ? 'must be string, number, boolean or expression' : t === 'anyString' ? 'must be a string' : t === 'step' || t === 'optStep' ? 'must be a step {"tool": "line.<name>", "args": {...}}' : t === 'optSteps' ? 'must be a list of 1 to 4 steps {"tool": "line.<name>", "args": {...}}' : t === 'strings' ? 'must be a JSON list of 1 to 50 non-empty strings, like ["First point.", "Second point."]' : 'must be a non-empty string');
       if (v.expect !== undefined) { const why = checkExpect(v.expect); if (why) return failed(['expect'], why); }
       if (v.retry !== undefined) { const why = checkRetry(v.retry); if (why) return failed(['retry'], why); }
       if (v.fixOf !== undefined && (typeof v.fixOf !== 'string' || !v.fixOf)) return failed(['fixOf'], 'must be the id of the step this fix is for');
