@@ -64,7 +64,8 @@ function licenceOf(dir) {
   const pj = JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf8'));
   const file = fs.readdirSync(dir).find((f) => /^licen[cs]e/i.test(f));
   const text = file ? fs.readFileSync(path.join(dir, file), 'utf8') : '';
-  const copyright = text.split('\n').map((l) => l.trim()).find((l) => /^copyright/i.test(l)) ?? null;
+  // A real notice ("Copyright (c) 2022 WorkOS", "Copyright 2019 Adobe"), not the Apache text's own "copyright notice ...".
+  const copyright = text.split('\n').map((l) => l.trim()).find((l) => /^copyright\s+(\(c\)|©|\d{4})/i.test(l)) ?? (pj.author ? `${typeof pj.author === 'string' ? pj.author : pj.author.name} (package.json author)` : null);
   return { spdx: pj.license, copyright, version: pj.version };
 }
 
