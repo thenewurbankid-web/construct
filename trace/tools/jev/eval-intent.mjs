@@ -1,14 +1,18 @@
 #!/usr/bin/env node
 // #892: score the drafter's static classifier against jev on the gold labels (data/intent-gold.jsonl).
 //   node trace/tools/jev/eval-intent.mjs [--gold file] [--seed n] [--no-jev] [--jev-url http://127.0.0.1:8765] [--out dir] [--json]
+//                                        [--arms static,lr,nb,spacy,jev,nli | --no-arms]
 // Per label set (intent, object, slot exact; layers exact + micro F1), static vs jev, on all rows and on the held-out
 // split (`--seed`, the same split train_intent.py holds out); the top confusion pairs; the fork rate and how often a fork
-// would have held the gold value (the beam-rescue proxy). Writes <out>/intent-eval.md and .json; always exits 0.
+// would have held the gold value (the beam-rescue proxy). #903: per beam arm (trace/src/beam/arms.mjs) the same labels on
+// its best reading, and "gold among candidates" recall over its top-k readings (and over the union of every arm).
+// Writes <out>/intent-eval.md and .json; always exits 0.
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { classifyJev, closedLabels, forksOf, DEFAULT_GATE } from '../../../packages/engine/line/drafter/classifyJev.mjs';
-import { readGold, readRequest, splitOf, CATALOG, GOLD_FILE, HERE } from './intentGold.mjs';
+import { readGold, readRequest, splitOf, armContext, closedReading, CATALOG, GOLD_FILE, HERE } from './intentGold.mjs';
+import { readCandidates, ARMS } from '../../src/beam/arms.mjs';
 
 export const REPORT_DIR = path.join(HERE, 'reports');
 const LABELS = /** @type {const} */ (['intent', 'object', 'slot', 'layers']);
@@ -29,14 +33,23 @@ export async function scoreRows(gold, o = {}) {
   const gate = o.gate ?? DEFAULT_GATE;
   const rows = [];
   for (const g of [...gold].sort((a, b) => a.id.localeCompare(b.id))) {
-    const { d, normalized, staticLabels } = readRequest(g.project, g.request);
+    const rr = readRequest(g.project, g.request);
+    const { d, normalized, staticLabels } = rr;
     let jevLabels = null; let conf = null;
     if (o.jev !== false) {
       const jl = await classifyJev(normalized, d.slots, CATALOG, { choose: o.choose, baseUrl: o.baseUrl, timeoutMs: o.timeoutMs ?? 15000 });
       jevLabels = closedLabels(jl, d.slots, d.bindings);
       conf = jl?.confidences ?? null;
     }
-    rows.push({ id: g.id, split: splitOf(g.id, seed), uncertain: Boolean(g.uncertain), request: g.request, normalized: d.request, gold: g.gold, static: staticLabels, jev: jevLabels, confidence: conf, forks: forksOf(staticLabels, jevLabels, conf, gate) });
+    const row = { id: g.id, split: splitOf(g.id, seed), uncertain: Boolean(g.uncertain), request: g.request, normalized: d.request, gold: g.gold, static: staticLabels, jev: jevLabels, confidence: conf, forks: forksOf(staticLabels, jevLabels, conf, gate) };
+    if (o.arms?.length) {
+      const res = await readCandidates(armContext(rr, g.request), { arms: o.arms, post: o.post, baseUrl: o.baseUrl, timeoutMs: o.timeoutMs ?? 15000 });
+      const cl = (r) => closedReading(r, d.slots, d.bindings);
+      row.arms = Object.fromEntries(o.arms.map((a) => { const x = res.byArm[a]; return [a, x?.readings?.length ? { top: cl(x.readings[0]), cands: x.readings.map(cl), confidence: x.confidence } : null]; }));
+      row.union = res.union.map(cl);
+      row.armForks = res.shadowForks.map((f) => f.label);
+    }
+    rows.push(row);
   }
   return rows;
 }
@@ -53,6 +66,24 @@ export function metrics(rows, who) {
   const t = have.reduce((a, r) => { const o = overlap(r.gold.layers, r[who].layers); return { tp: a.tp + o.tp, fp: a.fp + o.fp, fn: a.fn + o.fn }; }, { tp: 0, fp: 0, fn: 0 });
   const p = t.tp / (t.tp + t.fp || 1); const rc = t.tp / (t.tp + t.fn || 1);
   m.layersF1 = have.length ? Math.round((2 * p * rc) / (p + rc || 1) * 1000) / 10 : null;
+  return m;
+}
+
+/**
+ * #903: one beam arm over scored rows: the labels of its best reading (as metrics()), and "gold among candidates" recall
+ * over its top-k readings: the gold intent, the gold intent with the gold slot, the full gold tuple (layers as a superset,
+ * since readings are recall-first), plus how many readings it opened and on how many rows arms forked.
+ * @param {any[]} rows @param {string} arm  An arm name, or 'union' (every arm's readings together).
+ */
+export function armMetrics(rows, arm) {
+  const have = rows.filter((r) => (arm === 'union' ? r.union?.length : r.arms?.[arm]));
+  const cands = (r) => (arm === 'union' ? r.union : r.arms[arm].cands);
+  const m = arm === 'union' ? { n: have.length } : metrics(have.map((r) => ({ gold: r.gold, x: r.arms[arm].top })), /** @type {any} */ ('x'));
+  const sup = (g, p) => g.every((l) => p.includes(l));
+  m.recallIntent = pct(have.filter((r) => cands(r).some((c) => c.intent === r.gold.intent)).length, have.length);
+  m.recallIntentSlot = pct(have.filter((r) => cands(r).some((c) => c.intent === r.gold.intent && same(c.slot, r.gold.slot))).length, have.length);
+  m.recallTuple = pct(have.filter((r) => cands(r).some((c) => c.intent === r.gold.intent && same(c.slot, r.gold.slot) && sup(r.gold.layers, c.layers))).length, have.length);
+  m.meanCands = have.length ? Math.round((have.reduce((a, r) => a + cands(r).length, 0) / have.length) * 10) / 10 : null;
   return m;
 }
 
@@ -88,11 +119,16 @@ export function forkStats(rows) {
 export function summarize(rows, meta) {
   const parts = { all: rows, 'held-out': rows.filter((r) => r.split === 'test') };
   const tables = Object.fromEntries(Object.entries(parts).map(([k, rs]) => [k, { static: metrics(rs, 'static'), jev: metrics(rs, 'jev'), forks: forkStats(rs) }]));
+  const armNames = rows.find((r) => r.arms) ? Object.keys(rows.find((r) => r.arms).arms) : [];
+  const arms = armNames.length ? Object.fromEntries(Object.entries(parts).map(([k, rs]) => [k, {
+    ...Object.fromEntries([...armNames, 'union'].map((a) => [a, armMetrics(rs, a)])),
+    forkedRows: pct(rs.filter((r) => r.armForks?.length).length, rs.filter((r) => r.arms).length),
+  }])) : null;
   const cover = {};
   for (const r of rows) cover[r.gold.intent] = (cover[r.gold.intent] ?? 0) + 1;
   // Layers are recall-tuned in static (it over-includes on purpose), so their pairs get their own short list.
   const all = confusions(rows, 1000);
-  return { ...meta, rows: rows.length, uncertain: rows.filter((r) => r.uncertain).length, tables, confusions: all.filter((c) => c.label !== 'layers').slice(0, 10), layerConfusions: all.filter((c) => c.label === 'layers').slice(0, 5), coverage: cover };
+  return { ...meta, rows: rows.length, uncertain: rows.filter((r) => r.uncertain).length, tables, arms, confusions: all.filter((c) => c.label !== 'layers').slice(0, 10), layerConfusions: all.filter((c) => c.label === 'layers').slice(0, 5), coverage: cover };
 }
 
 const cell = (v) => (v === null || v === undefined ? '—' : `${v}%`);
@@ -105,6 +141,17 @@ export function renderMarkdown(s) {
     for (const [k, label] of [['intent', 'intent (exact)'], ['object', 'object (exact)'], ['slot', 'slot (exact)'], ['layersExact', 'layers (exact set)'], ['layersF1', 'layers (micro F1)']]) out.push(`| ${label} | ${cell(t.static[k])} | ${cell(t.jev[k])} |`);
     const f = t.forks;
     out.push('', f.answered ? `Forks: ${f.forkedRows}/${f.answered} rows (${cell(f.forkRate)}), ${f.forkLabels} fork labels (intent ${f.byLabel.intent}, object ${f.byLabel.object}, slot ${f.byLabel.slot}, layers ${f.byLabel.layers}); a fork held the gold value ${cell(f.containsGold)} of the time; jev alone was right on ${f.rescues} of them (beam rescues).` : 'Forks: jev did not answer, so there are none.', '');
+  }
+  if (s.arms) {
+    for (const [name, t] of Object.entries(s.arms)) {
+      out.push(`## Beam arms: ${name} (best reading; recall over each arm's readings)`, '', '| arm | n | intent | object | slot | layers (exact) | layers (F1) | gold intent in readings | + slot | + layers | readings |', '|---|---|---|---|---|---|---|---|---|---|---|');
+      for (const [a, m] of Object.entries(t)) {
+        if (a === 'forkedRows') continue;
+        const mm = /** @type {any} */ (m);
+        out.push(`| ${a === 'union' ? 'union (all arms)' : a} | ${mm.n} | ${a === 'union' ? '—' : cell(mm.intent)} | ${a === 'union' ? '—' : cell(mm.object)} | ${a === 'union' ? '—' : cell(mm.slot)} | ${a === 'union' ? '—' : cell(mm.layersExact)} | ${a === 'union' ? '—' : cell(mm.layersF1)} | ${cell(mm.recallIntent)} | ${cell(mm.recallIntentSlot)} | ${cell(mm.recallTuple)} | ${mm.meanCands ?? '—'} |`);
+      }
+      out.push('', `Arms forked (disagree or under the gate) on ${cell(t.forkedRows)} of rows. An arm with n=0 did not answer (sidecar down, or its model or weights missing).`, '');
+    }
   }
   out.push('## Top confusions: intent, object, slot (gold -> predicted, top 10)', '', '| who | label | gold | predicted | n |', '|---|---|---|---|---|');
   for (const c of s.confusions) out.push(`| ${c.who} | ${c.label} | ${c.gold} | ${c.pred} | ${c.n} |`);
@@ -127,7 +174,12 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     const useJev = !argv.includes('--no-jev');
     const baseUrl = arg('--jev-url');
     const jev = useJev ? await jevHealth(baseUrl) : 'off (--no-jev)';
-    const rows = await scoreRows(readGold(arg('--gold') ?? GOLD_FILE), { jev: useJev && jev !== 'not running', baseUrl, seed });
+    const side = useJev ? jev : await jevHealth(baseUrl);
+    let arms = argv.includes('--no-arms') ? [] : (arg('--arms') ?? ARMS.join(',')).split(',').map((x) => x.trim()).filter((x) => ARMS.includes(x));
+    // The sidecar serves every arm but static; down -> static only. --no-jev drops the jev arm too.
+    if (side === 'not running') arms = arms.filter((a) => a === 'static');
+    if (!useJev) arms = arms.filter((a) => a !== 'jev');
+    const rows = await scoreRows(readGold(arg('--gold') ?? GOLD_FILE), { jev: useJev && jev !== 'not running', baseUrl, seed, arms });
     const s = summarize(rows, { seed, jev });
     const dir = arg('--out') ?? REPORT_DIR;
     fs.mkdirSync(dir, { recursive: true });

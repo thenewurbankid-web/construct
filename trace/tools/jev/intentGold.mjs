@@ -15,7 +15,10 @@ import { fileURLToPath } from 'node:url';
 import { draft } from '../../../packages/engine/line/drafter/index.mjs';
 import { buildIntentCatalog, VERBS, OBJECTS, LAYERS } from '../../../packages/engine/line/drafter/contract.mjs';
 import { LINE_PLAN_TOOLS } from '../../../packages/engine/line/contract.mjs';
-import { closedLabels } from '../../../packages/engine/line/drafter/classifyJev.mjs';
+import { closedLabels, slotKey } from '../../../packages/engine/line/drafter/classifyJev.mjs';
+import { buildDomainMap } from '../../../packages/engine/line/drafter/domainMap.mjs';
+import { factsSummary } from '../../../packages/engine/line/facts.mjs';
+import { readLineProject } from '../../../packages/engine/line/model.mjs';
 
 export const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const REPO = path.resolve(HERE, '../../..');
@@ -62,7 +65,33 @@ export function nextId(rows, prefix = 'hand') {
 export function readRequest(project, request, o = {}) {
   const root = path.isAbsolute(project) ? project : path.join(REPO, project);
   const d = draft(root, request, { verify: o.verify ?? false, shadow: false });
-  return { root, d, normalized: { text: d.request, tokens: d.tokens }, staticLabels: closedLabels(d.labels, d.slots, d.bindings) };
+  const normalized = { text: d.request, tokens: d.tokens };
+  return { root, d, normalized, staticLabels: closedLabels(d.labels, d.slots, d.bindings) };
+}
+
+const MAPS = new Map();
+/** The project's domain map (the spacy arm's EntityRuler), built once per project. @param {string} root */
+export function domainMapOf(root) {
+  if (!MAPS.has(root)) MAPS.set(root, buildDomainMap(root, factsSummary(root, readLineProject(root))));
+  return MAPS.get(root);
+}
+
+/**
+ * What the beam's arms read for one request (trace/src/beam/arms.mjs ArmContext).
+ * @param {ReturnType<typeof readRequest>} rr @param {string} request
+ */
+export function armContext(rr, request) {
+  return { request, normalized: rr.normalized, slots: rr.d.slots, bindings: rr.d.bindings, catalog: CATALOG, labels: rr.d.labels, map: domainMapOf(rr.root) };
+}
+
+/**
+ * A Reading (trace/src/beam/contract.mjs) as the four closed labels gold holds; the target named like gold's slot.
+ * @param {{intent: string, object: string|null, target: string|null, layers: string[]}|null|undefined} r
+ * @param {Record<string, any>} slots @param {Record<string, any>} [bindings]
+ */
+export function closedReading(r, slots, bindings = {}) {
+  if (!r) return null;
+  return { intent: r.intent, object: r.object, slot: slotKey(r.target, slots, bindings), layers: [...r.layers].sort() };
 }
 
 /**
