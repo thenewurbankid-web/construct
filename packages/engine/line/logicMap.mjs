@@ -258,17 +258,19 @@ export function fileUnits(source, rel, renames = {}) {
  * same logic twice in one function) are made unique by their order: the second gets `#2` hashed in, and so on.
  * @param {string} appRoot
  * @param {string[]} files
- * @param {{renames?: RenameTable, read?: (abs: string) => string}} [options] `renames` maps identifiers before hashing; `read` replaces fs (tests).
+ * @param {{renames?: RenameTable, read?: (abs: string) => string, unitsOf?: (source: string, rel: string, renames: RenameTable) => ReturnType<typeof fileUnits>}} [options]
+ *   `renames` maps identifiers before hashing; `read` replaces fs (tests); `unitsOf` replaces fileUnits (a cache layer:
+ *   importLoopDisk.mjs keeps each file's units by its content hash).
  * @returns {LogicMap}
  */
-export function buildLogicMap(appRoot, files, { renames = {}, read = (abs) => fs.readFileSync(abs, 'utf8') } = {}) {
+export function buildLogicMap(appRoot, files, { renames = {}, read = (abs) => fs.readFileSync(abs, 'utf8'), unitsOf = fileUnits } = {}) {
   /** @type {LogicUnit[]} */
   const units = [];
   const seen = new Map();
   for (const file of files) {
     const rel = file.split(path.sep).join('/');
     const counters = new Map();
-    for (const u of fileUnits(read(path.join(appRoot, rel)), rel, renames)) {
+    for (const u of unitsOf(read(path.join(appRoot, rel)), rel, renames)) {
       const base = unitFingerprint(u.kind, u.fn, u.anchor, renames);
       const k = (seen.get(base) ?? 0) + 1;
       seen.set(base, k);

@@ -563,7 +563,7 @@ export function createImportAgent(o) {
         let logicFailing = [];
         let extra = [];
         if (looping(doc)) {
-          const m = await measure(o.logic, { root, folder, logic: doc.logic });
+          const m = await measure(o.logic, { root, folder, logic: doc.logic, full: true });
           const lc = loopChecks(m, doc.logic, { at: 'verify', folder });
           const st = loopState({ step: { id: 'verify', tool: 'verify', sentence: 'Check everything', args: { folder } }, n: doc.steps.length + 1, at: now(), before: doc.logic.loop.at(-1)?.mapAfter ?? doc.logic.map, m, checks: lc, logic: doc.logic });
           doc.logic.last = { kept: m.diff.kept.length + m.diff.moved.length, missing: st.diff.missing.filter((u) => !u.waived), coverage: st.coverage, tests: st.tests };

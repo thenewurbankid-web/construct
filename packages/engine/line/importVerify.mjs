@@ -6,6 +6,7 @@
 // could not run (`skipped`): a project with no TypeScript installed, or a folder with no tests, is said, never faked.
 // Pure reads: nothing here writes to the project.
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -160,8 +161,8 @@ export function testRunnerOf(projectRoot) {
 }
 
 /** One test file in the app's runner: passed, or the reason it failed (the end of its output). */
-function runOneTest(projectRoot, runner, file) {
-  const args = runner === 'jest' ? [path.join(projectRoot, 'node_modules', 'jest', 'bin', 'jest.js'), '--ci', '--runTestsByPath', file]
+function runOneTest(projectRoot, runner, file, jestRun = null) {
+  const args = runner === 'jest' ? [jestRun?.bin ?? path.join(projectRoot, 'node_modules', 'jest', 'bin', 'jest.js'), ...(jestRun?.args ?? []), '--ci', '--runTestsByPath', file]
     : runner === 'vitest' ? [path.join(projectRoot, 'node_modules', 'vitest', 'vitest.mjs'), 'run', file]
       : ['--test', file];
   // The app's runner gets a clean test context (a node:test parent's NODE_TEST_CONTEXT would make the child report to it).
@@ -172,26 +173,66 @@ function runOneTest(projectRoot, runner, file) {
 }
 
 /**
- * Run the characterization tests (CharTest[]) in the app's own runner, one file at a time, so each failure names its test.
+ * Several jest test files in one jest process: each file's outcome from jest's --json report (a failing file keeps the
+ * end of its failure messages). Null when jest reported nothing usable (the caller then runs the files one by one).
+ * @param {string} projectRoot
+ * @param {string[]} files Project-relative test files.
+ * @returns {Map<string, {ok: boolean, detail?: string}> | null}
+ */
+function runJestBatch(projectRoot, files, jestRun = null) {
+  const out = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'line-chartests-')), 'res.json');
+  const { NODE_TEST_CONTEXT: _ctx, NODE_OPTIONS: _opts, ...env } = process.env;
+  const args = [jestRun?.bin ?? path.join(projectRoot, 'node_modules', 'jest', 'bin', 'jest.js'), ...(jestRun?.args ?? []), '--ci', '--watchman=false', '--maxWorkers=2', '--json', `--outputFile=${out}`, '--runTestsByPath', ...files];
+  const r = spawnSync(process.execPath, args, { cwd: projectRoot, encoding: 'utf8', timeout: Math.max(TIMEOUT, files.length * 60_000), env: { ...env, CI: '1' }, maxBuffer: 64 * 1024 * 1024 });
+  let res = null;
+  try { res = JSON.parse(fs.readFileSync(out, 'utf8')); } catch { res = null; }
+  fs.rmSync(path.dirname(out), { recursive: true, force: true });
+  if (r.error || !res?.testResults?.length) return null;
+  const byPath = new Map();
+  for (const t of res.testResults) {
+    const name = String(t.name);
+    const real = (() => { try { return fs.realpathSync(name); } catch { return name; } })();
+    const v = t.status === 'passed' ? { ok: true } : { ok: false, detail: String(t.message || (t.assertionResults ?? []).flatMap((a) => a.failureMessages ?? []).join('\n')).trim().split('\n').slice(-12).join('\n') };
+    byPath.set(name, v);
+    byPath.set(real, v);
+  }
+  const outcome = new Map();
+  for (const f of files) {
+    const abs = path.join(projectRoot, f);
+    const real = (() => { try { return fs.realpathSync(abs); } catch { return abs; } })();
+    const v = byPath.get(abs) ?? byPath.get(real);
+    if (v) outcome.set(f, v);
+  }
+  return outcome;
+}
+
+/**
+ * Run the characterization tests (CharTest[]) in the app's own runner (jest: every file in one process), so each failure names its test file.
  * A test file that is gone counts as failed. No tests at all is `skipped`, said, never faked.
  * @param {string} projectRoot
  * @param {string} folder
  * @param {{file: string, title: string, runner?: string}[]} tests
+ * @param {{jest?: {bin: string, args: string[]} | null}} [o] `jest`: how jest runs when the app has none of its own (characterize.mjs jestRunnerFor).
  * @returns {{state: 'pass'|'fail'|'skipped', passed: number, failed: number, total: number, failures: {file: string, title: string}[], sentence: string, detail?: string}}
  */
-export function runCharTests(projectRoot, folder, tests) {
+export function runCharTests(projectRoot, folder, tests, o = {}) {
   const list = Array.isArray(tests) ? tests : [];
   if (!list.length) return { state: 'skipped', passed: 0, failed: 0, total: 0, failures: [], sentence: `There are no characterization tests for ${folder} yet, so behaviour is checked by the logic map and the behaviour check only.` };
-  const runner = testRunnerOf(projectRoot);
+  const runner = o.jest ? 'jest' : testRunnerOf(projectRoot);
   const failures = [];
   const details = [];
   // One run per test file (the characterizer writes many tests per file), each test of a failing file counted failed.
   /** @type {Map<string, {ok: boolean, detail?: string}>} */
   const byFile = new Map();
+  const present = [];
   for (const file of new Set(list.map((t) => t.file))) {
-    if (!fs.existsSync(path.join(projectRoot, file))) { byFile.set(file, { ok: false, detail: 'the test file is gone' }); continue; }
-    byFile.set(file, runOneTest(projectRoot, runner, file));
+    if (!fs.existsSync(path.join(projectRoot, file))) byFile.set(file, { ok: false, detail: 'the test file is gone' });
+    else present.push(file);
   }
+  // jest runs every file in one process (one start-up, its workers share the transform cache) and reports each file;
+  // the other runners, or a jest run that reported nothing, go one file at a time.
+  const batch = runner === 'jest' && present.length > 1 ? runJestBatch(projectRoot, present, o.jest) : null;
+  for (const file of present) byFile.set(file, batch?.get(file) ?? runOneTest(projectRoot, runner, file, o.jest));
   for (const [file, r] of byFile) if (!r.ok) details.push(`${file}:\n${r.detail}`);
   for (const t of list) if (!byFile.get(t.file)?.ok) failures.push({ file: t.file, title: t.title });
   const failed = failures.length;
@@ -334,6 +375,6 @@ export function checkBehaviour(projectRoot, diff, sources, folder = '') {
  * @returns {Promise<any[]>}
  */
 export async function verifyImportLogic(projectRoot, folder, logic, ops) {
-  const m = await measure(ops, { root: projectRoot, folder, logic });
+  const m = await measure(ops, { root: projectRoot, folder, logic, full: true });
   return loopChecks(m, logic, { at: 'verify', folder });
 }
