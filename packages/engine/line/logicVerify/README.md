@@ -10,11 +10,15 @@ build step 1, the contract: shapes, expected outputs and tests. The later steps 
 | `escalation.mjs` | `LEVELS` (L0 to L3), `LAYER_ORDER` per purity, `levelsFor`, `layerOrder`, `isDecisive`, `nextLayer`, `decideUnit` |
 | `fakes.mjs` | Interfaces for the recording fakes, `EffectRecord`, `UnitRun`, `FAKE_ENV`, the sentinel format (`sentinel`, `findSentinels`), `assertEffectRecord`, `assertUnitRun` |
 | `layoutFakes.mjs` | `LAYOUT_FAKE_TYPES` and `LAYOUT_EVENTS` (names from `lib.dom.d.ts`), the `LayoutFakeGenerator` interface, `layoutValues` |
+| `canonical.mjs` | Step 3, C1: `canonicalUnit` (one unit to a stable string and a logic-map fingerprint), `canonicalCompare` (the L0 layer, with the exact location on a mismatch), `locateUnit`, `unitNames`, `PINNED` (esbuild 0.28.2, whitespace and comments only) |
+| `roundTrip.mjs` | Step 3: `roundTripCompare` (re-inline the extracted functions, then canonical-compare with the original), `inBlocks` |
+| `verifyPair.mjs` | `verifyPair` (the layer walk; `RUNNERS` holds the built layers, L0-canonical and round-trip so far), `pairBefore`, `classifyBefore` |
 
 Tests:
 
 - `test/line-logic-verify-contract.test.mjs` covers every validator and pure function.
-- `test/line-logic-verify-planted.test.mjs` holds the planted fixtures and the acceptance tests for each step.
+- `test/line-logic-verify-planted.test.mjs` holds the planted fixtures and the acceptance tests for each step (`BUILT` lists the steps whose acceptance tests run).
+- `test/line-logic-verify-canonical.test.mjs` covers the canonicaliser's edge cases, the round-trip and verifyPair's L0 walk.
 - The fixtures are in `test/fixtures/logic-verify/`. They are small synthetic snippets written for these tests, not
   taken from any app.
 
@@ -41,6 +45,28 @@ each step lands.
 - `verifyPair.mjs`: `verifyPair({beforeRoot, afterRoot, unit, transforms, levels, blocks?})` returns
   `Promise<UnitVerdict>`. Steps 3 to 6 and step 8 build it.
 - `verifyPair.mjs`: `verifyStep({step, cases})` returns `Promise<StepSummary>`. This is step 7.
+
+## The canonical form (step 3)
+
+The choices, and why (each is conservative: a false "changed" only falls through to the next layer on a hand edit):
+
+- Locals are renamed by first appearance (`$$0`, `$$1`, ...) with `@typescript-eslint/scope-manager`, so the renaming
+  is scope-precise; the unit's own name becomes `$$self`. Free names and property names stay. esbuild's own mangler is
+  not used: it picks names by the character frequency of the input, old local names included, so it is not
+  rename-stable.
+- esbuild prints with whitespace and comment removal only: no syntax minification, so no inlining, folding or
+  reordering. Types, comments, quotes and formatting do not count. The file path is never part of the form, so a pure
+  move is equal.
+- Reordered declarations are not equal, even independent ones: proving independence needs effect analysis.
+- An arrow function is not equal to a function declaration (`this`, `arguments`, hoisting, `new` differ).
+- The hash is `logicMap.unitFingerprint` of the canonical text plus the pinned printer version: no second scheme.
+- esbuild 0.28.2 and scope-manager are resolved from the repo's installed dev dependencies; when either is missing
+  the layer answers `cant-tell`.
+- Until step 2 lands, `classifyBefore` falls back to the logic map's effect units inside the function (no
+  transitive chain).
+
+Speed on the planted fixtures (warm): about 2.3 ms per unit, 2.9 ms per canonical compare, 5.5 ms per `verifyPair`.
+The first unit in a process pays about 0.5 s to load esbuild and scope-manager.
 
 ## Planted fixtures
 

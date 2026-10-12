@@ -83,7 +83,7 @@ export function unitFingerprint(kind, fn, anchor, renames = {}) {
 }
 
 /** Name a function node the way a person would: its own name, its variable, its property, or `on:<attr>` for an inline handler. */
-function functionName(node, parent, grand) {
+export function functionName(node, parent, grand) {
   if (node.id?.name) return node.id.name;
   if (parent?.type === 'VariableDeclarator' && parent.id.type === 'Identifier') return parent.id.name;
   if ((parent?.type === 'Property' || parent?.type === 'MethodDefinition' || parent?.type === 'PropertyDefinition') && parent.key?.type === 'Identifier') return parent.key.name;
