@@ -331,3 +331,58 @@ test('neither probe available: runs without the RAM check and says so', () => {
   assert.match(r.stdout, /ran/);
   assert.match(r.stderr, /running without the free-RAM check/);
 });
+
+// ---- #855: Termux (no writable /tmp; everything under $PREFIX and $TMPDIR) -------------------
+// CONSTRUCT_HEAVY_SHARED_TMP stands in for /tmp so the real machine-wide lock is never touched.
+
+/** The sandbox env with the default lock path in play (no CONSTRUCT_HEAVY_LOCK). */
+function defaultLockEnv(extra) {
+  const { dir, env } = sandbox();
+  delete env.CONSTRUCT_HEAVY_LOCK;
+  return { dir, env: { ...env, ...extra } };
+}
+
+test('#855 no usable /tmp (Termux): the lock falls back to $TMPDIR, and a job really takes it there', () => {
+  const { dir } = defaultLockEnv();
+  const tmpdir = path.join(dir, 'termux-tmp');
+  fs.mkdirSync(tmpdir);
+  const { env } = defaultLockEnv({ CONSTRUCT_HEAVY_SHARED_TMP: path.join(dir, 'no-such-tmp'), TMPDIR: `${tmpdir}/` });
+  const p = run(['--lock-path'], env);
+  assert.equal(p.status, 0, p.stderr);
+  assert.equal(p.stdout.trim(), path.join(tmpdir, 'construct-heavy.lock'));
+  const r = run(['sh', '-c', `cat "${path.join(tmpdir, 'construct-heavy.lock.holder')}"`], env);
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.stdout, /^pid \d+ since .*: sh -c cat/, 'the holder file sits next to the $TMPDIR lock while the job runs');
+});
+
+test('#855 a writable /tmp keeps the lock there even when $TMPDIR is set (macOS sets one per user): one lock per machine', () => {
+  const { dir } = defaultLockEnv();
+  const shared = path.join(dir, 'shared-tmp');
+  fs.mkdirSync(shared);
+  const { env } = defaultLockEnv({ CONSTRUCT_HEAVY_SHARED_TMP: shared, TMPDIR: path.join(dir, 'per-user') });
+  assert.equal(run(['--lock-path'], env).stdout.trim(), path.join(shared, 'construct-heavy.lock'));
+  const { env: real } = defaultLockEnv({ TMPDIR: path.join(dir, 'per-user') });
+  delete real.CONSTRUCT_HEAVY_SHARED_TMP;
+  assert.equal(run(['--lock-path'], real).stdout.trim(), '/tmp/construct-heavy.lock', 'the real default is unchanged (path only; the lock is not taken)');
+});
+
+test('#855 a lock whose folder does not exist fails fast with exit 2 and says how to fix it, nothing runs', () => {
+  const { dir, env } = sandbox({ CONSTRUCT_HEAVY_LOCK_WAIT_SEC: '20' });
+  env.CONSTRUCT_HEAVY_LOCK = path.join(dir, 'missing', 'heavy.lock');
+  const started = Date.now();
+  const r = run(['sh', '-c', 'echo must-not-run'], env);
+  assert.equal(r.status, 2, r.stderr);
+  assert.ok(Date.now() - started < 5000, 'did not sit out the lock wait');
+  assert.doesNotMatch(r.stdout, /must-not-run/);
+  assert.match(r.stderr, /the lock's folder .*missing does not exist .*CONSTRUCT_HEAVY_LOCK or TMPDIR/);
+});
+
+test('#855 status.sh reads the lock path from heavy.sh, and verify.sh makes its temp files under $TMPDIR', () => {
+  const dev = path.dirname(HEAVY);
+  const status = fs.readFileSync(path.join(dev, 'status.sh'), 'utf8');
+  assert.doesNotMatch(status, /\/tmp\/construct-heavy\.lock/);
+  assert.match(status, /heavy\.sh" --lock-path/);
+  const verify = fs.readFileSync(path.join(dev, 'verify.sh'), 'utf8');
+  assert.doesNotMatch(verify, /mktemp \/tmp/);
+  assert.match(verify, /TMPD="\$\{TMPDIR:-\/tmp\}"/);
+});

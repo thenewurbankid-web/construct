@@ -10,7 +10,7 @@
 //                                                             site/content/user/system-requirements.md from this run
 //   node packages/tools/dev/benchmark.mjs --docs-only         no measuring: regenerate the page's tables from TIERS and the committed snapshot
 //
-// Peak memory: GNU `/usr/bin/time -f %M` where it exists (the largest resident set of the command and everything it started),
+// Peak memory: GNU `time -f %M` (found on PATH) where it exists (the largest resident set of the command and everything it started),
 // else a `ps` sampling of the command; where neither works the memory of that check is "unmeasured" (reported, never a failure).
 // The numbers the docs quote come from a `--update-docs` run of this script, never from an estimate.
 import fs from 'node:fs';
@@ -122,12 +122,44 @@ export function parseTimeLine(stderr) {
   return { ms: Number(m[1]) * 1000, rssMb: Number(m[2]) / 1024, stderr: stderr.slice(0, m.index) };
 }
 
+/**
+ * The `time` executable on PATH, like `command -v time` in a POSIX shell but never the shell keyword: /usr/bin/time on
+ * Linux, $PREFIX/bin/time on Termux, where /usr/bin does not exist (#855).
+ *
+ * @param {string} [pathEnv] A PATH value (default `process.env.PATH`).
+ * @returns {string | null} Its absolute path, or null when there is none.
+ */
+export function findTimeBinary(pathEnv = process.env.PATH ?? '') {
+  for (const dir of pathEnv.split(path.delimiter).filter(Boolean)) {
+    const candidate = path.join(dir, 'time');
+    try {
+      fs.accessSync(candidate, fs.constants.X_OK);
+      if (fs.statSync(candidate).isFile()) return candidate;
+    } catch {
+      // not here: next PATH entry
+    }
+  }
+  return null;
+}
+
+/**
+ * The machine's core count for the report. `os.cpus()` is empty where /proc/cpuinfo hides the cores (Android, some
+ * containers): fall back to the scheduler's count, never report 0 (#855).
+ *
+ * @param {{ cpus?: () => unknown[], availableParallelism?: () => number }} [probe] Injected for tests (default `os`).
+ * @returns {number} At least 1.
+ */
+export function coreCount({ cpus = os.cpus, availableParallelism = os.availableParallelism } = {}) {
+  return cpus().length || availableParallelism?.() || 1;
+}
+
 let gnuTime;
-/** Whether `/usr/bin/time -f` (GNU time) works here. */
-function hasGnuTime() {
+/** The GNU `time` binary whose `-f` works here, or null (BSD/macOS `time` has no -f; Termux's lives under $PREFIX). */
+function gnuTimeBinary() {
   if (gnuTime === undefined) {
-    const r = spawnSync('/usr/bin/time', ['-f', '%M', process.execPath, '-e', '0'], { encoding: 'utf8' });
-    gnuTime = r.status === 0 && /^\d+\s*$/.test(r.stderr ?? '');
+    const bin = findTimeBinary();
+    const r = bin ? spawnSync(bin, ['-f', '%M', process.execPath, '-e', '0'], { encoding: 'utf8' }) : null;
+    gnuTime = r && r.status === 0 && /^\d+\s*$/.test(r.stderr ?? '') ? bin : null;
   }
   return gnuTime;
 }
@@ -142,8 +174,8 @@ function hasGnuTime() {
  */
 export function measureCli(args, { timeoutMs = 120_000, env = process.env } = {}) {
   return new Promise((resolve) => {
-    const gnu = hasGnuTime();
-    const [cmd, cmdArgs] = gnu ? ['/usr/bin/time', ['-f', '__TIME__ %e %M', process.execPath, CLI, ...args]] : [process.execPath, [CLI, ...args]];
+    const gnu = gnuTimeBinary();
+    const [cmd, cmdArgs] = gnu ? [gnu, ['-f', '__TIME__ %e %M', process.execPath, CLI, ...args]] : [process.execPath, [CLI, ...args]];
     const start = process.hrtime.bigint();
     const child = spawn(cmd, cmdArgs, { cwd: REPO, env, stdio: ['ignore', 'ignore', 'pipe'] });
     let err = '';
@@ -277,7 +309,7 @@ export async function measureAll({ runs = 3, only = null, log = () => {} } = {})
   return {
     schema: 'construct-benchmark.v1',
     date: new Date().toISOString(),
-    machine: { platform: process.platform, node: process.versions.node, cores: os.cpus().length, totalRamMb: Math.round(os.totalmem() / 1048576) },
+    machine: { platform: process.platform, node: process.versions.node, cores: coreCount(), totalRamMb: Math.round(os.totalmem() / 1048576) },
     runs,
     checks,
   };

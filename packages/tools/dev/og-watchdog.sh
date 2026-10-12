@@ -26,7 +26,8 @@
 # Files live in ~/.og-watchdog (override OG_STATE_DIR); handoff summaries are kept in ~/.og-watchdog/handoffs.
 set -u
 
-export PATH="$HOME/.local/bin:$HOME/bin:/usr/local/bin:/usr/bin:/bin"
+# ${PREFIX:+...}: Termux keeps every binary under $PREFIX/bin, not /usr/bin (#855); unset elsewhere, so PATH is unchanged.
+export PATH="${PREFIX:+$PREFIX/bin:}$HOME/.local/bin:$HOME/bin:/usr/local/bin:/usr/bin:/bin"
 REPO="${OG_REPO:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)}"
 STATE="${OG_STATE_DIR:-$HOME/.og-watchdog}"
 TMUX_NAME="${OG_TMUX:-og}"

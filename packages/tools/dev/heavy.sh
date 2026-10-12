@@ -7,7 +7,10 @@
 #   packages/tools/dev/heavy.sh npx playwright test --workers=1 pages-editor
 #   packages/tools/dev/heavy.sh --prune-only        # only the temp-dir sweep, no lock, no command
 #
-# Env: CONSTRUCT_HEAVY_LOCK (lock file, default /tmp/construct-heavy.lock),
+#   packages/tools/dev/heavy.sh --lock-path         # print the lock file this machine uses
+#
+# Env: CONSTRUCT_HEAVY_LOCK (lock file, default /tmp/construct-heavy.lock; $TMPDIR/construct-heavy.lock
+#      where /tmp is not a writable folder, e.g. Termux),
 #      CONSTRUCT_MIN_FREE_MB (default 3000), CONSTRUCT_HEAVY_HEAP_MB (default 2048),
 #      CONSTRUCT_HEAVY_LOCK_WAIT_SEC (default 3600: give up on the lock after this),
 #      CONSTRUCT_HEAVY_RAM_WAIT_SEC (default 1800: give up waiting for RAM after this),
@@ -16,7 +19,7 @@
 #      CONSTRUCT_HEAVY_MEMINFO / CONSTRUCT_HEAVY_VMSTAT (test overrides for the free-RAM probe).
 #
 # Exit status: the command's own; 75 (EX_TEMPFAIL) when the lock or the RAM never
-# came within the wait; 2 on usage.
+# came within the wait; 2 on usage or when the lock's folder does not exist.
 #
 # Waits are bounded (#414). A holder that is *dead* never blocks anyone: the kernel
 # releases flock with the process. A holder that is *hung* used to block every heavy
@@ -39,7 +42,15 @@
 # is older than a day. It used to be `find -mmin +30`, which deleted the live
 # state of any run longer than 30 minutes (a full e2e run is).
 set -u
-LOCK="${CONSTRUCT_HEAVY_LOCK:-/tmp/construct-heavy.lock}"
+# The default lock lives in /tmp wherever /tmp is a writable directory (Linux, macOS): one path every session on the
+# machine shares, even sessions that each have their own $TMPDIR (macOS sets a per-user one; sandboxes set their own),
+# so it is not moved there. Where /tmp is not usable (Termux on Android) it falls back to $TMPDIR (#855).
+# CONSTRUCT_HEAVY_SHARED_TMP stands in for /tmp in tests.
+default_lock() {
+  local shared="${CONSTRUCT_HEAVY_SHARED_TMP:-/tmp}"
+  if [ -d "$shared" ] && [ -w "$shared" ]; then printf '%s/construct-heavy.lock' "${shared%/}"; else printf '%s/construct-heavy.lock' "${TMPDIR:-/tmp}" | sed 's#//*#/#g'; fi
+}
+LOCK="${CONSTRUCT_HEAVY_LOCK:-$(default_lock)}"
 MIN_MB="${CONSTRUCT_MIN_FREE_MB:-3000}"
 HEAP_MB="${CONSTRUCT_HEAVY_HEAP_MB:-2048}"
 LOCK_WAIT_SEC="${CONSTRUCT_HEAVY_LOCK_WAIT_SEC:-3600}"
@@ -152,6 +163,16 @@ fi
 if [ "$1" = "--prune-only" ]; then
   prune_stale
   exit 0
+fi
+if [ "$1" = "--lock-path" ]; then # where the lock is (status.sh asks, so the two never disagree)
+  printf '%s\n' "$LOCK"
+  exit 0
+fi
+# A lock whose folder does not exist can never be taken: the flock path would fail to open it on every pass and the
+# mkdir path would wait out the whole CONSTRUCT_HEAVY_LOCK_WAIT_SEC. Say so at once instead (#855).
+if [ ! -d "$(dirname "$LOCK")" ]; then
+  say "the lock's folder $(dirname "$LOCK") does not exist (lock $LOCK). Create it, or set CONSTRUCT_HEAVY_LOCK or TMPDIR to a writable folder."
+  exit 2
 fi
 
 # Available RAM in MB, or nothing when this machine offers no way to tell (#854).

@@ -10,7 +10,7 @@ import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
 const SCRIPT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../packages/tools/dev/og-watchdog.sh');
 const have = (cmd, args = ['-V']) => spawnSync(cmd, args, { stdio: 'ignore' }).status === 0;
-const skip = process.platform !== 'linux' || !have('tmux') || !have('python3', ['--version']) ? 'needs linux, tmux and python3' : false;
+const skip = !['linux', 'android'].includes(process.platform) ||!have('tmux') || !have('python3', ['--version']) ? 'needs linux, tmux and python3' : false;
 
 function rig(name, env = {}) {
   const root = makeTempDir('ogw-');
@@ -233,6 +233,21 @@ test('og-watchdog: OG is not recycled while its screen shows a turn in progress,
     assert.doesNotMatch(r.log(), /recycling/);
     assert.equal(fs.existsSync(path.join(r.state, 'recycle')), false);
   } finally { r.cleanup(); }
+});
+
+test('og-watchdog: $PREFIX/bin comes first on its PATH when PREFIX is set (Termux), so claude, tmux and flock resolve there (#855)', () => {
+  const root = makeTempDir('ogw-prefix-');
+  const prefix = path.join(root, 'prefix'), home = path.join(root, 'home'), state = path.join(root, 'state'), repo = path.join(root, 'repo');
+  for (const d of [path.join(prefix, 'bin'), home, state, repo]) fs.mkdirSync(d, { recursive: true });
+  // Fakes that exist only under $PREFIX/bin: claude, flock (always granted), tmux (no session exists).
+  fs.writeFileSync(path.join(prefix, 'bin', 'claude'), '#!/bin/sh\nexit 0\n', { mode: 0o755 });
+  fs.writeFileSync(path.join(prefix, 'bin', 'flock'), '#!/bin/sh\nexit 0\n', { mode: 0o755 });
+  fs.writeFileSync(path.join(prefix, 'bin', 'tmux'), '#!/bin/sh\nexit 1\n', { mode: 0o755 });
+  const env = { ...process.env, PREFIX: prefix, HOME: home, OG_STATE_DIR: state, OG_REPO: repo, OG_FORCE: '1', OG_TMUX: `ogtest-prefix-${process.pid}` };
+  delete env.CLAUDE_BIN;
+  const r = spawnSync('bash', [SCRIPT, 'start', '--dry-run'], { env, encoding: 'utf8' });
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.stdout, new RegExp(`would run in tmux .*: ${path.join(prefix, 'bin', 'claude').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} --agent og`));
 });
 
 test('og-watchdog: defaults are a check every minute and a 1-minute idle threshold for OG', () => {

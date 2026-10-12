@@ -4,7 +4,8 @@
 # Runs: merge (no commit) -> root/server/client tests, tsc, lint -> optional browser configs. Prints only PASS/FAIL lines.
 set -uo pipefail
 BR="${1:?branch}"; BROWSER="${2:-}"; R="$(cd "$(dirname "$0")/../../.." && pwd)"; H="$R/packages/tools/dev/heavy.sh"
-OUT="$(mktemp /tmp/verify-XXXX.log)"; cd "$R"
+TMPD="${TMPDIR:-/tmp}"; TMPD="${TMPD%/}"   # Termux has no /tmp (#855)
+OUT="$(mktemp "$TMPD/verify-XXXX.log")"; cd "$R"
 git fetch -q origin "$BR" 2>/dev/null; git merge --no-ff --no-edit "origin/$BR" >>"$OUT" 2>&1 || { echo "MERGE CONFLICT — see $OUT"; git merge --abort; exit 1; }
 res() { printf '%-22s %s\n' "$1" "$2"; }
 t() { local n="$1"; shift; local o; o=$("$@" 2>&1 | grep -E "^# (pass|fail)" | tr '\n' ' '); res "$n" "${o:-no result}"; }
@@ -19,7 +20,7 @@ if [ "$BROWSER" = "--browser" ] || [ "$BROWSER" = "--full" ]; then
     res "e2e $c" "$(cd ui/e2e && "$H" npx playwright test -c playwright.$c.config.js --workers=1 2>&1 | grep -E "passed|failed" | tail -1)"
   done
   if [ "$BROWSER" = "--full" ]; then
-    J="$(mktemp /tmp/verify-e2e-XXXX.json)"
+    J="$(mktemp "$TMPD/verify-e2e-XXXX.json")"
     (cd ui/e2e && PLAYWRIGHT_JSON_OUTPUT_NAME="$J" "$H" npx playwright test --workers=1 --reporter=json >/dev/null 2>&1)
     res "e2e default" "$(node -e 'const r=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));const s=r.stats;const bad=[];(function w(n){(n.specs||[]).forEach(sp=>sp.tests.forEach(t=>{if(t.status==="unexpected")bad.push(sp.file+": "+sp.title.slice(0,60))}));(n.suites||[]).forEach(w)})({suites:r.suites});console.log(s.expected+" passed, "+s.unexpected+" failed, "+s.skipped+" skipped"+(bad.length?"\n    "+bad.join("\n    "):""))' "$J" 2>/dev/null || echo "no result (see $J)")"
   fi

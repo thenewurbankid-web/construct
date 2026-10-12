@@ -35,6 +35,7 @@
 // whichever executor #291 supplies still routes its in-process cli.mjs calls
 // through `runCapturing`. Core imports nothing from `ui/`.
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { planToCommand } from '@line/construct-core/plan';
 import { createTransaction } from './transactionalWriter.mjs';
@@ -102,7 +103,7 @@ export function materializeCommand(step, { tmpDir } = {}) {
   let argv = command.argv;
   for (const file of command.files) {
     // The pid in the name is what lets packages/tools/dev/heavy.sh tell a live step dir from a dead one (#414).
-    const dir = tmpDir || fs.mkdtempSync(path.join(process.env.TMPDIR || '/tmp', `construct-step-${process.pid}-`));
+    const dir = tmpDir || fs.mkdtempSync(path.join(os.tmpdir(), `construct-step-${process.pid}-`));
     const target = path.join(dir, `${file.arg}.json`);
     fs.mkdirSync(path.dirname(target), { recursive: true });
     fs.writeFileSync(target, `${JSON.stringify(file.value, null, 2)}\n`);
