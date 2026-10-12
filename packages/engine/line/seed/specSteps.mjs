@@ -22,9 +22,9 @@ import path from 'node:path';
 import { loadConfig } from '@line/construct-core/config';
 import { normalizeLineConfig, CODE_EXTENSIONS } from '@line/construct-core/profiles/line/contract';
 import { resolveLayout } from '@line/construct-core/profiles/line/checks';
-import { openWork } from './openWork.mjs';
-import { baseRank, appDirOf, routeFolders, featurePages } from './build.mjs';
-import { arrayFixtures, fixtureFor } from './basePage.mjs';
+import { openWork } from '../openWork.mjs';
+import { baseRank, appDirOf, routeFolders, featurePages } from '../build.mjs';
+import { arrayFixtures, fixtureFor } from '../basePage.mjs';
 
 const posix = path.posix;
 const readOrNull = (abs) => { try { return fs.readFileSync(abs, 'utf8'); } catch { return null; } };
@@ -167,6 +167,7 @@ export function specSteps(root, { spec, planned = [] }) {
         skipped.push({ kind: 'route', feature: f.name, route, reason: `${route} is served already` }); return;
       }
       // The page: an unrouted page of this feature with the seeded name is reused, else based on the fitting library page.
+      // After line/r4-gaps merges, openWork.mjs pointStep (the baseOn that creates a point's page) can pick this step.
       const want = pageName(f.name, route, i, new Set());
       const existing = pages.find((p) => p.file.split('/').at(-3) === f.name && posix.basename(p.file).replace(/\.[^.]+$/, '') === want);
       let file;

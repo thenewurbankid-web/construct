@@ -10,7 +10,7 @@
   "exports": {
     "./impact": "./impact.mjs",
     "./line/plan-service": "./line/planService.mjs",
-    "./line/spec-steps": "./line/specSteps.mjs",
+    "./line/spec-steps": "./line/seed/specSteps.mjs",
     "./line/spec": "./line/spec.mjs",
     "./line/tool-registry": "./line/toolRegistry.mjs",
     "./line/import-agent": "./line/importAgentDisk.mjs",

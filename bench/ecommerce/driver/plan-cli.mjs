@@ -39,7 +39,7 @@ import { hashOf } from '../../../packages/engine/pagesEditor.mjs';
 import { rulesCard, layerOf, jevShadow } from '../../../packages/engine/line/hints.mjs';
 import { SPEC_FILE, readSpec } from './spec-slice.mjs';
 import { workText } from '../../../packages/engine/line/openWork.mjs';
-import { parseSpecMd, specSteps } from '../../../packages/engine/line/specSteps.mjs';
+import { parseSpecMd, specSteps } from '../../../packages/engine/line/seed/specSteps.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 /** Tools a builder may add (Import's tools are for bringing an existing app in, not for building one). */

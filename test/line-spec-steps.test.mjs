@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
-import { parseSpecMd, specSteps, seedText } from '../packages/engine/line/specSteps.mjs';
+import { parseSpecMd, specSteps, seedText } from '../packages/engine/line/seed/specSteps.mjs';
 import { createPlanCli } from '../bench/ecommerce/driver/plan-cli.mjs';
 import { seedFirst, flags } from '../bench/ecommerce/driver/qwen-agent.mjs';
 import { planSeed } from '../packages/mcp/src/plan.mjs';
