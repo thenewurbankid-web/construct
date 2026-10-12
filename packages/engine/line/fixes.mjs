@@ -34,6 +34,7 @@ import {
 } from '@line/construct-core/profiles/line/checks';
 import { validateLine } from '@line/construct-core/profiles/line';
 import { LineOpError } from './contract.mjs';
+import { rerankFixes } from './fixRanking.mjs';
 import { toFinding } from './model.mjs';
 import { planBaseOn, planPromote, planSetBase, planMoveFile, planCreateLayout, applyChange } from './ops.mjs';
 
@@ -284,6 +285,12 @@ function layoutFixes(ctx, file) {
  * @returns {import('./contract.mjs').LineFix[]}
  */
 export function fixesFor(root, finding, ctx = fixContext(root)) {
+  // cs2: reviewed fix-ranking rules (fix-ranking.json, from the static rule factory) may reorder the static ranking.
+  return rerankFixes(finding.rule, staticFixesFor(finding, ctx));
+}
+
+/** The fixes the static rules derive, ranked, before the reviewed fix-ranking rules. */
+function staticFixesFor(finding, ctx) {
   const { rule, file, line } = finding;
   switch (rule) {
     case 'LINE-BASE': return baseFixes(ctx, file);

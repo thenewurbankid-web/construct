@@ -12,6 +12,7 @@
 //   construct line records [--dir <project>] [--json]                                 the plan records kept for training (logic only)
 //   construct line graph [--dir <project>] [--json]                                   build (incrementally) and store the Line graph
 //                                                                                     (writes only <state>/graph/, through writeLineState)
+//   construct line rules propose|gate|apply [--dir <project>] ...                     the static rule factory (cs2, packages/rule-factory)
 import path from 'node:path';
 import { findProjectRoot } from './config.mjs';
 import { ConstructError, EXIT_CODES } from './diagnostics.mjs';
@@ -25,6 +26,9 @@ export const LINE_USAGE = [
   '  construct line facts [--dir <project>]',
   '  construct line records [--dir <project>] [--json]',
   '  construct line graph [--dir <project>] [--json]',
+  '  construct line rules propose [--dir <project>] [--ledger <dir>] [--labels <jsonl>] [--limit <n>] [--no-jev] [--no-drafter] [--json]',
+  '  construct line rules gate [--dir <project>] [--json]',
+  '  construct line rules apply [--dir <project>] [--id <proposal id>]... [--json]',
 ].join('\n');
 
 const flag = (args, name) => { const i = args.indexOf(name); return i >= 0 && args[i + 1] && !args[i + 1].startsWith('--') ? args[i + 1] : undefined; };
@@ -134,6 +138,7 @@ export async function lineCommand(args) {
     if (skipped) console.log(`${skipped} record line${skipped === 1 ? ' was' : 's were'} unreadable and skipped.`);
     return;
   }
+  if (verb === 'rules') { await rulesCommand(rest); return; }
   throw usage(verb ? `"${verb}" is not a line command.` : 'Name a line command.');
 }
 
@@ -163,4 +168,62 @@ function printMissReport(r) {
   if (r.numbers?.train) console.log(`Train Line held-out eval: ${Math.round(r.numbers.train.recall * 100)}% of the valid routes found, ${Math.round(r.numbers.train.preferred * 100)}% picked the preferred one (${r.numbers.train.n} cases).`);
   if (r.numbers?.drafter) console.log(`Drafter eval: ${Math.round(r.numbers.drafter.recall * 100)}% route recall, ${Math.round(r.numbers.drafter.precision * 100)}% precision (${r.numbers.drafter.n} cases).`);
   if (!r.numbers) console.log('Add --eval to include Train Line\'s gold and the drafter eval (about 30 seconds).');
+}
+
+const pct = (x) => (x === null || x === undefined ? '-' : `${Math.round(x * 100)}%`);
+const many = (n, one, more = `${one}s`) => `${n} ${n === 1 ? one : more}`;
+
+/**
+ * `construct line rules propose|gate|apply`: the static rule factory (cs2). Offline: propose collects and labels
+ * misses and writes proposals into the project's Line state folder; gate measures them on the held-out evals; apply
+ * (run by a person) writes the passed ones to the Construct checkout's rule files through the writer.
+ * @param {string[]} args The arguments after `rules`.
+ * @returns {Promise<void>}
+ */
+async function rulesCommand(args) {
+  const [sub, ...rest] = args;
+  const root = rootOf(rest);
+  const json = rest.includes('--json');
+  const factory = await import('@line/rule-factory/factory');
+  if (sub === 'propose') {
+    const limit = flag(rest, '--limit');
+    if (limit !== undefined && !(Number.isInteger(Number(limit)) && Number(limit) > 0)) throw usage('--limit must be a whole number from 1.');
+    const ledger = flag(rest, '--ledger'); const labels = flag(rest, '--labels');
+    const r = await factory.propose({
+      root, limit: limit ? Number(limit) : undefined, jev: !rest.includes('--no-jev'), drafter: !rest.includes('--no-drafter'),
+      ...(ledger ? { ledger: path.resolve(ledger) } : {}), ...(labels ? { labels: path.resolve(labels) } : {}),
+    });
+    if (json) { console.log(JSON.stringify({ ok: true, ...r }, null, 2)); return; }
+    console.log(`Collected ${many(r.records, 'decision')}, ${many(r.misses, 'miss', 'misses')} by static code:`);
+    for (const [s, n] of Object.entries(r.bySource)) console.log(`- ${s}: ${n.misses} of ${n.total} missed.`);
+    const all = r.shares.find((x) => x.step === 'all');
+    if (all) console.log(`All steps: ${all.sentence}`);
+    console.log(r.labelling.sentence);
+    console.log(r.proposals.length ? `${many(r.proposals.length, 'rule proposal')} (none applied):` : 'No rule proposal this time.');
+    for (const p of r.proposals) console.log(`- ${p.id} (${p.kind}): ${p.sentence}`);
+    for (const s of r.skipped) console.log(`Not proposed: ${s.count} x ${s.sentence}`);
+    for (const n of r.notes) console.log(n);
+    console.log(`Written: ${r.files.join(', ')}. Fill in the labelling file and propose again to add your own labels; then run \`construct line rules gate\`.`);
+    return;
+  }
+  if (sub === 'gate') {
+    const r = await factory.gate({ root, onProgress: json ? undefined : (s) => console.log(s) });
+    if (json) { console.log(JSON.stringify({ ok: Boolean(r.report), ...r }, null, 2)); return; }
+    if (!r.report) { console.log(r.sentence); return; }
+    const b = r.report.baseline;
+    console.log(`Baseline: Train held-out recall ${pct(b.train.recall)}, precision ${pct(b.train.precision)}, preferred ${pct(b.train.preferred)} (${b.train.n} cases); drafter held-out recall ${pct(b.drafter.recall)}, precision ${pct(b.drafter.precision)}, preferred ${pct(b.drafter.preferred)} (${b.drafter.n} cases).`);
+    for (const x of r.report.results) console.log(`- ${x.proposalId}: ${x.sentence} ${x.ownTest.sentence}`);
+    console.log(r.report.sentence);
+    console.log(`Written: ${r.file}.${r.report.passed.length ? ' A person applies them with `construct line rules apply`.' : ''}`);
+    return;
+  }
+  if (sub === 'apply') {
+    const ids = rest.flatMap((a, i) => (a === '--id' && rest[i + 1] ? [rest[i + 1]] : []));
+    const r = factory.apply({ root, ids });
+    if (json) console.log(JSON.stringify(r, null, 2));
+    else console.log(r.sentence);
+    if (!r.ok) process.exitCode = 1;
+    return;
+  }
+  throw usage(sub ? `"${sub}" is not a rules command; use propose, gate or apply.` : 'Name a rules command: propose, gate or apply.');
 }

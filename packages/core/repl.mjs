@@ -251,7 +251,10 @@ export const HELP_TOPICS = {
   line facts [--dir <path>]
   line records [--dir <path>] [--json]
       Evaluate an expression against the project's facts, print the facts, or
-      list the plan records kept for training (logic only, no names).`,
+      list the plan records kept for training (logic only, no names).
+  line rules propose|gate|apply [--dir <path>]
+      The static rule factory: collect and label where static code missed,
+      propose static rules, gate them on held-out accuracy; a person applies.`,
 
   dir: `--dir <path>
       Every command accepts --dir to target a Construct project nested in a

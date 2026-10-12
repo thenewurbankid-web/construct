@@ -37,6 +37,17 @@
       "ladder": { "static": { "target": 1 }, "options": { "on": false, "target": 0.6 }, "review": { "on": false, "target": 0.7 }, "measured": "2026-10-12, 20 seeded Train Line refusals: 1.5B one attempt 7/20; 1.5B loop with reason 5/20; A 1.5B loop without reason 7/20 (~0.3 s, the default: chosen for speed and memory, owner); B 7B loop with reason 4/20; C 7B loop without reason 8/20 (~1 s). Re-measure after the nearest-match typed fix (bench-gaps) merges; switch to the 7B only if it then clearly wins." }
     },
     {
+      "step": "construct.label-miss",
+      "label": "Labels where static code missed, offline: picks the right option for each miss, or none fits, so new static rules can be proposed.",
+      "kind": "decide",
+      "provider": "ollama",
+      "maxTokens": 800,
+      "source": "construct",
+      "guidance": "Static code missed this decision. Pick the option that was right, or none fits when no option is right.",
+      "question": "Which option was right?",
+      "ladder": { "static": { "target": 1 }, "options": { "on": true, "target": 0.8 }, "review": { "on": false, "target": 0.7 }, "measured": null }
+    },
+    {
       "step": "trace.choose",
       "label": "Picks where one part of a page gets its data from, citing a fact that settles it.",
       "kind": "decide",

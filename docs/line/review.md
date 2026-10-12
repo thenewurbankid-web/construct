@@ -822,7 +822,62 @@ Tests: `packages/rule-factory/test/contract.test.mjs` (3), `packages/rule-factor
 3. The share comes per step and for all steps, as a count, a percentage and a sentence.
 4. On a copy of the sample, one approved Base on step plus the two planted findings give "line.baseOn: Static code decided 1 of 1 (100%)". A broken plan file is skipped, and findings can also come from a saved JSON file.
 
-Gaps (scaffold): decision traces and the reason ledger are in the contract but have no collector; jev labelling, rule proposals and the held-out accuracy gate are not built.
+Gaps (scaffold): decision traces and the reason ledger are in the contract but have no collector; jev labelling, rule proposals and the held-out accuracy gate are not built. (Built since: "cs2 (rule factory)" below.)
+## cs2 (rule factory): jev and Claude grow the static layer, offline (12 Oct, branch `cloud-cs2`; no UAT screen)
+
+Static code stays the runtime. The factory runs offline: it collects where static code missed, labels each miss, turns the labels into candidate static rules, and keeps a rule only when it raises held-out accuracy with nothing broken. A person applies it. `packages/rule-factory`, CLI `construct line rules propose|gate|apply --dir <project>`.
+
+1. **Collect** (`collect.mjs`): plan feedback and validate findings (scaffold), plus decision traces (`decision-trace.v1` from the per-user state folder; a rules suggestion that was chosen and not reverted is static's), the reason ledger (@mx/reason's file ledger `<dir>/<pairId>/<requestId>.json`, default `<project>/line/reasoning`, `--ledger` to point elsewhere; static's when the ladder's static rung decided and no miss, change, undo or failed verify followed), and the drafter on Train Line's train split (`drafter-misses.mjs`: each train case drafted with retrieval from the other worlds only; never a held-out world). Every miss record carries its closed options, `kind` (absent or picked) and the right option once known.
+2. **Label** (`label.mjs`): each miss becomes one closed question, "none fits" last. jev answers through Line's one `decide()` (new profile `construct.label-miss`, 1.5B, jev on). A person's own override is the label already. With jev down (reason not linked, model not running, `--no-jev`) the rules answer what they can and the output says so: "jev was not available (...), so the rules labelled N of M misses". Claude or a person labels offline: `line/rules/labelling.jsonl` lists every item with plain option labels; fill `correct` and `labelledBy` ("person" or "claude") and run propose again. An answer outside the options is refused with a sentence.
+3. **Propose** (`propose.mjs`): verb, grammar and handler words, and catalog entries go into the drafter's lexicon (`lexicon.json`). Fix ranking goes into the new `packages/engine/line/fix-ranking.json`, which `fixesFor` now reads: for one rule, one fix family ranks above another. Each proposal is data plus its own test (its Train cases, or its fix choices) and the misses it came from. Nothing is applied by itself.
+4. **Gate** (`gate.mjs`, `gate-worker.mjs`): each proposal is measured in a worker process with the proposal loaded over the shipped rules (`LINE_STATIC_OVERLAY`, read once by `lexicon.mjs` and `fixRanking.mjs`; unset everywhere else). A proposal passes only when all of these hold:
+   - a held-out score rises: Train held-out recall, precision or preferred; the drafter eval's held-out project and paraphrases; or held-out fix choices for a fix-rank proposal;
+   - no case of either eval that passed now fails (preferred route, labels, defer, recall);
+   - no held-out score falls and the drafter's pinned floors hold;
+   - its own test passes.
+   The proposals that pass are then measured together once.
+5. **Apply** (`apply.mjs`): a person runs it. It applies only proposals that passed, and several at once only when they were measured together cleanly. One transaction through Construct's writer, checked before it lands (`assertLexicon`, `assertFixRanking`), plus `packages/rule-factory/applied.json`, which a test re-checks.
+
+The gate's numbers (12 Oct, the real corpora, `--dir` a copy of `examples/line-sample`):
+- Collected 424 decisions: validate 0 of 2 missed; the drafter 5 of 422 Train train-split cases. Static share 99%. The train split is already tuned ("System 1 accuracy"), so there is little to mine; scale comes from im1-im2's generated worlds.
+- One word to label: "size" (from "per page" on update.prop). jev (running locally) said `verb:update`, the rules said `grammar`.
+- Baseline: Train held-out recall 96%, precision 91%, preferred 100% (130 cases); drafter held-out recall 86%, precision 93%, preferred 86% (28 cases).
+- Both proposals were held back: "no held-out score rose; its own test fails". The case still misses with either rule, so the cause is elsewhere (the "per page" phrase's slot). 0 of 1 passed in each run, so nothing was applied.
+
+Tests (`node --test packages/rule-factory/test/*.test.mjs`, 35):
+1. Contract: five sources, all collected. A label item is a closed question with "none fits" last, labelled exactly when it says who labelled it. It gives im1-im2's `{step, kind, options, chosen, correct}`. A proposal carries its own test. A gate report passes only what rose with nothing broken.
+2. Traces: a static suggestion that was chosen and went well is static's. An override (picked), an exit (absent, none fits) and a revert are misses. A model provider's suggestion is not static's. Read from a real trace store with outcomes merged.
+3. Ledger: the static rung right is static's. A person's change (picked, their value is right), a ladder miss (absent) and a jev pick are misses. A broken file is skipped and counted.
+4. Drafter: a miss keeps the slot-form request and the words it could not read.
+5. Labelling: jev labels through a scripted `decide()`. With jev mocked off, throwing or turned off, the rules label and the sentence says why. The JSONL round trip refuses wrong answers and unknown items, and Claude's answer stands over jev's.
+6. Proposals: grouped per change with stable ids. None fits, unlabelled and words already in the lexicon make none. A fix choice becomes a fix-rank rule that re-ranks only its own rule. The merged lexicon still passes `assertLexicon`, and merging twice changes nothing. The overlay seam is null unless set, and an unreadable overlay stops with a sentence.
+7. Gate (injected scores): only the proposal that rose, broke nothing and passed its own test ships. Each result says why. Two proposals that pass alone but break a case together are flagged. A fix-rank proposal is scored on its held-out fix choices. A real worker proves the overlay reaches the drafter ("size" stops being a question).
+8. Apply: refuses without a report, for a proposal that did not pass, and for several not measured together. Writes the lexicon in its own format and the fix ranking, and records each proposal once. A change that breaks the lexicon contract lands nothing. CLI: gate and apply say what to run first; propose writes its two files.
+9. Applied rules are still in their rule files, and a fix-rank rule still ranks its right fixes first.
+
+To reconcile with im1-im2 (not pushed when this was built): that branch adds miss records `{step, kind: 'absent'|'picked', options, chosen, correct}` to this package. Here the same fields sit on `MissRecord` (`options`, `kind`, `correct`, with `staticChoice` as chosen) and on `LabelItem` (`toStepMiss()` gives exactly that shape, with "none fits" as `correct: null`). When it lands:
+- add its records as a source (or map them with `toStepMiss`'s inverse);
+- point `draftTrainSplit` at its generated worlds;
+- check that its `chosen` means Line's choice (static or jev), as here.
+
+Gaps:
+- Little real material yet: the train split is 99% static, and no project here has decision traces or a reason ledger. The collectors are tested on built records only.
+- The reason ledger's location for Line projects is not fixed (`line/reasoning` is the default here; GateLM keeps it under `runs/gatelm/projects/<name>/reasoning`).
+- Trace and ledger misses outside fix choices (chooser order, GateLM fills) have no kind of static rule yet. They are counted ("no kind of static rule yet") and not proposed.
+- The gate re-runs both evals per proposal (about a minute each); there is no batching yet.
+- `apply` runs the writer's shadow copy over the whole Construct checkout: slow, but a person runs it rarely. The full test suite still has to be run by hand after apply.
+- Phrase proposals (`everyday.phrases`) are supported by `mergeLexicon` but not generated yet.
+- `construct line spec --topic modules` is now 32,644 bytes, near its 32 KiB MCP limit (`test/line-spec.test.mjs`). The two new engine files keep a one-line header so it fits. The next file added to `packages/engine/line` will push it over; the limit or the topic needs a decision.
+- Line test run (`node --test test/line-*.test.mjs ui/server/src/line*.test.mjs packages/mcp/test packages/rule-factory/test packages/summarize/test`, under heavy machine load): 544 passed, 5 failed.
+  - The spec-size test was fixed by the item above.
+  - `line-fragments` (types) and `lineRenderApi` (link down) pass when run alone.
+  - The MCP startup budget (15 s against 10 s), `line-characterize` (jest, 283 s) and `line-import-agent` (killed after 1,123 s) are timing failures under load and were not re-run. The owner asked to stop heavy runs.
+  - The full `heavy.sh npm test` is still owed.
+
+UAT (CLI, about 5 minutes):
+1. `cp -R examples/line-sample /tmp/rf && node packages/cli/construct.mjs line rules propose --dir /tmp/rf`: "Collected 424 decisions, 5 misses by static code", the static share, and who labelled (jev if Ollama runs, else the rules, with why).
+2. `node packages/cli/construct.mjs line rules gate --dir /tmp/rf`: the baseline line, then each proposal "Passes" or "Held back" with the reason; `/tmp/rf/line/rules/gate.json` has the numbers.
+3. `node packages/cli/construct.mjs line rules apply --dir /tmp/rf`: "No proposal passed the gate, so there is nothing to apply."
 ## cu3: one tool registry (awaiting UAT)
 
 Every capability is one typed tool call in `packages/engine/line/toolRegistry.mjs` (contract: `ToolEntry` in `contract.mjs`: id, read or write, what a write changes, input and output shape, one sentence, optional `controlId` for cg1/ct1). Cockpit's `/api/line` routes, construct-mcp's 11 tools, the plan runner's tools (line.* and construct.*), GateLM's 8 tools (`@mx/plan` gatelmTools) and Studio's dispatcher (`studio/src/dispatch.ts`, now linked as `@mx/studio-dispatch`) all resolve from it. `GET /api/line/tools` lists it.

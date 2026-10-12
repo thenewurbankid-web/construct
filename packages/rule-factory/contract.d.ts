@@ -12,3 +12,15 @@ export * as collect from './collect.mjs';
 export * as misses from './misses.mjs';
 /** `@line/rule-factory/eval-misses` */
 export * as evalMisses from './eval-misses.mjs';
+/** `@line/rule-factory/label` */
+export * as label from './label.mjs';
+/** `@line/rule-factory/propose` */
+export * as propose from './propose.mjs';
+/** `@line/rule-factory/gate` */
+export * as gate from './gate.mjs';
+/** `@line/rule-factory/apply` */
+export * as apply from './apply.mjs';
+/** `@line/rule-factory/factory` */
+export * as factory from './factory.mjs';
+/** `@line/rule-factory/drafter-misses` */
+export * as drafterMisses from './drafter-misses.mjs';

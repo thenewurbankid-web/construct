@@ -474,6 +474,8 @@ export function evaluateCase(c, o = {}) {
     request: c.request,
     gold: c.gold.routes.map((g) => ({ sig: goldSig(g), step: g.outcome === 'question' ? 'ask' : g.steps[0]?.tool ?? 'none', outcome: g.outcome, preferred: g.id === c.gold.preferred, found: hits(g) })),
     offered, chosen,
+    // cs2: the words the drafter could not read at all (a question with no suggestion), for the rule factory's labelling.
+    unread: d.questions.filter((q) => q.via === 'ask').map((q) => q.word).filter((w) => typeof w === 'string' && w),
   };
 }
 
