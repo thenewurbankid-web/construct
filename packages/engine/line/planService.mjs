@@ -30,6 +30,7 @@ import { createSessionTrace, refusalOfStep, matchFix, sourceOf, traceArgs } from
 import { memoryOf, memoryBy } from './memory/index.mjs';
 import { SHOWN_CHOICES, renderReoffer, shapeRefusal, contextFor, withHints, badValueOf, badArgsField, targetOf, rulesCard, hintsJevOn, jevScores, renderQuestion, answerCall } from './hints.mjs';
 import { rankLines } from './contextScore.mjs';
+import { createRepeatGuard, guardFixes, escalate } from './repeatGuard.mjs';
 
 /** One session per open project, for now. */
 export const SESSION_ID = 'ses-cockpit';
@@ -189,6 +190,7 @@ export function stepView(root, plan, s, ops = REAL_PLAN_OPS) {
  *   commands?: any, load?: (o: {root: string, registry: any}) => Promise<{api: any, store: {linked: boolean, sentence: string}}>,
  *   linkOptions?: object, trace?: {id: string, record: (e: any) => any, problem: string|null} | null, records?: any, memory?: any,
  *   offers?: {get: () => any[] | null, set: (fixes: any[]) => void}, hintState?: {get: () => any, set: (v: any) => void},
+ *   repeats?: {get: () => any, set: (v: any) => void}, repeatAt?: number,
  *   imports?: {question: (folder: string) => Promise<any>, answer: (by: string, folder: string, qid: string, oid: string) => Promise<any>}}} o `commands`: the
  *   construct.* registry (default: Construct's built-in commands; null for none). `trace` (cl1): where this session's
  *   typed trace goes (default `<state>/traces/<id>.jsonl`; null records nothing). `records` (expressions): where finished
@@ -196,11 +198,13 @@ export function stepView(root, plan, s, ops = REAL_PLAN_OPS) {
  *   where plan feedback is remembered per step (default memory/index.mjs memoryOf(root); null remembers nothing).
  *   `offers` (R1): where the last refusal's typed fixes are kept between processes (default: in memory only).
  *   `hintState` (#886): where the refusal counts per code and target are kept between processes (default: in memory).
+ *   `repeats` (#912): where the identical-refused-call counts are kept between processes (default: in memory);
+ *   `repeatAt`: the identical refusal that escalates (default 3, repeatGuard.mjs).
  *   `imports` (#887): the import agents an answer goes to (default: the folder's agent on disk, importAgentDisk.mjs): the
  *   waiting question, or any scan (classify) question by id until the first import step runs.
  * @returns The plan service.
  */
-export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, commands, load = loadPlanApi, linkOptions, trace, records, memory, offers, hintState, blocked, imports }) {
+export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, commands, load = loadPlanApi, linkOptions, trace, records, memory, offers, hintState, blocked, repeats: repeatState, repeatAt, imports }) {
   const tr = trace === undefined ? createSessionTrace(root, { sessionId: SESSION_ID }) : trace;
   const mem = memory === undefined ? memoryOf(root) : memory;
   /** im3: remember plan feedback (best effort: a memory that cannot be saved never stops the plan). */
@@ -411,6 +415,8 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
     try { const f = offers?.get(); if (Array.isArray(f)) return f; } catch { /* none kept */ }
     return offered;
   };
+  // #912: identical refused calls per plan; the repeatAt-th one escalates (repeatGuard.mjs).
+  const repeats = createRepeatGuard({ store: repeatState, at: repeatAt });
   // #886: how often each code was refused for each target in this plan (the context cap grows from 5 to 15 on a repeat).
   /** @type {Record<string, number>} */
   let seen = {};
@@ -562,11 +568,14 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
       const page = req?.tool ? pageOfBlock({ tool: String(req.tool), args: req.args }, /** @type {any} */ (r0)) : null;
       if (page) block(plan, { tool: String(req.tool), args: plainArgs(req.args), page, code: String(/** @type {any} */ (r0).code) });
       const again = (await reoffers(plan)).filter((a) => !sameStep(a.step, req));
-      const own = again.length ? withReoffers(again, checked.fixes) : checked.fixes;
+      // #912: never the refused call; from its repeatAt-th identical refusal, the one different step leads as f1.
+      const times = repeats.note(plan?.id, req, String(/** @type {any} */ (r0).code));
+      const own = guardFixes(root, req, String(/** @type {any} */ (r0).code), times, again.length ? withReoffers(again, checked.fixes) : checked.fixes, repeats.at);
       // A small model that sends a fix's ref or a path as the tool name ("fixes[0].step", "f1") meant the offered fix.
       const meantFix = !own.length && /** @type {any} */ (r0).code === 'UNKNOWN_TOOL' && /fix|^f\d+$/i.test(String(req?.tool ?? '')) ? offeredNow() : [];
       const { fixes: _unchecked, ...bare } = /** @type {any} */ (r0);
       r = await say(bare, req, own.length ? own : meantFix, registry.list().map((t) => t.name).filter((n) => n.startsWith('line.') && !n.startsWith('line.import.')));
+      r = escalate(r, req, times, repeats.at);
       if (checked.dropped.length) r = { ...r, dropped: checked.dropped };
       if (!meantFix.length) offer(own);
     } else {

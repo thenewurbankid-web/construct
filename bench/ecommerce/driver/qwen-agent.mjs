@@ -9,7 +9,8 @@
 //
 // Logs, per turn: tokens in (prompt_eval_count) and out (eval_count), wall time, tool calls and their outcomes, to
 // <run>/logs/turns.jsonl and bench/ecommerce/results/<builder>.tokens.jsonl. Stops at the budget, when the model calls
-// `finish`, or after 8 turns in a row without a tool call.
+// `finish`, after 8 turns in a row without a tool call, or (#912) after --max-repeat-refusals (10) identical refused
+// calls in a row (stop reason "repeated refusal").
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -21,11 +22,11 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const bench = path.join(here, '..');
 
 export function flags(argv) {
-  const o = { seed: undefined, project: process.env.BENCH_PROJECT, arm: 'line', builder: '', model: 'qwen2.5-coder:7b', maxTurns: 200, maxMinutes: 90, numCtx: 16384, ollama: process.env.OLLAMA_HOST ?? 'http://127.0.0.1:11434', log: process.env.BENCH_LOG };
+  const o = { seed: undefined, project: process.env.BENCH_PROJECT, arm: 'line', builder: '', model: 'qwen2.5-coder:7b', maxTurns: 200, maxMinutes: 90, numCtx: 16384, maxRepeatRefusals: 10, ollama: process.env.OLLAMA_HOST ?? 'http://127.0.0.1:11434', log: process.env.BENCH_LOG };
   for (let i = 0; i < argv.length; i += 1) {
     const k = argv[i]; const v = argv[i + 1];
     if (k === '--project') { o.project = v; i += 1; } else if (k === '--arm') { o.arm = v; i += 1; } else if (k === '--builder') { o.builder = v; i += 1; }
-    else if (k === '--model') { o.model = v; i += 1; } else if (k === '--max-turns') { o.maxTurns = Number(v); i += 1; } else if (k === '--max-minutes') { o.maxMinutes = Number(v); i += 1; }
+    else if (k === '--model') { o.model = v; i += 1; } else if (k === '--max-turns') { o.maxTurns = Number(v); i += 1; } else if (k === '--max-repeat-refusals') { o.maxRepeatRefusals = Number(v); i += 1; } else if (k === '--max-minutes') { o.maxMinutes = Number(v); i += 1; }
     else if (k === '--num-ctx') { o.numCtx = Number(v); i += 1; } else if (k === '--ollama') { o.ollama = v; i += 1; } else if (k === '--log') { o.log = v; i += 1; }
     else if (k === '--seed') { o.seed = Number(v); i += 1; }
   }
@@ -86,6 +87,30 @@ async function callTool(cli, arm, name, a) {
   return { ok: false, code: 'UNKNOWN_TOOL', sentence: `There is no tool ${name}.` };
 }
 const safeParse = (s) => { try { return JSON.parse(s); } catch { return s; } };
+
+/** Canonical JSON (keys sorted), so the same call compares equal whatever order its args came in. */
+const canonJson = (v) => JSON.stringify(v ?? {}, (_k, x) => (x && typeof x === 'object' && !Array.isArray(x) ? Object.fromEntries(Object.keys(x).sort().map((k) => [k, x[k]])) : x));
+/**
+ * #912: counts identical refused calls in a row (same tool name, same args, same refusal code). Any other call (a
+ * different one, or one that is not refused) resets it; a turn without a tool call leaves it as it is.
+ * `see(name, args, out)` returns the current run length; `hit` is true once it reaches `limit` (a limit of 0 or less
+ * never stops).
+ * @param {number} [limit]
+ */
+export function refusalStreak(limit = 10) {
+  let last = null; let n = 0;
+  return {
+    see(name, args, out) {
+      if (!out || out.ok !== false) { last = null; n = 0; return 0; }
+      const key = `${name} ${canonJson(args)} ${out.code ?? ''}`;
+      n = key === last ? n + 1 : 1; last = key;
+      return n;
+    },
+    get count() { return n; },
+    get hit() { return limit > 0 && n >= limit; },
+    get call() { return last; },
+  };
+}
 
 /** Tool calls the model wrote as text instead of a tool call (small models do): {"name": ..., "arguments": ...}. */
 export function textToolCalls(content) {
@@ -152,6 +177,7 @@ async function main() {
   const t0 = Date.now();
   const deadline = t0 + o.maxMinutes * 60_000;
   let idle = 0; let stop = 'max turns'; let turn = 0;
+  const streak = refusalStreak(o.maxRepeatRefusals);
   write(turnsFile, { kind: 'start', at: new Date().toISOString(), builder: o.builder, model: o.model, arm: o.arm, maxTurns: o.maxTurns, maxMinutes: o.maxMinutes, numCtx: o.numCtx, seed: o.seed ?? null });
   for (turn = 1; turn <= o.maxTurns; turn += 1) {
     if (Date.now() > deadline) { stop = 'max wall time'; break; }
@@ -185,6 +211,7 @@ async function main() {
       const name = c.function?.name; const args = typeof c.function?.arguments === 'string' ? safeParse(c.function.arguments) : c.function?.arguments;
       if (name === 'finish') { finished = String(args?.summary ?? ''); outcomes.push({ name, ok: true }); break; }
       const out = await callTool(cli, o.arm, name, args);
+      streak.see(name, args, out);
       outcomes.push({ name, args: clip(JSON.stringify(args ?? {}), 400), ok: out.ok, code: out.code ?? null, sentence: out.sentence });
       history.push({ role: 'tool', content: clip(JSON.stringify(toModel(out))) });
     }
@@ -194,8 +221,9 @@ async function main() {
     console.log(`turn ${turn}: in ${tokens.in} out ${tokens.out} ${tokens.ms} ms; ${outcomes.map((x) => `${x.name}${x.ok ? '' : ` (${x.code})`}`).join(', ') || 'no tool call'}`);
     if (finished !== null) { stop = `finish: ${finished}`; break; }
     if (idle >= 8) { stop = '8 turns without a tool call'; break; }
+    if (streak.hit) { stop = 'repeated refusal'; break; }
   }
-  write(turnsFile, { kind: 'end', at: new Date().toISOString(), turns: Math.min(turn, o.maxTurns), wallMs: Date.now() - t0, stop });
+  write(turnsFile, { kind: 'end', at: new Date().toISOString(), turns: Math.min(turn, o.maxTurns), wallMs: Date.now() - t0, stop, ...(stop === 'repeated refusal' ? { repeated: { times: streak.count, call: streak.call } } : {}) });
   console.log(JSON.stringify({ builder: o.builder, turns: Math.min(turn, o.maxTurns), wallMs: Date.now() - t0, stop }));
 }
 
