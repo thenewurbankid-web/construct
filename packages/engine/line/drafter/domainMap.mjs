@@ -65,7 +65,11 @@ const LIBRARY_AFTER = /^(based|built|basing|shaped)$/;
 export { splitWords } from '../slots.mjs';
 const singular = (w) => (w.endsWith('ies') ? `${w.slice(0, -3)}y` : w.endsWith('ses') ? w.slice(0, -2) : w.endsWith('s') && !w.endsWith('ss') ? w.slice(0, -1) : w);
 const plural = (w) => (w.endsWith('y') ? `${w.slice(0, -1)}ies` : w.endsWith('s') ? w : `${w}s`);
-/** The surface forms a name is recognised by: "order button", "orderbutton", with the last word singular or plural. */
+/**
+ * The surface forms a name is recognised by: "order button", "orderbutton", with the last word singular or plural.
+ * @param {string} name An item name (PascalCase or words).
+ * @returns {string[]} Its lower-case forms.
+ */
 export function formsOf(name) {
   const w = splitWords(name);
   if (!w.length) return [];

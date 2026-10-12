@@ -48,7 +48,11 @@ const LAYER_WORDS = [
 ];
 const OBJ_OF_ITEM = { pages: 'page', components: 'component', workflows: 'workflow', fixtures: 'fixture' };
 
-/** Whether a word reads as an intent verb (a Line verb word or an everyday one). @param {string} w */
+/**
+ * Whether a word reads as an intent verb (a Line verb word or an everyday one).
+ * @param {string} w One word.
+ * @returns {boolean}
+ */
 export const isVerbWord = (w) => VERB_WORDS.some(([, re]) => re.test(String(w).toLowerCase())) || everydayVerb(String(w)) !== null;
 
 /**
