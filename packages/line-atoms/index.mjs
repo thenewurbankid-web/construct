@@ -24,7 +24,8 @@ let cache = null;
 export function listAtoms() {
   if (cache) return cache;
   const ids = fs.readdirSync(ATOMS_DIR, { withFileTypes: true }).filter((e) => e.isDirectory() && fs.existsSync(path.join(ATOMS_DIR, e.name, 'atom.json'))).map((e) => e.name).sort();
-  cache = Object.freeze(ids.map((id) => Object.freeze(assertAtom(JSON.parse(fs.readFileSync(path.join(ATOMS_DIR, id, 'atom.json'), 'utf8'))))));
+  const read = (id) => Object.freeze(assertAtom(JSON.parse(fs.readFileSync(path.join(ATOMS_DIR, id, 'atom.json'), 'utf8'))));
+  cache = /** @type {any} */ (Object.freeze(ids.map(read)));
   return cache;
 }
 

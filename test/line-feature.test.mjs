@@ -21,7 +21,7 @@ const names = (d) => Object.fromEntries(Object.entries(d.items).map(([k, v]) => 
 test('feature: orders lists its items by kind, a static summary of their bases, and its spec with one point covered', () => {
   const d = readLineFeature(copy(), 'orders');
   assertLineFeatureDetail(d);
-  assert.deepEqual(names(d), { components: ['OrderButton', 'OrderCard'], pages: ['OrdersPage'], workflows: ['orderCheckout'], fixtures: [], usecases: [], services: [], domains: [] });
+  assert.deepEqual(names(d), { components: ['OrderButton', 'OrderCard'], pages: ['OrdersPage'], workflows: ['orderCheckout'], fixtures: [], usecases: [], services: [], domains: [], atoms: [] });
   assert.deepEqual(d.summary, { via: 'static', sentences: [
     'orders has 1 page, 2 components and 1 workflow.', 'OrdersPage is based on ListPage.', 'OrderButton is based on Button.',
     'OrderCard is based on Card.', 'orderCheckout is based on checkout.', 'Everything in orders passes the checks.',

@@ -21,8 +21,8 @@ function project(files) {
 }
 
 test('the kinds: the three logic kinds join the four, with the same folder names in the library and features', () => {
-  assert.deepEqual(ITEM_KINDS, ['components', 'pages', 'workflows', 'fixtures', 'usecases', 'services', 'domains']);
-  assert.deepEqual(LOGIC_KINDS, ['usecases', 'services', 'domains']);
+  assert.deepEqual(ITEM_KINDS, ['components', 'pages', 'workflows', 'fixtures', 'usecases', 'services', 'domains', 'atoms']);
+  assert.deepEqual(LOGIC_KINDS, ['usecases', 'services', 'domains', 'atoms']);
   assert.deepEqual([...LINE_KINDS], [...ITEM_KINDS], 'the engine contract and the profile list the same kinds');
   for (const k of ITEM_KINDS) assert.ok(KIND_SINGULAR[k]);
   assert.deepEqual(normalizeLineConfig(undefined).traceExcludes, []);
@@ -43,7 +43,7 @@ test('validate: usecases/, services/ and domains/ are allowed in a feature and t
   const hits = r.violations.map((v) => `${v.rule} ${v.file}`).sort();
   assert.deepEqual(hits, ['LINE-LAYOUT features/orders/helpers'], 'only the unknown folder is reported');
   const layout = validateLine(dir, { rules: ['LINE-LAYOUT'] }).violations[0];
-  assert.match(layout.message, /a feature holds only components\/, pages\/, workflows\/, fixtures\/, usecases\/, services\/ and domains\/ plus spec\.md/);
+  assert.match(layout.message, /a feature holds only components\/, pages\/, workflows\/, fixtures\/, usecases\/, services\/, domains\/ and atoms\/ plus spec\.md/);
 });
 
 test('model: the Line project reads the logic kinds as items, and the feature summary says what they are', () => {

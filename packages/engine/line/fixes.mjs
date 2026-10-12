@@ -15,6 +15,8 @@
 //   LINE-DIR      feature or library imports a feature   line.promote the imported item
 //   LINE-WRITER   direct fs write                        none: route the write through Construct's writer, or declare a writer
 //   LINE-SHARED   own copy of a shared concern           none: import the shared module
+//   LINE-ATOM     hand-written copy of a logic atom      none ("use atom X", typed with the atom and its import): call the atom
+//                 an atom imported outside usecases/services  none: call it from a usecase
 //   LINE-LAYOUT   no library/ or features/               line.createLayout
 //                 a file at the top of the library       line.moveFile into the kind it looks like
 //                 a code file at the top of a feature    line.moveFile into the feature's kind folder (with a base) or the library
@@ -33,6 +35,7 @@ import {
   resolveLayout, loadProject, classify, isItemFile, baseLinks, resolveBase, moduleEdges, resolveSpecifier,
 } from '@line/construct-core/profiles/line/checks';
 import { validateLine } from '@line/construct-core/profiles/line';
+import { findAtomCopies } from '@line/atoms/check';
 import { LineOpError } from './contract.mjs';
 import { toFinding } from './model.mjs';
 import { planBaseOn, planPromote, planSetBase, planMoveFile, planCreateLayout, applyChange } from './ops.mjs';
@@ -297,6 +300,14 @@ export function fixesFor(root, finding, ctx = fixContext(root)) {
     case 'LINE-SHARED': {
       const mod = (finding.sentence.match(/use the shared module (.+?) instead/) || [])[1] ?? 'the shared module';
       return [none('LINE-SHARED/use-shared', `Replace the copy in ${posix.basename(file)} with a call to ${mod}; Line cannot rewrite that code safely.`)];
+    }
+    case 'LINE-ATOM': {
+      // Re-derived from the file: the atom check's own typed fixes for the finding on this line.
+      const ast = ctx.project.ast(file);
+      if (ast instanceof Error) return [];
+      const kind = classify(file, ctx.layout).kind;
+      const hit = findAtomCopies({ file, source: ctx.project.source(file), ast, kind }).find((h) => h.line === line);
+      return hit ? hit.fixes : [];
     }
     default: return [];
   }

@@ -35,8 +35,8 @@ function copyFixture(name, overlay = {}) {
 
 const where = (vs) => vs.map((v) => `${v.rule} ${v.file}:${v.line}`).sort();
 
-test('contract: seven LINE rules, each with a one-sentence why and how it is checked', () => {
-  assert.deepEqual([...LINE_RULE_IDS].sort(), ['LINE-BASE', 'LINE-DIR', 'LINE-LAYOUT', 'LINE-MODULE', 'LINE-OWNER', 'LINE-SHARED', 'LINE-WRITER']);
+test('contract: eight LINE rules, each with a one-sentence why and how it is checked', () => {
+  assert.deepEqual([...LINE_RULE_IDS].sort(), ['LINE-ATOM', 'LINE-BASE', 'LINE-DIR', 'LINE-LAYOUT', 'LINE-MODULE', 'LINE-OWNER', 'LINE-SHARED', 'LINE-WRITER']);
   for (const id of LINE_RULE_IDS) {
     const r = LINE_RULES[id];
     assert.equal(r.id, id);

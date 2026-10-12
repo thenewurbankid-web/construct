@@ -5,11 +5,15 @@
   "type": "module",
   "license": "MIT",
   "private": true,
+  "dependencies": {
+    "@line/summarize": "^0.1.0"
+  },
   "exports": {
     ".": "./index.mjs",
     "./contract": "./contract.mjs",
     "./mock": "./mock.mjs",
     "./testkit": "./testkit.mjs",
+    "./check": "./check.mjs",
     "./async-status": "./atoms/async-status/index.ts",
     "./client-pagination": "./atoms/client-pagination/index.ts",
     "./csv-export": "./atoms/csv-export/index.ts",

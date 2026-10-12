@@ -9,6 +9,8 @@ export * as contract from './contract.mjs';
 export * as mock from './mock.mjs';
 /** `@line/atoms/testkit` */
 export * as testkit from './testkit.mjs';
+/** `@line/atoms/check` */
+export * as check from './check.mjs';
 /** `@line/atoms/async-status` */
 export * as asyncStatus from './atoms/async-status/index';
 /** `@line/atoms/client-pagination` */

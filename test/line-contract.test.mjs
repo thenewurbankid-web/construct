@@ -83,7 +83,7 @@ test('contract: a feature detail groups items by kind, says what they are built 
   const ops = createMockLineOps();
   const d = ops.readLineFeature(ROOT, 'orders');
   assertLineFeatureDetail(d);
-  assert.deepEqual(Object.fromEntries(Object.entries(d.items).map(([k, v]) => [k, v.map((i) => i.name)])), { components: ['OrderButton'], pages: ['OrdersPage'], workflows: [], fixtures: [], usecases: [], services: [], domains: [] });
+  assert.deepEqual(Object.fromEntries(Object.entries(d.items).map(([k, v]) => [k, v.map((i) => i.name)])), { components: ['OrderButton'], pages: ['OrdersPage'], workflows: [], fixtures: [], usecases: [], services: [], domains: [], atoms: [] });
   assert.deepEqual(d.summary, { via: 'static', sentences: ['orders has 1 page and 1 component.', 'OrdersPage is based on ListPage.', 'OrderButton is based on Button.', 'Everything in orders passes the checks.'] });
   assert.deepEqual(d.spec.stories[0].points.map((p) => [p.id, p.covered, p.by]), [['s1.p1', true, ['OrdersPage']], ['s1.p2', false, []]]);
   const billing = ops.readLineFeature(ROOT, 'billing');

@@ -8,6 +8,7 @@ import { minimatch } from 'minimatch';
 import { walk as walkAst } from 'estree-walker';
 import { parseToAst } from '@construct/ast';
 import { lineOf } from '@construct/ast/extract';
+import { findAtomCopies } from '@line/atoms/check';
 import {
   ITEM_KINDS, LOGIC_KINDS, KIND_SINGULAR, FEATURE_FILES, LIBRARY_FILES, CODE_EXTENSIONS, SKIP_DIRS, NON_ITEM_FILE, DEFAULT_APP_FOLDERS, DEFAULT_PACKAGE_ROOTS,
   FS_WRITE_FUNCTIONS, FS_EXTRA_WRITE_FUNCTIONS, FS_MODULES, SHARED_CONCERNS,
@@ -806,6 +807,28 @@ export function checkModules(project, line) {
         if (exportsAllows(other.pkg?.exports, sub)) continue;
         hits.push({ rule: 'LINE-MODULE', file: rel, line: e.line, message: `"${rel}" imports "${spec}", a file inside ${name} that its package.json "exports" does not list; import "${name}" itself, or add "${sub}" to the "exports" of ${other.dir}/package.json if it is meant to be public.` });
       }
+    }
+  }
+  return hits;
+}
+
+// ---------------------------------------------------------------------------------------------
+// LINE-ATOM
+
+/**
+ * LINE-ATOM: hand-written code in the library or a feature that does a logic atom's job (with the typed fix "use atom
+ * X"), and atoms imported by kinds other than usecases and services. The detection is @line/atoms' own check.
+ * @param {ReturnType<typeof loadProject>} project The loaded project.
+ * @returns {{rule: string, file: string, line: number, message: string, atom: string}[]} The hits.
+ */
+export function checkAtoms(project) {
+  const hits = [];
+  for (const file of project.files) {
+    if ((file.area !== 'library' && file.area !== 'feature') || !isItemFile(file) || !isCode(file.rel)) continue;
+    const ast = project.ast(file.rel);
+    if (ast instanceof Error) continue;
+    for (const h of findAtomCopies({ file: file.rel, source: project.source(file.rel), ast, kind: file.kind })) {
+      hits.push({ rule: 'LINE-ATOM', file: h.file, line: h.line, message: h.message, atom: h.atom });
     }
   }
   return hits;
