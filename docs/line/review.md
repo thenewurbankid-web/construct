@@ -62,6 +62,13 @@ Tests (all pass): `packages/rule-factory/test/misses.test.mjs` (4), `test/line-i
 `ui/server/src/lineAiApi.test.mjs` (+1), `ui/client/features/ai-steps/domain/AiSteps.spec.mjs` (+1), the raised floors in
 `test/line-train.test.mjs`, `test/line-drafter-contract.test.mjs` (fix.problem now names line.promote too); UAT walk
 `ui/e2e/uat/im1-im2.spec.js` (`playwright.im1-im2.config.js`, ports 3398/4398).
+Run on the combined branch: `node --test test/line-*.test.mjs ui/server/src/line*.test.mjs packages/mcp/test/*.test.mjs
+packages/rule-factory/test/*.test.mjs` 532 tests, 0 failed after cl1's UAT test was updated for the new report lines
+(two timing tests, MCP startup under 1 s and a tsc fragment check, failed once under a load average of 30+ and pass
+alone); tsc ratchet 594; api-coverage 249 (baseline); `fix-imports --dry-run` 0; `contracts.mjs --check` clean; eslint
+clean on the changed files; Playwright `playwright.im1-im2.config.js` through heavy.sh, `--workers=1`, ports 3398/4398:
+4 passed (cu2's two AI-steps specs and the two walks). Full `heavy.sh npm test` not run (another session held the heavy
+lock for most of this run).
 1. Contract: a miss is absent exactly when the right answer was not offered; a project name or quoted text in a pattern
    is refused; a miss that chose the right answer is not a miss.
 2. Eval cases: a gold route never offered is absent, the preferred one offered but not recommended is picked; a question
