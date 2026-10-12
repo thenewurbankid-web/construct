@@ -19,6 +19,11 @@ test('Import modes: the provider passes the contract; a folder opens beside the 
   assert.equal(crumbTarget(crumbs[1]).href, '/import?folder=src%2Falerts');
 });
 
+test('Import modes: Pick a folder waits until the folders are read', () => {
+  assert.equal(P.options(root, { ...data, folders: null })[0].disabled, 'Still reading the folders of this project.');
+  assert.equal(P.options(root, data)[0].disabled, undefined);
+});
+
 test('Import modes: Where is it? follows the import; a refusal keeps its sentence; the agent is a link', () => {
   const at = { screen: 'import', steps: [{ param: 'folder', id: 'src/alerts', label: 'src/alerts' }] };
   assert.equal(P.answer('import.status', at, { ...data, phase: 'planned' }).text, 'The plan is ready beside this chat. Read its steps, then Apply.');

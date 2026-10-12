@@ -9,7 +9,7 @@ import type { ImportControls } from '../types';
  * screen's own Read. */
 export function useImportModes({ state, view, setFolder, scan }: ImportControls) {
   const data: ImportModeData = useMemo(
-    () => ({ folders: state.folders?.folders.map((f) => f.path) ?? [], folder: state.folder, phase: state.phase, summary: view.summary, error: state.error }),
+    () => ({ folders: state.folders ? state.folders.folders.map((f) => f.path) : null, folder: state.folder, phase: state.phase, summary: view.summary, error: state.error }),
     [state.folders, state.folder, state.phase, view.summary, state.error],
   );
   const onPlace = (place: Place) => {

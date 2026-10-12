@@ -124,6 +124,8 @@ export type PendingWorkflowEdit = { req: WorkflowEditRequest; hunks: DiffHunk[] 
 
 export type WorkflowsState = {
   features: string[];
+  /** Two modes: whether the feature list has been read (the chat offers it only then). */
+  featuresLoaded: boolean;
   feature: string;
   files: string[];
   filesLoading: boolean;

@@ -25,9 +25,9 @@ export function WorkflowsController() {
   useRegisterShellTab('tools', tabs.narrative);
   useRegisterShellTab('tools', tabs.context);
   useRegisterShellTab('tools', tabs.edit);
-  const { features, feature, files, filesLoading } = workflows;
+  const { features, featuresLoaded, feature, files, filesLoading } = workflows;
   useWorkflowsUrl(feature, workflows.file);
-  const data = useMemo(() => ({ features, feature, files, filesLoading }), [features, feature, files, filesLoading]);
+  const data = useMemo(() => ({ features, featuresLoaded, feature, files, filesLoading }), [features, featuresLoaded, feature, files, filesLoading]);
   const onPlace = (place: Place) => void workflows.goTo(idAt(place, 'feature'), idAt(place, 'file'));
 
   return (

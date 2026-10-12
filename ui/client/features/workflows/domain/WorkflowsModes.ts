@@ -3,13 +3,16 @@
 import type { ChatAnswer, ChatOption, Place, ScreenChatProvider } from '@/lib/lineModes';
 
 /** What the Workflows chat reads: the features with a workflows/ folder, and the open feature's workflow files. */
-export type WorkflowsModeData = { features: string[]; feature: string; files: string[]; filesLoading: boolean };
+export type WorkflowsModeData = { features: string[]; featuresLoaded: boolean; feature: string; files: string[]; filesLoading: boolean };
 
 const at = (place: Place, param: string) => place.steps.find((s) => s.param === param)?.id ?? null;
 const EXPLAIN: ChatOption = { id: 'workflows.explain', label: 'Explain', sentence: 'What a workflow is and what this screen shows.', effect: 'read' };
 
 function options(place: Place, data: WorkflowsModeData): ChatOption[] {
-  if (place.steps.length === 0) return [{ id: 'workflows.open', label: 'Open a feature', sentence: 'Pick a feature to see its workflow files.', effect: 'read' }, EXPLAIN];
+  if (place.steps.length === 0) {
+    const open: ChatOption = { id: 'workflows.open', label: 'Open a feature', sentence: 'Pick a feature to see its workflow files.', effect: 'read' };
+    return [data.featuresLoaded ? open : { ...open, disabled: 'Still reading which features have workflows.' }, EXPLAIN];
+  }
   if (place.steps.length > 1) return [EXPLAIN];
   const open: ChatOption = { id: 'workflows.open-file', label: 'Open a workflow', sentence: 'Pick one of this feature\'s workflow files to see its states as a diagram.', effect: 'read' };
   // Offered once the feature's files are read, so the answer always has them to pick from.

@@ -2,14 +2,15 @@
 // (?folder=). Reading the folder is the screen's own action (the same one its Read button runs). Pure.
 import type { ChatAnswer, ChatOption, Place, ScreenChatProvider } from '@/lib/lineModes';
 
-/** What the Import chat reads: the folders it may import, and where the import is. */
-export type ImportModeData = { folders: string[]; folder: string; phase: string; summary: string | null; error: string | null };
+/** What the Import chat reads: the folders it may import (null while they are read), and where the import is. */
+export type ImportModeData = { folders: string[] | null; folder: string; phase: string; summary: string | null; error: string | null };
 
 const AGENT: ChatOption = { id: 'import.agent', label: 'Let the Import agent do it', sentence: 'The agent plans the whole import for you to review and approve, step by step.', effect: 'navigate' };
 const EXPLAIN: ChatOption = { id: 'import.explain', label: 'Explain', sentence: 'What importing a folder does, and what it never touches.', effect: 'read' };
 
-function options(place: Place): ChatOption[] {
-  if (!place.steps.length) return [{ id: 'import.folder', label: 'Pick a folder', sentence: 'Choose the one folder of your app to bring into Line.', effect: 'read' }, AGENT, EXPLAIN];
+function options(place: Place, data: ImportModeData): ChatOption[] {
+  const pick: ChatOption = { id: 'import.folder', label: 'Pick a folder', sentence: 'Choose the one folder of your app to bring into Line.', effect: 'read' };
+  if (!place.steps.length) return [data.folders ? pick : { ...pick, disabled: 'Still reading the folders of this project.' }, AGENT, EXPLAIN];
   return [
     { id: 'import.scan', label: 'Read this folder', sentence: 'Line reads the folder and proposes what each file becomes.', effect: 'read' },
     { id: 'import.status', label: 'Where is it?', sentence: 'Say where this import is and what comes next.', effect: 'read' },
@@ -30,7 +31,7 @@ const NEXT: Record<string, string> = {
 
 function answer(optionId: string, place: Place, data: ImportModeData): ChatAnswer | null {
   if (optionId === 'import.folder') {
-    if (!data.folders.length) return { text: 'Line found no folder it can import in this project.' };
+    if (!data.folders?.length) return { text: 'Line found no folder it can import in this project.' };
     return { text: 'Which folder do you want to bring into Line?', pick: { label: 'Folders', items: data.folders.map((f) => ({ id: f, name: f, text: `Import ${f}; nothing outside it changes.` })) } };
   }
   if (optionId === 'import.agent') return { text: 'The Import agent plans the whole import; you review and approve each step.', link: { href: '/import/agent', label: 'Open the Import agent' } };

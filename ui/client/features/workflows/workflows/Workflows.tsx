@@ -16,6 +16,7 @@ export type WorkflowsAction =
 
 export const initialWorkflowsState: WorkflowsState = {
   features: [],
+  featuresLoaded: false,
   feature: '',
   files: [],
   filesLoading: false,
@@ -30,7 +31,7 @@ export const initialWorkflowsState: WorkflowsState = {
 export function workflowsReducer(state: WorkflowsState, action: WorkflowsAction): WorkflowsState {
   switch (action.type) {
     case 'FEATURES_LOADED':
-      return { ...state, features: action.features };
+      return { ...state, features: action.features, featuresLoaded: true };
     case 'SET_FEATURE':
       return { ...state, feature: action.feature, files: [], filesLoading: !!action.feature, file: '', loaded: null, error: null, pending: null, editError: null };
     case 'FILES_LOADED':

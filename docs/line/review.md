@@ -15,8 +15,9 @@ each screen shows its own default: Features opens in Chat (as cd1 did), every ot
   the same item selected.
 - **Under the hood:** the regular screen, with the same chat beside it as a helper. "Hide the chat" folds it away.
 
-Screens wired: Open a project, Features, Workflows, Import, Import agent, Settings and Train Line (Components, Pages and
-Plan: see below). How it is built: one contract (`ui/client/lib/lineModes.ts`): each screen gives a small options
+Screens wired: Open a project, Features, Workflows, Import, Import agent, Settings, Train Line, Components and Pages; the
+Plan's options (Approve, a fix, Try again, Leave as it is) sit in the Components and Pages chats (merged from
+`cloud-modes-b`). How it is built: one contract (`ui/client/lib/lineModes.ts`): each screen gives a small options
 provider in its own folder, with lineChat's option rules (stable dotted ids, a label, a full sentence). Where you are is
 kept in the address bar, one value per level (`?feature=orders&item=OrdersPage&part=title`), so both modes and a reload
 agree. The shared frame is `features/line-modes`; it reuses `ChatEntry` unchanged. The switch, the crumbs and the
@@ -36,10 +37,11 @@ Tests, in plain words:
    Train Line and Open a project each work in both modes; accessibility is clean at 1280 and at 375 wide.
 
 Gaps:
-- Browser run so far (12 Oct, stopped early because the machine was overloaded): the two Features tests pass, including your orders-crumb check; the Workflows test failed (picking a workflow file timed out, probably asked before the files were read); the remaining four did not run. Fix and rerun next sprint.
-- Components, Pages and Plan are wired on a parallel branch (`cloud-modes-b`); they arrive when it merges.
-- When you click inside the screen in Chat's side panel (not in the chat), the breadcrumb does not follow that click; it
-  follows the chat and the crumbs.
+- Browser (12 Oct, combined branch): `line-two-modes` 7/7, `line-modes-components` 3/3, `line-modes-pages` 2/2,
+  `line-modes-plan` 2/2; axe clean on each screen and on the switch, at 1280 and at 375 (Features, Settings, Components, Pages).
+- A pick made in the screen itself (Under the hood, or beside the chat) moves the chat and its breadcrumb there when the
+  screen keeps that pick in the address bar (Features, Pages, Workflows); Components, Settings, Train and the Import
+  screens do not keep in-page picks in the address bar yet.
 - On Settings, Train Line and the Import agent, a crumb scrolls to and outlines the section (those screens show every
   section on one page); the Import agent outlines the plan, not the one step.
 - The chat has options only (no free text), as cd1.

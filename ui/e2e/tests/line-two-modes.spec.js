@@ -112,6 +112,7 @@ test.describe.serial('Two modes on every screen (Line sample project, real serve
     await expect(screen(page)).toHaveAttribute('data-mode', 'hood', { timeout: 30_000 });
     await toMode(page, 'chat');
     await expect(crumbs(page)).toHaveText(['Workflows']);
+    await expect(option(page, 'workflows.open')).toBeEnabled({ timeout: 15_000 });
     await option(page, 'workflows.open').click();
     await pick(page, 'orders').click();
     await expect(crumbs(page)).toHaveText(['Workflows', 'orders']);
@@ -137,12 +138,18 @@ test.describe.serial('Two modes on every screen (Line sample project, real serve
     await toMode(page, 'chat');
     await expect(crumbs(page)).toHaveText(['Import']);
     await expect(option(page, 'import.agent')).toBeVisible();
+    // Offered once the project's folders are read; the sample may have none to import, and then the chat says so.
+    await expect(option(page, 'import.folder')).toBeEnabled({ timeout: 15_000 });
     await option(page, 'import.folder').click();
-    const folder = page.getByTestId('ln-pick').last();
-    const name = await folder.getAttribute('data-item');
-    await folder.click();
-    await expect(crumbs(page)).toHaveText(['Import', name]);
-    await expect(page.getByTestId('line-import')).toBeVisible();
+    const answer = page.getByTestId('ln-msg').last();
+    await expect(answer.getByTestId('ln-msg-text')).toHaveText(/^(Which folder do you want to bring into Line\?|Line found no folder it can import in this project\.)$/);
+    if ((await answer.getByTestId('ln-pick').count()) > 0) {
+      const folder = answer.getByTestId('ln-pick').last();
+      const name = await folder.getAttribute('data-item');
+      await folder.click();
+      await expect(crumbs(page)).toHaveText(['Import', name]);
+      await expect(page.getByTestId('line-import')).toBeVisible();
+    }
     await axeClean(page, 'Import chat');
 
     await page.goto('/import/agent');
@@ -191,6 +198,15 @@ test.describe.serial('Two modes on every screen (Line sample project, real serve
     await page.goto('/settings');
     await toMode(page, 'chat');
     await axeClean(page, 'Settings chat at 375');
+    // Screens-B's screens at phone width, in Chat (remembered) and Under the hood.
+    for (const route of ['/components', '/pages']) {
+      await page.goto(route);
+      await expect(screen(page)).toHaveAttribute('data-mode', 'chat', { timeout: 30_000 });
+      await axeClean(page, `${route} chat at 375`);
+      await toMode(page, 'hood');
+      await axeClean(page, `${route} under the hood at 375`);
+      await toMode(page, 'chat');
+    }
   });
 
   test('Open a project: with no project open, both modes on the gate; picking New project opens it beside the chat', async ({ page, request }) => {

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { chatOption, chatPick, chatStart, crumbTarget, crumbsOf, providerProblems } from '../../../lib/lineModes.ts';
 import { WORKFLOWS_MODES as P } from './WorkflowsModes.ts';
 
-const data = { features: ['orders', 'billing'], feature: 'orders', files: ['checkout.ts'], filesLoading: false };
+const data = { features: ['orders', 'billing'], featuresLoaded: true, feature: 'orders', files: ['checkout.ts'], filesLoading: false };
 const place = (...ids) => ({ screen: 'workflows', steps: ids.map((id, i) => ({ param: P.params[i], id, label: id })) });
 const lastPick = (s) => [...s.log].reverse().find((m) => m.pick);
 
@@ -27,6 +27,7 @@ test('Workflows modes: Open a workflow waits until the feature\'s files are read
   assert.equal(P.options(place('orders'), { ...data, filesLoading: true })[0].disabled, 'Still reading the workflows of orders.');
   assert.equal(P.options(place('billing'), data)[0].disabled, 'Still reading the workflows of billing.');
   assert.equal(P.options(place('orders'), data)[0].disabled, undefined);
+  assert.equal(P.options(place(), { ...data, featuresLoaded: false })[0].disabled, 'Still reading which features have workflows.');
 });
 
 test('Workflows modes: while the files are read, or for another feature, the chat says to ask again', () => {
