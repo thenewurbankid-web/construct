@@ -1,0 +1,51 @@
+{
+  "builder": "pilot-qwen-7b-plain-r4",
+  "arm": "plain",
+  "model": "qwen2.5-coder:7b",
+  "at": "2026-10-12T21:53:52.775Z",
+  "wallMs": 229137,
+  "turns": 200,
+  "tokens": {
+    "input": 2115430,
+    "output": 5026,
+    "cacheRead": 0,
+    "cacheWrite": 0,
+    "source": "ollama prompt_eval_count/eval_count",
+    "total": 2120456,
+    "costUsd": 0,
+    "priceDate": "2026-10-06"
+  },
+  "tokensPerLandedStep": null,
+  "tokensPerPassedTest": null,
+  "plan": null,
+  "validate": {
+    "profile": "line (measurement only)",
+    "errors": 2,
+    "warnings": 0,
+    "byRule": {
+      "LINE-OWNER": 1,
+      "LINE-LAYOUT": 1
+    }
+  },
+  "tsc": {
+    "errors": 8
+  },
+  "acceptance": {
+    "passed": null,
+    "total": 22,
+    "ran": false,
+    "status": "did not run: build failed",
+    "passedIds": []
+  },
+  "loc": 38,
+  "filesChanged": 4,
+  "duplicates": {
+    "pairs": 0,
+    "examples": []
+  },
+  "libraryReuse": null,
+  "humanInterventions": 0,
+  "directWrites": [],
+  "lineModelUse": null,
+  "contention": null
+}
