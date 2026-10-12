@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { makeTempDir } from '../test-utils/tmpdir.mjs';
 import { buildLogicMap } from '../packages/engine/line/logicMap.mjs';
 import { classifyFile } from '../packages/engine/line/logicVerify/purity.mjs';
 import { assertLineGraph } from '../packages/engine/line/graph/contract.mjs';
@@ -15,7 +16,7 @@ const SRC = [
 ].join('');
 
 test('#861 the logic map carries each function unit\'s purity class and effects when given the classifier', (t) => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'construct-lv-purity-map-'));
+  const root = makeTempDir('construct-lv-purity-map-');
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   fs.writeFileSync(path.join(root, 'a.ts'), SRC);
   const plain = buildLogicMap(root, ['a.ts']);
@@ -29,7 +30,7 @@ test('#861 the logic map carries each function unit\'s purity class and effects 
 });
 
 test('#861 G1 unit nodes carry purity and effects and still meet the graph contract', (t) => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'construct-lv-purity-g1-'));
+  const root = makeTempDir('construct-lv-purity-g1-');
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   fs.cpSync(path.resolve(import.meta.dirname, '../examples/line-sample'), root, { recursive: true, filter: (s) => !/node_modules|\/line\/graph/.test(s) });
   const { graph } = buildLineGraph(root, { write: false });

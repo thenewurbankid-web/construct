@@ -5,8 +5,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
+import { fileURLToPath } from 'node:url';
 import { isolatedPair, isolatedCases } from '../packages/engine/line/logicVerify/isolatedRun.mjs';
 import { RUNNERS } from '../packages/engine/line/logicVerify/verifyPair.mjs';
 import { assertLayerResult } from '../packages/engine/line/logicVerify/contract.mjs';
@@ -106,7 +106,7 @@ test('isolated: a hanging unit is killed by the time limit', async () => {
 test('isolated: the sandbox leaves no temp dir behind and time and random are fixed', async () => {
   // A private TMPDIR (os.tmpdir() reads it per call): other test files running isolated pairs at the same time
   // create their own construct-lv-isolated-* dirs in the shared temp dir, which this check must not see.
-  const own = fs.mkdtempSync(path.join(os.tmpdir(), 'construct-lv-isolated-test-'));
+  const own = makeTempDir('construct-lv-isolated-test-');
   const saved = process.env.TMPDIR;
   process.env.TMPDIR = own;
   try {

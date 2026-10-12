@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { makeTempDir } from '../test-utils/tmpdir.mjs';
 import { logicCheck, functionUnits, folderCodeFiles, IMPORT_BASELINE_FILE } from '../packages/engine/line/logicVerify/importUnits.mjs';
 import { assertUnitVerdict, assertStepSummary } from '../packages/engine/line/logicVerify/contract.mjs';
 
@@ -13,7 +14,7 @@ const LABEL = "export function label(n: number) {\n  return n > 1 ? `${n} items`
 
 /** A project whose folder src/alerts had two files before the import; `after` writes the folder now. */
 function project(after) {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'construct-lv-import-'));
+  const root = makeTempDir('construct-lv-import-');
   const sources = { 'src/alerts/age.ts': AGE, 'src/alerts/label.ts': LABEL };
   for (const [rel, text] of Object.entries(after)) {
     fs.mkdirSync(path.dirname(path.join(root, rel)), { recursive: true });
@@ -60,7 +61,7 @@ test('a flipped condition fails the check and names the exact location', async (
 });
 
 test('a folder with no import baseline is skipped, said in one sentence', async (t) => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'construct-lv-import-'));
+  const root = makeTempDir('construct-lv-import-');
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   fs.mkdirSync(path.join(root, 'src/alerts'), { recursive: true });
   const c = await logicCheck(root, 'src/alerts');

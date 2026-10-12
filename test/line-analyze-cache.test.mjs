@@ -4,11 +4,12 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { makeTempDir } from '../test-utils/tmpdir.mjs';
 import { analyzeClosure } from '../packages/engine/line/characterize/analyze.mjs';
 import { createAnalysisCache, analysisKey } from '../packages/engine/line/characterize/analyzeCache.mjs';
 
 function app() {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'construct-analyze-cache-'));
+  const root = makeTempDir('construct-analyze-cache-');
   fs.mkdirSync(path.join(root, 'src'), { recursive: true });
   fs.writeFileSync(path.join(root, 'src/limits.ts'), 'export const LIMIT = 18;\n');
   fs.writeFileSync(path.join(root, 'src/age.ts'), "import { LIMIT } from './limits';\nexport function isAdult(age: number) { return age >= LIMIT && age < 120; }\n");
