@@ -9,6 +9,8 @@
 // #904: it also runs the beam planner (askBeam.mjs -> trace/src/beam planBeamDir) on the Trace example the request is
 // about: --json carries runs (open/closed + reason), recommended, steps OR the one closed question, the arms' readings
 // and the events; with BEAM_EVENTS_FILE set the events stream there as they happen. --no-beam skips it.
+// The beam's readings (runs[].labels, arms) come from the Trace example's own facts (trace/src/beam/exampleFacts.mjs),
+// not the Line project: --example <dir> names it (the eval passes the item's app), else exampleFor(request) guesses.
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -85,6 +87,8 @@ export async function ask(request, o = {}) {
     shadow,
     // The beam (#904): every run with its state, the recommended one, the plan steps OR the one closed question.
     example: b?.example ?? null,
+    // How the arms read the request against that example (its facts, not the Line project's): slotted text + static pick.
+    exampleRead: b?.read ?? null,
     outcome: b?.outcome ?? null,
     beamNote: b?.note ?? (b ? null : 'beam skipped (--no-beam)'),
     runs: b?.runs ?? [],

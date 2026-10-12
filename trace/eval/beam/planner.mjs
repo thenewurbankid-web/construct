@@ -15,7 +15,8 @@
 //
 // The beam (#904): ask.mjs --json lists every run with `state` (open | closed + reason), `recommended`, the plan
 // `steps` or the one `question`, the arms' readings and the events; a single-run answer becomes runs:[that run] with
-// recommended = its id. The planner only ever gets the request string: never gold, notes or rubric.
+// recommended = its id. The planner only ever gets the request string (and, for ask.mjs, which app it is about, as
+// --example): never gold, notes or rubric.
 import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
@@ -113,11 +114,13 @@ export function normalizePlannerOutput(raw, source) {
 export function createAskPlanner({ askPath = DEFAULT_ASK, run = spawnSync, timeoutMs = 120_000 } = {}) {
   return {
     kind: "ask",
-    ask(request, { eventsFile } = {}) {
+    // `example`: the item's app folder (owner decision, #904): ask.mjs reads the request against that Trace example's facts
+    // (--example); the request text is unchanged. Without it ask.mjs guesses the example from the request (exampleFor).
+    ask(request, { eventsFile, example } = {}) {
       if (typeof request !== "string") throw new TypeError("the planner takes the request text only");
       const fail = (error) => ({ available: false, source: "ask", error, labels: null, path: [], question: null, runs: [], recommended: null });
       if (!fs.existsSync(askPath)) return fail(`${path.relative(path.join(BEAM_DIR, "..", ".."), askPath)} is not there yet (the planner CLI is built separately); use --planner fixture`);
-      const res = run(process.execPath, [askPath, request, "--json"], { encoding: "utf8", timeout: timeoutMs, maxBuffer: 10 * 1024 * 1024, env: eventsFile ? { ...process.env, BEAM_EVENTS_FILE: eventsFile } : process.env });
+      const res = run(process.execPath, [askPath, request, "--json", ...(example ? ["--example", String(example)] : [])], { encoding: "utf8", timeout: timeoutMs, maxBuffer: 10 * 1024 * 1024, env: eventsFile ? { ...process.env, BEAM_EVENTS_FILE: eventsFile } : process.env });
       if (res.error) return fail(`ask.mjs did not run: ${res.error.message}`);
       if (res.status !== 0) return fail(`ask.mjs exited ${res.status}: ${String(res.stderr || res.stdout).slice(0, 300)}`);
       let raw;

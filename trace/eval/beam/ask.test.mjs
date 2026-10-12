@@ -93,6 +93,26 @@ test("createAskPlanner runs the real ask.mjs: open runs graded, recommended amon
   assert.ok(Array.isArray(a.arms.static));
 });
 
+test("ask(): the readings come from the Trace example's facts: real intent, the page as target, on every app", async () => {
+  const cases = { contacts: "When I press Call on a contact, log that we called that person.", orders: "Show the total value of all orders in the header next to the order count.", deals: DEALS, invoices: "Let me archive an invoice from the invoices list.", roster: "Show each project's owner and backup in the roster." };
+  for (const [app, request] of Object.entries(cases)) {
+    const r = await ask(request, { jev: false, log: null, eventsFile: null, example: path.join(examplesDir, app) });
+    assert.equal(r.example, `trace/examples/${app}`);
+    assert.notEqual(r.exampleRead.labels.intent, "unknown", `${app}: ${r.exampleRead.normalized}`);
+    assert.notEqual(r.arms.static[0].intent, "unknown");
+    for (const run of r.runs) assert.deepEqual(run.labels.target, { kind: "page", name: app });
+  }
+});
+
+test("createAskPlanner passes the item's app as --example (request text unchanged); the eval passes the app", () => {
+  const seen = [];
+  const run = (bin, args) => { seen.push(args.slice(1)); return { status: 0, stdout: JSON.stringify({ labels: { intent: "update.prop" }, path: [] }) }; };
+  const askPath = fileURLToPath(import.meta.url);
+  createAskPlanner({ askPath, run }).ask("Show x", { example: "/ex/deals" });
+  createAskPlanner({ askPath, run }).ask("Show x");
+  assert.deepEqual(seen, [["Show x", "--json", "--example", "/ex/deals"], ["Show x", "--json"]]);
+});
+
 test("normalizePlannerOutput: every run closed -> nothing to grade, the tree still there", () => {
   const out = normalizePlannerOutput({ labels: {}, runs: [{ id: "r0", state: "closed", reason: "emit", labels: null, path: [] }], events: [{ t: "runOpened", run: "r0", parent: null, reading: { intent: "unknown", object: null, target: null, layers: [], confidence: 0 }, forks: [] }, { t: "runClosed", run: "r0", reason: "emit", detail: "x" }, { t: "done", outcome: "none", run: null, open: 0, closed: 1 }] }, "ask");
   assert.equal(out.available, true);

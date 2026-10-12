@@ -7,7 +7,8 @@ import path from 'node:path';
 import { planBeamDir } from '../../src/beam/index.mjs';
 import { readCandidates, mergeReadings } from '../../src/beam/arms.mjs';
 import { armsSwitch } from '../../../packages/engine/line/drafter/shadow.mjs';
-import { REPO } from './intentGold.mjs';
+import { readExample, targetOf } from '../../src/beam/exampleFacts.mjs';
+import { REPO, CATALOG } from './intentGold.mjs';
 
 export const EXAMPLES = path.join(REPO, 'trace', 'examples');
 
@@ -39,8 +40,12 @@ export function exampleFor(request, examplesDir = EXAMPLES) {
   return best;
 }
 
-/** A Reading as run labels (normalizePlannerOutput's shape). @param {any} r */
-export const readingLabels = (r) => ({ intent: r.intent, object: r.object, target: { kind: 'slot', name: r.target ?? '' }, layers: [...r.layers] });
+/**
+ * A Reading as run labels (normalizePlannerOutput's shape): the target slot named as the eval names one ({kind, name};
+ * in a Trace example the feature is its page). Without a context the slot id stays ({kind: "slot"}).
+ * @param {any} r @param {any} [ctx] the context the reading was read in (readExample)
+ */
+export const readingLabels = (r, ctx) => ({ intent: r.intent, object: r.object, target: ctx ? targetOf(r.target, ctx) : { kind: 'slot', name: r.target ?? '' }, layers: [...r.layers] });
 
 /**
  * A run's Trace path: its fork choices (FORK marks), then one node per file it writes and per placeholder ref.
@@ -70,21 +75,24 @@ export function armsOut(byArm) {
 }
 
 /**
- * Run the beam for one drafted request.
+ * Run the beam for one drafted request. The arms read the request against the Trace example it is about (readExample:
+ * that example's feature, page, fields and actions), so their readings and the beam's runs see the same page; with no
+ * example the Line project's context (`ctx`) is read and the beam has nothing to fit.
  * @param {object} o
  * @param {string} o.request
  * @param {string} o.root           the Line project (arm switches)
  * @param {string} o.stateDir
- * @param {any} o.ctx               ArmContext (arms.mjs)
+ * @param {any} o.ctx               ArmContext (arms.mjs) over the Line project: used only when there is no example
  * @param {string|null} [o.example] the Trace example folder (default: exampleFor(request))
  * @param {string|null} [o.eventsFile] default $BEAM_EVENTS_FILE
  * @param {any} [o.armOpts]         readCandidates options (post, baseUrl, timeoutMs)
  */
 export async function beamAsk({ request, root, stateDir, ctx, example, eventsFile = process.env.BEAM_EVENTS_FILE || null, armOpts = {} }) {
   const sw = armsSwitch(root, stateDir);
-  const cand = await readCandidates(ctx, { ...armOpts, arms: ['static', ...sw.shadow], on: sw.on });
-  const arms = armsOut(cand.byArm);
   const dir = example === undefined ? exampleFor(request) : example;
+  const read = dir ? readExample(dir, request, CATALOG) : ctx;
+  const cand = await readCandidates(read, { ...armOpts, arms: ['static', ...sw.shadow], on: sw.on });
+  const arms = armsOut(cand.byArm);
   if (!dir) return { example: null, outcome: 'none', note: 'The request names no Trace example (trace/examples/<feature>), so the beam has no page to fit.', runs: [], recommended: null, steps: null, question: null, events: [], ms: 0, arms, shadowArms: sw.shadow, onArms: sw.on };
 
   const t0 = Date.now();
@@ -102,13 +110,14 @@ export async function beamAsk({ request, root, stateDir, ctx, example, eventsFil
     state: x.closed ? 'closed' : 'open',
     reason: x.closed?.reason ?? null,
     detail: x.closed?.detail ?? null,
-    labels: readingLabels(x.reading),
+    labels: readingLabels(x.reading, read),
     forks: x.forks,
     path: runPath(x),
     ...(x.steps ? { steps: x.steps } : {}),
   }));
   return {
     example: path.relative(REPO, dir),
+    read: { normalized: read.normalized.text, labels: { intent: read.labels.intent.id, target: targetOf(read.labels.target, read) } },
     outcome: r.outcome,
     note: null,
     runs,

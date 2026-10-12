@@ -69,6 +69,13 @@ beam planner and prints every run (`state` open/closed + `reason`), `recommended
 `question`, the arms' readings and the events (also streamed to `BEAM_EVENTS_FILE`, which the pipeline points at
 `runs/<setup>/<item>/events.jsonl`). Only the open runs are graded; a beam that closed every run has nothing to grade.
 
+The pipeline passes the item's app as `--example trace/examples/<app>` (the request text is unchanged; without it
+ask.mjs guesses the example from the request, `exampleFor`). The arms read the request against that example's own facts
+(`trace/src/beam/exampleFacts.mjs`: its feature, its one page, the page/list/form fields, the endpoints' fields and the
+actions as handler props), not the Line project, so a run's `labels` carry a real intent and the page as target
+(`{kind: "page", name: "<app>"}`). Arm names in `arms` are the eval's: static, `sklearn` (the lr and nb arms, merged),
+spacy, jev and `zero-shot` (the nli arm).
+
 UI: start Trace (`npm start` in `trace/`) and open `/beam`. The page replays by default; to let its "Re-run with this
 setup" button call Opus, start the server with `TRACE_BEAM_LIVE=1` and tick "Live". `TRACE_BEAM_RESULTS` and
 `TRACE_BEAM_RUNS` move the data folders (the Playwright spec uses them).

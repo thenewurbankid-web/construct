@@ -71,7 +71,9 @@ export async function runSetup(o) {
     const eventsFile = path.join(itemDir, "events.jsonl");
     if (mode !== "replay") { fs.mkdirSync(itemDir, { recursive: true }); fs.rmSync(eventsFile, { force: true }); }
     const t0 = Date.now();
-    const plan = planner.ask(buildPlannerRequest(item), mode === "replay" ? {} : { eventsFile });
+    // The app is passed as which Trace example the request is about (#904), never inside the request text.
+    const example = path.join(examplesDir, app);
+    const plan = planner.ask(buildPlannerRequest(item), mode === "replay" ? { example } : { eventsFile, example });
     const ms = Date.now() - t0;
     if (mode !== "replay") {
       fs.writeFileSync(path.join(itemDir, "planner.json"), JSON.stringify({ request: item.requirement, planner: planner.kind, answer: plan, at: now() }, null, 2) + "\n");
