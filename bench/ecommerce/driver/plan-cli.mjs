@@ -11,6 +11,8 @@
 //   plan-cli.mjs add <tool> '<json-args>' --why "…"  add one step; a write is approved by Auto (ct1, see below)
 //   plan-cli.mjs add --fix <ref> [--why "…"]        add a typed fix the last refused add offered (f1 = recommended)
 //   plan-cli.mjs run-next                            run exactly one ready step; returns its checks and typed fixes
+//                                                    (#915: add --fix f1 runs it too, when f1 is the run-next choice
+//                                                    a duplicate or a refusal a pending step explains offers)
 //   plan-cli.mjs findings                            Line's view: features, items and validate findings with keys
 //   plan-cli.mjs validate                            construct validate --profile line: counts and the findings
 //   plan-cli.mjs read <path>                         one project file with its contentHash (for line.setCode)
@@ -100,8 +102,9 @@ export function createPlanCli({ project, log, builder = 'unknown', spec = SPEC_F
   const workOf = (v) => /** @type {any} */ (v)?.work?.text ?? '';
   // #888: a rules card is shown with the first add of each tool and layer (and on request: rules <tool> [file]).
   const cardsFile = path.join(path.dirname(logFile), 'cards-shown.json');
-  const firstCard = (tool, args) => {
-    const card = rulesCard(tool, args);
+  // #916: each card's examples name real files of this project (or the ones a pending step creates).
+  const firstCard = async (tool, args) => {
+    const card = rulesCard(tool, args, undefined, { resolve: await svc.examples() });
     if (!card.rules.length) return null;
     const key = `${tool}|${layerOf(tool, args) ?? '-'}`;
     let shown = [];
@@ -113,6 +116,32 @@ export function createPlanCli({ project, log, builder = 'unknown', spec = SPEC_F
   const record = (e) => fs.appendFileSync(logFile, `${JSON.stringify({ at: new Date().toISOString(), builder, ...e })}\n`);
   const fixesOut = (fixes) => fixes.map((f, i) => ({ ref: f.ref, id: f.id, sentence: f.sentence, step: f.step, ...(i === 0 ? { recommended: true } : {}), ...(f.why ? { why: f.why } : {}), ...(f.effect ? { effect: f.effect } : {}) }));
   const brief = (s) => ({ id: s.id, n: s.n, tool: s.tool, state: s.state, sentence: s.sentence });
+
+  /**
+   * #885/#908: what a run (run-next, or #915 the run-next choice) answers: the step that ran, whether it landed, its checks
+   * and typed fixes, the work card. `before`: the view before the run.
+   * @param {any} before @param {any} r
+   * @returns {any}
+   */
+  const ranOut = (before, r) => {
+    const open = new Set(before.steps.filter((s) => s.state === 'ready' || s.state === 'waiting').map((s) => s.id));
+    if (!r.ok) return { ok: false, code: r.code, sentence: r.text ?? r.sentence, ...(Array.isArray(r.fixes) && r.fixes.length ? { fixes: r.fixes.map((f, i) => ({ ref: f.ref, id: f.id, sentence: f.sentence, step: f.step, ...(i === 0 ? { recommended: true } : {}), why: f.why, effect: f.effect, ...(f.context ? { context: f.context } : {}) })) } : {}), ...(r.hintContext ? { hintContext: r.hintContext } : {}) };
+    const ran = r.steps.find((s) => open.has(s.id) && s.state !== 'ready' && s.state !== 'waiting');
+    if (!ran) return { ok: true, ...(r.remain ? { remain: r.remain } : {}), sentence: [sentence(r.message ?? 'Nothing ran.'), workOf(r) || r.remain].filter(Boolean).join('\n') };
+    const res = ran.result ?? {};
+    const options = (res.options ?? []).map((o) => ({ id: o.id, sentence: o.sentence, ...(o.step ? { step: o.step } : {}), ...(o.recommended ? { recommended: true } : {}) }));
+    const findings = (res.apply?.findings ?? []).slice(0, 8).map((f) => ({ rule: f.rule, severity: f.severity, file: f.file, line: f.line, sentence: f.sentence }));
+    return {
+      ok: true, stepId: ran.id, n: ran.n, tool: ran.tool, state: ran.state, landed: ran.state === 'done' && res.needsYou !== true,
+      files: res.apply?.files ?? [], checks: res.checks ?? [], findings, options, ...(r.recheck ? { recheck: r.recheck } : {}),
+      // #885: a step that needs a fix offers its choices like a refused add (r.needs: refs f1.., {"fix": "f1"}).
+      ...(r.needs?.stepId === ran.id ? { fixes: r.needs.fixes.map((f, i) => ({ ref: f.ref, id: f.id, sentence: f.sentence, step: f.step, ...(i === 0 ? { recommended: true } : {}), why: f.why, effect: f.effect, ...(f.context ? { context: f.context } : {}) })), hintContext: r.needs.hintContext } : {}),
+      ...(r.offer && r.needs?.stepId !== ran.id ? { fixes: fixesOut(r.offer.fixes) } : {}),
+      // #908: a landed step says how much work is left and what is next (the card's head), with the feature's points.
+      ...(r.remain ? { remain: r.remain } : {}),
+      sentence: r.needs?.stepId === ran.id ? r.needs.text : [sentence(ran.sentence), r.offer?.text, workOf(r) || r.remain].filter(Boolean).join('\n'),
+    };
+  };
 
   const commands = {
     async tools() {
@@ -132,55 +161,43 @@ export function createPlanCli({ project, log, builder = 'unknown', spec = SPEC_F
       const f = work?.features.find((x) => x.name === name) ?? null;
       // #906: a blocked step a landed setCode freed is offered again, as f1.
       const again = v.offer ?? null;
-      const text = work ? (feature ? workText(work, { cap: work.cap, feature }) : work.text) : '';
+      // #915: the approved steps waiting for run-next lead the card (work.text starts with them; a feature's card too).
+      const text = work ? (feature ? [work.waiting?.text, workText(work, { cap: work.cap, feature })].filter(Boolean).join('\n') : work.text) : '';
       return { ok: true, planId: v.planId, counts, steps, ...(card ? { card } : {}), ...(again ? { fixes: fixesOut(again.fixes) } : {}),
-        ...(f ? { spec: { feature: f.name, points: f.points.map((p) => p.id), open: f.open.length } } : {}), ...(work ? { work: { current: work.current, count: work.count } } : {}),
-        sentence: [open ? `Step ${open.n} needs a fix first: ${open.sentence}` : `The plan has ${steps.length} steps.`, again?.text, card?.text, text].filter(Boolean).join('\n') };
+        ...(f ? { spec: { feature: f.name, points: f.points.map((p) => p.id), open: f.open.length } } : {}), ...(work ? { work: { current: work.current, count: work.count, ...(work.waiting ? { waiting: work.waiting.count } : {}) } } : {}),
+        sentence: [open ? `Step ${open.n} needs a fix first: ${open.sentence}` : `The plan has ${steps.length} steps.`, again?.text, text, card?.text].filter(Boolean).join('\n') };
     },
     async add(tool, json, why, fix) {
       let args;
       if (fix) args = {};
       else { try { args = json ? JSON.parse(json) : {}; } catch (e) { return { ok: false, code: 'BAD_JSON', sentence: `The arguments are not JSON: ${/** @type {Error} */ (e).message}` }; } }
+      const before = fix ? await svc.view() : null;
       const r = /** @type {any} */ (await svc.addStep(fix ? { fix, why } : { tool, args, why }, 'agent'));
+      // #915: the run-next choice ran the next step instead of adding one; it answers as run-next does.
+      if (r.ok && r.ranNext && before) return ranOut(before, r);
       if (!r.ok) {
         // #885: the plan service shapes every refusal (hints.mjs): what was wrong, the rule, the choices with their refs
         // (f1 is the recommended one; `add --fix f1`, plan_add {"fix": "f1"}) or a correct call. Writing the step out
         // (add <tool> '<args>') still works.
         const fixes = Array.isArray(r.fixes) ? r.fixes.map((f, i) => ({ ref: f.ref, id: f.id, sentence: f.sentence, step: f.step, ...(i === 0 ? { recommended: true } : {}), ...(f.why ? { why: f.why } : {}), ...(f.effect ? { effect: f.effect } : {}), ...(f.context?.length ? { context: f.context } : {}) })) : [];
-        const card = !fix && tool && BUILDER_TOOLS.includes(tool) ? firstCard(tool, args) : null;
+        const card = !fix && tool && BUILDER_TOOLS.includes(tool) ? await firstCard(tool, args) : null;
         return { ok: false, code: r.code, sentence: [r.text ?? r.sentence, card?.text].filter(Boolean).join('\n'), ...(r.detail ? { detail: r.detail } : {}), ...(fixes.length ? { fixes } : {}), ...(r.dropped ? { dropped: r.dropped } : {}), ...(r.repeat ? { repeat: r.repeat } : {}), ...(r.hintContext ? { hintContext: r.hintContext } : {}), ...(card ? { card } : {}) };
       }
       const step = r.steps.find((s) => s.id === r.stepId);
-      const card = step ? firstCard(step.tool, step.args) : null;
+      const card = step ? await firstCard(step.tool, step.args) : null;
       const withCard = (o) => (card ? { ...o, sentence: `${o.sentence}\n${card.text}`, card } : o);
       if (step?.state === 'waiting') {
         const a = /** @type {any} */ (await svc.approve(r.stepId, 'ui'));
         if (!a.ok) return { ok: false, code: a.code, sentence: `The step joined the plan, but Auto could not approve it: ${a.sentence}`, stepId: r.stepId };
         record({ kind: 'approval', stepId: r.stepId, tool: step.tool, ...(fix ? { fix } : {}), approvedBy: 'auto', mechanism: 'ct1 Let Auto approve in this session' });
-        return withCard({ ok: true, stepId: r.stepId, state: 'ready', approvedBy: 'auto', sentence: [`Step ${step.n} joined the plan and Auto approved it; run-next lands it.`, workOf(r)].filter(Boolean).join('\n') });
+        // #915: the card after Auto's approval, so the step just approved counts among those waiting for run-next.
+        return withCard({ ok: true, stepId: r.stepId, state: 'ready', approvedBy: 'auto', sentence: [`Step ${step.n} joined the plan and Auto approved it; run-next lands it.`, workOf(a)].filter(Boolean).join('\n') });
       }
       return withCard({ ok: true, stepId: r.stepId, state: step?.state ?? null, sentence: [`Step ${step?.n} joined the plan: ${step?.sentence ?? ''}`, workOf(r)].filter(Boolean).join('\n') });
     },
     async 'run-next'() {
       const before = await svc.view();
-      const open = new Set(before.steps.filter((s) => s.state === 'ready' || s.state === 'waiting').map((s) => s.id));
-      const r = /** @type {any} */ (await svc.runNext('agent'));
-      if (!r.ok) return { ok: false, code: r.code, sentence: r.text ?? r.sentence, ...(Array.isArray(r.fixes) && r.fixes.length ? { fixes: r.fixes.map((f, i) => ({ ref: f.ref, id: f.id, sentence: f.sentence, step: f.step, ...(i === 0 ? { recommended: true } : {}), why: f.why, effect: f.effect, ...(f.context ? { context: f.context } : {}) })) } : {}), ...(r.hintContext ? { hintContext: r.hintContext } : {}) };
-      const ran = r.steps.find((s) => open.has(s.id) && s.state !== 'ready' && s.state !== 'waiting');
-      if (!ran) return { ok: true, ...(r.remain ? { remain: r.remain } : {}), sentence: [sentence(r.message ?? 'Nothing ran.'), workOf(r) || r.remain].filter(Boolean).join('\n') };
-      const res = ran.result ?? {};
-      const options = (res.options ?? []).map((o) => ({ id: o.id, sentence: o.sentence, ...(o.step ? { step: o.step } : {}), ...(o.recommended ? { recommended: true } : {}) }));
-      const findings = (res.apply?.findings ?? []).slice(0, 8).map((f) => ({ rule: f.rule, severity: f.severity, file: f.file, line: f.line, sentence: f.sentence }));
-      return {
-        ok: true, stepId: ran.id, n: ran.n, tool: ran.tool, state: ran.state, landed: ran.state === 'done' && res.needsYou !== true,
-        files: res.apply?.files ?? [], checks: res.checks ?? [], findings, options, ...(r.recheck ? { recheck: r.recheck } : {}),
-        // #885: a step that needs a fix offers its choices like a refused add (r.needs: refs f1.., {"fix": "f1"}).
-        ...(r.needs?.stepId === ran.id ? { fixes: r.needs.fixes.map((f, i) => ({ ref: f.ref, id: f.id, sentence: f.sentence, step: f.step, ...(i === 0 ? { recommended: true } : {}), why: f.why, effect: f.effect, ...(f.context ? { context: f.context } : {}) })), hintContext: r.needs.hintContext } : {}),
-        ...(r.offer && r.needs?.stepId !== ran.id ? { fixes: fixesOut(r.offer.fixes) } : {}),
-        // #908: a landed step says how much work is left and what is next (the card's head), with the feature's points.
-        ...(r.remain ? { remain: r.remain } : {}),
-        sentence: r.needs?.stepId === ran.id ? r.needs.text : [sentence(ran.sentence), r.offer?.text, workOf(r) || r.remain].filter(Boolean).join('\n'),
-      };
+      return ranOut(before, /** @type {any} */ (await svc.runNext('agent')));
     },
     async findings() {
       const p = readLineProject(root);
@@ -203,7 +220,7 @@ export function createPlanCli({ project, log, builder = 'unknown', spec = SPEC_F
     },
     async rules(tool, file) {
       if (!BUILDER_TOOLS.includes(String(tool))) return { ok: false, code: 'UNKNOWN_TOOL', sentence: `There is no plan tool ${tool ?? ''}; use one of ${BUILDER_TOOLS.filter((t) => t.startsWith('line.')).slice(0, 12).join(', ')}, ...` };
-      const card = rulesCard(String(tool), file ? { file, page: file } : {});
+      const card = rulesCard(String(tool), file ? { file, page: file } : {}, undefined, { resolve: await svc.examples() });
       return { ok: true, card, sentence: card.text || `Line has no rules card for ${tool}.` };
     },
     async ls(rel = '.') {

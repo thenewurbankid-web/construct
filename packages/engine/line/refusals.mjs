@@ -34,6 +34,7 @@ export const REFUSAL_FIXES = Object.freeze({
   NOTHING_TO_DO: { person: 'the request already holds; there is nothing to fix' },
   NOTHING_TO_FIX: { person: 'args.fixOf names a step that needs no fix; drop fixOf' },
   NOTHING_TO_LEAVE: { person: 'line.leaveAsIs names a step that needs no one; nothing to leave' },
+  DUPLICATE_STEP: { typed: 'the same call is pending in the plan already (#915): the fix is plan_run_next, which lands it' },
   NOT_A_CHANGE: { person: 'the tool reads and does not plan a change' },
   NOT_A_MACHINE: { person: 'the file is not a workflow Line can read; the person points at one' },
   NOT_LINE_LAYOUT: { person: 'a hand-written app/layout.tsx: only the person knows which of its code to keep before Line owns it' },
