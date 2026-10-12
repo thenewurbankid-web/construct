@@ -383,7 +383,11 @@ test('plan-cli: a refusal lists each choice with its id and exact step, says how
     }
     assert.match(lines[3], /^ {2}f1: line\.addRoute \{"route":"\/","page":"features\/home\/pages\/HomePage\.tsx"\}/);
     assert.equal(out.fixes[0].recommended, true);
-    assert.equal(lines.at(-1), 'To apply one, send {"fix":"f1"}.');
+    // #888: the first add of a tool and layer also shows its rules card, after the refusal.
+    const apply = lines.indexOf('To apply one, send {"fix":"f1"}.');
+    assert.ok(apply > 3, out.sentence);
+    assert.equal(lines[apply + 1], 'Rules for line.addRoute (page):');
+    assert.match(lines[apply + 2], /^- A route serves one feature page file, .*\. Example: /);
     assert.doesNotMatch(out.sentence, /fixes\[/);
     const call = fs.readFileSync(log, 'utf8').trim().split('\n').map((l) => JSON.parse(l)).filter((e) => e.kind === 'call').at(-1);
     assert.deepEqual(call.result.fixes.map((f) => [f.ref, f.id, f.step, f.recommended]), out.fixes.map((f) => [f.ref, f.id, f.step, f.recommended === true]));

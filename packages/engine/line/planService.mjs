@@ -28,7 +28,7 @@ import { createAtomicPlanWriter, createStaticPlanApi, lockPlanApi } from './plan
 import { isInsideWorkspace, readWorkspace } from './workspace.mjs';
 import { createSessionTrace, refusalOfStep, matchFix, sourceOf, traceArgs } from './trace.mjs';
 import { memoryOf, memoryBy } from './memory/index.mjs';
-import { shapeRefusal, contextFor, withHints, badValueOf, badArgsField, targetOf } from './hints.mjs';
+import { shapeRefusal, contextFor, withHints, badValueOf, badArgsField, targetOf, rulesCard } from './hints.mjs';
 
 /** One session per open project, for now. */
 export const SESSION_ID = 'ses-cockpit';
@@ -201,9 +201,13 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
   async function view(message) {
     const { api, store } = await init();
     const plan = await current(api);
+    // #888: the next open step's rules card (the 2-4 rules its tool and target layer must keep), before it runs.
+    const open = plan?.steps.find((s) => s.status === 'planned' || s.status === 'approved');
+    const card = open && CHANGE_TOOLS[open.tool] ? rulesCard(open.tool, open.args) : null;
     return {
       ok: /** @type {const} */ (true), sessionId: SESSION_ID, planId: plan?.id ?? null, version: plan?.version ?? null, status: plan?.status ?? null,
       steps: plan ? plan.steps.map((s) => stepView(root, plan, s, ops)) : [], store, ...(message ? { message: asSentence(message) } : {}),
+      ...(card?.rules.length ? { next: { stepId: open.id, card } } : {}),
     };
   }
 

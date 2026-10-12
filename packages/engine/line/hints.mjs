@@ -8,6 +8,7 @@
 //   shapeRefusal(o)          {code, sentence, tool, args, fixes} -> {wrong, rule, choices | example, apply, text}
 //   renderRefusal(shape)     the plain text a builder reads (plan-cli prints it; MCP sends it as the message)
 //   whyOf / effectOf         #886: per fix, one sentence from the deciding rule, and what choosing it does (pure)
+//   rulesCard(tool, args)    #888: the 2-4 rules for a step's tool and target layer, plain English, one example each
 //   contextFor(root, o)      #886: the minimal deterministic lines that decide it, ranked by contextScore.mjs and cut
 //                            to 5 (15 when the same code repeats for the same target in this plan); reads files only
 //
@@ -15,9 +16,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { closestId } from '@line/construct-core/nearest';
-import { loadConfig } from '@line/construct-core/config';
+import { loadConfig, DEFAULT_RULES } from '@line/construct-core/config';
 import { normalizeLineConfig, CODE_EXTENSIONS, LINE_RULES } from '@line/construct-core/profiles/line/contract';
 import { resolveLayout } from '@line/construct-core/profiles/line/checks';
+import { RULE_METADATA } from '@line/construct-core/rules-catalog';
 import { rankLines, capFor } from './contextScore.mjs';
 
 /** How many choices the text lists (the rest are named by ref, so they stay pickable). */
@@ -400,4 +402,89 @@ export function withHints(fixes, c, ctx) {
   });
   const refs = new Set(out.map((f) => f.ref));
   return { fixes: out, context: kept.filter((l) => !l.ref || !refs.has(l.ref)).map((l) => l.text) };
+}
+
+// ------------------------------------------------------------------------------------------------ #888 rules cards
+
+/** The checks a tool's planner makes before a step joins the plan (build.mjs, typeGate.mjs), in plain English. */
+const TOOL_RULES = Object.freeze({
+  'line.addRoute': [
+    { id: 'route-page', text: 'A route serves one feature page file, features/<feature>/pages/<Name>.tsx', example: '{"route":"/cart","page":"features/cart/pages/CartPage.tsx"}' },
+    { id: 'route-props', text: 'The page it serves takes no props except params and searchParams', example: 'export function CartPage() { ... }' },
+    { id: 'route-once', text: 'One page serves one route, and one route has one page', example: '/products/:id -> features/product/pages/DetailPage.tsx' },
+  ],
+  'line.setCode': [
+    { id: 'contentHash', text: 'To replace a file, read it and send its contentHash; to create one, leave contentHash out', example: 'read features/cart/pages/CartPage.tsx, then line.setCode {"file": ..., "code": ..., "contentHash": "<from read>"}' },
+  ],
+  'line.baseOn': [
+    { id: 'base-name', text: 'name is a capital letter then letters and digits, and the feature must exist', example: '{"libraryId":"pages/ListPage","feature":"catalog","name":"ProductListPage"}' },
+  ],
+  'line.createFeature': [
+    { id: 'feature-name', text: 'name is lower-case words joined by hyphens', example: '"cart", "order-history"' },
+    { id: 'feature-story', text: 'story is one sentence: As a <role>, I want <capability>, so that <benefit>', example: '"As a shopper, I want a cart I can change, so that I buy exactly what I want."' },
+    { id: 'feature-points', text: 'points is a JSON list of strings, one acceptance point each', example: '["The page at /cart has the heading \\"Your cart\\".", "A button \\"Remove <name>\\" removes that line."]' },
+    { id: 'feature-once', text: 'A feature that exists is reused: write its spec.md with line.setCode', example: 'line.setCode {"file":"features/cart/spec.md", ...}' },
+  ],
+  'line.setLayoutSlot': [
+    { id: 'slot', text: 'slot is header, nav or footer; components are component files of the library or a feature', example: '{"slot":"header","components":["features/cart/components/CartLink.tsx"]}' },
+  ],
+  'line.leaveAsIs': [
+    { id: 'leave', text: 'stepId names a step whose state is needs-fix or needs-you', example: '{"stepId":"s4"}' },
+  ],
+});
+
+/** A one-line example for a framework rule (falls back to the catalog's expected shape). */
+const RULE_EXAMPLES = Object.freeze({
+  'LINE-BASE': '// @line-base pages/ListPage   (the first line of a feature page)',
+  'LINE-DIR': "import { Button } from '../../../library/components/Button';   (never ../../other-feature/...)",
+  'LINE-OWNER': 'features/cart/pages/CartPage.tsx belongs to feature cart only',
+  'LINE-LAYOUT': 'features/cart/{components,pages,usecases,services,domains,expressions,fixtures}/',
+  'PAGE-003': "a page imports components and usecases: import { useCart } from '../usecases/useCart';",
+  'COMPONENT-003': 'take data as props: export function CartLine({ line }: { line: CartItem }) { ... }',
+  'WORKFLOW-001': 'a workflow file imports no React and renders nothing',
+  'SERVICE-002': 'a service file imports no React: export async function placeOrder(order: Order) { ... }',
+  'DOMAIN-001': 'export const subtotal = (lines: CartItem[]): number => lines.reduce(...)',
+  'EXPR-001': 'an expression only maps props to JSX: no fetch, no state, no writes',
+});
+
+/** The one layer rule a card shows per layer (the error rule a builder meets first there). */
+const LAYER_RULE = Object.freeze({ page: 'PAGE-003', component: 'COMPONENT-003', workflow: 'WORKFLOW-001', service: 'SERVICE-002', domain: 'DOMAIN-001', expression: 'EXPR-001' });
+const KIND_TO_LAYER = Object.freeze({ pages: 'page', components: 'component', workflows: 'workflow', services: 'service', domains: 'domain', expressions: 'expression', usecases: 'usecase', fixtures: 'fixture', atoms: 'atom' });
+const BASED = new Set(['page', 'component', 'workflow', 'fixture']);
+
+/** The layer a step targets: its file's kind folder, a library id's kind, a served page; null when none. */
+export function layerOf(tool, args) {
+  const a = args ?? {};
+  if (tool === 'line.addRoute') return 'page';
+  if (tool === 'line.setLayoutSlot') return 'component';
+  if (tool === 'line.createFeature') return 'feature';
+  if (typeof a.file === 'string' && /(^|\/)spec\.md$/.test(a.file)) return 'spec';
+  const kind = /(?:^|\/)(pages|components|workflows|services|domains|expressions|usecases|fixtures|atoms)\//.exec(String(a.file ?? a.page ?? ''))?.[1] ?? String(a.libraryId ?? '').split('/')[0];
+  return KIND_TO_LAYER[kind] ?? null;
+}
+
+/**
+ * #888: the 2-4 framework rules that apply to a step's tool and target layer, each in plain English with a one-line
+ * example. Static: the tool's planner checks, then LINE_RULES (LINE-BASE for a based kind, LINE-OWNER for a page,
+ * LINE-DIR for code), then the layer's first error rule from the rule catalog (RULE_METADATA layers, DEFAULT_RULES).
+ * @param {string} tool @param {any} [args] @param {{metadata?: Record<string, any>, defaults?: Record<string, any>}} [rules]
+ *   The catalog (default: packages/core rules-catalog.mjs RULE_METADATA and config.mjs DEFAULT_RULES).
+ * @returns {{tool: string, layer: string|null, rules: {id: string, text: string, example: string}[], text: string}}
+ */
+export function rulesCard(tool, args, rules = { metadata: RULE_METADATA, defaults: DEFAULT_RULES }) {
+  const layer = layerOf(tool, args);
+  const out = [...(TOOL_RULES[tool] ?? [])];
+  const line = (id) => ({ id, text: firstClause(LINE_RULES[id].why), example: RULE_EXAMPLES[id] ?? LINE_RULES[id].expected[0] });
+  const code = ['line.setCode', 'line.baseOn', 'line.newComponent', 'line.setFragment'].includes(tool) && layer !== 'spec';
+  if (code && BASED.has(String(layer))) out.push(line('LINE-BASE'));
+  if (tool === 'line.addRoute') out.push(line('LINE-OWNER'));
+  if (code) out.push(line('LINE-DIR'));
+  const lr = layer ? LAYER_RULE[layer] : null;
+  if (code && lr && rules.metadata?.[lr]?.layers?.includes(layer) && rules.defaults?.[lr]?.severity === 'error') {
+    out.push({ id: lr, text: String(rules.defaults[lr].name), example: RULE_EXAMPLES[lr] ?? String(rules.metadata[lr].expected?.[0] ?? '') });
+  }
+  if (tool === 'line.setCode' && layer === 'spec') out.push({ id: 'spec-format', text: 'A spec.md is "## <story>" then one numbered acceptance point per line', example: '## As a shopper, I want ..., so that ...\\n\\n1. CART-1: ...' });
+  const picked = out.slice(0, 4);
+  const head = `Rules for ${tool}${layer ? ` (${layer})` : ''}:`;
+  return { tool, layer, rules: picked, text: picked.length ? [head, ...picked.map((r) => `- ${r.text}. Example: ${r.example}`)].join('\n') : '' };
 }

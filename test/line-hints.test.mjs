@@ -137,3 +137,45 @@ test('#886: a type error shows the failing line +-2 of the code that was sent', 
     assert.match(win, /\n 5\| \/\/ five$/);
   } finally { done(); }
 });
+
+test('#888: a rules card names 2-4 rules for a step\'s tool and layer, each in plain English with an example', async () => {
+  const { rulesCard } = await import('../packages/engine/line/hints.mjs');
+  const { BUILDER_TOOLS } = await import('../bench/ecommerce/driver/plan-cli.mjs');
+  const cases = [['line.addRoute', { route: '/cart', page: 'features/cart/pages/CartPage.tsx' }, 'page'], ['line.setCode', { file: 'features/cart/pages/CartPage.tsx' }, 'page'],
+    ['line.setCode', { file: 'features/cart/components/CartLine.tsx' }, 'component'], ['line.setCode', { file: 'library/services/orders.ts' }, 'service'],
+    ['line.baseOn', { libraryId: 'pages/FormPage', feature: 'cart', name: 'CartPage' }, 'page'], ['line.createFeature', {}, 'feature'], ['line.setCode', { file: 'features/cart/spec.md' }, 'spec']];
+  for (const [tool, args, layer] of cases) {
+    const c = rulesCard(tool, args);
+    assert.equal(c.layer, layer, tool);
+    assert.ok(c.rules.length >= 2 && c.rules.length <= 4, `${tool} (${layer}): ${c.rules.length} rules`);
+    const lines = c.text.split('\n');
+    assert.equal(lines[0], `Rules for ${tool} (${layer}):`);
+    for (const l of lines.slice(1)) assert.match(l, /^- [^\n]+\. Example: \S/);
+  }
+  assert.deepEqual(rulesCard('line.setCode', { file: 'features/cart/pages/CartPage.tsx' }).rules.map((r) => r.id), ['contentHash', 'LINE-BASE', 'LINE-DIR', 'PAGE-003']);
+  for (const t of BUILDER_TOOLS) assert.ok(rulesCard(t, {}).rules.length <= 4, t);
+});
+
+test('#888: plan status carries the next open step\'s card; plan-cli shows a card with the first add of a tool and layer, on request, and logs it', async () => {
+  const { root, done } = project();
+  const { createPlanCli } = await import('../bench/ecommerce/driver/plan-cli.mjs');
+  try {
+    const svc = svcOf(root);
+    const r = /** @type {any} */ (await svc.addStep({ tool: 'line.baseOn', args: { libraryId: 'pages/ListPage', feature: 'home', name: 'ShopPage' }, why: 'A page.' }, 'agent'));
+    assert.equal(r.ok, true, r.text);
+    const v = /** @type {any} */ (await svc.view());
+    assert.equal(v.next.stepId, r.stepId);
+    assert.equal(v.next.card.tool, 'line.baseOn');
+    const log = path.join(root, '..', 'cards', 'calls.jsonl');
+    const cli = createPlanCli({ project: root, log, builder: 'test' });
+    const first = await cli.run('add', ['line.baseOn', JSON.stringify({ libraryId: 'pages/ListPage', feature: 'home', name: 'MorePage' })], { why: 'Another page.' });
+    assert.match(first.sentence, /\nRules for line\.baseOn \(page\):\n- /);
+    const second = await cli.run('add', ['line.baseOn', JSON.stringify({ libraryId: 'pages/ListPage', feature: 'home', name: 'ThirdPage' })], { why: 'One more.' });
+    assert.doesNotMatch(second.sentence, /Rules for/);
+    const asked = await cli.run('rules', ['line.addRoute']);
+    assert.match(asked.sentence, /^Rules for line\.addRoute \(page\):/);
+    const calls = fs.readFileSync(log, 'utf8').trim().split('\n').map((l) => JSON.parse(l)).filter((e) => e.kind === 'call');
+    assert.deepEqual(calls.find((c) => c.cmd === 'add').result.card, { tool: 'line.baseOn', layer: 'page', rules: ['base-name', 'LINE-BASE', 'LINE-DIR', 'PAGE-003'] });
+    assert.match(calls.find((c) => c.cmd === 'add').result.shown, /Rules for line\.baseOn/);
+  } finally { done(); }
+});

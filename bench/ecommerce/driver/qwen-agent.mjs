@@ -42,6 +42,7 @@ export const TOOLS = {
     fn('plan_run_next', 'plan-cli run-next: run the next ready step; returns whether it landed, its checks, and typed fixes when Construct refused it.'),
     fn('plan_findings', 'plan-cli findings: the library items, the features with their items, and the validate findings with keys.'),
     fn('plan_validate', 'plan-cli validate: construct validate --profile line counts and findings.'),
+    fn('plan_rules', 'plan-cli rules: the 2-4 rules a step of this tool must keep for this file, each with an example (read before you write the step).', { tool: S('A Line tool name, e.g. line.setCode'), file: S('The file the step is about, e.g. features/cart/pages/CartPage.tsx (optional)') }, ['tool']),
     fn('read_file', 'plan-cli read: one project file and its contentHash (pass it to line.setCode to replace the file).', { path: S('Project-relative path') }, ['path']),
     fn('list_dir', 'plan-cli ls: the entries of one project folder.', { path: S('Project-relative folder, "." for the root') }, ['path']),
     fn('finish', 'Stop: you believe every acceptance point is done, or you cannot make more progress.', { summary: S('What you built and what is left.') }, ['summary']),
@@ -68,6 +69,7 @@ async function callTool(cli, arm, name, a) {
     if (name === 'plan_validate') return cli.run('validate');
     if (name === 'read_file') return cli.run('read', [String(args.path ?? '')]);
     if (name === 'list_dir') return cli.run('ls', [String(args.path ?? '.')]);
+    if (name === 'plan_rules') return cli.run('rules', [String(args.tool ?? ''), ...(typeof args.file === 'string' && args.file ? [args.file] : [])]);
   } else {
     if (name === 'list_dir') return cli.run('ls', [String(args.path ?? '.')]);
     if (name === 'tree') return cli.run('tree', [String(args.path ?? '.')]);

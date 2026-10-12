@@ -12,7 +12,7 @@
 /** Model tool name (qwen-agent TOOLS) -> the CLI command it records in calls.jsonl. */
 export const TOOL_TO_CMD = {
   plan_tools: 'tools', plan_status: 'status', plan_add: 'add', plan_run_next: 'run-next', plan_findings: 'findings',
-  plan_validate: 'validate', read_file: 'read', list_dir: 'ls', tree: 'tree', write_file: 'write', run_script: 'run',
+  plan_validate: 'validate', read_file: 'read', list_dir: 'ls', tree: 'tree', write_file: 'write', run_script: 'run', plan_rules: 'rules',
 };
 
 /**

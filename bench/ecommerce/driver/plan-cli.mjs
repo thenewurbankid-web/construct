@@ -11,6 +11,7 @@
 //   plan-cli.mjs validate                            construct validate --profile line: counts and the findings
 //   plan-cli.mjs read <path>                         one project file with its contentHash (for line.setCode)
 //   plan-cli.mjs ls [dir]                            the entries of one project folder
+//   plan-cli.mjs rules <tool> [file]                 #888: the 2-4 rules a step of that tool and layer must keep
 //
 // Project and log: --project <dir> (or BENCH_PROJECT), --log <file> (or BENCH_LOG; default
 // bench/ecommerce/runs/<project folder name>/calls.jsonl), --builder <id> (or BENCH_BUILDER).
@@ -29,6 +30,7 @@ import { readLineProject } from '../../../packages/engine/line/model.mjs';
 import { aggregateValidation } from '../../../packages/core/registry.mjs';
 import { enforcersForRoot } from '../../../packages/core/profiles/index.mjs';
 import { hashOf } from '../../../packages/engine/pagesEditor.mjs';
+import { rulesCard, layerOf } from '../../../packages/engine/line/hints.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 /** Tools a builder may add (Import's tools are for bringing an existing app in, not for building one). */
@@ -72,6 +74,18 @@ export function createPlanCli({ project, log, builder = 'unknown' }) {
     set: (v) => { fs.writeFileSync(hintFile, `${JSON.stringify(v)}\n`); },
   };
   const svc = createLinePlanService({ root, offers, hintState });
+  // #888: a rules card is shown with the first add of each tool and layer (and on request: rules <tool> [file]).
+  const cardsFile = path.join(path.dirname(logFile), 'cards-shown.json');
+  const firstCard = (tool, args) => {
+    const card = rulesCard(tool, args);
+    if (!card.rules.length) return null;
+    const key = `${tool}|${layerOf(tool, args) ?? '-'}`;
+    let shown = [];
+    try { shown = JSON.parse(fs.readFileSync(cardsFile, 'utf8')); } catch { shown = []; }
+    if (shown.includes(key)) return null;
+    try { fs.writeFileSync(cardsFile, `${JSON.stringify([...shown, key])}\n`); } catch { /* best effort */ }
+    return card;
+  };
   const record = (e) => fs.appendFileSync(logFile, `${JSON.stringify({ at: new Date().toISOString(), builder, ...e })}\n`);
   const brief = (s) => ({ id: s.id, n: s.n, tool: s.tool, state: s.state, sentence: s.sentence });
 
@@ -85,7 +99,8 @@ export function createPlanCli({ project, log, builder = 'unknown' }) {
       const steps = v.steps.map(brief);
       const counts = steps.reduce((c, s) => ({ ...c, [s.state]: (c[s.state] ?? 0) + 1 }), {});
       const open = steps.find((s) => s.state === 'needs-fix' || s.state === 'needs-you');
-      return { ok: true, planId: v.planId, counts, steps, sentence: open ? `Step ${open.n} needs a fix first: ${open.sentence}` : `The plan has ${steps.length} steps.` };
+      const card = /** @type {any} */ (v).next?.card ?? null;
+      return { ok: true, planId: v.planId, counts, steps, ...(card ? { card } : {}), sentence: [open ? `Step ${open.n} needs a fix first: ${open.sentence}` : `The plan has ${steps.length} steps.`, card?.text].filter(Boolean).join('\n') };
     },
     async add(tool, json, why, fix) {
       let args;
@@ -97,16 +112,19 @@ export function createPlanCli({ project, log, builder = 'unknown' }) {
         // (f1 is the recommended one; `add --fix f1`, plan_add {"fix": "f1"}) or a correct call. Writing the step out
         // (add <tool> '<args>') still works.
         const fixes = Array.isArray(r.fixes) ? r.fixes.map((f, i) => ({ ref: f.ref, id: f.id, sentence: f.sentence, step: f.step, ...(i === 0 ? { recommended: true } : {}), ...(f.why ? { why: f.why } : {}), ...(f.effect ? { effect: f.effect } : {}), ...(f.context?.length ? { context: f.context } : {}) })) : [];
-        return { ok: false, code: r.code, sentence: r.text ?? r.sentence, ...(r.detail ? { detail: r.detail } : {}), ...(fixes.length ? { fixes } : {}), ...(r.hintContext ? { hintContext: r.hintContext } : {}) };
+        const card = !fix && tool && BUILDER_TOOLS.includes(tool) ? firstCard(tool, args) : null;
+        return { ok: false, code: r.code, sentence: [r.text ?? r.sentence, card?.text].filter(Boolean).join('\n'), ...(r.detail ? { detail: r.detail } : {}), ...(fixes.length ? { fixes } : {}), ...(r.hintContext ? { hintContext: r.hintContext } : {}), ...(card ? { card } : {}) };
       }
       const step = r.steps.find((s) => s.id === r.stepId);
+      const card = step ? firstCard(step.tool, step.args) : null;
+      const withCard = (o) => (card ? { ...o, sentence: `${o.sentence}\n${card.text}`, card } : o);
       if (step?.state === 'waiting') {
         const a = /** @type {any} */ (await svc.approve(r.stepId, 'ui'));
         if (!a.ok) return { ok: false, code: a.code, sentence: `The step joined the plan, but Auto could not approve it: ${a.sentence}`, stepId: r.stepId };
         record({ kind: 'approval', stepId: r.stepId, tool: step.tool, ...(fix ? { fix } : {}), approvedBy: 'auto', mechanism: 'ct1 Let Auto approve in this session' });
-        return { ok: true, stepId: r.stepId, state: 'ready', approvedBy: 'auto', sentence: `Step ${step.n} joined the plan and Auto approved it; run-next lands it.` };
+        return withCard({ ok: true, stepId: r.stepId, state: 'ready', approvedBy: 'auto', sentence: `Step ${step.n} joined the plan and Auto approved it; run-next lands it.` });
       }
-      return { ok: true, stepId: r.stepId, state: step?.state ?? null, sentence: `Step ${step?.n} joined the plan: ${step?.sentence ?? ''}` };
+      return withCard({ ok: true, stepId: r.stepId, state: step?.state ?? null, sentence: `Step ${step?.n} joined the plan: ${step?.sentence ?? ''}` });
     },
     async 'run-next'() {
       const before = await svc.view();
@@ -145,6 +163,11 @@ export function createPlanCli({ project, log, builder = 'unknown' }) {
       if (content.length > MAX_READ) return { ok: false, code: 'TOO_BIG', sentence: `${rel} is over 64 KB.` };
       return { ok: true, path: path.relative(root, abs), contentHash: hashOf(content), content, sentence: `Read ${path.relative(root, abs)} (${content.split('\n').length} lines); pass contentHash to line.setCode to replace it.` };
     },
+    async rules(tool, file) {
+      if (!BUILDER_TOOLS.includes(String(tool))) return { ok: false, code: 'UNKNOWN_TOOL', sentence: `There is no plan tool ${tool ?? ''}; use one of ${BUILDER_TOOLS.filter((t) => t.startsWith('line.')).slice(0, 12).join(', ')}, ...` };
+      const card = rulesCard(String(tool), file ? { file, page: file } : {});
+      return { ok: true, card, sentence: card.text || `Line has no rules card for ${tool}.` };
+    },
     async ls(rel = '.') {
       const abs = inside(root, rel);
       if (!abs || !fs.existsSync(abs) || !fs.statSync(abs).isDirectory()) return { ok: false, code: 'NOT_FOUND', sentence: `There is no folder ${rel} in the project.` };
@@ -175,8 +198,9 @@ export function createPlanCli({ project, log, builder = 'unknown' }) {
       ...(Array.isArray(out.fixes) && out.fixes.length ? { fixes: out.fixes.map((f) => ({ ref: f.ref, id: f.id, sentence: f.sentence, step: f.step, recommended: f.recommended === true, ...(f.why ? { why: f.why } : {}), ...(f.effect ? { effect: f.effect } : {}), ...(f.context ? { context: f.context } : {}) })) } : {}),
       ...(Array.isArray(out.options) && out.options.some((o) => o.step) ? { options: out.options } : {}),
       ...(out.hintContext ? { context: out.hintContext } : {}),
+      ...(out.card ? { card: { tool: out.card.tool, layer: out.card.layer, rules: out.card.rules.map((x) => x.id) } } : {}),
       // Exactly what the model was shown (the text it reads; the JSON fields around it are in the tool result too).
-      ...(out.ok === false || out.fixes ? { shown: out.sentence } : {}) };
+      ...(out.ok === false || out.fixes || out.card ? { shown: out.sentence } : {}) };
     record({ kind: 'call', cmd, args: cmd === 'add' ? { tool: rest[0] ?? null, args: safeJson(rest[1]), why: opts.why ?? null, ...(opts.fix ? { fix: opts.fix } : {}) } : rest, ms: Date.now() - t0, result: summary });
     // The candidate lines and their scores are for the log (and jev), not for the builder.
     delete out.hintContext;
@@ -206,7 +230,7 @@ export function parseArgv(argv) {
 if (process.argv[1] && fs.realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const o = parseArgv(process.argv.slice(2));
   if (!o.project || !o.cmd) {
-    console.log(JSON.stringify({ ok: false, sentence: 'Usage: plan-cli.mjs --project <dir> <tools|status|add|run-next|findings|validate|read|ls> [...] (or set BENCH_PROJECT).' }));
+    console.log(JSON.stringify({ ok: false, sentence: 'Usage: plan-cli.mjs --project <dir> <tools|status|add|run-next|findings|validate|read|ls|rules> [...] (or set BENCH_PROJECT).' }));
     process.exit(2);
   }
   const cli = createPlanCli({ project: o.project, log: o.log, builder: o.builder });

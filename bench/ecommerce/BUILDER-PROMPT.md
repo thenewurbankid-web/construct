@@ -28,6 +28,7 @@ editor on the project. Every call is recorded; a direct write counts as a human 
 | `validate` | `construct validate --profile line`: error and warning counts and the findings |
 | `read <path>` | one project file and its `contentHash` |
 | `ls <dir>` | the entries of one project folder |
+| `rules <tool> [file]` | the 2-4 rules a step of that tool must keep for that file, each with an example (the first `add` of each tool and kind shows them too) |
 
 ## How a Line project is laid out
 
