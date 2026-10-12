@@ -51,6 +51,8 @@ test('readPathAliases: the nearest tsconfig at or above the folder, as folders r
   assert.equal(movedSpecifier(path.join(app, 'src'), [{ prefix: '@/', dir: '' }], file, '../libs/api', oldAbs, newAbs), '../library/services/api');
   assert.equal(movedSpecifier(path.join(app, 'src'), [{ prefix: '@/', dir: '' }], file, '@/libs/other', oldAbs, newAbs), null, 'another module');
   assert.equal(movedSpecifier(path.join(app, 'src'), [{ prefix: '@/', dir: '' }], file, 'react', oldAbs, newAbs), null, 'a package');
+  // A move out of the alias's folder turns the alias into a relative specifier (never `@/../x`).
+  assert.equal(movedSpecifier(app, [{ prefix: '@/', dir: 'src' }], file, '@/libs/api', oldAbs, path.join(app, 'shared/api.ts')), '../../shared/api');
 });
 
 for (const engine of ['regex', 'typescript']) {

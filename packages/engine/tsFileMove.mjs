@@ -239,7 +239,7 @@ export function movedSpecifier(root, aliases, fileAbs, spec, oldAbs, newAbs) {
   else return null;
   if (t.alias) {
     const inAlias = posixRel(path.resolve(root, t.alias.dir), dest);
-    if (inAlias && !inAlias.startsWith('../')) return `${t.alias.prefix}${inAlias}`;
+    if (inAlias && inAlias !== '..' && !inAlias.startsWith('../') && !path.isAbsolute(inAlias)) return `${t.alias.prefix}${inAlias}`;
   }
   const r = posixRel(path.dirname(fileAbs), dest);
   return r.startsWith('.') ? r : `./${r}`;
