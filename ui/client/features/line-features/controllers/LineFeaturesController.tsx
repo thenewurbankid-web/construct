@@ -24,8 +24,8 @@ function LineScreen({ view, screen }: { view: LineFeaturesView; screen: Screen }
   const { reload } = view;
   const landed = useCallback(() => { reload(); setRevision((r) => r + 1); }, [reload]);
   const plan = useLinePlan(landed);
-  const chat = useFeatureChat(view, isLineMock() ? mockAddStep : plan.addStep);
   const { mode, crumbs, onCrumb } = useFeaturesModes(view);
+  const chat = useFeatureChat(view, isLineMock() ? mockAddStep : plan.addStep, mode);
   // One Plan panel per screen: the Workflows tab adds its steps to this screen's plan (the panel beside the chat).
   const workflows = view.feature && view.tab === 'workflows' ? <LineWorkflowsTab key={view.feature} feature={view.feature} addStep={plan.addStep} revision={revision} /> : null;
   const stage = <FeaturesSwitchPage view={view} chat={chat} plan={<LinePlanController plan={plan} />} workflows={workflows} trace={<LineTraceController screen="features" steps={plan.steps} />} mode={mode} crumbs={crumbs} onCrumb={onCrumb} />;

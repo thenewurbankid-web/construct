@@ -46,7 +46,8 @@ test.describe.serial('Line: Features as a chat entry, in Trace style (Line sampl
     await gotoCockpit(page, '/');
     await expect(entry(page)).toHaveAttribute('data-layout', 'full', { timeout: 30_000 });
     await expect(page.getByRole('heading', { level: 1, name: 'Features' })).toBeVisible();
-    await expect(page.getByTestId('ln-option')).toHaveCount(5);
+    // cd1's five plus Open an item (two modes: the chat can open an item of the feature).
+    await expect(page.getByTestId('ln-option')).toHaveCount(6);
     for (const id of ['features.open', 'features.missing', 'features.create', 'features.import', 'features.explain']) await expect(option(page, id)).toBeVisible();
     await expect(page.getByTestId('ln-msg-text').first()).toHaveText('Your project has 2 features. Pick one to open it, or choose what to do below.');
     await expect(pick(page, 'billing').getByTestId('ln-pick-status')).toHaveText('Needs attention');

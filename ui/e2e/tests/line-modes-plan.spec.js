@@ -6,7 +6,10 @@ import { fileURLToPath } from 'node:url';
 import { gotoCockpit } from './support/cockpit.js';
 import { openProject } from './support/browseProject.js';
 import { failOnConsoleErrors } from './support/consoleGuard.js';
-import { expectAxeClean, lmScreen, option, toMode } from './support/lineModes.js';
+import { expectAxeClean, lmScreen, option, startUnderTheHood, toMode } from './support/lineModes.js';
+
+// Two modes: this spec starts on the Components screen's regular view (screens open in Chat by default).
+startUnderTheHood(test);
 
 // Two modes on the Plan (the panel on Components and Pages; its options join each screen's chat as "<screen>.plan.*").
 // A step waits for approval: in Chat, "What is in the plan?" says so and "Approve step 1" runs it through the checked

@@ -13,12 +13,19 @@ import { listExplain, listIntro, listMissing } from '../domain/ListAnswers';
 import { stepAnswer } from '../domain/StepAnswer';
 import type { AddPlanStep, ChatAsk, ChatMessage, FeatureChatView, LineFeaturesView } from '../types';
 
+/** Two modes: Under the hood the feature cards carry the features.card control, so the chat helper's list beside them
+ * does not repeat it (Trace lights each control once). */
+function withoutControls(m: ChatMessage | null, mode: 'chat' | 'hood'): ChatMessage | null {
+  if (!m?.pick || mode === 'chat') return m;
+  return { ...m, pick: { ...m.pick, items: m.pick.items.map(({ control: _control, ...item }) => item) } };
+}
+
 const call = (tool: string, args: Record<string, unknown>) => `${tool}(${JSON.stringify(args)})`;
 
 /** cd1: the Features chat. Read options answer from what the read routes returned (project, feature detail); create
  * and fix add a plan step through `addStep` (the Plan panel's), which the person approves; nothing is written here.
  * The conversation starts again when the open feature changes (the side panel talks about that feature). */
-export function useFeatureChat(view: LineFeaturesView, addStep: AddPlanStep): FeatureChatView {
+export function useFeatureChat(view: LineFeaturesView, addStep: AddPlanStep, mode: 'chat' | 'hood' = 'chat'): FeatureChatView {
   const { project, feature, detail, choose, item, part, parts, chooseItem, choosePart } = view;
   const place = useMemo(() => featuresPlace(feature, item, part), [feature, item, part]);
   const [log, setLog] = useState<ChatMessage[]>([]);
@@ -136,7 +143,7 @@ export function useFeatureChat(view: LineFeaturesView, addStep: AddPlanStep): Fe
   };
 
   const deep = item && data ? { ...featuresIntro(place, data), id: 'intro', from: 'line' as const } : null;
-  const intro = deep ?? (feature ? itemIntro(feature) : project ? listIntro(project) : null);
+  const intro = withoutControls(deep ?? (feature ? itemIntro(feature) : project ? listIntro(project) : null), mode);
   const messages = intro ? [intro, ...log] : log;
   const title = feature ? `Ask about ${feature}` : 'Features';
   return { title, options, messages, ask, busy, onOption, onPick, onAnswer, onCancelAsk: () => setAsk(null) };
