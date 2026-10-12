@@ -108,8 +108,12 @@ export function itemLabeler(g) {
   const byId = new Map(g.nodes.map((n) => [n.id, n]));
   /** @type {Map<string, {file: string, line: number}>} */
   const where = new Map();
-  for (const e of [...g.edges].filter((y) => y.type === 'PART_OF' && y.from.startsWith('unit:') && 'file' in y.evidence).sort((a, b) => `${a.evidence.file}`.localeCompare(`${b.evidence.file}`))) {
-    if (!where.has(e.from)) where.set(e.from, /** @type {{file: string, line: number}} */ (e.evidence));
+  const located = g.edges
+    .filter((y) => y.type === 'PART_OF' && y.from.startsWith('unit:') && 'file' in y.evidence)
+    .map((y) => ({ from: y.from, at: /** @type {{file: string, line: number}} */ (/** @type {unknown} */ (y.evidence)) }))
+    .sort((a, b) => `${a.at.file}`.localeCompare(`${b.at.file}`));
+  for (const e of located) {
+    if (!where.has(e.from)) where.set(e.from, e.at);
   }
   return (id) => {
     const n = byId.get(id);

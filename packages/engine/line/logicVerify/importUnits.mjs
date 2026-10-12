@@ -29,7 +29,12 @@ const CODE = /\.(?:[cm]?[jt]sx?)$/;
 const NOT_UNITS = /(?:\.d\.ts|\.(?:test|spec)\.[cm]?[jt]sx?)$/;
 const SKIP_DIRS = new Set(['node_modules', 'line', '__line_characterization__']);
 
-/** The folder's code files (project-relative): no tests, declarations, Line state or generated tests. */
+/**
+ * The folder's code files (project-relative): no tests, declarations, Line state or generated tests.
+ * @param {string} projectRoot absolute project root
+ * @param {string} folder project-relative import folder
+ * @returns {string[]} project-relative code file paths
+ */
 export function folderCodeFiles(projectRoot, folder) {
   const out = [];
   const visit = (abs) => {
@@ -64,7 +69,12 @@ export function functionUnits(root, files) {
   return out;
 }
 
-/** The import baseline's sources, or null when the folder has none (no Import v2 baseline yet). */
+/**
+ * The import baseline's sources, or null when the folder has none (no Import v2 baseline yet).
+ * @param {string} projectRoot absolute project root
+ * @param {string} folder project-relative import folder
+ * @returns {Record<string, string> | null} file path to source text, or null
+ */
 export function readImportBaseline(projectRoot, folder) {
   try {
     const b = JSON.parse(fs.readFileSync(path.join(projectRoot, folder, IMPORT_BASELINE_FILE), 'utf8'));

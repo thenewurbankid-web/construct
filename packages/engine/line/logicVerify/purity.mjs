@@ -90,7 +90,10 @@ async function loadMorpheus() {
   return morpheus;
 }
 
-/** Whether Morpheus's scan is linked (the classifier then follows calls transitively). */
+/**
+ * Whether Morpheus's scan is linked (the classifier then follows calls transitively).
+ * @returns {Promise<boolean>} true when the @mx/morpheus-import link loaded
+ */
 export async function morpheusLinked() {
   return (await loadMorpheus()) !== null;
 }
@@ -173,7 +176,8 @@ export async function classifyUnit({ root, file, fn }) {
         enter(n) {
           if (n.type !== 'CallExpression' || n.callee.type !== 'MemberExpression' || n.callee.object.type !== 'Identifier') return;
           const b = bindings.get(n.callee.object.name);
-          const verb = n.callee.computed ? null : n.callee.property.name;
+          const prop = n.callee.property;
+          const verb = !n.callee.computed && prop.type === 'Identifier' ? prop.name : null;
           if (b?.opaque && verb && HTTP_VERBS.has(verb)) out.push({ effect: 'fetch', via: [b.id] });
         },
       });

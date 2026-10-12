@@ -1,6 +1,6 @@
 {
   "note": "Per-file tsc --noEmit error counts (npm run build). Only ever decreases: node packages/tools/tsc-ratchet/check.mjs --update. See docs/API-DOCS.md \"Coverage is enforced by the ratchet\" for the sibling api-coverage ratchet this mirrors, and packages/tools/tsc-ratchet/README.md for how to lower this one.",
-  "total": 472,
+  "total": 471,
   "files": {
     "packages/ast/backendFacts.mjs": 15,
     "packages/ast/clientBoundary.mjs": 2,
@@ -32,7 +32,7 @@
     "packages/core/extractExpression.mjs": 1,
     "packages/core/guard.mjs": 1,
     "packages/core/handler.mjs": 1,
-    "packages/core/import.mjs": 11,
+    "packages/core/import.mjs": 10,
     "packages/core/mechanical-plan.mjs": 2,
     "packages/core/openapi-spec.mjs": 6,
     "packages/core/placement.mjs": 9,
