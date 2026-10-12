@@ -64,8 +64,10 @@ node --test trace/eval/beam/beam.test.mjs
 ```
 
 `--planner ask|fixture|recorded` picks the planner (default: `ask` live, `recorded` with `--dry-run`). `ask` runs
-`node trace/tools/jev/ask.mjs "<request>" --json`; while that CLI does not exist an item records
-`planner.available: false` with the reason, and is not graded.
+`node trace/tools/jev/ask.mjs "<request>" --json` (#904): it fits the request into the Trace example it names with the
+beam planner and prints every run (`state` open/closed + `reason`), `recommended`, the plan `steps` or the one closed
+`question`, the arms' readings and the events (also streamed to `BEAM_EVENTS_FILE`, which the pipeline points at
+`runs/<setup>/<item>/events.jsonl`). Only the open runs are graded; a beam that closed every run has nothing to grade.
 
 UI: start Trace (`npm start` in `trace/`) and open `/beam`. The page replays by default; to let its "Re-run with this
 setup" button call Opus, start the server with `TRACE_BEAM_LIVE=1` and tick "Live". `TRACE_BEAM_RESULTS` and
@@ -83,8 +85,8 @@ the grader version, and the grader file pins its rubric in front matter (`rubric
 
 ## Running for real: calls and cost
 
-Opus calls per item: 1 (requester writes) + 1 if the planner asks a question (requester answers) + 1 per run (grader;
-1 today, k once the beam has k runs). So 2-3 calls per item now.
+Opus calls per item: 1 (requester writes) + 1 if the planner asks a question (requester answers) + 1 per open run (grader;
+1 when the beam ends on a plan, up to 4 when it asks). So 2-6 calls per item.
 
 Rough tokens per item (one run, a question on about a third of items): requester write ~5k in (the system prompt lists
 the 187 intent ids; the app view is page source + endpoints) / ~0.3k out; answer ~5k in / ~0.1k out; grade ~3k in
