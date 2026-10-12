@@ -1,13 +1,15 @@
 // "What Line knows", Memory tab (packages/engine/line/knows/memory.mjs): the page's memory service on im3's real store
 // (<state>/memory/<step>.jsonl through writeLineState). Every change is logged in <state>/memory.log.jsonl; the
-// embeddings switch is per project (<state>/memory.settings.json), off by default, LINE_MEMORY_EMBED overrides it.
+// embeddings are one AI profile step (construct.memory-embed, packages/core/ai-profiles.json), off by default and run
+// only with a measured win on that profile; the Memory tab's switch flips that step for the project (<state>/ai-profiles.json).
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
-import { createMemory, embeddingsEnabled } from '../packages/engine/line/memory/index.mjs';
-import { createMemoryService, MEMORY_LOG_FILE, MEMORY_SETTINGS_FILE } from '../packages/engine/line/knows/memory.mjs';
+import { createMemory } from '../packages/engine/line/memory/index.mjs';
+import { createMemoryService, MEMORY_LOG_FILE } from '../packages/engine/line/knows/memory.mjs';
+import { MEMORY_EMBED_STEP, PROJECT_PROFILES_FILE, stepProfile, stepOn, listStepProfiles, PROFILES_FILE } from '../packages/core/ai-profiles.mjs';
 import { assertMemoryRecordsView, assertMemoryExport } from '../packages/engine/line/knows/contract.mjs';
 
 const proposal = (intent = 'use.item') => ({ intent, structure: null, slots: ['F:feature'], neighbourhood: [], options: ['via-library:ui:I>F', 'base-on:ui:L>F'], proposed: 'via-library:ui:I>F' });
@@ -18,7 +20,7 @@ async function seeded() {
   const memory = createMemory(root, { words: [] });
   for (let i = 0; i < 3; i++) await memory.recordOutcome('drafter.route', proposal(), pick('via-library:ui:I>F'));
   await memory.recordOutcome('plan.fix', { ...proposal('fix.problem'), options: ['LINE-DIR:promote', 'LINE-DIR:remove'], proposed: 'LINE-DIR:promote' }, { kind: 'fix-picked', chosen: 'LINE-DIR:remove', by: 'person' });
-  const svc = createMemoryService(root, { memory, env: {} });
+  const svc = createMemoryService(root, { memory });
   return { root, memory, svc };
 }
 const readLog = (root) => fs.readFileSync(path.join(root, 'line', MEMORY_LOG_FILE), 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l));
@@ -29,7 +31,7 @@ test('records: every step, or one; the view passes the contract; embeddings off 
   assertMemoryRecordsView(all);
   assert.equal(all.step, null);
   assert.equal(all.records.length, 4);
-  assert.deepEqual(all.embeddings, { on: false, covers: 'slotted-text' });
+  assert.deepEqual(all.embeddings, { on: false, covers: 'slotted-text', runs: false });
   assert.deepEqual(all.log, []);
   assert.match(all.sentence, /4 decisions/);
   const one = svc.records({ step: 'plan.fix' });
@@ -92,25 +94,56 @@ test('export and import round trip into another project; import is logged and sk
   assert.equal(bad.code, 'BAD_EXPORT');
 });
 
-test('embeddings: a per-project switch in Line state, off by default; the env var overrides it; slotted text only', async () => {
-  const { root, svc } = await seeded();
+/** Line's profile set with the memory-embed step given a measured win (still off in ai-profiles.json). */
+const measuredProfiles = () => {
+  const data = JSON.parse(fs.readFileSync(PROFILES_FILE, 'utf8'));
+  for (const p of data.profiles) if (p.step === MEMORY_EMBED_STEP) p.ladder = { ...p.ladder, measured: 'test: a measured win over non-neural recall' };
+  return { data, traceConfig: null };
+};
+
+test('embeddings are one AI profile step: present, off by default, unmeasured, so it ships off', () => {
+  const p = stepProfile(MEMORY_EMBED_STEP, { traceConfig: null });
+  assert.equal(p.ladder.options.on, false);
+  assert.equal(p.ladder.measured, null);
+  assert.equal(stepOn(p), false);
+  assert.equal(p.model, 'nomic-embed-text');
+  assert.ok(listStepProfiles({ traceConfig: null }).some((x) => x.step === MEMORY_EMBED_STEP));
+});
+
+test('embeddings: the Memory tab flips the profile step for this project; it runs only with a measured win; logged', async () => {
+  const { root, memory, svc } = await seeded();
   const on = svc.setEmbeddings({ on: true });
-  assert.equal(on.embeddings.on, true);
-  assert.equal(on.embeddings.covers, 'slotted-text');
-  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(root, 'line', MEMORY_SETTINGS_FILE), 'utf8')), { v: 1, embeddings: true });
-  assert.equal(svc.embeddingsOn(), true);
+  assert.deepEqual(on.embeddings, { on: true, covers: 'slotted-text', runs: false });
+  assertMemoryRecordsView(on);
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(root, 'line', PROJECT_PROFILES_FILE), 'utf8')), { v: 1, steps: { [MEMORY_EMBED_STEP]: { on: true } } });
+  // Unmeasured, the flipped step still does not run.
+  assert.equal(svc.embeddingsOn(), false);
+  // With a measured win on its profile, the project's switch is what turns it on.
+  const measured = createMemoryService(root, { memory, profiles: measuredProfiles() });
+  assert.equal(measured.embeddingsOn(), true);
+  assert.equal(measured.records().embeddings.runs, true);
   assert.equal(svc.setEmbeddings({ on: 'yes' }).code, 'BAD_ARGS');
   const off = svc.setEmbeddings({ on: false });
   assert.equal(off.embeddings.on, false);
+  assert.equal(measured.embeddingsOn(), false);
   assert.deepEqual(readLog(root).map((e) => [e.action, e.target]), [['embeddings', 'on'], ['embeddings', 'off']]);
-  // LINE_MEMORY_EMBED overrides the stored switch either way.
-  const forced = createMemoryService(root, { env: { LINE_MEMORY_EMBED: '1' } });
-  assert.equal(forced.embeddingsOn(), true);
-  svc.setEmbeddings({ on: true });
-  assert.equal(createMemoryService(root, { env: { LINE_MEMORY_EMBED: 'off' } }).embeddingsOn(), false);
-  assert.equal(embeddingsEnabled({}, true), true);
-  assert.equal(embeddingsEnabled({ LINE_MEMORY_EMBED: '0' }, true), false);
-  assert.equal(embeddingsEnabled({}), false);
+});
+
+test('LINE_MEMORY_EMBED has no effect any more: the profile is the only switch', async () => {
+  const { root, memory } = await seeded();
+  const before = process.env.LINE_MEMORY_EMBED;
+  process.env.LINE_MEMORY_EMBED = '1';
+  try {
+    assert.equal(createMemoryService(root, { memory, profiles: measuredProfiles() }).embeddingsOn(), false, 'env cannot turn it on');
+    createMemoryService(root, { memory }).setEmbeddings({ on: true });
+    process.env.LINE_MEMORY_EMBED = '0';
+    assert.equal(createMemoryService(root, { memory, profiles: measuredProfiles() }).embeddingsOn(), true, 'env cannot turn it off');
+  } finally {
+    if (before === undefined) delete process.env.LINE_MEMORY_EMBED; else process.env.LINE_MEMORY_EMBED = before;
+  }
+  for (const f of ['packages/engine/line/knows/memory.mjs', 'packages/engine/line/memory/embed.mjs', 'packages/engine/line/memory/index.mjs']) {
+    assert.doesNotMatch(fs.readFileSync(new URL(`../${f}`, import.meta.url), 'utf8'), /LINE_MEMORY_EMBED/, f);
+  }
 });
 
 test('every write goes through Construct\'s writer: the log and settings live under the Line state folder only', () => {

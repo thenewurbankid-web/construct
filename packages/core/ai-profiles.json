@@ -37,6 +37,17 @@
       "ladder": { "static": { "target": 1 }, "options": { "on": true, "target": 0.6 }, "measured": "2026-10-12, 20 seeded Train Line refusals: 1.5B repair loop without a reason 7/20 (static repairs 0/20; ~0.3 s). 1.5B one attempt 7/20; loop with a reason 5/20; 7B loop with a reason 4/20, without 8/20 (~1 s). Re-measure after the nearest-match typed fix merges; switch to the 7B only if it then clearly wins." }
     },
     {
+      "step": "construct.memory-embed",
+      "label": "Recalls past decisions also by meaning: a local embedding model compares the slotted words of your past decisions, never your code; the Memory tab's switch turns it on for a project.",
+      "kind": "decide",
+      "provider": "ollama",
+      "model": "nomic-embed-text",
+      "modelFrom": "an embedding model, chosen for this step",
+      "maxTokens": 1,
+      "source": "construct",
+      "ladder": { "static": { "target": 1 }, "options": { "on": false, "target": 0.6 }, "measured": null }
+    },
+    {
       "step": "construct.label-miss",
       "label": "Labels where static code missed, offline: picks the right option for each miss, or none fits, so new static rules can be proposed.",
       "kind": "decide",

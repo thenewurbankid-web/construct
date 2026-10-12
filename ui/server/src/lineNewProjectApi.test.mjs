@@ -58,6 +58,18 @@ test('new project: a name and a first feature become a clean Line project in the
   assert.deepEqual(feature.spec.stories[0].points.map((p) => p.covered), [false]);
 });
 
+test('new project: the chosen library is passed through; primitives starts from the Line primitives library', async () => {
+  const body = await (await post({ parentDir: '', name: 'prims', firstFeature: 'catalog', library: 'primitives' })).json();
+  assert.equal(body.ok, true, body.sentence);
+  const dir = path.join(workspaceRoot(), 'prims');
+  const components = fs.readdirSync(path.join(dir, 'library', 'components'));
+  assert.ok(components.length > 3, `the primitives library, not the 3-item starter (${components.length} items)`);
+  const bad = await post({ parentDir: '', name: 'nolib', firstFeature: 'catalog', library: 'bogus' });
+  assert.equal(bad.status, 400);
+  assert.equal((await bad.json()).code, 'BAD_LIBRARY');
+  assert.ok(!listing().includes('nolib'), 'a refused library creates nothing');
+});
+
 test('new project: a parent folder inside the workspace is honoured, absolute or relative', async () => {
   fs.mkdirSync(path.join(workspaceRoot(), 'clients'));
   const rel = await (await post({ parentDir: 'clients', name: 'acme', firstFeature: 'orders' })).json();

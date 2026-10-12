@@ -19,7 +19,9 @@ test('profiles: one set covers Cockpit, Trace and Construct steps, each passing 
   const steps = all.map((p) => p.step);
   for (const s of ['construct.chooser', 'construct.fix', 'construct.repair', 'trace.choose', 'trace.pick-fields', 'trace.draft-body', 'cockpit.importFill', 'cockpit.createFill']) assert.ok(steps.includes(s), s);
   assert.equal(DEFAULT_STEP_MODEL, 'qwen2.5-coder:1.5b');
-  for (const p of all.filter((x) => x.provider === 'ollama')) assert.equal(p.model, DEFAULT_STEP_MODEL, p.step);
+  // The one exception: memory embeddings need an embedding model (construct.memory-embed, off and unmeasured).
+  for (const p of all.filter((x) => x.provider === 'ollama' && x.step !== 'construct.memory-embed')) assert.equal(p.model, DEFAULT_STEP_MODEL, p.step);
+  assert.equal(stepModel('construct.memory-embed', { traceConfig: null }), 'nomic-embed-text');
   // im2 (owner, 12 Oct): the repair loop on the 1.5B, no reason field, up to 4 attempts (variant A, review.md).
   assert.deepEqual([stepProfile('construct.repair').reason, stepProfile('construct.repair').maxAttempts], [false, 4]);
   assert.equal(stepModel('construct.chooser', { traceConfig: null }), DEFAULT_STEP_MODEL);

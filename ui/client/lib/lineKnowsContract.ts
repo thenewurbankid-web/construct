@@ -33,7 +33,7 @@ export type MemoryStepsView = { ok: true; steps: { step: string; label: string; 
 export type MemoryAction = 'edit' | 'forget' | 'forgetStep' | 'forgetAll' | 'import' | 'embeddings';
 export type MemoryLogEntry = { at: string; by: 'person'; action: MemoryAction; target: string };
 /** GET /api/line/memory/records?step= (and every memory write's answer). */
-export type MemoryRecordsView = { ok: true; step: string | null; records: MemoryRecord[]; embeddings: { on: boolean; covers: 'slotted-text' }; log: MemoryLogEntry[]; sentence: string };
+export type MemoryRecordsView = { ok: true; step: string | null; records: MemoryRecord[]; embeddings: { on: boolean; covers: 'slotted-text'; runs?: boolean }; log: MemoryLogEntry[]; sentence: string };
 
 // ------------------------------------------------------------------------------------------------ wire: change, stats
 export type ChangeKind = 'rebase' | 'promote' | 'removeCrossUse';

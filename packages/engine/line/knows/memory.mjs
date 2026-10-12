@@ -4,13 +4,15 @@
 // ui/server/src/lineMemoryApi.mjs); every change is logged. Everything is Line's own state, written only through
 // Construct's writer (writeLineState):
 //   <state>/memory.log.jsonl        one MemoryLogEntry per change (who, what, which record or step; never its text)
-//   <state>/memory.settings.json    {v: 1, embeddings: boolean}, off by default; LINE_MEMORY_EMBED overrides it
+//   <state>/ai-profiles.json        the project's own on/off per AI step; the embeddings switch flips the
+//                                   construct.memory-embed step there (packages/core/ai-profiles.mjs). Off by default, and
+//                                   it runs only once that step's profile records a measured win (stepOnFor).
 // Nothing here opens a connection: memory never leaves the machine.
 import fs from 'node:fs';
 import path from 'node:path';
 import { writeLineState } from '../../transactionalWriter.mjs';
 import { memoryOf } from '../memory/index.mjs';
-import { embeddingsEnabled } from '../memory/embed.mjs';
+import { stepProfile, stepOnFor, projectStepOn, projectStepFileWith, MEMORY_EMBED_STEP, PROJECT_PROFILES_FILE } from '../../../core/ai-profiles.mjs';
 import { STEP_ID } from '../memory/contract.mjs';
 
 /** @typedef {import('../memory/contract.mjs').MemoryRecord} MemoryRecord */
@@ -21,7 +23,6 @@ import { STEP_ID } from '../memory/contract.mjs';
 /** @typedef {{ok: false, code: string, sentence: string}} MemoryRefusal */
 
 export const MEMORY_LOG_FILE = 'memory.log.jsonl';
-export const MEMORY_SETTINGS_FILE = 'memory.settings.json';
 /** How many of the newest log entries a view carries. */
 export const LOG_SHOWN = 50;
 const ID = /^m-[a-z0-9]{6,32}$/;
@@ -32,13 +33,12 @@ const decisions = (n) => `${n} decision${n === 1 ? '' : 's'}`;
 /**
  * The Memory tab's service of one project.
  * @param {string} root
- * @param {{memory?: import('../memory/store.mjs').LineMemory, env?: Record<string, string|undefined>, now?: () => string}} [o]
- *   `memory`: the project's store (default im3's memoryOf(root)); `env`: for LINE_MEMORY_EMBED (default process.env).
+ * @param {{memory?: import('../memory/store.mjs').LineMemory, profiles?: Parameters<typeof stepProfile>[1], now?: () => string}} [o]
+ *   `memory`: the project's store (default im3's memoryOf(root)); `profiles`: Line's profile set (default ai-profiles.json).
  * @returns The service: embeddingsOn, records, edit, forgetRecord, forgetStep, forgetAll, exportMemory, importMemory, setEmbeddings.
  */
 export function createMemoryService(root, o = {}) {
   const memory = o.memory ?? memoryOf(root);
-  const env = o.env ?? process.env;
   const now = o.now ?? (() => new Date().toISOString());
   const stateDir = memory.stateDir;
   const abs = (f) => path.join(root, stateDir, f);
@@ -57,10 +57,10 @@ export function createMemoryService(root, o = {}) {
     writeLineState(root, `${stateDir}/${MEMORY_LOG_FILE}`, `${JSON.stringify(e)}\n`, { append: true, stateDir });
   };
 
-  /** The project's stored switch (off when missing or unreadable). */
-  const storedEmbeddings = () => { try { return JSON.parse(readText(MEMORY_SETTINGS_FILE) ?? '{}').embeddings === true; } catch { return false; } };
-  /** Whether embeddings are on for this project (the stored switch; LINE_MEMORY_EMBED overrides it). */
-  const embeddingsOn = () => embeddingsEnabled(env, storedEmbeddings());
+  /** The Memory tab's switch: the project's on/off for the embeddings step (else the profile's own). */
+  const switchOn = () => projectStepOn(root, MEMORY_EMBED_STEP, stateDir) ?? stepProfile(MEMORY_EMBED_STEP, o.profiles).ladder.options.on;
+  /** Whether embeddings run for this project: the switch on AND a measured win on the step's profile. */
+  const embeddingsOn = () => stepOnFor(stepProfile(MEMORY_EMBED_STEP, o.profiles), projectStepOn(root, MEMORY_EMBED_STEP, stateDir));
 
   const steps = () => Object.keys(memory.sizes()).sort();
   /** @param {string} id @returns {MemoryRecord|null} */
@@ -75,7 +75,7 @@ export function createMemoryService(root, o = {}) {
     const sentence = records.length
       ? `Line remembers ${decisions(records.length)} ${step === null ? 'for this project' : 'for this step'}, on this computer only.`
       : 'Line remembers nothing here yet; it learns from what you pick, approve and change.';
-    return { ok: true, step, records, embeddings: { on: embeddingsOn(), covers: 'slotted-text' }, log: log().slice(-LOG_SHOWN), sentence };
+    return { ok: true, step, records, embeddings: { on: switchOn(), covers: 'slotted-text', runs: embeddingsOn() }, log: log().slice(-LOG_SHOWN), sentence };
   }
 
   return {
@@ -136,7 +136,7 @@ export function createMemoryService(root, o = {}) {
     /** @param {{on?: unknown}} a */
     setEmbeddings(a) {
       if (typeof a?.on !== 'boolean') return refuse('BAD_ARGS', 'Say on or off.');
-      writeLineState(root, `${stateDir}/${MEMORY_SETTINGS_FILE}`, `${JSON.stringify({ v: 1, embeddings: a.on })}\n`, { stateDir });
+      writeLineState(root, `${stateDir}/${PROJECT_PROFILES_FILE}`, projectStepFileWith(root, MEMORY_EMBED_STEP, a.on, stateDir), { stateDir });
       logged('embeddings', a.on ? 'on' : 'off');
       return view();
     },

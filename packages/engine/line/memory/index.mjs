@@ -7,7 +7,7 @@ import { lineStateDir } from '../workspace.mjs';
 
 export { createMemory } from './store.mjs';
 export { recallFrom, preferenceOf, memoryOver, jaccard, bm25, slotTokens } from './recall.mjs';
-export { embeddingsEnabled, createOllamaEmbedder, recallWithEmbeddings, decisionText } from './embed.mjs';
+export { createOllamaEmbedder, recallWithEmbeddings, decisionText } from './embed.mjs';
 export * from './contract.mjs';
 export { TEMPLATE_PHRASE, routePhrase } from './words.mjs';
 
