@@ -22,6 +22,7 @@ build step 1, the contract: shapes, expected outputs and tests. The later steps 
 | `layoutDom.mjs` | Step 5. `createLayoutDom`: window, document, elements, `matchMedia`, `IntersectionObserver`, `ResizeObserver`, window/document/element listeners, all firing under the fake clock |
 | `layoutClock.mjs` | Step 5. `createFakeClock()` (a `ClockFake` at `FAKE_ENV.now`): timers, rAF and rendering frames in HTML order (resize, scroll, media change, rAF, ResizeObserver, IntersectionObserver) |
 | `layoutMedia.mjs` | Step 5. `parseMediaQuery`, `matchesMedia` (min/max, range syntax, em/rem, `and`, comma lists, `not`/`only`, orientation, fixed user preferences) |
+| `importUnits.mjs` | Step 7. `logicCheck` (verifyImport's `logic` check: a `UnitVerdict` per function unit of the import folder in `units`, the `StepSummary` in `summary`, fails only on `changed`), `verifyImportUnits`, `functionUnits`, `folderCodeFiles`, `readImportBaseline`, `materializeBefore`. Layers come from `verifyPair`'s `RUNNERS` by name and `classifyBefore`, so steps 2 and 4 plug in without a change here. `transformsOf` defaults to null per unit, so a unit is tested at best until the import passes the transforms its steps applied |
 | `layoutRun.mjs` | Step 5. `layoutReaders` (pure layout closures of a unit), `runLayoutCases` (the helper step 4's runner calls), `verifyLayoutPair` (the `isolated` layer result for layout) |
 
 Tests:
@@ -30,6 +31,7 @@ Tests:
 - `test/line-logic-verify-planted.test.mjs` holds the planted fixtures and the acceptance tests for each step (`BUILT` lists the steps whose acceptance tests run).
 - `test/line-logic-verify-canonical.test.mjs` covers the canonicaliser's edge cases, the round-trip and verifyPair's L0 walk.
 - `test/line-logic-verify-pure.test.mjs` covers the Z3 translator and layer, the fast-check layer, the locator on whole units and verifyPair's pure path.
+- `test/line-analyze-cache.test.mjs` covers the analyzeClosure cache; `test/line-logic-verify-import.test.mjs` covers verifyImport's `logic` check.
 - `test/line-logic-verify-layout.test.mjs` covers `lib.dom.d.ts`, the layout fakes, DOM, clock, media queries and `verifyLayoutPair`.
 - `test/line-logic-verify-purity.test.mjs` covers `classifyUnit` (pure, direct, transitive, unknown imports) and the fallback.
 - The fixtures are in `test/fixtures/logic-verify/`. They are small synthetic snippets written for these tests, not
@@ -125,7 +127,9 @@ pass, cold = first call in a fresh process, after about 0.1 to 0.2 s of module l
 | `out-of-set` | tested, `fast-check` | 230 ms | 500 ms |
 
 The two slow warm cases spend almost all their time in the characterizer's `analyzeClosure` (about 80 to 110 ms per
-root, once per side) for the mined literals, not in the solvers or the fakes; step 7 should cache it per file content.
+root, once per side) for the mined literals, not in the solvers or the fakes. Step 7 caches it per file content:
+`characterize/analyzeCache.mjs` `analyzeClosureCached` (bounded LRU, keyed by every closure file's depsHash, the routes,
+`charSalt` and the files `env` reads), which `fastCheckLayer.mjs` and `layoutRun.mjs` call.
 
 ## Planted fixtures
 
