@@ -167,6 +167,17 @@ import { EXTRACT_TOOLS } from './importV2/extractTarget.mjs';
 /** POST /api/line/fragment: replace only that fragment's range with `code`. @typedef {{file: string, fragmentId: string, code: string, contentHash: string}} SetFragmentRequest */
 
 /**
+ * Building an app inside Line (build.mjs): a new feature with its spec, a route for a feature page, the whole code of
+ * one library or feature file. Each is a plan step (write) planned purely and landed through the checked writer.
+ * @typedef {{name: string, story: string, points: string[]}} CreateFeatureRequest  features/<name>/spec.md: the story is
+ *   one sentence ("As a <role>, I want <capability>, so that <benefit>."), each point one acceptance point.
+ * @typedef {{route: string, page: string}} AddRouteRequest  `route` like "/", "/cart" or "/products/:id"; `page` a
+ *   feature page file (features/<f>/pages/<Name>.tsx). Writes the app-router entry and the page's `@line-route`.
+ * @typedef {{file: string, code: string, contentHash?: string}} SetCodeRequest  The whole file (library/<kind>/...,
+ *   features/<f>/<kind>/... or features/<f>/spec.md); `contentHash` (from a read) is required to replace an existing file.
+ */
+
+/**
  * The operations (implemented by model.mjs, ops.mjs and pageProp.mjs; faked by mock.mjs). Every plan
  * function is pure: it reads the project and returns a StagedChange, or throws a LineOpError.
  * @typedef {object} LineOps
@@ -188,6 +199,9 @@ import { EXTRACT_TOOLS } from './importV2/extractTarget.mjs';
  * @property {(root: string, req: SetWorkflowRoleRequest) => StagedChange} planSetWorkflowRole
  * @property {(root: string, req: AddWorkflowTransitionRequest) => StagedChange} planAddWorkflowTransition
  * @property {(root: string, req: RemoveWorkflowTransitionRequest) => StagedChange} planRemoveWorkflowTransition
+ * @property {(root: string, req: CreateFeatureRequest) => StagedChange} [planCreateFeature]  build.mjs
+ * @property {(root: string, req: AddRouteRequest) => StagedChange} [planAddRoute]  build.mjs
+ * @property {(root: string, req: SetCodeRequest) => StagedChange} [planSetCode]  build.mjs
  */
 
 /**
@@ -449,6 +463,10 @@ export const LINE_PLAN_TOOLS = Object.freeze([
   { name: 'line.import.extractUsecase', kind: 'write', request: '{folder, from, names, name, feature?}' },
   { name: 'line.import.splitPage', kind: 'write', request: '{folder, from, component, name, feature?}' },
   { name: 'line.import.extractWorkflow', kind: 'write', request: '{folder, from, component, name, feature?}' },
+  // Building an app inside Line (build.mjs).
+  { name: 'line.createFeature', kind: 'write', request: 'CreateFeatureRequest' },
+  { name: 'line.addRoute', kind: 'write', request: 'AddRouteRequest' },
+  { name: 'line.setCode', kind: 'write', request: 'SetCodeRequest' },
   { name: 'line.project', kind: 'read', request: '{}' },
 ]);
 export const CHECK_KINDS = Object.freeze(['validate', 'types', 'tests', 'file', 'spec']);

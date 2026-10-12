@@ -345,8 +345,36 @@ export function isPageShaped(rel) {
   return dirs.includes('pages') || (dirs.includes('app') && /^page\.[cm]?[jt]sx?$/.test(base)) || /\.page\.[cm]?[jt]sx?$/.test(base);
 }
 
+/** An app-router route entry: the whole file is one re-export of a page as the route's default export. */
+const ROUTE_ENTRY = /^export\s*\{\s*(?:default|[A-Za-z_$][\w$]*\s+as\s+default)\s*\}\s*from\s*['"]([^'"]+)['"]\s*;?$/;
+
 /**
- * LINE-OWNER: every page outside the library pages belongs to exactly one feature.
+ * The feature whose page an app-router route entry (`app/.../page.tsx` holding only `export { X as default } from
+ * '<features>/<f>/pages/X'`) re-exports, or null when the file is not such an entry. A route entry is how a Next.js
+ * app router serves a feature page: the page stays in its feature, the framework's file only points at it.
+ * @param {ReturnType<typeof loadProject>} project The loaded project.
+ * @param {string} rel Root-relative path of the page-shaped file.
+ * @returns {string|null} The owning feature.
+ */
+export function routeEntryFeature(project, rel) {
+  if (!/(?:^|\/)app\/(?:.*\/)?page\.[cm]?[jt]sx?$/.test(rel)) return null;
+  let src;
+  try { src = String(project.source(rel)); } catch { return null; }
+  const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '').trim();
+  const m = ROUTE_ENTRY.exec(code);
+  if (!m) return null;
+  const spec = m[1];
+  const target = spec.startsWith('@/') ? spec.slice(2) : spec.startsWith('.') ? posix.normalize(posix.join(posix.dirname(rel), spec)) : null;
+  if (!target || target.startsWith('..')) return null;
+  const prefix = `${/** @type {any} */ (project.layout).features}/`;
+  if (!target.startsWith(prefix)) return null;
+  const segs = target.slice(prefix.length).split('/');
+  return segs.length === 3 && segs[1] === 'pages' && segs[0] ? segs[0] : null;
+}
+
+/**
+ * LINE-OWNER: every page outside the library pages belongs to exactly one feature. An app-router route entry that only
+ * re-exports one feature page (routeEntryFeature) belongs to that feature.
  * @param {ReturnType<typeof loadProject>} project The loaded project.
  * @returns {{rule: string, file: string, line: number, message: string}[]} The hits.
  */
@@ -365,12 +393,13 @@ export function checkOwner(project) {
       }
       continue;
     }
+    if (file.area !== 'feature' && file.area !== 'library' && routeEntryFeature(project, file.rel)) continue;
     if (file.area === 'feature' && file.feature) {
       add(1, `The page "${file.rel}" sits in feature "${file.feature}" outside its pages/ folder; move it to ${layout.features}/${file.feature}/pages/.`);
     } else if (file.area === 'library') {
       add(1, `The page "${file.rel}" sits in the library outside ${layout.library}/pages/; move it there if it is a full library page.`);
     } else if (!file.rel.split('/').slice(0, -1).some((s) => TEST_DATA_SEGMENTS.has(s))) {
-      add(1, `The page "${file.rel}" does not belong to any feature; move it into ${layout.features}/<feature>/pages/, or into ${layout.library}/pages/ if it is a full library page.`);
+      add(1, `The page "${file.rel}" does not belong to any feature; move it into ${layout.features}/<feature>/pages/, or into ${layout.library}/pages/ if it is a full library page (an app-router route file may hold only \`export { Page as default } from '<the feature page>'\`).`);
     }
   }
   for (const [route, claims] of routes) {
