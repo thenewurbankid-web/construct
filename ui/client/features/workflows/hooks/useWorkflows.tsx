@@ -38,6 +38,15 @@ export function useWorkflows() {
     loadFile(state.feature, file);
   }
 
+  /** Two modes: open a feature and (optionally) one of its files in one go (a chat pick or a breadcrumb crumb). */
+  async function goTo(feature: string, file: string) {
+    if (feature === state.feature && file === state.file) return;
+    if (feature !== state.feature) await setFeature(feature);
+    if (!feature || !file) return;
+    dispatch({ type: 'OPEN_FILE', file });
+    loadFile(feature, file);
+  }
+
   function reload() {
     if (state.feature && state.file) loadFile(state.feature, state.file);
   }
@@ -48,5 +57,5 @@ export function useWorkflows() {
 
   const selection = useCanvasSelection(state.file);
 
-  return { ...state, narrative, setFeature, openFile, reload, ...editor, ...selection };
+  return { ...state, narrative, setFeature, openFile, goTo, reload, ...editor, ...selection };
 }

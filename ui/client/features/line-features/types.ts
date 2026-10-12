@@ -3,6 +3,7 @@ import type { LineFeatureDetail, LineFinding, LineHttp, LineKind, LineProject, S
 
 export type * from '@/lib/lineContract';
 export type * from '@/lib/lineChat';
+export type * from '@/lib/lineModes';
 import type { ChatAsk, ChatMessage, ChatOption } from '@/lib/lineChat';
 
 /** One feature in the list: its name, "All fine" or "Needs attention", and one line about its items. */
@@ -44,13 +45,20 @@ export type LineFeaturesView = {
   project: LineProject | null;
   /** Reads the project and the open feature again (after a plan step wrote files). */
   reload: () => void;
+  /** Two modes: the open item of the feature (?item=) and the open part of that item (?part=, a page's value). */
+  item: string | null;
+  part: string | null;
+  /** The open item's parts (a page's values a person can change without code); empty for any other item. */
+  parts: string[];
+  chooseItem: (name: string | null) => void;
+  choosePart: (name: string | null) => void;
 };
 
 /** The chosen feature's tabs: what it owns (Overview) and its workflows. */
 export type FeatureTab = 'overview' | 'workflows';
 
 /** Everything the Line Features API offers the screen (real server or the contract's mock). */
-export type LineFeaturesApi = Pick<LineHttp, 'getProject' | 'getFeature'>;
+export type LineFeaturesApi = Pick<LineHttp, 'getProject' | 'getFeature'> & Partial<Pick<LineHttp, 'getPageTree'>>;
 
 /** cd1: the Features chat as the screen renders it (lib/ChatEntry.tsx props, built by useFeatureChat). */
 export type FeatureChatView = {

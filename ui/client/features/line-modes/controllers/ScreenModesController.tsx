@@ -1,10 +1,8 @@
 'use client';
 
-import { useEffect, useState, type ReactNode } from 'react';
-import { ChatEntry } from '@/lib/ChatEntry';
+import { useEffect, type ReactNode } from 'react';
 import { crumbTarget, effectiveMode, type Crumb, type Place, type ScreenChatProvider } from '@/lib/lineModes';
-import { Breadcrumb } from '../components/Breadcrumb';
-import '../components/line-modes.css';
+import { ModesFrame } from '../components/ModesFrame';
 import { useLineMode } from '../hooks/useLineMode';
 import { useScreenChat } from '../hooks/useScreenChat';
 
@@ -18,72 +16,47 @@ type ScreenModesProps<D> = {
   onOption?: (optionId: string, place: Place) => void;
   /** Under the chat (e.g. the Plan panel). */
   footer?: ReactNode;
+  /** For a screen whose selection lives above its view (not read from the URL): called with the place at the start and
+   * whenever the chat or a crumb moves it, so the screen selects it. */
+  onPlace?: (place: Place) => void;
 };
 
-const CHAT_KEY = 'cockpit.mode.chatHidden';
-
-function useChatHidden(): [boolean, () => void] {
-  const [hidden, setHidden] = useState(false);
+/** Tells the shell's switch which mode this screen shows until the person picks one. */
+export function useScreenDefault(mode: 'chat' | 'hood') {
+  const { setScreenDefault } = useLineMode();
   useEffect(() => {
-    try {
-      setHidden(window.localStorage.getItem(CHAT_KEY) === '1');
-    } catch {
-      // Storage blocked: the chat starts shown.
-    }
-  }, []);
-  const toggle = () =>
-    setHidden((h) => {
-      try {
-        window.localStorage.setItem(CHAT_KEY, h ? '0' : '1');
-      } catch {
-        // Storage blocked: the choice lasts until the tab closes.
-      }
-      return !h;
-    });
-  return [hidden, toggle];
+    setScreenDefault(mode);
+    return () => setScreenDefault(null);
+  }, [mode, setScreenDefault]);
 }
 
-/** Two modes for one screen. Chat: the breadcrumb, then a full-screen chat with the screen's options; once something is
- * open, its Under the hood view fills the screen and the chat is a side panel. Under the hood: the regular screen with
- * the same chat as a helper beside it, which the person can hide. A crumb switches to Under the hood at that place. */
-export function ScreenModesController<D>({ provider, data, hood, onOption, footer }: ScreenModesProps<D>) {
-  const { stored, setMode, setScreenDefault } = useLineMode();
+/** Two modes for one screen, driven by its provider (lib/lineModes.ts). The place lives in the URL; when the chat (or a
+ * crumb) moves it, the screen's view remounts and reads the URL, so Under the hood opens exactly there. */
+export function ScreenModesController<D>({ provider, data, hood, onOption, footer, onPlace }: ScreenModesProps<D>) {
+  const { stored, setMode } = useLineMode();
+  useScreenDefault(provider.defaultMode);
   const mode = effectiveMode(stored, provider.defaultMode);
-  const chat = useScreenChat(provider, data, onOption);
-  const [hidden, toggleHidden] = useChatHidden();
-  useEffect(() => {
-    setScreenDefault(provider.defaultMode);
-    return () => setScreenDefault(null);
-  }, [provider.defaultMode, setScreenDefault]);
-
+  const chat = useScreenChat(provider, data, onOption, onPlace);
+  if (!chat) return <>{hood}</>;
   const onCrumb = (crumb: Crumb) => {
     const target = crumbTarget(crumb);
-    chat?.go(target.place);
+    chat.go(target.place);
     setMode(target.mode);
   };
-  const view = <div key={chat?.navKey ?? 0} className="lm-hood-view" data-testid="lm-hood-view">{hood}</div>;
-  if (!chat) return <>{hood}</>;
-  const entry = (selected: string | null, children: ReactNode) => (
-    <ChatEntry title={provider.label} testId="lm-chat-entry" selected={selected} options={chat.options} messages={chat.messages} onOption={chat.onOption} onPick={chat.onPick} footer={footer}>
-      {children}
-    </ChatEntry>
-  );
-
-  if (mode === 'chat') {
-    const last = chat.place.steps.at(-1);
-    return (
-      <div className="lm" data-mode="chat" data-screen={provider.screen} data-testid="lm-screen">
-        <Breadcrumb crumbs={chat.crumbs} onCrumb={onCrumb} />
-        {entry(last ? last.id : null, last ? view : null)}
-      </div>
-    );
-  }
+  const last = chat.place.steps.at(-1);
   return (
-    <div className="lm" data-mode="hood" data-screen={provider.screen} data-chat={hidden ? 'hidden' : 'shown'} data-testid="lm-screen">
-      <button type="button" className="lm-chat-toggle" data-testid="lm-chat-toggle" data-line-control="shell.chatToggle" aria-expanded={!hidden} onClick={toggleHidden}>
-        {hidden ? 'Show the chat' : 'Hide the chat'}
-      </button>
-      {entry('hood', view)}
-    </div>
+    <ModesFrame
+      screen={provider.screen}
+      mode={mode}
+      crumbs={chat.crumbs}
+      onCrumb={onCrumb}
+      chat={{ title: provider.label, testId: 'lm-chat-entry', options: chat.options, messages: chat.messages, onOption: chat.onOption, onPick: chat.onPick, footer }}
+      open={last ? last.id : null}
+      view={
+        <div key={chat.navKey} className="lm-hood-view" data-testid="lm-hood-view">
+          {hood}
+        </div>
+      }
+    />
   );
 }

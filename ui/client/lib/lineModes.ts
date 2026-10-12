@@ -12,6 +12,9 @@
 // hood, at exactly this URL": the screen's own Under the hood view reads the same parameters and selects the item.
 import { chatMessageProblems, chatOptionProblems, type ChatItem, type ChatMessage, type ChatOption } from './lineChat.ts';
 
+/** lineChat's shapes, so a provider needs one import. */
+export type { ChatItem, ChatMessage, ChatOption };
+
 /** The two modes: chat (full-screen chat first) and hood (the regular screen, chat as a collapsible helper). */
 export type LineMode = 'chat' | 'hood';
 
@@ -166,7 +169,9 @@ export function chatPick<D>(state: ChatState, provider: ScreenChatProvider<D>, d
  * and start with the screen id, its params are unique, and its intro and answers are well-formed messages. */
 export function providerProblems<D>(provider: ScreenChatProvider<D>, place: Place, data: D): string[] {
   const out = [...chatOptionProblems(optionsAt(provider, place, data))];
-  for (const o of provider.options(place, data)) if (!o.id.startsWith(`${provider.screen}.`)) out.push(`Option "${o.id}" does not start with its screen "${provider.screen}".`);
+  // The first segment names the screen; cd1's singular ("feature.add" on Features) counts as the screen's own.
+  const own = (id: string) => { const first = id.split('.')[0]; return provider.screen.startsWith(first) && first.length >= provider.screen.length - 1; };
+  for (const o of provider.options(place, data)) if (!own(o.id)) out.push(`Option "${o.id}" does not start with its screen "${provider.screen}".`);
   if (new Set(provider.params).size !== provider.params.length) out.push(`Screen "${provider.screen}" repeats a level parameter.`);
   const check = (a: ChatAnswer | null, id: string) => (a ? chatMessageProblems({ ...a, id, from: 'line' }) : []);
   out.push(...check(provider.intro(place, data), 'intro'));

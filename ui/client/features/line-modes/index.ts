@@ -12,3 +12,6 @@ export * from './controllers/ScreenModesController';
 
 /** One screen's chat, driven by its provider (for a screen that renders its own frame). */
 export * from './hooks/useScreenChat';
+
+/** The frame itself (switch-aware layout, breadcrumb, chat helper), for a screen that keeps its own chat (Features, cd1). */
+export * from './components/ModesFrame';

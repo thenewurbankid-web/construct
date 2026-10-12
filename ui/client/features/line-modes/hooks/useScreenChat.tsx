@@ -26,21 +26,27 @@ export type ScreenChatView = {
 /** The chat of one screen, driven by its provider (lib/lineModes.ts chatOption / chatPick). The place lives in the URL
  * (history.replaceState, like useUrlSelection), so both modes and a reload agree on where the person is. Options the
  * provider does not answer go to `onUnanswered` (the screen runs them: a plan step, a navigation). */
-export function useScreenChat<D>(provider: ScreenChatProvider<D>, data: D | null, onUnanswered?: (optionId: string, place: Place) => void): ScreenChatView | null {
+export function useScreenChat<D>(provider: ScreenChatProvider<D>, data: D | null, onUnanswered?: (optionId: string, place: Place) => void, onPlace?: (place: Place) => void): ScreenChatView | null {
   const [state, setState] = useState<ChatState | null>(null);
   const [navKey, setNavKey] = useState(0);
   const providerRef = useRef(provider);
   providerRef.current = provider;
+  // A screen whose state lives above its view (not in the URL) follows the place here: at the start and on every move.
+  const onPlaceRef = useRef(onPlace);
+  onPlaceRef.current = onPlace;
 
   useEffect(() => {
     if (data === null || state) return;
-    setState(chatStart(provider, placeFromSearch(provider, window.location.search, data), data));
+    const start = chatStart(provider, placeFromSearch(provider, window.location.search, data), data);
+    setState(start);
+    onPlaceRef.current?.(start.place);
   }, [provider, data, state]);
 
   const moved = useCallback((next: ChatState, before: ChatState) => {
     if (hrefOf(providerRef.current, next.place) === hrefOf(providerRef.current, before.place)) return;
     window.history.replaceState(null, '', urlOf(providerRef.current, next.place));
     setNavKey((k) => k + 1);
+    onPlaceRef.current?.(next.place);
   }, []);
 
   const onOption = useCallback(

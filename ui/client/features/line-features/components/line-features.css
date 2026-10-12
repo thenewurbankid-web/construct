@@ -58,3 +58,7 @@
 .lf .lpl-hint, .lf .lpl-head small, .lf .lpl-state, .lf .lpl-tech { color: var(--ln-muted); }
 .lf .lpl-btn { border-color: var(--ln-border-strong); background: var(--ln-surface); color: var(--ln-text); border-radius: var(--ln-r1); min-height: 32px; }
 .lf .lpl-btn--primary { background: var(--ln-accent); border-color: var(--ln-accent); color: var(--ln-on-accent); }
+
+/* Two modes: the item a chat pick or a breadcrumb opened. */
+.lf-item[data-open] { border-color: var(--ln-accent); box-shadow: 0 0 0 2px var(--ln-accent); }
+.lf-open-part { font-size: 0.875rem; font-weight: 600; }

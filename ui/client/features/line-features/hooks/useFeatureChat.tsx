@@ -1,7 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { LIST_OPTIONS, itemOptions } from '../domain/ChatOptions';
+import { optionsAt, upOption } from '@/lib/lineModes';
+import { FEATURES_MODES, featuresAnswer, featuresIntro, featuresOptions } from '../domain/FeaturesModes';
+import { featuresPlace } from '../domain/FeaturesPlace';
 import { fixPick, fixStep } from '../domain/FixActions';
 import { basePick, nameAsk } from '../domain/ItemActions';
 import { itemExplain, itemIntro, itemMissing } from '../domain/ItemAnswers';
@@ -16,7 +18,8 @@ const call = (tool: string, args: Record<string, unknown>) => `${tool}(${JSON.st
  * and fix add a plan step through `addStep` (the Plan panel's), which the person approves; nothing is written here.
  * The conversation starts again when the open feature changes (the side panel talks about that feature). */
 export function useFeatureChat(view: LineFeaturesView, addStep: AddPlanStep): FeatureChatView {
-  const { project, feature, detail, choose } = view;
+  const { project, feature, detail, choose, item, part, parts, chooseItem, choosePart } = view;
+  const place = useMemo(() => featuresPlace(feature, item, part), [feature, item, part]);
   const [log, setLog] = useState<ChatMessage[]>([]);
   const [ask, setAsk] = useState<ChatAsk | null>(null);
   const [busy, setBusy] = useState(false);
@@ -39,9 +42,25 @@ export function useFeatureChat(view: LineFeaturesView, addStep: AddPlanStep): Fe
     }
     setLog([]);
   }, [feature]);
+  // Two modes: opening an item or a part (or going back up) starts the conversation again there.
+  const deeper = useRef<string | null>(null);
+  useEffect(() => {
+    const here = `${item ?? ''}/${part ?? ''}`;
+    if (deeper.current === null || deeper.current === here) {
+      deeper.current = here;
+      return;
+    }
+    deeper.current = here;
+    setAsk(null);
+    setLog([]);
+  }, [item, part]);
 
   const ready = detail.phase === 'ready' ? detail.detail : null;
-  const options = useMemo(() => (feature ? itemOptions(ready) : LIST_OPTIONS), [feature, ready]);
+  const data = useMemo(() => (project ? { project, parts } : null), [project, parts]);
+  const options = useMemo(() => {
+    if (!data || place.steps.length < 2) return featuresOptions(place, data, ready);
+    return optionsAt(FEATURES_MODES, place, data);
+  }, [place, data, ready]);
   const label = (optionId: string) => options.find((o) => o.id === optionId)?.label ?? optionId;
 
   const runStep = async (tool: string, args: Record<string, unknown>) => {
@@ -62,7 +81,13 @@ export function useFeatureChat(view: LineFeaturesView, addStep: AddPlanStep): Fe
 
   const onOption = (optionId: string) => {
     if (optionId === 'feature.back') return choose(null);
-    if (!project) return;
+    if (optionId === upOption(FEATURES_MODES, place)?.id) return part ? choosePart(null) : chooseItem(null);
+    if (!project || !data) return;
+    const deeper = featuresAnswer(optionId, place, data);
+    if (deeper) {
+      const { opens, ...answer } = deeper;
+      return say(you(label(optionId)), { ...answer, id: id(opens === 'part' ? 'parts' : opens === 'item' ? 'items' : 'about'), from: 'line' });
+    }
     const me = you(label(optionId));
     const still: ChatMessage = { id: id('wait'), from: 'line', text: `Still reading ${feature ?? 'the project'}; ask again in a moment.` };
     const answers: Record<string, () => ChatMessage> = {
@@ -82,7 +107,10 @@ export function useFeatureChat(view: LineFeaturesView, addStep: AddPlanStep): Fe
 
   const onPick = (messageId: string, itemId: string) => {
     const purpose = messageId.split('#')[0];
+    if (purpose === 'intro' && item) return;
     if (purpose === 'intro' || purpose === 'open') return choose(itemId);
+    if (purpose === 'items') return chooseItem(itemId);
+    if (purpose === 'parts') return choosePart(itemId);
     if (purpose === 'create') {
       addNext.current = true;
       return choose(itemId);
@@ -106,7 +134,8 @@ export function useFeatureChat(view: LineFeaturesView, addStep: AddPlanStep): Fe
     void addBasedOn(askId.slice('name:'.length), text);
   };
 
-  const intro = feature ? itemIntro(feature) : project ? listIntro(project) : null;
+  const deep = item && data ? { ...featuresIntro(place, data), id: 'intro', from: 'line' as const } : null;
+  const intro = deep ?? (feature ? itemIntro(feature) : project ? listIntro(project) : null);
   const messages = intro ? [intro, ...log] : log;
   return { options, messages, ask, busy, onOption, onPick, onAnswer, onCancelAsk: () => setAsk(null) };
 }
