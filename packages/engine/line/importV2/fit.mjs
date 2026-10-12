@@ -130,7 +130,7 @@ function locate(shape, u) {
  */
 export function fitLogic(map, closure, o = {}) {
   const units = Array.isArray(map) ? map : map.units;
-  const feature = o.feature ?? familyFeature(closure.routes[0]?.route ?? '/');
+  const feature = o.feature ?? closure.feature ?? familyFeature(closure.routes[0]?.route ?? '/');
   const shared = o.shared ?? sharedFiles(closure);
   const entries = new Set(closure.routes.map((r) => r.entry));
   const sources = new Map();

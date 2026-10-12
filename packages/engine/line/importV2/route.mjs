@@ -32,6 +32,10 @@ const posix = path.posix;
 const PAGE_FILE = /(?:^|\/)app\/(?:.*\/)?page\.[cm]?[jt]sx?$/;
 /** Next.js app-router files that render or answer outside a page: each is a root of the app's own. */
 const APP_ROOT_FILE = /(?:^|\/)app\/(?:(.*)\/)?(?:page|layout|template|loading|error|global-error|not-found|default|route)\.[cm]?[jt]sx?$/;
+/** App-router files that wrap every route below their folder (not a page or a route handler). */
+const WRAPPER_FILE = /(?:^|\/)(?:layout|template|loading|error|global-error|not-found|default)\.[cm]?[jt]sx?$/;
+/** Whether `route` sits at or below the app-router folder whose route is `at`. */
+const under = (at, route) => at === '/' || route === at || route.startsWith(`${at}/`);
 /** App-level entry files every request passes through. */
 const APP_LEVEL_FILE = /^(?:src\/)?(?:middleware|instrumentation(?:-client)?)\.[cm]?[jt]sx?$/;
 const isTest = (rel) => /\.(test|spec|stories)\.[cm]?[jt]sx?$/.test(rel) || rel.split('/').some((s) => s === '__tests__');
@@ -194,7 +198,11 @@ function rootsOutside(appFiles, member, allRoutes) {
     if (APP_LEVEL_FILE.test(f)) { roots.add(f); continue; }
     if (!APP_ROOT_FILE.test(f)) continue;
     const route = appRoute(f.replace(/[^/]+$/, 'page.tsx'));
-    if (route !== null && !member(route)) roots.add(f);
+    if (route === null) continue;
+    if (!member(route)) { roots.add(f); continue; }
+    // A layout (template, loading, error, not-found, default) wraps every route below its folder: it is the family's
+    // own only when all of those routes are in the family; else (the root layout of a '/' family) it is a root outside.
+    if (WRAPPER_FILE.test(f) && allRoutes.some((r) => under(route, r.route) && !member(r.route))) roots.add(f);
   }
   return [...roots];
 }

@@ -89,6 +89,30 @@ test('fit: every unit goes to exactly one block by the fitting rules, and the on
   assert.deepEqual([...sharedFiles(closure)], [], 'no feature file is imported from outside the family');
 });
 
+// Rule 2 (pure -> domain) on a feature that owns money.ts: /home and /orders as ONE feature, so money.ts is the
+// feature's (no other route reaches it) and is fitted, not referenced as shared.
+test('fit: pure transforms of a file only the feature uses become a domain (two routes, one feature)', () => {
+  const app = copy();
+  const closure = readRouteFamily(app, ['/home', '/orders'], { feature: 'shop' });
+  assert.ok(closure.files.includes('src/utils/money.ts') && !closure.shared.includes('src/utils/money.ts'));
+  const units = [];
+  const add = (fn, kind, needle) => {
+    const line = fs.readFileSync(path.join(app, 'src/utils/money.ts'), 'utf8').split('\n').findIndex((l) => l.includes(needle)) + 1;
+    assert.ok(line > 0, needle);
+    units.push({ id: `src/utils/money.ts#${fn}:${kind}:${units.length + 1}`, file: 'src/utils/money.ts', fn, kind, line, detail: needle });
+  };
+  add('formatTotal', 'export', 'export function formatTotal');
+  add('formatTotal', 'branch', 'sum > 1000 ?');
+  add('label', 'export', 'export function label');
+  const p = fitLogic({ units }, closure);
+  assertFitProposal(p, units.map((u) => u.id));
+  assert.equal(p.feature, 'shop');
+  assert.deepEqual(units.map((u) => { const b = blockOf(p, u.id); return b ? `${b.kind}:${b.name}` : 'unassigned'; }), ['domain:money', 'domain:money', 'domain:money']);
+  const { steps } = planFitSteps(p, { folder: closureFolder(closure), closure });
+  assert.deepEqual(steps.map((s) => `${s.tool} ${s.args.from} ${s.args.name}`), ['line.import.extractDomain utils/money.ts money']);
+  assert.deepEqual(steps[0].args.names, ['formatTotal', 'label']);
+});
+
 test('fit -> plan: the proposal becomes extract steps that all land through the writer, in the import folder', async () => {
   const app = copy();
   const closure = readRouteFamily(app, '/orders');

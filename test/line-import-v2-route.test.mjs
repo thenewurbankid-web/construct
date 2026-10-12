@@ -92,6 +92,21 @@ test('route family scope: a component two routes share is in `shared`, not in `f
   assert.equal(fs.readFileSync(path.join(app, 'src/components/PriceTag.tsx'), 'utf8'), before, 'the shared file stays where it is');
 });
 
+test('route family scope: a layout that wraps routes outside the family is a root outside it, even when its own route is in the family', () => {
+  const app = copy();
+  fs.writeFileSync(path.join(app, 'src/components/Nav.tsx'), 'export function Nav() {\n  return <nav />;\n}\n');
+  fs.writeFileSync(path.join(app, 'src/app/[locale]/layout.tsx'), "import { Nav } from '@/components/Nav';\nexport default function Layout({ children }: { children: unknown }) { return <>{<Nav />}{children}</>; }\n");
+  fs.writeFileSync(path.join(app, 'src/app/[locale]/page.tsx'), "import { Nav } from '@/components/Nav';\nexport default function Home() { return <Nav />; }\n");
+  const c = readRouteFamily(app, '/');
+  assertRouteClosure(c);
+  assert.deepEqual(c.routes.map((r) => r.route), ['/:locale']);
+  assert.deepEqual(c.files, ['src/app/[locale]/page.tsx'], 'the / page is the feature');
+  assert.deepEqual(c.shared, ['src/components/Nav.tsx'], 'the locale layout wraps /home and /orders too, so what it renders is shared');
+  // With every route under it in the family, the layout is the family's own.
+  const all = readRouteFamily(app, ['/', '/home', '/orders'], { feature: 'shop' });
+  assert.ok(all.files.includes('src/components/Nav.tsx') && !all.shared.includes('src/components/Nav.tsx'));
+});
+
 test('route family: several routes with no common prefix make ONE feature with the person\'s name; a single route works as before', () => {
   const app = withSharedComponent();
   const c = readRouteFamily(app, ['/home', '/orders'], { feature: 'shop' });
