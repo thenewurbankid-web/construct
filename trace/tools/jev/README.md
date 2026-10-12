@@ -18,6 +18,18 @@ In the provider (`src/ai/provider.mjs`, `jev`), each question becomes two typed 
 
 Trained weights: `python tools/jev/serve.py --weights your.pt`.
 
+## Tokenizer (`jev_tokenizer.py`, shared by every jev script)
+
+open-jev's own tokenizer is a stand-in (whitespace split + CRC32 hash into 4096 buckets). `jev_tokenizer.py` replaces it for serve.py, train_context.py and any new trainer (train_intent.py, ...): a code-aware pre-split (paths and dotted names, camelCase / acronyms, snake_case, digits, each punctuation mark; lower-cased) feeding a 4096-token BPE (HuggingFace `tokenizers`, Apache-2.0, offline) trained on this repo's tracked code and docs plus the bench logs in `data/runs/` (the held-out run `pilot-qwen-7b-r2` excluded). The vocabulary is `tokenizer.json`, committed, so ids are stable; rebuild it only on purpose.
+
+```bash
+tools/jev/.venv/bin/python -m pip install tokenizers                     # one-time, next to torch
+tools/jev/.venv/bin/python tools/jev/jev_tokenizer.py "scoreContext in src/ai/provider.mjs"   # words, pieces, ids
+tools/jev/.venv/bin/python tools/jev/jev_tokenizer.py --train            # rebuild tokenizer.json (new version)
+```
+
+In a script (`tools/jev` on `sys.path`): `from jev_tokenizer import new_model, save_weights, load_weights, get_tokenizer, version, CONFIG`. `new_model()` is a Jev with the shared config and this tokenizer; `save_weights(model, path, **meta)` stores the tokenizer version beside the weights; `load_weights(model, path)` refuses weights saved under another tokenizer version, or bare state_dicts from the old hash tokenizer, with a message naming both, since their token ids mean other words. `/health` reports the version.
+
 ## Context-line scorer for Line's bench builder (#881, shadow, OFF by default)
 
 Line's bench builder shows a small model everything Line returned since its last action. A scorer ranks each context line 0-1 and the builder keeps the top lines under an adaptive cap (5, or 15 once the same refusal repeats). The static scorer (`packages/engine/line/contextScore.mjs`, re-exported here as `contextScore.mjs`; Line ranks every refusal's context lines with it, #886; rules: fix steps > paths/exports in a refusal > status > lists > fields, plus lexical overlap with the attempted step) is the default. jev is trained for the same job but stays off: an AI step ships only with a measured win over static code, and it has none yet (held-out pilot-qwen-7b-r2: static P@5 0.265 / R@5 0.824, jev 0.253 / 0.765).
@@ -31,7 +43,7 @@ node tools/jev/eval-context.mjs --runs pilot-qwen-7b-r2 --scores tools/jev/weigh
 ```
 
 - Labels are automatic: a line is USEFUL when the next action carried one of its key tokens (path, export, route, tool, fix ref, code) and was accepted; NOISE when the next action ignored it and was refused; otherwise unclear (kept in the file, not trained on). Exact repeats (refusal loops) collapse into one row with a `weight`.
-- jev answers two typed `Choice` questions: `keep` (keep / drop; the line's score is P(keep)) and, per turn, `fact` ("which fact settles the next step?" over the turn's lines). Soft targets (0.9 / 0.1), open-jev's RLCD loss and serve.py's config, so `serve.py --weights weights/context-<run>.pt` loads them. Line text is normalised (paths and camelCase split into words) before the hash tokenizer sees it; a caller must do the same.
+- jev answers two typed `Choice` questions: `keep` (keep / drop; the line's score is P(keep)) and, per turn, `fact` ("which fact settles the next step?" over the turn's lines). Soft targets (0.9 / 0.1), open-jev's RLCD loss and serve.py's config, so `serve.py --weights weights/context-<run>.pt` loads them. The tokenizer splits paths and camelCase itself, so callers send line text as is (a caller that still normalises, like `hints.mjs` `norm`, only loses the punctuation tokens).
 - Features use only what exists before the next action (the attempted step, its outcome, the model's output for it, the line); the next action is used only for the label.
 - Weights (16 MB each) go to `weights/`, which is gitignored.
 - Since #886, calls.jsonl keeps what the model was shown (`result.shown`, the fixes with why/effect/context) and every candidate context line with its static score (`result.context`), so fix steps and context lines are candidates from now on; runs before #886 keep only the summary fields.
