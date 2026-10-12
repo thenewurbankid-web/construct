@@ -12,6 +12,7 @@ import { makeTempDir } from '../test-utils/tmpdir.mjs';
 import { createLineProject } from '../packages/engine/line/newProject.mjs';
 import { createLinePlanService, needsYouSentence } from '../packages/engine/line/planService.mjs';
 import { REFUSAL_FIXES, RULE_FIXES, BUILDER_MODULES } from '../packages/engine/line/refusals.mjs';
+import { withViolationFixes } from '../packages/engine/line/fixes.mjs';
 import { LINE_RULE_IDS } from '../packages/core/profiles/line/contract.mjs';
 import { LINE_OFF_LAYER_RULES, validateLine } from '../packages/core/profiles/line/index.mjs';
 import { catalogRules } from '../packages/core/rules-catalog.mjs';
@@ -77,17 +78,20 @@ test('every refusal code a builder plan tool can throw is typed or on the person
   }
 });
 
-test('every rule that can refuse a step under the Line profile is typed or person-decides; the expression rules are off with a reason', () => {
+test('every rule that can refuse a step under the Line profile is typed or person-decides; the expression rules are on with a typed fix (line-expressions)', () => {
   const layerErrors = catalogRules().filter((r) => (r.layers ?? []).some((l) => ['page', 'component', 'workflow'].includes(l)) && r.defaultSeverity === 'error').map((r) => r.id);
-  for (const id of [...LINE_RULE_IDS, ...layerErrors]) {
+  for (const id of [...LINE_RULE_IDS, ...layerErrors, 'COMPONENT-005', 'COMPONENT-006', 'PAGE-008']) {
     const e = RULE_FIXES[id];
     assert.ok(e && (e.typed || e.person), `${id} is neither typed nor on the person-decides list`);
   }
-  for (const id of ['COMPONENT-005', 'COMPONENT-006', 'PAGE-008']) assert.match(LINE_OFF_LAYER_RULES[id], /expression/);
+  assert.deepEqual(LINE_OFF_LAYER_RULES, {});
   const { root, done } = project();
   try {
     write(root, 'library/components/List.tsx', '// @line-level atom\nexport function List({ xs }: { xs: string[] }) {\n  return <ul>{xs.map((x) => <li key={x}>{x}</li>)}</ul>;\n}\n');
-    assert.deepEqual(validateLine(root).violations.filter((v) => /COMPONENT-005|COMPONENT-006|PAGE-008/.test(v.rule)), []);
+    const hits = withViolationFixes(root, validateLine(root).violations.filter((v) => v.file === 'library/components/List.tsx' && v.rule === 'COMPONENT-005'));
+    assert.equal(hits.length, 1);
+    assert.deepEqual(hits[0].fixes?.[0].step, { tool: 'line.extractExpression', args: { file: 'library/components/List.tsx', name: 'XList' } });
+    assert.match(hits[0].fixes?.[0].sentence ?? '', /new expression XList \(library\/expressions\/XList\.tsx\)/);
   } finally { done(); }
 });
 

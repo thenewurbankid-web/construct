@@ -26,8 +26,13 @@ const SCAN_SKIP = new Set(['node_modules', '.git', '.next', 'dist', 'out', 'buil
 const cache = new Map();
 const CACHE_MAX = 32;
 
-/** The project's compiler options (tsconfig.json at the root), or null. */
-function optionsOf(root) {
+/**
+ * The project's compiler options (tsconfig.json at the root), or null. Exported for line.extractExpression
+ * (expressions.mjs), which reads the types of the values a JSX block uses with the same options the gate checks with.
+ * @param {string} root Project root.
+ * @returns {import('typescript').CompilerOptions | null}
+ */
+export function optionsOf(root) {
   const file = path.join(root, 'tsconfig.json');
   if (!fs.existsSync(file)) return null;
   const read = ts.readConfigFile(file, ts.sys.readFile);
@@ -83,6 +88,10 @@ function overlayHost(options, overlay) {
   const getSourceFile = host.getSourceFile.bind(host);
   host.readFile = (f) => (overlay.has(path.resolve(f)) ? overlay.get(path.resolve(f)) : readFile(f));
   host.fileExists = (f) => overlay.has(path.resolve(f)) || fileExists(f);
+  // A staged file in a folder that does not exist yet (a new expressions/ folder): module resolution asks for the
+  // folder before the file, so the folder of every staged file exists too.
+  const dirExists = host.directoryExists?.bind(host);
+  host.directoryExists = (d) => { const abs = path.resolve(d); return [...overlay.keys()].some((f) => f.startsWith(`${abs}${path.sep}`)) || (dirExists ? dirExists(d) : ts.sys.directoryExists(d)); };
   host.getSourceFile = (f, lang, onError, shouldCreate) => {
     const abs = path.resolve(f);
     return overlay.has(abs) ? ts.createSourceFile(f, /** @type {string} */ (overlay.get(abs)), lang, true) : getSourceFile(f, lang, onError, shouldCreate);

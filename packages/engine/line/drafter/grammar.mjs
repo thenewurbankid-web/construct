@@ -10,10 +10,10 @@ import { fileURLToPath } from 'node:url';
 import { EXPR_CHECKS } from '../contract.mjs';
 
 /** A string that is a slot ref, optionally after a kind prefix: "<F1>", "<C1.file>", "components/<C1.name>". */
-export const SLOT_STRING = '^((components|pages|workflows|fixtures)/)?<[A-Z][0-9]{1,3}(\\.[a-zA-Z][a-zA-Z0-9]{0,15})?>$';
+export const SLOT_STRING = '^((components|pages|workflows|fixtures|expressions)/)?<[A-Z][0-9]{1,3}(\\.[a-zA-Z][a-zA-Z0-9]{0,15})?>$';
 /** A feature item id in slot form: an item slot ("<C1>") or "<F1>/<kind>/<N1>". */
-export const ITEM_STRING = '^(<[A-Z][0-9]{1,3}>/(components|pages|workflows|fixtures)/)?<[A-Z][0-9]{1,3}(\\.[a-zA-Z][a-zA-Z0-9]{0,15})?>$';
-const KINDS = ['components', 'pages', 'workflows', 'fixtures'];
+export const ITEM_STRING = '^(<[A-Z][0-9]{1,3}>/(components|pages|workflows|fixtures|expressions)/)?<[A-Z][0-9]{1,3}(\\.[a-zA-Z][a-zA-Z0-9]{0,15})?>$';
+const KINDS = ['components', 'pages', 'workflows', 'fixtures', 'expressions'];
 
 /**
  * The expressions a drafted route may hold: Line's named checks (../contract.mjs EXPR_CHECKS) in the argument shapes

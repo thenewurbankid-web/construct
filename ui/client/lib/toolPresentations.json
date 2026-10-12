@@ -2860,6 +2860,37 @@
         "by": "rules"
       }
     },
+    "line.extractExpression": {
+      "kind": {
+        "value": "component",
+        "by": "rules"
+      },
+      "icon": {
+        "value": "block",
+        "by": "rules"
+      },
+      "overlay": {
+        "value": "ghost-after",
+        "by": "rules"
+      },
+      "states": {
+        "value": [
+          "loading",
+          "error",
+          "disabled",
+          "filled"
+        ],
+        "by": "rules"
+      },
+      "focus": {
+        "value": "self",
+        "by": "rules"
+      },
+      "caption": {
+        "value": "Moves an inline conditional or loop of a page or component into a typed expression.",
+        "by": "rules"
+      }
+    },
     "line.leaveAsIs": {
       "kind": {
         "value": "finding",

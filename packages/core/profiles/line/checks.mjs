@@ -9,7 +9,7 @@ import { walk as walkAst } from 'estree-walker';
 import { parseToAst } from '@construct/ast';
 import { lineOf } from '@construct/ast/extract';
 import {
-  ITEM_KINDS, LOGIC_KINDS, KIND_SINGULAR, FEATURE_FILES, LIBRARY_FILES, CODE_EXTENSIONS, SKIP_DIRS, NON_ITEM_FILE, DEFAULT_APP_FOLDERS, DEFAULT_PACKAGE_ROOTS,
+  ITEM_KINDS, LOGIC_KINDS, BASE_OPTIONAL_KINDS, KIND_SINGULAR, FEATURE_FILES, LIBRARY_FILES, CODE_EXTENSIONS, SKIP_DIRS, NON_ITEM_FILE, DEFAULT_APP_FOLDERS, DEFAULT_PACKAGE_ROOTS,
   FS_WRITE_FUNCTIONS, FS_EXTRA_WRITE_FUNCTIONS, FS_MODULES, SHARED_CONCERNS,
 } from './contract.mjs';
 import { readPathAliases, resolveImportSpecifier } from '../../route-resolver.mjs';
@@ -309,6 +309,7 @@ export function checkBase(project) {
     const isJson = posix.extname(file.rel) === '.json';
     const { links, invalid } = baseLinks(project, file.rel);
     const add = (line, message) => hits.push({ rule: 'LINE-BASE', file: file.rel, line, message });
+    if (!links.length && !invalid && BASE_OPTIONAL_KINDS.includes(String(file.kind))) continue;
     if (invalid) { add(1, `The fixture "${file.rel}" is not valid JSON, so its library base cannot be read; fix the JSON and keep one "$lineBase" link.`); continue; }
     if (!links.length) {
       const how = isJson ? `a "$lineBase": "${file.kind}/<name>" field` : `one "@line-base ${file.kind}/<Name>" comment`;

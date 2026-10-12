@@ -9,7 +9,7 @@
 //   person: no plan step can make this decision; the sentence says what the person (or their agent) must decide
 
 /** The modules whose planners the builder plan tools run (plan-cli's tools: lineToolSpecs without line.import.*). */
-export const BUILDER_MODULES = Object.freeze(['build', 'shell', 'ops', 'fixes', 'pageProp', 'fragments', 'workflows', 'planTools', 'planService', 'conditions', 'typeGate']);
+export const BUILDER_MODULES = Object.freeze(['build', 'shell', 'ops', 'fixes', 'pageProp', 'fragments', 'workflows', 'planTools', 'planService', 'conditions', 'typeGate', 'expressions']);
 
 /** @type {Readonly<Record<string, {typed?: string, person?: string}>>} */
 export const REFUSAL_FIXES = Object.freeze({
@@ -78,4 +78,8 @@ export const RULE_FIXES = Object.freeze({
   'COMPONENT-002': { person: 'a component that imports a controller: Line has no controllers; the author passes the data in as props' },
   'WORKFLOW-001': { person: 'a workflow that imports React: the author moves the UI out of the state machine' },
   'SERVICE-001': { person: 'a service rule: the author restructures the service' },
+  // line-expressions: warnings (they never refuse a step), each with its typed fix.
+  'COMPONENT-005': { typed: 'expressions.mjs: line.extractExpression (the inline conditional or loop into a typed expression)' },
+  'COMPONENT-006': { typed: 'expressions.mjs: line.extractExpression (an inline branch out of the component)', person: 'a component over its depth budget with no inline branch: its author splits it' },
+  'PAGE-008': { typed: 'expressions.mjs: line.extractExpression (the inline conditional or loop into a typed expression)' },
 });

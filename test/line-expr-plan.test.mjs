@@ -50,7 +50,7 @@ test('default checks: cp1\'s two checks carry expressions, and every outcome and
 
 test('pre and post: the five tools declare both, as valid expressions; pre holds for a good request and refuses a bad one in one sentence', () => {
   const EXTRACT = ['line.import.extractDomain', 'line.import.extractService', 'line.import.extractUsecase', 'line.import.extractWorkflow', 'line.import.splitPage'];
-  assert.deepEqual([...CONDITION_TOOLS].sort(), ['line.baseOn', 'line.fix', ...EXTRACT, 'line.promote', 'line.setFragment', 'line.setPageProp']);
+  assert.deepEqual([...CONDITION_TOOLS].sort(), ['line.baseOn', 'line.extractExpression', 'line.fix', ...EXTRACT, 'line.promote', 'line.setFragment', 'line.setPageProp']);
   const dir = copy(); const f = facts(dir);
   const page = 'features/orders/pages/OrdersPage.tsx';
   const frag = listFragments(dir, page);
@@ -69,8 +69,9 @@ test('pre and post: the five tools declare both, as valid expressions; pre holds
     'line.setFragment': [{ ...good['line.setFragment'], contentHash: 'stale' }, /the hash of features\/orders\/pages\/OrdersPage\.tsx is "[0-9a-f]{20}/],
     'line.fix': [{ findingKey: 'NOPE|x|1', fixId: 'y' }, /nothing in the findings has key "NOPE\|x\|1"/],
   };
-  // Import v2's extract steps are pinned in test/line-import-v2-extract.test.mjs.
-  for (const tool of CONDITION_TOOLS.filter((t) => !EXTRACT.includes(t))) {
+  // Import v2's extract steps are pinned in test/line-import-v2-extract.test.mjs, line.extractExpression's in
+  // test/line-expressions.test.mjs.
+  for (const tool of CONDITION_TOOLS.filter((t) => !EXTRACT.includes(t) && t !== 'line.extractExpression')) {
     const c = conditionsOf(tool, good[tool], { features: 'features' });
     assert.equal(exprProblem(c.pre), null, tool); assert.equal(exprProblem(c.post), null, tool);
     assert.equal(checkPre(f, tool, good[tool]), null, `${tool}: ${checkPre(f, tool, good[tool])}`);

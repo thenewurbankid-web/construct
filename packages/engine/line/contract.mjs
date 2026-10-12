@@ -17,7 +17,7 @@
 import { assertImportLogic } from './importV2/contract.mjs';
 import { EXTRACT_TOOLS } from './importV2/extractTarget.mjs';
 
-/** @typedef {'components'|'pages'|'workflows'|'fixtures'|'usecases'|'services'|'domains'} LineKind */
+/** @typedef {'components'|'pages'|'workflows'|'fixtures'|'usecases'|'services'|'domains'|'expressions'} LineKind */
 /** @typedef {'atom'|'molecule'|'organism'} Level */
 
 /**
@@ -40,7 +40,7 @@ import { EXTRACT_TOOLS } from './importV2/extractTarget.mjs';
  *   line.moveFile     {from, to, base?}          move a file, re-pointing every import; `base` also writes its line-base header
  *   line.createLayout {}                         create the library folder (library/README.md) so the project is laid out as Line
  *   line.amend        {change, fix} | {change, fixes}  a refused change plus its fix (or a chain of fixes), applied as one change
- * @typedef {'line.setBase'|'line.promote'|'line.baseOn'|'line.moveFile'|'line.createLayout'|'line.amend'} LineFixTool
+ * @typedef {'line.setBase'|'line.promote'|'line.baseOn'|'line.moveFile'|'line.createLayout'|'line.amend'|'line.useViaUsecase'|'line.extractExpression'} LineFixTool
  */
 
 /**
@@ -184,6 +184,12 @@ import { EXTRACT_TOOLS } from './importV2/extractTarget.mjs';
  *   (services/, workflows/, domain) it may not (PAGE-002/003/005, COMPONENT-003): import it through a usecase of the
  *   same feature (or the library) instead. Writes `<area>/usecases/<name>.ts` re-exporting the module, and re-points
  *   the import in `file`.
+ * @typedef {{file: string, name?: string}} ExtractExpressionRequest  line-expressions (expressions.mjs): the first
+ *   inline conditional or loop of a library or feature page or component (the one COMPONENT-005/006 or PAGE-008
+ *   reports) moves into a new expression `<area>/expressions/<name>.tsx`, a pure function component whose inputs (every
+ *   value the JSX used from outside it) are typed props; the call site passes them. `name` defaults to the derived one
+ *   (`<Item>List` for a loop over items, `Show<Subject>` for a conditional). A feature expression links
+ *   `@line-base expressions/<name>` when the library has an expression of that name, else it has no base.
  */
 
 /**
@@ -560,6 +566,7 @@ export const LINE_PLAN_TOOLS = Object.freeze([
   { name: 'line.setCode', kind: 'write', request: 'SetCodeRequest' },
   { name: 'line.setLayoutSlot', kind: 'write', request: 'SetLayoutSlotRequest' },
   { name: 'line.useViaUsecase', kind: 'write', request: 'UseViaUsecaseRequest' },
+  { name: 'line.extractExpression', kind: 'write', request: 'ExtractExpressionRequest' },
   { name: 'line.project', kind: 'read', request: '{}' },
 ]);
 export const CHECK_KINDS = Object.freeze(['validate', 'types', 'tests', 'file', 'spec']);
@@ -1069,9 +1076,9 @@ export const IMPORT_TOOLS = Object.freeze(['line.import.mark', 'line.import.toLi
 /** The tools an Import agent's step names: Import's own, and (a route-seeded import) the FitProposal's extract steps. */
 export const IMPORT_AGENT_TOOLS = Object.freeze([...IMPORT_TOOLS, ...EXTRACT_TOOLS]);
 
-export const LINE_FIX_TOOLS = Object.freeze(['line.setBase', 'line.promote', 'line.baseOn', 'line.moveFile', 'line.createLayout', 'line.amend', 'line.useViaUsecase']);
+export const LINE_FIX_TOOLS = Object.freeze(['line.setBase', 'line.promote', 'line.baseOn', 'line.moveFile', 'line.createLayout', 'line.amend', 'line.useViaUsecase', 'line.extractExpression']);
 
-export const LINE_KINDS = Object.freeze(['components', 'pages', 'workflows', 'fixtures', 'usecases', 'services', 'domains']);
+export const LINE_KINDS = Object.freeze(['components', 'pages', 'workflows', 'fixtures', 'usecases', 'services', 'domains', 'expressions']);
 export const LEVELS = Object.freeze(['atom', 'molecule', 'organism']);
 export const FRAGMENT_KINDS = Object.freeze(['prop-expression', 'handler', 'condition', 'style']);
 /** cu2: the local model every AI step uses unless its profile names another. */

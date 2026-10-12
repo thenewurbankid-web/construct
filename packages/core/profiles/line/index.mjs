@@ -26,19 +26,14 @@ const CHECKS = {
 };
 
 /**
- * bench-gaps 5: layer rules the Line profile does not run, each with the reason. They ask for `@expression` units
- * (defineExpression in an `expressions/` layer), which a Line project has no kind for, so a builder could never satisfy
- * them: the pilot ended with 14 of them on every list and conditional, the starter's own Radix components included.
- * Construct's extractExpression codemod is not a usable typed fix inside Line yet: it imports Construct's in-repo
- * typed-contracts by a path outside the project, passes only the list or condition (not the other values the JSX uses),
- * and hoists components with no @line-base. They come back when Line has an `expressions` kind with a Line-aware
- * extraction as their typed fix (the layers wave). Smith's pattern (pure named functions from atoms) still applies.
+ * Layer rules the Line profile does not run, each with the reason. bench-gaps 5 turned COMPONENT-005, COMPONENT-006 and
+ * PAGE-008 off (they asked for `@expression` units, which a Line project had no kind for). line-expressions turned them
+ * back on: Line has an `expressions` kind, and each finding carries a typed fix, one `line.extractExpression` step
+ * (packages/engine/line/expressions.mjs) that moves the inline conditional or loop into a typed expression inside the
+ * project. Empty now; kept as the one place a rule would be listed with its reason.
+ * @type {Readonly<Record<string, string>>}
  */
-export const LINE_OFF_LAYER_RULES = Object.freeze({
-  'COMPONENT-005': 'asks for an @expression unit, and a Line project has no expressions kind yet',
-  'COMPONENT-006': 'its budget counts inline branches that only an @expression unit could take out',
-  'PAGE-008': 'asks for an @expression unit, and a Line project has no expressions kind yet',
-});
+export const LINE_OFF_LAYER_RULES = Object.freeze({});
 
 /** Existing Construct layer rules for every library/feature component, page and workflow. */
 function layerHits(project, config) {

@@ -4,7 +4,7 @@
 //
 // A Line project:
 //
-//   <library>/            components/ pages/ workflows/ fixtures/ usecases/ services/ domains/     (complete, usable items)
+//   <library>/            components/ pages/ workflows/ fixtures/ usecases/ services/ domains/ expressions/   (complete, usable items)
 //   <features>/<name>/    the same kind folders, plus spec.md
 //   line/                 plans, memory, state (Line's own state; only the writer touches it)
 //
@@ -18,13 +18,21 @@ import { ConstructError, EXIT_CODES } from '../../diagnostics.mjs';
  * and adapters) and `domains` (pure rules and transforms). They need no library base yet (LOGIC_KINDS); the layers wave
  * adds their full dependency rule.
  */
-export const ITEM_KINDS = Object.freeze(['components', 'pages', 'workflows', 'fixtures', 'usecases', 'services', 'domains']);
+export const ITEM_KINDS = Object.freeze(['components', 'pages', 'workflows', 'fixtures', 'usecases', 'services', 'domains', 'expressions']);
+
+/**
+ * line-expressions: an expression is a pure, typed function component that renders one conditional or one loop, with
+ * every input an explicit prop (`line.extractExpression` makes one from a page's or component's inline JSX logic). A
+ * feature expression may be based on a library expression like any other kind; one with no `@line-base` is allowed
+ * (a new expression has one user; it is promoted into the library once a second feature needs it).
+ */
+export const BASE_OPTIONAL_KINDS = Object.freeze(['expressions']);
 
 /** The logic kinds (minimal version): a feature item of these kinds needs no `@line-base` link yet. */
 export const LOGIC_KINDS = Object.freeze(['usecases', 'services', 'domains']);
 
 /** Each kind's singular name, as sentences say it. */
-export const KIND_SINGULAR = Object.freeze({ components: 'component', pages: 'page', workflows: 'workflow', fixtures: 'fixture', usecases: 'usecase', services: 'service', domains: 'domain' });
+export const KIND_SINGULAR = Object.freeze({ components: 'component', pages: 'page', workflows: 'workflow', fixtures: 'fixture', usecases: 'usecase', services: 'service', domains: 'domain', expressions: 'expression' });
 
 /** Which existing Construct layer each kind is checked as (fixtures have no layer rules). */
 export const KIND_LAYER = Object.freeze({ components: 'component', pages: 'page', workflows: 'workflow' });
@@ -85,7 +93,7 @@ export const LINE_RULES = Object.freeze({
     defaultSeverity: 'error',
     why: 'Every feature item is based on exactly one library item of the same kind, so the library stays the single source every feature builds on.',
     expected: ['one "@line-base <kind>/<name>" link to an existing library item of the same kind'],
-    check: 'Each component, page, workflow and fixture file under a feature carries exactly one @line-base link (a comment in code, "$lineBase" in JSON) that resolves to an existing library item of the same kind; spec.md and the logic kinds (usecases, services, domains: no base until the layers wave) are exempt.',
+    check: 'Each component, page, workflow and fixture file under a feature carries exactly one @line-base link (a comment in code, "$lineBase" in JSON) that resolves to an existing library item of the same kind; spec.md and the logic kinds (usecases, services, domains: no base until the layers wave) are exempt; an expression may have no base (a new one has a single user), but a base it names must resolve.',
   },
   'LINE-OWNER': {
     id: 'LINE-OWNER',
