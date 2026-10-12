@@ -27,3 +27,20 @@ When Line's static algorithms can't handle a case (no tool, no typed fix, no tem
 4. **Project store and versioning:** `line/middleware/`, through the writer, with enable/disable per middleware.
 5. **Export/share with the leak guard, and promotion into Line through the release gate.**
 6. **(Later) a marketplace design:** index, install, ratings, licences.
+
+## Self-improving loop (owner, 2026-10-12): AI writes middleware on its own
+When a new case comes in that the static tools can't handle, Line's AI creates a middleware for it automatically, uses it right away, and stores it in the user's local copy of Line.
+1. **Detect:** the drafter, a fix, an import or a check returns "no static answer". This is the same miss signal as im1.
+2. **Draft:** Line's Qwen (code fill, grammar-constrained) writes a middleware for the right hook. It gets only the slotted case, the hook's schema and the nearest existing static code as examples.
+3. **Prove:**
+   - The draft must pass its own test (the case that triggered it, plus negatives the AI generates).
+   - It must not break any existing Line test or eval case. Run the affected subset fast, and the full set in the background.
+   - It runs in the sandbox (pure, no network or file access).
+   - If it fails, there is one repair attempt from the exact error (im2), then the case goes to the person.
+4. **Use:** the middleware's proposal joins the ladder for this case. It is still checked by Construct and still approved by the person before any project write. Nothing it does skips the plan.
+5. **Store locally:** `line/middleware/<hook>/<id>`, written through the writer and logged, tagged `author: qwen` and `status: auto`.
+   - It stays "auto" until the person keeps it, with a one-click "Keep" or "Remove" on the What Line knows → Memory/Middleware view.
+   - An auto middleware is disabled automatically when a later case refuses its output, or when the person edits away from it twice.
+6. **Learn:** kept middleware feeds cs2's rule factory, sharing, and Line-1's training worlds (slotted only).
+
+The guardrails don't change: the person approves project writes; middleware only proposes; and everything is local unless the person shares it.
