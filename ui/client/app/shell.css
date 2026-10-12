@@ -518,6 +518,10 @@ kbd {
   .sh-spacer { flex: 0 0 0; }
   /* The local-model status is also in the profile menu (Local model row), so the phone bar drops its dot. */
   [data-testid='pill-model'] { display: none; }
+  /* Two modes put the Chat | Under the hood switch in this row too: the brand keeps its mark (the word stays for
+   * screen readers) and the project name truncates sooner, so the row still fits 375 px with no sideways scroll. */
+  .sh-brand > span:last-child { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .sh-project-btn { max-width: 88px; }
 }
 
 /* ---- signed-in account (#278) ---------------------------------------- *
