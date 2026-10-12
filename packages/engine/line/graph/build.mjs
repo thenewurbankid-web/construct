@@ -242,7 +242,7 @@ function fileFragment(root, self, items, hash, program) {
       const id = `unit:${u.fingerprint}`;
       // No file or line on the node: the same logic in two files is ONE unit (one fingerprint), PART_OF each item,
       // and each PART_OF edge carries where it sits. So a unit node never depends on which file was read first.
-      nodes.push({ id, kind: 'unit', label: safeLabel(`${u.kind} in ${u.fn}`), hash: contentHash(u.fingerprint), attrs: { unitKind: u.kind } });
+      nodes.push({ id, kind: 'unit', label: safeLabel(u.exportName ? `${u.kind} ${u.exportName}` : `${u.kind} in ${u.fn}`), hash: contentHash(u.fingerprint), attrs: { unitKind: u.kind } });
       edges.push({ from: id, to: self.id, type: 'PART_OF', layer: 'structure', evidence: ev(u.line) });
     }
   } catch { /* a file that does not parse has no units; validate reports it */ }

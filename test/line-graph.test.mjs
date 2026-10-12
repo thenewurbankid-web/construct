@@ -53,6 +53,16 @@ test('the sample graph has the expected nodes and edges, and passes the contract
   assert.match(graphSentence(g, stats), /^The Line graph has \d+ nodes \(17 items, \d+ logic units\) and \d+ edges: .*\.$/);
 });
 
+test('#856 an export unit is labelled by the name it exports, not "export in <module>"', () => {
+  const { graph: g } = buildLineGraph(copy(SAMPLE));
+  const exportLabels = g.nodes.filter((n) => n.kind === 'unit' && n.attrs?.unitKind === 'export').map((n) => n.label);
+  assert.ok(exportLabels.length > 0);
+  assert.ok(exportLabels.every((l) => !/ in /.test(l)), exportLabels.join(' | '));
+  assert.ok(exportLabels.includes('export roles'), exportLabels.join(' | '));
+  // A unit inside a function keeps "kind in fn".
+  assert.ok(g.nodes.some((n) => n.kind === 'unit' && n.attrs?.unitKind !== 'export' && / in /.test(n.label)));
+});
+
 test('the sample graph has the planted and the expected edges', () => {
   const { graph: g } = buildLineGraph(copy(SAMPLE));
   assert.ok(has(g, ORDERS_PAGE, 'BASED_ON', LIST_PAGE), 'OrdersPage BASED_ON ListPage');

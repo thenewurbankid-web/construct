@@ -25,6 +25,8 @@
  * @property {string} fn           Enclosing named function, or "<module>".
  * @property {number} line         1-based.
  * @property {string} detail       Short readable text of the unit (at most 140 characters).
+ * @property {string} [exportName] Export units only: the exported binding name(s) ("Button", "a, b", "default"), for
+ *                                 labels; `fn` stays "<module>" because fingerprints key on it.
  * @property {string} [anchor]     The normalized AST text the fingerprint was hashed from (optional; lets
  *                                 compareLogicMaps re-hash through a rename table given after the map was built).
  */

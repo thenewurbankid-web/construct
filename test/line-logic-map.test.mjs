@@ -95,6 +95,15 @@ test('logic map: the same logic twice in one function gets distinct fingerprints
   assert.deepEqual(mapOf({ 'y/z.ts': src }).units.map((u) => u.fingerprint), map.units.map((u) => u.fingerprint));
 });
 
+test('#856 an export unit carries exportName additively; fn stays <module> so fingerprints do not move', () => {
+  const src = 'export function Button() { return null; }\nexport const a = 1, b = () => 2;\nexport default function () { return 1; }\n';
+  const map = mapOf({ 'Button.tsx': src });
+  assertLogicMap(map);
+  const ex = map.units.filter((u) => u.kind === 'export');
+  assert.deepEqual(ex.map((u) => [u.fn, u.exportName]), [['<module>', 'Button'], ['<module>', 'a, b'], ['<module>', 'default']]);
+  assert.ok(map.units.filter((u) => u.kind !== 'export').every((u) => !('exportName' in u)));
+});
+
 test('logic map: the map is stored at line/logic-map.json through writeLineState', () => {
   const dir = makeTempDir('logic-map-');
   try {
