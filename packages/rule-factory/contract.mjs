@@ -20,7 +20,7 @@
 // directory), the reason ledger (@mx/reason's file ledger, <dir>/<pairId>/<requestId>.json) and the drafter's misses on
 // Train Line's train split. No model is called here; jev is called only through Line's one decide() (label.mjs).
 
-export const MISS_SOURCES = Object.freeze(['plan', 'validate', 'decision-trace', 'reason-ledger', 'drafter']);
+export const MISS_SOURCES = Object.freeze(['plan', 'validate', 'decision-trace', 'reason-ledger', 'drafter', 'miss-report']);
 /** Sources with a collector (all of them since cs2). */
 export const COLLECTED_SOURCES = MISS_SOURCES;
 export const DECIDERS = Object.freeze(['static', 'person', 'agent', 'model', 'none']);
@@ -47,7 +47,7 @@ export const FACTORY_FILES = Object.freeze({
 });
 
 /**
- * @typedef {'plan'|'validate'|'decision-trace'|'reason-ledger'|'drafter'} MissSource
+ * @typedef {'plan'|'validate'|'decision-trace'|'reason-ledger'|'drafter'|'miss-report'} MissSource
  * @typedef {'static'|'person'|'agent'|'model'|'none'} Decider  `none`: nobody has decided yet (open, or failed).
  *
  * @typedef {object} MissRecord

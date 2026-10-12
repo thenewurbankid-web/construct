@@ -8,7 +8,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { makeTempDir } from '../../../test-utils/tmpdir.mjs';
 import { assertMissRecord, assertStaticShare } from '../contract.mjs';
-import { missesFromFindings, missesFromPlanDoc, readPlanMisses, staticShare, missesFromTraces, readTraceMisses, missesFromLedger, readLedgerMisses, missesFromDrafts } from '../collect.mjs';
+import { missesFromFindings, missesFromPlanDoc, readPlanMisses, staticShare, missesFromTraces, readTraceMisses, missesFromLedger, readLedgerMisses, missesFromDrafts, missesFromClassified } from '../collect.mjs';
 import { createLinePlanService } from '@line/construct-engine/line/plan-service';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
@@ -166,4 +166,15 @@ test('drafter: a train case drafted to its preferred route is static; a miss kee
   assert.deepEqual(rs.map((r) => [r.id, r.decidedBy, r.miss, r.kind]), [['drafter:tc-1', 'static', false, null], ['drafter:tc-2', 'none', true, 'picked']]);
   assert.equal(rs[1].sentence, 'The drafter did not read "size".');
   assert.deepEqual(rs[1].context.words, ['size']);
+});
+
+test('im1\'s classified misses are a source: chosen is Line\'s choice (staticChoice), correct the right answer; a plan miss cs2 already holds is not counted twice', () => {
+  const picked = { id: 'train:tc-9:line.promote', source: 'train', step: 'line.promote', kind: 'picked', options: ['line.promote', 'line.baseOn'], chosen: 'line.baseOn', correct: 'line.promote', correctFrom: 'train-gold', pattern: 'share <component> with <feature> -> line.promote', sentence: 'Line recommended line.baseOn; the gold is line.promote.' };
+  const absent = { id: 'plan:p1:s2', source: 'plan', step: 'line.baseOn', kind: 'absent', options: [], chosen: null, correct: 'line.baseOn', correctFrom: 'person', pattern: 'base <component> -> line.baseOn', sentence: 'The person added line.baseOn, which Line did not offer.' };
+  const other = { ...absent, id: 'plan:p1:s3' };
+  const rs = missesFromClassified([picked, absent, other], ['plan:p1:s2']);
+  for (const r of rs) assertMissRecord(r);
+  assert.deepEqual(rs.map((r) => r.id), ['miss-report:train:tc-9:line.promote', 'miss-report:plan:p1:s3'], 'plan:p1:s2 is cs2\'s already');
+  assert.deepEqual([rs[0].source, rs[0].staticChoice, rs[0].finalChoice, rs[0].kind, rs[0].correct, rs[0].decidedBy], ['miss-report', 'line.baseOn', 'line.promote', 'picked', 'line.promote', 'static']);
+  assert.deepEqual([rs[1].decidedBy, rs[1].staticChoice, rs[1].kind], ['person', null, 'absent']);
 });

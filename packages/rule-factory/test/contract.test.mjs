@@ -9,7 +9,7 @@ import {
 import { MOCK_MISSES, MOCK_LABEL_ITEMS, createMockMissCollector, createMockFactory } from '../mock.mjs';
 
 test('contract: five miss sources, every one collected; every mock record is a valid miss record', () => {
-  assert.deepEqual([...MISS_SOURCES], ['plan', 'validate', 'decision-trace', 'reason-ledger', 'drafter']);
+  assert.deepEqual([...MISS_SOURCES], ['plan', 'validate', 'decision-trace', 'reason-ledger', 'drafter', 'miss-report']);
   assert.deepEqual([...COLLECTED_SOURCES], [...MISS_SOURCES]);
   for (const r of createMockMissCollector().collect()) assertMissRecord(r);
 });

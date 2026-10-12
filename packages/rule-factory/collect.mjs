@@ -268,3 +268,29 @@ export function missesFromDrafts(results) {
     context: { request: r.request, words: [...r.words], intent: r.intent },
   }));
 }
+
+// ------------------------------------------------------------------------------------------------- im1's miss reports
+// im1-im2's classified misses ({step, kind, options, chosen, correct}: `chosen` is what LINE chose -- its recommended
+// option, the same as a MissRecord's staticChoice and a LabelItem's chosen -- and `correct` the right answer from the
+// person, Train Line's gold or the drafter eval) are one more source. A plan miss cs2's own plan collector already
+// holds (same plan and step) is not counted twice.
+
+/**
+ * im1's classified misses as MissRecords (source "miss-report"): Line's choice is the static choice, the right answer
+ * the final one; kind, options and correct carried over as they are.
+ * @param {import('./contract.mjs').ClassifiedMiss[]} misses
+ * @param {Iterable<string>} [have] Ids of records already collected (cs2's plan records), to skip.
+ * @returns {import('./contract.mjs').MissRecord[]}
+ */
+export function missesFromClassified(misses, have = []) {
+  const seen = new Set(have);
+  const planKey = (id) => String(id).split(':').slice(0, 3).join(':');
+  return (misses ?? []).filter((m) => !(m.source === 'plan' && (seen.has(planKey(m.id)) || seen.has(`${planKey(m.id)}:fix`)))).map((m) => ({
+    id: `miss-report:${m.id}`, source: /** @type {const} */ ('miss-report'), step: m.step,
+    decidedBy: /** @type {import('./contract.mjs').Decider} */ (m.correctFrom === 'person' ? 'person' : 'static'), miss: true,
+    staticChoice: m.chosen, finalChoice: m.correct, sentence: m.sentence,
+    ref: { file: m.source === 'plan' ? 'line/plans' : 'line/rule-factory/eval-misses.json', caseId: m.id }, label: null,
+    options: [...m.options], kind: m.kind, correct: m.correct,
+    context: { request: m.pattern.split(' -> ')[0] },
+  }));
+}

@@ -13,7 +13,9 @@ import { writeLineState } from '@line/construct-engine/transactional-writer';
 import { LEXICON } from '@line/construct-engine/line/drafter/lexicon';
 import { rerankFixes } from '@line/construct-engine/line/fix-ranking';
 import { FACTORY_FILES } from './contract.mjs';
-import { missesFromFindings, readPlanMisses, readTraceMisses, readLedgerMisses, missesFromDrafts, staticShare } from './collect.mjs';
+import { missesFromFindings, readPlanMisses, readTraceMisses, readLedgerMisses, missesFromDrafts, missesFromClassified, staticShare } from './collect.mjs';
+import { readClassifiedPlanMisses } from './misses.mjs';
+import { readSnapshot } from './eval-misses.mjs';
 import { readTrainCases, draftTrainSplit } from './drafter-misses.mjs';
 import { labelItemsOf, labelWithJev, labellingJsonl, importLabelling } from './label.mjs';
 import { proposeRules } from './propose.mjs';
@@ -38,7 +40,7 @@ async function findingsOf(root) {
 
 /**
  * propose: collect, label, propose; writes the factory's files into the project's Line state folder.
- * @param {{root: string, checkout?: string, ledger?: string, limit?: number, drafter?: boolean, jev?: boolean, labels?: string, decide?: any, stateDir?: any}} o
+ * @param {{root: string, checkout?: string, ledger?: string, limit?: number, drafter?: boolean, jev?: boolean, labels?: string, decide?: any, stateDir?: any, snapshot?: string|null}} o `snapshot`: im1's eval miss snapshot file (default the repo's; null, or drafter false: none)
  * @returns {Promise<{records: number, misses: number, bySource: Record<string, {total: number, misses: number}>, shares: any[], labelling: any, proposals: any[], skipped: any[], notes: string[], files: string[]}>}
  */
 export async function propose(o) {
@@ -58,7 +60,11 @@ export async function propose(o) {
     if (!cases.length) notes.push('Train Line has no cases in this checkout, so the drafter\'s misses are not collected.');
     else drafts = draftTrainSplit(cases, { limit: o.limit });
   }
-  const records = [...plan, ...missesFromFindings(f.findings), ...traces.records, ...ledger.records, ...missesFromDrafts(drafts)];
+  // im1's classified misses: the project's plan feedback (what cs2's plan collector does not already hold) and the
+  // repo's eval snapshot (Train Line's gold and the drafter eval, `construct line misses --eval --save`), when kept.
+  const snapshot = o.snapshot === null || o.drafter === false ? null : readSnapshot(o.snapshot);
+  const im1 = missesFromClassified([...readClassifiedPlanMisses(o.root), ...(snapshot?.misses ?? [])], plan.map((r) => r.id));
+  const records = [...plan, ...missesFromFindings(f.findings), ...traces.records, ...ledger.records, ...missesFromDrafts(drafts), ...im1];
   /** @type {Record<string, {total: number, misses: number}>} */
   const bySource = {};
   for (const r of records) { const s = bySource[r.source] ?? { total: 0, misses: 0 }; s.total += 1; s.misses += r.miss ? 1 : 0; bySource[r.source] = s; }
