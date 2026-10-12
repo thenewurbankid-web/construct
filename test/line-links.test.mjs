@@ -17,7 +17,7 @@ const skip = status.ok ? false : status.message;
 test('link status: every package in links.json is ready at the pinned commit', { skip }, () => {
   assert.equal(status.head, readLinks().source.commit);
   assert.deepEqual(status.packages.map((p) => [p.name, p.state]), Object.keys(readLinks().links).map((n) => [n, 'ok']));
-  assert.match(status.message, /^All 6 Line links are ready/);
+  assert.match(status.message, /^All 7 Line links are ready/);
 });
 
 test('@mx/reason: loads through the link, fits the contract, and decides a pick with no model (static path)', { skip }, async () => {

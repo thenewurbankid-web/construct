@@ -15,7 +15,8 @@ build step 1, the contract: shapes, expected outputs and tests. The later steps 
 | `z3Translate.mjs` | Step 6: `translateFunction` from the TS subset to a solver-neutral IR, `findFunction`, `Unsupported` (subset in the file header) |
 | `z3Prove.mjs` | Step 6: `z3Layer` and `proveEqual`; lowers the IR to Z3 (z3-solver, MIT, WASM; numbers as IEEE doubles), per-proof timeout `Z3_TIMEOUT_MS` |
 | `fastCheckLayer.mjs` | Step 6: `fastCheckLayer` over `ast/pureExportEquivalence`, seeded by `minedSeeds` (the characterizer's literal pools of both sides) |
-| `verifyPair.mjs` | `verifyPair` (the layer walk; one `RUNNERS` registry in `escalation.mjs` order, a layer with no runner answers "skipped" and never decides), `pairBefore`, `classifyBefore` (the one purity stand-in until step 2) |
+| `verifyPair.mjs` | `verifyPair` (the layer walk; one `RUNNERS` registry in `escalation.mjs` order, a layer with no runner answers "skipped" and never decides), `pairBefore`, `classifyBefore` (calls `purity.mjs` `classifyUnit`) |
+| `purity.mjs` | Step 2 (B). `classifyUnit({root, file, fn})`: purity and transitive effect chain from Morpheus's import-scan facts (`@mx/morpheus-import` link: `loadProgram`, `collectItems`, `readItem`), plus logic-map effect kinds and HTTP verbs on opaque imports; `classifyLocal` (the fallback with the link down), `morpheusLinked`, `HTTP_VERBS`, `GLOBAL_EFFECTS` |
 | `libDom.mjs` | Step 5. Reads TypeScript's own `lib.dom.d.ts` through the compiler API: `libDomInterface(name)` (every member, inherited ones included, with its type text), `valueKindOf` |
 | `layoutFakeGen.mjs` | Step 5. `createLayoutFakeGenerator()` (the `LayoutFakeGenerator`): checks `LAYOUT_FAKE_TYPES` against `lib.dom.d.ts`, `make(type, case)` typed fakes, `values`, `cases`, `dom`, `fire`; `typedFake`; reading an unbacked member throws `NotFakedError` (`notFaked.mjs`) naming it |
 | `layoutDom.mjs` | Step 5. `createLayoutDom`: window, document, elements, `matchMedia`, `IntersectionObserver`, `ResizeObserver`, window/document/element listeners, all firing under the fake clock |
@@ -30,6 +31,7 @@ Tests:
 - `test/line-logic-verify-canonical.test.mjs` covers the canonicaliser's edge cases, the round-trip and verifyPair's L0 walk.
 - `test/line-logic-verify-pure.test.mjs` covers the Z3 translator and layer, the fast-check layer, the locator on whole units and verifyPair's pure path.
 - `test/line-logic-verify-layout.test.mjs` covers `lib.dom.d.ts`, the layout fakes, DOM, clock, media queries and `verifyLayoutPair`.
+- `test/line-logic-verify-purity.test.mjs` covers `classifyUnit` (pure, direct, transitive, unknown imports) and the fallback.
 - The fixtures are in `test/fixtures/logic-verify/`. They are small synthetic snippets written for these tests, not
   taken from any app.
 
@@ -53,7 +55,7 @@ The acceptance tests in `test/line-logic-verify-planted.test.mjs` call these fun
 each step lands.
 
 - `purity.mjs`: `classifyUnit({root, file, fn})` returns `{purity, effectChain}`. This is step 2. `verifyPair.mjs`
-  `classifyBefore` imports it as soon as the file exists; until then `classifyBefore` is the one stand-in.
+  `classifyBefore` calls it. Built.
 - `layoutRun.mjs`: `verifyLayoutPair({beforeRoot, afterRoot, unit, beforeFile?})` returns the `isolated` `LayerResult` for a
   unit's pure layout readers. This is step 5; `verifyPair`'s `isolated` runner calls it.
 - `isolatedRun.mjs`: `isolatedPair({beforeRoot, afterRoot, before, after, seeds?, timeoutMs?})` is step 4's effect
@@ -95,10 +97,9 @@ The choices, and why (each is conservative: a false "changed" only falls through
 - The unit before the step comes from the caller (`before`) or `pairBefore` (same file and name; else the one function
   with the same canonical form; else the one with the same name). `z3` takes the before name, so a renamed unit is
   still proved; `fast-check` pairs exports by name and skips a renamed unit.
-- Purity: one stand-in, `classifyBefore`. Until step 2's `purity.mjs` `classifyUnit` exists it reads the logic map's
-  effect units inside the function plus the effectful globals the domain-purity allowlist reports (`window` is `dom`,
-  `fetch` is `fetch`, `Date` is `time` ...), with no transitive chain. A call into an impure helper is not seen; the
-  proof layers stay sound because z3 and fast-check refuse calls and impure bodies themselves.
+- Purity: `classifyBefore` calls step 2's `classifyUnit`. With the Morpheus link down, `classifyLocal` reads the logic
+  map's effect units inside the function plus the effectful globals the domain-purity allowlist reports, with no
+  transitive chain; the proof layers stay sound because z3 and fast-check refuse calls and impure bodies themselves.
 - One AST-difference locator, `canonical.mjs` `diffLocation`: the side-by-side walk under the scope-precise renaming,
   output `{astPath, file, line, column, side}`. The canonical compare, the round-trip, z3 and fast-check
   (`locateUnitDifference`) and the layout layer (reader closures, from their own path) all use it. A differing leaf is

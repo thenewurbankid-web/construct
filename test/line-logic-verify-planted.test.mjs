@@ -23,7 +23,7 @@ const SUMMARY = JSON.parse(fs.readFileSync(path.join(FIX, 'expected-summary.json
 const STEP_NAMES = { 2: 'pure/impure split', 3: 'C1 canonicaliser and round-trip', 4: 'isolated execution', 5: 'layout fakes', 6: 'Z3 / fast-check', 7: 'wiring into Import v2 and the step view', 8: 'L2 dev server' };
 const todo = (step) => `step ${step}: ${STEP_NAMES[step]}`;
 /** The build steps that have landed: their acceptance tests run; the rest stay `todo`. */
-const BUILT = new Set([3, 5, 6]);
+const BUILT = new Set([2, 3, 5, 6]);
 const todoUnless = (step) => (BUILT.has(step) ? false : todo(step));
 
 /** A later step's module; a todo test fails with one line until the step adds it. */
@@ -87,7 +87,7 @@ test('planted fixtures: each changed location is exact (file, line and the text 
 // ---- acceptance: turned on by the build steps ----------------------------------------------------------------------
 
 for (const c of CASES) {
-  test(`step 2 acceptance, ${c.name}: purity and effect chain come from Morpheus's effect analysis`, { todo: todo(2) }, async () => {
+  test(`step 2 acceptance, ${c.name}: purity and effect chain come from Morpheus's effect analysis`, { todo: todoUnless(2) }, async () => {
     const { classifyUnit } = await later('purity.mjs', 2);
     const v = expected(c.name);
     const got = await classifyUnit({ root: roots(c).beforeRoot, file: c.before.file, fn: c.before.fn });
