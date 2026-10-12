@@ -15,7 +15,7 @@ export function DomainMapDetails({ map }: { map: { label: string; entries: Entry
   return (
     <details className="ltr-tech ltr-section" data-testid="train-domain-map">
       <summary>{map.label}</summary>
-      <div className="ltr-table-wrap">
+      <div className="ltr-table-wrap" role="region" aria-label={map.label} tabIndex={0}>
         <table className="ltr-table">
           <thead>
             <tr>
