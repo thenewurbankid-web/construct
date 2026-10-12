@@ -565,7 +565,7 @@ function decide(projectRoot, target, answers) {
 /**
  * Scan one folder of the open project: what it holds and what Line proposes for each item (pure read, no model).
  * @param {string} projectRoot The open project (absolute).
- * @param {string | {folder?: string, route?: string}} folder Project-relative folder, or (Import v2) a route family {route, folder?}.
+ * @param {string | {folder?: string, route?: string|string[], feature?: string}} folder Project-relative folder, or (Import v2) a route family {route, folder?, feature?} (route: one route or several that make one feature).
  * @returns {import('./contract.mjs').ImportScan}
  * @throws {LineOpError} BAD_FOLDER.
  */
@@ -603,7 +603,7 @@ export function scanImport(projectRoot, folder) {
  * The proposals as plan-ready steps. Order: mark the folder as Line; every complete item into the library (fixtures,
  * workflows, components, pages); feature items that move in on a real base; then the thin feature items over split ones.
  * @param {string} projectRoot
- * @param {string | {folder?: string, route?: string}} folder A folder, or (Import v2) a route family {route, folder?}.
+ * @param {string | {folder?: string, route?: string|string[], feature?: string}} folder A folder, or (Import v2) a route family {route, folder?, feature?} (route: one route or several that make one feature).
  * @param {Record<string, string>} [answers] Question id -> option id; the recommended option where missing.
  * @returns {import('./contract.mjs').ImportPlan}
  */
@@ -844,7 +844,7 @@ function scratchFolder(projectRoot, folder) {
  * Construct's writer, with the folder as its root. So it is all-or-nothing: when any step, or the final commit, is
  * refused, nothing is written and the folder stays byte-identical; nothing outside the folder can be written.
  * @param {string} projectRoot
- * @param {string | {folder?: string, route?: string}} folder A folder, or (Import v2) a route family {route, folder?}.
+ * @param {string | {folder?: string, route?: string|string[], feature?: string}} folder A folder, or (Import v2) a route family {route, folder?, feature?} (route: one route or several that make one feature).
  * @param {Record<string, string>} [answers]
  * @returns {import('./contract.mjs').ImportApplyResult}
  */
