@@ -84,6 +84,9 @@ test.describe.serial('Line: the Import agent brings one folder into Line (import
     await expect(screen.locator('[data-check="logic-map"]')).toHaveAttribute('data-state', 'pass');
     await expect(screen.locator('[data-check="logic-map"]')).toContainText('9 of 9 logic units kept (6 moved).');
     await expect(screen.locator('[data-check="behaviour"]')).toHaveAttribute('data-state', 'pass');
+    // Line logic verification step 7: one more row, a verdict per function unit against the import baseline.
+    await expect(screen.locator('[data-check="logic"]')).toHaveAttribute('data-state', 'pass');
+    await expect(screen.locator('[data-check="logic"]')).toContainText(/Logic verification: \d+ proven, \d+ tested, \d+ unverified\./);
     await expect(screen.locator('[data-check="coverage"]')).toContainText('or the owner waived it (9)');
     await expect(screen.getByTestId('la-logic-coverage')).toHaveText('0 of 9 units have a block and a test; the owner waived 9.');
     // Each step's diff, under a closed disclosure: nine steps, each kept everything.

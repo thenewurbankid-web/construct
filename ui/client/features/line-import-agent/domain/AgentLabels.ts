@@ -12,7 +12,7 @@ export const LABELS = {
   check: { pass: 'Passed', fail: 'Failed', skipped: 'Not run' } as Record<string, string>,
   checkName: {
     validate: 'Line rules', types: 'Types', tests: 'Tests',
-    'char-tests': 'Characterization tests', 'logic-map': 'Logic kept', behaviour: 'Same behaviour', coverage: 'Unit coverage',
+    'char-tests': 'Characterization tests', 'logic-map': 'Logic kept', behaviour: 'Same behaviour', coverage: 'Unit coverage', logic: 'Logic verified',
   } as Record<string, string>,
   loop: { ok: 'Kept everything', stopped: 'Stopped' } as Record<string, string>,
 };

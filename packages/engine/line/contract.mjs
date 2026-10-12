@@ -1871,8 +1871,8 @@ export function importFolderProblem(folder) {
   return null;
 }
 const CHANGE_ACTIONS = ['start', 'state', 'decide', 'edit', 'skip', 'unskip', 'move', 'approve', 'approve-all', 'add-step', 'answer', 'pause', 'resume', 'verify', 'undo', 'map', 'characterize', 'classify', 'loop', 'waive'];
-/** The verify stage's checks: ci2's three, and Line Import v2's loop checks (importLoop.mjs LOOP_CHECKS). */
-export const IMPORT_VERIFY_CHECKS = Object.freeze(['validate', 'types', 'tests', 'char-tests', 'logic-map', 'behaviour', 'imports', 'coverage']);
+/** The verify stage's checks: ci2's three, Line Import v2's loop checks (importLoop.mjs LOOP_CHECKS), and logic verification's per-unit check (logicVerify/importUnits.mjs). */
+export const IMPORT_VERIFY_CHECKS = Object.freeze(['validate', 'types', 'tests', 'char-tests', 'logic-map', 'behaviour', 'imports', 'coverage', 'logic']);
 
 /** @param {any} w @param {string} where */
 function assertWaiting(w, where) {

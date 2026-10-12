@@ -266,7 +266,7 @@ test('real: on a copy of import-sample, the agent plans, waits for the person, l
   v = await agent.answer('ui', 'verify', 'waive');
   assert.equal(v.state, 'done', v.sentence);
   assert.equal(v.sentence, 'Done: 10 steps landed.');
-  assert.deepEqual(v.verify.checks.map((c) => [c.id, c.state]), [['validate', 'pass'], ['types', 'skipped'], ['tests', 'skipped'], ['char-tests', 'skipped'], ['logic-map', 'pass'], ['behaviour', 'pass'], ['imports', 'pass'], ['coverage', 'pass']]);
+  assert.deepEqual(v.verify.checks.map((c) => [c.id, c.state]), [['validate', 'pass'], ['types', 'skipped'], ['tests', 'skipped'], ['logic', 'pass'], ['char-tests', 'skipped'], ['logic-map', 'pass'], ['behaviour', 'pass'], ['imports', 'pass'], ['coverage', 'pass']]);
   assert.equal(v.verify.checks[0].sentence, 'Validate (profile line) finds no new problems in the folder. 2 problems were already there before the import.');
   assert.ok(fs.existsSync(path.join(dir, FOLDER, 'features/alerts/pages/AlertsPage.tsx')));
   assert.ok(fs.existsSync(path.join(dir, FOLDER, 'library/components/SeverityBadge.tsx')));
@@ -302,7 +302,7 @@ test('real + jest: import-sample\'s folder import is pinned by generated charact
   assert.equal(v.state, 'done', v.sentence);
   assert.equal(v.sentence, 'Done: 10 steps landed.');
   assert.ok(v.logic.steps.every((s) => s.status === 'ok' && s.tests.state === 'pass'), 'the tests pass after every step');
-  assert.deepEqual(v.verify.checks.map((c) => [c.id, c.state]), [['validate', 'pass'], ['types', 'pass'], ['tests', 'skipped'], ['char-tests', 'pass'], ['logic-map', 'pass'], ['behaviour', 'pass'], ['imports', 'pass'], ['coverage', 'pass']]);
+  assert.deepEqual(v.verify.checks.map((c) => [c.id, c.state]), [['validate', 'pass'], ['types', 'pass'], ['tests', 'skipped'], ['logic', 'pass'], ['char-tests', 'pass'], ['logic-map', 'pass'], ['behaviour', 'pass'], ['imports', 'pass'], ['coverage', 'pass']]);
   assert.equal(v.logic.waivers.length, 0, 'no waiver');
   assert.ok(!v.changes.some((c) => c.action === 'waive'));
 });

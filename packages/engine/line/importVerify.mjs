@@ -4,6 +4,7 @@
 // unit coverage, and the path-mapped behaviour check of every moved file (checkBehaviour: core check-change's
 // checkChangeForMove, imports normalized, pure exports by fast-check). Each check says in one sentence what it found, or why it
 // could not run (`skipped`): a project with no TypeScript installed, or a folder with no tests, is said, never faked.
+// Line logic verification adds the `logic` check: a verdict per unit (logicVerify/importUnits.mjs).
 // Pure reads: nothing here writes to the project.
 import fs from 'node:fs';
 import os from 'node:os';
@@ -15,6 +16,7 @@ import { checkChangeForMove } from '@line/construct-core/check-change';
 import { moduleSpecifiers, semanticDiffSplit } from '@construct/ast/semantic-diff';
 import { runTypesCheck } from '../verifyRunner.mjs';
 import { measure, loopChecks } from './importLoop.mjs';
+import { logicCheck } from './logicVerify/importUnits.mjs';
 
 const CLI = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../cli/construct.mjs');
 const TIMEOUT = 180_000;
@@ -137,14 +139,18 @@ export function checkTests(projectRoot, folder) {
 }
 
 /**
- * The verify stage on the real project.
+ * The verify stage on the real project: Line rules, types, the folder's tests, and (Line logic verification step 7) the
+ * `logic` check: every function unit of the folder against the import baseline through logicVerify's verifyPair, its
+ * per-unit UnitVerdicts in `units` and the step summary in `summary` (logicVerify/importUnits.mjs logicCheck).
  * @param {any} projectRoot
  * @param {any} folder
  * @param {any} [baseline]
+ * @param {{logic?: false | {levels?: any[], transformsOf?: any, maxUnits?: number}}} [o] `logic: false` leaves the logic check out.
  * @returns {Promise<any>}
  */
-export async function verifyImport(projectRoot, folder, baseline = []) {
+export async function verifyImport(projectRoot, folder, baseline = [], o = {}) {
   const checks = [checkValidate(path.join(projectRoot, folder), baseline), await checkTypes(projectRoot, folder, baseline), checkTests(projectRoot, folder)];
+  if (o.logic !== false) checks.push(await logicCheck(projectRoot, folder, o.logic || {}));
   return { ok: !checks.some((c) => c.state === 'fail'), checks };
 }
 
