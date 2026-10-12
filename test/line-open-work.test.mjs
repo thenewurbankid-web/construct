@@ -127,3 +127,26 @@ test('plan service: the view carries the work card; run-next says how many items
     assert.equal(/** @type {any} */ (await svc.view()).work.cap, 15);
   } finally { done(); }
 });
+
+test('bench plan-cli: status, add and run-next all carry the open-work card with the current feature\'s points', async () => {
+  const { createPlanCli } = await import('../bench/ecommerce/driver/plan-cli.mjs');
+  const { root, done } = fourB();
+  try {
+    const log = path.join(root, '..', 'log', 'calls.jsonl');
+    const cli = createPlanCli({ project: root, log, builder: 'test', shadowJev: false });
+    const st = await cli.run('status');
+    assert.match(st.sentence, /^The plan has 0 steps\.\nOpen work: 13 items remain \(catalog 6, product 1, cart 5, checkout 1\)\.\nCurrent feature: catalog /);
+    assert.deepEqual(st.work, { current: 'catalog', count: 13 });
+    assert.match((await cli.run('status', ['cart'])).sentence, /\nCurrent feature: cart \(As a shopper, I want a cart I can change/);
+    const add = await cli.run('add', ['line.addRoute', JSON.stringify({ route: '/', page: CATALOG_PAGE })], { why: 'Serve the catalog page at the root.' });
+    assert.equal(add.ok, true, add.sentence);
+    assert.match(add.sentence, /\nCurrent feature: catalog /);
+    const ran = await cli.run('run-next');
+    assert.equal(ran.landed, true, ran.sentence);
+    assert.match(ran.remain, /^12 open items remain; next: CatalogPage renders ListPage/);
+    assert.match(ran.sentence, /^Saved: Serves CatalogPage of feature catalog at \/\.\nOpen work: 12 items remain .*\n- CAT-1 \[open\]: /s);
+    const calls = fs.readFileSync(log, 'utf8').trim().split('\n').map((l) => JSON.parse(l)).filter((e) => e.kind === 'call');
+    assert.match(calls.at(-1).result.remain, /^12 open items remain/);
+    assert.match(calls.at(-1).result.shown, /Current feature: catalog/);
+  } finally { done(); }
+});

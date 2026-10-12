@@ -3,8 +3,11 @@
 // for one project folder, in Auto mode. Every call is recorded (calls.jsonl); every output is JSON plus one sentence.
 //
 //   plan-cli.mjs tools                               the plan tools a builder may add, each with its JSON Schema
-//   plan-cli.mjs status [feature]                    the session plan: each step's state and sentence, and (#889) the
-//                                                    current feature's acceptance points from SPEC.md (or that feature's)
+//   plan-cli.mjs status [feature]                    the session plan: each step's state and sentence, and (#908) the
+//                                                    open work card: what is left per feature (exact steps where Line
+//                                                    has them), the current feature (first with open work, SPEC.md
+//                                                    order) and its points (or that feature's card). add and run-next
+//                                                    answers carry the same card, so the points come every turn.
 //   plan-cli.mjs add <tool> '<json-args>' --why "…"  add one step; a write is approved by Auto (ct1, see below)
 //   plan-cli.mjs add --fix <ref> [--why "…"]        add a typed fix the last refused add offered (f1 = recommended)
 //   plan-cli.mjs run-next                            run exactly one ready step; returns its checks and typed fixes
@@ -32,7 +35,8 @@ import { aggregateValidation } from '../../../packages/core/registry.mjs';
 import { enforcersForRoot } from '../../../packages/core/profiles/index.mjs';
 import { hashOf } from '../../../packages/engine/pagesEditor.mjs';
 import { rulesCard, layerOf, jevShadow } from '../../../packages/engine/line/hints.mjs';
-import { SPEC_FILE, readSpec, currentFeature, sliceText } from './spec-slice.mjs';
+import { SPEC_FILE, readSpec } from './spec-slice.mjs';
+import { workText } from '../../../packages/engine/line/openWork.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 /** Tools a builder may add (Import's tools are for bringing an existing app in, not for building one). */
@@ -77,7 +81,11 @@ export function createPlanCli({ project, log, builder = 'unknown', spec = SPEC_F
     get: () => { try { return JSON.parse(fs.readFileSync(hintFile, 'utf8')); } catch { return null; } },
     set: (v) => { fs.writeFileSync(hintFile, `${JSON.stringify(v)}\n`); },
   };
-  const svc = createLinePlanService({ root, offers, hintState });
+  // #908: open work is measured against SPEC.md (read per view, so a test can swap the file).
+  const specNow = () => { try { return spec ? readSpec(spec) : null; } catch { return null; } };
+  const svc = createLinePlanService({ root, offers, hintState, spec: specNow });
+  /** The open-work card the plan service attached to a view, or ''. */
+  const workOf = (v) => /** @type {any} */ (v)?.work?.text ?? '';
   // #888: a rules card is shown with the first add of each tool and layer (and on request: rules <tool> [file]).
   const cardsFile = path.join(path.dirname(logFile), 'cards-shown.json');
   const firstCard = (tool, args) => {
@@ -99,17 +107,20 @@ export function createPlanCli({ project, log, builder = 'unknown', spec = SPEC_F
       return { ok: true, tools, sentence: `There are ${tools.length} plan tools; add one with: add <tool> '<json-args>' --why "<one sentence>".` };
     },
     async status(feature) {
-      const v = await svc.view();
-      let sp = null;
-      try { sp = spec ? readSpec(spec) : null; } catch { sp = null; }
-      const f = sp ? (feature ? sp.features.find((x) => x.name === feature) : currentFeature(sp, v.steps)) ?? null : null;
-      if (feature && sp && !f) return { ok: false, code: 'NOT_FOUND', sentence: `There is no feature ${feature} in the spec; its features are ${sp.features.map((x) => x.name).join(', ')}.` };
+      const v = /** @type {any} */ (await svc.view());
+      const sp = specNow();
+      if (feature && sp && !sp.features.some((x) => x.name === feature)) return { ok: false, code: 'NOT_FOUND', sentence: `There is no feature ${feature} in the spec; its features are ${sp.features.map((x) => x.name).join(', ')}.` };
       const steps = v.steps.map(brief);
       const counts = steps.reduce((c, s) => ({ ...c, [s.state]: (c[s.state] ?? 0) + 1 }), {});
       const open = steps.find((s) => s.state === 'needs-fix' || s.state === 'needs-you');
-      const card = /** @type {any} */ (v).next?.card ?? null;
-      return { ok: true, planId: v.planId, counts, steps, ...(card ? { card } : {}), ...(f ? { spec: { feature: f.name, points: f.points.map((p) => p.id) } } : {}),
-        sentence: [open ? `Step ${open.n} needs a fix first: ${open.sentence}` : `The plan has ${steps.length} steps.`, card?.text, sliceText(f)].filter(Boolean).join('\n') };
+      const card = v.next?.card ?? null;
+      const work = v.work ?? null;
+      const name = feature ?? work?.current ?? sp?.features[0]?.name ?? null;
+      const f = work?.features.find((x) => x.name === name) ?? null;
+      const text = work ? (feature ? workText(work, { cap: work.cap, feature }) : work.text) : '';
+      return { ok: true, planId: v.planId, counts, steps, ...(card ? { card } : {}),
+        ...(f ? { spec: { feature: f.name, points: f.points.map((p) => p.id), open: f.open.length } } : {}), ...(work ? { work: { current: work.current, count: work.count } } : {}),
+        sentence: [open ? `Step ${open.n} needs a fix first: ${open.sentence}` : `The plan has ${steps.length} steps.`, card?.text, text].filter(Boolean).join('\n') };
     },
     async add(tool, json, why, fix) {
       let args;
@@ -131,9 +142,9 @@ export function createPlanCli({ project, log, builder = 'unknown', spec = SPEC_F
         const a = /** @type {any} */ (await svc.approve(r.stepId, 'ui'));
         if (!a.ok) return { ok: false, code: a.code, sentence: `The step joined the plan, but Auto could not approve it: ${a.sentence}`, stepId: r.stepId };
         record({ kind: 'approval', stepId: r.stepId, tool: step.tool, ...(fix ? { fix } : {}), approvedBy: 'auto', mechanism: 'ct1 Let Auto approve in this session' });
-        return withCard({ ok: true, stepId: r.stepId, state: 'ready', approvedBy: 'auto', sentence: `Step ${step.n} joined the plan and Auto approved it; run-next lands it.` });
+        return withCard({ ok: true, stepId: r.stepId, state: 'ready', approvedBy: 'auto', sentence: [`Step ${step.n} joined the plan and Auto approved it; run-next lands it.`, workOf(r)].filter(Boolean).join('\n') });
       }
-      return withCard({ ok: true, stepId: r.stepId, state: step?.state ?? null, sentence: `Step ${step?.n} joined the plan: ${step?.sentence ?? ''}` });
+      return withCard({ ok: true, stepId: r.stepId, state: step?.state ?? null, sentence: [`Step ${step?.n} joined the plan: ${step?.sentence ?? ''}`, workOf(r)].filter(Boolean).join('\n') });
     },
     async 'run-next'() {
       const before = await svc.view();
@@ -141,7 +152,7 @@ export function createPlanCli({ project, log, builder = 'unknown', spec = SPEC_F
       const r = /** @type {any} */ (await svc.runNext('agent'));
       if (!r.ok) return { ok: false, code: r.code, sentence: r.text ?? r.sentence, ...(Array.isArray(r.fixes) && r.fixes.length ? { fixes: r.fixes.map((f, i) => ({ ref: f.ref, id: f.id, sentence: f.sentence, step: f.step, ...(i === 0 ? { recommended: true } : {}), why: f.why, effect: f.effect, ...(f.context ? { context: f.context } : {}) })) } : {}), ...(r.hintContext ? { hintContext: r.hintContext } : {}) };
       const ran = r.steps.find((s) => open.has(s.id) && s.state !== 'ready' && s.state !== 'waiting');
-      if (!ran) return { ok: true, sentence: sentence(r.message ?? 'Nothing ran.') };
+      if (!ran) return { ok: true, ...(r.remain ? { remain: r.remain } : {}), sentence: [sentence(r.message ?? 'Nothing ran.'), workOf(r) || r.remain].filter(Boolean).join('\n') };
       const res = ran.result ?? {};
       const options = (res.options ?? []).map((o) => ({ id: o.id, sentence: o.sentence, ...(o.step ? { step: o.step } : {}), ...(o.recommended ? { recommended: true } : {}) }));
       const findings = (res.apply?.findings ?? []).slice(0, 8).map((f) => ({ rule: f.rule, severity: f.severity, file: f.file, line: f.line, sentence: f.sentence }));
@@ -150,7 +161,9 @@ export function createPlanCli({ project, log, builder = 'unknown', spec = SPEC_F
         files: res.apply?.files ?? [], checks: res.checks ?? [], findings, options, ...(r.recheck ? { recheck: r.recheck } : {}),
         // #885: a step that needs a fix offers its choices like a refused add (r.needs: refs f1.., {"fix": "f1"}).
         ...(r.needs?.stepId === ran.id ? { fixes: r.needs.fixes.map((f, i) => ({ ref: f.ref, id: f.id, sentence: f.sentence, step: f.step, ...(i === 0 ? { recommended: true } : {}), why: f.why, effect: f.effect, ...(f.context ? { context: f.context } : {}) })), hintContext: r.needs.hintContext } : {}),
-        sentence: r.needs?.stepId === ran.id ? r.needs.text : sentence(ran.sentence),
+        // #908: a landed step says how much work is left and what is next (the card's head), with the feature's points.
+        ...(r.remain ? { remain: r.remain } : {}),
+        sentence: r.needs?.stepId === ran.id ? r.needs.text : [sentence(ran.sentence), workOf(r) || r.remain].filter(Boolean).join('\n'),
       };
     },
     async findings() {
@@ -208,9 +221,9 @@ export function createPlanCli({ project, log, builder = 'unknown', spec = SPEC_F
       ...(Array.isArray(out.options) && out.options.some((o) => o.step) ? { options: out.options } : {}),
       ...(out.hintContext ? { context: out.hintContext } : {}),
       ...(out.card ? { card: { tool: out.card.tool, layer: out.card.layer, rules: out.card.rules.map((x) => x.id) } } : {}),
-      ...(out.spec ? { spec: out.spec } : {}),
+      ...(out.spec ? { spec: out.spec } : {}), ...(out.work ? { work: out.work } : {}), ...(out.remain ? { remain: out.remain } : {}),
       // Exactly what the model was shown (the text it reads; the JSON fields around it are in the tool result too).
-      ...(out.ok === false || out.fixes || out.card || out.spec ? { shown: out.sentence } : {}) };
+      ...(out.ok === false || out.fixes || out.card || out.spec || out.remain ? { shown: out.sentence } : {}) };
     // #890: with the "jev picks context" switch off (the default), jev's scores for the same lines go beside the static
     // ones when jev answers within JEV_SHADOW_MS; the builder is shown the static pick either way.
     const shadow = out.hintContext?.via === 'static' && out.hintContext.candidates?.length && shadowJev ? await jevShadow(out.hintContext, { code: out.code, said: out.sentence }) : null;
