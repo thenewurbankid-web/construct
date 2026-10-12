@@ -1,8 +1,11 @@
 // Line Import v2 -- the import loop's ops on a real project (importLoop.mjs LoopOps), so the Import agent maps,
 // characterizes, fits and checks every step on disk with the real Import v2 blocks:
 //
-//   closure     importV2/route.mjs readRouteFamily (a route), or the folder's own code files
-//   buildMap    logicMap.mjs buildLogicMap (the closure's files still there, and every code file of the folder)
+//   closure     importV2/route.mjs readRouteFamily (a route: its feature files, and the shared files other routes use
+//               too), or the folder's own code files
+//   buildMap    logicMap.mjs buildLogicMap: the closure's files still there, plus where moved files land (a route: the
+//               folder's library/ and features/<feature>/; a folder: every code file of the folder). A route's shared
+//               files are never mapped.
 //   compare     logicMap.mjs compareLogicMaps
 //   fit         importV2/fit.mjs fitLogic -> FitProposal, and planFitSteps -> the extract steps that land each block
 //   characterize characterize.mjs characterize: tests generated in the app's own jest, every one passing on the
@@ -22,7 +25,7 @@ import { aggregateValidation } from '@line/construct-core/registry';
 import { enforcersForRoot } from '@line/construct-core/profiles';
 import { folderRootOf } from './importUndo.mjs';
 import { buildLogicMap, compareLogicMaps, writeLogicMap, readLogicMap } from './logicMap.mjs';
-import { readRouteFamily } from './importV2/route.mjs';
+import { readRouteFamily, familyFeature } from './importV2/route.mjs';
 import { fitLogic, planFitSteps } from './importV2/fit.mjs';
 import { appDependsOn } from './importV2/extract.mjs';
 import { FIT_FILE, assertFitProposal } from './importV2/contract.mjs';
@@ -116,14 +119,19 @@ export function createLogicOnDisk(root, folder, o = {}) {
       throw e;
     }
   };
-  const feature = (closure) => (closure?.routes?.length ? undefined : path.posix.basename(folder).replace(/[^a-z0-9-]+/gi, '-').toLowerCase() || 'imported');
+  // Where the import's moves land: for a route only Line's own library/ and features/<feature>/ of the folder (the rest
+  // of the folder is other features' code, out of scope); for a folder every code file of it.
+  const landing = (f, closure) => (closure?.routes?.length
+    ? [...folderCodeFiles(root, `${f}/library`), ...folderCodeFiles(root, `${f}/features/${closure.feature ?? familyFeature(closure.routes[0].route)}`)]
+    : folderCodeFiles(root, f));
+  const feature = (closure) => (closure?.routes?.length ? closure.feature : path.posix.basename(folder).replace(/[^a-z0-9-]+/gi, '-').toLowerCase() || 'imported');
   return {
-    closure: async (_r, f, route) => (route ? readRouteFamily(root, route) : { appRoot: root, routes: [], files: folderCodeFiles(root, f), external: [] }),
-    // The map now: the closure's files that are still there, and every code file of the folder (where moved files land).
-    buildMap: async (_r, f, closure) => buildLogicMap(root, codeFiles(root, [...(closure?.files ?? []), ...folderCodeFiles(root, f)])),
+    closure: async (_r, f, route, feature) => (route ? readRouteFamily(root, route, feature ? { feature } : {}) : { appRoot: root, routes: [], files: folderCodeFiles(root, f), shared: [], external: [] }),
+    // The map now: the closure's files that are still there, and where moved files land.
+    buildMap: async (_r, f, closure) => buildLogicMap(root, codeFiles(root, [...(closure?.files ?? []), ...landing(f, closure)])),
     compare: async (before, after) => compareLogicMaps(before, after),
     fit: async (_r, f, closure, map) => {
-      const c = { appRoot: root, routes: closure?.routes ?? [], files: closure?.files ?? [], external: closure?.external ?? [] };
+      const c = { appRoot: root, routes: closure?.routes ?? [], ...(closure?.feature ? { feature: closure.feature } : {}), files: closure?.files ?? [], shared: closure?.shared ?? [], external: closure?.external ?? [] };
       const proposal = fitLogic(map, c, { feature: feature(closure) });
       assertFitProposal(proposal, map.units.map((u) => u.fingerprint));
       const planned = planFitSteps(proposal, { folder: f, closure: c });

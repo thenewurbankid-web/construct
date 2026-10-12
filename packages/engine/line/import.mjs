@@ -34,7 +34,7 @@ import { listFiles } from '@line/construct-core/profiles/line/checks';
 import { WALK_SKIP_DIRS, isGitCheckout } from '@line/construct-core/fs';
 import { CODE_EXTENSIONS, NON_ITEM_FILE } from '@line/construct-core/profiles/line/contract';
 import { readPathAliases, resolveImportSpecifier, parseReactSpaRoutes } from '@line/construct-core/route-resolver';
-import { appRoute, bindingSpecifier, readRouteFamily, familyFeature, commonFolder } from './importV2/route.mjs';
+import { appRoute, bindingSpecifier, readRouteFamily, familyFeature, commonFolder, routeLabel } from './importV2/route.mjs';
 import { parseToAst, walkAst } from '@construct/ast';
 import { createTransaction } from '../transactionalWriter.mjs';
 import { aggregateValidation } from '@line/construct-core/registry';
@@ -533,17 +533,18 @@ function proposalBase(it) {
 /**
  * What to import: a folder (a string, or {folder}), or a route family ({route}, optionally with the folder it lands in).
  * @param {string} projectRoot
- * @param {string | {folder?: string, route?: string}} target
- * @returns {{folder: string, route?: string, family?: string, only?: Set<string>}}
+ * @param {string | {folder?: string, route?: string|string[], feature?: string}} target `route`: one route or several
+ *   routes that make one feature; `feature` the feature's name (default the first route's family name).
+ * @returns {{folder: string, route?: string|string[], family?: string, only?: Set<string>}}
  */
 function importTarget(projectRoot, target) {
   if (typeof target === 'string') return { folder: checkFolder(projectRoot, target) };
   const t = /** @type {any} */ (target ?? {});
-  if (typeof t.route === 'string' && t.route) {
-    const closure = readRouteFamily(projectRoot, t.route);
+  if ((typeof t.route === 'string' && t.route) || (Array.isArray(t.route) && t.route.length)) {
+    const closure = readRouteFamily(projectRoot, t.route, t.feature ? { feature: t.feature } : {});
     const folder = t.folder ? checkFolder(projectRoot, t.folder) : commonFolder(closure.files);
-    if (!folder) throw new LineOpError(`The files of ${t.route} sit directly in the project root, so name the folder to import them into, such as src.`, 'BAD_FOLDER');
-    return { folder, route: t.route, family: familyFeature(t.route), only: new Set(closure.files.filter((f) => f.startsWith(`${folder}/`))) };
+    if (!folder) throw new LineOpError(`The files of ${routeLabel(t.route)} sit directly in the project root, so name the folder to import them into, such as src.`, 'BAD_FOLDER');
+    return { folder, route: t.route, family: closure.feature ?? familyFeature(String([t.route].flat()[0])), only: new Set(closure.files.filter((f) => f.startsWith(`${folder}/`))) };
   }
   if (typeof t.folder === 'string') return { folder: checkFolder(projectRoot, t.folder) };
   throw new LineOpError('Name a folder or a route to import, such as src/alerts or /alerts.', 'BAD_FOLDER');
@@ -564,7 +565,7 @@ function decide(projectRoot, target, answers) {
 /**
  * Scan one folder of the open project: what it holds and what Line proposes for each item (pure read, no model).
  * @param {string} projectRoot The open project (absolute).
- * @param {string | {folder?: string, route?: string}} folder Project-relative folder, or (Import v2) a route family {route, folder?}.
+ * @param {string | {folder?: string, route?: string|string[], feature?: string}} folder Project-relative folder, or (Import v2) a route family {route, folder?, feature?} (route: one route or several that make one feature).
  * @returns {import('./contract.mjs').ImportScan}
  * @throws {LineOpError} BAD_FOLDER.
  */
@@ -602,7 +603,7 @@ export function scanImport(projectRoot, folder) {
  * The proposals as plan-ready steps. Order: mark the folder as Line; every complete item into the library (fixtures,
  * workflows, components, pages); feature items that move in on a real base; then the thin feature items over split ones.
  * @param {string} projectRoot
- * @param {string | {folder?: string, route?: string}} folder A folder, or (Import v2) a route family {route, folder?}.
+ * @param {string | {folder?: string, route?: string|string[], feature?: string}} folder A folder, or (Import v2) a route family {route, folder?, feature?} (route: one route or several that make one feature).
  * @param {Record<string, string>} [answers] Question id -> option id; the recommended option where missing.
  * @returns {import('./contract.mjs').ImportPlan}
  */
@@ -640,7 +641,7 @@ export function planImport(projectRoot, folder, answers = {}) {
   }
   const lib = items.filter((i) => i.target === 'library').length;
   const feat = items.length - lib;
-  const of = d.route ? `the route ${d.route}` : f;
+  const of = d.route ? `the route${Array.isArray(d.route) && d.route.length > 1 ? 's' : ''} ${routeLabel(d.route)}` : f;
   const summary = items.length
     ? `Brings ${items.length} item${items.length === 1 ? '' : 's'} of ${of} into Line in ${steps.length} steps: ${lib} to the library and ${feat} to ${features.length === 1 ? `feature ${features[0]}` : `${features.length} features`}; nothing outside ${f} changes.`
     : `There is nothing in ${f} for Line to bring in.`;
@@ -843,7 +844,7 @@ function scratchFolder(projectRoot, folder) {
  * Construct's writer, with the folder as its root. So it is all-or-nothing: when any step, or the final commit, is
  * refused, nothing is written and the folder stays byte-identical; nothing outside the folder can be written.
  * @param {string} projectRoot
- * @param {string | {folder?: string, route?: string}} folder A folder, or (Import v2) a route family {route, folder?}.
+ * @param {string | {folder?: string, route?: string|string[], feature?: string}} folder A folder, or (Import v2) a route family {route, folder?, feature?} (route: one route or several that make one feature).
  * @param {Record<string, string>} [answers]
  * @returns {import('./contract.mjs').ImportApplyResult}
  */
