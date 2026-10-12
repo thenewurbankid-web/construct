@@ -12,7 +12,11 @@ build step 1, the contract: shapes, expected outputs and tests. The later steps 
 | `layoutFakes.mjs` | `LAYOUT_FAKE_TYPES` and `LAYOUT_EVENTS` (names from `lib.dom.d.ts`), the `LayoutFakeGenerator` interface, `layoutValues` |
 | `canonical.mjs` | Step 3, C1: `canonicalUnit` (one unit to a stable string and a logic-map fingerprint), `canonicalCompare` (the L0 layer, with the exact location on a mismatch), `locateUnit`, `unitNames`, `PINNED` (esbuild 0.28.2, whitespace and comments only) |
 | `roundTrip.mjs` | Step 3: `roundTripCompare` (re-inline the extracted functions, then canonical-compare with the original), `inBlocks` |
-| `verifyPair.mjs` | `verifyPair` (the layer walk; `RUNNERS` holds the built layers, L0-canonical and round-trip so far), `pairBefore`, `classifyBefore` |
+| `z3Translate.mjs` | Step 6: `translateFunction` from the TS subset to a solver-neutral IR, `findFunction`, `Unsupported` (subset in the file header) |
+| `z3Prove.mjs` | Step 6: `z3Layer` and `proveEqual`; lowers the IR to Z3 (z3-solver, MIT, WASM; numbers as IEEE doubles), per-proof timeout `Z3_TIMEOUT_MS` |
+| `fastCheckLayer.mjs` | Step 6: `fastCheckLayer` over `ast/pureExportEquivalence`, seeded by `minedSeeds` (the characterizer's literal pools of both sides) |
+| `astLocation.mjs` | `diffLocation`: the first differing expression of two versions of a function, as a `VerdictLocation` |
+| `verifyPair.mjs` | `verifyPair` (the layer walk; one `RUNNERS` registry in `escalation.mjs` order, a layer with no runner answers "skipped" and never decides), `pairBefore`, `classifyBefore` (the one purity stand-in until step 2) |
 
 Tests:
 
