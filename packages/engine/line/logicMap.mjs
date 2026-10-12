@@ -138,7 +138,7 @@ export function fileUnits(source, rel, renames = {}) {
   const at = (offset, type) => (byStart.get(offset) ?? []).find((n) => n.type === type);
   const parentOf = (n) => info.get(n)?.parent;
 
-  /** @type {Map<any, {kind: LogicUnitKind, detail: string, anchorNode?: any, anchorText?: string}>} */
+  /** @type {Map<any, {kind: LogicUnitKind, detail: string, anchorNode?: any, anchorText?: string, exportName?: string}>} */
   const found = new Map();
   const add = (node, kind, detail, anchorNode = node) => { if (node && !found.has(node)) found.set(node, { kind, detail, anchorNode }); };
 
@@ -233,6 +233,9 @@ export function fileUnits(source, rel, renames = {}) {
         else if (d?.type === 'VariableDeclaration') {
           add(node, 'export', d.declarations.map((x) => `${FN_TYPES.has(x.init?.type) ? shapeOf(text(x.id)) : 'const'} ${text(x.id)}`).join(', '), { type: 'ExportVar', ids: d.declarations.map((x) => x.id), fns: d.declarations.map((x) => (FN_TYPES.has(x.init?.type) ? /** @type {any} */ (x.init).params : null)) });
         }
+        // The exported binding name(s), for labels only: fn stays "<module>" (the fingerprint keys on it).
+        const f = found.get(node);
+        if (f?.kind === 'export') f.exportName = d.type === 'FunctionDeclaration' ? (d.id?.name ?? 'default') : d.declarations.map((x) => text(x.id)).join(', ');
       }
     },
   });
@@ -255,6 +258,7 @@ export function fileUnits(source, rel, renames = {}) {
     detail: oneLine(u.detail),
     anchor: normalizeNode(u.anchorNode, renames),
     start: node.range[0],
+    ...(u.exportName ? { exportName: u.exportName } : {}),
   }));
   return [...units.sort((a, b) => a.start - b.start), ...machineUnits];
 }
@@ -282,7 +286,7 @@ export function buildLogicMap(appRoot, files, { renames = {}, read = (abs) => fs
       seen.set(base, k);
       const key = `${rel}#${u.fn}:${u.kind}`;
       counters.set(key, (counters.get(key) ?? 0) + 1);
-      units.push({ id: `${key}:${counters.get(key)}`, fingerprint: k === 1 ? base : hash(`${base}#${k}`), kind: u.kind, file: rel, fn: u.fn, line: u.line, detail: u.detail, anchor: u.anchor });
+      units.push({ id: `${key}:${counters.get(key)}`, fingerprint: k === 1 ? base : hash(`${base}#${k}`), kind: u.kind, file: rel, fn: u.fn, line: u.line, detail: u.detail, anchor: u.anchor, ...(u.exportName ? { exportName: u.exportName } : {}) });
     }
   }
   /** @type {Partial<Record<LogicUnitKind, number>>} */
