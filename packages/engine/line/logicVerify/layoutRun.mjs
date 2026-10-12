@@ -19,7 +19,7 @@ import path from 'node:path';
 import vm from 'node:vm';
 import { createRequire } from 'node:module';
 import { ts, estreeParse } from '@construct/ast/lazy';
-import { analyzeClosure } from '../characterize/analyze.mjs';
+import { analyzeClosureCached as analyzeClosure } from '../characterize/analyzeCache.mjs';
 import { LAYOUT_FAKE_TYPES, mergePools } from './layoutFakes.mjs';
 import { createLayoutFakeGenerator } from './layoutFakeGen.mjs';
 import { createFakeClock } from './layoutClock.mjs';

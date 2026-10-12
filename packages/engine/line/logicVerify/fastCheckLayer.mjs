@@ -7,7 +7,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { pureExportEquivalence } from '@construct/ast/pure-export-equivalence';
-import { analyzeClosure } from '../characterize/analyze.mjs';
+import { analyzeClosureCached as analyzeClosure } from '../characterize/analyzeCache.mjs';
 import { PURE_EQUIVALENCE_OUTCOME } from './contract.mjs';
 import { locateUnitDifference } from './canonical.mjs';
 

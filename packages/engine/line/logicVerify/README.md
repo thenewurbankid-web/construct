@@ -118,7 +118,9 @@ pass, cold = first call in a fresh process, after about 0.1 to 0.2 s of module l
 | `out-of-set` | tested, `fast-check` | 230 ms | 500 ms |
 
 The two slow warm cases spend almost all their time in the characterizer's `analyzeClosure` (about 80 to 110 ms per
-root, once per side) for the mined literals, not in the solvers or the fakes; step 7 should cache it per file content.
+root, once per side) for the mined literals, not in the solvers or the fakes. Step 7 caches it per file content:
+`characterize/analyzeCache.mjs` `analyzeClosureCached` (bounded LRU, keyed by every closure file's depsHash, the routes,
+`charSalt` and the files `env` reads), which `fastCheckLayer.mjs` and `layoutRun.mjs` call.
 
 ## Planted fixtures
 
