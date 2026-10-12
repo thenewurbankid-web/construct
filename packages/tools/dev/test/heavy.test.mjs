@@ -386,3 +386,18 @@ test('#855 status.sh reads the lock path from heavy.sh, and verify.sh makes its 
   assert.doesNotMatch(verify, /mktemp \/tmp/);
   assert.match(verify, /TMPD="\$\{TMPDIR:-\/tmp\}"/);
 });
+
+// #854: without flock (macOS), status.sh used to report "HELD" forever because `flock -n` itself failed.
+// It must read heavy.sh's mkdir lock ($LOCK.d) instead. gh/curl/free are stubbed so no network is used.
+test('#854 status.sh reports the heavy queue from the mkdir lock where flock is missing', { skip: HAVE_FLOCK ? 'flock is installed here, so status.sh takes the flock path' : false }, () => {
+  const { dir, env } = sandbox();
+  const shims = path.join(dir, 'shims');
+  fs.mkdirSync(shims);
+  for (const bin of ['gh', 'curl', 'free']) fs.writeFileSync(path.join(shims, bin), '#!/bin/sh\nexit 0\n', { mode: 0o755 });
+  const run = () => spawnSync('bash', [path.join(path.dirname(HEAVY), 'status.sh')], { env: { ...env, PATH: `${shims}:${env.PATH}` }, encoding: 'utf8', timeout: 60000 });
+  const queue = (out) => out.split('\n')[out.split('\n').indexOf('-- heavy queue') + 1];
+  assert.equal(queue(run().stdout), 'free');
+  fs.mkdirSync(`${env.CONSTRUCT_HEAVY_LOCK}.d`);
+  fs.writeFileSync(`${env.CONSTRUCT_HEAVY_LOCK}.d/pid`, String(process.pid));
+  assert.match(queue(run().stdout), /^HELD by pid /);
+});
