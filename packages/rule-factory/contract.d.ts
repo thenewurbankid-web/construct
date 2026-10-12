@@ -8,3 +8,7 @@ export * as contract from './contract.mjs';
 export * as mock from './mock.mjs';
 /** `@line/rule-factory/collect` */
 export * as collect from './collect.mjs';
+/** `@line/rule-factory/misses` */
+export * as misses from './misses.mjs';
+/** `@line/rule-factory/eval-misses` */
+export * as evalMisses from './eval-misses.mjs';

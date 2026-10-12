@@ -14,6 +14,8 @@
   "exports": {
     "./contract": "./contract.mjs",
     "./mock": "./mock.mjs",
-    "./collect": "./collect.mjs"
+    "./collect": "./collect.mjs",
+    "./misses": "./misses.mjs",
+    "./eval-misses": "./eval-misses.mjs"
   }
 }

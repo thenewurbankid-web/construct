@@ -58,6 +58,7 @@ export const lineHttp: LineHttp = {
   getAiProfiles: () => getJson('/api/line/ai-profiles'),
   getMemory: () => getJson('/api/line/memory'),
   forgetMemory: (step) => personPost('/api/line/memory/forget', { step }),
+  getMisses: () => getJson('/api/line/misses'),
   trace: (req) => postJson('/api/line/trace', req),
   getImportAgent: (folder) => getJson(`/api/line/import-agent?folder=${encodeURIComponent(folder)}`),
   startImportAgent: (folder, route) => postJson('/api/line/import-agent/start', route ? { folder, route } : { folder }),

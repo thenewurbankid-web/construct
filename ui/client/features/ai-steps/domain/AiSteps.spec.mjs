@@ -5,6 +5,7 @@ import { aiStepRows } from './AiStepRows.ts';
 import { howItWorks, modelText } from './AiStepText.ts';
 import { aiStepsView } from './AiStepsView.ts';
 import { memoryRows } from './MemoryRows.ts';
+import { missView } from './MissView.ts';
 
 const profiles = () => readAiProfiles({ traceConfig: null, status: () => ({ ok: true, packages: [{ name: '@mx/reason', ok: true, message: 'ok' }] }) });
 
@@ -29,8 +30,8 @@ test("modelText and howItWorks: the 1.5B is Line's default; hosted and jev steps
 });
 
 test('aiStepsView: loading, a refusal sentence, and the ready rows each give one status sentence', () => {
-  assert.deepEqual(aiStepsView({ phase: 'loading' }), { status: 'Reading the AI steps.', rows: [] });
-  assert.deepEqual(aiStepsView({ phase: 'error', sentence: 'No.' }), { status: 'No.', rows: [] });
+  assert.deepEqual(aiStepsView({ phase: 'loading' }), { status: 'Reading the AI steps.', rows: [], misses: null });
+  assert.deepEqual(aiStepsView({ phase: 'error', sentence: 'No.' }), { status: 'No.', rows: [], misses: null });
   const p = profiles();
   const v = aiStepsView({ phase: 'ready', profiles: p, rows: aiStepRows(p) });
   assert.equal(v.status, p.reason.sentence);
@@ -41,4 +42,18 @@ test('memoryRows (im3 + j5): each memory step with its size in words; Forget onl
   assert.deepEqual(memoryRows(null), []);
   const rows = memoryRows({ ok: true, total: 4, sentence: 's', steps: [{ step: 'drafter.route', label: 'Which drafted route you pick', size: 3 }, { step: 'plan.step', label: 'What happens', size: 1 }, { step: 'plan.fix', label: 'Which fix', size: 0 }] });
   assert.deepEqual(rows.map((r) => [r.sizeText, r.canForget]), [['3 remembered decisions', true], ['1 remembered decision', true], ['0 remembered decisions', false]]);
+});
+
+test('missView (im1): the report in plain English, the steps, what Line did not offer, and the eval numbers', () => {
+  const v = missView({
+    ok: true, total: { misses: 1, absent: 1, picked: 0 },
+    steps: [{ step: 'line.promote', absent: 1, picked: 0, total: 1, sentence: 'The line.promote step: 1 miss where the right answer was not offered, 0 where it was offered but not recommended.' }],
+    topAbsent: [{ pattern: 'share <component> with <feature> -> line.promote', step: 'line.promote', count: 1, sources: ['drafter-eval'], examples: [], sentence: '1 miss: "share <component> with <feature>" needed the line.promote route, which Line did not offer.' }],
+    sentence: "1 miss: 1 where the right answer was not among Line's options (a static tool is missing), 0 where it was offered but another was recommended.",
+    from: 'From Train Line and the drafter eval (measured 2026-10-12).',
+    numbers: { train: { n: 130, recall: 1, precision: 0.917, preferred: 1 }, drafter: { n: 55, recall: 0.927, precision: 0.958, preferred: 0.927 } },
+  });
+  assert.equal(v.steps.length, 1);
+  assert.match(v.top[0], /did not offer\.$/);
+  assert.equal(v.evals, 'Train Line held-out: 100% of the valid routes found, 100% picked the preferred one. Drafter eval: 93% route recall, 96% precision.');
 });

@@ -366,6 +366,25 @@ function fix(ctx, intent, all) {
         risk: y.step.tool === 'line.promote' ? 'Moves an item into the library, so other features use the library copy.' : 'Changes only the file with the problem.',
         confidence: ctx.labels.intent.confidence * (i === 0 ? 1 : 0.6) * (ctx.words.includes('all') || ctx.words.includes('every') ? 0.6 : 1),
       }));
+      // im1 (top absent miss, Train Line's fix family): a typed fix that moves the cross-feature item into the library is
+      // also a plain plan step the person may want to take directly ("Move <item> into the library directly"). Offered
+      // after the fix itself, never recommended over it; Construct still checks it on a copy.
+      // Only for a cross-feature use (LINE-DIR), when the request is about that one problem (not "all", "every", or
+      // several problems in a feature): Train Line's gold lists the raw move there, and only there.
+      const one = x.rule === 'LINE-DIR' && findings.length === 1 && !ctx.words.includes('all') && !ctx.words.includes('every');
+      if (one && y.step.tool === 'line.promote' && typeof y.step.args?.featureItemId === 'string' && !out.some((o) => o.template === 'fix-step' && o.steps[0].args.featureItemId === y.step.args.featureItemId)) {
+        const item = ctx.summary.features.flatMap((f) => f.items).find((it) => it.id === y.step.args.featureItemId);
+        if (!item) return;
+        const I = itemSlot(ctx, item);
+        out.push(route({
+          id: `fix-step:${r}:${i + 1}`, template: 'fix-step', intent, label: `Move <${I}> into the library directly.`,
+          scope: { layers: [KIND_LAYER[item.kind] ?? 'ui'], features: [], library: [], scope: 'library' },
+          steps: [{ tool: 'line.promote', args: { featureItemId: `<${I}>` } }],
+          expect: [{ noFinding: { key: `<${r}>` } }, { noNewFindings: true }], delta: d ?? [],
+          risk: 'Moves an item into the library, so other features use the library copy.',
+          confidence: ctx.labels.intent.confidence * 0.5,
+        }));
+      }
     });
   }
   return out;

@@ -401,6 +401,9 @@ import { EXTRACT_TOOLS } from './importV2/extractTarget.mjs';
  * @property {{tool: string, args: Record<string, unknown>}[]} steps  For Details.
  * @property {{sentence: string}|null} fix  A refused route's typed fix, in words.
  * @property {string|null} [memory]  im3 + j5: why memory moved this route first ("Recalled from 3 past decisions: ...").
+ * @property {{outcome: string, sentence: string, progress: string[], tries: {n: number, reason: string, outcome: string, refusal: string|null}[]}|null} [repair]
+ *   im2: the local model's repair of this route (a model's route that Construct refused): what came of it, the live line
+ *   (one sentence per attempt, in order) and every attempt for Details; null when none was tried.
  *
  * @typedef {object} DraftView
  * @property {true} ok
@@ -573,6 +576,7 @@ export const PLAN_PROTOCOL = Object.freeze([
  * @property {string|null} model  The model the step uses; the local default is qwen2.5-coder:1.5b. Null only for a hosted step.
  * @property {string} modelFrom   Plain English: where the model comes from ("Line's default", "trace/ai.config.json").
  * @property {number} maxTokens   The reply cap for the step's model (Qwen's proposer reads it; 800 for plan steps).
+ * @property {number} [maxAttempts]  im2: how many repairs the step may try (construct.repair; default 4).
  * @property {'static'} fallback  When the model is down or not linked, the static path answers and says so.
  * @property {{static: {target: number}, options: {on: boolean, target: number}, review: {on: boolean, target: number}, measured: string|null}} ladder
  * @property {'cockpit'|'trace'|'construct'} source  Which app's step it is.
@@ -611,8 +615,85 @@ export const PLAN_PROTOCOL = Object.freeze([
  * improve the score (then ONE question for the person).
  * @typedef {object} DecideLoopResult
  * @property {'accepted'|'ask'} outcome
- * @property {{decision: DecideResult, ok: boolean, score: number, refusal: Refusal|null}[]} rounds
+ * @property {{decision: DecideResult, ok: boolean, score: number, refusal: Refusal|null, repair?: RepairAttempt}[]} rounds
+ *   `repair` (im2): the ONE repair the local model made of the option Qwen or jev chose, on the last round only.
  * @property {{sentence: string, options: {id: string, sentence: string}[]}|null} question  Set exactly when outcome is ask.
+ */
+
+/**
+ * im2: the local model's repair of a refused option (packages/core/line-decide.mjs repairLoop; owner, 12 Oct: up to
+ * `maxAttempts`, profile construct.repair, default 4). Each attempt gets only the error (the refusal sentence, the
+ * finding, the typed fixes), the option and every earlier attempt with its refusal; the reply is a short reason then the
+ * option, constrained to the option's schema; Construct checks each repaired option. It stops when one lands, repeats an
+ * earlier one, or passes no more checks than the last one. Kept on the decision trace (DecideLoopResult round `repair`),
+ * slotted in the plan records (`records/repairs.jsonl`); `progress` is the person's live line, one sentence per attempt.
+ * @typedef {object} RepairTry
+ * @property {number} n
+ * @property {string} reason  The model's short reason, written before the option.
+ * @property {{tool: string, args: any}|null} option  null when the reply did not fit the schema.
+ * @property {'landed'|'refused'|'invalid'|'repeat'|'unchanged'|'proposed'} outcome
+ * @property {{sentence: string, rule: string|null, code: string|null}|null} refusal  Construct's refusal of this attempt.
+ * @property {number|null} passed  Checks passed, when the check reports it.
+ *
+ * @typedef {object} RepairAttempt
+ * @property {1|2} v
+ * @property {'construct.repair'} step
+ * @property {string} model
+ * @property {number} attempts  0 only when the model was not there.
+ * @property {number} [maxAttempts]
+ * @property {'repaired'|'still-refused'|'no-better'|'repeated'|'invalid'|'unchanged'|'no-model'|'proposed'} outcome
+ *   repaired: Construct accepts an attempt; still-refused / no-better / repeated / invalid / unchanged: the person decides
+ *   (every attempt under Details); no-model: the static path is unchanged; proposed: not yet checked (the caller checks it).
+ * @property {{tool: string, args: any}} before  The refused option.
+ * @property {{tool: string, args: any}|null} option  The landed or proposed option, or the last refused one.
+ * @property {{sentence: string, rule: string|null, code: string|null, fixes: {id: string, sentence: string}[]}} refusal  What the model was given first.
+ * @property {{sentence: string, rule: string|null, code: string|null}|null} after  Construct's refusal of the last attempt.
+ * @property {RepairTry[]} [tries]  Every attempt (v2).
+ * @property {string[]} [progress]  One plain sentence per attempt, in order (v2).
+ * @property {string} sentence
+ * @property {number} ms
+ */
+
+export const REPAIR_OUTCOMES = Object.freeze(['repaired', 'still-refused', 'no-better', 'repeated', 'invalid', 'unchanged', 'no-model', 'proposed']);
+
+/**
+ * im2: throws unless a is a RepairAttempt.
+ * @param {any} a
+ * @returns {asserts a is RepairAttempt}
+ */
+export function assertRepairAttempt(a) {
+  if (![1, 2].includes(a?.v) || a.step !== 'construct.repair') fail('repair', 'must be a construct.repair attempt');
+  str(a.model, 'repair.model');
+  if (!REPAIR_OUTCOMES.includes(a.outcome)) fail('repair.outcome', `must be one of ${REPAIR_OUTCOMES.join(', ')}`);
+  const max = a.maxAttempts ?? 1;
+  if (a.outcome === 'no-model' ? a.attempts !== 0 : !(Number.isInteger(a.attempts) && a.attempts >= 1 && a.attempts <= max)) fail('repair.attempts', 'is between one and maxAttempts, or zero when the model was not there');
+  if (!a.before || typeof a.before.tool !== 'string') fail('repair.before', 'must be the refused option');
+  if (['repaired', 'proposed'].includes(a.outcome) && !a.option) fail('repair.option', 'is set when an attempt landed or was proposed');
+  if (['invalid', 'unchanged', 'repeated', 'no-model'].includes(a.outcome) && a.option !== null) fail('repair.option', 'is null when no attempt is left to show');
+  if (a.option && a.option.tool !== a.before.tool) fail('repair.option.tool', 'a repair keeps the tool');
+  if (a.after !== null && !['still-refused', 'no-better'].includes(a.outcome)) fail('repair.after', 'is set only when the last attempt was refused');
+  if (a.v === 2) {
+    if (!Array.isArray(a.tries) || a.tries.length !== a.attempts) fail('repair.tries', 'lists every attempt');
+    if (!Array.isArray(a.progress) || a.progress.length !== a.attempts) fail('repair.progress', 'has one sentence per attempt');
+    a.progress.forEach((p, i) => sentence(p, `repair.progress[${i}]`));
+    if (a.tries.filter((t) => t.outcome === 'landed').length !== (a.outcome === 'repaired' ? 1 : 0)) fail('repair.tries', 'one attempt landed exactly when repaired');
+  }
+  sentence(a.refusal?.sentence, 'repair.refusal.sentence');
+  sentence(a.sentence, 'repair.sentence');
+}
+
+/**
+ * im1: GET /api/line/misses, the miss report Settings shows under "AI steps" (@line/rule-factory MissReport, plus where
+ * it comes from). Every miss is absent (the right answer was not among Line's options) or picked (offered, another
+ * recommended); patterns are slotted.
+ * @typedef {object} MissReportView
+ * @property {true} ok
+ * @property {{misses: number, absent: number, picked: number}} total
+ * @property {{step: string, absent: number, picked: number, total: number, sentence: string}[]} steps
+ * @property {{pattern: string, step: string, count: number, sources: string[], examples: string[], sentence: string}[]} topAbsent
+ * @property {string} sentence
+ * @property {string} from  Where the misses come from, in one sentence.
+ * @property {{train: any, drafter: any}|null} numbers  The eval numbers of the snapshot, when there is one.
  */
 
 /**
@@ -718,7 +799,7 @@ export const AUTO_ACTION_KINDS = Object.freeze(['click', 'type', 'select', 'appr
  * @typedef {{n: number, at: string, by: 'ui'|'agent'|'line', action: 'start'|'state'|'decide'|'edit'|'skip'|'unskip'|'move'|'approve'|'approve-all'|'add-step'|'answer'|'pause'|'resume'|'verify'|'undo', stepId?: string, sentence: string}} ImportChange
  *
  * One decision the agent took (a classify question or a fix to try), and who took it.
- * @typedef {{id: string, question: string, options: string[], picked: string, answer: string, by: 'static'|'single'|'order'|'jev'|'person', reason: string}} ImportDecision
+ * @typedef {{id: string, question: string, options: string[], picked: string, answer: string, by: 'static'|'single'|'order'|'jev'|'person'|'model', reason: string}} ImportDecision  `model` (im2): the local model's one repair of a refused fix.
  *
  * What the process waits for. `approval`: a person approves cp1 plan step `planStepId` (Plan panel or Import agent).
  * `review`: the plan steps are approved (a person, or the person's coding agent over MCP). `answer`: one question.
@@ -744,7 +825,7 @@ export const AUTO_ACTION_KINDS = Object.freeze(['click', 'type', 'select', 'appr
  * @property {Record<string, string>} answers     Classify question id -> option id.
  * @property {ImportDecision[]} decisions
  * @property {ImportAgentStep[]} steps
- * @property {{pending: string|null, origin: string|null, phase: 'step'|'fix'|'retry'|'leave'|'refresh'|'putback'|null, stepId?: string}} cursor  The cp1 step being waited on (`putback`: a loop's typed fix for import step `stepId`).
+ * @property {{pending: string|null, origin: string|null, phase: 'step'|'fix'|'repair'|'retry'|'leave'|'refresh'|'putback'|null, stepId?: string}} cursor  The cp1 step being waited on (`putback`: a loop's typed fix for import step `stepId`; `repair`, im2: the local model's one repair of a refused fix, `stepId` the refused fix it replaces; on the `retry` that follows, the leave-as-is step for that fix, run after it).
  * @property {{ok: boolean, checks: ImportVerifyCheck[]}|null} verify
  * @property {ImportChange[]} changes
  * @property {'saved'|'none'|'undone'} [undo]  Whether the folder was saved before the first step landed (so the person can
@@ -850,6 +931,7 @@ export const LINE_API = Object.freeze([
   { method: 'GET', path: '/api/line/ai-profiles', request: null, response: 'AiProfiles' },
   { method: 'GET', path: '/api/line/memory', request: null, response: 'MemoryView (memory/contract.mjs)' },
   { method: 'POST', path: '/api/line/memory/forget', request: '{step} + x-line-approval', response: 'MemoryView & {message}' },
+  { method: 'GET', path: '/api/line/misses', request: null, response: 'MissReportView' },
   { method: 'POST', path: '/api/line/trace', request: 'TraceRequest', response: 'TraceMatch' },
   { method: 'GET', path: '/api/line/import-agent', request: 'folder (query)', response: 'ImportAgentView' },
   { method: 'POST', path: '/api/line/import-agent/start', request: '{folder, route?}', response: 'ImportAgentView' },
@@ -1437,6 +1519,7 @@ export function assertStepProfile(p, where = 'profile') {
   else if (p.model !== null && typeof p.model !== 'string') fail(`${where}.model`, 'must be a string or null');
   str(p.modelFrom, `${where}.modelFrom`);
   if (!Number.isInteger(p.maxTokens) || p.maxTokens < 1 || p.maxTokens > 32768) fail(`${where}.maxTokens`, 'must be a whole number from 1 to 32768');
+  if (p.maxAttempts !== undefined && (!Number.isInteger(p.maxAttempts) || p.maxAttempts < 1 || p.maxAttempts > 8)) fail(`${where}.maxAttempts`, 'must be a whole number from 1 to 8');
   if (p.fallback !== 'static') fail(`${where}.fallback`, 'must be static');
   const l = p.ladder;
   if (!l || typeof l !== 'object') fail(`${where}.ladder`, 'must be an object');
@@ -1498,7 +1581,9 @@ export function assertDecideLoopResult(x) {
     if (i > 0 && !r.decision.feedback) fail(`loop.rounds[${i}].decision.feedback`, 'a retry decides over the refusal\'s typed fixes');
   });
   const last = x.rounds.at(-1);
-  if ((x.outcome === 'accepted') !== last.ok) fail('loop.outcome', 'is accepted exactly when the last round landed');
+  x.rounds.forEach((r, i) => { if (r.repair !== undefined) { assertRepairAttempt(r.repair); if (i !== x.rounds.length - 1 || x.rounds.slice(0, i).some((p) => p.repair)) fail(`loop.rounds[${i}].repair`, 'one repair, on the last round'); } });
+  const landed = last.ok || last.repair?.outcome === 'repaired';
+  if ((x.outcome === 'accepted') !== landed) fail('loop.outcome', 'is accepted exactly when the last round landed (or its one repair did)');
   if ((x.outcome === 'ask') !== (x.question !== null)) fail('loop.question', 'is set exactly when the outcome is ask');
   if (x.question) {
     sentence(x.question.sentence, 'loop.question.sentence');
@@ -1698,12 +1783,12 @@ export function assertImportPlanFile(p) {
   p.decisions.forEach((d, i) => {
     str(d.id, `importPlan.decisions[${i}].id`);
     if (!d.options.includes(d.picked)) fail(`importPlan.decisions[${i}].picked`, 'must be one of its options');
-    if (!['static', 'single', 'order', 'jev', 'person'].includes(d.by)) fail(`importPlan.decisions[${i}].by`, 'unknown decider');
+    if (!['static', 'single', 'order', 'jev', 'person', 'model'].includes(d.by)) fail(`importPlan.decisions[${i}].by`, 'unknown decider');
     sentence(d.reason, `importPlan.decisions[${i}].reason`);
     sentence(d.answer, `importPlan.decisions[${i}].answer`);
   });
   p.changes.forEach((c, i) => { assertChange(c, `importPlan.changes[${i}]`); if (c.n !== i + 1) fail(`importPlan.changes[${i}].n`, 'must count up by one'); });
-  if (!p.cursor || !['step', 'fix', 'retry', 'leave', 'refresh', 'putback', null].includes(p.cursor.phase)) fail('importPlan.cursor', 'must be {pending, origin, phase}');
+  if (!p.cursor || !['step', 'fix', 'repair', 'retry', 'leave', 'refresh', 'putback', null].includes(p.cursor.phase)) fail('importPlan.cursor', 'must be {pending, origin, phase}');
   if (p.cursor.phase === 'putback' && typeof p.cursor.stepId !== 'string') fail('importPlan.cursor.stepId', 'must name the import step a put-back fix is for');
   assertVerify(p.verify, 'importPlan.verify');
   if (p.undo !== undefined && !['saved', 'none', 'undone'].includes(p.undo)) fail('importPlan.undo', 'must be saved, none or undone');

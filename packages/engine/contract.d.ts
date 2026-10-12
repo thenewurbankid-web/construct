@@ -146,6 +146,8 @@ export * as lineFacts from './line/facts.mjs';
 export * as lineConditions from './line/conditions.mjs';
 /** `@line/construct-engine/line/records` */
 export * as lineRecords from './line/records.mjs';
+/** `@line/construct-engine/line/repair` */
+export * as lineRepair from './line/repair.mjs';
 /** `@line/construct-engine/line/structure` */
 export * as lineStructure from './line/structure.mjs';
 /** `@line/construct-engine/line/mock-facts` */

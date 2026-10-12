@@ -31,6 +31,8 @@ export type RouteCard = {
   how: string;
   /** im3 + j5: why memory recommends it ("Recalled from 3 past decisions: ..."), else null. */
   memory: string | null;
+  /** im2: the repair's live line (one sentence per attempt) and every attempt for Details; null when none was tried. */
+  repair: { sentence: string; progress: string[]; tries: string[] } | null;
 };
 
 /** Everything the drafter box needs. */

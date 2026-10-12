@@ -1367,7 +1367,13 @@ app.use('/api/line', createLineRenderRouter({
 }));
 
 // cu2: every AI step's profile (model, reply cap, ladder, static fallback), read-only for Settings.
-app.use('/api/line', createLineAiRouter());
+app.use('/api/line', createLineAiRouter({
+  // im1: the open project's plan feedback joins the miss report under "AI steps".
+  getRoot: () => {
+    const root = containedProjectRoot(getProjectDir());
+    return root ? { ok: true, root } : { ok: false, error: 'No project is open.' };
+  },
+}));
 
 // im3 + j5: the open project's memory of past answers per step (size, and Forget: one click, a person only).
 app.use('/api/line', createLineMemoryRouter({

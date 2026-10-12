@@ -78,7 +78,9 @@ test('UAT cl1: spec from code, two Cockpit sessions with the same refusal, then 
   const lines = sentences(misses.stdout);
   assert.equal(lines[0], 'Read 2 session traces: 1 kind of refusal, 1 that recurs with no working typed fix.');
   assert.ok(lines.includes('- Framework issue: Editing a code fragment (line.setFragment) was refused twice (LINE-DIR). Construct refused this twice and never offered a typed fix that can run as a step.'), misses.stdout);
-  assert.equal(lines.at(-1), 'Add --draft to write each one as a markdown issue in the project\'s line/issues folder (nothing is filed).');
+  assert.ok(lines.includes('Add --draft to write each one as a markdown issue in the project\'s line/issues folder (nothing is filed).'), misses.stdout);
+  // im1: the miss report follows the trace section; every line is still a full sentence.
+  assert.match(lines.at(-1), /^Add --eval to include Train Line's gold and the drafter eval/);
   for (const l of lines) assert.ok(plain(l), `plain English: ${l}`);
 
   // Step 4: draft them (not filed), and read one.

@@ -1,5 +1,6 @@
 import { AiStepList } from '../components/AiStepList';
 import { MemoryList } from '../components/MemoryList';
+import { MissReport } from '../components/MissReport';
 import '../components/ai-steps.css';
 import type { AiStepsView, MemoryPanel } from '../types';
 
@@ -17,6 +18,7 @@ export function AiStepsPanel({ view, memory }: { view: AiStepsView; memory: Memo
       </p>
       <AiStepList rows={view.rows} />
       <MemoryList memory={memory} />
+      {view.misses ? <MissReport misses={view.misses} /> : null}
     </section>
   );
 }

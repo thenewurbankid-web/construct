@@ -19,6 +19,8 @@ test('profiles: one set covers Cockpit, Trace and Construct steps, each passing 
   for (const s of ['construct.chooser', 'construct.fix', 'trace.choose', 'trace.pick-fields', 'trace.draft-body', 'cockpit.importFill', 'cockpit.createFill', 'cockpit.planAnalysis']) assert.ok(steps.includes(s), s);
   assert.equal(DEFAULT_STEP_MODEL, 'qwen2.5-coder:1.5b');
   for (const p of all.filter((x) => x.provider === 'ollama')) assert.equal(p.model, DEFAULT_STEP_MODEL, p.step);
+  // im2 (owner, 12 Oct): the repair loop on the 1.5B, no reason field, up to 4 attempts (variant A, review.md).
+  assert.deepEqual([stepProfile('construct.repair').reason, stepProfile('construct.repair').maxAttempts], [false, 4]);
   assert.equal(stepModel('cockpit.planAnalysis', { traceConfig: null }), null, 'plan analysis stays on a hosted model');
   assert.equal(stepProfile('construct.chooser').maxTokens, 800, 'plan steps get 800 tokens');
   assert.equal(stepProfile('construct.chooser').fallback, 'static');

@@ -73,6 +73,8 @@ export const TEMPLATES = Object.freeze({
   'set-fragment': { tools: ['line.setFragment'], intents: ['update.handler', 'update.variable', 'update.workflow-step', 'update.workflow', 'update.feature-flow', 'update.prop', 'wire.handler'] },
   fix: { tools: ['line.fix'], intents: ['fix.problem'] },
   'fix-all': { tools: ['line.fix'], intents: ['fix.problem'] },
+  /** im1: a typed fix's own plan step taken directly (move the cross-feature item into the library). */
+  'fix-step': { tools: ['line.promote'], intents: ['fix.problem'] },
   'create-layout': { tools: ['line.createLayout'], intents: ['add.layout'] },
   'new-feature': { tools: ['line.baseOn'], intents: ['add.feature'] },
   /** Two single-layer routes on different layers, run one after the other (multi-layer intents only). */

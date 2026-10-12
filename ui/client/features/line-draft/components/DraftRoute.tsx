@@ -21,6 +21,29 @@ function Memory({ memory }: { memory: string | null }) {
   );
 }
 
+/** im2: what the local model tried, as it happened (one line per attempt), the outcome, and every attempt under Details. */
+function Repair({ repair }: { repair: RouteCard['repair'] }) {
+  if (!repair) return null;
+  const lines = repair.progress.map((p) => (
+    <li key={p} data-testid="draft-repair-progress">
+      {p}
+    </li>
+  ));
+  const tries = repair.tries.map((t) => <li key={t}>{t}</li>);
+  return (
+    <div className="ldr-repair" data-testid="draft-repair" aria-live="polite">
+      <ul className="ldr-repair-progress">{lines}</ul>
+      <p className="ldr-sentence">{repair.sentence}</p>
+      {tries.length ? (
+        <details className="ldr-tech">
+          <summary>Details: every attempt</summary>
+          <ul>{tries}</ul>
+        </details>
+      ) : null}
+    </div>
+  );
+}
+
 /** Add to plan, only for a route Construct checked. */
 function AddButton({ card, busy, onAdd }: Add & { card: RouteCard }) {
   if (!card.canAdd) return null;
@@ -46,6 +69,7 @@ export function DraftRoute({ card, ...add }: Add & { card: RouteCard }) {
       <StreamedText text={card.sentence} className="ldr-sentence" testId="draft-route-sentence" />
       <Memory memory={card.memory} />
       <Fix fix={card.fix} />
+      <Repair repair={card.repair} />
       <p className="ldr-risk">{card.risk}</p>
       <AddButton card={card} {...add} />
       <details className="ldr-tech">

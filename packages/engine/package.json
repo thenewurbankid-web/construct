@@ -81,6 +81,7 @@
     "./line/facts": "./line/facts.mjs",
     "./line/conditions": "./line/conditions.mjs",
     "./line/records": "./line/records.mjs",
+    "./line/repair": "./line/repair.mjs",
     "./line/structure": "./line/structure.mjs",
     "./line/mock-facts": "./line/mockFacts.mjs"
   },

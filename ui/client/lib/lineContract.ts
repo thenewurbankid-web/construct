@@ -397,6 +397,8 @@ export type DraftRouteView = {
   fix: { sentence: string } | null;
   /** im3 + j5: why memory moved this route first ("Recalled from 3 past decisions: ..."), else null. */
   memory?: string | null;
+  /** im2: the local model's repair of a refused model route: the outcome, the live line per attempt, every attempt. */
+  repair?: { outcome: string; sentence: string; progress: string[]; tries: { n: number; reason: string; outcome: string; refusal: string | null }[] } | null;
 };
 export type DraftQuestion = { word: string; sentence: string; choices: { key: string; label: string }[]; suggested: string | null };
 export type DraftView = {
@@ -446,6 +448,8 @@ export type LineHttp = {
   getMemory: () => Promise<MemoryView | LineRefusal>;
   /** im3 + j5: forget one step's memory (a person only: sends the approval token). */
   forgetMemory: (step: string) => Promise<(MemoryView & { message: string }) | LineRefusal>;
+  /** im1: the miss report (absent vs picked per step) Settings shows under "AI steps". */
+  getMisses: () => Promise<MissReportView | LineRefusal>;
   trace: (req: TraceRequest) => Promise<TraceMatch | LineRefusal>;
   getImportAgent: (folder: string) => Promise<ImportAgentView | LineRefusal>;
   startImportAgent: (folder: string, route?: string) => Promise<ImportAgentView | LineRefusal>;
@@ -467,6 +471,8 @@ export type StepProfile = {
   model: string | null;
   modelFrom: string;
   maxTokens: number;
+  /** im2: how many repairs the step may try (construct.repair). */
+  maxAttempts?: number;
   fallback: 'static';
   ladder: {
     static: { target: number };
@@ -482,6 +488,17 @@ export type AiProfiles = {
   defaultModel: string;
   profiles: StepProfile[];
   reason: { linked: boolean; sentence: string };
+};
+
+/** im1: GET /api/line/misses (MissReportView in packages/engine/line/contract.mjs). */
+export type MissReportView = {
+  ok: true;
+  total: { misses: number; absent: number; picked: number };
+  steps: { step: string; absent: number; picked: number; total: number; sentence: string }[];
+  topAbsent: { pattern: string; step: string; count: number; sources: string[]; examples: string[]; sentence: string }[];
+  sentence: string;
+  from: string;
+  numbers: { train: { n: number; recall: number; precision: number; preferred: number } | null; drafter: { n: number; recall: number; precision: number; preferred: number } | null } | null;
 };
 
 // ------------------------------------------------------------------------------------------------- Train Line

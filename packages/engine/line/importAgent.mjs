@@ -181,7 +181,7 @@ export async function decideWith(provider, id, question, optionIds) {
 // ------------------------------------------------------------------------------------------------- the agent
 /**
  * The Import agent for one folder of one project.
- * @param {{root: string, folder: string, planService: {view: () => Promise<any>, addStep: (req: any, by: string) => Promise<any>, approve: (id: string, by: string) => Promise<any>, runNext: (by: string, id?: string) => Promise<any>}, reason?: {suggest: (summary: any) => Promise<any>, lastNote?: () => string | null} | null, verify?: (root: string, folder: string, baseline: string[]) => Promise<{ok: boolean, checks: any[]}>, baseline?: (root: string, folder: string) => Promise<string[]> | string[], importOps: {scan: (root: string, folder: string) => any, plan: (root: string, folder: string, answers: Record<string, string>, target?: {route: string|string[], feature?: string}) => any}, store: {read: () => any, write: (doc: any) => void}, logic?: any, checkFolder?: () => void, snapshot?: (root: string, folder: string) => unknown, rollback?: (root: string, folder: string) => {ok: boolean, sentence: string, files: string[]} | Promise<{ok: boolean, sentence: string, files: string[]}>, now?: () => string, decider?: string, memory?: any}} o `memory` (im3): where plan edits are remembered (default memoryOf(root); null for none). `importOps` and `store` are the disk ones in importAgentDisk.mjs (createImportAgentOnDisk), in-memory ones in the mock. `logic` is the import loop's ops (importLoop.mjs): importLoopDisk.mjs createLogicOnDisk on disk, importLoopMock.mjs createMockLogic in the mock; without it the map, characterize and loop checks say they are not set up and pass through.
+ * @param {{root: string, folder: string, planService: {view: () => Promise<any>, addStep: (req: any, by: string) => Promise<any>, approve: (id: string, by: string) => Promise<any>, runNext: (by: string, id?: string) => Promise<any>}, reason?: {suggest: (summary: any) => Promise<any>, lastNote?: () => string | null} | null, verify?: (root: string, folder: string, baseline: string[]) => Promise<{ok: boolean, checks: any[]}>, baseline?: (root: string, folder: string) => Promise<string[]> | string[], importOps: {scan: (root: string, folder: string) => any, plan: (root: string, folder: string, answers: Record<string, string>, target?: {route: string|string[], feature?: string}) => any}, store: {read: () => any, write: (doc: any) => void}, logic?: any, checkFolder?: () => void, snapshot?: (root: string, folder: string) => unknown, rollback?: (root: string, folder: string) => {ok: boolean, sentence: string, files: string[]} | Promise<{ok: boolean, sentence: string, files: string[]}>, now?: () => string, decider?: string, memory?: any, repair?: ((option: any, refusal: any, c?: any) => Promise<any>) | null}} o `memory` (im3): where plan edits are remembered (default memoryOf(root); null for none). `repair` (im2): the one repair of a refused fix jev picked (importAgentDisk.mjs: the local 1.5B; absent: the person decides). `importOps` and `store` are the disk ones in importAgentDisk.mjs (createImportAgentOnDisk), in-memory ones in the mock. `logic` is the import loop's ops (importLoop.mjs): importLoopDisk.mjs createLogicOnDisk on disk, importLoopMock.mjs createMockLogic in the mock; without it the map, characterize and loop checks say they are not set up and pass through.
  * @returns {any}
  */
 export function createImportAgent(o) {
@@ -352,6 +352,18 @@ export function createImportAgent(o) {
       return 'more';
     }
     if (ps.state === 'done' || ps.state === 'skipped') {
+      if (c.phase === 'repair' && c.stepId) {
+        // The repaired fix landed. The refused fix it replaced is left as it is and the refused step is tried again; both
+        // are planned together (a plan runs only what answers the first step that needs the person), the retry runs
+        // first, then the leave.
+        const l = await addPlanStep(doc, step, { tool: 'line.leaveAsIs', args: { stepId: c.stepId } }, by, true);
+        if (!l.ok) { askAboutStep(doc, step, null, l.sentence); return 'wait'; }
+        const r = await addPlanStep(doc, step, { tool: step.tool, args: { retry: { of: c.origin } } }, by, answered || reviewedByPerson);
+        if (!r.ok) { askAboutStep(doc, step, null, r.sentence); return 'wait'; }
+        doc.cursor = { pending: r.stepId, origin: r.stepId, phase: 'retry', stepId: l.stepId };
+        return 'more';
+      }
+      if (c.phase === 'retry' && c.stepId && ps.state === 'done') { doc.cursor = { pending: c.stepId, origin: c.origin, phase: 'retry' }; return 'more'; }
       if (c.phase === 'fix') {
         const r = await addPlanStep(doc, step, { tool: step.tool, args: { retry: { of: c.origin } } }, by, answered || reviewedByPerson);
         if (!r.ok) {
@@ -389,7 +401,15 @@ export function createImportAgent(o) {
       return 'more';
     }
     if (ps.state === 'needs-fix' || ps.state === 'needs-you') {
-      if (c.phase === 'fix') { askAboutStep(doc, step, null, `the fix Line tried was refused too: ${lower(ps.sentence)}`); doc.cursor = { ...c, origin: c.origin }; return 'wait'; }
+      if (c.phase === 'fix') {
+        // im2: the fix jev picked was refused: the local model repairs it ONCE from Construct's exact error; the repaired
+        // fix becomes a plan step (a person still approves it) and Construct checks it when it runs. Not repaired, or the
+        // model not running: the person decides, as before.
+        const repaired = await repairFix(doc, step, ps, c, by, answered);
+        if (repaired) return repaired;
+        askAboutStep(doc, step, null, `the fix Line tried was refused too: ${lower(ps.sentence)}`); doc.cursor = { ...c, origin: c.origin }; return 'wait';
+      }
+      if (c.phase === 'repair') { askAboutStep(doc, step, null, `the local model's repair of the fix was refused too when it ran: ${lower(ps.sentence)}`); doc.cursor = { ...c, origin: c.origin }; return 'wait'; }
       const result = ps.result ?? {};
       const fixes = (result.options ?? []).filter((x) => x.id === 'fix' && x.step);
       if (result.stopped) { askAboutStep(doc, step, ps, `trying again did not pass more checks than before. ${ps.sentence}`); doc.cursor = { ...c, origin: ps.id }; return 'wait'; }
@@ -410,6 +430,37 @@ export function createImportAgent(o) {
     askAboutStep(doc, step, ps, ps.sentence || 'the plan step failed');
     doc.cursor = { ...c, origin: ps.id };
     return 'wait';
+  }
+
+  /**
+   * im2: the repair loop on a refused fix that jev picked. The model sees only the refusal sentence, the finding, the
+   * typed fixes, the fix step and its own earlier attempts; each attempt is checked on a copy (up to construct.repair's
+   * maxAttempts) and said in the change log as it happens. The landed repair joins the plan as a step that fixes the same
+   * refused step (`fixOf`), so the person still approves it and Construct checks it again when it runs (cursor phase
+   * `repair`: refused again asks the person).
+   * @returns {Promise<'more' | null>} 'more' when a repaired fix was added, null when the person decides as before.
+   */
+  async function repairFix(doc, step, ps, c, by, answered) {
+    if (!o.repair) return null;
+    const picked = [...doc.decisions].reverse().find((x) => x.id === `fix:${c.origin}`);
+    if (!picked || picked.by !== 'jev' || doc.decisions.some((x) => x.id === `repair:${c.origin}`)) return null;
+    const { fixOf: _f, retry: _r, expect: _e, ...args } = ps.args ?? {};
+    const fixes = (ps.result?.options ?? []).filter((x) => x.id === 'fix').map((x, i) => ({ id: String(x.fixId ?? `fix${i + 1}`), sentence: x.sentence, rank: x.recommended ? 1 : i + 2, step: x.step ?? null }));
+    const finding = ps.result?.findings?.[0] ?? null;
+    let attempt;
+    // Each attempt says what Line is trying, as it happens (the import's change log is the live line Cockpit shows).
+    const onProgress = (said) => record(doc, 'agent', 'decide', lower(asSentence(said)), step.id);
+    try { attempt = await o.repair({ tool: ps.tool, args }, { sentence: ps.sentence, rule: finding?.rule ?? null, code: ps.result?.code ?? null, finding: finding?.message ?? null, fixes }, { onProgress }); } catch { return null; }
+    const added = ['proposed', 'repaired'].includes(attempt.outcome) && attempt.option;
+    // Every attempt is listed with the decision (its reason and what Construct said), for the person's Details.
+    const tried = (attempt.tries ?? []).map((t) => `Attempt ${t.n}: ${String(t.reason || 'no reason given').replace(/[.!?]+$/, '')}${t.refusal ? `; refused: ${t.refusal.sentence}` : ''}`.replace(/[.!?]?$/, '.')).join(' ');
+    doc.decisions.push({ id: `repair:${c.origin}`, question: asSentence(`Can the local model repair the refused fix for ${step.args.name ?? step.id}?`), options: ['repair', 'ask'], picked: added ? 'repair' : 'ask', answer: asSentence(attempt.sentence), by: 'model', reason: asSentence(tried || attempt.sentence) });
+    record(doc, 'agent', 'decide', `asked the local model to repair the refused fix: ${lower(asSentence(attempt.sentence))}`, step.id);
+    if (!added) return null;
+    const r = await addPlanStep(doc, step, { tool: attempt.option.tool, args: { ...attempt.option.args, fixOf: c.origin }, why: asSentence(`Repaired fix for ${step.args.name ?? step.id}, from Construct's error`) }, by, answered);
+    if (!r.ok) return null;
+    doc.cursor = { pending: r.stepId, origin: c.origin, phase: 'repair', stepId: ps.id };
+    return 'more';
   }
 
   /** A typed put-back fix (the extract step of a lost unit's block) is running: once it lands, check the step again. */

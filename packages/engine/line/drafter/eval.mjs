@@ -115,7 +115,13 @@ export function scoreCase(c, root, o = {}) {
   const targetOk = g.target === null ? true : d.labels.target !== null && JSON.stringify(bind(`<${d.labels.target}>`, d.bindings)) === JSON.stringify(bind(`<${g.target}>`, fill));
   const rec = d.recommended ? d.routes.find((r) => r.id === d.recommended) : null;
   const recSteps = rec ? boundRoute(d, rec.id).steps : null;
+  // im1: offered and gold routes as slotted signatures (tool chains), for the rule factory's absent / picked split.
+  const goldSig = (gr) => gr.map((s) => s.tool).join(' + ');
+  const sigOf = (steps) => { const gr = goldRoutes.find((x) => stepsMatch(x, steps)); return gr ? goldSig(gr) : `${steps.map((s) => s.tool).join(' + ') || 'nothing'} (other)`; };
   return {
+    gold: goldRoutes.map((gr, i) => ({ sig: goldSig(gr), step: gr[0]?.tool ?? 'none', outcome: 'change', preferred: g.preferred === i, found: Boolean(found[i]) })),
+    offered: [...new Set(bound.map((x) => sigOf(x.steps)))],
+    chosen: recSteps ? sigOf(recSteps) : null,
     id: c.id, project: c.project, family: c.family, heldOut: !!c.heldOut, request: c.request,
     normalized: d.questions.length === 0,
     intentOk: d.labels.intent.id === g.intent,
