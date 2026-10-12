@@ -10,7 +10,9 @@
 // Logs, per turn: tokens in (prompt_eval_count) and out (eval_count), wall time, tool calls and their outcomes, to
 // <run>/logs/turns.jsonl and bench/ecommerce/results/<builder>.tokens.jsonl. Stops at the budget, when the model calls
 // `finish`, after 8 turns in a row without a tool call, or (#912) after --max-repeat-refusals (10) identical refused
-// calls in a row (stop reason "repeated refusal").
+// calls in a row (stop reason "repeated refusal"), or (#918) when the same (tool call, reply) pair comes back
+// --max-cycle-repeats (6) times within --cycle-window (20) turns, other calls between them or not (stop reason
+// "repeated cycle"; the end record names the pair and its count).
 //
 // #913: each turn's exact request to Ollama goes to <run>/logs/turn-input/<turn>.json (the messages array as sent, tool
 // results verbatim, model, options) and the raw response to logs/turn-output/<turn>.json (content, thinking, tool
@@ -28,13 +30,13 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const bench = path.join(here, '..');
 
 export function flags(argv) {
-  const o = { seed: undefined, project: process.env.BENCH_PROJECT, arm: 'line', builder: '', model: 'qwen2.5-coder:7b', maxTurns: 200, maxMinutes: 90, numCtx: 16384, maxRepeatRefusals: 10, ollama: process.env.OLLAMA_HOST ?? 'http://127.0.0.1:11434', log: process.env.BENCH_LOG };
+  const o = { seed: undefined, project: process.env.BENCH_PROJECT, arm: 'line', builder: '', model: 'qwen2.5-coder:7b', maxTurns: 200, maxMinutes: 90, numCtx: 16384, maxRepeatRefusals: 10, maxCycleRepeats: 6, cycleWindow: 20, ollama: process.env.OLLAMA_HOST ?? 'http://127.0.0.1:11434', log: process.env.BENCH_LOG };
   for (let i = 0; i < argv.length; i += 1) {
     const k = argv[i]; const v = argv[i + 1];
     if (k === '--project') { o.project = v; i += 1; } else if (k === '--arm') { o.arm = v; i += 1; } else if (k === '--builder') { o.builder = v; i += 1; }
     else if (k === '--model') { o.model = v; i += 1; } else if (k === '--max-turns') { o.maxTurns = Number(v); i += 1; } else if (k === '--max-repeat-refusals') { o.maxRepeatRefusals = Number(v); i += 1; } else if (k === '--max-minutes') { o.maxMinutes = Number(v); i += 1; }
     else if (k === '--num-ctx') { o.numCtx = Number(v); i += 1; } else if (k === '--ollama') { o.ollama = v; i += 1; } else if (k === '--log') { o.log = v; i += 1; }
-    else if (k === '--seed') { o.seed = Number(v); i += 1; }
+    else if (k === '--seed') { o.seed = Number(v); i += 1; } else if (k === '--max-cycle-repeats') { o.maxCycleRepeats = Number(v); i += 1; } else if (k === '--cycle-window') { o.cycleWindow = Number(v); i += 1; }
   }
   if (!o.builder) o.builder = o.arm === 'plain' ? 'qwen-7b-plain' : 'qwen-7b';
   return o;
@@ -55,7 +57,7 @@ export const TOOLS = {
     fn('plan_run_next', 'plan-cli run-next: run the next ready step; returns whether it landed, its checks, and typed fixes when Construct refused it.'),
     fn('plan_findings', 'plan-cli findings: the library items, the features with their items, and the validate findings with keys.'),
     fn('plan_validate', 'plan-cli validate: construct validate --profile line counts and findings.'),
-    fn('plan_rules', 'plan-cli rules: the 2-4 rules a step of this tool must keep for this file, each with an example (read before you write the step).', { tool: S('A Line tool name, e.g. line.setCode'), file: S('The file the step is about, e.g. features/cart/pages/CartPage.tsx (optional)') }, ['tool']),
+    fn('plan_rules', 'plan-cli rules: the 2-4 rules a step of this tool must keep for this file, each with an example (read before you write the step).', { tool: S('A Line tool name, e.g. line.setCode'), file: S('The file the step is about, like features/<feature>/pages/<Name>.tsx (optional)') }, ['tool']),
     fn('read_file', 'plan-cli read: one project file and its contentHash (pass it to line.setCode to replace the file).', { path: S('Project-relative path') }, ['path']),
     fn('list_dir', 'plan-cli ls: the entries of one project folder.', { path: S('Project-relative folder, "." for the root') }, ['path']),
     fn('finish', 'Stop: you believe every acceptance point is done, or you cannot make more progress.', { summary: S('What you built and what is left.') }, ['summary']),
@@ -115,6 +117,48 @@ export function refusalStreak(limit = 10) {
     get count() { return n; },
     get hit() { return limit > 0 && n >= limit; },
     get call() { return last; },
+  };
+}
+
+/**
+ * #918: the reply part of a (call, reply) pair: ok, code and the sentence with its numbers blanked, so a reply that only
+ * counts up ("refused 3 times", "The plan has 6 steps") is the same reply.
+ * @param {{ok?: boolean, code?: string|null, sentence?: string}} out
+ * @returns {string}
+ */
+export const replyKey = (out) => `${out?.ok === false ? 'refused' : 'ok'}|${out?.code ?? ''}|${String(out?.sentence ?? '').replace(/\d+/g, '#')}`;
+
+/**
+ * #918: stops a cycle the consecutive-refusal streak cannot see (pilot-qwen-7b-r4: refused setCode, plan_status, setCode
+ * spec.md, baseOn, 48 times; r4-s2: NO_CHANGE setCode and plan_status, 93 times). `see(turn, name, args, out)` records
+ * one call and its reply; `hit` is true once one (call, reply) pair has come back `limit` times within this turn and
+ * the `window` turns before it, other calls between them or not (a limit of 0 or less never stops). `pair` and `count` name the most
+ * repeated pair in the window, for the end record.
+ * @param {{limit?: number, window?: number}} [o]
+ */
+export function cycleWatch({ limit = 6, window = 20 } = {}) {
+  /** @type {{turn: number, key: string, call: string, reply: string}[]} */
+  let seen = [];
+  /** @type {{call: string, reply: string} | null} */
+  let top = null; let n = 0;
+  return {
+    see(turn, name, args, out) {
+      const call = `${name} ${canonJson(args)}`;
+      const reply = replyKey(out);
+      const key = `${call}\u0000${reply}`;
+      // Only this turn and the `window` turns before it count (a 4-call cycle's 6th round lands 20 turns after its
+      // first), so a pair that left the window is forgotten.
+      seen = [...seen.filter((x) => x.turn >= turn - window), { turn, key, call, reply }];
+      /** @type {Map<string, number>} */
+      const counts = new Map();
+      for (const x of seen) counts.set(x.key, (counts.get(x.key) ?? 0) + 1);
+      n = 0; top = null;
+      for (const x of seen) { const c = counts.get(x.key) ?? 0; if (c > n) { n = c; top = { call: x.call, reply: x.reply }; } }
+      return counts.get(key) ?? 0;
+    },
+    get count() { return n; },
+    get hit() { return limit > 0 && n >= limit; },
+    get pair() { return top; },
   };
 }
 
@@ -227,6 +271,7 @@ export async function runAgent(o, { resultsDir = path.join(bench, 'results') } =
   const deadline = t0 + o.maxMinutes * 60_000;
   let idle = 0; let stop = 'max turns'; let turn = 0;
   const streak = refusalStreak(o.maxRepeatRefusals);
+  const cycle = cycleWatch({ limit: o.maxCycleRepeats, window: o.cycleWindow });
   const io = createTurnIo({ logDir });
   write(turnsFile, { kind: 'start', at: new Date().toISOString(), builder: o.builder, model: o.model, arm: o.arm, maxTurns: o.maxTurns, maxMinutes: o.maxMinutes, numCtx: o.numCtx, seed: o.seed ?? null });
   for (turn = 1; turn <= o.maxTurns; turn += 1) {
@@ -268,6 +313,7 @@ export async function runAgent(o, { resultsDir = path.join(bench, 'results') } =
       if (name === 'finish') { finished = String(args?.summary ?? ''); outcomes.push({ name, ok: true }); break; }
       const out = await callTool(cli, o.arm, name, args);
       streak.see(name, args, out);
+      cycle.see(turn, name, args, out);
       outcomes.push({ name, args: clip(JSON.stringify(args ?? {}), 400), ok: out.ok, code: out.code ?? null, sentence: out.sentence });
       history.push({ role: 'tool', content: clip(JSON.stringify(toModel(out))) });
     }
@@ -278,10 +324,12 @@ export async function runAgent(o, { resultsDir = path.join(bench, 'results') } =
     if (finished !== null) { stop = `finish: ${finished}`; break; }
     if (idle >= 8) { stop = '8 turns without a tool call'; break; }
     if (streak.hit) { stop = 'repeated refusal'; break; }
+    if (cycle.hit) { stop = 'repeated cycle'; break; }
   }
-  write(turnsFile, { kind: 'end', at: new Date().toISOString(), turns: Math.min(turn, o.maxTurns), wallMs: Date.now() - t0, stop, ...(stop === 'repeated refusal' ? { repeated: { times: streak.count, call: streak.call } } : {}) });
-  console.log(JSON.stringify({ builder: o.builder, turns: Math.min(turn, o.maxTurns), wallMs: Date.now() - t0, stop }));
-  return { stop, turns: Math.min(turn, o.maxTurns) };
+  write(turnsFile, { kind: 'end', at: new Date().toISOString(), turns: Math.min(turn, o.maxTurns), wallMs: Date.now() - t0, stop, ...(stop === 'repeated refusal' ? { repeated: { times: streak.count, call: streak.call } } : {}), ...(stop === 'repeated cycle' ? { cycle: { times: cycle.count, window: o.cycleWindow, ...cycle.pair } } : {}) });
+  const cycled = stop === 'repeated cycle' ? { cycle: { times: cycle.count, window: o.cycleWindow, ...cycle.pair } } : {};
+  console.log(JSON.stringify({ builder: o.builder, turns: Math.min(turn, o.maxTurns), wallMs: Date.now() - t0, stop, ...cycled }));
+  return { stop, turns: Math.min(turn, o.maxTurns), ...cycled };
 }
 
 /** turns.jsonl pointers to the turn's input/output files (#913); nothing when turn I/O logging is off. */
