@@ -4,6 +4,7 @@ import { CloneController } from '@/features/clone';
 import { NewProjectController } from '@/features/new-project';
 import { ProjectCardsPage, useProjectCards, useWorkspaceFolder } from '@/features/directory-browser';
 import { OPEN_PROJECT_TABS, tabForKey } from '../domain/OpenProjectTabs';
+import { OpenProjectHelperController } from './OpenProjectHelperController';
 import { useOpenProjectTab } from '../hooks/useOpenProjectTab';
 import { OpenProjectPage } from '../pages/ProjectGatePage';
 import type { ProjectStatus } from '../types';
@@ -43,6 +44,7 @@ export function OpenProjectController({ status, opening, openError, onOpen }: Op
       sampleLoading={sample.state === 'loading'}
       newProject={<NewProjectController onCreated={onOpen} workspaceRoot={workspaceRoot} />}
       clone={<CloneController onCloned={onOpen} workspaceRoot={workspaceRoot} />}
+      helper={<OpenProjectHelperController projects={projects.cards} onOpen={onOpen} />}
     />
   );
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from 'react';
 import type { ChatAsk, ChatEntryProps, ChatItem, ChatMessage, ChatOption } from './lineChat';
+import { StreamedText } from './StreamedText';
 import './line-style.css';
 
 // cd1: the chat entry of a Line screen, in Trace's style (lib/line-style.css). With nothing selected the chat fills
@@ -65,12 +66,22 @@ function MessageLink({ link }: { link?: ChatMessage['link'] }) {
 }
 
 /** One message: the plain-English text first, then what can be picked, then the technical lines under Details. */
-function Message({ message, onPick, busy }: { message: ChatMessage; onPick: ChatEntryProps['onPick']; busy?: boolean }) {
-  return (
-    <li className="ln-msg" data-from={message.from} data-tone={message.tone ?? 'plain'} data-testid="ln-msg" data-msg={message.id}>
+function MessageText({ message, elements }: { message: ChatMessage; elements?: ChatEntryProps['elements'] }) {
+  // What the person typed is shown as typed; Line's answers stream in (flowtoken), with the screen's Line elements.
+  if (message.from === 'you') {
+    return (
       <p className="ln-msg-text" data-testid="ln-msg-text">
         {message.text}
       </p>
+    );
+  }
+  return <StreamedText text={message.text} elements={elements} className="ln-msg-text" testId="ln-msg-text" />;
+}
+
+function Message({ message, onPick, busy, elements }: { message: ChatMessage; onPick: ChatEntryProps['onPick']; busy?: boolean; elements?: ChatEntryProps['elements'] }) {
+  return (
+    <li className="ln-msg" data-from={message.from} data-tone={message.tone ?? 'plain'} data-testid="ln-msg" data-msg={message.id}>
+      <MessageText message={message} elements={elements} />
       <Picks message={message} onPick={onPick} busy={busy} />
       <MessageLink link={message.link} />
       <Details lines={message.details} testId="ln-msg-details" />
@@ -122,6 +133,29 @@ function Controls(p: ChatEntryProps) {
   return <Options options={p.options} onOption={p.onOption} busy={p.busy} />;
 }
 
+/** A free request box (a screen's chat helper): Enter or the button sends it, and the box is cleared. */
+function RequestBox({ input, onAnswer, busy }: { input?: ChatAsk | null; onAnswer?: ChatEntryProps['onAnswer']; busy?: boolean }) {
+  const [text, setText] = useState('');
+  if (!input) return null;
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    const t = text.trim();
+    setText('');
+    if (t) onAnswer?.(input.id, t);
+  };
+  return (
+    <form className="ln-ask" aria-label={input.label} onSubmit={submit} data-testid="ln-request">
+      <label htmlFor={`ln-request-${input.id}`}>{input.label}</label>
+      <span className="ln-ask-row">
+        <input id={`ln-request-${input.id}`} className="ln-txt" value={text} onChange={(e) => setText(e.target.value)} autoComplete="off" spellCheck={false} data-testid="ln-request-input" />
+        <button type="submit" className="ln-btn ln-btn--primary" disabled={busy || !text.trim()}>
+          {input.submit}
+        </button>
+      </span>
+    </form>
+  );
+}
+
 function Page({ selected, children }: Pick<ChatEntryProps, 'selected' | 'children'>) {
   if (selected === null) return null;
   return <div className="ln-ce-page">{children}</div>;
@@ -129,9 +163,9 @@ function Page({ selected, children }: Pick<ChatEntryProps, 'selected' | 'childre
 
 /** The chat entry (contract: lib/lineChat.ts ChatEntryProps). */
 export function ChatEntry(p: ChatEntryProps) {
-  const layout = p.selected === null ? 'full' : 'side';
+  const layout = p.layout ?? (p.selected === null ? 'full' : 'side');
   const Heading = layout === 'full' ? 'h1' : 'h2';
-  const message = (m: ChatMessage) => <Message key={m.id} message={m} onPick={p.onPick} busy={p.busy} />;
+  const message = (m: ChatMessage) => <Message key={m.id} message={m} onPick={p.onPick} busy={p.busy} elements={p.elements} />;
   return (
     <section className="ln ln-chat-entry" data-layout={layout} data-testid={p.testId ?? 'ln-chat-entry'} aria-busy={p.busy ?? false}>
       <Page selected={p.selected}>{p.children}</Page>
@@ -141,6 +175,7 @@ export function ChatEntry(p: ChatEntryProps) {
           {p.messages.map(message)}
         </ol>
         <Controls {...p} />
+        <RequestBox input={p.input} onAnswer={p.onAnswer} busy={p.busy} />
         {p.footer}
       </div>
     </section>

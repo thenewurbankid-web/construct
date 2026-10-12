@@ -1,8 +1,9 @@
 'use client';
 
 import { useSyncExternalStore } from 'react';
-import { DEFAULT_SETTINGS, parseSettings } from '../domain/TraceSettings';
-import type { TraceSettings } from '../types';
+import { startRun } from '../domain/AutoRun';
+import { DEFAULT_SETTINGS, parseSettings, withHistory } from '../domain/TraceSettings';
+import type { AutoAction, TraceSettings } from '../types';
 
 // Trace and Auto settings for this browser tab (sessionStorage): the modes, the request, the person's "let Auto
 // approve" (off until they turn it on; it ends with the tab), the speed, the run history and a run in progress, so they
@@ -37,6 +38,14 @@ export function updateTraceSettings(change: (s: TraceSettings) => TraceSettings)
 function subscribe(l: () => void): () => void {
   listeners.add(l);
   return () => listeners.delete(l);
+}
+
+/** Start Auto on `script` for `request`: the same player, moves and stops as the Trace bar's "Do it" (it stops at
+ * Approve, Create or Bring it in unless the person lets Auto approve in this session), shown with the cursor when Trace
+ * is on. A screen's chat helper fills its questions this way. */
+export function startAutoRun(request: string, script: AutoAction[]): void {
+  const id = `run-${Date.now().toString(36)}`;
+  updateTraceSettings((s) => ({ ...s, run: startRun(id, request, script, s.trace), history: withHistory(s.history, { id, request, script, at: new Date().toISOString() }) }));
 }
 
 const serverSnapshot = () => DEFAULT_SETTINGS;

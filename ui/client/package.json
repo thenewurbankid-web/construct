@@ -20,6 +20,7 @@
     "@statelyai/inspect": "^0.7.2",
     "@xyflow/react": "^12.11.6",
     "diff": "^9.0.0",
+    "flowtoken": "^1.0.40",
     "next": "^15.5.0",
     "prismjs": "^1.30.0",
     "react": "^19.1.0",
