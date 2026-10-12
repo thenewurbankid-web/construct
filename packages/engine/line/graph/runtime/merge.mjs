@@ -111,18 +111,22 @@ export function runtimeCoverage(map, records) {
 }
 
 /**
- * Turn runtime records into the graph's runtime layer. Edges whose ends are not nodes of `graph` (when it has nodes)
- * are left out and listed under `unresolved`; any earlier runtime-layer edges of `graph` are replaced.
- * @param {{nodes?: {id: string}[], edges?: object[]}} graph
+ * Turn runtime records into the graph's runtime layer (G1's graph from graph/build.mjs). A recorded function lands on
+ * its logic-map unit (`unit:<fingerprint>`, needs `map`) when that unit is a node of the graph, else on the graph's
+ * `item:` node for its file (so G1's graph alone, without a map, still gets item -> item edges). Ends that are neither
+ * are left out and listed under `unresolved`; earlier runtime-layer edges of `graph` are replaced.
+ * @param {{nodes?: {id: string, kind?: string, file?: string}[], edges?: object[]}} graph
  * @param {RuntimeRecord[]} records
- * @param {{map: {units: Unit[]}}} opts
+ * @param {{map?: {units: Unit[]}}} [opts]
  * @returns {import('./contract.mjs').RuntimeMerge}
  */
-export function mergeRuntime(graph, records, opts) {
-  const map = opts?.map;
-  if (!map?.units) throw new TypeError('mergeRuntime must be given the logic map ({map}) to resolve recorded functions to units.');
-  const nodes = new Set((graph?.nodes ?? []).map((n) => n.id));
+export function mergeRuntime(graph, records, opts = {}) {
+  const map = opts.map ?? { units: [] };
+  const graphNodes = graph?.nodes ?? [];
+  if (!graphNodes.length && !opts.map) throw new TypeError('mergeRuntime must be given a graph with nodes or the logic map ({map}) to resolve recorded functions.');
+  const nodes = new Set(graphNodes.map((n) => n.id));
   const known = (id) => !nodes.size || nodes.has(id);
+  const itemByFile = new Map(graphNodes.filter((n) => n.kind === 'item' && n.file).map((n) => [n.file, n.id]));
   const cache = new Map();
   const unresolved = new Map();
   const resolve = (ref) => {
@@ -130,12 +134,13 @@ export function mergeRuntime(graph, records, opts) {
     const k = refKey(ref);
     if (!cache.has(k)) {
       const u = resolveRef(ref, map);
-      cache.set(k, u ? unitNodeId(u) : null);
-      if (!u) unresolved.set(k, { ref, why: 'No logic-map unit matches it.' });
-      else if (!known(unitNodeId(u))) unresolved.set(k, { ref, why: `${unitNodeId(u)} is not a node of the graph.` });
+      const unitId = u ? unitNodeId(u) : null;
+      const item = itemByFile.get(u?.file ?? ref.file) ?? null;
+      const id = unitId && known(unitId) ? unitId : item;
+      cache.set(k, id);
+      if (!id) unresolved.set(k, { ref, why: unitId ? `${unitId} is not a node of the graph, nor is an item for ${ref.file}.` : 'No logic-map unit or graph item matches it.' });
     }
-    const id = cache.get(k);
-    return id && known(id) ? id : null;
+    return cache.get(k);
   };
 
   const edgeAgg = new Map();

@@ -145,6 +145,21 @@ test('node (registerHooks): edges, fetch pattern, shapes without values, unreach
   assert.ok(merged.graph.edges.length === merged.edges.length);
 });
 
+test('mergeRuntime on G1\'s graph alone (no map): edges land on the item nodes of the files', () => {
+  const dir = makeTempDir('construct-line-graph-node-items-');
+  const recDir = path.join(dir, 'records');
+  const r = spawnSync(process.execPath, ['--import', REGISTER_PATH, 'app.spec.mjs'], {
+    cwd: NODE_APP, encoding: 'utf8', env: { ...process.env, LINE_RUNTIME_DIR: recDir, LINE_RUNTIME_ROOT: NODE_APP, LINE_RUNTIME_FILES: 'lib.mjs,app.mjs' },
+  });
+  assert.equal(r.status, 0, r.stderr);
+  const item = (file, name) => ({ id: `item:shop/${name}`, kind: 'item', label: name, file, line: 1, hash: 'sha256:0123456789abcdef', attrs: { area: 'feature', itemKind: 'service' } });
+  const graph = { nodes: [item('app.mjs', 'app'), item('lib.mjs', 'lib')], edges: [] };
+  const merged = mergeRuntime(graph, readRuntimeRecords(recDir));
+  assertG1(merged.graph, merged.edges);
+  assert.deepEqual(pairs(merged.edges), ['item:shop/app -> item:shop/lib']);
+  assert.equal(merged.edges[0].evidence.count, 2, 'total and formatTotal, one call each');
+});
+
 // ---------------------------------------------------------------------------------------------------------------
 // jest: the characterization runner's mechanism (transform wrapper + setupFilesAfterEnv)
 
