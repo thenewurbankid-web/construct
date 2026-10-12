@@ -32,6 +32,12 @@ export const LINE_CONTROLS = Object.freeze([
   { controlId: 'plan.retry', toolId: 'plan.retry', screen: 'plan', label: 'Try again' },
   { controlId: 'plan.leave', toolId: 'line.leaveAsIs', screen: 'plan', label: 'Leave as it is' },
   { controlId: 'plan.fix', toolId: 'line.fix', screen: 'plan', label: 'Apply recommended fix' },
+  // The shell (two modes, on every screen): the global switch and the chat-mode breadcrumb. They only change what the
+  // person sees (a read of the project), never the project, so they trigger the read tool.
+  { controlId: 'shell.modeChat', toolId: 'line.project', screen: 'shell', label: 'Chat' },
+  { controlId: 'shell.modeHood', toolId: 'line.project', screen: 'shell', label: 'Under the hood' },
+  { controlId: 'shell.crumb', toolId: 'line.project', screen: 'shell', label: 'Breadcrumb' },
+  { controlId: 'shell.chatToggle', toolId: 'line.project', screen: 'shell', label: 'Show or hide the chat' },
 ].map((c) => Object.freeze(/** @type {import('./contract.mjs').LineControl} */ (c))));
 
 const FIX_PATH = ['features.finding', 'plan.fix', 'plan.approve'];
@@ -50,6 +56,11 @@ export const TOOL_PATHS = Object.freeze({
   'line.project': ['features.card'],
   'plan.approve': ['plan.approve'],
   'plan.retry': ['plan.retry'],
+  // Two modes: shell moves, not tools (they change only what the person sees). Keyed by the move, so Trace and Auto can
+  // light and drive them by name; no request maps to them as a tool.
+  'shell.modeChat': ['shell.modeChat'],
+  'shell.modeHood': ['shell.modeHood', 'shell.chatToggle'],
+  'shell.crumb': ['shell.crumb'],
 });
 
 /**

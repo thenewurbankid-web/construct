@@ -6,11 +6,12 @@ export const SCREENS: Record<LineScreen, { title: string; href: string }> = {
   pages: { title: 'Pages', href: '/pages' },
   features: { title: 'Features', href: '/' },
   plan: { title: 'the Plan panel on Components', href: '/components' },
+  shell: { title: 'the Cockpit frame', href: '/' },
 };
 
-/** Whether a control of `screen` is on the screen the person is looking at (the Plan panel is on Components and Pages). */
+/** Whether a control of `screen` is on the screen the person is looking at (the Plan panel is on Components and Pages; the shell is on every screen). */
 export function isOnScreen(controlScreen: LineScreen, here: TraceScreen): boolean {
-  return controlScreen === here || (controlScreen === 'plan' && here !== 'features');
+  return controlScreen === here || controlScreen === 'shell' || (controlScreen === 'plan' && here !== 'features');
 }
 
 /** The screen a control id belongs to ("<screen>.<name>"). */

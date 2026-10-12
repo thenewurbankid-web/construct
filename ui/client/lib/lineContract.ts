@@ -301,7 +301,7 @@ export type ToolList = { ok: true; tools: ToolView[] };
 
 /** cg1/ct1: Trace (contract.mjs LineControl, AutoAction, TraceMatch). One control registry; the DOM carries
  * data-line-control (and data-line-target for the item a control acts on). */
-export type LineScreen = 'components' | 'pages' | 'features' | 'plan';
+export type LineScreen = 'components' | 'pages' | 'features' | 'plan' | 'shell';
 export type LineControl = { controlId: string; toolId: string; screen: LineScreen; label: string };
 export type AutoAction = { kind: 'click' | 'type' | 'select' | 'approve'; controlId: string; target: string | null; value?: string; caption: string };
 export type TraceTool = {

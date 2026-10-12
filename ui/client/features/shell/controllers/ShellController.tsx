@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react';
 import { UserMenuController } from '@/features/auth';
 import { CommandPaletteController, CommandRegistryProvider } from '@/features/command-palette';
+import { LineModeProvider, ModeSwitchController } from '@/features/line-modes';
 import { ProjectGateController } from '@/features/project-gate';
 import { LoadingState } from '@/features/states';
 import { shellMode } from '../domain/ProjectRequirement';
@@ -25,10 +26,15 @@ function ShellRoot({ children }: { children: ReactNode }) {
   const model = useModelStatus();
   const theme = useTheme();
   const mode = shellMode(project.known, project.dir, route.pathname);
+  // Two modes: the global Chat | Under the hood switch sits beside the profile menu, in both top bars (the full shell's
+  // and the "Open a project" gate's), so it is on every screen.
   const userMenu = (
-    <UserMenuController>
-      <ProfileMenuItems pathname={route.pathname} modelStatus={model} preference={theme.preference} onPreference={theme.setPreference} />
-    </UserMenuController>
+    <>
+      <ModeSwitchController />
+      <UserMenuController>
+        <ProfileMenuItems pathname={route.pathname} modelStatus={model} preference={theme.preference} onPreference={theme.setPreference} />
+      </UserMenuController>
+    </>
   );
   return (
     <ShellRootPage
@@ -59,7 +65,9 @@ export function ShellController({ children }: { children: ReactNode }) {
   return (
     <CommandRegistryProvider>
       <ShellTabsProvider>
-        <ShellRoot>{children}</ShellRoot>
+        <LineModeProvider>
+          <ShellRoot>{children}</ShellRoot>
+        </LineModeProvider>
       </ShellTabsProvider>
     </CommandRegistryProvider>
   );

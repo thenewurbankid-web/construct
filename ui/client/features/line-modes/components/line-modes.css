@@ -1,0 +1,16 @@
+/* Two modes (features/line-modes): the shell switch, chat mode's breadcrumb and the Under the hood chat helper. Colours
+ * come from the Line style tokens (lib/line-style.css) inside a screen and from the shell's tokens in the top bar. */
+.lm-switch { display: inline-flex; align-items: center; border: 1px solid var(--border, currentColor); border-radius: 999px; padding: 2px; gap: 2px; flex: none; }
+.lm-switch-btn { border: 0; background: transparent; color: inherit; font: inherit; font-size: 0.8125rem; padding: 2px 10px; min-height: 24px; border-radius: 999px; cursor: pointer; white-space: nowrap; }
+.lm-switch-btn[aria-pressed='true'] { background: var(--accent, #2563eb); color: var(--accent-contrast, #fff); font-weight: 600; }
+@media (max-width: 600px) { .lm-switch-btn { padding: 2px 6px; font-size: 0.75rem; } }
+
+.lm { display: grid; gap: 8px; min-width: 0; }
+.lm-crumbs ol { list-style: none; margin: 0; padding: 0 var(--ln-s3, 24px); display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.lm-crumbs li + li::before { content: '\203A'; margin-right: 4px; }
+.lm-crumb { border: 0; background: transparent; color: inherit; font: inherit; font-size: 0.875rem; padding: 2px 4px; min-height: 24px; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+.lm-crumb[aria-current='location'] { font-weight: 650; text-decoration: none; }
+.lm-chat-toggle { justify-self: end; border: 1px solid var(--border, currentColor); border-radius: 6px; background: transparent; color: inherit; font: inherit; font-size: 0.8125rem; padding: 2px 10px; min-height: 28px; cursor: pointer; }
+.lm[data-chat='hidden'] .ln-chat-entry[data-layout='side'] { grid-template-columns: minmax(0, 1fr); }
+.lm[data-chat='hidden'] .ln-ce-chat { display: none; }
+.lm-hood-view { min-width: 0; }
