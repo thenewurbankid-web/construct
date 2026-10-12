@@ -53,7 +53,7 @@ const lower = (s) => s.charAt(0).toLowerCase() + s.slice(1);
  */
 export async function loadStudioEditor(o = {}) {
   const linked = await importLinked('@mx/studio-editor', o.env ? { env: o.env } : {});
-  if (!linked.ok) return { ok: false, sentence: `Studio's Behaviour and Events parts are not linked (${lower(linked.reason).replace(/[.]$/, '')}), so Cockpit shows the component's events as plain sentences and cannot draw its behaviour.` };
+  if (linked.ok === false) return { ok: false, sentence: `Studio's Behaviour and Events parts are not linked (${lower(linked.reason).replace(/[.]$/, '')}), so Cockpit shows the component's events as plain sentences and cannot draw its behaviour.` };
   try {
     const table = readLinks();
     const studioSrc = path.join(sourceDirOf(table, o.env ?? process.env), table.links['@mx/studio-editor'].path);
@@ -70,7 +70,10 @@ export async function loadStudioEditor(o = {}) {
 
 /** The parts every call here uses; loaded once when this module loads (the plan ops are synchronous). */
 let STUDIO = await loadStudioEditor();
-/** @returns {StudioEditor} */
+/**
+ * Studio's Editor parts as this process loaded them (or why not).
+ * @returns {StudioEditor}
+ */
 export const studioEditor = () => STUDIO;
 /**
  * Tests only: run as if the link were down (`false`), or load it again (`true`).
@@ -157,7 +160,11 @@ export function componentApiOf(source, name, file) {
 }
 
 // ------------------------------------------------------------------------------------------- where it lives
-/** `features/orders/components/OrderButton.tsx` -> `features/orders/components/OrderButton.behaviour.json`. */
+/**
+ * Where a component's working copy lives: `features/orders/components/OrderButton.tsx` -> `...OrderButton.behaviour.json`.
+ * @param {string} file The component's root-relative path.
+ * @returns {string} The working copy's root-relative path.
+ */
 export const workingCopyPath = (file) => `${file.slice(0, file.length - posix.extname(file).length)}.behaviour.json`;
 
 /**

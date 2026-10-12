@@ -76,7 +76,7 @@ export type LineWorkspace = { root: string; folder: string; readOnly: true };
 export type WorkspaceRequest = { folder: string };
 
 /** A LineOpError as the server sends it (HTTP 400); `detail` is the technical reason (a parser or type message) for Details. */
-export type LineRefusal = { ok: false; sentence: string; code: string; detail?: string };
+export type LineRefusal = { ok: false; sentence: string; code: string; detail?: string; fixes?: LineFix[] };
 
 /** cx1: one fragment of code a person edits in place (a prop's value, a handler, a condition, a style value). */
 export type FragmentKind = 'prop-expression' | 'handler' | 'condition' | 'style';
@@ -276,6 +276,41 @@ export type LineWorkflow = {
   usedBy: { feature: string; file: string }[];
 };
 /** GET /api/line/workflows?feature= */
+/** cu4: one component in the Components editor (GET /api/line/component, packages/engine/line/components.mjs). */
+export type ComponentSource = { kind: string; slot?: string; prop?: string; primitive?: string };
+export type ComponentAction = { kind: string; primitive?: string; action?: string; prop?: string; value?: string | number | boolean; name?: string };
+export type ComponentDiagramState = { id: string; label: string; sentence: string; initial: boolean; final: boolean; role: null; page: null; current: boolean };
+export type ComponentDiagram = {
+  initial: string;
+  current: string;
+  states: ComponentDiagramState[];
+  transitions: { id: string; from: string; to: string; event: string; origin: 'library'; when: string; do: string }[];
+};
+export type ComponentPrimitive = { ref: string; primitive: string; origin: 'used' | 'attached'; roles: { role: string; label: string; sentence: string }[]; diagram: ComponentDiagram | null };
+export type ComponentEventFix = { label: string; sentence: string; remove: string[]; add: { source: ComponentSource; action: ComponentAction }[] };
+export type ComponentEventGroup = { key: string; label: string; sentence: string; actions: { wire: string; label: string; sentence: string }[]; conflicts: string[]; fix: ComponentEventFix | null };
+export type LineComponentEditor = {
+  file: string;
+  name: string;
+  kind: 'library' | 'feature';
+  feature: string | null;
+  baseName: string | null;
+  readOnly: boolean;
+  readOnlySentence: string | null;
+  api: { props: { name: string; type: string; values: (string | number)[] }[]; slots: string[]; events: string[] };
+  via: 'studio' | 'static';
+  viaSentence: string;
+  behaviour: { primitives: ComponentPrimitive[]; fits: { primitive: string; reason: string; mapping: Record<string, string> }[] };
+  events: {
+    groups: ComponentEventGroup[];
+    sources: { id: string; label: string; source: ComponentSource }[];
+    actions: { id: string; label: string; action: ComponentAction }[];
+  };
+  states: {
+    rows: { id: string; name: string; origin: string; sentence: string }[];
+    current: { ref: string; primitive: string; state: string; label: string; sentence: string; shows: string | null }[];
+  };
+};
 export type LineWorkflowList = { feature: string; workflows: LineWorkflow[]; library: LineWorkflow[]; pages: string[]; notMachines: { id: string; file: string; sentence: string }[] };
 /** The workflow plan tools' arguments (each is a write step a person approves in the Plan panel). */
 export type BaseWorkflowOnRequest = { libraryId: string; feature: string; name: string };
@@ -421,6 +456,7 @@ export type LineHttp = {
   getFeature: (name: string) => Promise<LineFeatureDetail | LineRefusal>;
   getWorkspace: () => Promise<LineWorkspace | LineRefusal>;
   getWorkflows: (feature: string) => Promise<LineWorkflowList | LineRefusal>;
+  getComponent: (file: string) => Promise<LineComponentEditor | LineRefusal>;
   setWorkspace: (req: WorkspaceRequest) => Promise<LineWorkspace | LineRefusal>;
   getPlan: () => Promise<PlanView | LineRefusal>;
   addPlanStep: (req: PlanStepRequest) => Promise<PlanView | LineRefusal>;

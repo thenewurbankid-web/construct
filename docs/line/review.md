@@ -4,6 +4,97 @@ One section per step. For each: what the tests prove (plain English), known gaps
 check it yourself. A step is done only after your UAT passes; until then it is "awaiting UAT".
 Branch: `work/2026-09-23` in `~/Repositories/construct` (local only, not pushed).
 
+## cu4: Components screen, Studio's Library, Editor (Behaviour, Events, States) and New component in Cockpit (12 Oct, branch `cu4-components`; awaiting UAT)
+
+What it is: the Components screen of a Line project now has three areas. **Library**: the cards and each feature's
+components, as before, plus "Open in the editor" on each. **Editor**: the open component with three tabs.
+Behaviour lists its behaviours (role chips, each with a sentence, and a state diagram) and the behaviours that fit it.
+Events shows When → Do cards, with a warning when two actions undo each other and Studio's fix. States shows the state
+each behaviour is in now, marked on its graph; clicking another state changes it. **New component**: a feature
+component based on a library component. Every edit is a plan step you approve in the Plan panel, written only by
+Construct's writer. A library component opens read-only. Editing one is refused in one sentence ("...; base a feature
+item on it and change that.") with a typed `line.baseOn` fix that is one click away.
+
+Reused, not rebuilt: Studio's Editor parts, linked from vision-architect-pipeline as a sixth Line link
+`@mx/studio-editor` (`packages/line-links/links.json`). The edits are Studio's own `applyEditorCall` over
+`EDITOR_WRITES` (attachPrimitive, addEvent, updateEvent, fixEvent). The views are Studio's `primitivesOn`,
+`roleChips`, `statesOf` and `statePreview` (behaviourView.ts), `eventGroups` with its conflicts and fixes
+(eventFlow.ts), and Morpheus's `primitiveDiagram` and `compatiblePrimitives`. The state graph is laid out by cw1's
+`workflowDiagram`. "New component" and the refusal's fix are T2's `planBaseOn`. Built here:
+`packages/engine/line/components.mjs`, which reads a Line component's API (props, parts that take content, events)
+from its code, keeps the working copy, enforces the library rule and defines the six plan tools. Also built: the
+client feature `ui/client/features/line-components`. Studio's React panels are not mounted: Cockpit's client cannot
+import the linked repo's TSX, so the server runs Studio's pure halves and Cockpit draws what they return.
+
+Where an edit lands: beside the feature component as `<Name>.behaviour.json`, holding Studio's `ComponentApiEdits`
+plus the current state per behaviour. It is not an item file, so the Line rules ignore it.
+
+Tests: `test/line-components.test.mjs` (9), `ui/server/src/lineComponentsApi.test.mjs` (3), client
+`features/line-components/domain/ComponentEditor.spec.mjs` (5), Playwright `ui/e2e/tests/line-components-editor.spec.js`
+(6, real server), UAT walk `ui/e2e/uat/cu4.spec.js`. Sample: `examples/line-sample` plus the overlay `fixtures/line-cu4`
+(a library Disclosure with a trigger, content, `open` and `onOpenChange`, and orders/OrderDetails based on it).
+1. A Line component's API is read from its code: Disclosure has the yes/no prop `open`, the parts `trigger` and
+   `children`, and the event `onOpenChange`. A text, number or choice prop reads too.
+2. A library component reads read-only, with the sentence that says how to change it. Each edit tool refuses it
+   with LIBRARY_ITEM, one sentence and one typed fix (`line.baseOn`, recommended), and the file is unchanged.
+3. Behaviour: disclosure fits OrderDetails. Attaching it plans one file (the working copy) and planning writes
+   nothing. After it lands there is a role chip "Clicking the trigger opens and closes it." and a two-state diagram
+   (closed, open). Attaching it twice or attaching one that does not fit is refused. Validate shows only the
+   sample's two planted problems.
+4. Events: "when the trigger is clicked, open the disclosure" lands. Adding "close" on the same click shows Studio's
+   warning ("... nothing seems to happen") and its fix. The fix removes the warning, and changing a card's action
+   lands. An unknown part, behaviour or card is refused.
+5. States: the current state starts at closed. Setting it to open is a plan step. Afterwards the graph and the
+   States tab say open, and the preview props are `open = true`. Setting the same state again, or a state that does
+   not exist, is refused.
+6. New component: based on Disclosure in billing, it creates `InvoiceDetails.tsx` with its base link. A page as the
+   base, or a name already taken, is refused.
+7. Static path: with Studio unlinked, the component still reads with "Read by: static" and an event can still be
+   added (plain sentences). Attaching a behaviour is refused (STUDIO_DOWN) and says why.
+8. The six tools are in the contract, the one tool registry, the plan registry and `LINE_CONTROLS`, each with a
+   control. `GET /api/line/component` is registered.
+9. Server: the read route works for a feature component and a library one, and a bad path is one sentence. An edit
+   writes nothing before Approve. A library edit is a 400 with LIBRARY_ITEM and its fixes, and starts no plan.
+10. Client: each edit tool builds the contract's step. The state graph reuses the workflow layout and marks the
+    current state. A refusal shows its sentence, its code (for Details) and its fix as a step.
+Browser (Playwright, real server): open OrderDetails, which shows the Behaviour, Events and States tabs, with axe
+clean at 1280. Add the behaviour, Approve, and the working copy is on disk. Add a When → Do and Approve, and the
+file changes. The conflict warning and its fix work. Click "open" on the graph and Approve. A library edit is refused
+with Details closed, nothing is written, and its fix creates BillingDisclosure. New component OrderFaq works, with
+axe clean at 375.
+
+Trace and Auto: 13 new controls (`components.open`, `components.tab`, `components.attachBehaviour`, `components.whenSource`,
+`components.whenAction`, `components.addWhenDo`, `components.changeWhenDo`, `components.fixWhenDo`,
+`components.setState`, `components.newBase`, `components.newFeature`, `components.newName`, `components.newCreate`) and
+their `TOOL_PATHS`, so Trace lights them. Auto has no scripts for these tools yet. ChatEntry and StreamedText were not
+touched (`open-project-simple` owns them). The hook points are the stable control ids and tool names above.
+
+Gaps: the working copy does not change the component's code yet: Morpheus's build from `ComponentApiEdits` to code
+is not wired into Construct's writer. The JSON is the record, and the preview does not run the When → Do yet.
+"Live current state" is the state saved per behaviour, not port events from a running preview (Studio's `live.ts`
+needs Morpheus's catalog descriptors, which a Line project does not have). Only components written as one exported
+function with an inline or local props type are read; the rest show no parts. There is no mock of the cu4 ops in
+`mock.mjs` (the engine tests run on a real copy). The editor's files carry the same ui/client architecture findings
+as the other Line screens (COMPONENT-003/005/006, SLICE-001: no `pages/` or `workflows/` folder). Studio's React
+panels are not reused as components (see above). contact-manager-ui cannot open as a Line project (no
+`preset: line`), so the UAT uses the sample.
+
+UAT (project: a copy of `examples/line-sample` plus `fixtures/line-cu4`; `~/Repositories/import-samples/contact-manager-ui`
+is not a Line project until it is imported):
+`rm -rf ~/workspace/line-cu4 && cp -R examples/line-sample ~/workspace/line-cu4 && cp -R fixtures/line-cu4/library fixtures/line-cu4/features ~/workspace/line-cu4/`,
+start Cockpit (`cd ui/server && npm start`, `cd ui/client && npm run dev`) and open `line-cu4`.
+1. Components → under orders, OrderDetails → **Open in the editor**. The editor says "OrderDetails: a component of
+   orders, based on Disclosure." and shows the Behaviour, Events and States tabs.
+2. Behaviour: on disclosure, click **Add this behaviour**, then **Approve** in the Plan panel. Expect "Clicking the
+   trigger opens and closes it." and a diagram with closed and open.
+3. Events: When "The trigger is clicked", Do "Open it if closed, close it if open" → **Add When -> Do** →
+   **Approve**. One card appears. Then States: it says closed; click **open** on the graph, then **Approve**. It now
+   says open.
+4. Disclosure's card → **Open in the editor** → Events → **Add When -> Do**. Expect one sentence ending "base a
+   feature item on it and change that." with a button that bases one, and nothing changed on disk.
+5. New component: Based on Disclosure, Feature billing, Name InvoiceFaq → **Create component** → **Approve**.
+   InvoiceFaq appears under billing.
+
 ## Import v2: fit existing logic into Line's blocks, backed by tests (11 Oct, merged on `merge-iv2`; awaiting UAT)
 
 Contract: `docs/line/import-v2/CONTRACT.md`. Merged branches: `fix-plan-lock`, `fix-yaml-comments`, `iv2-bugs`, `iv2-map`,

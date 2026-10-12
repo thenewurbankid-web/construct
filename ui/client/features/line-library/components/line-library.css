@@ -51,3 +51,8 @@
 .ll-error { margin: 0; font-size: var(--fs-sm); color: var(--text); padding: var(--sp-1) var(--sp-2); border-left: 3px solid var(--danger); background: var(--danger-soft); overflow-wrap: anywhere; }
 .ll-notice { display: flex; flex-direction: column; gap: var(--sp-1); padding: var(--sp-2) var(--sp-3); border: 1px solid var(--success); border-radius: var(--r-md); background: var(--success-soft); }
 .ll-notice p { margin: 0; }
+/* cu4: three areas: the library (cards and feature components), the editor and New component beside it. */
+.ll-areas { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: var(--sp-4); align-items: start; }
+.ll-library-area, .ll-editor-area { display: flex; flex-direction: column; gap: var(--sp-4); min-width: 0; }
+.ll-editor-area { position: sticky; top: var(--sp-3); }
+@media (max-width: 1000px) { .ll-areas { grid-template-columns: minmax(0, 1fr); } .ll-editor-area { position: static; } }

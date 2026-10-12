@@ -1,6 +1,7 @@
 import type { ChangeControls, LibraryCard, LibraryGroup } from '../types';
 import { BaseOnForm } from './BaseOnForm';
 import { CardPreview } from './CardPreview';
+import { OpenInEditor } from './OpenInEditor';
 import { ReadOnlyTag } from './ReadOnlyTag';
 
 function Card({ card, controls }: { card: LibraryCard; controls: ChangeControls }) {
@@ -22,6 +23,7 @@ function Card({ card, controls }: { card: LibraryCard; controls: ChangeControls 
           Base on this
         </button>
       )}
+      <OpenInEditor file={card.file} name={card.name} controls={controls} />
       <CardPreview card={card} />
       <details className="ll-tech">
         <summary>Details</summary>
