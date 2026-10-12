@@ -21,19 +21,26 @@ const TIME_BUDGET_MS = 2000;
  * an unsupported type as to an impure body).
  *
  * @param {object|null} typeNode A typescript-estree type node (e.g. `TSNumberKeyword`), or `null` (no annotation).
+ * @param {(string|number)[]} [seeds] Literals drawn alongside generated values (those of the type's kind are used).
  * @returns {object|null} A fast-check arbitrary, or `null` if unsupported.
  */
-function arbitraryForTypeNode(typeNode) {
+function arbitraryForTypeNode(typeNode, seeds = []) {
   if (!typeNode) return null;
+  // seeds (literals mined from the code; Line logic verification step 6) are drawn as often as generated values, so a
+  // boundary like `age >= 18` is hit within a few runs instead of by luck
+  const seeded = (base, kind) => {
+    const pool = [...new Set(seeds.filter((v) => typeof v === kind))];
+    return pool.length ? fc.oneof(fc.constantFrom(...pool), base) : base;
+  };
   switch (typeNode.type) {
     case 'TSNumberKeyword':
-      return fc.double({ noNaN: true, noDefaultInfinity: true });
+      return seeded(fc.double({ noNaN: true, noDefaultInfinity: true }), 'number');
     case 'TSStringKeyword':
-      return fc.string();
+      return seeded(fc.string(), 'string');
     case 'TSBooleanKeyword':
       return fc.boolean();
     case 'TSArrayType': {
-      const inner = arbitraryForTypeNode(typeNode.elementType);
+      const inner = arbitraryForTypeNode(typeNode.elementType, seeds);
       return inner ? fc.array(inner, { maxLength: 10 }) : null;
     }
     default:
@@ -42,15 +49,22 @@ function arbitraryForTypeNode(typeNode) {
 }
 
 /**
+ * Literals to draw alongside generated inputs: per parameter name, and for every parameter of a matching kind.
+ * @typedef {{byParam?: Record<string, (string|number)[]>, numbers?: number[], strings?: string[]}} EquivalenceSeeds
+ */
+
+/**
  * One fast-check arbitrary per parameter, or `null` if any parameter lacks a supported type annotation.
  *
  * @param {object[]} params A function/arrow function's `params`.
+ * @param {EquivalenceSeeds} [seeds] Mined literals to draw alongside generated values.
  * @returns {object[]|null} Arbitraries in parameter order, or `null` when unsupported.
  */
-function arbitrariesForParams(params) {
+function arbitrariesForParams(params, seeds = {}) {
   const arbitraries = [];
   for (const param of params) {
-    const arb = arbitraryForTypeNode(param.typeAnnotation?.typeAnnotation ?? null);
+    const own = param.type === 'Identifier' ? seeds.byParam?.[param.name] ?? [] : [];
+    const arb = arbitraryForTypeNode(param.typeAnnotation?.typeAnnotation ?? null, [...own, ...(seeds.numbers ?? []), ...(seeds.strings ?? [])]);
     if (!arb) return null;
     arbitraries.push(arb);
   }
@@ -196,6 +210,9 @@ function runEquivalence(name, beforeEvalSource, afterEvalSource, arbitraries) {
  *
  * @param {string} beforeSource The source before the edit.
  * @param {string} afterSource The source after the edit.
+ * @param {{names?: string[], seeds?: EquivalenceSeeds}} [options] `names`: check only these exports; `seeds`:
+ *   literals mined from the code (the characterizer's pools) drawn alongside generated inputs. Omitted, the
+ *   check is the #749 one.
  * @returns {{checked: object[], skipped: {name: string, reason: string}[], reason?: string}}
  *
  * @example
@@ -205,7 +222,7 @@ function runEquivalence(name, beforeEvalSource, afterEvalSource, arbitraries) {
  * );
  * // => { checked: [{ name: 'total', verdict: 'diverged', input: [...], before: ..., after: ... }], skipped: [] }
  */
-export function pureExportEquivalence(beforeSource, afterSource) {
+export function pureExportEquivalence(beforeSource, afterSource, { names, seeds } = {}) {
   let beforeAst;
   let afterAst;
   try {
@@ -222,6 +239,7 @@ export function pureExportEquivalence(beforeSource, afterSource) {
   const skipped = [];
 
   for (const before of beforeCandidates) {
+    if (names && !names.includes(before.name)) continue;
     const after = afterByName.get(before.name);
     if (!after || before.source === after.source) continue; // removed, or untouched
 
@@ -229,7 +247,7 @@ export function pureExportEquivalence(beforeSource, afterSource) {
       skipped.push({ name: before.name, reason: 'not detected as pure' });
       continue;
     }
-    const arbitraries = arbitrariesForParams(after.params);
+    const arbitraries = arbitrariesForParams(after.params, seeds);
     if (!arbitraries) {
       skipped.push({ name: before.name, reason: 'unsupported parameter types' });
       continue;

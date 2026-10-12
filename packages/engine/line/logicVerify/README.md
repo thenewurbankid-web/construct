@@ -10,6 +10,11 @@ build step 1, the contract: shapes, expected outputs and tests. The later steps 
 | `escalation.mjs` | `LEVELS` (L0 to L3), `LAYER_ORDER` per purity, `levelsFor`, `layerOrder`, `isDecisive`, `nextLayer`, `decideUnit` |
 | `fakes.mjs` | Interfaces for the recording fakes, `EffectRecord`, `UnitRun`, `FAKE_ENV`, the sentinel format (`sentinel`, `findSentinels`), `assertEffectRecord`, `assertUnitRun` |
 | `layoutFakes.mjs` | `LAYOUT_FAKE_TYPES` and `LAYOUT_EVENTS` (names from `lib.dom.d.ts`), the `LayoutFakeGenerator` interface, `layoutValues` |
+| `z3Translate.mjs` | Step 6: `translateFunction` from the TS subset to a solver-neutral IR, `findFunction`, `Unsupported` (subset in the file header) |
+| `z3Prove.mjs` | Step 6: `z3Layer` and `proveEqual`; lowers the IR to Z3 (z3-solver, MIT, WASM; numbers as IEEE doubles), per-proof timeout `Z3_TIMEOUT_MS` |
+| `fastCheckLayer.mjs` | Step 6: `fastCheckLayer` over `ast/pureExportEquivalence`, seeded by `minedSeeds` (the characterizer's literal pools of both sides) |
+| `astLocation.mjs` | `diffLocation`: the first differing expression of two versions of a function, as a `VerdictLocation` |
+| `verifyPair.mjs` | `verifyPair`: walks the layer order, one runner per built layer (`RUNNERS`); unbuilt layers answer "skipped" |
 
 Tests:
 
