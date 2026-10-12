@@ -82,8 +82,8 @@ for (const theme of THEMES) {
       }
       // Every side-pane and tab: click through each tab of each tablist (Browser,
       // Tools, drawer...) and scan, so hidden tab panels are covered too.
-      // '/' (#773): the Features screen's Browser pane, where the Rules and Envelopes
-      // composer tabs (#395) live -- scanAllTabs discovers and scans them automatically,
+      // '/' (#773): the Features screen's Browser pane, where the Rules
+      // tab (#395) lives -- scanAllTabs discovers and scans it automatically,
       // same as every other tab here.
       for (const route of ['/', '/pages', '/workflows', '/dashboard']) {
         test(`${route} all panes and tabs`, async ({ page }) => {

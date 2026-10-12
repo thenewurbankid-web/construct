@@ -195,19 +195,11 @@ Commands:
   construct pipeline run [--dir <path>]   (reads a Context Envelope as JSON on stdin, writes one to stdout)
   construct traces list [--chooser <id>] [--limit <n>] [--json] [--dir <path>]
   construct traces stats [--chooser <id>] [--json] [--dir <path>]
-  construct traces replay (--provider <name> [--plugin <file.mjs>] | --model <name> [--all]) [--chooser <id>] [--min-traces <n>] [--baseline <name>] [--json] [--dir <path>]
-  construct traces export --out <dir> [--since <date>] [--chooser <id>] [--yes] [--json] [--dir <path>]
+  construct traces replay --provider <name> [--plugin <file.mjs>] [--chooser <id>] [--min-traces <n>] [--baseline <name>] [--json] [--dir <path>]
     (the choices made in a chain are recorded locally as decision-trace.v1, never inside your project: 'list' shows them, 'stats'
     counts them and how often a suggestion was taken, 'replay' scores a decision provider (rules, off, a plugin) on what people
     chose against the rules baseline: beats, ties or loses, promotable only on >= 30 traces; read-only, no model, no network;
-    switch recording off with 'traces: off' in architecture.yml; see docs/DECISION-TRACES.md; 'export' previews, and with --yes
-    writes, a dataset bundle to train the decision model on ANOTHER machine: nothing trains here, see docs/TRAIN-ELSEWHERE.md)
-  construct model list [--json] [--dir <path>]
-  construct model import <dir> [--yes] [--min-traces <n>] [--json] [--dir <path>]
-  construct model remove|enable|disable <name> [--json] [--dir <path>]
-    (a model trained elsewhere comes back as plain data: 'import' refuses anything else (scripts, pickles, links, paths, wrong
-    checksums, a dataset this project never exported), replays the held-out traces against the rules baseline and, with --yes,
-    registers it DISABLED in the state directory; architecture.yml is never edited; 'enable' is your explicit act)
+    switch recording off with 'traces: off' in architecture.yml; see docs/DECISION-TRACES.md)
   construct decide --summary <file|-> [--provider <name>] [--format json] [--dir <path>]
   construct decide --requirement "<sentence>" [--provider <name>] [--format json] [--dir <path>]
     (the decision model as a tool: a chooser or open-question summary as JSON in, one suggestion out {option, reason, runnerUp};

@@ -657,14 +657,13 @@ Every closed question a person answers in a chain (the Requirement screen's open
 construct traces list [--chooser <id>] [--json]
 construct traces stats [--json]
 construct traces replay --provider <name> [--min-traces 30] [--plugin <file.mjs>] [--json]   # beats / ties / loses vs the rules baseline
-construct traces replay --model <name> [--all]                                             # the same for a model registered by `construct model import`, enabled or not
 ```
 
 The suggestion that is recorded comes from the project's decision provider (`decision: { provider: rules|off|<name>, plugin: <file in the project> }` in `architecture.yml`, default `rules`). `construct decide --summary <file|-> | --requirement "<sentence>" [--format json]` is that provider as a read-only tool (a chooser summary in, one suggestion out; for a sentence, one per open question and offer), and the Requirement screen marks the suggested option "suggested by rules" with its reason, still one click to take and one to change. A plugin is a small file that default-exports `{ name, version, suggest(summary) }`, receives only the frozen, path-free summary and falls back to `rules` when it fails or is slow: see `docs/DECISION-PROVIDERS.md`.
 
 Replay is deterministic and read-only: no model, no network. A provider is promotable only when it beats the `rules` baseline on at least 30 person-made traces.
 
-A model is never trained on the dev machine. `construct traces export --out <dir>` previews and, with `--yes`, writes a dataset bundle (records re-validated, an 80/10/10 split by a hash of the id, a manifest with hashes); the kit in `train-kit/` trains on another machine (a MacBook, or any box with Python 3); `construct model import <dir>` verifies what comes back as plain data (no scripts, no pickles, checksums, a dataset this project exported), replays the held-out traces against the rules baseline and registers the model DISABLED until you enable it. See `docs/TRAIN-ELSEWHERE.md`. Fields, privacy and the command in full: `docs/DECISION-TRACES.md`.
+The #616 decision-model stack (dataset export, `construct model import`, the training kit) is retired (2026-10-12): decisions run on the one ladder in `packages/core/line-decide.mjs`, and nothing trains on the dev machine.
 
 ## Cockpit execution mode: in-process engine or the real CLI (#541)
 

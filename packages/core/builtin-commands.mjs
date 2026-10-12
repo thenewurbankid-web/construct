@@ -10,7 +10,7 @@
 // inline `else if`.
 import {
   init, feature, generate, sync, validate, summarize, doctor, create, refactor, research, review,
-  testCommand, template, importCommand, pipeline, traces, decide, model, processCommand,
+  testCommand, template, importCommand, pipeline, traces, decide, processCommand,
   checkChange, mutationCheck, addRuleCommand, exportCommand, rulesCommand, rename,
 } from './cli.mjs';
 
@@ -57,9 +57,8 @@ export function registerBuiltinCommands(registry) {
   registry.register({ name: 'template', summary: 'List, show or instantiate a named, reusable, parameterised plan', handler: template, source: SOURCE });
   registry.register({ name: 'import', summary: 'Scaffold layers for an existing, non-Construct file or route', handler: importHandler, source: SOURCE });
   registry.register({ name: 'pipeline', summary: 'Run a Context Envelope through the generator pipeline (stdin/stdout)', handler: pipeline, source: SOURCE });
-  registry.register({ name: 'traces', summary: 'Inspect, replay or export recorded decision traces', handler: traces, source: SOURCE });
+  registry.register({ name: 'traces', summary: 'Inspect or replay recorded decision traces', handler: traces, source: SOURCE });
   registry.register({ name: 'decide', summary: 'Ask the decision model for a suggestion (read-only)', handler: decide, source: SOURCE });
-  registry.register({ name: 'model', summary: 'List, import, enable or disable a decision model trained elsewhere', handler: model, source: SOURCE });
   registry.register({ name: 'repl', summary: 'Interactive shell over the same functions a one-shot invocation dispatches to', handler: replHandler, source: 'packages/core/repl.mjs' });
   registry.register({ name: 'line', summary: 'Line describes itself: the versioned spec, recurring refusals from session traces, the context Line picks', handler: async (args) => (await import('./line-command.mjs')).lineCommand(args), source: 'packages/core/line-command.mjs' });
   registry.register({ name: 'add-rule', summary: 'Scaffold a project-local rule (local-rules/<id>/rule.yml) plus a violates/passes fixture pair', handler: addRuleCommand, source: SOURCE });

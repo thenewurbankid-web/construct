@@ -37,16 +37,6 @@ export * as decisionTraceStore from './decision-trace-store.mjs';
 export * as decisionTraceAdapters from './decision-trace-adapters.mjs';
 /** `@line/construct-core/decision-trace-replay` */
 export * as decisionTraceReplay from './decision-trace-replay.mjs';
-/** `@line/construct-core/decision-dataset` */
-export * as decisionDataset from './decision-dataset.mjs';
-/** `@line/construct-core/decision-features` */
-export * as decisionFeatures from './decision-features.mjs';
-/** `@line/construct-core/decision-prototypes` */
-export * as decisionPrototypes from './decision-prototypes.mjs';
-/** `@line/construct-core/decision-model-bundle` */
-export * as decisionModelBundle from './decision-model-bundle.mjs';
-/** `@line/construct-core/decision-model-registry` */
-export * as decisionModelRegistry from './decision-model-registry.mjs';
 /** `@line/construct-core/redaction` */
 export * as redaction from './redaction.mjs';
 /** `@line/construct-core/requirement-card` */
