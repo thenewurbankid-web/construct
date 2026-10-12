@@ -75,26 +75,36 @@ export const NOT_VISIBLE_CODE = 'NOT_VISIBLE_TO_CONNECTION';
 export const NOT_VISIBLE_MESSAGE = 'Your GitHub connection cannot see this repository. Either the address is misspelled, or the Cockpit\'s GitHub app is not installed on it: install the app on this repository, and for an organisation\'s repository ask an organisation owner to install or approve it. If you revoked the connection on GitHub, Disconnect and connect again. You can also paste an access token instead.';
 export const AUTH_MESSAGE_WITH_TOKEN = 'Private or misspelled — the token you pasted was not accepted for this repository. Paste a token with read access to it.';
 
+/**
+ * #866: the POSIX shell the askpass helper runs under. `/bin/sh` on macOS/Linux; Termux has no `/bin/sh`, so fall back
+ * to `$PREFIX/bin/sh`, then Android's `/system/bin/sh`. `env`/`exists` are injectable for tests.
+ */
+export function askpassShell({ env = process.env, exists = fs.existsSync } = {}) {
+  const candidates = ['/bin/sh', env.PREFIX ? path.join(env.PREFIX, 'bin', 'sh') : null, '/system/bin/sh'].filter(Boolean);
+  return candidates.find((p) => exists(p)) ?? '/bin/sh';
+}
+
 // No secret in this file. It is written once, verbatim, by createAskpass().
-export const ASKPASS_SCRIPT = `#!/bin/sh
+export const askpassScript = (shell) => `#!${shell}
 # Construct clone helper. Holds no secret: the password is read once from file descriptor 3, a pipe from the server.
 case "$1" in
   Username*|username*) printf '%s\\n' '${TOKEN_USERNAME}' ;;
   *) t=; IFS= read -r t <&3 || t=; printf '%s\\n' "$t"; t= ;;
 esac
 `;
+export const ASKPASS_SCRIPT = askpassScript('/bin/sh');
 
 /**
  * Create the per-job askpass helper in a private directory. -> {path, dir, cleanup()}
  * `base` is where the private directory is made (default $CONSTRUCT_ASKPASS_DIR, else the OS temp dir: set it when /tmp is mounted noexec); the directory is 0700 and named with
  * this process's pid so the machine's temp-dir pruning knows whose it is.
  */
-export function createAskpass({ base = process.env.CONSTRUCT_ASKPASS_DIR || os.tmpdir() } = {}) {
+export function createAskpass({ base = process.env.CONSTRUCT_ASKPASS_DIR || os.tmpdir(), shell = askpassShell() } = {}) {
   const dir = fs.mkdtempSync(path.join(base, `construct-askpass-${process.pid}-`)); // mkdtemp: mode 0700, unique
   const file = path.join(dir, 'askpass.sh');
   try {
     fs.chmodSync(dir, 0o700);
-    fs.writeFileSync(file, ASKPASS_SCRIPT, { flag: 'wx', mode: 0o700 });
+    fs.writeFileSync(file, askpassScript(shell), { flag: 'wx', mode: 0o700 });
     fs.chmodSync(file, 0o700);
   } catch (e) {
     fs.rmSync(dir, { recursive: true, force: true });

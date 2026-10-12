@@ -9,7 +9,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { makeTempDir } from '../../../test-utils/tmpdir.mjs';
-import { ASKPASS_SCRIPT, AUTH_MESSAGE, createAskpass, feedToken, looksLikeAuthFailure, makeRedactor, MAX_TOKEN_LENGTH, parseToken, scrubGitConfig, wipe } from './cloneAuth.mjs';
+import { ASKPASS_SCRIPT, askpassScript, askpassShell, AUTH_MESSAGE, createAskpass, feedToken, looksLikeAuthFailure, makeRedactor, MAX_TOKEN_LENGTH, parseToken, scrubGitConfig, wipe } from './cloneAuth.mjs';
 import { cloneEnv } from './cloneJobs.mjs';
 import { CloneInputError } from './gitUrl.mjs';
 
@@ -74,6 +74,20 @@ test('the auth-failure wording covers what git and hosts say', () => {
   }
   assert.ok(!looksLikeAuthFailure('fatal: destination path already exists'));
   assert.match(AUTH_MESSAGE, /^Private or misspelled/);
+});
+
+test('#866: the askpass shebang uses /bin/sh when present, else $PREFIX/bin/sh (Termux), and createAskpass writes it', () => {
+  const has = (set) => (p) => set.includes(p);
+  assert.equal(askpassShell({ env: {}, exists: has(['/bin/sh']) }), '/bin/sh');
+  assert.equal(askpassShell({ env: { PREFIX: '/data/data/com.termux/files/usr' }, exists: has(['/data/data/com.termux/files/usr/bin/sh']) }), '/data/data/com.termux/files/usr/bin/sh');
+  assert.equal(askpassShell({ env: { PREFIX: '/opt/x' }, exists: has(['/bin/sh', '/opt/x/bin/sh']) }), '/bin/sh', 'macOS/Linux unchanged');
+  assert.equal(askpassShell({ env: {}, exists: has(['/system/bin/sh']) }), '/system/bin/sh', 'bare Android');
+  assert.match(askpassScript('/data/data/com.termux/files/usr/bin/sh'), /^#!\/data\/data\/com\.termux\/files\/usr\/bin\/sh\n/);
+  assert.equal(askpassScript('/bin/sh'), ASKPASS_SCRIPT);
+  const base = fs.realpathSync(makeTempDir('askpass-'));
+  const a = createAskpass({ base, shell: '/custom/sh' });
+  assert.match(fs.readFileSync(a.path, 'utf8'), /^#!\/custom\/sh\n/);
+  a.cleanup();
 });
 
 test('the askpass helper holds no secret and lives in a private 0700 directory that cleanup removes', () => {
