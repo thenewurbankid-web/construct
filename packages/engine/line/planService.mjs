@@ -28,7 +28,7 @@ import { createAtomicPlanWriter, createStaticPlanApi, lockPlanApi } from './plan
 import { isInsideWorkspace, readWorkspace } from './workspace.mjs';
 import { createSessionTrace, refusalOfStep, matchFix, sourceOf, traceArgs } from './trace.mjs';
 import { memoryOf, memoryBy } from './memory/index.mjs';
-import { shapeRefusal, contextFor, withHints, badValueOf, badArgsField, targetOf, rulesCard, hintsJevOn, jevScores, renderQuestion, answerCall } from './hints.mjs';
+import { SHOWN_CHOICES, renderReoffer, shapeRefusal, contextFor, withHints, badValueOf, badArgsField, targetOf, rulesCard, hintsJevOn, jevScores, renderQuestion, answerCall } from './hints.mjs';
 import { rankLines } from './contextScore.mjs';
 
 /** One session per open project, for now. */
@@ -42,6 +42,30 @@ const lower = (s) => String(s).charAt(0).toLowerCase() + String(s).slice(1);
 const asSentence = (s) => { const t = String(s ?? '').trim().replace(/\s+/g, ' '); return /[.?!]$/.test(t) ? t : `${t}.`; };
 const refusal = (code, sentence) => ({ ok: /** @type {const} */ (false), code, sentence: asSentence(sentence) });
 const fromPlan = (r) => refusal(`PLAN_${String(r.code).toUpperCase()}`, r.reason);
+
+/** A step's args without the plan's own fields (checks, retry, fix links), as a builder would send them. */
+const plainArgs = (a) => Object.fromEntries(Object.entries(a && typeof a === 'object' ? a : {}).filter(([k]) => !['expect', 'retry', 'fixOf'].includes(k)));
+/** Canonical JSON (keys sorted), so two calls compare whatever order their args came in. */
+const canon = (v) => JSON.stringify(v, (_k, x) => (x && typeof x === 'object' && !Array.isArray(x) ? Object.fromEntries(Object.keys(x).sort().map((k) => [k, x[k]])) : x));
+/**
+ * #906: whether two steps are the same call (same tool, same args but the plan's own fields).
+ * @param {{tool?: string, args?: any}} a @param {{tool?: string, args?: any}} b
+ * @returns {boolean}
+ */
+export const sameStep = (a, b) => Boolean(a && b && a.tool === b.tool && canon(plainArgs(a.args)) === canon(plainArgs(b.args)));
+/**
+ * #906: the page a refused step waits on: the page a route would serve (addRoute), else the file its first setCode fix
+ * rewrites, else the first file the type errors name. Null for a setCode (it is the change to that page itself).
+ * @param {{tool: string, args?: any}} step @param {{code: string, fixes?: any[], detail?: string}} r
+ * @returns {string|null}
+ */
+export function pageOfBlock(step, r) {
+  if (r?.code !== 'TYPE_ERROR' || step.tool === 'line.setCode' || !CHANGE_TOOLS[step.tool]) return null;
+  if (step.tool === 'line.addRoute' && typeof step.args?.page === 'string') return step.args.page;
+  const fix = (r.fixes ?? []).find((f) => f?.step?.tool === 'line.setCode' && typeof f.step.args?.file === 'string');
+  if (fix) return fix.step.args.file;
+  return /^(\S+\.[jt]sx?):\d+ /m.exec(String(r.detail ?? ''))?.[1] ?? null;
+}
 
 /**
  * Load the plan API for `root`: @mx/plan when linked, else the built-in store.
@@ -176,7 +200,7 @@ export function stepView(root, plan, s, ops = REAL_PLAN_OPS) {
  *   waiting question, or any scan (classify) question by id until the first import step runs.
  * @returns The plan service.
  */
-export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, commands, load = loadPlanApi, linkOptions, trace, records, memory, offers, hintState, imports }) {
+export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, commands, load = loadPlanApi, linkOptions, trace, records, memory, offers, hintState, blocked, imports }) {
   const tr = trace === undefined ? createSessionTrace(root, { sessionId: SESSION_ID }) : trace;
   const mem = memory === undefined ? memoryOf(root) : memory;
   /** im3: remember plan feedback (best effort: a memory that cannot be saved never stops the plan). */
@@ -210,10 +234,14 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
     // #888: the next open step's rules card (the 2-4 rules its tool and target layer must keep), before it runs.
     const open = plan?.steps.find((s) => s.status === 'planned' || s.status === 'approved');
     const card = open && CHANGE_TOOLS[open.tool] ? rulesCard(open.tool, open.args) : null;
+    // #906: the blocked steps a landed setCode freed (pre-checked), offered as f1.. ({"fix":"f1"} adds one).
+    const again = plan && !open && blockedNow().length ? await reoffers(plan).catch(() => []) : [];
+    const offerNow = again.length ? withHints(withReoffers(again, []), { code: 'BLOCKED' }).fixes : [];
     return {
       ok: /** @type {const} */ (true), sessionId: SESSION_ID, planId: plan?.id ?? null, version: plan?.version ?? null, status: plan?.status ?? null,
       steps: plan ? plan.steps.map((s) => stepView(root, plan, s, ops)) : [], store, ...(message ? { message: asSentence(message) } : {}),
       ...(card?.rules.length ? { next: { stepId: open.id, card } } : {}),
+      ...(offerNow.length ? { offer: { fixes: offerNow, text: renderReoffer(offerNow) } } : {}),
     };
   }
 
@@ -238,6 +266,86 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
   }
 
   /**
+   * The gate a change step passes before it joins the plan (pure, nothing written): planned through its planner (the
+   * type gate included), inside the workspace folder, its pre holding on the project as it is. #906: the same gate
+   * pre-checks every fix a refusal offers and the blocked step a later setCode frees.
+   * @param {string} tool A change tool. @param {any} args
+   * @returns {{ok: true, summary: string|null, layout: any} | {ok: false, refusal: any}}
+   */
+  function planGate(tool, args) {
+    let summary = null;
+    if (!isDeferred(tool)) {
+      try {
+        const staged = previewStep(root, tool, args, ops);
+        summary = staged.summary;
+        // cu6: a change outside the workspace folder can never land, so it never joins the plan (one sentence, as the writer says it).
+        let folder = '';
+        try { folder = readWorkspace(root).folder; } catch { folder = ''; }
+        const outside = folder ? staged.files.find((f) => !isInsideWorkspace(folder, f.path)) : null;
+        if (outside) return { ok: false, refusal: refusal('OUTSIDE_WORKSPACE', `Nothing was saved: ${outside.path} is outside your workspace folder ${folder}; it stays read-only.`) };
+      } catch (e) {
+        if (/** @type {any} */ (e)?.name === 'LineOpError') {
+          const r = refusal(/** @type {any} */ (e).code, /** @type {any} */ (e).sentence);
+          const detail = /** @type {any} */ (e).detail;
+          // bench-gaps 1: a refusal carries its typed fixes (contract.mjs RefusalFix): steps to add instead.
+          // R1: each carries a short ref (f1 = rank 1) an agent sends back as {fix: "f1"} to add it.
+          const fixes = Array.isArray(/** @type {any} */ (e).fixes) ? /** @type {any[]} */ ((/** @type {any} */ (e)).fixes).map((f, i) => ({ ...f, ref: `f${i + 1}` })) : [];
+          return { ok: false, refusal: { ...r, ...(typeof detail === 'string' && detail ? { detail } : {}), ...(fixes.length ? { fixes } : {}) } };
+        }
+        throw e;
+      }
+    }
+    // Expressions: the tool's pre must hold on the project as it is (one sentence when not), and its post joins the
+    // step's checks (expectFor). An import or extract step is checked against its import folder's facts.
+    let at = root;
+    try { at = rootOf(root, tool, args); } catch { at = root; }
+    const facts = buildFacts(at, { ops });
+    const layout = facts.project()?.layout;
+    const pre = checkPre(facts, tool, requestOf(args), layout);
+    if (pre) return { ok: false, refusal: refusal('PRE_FAILED', pre) };
+    return { ok: true, summary, layout };
+  }
+
+  /**
+   * #906: the fixes a refusal may offer, each pre-checked through the same gate (up to SHOWN_CHOICES checked ones; the
+   * rest ride along unchecked, named by ref). The refused call itself is never offered; a fix that would be refused is
+   * dropped. When the recommended one fails and its own refusal has a first fix that passes (the page it needs changed
+   * first), that fix takes its place and the dropped step is remembered as blocked by that page (re-offered once a
+   * setCode lands there).
+   * @param {any[]} fixes @param {any} [req] The refused request ({tool, args}).
+   * @returns {Promise<{fixes: any[], dropped: {id: string|null, code: string}[]}>}
+   */
+  async function precheck(fixes, req) {
+    const out = []; const dropped = [];
+    let plan = null;
+    try { plan = await current((await init()).api); } catch { plan = null; }
+    const has = (s) => out.some((f) => sameStep(f.step, s));
+    let checked = 0;
+    for (const [i, f] of fixes.entries()) {
+      const s = f?.step;
+      if (!s || typeof s.tool !== 'string') continue;
+      if (req?.tool && sameStep(s, req)) { dropped.push({ id: f.id ?? null, code: 'SAME_CALL' }); continue; }
+      if (has(s)) continue;
+      if (!CHANGE_TOOLS[s.tool] || s.args?.retry || checked >= SHOWN_CHOICES) { out.push(f); continue; }
+      checked += 1;
+      let g;
+      try { g = planGate(s.tool, plainArgs(s.args)); } catch { g = { ok: true }; }
+      if (g.ok) { out.push(f); continue; }
+      dropped.push({ id: f.id ?? null, code: String(g.refusal.code) });
+      // Only the recommended fix is replaced by what it needs first; another one that would fail is just dropped.
+      const sub = i === 0 ? (g.refusal.fixes ?? [])[0] : null;
+      if (!sub?.step || (req?.tool && sameStep(sub.step, req)) || has(sub.step)) continue;
+      let ok = false;
+      try { ok = planGate(sub.step.tool, plainArgs(sub.step.args)).ok; } catch { ok = false; }
+      if (!ok) continue;
+      out.push({ ...sub, ...(s.args?.fixOf ? { step: { ...sub.step, args: { ...sub.step.args, fixOf: s.args.fixOf } } } : {}) });
+      const page = pageOfBlock(s, g.refusal);
+      if (page) block(plan, { tool: s.tool, args: plainArgs(s.args), page, code: String(g.refusal.code) });
+    }
+    return { fixes: out.map((f, i) => ({ ...f, rank: i + 1, ref: `f${i + 1}` })), dropped };
+  }
+
+  /**
    * @param {{tool?: unknown, args?: unknown, why?: unknown}} req @param {string} by
    */
   const addStepInner = async (req, by) => {
@@ -254,40 +362,15 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
     if (!args.retry) { const bad = badArgs(); if (bad) return bad; }
     // A change is planned (pure) before it joins the plan: a refusal is one sentence and starts nothing.
     // An import step builds on the steps before it, so it is planned when it runs; only its folder is checked now.
+    let layout;
     if (isDeferred(tool) && !args.retry) {
       try { rootOf(root, tool, args); } catch (e) { return refusal(/** @type {any} */ (e).code ?? 'BAD_FOLDER', /** @type {any} */ (e).sentence ?? 'The import folder must be inside the project'); }
-    } else if (CHANGE_TOOLS[tool] && !args.retry) {
-      try {
-        const staged = previewStep(root, tool, args, ops);
-        why = why ?? staged.summary;
-        // cu6: a change outside the workspace folder can never land, so it never joins the plan (one sentence, as the writer says it).
-        let folder = '';
-        try { folder = readWorkspace(root).folder; } catch { folder = ''; }
-        const outside = folder ? staged.files.find((f) => !isInsideWorkspace(folder, f.path)) : null;
-        if (outside) return refusal('OUTSIDE_WORKSPACE', `Nothing was saved: ${outside.path} is outside your workspace folder ${folder}; it stays read-only.`);
-      } catch (e) {
-        if (/** @type {any} */ (e)?.name === 'LineOpError') {
-          const r = refusal(/** @type {any} */ (e).code, /** @type {any} */ (e).sentence);
-          const detail = /** @type {any} */ (e).detail;
-          // bench-gaps 1: a refusal carries its typed fixes (contract.mjs RefusalFix): steps to add instead.
-          // R1: each carries a short ref (f1 = rank 1) an agent sends back as {fix: "f1"} to add it.
-          const fixes = Array.isArray(/** @type {any} */ (e).fixes) ? /** @type {any[]} */ ((/** @type {any} */ (e)).fixes).map((f, i) => ({ ...f, ref: `f${i + 1}` })) : [];
-          return { ...r, ...(typeof detail === 'string' && detail ? { detail } : {}), ...(fixes.length ? { fixes } : {}) };
-        }
-        throw e;
-      }
     }
-    // Expressions: the tool's pre must hold on the project as it is (one sentence when not), and its post joins the
-    // step's checks (expectFor). Read once per added step; a planner refusal above keeps its own sentence.
-    let layout;
     if (CHANGE_TOOLS[tool] && !args.retry) {
-      // An import or extract step is checked against its import folder's facts (its paths are folder-relative).
-      let at = root;
-      try { at = rootOf(root, tool, args); } catch { at = root; }
-      const facts = buildFacts(at, { ops });
-      layout = facts.project()?.layout;
-      const why = checkPre(facts, tool, requestOf(args), layout);
-      if (why) return refusal('PRE_FAILED', why);
+      const g = planGate(tool, args);
+      if (!g.ok) return g.refusal;
+      why = why ?? g.summary;
+      layout = g.layout;
     }
     const has = await ensurePlan(api, by);
     if (!has.ok) return fromPlan(has);
@@ -371,9 +454,52 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
     return { ...out, hintContext: { via, cap: ctx.cap, repeat, attempt: ctx.attempt, candidates: ctx.candidates, kept: ctx.lines.map((l) => ({ text: l.text, score: l.score, ref: l.ref })) } };
   };
 
+  // #906: steps refused because of a page (route-props: the page takes props a route cannot give), kept until a setCode
+  // lands on that page; then the next refusal, run-next and plan view offer the step again as f1 (pre-checked).
+  /** @type {any[]} */
+  let blockedList = [];
+  const blockedNow = () => { try { const v = blocked?.get(); if (Array.isArray(v)) return v; } catch { /* none kept */ } return blockedList; };
+  const keepBlocked = (list) => { blockedList = list; try { blocked?.set(list); } catch { /* best effort */ } };
+  /** A setCode step of `plan` that landed on `page`. */
+  const landedOn = (s, page) => s.tool === 'line.setCode' && s.args?.file === page && s.status === 'done' && s.result?.apply?.ok === true && s.result?.needsYou !== true;
+  /** Remember `e` ({tool, args, page, code}) as blocked in `plan`: only a setCode that lands on its page after now frees it. */
+  const block = (plan, e) => {
+    const list = blockedNow().filter((x) => !sameStep(x, e));
+    keepBlocked([...list, { ...e, planId: plan?.id ?? null, seen: (plan?.steps ?? []).filter((s) => landedOn(s, e.page)).map((s) => s.id) }]);
+  };
+  /** Forget the blocked steps equal to `step` (it joined the plan). */
+  const unblock = (step) => { const list = blockedNow(); if (list.some((x) => sameStep(x, step))) keepBlocked(list.filter((x) => !sameStep(x, step))); };
+  /**
+   * The blocked steps a landed setCode has freed, as typed fixes (recommended first), each pre-checked through the gate.
+   * @param {any} [plan] The current plan (read when not given).
+   * @returns {Promise<any[]>}
+   */
+  const reoffers = async (plan0) => {
+    const list = blockedNow();
+    if (!list.length) return [];
+    const plan = plan0 ?? await current((await init()).api).catch(() => null);
+    if (!plan) return [];
+    const out = [];
+    for (const e of list) {
+      if (e.planId && e.planId !== plan.id) continue;
+      const by = plan.steps.find((s) => landedOn(s, e.page) && !(e.seen ?? []).includes(s.id));
+      if (!by) continue;
+      let g;
+      try { g = planGate(e.tool, e.args); } catch { continue; }
+      if (!g.ok) continue;
+      const again = e.tool === 'line.addRoute' ? `route ${e.args.route} again` : `add ${e.tool} again`;
+      out.push({ id: `BLOCKED/${e.tool}:${e.page}`, sentence: `Now ${again}: step ${by.n} changed ${e.page}, so it plans clean.`, step: { tool: e.tool, args: e.args }, blockedBy: e.page, freedBy: by.id });
+    }
+    return out;
+  };
+  /** The re-offers first, then `fixes` (minus any the re-offers repeat), with refs f1.. . */
+  const withReoffers = (again, fixes) => [...again, ...fixes.filter((f) => !again.some((a) => sameStep(a.step, f.step)))].map((f, i) => ({ ...f, rank: i + 1, ref: `f${i + 1}` }));
+
   /** The fix `want` names (a ref like "f1", or a fix id), or a refusal that lists what can be picked. */
-  const pickFix = (want) => {
-    const fixes = offeredNow();
+  const pickFix = async (want) => {
+    let fixes = offeredNow();
+    // #906: with nothing on offer (a landed step clears it), the blocked steps a setCode freed are what f1.. name.
+    if (!fixes.length) { try { fixes = withReoffers(await reoffers(), []); } catch { fixes = []; } }
     const hit = fixes.find((f) => f.ref === want || f.id === want);
     if (hit?.step && typeof hit.step.tool === 'string') return { ok: /** @type {const} */ (true), fix: hit };
     if (!fixes.length) return refusal('UNKNOWN_FIX', `There is no fix ${want} to add: the last step added was not refused with fixes; add a step with its tool and args instead`);
@@ -417,7 +543,7 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
   // An answer is not queued with the plan's own calls: the import agent it reaches adds and runs plan steps itself.
   const addStep = (req0, by) => (typeof req0?.answer === 'string' && req0.answer.trim() ? answerQuestion(req0, by) : serial(async () => {
     const want = typeof req0?.fix === 'string' && req0.fix.trim() ? req0.fix.trim() : null;
-    const picked = want ? pickFix(want) : null;
+    const picked = want ? await pickFix(want) : null;
     if (picked && !picked.ok) {
       if (tr) tr.record({ kind: 'refusal', by: String(by), tool: '(fix)', stepId: null, args: { fix: want }, source: sourceOf(picked.code), code: String(picked.code), sentence: picked.sentence, rules: [], files: [], fixes: [] });
       // #885: the choices on offer are shown again, so the next call can pick one.
@@ -428,13 +554,25 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
     const r0 = await addStepInner(req, by);
     let r = r0;
     if (!r0.ok) {
-      const own = Array.isArray(/** @type {any} */ (r0).fixes) ? /** @type {any} */ (r0).fixes : [];
+      const { api, registry } = await init();
+      const plan = await current(api).catch(() => null);
+      // #906: every fix is pre-checked through the same gate (never the call that just failed), and a step refused
+      // because of its page is remembered until a setCode lands there; the steps that freed come first, as f1.
+      const checked = Array.isArray(/** @type {any} */ (r0).fixes) ? await precheck(/** @type {any} */ (r0).fixes, req) : { fixes: [], dropped: [] };
+      const page = req?.tool ? pageOfBlock({ tool: String(req.tool), args: req.args }, /** @type {any} */ (r0)) : null;
+      if (page) block(plan, { tool: String(req.tool), args: plainArgs(req.args), page, code: String(/** @type {any} */ (r0).code) });
+      const again = (await reoffers(plan)).filter((a) => !sameStep(a.step, req));
+      const own = again.length ? withReoffers(again, checked.fixes) : checked.fixes;
       // A small model that sends a fix's ref or a path as the tool name ("fixes[0].step", "f1") meant the offered fix.
       const meantFix = !own.length && /** @type {any} */ (r0).code === 'UNKNOWN_TOOL' && /fix|^f\d+$/i.test(String(req?.tool ?? '')) ? offeredNow() : [];
-      const { registry } = await init();
-      r = await say(r0, req, own.length ? own : meantFix, registry.list().map((t) => t.name).filter((n) => n.startsWith('line.') && !n.startsWith('line.import.')));
+      const { fixes: _unchecked, ...bare } = /** @type {any} */ (r0);
+      r = await say(bare, req, own.length ? own : meantFix, registry.list().map((t) => t.name).filter((n) => n.startsWith('line.') && !n.startsWith('line.import.')));
+      if (checked.dropped.length) r = { ...r, dropped: checked.dropped };
       if (!meantFix.length) offer(own);
-    } else offer([]);
+    } else {
+      offer([]);
+      if (req?.tool) unblock({ tool: String(req.tool), args: req.args });
+    }
     if (!tr) return r;
     const tool = typeof req?.tool === 'string' && req.tool ? req.tool : '(none)';
     const args = traceArgs(req?.args);
@@ -486,7 +624,7 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
     const next = plan.steps.find((s) => s.id === nextId);
     const resolves = answers(next);
     if (blocked && !resolves) {
-      const choices = choicesOf(blocked);
+      const choices = (await precheck(choicesOf(blocked))).fixes;
       offer(choices);
       return say(refusal('NEEDS_YOU', needsYouSentence(blocked)), { tool: blocked.tool, args: {} }, choices);
     }
@@ -545,10 +683,18 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
     let r = r0;
     const stuck = r0.ok ? r0.steps.find((s) => open.has(s.id) && (s.state === 'needs-fix' || s.state === 'needs-you')) : null;
     if (stuck) {
-      const choices = choicesOf(stuck);
+      const choices = (await precheck(choicesOf(stuck))).fixes;
       offer(choices);
       const said = await say({ ok: false, code: stuck.state === 'needs-fix' ? 'NEEDS_FIX' : 'NEEDS_YOU', sentence: stuck.sentence, detail: stuck.result?.apply?.detail ?? null }, { tool: stuck.tool, args: stuck.args }, choices);
       r = { ...r0, needs: { stepId: stuck.id, fixes: said.fixes, hint: said.hint, text: said.text, hintContext: said.hintContext } };
+    } else if (r0.ok) {
+      // #906: a setCode that landed on a page a step was refused for frees it: offered again now, as f1.
+      const again = r0.offer ? [] : await reoffers().catch(() => []);
+      const fixes = r0.offer?.fixes ?? (again.length ? withHints(withReoffers(again, []), { code: 'BLOCKED' }).fixes : []);
+      if (fixes.length) {
+        offer(fixes);
+        r = { ...r0, offer: { fixes, text: renderReoffer(fixes) } };
+      }
     }
     if (rec && state && r.ok) await recordFinished(state, open);
     if (!tr) return r;

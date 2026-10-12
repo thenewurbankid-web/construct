@@ -143,7 +143,9 @@ test('line.setCode on app/: the layout becomes line.setLayoutSlot, a route entry
     assert.equal((await runOne(svc)).result.apply.ok, true);
     assert.deepEqual(Object.keys(parseAppLayout(read(root, 'app/layout.tsx'))?.slots ?? {}).sort(), ['footer', 'nav']);
     const bad = /** @type {any} */ (await svc.addStep({ tool: 'line.setLayoutSlot', args: { slot: 'top', components: ['library/components/CartLink.tsx'] }, why: WHY }, 'agent'));
-    assert.deepEqual(bad.fixes.map((f) => f.step.args.slot), ['header', 'nav', 'footer']);
+    // #906: each fix is pre-checked: nav and footer already show CartLink, so only header would change anything.
+    assert.deepEqual(bad.fixes.map((f) => f.step.args.slot), ['header']);
+    assert.deepEqual(bad.dropped.map((d) => d.code), ['NO_CHANGE', 'NO_CHANGE']);
     write(root, 'features/home/pages/HomePage.tsx', "// @line-base pages/ListPage\nimport { ListPage } from '../../../library/pages/ListPage';\nexport function HomePage() { return <ListPage title=\"Home\" first=\"a\" />; }\n");
     const route = /** @type {any} */ (await svc.addStep({ tool: 'line.setCode', args: { file: 'app/cart/page.tsx', code: "export { HomePage as default } from '../../features/home/pages/HomePage';\n" }, why: WHY }, 'agent'));
     assert.deepEqual(route.fixes[0].step, { tool: 'line.addRoute', args: { route: '/cart', page: 'features/home/pages/HomePage.tsx' } });

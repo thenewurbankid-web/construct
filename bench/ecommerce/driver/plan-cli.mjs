@@ -77,7 +77,13 @@ export function createPlanCli({ project, log, builder = 'unknown', spec = SPEC_F
     get: () => { try { return JSON.parse(fs.readFileSync(hintFile, 'utf8')); } catch { return null; } },
     set: (v) => { fs.writeFileSync(hintFile, `${JSON.stringify(v)}\n`); },
   };
-  const svc = createLinePlanService({ root, offers, hintState });
+  // #906: the steps refused because of a page, kept the same way until a setCode lands there (then offered again).
+  const blockedFile = path.join(path.dirname(logFile), 'blocked-steps.json');
+  const blocked = {
+    get: () => { try { return JSON.parse(fs.readFileSync(blockedFile, 'utf8')); } catch { return null; } },
+    set: (v) => { fs.writeFileSync(blockedFile, `${JSON.stringify(v)}\n`); },
+  };
+  const svc = createLinePlanService({ root, offers, hintState, blocked });
   // #888: a rules card is shown with the first add of each tool and layer (and on request: rules <tool> [file]).
   const cardsFile = path.join(path.dirname(logFile), 'cards-shown.json');
   const firstCard = (tool, args) => {
@@ -91,6 +97,7 @@ export function createPlanCli({ project, log, builder = 'unknown', spec = SPEC_F
     return card;
   };
   const record = (e) => fs.appendFileSync(logFile, `${JSON.stringify({ at: new Date().toISOString(), builder, ...e })}\n`);
+  const fixesOut = (fixes) => fixes.map((f, i) => ({ ref: f.ref, id: f.id, sentence: f.sentence, step: f.step, ...(i === 0 ? { recommended: true } : {}), ...(f.why ? { why: f.why } : {}), ...(f.effect ? { effect: f.effect } : {}) }));
   const brief = (s) => ({ id: s.id, n: s.n, tool: s.tool, state: s.state, sentence: s.sentence });
 
   const commands = {
@@ -108,8 +115,10 @@ export function createPlanCli({ project, log, builder = 'unknown', spec = SPEC_F
       const counts = steps.reduce((c, s) => ({ ...c, [s.state]: (c[s.state] ?? 0) + 1 }), {});
       const open = steps.find((s) => s.state === 'needs-fix' || s.state === 'needs-you');
       const card = /** @type {any} */ (v).next?.card ?? null;
-      return { ok: true, planId: v.planId, counts, steps, ...(card ? { card } : {}), ...(f ? { spec: { feature: f.name, points: f.points.map((p) => p.id) } } : {}),
-        sentence: [open ? `Step ${open.n} needs a fix first: ${open.sentence}` : `The plan has ${steps.length} steps.`, card?.text, sliceText(f)].filter(Boolean).join('\n') };
+      // #906: a blocked step a landed setCode freed is offered again, as f1.
+      const again = /** @type {any} */ (v).offer ?? null;
+      return { ok: true, planId: v.planId, counts, steps, ...(card ? { card } : {}), ...(again ? { fixes: fixesOut(again.fixes) } : {}), ...(f ? { spec: { feature: f.name, points: f.points.map((p) => p.id) } } : {}),
+        sentence: [open ? `Step ${open.n} needs a fix first: ${open.sentence}` : `The plan has ${steps.length} steps.`, again?.text, card?.text, sliceText(f)].filter(Boolean).join('\n') };
     },
     async add(tool, json, why, fix) {
       let args;
@@ -122,7 +131,7 @@ export function createPlanCli({ project, log, builder = 'unknown', spec = SPEC_F
         // (add <tool> '<args>') still works.
         const fixes = Array.isArray(r.fixes) ? r.fixes.map((f, i) => ({ ref: f.ref, id: f.id, sentence: f.sentence, step: f.step, ...(i === 0 ? { recommended: true } : {}), ...(f.why ? { why: f.why } : {}), ...(f.effect ? { effect: f.effect } : {}), ...(f.context?.length ? { context: f.context } : {}) })) : [];
         const card = !fix && tool && BUILDER_TOOLS.includes(tool) ? firstCard(tool, args) : null;
-        return { ok: false, code: r.code, sentence: [r.text ?? r.sentence, card?.text].filter(Boolean).join('\n'), ...(r.detail ? { detail: r.detail } : {}), ...(fixes.length ? { fixes } : {}), ...(r.hintContext ? { hintContext: r.hintContext } : {}), ...(card ? { card } : {}) };
+        return { ok: false, code: r.code, sentence: [r.text ?? r.sentence, card?.text].filter(Boolean).join('\n'), ...(r.detail ? { detail: r.detail } : {}), ...(fixes.length ? { fixes } : {}), ...(r.dropped ? { dropped: r.dropped } : {}), ...(r.hintContext ? { hintContext: r.hintContext } : {}), ...(card ? { card } : {}) };
       }
       const step = r.steps.find((s) => s.id === r.stepId);
       const card = step ? firstCard(step.tool, step.args) : null;
@@ -150,7 +159,8 @@ export function createPlanCli({ project, log, builder = 'unknown', spec = SPEC_F
         files: res.apply?.files ?? [], checks: res.checks ?? [], findings, options, ...(r.recheck ? { recheck: r.recheck } : {}),
         // #885: a step that needs a fix offers its choices like a refused add (r.needs: refs f1.., {"fix": "f1"}).
         ...(r.needs?.stepId === ran.id ? { fixes: r.needs.fixes.map((f, i) => ({ ref: f.ref, id: f.id, sentence: f.sentence, step: f.step, ...(i === 0 ? { recommended: true } : {}), why: f.why, effect: f.effect, ...(f.context ? { context: f.context } : {}) })), hintContext: r.needs.hintContext } : {}),
-        sentence: r.needs?.stepId === ran.id ? r.needs.text : sentence(ran.sentence),
+        ...(r.offer && r.needs?.stepId !== ran.id ? { fixes: fixesOut(r.offer.fixes) } : {}),
+        sentence: r.needs?.stepId === ran.id ? r.needs.text : [sentence(ran.sentence), r.offer?.text].filter(Boolean).join('\n'),
       };
     },
     async findings() {
@@ -205,6 +215,8 @@ export function createPlanCli({ project, log, builder = 'unknown', spec = SPEC_F
       // What the builder was offered, so calls.jsonl (and Mission Control) show the choices next to what it sent.
       // #886: and why, what each does, the context lines and every candidate line with its static score (jev's data).
       ...(Array.isArray(out.fixes) && out.fixes.length ? { fixes: out.fixes.map((f) => ({ ref: f.ref, id: f.id, sentence: f.sentence, step: f.step, recommended: f.recommended === true, ...(f.why ? { why: f.why } : {}), ...(f.effect ? { effect: f.effect } : {}), ...(f.context ? { context: f.context } : {}) })) } : {}),
+      // #906: the fixes the pre-check dropped (they would have been refused), by id and the code they would meet.
+      ...(Array.isArray(out.dropped) && out.dropped.length ? { dropped: out.dropped } : {}),
       ...(Array.isArray(out.options) && out.options.some((o) => o.step) ? { options: out.options } : {}),
       ...(out.hintContext ? { context: out.hintContext } : {}),
       ...(out.card ? { card: { tool: out.card.tool, layer: out.card.layer, rules: out.card.rules.map((x) => x.id) } } : {}),
