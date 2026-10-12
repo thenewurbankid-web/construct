@@ -39,6 +39,27 @@ export async function planStatus(ctx) {
 }
 
 /**
+ * `plan_seed` (#914): the plan steps a block can decide from the project's SPEC.md (features, data-wired pages on the
+ * fitting library page, routes; specSteps.mjs), stub-first, each with a why naming the spec point. Reads only: the
+ * agent adds them with plan_add_step one by one (each needs the one before it to have landed). Steps on disk or in the
+ * plan already are skipped; with no SPEC.md at the project root there are none.
+ * @param {any} ctx The MCP server context (its root).
+ * @returns {Promise<{ok: true, steps: any[], skipped: any[], sentence: string}>}
+ */
+export async function planSeed(ctx) {
+  const fs = await import('node:fs');
+  const path = await import('node:path');
+  let text = null;
+  try { text = fs.readFileSync(path.join(ctx.root, 'SPEC.md'), 'utf8'); } catch { text = null; }
+  if (text === null) return { ok: true, steps: [], skipped: [], sentence: 'There is no SPEC.md at the project root, so there is nothing to seed.' };
+  const { parseSpecMd, specSteps } = await import('@line/construct-engine/line/spec-steps');
+  const view = await (await serviceOf(ctx)).view();
+  const { steps, skipped } = specSteps(ctx.root, { spec: parseSpecMd(text), planned: view.steps ?? [] });
+  const first = steps[0];
+  return { ok: true, steps, skipped, sentence: steps.length ? `${steps.length} step${steps.length === 1 ? '' : 's'} can be decided from the spec; add them in order with plan_add_step, starting with ${first.tool} (${first.why})` : 'Every step the spec decides is on disk or in the plan already.' };
+}
+
+/**
  * `plan_add_step`: add one step (a change is planned first and refused in one sentence when it cannot be made).
  * @param {any} ctx The MCP server context (its root).
  * @param {{tool?: string, args?: object, why?: string, fix?: string, answer?: string, option?: string, folder?: string}} args

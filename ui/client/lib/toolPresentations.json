@@ -2953,6 +2953,36 @@
         "by": "rules"
       }
     },
+    "plan.seed": {
+      "kind": {
+        "value": "step",
+        "by": "rules"
+      },
+      "icon": {
+        "value": "step",
+        "by": "rules"
+      },
+      "overlay": {
+        "value": "outline",
+        "by": "rules"
+      },
+      "states": {
+        "value": [
+          "loading",
+          "error",
+          "filled"
+        ],
+        "by": "rules"
+      },
+      "focus": {
+        "value": "self",
+        "by": "rules"
+      },
+      "caption": {
+        "value": "Lists the plan steps Construct decides from the project's SPEC.md with no model: features, wired pages, routes.",
+        "by": "rules"
+      }
+    },
     "plan.addStep": {
       "kind": {
         "value": "step",

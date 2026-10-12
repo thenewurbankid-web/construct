@@ -18,6 +18,8 @@
 //   plan-cli.mjs read <path>                         one project file with its contentHash (for line.setCode)
 //   plan-cli.mjs ls [dir]                            the entries of one project folder
 //   plan-cli.mjs rules <tool> [file]                 #888: the 2-4 rules a step of that tool and layer must keep
+//   plan-cli.mjs seed                                #914: add, Auto-approve and run, one by one, the steps a block can
+//                                                    decide from SPEC.md (specSteps.mjs: features, wired pages, routes)
 //
 // Project and log: --project <dir> (or BENCH_PROJECT), --log <file> (or BENCH_LOG; default
 // bench/ecommerce/runs/<project folder name>/calls.jsonl), --builder <id> (or BENCH_BUILDER).
@@ -39,6 +41,7 @@ import { hashOf } from '../../../packages/engine/pagesEditor.mjs';
 import { rulesCard, layerOf, jevShadow } from '../../../packages/engine/line/hints.mjs';
 import { SPEC_FILE, readSpec } from './spec-slice.mjs';
 import { workText } from '../../../packages/engine/line/openWork.mjs';
+import { parseSpecMd, specSteps } from '../../../packages/engine/line/seed/specSteps.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 /** Tools a builder may add (Import's tools are for bringing an existing app in, not for building one). */
@@ -199,6 +202,39 @@ export function createPlanCli({ project, log, builder = 'unknown', spec = SPEC_F
       const before = await svc.view();
       return ranOut(before, /** @type {any} */ (await svc.runNext('agent')));
     },
+    // #914: the spec's decidable steps, each added (Auto approves it) and run before the next is computed, so a step that
+    // needs the one before it (baseOn needs its feature) is planned against the project as it is then. Stops at the
+    // first step that is refused or does not land; recorded once in calls.jsonl as {kind: "seed"}.
+    async seed() {
+      let text;
+      try { text = spec ? fs.readFileSync(spec, 'utf8') : null; } catch { text = null; }
+      if (!text) return { ok: false, code: 'NO_SPEC', sentence: 'There is no SPEC.md to seed the plan from.' };
+      const sp = parseSpecMd(text);
+      const ran = []; const seen = new Set(); let stop = null; let skipped = [];
+      for (let i = 0; i < 64; i += 1) {
+        const v = /** @type {any} */ (await svc.view());
+        const next = specSteps(root, { spec: sp, planned: v.steps });
+        skipped = next.skipped;
+        const step = next.steps[0];
+        if (!step) break;
+        const key = `${step.tool} ${JSON.stringify(step.args)}`;
+        if (seen.has(key)) { stop = { step: key, code: 'REPEAT', sentence: 'The step landed but the spec still asks for it.' }; break; }
+        seen.add(key);
+        const a = await commands.add(step.tool, JSON.stringify(step.args), step.why);
+        if (!a.ok) { stop = { step: key, code: a.code, sentence: a.sentence }; break; }
+        const r = await commands['run-next']();
+        // A setCode's code (a spec.md) is in the project now; the log and the answer carry its size, not the text.
+        const args = typeof step.args.code === 'string' ? { ...step.args, code: `<${step.args.code.length} characters>` } : step.args;
+        ran.push({ tool: step.tool, args, why: step.why, point: step.point, ...(step.base ? { base: step.base } : {}), ...(step.fixture ? { fixture: step.fixture } : {}), landed: r.landed === true, ...(r.landed ? {} : { code: r.code ?? r.state ?? null }) });
+        if (!r.landed) { stop = { step: key, code: r.code ?? r.state ?? 'NOT_LANDED', sentence: r.sentence }; break; }
+      }
+      record({ kind: 'seed', steps: ran, skipped, ...(stop ? { stop } : {}) });
+      const landed = ran.filter((x) => x.landed).length;
+      const what = ran.filter((x) => x.landed).map((x) => (x.tool === 'line.addRoute' ? `${x.args.route} -> ${x.args.page}` : x.tool === 'line.baseOn' ? `${x.args.feature}/${x.args.name} on ${x.args.libraryId}` : x.tool === 'line.createFeature' ? `feature ${x.args.name}` : `${x.args.file}`));
+      const v = /** @type {any} */ (await svc.view());
+      return { ok: !stop, ...(stop ? { code: stop.code } : {}), steps: ran, skipped,
+        sentence: [`Seeded ${landed} step${landed === 1 ? '' : 's'} from the spec${what.length ? `: ${what.join('; ')}` : ''}.`, stop ? `Stopped at ${stop.step}: ${stop.sentence}` : '', workOf(v)].filter(Boolean).join('\n') };
+    },
     async findings() {
       const p = readLineProject(root);
       const features = p.features.map((f) => ({ name: f.name, spec: f.spec, items: f.items.map((i) => ({ id: i.id, file: i.file, base: i.base?.libraryId ?? null })) }));
@@ -293,7 +329,7 @@ export function parseArgv(argv) {
 if (process.argv[1] && fs.realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const o = parseArgv(process.argv.slice(2));
   if (!o.project || !o.cmd) {
-    console.log(JSON.stringify({ ok: false, sentence: 'Usage: plan-cli.mjs --project <dir> <tools|status|add|run-next|findings|validate|read|ls|rules> [...] (or set BENCH_PROJECT).' }));
+    console.log(JSON.stringify({ ok: false, sentence: 'Usage: plan-cli.mjs --project <dir> <tools|status|add|run-next|findings|validate|read|ls|rules|seed> [...] (or set BENCH_PROJECT).' }));
     process.exit(2);
   }
   const cli = createPlanCli({ project: o.project, log: o.log, builder: o.builder });

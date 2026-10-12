@@ -125,6 +125,14 @@ export const PLAN_TOOLS = Object.freeze([
     run: plan.planStatus,
   },
   {
+    name: 'plan_seed',
+    title: 'Seed the Line plan from the spec',
+    description: 'The plan steps Construct can decide from the project\'s SPEC.md without a model: create each missing feature, base each page the spec routes on the fitting library page (list, detail, form; wired to the fixture), add its route. Stub-first, each with a why naming the spec point; steps done or planned are skipped. Reads only: add them in order with plan_add_step.',
+    inputSchema: z.object({}),
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    run: plan.planSeed,
+  },
+  {
     name: 'plan_add_step',
     title: 'Add a step to the Line plan',
     description: 'Add one step to the project\'s Line plan: tool line.baseOn, line.promote, line.setPageProp (writes, so a person must approve it in Cockpit), line.project (read), or a construct.* command. A change is planned first; a refusal says what was wrong, the rule, and its choices f1..fn with their exact steps. To add one of them, send {"fix": "f1"} instead of tool and args. Writes no project file.',

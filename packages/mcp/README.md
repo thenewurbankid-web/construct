@@ -47,12 +47,13 @@ text), then `plan_validate` on any plan the model wrote itself. `summarize` and 
 
 ## Plan tools (Line, cp1)
 
-Three more tools let an agent drive the project's Line plan, the same session Cockpit shows (`line/plans/ses-cockpit.json`, through
+Four more tools let an agent drive the project's Line plan, the same session Cockpit shows (`line/plans/ses-cockpit.json`, through
 `@line/construct-engine`'s plan service: `@mx/plan` when linked, Line's built-in plan store otherwise).
 
 | Tool | What it does | Example call |
 | --- | --- | --- |
 | `plan_status` | The current plan: each step's state (waiting for approval, ready, done, needs you), sentence, what is already there, and its checks. Read-only. | `{}` |
+| `plan_seed` | The steps Construct decides from the project's `SPEC.md` with no model (#914): each missing feature, each routed page based on the fitting library page (wired to the fixture), its route; stub-first, each with a why naming the spec point. Read-only: add them in order with `plan_add_step`. | `{}` |
 | `plan_add_step` | Adds one step. A change (`line.baseOn`, `line.promote`, `line.setPageProp`) is planned first and refused in one sentence (`PLAN_REFUSED`, the plan's code in `reason`) when it cannot be made. | `{ "tool": "line.baseOn", "args": { "libraryId": "components/Badge", "feature": "orders", "name": "StatusBadge" } }` |
 | `plan_run_next` | Runs exactly one ready step. A write runs only after a person approved it in Cockpit; a step whose checks failed stops the plan until the person decides. | `{}` |
 
