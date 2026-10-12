@@ -527,7 +527,7 @@ const server = http.createServer((req, res) => {
       const bench = path.resolve(dir, '../..');
       const arm = tailers.get(dir)?.state.turns.find((x) => x?.kind === 'start')?.arm;
       const p = path.join(bench, arm === 'plain' ? 'BUILDER-PROMPT-PLAIN.md' : 'BUILDER-PROMPT.md');
-      text = readBody(p); source = path.relative(REPO, p) + ' (+ SPEC.md in place of {{SPEC}}; static per arm)';
+      text = readBody(p); source = path.relative(REPO, p) + (arm === 'plain' ? ' (+ SPEC.md in place of {{SPEC}}; static per arm)' : ' (+ the SPEC.md overview and feature index in place of {{SPEC}}; each feature\'s points arrive in plan status, #889)');
     }
     res.writeHead(text ? 200 : 404, { 'content-type': 'application/json' });
     res.end(JSON.stringify({ source, text: text ? String(text) : null }));

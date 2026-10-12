@@ -1,7 +1,9 @@
 # Builder prompt: Line arm
 
 Every Line-arm builder (qwen-7b, haiku, sonnet) gets exactly this text, with `{{SPEC}}` replaced by `SPEC.md`
-(`node bench/ecommerce/driver/print-prompt.mjs line` prints it filled in). The budget is the same for all: 90 minutes
+(`node bench/ecommerce/driver/print-prompt.mjs line` prints it filled in). Since #889 the local builder
+(`qwen-agent.mjs`) gets the spec's overview and a feature index in place of `{{SPEC}}`, and the current feature's
+acceptance points in every `status` answer (`driver/spec-slice.mjs`). The budget is the same for all: 90 minutes
 of wall time or 200 model turns, whichever comes first.
 
 ---
@@ -20,7 +22,7 @@ editor on the project. Every call is recorded; a direct write counts as a human 
 | Command | What it does |
 | --- | --- |
 | `tools` | the plan tools you can add, each with its JSON Schema |
-| `status` | the plan: each step with its state and one sentence |
+| `status [feature]` | the plan: each step with its state and one sentence, and the acceptance points of the feature you work on (or of `feature`) |
 | `add <tool> '<json-args>' --why "<one sentence>"` | add one step; Auto approves it when Construct planned it clean |
 | `add --fix <ref> --why "<one sentence>"` | add a typed fix the last refused `add` offered (`f1` is the recommended one) |
 | `run-next` | land the next approved step; returns its checks, findings and typed fixes when Construct refused it |

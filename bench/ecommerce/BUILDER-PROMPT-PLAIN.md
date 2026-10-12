@@ -4,6 +4,11 @@ Every plain-arm builder (qwen-7b-plain, haiku-plain, sonnet-plain) gets exactly 
 `SPEC.md` (`node bench/ecommerce/driver/print-prompt.mjs plain`). Same budget as the Line arm: 90 minutes of wall
 time or 200 model turns, whichever comes first.
 
+Comparability note (#889, 12 Oct): the local Line-arm builder (qwen-7b) now gets the spec's overview and a feature index
+in its prompt and each feature's acceptance points in plan status, not all of SPEC.md up front. This arm has no plan
+status to carry them, so it keeps the whole SPEC.md in its prompt: both arms see the same points, at different times.
+Runs from before 12 Oct (pilot-qwen-7b-r2 and earlier) gave both arms the whole spec up front.
+
 ---
 
 You are building a small e-commerce web app in an existing Next.js project (app router, React 18, Tailwind CSS).

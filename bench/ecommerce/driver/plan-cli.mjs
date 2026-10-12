@@ -3,7 +3,8 @@
 // for one project folder, in Auto mode. Every call is recorded (calls.jsonl); every output is JSON plus one sentence.
 //
 //   plan-cli.mjs tools                               the plan tools a builder may add, each with its JSON Schema
-//   plan-cli.mjs status                              the session plan: each step's state and sentence
+//   plan-cli.mjs status [feature]                    the session plan: each step's state and sentence, and (#889) the
+//                                                    current feature's acceptance points from SPEC.md (or that feature's)
 //   plan-cli.mjs add <tool> '<json-args>' --why "…"  add one step; a write is approved by Auto (ct1, see below)
 //   plan-cli.mjs add --fix <ref> [--why "…"]        add a typed fix the last refused add offered (f1 = recommended)
 //   plan-cli.mjs run-next                            run exactly one ready step; returns its checks and typed fixes
@@ -31,6 +32,7 @@ import { aggregateValidation } from '../../../packages/core/registry.mjs';
 import { enforcersForRoot } from '../../../packages/core/profiles/index.mjs';
 import { hashOf } from '../../../packages/engine/pagesEditor.mjs';
 import { rulesCard, layerOf } from '../../../packages/engine/line/hints.mjs';
+import { SPEC_FILE, readSpec, currentFeature, sliceText } from './spec-slice.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 /** Tools a builder may add (Import's tools are for bringing an existing app in, not for building one). */
@@ -54,9 +56,10 @@ function inside(root, rel) {
 
 /**
  * One plan-cli session over a project folder.
- * @param {{project: string, log?: string, builder?: string}} o
+ * @param {{project: string, log?: string, builder?: string, spec?: string|null}} o `spec` (#889): the SPEC.md whose
+ *   current feature plan status shows (default bench/ecommerce/SPEC.md; null for none).
  */
-export function createPlanCli({ project, log, builder = 'unknown' }) {
+export function createPlanCli({ project, log, builder = 'unknown', spec = SPEC_FILE }) {
   const root = fs.realpathSync(path.resolve(project));
   const logFile = log ?? path.join(here, '..', 'runs', path.basename(root), 'calls.jsonl');
   fs.mkdirSync(path.dirname(logFile), { recursive: true });
@@ -94,13 +97,18 @@ export function createPlanCli({ project, log, builder = 'unknown' }) {
       const tools = lineToolSpecs().filter((t) => BUILDER_TOOLS.includes(t.name)).map((t) => ({ name: t.name, kind: t.kind, describe: t.describe, args: t.args }));
       return { ok: true, tools, sentence: `There are ${tools.length} plan tools; add one with: add <tool> '<json-args>' --why "<one sentence>".` };
     },
-    async status() {
+    async status(feature) {
       const v = await svc.view();
+      let sp = null;
+      try { sp = spec ? readSpec(spec) : null; } catch { sp = null; }
+      const f = sp ? (feature ? sp.features.find((x) => x.name === feature) : currentFeature(sp, v.steps)) ?? null : null;
+      if (feature && sp && !f) return { ok: false, code: 'NOT_FOUND', sentence: `There is no feature ${feature} in the spec; its features are ${sp.features.map((x) => x.name).join(', ')}.` };
       const steps = v.steps.map(brief);
       const counts = steps.reduce((c, s) => ({ ...c, [s.state]: (c[s.state] ?? 0) + 1 }), {});
       const open = steps.find((s) => s.state === 'needs-fix' || s.state === 'needs-you');
       const card = /** @type {any} */ (v).next?.card ?? null;
-      return { ok: true, planId: v.planId, counts, steps, ...(card ? { card } : {}), sentence: [open ? `Step ${open.n} needs a fix first: ${open.sentence}` : `The plan has ${steps.length} steps.`, card?.text].filter(Boolean).join('\n') };
+      return { ok: true, planId: v.planId, counts, steps, ...(card ? { card } : {}), ...(f ? { spec: { feature: f.name, points: f.points.map((p) => p.id) } } : {}),
+        sentence: [open ? `Step ${open.n} needs a fix first: ${open.sentence}` : `The plan has ${steps.length} steps.`, card?.text, sliceText(f)].filter(Boolean).join('\n') };
     },
     async add(tool, json, why, fix) {
       let args;
@@ -199,8 +207,9 @@ export function createPlanCli({ project, log, builder = 'unknown' }) {
       ...(Array.isArray(out.options) && out.options.some((o) => o.step) ? { options: out.options } : {}),
       ...(out.hintContext ? { context: out.hintContext } : {}),
       ...(out.card ? { card: { tool: out.card.tool, layer: out.card.layer, rules: out.card.rules.map((x) => x.id) } } : {}),
+      ...(out.spec ? { spec: out.spec } : {}),
       // Exactly what the model was shown (the text it reads; the JSON fields around it are in the tool result too).
-      ...(out.ok === false || out.fixes || out.card ? { shown: out.sentence } : {}) };
+      ...(out.ok === false || out.fixes || out.card || out.spec ? { shown: out.sentence } : {}) };
     record({ kind: 'call', cmd, args: cmd === 'add' ? { tool: rest[0] ?? null, args: safeJson(rest[1]), why: opts.why ?? null, ...(opts.fix ? { fix: opts.fix } : {}) } : rest, ms: Date.now() - t0, result: summary });
     // The candidate lines and their scores are for the log (and jev), not for the builder.
     delete out.hintContext;
