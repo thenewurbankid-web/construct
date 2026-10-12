@@ -24,6 +24,7 @@ build step 1, the contract: shapes, expected outputs and tests. The later steps 
 | `layoutMedia.mjs` | Step 5. `parseMediaQuery`, `matchesMedia` (min/max, range syntax, em/rem, `and`, comma lists, `not`/`only`, orientation, fixed user preferences) |
 | `importUnits.mjs` | Step 7. `logicCheck` (verifyImport's `logic` check: a `UnitVerdict` per function unit of the import folder in `units`, the `StepSummary` in `summary`, fails only on `changed`), `verifyImportUnits`, `functionUnits`, `folderCodeFiles`, `readImportBaseline`, `materializeBefore`. Layers come from `verifyPair`'s `RUNNERS` by name and `classifyBefore`, so steps 2 and 4 plug in without a change here. `transformsOf` defaults to `importTransforms` (the import plan's done whole-file moves give their units `move` + `repoint-imports`, so an unchanged moved unit is proven; every other unit is null, tested at best) |
 | `layoutRun.mjs` | Step 5. `layoutReaders` (pure layout closures of a unit), `runLayoutCases` (the helper step 4's runner calls), `verifyLayoutPair` (the `isolated` layer result for layout) |
+| `devServerRun.mjs` | Step 8, L2. `devServerPair` (the `dev-server` LayerResult: the app's own dev server per side over HTTP), `runDevSide`, `envKeysRead`, `envLineStubs`, `formatEnvLine` (`.env.line`), `startFixtureServer`, `fixtureBody`, `routesForFile`, `serverSpawnSpec`, `unitRan` (NODE_V8_COVERAGE) |
 
 Tests:
 
@@ -34,6 +35,7 @@ Tests:
 - `test/line-analyze-cache.test.mjs` covers the analyzeClosure cache; `test/line-logic-verify-import.test.mjs` covers verifyImport's `logic` check.
 - `test/line-logic-verify-layout.test.mjs` covers `lib.dom.d.ts`, the layout fakes, DOM, clock, media queries and `verifyLayoutPair`.
 - `test/line-logic-verify-purity.test.mjs` covers `classifyUnit` (pure, direct, transitive, unknown imports) and the fallback.
+- `test/line-logic-verify-devserver.test.mjs` covers the L2 level on a small node:http fixture app (a real `next dev` runs only through `packages/tools/dev/heavy.sh`).
 - The fixtures are in `test/fixtures/logic-verify/`. They are small synthetic snippets written for these tests, not
   taken from any app.
 
@@ -46,7 +48,7 @@ Tests:
 | C | Layered equivalence and its outcomes, plus the round-trip check | `contract.mjs` `VERIFY_LAYERS`, `LAYER_STRENGTH`, `LayerResult`; `escalation.mjs` `LAYER_ORDER`, `decideUnit` | 3 (C1, round-trip), 6 (C3) |
 | D | Isolated execution with recording fakes and sentinels | `fakes.mjs`; step 4: `isolatedRun.mjs`, `isolatedChild.cjs` | 4 (built, with hooks and handlers, #877, and branch coverage, #883: `instrument.mjs`) |
 | E | Layout as input | `layoutFakes.mjs`; step 5: `libDom.mjs`, `layoutFakeGen.mjs`, `layoutDom.mjs`, `layoutClock.mjs`, `layoutMedia.mjs`, `layoutRun.mjs` | 5 (built; hook closures wait for step 4's runner) |
-| F | Escalation from L0 to L3 | `escalation.mjs` `LEVELS`, `levelsFor`, `layerOrder`; `contract.mjs` `LEVEL_OF_LAYER` | 4 (L1), 8 (L2, L3) |
+| F | Escalation from L0 to L3 | `escalation.mjs` `LEVELS`, `levelsFor`, `layerOrder`; `contract.mjs` `LEVEL_OF_LAYER` | 4 (L1), 8 (L2 built: `devServerRun.mjs`; L3 waits) |
 | G | Speed | Not in the contract yet. Each `LayerResult` has an optional `ms` field. | 7 |
 | H | Atom discovery | Not in the contract yet. It reuses the C1 canonical form. | after 3 |
 | I | Where results show | `verdict.mjs` `summarizeStep` (Cockpit step view), `shareOf` ("How smart is it"), `verdictSentence` (refusals) | 7 |
@@ -141,7 +143,41 @@ root, once per side) for the mined literals, not in the solvers or the fakes. St
 `characterize/analyzeCache.mjs` `analyzeClosureCached` (bounded LRU, keyed by every closure file's depsHash, the routes,
 `charSalt` and the files `env` reads), which `fastCheckLayer.mjs` and `layoutRun.mjs` call.
 
-## Planted fixtures
+## The L2 dev-server level (step 8)
+
+`RUNNERS['dev-server']` calls `devServerPair` only when the unit's levels include `L2` (`levelsFor` with
+`serverRendered`); the default `['L0', 'L1']` never starts a server. Per side, one at a time:
+
+1. A fixture server on 127.0.0.1 answers every request with `fixtureBody` (sentinel JSON numbered from the method and
+   path, so both sides get the same answer) and records method, path and sentinels.
+2. `.env.line` is generated in the run's temp dir: every key the app reads (`process.env.X`, `process.env['X']`,
+   `import.meta.env.X`, and the key names of its `.env*` files) gets the fixture URL when it looks like an address
+   (`URL_KEY`) and a sentinel otherwise. The stubs go into the server's environment, which Next.js and Vite rank above
+   `.env` files, so the app's `.env` and code are never edited.
+3. The app's `dev` (else `start`) script runs through npm in its own process group with a minimal env (PATH, HOME,
+   LANG, TZ, the stubs, PORT, HOSTNAME=127.0.0.1, NODE_V8_COVERAGE). No node flags and no NODE_OPTIONS: never
+   `--allow-inspector` (#877); coverage comes from V8's env switch.
+4. Each route is requested once (GET, no redirects followed); then SIGTERM to the group (node writes the coverage),
+   SIGKILL after the grace period, fixture closed, temp dir removed.
+
+Compared per route: status, redirect target, the sentinels in the HTML in order; then the fixture requests (sorted).
+The first difference is `changed` with `input: {route}` and the unit's location (the AST locator). A "same" where
+the coverage shows the unit never ran on either side is `cant-tell`; unreadable coverage keeps the "same" and says so.
+A side that does not start or a request past the time limit is `cant-tell`; no route or no script is `skipped`.
+
+Choices where the spec is open (the simplest deterministic option each time):
+
+- Routes: the caller passes them (`verifyPair({routes})`, from the G1 impact graph); otherwise `routesForFile` maps a
+  Next.js `app/**/page|route` or `pages/**` file to its route, dynamic segments filled with sentinels. A unit in any
+  other file has no route and the layer is skipped.
+- `.env.line` lives in the run's temp dir, not the app root, and reaches the server as environment variables.
+- The two sides run one after the other, not in parallel (one dev server at a time on a 15 GB box).
+- "Ran" is a function of the unit's name with a non-zero count in any script under the app root (sources or its
+  dev build), node_modules excluded.
+- The dev server itself is not under node's permission model (a dev server writes its build dir); its outbound
+  addresses are the fixture's, so the app's real backends are not called through the env.
+
+
 
 | Case | Edit | Expected verdict | Step |
 | --- | --- | --- | --- |
