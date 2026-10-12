@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
-import { callLlm, stripCodeFence, PROVIDERS, DEFAULT_OLLAMA_MODEL, DEFAULT_OLLAMA_BASE_URL, DEFAULT_LLM_TIMEOUT_SEC, resolveLlmTimeoutMs, ollamaContextFor, MIN_OLLAMA_CONTEXT, MAX_OLLAMA_CONTEXT } from '../packages/core/llm.mjs';
+import { callLlm, claudeArgs, stripCodeFence, PROVIDERS, DEFAULT_OLLAMA_MODEL, DEFAULT_OLLAMA_BASE_URL, DEFAULT_LLM_TIMEOUT_SEC, resolveLlmTimeoutMs, ollamaContextFor, MIN_OLLAMA_CONTEXT, MAX_OLLAMA_CONTEXT } from '../packages/core/llm.mjs';
 import { ConstructError } from '../packages/core/diagnostics.mjs';
 
 test('callLlm throws a clear USAGE_ERROR for an unsupported provider', async () => {
@@ -464,5 +464,20 @@ test('#599: an is_error result from the streaming claude call is a real error, n
 test('#599: without onChunk or signal the claude provider is still the plain call (no stream-json flags)', async () => {
   await withFakeClaudeBin(`process.stdin.resume(); process.stdin.on('data', () => {}); process.stdin.on('end', () => { console.log(process.argv.includes('stream-json') ? 'STREAMING' : 'plain'); });`, async () => {
     assert.equal((await PROVIDERS.claude('x')).trim(), 'plain');
+  });
+});
+
+// #896: the claude provider takes an optional model and system prompt (the planner eval's judges run on "opus").
+test('claudeArgs leaves the base arguments unchanged without options and appends --model / --system-prompt when given', () => {
+  const base = ['-p', '--output-format', 'text'];
+  assert.deepEqual(claudeArgs(base), base);
+  assert.deepEqual(claudeArgs(base, {}), base);
+  assert.deepEqual(claudeArgs(base, { model: 'opus', systemPrompt: 'You are a grader.' }), [...base, '--model', 'opus', '--system-prompt', 'You are a grader.']);
+  assert.deepEqual(base, ['-p', '--output-format', 'text'], 'the base array is never mutated');
+});
+
+test('#896: the plain claude call passes --model and --system-prompt to the CLI', async () => {
+  await withFakeClaudeBin(`process.stdin.resume(); process.stdin.on('data', () => {}); process.stdin.on('end', () => { const a = process.argv; console.log(a[a.indexOf('--model') + 1] + '|' + a[a.indexOf('--system-prompt') + 1]); });`, async () => {
+    assert.equal((await PROVIDERS.claude('x', { model: 'opus', systemPrompt: 'SYS' })).trim(), 'opus|SYS');
   });
 });

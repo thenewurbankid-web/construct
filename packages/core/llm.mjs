@@ -126,13 +126,28 @@ async function readOllamaStream(body, onChunk) {
  * (`signal` kills the child) or timed out. Used only when a caller passes `onChunk` or `signal`;
  * otherwise the original single synchronous call is unchanged.
  */
+/**
+ * #896: the `claude` CLI's arguments with the caller's optional model and system prompt appended. Additive: with
+ * neither option the arguments are exactly `base` (every existing caller is unchanged). `model` is passed as
+ * `--model <name>` (an alias such as "opus" or a full id), `systemPrompt` as `--system-prompt <text>`.
+ * @param {string[]} base
+ * @param {{model?: string, systemPrompt?: string}} [options]
+ * @returns {string[]}
+ */
+export function claudeArgs(base, options = {}) {
+  const args = [...base];
+  if (typeof options.model === 'string' && options.model) args.push('--model', options.model);
+  if (typeof options.systemPrompt === 'string' && options.systemPrompt) args.push('--system-prompt', options.systemPrompt);
+  return args;
+}
+
 function claudeStreaming(prompt, options) {
   const timeout = timeoutOf(options);
   const onChunk = typeof options.onChunk === 'function' ? options.onChunk : null;
   const cancelledError = () => Object.assign(new ConstructError('The model call was cancelled.', { exitCode: EXIT_CODES.INTERNAL_ERROR }), { cancelled: true });
   if (options.signal?.aborted) return Promise.reject(cancelledError());
   return new Promise((resolve, reject) => {
-    const child = spawn('claude', ['-p', '--output-format', 'stream-json', '--verbose', '--include-partial-messages', '--permission-prompts', 'none'], { stdio: ['pipe', 'pipe', 'pipe'] });
+    const child = spawn('claude', claudeArgs(['-p', '--output-format', 'stream-json', '--verbose', '--include-partial-messages', '--permission-prompts', 'none'], options), { stdio: ['pipe', 'pipe', 'pipe'] });
     let settled = false;
     let stdoutBuffer = '';
     let stderr = '';
@@ -228,7 +243,7 @@ export const PROVIDERS = {
     // the blocking spawnSync below is only the plain, callback-free path.
     if (options.onChunk || options.signal) return claudeStreaming(prompt, options);
     const timeout = timeoutOf(options);
-    const res = spawnSync('claude', ['-p', '--output-format', 'text', '--permission-prompts', 'none'], {
+    const res = spawnSync('claude', claudeArgs(['-p', '--output-format', 'text', '--permission-prompts', 'none'], options), {
       input: prompt,
       encoding: 'utf8',
       maxBuffer: 10 * 1024 * 1024,
