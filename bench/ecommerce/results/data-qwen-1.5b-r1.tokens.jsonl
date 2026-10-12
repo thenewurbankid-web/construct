@@ -1,0 +1,1 @@
+{"builder":"data-qwen-1.5b-r1","model":"qwen2.5-coder:1.5b","turn":1,"in":2812,"out":52,"ms":2237,"evalMs":355,"promptMs":545,"source":"ollama prompt_eval_count/eval_count","at":"2026-10-12T14:37:48.424Z"}

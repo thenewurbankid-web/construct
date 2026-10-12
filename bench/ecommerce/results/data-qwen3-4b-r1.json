@@ -1,0 +1,90 @@
+{
+  "builder": "data-qwen3-4b-r1",
+  "arm": "line",
+  "model": "qwen3:4b",
+  "at": "2026-10-12T15:02:04.754Z",
+  "wallMs": 1374186,
+  "turns": 43,
+  "tokens": {
+    "input": 254882,
+    "output": 66230,
+    "cacheRead": 0,
+    "cacheWrite": 0,
+    "source": "ollama prompt_eval_count/eval_count",
+    "total": 321112,
+    "costUsd": null,
+    "priceDate": "2026-10-06"
+  },
+  "tokensPerLandedStep": 26759,
+  "tokensPerPassedTest": null,
+  "plan": {
+    "added": 12,
+    "landed": 12,
+    "refusedAtRun": 0,
+    "refusedAtAdd": 13,
+    "refusedByRule": {
+      "add:BAD_ARGS": 1,
+      "add:NAME_TAKEN": 1,
+      "add:PLAN_INVALID": 5,
+      "add:TYPE_ERROR": 4,
+      "add:UNKNOWN_FIX": 1,
+      "add:UNKNOWN_ITEM": 1
+    },
+    "fixesApplied": 0,
+    "fixesById": {
+      "sent": 3,
+      "added": 1,
+      "landed": 1
+    },
+    "leftAsIs": 0,
+    "approvals": {
+      "auto": 12
+    },
+    "byTool": {
+      "line.setCode": 3,
+      "line.baseOn": 5,
+      "line.createFeature": 3,
+      "line.addRoute": 1
+    }
+  },
+  "validate": {
+    "profile": "line",
+    "errors": 0,
+    "warnings": 10,
+    "byRule": {
+      "COMPONENT-005": 6,
+      "COMPONENT-006": 1,
+      "PAGE-008": 3
+    }
+  },
+  "tsc": {
+    "errors": null,
+    "note": "skipped"
+  },
+  "acceptance": {
+    "passed": 0,
+    "total": 22,
+    "ran": false,
+    "passedIds": []
+  },
+  "loc": 24,
+  "filesChanged": 10,
+  "duplicates": {
+    "pairs": 0,
+    "examples": []
+  },
+  "libraryReuse": {
+    "featureItems": 5,
+    "basedOnLibrary": 5,
+    "share": 1
+  },
+  "humanInterventions": 0,
+  "directWrites": [],
+  "lineModelUse": {
+    "calls": 0,
+    "tokensIn": 0,
+    "tokensOut": 0,
+    "note": "no model call recorded in line/ (drafter off: LINE_DRAFTER unset; no jev or Qwen step ran inside Construct)"
+  },
+  "contention": null
+}

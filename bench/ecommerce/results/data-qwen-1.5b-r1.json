@@ -1,0 +1,77 @@
+{
+  "builder": "data-qwen-1.5b-r1",
+  "arm": "line",
+  "model": "qwen2.5-coder:1.5b",
+  "at": "2026-10-12T14:41:25.717Z",
+  "wallMs": 2237,
+  "turns": 1,
+  "tokens": {
+    "input": 2812,
+    "output": 52,
+    "cacheRead": 0,
+    "cacheWrite": 0,
+    "source": "ollama prompt_eval_count/eval_count",
+    "total": 2864,
+    "costUsd": null,
+    "priceDate": "2026-10-06"
+  },
+  "tokensPerLandedStep": null,
+  "tokensPerPassedTest": null,
+  "plan": {
+    "added": 0,
+    "landed": 0,
+    "refusedAtRun": 0,
+    "refusedAtAdd": 0,
+    "refusedByRule": {},
+    "fixesApplied": 0,
+    "fixesById": {
+      "sent": 0,
+      "added": 0,
+      "landed": 0
+    },
+    "leftAsIs": 0,
+    "approvals": {
+      "auto": 0
+    },
+    "byTool": {}
+  },
+  "validate": {
+    "profile": "line",
+    "errors": 0,
+    "warnings": 10,
+    "byRule": {
+      "COMPONENT-005": 6,
+      "COMPONENT-006": 1,
+      "PAGE-008": 3
+    }
+  },
+  "tsc": {
+    "errors": 0
+  },
+  "acceptance": {
+    "passed": 0,
+    "total": 22,
+    "ran": false,
+    "passedIds": []
+  },
+  "loc": 0,
+  "filesChanged": 0,
+  "duplicates": {
+    "pairs": 0,
+    "examples": []
+  },
+  "libraryReuse": {
+    "featureItems": 0,
+    "basedOnLibrary": 0,
+    "share": null
+  },
+  "humanInterventions": 0,
+  "directWrites": [],
+  "lineModelUse": {
+    "calls": 0,
+    "tokensIn": 0,
+    "tokensOut": 0,
+    "note": "no model call recorded in line/ (drafter off: LINE_DRAFTER unset; no jev or Qwen step ran inside Construct)"
+  },
+  "contention": null
+}
