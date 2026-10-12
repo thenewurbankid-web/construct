@@ -28,7 +28,7 @@ import { createAtomicPlanWriter, createStaticPlanApi, lockPlanApi } from './plan
 import { isInsideWorkspace, readWorkspace } from './workspace.mjs';
 import { createSessionTrace, refusalOfStep, matchFix, sourceOf, traceArgs } from './trace.mjs';
 import { memoryOf, memoryBy } from './memory/index.mjs';
-import { shapeRefusal, contextFor, withHints, badValueOf, badArgsField, targetOf, rulesCard, hintsJevOn, jevScores } from './hints.mjs';
+import { shapeRefusal, contextFor, withHints, badValueOf, badArgsField, targetOf, rulesCard, hintsJevOn, jevScores, renderQuestion, answerCall } from './hints.mjs';
 import { rankLines } from './contextScore.mjs';
 
 /** One session per open project, for now. */
@@ -111,9 +111,9 @@ export function choicesOf(step) {
  * @param {string[]} [tools] The tool names (UNKNOWN_TOOL's nearest).
  * @returns {any}
  */
-export function shapedRefusal(r, req, fixes, tools, context) {
+export function shapedRefusal(r, req, fixes, tools, context, example) {
   const list = fixes ?? (Array.isArray(r.fixes) ? r.fixes : []);
-  const { text, ...hint } = shapeRefusal({ code: r.code, sentence: r.sentence, tool: req?.tool, args: req?.args, fix: req?.fix, answer: req?.answer, option: req?.option, fixes: list, tools, context });
+  const { text, ...hint } = shapeRefusal({ code: r.code, sentence: r.sentence, tool: req?.tool, args: req?.args, fix: req?.fix, answer: req?.answer, option: req?.option, fixes: list, tools, context, example });
   return { ...r, ...(list.length ? { fixes: list } : {}), hint, text };
 }
 
@@ -162,16 +162,18 @@ export function stepView(root, plan, s, ops = REAL_PLAN_OPS) {
  * @param {{root: string, ops?: typeof REAL_PLAN_OPS, afterSave?: (root: string, file: string) => unknown,
  *   commands?: any, load?: (o: {root: string, registry: any}) => Promise<{api: any, store: {linked: boolean, sentence: string}}>,
  *   linkOptions?: object, trace?: {id: string, record: (e: any) => any, problem: string|null} | null, records?: any, memory?: any,
- *   offers?: {get: () => any[] | null, set: (fixes: any[]) => void}, hintState?: {get: () => any, set: (v: any) => void}}} o `commands`: the
+ *   offers?: {get: () => any[] | null, set: (fixes: any[]) => void}, hintState?: {get: () => any, set: (v: any) => void},
+ *   imports?: {question: (folder: string) => Promise<any>, answer: (by: string, folder: string, qid: string, oid: string) => Promise<any>}}} o `commands`: the
  *   construct.* registry (default: Construct's built-in commands; null for none). `trace` (cl1): where this session's
  *   typed trace goes (default `<state>/traces/<id>.jsonl`; null records nothing). `records` (expressions): where finished
  *   steps' training records go (default `<state>/records/plans.jsonl`, records.mjs; null records nothing). `memory` (im3):
  *   where plan feedback is remembered per step (default memory/index.mjs memoryOf(root); null remembers nothing).
  *   `offers` (R1): where the last refusal's typed fixes are kept between processes (default: in memory only).
  *   `hintState` (#886): where the refusal counts per code and target are kept between processes (default: in memory).
+ *   `imports` (#887): the import agents an answer goes to (default: the folder's agent on disk, importAgentDisk.mjs).
  * @returns The plan service.
  */
-export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, commands, load = loadPlanApi, linkOptions, trace, records, memory, offers, hintState }) {
+export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, commands, load = loadPlanApi, linkOptions, trace, records, memory, offers, hintState, imports }) {
   const tr = trace === undefined ? createSessionTrace(root, { sessionId: SESSION_ID }) : trace;
   const mem = memory === undefined ? memoryOf(root) : memory;
   /** im3: remember plan feedback (best effort: a memory that cannot be saved never stops the plan). */
@@ -376,8 +378,37 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
     return refusal('UNKNOWN_FIX', `There is no fix ${want}; the last refusal offered ${list}. Send one of those refs, for example {"fix": "${fixes[0].ref}"}`);
   };
 
+  // #887: an import question is answered through the plan API in the same shape as a fix: {answer, option, folder}.
+  /** @type {Map<string, any>} */
+  const agents = new Map();
+  const agentOf = async (folder) => {
+    if (!agents.has(folder)) {
+      const [{ createImportAgentOnDisk }, { verifyImport, lineBaseline }] = await Promise.all([import('./importAgentDisk.mjs'), import('./importVerify.mjs')]);
+      agents.set(folder, createImportAgentOnDisk({ root, folder, planService: service, verify: verifyImport, baseline: lineBaseline }));
+    }
+    return agents.get(folder);
+  };
+  const imp = imports ?? {
+    question: async (folder) => (await (await agentOf(folder)).view())?.waiting?.question ?? null,
+    answer: async (by, folder, qid, oid) => (await agentOf(folder)).answer(by, qid, oid),
+  };
+  const answerQuestion = async (req, by) => {
+    const folder = typeof req.folder === 'string' && req.folder.trim() ? req.folder.trim() : '';
+    const qid = String(req.answer); const oid = typeof req.option === 'string' ? req.option : '';
+    if (!folder) return shapedRefusal(refusal('BAD_ARGS', 'Name the import folder the question belongs to (folder)'), { answer: qid, option: oid }, [], undefined, undefined, answerCall(qid, oid || '<option id>', 'src/alerts'));
+    let r;
+    try { r = await imp.answer(by, folder, qid, oid); } catch (e) { r = refusal(/** @type {any} */ (e)?.code ?? 'BAD_FOLDER', /** @type {any} */ (e)?.sentence ?? String(/** @type {any} */ (e)?.message ?? e)); }
+    if (r && r.ok === false) {
+      let open = null;
+      try { open = await imp.question(folder); } catch { open = null; }
+      return shapedRefusal(r, { answer: qid, option: oid }, [], undefined, open ? renderQuestion(open, { folder }) : [], open ? answerCall(open.id, open.recommended ?? open.options[0]?.id, folder) : undefined);
+    }
+    return { ok: /** @type {const} */ (true), answered: { question: qid, option: oid, folder }, import: r };
+  };
+
   /** cl1: record a step or a refusal in the session trace; with args.fixOf, also which offered fix was picked. */
-  const addStep = (req0, by) => serial(async () => {
+  // An answer is not queued with the plan's own calls: the import agent it reaches adds and runs plan steps itself.
+  const addStep = (req0, by) => (typeof req0?.answer === 'string' && req0.answer.trim() ? answerQuestion(req0, by) : serial(async () => {
     const want = typeof req0?.fix === 'string' && req0.fix.trim() ? req0.fix.trim() : null;
     const picked = want ? pickFix(want) : null;
     if (picked && !picked.ok) {
@@ -416,7 +447,7 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
       if (fixId) remember('plan.fix', { intent: of?.tool ?? tool, options: offered, proposed: offered[0] ?? null }, { kind: 'fix-picked', chosen: fixId, by: memoryBy(String(by)) });
     }
     return r;
-  });
+  }));
 
   const approve = (stepId, by) => serial(async () => {
     const { api } = await init();
@@ -532,5 +563,6 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
     return r;
   });
 
-  return { view: () => serial(() => view()), addStep, approve, runNext, store: async () => (await init()).store, trace: tr, records: rec };
+  const service = { view: () => serial(() => view()), addStep, approve, runNext, store: async () => (await init()).store, trace: tr, records: rec };
+  return service;
 }

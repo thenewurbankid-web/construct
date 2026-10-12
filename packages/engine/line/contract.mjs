@@ -598,8 +598,10 @@ export const CHECK_KINDS = Object.freeze(['validate', 'types', 'tests', 'file', 
  * @property {string} id          Stable: "<rule>:<file>".
  * @property {string} file        The item it is about.
  * @property {string} sentence    The question in plain English.
- * @property {{id: string, sentence: string}[]} options
- * @property {string} recommended An option id (listed first).
+ * @property {string} hint        #887: why the recommended option, one sentence naming the deciding rule ("rule used-by-pages").
+ * @property {{id: string, sentence: string, effect: string}[]} options  `effect`: what choosing it does.
+ * @property {string} recommended An option id (listed first). An agent answers by id through the plan API, in the same
+ *   shape as a fix: {"answer": <id>, "option": <option id>} (planService addStep, with the import `folder`).
  */
 
 /**
@@ -1337,8 +1339,9 @@ export function assertImportScan(s) {
     str(q.id, `${w}.id`);
     relPath(q.file, `${w}.file`);
     sentence(q.sentence, `${w}.sentence`);
+    sentence(q.hint, `${w}.hint`);
     if (!Array.isArray(q.options) || q.options.length < 2) fail(`${w}.options`, 'a question offers at least two options');
-    q.options.forEach((o, j) => { str(o.id, `${w}.options[${j}].id`); sentence(o.sentence, `${w}.options[${j}].sentence`); });
+    q.options.forEach((o, j) => { str(o.id, `${w}.options[${j}].id`); sentence(o.sentence, `${w}.options[${j}].sentence`); str(o.effect, `${w}.options[${j}].effect`); });
     if (q.options[0].id !== q.recommended) fail(`${w}.recommended`, 'must be the first option');
     qFiles.add(q.file);
   });

@@ -131,6 +131,9 @@ export const PLAN_TOOLS = Object.freeze([
     inputSchema: z.object({
       tool: z.string().min(3).max(60).regex(/^[a-z][\w]*(\.[a-zA-Z][\w]*)+$/).optional().describe('A tool name, for example line.baseOn (leave out when you send fix).'),
       fix: z.string().min(1).max(200).optional().describe('The ref (f1 is the recommended one) or id of a choice the last refusal offered; adds its step instead of tool and args.'),
+      answer: z.string().min(1).max(300).optional().describe('An import question\'s id (import_status shows the open one), answered with option, in the same shape as a fix.'),
+      option: z.string().min(1).max(200).optional().describe('With answer: one of the question\'s option ids.'),
+      folder: z.string().min(1).max(200).optional().describe('With answer: the import folder the question belongs to, for example src/alerts.'),
       args: z.record(z.string(), z.unknown()).optional().describe('The tool\'s arguments, for example {"libraryId": "components/Badge", "feature": "orders", "name": "StatusBadge"}.'),
       why: z.string().min(3).max(400).optional().describe('One plain-English sentence; a change is worded by its own plan when left out.'),
     }),

@@ -41,12 +41,13 @@ export async function planStatus(ctx) {
 /**
  * `plan_add_step`: add one step (a change is planned first and refused in one sentence when it cannot be made).
  * @param {any} ctx The MCP server context (its root).
- * @param {{tool?: string, args?: object, why?: string, fix?: string}} args The step to add, or `fix`: a choice the last
- *   refusal offered (its ref, f1 = recommended, or its id), added in place of tool and args (#880).
+ * @param {{tool?: string, args?: object, why?: string, fix?: string, answer?: string, option?: string, folder?: string}} args
+ *   The step to add; or `fix`: a choice the last refusal offered (its ref, f1 = recommended, or its id), added in place
+ *   of tool and args (#880); or `answer` + `option` + `folder`: an answer to the folder's open import question (#887).
  * @returns {Promise<any>} The plan view with the new step.
  */
 export async function planAddStep(ctx, args) {
-  const req = args.fix ? { fix: args.fix, why: args.why } : { tool: args.tool, args: args.args ?? {}, why: args.why };
+  const req = args.answer ? { answer: args.answer, option: args.option, folder: args.folder } : args.fix ? { fix: args.fix, why: args.why } : { tool: args.tool, args: args.args ?? {}, why: args.why };
   return answer(await (await serviceOf(ctx)).addStep(req, 'agent'));
 }
 

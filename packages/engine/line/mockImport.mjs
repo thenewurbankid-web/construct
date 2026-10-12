@@ -28,7 +28,11 @@ function scanOf(answers = {}) {
     questions: [{
       id: TABLE_Q, file: `${FOLDER}/components/Table.tsx`,
       sentence: 'Table sounds like general UI, so it could go to the library, but only one page uses it; where should it go?',
-      options: [{ id: 'library', sentence: 'Put Table in the library, so every feature can use it.' }, { id: 'feature:alerts', sentence: 'Keep Table in feature alerts, where it is used.' }],
+      hint: 'Recommended because Table is a general UI name, and the library is where every feature can use it (rule generic-name).',
+      options: [
+        { id: 'library', sentence: 'Put Table in the library, so every feature can use it.', effect: 'Table becomes library/components/Table; the files that import it are pointed at the library copy' },
+        { id: 'feature:alerts', sentence: 'Keep Table in feature alerts, where it is used.', effect: 'Table becomes features/alerts/components/Table, based on a library copy' },
+      ],
       recommended: 'library',
     }],
     unchanged: [

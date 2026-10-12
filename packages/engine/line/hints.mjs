@@ -8,6 +8,7 @@
 //   shapeRefusal(o)          {code, sentence, tool, args, fixes} -> {wrong, rule, choices | example, apply, text}
 //   renderRefusal(shape)     the plain text a builder reads (plan-cli prints it; MCP sends it as the message)
 //   whyOf / effectOf         #886: per fix, one sentence from the deciding rule, and what choosing it does (pure)
+//   renderQuestion(q)        #887: an import question in the same shape: hint, options with their effect, how to answer
 //   rulesCard(tool, args)    #888: the 2-4 rules for a step's tool and target layer, plain English, one example each
 //   hintsJevOn / jevShadow   #890: the "jev picks context" switch (off) and jev's scores logged beside the static ones
 //   contextFor(root, o)      #886: the minimal deterministic lines that decide it, ranked by contextScore.mjs and cut
@@ -172,8 +173,9 @@ export const badArgsField = (sentence) => /: ([A-Za-z_$][\w$.]*) (?:must|is not)
 /**
  * The refusal as the builder sees it.
  * @param {{code: string, sentence: string, tool?: string, args?: any, fix?: string, answer?: string, option?: string,
- *   fixes?: any[], tools?: string[], context?: string[]}} o `fixes`: the typed fixes (ref, step, why/effect/context
- *   when known), recommended first; `tools`: the tool names (UNKNOWN_TOOL's nearest one); `context`: refusal lines.
+ *   fixes?: any[], tools?: string[], context?: string[], example?: string}} o `fixes`: the typed fixes (ref, step,
+ *   why/effect/context when known), recommended first; `tools`: the tool names (UNKNOWN_TOOL's nearest one); `context`:
+ *   refusal lines; `example`: the correct call, when the caller knows a better one than the tool's.
  * @returns {RefusalShape}
  */
 export function shapeRefusal(o) {
@@ -189,8 +191,8 @@ export function shapeRefusal(o) {
   let wrong = clean(choices.length ? firstSentence(o.sentence) : asSentence(o.sentence));
   const bad = badValueOf(code, req);
   if (bad && !wrong.includes(bad.value)) wrong = `${wrong.replace(/[.?!]$/, '')} (you sent ${bad.field} "${bad.value}").`;
-  let example = null;
-  if (!choices.length) {
+  let example = o.example ?? null;
+  if (!choices.length && !example) {
     const near = code === 'UNKNOWN_TOOL' && o.tool && o.tools?.length ? closestId(String(o.tool), o.tools) : null;
     const call = hint.example?.(req) ?? (near ? TOOL_EXAMPLES[near] ?? ex(near, {}) : null) ?? (o.tool ? TOOL_EXAMPLES[o.tool] : null) ?? (code === 'UNKNOWN_TOOL' || code === 'BAD_JSON' ? TOOL_EXAMPLES['line.addRoute'] : null);
     example = call ? callText(call) : `${o.tool ?? 'line.createFeature'} ${JSON.stringify(TOOL_EXAMPLES[o.tool ?? '']?.args ?? TOOL_EXAMPLES['line.createFeature'].args)}`;
@@ -561,3 +563,27 @@ export async function jevShadow(ctx, o = {}) {
     keptStatic: top((l) => l.score), keptJev: top((_l, i) => got.scores[i]),
   };
 }
+
+// ------------------------------------------------------------------------------------------------ #887 questions
+
+/**
+ * #887: an import question as a builder reads it, in the same shape as a refusal's choices: the question, why the
+ * recommended option (its hint), each option with what it does, and how to answer ({"answer": id, "option": id}).
+ * @param {{id: string, sentence: string, hint?: string, options: {id: string, sentence: string, effect?: string}[], recommended?: string}} q
+ * @param {{folder?: string}} [o] The import folder, sent along with the answer.
+ * @returns {string[]}
+ */
+export function renderQuestion(q, o = {}) {
+  const rec = q.recommended ?? q.options[0]?.id;
+  const opts = [...q.options].sort((a, b) => (a.id === rec ? -1 : b.id === rec ? 1 : 0));
+  return [
+    `Question (${q.id}): ${asSentence(q.sentence)}`,
+    ...(q.hint ? [`Hint: ${asSentence(q.hint)}`] : []),
+    opts.length === 1 ? 'Option:' : 'Options, recommended first:',
+    ...opts.flatMap((x) => [`  ${x.id}: ${asSentence(x.sentence)}`, ...(x.effect ? [`      does: ${x.effect}`] : [])]),
+    `To answer, send ${answerCall(q.id, rec, o.folder)}.`,
+  ];
+}
+
+/** The answer call for a question: {"answer": <id>, "option": <id>, "folder": <folder>}. */
+export const answerCall = (qid, oid, folder) => JSON.stringify({ answer: qid, option: oid, ...(folder ? { folder } : {}) });

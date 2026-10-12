@@ -258,6 +258,58 @@ test('#890: "jev picks context" ships off; with jev up its scores are logged bes
   }
 });
 
+test('#887: an import question carries a hint and each option\'s effect, and is answered by id through the plan API', async () => {
+  const { scanImport } = await import('../packages/engine/line/import.mjs');
+  const { assertImportScan } = await import('../packages/engine/line/contract.mjs');
+  const { renderQuestion } = await import('../packages/engine/line/hints.mjs');
+  const q = { id: 'generic-name:src/alerts/components/Table.tsx', sentence: 'Table sounds like general UI; where should it go?', hint: 'Recommended because Table is a general UI name (rule generic-name).',
+    options: [{ id: 'library', sentence: 'Put Table in the library.', effect: 'Table becomes library/components/Table' }, { id: 'feature:alerts', sentence: 'Keep Table in feature alerts.', effect: 'Table becomes features/alerts/components/Table' }], recommended: 'library' };
+  assert.deepEqual(renderQuestion(q, { folder: 'src/alerts' }), [
+    'Question (generic-name:src/alerts/components/Table.tsx): Table sounds like general UI; where should it go?',
+    'Hint: Recommended because Table is a general UI name (rule generic-name).',
+    'Options, recommended first:', '  library: Put Table in the library.', '      does: Table becomes library/components/Table',
+    '  feature:alerts: Keep Table in feature alerts.', '      does: Table becomes features/alerts/components/Table',
+    'To answer, send {"answer":"generic-name:src/alerts/components/Table.tsx","option":"library","folder":"src/alerts"}.',
+  ]);
+  const answered = [];
+  const imports = {
+    question: async () => q,
+    answer: async (by, folder, qid, oid) => {
+      if (qid !== q.id) return { ok: false, code: 'NO_QUESTION', sentence: 'There is no such question open right now.' };
+      if (!q.options.some((o) => o.id === oid)) return { ok: false, code: 'BAD_OPTION', sentence: 'Pick one of the options: library, feature:alerts.' };
+      answered.push([by, folder, qid, oid]);
+      return { ok: true, state: 'plan' };
+    },
+  };
+  const { root, done } = project();
+  try {
+    const svc = createLinePlanService({ root, commands: null, trace: null, records: null, imports });
+    const wrong = /** @type {any} */ (await svc.addStep({ answer: 'nope', option: 'library', folder: 'src/alerts' }, 'agent'));
+    assert.equal(wrong.code, 'NO_QUESTION');
+    assert.match(wrong.text, /^Refused \(NO_QUESTION\): There is no such question open right now \(you sent answer "nope"\)\.\nRule: /);
+    assert.match(wrong.text, /\n {2}Question \(generic-name:src\/alerts\/components\/Table\.tsx\): /);
+    assert.match(wrong.text, /\nA correct call: \{"answer":"generic-name:src\/alerts\/components\/Table\.tsx","option":"library","folder":"src\/alerts"\}$/);
+    const bad = /** @type {any} */ (await svc.addStep({ answer: q.id, option: 'elsewhere', folder: 'src/alerts' }, 'agent'));
+    assert.equal(bad.code, 'BAD_OPTION');
+    assert.match(bad.text, /\(you sent option "elsewhere"\)/);
+    const noFolder = /** @type {any} */ (await svc.addStep({ answer: q.id, option: 'library' }, 'agent'));
+    assert.equal(noFolder.code, 'BAD_ARGS');
+    const ok = /** @type {any} */ (await svc.addStep({ answer: q.id, option: 'feature:alerts', folder: 'src/alerts' }, 'agent'));
+    assert.equal(ok.ok, true, ok.text);
+    assert.deepEqual(answered, [['agent', 'src/alerts', q.id, 'feature:alerts']]);
+  } finally { done(); }
+  // The scan's questions carry them for real (contract: a hint and every option's effect).
+  const repo = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
+  const parent = fs.realpathSync(makeTempDir('line-hints-import-'));
+  try {
+    fs.cpSync(path.join(repo, 'examples', 'import-sample'), parent, { recursive: true });
+    const scan = scanImport(parent, 'src/alerts');
+    assertImportScan(scan);
+    assert.ok(scan.questions.length >= 1);
+    for (const x of scan.questions) { assert.match(x.hint, /\(rule [\w-]+\)\.$/); for (const o of x.options) assert.ok(o.effect, o.id); }
+  } finally { fs.rmSync(parent, { recursive: true, force: true }); }
+});
+
 test('#880 follow-up: bench metrics count the fixes a builder picked by id (sent, added, landed)', async () => {
   const { planStats } = await import('../bench/ecommerce/metrics.mjs');
   const parent = fs.realpathSync(makeTempDir('line-hints-metrics-'));
