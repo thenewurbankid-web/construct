@@ -186,7 +186,7 @@ export function createLogicOnDisk(root, folder, o = {}) {
     closure: async (_r, f, route, feature) => (route ? readRouteFamily(root, route, feature ? { feature } : {}) : { appRoot: root, routes: [], files: folderCodeFiles(root, f), shared: [], external: [] }),
     // The map now: the closure's files that are still there, and where moved files land.
     buildMap: async (_r, f, closure) => { const c = cache(); return timed('map', () => buildLogicMap(root, codeFiles(root, [...(closure?.files ?? []), ...landing(f, closure)]), { unitsOf: cachedUnits(c) }), c); },
-    compare: async (before, after) => compareLogicMaps(before, after),
+    compare: async (before, after, options = {}) => compareLogicMaps(before, after, options),
     fit: async (_r, f, closure, map) => timed('fit', async () => {
       const c = { appRoot: root, routes: closure?.routes ?? [], ...(closure?.feature ? { feature: closure.feature } : {}), files: closure?.files ?? [], shared: closure?.shared ?? [], external: closure?.external ?? [] };
       const proposal = fitLogic(map, c, { feature: feature(closure) });

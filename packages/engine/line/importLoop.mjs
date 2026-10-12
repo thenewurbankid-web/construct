@@ -94,18 +94,50 @@ export function blocksOf(fit) {
   return out;
 }
 
+/** The import steps that move a file AND rename its component (a name clash at plan time: `exportName` -> `name`). */
+const MOVE_TOOLS = new Set(['line.import.toLibrary', 'line.import.toFeature']);
+
+/**
+ * The per-file rename tables the completed import steps imply (#875): each done step that moved a file and renamed its
+ * export (`exportName` differs from `name`) renames that identifier in that file only, keyed by the file's
+ * app-relative path before the move (the baseline map's `file`). Another file that still uses the old name is left
+ * alone, so a project-wide table would be wrong. Importers keep their own local name (import.mjs withRename), so only
+ * the moved file needs a table. Pure.
+ * @param {string} folder The import folder, app-relative.
+ * @param {{run?: string, tool: string, args?: any}[] | null | undefined} steps The import plan file's steps.
+ * @returns {Record<string, Record<string, string>>}
+ */
+export function stepRenames(folder, steps) {
+  /** @type {Record<string, Record<string, string>>} */
+  const out = {};
+  const base = String(folder ?? '').replace(/\/+$/, '');
+  for (const s of steps ?? []) {
+    const a = s?.args ?? {};
+    if (s?.run !== 'done' || !MOVE_TOOLS.has(s.tool) || typeof a.from !== 'string') continue;
+    if (s.tool === 'line.import.toFeature' && a.mode !== 'move') continue;
+    if (!a.exportName || !a.name || a.exportName === a.name) continue;
+    const file = base && base !== '.' ? `${base}/${a.from}` : a.from;
+    out[file] = { ...(out[file] ?? {}), [a.exportName]: a.name };
+  }
+  return out;
+}
+
 /**
  * Measure where the import stands: the map now, its diff against the baseline, the tests, the moved files' behaviour,
  * each unit's block (from the FitProposal) and the unit coverage. Reads only.
  * @param {any} ops LoopOps
- * @param {{root: string, folder: string, logic: any, full?: boolean}} ctx `full`: run every characterization test (verify), not
- *   only those whose inputs changed since they last passed.
+ * @param {{root: string, folder: string, logic: any, full?: boolean, steps?: any[]}} ctx `full`: run every characterization
+ *   test (verify), not only those whose inputs changed since they last passed. `steps`: the import plan file's steps; a
+ *   done step that moved and renamed a file gives that file's rename table to the compare (stepRenames).
  * @returns {Promise<any>}
  */
-export async function measure(ops, { root, folder, logic, full = false }) {
+export async function measure(ops, { root, folder, logic, full = false, steps = [] }) {
   const baseline = await ops.load('logic-map');
   const map = await ops.buildMap(root, folder, logic.closure);
-  const diff = baseline ? await ops.compare(baseline, map) : { kept: [], moved: [], missing: [], changed: [], added: map.units };
+  const fileRenames = stepRenames(folder, steps);
+  const diff = baseline
+    ? await (Object.keys(fileRenames).length ? ops.compare(baseline, map, { fileRenames }) : ops.compare(baseline, map))
+    : { kept: [], moved: [], missing: [], changed: [], added: map.units };
   const tests = await ops.runTests(root, folder, logic.tests ?? [], { full });
   const behaviour = ops.behaviour ? await ops.behaviour(root, folder, diff) : [];
   // Every import still resolves after the step (null: the ops cannot tell; the check then says so).

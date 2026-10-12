@@ -17,6 +17,7 @@ import { fileStore, createImportAgentOnDisk, snapshotFolder, rollbackFolder } fr
 import { createLogicOnDisk, readRouteFamily, buildLogicMap } from '../packages/engine/line/importLoopDisk.mjs';
 import { compareLogicMaps } from '../packages/engine/line/logicMap.mjs';
 import { createMockLogic } from '../packages/engine/line/importLoopMock.mjs';
+import { measure, loopChecks, stepRenames } from '../packages/engine/line/importLoop.mjs';
 import { createMockImportAgentService, createMockPlanService } from '../packages/engine/line/mockImportAgent.mjs';
 import { readImportLoopRecords } from '../packages/engine/line/records.mjs';
 import { createLinePlanService } from '../packages/engine/line/planService.mjs';
@@ -355,6 +356,38 @@ test('route input: readRouteFamily reads /alerts and its sub-route; the agent st
   assert.equal(v.logic.route, '/alerts');
   assert.equal(v.logic.files, closure.files.length);
   assert.match(v.logic.sentence, /^Route \/alerts: \d+ logic units in \d+ files; \d+ of \d+ kept\.$/);
+});
+
+// #875: a step that moves a page into the library and renames its component (a name clash: exportName -> name) keeps
+// every unit of it; the same function name in another file, not renamed, is left alone.
+test('#875 loop: a done step that renames a moved component reports no missing or added units; the other copy of the name is unaffected', async () => {
+  const dir = makeTempDir('construct-line-import-rename-');
+  const card = (name) => `export function ${name}({ item, onPick }) {\n  if (!item) return null;\n  return <button onClick={() => onPick(item.id)}>{item.title}</button>;\n}\n`;
+  fs.mkdirSync(path.join(dir, FOLDER, 'blog'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'package.json'), '{"name":"calc-app","type":"module","private":true}\n');
+  fs.writeFileSync(path.join(dir, FOLDER, 'Card.tsx'), card('Card'));
+  fs.writeFileSync(path.join(dir, FOLDER, 'blog/Card.tsx'), card('Card'));
+  const disk = createLogicOnDisk(dir, FOLDER, { cache: false });
+  const baseline = await disk.buildMap(dir, FOLDER, null);
+  // the step lands: Card.tsx moves into the library as ShopCard (its export renamed); blog/Card.tsx stays as it is
+  fs.mkdirSync(path.join(dir, FOLDER, 'library/pages'), { recursive: true });
+  fs.writeFileSync(path.join(dir, FOLDER, 'library/pages/ShopCard.tsx'), card('ShopCard'));
+  fs.rmSync(path.join(dir, FOLDER, 'Card.tsx'));
+  const ops = { ...disk, load: async (what) => (what === 'logic-map' ? baseline : null), runTests: async () => ({ state: 'skipped', passed: 0, failed: 0, total: 0, failures: [] }), behaviour: null, imports: null };
+  const logic = { closure: null, tests: [], waivers: [] };
+  const step = { id: 'import-1-lib-ShopCard', tool: 'line.import.toLibrary', args: { folder: FOLDER, from: 'Card.tsx', kind: 'pages', name: 'ShopCard', exportName: 'Card' }, run: 'done' };
+  const without = await measure(ops, { root: dir, folder: FOLDER, logic });
+  assert.ok(without.diff.missing.length > 0 && without.diff.added.length > 0, 'without the step\'s rename every unit of the moved Card reads as missing + added');
+  assert.deepEqual(stepRenames(FOLDER, [step]), { [`${FOLDER}/Card.tsx`]: { Card: 'ShopCard' } });
+  assert.deepEqual(stepRenames(FOLDER, [{ ...step, run: 'todo' }]), {}, 'a step not done yet renames nothing');
+  const m = await measure(ops, { root: dir, folder: FOLDER, logic, steps: [step] });
+  assert.deepEqual([m.diff.missing.length, m.diff.changed.length, m.diff.added.length], [0, 0, 0]);
+  const moved = baseline.units.filter((u) => u.file === `${FOLDER}/Card.tsx`).length;
+  assert.ok(moved > 0);
+  assert.equal(m.diff.moved.length, moved);
+  assert.equal(m.diff.kept.length, baseline.units.length - moved, `${FOLDER}/blog/Card.tsx keeps every unit under its own name`);
+  assert.ok(m.diff.kept.every((u) => u.file === `${FOLDER}/blog/Card.tsx`));
+  assert.equal(loopChecks(m, logic, { at: 'step', folder: FOLDER }).find((c) => c.id === 'logic-map').state, 'pass');
 });
 
 // ------------------------------------------------------------------------------------------------- the mock
