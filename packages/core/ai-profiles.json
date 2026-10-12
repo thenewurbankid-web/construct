@@ -33,7 +33,7 @@
       "maxAttempts": 4,
       "source": "construct",
       "guidance": "Construct refused this change. Change only what the error and its typed fixes say, and answer with the corrected change in the same shape.",
-      "ladder": { "static": { "target": 1 }, "options": { "on": false, "target": 0.6 }, "review": { "on": false, "target": 0.7 }, "measured": "2026-10-12 qwen2.5-coder:1.5b: one repair landed 7 of 20 seeded Train Line refusals (35%); 11 gave back the same change, 2 were refused again" }
+      "ladder": { "static": { "target": 1 }, "options": { "on": false, "target": 0.6 }, "review": { "on": false, "target": 0.7 }, "measured": "2026-10-12 qwen2.5-coder:1.5b on 20 seeded Train Line refusals: one attempt (no reason field) 7 of 20; up to 4 attempts with a reason first 5 of 20 (4 on the first attempt), 11 gave back the same change, 4 repeated an earlier attempt" }
     },
     {
       "step": "trace.choose",

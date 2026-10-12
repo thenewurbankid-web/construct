@@ -59,7 +59,7 @@ function seeds() {
   return out;
 }
 
-test('live: the 1.5B repairs seeded Train Line refusals once; prints the success rate', { skip: !LIVE && 'set CONSTRUCT_LIVE_QWEN=1 (needs Ollama with qwen2.5-coder:1.5b)', timeout: 15 * 60_000 }, async () => {
+test('live: the 1.5B repairs seeded Train Line refusals, up to 4 attempts each; prints the success rate', { skip: !LIVE && 'set CONSTRUCT_LIVE_QWEN=1 (needs Ollama with qwen2.5-coder:1.5b)', timeout: 15 * 60_000 }, async () => {
   const list = seeds();
   assert.equal(list.length, N, `${list.length} seeded refusals`);
   const rows = [];

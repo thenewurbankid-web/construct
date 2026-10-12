@@ -57,6 +57,29 @@ model qwen2.5-coder:1.5b is not running, so Line did not try a repair and the st
   nearest match, so the model has nothing to copy. That is a static gap: a "did you mean <nearest id>" typed fix on
   UNKNOWN_ITEM / UNKNOWN_FEATURE would fix most of these without a model (next im step).
 
+**im2 changed (owner, 12 Oct): Qwen reasons and tries up to 4 times.** `repairLoop(option, refusal)` replaces the one
+repair (`repairOnce` is now `repairLoop` with `maxAttempts: 1`). Each attempt gets the refusal sentence, the finding, the
+typed fixes and every earlier attempt with Construct's refusal of it ("Do not repeat a change that was already
+refused."). The reply is grammar-constrained to `{reason, tool, args}`: a short reason first (recorded on each attempt),
+then the option in its own schema. It stops when an attempt lands, repeats an earlier one (or gives back the refused
+change), or passes no more checks than the one before (when the check reports `passed`); after 4 attempts or an early
+stop the person decides, with every attempt listed under Details. `construct.repair` has `maxAttempts` (default 4).
+- The person is told while it works: one sentence per attempt, in order ("Line is trying again (2 of 4): row was
+  refused too; the base is AlertRowBase."), through `onProgress`, kept as `progress` on the attempt (decision trace round
+  `repair`), shown on the drafter's route card as a live line (`aria-live`) with every attempt under Details, and written
+  to the import's change log as each attempt happens. There is no StreamedText on this branch, so it is a plain live line.
+- The import fix loop now checks each attempt on a copy of the project first (Construct's writer in a scratch copy);
+  the landed repair joins the plan as a waiting step and is checked again when it runs.
+- **Live, the same 20 seeded refusals: up to 4 attempts 5 of 20 repaired (25%), against 7 of 20 with one attempt.** Only
+  4 landed on the first attempt this time (the reason-first reply cost three first-attempt repairs), the loop added one;
+  11 gave back the refused change on attempt 1 (stopped as a repeat) and 4 repeated an earlier attempt. So 4 attempts did
+  not help the 1.5B here: it does not use the earlier refusals. The fix stays static: a nearest-match typed fix
+  ("did you mean <id>") on UNKNOWN_ITEM / UNKNOWN_FEATURE / BAD_NAME, which these refusals lack.
+- New tests (`test/line-repair.test.mjs`, `test/line-repair-wiring.test.mjs`): mock Qwen lands on attempt 3 and each
+  attempt's prompt lists the earlier ones; an identical repeat stops after attempt 2; passing no more checks stops; 4
+  failures go to the person with all 4 attempts; progress sentences come out in order (loop, decision trace, import
+  change log); `maxAttempts: 1` keeps the old wording; in the import loop the model lands on attempt 2 and the import ends.
+
 Tests (all pass): `packages/rule-factory/test/misses.test.mjs` (4), `test/line-im1.test.mjs` (3),
 `test/line-repair.test.mjs` (6), `test/line-repair-wiring.test.mjs` (4), `test/line-repair-live.test.mjs` (1, opt-in),
 `ui/server/src/lineAiApi.test.mjs` (+1), `ui/client/features/ai-steps/domain/AiSteps.spec.mjs` (+1), the raised floors in
@@ -114,8 +137,8 @@ Gaps:
 3. Components -> "Describe a change": `fix the problem in InvoicesPage` and Enter: below the recommended fix, a second
    checked route "Move OrderButton into the library directly."; Add to plan puts it in the Plan panel waiting for your
    approval, nothing is written yet.
-4. Optional, with Ollama running: `CONSTRUCT_LIVE_QWEN=1 node --test test/line-repair-live.test.mjs` prints "Live repair
-   success: 7/20 (35%) ...".
+4. Optional, with Ollama running: `CONSTRUCT_LIVE_QWEN=1 node --test test/line-repair-live.test.mjs` prints "Live repair,
+   up to 4 attempts: 5/20 repaired; on the first attempt alone 4/20 ...".
 
 ## Import v2: fit existing logic into Line's blocks, backed by tests (11 Oct, merged on `merge-iv2`; awaiting UAT)
 
