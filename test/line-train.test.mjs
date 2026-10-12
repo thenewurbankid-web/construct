@@ -26,7 +26,8 @@ const SEED = path.join(REPO, 'line');
 const seed = fs.readFileSync(path.join(SEED, CASES), 'utf8').split('\n').filter(Boolean);
 const tmp = () => makeTempDir('line-train-test-');
 /** Train eval floors on the real drafter (see the eval test). */
-const FLOORS = Object.freeze({ recall: 0.96, precision: 0.91, preferred: 1 });
+/** Raised by im1 (the raw move for a cross-feature problem, the top absent miss): recall 0.96 -> 1, precision 0.91 -> 0.92. */
+const FLOORS = Object.freeze({ recall: 1, precision: 0.92, preferred: 1 });
 /** Per tool family (preferred picked), measured with "System 1 accuracy" (docs/line/review.md). */
 const FAMILY_FLOORS = Object.freeze({ 'line.baseOn': 1, 'line.promote': 1, 'line.setPageProp': 1, 'line.setFragment': 1, 'line.fix': 1, none: 1 });
 const treeHash = (dir) => {

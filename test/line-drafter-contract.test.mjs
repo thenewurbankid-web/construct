@@ -14,7 +14,8 @@ test('drafter contract: the intent catalog is every verb x object, generated fro
   assert.deepEqual(byId.get('update.feature-flow').templates, ['set-prop', 'set-fragment']);
   assert.deepEqual(byId.get('update.feature-flow').layers, ['ui', 'workflow', 'api', 'library']);
   assert.deepEqual(byId.get('add.component').templates, ['base-on', 'via-library']);
-  assert.deepEqual(byId.get('fix.problem').tools, ['line.fix']);
+  // im1: a cross-feature problem may also be fixed by moving the item into the library directly (template fix-step).
+  assert.deepEqual(byId.get('fix.problem').tools, ['line.fix', 'line.promote']);
   assert.deepEqual(byId.get('split.service').templates, [], 'a known operation without a static route yet');
   // A template whose tool is not in the registry never appears.
   const noPromote = buildIntentCatalog(TOOLS.filter((t) => t !== 'line.promote'));

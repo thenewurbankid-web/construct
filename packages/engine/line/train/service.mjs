@@ -426,11 +426,20 @@ export function evaluateCase(c, o = {}) {
   const preferred = gp.outcome === 'question' ? asked
     : gp.outcome === 'refusal' ? d.recommended === null && drafted.some((x) => x.r.status === 'refused' && stepsMatch(goldSteps(gp), x.steps))
       : Boolean(rec) && stepsMatch(goldSteps(gp), rec.steps);
+  // im1: what was offered and what the gold says, as slotted signatures (tool chains, never names), so the rule factory
+  // can tell an absent right answer (not offered) from a picked-wrong one (offered, another recommended).
+  const goldSig = (g) => (g.outcome === 'question' ? 'ask' : g.outcome === 'refusal' ? `refuse ${g.steps.map((s) => s.tool).join(' + ')}` : g.steps.map((s) => s.tool).join(' + '));
+  const sigOf = (x) => { const g = c.gold.routes.find((gr) => gr.outcome !== 'question' && stepsMatch(goldSteps(gr), x.steps)); return g ? goldSig(g) : `${x.steps.map((s) => s.tool).join(' + ') || 'nothing'} (other)`; };
+  const offered = [...new Set([...drafted.map(sigOf), ...(asked ? ['ask'] : [])])];
+  const chosen = gp.outcome === 'question' ? (asked ? 'ask' : rec ? sigOf(rec) : null) : gp.outcome === 'refusal' ? (preferred ? goldSig(gp) : rec ? sigOf(rec) : null) : rec ? sigOf(rec) : (asked ? 'ask' : null);
   return {
     id: c.id, intent: c.intent, family: familyKey(c), drafted: d.labels.intent.id, intentOk: d.labels.intent.id === c.intent,
     recall: c.gold.routes.filter(hits).length / c.gold.routes.length, precision: shown ? right / shown : 0, preferred: preferred ? 1 : 0,
     noRepair: gp.outcome === 'change' ? (rec !== null && rec.r.status === 'ok' && isGold(rec) ? 1 : 0) : (preferred ? 1 : 0),
     via: rec?.r.via ?? (asked ? 'ask' : 'none'),
+    request: c.request,
+    gold: c.gold.routes.map((g) => ({ sig: goldSig(g), step: g.outcome === 'question' ? 'ask' : g.steps[0]?.tool ?? 'none', outcome: g.outcome, preferred: g.id === c.gold.preferred, found: hits(g) })),
+    offered, chosen,
   };
 }
 

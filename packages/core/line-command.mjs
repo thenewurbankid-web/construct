@@ -3,7 +3,9 @@
 // Line-state path). Nothing is filed and nothing leaves the machine.
 //
 //   construct line spec [--topic <rules|commands|plan|model|modules>] [--id <text>]   the versioned spec (JSON)
-//   construct line misses [--dir <project>] [--threshold <n>] [--draft] [--json]     recurring refusals with no working fix
+//   construct line misses [--dir <project>] [--threshold <n>] [--draft] [--eval] [--json]
+//                                                      recurring refusals with no working fix, and the miss report (im1):
+//                                                      absent vs picked per step; --eval adds Train Line and the drafter eval
 //   construct line context [--dir <project>] [--json]                                 the context Line picks for the latest miss
 //   construct line check [--dir <project>] <expr JSON> [--json]                       evaluate an expression on the project's facts
 //   construct line facts [--dir <project>]                                            the facts snapshot (JSON) expressions read
@@ -15,7 +17,7 @@ import { ConstructError, EXIT_CODES } from './diagnostics.mjs';
 export const LINE_USAGE = [
   'Usage:',
   '  construct line spec [--topic rules|commands|plan|model|modules] [--id <text>]',
-  '  construct line misses [--dir <project>] [--threshold <n>] [--draft] [--json]',
+  '  construct line misses [--dir <project>] [--threshold <n>] [--draft] [--eval] [--json]',
   '  construct line context [--dir <project>] [--json]',
   '  construct line check [--dir <project>] \'<expression JSON>\' [--json]',
   '  construct line facts [--dir <project>]',
@@ -55,11 +57,15 @@ export async function lineCommand(args) {
       const { buildLineSpec } = await import('@line/construct-engine/line/spec');
       drafts = await draftFrameworkIssues(root, events, { threshold, spec: await buildLineSpec() });
     }
+    // im1: the miss report -- every miss classified absent (the right answer was not among Line's options) or picked
+    // (offered, another recommended), per step, from plan feedback; with --eval also from Train Line's gold and the
+    // drafter eval (the repo's own corpora; about 30 seconds).
+    const report = await missReportOf(root, rest.includes('--eval'));
     if (rest.includes('--json')) {
-      console.log(JSON.stringify({ ok: true, traces: files, skipped, misses: misses.map(({ minimal, ...m }) => ({ ...m, case: { trace: minimal.trace, seq: minimal.seq } })), drafts: drafts.map((d) => d.file) }, null, 2));
+      console.log(JSON.stringify({ ok: true, traces: files, skipped, misses: misses.map(({ minimal, ...m }) => ({ ...m, case: { trace: minimal.trace, seq: minimal.seq } })), drafts: drafts.map((d) => d.file), report }, null, 2));
       return;
     }
-    if (!files.length) { console.log('There are no session traces in this project yet; they appear once a plan step is added in Cockpit or through MCP.'); return; }
+    if (!files.length) { console.log('There are no session traces in this project yet; they appear once a plan step is added in Cockpit or through MCP.'); printMissReport(report); return; }
     const issues = misses.filter((m) => m.frameworkIssue);
     console.log(`Read ${files.length} session trace${files.length === 1 ? '' : 's'}: ${misses.length} kind${misses.length === 1 ? '' : 's'} of refusal, ${issues.length} that recur${issues.length === 1 ? 's' : ''} with no working typed fix.`);
     for (const m of misses) console.log(`- ${m.frameworkIssue ? 'Framework issue' : m.working ? 'Fixed by a typed fix' : 'Not a pattern yet'}: ${toolWords(m.tool)} was refused ${times(m.count)} (${m.rules.join(', ') || m.code}). ${m.reason}`);
@@ -67,6 +73,7 @@ export async function lineCommand(args) {
     if (drafts.length) for (const d of drafts) console.log(`Drafted (not filed): ${d.file}`);
     else if (rest.includes('--draft')) console.log('Nothing to draft: no refusal recurs without a working typed fix.');
     else if (issues.length) console.log('Add --draft to write each one as a markdown issue in the project\'s line/issues folder (nothing is filed).');
+    printMissReport(report);
     return;
   }
   if (verb === 'context') {
@@ -116,4 +123,30 @@ export async function lineCommand(args) {
     return;
   }
   throw usage(verb ? `"${verb}" is not a line command.` : 'Name a line command.');
+}
+
+/**
+ * im1: the miss report of a project (plan feedback), plus Train Line's and the drafter eval's misses with `withEval`.
+ * @param {string} root
+ * @param {boolean} withEval
+ * @returns {Promise<any>}
+ */
+async function missReportOf(root, withEval) {
+  const { readClassifiedPlanMisses, missReport } = await import('@line/rule-factory/misses');
+  const plan = readClassifiedPlanMisses(root);
+  if (!withEval) return { sources: ['plan'], numbers: null, ...missReport(plan) };
+  const { runEvalMisses } = await import('@line/rule-factory/eval-misses');
+  const ev = await runEvalMisses();
+  return { sources: ['plan', 'train', 'drafter-eval'], numbers: ev.numbers, ...missReport([...plan, ...ev.train, ...ev.drafter]) };
+}
+
+/** @param {any} r */
+function printMissReport(r) {
+  console.log(`Miss report (${r.sources.join(', ')}): ${r.sentence}`);
+  for (const s of r.steps) console.log(`- ${s.sentence}`);
+  if (r.topAbsent.length) console.log('Most common misses where the right answer was not offered (a static tool should cover them):');
+  for (const p of r.topAbsent) console.log(`- ${p.sentence}`);
+  if (r.numbers?.train) console.log(`Train Line held-out eval: ${Math.round(r.numbers.train.recall * 100)}% of the valid routes found, ${Math.round(r.numbers.train.preferred * 100)}% picked the preferred one (${r.numbers.train.n} cases).`);
+  if (r.numbers?.drafter) console.log(`Drafter eval: ${Math.round(r.numbers.drafter.recall * 100)}% route recall, ${Math.round(r.numbers.drafter.precision * 100)}% precision (${r.numbers.drafter.n} cases).`);
+  if (!r.numbers) console.log('Add --eval to include Train Line\'s gold and the drafter eval (about 30 seconds).');
 }
