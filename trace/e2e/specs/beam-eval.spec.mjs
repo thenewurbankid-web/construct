@@ -38,7 +38,8 @@ test("review order, owner grading, agreement, compare and replay re-run", async 
   await expect(page.getByTestId("planner-question")).toContainText("api field or be computed");
   await expect(page.getByTestId("requester-answer")).toContainText("Add up the totals");
   await expect(page.getByTestId("beam-run")).toHaveCount(2);
-  await expect(detail.getByText("recommended", { exact: true })).toBeVisible();
+  // the graded runs' mark (#902's beam tree above them has its own "recommended" chip for a question outcome)
+  await expect(page.getByTestId("beam-run").getByText("recommended", { exact: true })).toBeVisible();
   await expect(detail.getByText(/graded blind as run [AB]/).first()).toBeVisible();
   await expect(page.getByTestId("grader-justification")).toContainText("Right computed path");
   await expect(page.getByTestId("gold")).toContainText("appear once you have graded");
