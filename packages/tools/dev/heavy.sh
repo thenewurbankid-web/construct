@@ -7,15 +7,19 @@
 #   packages/tools/dev/heavy.sh npx playwright test --workers=1 pages-editor
 #   packages/tools/dev/heavy.sh --prune-only        # only the temp-dir sweep, no lock, no command
 #
-# Env: CONSTRUCT_HEAVY_LOCK (lock file, default /tmp/construct-heavy.lock),
+#   packages/tools/dev/heavy.sh --lock-path         # print the lock file this machine uses
+#
+# Env: CONSTRUCT_HEAVY_LOCK (lock file, default /tmp/construct-heavy.lock; $TMPDIR/construct-heavy.lock
+#      where /tmp is not a writable folder, e.g. Termux),
 #      CONSTRUCT_MIN_FREE_MB (default 3000), CONSTRUCT_HEAVY_HEAP_MB (default 2048),
 #      CONSTRUCT_HEAVY_LOCK_WAIT_SEC (default 3600: give up on the lock after this),
 #      CONSTRUCT_HEAVY_RAM_WAIT_SEC (default 1800: give up waiting for RAM after this),
 #      CONSTRUCT_HEAVY_POLL_SEC (default 15: pause between RAM checks),
-#      CONSTRUCT_HEAVY_TMP (default $TMPDIR or /tmp: where construct-* dirs are pruned).
+#      CONSTRUCT_HEAVY_TMP (default $TMPDIR or /tmp: where construct-* dirs are pruned),
+#      CONSTRUCT_HEAVY_MEMINFO / CONSTRUCT_HEAVY_VMSTAT (test overrides for the free-RAM probe).
 #
 # Exit status: the command's own; 75 (EX_TEMPFAIL) when the lock or the RAM never
-# came within the wait; 2 on usage.
+# came within the wait; 2 on usage or when the lock's folder does not exist.
 #
 # Waits are bounded (#414). A holder that is *dead* never blocks anyone: the kernel
 # releases flock with the process. A holder that is *hung* used to block every heavy
@@ -38,7 +42,15 @@
 # is older than a day. It used to be `find -mmin +30`, which deleted the live
 # state of any run longer than 30 minutes (a full e2e run is).
 set -u
-LOCK="${CONSTRUCT_HEAVY_LOCK:-/tmp/construct-heavy.lock}"
+# The default lock lives in /tmp wherever /tmp is a writable directory (Linux, macOS): one path every session on the
+# machine shares, even sessions that each have their own $TMPDIR (macOS sets a per-user one; sandboxes set their own),
+# so it is not moved there. Where /tmp is not usable (Termux on Android) it falls back to $TMPDIR (#855).
+# CONSTRUCT_HEAVY_SHARED_TMP stands in for /tmp in tests.
+default_lock() {
+  local shared="${CONSTRUCT_HEAVY_SHARED_TMP:-/tmp}"
+  if [ -d "$shared" ] && [ -w "$shared" ]; then printf '%s/construct-heavy.lock' "${shared%/}"; else printf '%s/construct-heavy.lock' "${TMPDIR:-/tmp}" | sed 's#//*#/#g'; fi
+}
+LOCK="${CONSTRUCT_HEAVY_LOCK:-$(default_lock)}"
 MIN_MB="${CONSTRUCT_MIN_FREE_MB:-3000}"
 HEAP_MB="${CONSTRUCT_HEAVY_HEAP_MB:-2048}"
 LOCK_WAIT_SEC="${CONSTRUCT_HEAVY_LOCK_WAIT_SEC:-3600}"
@@ -152,9 +164,39 @@ if [ "$1" = "--prune-only" ]; then
   prune_stale
   exit 0
 fi
+if [ "$1" = "--lock-path" ]; then # where the lock is (status.sh asks, so the two never disagree)
+  printf '%s\n' "$LOCK"
+  exit 0
+fi
+# A lock whose folder does not exist can never be taken: the flock path would fail to open it on every pass and the
+# mkdir path would wait out the whole CONSTRUCT_HEAVY_LOCK_WAIT_SEC. Say so at once instead (#855).
+if [ ! -d "$(dirname "$LOCK")" ]; then
+  say "the lock's folder $(dirname "$LOCK") does not exist (lock $LOCK). Create it, or set CONSTRUCT_HEAVY_LOCK or TMPDIR to a writable folder."
+  exit 2
+fi
 
+# Available RAM in MB, or nothing when this machine offers no way to tell (#854).
+#   Linux/Android: MemAvailable from /proc/meminfo.
+#   macOS (no /proc): (free + inactive + speculative) pages from `vm_stat`, times the page size
+#   its header states ("(page size of 16384 bytes)"). Inactive and speculative pages are what
+#   macOS reclaims on demand, the closest counterpart of Linux's MemAvailable.
+# Overridable for tests: CONSTRUCT_HEAVY_MEMINFO (a file read instead of /proc/meminfo) and
+# CONSTRUCT_HEAVY_VMSTAT (a command run instead of `vm_stat`).
+MEMINFO="${CONSTRUCT_HEAVY_MEMINFO:-/proc/meminfo}"
+VMSTAT="${CONSTRUCT_HEAVY_VMSTAT:-vm_stat}"
 free_mb() {
-  if [ -r /proc/meminfo ]; then awk '/MemAvailable/{print int($2/1024)}' /proc/meminfo; else echo ''; fi
+  if [ -r "$MEMINFO" ]; then
+    awk '/^MemAvailable:/{print int($2/1024); exit}' "$MEMINFO"
+    return
+  fi
+  if command -v "$VMSTAT" >/dev/null 2>&1; then
+    "$VMSTAT" 2>/dev/null | awk '
+      /page size of/ { for (i = 1; i <= NF; i++) if ($i == "of") ps = $(i + 1) + 0 }
+      /^Pages (free|inactive|speculative):/ { v = $NF; gsub(/[^0-9]/, "", v); pages += v; seen++ }
+      END { if (ps > 0 && seen > 0) printf "%d\n", pages * ps / 1048576 }'
+    return
+  fi
+  echo ''
 }
 
 [ "$HAVE_FLOCK" = 1 ] && exec 9>>"$LOCK"
@@ -171,7 +213,7 @@ while :; do
   fi
   free=$(free_mb)
   if [ -z "$free" ]; then
-    say "no /proc/meminfo here; running without the free-RAM check."
+    say "no /proc/meminfo or vm_stat here; running without the free-RAM check."
     break
   fi
   if [ "$free" -ge "$MIN_MB" ]; then break; fi

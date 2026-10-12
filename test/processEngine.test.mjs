@@ -689,3 +689,28 @@ test('materializeCommand turns an import.plan step into a real runnable command 
     command.cleanup();
   }
 });
+
+test('#855 materializeCommand writes its step dir under os.tmpdir() (TMPDIR, then TMP, TEMP), never a hardcoded /tmp', () => {
+  const step = {
+    id: 'import',
+    title: 'Run the import plan',
+    flow: 'import.plan',
+    args: { plan: { feature: 'checkout', units: [] } },
+    executor: 'deterministic',
+    touches: { features: ['checkout'], files: [] },
+  };
+  const saved = { TMPDIR: process.env.TMPDIR, TMP: process.env.TMP, TEMP: process.env.TEMP };
+  const tmp = makeTempDir('construct-engine-tmp-');
+  delete process.env.TMPDIR;
+  delete process.env.TEMP;
+  process.env.TMP = tmp; // Node's os.tmpdir() reads TMP when TMPDIR is unset
+  let command;
+  try {
+    command = materializeCommand(step);
+    const planFile = command.argv[command.argv.indexOf('--plan') + 1];
+    assert.ok(planFile.startsWith(`${tmp}${path.sep}construct-step-${process.pid}-`), planFile);
+  } finally {
+    command?.cleanup();
+    for (const [k, v] of Object.entries(saved)) if (v === undefined) delete process.env[k]; else process.env[k] = v;
+  }
+});

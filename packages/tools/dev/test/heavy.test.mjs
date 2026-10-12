@@ -31,8 +31,8 @@ function sandbox(extraEnv = {}) {
   return { dir, tmp, env };
 }
 
-// The flock path and the free-RAM wait only exist where `flock` and /proc/meminfo do (Linux). macOS has
-// neither: heavy.sh takes the mkdir lock and skips the RAM check there, which the #686 tests below cover.
+// The flock path only exists where `flock` does (Linux). macOS has none: heavy.sh takes the mkdir lock
+// there (the #686 tests below), and reads free RAM from vm_stat instead of /proc/meminfo (the #854 tests).
 const HAVE_FLOCK = spawnSync('flock', ['-h']).error?.code !== 'ENOENT';
 const onlyWithFlock = { skip: HAVE_FLOCK ? false : 'flock is not installed here (macOS has none); the mkdir-lock tests below cover this machine' };
 const onlyWithMeminfo = {
@@ -256,4 +256,133 @@ test('flock missing: a lock held by another live process times out, names the ho
   } finally {
     holderProc.kill('SIGKILL');
   }
+});
+
+// ---- #854: the free-RAM probe on macOS (vm_stat) and Linux (/proc/meminfo) ------------------
+// Both probes are faked so the tests run identically on every OS: CONSTRUCT_HEAVY_MEMINFO points at a
+// fake meminfo (or a missing file, to force the vm_stat path), CONSTRUCT_HEAVY_VMSTAT at a fake vm_stat.
+
+/** A fake `vm_stat` printing a 16 KiB page size and the given page counts. */
+function fakeVmStat(dir, { free, inactive, speculative }) {
+  const p = path.join(dir, `fake-vm_stat-${free}-${inactive}-${speculative}`);
+  fs.writeFileSync(
+    p,
+    [
+      '#!/bin/sh',
+      'cat <<OUT',
+      'Mach Virtual Memory Statistics: (page size of 16384 bytes)',
+      `Pages free:                              ${free}.`,
+      'Pages active:                            400283.',
+      `Pages inactive:                          ${inactive}.`,
+      `Pages speculative:                        ${speculative}.`,
+      'Pages wired down:                        234863.',
+      'OUT',
+      '',
+    ].join('\n'),
+    { mode: 0o755 },
+  );
+  return p;
+}
+
+test('macOS: vm_stat reporting too little free RAM makes the RAM wait time out (exit 75), nothing runs', () => {
+  const { dir, env } = sandbox({ CONSTRUCT_MIN_FREE_MB: '3000', CONSTRUCT_HEAVY_RAM_WAIT_SEC: '1' });
+  // (100 + 50 + 10) pages x 16 KiB = 2.5 MB available
+  env.CONSTRUCT_HEAVY_VMSTAT = fakeVmStat(dir, { free: 100, inactive: 50, speculative: 10 });
+  env.CONSTRUCT_HEAVY_MEMINFO = path.join(dir, 'no-such-meminfo');
+  const r = run(['sh', '-c', 'echo must-not-run'], env);
+  assert.equal(r.status, 75, r.stderr);
+  assert.doesNotMatch(r.stdout, /must-not-run/);
+  assert.match(r.stderr, /waiting for >= 3000 MB free RAM \(have 2 MB\)/);
+  assert.doesNotMatch(r.stderr, /without the free-RAM check/);
+});
+
+test('macOS: vm_stat available MB is (free + inactive + speculative) x page size, and enough of it runs the job', () => {
+  // (64000 + 128000 + 0) pages x 16 KiB = 3000 MB exactly: meets CONSTRUCT_MIN_FREE_MB=3000.
+  const { dir, env } = sandbox({ CONSTRUCT_MIN_FREE_MB: '3000', CONSTRUCT_HEAVY_RAM_WAIT_SEC: '1' });
+  env.CONSTRUCT_HEAVY_VMSTAT = fakeVmStat(dir, { free: 64000, inactive: 128000, speculative: 0 });
+  env.CONSTRUCT_HEAVY_MEMINFO = path.join(dir, 'no-such-meminfo');
+  const r = run(['sh', '-c', 'echo ran'], env);
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.stdout, /ran/);
+  // One page fewer is 2999 MB: below the bar.
+  env.CONSTRUCT_HEAVY_VMSTAT = fakeVmStat(dir, { free: 63999, inactive: 128000, speculative: 0 });
+  const low = run(['sh', '-c', 'echo must-not-run'], env);
+  assert.equal(low.status, 75, low.stderr);
+  assert.match(low.stderr, /have 2999 MB/);
+});
+
+test('Linux: /proc/meminfo MemAvailable wins over vm_stat when both exist', () => {
+  const { dir, env } = sandbox({ CONSTRUCT_MIN_FREE_MB: '3000', CONSTRUCT_HEAVY_RAM_WAIT_SEC: '1' });
+  const meminfo = path.join(dir, 'meminfo');
+  fs.writeFileSync(meminfo, 'MemTotal:       16000000 kB\nMemFree:          100000 kB\nMemAvailable:    1024000 kB\n');
+  env.CONSTRUCT_HEAVY_MEMINFO = meminfo;
+  env.CONSTRUCT_HEAVY_VMSTAT = fakeVmStat(dir, { free: 9999999, inactive: 0, speculative: 0 });
+  const r = run(['sh', '-c', 'echo must-not-run'], env);
+  assert.equal(r.status, 75, r.stderr);
+  assert.match(r.stderr, /have 1000 MB/);
+});
+
+test('neither probe available: runs without the RAM check and says so', () => {
+  const { dir, env } = sandbox({ CONSTRUCT_MIN_FREE_MB: '999999999' });
+  env.CONSTRUCT_HEAVY_MEMINFO = path.join(dir, 'no-such-meminfo');
+  env.CONSTRUCT_HEAVY_VMSTAT = path.join(dir, 'no-such-vm_stat');
+  const r = run(['sh', '-c', 'echo ran'], env);
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.stdout, /ran/);
+  assert.match(r.stderr, /running without the free-RAM check/);
+});
+
+// ---- #855: Termux (no writable /tmp; everything under $PREFIX and $TMPDIR) -------------------
+// CONSTRUCT_HEAVY_SHARED_TMP stands in for /tmp so the real machine-wide lock is never touched.
+
+/** The sandbox env with the default lock path in play (no CONSTRUCT_HEAVY_LOCK). */
+function defaultLockEnv(extra) {
+  const { dir, env } = sandbox();
+  delete env.CONSTRUCT_HEAVY_LOCK;
+  return { dir, env: { ...env, ...extra } };
+}
+
+test('#855 no usable /tmp (Termux): the lock falls back to $TMPDIR, and a job really takes it there', () => {
+  const { dir } = defaultLockEnv();
+  const tmpdir = path.join(dir, 'termux-tmp');
+  fs.mkdirSync(tmpdir);
+  const { env } = defaultLockEnv({ CONSTRUCT_HEAVY_SHARED_TMP: path.join(dir, 'no-such-tmp'), TMPDIR: `${tmpdir}/` });
+  const p = run(['--lock-path'], env);
+  assert.equal(p.status, 0, p.stderr);
+  assert.equal(p.stdout.trim(), path.join(tmpdir, 'construct-heavy.lock'));
+  const r = run(['sh', '-c', `cat "${path.join(tmpdir, 'construct-heavy.lock.holder')}"`], env);
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.stdout, /^pid \d+ since .*: sh -c cat/, 'the holder file sits next to the $TMPDIR lock while the job runs');
+});
+
+test('#855 a writable /tmp keeps the lock there even when $TMPDIR is set (macOS sets one per user): one lock per machine', () => {
+  const { dir } = defaultLockEnv();
+  const shared = path.join(dir, 'shared-tmp');
+  fs.mkdirSync(shared);
+  const { env } = defaultLockEnv({ CONSTRUCT_HEAVY_SHARED_TMP: shared, TMPDIR: path.join(dir, 'per-user') });
+  assert.equal(run(['--lock-path'], env).stdout.trim(), path.join(shared, 'construct-heavy.lock'));
+  const { env: real } = defaultLockEnv({ TMPDIR: path.join(dir, 'per-user') });
+  delete real.CONSTRUCT_HEAVY_SHARED_TMP;
+  assert.equal(run(['--lock-path'], real).stdout.trim(), '/tmp/construct-heavy.lock', 'the real default is unchanged (path only; the lock is not taken)');
+});
+
+test('#855 a lock whose folder does not exist fails fast with exit 2 and says how to fix it, nothing runs', () => {
+  const { dir, env } = sandbox({ CONSTRUCT_HEAVY_LOCK_WAIT_SEC: '20' });
+  env.CONSTRUCT_HEAVY_LOCK = path.join(dir, 'missing', 'heavy.lock');
+  const started = Date.now();
+  const r = run(['sh', '-c', 'echo must-not-run'], env);
+  assert.equal(r.status, 2, r.stderr);
+  assert.ok(Date.now() - started < 5000, 'did not sit out the lock wait');
+  assert.doesNotMatch(r.stdout, /must-not-run/);
+  assert.match(r.stderr, /the lock's folder .*missing does not exist .*CONSTRUCT_HEAVY_LOCK or TMPDIR/);
+});
+
+test('#855 status.sh reads the lock path from heavy.sh, and verify.sh makes its temp files under $TMPDIR', () => {
+  const dev = path.dirname(HEAVY);
+  const status = fs.readFileSync(path.join(dev, 'status.sh'), 'utf8');
+  assert.doesNotMatch(status, /\/tmp\/construct-heavy\.lock/);
+  assert.match(status, /heavy\.sh" --lock-path/);
+  const verify = fs.readFileSync(path.join(dev, 'verify.sh'), 'utf8');
+  assert.doesNotMatch(verify, /mktemp \/tmp/);
+  assert.match(verify, /TMPD="\$\{TMPDIR:-\/tmp\}"/);
 });

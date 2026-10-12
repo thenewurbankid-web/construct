@@ -4,7 +4,27 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { measureCli, compareBudgets, parseTimeLine, spread, mediansOf, renderMeasuredTable, spliceBlock, readBlock, CHECKS } from '../benchmark.mjs';
+import { measureCli, compareBudgets, parseTimeLine, spread, mediansOf, renderMeasuredTable, spliceBlock, readBlock, CHECKS, findTimeBinary, coreCount } from '../benchmark.mjs';
+import { makeTempDir } from '../../../../test-utils/tmpdir.mjs';
+
+test('#855 the time binary is looked up on PATH ($PREFIX/bin on Termux), not assumed at /usr/bin/time', () => {
+  const dir = makeTempDir('bench-time-');
+  const bin = path.join(dir, 'prefix', 'bin');
+  fs.mkdirSync(bin, { recursive: true });
+  fs.mkdirSync(path.join(dir, 'empty'));
+  fs.mkdirSync(path.join(dir, 'dirnamed', 'time'), { recursive: true }); // a folder called `time` is not the binary
+  fs.writeFileSync(path.join(bin, 'time'), '#!/bin/sh\n', { mode: 0o755 });
+  const PATH = [path.join(dir, 'empty'), path.join(dir, 'dirnamed'), bin].join(path.delimiter);
+  assert.equal(findTimeBinary(PATH), path.join(bin, 'time'));
+  assert.equal(findTimeBinary(path.join(dir, 'empty')), null);
+});
+
+test('#855 the core count never reports 0 where os.cpus() is empty (Android)', () => {
+  assert.equal(coreCount({ cpus: () => [{}, {}, {}, {}], availableParallelism: () => 2 }), 4);
+  assert.equal(coreCount({ cpus: () => [], availableParallelism: () => 8 }), 8);
+  assert.equal(coreCount({ cpus: () => [], availableParallelism: null }), 1);
+  assert.equal(coreCount({ cpus: () => [], availableParallelism: () => 0 }), 1);
+});
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const budgets = { checks: { version: { maxMs: 600, maxRssMb: 120 }, validate: { maxMs: 3000, maxRssMb: 400 }, 'cockpit-start': { maxMs: 10000, maxRssMb: 400 } } };

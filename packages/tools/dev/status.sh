@@ -11,6 +11,7 @@ for d in "$R"/.claude/worktrees/agent-*; do [ -d "$d" ] || continue
   [ "$n" = "0" ] && continue
   printf '%s  %s ahead, last %s\n' "$(basename "$d" | cut -c7-14)" "$n" "$(git -C "$d" log -1 --format=%cr 2>/dev/null)"
 done
-echo "-- heavy queue"; if flock -n /tmp/construct-heavy.lock -c true 2>/dev/null; then echo "free"; else echo "HELD by: $(pgrep -fa 'heavy.sh' | grep -v pgrep | head -1 | cut -c1-110)"; fi
+LOCK="$(bash "$R/packages/tools/dev/heavy.sh" --lock-path)"   # same path heavy.sh takes: /tmp, or $TMPDIR where /tmp is unusable (Termux)
+echo "-- heavy queue"; if flock -n "$LOCK" -c true 2>/dev/null; then echo "free"; else echo "HELD by: $(pgrep -fa 'heavy.sh' | grep -v pgrep | head -1 | cut -c1-110)"; fi
 echo "-- machine"; free -g | awk 'NR==2{print "mem avail " $7 "G"}'; uptime | sed 's/.*load/load/'
 echo "-- hosted"; curl -s -m 5 -o /dev/null -w "https %{http_code}\n" https://2-28-127-143.sslip.io/
