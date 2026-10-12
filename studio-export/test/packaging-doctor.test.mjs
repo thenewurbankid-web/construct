@@ -61,6 +61,8 @@ test('doctor: a probe that throws counts as missing and never crashes; fixes fol
   assert.equal(r.exitCode, 1);
   assert.equal(byId(r, 'ffmpeg').fix, 'brew install ffmpeg');
   assert.equal((await runDoctor({ probes: only({ ffmpeg: () => false }), platform: 'win32', cwd: makeTempDir('studio-doc-') })).results[1].fix, 'winget install Gyan.FFmpeg');
+  // #869: Termux has no apt/sudo -- pkg is its package manager
+  assert.equal((await runDoctor({ probes: only({ ffmpeg: () => false }), platform: 'android', cwd: makeTempDir('studio-doc-') })).results[1].fix, 'pkg install ffmpeg');
 });
 
 test('doctor: the Ollama URL comes from --ollama-url, then studio.config.json, then OLLAMA_HOST, then the default', async () => {

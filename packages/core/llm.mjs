@@ -9,6 +9,7 @@
 // breadcrumbs — stays fully deterministic regardless of this module.
 import { spawn, spawnSync } from 'node:child_process';
 import { ConstructError, EXIT_CODES } from './diagnostics.mjs';
+import { OLLAMA_DEFAULT_URL, normalizeOllamaHost } from './ollama-host.mjs';
 
 // Defaults for the `ollama` provider below — overridable per call via its
 // `options` parameter (see `callLlm`), which is how #100 (per-capability
@@ -16,7 +17,8 @@ import { ConstructError, EXIT_CODES } from './diagnostics.mjs';
 // anything about "capabilities". Exported so callers/tests can reference
 // the same defaults instead of re-guessing them.
 export const DEFAULT_OLLAMA_MODEL = 'qwen2.5-coder:7b';
-export const DEFAULT_OLLAMA_BASE_URL = 'http://localhost:11434';
+// #865: one default and one normaliser for OLLAMA_HOST, shared with machine.mjs and ui/server/src/ollama.mjs.
+export const DEFAULT_OLLAMA_BASE_URL = OLLAMA_DEFAULT_URL;
 
 // Ollama's own /api/generate defaults its RUNTIME context window to a small value (historically
 // 2048 tokens) regardless of what the model itself supports ("context length" in `ollama show
@@ -285,7 +287,7 @@ export const PROVIDERS = {
     // #471: OLLAMA_HOST (not just options.baseUrl) so this agrees with the Local Model screen
     // (ui/server/src/ollama.mjs reads the same env var for list/pull/status) instead of the two
     // silently drifting whenever OLLAMA_HOST points somewhere other than the hardcoded default.
-    const baseUrl = options.baseUrl || process.env.OLLAMA_HOST || DEFAULT_OLLAMA_BASE_URL;
+    const baseUrl = options.baseUrl || normalizeOllamaHost(process.env.OLLAMA_HOST);
     const timeout = timeoutOf(options);
     // num_ctx: sized from the real prompt (see ollamaContextFor's own comment for why this
     // matters) unless the caller overrides it. If even MAX_OLLAMA_CONTEXT can't fit the whole

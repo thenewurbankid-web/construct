@@ -16,7 +16,9 @@ import { resolveStateDir } from '@line/construct-engine/process-store';
 export const MIN_NODE_MAJOR = 20;
 
 /** Where to look for Ollama: this machine only. */
-export const OLLAMA_DEFAULT_URL = 'http://127.0.0.1:11434';
+import { OLLAMA_DEFAULT_URL, normalizeOllamaHost } from './ollama-host.mjs';
+
+export { OLLAMA_DEFAULT_URL, normalizeOllamaHost };
 
 /** How long the Ollama check waits before it gives up (milliseconds). Never fatal. */
 export const OLLAMA_TIMEOUT_MS = 2000;
@@ -210,8 +212,8 @@ export function defaultProbes({ env = process.env, platform = process.platform, 
 export function localOllamaUrl(env = process.env) {
   if (!env.OLLAMA_HOST) return OLLAMA_DEFAULT_URL;
   try {
-    const u = new URL(/^https?:\/\//.test(env.OLLAMA_HOST) ? env.OLLAMA_HOST : `http://${env.OLLAMA_HOST}`);
-    return /^(127\.\d+\.\d+\.\d+|localhost|\[::1\])$/.test(u.hostname) ? u.origin.replace(/:80$/, '') + (u.port ? '' : ':11434') : null;
+    const u = new URL(normalizeOllamaHost(env.OLLAMA_HOST));
+    return /^(127\.\d+\.\d+\.\d+|localhost|\[::1\])$/.test(u.hostname) ? u.origin + (u.port ? '' : ':11434') : null;
   } catch {
     return null;
   }
@@ -324,8 +326,8 @@ export async function detectMachine(probes = defaultProbes()) {
   };
 }
 
-const installFfmpeg = (platform) => (platform === 'darwin' ? 'brew install ffmpeg' : platform === 'win32' ? 'winget install Gyan.FFmpeg' : 'sudo apt install ffmpeg');
-const installPython = (platform) => (platform === 'darwin' ? 'brew install python' : platform === 'win32' ? 'winget install Python.Python.3' : 'sudo apt install python3 python3-venv');
+const installFfmpeg = (platform) => (platform === 'darwin' ? 'brew install ffmpeg' : platform === 'win32' ? 'winget install Gyan.FFmpeg' : platform === 'android' ? 'pkg install ffmpeg' : 'sudo apt install ffmpeg'); // #869: Termux uses pkg
+const installPython = (platform) => (platform === 'darwin' ? 'brew install python' : platform === 'win32' ? 'winget install Python.Python.3' : platform === 'android' ? 'pkg install python' : 'sudo apt install python3 python3-venv');
 
 /**
  * The optional items doctor checks, each with what it enables and the exact line that fixes it when it is missing.

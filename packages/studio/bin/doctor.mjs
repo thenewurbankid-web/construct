@@ -75,8 +75,8 @@ export function defaultProbes({ env = process.env, platform = process.platform }
   };
 }
 
-const installFfmpeg = (platform) => (platform === 'darwin' ? 'brew install ffmpeg' : platform === 'win32' ? 'winget install Gyan.FFmpeg' : 'sudo apt install ffmpeg');
-const installPython = (platform) => (platform === 'darwin' ? 'brew install python' : platform === 'win32' ? 'winget install Python.Python.3' : 'sudo apt install python3 python3-venv');
+const installFfmpeg = (platform) => (platform === 'darwin' ? 'brew install ffmpeg' : platform === 'win32' ? 'winget install Gyan.FFmpeg' : platform === 'android' ? 'pkg install ffmpeg' : 'sudo apt install ffmpeg'); // #869: Termux uses pkg
+const installPython = (platform) => (platform === 'darwin' ? 'brew install python' : platform === 'win32' ? 'winget install Python.Python.3' : platform === 'android' ? 'pkg install python' : 'sudo apt install python3 python3-venv');
 
 /**
  * Run every check. Returns { results, lines, exitCode }; each result is

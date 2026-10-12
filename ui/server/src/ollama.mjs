@@ -1,5 +1,5 @@
 // Thin wrapper around Ollama's local HTTP API (default
-// http://localhost:11434, overridable via OLLAMA_HOST for anyone running it
+// http://127.0.0.1:11434, overridable via OLLAMA_HOST for anyone running it
 // on a non-default port/host). Deliberately hand-rolled `fetch()` calls
 // rather than an npm Ollama client: the API surface used here is four small,
 // stable endpoints (version/tags/pull/delete), and the existing `claude`
@@ -8,7 +8,10 @@
 // thin HTTP wrapper — see the Epic 6.1 issue comment for the fuller
 // reasoning. No LLM call happens in this module; it only manages which
 // models are installed for the `ollama` provider in src/llm.mjs to use.
-const OLLAMA_HOST = process.env.OLLAMA_HOST || 'http://localhost:11434';
+import { normalizeOllamaHost } from '../../../packages/core/ollama-host.mjs';
+
+// #865: read and normalise per call (a scheme-less `0.0.0.0:11434` is a valid OLLAMA_HOST).
+const ollamaHost = () => normalizeOllamaHost(process.env.OLLAMA_HOST);
 
 // Keep detection calls snappy — a non-running daemon should fail fast
 // (connection refused) rather than hang the UI, but a slow/loaded one still
@@ -20,12 +23,12 @@ const DETECT_TIMEOUT_MS = 3000;
  * reportable state, not an error. */
 export async function getOllamaStatus() {
   try {
-    const res = await fetch(`${OLLAMA_HOST}/api/version`, { signal: AbortSignal.timeout(DETECT_TIMEOUT_MS) });
+    const res = await fetch(`${ollamaHost()}/api/version`, { signal: AbortSignal.timeout(DETECT_TIMEOUT_MS) });
     if (!res.ok) return { running: false };
     const data = await res.json();
-    return { running: true, version: data.version ?? null, host: OLLAMA_HOST };
+    return { running: true, version: data.version ?? null, host: ollamaHost() };
   } catch {
-    return { running: false, host: OLLAMA_HOST };
+    return { running: false, host: ollamaHost() };
   }
 }
 
@@ -33,7 +36,7 @@ export async function getOllamaStatus() {
  * modified date, etc.) — passed through as-is rather than reshaped, so the
  * UI has access to whatever Ollama itself considers a model's identity. */
 export async function listOllamaModels() {
-  const res = await fetch(`${OLLAMA_HOST}/api/tags`, { signal: AbortSignal.timeout(DETECT_TIMEOUT_MS) });
+  const res = await fetch(`${ollamaHost()}/api/tags`, { signal: AbortSignal.timeout(DETECT_TIMEOUT_MS) });
   if (!res.ok) throw new Error(`Ollama /api/tags returned ${res.status}`);
   const data = await res.json();
   return data.models || [];
@@ -45,7 +48,7 @@ export async function listOllamaModels() {
  * instead of buffering a multi-GB download in memory. No timeout here — a
  * real pull can legitimately run for many minutes. */
 export async function startOllamaPull(name) {
-  const res = await fetch(`${OLLAMA_HOST}/api/pull`, {
+  const res = await fetch(`${ollamaHost()}/api/pull`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ name, stream: true }),
@@ -57,7 +60,7 @@ export async function startOllamaPull(name) {
 }
 
 export async function removeOllamaModel(name) {
-  const res = await fetch(`${OLLAMA_HOST}/api/delete`, {
+  const res = await fetch(`${ollamaHost()}/api/delete`, {
     method: 'DELETE',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ name }),

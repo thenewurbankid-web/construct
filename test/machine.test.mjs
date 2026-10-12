@@ -117,6 +117,9 @@ test('every optional item has a plain fix line when missing, and none when found
   assert.match(items.find((i) => i.id === 'kokoro').fix, /npm i kokoro-js$/);
   assert.equal(optionalItems({ ...missing, platform: 'darwin' }).find((i) => i.id === 'ffmpeg').fix, 'brew install ffmpeg');
   assert.equal(optionalItems({ ...missing, platform: 'win32' }).find((i) => i.id === 'python3').fix, 'winget install Python.Python.3');
+  // #869: Termux has no apt/sudo -- pkg is its package manager
+  assert.equal(optionalItems({ ...missing, platform: 'android' }).find((i) => i.id === 'ffmpeg').fix, 'pkg install ffmpeg');
+  assert.equal(optionalItems({ ...missing, platform: 'android' }).find((i) => i.id === 'python3').fix, 'pkg install python');
   assert.match(optionalItems(missing, { env: { CONSTRUCT_MEDIA_CACHE: '/opt/media' } }).find((i) => i.id === 'kokoro').fix, /mkdir -p \/opt\/media/);
   const found = optionalItems(await detectMachine(laptop(16, { kokoro: () => true, chatterbox: () => true })));
   assert.ok(found.every((i) => i.fix === undefined && i.found === true));
@@ -204,7 +207,7 @@ test('doctor exits 1 for an unsupported Node and still prints the report', async
 test('no network: the module imports no network module, injected probes never call fetch, and only a loopback address is ever pinged', async () => {
   const src = fs.readFileSync(path.join(ROOT, 'packages/core/machine.mjs'), 'utf8');
   const imports = [...src.matchAll(/^import .* from '([^']+)'/gm)].map((m) => m[1]);
-  assert.deepEqual(imports.sort(), ['@line/construct-engine/process-store', 'node:fs', 'node:os', 'node:path']);
+  assert.deepEqual(imports.sort(), ['./ollama-host.mjs', '@line/construct-engine/process-store', 'node:fs', 'node:os', 'node:path']);
   assert.doesNotMatch(src, /node:(https?|net|dgram|dns|tls)|XMLHttpRequest|WebSocket/);
   const realFetch = globalThis.fetch;
   globalThis.fetch = () => { throw new Error('the network was used'); };
