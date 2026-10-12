@@ -19,8 +19,7 @@ export async function crumbLabels(page) {
 }
 
 /** No serious or critical axe finding on the two-modes screen (the chat, the breadcrumb and Under the hood). The shell's
- * switch is the shell's own: its pressed button (#fff on the dark theme's #5b8cff accent, 3.16:1) fails color-contrast,
- * reported to the shell owner rather than fixed from a screen lane. */
+ * switch is checked by line-two-modes.spec.js (its pressed button now uses the shell's accent foreground, 4.5:1+). */
 export async function expectAxeClean(page) {
   const found = await runAxe(page, { include: '[data-testid="lm-screen"]' });
   const blocking = found.filter(isBlocking);

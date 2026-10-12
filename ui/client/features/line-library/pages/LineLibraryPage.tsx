@@ -2,8 +2,7 @@ import type { ReactNode } from 'react';
 import { ChangeNotice } from '../components/ChangeNotice';
 import { FeatureComponents } from '../components/FeatureComponents';
 import { LibraryCards } from '../components/LibraryCards';
-import type { ComponentSelection } from '../hooks/useComponentSelection';
-import type { ChangeControls, LibraryView } from '../types';
+import type { ChangeControls, ComponentSelection, LibraryView } from '../types';
 
 /** The Components screen of a Line project: the library as cards by level, then each feature's own components
  * with their base links (mock: docs/design components-library, Library tab), the Plan panel (each change waits there for

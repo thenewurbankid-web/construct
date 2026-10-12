@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ChatMessage, ChatOption } from '@/lib/lineChat';
+import { PLACE_EVENT } from '@/lib/urlPlace';
 import { chatOption, chatPick, chatStart, crumbsOf, hrefOf, optionsAt, placeFromSearch, type ChatState, type Crumb, type Place, type ScreenChatProvider } from '@/lib/lineModes';
 
 /** The URL of a place on the page the person is on (a screen can answer on more than one route, e.g. / and /plan). */
@@ -41,6 +42,22 @@ export function useScreenChat<D>(provider: ScreenChatProvider<D>, data: D | null
     setState(start);
     onPlaceRef.current?.(start.place);
   }, [provider, data, state]);
+
+  // A pick Under the hood (or in the view beside the chat) writes the URL: the chat and its breadcrumb follow it there.
+  // The view is already at that place, so it is not remounted and the screen is not told again.
+  const latest = useRef({ state, data });
+  latest.current = { state, data };
+  useEffect(() => {
+    const follow = () => {
+      const { state: now, data: d } = latest.current;
+      if (!now || d === null) return;
+      const here = placeFromSearch(providerRef.current, window.location.search, d);
+      if (hrefOf(providerRef.current, here) === hrefOf(providerRef.current, now.place)) return;
+      setState(chatStart(providerRef.current, here, d));
+    };
+    window.addEventListener(PLACE_EVENT, follow);
+    return () => window.removeEventListener(PLACE_EVENT, follow);
+  }, []);
 
   const moved = useCallback((next: ChatState, before: ChatState) => {
     if (hrefOf(providerRef.current, next.place) === hrefOf(providerRef.current, before.place)) return;

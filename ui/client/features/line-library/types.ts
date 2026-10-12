@@ -104,3 +104,6 @@ export type LineProjectState =
   | { status: 'loading' }
   | { status: 'error'; sentence: string }
   | { status: 'ready'; project: LineProject };
+
+/** Two modes, Under the hood: the feature and component the URL selects (?feature=, ?component=). */
+export type ComponentSelection = { feature: string | null; component: string | null };

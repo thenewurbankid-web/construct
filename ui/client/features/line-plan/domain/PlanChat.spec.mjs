@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { chatOption, chatStart, crumbTarget, crumbsOf, optionsAt, placeFromSearch, providerProblems } from '../../../lib/lineModes.ts';
 import { MOCK_PROVIDER, MOCK_WORLD } from '../../../lib/lineModesMock.ts';
-import { PLAN_CHAT, planDecision, planDecisionOn, withPlanOptions } from './PlanChat.ts';
+import { PLAN_CHAT, planDecision } from './PlanChat.ts';
+import { planDecisionOn, withPlanOptions } from './PlanOptions.ts';
 import { planRows } from './PlanRows.ts';
 
 const waiting = { id: 's1', n: 1, tool: 'line.baseOn', args: {}, why: 'Creates StatusBadge.', kind: 'write', state: 'waiting', sentence: 'Waiting for your approval: Creates StatusBadge in feature orders.', gap: [], result: null, error: null };

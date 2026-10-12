@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { componentPlace } from '../domain/ComponentsChat';
+import type { ComponentSelection } from '../types';
 
-export type ComponentSelection = { feature: string | null; component: string | null };
 
 const NONE: ComponentSelection = { feature: null, component: null };
 

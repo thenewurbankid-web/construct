@@ -28,8 +28,11 @@ async function toMode(page, mode) {
 }
 
 async function axeClean(page, label) {
-  const found = await runAxe(page, { include: '[data-testid="lm-screen"]' });
-  expect(found.filter(isBlocking), `${label}: ${format(found.filter(isBlocking))}`).toEqual([]);
+  // The screen in its mode, and the shell's switch (its pressed button must reach 4.5:1 in both themes).
+  for (const include of ['[data-testid="lm-screen"]', '[data-testid="lm-switch"]']) {
+    const found = await runAxe(page, { include });
+    expect(found.filter(isBlocking), `${label} (${include}): ${format(found.filter(isBlocking))}`).toEqual([]);
+  }
 }
 
 test.describe.serial('Two modes on every screen (Line sample project, real server)', () => {
@@ -113,6 +116,8 @@ test.describe.serial('Two modes on every screen (Line sample project, real serve
     await pick(page, 'orders').click();
     await expect(crumbs(page)).toHaveText(['Workflows', 'orders']);
     await expect(option(page, 'workflows.up')).toHaveText(/Back to Workflows/);
+    // Offered once orders' workflow files are read.
+    await expect(option(page, 'workflows.open-file')).toBeEnabled({ timeout: 15_000 });
     await option(page, 'workflows.open-file').click();
     const file = page.getByTestId('ln-pick').last();
     const name = await file.getAttribute('data-item');

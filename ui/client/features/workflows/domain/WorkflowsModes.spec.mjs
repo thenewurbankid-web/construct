@@ -23,6 +23,12 @@ test('Workflows modes: open a feature, then a workflow; the breadcrumb follows a
   assert.deepEqual(crumbTarget(crumbs[1]), { mode: 'hood', href: '/workflows?feature=orders', place: place('orders') });
 });
 
+test('Workflows modes: Open a workflow waits until the feature\'s files are read', () => {
+  assert.equal(P.options(place('orders'), { ...data, filesLoading: true })[0].disabled, 'Still reading the workflows of orders.');
+  assert.equal(P.options(place('billing'), data)[0].disabled, 'Still reading the workflows of billing.');
+  assert.equal(P.options(place('orders'), data)[0].disabled, undefined);
+});
+
 test('Workflows modes: while the files are read, or for another feature, the chat says to ask again', () => {
   assert.equal(P.answer('workflows.open-file', place('billing'), data).text, 'Still reading the workflows of billing; ask again in a moment.');
   assert.equal(P.answer('workflows.open-file', place('orders'), { ...data, files: [] }).text, 'orders has no workflow files yet.');

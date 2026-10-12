@@ -8,6 +8,7 @@ import type { Place } from '@/lib/lineModes';
 import '../components/workflows-shell.css';
 import { WORKFLOWS_MODES } from '../domain/WorkflowsModes';
 import { useWorkflows } from '../hooks/useWorkflows';
+import { useWorkflowsUrl } from '../hooks/useWorkflowsUrl';
 import { WorkflowsPage } from '../pages/WorkflowsPage';
 import { workflowsShellTabs } from '../pages/WorkflowsShellTabs';
 
@@ -25,6 +26,7 @@ export function WorkflowsController() {
   useRegisterShellTab('tools', tabs.context);
   useRegisterShellTab('tools', tabs.edit);
   const { features, feature, files, filesLoading } = workflows;
+  useWorkflowsUrl(feature, workflows.file);
   const data = useMemo(() => ({ features, feature, files, filesLoading }), [features, feature, files, filesLoading]);
   const onPlace = (place: Place) => void workflows.goTo(idAt(place, 'feature'), idAt(place, 'file'));
 

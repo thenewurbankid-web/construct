@@ -8,10 +8,13 @@ export type WorkflowsModeData = { features: string[]; feature: string; files: st
 const at = (place: Place, param: string) => place.steps.find((s) => s.param === param)?.id ?? null;
 const EXPLAIN: ChatOption = { id: 'workflows.explain', label: 'Explain', sentence: 'What a workflow is and what this screen shows.', effect: 'read' };
 
-function options(place: Place): ChatOption[] {
+function options(place: Place, data: WorkflowsModeData): ChatOption[] {
   if (place.steps.length === 0) return [{ id: 'workflows.open', label: 'Open a feature', sentence: 'Pick a feature to see its workflow files.', effect: 'read' }, EXPLAIN];
-  if (place.steps.length === 1) return [{ id: 'workflows.open-file', label: 'Open a workflow', sentence: 'Pick one of this feature\'s workflow files to see its states as a diagram.', effect: 'read' }, EXPLAIN];
-  return [EXPLAIN];
+  if (place.steps.length > 1) return [EXPLAIN];
+  const open: ChatOption = { id: 'workflows.open-file', label: 'Open a workflow', sentence: 'Pick one of this feature\'s workflow files to see its states as a diagram.', effect: 'read' };
+  // Offered once the feature's files are read, so the answer always has them to pick from.
+  const reading = data.feature !== place.steps[0].id || data.filesLoading;
+  return [reading ? { ...open, disabled: `Still reading the workflows of ${place.steps[0].id}.` } : open, EXPLAIN];
 }
 
 function answer(optionId: string, place: Place, data: WorkflowsModeData): ChatAnswer | null {

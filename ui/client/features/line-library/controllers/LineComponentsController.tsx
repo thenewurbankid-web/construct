@@ -4,18 +4,18 @@ import { useCallback, useMemo, type ReactNode } from 'react';
 import { ComponentsController } from '@/features/component-docs';
 import { LineDraftController } from '@/features/line-draft';
 import { ScreenModesController } from '@/features/line-modes';
-import { LinePlanController, planDecisionOn, useLinePlan, withPlanOptions } from '@/features/line-plan';
+import { LinePlanController, useLinePlan, withPlanOptions } from '@/features/line-plan';
 import { LineTraceController } from '@/features/line-trace';
 import { ProjectGateController } from '@/features/project-gate';
 import { useShellDrawer } from '@/features/shell';
 import { useLineWorkspace } from '@/lib/lineWorkspace';
-import type { Place } from '@/lib/lineModes';
 import '../components/line-library.css';
 import { LineScreenSwitch } from '../components/LineScreenSwitch';
 import { COMPONENTS_CHAT } from '../domain/ComponentsChat';
 import { screenFor } from '../domain/LibraryView';
 import { screenWithWorkspace, writableFeatures } from '../domain/ReadOnly';
 import { useComponentSelection } from '../hooks/useComponentSelection';
+import { useComponentsChatOptions } from '../hooks/useComponentsChatOptions';
 import { useLineChanges } from '../hooks/useLineChanges';
 import { useLineProject } from '../hooks/useLineProject';
 import { LineLibraryPage } from '../pages/LineLibraryPage';
@@ -30,8 +30,6 @@ function LineLibraryHood({ view, controls, panel }: { view: LibraryView; control
   const selected = useComponentSelection();
   return <LineLibraryPage view={view} controls={controls} panel={panel} selected={selected} />;
 }
-
-const stepOf = (place: Place, param: string) => place.steps.find((s) => s.param === param)?.id ?? null;
 
 function LineComponentsScreen() {
   const { state, refresh } = useLineProject();
@@ -51,21 +49,8 @@ function LineComponentsScreen() {
   const controls = useLineChanges(features, plan.addStep, notice, onLanded);
   const view = screen.kind === 'line' ? screen.view : null;
   const data = useMemo(() => (view ? { screen: view, plan: plan.rows } : null), [view, plan.rows]);
-  const { rows, approve, choose } = plan;
-  const { openPromote } = controls;
   // Options the chat does not answer: the Plan's decisions, and Promote (opens the same confirm as the button).
-  const onOption = useCallback(
-    (optionId: string, place: Place) => {
-      const decision = planDecisionOn('components', optionId, rows);
-      if (decision?.kind === 'approve') return approve(decision.stepId);
-      if (decision?.kind === 'choose') return choose(decision.stepId, decision.choice);
-      if (optionId !== 'components.promote' || !view) return;
-      const feature = view.features.find((f) => f.name === stepOf(place, 'feature'));
-      const row = feature?.rows.find((r) => r.name === stepOf(place, 'component'));
-      if (row) openPromote(row.id, row.name);
-    },
-    [rows, approve, choose, openPromote, view],
-  );
+  const onOption = useComponentsChatOptions(view, plan, controls.openPromote);
   const panel = (
     <>
       <LineTraceController screen="components" steps={plan.steps} />

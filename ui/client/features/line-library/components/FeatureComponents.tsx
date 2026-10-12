@@ -1,6 +1,5 @@
 import { LineFixController } from '@/features/line-fix';
-import type { ComponentSelection } from '../hooks/useComponentSelection';
-import type { ChangeControls, FeatureComponentRow, FeatureSection } from '../types';
+import type { ChangeControls, ComponentSelection, FeatureComponentRow, FeatureSection } from '../types';
 import { PromoteConfirm } from './PromoteConfirm';
 import { ReadOnlyTag } from './ReadOnlyTag';
 
