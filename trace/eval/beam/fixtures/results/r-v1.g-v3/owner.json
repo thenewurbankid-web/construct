@@ -1,0 +1,46 @@
+{
+  "contacts-1": {
+    "scores": {
+      "fits": 3,
+      "layer": 3,
+      "asked": 2,
+      "clarity": 2
+    },
+    "note": "Agree.",
+    "rubricVersion": "v2",
+    "at": "2026-10-12T15:30:00.000Z"
+  },
+  "contacts-3": {
+    "scores": {
+      "fits": 3,
+      "layer": 3,
+      "asked": 0,
+      "clarity": 0
+    },
+    "note": "The question asks what the requirement already says, and it is open.",
+    "rubricVersion": "v2",
+    "at": "2026-10-12T15:30:00.000Z"
+  },
+  "orders-2": {
+    "scores": {
+      "fits": 0,
+      "layer": 1,
+      "asked": 0,
+      "clarity": 2
+    },
+    "note": "Wrong intent, and it must ask: the api has no status field.",
+    "rubricVersion": "v2",
+    "at": "2026-10-12T15:30:00.000Z"
+  },
+  "contacts-2": {
+    "scores": {
+      "fits": 2,
+      "layer": 2,
+      "asked": 2,
+      "clarity": 2
+    },
+    "note": "One unused input.",
+    "rubricVersion": "v2",
+    "at": "2026-10-12T15:30:00.000Z"
+  }
+}

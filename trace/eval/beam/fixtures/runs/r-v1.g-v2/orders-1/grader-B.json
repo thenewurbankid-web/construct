@@ -1,10 +1,10 @@
 {
   "step": "grader-B",
   "role": "grader",
-  "promptFile": "prompts/grader.md",
+  "promptFile": "prompts/archive/grader.v2.md",
   "promptVersion": "v2",
-  "promptSha": "5497e42ba8ba",
-  "rubricFile": "prompts/rubric.md",
+  "promptSha": "6374dde4cf9b",
+  "rubricFile": "prompts/archive/rubric.v1.md",
   "rubricVersion": "v1",
   "rubricSha": "916fd46bb9a3",
   "model": "opus",

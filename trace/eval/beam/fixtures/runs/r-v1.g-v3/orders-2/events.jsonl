@@ -1,0 +1,5 @@
+{"t":"runOpened","run":"run-1","parent":null,"reading":{"intent":"update.prop","object":"prop","target":"F1","layers":["ui"],"confidence":0.6},"forks":[]}
+{"t":"runOpened","run":"run-2","parent":null,"reading":{"intent":"add.handler","object":"handler","target":"F1","layers":["ui","api"],"confidence":0.6},"forks":[]}
+{"t":"runClosed","run":"run-2","reason":"precondition","detail":"the orders api has no status field"}
+{"t":"runRanked","run":"run-1","score":0.5,"rank":1,"why":["the only run left"]}
+{"t":"done","outcome":"plan","run":"run-1","open":1,"closed":1,"ms":1530}

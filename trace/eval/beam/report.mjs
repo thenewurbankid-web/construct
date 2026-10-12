@@ -25,6 +25,13 @@ export function renderReport(store, opts = {}) {
   for (const v of views) {
     out.push("", `## ${v.setup}`, "", `Rubric ${v.rubric.version}. Per line, grader / owner means:`, "");
     out.push(v.rubric.lines.map((l) => `- ${l.id} (0–${l.max}): ${fmt(v.summary.perLine[l.id].grader)} / ${fmt(v.summary.perLine[l.id].owner)}`).join("\n"));
+    const m = v.metrics;
+    if (m) {
+      const p = (r) => (r === null || r === undefined ? "–" : `${Math.round(r * 100)}%`);
+      out.push("", `Beam (deterministic, ${m.items} item(s)): NLP recall ${p(m.nlpRecall)}, beam recall ${p(m.beamRecall)}, prune accuracy ${p(m.pruneAccuracy)}, final right ${p(m.finalRight)}; runs ${m.runsOpened} opened / ${m.runsClosed} closed (${Object.entries(m.closedBy).map(([k, n]) => `${k} ${n}`).join(", ") || "none"}); ${m.questions} question(s); tsc fail ${m.tscFail}, condition fail ${m.conditionFail}; mean ${fmt(m.meanMs)} ms.`, "");
+      out.push("| arm | accuracy | gold in top-k | layers | rescued by the beam |", "|---|---|---|---|---|");
+      for (const [a, x] of Object.entries(m.perArm)) out.push(`| ${a} | ${p(x.accuracy)} | ${p(x.topK)} | ${p(x.layers)} | ${x.rescued} |`);
+    }
     const review = v.items.filter((i) => i.agreement.disagree2);
     if (review.length) {
       out.push("", "Review first (grader and owner differ by 2 or more):", "");

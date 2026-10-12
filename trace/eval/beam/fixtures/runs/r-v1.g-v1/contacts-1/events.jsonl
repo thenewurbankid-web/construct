@@ -1,0 +1,5 @@
+{"t":"runOpened","run":"run-1","parent":null,"reading":{"intent":"update.prop","object":"prop","target":"F1","layers":["ui"],"confidence":0.8},"forks":[]}
+{"t":"runOpened","run":"run-2","parent":null,"reading":{"intent":"add.component","object":"component","target":"F1","layers":["ui"],"confidence":0.5},"forks":[]}
+{"t":"runClosed","run":"run-2","reason":"structural","detail":"the contacts page has no free slot for a new component"}
+{"t":"runRanked","run":"run-1","score":0.92,"rank":1,"why":["completes the useContactName stub"]}
+{"t":"done","outcome":"plan","run":"run-1","open":1,"closed":1,"ms":640}

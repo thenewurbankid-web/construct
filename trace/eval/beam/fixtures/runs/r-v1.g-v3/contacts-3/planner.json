@@ -1,0 +1,187 @@
+{
+  "request": "Show how many contacts there are in the page header.",
+  "planner": "fixture",
+  "answer": {
+    "available": true,
+    "source": "fixture",
+    "labels": {
+      "intent": "update.prop",
+      "object": "prop",
+      "target": {
+        "kind": "page",
+        "name": "contacts"
+      },
+      "layers": [
+        "ui"
+      ],
+      "by": "static"
+    },
+    "path": [
+      {
+        "layer": "page-part",
+        "label": "contactCount (header)",
+        "decision": "dynamic",
+        "picks": null,
+        "fork": false
+      },
+      {
+        "layer": "source",
+        "label": "contacts.length",
+        "decision": "computed",
+        "picks": null,
+        "fork": false
+      },
+      {
+        "layer": "controller",
+        "label": "ContactsController.rows",
+        "decision": "fn",
+        "picks": null,
+        "fork": false
+      }
+    ],
+    "question": {
+      "text": "What should the contact count show?",
+      "options": []
+    },
+    "runs": [
+      {
+        "id": "run-1",
+        "labels": {
+          "intent": "update.prop",
+          "object": "prop",
+          "target": {
+            "kind": "page",
+            "name": "contacts"
+          },
+          "layers": [
+            "ui"
+          ],
+          "by": "static"
+        },
+        "path": [
+          {
+            "layer": "page-part",
+            "label": "contactCount (header)",
+            "decision": "dynamic",
+            "picks": null,
+            "fork": false
+          },
+          {
+            "layer": "source",
+            "label": "contacts.length",
+            "decision": "computed",
+            "picks": null,
+            "fork": false
+          },
+          {
+            "layer": "controller",
+            "label": "ContactsController.rows",
+            "decision": "fn",
+            "picks": null,
+            "fork": false
+          }
+        ],
+        "question": {
+          "text": "What should the contact count show?",
+          "options": []
+        }
+      }
+    ],
+    "recommended": "run-1",
+    "beam": {
+      "events": [
+        {
+          "t": "runOpened",
+          "run": "run-1",
+          "parent": null,
+          "reading": {
+            "intent": "update.prop",
+            "object": "prop",
+            "target": "F1",
+            "layers": [
+              "ui"
+            ],
+            "confidence": 0.85
+          },
+          "forks": []
+        },
+        {
+          "t": "runRanked",
+          "run": "run-1",
+          "score": 0.9,
+          "rank": 1,
+          "why": [
+            "count of the loaded list"
+          ]
+        },
+        {
+          "t": "done",
+          "outcome": "plan",
+          "run": "run-1",
+          "open": 1,
+          "closed": 0,
+          "ms": 420
+        }
+      ],
+      "ms": null
+    },
+    "arms": {
+      "static": [
+        {
+          "intent": "update.prop",
+          "object": "prop",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.85
+        }
+      ],
+      "sklearn": [
+        {
+          "intent": "update.prop",
+          "object": "prop",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.8
+        }
+      ],
+      "spacy": [
+        {
+          "intent": "update.prop",
+          "object": "prop",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.7
+        }
+      ],
+      "jev": [
+        {
+          "intent": "update.prop",
+          "object": "prop",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.9
+        }
+      ],
+      "zero-shot": [
+        {
+          "intent": "update.prop",
+          "object": "prop",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.6
+        }
+      ]
+    }
+  },
+  "at": "2026-10-12T15:01:00.000Z"
+}

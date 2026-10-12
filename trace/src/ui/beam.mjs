@@ -1,7 +1,8 @@
 // The planner eval page (/beam, #896): the Opus-Grader's scores and the owner's own, side by side, per item and per
 // setup. Rendering is pure (data in, HTML string out) and unit-tested in Node; mountBeam() is the only DOM part.
-// Same convention as src/ui/drift.mjs and src/ui/quality.mjs.
-import { esc } from "./about.mjs";
+// Same convention as src/ui/drift.mjs and src/ui/quality.mjs. Self-contained (no imports) so Mission Control's Beam
+// eval panel (packages/tools/dev/mission-control/beam-eval.mjs, #902) serves this one file and reuses every renderer.
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
 const DECISION = { stub: ["Stub: complete it", "d-stub"], fn: ["Existing fn: reuse", "d-fn"], create: ["Create", "d-create"], computed: ["Computed", "d-src"], api: ["API", "d-src"], dynamic: ["Dynamic", "d-dyn"], static: ["Static", "d-dyn"] };
 const fmt = (v, d = "–") => (v === null || v === undefined ? d : String(v));
@@ -112,8 +113,62 @@ export function renderGold(item) {
     ${item.notes ? `<p class="sub">Requester's private notes: ${esc(item.notes)}</p>` : ""}</div>`;
 }
 
+const CLOSE = { shape: "shape", structural: "structural gate", precondition: "precondition", emit: "emit / tsc", goal: "goal condition", cap: "beam cap", duplicate: "duplicate", won: "another run won" };
+const reading = (r) => (r ? `<code>${esc(r.intent)}</code>${r.target ? ` → <code>${esc(r.target)}</code>` : ""} <span class="sub">${esc((r.layers ?? []).join(", "))} · ${Math.round((r.confidence ?? 0) * 100)}%</span>` : `<span class="sub">no reading</span>`);
+
+/** The beam's run tree (#902): every run opened, closed with its reason, or the one the beam ended on. */
+export function renderTree(tree, itemId = "") {
+  if (!tree?.runs?.length) return `<div class="tree" data-testid="beam-tree" data-item="${esc(itemId)}"><p class="empty">No beam events for this item.</p></div>`;
+  const kids = (parent) => tree.runs.filter((r) => (r.parent ?? null) === parent);
+  const li = (r) => {
+    const st = r.status === "won" ? `<span class="chip ok">${tree.done?.outcome === "question" ? "recommended" : "won"}</span>` : r.status === "closed" ? `<span class="chip warn" title="${esc(r.detail)}">closed: ${esc(CLOSE[r.reason] ?? r.reason)}</span>` : `<span class="chip mut">${tree.done ? "survived" : "open"}</span>`;
+    const forks = r.forks?.length ? ` <span class="sub">${r.forks.map((f) => `${esc(f.point)}=${esc(f.pick)}`).join(" · ")}</span>` : "";
+    const rk = r.rank !== null && r.rank !== undefined ? ` <span class="sub">rank ${r.rank} · ${esc(r.score)}${r.why?.length ? ` · ${esc(r.why.join("; "))}` : ""}</span>` : "";
+    const sub = kids(r.id);
+    return `<li data-run="${esc(r.id)}" data-status="${esc(r.status)}"><code>${esc(r.id)}</code> ${st} ${reading(r.reading)}${forks}${rk}${r.status === "closed" && r.detail ? `<div class="sub">${esc(r.detail)}</div>` : ""}${sub.length ? `<ul>${sub.map(li).join("")}</ul>` : ""}</li>`;
+  };
+  const roots = tree.runs.filter((r) => !r.parent || !tree.runs.some((x) => x.id === r.parent));
+  const end = tree.done ? `${esc(tree.done.outcome)}${tree.ms !== null && tree.ms !== undefined ? ` · ${tree.ms} ms` : ""}` : "running…";
+  return `<div class="tree" data-testid="beam-tree" data-item="${esc(itemId)}">
+    <p class="sub" data-testid="tree-counts">${tree.runs.length} opened · ${tree.closed} closed · ${tree.open} kept · ${end}${tree.problems?.length ? ` · <span class="chip warn">${tree.problems.length} bad line(s)</span>` : ""}</p>
+    <ul>${roots.map(li).join("")}</ul>
+    ${tree.question ? `<p data-testid="beam-question"><b>Beam asks:</b> ${esc(tree.question.sentence)} <span class="sub">${tree.question.options.map((o) => esc(o.sentence)).join(" · ")}${tree.question.hint ? ` — ${esc(tree.question.hint)}` : ""}</span></p>` : ""}
+  </div>`;
+}
+
+/** The arms' readings (static / sklearn / spaCy / jev / zero-shot), best first. */
+export function renderArms(arms) {
+  const list = Array.isArray(arms) ? arms.map((a) => [a.arm, a.readings]) : Object.entries(arms ?? {});
+  if (!list.length) return `<p class="empty" data-testid="beam-arms">No arm readings.</p>`;
+  return `<table class="arms" data-testid="beam-arms"><thead><tr><th>Arm</th><th>Readings (best first)</th></tr></thead><tbody>${list.map(([a, rs]) => `<tr><th scope="row">${esc(a)}</th><td>${(rs ?? []).map(reading).join("<br>") || "–"}</td></tr>`).join("")}</tbody></table>`;
+}
+
+/** One item's deterministic metrics (shown once the owner has graded: they compare with gold). */
+export function renderItemMetrics(item) {
+  const m = item.metrics;
+  if (!m) return `<p class="sub" data-testid="item-metrics">${item.goldHidden ? "Metrics compare with the gold labels: they appear once you have graded this item." : "No beam or arm record for this item."}</p>`;
+  const yn = (v) => (v === null || v === undefined ? "–" : v ? "yes" : "no");
+  const arms = Object.entries(m.arms ?? {}).map(([a, x]) => `${esc(a)} ${x.correct ? "✓" : "✗"}${x.rescued ? " (rescued)" : ""}`).join(" · ");
+  return `<p data-testid="item-metrics">NLP recall ${yn(m.nlpRecall)} · beam recall ${yn(m.beamRecall)} · prune ${m.prune ? pct(m.prune.accuracy) : "–"}${m.prune?.rightClosed?.length ? ` <span class="chip warn">right run closed: ${m.prune.rightClosed.map((r) => `${esc(r.run)} (${esc(r.reason)})`).join(", ")}</span>` : ""} · final right ${yn(m.final?.right)} · tsc fail ${m.checks?.tscFail ?? "–"} · condition fail ${m.checks?.conditionFail ?? "–"} · ${fmt(m.ms)} ms${arms ? `<br><span class="sub">arms: ${arms}</span>` : ""}</p>`;
+}
+
+/** The setup's deterministic metrics: totals, per arm (accuracy, rescued by the beam) and per layer. */
+export function renderMetrics(m) {
+  if (!m) return `<p class="sub" data-testid="beam-metrics">No beam metrics (no item has beam events or arm readings yet).</p>`;
+  const row = (k, x) => `<tr><th scope="row">${esc(k)}</th><td>${x.items}</td><td>${pct(x.nlpRecall)}</td><td>${pct(x.beamRecall)}</td><td>${pct(x.pruneAccuracy)}</td><td>${pct(x.finalRight)}</td><td>${x.runsOpened}/${x.runsClosed}</td><td>${x.questions}</td><td>${x.tscFail}/${x.conditionFail}</td><td>${fmt(x.meanMs === null ? null : Math.round(x.meanMs))}</td></tr>`;
+  const arms = Object.entries(m.perArm);
+  return `<div data-testid="beam-metrics">
+    <table class="metrics"><caption>Beam, deterministic (no judge)</caption>
+      <thead><tr><th></th><th>items</th><th>NLP recall</th><th>beam recall</th><th>prune acc.</th><th>final right</th><th>runs open/closed</th><th>questions</th><th>tsc/cond. fail</th><th>mean ms</th></tr></thead>
+      <tbody>${row("all", m)}${Object.entries(m.perLayer ?? {}).map(([l, x]) => row(`layer ${l}`, x)).join("")}</tbody></table>
+    <p class="sub">closed by: ${Object.entries(m.closedBy).map(([k, n]) => `${esc(CLOSE[k] ?? k)} ${n}`).join(" · ") || "none"}</p>
+    ${arms.length ? `<table class="metrics" data-testid="arm-metrics"><caption>Arms</caption><thead><tr><th>arm</th><th>top-1 accuracy</th><th>gold in top-k</th><th>layers</th><th>rescued by the beam</th></tr></thead>
+      <tbody>${arms.map(([a, x]) => `<tr><th scope="row">${esc(a)}</th><td>${pct(x.accuracy)}</td><td>${pct(x.topK)}</td><td>${pct(x.layers)}</td><td>${x.rescued}</td></tr>`).join("")}</tbody></table>` : ""}
+  </div>`;
+}
+
 /** One item in full. */
-export function renderDetail(item, view, draft) {
+export function renderDetail(item, view, draft, liveTree = null) {
   if (!item) return `<p class="empty">Pick an item.</p>`;
   const lines = view.rubric.lines;
   const q = item.plannerQuestion;
@@ -123,7 +178,11 @@ export function renderDetail(item, view, draft) {
     <p class="req" data-testid="requirement">${esc(item.requirement)}</p>
     <h3>Planner's question</h3>
     ${q?.text ? `<p data-testid="planner-question">${esc(q.text)}${q.options?.length ? ` <span class="sub">options: ${q.options.map(esc).join(" · ")}</span>` : ""}</p><p data-testid="requester-answer"><b>Owner (requester) answered:</b> ${esc(item.requesterAnswer?.answer ?? "–")}</p>` : `<p class="sub" data-testid="planner-question">No question asked.</p>`}
-    <h3>Run tree</h3>
+    <h3>Beam <span class="sub">(runs opened and closed, live from events.jsonl)</span></h3>
+    ${renderTree(liveTree ?? item.tree, item.id)}
+    <h3>Arms' readings</h3>
+    ${renderArms(item.arms)}
+    <h3>Graded runs</h3>
     ${renderRuns(item, lines)}
     <h3>Opus-Grader <span class="sub">(recommended run)</span></h3>
     ${item.grader ? `<p class="scores" data-testid="grader-scores">${scoreRow(item.grader.scores, lines)} <b>${fmt(total(item.grader.scores, lines))}/${view.summary.maxTotal}</b></p><p class="just" data-testid="grader-justification">${esc(item.grader.justification)}</p>` : `<p class="empty">Not graded (no planner answer).</p>`}
@@ -133,6 +192,8 @@ export function renderDetail(item, view, draft) {
     ${renderAgreement(item, lines)}
     <h3>Gold labels</h3>
     ${renderGold(item)}
+    <h3>Metrics <span class="sub">(deterministic)</span></h3>
+    ${renderItemMetrics(item)}
   </article>`;
 }
 
@@ -161,6 +222,7 @@ export function mountBeam(root, opts = {}) {
   const getJson = opts.fetchJson ?? (async (u, init) => { const r = await fetch(u, { cache: "no-store", ...init }); const body = await r.json(); if (!r.ok) throw new Error(body.error ?? `HTTP ${r.status}`); return body; });
   const post = (u, body) => getJson(u, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
   const state = { setup: null, compare: "", requester: null, grader: null, live: false, selected: null, draft: null, runStatus: "" };
+  const live = new Map(); // "<setup>/<item>" -> run tree streamed while a run is in progress (Mission Control, #902)
   let meta = null, view = null, other = null;
 
   async function loadMeta() {
@@ -179,8 +241,8 @@ export function mountBeam(root, opts = {}) {
   }
   function paint() {
     const item = view.items.find((i) => i.id === state.selected);
-    root.innerHTML = `${renderSetupBar(meta, state)}${renderSummary(view)}${other ? renderCompare(view, other) : ""}
-      <div class="cols">${renderList(view, state.selected)}${renderDetail(item, view, state.draft)}</div>`;
+    root.innerHTML = `${renderSetupBar(meta, state)}${renderSummary(view)}${renderMetrics(view.metrics)}${other ? renderCompare(view, other) : ""}
+      <div class="cols">${renderList(view, state.selected)}${renderDetail(item, view, state.draft, live.get(`${state.setup}/${state.selected}`))}</div>`;
   }
   async function refresh() { await loadView(); paint(); }
 
@@ -235,4 +297,16 @@ export function mountBeam(root, opts = {}) {
     try { if (await loadMeta()) await refresh(); }
     catch (err) { root.innerHTML = `<p class="empty">Could not load /api/beam: ${esc(err.message)}</p>`; }
   })();
+
+  return {
+    /** A streamed run tree for one item: repaints only that item's tree when it is on screen. */
+    setLiveTree(setup, itemId, tree) {
+      live.set(`${setup}/${itemId}`, tree);
+      if (setup !== state.setup || itemId !== state.selected) return;
+      const el = root.querySelector("[data-testid=beam-tree]");
+      if (el) el.outerHTML = renderTree(tree, itemId);
+    },
+    /** Results changed on disk (a run finished): reload the setups and the view. */
+    async reload() { if (await loadMeta()) await refresh(); },
+  };
 }

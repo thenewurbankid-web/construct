@@ -12,6 +12,8 @@ import path from "node:path";
 import { BEAM_DIR, parseSetupId, loadRubric } from "./prompts.mjs";
 import { reviewOrder, summarize } from "./agreement.mjs";
 import { labelMatch } from "./gold.mjs";
+import { foldEvents } from "./beam-tree.mjs";
+import { itemMetrics, setupMetrics } from "./metrics.mjs";
 
 export const FIXTURES_DIR = path.join(BEAM_DIR, "fixtures");
 
@@ -63,10 +65,13 @@ export function createStore(dirs = beamDirs()) {
       const items = doc.items.map((i) => ({ ...i, owner: owner[i.id] ?? null }));
       const ordered = reviewOrder(items, rubric.lines).map((i) => {
         const graded = Boolean(i.owner?.scores && rubric.lines.every((l) => Number.isInteger(i.owner.scores[l.id])));
-        const { notes, gold, ...rest } = i;
-        return graded ? { ...rest, gold, notes, goldHidden: false, goldMatch: labelMatch(gold, i.labels) } : { ...rest, goldHidden: true };
+        // The beam's run tree is the planner's own record (no gold): always shown. The item's metrics compare with
+        // gold, so like gold they wait until the owner has graded the item.
+        const { notes, gold, metrics, beam, ...rest } = i;
+        const tree = beam?.events ? foldEvents(beam.events) : null;
+        return graded ? { ...rest, tree, gold, notes, metrics: metrics ?? itemMetrics(i), goldHidden: false, goldMatch: labelMatch(gold, i.labels) } : { ...rest, tree, goldHidden: true };
       });
-      return { setup, source: where(setup), versions: doc.versions, mode: doc.mode, createdAt: doc.createdAt, apps: doc.apps, rubric: { version: rubric.version, lines: rubric.lines }, summary: summarize(items, rubric.lines), items: ordered };
+      return { setup, source: where(setup), versions: doc.versions, mode: doc.mode, createdAt: doc.createdAt, apps: doc.apps, rubric: { version: rubric.version, lines: rubric.lines }, summary: summarize(items, rubric.lines), metrics: setupMetrics(items), items: ordered };
     },
 
     /** Save an eval run's results document. */

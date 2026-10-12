@@ -123,7 +123,140 @@
         "question": null
       }
     ],
-    "recommended": "run-1"
+    "recommended": "run-1",
+    "beam": {
+      "events": [
+        {
+          "t": "runOpened",
+          "run": "run-1",
+          "parent": null,
+          "reading": {
+            "intent": "update.prop",
+            "object": "prop",
+            "target": "F1",
+            "layers": [
+              "ui"
+            ],
+            "confidence": 0.8
+          },
+          "forks": []
+        },
+        {
+          "t": "runOpened",
+          "run": "run-2",
+          "parent": null,
+          "reading": {
+            "intent": "add.component",
+            "object": "component",
+            "target": "F1",
+            "layers": [
+              "ui"
+            ],
+            "confidence": 0.5
+          },
+          "forks": []
+        },
+        {
+          "t": "runClosed",
+          "run": "run-2",
+          "reason": "structural",
+          "detail": "the contacts page has no free slot for a new component"
+        },
+        {
+          "t": "runRanked",
+          "run": "run-1",
+          "score": 0.92,
+          "rank": 1,
+          "why": [
+            "completes the useContactName stub"
+          ]
+        },
+        {
+          "t": "done",
+          "outcome": "plan",
+          "run": "run-1",
+          "open": 1,
+          "closed": 1,
+          "ms": 640
+        }
+      ],
+      "ms": null
+    },
+    "arms": {
+      "static": [
+        {
+          "intent": "update.prop",
+          "object": "prop",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.8
+        },
+        {
+          "intent": "update.component",
+          "object": "component",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.3
+        }
+      ],
+      "sklearn": [
+        {
+          "intent": "update.prop",
+          "object": "prop",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.7
+        }
+      ],
+      "spacy": [
+        {
+          "intent": "update.prop",
+          "object": "prop",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.6
+        }
+      ],
+      "jev": [
+        {
+          "intent": "update.prop",
+          "object": "prop",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.9
+        }
+      ],
+      "zero-shot": [
+        {
+          "intent": "add.component",
+          "object": "component",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.5
+        },
+        {
+          "intent": "update.prop",
+          "object": "prop",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.4
+        }
+      ]
+    }
   },
   "at": "2026-10-12T15:00:02.000Z"
 }

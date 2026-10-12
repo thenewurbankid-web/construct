@@ -569,4 +569,5 @@ function stop() {
 process.on('SIGINT', stop);
 process.on('SIGTERM', stop);
 server.on('error', (e) => { console.error(`Mission Control: ${e.message}`); process.exit(1); });
+await (await import('./beam-eval.mjs')).attachBeamEval(server, { every, timers, self: SELF }); // #902 Beam eval panel (beam-eval.mjs)
 start();

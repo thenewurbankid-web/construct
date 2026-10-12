@@ -27,8 +27,8 @@ test("setups, a setup's view, the owner's grade", async () => {
   const env = envIn();
   const route = createBeamRoutes({ examplesDir, env });
   const s = await call(route, "GET", "/api/beam/setups");
-  assert.deepEqual(s.body.setups.map((x) => x.id).sort(), ["r-v1.g-v1", "r-v1.g-v2"]);
-  assert.deepEqual(s.body.versions.grader, ["v2", "v1"]);
+  assert.deepEqual(s.body.setups.map((x) => x.id).sort(), ["r-v1.g-v1", "r-v1.g-v2", "r-v1.g-v3"]);
+  assert.deepEqual(s.body.versions.grader, ["v3", "v2", "v1"]);
   assert.equal(s.body.live, false);
   const v = await call(route, "GET", "/api/beam/setup?id=r-v1.g-v1");
   assert.equal(v.body.items[0].id, "orders-2");

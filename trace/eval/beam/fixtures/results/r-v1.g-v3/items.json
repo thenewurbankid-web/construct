@@ -1,0 +1,2227 @@
+{
+  "setup": "r-v1.g-v3",
+  "versions": {
+    "requester": "v1",
+    "grader": "v3",
+    "rubric": "v2"
+  },
+  "mode": "fixture",
+  "createdAt": "2026-10-12T15:01:06.000Z",
+  "apps": [
+    "contacts",
+    "orders"
+  ],
+  "planner": "fixture",
+  "items": [
+    {
+      "id": "contacts-1",
+      "app": "contacts",
+      "requirement": "In the contacts table, show each person's full name, first and last name together, in the Name column.",
+      "gold": {
+        "source": "requester",
+        "intent": "update.prop",
+        "object": "prop",
+        "target": {
+          "kind": "page",
+          "name": "contacts"
+        },
+        "layers": [
+          "ui"
+        ]
+      },
+      "notes": "The Name column should join first and last from the list we already load; nothing new from the server.",
+      "goldProblems": [],
+      "transcripts": [
+        {
+          "step": "requester-write",
+          "role": "requester",
+          "promptFile": "prompts/requester.md",
+          "promptVersion": "v1",
+          "promptSha": "b5f0685251a5",
+          "model": "opus",
+          "temperature": null,
+          "temperatureEnforced": false,
+          "at": "2026-10-12T15:00:45.000Z",
+          "mode": "fake"
+        },
+        {
+          "step": "grader-A",
+          "role": "grader",
+          "promptFile": "prompts/grader.md",
+          "promptVersion": "v3",
+          "promptSha": "c8286fd77bfe",
+          "rubricFile": "prompts/rubric.md",
+          "rubricVersion": "v2",
+          "rubricSha": "f30d89c4d957",
+          "model": "opus",
+          "temperature": null,
+          "temperatureEnforced": false,
+          "at": "2026-10-12T15:00:47.000Z",
+          "mode": "fake"
+        }
+      ],
+      "planner": {
+        "available": true,
+        "source": "fixture",
+        "error": null,
+        "ms": null
+      },
+      "beam": {
+        "events": [
+          {
+            "t": "runOpened",
+            "run": "run-1",
+            "parent": null,
+            "reading": {
+              "intent": "update.prop",
+              "object": "prop",
+              "target": "F1",
+              "layers": [
+                "ui"
+              ],
+              "confidence": 0.8
+            },
+            "forks": []
+          },
+          {
+            "t": "runOpened",
+            "run": "run-2",
+            "parent": null,
+            "reading": {
+              "intent": "add.component",
+              "object": "component",
+              "target": "F1",
+              "layers": [
+                "ui"
+              ],
+              "confidence": 0.5
+            },
+            "forks": []
+          },
+          {
+            "t": "runClosed",
+            "run": "run-2",
+            "reason": "structural",
+            "detail": "the contacts page has no free slot for a new component"
+          },
+          {
+            "t": "runRanked",
+            "run": "run-1",
+            "score": 0.92,
+            "rank": 1,
+            "why": [
+              "completes the useContactName stub"
+            ]
+          },
+          {
+            "t": "done",
+            "outcome": "plan",
+            "run": "run-1",
+            "open": 1,
+            "closed": 1,
+            "ms": 640
+          }
+        ],
+        "ms": null
+      },
+      "arms": {
+        "static": [
+          {
+            "intent": "update.prop",
+            "object": "prop",
+            "target": "F1",
+            "layers": [
+              "ui"
+            ],
+            "confidence": 0.8
+          },
+          {
+            "intent": "update.component",
+            "object": "component",
+            "target": "F1",
+            "layers": [
+              "ui"
+            ],
+            "confidence": 0.3
+          }
+        ],
+        "sklearn": [
+          {
+            "intent": "update.prop",
+            "object": "prop",
+            "target": "F1",
+            "layers": [
+              "ui"
+            ],
+            "confidence": 0.7
+          }
+        ],
+        "spacy": [
+          {
+            "intent": "update.prop",
+            "object": "prop",
+            "target": "F1",
+            "layers": [
+              "ui"
+            ],
+            "confidence": 0.6
+          }
+        ],
+        "jev": [
+          {
+            "intent": "update.prop",
+            "object": "prop",
+            "target": "F1",
+            "layers": [
+              "ui"
+            ],
+            "confidence": 0.9
+          }
+        ],
+        "zero-shot": [
+          {
+            "intent": "add.component",
+            "object": "component",
+            "target": "F1",
+            "layers": [
+              "ui"
+            ],
+            "confidence": 0.5
+          },
+          {
+            "intent": "update.prop",
+            "object": "prop",
+            "target": "F1",
+            "layers": [
+              "ui"
+            ],
+            "confidence": 0.4
+          }
+        ]
+      },
+      "metrics": {
+        "nlpRecall": true,
+        "beamRecall": true,
+        "runs": {
+          "opened": 2,
+          "closed": 1,
+          "open": 1,
+          "closedBy": {
+            "structural": 1
+          }
+        },
+        "prune": {
+          "accuracy": 1,
+          "rightKept": true,
+          "wrong": 1,
+          "wrongClosed": 1,
+          "wrongKept": [],
+          "rightClosed": []
+        },
+        "final": {
+          "run": "run-1",
+          "outcome": "plan",
+          "right": true
+        },
+        "questions": 0,
+        "checks": {
+          "tscFail": 0,
+          "conditionFail": 0,
+          "pass": true
+        },
+        "ms": 640,
+        "arms": {
+          "static": {
+            "top": "update.prop",
+            "correct": true,
+            "inTopK": true,
+            "layersHit": true,
+            "rescued": false
+          },
+          "sklearn": {
+            "top": "update.prop",
+            "correct": true,
+            "inTopK": true,
+            "layersHit": true,
+            "rescued": false
+          },
+          "spacy": {
+            "top": "update.prop",
+            "correct": true,
+            "inTopK": true,
+            "layersHit": true,
+            "rescued": false
+          },
+          "jev": {
+            "top": "update.prop",
+            "correct": true,
+            "inTopK": true,
+            "layersHit": true,
+            "rescued": false
+          },
+          "zero-shot": {
+            "top": "add.component",
+            "correct": false,
+            "inTopK": true,
+            "layersHit": true,
+            "rescued": true
+          }
+        }
+      },
+      "labels": {
+        "intent": "update.prop",
+        "object": "prop",
+        "target": {
+          "kind": "page",
+          "name": "contacts"
+        },
+        "layers": [
+          "ui"
+        ],
+        "by": "static"
+      },
+      "runs": [
+        {
+          "id": "run-1",
+          "labels": {
+            "intent": "update.prop",
+            "object": "prop",
+            "target": {
+              "kind": "page",
+              "name": "contacts"
+            },
+            "layers": [
+              "ui"
+            ],
+            "by": "static"
+          },
+          "path": [
+            {
+              "layer": "page-part",
+              "label": "fullName (Name cell)",
+              "decision": "dynamic",
+              "picks": null,
+              "fork": false
+            },
+            {
+              "layer": "source",
+              "label": "first + last from GET /api/contacts",
+              "decision": "computed",
+              "picks": null,
+              "fork": false
+            },
+            {
+              "layer": "controller",
+              "label": "ContactsController.rows",
+              "decision": "fn",
+              "picks": null,
+              "fork": false
+            },
+            {
+              "layer": "hook",
+              "label": "useContactName(row)",
+              "decision": "stub",
+              "picks": null,
+              "fork": false
+            },
+            {
+              "layer": "service",
+              "label": "contactsService.list",
+              "decision": "fn",
+              "picks": null,
+              "fork": false
+            },
+            {
+              "layer": "contract",
+              "label": "GET /api/contacts",
+              "decision": "fn",
+              "picks": null,
+              "fork": false
+            }
+          ],
+          "question": null
+        }
+      ],
+      "recommended": "run-1",
+      "plannerQuestion": null,
+      "requesterAnswer": null,
+      "grader": {
+        "runScores": {
+          "run-1": {
+            "blindId": "A",
+            "scores": {
+              "fits": 3,
+              "layer": 3,
+              "asked": 2,
+              "clarity": 2
+            },
+            "justification": "Computed from existing fields and completes the useContactName stub; nothing to fault.",
+            "problems": []
+          }
+        },
+        "scores": {
+          "fits": 3,
+          "layer": 3,
+          "asked": 2,
+          "clarity": 2
+        },
+        "justification": "Computed from existing fields and completes the useContactName stub; nothing to fault.",
+        "problems": [],
+        "setup": "r-v1.g-v3",
+        "rubricVersion": "v2",
+        "revealedAfterGrading": true
+      }
+    },
+    {
+      "id": "orders-1",
+      "app": "orders",
+      "requirement": "Show the total value of all orders in the header next to the order count.",
+      "gold": {
+        "source": "requester",
+        "intent": "update.prop",
+        "object": "prop",
+        "target": {
+          "kind": "page",
+          "name": "orders"
+        },
+        "layers": [
+          "ui"
+        ]
+      },
+      "notes": "Add up the totals of the orders on the page; I do not want a new report endpoint.",
+      "goldProblems": [],
+      "transcripts": [
+        {
+          "step": "requester-write",
+          "role": "requester",
+          "promptFile": "prompts/requester.md",
+          "promptVersion": "v1",
+          "promptSha": "b5f0685251a5",
+          "model": "opus",
+          "temperature": null,
+          "temperatureEnforced": false,
+          "at": "2026-10-12T15:00:48.000Z",
+          "mode": "fake"
+        },
+        {
+          "step": "requester-answer",
+          "role": "requester",
+          "promptFile": "prompts/requester.md",
+          "promptVersion": "v1",
+          "promptSha": "b5f0685251a5",
+          "model": "opus",
+          "temperature": null,
+          "temperatureEnforced": false,
+          "at": "2026-10-12T15:00:50.000Z",
+          "mode": "fake"
+        },
+        {
+          "step": "grader-A",
+          "role": "grader",
+          "promptFile": "prompts/grader.md",
+          "promptVersion": "v3",
+          "promptSha": "c8286fd77bfe",
+          "rubricFile": "prompts/rubric.md",
+          "rubricVersion": "v2",
+          "rubricSha": "f30d89c4d957",
+          "model": "opus",
+          "temperature": null,
+          "temperatureEnforced": false,
+          "at": "2026-10-12T15:00:51.000Z",
+          "mode": "fake"
+        },
+        {
+          "step": "grader-B",
+          "role": "grader",
+          "promptFile": "prompts/grader.md",
+          "promptVersion": "v3",
+          "promptSha": "c8286fd77bfe",
+          "rubricFile": "prompts/rubric.md",
+          "rubricVersion": "v2",
+          "rubricSha": "f30d89c4d957",
+          "model": "opus",
+          "temperature": null,
+          "temperatureEnforced": false,
+          "at": "2026-10-12T15:00:52.000Z",
+          "mode": "fake"
+        }
+      ],
+      "planner": {
+        "available": true,
+        "source": "fixture",
+        "error": null,
+        "ms": null
+      },
+      "beam": {
+        "events": [
+          {
+            "t": "runOpened",
+            "run": "run-static",
+            "parent": null,
+            "reading": {
+              "intent": "update.prop",
+              "object": "prop",
+              "target": "F1",
+              "layers": [
+                "ui",
+                "api"
+              ],
+              "confidence": 0.6
+            },
+            "forks": [
+              {
+                "point": "source",
+                "pick": "api",
+                "label": "from a new api field"
+              }
+            ]
+          },
+          {
+            "t": "runOpened",
+            "run": "run-jev",
+            "parent": null,
+            "reading": {
+              "intent": "update.prop",
+              "object": "prop",
+              "target": "F1",
+              "layers": [
+                "ui"
+              ],
+              "confidence": 0.8
+            },
+            "forks": [
+              {
+                "point": "source",
+                "pick": "computed",
+                "label": "computed from the orders"
+              }
+            ]
+          },
+          {
+            "t": "runOpened",
+            "run": "run-3",
+            "parent": null,
+            "reading": {
+              "intent": "add.handler",
+              "object": "handler",
+              "target": "F2",
+              "layers": [
+                "ui"
+              ],
+              "confidence": 0.45
+            },
+            "forks": []
+          },
+          {
+            "t": "runClosed",
+            "run": "run-3",
+            "reason": "precondition",
+            "detail": "an add.handler needs an action slot; the header has none"
+          },
+          {
+            "t": "runRanked",
+            "run": "run-jev",
+            "score": 0.81,
+            "rank": 1,
+            "why": [
+              "computed from fields already loaded"
+            ]
+          },
+          {
+            "t": "runRanked",
+            "run": "run-static",
+            "score": 0.55,
+            "rank": 2,
+            "why": [
+              "creates three layers"
+            ]
+          },
+          {
+            "t": "question",
+            "question": {
+              "id": "beam:orders-1",
+              "sentence": "Should the total value come from an api field or be computed from the orders on the page?",
+              "hint": "Computed first: every field it needs is already loaded (rule: reuse before create).",
+              "recommended": "run-jev",
+              "options": [
+                {
+                  "id": "run-jev",
+                  "sentence": "computed from the orders",
+                  "effect": "adds a hook over the loaded orders"
+                },
+                {
+                  "id": "run-static",
+                  "sentence": "an api field",
+                  "effect": "adds GET /api/orders/total and three layers"
+                }
+              ]
+            }
+          },
+          {
+            "t": "done",
+            "outcome": "question",
+            "run": "run-jev",
+            "open": 2,
+            "closed": 1,
+            "ms": 1210
+          }
+        ],
+        "ms": null
+      },
+      "arms": {
+        "static": [
+          {
+            "intent": "update.prop",
+            "object": "prop",
+            "target": "F1",
+            "layers": [
+              "ui"
+            ],
+            "confidence": 0.6
+          }
+        ],
+        "sklearn": [
+          {
+            "intent": "update.prop",
+            "object": "prop",
+            "target": "F1",
+            "layers": [
+              "ui"
+            ],
+            "confidence": 0.7
+          }
+        ],
+        "spacy": [
+          {
+            "intent": "update.prop",
+            "object": "prop",
+            "target": "F1",
+            "layers": [
+              "ui"
+            ],
+            "confidence": 0.5
+          }
+        ],
+        "jev": [
+          {
+            "intent": "update.prop",
+            "object": "prop",
+            "target": "F1",
+            "layers": [
+              "ui"
+            ],
+            "confidence": 0.8
+          }
+        ],
+        "zero-shot": [
+          {
+            "intent": "add.handler",
+            "object": "handler",
+            "target": "F1",
+            "layers": [
+              "ui"
+            ],
+            "confidence": 0.45
+          },
+          {
+            "intent": "update.prop",
+            "object": "prop",
+            "target": "F1",
+            "layers": [
+              "ui"
+            ],
+            "confidence": 0.4
+          }
+        ]
+      },
+      "metrics": {
+        "nlpRecall": true,
+        "beamRecall": true,
+        "runs": {
+          "opened": 3,
+          "closed": 1,
+          "open": 2,
+          "closedBy": {
+            "precondition": 1
+          }
+        },
+        "prune": {
+          "accuracy": 1,
+          "rightKept": true,
+          "wrong": 1,
+          "wrongClosed": 1,
+          "wrongKept": [],
+          "rightClosed": []
+        },
+        "final": {
+          "run": "run-jev",
+          "outcome": "question",
+          "right": true
+        },
+        "questions": 1,
+        "checks": {
+          "tscFail": 0,
+          "conditionFail": 0,
+          "pass": null
+        },
+        "ms": 1210,
+        "arms": {
+          "static": {
+            "top": "update.prop",
+            "correct": true,
+            "inTopK": true,
+            "layersHit": true,
+            "rescued": false
+          },
+          "sklearn": {
+            "top": "update.prop",
+            "correct": true,
+            "inTopK": true,
+            "layersHit": true,
+            "rescued": false
+          },
+          "spacy": {
+            "top": "update.prop",
+            "correct": true,
+            "inTopK": true,
+            "layersHit": true,
+            "rescued": false
+          },
+          "jev": {
+            "top": "update.prop",
+            "correct": true,
+            "inTopK": true,
+            "layersHit": true,
+            "rescued": false
+          },
+          "zero-shot": {
+            "top": "add.handler",
+            "correct": false,
+            "inTopK": true,
+            "layersHit": true,
+            "rescued": true
+          }
+        }
+      },
+      "labels": {
+        "intent": "update.prop",
+        "object": "prop",
+        "target": {
+          "kind": "page",
+          "name": "orders"
+        },
+        "layers": [
+          "ui"
+        ],
+        "by": "jev"
+      },
+      "runs": [
+        {
+          "id": "run-static",
+          "labels": {
+            "intent": "update.prop",
+            "object": "prop",
+            "target": {
+              "kind": "page",
+              "name": "orders"
+            },
+            "layers": [
+              "ui",
+              "api"
+            ],
+            "by": "static"
+          },
+          "path": [
+            {
+              "layer": "page-part",
+              "label": "totalValue (header)",
+              "decision": "dynamic",
+              "picks": null,
+              "fork": false
+            },
+            {
+              "layer": "source",
+              "label": "GET /api/orders/total",
+              "decision": "api",
+              "picks": {
+                "static": "api",
+                "jev": "computed"
+              },
+              "fork": true
+            },
+            {
+              "layer": "controller",
+              "label": "OrdersController.totalValue",
+              "decision": "create",
+              "picks": null,
+              "fork": false
+            },
+            {
+              "layer": "service",
+              "label": "ordersService.total",
+              "decision": "create",
+              "picks": null,
+              "fork": false
+            },
+            {
+              "layer": "contract",
+              "label": "GET /api/orders/total",
+              "decision": "create",
+              "picks": null,
+              "fork": false
+            }
+          ],
+          "question": null
+        },
+        {
+          "id": "run-jev",
+          "labels": {
+            "intent": "update.prop",
+            "object": "prop",
+            "target": {
+              "kind": "page",
+              "name": "orders"
+            },
+            "layers": [
+              "ui"
+            ],
+            "by": "jev"
+          },
+          "path": [
+            {
+              "layer": "page-part",
+              "label": "totalValue (header)",
+              "decision": "dynamic",
+              "picks": null,
+              "fork": false
+            },
+            {
+              "layer": "source",
+              "label": "sum of orders[].total",
+              "decision": "computed",
+              "picks": {
+                "static": "api",
+                "jev": "computed"
+              },
+              "fork": true
+            },
+            {
+              "layer": "controller",
+              "label": "OrdersController.orders",
+              "decision": "fn",
+              "picks": null,
+              "fork": false
+            },
+            {
+              "layer": "hook",
+              "label": "useOrderTotals(orders)",
+              "decision": "create",
+              "picks": null,
+              "fork": false
+            },
+            {
+              "layer": "contract",
+              "label": "GET /api/orders",
+              "decision": "fn",
+              "picks": null,
+              "fork": false
+            }
+          ],
+          "question": null
+        }
+      ],
+      "recommended": "run-jev",
+      "plannerQuestion": {
+        "text": "Should the total value come from an api field or be computed from the orders on the page?",
+        "options": [
+          "an api field",
+          "computed from the orders"
+        ]
+      },
+      "requesterAnswer": {
+        "answer": "Add up the totals of the orders we already show.",
+        "option": "computed from the orders"
+      },
+      "grader": {
+        "runScores": {
+          "run-static": {
+            "blindId": "A",
+            "scores": {
+              "fits": 2,
+              "layer": 0,
+              "asked": 2,
+              "clarity": 2
+            },
+            "justification": "Routes a computable total to a new endpoint and creates three layers the orders list already covers (layer).",
+            "problems": []
+          },
+          "run-jev": {
+            "blindId": "B",
+            "scores": {
+              "fits": 3,
+              "layer": 2,
+              "asked": 2,
+              "clarity": 2
+            },
+            "justification": "Right computed path, needed closed question; creates useOrderTotals where the list hook could be reused (layer).",
+            "problems": []
+          }
+        },
+        "scores": {
+          "fits": 3,
+          "layer": 2,
+          "asked": 2,
+          "clarity": 2
+        },
+        "justification": "Right computed path, needed closed question; creates useOrderTotals where the list hook could be reused (layer).",
+        "problems": [],
+        "setup": "r-v1.g-v3",
+        "rubricVersion": "v2",
+        "revealedAfterGrading": true
+      }
+    },
+    {
+      "id": "contacts-2",
+      "app": "contacts",
+      "requirement": "When I press Call on a contact, log that we called that person so I can see it later.",
+      "gold": {
+        "source": "requester",
+        "intent": "update.handler",
+        "object": "handler",
+        "target": {
+          "kind": "page",
+          "name": "contacts"
+        },
+        "layers": [
+          "ui"
+        ]
+      },
+      "notes": "Just record the call against the contact; a log line is enough for now.",
+      "goldProblems": [],
+      "transcripts": [
+        {
+          "step": "requester-write",
+          "role": "requester",
+          "promptFile": "prompts/requester.md",
+          "promptVersion": "v1",
+          "promptSha": "b5f0685251a5",
+          "model": "opus",
+          "temperature": null,
+          "temperatureEnforced": false,
+          "at": "2026-10-12T15:00:53.000Z",
+          "mode": "fake"
+        },
+        {
+          "step": "grader-A",
+          "role": "grader",
+          "promptFile": "prompts/grader.md",
+          "promptVersion": "v3",
+          "promptSha": "c8286fd77bfe",
+          "rubricFile": "prompts/rubric.md",
+          "rubricVersion": "v2",
+          "rubricSha": "f30d89c4d957",
+          "model": "opus",
+          "temperature": null,
+          "temperatureEnforced": false,
+          "at": "2026-10-12T15:00:55.000Z",
+          "mode": "fake"
+        }
+      ],
+      "planner": {
+        "available": true,
+        "source": "fixture",
+        "error": null,
+        "ms": null
+      },
+      "beam": {
+        "events": [
+          {
+            "t": "runOpened",
+            "run": "run-1",
+            "parent": null,
+            "reading": {
+              "intent": "update.handler",
+              "object": "handler",
+              "target": "F1",
+              "layers": [
+                "ui"
+              ],
+              "confidence": 0.75
+            },
+            "forks": []
+          },
+          {
+            "t": "runOpened",
+            "run": "run-2",
+            "parent": null,
+            "reading": {
+              "intent": "update.prop",
+              "object": "prop",
+              "target": "F1",
+              "layers": [
+                "ui"
+              ],
+              "confidence": 0.55
+            },
+            "forks": []
+          },
+          {
+            "t": "runOpened",
+            "run": "run-3",
+            "parent": null,
+            "reading": {
+              "intent": "add.handler",
+              "object": "handler",
+              "target": "F1",
+              "layers": [
+                "ui"
+              ],
+              "confidence": 0.5
+            },
+            "forks": []
+          },
+          {
+            "t": "runClosed",
+            "run": "run-2",
+            "reason": "goal",
+            "detail": "goal condition false: the call is never logged"
+          },
+          {
+            "t": "runClosed",
+            "run": "run-3",
+            "reason": "emit",
+            "detail": "tsc: useCallLog is not exported"
+          },
+          {
+            "t": "runRanked",
+            "run": "run-1",
+            "score": 0.7,
+            "rank": 1,
+            "why": [
+              "the Call button already has a handler"
+            ]
+          },
+          {
+            "t": "done",
+            "outcome": "plan",
+            "run": "run-1",
+            "open": 1,
+            "closed": 2,
+            "ms": 980
+          }
+        ],
+        "ms": null
+      },
+      "arms": {
+        "static": [
+          {
+            "intent": "update.prop",
+            "object": "prop",
+            "target": "F1",
+            "layers": [
+              "ui"
+            ],
+            "confidence": 0.55
+          }
+        ],
+        "sklearn": [
+          {
+            "intent": "update.handler",
+            "object": "handler",
+            "target": "F1",
+            "layers": [
+              "ui"
+            ],
+            "confidence": 0.6
+          }
+        ],
+        "spacy": [
+          {
+            "intent": "update.handler",
+            "object": "handler",
+            "target": "F1",
+            "layers": [
+              "ui"
+            ],
+            "confidence": 0.5
+          }
+        ],
+        "jev": [
+          {
+            "intent": "update.handler",
+            "object": "handler",
+            "target": "F1",
+            "layers": [
+              "ui"
+            ],
+            "confidence": 0.75
+          }
+        ],
+        "zero-shot": [
+          {
+            "intent": "add.handler",
+            "object": "handler",
+            "target": "F1",
+            "layers": [
+              "ui"
+            ],
+            "confidence": 0.5
+          },
+          {
+            "intent": "update.handler",
+            "object": "handler",
+            "target": "F1",
+            "layers": [
+              "ui"
+            ],
+            "confidence": 0.45
+          }
+        ]
+      },
+      "metrics": {
+        "nlpRecall": true,
+        "beamRecall": true,
+        "runs": {
+          "opened": 3,
+          "closed": 2,
+          "open": 1,
+          "closedBy": {
+            "goal": 1,
+            "emit": 1
+          }
+        },
+        "prune": {
+          "accuracy": 1,
+          "rightKept": true,
+          "wrong": 2,
+          "wrongClosed": 2,
+          "wrongKept": [],
+          "rightClosed": []
+        },
+        "final": {
+          "run": "run-1",
+          "outcome": "plan",
+          "right": true
+        },
+        "questions": 0,
+        "checks": {
+          "tscFail": 1,
+          "conditionFail": 1,
+          "pass": true
+        },
+        "ms": 980,
+        "arms": {
+          "static": {
+            "top": "update.prop",
+            "correct": false,
+            "inTopK": false,
+            "layersHit": true,
+            "rescued": true
+          },
+          "sklearn": {
+            "top": "update.handler",
+            "correct": true,
+            "inTopK": true,
+            "layersHit": true,
+            "rescued": false
+          },
+          "spacy": {
+            "top": "update.handler",
+            "correct": true,
+            "inTopK": true,
+            "layersHit": true,
+            "rescued": false
+          },
+          "jev": {
+            "top": "update.handler",
+            "correct": true,
+            "inTopK": true,
+            "layersHit": true,
+            "rescued": false
+          },
+          "zero-shot": {
+            "top": "add.handler",
+            "correct": false,
+            "inTopK": true,
+            "layersHit": true,
+            "rescued": true
+          }
+        }
+      },
+      "labels": {
+        "intent": "update.handler",
+        "object": "handler",
+        "target": {
+          "kind": "page",
+          "name": "contacts"
+        },
+        "layers": [
+          "ui"
+        ],
+        "by": "static"
+      },
+      "runs": [
+        {
+          "id": "run-1",
+          "labels": {
+            "intent": "update.handler",
+            "object": "handler",
+            "target": {
+              "kind": "page",
+              "name": "contacts"
+            },
+            "layers": [
+              "ui"
+            ],
+            "by": "static"
+          },
+          "path": [
+            {
+              "layer": "page-part",
+              "label": "call (row action)",
+              "decision": "dynamic",
+              "picks": null,
+              "fork": false
+            },
+            {
+              "layer": "controller",
+              "label": "ContactsController.onCall(contact)",
+              "decision": "create",
+              "picks": null,
+              "fork": false
+            },
+            {
+              "layer": "hook",
+              "label": "useCallLog(contact, when)",
+              "decision": "create",
+              "picks": null,
+              "fork": false
+            }
+          ],
+          "question": null
+        }
+      ],
+      "recommended": "run-1",
+      "plannerQuestion": null,
+      "requesterAnswer": null,
+      "grader": {
+        "runScores": {
+          "run-1": {
+            "blindId": "A",
+            "scores": {
+              "fits": 2,
+              "layer": 2,
+              "asked": 2,
+              "clarity": 2
+            },
+            "justification": "Logs the call, but useCallLog takes `when` and never reads it (fits: an unused input ships a stub).",
+            "problems": []
+          }
+        },
+        "scores": {
+          "fits": 2,
+          "layer": 2,
+          "asked": 2,
+          "clarity": 2
+        },
+        "justification": "Logs the call, but useCallLog takes `when` and never reads it (fits: an unused input ships a stub).",
+        "problems": [],
+        "setup": "r-v1.g-v3",
+        "rubricVersion": "v2",
+        "revealedAfterGrading": true
+      }
+    },
+    {
+      "id": "orders-2",
+      "app": "orders",
+      "requirement": "Let me mark an order as shipped from the orders list.",
+      "gold": {
+        "source": "requester",
+        "intent": "add.handler",
+        "object": "handler",
+        "target": {
+          "kind": "page",
+          "name": "orders"
+        },
+        "layers": [
+          "ui",
+          "api"
+        ]
+      },
+      "notes": "A button per row that sets the order's status to Shipped on the server.",
+      "goldProblems": [],
+      "transcripts": [
+        {
+          "step": "requester-write",
+          "role": "requester",
+          "promptFile": "prompts/requester.md",
+          "promptVersion": "v1",
+          "promptSha": "b5f0685251a5",
+          "model": "opus",
+          "temperature": null,
+          "temperatureEnforced": false,
+          "at": "2026-10-12T15:00:56.000Z",
+          "mode": "fake"
+        },
+        {
+          "step": "grader-A",
+          "role": "grader",
+          "promptFile": "prompts/grader.md",
+          "promptVersion": "v3",
+          "promptSha": "c8286fd77bfe",
+          "rubricFile": "prompts/rubric.md",
+          "rubricVersion": "v2",
+          "rubricSha": "f30d89c4d957",
+          "model": "opus",
+          "temperature": null,
+          "temperatureEnforced": false,
+          "at": "2026-10-12T15:00:58.000Z",
+          "mode": "fake"
+        }
+      ],
+      "planner": {
+        "available": true,
+        "source": "fixture",
+        "error": null,
+        "ms": null
+      },
+      "beam": {
+        "events": [
+          {
+            "t": "runOpened",
+            "run": "run-1",
+            "parent": null,
+            "reading": {
+              "intent": "update.prop",
+              "object": "prop",
+              "target": "F1",
+              "layers": [
+                "ui"
+              ],
+              "confidence": 0.6
+            },
+            "forks": []
+          },
+          {
+            "t": "runOpened",
+            "run": "run-2",
+            "parent": null,
+            "reading": {
+              "intent": "add.handler",
+              "object": "handler",
+              "target": "F1",
+              "layers": [
+                "ui",
+                "api"
+              ],
+              "confidence": 0.6
+            },
+            "forks": []
+          },
+          {
+            "t": "runClosed",
+            "run": "run-2",
+            "reason": "precondition",
+            "detail": "the orders api has no status field"
+          },
+          {
+            "t": "runRanked",
+            "run": "run-1",
+            "score": 0.5,
+            "rank": 1,
+            "why": [
+              "the only run left"
+            ]
+          },
+          {
+            "t": "done",
+            "outcome": "plan",
+            "run": "run-1",
+            "open": 1,
+            "closed": 1,
+            "ms": 1530
+          }
+        ],
+        "ms": null
+      },
+      "arms": {
+        "static": [
+          {
+            "intent": "update.prop",
+            "object": "prop",
+            "target": "F1",
+            "layers": [
+              "ui"
+            ],
+            "confidence": 0.6
+          }
+        ],
+        "sklearn": [
+          {
+            "intent": "update.prop",
+            "object": "prop",
+            "target": "F1",
+            "layers": [
+              "ui"
+            ],
+            "confidence": 0.5
+          }
+        ],
+        "spacy": [
+          {
+            "intent": "add.handler",
+            "object": "handler",
+            "target": "F1",
+            "layers": [
+              "ui",
+              "api"
+            ],
+            "confidence": 0.4
+          }
+        ],
+        "jev": [
+          {
+            "intent": "update.prop",
+            "object": "prop",
+            "target": "F1",
+            "layers": [
+              "ui"
+            ],
+            "confidence": 0.55
+          }
+        ],
+        "zero-shot": [
+          {
+            "intent": "add.handler",
+            "object": "handler",
+            "target": "F1",
+            "layers": [
+              "ui",
+              "api"
+            ],
+            "confidence": 0.6
+          }
+        ]
+      },
+      "metrics": {
+        "nlpRecall": true,
+        "beamRecall": true,
+        "runs": {
+          "opened": 2,
+          "closed": 1,
+          "open": 1,
+          "closedBy": {
+            "precondition": 1
+          }
+        },
+        "prune": {
+          "accuracy": 0,
+          "rightKept": false,
+          "wrong": 1,
+          "wrongClosed": 0,
+          "wrongKept": [
+            "run-1"
+          ],
+          "rightClosed": [
+            {
+              "run": "run-2",
+              "reason": "precondition",
+              "detail": "the orders api has no status field"
+            }
+          ]
+        },
+        "final": {
+          "run": "run-1",
+          "outcome": "plan",
+          "right": false
+        },
+        "questions": 0,
+        "checks": {
+          "tscFail": 0,
+          "conditionFail": 0,
+          "pass": true
+        },
+        "ms": 1530,
+        "arms": {
+          "static": {
+            "top": "update.prop",
+            "correct": false,
+            "inTopK": false,
+            "layersHit": false,
+            "rescued": false
+          },
+          "sklearn": {
+            "top": "update.prop",
+            "correct": false,
+            "inTopK": false,
+            "layersHit": false,
+            "rescued": false
+          },
+          "spacy": {
+            "top": "add.handler",
+            "correct": true,
+            "inTopK": true,
+            "layersHit": true,
+            "rescued": false
+          },
+          "jev": {
+            "top": "update.prop",
+            "correct": false,
+            "inTopK": false,
+            "layersHit": false,
+            "rescued": false
+          },
+          "zero-shot": {
+            "top": "add.handler",
+            "correct": true,
+            "inTopK": true,
+            "layersHit": true,
+            "rescued": false
+          }
+        }
+      },
+      "labels": {
+        "intent": "update.prop",
+        "object": "prop",
+        "target": {
+          "kind": "page",
+          "name": "orders"
+        },
+        "layers": [
+          "ui"
+        ],
+        "by": "static"
+      },
+      "runs": [
+        {
+          "id": "run-1",
+          "labels": {
+            "intent": "update.prop",
+            "object": "prop",
+            "target": {
+              "kind": "page",
+              "name": "orders"
+            },
+            "layers": [
+              "ui"
+            ],
+            "by": "static"
+          },
+          "path": [
+            {
+              "layer": "page-part",
+              "label": "ship (row action)",
+              "decision": "dynamic",
+              "picks": null,
+              "fork": false
+            },
+            {
+              "layer": "controller",
+              "label": "OrdersController.onShip(order)",
+              "decision": "create",
+              "picks": null,
+              "fork": false
+            },
+            {
+              "layer": "provider",
+              "label": "ordersProvider.update(order)",
+              "decision": "create",
+              "picks": null,
+              "fork": false
+            },
+            {
+              "layer": "service",
+              "label": "ordersService.update(order)",
+              "decision": "create",
+              "picks": null,
+              "fork": false
+            },
+            {
+              "layer": "contract",
+              "label": "PUT /api/orders/:id",
+              "decision": "create",
+              "picks": null,
+              "fork": false
+            }
+          ],
+          "question": null
+        }
+      ],
+      "recommended": "run-1",
+      "plannerQuestion": null,
+      "requesterAnswer": null,
+      "grader": {
+        "runScores": {
+          "run-1": {
+            "blindId": "A",
+            "scores": {
+              "fits": 1,
+              "layer": 2,
+              "asked": 0,
+              "clarity": 2
+            },
+            "justification": "Reads an add of a ship action as update.prop and does not ask about the missing status field (asked).",
+            "problems": []
+          }
+        },
+        "scores": {
+          "fits": 1,
+          "layer": 2,
+          "asked": 0,
+          "clarity": 2
+        },
+        "justification": "Reads an add of a ship action as update.prop and does not ask about the missing status field (asked).",
+        "problems": [],
+        "setup": "r-v1.g-v3",
+        "rubricVersion": "v2",
+        "revealedAfterGrading": true
+      }
+    },
+    {
+      "id": "contacts-3",
+      "app": "contacts",
+      "requirement": "Show how many contacts there are in the page header.",
+      "gold": {
+        "source": "requester",
+        "intent": "update.prop",
+        "object": "prop",
+        "target": {
+          "kind": "page",
+          "name": "contacts"
+        },
+        "layers": [
+          "ui"
+        ]
+      },
+      "notes": "The count of the list we load; it is already in the header design.",
+      "goldProblems": [],
+      "transcripts": [
+        {
+          "step": "requester-write",
+          "role": "requester",
+          "promptFile": "prompts/requester.md",
+          "promptVersion": "v1",
+          "promptSha": "b5f0685251a5",
+          "model": "opus",
+          "temperature": null,
+          "temperatureEnforced": false,
+          "at": "2026-10-12T15:00:59.000Z",
+          "mode": "fake"
+        },
+        {
+          "step": "requester-answer",
+          "role": "requester",
+          "promptFile": "prompts/requester.md",
+          "promptVersion": "v1",
+          "promptSha": "b5f0685251a5",
+          "model": "opus",
+          "temperature": null,
+          "temperatureEnforced": false,
+          "at": "2026-10-12T15:01:01.000Z",
+          "mode": "fake"
+        },
+        {
+          "step": "grader-A",
+          "role": "grader",
+          "promptFile": "prompts/grader.md",
+          "promptVersion": "v3",
+          "promptSha": "c8286fd77bfe",
+          "rubricFile": "prompts/rubric.md",
+          "rubricVersion": "v2",
+          "rubricSha": "f30d89c4d957",
+          "model": "opus",
+          "temperature": null,
+          "temperatureEnforced": false,
+          "at": "2026-10-12T15:01:02.000Z",
+          "mode": "fake"
+        }
+      ],
+      "planner": {
+        "available": true,
+        "source": "fixture",
+        "error": null,
+        "ms": null
+      },
+      "beam": {
+        "events": [
+          {
+            "t": "runOpened",
+            "run": "run-1",
+            "parent": null,
+            "reading": {
+              "intent": "update.prop",
+              "object": "prop",
+              "target": "F1",
+              "layers": [
+                "ui"
+              ],
+              "confidence": 0.85
+            },
+            "forks": []
+          },
+          {
+            "t": "runRanked",
+            "run": "run-1",
+            "score": 0.9,
+            "rank": 1,
+            "why": [
+              "count of the loaded list"
+            ]
+          },
+          {
+            "t": "done",
+            "outcome": "plan",
+            "run": "run-1",
+            "open": 1,
+            "closed": 0,
+            "ms": 420
+          }
+        ],
+        "ms": null
+      },
+      "arms": {
+        "static": [
+          {
+            "intent": "update.prop",
+            "object": "prop",
+            "target": "F1",
+            "layers": [
+              "ui"
+            ],
+            "confidence": 0.85
+          }
+        ],
+        "sklearn": [
+          {
+            "intent": "update.prop",
+            "object": "prop",
+            "target": "F1",
+            "layers": [
+              "ui"
+            ],
+            "confidence": 0.8
+          }
+        ],
+        "spacy": [
+          {
+            "intent": "update.prop",
+            "object": "prop",
+            "target": "F1",
+            "layers": [
+              "ui"
+            ],
+            "confidence": 0.7
+          }
+        ],
+        "jev": [
+          {
+            "intent": "update.prop",
+            "object": "prop",
+            "target": "F1",
+            "layers": [
+              "ui"
+            ],
+            "confidence": 0.9
+          }
+        ],
+        "zero-shot": [
+          {
+            "intent": "update.prop",
+            "object": "prop",
+            "target": "F1",
+            "layers": [
+              "ui"
+            ],
+            "confidence": 0.6
+          }
+        ]
+      },
+      "metrics": {
+        "nlpRecall": true,
+        "beamRecall": true,
+        "runs": {
+          "opened": 1,
+          "closed": 0,
+          "open": 1,
+          "closedBy": {}
+        },
+        "prune": {
+          "accuracy": 1,
+          "rightKept": true,
+          "wrong": 0,
+          "wrongClosed": 0,
+          "wrongKept": [],
+          "rightClosed": []
+        },
+        "final": {
+          "run": "run-1",
+          "outcome": "plan",
+          "right": true
+        },
+        "questions": 0,
+        "checks": {
+          "tscFail": 0,
+          "conditionFail": 0,
+          "pass": true
+        },
+        "ms": 420,
+        "arms": {
+          "static": {
+            "top": "update.prop",
+            "correct": true,
+            "inTopK": true,
+            "layersHit": true,
+            "rescued": false
+          },
+          "sklearn": {
+            "top": "update.prop",
+            "correct": true,
+            "inTopK": true,
+            "layersHit": true,
+            "rescued": false
+          },
+          "spacy": {
+            "top": "update.prop",
+            "correct": true,
+            "inTopK": true,
+            "layersHit": true,
+            "rescued": false
+          },
+          "jev": {
+            "top": "update.prop",
+            "correct": true,
+            "inTopK": true,
+            "layersHit": true,
+            "rescued": false
+          },
+          "zero-shot": {
+            "top": "update.prop",
+            "correct": true,
+            "inTopK": true,
+            "layersHit": true,
+            "rescued": false
+          }
+        }
+      },
+      "labels": {
+        "intent": "update.prop",
+        "object": "prop",
+        "target": {
+          "kind": "page",
+          "name": "contacts"
+        },
+        "layers": [
+          "ui"
+        ],
+        "by": "static"
+      },
+      "runs": [
+        {
+          "id": "run-1",
+          "labels": {
+            "intent": "update.prop",
+            "object": "prop",
+            "target": {
+              "kind": "page",
+              "name": "contacts"
+            },
+            "layers": [
+              "ui"
+            ],
+            "by": "static"
+          },
+          "path": [
+            {
+              "layer": "page-part",
+              "label": "contactCount (header)",
+              "decision": "dynamic",
+              "picks": null,
+              "fork": false
+            },
+            {
+              "layer": "source",
+              "label": "contacts.length",
+              "decision": "computed",
+              "picks": null,
+              "fork": false
+            },
+            {
+              "layer": "controller",
+              "label": "ContactsController.rows",
+              "decision": "fn",
+              "picks": null,
+              "fork": false
+            }
+          ],
+          "question": {
+            "text": "What should the contact count show?",
+            "options": []
+          }
+        }
+      ],
+      "recommended": "run-1",
+      "plannerQuestion": {
+        "text": "What should the contact count show?",
+        "options": []
+      },
+      "requesterAnswer": {
+        "answer": "The number of contacts in the list.",
+        "option": "count of the loaded contacts"
+      },
+      "grader": {
+        "runScores": {
+          "run-1": {
+            "blindId": "A",
+            "scores": {
+              "fits": 3,
+              "layer": 3,
+              "asked": 0,
+              "clarity": 0
+            },
+            "justification": "Asks an open question whose answer is already in the requirement (asked, clarity).",
+            "problems": []
+          }
+        },
+        "scores": {
+          "fits": 3,
+          "layer": 3,
+          "asked": 0,
+          "clarity": 0
+        },
+        "justification": "Asks an open question whose answer is already in the requirement (asked, clarity).",
+        "problems": [],
+        "setup": "r-v1.g-v3",
+        "rubricVersion": "v2",
+        "revealedAfterGrading": true
+      }
+    },
+    {
+      "id": "orders-3",
+      "app": "orders",
+      "requirement": "Next to the order count, show how many orders are still pending.",
+      "gold": {
+        "source": "requester",
+        "intent": "update.prop",
+        "object": "prop",
+        "target": {
+          "kind": "page",
+          "name": "orders"
+        },
+        "layers": [
+          "ui"
+        ]
+      },
+      "notes": "Count the orders whose status is Pending.",
+      "goldProblems": [],
+      "transcripts": [
+        {
+          "step": "requester-write",
+          "role": "requester",
+          "promptFile": "prompts/requester.md",
+          "promptVersion": "v1",
+          "promptSha": "b5f0685251a5",
+          "model": "opus",
+          "temperature": null,
+          "temperatureEnforced": false,
+          "at": "2026-10-12T15:01:03.000Z",
+          "mode": "fake"
+        },
+        {
+          "step": "grader-A",
+          "role": "grader",
+          "promptFile": "prompts/grader.md",
+          "promptVersion": "v3",
+          "promptSha": "c8286fd77bfe",
+          "rubricFile": "prompts/rubric.md",
+          "rubricVersion": "v2",
+          "rubricSha": "f30d89c4d957",
+          "model": "opus",
+          "temperature": null,
+          "temperatureEnforced": false,
+          "at": "2026-10-12T15:01:05.000Z",
+          "mode": "fake"
+        }
+      ],
+      "planner": {
+        "available": true,
+        "source": "fixture",
+        "error": null,
+        "ms": null
+      },
+      "beam": {
+        "events": [
+          {
+            "t": "runOpened",
+            "run": "run-1",
+            "parent": null,
+            "reading": {
+              "intent": "update.prop",
+              "object": "prop",
+              "target": "F1",
+              "layers": [
+                "ui"
+              ],
+              "confidence": 0.8
+            },
+            "forks": []
+          },
+          {
+            "t": "runOpened",
+            "run": "run-2",
+            "parent": null,
+            "reading": {
+              "intent": "update.handler",
+              "object": "handler",
+              "target": "F1",
+              "layers": [
+                "ui"
+              ],
+              "confidence": 0.5
+            },
+            "forks": []
+          },
+          {
+            "t": "runClosed",
+            "run": "run-2",
+            "reason": "cap",
+            "detail": "ranked below the beam cap"
+          },
+          {
+            "t": "runRanked",
+            "run": "run-1",
+            "score": 0.85,
+            "rank": 1,
+            "why": [
+              "filter over the loaded orders"
+            ]
+          },
+          {
+            "t": "done",
+            "outcome": "plan",
+            "run": "run-1",
+            "open": 1,
+            "closed": 1,
+            "ms": 760
+          }
+        ],
+        "ms": null
+      },
+      "arms": {
+        "static": [
+          {
+            "intent": "update.prop",
+            "object": "prop",
+            "target": "F1",
+            "layers": [
+              "ui"
+            ],
+            "confidence": 0.7
+          }
+        ],
+        "sklearn": [
+          {
+            "intent": "update.prop",
+            "object": "prop",
+            "target": "F1",
+            "layers": [
+              "ui"
+            ],
+            "confidence": 0.65
+          }
+        ],
+        "spacy": [
+          {
+            "intent": "update.prop",
+            "object": "prop",
+            "target": "F1",
+            "layers": [
+              "ui"
+            ],
+            "confidence": 0.6
+          }
+        ],
+        "jev": [
+          {
+            "intent": "update.prop",
+            "object": "prop",
+            "target": "F1",
+            "layers": [
+              "ui"
+            ],
+            "confidence": 0.8
+          }
+        ],
+        "zero-shot": [
+          {
+            "intent": "update.handler",
+            "object": "handler",
+            "target": "F1",
+            "layers": [
+              "ui"
+            ],
+            "confidence": 0.5
+          }
+        ]
+      },
+      "metrics": {
+        "nlpRecall": true,
+        "beamRecall": true,
+        "runs": {
+          "opened": 2,
+          "closed": 1,
+          "open": 1,
+          "closedBy": {
+            "cap": 1
+          }
+        },
+        "prune": {
+          "accuracy": 1,
+          "rightKept": true,
+          "wrong": 1,
+          "wrongClosed": 1,
+          "wrongKept": [],
+          "rightClosed": []
+        },
+        "final": {
+          "run": "run-1",
+          "outcome": "plan",
+          "right": true
+        },
+        "questions": 0,
+        "checks": {
+          "tscFail": 0,
+          "conditionFail": 0,
+          "pass": true
+        },
+        "ms": 760,
+        "arms": {
+          "static": {
+            "top": "update.prop",
+            "correct": true,
+            "inTopK": true,
+            "layersHit": true,
+            "rescued": false
+          },
+          "sklearn": {
+            "top": "update.prop",
+            "correct": true,
+            "inTopK": true,
+            "layersHit": true,
+            "rescued": false
+          },
+          "spacy": {
+            "top": "update.prop",
+            "correct": true,
+            "inTopK": true,
+            "layersHit": true,
+            "rescued": false
+          },
+          "jev": {
+            "top": "update.prop",
+            "correct": true,
+            "inTopK": true,
+            "layersHit": true,
+            "rescued": false
+          },
+          "zero-shot": {
+            "top": "update.handler",
+            "correct": false,
+            "inTopK": false,
+            "layersHit": true,
+            "rescued": true
+          }
+        }
+      },
+      "labels": {
+        "intent": "update.prop",
+        "object": "prop",
+        "target": {
+          "kind": "page",
+          "name": "orders"
+        },
+        "layers": [
+          "ui"
+        ],
+        "by": "static"
+      },
+      "runs": [
+        {
+          "id": "run-1",
+          "labels": {
+            "intent": "update.prop",
+            "object": "prop",
+            "target": {
+              "kind": "page",
+              "name": "orders"
+            },
+            "layers": [
+              "ui"
+            ],
+            "by": "static"
+          },
+          "path": [
+            {
+              "layer": "page-part",
+              "label": "pendingCount (header)",
+              "decision": "dynamic",
+              "picks": null,
+              "fork": false
+            },
+            {
+              "layer": "source",
+              "label": "orders where status = Pending",
+              "decision": "computed",
+              "picks": null,
+              "fork": false
+            },
+            {
+              "layer": "controller",
+              "label": "OrdersController.orders",
+              "decision": "fn",
+              "picks": null,
+              "fork": false
+            },
+            {
+              "layer": "hook",
+              "label": "usePendingCount(orders)",
+              "decision": "create",
+              "picks": null,
+              "fork": false
+            }
+          ],
+          "question": null
+        }
+      ],
+      "recommended": "run-1",
+      "plannerQuestion": null,
+      "requesterAnswer": null,
+      "grader": {
+        "runScores": {
+          "run-1": {
+            "blindId": "A",
+            "scores": {
+              "fits": 3,
+              "layer": 2,
+              "asked": 2,
+              "clarity": 2
+            },
+            "justification": "Computed pending count; creates a hook where the orders hook could take a filter (layer).",
+            "problems": []
+          }
+        },
+        "scores": {
+          "fits": 3,
+          "layer": 2,
+          "asked": 2,
+          "clarity": 2
+        },
+        "justification": "Computed pending count; creates a hook where the orders hook could take a filter (layer).",
+        "problems": [],
+        "setup": "r-v1.g-v3",
+        "rubricVersion": "v2",
+        "revealedAfterGrading": true
+      }
+    }
+  ],
+  "calls": 15
+}

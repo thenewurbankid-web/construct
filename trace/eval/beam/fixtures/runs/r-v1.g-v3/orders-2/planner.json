@@ -1,0 +1,233 @@
+{
+  "request": "Let me mark an order as shipped from the orders list.",
+  "planner": "fixture",
+  "answer": {
+    "available": true,
+    "source": "fixture",
+    "labels": {
+      "intent": "update.prop",
+      "object": "prop",
+      "target": {
+        "kind": "page",
+        "name": "orders"
+      },
+      "layers": [
+        "ui"
+      ],
+      "by": "static"
+    },
+    "path": [
+      {
+        "layer": "page-part",
+        "label": "ship (row action)",
+        "decision": "dynamic",
+        "picks": null,
+        "fork": false
+      },
+      {
+        "layer": "controller",
+        "label": "OrdersController.onShip(order)",
+        "decision": "create",
+        "picks": null,
+        "fork": false
+      },
+      {
+        "layer": "provider",
+        "label": "ordersProvider.update(order)",
+        "decision": "create",
+        "picks": null,
+        "fork": false
+      },
+      {
+        "layer": "service",
+        "label": "ordersService.update(order)",
+        "decision": "create",
+        "picks": null,
+        "fork": false
+      },
+      {
+        "layer": "contract",
+        "label": "PUT /api/orders/:id",
+        "decision": "create",
+        "picks": null,
+        "fork": false
+      }
+    ],
+    "question": null,
+    "runs": [
+      {
+        "id": "run-1",
+        "labels": {
+          "intent": "update.prop",
+          "object": "prop",
+          "target": {
+            "kind": "page",
+            "name": "orders"
+          },
+          "layers": [
+            "ui"
+          ],
+          "by": "static"
+        },
+        "path": [
+          {
+            "layer": "page-part",
+            "label": "ship (row action)",
+            "decision": "dynamic",
+            "picks": null,
+            "fork": false
+          },
+          {
+            "layer": "controller",
+            "label": "OrdersController.onShip(order)",
+            "decision": "create",
+            "picks": null,
+            "fork": false
+          },
+          {
+            "layer": "provider",
+            "label": "ordersProvider.update(order)",
+            "decision": "create",
+            "picks": null,
+            "fork": false
+          },
+          {
+            "layer": "service",
+            "label": "ordersService.update(order)",
+            "decision": "create",
+            "picks": null,
+            "fork": false
+          },
+          {
+            "layer": "contract",
+            "label": "PUT /api/orders/:id",
+            "decision": "create",
+            "picks": null,
+            "fork": false
+          }
+        ],
+        "question": null
+      }
+    ],
+    "recommended": "run-1",
+    "beam": {
+      "events": [
+        {
+          "t": "runOpened",
+          "run": "run-1",
+          "parent": null,
+          "reading": {
+            "intent": "update.prop",
+            "object": "prop",
+            "target": "F1",
+            "layers": [
+              "ui"
+            ],
+            "confidence": 0.6
+          },
+          "forks": []
+        },
+        {
+          "t": "runOpened",
+          "run": "run-2",
+          "parent": null,
+          "reading": {
+            "intent": "add.handler",
+            "object": "handler",
+            "target": "F1",
+            "layers": [
+              "ui",
+              "api"
+            ],
+            "confidence": 0.6
+          },
+          "forks": []
+        },
+        {
+          "t": "runClosed",
+          "run": "run-2",
+          "reason": "precondition",
+          "detail": "the orders api has no status field"
+        },
+        {
+          "t": "runRanked",
+          "run": "run-1",
+          "score": 0.5,
+          "rank": 1,
+          "why": [
+            "the only run left"
+          ]
+        },
+        {
+          "t": "done",
+          "outcome": "plan",
+          "run": "run-1",
+          "open": 1,
+          "closed": 1,
+          "ms": 1530
+        }
+      ],
+      "ms": null
+    },
+    "arms": {
+      "static": [
+        {
+          "intent": "update.prop",
+          "object": "prop",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.6
+        }
+      ],
+      "sklearn": [
+        {
+          "intent": "update.prop",
+          "object": "prop",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.5
+        }
+      ],
+      "spacy": [
+        {
+          "intent": "add.handler",
+          "object": "handler",
+          "target": "F1",
+          "layers": [
+            "ui",
+            "api"
+          ],
+          "confidence": 0.4
+        }
+      ],
+      "jev": [
+        {
+          "intent": "update.prop",
+          "object": "prop",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.55
+        }
+      ],
+      "zero-shot": [
+        {
+          "intent": "add.handler",
+          "object": "handler",
+          "target": "F1",
+          "layers": [
+            "ui",
+            "api"
+          ],
+          "confidence": 0.6
+        }
+      ]
+    }
+  },
+  "at": "2026-10-12T15:00:57.000Z"
+}

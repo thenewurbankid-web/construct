@@ -43,6 +43,136 @@
         "label": "GET /api/contacts",
         "decision": "fn"
       }
+    ],
+    "arms": {
+      "static": [
+        {
+          "intent": "update.prop",
+          "object": "prop",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.8
+        },
+        {
+          "intent": "update.component",
+          "object": "component",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.3
+        }
+      ],
+      "sklearn": [
+        {
+          "intent": "update.prop",
+          "object": "prop",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.7
+        }
+      ],
+      "spacy": [
+        {
+          "intent": "update.prop",
+          "object": "prop",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.6
+        }
+      ],
+      "jev": [
+        {
+          "intent": "update.prop",
+          "object": "prop",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.9
+        }
+      ],
+      "zero-shot": [
+        {
+          "intent": "add.component",
+          "object": "component",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.5
+        },
+        {
+          "intent": "update.prop",
+          "object": "prop",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.4
+        }
+      ]
+    },
+    "events": [
+      {
+        "t": "runOpened",
+        "run": "run-1",
+        "parent": null,
+        "reading": {
+          "intent": "update.prop",
+          "object": "prop",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.8
+        },
+        "forks": []
+      },
+      {
+        "t": "runOpened",
+        "run": "run-2",
+        "parent": null,
+        "reading": {
+          "intent": "add.component",
+          "object": "component",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.5
+        },
+        "forks": []
+      },
+      {
+        "t": "runClosed",
+        "run": "run-2",
+        "reason": "structural",
+        "detail": "the contacts page has no free slot for a new component"
+      },
+      {
+        "t": "runRanked",
+        "run": "run-1",
+        "score": 0.92,
+        "rank": 1,
+        "why": [
+          "completes the useContactName stub"
+        ]
+      },
+      {
+        "t": "done",
+        "outcome": "plan",
+        "run": "run-1",
+        "open": 1,
+        "closed": 1,
+        "ms": 640
+      }
     ]
   },
   "Show the total value of all orders in the header next to the order count.": {
@@ -150,7 +280,186 @@
         "an api field",
         "computed from the orders"
       ]
-    }
+    },
+    "arms": {
+      "static": [
+        {
+          "intent": "update.prop",
+          "object": "prop",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.6
+        }
+      ],
+      "sklearn": [
+        {
+          "intent": "update.prop",
+          "object": "prop",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.7
+        }
+      ],
+      "spacy": [
+        {
+          "intent": "update.prop",
+          "object": "prop",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.5
+        }
+      ],
+      "jev": [
+        {
+          "intent": "update.prop",
+          "object": "prop",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.8
+        }
+      ],
+      "zero-shot": [
+        {
+          "intent": "add.handler",
+          "object": "handler",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.45
+        },
+        {
+          "intent": "update.prop",
+          "object": "prop",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.4
+        }
+      ]
+    },
+    "events": [
+      {
+        "t": "runOpened",
+        "run": "run-static",
+        "parent": null,
+        "reading": {
+          "intent": "update.prop",
+          "object": "prop",
+          "target": "F1",
+          "layers": [
+            "ui",
+            "api"
+          ],
+          "confidence": 0.6
+        },
+        "forks": [
+          {
+            "point": "source",
+            "pick": "api",
+            "label": "from a new api field"
+          }
+        ]
+      },
+      {
+        "t": "runOpened",
+        "run": "run-jev",
+        "parent": null,
+        "reading": {
+          "intent": "update.prop",
+          "object": "prop",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.8
+        },
+        "forks": [
+          {
+            "point": "source",
+            "pick": "computed",
+            "label": "computed from the orders"
+          }
+        ]
+      },
+      {
+        "t": "runOpened",
+        "run": "run-3",
+        "parent": null,
+        "reading": {
+          "intent": "add.handler",
+          "object": "handler",
+          "target": "F2",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.45
+        },
+        "forks": []
+      },
+      {
+        "t": "runClosed",
+        "run": "run-3",
+        "reason": "precondition",
+        "detail": "an add.handler needs an action slot; the header has none"
+      },
+      {
+        "t": "runRanked",
+        "run": "run-jev",
+        "score": 0.81,
+        "rank": 1,
+        "why": [
+          "computed from fields already loaded"
+        ]
+      },
+      {
+        "t": "runRanked",
+        "run": "run-static",
+        "score": 0.55,
+        "rank": 2,
+        "why": [
+          "creates three layers"
+        ]
+      },
+      {
+        "t": "question",
+        "question": {
+          "id": "beam:orders-1",
+          "sentence": "Should the total value come from an api field or be computed from the orders on the page?",
+          "hint": "Computed first: every field it needs is already loaded (rule: reuse before create).",
+          "recommended": "run-jev",
+          "options": [
+            {
+              "id": "run-jev",
+              "sentence": "computed from the orders",
+              "effect": "adds a hook over the loaded orders"
+            },
+            {
+              "id": "run-static",
+              "sentence": "an api field",
+              "effect": "adds GET /api/orders/total and three layers"
+            }
+          ]
+        }
+      },
+      {
+        "t": "done",
+        "outcome": "question",
+        "run": "run-jev",
+        "open": 2,
+        "closed": 1,
+        "ms": 1210
+      }
+    ]
   },
   "When I press Call on a contact, log that we called that person so I can see it later.": {
     "labels": {
@@ -180,6 +489,148 @@
         "layer": "hook",
         "label": "useCallLog(contact, when)",
         "decision": "create"
+      }
+    ],
+    "arms": {
+      "static": [
+        {
+          "intent": "update.prop",
+          "object": "prop",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.55
+        }
+      ],
+      "sklearn": [
+        {
+          "intent": "update.handler",
+          "object": "handler",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.6
+        }
+      ],
+      "spacy": [
+        {
+          "intent": "update.handler",
+          "object": "handler",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.5
+        }
+      ],
+      "jev": [
+        {
+          "intent": "update.handler",
+          "object": "handler",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.75
+        }
+      ],
+      "zero-shot": [
+        {
+          "intent": "add.handler",
+          "object": "handler",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.5
+        },
+        {
+          "intent": "update.handler",
+          "object": "handler",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.45
+        }
+      ]
+    },
+    "events": [
+      {
+        "t": "runOpened",
+        "run": "run-1",
+        "parent": null,
+        "reading": {
+          "intent": "update.handler",
+          "object": "handler",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.75
+        },
+        "forks": []
+      },
+      {
+        "t": "runOpened",
+        "run": "run-2",
+        "parent": null,
+        "reading": {
+          "intent": "update.prop",
+          "object": "prop",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.55
+        },
+        "forks": []
+      },
+      {
+        "t": "runOpened",
+        "run": "run-3",
+        "parent": null,
+        "reading": {
+          "intent": "add.handler",
+          "object": "handler",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.5
+        },
+        "forks": []
+      },
+      {
+        "t": "runClosed",
+        "run": "run-2",
+        "reason": "goal",
+        "detail": "goal condition false: the call is never logged"
+      },
+      {
+        "t": "runClosed",
+        "run": "run-3",
+        "reason": "emit",
+        "detail": "tsc: useCallLog is not exported"
+      },
+      {
+        "t": "runRanked",
+        "run": "run-1",
+        "score": 0.7,
+        "rank": 1,
+        "why": [
+          "the Call button already has a handler"
+        ]
+      },
+      {
+        "t": "done",
+        "outcome": "plan",
+        "run": "run-1",
+        "open": 1,
+        "closed": 2,
+        "ms": 980
       }
     ]
   },
@@ -222,6 +673,121 @@
         "label": "PUT /api/orders/:id",
         "decision": "create"
       }
+    ],
+    "arms": {
+      "static": [
+        {
+          "intent": "update.prop",
+          "object": "prop",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.6
+        }
+      ],
+      "sklearn": [
+        {
+          "intent": "update.prop",
+          "object": "prop",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.5
+        }
+      ],
+      "spacy": [
+        {
+          "intent": "add.handler",
+          "object": "handler",
+          "target": "F1",
+          "layers": [
+            "ui",
+            "api"
+          ],
+          "confidence": 0.4
+        }
+      ],
+      "jev": [
+        {
+          "intent": "update.prop",
+          "object": "prop",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.55
+        }
+      ],
+      "zero-shot": [
+        {
+          "intent": "add.handler",
+          "object": "handler",
+          "target": "F1",
+          "layers": [
+            "ui",
+            "api"
+          ],
+          "confidence": 0.6
+        }
+      ]
+    },
+    "events": [
+      {
+        "t": "runOpened",
+        "run": "run-1",
+        "parent": null,
+        "reading": {
+          "intent": "update.prop",
+          "object": "prop",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.6
+        },
+        "forks": []
+      },
+      {
+        "t": "runOpened",
+        "run": "run-2",
+        "parent": null,
+        "reading": {
+          "intent": "add.handler",
+          "object": "handler",
+          "target": "F1",
+          "layers": [
+            "ui",
+            "api"
+          ],
+          "confidence": 0.6
+        },
+        "forks": []
+      },
+      {
+        "t": "runClosed",
+        "run": "run-2",
+        "reason": "precondition",
+        "detail": "the orders api has no status field"
+      },
+      {
+        "t": "runRanked",
+        "run": "run-1",
+        "score": 0.5,
+        "rank": 1,
+        "why": [
+          "the only run left"
+        ]
+      },
+      {
+        "t": "done",
+        "outcome": "plan",
+        "run": "run-1",
+        "open": 1,
+        "closed": 1,
+        "ms": 1530
+      }
     ]
   },
   "Show how many contacts there are in the page header.": {
@@ -257,7 +823,98 @@
     "question": {
       "text": "What should the contact count show?",
       "options": []
-    }
+    },
+    "arms": {
+      "static": [
+        {
+          "intent": "update.prop",
+          "object": "prop",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.85
+        }
+      ],
+      "sklearn": [
+        {
+          "intent": "update.prop",
+          "object": "prop",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.8
+        }
+      ],
+      "spacy": [
+        {
+          "intent": "update.prop",
+          "object": "prop",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.7
+        }
+      ],
+      "jev": [
+        {
+          "intent": "update.prop",
+          "object": "prop",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.9
+        }
+      ],
+      "zero-shot": [
+        {
+          "intent": "update.prop",
+          "object": "prop",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.6
+        }
+      ]
+    },
+    "events": [
+      {
+        "t": "runOpened",
+        "run": "run-1",
+        "parent": null,
+        "reading": {
+          "intent": "update.prop",
+          "object": "prop",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.85
+        },
+        "forks": []
+      },
+      {
+        "t": "runRanked",
+        "run": "run-1",
+        "score": 0.9,
+        "rank": 1,
+        "why": [
+          "count of the loaded list"
+        ]
+      },
+      {
+        "t": "done",
+        "outcome": "plan",
+        "run": "run-1",
+        "open": 1,
+        "closed": 0,
+        "ms": 420
+      }
+    ]
   },
   "Next to the order count, show how many orders are still pending.": {
     "labels": {
@@ -292,6 +949,118 @@
         "layer": "hook",
         "label": "usePendingCount(orders)",
         "decision": "create"
+      }
+    ],
+    "arms": {
+      "static": [
+        {
+          "intent": "update.prop",
+          "object": "prop",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.7
+        }
+      ],
+      "sklearn": [
+        {
+          "intent": "update.prop",
+          "object": "prop",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.65
+        }
+      ],
+      "spacy": [
+        {
+          "intent": "update.prop",
+          "object": "prop",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.6
+        }
+      ],
+      "jev": [
+        {
+          "intent": "update.prop",
+          "object": "prop",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.8
+        }
+      ],
+      "zero-shot": [
+        {
+          "intent": "update.handler",
+          "object": "handler",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.5
+        }
+      ]
+    },
+    "events": [
+      {
+        "t": "runOpened",
+        "run": "run-1",
+        "parent": null,
+        "reading": {
+          "intent": "update.prop",
+          "object": "prop",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.8
+        },
+        "forks": []
+      },
+      {
+        "t": "runOpened",
+        "run": "run-2",
+        "parent": null,
+        "reading": {
+          "intent": "update.handler",
+          "object": "handler",
+          "target": "F1",
+          "layers": [
+            "ui"
+          ],
+          "confidence": 0.5
+        },
+        "forks": []
+      },
+      {
+        "t": "runClosed",
+        "run": "run-2",
+        "reason": "cap",
+        "detail": "ranked below the beam cap"
+      },
+      {
+        "t": "runRanked",
+        "run": "run-1",
+        "score": 0.85,
+        "rank": 1,
+        "why": [
+          "filter over the loaded orders"
+        ]
+      },
+      {
+        "t": "done",
+        "outcome": "plan",
+        "run": "run-1",
+        "open": 1,
+        "closed": 1,
+        "ms": 760
       }
     ]
   }
