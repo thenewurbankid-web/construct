@@ -68,7 +68,9 @@ test('owner walk: two clicks from the profile menu; every step in plain sentence
   for (const s of await steps.all()) {
     expect((await s.locator('.ais-label').innerText()).trim()).toMatch(/^[A-Z].*\.$/);
     expect((await s.locator('.ais-how').innerText()).trim()).toMatch(/^[A-Z].*\.$/);
-    await expect(s.getByTestId('ai-step-model')).toHaveText(/^Model: (qwen2\.5-coder:1\.5b \(Line's default\)|The hosted model you choose)$/);
+    // #871: memory embeddings are one step too, on an embedding model (the only local step not on the 1.5B).
+    const embed = (await s.getAttribute('data-step')) === 'construct.memory-embed';
+    await expect(s.getByTestId('ai-step-model')).toHaveText(embed ? 'Model: nomic-embed-text (an embedding model, chosen for this step)' : /^Model: (qwen2\.5-coder:1\.5b \(Line's default\)|The hosted model you choose)$/);
     await expect(s.getByTestId('ai-step-win')).toHaveText(/^Win over static: /);
   }
   const chooser = panel.locator('[data-testid="ai-step"][data-step="construct.chooser"]');
