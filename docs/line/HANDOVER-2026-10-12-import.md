@@ -93,3 +93,11 @@ This extends G4. One Cockpit page with three tabs, every view in plain English a
 - **Change:** an edit that touches the project goes through the plan. Examples: re-basing an item, moving a component to the library, removing a cross-feature use. Each becomes a plan step with typed fixes, approved by a person. Memory edits are Line state: they apply at once and are logged.
 
 Reuse ChatEntry, StreamedText, Trace/Auto and LINE_CONTROLS, and the two modes (chat / under the hood). Start after G2 and im3+j5 merge. Tests first, plus a UAT walk on contact-manager-ui.
+- **A fourth tab, "How smart is it" (owner):** the page also shows the person how accurate their framework is, on their own project, in plain numbers with trends:
+  - **Logic coverage:** % of logic units with a test; % reached at runtime (G2).
+  - **Graph health:** cross-feature uses, items with no base, unresolved imports, and duplicates.
+  - **AI accuracy per step:** proposals accepted as-is / edited / refused, static vs AI share (cs2), drafter preferred-route accuracy on the person's own picks, and misses absent vs picked (im1).
+  - **Fixes:** % of Construct refusals fixed by a typed fix with no person edit, and the repair success rate (im2).
+  - **Memory effect:** accuracy with memory vs without (im3/j5).
+
+  Each number links to the items behind it (one click goes to Map or to the plan), and each has a one-line "how to improve it". Data comes only from local records; nothing leaves the machine.
