@@ -1,3 +1,4 @@
+import { StreamedText } from '@/lib/StreamedText';
 import type { AgentActions, AgentScreen } from '../types';
 import { AgentQuestion } from './AgentQuestion';
 
@@ -11,7 +12,7 @@ export function WaitingPanel({ screen, busy, error, actions }: WaitingPanelProps
     <section className="la-card la-now" aria-labelledby="la-now-h" hidden={!screen.started && !error}>
       <h2 id="la-now-h" className="la-h2">Now</h2>
       <div role="status" aria-live="polite">
-        <p className="la-sentence" data-testid="la-sentence">{screen.sentence}</p>
+        <StreamedText text={screen.sentence ?? ''} className="la-sentence" testId="la-sentence" />
         <p className="la-hint" hidden={!screen.message}>{screen.message}</p>
         <p className="la-error" data-testid="la-error" hidden={!error}>{error}</p>
       </div>

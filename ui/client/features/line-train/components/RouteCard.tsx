@@ -1,3 +1,4 @@
+import { StreamedText } from '@/lib/StreamedText';
 import type { RouteCardView, TriedView } from '../types';
 
 /** What the person can do with a draft's route card (absent on a stored case). */
@@ -45,7 +46,7 @@ function EditControls({ card, edit }: { card: RouteCardView; edit?: RouteEdit })
 /** What Line asks first, for a route that asks. */
 function Asks({ sentence }: { sentence?: string }) {
   if (!sentence) return null;
-  return <p className="ltr-touches">Line asks: {sentence}</p>;
+  return <StreamedText text={`Line asks: ${sentence}`} className="ltr-touches" />;
 }
 
 /** One route as a card: what it is, what it touches, how many steps, the steps and checks as sentences; the tool

@@ -1,3 +1,4 @@
+import { StreamedText } from '@/lib/StreamedText';
 import type { RouteCard } from '../types';
 
 type Add = { busy: boolean; onAdd: (routeId: string) => void };
@@ -32,9 +33,7 @@ export function DraftRoute({ card, ...add }: Add & { card: RouteCard }) {
       <p className="ldr-label" data-testid="draft-route-label">
         {card.label}
       </p>
-      <p className="ldr-sentence" data-testid="draft-route-sentence">
-        {card.sentence}
-      </p>
+      <StreamedText text={card.sentence} className="ldr-sentence" testId="draft-route-sentence" />
       <Fix fix={card.fix} />
       <p className="ldr-risk">{card.risk}</p>
       <AddButton card={card} {...add} />
