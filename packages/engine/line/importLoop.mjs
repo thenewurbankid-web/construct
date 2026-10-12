@@ -108,6 +108,8 @@ export async function measure(ops, { root, folder, logic, full = false }) {
   const diff = baseline ? await ops.compare(baseline, map) : { kept: [], moved: [], missing: [], changed: [], added: map.units };
   const tests = await ops.runTests(root, folder, logic.tests ?? [], { full });
   const behaviour = ops.behaviour ? await ops.behaviour(root, folder, diff) : [];
+  // Every import still resolves after the step (null: the ops cannot tell; the check then says so).
+  const imports = ops.imports ? await ops.imports(root, folder) : null;
   const passing = new Set(tests.state === 'fail' ? (logic.tests ?? []).filter((t) => !(tests.failures ?? []).some((f) => f.file === t.file)).flatMap((t) => t.unitFingerprints) : (logic.tests ?? []).flatMap((t) => t.unitFingerprints));
   const fit = await ops.load('fit');
   const blocks = blocksOf(fit);
@@ -115,7 +117,7 @@ export async function measure(ops, { root, folder, logic, full = false }) {
   // The units to keep are the app's: logic the import itself adds (Line's thin feature items) is not measured.
   const added = baseline ? new Set(diff.added) : new Set();
   const units = map.units.filter((u) => !added.has(u)).map((u) => ({ fingerprint: u.fingerprint, id: u.id, kind: u.kind, fn: u.fn, file: u.file, block: blocks.get(keyOf(u)) ?? null, tested: passing.has(u.fingerprint), waived: waived.has(u.fingerprint) }));
-  return { map, diff, tests, behaviour, units, fit, blocks };
+  return { map, diff, tests, behaviour, imports, units, fit, blocks };
 }
 
 /** The folder-relative form of an app-relative path, or null when it is outside the folder. */
@@ -213,7 +215,25 @@ export function loopChecks(m, logic, { at, folder }) {
       });
     }
   }
-  // 4. Unit coverage (verify only): every unit has a block (the FitProposal placed it) and a test, or the owner waived it.
+  // 4. Every import still resolves: a move that leaves its importers pointing at a file that is gone is caught here even
+  // when the logic map reads "all kept" (found on max-ai-ui /opportunity: 9 importers of a deleted file).
+  {
+    const list = m.imports;
+    if (!Array.isArray(list)) checks.push({ id: 'imports', state: 'skipped', sentence: 'Line has no record of the app\'s imports before the import, so it did not check that every import still resolves.', expr: IMPORT_LOOP_EXPRS.imports, fixes: [] });
+    else {
+      const r = run('imports', { broken: list.map((b) => ({ file: b.file, spec: b.spec, line: b.line })) });
+      if (r.ok) checks.push({ id: 'imports', state: 'pass', sentence: 'Every import still resolves to a file.', expr: IMPORT_LOOP_EXPRS.imports, fixes: [] });
+      else {
+        const first = list[0];
+        checks.push({
+          id: 'imports', state: 'fail', sentence: end(`${plural(list.length, 'import')} name${list.length === 1 ? 's' : ''} a file that is not there; the first: ${first.file} (line ${first.line}) imports ${first.spec}`),
+          detail: list.slice(0, LOOP_LIMITS.units).map((b) => `${b.file}:${b.line} ${b.spec}`).join('\n'), expr: IMPORT_LOOP_EXPRS.imports,
+          fixes: [{ id: 'recheck', sentence: 'Point these imports at where the files are now (or put the files back), then check again.' }],
+        });
+      }
+    }
+  }
+  // 5. Unit coverage (verify only): every unit has a block (the FitProposal placed it) and a test, or the owner waived it.
   if (at === 'verify') {
     const r = run('coverage', { units: m.units.map((u) => ({ fingerprint: u.fingerprint, block: u.block, tested: u.tested, waived: u.waived })) });
     const open = m.units.filter((u) => !u.waived && !(u.block && u.tested));

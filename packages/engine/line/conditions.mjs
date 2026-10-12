@@ -29,12 +29,14 @@ export const DEFAULT_CHECK_EXPRS = Object.freeze({
  *   logic-map   {missing: [{fingerprint, waived}], changed: [...]}  every lost or changed unit has an owner waiver
  *   behaviour   {files: [{from, to, verdict, waived}]}             no moved file behaves differently, unless the owner waived it
  *   coverage    {units: [{fingerprint, block, tested, waived}]}    every unit has a block and a test, or an owner waiver
+ *   imports     {broken: [{file, spec, line}]}                     every import still resolves (none newly names a missing file)
  */
 export const IMPORT_LOOP_EXPRS = Object.freeze({
   'char-tests': Object.freeze({ or: [{ eq: [P('tests', 'state'), 'skipped'] }, { eq: [P('tests', 'failed'), 0] }] }),
   'logic-map': Object.freeze({ and: [{ every: [P('missing'), I('waived')] }, { every: [P('changed'), I('waived')] }] }),
   behaviour: Object.freeze({ every: [P('files'), { or: [{ ne: [I('verdict'), 'changed'] }, I('waived')] }] }),
   coverage: Object.freeze({ every: [P('units'), { or: [I('waived'), { and: [I('block'), I('tested')] }] }] }),
+  imports: Object.freeze({ eq: [{ count: P('broken') }, 0] }),
 });
 
 /** The feature a feature file belongs to: the folder right under the features root. */

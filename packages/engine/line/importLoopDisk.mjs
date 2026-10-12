@@ -38,6 +38,8 @@ import { characterize, CHAR_DIR, jestRunnerFor } from './characterize.mjs';
 import { runCharTests, checkBehaviour } from './importVerify.mjs';
 import { createImportLoopRecorder } from './records.mjs';
 import { createLineCache, createDepHasher, charSalt, hashOf } from './importV2/cache.mjs';
+import { unresolvedImports, brokenImports } from './importV2/resolve.mjs';
+import { listFiles } from '@line/construct-core/profiles/line/checks';
 
 export { readRouteFamily, buildLogicMap };
 
@@ -213,10 +215,17 @@ export function createLogicOnDisk(root, folder, o = {}) {
     },
     runTests: async (_r, f, tests, how) => timed('tests', () => runTestsCached(f, tests, how)),
     behaviour: async (_r, f, diff) => checkBehaviour(root, diff, (await load('baseline'))?.sources ?? {}, f),
+    // Every import of the app still resolves (importV2/resolve.mjs): the specifiers that name no file now and did before
+    // the import began. Null when the baseline predates this check (it then says so instead of guessing).
+    imports: async () => {
+      const b = await load('baseline');
+      return Array.isArray(b?.unresolved) ? brokenImports(root, listFiles(root), b.unresolved) : null;
+    },
     save: async (name, data) => {
       if (name === 'logic-map') { writeLogicMap(fr(), data); return; }
-      // The baseline keeps each file's source, for the behaviour check after the files moved.
-      const body = name === 'baseline' ? { sources: Object.fromEntries((data.files ?? []).filter((x) => fs.existsSync(path.join(root, x))).map((x) => [x, fs.readFileSync(path.join(root, x), 'utf8')])) } : data;
+      // The baseline keeps each file's source, for the behaviour check after the files moved, and the imports that
+      // already named no file before the import (the app's own; the imports check reports only new ones).
+      const body = name === 'baseline' ? { sources: Object.fromEntries((data.files ?? []).filter((x) => fs.existsSync(path.join(root, x))).map((x) => [x, fs.readFileSync(path.join(root, x), 'utf8')])), unresolved: unresolvedImports(root, listFiles(root)).map(({ file, spec }) => ({ file, spec })) } : data;
       writeLineState(fr(), files[name], `${JSON.stringify(body)}\n`);
     },
     load,

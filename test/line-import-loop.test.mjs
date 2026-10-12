@@ -141,7 +141,7 @@ test('a step that keeps every unit continues to done; a step that drops a branch
   const loop = saved.logic.loop[0];
   // Each failing check carries its typed fixes: put the lost branch back or the owner waives it; put the file's old logic back or the owner accepts it.
   assert.deepEqual(loop.fixes.map((f) => [f.id, f.ownerOnly ?? false]), [['put-back', false], ['waive', true], ['put-back', false], ['waive', true]]);
-  assert.deepEqual(loop.checks.map((c) => [c.id, c.state]), [['char-tests', 'pass'], ['logic-map', 'fail'], ['behaviour', 'fail']]);
+  assert.deepEqual(loop.checks.map((c) => [c.id, c.state]), [['char-tests', 'pass'], ['logic-map', 'fail'], ['behaviour', 'fail'], ['imports', 'pass']]);
 
   // Picking the typed fix adds it as a plan step the person approved here; once it lands the step is checked again (the
   // branch is still gone, so the loop asks again: moving code cannot bring back code that was lost).

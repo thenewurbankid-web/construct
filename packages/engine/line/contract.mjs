@@ -886,7 +886,7 @@ export const AUTO_ACTION_KINDS = Object.freeze(['click', 'type', 'select', 'appr
  *   question?: {id: string, sentence: string, options: {id: string, sentence: string}[], recommended: string}}} ImportWaiting
  *
  * The verify stage: validate --profile line on the folder, types (tsc), tests. A check Line cannot run says why (skipped).
- * @typedef {{id: 'validate'|'types'|'tests'|'char-tests'|'logic-map'|'behaviour'|'coverage', state: 'pass'|'fail'|'skipped', sentence: string, detail?: string}} ImportVerifyCheck
+ * @typedef {{id: 'validate'|'types'|'tests'|'char-tests'|'logic-map'|'behaviour'|'imports'|'coverage', state: 'pass'|'fail'|'skipped', sentence: string, detail?: string}} ImportVerifyCheck
  *
  * Line Import v2's shapes (LogicMap, MapDiff, CharTest, FitProposal, ImportLoopState, ImportLogic, ...) live in ONE place,
  * line/importV2/contract.mjs.
@@ -1852,7 +1852,7 @@ export function importFolderProblem(folder) {
 }
 const CHANGE_ACTIONS = ['start', 'state', 'decide', 'edit', 'skip', 'unskip', 'move', 'approve', 'approve-all', 'add-step', 'answer', 'pause', 'resume', 'verify', 'undo', 'map', 'characterize', 'classify', 'loop', 'waive'];
 /** The verify stage's checks: ci2's three, and Line Import v2's loop checks (importLoop.mjs LOOP_CHECKS). */
-export const IMPORT_VERIFY_CHECKS = Object.freeze(['validate', 'types', 'tests', 'char-tests', 'logic-map', 'behaviour', 'coverage']);
+export const IMPORT_VERIFY_CHECKS = Object.freeze(['validate', 'types', 'tests', 'char-tests', 'logic-map', 'behaviour', 'imports', 'coverage']);
 
 /** @param {any} w @param {string} where */
 function assertWaiting(w, where) {
