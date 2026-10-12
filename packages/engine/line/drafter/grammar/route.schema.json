@@ -1038,6 +1038,315 @@
             ],
             "properties": {
               "tool": {
+                "const": "line.bindPart"
+              },
+              "args": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "file",
+                  "partId",
+                  "libraryId"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "pattern": "^((components|pages|workflows|fixtures)/)?<[A-Z][0-9]{1,3}(\\.[a-zA-Z][a-zA-Z0-9]{0,15})?>$"
+                  },
+                  "partId": {
+                    "type": "string",
+                    "pattern": "^((components|pages|workflows|fixtures)/)?<[A-Z][0-9]{1,3}(\\.[a-zA-Z][a-zA-Z0-9]{0,15})?>$"
+                  },
+                  "libraryId": {
+                    "type": "string",
+                    "pattern": "^((components|pages|workflows|fixtures)/)?<[A-Z][0-9]{1,3}(\\.[a-zA-Z][a-zA-Z0-9]{0,15})?>$"
+                  },
+                  "contentHash": {
+                    "type": "string",
+                    "pattern": "^((components|pages|workflows|fixtures)/)?<[A-Z][0-9]{1,3}(\\.[a-zA-Z][a-zA-Z0-9]{0,15})?>$"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "tool",
+              "args"
+            ],
+            "properties": {
+              "tool": {
+                "const": "line.bindInteraction"
+              },
+              "args": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "file",
+                  "interactionId",
+                  "to"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "pattern": "^((components|pages|workflows|fixtures)/)?<[A-Z][0-9]{1,3}(\\.[a-zA-Z][a-zA-Z0-9]{0,15})?>$"
+                  },
+                  "interactionId": {
+                    "type": "string",
+                    "pattern": "^((components|pages|workflows|fixtures)/)?<[A-Z][0-9]{1,3}(\\.[a-zA-Z][a-zA-Z0-9]{0,15})?>$"
+                  },
+                  "to": {
+                    "type": "string",
+                    "pattern": "^((components|pages|workflows|fixtures)/)?<[A-Z][0-9]{1,3}(\\.[a-zA-Z][a-zA-Z0-9]{0,15})?>$"
+                  },
+                  "endpoint": {
+                    "type": "string",
+                    "pattern": "^((components|pages|workflows|fixtures)/)?<[A-Z][0-9]{1,3}(\\.[a-zA-Z][a-zA-Z0-9]{0,15})?>$"
+                  },
+                  "verb": {
+                    "type": "string",
+                    "pattern": "^((components|pages|workflows|fixtures)/)?<[A-Z][0-9]{1,3}(\\.[a-zA-Z][a-zA-Z0-9]{0,15})?>$"
+                  },
+                  "contentHash": {
+                    "type": "string",
+                    "pattern": "^((components|pages|workflows|fixtures)/)?<[A-Z][0-9]{1,3}(\\.[a-zA-Z][a-zA-Z0-9]{0,15})?>$"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "tool",
+              "args"
+            ],
+            "properties": {
+              "tool": {
+                "const": "line.attachComponentPrimitive"
+              },
+              "args": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "file",
+                  "primitive",
+                  "mapping"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "pattern": "^((components|pages|workflows|fixtures)/)?<[A-Z][0-9]{1,3}(\\.[a-zA-Z][a-zA-Z0-9]{0,15})?>$"
+                  },
+                  "primitive": {
+                    "type": "string",
+                    "pattern": "^((components|pages|workflows|fixtures)/)?<[A-Z][0-9]{1,3}(\\.[a-zA-Z][a-zA-Z0-9]{0,15})?>$"
+                  },
+                  "mapping": {
+                    "type": "string",
+                    "pattern": "^((components|pages|workflows|fixtures)/)?<[A-Z][0-9]{1,3}(\\.[a-zA-Z][a-zA-Z0-9]{0,15})?>$"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "tool",
+              "args"
+            ],
+            "properties": {
+              "tool": {
+                "const": "line.addComponentEvent"
+              },
+              "args": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "file",
+                  "source",
+                  "action"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "pattern": "^((components|pages|workflows|fixtures)/)?<[A-Z][0-9]{1,3}(\\.[a-zA-Z][a-zA-Z0-9]{0,15})?>$"
+                  },
+                  "source": {
+                    "type": "string",
+                    "pattern": "^((components|pages|workflows|fixtures)/)?<[A-Z][0-9]{1,3}(\\.[a-zA-Z][a-zA-Z0-9]{0,15})?>$"
+                  },
+                  "action": {
+                    "type": "string",
+                    "pattern": "^((components|pages|workflows|fixtures)/)?<[A-Z][0-9]{1,3}(\\.[a-zA-Z][a-zA-Z0-9]{0,15})?>$"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "tool",
+              "args"
+            ],
+            "properties": {
+              "tool": {
+                "const": "line.changeComponentEvent"
+              },
+              "args": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "file",
+                  "id",
+                  "action"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "pattern": "^((components|pages|workflows|fixtures)/)?<[A-Z][0-9]{1,3}(\\.[a-zA-Z][a-zA-Z0-9]{0,15})?>$"
+                  },
+                  "id": {
+                    "type": "string",
+                    "pattern": "^((components|pages|workflows|fixtures)/)?<[A-Z][0-9]{1,3}(\\.[a-zA-Z][a-zA-Z0-9]{0,15})?>$"
+                  },
+                  "action": {
+                    "type": "string",
+                    "pattern": "^((components|pages|workflows|fixtures)/)?<[A-Z][0-9]{1,3}(\\.[a-zA-Z][a-zA-Z0-9]{0,15})?>$"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "tool",
+              "args"
+            ],
+            "properties": {
+              "tool": {
+                "const": "line.fixComponentEvent"
+              },
+              "args": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "file",
+                  "label",
+                  "remove",
+                  "add"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "pattern": "^((components|pages|workflows|fixtures)/)?<[A-Z][0-9]{1,3}(\\.[a-zA-Z][a-zA-Z0-9]{0,15})?>$"
+                  },
+                  "label": {
+                    "type": "string",
+                    "pattern": "^((components|pages|workflows|fixtures)/)?<[A-Z][0-9]{1,3}(\\.[a-zA-Z][a-zA-Z0-9]{0,15})?>$"
+                  },
+                  "remove": {
+                    "type": "string",
+                    "pattern": "^((components|pages|workflows|fixtures)/)?<[A-Z][0-9]{1,3}(\\.[a-zA-Z][a-zA-Z0-9]{0,15})?>$"
+                  },
+                  "add": {
+                    "type": "string",
+                    "pattern": "^((components|pages|workflows|fixtures)/)?<[A-Z][0-9]{1,3}(\\.[a-zA-Z][a-zA-Z0-9]{0,15})?>$"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "tool",
+              "args"
+            ],
+            "properties": {
+              "tool": {
+                "const": "line.setComponentState"
+              },
+              "args": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "file",
+                  "ref",
+                  "state"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "pattern": "^((components|pages|workflows|fixtures)/)?<[A-Z][0-9]{1,3}(\\.[a-zA-Z][a-zA-Z0-9]{0,15})?>$"
+                  },
+                  "ref": {
+                    "type": "string",
+                    "pattern": "^((components|pages|workflows|fixtures)/)?<[A-Z][0-9]{1,3}(\\.[a-zA-Z][a-zA-Z0-9]{0,15})?>$"
+                  },
+                  "state": {
+                    "type": "string",
+                    "pattern": "^((components|pages|workflows|fixtures)/)?<[A-Z][0-9]{1,3}(\\.[a-zA-Z][a-zA-Z0-9]{0,15})?>$"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "tool",
+              "args"
+            ],
+            "properties": {
+              "tool": {
+                "const": "line.newComponent"
+              },
+              "args": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "libraryId",
+                  "feature",
+                  "name"
+                ],
+                "properties": {
+                  "libraryId": {
+                    "type": "string",
+                    "pattern": "^((components|pages|workflows|fixtures)/)?<[A-Z][0-9]{1,3}(\\.[a-zA-Z][a-zA-Z0-9]{0,15})?>$"
+                  },
+                  "feature": {
+                    "type": "string",
+                    "pattern": "^((components|pages|workflows|fixtures)/)?<[A-Z][0-9]{1,3}(\\.[a-zA-Z][a-zA-Z0-9]{0,15})?>$"
+                  },
+                  "name": {
+                    "type": "string",
+                    "pattern": "^((components|pages|workflows|fixtures)/)?<[A-Z][0-9]{1,3}(\\.[a-zA-Z][a-zA-Z0-9]{0,15})?>$"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "tool",
+              "args"
+            ],
+            "properties": {
+              "tool": {
                 "const": "line.import.fix"
               },
               "args": {
