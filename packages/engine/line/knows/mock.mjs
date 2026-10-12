@@ -5,6 +5,7 @@
 // contract.mjs and graph/contract.mjs.
 import { countGraph, GRAPH_VERSION } from '../graph/contract.mjs';
 import { queryGraph } from '../graph/query.mjs';
+import { changeProposals, changeView } from './proposals.mjs';
 
 /** @typedef {import('../graph/contract.mjs').GraphNode} GraphNode */
 /** @typedef {import('../graph/contract.mjs').GraphEdge} GraphEdge */
@@ -128,16 +129,14 @@ function rec(n, step, intent, chosen, options, kind, at) {
   return { v: 1, id: `m-mock${String(n).padStart(4, '0')}`, step, at, intent, structure: null, slots: ['F:feature', 'I:item kind=components'], neighbourhood: [], options, proposed: options[0], kind, chosen, by: 'person', agreed: false };
 }
 
+/** The sample's findings with their typed fixes, as validate reports them (model.mjs readLineProject). */
+export const MOCK_FINDINGS = Object.freeze([
+  { key: 'LINE-BASE|features/billing/components/InvoiceCard.tsx|1', rule: 'LINE-BASE', file: 'features/billing/components/InvoiceCard.tsx', line: 1, fixes: [{ id: 'LINE-BASE/set-base:components/Card', sentence: 'Base InvoiceCard.tsx on the library component Card, which it already uses.', step: { tool: 'line.setBase', args: { file: 'features/billing/components/InvoiceCard.tsx', libraryId: 'components/Card' } } }] },
+  { key: 'LINE-DIR|features/billing/pages/InvoicesPage.tsx|4', rule: 'LINE-DIR', file: 'features/billing/pages/InvoicesPage.tsx', line: 4, fixes: [{ id: 'LINE-DIR/promote', sentence: 'Move OrderButton.tsx from feature orders into the library and point every import at the library copy.', step: { tool: 'line.promote', args: { featureItemId: 'orders/components/OrderButton' } } }] },
+]);
+
 /** The typed changes the Map proposes for the sample (each a plan step a person approves). */
-export const MOCK_CHANGE_VIEW = /** @type {ChangeView} */ (Object.freeze({
-  ok: true,
-  sentence: 'Line proposes 3 changes; each one waits for your approval and goes through Construct\'s writer.',
-  proposals: [
-    { id: 'change:promote:orders/components/OrderButton', kind: 'promote', target: I('orders/components/OrderButton'), finding: 'finding:LINE-DIR|features/billing/pages/InvoicesPage.tsx|4', sentence: 'Move OrderButton to the library, so billing can use it from there.', step: { tool: 'line.promote', args: { featureItemId: 'orders/components/OrderButton' } }, details: ['line.promote featureItemId=orders/components/OrderButton', 'fixes LINE-DIR features/billing/pages/InvoicesPage.tsx:4'] },
-    { id: 'change:removeCrossUse:billing/pages/InvoicesPage', kind: 'removeCrossUse', target: I('billing/pages/InvoicesPage'), finding: 'finding:LINE-DIR|features/billing/pages/InvoicesPage.tsx|4', sentence: 'Stop InvoicesPage using OrderButton from feature orders.', step: { tool: 'line.fix', args: { findingKey: 'LINE-DIR|features/billing/pages/InvoicesPage.tsx|4', fixId: 'LINE-DIR/remove' } }, details: ['line.fix findingKey=LINE-DIR|features/billing/pages/InvoicesPage.tsx|4 fixId=LINE-DIR/remove'] },
-    { id: 'change:rebase:billing/components/InvoiceCard', kind: 'rebase', target: I('billing/components/InvoiceCard'), finding: 'finding:LINE-BASE|features/billing/components/InvoiceCard.tsx|1', sentence: 'Base InvoiceCard on the library Card.', step: { tool: 'line.setBase', args: { file: 'features/billing/components/InvoiceCard.tsx', libraryId: 'components/Card' } }, details: ['line.setBase file=features/billing/components/InvoiceCard.tsx libraryId=components/Card', 'fixes LINE-BASE features/billing/components/InvoiceCard.tsx:1'] },
-  ],
-}));
+export const MOCK_CHANGE_VIEW = /** @type {ChangeView} */ (Object.freeze(changeView(changeProposals({ findings: [...MOCK_FINDINGS] }, MOCK_KNOWS_GRAPH))));
 
 /** "How smart is it" on the sample (local records only). */
 export const MOCK_SMART_VIEW = /** @type {SmartView} */ (Object.freeze({
@@ -235,16 +234,17 @@ export function createMockKnows() {
       return view();
     },
     setEmbeddings: (/** @type {{on: boolean}} */ a) => { embeddings = a.on === true; logged('embeddings', embeddings ? 'on' : 'off'); return view(); },
-    changes: () => {
+    changes: (/** @type {string|undefined} */ focus) => {
       const open = findings();
-      const proposals = MOCK_CHANGE_VIEW.proposals.filter((p) => !p.finding || open.has(p.finding));
-      return /** @type {ChangeView} */ ({ ok: true, proposals, sentence: proposals.length ? `Line proposes ${proposals.length} change${proposals.length === 1 ? '' : 's'}; each one waits for your approval and goes through Construct's writer.` : 'Line has no change to propose.' });
+      return changeView(changeProposals({ findings: MOCK_FINDINGS.filter((f) => open.has(`finding:${f.key}`)) }, graph, focus));
     },
     /** Mock mode's approve: the change landed, so its finding leaves the graph. */
     applyChange: (/** @type {string} */ id) => {
-      const p = MOCK_CHANGE_VIEW.proposals.find((x) => x.id === id);
+      const p = changeProposals({ findings: [...MOCK_FINDINGS] }, graph, id.startsWith('change:promote:') ? `item:${id.slice('change:promote:'.length)}` : undefined).find((x) => x.id === id);
       if (!p) return { ok: false, code: 'UNKNOWN_CHANGE', sentence: 'That change is not proposed any more.' };
-      graph = { ...graph, nodes: graph.nodes.filter((n) => n.id !== p.finding), edges: graph.edges.filter((e) => e.from !== p.finding) };
+      // The finding this change fixes leaves the graph (a promote also fixes the cross-feature use of what it moves).
+      const gone = new Set(MOCK_FINDINGS.filter((f) => `finding:${f.key}` === p.finding || f.fixes.some((x) => JSON.stringify(x.step) === JSON.stringify(p.step))).map((f) => `finding:${f.key}`));
+      graph = { ...graph, nodes: graph.nodes.filter((n) => !gone.has(n.id)), edges: graph.edges.filter((e) => !gone.has(e.from)) };
       graph = { ...graph, index: { ...graph.index, counts: countGraph(graph.nodes, graph.edges) } };
       return { ok: true, sentence: `Done: ${p.sentence}` };
     },

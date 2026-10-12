@@ -15,7 +15,7 @@ async function forgetStep(step: string) {
 
 export const lineKnowsHttp: KnowsHttp = {
   graph: (focus) => getJson(focus ? `/api/line/graph?focus=${encodeURIComponent(focus)}` : '/api/line/graph'),
-  changes: () => getJson('/api/line/graph/changes'),
+  changes: (focus) => getJson(focus ? `/api/line/graph/changes?focus=${encodeURIComponent(focus)}` : '/api/line/graph/changes'),
   stats: () => getJson('/api/line/graph/stats'),
   memorySteps: () => getJson('/api/line/memory'),
   memoryRecords: (step) => getJson(step ? `/api/line/memory/records?step=${encodeURIComponent(step)}` : '/api/line/memory/records'),

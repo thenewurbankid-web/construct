@@ -13,7 +13,7 @@
 //                    GET  /api/line/memory/export           im3's MemoryExport (a file the person keeps)
 //                    POST /api/line/memory/import           im3's MemoryExport                          person only, logged
 //                    POST /api/line/memory/embeddings       {on}  slotted decision text only, never code; off by default
-//   Change           GET  /api/line/graph/changes           ChangeView: typed fixes the Map proposes; each one runs as a
+//   Change           GET  /api/line/graph/changes?focus=    ChangeView: typed fixes the Map proposes; each one runs as a
 //                                                           plan step (line.setBase, line.promote, line.fix) a person
 //                                                           approves, through Construct's writer (no new write route)
 //   How smart is it  GET  /api/line/graph/stats             SmartView: numbers on the person's own project, local

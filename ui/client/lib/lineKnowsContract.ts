@@ -50,7 +50,7 @@ export type SmartView = { ok: true; metrics: Metric[]; sentence: string; local: 
 /** The page's routes (lib/lineKnowsHttp.ts; mock mode answers from the engine's knows/mock.mjs). */
 export type KnowsHttp = {
   graph: (focus?: string) => Promise<GraphRead | LineRefusal>;
-  changes: () => Promise<ChangeView | LineRefusal>;
+  changes: (focus?: string) => Promise<ChangeView | LineRefusal>;
   stats: () => Promise<SmartView | LineRefusal>;
   memorySteps: () => Promise<MemoryStepsView | LineRefusal>;
   memoryRecords: (step?: string) => Promise<MemoryRecordsView | LineRefusal>;

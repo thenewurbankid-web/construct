@@ -9,7 +9,7 @@ const later = <T>(v: unknown) => Promise.resolve(v as T);
 /** The page's routes answered by the mock (same shapes as the server). */
 export const mockKnowsHttp: KnowsHttp = {
   graph: (focus) => later(mock.graph(focus)),
-  changes: () => later(mock.changes()),
+  changes: (focus) => later(mock.changes(focus)),
   stats: () => later(mock.stats()),
   memorySteps: () => later(mock.memory()),
   memoryRecords: (step) => later(mock.records(step ? { step } : {})),

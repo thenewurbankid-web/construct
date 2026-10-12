@@ -1371,6 +1371,7 @@ app.use('/api/line', createLineRenderRouter({
 // (lineKnowsApi.mjs, packages/engine/line/knows/). A proposed change runs only as a plan step a person approves.
 app.use('/api/line', createLineKnowsRouter({
   clientOrigin: CLIENT_ORIGIN,
+  write: true,
   getRoot: () => {
     const root = containedProjectRoot(getProjectDir());
     return root ? { ok: true, root } : { ok: false, error: 'No project is open; pick a project first.' };

@@ -74,7 +74,7 @@ export const TOOL_ENTRIES = Object.freeze(/** @type {any[]} */ ([
   // Line's own state, changed by a person only (never an agent) and logged. A proposed change runs as its own plan step
   // (line.setBase, line.promote, line.fix), so the page adds no project write route.
   { id: 'line.graph', kind: 'read', writes: null, inputSchema: fieldsSchema([], ['focus']), outputSchema: 'GraphRead', sentence: 'Reads what Line knows about the project as a graph, and for one item who uses it and what a change to it may break.', surfaces: { http: http('GET', '/graph') } },
-  { id: 'line.graphChanges', kind: 'read', writes: null, inputSchema: NONE, outputSchema: 'ChangeView', sentence: 'Lists the typed changes the graph proposes, each one a plan step a person approves.', surfaces: { http: http('GET', '/graph/changes') } },
+  { id: 'line.graphChanges', kind: 'read', writes: null, inputSchema: fieldsSchema([], ['focus']), outputSchema: 'ChangeView', sentence: 'Lists the typed changes the graph proposes, each one a plan step a person approves.', surfaces: { http: http('GET', '/graph/changes') } },
   { id: 'line.graphStats', kind: 'read', writes: null, inputSchema: NONE, outputSchema: 'SmartView', sentence: 'Measures how well Line knows this project, from local records only.', surfaces: { http: http('GET', '/graph/stats') } },
   // Memory's page routes beside im3's two (GET /memory sizes, POST /memory/forget {step}); person only, logged.
   { id: 'line.memory.records', kind: 'read', writes: null, inputSchema: fieldsSchema([], ['step']), outputSchema: 'MemoryRecordsView', sentence: 'Reads what Line remembered, record by record, for one AI step or all of them.', surfaces: { http: http('GET', '/memory/records') } },

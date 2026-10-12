@@ -75,7 +75,7 @@ test('the palette offers Go to <screen> for the five screens once, and keeps the
 });
 
 test('the palette-only screens are Notes (#596), Requirement (#642), Debug (LIN-82), Break down into functions (#748), the Import Wizard, Settings, Local Model and Help plus the routes a primary screen also owns', () => {
-  assert.deepEqual(SCREENS.map((s) => s.label), ['Notes', 'Requirement', 'Debug', 'Break down into functions', 'Import Wizard', 'Pages Editor', 'Page Builder', 'Workflows', 'Tests', 'Train Line', 'Local Model', 'Settings', 'Help']);
+  assert.deepEqual(SCREENS.map((s) => s.label), ['Notes', 'Requirement', 'Debug', 'Break down into functions', 'Import Wizard', 'Pages Editor', 'Page Builder', 'Workflows', 'Tests', 'Train Line', 'What Line knows', 'Local Model', 'Settings', 'Help']);
   assert.equal(isScreenActive(SCREENS.find((s) => s.label === 'Settings'), '/settings'), true);
   assert.equal(isScreenActive(SCREENS.find((s) => s.label === 'Settings'), '/help'), false);
   assert.ok(!SCREENS.some((s) => s.label === 'Dashboard'), 'the Dashboard is retired');

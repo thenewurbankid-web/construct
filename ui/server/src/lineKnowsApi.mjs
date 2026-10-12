@@ -1,7 +1,7 @@
 // "What Line knows" (packages/engine/line/knows/contract.mjs KNOWS_API): the page's routes under /api/line, each an
 // entry of the one tool registry (the tool gate, lineToolGate.mjs, runs first and logs every memory write).
 //
-//   GET  /graph?focus=<node id>   GraphRead          GET /graph/changes  ChangeView      GET /graph/stats  SmartView
+//   GET  /graph?focus=<node id>   GraphRead          GET /graph/changes?focus=  ChangeView      GET /graph/stats  SmartView
 //   GET  /memory/records?step=    MemoryRecordsView  GET /memory/export  im3's MemoryExport
 //   POST /memory/edit | /memory/forget-record | /memory/forget-all | /memory/import | /memory/embeddings
 //        person only (Cockpit), Line's own state; im3's GET /memory and POST /memory/forget live in lineMemoryApi.mjs
@@ -16,12 +16,13 @@ const FOCUS = /^(item:|unit:|feature:|route:|endpoint:|field:|table:|spec:|findi
 
 /**
  * @param {{getRoot: () => ({ok: true, root: string} | {ok: false, error: string}), clientOrigin?: string,
- *   serviceFor?: (root: string) => any}} deps `serviceFor` for tests (e.g. the engine's createMockKnows).
+ *   serviceFor?: (root: string) => any, write?: boolean}} deps `serviceFor` for tests (e.g. the engine's createMockKnows);
+ *   `write` stores the graph in the project's Line state so an unchanged project is not analysed again (the server).
  * @returns {import('express').Router}
  */
-export function createLineKnowsRouter({ getRoot, clientOrigin, serviceFor }) {
+export function createLineKnowsRouter({ getRoot, clientOrigin, serviceFor, write = false }) {
   const services = new Map();
-  const forRoot = serviceFor ?? ((root) => { if (!services.has(root)) services.set(root, createKnowsService({ root })); return services.get(root); });
+  const forRoot = serviceFor ?? ((root) => { if (!services.has(root)) services.set(root, createKnowsService({ root, write })); return services.get(root); });
   const router = express.Router();
   const handle = (fn, failed) => async (req, res) => {
     const r = getRoot();
@@ -46,7 +47,11 @@ export function createLineKnowsRouter({ getRoot, clientOrigin, serviceFor }) {
     if (focus !== undefined && !FOCUS.test(focus)) return { ok: false, code: 'BAD_REQUEST', sentence: 'Name the item to start from, for example ?focus=item:orders/pages/OrdersPage.' };
     return s.graph(focus);
   }, 'Cockpit could not read what Line knows about this project.'));
-  router.get('/graph/changes', handle((s) => s.changes(), 'Cockpit could not list the proposed changes.'));
+  router.get('/graph/changes', handle((s, _b, req) => {
+    const focus = typeof req.query.focus === 'string' && req.query.focus ? req.query.focus : undefined;
+    if (focus !== undefined && !FOCUS.test(focus)) return { ok: false, code: 'BAD_REQUEST', sentence: 'Name the item to change, for example ?focus=item:orders/components/OrderButton.' };
+    return s.changes(focus);
+  }, 'Cockpit could not list the proposed changes.'));
   router.get('/graph/stats', handle((s) => s.stats(), 'Cockpit could not measure this project.'));
   // Memory's page routes (im3's GET /memory and POST /memory/forget stay in lineMemoryApi.mjs).
   router.get('/memory/records', handle((s, _b, req) => s.records({ ...(typeof req.query.step === 'string' && req.query.step ? { step: req.query.step } : {}) }), 'Cockpit could not read what Line remembered.'));
