@@ -245,7 +245,7 @@ export const badArgsField = (sentence) => /: ([A-Za-z_$][\w$.]*) (?:must|is not)
 
 /**
  * The refusal as the builder sees it.
- * @param {{code: string, sentence: string, tool?: string, args?: any, fix?: string, answer?: string, option?: string,
+ * @param {{code: string, sentence: string, tool?: string, args?: any, why?: string, fix?: string, answer?: string, option?: string,
  *   fixes?: any[], tools?: string[], context?: string[], example?: string}} o `fixes`: the typed fixes (ref, step,
  *   why/effect/context when known), recommended first; `tools`: the tool names (UNKNOWN_TOOL's nearest one); `context`:
  *   refusal lines; `example`: the correct call, when the caller knows a better one than the tool's.
