@@ -7,6 +7,9 @@
 //   z3, fast-check             step 6 (z3Prove.mjs, fastCheckLayer.mjs), pure units only
 //   isolated                   step 5's layout layer (layoutRun.mjs verifyLayoutPair) and step 4's effect runner
 //                              (isolatedRun.mjs isolatedPair: a child-process sandbox under the recording fakes)
+//   dev-server                 step 8, L2 (devServerRun.mjs devServerPair: the app's own dev server per side, a
+//                              fixture server behind generated .env.line stubs, NODE_V8_COVERAGE); only when the
+//                              levels include L2
 // A layer with no runner answers "skipped" and the walk goes on. Skipped layers never decide: a missing layer can only
 // leave a unit unverified, never wrongly proven or changed.
 import fs from 'node:fs';
@@ -19,6 +22,7 @@ import { z3Layer } from './z3Prove.mjs';
 import { fastCheckLayer, minedSeeds } from './fastCheckLayer.mjs';
 import { verifyLayoutPair } from './layoutRun.mjs';
 import { isolatedPair } from './isolatedRun.mjs';
+import { devServerPair } from './devServerRun.mjs';
 import { classifyUnit } from './purity.mjs';
 
 /** @typedef {import('./contract.mjs').UnitRef} UnitRef */
@@ -46,6 +50,7 @@ import { classifyUnit } from './purity.mjs';
  * @property {TransformId[]|null} transforms
  * @property {boolean} extracted
  * @property {LayerResult[]} results
+ * @property {string[]} [routes]  The server-rendered routes that reach the unit (L2); default: from its file's path.
  */
 
 /** Two minedSeeds results as one (a moved unit's literals come from both of its files). */
@@ -102,6 +107,14 @@ export const RUNNERS = {
     }
     return effects.outcome === 'changed' || layout.outcome === 'skipped' ? effects : layout;
   },
+  'dev-server': async (ctx) => {
+    if (!ctx.before) return noBefore('dev-server');
+    try {
+      return await devServerPair({ beforeRoot: ctx.beforeRoot, afterRoot: ctx.afterRoot, before: ctx.before, after: ctx.after, routes: ctx.routes });
+    } catch (err) {
+      return { layer: 'dev-server', outcome: 'cant-tell', reason: `the dev-server run failed: ${/** @type {Error} */ (err).message}` };
+    }
+  },
 };
 
 const SOURCE = /\.(?:[cm]?[jt]sx?)$/;
@@ -157,9 +170,10 @@ export function classifyBefore({ root, file, fn }) {
  * @param {EscalationLevel[]} [args.levels]
  * @param {Block[]} [args.blocks]                  The atoms and blocks the step produced; a unit in none is not-extracted.
  * @param {{file: string, fn: string}} [args.before] The unit before the step, when the step knows it (else pairBefore).
+ * @param {string[]} [args.routes] L2: the server-rendered routes that reach the unit (else from its file's path).
  * @returns {Promise<UnitVerdict>}
  */
-export async function verifyPair({ beforeRoot, afterRoot, unit, transforms = null, levels = ['L0', 'L1'], blocks, before }) {
+export async function verifyPair({ beforeRoot, afterRoot, unit, transforms = null, levels = ['L0', 'L1'], blocks, before, routes }) {
   const after = { file: unit.file, fn: unit.fn };
   const pair = before ?? pairBefore(beforeRoot, afterRoot, after);
   const { purity, effectChain } = await classifyBefore(pair ? { root: beforeRoot, ...pair } : { root: afterRoot, ...after });
@@ -171,7 +185,7 @@ export async function verifyPair({ beforeRoot, afterRoot, unit, transforms = nul
   const results = [];
   /** @type {LayerContext} */
   const ctx = {
-    beforeRoot, afterRoot, unit, before: pair, after, transforms, extracted, results,
+    beforeRoot, afterRoot, unit, before: pair, after, transforms, extracted, results, routes,
     beforeSource: pair ? read(beforeRoot, pair.file) : null, afterSource: read(afterRoot, after.file),
   };
   for (let layer = nextLayer(order, results, transforms); layer; layer = nextLayer(order, results, transforms)) {
