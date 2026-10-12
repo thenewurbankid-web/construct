@@ -176,6 +176,7 @@ export function planAddRoute(root, { route, page } = /** @type {any} */ ({})) {
   const rel = cleanRel(page);
   const segs = rel ? rel.slice(features.length + 1).split('/') : [];
   if (!rel || !rel.startsWith(`${features}/`) || segs.length !== 3 || segs[1] !== 'pages' || !CODE_EXTENSIONS.includes(posix.extname(rel))) {
+    /** @type {{id: string, sentence: string, step: {tool: string, args: any}}[]} */
     const fixes = routeFixes(root, route, page);
     if (!fixes.length) fixes.push(...newPageFixes(root, page));
     const some = fixes.slice(0, 3).map((f) => f.step.args.page).join(', ');

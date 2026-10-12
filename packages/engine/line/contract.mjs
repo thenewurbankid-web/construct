@@ -783,7 +783,7 @@ export const AUTO_ACTION_KINDS = Object.freeze(['click', 'type', 'select', 'appr
  * technical reason (a parser or type-checker message) for a collapsed Details; `fixes` (optional, bench-gaps) are the
  * typed fixes (RefusalFix) that get past it, recommended first. */
 export class LineOpError extends Error {
-  /** @param {string} sentence @param {string} code @param {string} [detail] @param {RefusalFix[]} [fixes] */
+  /** @param {string} sentence @param {string} code @param {string} [detail] @param {{id: string, sentence: string, step: {tool: string, args: any}, rank?: number}[]} [fixes] Ranked here, in order. */
   constructor(sentence, code, detail, fixes) {
     super(sentence); this.name = 'LineOpError'; this.sentence = sentence; this.code = code;
     if (detail !== undefined) this.detail = detail;
