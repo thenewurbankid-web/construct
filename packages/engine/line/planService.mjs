@@ -196,7 +196,10 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
         if (/** @type {any} */ (e)?.name === 'LineOpError') {
           const r = refusal(/** @type {any} */ (e).code, /** @type {any} */ (e).sentence);
           const detail = /** @type {any} */ (e).detail;
-          return typeof detail === 'string' && detail ? { ...r, detail } : r;
+          // cu4: a refusal may carry its typed fixes (a library component edit: "base a feature item on it").
+          const fixes = /** @type {any} */ (e).fixes;
+          const withFixes = Array.isArray(fixes) && fixes.length ? { ...r, fixes } : r;
+          return typeof detail === 'string' && detail ? { ...withFixes, detail } : withFixes;
         }
         throw e;
       }

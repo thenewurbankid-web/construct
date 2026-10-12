@@ -10,16 +10,18 @@ import { LineOpError } from '../../../packages/engine/line/contract.mjs';
 import { readLineProject } from '../../../packages/engine/line/model.mjs';
 import { readLineFeature } from '../../../packages/engine/line/feature.mjs';
 import { readLineWorkflows } from '../../../packages/engine/line/workflows.mjs';
+import { readLineComponent } from '../../../packages/engine/line/components.mjs';
 
 /**
  * @param {{getRoot: () => ({ok: true, root: string} | {ok: false, error: string}),
  *   readProject?: (root: string) => import('../../../packages/engine/line/contract.mjs').LineProject,
  *   readFeature?: (root: string, name: string) => import('../../../packages/engine/line/contract.mjs').LineFeatureDetail,
- *   readWorkflows?: (root: string, feature: string) => import('../../../packages/engine/line/contract.mjs').LineWorkflowList}} deps
+ *   readWorkflows?: (root: string, feature: string) => import('../../../packages/engine/line/contract.mjs').LineWorkflowList,
+ *   readComponent?: (root: string, file: string) => any}} deps
  *   `readProject`, `readFeature` and `readWorkflows` default to the real model; tests pass the contract's mock.
  * @returns {import('express').Router}
  */
-export function createLineRouter({ getRoot, readProject = readLineProject, readFeature = readLineFeature, readWorkflows = readLineWorkflows }) {
+export function createLineRouter({ getRoot, readProject = readLineProject, readFeature = readLineFeature, readWorkflows = readLineWorkflows, readComponent = readLineComponent }) {
   const router = express.Router();
   /** One read route: no project, a refusal and a crash are each one sentence. */
   const read = (fn, failed) => (req, res) => {
@@ -44,5 +46,11 @@ export function createLineRouter({ getRoot, readProject = readLineProject, readF
     if (!/^[A-Za-z0-9][\w.-]*$/.test(feature)) throw new LineOpError('Name the feature whose workflows to show, for example ?feature=orders.', 'BAD_REQUEST');
     return readWorkflows(root, feature);
   }, 'Cockpit could not read this feature\'s workflows.'));
+  // cu4: one component for the Components editor (Behaviour, Events, States; components.mjs). Changes are plan steps.
+  router.get('/component', read((root, req) => {
+    const file = typeof req.query.file === 'string' ? req.query.file : '';
+    if (!file || file.includes('..') || file.startsWith('/')) throw new LineOpError('Name the component to open, for example ?file=features/orders/components/OrderButton.tsx.', 'BAD_REQUEST');
+    return readComponent(root, file);
+  }, 'Cockpit could not read this component.'));
   return router;
 }
