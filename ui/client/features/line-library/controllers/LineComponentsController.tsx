@@ -1,21 +1,37 @@
 'use client';
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, type ReactNode } from 'react';
 import { ComponentsController } from '@/features/component-docs';
 import { LineDraftController } from '@/features/line-draft';
-import { LinePlanController, useLinePlan } from '@/features/line-plan';
+import { ScreenModesController } from '@/features/line-modes';
+import { LinePlanController, planDecisionOn, useLinePlan, withPlanOptions } from '@/features/line-plan';
 import { LineTraceController } from '@/features/line-trace';
 import { ProjectGateController } from '@/features/project-gate';
 import { useShellDrawer } from '@/features/shell';
 import { useLineWorkspace } from '@/lib/lineWorkspace';
+import type { Place } from '@/lib/lineModes';
 import '../components/line-library.css';
 import { LineScreenSwitch } from '../components/LineScreenSwitch';
+import { COMPONENTS_CHAT } from '../domain/ComponentsChat';
 import { screenFor } from '../domain/LibraryView';
 import { screenWithWorkspace, writableFeatures } from '../domain/ReadOnly';
+import { useComponentSelection } from '../hooks/useComponentSelection';
 import { useLineChanges } from '../hooks/useLineChanges';
 import { useLineProject } from '../hooks/useLineProject';
+import { LineLibraryPage } from '../pages/LineLibraryPage';
+import type { ChangeControls, LibraryView } from '../types';
 
 const NO_FEATURES: string[] = [];
+/** Two modes: the Components chat with the Plan's options joined ("components.plan.*"). */
+const COMPONENTS_MODES = withPlanOptions(COMPONENTS_CHAT);
+
+/** Under the hood: the Line library, with the feature and component the URL selects (where the chat or a crumb is). */
+function LineLibraryHood({ view, controls, panel }: { view: LibraryView; controls: ChangeControls; panel: ReactNode }) {
+  const selected = useComponentSelection();
+  return <LineLibraryPage view={view} controls={controls} panel={panel} selected={selected} />;
+}
+
+const stepOf = (place: Place, param: string) => place.steps.find((s) => s.param === param)?.id ?? null;
 
 function LineComponentsScreen() {
   const { state, refresh } = useLineProject();
@@ -33,25 +49,37 @@ function LineComponentsScreen() {
   const plan = useLinePlan(onLanded, undefined, screen.kind === 'line');
   const notice = plan.lastRun?.apply ?? null;
   const controls = useLineChanges(features, plan.addStep, notice, onLanded);
-  return (
-    <LineScreenSwitch
-      screen={screen}
-      fallback={<ComponentsController />}
-      controls={controls}
-      panel={
-        <>
-          <LineTraceController screen="components" steps={plan.steps} />
-          <LineDraftController onAdded={plan.refresh} />
-          <LinePlanController plan={plan} />
-        </>
-      }
-    />
+  const view = screen.kind === 'line' ? screen.view : null;
+  const data = useMemo(() => (view ? { screen: view, plan: plan.rows } : null), [view, plan.rows]);
+  const { rows, approve, choose } = plan;
+  const { openPromote } = controls;
+  // Options the chat does not answer: the Plan's decisions, and Promote (opens the same confirm as the button).
+  const onOption = useCallback(
+    (optionId: string, place: Place) => {
+      const decision = planDecisionOn('components', optionId, rows);
+      if (decision?.kind === 'approve') return approve(decision.stepId);
+      if (decision?.kind === 'choose') return choose(decision.stepId, decision.choice);
+      if (optionId !== 'components.promote' || !view) return;
+      const feature = view.features.find((f) => f.name === stepOf(place, 'feature'));
+      const row = feature?.rows.find((r) => r.name === stepOf(place, 'component'));
+      if (row) openPromote(row.id, row.name);
+    },
+    [rows, approve, choose, openPromote, view],
   );
+  const panel = (
+    <>
+      <LineTraceController screen="components" steps={plan.steps} />
+      <LineDraftController onAdded={plan.refresh} />
+      <LinePlanController plan={plan} />
+    </>
+  );
+  const line = view ? <ScreenModesController provider={COMPONENTS_MODES} data={data} onOption={onOption} hood={<LineLibraryHood view={view} controls={controls} panel={panel} />} /> : null;
+  return <LineScreenSwitch screen={screen} fallback={<ComponentsController />} line={line} />;
 }
 
 /** The Components screen (`/components`): a `preset: line` project gets its library as cards by level ("Base on
- * this") plus each feature's components with their base links ("Promote to library"); any other project, or a Line
- * view that could not be read, gets the existing Components screen unchanged. */
+ * this") plus each feature's components with their base links ("Promote to library"), in two modes (Chat and Under the
+ * hood); any other project, or a Line view that could not be read, gets the existing Components screen unchanged. */
 export function LineComponentsController() {
   return (
     <ProjectGateController>
