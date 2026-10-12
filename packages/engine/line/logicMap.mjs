@@ -268,7 +268,7 @@ export function fileUnits(source, rel, renames = {}) {
  * same logic twice in one function) are made unique by their order: the second gets `#2` hashed in, and so on.
  * @param {string} appRoot
  * @param {string[]} files
- * @param {{renames?: RenameTable, read?: (abs: string) => string, unitsOf?: (source: string, rel: string, renames: RenameTable) => ReturnType<typeof fileUnits>}} [options]
+ * @param {{renames?: RenameTable, read?: (abs: string) => string, unitsOf?: (source: string, rel: string, renames: RenameTable) => ReturnType<typeof fileUnits>, classify?: (source: string, rel: string) => Map<string, {purity: 'pure'|'impure', effects: string[]}>}} [options]
  *   `renames` maps identifiers before hashing; `read` replaces fs (tests); `unitsOf` replaces fileUnits (a cache layer:
  *   importLoopDisk.mjs keeps each file's units by its content hash). `classify` (logicVerify/purity.mjs classifyFile,
  *   injected so this module stays free of the purity classifier) adds each function unit's purity class, `purity`
