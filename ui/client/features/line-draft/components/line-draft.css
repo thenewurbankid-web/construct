@@ -10,9 +10,9 @@
 .ldr-route[data-recommended='true'] { border-color: var(--accent); }
 .ldr-route[data-status='refused'], .ldr-route[data-status='failed'], .ldr-route[data-status='wrong-shape'] { border-style: dashed; }
 .ldr-state { font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); }
-.ldr-label, .ldr-sentence, .ldr-fix, .ldr-risk, .ldr-note { margin: 0; overflow-wrap: anywhere; }
+.ldr-label, .ldr-sentence, .ldr-memory, .ldr-fix, .ldr-risk, .ldr-note { margin: 0; overflow-wrap: anywhere; }
 .ldr-label { font-weight: 600; }
-.ldr-sentence, .ldr-fix, .ldr-risk, .ldr-note { font-size: var(--fs-sm); }
+.ldr-sentence, .ldr-memory, .ldr-fix, .ldr-risk, .ldr-note { font-size: var(--fs-sm); }
 .ldr-risk, .ldr-note { color: var(--text-muted); }
 .ldr-actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
 .ldr-btn { min-height: 28px; padding: 0 var(--sp-3); border: 1px solid var(--border-strong); border-radius: var(--r-sm); background: var(--surface-1); color: var(--text); font-size: var(--fs-sm); cursor: pointer; }

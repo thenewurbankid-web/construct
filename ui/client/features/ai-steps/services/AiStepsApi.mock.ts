@@ -12,4 +12,21 @@ const SAMPLE: AiProfiles = {
   ],
 };
 
-export const mockAiStepsApi: AiStepsApi = { getAiProfiles: async () => SAMPLE };
+// im3 + j5: a small in-memory memory, one step with three picks; Forget clears it.
+const memory = { 'drafter.route': 3, 'plan.step': 0 } as Record<string, number>;
+const LABELS: Record<string, string> = { 'drafter.route': 'Which drafted route you pick', 'plan.step': 'What happens to a proposed plan step' };
+const memoryView = () => {
+  const steps = Object.entries(memory).map(([step, size]) => ({ step, label: LABELS[step] ?? step, size }));
+  const total = steps.reduce((s, x) => s + x.size, 0);
+  return { ok: true as const, steps, total, sentence: total ? `Line remembers ${total} remembered decisions for this project, on this computer only.` : 'Line has no memory for this project yet; it learns from what you pick, approve and change.' };
+};
+
+export const mockAiStepsApi: AiStepsApi = {
+  getAiProfiles: async () => SAMPLE,
+  getMemory: async () => memoryView(),
+  forgetMemory: async (step) => {
+    const n = memory[step] ?? 0;
+    memory[step] = 0;
+    return { ...memoryView(), message: n ? `Line forgot ${n} remembered decisions for this step.` : 'There was nothing to forget for this step.' };
+  },
+};

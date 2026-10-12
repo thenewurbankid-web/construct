@@ -15,6 +15,7 @@
     "./line/import-agent": "./line/importAgentDisk.mjs",
     "./line/import-verify": "./line/importVerify.mjs",
     "./line/logic-map": "./line/logicMap.mjs",
+    "./line/memory": "./line/memory/index.mjs",
     "./line/graph": "./line/graph/build.mjs",
     "./line/graph/contract": "./line/graph/contract.mjs",
     "./line/graph/mock": "./line/graph/mock.mjs",

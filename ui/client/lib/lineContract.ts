@@ -395,6 +395,8 @@ export type DraftRouteView = {
   cost: { steps: number; files: number; layers: number };
   steps: { tool: string; args: Record<string, unknown> }[];
   fix: { sentence: string } | null;
+  /** im3 + j5: why memory moved this route first ("Recalled from 3 past decisions: ..."), else null. */
+  memory?: string | null;
 };
 export type DraftQuestion = { word: string; sentence: string; choices: { key: string; label: string }[]; suggested: string | null };
 export type DraftView = {
@@ -408,6 +410,8 @@ export type DraftView = {
   defer: { to: 'qwen' | 'ask' | null; sentence: string };
   questions: DraftQuestion[];
   dropped: { sentence: string }[];
+  /** im3 + j5: what memory recalled when it moved a checked route first. */
+  memory?: { route: string; count: number; sentence: string } | null;
 };
 /** POST /api/line/plan/draft/add: the plan with the route's steps added; `next` is the step to add after the first ones ran. */
 export type DraftAdded = PlanView & { added: string[]; next: number | null; sentence: string };
@@ -438,6 +442,10 @@ export type LineHttp = {
   importPlan: (req: ImportPlanRequest) => Promise<ImportPlan | LineRefusal>;
   newProject: (req: NewLineProjectRequest) => Promise<NewLineProjectResult | LineRefusal>;
   getAiProfiles: () => Promise<AiProfiles | LineRefusal>;
+  /** im3 + j5: the open project's memory per step. */
+  getMemory: () => Promise<MemoryView | LineRefusal>;
+  /** im3 + j5: forget one step's memory (a person only: sends the approval token). */
+  forgetMemory: (step: string) => Promise<(MemoryView & { message: string }) | LineRefusal>;
   trace: (req: TraceRequest) => Promise<TraceMatch | LineRefusal>;
   getImportAgent: (folder: string) => Promise<ImportAgentView | LineRefusal>;
   startImportAgent: (folder: string, route?: string) => Promise<ImportAgentView | LineRefusal>;
@@ -446,6 +454,9 @@ export type LineHttp = {
   editImportStep: (req: ImportStepEdit) => Promise<ImportAgentView | LineRefusal>;
   answerImportAgent: (req: ImportAnswerRequest) => Promise<ImportAgentView | LineRefusal>;
 };
+
+/** im3 + j5: GET /api/line/memory (packages/engine/line/memory/contract.mjs MemoryView). */
+export type MemoryView = { ok: true; steps: { step: string; label: string; size: number }[]; total: number; sentence: string };
 
 /** cu2: one AI step's profile (Cockpit, Trace and Construct steps are one set; contract.mjs StepProfile). */
 export type StepProfile = {

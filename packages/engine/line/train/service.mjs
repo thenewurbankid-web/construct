@@ -19,6 +19,8 @@ import { describe } from '../expr.mjs';
 import { tryRoute, wordsOf } from './verify.mjs';
 import { createTrainStore, DEFAULT_TRAIN_ROOT } from './store.mjs';
 import { recordsFromTraining, memoOf, INDEX } from './records.mjs';
+import { createMemory } from '../memory/store.mjs';
+import { routeKey, draftContext } from '../memory/index.mjs';
 
 const nameOfId = (id) => String(id).split('/').pop();
 const baseName = (f) => path.posix.basename(String(f)).replace(/\.(tsx|ts|json)$/, '');
@@ -83,11 +85,14 @@ export function routeView(r, bound, facts, preferred) {
 
 /**
  * The Train Line service over one training root (cases, drafts, Try it, reviews, eval).
- * @param {{root?: string, seedFrom?: string, now?: () => string}} [o]
+ * @param {{root?: string, seedFrom?: string, now?: () => string, memory?: any}} [o] `memory` (im3): where the owner's
+ *   agreements are remembered (default `<root>/train/memory/`; null for none).
  * @returns {any}
  */
 export function createTrainService(o = {}) {
   const store = createTrainStore(o);
+  // im3: Train Line's own memory (slotted cases already), kept beside its cases: <root>/train/memory/.
+  const mem = o.memory === undefined ? createMemory(store.root, { stateDir: 'train', words: [] }) : o.memory;
   /**
    * The drafter's retrieval records from the train split: per case, read from the committed index (the training
    * root's, else the seed's) and built only for a case it does not hold (new, or its status changed).
@@ -331,6 +336,13 @@ export function createTrainService(o = {}) {
       const text = verdict === 'disagree' ? (String(note ?? '').trim() || 'The owner disagrees.') : String(note ?? '').trim();
       const next = { ...c, status: verdict === 'agree' ? 'agreed' : 'disputed', notes: [...c.notes, ...(text ? [{ by: 'owner', text, at: now() }] : [])] };
       store.put([next], 'owner', verdict);
+      // im3: an agreement (or disagreement) with Claude's preferred route is remembered for the drafter's route step.
+      if (mem) {
+        const keys = c.gold.routes.map(trainRouteKey);
+        const proposed = trainRouteKey(c.gold.routes.find((r) => r.id === c.gold.preferred) ?? c.gold.routes[0]);
+        Promise.resolve().then(() => mem.recordOutcome('train.route', { intent: c.intent, structure: c.factsHash ?? null, slots: trainSlotTokens(c.slots), neighbourhood: [], options: [...new Set(keys)], proposed },
+          { kind: verdict === 'agree' ? 'agreed' : 'disagreed', chosen: verdict === 'agree' ? proposed : null, by: 'person' })).catch(() => {});
+      }
       return { case: view(next) };
     },
     /** "Did you mean ...?": the owner's answer goes into that world's map as a synonym. */
@@ -397,6 +409,26 @@ function suggestions(world) {
 
 // ------------------------------------------------------------------------------------------------- eval
 const familyOf = (c) => c.gold.routes.find((r) => r.id === c.gold.preferred)?.steps[0]?.tool ?? 'none';
+/**
+ * im3: a Train route as a memory option key: its tools in order ("line.baseOn+line.promote"), or its outcome.
+ * @param {any} r A gold route.
+ * @returns {string}
+ */
+export const trainRouteKey = (r) => (r?.outcome === 'change' && r.steps?.length ? r.steps.map((s) => s.tool).join('+') : String(r?.outcome ?? 'none'));
+/**
+ * im3: a case's slots as memory tokens (type and kind, never a name).
+ * @param {Record<string, any>} slots
+ * @returns {string[]}
+ */
+export const trainSlotTokens = (slots) => Object.entries(slots ?? {}).map(([k, v]) => [`${k.replace(/\d+$/, '')}:${v.type}`, v.kind ? `kind=${v.kind}` : ''].filter(Boolean).join(' '));
+
+/** im3: the gold-preferred drafted route as the memory record a person's pick would make (null when it was not drafted). */
+function memoryPick(d, hit) {
+  if (!hit) return null;
+  const options = [...new Set(d.routes.filter((r) => r.status === 'ok').map((r) => routeKey(r.id)))];
+  return { context: draftContext(d), options, proposed: d.recommended ? routeKey(d.recommended) : null, chosen: routeKey(hit.r.id) };
+}
+
 const familyKey = (c) => (c.gold.routes.find((r) => r.id === c.gold.preferred)?.outcome === 'change' ? familyOf(c) : 'none');
 
 /**
@@ -404,14 +436,15 @@ const familyKey = (c) => (c.gold.routes.find((r) => r.id === c.gold.preferred)?.
  * A gold step matches a drafted one when the tool and every argument agree (bound to the world's names); a name the
  * request does not give (the drafter makes one up) and a content hash match any value. A refusal is found when the
  * drafter shows that route refused and recommends nothing; a question when the drafter asks.
- * @param {any} c A stored case. @param {{records?: any[]}} [o]
+ * @param {any} c A stored case. @param {{records?: any[], memory?: any, withPick?: boolean}} [o] `withPick`: also return the person's pick as memory would record it.
+ *   `memory` (im3 + j5): the world's memory, for the with/without eval.
  * @returns {any|null} null when the case no longer binds in its world.
  */
 export function evaluateCase(c, o = {}) {
   const facts = worldFacts(c.world);
   const gb = /** @type {any} */ (bindSlots(c.slots, facts, wordsOf(c.world)));
   if (!gb.ok) return null;
-  const { d } = draftInWorld(c.world, fill(c.request, gb.bound), { records: o.records });
+  const { d } = draftInWorld(c.world, fill(c.request, gb.bound), { records: o.records, memory: o.memory });
   const said = new Set(slotNamesIn(c.request));
   const free = (v) => { const m = typeof v === 'string' ? /^<name:([A-Z][A-Za-z]*\d+)>$/.exec(v) : null; return Boolean(m) && !said.has(/** @type {any} */ (m)[1]); };
   const goldSteps = (r) => r.steps.map((s) => ({ tool: s.tool, args: Object.fromEntries(Object.entries(s.args).map(([k, v]) => [k, k === 'contentHash' || free(v) ? '*' : fill(v, gb.bound, { asArg: true })])) }));
@@ -431,6 +464,7 @@ export function evaluateCase(c, o = {}) {
     recall: c.gold.routes.filter(hits).length / c.gold.routes.length, precision: shown ? right / shown : 0, preferred: preferred ? 1 : 0,
     noRepair: gp.outcome === 'change' ? (rec !== null && rec.r.status === 'ok' && isGold(rec) ? 1 : 0) : (preferred ? 1 : 0),
     via: rec?.r.via ?? (asked ? 'ask' : 'none'),
+    ...(o.withPick ? { pick: memoryPick(d, gp.outcome === 'change' ? drafted.find((x) => stepsMatch(goldSteps(gp), x.steps)) ?? null : null) } : {}),
   };
 }
 

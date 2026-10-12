@@ -41,6 +41,7 @@
 import { createMachine, getNextSnapshot } from 'xstate';
 import { IMPORT_AGENT_STAGES, IMPORT_EDITABLE, LEVELS, LineOpError, assertImportPlanFile, importFolderProblem } from './contract.mjs';
 import { newLogic, measure, loopChecks, loopState, loopQuestion, addWaivers, logicView, mapSummary, fitSummary, fitPlanSteps, LOOP_LIMITS } from './importLoop.mjs';
+import { memoryOf, memoryBy, PLAN_EVENT_KIND } from './memory/index.mjs';
 
 /** Fix rounds per step before the agent asks the person, even when each round improved. */
 export const MAX_ROUNDS = 3;
@@ -179,7 +180,7 @@ export async function decideWith(provider, id, question, optionIds) {
 // ------------------------------------------------------------------------------------------------- the agent
 /**
  * The Import agent for one folder of one project.
- * @param {{root: string, folder: string, planService: {view: () => Promise<any>, addStep: (req: any, by: string) => Promise<any>, approve: (id: string, by: string) => Promise<any>, runNext: (by: string, id?: string) => Promise<any>}, reason?: {suggest: (summary: any) => Promise<any>, lastNote?: () => string | null} | null, verify?: (root: string, folder: string, baseline: string[]) => Promise<{ok: boolean, checks: any[]}>, baseline?: (root: string, folder: string) => Promise<string[]> | string[], importOps: {scan: (root: string, folder: string) => any, plan: (root: string, folder: string, answers: Record<string, string>, target?: {route: string}) => any}, store: {read: () => any, write: (doc: any) => void}, logic?: any, checkFolder?: () => void, snapshot?: (root: string, folder: string) => unknown, rollback?: (root: string, folder: string) => {ok: boolean, sentence: string, files: string[]} | Promise<{ok: boolean, sentence: string, files: string[]}>, now?: () => string, decider?: string}} o `importOps` and `store` are the disk ones in importAgentDisk.mjs (createImportAgentOnDisk), in-memory ones in the mock. `logic` is the import loop's ops (importLoop.mjs): importLoopDisk.mjs createLogicOnDisk on disk, importLoopMock.mjs createMockLogic in the mock; without it the map, characterize and loop checks say they are not set up and pass through.
+ * @param {{root: string, folder: string, planService: {view: () => Promise<any>, addStep: (req: any, by: string) => Promise<any>, approve: (id: string, by: string) => Promise<any>, runNext: (by: string, id?: string) => Promise<any>}, reason?: {suggest: (summary: any) => Promise<any>, lastNote?: () => string | null} | null, verify?: (root: string, folder: string, baseline: string[]) => Promise<{ok: boolean, checks: any[]}>, baseline?: (root: string, folder: string) => Promise<string[]> | string[], importOps: {scan: (root: string, folder: string) => any, plan: (root: string, folder: string, answers: Record<string, string>, target?: {route: string}) => any}, store: {read: () => any, write: (doc: any) => void}, logic?: any, checkFolder?: () => void, snapshot?: (root: string, folder: string) => unknown, rollback?: (root: string, folder: string) => {ok: boolean, sentence: string, files: string[]} | Promise<{ok: boolean, sentence: string, files: string[]}>, now?: () => string, decider?: string, memory?: any}} o `memory` (im3): where plan edits are remembered (default memoryOf(root); null for none). `importOps` and `store` are the disk ones in importAgentDisk.mjs (createImportAgentOnDisk), in-memory ones in the mock. `logic` is the import loop's ops (importLoop.mjs): importLoopDisk.mjs createLogicOnDisk on disk, importLoopMock.mjs createMockLogic in the mock; without it the map, characterize and loop checks say they are not set up and pass through.
  * @returns {any}
  */
 export function createImportAgent(o) {
@@ -187,6 +188,7 @@ export function createImportAgent(o) {
   const bad = importFolderProblem(folder);
   if (bad) throw new LineOpError(`The import folder ${bad}.`, 'BAD_FOLDER');
   const { store, importOps } = o;
+  const mem = o.memory === undefined ? memoryOf(root) : o.memory;
   const now = o.now ?? (() => new Date().toISOString());
   const decider = o.decider ?? (o.reason ? 'Decisions go through @mx/reason; when it is not linked, Line takes the recommended option.' : 'Line takes the recommended option for each decision (no decision module is set up).');
   let queue = Promise.resolve();
@@ -623,6 +625,9 @@ export function createImportAgent(o) {
         doc.steps.splice(to, 0, step);
         record(doc, by, 'move', `moved "${step.sentence.replace(/[.?!]$/, '')}" from place ${from + 1} to ${to + 1}`, step.id);
       } else return refusal('BAD_ACTION', 'The action is one of edit, skip, unskip, move, approve or approve-all');
+      // im3: remember how the proposed import step was changed (slotted: the tool only; best effort).
+      const kind = PLAN_EVENT_KIND[/** @type {keyof typeof PLAN_EVENT_KIND} */ (action)];
+      if (kind && mem) Promise.resolve().then(() => mem.recordOutcome('import.step', { intent: step.tool, structure: null, slots: [], neighbourhood: [], options: [step.tool], proposed: step.tool }, { kind: /** @type {any} */ (kind), chosen: kind === 'skipped' ? null : step.tool, by: memoryBy(String(by)) })).catch(() => {});
       if (doc.state === 'execute' && step.review !== 'approved' && current(doc)?.id === step.id) doc.waiting = null;
       if (!doc.paused && doc.waiting?.for !== 'answer' && doc.waiting?.for !== 'approval') await run(doc, by);
       save(doc);

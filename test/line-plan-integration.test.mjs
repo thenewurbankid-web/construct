@@ -25,7 +25,7 @@ function hashes(dir) {
   const visit = (abs, rel) => {
     for (const e of fs.readdirSync(abs, { withFileTypes: true })) {
       const r = rel ? `${rel}/${e.name}` : e.name;
-      if (r === 'line/plans' || r === 'line/traces' || r === 'line/records') continue;
+      if (r === 'line/plans' || r === 'line/traces' || r === 'line/records' || r === 'line/memory') continue;
       if (e.isDirectory()) visit(path.join(abs, e.name), r);
       else out[r] = crypto.createHash('sha256').update(fs.readFileSync(path.join(abs, e.name))).digest('hex');
     }

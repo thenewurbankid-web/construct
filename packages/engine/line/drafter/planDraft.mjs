@@ -10,6 +10,7 @@ import { draft as staticDraft, boundRoute } from './index.mjs';
 import { factsSummary } from '../facts.mjs';
 import { addSynonym } from './domainMap.mjs';
 import { toRecord, appendRecord, precedentsFromTraining } from './retrieval.mjs';
+import { memoryOf, routeKey, draftContext, memoryBy } from '../memory/index.mjs';
 
 /**
  * Whether the drafter is on (LINE_DRAFTER=1 or "on").
@@ -40,20 +41,24 @@ function routeView(d, r) {
   return {
     id: r.id, label: /** @type {any} */ (b).label, risk: /** @type {any} */ (b).risk, status: /** @type {any} */ (r.status), sentence, via: r.via, confidence: r.confidence,
     cost: r.cost, steps: /** @type {any} */ (b).steps, fix: r.refusal?.fix ? { sentence: r.refusal.fix.sentence } : null,
+    memory: /** @type {any} */ (r).memory ?? null,
   };
 }
 
 /**
  * The drafter wired in front of one project's plan service.
  * @param {{root: string, plan: {addStep: (req: any, by: string) => Promise<any>, view: () => Promise<any>}, enabled?: boolean,
- *   draftFn?: (root: string, request: string) => any, record?: boolean}} o
+ *   draftFn?: (root: string, request: string, o?: {memory?: any}) => any, record?: boolean, memory?: any}} o `memory` (im3 + j5): this
+ *   project's memory (default memory/index.mjs memoryOf(root); null for none): a picked route is remembered, and the
+ *   person's consistent past picks move a checked route first.
  * @returns {{status: () => {ok: true, on: boolean}, draft: (request: unknown) => Promise<any>, addRoute: (request: unknown, routeId: unknown, by: string, from?: unknown) => Promise<any>, answer: (word: unknown, key: unknown) => Promise<any>}}
  */
-export function createPlanDrafter({ root, plan, enabled = drafterEnabled(), draftFn = (r, q) => staticDraft(r, q, { precedents: precedentsFromTraining() }), record = true }) {
+export function createPlanDrafter({ root, plan, enabled = drafterEnabled(), draftFn = (r, q, x) => staticDraft(r, q, { precedents: precedentsFromTraining(), ...x }), record = true, memory }) {
+  const mem = memory === undefined ? memoryOf(root) : memory;
   const cache = new Map();
   const off = () => refusal('DRAFTER_OFF', 'The drafter is off; start the server with LINE_DRAFTER=1 to turn it on.');
   const asRequest = (q) => (typeof q === 'string' ? q.trim().slice(0, 500) : '');
-  const get = (q) => { if (!cache.has(q)) { if (cache.size > 20) cache.clear(); cache.set(q, draftFn(root, q)); } return cache.get(q); };
+  const get = (q) => { if (!cache.has(q)) { if (cache.size > 20) cache.clear(); cache.set(q, draftFn(root, q, mem ? { memory: mem } : {})); } return cache.get(q); };
 
   async function draftView(q) {
     if (!enabled) return off();
@@ -67,6 +72,7 @@ export function createPlanDrafter({ root, plan, enabled = drafterEnabled(), draf
       routes: d.routes.map((r) => routeView(d, r)), recommended: d.recommended, defer: d.defer,
       questions: d.questions.map((x) => ({ word: x.word, sentence: x.sentence, choices: x.choices, suggested: x.suggested })),
       dropped: d.dropped.map((x) => ({ sentence: x.sentence })),
+      memory: d.memory ? { route: d.memory.route, count: d.memory.count, sentence: d.memory.sentence } : null,
     };
   }
 
@@ -94,6 +100,13 @@ export function createPlanDrafter({ root, plan, enabled = drafterEnabled(), draf
     }
     if (record && start === 0) {
       try { appendRecord(root, factsSummary(root, readLineProject(root)), toRecord(d, r.id, true)); } catch { /* a record is best effort; the plan step stands */ }
+    }
+    // im3: remember the pick against what Line recommended (slotted; a memory that cannot be saved never stops the plan).
+    if (mem && start === 0) {
+      const options = [...new Set(d.routes.filter((x) => x.status === 'ok').map((x) => routeKey(x.id)))];
+      try {
+        await mem.recordOutcome('drafter.route', { ...draftContext(d), options, proposed: d.recommended ? routeKey(d.recommended) : null }, { kind: 'picked', chosen: routeKey(r.id), by: memoryBy(by) });
+      } catch { /* best effort */ }
     }
     return { ...last, added, next: null, sentence: `Added ${added.length === 1 ? 'one step' : `${added.length} steps`} to the plan; approve ${added.length === 1 ? 'it' : 'each'} to run.` };
   }

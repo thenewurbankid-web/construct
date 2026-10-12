@@ -4,6 +4,55 @@ One section per step. For each: what the tests prove (plain English), known gaps
 check it yourself. A step is done only after your UAT passes; until then it is "awaiting UAT".
 Branch: `work/2026-09-23` in `~/Repositories/construct` (local only, not pushed).
 
+## im3 + j5: memory of past answers per step, recalled before Qwen suggests (12 Oct, branch `im3-j5`; awaiting UAT)
+
+Line now remembers, per project and per step, what a person or an agent did with what Line proposed, and uses it the next time the same step comes up. Code: `packages/engine/line/memory/` (contract, store, recall, optional embeddings, eval).
+
+What is stored: one line per decision in `line/memory/<step>.jsonl` of the project, appended through Construct's writer (`writeLineState`, under the file lock), never sent anywhere. A record is slotted: the intent (`add.component`), the target's structure hash, slot shapes (`F:feature`, `C:component kind=components role=on:atom`), layer hashes, the closed option keys Line offered (`via-library:ui:C>F`, `base-on:ui:L>F`, a fix id, a tool name), the one it proposed, what happened (`picked`, `approved`, `refused`, `edited`, `skipped`, `reordered`, `fix-picked`, `agreed`, `disagreed`), the option kept and who did it (person, agent, Line). No project word (the shared leak guard in `slots.mjs`, plus every name of the project's features, items and library) and no code text (no braces, semicolons, arrows, JSX or line breaks); a record that has either is refused.
+
+Who feeds it: a drafted route picked in Cockpit (`drafter.route`); a plan step approved, or refused when it ran (`plan.step`); a typed fix picked for a refused step (`plan.fix`); an Import plan step edited, skipped, moved or approved (`import.step`); an owner's agree or disagree in Train Line (`train.route`, kept beside Train's cases).
+
+How it is recalled: first an exact match on step, intent and structure hash (newest first), then records of the same step by slot and structure similarity only: intent match, slot Jaccard, layer-hash Jaccard and BM25 over the slot tokens. Embeddings are optional and off (`LINE_MEMORY_EMBED=1`, local Ollama `nomic-embed-text` only, embedding only the slotted decision text); on Train's held-out cases they did not beat the non-neural recall (below), so they stay off.
+
+How it is used: when the newest 3 person decisions for a request like this all kept the same option, that option moves first, in the drafter's ranking and in `decide()` (cu2, `by: 'memory'`), and the reason reads "Recalled from 3 past decisions: the last 3 times you picked a new item based on the library." Only options Construct already checked can move: memory never adds one, a remembered option that fails the checks is not chosen, and an agent's picks are remembered but never steer. A later refusal, skip or disagreement of that option breaks the run.
+
+Settings, "AI steps": a Memory list with each step's size and "Forget this step's memory" (one click; only a person in Cockpit: the page's Origin and the approval token, as for Approve and Run).
+
+Eval (`node packages/engine/line/memory/eval.mjs --embed`, Train Line's 130 held-out cases; each held-out world is one project, and each case's memory is the person's picks of the other cases in that world, never its own):
+
+| | without memory | with memory |
+|---|---|---|
+| drafter preferred route | 100% | 100% (0 cases changed) |
+| recall top-1 chose the same route kind, all 110 cases with a pick | | 18% non-neural, 18% embeddings |
+| recall top-1 when the answer is in memory (20 cases) | | 100% non-neural, 100% embeddings |
+
+Reading it: the held-out set is already at 100% preferred, so memory could only hurt it, and it does not; it changes the ranking only after 3 consistent picks of the person in that project. Recall's low overall top-1 is because most worlds' other cases are different requests (the right past decision is simply not there); when it is, recall finds it every time. Floors are pinned in `test/line-memory.test.mjs` (raise only).
+
+Tests: `test/line-memory.test.mjs` (12), `ui/server/src/lineMemoryApi.test.mjs` (1), `ui/client/features/ai-steps/domain/AiSteps.spec.mjs` (+1), `ui/server/src/lineToolGate.test.mjs` (the memory routes are registry entries), Playwright `ui/e2e/uat/im3-j5.spec.js` with `tests/line-ai-steps.spec.js` (`playwright.line-memory.config.js`, ports 3399/4399: 3 passed).
+1. A record is closed, slotted data; a bad step, option key, outcome or extra field is refused in one sentence.
+2. Leak guard: a project word (`orders`, `OrderButton`) or code text (`() => save()`, JSX) is never remembered; Line's own words (layers such as "data") are not a leak.
+3. Recall returns the right past outcome: the exact match first, then similar ones of the same step by slots and structure; another step is never recalled.
+4. Ranking changes only after 3 consistent person picks; 2 picks, agent picks, or a later refusal change nothing; an option not offered now is never added.
+5. Drafter: three picks of the second route make it first on the 4th draft with "Recalled from 3 past decisions: ..."; the routes are the same set as without memory; the memory file holds no project name.
+6. Privacy (`docs/line-test-plan.md` row 21): project A's memory is never read in project B; deleting one entry removes it from recall; Forget clears the step and the ranking is static again; export and import round trip, and an import is checked against the receiving project's words; the store, recall and contract open no connection; embeddings are off by default, local only, embed slotted text only, and fall back to the non-neural recall when the model is down.
+7. `decide()`: a recalled option leads the checked ones with `by: memory` and the sentence; a remembered option that fails the checks is not chosen.
+8. Plan feedback: an approval is remembered as `plan.step`, with no project name.
+9. Eval floor: with memory is never below without on held-out worlds.
+10. Server: GET `/memory` lists each step with its size; Forget without the Cockpit Origin or the approval token is refused and forgets nothing; with both it clears the step.
+11. Browser (UAT walk): pick the same drafted route 3 times, the 4th draft recommends it first saying why; Settings shows "3 remembered decisions" (axe clean); Forget says "Line forgot 3 remembered decisions for this step." and the static order is back; no console error and no 4xx/5xx.
+
+Known gaps:
+- The UAT runs on `examples/line-sample`: `import-samples/contact-manager-ui` is not a Line project, so the drafter cannot open it.
+- `plan.step` and `import.step` records carry the tool only (Cockpit's plan steps have no slotted request context yet), so they are remembered but do not steer anything yet; `decide()` callers (Trace, Construct's chooser) do not pass a memory yet, only the drafter does.
+- Graph-neighbourhood ids from G1's graph are not used: the graph's node ids hold names; the layer hashes stand in for the neighbourhood.
+- The memory export/import has no Cockpit button yet (engine `exportAll`/`importAll` only).
+
+### UAT (5 minutes)
+1. Start the server with the drafter on: `cd ui/server && LINE_DRAFTER=1 npm start`; then `cd ui/client && npm run dev`; open a copy of `examples/line-sample` (`cp -R examples/line-sample ~/workspace/`).
+2. Components, "Describe a change": type `use OrderButton in billing`, Enter. The first card is via the library. Click Add to plan on the second card ("a new item on the same base"); type the request again and repeat until you have added it 3 times.
+3. Draft the same request a 4th time: the second route is now first, Recommended, and reads "Recalled from 3 past decisions: the last 3 times you picked a new item based on the library."
+4. Settings, AI steps, Memory: "Which drafted route you pick" shows 3 remembered decisions. Click "Forget this step's memory": it says "Line forgot 3 remembered decisions for this step." Draft again: via the library is first again.
+
 ## Import v2: fit existing logic into Line's blocks, backed by tests (11 Oct, merged on `merge-iv2`; awaiting UAT)
 
 Contract: `docs/line/import-v2/CONTRACT.md`. Merged branches: `fix-plan-lock`, `fix-yaml-comments`, `iv2-bugs`, `iv2-map`,

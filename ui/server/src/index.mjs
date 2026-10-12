@@ -95,6 +95,8 @@ import { createLineImportRouter } from './lineImportApi.mjs';
 import { createLineNewProjectRouter } from './lineNewProjectApi.mjs';
 import { createLineToolGate } from './lineToolGate.mjs';
 import { createLineAiRouter } from './lineAiApi.mjs';
+import { createLineMemoryRouter } from './lineMemoryApi.mjs';
+import crypto from 'node:crypto';
 import { stepModel } from '../../../packages/core/ai-profiles.mjs';
 import { createLineTraceRouter } from './lineTraceApi.mjs';
 import { createLineImportAgentRouter } from './lineImportAgentApi.mjs';
@@ -1296,8 +1298,11 @@ app.use('/api/line', createLineOpsRouter({
 // cp1 (Line Cockpit): every Line action as a step of the open project's plan (line/plans/); a person approves each
 // write, then it runs through the same writer (linePlanApi.mjs, packages/engine/line/planService.mjs).
 // ci2: the same ONE plan service per project (linePlanServiceFor above), shared with the Import agent.
+// im3 + j5: one approval token for every person-only Line action (approve, run, forget a step's memory).
+const LINE_APPROVAL_TOKEN = crypto.randomBytes(24).toString('hex');
 app.use('/api/line', createLinePlanRouter({
   clientOrigin: CLIENT_ORIGIN,
+  approvalToken: LINE_APPROVAL_TOKEN,
   afterSave,
   serviceFor: linePlanServiceFor,
   getRoot: () => {
@@ -1363,6 +1368,16 @@ app.use('/api/line', createLineRenderRouter({
 
 // cu2: every AI step's profile (model, reply cap, ladder, static fallback), read-only for Settings.
 app.use('/api/line', createLineAiRouter());
+
+// im3 + j5: the open project's memory of past answers per step (size, and Forget: one click, a person only).
+app.use('/api/line', createLineMemoryRouter({
+  clientOrigin: CLIENT_ORIGIN,
+  approvalToken: LINE_APPROVAL_TOKEN,
+  getRoot: () => {
+    const root = containedProjectRoot(getProjectDir());
+    return root ? { ok: true, root } : { ok: false, error: 'No project is open; pick a project first.' };
+  },
+}));
 
 // #386: the Picker's "propose selectors as a diff to story.md" (design section 9.7). Below the session gate
 // like every other `/api` route; the client names a feature and a story.md must already exist for it.
