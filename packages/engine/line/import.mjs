@@ -827,8 +827,11 @@ function scratchFolder(projectRoot, folder) {
   const parts = folder.split('/');
   for (let i = 0; i < parts.length; i += 1) {
     const rel = parts.slice(0, i).join('/');
-    const yml = path.join(projectRoot, rel, 'architecture.yml');
-    if (fs.existsSync(yml)) { fs.mkdirSync(path.join(top, rel), { recursive: true }); fs.copyFileSync(yml, path.join(top, rel, 'architecture.yml')); }
+    // architecture.yml (frozen globs, the root), and tsconfig.json (its `paths` aliases, so a move re-points `@/…` imports)
+    for (const name of ['architecture.yml', 'tsconfig.json']) {
+      const file = path.join(projectRoot, rel, name);
+      if (fs.existsSync(file)) { fs.mkdirSync(path.join(top, rel), { recursive: true }); fs.copyFileSync(file, path.join(top, rel, name)); }
+    }
   }
   const src = path.join(projectRoot, folder);
   const dest = path.join(top, folder);
