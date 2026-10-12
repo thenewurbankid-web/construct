@@ -270,23 +270,29 @@ export function fileUnits(source, rel, renames = {}) {
  * @param {string[]} files
  * @param {{renames?: RenameTable, read?: (abs: string) => string, unitsOf?: (source: string, rel: string, renames: RenameTable) => ReturnType<typeof fileUnits>}} [options]
  *   `renames` maps identifiers before hashing; `read` replaces fs (tests); `unitsOf` replaces fileUnits (a cache layer:
- *   importLoopDisk.mjs keeps each file's units by its content hash).
+ *   importLoopDisk.mjs keeps each file's units by its content hash). `classify` (logicVerify/purity.mjs classifyFile,
+ *   injected so this module stays free of the purity classifier) adds each function unit's purity class, `purity`
+ *   ('pure' | 'impure') and `effects` (its effect names; the effect chain length is their count). Off by default, so
+ *   logic-map.json and the import loop's maps are unchanged.
  * @returns {LogicMap}
  */
-export function buildLogicMap(appRoot, files, { renames = {}, read = (abs) => fs.readFileSync(abs, 'utf8'), unitsOf = fileUnits } = {}) {
+export function buildLogicMap(appRoot, files, { renames = {}, read = (abs) => fs.readFileSync(abs, 'utf8'), unitsOf = fileUnits, classify } = {}) {
   /** @type {LogicUnit[]} */
   const units = [];
   const seen = new Map();
   for (const file of files) {
     const rel = file.split(path.sep).join('/');
     const counters = new Map();
-    for (const u of unitsOf(read(path.join(appRoot, rel)), rel, renames)) {
+    const source = read(path.join(appRoot, rel));
+    const classes = classify ? classify(source, rel) : null;
+    for (const u of unitsOf(source, rel, renames)) {
       const base = unitFingerprint(u.kind, u.fn, u.anchor, renames);
       const k = (seen.get(base) ?? 0) + 1;
       seen.set(base, k);
       const key = `${rel}#${u.fn}:${u.kind}`;
       counters.set(key, (counters.get(key) ?? 0) + 1);
-      units.push({ id: `${key}:${counters.get(key)}`, fingerprint: k === 1 ? base : hash(`${base}#${k}`), kind: u.kind, file: rel, fn: u.fn, line: u.line, detail: u.detail, anchor: u.anchor, ...(u.exportName ? { exportName: u.exportName } : {}) });
+      const c = classes?.get(u.fn);
+      units.push({ id: `${key}:${counters.get(key)}`, fingerprint: k === 1 ? base : hash(`${base}#${k}`), kind: u.kind, file: rel, fn: u.fn, line: u.line, detail: u.detail, anchor: u.anchor, ...(u.exportName ? { exportName: u.exportName } : {}), ...(c ? { purity: c.purity, effects: c.effects } : {}) });
     }
   }
   /** @type {Partial<Record<LogicUnitKind, number>>} */

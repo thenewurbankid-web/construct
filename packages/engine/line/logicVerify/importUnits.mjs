@@ -14,6 +14,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { buildLogicMap } from '../logicMap.mjs';
+import { IMPORT_PLAN_FILE } from '../contract.mjs';
 import { verifyPair } from './verifyPair.mjs';
 import { summarizeStep } from './verdict.mjs';
 
@@ -82,6 +83,46 @@ export function readImportBaseline(projectRoot, folder) {
   } catch { return null; }
 }
 
+/** The extension of a path (`.tsx`), or ''. */
+const extOf = (rel) => { const base = String(rel).split('/').pop() ?? ''; const i = base.lastIndexOf('.'); return i > 0 ? base.slice(i) : ''; };
+
+/**
+ * Where a done import step moved a file whole (folder-relative), as importLoop.mjs fitPlanSteps reads it: a
+ * `line.import.toLibrary` step to `library/<kind>/<name><ext>`, a `line.import.toFeature` move (no base) to
+ * `features/<feature>/<kind>/<name><ext>`. Null for every other step.
+ * @param {{tool?: string, args?: any}} s
+ * @returns {string|null}
+ */
+export function movedTo(s) {
+  const a = s?.args;
+  if (typeof a?.from !== 'string' || typeof a?.name !== 'string' || typeof a?.kind !== 'string') return null;
+  if (s.tool === 'line.import.toLibrary') return `library/${a.kind}/${a.name}${extOf(a.from)}`;
+  if (s.tool === 'line.import.toFeature' && a.mode === 'move' && !a.base && typeof a.feature === 'string') return `features/${a.feature}/${a.kind}/${a.name}${extOf(a.from)}`;
+  return null;
+}
+
+/**
+ * The closed-set transforms the import applied to each unit, from the import agent's plan
+ * (<folder>/line/import-plan.json): a unit in a file a done step moved whole was moved with its imports repointed
+ * (`['move', 'repoint-imports']`), so a same canonical form proves it. Every other unit stays null (a hand edit as far
+ * as anyone can say: tested at best). Extract steps are not mapped yet: their landing file is not recorded per unit.
+ * @param {string} projectRoot
+ * @param {string} folder
+ * @returns {(unit: UnitRef) => import('./contract.mjs').TransformId[]|null}
+ */
+export function importTransforms(projectRoot, folder) {
+  /** @type {Map<string, import('./contract.mjs').TransformId[]>} */
+  const byFile = new Map();
+  let doc = null;
+  try { doc = JSON.parse(fs.readFileSync(path.join(projectRoot, folder, IMPORT_PLAN_FILE), 'utf8')); } catch { /* no plan: nothing claimed */ }
+  for (const s of Array.isArray(doc?.steps) ? doc.steps : []) {
+    if (s?.run !== 'done') continue;
+    const to = movedTo(s);
+    if (to) byFile.set(`${folder}/${to}`, ['move', 'repoint-imports']);
+  }
+  return (unit) => byFile.get(unit.file) ?? null;
+}
+
 /**
  * The before root: the baseline's sources at their project-relative paths, plus the project's tsconfig.json and
  * package.json (the characterizer's analysis reads them). The caller removes it.
@@ -144,7 +185,7 @@ export async function logicCheck(projectRoot, folder, o = {}) {
   if (!sources || !Object.keys(sources).length) return { id: 'logic', state: 'skipped', sentence: `Logic was not verified unit by unit: ${folder} has no import baseline (Line Import v2 writes it when the import starts).` };
   let r;
   try {
-    r = await verifyImportUnits({ projectRoot, folder, sources, ...o });
+    r = await verifyImportUnits({ projectRoot, folder, sources, ...o, transformsOf: o.transformsOf ?? importTransforms(projectRoot, folder) });
   } catch (err) {
     return { id: 'logic', state: 'skipped', sentence: 'Logic could not be verified unit by unit.', detail: String(/** @type {Error} */ (err)?.message ?? err) };
   }

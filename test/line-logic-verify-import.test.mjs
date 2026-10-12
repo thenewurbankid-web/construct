@@ -67,3 +67,35 @@ test('a folder with no import baseline is skipped, said in one sentence', async 
   assert.equal(c.state, 'skipped');
   assert.match(c.sentence, /has no import baseline/);
 });
+
+/** The import agent's plan with one done step that moved age.ts whole into the library. */
+function planMove(root) {
+  const step = { id: 's1', tool: 'line.import.toLibrary', args: { from: 'age.ts', kind: 'domains', name: 'age' }, run: 'done', planStepIds: [] };
+  fs.writeFileSync(path.join(root, 'src/alerts/line/import-plan.json'), JSON.stringify({ folder: 'src/alerts', steps: [step] }));
+}
+
+test('#857 a pure unit the import only moved comes back proven; the untouched one stays tested', async (t) => {
+  const root = project({ 'src/alerts/library/domains/age.ts': AGE, 'src/alerts/label.ts': LABEL });
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  planMove(root);
+  const c = await logicCheck(root, 'src/alerts');
+  assert.equal(c.state, 'pass', c.detail);
+  for (const v of c.units ?? []) assertUnitVerdict(v);
+  const age = c.units?.find((v) => v.unit.fn === 'isAdult');
+  assert.equal(age?.status, 'proven', c.detail);
+  assert.deepEqual(age?.transforms, ['move', 'repoint-imports']);
+  assert.equal(c.units?.find((v) => v.unit.fn === 'label')?.status, 'tested');
+  assert.match(c.sentence, /^Logic verification: 1 proven, 1 tested, 0 unverified\.$/);
+});
+
+test('#857 a moved unit whose logic changed still fails with its location', async (t) => {
+  const root = project({ 'src/alerts/library/domains/age.ts': AGE.replace('>=', '>'), 'src/alerts/label.ts': LABEL });
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  planMove(root);
+  const c = await logicCheck(root, 'src/alerts');
+  assert.equal(c.state, 'fail', c.detail);
+  const changed = c.units?.find((v) => v.status === 'changed');
+  assert.equal(changed?.unit.fn, 'isAdult');
+  assert.equal(changed?.location?.file, 'src/alerts/library/domains/age.ts');
+  assert.equal(changed?.location?.line, 2);
+});

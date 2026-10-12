@@ -29,6 +29,8 @@
  *                                 labels; `fn` stays "<module>" because fingerprints key on it.
  * @property {string} [anchor]     The normalized AST text the fingerprint was hashed from (optional; lets
  *                                 compareLogicMaps re-hash through a rename table given after the map was built).
+ * @property {'pure'|'impure'} [purity]  The enclosing function's purity class (buildLogicMap `classify`; #861).
+ * @property {string[]} [effects]  Its effect names (logicVerify/purity.mjs classifyFile); the chain length is the count.
  */
 
 /**
