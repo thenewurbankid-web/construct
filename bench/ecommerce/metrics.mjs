@@ -4,6 +4,7 @@
 //   node bench/ecommerce/metrics.mjs collect --builder <id> --arm line|plain|ui --run <run-dir> [--model <id>]
 //        [--usage <file.json>] [--wall-ms <n>] [--turns <n>] [--human <n>] [--no-tsc]
 //   node bench/ecommerce/metrics.mjs report
+//   node bench/ecommerce/metrics.mjs acceptance <report.json> [acceptance.log]   (run-acceptance.sh's summary)
 //
 // <run-dir> is what driver/new-run.sh made: <run>/project (the built project, a git repo whose first commit is the
 // starter) and <run>/logs (calls.jsonl from the CLI, turns.jsonl from qwen-agent, acceptance.json from
@@ -19,7 +20,8 @@
 //   validate           Construct's validate on the project (Line arm: its profile; plain arm: the Line profile run as a
 //                      measurement only, "rules a plain build would break")
 //   tsc                npx tsc --noEmit in the project (needs its node_modules)
-//   acceptance         logs/acceptance.json (Playwright JSON report); total is the number of acceptance tests
+//   acceptance         logs/acceptance.json (Playwright JSON report); total is the number of acceptance tests; no test
+//                      ran (the webServer's next build failed) is "did not run: build failed", passed null, never 0/total
 //   LOC, duplicates    code files the build added or changed (git diff against the starter commit)
 //   library reuse      Line view: the share of feature items (not logic kinds) that are based on a library item
 //   interventions      --human (default 0) plus project files changed outside any landed plan step (Line arm)
@@ -151,14 +153,38 @@ export function acceptanceTotal() {
   return fs.readdirSync(dir).filter((f) => f.endsWith('.spec.ts')).reduce((n, f) => n + (fs.readFileSync(path.join(dir, f), 'utf8').match(/^test\(/gm)?.length ?? 0), 0);
 }
 
-function acceptance(logs) {
-  const total = acceptanceTotal();
-  const r = readJson(path.join(logs, 'acceptance.json'));
-  if (!r) return { passed: 0, total, ran: false, passedIds: [] };
+/**
+ * A Playwright JSON report as the bench counts it. A report with no test that ran (Playwright's webServer, which runs
+ * `next build && next start`, never started, so no test ran) is "did not run", never 0 of the total: `passed` is null
+ * and `status` says why, so a build failure is not read as 22 failed tests.
+ * @param {any} r The report (null when there is none).
+ * @param {number} total The number of acceptance tests.
+ * @param {string} [log] run-acceptance.sh's console output (acceptance.log), when kept: it tells a build failure apart.
+ * @returns {{passed: number|null, total: number, ran: boolean, status: string, passedIds: string[]}}
+ */
+export function acceptanceOf(r, total, log = '') {
+  if (!r) return { passed: null, total, ran: false, status: 'did not run: no report', passedIds: [] };
   const specs = []; const walk = (s) => { for (const x of s.suites ?? []) walk(x); for (const sp of s.specs ?? []) specs.push(sp); };
   walk(r);
-  const passed = specs.filter((s) => s.ok);
-  return { passed: passed.length, total, ran: specs.length > 0, passedIds: passed.map((s) => s.title.split(':')[0]) };
+  const ran = specs.some((sp) => (sp.tests ?? []).some((t) => (t.results ?? []).length > 0));
+  if (!ran) {
+    const said = (r.errors ?? []).map((e) => String(e.message ?? '')).join('\n');
+    const server = /webServer was not able to start/.test(said);
+    const buildError = /Failed to compile|Build error|Type error:/i.test(log);
+    const why = server && (buildError || !log) ? 'build failed' : server ? 'the web server did not start' : said ? said.split('\n')[0].replace(/^Error:\s*/, '') : 'no test ran';
+    return { passed: null, total, ran: false, status: `did not run: ${why}`, passedIds: [] };
+  }
+  const passed = specs.filter((sp) => sp.ok);
+  return { passed: passed.length, total, ran: true, status: `${passed.length}/${total}`, passedIds: passed.map((sp) => sp.title.split(':')[0]) };
+}
+
+/** Acceptance as a table cell: "passed/total", or why it did not run (older results carry only ran: false). */
+export const acceptanceText = (a) => (a?.ran === false ? a.status ?? 'did not run' : `${a?.passed ?? 0}/${a?.total ?? 0}`);
+
+function acceptance(logs) {
+  let log = '';
+  try { log = fs.readFileSync(path.join(logs, 'acceptance.log'), 'utf8'); } catch { /* not kept */ }
+  return acceptanceOf(readJson(path.join(logs, 'acceptance.json')), acceptanceTotal(), log);
 }
 
 function tokens(builder, usage, model) {
@@ -231,7 +257,7 @@ async function collect(o) {
   };
   fs.mkdirSync(RESULTS, { recursive: true });
   fs.writeFileSync(path.join(RESULTS, `${builder}.json`), `${JSON.stringify(result, null, 2)}\n`);
-  console.log(JSON.stringify({ ok: true, file: `results/${builder}.json`, acceptance: `${acc.passed}/${acc.total}`, landed: plan?.landed ?? null }));
+  console.log(JSON.stringify({ ok: true, file: `results/${builder}.json`, acceptance: acceptanceText(acc), landed: plan?.landed ?? null }));
 }
 
 const fmt = (n, d = 0) => (n === null || n === undefined ? '–' : typeof n === 'number' ? n.toLocaleString('en-US', { maximumFractionDigits: d }) : String(n));
@@ -252,7 +278,7 @@ function report() {
   L.push('', '## Outcome', '', '| Builder | Arm | Acceptance | Turns | Steps added | Landed | Refused (add / run) | Fixes (by id: sent / landed) | Validate errors / warnings | tsc errors | LOC | Duplicate pairs | Library reuse | Human interventions |', '| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |');
   for (const r of rows) {
     const p = r.plan;
-    L.push(`| ${r.builder} | ${r.arm} | ${r.acceptance.passed}/${r.acceptance.total} | ${fmt(r.turns)} | ${p ? p.added : 'n/a'} | ${p ? p.landed : 'n/a'} | ${p ? `${p.refusedAtAdd} / ${p.refusedAtRun}` : 'n/a'} | ${p ? `${p.fixesApplied} (${p.fixesById ? `${p.fixesById.sent} / ${p.fixesById.landed}` : 'n/a'})` : 'n/a'} | ${r.validate.errors} / ${r.validate.warnings} | ${fmt(r.tsc.errors)} | ${r.loc} | ${r.duplicates.pairs} | ${r.libraryReuse?.share ?? 'n/a'} | ${r.humanInterventions} |`);
+    L.push(`| ${r.builder} | ${r.arm} | ${acceptanceText(r.acceptance)} | ${fmt(r.turns)} | ${p ? p.added : 'n/a'} | ${p ? p.landed : 'n/a'} | ${p ? `${p.refusedAtAdd} / ${p.refusedAtRun}` : 'n/a'} | ${p ? `${p.fixesApplied} (${p.fixesById ? `${p.fixesById.sent} / ${p.fixesById.landed}` : 'n/a'})` : 'n/a'} | ${r.validate.errors} / ${r.validate.warnings} | ${fmt(r.tsc.errors)} | ${r.loc} | ${r.duplicates.pairs} | ${r.libraryReuse?.share ?? 'n/a'} | ${r.humanInterventions} |`);
   }
   const refusals = rows.filter((r) => r.plan && Object.keys(r.plan.refusedByRule).length);
   if (refusals.length) {
@@ -265,7 +291,8 @@ function report() {
   if (!pairs.length) L.push('| – | no paired runs yet | | | | | |');
   for (const [l, p] of pairs) {
     const d = (a, b) => (a === null || b === null || a === undefined || b === undefined ? '–' : `${a - b >= 0 ? '+' : ''}${fmt(a - b)}`);
-    L.push(`| ${l.builder} | ${l.acceptance.passed} / ${p.acceptance.passed} / ${d(l.acceptance.passed, p.acceptance.passed)} | ${fmt(l.tokens.total)} / ${fmt(p.tokens.total)} / ${d(l.tokens.total, p.tokens.total)} | ${mins(l.wallMs)} / ${mins(p.wallMs)} | ${fmt(l.tsc.errors)} / ${fmt(p.tsc.errors)} | ${l.validate.errors} / ${p.validate.errors} | ${l.duplicates.pairs} / ${p.duplicates.pairs} |`);
+    const ap = (a) => (a.ran === false ? null : a.passed);
+    L.push(`| ${l.builder} | ${ap(l.acceptance) ?? acceptanceText(l.acceptance)} / ${ap(p.acceptance) ?? acceptanceText(p.acceptance)} / ${d(ap(l.acceptance), ap(p.acceptance))} | ${fmt(l.tokens.total)} / ${fmt(p.tokens.total)} / ${d(l.tokens.total, p.tokens.total)} | ${mins(l.wallMs)} / ${mins(p.wallMs)} | ${fmt(l.tsc.errors)} / ${fmt(p.tsc.errors)} | ${l.validate.errors} / ${p.validate.errors} | ${l.duplicates.pairs} / ${p.duplicates.pairs} |`);
   }
   L.push('', '## Prices used', '', `${PRICES.source}. Date: ${PRICES.date}.`, '', '| Model | Input $/M | Output $/M | Cache read $/M | Cache write $/M | Note |', '| --- | ---: | ---: | ---: | ---: | --- |');
   for (const [m, p] of Object.entries(PRICES.models)) L.push(`| ${m} | ${p.in} | ${p.out} | ${p.cacheRead} | ${p.cacheWrite} | ${p.note ?? ''} |`);
@@ -286,5 +313,11 @@ if (process.argv[1] && fs.realpathSync(process.argv[1]) === fileURLToPath(import
   const o = flags(process.argv.slice(2));
   if (o._[0] === 'collect') await collect(o);
   else if (o._[0] === 'report') report();
-  else { console.error('usage: metrics.mjs collect --builder <id> --arm line|plain|ui --run <dir> [...] | report'); process.exit(2); }
+  else if (o._[0] === 'acceptance') {
+    // run-acceptance.sh's summary line: node metrics.mjs acceptance <report.json> [acceptance.log]
+    let log = ''; try { log = o._[2] ? fs.readFileSync(o._[2], 'utf8') : ''; } catch { /* none */ }
+    const a = acceptanceOf(readJson(o._[1] ?? ''), acceptanceTotal(), log);
+    console.log(JSON.stringify({ ran: a.ran, status: a.status, passed: a.passed, total: a.total }));
+  }
+  else { console.error('usage: metrics.mjs collect --builder <id> --arm line|plain|ui --run <dir> [...] | report | acceptance <report.json> [acceptance.log]'); process.exit(2); }
 }

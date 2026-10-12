@@ -1,0 +1,14 @@
+{
+  "config": { "version": "1.63.0" },
+  "suites": [
+    {
+      "title": "catalog.spec.ts",
+      "specs": [
+        { "title": "CHK-1: the catalog lists 12 products", "ok": true, "tests": [{ "results": [{ "status": "passed" }] }] },
+        { "title": "CHK-2: a category filter narrows the list", "ok": false, "tests": [{ "results": [{ "status": "failed" }] }] }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": { "expected": 1, "skipped": 0, "unexpected": 1, "flaky": 0 }
+}

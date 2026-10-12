@@ -1,0 +1,7 @@
+[WebServer] Failed to compile.
+[WebServer]
+[WebServer] app/cart/page.tsx
+[WebServer] Type error: Page "app/cart/page.tsx" has an invalid "default" export:
+[WebServer]   Type "FormPageProps & object" is not valid.
+[WebServer]
+Error: Process from config.webServer was not able to start. Exit code: 1
