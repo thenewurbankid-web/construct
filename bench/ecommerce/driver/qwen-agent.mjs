@@ -38,7 +38,7 @@ export const TOOLS = {
   line: [
     fn('plan_tools', 'plan-cli tools: list the Line plan tools you can add, each with its JSON Schema.'),
     fn('plan_status', 'plan-cli status: the plan, each step with its state and sentence.'),
-    fn('plan_add', 'plan-cli add: add one plan step. Auto approves it when Construct planned it clean; then call plan_run_next to land it.', { tool: S('A Line tool name, e.g. line.setCode'), args: { type: 'object', description: 'The tool arguments, as its JSON Schema says' }, why: S('One plain-English sentence: why this step.') }, ['tool', 'args', 'why']),
+    fn('plan_add', 'plan-cli add: add one plan step, either {tool, args, why} or {fix} to add a typed fix the last refusal offered. Auto approves it when Construct planned it clean; then call plan_run_next to land it.', { tool: S('A Line tool name, e.g. line.setCode (leave out when you send fix)'), args: { type: 'object', description: 'The tool arguments, as its JSON Schema says (leave out when you send fix)' }, why: S('One plain-English sentence: why this step.'), fix: S('The ref of a fix the last refused plan_add offered, e.g. "f1" (its recommended fix); adds that fix\'s step instead of tool and args') }, ['why']),
     fn('plan_run_next', 'plan-cli run-next: run the next ready step; returns whether it landed, its checks, and typed fixes when Construct refused it.'),
     fn('plan_findings', 'plan-cli findings: the library items, the features with their items, and the validate findings with keys.'),
     fn('plan_validate', 'plan-cli validate: construct validate --profile line counts and findings.'),
@@ -62,7 +62,7 @@ async function callTool(cli, arm, name, a) {
   if (arm === 'line') {
     if (name === 'plan_tools') return cli.run('tools');
     if (name === 'plan_status') return cli.run('status');
-    if (name === 'plan_add') return cli.run('add', [String(args.tool ?? ''), JSON.stringify(typeof args.args === 'string' ? safeParse(args.args) : args.args ?? {})], { why: typeof args.why === 'string' ? args.why : undefined });
+    if (name === 'plan_add') return cli.run('add', [String(args.tool ?? ''), JSON.stringify(typeof args.args === 'string' ? safeParse(args.args) : args.args ?? {})], { why: typeof args.why === 'string' ? args.why : undefined, fix: typeof args.fix === 'string' && args.fix.trim() ? args.fix.trim() : undefined });
     if (name === 'plan_run_next') return cli.run('run-next');
     if (name === 'plan_findings') return cli.run('findings');
     if (name === 'plan_validate') return cli.run('validate');

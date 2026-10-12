@@ -266,3 +266,126 @@ test('"Did you mean ...?": an unknown item, an unknown feature or a bad name lan
     assert.equal(far.fixes, undefined);
   } finally { done(); }
 });
+
+/** A project that type-checks with real React types (the repo's node_modules, linked): the route-props gate runs. */
+const typedProject = () => {
+  const p = project();
+  write(p.root, 'tsconfig.json', JSON.stringify({ compilerOptions: { strict: true, jsx: 'react-jsx', module: 'esnext', moduleResolution: 'bundler', target: 'es2020', noEmit: true, skipLibCheck: true, types: [] } }));
+  fs.symlinkSync(path.join(here, '..', 'node_modules'), path.join(p.root, 'node_modules'), 'dir');
+  // A library page whose props are all optional, so a bare wrapper of it compiles with none.
+  write(p.root, 'library/pages/ShelfPage.tsx', 'export function ShelfPage({ title }: { title?: string }) {\n  return <main><h1>{title ?? "Shelf"}</h1></main>;\n}\n');
+  return p;
+};
+
+test('ROUTE_PROPS on line.addRoute: a line.baseOn wrapper served at a route is refused as setCode refuses it, and its fix lands (pilot-qwen-7b-r2 R2)', async () => {
+  const { root, done } = typedProject();
+  try {
+    const svc = svcOf(root);
+    await addApproved(svc, 'line.baseOn', { libraryId: 'pages/ShelfPage', feature: 'home', name: 'HomePage' });
+    assert.equal((await runOne(svc)).state, 'done');
+    const wrapper = read(root, 'features/home/pages/HomePage.tsx');
+    assert.match(wrapper, /export function HomePage\(props: ComponentProps<typeof ShelfPage> & object\)/);
+    const r = /** @type {any} */ (await svc.addStep({ tool: 'line.addRoute', args: { route: '/', page: 'features/home/pages/HomePage.tsx' }, why: WHY }, 'agent'));
+    assert.equal(r.code, 'TYPE_ERROR', r.sentence);
+    assert.match(r.sentence, /^The code does not compile, so nothing was saved: HomePage is served at a route \(app\/page\.tsx\), so Next\.js lets it take only params and searchParams as props, not title/);
+    assert.equal(r.fixes[0].id, 'TYPE_ERROR/route-props');
+    assert.equal(r.fixes[0].ref, 'f1');
+    assert.match(r.fixes[0].sentence, /^Make HomePage take no props \(it only passes props on\), so its route can serve it\. Then add the route \/ again\.$/);
+    assert.equal(r.fixes[0].step.tool, 'line.setCode');
+    assert.equal(r.fixes[0].step.args.contentHash, hashOf(wrapper));
+    assert.match(r.fixes[0].step.args.code, /export function HomePage\(\) \{\n {2}return <ShelfPage \/>;/);
+    assert.doesNotMatch(r.fixes[0].step.args.code, /ComponentProps/);
+    assert.equal(fs.existsSync(path.join(root, 'app/page.tsx')), false, 'nothing was written');
+    await fixLands(svc, r);
+    const routed = await addApproved(svc, 'line.addRoute', { route: '/', page: 'features/home/pages/HomePage.tsx' });
+    assert.equal(routed.ok, true, routed.sentence);
+    assert.equal((await runOne(svc)).state, 'done');
+    assert.match(read(root, 'app/page.tsx'), /export \{ HomePage as default \}/);
+    // A library page whose props are required: rendered bare it would not compile, so no fix is offered (the page's
+    // content is the builder's to write), but the route is still refused.
+    await addApproved(svc, 'line.baseOn', { libraryId: 'pages/ListPage', feature: 'home', name: 'ListView' });
+    assert.equal((await runOne(svc)).state, 'done');
+    const listed = /** @type {any} */ (await svc.addStep({ tool: 'line.addRoute', args: { route: '/list', page: 'features/home/pages/ListView.tsx' }, why: WHY }, 'agent'));
+    assert.equal(listed.code, 'TYPE_ERROR');
+    assert.match(listed.sentence, /ListView is served at a route \(app\/list\/page\.tsx\)/);
+    assert.equal(listed.fixes, undefined);
+  } finally { done(); }
+});
+
+test('ROUTE_PROPS on line.baseOn: a new page that a route entry already imports is refused, its fix creates it taking no props (pilot-qwen-7b-r2 R2)', async () => {
+  const { root, done } = typedProject();
+  try {
+    write(root, 'app/shelf/page.tsx', "export { ShelfView as default } from '../../features/home/pages/ShelfView';\n");
+    const svc = svcOf(root);
+    const r = /** @type {any} */ (await svc.addStep({ tool: 'line.baseOn', args: { libraryId: 'pages/ShelfPage', feature: 'home', name: 'ShelfView' }, why: WHY }, 'agent'));
+    assert.equal(r.code, 'TYPE_ERROR', r.sentence);
+    assert.match(r.sentence, /ShelfView is served at a route \(app\/shelf\/page\.tsx\), so Next\.js lets it take only params and searchParams as props/);
+    assert.equal(r.fixes[0].id, 'TYPE_ERROR/route-props');
+    assert.equal(r.fixes[0].step.args.contentHash, undefined, 'the fix creates the file');
+    assert.match(r.fixes[0].step.args.code, /^\/\/ @line-base pages\/ShelfPage\n/);
+    // A page no route serves is not checked: it lands as before.
+    const free = await addApproved(svc, 'line.baseOn', { libraryId: 'pages/ShelfPage', feature: 'home', name: 'FreeShelf' });
+    assert.equal(free.ok, true, free.sentence);
+  } finally { done(); }
+});
+
+test('a typed fix is added by its ref or id ({fix: "f1"}); an unknown ref is refused with the refs on offer (pilot-qwen-7b-r2 R1)', async () => {
+  const { root, done } = project();
+  try {
+    const svc = svcOf(root);
+    const none = /** @type {any} */ (await svc.addStep({ fix: 'f1', why: WHY }, 'agent'));
+    assert.equal(none.code, 'UNKNOWN_FIX');
+    assert.match(none.sentence, /^There is no fix f1 to add: the last step added was not refused with fixes/);
+    const r = /** @type {any} */ (await svc.addStep({ tool: 'line.baseOn', args: { libraryId: 'pages/ListPag', feature: 'home', name: 'HomePage' }, why: WHY }, 'agent'));
+    assert.equal(r.code, 'UNKNOWN_ITEM');
+    assert.deepEqual(r.fixes.map((f) => f.ref), r.fixes.map((_f, i) => `f${i + 1}`));
+    const bad = /** @type {any} */ (await svc.addStep({ fix: 'f9', tool: 'fixes[0].step' }, 'agent'));
+    assert.equal(bad.code, 'UNKNOWN_FIX');
+    assert.match(bad.sentence, /^There is no fix f9; the last refusal offered f1 \(Did you mean pages\/ListPage\?.*Send one of those refs, for example \{"fix": "f1"\}\.$/);
+    // The offer outlives a refused pick; it is picked by its stable id too. A refusal writes nothing into the project.
+    assert.equal(fs.existsSync(path.join(root, 'line/plans')), false);
+    const again = /** @type {any} */ (await svc.addStep({ fix: r.fixes[0].id }, 'agent'));
+    assert.equal(again.ok, true, again.sentence);
+    const step = again.steps.find((s) => s.id === again.stepId);
+    assert.equal(step.tool, 'line.baseOn');
+    assert.deepEqual({ ...step.args, expect: undefined }, { ...r.fixes[0].step.args, expect: undefined });
+    assert.equal(step.why, r.fixes[0].sentence);
+    if (step.state === 'waiting') assert.equal((/** @type {any} */ (await svc.approve(again.stepId, 'ui'))).ok, true);
+    const ran = await runOne(svc);
+    assert.equal(ran.result.apply.ok, true, ran.sentence);
+    assert.match(read(root, 'features/home/pages/HomePage.tsx'), /@line-base pages\/ListPage/);
+    // A landed add clears the offer: f1 now names nothing.
+    const stale = /** @type {any} */ (await svc.addStep({ fix: 'f1' }, 'agent'));
+    assert.equal(stale.code, 'UNKNOWN_FIX');
+  } finally { done(); }
+});
+
+test('plan-cli: a refusal lists each choice with its id and exact step, says how to send one, and calls.jsonl keeps the fixes (R1, owner shape)', async () => {
+  const { root, done } = project();
+  const { createPlanCli } = await import('../bench/ecommerce/driver/plan-cli.mjs');
+  try {
+    write(root, 'features/home/pages/HomePage.tsx', 'export function HomePage() { return null; }\n');
+    write(root, 'features/home/pages/AboutPage.tsx', 'export function AboutPage() { return null; }\n');
+    const log = path.join(root, '..', 'calls.jsonl');
+    const cli = createPlanCli({ project: root, log, builder: 'test' });
+    const out = await cli.run('add', ['line.addRoute', JSON.stringify({ route: '/', page: 'home/HomePage' })], { why: WHY });
+    assert.equal(out.ok, false);
+    assert.equal(out.code, 'UNKNOWN_ITEM');
+    const lines = out.sentence.split('\n');
+    assert.match(lines[0], /^Refused \(UNKNOWN_ITEM\): "home\/HomePage" is not a feature page file\. A route serves a file like features\/<feature>\/pages\/<Name>\.tsx/);
+    assert.equal(lines[1], 'Pick one and send its id:');
+    for (const f of out.fixes) {
+      const line = lines.find((l) => l.startsWith(`  ${f.ref}${f.recommended ? ' (recommended)' : ''}: `));
+      assert.ok(line, `${f.ref} is listed: ${out.sentence}`);
+      assert.ok(line.includes(`${f.step.tool} ${JSON.stringify(f.step.args)}`), `${f.ref} shows its exact step: ${line}`);
+    }
+    assert.match(lines[2], /^ {2}f1 \(recommended\): line\.addRoute \{"route":"\/","page":"features\/home\/pages\/HomePage\.tsx"\}/);
+    assert.equal(lines.at(-1), 'To use one, send {"fix":"f1"}.');
+    assert.doesNotMatch(out.sentence, /fixes\[/);
+    const call = fs.readFileSync(log, 'utf8').trim().split('\n').map((l) => JSON.parse(l)).filter((e) => e.kind === 'call').at(-1);
+    assert.deepEqual(call.result.fixes.map((f) => [f.ref, f.id, f.step, f.recommended]), out.fixes.map((f) => [f.ref, f.id, f.step, f.recommended === true]));
+    // The id it sends adds the recommended step, from a fresh one-shot process too (the offer is kept by the log).
+    const picked = await createPlanCli({ project: root, log, builder: 'test' }).run('add', [], { fix: 'f1' });
+    assert.equal(picked.ok, true, picked.sentence);
+  } finally { done(); }
+});

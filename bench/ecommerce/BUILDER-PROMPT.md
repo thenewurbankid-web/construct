@@ -22,6 +22,7 @@ editor on the project. Every call is recorded; a direct write counts as a human 
 | `tools` | the plan tools you can add, each with its JSON Schema |
 | `status` | the plan: each step with its state and one sentence |
 | `add <tool> '<json-args>' --why "<one sentence>"` | add one step; Auto approves it when Construct planned it clean |
+| `add --fix <ref> --why "<one sentence>"` | add a typed fix the last refused `add` offered (`f1` is the recommended one) |
 | `run-next` | land the next approved step; returns its checks, findings and typed fixes when Construct refused it |
 | `findings` | library items, features and their items, validate findings with their keys |
 | `validate` | `construct validate --profile line`: error and warning counts and the findings |
@@ -53,7 +54,19 @@ editor on the project. Every call is recorded; a direct write counts as a human 
 - `line.addRoute {route, page}`: serve a feature page at a route (`"/"`, `"/cart"`, `"/products/:id"`).
 - `line.setLayoutSlot {slot, components}`: show library or feature components on every page, in the app shell's
   `header`, `nav` or `footer` slot.
-- When `add` refuses a step and its answer has `fixes`, add `fixes[0].step` (or another `fixes[].step`) instead.
+- When `add` refuses a step, its answer lists the choices, each with an id and the exact step it adds, the
+  recommended one first:
+
+  ```
+  Refused (UNKNOWN_ITEM): "catalog/ListPage" is not a feature page file. ...
+  Pick one and send its id:
+    f1 (recommended): line.addRoute {"route":"/","page":"features/catalog/pages/ListPage.tsx"}
+    f2: line.addRoute {"route":"/","page":"features/product/pages/DetailPage.tsx"}
+  To use one, send {"fix":"f1"}.
+  ```
+
+  Send the id you pick: `add --fix f1` (a tool call: `plan_add {"fix": "f1", "why": "..."}`). You may also write the
+  step out yourself as a normal `add`.
 - When `run-next` says a step needs a fix, add one of its `options[].step` with `"fixOf": "<step id>"` in the args, or
   add `line.leaveAsIs {"stepId": "<step id>"}` to carry on without it. The plan does not run other steps until you do.
 

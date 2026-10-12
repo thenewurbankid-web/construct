@@ -5,6 +5,7 @@
 //   plan-cli.mjs tools                               the plan tools a builder may add, each with its JSON Schema
 //   plan-cli.mjs status                              the session plan: each step's state and sentence
 //   plan-cli.mjs add <tool> '<json-args>' --why "…"  add one step; a write is approved by Auto (ct1, see below)
+//   plan-cli.mjs add --fix <ref> [--why "…"]        add a typed fix the last refused add offered (f1 = recommended)
 //   plan-cli.mjs run-next                            run exactly one ready step; returns its checks and typed fixes
 //   plan-cli.mjs findings                            Line's view: features, items and validate findings with keys
 //   plan-cli.mjs validate                            construct validate --profile line: counts and the findings
@@ -35,7 +36,31 @@ export const BUILDER_TOOLS = Object.freeze(lineToolSpecs().filter((t) => !t.name
 const SKIP = new Set(['node_modules', '.next', '.git']);
 const MAX_READ = 64 * 1024;
 
-const sentence = (s) => { const t = String(s ?? '').trim().replace(/\s+/g, ' '); return /[.?!]$/.test(t) ? t : `${t}.`; };
+/** One plain sentence (or, for a refusal with choices, plain lines: spaces collapse inside a line, indents stay). */
+const sentence = (s) => {
+  const t = String(s ?? '').trim().split('\n').map((l) => l.replace(/(\S)[ \t]+/g, '$1 ').replace(/^[ \t]+/, (m) => (m.length ? '  ' : '')).trimEnd()).filter(Boolean).join('\n');
+  return /[.?!]$/.test(t) ? t : `${t}.`;
+};
+
+/** A step as a reader sends it: the tool and its args as JSON, a long string value (a file's code) shortened. */
+const stepText = (step) => `${step.tool} ${JSON.stringify(step.args ?? {}, (_k, v) => (typeof v === 'string' && v.length > 120 ? `<${v.split('\n').length} lines>` : v))}`;
+const SHOWN_FIXES = 8;
+
+/**
+ * pilot-qwen-7b-r2 R1 (owner's shape): a refusal with typed fixes is self-contained. What was wrong and the rule (the
+ * planner's sentence), then each choice with its ref and the exact step it sends, recommended first, then the one way
+ * to apply it. Nothing to dereference: no JSON paths.
+ * @param {string} code @param {string} said The planner's sentence.
+ * @param {{ref: string, sentence?: string, step: {tool: string, args?: object}, recommended?: boolean}[]} fixes
+ * @returns {string}
+ */
+export function refusalText(code, said, fixes) {
+  const head = `Refused (${code}): ${sentence(said)}`;
+  if (!fixes.length) return head;
+  const lines = fixes.slice(0, SHOWN_FIXES).map((f) => `  ${f.ref}${f.recommended ? ' (recommended)' : ''}: ${stepText(f.step)}${f.sentence ? ` (${String(f.sentence).replace(/[.?!]$/, '')})` : ''}`);
+  if (fixes.length > SHOWN_FIXES) lines.push(`  ... and ${fixes.length - SHOWN_FIXES} more, ${fixes[SHOWN_FIXES].ref} to ${fixes.at(-1)?.ref}`);
+  return [head, 'Pick one and send its id:', ...lines, `To use one, send {"fix":"${fixes[0].ref}"}.`].join('\n');
+}
 
 /** A project-relative path that stays inside the project, or null. */
 function inside(root, rel) {
@@ -53,7 +78,14 @@ export function createPlanCli({ project, log, builder = 'unknown' }) {
   const root = fs.realpathSync(path.resolve(project));
   const logFile = log ?? path.join(here, '..', 'runs', path.basename(root), 'calls.jsonl');
   fs.mkdirSync(path.dirname(logFile), { recursive: true });
-  const svc = createLinePlanService({ root });
+  // R1: the fixes a refused add offered, kept next to calls.jsonl (not in the project), so `add --fix f1` in the next
+  // one-shot process picks from them.
+  const offersFile = path.join(path.dirname(logFile), 'offered-fixes.json');
+  const offers = {
+    get: () => { try { return JSON.parse(fs.readFileSync(offersFile, 'utf8')).fixes; } catch { return null; } },
+    set: (fixes) => { fs.writeFileSync(offersFile, `${JSON.stringify({ fixes })}\n`); },
+  };
+  const svc = createLinePlanService({ root, offers });
   const record = (e) => fs.appendFileSync(logFile, `${JSON.stringify({ at: new Date().toISOString(), builder, ...e })}\n`);
   const brief = (s) => ({ id: s.id, n: s.n, tool: s.tool, state: s.state, sentence: s.sentence });
 
@@ -69,20 +101,22 @@ export function createPlanCli({ project, log, builder = 'unknown' }) {
       const open = steps.find((s) => s.state === 'needs-fix' || s.state === 'needs-you');
       return { ok: true, planId: v.planId, counts, steps, sentence: open ? `Step ${open.n} needs a fix first: ${open.sentence}` : `The plan has ${steps.length} steps.` };
     },
-    async add(tool, json, why) {
+    async add(tool, json, why, fix) {
       let args;
-      try { args = json ? JSON.parse(json) : {}; } catch (e) { return { ok: false, code: 'BAD_JSON', sentence: `The arguments are not JSON: ${/** @type {Error} */ (e).message}` }; }
-      const r = /** @type {any} */ (await svc.addStep({ tool, args, why }, 'agent'));
+      if (fix) args = {};
+      else { try { args = json ? JSON.parse(json) : {}; } catch (e) { return { ok: false, code: 'BAD_JSON', sentence: `The arguments are not JSON: ${/** @type {Error} */ (e).message}` }; } }
+      const r = /** @type {any} */ (await svc.addStep(fix ? { fix, why } : { tool, args, why }, 'agent'));
       if (!r.ok) {
-        // A refusal with typed fixes: each fixes[].step is a step to add instead (add <step.tool> '<step.args>').
-        const fixes = Array.isArray(r.fixes) ? r.fixes.map((f) => ({ id: f.id, sentence: f.sentence, step: f.step, ...(f.rank === 1 ? { recommended: true } : {}) })) : [];
-        return { ok: false, code: r.code, sentence: fixes.length ? `${sentence(r.sentence)} Add fixes[0].step (or another of fixes[].step) instead.` : r.sentence, ...(r.detail ? { detail: r.detail } : {}), ...(fixes.length ? { fixes } : {}) };
+        // A refusal with typed fixes: each has a ref (f1 is the recommended one); `add --fix f1` (plan_add {"fix": "f1"})
+        // adds its step. Writing the step out (add <tool> '<args>') still works.
+        const fixes = Array.isArray(r.fixes) ? r.fixes.map((f) => ({ ref: f.ref, id: f.id, sentence: f.sentence, step: f.step, ...(f.rank === 1 ? { recommended: true } : {}) })) : [];
+        return { ok: false, code: r.code, sentence: fixes.length ? refusalText(r.code, r.sentence, fixes) : r.sentence, ...(r.detail ? { detail: r.detail } : {}), ...(fixes.length ? { fixes } : {}) };
       }
       const step = r.steps.find((s) => s.id === r.stepId);
       if (step?.state === 'waiting') {
         const a = /** @type {any} */ (await svc.approve(r.stepId, 'ui'));
         if (!a.ok) return { ok: false, code: a.code, sentence: `The step joined the plan, but Auto could not approve it: ${a.sentence}`, stepId: r.stepId };
-        record({ kind: 'approval', stepId: r.stepId, tool, approvedBy: 'auto', mechanism: 'ct1 Let Auto approve in this session' });
+        record({ kind: 'approval', stepId: r.stepId, tool: step.tool, ...(fix ? { fix } : {}), approvedBy: 'auto', mechanism: 'ct1 Let Auto approve in this session' });
         return { ok: true, stepId: r.stepId, state: 'ready', approvedBy: 'auto', sentence: `Step ${step.n} joined the plan and Auto approved it; run-next lands it.` };
       }
       return { ok: true, stepId: r.stepId, state: step?.state ?? null, sentence: `Step ${step?.n} joined the plan: ${step?.sentence ?? ''}` };
@@ -134,7 +168,7 @@ export function createPlanCli({ project, log, builder = 'unknown' }) {
 
   /**
    * Run one command; never throws (a crash is a JSON refusal). Every call is recorded.
-   * @param {string} cmd @param {string[]} rest positional args @param {{why?: string}} [opts]
+   * @param {string} cmd @param {string[]} rest positional args @param {{why?: string, fix?: string}} [opts]
    * @returns {Promise<any>}
    */
   async function run(cmd, rest = [], opts = {}) {
@@ -142,14 +176,17 @@ export function createPlanCli({ project, log, builder = 'unknown' }) {
     let out;
     try {
       if (!Object.hasOwn(commands, cmd)) out = { ok: false, code: 'UNKNOWN_COMMAND', sentence: `There is no command ${cmd}; use one of ${Object.keys(commands).join(', ')}.` };
-      else if (cmd === 'add') out = await commands.add(rest[0], rest[1], opts.why);
+      else if (cmd === 'add') out = await commands.add(rest[0], rest[1], opts.why, opts.fix);
       else out = await commands[cmd](...rest);
     } catch (e) {
       out = { ok: false, code: 'CRASH', sentence: `plan-cli failed: ${/** @type {Error} */ (e).message}` };
     }
     out.sentence = sentence(out.sentence);
-    const summary = { ok: out.ok, code: out.code ?? null, sentence: out.sentence, stepId: out.stepId ?? null, state: out.state ?? null, landed: out.landed ?? null, tool: out.tool ?? (cmd === 'add' ? rest[0] : null), rules: (out.findings ?? []).filter((f) => f.severity === 'error').map((f) => f.rule) };
-    record({ kind: 'call', cmd, args: cmd === 'add' ? { tool: rest[0], args: safeJson(rest[1]), why: opts.why ?? null } : rest, ms: Date.now() - t0, result: summary });
+    const summary = { ok: out.ok, code: out.code ?? null, sentence: out.sentence, stepId: out.stepId ?? null, state: out.state ?? null, landed: out.landed ?? null, tool: out.tool ?? (cmd === 'add' ? rest[0] : null), rules: (out.findings ?? []).filter((f) => f.severity === 'error').map((f) => f.rule),
+      // What the builder was offered, so calls.jsonl (and Mission Control) show the choices next to what it sent.
+      ...(Array.isArray(out.fixes) && out.fixes.length ? { fixes: out.fixes.map((f) => ({ ref: f.ref, id: f.id, sentence: f.sentence, step: f.step, recommended: f.recommended === true })) } : {}),
+      ...(Array.isArray(out.options) && out.options.some((o) => o.step) ? { options: out.options } : {}) };
+    record({ kind: 'call', cmd, args: cmd === 'add' ? { tool: rest[0] ?? null, args: safeJson(rest[1]), why: opts.why ?? null, ...(opts.fix ? { fix: opts.fix } : {}) } : rest, ms: Date.now() - t0, result: summary });
     return out;
   }
   return { run, root, logFile };
@@ -159,10 +196,11 @@ const safeJson = (s) => { try { return JSON.parse(s); } catch { return s ?? null
 
 /** argv -> {cmd, rest, why, project, log, builder}. */
 export function parseArgv(argv) {
-  const o = { cmd: '', rest: /** @type {string[]} */ ([]), why: undefined, project: process.env.BENCH_PROJECT, log: process.env.BENCH_LOG, builder: process.env.BENCH_BUILDER };
+  const o = { cmd: '', rest: /** @type {string[]} */ ([]), why: undefined, fix: undefined, project: process.env.BENCH_PROJECT, log: process.env.BENCH_LOG, builder: process.env.BENCH_BUILDER };
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i];
     if (a === '--why') o.why = argv[++i];
+    else if (a === '--fix') o.fix = argv[++i];
     else if (a === '--project') o.project = argv[++i];
     else if (a === '--log') o.log = argv[++i];
     else if (a === '--builder') o.builder = argv[++i];
@@ -179,7 +217,7 @@ if (process.argv[1] && fs.realpathSync(process.argv[1]) === fileURLToPath(import
     process.exit(2);
   }
   const cli = createPlanCli({ project: o.project, log: o.log, builder: o.builder });
-  const out = await cli.run(o.cmd, o.rest, { why: o.why });
+  const out = await cli.run(o.cmd, o.rest, { why: o.why, fix: o.fix });
   console.log(JSON.stringify(out, null, 1));
   process.exit(out.ok ? 0 : 1);
 }
