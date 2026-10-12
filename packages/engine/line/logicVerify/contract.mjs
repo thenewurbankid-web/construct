@@ -93,16 +93,10 @@ import { LOGIC_UNIT_KINDS } from '../importV2/contract.mjs';
 
 /** How the isolated runner called a unit: directly, under the headless hook harness, or with a generated event. */
 /** @typedef {'function'|'hook'|'handler'} RunAs */
-/** @typedef {'full'|'partial'|'low'|'unavailable'} CoverageLevel */
-/**
- * V8 branch coverage of one unit on each side over every case the isolated runner ran (null: not measured), and its
- * level: full (every block ran on both sides), low (under LOW_COVERAGE on a side), partial, or unavailable.
- * @typedef {{before: {covered: number, total: number}|null, after: {covered: number, total: number}|null, level: CoverageLevel}} BranchCoverage
- */
 
 /**
  * One layer's answer for one unit.
- * @typedef {{layer: VerifyLayer, outcome: 'same-behaviour'|'changed'|'cant-tell'|'skipped', location?: VerdictLocation, input?: unknown, reason?: string, ms?: number, runAs?: RunAs, coverage?: BranchCoverage}} LayerResult
+ * @typedef {{layer: VerifyLayer, outcome: 'same-behaviour'|'changed'|'cant-tell'|'skipped', location?: VerdictLocation, input?: unknown, reason?: string, ms?: number, runAs?: RunAs}} LayerResult
  */
 
 /** @typedef {'L0'|'L1'|'L2'|'L3'} EscalationLevel */
@@ -156,9 +150,6 @@ export const RUNTIME_RECORD_EFFECTS = Object.freeze(/** @type {Record<string, Ef
 /** ast/semanticDiff SEMANTIC_DIFF_VERDICTS plus `skipped`. */
 export const LAYER_OUTCOMES = Object.freeze(['same-behaviour', 'changed', 'cant-tell', 'skipped']);
 export const RUN_AS = Object.freeze(/** @type {RunAs[]} */ (['function', 'hook', 'handler']));
-export const COVERAGE_LEVELS = Object.freeze(/** @type {CoverageLevel[]} */ (['full', 'partial', 'low', 'unavailable']));
-/** Under this share of a side's blocks run, the isolated result's coverage is low (and the reason says so). */
-export const LOW_COVERAGE = 0.5;
 /** ast/pureExportEquivalence verdict -> layer outcome. */
 export const PURE_EQUIVALENCE_OUTCOME = Object.freeze({ equivalent: 'same-behaviour', diverged: 'changed', skipped: 'skipped', 'cant-tell': 'cant-tell' });
 
@@ -291,14 +282,6 @@ export function assertLayerResult(r, where = 'The layer result') {
   if (r.location !== undefined) assertVerdictLocation(r.location, `${where}'s location`);
   if (r.ms !== undefined && !(typeof r.ms === 'number' && r.ms >= 0)) fail(`${where}'s ms`, 'be a non-negative number');
   if (r.runAs !== undefined) oneOf(r.runAs, RUN_AS, `${where}'s runAs`);
-  if (r.coverage !== undefined) {
-    if (!r.coverage || typeof r.coverage !== 'object') fail(`${where}'s coverage`, 'be an object');
-    oneOf(r.coverage.level, COVERAGE_LEVELS, `${where}'s coverage level`);
-    for (const side of ['before', 'after']) {
-      const c = r.coverage[side];
-      if (c !== null && !(Number.isInteger(c?.covered) && Number.isInteger(c.total) && c.covered >= 0 && c.covered <= c.total)) fail(`${where}'s ${side} coverage`, 'be null or {covered, total} with covered at most total');
-    }
-  }
 }
 
 /**

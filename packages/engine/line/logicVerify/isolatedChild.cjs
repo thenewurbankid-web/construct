@@ -266,40 +266,11 @@ function syntheticEvent(f, desc, env) {
   return ev;
 }
 
-/**
- * V8 block coverage of the unit for one run: every range V8 reports inside the unit's source text, as
- * [start, end, count] with offsets from the unit's start (so runs of the same side line up). V8 leaves out a block
- * whose count equals its parent's, so isolatedRun.mjs reads a block missing from a run at its innermost reported holder.
- * @returns {Array<[number, number, number]>}
- */
-function unitRanges(scripts, url, from, to) {
-  return scripts.filter((s) => s.url === url).flatMap((s) => s.functions.flatMap((fn) => fn.ranges))
-    .filter((r) => r.startOffset >= from && r.endOffset <= to).map((r) => [r.startOffset - from, r.endOffset - from, r.count]);
-}
-
-/** The in-process inspector session for coverage, or null when the permission model does not allow it. */
-function coverageSession() {
-  try {
-    const inspector = require('node:inspector');
-    const s = new inspector.Session();
-    s.connect();
-    const post = (m, p) => new Promise((res, rej) => s.post(m, p, (e, r) => (e ? rej(e) : res(r))));
-    return { post };
-  } catch {
-    return null;
-  }
-}
-
-let runId = 0;
-
 /** Run the unit once under fresh fakes. */
-async function runOnce(side, args, env, cov) {
+async function runOnce(side, args, env) {
   const f = createFakes(env);
   const harness = createHookHarness(f);
   f.MODULES.react = harness.module;
-  const url = `${side.entry}#${++runId}`;
-  let unitSpan = null;
-  if (cov) await cov.post('Profiler.takePreciseCoverage');
   const sandbox = {};
   const unfaked = ['process', 'require', 'module', 'Buffer', 'WebSocket', 'XMLHttpRequest', 'EventSource', 'indexedDB', 'navigator', 'window', 'document', 'location', 'history', 'Worker', 'setImmediate', 'importScripts'];
   for (const name of unfaked) Object.defineProperty(sandbox, name, { get: () => f.refuse(name), configurable: false });
@@ -330,11 +301,7 @@ async function runOnce(side, args, env, cov) {
       return f.refuse(`import ${spec}`);
     };
     const wrapped = `(function (exports, require, module) {${code}\n})`;
-    vm.runInContext(wrapped, ctx, { filename: file === side.entry ? url : file })(mod.exports, req, mod);
-    if (file === side.entry && typeof mod.exports.__lineUnit === 'function') {
-      const at = wrapped.indexOf(Function.prototype.toString.call(mod.exports.__lineUnit));
-      unitSpan = at < 0 ? [0, wrapped.length] : [at, at + Function.prototype.toString.call(mod.exports.__lineUnit).length];
-    }
+    vm.runInContext(wrapped, ctx, { filename: file })(mod.exports, req, mod);
     return mod.exports;
   };
   // a handler's generated event is made here, inside the run, so its preventDefault records into this run's fakes
@@ -369,36 +336,25 @@ async function runOnce(side, args, env, cov) {
   } catch (e) {
     thrown = e && typeof e.name === 'string' && /^[A-Z]\w*$/.test(e.name) ? e.name : 'Error';
   }
-  let ranges = null;
-  if (cov && unitSpan) ranges = unitRanges((await cov.post('Profiler.takePreciseCoverage')).result, url, unitSpan[0], unitSpan[1]);
   // a hook's object result is compared by value too, with each function as fn
   const plain = (o) => { try { return JSON.parse(JSON.stringify(o, (_k, v) => (typeof v === 'function' ? 'fn' : v))); } catch { return undefined; } };
   const value = output === null || ['boolean', 'number', 'string'].includes(typeof output) ? output : side.runAs === 'hook' && !thrown ? plain(output) : undefined;
-  const inner = ranges ? ranges.filter(([a, b]) => !(a === 0 && b === unitSpan[1] - unitSpan[0])) : null;
-  const branches = inner ? { covered: inner.filter((r) => r[2] > 0).length, total: inner.length } : undefined;
   return {
     run: {
       inputs: callArgs.map((a, k) => (a !== args[k] ? 'event' : shapeOf(a))), output: thrown ? 'undefined' : shapeOf(output), thrown, effects: f.effects, transitions: f.transitions,
-      sentinels: findSentinels(json(output) + f.effects.flatMap((e) => e.sentinels).map((s) => `__line_${s}__`).join(' ')), ...(branches ? { branches } : {}),
+      sentinels: findSentinels(json(output) + f.effects.flatMap((e) => e.sentinels).map((s) => `__line_${s}__`).join(' ')),
     },
     value: typeof value === 'number' && !Number.isFinite(value) ? String(value) : value,
     notFaked: [...f.notFaked].sort(),
-    ranges,
-    span: unitSpan ? unitSpan[1] - unitSpan[0] : null,
   };
 }
 
 async function main() {
   const req = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'request.json'), 'utf8'));
-  const cov = req.coverage ? coverageSession() : null;
-  if (cov) {
-    await cov.post('Profiler.enable');
-    await cov.post('Profiler.startPreciseCoverage', { callCount: true, detailed: true });
-  }
-  const out = { before: [], after: [], coverage: Boolean(cov) };
+  const out = { before: [], after: [] };
   for (const args of req.cases) {
-    out.before.push(await runOnce(req.before, args, req.env, cov));
-    out.after.push(await runOnce(req.after, args, req.env, cov));
+    out.before.push(await runOnce(req.before, args, req.env));
+    out.after.push(await runOnce(req.after, args, req.env));
   }
   process.stdout.write(`${JSON.stringify(out)}\n`);
 }

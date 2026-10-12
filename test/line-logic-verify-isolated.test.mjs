@@ -7,7 +7,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 import { fileURLToPath } from 'node:url';
-import { isolatedPair, isolatedCases, runAsOf, COVERAGE_SUPPORTED } from '../packages/engine/line/logicVerify/isolatedRun.mjs';
+import { isolatedPair, isolatedCases, runAsOf } from '../packages/engine/line/logicVerify/isolatedRun.mjs';
 import { RUNNERS } from '../packages/engine/line/logicVerify/verifyPair.mjs';
 import { assertLayerResult } from '../packages/engine/line/logicVerify/contract.mjs';
 
@@ -130,10 +130,9 @@ test('isolated: cases are deterministic and carry sentinels', () => {
 test('isolated: the planted dropped-effect fixture gives the expected isolated layer result (app imports are spies)', async () => {
   const FIX = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures/logic-verify');
   const c = JSON.parse(fs.readFileSync(path.join(FIX, 'cases.json'), 'utf8')).find((x) => x.name === 'dropped-effect');
-  const { ms, reason, runAs, coverage, ...got } = await isolatedPair({ beforeRoot: path.join(FIX, c.name, 'before'), afterRoot: path.join(FIX, c.name, 'after'), before: c.before, after: c.before });
+  const { ms, reason, runAs, ...got } = await isolatedPair({ beforeRoot: path.join(FIX, c.name, 'before'), afterRoot: path.join(FIX, c.name, 'after'), before: c.before, after: c.before });
   assert.ok(typeof ms === 'number' && ms >= 0);
   assert.equal(runAs, 'function');
-  assert.ok(coverage, 'the result carries branch coverage');
   assert.deepEqual(got, c.layerResults.find((r) => r.layer === 'isolated'));
   assert.equal(reason, 'effect 2 was toast.success(string) before and nothing after');
 });
@@ -152,7 +151,7 @@ test('isolated: verifyPair RUNNERS.isolated runs the effect runner for a non-lay
   }
 });
 
-// #877: hooks under the headless hook harness, handlers with a generated event, V8 branch coverage per side
+// #877: hooks under the headless hook harness, handlers with a generated event (branch coverage: #883)
 
 /** isolatedPair on one before/after source pair for the unit `fn`. */
 async function verifyFn(fn, beforeSrc, afterSrc) {
@@ -222,23 +221,6 @@ test('isolated handler: a dropped preventDefault is changed, with the generated 
   assert.match(String(result.reason), /^effect 1 was event\.preventDefault before and storage\.setItem q\(string\) after$/);
 });
 
-test('isolated coverage: each side carries V8 branch coverage, and low coverage is reported in the reason', async (t) => {
-  if (!COVERAGE_SUPPORTED) { t.skip('this node has no --allow-inspector'); return; }
-  const full = 'export function save(n: number) { if (n > 0) { return 1; } return 2; }';
-  const r1 = await verifyFn('save', full, full);
-  assert.equal(r1.outcome, 'same-behaviour');
-  assert.equal(r1.coverage?.level, 'full', JSON.stringify(r1.coverage));
-  assert.ok((r1.coverage?.before?.total ?? 0) > 0);
-  assert.deepEqual(r1.coverage?.before, r1.coverage?.after);
-  assert.equal(r1.reason, undefined);
-  const low = 'export function save(n: number) { if (n === 123457) { return 1; } if (n === 98765) { return 2; } if (n === 31337) { return 3; } return 0; }';
-  const r2 = await verifyFn('save', low, low);
-  assert.equal(r2.outcome, 'same-behaviour');
-  assert.equal(r2.coverage?.level, 'low');
-  assert.ok((r2.coverage?.before?.covered ?? 0) < (r2.coverage?.before?.total ?? 0));
-  assert.match(String(r2.reason), /^low branch coverage \(before \d+ of \d+ blocks, after \d+ of \d+\)$/);
-});
-
 test('isolated: runAsOf classifies hooks, handlers and plain functions', () => {
   const fn = (params) => ({ params });
   const ev = { type: 'Identifier', name: 'e', typeAnnotation: { typeAnnotation: { type: 'TSTypeReference', typeName: { type: 'TSQualifiedName', right: { name: 'ChangeEvent' } } } } };
@@ -247,4 +229,11 @@ test('isolated: runAsOf classifies hooks, handlers and plain functions', () => {
   assert.equal(runAsOf('apply', fn([ev])), 'handler');
   assert.equal(runAsOf('handleClick', fn([])), 'function');
   assert.equal(runAsOf('total', fn([{ type: 'Identifier', name: 'n' }])), 'function');
+});
+
+test('isolated: the sandboxed child is never given --allow-inspector (coverage waits for a safer approach, #883)', () => {
+  const src = fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), '../packages/engine/line/logicVerify/isolatedRun.mjs'), 'utf8');
+  const spawnArgs = src.slice(src.indexOf('spawn(process.execPath'), src.indexOf('], {', src.indexOf('spawn(process.execPath')));
+  assert.ok(spawnArgs.includes("'--permission'"), 'the spawn arguments were found');
+  assert.ok(!spawnArgs.includes('allow-inspector'), spawnArgs);
 });
