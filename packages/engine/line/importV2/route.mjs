@@ -124,7 +124,8 @@ const packageOf = (spec) => (spec.startsWith('@') ? spec.split('/').slice(0, 2).
  */
 export function readRouteFamily(appRoot, route, o = {}) {
   const root = path.resolve(appRoot);
-  const family = `/${String(route ?? '').trim().replace(/^\/+|\/+$/g, '')}`;
+  // Next.js writes a dynamic segment as its folder name (/profile/[id], /docs/[...slug]); the route table reads :id.
+  const family = `/${String(route ?? '').trim().replace(/^\/+|\/+$/g, '')}`.split('/').map((s) => s.replace(/^\[+\.{0,3}(.*?)\]+$/, ':$1')).join('/');
   if (!/^\/[A-Za-z0-9_:\-./[\]]*$/.test(family)) throw new LineOpError(`"${route}" is not a route; name one like /orders.`, 'UNKNOWN_ROUTE');
   const all = listRoutes(root);
   const routes = all.filter((r) => inFamily(family, r.route));
