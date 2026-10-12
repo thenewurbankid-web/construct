@@ -14,7 +14,6 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const API = process.env.E2E_API_BASE || 'http://localhost:4000';
 const WS = process.env.E2E_WORKSPACE_ROOT;
 const BIN = path.resolve(__dirname, '../../../packages/cli/construct.mjs');
-const REVIEW_SHOT = path.resolve(__dirname, '../../../docs/line/review-shots/open-project.png');
 
 const closeProject = (request) => request.post(`${API}/api/settings`, { data: { closeProject: true } });
 const clearWorkspace = () => {
@@ -120,12 +119,6 @@ test.describe.serial('Open a project, simple', () => {
           const found = (await runAxe(page)).filter(isBlocking);
           expect(found, `${tab} ${theme} ${label}\n${format(found)}`).toEqual([]);
         }
-      }
-      if (label === '1280') {
-        await setTheme(page, 'dark');
-        await page.getByRole('tab', { name: 'Your projects' }).click();
-        fs.mkdirSync(path.dirname(REVIEW_SHOT), { recursive: true });
-        await page.screenshot({ path: REVIEW_SHOT, fullPage: true });
       }
     });
   }

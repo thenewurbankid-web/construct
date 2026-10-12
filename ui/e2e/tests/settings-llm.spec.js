@@ -68,10 +68,10 @@ test.describe.serial('#109 Settings LLM providers are consumed, opt-in per run',
     const form = await fillSingleLayerCreate(page, 'PlainStub');
     await expect(form.getByLabel(/Have the LLM write the implementation/)).not.toBeChecked();
     await form.getByRole('button', { name: /^Create (feature|slice|file)$/ }).click();
-    await expect(form.locator('.command-output')).toContainText('Created features/pricing/domain/PlainStub.tsx', { timeout: 15_000 });
+    await expect(form.locator('.command-output')).toContainText('Created features/pricing/domain/PlainStub.ts', { timeout: 15_000 });
     await expect(form.locator('.command-output')).not.toContainText('LLM-filled');
     await expect(form.locator('.command-result')).toContainText('0 calls');
-    const content = fs.readFileSync(path.join(projectDir, 'features/pricing/domain/PlainStub.tsx'), 'utf8');
+    const content = fs.readFileSync(path.join(projectDir, 'features/pricing/domain/PlainStub.ts'), 'utf8');
     expect(content).toBe('export function PlainStub() {\n  return true;\n}\n');
     await page.screenshot({ path: path.join(SCREENSHOTS_DIR, 'settings-llm-create-off.png'), fullPage: true });
   });
@@ -82,9 +82,9 @@ test.describe.serial('#109 Settings LLM providers are consumed, opt-in per run',
     await form.getByLabel(/Have the LLM write the implementation/).check();
     await form.getByRole('button', { name: /^Create (feature|slice|file)$/ }).click();
     await expect(form.locator('.command-result')).toContainText('via "ollama"', { timeout: 200_000 });
-    await expect(form.locator('.command-output')).toContainText('OllamaFilled.tsx');
-    const content = fs.readFileSync(path.join(projectDir, 'features/pricing/domain/OllamaFilled.tsx'), 'utf8');
-    console.log(`\nollama-written OllamaFilled.tsx:\n${content}`);
+    await expect(form.locator('.command-output')).toContainText('OllamaFilled.ts');
+    const content = fs.readFileSync(path.join(projectDir, 'features/pricing/domain/OllamaFilled.ts'), 'utf8');
+    console.log(`\nollama-written OllamaFilled.ts:\n${content}`);
     expect(content).toContain('OllamaFilled');
     expect(content).not.toBe('export function OllamaFilled() {\n  return true;\n}\n');
     await page.screenshot({ path: path.join(SCREENSHOTS_DIR, 'settings-llm-create-on-ollama.png'), fullPage: true });

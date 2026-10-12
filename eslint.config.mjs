@@ -27,7 +27,7 @@ export default [
   // `.claude/**`: agent worktrees live INSIDE the checkout, each carrying its own eslint.config.mjs; without this
   // ESLint descends into them and aborts ("empty config", missing packages), so `npm run lint` only passed in a
   // clean worktree and failed in the real checkout.
-  { ignores: ['.claude/**', 'example/**', '**/node_modules/**', '**/dist/**', 'ui/e2e/test-results/**', 'ui/e2e/playwright-report/**'] },
+  { ignores: ['.claude/**', 'example/**', 'trace/subframe-app/**', '**/node_modules/**', '**/dist/**', 'ui/e2e/test-results/**', 'ui/e2e/playwright-report/**'] },
 
   // Scope (#335): the places where makeTempDir applies. Deliberately NOT covered:
   //  - packages/engine/*.mjs (gitTrees, transactionalWriter, processEngine) manage their own directory

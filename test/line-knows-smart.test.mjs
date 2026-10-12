@@ -3,12 +3,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { computeSmart, memoryReplay, smartView, readSmartInputs } from '../packages/engine/line/knows/stats.mjs';
 import { assertSmartView, METRIC_IDS } from '../packages/engine/line/knows/contract.mjs';
 import { MOCK_KNOWS_GRAPH } from '../packages/engine/line/knows/mock.mjs';
 import { buildLineGraph } from '../packages/engine/line/graph/build.mjs';
+import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
 const A = 'via-library:ui:I>F';
 const B = 'base-on:ui:L>F';
@@ -107,7 +107,7 @@ test('no data: each number says so in one sentence, and nothing is made up', () 
 });
 
 test('on the real Line sample: local records only (no runtime run, no memory), the graph\'s health is real', () => {
-  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'line-smart-')));
+  const root = fs.realpathSync(makeTempDir('line-smart-'));
   fs.cpSync(path.resolve('examples/line-sample'), root, { recursive: true });
   try {
     const graph = buildLineGraph(root, { write: false }).graph;
