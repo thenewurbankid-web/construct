@@ -40,7 +40,7 @@ import { EXTRACT_TOOLS } from './importV2/extractTarget.mjs';
  *   line.moveFile     {from, to, base?}          move a file, re-pointing every import; `base` also writes its line-base header
  *   line.createLayout {}                         create the library folder (library/README.md) so the project is laid out as Line
  *   line.amend        {change, fix} | {change, fixes}  a refused change plus its fix (or a chain of fixes), applied as one change
- * @typedef {'line.setBase'|'line.promote'|'line.baseOn'|'line.moveFile'|'line.createLayout'|'line.amend'} LineFixTool
+ * @typedef {'line.setBase'|'line.promote'|'line.baseOn'|'line.moveFile'|'line.createLayout'|'line.amend'|'line.useViaUsecase'|'line.extractExpression'} LineFixTool
  */
 
 /**

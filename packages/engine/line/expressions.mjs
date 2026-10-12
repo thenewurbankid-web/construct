@@ -126,7 +126,16 @@ function isNameOnly(id) {
   return false;
 }
 
-/** The import declaration text that brings `localName` in, from the declaration node of an import alias. */
+/**
+ * @typedef {{local: string, specifier: string, typeOnly: boolean, named?: string, default?: boolean, namespace?: boolean}} ImportUse
+ *   One import a block relies on: a named one (`named` is the exported name), the default or a namespace import.
+ */
+
+/**
+ * The import that brings a name in, from the declaration node of an import alias; null for any other declaration.
+ * @param {any} decl The symbol's declaration node.
+ * @returns {ImportUse | null}
+ */
 function importOf(decl) {
   let clause = null; let what = null;
   if (ts.isImportSpecifier(decl)) { clause = decl.parent.parent; what = { named: decl.propertyName ? decl.propertyName.text : decl.name.text, local: decl.name.text, typeOnly: decl.isTypeOnly }; }
@@ -212,7 +221,7 @@ export function freeVariables(root, rel, source, range) {
   visit(block);
 
   // Each value's declared type (never the type narrowed at its use: the block re-tests what it tests).
-  const flags = ts.NodeBuilderFlags.NoTruncation | ts.NodeBuilderFlags.UseAliasDefinedOutsideOfCurrentScope | ts.NodeBuilderFlags.IgnoreErrors;
+  const flags = ts.NodeBuilderFlags.NoTruncation | ts.NodeBuilderFlags.UseAliasDefinedOutsideCurrentScope | ts.NodeBuilderFlags.IgnoreErrors;
   const printer = ts.createPrinter({ removeComments: true });
   const typeNames = new Set();
   const unresolved = [];
