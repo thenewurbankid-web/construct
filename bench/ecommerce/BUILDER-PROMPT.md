@@ -40,8 +40,8 @@ editor on the project. Every call is recorded; a direct write counts as a human 
   no base.
 - A feature imports from the library and its own folder, never from another feature. Something two features need goes
   in the library.
-- `app/` is the Next.js app router: `app/layout.tsx` (the root layout, already there) and one route entry per page,
-  which `line.addRoute` writes for you.
+- `app/` is the Next.js app router: `app/layout.tsx` (the root layout, which renders the library's `AppLayout` and
+  which `line.setLayoutSlot` writes for you) and one route entry per page, which `line.addRoute` writes for you.
 
 ## The tools you will use most
 
@@ -51,6 +51,9 @@ editor on the project. Every call is recorded; a direct write counts as a human 
 - `line.setCode {file, code, contentHash?}`: the whole code of one library or feature file. To replace an existing
   file, `read` it first and pass its `contentHash`; to create one, leave `contentHash` out.
 - `line.addRoute {route, page}`: serve a feature page at a route (`"/"`, `"/cart"`, `"/products/:id"`).
+- `line.setLayoutSlot {slot, components}`: show library or feature components on every page, in the app shell's
+  `header`, `nav` or `footer` slot.
+- When `add` refuses a step and its answer has `fixes`, add `fixes[0].step` (or another `fixes[].step`) instead.
 - When `run-next` says a step needs a fix, add one of its `options[].step` with `"fixOf": "<step id>"` in the args, or
   add `line.leaveAsIs {"stepId": "<step id>"}` to carry on without it. The plan does not run other steps until you do.
 

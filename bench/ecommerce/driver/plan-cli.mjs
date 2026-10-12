@@ -73,7 +73,11 @@ export function createPlanCli({ project, log, builder = 'unknown' }) {
       let args;
       try { args = json ? JSON.parse(json) : {}; } catch (e) { return { ok: false, code: 'BAD_JSON', sentence: `The arguments are not JSON: ${/** @type {Error} */ (e).message}` }; }
       const r = /** @type {any} */ (await svc.addStep({ tool, args, why }, 'agent'));
-      if (!r.ok) return { ok: false, code: r.code, sentence: r.sentence, ...(r.detail ? { detail: r.detail } : {}) };
+      if (!r.ok) {
+        // A refusal with typed fixes: each fixes[].step is a step to add instead (add <step.tool> '<step.args>').
+        const fixes = Array.isArray(r.fixes) ? r.fixes.map((f) => ({ id: f.id, sentence: f.sentence, step: f.step, ...(f.rank === 1 ? { recommended: true } : {}) })) : [];
+        return { ok: false, code: r.code, sentence: fixes.length ? `${sentence(r.sentence)} Add fixes[0].step (or another of fixes[].step) instead.` : r.sentence, ...(r.detail ? { detail: r.detail } : {}), ...(fixes.length ? { fixes } : {}) };
+      }
       const step = r.steps.find((s) => s.id === r.stepId);
       if (step?.state === 'waiting') {
         const a = /** @type {any} */ (await svc.approve(r.stepId, 'ui'));

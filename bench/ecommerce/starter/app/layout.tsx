@@ -1,6 +1,7 @@
+// @line-layout: the app shell. Line writes this file; change its slots with line.setLayoutSlot.
 import type { ReactNode } from 'react';
 import './globals.css';
-import { ToastProvider } from '../library/components/Toast';
+import { AppLayout } from '../library/components/AppLayout';
 
 export const metadata = { title: 'Shop' };
 
@@ -8,9 +9,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <body>
-        <ToastProvider>
-          <div className="mx-auto max-w-5xl p-6">{children}</div>
-        </ToastProvider>
+        <AppLayout>{children}</AppLayout>
       </body>
     </html>
   );
