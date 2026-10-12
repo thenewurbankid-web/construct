@@ -89,8 +89,6 @@ export * as pluginCommands from './plugin-commands.mjs';
 export * as frozen from './frozen.mjs';
 /** `@line/construct-core/registry` */
 export * as registry from './registry.mjs';
-/** `@line/construct-core/line-decide` */
-export * as lineDecide from './line-decide.mjs';
 /** `@line/construct-core/profiles` */
 export * as profiles from './profiles/index.mjs';
 /** `@line/construct-core/prose` */
