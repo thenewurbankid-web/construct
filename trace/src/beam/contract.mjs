@@ -73,7 +73,8 @@ export const DONE_OUTCOMES = Object.freeze(['plan', 'question', 'none']);
  * @typedef {object} BeamStep
  * @property {string} id        Stable: "trace-<n>-<slug>".
  * @property {'trace.emit'} tool
- * @property {{feature: string, file: string, layer: string, forks: Record<string, string>}} args  `forks`: point -> pick.
+ * @property {{feature: string, file: string, layer: string, forks: Record<string, string>, refs?: Record<string, 'stub'|'fn'|'create'>}} args
+ *   `forks`: point -> pick; `refs`: each placeholder function of that file, stub-first (existing stub, existing fn, create).
  * @property {string} sentence  What the step does, in plain English.
  */
 
@@ -83,7 +84,8 @@ export const DONE_OUTCOMES = Object.freeze(['plan', 'question', 'none']);
  * @property {'plan'|'question'|'none'} outcome
  * @property {{run: string, steps: BeamStep[]}|null} plan       outcome "plan": the one run that met every goal.
  * @property {BeamQuestion|null} question                       outcome "question": the surviving runs as options.
- * @property {Record<string, {forks: ForkChoice[], reading: Reading, closed: {reason: string, detail: string}|null, score: number|null}>} runs
+ * @property {Record<string, {forks: ForkChoice[], reading: Reading, closed: {reason: string, detail: string}|null, score: number|null, steps?: BeamStep[]}>} runs
+ *   Every run opened; `steps` on the ranked survivors (answerBeam({answer, option}) returns the chosen one's).
  * @property {BeamEvent[]} events                               Everything streamed to events.jsonl, in order.
  */
 
