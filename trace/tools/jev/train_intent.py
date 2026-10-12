@@ -8,7 +8,8 @@ it in one forward pass, exactly as classifyJev.mjs asks them through the jev pro
 Targets are soft (0.9 on gold, 0.1 spread over the rest), never one-hot, as open-jev's RLCD loss expects. Rows with
 split "test" are held out (the same seeded split eval-intent.mjs reports as "held-out").
 
-The model config matches serve.py, so the weights load with `serve.py --weights weights/intent.pt`.
+The model config and tokenizer come from jev_tokenizer.py (#881, shared with serve.py), so the weights load with
+`serve.py --weights weights/intent.pt` and carry the tokenizer version.
 
   node trace/tools/jev/build-intent-data.mjs --seed 0
   packages/tools/dev/heavy.sh trace/tools/jev/.venv/bin/python trace/tools/jev/train_intent.py
@@ -20,12 +21,12 @@ real report: it runs the live provider path).
 import argparse, json, os, random, sys, time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(HERE, "open-jev"))
 
 import torch
-from open_jev.main import Choice, Jev, JevConfig, RLCDLoss
-
-CONFIG = dict(vocab_size=4096, d_model=128, n_heads=4, d_ff=512, n_state_layers=3, n_readout_layers=4)
+from open_jev.main import Choice, RLCDLoss
+from jev_tokenizer import new_model, save_weights
 
 
 def soft(n, gold):
@@ -48,7 +49,7 @@ def items(rows):
 
 def train(tr, epochs, seed, log):
     torch.manual_seed(seed); random.seed(seed)
-    model = Jev(JevConfig(**CONFIG))
+    model = new_model()
     model.train()
     loss_fn = RLCDLoss(w_consistency=0.0)
     opt = torch.optim.AdamW(model.parameters(), lr=3e-4, weight_decay=0.01)
@@ -100,7 +101,7 @@ def main():
     print(f"train {len(tr_rows)} requests ({len(tr)} questions), held-out {len(te_rows)} requests ({len(te)} questions)", flush=True)
     model = train(tr, a.epochs, a.seed, lambda s: print(s, flush=True))
     os.makedirs(os.path.dirname(a.out), exist_ok=True)
-    torch.save(model.state_dict(), a.out)
+    save_weights(model, a.out, task="intent", seed=a.seed, all=a.all)
     print("held-out accuracy per question:", accuracy(model, te))
     print(f"weights -> {os.path.relpath(a.out)}")
 
