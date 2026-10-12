@@ -29,6 +29,7 @@ test("deals: forks list.owner x list.csm, emits the top 3, asks ONE closed quest
   const out = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "construct-beam-")), "events.jsonl");
   const r = planBeamDir(dir("deals"), { events: out });
   const lines = fs.readFileSync(out, "utf8").trim().split("\n").map((l) => JSON.parse(l));
+  fs.rmSync(path.dirname(out), { recursive: true, force: true });
   for (const e of lines) assertBeamEvent(e);
   assert.deepEqual(lines, r.events);
   assert.equal(lines.at(-1).t, "done");
