@@ -3,7 +3,7 @@
 
   POST /choose  {"state": {...}, "questions": [{"key": "q1", "text": "...", "options": ["a", "b"]}, ...]}
              -> {"answers": [{"key", "choice", "probabilities", "confidence"}], "ms": 1.2}
-  GET  /health -> {"ok": true, "weights": "random (seed 0)" | "<file>"}
+  GET  /health -> {"ok": true, "weights": "random (seed 0)" | "<file>", "tokenizer": "<version>"}
 
 IMPORTANT: open-jev ships with RANDOM weights. It is an architecture, not a trained model, so its answers are
 noise until it is trained. With random weights the answers are deterministic (fixed seed) but meaningless, and
@@ -13,10 +13,12 @@ import argparse, json, os, sys, time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(HERE, "open-jev"))
 
 import torch
-from open_jev.main import Choice, Jev, JevConfig
+from open_jev.main import Choice
+from jev_tokenizer import load_weights, new_model, version as tokenizer_version
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--port", type=int, default=8765)
@@ -25,10 +27,12 @@ ap.add_argument("--weights", default="")
 args = ap.parse_args()
 
 torch.manual_seed(args.seed)
-model = Jev(JevConfig(vocab_size=4096, d_model=128, n_heads=4, d_ff=512, n_state_layers=3, n_readout_layers=4)).eval()
+model = new_model()  # shared config + tokenizer (jev_tokenizer.py)
 if args.weights:
-    model.load_state_dict(torch.load(args.weights, map_location="cpu"))
+    load_weights(model, args.weights)  # refuses weights trained under another tokenizer
+model.eval()
 WEIGHTS = args.weights or f"random (seed {args.seed})"
+TOKENIZER = tokenizer_version()
 
 
 def answer(state, questions):
@@ -53,7 +57,7 @@ class H(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_GET(self):
-        self._send(200, {"ok": True, "weights": WEIGHTS}) if self.path == "/health" else self._send(404, {"error": "not found"})
+        self._send(200, {"ok": True, "weights": WEIGHTS, "tokenizer": TOKENIZER}) if self.path == "/health" else self._send(404, {"error": "not found"})
 
     def do_POST(self):
         if self.path != "/choose":
@@ -70,5 +74,5 @@ class H(BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
-    print(f"open-jev on http://127.0.0.1:{args.port}  weights: {WEIGHTS}", flush=True)
+    print(f"open-jev on http://127.0.0.1:{args.port}  weights: {WEIGHTS}  tokenizer: {TOKENIZER}", flush=True)
     ThreadingHTTPServer(("127.0.0.1", args.port), H).serve_forever()

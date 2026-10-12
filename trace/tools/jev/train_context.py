@@ -7,30 +7,30 @@ Each candidate line is one state; jev answers two typed Choice questions over it
 Targets are soft (0.9 / 0.1), never one-hot, as open-jev's RLCD loss expects. Only USEFUL / NOISE rows train; unclear
 rows are scored at eval time like any other line.
 
-The model config matches serve.py, so the saved weights load with `python tools/jev/serve.py --weights <file>`.
-The state carries the line text normalised (paths and camelCase split into words, see norm()), because open-jev's
-stand-in hash tokenizer only splits on whitespace; a caller must normalise the same way.
+The model config and tokenizer come from jev_tokenizer.py (shared with serve.py), so the saved weights load with
+`python tools/jev/serve.py --weights <file>`, and weights from another tokenizer refuse to load. The tokenizer splits
+paths, camelCase and snake_case itself, so the state carries the line text as is (only truncated).
 
   heavy.sh tools/jev/.venv/bin/python tools/jev/train_context.py --holdout pilot-qwen-7b-r2
   heavy.sh tools/jev/.venv/bin/python tools/jev/train_context.py --loro       # leave-one-run-out
 Writes weights/context-<holdout>.pt and weights/scores-<holdout>.jsonl ({id, score} per held-out line); score them
 with `node tools/jev/eval-context.mjs --runs <holdout> --scores weights/scores-<holdout>.jsonl`.
 """
-import argparse, json, os, random, re, sys, time
+import argparse, json, os, random, sys, time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(HERE, "open-jev"))
 
 import torch
-from open_jev.main import Choice, Jev, JevConfig, RLCDLoss
-
-CONFIG = dict(vocab_size=4096, d_model=128, n_heads=4, d_ff=512, n_state_layers=3, n_readout_layers=4)
+from open_jev.main import Choice, RLCDLoss
+from jev_tokenizer import new_model, save_weights, version as tokenizer_version
 KEEP = Choice("Keep this context line for the builder's next step?", options=["keep", "drop"], key="keep")
 
 
 def norm(s, n=400):
-    s = re.sub(r"([a-z0-9])([A-Z])", r"\1 \2", str(s or "")[:n])
-    return re.sub(r"[/._:\[\]{}()\"',=<>|-]+", " ", s)
+    """Truncate only; jev_tokenizer.presplit does the code-aware splitting."""
+    return str(s or "")[:n]
 
 
 def line_state(r):
@@ -65,7 +65,7 @@ def turn_items(rows):
 
 def train(rows, epochs, seed, log):
     torch.manual_seed(seed); random.seed(seed)
-    model = Jev(JevConfig(**CONFIG))
+    model = new_model()
     model.train()
     loss_fn = RLCDLoss(w_consistency=0.0)
     opt = torch.optim.AdamW(model.parameters(), lr=3e-4, weight_decay=0.01)
@@ -112,13 +112,14 @@ def main():
     ap.add_argument("--seed", type=int, default=0)
     a = ap.parse_args()
     rows = [json.loads(l) for l in open(a.data) if l.strip()]
+    print(f"tokenizer {tokenizer_version()}", flush=True)
     runs = sorted({r["run"] for r in rows if r["label"] == "useful"}) if a.loro else [a.holdout]
     wdir = os.path.join(HERE, "weights"); os.makedirs(wdir, exist_ok=True)
     for hold in runs:
         tr = [r for r in rows if r["run"] != hold]; te = [r for r in rows if r["run"] == hold]
         print(f"holdout {hold}: train {sum(r['label'] != 'unclear' for r in tr)} labelled lines, test {len(te)} lines", flush=True)
         model = train(tr, a.epochs, a.seed, lambda s: print(s, flush=True))
-        torch.save(model.state_dict(), os.path.join(wdir, f"context-{hold}.pt"))
+        save_weights(model, os.path.join(wdir, f"context-{hold}.pt"), task="context", holdout=hold)
         with open(os.path.join(wdir, f"scores-{hold}.jsonl"), "w") as f:
             f.write("\n".join(json.dumps(x) for x in score(model, te)) + "\n")
     print("params", sum(p.numel() for p in model.parameters()))
