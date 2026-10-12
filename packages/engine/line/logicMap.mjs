@@ -114,7 +114,7 @@ const oneLine = (/** @type {string} */ s, n = 140) => s.replace(/\s+/g, ' ').tri
  * @param {string} source
  * @param {string} rel App-root-relative path.
  * @param {RenameTable} renames
- * @returns {{kind: LogicUnitKind, fn: string, line: number, detail: string, anchor: string, start: number}[]}
+ * @returns {{kind: LogicUnitKind, fn: string, line: number, detail: string, anchor: string, start: number, exportName?: string}[]}
  */
 export function fileUnits(source, rel, renames = {}) {
   const ast = parseToAst(source);
@@ -235,7 +235,7 @@ export function fileUnits(source, rel, renames = {}) {
         }
         // The exported binding name(s), for labels only: fn stays "<module>" (the fingerprint keys on it).
         const f = found.get(node);
-        if (f?.kind === 'export') f.exportName = d.type === 'FunctionDeclaration' ? (d.id?.name ?? 'default') : d.declarations.map((x) => text(x.id)).join(', ');
+        if (f?.kind === 'export') f.exportName = d?.type === 'FunctionDeclaration' ? (d.id?.name ?? 'default') : d?.type === 'VariableDeclaration' ? d.declarations.map((x) => text(x.id)).join(', ') : undefined;
       }
     },
   });
