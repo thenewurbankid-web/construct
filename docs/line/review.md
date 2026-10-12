@@ -35,10 +35,27 @@ Tests, in plain words:
    open orders → OrdersPage, click "orders", and Under the hood shows Features with orders open. Also: the mode survives
    a reload; the chat hides and shows; an item crumb marks that item; Workflows, Import, the Import agent, Settings,
    Train Line and Open a project each work in both modes; accessibility is clean at 1280 and at 375 wide.
+4. Live stage (`lib/liveStage.spec.mjs`, `FeaturesModes.spec.mjs`, and the browser): which parts are active at each
+   place (the breadcrumb's levels, the last in focus; waiting, running and refused steps; the last step that ran); every
+   registry tool has a checked presentation; the static ladder outlines OrdersPage by its id and gives one sentence when
+   nothing is unique; an element maps to its tool through LINE_CONTROLS. In the browser: in Chat, OrdersPage is the
+   focused block and is outlined beside the chat; a step from the library waits on the stage, then shows as done.
+
+**Live stage (chat mode).** Above the chat, a strip of small read-only blocks shows what is active under the hood: the
+feature, item and part you are on (kind icon, status colour, base), the Plan's waiting or refused steps (with the typed
+fix as a chip and the UI states the tool shows, marked "stub"), and the last step that ran. Blocks stream in and fade
+out (no motion with reduced motion); the strip folds and is off below 900px wide. It is static at runtime (no model):
+the part in focus is outlined beside the chat by a fixed ladder (data-line-* id, page-tree node id, role and name, label,
+position), and how each tool shows comes from `ui/client/lib/toolPresentations.json`, generated offline by
+`node packages/tools/tool-presentations/generate.mjs` (rules first, jev only where the rules cannot decide; 6 of 510
+fields were jev's; `--check` says when a tool is missing). Not built yet (they need a page renderer): the live preview
+of a page with overlays (outline, badge, ghost "after", a connector from the chat sentence); the render route draws
+library components only, and only when Morpheus is linked.
 
 Gaps:
-- Browser (12 Oct, combined branch): `line-two-modes` 7/7, `line-modes-components` 3/3, `line-modes-pages` 2/2,
-  `line-modes-plan` 2/2; axe clean on each screen and on the switch, at 1280 and at 375 (Features, Settings, Components, Pages).
+- Browser (12 Oct, combined branch): all line-* specs, the two-modes specs and the live stage check; axe clean on each
+  screen and on the switch, at 1280 and at 375. Screens open in Chat until you pick (owner, 12 Oct); specs written for a
+  screen's regular view start Under the hood with `startUnderTheHood(test)`.
 - A pick made in the screen itself (Under the hood, or beside the chat) moves the chat and its breadcrumb there when the
   screen keeps that pick in the address bar (Features, Pages, Workflows); Components, Settings, Train and the Import
   screens do not keep in-page picks in the address bar yet.
