@@ -107,6 +107,7 @@ test('embeddings are one AI profile step: present, off by default, unmeasured, s
   assert.equal(p.ladder.measured, null);
   assert.equal(stepOn(p), false);
   assert.equal(p.model, 'nomic-embed-text');
+  assert.equal(p.kind, 'recall', 'an embedding step is a recall step, never a decide step (no picker, no reason pair)');
   assert.ok(listStepProfiles({ traceConfig: null }).some((x) => x.step === MEMORY_EMBED_STEP));
 });
 

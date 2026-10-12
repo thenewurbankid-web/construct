@@ -5,7 +5,7 @@ import { createMockKnows, MOCK_MEMORY_RECORDS } from '../../../../../packages/en
 import { MEMORY_STEPS } from '../../../../../packages/engine/line/memory/contract.mjs';
 import { TEMPLATE_PHRASE } from '../../../../../packages/engine/line/memory/words.mjs';
 import { intentPhrase } from '../../../../../packages/engine/line/drafter/contract.mjs';
-import { memoryTabView, optionWords, intentWords, outcomeWords, stepLabel, logLine, parseMemoryFile, exportFileName, ROUTE_WORDS, STEP_LABELS } from './MemoryTab.ts';
+import { embeddingsHelp, memoryTabView, optionWords, intentWords, outcomeWords, stepLabel, logLine, parseMemoryFile, exportFileName, ROUTE_WORDS, STEP_LABELS } from './MemoryTab.ts';
 
 const view = () => createMockKnows().records();
 
@@ -67,6 +67,7 @@ test('memoryTabView: null (loading) is empty; the log reads as sentences, newest
   m.setEmbeddings({ on: true });
   const v = memoryTabView(m.records());
   assert.equal(v.embeddingsOn, true);
+  assert.equal(v.embeddingsRuns, false, 'the mock has no runs field: the switch alone does not make comparisons run');
   assert.equal(v.log.length, 2);
   assert.match(v.log[0], /^You turned embeddings on/);
   assert.match(v.log[1], /^You forgot one decision \(m-mock0002\)/);
@@ -82,4 +83,12 @@ test('parseMemoryFile: a Line memory export, else one sentence; exportFileName i
   assert.equal(parseMemoryFile('not json').ok, false);
   assert.match(parseMemoryFile('{"v":1,"kind":"other"}').sentence, /not a Line memory file/);
   assert.equal(exportFileName(new Date('2026-10-12T10:00:00Z')), 'line-memory-2026-10-12.json');
+});
+
+test('embeddingsHelp (#871): on alone does not claim comparisons; only on AND runs (a measured win) does', () => {
+  assert.match(embeddingsHelp(false, false), /^Off by default\. When on, and once it measures a win/);
+  assert.match(embeddingsHelp(true, false), /^On, but no comparisons run yet/);
+  assert.match(embeddingsHelp(true, true), /^On: Line also compares/);
+  assert.equal(memoryTabView({ ...view(), embeddings: { on: true, covers: 'slotted-text', runs: true } }).embeddingsRuns, true);
+  for (const [on, runs] of [[false, false], [true, false], [true, true]]) assert.match(embeddingsHelp(on, runs), /never reads your code\.$/);
 });

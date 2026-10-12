@@ -52,6 +52,12 @@ test('profiles: the contract refuses a step that is on without a measured win, a
   assert.throws(() => assertStepProfile({ ...base, ladder: { ...base.ladder, review: { on: false, target: 0.7 } } }), /no review rung/);
   assert.throws(() => assertStepProfile({ ...base, provider: 'hosted', model: null, kind: 'decide', ladder: { ...base.ladder, options: { on: true, target: 0.6 }, measured: 'x' } }), /hosted/);
   assert.throws(() => assertStepProfile({ ...base, maxTokens: undefined }), /maxTokens/);
+  // #871: kinds are decide, draft or recall; a recall step (embeddings) is local only, and decide-only consumers never see it.
+  assert.throws(() => assertStepProfile({ ...base, kind: 'embed' }), /decide, draft or recall/);
+  const embed = stepProfile('construct.memory-embed', { traceConfig: null });
+  assert.doesNotThrow(() => assertStepProfile(embed));
+  assert.throws(() => assertStepProfile({ ...embed, provider: 'hosted', model: null }), /local embedding model/);
+  assert.ok(!listStepProfiles({ traceConfig: null }).some((p) => p.kind === 'decide' && p.model !== DEFAULT_STEP_MODEL), 'every decide step runs the picker model');
   assert.throws(() => stepProfile('nope.step'), /no profile/);
 });
 

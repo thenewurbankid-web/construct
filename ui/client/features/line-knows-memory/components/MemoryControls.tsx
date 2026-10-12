@@ -1,10 +1,11 @@
 import { useRef, useState } from 'react';
 import type { MemoryTabAction } from '../workflows/MemoryActions';
+import { embeddingsHelp } from '../domain/MemoryTab';
 
 type Act = { busy: boolean; act: (action: MemoryTabAction) => void };
 
 /** The embeddings switch: off by default; slotted decision text only, never code. */
-export function EmbeddingsSwitch({ on, busy, act }: Act & { on: boolean }) {
+export function EmbeddingsSwitch({ on, runs, busy, act }: Act & { on: boolean; runs: boolean }) {
   return (
     <div className="lkm-switch">
       <button type="button" role="switch" aria-checked={on} aria-describedby="lkm-embed-help" onClick={() => act({ kind: 'embeddings', on: !on })} disabled={busy} data-testid="memory-embeddings">
@@ -12,7 +13,7 @@ export function EmbeddingsSwitch({ on, busy, act }: Act & { on: boolean }) {
         Embeddings {on ? 'on' : 'off'}
       </button>
       <p id="lkm-embed-help" className="lkm-help">
-        Off by default. When on, Line also compares the words of your past decisions with a local model; it never reads your code.
+        {embeddingsHelp(on, runs)}
       </p>
     </div>
   );

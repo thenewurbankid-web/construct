@@ -105,7 +105,7 @@ export type MapTabView = {
 /** One record as the Memory tab shows it: what Line saw (intent), what you did (outcome), how often, when. */
 export type MemoryRow = { id: string; step: string; stepLabel: string; intent: string; outcome: string; count: number; when: string; options: string[]; chosen: string | null };
 /** `summaries`: one sentence per decision made the same way ("You picked 'via the library' 3 times for 'use item'."). */
-export type MemoryTabView = { sentence: string; rows: MemoryRow[]; steps: { step: string; label: string; size: number }[]; embeddingsOn: boolean; log: string[]; summaries: { step: string; text: string; count: number }[] };
+export type MemoryTabView = { sentence: string; rows: MemoryRow[]; steps: { step: string; label: string; size: number }[]; embeddingsOn: boolean; embeddingsRuns: boolean; log: string[]; summaries: { step: string; text: string; count: number }[] };
 
 // Change
 export type ChangeState = 'proposed' | 'waiting' | 'done' | 'refused';
