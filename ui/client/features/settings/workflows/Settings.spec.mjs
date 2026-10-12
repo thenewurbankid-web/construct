@@ -4,17 +4,17 @@ import { initialSettingsState as initial, settingsReducer as reduce } from './Se
 
 const settings = {
   projectDir: '/ws/proj',
-  llmProviders: { importFill: 'claude', createFill: 'ollama', planAnalysis: 'claude' },
-  llmModels: { importFill: null, createFill: 'qwen2.5-coder:7b', planAnalysis: null },
+  llmProviders: { importFill: 'claude', createFill: 'ollama' },
+  llmModels: { importFill: null, createFill: 'qwen2.5-coder:7b' },
   availableProviders: ['claude', 'ollama'],
-  availableProvidersByCapability: { importFill: ['claude', 'ollama'], createFill: ['claude', 'ollama'], planAnalysis: ['claude'] },
+  availableProvidersByCapability: { importFill: ['claude', 'ollama'], createFill: ['claude', 'ollama'] },
   resolvedProjectRoot: '/ws/proj',
   valid: true,
   needsInit: false,
 };
 
 test('#471: llmModels defaults every capability to null (the provider default) and loads alongside llmProviders', () => {
-  assert.deepEqual(initial.llmModels, { importFill: null, createFill: null, planAnalysis: null });
+  assert.deepEqual(initial.llmModels, { importFill: null, createFill: null });
 
   const loaded = reduce(initial, { type: 'LOADED', settings });
   assert.deepEqual(loaded.llmModels, settings.llmModels);
@@ -24,7 +24,7 @@ test('#471: llmModels defaults every capability to null (the provider default) a
 test('#471: SET_LLM_MODEL sets one capability at a time without disturbing the others or the providers', () => {
   const loaded = reduce(initial, { type: 'LOADED', settings });
   const changed = reduce(loaded, { type: 'SET_LLM_MODEL', capability: 'importFill', value: 'llama3:8b' });
-  assert.deepEqual(changed.llmModels, { importFill: 'llama3:8b', createFill: 'qwen2.5-coder:7b', planAnalysis: null });
+  assert.deepEqual(changed.llmModels, { importFill: 'llama3:8b', createFill: 'qwen2.5-coder:7b' });
   assert.deepEqual(changed.llmProviders, settings.llmProviders, 'untouched');
 });
 

@@ -4,21 +4,18 @@
 // handler below is the exact function (or exact inline logic) the old if-chain called, so no built-in
 // command's flags, output or exit behavior changes.
 //
-// `import` stays one command with its existing `--route` branch (never two commands); `generate` keeps its
+// `import` stays one command (its old `--route` wizard is retired: importCommand refuses it); `generate` keeps its
 // `g` alias; `repl` keeps its own lazy `import('./repl.mjs')` and explicit `process.exit(0)` -- both
 // preserved verbatim from packages/cli/construct.mjs, just moved behind a registered handler instead of an
 // inline `else if`.
 import {
   init, feature, generate, sync, validate, summarize, doctor, create, refactor, research, review,
-  testCommand, template, importCommand, runImportRouteWizard, pipeline, traces, decide, model, processCommand,
+  testCommand, template, importCommand, pipeline, traces, decide, processCommand,
   checkChange, mutationCheck, addRuleCommand, exportCommand, rulesCommand, rename,
 } from './cli.mjs';
 
-/** `construct import ...`: the same `--route` vs. plain-import branch `construct.mjs`'s old if-chain had inline. */
+/** `construct import ...` (the retired `--route` wizard is refused by importCommand with one sentence). */
 function importHandler(args) {
-  if (args[0] === '--route') {
-    return runImportRouteWizard(args[1]?.startsWith('--') ? undefined : args[1], { planner: args[args.indexOf('--planner') + 1] === 'mechanical' ? 'mechanical' : 'ai' });
-  }
   return importCommand(args);
 }
 
@@ -60,9 +57,8 @@ export function registerBuiltinCommands(registry) {
   registry.register({ name: 'template', summary: 'List, show or instantiate a named, reusable, parameterised plan', handler: template, source: SOURCE });
   registry.register({ name: 'import', summary: 'Scaffold layers for an existing, non-Construct file or route', handler: importHandler, source: SOURCE });
   registry.register({ name: 'pipeline', summary: 'Run a Context Envelope through the generator pipeline (stdin/stdout)', handler: pipeline, source: SOURCE });
-  registry.register({ name: 'traces', summary: 'Inspect, replay or export recorded decision traces', handler: traces, source: SOURCE });
+  registry.register({ name: 'traces', summary: 'Inspect or replay recorded decision traces', handler: traces, source: SOURCE });
   registry.register({ name: 'decide', summary: 'Ask the decision model for a suggestion (read-only)', handler: decide, source: SOURCE });
-  registry.register({ name: 'model', summary: 'List, import, enable or disable a decision model trained elsewhere', handler: model, source: SOURCE });
   registry.register({ name: 'repl', summary: 'Interactive shell over the same functions a one-shot invocation dispatches to', handler: replHandler, source: 'packages/core/repl.mjs' });
   registry.register({ name: 'line', summary: 'Line describes itself: the versioned spec, recurring refusals from session traces, the context Line picks', handler: async (args) => (await import('./line-command.mjs')).lineCommand(args), source: 'packages/core/line-command.mjs' });
   registry.register({ name: 'add-rule', summary: 'Scaffold a project-local rule (local-rules/<id>/rule.yml) plus a violates/passes fixture pair', handler: addRuleCommand, source: SOURCE });

@@ -17,16 +17,23 @@ test('aiStepRows: the real profile set, Cockpit first, then Trace, then Construc
     assert.match(row.how, /^[A-Z].*\.$/);
     assert.match(row.details.step, /^Step id: /);
   }
+  // The profile is the only switch: each row shows its measured win, or off.
+  const win = Object.fromEntries(rows.map((r) => [r.step, r.win]));
+  assert.match(win['construct.fix'], /^Win over static: .*9\/10.*6\/10/);
+  assert.match(win['construct.repair'], /^Win over static: .*7\/20/);
+  for (const s of ['construct.chooser', 'construct.label-miss', 'trace.choose']) assert.equal(win[s], 'Win over static: off');
 });
 
 test("modelText and howItWorks: the 1.5B is Line's default; hosted and jev steps say what happens", () => {
   const all = profiles().profiles;
   const choose = all.find((p) => p.step === 'trace.choose');
   assert.equal(modelText(choose), "qwen2.5-coder:1.5b (Line's default)");
-  assert.match(howItWorks(choose), /jev decides/);
-  const plan = all.find((p) => p.step === 'cockpit.planAnalysis');
-  assert.equal(modelText(plan), 'The hosted model you choose');
-  assert.match(howItWorks(plan), /hosted model/);
+  assert.match(howItWorks(choose), /^Off: static checks decide/);
+  const fix = all.find((p) => p.step === 'construct.fix');
+  assert.match(howItWorks(fix), /the picker \(jev until Line-1 ships\)/);
+  const hosted = { ...choose, provider: 'hosted', model: null };
+  assert.equal(modelText(hosted), 'The hosted model you choose');
+  assert.match(howItWorks(hosted), /hosted model/);
 });
 
 test('aiStepsView: loading, a refusal sentence, and the ready rows each give one status sentence', () => {

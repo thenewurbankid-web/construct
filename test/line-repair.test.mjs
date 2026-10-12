@@ -1,4 +1,4 @@
-// im2 -- Qwen repairs a failed option from Construct's exact error (packages/core/line-decide.mjs repairLoop; owner,
+// im2 -- the local model repairs a failed option from Construct's exact error (packages/core/line-decide.mjs repairLoop; owner,
 // 12 Oct: up to 4 attempts, each reasoning from every earlier attempt and its refusal). The local model gets only the
 // refusal sentence, the finding, the typed fixes, the option and its own earlier attempts; it answers a short reason and
 // the option in the option's schema; each repaired option is checked again; it stops when one lands, repeats an earlier
@@ -10,9 +10,9 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { assertRepairAttempt, assertDecideLoopResult } from '../packages/engine/line/contract.mjs';
+import { assertRepairAttempt } from '../packages/engine/line/contract.mjs';
 import { repairLoop, repairPrompt, optionSchema, ollamaPropose } from '../packages/core/line-decide.mjs';
-import { createMockDecide } from '../packages/core/line-decide-mock.mjs';
+import { profilesWithOn } from '../packages/core/line-decide-mock.mjs';
 import { checkOnCopy, toolArgsSchema, slotRepair, recordRepair } from '../packages/engine/line/repair.mjs';
 import { readLineProject } from '../packages/engine/line/model.mjs';
 
@@ -130,58 +130,14 @@ test('repairLoop: Ollama not running leaves the static path unchanged and says s
 });
 
 
-/** A plan where every option waits for a person's approval; Construct checks it on a copy first (nothing written). */
-function fakePlan() {
-  const waiting = []; const written = [];
-  const construct = (o) => (o.args.feature === 'orders' ? { ok: true } : { ok: false, refusal: REFUSAL });
-  return {
-    waiting, written,
-    add: (o) => { const r = construct(o); if (r.ok) waiting.push(o); return r; },
-    approve: () => { written.push(...waiting.splice(0)); },
-  };
-}
-
-test('decideUntilAccepted: the option jev chose is refused, repaired by the model, lands as a waiting step; nothing is written before approval', async () => {
-  const plan = fakePlan();
+test('repairLoop: the construct.repair profile off (no measured win) asks no model; the person decides', async () => {
+  const off = profilesWithOn([]);
+  for (const p of off.data.profiles) if (p.step === 'construct.repair') p.ladder = { ...p.ladder, options: { ...p.ladder.options, on: false } };
   const q = mockQwen(fixed);
-  const opts = [{ id: 'ordrs', label: 'In ordrs' }, { id: 'billing', label: 'In billing' }];
-  const loop = await createMockDecide({ pick: 0 }).decideUntilAccepted('construct.chooser', opts, {}, {
-    apply: (id) => plan.add({ ...OPTION, args: { ...OPTION.args, feature: id } }),
-    optionOf: (id) => ({ ...OPTION, args: { ...OPTION.args, feature: id } }),
-    applyOption: (o) => plan.add(o),
-    repair: { propose: q.propose },
-  });
-  assertDecideLoopResult(loop);
-  assert.equal(loop.outcome, 'accepted');
-  assert.equal(loop.rounds.length, 1);
-  assert.equal(loop.rounds[0].decision.via, 'jev');
-  assert.equal(loop.rounds[0].repair.outcome, 'repaired', 'the attempt is kept in the decision trace');
-  assert.deepEqual(plan.waiting, [fixed]);
-  assert.deepEqual(plan.written, [], 'nothing is written before a person approves');
-  plan.approve();
-  assert.deepEqual(plan.written, [fixed]);
-});
-
-test('decideUntilAccepted: 4 refused repairs ask the person one question, with the live line on the trace; a static choice is never repaired', async () => {
-  const opts = [{ id: 'ordrs', label: 'In ordrs' }, { id: 'billing', label: 'In billing' }];
-  const said = [];
-  const run = (q) => ({ apply: () => ({ ok: false, refusal: REFUSAL }), optionOf: (id) => ({ ...OPTION, args: { ...OPTION.args, feature: id } }), applyOption: () => ({ ok: false, refusal: { sentence: 'The name StatusBadge is taken in orders.' } }), repair: { propose: q.propose }, onProgress: (s) => said.push(s) });
-  const q1 = mockQwen(withFeature('f1', 'One.'), withFeature('f2', 'Two.'), withFeature('f3', 'Three.'), withFeature('f4', 'Four.'));
-  const loop = await createMockDecide({ pick: 0 }).decideUntilAccepted('construct.chooser', opts, {}, run(q1));
-  assertDecideLoopResult(loop);
-  assert.equal(loop.outcome, 'ask');
-  assert.equal(loop.rounds.at(-1).repair.outcome, 'still-refused');
-  assert.equal(loop.rounds.at(-1).repair.tries.length, 4);
-  assert.match(loop.question.sentence, /^The name StatusBadge is taken in orders\. Which fix should Line try\?$/);
-  assert.equal(q1.calls.length, 4);
-  assert.deepEqual(said, ['Line is asking the local model to repair it (1 of 4): one.', 'Line is trying again (2 of 4): two.', 'Line is trying again (3 of 4): three.', 'Line is trying again (4 of 4): four.']);
-  assert.deepEqual(loop.rounds.at(-1).repair.progress, said);
-  // Static order (no jev, no Qwen): no repair, the loop goes on with the typed fixes as before.
-  const q2 = mockQwen(fixed);
-  const st = await createMockDecide().decideUntilAccepted('construct.chooser', opts, {}, run(q2));
-  assertDecideLoopResult(st);
-  assert.equal(q2.calls.length, 0);
-  assert.ok(st.rounds.every((r) => r.repair === undefined));
+  const a = await repairLoop(OPTION, REFUSAL, { profiles: off, propose: q.propose, check: construct });
+  assertRepairAttempt(a);
+  assert.deepEqual([a.outcome, a.attempts, a.option, q.calls.length], ['off', 0, null, 0]);
+  assert.match(a.sentence, /off in its profile/);
 });
 
 test('Construct check on a copy: the refused option and its repair, on the Line sample; the sample is untouched; the record is slotted', async () => {

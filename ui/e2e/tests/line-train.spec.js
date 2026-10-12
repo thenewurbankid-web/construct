@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
 import path from 'node:path';
-import { gotoCockpit } from './support/cockpit.js';
+import { gotoCockpit, waitForCockpitReady } from './support/cockpit.js';
 import { runAxe, isBlocking, format } from './support/axe.js';
 import { startUnderTheHood } from './support/lineModes.js';
 
@@ -11,7 +11,8 @@ startUnderTheHood(test);
 // Train Line on the real server (run under playwright.line-train.config.js, which gives the server a training root of
 // its own, seeded from the repo's line/train). Claude's cases are reviewed, a typed request is drafted, corrected with
 // one closed choice, tried in a scratch copy and saved without project words; a near-miss word is answered once and
-// becomes a synonym; Run eval fills the scoreboard. No console error, no failed request, axe clean.
+// becomes a synonym; Run eval fills the scoreboard. No console error, no failed request, axe clean. The owner's walk
+// (merged here from uat/line-train.spec.js): Train Line opens from the profile menu, and a suggested request is one click.
 const ROOT = process.env.E2E_TRAIN_ROOT;
 // Never the repo's own line/train: the config always gives the server a temp training root (playwright.config.js).
 if (!ROOT || path.resolve(ROOT) === path.resolve(path.dirname(new URL(import.meta.url).pathname), '../../../line')) throw new Error('E2E_TRAIN_ROOT must be a temp folder, never the repo\'s line/.');
@@ -26,6 +27,23 @@ test.describe.serial('Train Line', () => {
     page.on('response', (r) => { if (r.url().includes('/api/line/train') && r.status() >= 400) problems.push(`${r.status()} ${r.url()}`); });
   });
   test.afterEach(() => { expect(problems, problems.join('\n')).toEqual([]); });
+
+  test('owner walk: Train Line opens from the profile menu; a suggested request drafts in one click, the feature in two', async ({ page }) => {
+    await page.goto('/');
+    await waitForCockpitReady(page);
+    await page.getByTestId('user-menu-trigger').click();
+    await page.getByTestId('profile-train').click();
+    await expect(page).toHaveURL(/\/train$/);
+    await expect(page.getByRole('heading', { name: 'Train Line', level: 1 })).toBeVisible();
+    const teach = page.getByTestId('train-teach');
+    await teach.getByTestId('train-suggestion').first().click();
+    const draft = page.getByTestId('train-draft');
+    await expect(draft.getByTestId('train-draft-request')).toHaveText('Make StatusBadge in billing, based on Badge.');
+    const feature = draft.getByTestId('train-slot-F1');
+    await feature.click();
+    await feature.selectOption({ label: 'orders' });
+    await expect(draft.getByTestId('train-draft-request')).toHaveText('Make StatusBadge in orders, based on Badge.');
+  });
 
   test('review: five of Claude\'s cases with their routes; Agree, and Disagree with a note, are logged as the owner', async ({ page }) => {
     await gotoCockpit(page, '/train');

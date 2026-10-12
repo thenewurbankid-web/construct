@@ -16,7 +16,7 @@ startUnderTheHood(test);
 // <details> do not count; a control inside a collapsed section is therefore not counted until it is opened.
 // The shell (top bar, left column, right panel, status bar) is counted once per screen, under "shell".
 
-const SCREENS = ['/dashboard', '/settings', '/help', '/plan', '/notes', '/wizard', '/tests', '/review', '/pages', '/workflows', '/components', '/ollama'];
+const SCREENS = ['/dashboard', '/settings', '/help', '/plan', '/notes', '/tests', '/review', '/pages', '/workflows', '/components', '/ollama'];
 
 const COUNT = () => {
   const visible = (el) => el.checkVisibility({ checkOpacity: false, checkVisibilityCSS: true });

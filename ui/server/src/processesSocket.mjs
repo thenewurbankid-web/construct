@@ -8,7 +8,7 @@
 // It takes the SAME `auth` object as the wizard socket and the `/api` gate,
 // so it can never be more permissive than REST: an upgrade with no valid
 // session is refused with 401 at the handshake, before a socket exists. The
-// origin check mirrors wizardSocket.mjs.
+// origin check is the same one every Cockpit socket uses.
 import { WebSocketServer } from 'ws';
 import { processView } from './processesService.mjs';
 import { routeUpgrade } from './wsUpgrade.mjs';

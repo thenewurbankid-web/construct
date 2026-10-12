@@ -1,69 +1,11 @@
-// cu1 -- the two thin adapters over the linked Line modules, tested against mocks only (packages/line-links/mocks.mjs):
-// @mx/reason as a decision provider, and @mx/plan's registry over Construct's command registry. No source repo needed.
+// cu1 -- the thin adapter over the linked Line modules, tested against mocks only (packages/line-links/mocks.mjs):
+// @mx/plan's registry over Construct's command registry. No source repo needed. (@mx/reason is reached only through
+// Line's one decide(), packages/core/line-decide.mjs: test/line-decide.test.mjs.)
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createReasonProvider, registerReasonProvider, REASON_PROVIDER_NAME } from '../packages/core/reason-provider.mjs';
-import { suggest, unregisterDecisionProvider } from '../packages/core/decision-provider.mjs';
 import { commandPlanRegistry, commandToolName, ARGV_SCHEMA } from '../packages/core/plan-registry.mjs';
 import { createCommandRegistry } from '../packages/core/command-registry.mjs';
 import { createMockReason, createMockPicker, createMockPlanRunner } from '../packages/line-links/mocks.mjs';
-
-const summary = (ids, disabled = []) => ({ id: 'next.step', question: 'What next?', options: ids.map((id) => ({ id, label: id, enabled: !disabled.includes(id), why: '' })), chosen: null });
-
-test('reason provider: one enabled option is decided by the static step, no picker asked', async () => {
-  const picker = createMockPicker(0);
-  const p = createReasonProvider({ loadReason: async () => createMockReason(), picker });
-  assert.deepEqual(await p.suggest(summary(['a', 'b'], ['b'])), { option: 'a', reason: 'It is the only step that passed the checks.', runnerUp: null });
-  assert.equal(picker.calls.length, 0);
-});
-
-test('reason provider: several options and no model keep the static order', async () => {
-  const p = createReasonProvider({ loadReason: async () => createMockReason() });
-  const s = await p.suggest(summary(['a', 'b', 'c']));
-  assert.equal(s.option, 'a');
-  assert.equal(s.runnerUp, 'b');
-  assert.match(s.reason, /no model was asked/);
-});
-
-test('reason provider: with jev up, its pick is the suggestion and only enabled options reach it', async () => {
-  const picker = createMockPicker(1);
-  const p = createReasonProvider({ loadReason: async () => createMockReason(), picker });
-  const s = await p.suggest(summary(['a', 'b', 'c'], ['b']));
-  assert.deepEqual(picker.calls, [['a', 'c']]);
-  assert.equal(s.option, 'c');
-  assert.equal(s.runnerUp, 'a');
-});
-
-test('reason provider: reason not linked -> static answer that says so in plain English', async () => {
-  const p = createReasonProvider({ loadReason: async () => null });
-  const s = await p.suggest(summary(['x', 'y']));
-  assert.deepEqual(s, { option: 'x', reason: 'First available step; the reason module is not linked, so Line used the static order.', runnerUp: 'y' });
-});
-
-test('reason provider: a throwing reason module falls back to the static answer', async () => {
-  const p = createReasonProvider({ loadReason: async () => createMockReason({ fail: true }) });
-  const s = await p.suggest(summary(['x', 'y']));
-  assert.equal(s.option, 'x');
-  assert.match(s.reason, /reason module failed/);
-  assert.match(p.lastNote(), /mock reason failure/);
-});
-
-test('reason provider: nothing enabled -> abstains', async () => {
-  const p = createReasonProvider({ loadReason: async () => createMockReason() });
-  assert.equal(await p.suggest(summary(['a'], ['a'])), null);
-});
-
-test('reason provider registers in the decision-provider seam and its answer is validated there', async () => {
-  registerReasonProvider({ loadReason: async () => createMockReason() });
-  try {
-    const s = await suggest(summary(['a', 'b']), { provider: REASON_PROVIDER_NAME });
-    assert.equal(s.option, 'a');
-    assert.equal(s.provider, 'reason');
-    assert.equal(s.version, 'reason-adapter-1');
-  } finally {
-    unregisterDecisionProvider(REASON_PROVIDER_NAME);
-  }
-});
 
 function fakeCommands() {
   const commands = createCommandRegistry();

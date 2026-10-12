@@ -17,17 +17,13 @@ test('getSettings returns a per-capability llmProviders map defaulting every cap
   assert.ok(settings.llmProviders);
   assert.equal(typeof settings.llmProviders.importFill, 'string');
   assert.equal(typeof settings.llmProviders.createFill, 'string');
-  assert.equal(typeof settings.llmProviders.planAnalysis, 'string');
+  assert.equal('planAnalysis' in settings.llmProviders, false, 'planAnalysis went with the retired route wizard');
 });
 
-test('getSettings never lists ollama among planAnalysis\'s available providers, even though it is a real provider', () => {
+test('getSettings lists every real provider for each capability', () => {
   const settings = getSettings();
   assert.ok(settings.availableProviders.includes('claude'));
-  // This assertion is only meaningful once #98's ollama provider exists;
-  // guard so this test still passes (harmlessly) if PROVIDERS ever loses it.
-  if (settings.availableProviders.includes('ollama')) {
-    assert.equal(settings.availableProvidersByCapability.planAnalysis.includes('ollama'), false);
-  }
+  assert.deepEqual(Object.keys(settings.availableProvidersByCapability).sort(), ['createFill', 'importFill']);
   assert.deepEqual(
     settings.availableProvidersByCapability.importFill.sort(),
     settings.availableProviders.slice().sort(),
@@ -53,16 +49,12 @@ test('updateSettings throws on an unknown provider for any capability, and does 
   assert.equal(getSettings().llmProviders.importFill, before);
 });
 
-test('updateSettings HARD-REJECTS ollama for planAnalysis — the #96 guardrail — even though ollama is a valid provider elsewhere', { skip: !PROVIDERS.ollama }, () => {
-  const before = getSettings().llmProviders.planAnalysis;
-  assert.throws(
-    () => updateSettings({ llmProviders: { planAnalysis: 'ollama' } }),
-    /planAnalysis.*never delegated to a local model/s,
-  );
-  assert.equal(getSettings().llmProviders.planAnalysis, before, 'must not have been applied');
+test('updateSettings ignores the retired planAnalysis capability', () => {
+  updateSettings({ llmProviders: { planAnalysis: 'claude' } });
+  assert.equal('planAnalysis' in getSettings().llmProviders, false);
 });
 
-test('updateSettings accepts ollama for importFill and createFill (only planAnalysis is restricted)', { skip: !PROVIDERS.ollama }, () => {
+test('updateSettings accepts ollama for importFill and createFill', { skip: !PROVIDERS.ollama }, () => {
   updateSettings({ llmProviders: { importFill: 'ollama' } });
   assert.equal(getSettings().llmProviders.importFill, 'ollama');
   updateSettings({ llmProviders: { createFill: 'ollama' } });
@@ -76,7 +68,6 @@ test('#471: getSettings returns a per-capability llmModels map defaulting every 
   assert.ok(settings.llmModels);
   assert.equal(settings.llmModels.importFill, null);
   assert.equal(settings.llmModels.createFill, null);
-  assert.equal(settings.llmModels.planAnalysis, null);
 });
 
 test('#471: updateSettings sets one capability\'s model at a time without disturbing the others or the providers', () => {
@@ -224,14 +215,13 @@ test('#420: fellBackFrom is null through ordinary use, and only appears (naming 
   assert.equal(getSettings().fellBackFrom, null);
 });
 
-test('updateSettings back-compat: a bare legacy { llmProvider } body sets importFill only, never planAnalysis/createFill', () => {
-  updateSettings({ llmProviders: { createFill: 'claude', planAnalysis: 'claude' } });
+test('updateSettings back-compat: a bare legacy { llmProvider } body sets importFill only, never createFill', () => {
+  updateSettings({ llmProviders: { createFill: 'claude' } });
   const before = getSettings().llmProviders;
   updateSettings({ llmProvider: 'claude' });
   const after = getSettings().llmProviders;
   assert.equal(after.importFill, 'claude');
   assert.equal(after.createFill, before.createFill);
-  assert.equal(after.planAnalysis, before.planAnalysis);
 });
 
 test('getSettings exposes a legacy llmProvider field mirroring importFill, for any old reader', () => {
@@ -273,17 +263,13 @@ test('#418: settings.json is re-validated against PROVIDERS on read — an unkno
   assert.equal(typeof providers.importFill, 'string');
 });
 
-test(
-  '#418: settings.json is re-validated against the #96 planAnalysis guardrail on read — a stale file naming ollama for planAnalysis is dropped',
-  { skip: !PROVIDERS.ollama },
-  async () => {
-    const state = makeTempDir('settings-llm-ollama-plan-');
-    fs.writeFileSync(path.join(state, 'settings.json'), JSON.stringify({ llmProviders: { planAnalysis: 'ollama' } }));
-    const readScript = `import('${new URL('./settings.mjs', import.meta.url).href}').then((m) => console.log(JSON.stringify(m.getSettings().llmProviders)))`;
-    const out = await runInFreshProcess(state, readScript);
-    assert.notEqual(JSON.parse(out.trim()).planAnalysis, 'ollama');
-  },
-);
+test('#418: a stale settings.json naming the retired planAnalysis capability is read without it', async () => {
+  const state = makeTempDir('settings-llm-ollama-plan-');
+  fs.writeFileSync(path.join(state, 'settings.json'), JSON.stringify({ llmProviders: { planAnalysis: 'ollama' } }));
+  const readScript = `import('${new URL('./settings.mjs', import.meta.url).href}').then((m) => console.log(JSON.stringify(m.getSettings().llmProviders)))`;
+  const out = await runInFreshProcess(state, readScript);
+  assert.equal('planAnalysis' in JSON.parse(out.trim()), false);
+});
 
 test('#418: a corrupt settings.json is ignored in favor of defaults, rather than crashing the server', async () => {
   const state = makeTempDir('settings-llm-corrupt-');

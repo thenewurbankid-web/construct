@@ -17,7 +17,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const API = process.env.E2E_API_BASE || 'http://localhost:4000';
 const BIN = path.resolve(__dirname, '../../../packages/cli/construct.mjs');
 const WS = process.env.E2E_WORKSPACE_ROOT;
-const ROUTES = ['/', '/plan', '/dashboard', '/wizard', '/pages', '/workflows', '/review', '/tests', '/states'];
+const ROUTES = ['/', '/plan', '/dashboard', '/pages', '/workflows', '/review', '/tests', '/states'];
 
 const closeProject = (request) => request.post(`${API}/api/settings`, { data: { closeProject: true } });
 const makeShop = () => {

@@ -7,9 +7,9 @@ export E2E_CLIENT_PORT=${E2E_CLIENT_PORT:-3391} E2E_SERVER_PORT=${E2E_SERVER_POR
 status=0
 run() { echo "=== $*"; npx playwright test "$@" --workers=1 --reporter=line || status=1; }
 if [ "$#" -gt 0 ]; then run "$@"; exit $status; fi
-MAIN=$(ls tests/line-*.spec.js | grep -v -e line-drafter -e line-train -e line-new-project)
+MAIN=$(ls tests/line-*.spec.js | grep -v -e line-drafter -e line-train)
 run -c playwright.config.js $MAIN
-run -c playwright.workspace.config.js tests/line-new-project.spec.js
+run -c playwright.workspace.config.js tests/new-project.spec.js
 run -c playwright.line-drafter.config.js tests/line-drafter.spec.js
 run -c playwright.line-train.config.js tests/line-train.spec.js
 run -c playwright.uat.config.js

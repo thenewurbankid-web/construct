@@ -1,14 +1,13 @@
-// cg1 -- when several tools fit a request, jev picks one with a cloze, through @mx/reason's ladder (the same decision
-// provider as cu1/cu2: packages/core/reason-provider.mjs). Static first: one tool decides alone and never reaches here.
+// cg1 -- when several tools fit a request, Line's one decide() picks (packages/core/line-decide.mjs, step
+// construct.chooser), with the request as a cloze for the picker. Static first: one tool decides alone and never reaches
+// here. construct.chooser is off until it records a measured win, so today the static order stands and says so.
 //
-// No single point of failure: when @mx/reason is not linked, or jev is not reachable (JEV_URL, default
-// http://127.0.0.1:8765, open-jev's serve.py), the static order stands and `via` says "static" with why in plain
-// English. `via` is "jev" only when jev actually answered.
-import { createReasonProvider } from '@line/construct-core/reason-provider';
-import { TOOL_WORDS } from './traceMatch.mjs';
+// No single point of failure: the picker off, not linked or not running, or decide() throwing, all keep the static
+// order, and `via` says "static" with why in plain English. `via` is "jev" only when the picker actually answered.
+import { decide as lineDecide } from '@line/construct-core/line-decide';
 
 /**
- * The cloze jev fills: the request, then a blank the offered tools fit.
+ * The cloze the picker fills: the request, then a blank the offered tools fit.
  * @param {string} request
  * @returns {string}
  */
@@ -17,54 +16,16 @@ export function clozeOf(request) {
 }
 
 /**
- * jev over HTTP as a ReasonPicker (packages/line-links/contracts.d.ts): `available` asks /health (short timeout),
- * `pick` sends the cloze and the tools' words to /choose and answers the index of jev's choice.
- * @param {{url?: string, fetchImpl?: typeof fetch, timeoutMs?: number}} [o]
- * @returns {import('../../line-links/contracts').ReasonPicker}
- */
-export function createJevPicker(o = {}) {
-  const url = (o.url ?? process.env.JEV_URL ?? 'http://127.0.0.1:8765').replace(/\/$/, '');
-  const f = o.fetchImpl ?? fetch;
-  const timeoutMs = o.timeoutMs ?? 400;
-  return {
-    name: 'jev',
-    async available() {
-      try { const r = await f(`${url}/health`, { signal: AbortSignal.timeout(timeoutMs) }); return r.ok; } catch { return false; }
-    },
-    async pick(q, options) {
-      const opts = options.map((t, i) => `${i + 1}) ${TOOL_WORDS[t] ?? t}`);
-      const r = await f(`${url}/choose`, {
-        method: 'POST', headers: { 'content-type': 'application/json' }, signal: AbortSignal.timeout(timeoutMs * 10),
-        body: JSON.stringify({ state: { part: 'cockpit', facts: [String(/** @type {any} */ (q)?.question ?? '')] }, questions: [{ key: 'choice', text: String(/** @type {any} */ (q)?.question ?? ''), options: opts }] }),
-      });
-      const j = await r.json();
-      return Math.max(0, opts.indexOf(j?.answers?.[0]?.choice));
-    },
-  };
-}
-
-/**
- * A `decide` for traceMatch: jev through @mx/reason when both are up, else the static order.
- * @param {{picker?: import('../../line-links/contracts').ReasonPicker | null, loadReason?: () => Promise<any>}} [o]
- *   `picker` defaults to jev over HTTP (null: static only); `loadReason` defaults to the linked @mx/reason.
+ * A `decide` for traceMatch over Line's one decide(), else the static order.
+ * @param {{decide?: typeof lineDecide}} [o] `decide` defaults to Line's one decide() (tests pass a mock's).
  * @returns {(options: string[], request: string) => Promise<{picked: string, via: 'static'|'jev', note: string}>}
  */
 export function createTraceDecide(o = {}) {
-  const base = o.picker === undefined ? createJevPicker() : o.picker;
-  let asked = false;
-  let down = null;
-  const picker = base && {
-    name: base.name,
-    async available(p) { const up = await base.available(p).catch(() => false); if (!up) down = 'jev is not reachable'; return up; },
-    async pick(q, options, p) { asked = true; return base.pick(q, options, p); },
-  };
-  const provider = createReasonProvider({ ...(o.loadReason ? { loadReason: o.loadReason } : {}), ...(picker ? { picker } : {}) });
+  const run = o.decide ?? lineDecide;
   return async (options, request) => {
-    asked = false; down = picker ? null : 'no jev is set up';
-    const summary = { id: 'cg1.trace', question: clozeOf(request), options: options.map((id) => ({ id, enabled: true })), chosen: null };
-    const r = await provider.suggest(summary).catch(() => null);
-    if (r && asked && options.includes(r.option)) return { picked: r.option, via: 'jev', note: 'jev picked it' };
-    const why = provider.lastNote() ? 'the reason module is not available' : down ?? 'jev did not answer';
+    const d = await Promise.resolve().then(() => run('construct.chooser', options, { question: clozeOf(request) })).catch(() => null);
+    if (d && d.via === 'jev' && options.includes(/** @type {string} */ (d.choice))) return { picked: /** @type {string} */ (d.choice), via: 'jev', note: 'jev picked it' };
+    const why = !d ? 'the decision failed' : d.attribution?.note ? d.attribution.note.replace(/[.!?]$/, '').replace(/^\w/, (c) => c.toLowerCase()) : 'the picker is off for this step';
     return { picked: options[0], via: 'static', note: `it comes first in Line's static order (${why})` };
   };
 }

@@ -1,7 +1,7 @@
 // cs2 -- labelling: every miss with closed options becomes one LabelItem (contract.mjs), a closed question "which
-// option was right?" with "none fits" last. jev answers it through Line's one decide() (step construct.label-miss);
-// when jev is not available (reason not linked, its local model not running) the rules answer what they can and the
-// result says so in one sentence. A person's own answer (they overrode the static choice) is the label already.
+// option was right?" with "none fits" last. The picker (jev, until Line-1 ships) answers it through Line's one decide()
+// (step construct.label-miss), only while that step's profile is on with a measured win; it ships off, so today, as
+// whenever the picker is not available, the rules answer what they can and the result says so in one sentence. A person's own answer (they overrode the static choice) is the label already.
 // Claude's labelling is optional and offline: `labellingJsonl` writes the items as JSONL for a person or Claude to
 // fill in (`correct`, `labelledBy`), and `importLabelling` reads them back, refusing any answer outside the options.
 // jev's and the rules' answers are in the file too, for review; a person overrides one by changing `labelledBy`.
@@ -127,6 +127,7 @@ export async function labelWithJev(items, o = {}) {
       continue;
     }
     if (d?.attribution?.note) note ??= d.attribution.note;
+    else if (d && d.via !== 'jev') note ??= `the ${LABEL_STEP} step is off in its profile (no measured win over static)`;
     out.push(it.rulesSaid ? { ...it, correct: it.rulesSaid, labelledBy: 'rules' } : it);
   }
   const by = { jev: 0, rules: 0, person: 0, claude: 0, unlabelled: 0 };

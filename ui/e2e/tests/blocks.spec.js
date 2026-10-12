@@ -38,8 +38,8 @@ test.describe.serial('Blocks: catalogue, per-project settings, refusal (#407)', 
   test('the Blocks tab lists every block once, in plain words, with what it reads and writes and whether it can use a model', async ({ page }) => {
     await openBlocks(page);
     await expect(browser(page).getByRole('tab', { name: 'Blocks' })).toHaveAttribute('aria-selected', 'true');
-    await expect(cards(page)).toHaveCount(25);
-    await expect(page.getByTestId('blocks-summary')).toHaveText('25 blocks');
+    await expect(cards(page)).toHaveCount(24);
+    await expect(page.getByTestId('blocks-summary')).toHaveText('24 blocks');
 
     const validate = card(page, 'validate');
     await expect(validate.getByTestId('block-kind')).toHaveText('Read-only');
@@ -78,11 +78,11 @@ test.describe.serial('Blocks: catalogue, per-project settings, refusal (#407)', 
     // The filter narrows the list by words in the id or the purpose.
     await page.getByTestId('blocks-filter').fill('wizard');
     await expect(cards(page)).toHaveCount(1);
-    await expect(cards(page).first()).toHaveAttribute('data-block-id', 'import.route');
+    await expect(cards(page).first()).toHaveAttribute('data-block-id', 'create.proof');
     await page.getByTestId('blocks-filter').fill('zzzz');
     await expect(page.getByTestId('blocks-empty')).toHaveText('No block matches that.');
     await page.getByTestId('blocks-filter').fill('');
-    await expect(cards(page)).toHaveCount(25);
+    await expect(cards(page)).toHaveCount(24);
   });
 
   test('turn a block off: the card, the summary and the file in the state directory agree, and a reload keeps it', async ({ page }) => {
@@ -90,7 +90,7 @@ test.describe.serial('Blocks: catalogue, per-project settings, refusal (#407)', 
     expect(store().disabledFlows().flows).toEqual([]);
     await card(page, 'create.unit').getByTestId('block-toggle').click();
     await expect(card(page, 'create.unit').getByTestId('block-toggle')).not.toBeChecked();
-    await expect(page.getByTestId('blocks-summary')).toHaveText('25 blocks, 1 turned off');
+    await expect(page.getByTestId('blocks-summary')).toHaveText('24 blocks, 1 turned off');
     await expect(card(page, 'create.unit').getByTestId('block-off-note')).toContainText('Turned off for this project');
     expect(store().disabledFlows().flows).toEqual(['create.unit']);
     expect(project.git('status', '--porcelain').trim()).toBe('');
@@ -98,7 +98,7 @@ test.describe.serial('Blocks: catalogue, per-project settings, refusal (#407)', 
     await page.reload();
     await browser(page).getByRole('tab', { name: 'Blocks' }).click();
     await expect(card(page, 'create.unit').getByTestId('block-toggle')).not.toBeChecked();
-    await expect(page.getByTestId('blocks-summary')).toHaveText('25 blocks, 1 turned off');
+    await expect(page.getByTestId('blocks-summary')).toHaveText('24 blocks, 1 turned off');
   });
 
   test('a plan that uses the turned-off block is refused with a plain sentence, Run plan stays off, and NOTHING starts', async ({ page, request }) => {
@@ -131,7 +131,7 @@ test.describe.serial('Blocks: catalogue, per-project settings, refusal (#407)', 
     await openBlocks(page);
     await card(page, 'create.unit').getByTestId('block-toggle').click();
     await expect(card(page, 'create.unit').getByTestId('block-toggle')).toBeChecked();
-    await expect(page.getByTestId('blocks-summary')).toHaveText('25 blocks');
+    await expect(page.getByTestId('blocks-summary')).toHaveText('24 blocks');
     expect(store().disabledFlows().flows).toEqual([]);
     const plan = { version: 1, ticket: { source: 'text', title: 'Add a cart' }, steps: [{ id: 's1', title: 'Add Cart', flow: 'create.unit', args: { layer: 'domain', name: 'Cart', feature: 'billing' }, executor: 'deterministic', touches: { features: ['billing'] } }] };
     const v = await (await request.post(`${API}/api/plan/validate`, { data: { plan } })).json();

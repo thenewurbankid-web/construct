@@ -1,6 +1,6 @@
 // #647 -- NOTHING TRAINS ON THIS MACHINE. The Construct packages (core, cli, engine, mcp) import no training or model-runtime
-// dependency, declare none, start no trainer, and carry no `train` verb: the only verbs are `traces export` (a dataset bundle for
-// ANOTHER machine) and `model import|list|remove|enable|disable` (verify data that came back). The kit is a separate folder.
+// dependency, declare none, start no trainer, and carry no `train` verb. (The #616 decision-model stack, its dataset export,
+// model import and the training kit, is retired; this guard stays.)
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -67,13 +67,13 @@ test('no package starts a trainer: no python, and never the kit entry points tra
   }
 });
 
-test('the only verbs are export and import: no `train` command, subcommand, usage line or exported function in the packages', () => {
+test('no `train` command, subcommand, usage line or exported function in the packages', () => {
   const dispatch = fs.readFileSync(path.join(repo, 'packages', 'cli', 'construct.mjs'), 'utf8');
   assert.doesNotMatch(dispatch, /cmd === '(?:train|fit|finetune|fine-tune)/);
   assert.doesNotMatch(USAGE, /construct (?:train|fit|finetune)\b/i);
   const cli = fs.readFileSync(path.join(repo, 'packages', 'core', 'cli.mjs'), 'utf8');
-  assert.match(cli, /\['list', 'stats', 'replay', 'export'\]\.includes\(sub\)/, 'traces has exactly list, stats, replay and export');
-  assert.match(cli, /\['list', 'import', 'remove', 'enable', 'disable'\]\.includes\(sub\)/, 'model has exactly list, import, remove, enable and disable');
+  assert.match(cli, /\['list', 'stats', 'replay'\]\.includes\(sub\)/, 'traces has exactly list, stats and replay');
+  assert.doesNotMatch(USAGE, /construct model /, 'the retired decision-model verbs are gone');
   for (const pkg of PACKAGES) {
     for (const file of sources(path.join(repo, 'packages', pkg))) {
       const text = fs.readFileSync(file, 'utf8');
@@ -84,8 +84,7 @@ test('the only verbs are export and import: no `train` command, subcommand, usag
   }
 });
 
-test('the kit is a folder of its own, outside every package', () => {
-  assert.ok(fs.existsSync(path.join(repo, 'train-kit', 'train_features.py')));
+test('no package carries a training kit', () => {
   assert.equal(fs.existsSync(path.join(repo, 'packages', 'train-kit')), false);
   for (const pkg of fs.readdirSync(path.join(repo, 'packages'))) {
     const file = path.join(repo, 'packages', pkg, 'package.json');

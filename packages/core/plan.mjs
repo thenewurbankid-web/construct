@@ -429,16 +429,6 @@ export const PLAN_FLOWS = Object.freeze({
       dir: DIR_ARG,
     },
   },
-  'import.route': {
-    cli: ['import'],
-    summary: 'The guided whole-feature import wizard: traces a real route\'s import graph, proposes a plan, builds it on approval. Interactive, so a human drives it.',
-    writes: true,
-    executors: ['user'],
-    args: {
-      route: { type: 'string', required: true, flag: '--route', description: 'A URL like /v2/home, or the folder that owns its page.tsx.' },
-      dir: DIR_ARG,
-    },
-  },
   'summarize.unit': {
     cli: ['summarize'],
     summary: 'Deterministic, LLM-free structured summary of one unit (schemas/unit-summary.v1.json). Read-only.',

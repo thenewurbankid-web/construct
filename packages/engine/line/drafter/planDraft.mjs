@@ -12,6 +12,7 @@ import { addSynonym } from './domainMap.mjs';
 import { toRecord, appendRecord, precedentsFromTraining } from './retrieval.mjs';
 import { memoryOf, routeKey, draftContext, memoryBy } from '../memory/index.mjs';
 import { createRepairer } from '../repair.mjs';
+import { decide as lineDecide } from '@line/construct-core/line-decide';
 
 /**
  * Whether the drafter is on (LINE_DRAFTER=1 or "on").
@@ -59,42 +60,72 @@ function repairView(a) {
 }
 
 /**
- * im2: a route a model proposed (via "model") that Construct refused gets the repair loop: the local model sees the
- * refusal sentence, the finding, the typed fix and its own earlier attempts, answers a reason and the step in the step's
- * schema, and Construct checks each repaired step on a copy (up to construct.repair's maxAttempts). Repaired: the route is checked and can be added (a person still approves it). Still
- * refused, or not repairable: it stays refused and the person decides. Only one-step routes; each route once.
+ * The refusal of a route as the repair loop reads it, its typed fixes ordered by construct.fix (Line's one decide(): the
+ * picker when it runs, else Construct's recommended fix first). With one fix or none, static decides and no model is asked.
+ * @param {any} r A refused or failed route.
+ * @param {((step: string, options: any[], context?: any) => Promise<any>) | null} decide
+ * @returns {Promise<{sentence: string, rule: string|null, code: string|null, fixes: any[], fix: {picked: string, driver: string}|null}>}
+ */
+async function routeRefusal(r, decide) {
+  if (r.status === 'failed') return { sentence: `A check failed: ${String(r.failed?.[0] ?? 'a check did not hold')}`, rule: null, code: null, fixes: [], fix: null };
+  const all = [...(r.refusal?.fixes ?? []), ...(r.refusal?.fix ? [r.refusal.fix] : [])];
+  const fixes = all.map((f, i) => ({ id: String(f.id ?? f.fixId ?? `fix${i + 1}`), sentence: f.sentence, rank: f.rank ?? i + 1, step: f.step ?? null }));
+  const base = { sentence: r.refusal?.sentence ?? 'Construct refused it.', rule: r.refusal?.rule ?? null, code: r.refusal?.code ?? null };
+  if (fixes.length < 2 || !decide) return { ...base, fixes, fix: fixes.length ? { picked: fixes[0].id, driver: 'static' } : null };
+  let d = null;
+  try { d = await decide('construct.fix', [], { refusal: { sentence: base.sentence, fixes } }); } catch { d = null; }
+  const picked = d?.choice && fixes.some((f) => f.id === d.choice) ? d.choice : [...fixes].sort((a, b) => a.rank - b.rank)[0].id;
+  const ordered = [...fixes.filter((f) => f.id === picked), ...fixes.filter((f) => f.id !== picked)].map((f, i) => ({ ...f, rank: i + 1 }));
+  return { ...base, fixes: ordered, fix: { picked, driver: d?.driver ?? 'static' } };
+}
+
+/**
+ * im2 + the one ladder: a route Construct refused gets construct.fix (which typed fix leads) and then the repair loop
+ * (construct.repair, while its profile is on): the local model sees the refusal sentence, the finding, the typed fixes and
+ * its own earlier attempts, answers the step in the step's schema, and Construct checks each repaired step on a copy (up
+ * to construct.repair's maxAttempts). Repaired: the route is checked and can be added (a person still approves it). Still
+ * refused, or not repairable: it stays refused and the person decides. Only one-step routes; each route once. A route a
+ * model proposed is always tried; a static route only when no route passed (so a working draft never waits on a model).
  * @param {any} d A draft (changed in place).
  * @param {(option: any, refusal: any) => Promise<any>} repair createRepairer's function.
+ * @param {{decide?: ((step: string, options: any[], context?: any) => Promise<any>) | null}} [o] `decide`: Line's one decide() for construct.fix.
  * @returns {Promise<any[]>} The attempts made.
  */
-export async function repairModelRoutes(d, repair) {
+export async function repairRoutes(d, repair, o = {}) {
   const attempts = [];
+  const nothingPassed = !d.routes.some((r) => r.status === 'ok');
   for (const r of d.routes) {
-    if (r.via !== 'model' || r.repair || !['refused', 'failed'].includes(r.status)) continue;
+    if (r.repair || !['refused', 'failed'].includes(r.status) || (r.via !== 'model' && !nothingPassed)) continue;
     const steps = /** @type {any} */ (boundRoute(d, r.id)).steps;
     if (steps.length !== 1) continue;
-    const refusal = r.status === 'failed'
-      ? { sentence: `A check failed: ${String(r.failed?.[0] ?? 'a check did not hold')}`, rule: null, code: null, fixes: [] }
-      : { sentence: r.refusal?.sentence ?? 'Construct refused it.', rule: r.refusal?.rule ?? null, code: r.refusal?.code ?? null, fixes: r.refusal?.fix ? [{ id: r.refusal.fix.id ?? 'fix', sentence: r.refusal.fix.sentence, rank: 1, step: r.refusal.fix.step ?? null }] : [] };
+    const { fix, ...refusal } = await routeRefusal(r, o.decide ?? null);
+    if (fix) r.fixDecision = fix;
     const attempt = await repair(steps[0], refusal);
+    if (!attempt || attempt.outcome === 'off') continue;
     r.repair = attempt;
     attempts.push(attempt);
     if (attempt.outcome === 'repaired') Object.assign(r, { status: 'ok', steps: [attempt.option], refusal: null, failed: [] });
+    // A static route: one repair per draft, so a draft with many refused routes does not wait on the model for each.
+    if (r.via !== 'model') break;
   }
   if (attempts.some((a) => a.outcome === 'repaired') && !d.recommended) d.recommended = d.routes.find((x) => x.status === 'ok')?.id ?? null;
   return attempts;
 }
 
+/** The earlier name (model routes only, before the one ladder): now repairRoutes. */
+export const repairModelRoutes = repairRoutes;
+
 /**
  * The drafter wired in front of one project's plan service.
  * @param {{root: string, plan: {addStep: (req: any, by: string) => Promise<any>, view: () => Promise<any>}, enabled?: boolean,
- *   draftFn?: (root: string, request: string, o?: {memory?: any}) => any, record?: boolean, memory?: any, repair?: ((option: any, refusal: any) => Promise<any>) | false}} o `memory` (im3 + j5): this
+ *   draftFn?: (root: string, request: string, o?: {memory?: any}) => any, record?: boolean, memory?: any, repair?: ((option: any, refusal: any) => Promise<any>) | false, decide?: ((step: string, options: any[], context?: any) => Promise<any>) | null}} o `memory` (im3 + j5): this
  *   project's memory (default memory/index.mjs memoryOf(root); null for none): a picked route is remembered, and the
- *   person's consistent past picks move a checked route first. `repair` (im2): the one repair of a model's refused route (default: the local 1.5B through
- *   Ollama; false: off).
+ *   person's consistent past picks move a checked route first. `repair` (im2): the repair loop on a refused route
+ *   (repairRoutes; default: construct.repair on the local 1.5B through Ollama; false: off). `decide`: Line's one decide(),
+ *   for construct.fix (which typed fix leads the repair; default the process's decider).
  * @returns {{status: () => {ok: true, on: boolean}, draft: (request: unknown) => Promise<any>, addRoute: (request: unknown, routeId: unknown, by: string, from?: unknown) => Promise<any>, answer: (word: unknown, key: unknown) => Promise<any>}}
  */
-export function createPlanDrafter({ root, plan, enabled = drafterEnabled(), draftFn = (r, q, x) => staticDraft(r, q, { precedents: precedentsFromTraining(), ...x }), record = true, memory, repair = createRepairer(root, { where: 'drafter' }) }) {
+export function createPlanDrafter({ root, plan, enabled = drafterEnabled(), draftFn = (r, q, x) => staticDraft(r, q, { precedents: precedentsFromTraining(), ...x }), record = true, memory, repair = createRepairer(root, { where: 'drafter' }), decide = lineDecide }) {
   const mem = memory === undefined ? memoryOf(root) : memory;
   const cache = new Map();
   const off = () => refusal('DRAFTER_OFF', 'The drafter is off; start the server with LINE_DRAFTER=1 to turn it on.');
@@ -107,7 +138,7 @@ export function createPlanDrafter({ root, plan, enabled = drafterEnabled(), draf
     if (!request) return refusal('BAD_ARGS', 'Say what you want to change, for example "add a badge to the orders feature".');
     cache.delete(request);
     const d = get(request);
-    if (repair) await repairModelRoutes(d, repair);
+    if (repair) await repairRoutes(d, repair, { decide });
     return {
       ok: true, on: true, request, normalized: d.request,
       intent: { id: d.labels.intent.id, confidence: d.labels.intent.confidence, inCatalog: d.labels.inCatalog },

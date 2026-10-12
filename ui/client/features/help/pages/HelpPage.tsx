@@ -3,7 +3,6 @@ import { Attribution } from '../components/Attribution';
 import { CliReference } from '../components/CliReference';
 import { GettingStarted } from '../components/GettingStarted';
 import { ListingDetailsTutorial } from '../components/ListingDetailsTutorial';
-import { RouteImportTutorial } from '../components/RouteImportTutorial';
 import { SetupSettingsTutorial } from '../components/SetupSettingsTutorial';
 import { UiGuide } from '../components/UiGuide';
 import type { HelpViewState } from '../types';
@@ -37,11 +36,9 @@ export function HelpPage(view: HelpViewState): ReactNode {
       <details id="tutorials" className="help-section">
         <summary><h2>Tutorials</h2></summary>
         <p className="hint">
-          Full walkthroughs of Construct&apos;s three headline flows, with real screenshots from
+          Full walkthroughs of Construct&apos;s headline flows, with real screenshots from
           an actual run of each.
         </p>
-        <h3>Guided route import</h3>
-        <RouteImportTutorial />
         <h3>New user setup and settings</h3>
         <SetupSettingsTutorial />
         <h3>Auto code generation and LLM-assisted implementation</h3>

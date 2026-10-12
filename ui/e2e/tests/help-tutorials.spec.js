@@ -53,13 +53,11 @@ test.describe('Help page — Tutorials section (#154)', () => {
     await browser.getByRole('link', { name: 'Tutorials' }).click();
     await expect(tutorials).toHaveAttribute('open', '');
     await expect(tutorials).toBeVisible();
-    await expect(tutorials).toContainText('Guided route import');
     await expect(tutorials).toContainText('New user setup and settings');
     await expect(tutorials).toContainText('Auto code generation and LLM-assisted implementation');
 
-    // The planAnalysis guardrail is a real, verifiable safety behaviour —
-    // confirm the tutorial actually mentions it, not just generic filler.
-    await expect(tutorials).toContainText('planAnalysis');
+    // The per-capability provider is real, verifiable behaviour; confirm the tutorial mentions it.
+    await expect(tutorials).toContainText('importFill');
 
     const images = tutorials.locator('img.tutorial-screenshot');
     await expect(images).toHaveCount(EXPECTED_IMAGE_PATHS.length);

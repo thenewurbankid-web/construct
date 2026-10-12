@@ -11,6 +11,9 @@ function AiStepItem({ row }: { row: AiStepRow }) {
         Model: {row.model}
       </p>
       <p className="ais-how">{row.how}</p>
+      <p className="ais-win" data-testid="ai-step-win">
+        {row.win}
+      </p>
       <details className="ais-details">
         <summary>Details</summary>
         <ul>

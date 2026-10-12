@@ -7,12 +7,6 @@ import type { LlmCapability, LlmModels, LlmProviders, SaveStatus } from '../type
 type CapabilityRow = { capability: LlmCapability; label: string; hint: string };
 
 // One row per independently-configurable LLM capability (#100/Epic 6.4).
-// `planAnalysis` intentionally has no local-model option in its own
-// dropdown — ui/server/src/settings.mjs's `availableProvidersByCapability`
-// already excludes it from that capability's list, so this never even
-// renders an 'ollama' <option> for planAnalysis, let alone lets it be
-// chosen; the hint spells out why so it isn't read as an arbitrary
-// omission.
 const CAPABILITY_ROWS: CapabilityRow[] = [
   {
     capability: 'importFill',
@@ -23,11 +17,6 @@ const CAPABILITY_ROWS: CapabilityRow[] = [
     capability: 'createFill',
     label: 'Create: which model fills in files',
     hint: 'Writes the implementation when you ask for it on a create; it can be a local model.',
-  },
-  {
-    capability: 'planAnalysis',
-    label: 'Import wizard: which model reads the plan',
-    hint: 'Always a hosted model; a local one is never offered.',
   },
 ];
 

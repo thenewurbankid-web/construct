@@ -99,12 +99,12 @@ function PerCapabilityProvider() {
     <>
       <h3>4. Per-capability LLM provider</h3>
       <p>
-        Three distinct capabilities can each choose a provider independently —{' '}
-        <code>importFill</code>, <code>createFill</code>, and <code>planAnalysis</code> — every
+        Two capabilities can each choose a provider independently —{' '}
+        <code>importFill</code> and <code>createFill</code> — every
         option validated live against the CLI&apos;s own provider list, never a UI-side copy that
         could drift. <code>importFill</code>/<code>createFill</code> both accept a local model via{' '}
         Ollama (e.g. <code>qwen2.5-coder:7b</code>). These choices are used for real: a Dashboard
-        Create or Import run (or the Import Wizard&apos;s per-file fill) uses the provider set here, but
+        Create or Import run uses the provider set here, but
         only when you tick the run&apos;s &quot;Have the LLM write…&quot; checkbox — nothing calls a model
         by default.
       </p>
@@ -121,42 +121,6 @@ function PerCapabilityProvider() {
   );
 }
 
-function PlanAnalysisGuardrail() {
-  return (
-    <>
-      <h3>5. The planAnalysis guardrail — a real safety behavior, not just documentation</h3>
-      <p>
-        <code>planAnalysis</code> is different on purpose: the whole-feature plan-analysis call
-        (the one combined call in the route-import wizard) is deliberately Claude/hosted-model-only
-        and can never be delegated to a local model, even by explicit request. This is enforced
-        twice, independently:
-      </p>
-      <ul>
-        <li>The provider dropdown for <code>planAnalysis</code> never renders an &quot;ollama&quot; option at all — it can&apos;t be picked through normal interaction.</li>
-        <li>
-          Even a direct API request bypassing the UI is hard-rejected server-side with a real{' '}
-          <code>HTTP 400</code> and the value left unchanged — not merely hidden in the form.
-        </li>
-      </ul>
-      <figure className="tutorial-figure">
-        <img
-          className="tutorial-screenshot"
-          src="/tutorials/setup-settings/150-4-settings-plananalysis-ollama-rejected.png"
-          alt="Settings page confirming a direct attempt to set planAnalysis to ollama was rejected"
-          loading="lazy"
-        />
-        <figcaption>Settings: a direct planAnalysis=ollama request rejected; value held unchanged.</figcaption>
-      </figure>
-      <p className="hint">
-        Equivalent CLI commands:{' '}
-        <code>construct init /path/to/new-project [--framework nextjs|react-spa]</code>. There is
-        no CLI equivalent for project directory or per-capability provider selection — those are
-        UI-only, backed by <code>GET</code>/<code>POST /api/settings</code>.
-      </p>
-    </>
-  );
-}
-
 export function SetupSettingsTutorial() {
   return (
     <div>
@@ -168,7 +132,6 @@ export function SetupSettingsTutorial() {
       <ProjectGateFlow />
       <ProjectDirectorySwitching />
       <PerCapabilityProvider />
-      <PlanAnalysisGuardrail />
     </div>
   );
 }

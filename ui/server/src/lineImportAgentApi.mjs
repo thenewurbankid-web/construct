@@ -16,7 +16,6 @@ import express from 'express';
 import { createImportAgentOnDisk } from '../../../packages/engine/line/importAgentDisk.mjs';
 import { folderProblem, folderRootOf } from '../../../packages/engine/line/importTools.mjs';
 import { verifyImport, lineBaseline } from '../../../packages/engine/line/importVerify.mjs';
-import { createReasonProvider } from '../../../packages/core/reason-provider.mjs';
 
 const plain = (body) => (body && typeof body === 'object' && !Array.isArray(body) ? body : {});
 
@@ -28,11 +27,10 @@ const plain = (body) => (body && typeof body === 'object' && !Array.isArray(body
  */
 export function createLineImportAgentRouter({ getRoot, clientOrigin, planServiceFor, agentFor }) {
   const agents = new Map();
-  const reason = createReasonProvider();
   const forFolder = agentFor ?? ((root, folder) => {
     const key = `${root}\u0000${folder}`;
     if (!agents.has(key)) {
-      agents.set(key, createImportAgentOnDisk({ root, folder, planService: planServiceFor(root), reason, verify: verifyImport, baseline: lineBaseline }));
+      agents.set(key, createImportAgentOnDisk({ root, folder, planService: planServiceFor(root), verify: verifyImport, baseline: lineBaseline }));
     }
     return agents.get(key);
   });

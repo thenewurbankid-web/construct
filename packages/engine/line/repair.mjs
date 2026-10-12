@@ -119,7 +119,7 @@ export function createRepairer(root, o = {}) {
   return async (option, refusal, c = {}) => {
     const check = c.check === null ? undefined : c.check ?? ((x) => checkOnCopy(root, x));
     const attempt = await repairLoop(option, refusal, { schema: optionSchema(option, toolArgsSchema(option.tool)), check, onProgress: c.onProgress, ...(o.maxAttempts ? { maxAttempts: o.maxAttempts } : {}), ...(o.propose ? { propose: o.propose } : {}) });
-    if (o.record !== false && attempt.outcome !== 'no-model') recordRepair(root, attempt, { where: o.where, write: o.write });
+    if (o.record !== false && !['no-model', 'off'].includes(attempt.outcome)) recordRepair(root, attempt, { where: o.where, write: o.write });
     return attempt;
   };
 }

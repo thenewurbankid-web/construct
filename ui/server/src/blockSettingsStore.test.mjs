@@ -72,7 +72,6 @@ test('a block that does not support AI can never be set to AI (nor given a model
   }
   assert.ok(!fs.existsSync(store.file), 'nothing was written by any refusal');
   assert.equal(code(() => store.update({ rev: 0, blocks: { 'manual.task': { engine: 'mechanical' } } })), 'BLOCK_ENGINE_UNSUPPORTED');
-  assert.equal(code(() => store.update({ rev: 0, blocks: { 'import.route': { engine: 'mechanical' } } })), 'BLOCK_ENGINE_UNSUPPORTED');
 });
 
 test('only the local provider is allowed, only a plain model name, and the refusal names its code', () => {

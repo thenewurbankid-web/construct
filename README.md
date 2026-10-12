@@ -174,8 +174,11 @@ actual innovation, not repetitive plumbing.
 Layers are structured so that one layer's real output becomes the next layer's
 concrete example, not an abstract spec to interpret from scratch. Each layer
 is mostly code-driven, and calls an LLM only where a deterministic block
-genuinely can't do the job (see `import --llm`, the route wizard's analysis
-step — the *only* two places in this whole tool that ever call one).
+genuinely can't do the job (see `import --llm`). Line's AI decisions run on
+one ladder: static → middleware → Line-1 (the one picker; jev fills that role
+until Line-1 ships) → Construct verify → person, and every AI step is off
+unless its profile records a measured win over static
+(`packages/core/ai-profiles.json`).
 
 **The hypothesis this project is testing**: if repetitive development work is
 broken down into small enough pieces, most of it needs no LLM at all — and
@@ -186,7 +189,7 @@ if it goes off the rails, instead of a wrong answer silently shipping.
 
 **Three tiers, one framework** — this is meant to be a genuinely new
 development experience, not just a different chat window:
-- **Beginner**: chat only (the guided import wizard, the UI's chat interface).
+- **Beginner**: chat only (the UI's chat interface; imports through the Import agent).
 - **Intermediate**: a no-code UI editor — dig into forms, visual trees, drag
   interactions (the Dashboard, the pages/JSX editor, workflow visualization).
 - **Expert**: full code, same architecture, same rules, no ceiling.
@@ -657,14 +660,13 @@ Every closed question a person answers in a chain (the Requirement screen's open
 construct traces list [--chooser <id>] [--json]
 construct traces stats [--json]
 construct traces replay --provider <name> [--min-traces 30] [--plugin <file.mjs>] [--json]   # beats / ties / loses vs the rules baseline
-construct traces replay --model <name> [--all]                                             # the same for a model registered by `construct model import`, enabled or not
 ```
 
 The suggestion that is recorded comes from the project's decision provider (`decision: { provider: rules|off|<name>, plugin: <file in the project> }` in `architecture.yml`, default `rules`). `construct decide --summary <file|-> | --requirement "<sentence>" [--format json]` is that provider as a read-only tool (a chooser summary in, one suggestion out; for a sentence, one per open question and offer), and the Requirement screen marks the suggested option "suggested by rules" with its reason, still one click to take and one to change. A plugin is a small file that default-exports `{ name, version, suggest(summary) }`, receives only the frozen, path-free summary and falls back to `rules` when it fails or is slow: see `docs/DECISION-PROVIDERS.md`.
 
 Replay is deterministic and read-only: no model, no network. A provider is promotable only when it beats the `rules` baseline on at least 30 person-made traces.
 
-A model is never trained on the dev machine. `construct traces export --out <dir>` previews and, with `--yes`, writes a dataset bundle (records re-validated, an 80/10/10 split by a hash of the id, a manifest with hashes); the kit in `train-kit/` trains on another machine (a MacBook, or any box with Python 3); `construct model import <dir>` verifies what comes back as plain data (no scripts, no pickles, checksums, a dataset this project exported), replays the held-out traces against the rules baseline and registers the model DISABLED until you enable it. See `docs/TRAIN-ELSEWHERE.md`. Fields, privacy and the command in full: `docs/DECISION-TRACES.md`.
+The #616 decision-model stack (dataset export, `construct model import`, the training kit) is retired (2026-10-12): decisions run on the one ladder in `packages/core/line-decide.mjs`, and nothing trains on the dev machine.
 
 ## Cockpit execution mode: in-process engine or the real CLI (#541)
 
@@ -693,7 +695,7 @@ Per verb, what `cli` mode runs and what it deliberately does not:
 | review | Review mode's analysis (`review.analyze` Process step) | `construct review <base> <head> --format json`, the changed-file summaries still computed by the existing worker | nothing; refused with `CLI_ROOT_MISMATCH` when the repository top level is not itself the folder holding `architecture.yml` (the CLI would climb out of it) |
 | create | `POST /api/create` | `construct create feature\|layer\|<layer> ... --format json` | any request with `useLlm` (a model call: the provider keys live in the Cockpit server) |
 | refactor | `POST /api/refactor` | `construct refactor move\|rename ... --format json` | nothing |
-| import | `POST /api/import` | `construct import ... --format json` | any request with `useLlm` or `llm`, and the Import Wizard (`/ws/wizard`, an interactive plan analysis with an LLM) |
+| import | `POST /api/import` | `construct import ... --format json` | any request with `useLlm` or `llm` |
 
 `--format json` on `create`, `refactor` and `import` covers the deterministic forms only and prints one document (`{ok: true, verb, ...}`, or `{ok: false, error: {code, message}}` with the matching exit code); a flag that implies a model call or an external input (`--llm`, `--from` on `create`, `--bind`, `--openapi`, `--route`) is refused by name.
 

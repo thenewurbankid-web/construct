@@ -37,11 +37,11 @@ test('rules: a word in a request whose intent was read right is grammar; the fir
   assert.equal(rulesForWord({ words: ['attach', 'nicely'], intent: 'add.component', drafted: null }, 'nicely'), null);
 });
 
-test('jev: the labelling step is a Line AI profile with jev on; jev labels every item without a person\'s answer', async () => {
+test('jev: the labelling step is a Line AI profile, off until measured; turned on, jev labels every item without a person\'s answer', async () => {
   const p = stepProfile(LABEL_STEP);
   assert.equal(p.kind, 'decide');
-  assert.equal(p.ladder.options.on, true);
-  const d = createMockDecide({ pick: 0 });
+  assert.equal(p.ladder.options.on, false, 'construct.label-miss ships off: no measured win yet');
+  const d = createMockDecide({ pick: 0, on: [LABEL_STEP] });
   const r = await labelWithJev(labelItemsOf([...drafts, ...traces]), { decide: d.decide });
   assert.equal(r.via, 'jev');
   assert.deepEqual(r.by, { jev: 4, rules: 0, person: 1, claude: 0, unlabelled: 0 });
@@ -51,11 +51,13 @@ test('jev: the labelling step is a Line AI profile with jev on; jev labels every
 });
 
 test('jev down: the rules label what they can, the rest stays for a person or Claude, and the sentence says why', async () => {
-  const d = createMockDecide();
+  const d = createMockDecide({ on: [LABEL_STEP] });
   const r = await labelWithJev(labelItemsOf([...drafts, ...traces]), { decide: d.decide });
   assert.equal(r.via, 'rules');
   assert.deepEqual(r.by, { jev: 0, rules: 2, person: 1, claude: 0, unlabelled: 2 });
-  assert.match(r.sentence, /^jev was not available \(The reason module is mocked off; Line decided without jev\), so the rules labelled 2 of 5 misses and people 1\. 2 stay unlabelled/);
+  assert.match(r.sentence, /^jev was not available \(The reason module is mocked off; Line decided without the picker\), so the rules labelled 2 of 5 misses and people 1\. 2 stay unlabelled/);
+  const shipped = await labelWithJev(labelItemsOf(drafts), { decide: createMockDecide({ pick: 0 }).decide });
+  assert.match(shipped.sentence, /^jev was not available \(the construct\.label-miss step is off in its profile/);
   const off = await labelWithJev(labelItemsOf(drafts), { off: 'it was turned off for this run with --no-jev' });
   assert.match(off.sentence, /^jev was not available \(it was turned off for this run with --no-jev\), so the rules labelled 2 of 3/);
   assert.equal((await labelWithJev([], { off: 'x' })).sentence, 'There were no misses with closed options to label.');
@@ -82,6 +84,6 @@ test('offline JSONL: written one item per line with plain option labels; filled 
     'Line 4 names no miss Line knows.',
     'Line 5 is not JSON.',
   ]);
-  const after = await labelWithJev(back.items, { decide: createMockDecide({ pick: 5 }).decide });
+  const after = await labelWithJev(back.items, { decide: createMockDecide({ pick: 5, on: [LABEL_STEP] }).decide });
   assert.equal(after.items[0].correct, 'verb:add', 'Claude\'s answer stands over jev\'s');
 });

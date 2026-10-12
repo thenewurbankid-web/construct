@@ -12,12 +12,12 @@ async function agentOf(ctx, folder) {
   if (!agents.has(ctx)) agents.set(ctx, new Map());
   const byFolder = agents.get(ctx);
   if (!byFolder.has(folder)) {
-    const [{ createImportAgentOnDisk }, { verifyImport, lineBaseline }, { createReasonProvider }] = await Promise.all([
-      import('@line/construct-engine/line/import-agent'), import('@line/construct-engine/line/import-verify'), import('@line/construct-core/reason-provider'),
+    const [{ createImportAgentOnDisk }, { verifyImport, lineBaseline }] = await Promise.all([
+      import('@line/construct-engine/line/import-agent'), import('@line/construct-engine/line/import-verify'),
     ]);
     let agent;
     try {
-      agent = createImportAgentOnDisk({ root: ctx.root, folder, planService: await planServiceOf(ctx), reason: createReasonProvider(), verify: verifyImport, baseline: lineBaseline });
+      agent = createImportAgentOnDisk({ root: ctx.root, folder, planService: await planServiceOf(ctx), verify: verifyImport, baseline: lineBaseline });
     } catch (e) {
       throw new ToolError('IMPORT_REFUSED', String(/** @type {any} */ (e)?.sentence ?? e?.message ?? e), { reason: String(/** @type {any} */ (e)?.code ?? 'BAD_FOLDER') });
     }

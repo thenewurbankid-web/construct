@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, type ReactNode } from 'react';
 import { DirectoryBrowserController } from '@/features/directory-browser';
-import { ProjectFolderPickerController } from '@/features/wizard';
+import { ProjectFolderPickerController } from '@/features/project-picker';
 import { ApprovalsController, ProcessAnnouncer, ProcessesController, pendingApprovalCount, summariesOf, useProcessAnnouncer, useProcesses } from '@/features/processes';
 import { describeSaveState, useGitSession } from '@/features/git-session';
 import { useOpenPalette } from '@/features/command-palette';

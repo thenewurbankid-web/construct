@@ -8,7 +8,7 @@ import { startUnderTheHood } from './support/lineModes.js';
 startUnderTheHood(test);
 
 // Design #250 — the shared empty / loading / error / offline states, used
-// consistently by the migrated screens (Settings, Local Model, Dashboard, Wizard, Help).
+// consistently by the migrated screens (Settings, Local Model, Dashboard, Help).
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SHOTS = path.resolve(__dirname, '../screenshots/shell-states');
 fs.mkdirSync(SHOTS, { recursive: true });
@@ -114,14 +114,6 @@ test('Dashboard: an offline local model shows the banner; a running one does not
   await expect(page.getByTestId('state-offline')).toHaveCount(0);
 });
 
-test('Wizard: a closed backend connection is an error state, not a bare line of text', async ({ page }) => {
-  await page.routeWebSocket('**/ws/wizard', (ws) => ws.close());
-  await page.goto('/wizard');
-  await expect(page.getByRole('heading', { name: 'Import Route Wizard', level: 1 })).toBeVisible();
-  await expect(page.getByTestId('state-error')).toContainText('Disconnected from the backend');
-  await page.screenshot({ path: path.join(SHOTS, 'wizard-disconnected-dark.png') });
-});
-
 test('Help: contents are also a tab in the Browser pane and jump to the section', async ({ page }) => {
   await page.goto('/help');
   const browser = page.getByRole('complementary', { name: 'Left panel: Browse' });
@@ -133,7 +125,7 @@ test('Help: contents are also a tab in the Browser pane and jump to the section'
 });
 
 test('screens on the shell idiom carry no glass blur', async ({ page }) => {
-  for (const route of ['/dashboard', '/wizard', '/settings', '/ollama', '/help']) {
+  for (const route of ['/dashboard', '/settings', '/ollama', '/help']) {
     await page.goto(route);
     await expect(page.locator('h1').first()).toBeVisible();
     const blurred = await page.evaluate(() =>

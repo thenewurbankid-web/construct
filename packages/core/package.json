@@ -17,7 +17,6 @@
     "./nearest": "./nearest.mjs",
     "./placement": "./placement.mjs",
     "./decision-provider": "./decision-provider.mjs",
-    "./reason-provider": "./reason-provider.mjs",
     "./line-decide": "./line-decide.mjs",
     "./line-decide-mock": "./line-decide-mock.mjs",
     "./ai-profiles": "./ai-profiles.mjs",
@@ -28,11 +27,6 @@
     "./decision-trace-store": "./decision-trace-store.mjs",
     "./decision-trace-adapters": "./decision-trace-adapters.mjs",
     "./decision-trace-replay": "./decision-trace-replay.mjs",
-    "./decision-dataset": "./decision-dataset.mjs",
-    "./decision-features": "./decision-features.mjs",
-    "./decision-prototypes": "./decision-prototypes.mjs",
-    "./decision-model-bundle": "./decision-model-bundle.mjs",
-    "./decision-model-registry": "./decision-model-registry.mjs",
     "./redaction": "./redaction.mjs",
     "./requirement-card": "./requirement-card.mjs",
     "./requirement-lexicon": "./requirement-lexicon.json",
@@ -87,8 +81,7 @@
     "./plan-registry": "./plan-registry.mjs",
     "./rules-catalog": "./rules-catalog.mjs",
     "./file-lock": "./file-lock.mjs",
-    "./yaml-edit": "./yaml-edit.mjs",
-    "./reason-provider": "./reason-provider.mjs"
+    "./yaml-edit": "./yaml-edit.mjs"
   },
   "files": [
     "*.mjs",

@@ -10,6 +10,7 @@ import { snapshotFolder, rollbackFolder } from './importUndo.mjs';
 import { createImportAgent } from './importAgent.mjs';
 import { createLogicOnDisk, writeFolderFile } from './importLoopDisk.mjs';
 import { createRepairer } from './repair.mjs';
+import { decide as lineDecide } from '@line/construct-core/line-decide';
 import { memoryOf } from './memory/index.mjs';
 
 export { createImportAgent, nextState, decideWith, agentView, MAX_ROUNDS } from './importAgent.mjs';
@@ -77,7 +78,10 @@ export function createImportAgentOnDisk(o) {
     checkFolder: () => folderRootOf(o.root, o.folder),
     snapshot: snapshotFolder,
     rollback: rollbackFolder,
-    // im2: a refused fix jev picked gets one repair by the local 1.5B (Ollama down: the person decides, as before).
+    // Line's one decide(): classify questions (construct.chooser, off: the static order) and which typed fix to try
+    // (construct.fix: the picker when it runs, else Construct's recommended fix).
+    decide: lineDecide,
+    // im2: a refused fix gets the repair loop (construct.repair, the local 1.5B; off or Ollama down: the person decides).
     repair: createRepairer(o.root, { where: 'import' }),
     // im3: plan edits are remembered in the project's memory (the browser mock has none).
     memory: memoryOf(o.root),

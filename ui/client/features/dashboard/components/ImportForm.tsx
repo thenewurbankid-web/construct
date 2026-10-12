@@ -67,7 +67,7 @@ export function ImportForm(props: ImportFormProps) {
     <GlassPanel as="form" className="command-form" onSubmit={run}>
       <h3>Import an existing file</h3>
       <p className="hint">
-        To bring in a whole route, use the <Link href="/wizard">Import Wizard</Link>.
+        To bring in a whole route, use the <Link href="/import/agent">Import agent</Link>.
       </p>
       <Field label="Mode">
         <Select value={mode} onChange={(e) => setMode(e.target.value)}>

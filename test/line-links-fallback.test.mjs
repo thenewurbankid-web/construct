@@ -10,7 +10,8 @@ import { makeTempDir } from '../test-utils/tmpdir.mjs';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { importLinked, linkStatus, readLinks, readHeadCommit } from '../packages/line-links/index.mjs';
-import { createReasonProvider } from '../packages/core/reason-provider.mjs';
+import { createDecider } from '../packages/core/line-decide.mjs';
+import { profilesWithOn } from '../packages/core/line-decide-mock.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const MISSING = path.join(os.tmpdir(), 'cu1-no-such-source-folder');
@@ -77,14 +78,13 @@ test('a git worktree checkout: HEAD is read from its git files (gitdir pointer, 
   assert.equal(readHeadCommit(path.join(dir, 'w')), sha);
 });
 
-test('reason provider with the source missing: the static path answers and says why', async () => {
+test('decide() with the reason source missing: the static path answers and says why', async () => {
   const saved = process.env.LINE_SOURCE_DIR;
   process.env.LINE_SOURCE_DIR = MISSING;
   try {
-    const p = createReasonProvider();
-    const s = await p.suggest({ id: 'q', question: 'Next?', options: [{ id: 'a', enabled: true }, { id: 'b', enabled: true }], chosen: null });
-    assert.deepEqual(s, { option: 'a', reason: 'First available step; the reason module is not linked, so Line used the static order.', runnerUp: 'b' });
-    assert.match(p.lastNote(), /@mx\/reason is not linked because the source folder .* is missing/);
+    const d = await createDecider({ profiles: profilesWithOn(['construct.chooser']) }).decide('construct.chooser', ['a', 'b'], { question: 'Next?' });
+    assert.deepEqual([d.choice, d.runnerUp, d.via, d.driver, d.attribution.fellBackFrom], ['a', 'b', 'static', 'static', 'reason']);
+    assert.match(d.attribution.note, /@mx\/reason is not linked because the source folder .* is missing.*; Line decided without the picker\.$/);
   } finally {
     if (saved === undefined) delete process.env.LINE_SOURCE_DIR; else process.env.LINE_SOURCE_DIR = saved;
   }

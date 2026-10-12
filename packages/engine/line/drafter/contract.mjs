@@ -10,7 +10,7 @@
 //     -> verify         Construct applies each route in a scratch copy (applyChange), evaluates the expressions and
 //                       hashes the result; refused routes carry Construct's sentence and typed fix; a hash mismatch is
 //                       a miss
-//     -> rank           static order now; jev only ranks (a `ranker` hook); the person picks
+//     -> rank           static order (memory may lead with the person's past pick); the person picks
 //
 // The drafter only drafts. Line's writer and checks decide what lands, and a person approves every write step.
 // Stored records hold slots, kinds, roles, layers, tools, expressions, deltas and hashes: never a project's names.

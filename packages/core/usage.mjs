@@ -89,7 +89,6 @@ Four capabilities, one CLI:
   construct template ...   (named, reusable, parameterised plans: instantiate prints a concrete plan.v1; a small starter set ships and is used by default, or point --templates <dir> or CONSTRUCT_TEMPLATES_DIR at a project's own curated set)
   construct import <name> --feature <feature> --layers <l1,l2,...> --from <path> [--llm <provider> | --format json] [--dir <path>]
   construct import --plan <path> [--llm <provider> | --format json] [--dir <path>]
-  construct import --route <path>  (standalone interactive wizard, run directly — not inside repl)
 
 'construct import' scaffolds the requested layers and drops a TODO(import)
 comment in each pointing at the source file, then by default stops there —
@@ -114,21 +113,6 @@ only changes what ends up inside the file(s) that were already going to be
 created. Omit --llm and every generated file is the exact same plain
 template stub as before. Locating files, scaffolding, and deciding feature
 shape never involve an LLM either way.
-
-'construct import --route <path>' is the guided, whole-feature form. <path>
-is a real router route — a URL like /v2/home, or the folder that owns its
-page.tsx — and seeds the first one; it then asks for as many more as the
-old feature actually spans (e.g. /v2/home and /v2/home/details), traces
-each one's real import graph (page -> Client -> hooks/components, stopping
-at known external boundaries) rather than reading a hand-picked directory,
-auto-creates the destination feature if it doesn't exist yet (never touches
-it if it does), analyzes everything with ONE combined "claude" call, shows
-you the plan, and on approval builds it, then immediately runs validate and
-tells you exactly what's left — a TODO(import) count to fill in, or a
-reminder to review LLM-written output. A URL-style route needs to know
-where your app/ directory is; it asks once and reuses it for every further
-route this session. It manages its own input, so run it directly from your
-shell — not typed inside 'construct repl', which is already reading input.
 
 Each of the above has a flat equivalent (unchanged, still supported):
 
@@ -211,19 +195,11 @@ Commands:
   construct pipeline run [--dir <path>]   (reads a Context Envelope as JSON on stdin, writes one to stdout)
   construct traces list [--chooser <id>] [--limit <n>] [--json] [--dir <path>]
   construct traces stats [--chooser <id>] [--json] [--dir <path>]
-  construct traces replay (--provider <name> [--plugin <file.mjs>] | --model <name> [--all]) [--chooser <id>] [--min-traces <n>] [--baseline <name>] [--json] [--dir <path>]
-  construct traces export --out <dir> [--since <date>] [--chooser <id>] [--yes] [--json] [--dir <path>]
+  construct traces replay --provider <name> [--plugin <file.mjs>] [--chooser <id>] [--min-traces <n>] [--baseline <name>] [--json] [--dir <path>]
     (the choices made in a chain are recorded locally as decision-trace.v1, never inside your project: 'list' shows them, 'stats'
     counts them and how often a suggestion was taken, 'replay' scores a decision provider (rules, off, a plugin) on what people
     chose against the rules baseline: beats, ties or loses, promotable only on >= 30 traces; read-only, no model, no network;
-    switch recording off with 'traces: off' in architecture.yml; see docs/DECISION-TRACES.md; 'export' previews, and with --yes
-    writes, a dataset bundle to train the decision model on ANOTHER machine: nothing trains here, see docs/TRAIN-ELSEWHERE.md)
-  construct model list [--json] [--dir <path>]
-  construct model import <dir> [--yes] [--min-traces <n>] [--json] [--dir <path>]
-  construct model remove|enable|disable <name> [--json] [--dir <path>]
-    (a model trained elsewhere comes back as plain data: 'import' refuses anything else (scripts, pickles, links, paths, wrong
-    checksums, a dataset this project never exported), replays the held-out traces against the rules baseline and, with --yes,
-    registers it DISABLED in the state directory; architecture.yml is never edited; 'enable' is your explicit act)
+    switch recording off with 'traces: off' in architecture.yml; see docs/DECISION-TRACES.md)
   construct decide --summary <file|-> [--provider <name>] [--format json] [--dir <path>]
   construct decide --requirement "<sentence>" [--provider <name>] [--format json] [--dir <path>]
     (the decision model as a tool: a chooser or open-question summary as JSON in, one suggestion out {option, reason, runnerUp};

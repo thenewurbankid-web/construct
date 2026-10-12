@@ -2,8 +2,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { spawnSync } from 'node:child_process';
-import { AsyncLocalStorage } from 'node:async_hooks';
-import { makeLineSource } from './line-source.mjs';
 import { createFeature, ensureFeatureExists, generateLayer, generatePageViewModel, generateTypedLayer, generateVertical, layerFromGeneratedFile, fillGeneratedFile, TYPED_STUB_LAYERS, EXTRACTABLE_JSX_RULES, extractExpressionHint } from './generators.mjs';
 import { generateServiceFromSpec, resolveSchemaEmit } from './service-generator.mjs';
 import { generateShapeLayer, generateShapeVertical } from './shapes.mjs';
@@ -27,11 +25,8 @@ import { summarizeBackend, renderBackendText, resolveBackendDir } from './backen
 import { moveLayerFile, renameLayerFile } from './refactor.mjs';
 import { renameUnit } from './unit-map.mjs';
 import { extractExpression } from './extractExpression.mjs';
-import { importVertical, importPlan, analyzeFiles, executeImportPlan, autoFixViolations } from './import.mjs';
-import { planMechanically } from './mechanical-plan.mjs';
-import { reviewImport } from './import-review.mjs';
+import { importVertical, importPlan, autoFixViolations } from './import.mjs';
 import { repairRelativeImports } from './import-repair.mjs';
-import { resolveRoute } from './route-resolver.mjs';
 import { DEFAULT_ENFORCERS } from '@line/construct-engine/default-enforcers';
 import { runPipeline } from '@line/construct-engine/pipeline';
 import { validateEnvelope } from '@line/construct-engine/envelope';
@@ -69,8 +64,6 @@ import { detectMachine, buildMachineReport, renderMachineText, defaultProbes as 
 import { parseRequirement, openQuestion } from './requirement-card.mjs';
 import { placeCard } from './placement.mjs';
 import { traceStats, replayTraces, renderTraceList, renderTraceStats, renderReplay, DEFAULT_MIN_TRACES } from './decision-trace-replay.mjs';
-import { exportDataset, renderExport } from './decision-dataset.mjs';
-import { importModel, listModels, removeModel, setModelEnabled, loadRegisteredModelProvider, unseenByModel, renderImport, renderModelList } from './decision-model-registry.mjs';
 import { gcProcesses } from '@line/construct-engine/process-gc';
 import { checkChangeCommand } from './check-change.mjs';
 import { mutationCheckCommand } from './mutation-check.mjs';
@@ -665,7 +658,7 @@ export async function generate(args) {
     const dt = formatDuration(elapsedSeconds(t));
     for (const file of written) console.log(`Created ${path.relative(root, file)} (${dt})`);
     // #825: the chain writes a controller (among others) straight into the feature folder same as
-    // `import --route`'s wizard does (line ~2612 above) -- without this, the new controller is a
+    // the retired `import --route` wizard used to -- without this, the new controller is a
     // real public module construct validate's own SLICE-003 then flags as missing from index.ts.
     const apiSync = syncPublicApi(root, feature);
     if (apiSync.changed) console.log(`Updated ${apiSync.path} (the feature's public API) with the new exports.`);
@@ -1070,68 +1063,25 @@ export async function pipeline(args) {
   if (output.status === 'aborted') setExitCode(exitCodeForViolations(output.diagnostics));
 }
 
-const TRACES_USAGE = 'Usage: construct traces list [--chooser <id>] [--limit <n>] [--json] | stats [--chooser <id>] [--json] | replay (--provider <name> [--plugin <file.mjs>] | --model <name> [--all]) [--chooser <id>] [--min-traces <n>] [--baseline <name>] [--json] | export --out <dir> [--since <date>] [--chooser <id>] [--yes] [--json] [--dir <path>]';
-const TRACES_VALUE_FLAGS = new Set(['--chooser', '--limit', '--provider', '--baseline', '--min-traces', '--plugin', '--model', '--dir', '--format', '--out', '--since']);
-
-/** The version of the running Construct, for the manifest of a dataset bundle: the baked value of the built CLI, else the core package's own. */
-function constructVersion() {
-  if (process.env.CONSTRUCT_CLI_VERSION) return process.env.CONSTRUCT_CLI_VERSION;
-  try {
-    return JSON.parse(fs.readFileSync(fileURLToPath(new URL('./package.json', import.meta.url)), 'utf8')).version;
-  } catch {
-    return 'unknown';
-  }
-}
-
-/** Failure codes that are the caller's wording, not the data or the machine: exit code 2 (usage). Everything else typed is 1 (refused), an internal failure 3. */
-const USAGE_CODES = new Set(['OUT_REQUIRED', 'SINCE_INVALID', 'NAME_REQUIRED', 'DIR_REQUIRED']);
-const INTERNAL_CODES = new Set(['EXPORT_FAILED', 'MODEL_VERIFY_FAILED', 'MODEL_REGISTER_FAILED', 'LEDGER_WRITE_FAILED']);
-
-/** Print a typed failure the way every #647 command does: as `{ ok: false, error: { code, message } }` with `--json`, else as one `Construct error` line; never a stack trace. */
-function reportTyped(failure, json) {
-  const exitCode = USAGE_CODES.has(failure.code) ? EXIT_CODES.USAGE_ERROR : INTERNAL_CODES.has(failure.code) ? EXIT_CODES.INTERNAL_ERROR : EXIT_CODES.VIOLATIONS;
-  if (json) {
-    console.log(JSON.stringify({ ok: false, error: { code: failure.code, message: failure.message } }, null, 2));
-    setExitCode(exitCode);
-    return;
-  }
-  throw new ConstructError(`${failure.code}: ${failure.message}`, { exitCode });
-}
-
-/** `construct traces export` (#647): preview by default, `--yes` writes the bundle. */
-function tracesExport(args, root, json) {
-  const result = exportDataset(root, { out: flagValue(args, '--out'), write: args.includes('--yes'), since: flagValue(args, '--since'), chooser: flagValue(args, '--chooser') ?? null, now: new Date().toISOString(), constructVersion: constructVersion() });
-  if (!result.ok) return reportTyped(result, json);
-  console.log(json ? JSON.stringify({ ok: true, written: result.written, out: result.out, preview: result.preview, ...(result.written ? { manifest: result.manifest } : {}) }, null, 2) : renderExport(result));
-  return undefined;
-}
+const TRACES_USAGE = 'Usage: construct traces list [--chooser <id>] [--limit <n>] [--json] | stats [--chooser <id>] [--json] | replay --provider <name> [--plugin <file.mjs>] [--chooser <id>] [--min-traces <n>] [--baseline <name>] [--json] [--dir <path>]';
+const TRACES_VALUE_FLAGS = new Set(['--chooser', '--limit', '--provider', '--baseline', '--min-traces', '--plugin', '--dir', '--format']);
 
 /**
- * `construct traces list|stats|replay|export` (#643): read-only (`export` writes only with --yes, and only the bundle folder), deterministic, no model and no network. The traces are the
+ * `construct traces list|stats|replay` (#643): read-only, deterministic, no model and no network. The traces are the
  * `decision-trace.v1` records the chain wrote to this project's state directory (docs/DECISION-TRACES.md).
  *
  *   list [--chooser <id>] [--limit <n>]     the recorded decisions
  *   stats [--chooser <id>]                  counts per chooser, acceptance rate of suggestions, per provider
  *   replay --provider <name> [--chooser <id>] [--min-traces <n>] [--baseline <name>] [--plugin <file.mjs>]
  *                                           score a provider on the recorded summaries against the `rules` baseline
- *   replay --model <name> [--all] [--chooser <id>] [--min-traces <n>] [--baseline <name>]
- *                                           (#645) the same, for a model registered by `construct model import` (a features.json or a
- *                                           prototypes.json model), ENABLED OR NOT: scoring a model offline never enables it. It scores
- *                                           only decisions the model has not seen (the held-out records of its export and everything
- *                                           recorded after it); --all scores every recorded decision, including the ones it was built from
- *   export --out <dir> [--since <date>] [--chooser <id>] [--yes]
- *                                           (#647) a dataset bundle for training the decision model ELSEWHERE: a PREVIEW of exactly what
- *                                           would be included (records per chooser, the fields, the date range, hashed project keys, no
- *                                           path or secret) unless --yes writes dataset.jsonl, schema.json, manifest.json and README.md
- *                                           into <dir>; `traces: off` projects contribute nothing; docs/TRAIN-ELSEWHERE.md
  *
  * `--json` (or `--format json`) prints one JSON document. `--plugin <file.mjs>` imports a module that registers a decision
  * provider (it calls `registerDecisionProvider`, or default-exports `{ name, suggest }`); code you name yourself, run
  * locally, so it is as trusted as any script you run. A provider that is not registered is a usage error (exit 2).
  *
- * @param {string[]} args `list`, `stats`, `replay` or `export` followed by its flags.
+ * @param {string[]} args `list`, `stats` or `replay` followed by its flags.
  * @returns {Promise<void>} Resolves after printing the report.
- * @throws {ConstructError} Usage error (exit code 2) for an unknown subcommand, a missing or unknown provider, or a bad number; a typed refusal of `export` (exit code 1, for example `DATASET_EMPTY`).
+ * @throws {ConstructError} Usage error (exit code 2) for an unknown subcommand, a missing or unknown provider, or a bad number.
  *
  * @example
  * await traces(['replay', '--provider', 'rules', '--json']);
@@ -1139,9 +1089,8 @@ function tracesExport(args, root, json) {
 export async function traces(args) {
   const usage = (message) => new ConstructError(`${message}\n${TRACES_USAGE}`, { exitCode: EXIT_CODES.USAGE_ERROR });
   const sub = args.find((a, i) => !a.startsWith('--') && !TRACES_VALUE_FLAGS.has(args[i - 1]));
-  if (!['list', 'stats', 'replay', 'export'].includes(sub)) throw usage(sub ? `Unknown traces command "${sub}".` : 'Say what to do with the traces.');
+  if (!['list', 'stats', 'replay'].includes(sub)) throw usage(sub === 'export' ? 'traces export (the dataset bundle for the retired decision model, #616) is gone.' : sub ? `Unknown traces command "${sub}".` : 'Say what to do with the traces.');
   const json = args.includes('--json') || flagValue(args, '--format') === 'json';
-  if (sub === 'export') return tracesExport(args, getRoot(args), json);
   const chooser = flagValue(args, '--chooser');
   const count = (name, fallback) => {
     const raw = flagValue(args, name);
@@ -1166,25 +1115,11 @@ export async function traces(args) {
     const stats = traceStats(decisions);
     print({ ok: true, enabled: read.enabled, skipped: read.skipped, ...stats }, withNotes(renderTraceStats(stats)));
   } else {
-    const modelName = flagValue(args, '--model');
-    const provider = flagValue(args, '--provider') ?? modelName;
-    let scored = decisions;
-    if (!provider) throw usage('replay needs --provider <name> or --model <name>.');
+    const provider = flagValue(args, '--provider');
+    const scored = decisions;
+    if (!provider) throw usage('replay needs --provider <name>.');
     const plugin = flagValue(args, '--plugin');
-    if (modelName) {
-      // A registered model is scored offline, enabled or not (`requireEnabled: false`): this run only reads the stored, hash-checked data.
-      if (provider !== modelName || plugin) throw usage('--model <name> takes no other provider and no --plugin.');
-      const loaded = loadRegisteredModelProvider(modelName, { root, requireEnabled: false });
-      if (!loaded.ok) throw usage(`Could not load the model: ${loaded.message}`);
-      if (getDecisionProvider(modelName)) throw usage(`A decision provider named "${modelName}" is already registered in this process.`);
-      registerDecisionProvider(modelName, loaded.provider);
-      if (!args.includes('--all')) {
-        const unseen = unseenByModel(root, modelName, decisions);
-        if (!unseen.ok) throw usage(`${unseen.message} Use --all to score every recorded decision.`);
-        scored = unseen.decisions;
-        notes.push(`Scored on the ${unseen.decisions.length} decisions ${modelName} has not seen (${unseen.heldOut} held-out records of its export, ${unseen.later} recorded since); --all scores every recorded decision, including the ones it was built from.`);
-      }
-    } else if (plugin) {
+    if (plugin) {
       // The same loader as the project setting (decision-plugin.mjs). A file named on the command line is any path you type; it
       // may default-export the provider contract or register itself with registerDecisionProvider (older plugins).
       const loaded = await loadDecisionPlugin(plugin, { expectName: provider, register: true, strict: false });
@@ -1209,67 +1144,6 @@ export async function traces(args) {
     }
     print({ ...report, enabled: read.enabled, skipped: read.skipped }, withNotes(renderReplay(report)));
   }
-}
-
-const MODEL_USAGE = 'Usage: construct model list [--json] | import <dir> [--yes] [--min-traces <n>] [--json] | remove <name> [--json] | enable <name> [--json] | disable <name> [--json] [--dir <path>]';
-const MODEL_VALUE_FLAGS = new Set(['--dir', '--min-traces', '--format']);
-
-/**
- * `construct model list|import|remove|enable|disable` (#647): a decision model trained on ANOTHER machine comes back as a folder of
- * plain data and is verified here. Nothing trains here and nothing in the folder is ever executed.
- *
- *   import <dir> [--yes] [--min-traces <n>]   verify the bundle (allowed files only: manifest.json, checksums.txt, eval-report.json,
- *                                             MODEL_CARD.md, features.json, prototypes.json, model.onnx; no script, pickle, link or
- *                                             path; size caps; sha256 of every file; the dataset hash must be one THIS project
- *                                             exported), replay the held-out test records against the rules baseline (a features.json
- *                                             model; an .onnx file is verified and stored, not loaded) and print the comparison; with
- *                                             --yes register it in the state directory DISABLED. architecture.yml is never edited.
- *   list                                      the registered models
- *   remove <name>                             delete a registered model (state directory only)
- *   enable <name> | disable <name>            the owner's explicit act: one flag in the state directory (docs/TRAIN-ELSEWHERE.md)
- *
- * `--json` prints one JSON document; a refusal is `{ ok: false, error: { code, message } }` and exit code 1 (2 for a usage error),
- * never a stack trace.
- *
- * @param {string[]} args `list`, `import`, `remove`, `enable` or `disable` followed by its argument and flags.
- * @returns {Promise<void>} Resolves after printing the result.
- * @throws {ConstructError} Usage error (exit code 2) for an unknown subcommand or a missing argument; a typed refusal (exit code 1, for example `MODEL_FILE_NOT_ALLOWED`).
- *
- * @example
- * await model(['import', 'model-out', '--yes']);
- */
-export async function model(args) {
-  const usage = (message) => new ConstructError(`${message}\n${MODEL_USAGE}`, { exitCode: EXIT_CODES.USAGE_ERROR });
-  const positionals = args.filter((a, i) => !a.startsWith('--') && !MODEL_VALUE_FLAGS.has(args[i - 1]));
-  const [sub, target] = positionals;
-  if (!['list', 'import', 'remove', 'enable', 'disable'].includes(sub)) throw usage(sub ? `Unknown model command "${sub}".` : 'Say what to do with the models.');
-  const json = args.includes('--json') || flagValue(args, '--format') === 'json';
-  const root = getRoot(args);
-  const emit = (doc, text) => console.log(json ? JSON.stringify(doc, null, 2) : text);
-  if (sub === 'list') {
-    const { models } = listModels(root);
-    emit({ ok: true, models }, renderModelList(models));
-    return;
-  }
-  if (!target) throw usage(sub === 'import' ? 'import needs the model folder: construct model import <dir>.' : `${sub} needs a model name.`);
-  if (sub === 'import') {
-    const raw = flagValue(args, '--min-traces');
-    if (raw !== undefined && !/^\d+$/.test(raw)) throw usage(`--min-traces must be a whole number (got ${JSON.stringify(raw)}).`);
-    const result = await importModel(root, target, { yes: args.includes('--yes'), minTraces: raw === undefined ? undefined : Number(raw), now: new Date().toISOString() });
-    if (!result.ok) return reportTyped(result, json);
-    emit({ ok: true, registered: result.registered, replaced: result.replaced, kind: result.kind, loadable: result.loadable, notes: result.notes, replayNote: result.replayNote, replay: result.replay, entry: result.entry }, renderImport(result));
-    return undefined;
-  }
-  if (sub === 'remove') {
-    const result = removeModel(root, target);
-    if (!result.ok) return reportTyped(result, json);
-    emit({ ok: true, removed: result.removed }, `Removed ${result.removed} from the registry.`);
-    return undefined;
-  }
-  const result = setModelEnabled(root, target, sub === 'enable');
-  if (!result.ok) return reportTyped(result, json);
-  emit({ ok: true, entry: result.entry }, `${result.entry.name}@${result.entry.version} is now ${result.entry.enabled ? 'ENABLED in the registry. It is used only when a project plugin file loads it and architecture.yml names that plugin (docs/TRAIN-ELSEWHERE.md, "Enable it")' : 'disabled'}.`);
-  return undefined;
 }
 
 const DECIDE_USAGE = 'Usage: construct decide --summary <file|-> [--provider <name>] [--format json] [--dir <path>]\n   or: construct decide --requirement "<sentence>" [--provider <name>] [--format json] [--dir <path>]';
@@ -2354,12 +2228,12 @@ async function refactorExtractExpression(args) {
  *
  * @param {string[]} args `<name> --feature <f> --layers <l1,l2,...> --from <path> [--llm <provider>]`, or `--plan <path> [--llm <provider>]` for a batch.
  * @returns {Promise<void>} Resolves once the layers are scaffolded (and filled, with `--llm`).
- * @throws {ConstructError} Usage error (exit code 2) for missing flags, or for `--route`, which must be run directly from a shell.
+ * @throws {ConstructError} Usage error (exit code 2) for missing flags, or for `--route` (the retired route wizard).
  */
 export async function importCommand(args) {
   if (args[0] === '--route') {
     throw new ConstructError(
-      'construct import --route <path> is a standalone interactive command — run it directly from your shell (not from inside `construct repl`, which is already reading its own input).',
+      'construct import --route (the old route wizard) is retired; import a route with Cockpit\'s Import agent, or over MCP (line_import_agent).',
       { exitCode: EXIT_CODES.USAGE_ERROR },
     );
   }
@@ -2374,7 +2248,7 @@ export async function importCommand(args) {
   const name = args[0], fi = args.indexOf('--feature'), li = args.indexOf('--layers'), fromI = args.indexOf('--from');
   if (!name || fi < 0 || !args[fi + 1] || li < 0 || !args[li + 1] || fromI < 0 || !args[fromI + 1]) {
     throw new ConstructError(
-      'Usage: construct import <name> --feature <feature> --layers <l1,l2,...> --from <path> [--llm <provider>] [--model <name>]\n   or: construct import --plan <path> [--llm <provider>] [--model <name>]\n   or: construct import --route <path>  (run directly, not inside repl)',
+      'Usage: construct import <name> --feature <feature> --layers <l1,l2,...> --from <path> [--llm <provider>] [--model <name>]\n   or: construct import --plan <path> [--llm <provider>] [--model <name>]',
       { exitCode: EXIT_CODES.USAGE_ERROR },
     );
   }
@@ -2396,7 +2270,7 @@ async function importFromPlan(args, llm, model) {
 
 // Shared reporting for both import forms — one clear tool/llm-attributed
 // summary either way, matching every other capability group. `analysisSeconds`
-// (#166, route-wizard only) folds the one whole-route analysis LLM call into
+// (#166, from the retired route wizard) folds a whole-route analysis LLM call into
 // the printed Total, same as every per-file LLM-fill call already is.
 function reportImport(root, results, llm, feature, analysisCalls = 0, analysisSeconds = 0) {
   let totalFiles = 0;
@@ -2481,468 +2355,4 @@ async function importDocument(args) {
   const units = results.map((r) => ({ name: r.name, source: r.source, files: r.files.map((f) => path.relative(root, f)) }));
   const totalFiles = units.reduce((n, u) => n + u.files.length, 0);
   return { verb: 'import', mode, ...(feature ? { feature } : {}), results: units, attribution: noLlmImportAttribution(totalFiles, units.length) };
-}
-
-// ---- import --route: interactive, whole-feature import wizard -------------
-//
-// A standalone interactive command — packages/cli/construct.mjs dispatches it
-// directly, bypassing importCommand entirely, and it consumes stdin itself
-// via its own line source. Deliberately NOT runnable from inside `construct
-// repl` (which is already consuming the same stdin): importCommand's
-// `--route` branch below exists only to explain that redirect, not to run
-// it. Asks a few questions, calls "claude" once to analyze the route and
-// propose a plan, shows it, and writes nothing until you explicitly
-// approve it.
-
-function renderPlanTable(plan) {
-  const lines = [`Proposed plan for feature "${plan.feature}" (${plan.units.length} unit(s)):`, ''];
-  for (const [i, u] of plan.units.entries()) {
-    lines.push(`  ${i + 1}. ${u.name.padEnd(24)} ${u.layers.join(', ').padEnd(28)} <- ${u.from}`);
-    for (const layer of u.layers) if (u.reasons?.[layer]) lines.push(`       ${layer}: ${u.reasons[layer]}`);
-  }
-  return lines.join('\n');
-}
-
-function isYes(answer) {
-  const a = answer.trim().toLowerCase();
-  return a === 'y' || a === 'yes';
-}
-
-/** The wizard's actual flow, decoupled from where its questions come from —
- * `ask` is an async `(promptText) => answer` function, so this is directly
- * unit-testable with a fake, scripted `ask` and never needs a real
- * terminal. `runImportRouteWizard` below is the only caller that wires it
- * to real stdin/stdout.
- *
- * Guides the whole thing end to end in one session: creates the
- * destination feature if it doesn't exist yet (never touches it if it
- * does — no re-scaffolding over real content), loops asking for as many
- * source directories as the old feature actually spans (analyzed together,
- * as one combined plan, not one call per directory), builds on approval,
- * then immediately validates and states exactly what's left — a TODO count
- * to fill in, or a reminder to review LLM-written output — rather than
- * leaving you to go find that out yourself. `seedRoute` (optional) is just
- * the first route, so `construct import --route <path>` can still seed the
- * loop instead of asking for it as question one.
- *
- * A "route" means something different per `config.project.framework`
- * (resolveRoute in route-resolver.mjs is framework-ready — #66): for the
- * default `nextjs`, a URL like `/v2/home` or, equivalently, the folder that
- * owns its `page.tsx` — a URL route needs to know where the `app/`
- * directory is, so that's asked for once, lazily, and reused for every
- * further route this session. For `react-spa`, a URL like `/dashboard`
- * (resolved through the project's centralized routes table) or an existing
- * controller file path directly — no directory question at all, since the
- * routes table is auto-located by convention from the project root. Either
- * way, the actual file list comes from tracing the real import graph
- * (route-resolver.mjs), never from "everything under a directory you point
- * at". */
-export async function importRouteWizard(ask, seedRoute, { planAnalysis = 'claude', importFill = 'claude', planner = 'ai', onStep, onThought, onWritten, signal } = {}) {
-  // #599 -- two SEPARATE kinds of live output, kept apart on purpose so a UI can style them
-  // differently: `onStep` receives the framework's own deterministic phase markers
-  // ({phase, detail}: tracing, analyzing, plan-ready, scaffolding, filling, validating,
-  // auto-fixing, done, cancelled), and `onThought` receives the model's own streamed output text.
-  // `signal` (an AbortSignal) cancels an in-flight model call and stops the run.
-  // `reason` is the framework's own why for this block, shown under the step so the deterministic side
-  // explains itself the way the model's stream does.
-  const step = (phase, detail = {}, reason) => onStep?.({ phase, detail, ...(reason ? { reason } : {}) });
-  const llmOptions = { ...(onThought ? { onChunk: onThought } : {}), ...(signal ? { signal } : {}) };
-  // Whole-feature plan analysis is deliberately hosted-model-only (#96) — the
-  // same guardrail ui/server's Settings enforces, repeated here so a direct
-  // caller can't route it to a local model either.
-  if (planner !== 'mechanical' && planAnalysis === 'ollama') {
-    console.error('Plan analysis cannot use "ollama" — the whole-feature analysis call is hosted-model-only (see epic #96). Use "claude" for planAnalysis.');
-    return;
-  }
-  const featureName = (await ask('Destination feature (Construct feature name): ')).trim();
-  if (!featureName) {
-    console.log('Cancelled — no feature name given.');
-    return;
-  }
-
-  const root = getRoot([]);
-  const config = loadConfig(root);
-  const featuresRoot = config.features?.root || 'features';
-  const framework = config.project?.framework || 'nextjs';
-  // #677: was an inline `if (!fs.existsSync(featureDir)) { createFeature(...); ... }` --
-  // functionally the same directory check generators.mjs's `ensureFeatureExists` now shares with
-  // every other create.* flow, so this wizard uses that one function instead of its own duplicate
-  // of the same logic. "never touches it if it does" still holds for an already-real feature.
-  if (ensureFeatureExists(root, featureName)) {
-    console.log(`(feature "${featureName}" didn't exist yet — created it)`);
-  }
-
-  function isExistingDir(p) {
-    try {
-      return fs.statSync(path.resolve(p)).isDirectory();
-    } catch {
-      return false;
-    }
-  }
-
-  // react-spa has no per-route entry file to point at directly the way a
-  // Next.js route folder does — the equivalent "already resolved, no
-  // further lookup needed" case is an existing *controller file* (mirrors
-  // resolveReactSpaRoute's own existing-file branch in route-resolver.mjs).
-  function isExistingFile(p) {
-    try {
-      return fs.statSync(path.resolve(p)).isFile();
-    } catch {
-      return false;
-    }
-  }
-
-  let appDir;
-  async function resolveAppDir() {
-    if (appDir) return appDir;
-    const guess = ['src/app', 'app']
-      .map((p) => path.join(root, p))
-      .find((p) => fs.existsSync(p) && fs.statSync(p).isDirectory());
-    const answer = (
-      await ask(`Path to your Next.js app/ directory (needed to resolve a URL route)${guess ? ` [${path.relative(root, guess)}]` : ''}: `, { expects: 'dir' })
-    ).trim();
-    appDir = answer ? path.resolve(answer) : guess;
-    if (!appDir) {
-      throw new ConstructError('No app directory given or found — cannot resolve a URL route.', { exitCode: EXIT_CODES.USAGE_ERROR });
-    }
-    return appDir;
-  }
-
-  const routeArgs = seedRoute ? [seedRoute] : [];
-  while (true) {
-    const prompt = routeArgs.length === 0
-      ? (framework === 'react-spa'
-        ? 'Route to import (a URL like /dashboard, or a controller file path): '
-        : 'Route to import (a URL like /v2/home, or a route folder path): ')
-      : `Another route to include (leave blank to finish — ${routeArgs.length} so far): `;
-    const answer = (await ask(prompt, { expects: 'route' })).trim();
-    if (!answer) {
-      if (routeArgs.length === 0) {
-        console.log('Cancelled — no route given.');
-        return;
-      }
-      break;
-    }
-    routeArgs.push(answer);
-  }
-
-  const fillWithLlm = isYes(
-    await ask('After you approve the plan, should the LLM also write the ported logic (not just TODO breadcrumbs)? [y/N]: '),
-  );
-
-  step('tracing', { routes: routeArgs }, 'Follows the real import statements from the route\'s entry file (parsed, not guessed), so only files it actually depends on are included.');
-  console.log(`Tracing ${routeArgs.join(', ')} ...`);
-  const traceStart = startTimer();
-  const tracedFiles = new Map(); // absolute path -> true, deduped across routes
-  const entryFiles = []; // each route's own entry file (first traced), the page/controller of the plan
-  const folders = [];
-  try {
-    for (const routeArg of routeArgs) {
-      let opts;
-      if (framework === 'react-spa') {
-        // No app/-directory question for react-spa: resolveRoute already
-        // auto-locates the centralized routes table (src/App.tsx/.jsx) by
-        // convention from `root` (#66) — an existing controller file needs
-        // nothing further.
-        opts = isExistingFile(routeArg) ? { framework } : { framework, root, featuresRoot };
-      } else {
-        opts = isExistingDir(routeArg) ? {} : { appDir: await resolveAppDir() };
-      }
-      const resolved = resolveRoute(routeArg, opts);
-      folders.push(resolved.folder);
-      if (resolved.files[0]) entryFiles.push(resolved.files[0]);
-      for (const f of resolved.files) tracedFiles.set(f, true);
-    }
-  } catch (e) {
-    console.error(`Route resolution failed: ${e.message}`);
-    return;
-  }
-
-  console.log(
-    `Found ${tracedFiles.size} file(s) across ${folders.length} route(s) in ${formatDuration(elapsedSeconds(traceStart))}: ${folders.map((f) => path.relative(root, f)).join(', ')}`,
-  );
-  let plan;
-  const analysisStart = startTimer();
-  if (planner === 'mechanical') {
-    console.log('Planning mechanically — reading each file\'s syntax tree, no model call, nothing is written yet...');
-    step('analyzing', { provider: 'mechanical', files: tracedFiles.size }, 'No model is involved: each file is classified from what its code does (JSX, its own state, fetch/storage, reducer shape, plain functions) and the reason is shown per layer.');
-    try {
-      plan = planMechanically([...tracedFiles.keys()], featureName, { entryFiles });
-    } catch (e) {
-      console.error(`Planning failed: ${e.message}`);
-      return;
-    }
-    if (!plan.units.length) {
-      console.error(`Planning failed: none of the ${tracedFiles.size} traced file(s) could be classified (${plan.skipped.map((k) => `${path.basename(k.file)}: ${k.reason}`).join('; ')}).`);
-      return;
-    }
-  } else {
-    console.log(
-      `Analyzing via "${planAnalysis}" — one LLM call for a single combined plan across all of them, nothing is written yet...`,
-    );
-    step('analyzing', { provider: planAnalysis, files: tracedFiles.size }, 'One model call proposes the units and layers; the framework then checks every layer name and source file it names and repairs impossible combinations (a controller always gets its page).');
-    try {
-      plan = await analyzeFiles([...tracedFiles.keys()], featureName, { llm: planAnalysis, llmOptions });
-    } catch (e) {
-      console.error(`Analysis failed: ${e.message}`);
-      return;
-    }
-  }
-  const analysisSeconds = elapsedSeconds(analysisStart);
-  console.log(planner === 'mechanical' ? `Plan ready (mechanical, ${formatDuration(analysisSeconds)}).` : `Analysis complete (llm ${formatDuration(analysisSeconds)}).`);
-
-  step('plan-ready', { units: plan.units.length }, plan.layerAdjustments?.length ? `Repaired the plan deterministically: ${plan.layerAdjustments.map((a) => `added ${a.added.join(', ')} to ${a.unit}`).join('; ')} (a controller composes a same-named page). Nothing is written until you approve.` : 'Nothing is written until you approve this plan.');
-  console.log('');
-  console.log(renderPlanTable(plan));
-  if (plan.skipped?.length) console.log(`Left out (not a layer of their own): ${plan.skipped.map((k) => `${path.basename(k.file)} — ${k.reason}`).join('; ')}`);
-  console.log('');
-
-  if (!isYes(await ask('Approve this plan and build it now? [y/N]: '))) {
-    console.log('Import cancelled — nothing written.');
-    return;
-  }
-
-  step('scaffolding', { feature: plan.feature }, 'Layer files come from Construct\'s own templates in build order (domain → service → workflow → hook → component → page → controller); no model is involved.');
-  const { results, cancelled: fillCancelled } = await executeImportPlan(root, plan, { llm: fillWithLlm ? importFill : undefined, llmOptions, onStep: (s) => step(s.phase, s.detail, s.phase === 'filling' ? 'The model ports this one file; if its output is unusable the file keeps its scaffolded stub and breadcrumb.' : undefined) });
-  reportImport(root, results, fillWithLlm ? importFill : undefined, plan.feature, planner === 'mechanical' ? 0 : 1, analysisSeconds);
-  onWritten?.({ root, plan, results });
-  if (fillCancelled) {
-    step('cancelled', { during: 'filling' });
-    console.log('Cancelled — files not yet filled were left as their TODO(import) stubs; nothing was half-written.');
-    return;
-  }
-
-  console.log('');
-  // A model's most common slip is the spelling of a sibling import (`../services/ordersApi` for `OrdersApi.tsx`); fixing it is exact-match work, so it is done here instead of by a retry.
-  const importRepairs = repairRelativeImports(results.flatMap((r) => r.files));
-  if (importRepairs.length) {
-    step('validating', { feature: plan.feature }, `Fixed the spelling of ${importRepairs.length} relative import(s) that matched a generated file only by case; no model call was needed.`);
-    for (const r of importRepairs) console.log(`Import repaired in ${path.relative(root, r.file)}: '${r.from}' -> '${r.to}'`);
-  }
-  // The public API is deterministic work, not a model's: export every new layer file from index.ts (with a JSDoc line each) so SLICE-003/READ-003 never fire on what we just generated.
-  const apiSync = syncPublicApi(root, plan.feature);
-  if (apiSync.changed) console.log(`Updated ${apiSync.path} (the feature's public API) with the new exports.`);
-  step('validating', { feature: plan.feature }, 'Runs every construct-validate enforcer on the new feature. The model\'s output is only trusted once this passes.');
-  console.log(`Running validate --feature ${plan.feature} ...`);
-  const validateStart = startTimer();
-  const { violations } = aggregateValidation(root, DEFAULT_ENFORCERS);
-  let scoped = violations.filter((v) => v.file.startsWith(`${featuresRoot}/${plan.feature}/`));
-  console.log(formatReport(scoped, { format: 'text' }));
-  console.log(`Validated in ${formatDuration(elapsedSeconds(validateStart))}.`);
-
-  // #496/#601 -- offer a real correction pass, not just the report: only when this run already
-  // called the model once (fillWithLlm) and only against files this import itself just wrote, so
-  // a pre-existing violation elsewhere in the project is never silently "fixed" without being asked
-  // about. Bounded (autoFixViolations' own maxAttempts, default 2) and interruptible the same way
-  // the rest of this wizard is -- Ctrl+C at any point stops it; there is no separate stop control
-  // to build here.
-  const importedRelFiles = new Set(results.flatMap((r) => r.files).map((f) => path.relative(root, f)));
-  const fixableViolations = scoped.filter((v) => importedRelFiles.has(v.file));
-  if (fillWithLlm && fixableViolations.length) {
-    const affectedFiles = [...new Set(fixableViolations.map((v) => v.file))];
-    const wantsFix = isYes(
-      await ask(
-        `Try to auto-fix ${fixableViolations.length} violation(s) in ${affectedFiles.length} file(s) with "${importFill}"? It plans first, then keeps trying each file (up to 5 attempts, each told what earlier attempts left behind) and stops early if it stops making progress. Cancel or Ctrl+C stops it at any time. [y/N]: `,
-      ),
-    );
-    if (wantsFix) {
-      step('auto-fixing', { files: affectedFiles }, 'Errors first, then files with the most violations. Each retry is told what earlier attempts left behind and sees the other files of this unit; it stops early if two attempts in a row change nothing.');
-      const { fixed, stillFailing, cancelled: fixCancelled } = await autoFixViolations(
-        root,
-        affectedFiles,
-        (r) => aggregateValidation(r, DEFAULT_ENFORCERS),
-        {
-          llm: importFill,
-          llmOptions,
-          siblingFiles: [...importedRelFiles],
-          onPlan: (plan) => {
-            console.log(`Fix plan (${plan.length} file(s), errors first):`);
-            for (const item of plan) {
-              console.log(`  ${item.file}`);
-              for (const v of item.violations) console.log(`    - ${v.rule} (line ${v.line}): ${v.message}${v.suggestedFix ? ` → ${v.suggestedFix}` : ''}`);
-            }
-          },
-          onAttempt: ({ file, attempt, violations: v }) => {
-            step('auto-fixing', { files: affectedFiles, file, attempt });
-            console.log(`  Attempt ${attempt} on ${file}: fixing ${v.length} violation(s) (${v.map((x) => x.rule).join(', ')})...`);
-          },
-        },
-      );
-      if (fixCancelled) {
-        step('cancelled', { during: 'auto-fixing' });
-        console.log('Cancelled — auto-fix stopped; files keep their last valid content.');
-        return;
-      }
-      if (fixed.length) console.log(`Fixed: ${fixed.map((f) => `${f.file} (${f.attempts} attempt(s))`).join(', ')}`);
-      if (stillFailing.length) {
-        console.log(`Still failing after auto-fix — review manually: ${stillFailing.map((f) => `${f.file} (${f.reason}, ${f.attempts} attempt(s))`).join(', ')}`);
-      }
-      const revalidated = aggregateValidation(root, DEFAULT_ENFORCERS);
-      scoped = revalidated.violations.filter((v) => v.file.startsWith(`${featuresRoot}/${plan.feature}/`));
-      console.log(formatReport(scoped, { format: 'text' }));
-    }
-  }
-
-  const allFiles = results.flatMap((r) => r.files);
-  const todoFiles = allFiles.filter((f) => fs.readFileSync(f, 'utf8').includes('TODO(import)'));
-  if (fillWithLlm) {
-    console.log(`Review the ${allFiles.length - todoFiles.length} LLM-written file(s) above against their source before trusting them.`);
-  }
-  if (fillWithLlm && !todoFiles.length) {
-    step('done', { files: allFiles.length, todo: 0 });
-    return;
-  }
-  console.log(
-    todoFiles.length
-      ? `${todoFiles.length} of ${allFiles.length} file(s) still have a TODO(import) marker to fill in — that's what's left before this feature is done:`
-      : 'No TODO(import) markers left — nothing further needed from this pass.',
-  );
-  for (const f of todoFiles) console.log(`  ${path.relative(root, f)}`);
-  step('done', { files: allFiles.length, todo: todoFiles.length });
-}
-
-export async function runImportRouteWizard(routeArg, options = {}) {
-  const lineSource = makeLineSource(process.stdin);
-  async function ask(promptText) {
-    process.stdout.write(promptText);
-    const { done, value } = await lineSource.next();
-    return done ? '' : value;
-  }
-  await importRouteWizard(ask, routeArg, options);
-}
-
-// ---- event-driven adapter for non-terminal callers (e.g. a chat UI) -------
-//
-// `importRouteWizard(ask, seedRoute)` above is already decoupled from real
-// stdin/stdout via its abstract `ask` callback, but it's still shaped for a
-// blocking terminal session: every prompt and every progress line goes out
-// via a synchronous `console.log`/`console.warn`/`console.error` call
-// interleaved with `await ask(...)`. A chat UI instead needs a running,
-// incremental conversation — each progress line delivered the moment it
-// happens, and the "next question" delivered as its own event rather than
-// blocking a request/response cycle on the terminal's stdin.
-//
-// This wraps the *existing*, unmodified `importRouteWizard` rather than
-// rewriting it: every console call made anywhere inside the wizard's run
-// (including from functions it calls into, like `reportImport` and
-// `formatReport`) is captured as an ordered `{ type: 'log', text }` event,
-// and `ask` is driven by an externally-resolved promise instead of a real
-// line source. The REPL/CLI/wizard tests exercise `importRouteWizard` and
-// `runImportRouteWizard` directly and are completely unaffected by this.
-//
-// #80 — per-session log capture instead of a global monkey-patch. Directly
-// reassigning console.log/warn/error per call (the original shape of this
-// adapter) corrupts concurrent sessions, not just serializes them: a second
-// call's "original" is actually the first call's already-wrapped functions
-// (so session A's output leaks into session B's captured events too), and
-// whichever session's `finally` runs first restores the *real* original
-// console methods out from under the other session, which is still mid-run.
-// Node's AsyncLocalStorage instead keeps a per-session `onEvent` scoped to
-// the exact async call chain it was started in (correctly propagated across
-// every `await` inside that chain, including into functions the wizard
-// calls into) — console.log/warn/error are wrapped exactly ONCE, at module
-// load, and every wrapper always calls the real original *and*, only if a
-// store is active for the currently-executing async chain, forwards to it.
-const wizardLogStore = new AsyncLocalStorage();
-let wizardConsolePatched = false;
-
-function ensureWizardConsolePatched() {
-  if (wizardConsolePatched) return;
-  wizardConsolePatched = true;
-  for (const kind of ['log', 'warn', 'error']) {
-    const original = console[kind].bind(console);
-    console[kind] = (...parts) => {
-      original(...parts);
-      const onEvent = wizardLogStore.getStore();
-      if (onEvent) onEvent({ kind, type: 'log', text: parts.map((p) => (typeof p === 'string' ? p : String(p))).join(' ') });
-    };
-  }
-}
-
-/**
- * Run the interactive `construct import --route` wizard as an event stream instead of a terminal session, so the Cockpit can drive it over a WebSocket: every prompt arrives as a `{type: 'question', text}` event and every console line the wizard prints as a `{type: 'log', kind, text}` event.
- *
- * @param {(event: object) => void} onEvent Receives questions and log lines.
- * @param {string} [seedRoute] Route to start from, when the caller already knows it.
- * @param {object} [providers] Injectable dependencies (LLM provider and friends) for tests.
- * @returns {{answer:(text:string) => boolean, cancel:() => void, done:Promise<any>, review:() => Promise<void>}} `review` runs the read-only plan-vs-written review (#603); `answer` feeds the reply to the pending question (`false` when none is pending); `cancel` aborts an in-flight model call and stops the run (#599); `done` settles when the wizard finishes.
- */
-export function runImportRouteWizardEventDriven(onEvent, seedRoute, providers) {
-  ensureWizardConsolePatched();
-  let pendingResolve = null;
-
-  function ask(promptText, hint) {
-    onEvent({ type: 'question', text: promptText, ...(hint?.expects ? { expects: hint.expects } : {}) });
-    return new Promise((resolve) => {
-      pendingResolve = resolve;
-    });
-  }
-
-  /** Feed the user's answer to whichever `ask()` call is currently pending.
-   * Returns false (a no-op) if the wizard isn't currently waiting on one —
-   * e.g. an answer arriving after the session already finished. */
-  function answer(text) {
-    if (!pendingResolve) return false;
-    const resolve = pendingResolve;
-    pendingResolve = null;
-    resolve(text);
-    return true;
-  }
-
-  // #599 -- framework steps and the model's own output are two different event types on purpose:
-  // `{type:'step', phase, detail}` vs `{type:'thought', text}`, so a UI can render them distinctly.
-  const controller = new AbortController();
-  let reviewable = null; // what the wizard has written so far, once something has been (#603)
-  let reviewController = null;
-  /** Cancel the run: aborts an in-flight model call and declines any pending question. */
-  function cancel() {
-    controller.abort();
-    reviewController?.abort();
-    if (pendingResolve) {
-      const resolve = pendingResolve;
-      pendingResolve = null;
-      resolve('');
-    }
-  }
-
-  const done = wizardLogStore
-    .run(onEvent, () => importRouteWizard(ask, seedRoute, {
-      ...providers,
-      signal: controller.signal,
-      onStep: (s) => onEvent({ type: 'step', ...s }),
-      onThought: (text) => onEvent({ type: 'thought', text }),
-      onWritten: (written) => {
-        reviewable = written;
-        onEvent({ type: 'reviewable' });
-      },
-    }))
-    .catch((e) => {
-      onEvent({ type: 'log', kind: 'error', text: `Error: ${e.message}` });
-    })
-    .finally(() => {
-      onEvent({ type: 'done' });
-    });
-
-  /** #603 -- a read-only model review of what has been written against the approved plan; available as soon as one file exists, including while a later question is still pending. Findings arrive as one `{type:'review'}` event. */
-  async function review() {
-    if (!reviewable) {
-      onEvent({ type: 'log', kind: 'error', text: 'Nothing to review yet -- a review is available once the wizard has written at least one file.' });
-      return;
-    }
-    if (reviewController) return;
-    reviewController = new AbortController();
-    onEvent({ type: 'review', phase: 'running' });
-    try {
-      const provider = providers?.planAnalysis && providers.planAnalysis !== 'ollama' ? providers.planAnalysis : 'claude';
-      const { findings } = await reviewImport(reviewable.root, reviewable.plan, reviewable.results, { llm: provider, llmOptions: { signal: reviewController.signal } });
-      onEvent({ type: 'review', phase: 'done', findings });
-    } catch (e) {
-      onEvent({ type: 'review', phase: 'failed' });
-      onEvent({ type: 'log', kind: 'error', text: e.cancelled ? 'Review cancelled.' : `Review failed: ${e.message}` });
-    } finally {
-      reviewController = null;
-    }
-  }
-
-  return { answer, cancel, done, review };
 }

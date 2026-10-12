@@ -103,7 +103,7 @@ export function createMockImportAgentService(o = {}) {
     if (folder !== 'src/alerts') throw new LineOpError(`The project has no folder "${folder}"; pick one of its folders.`, 'BAD_FOLDER');
     if (!agents.has(folder)) {
       agents.set(folder, createImportAgent({
-        root: '/mock/import-sample', folder, planService, store: createMemoryStore(), reason: o.reason ?? null, repair: o.repair ?? null, logic: 'logic' in o ? o.logic : createMockLogic(),
+        root: '/mock/import-sample', folder, planService, store: createMemoryStore(), decide: o.decide ?? null, repair: o.repair ?? null, logic: 'logic' in o ? o.logic : createMockLogic(),
         importOps: { scan: (_r, f) => ops.scan({ folder: f }), plan: (_r, f, answers) => ops.plan({ folder: f, answers }) },
         now: () => new Date(Date.UTC(2026, 9, 11, 9, 0, clock++)).toISOString(),
         verify: async () => ({ ok: true, checks: [

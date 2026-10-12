@@ -7,7 +7,7 @@
 // Sources: feature, item, library and prop names; exported names and state variables in feature code (split into
 // words, camelCase / kebab / snake); UI label strings, route paths and spec.md story text (weak: they point at the item
 // or feature they come from). Resolution of a word in a request: project map -> stored synonym -> shared lexicon
-// suggestion (lexicon.mjs) -> local model suggestion (`propose`, optional) -> one closed-choice question.
+// suggestion (lexicon.mjs) -> one closed-choice question.
 // For add / rename / create requests an unmatched noun next to a kind word ("a refund page") becomes a NEW name slot.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -188,8 +188,7 @@ const label = (e) => (e.type === 'feature' ? `the ${e.value.name} feature` : e.t
  * the questions for unknown words (closed choices, each with how it was suggested) and the ambiguous slots.
  * @param {string} request
  * @param {DomainMap} map
- * @param {{propose?: (word: string, choices: {key: string, label: string}[]) => string|null, lexicon?: boolean}} [o]
- *   `propose`: a local model's guess (an entry key) for an unknown word, shown as a one-click confirm (via "model").
+ * @param {{lexicon?: boolean}} [o]
  *   Each token keeps `src`, the words of the request it stands for (as typed), so a caller can rebuild the sentence.
  * @returns {{text: string, tokens: {t: string, slot?: string, kind?: string, src: string[]}[], bindings: Record<string, any>, entries: Record<string, string>, ambiguous: Record<string, string[]>, questions: {slot: string, word: string, sentence: string, choices: {key: string, label: string}[], suggested: string|null, via: 'map'|'lexicon'|'model'|'ask'}[], fully: boolean}}
  */
@@ -336,7 +335,7 @@ export function normalize(request, map, o = {}) {
       continue;
     }
     const near = map.entries.map((e) => ({ e, d: Math.min(...e.forms.map((f) => distance(x.t, f))) })).filter((c) => c.d <= Math.max(1, Math.floor(x.t.length / 4))).sort((a, b) => a.d - b.d || PRIORITY[a.e.type] - PRIORITY[b.e.type]).slice(0, 3);
-    let suggested = near[0]?.e.key ?? null; let via = /** @type {'map'|'lexicon'|'model'|'ask'} */ (suggested ? 'map' : 'ask');
+    let suggested = near[0]?.e.key ?? null; let via = /** @type {'map'|'lexicon'|'ask'} */ (suggested ? 'map' : 'ask');
     if (!suggested && o.lexicon !== false) { const lx = suggestFromLexicon(x.t, map); if (lx) { suggested = lx; via = 'lexicon'; } }
     // Refusal semantics: a word in a target place ("in archive", "based on Tooltip", "a Carousel called ...") that
     // neither the project map nor the lexicon resolves names a MISSING feature or library item. It is drafted as asked
@@ -355,7 +354,6 @@ export function normalize(request, map, o = {}) {
     bindings[s] = x.t;
     tokens[i] = { t: `<unknown:${s}>`, slot: s, kind: 'unknown', src: x.src };
     const choiceKeys = [...new Set([...(suggested ? [suggested] : []), ...near.map((c) => c.e.key), ...map.entries.filter((e) => e.type === 'feature').map((e) => e.key)])].slice(0, 4);
-    if (!suggested && o.propose) { const m = o.propose(x.t, choiceKeys.map((k) => ({ key: k, label: label(byKey.get(k)) }))); if (m && byKey.has(m)) { suggested = m; via = 'model'; } }
     const choices = choiceKeys.filter((k) => byKey.has(k)).map((k) => ({ key: k, label: label(byKey.get(k)) }));
     questions.push({ slot: s, word: x.t, sentence: suggested ? `Did you mean ${label(byKey.get(suggested))} by "${x.t}"?` : `Which part of the project do you mean by "${x.t}"?`, choices, suggested, via });
   }

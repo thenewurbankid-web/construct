@@ -58,7 +58,7 @@ test.describe.serial('#365 workspace boundary', () => {
     await expect(page.getByTestId('project-switcher')).toHaveCount(0);
     await expect(page.getByRole('navigation', { name: 'Screens', exact: true })).toHaveCount(0);
     // One prompt on other screens too, not a per-screen error.
-    for (const route of ['/wizard', '/pages', '/workflows', '/plan', '/review', '/tests']) {
+    for (const route of ['/pages', '/workflows', '/plan', '/review', '/tests']) {
       await page.goto(route);
       await expect(page.getByRole('heading', { name: 'Your projects', level: 1 }), route).toBeVisible();
     }

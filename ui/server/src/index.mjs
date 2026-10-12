@@ -22,7 +22,6 @@ import { listProjectTree } from './projectTree.mjs';
 import { getSettings, updateSettings, getBrowseRoots, getProjectDir, preloadProject } from './settings.mjs';
 import { handleBrowse } from './dirBrowse.mjs';
 import { runCapturing, withDir } from './commandRunner.mjs';
-import { attachWizardSocket } from './wizardSocket.mjs';
 import { createProcessesService } from './processesService.mjs';
 import { createProcessesRouter } from './processesApi.mjs';
 import { createDevServerService } from './devServer.mjs';
@@ -112,7 +111,6 @@ import { openBlockSettingsStore } from './blockSettingsStore.mjs';
 import { handleLogs } from './logBuffer.mjs';
 import { unitsIndex, unitSummary, featuresIndex, featureSummary } from './unitsApi.mjs';
 import { createRulesRouter } from './rulesApi.mjs';
-import { createEnvelopesRouter } from './envelopesApi.mjs';
 import { buildPalette } from '../../../packages/engine/palette.mjs';
 import { readPageSource, lintPageBuffer, quickFixPageBuffer } from './pageSource.mjs';
 import { viewPage, openReference, openSourceLocation, viewProjectFile } from './projectNav.mjs';
@@ -1190,20 +1188,6 @@ export const planService = createPlanService({
 });
 app.use('/api/plan', createPlanRouter(planService));
 
-// #395/#771/#772: the Envelopes tab -- named, reusable flows saved via `construct pipeline save` (#759,
-// packages/core/flows.mjs); a read-only list, a deterministic envelope preview, a preview/commit save, and
-// "Run this flow" through the exact same validate-then-start pipeline planService.run() uses (checkPlan,
-// withExpectedFiles, processesService.startPlan) -- no new or bypass execution mechanism, per #772's
-// acceptance. Mounted after planService so `startPlan`/`getBlockSettings` can be wired the same way.
-app.use('/api/envelopes', createEnvelopesRouter({
-  getRoot: () => {
-    const root = containedProjectRoot(getProjectDir());
-    return root ? { ok: true, root } : { ok: false, error: 'No Construct project found for the current project directory. Pick a project first.' };
-  },
-  startPlan: (plan) => processesService.startPlan(plan),
-  getBlockSettings: (root) => openBlockSettingsStore(root).disabledFlows(),
-}));
-
 // #642: the requirement chain (a sentence read back as card, placement, plan and timeline). Below the session gate and the
 // project-open gate; read-only and model-free. Approving its plan goes through the Plan route above, unchanged.
 app.use('/api/requirement', createRequirementRouter({
@@ -1522,14 +1506,13 @@ function isEntrypoint() {
  * exercise the real route table (and the real gate) without a listener. */
 export { app, auth };
 
-/** Build the HTTP server with the wizard WebSocket attached. The socket
+/** Build the HTTP server with the processes WebSocket attached. The socket
  * gets the same `auth` object the REST gate uses, so it can never be the
  * more permissive of the two. */
 export function createUiServer() {
   const server = http.createServer(app);
-  attachWizardSocket(server, '/ws/wizard', CLIENT_ORIGIN, auth);
   attachProcessesSocket(server, processesService, '/ws/processes', CLIENT_ORIGIN, auth);
-  refuseUnknownUpgrades(server, ['/ws/wizard', '/ws/processes']);
+  refuseUnknownUpgrades(server, ['/ws/processes']);
   return server;
 }
 

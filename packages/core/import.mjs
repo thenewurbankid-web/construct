@@ -568,52 +568,6 @@ export async function analyzeRoute(routeDirs, featureName, { llm = 'claude', llm
   return runAnalysis(fileMap, featureName, llm, `analysis of ${dirs.join(', ')}`, llmOptions);
 }
 
-/** Build a { label -> absolute path } map for an arbitrary list of already-
- * resolved files (e.g. from route-resolver.mjs's traceRouteFiles) — unlike
- * analyzeRoute's directory walk, these files can be scattered anywhere, so
- * there's no single relative-path base to label them by. Labels default to
- * a file's own basename; on a collision (two different files sharing one),
- * both (and only those) get their parent folder's name prefixed too, kept
- * to the minimum needed to stay unique rather than always qualifying every
- * label. */
-function labelFiles(absPaths) {
-  const byBasename = new Map();
-  for (const abs of absPaths) {
-    const base = path.basename(abs);
-    if (!byBasename.has(base)) byBasename.set(base, []);
-    byBasename.get(base).push(abs);
-  }
-  const labeled = new Map();
-  for (const [base, group] of byBasename) {
-    if (group.length === 1) {
-      labeled.set(base, group[0]);
-    } else {
-      for (const abs of group) labeled.set(`${path.basename(path.dirname(abs))}/${base}`, abs);
-    }
-  }
-  return labeled;
-}
-
-/**
- * Analyze an explicit list of already-resolved absolute file paths — the
- * counterpart to analyzeRoute for callers (the route-tracing wizard) that
- * already know exactly which files matter, rather than "everything under
- * this directory."
- *
- * @param {string[]} absPaths Absolute paths of the files to analyze.
- * @param {string} featureName Feature the analysis is for.
- * @param {{llm?: string}} [options] Provider that performs the analysis (default `'claude'`).
- * @returns {Promise<object>} The analysis.
- * @throws {ConstructError} Usage error when no files are given.
- */
-export async function analyzeFiles(absPaths, featureName, { llm = 'claude', llmOptions } = {}) {
-  if (!absPaths.length) {
-    throw new ConstructError('No files to analyze.', { exitCode: EXIT_CODES.USAGE_ERROR });
-  }
-  const fileMap = labelFiles(absPaths.map((p) => path.resolve(p)));
-  return runAnalysis(fileMap, featureName, llm, `analysis of ${absPaths.length} traced file(s)`, llmOptions);
-}
-
 /** Shared core: given a { label -> absolute path } map, build the prompt,
  * call the LLM, and validate the response into a plan whose every unit's
  * `from` is resolved back to a real absolute path. */
@@ -622,7 +576,7 @@ async function runAnalysis(fileMap, featureName, llm, sourceDescription, llmOpti
   const { prompt, omitted } = buildAnalysisPrompt(featureName, files);
   if (omitted.length) {
     console.warn(
-      `Warning: ${omitted.length} file(s) were too long to fit in this analysis and were left out (or partially cut): ${omitted.join(', ')}. Consider running import --route again scoped to just those, or splitting the analysis.`,
+      `Warning: ${omitted.length} file(s) were too long to fit in this analysis and were left out (or partially cut): ${omitted.join(', ')}. Consider analyzing just those, or splitting the analysis.`,
     );
   }
   const raw = await callLlm(llm, prompt, llmOptions);

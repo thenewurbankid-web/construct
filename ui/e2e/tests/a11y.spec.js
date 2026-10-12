@@ -14,7 +14,7 @@ startUnderTheHood(test);
 // wide (1280) and narrow (390), plus the drawer and command palette open.
 // Serious/critical violations FAIL; moderate/minor are collected and written to
 // $A11Y_REPORT (if set) so they can be tracked.
-const SCREENS = ['/dashboard', '/wizard', '/pages', '/components', '/workflows', '/tests', '/ollama', '/settings', '/help', '/states'];
+const SCREENS = ['/dashboard', '/pages', '/components', '/workflows', '/tests', '/ollama', '/settings', '/help', '/states'];
 const VIEWPORTS = { wide: { width: 1280, height: 800 }, narrow: { width: 390, height: 800 } };
 const THEMES = ['dark', 'light'];
 const lesser = [];
@@ -86,8 +86,8 @@ for (const theme of THEMES) {
       }
       // Every side-pane and tab: click through each tab of each tablist (Browser,
       // Tools, drawer...) and scan, so hidden tab panels are covered too.
-      // '/' (#773): the Features screen's Browser pane, where the Rules and Envelopes
-      // composer tabs (#395) live -- scanAllTabs discovers and scans them automatically,
+      // '/' (#773): the Features screen's Browser pane, where the Rules
+      // tab (#395) lives -- scanAllTabs discovers and scans it automatically,
       // same as every other tab here.
       for (const route of ['/', '/pages', '/workflows', '/dashboard']) {
         test(`${route} all panes and tabs`, async ({ page }) => {

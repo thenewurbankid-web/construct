@@ -39,7 +39,7 @@ test.describe('Cockpit top bar (#245)', () => {
     await go('Features', /\/$/);
 
     // Every route the retired modes and the Dashboard covered belongs to Features.
-    for (const route of ['/plan', '/dashboard', '/wizard']) {
+    for (const route of ['/plan', '/dashboard']) {
       await page.goto(route);
       await expect(nav.getByRole('link', { name: 'Features' })).toHaveAttribute('aria-current', 'page');
     }
@@ -81,10 +81,10 @@ test.describe('Cockpit top bar (#245)', () => {
     await expect(page.getByRole('navigation', { name: 'All screens' })).toHaveCount(0);
     await expect(page.getByRole('tab', { name: 'Screens' })).toHaveCount(0);
 
-    // Dashboard, Import Wizard, Pages Editor, Workflows, Tests, Local Model, Settings, Help:
+    // Dashboard, Pages Editor, Workflows, Tests, Local Model, Settings, Help:
     // - the five primary screens are in the left rail (Dashboard became Features, Pages Editor Pages, Workflows Components);
     // - Settings, Local Model and Help are in the profile menu;
-    // - the Import Wizard and everything else stay one palette command away.
+    // - everything else stays one palette command away.
     const nav = page.getByRole('navigation', { name: 'Screens', exact: true });
     await nav.getByRole('link', { name: 'Components' }).click();
     await expect(page).toHaveURL(/\/components$/);
@@ -100,9 +100,9 @@ test.describe('Cockpit top bar (#245)', () => {
 
     await page.keyboard.press('Control+k');
     const dialog = page.getByRole('dialog', { name: 'Command palette' });
-    await dialog.getByRole('combobox').fill('go to import wizard');
+    await dialog.getByRole('combobox').fill('go to requirement');
     await page.keyboard.press('Enter');
-    await expect(page).toHaveURL(/\/wizard$/);
+    await expect(page).toHaveURL(/\/requirement$/);
     await expect(nav.getByRole('link', { name: 'Features' })).toHaveAttribute('aria-current', 'page');
   });
 

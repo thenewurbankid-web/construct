@@ -1,6 +1,6 @@
 // System 1 drafter: draft(request) -> every route that can satisfy it, verified by Construct, ranked, the person picks.
 //   normalize (domain map; no domain word passes) -> classify (closed labels) -> enumerate (templates) + retrieve
-//   (nearest approved transition) -> verify (scratch copy, expressions, structure hash) -> rank (static; `ranker` = jev)
+//   (nearest approved transition) -> verify (scratch copy, expressions, structure hash) -> rank (static, memory may lead)
 // The drafter only drafts; adding a route's steps to the plan goes through planService.addStep, where a person approves.
 import { readLineProject } from '../model.mjs';
 import { LINE_PLAN_TOOLS } from '../contract.mjs';
@@ -49,9 +49,9 @@ export function staticRank(routes) {
  * Draft every route for a request on the project at `root`.
  * @param {string} root
  * @param {string} request
- * @param {{catalog?: import('./contract.mjs').IntentEntry[], verify?: boolean, ranker?: (routes: import('./contract.mjs').Route[]) => string[], propose?: (word: string, choices: {key: string, label: string}[]) => string|null, records?: import('./contract.mjs').TransitionRecord[]|null, precedents?: import('./contract.mjs').TransitionRecord[], maxVerify?: number, memory?: any, synonyms?: Record<string, string>}} [o]
+ * @param {{catalog?: import('./contract.mjs').IntentEntry[], verify?: boolean, records?: import('./contract.mjs').TransitionRecord[]|null, precedents?: import('./contract.mjs').TransitionRecord[], maxVerify?: number, memory?: any, synonyms?: Record<string, string>}} [o]
  *   `synonyms`: confirmed synonyms kept outside the project (word -> domain-map key), e.g. Train Line's per-world ones.
- *   `ranker`: jev's ranking (ids, best first); it only orders. `records`: training records (default: the project's own).
+ *   `records`: training records (default: the project's own).
  *   `memory`: this project's memory (memory/store.mjs); the person's consistent past picks move a checked route first.
  *   `precedents`: more approved records after them (Cockpit passes Train Line's slotted precedents, retrieval.mjs precedentsFromTraining).
  * @returns {import('./contract.mjs').Draft & {atoms: import('@line/atoms/contract').AtomMatch[], questions: any[], shown: {request: string}, tokens: {t: string, slot?: string, kind?: string, src: string[]}[], entries: Record<string, string>}}
@@ -62,7 +62,7 @@ export function draft(root, request, o = {}) {
   const project = readLineProject(root);
   const summary = factsSummary(root, project);
   const map = buildDomainMap(root, summary, { synonyms: o.synonyms });
-  const n = normalize(request, map, { propose: o.propose });
+  const n = normalize(request, map);
   const graph = structureGraph(project, readerOf(root));
   const roles = rolesOf(graph);
   const slots = slotShapes(n.bindings, n.entries, summary, roles);
@@ -123,7 +123,7 @@ export function draft(root, request, o = {}) {
   // The precedent was refused as asked (a missing feature or library item, a taken name) and is refused here too:
   // that refusal is the answer, not a route that does something else.
   if (precPreferred?.outcome === 'refusal' && routes.some((r) => r.retrieved && r.status === 'refused')) routes = routes.filter((r) => r.retrieved);
-  const order = (o.ranker ?? staticRank)(routes);
+  const order = staticRank(routes);
   routes = order.map((id) => routes.find((r) => r.id === id)).filter(Boolean);
   // im3 + j5: this project's memory of the person's past picks reorders the routes Construct already checked (never adds
   // one): after 3 consistent picks of the same kind of route for a request like this, that route comes first.

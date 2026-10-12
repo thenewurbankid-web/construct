@@ -1,5 +1,5 @@
 // cg1 + ct1 -- Trace: the one control registry, the static request -> tool -> control mapping over common requests,
-// jev's pick when several tools fit (and the static fallback when jev or @mx/reason is down), the plan's open steps
+// the picker's pick when several tools fit (only when construct.chooser is on; the static fallback otherwise), the plan's open steps
 // lighting their controls, and Auto's scripts (which stop at Approve).
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -10,10 +10,10 @@ import { assertControlRegistry, assertTraceMatch, assertLineControl, LINE_API, L
 import { LINE_CONTROLS, TOOL_PATHS, controlById } from '../packages/engine/line/controls.mjs';
 import { matchRequest, traceMatch } from '../packages/engine/line/traceMatch.mjs';
 import { TOOL_ENTRIES, entryById } from '../packages/engine/line/toolRegistry.mjs';
-import { createTraceDecide, createJevPicker, clozeOf } from '../packages/engine/line/traceDecide.mjs';
+import { createTraceDecide, clozeOf } from '../packages/engine/line/traceDecide.mjs';
+import { createMockDecide } from '../packages/core/line-decide-mock.mjs';
 import { readLineProject } from '../packages/engine/line/model.mjs';
 import { createMockLineOps } from '../packages/engine/line/mock.mjs';
-import { createMockReason, createMockPicker } from '../packages/line-links/mocks.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SAMPLE = readLineProject(path.join(ROOT, 'examples/line-sample'));
@@ -110,34 +110,32 @@ test('several fit: static order without jev, and the reason says why', async () 
   assert.deepEqual(m.alternatives, ['line.moveFile']);
 });
 
-test('several fit: jev picks with a cloze through @mx/reason, and via records jev', async () => {
-  const picker = createMockPicker(1);
-  const decide = createTraceDecide({ picker, loadReason: async () => createMockReason() });
-  const m = await traceMatch({ request: 'Move OrderButton into the library' }, { project: SAMPLE, decide });
+test('several fit: the picker (when construct.chooser is on) picks with a cloze through decide(), and via records jev', async () => {
+  const mock = createMockDecide({ pick: 1, on: ['construct.chooser'] });
+  const m = await traceMatch({ request: 'Move OrderButton into the library' }, { project: SAMPLE, decide: createTraceDecide({ decide: mock.decide }) });
   assertTraceMatch(m);
   assert.equal(m.via, 'jev');
   assert.equal(m.choice.picked, 'line.moveFile');
   assert.equal(m.choice.sentence, 'Several tools fit; jev picked "move a file".');
-  assert.deepEqual(picker.calls, [['line.promote', 'line.moveFile']]);
   assert.equal(clozeOf('Move it'), 'The person asked: "Move it". To do that in Cockpit, they use the tool to ___.');
 });
 
-test('fallback: jev not reachable, @mx/reason not linked or failing all keep the static pick and say so', async () => {
+test('fallback: construct.chooser off (the default), the picker down or decide() failing all keep the static pick and say so', async () => {
   const req = { request: 'Make OrderButton reusable' };
-  const down = await traceMatch(req, { project: SAMPLE, decide: createTraceDecide({ picker: createMockPicker(1, { available: false }), loadReason: async () => createMockReason() }) });
+  const off = await traceMatch(req, { project: SAMPLE, decide: createTraceDecide({ decide: createMockDecide({ pick: 1 }).decide }) });
+  assert.equal(off.via, 'static');
+  assert.equal(off.choice.picked, 'line.baseOn');
+  assert.match(off.choice.sentence, /static order \(the picker is off for this step\)\.$/);
+  const down = await traceMatch(req, { project: SAMPLE, decide: createTraceDecide({ decide: createMockDecide({ pick: 1, jevUp: false, on: ['construct.chooser'] }).decide }) });
   assert.equal(down.via, 'static');
-  assert.equal(down.choice.picked, 'line.baseOn');
-  assert.match(down.choice.sentence, /static order \(jev is not reachable\)\.$/);
-  const unlinked = await traceMatch(req, { decide: createTraceDecide({ picker: createMockPicker(1), loadReason: async () => null }) });
-  assert.equal(unlinked.via, 'static');
-  assert.match(unlinked.choice.sentence, /reason module is not available/);
-  const broken = await traceMatch(req, { decide: createTraceDecide({ picker: createMockPicker(1), loadReason: async () => createMockReason({ fail: true }) }) });
+  assert.match(down.choice.sentence, /not running/);
+  const broken = await traceMatch(req, { decide: createTraceDecide({ decide: async () => { throw new Error('boom'); } }) });
   assert.equal(broken.via, 'static');
+  assert.match(broken.choice.sentence, /the decision failed/);
   const throws = await traceMatch(req, { decide: async () => { throw new Error('boom'); } });
   assert.equal(throws.via, 'static');
-  // The real jev client: nothing listening answers "not available" quickly.
-  const real = createJevPicker({ url: 'http://127.0.0.1:9' });
-  assert.equal(await real.available(), false);
+  const real = await traceMatch(req, { project: SAMPLE, decide: createTraceDecide() });
+  assert.equal(real.via, 'static', 'the real decide(): construct.chooser ships off');
 });
 
 test('mock project: the client\'s mock mode maps the same way', async () => {

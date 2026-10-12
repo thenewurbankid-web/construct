@@ -4,9 +4,13 @@
 //   listStepProfiles()   every profile, with Trace's overrides (trace/ai.config.json) applied and `modelFrom` saying so
 //   stepProfile(step)    one profile (throws a TypeError for an unknown step: a programming error, not a user's)
 //   stepModel(step)      the model a step uses (the 1.5B unless overridden; null for a hosted step)
+//   stepOn(p)            whether a step's model rung runs: on in its profile AND a measured win recorded (the only switch)
+//   stepWin(p)           the step's measured win in one line, or "off" ("How smart is it" and Settings' AI steps list it)
 //   reasonPairOf(p)      the profile as an @mx/reason pair (StepProfileInput) for runLadder / createJevPicker
-//   readAiProfiles()     GET /api/line/ai-profiles: the profiles plus whether @mx/reason is linked, in one sentence
+//   readAiProfiles()     GET /api/line/ai-profiles: the profiles (each with `on` and `win`) plus whether @mx/reason is linked
 //
+// The one ladder: static -> middleware -> Line-1 (the one picker; jev fills that role until Line-1 ships) -> Construct
+// verify -> person. No Qwen pick and no review rung.
 // Reads two JSON files and never touches a model or the network.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -25,11 +29,11 @@ const DEFAULT_STEP_MODEL = 'qwen2.5-coder:1.5b';
 
 /**
  * Every step profile, Trace's overrides applied.
- * @param {{ file?: string, traceConfig?: string | object | null }} [o] `traceConfig`: a path or an already-read object (null: none).
+ * @param {{ file?: string, data?: any, traceConfig?: string | object | null }} [o] `data`: an already-read profile set (tests); `traceConfig`: a path or an already-read object (null: none).
  * @returns {import('../engine/line/contract.mjs').StepProfile[]}
  */
 export function listStepProfiles(o = {}) {
-  const data = readJson(o.file ?? PROFILES_FILE);
+  const data = o.data ?? readJson(o.file ?? PROFILES_FILE);
   if (!data || !Array.isArray(data.profiles)) throw new TypeError(`ai-profiles: ${o.file ?? PROFILES_FILE} could not be read`);
   const defaultModel = typeof data.defaultModel === 'string' && data.defaultModel ? data.defaultModel : DEFAULT_STEP_MODEL;
   const trace = o.traceConfig === undefined ? readJson(TRACE_AI_CONFIG) : (typeof o.traceConfig === 'string' ? readJson(o.traceConfig) : o.traceConfig);
@@ -37,7 +41,7 @@ export function listStepProfiles(o = {}) {
   return data.profiles.map((raw) => {
     const p = { ...raw, fallback: 'static', ladder: { ...raw.ladder } };
     if (p.provider === 'hosted') { p.model = raw.model ?? null; p.modelFrom = 'the hosted model you choose in Settings'; }
-    // A step may name its own model when it measured better (construct.repair: the 7B, im2); it says so.
+    // A step may name its own model when it measured better; it says so (none does today: every step uses the 1.5B).
     else { p.model = raw.model ?? defaultModel; p.modelFrom = raw.model ? (raw.modelFrom ?? 'chosen for this step') : LINE_DEFAULT; }
     if (p.source === 'trace' && trace) {
       const task = p.step.slice('trace.'.length);
@@ -73,6 +77,21 @@ export function stepProfile(step, o) {
 export const stepModel = (step, o) => stepProfile(step, o).model;
 
 /**
+ * Whether a step's model rung runs. The profile is the only switch (owner rule): on in `ladder.options.on` AND a measured
+ * win over static recorded in `ladder.measured`; anything else ships off and static answers.
+ * @param {{ladder: {options: {on: boolean}, measured: string|null}}} p A StepProfile.
+ * @returns {boolean}
+ */
+export const stepOn = (p) => p?.ladder?.options?.on === true && typeof p.ladder.measured === 'string' && p.ladder.measured.trim() !== '';
+
+/**
+ * The step's win, one line: its measurement when it is on, else "off" (with "only when you ask" for an on-request step).
+ * @param {{ladder: {options: {on: boolean}, measured: string|null}, onRequest?: boolean}} p A StepProfile.
+ * @returns {string}
+ */
+export const stepWin = (p) => (stepOn(p) ? /** @type {string} */ (p.ladder.measured) : p.onRequest ? 'off (runs only when you ask)' : 'off');
+
+/**
  * reason's ids are dotted identifiers: "trace.pick-fields" -> "trace.pickFields".
  * @param {string} step
  * @returns {string}
@@ -94,7 +113,8 @@ export function reasonPairOf(p) {
     proposeRetries: 0,
     jevFrame: p.step,
     review: { enabled: false, maxRounds: 1 },
-    ladder: { static: { ...p.ladder.static }, options: { ...p.ladder.options }, review: { ...p.ladder.review } },
+    // reason's pair shape has a review rung; Line has none, so it is always off.
+    ladder: { static: { ...p.ladder.static }, options: { ...p.ladder.options, on: stepOn(p) }, review: { on: false, target: 1 } },
     success: 'The person keeps the decided option.',
     askUser: 'whenWeak',
     coderReview: false,
@@ -109,14 +129,14 @@ export function reasonPairOf(p) {
  * @returns {import('../engine/line/contract.mjs').AiProfiles}
  */
 export function readAiProfiles(o = {}) {
-  const profiles = listStepProfiles(o).map(({ guidance, question, ...p }) => p);
+  const profiles = listStepProfiles(o).map(({ guidance, question, ...p }) => ({ ...p, on: stepOn(p), win: stepWin(p) }));
   let reason = { linked: false, sentence: 'jev and the ladder are not linked, so every AI step uses its static path.' };
   try {
     const st = (o.status ?? linkStatus)();
     const r = st.packages.find((x) => x.name === '@mx/reason');
-    if (r?.ok) reason = { linked: true, sentence: 'jev and the ladder (@mx/reason) are linked, so decide steps ask jev when the local model is running.' };
+    if (r?.ok) reason = { linked: true, sentence: 'jev and the ladder (@mx/reason) are linked, so a decide step that is on asks jev, the picker, when the local model is running.' };
     else if (r) reason = { linked: false, sentence: `${r.message.replace(/\.$/, '')}; every AI step uses its static path.` };
   } catch { /* keep the static sentence */ }
-  const data = readJson(o.file ?? PROFILES_FILE);
+  const data = o.data ?? readJson(o.file ?? PROFILES_FILE);
   return { defaultModel: data?.defaultModel ?? DEFAULT_STEP_MODEL, profiles, reason };
 }
