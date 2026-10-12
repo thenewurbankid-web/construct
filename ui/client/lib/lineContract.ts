@@ -438,6 +438,8 @@ export type LineHttp = {
   importPlan: (req: ImportPlanRequest) => Promise<ImportPlan | LineRefusal>;
   newProject: (req: NewLineProjectRequest) => Promise<NewLineProjectResult | LineRefusal>;
   getAiProfiles: () => Promise<AiProfiles | LineRefusal>;
+  /** im1: the miss report (absent vs picked per step) Settings shows under "AI steps". */
+  getMisses: () => Promise<MissReportView | LineRefusal>;
   trace: (req: TraceRequest) => Promise<TraceMatch | LineRefusal>;
   getImportAgent: (folder: string) => Promise<ImportAgentView | LineRefusal>;
   startImportAgent: (folder: string, route?: string) => Promise<ImportAgentView | LineRefusal>;
@@ -471,6 +473,17 @@ export type AiProfiles = {
   defaultModel: string;
   profiles: StepProfile[];
   reason: { linked: boolean; sentence: string };
+};
+
+/** im1: GET /api/line/misses (MissReportView in packages/engine/line/contract.mjs). */
+export type MissReportView = {
+  ok: true;
+  total: { misses: number; absent: number; picked: number };
+  steps: { step: string; absent: number; picked: number; total: number; sentence: string }[];
+  topAbsent: { pattern: string; step: string; count: number; sources: string[]; examples: string[]; sentence: string }[];
+  sentence: string;
+  from: string;
+  numbers: { train: { n: number; recall: number; precision: number; preferred: number } | null; drafter: { n: number; recall: number; precision: number; preferred: number } | null } | null;
 };
 
 // ------------------------------------------------------------------------------------------------- Train Line

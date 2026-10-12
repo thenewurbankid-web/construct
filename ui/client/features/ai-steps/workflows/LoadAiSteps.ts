@@ -1,5 +1,6 @@
 import { aiStepRows } from '../domain/AiStepRows';
-import type { AiStepsApi, AiStepsState } from '../types';
+import { missView } from '../domain/MissView';
+import type { AiStepsApi, AiStepsState, MissView } from '../types';
 
 const UNREADABLE = 'The AI step settings could not be read, so try again.';
 
@@ -12,5 +13,15 @@ export async function loadAiSteps(api: AiStepsApi): Promise<AiStepsState> {
     return { phase: 'error', sentence: UNREADABLE };
   } catch {
     return { phase: 'error', sentence: UNREADABLE };
+  }
+}
+
+/** im1: reads the miss report; null when it cannot be read (the panel then leaves the section out). */
+export async function loadMisses(api: AiStepsApi): Promise<MissView | null> {
+  try {
+    const r = await api.getMisses();
+    return r && 'steps' in r && Array.isArray(r.steps) ? missView(r) : null;
+  } catch {
+    return null;
   }
 }

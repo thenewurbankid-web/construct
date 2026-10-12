@@ -1,4 +1,5 @@
 import { AiStepList } from '../components/AiStepList';
+import { MissReport } from '../components/MissReport';
 import '../components/ai-steps.css';
 import type { AiStepsView } from '../types';
 
@@ -14,6 +15,7 @@ export function AiStepsPanel({ view }: { view: AiStepsView }) {
         {view.status}
       </p>
       <AiStepList rows={view.rows} />
+      {view.misses ? <MissReport misses={view.misses} /> : null}
     </section>
   );
 }

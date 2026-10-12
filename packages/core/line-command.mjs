@@ -17,7 +17,7 @@ import { ConstructError, EXIT_CODES } from './diagnostics.mjs';
 export const LINE_USAGE = [
   'Usage:',
   '  construct line spec [--topic rules|commands|plan|model|modules] [--id <text>]',
-  '  construct line misses [--dir <project>] [--threshold <n>] [--draft] [--eval] [--json]',
+  '  construct line misses [--dir <project>] [--threshold <n>] [--draft] [--eval [--save]] [--json]',
   '  construct line context [--dir <project>] [--json]',
   '  construct line check [--dir <project>] \'<expression JSON>\' [--json]',
   '  construct line facts [--dir <project>]',
@@ -60,7 +60,7 @@ export async function lineCommand(args) {
     // im1: the miss report -- every miss classified absent (the right answer was not among Line's options) or picked
     // (offered, another recommended), per step, from plan feedback; with --eval also from Train Line's gold and the
     // drafter eval (the repo's own corpora; about 30 seconds).
-    const report = await missReportOf(root, rest.includes('--eval'));
+    const report = await missReportOf(root, rest.includes('--eval'), rest.includes('--save'));
     if (rest.includes('--json')) {
       console.log(JSON.stringify({ ok: true, traces: files, skipped, misses: misses.map(({ minimal, ...m }) => ({ ...m, case: { trace: minimal.trace, seq: minimal.seq } })), drafts: drafts.map((d) => d.file), report }, null, 2));
       return;
@@ -129,14 +129,16 @@ export async function lineCommand(args) {
  * im1: the miss report of a project (plan feedback), plus Train Line's and the drafter eval's misses with `withEval`.
  * @param {string} root
  * @param {boolean} withEval
+ * @param {boolean} [save] Keep the eval misses as the repo's snapshot (Settings reads it).
  * @returns {Promise<any>}
  */
-async function missReportOf(root, withEval) {
+async function missReportOf(root, withEval, save = false) {
   const { readClassifiedPlanMisses, missReport } = await import('@line/rule-factory/misses');
   const plan = readClassifiedPlanMisses(root);
   if (!withEval) return { sources: ['plan'], numbers: null, ...missReport(plan) };
-  const { runEvalMisses } = await import('@line/rule-factory/eval-misses');
+  const { runEvalMisses, writeSnapshot } = await import('@line/rule-factory/eval-misses');
   const ev = await runEvalMisses();
+  if (save) console.error(`Kept the eval misses for Settings in ${writeSnapshot(ev)}.`);
   return { sources: ['plan', 'train', 'drafter-eval'], numbers: ev.numbers, ...missReport([...plan, ...ev.train, ...ev.drafter]) };
 }
 

@@ -41,7 +41,7 @@ function routeView(d, r) {
   return {
     id: r.id, label: /** @type {any} */ (b).label, risk: /** @type {any} */ (b).risk, status: /** @type {any} */ (r.status), sentence, via: r.via, confidence: r.confidence,
     cost: r.cost, steps: /** @type {any} */ (b).steps, fix: r.refusal?.fix ? { sentence: r.refusal.fix.sentence } : null,
-    repair: r.repair ? { outcome: r.repair.outcome, sentence: r.repair.sentence } : null,
+    repair: /** @type {any} */ (r).repair ? { outcome: /** @type {any} */ (r).repair.outcome, sentence: /** @type {any} */ (r).repair.sentence } : null,
   };
 }
 

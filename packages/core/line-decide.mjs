@@ -166,7 +166,9 @@ export function createDecider(setup = {}) {
    * @param {string} step
    * @param {Parameters<typeof decide>[1]} options
    * @param {Parameters<typeof decide>[2]} context
-   * @param {{ apply: (choice: string, decision: any) => Promise<{ ok: boolean, refusal?: { sentence: string, fixes: any[] } | null, score?: number }> | { ok: boolean, refusal?: any, score?: number }, maxRounds?: number }} run
+   * @param {{ apply: (choice: string, decision: any) => Promise<{ ok: boolean, refusal?: { sentence: string, fixes: any[] } | null, score?: number }> | { ok: boolean, refusal?: any, score?: number }, maxRounds?: number,
+   *   optionOf?: (id: string) => { tool: string, args: any } | null, applyOption?: (option: { tool: string, args: any }, decision: any) => any,
+   *   repair?: false | { propose?: (q: any) => Promise<string>, schemaOf?: (option: { tool: string, args: any }) => any } }} run
    *   `apply` runs the choice (as a plan step, through Construct's writer) and answers ok, or the refusal with its typed
    *   fixes; `score` (higher is better; default 1 for ok, else minus the number of fixes left) decides "improved".
    *   im2: with `optionOf(id)` (the option as a plan step {tool, args}) and `applyOption(option)` (apply a repaired
@@ -199,7 +201,8 @@ export function createDecider(setup = {}) {
       const option = !repaired && run.optionOf && run.applyOption && run.repair !== false && (decision.via === 'jev' || decision.via === 'model') ? run.optionOf(decision.choice) : null;
       if (option) {
         repaired = true;
-        const attempt = await repairOnce(option, refusal, { ...(run.repair ?? {}), schema: run.repair?.schemaOf?.(option), check: (opt) => run.applyOption(opt, decision), profiles: setup.profiles });
+        const rp = run.repair || {};
+        const attempt = await repairOnce(option, refusal, { ...(rp.propose ? { propose: rp.propose } : {}), schema: rp.schemaOf?.(option), check: (opt) => run.applyOption(opt, decision), profiles: setup.profiles });
         rounds[rounds.length - 1] = { ...rounds.at(-1), repair: attempt };
         if (attempt.outcome === 'repaired') return { outcome: 'accepted', rounds, question: null };
         if (attempt.outcome !== 'no-model') {
@@ -327,6 +330,7 @@ export async function repairOnce(option, refusal, o = {}) {
   const now = o.now ?? Date.now;
   const t0 = now();
   const err = { sentence: sentence(refusal?.sentence ?? 'Construct refused the change.'), rule: refusal?.rule ?? null, code: refusal?.code ?? null, fixes: (refusal?.fixes ?? []).slice(0, 5).map((f) => ({ id: String(f.id ?? f.fixId ?? 'fix'), sentence: sentence(f.sentence ?? '') })) };
+  /** @returns {any} */
   const done = (outcome, repaired, after, said) => ({ v: 1, step: REPAIR_STEP, model, attempts: 1, outcome, before: { tool: option.tool, args: option.args }, option: repaired, refusal: err, after: after ?? null, sentence: sentence(said), ms: Math.max(0, now() - t0) });
   let text;
   try {

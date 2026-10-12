@@ -3,6 +3,7 @@
 // recommended and which gold routes were found; misses.mjs classifies them. Running both takes about 30 seconds.
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { missesFromEvalCase } from './misses.mjs';
 
 /**
@@ -51,4 +52,28 @@ export async function runEvalMisses(o = {}) {
     out.numbers.train = { n: result.cases.length, recall: avg('recall'), precision: avg('precision'), preferred: avg('preferred') };
   }
   return out;
+}
+
+/** Where the repo keeps the last eval miss snapshot (Settings shows it): `construct line misses --eval --save`. */
+export const SNAPSHOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../line/rule-factory/eval-misses.json');
+
+/**
+ * The last eval miss snapshot, or null when there is none or it cannot be read.
+ * @param {string} [file]
+ * @returns {{at: string, numbers: any, misses: import('./contract.mjs').ClassifiedMiss[]} | null}
+ */
+export function readSnapshot(file = SNAPSHOT) {
+  try { const s = JSON.parse(fs.readFileSync(file, 'utf8')); return Array.isArray(s?.misses) ? s : null; } catch { return null; }
+}
+
+/**
+ * Keep the eval misses as the repo's snapshot (`construct line misses --eval --save`), for Settings' miss report.
+ * @param {Awaited<ReturnType<typeof runEvalMisses>>} r
+ * @param {string} [file]
+ * @returns {string} The file written.
+ */
+export function writeSnapshot(r, file = SNAPSHOT) {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, `${JSON.stringify({ at: new Date().toISOString().slice(0, 10), numbers: r.numbers, misses: [...r.train, ...r.drafter] }, null, 1)}\n`);
+  return file;
 }

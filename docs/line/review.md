@@ -4,6 +4,112 @@ One section per step. For each: what the tests prove (plain English), known gaps
 check it yourself. A step is done only after your UAT passes; until then it is "awaiting UAT".
 Branch: `work/2026-09-23` in `~/Repositories/construct` (local only, not pushed).
 
+## im1 + im2: miss reports, a static tool for the top miss, and Qwen's one repair (12 Oct, branch `im1-im2`; awaiting UAT)
+
+**im1, miss reports.** Every miss is now one of two kinds, per step: **absent** (the right answer was not among the
+options Line offered, so a static tool is missing) or **picked** (it was offered, but static order, Qwen or jev
+recommended another, a ranking problem). The right answer comes from the person (a fix they applied, their own step, an
+edit they retried, in plan feedback), from Train Line's gold, or from the drafter eval's gold. `@line/rule-factory`
+`misses.mjs` (`ClassifiedMiss`, `missReport()`), `eval-misses.mjs` (runs both evals); everything is slotted: request
+shapes keep slot kinds only (`fix the problem in <finding>`), never a project word.
+- CLI: `construct line misses --dir <project>` prints the miss report after the trace section; `--eval` adds Train Line
+  and the drafter eval (about 30 seconds on a quiet machine); `--eval --save` keeps them in
+  `line/rule-factory/eval-misses.json` for Settings.
+- Settings -> "AI steps" -> "Where Line missed": the open project's plan feedback plus that snapshot
+  (`GET /api/line/misses`, registry tool `line.misses`).
+
+Miss report, before -> after (eval sources): Train Line held-out 10 misses (10 absent, 0 picked) -> 0; drafter eval 6
+(6 absent, 0 picked) -> 6. Every Train miss was the same pattern: for one cross-feature problem (LINE-DIR), Train's gold
+also lists moving the item into the library directly, which the drafter never offered (~30 more in a leave-one-world-out
+run over the train split). **Static tool added**: drafter template `fix-step` offers that move, checked by Construct,
+below the typed fix (only for one LINE-DIR problem, not "all problems").
+
+| eval | recall | precision | preferred |
+|---|---|---|---|
+| Train Line held-out (130) | 96.2% -> 100% | 91.3% -> 91.7% | 100% -> 100% |
+| Drafter eval (55) | 92.7% -> 92.7% | 95.8% -> 95.8% | 92.7% -> 92.7% |
+
+Floors raised: Train recall 0.96 -> 1, precision 0.91 -> 0.92. **Decision for you**: the drafter corpus and Train's gold
+disagreed (Train lists the raw move as a valid route for one LINE-DIR fix, the drafter corpus did not); following "Train
+Line's gold wins" (11 Oct), the three single-LINE-DIR fix cases of the drafter corpus (ls-x01, ls-x04, cl-x02) now list
+it too; without that, drafter precision would read 93.1%. Say if the drafter corpus should win instead.
+
+The 6 drafter misses left are all held-out paraphrases ("<feature> should also show <component>", "share <component>
+with <feature>", "make <component> reusable across features", "the <page> should say <value>"). They are reported, not
+fixed: fixing them from their own wording would stop them being held out. New held-out paraphrases first, then lexicon
+entries.
+
+**im2, Qwen repairs a refused option once.** `packages/core/line-decide.mjs` `repairOnce(option, refusal)`: when an
+option Qwen or jev chose fails Construct's check, the local model (profile `construct.repair`, qwen2.5-coder:1.5b) gets
+a small fixed prompt with only the refusal sentence, the finding, the typed fixes and the option; its reply is
+constrained to the option's schema (Ollama `format`: the tool is fixed, the arguments are the tool's own, from the one
+registry); exactly one attempt; the repaired option is checked again; still refused, outside the schema, or the same
+change goes to the person. The attempt is kept on the decision trace (`DecideLoopResult` round `repair`) and, slotted,
+in `<state>/records/repairs.jsonl`. With Ollama down the static path is unchanged and one sentence says so ("The local
+model qwen2.5-coder:1.5b is not running, so Line did not try a repair and the static path is unchanged.").
+- Wired in: `decideUntilAccepted` (an option jev or Qwen chose), the drafter route check (a model's route Construct
+  refused; repaired, it can be added and still waits for approval), and the import fix loop (a refused fix jev picked:
+  the repaired fix joins the plan as a waiting step, lands, the refused step is tried again and the refused fix left).
+- Live (`CONSTRUCT_LIVE_QWEN=1 node --test test/line-repair-live.test.mjs`): **7 of 20 seeded Train Line refusals
+  repaired (35%)**; 11 gave back the same change, 2 were refused again; base-on 7 of 14, promote 0 of 6; about 0.35 s
+  each. Why it is low: Construct's refusal for an unknown item, a wrong library folder or a bad name ("There is no
+  feature item "orders/components/orderButton"; pick one from a feature.") carries no typed fix and does not name the
+  nearest match, so the model has nothing to copy. That is a static gap: a "did you mean <nearest id>" typed fix on
+  UNKNOWN_ITEM / UNKNOWN_FEATURE would fix most of these without a model (next im step).
+
+Tests (all pass): `packages/rule-factory/test/misses.test.mjs` (4), `test/line-im1.test.mjs` (3),
+`test/line-repair.test.mjs` (6), `test/line-repair-wiring.test.mjs` (4), `test/line-repair-live.test.mjs` (1, opt-in),
+`ui/server/src/lineAiApi.test.mjs` (+1), `ui/client/features/ai-steps/domain/AiSteps.spec.mjs` (+1), the raised floors in
+`test/line-train.test.mjs`, `test/line-drafter-contract.test.mjs` (fix.problem now names line.promote too); UAT walk
+`ui/e2e/uat/im1-im2.spec.js` (`playwright.im1-im2.config.js`, ports 3398/4398).
+1. Contract: a miss is absent exactly when the right answer was not offered; a project name or quoted text in a pattern
+   is refused; a miss that chose the right answer is not a miss.
+2. Eval cases: a gold route never offered is absent, the preferred one offered but not recommended is picked; a question
+   the gold wanted is absent on "ask".
+3. Plan feedback: the person applying an offered fix that was not recommended is picked; their own step or an edited
+   retry is absent; an agent's step is not the person's answer.
+4. The report counts per step, lists the top absent patterns and says it in one sentence; the CLI prints it, `--json`
+   carries it, no project name appears.
+5. The static tool: "fix the problem in InvoicesPage" offers "Move OrderButton into the library directly.", checked,
+   below the typed fix; "fix all problems" and a LINE-BASE problem do not; three held-out Train cases that missed it now
+   find every gold route.
+6. repairOnce: the prompt holds only the error, finding, typed fixes and option and stays under 800 characters; the
+   output schema fixes the tool; one attempt; checked again; a second failure, an off-schema reply or the same change go
+   to the person; Ollama down is one sentence and no attempt; the Ollama request carries the schema, the 1.5B and
+   temperature 0.
+7. decideUntilAccepted: jev's refused option is repaired once and lands as a waiting step, nothing written before a
+   person approves; refused again asks one question; a static choice is never repaired.
+8. Construct's check on a copy of the sample: refused, repaired, accepted; the sample is untouched; the record holds no
+   project name.
+9. Import fix loop (mock): jev's refused fix is repaired, waits for approval, lands, and the import ends "Done: 10 steps
+   landed."; refused again asks the person; a statically picked fix is never repaired.
+10. Drafter: a model's refused route is repaired, checked, kept in the records, and added as a waiting step; with Ollama
+    down it stays refused with the sentence and every static route is unchanged.
+
+Gaps:
+- No drafter route comes from a model yet (only templates and retrieval), so the drafter wiring runs only when one does;
+  the import fix loop is the live path today.
+- The import loop records a repair as "proposed" (it is checked when its plan step runs, not on a copy first).
+- Settings shows the eval misses from the saved snapshot, not live (the evals take about 30 seconds); re-run
+  `construct line misses --eval --save` after changing the drafter.
+- The live repair rate is 35%: see above; the fix is static (nearest-match typed fixes), not a bigger model.
+- `construct line misses` already listed recurring refusals (cl1); the miss report is added to the same command rather
+  than a new verb.
+
+### UAT (5 minutes; a copy of the sample)
+1. `node packages/cli/construct.mjs line misses --eval --dir examples/line-sample`: "Miss report (plan, train,
+   drafter-eval): 6 misses: 6 where the right answer was not among Line's options ...", one line per step, the top
+   patterns ("share <component> with <feature>" ...), "Train Line held-out eval: 100% of the valid routes found".
+2. Start Cockpit with the drafter on (`cd ui/server && LINE_DRAFTER=1 npm start`; `cd ui/client && npm run dev`), open a
+   copy of `examples/line-sample`, profile menu -> Settings -> "AI steps": "Where Line missed" shows the sentence, the
+   steps and, under Details, what Line did not offer; the list of steps includes "When Construct refuses an option Qwen
+   or jev chose, makes one repair ...".
+3. Components -> "Describe a change": `fix the problem in InvoicesPage` and Enter: below the recommended fix, a second
+   checked route "Move OrderButton into the library directly."; Add to plan puts it in the Plan panel waiting for your
+   approval, nothing is written yet.
+4. Optional, with Ollama running: `CONSTRUCT_LIVE_QWEN=1 node --test test/line-repair-live.test.mjs` prints "Live repair
+   success: 7/20 (35%) ...".
+
 ## Import v2: fit existing logic into Line's blocks, backed by tests (11 Oct, merged on `merge-iv2`; awaiting UAT)
 
 Contract: `docs/line/import-v2/CONTRACT.md`. Merged branches: `fix-plan-lock`, `fix-yaml-comments`, `iv2-bugs`, `iv2-map`,

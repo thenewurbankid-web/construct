@@ -1362,7 +1362,13 @@ app.use('/api/line', createLineRenderRouter({
 }));
 
 // cu2: every AI step's profile (model, reply cap, ladder, static fallback), read-only for Settings.
-app.use('/api/line', createLineAiRouter());
+app.use('/api/line', createLineAiRouter({
+  // im1: the open project's plan feedback joins the miss report under "AI steps".
+  getRoot: () => {
+    const root = containedProjectRoot(getProjectDir());
+    return root ? { ok: true, root } : { ok: false, error: 'No project is open.' };
+  },
+}));
 
 // #386: the Picker's "propose selectors as a diff to story.md" (design section 9.7). Below the session gate
 // like every other `/api` route; the client names a feature and a story.md must already exist for it.

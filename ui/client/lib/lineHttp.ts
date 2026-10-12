@@ -56,6 +56,7 @@ export const lineHttp: LineHttp = {
   importPlan: (req) => postJson('/api/line/import/plan', req),
   newProject: (req) => postJson('/api/line/new-project', req),
   getAiProfiles: () => getJson('/api/line/ai-profiles'),
+  getMisses: () => getJson('/api/line/misses'),
   trace: (req) => postJson('/api/line/trace', req),
   getImportAgent: (folder) => getJson(`/api/line/import-agent?folder=${encodeURIComponent(folder)}`),
   startImportAgent: (folder, route) => postJson('/api/line/import-agent/start', route ? { folder, route } : { folder }),

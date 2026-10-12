@@ -638,6 +638,20 @@ export function assertRepairAttempt(a) {
 }
 
 /**
+ * im1: GET /api/line/misses, the miss report Settings shows under "AI steps" (@line/rule-factory MissReport, plus where
+ * it comes from). Every miss is absent (the right answer was not among Line's options) or picked (offered, another
+ * recommended); patterns are slotted.
+ * @typedef {object} MissReportView
+ * @property {true} ok
+ * @property {{misses: number, absent: number, picked: number}} total
+ * @property {{step: string, absent: number, picked: number, total: number, sentence: string}[]} steps
+ * @property {{pattern: string, step: string, count: number, sources: string[], examples: string[], sentence: string}[]} topAbsent
+ * @property {string} sentence
+ * @property {string} from  Where the misses come from, in one sentence.
+ * @property {{train: any, drafter: any}|null} numbers  The eval numbers of the snapshot, when there is one.
+ */
+
+/**
  * cu2: GET /api/line/ai-profiles, the read-only Settings view of every AI step.
  * @typedef {object} AiProfiles
  * @property {string} defaultModel   qwen2.5-coder:1.5b.
@@ -861,6 +875,7 @@ export const LINE_API = Object.freeze([
   { method: 'POST', path: '/api/line/new-project', request: 'NewLineProjectRequest', response: 'NewLineProjectResult' },
   { method: 'GET', path: '/api/line/tools', request: null, response: 'ToolList' },
   { method: 'GET', path: '/api/line/ai-profiles', request: null, response: 'AiProfiles' },
+  { method: 'GET', path: '/api/line/misses', request: null, response: 'MissReportView' },
   { method: 'POST', path: '/api/line/trace', request: 'TraceRequest', response: 'TraceMatch' },
   { method: 'GET', path: '/api/line/import-agent', request: 'folder (query)', response: 'ImportAgentView' },
   { method: 'POST', path: '/api/line/import-agent/start', request: '{folder, route?}', response: 'ImportAgentView' },

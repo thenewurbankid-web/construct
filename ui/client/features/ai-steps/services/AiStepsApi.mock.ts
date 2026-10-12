@@ -1,4 +1,4 @@
-import type { AiProfiles, AiStepsApi, StepProfile } from '../types';
+import type { AiProfiles, AiStepsApi, MissReportView, StepProfile } from '../types';
 
 // A sample in the contract's shape (packages/core/ai-profiles.json holds the real set; the server reads it).
 const ladder = (jev: boolean): StepProfile['ladder'] => ({ static: { target: 1 }, options: { on: jev, target: 0.6 }, review: { on: false, target: 0.7 }, measured: null });
@@ -12,4 +12,14 @@ const SAMPLE: AiProfiles = {
   ],
 };
 
-export const mockAiStepsApi: AiStepsApi = { getAiProfiles: async () => SAMPLE };
+const MISSES: MissReportView = {
+  ok: true,
+  total: { misses: 2, absent: 1, picked: 1 },
+  steps: [{ step: 'line.promote', absent: 1, picked: 1, total: 2, sentence: 'The line.promote step: 1 miss where the right answer was not offered, 1 where it was offered but not recommended.' }],
+  topAbsent: [{ pattern: 'share <component> with <feature> -> line.promote + line.baseOn', step: 'line.promote', count: 1, sources: ['drafter-eval'], examples: ['drafter-eval:ls-v04'], sentence: '1 miss: "share <component> with <feature>" needed the line.promote + line.baseOn route, which Line did not offer.' }],
+  sentence: "2 misses: 1 where the right answer was not among Line's options (a static tool is missing), 1 where it was offered but another was recommended.",
+  from: 'From Train Line and the drafter eval (measured 2026-10-12).',
+  numbers: null,
+};
+
+export const mockAiStepsApi: AiStepsApi = { getAiProfiles: async () => SAMPLE, getMisses: async () => MISSES };

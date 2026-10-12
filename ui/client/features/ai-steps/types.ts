@@ -1,5 +1,5 @@
 // The AI steps view's own view models. The contract's shapes come from the one shared mirror (lib/lineContract.ts).
-import type { AiProfiles, LineHttp } from '@/lib/lineContract';
+import type { AiProfiles, LineHttp, MissReportView } from '@/lib/lineContract';
 
 export type * from '@/lib/lineContract';
 
@@ -20,8 +20,13 @@ export type AiStepsState =
   | { phase: 'ready'; profiles: AiProfiles; rows: AiStepRow[] }
   | { phase: 'error'; sentence: string };
 
-/** What the panel renders for any state: one status sentence and the rows (empty until loaded). */
-export type AiStepsView = { status: string; rows: AiStepRow[] };
+/** im1: the miss report as the panel shows it (null until read, or when it cannot be read). */
+export type MissView = { sentence: string; from: string; steps: { step: string; sentence: string }[]; top: string[]; evals: string | null };
+
+/** What the panel renders for any state: one status sentence and the rows (empty until loaded), and the miss report. */
+export type AiStepsView = { status: string; rows: AiStepRow[]; misses: MissView | null };
 
 /** What the panel needs from the server (real or mock). */
-export type AiStepsApi = Pick<LineHttp, 'getAiProfiles'>;
+export type AiStepsApi = Pick<LineHttp, 'getAiProfiles' | 'getMisses'>;
+
+export type { MissReportView };
