@@ -675,6 +675,29 @@
     ]
   },
   {
+    "root": "fixtures/line-cu4",
+    "violations": [
+      {
+        "rule": "SLICE-001",
+        "module": "separation-of-concerns",
+        "severity": "error",
+        "file": "features/orders/",
+        "line": 1,
+        "message": "Feature \"orders\" is missing expected folder(s): controllers, workflows, hooks, domain, services, pages.",
+        "why": "A feature slice must expose a full, predictable set of layer folders so ownership stays unambiguous.",
+        "expected": [
+          "features/orders/controllers/",
+          "features/orders/workflows/",
+          "features/orders/hooks/",
+          "features/orders/domain/",
+          "features/orders/services/",
+          "features/orders/pages/"
+        ],
+        "suggestedFix": "Run: construct feature create orders"
+      }
+    ]
+  },
+  {
     "root": "fixtures/readability-jsdoc",
     "violations": [
       {

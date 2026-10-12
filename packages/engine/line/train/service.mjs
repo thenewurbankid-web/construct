@@ -338,9 +338,9 @@ export function createTrainService(o = {}) {
       store.put([next], 'owner', verdict);
       // im3: an agreement (or disagreement) with Claude's preferred route is remembered for the drafter's route step.
       if (mem) {
-        const keys = c.gold.routes.map(trainRouteKey);
-        const proposed = trainRouteKey(c.gold.routes.find((r) => r.id === c.gold.preferred) ?? c.gold.routes[0]);
-        Promise.resolve().then(() => mem.recordOutcome('train.route', { intent: c.intent, structure: c.factsHash ?? null, slots: trainSlotTokens(c.slots), neighbourhood: [], options: [...new Set(keys)], proposed },
+        const keys = c.gold.routes.map(goldRouteKey);
+        const proposed = goldRouteKey(c.gold.routes.find((r) => r.id === c.gold.preferred) ?? c.gold.routes[0]);
+        Promise.resolve().then(() => mem.recordOutcome('train.route', { intent: c.intent, structure: c.factsHash ?? null, slots: goldSlotTokens(c.slots), neighbourhood: [], options: [...new Set(keys)], proposed },
           { kind: verdict === 'agree' ? 'agreed' : 'disagreed', chosen: verdict === 'agree' ? proposed : null, by: 'person' })).catch(() => {});
       }
       return { case: view(next) };
@@ -414,13 +414,13 @@ const familyOf = (c) => c.gold.routes.find((r) => r.id === c.gold.preferred)?.st
  * @param {any} r A gold route.
  * @returns {string}
  */
-export const trainRouteKey = (r) => (r?.outcome === 'change' && r.steps?.length ? r.steps.map((s) => s.tool).join('+') : String(r?.outcome ?? 'none'));
+export const goldRouteKey = (r) => (r?.outcome === 'change' && r.steps?.length ? r.steps.map((s) => s.tool).join('+') : String(r?.outcome ?? 'none'));
 /**
  * im3: a case's slots as memory tokens (type and kind, never a name).
  * @param {Record<string, any>} slots
  * @returns {string[]}
  */
-export const trainSlotTokens = (slots) => Object.entries(slots ?? {}).map(([k, v]) => [`${k.replace(/\d+$/, '')}:${v.type}`, v.kind ? `kind=${v.kind}` : ''].filter(Boolean).join(' '));
+export const goldSlotTokens = (slots) => Object.entries(slots ?? {}).map(([k, v]) => [`${k.replace(/\d+$/, '')}:${v.type}`, v.kind ? `kind=${v.kind}` : ''].filter(Boolean).join(' '));
 
 /** im3: the gold-preferred drafted route as the memory record a person's pick would make (null when it was not drafted). */
 function memoryPick(d, hit) {
