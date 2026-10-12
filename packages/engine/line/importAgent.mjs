@@ -237,7 +237,7 @@ export function createImportAgent(o) {
 
   /** After a step landed: rebuild the map, diff it, run the tests, check behaviour; keep and record the ImportLoopState. */
   async function checkStep(doc, step, by) {
-    const m = await measure(o.logic, { root, folder, logic: doc.logic });
+    const m = await measure(o.logic, { root, folder, logic: doc.logic, steps: doc.steps });
     const checks = loopChecks(m, doc.logic, { at: 'step', folder });
     const n = doc.steps.indexOf(step) + 1;
     const before = doc.logic.loop.at(-1)?.mapAfter ?? doc.logic.map;
@@ -576,7 +576,7 @@ export function createImportAgent(o) {
         let logicFailing = [];
         let extra = [];
         if (looping(doc)) {
-          const m = await measure(o.logic, { root, folder, logic: doc.logic, full: true });
+          const m = await measure(o.logic, { root, folder, logic: doc.logic, full: true, steps: doc.steps });
           const lc = loopChecks(m, doc.logic, { at: 'verify', folder });
           const st = loopState({ step: { id: 'verify', tool: 'verify', sentence: 'Check everything', args: { folder } }, n: doc.steps.length + 1, at: now(), before: doc.logic.loop.at(-1)?.mapAfter ?? doc.logic.map, m, checks: lc, logic: doc.logic });
           doc.logic.last = { kept: m.diff.kept.length + m.diff.moved.length, missing: st.diff.missing.filter((u) => !u.waived), coverage: st.coverage, tests: st.tests };

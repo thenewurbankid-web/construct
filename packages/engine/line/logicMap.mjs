@@ -306,7 +306,8 @@ export function buildLogicMap(appRoot, files, { renames = {}, read = (abs) => fs
  * rename table re-hashes as buildLogicMap does). Kept, moved, changed, missing (one sentence each) and added units.
  * @param {LogicMap} before
  * @param {LogicMap} after
- * @param {{renames?: RenameTable, threshold?: number}} [options] `threshold` is the least token similarity for "changed" (default 0.3).
+ * @param {{renames?: RenameTable, fileRenames?: Record<string, RenameTable>, threshold?: number}} [options] `fileRenames`
+ *   is a rename table per before-side file (#875); `threshold` is the least token similarity for "changed" (default 0.3).
  * @returns {MapDiff}
  */
 export function compareLogicMaps(before, after, options = {}) {

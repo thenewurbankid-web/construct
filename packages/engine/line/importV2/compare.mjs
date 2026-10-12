@@ -43,15 +43,30 @@ export const renameFn = (fn, renames) => String(fn).replace(/[A-Za-z_$][\w$]*/g,
  */
 export const fingerprintWith = (hash, kind, fn, anchor, renames = {}) => hash(`${kind}\u0000${renameFn(fn, renames)}\u0000${anchor}`);
 
-/** Re-hash a map's fingerprints through a rename table (old -> new), when its units still carry their anchors. */
-function rehash(map, renames, hash) {
-  if (!Object.keys(renames).length) return map.units;
+/**
+ * The rename table for one before-side unit: the project-wide `renames`, then its own file's table from `fileRenames`
+ * (an import step that moved and renamed that file only; another file using the old name keeps it).
+ * @param {{file?: string}} u
+ * @param {RenameTable} renames
+ * @param {Record<string, RenameTable>} fileRenames
+ * @returns {RenameTable}
+ */
+const tableFor = (u, renames, fileRenames) => {
+  const own = u.file === undefined ? undefined : fileRenames[u.file];
+  return own ? { ...renames, ...own } : renames;
+};
+
+/** Re-hash a map's fingerprints through its rename tables (old -> new), when its units still carry their anchors. */
+function rehash(map, renames, fileRenames, hash) {
+  const perFile = map.units.some((u) => Object.keys(tableFor(u, {}, fileRenames)).length);
+  if (!Object.keys(renames).length && !perFile) return map.units;
   if (!hash) throw new TypeError('compareLogicMaps needs the map\'s hash to apply a rename table.');
   const seen = new Map();
   return map.units.map((u) => {
     if (u.anchor === undefined) return u;
-    const anchor = u.anchor.replace(/([IJ]):([A-Za-z_$][\w$]*)/g, (_m, t, name) => `${t}:${renames[name] ?? name}`);
-    const base = fingerprintWith(hash, u.kind, u.fn, anchor, renames);
+    const table = tableFor(u, renames, fileRenames);
+    const anchor = u.anchor.replace(/([IJ]):([A-Za-z_$][\w$]*)/g, (_m, t, name) => `${t}:${table[name] ?? name}`);
+    const base = fingerprintWith(hash, u.kind, u.fn, anchor, table);
     const k = (seen.get(base) ?? 0) + 1;
     seen.set(base, k);
     return { ...u, fingerprint: k === 1 ? base : hash(`${base}#${k}`) };
@@ -70,14 +85,16 @@ export const missingSentence = (u) => `The ${LOGIC_UNIT_WORDS[u.kind] ?? u.kind}
  * or moved (another file). Of the rest, a before unit and an after unit of the same kind in the same function whose
  * text is alike are one unit that changed; a before unit with no partner is missing (with one sentence), an after
  * unit with none is added. `renames` (old -> new) maps the before side's identifiers, so a renamed component keeps
- * its units; it needs `hash`, the one the map was built with (logicMap.mjs passes it).
+ * its units; `fileRenames` (before-side file -> table) does the same for one file only (an import step that moved and
+ * renamed that file, #875: the same name in another file is left alone). Either needs `hash`, the one the map was built
+ * with (logicMap.mjs passes it).
  * @param {LogicMap} before
  * @param {LogicMap} after
- * @param {{renames?: RenameTable, threshold?: number, hash?: (s: string) => string}} [options] `threshold` is the least token similarity for "changed" (default 0.3).
+ * @param {{renames?: RenameTable, fileRenames?: Record<string, RenameTable>, threshold?: number, hash?: (s: string) => string}} [options] `threshold` is the least token similarity for "changed" (default 0.3).
  * @returns {MapDiff}
  */
-export function compareLogicMaps(before, after, { renames = {}, threshold = 0.3, hash } = {}) {
-  const b = rehash(before, renames, hash);
+export function compareLogicMaps(before, after, { renames = {}, fileRenames = {}, threshold = 0.3, hash } = {}) {
+  const b = rehash(before, renames, fileRenames, hash);
   const byFp = new Map();
   for (const u of after.units) if (!byFp.has(u.fingerprint)) byFp.set(u.fingerprint, u);
   /** @type {MapDiff} */
@@ -95,7 +112,7 @@ export function compareLogicMaps(before, after, { renames = {}, threshold = 0.3,
   const rest = after.units.filter((u) => !used.has(u));
   for (const i of left) {
     const u = before.units[i];
-    const fn = renameFn(u.fn, renames);
+    const fn = renameFn(u.fn, tableFor(u, renames, fileRenames));
     let best = null; let bestScore = threshold;
     for (const a of rest) {
       if (used.has(a) || a.kind !== u.kind || a.fn !== fn) continue;

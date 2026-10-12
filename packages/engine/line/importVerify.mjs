@@ -384,9 +384,10 @@ export function checkBehaviour(projectRoot, diff, sources, folder = '') {
  * @param {string} folder
  * @param {any} logic The import plan file's logic record.
  * @param {any} ops
+ * @param {any[]} [steps] The import plan file's steps (a done step that moved and renamed a file renames it in the compare).
  * @returns {Promise<any[]>}
  */
-export async function verifyImportLogic(projectRoot, folder, logic, ops) {
-  const m = await measure(ops, { root: projectRoot, folder, logic, full: true });
+export async function verifyImportLogic(projectRoot, folder, logic, ops, steps = []) {
+  const m = await measure(ops, { root: projectRoot, folder, logic, full: true, steps });
   return loopChecks(m, logic, { at: 'verify', folder });
 }

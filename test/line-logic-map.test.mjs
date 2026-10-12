@@ -85,6 +85,25 @@ test('logic map: a rename through the table keeps fingerprints', () => {
   assert.deepEqual(mapOf(ORIGINAL, { renames }).units.map((u) => u.fingerprint), after.units.map((u) => u.fingerprint));
 });
 
+// #875: an import step that moves a page into the library and renames its component renames it in that file only.
+const CARD = (name) => `export function ${name}({ item, onPick }) {\n  if (!item) return null;\n  return <button onClick={() => onPick(item.id)}>{item.title}</button>;\n}\n`;
+test('#875 logic map: a per-file rename table renames the moved file only; the same name in another file is unaffected', () => {
+  const before = mapOf({ 'src/shop/Card.tsx': CARD('Card'), 'src/blog/Card.tsx': CARD('Card') });
+  const after = mapOf({ 'src/shop/library/components/ShopCard.tsx': CARD('ShopCard'), 'src/blog/Card.tsx': CARD('Card') });
+  const without = compareLogicMaps(before, after);
+  assert.ok(without.missing.length + without.changed.length > 0 && without.added.length + without.changed.length > 0, 'without a table the renamed units read as missing + added');
+  const diff = compareLogicMaps(before, after, { fileRenames: { 'src/shop/Card.tsx': { Card: 'ShopCard' } } });
+  assertMapDiff(diff);
+  assert.deepEqual([diff.missing.length, diff.changed.length, diff.added.length], [0, 0, 0]);
+  assert.equal(diff.moved.length, before.units.filter((u) => u.file === 'src/shop/Card.tsx').length);
+  assert.ok(diff.moved.every((x) => x.from.file === 'src/shop/Card.tsx' && x.to.file === 'src/shop/library/components/ShopCard.tsx'));
+  assert.equal(diff.kept.length, before.units.filter((u) => u.file === 'src/blog/Card.tsx').length, 'the other Card keeps its name and every unit');
+  // a project-wide table is wrong: it renames the other copy too, which then reads as missing
+  const global = compareLogicMaps(before, after, { renames: { Card: 'ShopCard' } });
+  assert.ok(global.missing.length + global.changed.length > 0);
+  assert.ok([...global.missing, ...global.changed.map((c) => c.before)].every((u) => u.file === 'src/blog/Card.tsx'));
+});
+
 test('logic map: the same logic twice in one function gets distinct fingerprints, by order', () => {
   const src = 'export function f(a) {\n  if (a) return 1;\n  if (a) return 2;\n}\n';
   const map = mapOf({ 'x.ts': src });
