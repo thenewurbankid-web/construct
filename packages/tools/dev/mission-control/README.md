@@ -74,18 +74,24 @@ their job as `+N`), and `ollama ps`.
 bench run switched, step landed / not landed, refusals (first 20, then every 10th), STUCK and loop broken, run ended.
 History already in a run's logs is shown in the table, not replayed into the log.
 
+**Plan / jev (#892).** The latest `node trace/tools/jev/ask.mjs` request: its labels static vs jev with FORK marks,
+the recommended route and the Trace path (collapsible, each node's static pick, jev's pick + confidence, FORK), plus
+the latest `eval-intent` table (static vs jev per label, fork rate). Reads `trace/tools/jev/data/ask-log.jsonl`,
+`trace/tools/jev/reports/intent-eval.json` and `<MC_JEV_PROJECT>/line/drafter/jev-shadow.jsonl` (default
+`examples/line-sample`) in the checkout Mission Control runs from (`plan-jev.mjs`); polled every 3 s.
+
 Every source degrades on its own: a missing git, `ollama` or lock shows as unavailable in its panel and the rest keep
 streaming.
 
 ## Endpoints
 
 `/` the page, `/events` the SSE stream (`?run=`), `/api/row?id=&run=` one row's full detail, `/api/prompt?run=`,
-`/api/health`. Only discovered run dirs (or dirs under `bench/ecommerce/runs/` or `MC_RUNS`) are readable.
+`/api/plan-jev` (the Plan / jev panel's data), `/api/health`. Only discovered run dirs (or dirs under `bench/ecommerce/runs/` or `MC_RUNS`) are readable.
 
 ## Test
 
 ```
-node --test packages/tools/dev/mission-control/mission-control.test.mjs
+node --test packages/tools/dev/mission-control/mission-control.test.mjs packages/tools/dev/mission-control/plan-jev.test.mjs
 ```
 
 The parser, join, counters, timeline and loop detector over `fixtures/runs/fixture-qwen` (record shapes copied from

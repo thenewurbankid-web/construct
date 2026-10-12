@@ -65,7 +65,7 @@ export async function run(argv, o = {}) {
     }
     if (!request) { say('Give the request: intent-label.mjs add "<request>"'); return { lines, code: 1 }; }
     const { staticLabels, d } = readRequest(project, request);
-    say(`request   ${request}`, ); say(`project   ${project}`); say(`slot form ${d.request}`);
+    say(`request   ${request}`); say(`project   ${project}`); say(`slot form ${d.request}`);
     say(`static    ${show(staticLabels)}`);
     const slotChoices = Object.keys(d.slots).filter((s) => d.tokens.some((t) => t.slot === s)).map((s) => `${d.slots[s].kind}:${(d.bindings[s] && typeof d.bindings[s] === 'object' ? d.bindings[s].name ?? d.bindings[s].id : d.bindings[s]) ?? s}`);
     say(`slots     ${slotChoices.join(' | ') || 'none'}`);
@@ -114,7 +114,8 @@ export async function run(argv, o = {}) {
     const count = {};
     for (const r of rows) count[r.gold.intent] = (count[r.gold.intent] ?? 0) + 1;
     const templated = CATALOG.filter((e) => e.templates.length).map((e) => e.id);
-    say('', `${rows.length} rows; per intent: ${Object.entries(count).sort().map(([k, n]) => `${k} ${n}`).join(', ')}`);
+    say('');
+    say(`${rows.length} rows; per intent: ${Object.entries(count).sort().map(([k, n]) => `${k} ${n}`).join(', ')}`);
     const missing = templated.filter((id) => !count[id]);
     say(missing.length ? `intents with a template but no gold row: ${missing.join(', ')}` : 'every intent with a template has at least one gold row');
     return { lines, code: 0 };
