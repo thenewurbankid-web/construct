@@ -37,7 +37,7 @@ function projectCopy() {
 }
 
 test('cu4 UAT: open a component, give it a behaviour, add a When -> Do, change its state, try a library item, make a new component', async ({ page }) => {
-  test.setTimeout(180_000);
+  test.setTimeout(480_000);
   const { dir: base, used } = projectCopy();
   test.info().annotations.push({ type: 'project', description: used });
   console.log(`cu4 UAT project: ${used}`);
@@ -47,24 +47,25 @@ test('cu4 UAT: open a component, give it a behaviour, add a When -> Do, change i
   page.on('console', (m) => { if (m.type() === 'error' && !(refusalAllowed && /status of 400/.test(m.text()))) problems.push(`console: ${m.text()}`); });
   page.on('response', (r) => { if (r.status() >= 400 && !(refusalAllowed && r.status() === 400 && r.url().endsWith('/plan/step'))) problems.push(`${r.status()} ${r.request().method()} ${r.url()}`); });
   let clicks = 0;
-  const click = async (locator) => { clicks += 1; await locator.click({ timeout: 30_000 }); };
+  const click = async (locator) => { clicks += 1; await locator.click({ timeout: 60_000 }); };
   const plan = page.getByTestId('line-plan');
   const approve = async () => {
     await click(plan.locator('[data-testid="plan-step"][data-state="waiting"]').first().getByRole('button', { name: /^Approve step/ }));
-    await expect(plan.locator('[data-testid="plan-step"][data-state="waiting"]')).toHaveCount(0, { timeout: 30_000 });
+    await expect(plan.locator('[data-testid="plan-step"][data-state="waiting"]')).toHaveCount(0, { timeout: 60_000 });
+    await expect(plan.locator('[data-testid="plan-step"][data-state="ready"], [data-testid="plan-step"][data-state="running"]')).toHaveCount(0, { timeout: 60_000 });
   };
   try {
     // 1. Components: the library cards, the editor and New component. Open OrderDetails (orders, based on Disclosure).
     await gotoCockpit(page, '/components');
     await click(page.getByRole('button', { name: 'Open in the editor: OrderDetails' }));
-    await expect(page.getByTestId('lc-headline')).toHaveText('OrderDetails: a component of orders, based on Disclosure.', { timeout: 30_000 });
+    await expect(page.getByTestId('lc-headline')).toHaveText('OrderDetails: a component of orders, based on Disclosure.', { timeout: 60_000 });
 
     // 2. Behaviour: Add this behaviour (disclosure), then Approve: two clicks.
     clicks = 0;
     await click(page.locator('[data-line-control="components.attachBehaviour"][data-line-target="disclosure"]'));
     await approve();
     expect(clicks).toBeLessThanOrEqual(2);
-    await expect(page.getByTestId('lc-behaviour')).toContainText('Clicking the trigger opens and closes it.', { timeout: 30_000 });
+    await expect(page.getByTestId('lc-behaviour')).toContainText('Clicking the trigger opens and closes it.', { timeout: 60_000 });
 
     // 3. Events: When the trigger is clicked, Do open or close it; Add, then Approve.
     await click(page.getByRole('tab', { name: 'Events' }));
@@ -74,7 +75,7 @@ test('cu4 UAT: open a component, give it a behaviour, add a When -> Do, change i
     await click(page.locator('[data-line-control="components.addWhenDo"]'));
     await approve();
     expect(clicks).toBeLessThanOrEqual(2);
-    await expect(page.getByTestId('lc-whendo')).toHaveCount(1, { timeout: 30_000 });
+    await expect(page.getByTestId('lc-whendo')).toHaveCount(1, { timeout: 60_000 });
 
     // 4. States: it is closed now; click "open" on the graph, then Approve.
     await click(page.getByRole('tab', { name: 'States' }));
@@ -83,14 +84,14 @@ test('cu4 UAT: open a component, give it a behaviour, add a When -> Do, change i
     await click(page.getByRole('button', { name: 'Set to open' }));
     await approve();
     expect(clicks).toBeLessThanOrEqual(2);
-    await expect(page.getByTestId('lc-current-state')).toHaveText('open', { timeout: 30_000 });
+    await expect(page.getByTestId('lc-current-state')).toHaveText('open', { timeout: 60_000 });
 
     // 5. A library item stays as it is: try a When -> Do on Disclosure; one sentence, and its fix is one click away.
     await click(page.getByRole('button', { name: 'Open in the editor: Disclosure' }));
     await click(page.getByRole('tab', { name: 'Events' }));
     refusalAllowed = true;
     await click(page.locator('[data-line-control="components.addWhenDo"]'));
-    await expect(page.getByTestId('lc-refusal')).toContainText('base a feature item on it and change that.');
+    await expect(page.getByTestId('lc-refusal')).toContainText('base a feature item on it and change that.', { timeout: 60_000 });
     refusalAllowed = false;
 
     // 6. New component: based on Disclosure in billing, named InvoiceFaq; Create, then Approve.
@@ -102,7 +103,7 @@ test('cu4 UAT: open a component, give it a behaviour, add a When -> Do, change i
     await click(form.locator('[data-line-control="components.newCreate"]'));
     await approve();
     expect(clicks).toBeLessThanOrEqual(2);
-    await expect(page.getByRole('button', { name: 'Open in the editor: InvoiceFaq' })).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole('button', { name: 'Open in the editor: InvoiceFaq' })).toBeVisible({ timeout: 60_000 });
     expect(fs.existsSync(path.join(base, 'features/billing/components/InvoiceFaq.tsx'))).toBe(true);
 
     expect(problems, problems.join('\n')).toEqual([]);

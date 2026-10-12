@@ -44,6 +44,7 @@ export function ComponentEditor({ view }: { view: ComponentEditorView }) {
           Editor
         </h2>
         <p className="lc-muted">Open a component from the library or a feature to see its behaviour, events and states.</p>
+        <Notice notice={view.notice} view={view} />
       </section>
     );
   }
@@ -56,6 +57,7 @@ export function ComponentEditor({ view }: { view: ComponentEditorView }) {
         <p className="lc-muted" role={s.phase === 'error' ? 'alert' : 'status'}>
           {s.phase === 'error' ? s.sentence : 'Reading the component.'}
         </p>
+        <Notice notice={view.notice} view={view} />
       </section>
     );
   }
