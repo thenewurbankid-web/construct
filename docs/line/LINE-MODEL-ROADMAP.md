@@ -16,7 +16,7 @@ Owner decisions of 2026-10-12. Work starts once the current board reaches 100%, 
 
   Outputs point into the input list or use relative tokens (self, its base, its feature, its user, new). Names come back only in the decoder, through the domain map.
 - **Training data is only synthetic worlds** generated from that version's registries and rules and verified by Construct, plus curated paraphrases. User data is never used. Per-project knowledge exists only at runtime (the graph neighbourhood and memory recall), never in the weights.
-- **It ships behind the decide() ladder:** static → Line-1 → Qwen → jev, with the rules-only fallback.
+- **It ships behind the decide() ladder:** static → middleware → Line-1 (the only picker; jev holds that role until Line-1 ships) → Construct verify → person, with the rules-only fallback.
   - Release gate: it must beat rules + retrieval on that version's held-out eval. Otherwise that release falls back to static.
   - A version mismatch is refused in one sentence.
 
