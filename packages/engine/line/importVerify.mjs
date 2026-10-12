@@ -15,6 +15,7 @@ import { classifyTypeErrors } from '@line/construct-core/verify';
 import { checkChangeForMove } from '@line/construct-core/check-change';
 import { moduleSpecifiers, semanticDiffSplit } from '@construct/ast/semantic-diff';
 import { runTypesCheck } from '../verifyRunner.mjs';
+import { readPathAliases } from '../tsFileMove.mjs';
 import { measure, loopChecks } from './importLoop.mjs';
 import { logicCheck } from './logicVerify/importUnits.mjs';
 
@@ -307,7 +308,10 @@ function unitlessMoves(projectRoot, folder, sources, known) {
  */
 export function checkBehaviour(projectRoot, diff, sources, folder = '') {
   const dest = new Map();
+  /** Still in place with its baseline text: a unit "moved" from it is a twin of one that moved (copied code), not a move. */
+  const untouched = (file) => { try { return typeof sources?.[file] === 'string' && fs.readFileSync(path.join(projectRoot, file), 'utf8') === sources[file]; } catch { return false; } };
   for (const m of diff?.moved ?? []) {
+    if (untouched(m.from.file)) continue;
     const c = dest.get(m.from.file) ?? new Map();
     // An export alone says little (a thin wrapper exports the same name); the logic inside says where the file went.
     c.set(m.to.file, (c.get(m.to.file) ?? 0) + (m.from.kind === 'export' ? 1 : 10));
@@ -331,6 +335,8 @@ export function checkBehaviour(projectRoot, diff, sources, folder = '') {
   // Files with no logic units of their own (a JSON fixture, a types file) move too: an import that pointed at a file
   // that is gone now points at the one file of the same name in the folder.
   Object.assign(moves, unitlessMoves(projectRoot, folder, sources, moves));
+  // tsconfig `paths` (`@/x`): a move re-points an importer's alias specifier, which must read as the same module too
+  const aliases = readPathAliases(projectRoot);
   for (const file of Object.keys(sources ?? {})) {
     if (dest.has(file) || !fs.existsSync(path.join(projectRoot, file))) continue;
     // Changed in place: itself first; a file with no logic units of its own that now only points at its moved copy
@@ -339,7 +345,7 @@ export function checkBehaviour(projectRoot, diff, sources, folder = '') {
   }
   const one = (from, to) => {
     try {
-      const r = checkChangeForMove(projectRoot, from, to, { beforeSource: sources[from], moves });
+      const r = checkChangeForMove(projectRoot, from, to, { beforeSource: sources[from], moves, aliases });
       const diverged = /** @type {any[]} */ (r.propertyCheck?.checked ?? []).find((c) => c.verdict === 'diverged');
       return { from, to, verdict: r.verdict, ...(diverged ? { detail: `${diverged.name}(${JSON.stringify(diverged.input).slice(1, -1)}) was ${JSON.stringify(diverged.before)}, is ${JSON.stringify(diverged.after)}` } : r.reason ? { detail: r.reason } : {}) };
     } catch (e) {

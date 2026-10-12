@@ -271,24 +271,27 @@ export function moduleSpecifiers(source) {
  * `source` with every relative module specifier replaced by the module it points at, as a project path mapped through
  * `moves` (old module path -> new module path, both without extension): `'./Table'` in `src/a/Page.tsx` and
  * `'../../library/components/Table'` in its moved copy both read `"@module:src/a/library/components/Table"` once
- * `src/a/Table` -> `src/a/library/components/Table` is in `moves`. Bare and aliased specifiers are kept as they are.
+ * `src/a/Table` -> `src/a/library/components/Table` is in `moves`. A specifier through one of `aliases` (tsconfig
+ * `paths`, such as `@/` -> `src`) is normalized the same way; bare specifiers are kept as they are.
  *
  * @param {string} source The source text.
  * @param {string} file The project-relative path of the file the source belongs to.
  * @param {Record<string, string>} [moves] Old module path -> new module path (extension and `/index` optional).
- * @returns {string} The source with relative specifiers normalized.
+ * @param {{prefix: string, dir: string}[]} [aliases] Path aliases, longest prefix first, `dir` project-relative.
+ * @returns {string} The source with relative and aliased specifiers normalized.
  *
  * @example
  * normalizeSpecifiers("import T from './Table';", 'src/a/Page.tsx', { 'src/a/Table': 'src/a/lib/Table' });
  * // => 'import T from "@module:src/a/lib/Table";'
  */
-export function normalizeSpecifiers(source, file, moves = {}) {
+export function normalizeSpecifiers(source, file, moves = {}, aliases = []) {
   const map = new Map(Object.entries(moves).map(([k, v]) => [moduleKey(k), moduleKey(v)]));
   const dir = String(file).split('/').slice(0, -1).join('/');
   let out = source;
   for (const s of moduleSpecifiers(source).reverse()) {
-    if (!s.value.startsWith('.')) continue;
-    const at = moduleKey(joinPosix(dir, s.value));
+    const alias = s.value.startsWith('.') ? null : aliases.find((a) => s.value.startsWith(a.prefix));
+    if (!s.value.startsWith('.') && !alias) continue;
+    const at = moduleKey(alias ? joinPosix(alias.dir, s.value.slice(alias.prefix.length)) : joinPosix(dir, s.value));
     out = `${out.slice(0, s.start)}${JSON.stringify(`@module:${map.get(at) ?? at}`)}${out.slice(s.end)}`;
   }
   return out;
@@ -296,20 +299,20 @@ export function normalizeSpecifiers(source, file, moves = {}) {
 
 /**
  * `semanticDiff` for a file that moved (Line Import v2): the old file at `beforeFile` against the new one at `afterFile`,
- * with both sides' relative import specifiers normalized to the module they point at through `moves`, so a moved file
+ * with both sides' relative (and `aliases`) import specifiers normalized to the module they point at through `moves`, so a moved file
  * whose imports the move rewrote is not read as `changed`.
  *
  * @param {string} beforeSource The source at its old path.
  * @param {string} afterSource The source at its new path.
- * @param {{ beforeFile: string, afterFile: string, moves?: Record<string, string> }} at Both paths (project-relative) and every move of the import.
+ * @param {{ beforeFile: string, afterFile: string, moves?: Record<string, string>, aliases?: {prefix: string, dir: string}[] }} at Both paths (project-relative), every move of the import and the project's path aliases.
  * @returns {{ verdict: 'same-behaviour'|'changed'|'cant-tell', operations: string[], reason?: string }} As `semanticDiff`.
  *
  * @example
  * semanticDiffMapped("import T from './T'; export const a = T;", "import T from '../lib/T'; export const a = T;",
  *   { beforeFile: 'src/x/a.ts', afterFile: 'src/x/f/a.ts', moves: { 'src/x/T': 'src/x/lib/T' } }).verdict; // => 'same-behaviour'
  */
-export function semanticDiffMapped(beforeSource, afterSource, { beforeFile, afterFile, moves = {} }) {
-  return semanticDiff(normalizeSpecifiers(beforeSource, beforeFile, moves), normalizeSpecifiers(afterSource, afterFile, moves));
+export function semanticDiffMapped(beforeSource, afterSource, { beforeFile, afterFile, moves = {}, aliases = [] }) {
+  return semanticDiff(normalizeSpecifiers(beforeSource, beforeFile, moves, aliases), normalizeSpecifiers(afterSource, afterFile, moves, aliases));
 }
 
 /**
