@@ -98,14 +98,15 @@ export function blocksOf(fit) {
  * Measure where the import stands: the map now, its diff against the baseline, the tests, the moved files' behaviour,
  * each unit's block (from the FitProposal) and the unit coverage. Reads only.
  * @param {any} ops LoopOps
- * @param {{root: string, folder: string, logic: any}} ctx
+ * @param {{root: string, folder: string, logic: any, full?: boolean}} ctx `full`: run every characterization test (verify), not
+ *   only those whose inputs changed since they last passed.
  * @returns {Promise<any>}
  */
-export async function measure(ops, { root, folder, logic }) {
+export async function measure(ops, { root, folder, logic, full = false }) {
   const baseline = await ops.load('logic-map');
   const map = await ops.buildMap(root, folder, logic.closure);
   const diff = baseline ? await ops.compare(baseline, map) : { kept: [], moved: [], missing: [], changed: [], added: map.units };
-  const tests = await ops.runTests(root, folder, logic.tests ?? []);
+  const tests = await ops.runTests(root, folder, logic.tests ?? [], { full });
   const behaviour = ops.behaviour ? await ops.behaviour(root, folder, diff) : [];
   const passing = new Set(tests.state === 'fail' ? (logic.tests ?? []).filter((t) => !(tests.failures ?? []).some((f) => f.file === t.file)).flatMap((t) => t.unitFingerprints) : (logic.tests ?? []).flatMap((t) => t.unitFingerprints));
   const fit = await ops.load('fit');

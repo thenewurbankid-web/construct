@@ -27,10 +27,13 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { createTransaction } from '../transactionalWriter.mjs';
+import { fileURLToPath } from 'node:url';
+import { createTransaction, writeLineState } from '../transactionalWriter.mjs';
+import { readPathAliases } from '@line/construct-core/route-resolver';
 import { analyzeClosure } from './characterize/analyze.mjs';
 import { CHAR_DIR, PROBE_DIR, RUNTIME_FILE, runtimeText, probeText, lockedText, scenarioTitle, testKind, isGenerated } from './characterize/emit.mjs';
 import { locateUnitSpans, unitCoverage, unitsTouched } from './characterize/unitCoverage.mjs';
+import { createDepHasher, charSalt, hashOf } from './importV2/cache.mjs';
 
 export { unitCoverage, locateUnitSpans, unitsTouched, fingerprintOf, unitVerdict } from './characterize/unitCoverage.mjs';
 export { analyzeClosure, pathnameOfEntry } from './characterize/analyze.mjs';
@@ -60,31 +63,124 @@ export { CHAR_DIR } from './characterize/emit.mjs';
  * @property {(subject: object) => boolean} [only] Characterize only the subjects this accepts.
  * @property {(line: string) => void} [log]
  * @property {number} [maxWorkers] Jest workers (default 2).
+ * @property {ReturnType<typeof jestRunnerFor>} [runner] How jest runs (default jestRunnerFor: the app's own, else $LINE_CHAR_JEST_HOME).
+ * @property {string} [stateRoot] The Line folder whose line/ holds a generated jest config (default the app root).
+ * @property {{get: (kind: string, key: string) => any, put: (kind: string, key: string, value: any) => void}} [cache]
+ *   The content-hash cache (importV2/cache.mjs createLineCache): the analysis, each subject's kept cases and each locked
+ *   test file's coverage are reused while the files they depend on are unchanged, so only what changed runs again.
+ * @property {ReturnType<typeof createDepHasher>} [deps] The dependency hasher the cache keys use (default a fresh one).
  */
 
 const posix = (p) => p.split(path.sep).join('/');
+const FILE_COVERAGE_REPORTER = fileURLToPath(new URL('./characterize/fileCoverageReporter.cjs', import.meta.url));
 
-function jestBin(appRoot) {
-  const candidates = [path.join(appRoot, 'node_modules/jest/bin/jest.js'), path.join(appRoot, 'node_modules/.bin/jest')];
-  const found = candidates.find((c) => fs.existsSync(c));
-  if (!found) throw new Error(`No jest found in ${appRoot}/node_modules, so the characterization tests cannot run there; install the app's dependencies first.`);
-  return found;
+/** Istanbul coverage keyed by app-relative path (cache form), or back to absolute paths under `appRoot`. */
+function rekeyCoverage(cov, appRoot, toAbs) {
+  const out = {};
+  for (const [k, v] of Object.entries(cov ?? {})) {
+    const key = toAbs ? path.resolve(appRoot, k) : posix(path.isAbsolute(k) ? path.relative(appRoot, k) : k);
+    out[key] = { ...v, path: key };
+  }
+  return out;
+}
+
+/** Add istanbul coverage maps (hit counts summed per counter; a file's first map wins when their shapes differ). */
+export function mergeCoverage(...maps) {
+  const out = {};
+  for (const m of maps) {
+    for (const [k, v] of Object.entries(m ?? {})) {
+      const had = out[k];
+      if (!had) { out[k] = JSON.parse(JSON.stringify(v)); continue; }
+      if (Object.keys(had.s ?? {}).length !== Object.keys(v.s ?? {}).length) continue;
+      for (const [id, n] of Object.entries(v.s ?? {})) had.s[id] = (had.s[id] ?? 0) + n;
+      for (const [id, n] of Object.entries(v.f ?? {})) had.f[id] = (had.f[id] ?? 0) + n;
+      for (const [id, arms] of Object.entries(v.b ?? {})) had.b[id] = (had.b[id] ?? arms.map(() => 0)).map((x, i) => x + (arms[i] ?? 0));
+    }
+  }
+  return out;
+}
+
+/**
+ * How jest runs in an app: the app's own jest, else jest from a configured home (`LINE_CHAR_JEST_HOME`: a node_modules
+ * with jest, ts-jest, jest-environment-jsdom and React Testing Library) with a config Line generates in its own state
+ * folder (`<stateRoot>/line/jest/jest.config.cjs`, through Construct's writer; never in the app's files): ts-jest,
+ * jsdom, the app's tsconfig path aliases, and every package the app has (react, react-dom, ...) mapped to the app's
+ * OWN copy, so the tests never run on the home's React. Null when neither is there.
+ * @param {string} appRoot
+ * @param {{stateRoot?: string, home?: string|null}} [o] `stateRoot`: the Line folder whose line/ holds the config
+ *   (default the app root); `home`: the jest home (default $LINE_CHAR_JEST_HOME).
+ * @returns {{bin: string, args: string[], home: string|null, config: string|null} | null}
+ */
+export function jestRunnerFor(appRoot, o = {}) {
+  const own = [path.join(appRoot, 'node_modules/jest/bin/jest.js'), path.join(appRoot, 'node_modules/.bin/jest')].find((c) => fs.existsSync(c));
+  if (own) return { bin: own, args: [], home: null, config: null };
+  const home = o.home === undefined ? process.env.LINE_CHAR_JEST_HOME || null : o.home;
+  if (!home || !fs.existsSync(path.join(home, 'jest/bin/jest.js'))) return null;
+  const stateRoot = o.stateRoot ?? appRoot;
+  const rel = 'line/jest/jest.config.cjs';
+  writeLineState(stateRoot, 'line/jest/style-stub.cjs', 'module.exports = {};\n');
+  writeLineState(stateRoot, rel, jestHomeConfig(appRoot, home, path.join(stateRoot, 'line/jest/style-stub.cjs')));
+  const config = path.join(stateRoot, rel);
+  return { bin: path.join(home, 'jest/bin/jest.js'), args: ['--config', config, '--rootDir', appRoot], home, config };
+}
+
+const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
+
+/**
+ * The text of the jest config for an app without jest (jestRunnerFor): every path absolute, nothing read from the app's
+ * own jest config.
+ * @param {string} appRoot
+ * @param {string} home
+ * @param {string} styleStub
+ * @returns {string}
+ */
+export function jestHomeConfig(appRoot, home, styleStub) {
+  const mapper = { '\\.(css|scss|sass|less)$': styleStub };
+  for (const a of readPathAliases(appRoot).aliases) mapper[`^${escapeRe(a.prefix)}(.*)$`] = `${a.target}${a.target.endsWith('/') ? '' : '/'}$1`;
+  let pkg = {};
+  try { pkg = JSON.parse(fs.readFileSync(path.join(appRoot, 'package.json'), 'utf8')); } catch { pkg = {}; }
+  const named = new Set([...Object.keys(pkg.dependencies ?? {}), ...Object.keys(pkg.devDependencies ?? {}), ...Object.keys(pkg.peerDependencies ?? {}), 'react', 'react-dom']);
+  for (const name of [...named].sort()) {
+    const dir = path.join(appRoot, 'node_modules', name);
+    if (!fs.existsSync(path.join(dir, 'package.json'))) continue;
+    mapper[`^${escapeRe(name)}$`] = dir;
+    mapper[`^${escapeRe(name)}/(.*)$`] = `${dir}/$1`;
+  }
+  const config = {
+    rootDir: appRoot,
+    testEnvironment: path.join(home, 'jest-environment-jsdom'),
+    transform: { '^.+\\.[jt]sx?$': [path.join(home, 'ts-jest'), { diagnostics: false, tsconfig: { jsx: 'react-jsx', esModuleInterop: true, allowJs: true } }] },
+    moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
+    moduleNameMapper: mapper,
+    modulePaths: [home],
+    testPathIgnorePatterns: ['/node_modules/'],
+  };
+  return `// Generated by Construct (Line characterize): jest from ${home} for an app without jest; the app's own packages are mapped to its own copies.\nmodule.exports = ${JSON.stringify(config, null, 2)};\n`;
+}
+
+function jestBin(appRoot, runner) {
+  const r = runner ?? jestRunnerFor(appRoot);
+  if (!r) throw new Error(`No jest found in ${appRoot}/node_modules, so the characterization tests cannot run there; install the app's dependencies first, or set LINE_CHAR_JEST_HOME to a node_modules with jest.`);
+  return r;
 }
 
 /**
  * Run jest in the app on some test files, with coverage collected from `coverFiles`.
  * @param {string} appRoot
  * @param {string[]} testFiles App-relative test paths.
- * @param {{coverFiles?: string[], workDir: string, tag: string, env?: object, maxWorkers?: number, related?: string[], timeoutMs?: number}} o
- * @returns {{status: number|null, results: any, coverage: any, stderr: string}}
+ * @param {{coverFiles?: string[], workDir: string, tag: string, env?: object, maxWorkers?: number, related?: string[], timeoutMs?: number, byFile?: boolean, runner?: ReturnType<typeof jestRunnerFor>}} o `runner`: how jest runs (jestRunnerFor; default the app's own jest, else the configured home).
+ *   `byFile`: also keep each test file's own coverage (`coverageByFile`, test file path -> istanbul map).
+ * @returns {{status: number|null, results: any, coverage: any, stderr: string, coverageByFile?: Map<string, any>}}
  */
 export function runJest(appRoot, testFiles, o) {
   const covDir = path.join(o.workDir, `cov-${o.tag}`);
   const resFile = path.join(o.workDir, `res-${o.tag}.json`);
   fs.rmSync(covDir, { recursive: true, force: true });
   fs.rmSync(resFile, { force: true });
-  const bin = jestBin(appRoot);
+  const runner = jestBin(appRoot, o.runner);
+  const bin = runner.bin;
   const args = [
+    ...runner.args,
     ...(o.related ? ['--findRelatedTests', ...o.related] : ['--runTestsByPath', ...testFiles]),
     '--ci', '--watchman=false', `--maxWorkers=${o.maxWorkers ?? 2}`,
     '--json', `--outputFile=${resFile}`,
@@ -93,16 +189,30 @@ export function runJest(appRoot, testFiles, o) {
     args.push('--coverage', '--coverageReporters=json', `--coverageDirectory=${covDir}`, '--coverageThreshold={}');
     for (const f of o.coverFiles) args.push(`--collectCoverageFrom=${f}`);
   }
+  const byFileDir = path.join(o.workDir, `covfile-${o.tag}`);
+  if (o.coverFiles && o.byFile) {
+    fs.rmSync(byFileDir, { recursive: true, force: true });
+    args.push('--reporters=default', `--reporters=${FILE_COVERAGE_REPORTER}`);
+  }
   const r = spawnSync(bin.endsWith('.js') ? process.execPath : bin, bin.endsWith('.js') ? [bin, ...args] : args, {
     cwd: appRoot,
     encoding: 'utf8',
     // a search over a large page keeps many renders' worth of state; give each worker room (two workers on a 15 GB box)
-    env: { ...process.env, CI: '1', LINE_CHAR_DIR: o.workDir, NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --max-old-space-size=4096`.trim(), ...(o.env ?? {}) },
+    env: { ...process.env, CI: '1', LINE_CHAR_DIR: o.workDir, NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --max-old-space-size=4096`.trim(), ...(o.coverFiles && o.byFile ? { LINE_CHAR_COVER_BY_FILE: byFileDir } : {}), ...(o.env ?? {}) },
     timeout: o.timeoutMs ?? 3_600_000,
     maxBuffer: 256 * 1024 * 1024,
   });
   const read = (f) => { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return null; } };
-  return { status: r.status, results: read(resFile), coverage: o.coverFiles ? read(path.join(covDir, 'coverage-final.json')) : null, stderr: String(r.stderr ?? '').slice(-20000) };
+  /** @type {Map<string, any> | undefined} */
+  let coverageByFile;
+  if (o.coverFiles && o.byFile) {
+    coverageByFile = new Map();
+    for (const f of fs.existsSync(byFileDir) ? fs.readdirSync(byFileDir) : []) {
+      const e = read(path.join(byFileDir, f));
+      if (e?.testFilePath) coverageByFile.set(posix(e.testFilePath), e.coverage);
+    }
+  }
+  return { status: r.status, results: read(resFile), coverage: o.coverFiles ? read(path.join(covDir, 'coverage-final.json')) : null, stderr: String(r.stderr ?? '').slice(-20000), ...(coverageByFile ? { coverageByFile } : {}) };
 }
 
 /** Write (or delete, content null) files under the characterization folder through Construct's transactional writer. */
@@ -163,15 +273,49 @@ export async function characterize(appRoot, closure, map, opts = {}) {
   const log = opts.log ?? (() => {});
   const workDir = opts.workDir ?? fs.mkdtempSync(path.join(os.tmpdir(), 'line-char-'));
   fs.mkdirSync(workDir, { recursive: true });
-  const analysis = analyzeClosure(appRoot, closure);
+  const cache = opts.cache ?? null;
+  const deps = cache ? opts.deps ?? createDepHasher(appRoot) : null;
+  // jest: the app's own, else the configured home with a config Line writes in its state folder (jestRunnerFor)
+  const runner = jestBin(appRoot, opts.runner ?? jestRunnerFor(appRoot, { stateRoot: opts.stateRoot }) ?? undefined);
+  const salt = cache ? hashOf(charSalt(appRoot), runner.home ?? '', runner.config ? fs.readFileSync(runner.config, 'utf8') : '') : '';
+  const relFile = (f) => posix(path.isAbsolute(f) ? path.relative(appRoot, f) : f);
+  /** @type {Record<string, number>} milliseconds per stage */
+  const timing = {};
+  let t0 = Date.now();
+  const timed = (k) => { timing[k] = (timing[k] ?? 0) + (Date.now() - t0); t0 = Date.now(); };
+
+  // 1. analyze (cached by every closure file's content and imports, and the routes)
+  const analysisKey = cache && deps ? hashOf(salt, 'analysis', closure.routes ?? [], closure.files.map(relFile).sort().map((f) => [f, deps.depsHash(f)])) : '';
+  let analysis = cache ? cache.get('analysis', analysisKey) : null;
+  if (!analysis) {
+    analysis = analyzeClosure(appRoot, closure);
+    if (cache) cache.put('analysis', analysisKey, analysis);
+  }
+  timed('analyze');
   const subjects = analysis.subjects.filter((s) => (opts.only ? opts.only(s) : true));
   const charRel = posix(path.join(routeDirOf(appRoot, closure, opts), CHAR_DIR));
   const charAbs = path.join(appRoot, charRel);
   const probeAbs = path.join(charAbs, PROBE_DIR);
-  const coverFiles = closure.files.map((f) => posix(path.isAbsolute(f) ? path.relative(appRoot, f) : f));
+  const coverFiles = closure.files.map(relFile);
   const located = locateUnitSpans(appRoot, map.units);
   const budget = (s) => (s.kind === 'pure' ? opts.budgetMs ?? 20_000 : opts.componentBudgetMs ?? 60_000);
-  log(`characterize: ${subjects.length} subjects, ${located.length} units, tests in ${charRel}`);
+
+  // A subject's kept cases are reused while its file and everything that file imports are unchanged (and the options,
+  // the characterizer and the app's test setup are the same).
+  const subjectKey = (s) => {
+    if (!cache || !deps) return '';
+    const within = new Set(deps.depsOf(s.file));
+    const units = located.filter((u) => within.has(posix(u.file))).map((u) => u.fingerprint).sort();
+    return hashOf(salt, 'subject', s, deps.depsHash(s.file), units, opts.seed ?? 7, budget(s), opts.maxTests ?? 150, opts.maxIdle ?? null, opts.roundMs ?? null, analysis.env);
+  };
+  /** @type {Map<string, {cases: any[], stats: any}>} */
+  const reused = new Map();
+  for (const s of subjects) {
+    const hit = cache ? cache.get('subject', subjectKey(s)) : null;
+    if (hit) reused.set(s.id, hit);
+  }
+  const fresh = subjects.filter((s) => !reused.has(s.id));
+  log(`characterize: ${subjects.length} subjects (${reused.size} unchanged and reused), ${located.length} units, tests in ${charRel}`);
 
   const baseInput = (s) => ({
     subject: s,
@@ -185,10 +329,10 @@ export async function characterize(appRoot, closure, map, opts = {}) {
     rootDir: appRoot,
   });
 
-  // 2. search
+  // 2. search (only the subjects the cache does not hold)
   const probeRel = (s, mode) => posix(path.join(charRel, PROBE_DIR, `${s.id}.${mode}.test.tsx`));
   const files = [[posix(path.join(charRel, RUNTIME_FILE)), runtimeText()]];
-  for (const s of subjects) {
+  for (const s of fresh) {
     files.push([probeRel(s, 'fuzz'), probeText({ analysis, appRoot, dirAbs: probeAbs, subject: s, mode: 'fuzz', timeoutMs: budget(s) + 300_000 })]);
   }
   writeOwnedTests(appRoot, charRel, files);
@@ -196,10 +340,11 @@ export async function characterize(appRoot, closure, map, opts = {}) {
   // state; a subject stops when a round ends because nothing new was reached for `maxIdle` runs, when a round gains
   // nothing, or when its budget is spent
   const chosen = new Map();
-  const stats = { subjects: {} };
-  const spent = new Map(subjects.map((s) => [s.id, 0]));
-  const roundMs = new Map(subjects.map((s) => [s.id, opts.roundMs ?? 45_000]));
-  let active = subjects.slice();
+  const stats = { subjects: {}, timing, cache: cache ? { reused: reused.size, fresh: fresh.length } : null };
+  for (const [id, r] of reused) stats.subjects[id] = { ...r.stats, cached: true };
+  const spent = new Map(fresh.map((s) => [s.id, 0]));
+  const roundMs = new Map(fresh.map((s) => [s.id, opts.roundMs ?? 45_000]));
+  let active = fresh.slice();
   let fuzzRun = null;
   for (let round = 0; active.length; round++) {
     for (const s of active) {
@@ -213,7 +358,7 @@ export async function characterize(appRoot, closure, map, opts = {}) {
       fs.writeFileSync(path.join(workDir, `${s.id}.fuzz.in.json`), JSON.stringify({ ...baseInput(s), budgetMs: ms, maxIdle: opts.maxIdle ?? (s.kind === 'pure' ? 3000 : 2500), maxTests: opts.maxTests ?? 150, seed: (opts.seed ?? 7) + round, resume }));
     }
     log(`characterize: searching, round ${round + 1} (${active.length} subjects)`);
-    fuzzRun = runJest(appRoot, active.map((s) => probeRel(s, 'fuzz')), { coverFiles, workDir, tag: `fuzz${round}`, maxWorkers: opts.maxWorkers });
+    fuzzRun = runJest(appRoot, active.map((s) => probeRel(s, 'fuzz')), { coverFiles, workDir, tag: `fuzz${round}`, maxWorkers: opts.maxWorkers, runner });
     const next = [];
     for (const s of active) {
       let out = null;
@@ -231,22 +376,26 @@ export async function characterize(appRoot, closure, map, opts = {}) {
     }
     active = next;
   }
-  if (!chosen.size) throw new Error(`The search probes did not run in ${appRoot}: ${fuzzRun?.stderr.slice(-2000)}`);
+  if (fresh.length && !chosen.size) throw new Error(`The search probes did not run in ${appRoot}: ${fuzzRun?.stderr.slice(-2000)}`);
+  timed('search');
 
   // 3. record
-  const recorded = subjects.filter((s) => chosen.get(s.id)?.length);
+  const recordedFresh = fresh.filter((s) => chosen.get(s.id)?.length);
   const recFiles = [];
-  for (const s of recorded) {
+  for (const s of recordedFresh) {
     fs.writeFileSync(path.join(workDir, `${s.id}.record.in.json`), JSON.stringify({ ...baseInput(s), scenarios: chosen.get(s.id) }));
     recFiles.push([probeRel(s, 'record'), probeText({ analysis, appRoot, dirAbs: probeAbs, subject: s, mode: 'record', timeoutMs: 1_800_000 })]);
   }
-  writeOwnedTests(appRoot, charRel, recFiles);
-  log('characterize: recording');
-  runJest(appRoot, recorded.map((s) => probeRel(s, 'record')), { coverFiles, workDir, tag: 'record', maxWorkers: opts.maxWorkers });
+  if (recFiles.length) {
+    writeOwnedTests(appRoot, charRel, recFiles);
+    log('characterize: recording');
+    runJest(appRoot, recordedFresh.map((s) => probeRel(s, 'record')), { coverFiles, workDir, tag: 'record', maxWorkers: opts.maxWorkers, runner });
+  }
+  timed('record');
 
   // 4. lock
   const cases = new Map();
-  for (const s of recorded) {
+  for (const s of recordedFresh) {
     let out = null;
     try { out = JSON.parse(fs.readFileSync(path.join(workDir, `${s.id}.record.out.json`), 'utf8')); } catch { out = null; }
     if (!out) continue;
@@ -259,24 +408,44 @@ export async function characterize(appRoot, closure, map, opts = {}) {
     list.forEach((c, i) => { c.title = scenarioTitle(s, c.scenario, i); });
     if (list.length) cases.set(s.id, list);
   }
+  for (const [id, r] of reused) if (r.cases?.length) cases.set(id, r.cases);
+  const recorded = subjects.filter((s) => cases.has(s.id) || recordedFresh.includes(s));
   const lockedRel = (s) => posix(path.join(charRel, `${s.id}.char.test.tsx`));
-  const cleanup = [...subjects.map((s) => [probeRel(s, 'fuzz'), null]), ...recorded.map((s) => [probeRel(s, 'record'), null])];
+  const cleanup = [...fresh.map((s) => [probeRel(s, 'fuzz'), null]), ...recordedFresh.map((s) => [probeRel(s, 'record'), null])];
   const dropped = [];
   let final = null;
+  // a locked file whose text and inputs are unchanged keeps its cached coverage and is not run again
+  const covKey = (s, text) => (cache && deps ? hashOf(salt, 'jest-cov', text, deps.depsHash(s.file)) : '');
+  /** @type {Map<string, any>} subject id -> its locked file's cached coverage (app-relative keys) */
+  const cachedCov = new Map();
+  /** @type {Map<string, {text: string, cov: any}>} subject id -> what this run measured, for the cache */
+  const ranCov = new Map();
   for (let round = 0; round < 4; round++) {
     const lockFiles = [];
+    const texts = new Map();
     for (const s of recorded) {
       const list = cases.get(s.id);
-      lockFiles.push([lockedRel(s), list?.length ? lockedText({ analysis, appRoot, dirAbs: charAbs, subject: s, cases: list }) : null]);
+      const text = list?.length ? lockedText({ analysis, appRoot, dirAbs: charAbs, subject: s, cases: list }) : null;
+      texts.set(s.id, text);
+      lockFiles.push([lockedRel(s), text]);
     }
     writeOwnedTests(appRoot, charRel, round === 0 ? [...lockFiles, ...cleanup] : lockFiles);
-    // 5. verify
+    // 5. verify (only the locked files the cache does not hold)
     const live = recorded.filter((s) => cases.get(s.id)?.length);
-    log(`characterize: verifying (round ${round + 1})`);
-    final = runJest(appRoot, live.map(lockedRel), { coverFiles, workDir, tag: `verify${round}`, maxWorkers: opts.maxWorkers });
+    if (cache && round === 0) {
+      for (const s of live) {
+        const hit = reused.has(s.id) ? cache.get('jest-cov', covKey(s, texts.get(s.id))) : null;
+        if (hit) cachedCov.set(s.id, hit);
+      }
+    }
+    const run = live.filter((s) => !cachedCov.has(s.id));
+    if (!run.length) break;
+    log(`characterize: verifying (round ${round + 1}, ${run.length} of ${live.length} test files)`);
+    final = runJest(appRoot, run.map(lockedRel), { coverFiles, workDir, tag: `verify${round}`, maxWorkers: opts.maxWorkers, byFile: Boolean(cache), runner });
     const outcomes = testOutcomes(final.results);
     let changed = false;
-    for (const s of live) {
+    ranCov.clear();
+    for (const s of run) {
       const abs = posix(path.join(appRoot, lockedRel(s)));
       const real = (() => { try { return posix(fs.realpathSync(path.join(appRoot, lockedRel(s)))); } catch { return abs; } })();
       const outcome = (t) => outcomes.get(`${abs}::${t}`) ?? outcomes.get(`${real}::${t}`);
@@ -289,16 +458,38 @@ export async function characterize(appRoot, closure, map, opts = {}) {
       const keep = cases.get(s.id).filter((c) => outcome(c.title) !== false);
       for (const c of cases.get(s.id)) if (outcome(c.title) === false) dropped.push({ subject: s.id, title: c.title, why: 'It did not reproduce what was recorded on a second run.' });
       if (keep.length !== cases.get(s.id).length) { changed = true; keep.forEach((c, i) => { c.title = scenarioTitle(s, c.scenario, i); }); cases.set(s.id, keep); }
+      const cov = final.coverageByFile?.get(abs) ?? final.coverageByFile?.get(real);
+      if (cov) ranCov.set(s.id, { text: /** @type {string} */ (texts.get(s.id)), cov: rekeyCoverage(cov, appRoot, false) });
     }
     if (!changed) break;
   }
+  timed('verify');
 
   /** @type {CharTest[]} */
   const tests = [];
   for (const s of recorded) for (const c of cases.get(s.id) ?? []) tests.push({ file: lockedRel(s), runner: 'jest', kind: testKind(s, c.scenario), unitFingerprints: c.units, title: c.title });
-  const coverage = unitCoverage({ root: appRoot, units: located }, final?.coverage ?? {}, { appRoot });
-  const written = [posix(path.join(charRel, RUNTIME_FILE)), ...recorded.filter((s) => cases.get(s.id)?.length).map(lockedRel)];
-  return { tests, coverage, files: written, subjects, stats, dropped, workDir, passed: final?.results?.numPassedTests ?? 0, failed: final?.results?.numFailedTests ?? 0 };
+  // With the cache, coverage is the sum of each locked file's own coverage (cached or measured now), so a warm run
+  // gives the same number as the cold one; when a file's own coverage is missing, the last jest run's total stands in.
+  let coverageJson = final?.coverage ?? {};
+  const liveNow = recorded.filter((s) => cases.get(s.id)?.length);
+  if (cache) {
+    const ranAll = liveNow.filter((s) => !cachedCov.has(s.id)).every((s) => ranCov.has(s.id));
+    const parts = liveNow.map((s) => cachedCov.get(s.id) ?? ranCov.get(s.id)?.cov).filter(Boolean);
+    const merged = ranAll ? mergeCoverage(...parts) : mergeCoverage(final?.coverage ? rekeyCoverage(final.coverage, appRoot, false) : {}, ...cachedCov.values());
+    coverageJson = rekeyCoverage(merged, appRoot, true);
+    // keep what this run found: every searched subject's cases (an empty list too: nothing to search again), and the
+    // coverage of every locked file that ran in full
+    for (const s of fresh) if (!stats.subjects[s.id]?.error) cache.put('subject', subjectKey(s), { cases: cases.get(s.id) ?? [], stats: stats.subjects[s.id] ?? {} });
+    for (const [id, r] of ranCov) {
+      const s = subjects.find((x) => x.id === id);
+      if (s && cases.get(id)?.length) cache.put('jest-cov', covKey(s, r.text), r.cov);
+    }
+  }
+  const coverage = unitCoverage({ root: appRoot, units: located }, coverageJson, { appRoot });
+  timed('coverage');
+  const written = [posix(path.join(charRel, RUNTIME_FILE)), ...liveNow.map(lockedRel)];
+  const failed = final?.results?.numFailedTests ?? 0;
+  return { tests, coverage, files: written, subjects, stats, dropped, workDir, passed: tests.length - failed, failed };
 }
 
 /**

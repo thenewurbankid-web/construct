@@ -14,6 +14,11 @@
 // line/import-baseline.json, line/fit.json), written through Construct's writer (writeLineState); each step's
 // ImportLoopState is appended to the plan records, slotted (records.mjs createImportLoopRecorder:
 // records/import-loop.jsonl).
+//
+// The slow stages are cached by content hash under <folder>/line/cache/ (importV2/cache.mjs, through writeLineState):
+// each file's logic units, the characterizer's analysis, each subject's cases and each locked test file's coverage, and
+// each test file that passed in the app's runner. A second start on unchanged files reuses all of it; a changed file
+// invalidates only its own entries and those of the files that import it. `cache: false` turns it off.
 import fs from 'node:fs';
 import path from 'node:path';
 import { LineOpError } from './contract.mjs';
@@ -21,14 +26,15 @@ import { createTransaction, writeLineState } from '../transactionalWriter.mjs';
 import { aggregateValidation } from '@line/construct-core/registry';
 import { enforcersForRoot } from '@line/construct-core/profiles';
 import { folderRootOf } from './importUndo.mjs';
-import { buildLogicMap, compareLogicMaps, writeLogicMap, readLogicMap } from './logicMap.mjs';
+import { buildLogicMap, compareLogicMaps, writeLogicMap, readLogicMap, fileUnits } from './logicMap.mjs';
 import { readRouteFamily } from './importV2/route.mjs';
 import { fitLogic, planFitSteps } from './importV2/fit.mjs';
 import { appDependsOn } from './importV2/extract.mjs';
 import { FIT_FILE, assertFitProposal } from './importV2/contract.mjs';
-import { characterize, CHAR_DIR } from './characterize.mjs';
-import { runCharTests, checkBehaviour, testRunnerOf } from './importVerify.mjs';
+import { characterize, CHAR_DIR, jestRunnerFor } from './characterize.mjs';
+import { runCharTests, checkBehaviour } from './importVerify.mjs';
 import { createImportLoopRecorder } from './records.mjs';
+import { createLineCache, createDepHasher, charSalt, hashOf } from './importV2/cache.mjs';
 
 export { readRouteFamily, buildLogicMap };
 
@@ -100,9 +106,10 @@ const codeFiles = (root, files) => [...new Set(files)].filter((f) => CODE.test(f
  * The import loop's ops on a real project (importLoop.mjs LoopOps), for one folder.
  * @param {string} root
  * @param {string} folder
- * @param {{recorder?: {record: (state: any) => any}, characterize?: object, characterizeWith?: (root: string, folder: string, closure: any, map: any) => Promise<{tests: any[], sentence: string}>}} [o]
+ * @param {{recorder?: {record: (state: any) => any}, characterize?: object, characterizeWith?: (root: string, folder: string, closure: any, map: any) => Promise<{tests: any[], sentence: string}>, cache?: boolean, log?: (line: string) => void}} [o]
  *   `characterize`: options for characterize.mjs (budgets, seed; tests pass small ones); `characterizeWith` replaces the
- *   characterizer (a test that brings its own tests).
+ *   characterizer (a test that brings its own tests); `cache: false` turns the content-hash cache off; `log` hears each
+ *   stage's time and the cache's hits.
  * @returns {any}
  */
 export function createLogicOnDisk(root, folder, o = {}) {
@@ -116,13 +123,60 @@ export function createLogicOnDisk(root, folder, o = {}) {
       throw e;
     }
   };
+  const log = o.log ?? (() => {});
+  const cacheOn = o.cache !== false;
+  const cache = () => (cacheOn ? createLineCache(fr()) : null);
+  // A file's logic units depend on its path and its text only.
+  const cachedUnits = (c) => (source, rel, renames) => {
+    if (!c) return fileUnits(source, rel, renames);
+    const key = hashOf('logic-units', rel, source, renames);
+    const hit = c.get('logic-units', key);
+    if (hit) return hit;
+    const units = fileUnits(source, rel, renames);
+    c.put('logic-units', key, units);
+    return units;
+  };
+  const timed = async (stage, fn, c = null) => {
+    const t0 = Date.now();
+    const r = await fn();
+    const hits = c ? Object.entries(c.stats).map(([k, v]) => `${k} ${v.hits}/${v.hits + v.misses}`).join(', ') : '';
+    log(`${stage}: ${Date.now() - t0} ms${c ? ` (cache hits: ${hits || 'none asked'})` : ''}`);
+    return r;
+  };
+  /** The key of one test file's pass: its text and every in-app file it imports, the characterizer and the app's setup. */
+  const passKey = (deps, salt, file) => hashOf(salt, 'jest-pass', file, deps.depsHash(file));
+  const passedNow = (c, testFiles) => {
+    const deps = createDepHasher(root);
+    const salt = hashOf(charSalt(root), jestRun()?.home ?? '');
+    for (const file of testFiles) c.put('jest-pass', passKey(deps, salt, file), { ok: true });
+  };
+  /** runCharTests, skipping the test files that passed before on exactly the same inputs. */
+  // jest: the app's own, else $LINE_CHAR_JEST_HOME with a config in the folder's line/jest/ (characterize.mjs jestRunnerFor)
+  const jestRun = () => jestRunnerFor(root, { stateRoot: fr() });
+  const runTestsCached = (f, tests, { full = false } = {}) => {
+    const jr = jestRun();
+    const via = jr?.home ? { jest: jr } : {};
+    const list = Array.isArray(tests) ? tests : [];
+    const c = list.length && jr ? cache() : null;
+    if (!c) return runCharTests(root, f, list, via);
+    const deps = createDepHasher(root);
+    const salt = hashOf(charSalt(root), jestRun()?.home ?? '');
+    // `full` (verify): every file runs; a step runs only the files whose inputs changed since they last passed
+    const known = full ? new Set() : new Set([...new Set(list.map((t) => t.file))].filter((file) => fs.existsSync(path.join(root, file)) && c.get('jest-pass', passKey(deps, salt, file))));
+    const rest = list.filter((t) => !known.has(t.file));
+    const r = rest.length ? runCharTests(root, f, rest, via) : null;
+    const failedFiles = new Set((r?.failures ?? []).map((x) => x.file));
+    for (const file of new Set(rest.map((t) => t.file))) if (!failedFiles.has(file)) c.put('jest-pass', passKey(deps, salt, file), { ok: true });
+    if (!r) return { state: 'pass', passed: list.length, failed: 0, total: list.length, failures: [], sentence: `The ${list.length} characterization test${list.length === 1 ? '' : 's'} pass (jest; unchanged since they last passed).` };
+    return { ...r, passed: list.length - r.failed, total: list.length, sentence: r.failed ? `${r.failed} of ${list.length} characterization tests fail (jest).` : `The ${list.length} characterization test${list.length === 1 ? '' : 's'} pass (jest).` };
+  };
   const feature = (closure) => (closure?.routes?.length ? undefined : path.posix.basename(folder).replace(/[^a-z0-9-]+/gi, '-').toLowerCase() || 'imported');
   return {
     closure: async (_r, f, route) => (route ? readRouteFamily(root, route) : { appRoot: root, routes: [], files: folderCodeFiles(root, f), external: [] }),
     // The map now: the closure's files that are still there, and every code file of the folder (where moved files land).
-    buildMap: async (_r, f, closure) => buildLogicMap(root, codeFiles(root, [...(closure?.files ?? []), ...folderCodeFiles(root, f)])),
+    buildMap: async (_r, f, closure) => { const c = cache(); return timed('map', () => buildLogicMap(root, codeFiles(root, [...(closure?.files ?? []), ...folderCodeFiles(root, f)]), { unitsOf: cachedUnits(c) }), c); },
     compare: async (before, after) => compareLogicMaps(before, after),
-    fit: async (_r, f, closure, map) => {
+    fit: async (_r, f, closure, map) => timed('fit', async () => {
       const c = { appRoot: root, routes: closure?.routes ?? [], files: closure?.files ?? [], external: closure?.external ?? [] };
       const proposal = fitLogic(map, c, { feature: feature(closure) });
       assertFitProposal(proposal, map.units.map((u) => u.fingerprint));
@@ -132,18 +186,23 @@ export function createLogicOnDisk(root, folder, o = {}) {
       const steps = planned.steps.filter((s) => !(noXstate && s.tool === 'line.import.extractWorkflow'));
       const skipped = [...planned.skipped, ...planned.steps.filter((s) => !steps.includes(s)).map((s) => ({ block: s.blocks[0], sentence: `${s.args.name} stays where it is: the app does not depend on xstate, so a Line workflow would not compile in it.` }))];
       return { proposal, steps, skipped };
-    },
+    }),
     characterize: async (_r, f, closure, map) => {
       if (o.characterizeWith) return o.characterizeWith(root, f, closure, map);
-      if (testRunnerOf(root) !== 'jest') {
-        return { tests: [], sentence: 'The app has no jest installed, so Line cannot write characterization tests in its own runner; behaviour is checked by the logic map and the behaviour check.' };
+      const jr = jestRun();
+      if (!jr) {
+        return { tests: [], sentence: 'The app has no jest installed (and no LINE_CHAR_JEST_HOME is set), so Line cannot write characterization tests; behaviour is checked by the logic map and the behaviour check.' };
       }
       const c = { files: codeFiles(root, closure?.files ?? folderCodeFiles(root, f)), routes: closure?.routes ?? [] };
-      const r = await characterize(root, c, map, { dir: f, ...(o.characterize ?? {}) });
+      const lc = cache();
+      const r = await timed('characterize', () => characterize(root, c, map, { dir: f, log, runner: jr, stateRoot: fr(), ...(o.characterize ?? {}), ...(lc ? { cache: lc } : {}) }), lc);
+      log(`characterize stages: ${Object.entries(r.stats?.timing ?? {}).map(([k, v]) => `${k} ${v} ms`).join(', ')}`);
+      // the tests just passed on these exact files: the baseline run that follows need not run them again
+      if (lc && r.failed === 0) passedNow(lc, r.files.filter((x) => TEST.test(x)));
       const dropped = r.dropped.length ? ` ${r.dropped.length} did not reproduce on a second run and were dropped.` : '';
       return { tests: r.tests, coverage: r.coverage, sentence: `Line wrote ${r.tests.length} characterization test${r.tests.length === 1 ? '' : 's'} in ${r.files.length - 1} file${r.files.length === 2 ? '' : 's'} (jest), covering ${r.coverage.covered.length} of ${map.units.length} logic units.${dropped}` };
     },
-    runTests: async (_r, f, tests) => runCharTests(root, f, tests),
+    runTests: async (_r, f, tests, how) => timed('tests', () => runTestsCached(f, tests, how)),
     behaviour: async (_r, f, diff) => checkBehaviour(root, diff, (await load('baseline'))?.sources ?? {}, f),
     save: async (name, data) => {
       if (name === 'logic-map') { writeLogicMap(fr(), data); return; }
