@@ -35,11 +35,12 @@ export async function runAxe(page, opts = {}) {
   // Accepted false positive: the narrow layout has a fixed bottom pane bar that
   // covers content below the fold until it is scrolled up; axe evaluates
   // target-size at the current scroll position. Re-test each such target after
-  // scrolling it to the middle of the viewport; only report it if it still fails.
+  // scrolling it to the middle of the viewport; only report it if it still fails. The target is any selector of the
+  // page itself ("li:nth-child(5) > .ln-btn" too); one inside a frame or a shadow root does not resolve and is reported.
   const out = [];
   for (const v of found) {
-    if (v.id === 'target-size' && /obscured/.test(v.summary) && !v.target.includes(' ')) {
-      const ok = await page.evaluate((sel) => { const e = document.querySelector(sel); if (e) e.scrollIntoView({ block: 'center' }); return !!e; }, v.target);
+    if (v.id === 'target-size' && /obscured/.test(v.summary)) {
+      const ok = await page.evaluate((sel) => { let e = null; try { e = document.querySelector(sel); } catch { /* not a selector of this document */ } if (e) e.scrollIntoView({ block: 'center' }); return !!e; }, v.target);
       if (ok) {
         const again = await scan(page, { ...opts, include: v.target });
         if (!again.some((x) => x.id === 'target-size')) continue;
