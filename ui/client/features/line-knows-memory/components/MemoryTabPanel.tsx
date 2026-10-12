@@ -64,7 +64,7 @@ export function MemoryTabPanel({ screen }: { screen: MemoryTabScreen }) {
         {message ?? ''}
       </p>
       <div className="lkm-bar">
-        <EmbeddingsSwitch on={view.embeddingsOn} busy={busy} act={act} />
+        <EmbeddingsSwitch on={view.embeddingsOn} runs={view.embeddingsRuns} busy={busy} act={act} />
         <MemoryFileActions busy={busy} act={act} importFile={importFile} empty={view.rows.length === 0} />
       </div>
       {view.steps.map((s) => (

@@ -668,7 +668,8 @@ export const PLAN_PROTOCOL = Object.freeze([
  * @typedef {object} StepProfile
  * @property {string} step        Stable id "<app>.<task>", e.g. "construct.chooser", "trace.choose", "cockpit.importFill".
  * @property {string} label       Plain English: what the step does, one sentence.
- * @property {'decide'|'draft'} kind  decide: pick one of closed options (static, then middleware, then the picker); draft: a local model writes, Construct checks.
+ * @property {'decide'|'draft'|'recall'} kind  decide: pick one of closed options (static, then middleware, then the picker); draft: a local model writes, Construct checks;
+ *   recall: a local embedding model finds similar past decisions (never a picker, so never an @mx/reason pair).
  * @property {'ollama'|'hosted'} provider  ollama: a local model; hosted: a hosted model the person configures (never local).
  * @property {string|null} model  The model the step uses; the local default is qwen2.5-coder:1.5b. Null only for a hosted step.
  * @property {string} modelFrom   Plain English: where the model comes from ("Line's default", "trace/ai.config.json").
@@ -1694,7 +1695,8 @@ export function assertStepProfile(p, where = 'profile') {
   str(p?.step, `${where}.step`);
   if (!STEP_ID.test(p.step)) fail(`${where}.step`, `must look like "<app>.<task>": ${JSON.stringify(p.step)}`);
   sentence(p.label, `${where}.label`);
-  if (!['decide', 'draft'].includes(p.kind)) fail(`${where}.kind`, 'must be decide or draft');
+  if (!['decide', 'draft', 'recall'].includes(p.kind)) fail(`${where}.kind`, 'must be decide, draft or recall');
+  if (p.kind === 'recall' && p.provider !== 'ollama') fail(`${where}.provider`, 'a recall step runs a local embedding model (ollama)');
   if (!['ollama', 'hosted'].includes(p.provider)) fail(`${where}.provider`, 'must be ollama or hosted');
   if (p.provider === 'ollama') str(p.model, `${where}.model`);
   else if (p.model !== null && typeof p.model !== 'string') fail(`${where}.model`, 'must be a string or null');

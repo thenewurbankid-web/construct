@@ -105,7 +105,7 @@ export function logLine(e: MemoryLogEntry): string {
 
 export type MemorySummary = { step: string; text: string; count: number };
 
-const EMPTY: MemoryTabView = { sentence: 'Reading what Line remembered.', rows: [], steps: [], embeddingsOn: false, log: [], summaries: [] };
+const EMPTY: MemoryTabView = { sentence: 'Reading what Line remembered.', rows: [], steps: [], embeddingsOn: false, embeddingsRuns: false, log: [], summaries: [] };
 
 /**
  * The Memory tab: one row per record (newest first) with how often the same decision was made, a summary sentence per
@@ -141,7 +141,7 @@ export function memoryTabView(view: MemoryRecordsView | null): MemoryTabView {
   const sizes = new Map<string, number>();
   for (const r of view.records) sizes.set(r.step, (sizes.get(r.step) ?? 0) + 1);
   const steps = [...sizes.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([step, size]) => ({ step, label: stepLabel(step), size }));
-  return { sentence: view.sentence, rows, steps, embeddingsOn: view.embeddings.on, log: [...view.log].reverse().map(logLine), summaries };
+  return { sentence: view.sentence, rows, steps, embeddingsOn: view.embeddings.on, embeddingsRuns: view.embeddings.runs === true, log: [...view.log].reverse().map(logLine), summaries };
 }
 
 /** A file the person picked: a Line memory export, else one sentence. */
@@ -161,4 +161,11 @@ export function parseMemoryFile(text: string): { ok: true; file: MemoryExport } 
 /** The exported file's name, dated. */
 export function exportFileName(now: Date): string {
   return `line-memory-${now.toISOString().slice(0, 10)}.json`;
+}
+
+/** What the switch actually does now: on alone is not enough, comparisons run only once the step measured a win (API `runs`). */
+export function embeddingsHelp(on: boolean, runs: boolean): string {
+  if (on && runs) return 'On: Line also compares the words of your past decisions with a local model; it never reads your code.';
+  if (on) return 'On, but no comparisons run yet: the local model is used only once it measures a win over plain recall. It never reads your code.';
+  return 'Off by default. When on, and once it measures a win over plain recall, Line also compares the words of your past decisions with a local model; it never reads your code.';
 }

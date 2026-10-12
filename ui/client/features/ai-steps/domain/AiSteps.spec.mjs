@@ -34,6 +34,12 @@ test("modelText and howItWorks: the 1.5B is Line's default; hosted and jev steps
   const hosted = { ...choose, provider: 'hosted', model: null };
   assert.equal(modelText(hosted), 'The hosted model you choose');
   assert.match(howItWorks(hosted), /hosted model/);
+  // #871: memory embeddings are a recall step, not a decide step: no picker, off until a measured win.
+  const embed = all.find((p) => p.step === 'construct.memory-embed');
+  assert.equal(embed.kind, 'recall');
+  assert.match(howItWorks(embed), /^Off until it measures a win: Line recalls past decisions without a model/);
+  assert.doesNotMatch(howItWorks(embed), /picker/);
+  assert.match(howItWorks({ ...embed, on: true }), /^A local embedding model also recalls past decisions/);
 });
 
 test('aiStepsView: loading, a refusal sentence, and the ready rows each give one status sentence', () => {

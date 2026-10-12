@@ -35,6 +35,8 @@ test('Memory tab: what Line remembered in plain words; forget one record and it 
     await expect(tab.getByTestId('memory-record')).toHaveCount(4, { timeout: 30_000 });
     await expect(tab.getByTestId('memory-summary').filter({ hasText: "You picked 'via the library' 3 times for 'use item'." })).toHaveCount(1);
     await expect(tab.getByRole('switch', { name: /Embeddings/ })).toHaveAttribute('aria-checked', 'false');
+    // #871: the help never claims comparisons from the switch alone; they need a measured win (the API's `runs`).
+    await expect(tab.locator('#lkm-embed-help')).toHaveText(/^Off by default\. When on, and once it measures a win/);
 
     const axe = await runAxe(page, { include: '[data-testid="knows-memory"]' });
     expect(axe.filter(isBlocking), format(axe.filter(isBlocking))).toEqual([]);

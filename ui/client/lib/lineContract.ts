@@ -547,7 +547,7 @@ export type MemoryView = { ok: true; steps: { step: string; label: string; size:
 export type StepProfile = {
   step: string;
   label: string;
-  kind: 'decide' | 'draft';
+  kind: 'decide' | 'draft' | 'recall';
   provider: 'ollama' | 'hosted';
   model: string | null;
   modelFrom: string;

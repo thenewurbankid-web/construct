@@ -39,7 +39,7 @@
     {
       "step": "construct.memory-embed",
       "label": "Recalls past decisions also by meaning: a local embedding model compares the slotted words of your past decisions, never your code; the Memory tab's switch turns it on for a project.",
-      "kind": "decide",
+      "kind": "recall",
       "provider": "ollama",
       "model": "nomic-embed-text",
       "modelFrom": "an embedding model, chosen for this step",

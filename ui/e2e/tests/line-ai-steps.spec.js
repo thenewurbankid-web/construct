@@ -72,6 +72,8 @@ test('owner walk: two clicks from the profile menu; every step in plain sentence
     const embed = (await s.getAttribute('data-step')) === 'construct.memory-embed';
     await expect(s.getByTestId('ai-step-model')).toHaveText(embed ? 'Model: nomic-embed-text (an embedding model, chosen for this step)' : /^Model: (qwen2\.5-coder:1\.5b \(Line's default\)|The hosted model you choose)$/);
     await expect(s.getByTestId('ai-step-win')).toHaveText(/^Win over static: /);
+    // #871: embeddings are a recall step, never described as a picker.
+    if (embed) await expect(s.locator('.ais-how')).toHaveText(/^Off until it measures a win: Line recalls past decisions without a model/);
   }
   const chooser = panel.locator('[data-testid="ai-step"][data-step="construct.chooser"]');
   await chooser.getByText('Details').click();
