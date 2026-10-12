@@ -174,8 +174,11 @@ actual innovation, not repetitive plumbing.
 Layers are structured so that one layer's real output becomes the next layer's
 concrete example, not an abstract spec to interpret from scratch. Each layer
 is mostly code-driven, and calls an LLM only where a deterministic block
-genuinely can't do the job (see `import --llm`, the route wizard's analysis
-step — the *only* two places in this whole tool that ever call one).
+genuinely can't do the job (see `import --llm`). Line's AI decisions run on
+one ladder: static → middleware → Line-1 (the one picker; jev fills that role
+until Line-1 ships) → Construct verify → person, and every AI step is off
+unless its profile records a measured win over static
+(`packages/core/ai-profiles.json`).
 
 **The hypothesis this project is testing**: if repetitive development work is
 broken down into small enough pieces, most of it needs no LLM at all — and
@@ -186,7 +189,7 @@ if it goes off the rails, instead of a wrong answer silently shipping.
 
 **Three tiers, one framework** — this is meant to be a genuinely new
 development experience, not just a different chat window:
-- **Beginner**: chat only (the guided import wizard, the UI's chat interface).
+- **Beginner**: chat only (the UI's chat interface; imports through the Import agent).
 - **Intermediate**: a no-code UI editor — dig into forms, visual trees, drag
   interactions (the Dashboard, the pages/JSX editor, workflow visualization).
 - **Expert**: full code, same architecture, same rules, no ceiling.
@@ -692,7 +695,7 @@ Per verb, what `cli` mode runs and what it deliberately does not:
 | review | Review mode's analysis (`review.analyze` Process step) | `construct review <base> <head> --format json`, the changed-file summaries still computed by the existing worker | nothing; refused with `CLI_ROOT_MISMATCH` when the repository top level is not itself the folder holding `architecture.yml` (the CLI would climb out of it) |
 | create | `POST /api/create` | `construct create feature\|layer\|<layer> ... --format json` | any request with `useLlm` (a model call: the provider keys live in the Cockpit server) |
 | refactor | `POST /api/refactor` | `construct refactor move\|rename ... --format json` | nothing |
-| import | `POST /api/import` | `construct import ... --format json` | any request with `useLlm` or `llm`, and the Import Wizard (`/ws/wizard`, an interactive plan analysis with an LLM) |
+| import | `POST /api/import` | `construct import ... --format json` | any request with `useLlm` or `llm` |
 
 `--format json` on `create`, `refactor` and `import` covers the deterministic forms only and prints one document (`{ok: true, verb, ...}`, or `{ok: false, error: {code, message}}` with the matching exit code); a flag that implies a model call or an external input (`--llm`, `--from` on `create`, `--bind`, `--openapi`, `--route`) is refused by name.
 
