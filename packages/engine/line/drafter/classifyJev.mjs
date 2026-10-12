@@ -122,6 +122,23 @@ export async function classifyJev(normalized, slots, catalog, o = {}) {
   } catch { return null; }
 }
 
+/**
+ * One closed choice of the plan path (api vs computed, stub / function / create, which fix) asked of jev the same way:
+ * the picked option and jev's confidence, or null when jev cannot answer. Never throws.
+ * @param {{part?: string, question: string, options: string[], facts: string[]}} q
+ * @param {{choose?: (req: any) => Promise<{text: string, confidence?: number}>, baseUrl?: string, timeoutMs?: number}} [o]
+ * @returns {Promise<{option: string, index: number, confidence: number}|null>}
+ */
+export async function jevPick(q, o = {}) {
+  try {
+    if (!Array.isArray(q.options) || q.options.length < 2) return null;
+    const choose = o.choose ?? await jevChoose(o);
+    if (!choose) return null;
+    const a = await Promise.race([ask(choose, { part: q.part ?? 'plan path', facts: q.facts.length ? q.facts : ['no facts'] }, q), timeout(o.timeoutMs ?? DEFAULT_TIMEOUT_MS)]);
+    return a ? { option: q.options[a.index], index: a.index, confidence: a.confidence } : null;
+  } catch { return null; }
+}
+
 // ------------------------------------------------------------------------------------------------ closed labels + forks
 
 /**
