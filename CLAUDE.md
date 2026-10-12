@@ -66,9 +66,10 @@ block's work?
 ## Standing constraints
 
 - **Dogfood the UI**: `ui/` must become a real Construct feature that passes
-  `construct validate`. That needs support for Vite SPA and Express beyond
-  Next.js App Router (a `framework` option, an abstracted route entry), its
-  own epic. Do not force a Next.js rewrite of working UI code.
+  `construct validate`. That needs support for Express (`ui/server`) beyond
+  Next.js App Router (`ui/client` is already Next.js 15 App Router): a
+  `framework` option, an abstracted route entry, its own epic. Do not force a
+  rewrite of working UI code.
 - **Dogfood runs** (epic #489, label `dogfood`): every finding is high
   priority and is judged as developer experience, not only correctness. Does
   the fix make Construct do the work, or leave a gap to bridge by hand?
