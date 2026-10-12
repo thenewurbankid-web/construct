@@ -27,6 +27,7 @@ import { normalizeLineConfig } from '@line/construct-core/profiles/line/contract
 import { resolveLayout, classify } from '@line/construct-core/profiles/line/checks';
 import { LineOpError } from './contract.mjs';
 import { typeCheckStaged, typeRefusal, optionsOf } from './typeGate.mjs';
+import { expressionTarget } from './expressionTarget.mjs';
 
 const posix = path.posix;
 /** The rules whose typed fix is line.extractExpression. */
@@ -67,18 +68,8 @@ function nameFor(hit, file) {
   return `${item}${hit.kind === 'loop' ? 'Rows' : 'Branch'}`;
 }
 
-/**
- * Where the expression named `name` extracted from `file` goes: `<library>/expressions/` for a library item,
- * `<features>/<feature>/expressions/` for a feature item; null for a file that is neither.
- * @param {{library: string, features: string}} layout @param {string} file @param {string} name
- * @returns {string | null}
- */
-export function expressionTarget(layout, file, name) {
-  const place = classify(String(file ?? ''), /** @type {any} */ (layout));
-  if (place.area === 'library') return `${layout.library}/expressions/${name}.tsx`;
-  if (place.area === 'feature' && place.feature) return `${layout.features}/${place.feature}/expressions/${name}.tsx`;
-  return null;
-}
+/** Where the expression extracted from a file goes (pure, expressionTarget.mjs; conditions.mjs reads it too). */
+export { expressionTarget } from './expressionTarget.mjs';
 
 /** The library expression of that name, if there is one (root-relative), else null. */
 function libraryExpression(root, layout, name) {
