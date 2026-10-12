@@ -25,7 +25,7 @@ Start here. Read `CLAUDE.md`, `LINE.md`, then this file.
    - Cockpit can't create a project from the primitives library yet: `lineNewProjectApi` doesn't pass `library` through, and there is no selector in the UI.
    - Recheck `/api/validate` against the middleware hooks when `mw-ladder` merges.
    - `import.mjs` `analyzeRoute` is a leftover LLM call that only tests use.
-   - Memory embeddings have a second switch next to the AI profiles; this needs an owner decision.
+   - **Owner decision:** fold the memory embeddings into the AI profiles as one step. It is off by default and needs a measured win, and the Memory-tab toggle just flips that profile. Drop the `LINE_MEMORY_EMBED` switch.
 6. **Pipeline repo:** fast-forward core/ship to 3886a743, then bump Construct's pin together with the studio-editor link.
 
 ## Rules that bite
