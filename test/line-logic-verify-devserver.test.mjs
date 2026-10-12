@@ -134,8 +134,8 @@ test('devServerPair: an unchanged page is same-behaviour, the unit ran on both s
   const res = await devServerPair({ ...r, before: UNIT, after: UNIT, ...FAST });
   assertLayerResult(res);
   assert.equal(res.outcome, 'same-behaviour', res.reason);
-  assert.deepEqual(res.coverage?.before.ran, true);
-  assert.deepEqual(res.coverage?.after.ran, true);
+  assert.deepEqual(res.unitRan?.before.ran, true);
+  assert.deepEqual(res.unitRan?.after.ran, true);
   assert.match(res.reason ?? '', /\/orders answered the same/);
 });
 

@@ -352,7 +352,8 @@ function changeLocation(beforeRoot, afterRoot, before, after) {
  * @param {number} [args.startupMs]
  * @param {number} [args.requestMs]
  * @param {number} [args.graceMs]
- * @returns {Promise<LayerResult & {coverage?: {before: {ran: boolean|null, scripts: number}, after: {ran: boolean|null, scripts: number}}}>}
+ * @returns {Promise<LayerResult & {unitRan?: {before: {ran: boolean|null, scripts: number}, after: {ran: boolean|null, scripts: number}}}>}
+ *   `unitRan` (not LayerResult.coverage, which is #883's branch-count shape): whether V8 saw the unit run on each side.
  */
 export async function devServerPair({ beforeRoot, afterRoot, before, after, routes, seed = FAKE_ENV.seed, startupMs, requestMs, graceMs }) {
   const t0 = performance.now();
@@ -364,11 +365,11 @@ export async function devServerPair({ beforeRoot, afterRoot, before, after, rout
   if ('reason' in b) return done({ outcome: b.skipped ? 'skipped' : 'cant-tell', reason: `before: ${b.reason}` });
   const a = await runDevSide({ root: afterRoot, fn: after.fn, ...opts });
   if ('reason' in a) return done({ outcome: a.skipped ? 'skipped' : 'cant-tell', reason: `after: ${a.reason}` });
-  const coverage = { before: b.coverage, after: a.coverage };
+  const unitRan = { before: b.coverage, after: a.coverage };
   for (let i = 0; i < list.length; i++) {
     const [pb, pa] = [b.pages[i], a.pages[i]];
     if (JSON.stringify(pb) === JSON.stringify(pa)) continue;
-    return done({ outcome: 'changed', input: { route: list[i] }, location: changeLocation(beforeRoot, afterRoot, before, after), reason: pageDifference(pb, pa), coverage });
+    return done({ outcome: 'changed', input: { route: list[i] }, location: changeLocation(beforeRoot, afterRoot, before, after), reason: pageDifference(pb, pa), unitRan });
   }
   if (JSON.stringify(b.requests) !== JSON.stringify(a.requests)) {
     const bt = b.requests.map(reqText);
@@ -378,11 +379,11 @@ export async function devServerPair({ beforeRoot, afterRoot, before, after, rout
     const what = gone.length || added.length
       ? `the server's fetches differ (${gone.length ? `only before: ${gone.join(', ')}` : ''}${gone.length && added.length ? '; ' : ''}${added.length ? `only after: ${added.join(', ')}` : ''})`
       : "the server's fetches carry different sentinels";
-    return done({ outcome: 'changed', input: { route: list.join(', ') }, location: changeLocation(beforeRoot, afterRoot, before, after), reason: what, coverage });
+    return done({ outcome: 'changed', input: { route: list.join(', ') }, location: changeLocation(beforeRoot, afterRoot, before, after), reason: what, unitRan });
   }
   if (b.coverage.ran === false && a.coverage.ran === false) {
-    return done({ outcome: 'cant-tell', reason: `${after.fn} never ran on ${list.join(', ')} (V8 coverage), so the same answers prove nothing about it`, coverage });
+    return done({ outcome: 'cant-tell', reason: `${after.fn} never ran on ${list.join(', ')} (V8 coverage), so the same answers prove nothing about it`, unitRan });
   }
   const unread = b.coverage.ran === null || a.coverage.ran === null;
-  return done({ outcome: 'same-behaviour', reason: `${list.join(', ')} answered the same on both sides${unread ? '; the V8 coverage could not be read, so whether the unit ran is not known' : ''}`, coverage });
+  return done({ outcome: 'same-behaviour', reason: `${list.join(', ')} answered the same on both sides${unread ? '; the V8 coverage could not be read, so whether the unit ran is not known' : ''}`, unitRan });
 }
