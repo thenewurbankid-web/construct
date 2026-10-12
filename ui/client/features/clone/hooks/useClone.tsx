@@ -10,7 +10,7 @@ import { pollCloneJob } from '../services/CloneJobPolling';
 import { effectiveAuthMode } from '../domain/GithubConnection';
 import { repoAddress } from '../domain/GithubRepoPick';
 import { cloneReducer, initialCloneState } from '../workflows/Clone';
-import type { CloneAuthMode, GithubStatus } from '../types';
+import type { CloneAuthMode, CloneStep, GithubStatus } from '../types';
 
 /** The clone form: read what was pasted, start a clone, follow its job until it ends, cancel it, and hand the
  * finished folder to `onCloned` (the Open-a-project screen opens it). */
@@ -60,6 +60,10 @@ export function useClone(onCloned: (dir: string) => void, github: GithubStatus |
     setBranch: (branch: string) => dispatch({ type: 'SET_BRANCH', branch }),
     setToken: (token: string) => dispatch({ type: 'SET_TOKEN', token }),
     setAuthMode: (mode: CloneAuthMode) => dispatch({ type: 'SET_AUTH', mode }),
+    setPrivate: (isPrivate: boolean) => dispatch({ type: 'SET_PRIVATE', isPrivate }),
+    next: () => dispatch({ type: 'NEXT' }),
+    back: () => dispatch({ type: 'BACK' }),
+    goTo: (step: CloneStep) => dispatch({ type: 'GO', step }),
     /** #638: picking a repository from the GitHub picker fills the address; an empty pick changes nothing. */
     pickRepo: (fullName: string) => {
       if (fullName) dispatch({ type: 'SET_INPUT', input: repoAddress(fullName) });

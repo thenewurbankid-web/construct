@@ -1,11 +1,17 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { Button, Field, Input } from '@/components/ui';
-import type { ClonePreview, CloneJobView } from '../types';
+import { MoreOptions, QuestionSeries, type QuestionStepInfo } from '@/lib/QuestionSeries';
+import type { ClonePreview, CloneJobView, CloneStep } from '../types';
 import { CloneAuthSection, type CloneAuthSectionProps } from './CloneAuthSection';
+import { CloneJobPanel } from './CloneJobPanel';
 
 type CloneFormProps = {
+  /** The questions (link, private, bring it in). */
+  steps: ReadonlyArray<QuestionStepInfo>;
+  step: CloneStep;
+  /** The answer to "Is it private?" (null: not answered yet). */
+  isPrivate: boolean | null;
   input: string;
   name: string;
   /** The branch as it will be used: typed by the person, else read from the address, else ''. */
@@ -14,151 +20,137 @@ type CloneFormProps = {
   inputProblem: string | null;
   /** The derived address, folder and branch, once the text is understood. */
   preview: ClonePreview | null;
-  workspaceRoot: string | null;
+  /** The folder it will be copied into, and what the summary calls the project. */
+  destination: string;
+  folder: string;
+  projectLabel: string;
   folderProblem: string | null;
   branchProblem: string | null;
-  /** How a private repository is authorised: the GitHub login (#638) or the one-time token field. */
+  /** How a private project is authorised: the GitHub login (#638) or the one-time token field. */
   auth: Omit<CloneAuthSectionProps, 'disabled'>;
+  /** May Next (or "Bring it in") be pressed on the question on screen? A copy is running: nothing can be changed. */
+  canNext: boolean;
+  working: boolean;
   busy: boolean;
   error: string | null;
   job: CloneJobView | null;
-  /** The recent-clones list (another component of this feature, composed by the controller). */
+  /** The recent list (another component of this feature, composed by the controller). */
   recent?: ReactNode;
   onInput: (v: string) => void;
   onName: (v: string) => void;
   onBranch: (v: string) => void;
+  onPrivate: (v: boolean) => void;
+  onNext: () => void;
+  onBack: () => void;
   onStart: () => void;
   onCancel: () => void;
   onDismiss: () => void;
 };
 
-/** Presentation-only "Clone a repository" form for the Open-a-project screen (#330): ONE field that takes whatever
- * people paste, the address it was understood as, an optional folder name and branch, an optional one-time access
- * token for a private repository, the button, and the live progress of the clone with a Cancel. */
-export function CloneForm({
-  input, name, branch, inputProblem, preview, workspaceRoot, folderProblem, branchProblem, auth, busy, error, job, recent,
-  onInput, onName, onBranch, onStart, onCancel, onDismiss,
-}: CloneFormProps) {
-  const working = busy || !!job?.live;
-  // The hints are advice, not a gate: the server is the one that decides what may be cloned.
-  const canStart = input.trim() !== '' && !inputProblem && !folderProblem && !branchProblem && !auth.tokenProblem && !working;
+const seriesProps = (p: CloneFormProps) => ({ name: 'From GitHub', steps: [...p.steps], current: p.step, busy: p.working, canNext: p.canNext, error: p.error, errorTestId: 'clone-error', testId: 'clone-q' });
+
+function BranchPart({ branch }: { branch: string }) {
+  if (!branch) return null;
   return (
-    <section className="clone" aria-labelledby="clone-heading" data-testid="clone">
-      <h2 id="clone-heading" className="clone__heading">Clone a repository</h2>
-      <p className="hint">
-        Paste a repository the way you have it: <code>owner/repo</code>, a link copied from the browser, or a whole <code>git clone</code> line.
-        It is copied into the workspace as a new folder and opened. No terminal needed.
+    <>
+      {' '}on branch <code data-testid="clone-preview-branch">{branch}</code>
+    </>
+  );
+}
+
+function PreviewDetails({ preview, destination, branch }: Pick<CloneFormProps, 'preview' | 'destination' | 'branch'>) {
+  if (!preview) return null;
+  return (
+    <details className="ln-details" data-testid="clone-preview">
+      <summary>Details</summary>
+      <p>
+        Will copy <code data-testid="clone-preview-url">{preview.url}</code>
       </p>
-      <form
-        className="clone__form"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (canStart) onStart();
-        }}
-      >
-        <Field label="Repository" hint={inputProblem}>
-          <Input
-            type="text"
-            inputMode="url"
-            autoComplete="off"
-            autoCapitalize="off"
-            spellCheck={false}
-            placeholder="owner/repo, a link, or git clone …"
-            value={input}
-            disabled={working}
-            aria-invalid={inputProblem ? true : undefined}
-            onChange={(e) => onInput(e.target.value)}
-            data-testid="clone-url"
-          />
-        </Field>
-        {preview && (
-          <div className="clone__preview" role="status" aria-live="polite" data-testid="clone-preview">
-            <div>
-              Will clone <code data-testid="clone-preview-url">{preview.url}</code>
-            </div>
-            <div>
-              into <code data-testid="clone-preview-dest">{workspaceRoot ? `${workspaceRoot.replace(/[\\/]+$/, '')}/${name.trim() || preview.folder}` : name.trim() || preview.folder}</code>
-              {branch ? (
-                <>
-                  {' '}on branch <code data-testid="clone-preview-branch">{branch}</code>
-                </>
-              ) : null}
-            </div>
-            <div className="hint">{[preview.how, preview.note].filter(Boolean).join(' ')}</div>
-          </div>
-        )}
-        <div className="clone__row">
-          <Field label="Folder name (optional)" hint={folderProblem ?? (preview ? `Leave empty to use “${preview.folder}”.` : 'Leave empty to use the repository name.')}>
-            <Input
-              type="text"
-              autoComplete="off"
-              spellCheck={false}
-              value={name}
-              disabled={working}
-              onChange={(e) => onName(e.target.value)}
-              data-testid="clone-name"
-            />
-          </Field>
-          <Field label="Branch (optional)" hint={branchProblem ?? 'Empty means the default branch.'}>
-            <Input
-              type="text"
-              autoComplete="off"
-              spellCheck={false}
-              value={branch}
-              disabled={working}
-              onChange={(e) => onBranch(e.target.value)}
-              data-testid="clone-branch"
-            />
-          </Field>
-        </div>
-        <CloneAuthSection {...auth} disabled={working} />
-        <div className="clone__actions">
-          <Button type="submit" disabled={!canStart} data-testid="clone-start">
-            {busy ? 'Starting…' : 'Clone and open'}
-          </Button>
-        </div>
-      </form>
-      {error && (
-        <p className="status-error" role="alert" data-testid="clone-error">
-          {error}
-        </p>
-      )}
-      {job && (
-        <div className={`clone__job clone__job--${job.tone}`} role="status" aria-live="polite" data-testid="clone-job">
-          <div className="clone__job-head">
-            <strong>{job.title}</strong>
-            <span className="clone__state" data-testid="clone-state">{job.stateLabel}</span>
-          </div>
-          {job.live && (
-            <div
-              className="clone__bar"
-              role="progressbar"
-              aria-label={`${job.title} progress`}
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-valuenow={job.percent ?? undefined}
-            >
-              <div className="clone__bar-fill" style={{ width: `${job.percent ?? 8}%` }} />
-            </div>
-          )}
-          <p className="hint clone__progress" data-testid="clone-progress">
-            {job.progress} {job.live && <span>· {job.size}</span>}
-          </p>
-          <div className="clone__actions">
-            {job.live && (
-              <Button type="button" onClick={onCancel} disabled={job.stateLabel === 'Cancelling'} data-testid="clone-cancel">
-                Cancel
-              </Button>
-            )}
-            {!job.live && job.tone !== 'done' && (
-              <Button type="button" onClick={onDismiss} data-testid="clone-dismiss">
-                Dismiss
-              </Button>
-            )}
-          </div>
-        </div>
-      )}
-      {recent}
+      <p>
+        into <code data-testid="clone-preview-dest">{destination}</code>
+        <BranchPart branch={branch} />
+      </p>
+      <p>{[preview.how, preview.note].filter(Boolean).join(' ')}</p>
+    </details>
+  );
+}
+
+function LinkStep(p: CloneFormProps) {
+  return (
+    <QuestionSeries {...seriesProps(p)} question="Paste the GitHub link" inputId="clone-url" hint={p.inputProblem ?? 'For example owner/project, or a link copied from your browser.'} nextLabel="Next" nextTestId="clone-next" nextControl={'open-project.linkNext'} onNext={p.onNext} more={<PreviewDetails preview={p.preview} destination={p.destination} branch={p.branch} />}>
+      <input id="clone-url" className="ln-q-input" type="text" inputMode="url" autoComplete="off" autoCapitalize="off" spellCheck={false} placeholder="owner/project" value={p.input} disabled={p.working} aria-invalid={p.inputProblem ? true : undefined} onChange={(e) => p.onInput(e.target.value)} data-testid="clone-url" data-line-control="open-project.link" />
+    </QuestionSeries>
+  );
+}
+
+function PrivateChoice({ value, label, testId, p }: { value: boolean; label: string; testId: string; p: CloneFormProps }) {
+  return (
+    <label className="ln-q-choice" data-testid={testId}>
+      <span className="ln-q-choice-top">
+        <input type="radio" name="clone-private" checked={p.isPrivate === value} disabled={p.working} onChange={() => p.onPrivate(value)} />
+        {label}
+      </span>
+    </label>
+  );
+}
+
+function PrivateStep(p: CloneFormProps) {
+  return (
+    <QuestionSeries {...seriesProps(p)} question="Is it private?" hint="Only you, or people you invited, can see a private project." nextLabel="Next" nextTestId="clone-next" nextControl={'open-project.privateNext'} onNext={p.onNext} onBack={p.onBack}>
+      <fieldset className="ln-q-choices" aria-label="Is it private?" data-testid="clone-private" data-line-control="open-project.private">
+        <PrivateChoice value={false} label="No, anyone can see it" testId="clone-private-no" p={p} />
+        <PrivateChoice value={true} label="Yes, it is private" testId="clone-private-yes" p={p} />
+      </fieldset>
+      {p.isPrivate ? <CloneAuthSection {...p.auth} disabled={p.working} /> : null}
+    </QuestionSeries>
+  );
+}
+
+function ConfirmMore(p: CloneFormProps) {
+  return (
+    <>
+      <MoreOptions testId="clone-more" open={p.folderProblem !== null || p.branchProblem !== null || undefined}>
+        <label className="ln-q-field">
+          <span>Folder name</span>
+          <input className="ln-q-input ln-q-input--sm" type="text" autoComplete="off" spellCheck={false} value={p.name} placeholder={p.preview?.folder ?? ''} disabled={p.working} aria-invalid={p.folderProblem ? true : undefined} onChange={(e) => p.onName(e.target.value)} data-testid="clone-name" />
+          <small>{p.folderProblem ?? 'Leave empty to use the project’s own name.'}</small>
+        </label>
+        <label className="ln-q-field">
+          <span>Branch</span>
+          <input className="ln-q-input ln-q-input--sm" type="text" autoComplete="off" spellCheck={false} value={p.branch} disabled={p.working} aria-invalid={p.branchProblem ? true : undefined} onChange={(e) => p.onBranch(e.target.value)} data-testid="clone-branch" />
+          <small>{p.branchProblem ?? 'Leave empty for the main one.'}</small>
+        </label>
+      </MoreOptions>
+      <PreviewDetails preview={p.preview} destination={p.destination} branch={p.branch} />
+    </>
+  );
+}
+
+function ConfirmStep(p: CloneFormProps) {
+  return (
+    <QuestionSeries {...seriesProps(p)} question="Ready to bring it in?" nextLabel={p.busy ? 'Starting…' : 'Bring it in'} nextTestId="clone-start" nextControl={'open-project.bringIn'} onNext={p.onStart} onBack={p.onBack} more={<ConfirmMore {...p} />}>
+      <div className="ln-q-summary" data-testid="clone-summary">
+        <span>
+          <strong>{p.projectLabel}</strong> will be copied into your workspace as <strong>{p.folder}</strong> and opened.
+        </span>
+      </div>
+      <CloneJobPanel job={p.job} onCancel={p.onCancel} onDismiss={p.onDismiss} />
+    </QuestionSeries>
+  );
+}
+
+const STEP_VIEWS = { link: LinkStep, private: PrivateStep, confirm: ConfirmStep } as const;
+
+/** Presentation-only "From GitHub" question series for the Open-a-project screen (#330, #638): 1) the link, pasted the
+ * way people have it (owner/repo, a browser link or a whole copy line), 2) is it private (yes asks for the GitHub
+ * login or a one-time access token, with how to get one), 3) a last look, the folder name and branch under More
+ * options, and "Bring it in", with the live progress and Cancel. A refusal shows on the question it belongs to. */
+export function CloneForm(p: CloneFormProps) {
+  const Step = STEP_VIEWS[p.step];
+  return (
+    <section className="clone-q" aria-label="From GitHub" data-testid="clone">
+      <Step {...p} />
+      {p.recent}
     </section>
   );
 }

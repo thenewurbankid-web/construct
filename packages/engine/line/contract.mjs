@@ -607,7 +607,8 @@ export const PLAN_PROTOCOL = Object.freeze([
  * optional `controlId` to each tool of the one tool registry (@mx/plan); this registry is the control side of that same
  * link (packages/engine/line/controls.mjs LINE_CONTROLS), never a second tool registry.
  *
- * @typedef {'components'|'pages'|'features'|'plan'} LineScreen  'plan' is the Plan panel, shown on Components and Pages.
+ * @typedef {'components'|'pages'|'features'|'plan'|'open-project'} LineScreen  'plan' is the Plan panel, shown on Components and Pages;
+ *   'open-project' is the Your projects screen (no project open).
  *
  * @typedef {object} LineControl
  * @property {string} controlId  Stable, "<screen>.<name>", e.g. "components.baseOn".
@@ -654,11 +655,19 @@ export const LINE_SCREENS = Object.freeze([
   Object.freeze({ id: 'pages', label: 'Pages', href: '/pages' }),
   Object.freeze({ id: 'features', label: 'Features', href: '/' }),
   Object.freeze({ id: 'plan', label: 'Plan panel', href: '/components' }),
+  Object.freeze({ id: 'open-project', label: 'Your projects', href: '/' }),
 ]);
 /** The plan actions a control can trigger besides the plan tools (a person's decisions on a step). */
 export const PLAN_ACTION_TOOLS = Object.freeze([
   { name: 'plan.approve', kind: 'person', request: '{stepId}' },
   { name: 'plan.retry', kind: 'person', request: '{stepId}' },
+]);
+/** The Your projects screen's tools (no project open): start one, bring one in from GitHub, open one. Each is in the one
+ * tool catalog (toolRegistry.mjs); starting and bringing in are the person's (Auto stops before them), opening is a read. */
+export const OPEN_PROJECT_TOOLS = Object.freeze([
+  { name: 'line.newProject', kind: 'person', request: '{name, feature}' },
+  { name: 'line.bringIn', kind: 'person', request: '{url, name?, branch?}' },
+  { name: 'line.openProject', kind: 'read', request: '{dir}' },
 ]);
 export const AUTO_ACTION_KINDS = Object.freeze(['click', 'type', 'select', 'approve']);
 
@@ -1490,8 +1499,8 @@ export function assertAiProfiles(x) {
   if (typeof x.reason?.linked !== 'boolean') fail('aiProfiles.reason.linked', 'must be a boolean');
   sentence(x.reason.sentence, 'aiProfiles.reason.sentence');
 }
-const SCREEN_IDS = ['components', 'pages', 'features', 'plan'];
-const TOOL_IDS = () => [...LINE_PLAN_TOOLS, ...PLAN_ACTION_TOOLS].map((t) => t.name);
+const SCREEN_IDS = ['components', 'pages', 'features', 'plan', 'open-project'];
+const TOOL_IDS = () => [...LINE_PLAN_TOOLS, ...PLAN_ACTION_TOOLS, ...OPEN_PROJECT_TOOLS].map((t) => t.name);
 
 /**
  * cg1: throws unless c is a LineControl ("<screen>.<name>" id on its screen, a known tool, a label not a sentence).
@@ -1501,7 +1510,7 @@ const TOOL_IDS = () => [...LINE_PLAN_TOOLS, ...PLAN_ACTION_TOOLS].map((t) => t.n
  */
 export function assertLineControl(c, where = 'control') {
   str(c?.controlId, `${where}.controlId`);
-  if (!/^[a-z]+\.[A-Za-z]+$/.test(c.controlId)) fail(`${where}.controlId`, 'must be "<screen>.<name>"');
+  if (!/^[a-z][a-z-]*\.[A-Za-z]+$/.test(c.controlId)) fail(`${where}.controlId`, 'must be "<screen>.<name>"');
   if (!SCREEN_IDS.includes(c.screen)) fail(`${where}.screen`, `must be one of ${SCREEN_IDS.join(', ')}`);
   if (c.controlId.split('.')[0] !== c.screen) fail(`${where}.controlId`, 'must start with its screen');
   if (!TOOL_IDS().includes(c.toolId)) fail(`${where}.toolId`, `must be a plan tool or plan action, not ${c.toolId}`);

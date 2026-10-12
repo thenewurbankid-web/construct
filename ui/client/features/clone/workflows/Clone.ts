@@ -1,7 +1,13 @@
-import type { CloneAuthMode, CloneJob } from '../types';
+import { nextCloneStep, previousCloneStep } from '../domain/CloneSteps.ts';
+import { cloneRefusalStep } from '../domain/CloneStepRules.ts';
+import type { CloneAuthMode, CloneJob, CloneStep } from '../types';
 
 // Workflows own application state/flow but never import React (WORKFLOW-001): plain reducers.
 export type CloneFormState = {
+  /** The question on screen (From GitHub asks one at a time). */
+  step: CloneStep;
+  /** The answer to "Is it private?": null until answered. Only a private one asks for a token or the GitHub login. */
+  isPrivate: boolean | null;
   /** Whatever was pasted into the one repository field. */
   input: string;
   /** A folder name typed by the person; '' = use the repository name. */
@@ -24,13 +30,17 @@ export type CloneAction =
   | { type: 'SET_BRANCH'; branch: string }
   | { type: 'SET_TOKEN'; token: string }
   | { type: 'SET_AUTH'; mode: CloneAuthMode }
+  | { type: 'SET_PRIVATE'; isPrivate: boolean }
+  | { type: 'NEXT' }
+  | { type: 'BACK' }
+  | { type: 'GO'; step: CloneStep }
   | { type: 'START' }
   | { type: 'STARTED'; job: CloneJob }
   | { type: 'REFUSED'; error: string }
   | { type: 'JOB'; job: CloneJob }
   | { type: 'DISMISS' };
 
-export const initialCloneState: CloneFormState = { input: '', name: '', branch: null, token: '', authChoice: null, starting: false, job: null, error: null };
+export const initialCloneState: CloneFormState = { step: 'link', isPrivate: null, input: '', name: '', branch: null, token: '', authChoice: null, starting: false, job: null, error: null };
 
 export function cloneReducer(state: CloneFormState, action: CloneAction): CloneFormState {
   switch (action.type) {
@@ -46,13 +56,23 @@ export function cloneReducer(state: CloneFormState, action: CloneAction): CloneF
     case 'SET_AUTH':
       // Switching the way in drops what was typed for the other one: a token is never kept once it is not going to be used.
       return { ...state, authChoice: action.mode, token: action.mode === 'login' ? '' : state.token, error: null };
+    case 'SET_PRIVATE':
+      // "Not private" drops a token typed earlier: a token is never kept once it is not going to be used.
+      return { ...state, isPrivate: action.isPrivate, token: action.isPrivate ? state.token : '', error: null };
+    case 'NEXT':
+      return { ...state, step: nextCloneStep(state.step), error: null };
+    case 'BACK':
+      return { ...state, step: previousCloneStep(state.step), error: null };
+    case 'GO':
+      return { ...state, step: action.step };
     case 'START':
       return { ...state, starting: true, error: null, job: null };
     case 'STARTED':
       // The token has been sent; the form does not keep it.
       return { ...state, starting: false, job: action.job, token: '' };
     case 'REFUSED':
-      return { ...state, starting: false, error: action.error };
+      // Shown on the question it belongs to.
+      return { ...state, starting: false, error: action.error, step: cloneRefusalStep(action.error) };
     case 'JOB':
       return state.job && state.job.id === action.job.id ? { ...state, job: action.job } : state;
     case 'DISMISS':

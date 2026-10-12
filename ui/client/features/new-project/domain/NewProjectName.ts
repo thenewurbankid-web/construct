@@ -1,14 +1,7 @@
 // Pure (DOMAIN-001): what the New project form says about the name typed so far. A mirror of the server's rule
 // (the clone folder-name rule: newProjectApi.mjs -> gitUrl.validateSlug) for a quick hint; the server is the judge.
-import type { NewProjectFramework } from '../types';
 
 export const MAX_PROJECT_NAME_LENGTH = 100;
-
-export const FRAMEWORK_CHOICES: ReadonlyArray<{ id: NewProjectFramework; label: string }> = [
-  { id: 'nextjs', label: 'Next.js (default)' },
-  { id: 'react-spa', label: 'React single-page app' },
-  { id: 'line', label: 'Line project' },
-];
 
 /** A plain problem with `name` as a project name, or null (an empty name is not a problem yet, just not ready). */
 export function projectNameProblem(name: string): string | null {

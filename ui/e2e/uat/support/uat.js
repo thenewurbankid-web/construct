@@ -90,10 +90,10 @@ export const test = base.extend({
 export { expect };
 
 /** UAT step "Open the project line-sample from the project picker": from wherever Cockpit is, back to the picker
- * (switcher -> Close project when one is open) and Select line-sample. */
+ * (switcher -> Close project when one is open) and click the line-sample card. */
 export async function openSampleFromPicker(page) {
   await page.goto('/');
-  const picker = page.getByRole('heading', { name: 'Open a project' });
+  const picker = page.getByRole('heading', { name: 'Your projects', level: 1 });
   const switcher = page.getByTestId('project-switcher');
   await expect(picker.or(switcher)).toBeVisible({ timeout: 60_000 });
   // A poll already in flight when the project closes answers 409 "No Construct project is open"; that is the
@@ -105,8 +105,7 @@ export async function openSampleFromPicker(page) {
     await page.getByTestId('close-project').click();
     await expect(picker).toBeVisible({ timeout: 30_000 });
   }
-  const row = page.getByRole('listitem').filter({ hasText: 'line-sample' });
-  await row.getByRole('button', { name: /^Select/ }).click();
+  await page.getByRole('region', { name: 'Your projects' }).getByRole('button', { name: 'Open line-sample', exact: true }).click();
   await expect(switcher).toContainText('line-sample', { timeout: 30_000 });
   await waitForCockpitReady(page);
   await page.waitForTimeout(500);
@@ -218,15 +217,13 @@ export async function expectPlainEnglish(locator) {
   expect(text, 'technical detail outside Details').not.toMatch(/\b(LINE|SLICE|PAGE|COMPONENT)-[A-Z0-9]+\b|\.tsx?:\d+|\bline\.[a-zA-Z]+\(/);
 }
 
-/** Open a project the owner's way: from "Open a project", its row in "Your projects". */
+/** Open a project the owner's way: from "Your projects", one click on its card. */
 export async function openFromGate(page, me, name) {
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Open a project' })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole('heading', { name: 'Your projects', level: 1 })).toBeVisible({ timeout: 30_000 });
   const list = page.getByRole('region', { name: 'Your projects' });
   const action = me.action(`open ${name}`);
-  await me.click(list.getByRole('button', { name: `Select ${name}` }));
-  const open = page.getByRole('button', { name: new RegExp(`^Open( ${name})?$`) });
-  if (await open.count()) await me.click(open.first());
+  await me.click(list.getByRole('button', { name: `Open ${name}`, exact: true }));
   await expect(page.getByTestId('project-switcher')).toContainText(name, { timeout: 30_000 });
   action.done();
 }
@@ -236,7 +233,7 @@ export async function closeProject(page) {
   if (!(await page.getByTestId('project-switcher').count())) return;
   await page.getByTestId('project-switcher').click();
   await page.getByTestId('close-project').click();
-  await expect(page.getByRole('heading', { name: 'Open a project' })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole('heading', { name: 'Your projects', level: 1 })).toBeVisible({ timeout: 30_000 });
 }
 
 /** The screens rail link the owner clicks to move between screens. */

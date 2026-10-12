@@ -28,18 +28,27 @@ test.describe.serial('#445 New project', () => {
   });
 
   test('a name makes an initialised project in the workspace and opens it', async ({ page, request }) => {
-    await page.goto('/');
+    await page.goto('/?tab=new');
     const panel = page.getByTestId('new-project');
-    await expect(panel.getByRole('heading', { name: 'New project' })).toBeVisible();
-    await expect(panel.getByTestId('new-project-create')).toBeDisabled();
+    await expect(panel.getByText('What should we call it?')).toBeVisible();
+    await expect(panel.getByTestId('new-project-next')).toBeDisabled();
 
     await panel.getByTestId('new-project-name').fill('my-shop');
+    await panel.getByTestId('new-project-next').click();
+    // The second question: a Line project is recommended and chosen; a plain website sits under More options.
+    await expect(panel.getByText('What kind of project?')).toBeVisible();
+    await expect(panel.getByTestId('new-project-kind-line').getByRole('radio')).toBeChecked();
+    await panel.getByTestId('new-project-more').locator('summary').click();
+    await panel.getByTestId('new-project-kind-nextjs').click();
+    await panel.getByTestId('new-project-next').click();
+    await expect(panel.getByTestId('new-project-summary')).toContainText('my-shop, a Website (Next.js).');
+    await panel.getByText('Details').click();
     await expect(panel.getByTestId('new-project-preview')).toContainText(path.join(WS, 'my-shop'));
-    await expect(panel.getByTestId('new-project-create')).toBeEnabled();
+    await expect(panel.getByTestId('new-project-create')).toHaveText('Create');
     await panel.getByTestId('new-project-create').click();
 
     // The screen reloads into the new project: the gate is gone and the switcher names it.
-    await expect(page.getByRole('heading', { name: 'Open a project' })).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: 'Your projects', level: 1 })).toHaveCount(0);
     await expect(page.getByTestId('project-switcher')).toContainText('my-shop');
 
     const dir = path.join(WS, 'my-shop');
@@ -49,39 +58,65 @@ test.describe.serial('#445 New project', () => {
     expect(settings.valid).toBe(true);
   });
 
-  test('the keyboard is enough: type a name, press Enter; the other framework is offered', async ({ page }) => {
-    await page.goto('/');
+  test('the keyboard is enough: type a name, Enter through the questions; the other kinds are offered', async ({ page }) => {
+    await page.goto('/?tab=new');
     const panel = page.getByTestId('new-project');
-    await panel.getByTestId('new-project-framework').selectOption('react-spa');
     await panel.getByTestId('new-project-name').fill('spa-app');
     await panel.getByTestId('new-project-name').press('Enter');
-    await expect(page.getByRole('heading', { name: 'Open a project' })).toHaveCount(0);
+    await panel.getByTestId('new-project-more').locator('summary').click();
+    await panel.getByTestId('new-project-kind-react-spa').getByRole('radio').check();
+    await page.keyboard.press('Enter');
+    await expect(panel.getByTestId('new-project-summary')).toContainText('spa-app, a React app.');
+    await panel.getByTestId('new-project-create').focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('heading', { name: 'Your projects', level: 1 })).toHaveCount(0);
     expect(fs.readFileSync(path.join(WS, 'spa-app', 'architecture.yml'), 'utf8')).toContain('framework: react-spa');
     expect(fs.existsSync(path.join(WS, 'spa-app', 'src', 'App.tsx'))).toBe(true);
   });
 
+  test('Back keeps the answers, and the answers are kept when switching tabs', async ({ page }) => {
+    await page.goto('/?tab=new');
+    const panel = page.getByTestId('new-project');
+    await panel.getByTestId('new-project-name').fill('keep-me');
+    await panel.getByTestId('new-project-next').click();
+    await page.getByRole('tab', { name: 'From GitHub' }).click();
+    await expect(page).toHaveURL(/tab=github/);
+    await page.getByRole('tab', { name: 'New project' }).click();
+    await expect(panel.getByText('What kind of project?')).toBeVisible();
+    await panel.getByTestId('new-project-q-back').click();
+    await expect(panel.getByTestId('new-project-name')).toHaveValue('keep-me');
+    expect(entries()).toEqual([]);
+  });
+
   test('a bad name is explained as you type and cannot be sent; nothing is created', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/?tab=new');
     const panel = page.getByTestId('new-project');
     for (const [bad, hint] of [['../evil', /no slashes/], ['a/b', /no slashes/], ['/etc/passwd', /no slashes/], ['my shop', /no spaces/], ['..', /Use letters/], ['.hidden', /Use letters/]]) {
       await panel.getByTestId('new-project-name').fill(bad);
       await expect(panel, bad).toContainText(hint);
-      await expect(panel.getByTestId('new-project-create'), bad).toBeDisabled();
+      await expect(panel.getByTestId('new-project-next'), bad).toBeDisabled();
       await panel.getByTestId('new-project-name').press('Enter');
+      await expect(panel.getByText('What should we call it?'), bad).toBeVisible();
     }
-    await expect(page.getByRole('heading', { name: 'Open a project' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Your projects', level: 1 })).toBeVisible();
     expect(entries()).toEqual([]);
   });
 
-  test('a taken name is answered in plain words by the server, and the existing folder is left alone', async ({ page }) => {
+  test('a taken name is answered in plain words by the server on the name question, and the folder is left alone', async ({ page }) => {
     fs.mkdirSync(path.join(WS, 'taken'));
     fs.writeFileSync(path.join(WS, 'taken', 'keep.txt'), 'mine');
-    await page.goto('/');
+    await page.goto('/?tab=new');
     const panel = page.getByTestId('new-project');
     await panel.getByTestId('new-project-name').fill('taken');
+    await panel.getByTestId('new-project-name').press('Enter');
+    await panel.getByTestId('new-project-more').locator('summary').click();
+    await panel.getByTestId('new-project-kind-nextjs').click();
+    await panel.getByTestId('new-project-next').click();
     await panel.getByTestId('new-project-create').click();
     await expect(panel.getByTestId('new-project-error')).toContainText('There is already something called "taken"');
-    await expect(page.getByRole('heading', { name: 'Open a project' })).toBeVisible();
+    // The refusal is shown on the question it belongs to: the name.
+    await expect(panel.getByText('What should we call it?')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Your projects', level: 1 })).toBeVisible();
     expect(fs.readdirSync(path.join(WS, 'taken'))).toEqual(['keep.txt']);
     // Typing another name clears the refusal.
     await panel.getByTestId('new-project-name').fill('taken-2');
@@ -101,10 +136,10 @@ test.describe.serial('#445 New project', () => {
     expect(fs.readdirSync(outside).sort()).toEqual(outsideBefore);
   });
 
-  test('at 390px the form fits, and it passes the accessibility scan in both themes', async ({ page }) => {
+  test('at 390px the questions fit, and it passes the accessibility scan in both themes', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 800 });
     for (const theme of ['light', 'dark']) {
-      await page.goto('/');
+      await page.goto('/?tab=new');
       await expect(page.getByTestId('new-project')).toBeVisible();
       await setTheme(page, theme);
       await page.getByTestId('new-project-name').fill('narrow');

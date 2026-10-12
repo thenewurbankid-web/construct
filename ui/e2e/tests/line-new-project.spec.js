@@ -12,6 +12,17 @@ const API = process.env.E2E_API_BASE || 'http://localhost:4000';
 const WS = process.env.E2E_WORKSPACE_ROOT;
 
 const closeProject = (request) => request.post(`${API}/api/settings`, { data: { closeProject: true } });
+/** The New project questions for a Line project: the name, then the kind (Line, chosen to start with) with its first
+ * feature (and folder) under More options. Leaves the series on the kind question. */
+async function answerLine(panel, { name, feature, parent }) {
+  await panel.getByTestId('new-project-name').fill(name);
+  await panel.getByTestId('new-project-next').click();
+  await expect(panel.getByTestId('new-project-kind-line').getByRole('radio')).toBeChecked();
+  await panel.getByTestId('new-project-more').locator('summary').click();
+  if (feature !== undefined) await panel.getByTestId('new-project-feature').fill(feature);
+  if (parent !== undefined) await panel.getByTestId('new-project-parent').fill(parent);
+}
+
 const clearWorkspace = () => {
   for (const name of fs.readdirSync(WS)) fs.rmSync(path.join(WS, name), { recursive: true, force: true });
 };
@@ -47,12 +58,17 @@ test.describe.serial('Line cu7: New project -> Line', () => {
 
   test('Line, "shop", feature "catalog": the project is made, opened and lands on Features', async ({ page }) => {
     await page.goto('/');
+    // A fresh workspace opens on New project.
+    await expect(page.getByRole('tab', { name: 'New project' })).toHaveAttribute('aria-selected', 'true');
     const panel = page.getByTestId('new-project');
-    await panel.getByTestId('new-project-framework').selectOption('line');
-    await expect(panel.getByTestId('new-project-line-intro')).toContainText('starts with a small library');
-    await panel.getByTestId('new-project-name').fill('shop');
-    await expect(panel.getByTestId('new-project-create')).toBeDisabled(); // no first feature yet
+    await answerLine(panel, { name: 'shop', feature: '' });
+    await expect(panel.getByTestId('new-project-next')).toBeDisabled(); // no first feature
     await panel.getByTestId('new-project-feature').fill('catalog');
+    await expect(panel.getByTestId('new-project-kind-line')).toContainText('Starts with a small library');
+    await panel.getByTestId('new-project-next').click();
+    await expect(panel.getByTestId('new-project-summary')).toContainText('shop, a Line project.');
+    await expect(panel.getByTestId('new-project-summary')).toContainText('one empty part called catalog');
+    await panel.getByText('Details').click();
     await expect(panel.getByTestId('new-project-preview')).toContainText(path.join(WS, 'shop'));
 
     const found = await runAxe(page, { include: '[data-testid="new-project"]' });
@@ -61,7 +77,7 @@ test.describe.serial('Line cu7: New project -> Line', () => {
     await panel.getByTestId('new-project-create').click();
 
     // Opened, on Features, with the one empty feature fine.
-    await expect(page.getByRole('heading', { name: 'Open a project' })).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: 'Your projects', level: 1 })).toHaveCount(0);
     onNewProjectScreen = false;
     await expect(page.getByTestId('line-features')).toBeVisible({ timeout: 30_000 });
     await expect(page.getByRole('navigation', { name: 'Screens', exact: true }).getByRole('link', { name: 'Features' })).toHaveAttribute('aria-current', 'page');
@@ -89,29 +105,27 @@ test.describe.serial('Line cu7: New project -> Line', () => {
     fs.mkdirSync(path.join(WS, 'shop'));
     fs.writeFileSync(path.join(WS, 'shop', 'keep.txt'), 'mine');
     allowRefusalOf = { status: 409, statusText: 'Conflict' };
-    await page.goto('/');
+    await page.goto('/?tab=new');
     const panel = page.getByTestId('new-project');
-    await panel.getByTestId('new-project-framework').selectOption('line');
-    await panel.getByTestId('new-project-name').fill('shop');
-    await panel.getByTestId('new-project-feature').fill('catalog');
+    await answerLine(panel, { name: 'shop', feature: 'catalog' });
+    await panel.getByTestId('new-project-next').click();
     await panel.getByTestId('new-project-create').click();
     await expect(panel.getByTestId('new-project-error')).toHaveText('There is already something called "shop" in that folder; choose another name.');
-    await expect(page.getByRole('heading', { name: 'Open a project' })).toBeVisible();
+    await expect(panel.getByTestId('new-project-name')).toBeVisible(); // shown on the name question
+    await expect(page.getByRole('heading', { name: 'Your projects', level: 1 })).toBeVisible();
     expect(fs.readdirSync(path.join(WS, 'shop'))).toEqual(['keep.txt']);
   });
 
   test('a bad feature name or a folder outside the workspace is explained and cannot be sent', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/?tab=new');
     const panel = page.getByTestId('new-project');
-    await panel.getByTestId('new-project-framework').selectOption('line');
-    await panel.getByTestId('new-project-name').fill('shop');
-    await panel.getByTestId('new-project-feature').fill('a/b');
+    await answerLine(panel, { name: 'shop', feature: 'a/b' });
     await expect(panel).toContainText('A feature name uses letters, digits');
-    await expect(panel.getByTestId('new-project-create')).toBeDisabled();
+    await expect(panel.getByTestId('new-project-next')).toBeDisabled();
     await panel.getByTestId('new-project-feature').fill('catalog');
     await panel.getByTestId('new-project-parent').fill('../elsewhere');
     await expect(panel).toContainText('Pick a folder inside your workspace');
-    await expect(panel.getByTestId('new-project-create')).toBeDisabled();
+    await expect(panel.getByTestId('new-project-next')).toBeDisabled();
     expect(fs.readdirSync(WS)).toEqual([]);
   });
 });

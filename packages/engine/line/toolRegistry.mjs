@@ -67,6 +67,10 @@ export const TOOL_ENTRIES = Object.freeze(/** @type {any[]} */ ([
   { id: 'line.spec', kind: 'read', writes: null, inputSchema: fieldsSchema([], ['topic', 'id']), outputSchema: 'LineSpec', sentence: 'Reads Line\'s versioned spec, generated from its code, one topic at a time.', surfaces: { mcp: 'line_spec' } },
   // cu7: mounted at its own path before the gate (it needs no open project); a person starts a new project folder.
   { id: 'line.newProject', kind: 'write', writes: 'project', inputSchema: fieldsSchema(['name', 'feature'], [], { open: true }), outputSchema: 'NewLineProjectResult', sentence: 'Starts a new Line project in a folder of the workspace and opens it.', personOnly: true, surfaces: { http: http('POST', '/new-project') } },
+  // The Your projects screen (no project open; Cockpit routes outside /api/line: POST /api/clone and POST /api/settings).
+  // Bringing a project in is the person's (it copies a folder into the workspace); opening one only reads.
+  { id: 'line.bringIn', kind: 'write', writes: 'line', inputSchema: fieldsSchema(['url'], ['name', 'branch']), outputSchema: 'CloneJob', sentence: 'Copies a project from GitHub into a new folder of the workspace and opens it.', controlId: 'open-project.bringIn', personOnly: true, surfaces: {} },
+  { id: 'line.openProject', kind: 'read', writes: null, inputSchema: fieldsSchema(['dir']), outputSchema: 'ProjectStatus', sentence: 'Opens a project of the workspace.', controlId: 'open-project.card', surfaces: {} },
   { id: 'line.aiProfiles', kind: 'read', writes: null, inputSchema: NONE, outputSchema: 'AiProfiles', sentence: 'Reads every AI step\'s profile: its model, how it decides and its static fallback.', surfaces: { http: http('GET', '/ai-profiles') } },
   // ci2: the Import agent (its process file <folder>/line/import-plan.json is Line's own state; it changes project files
   // only by adding plan steps a person approves).

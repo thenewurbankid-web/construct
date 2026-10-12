@@ -39,3 +39,12 @@ export function buildRecentRows(items: RecentClone[], pulls: Record<string, { bu
     };
   });
 }
+
+/** Where the copy goes and what the last question calls it: the folder (typed, else the project's own name), its full
+ * path in the workspace, and the project as people know it (owner/project, else what was pasted). */
+export function cloneTarget(workspaceRoot: string | null, name: string, input: string, preview: ClonePreview | null): { folder: string; destination: string; projectLabel: string } {
+  const folder = name.trim() || preview?.folder || '';
+  const destination = workspaceRoot ? `${workspaceRoot.replace(/[\\/]+$/, '')}/${folder}` : folder;
+  const projectLabel = preview ? preview.url.replace(/^https:\/\/(www\.)?github\.com\//, '').replace(/\.git$/, '') : input.trim();
+  return { folder, destination, projectLabel };
+}

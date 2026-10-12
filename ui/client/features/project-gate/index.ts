@@ -10,3 +10,9 @@ export * from './controllers/ProjectGateController';
 /** Fetches project status and runs init-here — used by
  * ProjectGateController; exported for direct reuse/testing. */
 export * from './hooks/useProjectGate';
+
+/** The "Open a project" screen (projects as cards, New project, From GitHub), shown while no project is open. */
+export * from './controllers/OpenProjectController';
+
+/** The Open-a-project screen's tab, kept in the URL. */
+export * from './hooks/useOpenProjectTab';

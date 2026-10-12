@@ -32,6 +32,21 @@ export const LINE_CONTROLS = Object.freeze([
   { controlId: 'plan.retry', toolId: 'plan.retry', screen: 'plan', label: 'Try again' },
   { controlId: 'plan.leave', toolId: 'line.leaveAsIs', screen: 'plan', label: 'Leave as it is' },
   { controlId: 'plan.fix', toolId: 'line.fix', screen: 'plan', label: 'Apply recommended fix' },
+  // Your projects (no project open): the tabs, each question's input and Next, Create, Bring it in, and the project cards.
+  { controlId: 'open-project.tabNew', toolId: 'line.newProject', screen: 'open-project', label: 'New project' },
+  { controlId: 'open-project.name', toolId: 'line.newProject', screen: 'open-project', label: 'What should we call it' },
+  { controlId: 'open-project.nameNext', toolId: 'line.newProject', screen: 'open-project', label: 'Next' },
+  { controlId: 'open-project.kind', toolId: 'line.newProject', screen: 'open-project', label: 'Line project' },
+  { controlId: 'open-project.kindNext', toolId: 'line.newProject', screen: 'open-project', label: 'Next' },
+  { controlId: 'open-project.create', toolId: 'line.newProject', screen: 'open-project', label: 'Create' },
+  { controlId: 'open-project.tabGithub', toolId: 'line.bringIn', screen: 'open-project', label: 'From GitHub' },
+  { controlId: 'open-project.link', toolId: 'line.bringIn', screen: 'open-project', label: 'Paste the GitHub link' },
+  { controlId: 'open-project.linkNext', toolId: 'line.bringIn', screen: 'open-project', label: 'Next' },
+  { controlId: 'open-project.private', toolId: 'line.bringIn', screen: 'open-project', label: 'Is it private' },
+  { controlId: 'open-project.privateNext', toolId: 'line.bringIn', screen: 'open-project', label: 'Next' },
+  { controlId: 'open-project.bringIn', toolId: 'line.bringIn', screen: 'open-project', label: 'Bring it in' },
+  { controlId: 'open-project.tabProjects', toolId: 'line.openProject', screen: 'open-project', label: 'Your projects' },
+  { controlId: 'open-project.card', toolId: 'line.openProject', screen: 'open-project', label: 'Project' },
 ].map((c) => Object.freeze(/** @type {import('./contract.mjs').LineControl} */ (c))));
 
 const FIX_PATH = ['features.finding', 'plan.fix', 'plan.approve'];
@@ -50,6 +65,9 @@ export const TOOL_PATHS = Object.freeze({
   'line.project': ['features.card'],
   'plan.approve': ['plan.approve'],
   'plan.retry': ['plan.retry'],
+  'line.newProject': ['open-project.tabNew', 'open-project.name', 'open-project.nameNext', 'open-project.kind', 'open-project.kindNext', 'open-project.create'],
+  'line.bringIn': ['open-project.tabGithub', 'open-project.link', 'open-project.linkNext', 'open-project.private', 'open-project.privateNext', 'open-project.bringIn'],
+  'line.openProject': ['open-project.tabProjects', 'open-project.card'],
 });
 
 /**

@@ -64,8 +64,18 @@ async function signIn(page) {
   if (await login.isVisible()) await page.getByTestId('login-test-user').click();
   await expect(page.getByRole('banner')).toBeVisible();
   await page.request.post(`${API}/api/settings`, { data: { closeProject: true } });
-  await page.goto('/');
+  await page.goto('/?tab=github');
   await expect(page.getByTestId('clone')).toBeVisible();
+}
+
+/** From GitHub: the link, Next, "Yes, it is private": the question where the GitHub login or a token is asked for. */
+async function toPrivateStep(page, url = 'octo-mock/fixture-app') {
+  await page.goto('/?tab=github');
+  const panel = page.getByTestId('clone');
+  await panel.getByTestId('clone-url').fill(url);
+  await panel.getByTestId('clone-next').click();
+  await panel.getByTestId('clone-private-yes').click();
+  return panel;
 }
 
 test.describe.serial('#638 clone a private repository with a GitHub login', () => {
@@ -91,7 +101,7 @@ test.describe.serial('#638 clone a private repository with a GitHub login', () =
 
   test('connect: the button, the round trip through the mock GitHub, and the account shown', async ({ page }) => {
     await signIn(page);
-    const panel = page.getByTestId('clone');
+    const panel = await toPrivateStep(page);
     // Enabled but not connected: one button, and the pasted-token field is still right there.
     await expect(panel.getByTestId('github-connect')).toHaveText('Connect GitHub for private repositories');
     await expect(panel.getByTestId('clone-token')).toBeVisible();
@@ -99,6 +109,10 @@ test.describe.serial('#638 clone a private repository with a GitHub login', () =
 
     await panel.getByTestId('github-connect').click();
     // Cockpit -> mock GitHub authorize -> Cockpit /auth/repo/callback -> back on the Cockpit, now connected.
+    await expect(page.getByRole('heading', { name: 'Your projects', level: 1 })).toBeVisible();
+    // The URL is where the browser came back to: the Cockpit, with nothing of the connection in it.
+    expect(page.url()).not.toMatch(/code=|state=|token/);
+    await toPrivateStep(page);
     await expect(page.getByTestId('github-connected-panel')).toBeVisible();
     const connected = page.getByTestId('github-connected-panel');
     await expect(connected.getByTestId('clone-auth-login')).toBeChecked();
@@ -106,8 +120,6 @@ test.describe.serial('#638 clone a private repository with a GitHub login', () =
     // The token field is not in the way while the login is the default; the fallback is one click away.
     await expect(connected.getByTestId('clone-token')).toHaveCount(0);
     await expect(connected.getByTestId('clone-auth-token')).toBeVisible();
-    // The URL is where the browser came back to: the Cockpit, with nothing of the connection in it.
-    expect(page.url()).not.toMatch(/code=|state=|token/);
     const seen = await mockSeen();
     expect(seen.seen.some((r) => r.path === '/login/oauth/access_token')).toBe(true);
     expect(seen.seen.some((r) => r.path === '/user' && r.bearer)).toBe(true);
@@ -115,6 +127,7 @@ test.describe.serial('#638 clone a private repository with a GitHub login', () =
 
   test('the repository picker is filled from GitHub and picking one fills the address', async ({ page }) => {
     await signIn(page);
+    await toPrivateStep(page);
     const picker = page.getByTestId('github-repo-picker');
     await expect(picker).toBeVisible();
     const select = picker.getByTestId('github-repo-select');
@@ -124,9 +137,11 @@ test.describe.serial('#638 clone a private repository with a GitHub login', () =
     await picker.getByTestId('github-repo-filter').fill('');
     await expect(select.locator('option')).toHaveCount(4);
     await select.selectOption('octo-mock/fixture-app');
+    await expect(select).toHaveValue('octo-mock/fixture-app');
+    // The pick is the answer to the link question.
+    await page.getByTestId('clone-q-back').click();
     await expect(page.getByTestId('clone-url')).toHaveValue('https://github.com/octo-mock/fixture-app');
     await expect(page.getByTestId('clone-preview-url')).toHaveText('https://github.com/octo-mock/fixture-app.git');
-    await expect(select).toHaveValue('octo-mock/fixture-app');
   });
 
   test('Settings shows the connection and the account', async ({ page }) => {
@@ -144,6 +159,7 @@ test.describe.serial('#638 clone a private repository with a GitHub login', () =
         await page.addInitScript((t) => localStorage.setItem('construct.theme', t), theme);
         await page.setViewportSize(vp);
         await signIn(page);
+        await toPrivateStep(page);
         await expect(page.getByTestId('github-repo-select').locator('option')).toHaveCount(4);
         const form = (await runAxe(page)).filter(isBlocking);
         expect(form, `connected form ${theme} ${vp.width}\n${format(form)}`).toEqual([]);
@@ -157,9 +173,9 @@ test.describe.serial('#638 clone a private repository with a GitHub login', () =
 
   test('clone with the login: no token in the request, the job says so, origin stays plain, and no token anywhere', async ({ page }) => {
     await signIn(page);
-    const panel = page.getByTestId('clone');
     // The repository the picker offered stands in for a real github.com one; the local fixture is the clone source.
-    await panel.getByTestId('clone-url').fill(fixtureUrl('fixture-app.git'));
+    const panel = await toPrivateStep(page, fixtureUrl('fixture-app.git'));
+    await panel.getByTestId('clone-next').click();
     const post = page.waitForRequest((r) => r.method() === 'POST' && r.url() === `${API}/api/clone`);
     await panel.getByTestId('clone-start').click();
     const body = JSON.parse((await post).postData() ?? '{}');
@@ -189,6 +205,7 @@ test.describe.serial('#638 clone a private repository with a GitHub login', () =
 
   test('Disconnect takes the connection away at once; the form goes back to Connect, the token field is there again', async ({ page }) => {
     await signIn(page);
+    await toPrivateStep(page);
     const issued = (await mockSeen()).issued.filter((t) => t.startsWith('ghu_'));
     await page.getByTestId('github-disconnect').click();
     await expect(page.getByTestId('github-connect')).toBeVisible();
@@ -212,9 +229,9 @@ test.describe.serial('#638 clone a private repository with a GitHub login', () =
 
   test('the pasted-token fallback still works: the token goes in the body, never with useLogin', async ({ page }) => {
     await signIn(page);
-    const panel = page.getByTestId('clone');
-    await panel.getByTestId('clone-url').fill(fixtureUrl('secret-app.git'));
+    const panel = await toPrivateStep(page, fixtureUrl('secret-app.git'));
     await panel.getByTestId('clone-token').fill(TYPED_TOKEN);
+    await panel.getByTestId('clone-next').click();
     const post = page.waitForRequest((r) => r.method() === 'POST' && r.url() === `${API}/api/clone`);
     await panel.getByTestId('clone-start').click();
     const body = JSON.parse((await post).postData() ?? '{}');
@@ -247,12 +264,14 @@ test.describe.serial('#638 clone a private repository with a GitHub login', () =
     // A foreign Origin cannot disconnect it.
     expect((await context.request.post(`${API}/api/github/disconnect`, { data: {}, headers: { origin: 'https://evil.example' } })).status()).toBe(403);
     expect((await (await context.request.get(`${API}/api/github/status`)).json()).connected).toBe(true);
-    await page.goto('/');
+    await toPrivateStep(page);
     await expect(page.getByTestId('github-connected-panel')).toBeVisible();
     // Signing out wipes it.
     await context.request.post(`${API}/auth/logout`, { data: {} });
     await page.goto('/');
     await page.getByTestId('login-test-user').click();
+    await expect(page.getByRole('banner')).toBeVisible();
+    await toPrivateStep(page);
     await expect(page.getByTestId('github-connect')).toBeVisible();
   });
 
@@ -265,10 +284,12 @@ test.describe.serial('#638 clone a private repository with a GitHub login', () =
         body: JSON.stringify({ ok: true, job: { id: 'stub', kind: 'clone', title: 'Clone octo-org/hidden', url: 'https://github.com/octo-org/hidden.git', name: 'hidden', state: 'failed', progress: 'Starting', bytes: 0, startedAt: new Date().toISOString(), finishedAt: new Date().toISOString(), error: 'Your GitHub connection cannot see this repository. Either the address is misspelled, or the Cockpit’s GitHub app is not installed on it: install the app on this repository, and for an organisation’s repository ask an organisation owner to install or approve it.', code: 'NOT_VISIBLE_TO_CONNECTION', private: true, via: 'login', log: [] } }),
       });
     });
-    const panel = page.getByTestId('clone');
+    let panel = await toPrivateStep(page, 'octo-org/hidden');
     await panel.getByTestId('github-connect').click();
+    await expect(page.getByRole('heading', { name: 'Your projects', level: 1 })).toBeVisible();
+    panel = await toPrivateStep(page, 'octo-org/hidden');
     await expect(page.getByTestId('github-connected-panel')).toBeVisible();
-    await panel.getByTestId('clone-url').fill('octo-org/hidden');
+    await panel.getByTestId('clone-next').click();
     await panel.getByTestId('clone-start').click();
     await expect(panel.getByTestId('clone-progress')).toContainText('organisation owner');
     await expect(panel.getByTestId('clone-progress')).toContainText('GitHub app is not installed');

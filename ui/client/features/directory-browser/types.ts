@@ -45,3 +45,25 @@ export type DirListingView = {
   total: number;
   truncated: boolean;
 };
+
+/** One project as a card on the Open-a-project screen (domain/ProjectCard.ts). */
+export type ProjectCardView = {
+  name: string;
+  path: string;
+  status: { tone: 'fit' | 'wait'; label: 'Ready' | 'Needs setup' };
+  /** A small framework tag, only when it helps tell projects apart. */
+  tag: string | null;
+};
+
+/** Props of the project cards (components/ProjectCards). */
+export type ProjectCardsProps = {
+  /** null while the first page loads. */
+  cards: ProjectCardView[] | null;
+  total: number;
+  truncated: boolean;
+  loading: boolean;
+  error: string | null;
+  disabled?: boolean;
+  onSelect: (path: string) => void;
+  onLoadMore: () => void;
+};

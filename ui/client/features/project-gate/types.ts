@@ -25,3 +25,17 @@ export type ProjectStatus = {
 
 /** Result of asking the server to open a folder as the project. */
 export type OpenProjectResult = { ok: true } | { ok: false; error: string };
+
+/** The Open-a-project screen's tabs, one per workflow. */
+export type OpenProjectTab = 'projects' | 'new' | 'github';
+
+/** What a plain request on the Your projects screen asks for (domain/OpenProjectRequest.ts). `secret`: the text looked
+ * like an access token, which is never kept or read further. */
+export type OpenProjectIntent =
+  | { kind: 'new'; name: string | null; framework: 'line' | 'nextjs' | 'react-spa' }
+  | { kind: 'github'; link: string | null }
+  | { kind: 'open'; wanted: string; project: string | null }
+  | { kind: 'list' }
+  | { kind: 'explain' }
+  | { kind: 'secret' }
+  | { kind: 'unknown' };
