@@ -1,0 +1,7 @@
+{"kind":"start","at":"2026-10-12T11:00:00.000Z","builder":"fixture-context","model":"qwen2.5-coder:7b","arm":"line","maxTurns":200,"maxMinutes":90}
+{"kind":"turn","turn":1,"in":3100,"out":40,"ms":500,"calls":[{"name":"plan_status","args":"{}","ok":true,"code":null,"sentence":""}],"said":""}
+{"kind":"turn","turn":2,"in":3200,"out":40,"ms":500,"calls":[{"name":"plan_add","args":"{}","ok":false,"code":"UNKNOWN_ITEM","sentence":""}],"said":""}
+{"kind":"turn","turn":3,"in":3300,"out":40,"ms":500,"calls":[{"name":"plan_add","args":"{}","ok":false,"code":"UNKNOWN_ITEM","sentence":""}],"said":""}
+{"kind":"turn","turn":4,"in":3400,"out":40,"ms":500,"calls":[{"name":"plan_add","args":"{}","ok":false,"code":"BAD_ARGS","sentence":""}],"said":""}
+{"kind":"turn","turn":5,"in":3500,"out":40,"ms":500,"calls":[{"name":"plan_add","args":"{}","ok":false,"code":"BAD_ARGS","sentence":""}],"said":""}
+{"kind":"end","at":"2026-10-12T11:00:10.000Z","turns":5,"wallMs":10000,"stop":"fixture"}

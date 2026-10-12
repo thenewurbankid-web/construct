@@ -80,18 +80,33 @@ streaming.
 ## Endpoints
 
 `/` the page, `/events` the SSE stream (`?run=`), `/api/row?id=&run=` one row's full detail, `/api/prompt?run=`,
-`/api/health`. Only discovered run dirs (or dirs under `bench/ecommerce/runs/` or `MC_RUNS`) are readable.
+`/api/health`, `/ctx/api?run=` the Context / jev view as JSON. Only discovered run dirs (or dirs under `bench/ecommerce/runs/` or `MC_RUNS`) are readable.
 
 A row's detail also shows, when calls.jsonl has them (#886-#890): "What the model was shown" (`result.shown`: the
 refusal with its choices, why, effect and context, a rules card, a spec slice), the context lines with their static
 scores (`result.context`), and jev's shadow scores beside them (`shadow`; jev is off and only logged).
 
+### Context / jev (#899)
+
+Open a row in the bench table and press **context / jev** in its detail bar (the toggle stays on as you move between
+rows). It shows the run summary (refusals, lines shown of all candidates, kept %, static-vs-jev disagreement % over the
+lines jev scored) and, for every refusal in the selected row's turn, each context line with its static score
+(`packages/engine/line/contextScore.mjs`), jev's shadow score when logged, the rank under each, and KEPT/DROPPED under
+the cap (5, or 15 on a repeat). Rows where static and jev disagree on kept/dropped are highlighted. The choices with
+why/effect/context, the rules card and the spec slice sit above the table.
+
+Runs from before #886 have no `result.context`: their candidates are rebuilt from the refusal with
+`trace/tools/jev/contextLines.mjs` and labelled **reconstructed**; the cap then comes from in-run repeats of the same
+code and tool, bounded by `logs/hint-state.json` when present. Code: `context-view.mjs` (pure join + `/ctx/api?run=`),
+`context-view.client.js` (served as `/ctx/view.js`).
+
 ## Test
 
 ```
-node --test packages/tools/dev/mission-control/mission-control.test.mjs
+node --test packages/tools/dev/mission-control/mission-control.test.mjs packages/tools/dev/mission-control/context-view.test.mjs
 ```
 
 The parser, join, counters, timeline and loop detector over `fixtures/runs/fixture-qwen` (record shapes copied from
-qwen-agent.mjs and plan-cli.mjs). To see the panel without a live run:
+qwen-agent.mjs and plan-cli.mjs); the Context / jev join over `fixtures/runs/fixture-context` (logged context, jev
+shadow with two disagreements, an unreachable jev, reconstructed refusals, `hint-state.json`). To see the panel without a live run:
 `MC_RUNS=packages/tools/dev/mission-control/fixtures/runs npm run mc`.

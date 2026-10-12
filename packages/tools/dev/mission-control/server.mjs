@@ -16,6 +16,7 @@ import { execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { jsonlSplitter, joinRun, detectLoop, counters, timeline } from './bench-log.mjs';
 import { RUNS_REL, discoverRuns, pickAutoRun, isRealRun, runBanner } from './runs.mjs';
+import { handleContextRoute } from './context-view.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.MC_PORT ?? 4777);
@@ -533,6 +534,7 @@ const server = http.createServer((req, res) => {
     res.end(JSON.stringify({ source, text: text ? String(text) : null }));
     return;
   }
+  if (u.pathname.startsWith('/ctx/')) { handleContextRoute(u, res, (r) => (r ? allowedRun(r) : autoRun)); return; } // #899 Context / jev
   if (u.pathname === '/api/health') { res.writeHead(200, { 'content-type': 'application/json' }); res.end(JSON.stringify({ ok: true, clients: clients.size, autoRun, tailers: tailers.size })); return; }
   res.writeHead(404); res.end('not found');
 });
