@@ -393,3 +393,9 @@ test('#880 follow-up: bench metrics count the fixes a builder picked by id (sent
     assert.deepEqual(planStats(parent, calls).fixesById, { sent: 2, added: 1, landed: 1 });
   } finally { fs.rmSync(parent, { recursive: true, force: true }); }
 });
+
+test('qwen-agent --seed: passed to Ollama options.seed; omitted by default (unchanged behaviour)', async () => {
+  const { flags, chatOptions } = await import('../bench/ecommerce/driver/qwen-agent.mjs');
+  assert.equal(chatOptions(flags(['--seed', '2'])).seed, 2);
+  assert.equal('seed' in chatOptions(flags([])), false);
+});
