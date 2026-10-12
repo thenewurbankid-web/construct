@@ -51,7 +51,8 @@ export async function expectListed(page: Page, names: string[]) {
 /** Set a quantity field, whatever input the build used. */
 export async function setQuantity(field: Locator, n: number) {
   await field.fill(String(n));
-  await field.press('Tab');
+  // A quantity of 0 may remove the field at once (CART-3), so leaving it is best effort.
+  await field.press('Tab', { timeout: 1_000 }).catch(() => {});
 }
 
 /** Put `qty` of a product in the cart through its page. */

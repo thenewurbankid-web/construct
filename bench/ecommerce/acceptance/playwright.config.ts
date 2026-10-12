@@ -20,7 +20,7 @@ export default defineConfig({
   webServer: {
     command: `npx next build && npx next start -p ${port}`,
     cwd: project,
-    url: `http://localhost:${port}`,
+    port, // a port, not a URL: a build without a / page answers 404, and the tests must still run and fail
     timeout: 300_000,
     reuseExistingServer: false,
     stdout: 'ignore',
