@@ -2,7 +2,7 @@
   "builder": "pilot-haiku",
   "arm": "line",
   "model": "claude-haiku",
-  "at": "2026-10-12T00:22:56.946Z",
+  "at": "2026-10-12T01:25:44.248Z",
   "wallMs": 422519,
   "turns": 52,
   "tokens": {
@@ -16,7 +16,7 @@
     "priceDate": "2026-10-06"
   },
   "tokensPerLandedStep": 4811,
-  "tokensPerPassedTest": null,
+  "tokensPerPassedTest": 6779,
   "plan": {
     "added": 33,
     "landed": 31,
@@ -53,14 +53,36 @@
     }
   },
   "tsc": {
-    "errors": null,
-    "note": "skipped"
+    "errors": 0
   },
   "acceptance": {
-    "passed": 0,
+    "passed": 22,
     "total": 22,
-    "ran": false,
-    "passedIds": []
+    "ran": true,
+    "passedIds": [
+      "CART-1",
+      "CART-2",
+      "CART-3",
+      "CART-4",
+      "CART-5",
+      "CART-6",
+      "CART-7",
+      "CART-8",
+      "CAT-1",
+      "CAT-2",
+      "CAT-3",
+      "CAT-4",
+      "CAT-5",
+      "CHK-1",
+      "CHK-2",
+      "CHK-3",
+      "CHK-4 and CHK-5",
+      "CHK-6",
+      "PROD-1",
+      "PROD-2",
+      "PROD-3",
+      "PROD-4"
+    ]
   },
   "loc": 394,
   "filesChanged": 23,

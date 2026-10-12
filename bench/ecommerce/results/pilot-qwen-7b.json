@@ -2,7 +2,7 @@
   "builder": "pilot-qwen-7b",
   "arm": "line",
   "model": "qwen2.5-coder:7b",
-  "at": "2026-10-12T00:22:30.494Z",
+  "at": "2026-10-12T01:25:42.146Z",
   "wallMs": 271002,
   "turns": 200,
   "tokens": {
@@ -49,8 +49,7 @@
     }
   },
   "tsc": {
-    "errors": null,
-    "note": "skipped"
+    "errors": 1
   },
   "acceptance": {
     "passed": 0,
