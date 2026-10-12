@@ -9,14 +9,14 @@
 //                      items with the same name)
 //   ai.*, fixes.typed  im3's memory records (<state>/memory/<step>.jsonl): what the person did with each proposal
 //   ai.staticShare     the decision traces (core decision-trace-store), static vs model-decided; its details list
-//                      every AI step's `on` and `win` (the profiles GET /api/line/ai-profiles serves: core readAiProfiles)
+//                      every AI step's `on` and `win` (the same stepOn/stepWin GET /api/line/ai-profiles serves)
 //   memory.effect      a replay of the person's own picks: memory's preferred option vs the static proposal
 import fs from 'node:fs';
 import path from 'node:path';
 import { writeLineState } from '../../transactionalWriter.mjs';
 import { lineStateDir } from '../workspace.mjs';
 import { METRIC_IDS } from './contract.mjs';
-import { readAiProfiles } from '../../../core/ai-profiles.mjs';
+import { listStepProfiles, stepOn, stepWin } from '../../../core/ai-profiles.mjs';
 
 /** @typedef {import('./contract.mjs').Metric} Metric */
 /** @typedef {import('./contract.mjs').MetricId} MetricId */
@@ -202,7 +202,7 @@ export function readSmartInputs(root, graph) {
   let memory = [];
   try { memory = fs.readdirSync(memDir).filter((f) => f.endsWith('.jsonl')).sort().flatMap((f) => jsonl(path.join(memDir, f))); } catch { /* no memory yet */ }
   let aiSteps = null;
-  try { aiSteps = readAiProfiles().profiles.map((p) => ({ step: p.step, on: p.on, win: p.win })); } catch { /* no profiles: the steps go unlisted */ }
+  try { aiSteps = listStepProfiles().map((p) => ({ step: p.step, on: stepOn(p), win: stepWin(p) })); } catch { /* no profiles: the steps go unlisted */ }
   return { graph, testedItems, runtime: recorded ? { reached } : null, memory, decisions: null, history: jsonl(path.join(state, 'knows', 'smart.jsonl')), aiSteps };
 }
 

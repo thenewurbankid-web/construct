@@ -82,7 +82,13 @@ export function unitFingerprint(kind, fn, anchor, renames = {}) {
   return fingerprintWith(hash, kind, fn, anchor, renames);
 }
 
-/** Name a function node the way a person would: its own name, its variable, its property, or `on:<attr>` for an inline handler. */
+/**
+ * Name a function node the way a person would: its own name, its variable, its property, or `on:<attr>` for an inline handler.
+ * @param {any} node The function node (FunctionDeclaration, FunctionExpression or ArrowFunctionExpression).
+ * @param {any} [parent] Its parent node.
+ * @param {any} [grand] Its grandparent node.
+ * @returns {string | null} The name, or null when nothing names it.
+ */
 export function functionName(node, parent, grand) {
   if (node.id?.name) return node.id.name;
   if (parent?.type === 'VariableDeclarator' && parent.id.type === 'Identifier') return parent.id.name;

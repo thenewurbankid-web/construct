@@ -133,6 +133,6 @@ test('How smart is it lists each AI step\'s on and win from the profiles (the on
   const dir = fs.realpathSync(makeTempDir('line-smart-ai-'));
   let real;
   try { real = readSmartInputs(dir, { nodes: [], edges: [] }).aiSteps; } finally { fs.rmSync(dir, { recursive: true, force: true }); }
-  assert.ok(real.length > 0 && real.every((p) => typeof p.on === 'boolean' && typeof p.win === 'string'), 'read from readAiProfiles, the /api/line/ai-profiles source');
+  assert.ok(real.length > 0 && real.every((p) => typeof p.on === 'boolean' && typeof p.win === 'string'), 'read with stepOn and stepWin, as /api/line/ai-profiles serves them');
   assert.ok(real.filter((p) => p.on).every((p) => p.win !== 'off'), 'a step that is on carries its measured win');
 });
