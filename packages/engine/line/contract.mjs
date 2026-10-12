@@ -849,6 +849,8 @@ export const OPEN_PROJECT_TOOLS = Object.freeze([
   { name: 'line.bringIn', kind: 'person', request: '{url, name?, branch?}' },
   { name: 'line.openProject', kind: 'read', request: '{dir}' },
 ]);
+/** cu4: the Components editor's read (GET /api/line/component): opening a component and its tabs only read. */
+export const COMPONENT_EDITOR_TOOLS = Object.freeze([{ name: 'line.component', kind: 'read', request: '{file}' }]);
 export const AUTO_ACTION_KINDS = Object.freeze(['click', 'type', 'select', 'approve']);
 
 // ---------------------------------------------------------------------------------------------
@@ -1422,8 +1424,9 @@ export function assertFragmentList(l) {
 /** The spec's own format version; bump it when a topic's shape changes (its content hash is `version`). */
 export const SPEC_FORMAT = 1;
 /** The spec's topics, the slices `line_spec` serves. */
-/** `modules` and `line-modules` (Line's engine) list the module contracts, split so each fits one MCP call. */
-export const SPEC_TOPICS = Object.freeze(['rules', 'commands', 'plan', 'model', 'modules', 'line-modules']);
+/** `commands` (Construct's) and `line-tools` (Line's plan tools with their JSON Schemas), `modules` and `line-modules`
+ * (Line's engine): split so each topic fits one MCP call. */
+export const SPEC_TOPICS = Object.freeze(['rules', 'commands', 'line-tools', 'plan', 'model', 'modules', 'line-modules']);
 
 /**
  * `construct line spec` and the MCP tool `line_spec`: what Line is, generated from its code, never hand-written.
@@ -1431,7 +1434,7 @@ export const SPEC_TOPICS = Object.freeze(['rules', 'commands', 'plan', 'model', 
  * @property {1} format          SPEC_FORMAT.
  * @property {string} version    "sha256:<16 hex>" of all topics; changes exactly when a topic's content changes.
  * @property {string} construct  The Construct engine's package version.
- * @property {Partial<Record<'rules'|'commands'|'plan'|'model'|'modules'|'line-modules', unknown>>} topics  All topics, or one slice.
+ * @property {Partial<Record<'rules'|'commands'|'line-tools'|'plan'|'model'|'modules'|'line-modules', unknown>>} topics  All topics, or one slice.
  */
 
 /** The kinds of trace event. */
@@ -1745,7 +1748,7 @@ export function assertAiProfiles(x) {
   sentence(x.reason.sentence, 'aiProfiles.reason.sentence');
 }
 const SCREEN_IDS = ['components', 'pages', 'features', 'plan', 'open-project'];
-const TOOL_IDS = () => [...LINE_PLAN_TOOLS, ...PLAN_ACTION_TOOLS, ...OPEN_PROJECT_TOOLS].map((t) => t.name);
+const TOOL_IDS = () => [...LINE_PLAN_TOOLS, ...PLAN_ACTION_TOOLS, ...OPEN_PROJECT_TOOLS, ...COMPONENT_EDITOR_TOOLS].map((t) => t.name);
 
 /**
  * cg1: throws unless c is a LineControl ("<screen>.<name>" id on its screen, a known tool, a label not a sentence).

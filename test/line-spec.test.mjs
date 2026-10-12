@@ -48,8 +48,8 @@ const sample = (s) => (s.enum ? s.enum[0] : s.type === 'array' ? [sample(s.items
 test('invariant: every line tool in the spec is the registry\'s tool, and its JSON Schema accepts and refuses what the registry does', () => {
   const reg = createLinePlanRegistry({ root: SAMPLE });
   const byName = new Map(reg.list().map((t) => [t.name, t]));
-  assert.deepEqual(spec.topics.commands.line.map((t) => t.name).sort(), LINE_PLAN_TOOLS.map((t) => t.name).sort());
-  for (const t of spec.topics.commands.line) {
+  assert.deepEqual(spec.topics['line-tools'].line.map((t) => t.name).sort(), LINE_PLAN_TOOLS.map((t) => t.name).sort());
+  for (const t of spec.topics['line-tools'].line) {
     const real = byName.get(t.name);
     assert.equal(t.kind, real.kind, t.name);
     const full = Object.fromEntries(Object.entries(t.args.properties).filter(([k]) => !['expect', 'retry', 'fixOf'].includes(k)).map(([k, s]) => [k, sample(s)]));
@@ -84,7 +84,7 @@ test('slice: one topic keeps the spec version; an id narrows it; an unknown topi
   assert.ok(sliceSpec(spec, 'line-modules', 'planService').topics['line-modules'].every((m) => m.files.length));
   assert.deepEqual(sliceSpec(spec, 'line-modules', 'planService').topics['line-modules'].map((m) => m.module), ['line-engine'], 'Line\'s engine is its own topic');
   assert.ok(!spec.topics.modules.some((m) => m.module === 'line-engine') && spec.topics.modules.some((m) => m.module === 'mcp'), 'every other module is in modules');
-  assert.throws(() => sliceSpec(spec, 'prose'), /^Error: "prose" is not a spec topic; the topics are rules, commands, plan, model, modules, line-modules\.$/);
+  assert.throws(() => sliceSpec(spec, 'prose'), /^Error: "prose" is not a spec topic; the topics are rules, commands, line-tools, plan, model, modules, line-modules\.$/);
   for (const t of SPEC_TOPICS) assert.ok(Buffer.byteLength(JSON.stringify(sliceSpec(spec, t))) < 32 * 1024, `${t} fits one MCP call`);
 });
 

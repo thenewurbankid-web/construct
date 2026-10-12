@@ -127,9 +127,11 @@ export async function buildLineSpec({ sources = {}, repo = REPO } = {}) {
   const topics = {
     rules: [...src.catalogRules.map((r) => ({ id: r.id, module: r.module, layers: r.layers, scope: r.scope, defaultSeverity: r.defaultSeverity, why: r.why, expected: r.expected, fix: r.fix })), ...lineRules]
       .sort((a, b) => a.id.localeCompare(b.id)),
-    // The expression schema and the plan-step extras (expect, retry, fixOf) are listed once; each line tool refers to
-    // them by $id, so the topic stays one MCP call as tools are added.
-    commands: { construct: src.commands, line: shareStepExtras(src.lineTools), schemas: { [EXPR_JSON_SCHEMA.$id]: EXPR_JSON_SCHEMA, [STEP_EXTRAS_ID]: stepExtrasSchema(src.lineTools) } },
+    // Construct's commands and Line's plan tools are two topics, so each stays one MCP call as tools are added. The
+    // expression schema and the plan-step extras (expect, retry, fixOf) are listed once with the tools; each line tool
+    // refers to them by $id.
+    commands: { construct: src.commands },
+    'line-tools': { line: shareStepExtras(src.lineTools), schemas: { [EXPR_JSON_SCHEMA.$id]: EXPR_JSON_SCHEMA, [STEP_EXTRAS_ID]: stepExtrasSchema(src.lineTools) } },
     plan: {
       protocol: [...PLAN_PROTOCOL], tools: LINE_PLAN_TOOLS.map((t) => ({ ...t })), stepStates: [...PLAN_STEP_STATES], optionIds: [...STEP_OPTION_IDS],
       checkKinds: [...CHECK_KINDS], defaultExpect: DEFAULT_EXPECT.map((c) => ({ ...c })), fixTools: [...LINE_FIX_TOOLS],
@@ -164,7 +166,8 @@ export function sliceSpec(spec, topic, id) {
     const q = String(id).toLowerCase();
     const has = (s) => String(s ?? '').toLowerCase().includes(q);
     if (topic === 'rules') value = value.filter((r) => has(r.id));
-    else if (topic === 'commands') value = { construct: value.construct.filter((c) => has(c.name) || has(c.tool)), line: value.line.filter((t) => has(t.name)) };
+    else if (topic === 'commands') value = { construct: value.construct.filter((c) => has(c.name) || has(c.tool)) };
+    else if (topic === 'line-tools') value = { ...value, line: value.line.filter((t) => has(t.name)) };
     else if (MODULE_TOPICS.includes(topic)) value = value.map((m) => (has(m.module) ? m : { ...m, files: m.files.filter((f) => has(f.file)) })).filter((m) => m.files.length);
   }
   return { format: spec.format, version: spec.version, construct: spec.construct, topics: { [topic]: value } };

@@ -440,14 +440,14 @@ test('line_spec (cl1): no topic lists the topics and the version; a topic is one
   const index = await call('line_spec', {});
   assert.equal(index.isError, false, index.text);
   assert.match(index.body.version, /^sha256:[0-9a-f]{16}$/);
-  assert.deepEqual(index.body.topics.map((t) => t.name), ['rules', 'commands', 'plan', 'model', 'modules', 'line-modules']);
+  assert.deepEqual(index.body.topics.map((t) => t.name), ['rules', 'commands', 'line-tools', 'plan', 'model', 'modules', 'line-modules']);
   const rules = await call('line_spec', { topic: 'rules' });
   assert.equal(rules.isError, false, rules.text);
   assert.equal(rules.body.version, index.body.version, 'a slice carries the whole spec\'s version');
   assert.ok(rules.body.topics.rules.some((r) => r.id === 'LINE-DIR'));
-  const one = await call('line_spec', { topic: 'commands', id: 'line.promote' });
-  assert.deepEqual(one.body.topics.commands.line.map((t) => t.name), ['line.promote']);
-  assert.deepEqual(one.body.topics.commands.line[0].args.required, ['featureItemId']);
+  const one = await call('line_spec', { topic: 'line-tools', id: 'line.promote' });
+  assert.deepEqual(one.body.topics['line-tools'].line.map((t) => t.name), ['line.promote']);
+  assert.deepEqual(one.body.topics['line-tools'].line[0].args.required, ['featureItemId']);
   const bad = await call('line_spec', { topic: 'nope' });
   assert.equal(bad.isError, true);
   assert.equal(bad.body.error.code, 'INVALID_INPUT');
