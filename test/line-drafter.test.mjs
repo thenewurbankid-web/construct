@@ -282,7 +282,8 @@ test('Train precedents on a real project: the Cockpit drafter ranks by one, ever
   const dir = copy();
   const request = 'Let billing show OrderButton, which lives in orders.';
   const without = draft(dir, request, { records: [], precedents: [] });
-  assert.equal(without.recommended, null, 'no rule reads this wording');
+  // #904: "show" now reads as a change (or, for another feature's item, an add); no rule reads it as the precedent does.
+  assert.notEqual(without.labels.intent.id, 'promote.component', 'no rule reads this wording as a promote');
   // The Cockpit drafter (planDraft.mjs) passes the precedents by default.
   const steps = [];
   const drafter = createPlanDrafter({ root: dir, enabled: true, record: false, plan: { addStep: async (s) => { steps.push(s); return { ok: true, stepId: `s${steps.length}` }; }, view: async () => ({}) } });
