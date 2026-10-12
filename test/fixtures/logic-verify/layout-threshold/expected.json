@@ -20,7 +20,8 @@
   "location": {
     "astPath": "useIsCompact/FunctionDeclaration.body/BlockStatement.body[0]/VariableDeclaration.declarations[0]/VariableDeclarator.init/CallExpression.arguments[0]/ArrowFunctionExpression.body/BinaryExpression.right",
     "file": "src/layout/useIsCompact.ts",
-    "line": 4
+    "line": 4,
+    "column": 68
   },
   "input": {
     "Window.innerWidth": 640

@@ -24,6 +24,7 @@ import { LAYOUT_FAKE_TYPES, mergePools } from './layoutFakes.mjs';
 import { createLayoutFakeGenerator } from './layoutFakeGen.mjs';
 import { createFakeClock } from './layoutClock.mjs';
 import { parseMediaQuery } from './layoutMedia.mjs';
+import { diffLocation } from './canonical.mjs';
 
 const require = createRequire(import.meta.url);
 const { shapeOf } = require('../graph/runtime/recorder.cjs');
@@ -54,8 +55,6 @@ const readOf = (type, m) => {
 };
 const SKIP_KEYS = new Set(['parent', 'loc', 'range', 'type', 'typeAnnotation', 'returnType', 'typeParameters', 'typeArguments', 'decorators']);
 const FN_TYPES = new Set(['ArrowFunctionExpression', 'FunctionExpression']);
-const LEAVES = new Set(['Literal', 'Identifier', 'TemplateElement', 'PrivateIdentifier', 'ThisExpression', 'Super']);
-const PRIMITIVE_FIELDS = ['operator', 'kind', 'computed', 'optional', 'prefix', 'async', 'generator', 'method', 'shorthand', 'delegate'];
 
 /** The child nodes of an ESTree node, with the segment that names each (`BinaryExpression.right`, `Block.body[0]`). */
 function children(node) {
@@ -257,31 +256,6 @@ export function runLayoutCases(code, cases, { paramType = null, gen = createLayo
 const sameRecord = (a, b) => a.output === b.output && a.value === b.value && a.thrown === b.thrown;
 
 /**
- * Where two readers differ: the path down to the first differing node. A differing leaf (a literal, a name) is named by
- * its parent's segment (`BinaryExpression.right`); a differing operator by `<Type>.operator`.
- * @param {any} a The before node.
- * @param {any} b The after node.
- * @param {string[]} [segs] The path down to them.
- * @returns {{segs: string[], line: number}|null}
- */
-export function firstDifference(a, b, segs = []) {
-  if (a.type !== b.type) return { segs, line: b.loc.start.line };
-  for (const f of PRIMITIVE_FIELDS) if (f in a && a[f] !== b[f]) return { segs: [...segs, `${a.type}.${f}`], line: b.loc.start.line };
-  if (LEAVES.has(a.type)) return a.name === b.name && a.value === b.value && (a.type !== 'TemplateElement' || a.value.cooked === b.value.cooked) ? null : { segs, line: b.loc.start.line };
-  const ca = children(a);
-  const cb = children(b);
-  for (let i = 0; i < Math.max(ca.length, cb.length); i++) {
-    const x = ca[i];
-    const y = cb[i];
-    if (!x || !y || x.seg !== y.seg) return { segs: [...segs, `${a.type}.${(x ?? y).key}`], line: (y ?? x).node.loc.start.line };
-    if (x.node.type !== y.node.type || (LEAVES.has(x.node.type) && firstDifference(x.node, y.node))) return { segs: [...segs, x.seg], line: y.node.loc.start.line };
-    const d = firstDifference(x.node, y.node, [...segs, x.seg]);
-    if (d) return d;
-  }
-  return null;
-}
-
-/**
  * The `isolated` LayerResult for a unit's layout logic: run each pure layout reader before and after (paired by astPath)
  * under the cases from the mined literals of BOTH sides, and stop at the first case whose records differ.
  * @param {{beforeRoot: string, afterRoot: string, unit: import('./contract.mjs').UnitRef, beforeFile?: string, maxCases?: number}} args
@@ -307,8 +281,10 @@ export function verifyLayoutPair({ beforeRoot, afterRoot, unit, beforeFile = uni
     for (let i = 0; i < cases.length; i++) {
       for (const r of [rb[i], ra[i]]) if (r.notFaked) notFaked.add(r.notFaked);
       if (sameRecord(rb[i], ra[i])) continue;
-      const d = firstDifference(b.node, a.node, a.path) ?? { segs: a.path, line: a.node.loc.start.line };
-      return { layer: 'isolated', outcome: 'changed', input: cases[i].reads, location: { astPath: d.segs.join('/'), file: unit.file, line: d.line }, ms: Math.round(performance.now() - t0) };
+      // canonical.mjs diffLocation is the one AST-difference locator; reader closures are walked from their own paths
+      const location = diffLocation({ node: b.node, file: beforeFile, prefix: b.path }, { node: a.node, file: unit.file, prefix: a.path })
+        ?? { astPath: a.path.join('/'), file: unit.file, line: a.node.loc.start.line, column: a.node.loc.start.column + 1 };
+      return { layer: 'isolated', outcome: 'changed', input: cases[i].reads, location, ms: Math.round(performance.now() - t0) };
     }
   }
   if (notFaked.size) pending.unshift(`not faked: ${[...notFaked].sort().join(', ')}`);

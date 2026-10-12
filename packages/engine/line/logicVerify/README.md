@@ -10,25 +10,26 @@ build step 1, the contract: shapes, expected outputs and tests. The later steps 
 | `escalation.mjs` | `LEVELS` (L0 to L3), `LAYER_ORDER` per purity, `levelsFor`, `layerOrder`, `isDecisive`, `nextLayer`, `decideUnit` |
 | `fakes.mjs` | Interfaces for the recording fakes, `EffectRecord`, `UnitRun`, `FAKE_ENV`, the sentinel format (`sentinel`, `findSentinels`), `assertEffectRecord`, `assertUnitRun` |
 | `layoutFakes.mjs` | `LAYOUT_FAKE_TYPES` and `LAYOUT_EVENTS` (names from `lib.dom.d.ts`), the `LayoutFakeGenerator` interface, `layoutValues` |
-| `canonical.mjs` | Step 3, C1: `canonicalUnit` (one unit to a stable string and a logic-map fingerprint), `canonicalCompare` (the L0 layer, with the exact location on a mismatch), `locateUnit`, `unitNames`, `PINNED` (esbuild 0.28.2, whitespace and comments only) |
+| `canonical.mjs` | Step 3, C1: `canonicalUnit` (one unit to a stable string and a logic-map fingerprint), `canonicalCompare` (the L0 layer, with the exact location on a mismatch), `unitTree`, `locateUnit`, `unitNames`, `PINNED` (esbuild 0.28.2, whitespace and comments only); the one AST-difference locator: `diffLocation`, `locateDifference`, `locateUnitDifference` |
 | `roundTrip.mjs` | Step 3: `roundTripCompare` (re-inline the extracted functions, then canonical-compare with the original), `inBlocks` |
 | `z3Translate.mjs` | Step 6: `translateFunction` from the TS subset to a solver-neutral IR, `findFunction`, `Unsupported` (subset in the file header) |
 | `z3Prove.mjs` | Step 6: `z3Layer` and `proveEqual`; lowers the IR to Z3 (z3-solver, MIT, WASM; numbers as IEEE doubles), per-proof timeout `Z3_TIMEOUT_MS` |
 | `fastCheckLayer.mjs` | Step 6: `fastCheckLayer` over `ast/pureExportEquivalence`, seeded by `minedSeeds` (the characterizer's literal pools of both sides) |
-| `astLocation.mjs` | `diffLocation`: the first differing expression of two versions of a function, as a `VerdictLocation` |
 | `verifyPair.mjs` | `verifyPair` (the layer walk; one `RUNNERS` registry in `escalation.mjs` order, a layer with no runner answers "skipped" and never decides), `pairBefore`, `classifyBefore` (the one purity stand-in until step 2) |
 | `libDom.mjs` | Step 5. Reads TypeScript's own `lib.dom.d.ts` through the compiler API: `libDomInterface(name)` (every member, inherited ones included, with its type text), `valueKindOf` |
 | `layoutFakeGen.mjs` | Step 5. `createLayoutFakeGenerator()` (the `LayoutFakeGenerator`): checks `LAYOUT_FAKE_TYPES` against `lib.dom.d.ts`, `make(type, case)` typed fakes, `values`, `cases`, `dom`, `fire`; `typedFake`; reading an unbacked member throws `NotFakedError` (`notFaked.mjs`) naming it |
 | `layoutDom.mjs` | Step 5. `createLayoutDom`: window, document, elements, `matchMedia`, `IntersectionObserver`, `ResizeObserver`, window/document/element listeners, all firing under the fake clock |
 | `layoutClock.mjs` | Step 5. `createFakeClock()` (a `ClockFake` at `FAKE_ENV.now`): timers, rAF and rendering frames in HTML order (resize, scroll, media change, rAF, ResizeObserver, IntersectionObserver) |
 | `layoutMedia.mjs` | Step 5. `parseMediaQuery`, `matchesMedia` (min/max, range syntax, em/rem, `and`, comma lists, `not`/`only`, orientation, fixed user preferences) |
-| `layoutRun.mjs` | Step 5. `layoutReaders` (pure layout closures of a unit), `runLayoutCases` (the helper step 4's runner calls), `firstDifference`, `verifyLayoutPair` (the `isolated` layer result for layout) |
+| `layoutRun.mjs` | Step 5. `layoutReaders` (pure layout closures of a unit), `runLayoutCases` (the helper step 4's runner calls), `verifyLayoutPair` (the `isolated` layer result for layout) |
 
 Tests:
 
 - `test/line-logic-verify-contract.test.mjs` covers every validator and pure function.
 - `test/line-logic-verify-planted.test.mjs` holds the planted fixtures and the acceptance tests for each step (`BUILT` lists the steps whose acceptance tests run).
 - `test/line-logic-verify-canonical.test.mjs` covers the canonicaliser's edge cases, the round-trip and verifyPair's L0 walk.
+- `test/line-logic-verify-pure.test.mjs` covers the Z3 translator and layer, the fast-check layer, the locator on whole units and verifyPair's pure path.
+- `test/line-logic-verify-layout.test.mjs` covers `lib.dom.d.ts`, the layout fakes, DOM, clock, media queries and `verifyLayoutPair`.
 - The fixtures are in `test/fixtures/logic-verify/`. They are small synthetic snippets written for these tests, not
   taken from any app.
 
@@ -51,9 +52,11 @@ Tests:
 The acceptance tests in `test/line-logic-verify-planted.test.mjs` call these functions. They are marked `todo` until
 each step lands.
 
-- `purity.mjs`: `classifyUnit({root, file, fn})` returns `{purity, effectChain}`. This is step 2.
+- `purity.mjs`: `classifyUnit({root, file, fn})` returns `{purity, effectChain}`. This is step 2. `verifyPair.mjs`
+  `classifyBefore` imports it as soon as the file exists; until then `classifyBefore` is the one stand-in.
 - `layoutRun.mjs`: `verifyLayoutPair({beforeRoot, afterRoot, unit, beforeFile?})` returns the `isolated` `LayerResult` for a
-  unit's pure layout readers. This is step 5; `verifyPair` calls it once steps 3 and 4 land.
+  unit's pure layout readers. This is step 5; `verifyPair`'s `isolated` runner calls it. Step 4's effect runner joins
+  that runner (`RUNNERS.isolated` in `verifyPair.mjs`) and gives one `isolated` result per unit.
 - `verifyPair.mjs`: `verifyPair({beforeRoot, afterRoot, unit, transforms, levels, blocks?})` returns
   `Promise<UnitVerdict>`. Steps 3 to 6 and step 8 build it.
 - `verifyPair.mjs`: `verifyStep({step, cases})` returns `Promise<StepSummary>`. This is step 7.
@@ -74,11 +77,48 @@ The choices, and why (each is conservative: a false "changed" only falls through
 - The hash is `logicMap.unitFingerprint` of the canonical text plus the pinned printer version: no second scheme.
 - esbuild 0.28.2 and scope-manager are resolved from the repo's installed dev dependencies; when either is missing
   the layer answers `cant-tell`.
-- Until step 2 lands, `classifyBefore` falls back to the logic map's effect units inside the function (no
-  transitive chain).
 
-Speed on the planted fixtures (warm): about 2.3 ms per unit, 2.9 ms per canonical compare, 5.5 ms per `verifyPair`.
-The first unit in a process pays about 0.5 s to load esbuild and scope-manager.
+## verifyPair (steps 3, 5 and 6 combined)
+
+- One `RUNNERS` registry in `escalation.mjs` order: `round-trip` and `L0-canonical` (step 3), `semantic-diff` (no
+  runner), `z3` and `fast-check` (step 6, pure units), `isolated` (step 5's `verifyLayoutPair`; step 4 joins it). A
+  layer with no runner, or one that cannot take the unit, answers `skipped` and the walk goes on. Skipped layers never
+  decide: an undecided unit is `unverified` and names the last layer that actually tried.
+- `semantic-diff` has no runner on purpose: `ast/semanticDiff` alpha-renames free names too, so on one unit a call to
+  a different function reads as a rename, an unsound "same".
+- The unit before the step comes from the caller (`before`) or `pairBefore` (same file and name; else the one function
+  with the same canonical form; else the one with the same name). `z3` takes the before name, so a renamed unit is
+  still proved; `fast-check` pairs exports by name and skips a renamed unit.
+- Purity: one stand-in, `classifyBefore`. Until step 2's `purity.mjs` `classifyUnit` exists it reads the logic map's
+  effect units inside the function plus the effectful globals the domain-purity allowlist reports (`window` is `dom`,
+  `fetch` is `fetch`, `Date` is `time` ...), with no transitive chain. A call into an impure helper is not seen; the
+  proof layers stay sound because z3 and fast-check refuse calls and impure bodies themselves.
+- One AST-difference locator, `canonical.mjs` `diffLocation`: the side-by-side walk under the scope-precise renaming,
+  output `{astPath, file, line, column, side}`. The canonical compare, the round-trip, z3 and fast-check
+  (`locateUnitDifference`) and the layout layer (reader closures, from their own path) all use it. A differing leaf is
+  named by its parent's segment (`BinaryExpression.right`), as in the contract fixtures.
+- The round-trip answers `cant-tell`, not `changed`, when it re-inlined nothing (an expression extracted to a local):
+  it has nothing to undo, so the later layers decide.
+- z3: numbers are IEEE doubles (no false proof over the reals), a per-proof timeout gives `cant-tell`, anything
+  outside the subset is `skipped` with the construct named. fast-check: a "same" is a sample, so the unit is `tested`
+  at best; the characterizer's mined literals of both sides seed the runs.
+- Layout: only pure layout readers run under the fakes; closures over component state are counted in the reason and
+  wait for step 4's hook runner. Reading an unbacked member throws `NotFakedError` naming it, so the result is
+  `cant-tell`, never "same".
+
+Speed of `verifyPair` on the seven planted fixtures (2026-10-12, Apple silicon; warm = median of 10 after a warm-up
+pass, cold = first call in a fresh process, after about 0.1 to 0.2 s of module load):
+
+| Case | Verdict | Warm | Cold |
+| --- | --- | --- | --- |
+| `pure-move`, `rename`, `split` | proven, `L0-canonical` | 3 to 4 ms | 165 to 400 ms (esbuild and scope-manager load) |
+| `flipped-condition` | changed, `z3` | 7 ms | 290 ms (Z3 WASM load) |
+| `dropped-effect` | unverified (step 4 todo) | 2 ms | 160 ms |
+| `layout-threshold` | changed, `isolated` | 300 ms | 750 ms |
+| `out-of-set` | tested, `fast-check` | 230 ms | 500 ms |
+
+The two slow warm cases spend almost all their time in the characterizer's `analyzeClosure` (about 80 to 110 ms per
+root, once per side) for the mined literals, not in the solvers or the fakes; step 7 should cache it per file content.
 
 ## Planted fixtures
 

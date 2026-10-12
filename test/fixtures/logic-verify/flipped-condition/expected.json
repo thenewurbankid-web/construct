@@ -15,7 +15,8 @@
   "location": {
     "astPath": "isAdult/FunctionDeclaration.body/BlockStatement.body[0]/ReturnStatement.argument/BinaryExpression.operator",
     "file": "src/age.ts",
-    "line": 2
+    "line": 2,
+    "column": 10
   },
   "input": [
     18

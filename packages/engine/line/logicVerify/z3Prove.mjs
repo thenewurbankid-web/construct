@@ -7,7 +7,7 @@
 // z3-solver (MIT, WASM) loads lazily, once per process.
 import { parseToAst } from '@construct/ast/parse';
 import { Unsupported, findFunction, translateFunction } from './z3Translate.mjs';
-import { diffLocation } from './astLocation.mjs';
+import { locateUnitDifference } from './canonical.mjs';
 
 /** @typedef {import('./contract.mjs').LayerResult} LayerResult */
 /** @typedef {import('./z3Translate.mjs').Ir} Ir */
@@ -162,6 +162,6 @@ export async function z3Layer({ beforeSource, afterSource, fn, beforeFn = fn, fi
   }
   if (proof.result === 'same') return done({ outcome: 'same-behaviour' });
   if (proof.result === 'unknown') return done({ outcome: 'cant-tell', reason: proof.reason });
-  const location = diffLocation(bFn, aFn, { fn, file });
+  const location = locateUnitDifference({ source: beforeSource, file, fn: beforeFn }, { source: afterSource, file, fn });
   return done({ outcome: 'changed', input: proof.input, ...(location ? { location } : {}) });
 }

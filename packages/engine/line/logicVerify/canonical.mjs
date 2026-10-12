@@ -34,8 +34,9 @@
 //     logic map's export units cover it
 //
 // Mismatch location: both units' ASTs are walked side by side under the same renaming; the first difference gives
-// the contract's VerdictLocation {astPath, file, line, column, side}. A statement that exists only before is reported
-// on the before side (side 'before'); everything else on the after side.
+// the contract's VerdictLocation {astPath, file, line, column, side}. This walk (diffLocation) is logicVerify's one
+// AST-difference locator: z3, fast-check (locateUnitDifference) and the layout layer use it too. A statement that
+// exists only before is reported on the before side (side 'before'); everything else on the after side.
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
@@ -237,17 +238,30 @@ function framed(text, loc) {
 }
 
 /**
+ * One unit's parsed node and scope-precise renaming, without printing it: what the canonical form and the difference
+ * locator share.
+ * @param {UnitSpec} spec
+ * @returns {{file: string, fn: string, node: any, renames: Map<any, string>, source: string, loc: NonNullable<ReturnType<typeof locateUnit>>}|null}
+ */
+export function unitTree(spec) {
+  const source = readSource(spec);
+  const ast = parseToAst(source);
+  const loc = locateUnit(ast, source, spec);
+  if (!loc) return null;
+  const renames = localRenames(ast, loc.node, loc.selfNode, /\.[jt]sx$/.test(spec.file));
+  return { file: spec.file, fn: spec.fn, node: loc.node, renames, source, loc };
+}
+
+/**
  * Canonicalise one unit.
  * @param {UnitSpec} spec
  * @returns {CanonicalUnit|null} null when the file has no such unit.
  */
 export function canonicalUnit(spec) {
-  const source = readSource(spec);
-  const ast = parseToAst(source);
-  const loc = locateUnit(ast, source, spec);
-  if (!loc) return null;
+  const tree = unitTree(spec);
+  if (!tree) return null;
+  const { source, loc, renames } = tree;
   const jsx = /\.[jt]sx$/.test(spec.file);
-  const renames = localRenames(ast, loc.node, loc.selfNode, jsx);
   const parents = new Map();
   for (const { node, parent } of nodes(loc.node)) parents.set(node, parent);
   if (loc.parent) parents.set(loc.node, loc.parent);
@@ -317,24 +331,56 @@ function firstDiff(a0, b0, segs, A, B, pa = null, pb = null) {
 }
 
 /**
- * Where the after unit departs from the before unit.
- * @param {CanonicalUnit} before
- * @param {CanonicalUnit} after
- * @returns {VerdictLocation}
+ * THE AST-difference locator of logicVerify (every layer that names where a unit changed uses it): the first place, in
+ * reading order, where two nodes differ under scope-precise renamings, as a contract VerdictLocation
+ * {astPath, file, line, column, side}. A child that exists only before (a dropped statement) is reported on the before
+ * side; everything else on the after side. A differing leaf (a literal, a name) is named by its parent's segment
+ * (`BinaryExpression.right`), a differing operator by `<Type>.operator`.
+ * @param {{node: any, renames?: Map<any, string>, file: string, prefix: string[]}} before `prefix`: the astPath down to
+ *   `node` (`[fn]` for a whole unit, longer for a closure inside it)
+ * @param {{node: any, renames?: Map<any, string>, file: string, prefix: string[]}} after
+ * @returns {VerdictLocation|null} null when the two are the same under the renamings.
  */
-export function locateDifference(before, after) {
-  const d = firstDiff(before.node, after.node, [], before.renames, after.renames);
-  const side = d?.side ?? 'after';
-  const unit = side === 'before' ? before : after;
-  const node = d ? (side === 'before' ? d.a : d.b) ?? unit.node : unit.node;
-  const segs = d?.segs.length ? d.segs : [unwrap(unit.node).type];
+export function diffLocation(before, after) {
+  const d = firstDiff(before.node, after.node, [], before.renames ?? new Map(), after.renames ?? new Map());
+  if (!d) return null;
+  const side = d.side ?? 'after';
+  const own = side === 'before' ? before : after;
+  const node = (side === 'before' ? d.a : d.b) ?? own.node;
+  const segs = d.segs.length ? d.segs : [unwrap(own.node).type];
   return {
-    astPath: [unit.fn, ...segs].join('/'),
-    file: unit.file,
+    astPath: [...own.prefix, ...segs].join('/'),
+    file: own.file,
     line: node.loc.start.line,
     column: node.loc.start.column + 1,
     ...(side === 'before' ? { side } : {}),
   };
+}
+
+/**
+ * Where the after unit departs from the before unit (diffLocation over two canonicalised units; the unit's own node
+ * when they differ only in printing).
+ * @param {{file: string, fn: string, node: any, renames: Map<any, string>}} before A CanonicalUnit or a unitTree.
+ * @param {{file: string, fn: string, node: any, renames: Map<any, string>}} after
+ * @returns {VerdictLocation}
+ */
+export function locateDifference(before, after) {
+  const side = (u) => ({ node: u.node, renames: u.renames, file: u.file, prefix: [u.fn] });
+  return diffLocation(side(before), side(after)) ?? {
+    astPath: [after.fn, unwrap(after.node).type].join('/'), file: after.file, line: after.node.loc.start.line, column: after.node.loc.start.column + 1,
+  };
+}
+
+/**
+ * Where one unit changed between two sources, for the layers that find THAT it changed by other means (z3, fast-check).
+ * @param {UnitSpec} before
+ * @param {UnitSpec} after
+ * @returns {VerdictLocation|null} null when a side has no such unit or the two do not differ structurally.
+ */
+export function locateUnitDifference(before, after) {
+  const b = unitTree(before);
+  const a = unitTree(after);
+  return b && a ? diffLocation({ ...b, prefix: [b.fn] }, { ...a, prefix: [a.fn] }) : null;
 }
 
 /**

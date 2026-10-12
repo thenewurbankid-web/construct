@@ -11,7 +11,7 @@ import { assertLayerResult, assertUnitVerdict } from '../packages/engine/line/lo
 import { Unsupported, findFunction, translateFunction } from '../packages/engine/line/logicVerify/z3Translate.mjs';
 import { z3Layer, Z3_TIMEOUT_MS } from '../packages/engine/line/logicVerify/z3Prove.mjs';
 import { fastCheckLayer, minedSeeds } from '../packages/engine/line/logicVerify/fastCheckLayer.mjs';
-import { diffLocation } from '../packages/engine/line/logicVerify/astLocation.mjs';
+import { locateUnitDifference } from '../packages/engine/line/logicVerify/canonical.mjs';
 import { verifyPair } from '../packages/engine/line/logicVerify/verifyPair.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -97,7 +97,7 @@ test('z3 layer: a flipped condition is changed, with the counterexample and the 
   const r = await z3('export function f(age: number) {\n  return age >= 18;\n}', 'export function f(age: number) {\n  return age > 18;\n}');
   assert.equal(r.outcome, 'changed');
   assert.deepEqual(r.input, [18]);
-  assert.deepEqual(r.location, { astPath: 'f/FunctionDeclaration.body/BlockStatement.body[0]/ReturnStatement.argument/BinaryExpression.operator', file: 'src/f.ts', line: 2 });
+  assert.deepEqual(r.location, { astPath: 'f/FunctionDeclaration.body/BlockStatement.body[0]/ReturnStatement.argument/BinaryExpression.operator', file: 'src/f.ts', line: 2, column: 10 });
 });
 
 test('z3 layer: numbers are IEEE doubles, so !(a >= 18) and a < 18 differ at NaN (no false proof over the reals)', async () => {
@@ -142,13 +142,11 @@ test(`z3 layer: each small proof stays well under the ${Z3_TIMEOUT_MS} ms budget
 
 // ---- the location -----------------------------------------------------------------------------------------------------
 
-test('diffLocation: a renamed param is not a difference; a changed literal is, at its line', () => {
-  const b = parseToAst('function f(a: number) {\n  return a + 1;\n}');
-  const bf = findFunction(b, 'f');
-  const a = parseToAst('function f(x: number) {\n  return x + 2;\n}');
-  const af = findFunction(a, 'f');
-  assert.deepEqual(diffLocation(bf, af, { fn: 'f', file: 'src/f.ts' }), { astPath: 'f/FunctionDeclaration.body/BlockStatement.body[0]/ReturnStatement.argument/BinaryExpression.right/Literal.value', file: 'src/f.ts', line: 2 });
-  assert.equal(diffLocation(bf, findFunction(parseToAst('function f(y: number) {\n  return y + 1;\n}'), 'f'), { fn: 'f', file: 'src/f.ts' }), null);
+test('locateUnitDifference (the one locator, canonical.mjs): a renamed local is not a difference; a changed literal is, at its line and column', () => {
+  const at = (before, after) => locateUnitDifference({ source: before, file: 'src/f.ts', fn: 'f' }, { source: after, file: 'src/f.ts', fn: 'f' });
+  const before = 'function f(a: number) {\n  const b = a * 2;\n  return b + 1;\n}';
+  assert.deepEqual(at(before, 'function f(x: number) {\n  const y = x * 2;\n  return y + 2;\n}'), { astPath: 'f/FunctionDeclaration.body/BlockStatement.body[1]/ReturnStatement.argument/BinaryExpression.right', file: 'src/f.ts', line: 3, column: 14 });
+  assert.equal(at(before, 'function f(y: number) {\n  const z = y * 2;\n  return z + 1;\n}'), null);
 });
 
 // ---- the fast-check layer -------------------------------------------------------------------------------------------

@@ -7,11 +7,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { pureExportEquivalence } from '@construct/ast/pure-export-equivalence';
-import { parseToAst } from '@construct/ast/parse';
 import { analyzeClosure } from '../characterize/analyze.mjs';
 import { PURE_EQUIVALENCE_OUTCOME } from './contract.mjs';
-import { findFunction } from './z3Translate.mjs';
-import { diffLocation } from './astLocation.mjs';
+import { locateUnitDifference } from './canonical.mjs';
 
 /** @typedef {import('./contract.mjs').LayerResult} LayerResult */
 /** @typedef {{byParam: Record<string, (string|number)[]>, numbers: number[], strings: string[]}} Seeds */
@@ -57,8 +55,6 @@ export function fastCheckLayer({ beforeSource, afterSource, fn, file, seeds }) {
   }
   const outcome = PURE_EQUIVALENCE_OUTCOME[hit.verdict];
   if (outcome !== 'changed') return done({ outcome, ...(hit.reason ? { reason: hit.reason } : {}) });
-  const bFn = findFunction(parseToAst(beforeSource), fn);
-  const aFn = findFunction(parseToAst(afterSource), fn);
-  const location = bFn && aFn ? diffLocation(bFn, aFn, { fn, file }) : null;
+  const location = locateUnitDifference({ source: beforeSource, file, fn }, { source: afterSource, file, fn });
   return done({ outcome, input: hit.input, ...(location ? { location } : {}) });
 }

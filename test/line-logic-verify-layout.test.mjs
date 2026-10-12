@@ -10,7 +10,8 @@ import { createLayoutFakeGenerator, checkAgainstLibDom, NotFakedError, MAKE_TYPE
 import { createFakeClock, FRAME_MS } from '../packages/engine/line/logicVerify/layoutClock.mjs';
 import { parseMediaQuery, matchesMedia } from '../packages/engine/line/logicVerify/layoutMedia.mjs';
 import { mergePools, layoutCases, layoutBase, LARGE, MAX_CASES, LAYOUT_EVENTS } from '../packages/engine/line/logicVerify/layoutFakes.mjs';
-import { layoutReaders, runLayoutCases, verifyLayoutPair, firstDifference } from '../packages/engine/line/logicVerify/layoutRun.mjs';
+import { layoutReaders, runLayoutCases, verifyLayoutPair } from '../packages/engine/line/logicVerify/layoutRun.mjs';
+import { diffLocation } from '../packages/engine/line/logicVerify/canonical.mjs';
 import { FAKE_ENV } from '../packages/engine/line/logicVerify/fakes.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -297,11 +298,11 @@ test('runLayoutCases: outputs as shapes plus primitive values; element and entry
   assert.deepEqual(runLayoutCases('() => window.screen.width', [{ reads: {} }])[0], { reads: {}, output: 'undefined', thrown: 'NotFakedError', notFaked: 'Window.screen' });
 });
 
-test('firstDifference: a changed literal is named by its parent; a changed operator by the operator field', () => {
-  const tree = (src) => layoutReaders(`function f() { const g = ${src}; }`, 'x.ts', 'f').readers[0].node;
-  assert.deepEqual(firstDifference(tree('() => window.innerWidth < 768'), tree('() => window.innerWidth < 640'), ['f']), { segs: ['f', 'ArrowFunctionExpression.body', 'BinaryExpression.right'], line: 1 });
-  assert.deepEqual(firstDifference(tree('() => window.innerWidth < 768'), tree('() => window.innerWidth <= 768'), ['f']).segs.at(-1), 'BinaryExpression.operator');
-  assert.equal(firstDifference(tree('() => window.innerWidth < 768'), tree('() => window.innerWidth < 768'), ['f']), null);
+test('diffLocation on reader closures: a changed literal is named by its parent; a changed operator by the operator field', () => {
+  const side = (src) => ({ node: layoutReaders(`function f() { const g = ${src}; }`, 'x.ts', 'f').readers[0].node, file: 'x.ts', prefix: ['f'] });
+  assert.deepEqual(diffLocation(side('() => window.innerWidth < 768'), side('() => window.innerWidth < 640')), { astPath: 'f/ArrowFunctionExpression.body/BinaryExpression.right', file: 'x.ts', line: 1, column: 52 });
+  assert.equal(diffLocation(side('() => window.innerWidth < 768'), side('() => window.innerWidth <= 768'))?.astPath.split('/').at(-1), 'BinaryExpression.operator');
+  assert.equal(diffLocation(side('() => window.innerWidth < 768'), side('() => window.innerWidth < 768')), null);
 });
 
 test('verifyLayoutPair: the same code on both sides is not "changed"; the hook closures are named as pending', () => {
