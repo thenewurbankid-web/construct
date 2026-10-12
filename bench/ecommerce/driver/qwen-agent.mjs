@@ -5,7 +5,7 @@
 // for the plain arm; the Line arm gets the overview and a feature index, and each feature's points in plan status (#889).
 //
 //   node bench/ecommerce/driver/qwen-agent.mjs --project <dir> [--arm line|plain] [--builder qwen-7b]
-//        [--model qwen2.5-coder:7b] [--max-turns 200] [--max-minutes 90] [--num-ctx 16384] [--ollama http://127.0.0.1:11434]
+//        [--model qwen2.5-coder:7b] [--max-turns 200] [--max-minutes 90] [--num-ctx 16384] [--seed <n>] [--ollama http://127.0.0.1:11434]
 //
 // Logs, per turn: tokens in (prompt_eval_count) and out (eval_count), wall time, tool calls and their outcomes, to
 // <run>/logs/turns.jsonl and bench/ecommerce/results/<builder>.tokens.jsonl. Stops at the budget, when the model calls
@@ -20,17 +20,21 @@ import { readSpec, overviewWithIndex } from './spec-slice.mjs';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const bench = path.join(here, '..');
 
-function flags(argv) {
-  const o = { project: process.env.BENCH_PROJECT, arm: 'line', builder: '', model: 'qwen2.5-coder:7b', maxTurns: 200, maxMinutes: 90, numCtx: 16384, ollama: process.env.OLLAMA_HOST ?? 'http://127.0.0.1:11434', log: process.env.BENCH_LOG };
+export function flags(argv) {
+  const o = { seed: undefined, project: process.env.BENCH_PROJECT, arm: 'line', builder: '', model: 'qwen2.5-coder:7b', maxTurns: 200, maxMinutes: 90, numCtx: 16384, ollama: process.env.OLLAMA_HOST ?? 'http://127.0.0.1:11434', log: process.env.BENCH_LOG };
   for (let i = 0; i < argv.length; i += 1) {
     const k = argv[i]; const v = argv[i + 1];
     if (k === '--project') { o.project = v; i += 1; } else if (k === '--arm') { o.arm = v; i += 1; } else if (k === '--builder') { o.builder = v; i += 1; }
     else if (k === '--model') { o.model = v; i += 1; } else if (k === '--max-turns') { o.maxTurns = Number(v); i += 1; } else if (k === '--max-minutes') { o.maxMinutes = Number(v); i += 1; }
     else if (k === '--num-ctx') { o.numCtx = Number(v); i += 1; } else if (k === '--ollama') { o.ollama = v; i += 1; } else if (k === '--log') { o.log = v; i += 1; }
+    else if (k === '--seed') { o.seed = Number(v); i += 1; }
   }
   if (!o.builder) o.builder = o.arm === 'plain' ? 'qwen-7b-plain' : 'qwen-7b';
   return o;
 }
+
+/** Ollama sampling options; `seed` only when --seed is given (unset = Ollama's random seed, the prior behaviour). */
+export const chatOptions = (o) => ({ num_ctx: o.numCtx, temperature: 0.2, ...(Number.isFinite(o.seed) ? { seed: o.seed } : {}) });
 
 const fn = (name, description, properties = {}, required = []) => ({ type: 'function', function: { name, description, parameters: { type: 'object', properties, required } } });
 const S = (description) => ({ type: 'string', description });
@@ -148,7 +152,7 @@ async function main() {
   const t0 = Date.now();
   const deadline = t0 + o.maxMinutes * 60_000;
   let idle = 0; let stop = 'max turns'; let turn = 0;
-  write(turnsFile, { kind: 'start', at: new Date().toISOString(), builder: o.builder, model: o.model, arm: o.arm, maxTurns: o.maxTurns, maxMinutes: o.maxMinutes, numCtx: o.numCtx });
+  write(turnsFile, { kind: 'start', at: new Date().toISOString(), builder: o.builder, model: o.model, arm: o.arm, maxTurns: o.maxTurns, maxMinutes: o.maxMinutes, numCtx: o.numCtx, seed: o.seed ?? null });
   for (turn = 1; turn <= o.maxTurns; turn += 1) {
     if (Date.now() > deadline) { stop = 'max wall time'; break; }
     // Keep the context inside num_ctx: the system prompt, the first message and the most recent exchanges.
@@ -159,7 +163,7 @@ async function main() {
     try {
       const r = await fetch(`${o.ollama}/api/chat`, {
         method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ model: o.model, stream: false, messages: [system, first, ...history], tools: TOOLS[o.arm], options: { num_ctx: o.numCtx, temperature: 0.2 } }),
+        body: JSON.stringify({ model: o.model, stream: false, messages: [system, first, ...history], tools: TOOLS[o.arm], options: chatOptions(o) }),
         signal: AbortSignal.timeout(Math.max(10_000, Math.min(600_000, deadline - Date.now()))),
       });
       res = await r.json();
