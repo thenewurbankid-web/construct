@@ -954,6 +954,8 @@ export const AUTO_ACTION_KINDS = Object.freeze(['click', 'type', 'select', 'appr
  * @property {string} sentence  Plain English: what adding the step will do.
  * @property {number} rank      1 is the recommended fix.
  * @property {{tool: string, args: Record<string, unknown>}} step
+ * @property {string} [ref]     The plan service's short handle, "f<rank>": addStep({fix: "f1"}) adds this fix's step
+ *                              (as does its id), until the next add (pilot-qwen-7b-r2 R1).
  */
 
 /** A refused request (bad name, unknown item, name taken). `sentence` is shown as is; `detail` (optional) is the
@@ -1482,7 +1484,7 @@ export const SPEC_TOPICS = Object.freeze(['rules', 'commands', 'line-tools', 'pl
 /** The kinds of trace event. */
 export const TRACE_KINDS = Object.freeze(['step', 'refusal', 'fix-picked', 'outcome']);
 /** Plan-protocol refusals (the plan said no, not Construct's rules); every other code is Construct's. */
-export const PLAN_REFUSAL_CODES = Object.freeze(['UNKNOWN_TOOL', 'BAD_ARGS', 'NO_PLAN', 'NEEDS_YOU', 'NOTHING_TO_FIX', 'NOT_RETRYABLE', 'STOPPED', 'NOTHING_TO_LEAVE']);
+export const PLAN_REFUSAL_CODES = Object.freeze(['UNKNOWN_TOOL', 'BAD_ARGS', 'NO_PLAN', 'NEEDS_YOU', 'NOTHING_TO_FIX', 'NOT_RETRYABLE', 'STOPPED', 'NOTHING_TO_LEAVE', 'UNKNOWN_FIX']);
 
 /**
  * One line of a session trace (append-only JSONL). Construct's refusal plus its typed fixes is the feedback for every

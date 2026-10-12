@@ -180,7 +180,8 @@ export function planAddRoute(root, { route, page } = /** @type {any} */ ({})) {
     const fixes = routeFixes(root, route, page);
     if (!fixes.length) fixes.push(...newPageFixes(root, page));
     const some = fixes.slice(0, 3).map((f) => f.step.args.page).join(', ');
-    throw new LineOpError(`A route serves a feature page: name a file like ${features}/<feature>/pages/<Name>.tsx${fixes.length ? ` (the feature pages are ${some}${fixes.length > 3 ? ', ...' : ''}; each is in fixes)` : '; there is no feature page yet, so create one first with line.baseOn on a library page'}.`, 'UNKNOWN_ITEM', undefined, fixes);
+    // What was wrong (the value quoted), then the rule in one clause; the choices are the fixes (plan-cli lists them).
+    throw new LineOpError(`"${page ?? ''}" is not a feature page file. A route serves a file like ${features}/<feature>/pages/<Name>.tsx${fixes.length ? ` (the feature pages are ${some}${fixes.length > 3 ? ', ...' : ''})` : '; there is no feature page yet, so create one first with line.baseOn on a library page'}.`, 'UNKNOWN_ITEM', undefined, fixes);
   }
   const source = readOrNull(path.join(root, rel));
   if (source === null) {
