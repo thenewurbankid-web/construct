@@ -101,3 +101,10 @@ Reuse ChatEntry, StreamedText, Trace/Auto and LINE_CONTROLS, and the two modes (
   - **Memory effect:** accuracy with memory vs without (im3/j5).
 
   Each number links to the items behind it (one click goes to Map or to the plan), and each has a one-line "how to improve it". Data comes only from local records; nothing leaves the machine.
+
+## Roadmap (owner, 2026-10-12, full version)
+The full roadmap is in `docs/line/ROADMAP-2026-10-12.md`, replacing the earlier partial pastes. It covers items 1–18, the benchmark arms, envelope reconciliation, the north star and the licence.
+- **Next sprint:** 1, 2, 7, 8, 9, 10. Items 1 and 2 (core) are already pulled into the enterprise MVP.
+- **Later:** 3–6 and 11–18.
+- **Model roles:** 16 (Pick / Propose / Author tiers), 17 (model switching per step, with presets), 18 (internal model plus external agent as complementary reasoners).
+- **Licence:** everything is open source for now. The "Cockpit proprietary" note is on hold. max-ai-ui-derived content stays out of the public repo.
