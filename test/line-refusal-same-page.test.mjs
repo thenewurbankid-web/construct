@@ -103,6 +103,11 @@ async function benchProject() {
     if (added.steps.find((s) => s.id === added.stepId).state === 'waiting') await svc.approve(added.stepId, 'ui');
     const ran = /** @type {any} */ (await svc.runNext('agent'));
     assert.equal(ran.ok, true, ran.sentence);
+    // #907: line.baseOn now writes a routable, wired page; data-qwen3-4b-r1 ran before that, when it wrote a wrapper
+    // that passes its props on. That wrapper is what calls 34-44 met, so it is written back here.
+    const lib = name === 'ListPage' ? 'LibraryListPage' : 'ListPage';
+    const binding = lib === 'ListPage' ? '{ ListPage }' : '{ ListPage as LibraryListPage }';
+    write(root, `features/${feature}/pages/${name}.tsx`, `// @line-base pages/ListPage\nimport type { ComponentProps } from 'react';\nimport ${binding} from '../../../library/pages/ListPage';\n\nexport function ${name}(props: ComponentProps<typeof ${lib}> & object) {\n  return <${lib} {...props} />;\n}\n`);
   }
   assert.match(read(root, LIST), /\{\.\.\.props\}/);
   return { root, done: () => fs.rmSync(parent, { recursive: true, force: true }) };
