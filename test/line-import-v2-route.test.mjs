@@ -92,6 +92,23 @@ test('route family scope: a component two routes share is in `shared`, not in `f
   assert.equal(fs.readFileSync(path.join(app, 'src/components/PriceTag.tsx'), 'utf8'), before, 'the shared file stays where it is');
 });
 
+test('route family: several routes with no common prefix make ONE feature with the person\'s name; a single route works as before', () => {
+  const app = withSharedComponent();
+  const c = readRouteFamily(app, ['/home', '/orders'], { feature: 'shop' });
+  assertRouteClosure(c);
+  assert.equal(c.feature, 'shop');
+  assert.deepEqual(c.routes.map((r) => r.route), ['/:locale/home', '/:locale/orders', '/:locale/orders/detail']);
+  assert.ok(c.files.includes('src/components/PriceTag.tsx') && c.files.includes('src/utils/money.ts'), 'only the feature\'s own routes use them now');
+  assert.deepEqual(c.shared, [], 'no route outside the feature reaches any of its files');
+  assert.equal(readRouteFamily(app, '/orders').feature, 'orders', 'one route: the feature is named after it');
+  assert.throws(() => readRouteFamily(app, ['/orders', '/billing']), (e) => e.code === 'UNKNOWN_ROUTE' && /no route \/billing/.test(e.sentence));
+  assert.throws(() => readRouteFamily(app, ['/orders'], { feature: 'My Shop' }), (e) => e.code === 'BAD_FEATURE');
+  const plan = planImport(app, { route: ['/home', '/orders'], feature: 'shop' });
+  assertImportPlan(plan);
+  assert.deepEqual(plan.steps[0].args.features, ['shop']);
+  assert.match(plan.summary, /of the routes \/home and \/orders into Line/);
+});
+
 test('route family: an unknown route is refused in one sentence naming the routes there are', () => {
   const app = copy();
   assert.throws(() => readRouteFamily(app, '/billing'), (e) => e.name === 'LineOpError' && e.code === 'UNKNOWN_ROUTE' && /^The app has no route \/billing; its routes start with \/home, \/orders\.$/.test(e.sentence));

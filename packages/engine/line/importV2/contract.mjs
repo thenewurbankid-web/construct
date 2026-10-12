@@ -65,7 +65,10 @@
  * The files a route family reaches, and where the tracer stopped.
  * @typedef {object} RouteClosure
  * @property {string} appRoot
- * @property {{route: string, entry: string}[]} routes  The route and its sub-routes, each with its entry file.
+ * @property {{route: string, entry: string}[]} routes  The route and its sub-routes (or several routes' families,
+ *   one feature), each with its entry file.
+ * @property {string} [feature]                         The feature the family becomes: the person's name, else the
+ *   first route's family name.
  * @property {string[]} files                           App-root-relative files only this family reaches: the feature.
  *   They are imported, mapped, characterized and fitted.
  * @property {string[]} shared                          App-root-relative files the family reaches that a root outside
@@ -169,8 +172,9 @@
 /**
  * The import plan file's loop record (contract.mjs ImportPlanFile.logic).
  * @typedef {object} ImportLogic
- * @property {string|null} route
- * @property {{routes: {route: string, entry: string}[], files: string[], external: string[]}|null} closure
+ * @property {string|string[]|null} route  One route, or several routes that make one feature together.
+ * @property {string} [feature]             The person's name for the feature (default the first route's family name).
+ * @property {{routes: {route: string, entry: string}[], feature?: string, files: string[], shared?: string[], external: string[]}|null} closure
  * @property {MapSummary|null} map            The baseline (the full map is LOGIC_MAP_FILE).
  * @property {{feature: string, blocks: number, unassigned: number, sentence: string}|null} [fit]  The FitProposal (full one: FIT_FILE).
  * @property {CharTest[]} tests
@@ -267,6 +271,16 @@ export function assertMapDiff(d) {
     assertLogicUnit(c.after, `Changed unit ${i}'s after`);
     sentence(c.sentence, `Changed unit ${i}'s sentence`);
   });
+}
+
+/**
+ * A route spec (one route or several) in words: "/orders", or "/ and /profile/:id".
+ * @param {string|string[]|null|undefined} route
+ * @returns {string}
+ */
+export function routeLabel(route) {
+  const list = (Array.isArray(route) ? route : [route]).filter(Boolean).map(String);
+  return list.length < 3 ? list.join(' and ') : `${list.slice(0, -1).join(', ')} and ${list.at(-1)}`;
 }
 
 /**
@@ -432,7 +446,9 @@ export function assertImportLoopState(s) {
 export function assertImportLogic(l, where = 'The import logic') {
   if (l === undefined || l === null) return;
   if (typeof l !== 'object' || !Array.isArray(l.waivers) || !Array.isArray(l.loop) || !Array.isArray(l.tests)) fail(where, 'be {route, closure, map, fit, tests, baselineTests, waivers, loop, last}');
-  if (l.route !== null && (typeof l.route !== 'string' || !l.route.startsWith('/'))) fail(`${where}'s route`, 'be null or a route like /alerts');
+  const isRoute = (r) => typeof r === 'string' && r.startsWith('/');
+  if (l.route !== null && !isRoute(l.route) && !(Array.isArray(l.route) && l.route.length > 0 && l.route.every(isRoute))) fail(`${where}'s route`, 'be null, a route like /alerts, or a list of routes');
+  if (l.feature !== undefined && (typeof l.feature !== 'string' || !/^[a-z][a-z0-9-]*$/.test(l.feature))) fail(`${where}'s feature`, 'be a kebab-case feature name');
   if (l.map) assertMapSummary(l.map, `${where}'s map`);
   if (l.fit) { str(l.fit.feature, `${where}'s fit.feature`); sentence(l.fit.sentence, `${where}'s fit.sentence`); }
   // Only a person waives a unit: every waiver is the owner's.

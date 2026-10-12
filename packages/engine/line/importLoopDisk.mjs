@@ -122,16 +122,16 @@ export function createLogicOnDisk(root, folder, o = {}) {
   // Where the import's moves land: for a route only Line's own library/ and features/<feature>/ of the folder (the rest
   // of the folder is other features' code, out of scope); for a folder every code file of it.
   const landing = (f, closure) => (closure?.routes?.length
-    ? [...folderCodeFiles(root, `${f}/library`), ...folderCodeFiles(root, `${f}/features/${familyFeature(closure.routes[0].route)}`)]
+    ? [...folderCodeFiles(root, `${f}/library`), ...folderCodeFiles(root, `${f}/features/${closure.feature ?? familyFeature(closure.routes[0].route)}`)]
     : folderCodeFiles(root, f));
-  const feature = (closure) => (closure?.routes?.length ? undefined : path.posix.basename(folder).replace(/[^a-z0-9-]+/gi, '-').toLowerCase() || 'imported');
+  const feature = (closure) => (closure?.routes?.length ? closure.feature : path.posix.basename(folder).replace(/[^a-z0-9-]+/gi, '-').toLowerCase() || 'imported');
   return {
-    closure: async (_r, f, route) => (route ? readRouteFamily(root, route) : { appRoot: root, routes: [], files: folderCodeFiles(root, f), shared: [], external: [] }),
+    closure: async (_r, f, route, feature) => (route ? readRouteFamily(root, route, feature ? { feature } : {}) : { appRoot: root, routes: [], files: folderCodeFiles(root, f), shared: [], external: [] }),
     // The map now: the closure's files that are still there, and where moved files land.
     buildMap: async (_r, f, closure) => buildLogicMap(root, codeFiles(root, [...(closure?.files ?? []), ...landing(f, closure)])),
     compare: async (before, after) => compareLogicMaps(before, after),
     fit: async (_r, f, closure, map) => {
-      const c = { appRoot: root, routes: closure?.routes ?? [], files: closure?.files ?? [], shared: closure?.shared ?? [], external: closure?.external ?? [] };
+      const c = { appRoot: root, routes: closure?.routes ?? [], ...(closure?.feature ? { feature: closure.feature } : {}), files: closure?.files ?? [], shared: closure?.shared ?? [], external: closure?.external ?? [] };
       const proposal = fitLogic(map, c, { feature: feature(closure) });
       assertFitProposal(proposal, map.units.map((u) => u.fingerprint));
       const planned = planFitSteps(proposal, { folder: f, closure: c });
