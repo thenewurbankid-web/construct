@@ -521,6 +521,54 @@ export function createImportAgent(o) {
     return r;
   }
 
+  /** The plan stage: the answers turned into import steps (every one proposed), plus a route's fit steps. */
+  async function planStage(doc, why = 'wrote the plan') {
+    const route = doc.logic?.route ?? null;
+    const plan = importOps.plan(root, folder, doc.answers, route ? { route, ...(doc.logic.feature ? { feature: doc.logic.feature } : {}) } : undefined);
+    // A route-seeded import also lands the FitProposal's blocks: its extract steps run after Import's own moves.
+    const fitted = route && looping(doc) ? fitPlanSteps(await o.logic.load('fit'), plan.steps) : [];
+    doc.steps = [...plan.steps, ...fitted].map((s) => ({ id: s.id, tool: s.tool, args: s.args, sentence: s.sentence, review: 'proposed', run: 'todo', planStepIds: [], rounds: 0, outcome: null, approvedBy: null }));
+    record(doc, 'agent', 'state', `${why}: ${lower(plan.summary)}${fitted.length ? ` Then ${fitted.length} step${fitted.length === 1 ? '' : 's'} fit the logic into its blocks.` : ''}`);
+  }
+
+  /** #887 follow-up: the scan's classify questions (kept on the doc; an older doc reads them from a fresh scan). */
+  const scanQuestions = (doc) => doc.questions ?? importOps.scan(root, folder).questions ?? [];
+  /** A scan question can be answered by id until the first plan step runs (the plan is then rewritten from the answers). */
+  const ANSWERABLE = ['scan', 'map', 'characterize', 'classify', 'plan', 'review'];
+  const answerable = (doc) => ANSWERABLE.includes(doc.state) && doc.steps.every((s) => s.run === 'todo');
+
+  /**
+   * Answer a scan (classify) question by id: the answer replaces decide()'s pick, attributed to whoever sent it, and a
+   * plan already written is rewritten from the answers (a step whose tool and args are unchanged keeps its review).
+   */
+  async function answerScanQuestion(doc, by, q, optionId) {
+    const opt = q.options.find((x) => x.id === optionId);
+    const answeredBy = by === 'ui' ? 'owner' : 'agent';
+    const ids = [q.recommended, ...q.options.map((x) => x.id).filter((x) => x !== q.recommended)];
+    const was = doc.answers[q.id];
+    doc.answers[q.id] = optionId;
+    const decision = { id: q.id, question: asSentence(q.sentence), options: ids, picked: optionId, answer: asSentence(opt.sentence), by: answeredBy === 'owner' ? 'person' : 'agent', answeredBy, reason: answeredBy === 'owner' ? 'The owner picked it.' : 'An agent picked it through the plan API.' };
+    const at = doc.decisions.findIndex((x) => x.id === q.id);
+    if (at >= 0) doc.decisions[at] = decision; else doc.decisions.push(decision);
+    record(doc, by, 'answer', `answered "${q.sentence.replace(/[.?!]$/, '')}": ${lower(opt.sentence)}`);
+    if (doc.state === 'review' && was !== optionId) {
+      const old = doc.steps;
+      const key = (s) => `${s.tool} ${JSON.stringify(s.args)}`;
+      await planStage(doc, 'rewrote the plan after the answer');
+      let kept = 0;
+      for (const s of doc.steps) {
+        const prev = old.find((x) => key(x) === key(s));
+        if (prev) { s.review = prev.review; s.approvedBy = prev.approvedBy; kept += prev.review !== 'proposed' ? 1 : 0; }
+      }
+      keepSkippedInPlace(doc);
+      const open = doc.steps.filter((s) => s.review === 'proposed').length;
+      if (kept) record(doc, 'line', 'state', `kept the review of ${kept} unchanged step${kept === 1 ? '' : 's'}`);
+      doc.waiting = { for: 'review', sentence: doc.steps.length ? `Review the plan: approve its ${open} step${open === 1 ? '' : 's'}, or edit, skip or reorder them first.` : `There is nothing in ${folder} for Line to bring in.` };
+    }
+    save(doc);
+    return view(doc);
+  }
+
   /** Run the process until it needs someone, is paused, or is done. */
   async function run(doc, by, answered = false) {
     if (doc.waiting?.for === 'answer') return; // one question at a time: nothing moves until it is answered
@@ -544,21 +592,17 @@ export function createImportAgent(o) {
         for (const q of doc.questions ?? []) {
           if (doc.answers[q.id]) continue;
           const ids = [q.recommended, ...q.options.map((x) => x.id).filter((x) => x !== q.recommended)];
+          // Unanswered (#887 follow-up): Line's one decide() picks, the static order when no picker is on (rules-only fallback).
           const d = await decideWith(o.decide, CLASSIFY_STEP, q.sentence, ids);
           doc.answers[q.id] = d.picked;
-          doc.decisions.push({ id: q.id, question: asSentence(q.sentence), options: ids, picked: d.picked, answer: asSentence(q.options.find((x) => x.id === d.picked)?.sentence ?? d.picked), by: d.by, reason: d.reason });
+          doc.decisions.push({ id: q.id, question: asSentence(q.sentence), options: ids, picked: d.picked, answer: asSentence(q.options.find((x) => x.id === d.picked)?.sentence ?? d.picked), by: d.by, answeredBy: d.by === 'middleware' || d.by === 'jev' ? 'model' : 'rules', reason: d.reason });
           record(doc, 'agent', 'decide', `decided "${q.sentence.replace(/[.?!]$/, '')}": ${lower(q.options.find((x) => x.id === d.picked)?.sentence ?? d.picked)}`);
         }
-        delete doc.questions;
+        // Kept (#887 follow-up): a scan question stays answerable by id until the first step runs.
         await fitStage(doc);
         go(doc, by, 'CLASSIFIED');
       } else if (doc.state === 'plan') {
-        const route = doc.logic?.route ?? null;
-        const plan = importOps.plan(root, folder, doc.answers, route ? { route, ...(doc.logic.feature ? { feature: doc.logic.feature } : {}) } : undefined);
-        // A route-seeded import also lands the FitProposal's blocks: its extract steps run after Import's own moves.
-        const fitted = route && looping(doc) ? fitPlanSteps(await o.logic.load('fit'), plan.steps) : [];
-        doc.steps = [...plan.steps, ...fitted].map((s) => ({ id: s.id, tool: s.tool, args: s.args, sentence: s.sentence, review: 'proposed', run: 'todo', planStepIds: [], rounds: 0, outcome: null, approvedBy: null }));
-        record(doc, 'agent', 'state', `wrote the plan: ${lower(plan.summary)}${fitted.length ? ` Then ${fitted.length} step${fitted.length === 1 ? '' : 's'} fit the logic into its blocks.` : ''}`);
+        await planStage(doc);
         go(doc, by, 'PLANNED');
       } else if (doc.state === 'review') {
         const open = doc.steps.filter((s) => s.review === 'proposed');
@@ -704,9 +748,23 @@ export function createImportAgent(o) {
     }),
 
     /** Answer the one question the process asked. */
+    /** #887 follow-up: the scan's classify questions still answerable by id, each with its current pick and who made it ([] once a step ran). */
+    questions: () => serial(async () => {
+      const doc = load();
+      if (!doc || !answerable(doc)) return [];
+      return scanQuestions(doc).map((q) => ({ ...q, picked: doc.answers[q.id] ?? null, answeredBy: doc.decisions.find((x) => x.id === q.id)?.answeredBy ?? null }));
+    }),
+
+    /** Answer the one question the process asked, or (#887 follow-up) one of the scan's classify questions by id. */
     answer: (by, questionId, optionId) => withDoc(async (doc) => {
       const q = doc.waiting?.for === 'answer' ? doc.waiting.question : null;
-      if (!q || q.id !== questionId) return refusal('NO_QUESTION', 'There is no such question open right now');
+      if (!q || q.id !== questionId) {
+        const sq = scanQuestions(doc).find((x) => x.id === questionId);
+        if (!sq) return refusal('NO_QUESTION', 'There is no such question open right now');
+        if (!answerable(doc)) return refusal('TOO_LATE', `The plan has started running, so the scan question ${questionId} can no longer change it`);
+        if (!sq.options.some((x) => x.id === optionId)) return refusal('BAD_OPTION', `Pick one of the options: ${sq.options.map((x) => x.id).join(', ')}`);
+        return answerScanQuestion(doc, by, sq, optionId);
+      }
       if (!q.options.some((x) => x.id === optionId)) return refusal('BAD_OPTION', `Pick one of the options: ${q.options.map((x) => x.id).join(', ')}`);
       // Only a person waives: an agent's waiver is refused and changes nothing.
       if (optionId === 'waive' && by !== 'ui') return refusal('OWNER_ONLY', 'Only a person can waive a logic unit; an agent never can. Ask the owner to decide in Cockpit');
