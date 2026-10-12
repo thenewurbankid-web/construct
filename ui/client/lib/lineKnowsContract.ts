@@ -44,7 +44,7 @@ export type MetricId =
   | 'coverage.tested' | 'coverage.runtime' | 'health.crossFeature' | 'health.noBase' | 'health.unresolved' | 'health.duplicates'
   | 'ai.accepted' | 'ai.edited' | 'ai.refused' | 'ai.staticShare' | 'ai.preferred' | 'fixes.typed' | 'memory.effect';
 export type MetricGroup = 'coverage' | 'health' | 'ai' | 'fixes' | 'memory';
-export type Metric = { id: MetricId; group: MetricGroup; label: string; value: number | null; count?: number; trend: (number | null)[]; improve: string; items: string[]; open: 'map' | 'plan'; details: string[]; empty?: string };
+export type Metric = { id: MetricId; group: MetricGroup; label: string; value: number | null; count?: number; trend: (number | null)[]; improve: string; items: string[]; open: 'map' | 'plan'; details: string[]; empty?: string; itemLabels?: Record<string, string> };
 export type SmartView = { ok: true; metrics: Metric[]; sentence: string; local: true };
 
 /** The page's routes (lib/lineKnowsHttp.ts; mock mode answers from the engine's knows/mock.mjs). */
@@ -113,5 +113,7 @@ export type ChangeCard = { id: string; kind: ChangeKind; kindLabel: string; sent
 export type ChangeTabView = { sentence: string; cards: ChangeCard[] };
 
 // How smart is it
-export type MetricCard = { id: MetricId; group: MetricGroup; groupLabel: string; label: string; display: string; trend: string; trendDirection: 'up' | 'down' | 'flat' | 'none'; improve: string; items: string[]; open: 'map' | 'plan'; details: string[]; empty?: string };
+/** One item behind a number that opens on the Map: its readable label, and the id's tail (a unit's hash) as secondary text when it differs. */
+export type MetricItemRow = { id: string; label: string; secondary?: string };
+export type MetricCard = { id: MetricId; group: MetricGroup; groupLabel: string; label: string; display: string; trend: string; trendDirection: 'up' | 'down' | 'flat' | 'none'; improve: string; items: string[]; open: 'map' | 'plan'; details: string[]; empty?: string; itemRows: MetricItemRow[] };
 export type SmartTabView = { sentence: string; groups: { group: MetricGroup; label: string; cards: MetricCard[] }[] };

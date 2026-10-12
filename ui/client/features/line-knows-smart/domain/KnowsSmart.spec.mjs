@@ -22,6 +22,19 @@ test('the trend in words: earlier to now, and which way it went (fewer problems 
   assert.deepEqual(trendText(metric({ trend: [] })), { text: 'No trend yet', direction: 'none' });
 });
 
+test('#856 a card lists each Map item by its label with the hash as secondary text; no label: the hash alone', () => {
+  const c = metricCard(metric({ items: ['unit:6fad22416fa70dad', 'unit:28f4fe2e81302a5a'], itemLabels: { 'unit:6fad22416fa70dad': 'handler in onMore, OrdersPage.tsx:6' } }));
+  assert.deepEqual(c.itemRows, [
+    { id: 'unit:6fad22416fa70dad', label: 'handler in onMore, OrdersPage.tsx:6', secondary: '6fad22416fa70dad' },
+    { id: 'unit:28f4fe2e81302a5a', label: '28f4fe2e81302a5a' },
+  ]);
+  const item = metricCard(metric({ id: 'health.noBase', group: 'health', items: ['item:billing/components/InvoiceCard'], itemLabels: { 'item:billing/components/InvoiceCard': 'InvoiceCard' } }));
+  assert.deepEqual(item.itemRows, [{ id: 'item:billing/components/InvoiceCard', label: 'InvoiceCard' }], 'no secondary text when it would repeat the label');
+  assert.equal(metricCard(metric({ open: 'plan', items: ['m-1'] })).itemRows.length, 0, 'plan items are not Map rows');
+  const mock = smartTab(MOCK_SMART_VIEW).groups.flatMap((g) => g.cards).find((x) => x.id === 'coverage.tested');
+  assert.equal(mock.itemRows[0].label, 'handler in ListPage, ListPage.tsx:7');
+});
+
 test('the tab: five groups in order, every number of the mock, the sentence that nothing leaves the machine', () => {
   const t = smartTab(MOCK_SMART_VIEW);
   assert.deepEqual(t.groups.map((g) => g.label), ['Logic coverage', 'Graph health', 'AI accuracy', 'Fixes', 'Memory effect']);

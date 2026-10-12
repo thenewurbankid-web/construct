@@ -98,6 +98,14 @@ test.describe.serial('Line: What Line knows (Line sample project)', () => {
     await expect(noBase.getByTestId('knows-metric-value')).toHaveText('1');
     await expect(noBase.getByTestId('knows-metric-improve')).toContainText('Base each feature item on one library item');
     await expect(noBase.getByTestId('knows-metric-trend')).toContainText('Trend:');
+    await expect(noBase.getByTestId('knows-metric-item').first()).toHaveText('Show InvoiceCard on the Map');
+    await expect(noBase.getByTestId('knows-metric-item-id')).toHaveCount(0);
+    // #856: a logic unit reads by its kind, function and file:line, never by its hash; the hash is secondary text.
+    const tested = smart.locator('[data-metric="coverage.tested"]');
+    const unit = tested.getByTestId('knows-metric-item').first();
+    await expect(unit).toHaveText(/^Show (branch|export|handler|effect|guard) in [\w$-]+, [\w.-]+\.[cm]?[jt]sx?:\d+ on the Map$/);
+    await expect(unit).not.toHaveText(/[0-9a-f]{16}/);
+    await expect(tested.getByTestId('knows-metric-item-id').first()).toHaveText(/^[0-9a-f]{16}$/);
     // No memory and no recorded run in a fresh copy: each says so in one sentence.
     await expect(smart.locator('[data-metric="memory.effect"]').getByTestId('knows-metric-empty')).toHaveText('Line has no memory of your picks yet, so there is nothing to compare.');
     await axeClean(page);

@@ -57,9 +57,12 @@ import { assertMemoryRecord, assertMemoryExport } from '../memory/contract.mjs';
 /**
  * One number of "How smart is it". `value` is a share 0..1 (null: a count, or no records yet); `trend` the earlier
  * values, oldest first; `improve` one sentence; `items` the node or plan-step ids behind it; `open` where a click goes.
+ * `itemLabels` (additive, #856; absent from older producers): a readable name per graph item id in `items` (a logic
+ * unit as "<kind> in <function>, <File>:<line>", an item as its label, an unknown id as the id without its kind), so a
+ * person never reads a fingerprint; consumers without it show the id.
  * @typedef {'coverage.tested'|'coverage.runtime'|'health.crossFeature'|'health.noBase'|'health.unresolved'|'health.duplicates'|'ai.accepted'|'ai.edited'|'ai.refused'|'ai.staticShare'|'ai.preferred'|'fixes.typed'|'memory.effect'} MetricId
  * @typedef {'coverage'|'health'|'ai'|'fixes'|'memory'} MetricGroup
- * @typedef {{id: MetricId, group: MetricGroup, label: string, value: number|null, count?: number, trend: (number|null)[], improve: string, items: string[], open: 'map'|'plan', details: string[], empty?: string}} Metric
+ * @typedef {{id: MetricId, group: MetricGroup, label: string, value: number|null, count?: number, trend: (number|null)[], improve: string, items: string[], open: 'map'|'plan', details: string[], empty?: string, itemLabels?: Record<string, string>}} Metric
  * @typedef {{ok: true, metrics: Metric[], sentence: string, local: true}} SmartView
  */
 
@@ -177,6 +180,13 @@ export function assertSmartView(v) {
     strs(m.items, `${w}'s items`);
     if (m.open !== 'map' && m.open !== 'plan') fail(`${w}'s open`, 'be map or plan');
     strs(m.details, `${w}'s details`);
+    if (m.itemLabels !== undefined) {
+      if (!m.itemLabels || typeof m.itemLabels !== 'object' || Array.isArray(m.itemLabels)) fail(`${w}'s itemLabels`, 'be an object of id to label');
+      for (const [id, label] of Object.entries(m.itemLabels)) {
+        if (!m.items.includes(id)) fail(`${w}'s itemLabels ${id}`, 'name one of its items');
+        str(label, `${w}'s itemLabels ${id}`);
+      }
+    }
   });
   sentence(v.sentence, "The smart view's sentence");
 }

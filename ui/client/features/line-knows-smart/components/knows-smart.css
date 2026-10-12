@@ -10,3 +10,7 @@
 .lks-trend[data-direction='up'] { color: var(--ln-fit); }
 .lks-trend[data-direction='down'] { color: var(--ln-gap); }
 .lks-items { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px; }
+/* #856: each item by its readable label, the hash as secondary text under it. */
+.lks-items li { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; max-width: 100%; }
+.lks-items .ln-btn { white-space: normal; text-align: left; overflow-wrap: anywhere; }
+.lks-item-id { padding: 0 8px; font-family: ui-monospace, monospace; font-size: 0.75rem; color: var(--ln-muted); overflow-wrap: anywhere; }

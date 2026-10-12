@@ -95,6 +95,31 @@ const LABEL = /** @type {Record<MetricId, string>} */ ({
   'memory.effect': 'Right with memory',
 });
 
+const base = (/** @type {string} */ f) => f.split('/').pop() ?? f;
+
+/**
+ * A readable name for each graph id behind a number (#856): a logic unit is "<kind> in <function>, <File>:<line>" (where
+ * it sits from the node, else from its first PART_OF edge, since a real unit node carries no file of its own); any other
+ * node is its label; an id the graph does not know is the id without its kind (the hash for a unit).
+ * @param {LineGraph} g
+ * @returns {(id: string) => string}
+ */
+export function itemLabeler(g) {
+  const byId = new Map(g.nodes.map((n) => [n.id, n]));
+  /** @type {Map<string, {file: string, line: number}>} */
+  const where = new Map();
+  for (const e of [...g.edges].filter((y) => y.type === 'PART_OF' && y.from.startsWith('unit:') && 'file' in y.evidence).sort((a, b) => `${a.evidence.file}`.localeCompare(`${b.evidence.file}`))) {
+    if (!where.has(e.from)) where.set(e.from, /** @type {{file: string, line: number}} */ (e.evidence));
+  }
+  return (id) => {
+    const n = byId.get(id);
+    if (!n || !n.label) return id.replace(/^[a-z]+:/i, '');
+    if (n.kind !== 'unit') return n.label;
+    const at = n.file ? { file: n.file, line: n.line } : where.get(id);
+    return at ? `${n.label}, ${base(at.file)}${at.line ? `:${at.line}` : ''}` : n.label;
+  };
+}
+
 /**
  * The numbers from their inputs (pure).
  * @param {SmartInputs} x
@@ -103,6 +128,7 @@ const LABEL = /** @type {Record<MetricId, string>} */ ({
 export function computeSmart(x) {
   const g = x.graph;
   const byId = new Map(g.nodes.map((n) => [n.id, n]));
+  const labelOf = itemLabeler(g);
   const units = g.nodes.filter((n) => n.kind === 'unit').map((n) => n.id).sort();
   const itemOfUnit = new Map(g.edges.filter((e) => e.type === 'PART_OF' && e.from.startsWith('unit:')).map((e) => [e.from, e.to]));
   const tested = new Set(x.testedItems);
@@ -164,7 +190,9 @@ export function computeSmart(x) {
     const y = m[id];
     const before = x.history.map((h) => h.values[id]).filter((z) => z !== undefined && z !== null).slice(-(TREND - 1));
     const cur = now(y);
-    return { ...y, trend: cur === null ? before : [...before, cur] };
+    const mapIds = y.open === 'map' ? y.items.filter((i) => byId.has(i) || /^(item|unit|feature):/.test(i)) : [];
+    const itemLabels = mapIds.length ? { itemLabels: Object.fromEntries(mapIds.map((i) => [i, labelOf(i)])) } : {};
+    return { ...y, trend: cur === null ? before : [...before, cur], ...itemLabels };
   });
   return { ok: true, local: true, metrics, sentence: 'These numbers come only from records on this computer; nothing leaves it.' };
 }
