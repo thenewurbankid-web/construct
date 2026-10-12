@@ -157,6 +157,9 @@ test('verdictSentence: one line per status, the changed one names place and inpu
   const s = (over) => verdictSentence(base(over));
   assert.equal(s({ status: 'tested', layer: 'isolated' }), 'isAdult (export in src/age.ts) behaved the same under isolated execution, so it is tested, not proven.');
   assert.equal(s({ status: 'changed', layer: 'z3', location: LOC, input: [18] }), 'isAdult (export in src/age.ts) changed at src/age.ts:2 (BinaryExpression.operator) for input [18], found by a Z3 proof.');
+  // a Z3 counterexample is a double: NaN, Infinity and -0 read as JS writes them, not as JSON's null and 0
+  assert.equal(s({ status: 'changed', layer: 'z3', location: LOC, input: [NaN] }), 'isAdult (export in src/age.ts) changed at src/age.ts:2 (BinaryExpression.operator) for input [NaN], found by a Z3 proof.');
+  assert.ok(s({ status: 'changed', layer: 'z3', location: LOC, input: [-Infinity, -0, { a: Infinity }] }).includes('for input [-Infinity,-0,{"a":Infinity}],'));
   assert.equal(s({ status: 'changed', layer: 'isolated', location: { ...LOC, side: 'before' } }), 'isAdult (export in src/age.ts) changed at the old src/age.ts:2 (BinaryExpression.operator), found by isolated execution.');
   assert.equal(s({ status: 'unverified', layer: 'none' }), 'isAdult (export in src/age.ts) is unverified: no layer ran, so it is not assumed fine.');
   assert.equal(s({ status: 'unverified', layer: 'semantic-diff' }), 'isAdult (export in src/age.ts) is unverified: the semantic diff could not decide, so it is not assumed fine.');

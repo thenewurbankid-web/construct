@@ -17,7 +17,9 @@ const MAX_INPUT = 60;
  */
 function inputText(input) {
   let s;
-  try { s = JSON.stringify(input) ?? String(input); } catch { s = String(input); }
+  // Z3 counterexamples are IEEE doubles: NaN, the infinities and -0 are written as JS writes them, not as JSON's null/0.
+  const num = (_k, v) => (typeof v === 'number' && (!Number.isFinite(v) || Object.is(v, -0)) ? `@@num:${Object.is(v, -0) ? '-0' : v}@@` : v);
+  try { s = (JSON.stringify(input, num) ?? String(input)).replace(/"@@num:([^@]+)@@"/g, '$1'); } catch { s = String(input); }
   s = s.replace(/\s+/g, ' ');
   return s.length > MAX_INPUT ? `${s.slice(0, MAX_INPUT - 3)}...` : s;
 }

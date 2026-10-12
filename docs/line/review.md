@@ -1621,3 +1621,16 @@ COMPONENT-005, COMPONENT-006 and PAGE-008 are back on under the Line profile (`L
 Bench starter (a copy, without node_modules so the type gate was skipped): 10 expression warnings → 0 after 12 fixes, 0 errors before and after. Still open: without the project's packages installed, a value whose type comes from a package (a `useState` pair) is typed `any`; a value narrowed by an outer `if` is passed with its declared type, which the type gate refuses rather than lands.
 
 Tests: `test/line-expressions.test.mjs` (3: the fixture page's conditional and loop land through the plan service, render the same before and after, tsc clean, warning gone, no import outside the project; free variables and a missing one caught by the type gate; base, names and conditions), plus the updated `test/line-refusal-fixes.test.mjs`, `test/line-import-v2-kinds.test.mjs` and `test/line-plan.test.mjs`.
+
+## CLI UAT walks: rows with no screen (12 Oct, branch `cli-walks`)
+
+Scripted walks a person reruns, under `ui/e2e/uat/cli/`: each runs the real `construct` CLI where a command exists (the documented engine entry point where none does), checks with plain assertions, prints a short transcript and works in a fresh temp folder. All: `packages/tools/dev/heavy.sh node ui/e2e/uat/cli/run-all.mjs` (one or more by name: `run-all.mjs atoms lv`); cs2 takes about 80 s (the gate's evals), the rest a few seconds.
+
+- `cs2.walk.mjs`: `line rules propose --no-jev` on a copy of the sample (the rules label 1 of 4 misses and say so; one proposal, "size"); `line rules gate` holds it back ("no held-out score rose; its own test fails"); `line rules apply` refuses it with and without `--id`, and the checkout's rule files are unchanged; no MCP tool or Line plan tool offers apply.
+- `primitives.walk.mjs` (rm-01): `line primitives coverage`; 40 primitives, 40 kits; the Button kit run alone; a new project on the primitives library passes `validate --profile line`. No CLI command creates a Line project, so this step calls `createLineProject`.
+- `atoms.walk.mjs` (rm-02): 14 atoms; the client-pagination kit; hand-written pagination in a usecase gets the LINE-ATOM warning "use paginate from @line/atoms/client-pagination", and none once it calls the atom.
+- `lv.walk.mjs` (lv1, lv3, lv5, lv6): the seven planted verdicts pass the contract and three broken ones are refused with a sentence; move and rename proven at L0; the 768 to 640 threshold changed at innerWidth 640; the flipped condition changed by Z3 at 18; `!(age < 18)` changed at NaN; `18 <= age` proven equal by Z3 (tested, not proven, as a hand edit). No CLI command runs logic verification yet.
+
+Fixed on the way: a Z3 counterexample of NaN, Infinity or -0 read as `[null]` or `[0]` in the verdict sentence (`logicVerify/verdict.mjs` `inputText`; test in `test/line-logic-verify-contract.test.mjs`).
+
+Gaps: apply is person-only by surface (no MCP or plan tool), not by a check: an agent with a shell can run `construct line rules apply`. No CLI command creates a Line project, with either library.
