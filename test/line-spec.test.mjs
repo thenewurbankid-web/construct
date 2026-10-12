@@ -63,7 +63,7 @@ test('invariant: every line tool in the spec is the registry\'s tool, and its JS
 });
 
 test('spec: the modules topic is read from the source, so a new export changes it', async () => {
-  const engine = spec.topics.modules.find((m) => m.module === 'line-engine');
+  const engine = spec.topics['line-modules'].find((m) => m.module === 'line-engine');
   assert.ok(engine.files.find((f) => f.file.endsWith('/planService.mjs')).exports.includes('createLinePlanService'));
   assert.ok(engine.files.find((f) => f.file.endsWith('/spec.mjs')).header.startsWith('cl1 -- Line describes itself'));
   const repo = makeTempDir('line-spec-repo-');
@@ -81,8 +81,10 @@ test('slice: one topic keeps the spec version; an id narrows it; an unknown topi
   assert.equal(s.version, spec.version);
   assert.deepEqual(s.topics.rules.map((r) => r.id), ['LINE-DIR']);
   assert.deepEqual(Object.keys(sliceSpec(spec, 'plan').topics), ['plan']);
-  assert.ok(sliceSpec(spec, 'modules', 'planService').topics.modules.every((m) => m.files.length));
-  assert.throws(() => sliceSpec(spec, 'prose'), /^Error: "prose" is not a spec topic; the topics are rules, commands, plan, model, modules\.$/);
+  assert.ok(sliceSpec(spec, 'line-modules', 'planService').topics['line-modules'].every((m) => m.files.length));
+  assert.deepEqual(sliceSpec(spec, 'line-modules', 'planService').topics['line-modules'].map((m) => m.module), ['line-engine'], 'Line\'s engine is its own topic');
+  assert.ok(!spec.topics.modules.some((m) => m.module === 'line-engine') && spec.topics.modules.some((m) => m.module === 'mcp'), 'every other module is in modules');
+  assert.throws(() => sliceSpec(spec, 'prose'), /^Error: "prose" is not a spec topic; the topics are rules, commands, plan, model, modules, line-modules\.$/);
   for (const t of SPEC_TOPICS) assert.ok(Buffer.byteLength(JSON.stringify(sliceSpec(spec, t))) < 32 * 1024, `${t} fits one MCP call`);
 });
 

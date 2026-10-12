@@ -440,7 +440,7 @@ test('line_spec (cl1): no topic lists the topics and the version; a topic is one
   const index = await call('line_spec', {});
   assert.equal(index.isError, false, index.text);
   assert.match(index.body.version, /^sha256:[0-9a-f]{16}$/);
-  assert.deepEqual(index.body.topics.map((t) => t.name), ['rules', 'commands', 'plan', 'model', 'modules']);
+  assert.deepEqual(index.body.topics.map((t) => t.name), ['rules', 'commands', 'plan', 'model', 'modules', 'line-modules']);
   const rules = await call('line_spec', { topic: 'rules' });
   assert.equal(rules.isError, false, rules.text);
   assert.equal(rules.body.version, index.body.version, 'a slice carries the whole spec\'s version');

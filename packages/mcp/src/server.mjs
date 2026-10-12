@@ -101,9 +101,9 @@ export const TOOLS = Object.freeze([
   {
     name: 'line_spec',
     title: 'Line spec (from its code)',
-    description: 'Line\'s versioned spec, generated from Construct\'s code: rules (every rule id, why, expected), commands (construct commands and line.* plan tools with JSON Schemas of their args), plan (the plan protocol, step states, checks, refusal codes), model (library and feature kinds, layout) and modules (each module\'s header and exports). Give a topic, and an id to narrow it (a rule id, a tool name, a module); no topic lists the topics and the version. Reads only; writes nothing.',
+    description: 'Line\'s versioned spec, generated from Construct\'s code: rules (every rule id, why, expected), commands (construct commands and line.* plan tools with JSON Schemas of their args), plan (the plan protocol, step states, checks, refusal codes), model (library and feature kinds, layout) and modules (each module\'s header and exports; Line\'s engine, packages/engine/line, is its own topic line-modules). Give a topic, and an id to narrow it (a rule id, a tool name, a module); no topic lists the topics and the version. Reads only; writes nothing.',
     inputSchema: z.object({
-      topic: z.enum(['rules', 'commands', 'plan', 'model', 'modules']).optional().describe('The slice to read.'),
+      topic: z.enum(['rules', 'commands', 'plan', 'model', 'modules', 'line-modules']).optional().describe('The slice to read.'),
       id: z.string().min(1).max(LIMITS.nameChars).optional().describe('Narrow the topic: a rule id (LINE-DIR), a tool or command name (line.promote, validate) or a module (line-engine, planService).'),
     }),
     run: blocks.lineSpec,

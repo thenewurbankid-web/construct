@@ -16,14 +16,20 @@ import { DEFAULT_EXPECT, lineToolSpecs } from './planTools.mjs';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, '../../..');
 
-/** The source files whose contracts the `modules` topic lists (repo-relative), grouped by module. */
+/**
+ * The source files whose contracts the module topics list (repo-relative), grouped by module. Two topics, so each fits
+ * one MCP call (32 KiB) with every header at its full 300 characters: `line-modules` is Line's engine
+ * (packages/engine/line, the biggest by far), `modules` every other module.
+ */
 export const SPEC_MODULES = Object.freeze([
-  { module: 'line-engine', what: 'Line operations, plan tools and plan service', dir: 'packages/engine/line', match: /\.mjs$/ },
-  { module: 'line-profile', what: 'the Line validate profile (LINE-* rules)', dir: 'packages/core/profiles/line', match: /\.mjs$/ },
-  { module: 'line-links', what: 'the linked Line modules (@mx/reason, @mx/plan, ...) and their contracts', dir: 'packages/line-links', match: /\.(mjs|d\.ts)$/ },
-  { module: 'writer', what: 'Construct\'s transactional writer and the Line-state path', dir: 'packages/engine', match: /^transactionalWriter\.mjs$/ },
-  { module: 'mcp', what: 'the MCP server agents drive Line through', dir: 'packages/mcp/src', match: /\.mjs$/ },
+  { topic: 'line-modules', module: 'line-engine', what: 'Line operations, plan tools and plan service', dir: 'packages/engine/line', match: /\.mjs$/ },
+  { topic: 'modules', module: 'line-profile', what: 'the Line validate profile (LINE-* rules)', dir: 'packages/core/profiles/line', match: /\.mjs$/ },
+  { topic: 'modules', module: 'line-links', what: 'the linked Line modules (@mx/reason, @mx/plan, ...) and their contracts', dir: 'packages/line-links', match: /\.(mjs|d\.ts)$/ },
+  { topic: 'modules', module: 'writer', what: 'Construct\'s transactional writer and the Line-state path', dir: 'packages/engine', match: /^transactionalWriter\.mjs$/ },
+  { topic: 'modules', module: 'mcp', what: 'the MCP server agents drive Line through', dir: 'packages/mcp/src', match: /\.mjs$/ },
 ]);
+/** The topics that list module contracts. */
+export const MODULE_TOPICS = Object.freeze(['modules', 'line-modules']);
 
 /**
  * A source file's contract: its leading comment (joined, cut to 300 characters, so the modules topic fits one MCP call) and its exported names.
@@ -65,9 +71,9 @@ async function realSources() {
   };
 }
 
-/** The modules topic: each module's files with their header and exports, read from the source. */
-function modulesTopic(repo) {
-  return SPEC_MODULES.map((m) => {
+/** A module topic: each of its modules' files with their header and exports, read from the source. */
+function modulesTopic(repo, topic) {
+  return SPEC_MODULES.filter((m) => m.topic === topic).map((m) => {
     const dir = path.join(repo, m.dir);
     let files = [];
     try { files = fs.readdirSync(dir).filter((f) => m.match.test(f) && !/\.test\.mjs$/.test(f)).sort(); } catch { files = []; }
@@ -135,7 +141,8 @@ export async function buildLineSpec({ sources = {}, repo = REPO } = {}) {
       layout: { library: 'library (or src/library)', features: 'features (or src/features)', state: 'line' },
       sharedConcerns: src.model.SHARED_CONCERNS.map((c) => ({ id: c.id, concern: c.concern, module: c.module, owners: [...c.owners] })),
     },
-    modules: modulesTopic(repo),
+    modules: modulesTopic(repo, 'modules'),
+    'line-modules': modulesTopic(repo, 'line-modules'),
   };
   const version = `sha256:${crypto.createHash('sha256').update(stable(topics)).digest('hex').slice(0, 16)}`;
   const construct = JSON.parse(fs.readFileSync(path.join(HERE, '../package.json'), 'utf8')).version;
@@ -158,7 +165,7 @@ export function sliceSpec(spec, topic, id) {
     const has = (s) => String(s ?? '').toLowerCase().includes(q);
     if (topic === 'rules') value = value.filter((r) => has(r.id));
     else if (topic === 'commands') value = { construct: value.construct.filter((c) => has(c.name) || has(c.tool)), line: value.line.filter((t) => has(t.name)) };
-    else if (topic === 'modules') value = value.map((m) => (has(m.module) ? m : { ...m, files: m.files.filter((f) => has(f.file)) })).filter((m) => m.files.length);
+    else if (MODULE_TOPICS.includes(topic)) value = value.map((m) => (has(m.module) ? m : { ...m, files: m.files.filter((f) => has(f.file)) })).filter((m) => m.files.length);
   }
   return { format: spec.format, version: spec.version, construct: spec.construct, topics: { [topic]: value } };
 }

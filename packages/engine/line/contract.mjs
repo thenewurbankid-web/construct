@@ -1343,7 +1343,8 @@ export function assertFragmentList(l) {
 /** The spec's own format version; bump it when a topic's shape changes (its content hash is `version`). */
 export const SPEC_FORMAT = 1;
 /** The spec's topics, the slices `line_spec` serves. */
-export const SPEC_TOPICS = Object.freeze(['rules', 'commands', 'plan', 'model', 'modules']);
+/** `modules` and `line-modules` (Line's engine) list the module contracts, split so each fits one MCP call. */
+export const SPEC_TOPICS = Object.freeze(['rules', 'commands', 'plan', 'model', 'modules', 'line-modules']);
 
 /**
  * `construct line spec` and the MCP tool `line_spec`: what Line is, generated from its code, never hand-written.
@@ -1351,7 +1352,7 @@ export const SPEC_TOPICS = Object.freeze(['rules', 'commands', 'plan', 'model', 
  * @property {1} format          SPEC_FORMAT.
  * @property {string} version    "sha256:<16 hex>" of all topics; changes exactly when a topic's content changes.
  * @property {string} construct  The Construct engine's package version.
- * @property {Partial<Record<'rules'|'commands'|'plan'|'model'|'modules', unknown>>} topics  All topics, or one slice.
+ * @property {Partial<Record<'rules'|'commands'|'plan'|'model'|'modules'|'line-modules', unknown>>} topics  All topics, or one slice.
  */
 
 /** The kinds of trace event. */
