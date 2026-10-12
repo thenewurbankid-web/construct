@@ -84,7 +84,11 @@ function rekeyCoverage(cov, appRoot, toAbs) {
   return out;
 }
 
-/** Add istanbul coverage maps (hit counts summed per counter; a file's first map wins when their shapes differ). */
+/**
+ * Add istanbul coverage maps (hit counts summed per counter; a file's first map wins when their shapes differ).
+ * @param {...Record<string, any>} maps coverage-final.json shaped maps; none is changed.
+ * @returns {Record<string, any>}
+ */
 export function mergeCoverage(...maps) {
   const out = {};
   for (const m of maps) {
