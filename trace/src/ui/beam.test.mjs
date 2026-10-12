@@ -63,3 +63,32 @@ test("setup bar: replay only unless the server allows live runs", () => {
   assert.match(renderSetupBar(meta, { setup: "r-v1.g-v1", compare: "", requester: "v1", grader: "v1" }), /replay only/);
   assert.match(renderSetupBar({ ...meta, live: true }, { setup: "r-v1.g-v1", compare: "", requester: "v1", grader: "v1" }), /Live \(calls Opus\)/);
 });
+
+// #902: the beam's run tree, the arms' readings and the deterministic metrics (rubric v2 setup r-v1.g-v3).
+test("beam tree, arms and metrics render from the view; per-item metrics wait for the owner's grade", async () => {
+  const { renderTree, renderArms, renderMetrics, renderItemMetrics } = await import("./beam.mjs");
+  const v3 = store.view("r-v1.g-v3");
+  const o1 = v3.items.find((i) => i.id === "orders-1");
+  const tree = renderTree(o1.tree, o1.id);
+  assert.match(tree, /data-testid="beam-tree" data-item="orders-1"/);
+  assert.match(tree, /3 opened · 1 closed · 2 kept · question · 1210 ms/);
+  assert.match(tree, /data-run="run-3" data-status="closed".*closed: precondition/s);
+  assert.match(tree, /data-run="run-jev" data-status="won".*recommended/s);
+  assert.match(tree, /Beam asks:/);
+  assert.match(renderTree(null, "x"), /No beam events/);
+  const arms = renderArms(o1.arms);
+  assert.equal((arms.match(/<tr><th scope="row">/g) ?? []).length, 5);
+  assert.match(arms, /zero-shot/);
+  assert.match(renderItemMetrics(o1), /appear once you have graded/);
+  assert.match(renderItemMetrics(v3.items.find((i) => i.id === "orders-2")), /right run closed: run-2 \(precondition\)/);
+  const m = renderMetrics(v3.metrics);
+  assert.match(m, /<th scope="row">all<\/th><td>6<\/td><td>100%<\/td>/);
+  assert.match(m, /layer api/);
+  assert.match(m, /<th scope="row">static<\/th><td>67%<\/td><td>67%<\/td><td>83%<\/td><td>1<\/td>/);
+  assert.match(renderMetrics(null), /No beam metrics/);
+  const detail = renderDetail(o1, v3, null, { ...o1.tree, done: null, runs: o1.tree.runs.slice(0, 1), closed: 0, open: 1 });
+  assert.match(detail, /1 opened · 0 closed · 1 kept · running…/, "a streamed tree replaces the stored one");
+  assert.match(renderOwnerFormV2(v3), /data-line="clarity" data-score="2"/);
+});
+
+function renderOwnerFormV2(v) { return renderDetail(v.items[0], v, null); }

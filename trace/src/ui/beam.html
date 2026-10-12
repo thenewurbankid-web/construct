@@ -42,6 +42,11 @@ table{border-collapse:collapse;font-size:13px}
 th,td{border-bottom:1px solid var(--bd);padding:3px 10px;text-align:left}
 table.compare{margin:6px 0 12px;background:var(--card);border-radius:8px}
 table.compare caption{text-align:left;font-size:12px;color:var(--mut);padding:4px 0}
+table.metrics,table.arms{margin:6px 0 10px;background:var(--card);border-radius:8px;font-size:12px}
+table.metrics caption{text-align:left;font-size:12px;color:var(--mut);padding:4px 0}
+.tree ul{list-style:none;margin:2px 0;padding-left:14px;border-left:1px solid var(--line,#ddd)}
+.tree li{margin:3px 0}
+.tree li[data-status=closed]{opacity:.7}
 tr.ok td{color:var(--grn)}tr.near td{color:var(--amb)}tr.warn td,tr.warn th{color:var(--red);font-weight:600}
 .cols{display:grid;grid-template-columns:minmax(240px,340px) minmax(0,1fr);gap:14px;align-items:start}
 ol.items{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
