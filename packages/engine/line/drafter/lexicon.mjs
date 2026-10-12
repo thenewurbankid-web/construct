@@ -6,11 +6,42 @@
 // that never become a slot or a question, phrases for a Line library prop or handler ("per page" -> size, "titled" ->
 // title), everyday verbs ("needs" -> add, "clear" -> remove) and the handler shapes the templates write (log,
 // navigate, call, set). Curated and static like the rest; never built from projects.
+// New words reach it only as reviewed rule proposals (cs2, packages/rule-factory): `mergeLexicon` is the one way a
+// proposal is added, both when the gate measures it (STATIC_OVERLAY, in the gate's worker only) and when a person applies it.
 import fs from 'node:fs';
+import { STATIC_OVERLAY } from '../staticOverlay.mjs';
 
 const FILE = new URL('./lexicon.json', import.meta.url);
+
+/**
+ * The lexicon with `add` merged in: new entries (a word already there is left as it is), and everyday grammar words,
+ * verbs, handler words and phrases added to their lists without duplicates. Pure; `base` is not changed.
+ * @param {any} base A lexicon (lexicon.json's shape).
+ * @param {import('../staticOverlay.mjs').StaticOverlay['lexicon']} add
+ * @returns {any}
+ */
+export function mergeLexicon(base, add) {
+  const out = JSON.parse(JSON.stringify(base));
+  if (!add) return out;
+  const union = (a = [], b = []) => [...a, ...b.filter((x) => !a.includes(x))];
+  for (const e of add.entries ?? []) if (!out.entries.some((x) => x.word === e.word)) out.entries.push({ word: e.word, synonyms: [...(e.synonyms ?? [])], role: e.role, object: e.object });
+  const ev = add.everyday;
+  if (ev) {
+    out.everyday ??= { grammar: [], phrases: [], verbs: {}, handlers: {} };
+    out.everyday.grammar = union(out.everyday.grammar, ev.grammar);
+    for (const [k, ws] of Object.entries(ev.verbs ?? {})) out.everyday.verbs[k] = union(out.everyday.verbs[k], ws);
+    for (const [k, ws] of Object.entries(ev.handlers ?? {})) out.everyday.handlers[k] = union(out.everyday.handlers[k], ws);
+    for (const p of ev.phrases ?? []) {
+      const same = out.everyday.phrases.find((x) => x.means === p.means);
+      if (same) same.say = union(same.say, p.say); else out.everyday.phrases.push({ say: [...p.say], means: p.means });
+    }
+  }
+  return out;
+}
+
+const SHIPPED = JSON.parse(fs.readFileSync(FILE, 'utf8'));
 /** @type {{v: number, version: string, roles: string[], entries: {word: string, synonyms: string[], role: string, object: string}[], everyday?: {grammar: string[], phrases: {say: string[], means: string}[], verbs: Record<string, string[]>, handlers: Record<string, string[]>}}} */
-export const LEXICON = Object.freeze(JSON.parse(fs.readFileSync(FILE, 'utf8')));
+export const LEXICON = Object.freeze(STATIC_OVERLAY?.lexicon ? mergeLexicon(SHIPPED, STATIC_OVERLAY.lexicon) : SHIPPED);
 
 const singular = (w) => (w.endsWith('ies') ? `${w.slice(0, -3)}y` : w.endsWith('s') && !w.endsWith('ss') ? w.slice(0, -1) : w);
 

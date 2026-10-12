@@ -1,0 +1,4 @@
+{
+  "$comment": "cs2: which typed fix ranks first when a finding offers both, as reviewed rules from the static rule factory (packages/rule-factory). Each rule: for findings of `rule`, a fix of family `prefer` ranks above one of family `over` (a family is the fix id up to its first ':'). Added only by `construct line rules apply` after the accuracy gate passed it.",
+  "rules": []
+}
