@@ -7,6 +7,7 @@ import { LineWorkflowsTab } from '@/features/line-workflows';
 import { isLineMock } from '@/lib/lineMode';
 import { useFeatureChat } from '../hooks/useFeatureChat';
 import { useFeaturesModes } from '../hooks/useFeaturesModes';
+import { useFeaturesStage } from '../hooks/useFeaturesStage';
 import { useLineFeatures } from '../hooks/useLineFeatures';
 import { FeaturesScreenPage } from '../pages/FeaturesScreenPage';
 import { FeaturesSwitchPage } from '../pages/FeaturesSwitchPage';
@@ -26,9 +27,10 @@ function LineScreen({ view, screen }: { view: LineFeaturesView; screen: Screen }
   const plan = useLinePlan(landed);
   const { mode, crumbs, onCrumb } = useFeaturesModes(view);
   const chat = useFeatureChat(view, isLineMock() ? mockAddStep : plan.addStep, mode);
+  const blocks = useFeaturesStage(view, plan.rows);
   // One Plan panel per screen: the Workflows tab adds its steps to this screen's plan (the panel beside the chat).
   const workflows = view.feature && view.tab === 'workflows' ? <LineWorkflowsTab key={view.feature} feature={view.feature} addStep={plan.addStep} revision={revision} /> : null;
-  const stage = <FeaturesSwitchPage view={view} chat={chat} plan={<LinePlanController plan={plan} />} workflows={workflows} trace={<LineTraceController screen="features" steps={plan.steps} />} mode={mode} crumbs={crumbs} onCrumb={onCrumb} />;
+  const stage = <FeaturesSwitchPage view={view} chat={chat} plan={<LinePlanController plan={plan} />} workflows={workflows} trace={<LineTraceController screen="features" steps={plan.steps} />} mode={mode} crumbs={crumbs} onCrumb={onCrumb} blocks={blocks} />;
   return <FeaturesScreenPage phase="line" screen={screen} stage={stage} />;
 }
 

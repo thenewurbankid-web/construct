@@ -107,6 +107,40 @@ test.describe.serial('Two modes on every screen (Line sample project, real serve
     await expect(page.getByTestId('lf-feature')).toHaveCount(2);
   });
 
+  test('live stage: in chat, OrdersPage shows as the focused block and is outlined beside the chat; an approved step shows as done', async ({ page }) => {
+    const stage = page.getByTestId('lm-stage');
+    const block = (id) => stage.locator(`[data-testid="lm-stage-block"][data-block="${id}"]`);
+    await gotoCockpit(page, '/');
+    await expect(screen(page)).toHaveAttribute('data-mode', 'chat', { timeout: 30_000 });
+    await pick(page, 'orders').click();
+    await option(page, 'feature.items').click();
+    await pick(page, 'OrdersPage').click();
+    await expect(block('item:OrdersPage')).toHaveAttribute('data-focus', 'true');
+    await expect(block('item:OrdersPage')).toHaveAttribute('data-kind', 'page');
+    await expect(block('item:OrdersPage')).toContainText('Based on ListPage');
+    await expect(block('feature:orders')).toContainText('All fine');
+    // The part in focus is outlined in the view beside the chat (static ladder: its data-item id).
+    await expect(page.locator('[data-testid="lf-item"][data-item="OrdersPage"]')).toHaveAttribute('data-lm-focus', 'line-id');
+    await axeClean(page, 'Live stage');
+
+    // Back to orders, add a step from the library: it waits on the stage, then shows as done once approved.
+    await option(page, 'features.up').click();
+    await expect(block('item:OrdersPage')).toHaveCount(0);
+    await option(page, 'feature.add').click();
+    await pick(page, 'components/Card').click({ timeout: 30_000 });
+    const waiting = stage.locator('[data-testid="lm-stage-block"][data-kind="step"][data-status="wait"]');
+    await expect(waiting).toContainText('Waiting for your approval');
+    await expect(waiting.getByTestId('lm-stage-state').first()).toBeVisible();
+    const step = page.getByTestId('plan-step').first();
+    await step.getByRole('button', { name: /^Approve step/ }).click();
+    await expect(step).toHaveAttribute('data-state', 'done', { timeout: 60_000 });
+    await expect(stage.locator('[data-testid="lm-stage-block"][data-kind="step"][data-status="fit"]')).toHaveCount(1);
+    await expect(waiting).toHaveCount(0);
+    // Folded, the stage keeps only its button.
+    await page.getByTestId('lm-stage-toggle').click();
+    await expect(stage.getByTestId('lm-stage-block').first()).toBeHidden();
+  });
+
   test('Workflows: opens in Chat; open orders and its workflow, and its crumb opens the diagram', async ({ page }) => {
     await gotoCockpit(page, '/workflows');
     await expect(screen(page)).toHaveAttribute('data-mode', 'chat', { timeout: 30_000 });

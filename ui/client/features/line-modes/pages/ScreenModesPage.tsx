@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { LiveStageController } from '../controllers/LiveStageController';
 import { ModesFrameController } from '../controllers/ModesFrameController';
 import type { ScreenModesView } from '../types';
 
@@ -17,6 +18,7 @@ export function ScreenModesPage({ screen, title, modes, footer, hood }: ScreenMo
       onCrumb={modes.onCrumb}
       chat={{ title, testId: 'lm-chat-entry', options: chat.options, messages: chat.messages, onOption: chat.onOption, onPick: chat.onPick, footer }}
       open={modes.open}
+      stage={<LiveStageController blocks={modes.blocks} revision={chat.navKey} />}
       view={
         <div key={chat.navKey} className="lm-hood-view" data-testid="lm-hood-view">
           {hood}

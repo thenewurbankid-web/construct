@@ -4,6 +4,7 @@ import type { LineFeatureDetail, LineFinding, LineHttp, LineKind, LineProject, S
 export type * from '@/lib/lineContract';
 export type * from '@/lib/lineChat';
 export type * from '@/lib/lineModes';
+export type * from '@/lib/liveStage';
 import type { ChatAsk, ChatMessage, ChatOption } from '@/lib/lineChat';
 
 /** One feature in the list: its name, "All fine" or "Needs attention", and one line about its items. */

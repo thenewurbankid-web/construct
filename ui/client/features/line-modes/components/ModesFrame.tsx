@@ -21,19 +21,24 @@ type ModesFrameProps = {
   /** Under the hood: whether the chat helper is hidden, and the toggle. */
   hidden: boolean;
   onToggleHidden: () => void;
+  /** Chat mode: the live stage beside the chat (what is active under the hood). */
+  stage?: ReactNode;
 };
 
 /** Two modes around one screen. Chat: the breadcrumb, then a full-screen chat (lib/ChatEntry.tsx) with the screen's
  * options; once something is open, the screen's view fills the page and the chat is a side panel. Under the hood: the
  * screen's view with the same chat beside it as a helper the person can hide. */
-export function ModesFrame({ screen, mode, crumbs, onCrumb, chat, open, view, hidden, onToggleHidden }: ModesFrameProps) {
+export function ModesFrame({ screen, mode, crumbs, onCrumb, chat, open, view, hidden, onToggleHidden, stage = null }: ModesFrameProps) {
   if (mode === 'chat') {
     return (
       <div className="lm" data-mode="chat" data-screen={screen} data-testid="lm-screen">
         <Breadcrumb crumbs={crumbs} onCrumb={onCrumb} />
-        <ChatEntry {...chat} selected={open}>
-          {open === null ? null : view}
-        </ChatEntry>
+        <div className="lm-chat-row">
+          <ChatEntry {...chat} selected={open}>
+            {open === null ? null : view}
+          </ChatEntry>
+          {stage}
+        </div>
       </div>
     );
   }

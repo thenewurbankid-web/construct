@@ -55,3 +55,15 @@ test('Features modes: a page\'s parts are its plain values a person can change w
   const tree = { file: 'f', feature: 'orders', contentHash: 'h', scopeNames: [], roots: [node([{ kind: 'string', name: 'title', value: 'Orders' }, { kind: 'expression', name: 'onMore', value: '() => {}' }], [node([{ kind: 'string', name: 'title', value: 'x' }, { kind: 'boolean', name: 'dense', value: true }])])] };
   assert.deepEqual(pageValues(tree), ['title', 'dense']);
 });
+
+test('Features live stage: the open feature, item and part as parts with kind, status and base', async () => {
+  const { featuresStageParts } = await import('./FeaturesStage.ts');
+  const p = project();
+  assert.deepEqual(featuresStageParts(featuresPlace(null, null, null), p), []);
+  const parts = featuresStageParts(featuresPlace('orders', 'OrdersPage', 'title'), p);
+  assert.deepEqual(parts.map((x) => [x.param, x.id, x.kind, x.status]), [['feature', 'orders', 'feature', 'fit'], ['item', 'OrdersPage', 'page', 'fit'], ['part', 'title', 'component', 'open']]);
+  assert.equal(parts[1].base, 'ListPage');
+  const billing = featuresStageParts(featuresPlace('billing', 'InvoicesPage', null), p);
+  assert.deepEqual(billing.map((x) => x.status), ['gap', 'gap']);
+  assert.ok(billing[1].findings.length > 0);
+});

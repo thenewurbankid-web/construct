@@ -14,3 +14,6 @@ export * from './hooks/useFeatureChat';
 
 /** Two modes on Features: the mode, the breadcrumb and what a crumb does. */
 export * from './hooks/useFeaturesModes';
+
+/** Two modes: the live stage's blocks on Features (chat mode). */
+export * from './hooks/useFeaturesStage';

@@ -11,6 +11,7 @@
 // part). The URL is the one place both modes read, so a breadcrumb crumb is a Place, and clicking it means "Under the
 // hood, at exactly this URL": the screen's own Under the hood view reads the same parameters and selects the item.
 import { chatMessageProblems, chatOptionProblems, type ChatItem, type ChatMessage, type ChatOption } from './lineChat.ts';
+import type { StagePart } from './liveStage.ts';
 
 /** lineChat's shapes, so a provider needs one import. */
 export type { ChatItem, ChatMessage, ChatOption };
@@ -58,6 +59,9 @@ export type ScreenChatProvider<D> = {
   /** For a screen that shows every level on one page (Settings' sections, Train's panels): the DOM id of the element
    * Under the hood that shows the place, which the frame scrolls into view and marks as open. */
   anchor?: (place: Place) => string | null;
+  /** Live stage (chat mode): what the screen knows about each level of the place (kind, status, base, findings). A
+   * level it does not describe still shows, as "Open". */
+  stageParts?: (place: Place, data: D) => StagePart[];
 };
 
 /** The chat's state at one moment: the place, the conversation, and which level each pick message opens. */

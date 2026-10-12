@@ -17,3 +17,26 @@
 .lm-hood-view { min-width: 0; }
 /* A place a chat pick or a crumb opened on a page that shows every level at once (Settings, Train, Import agent). */
 [data-lm-open] { outline: 2px solid var(--ln-accent, #2563eb); outline-offset: 4px; border-radius: 6px; scroll-margin-top: 16px; }
+
+/* Live stage (chat mode): small read-only blocks of what is active under the hood. Card look from cd1's tokens and the
+ * Features cards; the focus outline is Trace's highlight (line-trace.css [data-line-lit]). Off on narrow screens. */
+.lm-chat-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(220px, 280px); gap: var(--ln-s2, 16px); align-items: start; }
+.lm-stage { position: sticky; top: var(--ln-s2, 16px); display: grid; gap: 8px; padding: 12px; border: 1px solid var(--ln-border); border-radius: var(--ln-r3, 12px); background: var(--ln-surface); color: var(--ln-text); font: 400 0.875rem/1.4 var(--ln-font); }
+.lm-stage-toggle { justify-self: start; border: 1px solid var(--ln-border-strong); border-radius: 6px; background: transparent; color: inherit; font: inherit; font-size: 0.8125rem; padding: 2px 10px; min-height: 28px; cursor: pointer; }
+.lm-blocks { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.lm-block { display: grid; gap: 4px; padding: 8px 10px; border: 1px solid var(--ln-border); border-radius: var(--ln-r2, 8px); background: var(--ln-bg); animation: ln-rise 0.25s var(--ln-ease) both; transition: opacity 0.25s var(--ln-ease); }
+.lm-block[data-focus] { outline: 2px solid var(--ln-accent); outline-offset: 2px; }
+.lm-block[data-status='problem'] { border-color: var(--ln-gap); }
+.lm-block[data-leaving] { opacity: 0; }
+.lm-block-top { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.lm-block-icon { font-size: 1rem; width: 1.25rem; text-align: center; }
+.lm-block-name { font-weight: 650; }
+.lm-block-base, .lm-block-text, .lm-stage-note { color: var(--ln-muted); font-size: 0.8125rem; }
+.lm-states { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.lm-states ul { list-style: none; margin: 0; padding: 0; display: flex; gap: 4px; flex-wrap: wrap; }
+.lm-state { font-size: 0.75rem; padding: 0 6px; border: 1px solid var(--ln-border-strong); border-radius: 999px; }
+.lm-stub { font-size: 0.6875rem; font-weight: 650; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ln-muted); }
+[data-lm-focus] { outline: 2px solid var(--accent) !important; outline-offset: 2px; box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 25%, transparent); }
+[data-lm-focus='position'] { outline-style: dashed !important; }
+@media (max-width: 900px) { .lm-chat-row { grid-template-columns: minmax(0, 1fr); } .lm-stage { display: none; } }
+@media (prefers-reduced-motion: reduce) { .lm-block { animation: none; transition: none; } }

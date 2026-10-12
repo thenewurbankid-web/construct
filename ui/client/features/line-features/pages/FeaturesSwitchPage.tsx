@@ -2,7 +2,7 @@ import type { ComponentProps, ReactNode } from 'react';
 import type { FeatureChatView, LineFeaturesView } from '../types';
 import { LineFeaturesPage } from './LineFeaturesPage';
 
-type ModeProps = Pick<ComponentProps<typeof LineFeaturesPage>, 'mode' | 'crumbs' | 'onCrumb'>;
+type ModeProps = Pick<ComponentProps<typeof LineFeaturesPage>, 'mode' | 'crumbs' | 'onCrumb' | 'blocks'>;
 type FeaturesSwitchPageProps = { view: LineFeaturesView; chat: FeatureChatView; plan: ReactNode; workflows?: ReactNode; trace?: ReactNode } & ModeProps;
 
 /** The Line Features stage (a Line project only): the chat entry, with the open feature's page and its Plan panel. */
