@@ -10,6 +10,16 @@ function Fix({ fix }: { fix: string | null }) {
   return <p className="ldr-fix">Suggested fix: {fix}</p>;
 }
 
+/** im3 + j5: why Line recommends this route from your past picks; nothing otherwise. */
+function Memory({ memory }: { memory: string | null }) {
+  if (!memory) return null;
+  return (
+    <p className="ldr-memory" data-testid="draft-route-memory">
+      {memory}
+    </p>
+  );
+}
+
 /** Add to plan, only for a route Construct checked. */
 function AddButton({ card, busy, onAdd }: Add & { card: RouteCard }) {
   if (!card.canAdd) return null;
@@ -25,7 +35,7 @@ function AddButton({ card, busy, onAdd }: Add & { card: RouteCard }) {
 /** One route: what it does and what Construct found first; Add to plan for a checked route; the steps under Details. */
 export function DraftRoute({ card, ...add }: Add & { card: RouteCard }) {
   return (
-    <li className="ldr-route" data-testid="draft-route" data-status={card.status} data-recommended={String(card.recommended)}>
+    <li className="ldr-route" data-testid="draft-route" data-route={card.id} data-status={card.status} data-recommended={String(card.recommended)}>
       <span className="ldr-state" data-status={card.status}>
         {card.statusLabel}
       </span>
@@ -35,6 +45,7 @@ export function DraftRoute({ card, ...add }: Add & { card: RouteCard }) {
       <p className="ldr-sentence" data-testid="draft-route-sentence">
         {card.sentence}
       </p>
+      <Memory memory={card.memory} />
       <Fix fix={card.fix} />
       <p className="ldr-risk">{card.risk}</p>
       <AddButton card={card} {...add} />

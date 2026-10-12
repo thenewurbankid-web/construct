@@ -275,14 +275,14 @@ export function routeOfDraft(r, d, cv, facts) {
  * Draft a request on a world with the real drafter (in a scratch copy of the world; Construct verifies every route
  * there), and the same draft in Train form.
  * @param {any} world @param {string} request
- * @param {{synonyms?: Record<string, string>, records?: any[], maxVerify?: number, verify?: boolean}} [o] `records`: the
+ * @param {{synonyms?: Record<string, string>, records?: any[], maxVerify?: number, verify?: boolean, memory?: any}} [o] `records`: the
  *   drafter's training records retrieval may use (none by default).
  * @returns {{d: any, train: import('./contract.mjs').TrainDraft}}
  */
 export function draftInWorld(world, request, o = {}) {
   const dir = materialize(world);
   let d;
-  try { d = drafterDraft(dir, String(request), { synonyms: drafterSynonyms(world, o.synonyms), records: o.records ?? [], maxVerify: o.maxVerify, verify: o.verify }); } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+  try { d = drafterDraft(dir, String(request), { synonyms: drafterSynonyms(world, o.synonyms), records: o.records ?? [], maxVerify: o.maxVerify, verify: o.verify, memory: o.memory }); } finally { fs.rmSync(dir, { recursive: true, force: true }); }
   const facts = worldFacts(world);
   const cv = createConverter(facts);
   const map = worldMap(world, o.synonyms);

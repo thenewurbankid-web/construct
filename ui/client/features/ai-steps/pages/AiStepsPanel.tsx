@@ -1,9 +1,11 @@
 import { AiStepList } from '../components/AiStepList';
+import { MemoryList } from '../components/MemoryList';
 import '../components/ai-steps.css';
-import type { AiStepsView } from '../types';
+import type { AiStepsView, MemoryPanel } from '../types';
 
-/** Settings' "AI steps": every AI step Line runs, read-only, with its model and how it falls back. */
-export function AiStepsPanel({ view }: { view: AiStepsView }) {
+/** Settings' "AI steps": every AI step Line runs, read-only, with its model and how it falls back; then what Line
+ * remembers for this project, per step, each with Forget (im3 + j5). */
+export function AiStepsPanel({ view, memory }: { view: AiStepsView; memory: MemoryPanel }) {
   return (
     <section className="ais" data-testid="ai-steps" aria-labelledby="ais-title">
       <div>
@@ -14,6 +16,7 @@ export function AiStepsPanel({ view }: { view: AiStepsView }) {
         {view.status}
       </p>
       <AiStepList rows={view.rows} />
+      <MemoryList memory={memory} />
     </section>
   );
 }

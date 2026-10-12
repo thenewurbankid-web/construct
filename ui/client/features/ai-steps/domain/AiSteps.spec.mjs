@@ -4,6 +4,7 @@ import { readAiProfiles } from '../../../../../packages/core/ai-profiles.mjs';
 import { aiStepRows } from './AiStepRows.ts';
 import { howItWorks, modelText } from './AiStepText.ts';
 import { aiStepsView } from './AiStepsView.ts';
+import { memoryRows } from './MemoryRows.ts';
 
 const profiles = () => readAiProfiles({ traceConfig: null, status: () => ({ ok: true, packages: [{ name: '@mx/reason', ok: true, message: 'ok' }] }) });
 
@@ -34,4 +35,10 @@ test('aiStepsView: loading, a refusal sentence, and the ready rows each give one
   const v = aiStepsView({ phase: 'ready', profiles: p, rows: aiStepRows(p) });
   assert.equal(v.status, p.reason.sentence);
   assert.equal(v.rows.length, p.profiles.length);
+});
+
+test('memoryRows (im3 + j5): each memory step with its size in words; Forget only where there is something to forget', () => {
+  assert.deepEqual(memoryRows(null), []);
+  const rows = memoryRows({ ok: true, total: 4, sentence: 's', steps: [{ step: 'drafter.route', label: 'Which drafted route you pick', size: 3 }, { step: 'plan.step', label: 'What happens', size: 1 }, { step: 'plan.fix', label: 'Which fix', size: 0 }] });
+  assert.deepEqual(rows.map((r) => [r.sizeText, r.canForget]), [['3 remembered decisions', true], ['1 remembered decision', true], ['0 remembered decisions', false]]);
 });

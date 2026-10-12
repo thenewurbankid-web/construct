@@ -24,6 +24,7 @@ import { createPlanRecorder } from './records.mjs';
 import { createAtomicPlanWriter, createStaticPlanApi, lockPlanApi } from './planFallback.mjs';
 import { isInsideWorkspace, readWorkspace } from './workspace.mjs';
 import { createSessionTrace, refusalOfStep, matchFix, sourceOf, traceArgs } from './trace.mjs';
+import { memoryOf, memoryBy } from './memory/index.mjs';
 
 /** One session per open project, for now. */
 export const SESSION_ID = 'ses-cockpit';
@@ -107,14 +108,21 @@ export function stepView(root, plan, s, ops = REAL_PLAN_OPS) {
  * The plan service for one project: the session plan Cockpit and agents share, over @mx/plan when linked, else the static store.
  * @param {{root: string, ops?: typeof REAL_PLAN_OPS, afterSave?: (root: string, file: string) => unknown,
  *   commands?: any, load?: (o: {root: string, registry: any}) => Promise<{api: any, store: {linked: boolean, sentence: string}}>,
- *   linkOptions?: object, trace?: {id: string, record: (e: any) => any, problem: string|null} | null, records?: any}} o `commands`: the
+ *   linkOptions?: object, trace?: {id: string, record: (e: any) => any, problem: string|null} | null, records?: any, memory?: any}} o `commands`: the
  *   construct.* registry (default: Construct's built-in commands; null for none). `trace` (cl1): where this session's
  *   typed trace goes (default `<state>/traces/<id>.jsonl`; null records nothing). `records` (expressions): where finished
- *   steps' training records go (default `<state>/records/plans.jsonl`, records.mjs; null records nothing).
+ *   steps' training records go (default `<state>/records/plans.jsonl`, records.mjs; null records nothing). `memory` (im3):
+ *   where plan feedback is remembered per step (default memory/index.mjs memoryOf(root); null remembers nothing).
  * @returns The plan service.
  */
-export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, commands, load = loadPlanApi, linkOptions, trace, records }) {
+export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, commands, load = loadPlanApi, linkOptions, trace, records, memory }) {
   const tr = trace === undefined ? createSessionTrace(root, { sessionId: SESSION_ID }) : trace;
+  const mem = memory === undefined ? memoryOf(root) : memory;
+  /** im3: remember plan feedback (best effort: a memory that cannot be saved never stops the plan). */
+  const remember = (step, proposal, outcome) => {
+    if (!mem) return;
+    Promise.resolve().then(() => mem.recordOutcome(step, { structure: null, slots: [], neighbourhood: [], ...proposal }, outcome)).catch(() => {});
+  };
   const rec = records === undefined ? createPlanRecorder(root, { ops }) : records;
   /** @type {Promise<{api: any, store: {linked: boolean, sentence: string}, registry: any}> | null} */
   let ready = null;
@@ -254,7 +262,13 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
     const fixOf = typeof args.fixOf === 'string' ? args.fixOf : null;
     const retryOf = req?.args?.retry?.of ?? null;
     tr.record({ kind: 'step', by: String(by), tool, stepId: r.stepId, args, fixOf, retryOf });
-    if (fixOf) tr.record({ kind: 'fix-picked', by: String(by), tool, stepId: r.stepId, fixOf, fixId: matchFix(r.steps.find((s) => s.id === fixOf), tool, req.args) });
+    if (fixOf) {
+      const of = r.steps.find((s) => s.id === fixOf);
+      const fixId = matchFix(of, tool, req.args);
+      tr.record({ kind: 'fix-picked', by: String(by), tool, stepId: r.stepId, fixOf, fixId });
+      const offered = (of?.result?.options ?? []).filter((o) => o.id === 'fix' && o.fixId).map((o) => String(o.fixId));
+      if (fixId) remember('plan.fix', { intent: of?.tool ?? tool, options: offered, proposed: offered[0] ?? null }, { kind: 'fix-picked', chosen: fixId, by: memoryBy(String(by)) });
+    }
     return r;
   });
 
@@ -264,6 +278,10 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
     if (!plan) return refusal('NO_PLAN', 'There is no plan yet, so there is nothing to approve');
     if (typeof stepId !== 'string' || !stepId) return refusal('BAD_ARGS', 'Name the step to approve');
     const r = await withVersion(api, plan.id, (p) => api.plan_approve({ planId: p.id, version: p.version, by, stepId }));
+    if (r.ok) {
+      const tool = plan.steps.find((s) => s.id === stepId)?.tool;
+      if (tool) remember('plan.step', { intent: tool, options: [tool], proposed: tool }, { kind: 'approved', chosen: tool, by: memoryBy(String(by)) });
+    }
     return r.ok ? view(r.message) : fromPlan(r);
   });
 
@@ -343,6 +361,7 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
       const passed = Number.isInteger(res?.passed) ? res.passed : ok ? 1 : 0;
       const total = Number.isInteger(res?.total) ? res.total : 1;
       if (res && res.needsYou === true && res.apply) tr.record({ by: String(by), ...refusalOfStep(s) });
+      if (res && res.needsYou === true) remember('plan.step', { intent: s.tool, options: [s.tool], proposed: s.tool }, { kind: 'refused', chosen: null, by: 'line' });
       tr.record({ kind: 'outcome', by: String(by), tool: s.tool, stepId: s.id, ok, passed, total, state: s.state, sentence: s.sentence });
     }
     return r;
