@@ -418,7 +418,7 @@ export type ImportAgentStep = {
   approvedBy?: 'ui' | 'agent' | null;
 };
 export type ImportChange = { n: number; at: string; by: 'ui' | 'agent' | 'line'; action: string; stepId?: string; sentence: string };
-export type ImportDecision = { id: string; question: string; options: string[]; picked: string; answer: string; by: 'static' | 'single' | 'order' | 'jev' | 'person'; reason: string };
+export type ImportDecision = { id: string; question: string; options: string[]; picked: string; answer: string; by: 'static' | 'single' | 'order' | 'middleware' | 'jev' | 'person' | 'model'; reason: string };
 export type ImportAgentQuestion = { id: string; sentence: string; options: { id: string; sentence: string }[]; recommended: string };
 export type ImportWaiting = { for: 'review' | 'approval' | 'answer'; sentence: string; stepId?: string; planStepId?: string; question?: ImportAgentQuestion };
 export type ImportVerifyCheck = { id: 'validate' | 'types' | 'tests' | 'char-tests' | 'logic-map' | 'behaviour' | 'coverage'; state: 'pass' | 'fail' | 'skipped'; sentence: string; detail?: string };
@@ -558,10 +558,14 @@ export type StepProfile = {
   ladder: {
     static: { target: number };
     options: { on: boolean; target: number };
-    review: { on: boolean; target: number };
     measured: string | null;
   };
   source: 'cockpit' | 'trace' | 'construct';
+  /** The step runs only when the person asks (a button or a chat), never by itself. */
+  onRequest?: boolean;
+  /** GET /api/line/ai-profiles adds these: whether the model rung runs (on AND measured), and its win or "off". */
+  on?: boolean;
+  win?: string;
 };
 
 /** cu2: GET /api/line/ai-profiles. */

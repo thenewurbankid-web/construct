@@ -6,7 +6,7 @@
 //   T2 ops        planBaseOn, planPromote, applyChange packages/engine/line/ops.mjs
 //   T3 page prop  planSetProp                          packages/engine/line/pageProp.mjs
 //   cu6 workspace readWorkspace, setWorkspace            packages/engine/line/workspace.mjs
-//   cu2 AI layer  stepProfile, decide, decideUntilAccepted packages/core/ai-profiles.mjs, packages/core/line-decide.mjs
+//   cu2 AI layer  stepProfile, decide, repairLoop        packages/core/ai-profiles.mjs, packages/core/line-decide.mjs
 //   T4 server     LINE_API routes                      ui/server/src/lineApi.mjs (mounted at /api/line)
 //   T5/T6 UI      ui/client/features/line-* through services/LineApi.ts (a typed mirror of LINE_API)
 //
@@ -648,14 +648,17 @@ export const PLAN_PROTOCOL = Object.freeze([
  * @typedef {object} StepProfile
  * @property {string} step        Stable id "<app>.<task>", e.g. "construct.chooser", "trace.choose", "cockpit.importFill".
  * @property {string} label       Plain English: what the step does, one sentence.
- * @property {'decide'|'draft'} kind  decide: pick one of closed options (static, Qwen suggests, jev decides, Qwen gives the reasons); draft: Qwen writes text that static checks.
+ * @property {'decide'|'draft'} kind  decide: pick one of closed options (static, then middleware, then the picker); draft: a local model writes, Construct checks.
  * @property {'ollama'|'hosted'} provider  ollama: a local model; hosted: a hosted model the person configures (never local).
  * @property {string|null} model  The model the step uses; the local default is qwen2.5-coder:1.5b. Null only for a hosted step.
  * @property {string} modelFrom   Plain English: where the model comes from ("Line's default", "trace/ai.config.json").
  * @property {number} maxTokens   The reply cap for the step's model (Qwen's proposer reads it; 800 for plan steps).
  * @property {number} [maxAttempts]  im2: how many repairs the step may try (construct.repair; default 4).
  * @property {'static'} fallback  When the model is down or not linked, the static path answers and says so.
- * @property {{static: {target: number}, options: {on: boolean, target: number}, review: {on: boolean, target: number}, measured: string|null}} ladder
+ * @property {{static: {target: number}, options: {on: boolean, target: number}, measured: string|null}} ladder  The one
+ *   ladder (static -> middleware -> Line-1, the one picker -> Construct verify -> person). `options.on` turns the step's model
+ *   rung on, and it runs only with `measured` recording its win over static (ai-profiles.mjs stepOn); no review rung.
+ * @property {boolean} [onRequest]  The step runs only when the person asks (a button or a chat), never by itself.
  * @property {'cockpit'|'trace'|'construct'} source  Which app's step it is.
  * @property {string} [guidance]  Optional extra guidance for Qwen (ai-profiles.json; not shown in Settings).
  * @property {string} [question]  Optional wording of the pick question for jev (ai-profiles.json; not shown in Settings).
@@ -668,33 +671,23 @@ export const PLAN_PROTOCOL = Object.freeze([
  */
 
 /**
- * cu2: what decide(step, options, context) answers. `via` names who decided: static (the checks or their order), jev (it
- * picked among the checked options), model (Qwen's suggestion stood because jev was not available). `reasons` are full
- * plain-English sentences (Qwen's reason when it gave one); `attribution` is what a decision trace records. With
- * `context.refusal`, the options ARE the refusal's typed fixes and `feedback` is true.
+ * cu2: what decide(step, options, context) answers, on the one ladder: static (the checks and their order) -> middleware
+ * (deterministic code a project or Line adds) -> the picker (Line-1; jev fills that role until Line-1 ships, only when the
+ * step's profile is on and measured) -> Construct verify -> person. `driver` says who decided; `via` and `by` say how.
+ * With `context.refusal`, the options ARE the refusal's typed fixes and `feedback` is true.
  * @typedef {object} DecideResult
  * @property {string} step
  * @property {string|null} choice      An option id that passed the checks, or null (nothing passed: ask the person).
  * @property {string|null} runnerUp
- * @property {'static'|'jev'|'model'} via
- * @property {'single'|'order'|'memory'|'jev'|'model'|'none'} by  `memory` (im3 + j5): static's order, led by the option the
- *   person consistently picked for this step before (only among the checked options; memory never adds one).
+ * @property {'static'|'middleware'|'jev'} via
+ * @property {'single'|'order'|'memory'|'middleware'|'jev'|'none'} by  `memory` (im3 + j5): static's order, led by the option
+ *   the person consistently picked for this step before (only among the checked options; memory never adds one).
+ * @property {'static'|'middleware'|'picker'|'person'} driver  Who decided: `person` when nothing passed (Line asks).
  * @property {string[]} reasons
  * @property {{option: string, count: number, sentence: string}|null} [memory]  What memory recalled, when it reordered the options.
- * @property {boolean} lowConfidence  jev and Qwen disagreed, or nothing passed: with Auto off, ask the person.
+ * @property {boolean} lowConfidence  The picker was unsure, or nothing passed: with Auto off, ask the person.
  * @property {boolean} feedback        The options were Construct's typed fixes for a refusal.
- * @property {{step: string, provider: '@mx/reason'|'static', decider: 'static'|'jev'|'qwen', model: string|null, version: string, fellBackFrom: 'jev'|'reason'|null, note: string|null}} attribution
- */
-
-/**
- * cu2: decideUntilAccepted(step, options, context, {apply, score}): decide, apply the choice through Construct; on a
- * refusal decide again with {refusal sentence, typed fixes} as the options; stop when it lands, or when a round does not
- * improve the score (then ONE question for the person).
- * @typedef {object} DecideLoopResult
- * @property {'accepted'|'ask'} outcome
- * @property {{decision: DecideResult, ok: boolean, score: number, refusal: Refusal|null, repair?: RepairAttempt}[]} rounds
- *   `repair` (im2): the ONE repair the local model made of the option Qwen or jev chose, on the last round only.
- * @property {{sentence: string, options: {id: string, sentence: string}[]}|null} question  Set exactly when outcome is ask.
+ * @property {{step: string, provider: '@mx/reason'|'static', decider: 'static'|'middleware'|'jev', model: string|null, version: string, fellBackFrom: 'jev'|'reason'|null, note: string|null}} attribution
  */
 
 /**
@@ -702,7 +695,7 @@ export const PLAN_PROTOCOL = Object.freeze([
  * `maxAttempts`, profile construct.repair, default 4). Each attempt gets only the error (the refusal sentence, the
  * finding, the typed fixes), the option and every earlier attempt with its refusal; the reply is a short reason then the
  * option, constrained to the option's schema; Construct checks each repaired option. It stops when one lands, repeats an
- * earlier one, or passes no more checks than the last one. Kept on the decision trace (DecideLoopResult round `repair`),
+ * earlier one, or passes no more checks than the last one. Kept where its caller records it (the import's decisions, the drafter's route),
  * slotted in the plan records (`records/repairs.jsonl`); `progress` is the person's live line, one sentence per attempt.
  * @typedef {object} RepairTry
  * @property {number} n
@@ -718,7 +711,7 @@ export const PLAN_PROTOCOL = Object.freeze([
  * @property {string} model
  * @property {number} attempts  0 only when the model was not there.
  * @property {number} [maxAttempts]
- * @property {'repaired'|'still-refused'|'no-better'|'repeated'|'invalid'|'unchanged'|'no-model'|'proposed'} outcome
+ * @property {'repaired'|'still-refused'|'no-better'|'repeated'|'invalid'|'unchanged'|'no-model'|'off'|'proposed'} outcome  `off`: the construct.repair profile is off.
  *   repaired: Construct accepts an attempt; still-refused / no-better / repeated / invalid / unchanged: the person decides
  *   (every attempt under Details); no-model: the static path is unchanged; proposed: not yet checked (the caller checks it).
  * @property {{tool: string, args: any}} before  The refused option.
@@ -731,7 +724,7 @@ export const PLAN_PROTOCOL = Object.freeze([
  * @property {number} ms
  */
 
-export const REPAIR_OUTCOMES = Object.freeze(['repaired', 'still-refused', 'no-better', 'repeated', 'invalid', 'unchanged', 'no-model', 'proposed']);
+export const REPAIR_OUTCOMES = Object.freeze(['repaired', 'still-refused', 'no-better', 'repeated', 'invalid', 'unchanged', 'no-model', 'off', 'proposed']);
 
 /**
  * im2: throws unless a is a RepairAttempt.
@@ -743,10 +736,10 @@ export function assertRepairAttempt(a) {
   str(a.model, 'repair.model');
   if (!REPAIR_OUTCOMES.includes(a.outcome)) fail('repair.outcome', `must be one of ${REPAIR_OUTCOMES.join(', ')}`);
   const max = a.maxAttempts ?? 1;
-  if (a.outcome === 'no-model' ? a.attempts !== 0 : !(Number.isInteger(a.attempts) && a.attempts >= 1 && a.attempts <= max)) fail('repair.attempts', 'is between one and maxAttempts, or zero when the model was not there');
+  if (['no-model', 'off'].includes(a.outcome) ? a.attempts !== 0 : !(Number.isInteger(a.attempts) && a.attempts >= 1 && a.attempts <= max)) fail('repair.attempts', 'is between one and maxAttempts, or zero when the model was not there');
   if (!a.before || typeof a.before.tool !== 'string') fail('repair.before', 'must be the refused option');
   if (['repaired', 'proposed'].includes(a.outcome) && !a.option) fail('repair.option', 'is set when an attempt landed or was proposed');
-  if (['invalid', 'unchanged', 'repeated', 'no-model'].includes(a.outcome) && a.option !== null) fail('repair.option', 'is null when no attempt is left to show');
+  if (['invalid', 'unchanged', 'repeated', 'no-model', 'off'].includes(a.outcome) && a.option !== null) fail('repair.option', 'is null when no attempt is left to show');
   if (a.option && a.option.tool !== a.before.tool) fail('repair.option.tool', 'a repair keeps the tool');
   if (a.after !== null && !['still-refused', 'no-better'].includes(a.outcome)) fail('repair.after', 'is set only when the last attempt was refused');
   if (a.v === 2) {
@@ -858,7 +851,7 @@ export const AUTO_ACTION_KINDS = Object.freeze(['click', 'type', 'select', 'appr
 // xstate machine): scan -> classify -> plan -> review -> execute -> verify -> done. Its whole state is ONE file inside the
 // chosen folder, `<folder>/line/import-plan.json`, written only through Construct's writer (applyChange, folder as root),
 // so it can be paused, resumed, edited by a person in Cockpit or by an agent over MCP, and every change is recorded.
-// It decides through @mx/reason (packages/core/reason-provider.mjs; static order when reason is not linked), calls only
+// It decides through Line's one decide() (packages/core/line-decide.mjs: construct.chooser, construct.fix), repairs a refused fix with the repair loop (construct.repair), calls only
 // registry tools, and executes ONLY by adding cp1 plan steps (line.import.*): a person still approves every write.
 
 /**
@@ -1038,8 +1031,10 @@ export const LEVELS = Object.freeze(['atom', 'molecule', 'organism']);
 export const FRAGMENT_KINDS = Object.freeze(['prop-expression', 'handler', 'condition', 'style']);
 /** cu2: the local model every AI step uses unless its profile names another. */
 export const DEFAULT_STEP_MODEL = 'qwen2.5-coder:1.5b';
-export const DECIDE_VIA = Object.freeze(['static', 'jev', 'model']);
-export const DECIDE_BY = Object.freeze(['single', 'order', 'memory', 'jev', 'model', 'none']);
+export const DECIDE_VIA = Object.freeze(['static', 'middleware', 'jev']);
+export const DECIDE_BY = Object.freeze(['single', 'order', 'memory', 'middleware', 'jev', 'none']);
+/** Who decided, on the one ladder (static -> middleware -> picker -> Construct verify -> person). */
+export const DECIDE_DRIVERS = Object.freeze(['static', 'middleware', 'picker', 'person']);
 
 // ---------------------------------------------------------------------------------------------
 // Runtime shape checks: the contract tests run them over the mock and every real implementation.
@@ -1663,12 +1658,12 @@ export function assertStepProfile(p, where = 'profile') {
   const l = p.ladder;
   if (!l || typeof l !== 'object') fail(`${where}.ladder`, 'must be an object');
   rate(l.static?.target, `${where}.ladder.static.target`);
-  for (const k of ['options', 'review']) {
-    if (typeof l[k]?.on !== 'boolean') fail(`${where}.ladder.${k}.on`, 'must be a boolean');
-    rate(l[k].target, `${where}.ladder.${k}.target`);
-  }
+  if (typeof l.options?.on !== 'boolean') fail(`${where}.ladder.options.on`, 'must be a boolean');
+  rate(l.options.target, `${where}.ladder.options.target`);
+  if ('review' in l) fail(`${where}.ladder.review`, 'is not part of the ladder: Line has no review rung');
   if (l.measured !== null && typeof l.measured !== 'string') fail(`${where}.ladder.measured`, 'must be a string or null');
-  if (p.kind === 'draft' && l.options.on) fail(`${where}.ladder.options.on`, 'a draft step has no options for jev to pick from');
+  if (l.options.on && !l.measured) fail(`${where}.ladder.options.on`, 'is on only with a measured win over static in ladder.measured');
+  if (p.onRequest !== undefined && typeof p.onRequest !== 'boolean') fail(`${where}.onRequest`, 'must be a boolean');
   if (p.provider === 'hosted' && l.options.on) fail(`${where}.ladder.options.on`, 'jev is a local model; a hosted step cannot turn it on');
   if (!['cockpit', 'trace', 'construct'].includes(p.source)) fail(`${where}.source`, 'must be cockpit, trace or construct');
 }
@@ -1685,11 +1680,13 @@ export function assertDecideResult(r, optionIds) {
   if (r.runnerUp !== null) str(r.runnerUp, 'decide.runnerUp');
   if (r.choice !== null && r.runnerUp === r.choice) fail('decide.runnerUp', 'must differ from the choice');
   if (optionIds && r.choice !== null && !optionIds.includes(r.choice)) fail('decide.choice', `must be one of the offered options: ${JSON.stringify(r.choice)}`);
-  if (!DECIDE_VIA.includes(r.via)) fail('decide.via', 'must be static, jev or model');
-  if (!DECIDE_BY.includes(r.by)) fail('decide.by', 'must be single, order, memory, jev, model or none');
+  if (!DECIDE_VIA.includes(r.via)) fail('decide.via', 'must be static, middleware or jev');
+  if (!DECIDE_BY.includes(r.by)) fail('decide.by', 'must be single, order, memory, middleware, jev or none');
   if ((r.choice === null) !== (r.by === 'none')) fail('decide.by', 'is none exactly when nothing was chosen');
   if ((r.via === 'jev') !== (r.by === 'jev')) fail('decide.via', 'is jev exactly when by is jev');
-  if ((r.via === 'model') !== (r.by === 'model')) fail('decide.via', 'is model exactly when by is model');
+  if ((r.via === 'middleware') !== (r.by === 'middleware')) fail('decide.via', 'is middleware exactly when by is middleware');
+  const driver = r.choice === null ? 'person' : r.via === 'jev' ? 'picker' : r.via;
+  if (r.driver !== driver) fail('decide.driver', `must be ${driver} (static, middleware, picker or person: who decided)`);
   if (!Array.isArray(r.reasons) || !r.reasons.length) fail('decide.reasons', 'must hold at least one sentence');
   r.reasons.forEach((x, i) => sentence(x, `decide.reasons[${i}]`));
   if (typeof r.lowConfidence !== 'boolean') fail('decide.lowConfidence', 'must be a boolean');
@@ -1697,37 +1694,13 @@ export function assertDecideResult(r, optionIds) {
   const a = r.attribution;
   if (!a || a.step !== r.step) fail('decide.attribution.step', 'must equal the step');
   if (!['@mx/reason', 'static'].includes(a.provider)) fail('decide.attribution.provider', 'must be @mx/reason or static');
-  if (!['static', 'jev', 'qwen'].includes(a.decider)) fail('decide.attribution.decider', 'must be static, jev or qwen');
-  if ((a.decider === 'jev') !== (r.via === 'jev') || (a.decider === 'qwen') !== (r.via === 'model')) fail('decide.attribution.decider', 'must match via');
+  if (!['static', 'middleware', 'jev'].includes(a.decider)) fail('decide.attribution.decider', 'must be static, middleware or jev');
+  if (a.decider !== r.via) fail('decide.attribution.decider', 'must match via');
   if (a.model !== null) str(a.model, 'decide.attribution.model');
   str(a.version, 'decide.attribution.version');
   if (a.fellBackFrom !== null && !['jev', 'reason'].includes(a.fellBackFrom)) fail('decide.attribution.fellBackFrom', 'must be jev, reason or null');
   if (a.note !== null) sentence(a.note, 'decide.attribution.note');
   if (a.fellBackFrom !== null && a.note === null) fail('decide.attribution.note', 'a fallback says why in one sentence');
-}
-
-/**
- * cu2: throws unless x is a DecideLoopResult.
- * @param {any} x
- * @returns {asserts x is DecideLoopResult}
- */
-export function assertDecideLoopResult(x) {
-  if (!['accepted', 'ask'].includes(x?.outcome)) fail('loop.outcome', 'must be accepted or ask');
-  if (!Array.isArray(x.rounds) || !x.rounds.length) fail('loop.rounds', 'must hold at least one round');
-  x.rounds.forEach((r, i) => {
-    assertDecideResult(r.decision);
-    if (typeof r.ok !== 'boolean' || typeof r.score !== 'number') fail(`loop.rounds[${i}]`, 'ok must be a boolean and score a number');
-    if (i > 0 && !r.decision.feedback) fail(`loop.rounds[${i}].decision.feedback`, 'a retry decides over the refusal\'s typed fixes');
-  });
-  const last = x.rounds.at(-1);
-  x.rounds.forEach((r, i) => { if (r.repair !== undefined) { assertRepairAttempt(r.repair); if (i !== x.rounds.length - 1 || x.rounds.slice(0, i).some((p) => p.repair)) fail(`loop.rounds[${i}].repair`, 'one repair, on the last round'); } });
-  const landed = last.ok || last.repair?.outcome === 'repaired';
-  if ((x.outcome === 'accepted') !== landed) fail('loop.outcome', 'is accepted exactly when the last round landed (or its one repair did)');
-  if ((x.outcome === 'ask') !== (x.question !== null)) fail('loop.question', 'is set exactly when the outcome is ask');
-  if (x.question) {
-    sentence(x.question.sentence, 'loop.question.sentence');
-    if (!Array.isArray(x.question.options)) fail('loop.question.options', 'must be an array');
-  }
 }
 
 /**
@@ -1922,7 +1895,7 @@ export function assertImportPlanFile(p) {
   p.decisions.forEach((d, i) => {
     str(d.id, `importPlan.decisions[${i}].id`);
     if (!d.options.includes(d.picked)) fail(`importPlan.decisions[${i}].picked`, 'must be one of its options');
-    if (!['static', 'single', 'order', 'jev', 'person', 'model'].includes(d.by)) fail(`importPlan.decisions[${i}].by`, 'unknown decider');
+    if (!['static', 'single', 'order', 'middleware', 'jev', 'person', 'model'].includes(d.by)) fail(`importPlan.decisions[${i}].by`, 'unknown decider');
     sentence(d.reason, `importPlan.decisions[${i}].reason`);
     sentence(d.answer, `importPlan.decisions[${i}].answer`);
   });

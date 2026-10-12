@@ -11,6 +11,8 @@ export type AiStepRow = {
   label: string;
   model: string;
   how: string;
+  /** The step's measured win over static, or "off" (the profile is the only switch). */
+  win: string;
   details: { step: string; cap: string; ladder: string; measured: string; fallback: string };
 };
 

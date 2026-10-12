@@ -53,7 +53,7 @@ for (const spec of models) {
       if (!q) { rows.push({ ex, id, want: prefix, status: "no such question" }); continue; }
       for (let r = 0; r < repeat; r++) {
         const entries = [];
-        const ai = createAi({ dir: s.dir, spec: s.spec, source: s.source, matched: s.matched, useCache: false, trusted: true, onLog: (e) => entries.push(e), overrides: { tasks: { choose: cfg, "pick-fields": cfg, "draft-body": cfg } } });
+        const ai = createAi({ dir: s.dir, spec: s.spec, source: s.source, matched: s.matched, useCache: false, trusted: true, measure: true, onLog: (e) => entries.push(e), overrides: { tasks: { choose: cfg, "pick-fields": cfg, "draft-body": cfg } } });
         const t0 = Date.now();
         const picked = await ai.answer(q);
         const wall = Date.now() - t0;

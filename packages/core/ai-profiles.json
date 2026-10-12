@@ -1,5 +1,5 @@
 {
-  "$comment": "cu2: Line's ONE set of per-step AI profiles (contract: StepProfile in packages/engine/line/contract.mjs). Cockpit's LLM capabilities (ui/server settings llmProviders), Trace's AI tasks (trace/ai.config.json now holds only overrides) and the @mx/reason pairs all read their model, reply cap and ladder from here. Static always runs first; a model rung is on only where measured to help; every step falls back to static. Local models only: nothing here pulls or stops a model.",
+  "$comment": "Line's ONE set of per-step AI profiles (contract: StepProfile in packages/engine/line/contract.mjs). Cockpit's LLM capabilities (ui/server settings llmProviders), Trace's AI tasks (trace/ai.config.json holds only model overrides) and the picker all read their model, reply cap and ladder from here. The ladder is static -> middleware -> Line-1 (the one picker; jev fills that role until Line-1 ships) -> Construct verify -> person. The profile is the only switch: a step's model rung (ladder.options.on) runs only when it is on AND ladder.measured records its win over static; otherwise the step ships off and static answers. onRequest steps run only when the person asks (a button, a chat, or turning AI on for a Trace run), never by themselves. Local models only: nothing here pulls or stops a model.",
   "defaultModel": "qwen2.5-coder:1.5b",
   "profiles": [
     {
@@ -11,7 +11,7 @@
       "source": "construct",
       "guidance": "Pick the next step a developer most likely wants from the offered steps.",
       "question": "Which step does the developer most likely want next?",
-      "ladder": { "static": { "target": 1 }, "options": { "on": true, "target": 0.6 }, "review": { "on": false, "target": 0.7 }, "measured": null }
+      "ladder": { "static": { "target": 1 }, "options": { "on": false, "target": 0.6 }, "measured": null }
     },
     {
       "step": "construct.fix",
@@ -22,11 +22,11 @@
       "source": "construct",
       "guidance": "Construct refused the change; pick the typed fix that resolves the refusal. The first fix is Construct's recommended one.",
       "question": "Which fix resolves the refusal?",
-      "ladder": { "static": { "target": 1 }, "options": { "on": true, "target": 0.8 }, "review": { "on": false, "target": 0.7 }, "measured": "2026-10-11 qwen2.5-coder:1.5b: no feedback 6/10, refusal sentence 8/10, sentence and typed fixes 9/10" }
+      "ladder": { "static": { "target": 1 }, "options": { "on": true, "target": 0.8 }, "measured": "2026-10-11 qwen2.5-coder:1.5b, 10 refusals: with the refusal sentence and typed fixes 9/10, static (Construct's recommended fix) 6/10." }
     },
     {
       "step": "construct.repair",
-      "label": "When Construct refuses an option Qwen or jev chose, repairs it from the exact error and its typed fixes, up to 4 tries that each learn from the last; if Construct still refuses it, you decide.",
+      "label": "When Construct refuses a change, the local model repairs it from the exact error and its typed fixes, up to 4 tries that each learn from the last; if Construct still refuses it, you decide.",
       "kind": "draft",
       "provider": "ollama",
       "maxTokens": 300,
@@ -34,7 +34,7 @@
       "reason": false,
       "source": "construct",
       "guidance": "Construct refused this change. Change only what the error and its typed fixes say, and answer with the corrected change in the same shape.",
-      "ladder": { "static": { "target": 1 }, "options": { "on": false, "target": 0.6 }, "review": { "on": false, "target": 0.7 }, "measured": "2026-10-12, 20 seeded Train Line refusals: 1.5B one attempt 7/20; 1.5B loop with reason 5/20; A 1.5B loop without reason 7/20 (~0.3 s, the default: chosen for speed and memory, owner); B 7B loop with reason 4/20; C 7B loop without reason 8/20 (~1 s). Re-measure after the nearest-match typed fix (bench-gaps) merges; switch to the 7B only if it then clearly wins." }
+      "ladder": { "static": { "target": 1 }, "options": { "on": true, "target": 0.6 }, "measured": "2026-10-12, 20 seeded Train Line refusals: 1.5B repair loop without a reason 7/20 (static repairs 0/20; ~0.3 s). 1.5B one attempt 7/20; loop with a reason 5/20; 7B loop with a reason 4/20, without 8/20 (~1 s). Re-measure after the nearest-match typed fix merges; switch to the 7B only if it then clearly wins." }
     },
     {
       "step": "construct.label-miss",
@@ -45,7 +45,7 @@
       "source": "construct",
       "guidance": "Static code missed this decision. Pick the option that was right, or none fits when no option is right.",
       "question": "Which option was right?",
-      "ladder": { "static": { "target": 1 }, "options": { "on": true, "target": 0.8 }, "review": { "on": false, "target": 0.7 }, "measured": null }
+      "ladder": { "static": { "target": 1 }, "options": { "on": false, "target": 0.8 }, "measured": null }
     },
     {
       "step": "trace.choose",
@@ -56,7 +56,7 @@
       "source": "trace",
       "guidance": "Pick the option the cited facts support; never static text.",
       "question": "Which option do the facts support?",
-      "ladder": { "static": { "target": 1 }, "options": { "on": true, "target": 0.6 }, "review": { "on": false, "target": 0.7 }, "measured": null }
+      "ladder": { "static": { "target": 1 }, "options": { "on": false, "target": 0.6 }, "measured": "2026-09-29 (LIN-110) qwen2.5-coder:1.5b on the Trace eval corpus: 78/132 answered, 60% of those correct; no win over static measured yet, so it ships off." }
     },
     {
       "step": "trace.pick-fields",
@@ -67,16 +67,16 @@
       "source": "trace",
       "guidance": "Pick every field the cited facts support.",
       "question": "Which fields feed this part?",
-      "ladder": { "static": { "target": 1 }, "options": { "on": false, "target": 0.6 }, "review": { "on": false, "target": 0.7 }, "measured": null }
+      "ladder": { "static": { "target": 1 }, "options": { "on": false, "target": 0.6 }, "measured": null }
     },
-    { "step": "trace.draft-body", "label": "Writes one expression for a placeholder, kept only when it reproduces the design's examples.", "kind": "draft", "provider": "ollama", "maxTokens": 100, "source": "trace", "ladder": { "static": { "target": 1 }, "options": { "on": false, "target": 0.6 }, "review": { "on": false, "target": 0.7 }, "measured": null } },
-    { "step": "trace.explain", "label": "Puts an open item in plain words for the run summary, checked against its facts.", "kind": "draft", "provider": "ollama", "maxTokens": 220, "source": "trace", "ladder": { "static": { "target": 1 }, "options": { "on": false, "target": 0.6 }, "review": { "on": false, "target": 0.7 }, "measured": null } },
-    { "step": "trace.mail", "label": "Rewrites a team email on request; every draft is fact-checked and never sent by itself.", "kind": "draft", "provider": "ollama", "maxTokens": 600, "source": "trace", "ladder": { "static": { "target": 1 }, "options": { "on": false, "target": 0.6 }, "review": { "on": false, "target": 0.7 }, "measured": null } },
-    { "step": "trace.part-chat", "label": "Answers questions about one part in the Part inspector, fact-checked and never applied by itself.", "kind": "draft", "provider": "ollama", "maxTokens": 400, "source": "trace", "ladder": { "static": { "target": 1 }, "options": { "on": false, "target": 0.6 }, "review": { "on": false, "target": 0.7 }, "measured": null } },
-    { "step": "trace.generate-sample", "label": "Proposes one sample value for a contract field that has no example.", "kind": "draft", "provider": "ollama", "maxTokens": 80, "source": "trace", "ladder": { "static": { "target": 1 }, "options": { "on": false, "target": 0.6 }, "review": { "on": false, "target": 0.7 }, "measured": null } },
-    { "step": "trace.draft-story", "label": "Proposes a page story with a goal and acceptance points, never saved by itself.", "kind": "draft", "provider": "ollama", "maxTokens": 400, "source": "trace", "ladder": { "static": { "target": 1 }, "options": { "on": false, "target": 0.6 }, "review": { "on": false, "target": 0.7 }, "measured": null } },
-    { "step": "cockpit.importFill", "label": "Fills one imported file's gaps, shown as a diff you approve.", "kind": "draft", "provider": "ollama", "maxTokens": 800, "source": "cockpit", "ladder": { "static": { "target": 1 }, "options": { "on": false, "target": 0.6 }, "review": { "on": false, "target": 0.7 }, "measured": null } },
-    { "step": "cockpit.createFill", "label": "Fills a newly created unit's body, shown as a diff you approve.", "kind": "draft", "provider": "ollama", "maxTokens": 800, "source": "cockpit", "ladder": { "static": { "target": 1 }, "options": { "on": false, "target": 0.6 }, "review": { "on": false, "target": 0.7 }, "measured": null } },
-    { "step": "cockpit.planAnalysis", "label": "Analyses a whole feature for import with a hosted model you choose; it never runs on a local model.", "kind": "draft", "provider": "hosted", "model": null, "maxTokens": 800, "source": "cockpit", "ladder": { "static": { "target": 1 }, "options": { "on": false, "target": 0.6 }, "review": { "on": false, "target": 0.7 }, "measured": null } }
+    { "step": "trace.draft-body", "label": "Writes one expression for a placeholder, kept only when it reproduces the design's examples.", "kind": "draft", "provider": "ollama", "maxTokens": 100, "source": "trace", "ladder": { "static": { "target": 1 }, "options": { "on": false, "target": 0.6 }, "measured": null }, "onRequest": true },
+    { "step": "trace.explain", "label": "Puts an open item in plain words for the run summary, checked against its facts.", "kind": "draft", "provider": "ollama", "maxTokens": 220, "source": "trace", "ladder": { "static": { "target": 1 }, "options": { "on": false, "target": 0.6 }, "measured": null }, "onRequest": true },
+    { "step": "trace.mail", "label": "Rewrites a team email on request; every draft is fact-checked and never sent by itself.", "kind": "draft", "provider": "ollama", "maxTokens": 600, "source": "trace", "ladder": { "static": { "target": 1 }, "options": { "on": false, "target": 0.6 }, "measured": null }, "onRequest": true },
+    { "step": "trace.part-chat", "label": "Answers questions about one part in the Part inspector, fact-checked and never applied by itself.", "kind": "draft", "provider": "ollama", "maxTokens": 400, "source": "trace", "ladder": { "static": { "target": 1 }, "options": { "on": false, "target": 0.6 }, "measured": null }, "onRequest": true },
+    { "step": "trace.generate-sample", "label": "Proposes one sample value for a contract field that has no example.", "kind": "draft", "provider": "ollama", "maxTokens": 80, "source": "trace", "ladder": { "static": { "target": 1 }, "options": { "on": false, "target": 0.6 }, "measured": null }, "onRequest": true },
+    { "step": "trace.draft-story", "label": "Proposes a page story with a goal and acceptance points, never saved by itself.", "kind": "draft", "provider": "ollama", "maxTokens": 400, "source": "trace", "ladder": { "static": { "target": 1 }, "options": { "on": false, "target": 0.6 }, "measured": null }, "onRequest": true },
+    { "step": "cockpit.importFill", "label": "Fills one imported file's gaps, shown as a diff you approve.", "kind": "draft", "provider": "ollama", "maxTokens": 800, "source": "cockpit", "ladder": { "static": { "target": 1 }, "options": { "on": false, "target": 0.6 }, "measured": null }, "onRequest": true },
+    { "step": "cockpit.createFill", "label": "Fills a newly created unit's body, shown as a diff you approve.", "kind": "draft", "provider": "ollama", "maxTokens": 800, "source": "cockpit", "ladder": { "static": { "target": 1 }, "options": { "on": false, "target": 0.6 }, "measured": null }, "onRequest": true },
+    { "step": "cockpit.planAnalysis", "label": "Analyses a whole feature for import with a hosted model you choose; it never runs on a local model.", "kind": "draft", "provider": "hosted", "model": null, "maxTokens": 800, "source": "cockpit", "ladder": { "static": { "target": 1 }, "options": { "on": false, "target": 0.6 }, "measured": null } }
   ]
 }

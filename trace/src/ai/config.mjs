@@ -60,25 +60,36 @@ function clean(l) {
 }
 
 // cu2: Line's one set of per-step profiles (packages/core/ai-profiles.json, steps "trace.<task>") holds each task's
-// default model (the 1.5B); ai.config.json and an example's ai.json only override it. Trace run on its own (no Construct
-// checkout beside it) keeps the built-in DEFAULT.
+// default model (the 1.5B); ai.config.json and an example's ai.json only override the model. Trace run on its own (no
+// Construct checkout beside it) keeps the built-in DEFAULT.
+//
+// The profile is the only switch (owner rule): a task that runs by itself (not `onRequest`) runs only when its profile is
+// on AND records a measured win over static (`ladder.options.on` and `ladder.measured`, the same rule as
+// packages/core/ai-profiles.mjs stepOn). Every other one is `off`: no model is asked and the static path stands, whatever
+// ai.config.json, ai.json or a run's overrides say. Only the measurement harness (eval, bench) runs an off task.
 export const PROFILES_FILE = path.join(root, "..", "packages", "core", "ai-profiles.json");
+const stepOn = (p) => p?.ladder?.options?.on === true && typeof p.ladder.measured === "string" && p.ladder.measured.trim() !== "";
 export function profileLayer(file = PROFILES_FILE) {
   const data = readJson(file);
   const tasks = {};
+  const off = [];
   for (const p of Array.isArray(data.profiles) ? data.profiles : []) {
     const task = typeof p?.step === "string" && p.step.startsWith("trace.") ? p.step.slice(6) : null;
+    if (!task || !TASKS.includes(task)) continue;
+    if (p.onRequest !== true && !stepOn(p)) off.push(task);
     // Only a profile that names its own model becomes a task entry, so an ai.config.json "default" still reaches the rest.
-    if (task && TASKS.includes(task) && p.provider === "ollama" && typeof p.model === "string") tasks[task] = { provider: "ollama", model: p.model };
+    if (p.provider === "ollama" && typeof p.model === "string") tasks[task] = { provider: "ollama", model: p.model };
   }
-  return typeof data.defaultModel === "string" ? { default: { provider: "ollama", model: data.defaultModel }, tasks } : { tasks };
+  return typeof data.defaultModel === "string" ? { default: { provider: "ollama", model: data.defaultModel }, tasks, off } : { tasks, off };
 }
 
 export function loadAiConfig({ dir, overrides = {}, trusted = false } = {}) {
   const file = readJson(path.join(root, "ai.config.json"));
-  const layers = [profileLayer(), file, dir ? readJson(path.join(dir, "ai.json")) : {}];
+  const profiles = profileLayer();
+  const layers = [profiles, file, dir ? readJson(path.join(dir, "ai.json")) : {}];
   if (trusted) layers.push(overrides);
-  const cfg = { default: { ...DEFAULT }, tasks: {}, allowedModels: {}, keyHosts: [] };
+  // `off`: the tasks whose profile is off (see profileLayer); only the profile sets it, no layer can turn a task back on.
+  const cfg = { default: { ...DEFAULT }, tasks: {}, allowedModels: {}, keyHosts: [], off: profiles.off ?? [] };
   for (const l of layers) {
     Object.assign(cfg.default, clean(l?.default));
     const tasks = l?.tasks ?? {};
@@ -104,5 +115,7 @@ export function loadAiConfig({ dir, overrides = {}, trusted = false } = {}) {
   }
   return cfg;
 }
+/** Whether a task is off by its profile (no measured win): the static path answers and no model is asked. */
+export const taskOff = (cfg, task) => (cfg.off ?? []).includes(task);
 // keyHosts travels with every task's config so the provider can decide where an API key may go.
 export const taskConfig = (cfg, task) => ({ ...cfg.default, ...(cfg.tasks[task] ?? {}), keyHosts: cfg.keyHosts ?? [] });

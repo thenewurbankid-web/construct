@@ -2537,7 +2537,7 @@ function isYes(answer) {
  * way, the actual file list comes from tracing the real import graph
  * (route-resolver.mjs), never from "everything under a directory you point
  * at". */
-export async function importRouteWizard(ask, seedRoute, { planAnalysis = 'claude', importFill = 'claude', planner = 'ai', onStep, onThought, onWritten, signal } = {}) {
+export async function importRouteWizard(ask, seedRoute, { planAnalysis = 'claude', importFill = 'claude', planner = 'mechanical', onStep, onThought, onWritten, signal } = {}) {
   // #599 -- two SEPARATE kinds of live output, kept apart on purpose so a UI can style them
   // differently: `onStep` receives the framework's own deterministic phase markers
   // ({phase, detail}: tracing, analyzing, plan-ready, scaffolding, filling, validating,

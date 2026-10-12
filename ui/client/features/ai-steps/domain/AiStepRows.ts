@@ -16,10 +16,11 @@ export function aiStepRow(p: StepProfile): AiStepRow {
     label: p.label,
     model: modelText(p),
     how: howItWorks(p),
+    win: `Win over static: ${p.win ?? (p.ladder.options.on && p.ladder.measured ? p.ladder.measured : 'off')}`,
     details: {
       step: `Step id: ${p.step}`,
       cap: `Reply cap: ${p.maxTokens} tokens${p.maxAttempts ? `; up to ${p.maxAttempts} tries, each learning from the last` : ''}`,
-      ladder: `Ladder: static (target ${pct(l.static.target)}), options and jev ${onOff(l.options.on)} (target ${pct(l.options.target)}), whole review ${onOff(l.review.on)} (target ${pct(l.review.target)})`,
+      ladder: `Ladder: static (target ${pct(l.static.target)}), then middleware, then the picker ${onOff(l.options.on)} (target ${pct(l.options.target)}), then Construct's checks, then you`,
       measured: `Measured: ${l.measured ?? 'not yet'}`,
       fallback: `Fallback: ${p.fallback}`,
     },

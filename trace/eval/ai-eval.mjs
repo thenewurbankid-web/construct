@@ -56,7 +56,7 @@ export async function runAi({ loaded, variant, workRoot, provider = null, limit 
     const { matched, questions } = variant.analyze(extract(l.pageSource), l.spec, { pageSource: l.pageSource });
     const parts = describeParts(matched, questions);
     const entries = [];
-    const ai = createAi({ dir, spec: l.spec, source: l.pageSource, matched, useCache: false, provider, onLog: (e) => e.kind === "call" && entries.push(e) });
+    const ai = createAi({ dir, spec: l.spec, source: l.pageSource, matched, useCache: false, provider, measure: true, onLog: (e) => e.kind === "call" && entries.push(e) });
     const priorAnswers = []; // reset per case: accepted answers accumulate as this loop moves down the page
     for (const p of parts) {
       const t = l.truth[p.id];

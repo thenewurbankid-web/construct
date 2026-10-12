@@ -39,7 +39,7 @@ export function useWizard() {
   const [state, dispatch] = useReducer(wizardReducer, initialWizardState);
   const [input, setInput] = useState('');
   const [seedRoute, setSeedRoute] = useState('');
-  const [planner, setPlanner] = useState<'ai' | 'mechanical'>('ai');
+  const [planner, setPlanner] = useState<'ai' | 'mechanical'>('mechanical');
   const wsRef = useWizardSocket(dispatch);
   // A running wizard session is the framework working (its model calls and mechanical steps): the top-bar mark animates.
   useEffect(() => (state.status === 'running' ? beginWork() : undefined), [state.status]);
