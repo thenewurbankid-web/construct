@@ -8,6 +8,7 @@
 //   construct line check [--dir <project>] <expr JSON> [--json]                       evaluate an expression on the project's facts
 //   construct line facts [--dir <project>]                                            the facts snapshot (JSON) expressions read
 //   construct line records [--dir <project>] [--json]                                 the plan records kept for training (logic only)
+//   construct line primitives coverage [--json]                                       held-out library components the primitives cover with no loss
 import path from 'node:path';
 import { findProjectRoot } from './config.mjs';
 import { ConstructError, EXIT_CODES } from './diagnostics.mjs';
@@ -20,6 +21,7 @@ export const LINE_USAGE = [
   '  construct line check [--dir <project>] \'<expression JSON>\' [--json]',
   '  construct line facts [--dir <project>]',
   '  construct line records [--dir <project>] [--json]',
+  '  construct line primitives coverage [--json]',
 ].join('\n');
 
 const flag = (args, name) => { const i = args.indexOf(name); return i >= 0 && args[i + 1] && !args[i + 1].startsWith('--') ? args[i + 1] : undefined; };
@@ -113,6 +115,15 @@ export async function lineCommand(args) {
     console.log(`${records.length} plan record${records.length === 1 ? '' : 's'} in ${file}: ${passed} passed every check, ${records.filter((r) => r.repaired).length} repaired an earlier step. Names are typed slots; no project name is kept.`);
     for (const r of records.slice(-5)) console.log(`- ${r.steps[r.step - 1].tool}: ${r.intent} (${r.passed} of ${r.checks.length} checks passed${r.approved ? ', approved by a person' : ''})`);
     if (skipped) console.log(`${skipped} record line${skipped === 1 ? ' was' : 's were'} unreadable and skipped.`);
+    return;
+  }
+  if (verb === 'primitives') {
+    // Roadmap item 1's per-release metric (@line/primitives coverage.mjs): read-only, from the shipped survey.json.
+    if (rest[0] !== 'coverage') throw usage(rest[0] ? `"${rest[0]}" is not a primitives command; the only one is coverage.` : 'Name a primitives command: coverage.');
+    const { coverage, coverageLines, loadSurvey } = await import('@line/primitives/coverage');
+    const report = coverage(loadSurvey());
+    if (rest.includes('--json')) { const { rows, ...summary } = report; console.log(JSON.stringify({ ok: true, ...summary, rows }, null, 2)); return; }
+    for (const line of coverageLines(report)) console.log(line);
     return;
   }
   throw usage(verb ? `"${verb}" is not a line command.` : 'Name a line command.');
