@@ -23,7 +23,7 @@ const SUMMARY = JSON.parse(fs.readFileSync(path.join(FIX, 'expected-summary.json
 const STEP_NAMES = { 2: 'pure/impure split', 3: 'C1 canonicaliser and round-trip', 4: 'isolated execution', 5: 'layout fakes', 6: 'Z3 / fast-check', 7: 'wiring into Import v2 and the step view', 8: 'L2 dev server' };
 const todo = (step) => `step ${step}: ${STEP_NAMES[step]}`;
 /** The build steps that have landed: their acceptance tests run; the rest stay `todo`. */
-const BUILT = new Set([2, 3, 5, 6]);
+const BUILT = new Set([2, 3, 4, 5, 6]);
 const todoUnless = (step) => (BUILT.has(step) ? false : todo(step));
 
 /** A later step's module; a todo test fails with one line until the step adds it. */
