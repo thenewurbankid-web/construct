@@ -44,7 +44,7 @@ Tests:
 | A | Closed transform set, Alive2-style validation, outside edits are "tested" | `contract.mjs` `TRANSFORM_IDS`, `TRANSFORM_SOURCES`, `inClosedSet`, and the proven rule in `assertUnitVerdict`; `escalation.mjs` `isDecisive` | 3 |
 | B | Pure/impure split with the transitive effect chain | `contract.mjs` `Purity`, `EffectLink`, `EFFECT_NAMES`, `MORPHEUS_EFFECTS`, `LOGIC_KIND_EFFECTS` | 2 (`purity.mjs` `classifyUnit`) |
 | C | Layered equivalence and its outcomes, plus the round-trip check | `contract.mjs` `VERIFY_LAYERS`, `LAYER_STRENGTH`, `LayerResult`; `escalation.mjs` `LAYER_ORDER`, `decideUnit` | 3 (C1, round-trip), 6 (C3) |
-| D | Isolated execution with recording fakes and sentinels | `fakes.mjs`; step 4: `isolatedRun.mjs`, `isolatedChild.cjs` | 4 (built, with hooks and handlers, #877; branch coverage is #883) |
+| D | Isolated execution with recording fakes and sentinels | `fakes.mjs`; step 4: `isolatedRun.mjs`, `isolatedChild.cjs` | 4 (built, with hooks and handlers, #877, and branch coverage, #883: `instrument.mjs`) |
 | E | Layout as input | `layoutFakes.mjs`; step 5: `libDom.mjs`, `layoutFakeGen.mjs`, `layoutDom.mjs`, `layoutClock.mjs`, `layoutMedia.mjs`, `layoutRun.mjs` | 5 (built; hook closures wait for step 4's runner) |
 | F | Escalation from L0 to L3 | `escalation.mjs` `LEVELS`, `levelsFor`, `layerOrder`; `contract.mjs` `LEVEL_OF_LAYER` | 4 (L1), 8 (L2, L3) |
 | G | Speed | Not in the contract yet. Each `LayerResult` has an optional `ms` field. | 7 |
@@ -70,9 +70,11 @@ each step lands.
   `reducer.<slot>` transitions and re-render, effects run when their deps change and clean up at unmount; each function
   the hook returns is called with the case's arguments, and the hook's last result is compared by value), or `handler`
   (`handleX` / `onX`, or a first parameter typed as a React event: a generated synthetic event per case, whose
-  `preventDefault` / `stopPropagation` record a `dom` effect). The result carries `runAs`. It carries no branch
-  coverage: V8 precise coverage would need `--allow-inspector` in the sandboxed child, so it waits for a safer approach
-  (#883).
+  `preventDefault` / `stopPropagation` record a `dom` effect). The result carries `runAs` and `coverage`
+  (`BranchCoverage`: covered / total blocks per side and a level of `COVERAGE_LEVELS`; under `LOW_COVERAGE` on a side
+  is `low` and said in the reason). Coverage comes from instrumenting the unit's source in the parent before it is sent
+  (`instrument.mjs`, a TypeScript `before` transformer: block counters come back in the child's JSON line), never from
+  V8 coverage, which needs `--allow-inspector` (or `--allow-fs-write` for `NODE_V8_COVERAGE`) on the child (#883).
   `RUNNERS.isolated` gives one result per unit: a change from either runner decides, else a layout answer stands,
   else the effect runner's.
 - `verifyPair.mjs`: `verifyPair({beforeRoot, afterRoot, unit, transforms, levels, blocks?})` returns

@@ -266,6 +266,18 @@ function syntheticEvent(f, desc, env) {
   return ev;
 }
 
+/**
+ * The unit's block counters after a run (isolatedRun.mjs instruments its source, instrument.mjs), copied out of the vm
+ * context as plain numbers; null when they are missing or not the instrumented shape (the unit replaced them).
+ */
+function coverageOf(exports, blocks) {
+  try {
+    const c = exports && exports.__lineCov;
+    if (!blocks || !Array.isArray(c) || c.length !== blocks) return null;
+    return Array.from({ length: blocks }, (_, k) => (typeof c[k] === 'number' && c[k] > 0 ? 1 : 0));
+  } catch { return null; }
+}
+
 /** Run the unit once under fresh fakes. */
 async function runOnce(side, args, env) {
   const f = createFakes(env);
@@ -309,8 +321,10 @@ async function runOnce(side, args, env) {
   const settle = async () => { f.clock.runAll(); await new Promise((r) => setImmediate(r)); f.clock.runAll(); };
   let output;
   let thrown = null;
+  let entry;
   try {
-    const unit = load(side.entry).__lineUnit;
+    entry = load(side.entry);
+    const unit = entry.__lineUnit;
     if (typeof unit !== 'function') throw new TypeError(`${side.fn} is not a function`);
     if (side.runAs === 'hook') {
       // render and settle, then call each function the hook returns (its handlers) with the case's arguments, settle
@@ -346,6 +360,7 @@ async function runOnce(side, args, env) {
     },
     value: typeof value === 'number' && !Number.isFinite(value) ? String(value) : value,
     notFaked: [...f.notFaked].sort(),
+    cov: coverageOf(entry ?? cache.get(side.entry)?.exports, side.blocks),
   };
 }
 

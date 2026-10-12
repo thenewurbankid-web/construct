@@ -23,6 +23,7 @@ import { parseToAst } from '@construct/ast/parse';
 import { findFunction } from './z3Translate.mjs';
 import { locateUnitDifference } from './canonical.mjs';
 import { FAKE_ENV, sentinel, assertUnitRun } from './fakes.mjs';
+import { instrumentUnit, branchCoverage, coverageLevel } from './instrument.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const CHILD = fs.realpathSync(path.join(HERE, 'isolatedChild.cjs'));
@@ -31,9 +32,9 @@ const RECORDER = fs.realpathSync(path.resolve(HERE, '../graph/runtime/recorder.c
 export const ISOLATED_TIMEOUT_MS = 5000;
 /** At most this many input cases per unit. */
 export const MAX_CASES = 12;
-// No branch coverage here on purpose (owner decision 2026-10-12): V8 precise coverage needs --allow-inspector in the
-// sandboxed child, which loosens it. Coverage via a safer approach (e.g. instrumenting the unit's source before it runs)
-// is its own story, #883.
+// Branch coverage (#883) comes from instrumenting the unit's source here, before it is sent (instrument.mjs), never from
+// V8 coverage: that needs --allow-inspector, or --allow-fs-write for NODE_V8_COVERAGE, on the sandboxed child (owner
+// decision 2026-10-12: the sandbox stays tight; the child's flags are asserted by a test).
 const HOOK_NAME = /^use[A-Z0-9]/;
 const HANDLER_NAME = /^(?:handle|on)[A-Z]/;
 /** React event type names to the generated event's type. */
@@ -41,10 +42,18 @@ const EVENT_TYPES = { ChangeEvent: 'change', MouseEvent: 'click', PointerEvent: 
 const EXTS = ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs'];
 const IDENT = /^[A-Za-z_$][\w$]*$/;
 
-/** Strip types, compile to CommonJS, and expose the unit (exported or not) as `__lineUnit`. */
+/**
+ * Strip types, compile to CommonJS, and expose the unit (exported or not) as `__lineUnit`; the unit's file is
+ * instrumented for branch coverage (instrument.mjs), and `blocks` is how many blocks it counts (0: not instrumented).
+ * @returns {{code: string, blocks: number}}
+ */
 function compile(source, fn) {
-  const out = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React, esModuleInterop: true } }).outputText;
-  return fn ? `${out}\n;exports.__lineUnit = typeof ${fn} === 'function' ? ${fn} : (exports.${fn} ?? exports.default);` : out;
+  const cov = fn ? instrumentUnit(fn) : null;
+  const out = ts.transpileModule(source, {
+    compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React, esModuleInterop: true },
+    ...(cov ? { transformers: { before: [cov.transformer] } } : {}),
+  }).outputText;
+  return { code: fn ? `${out}\n;exports.__lineUnit = typeof ${fn} === 'function' ? ${fn} : (exports.${fn} ?? exports.default);` : out, blocks: cov?.blocks() ?? 0 };
 }
 
 /** The relative imports of a file, resolved inside `root`; a specifier that does not resolve is left out (refused). */
@@ -62,22 +71,26 @@ function resolveRelative(root, file, source, missing = []) {
 
 /**
  * One side as the child takes it: compiled modules (the unit's file and its relative imports), the resolution table,
- * and per file the relative imports that resolve to no file (the child makes them recording spies).
+ * per file the relative imports that resolve to no file (the child makes them recording spies), and how many blocks the
+ * unit's instrumentation counts.
  */
 function sideRequest(root, file, fn) {
   const modules = {};
   const resolved = {};
   const missing = {};
+  let blocks = 0;
   const todo = [file];
   while (todo.length) {
     const f = /** @type {string} */ (todo.pop());
     if (f in modules) continue;
     const src = fs.readFileSync(path.join(root, f), 'utf8');
-    modules[f] = compile(src, f === file ? fn : null);
+    const compiled = compile(src, f === file ? fn : null);
+    modules[f] = compiled.code;
+    if (f === file) blocks = compiled.blocks;
     resolved[f] = resolveRelative(root, f, src, (missing[f] = []));
     todo.push(...Object.values(resolved[f]));
   }
-  return { entry: file, fn, modules, resolved, missing };
+  return { entry: file, fn, modules, resolved, missing, blocks };
 }
 
 /**
@@ -204,7 +217,7 @@ function describeDifference(b, a) {
  */
 export async function isolatedPair({ beforeRoot, afterRoot, before, after, seeds, timeoutMs = ISOLATED_TIMEOUT_MS }) {
   const t0 = performance.now();
-  /** @type {{runAs?: import('./contract.mjs').RunAs}} */
+  /** @type {{runAs?: import('./contract.mjs').RunAs, coverage?: import('./contract.mjs').BranchCoverage}} */
   const extra = {};
   const done = (r) => ({ layer: /** @type {const} */ ('isolated'), ...r, ...extra, ms: Math.round(performance.now() - t0) });
   if (!IDENT.test(before.fn) || !IDENT.test(after.fn)) return done({ outcome: 'skipped', reason: 'the unit has no plain function name' });
@@ -234,6 +247,11 @@ export async function isolatedPair({ beforeRoot, afterRoot, before, after, seeds
   if (!line) return done({ outcome: 'cant-tell', reason: 'the unit never settled (a promise that does not resolve)' });
   const runs = JSON.parse(line);
   extra.runAs = runAs;
+  const covBefore = branchCoverage(runs.before.map((r) => r.cov), request.before.blocks);
+  const covAfter = branchCoverage(runs.after.map((r) => r.cov), request.after.blocks);
+  extra.coverage = { before: covBefore, after: covAfter, level: coverageLevel(covBefore, covAfter) };
+  // low coverage is said in the reason, never hidden: a "same" over code that did not run is weak
+  const low = extra.coverage.level === 'low' ? `low branch coverage (before ${covBefore?.covered} of ${covBefore?.total} blocks ran, after ${covAfter?.covered} of ${covAfter?.total})` : null;
   const notFaked = new Set();
   for (let i = 0; i < cases.length; i++) {
     const [rb, ra] = [runs.before[i], runs.after[i]];
@@ -247,6 +265,6 @@ export async function isolatedPair({ beforeRoot, afterRoot, before, after, seeds
       ?? { astPath: after.fn, file: after.file, line: aNode.loc.start.line, column: aNode.loc.start.column + 1 };
     return done({ outcome: 'changed', input: cases[i], location, reason: describeDifference(cb, ca) });
   }
-  if (notFaked.size) return done({ outcome: 'cant-tell', reason: `not faked, so not executed: ${[...notFaked].sort().join(', ')}` });
-  return done({ outcome: 'same-behaviour' });
+  if (notFaked.size) return done({ outcome: 'cant-tell', reason: `not faked, so not executed: ${[...notFaked].sort().join(', ')}${low ? `; ${low}` : ''}` });
+  return done({ outcome: 'same-behaviour', ...(low ? { reason: low } : {}) });
 }
