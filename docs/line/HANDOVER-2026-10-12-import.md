@@ -108,3 +108,120 @@ The full roadmap is in `docs/line/ROADMAP-2026-10-12.md`, replacing the earlier 
 - **Later:** 3–6 and 11–18.
 - **Model roles:** 16 (Pick / Propose / Author tiers), 17 (model switching per step, with presets), 18 (internal model plus external agent as complementary reasoners).
 - **Licence:** everything is open source for now. The "Cockpit proprietary" note is on hold. max-ai-ui-derived content stays out of the public repo.
+
+## Line logic verification (owner, 2026-10-12)
+**Goal:** near-100% proof that import and extraction keep all logic. The proof is light, fast, framework-agnostic and logic-first. The UI is regenerated from primitives, so DOM output is not part of the proof.
+
+### 0. Read first; reuse, don't duplicate
+- **From Morpheus** (`~/Repositories/vision-architect-pipeline`):
+  - **Reuse** from `src/morpheus/import/scan*.ts`: the TS-checker item scan, transitive effects → IMPURE_LOGIC, the renders/uses/navigates edges, and `diffScans`. Feed the transitive effect analysis into the logic map and G1; there is no second graph.
+  - **Reuse** from `src/morpheus/behavior/`: the happy-dom child-process probe (reuse its sandbox design for isolated execution), the typed listener fingerprint (cross-check it against logic-map fingerprints) and `compareBehavior`.
+  - **Do NOT reuse** the HTML-input probe path.
+- **From Construct, reuse:**
+  - the logic map (fingerprints);
+  - the characterization generator (mined literals, recording fakes);
+  - `semanticDiff` / `semanticDiffSplit`;
+  - `check-change` (path-mapped);
+  - `pureExportEquivalence` (fast-check);
+  - the G2 runtime recorder and the G1 impact graph;
+  - `tsFileMove` and `extractExpression`;
+  - the Cockpit devServer slot and `heavy.sh`.
+
+### A. Correct-by-construction transforms
+- Line changes existing code only through a closed set of semantics-preserving transforms (TS language service / ts-morph):
+  - move and rename;
+  - extract function or expression;
+  - wrap in an adapter;
+  - re-point imports and mocks.
+- Each transform is validated Alive2-style: a canonical before/after compare must match exactly, and a mismatch stops at the exact location.
+- Code that people or models change outside these transforms is labelled "tested", never "proven".
+
+### B. Pure/impure split (from Morpheus's effect analysis)
+- Each unit is marked pure or impure, with its transitive effect chain: fetch, storage, navigation, store, timers.
+- Pure units go to the strong proofs (C3). Impure units go to isolated execution with recording fakes (D).
+- The split also drives fit: pure → domain, data effects → service, orchestration → usecase.
+
+### C. Layered equivalence per logic unit
+Run the layers cheapest first and stop at the first decisive one:
+1. **Canonical-form match.** One pinned minifier (esbuild/terser/SWC) with conservative settings: keep function boundaries, mangle locals only, no cross-function inlining, no reordering of side effects. Builds on the logic-map fingerprint.
+2. **Path-mapped** `semanticDiff` / `semanticDiffSplit`.
+3. **Pure units:** Z3 proofs for small logic (conditions, validators, guards) and fast-check property equivalence for other pure functions.
+4. **Isolated execution (D):** same inputs before and after must give the same outputs and effects.
+5. **G2 runtime traces** for whatever is left.
+
+The outcome for each unit is one of:
+- **proven unchanged;**
+- **changed**, with the exact location (AST path, file:line, failing input);
+- **unverified**, never assumed fine.
+
+**Round-trip check for extraction:** re-inline the atoms and canonical-compare with the original. Units in no atom or block are reported as "not extracted".
+
+### D. Logic-first isolated execution (no browser, no server, no render)
+- **Loading:** modules load through the target app's own bundler and tsconfig, in Node: the Vite module runner, or the esbuild/jest-style transform that characterize already uses.
+- **Sandbox:** a locked-down child process (the Morpheus design), with no real network, timers or global leaks.
+- **Fakes:** each unit's imports are swapped for recording fakes at load time.
+- **How each unit runs:**
+  - pure functions are called directly;
+  - handlers get fake events;
+  - hooks run in a headless hook runner (a no-op React renderer);
+  - every dependency is a recording fake: router, fetch/axios, store/dispatch, storage, toast, analytics, and timers (fake clock, seeded random, fixed locale).
+- **Recorded per unit:**
+  - inputs, outputs and thrown errors;
+  - state transitions and effects (shapes only, no values);
+  - sentinel data flow (unique fixture markers found in outputs, effects and requests);
+  - V8 branch coverage.
+- **Fake DOM only where code touches document, window, refs or storage:** a minimal recording stub first, with happy-dom as the fallback.
+
+### E. Layout as input
+Layout-dependent units are simulated, not skipped:
+- **Typed fakes** are generated from `lib.dom.d.ts`: DOMRect; offset, scroll and client sizes; innerWidth; IntersectionObserverEntry; ResizeObserverEntry; MediaQueryList; and scroll, resize, pointer and visibility events.
+- **Values** come from the characterizer's mined comparison literals: the boundary ±1, 0, negative and large.
+- **Observer callbacks and events** fire with those values under the fake clock.
+
+This proves the logic given the layout values. Pixels and real geometry are checked only at L3.
+
+### F. Escalation (the default stays light)
+- **L0:** static checks plus the canonical compare. Always runs; milliseconds.
+- **L1:** isolated execution in Node, for touched units only.
+- **L2:** the target's own dev server over HTTP, for server-rendered routes:
+  - sentinels in the HTML;
+  - server fetches pointed at a local fixture server through the env base URL;
+  - `NODE_V8_COVERAGE`.
+
+  The app's code and `.env` are never edited; a generated `.env.line` provides stubs.
+- **L3:** one shared headless browser, used only for screenshots, visual diffs, or apps that fail in Node.
+
+### G. Speed
+- Only touched units re-run (from the G1 impact graph), cached by file hash.
+- One Node worker pool. The dev server and the browser start only when escalated, and close afterwards.
+- **Targets:**
+  - per unit: milliseconds;
+  - per import step: a few seconds;
+  - an opportunity-size feature (25 files): under 60 s cold, under 10 s warm.
+
+### H. Atom discovery (same machinery)
+- Normalise units (C1), find near-duplicates with clone detection (jscpd, MIT), and match them against existing atoms and primitives.
+- Propose extraction as plan steps (T1 atom / T2 resource), proven by C.
+
+### I. Where results show
+- **Each import step in Cockpit:** "N proven, M tested, K unverified", plus the exact divergence when a unit changes.
+- **"How smart is it":** the proven/tested/unverified share per feature.
+- **Refusals** name the exact changed expression.
+
+### Build order (contract first: shapes, expected outputs and tests before code)
+1. **Contract:** `UnitVerdict {unit, purity, effectChain, status: proven|tested|unverified|changed|not-extracted, layer, location?, input?, sentence}`; the recording-fake interfaces; the layout-fake generator interface.
+2. **Pure/impure split,** from Morpheus's effect analysis, into the logic map and G1.
+3. **C1 canonicaliser** plus the round-trip extraction check.
+4. **Isolated execution runner** in the child-process sandbox, with recording fakes and sentinels (D).
+5. **Layout fakes** from `lib.dom.d.ts` (E).
+6. **Z3 / fast-check** for pure units (C3).
+7. **Wiring** into the Import v2 loop and `verifyImport`, and the Cockpit step view.
+8. **L2 dev-server level,** with the L3 browser as opt-in.
+
+**Proof run:** on clones only of max-ai-ui `/opportunity` and contact-manager-ui. It must show:
+- the share of units proven / tested / unverified;
+- no false "behaves differently" stops on moves and splits;
+- every planted change (flipped condition, dropped effect, changed layout threshold) caught with its exact location;
+- G's time targets met.
+
+Fixtures and expectations derived from those apps stay out of git.
