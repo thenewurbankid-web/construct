@@ -12,6 +12,7 @@ import {
   ITEM_KINDS, LOGIC_KINDS, KIND_SINGULAR, FEATURE_FILES, LIBRARY_FILES, CODE_EXTENSIONS, SKIP_DIRS, NON_ITEM_FILE, DEFAULT_APP_FOLDERS, DEFAULT_PACKAGE_ROOTS,
   FS_WRITE_FUNCTIONS, FS_EXTRA_WRITE_FUNCTIONS, FS_MODULES, SHARED_CONCERNS,
 } from './contract.mjs';
+import { readPathAliases, resolveImportSpecifier } from '../../route-resolver.mjs';
 
 const posix = path.posix;
 const SINGULAR = KIND_SINGULAR;
@@ -363,13 +364,17 @@ export function routeEntryFeature(project, rel) {
   const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '').trim();
   const m = ROUTE_ENTRY.exec(code);
   if (!m) return null;
-  const spec = m[1];
-  const target = spec.startsWith('@/') ? spec.slice(2) : spec.startsWith('.') ? posix.normalize(posix.join(posix.dirname(rel), spec)) : null;
-  if (!target || target.startsWith('..')) return null;
+  // Resolved the way the app resolves it (relative, or the project's tsconfig `paths` aliases), and only to a page file
+  // that exists: a link to a missing page, or to a page outside a feature's pages/, does not make the entry a feature's.
+  const { aliases } = readPathAliases(project.root);
+  const abs = resolveImportSpecifier(path.join(project.root, rel), m[1], aliases);
+  if (!abs) return null;
+  const target = path.relative(project.root, abs).split(path.sep).join('/');
+  if (target.startsWith('..')) return null;
   const prefix = `${/** @type {any} */ (project.layout).features}/`;
   if (!target.startsWith(prefix)) return null;
   const segs = target.slice(prefix.length).split('/');
-  return segs.length === 3 && segs[1] === 'pages' && segs[0] ? segs[0] : null;
+  return segs.length === 3 && segs[1] === 'pages' && segs[0] && isCode(target) ? segs[0] : null;
 }
 
 /**

@@ -90,6 +90,15 @@ test('LINE-OWNER: a route entry that only re-exports a feature page is owned; an
     assert.deepEqual(rules(root), ['LINE-OWNER app/page.tsx']);
     write(root, 'app/page.tsx', "export { ListPage as default } from '../library/pages/ListPage';\n");
     assert.deepEqual(rules(root), ['LINE-OWNER app/page.tsx']);
+    // (merge-wave5 review) only a page that exists counts: a link to a missing feature page is still an orphan.
+    write(root, 'app/page.tsx', "export { GonePage as default } from '../features/home/pages/GonePage';\n");
+    assert.deepEqual(rules(root), ['LINE-OWNER app/page.tsx']);
+    // An alias resolves through the project's own tsconfig paths, not a hard-coded "@/".
+    write(root, 'tsconfig.json', '{ "compilerOptions": { "baseUrl": ".", "paths": { "~/*": ["./*"] } } }\n');
+    write(root, 'app/page.tsx', "export { HomePage as default } from '~/features/home/pages/HomePage';\n");
+    assert.deepEqual(rules(root), []);
+    write(root, 'app/page.tsx', "export { HomePage as default } from '@/features/home/pages/HomePage';\n");
+    assert.deepEqual(rules(root), ['LINE-OWNER app/page.tsx'], '"@/" is not an alias of this project');
   } finally { done(); }
 });
 
