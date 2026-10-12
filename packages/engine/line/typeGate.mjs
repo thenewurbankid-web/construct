@@ -19,6 +19,8 @@ import { ts } from '@construct/ast/lazy';
 
 /** Above this the check is too slow to block a save; its errors then ride along as warnings (as setFragment does). */
 export const TYPE_GATE_BUDGET_MS = 4000;
+/** The budget in force: LINE_TYPE_GATE_BUDGET_MS overrides it (a loaded CI machine), read at each check. */
+const budgetMs = () => Number(process.env.LINE_TYPE_GATE_BUDGET_MS) || TYPE_GATE_BUDGET_MS;
 const TS_EXT = /\.(tsx?|mts|cts)$/;
 const SCAN_SKIP = new Set(['node_modules', '.git', '.next', 'dist', 'out', 'build', 'coverage', 'line']);
 const cache = new Map();
@@ -134,7 +136,7 @@ export function typeCheckStaged(root, files) {
     if (old.get(k)) old.set(k, old.get(k) - 1); else errors.push(e);
   }
   const ms = Date.now() - t0;
-  const out = { errors, ms, slow: ms > TYPE_GATE_BUDGET_MS, checked: roots };
+  const out = { errors, ms, slow: ms > budgetMs(), checked: roots };
   if (cache.size >= CACHE_MAX) cache.delete(cache.keys().next().value);
   cache.set(key, out);
   return out;

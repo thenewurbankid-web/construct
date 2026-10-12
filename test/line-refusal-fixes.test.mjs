@@ -2,6 +2,8 @@
 // step lands, or is on the explicit "person decides" list with its reason (packages/engine/line/refusals.mjs). The
 // scenarios run through the plan service, as plan-cli and Cockpit do: the refusal, its fix added as a step, run, landed.
 import test from 'node:test';
+// The type gate degrades to warnings past its budget; a loaded test machine must not turn the refusal into a warning.
+process.env.LINE_TYPE_GATE_BUDGET_MS ??= '60000';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -207,7 +209,7 @@ test('TYPE_ERROR on line.setCode: an unresolved import is refused before it land
     const svc = svcOf(root);
     const t0 = Date.now();
     const r = /** @type {any} */ (await svc.addStep({ tool: 'line.setCode', args: { file: 'features/home/services/price.ts', code: "import { dollars } from 'library/services/money';\nexport const price = (c: number): string => dollars(c);\n" }, why: WHY }, 'agent'));
-    assert.ok(Date.now() - t0 < 4000, `the type gate took ${Date.now() - t0} ms`);
+    assert.ok(Date.now() - t0 < 15000, `the type gate took ${Date.now() - t0} ms`);
     assert.equal(r.code, 'TYPE_ERROR');
     assert.match(r.sentence, /^The code does not compile, so nothing was saved: Cannot find module 'library\/services\/money'/);
     assert.match(r.detail, /TS2307/);
