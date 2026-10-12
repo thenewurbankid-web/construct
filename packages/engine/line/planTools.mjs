@@ -35,6 +35,7 @@ import { planSetProp } from './pageProp.mjs';
 import { readLineProject } from './model.mjs';
 import { planFixByKey, planStep, withFixes, planAmended, amendFixes, onScratch } from './fixes.mjs';
 import { planSetFragment } from './fragments.mjs';
+import { planCreateFeature, planAddRoute, planSetCode } from './build.mjs';
 import { entryById } from './toolRegistry.mjs';
 
 /** The one catalog's entry for a plan tool (toolRegistry.mjs); a tool the catalog does not list cannot be registered. */
@@ -44,7 +45,7 @@ import { importTools } from './importTools.mjs';
 import { planExtractStep, EXTRACT_TOOLS } from './importV2/extract.mjs';
 
 /** The real operations (tests pass the contract's mock instead). */
-export const REAL_PLAN_OPS = Object.freeze({ planBaseOn, planPromote, planSetProp, planFixByKey, planSetFragment, planStep, planAmended, planImportStep, planExtractStep, applyChange, checkChange, readLineProject, planBaseWorkflowOn, planSetWorkflowRole, planAddWorkflowTransition, planRemoveWorkflowTransition });
+export const REAL_PLAN_OPS = Object.freeze({ planCreateFeature, planAddRoute, planSetCode, planBaseOn, planPromote, planSetProp, planFixByKey, planSetFragment, planStep, planAmended, planImportStep, planExtractStep, applyChange, checkChange, readLineProject, planBaseWorkflowOn, planSetWorkflowRole, planAddWorkflowTransition, planRemoveWorkflowTransition });
 
 /** The write tools that plan a StagedChange, and the op that plans it (`planStep` takes {tool, args}). */
 export const CHANGE_TOOLS = Object.freeze({
@@ -58,6 +59,7 @@ export const CHANGE_TOOLS = Object.freeze({
   // cw1 workflows (workflows.mjs); promoting a workflow is line.promote like every other kind
   'line.baseWorkflowOn': 'planBaseWorkflowOn', 'line.setWorkflowRole': 'planSetWorkflowRole',
   'line.addWorkflowTransition': 'planAddWorkflowTransition', 'line.removeWorkflowTransition': 'planRemoveWorkflowTransition',
+  'line.createFeature': 'planCreateFeature', 'line.addRoute': 'planAddRoute', 'line.setCode': 'planSetCode',
 });
 
 /** Change tools planned only when they run: an import step builds on the steps before it (the library item a feature
@@ -127,6 +129,7 @@ const TYPES = {
   optSteps: (v) => v === undefined || (Array.isArray(v) && v.length > 0 && v.length <= 4 && v.every(isStep)),
   scalar: (v) => ['string', 'number', 'boolean'].includes(typeof v),
   propKind: (v) => ['string', 'number', 'boolean', 'expression'].includes(v),
+  strings: (v) => Array.isArray(v) && v.length > 0 && v.length <= 50 && v.every((x) => typeof x === 'string' && x.trim().length > 0),
 };
 
 /** `expect`: a list of {id, sentence, kind}. */
@@ -154,6 +157,7 @@ const JSON_TYPES = Object.freeze({
   optString: { type: 'string', minLength: 1 },
   scalar: { type: ['string', 'number', 'boolean'] },
   propKind: { enum: ['string', 'number', 'boolean', 'expression'] },
+  strings: { type: 'array', minItems: 1, maxItems: 50, items: { type: 'string', minLength: 1 } },
   step: { type: 'object', required: ['tool'], properties: { tool: { type: 'string', minLength: 1 }, args: { type: 'object' } } },
   optStep: { type: 'object', required: ['tool'], properties: { tool: { type: 'string', minLength: 1 }, args: { type: 'object' } } },
   optSteps: { type: 'array', minItems: 1, maxItems: 4, items: { type: 'object', required: ['tool'], properties: { tool: { type: 'string', minLength: 1 }, args: { type: 'object' } } } },
@@ -198,7 +202,7 @@ function objectSchema(required, o = {}) {
       const allowed = new Set([...Object.keys(required), ...(o.change ? ['expect', 'retry', 'fixOf'] : [])]);
       const extra = Object.keys(v).find((k) => !allowed.has(k));
       if (extra) return failed([extra], 'is not an argument of this tool');
-      for (const [k, t] of Object.entries(required)) if (!TYPES[t](v[k])) return failed([k], t === 'scalar' ? 'must be a string, number or boolean' : t === 'propKind' ? 'must be string, number, boolean or expression' : t === 'anyString' ? 'must be a string' : t === 'step' || t === 'optStep' ? 'must be a step {"tool": "line.<name>", "args": {...}}' : t === 'optSteps' ? 'must be a list of 1 to 4 steps {"tool": "line.<name>", "args": {...}}' : 'must be a non-empty string');
+      for (const [k, t] of Object.entries(required)) if (!TYPES[t](v[k])) return failed([k], t === 'scalar' ? 'must be a string, number or boolean' : t === 'propKind' ? 'must be string, number, boolean or expression' : t === 'anyString' ? 'must be a string' : t === 'step' || t === 'optStep' ? 'must be a step {"tool": "line.<name>", "args": {...}}' : t === 'optSteps' ? 'must be a list of 1 to 4 steps {"tool": "line.<name>", "args": {...}}' : t === 'strings' ? 'must be a JSON list of 1 to 50 non-empty strings, like ["First point.", "Second point."]' : 'must be a non-empty string');
       if (v.expect !== undefined) { const why = checkExpect(v.expect); if (why) return failed(['expect'], why); }
       if (v.retry !== undefined) { const why = checkRetry(v.retry); if (why) return failed(['retry'], why); }
       if (v.fixOf !== undefined && (typeof v.fixOf !== 'string' || !v.fixOf)) return failed(['fixOf'], 'must be the id of the step this fix is for');
@@ -267,6 +271,9 @@ const SCHEMAS = Object.freeze({
   'line.setWorkflowRole': objectSchema({ file: 'string', role: 'string', page: 'anyString' }, { change: true }),
   'line.addWorkflowTransition': objectSchema({ file: 'string', from: 'string', event: 'string', to: 'string', service: 'optString', part: 'optString', partState: 'optString' }, { change: true }),
   'line.removeWorkflowTransition': objectSchema({ file: 'string', from: 'string', event: 'string' }, { change: true }),
+  'line.createFeature': objectSchema({ name: 'string', story: 'string', points: 'strings' }, { change: true }),
+  'line.addRoute': objectSchema({ route: 'string', page: 'string' }, { change: true }),
+  'line.setCode': objectSchema({ file: 'string', code: 'string', contentHash: 'optString' }, { change: true }),
   'line.leaveAsIs': objectSchema({ stepId: 'string' }),
   'line.project': objectSchema({}),
 });
@@ -293,6 +300,9 @@ const DESCRIBE = Object.freeze({
   'line.setWorkflowRole': 'Chooses which page of the feature fills one role of a feature workflow (empty page clears it), through the checked writer.',
   'line.addWorkflowTransition': 'Adds a When -> Do transition to a feature workflow: when a state gets an event, optionally call a service or set a part\'s state, then go to a state; through the checked writer.',
   'line.removeWorkflowTransition': 'Removes a transition a feature added to its workflow (the library workflow\'s stay), through the checked writer.',
+  'line.createFeature': 'Creates a new feature folder with its spec.md (one story and its acceptance points), through the checked writer.',
+  'line.addRoute': 'Serves one feature page at a route: an app-router entry that only re-exports the page, plus the page\'s @line-route, through the checked writer.',
+  'line.setCode': 'Writes the whole code of one library or feature file (or a feature\'s spec.md); an existing file needs the contentHash it was read at; through the checked writer.',
   'line.leaveAsIs': 'Records that a person chose to carry on after a step that needed them; writes nothing.',
   'line.project': 'Reads the Line view of the project: library, features, items and findings.',
 });

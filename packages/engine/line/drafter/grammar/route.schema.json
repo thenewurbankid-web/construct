@@ -936,6 +936,108 @@
             ],
             "properties": {
               "tool": {
+                "const": "line.createFeature"
+              },
+              "args": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "name",
+                  "story",
+                  "points"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "pattern": "^((components|pages|workflows|fixtures)/)?<[A-Z][0-9]{1,3}(\\.[a-zA-Z][a-zA-Z0-9]{0,15})?>$"
+                  },
+                  "story": {
+                    "type": "string",
+                    "pattern": "^((components|pages|workflows|fixtures)/)?<[A-Z][0-9]{1,3}(\\.[a-zA-Z][a-zA-Z0-9]{0,15})?>$"
+                  },
+                  "points": {
+                    "type": "string",
+                    "pattern": "^((components|pages|workflows|fixtures)/)?<[A-Z][0-9]{1,3}(\\.[a-zA-Z][a-zA-Z0-9]{0,15})?>$"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "tool",
+              "args"
+            ],
+            "properties": {
+              "tool": {
+                "const": "line.addRoute"
+              },
+              "args": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "route",
+                  "page"
+                ],
+                "properties": {
+                  "route": {
+                    "type": "string",
+                    "pattern": "^((components|pages|workflows|fixtures)/)?<[A-Z][0-9]{1,3}(\\.[a-zA-Z][a-zA-Z0-9]{0,15})?>$"
+                  },
+                  "page": {
+                    "type": "string",
+                    "pattern": "^((components|pages|workflows|fixtures)/)?<[A-Z][0-9]{1,3}(\\.[a-zA-Z][a-zA-Z0-9]{0,15})?>$"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "tool",
+              "args"
+            ],
+            "properties": {
+              "tool": {
+                "const": "line.setCode"
+              },
+              "args": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "file",
+                  "code"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "pattern": "^((components|pages|workflows|fixtures)/)?<[A-Z][0-9]{1,3}(\\.[a-zA-Z][a-zA-Z0-9]{0,15})?>$"
+                  },
+                  "code": {
+                    "type": "string",
+                    "pattern": "^((components|pages|workflows|fixtures)/)?<[A-Z][0-9]{1,3}(\\.[a-zA-Z][a-zA-Z0-9]{0,15})?>$"
+                  },
+                  "contentHash": {
+                    "type": "string",
+                    "pattern": "^((components|pages|workflows|fixtures)/)?<[A-Z][0-9]{1,3}(\\.[a-zA-Z][a-zA-Z0-9]{0,15})?>$"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "tool",
+              "args"
+            ],
+            "properties": {
+              "tool": {
                 "const": "line.import.fix"
               },
               "args": {

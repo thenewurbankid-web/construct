@@ -1,0 +1,9 @@
+{
+  "name": "bench-ecommerce-acceptance",
+  "private": true,
+  "description": "Playwright acceptance specs for the e-commerce bench (run with ../run-acceptance.sh).",
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "typescript": "5.6.3"
+  }
+}
