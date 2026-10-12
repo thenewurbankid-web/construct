@@ -33,6 +33,9 @@ test("deals: forks list.owner x list.csm, emits the top 3, asks ONE closed quest
   for (const e of lines) assertBeamEvent(e);
   assert.deepEqual(lines, r.events);
   assert.equal(lines.at(-1).t, "done");
+  // #901 acceptance: the file on disk carries all five event types.
+  assert.deepEqual([...new Set(lines.map((e) => e.t))].sort(), ["done", "question", "runClosed", "runOpened", "runRanked"]);
+  for (const e of lines.filter((x) => x.t === "runClosed")) assert.ok(e.reason, "every runClosed names its reason");
   assert.equal(r.outcome, "question");
   const q = r.question;
   assert.equal(q.options[0].id, q.recommended);
