@@ -13,11 +13,27 @@ export * as testkit from './testkit.mjs';
 export * as asyncStatus from './atoms/async-status/index';
 /** `@line/atoms/client-pagination` */
 export * as clientPagination from './atoms/client-pagination/index';
+/** `@line/atoms/csv-export` */
+export * as csvExport from './atoms/csv-export/index';
+/** `@line/atoms/date-range` */
+export * as dateRange from './atoms/date-range/index';
+/** `@line/atoms/debounced-search` */
+export * as debouncedSearch from './atoms/debounced-search/index';
 /** `@line/atoms/filter-sort` */
 export * as filterSort from './atoms/filter-sort/index';
+/** `@line/atoms/infinite-list` */
+export * as infiniteList from './atoms/infinite-list/index';
 /** `@line/atoms/multi-step-flow` */
 export * as multiStepFlow from './atoms/multi-step-flow/index';
+/** `@line/atoms/optimistic-update` */
+export * as optimisticUpdate from './atoms/optimistic-update/index';
 /** `@line/atoms/paginated-query` */
 export * as paginatedQuery from './atoms/paginated-query/index';
+/** `@line/atoms/permission-check` */
+export * as permissionCheck from './atoms/permission-check/index';
+/** `@line/atoms/polling` */
+export * as polling from './atoms/polling/index';
+/** `@line/atoms/undo-history` */
+export * as undoHistory from './atoms/undo-history/index';
 /** `@line/atoms/validated-submit` */
 export * as validatedSubmit from './atoms/validated-submit/index';

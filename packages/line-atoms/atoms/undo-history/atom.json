@@ -1,0 +1,45 @@
+{
+  "v": 1,
+  "id": "undo-history",
+  "role": "state.undo",
+  "title": "Undo and redo",
+  "name": "undoHistory",
+  "kind": "function",
+  "english": "Keep the earlier values of something so a change can be undone and redone.",
+  "inputs": [
+    { "name": "value", "type": "V", "sentence": "The value to start from." },
+    { "name": "limit", "type": "number", "sentence": "How many earlier values to keep.", "optional": true }
+  ],
+  "outputs": [
+    { "name": "present", "type": "V", "sentence": "The value now." },
+    { "name": "canUndo", "type": "boolean", "sentence": "Whether there is a change to undo." },
+    { "name": "canRedo", "type": "boolean", "sentence": "Whether there is an undone change to redo." }
+  ],
+  "states": ["clean", "undoable", "redoable", "both"],
+  "initial": "clean",
+  "events": [
+    { "type": "SET", "sentence": "The value changes." },
+    { "type": "UNDO", "sentence": "The last change is undone." },
+    { "type": "REDO", "sentence": "The last undone change is made again." },
+    { "type": "CLEAR", "sentence": "The history is forgotten and the value kept." }
+  ],
+  "transitions": [
+    { "from": "*", "event": "SET", "to": "undoable" },
+    { "from": "undoable", "event": "UNDO", "to": "redoable" },
+    { "from": "undoable", "event": "UNDO", "to": "both" },
+    { "from": "both", "event": "UNDO", "to": "both" },
+    { "from": "both", "event": "UNDO", "to": "redoable" },
+    { "from": "redoable", "event": "REDO", "to": "undoable" },
+    { "from": "redoable", "event": "REDO", "to": "both" },
+    { "from": "both", "event": "REDO", "to": "both" },
+    { "from": "both", "event": "REDO", "to": "undoable" },
+    { "from": "*", "event": "CLEAR", "to": "clean" }
+  ],
+  "wraps": { "library": "zustand", "license": "MIT", "concept": "the temporal pattern: pastStates, futureStates, undo, redo and a history limit", "adapter": "The past and future lists are pastStates and futureStates; a store's set sends SET." },
+  "testKit": { "file": "undo-history.test.ts", "runner": "node" },
+  "phrases": ["add undo", "add undo and redo", "let the user undo changes", "undo the last change", "edit history"],
+  "signals": [
+    { "id": "hand-undo-stack", "all": ["\\b(past|history|undoStack|undoHistory)\\b", "\\b(future|redoStack)\\b|[Uu]ndo"], "any": ["\\.slice\\(\\s*0\\s*,\\s*-1\\s*\\)", "\\.pop\\(\\)", "\\.\\.\\."], "sentence": "This function keeps an undo history by hand." }
+  ],
+  "composes": []
+}

@@ -46,9 +46,7 @@ test('the survey: permissive licences only, descriptors only, and every atom tra
   for (const lib of survey.libraries) assert.ok(PERMISSIVE.has(lib.license), `${lib.id} is ${lib.license}`);
   for (const [id, lic] of Object.entries(survey.licences)) assert.ok(PERMISSIVE.has(lic), `${id} is ${lic}`);
   const ids = new Set(listAtoms().map((a) => a.id));
-  // Progress commit: the atoms still being written are listed here and removed as they land.
-  const writing = new Set(['infinite-list', 'optimistic-update', 'debounced-search', 'permission-check', 'date-range', 'csv-export', 'polling', 'undo-history']);
-  for (const p of survey.patterns) if (p.atom !== null && !writing.has(p.atom)) assert.ok(ids.has(p.atom), `survey pattern ${p.id} names atom ${p.atom}`);
+  for (const p of survey.patterns) if (p.atom !== null) assert.ok(ids.has(p.atom), `survey pattern ${p.id} names atom ${p.atom}`);
   for (const a of listAtoms()) assert.ok(survey.patterns.some((p) => p.atom === a.id && p.role === a.role), `atom ${a.id} comes from a surveyed pattern`);
   assert.doesNotMatch(JSON.stringify(survey), /\breturn\b|\bfunction\s*\(|=>\s*\{/, 'the survey holds descriptors, not code');
 });
@@ -77,6 +75,12 @@ test('matchAtoms routes requests to atoms, and nothing for an unrelated request'
   assert.equal(matchAtoms('filter the list by category')[0].id, 'filter-sort');
   assert.equal(matchAtoms('validate the form before submitting')[0].id, 'validated-submit');
   assert.equal(matchAtoms('split the list into pages')[0].id, 'client-pagination');
+  assert.equal(matchAtoms('add infinite scroll to the feed')[0].id, 'infinite-list');
+  assert.equal(matchAtoms('export the orders table to csv')[0].id, 'csv-export');
+  assert.equal(matchAtoms('only admins can do this')[0].id, 'permission-check');
+  assert.equal(matchAtoms('add undo and redo')[0].id, 'undo-history');
+  assert.equal(matchAtoms('filter by date range')[0].id, 'date-range');
+  assert.equal(matchAtoms('poll the job status until done')[0].id, 'polling');
   assert.deepEqual(matchAtoms('rename the header'), []);
   assert.deepEqual(matchAtoms(''), []);
   for (const m of matchAtoms('add a paginated list')) assert.match(m.sentence, /^Use the .+\.$/);

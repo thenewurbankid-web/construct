@@ -1,0 +1,37 @@
+{
+  "v": 1,
+  "id": "permission-check",
+  "role": "auth.permission",
+  "title": "Permission check",
+  "name": "checkPermission",
+  "kind": "function",
+  "english": "Allow an action only when the person's roles grant every permission it needs.",
+  "inputs": [
+    { "name": "user", "type": "{id: string, roles: string[]} | null", "sentence": "The person, or nobody when signed out." },
+    { "name": "table", "type": "Record<string, string[]>", "sentence": "Each role's permissions, such as orders:read, orders:* or *." },
+    { "name": "required", "type": "string | string[]", "sentence": "The permissions the action needs." },
+    { "name": "mode", "type": "'all' | 'any'", "sentence": "Whether every permission or any one of them is needed.", "optional": true }
+  ],
+  "outputs": [
+    { "name": "allowed", "type": "boolean", "sentence": "Whether the person may do it." },
+    { "name": "missing", "type": "string[]", "sentence": "The permissions the person lacks." }
+  ],
+  "states": ["unchecked", "allowed", "denied"],
+  "initial": "unchecked",
+  "events": [
+    { "type": "CHECK", "sentence": "An action asks whether the person may do it." },
+    { "type": "SET_USER", "sentence": "Someone else signed in, or the person signed out." }
+  ],
+  "transitions": [
+    { "from": "*", "event": "CHECK", "to": "allowed" },
+    { "from": "*", "event": "CHECK", "to": "denied" },
+    { "from": "*", "event": "SET_USER", "to": "unchecked" }
+  ],
+  "wraps": null,
+  "testKit": { "file": "permission-check.test.ts", "runner": "node" },
+  "phrases": ["add a permission check", "only admins can do this", "check the user role", "restrict access by role", "permission check", "hide the button unless allowed"],
+  "signals": [
+    { "id": "hand-role-check", "all": ["\\b(roles?|permissions?|isAdmin)\\b"], "any": ["(roles?|permissions?)\\s*\\.\\s*(includes|some|indexOf)\\(", "role\\s*===?\\s*['\"](admin|owner|editor|viewer|manager)['\"]"], "sentence": "This function checks a person's role or permissions by hand." }
+  ],
+  "composes": []
+}

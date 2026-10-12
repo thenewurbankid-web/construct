@@ -12,9 +12,17 @@
     "./testkit": "./testkit.mjs",
     "./async-status": "./atoms/async-status/index.ts",
     "./client-pagination": "./atoms/client-pagination/index.ts",
+    "./csv-export": "./atoms/csv-export/index.ts",
+    "./date-range": "./atoms/date-range/index.ts",
+    "./debounced-search": "./atoms/debounced-search/index.ts",
     "./filter-sort": "./atoms/filter-sort/index.ts",
+    "./infinite-list": "./atoms/infinite-list/index.ts",
     "./multi-step-flow": "./atoms/multi-step-flow/index.ts",
+    "./optimistic-update": "./atoms/optimistic-update/index.ts",
     "./paginated-query": "./atoms/paginated-query/index.ts",
+    "./permission-check": "./atoms/permission-check/index.ts",
+    "./polling": "./atoms/polling/index.ts",
+    "./undo-history": "./atoms/undo-history/index.ts",
     "./validated-submit": "./atoms/validated-submit/index.ts"
   }
 }

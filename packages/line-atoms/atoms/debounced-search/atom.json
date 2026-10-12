@@ -1,0 +1,42 @@
+{
+  "v": 1,
+  "id": "debounced-search",
+  "role": "input.debounce",
+  "title": "Debounced search",
+  "name": "debouncedSearch",
+  "kind": "function",
+  "english": "Wait until the person stops typing for a moment, then hand over what they typed as the search.",
+  "inputs": [
+    { "name": "text", "type": "string", "sentence": "What the person typed, with the time they typed it." },
+    { "name": "delay", "type": "number", "sentence": "How many milliseconds of quiet settle the search.", "optional": true },
+    { "name": "minLength", "type": "number", "sentence": "The shortest text that counts as a search.", "optional": true }
+  ],
+  "outputs": [
+    { "name": "query", "type": "string", "sentence": "The settled search text." },
+    { "name": "waitFor", "type": "number | null", "sentence": "How long to wait before checking again." }
+  ],
+  "states": ["idle", "waiting", "settled"],
+  "initial": "idle",
+  "events": [
+    { "type": "TYPE", "sentence": "The person typed." },
+    { "type": "TICK", "sentence": "Time passed." },
+    { "type": "FLUSH", "sentence": "The search runs now, for example on Enter." },
+    { "type": "CLEAR", "sentence": "The search box was emptied." }
+  ],
+  "transitions": [
+    { "from": "idle", "event": "TYPE", "to": "waiting" },
+    { "from": "waiting", "event": "TYPE", "to": "waiting" },
+    { "from": "settled", "event": "TYPE", "to": "waiting" },
+    { "from": "waiting", "event": "TICK", "to": "settled" },
+    { "from": "waiting", "event": "FLUSH", "to": "settled" },
+    { "from": "waiting", "event": "CLEAR", "to": "idle" },
+    { "from": "settled", "event": "CLEAR", "to": "idle" }
+  ],
+  "wraps": null,
+  "testKit": { "file": "debounced-search.test.ts", "runner": "node" },
+  "phrases": ["add a debounced search", "search as you type", "wait until the user stops typing", "debounce the search box", "debounce input"],
+  "signals": [
+    { "id": "hand-debounce", "all": ["setTimeout\\(", "clearTimeout\\("], "sentence": "This function debounces input with a timer by hand." }
+  ],
+  "composes": []
+}

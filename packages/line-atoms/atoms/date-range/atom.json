@@ -1,0 +1,47 @@
+{
+  "v": 1,
+  "id": "date-range",
+  "role": "date.range",
+  "title": "Date range",
+  "name": "dateRange",
+  "kind": "function",
+  "english": "Keep a range of whole calendar days and say whether it is complete and which dates fall in it.",
+  "inputs": [
+    { "name": "start", "type": "Date | null", "sentence": "The first day of the range." },
+    { "name": "end", "type": "Date | null", "sentence": "The last day of the range." },
+    { "name": "preset", "type": "{days: number, today: Date}", "sentence": "A ready-made range such as the last 7 days.", "optional": true }
+  ],
+  "outputs": [
+    { "name": "status", "type": "'empty' | 'partial' | 'complete' | 'invalid'", "sentence": "Whether the range can be used, and why not." },
+    { "name": "contains", "type": "(d: Date) => boolean", "sentence": "Whether a date falls on a day of the range." },
+    { "name": "daysIn", "type": "number", "sentence": "How many days the range covers." },
+    { "name": "overlaps", "type": "(other) => boolean", "sentence": "Whether two ranges share a day." }
+  ],
+  "states": ["empty", "partial", "complete", "invalid"],
+  "initial": "empty",
+  "events": [
+    { "type": "SET_START", "sentence": "The person picks the first day." },
+    { "type": "SET_END", "sentence": "The person picks the last day." },
+    { "type": "PRESET", "sentence": "The person picks a ready-made range." },
+    { "type": "CLEAR", "sentence": "The range is cleared." }
+  ],
+  "transitions": [
+    { "from": "*", "event": "SET_START", "to": "empty" },
+    { "from": "*", "event": "SET_START", "to": "partial" },
+    { "from": "*", "event": "SET_START", "to": "complete" },
+    { "from": "*", "event": "SET_START", "to": "invalid" },
+    { "from": "*", "event": "SET_END", "to": "empty" },
+    { "from": "*", "event": "SET_END", "to": "partial" },
+    { "from": "*", "event": "SET_END", "to": "complete" },
+    { "from": "*", "event": "SET_END", "to": "invalid" },
+    { "from": "*", "event": "PRESET", "to": "complete" },
+    { "from": "*", "event": "CLEAR", "to": "empty" }
+  ],
+  "wraps": { "library": "date-fns", "license": "MIT", "concept": "isWithinInterval, areIntervalsOverlapping, startOfDay, endOfDay, subDays, differenceInCalendarDays", "adapter": "A complete range is a date-fns interval {start, end}; contains, overlaps and daysIn answer what isWithinInterval, areIntervalsOverlapping and differenceInCalendarDays plus one answer, on UTC days." },
+  "testKit": { "file": "date-range.test.ts", "runner": "node" },
+  "phrases": ["add a date range picker", "filter by date range", "pick a start and end date", "last 7 days", "date range"],
+  "signals": [
+    { "id": "hand-date-between", "all": ["getTime\\(\\)|new Date\\(|Date\\.parse\\(", "\\b(start|from)\\w*\\s*(<=|<|>=|>)|(<=|<|>=|>)\\s*\\w*(end|to|End|To)\\b"], "sentence": "This function checks dates against a start and an end by hand." }
+  ],
+  "composes": []
+}

@@ -1,0 +1,37 @@
+{
+  "v": 1,
+  "id": "csv-export",
+  "role": "data.exportCsv",
+  "title": "CSV export",
+  "name": "exportCsv",
+  "kind": "function",
+  "english": "Turn the rows into a CSV file with one column per definition, quoting cells safely.",
+  "inputs": [
+    { "name": "rows", "type": "T[]", "sentence": "The rows to export." },
+    { "name": "columns", "type": "{header: string, accessor: keyof T | ((row: T) => unknown)}[]", "sentence": "Each column's header and how to read its cell." },
+    { "name": "name", "type": "string", "sentence": "The file's base name." },
+    { "name": "date", "type": "Date", "sentence": "The day the export is stamped with." }
+  ],
+  "outputs": [
+    { "name": "csv", "type": "string", "sentence": "The CSV text, quoted per RFC 4180." },
+    { "name": "fileName", "type": "string", "sentence": "A file name such as orders-2026-10-12.csv." },
+    { "name": "mime", "type": "string", "sentence": "The file's media type." }
+  ],
+  "states": ["empty", "ready"],
+  "initial": "empty",
+  "events": [
+    { "type": "EXPORT", "sentence": "The person exports the rows." }
+  ],
+  "transitions": [
+    { "from": "*", "event": "EXPORT", "to": "ready" },
+    { "from": "ready", "event": "EXPORT", "to": "empty" }
+  ],
+  "wraps": { "library": "@tanstack/table", "license": "MIT", "concept": "column definitions with a header and an accessor over the table's rows", "adapter": "A TanStack Table column's header and accessorKey or accessorFn are a column here as they are." },
+  "testKit": { "file": "csv-export.test.ts", "runner": "node" },
+  "phrases": ["add a csv export", "export the table to csv", "download as csv", "export rows", "add an export button"],
+  "signals": [
+    { "id": "hand-csv", "all": ["join\\(\\s*['\"],['\"]\\s*\\)", "join\\(\\s*['\"](\\\\r)?\\\\n['\"]\\s*\\)"], "sentence": "This function builds CSV text by hand." },
+    { "id": "hand-csv-blob", "all": ["text/csv"], "sentence": "This function makes a CSV file by hand." }
+  ],
+  "composes": []
+}
