@@ -79,3 +79,17 @@ Reuse:
 
 Start once the open-project-simple branch has committed its ChatEntry and StreamedText changes; it edits the same files. Each screen gets a Playwright check in both modes.
 - **Breadcrumb in chat mode (owner):** chat mode always shows a breadcrumb of where you are in the UI, for example "Features › orders › OrdersPage › title". Clicking any crumb switches to Under the hood at exactly that place: the same screen, with that item selected. As the chat moves around (opens a feature, a page, a part), the breadcrumb follows. Test: in chat, open orders → OrdersPage, click the "orders" crumb, and Under the hood shows Features with orders open.
+
+## "What Line knows" page (owner, 2026-10-12): see and change the graph and memory, in plain words
+This extends G4. One Cockpit page with three tabs, every view in plain English and the technical detail under Details:
+- **Map:** the knowledge graph as a readable picture, using dagre (already in Cockpit).
+  - Start from something the person knows: a feature, a page or a component. Show its neighbours as sentences ("OrdersPage is based on ListPage", "InvoicesPage uses OrderButton from feature orders, which a feature may not do").
+  - Filter by layer: structure, calls, domain, runtime, process.
+  - "Who uses this?" and "What breaks if I change it?" come from `whoCalls` / `impactOf`.
+- **Memory:** per AI step, what Line remembered (im3/j5): "You picked 'via the library' 3 times for 'use X in Y'".
+  - Edit, forget (one entry or the whole step), export/import.
+  - An embeddings on/off switch, off by default; embeddings cover slotted decision text only, never code.
+  - Person-only, and logged.
+- **Change:** an edit that touches the project goes through the plan. Examples: re-basing an item, moving a component to the library, removing a cross-feature use. Each becomes a plan step with typed fixes, approved by a person. Memory edits are Line state: they apply at once and are logged.
+
+Reuse ChatEntry, StreamedText, Trace/Auto and LINE_CONTROLS, and the two modes (chat / under the hood). Start after G2 and im3+j5 merge. Tests first, plus a UAT walk on contact-manager-ui.
