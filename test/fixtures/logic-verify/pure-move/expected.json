@@ -1,0 +1,18 @@
+{
+  "unit": {
+    "fingerprint": "a1f0000000000001",
+    "id": "src/domain/price.ts#withTax:export:0",
+    "kind": "export",
+    "file": "src/domain/price.ts",
+    "fn": "withTax",
+    "line": 1
+  },
+  "purity": "pure",
+  "effectChain": [],
+  "status": "proven",
+  "layer": "L0-canonical",
+  "transforms": [
+    "move"
+  ],
+  "sentence": "withTax (export in src/domain/price.ts) is proven unchanged by the canonical compare."
+}

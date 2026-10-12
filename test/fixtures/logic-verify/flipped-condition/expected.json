@@ -1,0 +1,24 @@
+{
+  "unit": {
+    "fingerprint": "a1f0000000000004",
+    "id": "src/age.ts#isAdult:export:0",
+    "kind": "export",
+    "file": "src/age.ts",
+    "fn": "isAdult",
+    "line": 1
+  },
+  "purity": "pure",
+  "effectChain": [],
+  "status": "changed",
+  "layer": "z3",
+  "transforms": null,
+  "location": {
+    "astPath": "isAdult/FunctionDeclaration.body/BlockStatement.body[0]/ReturnStatement.argument/BinaryExpression.operator",
+    "file": "src/age.ts",
+    "line": 2
+  },
+  "input": [
+    18
+  ],
+  "sentence": "isAdult (export in src/age.ts) changed at src/age.ts:2 (BinaryExpression.operator) for input [18], found by a Z3 proof."
+}
