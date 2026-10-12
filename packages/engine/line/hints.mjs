@@ -90,7 +90,7 @@ function typeErrorCall(req) {
  * Per code: `rule` (one clause, no full stop), `fields` (request args that may hold the bad value, first found wins),
  * `example(req)` (a correct call when the tool's own example is not the right one). Every code a builder can meet is
  * here: refusals.mjs REFUSAL_FIXES, contract.mjs PLAN_REFUSAL_CODES, the plan service's own and plan-cli's.
- * @type {Readonly<Record<string, {rule: string, fields?: string[], example?: (req: {tool?: string, args?: any}) => ({tool: string, args: any} | {fix: string} | {answer: string, option: string} | null)}>>}
+ * @type {Readonly<Record<string, {rule: string, ruleOf?: (said: string) => (string | null), fields?: string[], example?: (req: {tool?: string, args?: any, why?: any}) => ({tool: string, args: any, why?: string} | {fix: string} | {answer: string, option: string} | null)}>>}
  */
 export const REFUSAL_HINTS = Object.freeze({
   NAME_TAKEN: { rule: 'a name or route is used once: reuse the one that exists or pick a free one', fields: ['name', 'route', 'page'] },
@@ -149,7 +149,25 @@ export const REFUSAL_HINTS = Object.freeze({
   CRASH: { rule: 'plan-cli failed on its own; the call changed nothing' },
   // The plan store's own (PLAN_<code>): the plan changed or refused the call.
   PLAN: { rule: 'the plan changed meanwhile or refused the call: read plan status, then send the call again', example: () => ex('plan_status', {}) },
+  // A plan store's `invalid`: the step itself is malformed, so reading the plan again would not help. The rule names the
+  // part that failed (ruleOf, from the store's sentence) and the correct call is the builder's own step, mended.
+  PLAN_INVALID: {
+    rule: 'a step names a Line tool, takes the arguments that fit it, and says why in one plain-English sentence',
+    ruleOf: (said) => (/\bwhy\b/.test(said) ? "a step's why is one plain-English sentence that starts with a capital letter"
+      : /\bgoal\b/.test(said) ? "a plan's goal is one plain-English sentence that starts with a capital letter and ends with a full stop"
+        : /arguments do not fit/.test(said) ? 'each tool takes exactly its own arguments, in the types its schema gives'
+          : /no tool named|tool is missing/.test(said) ? 'a step uses one of the Line tools by its exact name' : null),
+    example: (req) => (req.tool ? { tool: req.tool, args: req.args ?? {}, why: mendWhy(req.why, req.tool) } : null),
+  },
 });
+
+/** A why as a correct call shows it: the builder's own words, capital first and a full stop last. */
+function mendWhy(why, tool) {
+  const t = String(why ?? '').trim().replace(/\s+/g, ' ');
+  if (!t) return `Run ${tool}.`;
+  const c = t.charAt(0).toUpperCase() + t.slice(1);
+  return /[.?!]$/.test(c) ? c : `${c}.`;
+}
 
 /**
  * The hint for `code` (PLAN_<x> share one).
@@ -236,7 +254,7 @@ export const badArgsField = (sentence) => /: ([A-Za-z_$][\w$.]*) (?:must|is not)
 export function shapeRefusal(o) {
   const code = String(o.code);
   const hint = hintOf(code) ?? { rule: 'Line refused the call' };
-  const req = { tool: o.tool, args: o.args, fix: o.fix, answer: o.answer, option: o.option, field: code === 'BAD_ARGS' ? badArgsField(o.sentence) : null };
+  const req = { tool: o.tool, args: o.args, why: o.why, fix: o.fix, answer: o.answer, option: o.option, field: code === 'BAD_ARGS' ? badArgsField(o.sentence) : null };
   const fixes = (o.fixes ?? []).filter((f) => f?.step && typeof f.step.tool === 'string');
   const choices = fixes.map((f, i) => ({
     ref: f.ref ?? `f${i + 1}`, id: f.id ?? null, step: f.step, recommended: i === 0, ...(f.sentence ? { sentence: asSentence(f.sentence) } : {}),
@@ -254,14 +272,15 @@ export function shapeRefusal(o) {
     example = call ? callText(call) : `${o.tool ?? 'line.createFeature'} ${JSON.stringify(TOOL_EXAMPLES[o.tool ?? '']?.args ?? TOOL_EXAMPLES['line.createFeature'].args)}`;
   }
   const apply = choices.length ? `To apply one, send {"fix":"${choices[0].ref}"}.` : null;
-  const shape = { code, wrong, rule: hint.rule, choices, apply, example, context: o.context ?? [] };
+  const shape = { code, wrong, rule: hint.ruleOf?.(String(o.sentence ?? '')) ?? hint.rule, choices, apply, example, context: o.context ?? [] };
   return { ...shape, text: renderRefusal(shape) };
 }
 
 /** A call as text: a step "line.x {...}", a plan-cli read, or a fix/answer object. */
 function callText(call) {
   if ('fix' in call || 'answer' in call) return JSON.stringify(call);
-  return stepText(/** @type {any} */ (call));
+  const step = stepText(/** @type {any} */ (call));
+  return typeof (/** @type {any} */ (call).why) === 'string' ? `${step} --why ${JSON.stringify(/** @type {any} */ (call).why)}` : step;
 }
 
 /** Programmer paths never reach a builder: "(fixes[0].step)" and "options[].step" are dropped or said in words. */

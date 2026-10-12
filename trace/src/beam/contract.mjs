@@ -18,7 +18,7 @@ export const EVENT_KINDS = Object.freeze(['runOpened', 'runClosed', 'runRanked',
  * - emit:         the scratch emit (write transaction, never committed) or tsc failed.
  * - goal:         a goal condition (Line expression) evaluated false.
  * - cap:          ranked below the beam cap.
- * - duplicate:    the same plan as a run already open.
+ * - duplicate:    the same plan as a run already open (a run that differs only in its reading is one).
  * - won:          another run met every goal condition first (closed without fault).
  * - forked:       the run split into its children at a fork point (closed without fault; the children carry on).
  */

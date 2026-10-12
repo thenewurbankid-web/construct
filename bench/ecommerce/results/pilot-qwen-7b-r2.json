@@ -55,9 +55,10 @@
     "errors": 6
   },
   "acceptance": {
-    "passed": 0,
+    "passed": null,
     "total": 22,
     "ran": false,
+    "status": "did not run: build failed",
     "passedIds": []
   },
   "loc": 18,

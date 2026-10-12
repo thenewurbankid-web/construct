@@ -3,7 +3,8 @@
 #
 #   bench/ecommerce/run-acceptance.sh <project-dir> [port=3395] [report.json]
 #
-# Writes the Playwright JSON report (default <project-dir>/../logs/acceptance.json) and prints "passed/total".
+# Writes the Playwright JSON report (default <project-dir>/../logs/acceptance.json) and prints its summary: passed/total,
+# or "did not run: build failed" when no test ran.
 # The project needs its node_modules (the starters' are installed; new-run.sh copies them).
 set -uo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
@@ -19,11 +20,7 @@ cd "$here/acceptance"
 BENCH_PROJECT="$project" BENCH_PORT="$port" BENCH_REPORT="$report" \
   "$repo/packages/tools/dev/heavy.sh" npx playwright test --config playwright.config.ts --workers=1
 code=$?
-node -e '
-const r = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"));
-const specs = []; const walk = (s) => { for (const x of s.suites ?? []) walk(x); for (const sp of s.specs ?? []) specs.push(sp); };
-walk(r);
-const passed = specs.filter((s) => s.ok).length;
-console.log(JSON.stringify({ passed, total: specs.length, failed: specs.filter((s) => !s.ok).map((s) => s.title) }));
-' "$report" 2>/dev/null || echo '{"passed":0,"total":0,"error":"no report"}'
+# The summary line from metrics.mjs (one module counts acceptance): no test ran, because the webServer's
+# `next build` failed, prints {"ran":false,"status":"did not run: build failed",...}, never "passed 0 total 0".
+node "$here/metrics.mjs" acceptance "$report"
 exit $code

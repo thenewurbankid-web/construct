@@ -180,7 +180,11 @@ test('built-in store: same file and rules as @mx/plan (atomic write, person-only
   assert.equal(stale.code, 'conflict');
   const bad = await api.plan_add_step({ planId: c.plan.id, version: add.plan.version, by: 'agent', step: { tool: 'line.project', args: {}, why: 'no capital' } });
   assert.equal(bad.code, 'invalid');
-  const run = await api.plan_run_next({ planId: c.plan.id, version: add.plan.version, by: 'agent' });
+  assert.equal(bad.reason, 'The step\'s why must start with a capital letter (you sent why "no capital").');
+  const noStop = await api.plan_add_step({ planId: c.plan.id, version: add.plan.version, by: 'agent', step: { tool: 'line.project', args: {}, why: ' Read it again ' } });
+  assert.equal(noStop.ok, true, 'a why with no full stop is ended with one, not refused');
+  assert.equal(noStop.plan.steps.at(-1).why, 'Read it again.');
+  const run = await api.plan_run_next({ planId: c.plan.id, version: noStop.plan.version, by: 'agent' });
   assert.equal(run.plan.steps[0].status, 'done', 'a read step runs without approval');
   assert.deepEqual(fs.readdirSync(path.join(dir, 'line/plans')).sort(), ['ses-x.json', 'writes.jsonl']);
 });
