@@ -8,6 +8,8 @@
 //   stepWin(p)           the step's measured win in one line, or "off" ("How smart is it" and Settings' AI steps list it)
 //   reasonPairOf(p)      the profile as an @mx/reason pair (StepProfileInput) for runLadder / createJevPicker
 //   readAiProfiles()     GET /api/line/ai-profiles: the profiles (each with `on` and `win`) plus whether @mx/reason is linked
+//   projectStepOn(r, s)  a project's own on/off for a step (<state>/ai-profiles.json; the Memory tab's embeddings switch)
+//   stepOnFor(p, on)     stepOn with the project's on/off in place of the profile's: still needs the measured win
 //
 // The one ladder: static -> middleware -> Line-1 (the one picker; jev fills that role until Line-1 ships) -> Construct
 // verify -> person. No Qwen pick and no review rung.
@@ -21,6 +23,11 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const PROFILES_FILE = path.join(HERE, 'ai-profiles.json');
 /** Trace's per-task override file (only overrides now; the defaults live in PROFILES_FILE). */
 export const TRACE_AI_CONFIG = path.resolve(HERE, '../../trace/ai.config.json');
+
+/** The memory-embeddings step: recall also by meaning (a local embedding model over slotted decision text, never code). */
+export const MEMORY_EMBED_STEP = 'construct.memory-embed';
+/** A project's own on/off per step, in its Line state folder: {v: 1, steps: {[step]: {on: boolean}}}. */
+export const PROJECT_PROFILES_FILE = 'ai-profiles.json';
 
 const readJson = (file) => { try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return null; } };
 const LINE_DEFAULT = "Line's default";
@@ -41,7 +48,8 @@ export function listStepProfiles(o = {}) {
   return data.profiles.map((raw) => {
     const p = { ...raw, fallback: 'static', ladder: { ...raw.ladder } };
     if (p.provider === 'hosted') { p.model = raw.model ?? null; p.modelFrom = 'the hosted model you choose in Settings'; }
-    // A step may name its own model when it measured better; it says so (none does today: every step uses the 1.5B).
+    // A step may name its own model when it measured better, or needs another kind of model; it says so (today only
+    // construct.memory-embed, an embedding model; every other local step uses the 1.5B).
     else { p.model = raw.model ?? defaultModel; p.modelFrom = raw.model ? (raw.modelFrom ?? 'chosen for this step') : LINE_DEFAULT; }
     if (p.source === 'trace' && trace) {
       const task = p.step.slice('trace.'.length);
@@ -83,6 +91,37 @@ export const stepModel = (step, o) => stepProfile(step, o).model;
  * @returns {boolean}
  */
 export const stepOn = (p) => p?.ladder?.options?.on === true && typeof p.ladder.measured === 'string' && p.ladder.measured.trim() !== '';
+
+/**
+ * stepOn with a project's own on/off in place of the profile's `ladder.options.on` (undefined: the profile's). The measured
+ * win is still required: a project can turn a step on, but an unmeasured step stays off.
+ * @param {{ladder: {options: {on: boolean}, measured: string|null}}} p A StepProfile.
+ * @param {boolean|undefined} projectOn
+ * @returns {boolean}
+ */
+export const stepOnFor = (p, projectOn) => (projectOn === undefined ? stepOn(p) : stepOn({ ...p, ladder: { ...p.ladder, options: { ...p.ladder.options, on: projectOn } } }));
+
+/**
+ * A project's own on/off for a step (`<root>/<stateDir>/ai-profiles.json`), or undefined when it has none.
+ * @param {string} root @param {string} step @param {string} [stateDir]
+ * @returns {boolean|undefined}
+ */
+export function projectStepOn(root, step, stateDir = 'line') {
+  const on = readJson(path.join(root, stateDir, PROJECT_PROFILES_FILE))?.steps?.[step]?.on;
+  return typeof on === 'boolean' ? on : undefined;
+}
+
+/**
+ * The project's step file with one step's on/off set (the caller writes it through Construct's writer).
+ * @param {string} root @param {string} step @param {boolean} on @param {string} [stateDir]
+ * @returns {string} The file's new text.
+ */
+export function projectStepFileWith(root, step, on, stateDir = 'line') {
+  const cur = readJson(path.join(root, stateDir, PROJECT_PROFILES_FILE));
+  const steps = cur && typeof cur.steps === 'object' && cur.steps ? { ...cur.steps } : {};
+  steps[step] = { ...(steps[step] ?? {}), on };
+  return `${JSON.stringify({ v: 1, steps })}\n`;
+}
 
 /**
  * The step's win, one line: its measurement when it is on, else "off" (with "only when you ask" for an on-request step).

@@ -9,6 +9,7 @@ import express from 'express';
 import { makeTempDir } from '../../../test-utils/tmpdir.mjs';
 import { createLineMemoryRouter } from './lineMemoryApi.mjs';
 import { createMemory } from '../../../packages/engine/line/memory/index.mjs';
+import { projectStepOn, MEMORY_EMBED_STEP } from '../../../packages/core/ai-profiles.mjs';
 import { assertMemoryRecordsView, assertMemoryExport } from '../../../packages/engine/line/knows/contract.mjs';
 
 const SAMPLE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../examples/line-sample');
@@ -100,6 +101,9 @@ test('Memory tab routes: records read; edit, forget one, forget all, export, imp
 
     const on = await (await post('embeddings', { on: true })).json();
     assert.equal(on.embeddings.on, true);
+    // The switch flips the construct.memory-embed AI profile step for this project; unmeasured, it does not run.
+    assert.equal(projectStepOn(root, MEMORY_EMBED_STEP, mem.stateDir), true);
+    assert.equal(on.embeddings.runs, false);
 
     const all = await (await post('forget-all', {})).json();
     assert.equal(all.records.length, 0);

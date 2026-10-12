@@ -41,9 +41,10 @@ import { assertMemoryRecord, assertMemoryExport } from '../memory/contract.mjs';
  */
 
 /**
- * GET /api/line/memory/records (and every memory write's answer). `step` null: all steps. `embeddings.on` is false by
- * default; it covers slotted decision text only, never code.
- * @typedef {{ok: true, step: string|null, records: MemoryRecord[], embeddings: {on: boolean, covers: 'slotted-text'}, log: MemoryLogEntry[], sentence: string}} MemoryRecordsView
+ * GET /api/line/memory/records (and every memory write's answer). `step` null: all steps. `embeddings.on` is the Memory
+ * tab's switch (the construct.memory-embed AI step for this project, false by default); `runs` is whether embeddings
+ * actually run (the switch on AND a measured win on the step's profile). They cover slotted decision text only, never code.
+ * @typedef {{ok: true, step: string|null, records: MemoryRecord[], embeddings: {on: boolean, covers: 'slotted-text', runs?: boolean}, log: MemoryLogEntry[], sentence: string}} MemoryRecordsView
  */
 
 /**

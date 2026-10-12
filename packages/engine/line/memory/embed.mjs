@@ -1,20 +1,8 @@
 // j5 (optional, OFF by default): local text embeddings over the SLOTTED decision text of a memory record (its intent,
-// slot shapes and structure tokens), never code and never a project name. Turned on with LINE_MEMORY_EMBED=1 and only
+// slot shapes and structure tokens), never code and never a project name. One AI profile step, construct.memory-embed
+// (packages/core/ai-profiles.json): the Memory tab's switch flips it per project, it runs only with a measured win, and only
 // against a local Ollama (nomic-embed-text); when it is not running, recall stays non-neural and says nothing is lost.
 import { recallFrom, slotTokens } from './recall.mjs';
-
-/**
- * Whether embeddings are on. The project's own switch (the Memory tab, `<state>/memory.settings.json`) decides; default
- * off. LINE_MEMORY_EMBED overrides it either way: "1"/"on" turns it on, "0"/"off" turns it off.
- * @param {Record<string, string|undefined>} [env]
- * @param {boolean} [setting] the project's stored switch
- * @returns {boolean}
- */
-export function embeddingsEnabled(env = process.env, setting = false) {
-  if (env.LINE_MEMORY_EMBED === '1' || env.LINE_MEMORY_EMBED === 'on') return true;
-  if (env.LINE_MEMORY_EMBED === '0' || env.LINE_MEMORY_EMBED === 'off') return false;
-  return setting === true;
-}
 
 /**
  * The only text that is ever embedded: the record's slotted decision text.

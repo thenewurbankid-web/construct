@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 import {
   assertMemoryRecord, assertMemoryExport, createMemory, memoryOf, recordOutcome, recall, recallFrom, preferenceOf, memoryOver, routeKey, draftContext,
-  embeddingsEnabled, createOllamaEmbedder, recallWithEmbeddings, decisionText, MIN_CONSISTENT,
+  createOllamaEmbedder, recallWithEmbeddings, decisionText, MIN_CONSISTENT,
 } from '../packages/engine/line/memory/index.mjs';
 import { createPlanDrafter } from '../packages/engine/line/drafter/planDraft.mjs';
 import { draft } from '../packages/engine/line/drafter/index.mjs';
@@ -173,8 +173,6 @@ test('privacy: memory is never sent anywhere; embeddings are off by default, loc
     const src = fs.readFileSync(path.join(MEMORY_SRC, f), 'utf8');
     assert.ok(!/\bfetch\(|node:https?|node:net|node:dgram|XMLHttpRequest|WebSocket/.test(src), `${f} opens no connection`);
   }
-  assert.equal(embeddingsEnabled({}), false);
-  assert.equal(embeddingsEnabled({ LINE_MEMORY_EMBED: '1' }), true);
   assert.throws(() => createOllamaEmbedder({ url: 'https://api.example.com' }), /localhost/);
   assert.equal(decisionText(CTX), 'add component f feature c component kind components role on atom ui sha256 bbbbbbbbbbbbbbbb');
   const sent = [];
