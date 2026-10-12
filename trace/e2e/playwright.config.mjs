@@ -19,5 +19,7 @@ export default defineConfig({
     url: `http://127.0.0.1:${PORT}/api/examples`,
     reuseExistingServer: false,
     timeout: 30_000,
+    // #896: the planner eval page reads and writes its results here, never trace/eval/beam/results (the spec grades items)
+    env: { TRACE_BEAM_RESULTS: "./out/beam/results", TRACE_BEAM_RUNS: "./out/beam/runs" },
   },
 });

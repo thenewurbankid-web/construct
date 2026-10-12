@@ -214,6 +214,7 @@ const POST_ROUTES = [
   "/api/suggest", "/api/part-chat", "/api/part-preview", "/api/part-similar", "/api/part-apply", "/api/part-undo", "/api/part-redo",
   "/api/demo/apply-fix", "/api/demo/release", "/api/wizard/markers/suggest", "/api/wizard/markers/apply", "/api/wizard/apply", "/api/wizard/apply-request", "/api/contract/sample",
   "/api/pagemap/decide", "/api/pagemap/undo", "/api/pagemap/redo", "/api/pagemap/apply", "/api/pagemap/use", // the Page map (src/pagemap-routes.mjs)
+  "/api/beam/owner", "/api/beam/run", // #896 the planner eval (src/beam-routes.mjs)
 ];
 const GET_ROUTES = [
   "/", "/studio", "/about", "/ui/about.mjs", "/ui/build-badge.mjs", "/ui/changelog/shots", "/ui/contract-panel.mjs", "/doc/README.md", "/doc/SECURITY.md", "/theme.css", "/tree/svg.mjs", "/ai/mail-chat.mjs",
@@ -224,12 +225,13 @@ const GET_ROUTES = [
   "/pagemap", "/pagemap/pagemap.mjs", "/pagemap/pagemap.css", "/api/pagemap?example=categories", "/api/pagemap/pages",
   "/api/pagemap/render?file=PortfolioHealthFigmaRebuild.tsx", // LIN-197: rendered real Subframe page for the Page map (src/pagemap-routes.mjs)
   "/drift", "/ui/drift.mjs", "/api/drift?example=invoices", // LIN-195: the stored contract-drift result (src/drift-routes.mjs)
+  "/beam", "/ui/beam.mjs", "/api/beam/setups", "/api/beam/setup?id=r-v1.g-v1", "/api/beam/job?id=none", // #896 the planner eval (src/beam-routes.mjs)
 ];
 const STREAMS = new Set(["/api/live"]); // never end on their own
 
 test("no route is missing from the lists above: every path the server sources register is covered", () => {
-  const src = ["src/server.mjs", "src/contract-routes.mjs", "src/import-wizard-routes.mjs", "src/demo-server.mjs", "src/inspector/routes.mjs", "src/build-routes.mjs", "src/pagemap-routes.mjs", "src/drift-routes.mjs"].map((f) => fs.readFileSync(path.join(root, f), "utf8")).join("\n");
-  const found = new Set([...src.matchAll(/["'`](\/(?:api|inspector|demo|ui|doc|report|about|studio|theme\.css|tree|ai|import-wizard|pagemap)[\w/.\-]*)/g)].map((m) => m[1].replace(/\/$/, "")));
+  const src = ["src/server.mjs", "src/contract-routes.mjs", "src/import-wizard-routes.mjs", "src/demo-server.mjs", "src/inspector/routes.mjs", "src/build-routes.mjs", "src/pagemap-routes.mjs", "src/drift-routes.mjs", "src/beam-routes.mjs"].map((f) => fs.readFileSync(path.join(root, f), "utf8")).join("\n");
+  const found = new Set([...src.matchAll(/["'`](\/(?:api|inspector|demo|ui|doc|report|about|studio|theme\.css|tree|ai|import-wizard|pagemap|beam)[\w/.\-]*)/g)].map((m) => m[1].replace(/\/$/, "")));
   const covered = new Set([...POST_ROUTES, ...GET_ROUTES].map((r) => r.split("?")[0]));
   // an /api route must be listed exactly; a static file is covered by a listed file of the same folder and type (the folder is an allow-list)
   const folder = (p) => p.replace(/\/[^/]*(\.\w+)$/, (_m, ext) => `/*${ext}`);
