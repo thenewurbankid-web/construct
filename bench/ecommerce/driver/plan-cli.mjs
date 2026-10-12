@@ -87,9 +87,15 @@ export function createPlanCli({ project, log, builder = 'unknown', spec = SPEC_F
     get: () => { try { return JSON.parse(fs.readFileSync(blockedFile, 'utf8')); } catch { return null; } },
     set: (v) => { fs.writeFileSync(blockedFile, `${JSON.stringify(v)}\n`); },
   };
-    // #908: open work is measured against SPEC.md (read per view, so a test can swap the file).
+  // #912: the identical-refused-call counts (the 3rd escalates), kept the same way.
+  const repeatFile = path.join(path.dirname(logFile), 'repeat-state.json');
+  const repeats = {
+    get: () => { try { return JSON.parse(fs.readFileSync(repeatFile, 'utf8')); } catch { return null; } },
+    set: (v) => { fs.writeFileSync(repeatFile, `${JSON.stringify(v)}\n`); },
+  };
+  // #908: open work is measured against SPEC.md (read per view, so a test can swap the file).
   const specNow = () => { try { return spec ? readSpec(spec) : null; } catch { return null; } };
-  const svc = createLinePlanService({ root, offers, hintState, blocked, spec: specNow });
+  const svc = createLinePlanService({ root, offers, hintState, blocked, repeats, spec: specNow });
   /** The open-work card the plan service attached to a view, or ''. */
   const workOf = (v) => /** @type {any} */ (v)?.work?.text ?? '';
   // #888: a rules card is shown with the first add of each tool and layer (and on request: rules <tool> [file]).
@@ -142,7 +148,7 @@ export function createPlanCli({ project, log, builder = 'unknown', spec = SPEC_F
         // (add <tool> '<args>') still works.
         const fixes = Array.isArray(r.fixes) ? r.fixes.map((f, i) => ({ ref: f.ref, id: f.id, sentence: f.sentence, step: f.step, ...(i === 0 ? { recommended: true } : {}), ...(f.why ? { why: f.why } : {}), ...(f.effect ? { effect: f.effect } : {}), ...(f.context?.length ? { context: f.context } : {}) })) : [];
         const card = !fix && tool && BUILDER_TOOLS.includes(tool) ? firstCard(tool, args) : null;
-        return { ok: false, code: r.code, sentence: [r.text ?? r.sentence, card?.text].filter(Boolean).join('\n'), ...(r.detail ? { detail: r.detail } : {}), ...(fixes.length ? { fixes } : {}), ...(r.dropped ? { dropped: r.dropped } : {}), ...(r.hintContext ? { hintContext: r.hintContext } : {}), ...(card ? { card } : {}) };
+        return { ok: false, code: r.code, sentence: [r.text ?? r.sentence, card?.text].filter(Boolean).join('\n'), ...(r.detail ? { detail: r.detail } : {}), ...(fixes.length ? { fixes } : {}), ...(r.dropped ? { dropped: r.dropped } : {}), ...(r.repeat ? { repeat: r.repeat } : {}), ...(r.hintContext ? { hintContext: r.hintContext } : {}), ...(card ? { card } : {}) };
       }
       const step = r.steps.find((s) => s.id === r.stepId);
       const card = step ? firstCard(step.tool, step.args) : null;
@@ -230,6 +236,8 @@ export function createPlanCli({ project, log, builder = 'unknown', spec = SPEC_F
       ...(Array.isArray(out.fixes) && out.fixes.length ? { fixes: out.fixes.map((f) => ({ ref: f.ref, id: f.id, sentence: f.sentence, step: f.step, recommended: f.recommended === true, ...(f.why ? { why: f.why } : {}), ...(f.effect ? { effect: f.effect } : {}), ...(f.context ? { context: f.context } : {}) })) } : {}),
       // #906: the fixes the pre-check dropped (they would have been refused), by id and the code they would meet.
       ...(Array.isArray(out.dropped) && out.dropped.length ? { dropped: out.dropped } : {}),
+      // #912: an identical refused call escalated (times, the call, the step it leads with).
+      ...(out.repeat ? { repeat: out.repeat } : {}),
       ...(Array.isArray(out.options) && out.options.some((o) => o.step) ? { options: out.options } : {}),
       ...(out.hintContext ? { context: out.hintContext } : {}),
       ...(out.card ? { card: { tool: out.card.tool, layer: out.card.layer, rules: out.card.rules.map((x) => x.id) } } : {}),

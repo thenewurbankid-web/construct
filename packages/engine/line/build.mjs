@@ -131,6 +131,41 @@ function newPageFixes(root, asked) {
   }))).slice(0, 6);
 }
 
+/** The library page a new page is based on: a route with a parameter or a "Detail" name -> detail, a form-ish name -> form, else list. */
+function baseRank(route, name) {
+  const want = /[:[]/.test(String(route)) || /Detail/.test(name) ? 'Detail' : /Form|Edit|New|Create|Checkout/.test(name) ? 'Form' : 'List';
+  return (id) => (id.split('/')[1].startsWith(want) ? 0 : 1);
+}
+
+/**
+ * #912: the steps that make a feature page a route asks for but that does not exist, recommended first: in an
+ * existing feature, line.baseOn on each library page (the fitting list/detail/form base first) under the same feature
+ * and name; when the feature itself is missing, line.createFeature for it (baseOn needs the feature). Empty when the
+ * path is not a feature page path.
+ * @param {string} root Project root. @param {string} route The route asked for. @param {string} page Root-relative page file.
+ * @returns {{id: string, sentence: string, step: {tool: string, args: any}}[]}
+ */
+export function missingPageFixes(root, route, page) {
+  const { features } = layoutOf(root);
+  const rel = cleanRel(page);
+  const segs = rel && rel.startsWith(`${features}/`) ? rel.slice(features.length + 1).split('/') : [];
+  if (segs.length !== 3 || segs[1] !== 'pages') return [];
+  const feature = segs[0];
+  const name = posix.basename(rel).replace(/\.[^.]+$/, '');
+  if (featureNameProblem(feature) || !/^[A-Z][A-Za-z0-9]*$/.test(name)) return [];
+  if (!fs.existsSync(path.join(root, features, feature))) {
+    const what = name.replace(/Page$/, '').replace(/([a-z0-9])([A-Z])/g, '$1 $2').toLowerCase() || feature;
+    return [{
+      id: `UNKNOWN_ITEM/create-feature:${feature}`,
+      sentence: `Create feature ${feature} first (there is no ${features}/${feature} yet); then base ${name} on a library page and add the route again.`,
+      step: { tool: 'line.createFeature', args: { name: feature, story: `As a user, I want a ${what} page at ${route}, so that I can use ${feature}.`, points: [`The page at ${route} shows the ${what} page.`] } },
+    }];
+  }
+  const rank = baseRank(route, name);
+  return libraryPageIds(root).map((libraryId, i) => ({ libraryId, i })).sort((a, b) => rank(a.libraryId) - rank(b.libraryId) || a.i - b.i)
+    .map(({ libraryId }) => ({ id: `UNKNOWN_ITEM/base-on:${libraryId}`, sentence: `Create ${name} in feature ${feature}, based on the library page ${libraryId.split('/')[1]}; then add the route again.`, step: { tool: 'line.baseOn', args: { libraryId, feature, name } } }));
+}
+
 /**
  * The app-router folder of the project: src/app when the project has one, else app.
  * @param {string} root Project root.
@@ -185,13 +220,9 @@ export function planAddRoute(root, { route, page } = /** @type {any} */ ({})) {
   }
   const source = readOrNull(path.join(root, rel));
   if (source === null) {
-    const feature = segs[0];
-    const name = posix.basename(rel).replace(/\.[^.]+$/, '');
-    const hasFeature = fs.existsSync(path.join(root, features, feature));
-    const create = hasFeature && /^[A-Z][A-Za-z0-9]*$/.test(name)
-      ? libraryPageIds(root).map((libraryId) => ({ id: `UNKNOWN_ITEM/base-on:${libraryId}`, sentence: `Create ${name} in feature ${feature}, based on the library page ${libraryId.split('/')[1]}; then add the route again.`, step: { tool: 'line.baseOn', args: { libraryId, feature, name } } }))
-      : [];
-    throw new LineOpError(`There is no page ${rel}; create it first (line.baseOn on a library page, or line.setCode), or serve a page that exists.`, 'UNKNOWN_ITEM', undefined, [...routeFixes(root, route, page, 4), ...create].slice(0, 8));
+    // #912: the step that makes the page leads (r3: 189 identical addRoutes to a page that was never created).
+    const create = missingPageFixes(root, route, rel);
+    throw new LineOpError(`There is no page ${rel}; create it first (${create[0]?.step.tool === 'line.createFeature' ? `feature ${segs[0]} does not exist yet, so line.createFeature it, then line.baseOn a library page` : 'line.baseOn on a library page, or line.setCode'}), then add the route again.`, 'UNKNOWN_ITEM', undefined, [...create, ...routeFixes(root, route, page, 4)].slice(0, 8));
   }
   const named = /export\s+(?:async\s+)?function\s+([A-Z][A-Za-z0-9_]*)/.exec(source) || /export\s+const\s+([A-Z][A-Za-z0-9_]*)\s*=/.exec(source);
   const hasDefault = /export\s+default\b/.test(source);
