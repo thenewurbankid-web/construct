@@ -4,6 +4,8 @@ import { DirectoryBrowserController } from '@/features/directory-browser';
 import { ConnectRemoteController, GithubConnectionController } from '@/features/clone';
 import { AutoCommitSettingsController } from '@/features/git-session';
 import { AiStepsController } from '@/features/ai-steps';
+import { ScreenModesController } from '@/features/line-modes';
+import { SETTINGS_MODES, SETTINGS_MODE_DATA } from '../domain/SettingsModes';
 import { useSettings } from '../hooks/useSettings';
 import { SettingsPage } from '../pages/SettingsPage';
 
@@ -18,5 +20,7 @@ export function SettingsController() {
   ) : null;
   // Commit-on-save's controls (#283) are another feature's controller, composed here as a second
   // slot for the same reason the picker is: settings stays unaware of how git is configured.
-  return <SettingsPage {...settings} picker={picker} gitSession={<AutoCommitSettingsController />} remote={<ConnectRemoteController />} github={<GithubConnectionController />} aiSteps={<AiStepsController />} />;
+  const page = <SettingsPage {...settings} picker={picker} gitSession={<AutoCommitSettingsController />} remote={<ConnectRemoteController />} github={<GithubConnectionController />} aiSteps={<AiStepsController />} />;
+  // Two modes: a chat that opens one group of settings, or the page with the chat as a helper.
+  return <ScreenModesController provider={SETTINGS_MODES} data={SETTINGS_MODE_DATA} hood={page} />;
 }

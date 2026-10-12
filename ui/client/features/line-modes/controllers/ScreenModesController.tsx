@@ -37,6 +37,17 @@ export function ScreenModesController<D>({ provider, data, hood, onOption, foote
   useScreenDefault(provider.defaultMode);
   const mode = effectiveMode(stored, provider.defaultMode);
   const chat = useScreenChat(provider, data, onOption, onPlace);
+  const anchor = chat ? (provider.anchor?.(chat.place) ?? null) : null;
+  useEffect(() => {
+    if (!anchor) return;
+    const frame = window.requestAnimationFrame(() => {
+      document.querySelectorAll('[data-lm-open]').forEach((el) => el.removeAttribute('data-lm-open'));
+      const el = document.getElementById(anchor);
+      el?.setAttribute('data-lm-open', 'true');
+      el?.scrollIntoView({ block: 'start' });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [anchor, mode, chat?.navKey]);
   if (!chat) return <>{hood}</>;
   const onCrumb = (crumb: Crumb) => {
     const target = crumbTarget(crumb);

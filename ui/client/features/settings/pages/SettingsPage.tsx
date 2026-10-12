@@ -37,26 +37,29 @@ export function SettingsPage({ settings, loadError, reload, projectDirInput, set
         restarting the backend resets to its defaults.
       </p>
 
-      <SettingsForm
-        projectDirInput={projectDirInput}
-        setProjectDirInput={setProjectDirInput}
-        llmProviders={llmProviders}
-        setLlmProvider={setLlmProvider}
-        llmModels={llmModels}
-        setLlmModel={setLlmModel}
-        availableProviders={settings.availableProviders}
-        availableProvidersByCapability={settings.availableProvidersByCapability}
-        status={status}
-        onSave={save}
-        pickerOpen={pickerOpen}
-        onTogglePicker={togglePicker}
-        picker={picker}
-      />
+      {/* Two modes: each group has an id, so a chat pick or a breadcrumb crumb opens it here (SettingsModes.ts). */}
+      <div id="settings-project">
+        <SettingsForm
+          projectDirInput={projectDirInput}
+          setProjectDirInput={setProjectDirInput}
+          llmProviders={llmProviders}
+          setLlmProvider={setLlmProvider}
+          llmModels={llmModels}
+          setLlmModel={setLlmModel}
+          availableProviders={settings.availableProviders}
+          availableProvidersByCapability={settings.availableProvidersByCapability}
+          status={status}
+          onSave={save}
+          pickerOpen={pickerOpen}
+          onTogglePicker={togglePicker}
+          picker={picker}
+        />
+      </div>
 
-      {gitSession}
-      {remote}
-      {github}
-      {aiSteps}
+      <div id="settings-git">{gitSession}</div>
+      <div id="settings-remote">{remote}</div>
+      <div id="settings-github">{github}</div>
+      <div id="settings-ai">{aiSteps}</div>
 
       <SettingsSummary projectDir={settings.projectDir} resolvedProjectRoot={settings.resolvedProjectRoot} />
     </div>

@@ -14,3 +14,5 @@
 .lm[data-chat='hidden'] .ln-chat-entry[data-layout='side'] { grid-template-columns: minmax(0, 1fr); }
 .lm[data-chat='hidden'] .ln-ce-chat { display: none; }
 .lm-hood-view { min-width: 0; }
+/* A place a chat pick or a crumb opened on a page that shows every level at once (Settings, Train, Import agent). */
+[data-lm-open] { outline: 2px solid var(--ln-accent, #2563eb); outline-offset: 4px; border-radius: 6px; scroll-margin-top: 16px; }

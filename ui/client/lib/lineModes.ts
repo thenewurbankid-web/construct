@@ -55,6 +55,9 @@ export type ScreenChatProvider<D> = {
   answer: (optionId: string, place: Place, data: D) => ChatAnswer | null;
   intro: (place: Place, data: D) => ChatAnswer;
   labelOf?: (param: string, id: string, data: D) => string;
+  /** For a screen that shows every level on one page (Settings' sections, Train's panels): the DOM id of the element
+   * Under the hood that shows the place, which the frame scrolls into view and marks as open. */
+  anchor?: (place: Place) => string | null;
 };
 
 /** The chat's state at one moment: the place, the conversation, and which level each pick message opens. */
