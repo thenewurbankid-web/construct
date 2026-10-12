@@ -200,7 +200,8 @@ export function createLogicOnDisk(root, folder, o = {}) {
       // the tests just passed on these exact files: the baseline run that follows need not run them again
       if (lc && r.failed === 0) passedNow(lc, r.files.filter((x) => TEST.test(x)));
       const dropped = r.dropped.length ? ` ${r.dropped.length} did not reproduce on a second run and were dropped.` : '';
-      return { tests: r.tests, coverage: r.coverage, sentence: `Line wrote ${r.tests.length} characterization test${r.tests.length === 1 ? '' : 's'} in ${r.files.length - 1} file${r.files.length === 2 ? '' : 's'} (jest), covering ${r.coverage.covered.length} of ${map.units.length} logic units.${dropped}` };
+      const reached = r.runtime ? ` (${r.runtime.reached.length} reached at runtime)` : '';
+      return { tests: r.tests, coverage: r.coverage, runtime: r.runtime, sentence: `Line wrote ${r.tests.length} characterization test${r.tests.length === 1 ? '' : 's'} in ${r.files.length - 1} file${r.files.length === 2 ? '' : 's'} (jest), covering ${r.coverage.covered.length} of ${map.units.length} logic units${reached}.${dropped}` };
     },
     runTests: async (_r, f, tests, how) => timed('tests', () => runTestsCached(f, tests, how)),
     behaviour: async (_r, f, diff) => checkBehaviour(root, diff, (await load('baseline'))?.sources ?? {}, f),

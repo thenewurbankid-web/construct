@@ -34,6 +34,7 @@ import { analyzeClosure } from './characterize/analyze.mjs';
 import { CHAR_DIR, PROBE_DIR, RUNTIME_FILE, runtimeText, probeText, lockedText, scenarioTitle, testKind, isGenerated } from './characterize/emit.mjs';
 import { locateUnitSpans, unitCoverage, unitsTouched } from './characterize/unitCoverage.mjs';
 import { createDepHasher, charSalt, hashOf } from './importV2/cache.mjs';
+import { withRuntimeRecorder, runtimeCoverage } from './graph/runtime/index.mjs';
 
 export { unitCoverage, locateUnitSpans, unitsTouched, fingerprintOf, unitVerdict } from './characterize/unitCoverage.mjs';
 export { analyzeClosure, pathnameOfEntry } from './characterize/analyze.mjs';
@@ -51,12 +52,12 @@ export { CHAR_DIR } from './characterize/emit.mjs';
 
 /**
  * @typedef {object} CharacterizeOptions
- * @property {number} [budgetMs] Search time per subject (default 20 s; components get `componentBudgetMs`).
- * @property {number} [componentBudgetMs] Search time per component or hook subject (default 60 s).
+ * @property {number} [budgetMs] Search time per subject (default 10 s; components get `componentBudgetMs`; was 20 s before the speed fix, which measured the same unit coverage on max-ai-ui /opportunity).
+ * @property {number} [componentBudgetMs] Search time per component or hook subject (default 25 s; was 60 s).
  * @property {number} [maxTests] Most tests kept per subject (default 150).
  * @property {string} [resumeFrom] The workDir of an earlier run: its search state is continued instead of starting over.
  * @property {number} [maxIdle] Stop a subject's search after this many runs in a row reach nothing new (default 3000 pure, 2500 others).
- * @property {number} [roundMs] Longest search round per subject in one jest process (default 45 s); later rounds resume.
+ * @property {number} [roundMs] Longest search round per subject in one jest process (default 25 s; was 45 s); later rounds resume.
  * @property {number} [seed] Sampling seed (default 7).
  * @property {string} [workDir] Folder for the probes' input and output (default a fresh temp folder).
  * @property {string} [dir] App-relative folder for the tests (default the route entry's folder).
@@ -64,6 +65,8 @@ export { CHAR_DIR } from './characterize/emit.mjs';
  * @property {(line: string) => void} [log]
  * @property {number} [maxWorkers] Jest workers (default 2).
  * @property {ReturnType<typeof jestRunnerFor>} [runner] How jest runs (default jestRunnerFor: the app's own, else $LINE_CHAR_JEST_HOME).
+ * @property {boolean} [runtime] Record what the locked tests ran (graph/runtime, G2; default true) and report
+ *   `runtime`: runtimeCoverage beside istanbul's `coverage`. Only the verify runs are recorded, not the search.
  * @property {string} [stateRoot] The Line folder whose line/ holds a generated jest config (default the app root).
  * @property {{get: (kind: string, key: string) => any, put: (kind: string, key: string, value: any) => void}} [cache]
  *   The content-hash cache (importV2/cache.mjs createLineCache): the analysis, each subject's kept cases and each locked
@@ -172,9 +175,11 @@ function jestBin(appRoot, runner) {
  * Run jest in the app on some test files, with coverage collected from `coverFiles`.
  * @param {string} appRoot
  * @param {string[]} testFiles App-relative test paths.
- * @param {{coverFiles?: string[], workDir: string, tag: string, env?: object, maxWorkers?: number, related?: string[], timeoutMs?: number, byFile?: boolean, runner?: ReturnType<typeof jestRunnerFor>}} o `runner`: how jest runs (jestRunnerFor; default the app's own jest, else the configured home).
- *   `byFile`: also keep each test file's own coverage (`coverageByFile`, test file path -> istanbul map).
- * @returns {{status: number|null, results: any, coverage: any, stderr: string, coverageByFile?: Map<string, any>}}
+ * @param {{coverFiles?: string[], workDir: string, tag: string, env?: object, maxWorkers?: number, related?: string[], timeoutMs?: number, byFile?: boolean, runner?: ReturnType<typeof jestRunnerFor>, runtime?: boolean}} o
+ *   `runner`: how jest runs (jestRunnerFor; default the app's own jest, else the configured home). `byFile`: also keep
+ *   each test file's own coverage (`coverageByFile`, test file path -> istanbul map). `runtime`: also record what ran
+ *   (graph/runtime withRuntimeRecorder on the `coverFiles`; istanbul's output is unchanged) into `runtime`.
+ * @returns {{status: number|null, results: any, coverage: any, stderr: string, coverageByFile?: Map<string, any>, runtime?: any[]}}
  */
 export function runJest(appRoot, testFiles, o) {
   const covDir = path.join(o.workDir, `cov-${o.tag}`);
@@ -198,11 +203,15 @@ export function runJest(appRoot, testFiles, o) {
     fs.rmSync(byFileDir, { recursive: true, force: true });
     args.push('--reporters=default', `--reporters=${FILE_COVERAGE_REPORTER}`);
   }
-  const r = spawnSync(bin.endsWith('.js') ? process.execPath : bin, bin.endsWith('.js') ? [bin, ...args] : args, {
+  const rtDir = path.join(o.workDir, `rt-${o.tag}`);
+  if (o.runtime) fs.mkdirSync(rtDir, { recursive: true });
+  const rec = o.runtime ? withRuntimeRecorder(args, { appRoot, files: o.coverFiles ?? [], workDir: rtDir }) : null;
+  const argv = rec ? rec.args : args;
+  const r = spawnSync(bin.endsWith('.js') ? process.execPath : bin, bin.endsWith('.js') ? [bin, ...argv] : argv, {
     cwd: appRoot,
     encoding: 'utf8',
     // a search over a large page keeps many renders' worth of state; give each worker room (two workers on a 15 GB box)
-    env: { ...process.env, CI: '1', LINE_CHAR_DIR: o.workDir, NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --max-old-space-size=4096`.trim(), ...(o.coverFiles && o.byFile ? { LINE_CHAR_COVER_BY_FILE: byFileDir } : {}), ...(o.env ?? {}) },
+    env: { ...process.env, CI: '1', LINE_CHAR_DIR: o.workDir, NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --max-old-space-size=4096`.trim(), ...(o.coverFiles && o.byFile ? { LINE_CHAR_COVER_BY_FILE: byFileDir } : {}), ...(rec ? rec.env : {}), ...(o.env ?? {}) },
     timeout: o.timeoutMs ?? 3_600_000,
     maxBuffer: 256 * 1024 * 1024,
   });
@@ -216,7 +225,7 @@ export function runJest(appRoot, testFiles, o) {
       if (e?.testFilePath) coverageByFile.set(posix(e.testFilePath), e.coverage);
     }
   }
-  return { status: r.status, results: read(resFile), coverage: o.coverFiles ? read(path.join(covDir, 'coverage-final.json')) : null, stderr: String(r.stderr ?? '').slice(-20000), ...(coverageByFile ? { coverageByFile } : {}) };
+  return { status: r.status, results: read(resFile), coverage: o.coverFiles ? read(path.join(covDir, 'coverage-final.json')) : null, stderr: String(r.stderr ?? '').slice(-20000), ...(coverageByFile ? { coverageByFile } : {}), ...(rec ? { runtime: rec.read() } : {}) };
 }
 
 /** Write (or delete, content null) files under the characterization folder through Construct's transactional writer. */
@@ -269,7 +278,7 @@ const routeDirOf = (appRoot, closure, opts) => {
  * @param {{files: string[], routes?: {route?: string, entry: string}[]}} closure The route closure (app-relative files).
  * @param {{root?: string, units: object[]}} map The closure's logic map.
  * @param {CharacterizeOptions} [opts]
- * @returns {Promise<{tests: CharTest[], coverage: import('./characterize/unitCoverage.mjs').UnitCoverage, files: string[], subjects: object[], stats: object, dropped: object[], workDir: string, passed: number, failed: number}>}
+ * @returns {Promise<{tests: CharTest[], coverage: import('./characterize/unitCoverage.mjs').UnitCoverage, runtime: any, files: string[], subjects: object[], stats: object, dropped: object[], workDir: string, passed: number, failed: number}>}
  *   `dropped` lists each test that did not reproduce on its second run (removed, with the reason); `passed`/`failed` are
  *   the final jest run's counts.
  */
@@ -302,7 +311,7 @@ export async function characterize(appRoot, closure, map, opts = {}) {
   const probeAbs = path.join(charAbs, PROBE_DIR);
   const coverFiles = closure.files.map(relFile);
   const located = locateUnitSpans(appRoot, map.units);
-  const budget = (s) => (s.kind === 'pure' ? opts.budgetMs ?? 20_000 : opts.componentBudgetMs ?? 60_000);
+  const budget = (s) => (s.kind === 'pure' ? opts.budgetMs ?? 10_000 : opts.componentBudgetMs ?? 25_000);
 
   // A subject's kept cases are reused while its file and everything that file imports are unchanged (and the options,
   // the characterizer and the app's test setup are the same).
@@ -347,7 +356,7 @@ export async function characterize(appRoot, closure, map, opts = {}) {
   const stats = { subjects: {}, timing, cache: cache ? { reused: reused.size, fresh: fresh.length } : null };
   for (const [id, r] of reused) stats.subjects[id] = { ...r.stats, cached: true };
   const spent = new Map(fresh.map((s) => [s.id, 0]));
-  const roundMs = new Map(fresh.map((s) => [s.id, opts.roundMs ?? 45_000]));
+  const roundMs = new Map(fresh.map((s) => [s.id, opts.roundMs ?? 25_000]));
   let active = fresh.slice();
   let fuzzRun = null;
   for (let round = 0; active.length; round++) {
@@ -439,13 +448,13 @@ export async function characterize(appRoot, closure, map, opts = {}) {
     if (cache && round === 0) {
       for (const s of live) {
         const hit = reused.has(s.id) ? cache.get('jest-cov', covKey(s, texts.get(s.id))) : null;
-        if (hit) cachedCov.set(s.id, hit);
+        if (hit?.coverage) cachedCov.set(s.id, hit);
       }
     }
     const run = live.filter((s) => !cachedCov.has(s.id));
     if (!run.length) break;
     log(`characterize: verifying (round ${round + 1}, ${run.length} of ${live.length} test files)`);
-    final = runJest(appRoot, run.map(lockedRel), { coverFiles, workDir, tag: `verify${round}`, maxWorkers: opts.maxWorkers, byFile: Boolean(cache), runner });
+    final = runJest(appRoot, run.map(lockedRel), { coverFiles, workDir, tag: `verify${round}`, maxWorkers: opts.maxWorkers, byFile: Boolean(cache), runner, runtime: opts.runtime !== false });
     const outcomes = testOutcomes(final.results);
     let changed = false;
     ranCov.clear();
@@ -463,7 +472,10 @@ export async function characterize(appRoot, closure, map, opts = {}) {
       for (const c of cases.get(s.id)) if (outcome(c.title) === false) dropped.push({ subject: s.id, title: c.title, why: 'It did not reproduce what was recorded on a second run.' });
       if (keep.length !== cases.get(s.id).length) { changed = true; keep.forEach((c, i) => { c.title = scenarioTitle(s, c.scenario, i); }); cases.set(s.id, keep); }
       const cov = final.coverageByFile?.get(abs) ?? final.coverageByFile?.get(real);
-      if (cov) ranCov.set(s.id, { text: /** @type {string} */ (texts.get(s.id)), cov: rekeyCoverage(cov, appRoot, false) });
+      // this file's runtime records: the ones its tests named ("<file> > <test>"), and those no test named (module loads)
+      const base = `${path.basename(lockedRel(s))} > `;
+      const runtime = (final.runtime ?? []).filter((x) => !x.test || String(x.test).startsWith(base));
+      if (cov) ranCov.set(s.id, { text: /** @type {string} */ (texts.get(s.id)), cov: rekeyCoverage(cov, appRoot, false), runtime });
     }
     if (!changed) break;
   }
@@ -475,25 +487,30 @@ export async function characterize(appRoot, closure, map, opts = {}) {
   // With the cache, coverage is the sum of each locked file's own coverage (cached or measured now), so a warm run
   // gives the same number as the cold one; when a file's own coverage is missing, the last jest run's total stands in.
   let coverageJson = final?.coverage ?? {};
+  /** @type {any[]} the runtime records of the locked tests (G2) */
+  let records = final?.runtime ?? [];
   const liveNow = recorded.filter((s) => cases.get(s.id)?.length);
   if (cache) {
     const ranAll = liveNow.filter((s) => !cachedCov.has(s.id)).every((s) => ranCov.has(s.id));
-    const parts = liveNow.map((s) => cachedCov.get(s.id) ?? ranCov.get(s.id)?.cov).filter(Boolean);
-    const merged = ranAll ? mergeCoverage(...parts) : mergeCoverage(final?.coverage ? rekeyCoverage(final.coverage, appRoot, false) : {}, ...cachedCov.values());
+    const parts = liveNow.map((s) => cachedCov.get(s.id)?.coverage ?? ranCov.get(s.id)?.cov).filter(Boolean);
+    const merged = ranAll ? mergeCoverage(...parts) : mergeCoverage(final?.coverage ? rekeyCoverage(final.coverage, appRoot, false) : {}, ...[...cachedCov.values()].map((v) => v.coverage));
+    records = [...[...cachedCov.values()].flatMap((v) => v.runtime ?? []), ...(ranAll ? [...ranCov.values()].flatMap((v) => v.runtime) : final?.runtime ?? [])];
     coverageJson = rekeyCoverage(merged, appRoot, true);
     // keep what this run found: every searched subject's cases (an empty list too: nothing to search again), and the
     // coverage of every locked file that ran in full
     for (const s of fresh) if (!stats.subjects[s.id]?.error) cache.put('subject', subjectKey(s), { cases: cases.get(s.id) ?? [], stats: stats.subjects[s.id] ?? {} });
     for (const [id, r] of ranCov) {
       const s = subjects.find((x) => x.id === id);
-      if (s && cases.get(id)?.length) cache.put('jest-cov', covKey(s, r.text), r.cov);
+      if (s && cases.get(id)?.length) cache.put('jest-cov', covKey(s, r.text), { coverage: r.cov, runtime: r.runtime });
     }
   }
   const coverage = unitCoverage({ root: appRoot, units: located }, coverageJson, { appRoot });
+  // what the tests reached at runtime (function level, G2), beside istanbul's statement-level coverage
+  const runtime = opts.runtime === false ? null : runtimeCoverage({ units: map.units }, records);
   timed('coverage');
   const written = [posix(path.join(charRel, RUNTIME_FILE)), ...liveNow.map(lockedRel)];
   const failed = final?.results?.numFailedTests ?? 0;
-  return { tests, coverage, files: written, subjects, stats, dropped, workDir, passed: tests.length - failed, failed };
+  return { tests, coverage, runtime, files: written, subjects, stats, dropped, workDir, passed: tests.length - failed, failed };
 }
 
 /**

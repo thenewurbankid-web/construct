@@ -13,7 +13,7 @@
 //   logic-units  logicMap.mjs fileUnits of one file             key: the file's path and content
 //   analysis     characterize/analyze.mjs analyzeClosure        key: every closure file's depsHash, the routes
 //   subject      a subject's kept cases (search + record + lock) key: the subject, its file's depsHash, the options
-//   jest-cov     one locked test file's coverage (all passed)   key: the test file's text, its subject file's depsHash
+//   jest-cov     one locked test file's coverage and runtime records (G2)   key: the test file's text, its subject file's depsHash
 //   jest-pass    one test file passed in the app's runner        key: the test file's text, the depsHash of what it imports
 import fs from 'node:fs';
 import path from 'node:path';
@@ -23,7 +23,7 @@ import { readPathAliases, resolveImportSpecifier } from '@line/construct-core/ro
 import { writeLineState } from '../../transactionalWriter.mjs';
 
 /** Bump when an entry's shape changes: every older entry is then a miss. */
-export const CACHE_VERSION = 1;
+export const CACHE_VERSION = 2;
 export const CACHE_DIR = 'line/cache';
 
 const posix = (p) => String(p).split(path.sep).join('/');
@@ -123,7 +123,7 @@ export function createDepHasher(appRoot) {
 }
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const CHARACTERIZER = ['../characterize.mjs', '../characterize/analyze.mjs', '../characterize/emit.mjs', '../characterize/runtime.cjs', '../characterize/unitCoverage.mjs', '../characterize/fileCoverageReporter.cjs'];
+const CHARACTERIZER = ['../characterize.mjs', '../characterize/analyze.mjs', '../characterize/emit.mjs', '../characterize/runtime.cjs', '../characterize/unitCoverage.mjs', '../characterize/fileCoverageReporter.cjs', '../graph/runtime/recorder.cjs', '../graph/runtime/jestTransform.cjs', '../graph/runtime/jestSetup.cjs', '../graph/runtime/jestConfig.cjs'];
 const APP_SETUP = ['package.json', 'package-lock.json', 'yarn.lock', 'pnpm-lock.yaml', 'tsconfig.json', 'jest.config.js', 'jest.config.cjs', 'jest.config.mjs', 'jest.config.ts', 'jest.setup.js', 'jest.setup.ts', 'babel.config.js', '.babelrc'];
 
 /**

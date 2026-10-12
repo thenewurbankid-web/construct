@@ -90,13 +90,14 @@ test('cache + jest: a warm characterize reuses every subject and runs no jest, w
     const r = await characterize(root, CLOSURE, map, { ...opts, cache, log: (l) => lines.push(l), workDir: makeTempDir('construct-line-cache-work-') });
     return { r, lines, cache };
   };
-  const view = (r) => ({ tests: r.tests, covered: [...r.coverage.covered].sort(), uncovered: [...r.coverage.uncovered].sort(), files: r.files, failed: r.failed, passed: r.passed });
+  const view = (r) => ({ tests: r.tests, covered: [...r.coverage.covered].sort(), uncovered: [...r.coverage.uncovered].sort(), reached: [...(r.runtime?.reached ?? [])].sort(), files: r.files, failed: r.failed, passed: r.passed });
 
   const cold = await run();
   assert.equal(cold.r.failed, 0);
   assert.ok(cold.r.tests.length >= 6, `${cold.r.tests.length} tests`);
   assert.equal(cold.r.stats.cache.reused, 0);
   assert.ok(cold.r.coverage.covered.length > 0);
+  assert.ok(cold.r.runtime.reached.length > 0, 'the runtime recorder (G2) reports what the tests reached, beside istanbul');
 
   const warm = await run();
   assert.deepEqual(view(warm.r), view(cold.r), 'the warm run gives the same tests and coverage');
