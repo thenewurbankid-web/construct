@@ -17,7 +17,7 @@ import { resolveLayout } from '@line/construct-core/profiles/line/checks';
 import { hashOf } from '../pagesEditor.mjs';
 import { LineOpError } from './contract.mjs';
 import { featureNameProblem } from './newProject.mjs';
-import { typeCheckStaged, importFixes, typeRefusal } from './typeGate.mjs';
+import { typeCheckStaged, importFixes, typeRefusal, refuseRouteProps } from './typeGate.mjs';
 import { appLayoutFile, layoutFixesFor } from './shell.mjs';
 import { closestId } from '@line/construct-core/nearest';
 
@@ -63,7 +63,7 @@ export function planCreateFeature(root, { name, story, points } = /** @type {any
     const before = readOrNull(path.join(root, file));
     if (before === content) throw new LineOpError(`The feature ${n} already exists with exactly this spec; go on with its pages and components.`, 'NAME_TAKEN');
     const fix = { id: 'NAME_TAKEN/use-existing', sentence: `Use the existing feature ${n}: write this story and these points into its spec.md.`, step: { tool: 'line.setCode', args: { file, code: content, ...(before === null ? {} : { contentHash: hashOf(before) }) } } };
-    throw new LineOpError(`The feature ${n} already exists${before !== null && isPlaceholderSpec(before) ? ' with a placeholder spec' : ''}; use it: write this story and these points into its spec.md (fixes[0].step).`, 'NAME_TAKEN', undefined, [fix]);
+    throw new LineOpError(`The feature ${n} already exists${before !== null && isPlaceholderSpec(before) ? ' with a placeholder spec' : ''}; use it: write this story and these points into its spec.md (the recommended fix).`, 'NAME_TAKEN', undefined, [fix]);
   }
   return { summary: `Creates the feature ${n} with its spec (${list.length} acceptance point${list.length === 1 ? '' : 's'}).`, files: [{ path: `${features}/${n}/spec.md`, content }] };
 }
@@ -214,7 +214,10 @@ export function planAddRoute(root, { route, page } = /** @type {any} */ ({})) {
     lines.splice(at, 0, `// @line-route ${lineRoute}`);
     files.push({ path: rel, content: lines.join('\n') });
   }
-  return { summary: `Serves ${posix.basename(rel).replace(/\.[^.]+$/, '')} of feature ${segs[0]} at ${lineRoute}.`, files };
+  // pilot-qwen-7b-r2 R2: a page whose props are more than params and searchParams (a line.baseOn wrapper's) is refused
+  // here as line.setCode refuses it, not left for `next build` to refuse every route.
+  const warnings = refuseRouteProps(root, layoutOf(root), files, { file: rel, code: source, contentHash: hashOf(source), then: `Then add the route ${lineRoute} again.` });
+  return { summary: `Serves ${posix.basename(rel).replace(/\.[^.]+$/, '')} of feature ${segs[0]} at ${lineRoute}.`, files, ...(warnings.length ? { warnings } : {}) };
 }
 
 /**

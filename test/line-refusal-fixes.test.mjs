@@ -266,3 +266,64 @@ test('"Did you mean ...?": an unknown item, an unknown feature or a bad name lan
     assert.equal(far.fixes, undefined);
   } finally { done(); }
 });
+
+/** A project that type-checks with real React types (the repo's node_modules, linked): the route-props gate runs. */
+const typedProject = () => {
+  const p = project();
+  write(p.root, 'tsconfig.json', JSON.stringify({ compilerOptions: { strict: true, jsx: 'react-jsx', module: 'esnext', moduleResolution: 'bundler', target: 'es2020', noEmit: true, skipLibCheck: true, types: [] } }));
+  fs.symlinkSync(path.join(here, '..', 'node_modules'), path.join(p.root, 'node_modules'), 'dir');
+  // A library page whose props are all optional, so a bare wrapper of it compiles with none.
+  write(p.root, 'library/pages/ShelfPage.tsx', 'export function ShelfPage({ title }: { title?: string }) {\n  return <main><h1>{title ?? "Shelf"}</h1></main>;\n}\n');
+  return p;
+};
+
+test('ROUTE_PROPS on line.addRoute: a line.baseOn wrapper served at a route is refused as setCode refuses it, and its fix lands (pilot-qwen-7b-r2 R2)', async () => {
+  const { root, done } = typedProject();
+  try {
+    const svc = svcOf(root);
+    await addApproved(svc, 'line.baseOn', { libraryId: 'pages/ShelfPage', feature: 'home', name: 'HomePage' });
+    assert.equal((await runOne(svc)).state, 'done');
+    const wrapper = read(root, 'features/home/pages/HomePage.tsx');
+    assert.match(wrapper, /export function HomePage\(props: ComponentProps<typeof ShelfPage> & object\)/);
+    const r = /** @type {any} */ (await svc.addStep({ tool: 'line.addRoute', args: { route: '/', page: 'features/home/pages/HomePage.tsx' }, why: WHY }, 'agent'));
+    assert.equal(r.code, 'TYPE_ERROR', r.sentence);
+    assert.match(r.sentence, /^The code does not compile, so nothing was saved: HomePage is served at a route \(app\/page\.tsx\), so Next\.js lets it take only params and searchParams as props, not title/);
+    assert.equal(r.fixes[0].id, 'TYPE_ERROR/route-props');
+    assert.match(r.fixes[0].sentence, /^Make HomePage take no props \(it only passes props on\), so its route can serve it\. Then add the route \/ again\.$/);
+    assert.equal(r.fixes[0].step.tool, 'line.setCode');
+    assert.equal(r.fixes[0].step.args.contentHash, hashOf(wrapper));
+    assert.match(r.fixes[0].step.args.code, /export function HomePage\(\) \{\n {2}return <ShelfPage \/>;/);
+    assert.doesNotMatch(r.fixes[0].step.args.code, /ComponentProps/);
+    assert.equal(fs.existsSync(path.join(root, 'app/page.tsx')), false, 'nothing was written');
+    await fixLands(svc, r);
+    const routed = await addApproved(svc, 'line.addRoute', { route: '/', page: 'features/home/pages/HomePage.tsx' });
+    assert.equal(routed.ok, true, routed.sentence);
+    assert.equal((await runOne(svc)).state, 'done');
+    assert.match(read(root, 'app/page.tsx'), /export \{ HomePage as default \}/);
+    // A library page whose props are required: rendered bare it would not compile, so no fix is offered (the page's
+    // content is the builder's to write), but the route is still refused.
+    await addApproved(svc, 'line.baseOn', { libraryId: 'pages/ListPage', feature: 'home', name: 'ListView' });
+    assert.equal((await runOne(svc)).state, 'done');
+    const listed = /** @type {any} */ (await svc.addStep({ tool: 'line.addRoute', args: { route: '/list', page: 'features/home/pages/ListView.tsx' }, why: WHY }, 'agent'));
+    assert.equal(listed.code, 'TYPE_ERROR');
+    assert.match(listed.sentence, /ListView is served at a route \(app\/list\/page\.tsx\)/);
+    assert.equal(listed.fixes, undefined);
+  } finally { done(); }
+});
+
+test('ROUTE_PROPS on line.baseOn: a new page that a route entry already imports is refused, its fix creates it taking no props (pilot-qwen-7b-r2 R2)', async () => {
+  const { root, done } = typedProject();
+  try {
+    write(root, 'app/shelf/page.tsx', "export { ShelfView as default } from '../../features/home/pages/ShelfView';\n");
+    const svc = svcOf(root);
+    const r = /** @type {any} */ (await svc.addStep({ tool: 'line.baseOn', args: { libraryId: 'pages/ShelfPage', feature: 'home', name: 'ShelfView' }, why: WHY }, 'agent'));
+    assert.equal(r.code, 'TYPE_ERROR', r.sentence);
+    assert.match(r.sentence, /ShelfView is served at a route \(app\/shelf\/page\.tsx\), so Next\.js lets it take only params and searchParams as props/);
+    assert.equal(r.fixes[0].id, 'TYPE_ERROR/route-props');
+    assert.equal(r.fixes[0].step.args.contentHash, undefined, 'the fix creates the file');
+    assert.match(r.fixes[0].step.args.code, /^\/\/ @line-base pages\/ShelfPage\n/);
+    // A page no route serves is not checked: it lands as before.
+    const free = await addApproved(svc, 'line.baseOn', { libraryId: 'pages/ShelfPage', feature: 'home', name: 'FreeShelf' });
+    assert.equal(free.ok, true, free.sentence);
+  } finally { done(); }
+});
