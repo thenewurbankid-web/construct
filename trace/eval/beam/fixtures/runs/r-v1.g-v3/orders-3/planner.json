@@ -1,0 +1,101 @@
+{
+  "request": "Next to the order count, show how many orders are still pending.",
+  "planner": "fixture",
+  "answer": {
+    "available": true,
+    "source": "fixture",
+    "labels": {
+      "intent": "update.prop",
+      "object": "prop",
+      "target": {
+        "kind": "page",
+        "name": "orders"
+      },
+      "layers": [
+        "ui"
+      ],
+      "by": "static"
+    },
+    "path": [
+      {
+        "layer": "page-part",
+        "label": "pendingCount (header)",
+        "decision": "dynamic",
+        "picks": null,
+        "fork": false
+      },
+      {
+        "layer": "source",
+        "label": "orders where status = Pending",
+        "decision": "computed",
+        "picks": null,
+        "fork": false
+      },
+      {
+        "layer": "controller",
+        "label": "OrdersController.orders",
+        "decision": "fn",
+        "picks": null,
+        "fork": false
+      },
+      {
+        "layer": "hook",
+        "label": "usePendingCount(orders)",
+        "decision": "create",
+        "picks": null,
+        "fork": false
+      }
+    ],
+    "question": null,
+    "runs": [
+      {
+        "id": "run-1",
+        "labels": {
+          "intent": "update.prop",
+          "object": "prop",
+          "target": {
+            "kind": "page",
+            "name": "orders"
+          },
+          "layers": [
+            "ui"
+          ],
+          "by": "static"
+        },
+        "path": [
+          {
+            "layer": "page-part",
+            "label": "pendingCount (header)",
+            "decision": "dynamic",
+            "picks": null,
+            "fork": false
+          },
+          {
+            "layer": "source",
+            "label": "orders where status = Pending",
+            "decision": "computed",
+            "picks": null,
+            "fork": false
+          },
+          {
+            "layer": "controller",
+            "label": "OrdersController.orders",
+            "decision": "fn",
+            "picks": null,
+            "fork": false
+          },
+          {
+            "layer": "hook",
+            "label": "usePendingCount(orders)",
+            "decision": "create",
+            "picks": null,
+            "fork": false
+          }
+        ],
+        "question": null
+      }
+    ],
+    "recommended": "run-1"
+  },
+  "at": "2026-10-12T15:01:04.000Z"
+}

@@ -20,7 +20,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const examplesDir = path.join(here, "..", "..", "examples");
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), "beam-"));
 const dirsIn = (root) => ({ resultsDir: path.join(root, "results"), runsDir: path.join(root, "runs"), fixturesDir: FIXTURES_DIR });
-const LINES = loadRubric().lines;
+const LINES = loadRubric("v1").lines; // the agreement-math tests below are written in rubric v1's five lines
 
 const SECRET_NOTES = "SECRET-NOTES-7f3a only the requester knows";
 const item = {
@@ -95,7 +95,7 @@ test("a fake run's grader transcripts carry no gold or notes, and every run is g
 
 // ---------------------------------------------------------------------------------------------------- versions
 test("prompts are versioned files; every transcript records file, version, hash, model opus and temperature", async () => {
-  assert.deepEqual(listVersions("grader").map((v) => v.version), ["v2", "v1"]);
+  assert.deepEqual(listVersions("grader").map((v) => v.version), ["v3", "v2", "v1"]);
   assert.equal(loadPrompt("grader", "v1").file, "prompts/archive/grader.v1.md");
   assert.equal(loadPrompt("requester").version, "v1");
   const root = tmp();
@@ -131,6 +131,22 @@ test("setup ids round-trip; the rubric parses into its five lines", () => {
   assert.deepEqual(parseSetupId("r-v1.g-v2"), { requester: "v1", grader: "v2" });
   assert.equal(parseSetupId("../etc"), null);
   assert.deepEqual(LINES.map((l) => [l.id, l.max]), [["intent", 2], ["path", 3], ["reuse", 3], ["question", 2], ["unused", 2]]);
+});
+
+test("rubric v2 is the owner's four lines (max 10); each grader version pins its rubric", () => {
+  const r = loadRubric();
+  assert.equal(r.version, "v2");
+  assert.deepEqual(r.lines.map((l) => [l.id, l.max]), [["fits", 3], ["layer", 3], ["asked", 2], ["clarity", 2]]);
+  assert.equal(r.lines.reduce((a, l) => a + l.max, 0), 10);
+  assert.equal(loadPrompt("rubric", "v1").file, "prompts/archive/rubric.v1.md");
+  assert.deepEqual(["v1", "v2", "v3"].map((v) => loadPrompt("grader", v).meta.rubric), ["v1", "v1", "v2"]);
+  const j = createJudges({ mode: "replay", requester: "v1", grader: "v3", runsDir: tmp() });
+  assert.equal(j.versions.rubric, "v2");
+  assert.equal(createJudges({ mode: "replay", requester: "v1", grader: "v2", runsDir: tmp() }).versions.rubric, "v1");
+  const v = createStore(dirsIn(tmp())).view("r-v1.g-v3");
+  assert.equal(v.rubric.version, "v2");
+  assert.equal(v.summary.maxTotal, 10);
+  assert.equal(v.items[0].id, "orders-2", "the disagree>=2 item comes first under rubric v2 too");
 });
 
 test("gold labels come only from the closed sets", () => {
@@ -196,7 +212,7 @@ test("review order: disagree>=2 first (largest gap first), then owner-ungraded, 
 test("dry-run replays the committed fixtures exactly, with no model call", async () => {
   const root = tmp();
   const dirs = dirsIn(root);
-  for (const grader of ["v1", "v2"]) {
+  for (const grader of ["v1", "v2", "v3"]) {
     const fixture = JSON.parse(fs.readFileSync(path.join(FIXTURES_DIR, "results", `r-v1.${"g-" + grader}`, "items.json"), "utf8"));
     const doc = await runAndSave({ requester: "v1", grader, apps: ["contacts", "orders"], items: 6, dryRun: true, examplesDir, dirs, store: createStore(dirs) });
     assert.equal(doc.calls, 0);
@@ -210,7 +226,7 @@ test("dry-run replays the committed fixtures exactly, with no model call", async
 test("store: fixture setups list, owner grades go to resultsDir, gold stays hidden until the owner grades", () => {
   const root = tmp();
   const store = createStore(dirsIn(root));
-  assert.deepEqual(store.listSetups().map((s) => s.id).sort(), ["r-v1.g-v1", "r-v1.g-v2"]);
+  assert.deepEqual(store.listSetups().map((s) => s.id).sort(), ["r-v1.g-v1", "r-v1.g-v2", "r-v1.g-v3"]);
   const v = store.view("r-v1.g-v1");
   assert.equal(v.items[0].id, "orders-2", "the disagree>=2 item comes first");
   const ungraded = v.items.find((i) => i.id === "orders-1");

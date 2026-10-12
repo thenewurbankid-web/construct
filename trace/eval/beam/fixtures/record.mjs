@@ -6,7 +6,8 @@
 //
 // Writes fixtures/runs/<setup>/<item>/*.json (transcripts + planner.json), fixtures/results/<setup>/items.json, and
 // the owner seed fixtures/results/<setup>/owner.json (a few hand grades so the UI shows agreement and disagreement).
-// Two setups: r-v1.g-v1 and r-v1.g-v2 (grader v2 is stricter on the question line), to compare side by side.
+// Three setups: r-v1.g-v1 and r-v1.g-v2 (rubric v1; grader v2 is stricter on the question line) and r-v1.g-v3 (the
+// owner's rubric v2: fits, layer, asked, clarity), to compare side by side.
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -61,6 +62,19 @@ const GRADES = {
   "orders-3": { "*": { scores: { intent: 2, path: 3, reuse: 2, question: 2, unused: 2 }, justification: "Computed pending count; creates a hook where the orders hook could take a filter." } },
 };
 
+/** Grader v3 grades with the owner's rubric v2 (fits 0-3, layer 0-3, asked 0-2, clarity 0-2). */
+const GRADES_V2 = {
+  "contacts-1": { "*": { scores: { fits: 3, layer: 3, asked: 2, clarity: 2 }, justification: "Computed from existing fields and completes the useContactName stub; nothing to fault." } },
+  "orders-1": {
+    "run-static": { scores: { fits: 2, layer: 0, asked: 2, clarity: 2 }, justification: "Routes a computable total to a new endpoint and creates three layers the orders list already covers (layer)." },
+    "run-jev": { scores: { fits: 3, layer: 2, asked: 2, clarity: 2 }, justification: "Right computed path, needed closed question; creates useOrderTotals where the list hook could be reused (layer)." },
+  },
+  "contacts-2": { "*": { scores: { fits: 2, layer: 2, asked: 2, clarity: 2 }, justification: "Logs the call, but useCallLog takes `when` and never reads it (fits: an unused input ships a stub)." } },
+  "orders-2": { "*": { scores: { fits: 1, layer: 2, asked: 0, clarity: 2 }, justification: "Reads an add of a ship action as update.prop and does not ask about the missing status field (asked)." } },
+  "contacts-3": { "*": { scores: { fits: 3, layer: 3, asked: 0, clarity: 0 }, justification: "Asks an open question whose answer is already in the requirement (asked, clarity)." } },
+  "orders-3": { "*": { scores: { fits: 3, layer: 2, asked: 2, clarity: 2 }, justification: "Computed pending count; creates a hook where the orders hook could take a filter (layer)." } },
+};
+
 const byRequirement = Object.fromEntries(Object.entries(REQUESTER).map(([id, r]) => [r.requirement, id]));
 
 /** The scripted judge: answers from the tables above by reading the input it was given. */
@@ -74,7 +88,7 @@ export function fakeLlm(graderVersion) {
     }
     if (role === "requester") return JSON.stringify(REQUESTER[byRequirement[input.requirement]].answer ?? { answer: "Either is fine.", option: null });
     const id = byRequirement[input.requirement];
-    const table = GRADES[id];
+    const table = (graderVersion === "v3" ? GRADES_V2 : GRADES)[id];
     // The grader never sees run ids or pickers (blind ids only), so the script tells the two runs apart by their path.
     const runId = table["run-static"] ? (input.run.path.some((p) => p.decision === "api") ? "run-static" : "run-jev") : null;
     const g = runId ? table[runId] : table[graderVersion] ?? table["*"];
@@ -91,6 +105,14 @@ export const OWNER = {
   "contacts-2": { scores: { intent: 2, path: 2, reuse: 2, question: 2, unused: 1 }, note: "One unused input, not a whole stub." },
 };
 
+/** The owner's hand grades with rubric v2 (grader v3 setups). */
+export const OWNER_V2 = {
+  "contacts-1": { scores: { fits: 3, layer: 3, asked: 2, clarity: 2 }, note: "Agree." },
+  "contacts-3": { scores: { fits: 3, layer: 3, asked: 0, clarity: 0 }, note: "The question asks what the requirement already says, and it is open." },
+  "orders-2": { scores: { fits: 0, layer: 1, asked: 0, clarity: 2 }, note: "Wrong intent, and it must ask: the api has no status field." },
+  "contacts-2": { scores: { fits: 2, layer: 2, asked: 2, clarity: 2 }, note: "One unused input." },
+};
+
 async function main() {
   const dirs = { resultsDir: path.join(here, "results"), runsDir: path.join(here, "runs"), fixturesDir: here };
   fs.rmSync(dirs.resultsDir, { recursive: true, force: true });
@@ -100,11 +122,11 @@ async function main() {
   const store = createStore(dirs);
   let t = Date.parse("2026-10-12T15:00:00Z");
   const now = () => new Date(t += 1000).toISOString();
-  for (const grader of ["v1", "v2"]) {
+  for (const grader of ["v1", "v2", "v3"]) {
     const doc = await runAndSave({ requester: "v1", grader, apps: ["contacts", "orders"], items: 6, planner: "fixture", examplesDir, dirs, store, llm: fakeLlm(grader), now });
     doc.mode = "fixture";
     store.saveDoc(doc.setup, doc);
-    const owner = Object.fromEntries(Object.entries(OWNER).map(([id, o]) => [id, { ...o, rubricVersion: "v1", at: "2026-10-12T15:30:00.000Z" }]));
+    const owner = Object.fromEntries(Object.entries(grader === "v3" ? OWNER_V2 : OWNER).map(([id, o]) => [id, { ...o, rubricVersion: doc.versions.rubric, at: "2026-10-12T15:30:00.000Z" }]));
     fs.writeFileSync(path.join(dirs.resultsDir, doc.setup, "owner.json"), JSON.stringify(owner, null, 2) + "\n");
     console.log(`recorded ${doc.setup}: ${doc.items.length} items, ${doc.calls} scripted calls`);
   }

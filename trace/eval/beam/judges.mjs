@@ -77,7 +77,8 @@ export function createJudges(opts) {
   if (mode === "fake" && typeof llm !== "function") throw new Error("fake mode needs an llm function");
   const requesterP = loadPrompt("requester", opts.requester, promptsDir);
   const graderP = loadPrompt("grader", opts.grader, promptsDir);
-  const rubric = loadRubric(opts.rubric, promptsDir);
+  // The grader prompt embeds the rubric, so a grader version pins its rubric version (front matter `rubric:`).
+  const rubric = loadRubric(opts.rubric ?? graderP.meta.rubric, promptsDir);
   const setup = setupId(requesterP.version, graderP.version);
   const requesterSystem = fillTemplate(requesterP.body, closedSetPlaceholders());
   const graderSystem = fillTemplate(graderP.body, { RUBRIC: rubric.body.trim() });

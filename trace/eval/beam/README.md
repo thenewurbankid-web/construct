@@ -29,7 +29,7 @@ picked only from the drafter's closed sets (`packages/engine/line/drafter/contra
 
 ```
 prompts/requester.md  grader.md  rubric.md     current versions (front matter `version:`)
-prompts/archive/<role>.<version>.md            older versions (grader.v1.md today)
+prompts/archive/<role>.<version>.md            older versions (grader.v1, grader.v2, rubric.v1)
 judges.mjs      the ONE module that calls Opus (packages/core/llm.mjs callLlm, provider claude, --model opus,
                 --system-prompt <the role's file>); records transcripts; live | replay | fake
 inputs.mjs      what each judge may see          gold.mjs      closed sets, gold check, label match
@@ -37,7 +37,7 @@ planner.mjs     planner adapter (ask.mjs-backed + fixture)   pipeline.mjs  one r
 agreement.mjs   per-line/overall agreement, summary, review order   store.mjs  results files, owner grades, the UI view
 run.mjs report.mjs                              CLIs
 fixtures/record.mjs                             re-records the committed fixtures with a scripted judge (no model)
-fixtures/{planner.json,runs/,results/}          two recorded setups: r-v1.g-v1, r-v1.g-v2
+fixtures/{planner.json,runs/,results/}          three recorded setups: r-v1.g-v1, r-v1.g-v2 (rubric v1), r-v1.g-v3 (rubric v2)
 results/<setup>/{items.json,owner.json}         real or replayed runs, owner grades (gitignored)
 runs/<setup>/<item>/<step>.json                 transcripts: {promptFile, promptVersion, promptSha, rubricVersion,
                                                 model, temperature, input, output, at, mode} (gitignored)
@@ -45,6 +45,10 @@ runs/<setup>/<item>/<step>.json                 transcripts: {promptFile, prompt
 
 A **setup** is `requester version × grader version`, id `r-<v>.g-<v>` (e.g. `r-v1.g-v2`). The rubric version is recorded
 with every grade.
+
+**Rubric v2 (owner, #902):** four lines, max 10: `fits` the request (0–3), right `layer` / stub-first (0–3), `asked`
+only when needed (0–2), question `clarity` (0–2). Grader v3 is the first grader on it; grader v1/v2 stay on rubric v1, so
+old setups keep re-running and comparing.
 
 ## Commands
 
@@ -72,7 +76,7 @@ setup" button call Opus, start the server with `TRACE_BEAM_LIVE=1` and tick "Liv
 
 The rubric's scored lines are its `## <id> — <title> (0–<max>)` headings: the grader's parser and the UI's buttons are
 built from them, so keep that format. The grader prompt embeds the rubric (`{{RUBRIC}}`), so a rubric change also bumps
-the grader version. An edit without a version bump still shows up as a different `promptSha` in the transcripts.
+the grader version, and the grader file pins its rubric in front matter (`rubric: v2`). An edit without a version bump still shows up as a different `promptSha` in the transcripts.
 
 ## Running for real: calls and cost
 

@@ -1,0 +1,58 @@
+{
+  "step": "requester-write",
+  "role": "requester",
+  "promptFile": "prompts/requester.md",
+  "promptVersion": "v1",
+  "promptSha": "b5f0685251a5",
+  "model": "opus",
+  "temperature": null,
+  "temperatureEnforced": false,
+  "input": {
+    "task": "write",
+    "app": {
+      "name": "orders",
+      "route": "/orders",
+      "about": "Missing API: no status field, no PUT or DELETE, and a form input the API doesn't know. Fix feature.json and it recalculates.",
+      "page": "// Designed page (static, as exported from the design tool).\n// Mark the dynamic parts:  data-dyn=\"name\"  ·  data-list=\"name\"  ·  data-action=\"verb\"\nconst highlightTags = [\"Priority\", \"Export\", \"Reviewed\"];\nconst STATUS_BADGE = { \"Shipped\": \"📦 Shipped\", \"Pending\": \"⏳ Pending\" };\nexport default function DesignedPage() {\n  return (\n    <main className=\"page\">\n      <header className=\"header\">\n        <h1>Orders</h1>\n        <p className=\"meta\">\n          <span data-dyn=\"orderCount\">3</span>\n          {\" orders · total value \"}\n          <span data-dyn=\"totalValue\">$10,660</span>\n        </p>\n        {orderCount === 0 && <p className=\"hint\">No orders yet</p>}\n        <ul className=\"tags\">\n          {highlightTags.map((tag) => <li key={tag} className=\"tag\">{tag}</li>)}\n        </ul>\n        {orderCount > 0 ? <span className=\"sync ok\">Synced</span> : <span className=\"sync warn\">Not synced</span>}\n        <span className=\"volume\">{orderCount === 0 ? \"None\" : orderCount < 5 ? \"Low\" : orderCount < 20 ? \"Medium\" : \"High\"}</span>\n        <span className=\"status-badge\">{STATUS_BADGE[status]}</span>\n      </header>\n\n      <form className=\"card form\" data-action=\"save\">\n        <input name=\"customer\" placeholder=\"Customer\" required />\n        <input name=\"total\" type=\"number\" placeholder=\"Total\" required />\n        <input name=\"notes\" placeholder=\"Notes\" required />\n        <button type=\"submit\" className=\"primary\">Save</button>\n        <button type=\"button\" data-action=\"cancel\">Cancel</button>\n      </form>\n\n      <table className=\"card table\">\n        <thead>\n          <tr>\n            <th>Order</th>\n            <th>Customer</th>\n            <th>Total</th>\n            <th>Placed</th>\n            <th>Status</th>\n            <th></th>\n          </tr>\n        </thead>\n        <tbody data-list=\"orders\">\n          <tr>\n            <td data-dyn=\"number\">ORD-201</td>\n            <td data-dyn=\"customer\">Northwind</td>\n            <td data-dyn=\"total\" className=\"num\">$1,200</td>\n            <td data-dyn=\"placedOn\">1 Sep 2026</td>\n            <td data-dyn=\"status\">Shipped</td>\n            <td className=\"actions\">\n              <button data-action=\"edit\">Edit</button>\n              <button data-action=\"delete\" className=\"danger\">Delete</button>\n            </td>\n          </tr>\n          <tr>\n            <td data-dyn=\"number\">ORD-202</td>\n            <td data-dyn=\"customer\">Kestrel</td>\n            <td data-dyn=\"total\" className=\"num\">$560</td>\n            <td data-dyn=\"placedOn\">3 Sep 2026</td>\n            <td data-dyn=\"status\">Pending</td>\n            <td className=\"actions\">\n              <button data-action=\"edit\">Edit</button>\n              <button data-action=\"delete\" className=\"danger\">Delete</button>\n            </td>\n          </tr>\n          <tr>\n            <td data-dyn=\"number\">ORD-203</td>\n            <td data-dyn=\"customer\">Bluepeak</td>\n            <td data-dyn=\"total\" className=\"num\">$8,900</td>\n            <td data-dyn=\"placedOn\">7 Sep 2026</td>\n            <td data-dyn=\"status\">Shipped</td>\n            <td className=\"actions\">\n              <button data-action=\"edit\">Edit</button>\n              <button data-action=\"delete\" className=\"danger\">Delete</button>\n            </td>\n          </tr>\n        </tbody>\n      </table>\n    </main>\n  );\n}\n",
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/api/orders",
+          "response": [
+            {
+              "id": 1,
+              "number": "ORD-201",
+              "customer": "Northwind",
+              "total": 1200,
+              "placedOn": "2026-09-01"
+            }
+          ]
+        },
+        {
+          "method": "POST",
+          "path": "/api/orders",
+          "request": {
+            "customer": "Oriel",
+            "total": 300
+          },
+          "response": {
+            "id": 4,
+            "number": "ORD-204",
+            "customer": "Oriel",
+            "total": 300,
+            "placedOn": "2026-09-20"
+          }
+        }
+      ],
+      "story": null
+    },
+    "index": 3,
+    "earlier": [
+      "Show the total value of all orders in the header next to the order count.",
+      "Let me mark an order as shipped from the orders list."
+    ]
+  },
+  "output": "{\"requirement\":\"Next to the order count, show how many orders are still pending.\",\"notes\":\"Count the orders whose status is Pending.\",\"gold\":{\"intent\":\"update.prop\",\"object\":\"prop\",\"target\":{\"kind\":\"page\",\"name\":\"orders\"},\"layers\":[\"ui\"]}}",
+  "at": "2026-10-12T15:01:03.000Z",
+  "mode": "fake"
+}

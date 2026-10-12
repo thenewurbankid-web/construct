@@ -63,7 +63,8 @@ export function loadPrompt(role, version, dir = PROMPTS_DIR) {
   const hit = version ? all.find((v) => v.version === version) : all[0];
   if (!hit) throw new Error(`no ${role} prompt${version ? ` version ${version}` : ""} under ${dir} (have: ${all.map((v) => v.version).join(", ") || "none"})`);
   const text = readFile(hit.file);
-  return { role, version: hit.version, file: path.relative(BEAM_DIR, hit.file), sha: sha(text), body: parsePromptFile(text).body };
+  const { meta, body } = parsePromptFile(text);
+  return { role, version: hit.version, file: path.relative(BEAM_DIR, hit.file), sha: sha(text), meta, body };
 }
 
 const LINE_HEAD = /^##\s+([a-z][a-z0-9-]*)\s+[—-]\s+(.+?)\s+\(0\s*[–-]\s*(\d)\)\s*$/;
