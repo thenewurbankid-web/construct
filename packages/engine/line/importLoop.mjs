@@ -366,6 +366,13 @@ export function fitPlanSteps(fit, planSteps) {
 }
 
 /**
+ * The one sentence naming a route's shared files (RouteClosure.shared).
+ * @param {number} n
+ * @returns {string}
+ */
+export const sharedSentence = (n) => (n === 1 ? '1 shared file stays where it is; other routes use it.' : `${n} shared files stay where they are; other routes use them.`);
+
+/**
  * The plain-English view of the loop for Cockpit and MCP: the map count, the fit, the coverage, the per-step diffs and
  * "N of M logic units kept", with technical detail for a Details disclosure.
  * @param {any} logic
@@ -379,6 +386,8 @@ export function logicView(logic) {
   return {
     route: logic.route ?? null,
     files: logic.closure?.files?.length ?? 0,
+    shared: logic.closure?.shared?.length ?? 0,
+    sharedSentence: logic.closure?.shared?.length ? sharedSentence(logic.closure.shared.length) : null,
     units: total,
     counts: logic.map?.counts ?? {},
     kept,
@@ -390,6 +399,6 @@ export function logicView(logic) {
     testCount: (logic.tests ?? []).length,
     waivers: logic.waivers ?? [],
     steps: (logic.loop ?? []).map((s) => ({ step: s.step, n: s.n, status: s.status, sentence: s.sentence, kept: s.diff.kept + s.diff.moved, moved: s.diff.moved, missing: s.diff.missingCount, added: s.diff.added, changed: s.diff.changed, tests: s.tests })),
-    sentence: !logic.map ? 'The logic map is not built yet.' : end(`${logic.route ? `Route ${logic.route}: ` : ''}${plural(total, 'logic unit')} in ${plural(logic.closure?.files?.length ?? 0, 'file')}; ${kept} of ${total} kept${last?.coverage ? `; ${last.coverage.covered} covered by a block and a test` : ''}`),
+    sentence: !logic.map ? 'The logic map is not built yet.' : end(`${logic.route ? `Route ${logic.route}: ` : ''}${plural(total, 'logic unit')} in ${plural(logic.closure?.files?.length ?? 0, 'file')}; ${kept} of ${total} kept${last?.coverage ? `; ${last.coverage.covered} covered by a block and a test` : ''}`) + (logic.closure?.shared?.length ? ` ${sharedSentence(logic.closure.shared.length)}` : ''),
   };
 }

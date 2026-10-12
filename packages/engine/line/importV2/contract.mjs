@@ -66,7 +66,11 @@
  * @typedef {object} RouteClosure
  * @property {string} appRoot
  * @property {{route: string, entry: string}[]} routes  The route and its sub-routes, each with its entry file.
- * @property {string[]} files                           App-root-relative files in the closure.
+ * @property {string[]} files                           App-root-relative files only this family reaches: the feature.
+ *   They are imported, mapped, characterized and fitted.
+ * @property {string[]} shared                          App-root-relative files the family reaches that a root outside
+ *   it (another route, a layout, middleware) reaches too: they stay where they are and are referenced, never imported,
+ *   mapped, characterized or fitted.
  * @property {string[]} external                        Boundaries the tracer stopped at (packages, excluded folders).
  */
 
@@ -278,6 +282,12 @@ export function assertRouteClosure(c) {
   c.routes.forEach((r, i) => { str(r?.route, `Route ${i}'s route`); str(r.entry, `Route ${i}'s entry`); });
   strs(c.files, "The route closure's files");
   c.files.forEach((f, i) => { if (f.startsWith('/') || f.startsWith('..')) fail(`The route closure's file ${i}`, 'be app-relative'); });
+  strs(c.shared, "The route closure's shared");
+  const own = new Set(c.files);
+  c.shared.forEach((f, i) => {
+    if (f.startsWith('/') || f.startsWith('..')) fail(`The route closure's shared file ${i}`, 'be app-relative');
+    if (own.has(f)) fail(`The route closure's shared file ${f}`, 'not be one of its files too');
+  });
   strs(c.external, "The route closure's external");
 }
 

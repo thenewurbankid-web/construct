@@ -40,7 +40,7 @@
 // (the file store, the real scan and plan) is importAgentDisk.mjs.
 import { createMachine, getNextSnapshot } from 'xstate';
 import { IMPORT_AGENT_STAGES, IMPORT_EDITABLE, LEVELS, LineOpError, assertImportPlanFile, importFolderProblem } from './contract.mjs';
-import { newLogic, measure, loopChecks, loopState, loopQuestion, addWaivers, logicView, mapSummary, fitSummary, fitPlanSteps, LOOP_LIMITS } from './importLoop.mjs';
+import { newLogic, measure, loopChecks, loopState, loopQuestion, addWaivers, logicView, sharedSentence, mapSummary, fitSummary, fitPlanSteps, LOOP_LIMITS } from './importLoop.mjs';
 
 /** Fix rounds per step before the agent asks the person, even when each round improved. */
 export const MAX_ROUNDS = 3;
@@ -266,10 +266,11 @@ export function createImportAgent(o) {
     const map = await o.logic.buildMap(root, folder, closure);
     await o.logic.save('logic-map', map);
     await o.logic.save('baseline', { files: map.files });
-    doc.logic.closure = { routes: closure.routes ?? [], files: closure.files ?? [], external: closure.external ?? [] };
+    doc.logic.closure = { routes: closure.routes ?? [], files: closure.files ?? [], shared: closure.shared ?? [], external: closure.external ?? [] };
     doc.logic.map = mapSummary(map);
     const files = doc.logic.closure.files.length;
-    record(doc, 'line', 'map', `mapped ${map.units.length} logic unit${map.units.length === 1 ? '' : 's'} in ${files} file${files === 1 ? '' : 's'}${doc.logic.route ? ` of route ${doc.logic.route}` : ''}`);
+    const shared = doc.logic.closure.shared.length;
+    record(doc, 'line', 'map', `mapped ${map.units.length} logic unit${map.units.length === 1 ? '' : 's'} in ${files} file${files === 1 ? '' : 's'}${doc.logic.route ? ` of route ${doc.logic.route}` : ''}${shared ? `; ${sharedSentence(shared).replace(/\.$/, '')}` : ''}`);
   }
 
   /** Characterization tests on the unmodified app: written once, and every one must pass before anything moves. */

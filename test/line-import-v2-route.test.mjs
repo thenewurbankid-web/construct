@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 import { readRouteFamily, listRoutes, inFamily, familyFeature, commonFolder } from '../packages/engine/line/importV2/route.mjs';
 import { assertRouteClosure } from '../packages/engine/line/importV2/contract.mjs';
-import { scanImport, planImport, importGraph } from '../packages/engine/line/import.mjs';
+import { scanImport, planImport, applyImport, importGraph } from '../packages/engine/line/import.mjs';
 import { assertImportScan, assertImportPlan } from '../packages/engine/line/contract.mjs';
 import { DEFAULT_TRACE_EXCLUDES, traceExcludesFor, traceRouteFiles, readPathAliases } from '../packages/core/route-resolver.mjs';
 
@@ -25,8 +25,9 @@ test('route family: /orders is the route and its sub-routes, traced to one closu
   assert.deepEqual(c.routes.map((r) => r.route), ['/:locale/orders', '/:locale/orders/detail'], 'the sub-route belongs to the family; /home does not');
   assert.deepEqual(c.files, [
     'src/app/[locale]/orders/OrdersClient.tsx', 'src/app/[locale]/orders/detail/page.tsx', 'src/app/[locale]/orders/page.tsx',
-    'src/components/OrdersView.tsx', 'src/hooks/useOrders.ts', 'src/types/order.ts', 'src/utils/money.ts',
+    'src/components/OrdersView.tsx', 'src/hooks/useOrders.ts',
   ]);
+  assert.deepEqual(c.shared, ['src/types/order.ts', 'src/utils/money.ts'], '/home uses money (and the order type through it): shared, not the feature\'s');
   assert.ok(c.external.includes('react') && c.external.includes('next'), 'packages are boundaries the trace stopped at');
   assert.equal(familyFeature('/orders'), 'orders');
   assert.equal(familyFeature('/:locale/order-history/x'), 'order-history');
@@ -42,6 +43,7 @@ test('route family: the trace stops where the caller or architecture.yml (line.t
   fs.writeFileSync(path.join(app, 'architecture.yml'), 'version: 1\nline:\n  traceExcludes:\n    - /components/\n');
   const byConfig = readRouteFamily(app, '/orders');
   assert.ok(!byConfig.files.includes('src/components/OrdersView.tsx') && byConfig.files.includes('src/hooks/useOrders.ts'));
+  assert.ok(!byConfig.shared.includes('src/components/OrdersView.tsx') && byConfig.external.includes('src/components/OrdersView.tsx'), 'an excluded file stays a boundary, not a shared file');
   // The old wizard keeps its own default list; Import v2 has none.
   assert.deepEqual(traceExcludesFor({}), []);
   assert.deepEqual(traceExcludesFor({ configured: ['/x/'] }), ['/x/']);
@@ -50,6 +52,44 @@ test('route family: the trace stops where the caller or architecture.yml (line.t
   const stops = [];
   traceRouteFiles(path.join(app, 'src/app/[locale]/orders/page.tsx'), { aliases, excludes: DEFAULT_TRACE_EXCLUDES, onStop: (what, why) => stops.push(why) });
   assert.ok(stops.includes('package'));
+});
+
+/** The shop with a PriceTag component that both /home and /orders render. */
+function withSharedComponent() {
+  const app = copy();
+  fs.writeFileSync(path.join(app, 'src/components/PriceTag.tsx'), 'export function PriceTag({ value }: { value: string }) {\n  return <span className="price">{value}</span>;\n}\n');
+  const home = path.join(app, 'src/app/[locale]/home/page.tsx');
+  fs.writeFileSync(home, `import { PriceTag } from '@/components/PriceTag';\n${fs.readFileSync(home, 'utf8').replace('<h1>Shop', '<h1><PriceTag value="Shop" />')}`);
+  const view = path.join(app, 'src/components/OrdersView.tsx');
+  fs.writeFileSync(view, `import { PriceTag } from './PriceTag';\n${fs.readFileSync(view, 'utf8').replace('<span>{total}</span>', '<PriceTag value={total} />')}`);
+  return app;
+}
+
+test('route family scope: a component two routes share is in `shared`, not in `files`, and the import never moves it', () => {
+  const app = withSharedComponent();
+  const c = readRouteFamily(app, '/orders');
+  assertRouteClosure(c);
+  assert.ok(c.shared.includes('src/components/PriceTag.tsx'), 'PriceTag: /home renders it too');
+  assert.ok(!c.files.includes('src/components/PriceTag.tsx'));
+  assert.ok(c.files.includes('src/components/OrdersView.tsx'), 'OrdersView: only /orders uses it, so it is the feature\'s');
+  // From the other side: /home keeps only its page; PriceTag is shared there too.
+  const home = readRouteFamily(app, '/home');
+  assert.deepEqual(home.files, ['src/app/[locale]/home/page.tsx']);
+  assert.ok(home.shared.includes('src/components/PriceTag.tsx'));
+  // A layout outside the family is a root too: what it imports is shared.
+  const layout = path.join(app, 'src/app/[locale]/layout.tsx');
+  fs.writeFileSync(layout, "import { OrdersView } from '@/components/OrdersView';\nexport { OrdersView };\nexport default function Layout({ children }: { children: unknown }) { return children; }\n");
+  assert.ok(readRouteFamily(app, '/orders').shared.includes('src/components/OrdersView.tsx'), 'the locale layout imports OrdersView');
+  fs.rmSync(layout);
+  // Import: no plan step names PriceTag; after the import it is where it was, byte for byte.
+  const before = fs.readFileSync(path.join(app, 'src/components/PriceTag.tsx'), 'utf8');
+  const scan = scanImport(app, { route: '/orders' });
+  assert.ok(!scan.found.some((f) => f.file.endsWith('PriceTag.tsx')), 'the scan does not read it as an item of the feature');
+  const plan = planImport(app, { route: '/orders' });
+  assert.ok(!JSON.stringify(plan.steps).includes('PriceTag.tsx'), 'no plan step moves the shared file');
+  const r = applyImport(app, { route: '/orders' });
+  assert.equal(r.ok, true, r.sentence);
+  assert.equal(fs.readFileSync(path.join(app, 'src/components/PriceTag.tsx'), 'utf8'), before, 'the shared file stays where it is');
 });
 
 test('route family: an unknown route is refused in one sentence naming the routes there are', () => {
