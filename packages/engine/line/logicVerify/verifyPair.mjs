@@ -5,7 +5,8 @@
 //   semantic-diff              no runner: ast/semanticDiff alpha-renames free names too, so on one unit a call to a
 //                              different function would read as a rename (an unsound "same"); it stays skipped
 //   z3, fast-check             step 6 (z3Prove.mjs, fastCheckLayer.mjs), pure units only
-//   isolated                   step 5's layout layer (layoutRun.mjs verifyLayoutPair); step 4's effect runner joins it
+//   isolated                   step 5's layout layer (layoutRun.mjs verifyLayoutPair) and step 4's effect runner
+//                              (isolatedRun.mjs isolatedPair: a child-process sandbox under the recording fakes)
 // A layer with no runner answers "skipped" and the walk goes on. Skipped layers never decide: a missing layer can only
 // leave a unit unverified, never wrongly proven or changed.
 import fs from 'node:fs';
@@ -22,6 +23,7 @@ import { findFunction } from './z3Translate.mjs';
 import { z3Layer } from './z3Prove.mjs';
 import { fastCheckLayer, minedSeeds } from './fastCheckLayer.mjs';
 import { verifyLayoutPair } from './layoutRun.mjs';
+import { isolatedPair } from './isolatedRun.mjs';
 
 /** @typedef {import('./contract.mjs').UnitRef} UnitRef */
 /** @typedef {import('./contract.mjs').UnitVerdict} UnitVerdict */
@@ -83,14 +85,26 @@ export const RUNNERS = {
       : mergeSeeds(minedSeeds([ctx.beforeRoot], ctx.before.file), minedSeeds([ctx.afterRoot], ctx.after.file));
     return fastCheckLayer({ beforeSource: /** @type {string} */ (ctx.beforeSource), afterSource: /** @type {string} */ (ctx.afterSource), fn: ctx.after.fn, file: ctx.after.file, seeds });
   },
-  // step 5's layout layer; step 4's isolated effect runner joins here (one isolated result per unit)
-  isolated: (ctx) => {
+  // one isolated result per unit from step 5's layout layer and step 4's effect runner: a change from either decides;
+  // else a layout answer stands; else the effect runner's
+  isolated: async (ctx) => {
     if (!ctx.before) return noBefore('isolated');
+    /** @type {LayerResult} */
+    let layout;
     try {
-      return verifyLayoutPair({ beforeRoot: ctx.beforeRoot, afterRoot: ctx.afterRoot, unit: ctx.unit, beforeFile: ctx.before.file });
+      layout = verifyLayoutPair({ beforeRoot: ctx.beforeRoot, afterRoot: ctx.afterRoot, unit: ctx.unit, beforeFile: ctx.before.file });
     } catch (err) {
-      return { layer: 'isolated', outcome: 'cant-tell', reason: `the layout run failed: ${/** @type {Error} */ (err).message}` };
+      layout = { layer: 'isolated', outcome: 'cant-tell', reason: `the layout run failed: ${/** @type {Error} */ (err).message}` };
     }
+    if (layout.outcome === 'changed') return layout;
+    /** @type {LayerResult} */
+    let effects;
+    try {
+      effects = await isolatedPair({ beforeRoot: ctx.beforeRoot, afterRoot: ctx.afterRoot, before: ctx.before, after: ctx.after });
+    } catch (err) {
+      effects = { layer: 'isolated', outcome: 'cant-tell', reason: `the isolated run failed: ${/** @type {Error} */ (err).message}` };
+    }
+    return effects.outcome === 'changed' || layout.outcome === 'skipped' ? effects : layout;
   },
 };
 
