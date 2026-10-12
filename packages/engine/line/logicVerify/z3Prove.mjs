@@ -111,6 +111,37 @@ export async function proveEqual(before, after, { timeoutMs = Z3_TIMEOUT_MS, ari
     if (seen && seen.sort !== v.sort) throw new Unsupported(`A param whose type changed (${v.name}) is outside the Z3 subset.`);
     vars.set(v.name, v);
   }
+  // #882: one check in flight at a time. A second `check()` started while another still runs never returns (z3-solver
+  // runs checks on one pthread), and the JS guard below can answer before Z3's own timeout stops a check (a loaded
+  // machine), so the next proof waits here until the previous check has really settled.
+  const turn = z3Turn;
+  /** @type {() => void} */
+  let release = () => {};
+  z3Turn = new Promise((resolve) => { release = resolve; });
+  /** @type {Promise<unknown>} */
+  let settled = Promise.resolve();
+  try {
+    await turn;
+    return await proveInTurn(before, after, vars, timeoutMs, arity, (check) => { settled = check.catch(() => {}); });
+  } finally {
+    settled.then(release, release);
+  }
+}
+
+/** Serialises Z3 checks: resolves once the previous proof's check has settled (see proveEqual). */
+let z3Turn = Promise.resolve();
+
+/**
+ * The Z3 part of proveEqual, run in its turn. `onCheck` receives the running check so the turn ends when it settles.
+ * @param {{vars: FreeVar[], body: Ir}} before
+ * @param {{vars: FreeVar[], body: Ir}} after
+ * @param {Map<string, FreeVar>} vars
+ * @param {number} timeoutMs
+ * @param {number|undefined} arity
+ * @param {(check: Promise<unknown>) => void} onCheck
+ * @returns {Promise<{result: 'same'|'differs'|'unknown', input?: unknown[], reason?: string}>}
+ */
+async function proveInTurn(before, after, vars, timeoutMs, arity, onCheck) {
   const Z = await z3();
   const F64 = Z.Float.sort64();
   const consts = new Map([...vars.values()].map((v) => [v.name, v.sort === 'num' ? Z.Float.const(v.name, F64) : v.sort === 'str' ? Z.String.const(v.name) : Z.Bool.const(v.name)]));
@@ -120,15 +151,19 @@ export async function proveEqual(before, after, { timeoutMs = Z3_TIMEOUT_MS, ari
   solver.add(Z.Not(Z.Eq(lower(Z, before.body, consts), lower(Z, after.body, consts))));
   let timer;
   const guard = new Promise((resolve) => { timer = setTimeout(() => resolve('timeout'), timeoutMs + 250); });
-  const res = await Promise.race([solver.check(), guard]);
+  const check = solver.check();
+  onCheck(check);
+  const res = await Promise.race([check, guard]);
   clearTimeout(timer);
+  // The guard answered first: the check still runs, so no further call on this solver (it would wait on that check).
+  if (res === 'timeout') return { result: 'unknown', reason: `Z3 hit the ${timeoutMs} ms timeout` };
   if (res === 'unsat') return { result: 'same' };
   if (res === 'sat') {
     const model = solver.model();
     const values = new Map([...vars.values()].map((v) => [v.name, valueOf(Z, v.sort, model.eval(consts.get(v.name), true))]));
     return { result: 'differs', input: inputOf([...vars.values()], values, arity ?? Math.max(0, ...[...vars.values()].map((v) => Number(v.name.slice(1).split('.')[0]) + 1))) };
   }
-  const why = res === 'timeout' ? 'timeout' : solver.reasonUnknown?.() ?? 'unknown';
+  const why = solver.reasonUnknown?.() ?? 'unknown';
   return { result: 'unknown', reason: /timeout|canceled/.test(why) ? `Z3 hit the ${timeoutMs} ms timeout` : `Z3 could not decide (${why})` };
 }
 
