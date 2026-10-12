@@ -18,7 +18,7 @@ const row = (l: ScoreLine) => (
 /** One scoreboard table (per tool family, or per kind of request). */
 function ScoreTable({ caption, first, lines, testId }: { caption: string; first: string; lines: ScoreLine[]; testId: string }) {
   return (
-    <div className="ltr-table-wrap">
+    <div className="ltr-table-wrap" role="region" aria-label={caption} tabIndex={0}>
       <table className="ltr-table" data-testid={testId}>
         <caption className="ltr-meta">{caption}</caption>
         <thead>
