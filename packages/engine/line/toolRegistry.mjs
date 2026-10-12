@@ -58,6 +58,7 @@ export const TOOL_ENTRIES = Object.freeze(/** @type {any[]} */ ([
   { id: 'line.pageTree', kind: 'read', writes: null, inputSchema: fieldsSchema(['file']), outputSchema: 'PageTree', sentence: 'Reads the parts of one feature page and their props.', surfaces: { http: http('GET', '/page-tree') } },
   { id: 'line.render', kind: 'read', writes: null, inputSchema: fieldsSchema(['file'], ['props']), outputSchema: 'RenderResult', sentence: 'Renders one library component alone with its props.', surfaces: { http: http('GET', '/render') } },
   { id: 'line.fragments', kind: 'read', writes: null, inputSchema: fieldsSchema(['file']), outputSchema: 'FragmentList', sentence: 'Lists the pieces of code in one file that can be changed on their own.', surfaces: { http: http('GET', '/fragments') } },
+  { id: 'line.pageBinding', kind: 'read', writes: null, inputSchema: fieldsSchema(['file']), outputSchema: 'LinePageBinding', sentence: 'Reads both bindings of one feature page: each part\'s library component, and its data, states and actions bound to the API.', surfaces: { http: http('GET', '/page-binding') } },
   { id: 'line.workspace', kind: 'read', writes: null, inputSchema: NONE, outputSchema: 'LineWorkspace', sentence: 'Reads the one folder Line may change.', surfaces: { http: http('GET', '/workspace') } },
   { id: 'line.tools', kind: 'read', writes: null, inputSchema: NONE, outputSchema: 'ToolList', sentence: 'Lists every tool Line offers, each marked read or write.', surfaces: { http: http('GET', '/tools') } },
   { id: 'line.workflows', kind: 'read', writes: null, inputSchema: fieldsSchema(['feature']), outputSchema: 'LineWorkflowList', sentence: 'Reads one feature\'s workflows and the library workflows to start from.', surfaces: { http: http('GET', '/workflows') } },
@@ -125,6 +126,9 @@ export const TOOL_ENTRIES = Object.freeze(/** @type {any[]} */ ([
   { id: 'line.setWorkflowRole', kind: 'write', writes: 'project', inputSchema: fieldsSchema(['file', 'role', 'page'], CHANGE_EXTRA), outputSchema: 'LineStepResult', sentence: 'Binds one role of a feature workflow to a page of the feature.', surfaces: { plan: true } },
   { id: 'line.addWorkflowTransition', kind: 'write', writes: 'project', inputSchema: fieldsSchema(['file', 'from', 'event', 'to'], ['service', 'part', 'partState', ...CHANGE_EXTRA]), outputSchema: 'LineStepResult', sentence: 'Adds one When -> Do transition to a feature workflow.', surfaces: { plan: true } },
   { id: 'line.removeWorkflowTransition', kind: 'write', writes: 'project', inputSchema: fieldsSchema(['file', 'from', 'event'], CHANGE_EXTRA), outputSchema: 'LineStepResult', sentence: 'Removes one of a feature workflow\'s own transitions.', surfaces: { plan: true } },
+  // cu5: a page's two bindings (pageBinding.mjs). Morpheus: a part to a library component; Trace: an interaction to the API.
+  { id: 'line.bindPart', kind: 'write', writes: 'project', inputSchema: fieldsSchema(['file', 'partId', 'libraryId'], ['contentHash', ...CHANGE_EXTRA]), outputSchema: 'LineStepResult', sentence: 'Binds one part of a feature page to a library component.', surfaces: { plan: true } },
+  { id: 'line.bindInteraction', kind: 'write', writes: 'project', inputSchema: fieldsSchema(['file', 'interactionId', 'to'], ['endpoint', 'verb', 'contentHash', ...CHANGE_EXTRA]), outputSchema: 'LineStepResult', sentence: 'Binds one interaction of a feature page to an API endpoint, a controller function or a marked stub.', surfaces: { plan: true } },
   // A plan-only decision: recorded in the plan (Line's own state); it has no direct handler, so it is always a step.
   { id: 'line.leaveAsIs', kind: 'write', writes: 'line', inputSchema: fieldsSchema(['stepId']), outputSchema: '{left, sentence}', sentence: 'Records that a person chose to carry on after a step that needed them.', controlId: 'plan-leave', surfaces: { plan: true } },
   // The plan API itself (Line's own state, line/plans/): Cockpit routes and the agent's MCP tools.
@@ -270,7 +274,7 @@ const planBy = (by) => (isAgent(by) ? 'agent' : 'ui');
  * The direct handlers for the reads and Line-state writes of the catalog, over Line's operations.
  * @param {string} root
  * @param {{readLineProject: Function, readLineFeature: Function, readPageTree: Function, listFragments: Function,
- *   readWorkspace: Function, setWorkspace: Function, renderLibraryComponent?: Function}} ops
+ *   readWorkspace: Function, setWorkspace: Function, renderLibraryComponent?: Function, readPageBinding?: Function}} ops
  * @returns {Record<string, (args: any) => unknown>}
  */
 export function lineHandlers(root, ops) {
@@ -279,6 +283,7 @@ export function lineHandlers(root, ops) {
     'line.feature': (a) => ops.readLineFeature(root, a.name),
     'line.pageTree': (a) => ops.readPageTree(root, a.file),
     'line.fragments': (a) => ops.listFragments(root, a.file),
+    ...(ops.readPageBinding ? { 'line.pageBinding': (a) => ops.readPageBinding(root, a.file) } : {}),
     'line.workspace': () => ops.readWorkspace(root),
     'line.setWorkspace': (a) => ops.setWorkspace(root, { folder: a.folder }),
     ...(ops.renderLibraryComponent ? { 'line.render': (a) => ops.renderLibraryComponent(root, { file: a.file, props: a.props }) } : {}),
@@ -290,13 +295,13 @@ export function lineHandlers(root, ops) {
  * @returns {Promise<any>} The ops lineHandlers takes.
  */
 export async function realLineOps() {
-  const [model, feature, pageProp, fragments, workspace, render] = await Promise.all([
-    import('./model.mjs'), import('./feature.mjs'), import('./pageProp.mjs'), import('./fragments.mjs'), import('./workspace.mjs'), import('./renderComponent.mjs'),
+  const [model, feature, pageProp, fragments, workspace, render, binding] = await Promise.all([
+    import('./model.mjs'), import('./feature.mjs'), import('./pageProp.mjs'), import('./fragments.mjs'), import('./workspace.mjs'), import('./renderComponent.mjs'), import('./pageBinding.mjs'),
   ]);
   return {
     readLineProject: model.readLineProject, readLineFeature: feature.readLineFeature, readPageTree: pageProp.readPageTree,
     listFragments: fragments.listFragments, readWorkspace: workspace.readWorkspace, setWorkspace: workspace.setWorkspace,
-    renderLibraryComponent: render.renderLibraryComponent,
+    renderLibraryComponent: render.renderLibraryComponent, readPageBinding: binding.readPageBinding,
   };
 }
 

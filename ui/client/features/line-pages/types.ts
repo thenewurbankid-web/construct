@@ -1,5 +1,5 @@
 // The Pages screen's own view models. The Line contract's shapes come from the one shared mirror (lib/lineContract.ts, lib/lineHttp.ts).
-import type { ApplyResult, CodeFragment, FeatureItem, LineFinding, LineHttp, LineRefusal, PlanStepRequest, PropValueKind, SetFragmentRequest, SetPropRequest } from '@/lib/lineContract';
+import type { ApplyResult, BindingFix, BindInteractionRequest, BindPartRequest, CodeFragment, FeatureItem, LineFinding, LineHttp, LinePageBinding, LineRefusal, PlanStepRequest, PropValueKind, SetFragmentRequest, SetPropRequest } from '@/lib/lineContract';
 
 export type * from '@/lib/lineContract';
 
@@ -30,6 +30,9 @@ export type FragmentOutcome = { fragmentId: string; outcome: SaveOutcome };
 /** The chosen page's parts, as the screen loads them. */
 export type PartsState = { phase: 'idle' } | { phase: 'loading' } | { phase: 'ready'; parts: PagePart[] } | { phase: 'error'; sentence: string };
 
+/** cu5: the chosen page's two bindings, as the screen loads them. */
+export type BindingState = { phase: 'idle' } | { phase: 'loading' } | { phase: 'ready'; binding: LinePageBinding } | { phase: 'error'; sentence: string };
+
 /** Everything the Line Pages screen renders and does (built by useLinePages). */
 export type LinePagesView = {
   features: { name: string; summary: string }[];
@@ -51,6 +54,14 @@ export type LinePagesView = {
   /** ca2: the last fix applied from a page's problem (line-fix), shown at the top until the next one. */
   fixNotice: ApplyResult | null;
   fixApplied: (result: ApplyResult) => void;
+  /** cu5: both bindings of the chosen page (Morpheus: library components; Trace: data, states, actions). */
+  binding?: BindingState;
+  /** cu5: bind one part to a library component (a line.bindPart plan step). */
+  bindPart?: (partId: string, libraryId: string) => void;
+  /** cu5: apply one typed fix of an action with no home (a line.bindInteraction plan step). */
+  bindAction?: (fix: BindingFix) => void;
+  /** cu5: what the last bind said ("Waiting for your approval: ..." or the refusal). */
+  bindOutcome?: SaveOutcome | null;
 };
 
 /** Everything the Line Pages API offers the screen (real server or the contract's mock). The two writes answer an
@@ -58,6 +69,10 @@ export type LinePagesView = {
 export type LinePagesApi = Pick<LineHttp, 'getProject' | 'getPageTree' | 'getFragments'> & {
   setPageProp: (req: SetPropRequest) => Promise<ApplyResult | LineRefusal>;
   setFragment: (req: SetFragmentRequest) => Promise<ApplyResult | LineRefusal>;
+  /** cu5: both bindings of one page; absent on an API without them (the screen then shows the parts only). */
+  getPageBinding?: LineHttp['getPageBinding'];
+  bindPart?: (req: BindPartRequest) => Promise<ApplyResult | LineRefusal>;
+  bindInteraction?: (req: BindInteractionRequest) => Promise<ApplyResult | LineRefusal>;
 };
 
 /** cp1: what the Pages screen needs from the project's plan (the Plan panel's useLinePlan). */

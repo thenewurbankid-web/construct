@@ -50,3 +50,18 @@
 .lp-fragment-actions { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
 .lp-fragment-detail { margin: var(--sp-1) 0 0; font-family: var(--mono); font-size: var(--fs-xs); white-space: pre-wrap; overflow-wrap: anywhere; }
 .lp-code [hidden] { display: none !important; }
+
+/* cu5: the page's two bindings side by side -- Morpheus (library component) and Trace (data, states, actions). */
+.lp-binding { display: flex; flex-direction: column; gap: var(--sp-2); min-width: 0; }
+.lp-binding h2 { margin: 0; }
+.lp-binding h3 { margin: 0 0 var(--sp-1); font-size: var(--fs-md, 15px); }
+.lp-binding-facts { margin: 0; padding-left: var(--sp-4); display: flex; flex-direction: column; gap: 2px; font-size: var(--fs-sm); }
+.lp-binding-scroll { overflow-x: auto; }
+.lp-binding-table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
+.lp-binding-table th, .lp-binding-table td { text-align: left; vertical-align: top; padding: var(--sp-2); border-bottom: 1px solid var(--border); }
+.lp-binding-table thead th { color: var(--text-muted); font-weight: 600; }
+.lp-binding-table tbody th { font-weight: 400; white-space: nowrap; }
+.lp-binding-list { list-style: none; margin: var(--sp-1) 0 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-1); }
+.lp-bind-form { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); margin-top: var(--sp-1); }
+.lp-bind-form select { min-height: 28px; background: var(--surface-0); color: var(--text); border: 1px solid var(--border); border-radius: var(--r-sm); font: inherit; }
+.lp-homeless { display: flex; flex-direction: column; gap: var(--sp-1); }

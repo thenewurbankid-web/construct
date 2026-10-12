@@ -78,6 +78,18 @@ function readPage(root, file) {
   return { feature, source: fs.readFileSync(real, 'utf8') };
 }
 
+/**
+ * A feature page's source and owning feature, through the same scope guard as readPageTree (cu5 reads the page once
+ * for both of its bindings).
+ * @param {string} root Project root.
+ * @param {string} file Root-relative page path.
+ * @returns {{feature: string, source: string}}
+ * @throws {LineOpError} UNKNOWN_ITEM when there is no such page.
+ */
+export function readPageSource(root, file) {
+  return readPage(root, file);
+}
+
 /** Parse the page, or refuse: a page that does not parse has no nodes to pick. */
 function treeOf(source, file) {
   try {

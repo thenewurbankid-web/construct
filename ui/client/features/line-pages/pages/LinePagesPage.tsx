@@ -3,13 +3,14 @@ import { LineFixNotice } from '@/features/line-fix';
 import { FeaturePicker } from '../components/FeaturePicker';
 import { PageList } from '../components/PageList';
 import { PartsPanel } from '../components/PartsPanel';
+import { BindingPanel } from '../components/BindingPanel';
 import '../components/line-pages.css';
 import type { LinePagesView } from '../types';
 
 /** The Pages screen of a Line project: pick a feature, see its pages (base, status, findings), pick a page to
  * change one prop of one of its parts, or one piece of code on it ("Edit code"), and Save it through the checked writer. */
 export function LinePagesPage({ view, panel }: { view: LinePagesView; panel?: ReactNode }) {
-  const { features, feature, chooseFeature, pages, page, choosePage, parts, save, saving, revision, outcome, saveFragment, fragmentOutcome, workspaceFolder, fixNotice, fixApplied } = view;
+  const { features, feature, chooseFeature, pages, page, choosePage, parts, save, saving, revision, outcome, saveFragment, fragmentOutcome, workspaceFolder, fixNotice, fixApplied, binding, bindPart, bindAction, bindOutcome } = view;
   return (
     <div className="page page--screen lp" data-testid="line-pages">
       <div>
@@ -35,6 +36,9 @@ export function LinePagesPage({ view, panel }: { view: LinePagesView; panel?: Re
             <p className="hint lp-pick-hint">Pick a page to see its parts and change them.</p>
           )}
         </div>
+      )}
+      {feature && page && binding && bindPart && bindAction && (
+        <BindingPanel pageName={page.name} state={binding} busy={saving} outcome={bindOutcome ?? null} onBindPart={bindPart} onBindAction={bindAction} />
       )}
     </div>
   );

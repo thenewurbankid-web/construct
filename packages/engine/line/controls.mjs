@@ -24,6 +24,9 @@ export const LINE_CONTROLS = Object.freeze([
   { controlId: 'pages.propSave', toolId: 'line.setPageProp', screen: 'pages', label: 'Save' },
   { controlId: 'pages.codeToggle', toolId: 'line.setFragment', screen: 'pages', label: 'Edit code' },
   { controlId: 'pages.fragmentSave', toolId: 'line.setFragment', screen: 'pages', label: 'Save code' },
+  // cu5: the page's two bindings, a part to a library component (Morpheus) and an action to the API (Trace).
+  { controlId: 'pages.bindPart', toolId: 'line.bindPart', screen: 'pages', label: 'Bind to library' },
+  { controlId: 'pages.bindInteraction', toolId: 'line.bindInteraction', screen: 'pages', label: 'Bind action' },
   // Features: the feature cards and what needs attention.
   { controlId: 'features.card', toolId: 'line.project', screen: 'features', label: 'Feature' },
   { controlId: 'features.finding', toolId: 'line.fix', screen: 'features', label: 'What needs attention' },
@@ -42,6 +45,8 @@ export const TOOL_PATHS = Object.freeze({
   'line.promote': ['components.promote', 'components.promoteConfirm', 'plan.approve'],
   'line.setPageProp': ['pages.feature', 'pages.page', 'pages.propInput', 'pages.propSave', 'plan.approve'],
   'line.setFragment': ['pages.feature', 'pages.page', 'pages.codeToggle', 'pages.fragmentSave', 'plan.approve'],
+  'line.bindPart': ['pages.feature', 'pages.page', 'pages.bindPart', 'plan.approve'],
+  'line.bindInteraction': ['pages.feature', 'pages.page', 'pages.bindInteraction', 'plan.approve'],
   'line.fix': FIX_PATH,
   'line.setBase': FIX_PATH,
   'line.moveFile': FIX_PATH,

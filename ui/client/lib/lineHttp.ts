@@ -51,6 +51,7 @@ export const lineHttp: LineHttp = {
   addDraftRoute: (request, routeId, from) => postJson('/api/line/plan/draft/add', from === undefined ? { request, routeId } : { request, routeId, from }),
   answerDraft: (word, key) => postJson('/api/line/plan/draft/answer', { word, key }),
   getFragments: (file) => getJson(`/api/line/fragments?file=${encodeURIComponent(file)}`),
+  getPageBinding: (file) => getJson(`/api/line/page-binding?file=${encodeURIComponent(file)}`),
   importFolders: () => getJson('/api/line/import/folders'),
   importScan: (req) => postJson('/api/line/import/scan', req),
   importPlan: (req) => postJson('/api/line/import/plan', req),

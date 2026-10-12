@@ -15,6 +15,7 @@
 //                                            planned together (fixes.mjs planAmended) and applied as ONE change
 //   line.baseWorkflowOn, line.setWorkflowRole, line.addWorkflowTransition, line.removeWorkflowTransition
 //                     write  cw1 workflows (workflows.mjs) + applyChange
+//   line.bindPart, line.bindInteraction   write  cu5 page bindings (pageBinding.mjs) + applyChange
 //   line.leaveAsIs    write  {stepId}        -> a person's "carry on" after a step that needs them (writes nothing)
 //   line.project      read   {}              -> readLineProject
 //
@@ -41,10 +42,11 @@ import { entryById } from './toolRegistry.mjs';
 const catalogEntry = (name) => { const e = entryById(name); if (!e || !e.surfaces.plan) throw new Error(`The tool registry has no plan tool ${name}.`); return e; };
 import { planBaseWorkflowOn, planSetWorkflowRole, planAddWorkflowTransition, planRemoveWorkflowTransition } from './workflows.mjs';
 import { importTools } from './importTools.mjs';
+import { planBindPart, planBindInteraction } from './pageBinding.mjs';
 import { planExtractStep, EXTRACT_TOOLS } from './importV2/extract.mjs';
 
 /** The real operations (tests pass the contract's mock instead). */
-export const REAL_PLAN_OPS = Object.freeze({ planBaseOn, planPromote, planSetProp, planFixByKey, planSetFragment, planStep, planAmended, planImportStep, planExtractStep, applyChange, checkChange, readLineProject, planBaseWorkflowOn, planSetWorkflowRole, planAddWorkflowTransition, planRemoveWorkflowTransition });
+export const REAL_PLAN_OPS = Object.freeze({ planBaseOn, planPromote, planSetProp, planFixByKey, planSetFragment, planStep, planAmended, planImportStep, planExtractStep, applyChange, checkChange, readLineProject, planBaseWorkflowOn, planSetWorkflowRole, planAddWorkflowTransition, planRemoveWorkflowTransition, planBindPart, planBindInteraction });
 
 /** The write tools that plan a StagedChange, and the op that plans it (`planStep` takes {tool, args}). */
 export const CHANGE_TOOLS = Object.freeze({
@@ -58,6 +60,8 @@ export const CHANGE_TOOLS = Object.freeze({
   // cw1 workflows (workflows.mjs); promoting a workflow is line.promote like every other kind
   'line.baseWorkflowOn': 'planBaseWorkflowOn', 'line.setWorkflowRole': 'planSetWorkflowRole',
   'line.addWorkflowTransition': 'planAddWorkflowTransition', 'line.removeWorkflowTransition': 'planRemoveWorkflowTransition',
+  // cu5 page bindings (pageBinding.mjs): a part to a library component, an interaction to an endpoint, a controller or a stub
+  'line.bindPart': 'planBindPart', 'line.bindInteraction': 'planBindInteraction',
 });
 
 /** Change tools planned only when they run: an import step builds on the steps before it (the library item a feature
@@ -267,6 +271,8 @@ const SCHEMAS = Object.freeze({
   'line.setWorkflowRole': objectSchema({ file: 'string', role: 'string', page: 'anyString' }, { change: true }),
   'line.addWorkflowTransition': objectSchema({ file: 'string', from: 'string', event: 'string', to: 'string', service: 'optString', part: 'optString', partState: 'optString' }, { change: true }),
   'line.removeWorkflowTransition': objectSchema({ file: 'string', from: 'string', event: 'string' }, { change: true }),
+  'line.bindPart': objectSchema({ file: 'string', partId: 'string', libraryId: 'string', contentHash: 'optString' }, { change: true }),
+  'line.bindInteraction': objectSchema({ file: 'string', interactionId: 'string', to: 'string', endpoint: 'optString', verb: 'optString', contentHash: 'optString' }, { change: true }),
   'line.leaveAsIs': objectSchema({ stepId: 'string' }),
   'line.project': objectSchema({}),
 });
@@ -293,6 +299,8 @@ const DESCRIBE = Object.freeze({
   'line.setWorkflowRole': 'Chooses which page of the feature fills one role of a feature workflow (empty page clears it), through the checked writer.',
   'line.addWorkflowTransition': 'Adds a When -> Do transition to a feature workflow: when a state gets an event, optionally call a service or set a part\'s state, then go to a state; through the checked writer.',
   'line.removeWorkflowTransition': 'Removes a transition a feature added to its workflow (the library workflow\'s stay), through the checked writer.',
+  'line.bindPart': 'Binds one part of a feature page to a library component (Morpheus\'s side): the part becomes that component, or its import points at the library, through the checked writer.',
+  'line.bindInteraction': 'Binds one interaction of a feature page (Trace\'s side) to an endpoint of the feature\'s API contract, a controller function or a marked stub, through the checked writer.',
   'line.leaveAsIs': 'Records that a person chose to carry on after a step that needed them; writes nothing.',
   'line.project': 'Reads the Line view of the project: library, features, items and findings.',
 });

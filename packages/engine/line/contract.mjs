@@ -188,6 +188,9 @@ import { EXTRACT_TOOLS } from './importV2/extractTarget.mjs';
  * @property {(root: string, req: SetWorkflowRoleRequest) => StagedChange} planSetWorkflowRole
  * @property {(root: string, req: AddWorkflowTransitionRequest) => StagedChange} planAddWorkflowTransition
  * @property {(root: string, req: RemoveWorkflowTransitionRequest) => StagedChange} planRemoveWorkflowTransition
+ * @property {(root: string, file: string) => LinePageBinding} readPageBinding  cu5 (pageBinding.mjs)
+ * @property {(root: string, req: BindPartRequest) => StagedChange} planBindPart
+ * @property {(root: string, req: BindInteractionRequest) => StagedChange} planBindInteraction
  */
 
 /**
@@ -294,6 +297,72 @@ import { EXTRACT_TOOLS } from './importV2/extractTarget.mjs';
  * @typedef {{file: string, from: string, event: string, to: string, service?: string, part?: string, partState?: string}} AddWorkflowTransitionRequest  line.addWorkflowTransition
  * @typedef {{file: string, from: string, event: string}} RemoveWorkflowTransitionRequest  line.removeWorkflowTransition (a feature's own transitions only)
  * Promoting a feature workflow to the library is line.promote (PromoteRequest), as for every other kind.
+ */
+
+/**
+ * cu5 -- a page's two bindings, side by side (packages/engine/line/pageBinding.mjs). Morpheus binds each part of a
+ * feature page to a library component; Trace binds the same parts to API data (Trace's page map, reused through its
+ * package entry `line-matcher/pagemap`): the data each part shows, its states, and every interaction wired to an API
+ * endpoint of the feature's contract (`<features>/<f>/openapi.json`), a controller function or a marked stub.
+ *
+ * Morpheus's side of one part: `library` (a library item, `libraryId`), `feature` (a feature item, `libraryId` its base
+ * or null), `local` (written inside the page), `outside` (imported from somewhere else, `from` the specifier) or `html`.
+ * @typedef {'library'|'feature'|'local'|'outside'|'html'} PartBaseKind
+ * @typedef {{kind: PartBaseKind, libraryId: string|null, from: string|null, sentence: string}} PartBase
+ *
+ * Trace's side of one part: the data it shows. `endpoint` is "<METHOD> <path>" of the contract, `field` the data item.
+ * @typedef {{kind: 'list'|'value'|'input'|'static'|'none', endpoint: string|null, field: string|null, sentence: string}} PartData
+ *
+ * A state of a part (Trace states.mjs): when it is shown, disabled, loading, empty, in error...; `team` and
+ * `requirement` are the question Trace asks Product or Design about it.
+ * @typedef {{id: string, kind: string, condition: string, sentence: string, team: string, requirement: string}} PartState
+ *
+ * @typedef {object} PagePartBinding
+ * @property {string} id         The page-tree id ("n0", ...), the same as PageTree's.
+ * @property {string} tag
+ * @property {number} depth
+ * @property {number} line
+ * @property {PartBase} base
+ * @property {PartData} data
+ * @property {PartState[]} states
+ * @property {string[]} interactions  Ids of this part's PageInteractions.
+ *
+ * One interaction and how Trace resolves it (interactions.mjs): `api` (calls `endpoint`), `controller` (a UI-only
+ * function), `stub` (a marked stub to write) or `unresolved` (no home yet: a finding).
+ * @typedef {object} PageInteraction
+ * @property {string} id         "<partId>:<handler prop>" ("n0:onMore"), or "<partId>:self" when it has no handler.
+ * @property {string} partId
+ * @property {string|null} prop  The handler prop (onClick, onMore), null when there is none.
+ * @property {string} label
+ * @property {string} verb       The verb Trace reads (data-action, else the label's or the handler's).
+ * @property {'none'|'stub'|'function'} handler
+ * @property {'api'|'controller'|'stub'|'unresolved'} resolution
+ * @property {string|null} endpoint  For `api`: the endpoint it calls.
+ * @property {string} sentence
+ *
+ * A typed fix of an unresolved interaction (or a part): one plan step, recommended first (rank 1).
+ * @typedef {{id: string, sentence: string, rank: number, step: {tool: 'line.bindInteraction'|'line.bindPart', args: Record<string, unknown>}}} BindingFix
+ * @typedef {{key: string, partId: string, interactionId: string, sentence: string, fixes: BindingFix[]}} BindingFinding
+ *
+ * GET /api/line/page-binding?file=<feature page>: both bindings of one page. `via` is `static` (and `note` says why in
+ * one sentence) when Trace's page map could not be loaded or read the page: then only Morpheus's side is filled.
+ * @typedef {object} LinePageBinding
+ * @property {string} file
+ * @property {string} feature
+ * @property {string} page
+ * @property {string} contentHash  sha256 of the page the ids were computed from; pass it back with a bind request.
+ * @property {'trace'|'static'} via
+ * @property {string|null} note
+ * @property {{file: string|null, state: 'none'|'invalid'|'empty'|'ok', sentence: string, endpoints: {id: string, method: string, path: string, role: string, says: string}[]}} contract
+ * @property {PagePartBinding[]} parts
+ * @property {PageInteraction[]} interactions
+ * @property {BindingFinding[]} findings
+ * @property {{total: number, api: number, controller: number, stub: number, unresolved: number, rate: number}} coverage
+ * @property {{id: string, name: string}[]} components  The library components a part can be bound to.
+ *
+ * Requests of the binding plan tools (write steps a person approves in the Plan panel):
+ * @typedef {{file: string, partId: string, libraryId: string, contentHash?: string}} BindPartRequest  line.bindPart
+ * @typedef {{file: string, interactionId: string, to: 'endpoint'|'controller'|'stub', endpoint?: string, verb?: 'select'|'clear', contentHash?: string}} BindInteractionRequest  line.bindInteraction
  */
 
 /**
@@ -439,6 +508,8 @@ export const LINE_PLAN_TOOLS = Object.freeze([
   { name: 'line.setWorkflowRole', kind: 'write', request: 'SetWorkflowRoleRequest' },
   { name: 'line.addWorkflowTransition', kind: 'write', request: 'AddWorkflowTransitionRequest' },
   { name: 'line.removeWorkflowTransition', kind: 'write', request: 'RemoveWorkflowTransitionRequest' },
+  { name: 'line.bindPart', kind: 'write', request: 'BindPartRequest' },
+  { name: 'line.bindInteraction', kind: 'write', request: 'BindInteractionRequest' },
   { name: 'line.leaveAsIs', kind: 'write', request: '{stepId}' },
   { name: 'line.import.fix', kind: 'write', request: '{folder, tool, args} (ci2: a typed fix run inside the import folder)' },
   { name: 'line.import.save', kind: 'write', request: '{folder} (iv2: save the folder before an import, so it can be undone)' },
@@ -804,6 +875,7 @@ export const LINE_API = Object.freeze([
   { method: 'GET', path: '/api/line/workspace', request: null, response: 'LineWorkspace' },
   { method: 'POST', path: '/api/line/workspace', request: 'WorkspaceRequest', response: 'LineWorkspace' },
   { method: 'GET', path: '/api/line/fragments', request: 'file (query)', response: 'FragmentList' },
+  { method: 'GET', path: '/api/line/page-binding', request: 'file (query)', response: 'LinePageBinding' },
   // cp1: every change to the project is a plan step (line.baseOn, line.promote, line.setPageProp, line.fix, line.setFragment,
   // line.import.*); approve and run need the Cockpit page's Origin and the x-line-approval token GET /plan hands it.
   { method: 'GET', path: '/api/line/plan', request: null, response: 'PlanView & {approvalToken}' },
@@ -1384,8 +1456,64 @@ export function assertLineWorkflowList(l) {
   l.notMachines.forEach((n, i) => { str(n.id, `workflows.notMachines[${i}].id`); str(n.file, `workflows.notMachines[${i}].file`); sentence(n.sentence, `workflows.notMachines[${i}].sentence`); });
 }
 
+// cu5 ------------------------------------------------------------------------------------------
+const PART_BASE_KINDS = Object.freeze(['library', 'feature', 'local', 'outside', 'html']);
+const PART_DATA_KINDS = Object.freeze(['list', 'value', 'input', 'static', 'none']);
+const RESOLUTIONS = Object.freeze(['api', 'controller', 'stub', 'unresolved']);
+const oneOf = (v, list, where) => list.includes(v) || fail(where, `must be one of ${list.join(', ')}`);
+const strOrNull = (v, where) => v === null || str(v, where);
+
+/**
+ * Throw a TypeError naming the bad field unless `b` is a LinePageBinding: every part has a base and a data sentence,
+ * every interaction sits on a listed part and resolves to one of four outcomes, an `api` one names its endpoint, every
+ * unresolved one is a finding whose fixes are ranked plan steps of line.bindInteraction or line.bindPart.
+ * @param {any} b
+ * @returns {asserts b is LinePageBinding}
+ */
+export function assertLinePageBinding(b) {
+  for (const k of ['file', 'feature', 'page', 'contentHash']) str(b?.[k], `binding.${k}`);
+  oneOf(b.via, ['trace', 'static'], 'binding.via');
+  if (b.via === 'static') sentence(b.note, 'binding.note');
+  sentence(b.contract?.sentence, 'binding.contract.sentence');
+  oneOf(b.contract.state, ['none', 'invalid', 'empty', 'ok'], 'binding.contract.state');
+  for (const k of ['parts', 'interactions', 'findings', 'components']) if (!Array.isArray(b[k])) fail(`binding.${k}`, 'must be an array');
+  b.contract.endpoints.forEach((e, i) => { str(e.id, `binding.contract.endpoints[${i}].id`); if (e.id !== `${e.method} ${e.path}`) fail(`binding.contract.endpoints[${i}].id`, 'must be "<METHOD> <path>"'); });
+  const parts = new Set();
+  b.parts.forEach((p, i) => {
+    const at = `binding.parts[${i}]`;
+    str(p.id, `${at}.id`); str(p.tag, `${at}.tag`); parts.add(p.id);
+    oneOf(p.base?.kind, PART_BASE_KINDS, `${at}.base.kind`); sentence(p.base.sentence, `${at}.base.sentence`);
+    if (p.base.kind === 'library') str(p.base.libraryId, `${at}.base.libraryId`);
+    oneOf(p.data?.kind, PART_DATA_KINDS, `${at}.data.kind`); sentence(p.data.sentence, `${at}.data.sentence`);
+    p.states.forEach((s, j) => sentence(s.sentence, `${at}.states[${j}].sentence`));
+  });
+  const ids = new Set();
+  b.interactions.forEach((it, i) => {
+    const at = `binding.interactions[${i}]`;
+    str(it.id, `${at}.id`); ids.add(it.id);
+    if (!parts.has(it.partId)) fail(`${at}.partId`, 'must be a listed part');
+    oneOf(it.resolution, RESOLUTIONS, `${at}.resolution`); oneOf(it.handler, ['none', 'stub', 'function'], `${at}.handler`);
+    strOrNull(it.prop, `${at}.prop`); sentence(it.sentence, `${at}.sentence`);
+    if (it.resolution === 'api') str(it.endpoint, `${at}.endpoint`);
+  });
+  const unresolved = b.interactions.filter((it) => it.resolution === 'unresolved').map((it) => it.id).sort();
+  if (JSON.stringify(b.findings.map((f) => f.interactionId).sort()) !== JSON.stringify(unresolved)) fail('binding.findings', 'must be exactly the unresolved interactions');
+  b.findings.forEach((f, i) => {
+    const at = `binding.findings[${i}]`;
+    str(f.key, `${at}.key`); sentence(f.sentence, `${at}.sentence`);
+    if (!ids.has(f.interactionId)) fail(`${at}.interactionId`, 'must be a listed interaction');
+    f.fixes.forEach((x, j) => {
+      sentence(x.sentence, `${at}.fixes[${j}].sentence`);
+      if (x.rank !== j + 1) fail(`${at}.fixes[${j}].rank`, 'must rank the fixes 1, 2, ... in order');
+      oneOf(x.step?.tool, ['line.bindInteraction', 'line.bindPart'], `${at}.fixes[${j}].step.tool`);
+    });
+  });
+  const c = b.coverage;
+  if (!c || c.total !== b.interactions.length || c.api + c.controller + c.stub + c.unresolved !== c.total) fail('binding.coverage', 'must count every interaction once');
+}
+
 // cu2 ------------------------------------------------------------------------------------------
-const rate = (v, where) => (typeof v === 'number' && v >= 0 && v <= 1) || fail(where, 'must be a number from 0 to 1');
+const rate =(v, where) => (typeof v === 'number' && v >= 0 && v <= 1) || fail(where, 'must be a number from 0 to 1');
 const STEP_ID = /^[a-z]+\.[A-Za-z][\w-]*$/;
 
 /**

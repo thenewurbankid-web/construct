@@ -17,6 +17,8 @@ const RULES = Object.freeze([
   { toolId: 'line.promote', any: [/\bpromote\b/, /\b(into|to) the library\b/, /\bshared?\b/, /\breus/] },
   { toolId: 'line.setPageProp', any: [/\b(change|set|rename|update)\b.*\b(title|label|text|heading|prop)\b/, /\bprop\b/] },
   { toolId: 'line.setFragment', any: [/\b(edit|change)\b.*\bcode\b/, /\bwhen\b.*\bclicked\b/, /\bhandler\b/, /\bcondition\b/] },
+  { toolId: 'line.bindInteraction', any: [/\bbind\b.*\b(action|button|click|endpoint|api|stub|controller)\b/, /\bwire\b/, /\b(endpoint|api call)\b/] },
+  { toolId: 'line.bindPart', any: [/\bbind\b.*\b(to|with) (the )?library\b/, /\bbind\b.*\b(part|component)\b/] },
   { toolId: 'line.fix', any: [/\bfix\b/, /\b(problem|error|finding|warning)s?\b/] },
   { toolId: 'line.moveFile', any: [/\bmove\b/] },
   { toolId: 'line.createLayout', any: [/\blayout\b/] },
@@ -33,6 +35,8 @@ export const TOOL_WORDS = Object.freeze({
   'line.promote': 'Promote a feature component to the library',
   'line.setPageProp': 'Change one prop of a page',
   'line.setFragment': 'Edit one piece of code on a page',
+  'line.bindInteraction': 'Bind an action on a page to the API',
+  'line.bindPart': 'Bind a part of a page to a library component',
   'line.fix': 'Apply the recommended fix for a problem',
   'line.moveFile': 'Move a file',
   'line.createLayout': 'Create the layout',
@@ -85,7 +89,7 @@ export function readArgs(toolId, request, project) {
     const own = items.filter((i) => i.kind === 'components');
     const name = findName(request, own.map((i) => i.name));
     if (name) out.featureItemId = own.find((i) => i.name === name).id;
-  } else if (toolId === 'line.setPageProp' || toolId === 'line.setFragment') {
+  } else if (['line.setPageProp', 'line.setFragment', 'line.bindPart', 'line.bindInteraction'].includes(toolId)) {
     const pages = items.filter((i) => i.kind === 'pages');
     const pageName = findName(request, pages.map((i) => i.name));
     const page = pageName ? pages.find((i) => i.name === pageName) : feature ? pages.find((i) => i.feature === feature) : null;
@@ -110,7 +114,7 @@ function targetFor(controlId, args) {
     case 'components.baseOn': case 'components.baseOnFeature': case 'components.baseOnName': case 'components.baseOnCreate': return nameOf(args.libraryId);
     case 'components.promote': case 'components.promoteConfirm': return nameOf(args.featureItemId);
     case 'pages.feature': case 'features.card': return args.feature ?? null;
-    case 'pages.page': case 'pages.codeToggle': case 'pages.fragmentSave': return args.page ?? null;
+    case 'pages.page': case 'pages.codeToggle': case 'pages.fragmentSave': case 'pages.bindPart': case 'pages.bindInteraction': return args.page ?? null;
     case 'pages.propInput': case 'pages.propSave': return args.prop ?? null;
     case 'plan.approve': case 'plan.retry': case 'plan.leave': case 'plan.fix': return args.n === undefined ? null : String(args.n);
     default: return null;

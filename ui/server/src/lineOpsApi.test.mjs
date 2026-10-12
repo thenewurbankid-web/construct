@@ -12,7 +12,7 @@ import { makeTempDir } from '../../../test-utils/tmpdir.mjs';
 import { createLineOpsRouter } from './lineOpsApi.mjs';
 import { createLinePlanRouter } from './linePlanApi.mjs';
 import { createLinePlanService, loadPlanApi } from '../../../packages/engine/line/planService.mjs';
-import { assertApplyResult, assertFragmentList, assertLineWorkspace } from '../../../packages/engine/line/contract.mjs';
+import { assertApplyResult, assertFragmentList, assertLineWorkspace, assertLinePageBinding } from '../../../packages/engine/line/contract.mjs';
 import { lineFindings } from '../../../packages/engine/line/model.mjs';
 
 const SAMPLE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../examples/line-sample');
@@ -207,4 +207,26 @@ test('fragments (cx1): the list comes back, an edit lands only in its range, and
   const outside = await fetch(`${base}/fragments?file=${encodeURIComponent('../outside.tsx')}`);
   assert.equal(outside.status, 400);
   assert.equal((await outside.json()).code, 'UNKNOWN_ITEM');
+});
+
+test('page binding (cu5): both bindings come back; binding "More" to GET /api/orders is a plan step that lands only after Approve', async (t) => {
+  const { dir, base, post, change } = await serve(t);
+  const file = 'features/orders/pages/OrdersPage.tsx';
+  const b = await (await fetch(`${base}/page-binding?file=${encodeURIComponent(file)}`)).json();
+  assertLinePageBinding(b);
+  assert.equal(b.parts[0].base.libraryId, 'pages/ListPage');
+  const fix = b.findings[0].fixes[0];
+  assert.equal(fix.sentence, 'Bind "More" to GET /api/orders (reload the list).');
+  const before = read(dir, file);
+  const added = await (await post('/plan/step', fix.step)).json();
+  assert.match(added.steps.find((s) => s.id === added.stepId).sentence, /Binds "More" on ListPage in the page OrdersPage to GET \/api\/orders/);
+  assert.equal(read(dir, file), before, 'nothing written before Approve');
+  const ran = await change('line.bindInteraction', { ...fix.step.args, contentHash: b.contentHash });
+  assert.equal(ran.apply.ok, true, ran.apply.sentence);
+  assert.match(read(dir, file), /data-action="reload"/);
+  const after = await (await fetch(`${base}/page-binding?file=${encodeURIComponent(file)}`)).json();
+  assert.deepEqual([after.interactions[0].resolution, after.interactions[0].endpoint], ['api', 'GET /api/orders']);
+  const unknown = await fetch(`${base}/page-binding?file=${encodeURIComponent('../outside.tsx')}`);
+  assert.equal(unknown.status, 400);
+  assert.equal((await unknown.json()).code, 'UNKNOWN_ITEM');
 });

@@ -6,6 +6,7 @@ import { LineOpError } from './contract.mjs';
 import { groupItems, summarySentences, parseSpec, coverSpec, testTitles } from './featureText.mjs';
 import { mockFragmentsOf, mockHash } from './mockFragments.mjs';
 import { createMockWorkflows } from './mockWorkflows.mjs';
+import { createMockPageBinding } from './mockPageBinding.mjs';
 
 const LIB = 'library';
 const FEAT = 'features';
@@ -138,6 +139,7 @@ export function createMockLineOps({ files: initial = MOCK_FILES } = {}) {
     readLineProject,
     readLineFeature,
     ...workflowOps,
+    ...createMockPageBinding({ files }), // cu5: a page's two bindings and the two binding plans
     planBaseOn(_root, { libraryId, feature, name }) {
       const lib = /** @type {import('./contract.mjs').LibraryItem|undefined} */ (readLineProject().library.find((l) => l.id === libraryId));
       if (!lib) throw new LineOpError(`There is no library item "${libraryId}"; pick one from the library.`, 'UNKNOWN_ITEM');

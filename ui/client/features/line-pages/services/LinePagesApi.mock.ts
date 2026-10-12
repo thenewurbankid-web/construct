@@ -11,4 +11,7 @@ export const mockLinePagesApi: LinePagesApi = {
   setPageProp: async (req) => mockWrite(() => ops.applyChange(MOCK_ROOT, ops.planSetProp(MOCK_ROOT, req))),
   getFragments: async (file) => mockWrite(() => ops.listFragments(MOCK_ROOT, file)),
   setFragment: async (req) => mockWrite(() => ops.applyChange(MOCK_ROOT, ops.planSetFragment(MOCK_ROOT, req))),
+  getPageBinding: async (file) => mockWrite(() => ops.readPageBinding(MOCK_ROOT, file)),
+  bindPart: async (req) => mockWrite(() => ops.applyChange(MOCK_ROOT, ops.planBindPart(MOCK_ROOT, req))),
+  bindInteraction: async (req) => mockWrite(() => ops.applyChange(MOCK_ROOT, ops.planBindInteraction(MOCK_ROOT, req))),
 };
