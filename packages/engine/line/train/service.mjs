@@ -431,6 +431,8 @@ export function evaluateCase(c, o = {}) {
     recall: c.gold.routes.filter(hits).length / c.gold.routes.length, precision: shown ? right / shown : 0, preferred: preferred ? 1 : 0,
     noRepair: gp.outcome === 'change' ? (rec !== null && rec.r.status === 'ok' && isGold(rec) ? 1 : 0) : (preferred ? 1 : 0),
     via: rec?.r.via ?? (asked ? 'ask' : 'none'),
+    // cs2: the words the drafter could not read at all (a question with no suggestion), for the rule factory's labelling.
+    unread: d.questions.filter((q) => q.via === 'ask').map((q) => q.word).filter((w) => typeof w === 'string' && w),
   };
 }
 
