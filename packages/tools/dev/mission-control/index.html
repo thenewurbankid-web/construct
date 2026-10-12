@@ -1,0 +1,569 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mission Control</title>
+<style>
+:root {
+  --bg: #07090c; --panel: #0d1117; --panel2: #111821; --line: #1f2a36; --line2: #2a3949;
+  --fg: #c9d6e3; --dim: #6c7f93; --faint: #3b4a5a;
+  --green: #3ddc84; --green-d: #16502f; --amber: #ffb02e; --amber-d: #5a3d06; --red: #ff4d4d; --red-d: #5c1414;
+  --blue: #4db8ff; --blue-d: #0e3a5a; --violet: #b58cff;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  --sans: -apple-system, "Segoe UI", system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--fg); font: 12px/1.35 var(--sans); }
+body { min-height: 100vh; }
+button, input, select { font: inherit; color: inherit; }
+.mono, td, .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+header { display: flex; align-items: center; gap: 14px; padding: 6px 12px; border-bottom: 1px solid var(--line); background: linear-gradient(#0b1018, #07090c); position: sticky; top: 0; z-index: 5; flex-wrap: wrap; }
+header h1 { margin: 0; font: 600 13px/1 var(--mono); letter-spacing: .22em; color: #e8f1fa; }
+header h1 span { color: var(--green); }
+.clock { font: 600 18px/1 var(--mono); color: #e8f1fa; letter-spacing: .05em; }
+.clock small { font-size: 10px; color: var(--dim); margin-left: 4px; letter-spacing: .1em; }
+.lights { display: flex; gap: 10px; flex-wrap: wrap; }
+.light { display: inline-flex; align-items: center; gap: 5px; font: 10px/1 var(--mono); letter-spacing: .08em; color: var(--dim); text-transform: uppercase; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--faint); box-shadow: 0 0 0 1px #000 inset; flex: none; }
+.dot.g { background: var(--green); box-shadow: 0 0 6px var(--green); }
+.dot.a { background: var(--amber); box-shadow: 0 0 6px var(--amber); }
+.dot.r { background: var(--red); box-shadow: 0 0 8px var(--red); }
+.dot.b { background: var(--blue); box-shadow: 0 0 6px var(--blue); }
+.spacer { flex: 1; }
+select, input[type=search], input[type=text] { background: var(--panel2); border: 1px solid var(--line2); border-radius: 3px; padding: 3px 6px; }
+select { max-width: 360px; }
+main { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 8px; padding: 8px; }
+@media (max-width: 1100px) { main { grid-template-columns: minmax(0, 1fr); } }
+.col { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+section.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 4px; min-width: 0; display: flex; flex-direction: column; }
+.ph { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border-bottom: 1px solid var(--line); font: 600 10px/1.2 var(--mono); letter-spacing: .16em; color: #9fb3c8; text-transform: uppercase; flex-wrap: wrap; }
+.ph .sub { color: var(--dim); font-weight: 400; letter-spacing: .04em; text-transform: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.pb { padding: 6px 8px; min-width: 0; }
+.muted { color: var(--dim); }
+.degraded { color: var(--amber); font: 11px var(--mono); padding: 6px 8px; }
+/* counters */
+.counters { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 4px; }
+.ctr { background: var(--panel2); border: 1px solid var(--line); border-radius: 3px; padding: 4px 6px; min-width: 0; }
+.ctr .k { font: 9px/1.2 var(--mono); letter-spacing: .12em; color: var(--dim); text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ctr .v { font: 600 16px/1.2 var(--mono); color: #e8f1fa; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ctr .v small { font-size: 11px; color: var(--dim); font-weight: 400; }
+.ctr.g .v { color: var(--green); } .ctr.a .v { color: var(--amber); } .ctr.r .v { color: var(--red); }
+.bar { height: 3px; background: var(--line); border-radius: 2px; margin-top: 3px; overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--blue); }
+.codes { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.code { font: 11px/1.4 var(--mono); padding: 1px 6px; border-radius: 3px; background: var(--amber-d); color: var(--amber); border: 1px solid #7a560d; cursor: pointer; }
+.code.hot { background: var(--red-d); color: #ffd0d0; border-color: var(--red); font-weight: 700; }
+.code.on { outline: 1px solid #fff; }
+/* stuck banner */
+.banner { margin: 0 0 6px; padding: 5px 10px; border-radius: 3px; font: 700 12px/1.3 var(--mono); letter-spacing: .06em; border: 1px solid var(--line2); background: var(--panel2); color: var(--dim); }
+.banner.live { border-color: var(--green); background: #0c2a1a; color: #c8ffe0; }
+.banner.live::before { content: "\25CF  "; color: var(--green); }
+.banner.replay { border-color: var(--blue); background: #0b2236; color: #cfe9ff; }
+.banner.fixture { border-color: var(--amber); background: repeating-linear-gradient(-45deg, #3a2a05, #3a2a05 10px, #2a1e03 10px, #2a1e03 20px); color: #ffe6b0; font-size: 13px; }
+.stepper { display: flex; gap: 6px; align-items: center; margin-top: 6px; font: 11px var(--mono); min-width: 0; }
+.stepper input[type=range] { flex: 1; min-width: 80px; accent-color: var(--blue); }
+.stepper .btn { padding: 1px 8px; }
+.stepper #tLabel { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 0 0 45%; }
+tr.row.turnhl td { background: #16304a; }
+.tl i.cur { outline: 2px solid #fff; outline-offset: -1px; }
+.stuck { display: none; margin: 6px 0 0; padding: 6px 10px; border: 1px solid var(--red); background: repeating-linear-gradient(-45deg, #3a0b0b, #3a0b0b 8px, #2a0707 8px, #2a0707 16px); color: #ffe1e1; font: 600 12px/1.4 var(--mono); border-radius: 3px; cursor: pointer; }
+.stuck.show { display: block; animation: pulse 1.2s ease-in-out infinite; }
+.stuck .s2 { font-weight: 400; color: #ffb3b3; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@keyframes pulse { 50% { box-shadow: 0 0 14px var(--red); } }
+/* timeline */
+.tl { display: flex; gap: 1px; height: 18px; margin-top: 6px; align-items: stretch; overflow: hidden; }
+.tl i { flex: 1 1 0; min-width: 2px; max-width: 14px; background: var(--faint); cursor: pointer; }
+.tl i.landed { background: var(--green); } .tl i.ok { background: #2b6b8f; } .tl i.refused { background: var(--amber); }
+.tl i.error { background: var(--red); } .tl i.not-landed { background: #ff7a45; } .tl i.idle { background: #39434f; } .tl i.finish { background: var(--violet); }
+.tl i:hover { outline: 1px solid #fff; }
+.legend { display: flex; gap: 10px; flex-wrap: wrap; font: 10px var(--mono); color: var(--dim); margin-top: 3px; }
+.legend b { display: inline-block; width: 8px; height: 8px; margin-right: 3px; vertical-align: -1px; }
+/* filters */
+.filters { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+.filters label { display: inline-flex; gap: 4px; align-items: center; color: var(--dim); font: 10px var(--mono); text-transform: uppercase; letter-spacing: .08em; }
+.filters input[type=search] { width: 220px; }
+.btn { background: var(--panel2); border: 1px solid var(--line2); border-radius: 3px; padding: 3px 8px; cursor: pointer; }
+.btn.on { background: var(--blue-d); border-color: var(--blue); color: #dff2ff; }
+/* log table */
+.tablewrap { overflow: auto; max-height: 56vh; min-height: 200px; }
+table { border-collapse: collapse; width: 100%; table-layout: fixed; }
+th { position: sticky; top: 0; background: #0a0e14; color: var(--dim); font: 600 10px/1.2 var(--mono); letter-spacing: .1em; text-transform: uppercase; text-align: left; padding: 4px 6px; border-bottom: 1px solid var(--line2); z-index: 1; }
+td { padding: 2px 6px; border-bottom: 1px solid #121a23; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 11.5px; }
+tr.row { cursor: pointer; }
+tr.row:hover td { background: #121b26; }
+tr.row.sel td { background: #13263a; }
+tr.row.flash td { animation: flash 1.6s ease-out; }
+@keyframes flash { from { background: #1f4a30; } to { background: transparent; } }
+td.st { font-weight: 700; }
+tr.landed td.st { color: var(--green); } tr.refused td.st { color: var(--amber); } tr.error td.st { color: var(--red); }
+tr.not-landed td.st { color: #ff7a45; } tr.ok td.st { color: #6fb8e0; } tr.idle td.st { color: var(--dim); } tr.finish td.st { color: var(--violet); }
+tr.refused td:first-child { box-shadow: 2px 0 0 var(--amber) inset; } tr.error td:first-child, tr.loop td:first-child { box-shadow: 3px 0 0 var(--red) inset; }
+tr.landed td:first-child { box-shadow: 2px 0 0 var(--green) inset; }
+tr.pending td { color: #8fa6bd; font-style: italic; }
+td.r { text-align: right; }
+td .fix { color: var(--blue); font-weight: 700; }
+tr.detail td { white-space: normal; background: #0a0f15; padding: 0; cursor: default; }
+.det { padding: 8px 10px; display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 8px; }
+.det h4 { margin: 0 0 3px; font: 600 10px var(--mono); letter-spacing: .14em; color: #9fb3c8; text-transform: uppercase; }
+.det pre { margin: 0; background: #05080b; border: 1px solid var(--line); border-radius: 3px; padding: 6px 8px; max-height: 340px; overflow: auto; white-space: pre-wrap; word-break: break-word; font: 11px/1.45 var(--mono); color: #cfe0ef; }
+.det .wide { grid-column: 1 / -1; }
+.det .tools { grid-column: 1 / -1; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+mark { background: #6b5500; color: #fff3c2; }
+.jk { color: #7fc8ff; } .js { color: #b8e08a; } .jn { color: #ffb86b; } .jb { color: #d79bff; }
+/* console */
+.console { background: #030507; font: 11px/1.4 var(--mono); max-height: 22vh; min-height: 60px; overflow: auto; padding: 4px 8px; white-space: pre-wrap; word-break: break-all; color: #9fe0b0; }
+.console .f { color: var(--faint); }
+.console .w { color: var(--amber); }
+/* side panels */
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; font: 11px var(--mono); }
+.kv .k { color: var(--dim); }
+.meter { height: 8px; background: var(--line); border-radius: 2px; overflow: hidden; display: flex; margin: 4px 0; }
+.meter i { display: block; height: 100%; }
+.list { font: 11px/1.4 var(--mono); max-height: 240px; overflow: auto; }
+.list .it { padding: 2px 0; border-bottom: 1px solid #121a23; display: flex; gap: 6px; min-width: 0; }
+.list .it > * { min-width: 0; }
+.list .it .t { color: var(--dim); flex: none; }
+.list .it .x { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.list .it.fresh { background: #0f2418; }
+.tag { font: 10px/1.3 var(--mono); padding: 0 4px; border-radius: 2px; background: var(--blue-d); color: #bfe6ff; flex: none; }
+.tag.og { background: #2c1f4d; color: #d9c7ff; }
+.wt { font: 11px var(--mono); max-height: 300px; overflow: auto; }
+.wt .it { display: grid; grid-template-columns: 10px minmax(0, 1fr) 46px 34px; gap: 6px; padding: 2px 0; border-bottom: 1px solid #121a23; align-items: center; }
+.wt .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wt .nm small { color: var(--dim); }
+.wt .it.hot .nm { color: #e8fff0; }
+.wt .it.self .nm::after { content: " (this)"; color: var(--blue); }
+.events { font: 11px/1.4 var(--mono); max-height: 46vh; overflow: auto; }
+.events .it { display: grid; grid-template-columns: 58px 64px minmax(0, 1fr); gap: 6px; padding: 1px 0; border-bottom: 1px solid #10171f; }
+.events .src { color: var(--dim); text-transform: uppercase; font-size: 10px; }
+.events .good .x { color: var(--green); } .events .warn .x { color: var(--amber); } .events .bad .x { color: var(--red); font-weight: 700; } .events .error .x { color: var(--red); }
+.events .x { overflow-wrap: anywhere; }
+.events .new { background: #132132; }
+.empty { color: var(--dim); font: 11px var(--mono); padding: 10px 8px; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>CONSTRUCT <span>//</span> MISSION CONTROL</h1>
+  <div class="clock mono" id="clock">--:--:--<small>UTC</small></div>
+  <div class="lights">
+    <span class="light"><i class="dot" id="l-link"></i>LINK</span>
+    <span class="light"><i class="dot" id="l-bench"></i>BENCH</span>
+    <span class="light"><i class="dot" id="l-loop"></i>LOOP</span>
+    <span class="light"><i class="dot" id="l-heavy"></i>HEAVY</span>
+    <span class="light"><i class="dot" id="l-ollama"></i>OLLAMA</span>
+    <span class="light"><i class="dot" id="l-mem"></i>MEM</span>
+  </div>
+  <div class="spacer"></div>
+  <label class="muted mono" style="font-size:10px">RUN
+    <select id="runSel" aria-label="Bench run"><option value="">auto (newest)</option></select>
+  </label>
+</header>
+<main>
+  <div class="col">
+    <section class="panel" aria-label="Bench telemetry">
+      <div class="ph">Bench telemetry <span class="sub" id="runName">no run</span></div>
+      <div class="pb">
+        <div class="banner" id="banner" role="status">NO RUN</div>
+        <div class="counters" id="counters"></div>
+        <div class="codes" id="codes"></div>
+        <div class="stuck" id="stuck" role="alert" title="Click to jump to the repeating call"></div>
+        <div class="tl" id="timeline" aria-label="Turn timeline"></div>
+        <div class="legend"><span><b style="background:var(--green)"></b>landed</span><span><b style="background:#2b6b8f"></b>ok</span><span><b style="background:var(--amber)"></b>refused</span><span><b style="background:#ff7a45"></b>not landed</span><span><b style="background:var(--red)"></b>error</span><span><b style="background:#39434f"></b>no call</span><span><b style="background:var(--violet)"></b>finish</span></div>
+        <div class="stepper" aria-label="Step through turns">
+          <button class="btn" id="tPrev" title="Previous turn (Left arrow)">&#9664; prev</button>
+          <button class="btn" id="tNext" title="Next turn (Right arrow)">next &#9654;</button>
+          <input type="range" id="tSlider" min="1" max="1" value="1" aria-label="Turn">
+          <span id="tLabel" class="muted">turn &mdash;</span>
+        </div>
+      </div>
+      <div class="filters">
+        <label>Tool <select id="fTool"><option value="">all</option></select></label>
+        <label>Status <select id="fStatus"><option value="">all</option><option>landed</option><option>not-landed</option><option>refused</option><option>error</option><option>ok</option><option>idle</option><option>finish</option></select></label>
+        <label>Code <select id="fCode"><option value="">all</option></select></label>
+        <input type="search" id="fText" placeholder="search args, sentence, tool, code…" aria-label="Search calls">
+        <button class="btn on" id="follow" aria-pressed="true">follow tail</button>
+        <span class="muted mono" id="shown"></span>
+      </div>
+      <div class="tablewrap" id="tw">
+        <table>
+          <colgroup><col style="width:74px"><col style="width:44px"><col style="width:156px"><col><col style="width:168px"><col style="width:58px"><col style="width:58px"><col style="width:84px"></colgroup>
+          <thead><tr><th>time</th><th>turn</th><th>tool</th><th>args</th><th>result</th><th>tok in</th><th>tok out</th><th>ms call/llm</th></tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+        <div class="empty" id="noRows">Waiting for a run… (bench/ecommerce/runs/*/logs/calls.jsonl in the main checkout or any worktree)</div>
+      </div>
+      <div class="ph">Builder console <span class="sub" id="consoleFiles">logs/*.log</span></div>
+      <div class="console" id="console" aria-live="off"></div>
+    </section>
+  </div>
+  <div class="col">
+    <section class="panel" aria-label="Machine">
+      <div class="ph">Machine <span class="sub" id="machSub"></span></div>
+      <div class="pb" id="machine"><div class="empty">no data yet</div></div>
+    </section>
+    <section class="panel" aria-label="Event log">
+      <div class="ph">Event log <span class="sub">newest first</span></div>
+      <div class="pb events" id="events"></div>
+    </section>
+    <section class="panel" aria-label="Commits">
+      <div class="ph">Commits <span class="sub" id="commitSub"></span></div>
+      <div class="pb list" id="commits"><div class="empty">no data yet</div></div>
+    </section>
+    <section class="panel" aria-label="Agents and worktrees">
+      <div class="ph">Agents &amp; worktrees <span class="sub" id="wtSub"></span> <span class="spacer"></span><button class="btn" id="wtAll" style="font-size:10px;padding:1px 6px">show all</button></div>
+      <div class="pb wt" id="worktrees"><div class="empty">no data yet</div></div>
+    </section>
+  </div>
+</main>
+<script>
+'use strict';
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const pad = (n) => String(n).padStart(2, '0');
+const hms = (ms) => { const d = new Date(ms); return `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`; };
+const ago = (ms) => { if (!ms) return '—'; const s = Math.max(0, (Date.now() - ms) / 1000); return s < 60 ? `${Math.round(s)}s` : s < 3600 ? `${Math.round(s / 60)}m` : s < 86400 ? `${Math.round(s / 3600)}h` : `${Math.round(s / 86400)}d`; };
+const dur = (ms) => { if (ms == null) return '—'; const s = Math.floor(ms / 1000); return `${Math.floor(s / 60)}:${pad(s % 60)}`; };
+const fmtN = (n) => n == null ? '—' : n >= 1e6 ? `${(n / 1e6).toFixed(2)}M` : n >= 1e4 ? `${(n / 1e3).toFixed(1)}k` : String(n);
+const gb = (b) => b == null ? '—' : `${(b / 1073741824).toFixed(1)}G`;
+const light = (id, c) => { $(id).className = `dot ${c || ''}`; };
+const HOT = new Set(['UNKNOWN_ITEM']);
+
+const params = new URLSearchParams(location.search);
+let pinned = params.get('run');
+const S = { run: null, rows: new Map(), order: [], summary: null, selected: null, follow: true, wtAll: false, worktrees: [], self: null, codeFilter: '' };
+
+// ------------------------------------------------------------ clock
+setInterval(() => { const n = new Date(); $('clock').innerHTML = `${pad(n.getUTCHours())}:${pad(n.getUTCMinutes())}:${pad(n.getUTCSeconds())}<small>UTC</small>`; }, 250);
+
+// ------------------------------------------------------------ SSE
+let es;
+let lastMsg = 0;
+function connect() {
+  if (es) es.close();
+  es = new EventSource(`/events${pinned ? `?run=${encodeURIComponent(pinned)}` : ''}`);
+  es.onopen = () => light('l-link', 'g');
+  es.onerror = () => light('l-link', 'r');
+  const on = (t, f) => es.addEventListener(t, (e) => { lastMsg = Date.now(); try { f(JSON.parse(e.data)); } catch (err) { console.error(t, err); } });
+  on('hello', (h) => { S.self = h.self; if (h.pinned && String(h.pinned).startsWith('refused')) addEvent({ at: new Date().toISOString(), source: 'mc', level: 'bad', text: `run not allowed: ${h.pinned}` }); });
+  on('tick', () => {});
+  on('events-backlog', (list) => { $('events').innerHTML = ''; list.forEach((e) => addEvent(e, true)); });
+  on('event', (e) => addEvent(e));
+  on('runs', renderRuns);
+  on('bench-reset', (m) => { S.run = m.run; S.stepTurn = null; S.rows.clear(); S.order = []; S.selected = null; $('rows').innerHTML = ''; $('console').innerHTML = ''; $('runName').textContent = m.run ? m.run.split('/').slice(-4).join('/') : 'no run'; $('runName').title = m.run || ''; light('l-bench', m.run ? 'b' : ''); });
+  on('bench-rows', (m) => { const first = S.rows.size === 0; for (const id of m.removed || []) S.rows.delete(id); for (const r of m.upserts) { S.rows.set(r.id, r); } S.flash = first ? null : new Set(m.upserts.map((r) => r.id)); scheduleTable(); });
+  on('bench-summary', (m) => { S.summary = m; renderSummary(); });
+  on('bench-console', (m) => appendConsole(m.lines));
+  on('machine', renderMachine);
+  on('commits', renderCommits);
+  on('worktrees', (m) => { S.worktrees = m.items || []; S.wtError = m.error; renderWorktrees(); });
+}
+setInterval(() => { if (Date.now() - lastMsg > 4000) light('l-link', 'a'); }, 1000);
+
+// ------------------------------------------------------------ runs picker
+function renderRuns(m) {
+  const sel = $('runSel');
+  const cur = pinned || '';
+  sel.innerHTML = `<option value="">auto (newest)${m.auto ? ` — ${esc(m.auto.split('/').slice(-1)[0])}` : ''}</option>` +
+    m.runs.map((r) => `<option value="${esc(r.path)}"${r.path === cur ? ' selected' : ''}>${r.real ? '' : 'FIXTURE · '}${esc(r.name)} · ${esc(r.where)} · ${ago(r.growMtime || r.mtime)} ago</option>`).join('');
+  if (cur && !m.runs.some((r) => r.path === cur)) sel.insertAdjacentHTML('beforeend', `<option value="${esc(cur)}" selected>${esc(cur)}</option>`);
+}
+$('runSel').addEventListener('change', (e) => {
+  pinned = e.target.value || null;
+  const u = new URL(location.href);
+  if (pinned) u.searchParams.set('run', pinned); else u.searchParams.delete('run');
+  history.replaceState(null, '', u);
+  connect();
+});
+
+// ------------------------------------------------------------ summary
+function ctr(k, v, cls = '', bar = null) {
+  return `<div class="ctr ${cls}"><div class="k">${esc(k)}</div><div class="v">${v}</div>${bar != null ? `<div class="bar"><i style="width:${Math.min(100, Math.max(0, bar * 100)).toFixed(1)}%"></i></div>` : ''}</div>`;
+}
+function renderSummary() {
+  const s = S.summary; if (!s) return;
+  const c = s.counters;
+  const refusalTotal = Object.values(c.refusals).reduce((a, b) => a + b, 0);
+  const idleMs = c.lastActivity ? Date.now() - Date.parse(c.lastActivity) : null;
+  const bn = s.banner || { kind: 'none', text: 'NO RUN' };
+  $('banner').className = `banner ${bn.kind}`;
+  $('banner').textContent = bn.text;
+  // A run that went quiet without an end record (killed, crashed): elapsed stops at its last activity.
+  const el = !c.finished && idleMs != null && idleMs > 120000 && c.elapsedMs != null ? c.elapsedMs - idleMs : c.elapsedMs;
+  $('counters').innerHTML = [
+    ctr('turn', c.turn == null ? `${c.calls} <small>calls</small>` : `${c.turn}<small>/${c.maxTurns}</small>`, '', c.turn == null ? null : c.turn / c.maxTurns),
+    ctr('elapsed', `${dur(el)}<small>/${c.maxMinutes}m</small>`, el > c.maxMinutes * 60000 * 0.9 ? 'a' : '', el == null ? null : el / (c.maxMinutes * 60000)),
+    ctr('status', bn.kind === 'live' ? 'LIVE' : bn.kind === 'fixture' ? 'FIXTURE' : c.finished ? `FINISHED <small>${esc(String(c.stop || '').slice(0, 24))}</small>` : bn.kind === 'replay' ? `REPLAY <small>quiet ${ago(Date.parse(c.lastActivity))}</small>` : '—', bn.kind === 'live' ? 'g' : bn.kind === 'fixture' ? 'a' : ''),
+    ctr('steps added', c.added, c.added ? 'g' : ''),
+    ctr('landed', `${c.landed}<small>${c.notLanded ? ` +${c.notLanded} not` : ''}</small>`, c.landed ? 'g' : ''),
+    ctr('refusals', refusalTotal, refusalTotal ? 'a' : ''),
+    ctr('typed fixes', `${c.fixes}<small>${c.leaveAsIs ? ` +${c.leaveAsIs} leave` : ''}</small>`),
+    ctr('validate/tsc err', c.validate ? `${c.validate.errors}<small>${c.validate.warnings != null ? ` ${c.validate.warnings}w` : ''}</small>` : `—<small>${c.tscRefusals ? ` ${c.tscRefusals} tsc refusals` : ''}</small>`, c.validate?.errors ? 'a' : ''),
+    ctr('tokens in', fmtN(c.tokIn)),
+    ctr('tokens out', fmtN(c.tokOut)),
+    ctr('model', esc(c.model || c.builder || '—')),
+    ctr('errors', c.errors, c.errors ? 'r' : ''),
+  ].join('');
+  const codes = Object.entries(c.refusals).sort((a, b) => b[1] - a[1]);
+  $('codes').innerHTML = codes.map(([k, n]) => `<span class="code${HOT.has(k) || n >= 20 ? ' hot' : ''}${S.codeFilter === k ? ' on' : ''}" data-code="${esc(k)}" title="filter to ${esc(k)}">${esc(k)} ×${n}</span>`).join('');
+  const L = s.loop;
+  const st = $('stuck');
+  if (L.current) {
+    const r = L.current.sample || {};
+    st.className = 'stuck show';
+    st.dataset.row = L.current.lastRow || '';
+    st.innerHTML = `${c.finished ? 'ENDED IN LOOP' : 'STUCK'}: ${esc(L.current.tool)} → ${esc(L.current.code)} ×${L.current.count} in a row<span class="s2">${esc(r.args || '')} — ${esc(r.sentence || '')}</span>`;
+    light('l-loop', 'r');
+  } else {
+    st.className = 'stuck';
+    light('l-loop', L.longest && L.longest.count >= 5 ? 'a' : S.run ? 'g' : '');
+  }
+  light('l-bench', !S.run ? '' : bn.kind === 'live' ? 'g' : bn.kind === 'fixture' ? 'a' : 'b');
+  const tl = s.timeline;
+  const sl = $('tSlider');
+  sl.min = String(tl.length ? tl[0].turn : 1); sl.max = String(tl.length ? tl[tl.length - 1].turn : 1);
+  if (S.stepTurn == null) sl.value = sl.max;
+  // Turns compress into the strip width; each cell is a turn (or a call on runs without turns).
+  $('timeline').innerHTML = tl.map((t) => `<i class="${t.status}${t.turn === S.stepTurn ? ' cur' : ''}" data-turn="${t.turn}" title="turn ${t.turn}: ${t.status}"></i>`).join('');
+  fillSelect('fCode', Object.keys(c.refusals).sort());
+}
+$('codes').addEventListener('click', (e) => { const k = e.target.dataset?.code; if (!k) return; S.codeFilter = S.codeFilter === k ? '' : k; $('fCode').value = S.codeFilter; renderSummary(); scheduleTable(); });
+$('stuck').addEventListener('click', () => { const id = $('stuck').dataset.row; if (id) { setFollow(false); select(id, true); } });
+$('timeline').addEventListener('click', (e) => {
+  const t = Number(e.target.dataset?.turn); if (!t) return;
+  gotoTurn(t);
+});
+
+// ------------------------------------------------------------ step-through (replays): one turn at a time
+function turnsList() { return (S.summary?.timeline || []).map((t) => t.turn); }
+function gotoTurn(t) {
+  const list = turnsList(); if (!list.length) return;
+  const k = list.includes(t) ? t : list.reduce((a, b) => (Math.abs(b - t) < Math.abs(a - t) ? b : a), list[0]);
+  S.stepTurn = k; setFollow(false);
+  $('tSlider').value = String(k);
+  const rows = S.order.filter((r) => (r.turn ?? r.seq) === k);
+  $('tLabel').textContent = `turn ${k}/${list[list.length - 1]}${rows.length ? ` · ${rows.map((r) => `${r.tool} ${statusText(r)}`).join(', ')}` : ''}`;
+  renderTable(); renderSummary();
+  const tr = document.querySelector('tr.row.turnhl');
+  if (tr) tr.scrollIntoView({ block: 'center' });
+}
+function stepTurn(d) {
+  const list = turnsList(); if (!list.length) return;
+  const i = S.stepTurn == null ? (d > 0 ? -1 : list.length) : list.indexOf(S.stepTurn);
+  gotoTurn(list[Math.max(0, Math.min(list.length - 1, i + d))]);
+}
+$('tPrev').addEventListener('click', () => stepTurn(-1));
+$('tNext').addEventListener('click', () => stepTurn(1));
+$('tSlider').addEventListener('input', (e) => gotoTurn(Number(e.target.value)));
+document.addEventListener('keydown', (e) => {
+  if (e.target.closest && e.target.closest('input, select, textarea')) return;
+  if (e.key === 'ArrowLeft') { stepTurn(-1); e.preventDefault(); } else if (e.key === 'ArrowRight') { stepTurn(1); e.preventDefault(); }
+});
+
+function fillSelect(id, values) {
+  const sel = $(id); const cur = sel.value;
+  const have = [...sel.options].slice(1).map((o) => o.value).join('|');
+  if (have === values.join('|')) return;
+  sel.innerHTML = '<option value="">all</option>' + values.map((v) => `<option${v === cur ? ' selected' : ''}>${esc(v)}</option>`).join('');
+}
+
+// ------------------------------------------------------------ table
+let tableTimer = null;
+function scheduleTable() { if (!tableTimer) tableTimer = setTimeout(() => { tableTimer = null; renderTable(); }, 120); }
+function sortRows() {
+  S.order = [...S.rows.values()].sort((a, b) => {
+    const ka = a.idx != null ? a.idx : null; const kb = b.idx != null ? b.idx : null;
+    const ta = a.turn ?? a.seq ?? 1e9; const tb = b.turn ?? b.seq ?? 1e9;
+    if (ta !== tb) return ta - tb;
+    if (ka != null && kb != null) return ka - kb;
+    return String(a.id).localeCompare(String(b.id));
+  });
+}
+function matches(r) {
+  const t = $('fTool').value; const s = $('fStatus').value; const c = $('fCode').value || S.codeFilter; const q = $('fText').value.trim().toLowerCase();
+  if (t && r.tool !== t) return false;
+  if (s && r.status !== s) return false;
+  if (c && r.code !== c) return false;
+  if (q && !`${r.tool} ${r.args} ${r.sentence} ${r.code ?? ''} ${r.status} ${(r.rules || []).join(' ')} turn ${r.turn}`.toLowerCase().includes(q)) return false;
+  return true;
+}
+function loopIds() {
+  const L = S.summary?.loop?.current; if (!L) return new Set();
+  const a = S.order.findIndex((r) => r.id === L.fromRow); const b = S.order.findIndex((r) => r.id === L.lastRow);
+  return new Set(a >= 0 && b >= a ? S.order.slice(a, b + 1).map((r) => r.id) : []);
+}
+function statusText(r) {
+  if (r.status === 'refused') return `refused ${r.code}`;
+  if (r.status === 'error') return `error ${r.code || ''}`;
+  if (r.status === 'not-landed') return `not landed${r.rules?.length ? ` [${r.rules.join(',')}]` : ''}`;
+  if (r.status === 'landed') return 'landed';
+  if (r.status === 'idle') return 'no call';
+  return r.status;
+}
+function renderTable() {
+  sortRows();
+  fillSelect('fTool', [...new Set(S.order.map((r) => r.tool))].sort());
+  const loop = loopIds();
+  const shown = S.order.filter(matches);
+  const tb = $('rows');
+  // Keep an open detail row as is (its find box may have focus) across re-renders.
+  const keep = document.querySelector('tr.detail');
+  const html = [];
+  for (const r of shown) {
+    const pend = r.turn != null && S.summary?.counters?.turn != null && r.turn > S.summary.counters.turn;
+    const cls = `row ${r.status}${S.stepTurn != null && (r.turn ?? r.seq) === S.stepTurn ? ' turnhl' : ''}${loop.has(r.id) ? ' loop' : ''}${S.selected === r.id ? ' sel' : ''}${pend ? ' pending' : ''}${S.flash?.has(r.id) ? ' flash' : ''}`;
+    html.push(`<tr class="${cls}" data-id="${esc(r.id)}"><td>${r.at ? hms(Date.parse(r.at)) : '—'}</td><td class="r">${r.turn ?? r.seq ?? '—'}</td><td title="${esc(r.tool)}">${r.fix ? '<span class="fix" title="typed fix">⚑ </span>' : ''}${esc(r.tool)}</td><td title="${esc(r.args)}">${esc(r.args)}</td><td class="st" title="${esc(r.sentence)}">${esc(statusText(r))}</td><td class="r">${r.tokIn ?? ''}</td><td class="r">${r.tokOut ?? ''}</td><td class="r">${r.callMs ?? '—'}/${r.turnFirst ? r.modelMs ?? '—' : r.modelMs != null ? '·' : '—'}</td></tr>`);
+    if (S.selected === r.id) html.push(`<tr class="detail" data-for="${esc(r.id)}"><td colspan="8"><div class="det" id="det">loading…</div></td></tr>`);
+  }
+  tb.innerHTML = html.join('');
+  const slot = document.querySelector('tr.detail');
+  const kept = Boolean(keep && slot && keep.dataset.for === slot.dataset.for && S.detail);
+  if (kept) slot.replaceWith(keep);
+  S.flash = null;
+  $('noRows').style.display = S.order.length ? 'none' : '';
+  $('shown').textContent = `${shown.length}/${S.order.length} rows`;
+  if (S.selected && !kept) { if (S.detail && S.detail.row?.id === S.selected) renderDetail(S.detail); else loadDetail(S.selected); }
+  if (S.follow) { const w = $('tw'); w.scrollTop = w.scrollHeight; }
+}
+['fTool', 'fStatus', 'fCode'].forEach((id) => $(id).addEventListener('change', () => { if (id === 'fCode') S.codeFilter = $(id).value; scheduleTable(); renderSummary(); }));
+$('fText').addEventListener('input', scheduleTable);
+function setFollow(on) { S.follow = on; $('follow').classList.toggle('on', on); $('follow').setAttribute('aria-pressed', String(on)); }
+$('follow').addEventListener('click', () => { setFollow(!S.follow); if (S.follow) { S.stepTurn = null; $('tLabel').textContent = 'turn —'; renderTable(); renderSummary(); } });
+$('tw').addEventListener('wheel', (e) => { if (e.deltaY < 0 && S.follow) setFollow(false); }, { passive: true });
+$('rows').addEventListener('click', (e) => {
+  const tr = e.target.closest('tr.row'); if (!tr) return;
+  const id = tr.dataset.id;
+  if (S.selected === id) { S.selected = null; S.detail = null; renderTable(); return; }
+  setFollow(false); select(id, false);
+});
+function select(id, scroll) {
+  S.selected = id; S.detail = null; renderTable();
+  if (scroll) { const tr = document.querySelector(`tr.row[data-id="${CSS.escape(id)}"]`); if (tr) tr.scrollIntoView({ block: 'center' }); }
+}
+async function loadDetail(id) {
+  try {
+    const r = await fetch(`/api/row?id=${encodeURIComponent(id)}${S.run ? `&run=${encodeURIComponent(S.run)}` : ''}`);
+    const d = await r.json();
+    if (S.selected !== id) return;
+    S.detail = d; renderDetail(d);
+  } catch (e) { const el = $('det'); if (el) el.textContent = `detail failed: ${e.message}`; }
+}
+
+// Pretty JSON with syntax colour and search marks (escape first, then colour, then mark text outside tags).
+function pj(v) {
+  const s = esc(typeof v === 'string' ? v : JSON.stringify(v, null, 2));
+  return s.replace(/(&quot;(?:[^&]|&(?!quot;))*?&quot;)(\s*:)?|\b(true|false|null)\b|(-?\d+\.?\d*(?:e[+-]?\d+)?)/g, (m, str, colon, b, n) => str ? `<span class="${colon ? 'jk' : 'js'}">${str}</span>${colon || ''}` : b ? `<span class="jb">${b}</span>` : `<span class="jn">${n}</span>`);
+}
+function markHtml(html, q) {
+  if (!q) return html;
+  const re = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+  return html.replace(/(<[^>]+>)|([^<]+)/g, (m, tag, text) => tag || text.replace(re, (x) => `<mark>${x}</mark>`));
+}
+function unclip(v) { if (typeof v !== 'string') return v; try { return JSON.parse(v); } catch { return v; } }
+function renderDetail(d) {
+  const el = $('det'); if (!el) return;
+  const q = (S.detailQ ?? '').trim();
+  const blocks = [];
+  const blk = (title, v, wide) => { if (v == null || v === '') return; blocks.push(`<div class="${wide ? 'wide' : ''}"><h4>${esc(title)}</h4><pre>${markHtml(pj(v), q)}</pre></div>`); };
+  const c = d.call;
+  blk('Tool call (calls.jsonl args)', c ? { cmd: c.cmd, ...(c.cmd === 'add' ? { tool: c.args?.tool, why: c.args?.why, args: c.args?.args } : { args: c.args }), ...(c.bytes != null ? { bytes: c.bytes } : {}) } : d.outcome ? { name: d.outcome.name, args: unclip(d.outcome.args) } : null);
+  blk('Tool result', c ? { ms: c.ms, ...c.result } : d.outcome ? d.outcome : d.row.status === 'idle' ? { result: 'the model made no tool call this turn' } : null);
+  if (d.turn) {
+    blk('Model output (turns.jsonl said, clipped at 600 chars by qwen-agent)', d.turn.error ?? (d.turn.said || '(no text: the model answered with native tool calls only)'), true);
+    blk('Turn', { turn: d.turn.turn, tokensIn: d.turn.in, tokensOut: d.turn.out, wallMs: d.turn.ms, evalMs: d.turn.evalMs, promptMs: d.turn.promptMs, textCalls: d.turn.textCalls, callsThisTurn: (d.turn.calls || []).map((o) => `${o.name}${o.ok ? '' : ` (${o.code})`}`) });
+  } else if (d.row.turn == null) {
+    blocks.push('<div><h4>Model output</h4><pre>This run has no turns.jsonl (a Claude builder): the model output is not logged per call.</pre></div>');
+  } else {
+    blocks.push('<div><h4>Model output</h4><pre>Turn in progress: its turns.jsonl record arrives when the turn finishes.</pre></div>');
+  }
+  blk('Approval', d.approval);
+  blk('Prompt', S.prompt ? `source: ${S.prompt.source}\n\n${S.prompt.text}` : null, true);
+  el.innerHTML = `<div class="tools"><input type="search" id="detQ" placeholder="find in detail…" value="${esc(S.detailQ ?? '')}" aria-label="Find in detail"><button class="btn" id="detPrompt">${S.prompt ? 'hide prompt' : 'show prompt'}</button><button class="btn" id="detCopy">copy JSON</button><span class="muted mono">${esc(d.row.id)} · ${esc(d.row.at || '')}</span></div>${blocks.join('')}`;
+  const qi = $('detQ');
+  qi.addEventListener('input', () => { S.detailQ = qi.value; renderDetail(d); const n = $('detQ'); n.focus(); n.setSelectionRange(n.value.length, n.value.length); });
+  $('detPrompt').addEventListener('click', async () => {
+    if (S.prompt) { S.prompt = null; renderDetail(d); return; }
+    const r = await fetch(`/api/prompt${S.run ? `?run=${encodeURIComponent(S.run)}` : ''}`); S.prompt = await r.json(); if (!S.prompt.text) S.prompt.text = '(no prompt found)'; renderDetail(d);
+  });
+  $('detCopy').addEventListener('click', () => navigator.clipboard?.writeText(JSON.stringify(d, null, 2)));
+}
+
+// ------------------------------------------------------------ console
+function appendConsole(lines) {
+  const el = $('console');
+  const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 8;
+  const files = new Set();
+  const frag = lines.map((l) => { files.add(l.file); const w = /\(([A-Z_]{3,})\)|error|refused/i.test(l.line); return `<div class="${w ? 'w' : ''}"><span class="f">${esc(l.file)} │ </span>${esc(l.line)}</div>`; }).join('');
+  el.insertAdjacentHTML('beforeend', frag);
+  while (el.childElementCount > 2000) el.firstElementChild.remove();
+  if (files.size) $('consoleFiles').textContent = [...files].join(', ');
+  if (atBottom) el.scrollTop = el.scrollHeight;
+  if (!el.childElementCount) el.innerHTML = '';
+}
+
+// ------------------------------------------------------------ machine
+function renderMachine(m) {
+  const mem = m.mem || {};
+  const usedPct = mem.total ? mem.used / mem.total : 0;
+  light('l-mem', usedPct > 0.92 ? 'r' : usedPct > 0.8 ? 'a' : 'g');
+  const lock = m.lock || {};
+  light('l-heavy', lock.held ? 'a' : 'g');
+  const ol = m.ollama || {};
+  light('l-ollama', !ol.ok ? '' : ol.models.length ? 'g' : 'b');
+  $('machSub').textContent = `${m.platform} · ${m.cpus} cpu · load ${m.load.map((x) => x.toFixed(2)).join(' ')}`;
+  const seg = (v, col) => mem.total ? `<i style="width:${(100 * v / mem.total).toFixed(1)}%;background:${col}"></i>` : '';
+  $('machine').innerHTML = `
+    <div class="kv"><span class="k">memory</span><span>${gb(mem.used)} used / ${gb(mem.total)} · ${gb(mem.available)} avail <span class="muted">(${esc(mem.source)})</span></span></div>
+    <div class="meter">${mem.wired != null ? seg(mem.wired, '#ff7a45') + seg(mem.compressed || 0, '#b58cff') + seg(Math.max(0, mem.used - mem.wired - (mem.compressed || 0)), usedPct > 0.9 ? 'var(--red)' : 'var(--amber)') : seg(mem.used, usedPct > 0.9 ? 'var(--red)' : 'var(--amber)')}</div>
+    <div class="kv">
+      <span class="k">heavy lock</span><span>${lock.held ? `<b style="color:var(--amber)">HELD</b> pid ${lock.pid}` : '<span style="color:var(--green)">free</span>'} <span class="muted">${esc(lock.path || 'unknown')}</span></span>
+      ${lock.holder ? `<span class="k">holder</span><span class="muted" style="overflow-wrap:anywhere">${esc(lock.holder)}</span>` : ''}
+      <span class="k">ollama</span><span>${ol.ok ? (ol.models.length ? ol.models.map((x) => `<b>${esc(x.name)}</b> ${esc(x.size)} ${esc(x.processor)} <span class="muted">${esc(x.until)}</span>`).join('<br>') : '<span class="muted">no model loaded</span>') : `<span style="color:var(--amber)">unavailable</span> <span class="muted">${esc(ol.error || '')}</span>`}</span>
+    </div>
+    <div class="list" style="margin-top:6px">${m.procs.length ? m.procs.map((p) => `<div class="it"><span class="t">${p.pid}</span><span class="t">${esc(p.etime)}</span><span class="t">${p.rssMb}M</span>${p.workers ? `<span class="tag">+${p.workers}</span>` : ''}<span class="x" title="${esc(p.cmd)}">${esc(p.cmd)}</span></div>`).join('') : '<div class="empty" style="padding:2px 0">no heavy processes (tests, playwright, qwen-agent, npm ci, next dev)</div>'}</div>`;
+}
+
+// ------------------------------------------------------------ commits
+function renderCommits(m) {
+  $('commitSub').textContent = `${m.branch} + og/*`;
+  if (m.error) { $('commits').innerHTML = `<div class="degraded">git log failed: ${esc(m.error)}</div>`; return; }
+  $('commits').innerHTML = (m.items || []).slice(0, 40).map((c) => {
+    const br = c.branch || (c.refs || '').split(',').map((x) => x.trim().replace('HEAD -> ', '')).find((x) => x && !x.startsWith('tag:')) || '';
+    return `<div class="it${c.fresh ? ' fresh' : ''}"><span class="t">${ago(c.at)}</span><span class="t" style="color:#7fc8ff">${esc(c.sha.slice(0, 8))}</span>${br ? `<span class="tag${/^og\//.test(br) ? ' og' : ''}">${esc(br.replace(/~\d+$/, '').slice(0, 26))}</span>` : ''}<span class="x" title="${esc(c.subject)} — ${esc(c.author)}">${esc(c.subject)}</span></div>`;
+  }).join('') || '<div class="empty">no commits</div>';
+}
+
+// ------------------------------------------------------------ worktrees
+function renderWorktrees() {
+  const items = [...S.worktrees].sort((a, b) => (b.activityMs || b.commitAt || 0) - (a.activityMs || a.commitAt || 0));
+  const hot = items.filter((w) => w.activityMs && Date.now() - w.activityMs < 600000);
+  $('wtSub').textContent = `${items.length} total · ${hot.length} active <10m`;
+  if (S.wtError) { $('worktrees').innerHTML = `<div class="degraded">git worktree list failed: ${esc(S.wtError)}</div>`; return; }
+  const list = S.wtAll ? items : items.slice(0, Math.max(25, hot.length));
+  $('worktrees').innerHTML = list.map((w) => {
+    const isHot = w.activityMs && Date.now() - w.activityMs < 600000;
+    const dotc = w.prunable ? 'r' : isHot ? 'g' : w.dirty ? 'a' : '';
+    return `<div class="it${isHot ? ' hot' : ''}${w.path === S.self ? ' self' : ''}" title="${esc(w.path)}\n${esc(w.subject || '')}"><i class="dot ${dotc}"></i><span class="nm">${esc(w.name)} <small>${esc(w.branch || '')}</small></span><span class="num muted" title="last commit age">${w.commitAt ? ago(w.commitAt) : '…'}</span><span class="num" style="color:${w.dirty ? 'var(--amber)' : 'var(--dim)'}" title="dirty files">${w.dirty == null ? '…' : w.dirty ? `±${w.dirty}` : '0'}</span></div>`;
+  }).join('') || '<div class="empty">no worktrees</div>';
+  $('wtAll').textContent = S.wtAll ? 'top only' : 'show all';
+}
+$('wtAll').addEventListener('click', () => { S.wtAll = !S.wtAll; renderWorktrees(); });
+
+// ------------------------------------------------------------ events
+function addEvent(e, backlog = false) {
+  const el = $('events');
+  const d = Date.parse(e.at);
+  el.insertAdjacentHTML('afterbegin', `<div class="it ${esc(e.level)}${backlog ? '' : ' new'}"><span class="t muted">${hms(d)}</span><span class="src">${esc(e.source)}</span><span class="x">${esc(e.text)}</span></div>`);
+  while (el.childElementCount > 400) el.lastElementChild.remove();
+  if (!backlog) setTimeout(() => el.firstElementChild?.classList.remove('new'), 3000);
+}
+
+setInterval(() => { if (S.summary) renderSummary(); renderWorktrees(); }, 5000);
+connect();
+</script>
+</body>
+</html>
