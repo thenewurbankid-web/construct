@@ -23,7 +23,7 @@ const SUMMARY = JSON.parse(fs.readFileSync(path.join(FIX, 'expected-summary.json
 const STEP_NAMES = { 2: 'pure/impure split', 3: 'C1 canonicaliser and round-trip', 4: 'isolated execution', 5: 'layout fakes', 6: 'Z3 / fast-check', 7: 'wiring into Import v2 and the step view', 8: 'L2 dev server' };
 const todo = (step) => `step ${step}: ${STEP_NAMES[step]}`;
 /** The build steps that have landed: their acceptance tests run; the rest stay `todo`. */
-const BUILT = new Set([3, 6]);
+const BUILT = new Set([3, 5, 6]);
 const todoUnless = (step) => (BUILT.has(step) ? false : todo(step));
 
 /** A later step's module; a todo test fails with one line until the step adds it. */
@@ -103,6 +103,22 @@ for (const c of CASES) {
     assert.deepEqual(got, v);
   });
 }
+
+test('step 5 acceptance, layout-threshold: the layout fakes find innerWidth 640 at the changed literal', async () => {
+  const { verifyLayoutPair } = await later('layoutRun.mjs', 5);
+  const c = CASES.find((x) => x.name === 'layout-threshold');
+  const v = expected('layout-threshold');
+  const { ms, ...got } = verifyLayoutPair({ ...roots(c), unit: v.unit, beforeFile: c.before.file });
+  assert.ok(typeof ms === 'number' && ms >= 0);
+  assert.deepEqual(got, c.layerResults.find((r) => r.layer === 'isolated'));
+  assert.deepEqual(got.input, { 'Window.innerWidth': 640 });
+  // with the cheaper layers' answers before it, the layer decides the expected verdict
+  const results = [...c.layerResults.filter((r) => r.layer !== 'isolated'), got];
+  const built = buildUnitVerdict({ unit: v.unit, purity: v.purity, effectChain: v.effectChain, transforms: c.transforms, ...decideUnit({ results, transforms: c.transforms }) });
+  assert.deepEqual(built, v);
+  assert.equal(built.status, 'changed');
+  assert.deepEqual(built.location, v.location);
+});
 
 test('step 3 acceptance: an extracted unit that sits in no atom or block is reported not-extracted', { todo: todoUnless(3) }, async () => {
   const { verifyPair } = await later('verifyPair.mjs', 3);

@@ -2,7 +2,9 @@
 // lib.dom.d.ts: DOMRect, offset/scroll/client sizes, innerWidth, IntersectionObserverEntry, ResizeObserverEntry,
 // MediaQueryList, and scroll/resize/pointer/visibility events) and its VALUE STRATEGY: the characterizer's mined
 // comparison literals (characterize/analyze.mjs ClosureAnalysis.pools) at the boundary +-1, plus 0, negative and large.
-// Interface and value strategy only; making the fakes and firing observers under the fake clock is step 5.
+// Step 5 adds mergePools (both sides' literals), LAYOUT_BASE / layoutBase and layoutCases here; the generator is
+// layoutFakeGen.mjs, the fake DOM and observers layoutDom.mjs, the clock layoutClock.mjs, matchMedia layoutMedia.mjs and
+// the runner helper layoutRun.mjs.
 // test/line-logic-verify-contract.test.mjs checks every name below against TypeScript's own lib.dom.d.ts.
 
 /** @typedef {'number'|'boolean'|'string'|'DOMRect'|'DOMRect|null'|'ResizeObserverSize[]'|'Element'} LayoutValueType */
@@ -111,4 +113,90 @@ export function layoutValues(type, member, pools) {
   const out = new Set([0, -1, LARGE]);
   for (const n of lits) { const s = stepOf(n); out.add(round(n - s)); out.add(n); out.add(round(n + s)); }
   return [...out].sort((a, b) => a - b);
+}
+
+// ---- step 5: the value plan over both sides ------------------------------------------------------------------------
+
+const MEDIA_PX = /\b(min|max)-(width|height)\s*:\s*(-?\d+(?:\.\d+)?)(px|em|rem)?/g;
+/** The members a media-query width or height also seeds (the viewport is what a media query reads). */
+const MEDIA_MEMBERS = Object.freeze({ width: ['innerWidth', 'outerWidth'], height: ['innerHeight', 'outerHeight'] });
+
+/**
+ * One literal pool from several (owner decision 4: layout values come from the mined literals of BOTH the before and
+ * the after code). Strings and numbers are unioned and sorted; each byKey list is unioned in first-seen order.
+ * Media-query widths and heights (`(max-width: 767px)`, `(min-width: 48em)` as 768) also join the keyed pools of the
+ * viewport members, so a matchMedia breakpoint is exercised at its boundary like a compared literal.
+ * @param {...(LiteralPools|null|undefined)} all
+ * @returns {LiteralPools}
+ */
+export function mergePools(...all) {
+  const strings = new Set();
+  const numbers = new Set();
+  /** @type {Record<string, (string|number)[]>} */
+  const byKey = {};
+  const add = (k, v) => { const l = (byKey[k] ??= []); if (!l.includes(v)) l.push(v); };
+  for (const p of all) {
+    if (!p) continue;
+    for (const s of p.strings ?? []) strings.add(s);
+    for (const n of p.numbers ?? []) if (Number.isFinite(n)) numbers.add(n);
+    for (const [k, vs] of Object.entries(p.byKey ?? {})) for (const v of vs) add(k, v);
+  }
+  for (const s of [...strings].sort()) {
+    for (const m of s.matchAll(MEDIA_PX)) {
+      const px = Number(m[3]) * (m[4] === 'em' || m[4] === 'rem' ? 16 : 1);
+      for (const k of MEDIA_MEMBERS[/** @type {'width'|'height'} */ (m[2])]) add(k, px);
+    }
+  }
+  return { strings: [...strings].sort(), numbers: [...numbers].sort((a, b) => a - b), byKey };
+}
+
+/** At most this many cases per unit (each read varies alone, so the cap bounds reads x values). */
+export const MAX_CASES = 64;
+
+/** The neutral base a read keeps while another read varies: a desktop viewport, nothing scrolled, the page visible. */
+export const LAYOUT_BASE = Object.freeze(/** @type {Record<string, unknown>} */ ({
+  'Window.innerWidth': 1024, 'Window.innerHeight': 768, 'Window.outerWidth': 1024, 'Window.outerHeight': 768, 'Window.devicePixelRatio': 1,
+  'HTMLElement.offsetWidth': 100, 'HTMLElement.offsetHeight': 100, 'Element.clientWidth': 100, 'Element.clientHeight': 100,
+  'Element.scrollWidth': 100, 'Element.scrollHeight': 100, 'DOMRect.width': 100, 'DOMRect.height': 100,
+  'IntersectionObserverEntry.intersectionRatio': 1, 'IntersectionObserverEntry.isIntersecting': true,
+  'ResizeObserverSize.inlineSize': 100, 'ResizeObserverSize.blockSize': 100,
+  'Document.visibilityState': 'visible', 'Document.hidden': false, 'MediaQueryList.matches': false,
+  'PointerEvent.pointerType': 'mouse', 'PointerEvent.isPrimary': true, 'PointerEvent.pressure': 0.5,
+  'PointerEvent.width': 1, 'PointerEvent.height': 1, 'PointerEvent.pointerId': 1,
+}));
+
+/**
+ * The neutral base of one read: LAYOUT_BASE, else 0 / false / the first closed string.
+ * @param {string} read `<Type>.<member>`.
+ * @returns {unknown}
+ */
+export function layoutBase(read) {
+  if (read in LAYOUT_BASE) return LAYOUT_BASE[read];
+  const [type, member] = read.split('.');
+  const kind = LAYOUT_FAKE_TYPES.find((t) => t.name === type)?.members[member];
+  if (kind === 'boolean') return false;
+  if (kind === 'string') return LAYOUT_STRING_VALUES[member]?.[0] ?? '';
+  if (kind === 'DOMRect|null') return null;
+  return kind === 'number' ? 0 : undefined;
+}
+
+/**
+ * The input cases for one unit: for each read (`<Type>.<member>`, sorted), one case per layoutValues value with only
+ * that read set (every other read stays at its layoutBase), in value order, capped at `max`. Deterministic.
+ * @param {string[]} reads
+ * @param {LiteralPools} pools
+ * @param {{max?: number}} [opts]
+ * @returns {LayoutCase[]}
+ */
+export function layoutCases(reads, pools, { max = MAX_CASES } = {}) {
+  /** @type {LayoutCase[]} */
+  const out = [];
+  for (const read of [...new Set(reads)].sort()) {
+    const [type, member] = read.split('.');
+    for (const v of layoutValues(type, member, pools)) {
+      if (out.length >= max) return out;
+      out.push({ reads: { [read]: v } });
+    }
+  }
+  return out;
 }

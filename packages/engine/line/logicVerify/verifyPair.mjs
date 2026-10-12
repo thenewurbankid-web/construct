@@ -21,6 +21,7 @@ import { fileUnits } from '../logicMap.mjs';
 import { findFunction } from './z3Translate.mjs';
 import { z3Layer } from './z3Prove.mjs';
 import { fastCheckLayer, minedSeeds } from './fastCheckLayer.mjs';
+import { verifyLayoutPair } from './layoutRun.mjs';
 
 /** @typedef {import('./contract.mjs').UnitRef} UnitRef */
 /** @typedef {import('./contract.mjs').UnitVerdict} UnitVerdict */
@@ -81,6 +82,15 @@ export const RUNNERS = {
       ? minedSeeds([ctx.beforeRoot, ctx.afterRoot], ctx.after.file)
       : mergeSeeds(minedSeeds([ctx.beforeRoot], ctx.before.file), minedSeeds([ctx.afterRoot], ctx.after.file));
     return fastCheckLayer({ beforeSource: /** @type {string} */ (ctx.beforeSource), afterSource: /** @type {string} */ (ctx.afterSource), fn: ctx.after.fn, file: ctx.after.file, seeds });
+  },
+  // step 5's layout layer; step 4's isolated effect runner joins here (one isolated result per unit)
+  isolated: (ctx) => {
+    if (!ctx.before) return noBefore('isolated');
+    try {
+      return verifyLayoutPair({ beforeRoot: ctx.beforeRoot, afterRoot: ctx.afterRoot, unit: ctx.unit, beforeFile: ctx.before.file });
+    } catch (err) {
+      return { layer: 'isolated', outcome: 'cant-tell', reason: `the layout run failed: ${/** @type {Error} */ (err).message}` };
+    }
   },
 };
 

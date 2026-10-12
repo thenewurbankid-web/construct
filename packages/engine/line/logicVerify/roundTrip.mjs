@@ -138,5 +138,8 @@ export function roundTripCompare({ beforeRoot, afterRoot, before, after, transfo
   let text = source;
   for (const e of edits.sort((x, y) => y.at[0] - x.at[0])) text = text.slice(0, e.at[0]) + e.text + text.slice(e.at[1]);
   const r = canonicalCompare({ root: beforeRoot, ...before }, { ...after, source: text }, { transforms });
+  // Nothing re-inlined (an expression extracted to a local, or no new function called): the round-trip has nothing to
+  // undo, so a text mismatch here is not a failed extraction; the later layers decide.
+  if (!inlined.length && r.outcome === 'changed') return cantTell('no extracted function to re-inline (an expression extracted to a local is not re-inlined), so the later layers decide');
   return { ...r, layer: 'round-trip', ms: ms(), ...(inlined.length ? { inlined } : {}) };
 }
