@@ -31,7 +31,8 @@
     "validate": "node ./packages/cli/construct.mjs validate",
     "sync": "node ./packages/cli/construct.mjs sync",
     "docs:api": "node site/build.mjs --no-search --out site/dist",
-    "docs:coverage": "node packages/tools/api-coverage/check.mjs"
+    "docs:coverage": "node packages/tools/api-coverage/check.mjs",
+    "mc": "node packages/tools/dev/mission-control/server.mjs"
   },
   "dependencies": {
     "@hey-api/openapi-ts": "^0.97.3",
