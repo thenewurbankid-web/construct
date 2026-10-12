@@ -4,6 +4,54 @@ One section per step. For each: what the tests prove (plain English), known gaps
 check it yourself. A step is done only after your UAT passes; until then it is "awaiting UAT".
 Branch: `work/2026-09-23` in `~/Repositories/construct` (local only, not pushed).
 
+## Two modes: Chat and Under the hood on every screen (12 Oct, branch `cloud-modes`; awaiting UAT)
+
+What changed: one switch in the top bar, **Chat | Under the hood**, on every screen (also on "Open a project", where
+no project is open yet). It is remembered per person (one setting per signed-in login in this browser). Until you pick,
+each screen shows its own default: Features opens in Chat (as cd1 did), every other screen opens Under the hood.
+- **Chat:** a full-screen chat in cd1's style with that screen's own options. Picking an item opens it, and the chat
+  moves to a side panel. A breadcrumb above the chat always says where you are, for example
+  "Features › orders › OrdersPage › title". Clicking any crumb switches to Under the hood at exactly that place, with
+  the same item selected.
+- **Under the hood:** the regular screen, with the same chat beside it as a helper. "Hide the chat" folds it away.
+
+Screens wired: Open a project, Features, Workflows, Import, Import agent, Settings and Train Line (Components, Pages and
+Plan: see below). How it is built: one contract (`ui/client/lib/lineModes.ts`): each screen gives a small options
+provider in its own folder, with lineChat's option rules (stable dotted ids, a label, a full sentence). Where you are is
+kept in the address bar, one value per level (`?feature=orders&item=OrdersPage&part=title`), so both modes and a reload
+agree. The shared frame is `features/line-modes`; it reuses `ChatEntry` unchanged. The switch, the crumbs and the
+hide/show button are registered controls (`shell.modeChat`, `shell.modeHood`, `shell.crumb`, `shell.chatToggle`), so
+Trace can light them and Auto can click them.
+
+Tests, in plain words:
+1. The contract (`lib/lineModes.spec.mjs`, on a mock screen): a mode is Chat or Under the hood, stored per login; the
+   breadcrumb follows the chat as it opens a feature, an item and a part; clicking the "orders" crumb gives Under the
+   hood at `?feature=orders`, which the screen reads back as "orders open"; "Back to ..." goes up one level.
+2. Each screen's options pass the contract at every level, and each screen's crumb lands at the right address
+   (`FeaturesModes`, `WorkflowsModes`, `OpenModes`, `ImportModes`, `ImportAgentModes`, `SettingsModes`, `TrainModes`
+   spec files, 17 tests). cd1's Features options are unchanged; Features adds "Open an item" and, on a page, "Open a part".
+3. In the browser (`ui/e2e/tests/line-two-modes.spec.js`, real server, a copy of the Line sample): your check: in Chat,
+   open orders → OrdersPage, click "orders", and Under the hood shows Features with orders open. Also: the mode survives
+   a reload; the chat hides and shows; an item crumb marks that item; Workflows, Import, the Import agent, Settings,
+   Train Line and Open a project each work in both modes; accessibility is clean at 1280 and at 375 wide.
+
+Gaps:
+- Browser run so far (12 Oct, stopped early because the machine was overloaded): the two Features tests pass, including your orders-crumb check; the Workflows test failed (picking a workflow file timed out, probably asked before the files were read); the remaining four did not run. Fix and rerun next sprint.
+- Components, Pages and Plan are wired on a parallel branch (`cloud-modes-b`); they arrive when it merges.
+- When you click inside the screen in Chat's side panel (not in the chat), the breadcrumb does not follow that click; it
+  follows the chat and the crumbs.
+- On Settings, Train Line and the Import agent, a crumb scrolls to and outlines the section (those screens show every
+  section on one page); the Import agent outlines the plan, not the one step.
+- The chat has options only (no free text), as cd1.
+- "Remembered per person" is per login in this browser, not across machines.
+
+UAT (fresh sample; `cd ui/server && npm start`, `cd ui/client && npm run dev`, open `examples/line-sample` copy):
+1. Features opens in Chat. Pick **orders**, then **Open an item**, **OrdersPage**, **Open a part**, **title**. The
+   breadcrumb reads "Features › orders › OrdersPage › title".
+2. Click **orders** in the breadcrumb: the switch shows Under the hood and the orders page is open. Reload: still there.
+3. Click **Chat** in the top bar, then open Settings: pick **Open a section**, **Saving to git**, then click that crumb.
+   The git settings are outlined. Is this the right feel for every screen?
+
 ## Import v2: fit existing logic into Line's blocks, backed by tests (11 Oct, merged on `merge-iv2`; awaiting UAT)
 
 Contract: `docs/line/import-v2/CONTRACT.md`. Merged branches: `fix-plan-lock`, `fix-yaml-comments`, `iv2-bugs`, `iv2-map`,
