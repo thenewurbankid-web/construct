@@ -329,6 +329,9 @@ function readFolder(projectRoot, folder, scope = /** @type {{only?: Set<string>,
   return { items, unchanged, routes, graph };
 }
 
+/** A Next.js app-router file: the framework finds it by its path (page.tsx, layout.tsx, route.ts, ... under app/), nothing imports it. */
+const servedByPath = (rel) => /(?:^|\/)app\/(?:.*\/)?(?:page|layout|template|loading|error|not-found|default|route)\.[cm]?[jt]sx?$/.test(rel);
+
 const pageFeatureOf = (folder, page, family) => (page.startsWith(`${folder}/`) ? (family ?? folderFeature(folder, page)) : null);
 
 /** The questions two rules raise for an item, with the recommended option first. */
@@ -620,7 +623,13 @@ export function planImport(projectRoot, folder, answers = {}) {
   // Folders whose files stay where they are (hooks, types): listed as line.appFolders so LINE-LAYOUT does not report them.
   const appFolders = [...new Set(d.unchanged.map((u) => local(u.file)).filter((r) => r.includes('/')).map((r) => r.split('/')[0]))].sort();
   add('line.import.mark', { features, ...(appFolders.length ? { appFolders } : {}) }, `Marks ${f} as a Line folder, with a library and ${features.length === 1 ? `the feature ${features[0]}` : `the features ${features.join(', ')}`}${features.length ? '' : ' no features'}.`, 'mark');
-  const shimNote = (it) => (it.outsideUsers.length ? ` Its old file stays as a one-line link, because ${it.outsideUsers.length === 1 ? posix.basename(it.outsideUsers[0]) : `${it.outsideUsers.length} files`} outside the folder use${it.outsideUsers.length === 1 ? 's' : ''} it.` : '');
+  // A Next.js app-router file (page.tsx, layout.tsx, route.ts, ...) is found by its path, not imported: it keeps a
+  // one-line link at its old path, or the route it serves is gone.
+  const keepShim = (it) => it.outsideUsers.length > 0 || servedByPath(it.file);
+  const shimNote = (it) => {
+    if (it.outsideUsers.length) return ` Its old file stays as a one-line link, because ${it.outsideUsers.length === 1 ? posix.basename(it.outsideUsers[0]) : `${it.outsideUsers.length} files`} outside the folder use${it.outsideUsers.length === 1 ? 's' : ''} it.`;
+    return servedByPath(it.file) ? ` Its old file stays as a one-line link, because Next.js serves ${appRoute(it.file) ?? 'a route'} from it.` : '';
+  };
   // A renamed component or page renames its export too (exportName: the name its file exports today).
   const rename = (it) => (it.clash && it.exportName && it.exportName !== it.name ? { exportName: it.exportName } : {});
   // Where two items clash, the step names both files.
@@ -628,11 +637,11 @@ export function planImport(projectRoot, folder, answers = {}) {
   const as = (it) => (it.clash ? ` as ${it.name}` : '');
   for (const it of items.filter((i) => i.target === 'library' || i.mode === 'split')) {
     const lvl = it.target === 'library' && it.level ? it.level : undefined;
-    add('line.import.toLibrary', { from: local(it.file), kind: it.kind, name: it.name, ...rename(it), ...(lvl ? { level: lvl } : {}), keepShim: it.outsideUsers.length > 0 },
+    add('line.import.toLibrary', { from: local(it.file), kind: it.kind, name: it.name, ...rename(it), ...(lvl ? { level: lvl } : {}), keepShim: keepShim(it) },
       `Moves ${what(it)} into the library${as(it)}${lvl ? ` as ${lvl === 'atom' ? 'an' : 'a'} ${lvl}` : ''} and points its users at it.${clashNote(it, true)}${shimNote(it)}`, `lib-${it.name}`);
   }
   for (const it of items.filter((i) => i.mode === 'move')) {
-    add('line.import.toFeature', { mode: 'move', from: local(it.file), kind: it.kind, name: it.name, ...rename(it), feature: it.feature, base: it.base, keepShim: it.outsideUsers.length > 0, ...(it.route ? { route: it.route } : {}) },
+    add('line.import.toFeature', { mode: 'move', from: local(it.file), kind: it.kind, name: it.name, ...rename(it), feature: it.feature, base: it.base, keepShim: keepShim(it), ...(it.route ? { route: it.route } : {}) },
       `Moves ${what(it)} into feature ${it.feature}${as(it)}, based on the library ${it.baseItem.name}.${clashNote(it, true)}${shimNote(it)}`, `feature-${it.name}`);
   }
   for (const it of items.filter((i) => i.mode === 'split')) {

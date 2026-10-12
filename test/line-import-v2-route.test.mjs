@@ -129,6 +129,13 @@ test('route family: an unknown route is refused in one sentence naming the route
   assert.throws(() => readRouteFamily(app, '/billing'), (e) => e.name === 'LineOpError' && e.code === 'UNKNOWN_ROUTE' && /^The app has no route \/billing; its routes start with \/home, \/orders\.$/.test(e.sentence));
 });
 
+test('route family: a route written the way Next.js names its folders ([locale], [id]) is the same family as :locale', () => {
+  const app = copy();
+  assert.deepEqual(readRouteFamily(app, '/[locale]/orders').routes.map((r) => r.route), ['/:locale/orders', '/:locale/orders/detail']);
+  assert.deepEqual(readRouteFamily(app, '/[locale]/orders/').files, readRouteFamily(app, '/orders').files);
+  assert.deepEqual(readRouteFamily(app, '/[...locale]/orders').routes.map((r) => r.route), ['/:locale/orders', '/:locale/orders/detail']);
+});
+
 test('scanImport and planImport take {route}: only the family\'s files, every feature item in ONE feature named after the route', () => {
   const app = copy();
   const scan = scanImport(app, { route: '/orders' });
@@ -145,6 +152,14 @@ test('scanImport and planImport take {route}: only the family\'s files, every fe
   assertImportPlan(plan);
   assert.deepEqual(plan.steps[0].args.features, ['orders']);
   assert.match(plan.summary, /of the route \/orders into Line/);
+  // Next.js finds a page by its path (nothing imports it): moving it keeps a one-line link there, or /orders is gone
+  // (found on contact-manager-ui, 2026-10-12: the import deleted src/app/(core)/page.tsx).
+  const pageStep = plan.steps.find((s) => s.args.from === 'app/[locale]/orders/page.tsx');
+  assert.equal(pageStep.args.keepShim, true);
+  assert.match(pageStep.sentence, /Its old file stays as a one-line link, because Next\.js serves \/:locale\/orders from it\.$/);
+  assert.equal(plan.steps.find((s) => s.args.from === 'components/OrdersView.tsx').args.keepShim, false, 'an imported file needs no link');
+  assert.equal(applyImport(app, { route: '/orders' }).ok, true);
+  assert.match(fs.readFileSync(path.join(app, 'src/app/[locale]/orders/page.tsx'), 'utf8'), /export \{ default \} from '\.\.\/\.\.\/\.\.\/library\/pages\/OrdersPage';/);
   // A folder still works as before.
   assert.equal(scanImport(app, 'src').folder, 'src');
   assert.throws(() => scanImport(app, /** @type {any} */ ({})), /Name a folder or a route/);

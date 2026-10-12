@@ -311,3 +311,53 @@ export function normalizeSpecifiers(source, file, moves = {}) {
 export function semanticDiffMapped(beforeSource, afterSource, { beforeFile, afterFile, moves = {} }) {
   return semanticDiff(normalizeSpecifiers(beforeSource, beforeFile, moves), normalizeSpecifiers(afterSource, afterFile, moves));
 }
+
+/**
+ * A module's own declarations as one source: every top-level statement except imports and export lists (`export {a}`,
+ * `export * from`), with `export` / `export default` taken off a declaration. Two modules whose declarations match read
+ * the same even when one function moved to a file of its own (where it is exported). Throws on a parse error.
+ *
+ * @param {string} source The source text.
+ * @returns {string} The declarations, one per line, in source order.
+ *
+ * @example
+ * declarationsOnly("import x from './x';\nexport function f() { return x; }"); // => 'function f() { return x; }'
+ */
+export function declarationsOnly(source) {
+  const ast = parseToAst(source);
+  const parts = [];
+  for (const n of ast.body) {
+    if (n.type === 'ImportDeclaration' || n.type === 'ExportAllDeclaration') continue;
+    if (n.type === 'ExportNamedDeclaration' && !n.declaration) continue;
+    const named = n.declaration && (n.type === 'ExportNamedDeclaration' || n.declaration.id);
+    const node = (n.type === 'ExportNamedDeclaration' || n.type === 'ExportDefaultDeclaration') && named ? n.declaration : n;
+    parts.push(source.slice(node.range[0], node.range[1]));
+  }
+  return parts.join('\n');
+}
+
+/**
+ * `semanticDiff` for a file split in two or more (Line Import v2's extract steps): the declarations of the old file
+ * against the declarations of every file they now live in (the old file and the new ones), imports and export
+ * keywords aside, so a function moved out of a file and exported from its own reads as `same-behaviour`, and a body
+ * that changed on the way reads as `changed`. Whether an export or a unit went missing is the logic map's check.
+ *
+ * @param {string} beforeSource The file before the split.
+ * @param {string[]} afterSources The file after the split, and the files it was split into.
+ * @returns {{ verdict: 'same-behaviour'|'changed'|'cant-tell', operations: string[], reason?: string }} As `semanticDiff`.
+ *
+ * @example
+ * semanticDiffSplit('function a() {}\nfunction b() {}', ["import { b } from './b';\nfunction a() {}", 'export function b() {}']).verdict;
+ * // => 'same-behaviour'
+ */
+export function semanticDiffSplit(beforeSource, afterSources) {
+  let before;
+  let after;
+  try {
+    before = declarationsOnly(beforeSource);
+    after = afterSources.map(declarationsOnly).join('\n');
+  } catch (e) {
+    return { verdict: 'cant-tell', operations: [], reason: `parse error: ${/** @type {any} */ (e)?.message ?? e}` };
+  }
+  return semanticDiff(before, after);
+}

@@ -146,7 +146,8 @@ const packageOf = (spec) => (spec.startsWith('@') ? spec.split('/').slice(0, 2).
  */
 export function readRouteFamily(appRoot, route, o = {}) {
   const root = path.resolve(appRoot);
-  const asked = (Array.isArray(route) ? route : [route]).map((r) => `/${String(r ?? '').trim().replace(/^\/+|\/+$/g, '')}`);
+  // Next.js writes a dynamic segment as its folder name (/profile/[id], /docs/[...slug]); the route table reads :id.
+  const asked = (Array.isArray(route) ? route : [route]).map((r) => `/${String(r ?? '').trim().replace(/^\/+|\/+$/g, '')}`.split('/').map((s) => s.replace(/^\[+\.{0,3}(.*?)\]+$/, ':$1')).join('/'));
   if (!asked.length) throw new LineOpError('Name a route to import, such as /orders.', 'UNKNOWN_ROUTE');
   const bad = asked.find((f) => !/^\/[A-Za-z0-9_:\-./[\]]*$/.test(f));
   if (bad) throw new LineOpError(`"${bad}" is not a route; name one like /orders.`, 'UNKNOWN_ROUTE');
