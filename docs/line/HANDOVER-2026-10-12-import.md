@@ -63,3 +63,18 @@ Re-run `/opportunity` end to end on a fresh clone until it reaches `done` with e
   - G3: domain layer, from OpenAPI via `packages/core/shape-source.mjs`, the cf1 spec, and the DB schema if present.
   - G4: context picker and symbol index on the graph, plus a Graph Details view in Cockpit.
 - **Rule:** write tests and expected outputs first. If tests fail, stop and report them to the owner.
+
+## Next UI milestone (owner, 2026-10-12): two modes on every screen
+Every Cockpit screen gets two modes, switched by one global toggle in the shell and remembered per user:
+- **Chat mode:** a full-screen chat in the style of cd1's Features, offering that screen's own options. Picking an item opens it with the chat as a side panel.
+- **Under the hood:** the regular screen, with the chat as a collapsible helper.
+
+Screens: Open a project, Components, Pages, Features, Workflows, Import / Import agent, Plan, Settings and Train.
+
+Reuse:
+- `ChatEntry` and `lineChat.ts` (cd1);
+- `StreamedText` (flowtoken);
+- Trace and Auto (ct1/cg1);
+- `LINE_CONTROLS`.
+
+Start once the open-project-simple branch has committed its ChatEntry and StreamedText changes; it edits the same files. Each screen gets a Playwright check in both modes.
