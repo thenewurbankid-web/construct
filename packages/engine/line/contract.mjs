@@ -1013,6 +1013,18 @@ export const LINE_API = Object.freeze([
   { method: 'GET', path: '/api/line/memory', request: null, response: 'MemoryView (memory/contract.mjs)' },
   { method: 'POST', path: '/api/line/memory/forget', request: '{step} + x-line-approval', response: 'MemoryView & {message}' },
   { method: 'GET', path: '/api/line/misses', request: null, response: 'MissReportView' },
+  // "What Line knows" (knows/contract.mjs KNOWS_API): the graph and its changes and numbers (lineKnowsApi.mjs), and the
+  // Memory tab's routes beside im3's (lineMemoryApi.mjs; every change carries x-line-approval).
+  { method: 'GET', path: '/api/line/graph', request: 'focus (query, a node id)', response: 'GraphRead (knows/contract.mjs)' },
+  { method: 'GET', path: '/api/line/graph/changes', request: 'focus (query, a node id)', response: 'ChangeView (knows/contract.mjs)' },
+  { method: 'GET', path: '/api/line/graph/stats', request: null, response: 'SmartView (knows/contract.mjs)' },
+  { method: 'GET', path: '/api/line/memory/records', request: 'step (query)', response: 'MemoryRecordsView (knows/contract.mjs)' },
+  { method: 'GET', path: '/api/line/memory/export', request: 'x-line-approval', response: 'MemoryExport (memory/contract.mjs)' },
+  { method: 'POST', path: '/api/line/memory/edit', request: '{id, chosen} + x-line-approval', response: 'MemoryRecordsView' },
+  { method: 'POST', path: '/api/line/memory/forget-record', request: '{id} + x-line-approval', response: 'MemoryRecordsView' },
+  { method: 'POST', path: '/api/line/memory/forget-all', request: '{} + x-line-approval', response: 'MemoryRecordsView' },
+  { method: 'POST', path: '/api/line/memory/import', request: 'MemoryExport + x-line-approval', response: 'MemoryRecordsView' },
+  { method: 'POST', path: '/api/line/memory/embeddings', request: '{on} + x-line-approval', response: 'MemoryRecordsView' },
   { method: 'POST', path: '/api/line/trace', request: 'TraceRequest', response: 'TraceMatch' },
   { method: 'GET', path: '/api/line/import-agent', request: 'folder (query)', response: 'ImportAgentView' },
   { method: 'POST', path: '/api/line/import-agent/start', request: '{folder, route?}', response: 'ImportAgentView' },

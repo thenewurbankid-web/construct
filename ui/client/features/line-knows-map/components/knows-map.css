@@ -1,0 +1,30 @@
+/* "What Line knows", the Map tab. */
+.lkm { display: grid; grid-template-columns: minmax(180px, 240px) minmax(0, 1fr); gap: 16px; }
+.lkm-start { display: flex; flex-direction: column; gap: 8px; max-height: 70vh; overflow: auto; }
+.lkm-start h3, .lkm-refs h3, .lkm-main h2 { margin: 4px 0; font-size: 0.95rem; }
+.lkm-start ul, .lkm-sentences, .lkm-refs ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.lkm-start-item[aria-current='true'] { outline: 2px solid var(--ln-accent); }
+.lkm-main { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.lkm-focus { margin: 0; color: var(--ln-muted); }
+.lkm-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.lkm-layers { display: flex; flex-wrap: wrap; gap: 4px 12px; border: 1px solid var(--ln-border); border-radius: 8px; padding: 8px 12px; margin: 0; }
+.lkm-layers legend { padding: 0 4px; color: var(--ln-muted); }
+.lkm-layer { display: inline-flex; gap: 4px; align-items: center; }
+.lkm-sentence { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; padding: 6px 8px; border-left: 3px solid var(--ln-border); }
+.lkm-sentence[data-bad='true'] { border-left-color: var(--ln-gap); }
+.lkm-sentence .ln-details { flex-basis: 100%; }
+.lkm-refs { border: 1px solid var(--ln-border); border-radius: 8px; padding: 8px 12px; }
+.lkm-refs p { margin: 0 0 6px; }
+.lkm-pic { overflow: auto; max-width: 100%; border: 1px solid var(--ln-border); border-radius: 8px; background: var(--ln-surface); color: var(--ln-muted); }
+.lkm-edge { fill: none; stroke: currentColor; stroke-width: 1.4; }
+.lkm-edge[data-bad='true'] { stroke: var(--ln-gap); stroke-width: 2; stroke-dasharray: 5 3; }
+.lkm-node { cursor: pointer; }
+.lkm-node rect { fill: var(--ln-bg); stroke: var(--ln-border-strong); }
+.lkm-node[data-area='library'] rect { stroke: var(--ln-fit); }
+.lkm-node[data-focus='true'] rect { stroke: var(--ln-accent); stroke-width: 2.5; }
+.lkm-node[data-flagged='true'] rect { stroke: var(--ln-gap); }
+.lkm-node text { fill: var(--ln-text); font-size: 12px; }
+@media (max-width: 700px) {
+  .lkm { grid-template-columns: minmax(0, 1fr); }
+  .lkm-start { max-height: 40vh; }
+}

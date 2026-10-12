@@ -1,0 +1,14 @@
+/* "What Line knows": the shell (tabs) and the shared look of the four tabs, in Trace's style (lib/line-style.css). */
+.lk { display: flex; flex-direction: column; gap: 16px; min-width: 0; padding: 16px; color: var(--ln-text); }
+.lk h1 { margin: 0; font-size: 1.5rem; }
+.lk-lead { margin: 0; color: var(--ln-muted); max-width: 70ch; }
+.lk-tabs { display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 1px solid var(--ln-border); }
+.lk-tab { appearance: none; background: none; border: 0; border-bottom: 2px solid transparent; padding: 8px 12px; color: var(--ln-muted); font: inherit; cursor: pointer; }
+.lk-tab[aria-selected='true'] { color: var(--ln-text); border-bottom-color: var(--ln-accent); font-weight: 600; }
+.lk-tab:focus-visible { outline: 2px solid var(--ln-accent); outline-offset: 2px; }
+.lk-panel { min-width: 0; }
+.lk-soon { padding: 16px; border: 1px dashed var(--ln-border-strong); border-radius: 8px; color: var(--ln-muted); }
+@media (max-width: 600px) {
+  .lk { padding: 12px; }
+  .lk-tab { padding: 8px; }
+}

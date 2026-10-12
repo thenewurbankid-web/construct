@@ -1,0 +1,9 @@
+/* "What Line knows", the Change tab. */
+.lkc { display: flex; flex-direction: column; gap: 12px; }
+.lkc > p { margin: 0; }
+.lkc-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.lkc-card { display: flex; flex-direction: column; gap: 6px; padding: 12px; }
+.lkc-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.lkc-sentence, .lkc-note { margin: 0; }
+.lkc-note { color: var(--ln-muted); }
+.lkc-actions { display: flex; flex-wrap: wrap; gap: 8px; }

@@ -1502,3 +1502,28 @@ Gaps: Train's cases do not reach the real drafter's retrieval yet (it reads appr
 3. Under "Teach a new request", click a suggested request (or type one, e.g. "Make StatusBadge in orders, based on Badge.").
 4. Correct the draft: change the feature in its list (two clicks), press Try it on a route (it says "It works in a scratch copy"), then Save as a training case.
 5. Press Run eval and read the scoreboard: per tool family, the share of valid routes found, preferred picked, and your agreement on Claude's cases.
+
+## What Line knows: the graph, memory, changes and how smart Line is, in plain words (12 Oct, branch `cloud-knows`; awaiting UAT)
+
+One page, `/knows` (profile menu → What Line knows), with four tabs and the chat (`ChatEntry`) beside them. Everything is in plain English; the technical part (edge, file:line, plan tool) sits under Details. Nothing leaves the machine.
+
+- **Map** (built): start from a feature, page or component; its neighbours read as sentences ("OrdersPage is based on ListPage.", "InvoicesPage uses OrderButton from feature orders, which a feature may not do."; a rule break first, marked red); a layer filter (structure, calls, domain, runtime, process); a dagre picture; "Who uses this?" and "What breaks if I change it?" from G1's `whoCalls` / `impactOf`; "Change it" opens Change for that item.
+- **Change** (built): the typed changes the graph proposes, each a plan step a person approves: a finding's own typed fixes (`line.promote`, `line.setBase`, else `line.fix`) and, for the item in focus, promote it or re-base it on a library item of its kind that it already uses. "Plan it" adds the step, "Approve" (the `plan.approve` control) approves and runs it through Construct's writer. No new write route.
+- **Memory** (branch `cloud-knows-memory`, on im3's store): per AI step what Line remembered, edit, forget one or all, export/import, an embeddings switch (off by default, slotted text only, never code); person only, every change logged.
+- **How smart is it** (slot): shows "coming soon" with the contract mock's sentence until its branch lands.
+
+Contract: `packages/engine/line/knows/contract.mjs` (routes, shapes, asserts; memory records are im3's), `knows/mock.mjs` (the sample's graph and every view; the client's `?line=mock` uses it), one provider per tab (`memory.mjs`, `changes.mjs` + pure `proposals.mjs`, `stats.mjs`). Routes (`ui/server/src/lineKnowsApi.mjs`, every one in the one tool registry; memory writes person only): `GET /api/line/graph?focus=`, `/graph/changes?focus=`, `/graph/stats`, `/memory/records?step=`, `/memory/export`, `POST /memory/edit | forget-record | forget-all | import | embeddings` (im3's `GET /memory` and `POST /memory/forget` stay). The server stores the graph in Line's state so an unchanged project is not analysed again.
+
+Tests: client domain (Map 6, Change 4, tabs 3; the client's 576 unit tests pass), server routes 7 (on the real sample and the mock), Playwright `ui/e2e/tests/line-knows.spec.js` 3 passed (`--workers=1`, through `heavy.sh`): open orders → "OrdersPage is based on ListPage." → OrderButton → "What breaks if I change it?" lists InvoicesPage → Change → "Move OrderButton … into the library" → Plan it → Approve → the file is in `library/` and billing's cross-feature sentence is gone; axe clean at 1280 and 375 px with no sideways scroll on all four tabs.
+
+Gaps:
+- No typed "remove the cross-feature use" fix exists in Construct yet (LINE-DIR's only fix is the promote), so the sample shows no removeCrossUse card; the kind is wired (`line.fix` of any other typed fix).
+- Memory and How smart is it come from their own branches; until then Memory reads the contract mock.
+- The picture's boxes open an item by mouse; the keyboard path is the sentences' Open buttons.
+
+### UAT (5 minutes)
+1. Fresh copy of the sample (`rm -rf ~/workspace/line-sample && cp -R examples/line-sample ~/workspace/`), open it in Cockpit, profile menu → What Line knows.
+2. Map: click Feature orders; read "OrdersPage is based on ListPage." and the red "InvoicesPage uses OrderButton from feature orders, which a feature may not do."
+3. Click OrderButton, then "What breaks if I change it?": InvoicesPage, /billing and the problem are listed.
+4. Click "Change it": the first card reads "Move OrderButton.tsx from feature orders into the library …". Plan it, then Approve: it says Done.
+5. Back on Map → Feature billing: InvoicesPage now "uses OrderButton from the library"; the red sentence is gone.

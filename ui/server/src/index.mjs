@@ -96,6 +96,7 @@ import { createLineNewProjectRouter } from './lineNewProjectApi.mjs';
 import { createLineToolGate } from './lineToolGate.mjs';
 import { createLineAiRouter } from './lineAiApi.mjs';
 import { createLineMemoryRouter } from './lineMemoryApi.mjs';
+import { createLineKnowsRouter } from './lineKnowsApi.mjs';
 import crypto from 'node:crypto';
 import { stepModel } from '../../../packages/core/ai-profiles.mjs';
 import { createLineTraceRouter } from './lineTraceApi.mjs';
@@ -1360,6 +1361,17 @@ app.use('/api/line', createLineTrainRouter({ clientOrigin: CLIENT_ORIGIN }));
 
 // T7 (Line Cockpit): one library component rendered alone with its props (Morpheus's isolated render; a pure read).
 app.use('/api/line', createLineRenderRouter({
+  getRoot: () => {
+    const root = containedProjectRoot(getProjectDir());
+    return root ? { ok: true, root } : { ok: false, error: 'No project is open; pick a project first.' };
+  },
+}));
+
+// "What Line knows": the knowledge graph (G1/G2), its proposed changes and numbers, and the memory page's records
+// (lineKnowsApi.mjs, packages/engine/line/knows/). A proposed change runs only as a plan step a person approves.
+app.use('/api/line', createLineKnowsRouter({
+  clientOrigin: CLIENT_ORIGIN,
+  write: true,
   getRoot: () => {
     const root = containedProjectRoot(getProjectDir());
     return root ? { ok: true, root } : { ok: false, error: 'No project is open; pick a project first.' };

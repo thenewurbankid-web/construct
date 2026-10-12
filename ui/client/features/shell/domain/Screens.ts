@@ -14,6 +14,7 @@ export const SCREENS: ShellScreen[] = [
   { href: '/workflows', label: 'Workflows', activeOn: ['/workflows'] },
   { href: '/tests', label: 'Tests', activeOn: ['/tests'] },
   { href: '/train', label: 'Train Line', activeOn: ['/train'] },
+  { href: '/knows', label: 'What Line knows', activeOn: ['/knows'] },
   { href: '/ollama', label: 'Local Model', activeOn: ['/ollama'] },
   { href: '/settings', label: 'Settings', activeOn: ['/settings'] },
   { href: '/help', label: 'Help', activeOn: ['/help'] },

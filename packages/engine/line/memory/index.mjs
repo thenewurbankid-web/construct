@@ -9,6 +9,7 @@ export { createMemory } from './store.mjs';
 export { recallFrom, preferenceOf, memoryOver, jaccard, bm25, slotTokens } from './recall.mjs';
 export { embeddingsEnabled, createOllamaEmbedder, recallWithEmbeddings, decisionText } from './embed.mjs';
 export * from './contract.mjs';
+export { TEMPLATE_PHRASE, routePhrase } from './words.mjs';
 
 const stores = new Map();
 /**
@@ -53,19 +54,7 @@ export function recall(root, step, context, k = 5) {
  */
 export const routeKey = (id) => String(id).replace(/(^|[:>+.@=])([A-Z])\d+(?=$|[:>+.@=])/g, '$1$2');
 
-/** How a route template reads in a "you picked ..." sentence. */
-export const TEMPLATE_PHRASE = Object.freeze({
-  'via-library': 'via the library', 'base-on': 'a new item based on the library', promote: 'moving it into the library', 'set-base': 'setting its base',
-  'set-prop': 'setting the page value', 'set-fragment': 'editing that piece of code', fix: 'that fix', 'fix-all': 'fixing them all', combo: 'that combined route',
-  'new-feature': 'starting a new feature', 'create-layout': 'creating the layout',
-});
-
-/**
- * The phrase for a route key ("via-library:ui:C>F" -> "via the library").
- * @param {string} key
- * @returns {string}
- */
-export const routePhrase = (key) => TEMPLATE_PHRASE[/** @type {keyof typeof TEMPLATE_PHRASE} */ (String(key).replace(/^retrieval:/, '').split(':')[0])] ?? 'that route';
+// TEMPLATE_PHRASE and routePhrase live in ./words.mjs (pure), re-exported above.
 
 /**
  * A draft's recall context: intent, the target's structure hash, slot shapes and layer hashes (no names, no code).
