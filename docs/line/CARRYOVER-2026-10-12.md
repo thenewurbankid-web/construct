@@ -19,17 +19,23 @@ Start here. Read `CLAUDE.md`, `LINE.md`, then this file.
   terminal and asks y/N in one. Tracker: 14 rows marked done.
 - Main checkout had missing deps; `npm install` was run at its root and in ui/client.
 
+## Update (2026-10-12, 14:50): og wave merged locally
+- Done: item 1 (full npm test: 6,680 tests, only known flakes); item 2 (#793 Processes drawer crash, #860 project
+  switcher overflow; both specs 10/10); item 4 (#856 readable unit labels, exports named); smaller items (#870
+  analyzeRoute removed, #871 embeddings as one AI profile step, #873 library passthrough); lv2 (#861), lv4 (#859),
+  lv7 cache + verifyImport logic check (#857); setup gap (#853), heavy.sh macOS RAM check (#854); Android epic #855
+  with sub-issues #862-#869, #862/#865/#866/#867/#869 fixed.
+- Walks: cs2 and the CLI walks pass 4/4; open-project token assert passes; Train spec 5/5.
+
 ## Open, in order
-1. Run the full `npm test` once (not rerun since the last merges). Known flaky: transactionalWriter shadow-dir test,
-   portfolio-redesigned tie sort.
-2. Already failing before this session: tests/shell-topbar-density.spec.js (1280, 1024) and
-   tests/shell-drawer-palette.spec.js "Logs".
-3. open-project row: 3 items (token assert re-run, Settings menu flake, Train UAT). cs2 row at 97%: re-run its walk;
-   follow-up is a token-gated Cockpit route + button for apply (designer first).
-4. How smart is it lists logic units by hash, not label (needs a stats contract change).
-5. The real flow: max-ai-ui `/opportunity` run on a clone, with the run2.mjs script (details in e700e720).
-6. Logic verification lv2, lv4, lv7, lv8; smaller items; embeddings into an AI profile (owner decision); pipeline repo.
-   Details for 5-6 are in the earlier list in git history (e700e720).
+1. og/lv7-transforms (c62032af transforms -> proven, bb6ce58e purity into logic map and G1) conflicts with #856's
+   exportName in packages/engine/line/logicMap.mjs and graph/build.mjs (both sides additive); merge it by hand.
+2. Real flow (item 5): reaches step 14 of 67 after #858 and #872; step 14 is #875 (renamed component reads as
+   missing + added; per-file renames recommended). Clone kept at /tmp/construct-realflow-142056.
+3. Pipeline repo: fast-forward core/ship (runs/core-ship, 61eee8f) to line-merge-pipeline 3886a74, then
+   `node packages/line-links/link.mjs --pin`, then the link tests.
+4. Settings-menu flake (cold dev-server compile, not a race), Train UAT walk, lv4 hook runner + V8 coverage, lv8.
+5. Designer: Cockpit library selector on New project (#873); token-gated apply route for cs2; Memory-tab copy.
 
 ## Rules that bite
 - **Never push to the public repo** (thenewurbankid-web/construct): the work branch has max-ai-ui-derived content. Cloud work goes only to `private`. Ask the owner before any public push.
