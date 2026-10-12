@@ -48,6 +48,9 @@ const LAYER_WORDS = [
 ];
 const OBJ_OF_ITEM = { pages: 'page', components: 'component', workflows: 'workflow', fixtures: 'fixture' };
 
+/** Whether a word reads as an intent verb (a Line verb word or an everyday one). @param {string} w */
+export const isVerbWord = (w) => VERB_WORDS.some(([, re]) => re.test(String(w).toLowerCase())) || everydayVerb(String(w)) !== null;
+
 /**
  * Classify a normalized request.
  * @param {{tokens: {t: string, slot?: string, kind?: string}[]}} normalized
@@ -83,6 +86,13 @@ export function classify(normalized, slots, catalog) {
   if (verb === 'update' && verbWord === 'make' && (has('N') || ((words.includes('new') || words.includes('another')) && !valued))) verb = 'add';
   if (words.includes('rename')) verb = valued ? 'update' : 'rename';
   if (!verb && valued) { verb = 'update'; verbConf = 0.3; }
+  // "let me <do something> ...": a new action for the person (a handler to add), whatever verb follows.
+  const letMe = !valued && words.some((w, i) => w === 'let' && /^(me|us)$/.test(words[i + 1] ?? ''));
+  if (letMe) { verb = 'add'; verbConf = 0.3; }
+  // "when I click <a handler prop> ...": changing what an existing handler does.
+  if (!verb && handlerProp) { verb = 'update'; verbConf = 0.3; }
+  // "<feature> should also show <an item of another feature or the library>": using it there is an add, not a change.
+  if (verb === 'update' && /^(show|shows|display|displays)$/.test(verbWord) && (lib.length || (items.length && features.some((f) => f !== slots[items[0]]?.of)))) verb = 'add';
   // "make <item> a library item", "move <item> into the library": a promote.
   if ((verb === 'move' || verb === 'add' || (verb === 'update' && verbWord === 'make')) && words.includes('library') && items.length && !features.length) verb = 'promote';
   if (verb === 'promote' && items.length === 0 && lib.length === 0) verb = null;
@@ -95,10 +105,13 @@ export function classify(normalized, slots, catalog) {
   const itemObj = items.length ? OBJ_OF_ITEM[slots[items[0]]?.itemKind] : null;
   const libObj = lib.length ? OBJ_OF_ITEM[slots[lib[0]]?.itemKind] : null;
   const newKind = (() => { const i = normalized.tokens.findIndex((x) => x.kind === 'new'); if (i < 0) return null; const near = [normalized.tokens[i + 1]?.t, normalized.tokens[i - 1]?.t, normalized.tokens[i - 2]?.t]; return near.map((w) => OBJECT_WORDS.find(([, re]) => re.test(w ?? ''))?.[0]).find((o) => ['page', 'component', 'workflow', 'fixture', 'feature'].includes(o)) ?? null; })();
-  if (verb === 'fix' || objWords.includes('problem')) { object = 'problem'; objConf = 0.4; if (!verb) { verb = 'fix'; verbConf = 0.4; } }
+  if (letMe) { object = 'handler'; objConf = 0.35; }
+  else if (verb === 'fix' || objWords.includes('problem')) { object = 'problem'; objConf = 0.4; if (!verb) { verb = 'fix'; verbConf = 0.4; } }
   else if (has('K')) { object = slots[items[0]]?.itemKind === 'workflows' || objWords.includes('workflow-step') ? 'workflow-step' : objWords.includes('handler') || handlerProp ? 'handler' : has('A') ? 'prop' : itemObj === 'workflow' ? 'workflow-step' : 'handler'; objConf = 0.4; }
   // "log "..."", "go to ...", "call ...": what a handler should do (the handler templates write the code).
   else if (words.some((w) => ['log', 'navigate', 'call'].includes(handlerShape(w) ?? '')) && (has('V') || has('S') || has('P') || has('A'))) { object = 'handler'; objConf = 0.4; if (!verb) { verb = 'update'; verbConf = 0.3; } }
+  // "when I click the Forecast button, open ...": a handler prop named with no value is about what the handler does.
+  else if (handlerProp && !has('V')) { object = 'handler'; objConf = 0.35; }
   else if (has('A') || (has('V') && (itemObj === 'page' || itemObj === 'component'))) { object = 'prop'; objConf = 0.4; }
   else if (verb === 'add' && newKind === 'feature') { object = 'feature'; objConf = 0.4; }
   else if ((verb === 'add' || verb === 'base-on') && newKind && newKind !== 'feature') { object = newKind; objConf = 0.4; }

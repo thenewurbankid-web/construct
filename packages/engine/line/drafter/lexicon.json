@@ -1478,6 +1478,12 @@
  "everyday": {
   "note": "Everyday English that names no project thing (curated, static, never built from projects). grammar: words that never become a slot or a question. phrases: what a person says for a Line prop or handler of the library (the project map then resolves it, or not). verbs: everyday verbs for an intent verb. handlers: what a handler should do, for the handler templates (log, navigate, call, set state); anything else needs code.",
   "grammar": [
+   "mark",
+   "marks",
+   "press",
+   "presses",
+   "sort",
+   "sorts",
    "built",
    "building",
    "builds",
@@ -1586,6 +1592,16 @@
     "wants",
     "give",
     "gives"
+   ],
+   "update": [
+    "show",
+    "shows",
+    "display",
+    "displays",
+    "sort",
+    "sorts",
+    "mark",
+    "marks"
    ],
    "remove": [
     "clear",

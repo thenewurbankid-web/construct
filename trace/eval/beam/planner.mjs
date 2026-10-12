@@ -13,8 +13,10 @@
 // work; when the file is missing or fails, the answer says so with available:false instead of throwing), and
 // `createFixturePlanner` answers from recorded outputs (tests, the committed fixtures, replays).
 //
-// The beam (several runs, one recommended) does not exist yet: a single-run answer becomes runs:[that run] with
-// recommended = its id. The planner only ever gets the request string: never gold, notes or rubric.
+// The beam (#904): ask.mjs --json lists every run with `state` (open | closed + reason), `recommended`, the plan
+// `steps` or the one `question`, the arms' readings and the events; a single-run answer becomes runs:[that run] with
+// recommended = its id. The planner only ever gets the request string (and, for ask.mjs, which app it is about, as
+// --example): never gold, notes or rubric.
 import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
@@ -64,10 +66,13 @@ const labelsOf = (l) => (l && typeof l === "object" ? {
   by: l.by ?? null,
 } : null);
 
+// A BeamQuestion lists the recommended run first; the eval shows its options in a neutral (sorted) order so the
+// position never tells the grader which run won, and as sentences, never run ids.
 const questionOf = (q) => {
   if (!q) return null;
   if (typeof q === "string") return { text: q, options: [] };
-  return { text: String(q.text ?? q.sentence ?? q.question ?? ""), options: Array.isArray(q.options) ? q.options.map((o) => (typeof o === "string" ? o : String(o.label ?? o.id ?? ""))) : [] };
+  const options = Array.isArray(q.options) ? q.options.map((o) => (typeof o === "string" ? o : String(o.label ?? o.sentence ?? o.id ?? ""))) : [];
+  return { text: String(q.text ?? q.sentence ?? q.question ?? ""), options: q.recommended != null ? [...options].sort() : options };
 };
 
 /**
@@ -88,12 +93,16 @@ export function normalizePlannerOutput(raw, source) {
   const events = Array.isArray(raw.events) ? raw.events : Array.isArray(raw.beam?.events) ? raw.beam.events : raw.eventsFile ? readEvents(String(raw.eventsFile)).events : null;
   const tree = events ? foldEvents(events) : null;
   const fromTree = tree && !(Array.isArray(raw.runs) && raw.runs.length) && !raw.labels && !raw.path ? tree.runs.filter((r) => r.status !== "closed").map((r) => ({ id: r.id, labels: readingLabels(r.reading), path: raw.paths?.[r.id] ?? [] })) : null;
-  const runs = fromTree?.length ? fromTree.map(runOf) : Array.isArray(raw.runs) && raw.runs.length ? raw.runs.map(runOf) : [runOf(raw, 0)];
+  // ask.mjs (#904) lists every run with its state; only the runs still open (the plan's run, or the question's
+  // options) are graded. None open (the beam closed every run): nothing to grade, the tree says why.
+  const stated = Array.isArray(raw.runs) && raw.runs.some((r) => r && typeof r.state === "string");
+  const beam = events ? { events, ms: Number.isFinite(raw.ms) ? raw.ms : Number.isFinite(raw.beam?.ms) ? raw.beam.ms : null } : null;
+  if (stated && !raw.runs.some((r) => r.state !== "closed")) return { available: true, source, labels: null, path: [], question: questionOf(raw.question) ?? null, runs: [], recommended: null, beam, arms: raw.arms ?? null };
+  const runs = fromTree?.length ? fromTree.map(runOf) : stated ? raw.runs.filter((r) => r.state !== "closed").map(runOf) : Array.isArray(raw.runs) && raw.runs.length ? raw.runs.map(runOf) : [runOf(raw, 0)];
   const rec = raw.recommended ?? tree?.winner;
   const recommended = rec != null && runs.some((r) => r.id === String(rec)) ? String(rec) : runs[0].id;
   const top = runs.find((r) => r.id === recommended);
-  const beamQ = tree?.question ? { text: tree.question.sentence, options: tree.question.options.map((o) => o.sentence) } : null;
-  const beam = events ? { events, ms: Number.isFinite(raw.ms) ? raw.ms : Number.isFinite(raw.beam?.ms) ? raw.beam.ms : null } : null;
+  const beamQ = tree?.question ? { text: tree.question.sentence, options: tree.question.options.map((o) => o.sentence).sort() } : null;
   return { available: true, source, labels: top.labels, path: top.path, question: questionOf(raw.question) ?? beamQ ?? top.question, runs, recommended, beam, arms: raw.arms ?? null };
 }
 
@@ -105,11 +114,13 @@ export function normalizePlannerOutput(raw, source) {
 export function createAskPlanner({ askPath = DEFAULT_ASK, run = spawnSync, timeoutMs = 120_000 } = {}) {
   return {
     kind: "ask",
-    ask(request, { eventsFile } = {}) {
+    // `example`: the item's app folder (owner decision, #904): ask.mjs reads the request against that Trace example's facts
+    // (--example); the request text is unchanged. Without it ask.mjs guesses the example from the request (exampleFor).
+    ask(request, { eventsFile, example } = {}) {
       if (typeof request !== "string") throw new TypeError("the planner takes the request text only");
       const fail = (error) => ({ available: false, source: "ask", error, labels: null, path: [], question: null, runs: [], recommended: null });
       if (!fs.existsSync(askPath)) return fail(`${path.relative(path.join(BEAM_DIR, "..", ".."), askPath)} is not there yet (the planner CLI is built separately); use --planner fixture`);
-      const res = run(process.execPath, [askPath, request, "--json"], { encoding: "utf8", timeout: timeoutMs, maxBuffer: 10 * 1024 * 1024, env: eventsFile ? { ...process.env, BEAM_EVENTS_FILE: eventsFile } : process.env });
+      const res = run(process.execPath, [askPath, request, "--json", ...(example ? ["--example", String(example)] : [])], { encoding: "utf8", timeout: timeoutMs, maxBuffer: 10 * 1024 * 1024, env: eventsFile ? { ...process.env, BEAM_EVENTS_FILE: eventsFile } : process.env });
       if (res.error) return fail(`ask.mjs did not run: ${res.error.message}`);
       if (res.status !== 0) return fail(`ask.mjs exited ${res.status}: ${String(res.stderr || res.stdout).slice(0, 300)}`);
       let raw;
