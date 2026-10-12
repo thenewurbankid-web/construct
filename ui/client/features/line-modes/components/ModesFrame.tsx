@@ -33,12 +33,10 @@ export function ModesFrame({ screen, mode, crumbs, onCrumb, chat, open, view, hi
     return (
       <div className="lm" data-mode="chat" data-screen={screen} data-testid="lm-screen">
         <Breadcrumb crumbs={crumbs} onCrumb={onCrumb} />
-        <div className="lm-chat-row">
-          <ChatEntry {...chat} selected={open}>
-            {open === null ? null : view}
-          </ChatEntry>
-          {stage}
-        </div>
+        {stage}
+        <ChatEntry {...chat} selected={open}>
+          {open === null ? null : view}
+        </ChatEntry>
       </div>
     );
   }
