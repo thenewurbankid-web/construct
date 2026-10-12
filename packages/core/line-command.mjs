@@ -191,6 +191,24 @@ const many = (n, one, more = `${one}s`) => `${n} ${n === 1 ? one : more}`;
  * @param {string[]} args The arguments after `rules`.
  * @returns {Promise<void>}
  */
+/**
+ * Ask the person, in an interactive terminal only, whether to apply these proposals. No terminal: false.
+ * @param {{id: string, sentence: string}[]} chosen
+ * @returns {Promise<boolean>}
+ */
+async function personConfirms(chosen) {
+  if (!process.stdin.isTTY || !process.stdout.isTTY) return false;
+  const { createInterface } = await import('node:readline/promises');
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  try {
+    for (const p of chosen) console.log(`- ${p.id}: ${p.sentence}`);
+    const answer = await rl.question(`Apply ${chosen.length === 1 ? 'this rule' : `these ${chosen.length} rules`} to Construct's rule files? [y/N] `);
+    return /^y(es)?$/i.test(answer.trim());
+  } finally {
+    rl.close();
+  }
+}
+
 async function rulesCommand(args) {
   const [sub, ...rest] = args;
   const root = rootOf(rest);
@@ -230,6 +248,16 @@ async function rulesCommand(args) {
   }
   if (sub === 'apply') {
     const ids = rest.flatMap((a, i) => (a === '--id' && rest[i + 1] ? [rest[i + 1]] : []));
+    // Person-only: what would land is asked about in an interactive terminal; a piped or scripted run (an agent's
+    // shell) is refused before anything is written. A refusal from the gate is shown as before.
+    const c = factory.applicable({ root, ids });
+    if (c.ok && !(await personConfirms(c.chosen))) {
+      const r = { ok: false, sentence: process.stdin.isTTY && process.stdout.isTTY ? 'Nothing was applied.' : 'Applying rules is a person\'s step: run `construct line rules apply` in a terminal and answer its question. Nothing was applied.', files: [] };
+      if (json) console.log(JSON.stringify(r, null, 2));
+      else console.log(r.sentence);
+      process.exitCode = 1;
+      return;
+    }
     const r = factory.apply({ root, ids });
     if (json) console.log(JSON.stringify(r, null, 2));
     else console.log(r.sentence);

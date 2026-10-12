@@ -99,6 +99,17 @@ export async function gate(o) {
 }
 
 /**
+ * Which proposals `apply` would apply for these options, or why none: the CLI asks the person about exactly these.
+ * @param {{root: string, ids?: string[]}} o
+ * @returns {{ok: true, chosen: import('./contract.mjs').RuleProposal[]}|{ok: false, sentence: string}}
+ */
+export function applicable(o) {
+  const doc = readJson(path.join(o.root, FACTORY_FILES.proposals));
+  const report = readJson(path.join(o.root, FACTORY_FILES.gate));
+  return choose(doc?.proposals ?? [], report, o.ids);
+}
+
+/**
  * apply: a person applies what passed (or the `ids` they name) to the checkout's rule files, through the writer.
  * @param {{root: string, checkout?: string, ids?: string[], by?: string}} o
  * @returns {{ok: boolean, sentence: string, files: string[]}}
