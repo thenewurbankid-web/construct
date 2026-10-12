@@ -41,16 +41,38 @@ export function fileStore(root, folder) {
 }
 
 /**
+ * The characterizer's search budgets (characterize.mjs budgetMs, componentBudgetMs, roundMs) from the agent's
+ * `characterize.budgets`, else LINE_CHAR_BUDGETS ("pure,component,round" in seconds, e.g. "20,60,45"), else none (the
+ * characterizer's defaults: 10 s pure, 25 s components, 25 s rounds). A cold pass with larger budgets raises coverage
+ * when the defaults leave too many units untested.
+ * @param {{pureMs?: number, componentMs?: number, roundMs?: number}} [budgets]
+ * @param {Record<string, string|undefined>} [env]
+ * @returns {{budgetMs?: number, componentBudgetMs?: number, roundMs?: number}}
+ */
+export function characterizeBudgets(budgets, env = process.env) {
+  const ok = (n) => Number.isFinite(n) && n > 0;
+  let b = budgets ?? null;
+  if (!b && env.LINE_CHAR_BUDGETS) {
+    const [p, c, r] = String(env.LINE_CHAR_BUDGETS).split(',').map((x) => Number(x.trim()) * 1000);
+    b = { pureMs: p, componentMs: c, roundMs: r };
+  }
+  if (!b) return {};
+  return { ...(ok(b.pureMs) ? { budgetMs: b.pureMs } : {}), ...(ok(b.componentMs) ? { componentBudgetMs: b.componentMs } : {}), ...(ok(b.roundMs) ? { roundMs: b.roundMs } : {}) };
+}
+
+/**
  * The Import agent for one folder of a project on disk.
- * @param {Omit<Parameters<typeof createImportAgent>[0], 'store' | 'importOps'> & Partial<Parameters<typeof createImportAgent>[0]>} o
+ * @param {Omit<Parameters<typeof createImportAgent>[0], 'store' | 'importOps'> & Partial<Parameters<typeof createImportAgent>[0]> & {characterize?: {budgets?: {pureMs?: number, componentMs?: number, roundMs?: number}}}} o
+ *   `characterize.budgets`: the characterizer's search budgets (characterizeBudgets; default its own, or LINE_CHAR_BUDGETS).
  * @returns {any}
  */
 export function createImportAgentOnDisk(o) {
+  const budgets = characterizeBudgets(o.characterize?.budgets);
   return createImportAgent({
     store: fileStore(o.root, o.folder),
     // A route-seeded import plans the route family's files (import.mjs planImport with {route, folder}).
     importOps: { scan: scanImport, plan: (root, folder, answers, x) => planImport(root, x?.route ? { route: x.route, folder, ...(x.feature ? { feature: x.feature } : {}) } : folder, answers) },
-    logic: createLogicOnDisk(o.root, o.folder),
+    logic: createLogicOnDisk(o.root, o.folder, Object.keys(budgets).length ? { characterize: budgets } : {}),
     checkFolder: () => folderRootOf(o.root, o.folder),
     snapshot: snapshotFolder,
     rollback: rollbackFolder,

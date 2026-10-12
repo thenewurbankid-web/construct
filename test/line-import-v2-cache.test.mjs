@@ -14,6 +14,7 @@ import { createLogicOnDisk } from '../packages/engine/line/importLoopDisk.mjs';
 import { characterize, locateUnitSpans, mergeCoverage, jestRunnerFor, runJest } from '../packages/engine/line/characterize.mjs';
 import { buildLogicMap } from '../packages/engine/line/logicMap.mjs';
 import { runCharTests } from '../packages/engine/line/importVerify.mjs';
+import { characterizeBudgets } from '../packages/engine/line/importAgentDisk.mjs';
 
 const FIXTURE = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures/line-char-app');
 const FILES = ['src/app/shop/page.tsx', 'src/app/shop/Shop.tsx', 'src/lib/price.ts', 'src/lib/api.ts', 'src/lib/toast.ts'];
@@ -173,4 +174,12 @@ test('jest home + jest: an app without jest is characterized with jest from the 
   const runs = runCharTests(root, 'src', r.tests, { jest: runner });
   assert.equal(runs.state, 'pass', runs.detail);
   assert.ok(!fs.existsSync(path.join(root, 'jest.config.js')), 'no jest config was written into the app');
+});
+
+test('budgets: the speed defaults stay unless the agent (characterize.budgets) or LINE_CHAR_BUDGETS asks for more, e.g. one cold pass at the old 20/60/45 s', () => {
+  assert.deepEqual(characterizeBudgets(undefined, {}), {}, 'none given: the characterizer keeps 10 s / 25 s / 25 s');
+  assert.deepEqual(characterizeBudgets({ pureMs: 20_000, componentMs: 60_000, roundMs: 45_000 }, {}), { budgetMs: 20_000, componentBudgetMs: 60_000, roundMs: 45_000 });
+  assert.deepEqual(characterizeBudgets(undefined, { LINE_CHAR_BUDGETS: '20,60,45' }), { budgetMs: 20_000, componentBudgetMs: 60_000, roundMs: 45_000 });
+  assert.deepEqual(characterizeBudgets({ componentMs: 40_000 }, { LINE_CHAR_BUDGETS: '20,60,45' }), { componentBudgetMs: 40_000 }, 'the agent\'s option wins over the environment');
+  assert.deepEqual(characterizeBudgets(undefined, { LINE_CHAR_BUDGETS: 'x,0,-1' }), {}, 'nonsense is ignored');
 });
