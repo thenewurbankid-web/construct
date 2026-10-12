@@ -1,43 +1,120 @@
-// cs2 (scaffold) -- the static rule factory's contract. Static code stays the runtime; this collects where it missed
-// so rules can be proposed at development time (as reviewed PRs, never inside Line) and kept only when they raise
-// held-out accuracy with no regressions. The key number is the share of decisions static code made, per step.
+// cs2 -- the static rule factory's contract. Static code stays the runtime; this collects where it missed so new static
+// rules can be proposed offline (reviewed, never inside Line at runtime) and kept only when they raise held-out
+// accuracy with no regressions. The key number is the share of decisions static code made, per step.
 //
 //   MissRecord     one decision Line made (or could not make), from one source, with who made it and whether static
-//                  code got it right. `label` is for jev to fill when it labels the corpus (null until then).
+//                  code got it right. `options` are the closed options the decision had (empty when it had none),
+//                  `kind` says how a wrong answer was wrong (absent: the right one was not offered; picked: it was,
+//                  and another was chosen), `correct` is the right option once known. `label` is jev's verdict on the
+//                  static choice (null until labelled).
 //   StaticShare    per step: how many decisions, how many static code made, the share, one sentence.
+//   LabelItem      one closed question about a miss: which option was right, plus "none fits". jev answers it; with
+//                  jev down the rules answer it and say so; a person or Claude can answer it offline (JSONL).
+//                  Its core is the step-miss shape {step, kind, options, chosen, correct} (branch im1-im2).
+//   RuleProposal   a candidate static rule made from labelled misses: data (a lexicon or fix-ranking change), its own
+//                  test case, the misses it came from, one sentence. Never applied by itself.
+//   GateResult     one proposal measured on the held-out evals (Train Line's held-out worlds, the drafter's eval):
+//                  ships only when a held-out score rises, no case that passed now fails, and its own test passes.
 //
-// Sources: plan feedback (line/plans/*.json) and validate findings are collected now (collect.mjs). Decision traces
-// and the reason ledger are in the contract but have no collector yet (scaffold). No model is called anywhere here.
+// Sources: plan feedback (line/plans/*.json), validate findings, decision traces (decision-trace.v1, the state
+// directory), the reason ledger (@mx/reason's file ledger, <dir>/<pairId>/<requestId>.json) and the drafter's misses on
+// Train Line's train split. No model is called here; jev is called only through Line's one decide() (label.mjs).
 
-export const MISS_SOURCES = Object.freeze(['plan', 'validate', 'decision-trace', 'reason-ledger']);
-/** Sources with a collector today. */
-export const COLLECTED_SOURCES = Object.freeze(['plan', 'validate']);
+export const MISS_SOURCES = Object.freeze(['plan', 'validate', 'decision-trace', 'reason-ledger', 'drafter']);
+/** Sources with a collector (all of them since cs2). */
+export const COLLECTED_SOURCES = MISS_SOURCES;
 export const DECIDERS = Object.freeze(['static', 'person', 'agent', 'model', 'none']);
+/** How a wrong answer was wrong (the step-miss shape of branch im1-im2). */
+export const MISS_KINDS = Object.freeze(['absent', 'picked']);
+/** The closed option every label item has last: none of the offered options fits. */
+export const NONE_FITS = 'none';
+/** Who answered a label item. */
+export const LABELLERS = Object.freeze(['jev', 'rules', 'person', 'claude']);
+/** The kinds of static rule a proposal can be, and the file each one changes. */
+export const PROPOSAL_KINDS = Object.freeze({
+  verb: 'lexicon', grammar: 'lexicon', handler: 'lexicon', catalog: 'lexicon', 'fix-rank': 'fix-ranking',
+});
+/** The rule files a proposal changes, relative to the Construct checkout (applied only through the writer). */
+export const RULE_FILES = Object.freeze({
+  lexicon: 'packages/engine/line/drafter/lexicon.json',
+  'fix-ranking': 'packages/engine/line/fix-ranking.json',
+});
+/** Where the factory keeps its work in a project's Line state folder. */
+export const FACTORY_FILES = Object.freeze({
+  proposals: 'line/rules/proposals.json',
+  labelling: 'line/rules/labelling.jsonl',
+  gate: 'line/rules/gate.json',
+});
 
 /**
- * @typedef {'plan'|'validate'|'decision-trace'|'reason-ledger'} MissSource
+ * @typedef {'plan'|'validate'|'decision-trace'|'reason-ledger'|'drafter'} MissSource
  * @typedef {'static'|'person'|'agent'|'model'|'none'} Decider  `none`: nobody has decided yet (open, or failed).
  *
  * @typedef {object} MissRecord
  * @property {string} id                 Stable: the same input gives the same id.
  * @property {MissSource} source
  * @property {string} step               The step the decision belongs to: a plan tool ("line.baseOn"), a fix choice
- *                                       ("line.baseOn fix choice") or a validate rule ("validate LINE-DIR").
+ *                                       ("line.baseOn fix choice"), a validate rule ("validate LINE-DIR"), a chooser
+ *                                       id, a reason step ("gatelm.gapFill") or "drafter <intent>".
  * @property {Decider} decidedBy
  * @property {boolean} miss              Static code did not make the final decision (or made a different one).
  * @property {string|null} staticChoice  What static code chose or recommended (a fix id, "pass"), null when it had none.
  * @property {string|null} finalChoice   What was finally chosen, null while open.
  * @property {string} sentence           Plain English: what happened.
- * @property {{file: string, planId?: string, stepId?: string, rule?: string, line?: number}} ref
+ * @property {{file: string, planId?: string, stepId?: string, rule?: string, line?: number, chooser?: string, pairId?: string, requestId?: string, caseId?: string}} ref
  * @property {null|'right'|'wrong'} label  jev's label of the static choice, null until labelled.
+ * @property {string[]} [options]        The closed options of the decision (absent or empty: none to label).
+ * @property {null|'absent'|'picked'} [kind]  How a known-wrong answer was wrong; null when not known to be wrong.
+ * @property {string|null} [correct]     The right option once known (NONE_FITS when none of the options fits).
+ * @property {{request?: string, words?: string[], intent?: string, rule?: string, question?: string}} [context]
+ *                                       What a labeller reads (no project names: slots only).
  *
  * @typedef {{step: string, total: number, byStatic: number, share: number, sentence: string}} StaticShare
+ *
+ * @typedef {object} LabelItem
+ * @property {string} id                 Stable: the miss id (plus the word, for a drafter word).
+ * @property {string} missId
+ * @property {MissSource} source
+ * @property {string} step
+ * @property {null|'absent'|'picked'} kind
+ * @property {string} question           One plain-English question.
+ * @property {string[]} options          Closed option ids, NONE_FITS last.
+ * @property {string|null} chosen        What Line chose (static or a model), null when it chose nothing.
+ * @property {string|null} correct       The label: one of `options`, null until labelled.
+ * @property {null|'jev'|'rules'|'person'|'claude'} labelledBy
+ * @property {string|null} rulesSaid     What the rules would answer (null: the rules cannot tell), kept for agreement.
+ * @property {string[]} facts            Short facts a labeller reads.
+ * @property {{word?: string, caseId?: string, rule?: string, intent?: string}} about
+ *
+ * @typedef {object} RuleProposal
+ * @property {string} id                 Stable: a hash of the kind and the change.
+ * @property {keyof typeof PROPOSAL_KINDS} kind
+ * @property {'lexicon'|'fix-ranking'} target
+ * @property {any} change                The data merged into the rule file (lexicon: a mergeLexicon addition; fix-ranking: {rule, prefer, over}).
+ * @property {string[]} evidence         Label item ids it came from.
+ * @property {{kind: 'train-cases', caseIds: string[]}|{kind: 'fix-items', items: {options: string[], chosen: string|null, correct: string}[]}} test
+ * @property {string} sentence
+ *
+ * @typedef {{recall: number|null, precision: number|null, preferred: number|null, n: number}} HeldOutScore
+ * @typedef {{train: HeldOutScore, drafter: HeldOutScore}} GateScores
+ *
+ * @typedef {object} GateResult
+ * @property {string} proposalId
+ * @property {boolean} pass
+ * @property {GateScores} with
+ * @property {string[]} improved         The held-out scores that rose ("train preferred", "drafter recall", ...).
+ * @property {string[]} regressions      Case ids that passed before and fail with the proposal (any split).
+ * @property {{ok: boolean, sentence: string}} ownTest
+ * @property {string} sentence
+ *
+ * @typedef {{at: string, baseline: GateScores, results: GateResult[], together: {ids: string[], with: GateScores, regressions: string[], ok: boolean}|null, passed: string[], sentence: string}} GateReport
  */
 
-/** @param {unknown} c @param {string} msg */
-function must(c, msg) {
-  if (!c) throw new TypeError(`MissRecord contract: ${msg}`);
+/** @param {unknown} c @param {string} msg @param {string} [what] */
+function must(c, msg, what = 'MissRecord') {
+  if (!c) throw new TypeError(`${what} contract: ${msg}`);
 }
+const FULL_SENTENCE = /^[A-Z0-9"].*[.?!]$/s;
 
 /**
  * @param {any} r
@@ -53,9 +130,12 @@ export function assertMissRecord(r) {
   must(r.miss || r.decidedBy === 'static', 'a record that is not a miss was decided by static code');
   must(r.staticChoice === null || typeof r.staticChoice === 'string', 'staticChoice is a string or null');
   must(r.finalChoice === null || typeof r.finalChoice === 'string', 'finalChoice is a string or null');
-  must(typeof r.sentence === 'string' && /^[A-Z0-9"].*[.?!]$/.test(r.sentence), 'sentence is a full sentence');
+  must(typeof r.sentence === 'string' && FULL_SENTENCE.test(r.sentence), 'sentence is a full sentence');
   must(r.ref && typeof r.ref.file === 'string', 'ref names a file');
   must(r.label === null || r.label === 'right' || r.label === 'wrong', 'label is null, right or wrong');
+  must(r.options === undefined || (Array.isArray(r.options) && r.options.every((o) => typeof o === 'string' && o)), 'options is a list of option ids');
+  must(r.kind === undefined || r.kind === null || MISS_KINDS.includes(r.kind), 'kind is absent, picked or null');
+  must(r.correct === undefined || r.correct === null || typeof r.correct === 'string', 'correct is a string or null');
   return r;
 }
 
@@ -68,4 +148,72 @@ export function assertStaticShare(s) {
     throw new TypeError('StaticShare contract: step, total >= byStatic, share between 0 and 1, and a sentence');
   }
   return s;
+}
+
+/**
+ * @param {any} i
+ * @returns {LabelItem}
+ */
+export function assertLabelItem(i) {
+  const m = (c, msg) => must(c, msg, 'LabelItem');
+  m(i && typeof i.id === 'string' && i.id, 'an item has an id');
+  m(typeof i.missId === 'string' && i.missId, 'an item names its miss');
+  m(MISS_SOURCES.includes(i.source), 'source is a miss source');
+  m(typeof i.step === 'string' && i.step, 'an item names its step');
+  m(i.kind === null || MISS_KINDS.includes(i.kind), 'kind is absent, picked or null');
+  m(typeof i.question === 'string' && /\?$/.test(i.question), 'question is one question');
+  m(Array.isArray(i.options) && i.options.length >= 2 && i.options.at(-1) === NONE_FITS && new Set(i.options).size === i.options.length, `options are distinct closed ids with "${NONE_FITS}" last`);
+  m(i.chosen === null || typeof i.chosen === 'string', 'chosen is a string or null');
+  m(i.correct === null || i.options.includes(i.correct), 'correct is null or one of the options');
+  m(i.labelledBy === null || LABELLERS.includes(i.labelledBy), `labelledBy is null or one of ${LABELLERS.join(', ')}`);
+  m((i.correct === null) === (i.labelledBy === null), 'an item is labelled exactly when it says who labelled it');
+  m(i.rulesSaid === null || i.options.includes(i.rulesSaid), 'rulesSaid is null or one of the options');
+  m(Array.isArray(i.facts) && i.facts.every((f) => typeof f === 'string'), 'facts are strings');
+  return i;
+}
+
+/**
+ * The step-miss shape of branch im1-im2: {step, kind, options, chosen, correct}.
+ * @param {LabelItem} i
+ * @returns {{step: string, kind: null|'absent'|'picked', options: string[], chosen: string|null, correct: string|null}}
+ */
+export function toStepMiss(i) {
+  return { step: i.step, kind: i.kind, options: i.options.filter((o) => o !== NONE_FITS), chosen: i.chosen, correct: i.correct === NONE_FITS ? null : i.correct };
+}
+
+/**
+ * @param {any} p
+ * @returns {RuleProposal}
+ */
+export function assertRuleProposal(p) {
+  const m = (c, msg) => must(c, msg, 'RuleProposal');
+  m(p && typeof p.id === 'string' && /^rp-[0-9a-f]{12}$/.test(p.id), 'a proposal has an id rp-<12 hex>');
+  m(Object.keys(PROPOSAL_KINDS).includes(p.kind), `kind is one of ${Object.keys(PROPOSAL_KINDS).join(', ')}`);
+  m(p.target === PROPOSAL_KINDS[p.kind], 'target is the rule file of its kind');
+  m(p.change && typeof p.change === 'object', 'a proposal carries its change as data');
+  m(Array.isArray(p.evidence) && p.evidence.length >= 1, 'a proposal names the misses it came from');
+  m(p.test && ((p.test.kind === 'train-cases' && Array.isArray(p.test.caseIds) && p.test.caseIds.length >= 1) || (p.test.kind === 'fix-items' && Array.isArray(p.test.items) && p.test.items.length >= 1)), 'a proposal carries its own test case');
+  m(typeof p.sentence === 'string' && FULL_SENTENCE.test(p.sentence), 'sentence is a full sentence');
+  return p;
+}
+
+/**
+ * @param {any} r
+ * @returns {GateReport}
+ */
+export function assertGateReport(r) {
+  const m = (c, msg) => must(c, msg, 'GateReport');
+  const score = (s) => s && ['train', 'drafter'].every((k) => s[k] && Number.isInteger(s[k].n));
+  m(r && typeof r.at === 'string', 'a report has a time');
+  m(score(r.baseline), 'a report has the baseline scores');
+  m(Array.isArray(r.results), 'a report lists its results');
+  for (const x of r.results) {
+    m(typeof x.proposalId === 'string' && typeof x.pass === 'boolean' && score(x.with), 'each result names its proposal, pass and scores');
+    m(Array.isArray(x.improved) && Array.isArray(x.regressions) && x.ownTest && typeof x.ownTest.ok === 'boolean', 'each result lists what improved, what regressed and its own test');
+    m(!x.pass || (x.improved.length > 0 && x.regressions.length === 0 && x.ownTest.ok), 'a result passes only when a held-out score rose, nothing regressed and its own test passed');
+    m(typeof x.sentence === 'string' && FULL_SENTENCE.test(x.sentence), 'each result has a sentence');
+  }
+  m(Array.isArray(r.passed) && r.passed.every((id) => r.results.some((x) => x.proposalId === id && x.pass)), 'passed lists exactly results that passed');
+  m(typeof r.sentence === 'string' && FULL_SENTENCE.test(r.sentence), 'a report has a sentence');
+  return r;
 }
