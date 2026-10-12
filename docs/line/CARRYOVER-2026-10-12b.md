@@ -3,10 +3,10 @@
 Base: `private/work/2026-09-23` (local `work/2026-09-23` ref is stale at cc45f012; always fetch private). Push to `private` only, never `origin`. Never model "fable". Android/Termux paused.
 
 ## Heavy queue (owner decision)
-Bench runs first (one at a time through heavy.sh): pilot-qwen-7b-r3 (Line arm), pilot-qwen-7b-plain-r3 (twin), pilot-qwen-7b-r3-s2 (seed 2). When all three finish, send "bench done" to the waiting agents below; after that up to 2 heavy jobs at once (heavy.sh is one slot today — needs a small change or two queues).
+Owner rule (supersedes the earlier bench-first plan): development runs in parallel always; tests, Playwright, training and benchmarks run strictly one at a time through heavy.sh (single slot, never raise it). Benchmarks run only at the END, on the final merged tree: pilot-qwen-7b-r3 (Line arm), pilot-qwen-7b-plain-r3 (twin), pilot-qwen-7b-r3-s2 (seed 2), one after another. The branches below no longer wait on "bench done"; they merge first (one combined full suite via og), then the bench runs.
 Then report r2 vs r3 vs twin vs seed 2 against the owner bar (>=3 landed steps, model gaps not the majority).
 
-## Branches waiting for "bench done" (all unmerged; merge via og after full suite on the combined tree)
+## Branches to merge before the bench (merge via og after one full suite on the combined tree)
 | Work | Branch | Head | Waits on |
 |---|---|---|---|
 | jev intent shadow, ask CLI, label CLI, Plan/jev MC panel (#892, epic #891) | worktree-agent-a83ab6193103a5684 | e81b9970 | train_intent, trained eval, full suite |
@@ -26,6 +26,5 @@ Owner decisions: beam forks the Trace pipeline (makePlan per candidate; not runP
 ## Follow-ups to file/launch
 - Drop the old `norm` in packages/engine/line/hints.mjs:551 so the jev shadow sends raw text (owner: raw text).
 - Board: 17 older orphans flagged, 127 unclassified issues (#637-#852), stale In progress #180 #182 #299 #701, no epic for "[Logic verification]" issues.
-- heavy.sh: allow 2 slots after bench.
 
 Mission Control: `npm run mc` (127.0.0.1:4777).
