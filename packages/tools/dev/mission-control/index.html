@@ -495,6 +495,7 @@ function renderDetail(d) {
     const r = await fetch(`/api/prompt${S.run ? `?run=${encodeURIComponent(S.run)}` : ''}`); S.prompt = await r.json(); if (!S.prompt.text) S.prompt.text = '(no prompt found)'; renderDetail(d);
   });
   $('detCopy').addEventListener('click', () => navigator.clipboard?.writeText(JSON.stringify(d, null, 2)));
+  window.ctxView?.decorate(el, d); // #899 Context / jev toggle (context-view.client.js)
 }
 
 // ------------------------------------------------------------ console
@@ -570,5 +571,6 @@ function addEvent(e, backlog = false) {
 setInterval(() => { if (S.summary) renderSummary(); renderWorktrees(); }, 5000);
 connect();
 </script>
+<script src="/ctx/view.js"></script>
 </body>
 </html>
