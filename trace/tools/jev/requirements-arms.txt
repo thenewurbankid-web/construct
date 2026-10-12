@@ -1,0 +1,18 @@
+# Sidecar arms (#903), installed into tools/jev/.venv beside torch (open-jev). Permissive licenses only.
+# Install: tools/jev/.venv/bin/python -m pip install -r tools/jev/requirements-arms.txt
+#          tools/jev/.venv/bin/python -m spacy download en_core_web_sm        (3.8.0, MIT, 12 MB)
+#          tools/jev/.venv/bin/python tools/jev/fetch_arms_models.py           (NLI model below)
+# NLI model: MoritzLaurer/xtremedistil-l6-h256-zeroshot-v1.1-all-33 (MIT, 13M params, 25 MB safetensors),
+#   saved in tools/jev/models/xtremedistil-zeroshot (gitignored).
+torch==2.14.0            # BSD-3-Clause (already there for open-jev)
+tokenizers==0.23.3       # Apache-2.0
+scikit-learn==1.9.1      # BSD-3-Clause
+numpy==2.5.4             # BSD-3-Clause
+scipy==1.18.1            # BSD-3-Clause
+joblib==1.6.0            # BSD-3-Clause
+spacy==3.8.16            # MIT
+thinc==8.3.13            # MIT
+transformers==5.19.0     # Apache-2.0
+safetensors==0.8.0       # Apache-2.0
+huggingface_hub==2.2.0   # Apache-2.0
+pytest                   # MIT (tests only)
