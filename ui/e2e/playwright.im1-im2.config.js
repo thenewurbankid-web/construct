@@ -8,5 +8,6 @@ export default {
   testDir: '.',
   testMatch: /(uat[\\/]im1-im2|tests[\\/]line-ai-steps)\.spec\.js$/,
   timeout: 90_000,
-  webServer: base.webServer.map((w, i) => (i === 0 ? { ...w, env: { ...w.env, LINE_DRAFTER: '1' } } : w)),
+  // A busy machine compiles the first page slowly: give the servers three minutes to come up.
+  webServer: base.webServer.map((w, i) => ({ ...(i === 0 ? { ...w, env: { ...w.env, LINE_DRAFTER: '1' } } : w), timeout: 180_000 })),
 };
