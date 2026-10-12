@@ -1,6 +1,6 @@
-// G2 runtime layer shapes. The graph's own shapes (GraphNode, GraphEdge, RuntimeEdge) live in G1's
-// packages/engine/line/graph/contract.mjs (branch line-graph); until that merges, the runtime edge is mirrored here:
-//   RuntimeEdge {from, to, type: 'CALLED_AT_RUNTIME', layer: 'runtime', evidence: {test, count?}}
+// G2 runtime layer shapes. The graph's own shapes (GraphNode, GraphEdge, RuntimeEdge, assertRuntimeEdge) live in G1's
+// ../contract.mjs; the edges mergeRuntime makes are its RuntimeEdge:
+//   {from, to, type: 'CALLED_AT_RUNTIME', layer: 'runtime', evidence: {test, count?}}
 // G1's edge carries ONLY from, to, type, layer and evidence, so argument and return SHAPES sit beside the edges in
 // `RuntimeMerge.shapes`, keyed "<from> -> <to>". Node ids are G1's: a logic-map unit is `unit:<fingerprint>`.
 
@@ -23,7 +23,7 @@
  */
 
 /**
- * @typedef {{from: string, to: string, type: 'CALLED_AT_RUNTIME', layer: 'runtime', evidence: {test: string, count?: number}}} RuntimeEdge
+ * @typedef {import('../contract.mjs').RuntimeEdge} RuntimeEdge
  * @typedef {{fingerprint: string, id: string, kind: string, file: string, fn: string, line: number}} UnreachedUnit
  * @typedef {{
  *   graph: {nodes: object[], edges: object[]},
@@ -37,10 +37,16 @@
  * @typedef {{total: number, reached: string[], unreached: string[], mocked: string[], byKind: Record<string, {reached: number, total: number}>, sentence: string}} RuntimeCoverage
  */
 
+import { EDGE_LAYER, ID_PREFIX } from '../contract.mjs';
+
 export const RUNTIME_EDGE_TYPE = 'CALLED_AT_RUNTIME';
-export const RUNTIME_LAYER = 'runtime';
+export const RUNTIME_LAYER = EDGE_LAYER[RUNTIME_EDGE_TYPE];
 /** Env the recorders read. */
 export const RUNTIME_ENV = Object.freeze({ dir: 'LINE_RUNTIME_DIR', root: 'LINE_RUNTIME_ROOT', files: 'LINE_RUNTIME_FILES' });
 
-/** G1's node id of a logic-map unit. @param {{fingerprint: string}} u */
-export const unitNodeId = (u) => `unit:${u.fingerprint}`;
+/**
+ * G1's node id of a logic-map unit.
+ * @param {{fingerprint: string}} u
+ * @returns {string}
+ */
+export const unitNodeId = (u) => `${ID_PREFIX.unit}${u.fingerprint}`;

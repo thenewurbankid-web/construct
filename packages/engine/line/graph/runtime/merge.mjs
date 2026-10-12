@@ -20,6 +20,7 @@ const { handlerHash } = require('./recorder.cjs');
 const exportNames = (u) => u.detail.split(',').map((s) => s.trim().split(/\s+/).pop());
 
 /**
+ * The logic-map unit a recorded caller, callee or state write is: by its file first, then by name anywhere in the map.
  * @param {RuntimeRef|{kind: 'state', file: string, owner: string, key: string}} ref
  * @param {{units: Unit[]}} map
  * @returns {Unit|null}
@@ -138,6 +139,7 @@ export function mergeRuntime(graph, records, opts) {
   };
 
   const edgeAgg = new Map();
+  /** @type {Record<string, {args: string[], ret: string[]}>} */
   const shapes = {};
   const addShape = (key, args, ret) => {
     const s = (shapes[key] ??= { args: [], ret: [] });

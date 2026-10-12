@@ -12,6 +12,7 @@ const STATE_CALL = /\b(?:React\.)?use(?:State|Reducer)\s*(?:<[^>()]*(?:<[^>()]*>
 function stateNames(source) {
   const owners = [];
   for (const m of source.matchAll(OWNER)) owners.push({ at: m.index ?? 0, name: m[1] ?? m[2] });
+  /** @type {Record<string, (string|null)[]>} */
   const out = {};
   for (const m of source.matchAll(STATE_CALL)) {
     const at = m.index ?? 0;

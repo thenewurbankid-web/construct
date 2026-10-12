@@ -89,7 +89,7 @@ function createRecorder(o = {}) {
   const loaded = new Set();
   const handlerCache = new WeakMap();
   const testName = o.test ?? (() => undefined);
-  const isMock = o.isMock ?? ((fn) => typeof fn?.mock === 'object' && typeof fn?.mockReturnValue === 'function');
+  const isMock = o.isMock ?? ((/** @type {any} */ fn) => typeof fn?.mock === 'object' && typeof fn?.mockReturnValue === 'function');
 
   const current = () => als.getStore() ?? null;
   const add = (rec) => {

@@ -18,6 +18,7 @@ import {
   REGISTER_PATH, RUNTIME_LAYER,
 } from '../packages/engine/line/graph/runtime/index.mjs';
 import { createRecorder } from '../packages/engine/line/graph/runtime/recorder.cjs';
+import { assertGraphNode, assertRuntimeEdge } from '../packages/engine/line/graph/contract.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const CHAR_APP = path.join(HERE, 'fixtures/line-char-app');
@@ -31,7 +32,13 @@ function unitOf(map, file, kind, detail) {
 }
 const id = (u) => unitNodeId(u);
 /** The graph nodes G1 would hold for a map's units (mirror of graph/contract.mjs: unit:<fingerprint>). */
-const graphOf = (map) => ({ nodes: map.units.map((u) => ({ id: id(u), kind: 'unit', label: `${u.kind} in ${u.fn}`, file: u.file, line: u.line, hash: `sha256:${u.fingerprint}`, attrs: { unitKind: u.kind } })), edges: [] });
+const graphOf = (map) => ({ nodes: map.units.map((u) => ({ id: id(u), kind: 'unit', label: `${u.kind} in ${u.fn.replace(/[<>]/g, '')}`, file: u.file, line: u.line, hash: `sha256:${u.fingerprint}`, attrs: { unitKind: u.kind } })), edges: [] });
+/** Every merged edge is a valid G1 RuntimeEdge between nodes of the graph. */
+function assertG1(graph, edges) {
+  graph.nodes.forEach((n) => assertGraphNode(n));
+  const nodes = new Map(graph.nodes.map((n) => [n.id, n]));
+  edges.forEach((e) => assertRuntimeEdge(e, nodes));
+}
 const pairs = (edges) => [...new Set(edges.map((e) => `${e.from} -> ${e.to}`))].sort();
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -122,6 +129,7 @@ test('node (registerHooks): edges, fetch pattern, shapes without values, unreach
   const neverCalled = unitOf(map, 'lib.mjs', 'export', 'neverCalled');
 
   const merged = mergeRuntime(graphOf(map), records, { map });
+  assertG1(merged.graph, merged.edges);
   assert.deepEqual(pairs(merged.edges), [`${id(checkout)} -> ${id(formatTotal)}`, `${id(checkout)} -> ${id(total)}`].sort());
   for (const e of merged.edges) {
     assert.deepEqual(Object.keys(e).sort(), ['evidence', 'from', 'layer', 'to', 'type']);
@@ -235,6 +243,7 @@ test('jest (withRuntimeRecorder): a known flow gives the expected edges, a fetch
   ].map(([a, b]) => `${id(a)} -> ${id(b)}`).sort();
 
   const merged = mergeRuntime(graphOf(map), records, { map });
+  assertG1(merged.graph, merged.edges);
   const actual = pairs(merged.edges);
   const name = new Map(map.units.map((x) => [id(x), `${x.file}#${x.fn}:${x.kind}(${x.detail.slice(0, 30)})`]));
   const readable = (list) => list.map((p) => p.split(' -> ').map((x) => name.get(x) ?? x).join(' -> '));
