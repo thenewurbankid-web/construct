@@ -136,8 +136,10 @@ export function planBeam({ spec, pageSource, viewModel = null, readings = [PAGE_
     try { plan = makePlan(spec, run.m); } catch (e) { close(run, "shape", `The plan could not be made: ${String(e?.message ?? e).split("\n")[0]}`); continue; }
     const fail = checkShape(plan) ?? checkLine(plan, line);
     if (fail) { close(run, fail.reason, fail.detail); continue; }
-    const sig = JSON.stringify([run.reading.intent, run.forks.filter((f) => f.point.startsWith("ref:")).map((f) => f.pick), runFacts(plan, { forks: [], emitted: false, open: [] }).plan]);
-    if (seen.has(sig)) { close(run, "duplicate", `Makes the same plan as ${seen.get(sig)}.`); continue; }
+    // The reading is not part of the signature: two readings that make the same plan are one plan, not a question for
+    // the person (live is ranked, so the better-read run is seen first and kept).
+    const sig = JSON.stringify([run.forks.filter((f) => f.point.startsWith("ref:")).map((f) => f.pick), runFacts(plan, { forks: [], emitted: false, open: [] }).plan]);
+    if (seen.has(sig)) { close(run, "duplicate", `Makes the same plan as ${seen.get(sig)}${run.reading.intent === runs[seen.get(sig)].reading.intent ? "" : `; only the reading differs (${run.reading.intent})`}.`); continue; }
     seen.set(sig, run.id);
     planned.push({ run, plan });
   }

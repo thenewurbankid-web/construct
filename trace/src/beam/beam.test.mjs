@@ -93,8 +93,24 @@ test("readings and domain-map references fork the reading, not the page", () => 
   const r = planBeamDir(dir("orders"), { readings, normalized });
   assert.equal(r.outcome, "question");
   assert.equal(r.runs[r.question.recommended].reading.intent, "wire.page");
-  assert.match(r.question.sentence, /reading, ref:F1/);
+  // The two readings make the same plan, so only the reference is asked about.
+  assert.match(r.question.sentence, /differ at ref:F1\. /);
+  assert.equal(Object.values(r.runs).filter((x) => x.closed?.reason === "duplicate").length, 2);
 });
+
+for (const ex of ["contacts", "orders"]) {
+  test(`${ex}: two readings that make the same plan are duplicates, so the beam plans instead of asking (#900)`, () => {
+    const readings = [{ intent: "wire.page", object: "page", target: null, layers: ["ui"], confidence: 0.9 }, { intent: "update.page", object: "page", target: null, layers: ["ui"], confidence: 0.5 }];
+    const r = planBeamDir(dir(ex), { readings });
+    assert.equal(r.outcome, "plan", r.question?.sentence);
+    assert.equal(r.runs[r.plan.run].reading.intent, "wire.page", "the better-read run is kept");
+    const dup = Object.entries(r.runs).filter(([, x]) => x.closed?.reason === "duplicate");
+    assert.equal(dup.length, 1);
+    assert.equal(dup[0][1].reading.intent, "update.page");
+    assert.match(dup[0][1].closed.detail, new RegExp(`^Makes the same plan as ${r.plan.run}; only the reading differs \\(update\\.page\\)\\.$`));
+    assert.ok(!r.events.some((e) => e.t === "question"));
+  });
+}
 
 test("fork points and trims are pure; layerRef is stub-first", () => {
   const m = { list: { fields: [{ name: "a", candidates: [{ field: "x", formatter: "asText", cost: 0 }, { field: "y", formatter: "asText", cost: 1 }] }], sort: [{ field: null, dir: "none" }] }, values: [], forms: [] };
