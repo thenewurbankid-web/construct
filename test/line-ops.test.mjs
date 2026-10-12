@@ -74,7 +74,7 @@ test('ops: base-on plans one wrapped feature file and writes nothing; applying i
 test('ops: base-on works for every kind (page, workflow, fixture) and each lands clean', () => {
   const dir = project();
   const reqs = [
-    { libraryId: 'pages/ListPage', feature: 'billing', name: 'PaymentsPage', path: 'features/billing/pages/PaymentsPage.tsx', has: /return <ListPage \{\.\.\.props\} \/>/ },
+    { libraryId: 'pages/ListPage', feature: 'billing', name: 'PaymentsPage', path: 'features/billing/pages/PaymentsPage.tsx', has: /export function PaymentsPage\(\) \{\n {2}return <ListPage title="Billing" \/>;/ },
     { libraryId: 'workflows/checkout', feature: 'billing', name: 'billingCheckout', path: 'features/billing/workflows/billingCheckout.ts', has: /^\/\/ @line-base workflows\/checkout\nexport \* from '\.\.\/\.\.\/\.\.\/library\/workflows\/checkout';\n$/ },
     { libraryId: 'fixtures/user', feature: 'billing', name: 'payer', path: 'features/billing/fixtures/payer.json', has: /^\{\n {2}"\$lineBase": "fixtures\/user",/ },
   ];
