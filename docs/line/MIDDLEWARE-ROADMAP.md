@@ -44,3 +44,24 @@ When a new case comes in that the static tools can't handle, Line's AI creates a
 6. **Learn:** kept middleware feeds cs2's rule factory, sharing, and Line-1's training worlds (slotted only).
 
 The guardrails don't change: the person approves project writes; middleware only proposes; and everything is local unless the person shares it.
+
+## "Line internals" page (owner, 2026-10-12): see and extend every static block
+One static Cockpit page that shows all of Line's static blocks and internal framework to the person, and lets them extend any of it in JS through middleware.
+- **Catalog:** every static block, grouped by middleware hook:
+  - classifiers and pattern matchers (drafter verbs, lexicon, intent catalog);
+  - route templates;
+  - typed fixes per rule;
+  - piece descriptors and roles;
+  - Import fit rules;
+  - checks and rules.
+
+  Each block shows what it does in one sentence, its input and output schema, examples, and how often it decided recently (from the miss reports and the cs2 collector).
+- **Extend:** on any block, choose "Write your own" to open an editor with:
+  - the hook's typed input/output;
+  - a starter function;
+  - the block's own cases as tests.
+
+  The person writes a pattern matcher or a better algorithm in plain JS (`run(input)`). Run tests in the sandbox, see the results next to the static block's results on the same cases, then Save. A person-authored middleware is stored as `kept`.
+- **Compare and replace:** if the person's function beats the static block on the held-out cases, offer to put it ahead of the static one for this project. Never silently.
+- Same guardrails: sandbox, slots only, tests required, proposals still checked by Construct and approved by the person. The page itself is read-only for agents.
+- Build it after `mw-ladder` merges. It uses `middleware/contract.mjs`, `sandbox.mjs`, `store.mjs` and the Settings middleware panel.
