@@ -59,7 +59,7 @@ import { createPathCli, pathPrompt } from './path-cli.mjs';
 import { readSpec, overviewWithIndex } from './spec-slice.mjs';
 import { createTurnReads } from './read-tools.mjs';
 import { compactHistory } from './compact.mjs';
-import { buildTurn } from './turn.mjs';
+import { buildTurn, projectFacts } from './turn.mjs';
 import { loadLedger } from './ledger.mjs';
 import { createScratch, SCRATCH_CAP, SCRATCH_FENCE_LINES } from './scratch.mjs';
 import { createSessionLog, toolEvents, sessionLogSlice, selectTurnTools } from './session-log.mjs';
@@ -401,7 +401,7 @@ export async function runAgent(o, { resultsDir = path.join(o.bench ?? bench, 're
     const turnTools = o.arm === 'line' ? selectTurnTools(sel ? sel.tools : TOOLS.line, { refused: refusedLast }) : TOOLS[o.arm];
     if (ledger && L) {
       const card = await /** @type {any} */ (cli).card();
-      const built = buildTurn({ system, ledger, ledgerView: L.ledgerView, card, last, tools: turnTools, notes: scratch?.text ?? '' });
+      const built = buildTurn({ system, ledger, ledgerView: L.ledgerView, card, last, tools: turnTools, notes: scratch?.text ?? '', facts: projectFacts(path.resolve(o.project)) });
       messages = built.messages;
       context = { mode: 'ledger', tokens: built.tokens, parts: built.parts, ledger: ledger.entries.length };
       const head = String(card).split('\n').find((l) => l.startsWith('Open work:')) ?? '';
