@@ -1,0 +1,216 @@
+{
+  "summary": {
+    "model": "nomic-embed-text",
+    "atoms": 14,
+    "n": 8,
+    "exactHits": 0,
+    "top1Pct": 88,
+    "top3Pct": 100,
+    "minRightTop1Score": 0.6815,
+    "maxWrongTop1Score": 0.6758,
+    "killBelow": 50,
+    "verdict": "pass"
+  },
+  "atoms": [
+    "async-status",
+    "client-pagination",
+    "csv-export",
+    "date-range",
+    "debounced-search",
+    "filter-sort",
+    "infinite-list",
+    "multi-step-flow",
+    "optimistic-update",
+    "paginated-query",
+    "permission-check",
+    "polling",
+    "undo-history",
+    "validated-submit"
+  ],
+  "rows": [
+    {
+      "id": "k4-1",
+      "sentence": "Show the books six at a time and move between the pages with Previous page and Next page.",
+      "atom": "client-pagination",
+      "exact": null,
+      "top3": [
+        {
+          "id": "client-pagination",
+          "score": 0.7256
+        },
+        {
+          "id": "infinite-list",
+          "score": 0.7153
+        },
+        {
+          "id": "paginated-query",
+          "score": 0.6818
+        }
+      ],
+      "rightScore": 0.7256,
+      "top1": true,
+      "inTop3": true
+    },
+    {
+      "id": "k4-2",
+      "sentence": "Keep only the books of the chosen genre and order them by title.",
+      "atom": "filter-sort",
+      "exact": null,
+      "top3": [
+        {
+          "id": "date-range",
+          "score": 0.6758
+        },
+        {
+          "id": "undo-history",
+          "score": 0.6594
+        },
+        {
+          "id": "filter-sort",
+          "score": 0.6352
+        }
+      ],
+      "rightScore": 0.6352,
+      "top1": false,
+      "inTop3": true
+    },
+    {
+      "id": "k4-3",
+      "sentence": "Wait until the member stops typing in Find a book, then use what they typed to search.",
+      "atom": "debounced-search",
+      "exact": null,
+      "top3": [
+        {
+          "id": "debounced-search",
+          "score": 0.836
+        },
+        {
+          "id": "infinite-list",
+          "score": 0.684
+        },
+        {
+          "id": "polling",
+          "score": 0.6713
+        }
+      ],
+      "rightScore": 0.836,
+      "top1": true,
+      "inTop3": true
+    },
+    {
+      "id": "k4-4",
+      "sentence": "Check the name, card number, email and branch, and send the request only when every value is valid.",
+      "atom": "validated-submit",
+      "exact": null,
+      "top3": [
+        {
+          "id": "validated-submit",
+          "score": 0.6846
+        },
+        {
+          "id": "optimistic-update",
+          "score": 0.6378
+        },
+        {
+          "id": "debounced-search",
+          "score": 0.6338
+        }
+      ],
+      "rightScore": 0.6846,
+      "top1": true,
+      "inTop3": true
+    },
+    {
+      "id": "k4-5",
+      "sentence": "Add the book to the picks at once and take it back off if keeping it fails.",
+      "atom": "optimistic-update",
+      "exact": null,
+      "top3": [
+        {
+          "id": "optimistic-update",
+          "score": 0.6815
+        },
+        {
+          "id": "undo-history",
+          "score": 0.6527
+        },
+        {
+          "id": "debounced-search",
+          "score": 0.6344
+        }
+      ],
+      "rightScore": 0.6815,
+      "top1": true,
+      "inTop3": true
+    },
+    {
+      "id": "k4-6",
+      "sentence": "Load the loans and say whether they are loading, loaded or failed.",
+      "atom": "async-status",
+      "exact": null,
+      "top3": [
+        {
+          "id": "async-status",
+          "score": 0.806
+        },
+        {
+          "id": "polling",
+          "score": 0.7368
+        },
+        {
+          "id": "infinite-list",
+          "score": 0.6816
+        }
+      ],
+      "rightScore": 0.806,
+      "top1": true,
+      "inTop3": true
+    },
+    {
+      "id": "k4-7",
+      "sentence": "Walk the member from the picks to the request form to the confirmation, one step after another.",
+      "atom": "multi-step-flow",
+      "exact": null,
+      "top3": [
+        {
+          "id": "multi-step-flow",
+          "score": 0.6972
+        },
+        {
+          "id": "debounced-search",
+          "score": 0.6897
+        },
+        {
+          "id": "validated-submit",
+          "score": 0.6703
+        }
+      ],
+      "rightScore": 0.6972,
+      "top1": true,
+      "inTop3": true
+    },
+    {
+      "id": "k4-8",
+      "sentence": "Let the member undo removing a book from the picks and redo it.",
+      "atom": "undo-history",
+      "exact": null,
+      "top3": [
+        {
+          "id": "undo-history",
+          "score": 0.7218
+        },
+        {
+          "id": "optimistic-update",
+          "score": 0.687
+        },
+        {
+          "id": "debounced-search",
+          "score": 0.65
+        }
+      ],
+      "rightScore": 0.7218,
+      "top1": true,
+      "inTop3": true
+    }
+  ]
+}

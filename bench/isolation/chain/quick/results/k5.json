@@ -1,0 +1,192 @@
+{
+  "summary": {
+    "model": "qwen2.5-coder:1.5b",
+    "runs": 5,
+    "pass": 0,
+    "passAndUnit": 0,
+    "unitOnly": 2,
+    "tscPassed": 3,
+    "rule": "pass = a tsc-clean, stub-clean body (best of 5) whose Smith English matches the model's own plan exactly",
+    "verdict": "kill"
+  },
+  "runs": [
+    {
+      "run": 0,
+      "plan": [
+        "return available ? 'On loan' : 'Available'"
+      ],
+      "planVsRef": 0,
+      "tries": [
+        {
+          "k": 0,
+          "tsc": 0,
+          "stub": []
+        }
+      ],
+      "code": "export function formatAvailability(available: boolean): string {\nreturn available ? 'On loan' : 'Available';\n}\n",
+      "smith": {
+        "formatAvailability": [
+          "It returns (...)"
+        ]
+      },
+      "smithVsPlan": 0,
+      "smithVsRef": 0,
+      "unit": false,
+      "pass": false,
+      "passAndUnit": false,
+      "calls": 2,
+      "tokens": 495
+    },
+    {
+      "run": 1,
+      "plan": [
+        "return available ? 'Available' : 'On loan'"
+      ],
+      "planVsRef": 0,
+      "tries": [
+        {
+          "k": 0,
+          "tsc": 0,
+          "stub": []
+        }
+      ],
+      "code": "export function formatAvailability(available: boolean): string {\nreturn available ? 'Available' : 'On loan';\n}\n",
+      "smith": {
+        "formatAvailability": [
+          "It returns (...)"
+        ]
+      },
+      "smithVsPlan": 0,
+      "smithVsRef": 0,
+      "unit": true,
+      "pass": false,
+      "passAndUnit": false,
+      "calls": 2,
+      "tokens": 494
+    },
+    {
+      "run": 2,
+      "plan": [
+        "return 'On loan'"
+      ],
+      "planVsRef": 0.5,
+      "tries": [
+        {
+          "k": 0,
+          "tsc": 0,
+          "stub": [
+            "UNUSED_INPUT"
+          ]
+        },
+        {
+          "k": 1,
+          "tsc": 0,
+          "stub": [
+            "UNUSED_INPUT"
+          ]
+        },
+        {
+          "k": 2,
+          "tsc": 0,
+          "stub": [
+            "UNUSED_INPUT"
+          ]
+        },
+        {
+          "k": 3,
+          "tsc": 0,
+          "stub": [
+            "UNUSED_INPUT"
+          ]
+        },
+        {
+          "k": 4,
+          "tsc": 0,
+          "stub": [
+            "UNUSED_INPUT"
+          ]
+        }
+      ],
+      "code": null,
+      "smith": null,
+      "smithVsPlan": null,
+      "smithVsRef": null,
+      "unit": false,
+      "pass": false,
+      "passAndUnit": false,
+      "calls": 6,
+      "tokens": 1056
+    },
+    {
+      "run": 3,
+      "plan": [
+        "let available be true",
+        "return available ? 'Available' : 'On loan'"
+      ],
+      "planVsRef": 0,
+      "tries": [
+        {
+          "k": 0,
+          "tsc": 2,
+          "stub": []
+        },
+        {
+          "k": 1,
+          "tsc": 2,
+          "stub": []
+        },
+        {
+          "k": 2,
+          "tsc": 2,
+          "stub": []
+        },
+        {
+          "k": 3,
+          "tsc": 2,
+          "stub": []
+        },
+        {
+          "k": 4,
+          "tsc": 2,
+          "stub": []
+        }
+      ],
+      "code": null,
+      "smith": null,
+      "smithVsPlan": null,
+      "smithVsRef": null,
+      "unit": false,
+      "pass": false,
+      "passAndUnit": false,
+      "calls": 6,
+      "tokens": 1184
+    },
+    {
+      "run": 4,
+      "plan": [
+        "return available ? 'Available' : 'On loan'"
+      ],
+      "planVsRef": 0,
+      "tries": [
+        {
+          "k": 0,
+          "tsc": 0,
+          "stub": []
+        }
+      ],
+      "code": "export function formatAvailability(available: boolean): string {\nreturn available ? 'Available' : 'On loan';\n}\n",
+      "smith": {
+        "formatAvailability": [
+          "It returns (...)"
+        ]
+      },
+      "smithVsPlan": 0,
+      "smithVsRef": 0,
+      "unit": true,
+      "pass": false,
+      "passAndUnit": false,
+      "calls": 2,
+      "tokens": 494
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+[
+  { "id": "salt-and-lanterns", "title": "Salt and Lanterns", "author": "Ines Okafor", "genre": "Fiction", "year": 2019, "pages": 312, "summary": "Three sisters keep a lighthouse running through the last winter before it is automated.", "available": true },
+  { "id": "orchard-at-night", "title": "Orchard at Night", "author": "Tomas Lindqvist", "genre": "Fiction", "year": 2004, "pages": 248, "summary": "A night watchman and an apple farmer trade stories across one long harvest.", "available": true },
+  { "id": "glass-harbour", "title": "Glass Harbour", "author": "Mara Quill", "genre": "Fiction", "year": 2021, "pages": 401, "summary": "A glassblower's apprentice inherits a failing workshop in a fishing town.", "available": true },
+  { "id": "winter-ferry", "title": "Winter Ferry", "author": "Priya Raman", "genre": "Fiction", "year": 1998, "pages": 276, "summary": "Strangers stranded on a ferry by ice learn more about each other than they meant to.", "available": false },
+  { "id": "kestrel-street", "title": "Kestrel Street", "author": "Daniel Abara", "genre": "Fiction", "year": 2012, "pages": 330, "summary": "One street, ten houses and a summer that changes all of them.", "available": true },
+  { "id": "bridges-of-empire", "title": "Bridges of Empire", "author": "Helen Marsh", "genre": "History", "year": 2009, "pages": 512, "summary": "How bridge builders shaped trade and power across four centuries.", "available": true },
+  { "id": "copper-roads", "title": "Copper Roads", "author": "Mara Quill", "genre": "History", "year": 2016, "pages": 388, "summary": "The mining towns and trade routes that grew around copper.", "available": true },
+  { "id": "cartographers-at-war", "title": "Cartographers at War", "author": "Felix Brandt", "genre": "History", "year": 1987, "pages": 440, "summary": "The mapmakers whose surveys decided the outcome of campaigns.", "available": true },
+  { "id": "river-kings", "title": "River Kings", "author": "Amara Diallo", "genre": "History", "year": 2001, "pages": 296, "summary": "A history of the merchant families who controlled river trade.", "available": true },
+  { "id": "harvest-years", "title": "Harvest Years", "author": "Owen Pryce", "genre": "History", "year": 2014, "pages": 352, "summary": "Farming, famine and invention in a century of change.", "available": true },
+  { "id": "quiet-atoms", "title": "Quiet Atoms", "author": "Lena Sorensen", "genre": "Science", "year": 2018, "pages": 224, "summary": "A gentle introduction to the physics of the very small.", "available": true },
+  { "id": "tides-explained", "title": "Tides Explained", "author": "Rafael Ortiz", "genre": "Science", "year": 1993, "pages": 208, "summary": "Why the sea rises and falls, and what the moon has to do with it.", "available": true },
+  { "id": "deep-time-notes", "title": "Deep Time Notes", "author": "Yuki Tanaka", "genre": "Science", "year": 2022, "pages": 264, "summary": "Field notes from geologists reading billions of years in rock.", "available": true },
+  { "id": "moss-and-mycelium", "title": "Moss and Mycelium", "author": "Beatrice Hale", "genre": "Science", "year": 2007, "pages": 236, "summary": "The hidden networks that hold a forest floor together.", "available": false },
+  { "id": "electric-weather", "title": "Electric Weather", "author": "Samir Haddad", "genre": "Science", "year": 2011, "pages": 290, "summary": "Lightning, auroras and the electricity in the air around us.", "available": true }
+]
