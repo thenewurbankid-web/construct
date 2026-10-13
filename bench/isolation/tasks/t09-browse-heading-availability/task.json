@@ -1,6 +1,7 @@
 {
   "id": "t09-browse-heading-availability",
   "title": "BrowsePage: spec heading text and \"Available\" / \"On loan\"",
+  "kind": "format",
   "goal": "Make the catalogue's heading and each book's availability match the spec wording. (Paging is a separate task: keep listing every book.)",
   "spec": "BRW-1: The page at `/` has the main heading \"Library catalogue\" and shows the books six at a time, each with its title, its author, its genre, its year and \"Available\" or \"On loan\"; each title is a link to the book's page at `/books/<id>`.",
   "target": "features/browse/pages/BrowsePage.tsx",

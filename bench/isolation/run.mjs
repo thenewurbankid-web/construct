@@ -11,6 +11,10 @@ import { fileURLToPath } from 'node:url';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import * as config from './config.mjs';
+import { spliceDeclarations, applySearchReplace, splitSkeleton, signatures } from './lib/edit.mjs';
+import { buildBriefs } from './blocks/briefBuilder.mjs';
+import { applyPrelude, spliceFunction } from './blocks/spliceApplier.mjs';
+import { sample } from './blocks/sampler.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const TASKS = join(HERE, 'tasks');
@@ -47,7 +51,7 @@ const readWs = (ws, p) => readFileSync(join(ws, p), 'utf8');
 
 function runTsc(ws) {
   const r = spawnSync(process.execPath, [TSC, '-p', join(ws, 'tsconfig.json'), '--pretty', 'false'], { encoding: 'utf8', timeout: 120_000 });
-  const lines = (r.stdout + r.stderr).split('\n').filter((l) => /error TS\d+/.test(l)).map((l) => l.replace(ws + '/', ''));
+  const lines = (r.stdout + r.stderr).split('\n').filter((l) => /error TS\d+/.test(l)).map((l) => l.replace(ws + '/', '').replace(relative(process.cwd(), ws) + '/', ''));
   return { ok: r.status === 0 && lines.length === 0, errors: lines };
 }
 
@@ -67,7 +71,7 @@ function evaluate(ws, task, startBody, parsed) {
   const tsc = runTsc(ws);
   const check = runCheck(ws, task);
   const fragment = missing.length ? `fragment: missing export(s) ${missing.join(', ')}` : null;
-  const failClass = fragment ? 'format' : !tsc.ok ? 'tsc' : !check.ok ? 'check' : null;
+  const failClass = fragment ? 'fragment' : !tsc.ok ? 'tsc' : !check.ok ? 'check' : null;
   return { pass: failClass === null, failClass, detail: fragment, tsc, check };
 }
 const errorsText = (ev) => [
@@ -77,22 +81,49 @@ const errorsText = (ev) => [
 ].filter(Boolean).join('\n') || '- the reply did not contain a fenced code block with the file';
 
 // ---------- models ----------
-async function chat(modelKey, samplingKey, system, user) {
+async function ollama(endpoint, modelKey, options, payload) {
   const model = config.models[modelKey];
   if (model === 'fable') throw new Error('model "fable" is not allowed');
   const t0 = Date.now();
-  const res = await fetch(`${config.ollama.url}/api/chat`, {
+  const res = await fetch(`${config.ollama.url}/api/${endpoint}`, {
     method: 'POST', headers: { 'content-type': 'application/json' },
     signal: AbortSignal.timeout(config.ollama.timeoutMs),
-    body: JSON.stringify({ model, stream: false, keep_alive: config.ollama.keepAlive, options: config.sampling[samplingKey],
-      messages: [{ role: 'system', content: system }, { role: 'user', content: user }] }),
+    body: JSON.stringify({ model, stream: false, keep_alive: config.ollama.keepAlive, options, ...payload }),
   });
   if (!res.ok) throw new Error(`ollama ${res.status}: ${await res.text()}`);
   const j = await res.json();
-  return { model, reply: j.message?.content ?? '', tokensIn: j.prompt_eval_count ?? 0, tokensOut: j.eval_count ?? 0, ms: Date.now() - t0 };
+  return { model, reply: (endpoint === 'chat' ? j.message?.content : j.response) ?? '', tokensIn: j.prompt_eval_count ?? 0, tokensOut: j.eval_count ?? 0, ms: Date.now() - t0 };
+}
+// Every call is fresh and single-turn (system + one user message): no history is carried between calls.
+const chat = (modelKey, options, system, user) => ollama('chat', modelKey, options, { messages: [{ role: 'system', content: system }, { role: 'user', content: user }] });
+// FIM: Ollama's qwen2.5-coder template turns prompt + suffix into <|fim_prefix|>..<|fim_suffix|>..<|fim_middle|>.
+const fim = (modelKey, options, prefix, suffix) => ollama('generate', modelKey, options, { prompt: prefix, suffix });
+
+// Worker context: signature-only context files, dropped from the end while the prompt is over the budget.
+function workerContext(arm, material, build) {
+  if (!arm.coderContext || arm.coderContext === 'full') return material.context;
+  let ctxFiles = arm.coderContext === 'none' ? [] : material.context.map((f) => ({ path: f.path, body: signatures(f.path, f.body) }));
+  while (ctxFiles.length && config.approxTokens(build(ctxFiles)) > config.workerBudgetTokens) ctxFiles = ctxFiles.slice(0, -1);
+  return ctxFiles;
 }
 
 // ---------- strategies ----------
+// One brief -> up to N 1.5b samples (sampler block) -> spliceApplier -> tsc (+ the task check on the last function).
+async function codeRound(arm, ctx, brief, file, final, label) {
+  return sample({
+    n: arm.n, seedBase: arm.seedBase,
+    generate: (seed) => ctx.call('coder', arm.coder, config.prompts.functionCoderSystem, brief.brief, { seed }),
+    judge: (reply, i) => {
+      const t0 = Date.now();
+      const sp = spliceFunction(file, reply, brief.name, ctx.material.task.target);
+      if (!sp.ok) return { pass: false, tscOk: false, failClass: sp.failClass, ev: { pass: false, failClass: sp.failClass, detail: sp.detail }, ms: Date.now() - t0 };
+      const ev = ctx.evaluate({ ok: true, body: sp.body }, `${label}-s${i + 1}`);
+      const pass = final ? ev.pass : ev.tsc?.ok === true;
+      return { pass, tscOk: ev.tsc?.ok === true, failClass: pass ? null : ev.failClass ?? 'tsc', ev, body: sp.body, ms: Date.now() - t0 };
+    },
+  });
+}
+
 const strategies = {
   async direct(arm, ctx) {
     const call = await ctx.call('coder', arm.model, config.prompts.coderSystem, config.prompts.direct(ctx.material));
@@ -117,6 +148,148 @@ const strategies = {
     }
     return ev;
   },
+
+  // E: one driver brief (B's prompt), up to N sampled whole-file edits through the shared sampler block.
+  // Picker = first sample that passes tsc and the check; N=1/3/5 stats come from the same draw.
+  async bestOfN(arm, ctx) {
+    const instr = await ctx.call('driver', arm.driver, config.prompts.driverSystem, config.prompts.driver(ctx.material), { sampling: arm.driverSampling });
+    const build = (c) => config.prompts.driven({ instruction: instr.reply, target: ctx.material.target, context: c });
+    const user = build(workerContext(arm, ctx.material, build));
+    const res = await sample({
+      n: arm.n, seedBase: arm.seedBase,
+      generate: (seed) => ctx.call('coder', arm.coder, config.prompts.coderSystem, user, { seed }),
+      judge: (reply, i) => {
+        const t0 = Date.now();
+        const ev = ctx.evaluate(config.editFormats['whole-file'].parse(reply), i + 1);
+        return { ev, pass: ev.pass, tscOk: ev.tsc?.ok === true && ev.failClass !== 'fragment', failClass: ev.failClass, ms: Date.now() - t0 };
+      },
+    });
+    return { ...res.picked.result.ev, attempts: res.samples.length, nStats: res.stats(arm.reportN ?? [arm.n], instr.ms), sampleClasses: res.samples.map((x) => x.failClass ?? 'pass') };
+  },
+
+  // H: deterministic blocks, no driver model. briefBuilder -> 1.5b (sampler, N up to 5) -> spliceApplier.
+  async blocks(arm, ctx) {
+    const task = ctx.material.task;
+    const { prelude, briefs } = buildBriefs({ task, file: ctx.material.target.body, read: ctx.read });
+    let file = applyPrelude(ctx.material.target.body, prelude, task.target);
+    let res; let drawn = 0;
+    for (const [k, b] of briefs.entries()) {
+      res = await codeRound(arm, ctx, b, file, k === briefs.length - 1, `f${k + 1}`);
+      drawn += res.samples.length;
+      if (!res.pass) break;
+      file = res.picked.result.body;
+    }
+    const ev = res.picked.result.ev;
+    return { ...ev, attempts: drawn, sampleClasses: res.samples.map((x) => x.failClass ?? 'pass'),
+      ...(briefs.length === 1 ? { nStats: res.stats(arm.reportN ?? [arm.n], 0) } : {}), briefTokens: briefs.map((b) => b.approxTokens) };
+  },
+
+  // I: a small driver (qwen3:4b) calling native Ollama tools over the same blocks. Expected tool order:
+  // brief -> code -> splice (-> brief/code/splice per extra function) -> check -> done; a failed check or code
+  // round may go back to brief (a repair), at most `repairs` times. At most `maxTurns` driver turns.
+  async toolDriver(arm, ctx) {
+    const task = ctx.material.task;
+    const start = buildBriefs({ task, file: ctx.material.target.body, read: ctx.read });
+    const names = start.briefs.map((b) => b.name);
+    const st = { file: applyPrelude(ctx.material.target.body, start.prelude, task.target), fn: 0, brief: null, candidate: null,
+      repairs: 0, failed: false, done: false };
+    const log = { turns: 0, nativeTurns: 0, toolCalls: 0, rightTool: 0, sequence: [], drawn: 0 };
+    let expected = 'brief';
+    const nextAfter = (tool, ok) => {
+      if (tool === 'brief') return ok ? 'code' : (st.fn >= names.length ? 'check' : 'done');
+      if (tool === 'code') return ok ? 'splice' : (st.repairs < arm.repairs ? 'brief' : 'done');
+      if (tool === 'splice') return st.fn < names.length ? 'brief' : 'check';
+      if (tool === 'check') return ok ? 'done' : (st.repairs < arm.repairs ? 'brief' : 'done');
+      return 'done';
+    };
+    const exec = {
+      async brief({ intent } = {}) {
+        if (st.failed) {
+          if (st.repairs >= arm.repairs) return { ok: false, text: 'Repair limit reached. Call done.' };
+          st.repairs++; st.failed = false;
+          if (st.fn >= names.length) st.fn = names.length - 1;
+        }
+        if (st.fn >= names.length) return { ok: false, text: 'Every function is written. Call check.' };
+        const b = buildBriefs({ task, file: st.file, read: ctx.read, targetName: names[st.fn] }).briefs[0];
+        st.brief = { ...b, brief: intent ? `${b.brief}\n\nLEAD'S NOTE: ${String(intent).slice(0, 1200)}` : b.brief };
+        st.candidate = null;
+        return { ok: true, text: `Brief ready for function ${b.name} (about ${config.approxTokens(st.brief.brief)} tokens). Next: code.` };
+      },
+      async code({ n } = {}) {
+        if (!st.brief) return { ok: false, text: 'No brief yet. Call brief first.' };
+        const last = st.fn === names.length - 1;
+        const res = await codeRound({ ...arm, n: Math.max(1, Math.min(arm.n, Number(n) || arm.n)) }, ctx, st.brief, st.file, last, `r${st.repairs}f${st.fn + 1}`);
+        log.drawn += res.samples.length;
+        if (res.pass) { st.candidate = res.picked.result.body; return { ok: true, text: `Sample ${res.picked.i + 1} of ${res.samples.length} passed tsc${last ? ' and the task check' : ''}. Next: splice.` }; }
+        st.failed = true;
+        return { ok: false, text: `No sample passed (${res.samples.map((x) => x.failClass).join(', ')}). Last sample's problems:\n${errorsText(res.picked.result.ev)}` };
+      },
+      async splice() {
+        if (!st.candidate) return { ok: false, text: 'Nothing to splice: no passing sample from code.' };
+        st.file = st.candidate; st.candidate = null; st.brief = null;
+        const name = names[st.fn]; st.fn++;
+        return { ok: true, text: st.fn < names.length ? `Spliced ${name}. Next: brief for ${names[st.fn]}.` : `Spliced ${name}. Every function is written. Next: check.` };
+      },
+      async check() {
+        const ev = ctx.evaluate({ ok: true, body: st.file }, `check${st.repairs}`);
+        if (!ev.pass) st.failed = true;
+        return { ok: ev.pass, text: ev.pass ? 'PASS: tsc is clean and the task check passed. Call done.' : `FAIL:\n${errorsText(ev)}` };
+      },
+      async done() { st.done = true; return { ok: true, text: 'Done.' }; },
+    };
+    const tools = [
+      ['brief', 'Build the code-shaped brief for the next function to write (signature, types, spec line and a worked example, made by a deterministic block). Optional intent: extra instructions for the coder, e.g. the exact strings to show or the errors to fix.', { intent: { type: 'string', description: 'Extra instructions for the coder.' } }],
+      ['code', 'Send the current brief to the coder model; it draws up to n samples (max 5) and keeps the first that passes.', { n: { type: 'integer', description: 'Samples to draw, 1-5.' } }],
+      ['splice', "Put the coder's passing function into the file.", {}],
+      ['check', 'Run tsc and the task check on the file.', {}],
+      ['done', 'Finish.', {}],
+    ].map(([name, description, properties]) => ({ type: 'function', function: { name, description, parameters: { type: 'object', properties, required: [] } } }));
+    const messages = [
+      { role: 'system', content: config.prompts.toolDriverSystem },
+      { role: 'user', content: config.prompts.toolDriver(ctx.material) },
+    ];
+    while (!st.done && log.turns < arm.maxTurns) {
+      const r = await ctx.chatTools(arm.driver, messages, tools);
+      log.turns++;
+      messages.push(r.message);
+      const calls = r.message.tool_calls ?? [];
+      if (!calls.length) { messages.push({ role: 'user', content: 'Call exactly one of the tools.' }); continue; }
+      log.nativeTurns++;
+      for (const c of calls) {
+        const name = c.function?.name;
+        log.toolCalls++;
+        if (name === expected) log.rightTool++;
+        log.sequence.push(name);
+        const out = exec[name] ? await exec[name](c.function?.arguments ?? {}) : { ok: false, text: `Unknown tool ${name}.` };
+        if (exec[name]) expected = nextAfter(name, out.ok);
+        messages.push({ role: 'tool', tool_name: name, content: out.text });
+        if (st.done) break;
+      }
+    }
+    writeFileSync(join(ctx.rawDir, 'driver-transcript.json'), JSON.stringify(messages, null, 1));
+    const ev = ctx.evaluate({ ok: true, body: st.file }, 'final');
+    return { ...ev, attempts: log.drawn, toolLog: { ...log, nativeRate: log.turns ? log.nativeTurns / log.turns : 0, rightRate: log.toolCalls ? log.rightTool / log.toolCalls : 0, repairs: st.repairs, calledDone: st.done } };
+  },
+
+  // F / F-sr: code-shaped brief; the coder answers with a declaration (spliced by name) or SEARCH/REPLACE blocks.
+  async codeShaped(arm, ctx) {
+    const instr = await ctx.call('driver', arm.driver, config.prompts.codeShapedSystem, config.prompts.codeShaped(ctx.material));
+    const prompt = arm.editFormat === 'splice' ? config.prompts.splice : config.prompts.searchReplace;
+    const build = (c) => prompt({ instruction: instr.reply, target: ctx.material.target, context: c });
+    const code = await ctx.call('coder', arm.coder, config.prompts.coderSystem.replace(/ Reply with[\s\S]*$/, ' Follow the reply format you are given exactly.'), build(workerContext(arm, ctx.material, build)));
+    const body = ctx.material.target.body;
+    return ctx.evaluate(arm.editFormat === 'splice' ? spliceDeclarations(body, code.reply) : applySearchReplace(body, code.reply), 1);
+  },
+
+  // G: the driver writes the file with one /*FILL*/ hole; the coder fills it by FIM (prefix + suffix, no chat).
+  async fim(arm, ctx) {
+    const sk = await ctx.call('driver', arm.driver, config.prompts.skeletonSystem, config.prompts.skeleton(ctx.material));
+    const split = splitSkeleton(sk.reply);
+    if (!split.ok) return ctx.evaluate({ ok: false, detail: split.detail }, 1);
+    const mid = await ctx.fim(arm.coder, split.prefix, split.suffix);
+    const middle = mid.reply.endsWith('\n') ? mid.reply : mid.reply + '\n';
+    return ctx.evaluate({ ok: true, body: split.prefix + middle + split.suffix }, 1);
+  },
 };
 
 async function runArm(armKey, task) {
@@ -134,12 +307,32 @@ async function runArm(armKey, task) {
   const calls = [];
   const t0 = Date.now();
   const ctx = {
-    material,
-    async call(role, modelKey, system, user) {
-      const sampKey = config.arms[armKey].sampling;
-      const c = await chat(modelKey, sampKey, system, user);
-      calls.push({ role, model: c.model, tokensIn: c.tokensIn, tokensOut: c.tokensOut, ms: c.ms });
+    material, rawDir,
+    read: (p) => readWs(ws, p),
+    async chatTools(modelKey, messages, tools) {
+      const model = config.models[modelKey];
+      if (model === 'fable') throw new Error('model "fable" is not allowed');
+      const t0 = Date.now();
+      const res = await fetch(`${config.ollama.url}/api/chat`, {
+        method: 'POST', headers: { 'content-type': 'application/json' }, signal: AbortSignal.timeout(config.ollama.timeoutMs),
+        body: JSON.stringify({ model, stream: false, think: arm.think, keep_alive: config.ollama.keepAlive, options: config.sampling[arm.driverSampling], messages, tools }),
+      });
+      if (!res.ok) throw new Error(`ollama ${res.status}: ${await res.text()}`);
+      const j = await res.json();
+      calls.push({ role: 'driver', model, tokensIn: j.prompt_eval_count ?? 0, tokensOut: j.eval_count ?? 0, ms: Date.now() - t0, promptApprox: 0 });
+      return { message: j.message ?? { role: 'assistant', content: '' } };
+    },
+    async call(role, modelKey, system, user, over = {}) {
+      const options = { ...config.sampling[over.sampling ?? (role === 'driver' ? arm.driverSampling : undefined) ?? arm.sampling], ...(over.seed != null ? { seed: over.seed } : {}) };
+      const c = await chat(modelKey, options, system, user);
+      calls.push({ role, model: c.model, tokensIn: c.tokensIn, tokensOut: c.tokensOut, ms: c.ms, promptApprox: config.approxTokens(system + user) });
       writeFileSync(join(rawDir, `${String(calls.length).padStart(2, '0')}-${role}.md`), c.reply);
+      return c;
+    },
+    async fim(modelKey, prefix, suffix) {
+      const c = await fim(modelKey, config.sampling[arm.sampling], prefix, suffix);
+      calls.push({ role: 'coder', model: c.model, tokensIn: c.tokensIn, tokensOut: c.tokensOut, ms: c.ms, promptApprox: config.approxTokens(prefix + suffix) });
+      writeFileSync(join(rawDir, `${String(calls.length).padStart(2, '0')}-coder-fim.md`), c.reply);
       return c;
     },
     evaluate(parsed, attempt) {
@@ -160,6 +353,9 @@ async function runArm(armKey, task) {
     attempts: ev.attempts, tokensIn: sum('tokensIn'), tokensOut: sum('tokensOut'),
     tokensByRole: { driver: { in: sum('tokensIn', 'driver'), out: sum('tokensOut', 'driver') }, coder: { in: sum('tokensIn', 'coder'), out: sum('tokensOut', 'coder') } },
     modelMs: sum('ms'), wallMs: Date.now() - t0, calls: calls.length,
+    coderPromptMax: Math.max(0, ...calls.filter((c) => c.role === 'coder').map((c) => c.promptApprox)),
+    ...(ev.nStats ? { nStats: ev.nStats } : {}), ...(ev.sampleClasses ? { sampleClasses: ev.sampleClasses } : {}),
+    ...(ev.toolLog ? { toolLog: ev.toolLog } : {}), ...(ev.briefTokens ? { briefTokens: ev.briefTokens } : {}),
     tscErrors: ev.tsc?.errors?.slice(0, 8) ?? null, checkFailures: ev.check?.failures ?? null,
     raw: relative(HERE, rawDir),
   };
@@ -193,7 +389,11 @@ function writeReport(rows, armKeys) {
     for (const r of rs) if (!r.pass) fails[r.failClass] = (fails[r.failClass] ?? 0) + 1;
     summary[a] = { label: config.arms[a].label, pass: rs.filter((r) => r.pass).length, total: rs.length,
       tokensIn: rs.reduce((x, r) => x + r.tokensIn, 0), tokensOut: rs.reduce((x, r) => x + r.tokensOut, 0),
-      wallMs: rs.reduce((x, r) => x + r.wallMs, 0), fails };
+      wallMs: rs.reduce((x, r) => x + r.wallMs, 0), fails, coderPromptMax: Math.max(0, ...rs.map((r) => r.coderPromptMax ?? 0)) };
+    const withN = rs.filter((r) => r.nStats);
+    if (withN.length) summary[a].nStats = Object.fromEntries(Object.keys(withN[0].nStats).map((n) => [n, {
+      pass: withN.filter((r) => r.nStats[n].pass).length, tscPickerPass: withN.filter((r) => r.nStats[n].tscPickerPass).length,
+      wallMs: withN.reduce((x, r) => x + r.nStats[n].wallMs, 0), of: withN.length }]));
   }
   const meta = { run: runName, date: new Date().toISOString(), models: config.models, sampling: Object.fromEntries(armKeys.map((a) => [a, config.sampling[config.arms[a].sampling]])), arms: Object.fromEntries(armKeys.map((a) => [a, config.arms[a]])) };
   writeFileSync(join(RESULTS, `${runName}.json`), JSON.stringify({ meta, summary, rows }, null, 2) + '\n');
@@ -202,11 +402,23 @@ function writeReport(rows, armKeys) {
   const md = [
     `# Isolation ${runName}`, '',
     `${meta.date.slice(0, 10)}. Coder ${config.models.coder}, driver ${config.models.driver}. Rows: \`${runName}.jsonl\` (one line per arm and task, same order as below); raw replies and attempt files: \`${runName}-raw/<arm>/<task>/\`.`, '',
-    '| Arm | | pass@1 | tokens in / out | wall | failures |', '| --- | --- | --- | --- | --- | --- |',
-    ...armKeys.map((a) => { const s = summary[a]; return `| ${a} | ${s.label} | ${s.pass}/${s.total} | ${s.tokensIn} / ${s.tokensOut} | ${(s.wallMs / 1000).toFixed(0)} s | ${Object.entries(s.fails).map(([k, v]) => `${k} ${v}`).join(', ') || '-'} |`; }),
+    '| Arm | | pass@1 | tokens in / out | wall | failures | max 1.5b prompt (approx tok) |', '| --- | --- | --- | --- | --- | --- | --- |',
+    ...armKeys.map((a) => { const s = summary[a]; return `| ${a} | ${s.label} | ${s.pass}/${s.total} | ${s.tokensIn} / ${s.tokensOut} | ${(s.wallMs / 1000).toFixed(0)} s | ${Object.entries(s.fails).map(([k, v]) => `${k} ${v}`).join(', ') || '-'} | ${config.arms[a].model === 'driver' ? '-' : s.coderPromptMax} |`; }),
+    ...armKeys.filter((a) => summary[a].nStats).flatMap((a) => ['', `Best-of-N, arm ${a} (same samples; wall = driver + samples up to the first pass; "tsc-only picker" = the first tsc-clean sample, judged by the check afterwards):`, '',
+      '| N | pass (tsc+check picker) | pass (tsc-only picker) | wall |', '| --- | --- | --- | --- |',
+      ...Object.entries(summary[a].nStats).map(([n, v]) => `| ${n} | ${v.pass}/${v.of} | ${v.tscPickerPass}/${v.of} | ${(v.wallMs / 1000).toFixed(0)} s |`), ...(summary[a].nStats[Object.keys(summary[a].nStats)[0]].of < summary[a].total ? ['', `(${summary[a].total - summary[a].nStats[Object.keys(summary[a].nStats)[0]].of} multi-function task(s) excluded from N stats: each function is sampled separately.)`] : [])]),
+    ...armKeys.filter((a) => rows.some((r) => r.arm === a && r.toolLog)).flatMap((a) => {
+      const rs = rows.filter((r) => r.arm === a && r.toolLog);
+      const pct = (x) => `${Math.round(x * 100)}%`;
+      const tot = rs.reduce((acc, r) => ({ turns: acc.turns + r.toolLog.turns, native: acc.native + r.toolLog.nativeTurns, calls: acc.calls + r.toolLog.toolCalls, right: acc.right + r.toolLog.rightTool }), { turns: 0, native: 0, calls: 0, right: 0 });
+      return ['', `Tool-calling driver, arm ${a} (${config.models[config.arms[a].driver]}, sampling ${JSON.stringify(config.sampling[config.arms[a].driverSampling])}, think=${config.arms[a].think}). Native rate = driver turns with a native tool call / all turns; right-tool rate = calls matching the expected next tool (brief -> code -> splice -> check -> done, repairs back to brief) / all calls.`, '',
+        '| Task | pass | native tool-call rate | right-tool rate | turns | sequence | wall | driver tokens in / out |', '| --- | --- | --- | --- | --- | --- | --- | --- |',
+        ...rs.map((r) => `| ${r.task} | ${r.pass ? 'pass' : r.failClass} | ${pct(r.toolLog.nativeRate)} | ${r.toolLog.toolCalls ? pct(r.toolLog.rightRate) : '-'} | ${r.toolLog.turns} | ${r.toolLog.sequence.join(' ') || '-'}${r.toolLog.calledDone ? '' : ' (no done)'} | ${(r.wallMs / 1000).toFixed(0)} s | ${r.tokensByRole.driver.in} / ${r.tokensByRole.driver.out} |`),
+        `| all | ${rs.filter((r) => r.pass).length}/${rs.length} | ${pct(tot.native / Math.max(1, tot.turns))} | ${pct(tot.right / Math.max(1, tot.calls))} | ${tot.turns} | | | |`];
+    }),
     '', `| Task | ${armKeys.join(' | ')} |`, `| --- | ${armKeys.map(() => '---').join(' | ')} |`,
     ...tasks.map((t) => `| ${t.id} | ${armKeys.map((a) => cell(rows.find((r) => r.arm === a && r.task === t.id))).join(' | ')} |`),
-    '', 'pass = tsc clean and the task check passed. Fail classes, first failing stage wins: format (no usable fenced file, or a fragment missing an export the file had), tsc, check. C\'s pass counts whichever of its up to 3 attempts passed (try n). Tokens are Ollama prompt_eval_count / eval_count summed over every call of the arm (driver + coder). Wall time is per arm, summed over tasks, including checks.', '',
+    '', 'pass = tsc clean and the task check passed. Fail classes, first failing stage wins: format (the reply did not yield a file: no fence, no SEARCH match, no FILL marker), fragment (a whole-file reply missing an export the file had: a fragment pasted as the file; r1 reported these under format), tsc, check. E\'s cell shows the first passing sample (try n of 5). C\'s pass counts whichever of its up to 3 attempts passed (try n). Tokens are Ollama prompt_eval_count / eval_count summed over every call of the arm (driver + coder). Wall time is per arm, summed over tasks, including checks.', '',
   ].join('\n');
   writeFileSync(join(RESULTS, `${runName}.md`), md);
   return summary;

@@ -1,6 +1,7 @@
 {
   "id": "t07-picks-page-list",
   "title": "PicksPage: list the picks store with \"Remove <title>\" buttons",
+  "kind": "list",
   "goal": "Make the picks page list the picked books from the picks store (listPicks and removePick in features/picks/store/picksStore.ts), looking each id up in the books fixture (library/fixtures/books.json). The page needs 'use client' and React state so a removal re-renders the list.",
   "spec": "PCK-2: The page at `/picks` has the main heading \"My picks\" and lists each picked book with its title and author and a button \"Remove <title>\" that takes it off the list.",
   "target": "features/picks/pages/PicksPage.tsx",
