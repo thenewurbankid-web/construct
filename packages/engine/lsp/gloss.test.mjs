@@ -77,6 +77,14 @@ test('a failed or empty model answer falls back to Smith text and never throws',
   assert.equal((await glossFor([], { chat: fake('x').chat, cache: new Map() })).reason, 'no Smith text');
 });
 
+test('possessives, acronyms and backticked names Smith used do not trip the guard', () => {
+  const smith = "Page works in 1 step. It returns shows a <CoreController>. Let checked be machine send state's data; if checked's status !== 'submitting', return checked.";
+  assert.equal(introducedToken("It checks the machine's state and isn't done unless status is 'submitting'.", smith), null);
+  assert.equal(introducedToken('It shows the `<CoreController >` as an HTML page with an ID.', smith), null);
+  assert.equal(introducedToken('The `canUndo` check runs.', smith).value, 'canUndo');
+  assert.equal(introducedToken('It has 1 part.', 'It shows a <h1>.').value, '1');
+});
+
 test('cleanGloss keeps at most two sentences and strips preamble', () => {
   assert.equal(cleanGloss('Plain English: "One. Two! Three."'), 'One. Two!');
   assert.equal(cleanGloss('**It works.**'), 'It works.');

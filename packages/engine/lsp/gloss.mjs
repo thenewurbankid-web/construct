@@ -42,13 +42,19 @@ export function cleanGloss(raw) {
  * identifiers (camelCase, PascalCase with an inner capital, a `_`/`$`/digit, a dotted path, a call `f()`), plus a
  * capitalized word that does not start a sentence.
  */
+const QUOTED = /(?<![\w])'([^'\n]*)'(?![\w])|"([^"\n]*)"|`([^`\n]*)`/g;
+
 export function codeTokens(text) {
   const out = [];
   const t = String(text);
-  for (const m of t.matchAll(/'([^']*)'|"([^"]*)"|`([^`]*)`/g)) out.push({ kind: 'literal', value: m[1] ?? m[2] ?? m[3] });
-  const bare = t.replace(/'[^']*'|"[^"]*"|`[^`]*`/g, ' ');
+  // A quote opens and closes only off a word (so "state's" and "isn't" are not quotes); a backticked span is code.
+  for (const m of t.matchAll(QUOTED)) {
+    if (m[3] != null) out.push({ kind: 'code', value: m[3].trim() });
+    else out.push({ kind: 'literal', value: m[1] ?? m[2] });
+  }
+  const bare = t.replace(QUOTED, ' ');
   for (const m of bare.matchAll(/<\/?([A-Za-z][\w.:-]*)/g)) out.push({ kind: 'identifier', value: m[1] });
-  for (const m of bare.matchAll(/(?<![\w.])\d+(?:\.\d+)?(?![\w])/g)) out.push({ kind: 'literal', value: m[0] });
+  for (const m of bare.matchAll(/(?<![\w.])\d+(?:\.\d+)?(?![\w])/g)) out.push({ kind: 'number', value: m[0] });
   const words = bare.replace(/<\/?[A-Za-z][\w.:-]*>?/g, ' ').split(/\s+/).filter(Boolean);
   words.forEach((raw, i) => {
     const w = raw.replace(/^[^\w$]+|[^\w$)]+$/g, '').replace(/\(\)$/, '');
@@ -56,7 +62,8 @@ export function codeTokens(text) {
     const prev = i === 0 ? '' : words[i - 1];
     const startsSentence = i === 0 || /[.!?:]$/.test(prev);
     const idShaped = /[a-z][A-Z]/.test(w) || /^[A-Z][a-z0-9]+[A-Z]/.test(w) || /[_$]/.test(w) || /[A-Za-z]\d|\d[A-Za-z]/.test(w) || /\w\.\w/.test(w) || /\(\)$/.test(raw.replace(/[^\w$()]+$/g, ''));
-    const midCap = !startsSentence && /^[A-Z]/.test(w) && w !== 'I';
+    // An all-caps word of 2-5 letters (ID, HTML, URL, JSON) is an acronym, not an identifier.
+    const midCap = !startsSentence && /^[A-Z]/.test(w) && w !== 'I' && !/^[A-Z]{2,5}s?$/.test(w);
     if (idShaped || midCap) out.push({ kind: 'identifier', value: w });
   });
   return out;
@@ -70,7 +77,9 @@ export function introducedToken(gloss, smithText) {
   const smith = String(smithText);
   const smithWords = new Set(smith.split(/[^\w$]+/).filter(Boolean));
   for (const tok of codeTokens(gloss)) {
+    if (tok.kind === 'number') { if (!new RegExp(`(?<![\\w.])${tok.value.replace('.', '\\.')}(?![\\w])`).test(smith)) return tok; continue; }
     if (tok.kind === 'literal') { if (!smith.includes(tok.value)) return tok; continue; }
+    if (tok.kind === 'code') { if (!smith.includes(tok.value) && !(tok.value.match(/[\w$]+/g) ?? []).every((w) => smithWords.has(w))) return tok; continue; }
     const parts = tok.value.split('.').filter(Boolean);
     if (!(smithWords.has(tok.value) || smith.includes(tok.value) || parts.every((p) => smithWords.has(p)))) return tok;
   }
