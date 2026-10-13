@@ -42,6 +42,7 @@ import { planFixByKey, planStep, withFixes, planAmended, amendFixes, onScratch }
 import { planSetFragment } from './fragments.mjs';
 import { planCreateFeature, planAddRoute, planSetCode } from './build.mjs';
 import { planSetLayoutSlot } from './shell.mjs';
+import { planUseAtom } from './seed/useAtom.mjs';
 import { entryById } from './toolRegistry.mjs';
 
 /** The one catalog's entry for a plan tool (toolRegistry.mjs); a tool the catalog does not list cannot be registered. */
@@ -78,6 +79,8 @@ export const CHANGE_TOOLS = Object.freeze({
   'line.setLayoutSlot': 'planSetLayoutSlot', 'line.useViaUsecase': 'planStep',
   // line-expressions: the expression warnings' typed fix (expressions.mjs planExtractExpression, a fixes.mjs planStep tool)
   'line.extractExpression': 'planStep',
+  // #919: copy a shipped logic atom into the project's library atoms (seed/useAtom.mjs)
+  'line.useAtom': 'planUseAtom',
 });
 
 /** Change tools planned only when they run: an import step builds on the steps before it (the library item a feature
@@ -115,6 +118,7 @@ const MAX_AMEND_DEPTH = 3;
 function planWith(ops, root, tool, req, depth = 0) {
   const opName = CHANGE_TOOLS[tool];
   if (opName === 'planImportStep') return ops.planImportStep(rootOf(root, tool, req), { id: tool, tool, args: req });
+  if (opName === 'planUseAtom') return (ops.planUseAtom ?? planUseAtom)(root, req);
   if (opName === 'planExtractStep') return (ops.planExtractStep ?? planExtractStep)(rootOf(root, tool, req), { tool, args: req });
   if (opName === 'planAmended') {
     const { change, fix: one, fixes } = /** @type {any} */ (req);
@@ -312,6 +316,7 @@ const SCHEMAS = Object.freeze({
   'line.setLayoutSlot': objectSchema({ slot: 'string', components: 'strings' }, { change: true }),
   'line.useViaUsecase': objectSchema({ file: 'string', specifier: 'string' }, { change: true }),
   'line.extractExpression': objectSchema({ file: 'string', name: 'optString' }, { change: true }),
+  'line.useAtom': objectSchema({ atom: 'string' }, { change: true }),
   'line.leaveAsIs': objectSchema({ stepId: 'string' }),
   'line.project': objectSchema({}),
 });
@@ -352,6 +357,7 @@ const DESCRIBE = Object.freeze({
   'line.setLayoutSlot': 'Shows library or feature components on every page: fills one slot (header, nav or footer) of the app shell, which app/layout.tsx renders; through the checked writer.',
   'line.useViaUsecase': 'Imports an application layer (a service, workflow or domain) into a page or component through a usecase of its feature or the library instead of directly, through the checked writer.',
   'line.extractExpression': 'Moves the first inline conditional or loop of a page or component into a new expression (a pure function component whose inputs are typed props) and renders it in its place, type-checked, through the checked writer.',
+  'line.useAtom': 'Copies one shipped logic atom (@line/atoms) into the project library atoms (<library>/atoms/<id>.ts), so its usecases and services import it by a relative path; through the checked writer.',
   'line.leaveAsIs': 'Records that a person chose to carry on after a step that needed them; writes nothing.',
   'line.project': 'Reads the Line view of the project: library, features, items and findings.',
 });

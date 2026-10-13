@@ -572,6 +572,7 @@ export const LINE_PLAN_TOOLS = Object.freeze([
   { name: 'line.setLayoutSlot', kind: 'write', request: 'SetLayoutSlotRequest' },
   { name: 'line.useViaUsecase', kind: 'write', request: 'UseViaUsecaseRequest' },
   { name: 'line.extractExpression', kind: 'write', request: 'ExtractExpressionRequest' },
+  { name: 'line.useAtom', kind: 'write', request: '{atom} (#919: copy a shipped @line/atoms atom into <library>/atoms/<id>.ts)' },
   { name: 'line.project', kind: 'read', request: '{}' },
 ]);
 export const CHECK_KINDS = Object.freeze(['validate', 'types', 'tests', 'file', 'spec']);

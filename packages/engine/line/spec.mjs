@@ -24,7 +24,7 @@ const REPO = path.resolve(HERE, '../../..');
 export const SPEC_MODULES = Object.freeze([
   { topic: 'line-modules', module: 'line-engine', what: 'Line operations, plan tools and plan service', dir: 'packages/engine/line', match: /\.mjs$/ },
   // #914: the seed pass sits in its own folder and topic, so line-modules stays under one MCP call.
-  { topic: 'modules', module: 'line-seed', what: 'spec -> steps: the plan steps a block decides from SPEC.md', dir: 'packages/engine/line/seed', match: /\.mjs$/ },
+  { topic: 'modules', module: 'line-seed', what: 'spec -> steps: the plan steps a block decides from SPEC.md (pages, routes, atom-wired behaviour; line.useAtom)', dir: 'packages/engine/line/seed', match: /\.mjs$/ },
   { topic: 'modules', module: 'line-profile', what: 'the Line validate profile (LINE-* rules)', dir: 'packages/core/profiles/line', match: /\.mjs$/ },
   { topic: 'modules', module: 'line-links', what: 'the linked Line modules (@mx/reason, @mx/plan, ...) and their contracts', dir: 'packages/line-links', match: /\.(mjs|d\.ts)$/ },
   { topic: 'modules', module: 'writer', what: 'Construct\'s transactional writer and the Line-state path', dir: 'packages/engine', match: /^transactionalWriter\.mjs$/ },

@@ -19,7 +19,8 @@
 //   plan-cli.mjs ls [dir]                            the entries of one project folder
 //   plan-cli.mjs rules <tool> [file]                 #888: the 2-4 rules a step of that tool and layer must keep
 //   plan-cli.mjs seed                                #914: add, Auto-approve and run, one by one, the steps a block can
-//                                                    decide from SPEC.md (specSteps.mjs: features, wired pages, routes)
+//                                                    decide from SPEC.md (specSteps.mjs: features, wired pages, routes;
+//                                                    #919 atomSteps.mjs: behaviour points wired from atoms)
 //
 // Project and log: --project <dir> (or BENCH_PROJECT), --log <file> (or BENCH_LOG; default
 // bench/ecommerce/runs/<project folder name>/calls.jsonl), --builder <id> (or BENCH_BUILDER).
@@ -210,11 +211,11 @@ export function createPlanCli({ project, log, builder = 'unknown', spec = SPEC_F
       try { text = spec ? fs.readFileSync(spec, 'utf8') : null; } catch { text = null; }
       if (!text) return { ok: false, code: 'NO_SPEC', sentence: 'There is no SPEC.md to seed the plan from.' };
       const sp = parseSpecMd(text);
-      const ran = []; const seen = new Set(); let stop = null; let skipped = [];
+      const ran = []; const seen = new Set(); let stop = null; let skipped = []; let open = [];
       for (let i = 0; i < 64; i += 1) {
         const v = /** @type {any} */ (await svc.view());
         const next = specSteps(root, { spec: sp, planned: v.steps });
-        skipped = next.skipped;
+        skipped = next.skipped; open = next.open ?? [];
         const step = next.steps[0];
         if (!step) break;
         const key = `${step.tool} ${JSON.stringify(step.args)}`;
@@ -228,12 +229,12 @@ export function createPlanCli({ project, log, builder = 'unknown', spec = SPEC_F
         ran.push({ tool: step.tool, args, why: step.why, point: step.point, ...(step.base ? { base: step.base } : {}), ...(step.fixture ? { fixture: step.fixture } : {}), landed: r.landed === true, ...(r.landed ? {} : { code: r.code ?? r.state ?? null }) });
         if (!r.landed) { stop = { step: key, code: r.code ?? r.state ?? 'NOT_LANDED', sentence: r.sentence }; break; }
       }
-      record({ kind: 'seed', steps: ran, skipped, ...(stop ? { stop } : {}) });
+      record({ kind: 'seed', steps: ran, skipped, open, ...(stop ? { stop } : {}) });
       const landed = ran.filter((x) => x.landed).length;
-      const what = ran.filter((x) => x.landed).map((x) => (x.tool === 'line.addRoute' ? `${x.args.route} -> ${x.args.page}` : x.tool === 'line.baseOn' ? `${x.args.feature}/${x.args.name} on ${x.args.libraryId}` : x.tool === 'line.createFeature' ? `feature ${x.args.name}` : `${x.args.file}`));
+      const what = ran.filter((x) => x.landed).map((x) => (x.tool === 'line.addRoute' ? `${x.args.route} -> ${x.args.page}` : x.tool === 'line.baseOn' ? `${x.args.feature}/${x.args.name} on ${x.args.libraryId}` : x.tool === 'line.createFeature' ? `feature ${x.args.name}` : x.tool === 'line.useAtom' ? `atom ${x.args.atom}` : x.tool === 'line.setLayoutSlot' ? `${x.args.slot} slot` : `${x.args.file}`));
       const v = /** @type {any} */ (await svc.view());
-      return { ok: !stop, ...(stop ? { code: stop.code } : {}), steps: ran, skipped,
-        sentence: [`Seeded ${landed} step${landed === 1 ? '' : 's'} from the spec${what.length ? `: ${what.join('; ')}` : ''}.`, stop ? `Stopped at ${stop.step}: ${stop.sentence}` : '', workOf(v)].filter(Boolean).join('\n') };
+      return { ok: !stop, ...(stop ? { code: stop.code } : {}), steps: ran, skipped, open,
+        sentence: [`Seeded ${landed} step${landed === 1 ? '' : 's'} from the spec${what.length ? `: ${what.join('; ')}` : ''}.`, stop ? `Stopped at ${stop.step}: ${stop.sentence}` : '', open.length ? `Open for the builder: ${open.map((o) => `${o.point} (${o.reason})`).join('; ')}.` : '', workOf(v)].filter(Boolean).join('\n') };
     },
     async findings() {
       const p = readLineProject(root);

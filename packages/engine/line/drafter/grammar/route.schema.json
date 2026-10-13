@@ -1439,6 +1439,32 @@
             ],
             "properties": {
               "tool": {
+                "const": "line.useAtom"
+              },
+              "args": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "atom"
+                ],
+                "properties": {
+                  "atom": {
+                    "type": "string",
+                    "pattern": "^((components|pages|workflows|fixtures|expressions)/)?<[A-Z][0-9]{1,3}(\\.[a-zA-Z][a-zA-Z0-9]{0,15})?>$"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "tool",
+              "args"
+            ],
+            "properties": {
+              "tool": {
                 "const": "line.import.fix"
               },
               "args": {

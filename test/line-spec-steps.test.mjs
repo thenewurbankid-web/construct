@@ -24,7 +24,7 @@ function starter() {
   fs.cpSync(path.join(BENCH, 'starter'), root, { recursive: true, filter: (src) => !/node_modules|\.next/.test(src) });
   return { parent, root, done: () => fs.rmSync(parent, { recursive: true, force: true }) };
 }
-const brief = (s) => [s.tool, s.tool === 'line.createFeature' ? s.args.name : s.tool === 'line.setCode' ? s.args.file : s.tool === 'line.baseOn' ? `${s.args.feature}/${s.args.name} ${s.args.libraryId}` : `${s.args.route} ${s.args.page}`];
+const brief = (s) => [s.tool, s.tool === 'line.createFeature' ? s.args.name : s.tool === 'line.setCode' ? s.args.file : s.tool === 'line.useAtom' ? s.args.atom : s.tool === 'line.baseOn' ? `${s.args.feature}/${s.args.name} ${s.args.libraryId}` : `${s.args.route} ${s.args.page}`];
 
 test('parseSpecMd: the bench SPEC.md has 4 features with 22 points and a route table of 5 routes in Line form', () => {
   assert.deepEqual(SPEC.features.map((f) => [f.name, f.points.length]), [['catalog', 5], ['product', 4], ['cart', 8], ['checkout', 6]]);
@@ -49,8 +49,12 @@ test('the starter: the steps in plan order, stub-first per feature, each with a 
       ['line.createFeature', 'checkout'],
       ['line.baseOn', 'checkout/CheckoutPage pages/FormPage'],
       ['line.addRoute', '/checkout features/checkout/pages/CheckoutPage.tsx'],
+      // #919: then the behaviour steps whose inputs are already on disk (the rest wait for their pages).
+      ['line.useAtom', 'filter-sort'],
+      ['line.setCode', 'features/catalog/usecases/filterProducts.ts'],
+      ['line.setCode', 'library/services/cart.ts'],
     ]);
-    assert.deepEqual(steps.map((s) => s.kind), ['feature', 'page', 'route', 'feature', 'page', 'route', 'feature', 'page', 'route', 'feature', 'page', 'route']);
+    assert.deepEqual(steps.map((s) => s.kind), ['feature', 'page', 'route', 'feature', 'page', 'route', 'feature', 'page', 'route', 'feature', 'page', 'route', 'atom', 'block', 'block']);
     assert.match(steps[1].why, /^CAT-1 puts a page at \/: CatalogPage is based on the library ListPage, wired to library\/fixtures\/products\.json\.$/);
     assert.match(steps[2].why, /^CAT-1 puts a page at \/: serve CatalogPage there\.$/);
     assert.match(steps[3].why, /feature product \(PROD-1, PROD-2, PROD-3, PROD-4\)/);
@@ -63,14 +67,14 @@ test('the starter: the steps in plan order, stub-first per feature, each with a 
   } finally { done(); }
 });
 
-test('the library base per route: list for "/" and "/cart", detail for the :param route, form for checkout; list and detail are wired to the fixture', () => {
+test('the library base per route: list for "/" and "/cart", detail for the :param route, form for checkout; the catalog list and the detail are wired to the fixture, the cart (#919) is not', () => {
   const { root, done } = starter();
   try {
     const pages = specSteps(root, { spec: SPEC }).steps.filter((s) => s.kind === 'page');
     assert.deepEqual(pages.map((s) => [s.route, s.base, s.fixture ?? null]), [
       ['/', 'pages/ListPage', 'library/fixtures/products.json'],
       ['/products/:id', 'pages/DetailPage', 'library/fixtures/products.json'],
-      ['/cart', 'pages/ListPage', 'library/fixtures/products.json'],
+      ['/cart', 'pages/ListPage', null],
       ['/checkout', 'pages/FormPage', null],
     ]);
   } finally { done(); }
@@ -80,14 +84,14 @@ test('nothing for points a block cannot decide: behaviour points get no step, a 
   const { root, done } = starter();
   try {
     const { steps, skipped } = specSteps(root, { spec: SPEC });
-    assert.deepEqual([...new Set(steps.filter((s) => s.kind !== 'feature').map((s) => s.point))], ['CAT-1', 'PROD-1', 'CART-2', 'CHK-1']);
+    assert.deepEqual([...new Set(steps.filter((s) => s.kind === 'page' || s.kind === 'route').map((s) => s.point))], ['CAT-1', 'PROD-1', 'CART-2', 'CHK-1']);
     assert.ok(!steps.some((s) => s.route === '/order/confirmation'));
-    assert.deepEqual(skipped, [{ kind: 'page', feature: 'checkout', route: '/order/confirmation', reason: 'the spec does not say which library page fits it' }]);
+    assert.deepEqual(skipped.filter((x) => x.kind !== 'behaviour'), [{ kind: 'page', feature: 'checkout', route: '/order/confirmation', reason: 'the spec does not say which library page fits it' }]);
     // Without the route table, a route a point only mentions ("opens `/order/confirmation`") is not even considered.
     const noTable = { features: SPEC.features };
     const r = specSteps(root, { spec: noTable });
     assert.deepEqual(r.steps.filter((s) => s.kind === 'route').map((s) => s.args.route), ['/', '/products/:id', '/cart', '/checkout']);
-    assert.deepEqual(r.skipped, []);
+    assert.deepEqual(r.skipped.filter((x) => x.kind !== 'behaviour'), []);
     // A feature whose points put no page anywhere gets only its feature step.
     const bare = { features: [{ name: 'wishlist', story: 'As a shopper, I want a wishlist, so that I can come back later', points: [{ id: 'WISH-1', text: 'A "Save" button keeps the product for later.' }] }] };
     assert.deepEqual(specSteps(root, { spec: bare }).steps.map(brief), [['line.createFeature', 'wishlist']]);
@@ -109,9 +113,9 @@ test('idempotent: planned steps are skipped, and after plan-cli seed lands them 
     const cli = createPlanCli({ project: root, log, builder: 'test', spec: SPEC_FILE, shadowJev: false });
     const out = await cli.run('seed');
     assert.equal(out.ok, true, out.sentence);
-    assert.equal(out.steps.length, 12);
+    assert.equal(out.steps.length, 29);
     assert.ok(out.steps.every((s) => s.landed));
-    assert.match(out.sentence, /^Seeded 12 steps from the spec: features\/catalog\/spec\.md; catalog\/CatalogPage on pages\/ListPage; \/ -> features\/catalog\/pages\/CatalogPage\.tsx;/);
+    assert.match(out.sentence, /^Seeded 29 steps from the spec: features\/catalog\/spec\.md; catalog\/CatalogPage on pages\/ListPage; \/ -> features\/catalog\/pages\/CatalogPage\.tsx;/);
     assert.match(out.steps[0].args.code, /^<\d+ characters>$/, 'the spec text is not repeated in the answer or the log');
     for (const [entry, page] of [['app/page.tsx', 'CatalogPage'], ['app/products/[id]/page.tsx', 'ProductPage'], ['app/cart/page.tsx', 'CartPage'], ['app/checkout/page.tsx', 'CheckoutPage']]) {
       assert.match(fs.readFileSync(path.join(root, entry), 'utf8'), new RegExp(`export \\{ ${page} as default \\}`));
@@ -119,7 +123,7 @@ test('idempotent: planned steps are skipped, and after plan-cli seed lands them 
     assert.match(fs.readFileSync(path.join(root, 'features/catalog/pages/CatalogPage.tsx'), 'utf8'), /import products from '..\/..\/..\/library\/fixtures\/products\.json';/);
     const seedLog = fs.readFileSync(log, 'utf8').trim().split('\n').map((l) => JSON.parse(l)).filter((e) => e.kind === 'seed');
     assert.equal(seedLog.length, 1);
-    assert.equal(seedLog[0].steps.length, 12);
+    assert.equal(seedLog[0].steps.length, 29);
     assert.equal(seedLog[0].steps[1].fixture, 'library/fixtures/products.json');
 
     assert.deepEqual(specSteps(root, { spec: SPEC }).steps, []);
@@ -151,7 +155,7 @@ test('MCP plan_seed: the steps from the project\'s SPEC.md, none without one', a
     assert.match(none.sentence, /no SPEC\.md/);
     fs.writeFileSync(path.join(root, 'SPEC.md'), SPEC_TEXT);
     const r = await planSeed({ root });
-    assert.equal(r.steps.length, 12);
-    assert.match(r.sentence, /^12 steps can be decided from the spec; add them in order with plan_add_step, starting with line\.setCode/);
+    assert.equal(r.steps.length, 15);
+    assert.match(r.sentence, /^15 steps can be decided from the spec; add them in order with plan_add_step, starting with line\.setCode/);
   } finally { done(); }
 });
