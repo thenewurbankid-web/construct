@@ -1,0 +1,13 @@
+{
+  "id": "t02-book-page-count",
+  "title": "BookPage: show the page count as \"<n> pages\"",
+  "goal": "On the book page, show the page count in the form the spec asks for.",
+  "spec": "BK-1: The page at `/books/<id>` has the book's title as its main heading and shows \"by <author>\", its genre, its year, its page count (like \"312 pages\") and its summary.",
+  "target": "features/book/pages/BookPage.tsx",
+  "context": [
+    "library/pages/DetailPage.tsx"
+  ],
+  "entries": {
+    "page": "features/book/pages/BookPage.tsx"
+  }
+}

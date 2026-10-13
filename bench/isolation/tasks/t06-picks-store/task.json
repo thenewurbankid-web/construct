@@ -1,0 +1,11 @@
+{
+  "id": "t06-picks-store",
+  "title": "Picks store module: addPick / removePick / listPicks over localStorage",
+  "goal": "Write the picks store. Export exactly these functions: listPicks(): string[] (the picked book ids, in the order they were added), addPick(id: string): void (adds it; adding an id that is already there does nothing), removePick(id: string): void. Keep the ids in localStorage under the key \"picks\" as a JSON array of strings.",
+  "spec": "There is no backend and no sign-in: the books come from the fixture file, the member's picks and loans live in the browser (localStorage).\n\nPCK-2: The page at `/picks` ... lists each picked book with its title and author and a button \"Remove <title>\" that takes it off the list.\n\nPCK-6: The picks are kept when the page is reloaded.",
+  "target": "features/picks/store/picksStore.ts",
+  "context": [],
+  "entries": {
+    "store": "features/picks/store/picksStore.ts"
+  }
+}

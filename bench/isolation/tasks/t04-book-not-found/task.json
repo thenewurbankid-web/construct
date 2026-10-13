@@ -1,0 +1,13 @@
+{
+  "id": "t04-book-not-found",
+  "title": "BookPage: \"Back to the catalogue\" link and the unknown-id text",
+  "goal": "Make the book page's back link and its unknown-book message match the spec.",
+  "spec": "BK-4: Every book page has a link \"Back to the catalogue\" to `/`; an unknown id shows \"We could not find that book\" and the same link.",
+  "target": "features/book/pages/BookPage.tsx",
+  "context": [
+    "library/pages/DetailPage.tsx"
+  ],
+  "entries": {
+    "page": "features/book/pages/BookPage.tsx"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "id": "t08-picks-page-empty",
+  "title": "PicksPage: \"My picks\" heading and the empty-list text",
+  "goal": "Give the picks page the spec's heading and, when the picks store (listPicks in features/picks/store/picksStore.ts) is empty, the spec's empty text.",
+  "spec": "PCK-2: The page at `/picks` has the main heading \"My picks\".\n\nPCK-5: With no picks, the page says \"You have not picked any books yet\" and offers no way to request.",
+  "target": "features/picks/pages/PicksPage.tsx",
+  "context": [
+    "features/picks/store/picksStore.ts",
+    "library/pages/ListPage.tsx"
+  ],
+  "entries": {
+    "page": "features/picks/pages/PicksPage.tsx",
+    "store": "features/picks/store/picksStore.ts"
+  }
+}
