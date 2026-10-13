@@ -13,6 +13,7 @@
     "./line/spec-steps": "./line/seed/specSteps.mjs",
     "./line/spec": "./line/spec.mjs",
     "./line/tool-registry": "./line/toolRegistry.mjs",
+    "./line/read-tools": "./line/readTools.mjs",
     "./line/import-agent": "./line/importAgentDisk.mjs",
     "./line/import-verify": "./line/importVerify.mjs",
     "./line/logic-map": "./line/logicMap.mjs",

@@ -6,10 +6,11 @@ import fs from 'node:fs';
 import { McpServer } from '@modelcontextprotocol/server';
 import * as z from 'zod/v4';
 import { LIMITS, ToolError, createTokenBucket, DEFAULT_RATE_PER_MINUTE } from './limits.mjs';
-import { openRoot, createScrubber } from './guard.mjs';
+import { openRoot, createScrubber, assertContained } from './guard.mjs';
 import * as blocks from './blocks.mjs';
 import * as plan from './plan.mjs';
-import { entryForMcp } from '@line/construct-engine/line/tool-registry';
+import { entryForMcp, mcpNameOf } from '@line/construct-engine/line/tool-registry';
+import { registryReads, READ_SKIPPED, createReadDispatcher } from '@line/construct-engine/line/read-tools';
 import * as importAgent from './importAgent.mjs';
 import * as train from './train.mjs';
 
@@ -259,7 +260,44 @@ export const TRAIN_MCP_TOOLS = Object.freeze([
   },
 ]);
 
-const INSTRUCTIONS = 'Construct blocks, read-only and plan-only. Start with requirement_parse, then placement_place (answer its closed questions and call again), then plan_validate. summarize and validate describe the project before you read files; line_spec says what Line is (rules, tools, plan protocol), from its code. Every tool is bounded and path-free; none writes. A plan preview is applied through the Cockpit\'s per-diff approval, never here. To change a Line project, add a step with plan_add_step, ask the user to approve it in Cockpit, then plan_run_next; plan_status shows the plan.';
+/** Argument names a registry read takes that are not strings (everything else is one bounded string). */
+const LOOSE_ARGS = Object.freeze({
+  props: () => z.record(z.string(), z.unknown()),
+  steps: () => z.array(z.unknown()).max(50),
+  answers: () => z.record(z.string(), z.string()),
+  route: () => z.union([z.string().max(200), z.array(z.string().max(200)).max(20)]),
+});
+
+/**
+ * #937: every read of Line's tool registry that runs from a project root (read-tools.mjs readHandlers) and is not
+ * already one of the hand-written tools above, as an MCP tool: its name (mcpNameOf), its sentence and its fields come
+ * from the registry entry; the call goes through the registry's read dispatcher (argument check, file arguments kept
+ * inside the root). Reads that need Cockpit-only state are listed in READ_SKIPPED with the reason.
+ *
+ * @param {Set<string>} [taken] The names already registered.
+ * @returns {{ id: string, name: string, title: string, description: string, inputSchema: import('zod/v4').ZodObject<any> }[]}
+ */
+export function registryReadTools(taken = HAND_NAMES()) {
+  return registryReads()
+    .filter((e) => !(e.id in READ_SKIPPED) && !taken.has(mcpNameOf(e)) && !(e.surfaces.mcp && entryForMcp(e.surfaces.mcp) !== e))
+    .map((e) => {
+      const schema = /** @type {any} */ (e.inputSchema);
+      const required = new Set(schema.required ?? []);
+      const shape = Object.fromEntries((schema.fields ?? []).map((k) => {
+        const base = LOOSE_ARGS[k] ? LOOSE_ARGS[k]() : z.string().min(1).max(LIMITS.textChars);
+        const t = k === 'file' ? base.describe('A project-relative file, for example features/loans/pages/LoansPage.tsx.') : base;
+        return [k, required.has(k) ? t : t.optional()];
+      }));
+      return { id: e.id, name: mcpNameOf(e), title: e.id, description: `${e.sentence} A read of Line's tool registry (${e.id}); it writes nothing.`, inputSchema: z.object(shape) };
+    });
+}
+
+/** The hand-written tools' names (a registry read never shadows one). */
+function HAND_NAMES() {
+  return new Set([...TOOLS, ...PLAN_TOOLS, ...IMPORT_AGENT_TOOLS, ...TRAIN_MCP_TOOLS].map((t) => t.name));
+}
+
+const INSTRUCTIONS ='Construct blocks, read-only and plan-only. Start with requirement_parse, then placement_place (answer its closed questions and call again), then plan_validate. summarize and validate describe the project before you read files; line_spec says what Line is (rules, tools, plan protocol), from its code. Every tool is bounded and path-free; none writes. A plan preview is applied through the Cockpit\'s per-diff approval, never here. To change a Line project, add a step with plan_add_step, ask the user to approve it in Cockpit, then plan_run_next; plan_status shows the plan.';
 
 /** A server class whose own errors (input the schema refused, an unexpected throw) come out typed, like every other refusal. */
 class ConstructMcpServer extends McpServer {
@@ -336,6 +374,26 @@ export function createConstructMcpServer(options = {}) {
       if (!taken.ok) return fail('RATE_LIMITED', `More than ${bucket.capacity} calls a minute. Try again in ${taken.retryAfterSeconds} seconds.`, { retryAfterSeconds: taken.retryAfterSeconds });
       try {
         return succeed(await tool.run(ctx, args ?? {}));
+      } catch (e) {
+        if (e instanceof ToolError) return fail(e.code, e.message, e.extra);
+        log(`construct-mcp: ${tool.name} failed (${e?.name ?? 'Error'})`);
+        return fail('TOOL_FAILED', 'The tool could not answer.');
+      }
+    });
+  }
+
+  // #937: the registry's reads, through one read dispatcher per server (loaded on the first call).
+  let reads = null;
+  for (const tool of registryReadTools()) {
+    server.registerTool(tool.name, { title: tool.title, description: tool.description, inputSchema: tool.inputSchema, annotations: { title: tool.title, ...READ_ONLY } }, async (args) => {
+      const taken = bucket.take();
+      if (!taken.ok) return fail('RATE_LIMITED', `More than ${bucket.capacity} calls a minute. Try again in ${taken.retryAfterSeconds} seconds.`, { retryAfterSeconds: taken.retryAfterSeconds });
+      try {
+        assertContained(root);
+        reads ??= await createReadDispatcher(root);
+        const r = await reads.dispatch(tool.id, args ?? {});
+        if (r?.ok === false) return fail(r.code ?? 'REFUSED', r.sentence ?? 'That was refused.');
+        return succeed(r);
       } catch (e) {
         if (e instanceof ToolError) return fail(e.code, e.message, e.extra);
         log(`construct-mcp: ${tool.name} failed (${e?.name ?? 'Error'})`);

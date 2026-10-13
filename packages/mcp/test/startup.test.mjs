@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { makeProject, connectStdio, callTool, BIN } from '../test-utils/harness.mjs';
+import { registryReadTools } from '../src/server.mjs';
 
 const BUDGET_MS = 1000;
 const BUDGET_RSS_MB = 150;
@@ -33,7 +34,7 @@ test('startup: initialize and list the tools in under 1 s and under 150 MB peak 
   const mb = peakRssMb(s.transport.pid);
   process.stderr.write(`# construct-mcp startup: ${ms.toFixed(0)} ms to initialize and list ${tools.length} tools, peak RSS ${mb === null ? 'n/a' : `${mb.toFixed(0)} MB`}\n`);
   await s.close();
-  assert.equal(tools.length, 21, "nine read-only block tools, four plan tools (#914 adds plan seed), five Import agent tools (ci2) and three Train Line tools");
+  assert.equal(tools.length, 21 + registryReadTools().length, 'nine read-only block tools, four plan tools (#914 adds plan seed), five Import agent tools (ci2), three Train Line tools and (#937) the registry reads');
   assert.ok(ms < TIME_LIMIT_MS, `${ms.toFixed(0)} ms is over the ${TIME_LIMIT_MS} ms limit (budget ${BUDGET_MS} ms on an idle machine)`);
   if (mb !== null) assert.ok(mb < BUDGET_RSS_MB, `${mb.toFixed(0)} MB is over the ${BUDGET_RSS_MB} MB budget`);
 });
