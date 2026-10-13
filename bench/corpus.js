@@ -67,9 +67,11 @@ function containsJsx(node) {
 
 function parses(code, kind) {
   const wrapped = kind === 'method' ? `class __W__ {\n${code}\n}` : code;
+  // Same tolerance as toEnglish: a method lifted out of its class may use
+  // private fields the wrapper doesn't declare; nothing else is forgiven.
   try {
-    parser.parse(wrapped, { sourceType: 'module', plugins: TS_PLUGINS });
-    return true;
+    const ast = parser.parse(wrapped, { sourceType: 'module', plugins: TS_PLUGINS, errorRecovery: true });
+    return !(ast.errors || []).some((e) => e.reasonCode !== 'InvalidPrivateFieldResolution');
   } catch {
     return false;
   }

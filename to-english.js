@@ -391,6 +391,7 @@ const EXPR_RULES = {
   UnaryExpression: (node, out) => {
     if (node.operator === '!') {
       chip(out, 'not', 'connective');
+      if (isGrouped(node.argument)) return walkExpr(node.argument, out);
       glue(out, '(', { glueR: true });
       walkExpr(node.argument, out);
       return glue(out, ')', { glueL: true });
@@ -515,11 +516,23 @@ const EXPR_RULES = {
   PipelineTopicExpression: transparent,
 };
 
+// Operators whose grouping changes the meaning: when the source wrote them in
+// parentheses, the sentence keeps the parentheses (glue only, never a chip),
+// so `sum * (1 - d)` doesn't read as "sum * 1 - d".
+const GROUPED = new Set(['BinaryExpression', 'LogicalExpression', 'ConditionalExpression', 'AssignmentExpression', 'SequenceExpression']);
+
+function isGrouped(node) {
+  return !!(node && node.extra && node.extra.parenthesized && GROUPED.has(node.type));
+}
+
 function walkExpr(node, out) {
   if (!node) return;
   const rule = EXPR_RULES[node.type];
-  if (rule) return rule(node, out);
-  return placeholder(out, 'expr', node);
+  if (!rule) return placeholder(out, 'expr', node);
+  if (!isGrouped(node)) return rule(node, out);
+  glue(out, '(', { glueR: true });
+  rule(node, out);
+  glue(out, ')', { glueL: true });
 }
 
 function walkBlock(node, out) {
@@ -815,6 +828,19 @@ function describeImplicitReturn(expr) {
 const PARSE_PLUGINS = ['typescript', 'jsx'];
 const PARSE_OPTS = { sourceType: 'module', plugins: PARSE_PLUGINS };
 
+// A method chunk lifted out of its class (`find(id) { return this.#items.get(id); }`)
+// refers to private fields the throwaway wrapper class doesn't declare. That
+// one complaint is about the wrapper, not the code, so it is tolerated; any
+// other syntax error still throws, same as before.
+const TOLERATED_PARSE_ERRORS = new Set(['InvalidPrivateFieldResolution']);
+
+function parseForEnglish(wrapped) {
+  const ast = parser.parse(wrapped, { ...PARSE_OPTS, errorRecovery: true });
+  const fatal = (ast.errors || []).find((e) => !TOLERATED_PARSE_ERRORS.has(e.reasonCode));
+  if (fatal) throw fatal;
+  return ast;
+}
+
 function isFnExpr(node) {
   return !!node && (node.type === 'ArrowFunctionExpression' || node.type === 'FunctionExpression');
 }
@@ -941,7 +967,7 @@ function describeFunction(fn, wrapped, prefixLen) {
 function toEnglish(code, kind, options = {}) {
   const prefixLen = kind === 'method' ? `class __W__ {\n`.length : 0;
   const wrapped = kind === 'method' ? `class __W__ {\n${code}\n}` : code;
-  const ast = parser.parse(wrapped, PARSE_OPTS);
+  const ast = parseForEnglish(wrapped);
   let fns = topLevelFunctions(ast.program);
   if (!fns.length) {
     const legacy = legacyFirstFunction(ast);
