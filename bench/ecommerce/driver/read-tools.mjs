@@ -65,6 +65,8 @@ export async function createTurnReads({ root, spec = null, logDir, base, dispatc
     },
     /** Whether `name` is a registry read this run can serve. */
     serves: (name) => reads.byName(name) !== null,
+    /** Whether `name` is a tool of this run at all (the arm's or a registry read): a call to it is a miss, served. */
+    knows: (name) => known.has(name),
     /**
      * Run a registry read by its name. An answer that is already English (a `sentence`, as the coder reads give) reaches
      * the model as that sentence only; the structured copy behind it is left out, as toModel does for plan-cli.

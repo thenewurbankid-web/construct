@@ -7,6 +7,14 @@
 //   node bench/ecommerce/driver/qwen-agent.mjs --project <dir> [--arm line|plain] [--builder qwen-7b]
 //        [--model qwen2.5-coder:7b] [--max-turns 200] [--max-minutes 90] [--num-ctx 32768] [--seed <n>] [--ollama http://127.0.0.1:11434]
 //        [--seed-plan] [--bench <bench-dir>]
+//        [--prompt-variant current|clean|bare] [--tool-set full|subset] [--max-tools <n>]
+//
+// Tool calls (#938, packages/engine/line/toolHarness.mjs) are Ollama's native ones first: the `tools` param in,
+// message.tool_calls out. Only for a model whose profile has textFallback (qwen2.5-coder, which writes its calls as
+// text) the old textToolCalls recovery reads a call from the content; otherwise a text answer or a call of a tool not
+// offered gets one line naming the same tools next turn. --prompt-variant (prompt-variants.mjs) and, on the Line arm, --tool-set subset (only
+// the tools the turn's situation needs, turn-tools.mjs, cut to --max-tools) default to the model's entry in
+// driver/model-profiles.json (measured by tool-harness-probe.mjs), else current and full.
 //
 // --bench (or BENCH_DIR; default bench/ecommerce) picks the bench: its SPEC.md (system prompt, plan status, seed), its
 // BUILDER-PROMPT*.md when it has its own (else this bench's), and its results/ folder for the token log. For example
@@ -67,13 +75,16 @@ import { buildTurn, projectFacts } from './turn.mjs';
 import { loadLedger, bridgeLedger, bridgedView } from './ledger.mjs';
 import { createScratch, SCRATCH_CAP, SCRATCH_FENCE_LINES } from './scratch.mjs';
 import { createSessionLog, toolEvents, sessionLogSlice, selectTurnTools } from './session-log.mjs';
+import { callNative, nudge } from '../../../packages/engine/line/toolHarness.mjs';
+import { promptVariant } from './prompt-variants.mjs';
+import { toolsForTurn } from './turn-tools.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const bench = path.join(here, '..');
 const benchOf = (dir) => (dir ? path.resolve(dir) : bench);
 
 export function flags(argv) {
-  const o = { seed: undefined, seedPlan: false, project: process.env.BENCH_PROJECT, arm: 'line', builder: '', model: 'qwen2.5-coder:7b', maxTurns: 200, maxMinutes: 90, numCtx: Number(process.env.BENCH_NUM_CTX) || 32768, answerReserve: 2048, maxRepeatRefusals: 10, maxCycleRepeats: 6, cycleWindow: 20, ollama: process.env.OLLAMA_HOST ?? 'http://127.0.0.1:11434', log: process.env.BENCH_LOG, bench: benchOf(process.env.BENCH_DIR) };
+  const o = { seed: undefined, seedPlan: false, project: process.env.BENCH_PROJECT, arm: 'line', builder: '', model: 'qwen2.5-coder:7b', maxTurns: 200, maxMinutes: 90, numCtx: Number(process.env.BENCH_NUM_CTX) || 32768, answerReserve: 2048, maxRepeatRefusals: 10, maxCycleRepeats: 6, cycleWindow: 20, ollama: process.env.OLLAMA_HOST ?? 'http://127.0.0.1:11434', log: process.env.BENCH_LOG, bench: benchOf(process.env.BENCH_DIR), promptVariant: undefined, toolSet: undefined, maxTools: undefined };
   for (let i = 0; i < argv.length; i += 1) {
     const k = argv[i]; const v = argv[i + 1];
     if (k === '--project') { o.project = v; i += 1; } else if (k === '--arm') { o.arm = v; i += 1; } else if (k === '--builder') { o.builder = v; i += 1; }
@@ -83,6 +94,7 @@ export function flags(argv) {
     else if (k === '--bench') { o.bench = benchOf(v); i += 1; } else if (k === '--answer-reserve') { o.answerReserve = Number(v); i += 1; }
     else if (k === '--context-representation') { o.contextRepresentation = v; i += 1; } else if (k === '--context') { o.context = v; i += 1; }
     else if (k === '--research') o.research = true; else if (k === '--research-model') { o.researchModel = v; i += 1; }
+    else if (k === '--prompt-variant') { o.promptVariant = v; i += 1; } else if (k === '--tool-set') { o.toolSet = v; i += 1; } else if (k === '--max-tools') { o.maxTools = Number(v); i += 1; }
   }
   // #932: the line arm builds each turn fresh from the ledger (--context ledger); --context history is the old path.
   if (!o.context) o.context = o.arm === 'line' ? 'ledger' : 'history';
@@ -343,7 +355,15 @@ export async function runAgent(o, { resultsDir = path.join(o.bench ?? bench, 're
   const turnsFile = path.join(logDir, 'turns.jsonl');
   const tokensFile = path.join(resultsDir, `${o.builder}.tokens.jsonl`);
   const write = (f, e) => fs.appendFileSync(f, `${JSON.stringify(e)}\n`);
-  const system = { role: 'system', content: o.arm === 'path' ? pathPrompt(path.resolve(o.project)) : systemPrompt(o.arm, dir) };
+  // #938: the prompt variant and the per-turn tool set, from the flags, else the model's profile, else current/full.
+  const profile = modelProfile(o.model);
+  const variant = o.promptVariant ?? profile.prompt ?? 'current';
+  const subset = o.arm === 'line' && (o.toolSet ?? profile.toolSet) === 'subset';
+  const maxTools = o.maxTools ?? profile.maxTools ?? 6;
+  const textFallback = profile.textFallback === true;
+  /** @type {{name: string, out: any} | null} */
+  let lastTool = null;
+  const system = { role: 'system', content: o.arm === 'path' ? pathPrompt(path.resolve(o.project)) : promptVariant(systemPrompt(o.arm, dir), variant) };
   const first = { role: 'user', content: o.arm === 'path' ? 'Fill the open stubs in order, one fill per stub until it passes. Use only your tools. Call finish when every stub passes or you cannot make more progress.' : 'Start building. Use only your tools. Call finish when every acceptance point is done or you cannot make more progress.' };
   // #932: the layered session log (line and plain arms; the path arm too, it costs nothing).
   const slog = createSessionLog({ file: path.join(logDir, 'session.jsonl') });
@@ -408,9 +428,13 @@ export async function runAgent(o, { resultsDir = path.join(o.bench ?? bench, 're
       sel.names = sel.tools.map((t) => t.function.name);
     }
     const turnTools = o.arm === 'line' ? selectTurnTools(sel ? sel.tools : TOOLS.line, { refused: refusedLast }) : TOOLS[o.arm];
+    // #938: --tool-set subset narrows the turn to the tools the last tool's situation needs (the same small set repeats
+    // until a tool runs); #936: --research adds the research tool (before finish).
+    const baseTools = subset ? toolsForTurn(lastTool, { max: maxTools }) : turnTools;
+    const offered = rs ? rs.tools(baseTools) : baseTools;
     if (ledger && L) {
       const card = await /** @type {any} */ (cli).card();
-      const built = buildTurn({ system, ledger, ledgerView: researchLedger ? bridgedView : L.ledgerView, card, last, tools: turnTools, notes: scratch?.text ?? '', facts: projectFacts(path.resolve(o.project)) });
+      const built = buildTurn({ system, ledger, ledgerView: researchLedger ? bridgedView : L.ledgerView, card, last, tools: offered, notes: scratch?.text ?? '', facts: projectFacts(path.resolve(o.project)) });
       messages = built.messages;
       context = { mode: 'ledger', tokens: built.tokens, parts: built.parts, ledger: ledger.entries.length };
       const head = String(card).split('\n').find((l) => l.startsWith('Open work:')) ?? '';
@@ -424,29 +448,33 @@ export async function runAgent(o, { resultsDir = path.join(o.bench ?? bench, 're
       slog.add({ turn, layer: 'context', kind: 'compacted', english: `Turn ${turn} sent the compacted history: ${packed.before} -> ${packed.after} tokens (${packed.collapsed} repeats collapsed, ${packed.summarised} answers summarised, ${packed.dropped} dropped).`, ref: null });
     }
     const started = Date.now();
-    let res;
-    // #936: --research adds the research tool (before finish); its ledger view is a message of its own in history mode.
-    const sent = JSON.stringify({ model: o.model, stream: false, messages, tools: rs ? rs.tools(turnTools) : turnTools, options: chatOptions(o) });
+    let res; let h;
     let input = null;
     try {
-      const r = await fetch(`${o.ollama}/api/chat`, {
-        method: 'POST', headers: { 'content-type': 'application/json' },
-        body: sent,
-        signal: AbortSignal.timeout(Math.max(10_000, Math.min(600_000, deadline - Date.now()))),
-      });
-      // #913: logged once the request is sent, parsed back from the sent text, so the file is exactly what Ollama got.
-      input = io.input(turn, JSON.parse(sent));
-      res = await r.json();
-      if (!r.ok) throw new Error(res?.error ?? `HTTP ${r.status}`);
+      h = await callNative({ model: o.model, messages, tools: offered, options: chatOptions(o), ollama: o.ollama,
+        signal: AbortSignal.timeout(Math.max(10_000, Math.min(600_000, deadline - Date.now()))) });
+      // #913: the request body exactly as sent to Ollama.
+      input = io.input(turn, h.request);
+      res = h.response;
     } catch (e) {
-      const output = res !== undefined ? io.output(turn, res, []) : null;
-      write(turnsFile, { kind: 'error', turn, ms: Date.now() - started, error: String(/** @type {Error} */ (e).message ?? e), ...ioRefs(input, output) });
-      stop = `model error: ${/** @type {Error} */ (e).message}`;
+      const err = /** @type {any} */ (e);
+      if (err.request) input = io.input(turn, err.request);
+      const output = err.response !== undefined ? io.output(turn, err.response, []) : null;
+      write(turnsFile, { kind: 'error', turn, ms: Date.now() - started, error: String(err.message ?? e), ...ioRefs(input, output) });
+      stop = `model error: ${err.message}`;
       break;
     }
-    const msg = res.message ?? { role: 'assistant', content: '' };
-    let calls = Array.isArray(msg.tool_calls) ? msg.tool_calls : [];
-    const fromText = !calls.length ? textToolCalls(msg.content) : [];
+    const msg = h.message;
+    // #937 x #938: a native call of a run's tool that this turn's read selection left out is a miss: served and logged
+    // (read-misses.jsonl) so the selection table can be corrected; only a tool the run does not have gets the nudge.
+    if (sel) {
+      const served = h.wrong.filter((c) => reads.knows(c.function?.name));
+      if (served.length) h = { ...h, calls: [...h.calls, ...served], wrong: h.wrong.filter((c) => !served.includes(c)) };
+    }
+    let calls = h.calls;
+    // The old text recovery, only for a model whose profile says textFallback (qwen2.5-coder writes its calls as text;
+    // removed once a LoRA teaches it native calls). Native tool_calls stay the first path.
+    const fromText = textFallback && !calls.length && !h.wrong.length ? textToolCalls(msg.content) : [];
     if (fromText.length) calls = fromText;
     const output = io.output(turn, res, calls);
     const tokens = { turn, in: res.prompt_eval_count ?? 0, out: res.eval_count ?? 0, ms: Date.now() - started, evalMs: Math.round((res.eval_duration ?? 0) / 1e6), promptMs: Math.round((res.prompt_eval_duration ?? 0) / 1e6) };
@@ -468,6 +496,8 @@ export async function runAgent(o, { resultsDir = path.join(o.bench ?? bench, 're
       const out = gate ?? (isLog ? sessionLogSlice(slog.events, args ?? {}) : isScratch ? (name === 'scratch_write' ? scratch.write(args ?? {}, { turn, step: focusNow.step }) : scratch.read())
         : rs?.handles(name) ? await rs.handle(args, turn) : reads?.serves(name) ? await reads.call(name, args) : await callTool(cli, o.arm, name, args));
       const miss = sel && !gate ? reads.miss(turn, name, sel) : false;
+      // #938: the tool that ran last picks the next turn's subset (--tool-set subset).
+      lastTool = { name, out };
       // #936: the coder's own results go into the research ledger too (research answers are there already).
       if (!isScratch && !isLog) rs?.record(name, args, out, turn);
       if (out.ok === false) lastRefusal = { code: out.code ?? null, sentence: String(out.sentence ?? '') }; else if (name === 'plan_add' || name === 'plan_run_next') lastRefusal = null;
@@ -486,11 +516,11 @@ export async function runAgent(o, { resultsDir = path.join(o.bench ?? bench, 're
         slog.add({ turn, layer: 'ledger', kind: 'added', english: `Ledger ${e?.kind ?? 'entry'}: ${e?.text ?? ''}`, ref: e?.cites?.[1] ?? null });
       }
     }
-    if (!calls.length) { idle += 1; history.push({ role: 'user', content: 'Use one of your tools (or call finish).' }); } else idle = 0;
+    if (!calls.length) { idle += 1; history.push({ role: 'user', content: nudge(h, offered) }); } else idle = 0;
     last = history.slice(turnStart);
     write(tokensFile, { builder: o.builder, model: o.model, ...tokens, source: 'ollama prompt_eval_count/eval_count', at: new Date().toISOString() });
     const scratchRow = scratch && (gced.length || outcomes.some((x) => x.name === 'scratch_write')) ? { scratch: { removed: gced, version: scratch.text } } : {};
-    write(turnsFile, { kind: 'turn', ...tokens, context, ...scratchRow, textCalls: fromText.length > 0, ...(sel ? { offered: sel.ids, open: sel.open } : {}), calls: outcomes, said: clip(msg.content ?? '', 600), ...ioRefs(input, output) });
+    write(turnsFile, { kind: 'turn', ...tokens, context, ...scratchRow, textCalls: fromText.length > 0, textAnswer: !calls.length && !h.wrong.length && Boolean(msg.content), offered: offered.map((t) => t.function.name), wrongCalls: h.wrong.map((c) => c.function.name), ...(sel ? { reads: sel.ids, open: sel.open } : {}), calls: outcomes, said: clip(msg.content ?? '', 600), ...ioRefs(input, output) });
     console.log(`turn ${turn}: in ${tokens.in} out ${tokens.out} ${tokens.ms} ms; ${outcomes.map((x) => `${x.name}${x.ok ? '' : ` (${x.code})`}`).join(', ') || 'no tool call'}`);
     if (finished !== null) { stop = `finish: ${finished}`; break; }
     if (idle >= 8) { stop = '8 turns without a tool call'; break; }
@@ -502,6 +532,11 @@ export async function runAgent(o, { resultsDir = path.join(o.bench ?? bench, 're
   const cycled = stop === 'repeated cycle' ? { cycle: { times: cycle.count, window: o.cycleWindow, ...cycle.pair } } : {};
   console.log(JSON.stringify({ builder: o.builder, turns: Math.min(turn, o.maxTurns), wallMs: Date.now() - t0, stop, ...cycled }));
   return { stop, turns: Math.min(turn, o.maxTurns), ...cycled };
+}
+
+/** #938: the model's entry in model-profiles.json ({prompt, toolSet, maxTools}); {} when there is none. */
+export function modelProfile(model, file = path.join(here, 'model-profiles.json')) {
+  try { return JSON.parse(fs.readFileSync(file, 'utf8')).models?.[model] ?? {}; } catch { return {}; }
 }
 
 /** turns.jsonl pointers to the turn's input/output files (#913); nothing when turn I/O logging is off. */

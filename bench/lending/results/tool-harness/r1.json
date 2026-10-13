@@ -1,0 +1,2676 @@
+{
+ "at": "2026-10-13T05:55:23.270Z",
+ "ollama": "http://127.0.0.1:11434",
+ "options": {
+  "num_ctx": 16384,
+  "temperature": 0.2,
+  "seed": 7
+ },
+ "maxTools": {
+  "qwen2.5-coder:7b": 5,
+  "qwen2.5-coder:1.5b": 3,
+  "qwen3:4b": 5
+ },
+ "cases": [
+  {
+   "id": "status",
+   "accept": [
+    "plan_status"
+   ]
+  },
+  {
+   "id": "setCode",
+   "accept": [
+    "plan_add"
+   ]
+  },
+  {
+   "id": "read",
+   "accept": [
+    "read_file"
+   ]
+  },
+  {
+   "id": "runNext",
+   "accept": [
+    "plan_run_next"
+   ]
+  },
+  {
+   "id": "finish",
+   "accept": [
+    "finish"
+   ]
+  },
+  {
+   "id": "r1-t1",
+   "accept": [
+    "plan_status",
+    "plan_add",
+    "read_file",
+    "list_dir",
+    "plan_tools"
+   ]
+  },
+  {
+   "id": "r1-t2",
+   "accept": [
+    "plan_run_next"
+   ]
+  },
+  {
+   "id": "r1-t3",
+   "accept": [
+    "plan_run_next"
+   ]
+  },
+  {
+   "id": "r1-t7",
+   "accept": [
+    "read_file",
+    "plan_rules",
+    "plan_status",
+    "plan_run_next",
+    "list_dir"
+   ]
+  },
+  {
+   "id": "r1-t8",
+   "accept": [
+    "plan_run_next"
+   ]
+  }
+ ],
+ "models": {
+  "qwen2.5-coder:7b": {
+   "rows": [
+    {
+     "config": "current/full",
+     "native": 0,
+     "right": 0,
+     "valid": 0,
+     "textNamedRight": 60,
+     "l1Right": null,
+     "callsPerStep": 1,
+     "medianMs": 1842,
+     "turns": [
+      {
+       "case": "status",
+       "ms": 3707,
+       "requests": 1,
+       "native": false,
+       "textNamedRight": true,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_tools",
+        "plan_status",
+        "plan_add",
+        "plan_run_next",
+        "plan_findings",
+        "plan_validate",
+        "plan_rules",
+        "read_file",
+        "list_dir",
+        "finish"
+       ],
+       "content": "{\"name\": \"plan_status\", \"arguments\": {\"feature\": \"browse\"}}"
+      },
+      {
+       "case": "setCode",
+       "ms": 1298,
+       "requests": 1,
+       "native": false,
+       "textNamedRight": true,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_tools",
+        "plan_status",
+        "plan_add",
+        "plan_run_next",
+        "plan_findings",
+        "plan_validate",
+        "plan_rules",
+        "read_file",
+        "list_dir",
+        "finish"
+       ],
+       "content": "{\"name\": \"plan_add\", \"arguments\": {\"tool\": \"line.setCode\", \"file\": \"features/browse/domains/countBooks.ts\", \"code\": \"export const countBooks = (books: unknown[]): number => books.length;\", \"why\": \"Cre"
+      },
+      {
+       "case": "read",
+       "ms": 444,
+       "requests": 1,
+       "native": false,
+       "textNamedRight": true,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_tools",
+        "plan_status",
+        "plan_add",
+        "plan_run_next",
+        "plan_findings",
+        "plan_validate",
+        "plan_rules",
+        "read_file",
+        "list_dir",
+        "finish"
+       ],
+       "content": "{\"name\": \"read_file\", \"arguments\": {\"path\": \"features/browse/spec.md\"}}"
+      },
+      {
+       "case": "runNext",
+       "ms": 338,
+       "requests": 1,
+       "native": false,
+       "textNamedRight": true,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_tools",
+        "plan_status",
+        "plan_add",
+        "plan_run_next",
+        "plan_findings",
+        "plan_validate",
+        "plan_rules",
+        "read_file",
+        "list_dir",
+        "finish"
+       ],
+       "content": "{\"name\": \"plan_run_next\", \"arguments\": {}}"
+      },
+      {
+       "case": "finish",
+       "ms": 2599,
+       "requests": 1,
+       "native": false,
+       "textNamedRight": true,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_tools",
+        "plan_status",
+        "plan_add",
+        "plan_run_next",
+        "plan_findings",
+        "plan_validate",
+        "plan_rules",
+        "read_file",
+        "list_dir",
+        "finish"
+       ],
+       "content": "{\"name\": \"finish\", \"arguments\": {\"summary\": \"I have built the Lending Library MVP. All acceptance points are done and the validate is clean. I have created the 'browse', 'book', 'picks', 'request', an"
+      },
+      {
+       "case": "r1-t1",
+       "ms": 1842,
+       "requests": 1,
+       "native": false,
+       "textNamedRight": true,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_tools",
+        "plan_status",
+        "plan_add",
+        "plan_run_next",
+        "plan_findings",
+        "plan_validate",
+        "plan_rules",
+        "read_file",
+        "list_dir",
+        "finish"
+       ],
+       "content": "{\"name\": \"plan_add\", \"arguments\": {\"tool\": \"line.baseOn\", \"args\": {\"libraryId\": \"pages/DetailPage\", \"feature\": \"browse\", \"name\": \"DetailPage\"}, \"why\": \"Create a new page based on the library's DetailP"
+      },
+      {
+       "case": "r1-t2",
+       "ms": 8734,
+       "requests": 1,
+       "native": false,
+       "textNamedRight": false,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_tools",
+        "plan_status",
+        "plan_add",
+        "plan_run_next",
+        "plan_findings",
+        "plan_validate",
+        "plan_rules",
+        "read_file",
+        "list_dir",
+        "finish"
+       ],
+       "content": "{\"name\": \"plan_add\", \"arguments\": {\"args\":{\"file\":\"features/book/pages/BookPage.tsx\",\"code\":\"// @line-base pages/DetailPage\\n// @line-route /books/:id\\nimport Link from 'next/link';\\nimport { DetailPa"
+      },
+      {
+       "case": "r1-t3",
+       "ms": 1580,
+       "requests": 1,
+       "native": false,
+       "textNamedRight": false,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_tools",
+        "plan_status",
+        "plan_add",
+        "plan_run_next",
+        "plan_findings",
+        "plan_validate",
+        "plan_rules",
+        "read_file",
+        "list_dir",
+        "finish"
+       ],
+       "content": "\n"
+      },
+      {
+       "case": "r1-t7",
+       "ms": 6896,
+       "requests": 1,
+       "native": false,
+       "textNamedRight": false,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_tools",
+        "plan_status",
+        "plan_add",
+        "plan_run_next",
+        "plan_findings",
+        "plan_validate",
+        "plan_rules",
+        "read_file",
+        "list_dir",
+        "finish"
+       ],
+       "content": "It seems that the code you are trying to set for `features/picks/pages/PicksPage.tsx` is causing a type error because `localStorage.getItem('picks')` can return `null`, and you are trying to parse it "
+      },
+      {
+       "case": "r1-t8",
+       "ms": 1943,
+       "requests": 1,
+       "native": false,
+       "textNamedRight": false,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_tools",
+        "plan_status",
+        "plan_add",
+        "plan_run_next",
+        "plan_findings",
+        "plan_validate",
+        "plan_rules",
+        "read_file",
+        "list_dir",
+        "finish"
+       ],
+       "content": "\n"
+      }
+     ]
+    },
+    {
+     "config": "clean/full",
+     "native": 0,
+     "right": 0,
+     "valid": 0,
+     "textNamedRight": 50,
+     "l1Right": null,
+     "callsPerStep": 1,
+     "medianMs": 1839,
+     "turns": [
+      {
+       "case": "status",
+       "ms": 2428,
+       "requests": 1,
+       "native": false,
+       "textNamedRight": true,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_status",
+        "plan_add",
+        "plan_run_next",
+        "read_file",
+        "list_dir",
+        "plan_rules",
+        "plan_validate",
+        "plan_findings",
+        "plan_tools",
+        "finish"
+       ],
+       "content": "{\"name\": \"plan_status\"}"
+      },
+      {
+       "case": "setCode",
+       "ms": 878,
+       "requests": 1,
+       "native": false,
+       "textNamedRight": false,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_status",
+        "plan_add",
+        "plan_run_next",
+        "read_file",
+        "list_dir",
+        "plan_rules",
+        "plan_validate",
+        "plan_findings",
+        "plan_tools",
+        "finish"
+       ],
+       "content": "{\"name\": \"line.setCode\", \"arguments\": {\"file\": \"features/browse/domains/countBooks.ts\", \"code\": \"export const countBooks = (books: unknown[]): number => books.length;\\n\"}}"
+      },
+      {
+       "case": "read",
+       "ms": 442,
+       "requests": 1,
+       "native": false,
+       "textNamedRight": true,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_status",
+        "plan_add",
+        "plan_run_next",
+        "read_file",
+        "list_dir",
+        "plan_rules",
+        "plan_validate",
+        "plan_findings",
+        "plan_tools",
+        "finish"
+       ],
+       "content": "{\"name\": \"read_file\", \"arguments\": {\"path\": \"features/browse/spec.md\"}}"
+      },
+      {
+       "case": "runNext",
+       "ms": 337,
+       "requests": 1,
+       "native": false,
+       "textNamedRight": true,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_status",
+        "plan_add",
+        "plan_run_next",
+        "read_file",
+        "list_dir",
+        "plan_rules",
+        "plan_validate",
+        "plan_findings",
+        "plan_tools",
+        "finish"
+       ],
+       "content": "{\"name\": \"plan_run_next\", \"arguments\": {}}"
+      },
+      {
+       "case": "finish",
+       "ms": 1004,
+       "requests": 1,
+       "native": false,
+       "textNamedRight": true,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_status",
+        "plan_add",
+        "plan_run_next",
+        "read_file",
+        "list_dir",
+        "plan_rules",
+        "plan_validate",
+        "plan_findings",
+        "plan_tools",
+        "finish"
+       ],
+       "content": "{\"name\": \"finish\", \"arguments\": {\"summary\": \"I have built the lending library MVP with the following features: browse, book, picks, request, and loans. All acceptance points are done and the project i"
+      },
+      {
+       "case": "r1-t1",
+       "ms": 1839,
+       "requests": 1,
+       "native": false,
+       "textNamedRight": true,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_status",
+        "plan_add",
+        "plan_run_next",
+        "read_file",
+        "list_dir",
+        "plan_rules",
+        "plan_validate",
+        "plan_findings",
+        "plan_tools",
+        "finish"
+       ],
+       "content": "{\"name\": \"plan_add\", \"arguments\": {\"tool\": \"line.baseOn\", \"args\": {\"libraryId\": \"pages/DetailPage\", \"feature\": \"browse\", \"name\": \"DetailPage\"}, \"why\": \"Create a new page based on the library's DetailP"
+      },
+      {
+       "case": "r1-t2",
+       "ms": 8708,
+       "requests": 1,
+       "native": false,
+       "textNamedRight": false,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_status",
+        "plan_add",
+        "plan_run_next",
+        "read_file",
+        "list_dir",
+        "plan_rules",
+        "plan_validate",
+        "plan_findings",
+        "plan_tools",
+        "finish"
+       ],
+       "content": "{\"name\": \"plan_add\", \"arguments\": {\"args\":{\"file\":\"features/book/pages/BookPage.tsx\",\"code\":\"// @line-base pages/DetailPage\\n// @line-route /books/:id\\nimport Link from 'next/link';\\nimport { DetailPa"
+      },
+      {
+       "case": "r1-t3",
+       "ms": 5239,
+       "requests": 1,
+       "native": false,
+       "textNamedRight": false,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_status",
+        "plan_add",
+        "plan_run_next",
+        "read_file",
+        "list_dir",
+        "plan_rules",
+        "plan_validate",
+        "plan_findings",
+        "plan_tools",
+        "finish"
+       ],
+       "content": "{\"name\": \"plan_add\", \"arguments\": {\"args\":{\"code\":\"// @line-base pages/ListPage\\n// @line-route /picks\\nimport { ListPage } from '../../../library/pages/ListPage';\\n\\n/* PCK-1: Every page shows a link"
+      },
+      {
+       "case": "r1-t7",
+       "ms": 3634,
+       "requests": 1,
+       "native": false,
+       "textNamedRight": false,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_status",
+        "plan_add",
+        "plan_run_next",
+        "read_file",
+        "list_dir",
+        "plan_rules",
+        "plan_validate",
+        "plan_findings",
+        "plan_tools",
+        "finish"
+       ],
+       "content": "\n"
+      },
+      {
+       "case": "r1-t8",
+       "ms": 1955,
+       "requests": 1,
+       "native": false,
+       "textNamedRight": false,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_status",
+        "plan_add",
+        "plan_run_next",
+        "read_file",
+        "list_dir",
+        "plan_rules",
+        "plan_validate",
+        "plan_findings",
+        "plan_tools",
+        "finish"
+       ],
+       "content": "\n"
+      }
+     ]
+    },
+    {
+     "config": "clean/subset",
+     "native": 0,
+     "right": 0,
+     "valid": 0,
+     "textNamedRight": 50,
+     "l1Right": null,
+     "callsPerStep": 1,
+     "medianMs": 1529,
+     "turns": [
+      {
+       "case": "status",
+       "ms": 491,
+       "requests": 1,
+       "native": false,
+       "textNamedRight": true,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_status",
+        "plan_add",
+        "read_file",
+        "list_dir",
+        "plan_tools"
+       ],
+       "content": "{\"name\": \"plan_status\"}"
+      },
+      {
+       "case": "setCode",
+       "ms": 873,
+       "requests": 1,
+       "native": false,
+       "textNamedRight": false,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_status",
+        "plan_add",
+        "read_file",
+        "list_dir",
+        "plan_tools"
+       ],
+       "content": "{\"name\": \"line.setCode\", \"arguments\": {\"file\": \"features/browse/domains/countBooks.ts\", \"code\": \"export const countBooks = (books: unknown[]): number => books.length;\\n\"}}"
+      },
+      {
+       "case": "read",
+       "ms": 440,
+       "requests": 1,
+       "native": false,
+       "textNamedRight": true,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_status",
+        "plan_add",
+        "read_file",
+        "list_dir",
+        "plan_tools"
+       ],
+       "content": "{\"name\": \"read_file\", \"arguments\": {\"path\": \"features/browse/spec.md\"}}"
+      },
+      {
+       "case": "runNext",
+       "ms": 744,
+       "requests": 1,
+       "native": false,
+       "textNamedRight": true,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_run_next",
+        "plan_status",
+        "plan_add",
+        "finish"
+       ],
+       "content": "{\"name\": \"plan_run_next\", \"arguments\": {}}"
+      },
+      {
+       "case": "finish",
+       "ms": 1818,
+       "requests": 1,
+       "native": false,
+       "textNamedRight": true,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_add",
+        "plan_status",
+        "finish",
+        "plan_validate",
+        "read_file"
+       ],
+       "content": "{\"name\": \"finish\", \"arguments\": {\"summary\": \"I have built the lending library MVP with all the required features and acceptance points. The app allows members to browse the catalogue, read about a boo"
+      },
+      {
+       "case": "r1-t1",
+       "ms": 2230,
+       "requests": 1,
+       "native": false,
+       "textNamedRight": true,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_status",
+        "plan_add",
+        "read_file",
+        "list_dir",
+        "plan_tools"
+       ],
+       "content": "{\"name\": \"plan_add\", \"arguments\": {\"tool\": \"line.baseOn\", \"args\": {\"libraryId\": \"pages/DetailPage\", \"feature\": \"browse\", \"name\": \"DetailPage\"}, \"why\": \"Create a new page based on the library's DetailP"
+      },
+      {
+       "case": "r1-t2",
+       "ms": 9501,
+       "requests": 1,
+       "native": false,
+       "textNamedRight": false,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_run_next",
+        "plan_status",
+        "plan_add",
+        "finish"
+       ],
+       "content": "{\"name\": \"plan_add\", \"arguments\": {\"args\":{\"file\":\"features/book/pages/BookPage.tsx\",\"code\":\"// @line-base pages/DetailPage\\n// @line-route /books/:id\\nimport Link from 'next/link';\\nimport { DetailPa"
+      },
+      {
+       "case": "r1-t3",
+       "ms": 1529,
+       "requests": 1,
+       "native": false,
+       "textNamedRight": false,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_run_next",
+        "plan_status",
+        "plan_add",
+        "finish"
+       ],
+       "content": "\n"
+      },
+      {
+       "case": "r1-t7",
+       "ms": 10354,
+       "requests": 1,
+       "native": false,
+       "textNamedRight": false,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_add",
+        "read_file",
+        "plan_rules",
+        "plan_status",
+        "finish"
+       ],
+       "content": "It seems that the code you are trying to set for `features/picks/pages/PicksPage.tsx` is causing a type error because `localStorage.getItem('picks')` can return `null`, and you are trying to parse it "
+      },
+      {
+       "case": "r1-t8",
+       "ms": 5288,
+       "requests": 1,
+       "native": false,
+       "textNamedRight": false,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_run_next",
+        "plan_status",
+        "plan_add",
+        "finish"
+       ],
+       "content": "\n"
+      }
+     ]
+    },
+    {
+     "config": "layered",
+     "native": 0,
+     "right": 0,
+     "valid": 0,
+     "textNamedRight": null,
+     "l1Right": 50,
+     "callsPerStep": 2.8,
+     "medianMs": 2544,
+     "turns": [
+      {
+       "case": "status",
+       "ms": 366,
+       "requests": 1,
+       "native": false,
+       "intent": "Ask a question",
+       "l1Right": false,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_status",
+        "plan_add",
+        "read_file",
+        "list_dir",
+        "plan_tools"
+       ],
+       "note": "The coder asked a question instead of a step."
+      },
+      {
+       "case": "setCode",
+       "ms": 3584,
+       "requests": 3,
+       "native": false,
+       "intent": "Write the code for this step",
+       "l1Right": true,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_status",
+        "plan_add",
+        "read_file",
+        "list_dir",
+        "plan_tools"
+       ],
+       "note": "plan_add: no native call in 2 tries (a miss)."
+      },
+      {
+       "case": "read",
+       "ms": 1245,
+       "requests": 3,
+       "native": false,
+       "intent": "Read a project file",
+       "l1Right": true,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_status",
+        "plan_add",
+        "read_file",
+        "list_dir",
+        "plan_tools"
+       ],
+       "note": "read_file: no native call in 2 tries (a miss)."
+      },
+      {
+       "case": "runNext",
+       "ms": 1002,
+       "requests": 3,
+       "native": false,
+       "intent": "Land the next approved step",
+       "l1Right": true,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_run_next",
+        "plan_status",
+        "plan_add",
+        "finish"
+       ],
+       "note": "plan_run_next: no native call in 2 tries (a miss)."
+      },
+      {
+       "case": "finish",
+       "ms": 2101,
+       "requests": 3,
+       "native": false,
+       "intent": "Add a step that changes the project",
+       "l1Right": false,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_add",
+        "plan_status",
+        "finish",
+        "plan_validate",
+        "read_file"
+       ],
+       "note": "plan_add: no native call in 2 tries (a miss)."
+      },
+      {
+       "case": "r1-t1",
+       "ms": 2544,
+       "requests": 3,
+       "native": false,
+       "intent": "Add a step that changes the project",
+       "l1Right": true,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_status",
+        "plan_add",
+        "read_file",
+        "list_dir",
+        "plan_tools"
+       ],
+       "note": "plan_add: no native call in 2 tries (a miss)."
+      },
+      {
+       "case": "r1-t2",
+       "ms": 13291,
+       "requests": 3,
+       "native": false,
+       "intent": "Add a step that changes the project",
+       "l1Right": false,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_run_next",
+        "plan_status",
+        "plan_add",
+        "finish"
+       ],
+       "note": "plan_add: no native call in 2 tries (a miss)."
+      },
+      {
+       "case": "r1-t3",
+       "ms": 8817,
+       "requests": 3,
+       "native": false,
+       "intent": "Write the code for this step",
+       "l1Right": false,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_run_next",
+        "plan_status",
+        "plan_add",
+        "finish"
+       ],
+       "note": "plan_add: no native call in 2 tries (a miss)."
+      },
+      {
+       "case": "r1-t7",
+       "ms": 3011,
+       "requests": 3,
+       "native": false,
+       "intent": "Read the rules a step must keep",
+       "l1Right": true,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_add",
+        "read_file",
+        "plan_rules",
+        "plan_status",
+        "finish"
+       ],
+       "note": "plan_rules: no native call in 2 tries (a miss)."
+      },
+      {
+       "case": "r1-t8",
+       "ms": 8465,
+       "requests": 3,
+       "native": false,
+       "intent": "Write the code for this step",
+       "l1Right": false,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_run_next",
+        "plan_status",
+        "plan_add",
+        "finish"
+       ],
+       "note": "plan_add: no native call in 2 tries (a miss)."
+      }
+     ]
+    }
+   ]
+  },
+  "qwen2.5-coder:1.5b": {
+   "rows": [
+    {
+     "config": "current/full",
+     "native": 0,
+     "right": 0,
+     "valid": 0,
+     "textNamedRight": 40,
+     "l1Right": null,
+     "callsPerStep": 1,
+     "medianMs": 387,
+     "turns": [
+      {
+       "case": "status",
+       "ms": 1406,
+       "requests": 1,
+       "native": false,
+       "textNamedRight": true,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_tools",
+        "plan_status",
+        "plan_add",
+        "plan_run_next",
+        "plan_findings",
+        "plan_validate",
+        "plan_rules",
+        "read_file",
+        "list_dir",
+        "finish"
+       ],
+       "content": "```json\n{\n  \"name\": \"plan_status\",\n  \"arguments\": {\n    \"feature\": \"browse\"\n  }\n}\n```"
+      },
+      {
+       "case": "setCode",
+       "ms": 205,
+       "requests": 1,
+       "native": false,
+       "textNamedRight": false,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_tools",
+        "plan_status",
+        "plan_add",
+        "plan_run_next",
+        "plan_findings",
+        "plan_validate",
+        "plan_rules",
+        "read_file",
+        "list_dir",
+        "finish"
+       ],
+       "content": "{\"name\": \"add\", \"arguments\": {\"fix\": \"f1\", \"why\": \"The file does not exist.\"}}"
+      },
+      {
+       "case": "read",
+       "ms": 169,
+       "requests": 1,
+       "native": false,
+       "textNamedRight": true,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_tools",
+        "plan_status",
+        "plan_add",
+        "plan_run_next",
+        "plan_findings",
+        "plan_validate",
+        "plan_rules",
+        "read_file",
+        "list_dir",
+        "finish"
+       ],
+       "content": "```json\n{\"name\": \"read_file\", \"arguments\": {\"path\": \"features/browse/spec.md\"}}\n```"
+      },
+      {
+       "case": "runNext",
+       "ms": 182,
+       "requests": 1,
+       "native": false,
+       "textNamedRight": false,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_tools",
+        "plan_status",
+        "plan_add",
+        "plan_run_next",
+        "plan_findings",
+        "plan_validate",
+        "plan_rules",
+        "read_file",
+        "list_dir",
+        "finish"
+       ],
+       "content": "{\"name\": \"run-next\", \"arguments\": {}}\n\nThe step you added is approved and waiting. Land it now."
+      },
+      {
+       "case": "finish",
+       "ms": 320,
+       "requests": 1,
+       "native": false,
+       "textNamedRight": true,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_tools",
+        "plan_status",
+        "plan_add",
+        "plan_run_next",
+        "plan_findings",
+        "plan_validate",
+        "plan_rules",
+        "read_file",
+        "list_dir",
+        "finish"
+       ],
+       "content": "{\"name\": \"finish\", \"arguments\": {\"summary\": \"I built the lending library MVP, which includes a catalogue, book reading, pick list, request form, and loan management. I passed all acceptance points and"
+      },
+      {
+       "case": "r1-t1",
+       "ms": 387,
+       "requests": 1,
+       "native": false,
+       "textNamedRight": false,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_tools",
+        "plan_status",
+        "plan_add",
+        "plan_run_next",
+        "plan_findings",
+        "plan_validate",
+        "plan_rules",
+        "read_file",
+        "list_dir",
+        "finish"
+       ],
+       "content": "{\"name\": \"line.baseOn\", \"arguments\": {\"libraryId\": \"pages/DetailPage\", \"feature\": \"browse\", \"name\": \"DetailPage\"}}"
+      },
+      {
+       "case": "r1-t2",
+       "ms": 424,
+       "requests": 1,
+       "native": false,
+       "textNamedRight": true,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_tools",
+        "plan_status",
+        "plan_add",
+        "plan_run_next",
+        "plan_findings",
+        "plan_validate",
+        "plan_rules",
+        "read_file",
+        "list_dir",
+        "finish"
+       ],
+       "content": "{\"name\": \"plan_run_next\", \"arguments\": {\"why\":\"Land the next step in the plan.\"}}"
+      },
+      {
+       "case": "r1-t3",
+       "ms": 496,
+       "requests": 1,
+       "native": false,
+       "textNamedRight": false,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_tools",
+        "plan_status",
+        "plan_add",
+        "plan_run_next",
+        "plan_findings",
+        "plan_validate",
+        "plan_rules",
+        "read_file",
+        "list_dir",
+        "finish"
+       ],
+       "content": "\n"
+      },
+      {
+       "case": "r1-t7",
+       "ms": 1113,
+       "requests": 1,
+       "native": false,
+       "textNamedRight": false,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_tools",
+        "plan_status",
+        "plan_add",
+        "plan_run_next",
+        "plan_findings",
+        "plan_validate",
+        "plan_rules",
+        "read_file",
+        "list_dir",
+        "finish"
+       ],
+       "content": ""
+      },
+      {
+       "case": "r1-t8",
+       "ms": 650,
+       "requests": 1,
+       "native": false,
+       "textNamedRight": false,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_tools",
+        "plan_status",
+        "plan_add",
+        "plan_run_next",
+        "plan_findings",
+        "plan_validate",
+        "plan_rules",
+        "read_file",
+        "list_dir",
+        "finish"
+       ],
+       "content": "\n"
+      }
+     ]
+    },
+    {
+     "config": "clean/full",
+     "native": 0,
+     "right": 0,
+     "valid": 0,
+     "textNamedRight": 40,
+     "l1Right": null,
+     "callsPerStep": 1,
+     "medianMs": 379,
+     "turns": [
+      {
+       "case": "status",
+       "ms": 2208,
+       "requests": 1,
+       "native": false,
+       "textNamedRight": false,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_status",
+        "plan_add",
+        "plan_run_next",
+        "read_file",
+        "list_dir",
+        "plan_rules",
+        "plan_validate",
+        "plan_findings",
+        "plan_tools",
+        "finish"
+       ],
+       "content": "```json\n{\n  \"plan\": [\n    {\n      \"tool\": \"line.createFeature\",\n      \"args\": {\n        \"name\": \"browse\",\n        \"story\": \"As a member, I want to look through the catalogue, so that I can find someth"
+      },
+      {
+       "case": "setCode",
+       "ms": 346,
+       "requests": 1,
+       "native": false,
+       "textNamedRight": false,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_status",
+        "plan_add",
+        "plan_run_next",
+        "read_file",
+        "list_dir",
+        "plan_rules",
+        "plan_validate",
+        "plan_findings",
+        "plan_tools",
+        "finish"
+       ],
+       "content": "```json\n{\n  \"name\": \"line.setCode\",\n  \"arguments\": {\n    \"file\": \"features/browse/domains/countBooks.ts\",\n    \"code\": \"export const countBooks = (books: unknown[]): number => books.length;\"\n  }\n}\n```"
+      },
+      {
+       "case": "read",
+       "ms": 170,
+       "requests": 1,
+       "native": false,
+       "textNamedRight": true,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_status",
+        "plan_add",
+        "plan_run_next",
+        "read_file",
+        "list_dir",
+        "plan_rules",
+        "plan_validate",
+        "plan_findings",
+        "plan_tools",
+        "finish"
+       ],
+       "content": "```json\n{\"name\": \"read_file\", \"arguments\": {\"path\": \"features/browse/spec.md\"}}\n```"
+      },
+      {
+       "case": "runNext",
+       "ms": 139,
+       "requests": 1,
+       "native": false,
+       "textNamedRight": true,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_status",
+        "plan_add",
+        "plan_run_next",
+        "read_file",
+        "list_dir",
+        "plan_rules",
+        "plan_validate",
+        "plan_findings",
+        "plan_tools",
+        "finish"
+       ],
+       "content": "```json\n{\"name\": \"plan_run_next\", \"arguments\": {}}\n```"
+      },
+      {
+       "case": "finish",
+       "ms": 309,
+       "requests": 1,
+       "native": false,
+       "textNamedRight": true,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_status",
+        "plan_add",
+        "plan_run_next",
+        "read_file",
+        "list_dir",
+        "plan_rules",
+        "plan_validate",
+        "plan_findings",
+        "plan_tools",
+        "finish"
+       ],
+       "content": "{\"name\": \"finish\", \"arguments\": {\"summary\": \"I built the lending library MVP with 15 books, a member's picks and loans, and a request form. I passed all acceptance points and validate is clean.\"}}"
+      },
+      {
+       "case": "r1-t1",
+       "ms": 379,
+       "requests": 1,
+       "native": false,
+       "textNamedRight": false,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_status",
+        "plan_add",
+        "plan_run_next",
+        "read_file",
+        "list_dir",
+        "plan_rules",
+        "plan_validate",
+        "plan_findings",
+        "plan_tools",
+        "finish"
+       ],
+       "content": "{\"name\": \"line.baseOn\", \"arguments\": {\"libraryId\": \"pages/DetailPage\", \"feature\": \"browse\", \"name\": \"DetailPage\"}}"
+      },
+      {
+       "case": "r1-t2",
+       "ms": 417,
+       "requests": 1,
+       "native": false,
+       "textNamedRight": true,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_status",
+        "plan_add",
+        "plan_run_next",
+        "read_file",
+        "list_dir",
+        "plan_rules",
+        "plan_validate",
+        "plan_findings",
+        "plan_tools",
+        "finish"
+       ],
+       "content": "{\"name\": \"plan_run_next\", \"arguments\": {\"why\":\"Land the next step in the plan.\"}}"
+      },
+      {
+       "case": "r1-t3",
+       "ms": 494,
+       "requests": 1,
+       "native": false,
+       "textNamedRight": false,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_status",
+        "plan_add",
+        "plan_run_next",
+        "read_file",
+        "list_dir",
+        "plan_rules",
+        "plan_validate",
+        "plan_findings",
+        "plan_tools",
+        "finish"
+       ],
+       "content": "\n"
+      },
+      {
+       "case": "r1-t7",
+       "ms": 1102,
+       "requests": 1,
+       "native": false,
+       "textNamedRight": false,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_status",
+        "plan_add",
+        "plan_run_next",
+        "read_file",
+        "list_dir",
+        "plan_rules",
+        "plan_validate",
+        "plan_findings",
+        "plan_tools",
+        "finish"
+       ],
+       "content": ""
+      },
+      {
+       "case": "r1-t8",
+       "ms": 641,
+       "requests": 1,
+       "native": false,
+       "textNamedRight": false,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_status",
+        "plan_add",
+        "plan_run_next",
+        "read_file",
+        "list_dir",
+        "plan_rules",
+        "plan_validate",
+        "plan_findings",
+        "plan_tools",
+        "finish"
+       ],
+       "content": "\n"
+      }
+     ]
+    },
+    {
+     "config": "clean/subset",
+     "native": 0,
+     "right": 0,
+     "valid": 0,
+     "textNamedRight": 40,
+     "l1Right": null,
+     "callsPerStep": 1,
+     "medianMs": 366,
+     "turns": [
+      {
+       "case": "status",
+       "ms": 154,
+       "requests": 1,
+       "native": false,
+       "textNamedRight": false,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_status",
+        "plan_add",
+        "read_file"
+       ],
+       "content": "```json\n{\n  \"feature\": \"browse\"\n}\n```"
+      },
+      {
+       "case": "setCode",
+       "ms": 366,
+       "requests": 1,
+       "native": false,
+       "textNamedRight": false,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_status",
+        "plan_add",
+        "read_file"
+       ],
+       "content": "```json\n{\n  \"name\": \"line.setCode\",\n  \"arguments\": {\n    \"file\": \"features/browse/domains/countBooks.ts\",\n    \"code\": \"export const countBooks = (books: unknown[]): number => books.length;\"\n  }\n}\n```"
+      },
+      {
+       "case": "read",
+       "ms": 170,
+       "requests": 1,
+       "native": false,
+       "textNamedRight": true,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_status",
+        "plan_add",
+        "read_file"
+       ],
+       "content": "```json\n{\"name\": \"read_file\", \"arguments\": {\"path\": \"features/browse/spec.md\"}}\n```"
+      },
+      {
+       "case": "runNext",
+       "ms": 215,
+       "requests": 1,
+       "native": false,
+       "textNamedRight": true,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_run_next",
+        "plan_status",
+        "plan_add"
+       ],
+       "content": "```json\n{\"name\": \"plan_run_next\", \"arguments\": {}}\n```"
+      },
+      {
+       "case": "finish",
+       "ms": 292,
+       "requests": 1,
+       "native": false,
+       "textNamedRight": true,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_add",
+        "plan_status",
+        "finish"
+       ],
+       "content": "{\"name\": \"finish\", \"arguments\": {\"summary\": \"The lending library MVP is built. All acceptance points are done and validate is clean.\"}}"
+      },
+      {
+       "case": "r1-t1",
+       "ms": 493,
+       "requests": 1,
+       "native": false,
+       "textNamedRight": false,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_status",
+        "plan_add",
+        "read_file"
+       ],
+       "content": "```json\n{\"name\": \"line.baseOn\", \"arguments\": {\"libraryId\": \"pages/DetailPage\", \"feature\": \"browse\", \"name\": \"DetailPage\"}}\n```"
+      },
+      {
+       "case": "r1-t2",
+       "ms": 753,
+       "requests": 1,
+       "native": false,
+       "textNamedRight": true,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_run_next",
+        "plan_status",
+        "plan_add"
+       ],
+       "content": "{\"name\": \"plan_run_next\", \"arguments\": {\"why\":\"Step 12 is waiting to run (step 12 line.baseOn DetailPage in browse): call plan_run_next to land it.\"}}\n"
+      },
+      {
+       "case": "r1-t3",
+       "ms": 465,
+       "requests": 1,
+       "native": false,
+       "textNamedRight": false,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_run_next",
+        "plan_status",
+        "plan_add"
+       ],
+       "content": "\n"
+      },
+      {
+       "case": "r1-t7",
+       "ms": 2006,
+       "requests": 1,
+       "native": false,
+       "textNamedRight": false,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_add",
+        "read_file",
+        "plan_rules"
+       ],
+       "content": ""
+      },
+      {
+       "case": "r1-t8",
+       "ms": 1660,
+       "requests": 1,
+       "native": false,
+       "textNamedRight": false,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_run_next",
+        "plan_status",
+        "plan_add"
+       ],
+       "content": "\n"
+      }
+     ]
+    },
+    {
+     "config": "layered",
+     "native": 0,
+     "right": 0,
+     "valid": 0,
+     "textNamedRight": null,
+     "l1Right": 60,
+     "callsPerStep": 3,
+     "medianMs": 914,
+     "turns": [
+      {
+       "case": "status",
+       "ms": 914,
+       "requests": 3,
+       "native": false,
+       "intent": "Read a project file",
+       "l1Right": false,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_status",
+        "plan_add",
+        "read_file"
+       ],
+       "note": "read_file: no native call in 2 tries (a miss)."
+      },
+      {
+       "case": "setCode",
+       "ms": 833,
+       "requests": 3,
+       "native": false,
+       "intent": "Add a step that changes the project",
+       "l1Right": true,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_status",
+        "plan_add",
+        "read_file"
+       ],
+       "note": "plan_add: no native call in 2 tries (a miss)."
+      },
+      {
+       "case": "read",
+       "ms": 795,
+       "requests": 3,
+       "native": false,
+       "intent": "Read a project file",
+       "l1Right": true,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_status",
+        "plan_add",
+        "read_file"
+       ],
+       "note": "read_file: no native call in 2 tries (a miss)."
+      },
+      {
+       "case": "runNext",
+       "ms": 418,
+       "requests": 3,
+       "native": false,
+       "intent": "Land the next approved step",
+       "l1Right": true,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_run_next",
+        "plan_status",
+        "plan_add"
+       ],
+       "note": "plan_run_next: no native call in 2 tries (a miss)."
+      },
+      {
+       "case": "finish",
+       "ms": 607,
+       "requests": 3,
+       "native": false,
+       "intent": "Stop: the work is done or I am stuck",
+       "l1Right": true,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_add",
+        "plan_status",
+        "finish"
+       ],
+       "note": "finish: no native call in 2 tries (a miss)."
+      },
+      {
+       "case": "r1-t1",
+       "ms": 1313,
+       "requests": 3,
+       "native": false,
+       "intent": "Add a step that changes the project",
+       "l1Right": true,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_status",
+        "plan_add",
+        "read_file"
+       ],
+       "note": "plan_add: no native call in 2 tries (a miss)."
+      },
+      {
+       "case": "r1-t2",
+       "ms": 4405,
+       "requests": 3,
+       "native": false,
+       "intent": "Add a step that changes the project",
+       "l1Right": false,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_run_next",
+        "plan_status",
+        "plan_add"
+       ],
+       "note": "plan_add: no native call in 2 tries (a miss)."
+      },
+      {
+       "case": "r1-t3",
+       "ms": 1820,
+       "requests": 3,
+       "native": false,
+       "intent": "Write the code for this step",
+       "l1Right": false,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_run_next",
+        "plan_status",
+        "plan_add"
+       ],
+       "note": "plan_add: no native call in 2 tries (a miss)."
+      },
+      {
+       "case": "r1-t7",
+       "ms": 1296,
+       "requests": 3,
+       "native": false,
+       "intent": "Read the rules a step must keep",
+       "l1Right": true,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_add",
+        "read_file",
+        "plan_rules"
+       ],
+       "note": "plan_rules: no native call in 2 tries (a miss)."
+      },
+      {
+       "case": "r1-t8",
+       "ms": 1849,
+       "requests": 3,
+       "native": false,
+       "intent": "Write the code for this step",
+       "l1Right": false,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_run_next",
+        "plan_status",
+        "plan_add"
+       ],
+       "note": "plan_add: no native call in 2 tries (a miss)."
+      }
+     ]
+    }
+   ]
+  },
+  "qwen3:4b": {
+   "rows": [
+    {
+     "config": "current/full",
+     "native": 100,
+     "right": 80,
+     "valid": 100,
+     "textNamedRight": 0,
+     "l1Right": null,
+     "callsPerStep": 1,
+     "medianMs": 17767,
+     "turns": [
+      {
+       "case": "status",
+       "ms": 7287,
+       "requests": 1,
+       "native": true,
+       "textNamedRight": false,
+       "name": "plan_status",
+       "valid": true,
+       "right": true,
+       "offered": [
+        "plan_tools",
+        "plan_status",
+        "plan_add",
+        "plan_run_next",
+        "plan_findings",
+        "plan_validate",
+        "plan_rules",
+        "read_file",
+        "list_dir",
+        "finish"
+       ],
+       "content": ""
+      },
+      {
+       "case": "setCode",
+       "ms": 17767,
+       "requests": 1,
+       "native": true,
+       "textNamedRight": false,
+       "name": "plan_add",
+       "valid": true,
+       "right": true,
+       "offered": [
+        "plan_tools",
+        "plan_status",
+        "plan_add",
+        "plan_run_next",
+        "plan_findings",
+        "plan_validate",
+        "plan_rules",
+        "read_file",
+        "list_dir",
+        "finish"
+       ],
+       "content": ""
+      },
+      {
+       "case": "read",
+       "ms": 6136,
+       "requests": 1,
+       "native": true,
+       "textNamedRight": false,
+       "name": "read_file",
+       "valid": true,
+       "right": true,
+       "offered": [
+        "plan_tools",
+        "plan_status",
+        "plan_add",
+        "plan_run_next",
+        "plan_findings",
+        "plan_validate",
+        "plan_rules",
+        "read_file",
+        "list_dir",
+        "finish"
+       ],
+       "content": ""
+      },
+      {
+       "case": "runNext",
+       "ms": 6686,
+       "requests": 1,
+       "native": true,
+       "textNamedRight": false,
+       "name": "plan_run_next",
+       "valid": true,
+       "right": true,
+       "offered": [
+        "plan_tools",
+        "plan_status",
+        "plan_add",
+        "plan_run_next",
+        "plan_findings",
+        "plan_validate",
+        "plan_rules",
+        "read_file",
+        "list_dir",
+        "finish"
+       ],
+       "content": ""
+      },
+      {
+       "case": "finish",
+       "ms": 43549,
+       "requests": 1,
+       "native": true,
+       "textNamedRight": false,
+       "name": "finish",
+       "valid": true,
+       "right": true,
+       "offered": [
+        "plan_tools",
+        "plan_status",
+        "plan_add",
+        "plan_run_next",
+        "plan_findings",
+        "plan_validate",
+        "plan_rules",
+        "read_file",
+        "list_dir",
+        "finish"
+       ],
+       "content": ""
+      },
+      {
+       "case": "r1-t1",
+       "ms": 20839,
+       "requests": 1,
+       "native": true,
+       "textNamedRight": false,
+       "name": "plan_add",
+       "valid": true,
+       "right": true,
+       "offered": [
+        "plan_tools",
+        "plan_status",
+        "plan_add",
+        "plan_run_next",
+        "plan_findings",
+        "plan_validate",
+        "plan_rules",
+        "read_file",
+        "list_dir",
+        "finish"
+       ],
+       "content": ""
+      },
+      {
+       "case": "r1-t2",
+       "ms": 6708,
+       "requests": 1,
+       "native": true,
+       "textNamedRight": false,
+       "name": "plan_run_next",
+       "valid": true,
+       "right": true,
+       "offered": [
+        "plan_tools",
+        "plan_status",
+        "plan_add",
+        "plan_run_next",
+        "plan_findings",
+        "plan_validate",
+        "plan_rules",
+        "read_file",
+        "list_dir",
+        "finish"
+       ],
+       "content": ""
+      },
+      {
+       "case": "r1-t3",
+       "ms": 33858,
+       "requests": 1,
+       "native": true,
+       "textNamedRight": false,
+       "name": "plan_run_next",
+       "valid": true,
+       "right": true,
+       "offered": [
+        "plan_tools",
+        "plan_status",
+        "plan_add",
+        "plan_run_next",
+        "plan_findings",
+        "plan_validate",
+        "plan_rules",
+        "read_file",
+        "list_dir",
+        "finish"
+       ],
+       "content": ""
+      },
+      {
+       "case": "r1-t7",
+       "ms": 30810,
+       "requests": 1,
+       "native": true,
+       "textNamedRight": false,
+       "name": "plan_add",
+       "valid": true,
+       "right": false,
+       "offered": [
+        "plan_tools",
+        "plan_status",
+        "plan_add",
+        "plan_run_next",
+        "plan_findings",
+        "plan_validate",
+        "plan_rules",
+        "read_file",
+        "list_dir",
+        "finish"
+       ],
+       "content": ""
+      },
+      {
+       "case": "r1-t8",
+       "ms": 45273,
+       "requests": 1,
+       "native": true,
+       "textNamedRight": false,
+       "name": "plan_add",
+       "valid": true,
+       "right": false,
+       "offered": [
+        "plan_tools",
+        "plan_status",
+        "plan_add",
+        "plan_run_next",
+        "plan_findings",
+        "plan_validate",
+        "plan_rules",
+        "read_file",
+        "list_dir",
+        "finish"
+       ],
+       "content": ""
+      }
+     ]
+    },
+    {
+     "config": "clean/full",
+     "native": 100,
+     "right": 80,
+     "valid": 100,
+     "textNamedRight": 0,
+     "l1Right": null,
+     "callsPerStep": 1,
+     "medianMs": 15727,
+     "turns": [
+      {
+       "case": "status",
+       "ms": 10039,
+       "requests": 1,
+       "native": true,
+       "textNamedRight": false,
+       "name": "plan_status",
+       "valid": true,
+       "right": true,
+       "offered": [
+        "plan_status",
+        "plan_add",
+        "plan_run_next",
+        "read_file",
+        "list_dir",
+        "plan_rules",
+        "plan_validate",
+        "plan_findings",
+        "plan_tools",
+        "finish"
+       ],
+       "content": ""
+      },
+      {
+       "case": "setCode",
+       "ms": 9589,
+       "requests": 1,
+       "native": true,
+       "textNamedRight": false,
+       "name": "plan_add",
+       "valid": true,
+       "right": true,
+       "offered": [
+        "plan_status",
+        "plan_add",
+        "plan_run_next",
+        "read_file",
+        "list_dir",
+        "plan_rules",
+        "plan_validate",
+        "plan_findings",
+        "plan_tools",
+        "finish"
+       ],
+       "content": ""
+      },
+      {
+       "case": "read",
+       "ms": 2582,
+       "requests": 1,
+       "native": true,
+       "textNamedRight": false,
+       "name": "read_file",
+       "valid": true,
+       "right": true,
+       "offered": [
+        "plan_status",
+        "plan_add",
+        "plan_run_next",
+        "read_file",
+        "list_dir",
+        "plan_rules",
+        "plan_validate",
+        "plan_findings",
+        "plan_tools",
+        "finish"
+       ],
+       "content": ""
+      },
+      {
+       "case": "runNext",
+       "ms": 21243,
+       "requests": 1,
+       "native": true,
+       "textNamedRight": false,
+       "name": "plan_run_next",
+       "valid": true,
+       "right": true,
+       "offered": [
+        "plan_status",
+        "plan_add",
+        "plan_run_next",
+        "read_file",
+        "list_dir",
+        "plan_rules",
+        "plan_validate",
+        "plan_findings",
+        "plan_tools",
+        "finish"
+       ],
+       "content": ""
+      },
+      {
+       "case": "finish",
+       "ms": 44317,
+       "requests": 1,
+       "native": true,
+       "textNamedRight": false,
+       "name": "finish",
+       "valid": true,
+       "right": true,
+       "offered": [
+        "plan_status",
+        "plan_add",
+        "plan_run_next",
+        "read_file",
+        "list_dir",
+        "plan_rules",
+        "plan_validate",
+        "plan_findings",
+        "plan_tools",
+        "finish"
+       ],
+       "content": ""
+      },
+      {
+       "case": "r1-t1",
+       "ms": 31649,
+       "requests": 1,
+       "native": true,
+       "textNamedRight": false,
+       "name": "plan_add",
+       "valid": true,
+       "right": true,
+       "offered": [
+        "plan_status",
+        "plan_add",
+        "plan_run_next",
+        "read_file",
+        "list_dir",
+        "plan_rules",
+        "plan_validate",
+        "plan_findings",
+        "plan_tools",
+        "finish"
+       ],
+       "content": ""
+      },
+      {
+       "case": "r1-t2",
+       "ms": 7477,
+       "requests": 1,
+       "native": true,
+       "textNamedRight": false,
+       "name": "plan_run_next",
+       "valid": true,
+       "right": true,
+       "offered": [
+        "plan_status",
+        "plan_add",
+        "plan_run_next",
+        "read_file",
+        "list_dir",
+        "plan_rules",
+        "plan_validate",
+        "plan_findings",
+        "plan_tools",
+        "finish"
+       ],
+       "content": ""
+      },
+      {
+       "case": "r1-t3",
+       "ms": 15727,
+       "requests": 1,
+       "native": true,
+       "textNamedRight": false,
+       "name": "plan_run_next",
+       "valid": true,
+       "right": true,
+       "offered": [
+        "plan_status",
+        "plan_add",
+        "plan_run_next",
+        "read_file",
+        "list_dir",
+        "plan_rules",
+        "plan_validate",
+        "plan_findings",
+        "plan_tools",
+        "finish"
+       ],
+       "content": ""
+      },
+      {
+       "case": "r1-t7",
+       "ms": 50825,
+       "requests": 1,
+       "native": true,
+       "textNamedRight": false,
+       "name": "plan_add",
+       "valid": true,
+       "right": false,
+       "offered": [
+        "plan_status",
+        "plan_add",
+        "plan_run_next",
+        "read_file",
+        "list_dir",
+        "plan_rules",
+        "plan_validate",
+        "plan_findings",
+        "plan_tools",
+        "finish"
+       ],
+       "content": ""
+      },
+      {
+       "case": "r1-t8",
+       "ms": 24731,
+       "requests": 1,
+       "native": true,
+       "textNamedRight": false,
+       "name": "plan_add",
+       "valid": true,
+       "right": false,
+       "offered": [
+        "plan_status",
+        "plan_add",
+        "plan_run_next",
+        "read_file",
+        "list_dir",
+        "plan_rules",
+        "plan_validate",
+        "plan_findings",
+        "plan_tools",
+        "finish"
+       ],
+       "content": ""
+      }
+     ]
+    },
+    {
+     "config": "clean/subset",
+     "native": 100,
+     "right": 60,
+     "valid": 100,
+     "textNamedRight": 0,
+     "l1Right": null,
+     "callsPerStep": 1,
+     "medianMs": 27491,
+     "turns": [
+      {
+       "case": "status",
+       "ms": 4694,
+       "requests": 1,
+       "native": true,
+       "textNamedRight": false,
+       "name": "plan_status",
+       "valid": true,
+       "right": true,
+       "offered": [
+        "plan_status",
+        "plan_add",
+        "read_file",
+        "list_dir",
+        "plan_tools"
+       ],
+       "content": ""
+      },
+      {
+       "case": "setCode",
+       "ms": 21519,
+       "requests": 1,
+       "native": true,
+       "textNamedRight": false,
+       "name": "plan_add",
+       "valid": true,
+       "right": true,
+       "offered": [
+        "plan_status",
+        "plan_add",
+        "read_file",
+        "list_dir",
+        "plan_tools"
+       ],
+       "content": ""
+      },
+      {
+       "case": "read",
+       "ms": 3145,
+       "requests": 1,
+       "native": true,
+       "textNamedRight": false,
+       "name": "read_file",
+       "valid": true,
+       "right": true,
+       "offered": [
+        "plan_status",
+        "plan_add",
+        "read_file",
+        "list_dir",
+        "plan_tools"
+       ],
+       "content": ""
+      },
+      {
+       "case": "runNext",
+       "ms": 30513,
+       "requests": 1,
+       "native": true,
+       "textNamedRight": false,
+       "name": "plan_run_next",
+       "valid": true,
+       "right": true,
+       "offered": [
+        "plan_run_next",
+        "plan_status",
+        "plan_add",
+        "finish"
+       ],
+       "content": ""
+      },
+      {
+       "case": "finish",
+       "ms": 27636,
+       "requests": 1,
+       "native": true,
+       "textNamedRight": false,
+       "name": "finish",
+       "valid": true,
+       "right": true,
+       "offered": [
+        "plan_add",
+        "plan_status",
+        "finish",
+        "plan_validate",
+        "read_file"
+       ],
+       "content": ""
+      },
+      {
+       "case": "r1-t1",
+       "ms": 27491,
+       "requests": 1,
+       "native": true,
+       "textNamedRight": false,
+       "name": "plan_add",
+       "valid": true,
+       "right": true,
+       "offered": [
+        "plan_status",
+        "plan_add",
+        "read_file",
+        "list_dir",
+        "plan_tools"
+       ],
+       "content": ""
+      },
+      {
+       "case": "r1-t2",
+       "ms": 19543,
+       "requests": 1,
+       "native": true,
+       "textNamedRight": false,
+       "name": "plan_add",
+       "valid": true,
+       "right": false,
+       "offered": [
+        "plan_run_next",
+        "plan_status",
+        "plan_add",
+        "finish"
+       ],
+       "content": ""
+      },
+      {
+       "case": "r1-t3",
+       "ms": 36816,
+       "requests": 1,
+       "native": true,
+       "textNamedRight": false,
+       "name": "plan_add",
+       "valid": true,
+       "right": false,
+       "offered": [
+        "plan_run_next",
+        "plan_status",
+        "plan_add",
+        "finish"
+       ],
+       "content": ""
+      },
+      {
+       "case": "r1-t7",
+       "ms": 65222,
+       "requests": 1,
+       "native": true,
+       "textNamedRight": false,
+       "name": "plan_add",
+       "valid": true,
+       "right": false,
+       "offered": [
+        "plan_add",
+        "read_file",
+        "plan_rules",
+        "plan_status",
+        "finish"
+       ],
+       "content": ""
+      },
+      {
+       "case": "r1-t8",
+       "ms": 43218,
+       "requests": 1,
+       "native": true,
+       "textNamedRight": false,
+       "name": "plan_add",
+       "valid": true,
+       "right": false,
+       "offered": [
+        "plan_run_next",
+        "plan_status",
+        "plan_add",
+        "finish"
+       ],
+       "content": ""
+      }
+     ]
+    },
+    {
+     "config": "layered",
+     "native": 50,
+     "right": 20,
+     "valid": 50,
+     "textNamedRight": null,
+     "l1Right": 30,
+     "callsPerStep": 2.2,
+     "medianMs": 41686,
+     "turns": [
+      {
+       "case": "status",
+       "ms": 2410,
+       "requests": 1,
+       "native": false,
+       "intent": "Ask a question",
+       "l1Right": false,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_status",
+        "plan_add",
+        "read_file",
+        "list_dir",
+        "plan_tools"
+       ],
+       "note": "The coder asked a question instead of a step."
+      },
+      {
+       "case": "setCode",
+       "ms": 44051,
+       "requests": 3,
+       "native": false,
+       "intent": "Add a step that changes the project",
+       "l1Right": true,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_status",
+        "plan_add",
+        "read_file",
+        "list_dir",
+        "plan_tools"
+       ],
+       "note": "plan_add: no native call in 2 tries (a miss)."
+      },
+      {
+       "case": "read",
+       "ms": 11591,
+       "requests": 2,
+       "native": true,
+       "intent": "Read a project file",
+       "l1Right": true,
+       "name": "read_file",
+       "valid": true,
+       "right": true,
+       "offered": [
+        "plan_status",
+        "plan_add",
+        "read_file",
+        "list_dir",
+        "plan_tools"
+       ],
+       "note": "read_file features/browse/spec.md: called"
+      },
+      {
+       "case": "runNext",
+       "ms": 31571,
+       "requests": 2,
+       "native": true,
+       "intent": "Add a step that changes the project",
+       "l1Right": false,
+       "name": "plan_add",
+       "valid": true,
+       "right": false,
+       "offered": [
+        "plan_run_next",
+        "plan_status",
+        "plan_add",
+        "finish"
+       ],
+       "note": "plan_add line.createFeature: called"
+      },
+      {
+       "case": "finish",
+       "ms": 61903,
+       "requests": 3,
+       "native": true,
+       "intent": "Add a step that changes the project",
+       "l1Right": false,
+       "name": "plan_add",
+       "valid": true,
+       "right": false,
+       "offered": [
+        "plan_add",
+        "plan_status",
+        "finish",
+        "plan_validate",
+        "read_file"
+       ],
+       "note": "plan_add line.createFeature: called"
+      },
+      {
+       "case": "r1-t1",
+       "ms": 41686,
+       "requests": 2,
+       "native": true,
+       "intent": "Add a step that changes the project",
+       "l1Right": true,
+       "name": "plan_add",
+       "valid": true,
+       "right": true,
+       "offered": [
+        "plan_status",
+        "plan_add",
+        "read_file",
+        "list_dir",
+        "plan_tools"
+       ],
+       "note": "plan_add line.baseOn: called"
+      },
+      {
+       "case": "r1-t2",
+       "ms": 144687,
+       "requests": 3,
+       "native": false,
+       "intent": "Add a step that changes the project",
+       "l1Right": false,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_run_next",
+        "plan_status",
+        "plan_add",
+        "finish"
+       ],
+       "note": "plan_add: no native call in 2 tries (a miss)."
+      },
+      {
+       "case": "r1-t3",
+       "ms": 41176,
+       "requests": 1,
+       "native": false,
+       "intent": "Ask a question",
+       "l1Right": false,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_run_next",
+        "plan_status",
+        "plan_add",
+        "finish"
+       ],
+       "note": "The coder asked a question instead of a step."
+      },
+      {
+       "case": "r1-t7",
+       "ms": 123016,
+       "requests": 3,
+       "native": false,
+       "intent": "Add a step that changes the project",
+       "l1Right": false,
+       "name": null,
+       "right": false,
+       "valid": false,
+       "offered": [
+        "plan_add",
+        "read_file",
+        "plan_rules",
+        "plan_status",
+        "finish"
+       ],
+       "note": "plan_add: no native call in 2 tries (a miss)."
+      },
+      {
+       "case": "r1-t8",
+       "ms": 199620,
+       "requests": 2,
+       "native": true,
+       "intent": "Add a step that changes the project",
+       "l1Right": false,
+       "name": "plan_add",
+       "valid": true,
+       "right": false,
+       "offered": [
+        "plan_run_next",
+        "plan_status",
+        "plan_add",
+        "finish"
+       ],
+       "note": "plan_add line.setCode: called"
+      }
+     ]
+    }
+   ]
+  }
+ }
+}
