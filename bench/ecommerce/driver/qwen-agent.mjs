@@ -39,6 +39,12 @@
 // message are never cut. Each turn row in turns.jsonl carries context: {before, after, budget, collapsed, summarised,
 // dropped} (estimated tokens). --context-representation code|english (default code; LINE_CONTEXT_REPRESENTATION) picks
 // how the context pack shows code blocks (contextPack.mjs renderCodeBlock; english falls back to code until plugged in).
+//
+// #932 (owner redirect): --context ledger (default for the line arm) sends no history at all. Each turn is built fresh
+// (turn.mjs buildTurn): the system prompt, the ledger view (ledger.mjs: every earlier tool result distilled to one
+// sentence with cites), the current step/point and its context pack (plan-cli card()), and only the last turn's call
+// and tool result. --context history keeps the compacted-history path above, for comparison. Turn rows carry
+// context: {mode: 'ledger', tokens, parts: {system, ledger, card, last}} in ledger mode.
 import fs from 'node:fs';
 import crypto from 'node:crypto';
 import path from 'node:path';
@@ -48,6 +54,8 @@ import { createPlainCli } from './plain-cli.mjs';
 import { createPathCli, pathPrompt } from './path-cli.mjs';
 import { readSpec, overviewWithIndex } from './spec-slice.mjs';
 import { compactHistory } from './compact.mjs';
+import { buildTurn } from './turn.mjs';
+import { loadLedger } from './ledger.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const bench = path.join(here, '..');
@@ -62,8 +70,10 @@ export function flags(argv) {
     else if (k === '--num-ctx') { o.numCtx = Number(v); i += 1; } else if (k === '--ollama') { o.ollama = v; i += 1; } else if (k === '--log') { o.log = v; i += 1; }
     else if (k === '--seed') { o.seed = Number(v); i += 1; } else if (k === '--max-cycle-repeats') { o.maxCycleRepeats = Number(v); i += 1; } else if (k === '--cycle-window') { o.cycleWindow = Number(v); i += 1; } else if (k === '--seed-plan') o.seedPlan = true;
     else if (k === '--bench') { o.bench = benchOf(v); i += 1; } else if (k === '--answer-reserve') { o.answerReserve = Number(v); i += 1; }
-    else if (k === '--context-representation') { o.contextRepresentation = v; i += 1; }
+    else if (k === '--context-representation') { o.contextRepresentation = v; i += 1; } else if (k === '--context') { o.context = v; i += 1; }
   }
+  // #932: the line arm builds each turn fresh from the ledger (--context ledger); --context history is the old path.
+  if (!o.context) o.context = o.arm === 'line' ? 'ledger' : 'history';
   if (!o.builder) o.builder = o.arm === 'plain' ? 'qwen-7b-plain' : o.arm === 'path' ? 'qwen-7b-path' : 'qwen-7b';
   return o;
 }
@@ -329,6 +339,13 @@ export async function runAgent(o, { resultsDir = path.join(o.bench ?? bench, 're
   }
   /** @type {any[]} */
   let history = [];
+  // #932: the ledger turn builder's state: the ledger and the last turn's messages.
+  const ledgerMode = o.context === 'ledger' && typeof (/** @type {any} */ (cli)).card === 'function';
+  const L = ledgerMode ? await loadLedger() : null;
+  const ledger = L ? L.createLedger() : null;
+  if (ledger && o.seedPlan) ledger.add({ kind: 'decision', text: String(first.content.split('\n')[1] ?? '').slice(0, 400), cites: ['seed', 'SPEC.md'] });
+  /** @type {any[]} */
+  let last = [];
   const t0 = Date.now();
   const deadline = t0 + o.maxMinutes * 60_000;
   let idle = 0; let stop = 'max turns'; let turn = 0; let allPass = false;
@@ -341,11 +358,20 @@ export async function runAgent(o, { resultsDir = path.join(o.bench ?? bench, 're
     // #932: keep the request inside num_ctx: the system prompt and the first message always, the history compacted.
     if (history.length > 400) history = history.slice(-400);
     while (history.length && history[0].role === 'tool') history.shift();
-    const packed = compactHistory(history, { fixed: [system, first], tools: TOOLS[o.arm], budget: o.numCtx - (o.answerReserve ?? 2048) });
-    const context = { before: packed.before, after: packed.after, budget: o.numCtx - (o.answerReserve ?? 2048), collapsed: packed.collapsed, summarised: packed.summarised, dropped: packed.dropped };
+    /** @type {any[]} */
+    let messages; let context;
+    if (ledger && L) {
+      const built = buildTurn({ system, ledger, ledgerView: L.ledgerView, card: await /** @type {any} */ (cli).card(), last, tools: TOOLS[o.arm] });
+      messages = built.messages;
+      context = { mode: 'ledger', tokens: built.tokens, parts: built.parts, ledger: ledger.entries.length };
+    } else {
+      const packed = compactHistory(history, { fixed: [system, first], tools: TOOLS[o.arm], budget: o.numCtx - (o.answerReserve ?? 2048) });
+      messages = [system, first, ...packed.messages];
+      context = { mode: 'history', before: packed.before, after: packed.after, budget: o.numCtx - (o.answerReserve ?? 2048), collapsed: packed.collapsed, summarised: packed.summarised, dropped: packed.dropped };
+    }
     const started = Date.now();
     let res;
-    const sent = JSON.stringify({ model: o.model, stream: false, messages: [system, first, ...packed.messages], tools: TOOLS[o.arm], options: chatOptions(o) });
+    const sent = JSON.stringify({ model: o.model, stream: false, messages, tools: TOOLS[o.arm], options: chatOptions(o) });
     let input = null;
     try {
       const r = await fetch(`${o.ollama}/api/chat`, {
@@ -370,6 +396,7 @@ export async function runAgent(o, { resultsDir = path.join(o.bench ?? bench, 're
     const output = io.output(turn, res, calls);
     const tokens = { turn, in: res.prompt_eval_count ?? 0, out: res.eval_count ?? 0, ms: Date.now() - started, evalMs: Math.round((res.eval_duration ?? 0) / 1e6), promptMs: Math.round((res.prompt_eval_duration ?? 0) / 1e6) };
     history.push({ role: 'assistant', content: msg.content ?? '', ...(msg.tool_calls ? { tool_calls: msg.tool_calls } : {}) });
+    const turnStart = history.length - 1;
     const outcomes = [];
     let finished = null;
     for (const c of calls) {
@@ -381,8 +408,11 @@ export async function runAgent(o, { resultsDir = path.join(o.bench ?? bench, 're
       cycle.see(turn, name, args, out);
       outcomes.push({ name, args: clip(JSON.stringify(args ?? {}), 400), ok: out.ok, code: out.code ?? null, sentence: out.sentence });
       history.push({ role: 'tool', content: clip(JSON.stringify(toModel(out))) });
+      // #932: every tool result is distilled into the ledger (one sentence + cites).
+      if (ledger) ledger.distil(name, args, out);
     }
     if (!calls.length) { idle += 1; history.push({ role: 'user', content: 'Use one of your tools (or call finish).' }); } else idle = 0;
+    last = history.slice(turnStart);
     write(tokensFile, { builder: o.builder, model: o.model, ...tokens, source: 'ollama prompt_eval_count/eval_count', at: new Date().toISOString() });
     write(turnsFile, { kind: 'turn', ...tokens, context, textCalls: fromText.length > 0, calls: outcomes, said: clip(msg.content ?? '', 600), ...ioRefs(input, output) });
     console.log(`turn ${turn}: in ${tokens.in} out ${tokens.out} ${tokens.ms} ms; ${outcomes.map((x) => `${x.name}${x.ok ? '' : ` (${x.code})`}`).join(', ') || 'no tool call'}`);

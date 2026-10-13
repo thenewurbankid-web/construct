@@ -308,7 +308,15 @@ export function createPlanCli({ project, log, builder = 'unknown', spec = SPEC_F
     delete out.hintContext;
     return out;
   }
-  return { run, root, logFile };
+  /**
+   * #932: the current step or point and its context pack (the open-work card plan status shows), for the ledger turn
+   * builder. Read only and not logged: it is the driver's context, not a builder call.
+   * @returns {Promise<string>}
+   */
+  async function card() {
+    try { const v = /** @type {any} */ (await svc.view()); return v?.work?.text ?? ''; } catch { return ''; }
+  }
+  return { run, card, root, logFile };
 }
 
 const safeJson = (s) => { try { return JSON.parse(s); } catch { return s ?? null; } };
