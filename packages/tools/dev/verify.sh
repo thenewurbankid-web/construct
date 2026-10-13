@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Independent verification of a branch on merged-with-main state, ONE compact summary at the end.
 # Usage: packages/tools/dev/verify.sh <branch> [--browser|--full]   (--browser: own-server e2e configs; --full: also the default config, ~25 min)    (run from the main checkout; needs a clean tree)
+# Agents self-check first with: node packages/tools/dev/affected-tests.mjs <base> --run   (affected subset; og still runs the full suite)
 # Runs: merge (no commit) -> root/server/client tests, tsc, lint -> optional browser configs. Prints only PASS/FAIL lines.
 set -uo pipefail
 BR="${1:?branch}"; BROWSER="${2:-}"; R="$(cd "$(dirname "$0")/../../.." && pwd)"; H="$R/packages/tools/dev/heavy.sh"
