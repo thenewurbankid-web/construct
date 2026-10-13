@@ -14,13 +14,13 @@
 // Static and deterministic: no model, no network, nothing written.
 import fs from 'node:fs';
 import path from 'node:path';
-import { LineOpError } from './contract.mjs';
-import { readLineProject } from './model.mjs';
-import { readLineFeature } from './feature.mjs';
-import { staticSummarizer } from './contextPicker.mjs';
-import { moduleContract } from './spec.mjs';
-import { importableFiles } from './typeGate.mjs';
-import { matchRequest } from './traceMatch.mjs';
+import { LineOpError } from '../contract.mjs';
+import { readLineProject } from '../model.mjs';
+import { readLineFeature } from '../feature.mjs';
+import { staticSummarizer } from '../contextPicker.mjs';
+import { moduleContract } from '../spec.mjs';
+import { importableFiles } from '../typeGate.mjs';
+import { matchRequest } from '../traceMatch.mjs';
 import { matchAtoms, getAtom, listAtoms } from '@line/atoms';
 
 const CODE_EXT = ['.ts', '.tsx', '.js', '.jsx', '.mjs'];
@@ -56,7 +56,12 @@ function specifierFor(root, file, target) {
   return s;
 }
 
-/** The project files a code file imports (relative and `@/` specifiers), resolved to files that exist. */
+/**
+ * The project files a code file imports (relative and `@/` specifiers), resolved to files that exist.
+ * @param {string} root The project root.
+ * @param {string} file The root-relative code file.
+ * @returns {string[]} Root-relative files.
+ */
 export function importsOfFile(root, file) {
   const text = read(root, file);
   if (text === null) return [];
@@ -116,7 +121,8 @@ export function scopeOf(root, { file }) {
   const f = projectFile(file);
   const p = readLineProject(root);
   if (!p.isLine) throw new LineOpError('This project is not a Line project, so it has no import scope.', 'NOT_LINE');
-  const items = new Map([...p.library.map((l) => [l.file, { kind: l.kind }]), ...p.features.flatMap((x) => x.items.map((i) => [i.file, i]))]);
+  /** @type {Map<string, any>} */
+  const items = new Map(/** @type {[string, any][]} */ ([...p.library.map((l) => [l.file, { kind: l.kind }]), ...p.features.flatMap((x) => x.items.map((i) => [i.file, i]))]));
   const own = f.startsWith(`${p.layout.features}/`) ? `${p.layout.features}/${f.split('/')[p.layout.features.split('/').length]}/` : null;
   const all = importableFor(root, p.layout, f).filter((x) => x !== f && !TEST_FILE.test(x));
   // Own feature first, then the library; each group in path order.
@@ -189,7 +195,7 @@ const IMPORT_REFUSAL = /\b(cannot find module|has no exported member|import|impo
  * Order: a refusal's need (TYPE_ERROR or an import problem -> line.scope; a rule refusal -> line.scope and
  * line.featureSummary), then the open step's tool, then the open item's kind, then what Trace (line.trace's static
  * matcher) says the point's or step's words need; padded from line.featureSummary, line.scope, line.atoms.
- * @param {{openStep?: {kind?: string, file?: string, sentence?: string, step?: {tool?: string, args?: any}} | null,
+ * @param {{openStep?: {kind?: string, file?: string, sentence?: string, point?: {text?: string}, step?: {tool?: string, args?: any}} | null,
  *   point?: {id?: string, text?: string} | null, kind?: string | null, lastRefusal?: {code?: string|null, sentence?: string} | null}} o
  * @returns {string[]}
  */

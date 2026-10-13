@@ -229,7 +229,13 @@ export function refuseRouteProps(root, layout, files, page) {
   throw new LineOpError(sentence, 'TYPE_ERROR', detail, page.then ? fixes.map((f) => ({ ...f, sentence: `${f.sentence} ${page.then}` })) : fixes);
 }
 
-/** Code files of the library and of `feature` (the places a feature or library file may import from). */
+/**
+ * Code files of the library and of the file's own feature (the places a feature or library file may import from).
+ * @param {string} root The project root.
+ * @param {{library: string, features: string}} layout The Line layout.
+ * @param {string} file The root-relative file that would import them.
+ * @returns {string[]} Root-relative code files.
+ */
 export function importableFiles(root, layout, file) {
   const segs = file.split('/');
   const fBase = layout.features.split('/').length;

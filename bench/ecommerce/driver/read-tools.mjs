@@ -1,5 +1,5 @@
 // #937 (epic #934): the Line arm's read tools, chosen per turn. Each turn the builder is offered its plan tools, read_file
-// and finish, plus only the 3-6 registry reads selectReadTools (packages/engine/line/coderReads.mjs) picks for the open
+// and finish, plus only the 3-6 registry reads selectReadTools (packages/engine/line/coder/reads.mjs) picks for the open
 // work item (openWork's first item: its kind, its step's tool, its point) and the last refusal. The reads run in-process
 // through the same registry read dispatcher construct-mcp registers (packages/engine/line/toolRegistry.mjs createReadDispatcher), so the
 // registry stays the one source of names, sentences, fields and argument checks; MCP stdio would add a child process
@@ -9,7 +9,7 @@
 // and `miss: true` on the call in turns.jsonl) so the selection table can be corrected from real runs.
 import fs from 'node:fs';
 import path from 'node:path';
-import { selectReadTools } from '../../../packages/engine/line/coderReads.mjs';
+import { selectReadTools } from '../../../packages/engine/line/coder/reads.mjs';
 import { mcpNameOf, createReadDispatcher } from '../../../packages/engine/line/toolRegistry.mjs';
 import { openWork } from '../../../packages/engine/line/openWork.mjs';
 import { readSpec } from './spec-slice.mjs';
