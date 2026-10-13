@@ -1,5 +1,5 @@
 // Mission Control "Context / jev" view (#899): for each refusal of a bench run, every context line the model was
-// shown or could have been shown, with its static score (packages/engine/line/contextScore.mjs, reused), jev's shadow
+// shown or could have been shown, with its static score (packages/engine/line/context/contextScore.mjs, reused), jev's shadow
 // score when calls.jsonl logged one (#890), the rank under each, and KEPT/DROPPED under the adaptive cap (5, or 15
 // once the same code repeats). Lines where static and jev disagree on kept/dropped are flagged.
 //
@@ -17,7 +17,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { rankLines, scoreLine, capFor } from '../../../engine/line/contextScore.mjs';
+import { rankLines, scoreLine, capFor } from '../../../engine/line/context/contextScore.mjs';
 import { candidateLines, attemptText } from '../../../../trace/tools/jev/contextLines.mjs';
 import { jsonlSplitter, joinRun } from './bench-log.mjs';
 

@@ -25,7 +25,7 @@ import { normalizeLineConfig, CODE_EXTENSIONS, LINE_RULES } from '@line/construc
 import { resolveLayout } from '@line/construct-core/profiles/line/checks';
 import { RULE_METADATA } from '@line/construct-core/rules-catalog';
 import { stepOnFor, stepProfile, projectStepOn } from '@line/construct-core/ai-profiles';
-import { rankLines, capFor } from './contextScore.mjs';
+import { rankLines, capFor } from './context/contextScore.mjs';
 
 /** How many choices the text lists (the rest are named by ref, so they stay pickable). */
 export const SHOWN_CHOICES = 4;

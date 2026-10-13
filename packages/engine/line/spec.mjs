@@ -29,6 +29,10 @@ export const SPEC_MODULES = Object.freeze([
   { topic: 'modules', module: 'line-scope', what: 'a feature read as a module: what it declares, exports and imports, and the fixtures it sees', dir: 'packages/engine/line/scope', match: /\.mjs$/ },
   // #937: the coder's read tools sit in their own folder and topic too, for the same reason.
   { topic: 'modules', module: 'line-coder', what: 'the coder\'s read tools (feature_summary, scope, atoms), per-turn read selection, and the registry reads that run from a root', dir: 'packages/engine/line/coder', match: /\.mjs$/ },
+  // #932: the refusal's context pack and example fix sit in their own folder and topic too.
+  { topic: 'modules', module: 'line-context', what: 'what a refusal carries: its context lines ranked, the context pack of the file a step targets, the offending line corrected', dir: 'packages/engine/line/context', match: /\.mjs$/ },
+  // #938: the native-first tool harness sits in its own folder and topic too (line-modules is at its one-call cap).
+  { topic: 'modules', module: 'line-harness', what: 'the builder\'s tool harness: Ollama native tool calls first, argument checks, the nudge line, the layered turn', dir: 'packages/engine/line/harness', match: /\.mjs$/ },
   { topic: 'modules', module: 'line-profile', what: 'the Line validate profile (LINE-* rules)', dir: 'packages/core/profiles/line', match: /\.mjs$/ },
   { topic: 'modules', module: 'line-links', what: 'the linked Line modules (@mx/reason, @mx/plan, ...) and their contracts', dir: 'packages/line-links', match: /\.(mjs|d\.ts)$/ },
   { topic: 'modules', module: 'writer', what: 'Construct\'s transactional writer and the Line-state path', dir: 'packages/engine', match: /^transactionalWriter\.mjs$/ },

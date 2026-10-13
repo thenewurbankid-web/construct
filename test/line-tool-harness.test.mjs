@@ -1,4 +1,4 @@
-// #938: the tool harness (packages/engine/line/toolHarness.mjs) uses Ollama's native tool calls only. Native calls are
+// #938: the tool harness (packages/engine/line/harness/toolHarness.mjs) uses Ollama's native tool calls only. Native calls are
 // split into offered and wrong; text is never parsed; a text answer or a wrong tool gets one nudge line naming the
 // same tools; L3 checks arguments with an example of a correct call; the layered turn forces only the choice (L1
 // format enum), offers only the chosen tool in L2, retries a missing call once and repeats L2 (never L1) after a
@@ -10,7 +10,7 @@ import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
-import { validate, exampleOf, checkArgs, callNative, nudge, layeredTurn, intentSchema, ASK } from '../packages/engine/line/toolHarness.mjs';
+import { validate, exampleOf, checkArgs, callNative, nudge, layeredTurn, intentSchema, ASK } from '../packages/engine/line/harness/toolHarness.mjs';
 import { cleanPrompt, promptVariant, BARE_PROMPT } from '../bench/ecommerce/driver/prompt-variants.mjs';
 import { CHOOSING_TOOLS, toolsForTurn, situation, intentsFor, TURN_SETS } from '../bench/ecommerce/driver/turn-tools.mjs';
 import { TOOLS, flags, runAgent, systemPrompt, textToolCalls, modelProfile } from '../bench/ecommerce/driver/qwen-agent.mjs';

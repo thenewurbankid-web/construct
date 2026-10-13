@@ -9,7 +9,7 @@
 //        [--seed-plan] [--bench <bench-dir>]
 //        [--prompt-variant current|clean|bare] [--tool-set full|subset] [--max-tools <n>]
 //
-// Tool calls (#938, packages/engine/line/toolHarness.mjs) are Ollama's native ones first: the `tools` param in,
+// Tool calls (#938, packages/engine/line/harness/toolHarness.mjs) are Ollama's native ones first: the `tools` param in,
 // message.tool_calls out. Only for a model whose profile has textFallback (qwen2.5-coder, which writes its calls as
 // text) the old textToolCalls recovery reads a call from the content; otherwise a text answer or a call of a tool not
 // offered gets one line naming the same tools next turn. --prompt-variant (prompt-variants.mjs) and, on the Line arm, --tool-set subset (only
@@ -75,7 +75,7 @@ import { buildTurn, projectFacts } from './turn.mjs';
 import { loadLedger, bridgeLedger, bridgedView } from './ledger.mjs';
 import { createScratch, SCRATCH_CAP, SCRATCH_FENCE_LINES } from './scratch.mjs';
 import { createSessionLog, toolEvents, sessionLogSlice, selectTurnTools } from './session-log.mjs';
-import { callNative, nudge } from '../../../packages/engine/line/toolHarness.mjs';
+import { callNative, nudge } from '../../../packages/engine/line/harness/toolHarness.mjs';
 import { promptVariant } from './prompt-variants.mjs';
 import { toolsForTurn } from './turn-tools.mjs';
 

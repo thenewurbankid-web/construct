@@ -9,7 +9,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
-import { exampleFix, exampleFixLines, parseTypeDetail, EXAMPLE_FIX_RULES } from '../packages/engine/line/exampleFix.mjs';
+import { exampleFix, exampleFixLines, parseTypeDetail, EXAMPLE_FIX_RULES } from '../packages/engine/line/context/exampleFix.mjs';
 import { escalate } from '../packages/engine/line/repeatGuard.mjs';
 import { createLineProject } from '../packages/engine/line/newProject.mjs';
 import { createPlanCli } from '../bench/ecommerce/driver/plan-cli.mjs';

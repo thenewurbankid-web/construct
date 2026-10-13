@@ -12,7 +12,7 @@ import { fileURLToPath } from 'node:url';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 import { createLineProject } from '../packages/engine/line/newProject.mjs';
 import { hashOf } from '../packages/engine/pagesEditor.mjs';
-import { contextPack, packText, packTarget, propsOf, renderCodeBlock, registerRepresentation, representationOf, PACK_CAP } from '../packages/engine/line/contextPack.mjs';
+import { contextPack, packText, packTarget, propsOf, renderCodeBlock, registerRepresentation, representationOf, PACK_CAP } from '../packages/engine/line/context/contextPack.mjs';
 import { createPlanCli } from '../bench/ecommerce/driver/plan-cli.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));

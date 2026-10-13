@@ -18,7 +18,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { callNative, checkArgs, layeredTurn, recordSentence, toolName } from '../../../packages/engine/line/toolHarness.mjs';
+import { callNative, checkArgs, layeredTurn, recordSentence, toolName } from '../../../packages/engine/line/harness/toolHarness.mjs';
 import { TOOLS } from './qwen-agent.mjs';
 import { cleanPrompt } from './prompt-variants.mjs';
 import { CHOOSING_TOOLS, toolsForTurn, intentsFor, INTENTS } from './turn-tools.mjs';

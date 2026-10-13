@@ -97,7 +97,7 @@ scores (`result.context`), and jev's shadow scores beside them (`shadow`; jev is
 Open a row in the bench table and press **context / jev** in its detail bar (the toggle stays on as you move between
 rows). It shows the run summary (refusals, lines shown of all candidates, kept %, static-vs-jev disagreement % over the
 lines jev scored) and, for every refusal in the selected row's turn, each context line with its static score
-(`packages/engine/line/contextScore.mjs`), jev's shadow score when logged, the rank under each, and KEPT/DROPPED under
+(`packages/engine/line/context/contextScore.mjs`), jev's shadow score when logged, the rank under each, and KEPT/DROPPED under
 the cap (5, or 15 on a repeat). Rows where static and jev disagree on kept/dropped are highlighted. The choices with
 why/effect/context, the rules card and the spec slice sit above the table.
 

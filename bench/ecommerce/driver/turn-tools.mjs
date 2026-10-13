@@ -6,7 +6,7 @@
 //
 //   toolsForTurn(last, {max})   the tools a turn needs, from the last tool answer (the open step's state), most
 //                               likely first, cut to the model profile's `maxTools`
-//   INTENTS                     the layered turn's L1 sentences -> tool (packages/engine/line/toolHarness.mjs)
+//   INTENTS                     the layered turn's L1 sentences -> tool (packages/engine/line/harness/toolHarness.mjs)
 import { BUILDER_TOOLS } from './plan-cli.mjs';
 
 const fn = (name, description, properties = {}, required = []) => ({ type: 'function', function: { name, description, parameters: { type: 'object', properties, required } } });

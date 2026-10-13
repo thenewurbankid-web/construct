@@ -39,11 +39,11 @@ import { isInsideWorkspace, readWorkspace } from './workspace.mjs';
 import { createSessionTrace, refusalOfStep, matchFix, sourceOf, traceArgs } from './trace.mjs';
 import { memoryOf, memoryBy } from './memory/index.mjs';
 import { SHOWN_CHOICES, RUN_NEXT, renderReoffer, shapeRefusal, contextFor, withHints, badValueOf, badArgsField, targetOf, rulesCard, hintsJevOn, jevScores, renderQuestion, answerCall, stepText, createExampleResolver, plannedFiles } from './hints.mjs';
-import { rankLines, capFor } from './contextScore.mjs';
+import { rankLines, capFor } from './context/contextScore.mjs';
 import { openWork, workText, itemText, slotOf, pointSlot } from './openWork.mjs';
 import { createRepeatGuard, guardFixes, escalate } from './repeatGuard.mjs';
-import { exampleFixLines } from './exampleFix.mjs';
-import { contextPack, packTarget, packText, packLayout } from './contextPack.mjs';
+import { exampleFixLines } from './context/exampleFix.mjs';
+import { contextPack, packTarget, packText, packLayout } from './context/contextPack.mjs';
 
 /** One session per open project, for now. */
 export const SESSION_ID = 'ses-cockpit';

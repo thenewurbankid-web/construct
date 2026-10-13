@@ -32,7 +32,7 @@ In a script (`tools/jev` on `sys.path`): `from jev_tokenizer import new_model, s
 
 ## Context-line scorer for Line's bench builder (#881, shadow, OFF by default)
 
-Line's bench builder shows a small model everything Line returned since its last action. A scorer ranks each context line 0-1 and the builder keeps the top lines under an adaptive cap (5, or 15 once the same refusal repeats). The static scorer (`packages/engine/line/contextScore.mjs`, re-exported here as `contextScore.mjs`; Line ranks every refusal's context lines with it, #886; rules: fix steps > paths/exports in a refusal > status > lists > fields, plus lexical overlap with the attempted step) is the default. jev is trained for the same job but stays off: an AI step ships only with a measured win over static code, and it has none yet (held-out pilot-qwen-7b-r2: static P@5 0.265 / R@5 0.824, jev 0.253 / 0.765).
+Line's bench builder shows a small model everything Line returned since its last action. A scorer ranks each context line 0-1 and the builder keeps the top lines under an adaptive cap (5, or 15 once the same refusal repeats). The static scorer (`packages/engine/line/context/contextScore.mjs`, re-exported here as `contextScore.mjs`; Line ranks every refusal's context lines with it, #886; rules: fix steps > paths/exports in a refusal > status > lists > fields, plus lexical overlap with the attempted step) is the default. jev is trained for the same job but stays off: an AI step ships only with a measured win over static code, and it has none yet (held-out pilot-qwen-7b-r2: static P@5 0.265 / R@5 0.824, jev 0.253 / 0.765).
 
 ```bash
 node tools/jev/build-context-lines.mjs        # data/runs/<run>/{calls,turns}.jsonl -> data/context-lines.jsonl (+ label counts per run)

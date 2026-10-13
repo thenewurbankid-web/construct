@@ -15,7 +15,7 @@ import path from 'node:path';
 import { loadConfig } from '@line/construct-core/config';
 import { normalizeLineConfig, CODE_EXTENSIONS } from '@line/construct-core/profiles/line/contract';
 import { resolveLayout } from '@line/construct-core/profiles/line/checks';
-import { hashOf } from '../pagesEditor.mjs';
+import { hashOf } from '../../pagesEditor.mjs';
 
 /** The pack's whole text is cut here (characters, ~1k tokens). */
 export const PACK_CAP = 3600;
