@@ -2,7 +2,8 @@
 // split into offered and wrong; text is never parsed; a text answer or a wrong tool gets one nudge line naming the
 // same tools; L3 checks arguments with an example of a correct call; the layered turn forces only the choice (L1
 // format enum), offers only the chosen tool in L2, retries a missing call once and repeats L2 (never L1) after a
-// refusal. Also: the cleaned prompt, the per-turn tool subset, and qwen-agent's wiring (nudge + same tool set).
+// refusal. Also: the cleaned prompt, the per-turn tool subset, qwen-agent's wiring (nudge + same tool set) and the old
+// text recovery, kept only for models whose profile says textFallback.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -12,7 +13,7 @@ import { makeTempDir } from '../test-utils/tmpdir.mjs';
 import { validate, exampleOf, checkArgs, callNative, nudge, layeredTurn, intentSchema, ASK } from '../packages/engine/line/toolHarness.mjs';
 import { cleanPrompt, promptVariant, BARE_PROMPT } from '../bench/ecommerce/driver/prompt-variants.mjs';
 import { CHOOSING_TOOLS, toolsForTurn, situation, intentsFor, TURN_SETS } from '../bench/ecommerce/driver/turn-tools.mjs';
-import { TOOLS, flags, runAgent, systemPrompt } from '../bench/ecommerce/driver/qwen-agent.mjs';
+import { TOOLS, flags, runAgent, systemPrompt, textToolCalls, modelProfile } from '../bench/ecommerce/driver/qwen-agent.mjs';
 
 const READ = CHOOSING_TOOLS.read_file;
 const ADD = CHOOSING_TOOLS.plan_add;
@@ -172,5 +173,33 @@ test('qwen-agent: a text answer is not parsed; the next turn says so in one line
     const turns = fs.readFileSync(path.join(parent, 'logs', 'turns.jsonl'), 'utf8').trim().split('\n').map((l) => JSON.parse(l)).filter((t) => t.kind === 'turn');
     assert.equal(turns[0].textAnswer, true);
     assert.deepEqual(turns[0].calls, []);
+  } finally { await ollama.close(); }
+});
+
+test('textToolCalls (the old recovery): balanced {name, arguments} spans in text, strings respected, other JSON skipped', () => {
+  assert.deepEqual(textToolCalls('Sure. {"name": "read_file", "arguments": {"path": "a}.ts"}} and {"x": 1}'), [{ function: { name: 'read_file', arguments: { path: 'a}.ts' } } }]);
+  assert.deepEqual(textToolCalls('```json\n{"name": "finish", "parameters": {"summary": "s"}}\n```'), [{ function: { name: 'finish', arguments: { summary: 's' } } }]);
+  assert.deepEqual(textToolCalls('no call here'), []);
+});
+
+test('qwen-agent: a model whose profile has textFallback (qwen2.5-coder:7b) gets its text call run, logged as textCalls', async () => {
+  assert.equal(modelProfile('qwen2.5-coder:7b').textFallback, true);
+  assert.equal(modelProfile('qwen3:4b').textFallback, false);
+  const parent = fs.realpathSync(makeTempDir('tool-harness-'));
+  const project = path.join(parent, 'project');
+  fs.mkdirSync(project);
+  fs.writeFileSync(path.join(project, 'README.md'), 'hi\n');
+  const ollama = await fakeOllama([
+    { role: 'assistant', content: '{"name": "read_file", "arguments": {"path": "README.md"}}' },
+    call('finish', { summary: 'done' }),
+  ]);
+  try {
+    const o = flags(['--project', project, '--arm', 'plain', '--builder', 'harness-test', '--model', 'qwen2.5-coder:7b', '--ollama', ollama.url]);
+    const r = await runAgent(o, { resultsDir: path.join(parent, 'results') });
+    assert.equal(r.stop, 'finish: done');
+    const turns = fs.readFileSync(path.join(parent, 'logs', 'turns.jsonl'), 'utf8').trim().split('\n').map((l) => JSON.parse(l)).filter((t) => t.kind === 'turn');
+    assert.equal(turns[0].textCalls, true);
+    assert.deepEqual(turns[0].calls.map((c) => [c.name, c.ok]), [['read_file', true]]);
+    assert.equal(ollama.bodies[1].messages.at(-1).role, 'tool');
   } finally { await ollama.close(); }
 });

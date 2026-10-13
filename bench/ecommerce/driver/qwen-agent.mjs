@@ -9,9 +9,10 @@
 //        [--seed-plan] [--bench <bench-dir>]
 //        [--prompt-variant current|clean|bare] [--tool-set full|subset] [--max-tools <n>]
 //
-// Tool calls (#938, packages/engine/line/toolHarness.mjs) are Ollama's native ones only: the `tools` param in,
-// message.tool_calls out; a text answer or a call of a tool not offered gets one line naming the same tools next turn
-// (nothing is parsed out of text). --prompt-variant (prompt-variants.mjs) and, on the Line arm, --tool-set subset (only
+// Tool calls (#938, packages/engine/line/toolHarness.mjs) are Ollama's native ones first: the `tools` param in,
+// message.tool_calls out. Only for a model whose profile has textFallback (qwen2.5-coder, which writes its calls as
+// text) the old textToolCalls recovery reads a call from the content; otherwise a text answer or a call of a tool not
+// offered gets one line naming the same tools next turn. --prompt-variant (prompt-variants.mjs) and, on the Line arm, --tool-set subset (only
 // the tools the turn's situation needs, turn-tools.mjs, cut to --max-tools) default to the model's entry in
 // driver/model-profiles.json (measured by tool-harness-probe.mjs), else current and full.
 //
@@ -201,6 +202,27 @@ export function cycleWatch({ limit = 6, window = 20 } = {}) {
   };
 }
 
+/** Tool calls the model wrote as text instead of a tool call (small models do): {"name": ..., "arguments": ...}. */
+export function textToolCalls(content) {
+  const out = [];
+  const s = String(content ?? '');
+  // Balanced top-level {...} spans (strings respected), each parsed as JSON.
+  for (let i = 0; i < s.length; i += 1) {
+    if (s[i] !== '{') continue;
+    let depth = 0; let str = false; let esc = false; let end = -1;
+    for (let j = i; j < s.length; j += 1) {
+      const c = s[j];
+      if (str) { if (esc) esc = false; else if (c === '\\') esc = true; else if (c === '"') str = false; continue; }
+      if (c === '"') str = true; else if (c === '{') depth += 1; else if (c === '}') { depth -= 1; if (depth === 0) { end = j; break; } }
+    }
+    if (end < 0) break;
+    const j = safeParse(s.slice(i, end + 1));
+    if (j && typeof j === 'object' && typeof j.name === 'string') out.push({ function: { name: j.name, arguments: j.arguments ?? j.parameters ?? {} } });
+    i = end;
+  }
+  return out;
+}
+
 /**
  * The system prompt: the arm's BUILDER-PROMPT with the spec in place of {{SPEC}}: all of SPEC.md for the plain arm; for
  * the Line arm (#889) the overview and a feature index only, since plan status carries the current feature's points.
@@ -302,6 +324,7 @@ export async function runAgent(o, { resultsDir = path.join(o.bench ?? bench, 're
   const variant = o.promptVariant ?? profile.prompt ?? 'current';
   const subset = o.arm === 'line' && (o.toolSet ?? profile.toolSet) === 'subset';
   const maxTools = o.maxTools ?? profile.maxTools ?? 6;
+  const textFallback = profile.textFallback === true;
   /** @type {{name: string, out: any} | null} */
   let last = null;
   const system = { role: 'system', content: o.arm === 'path' ? pathPrompt(path.resolve(o.project)) : promptVariant(systemPrompt(o.arm, dir), variant) };
@@ -346,7 +369,11 @@ export async function runAgent(o, { resultsDir = path.join(o.bench ?? bench, 're
       break;
     }
     const msg = h.message;
-    const calls = h.calls;
+    let calls = h.calls;
+    // The old text recovery, only for a model whose profile says textFallback (qwen2.5-coder writes its calls as text;
+    // removed once a LoRA teaches it native calls). Native tool_calls stay the first path.
+    const fromText = textFallback && !calls.length && !h.wrong.length ? textToolCalls(msg.content) : [];
+    if (fromText.length) calls = fromText;
     const output = io.output(turn, res, calls);
     const tokens = { turn, in: res.prompt_eval_count ?? 0, out: res.eval_count ?? 0, ms: Date.now() - started, evalMs: Math.round((res.eval_duration ?? 0) / 1e6), promptMs: Math.round((res.prompt_eval_duration ?? 0) / 1e6) };
     history.push({ role: 'assistant', content: msg.content ?? '', ...(msg.tool_calls ? { tool_calls: msg.tool_calls } : {}) });
@@ -365,7 +392,7 @@ export async function runAgent(o, { resultsDir = path.join(o.bench ?? bench, 're
     }
     if (!calls.length) { idle += 1; history.push({ role: 'user', content: nudge(h, offered) }); } else idle = 0;
     write(tokensFile, { builder: o.builder, model: o.model, ...tokens, source: 'ollama prompt_eval_count/eval_count', at: new Date().toISOString() });
-    write(turnsFile, { kind: 'turn', ...tokens, textAnswer: !calls.length && !h.wrong.length && Boolean(msg.content), offered: offered.map((t) => t.function.name), wrongCalls: h.wrong.map((c) => c.function.name), calls: outcomes, said: clip(msg.content ?? '', 600), ...ioRefs(input, output) });
+    write(turnsFile, { kind: 'turn', ...tokens, textCalls: fromText.length > 0, textAnswer: !calls.length && !h.wrong.length && Boolean(msg.content), offered: offered.map((t) => t.function.name), wrongCalls: h.wrong.map((c) => c.function.name), calls: outcomes, said: clip(msg.content ?? '', 600), ...ioRefs(input, output) });
     console.log(`turn ${turn}: in ${tokens.in} out ${tokens.out} ${tokens.ms} ms; ${outcomes.map((x) => `${x.name}${x.ok ? '' : ` (${x.code})`}`).join(', ') || 'no tool call'}`);
     if (finished !== null) { stop = `finish: ${finished}`; break; }
     if (idle >= 8) { stop = '8 turns without a tool call'; break; }

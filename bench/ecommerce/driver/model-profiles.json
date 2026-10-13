@@ -1,11 +1,12 @@
 {
- "$comment": "Per-model builder profile (#938): only the system-prompt variant (current|clean, prompt-variants.mjs), the per-turn tool set (full|subset, turn-tools.mjs) and maxTools. Call format is always Ollama native tool calls. A choice moves off current/full only on a measured win (tool-harness-probe.mjs; measured.table is rewritten by it).",
+ "$comment": "Per-model builder profile (#938): only the system-prompt variant (current|clean, prompt-variants.mjs), the per-turn tool set (full|subset, turn-tools.mjs), maxTools and textFallback (native tool_calls first; the old text recovery only where this is true). Native tool_calls are always asked for. A choice moves off current/full only on a measured win (tool-harness-probe.mjs; measured.table is rewritten by it).",
  "models": {
   "qwen2.5-coder:7b": {
    "prompt": "current",
    "toolSet": "full",
    "maxTools": 5,
-   "note": "0% native tool_calls in every configuration (writes the call as JSON text without <tool_call> tags); cannot drive the native-only builder.",
+   "note": "0% native tool_calls in every configuration (writes the call as JSON text without <tool_call> tags). textFallback: the old textToolCalls recovery reads the call from the text; removed once the LoRA teaches native calls.",
+   "textFallback": true,
    "measured": {
     "file": "bench/lending/results/tool-harness/r1.json",
     "at": "2026-10-13",
@@ -21,7 +22,8 @@
    "prompt": "current",
    "toolSet": "full",
    "maxTools": 3,
-   "note": "0% native tool_calls in every configuration; cannot drive the native-only builder.",
+   "note": "0% native tool_calls in every configuration. textFallback: the old textToolCalls recovery reads the call from the text; removed once the LoRA teaches native calls.",
+   "textFallback": true,
    "measured": {
     "file": "bench/lending/results/tool-harness/r1.json",
     "at": "2026-10-13",
@@ -38,6 +40,7 @@
    "toolSet": "full",
    "maxTools": 5,
    "note": "100% native tool_calls; clean prompt ties current on right tool (80%); the subset (60%) and layered (20%) lose.",
+   "textFallback": false,
    "measured": {
     "file": "bench/lending/results/tool-harness/r1.json",
     "at": "2026-10-13",
