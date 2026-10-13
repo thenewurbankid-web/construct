@@ -16,7 +16,12 @@ const fn = (name, description, properties = {}, required = []) => ({ type: 'func
 const S = (description) => ({ type: 'string', description });
 const clip = (s, n = 3000) => (s.length > n ? `${s.slice(0, n)}\n...(${s.length - n} more characters cut)` : s);
 
-/** A project-relative path inside `root` (never outside it, never node_modules), or null. */
+/**
+ * A project-relative path inside `root` (never outside it, never node_modules), as an absolute path, or null.
+ * @param {string} root
+ * @param {string} rel
+ * @returns {string|null}
+ */
 export function inside(root, rel) {
   const abs = path.resolve(root, String(rel ?? '.'));
   const r = path.relative(path.resolve(root), abs);
@@ -53,7 +58,11 @@ export const READ_TOOLS = Object.freeze({
 /** The answer tool every sub-agent ends with. */
 export const ANSWER_TOOL = fn('answer', 'Give your answer: one short English sentence, and the project paths that back it.', { answer: S('The answer in plain English'), cites: { type: 'array', items: { type: 'string' }, description: 'Project-relative paths (path or path:line) you read that back the answer' } }, ['answer']);
 
-/** The default per-question tool choice: the file tools, plus the blocks the question's words point at. */
+/**
+ * The default per-question tool choice: the file tools, plus the blocks the question's words point at.
+ * @param {string} question
+ * @returns {string[]}
+ */
 export function defaultSelectTools(question) {
   const q = String(question).toLowerCase();
   const names = ['read_file', 'list_dir'];
@@ -66,6 +75,7 @@ export function defaultSelectTools(question) {
 /**
  * The default model call: Ollama /api/chat, local only.
  * @param {{ollama?: string, numCtx?: number, fetchFn?: typeof fetch}} [o]
+ * @returns {(req: {model: string, messages: any[], tools: any[]}) => Promise<any>}
  */
 export function ollamaChat(o = {}) {
   const url = o.ollama ?? 'http://127.0.0.1:11434';

@@ -21,13 +21,21 @@ const first = (s) => {
   return (t.match(/^.*?[.?!](?=\s|$)/) ?? [t])[0].trim();
 };
 const stop = (s) => (/[.?!]$/.test(s) ? s : `${s}.`);
-/** "line.setCode" -> "set code"; "plan_run_next" -> "plan run next". */
+/**
+ * A tool name as words: "line.setCode" -> "set code"; "plan_run_next" -> "plan run next".
+ * @param {string} name
+ * @returns {string}
+ */
 export const toolWords = (name) => camelToWords(String(name ?? 'a tool').replace(/^[a-z]+\./, '')).replace(/_/g, ' ');
 /** Canonical JSON, keys sorted: the same call compares equal whatever order its args came in. */
 const canon = (v) => JSON.stringify(v ?? {}, (_k, x) => (x && typeof x === 'object' && !Array.isArray(x) ? Object.fromEntries(Object.keys(x).sort().map((k) => [k, x[k]])) : x));
 const fileArg = (a) => [a?.path, a?.file, a?.args?.file, a?.args?.page].find((x) => typeof x === 'string' && x) ?? null;
 
-/** Is this result a refusal? */
+/**
+ * Is this result a refusal (not ok, a step that did not land, a fill that failed)?
+ * @param {any} result
+ * @returns {boolean}
+ */
 export function isRefusal(result) {
   if (!result || typeof result !== 'object') return false;
   return result.ok === false || (result.landed === false && !!result.code) || result.pass === false;
@@ -85,6 +93,7 @@ export function distill(toolName, result, o = {}) {
  * @param {ReturnType<typeof import('./ledger.mjs').createLedger>} ledger
  * @param {string} toolName @param {any} args @param {any} result
  * @param {{root?: string, turn?: number}} [o]
+ * @returns {import('./ledger.mjs').LedgerEntry[]}
  */
 export function recordToolResult(ledger, toolName, args, result, o = {}) {
   const out = [];

@@ -44,7 +44,7 @@ export function optionsOf(root) {
 }
 
 /** Every TypeScript file of the project outside node_modules, build output and Line's state, root-relative. */
-export function codeFiles(root) {
+function codeFiles(root) {
   const out = [];
   const walk = (dir) => {
     let entries = [];
@@ -230,7 +230,7 @@ export function refuseRouteProps(root, layout, files, page) {
 }
 
 /** Code files of the library and of `feature` (the places a feature or library file may import from). */
-export function importableFiles(root, layout, file) {
+function importableFiles(root, layout, file) {
   const segs = file.split('/');
   const fBase = layout.features.split('/').length;
   const own = file.startsWith(`${layout.features}/`) ? `${layout.features}/${segs[fBase]}/` : null;

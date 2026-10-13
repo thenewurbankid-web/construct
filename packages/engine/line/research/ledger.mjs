@@ -49,12 +49,17 @@ export const KEEP_RECENT_FACTS = 3;
  * @property {number} [count]      For a miss: how many times it was attempted.
  */
 
-/** About four characters a token: the estimate the builder's context budget uses. */
+/**
+ * About four characters a token: the estimate the builder's context budget uses.
+ * @param {string} text
+ * @returns {number}
+ */
 export const estimateTokens = (text) => Math.ceil(String(text ?? '').length / 4);
 
 /**
  * One sentence that keeps the summarize rules: plainSentence's repair when the text does not pass as written.
  * @param {string} text @param {string[]} [names]
+ * @returns {string}
  */
 export function ledgerSentence(text, names = []) {
   const s = String(text ?? '').trim().replace(/\s+/g, ' ');
@@ -77,6 +82,7 @@ function assertEntry(e, names = []) {
 /**
  * A ledger, in memory, optionally stored at `file` (read back when it exists).
  * @param {{file?: string|null, names?: string[]}} [o] `names`: feature and item names kept as written in sentences.
+ * @returns {any} add, addMiss, supersede, answer, openQuestion, prune, view, viewEntries, save, file, entries.
  */
 export function createLedger({ file = null, names = [] } = {}) {
   /** @type {LedgerEntry[]} */
@@ -212,8 +218,9 @@ export function createLedger({ file = null, names = [] } = {}) {
     const dropOrder = ['fact', 'miss', 'decision', 'question'];
     while (shown.length && estimateTokens(render(shown, total - shown.length)) > budgetTokens) {
       const kind = dropOrder.find((k) => shown.some((e) => e.kind === k));
-      // The last of a kind in view order is its oldest (questions: the newest asked goes first).
-      const idx = shown.findLastIndex((e) => e.kind === kind);
+      // The last of a kind in view order is its oldest.
+      let idx = -1;
+      shown.forEach((e, i) => { if (e.kind === kind) idx = i; });
       shown = shown.filter((_, i) => i !== idx);
     }
     const text = render(shown, total - shown.length);
@@ -246,6 +253,7 @@ function render(list, hidden = 0) {
  * The ledger's misses as the rule factory's miss records (packages/rule-factory/contract.mjs), so research misses can
  * feed it like the reason ledger's do.
  * @param {LedgerEntry[]} entries @param {string} [file]
+ * @returns {any[]}
  */
 export function toMissRecords(entries, file = LEDGER_FILE) {
   return entries.filter((e) => e.kind === 'miss').map((e) => ({ id: `research:${e.id}`, source: /** @type {const} */ ('miss-report'), step: 'research', decidedBy: /** @type {const} */ ('none'), miss: true, staticChoice: null, finalChoice: null, sentence: e.english, ref: { file }, label: null }));

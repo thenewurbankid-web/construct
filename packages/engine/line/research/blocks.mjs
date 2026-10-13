@@ -12,7 +12,37 @@ import path from 'node:path';
 import { readLineFeature } from '../feature.mjs';
 import { readLineProject } from '../model.mjs';
 import { matchAtoms } from '@line/atoms';
-import { codeFiles, importableFiles } from '../typeGate.mjs';
+
+// typeGate.mjs's codeFiles and importableFiles, mirrored: exporting them from typeGate puts the engine's spec topic
+// (line-modules) over its one-MCP-call cap. Keep the two in step with typeGate.mjs.
+const TS_EXT = /\.(tsx?|mts|cts)$/;
+const SCAN_SKIP = new Set(['node_modules', '.git', '.next', 'dist', 'out', 'build', 'coverage', 'line']);
+/**
+ * Every TypeScript file of the project outside node_modules, build output and Line's state, root-relative.
+ * @param {string} root
+ * @returns {string[]}
+ */
+function codeFiles(root) {
+  const out = [];
+  const walk = (dir) => {
+    let entries = [];
+    try { entries = fs.readdirSync(path.join(root, dir), { withFileTypes: true }); } catch { return; }
+    for (const e of entries) {
+      if (e.name.startsWith('.') || SCAN_SKIP.has(e.name)) continue;
+      const rel = dir ? `${dir}/${e.name}` : e.name;
+      if (e.isDirectory()) walk(rel);
+      else if (TS_EXT.test(e.name) && !e.name.endsWith('.d.ts')) out.push(rel);
+    }
+  };
+  walk('');
+  return out;
+}
+/** Code files of the library and of the file's own feature (the places a feature or library file may import from). */
+function importableFiles(root, layout, file) {
+  const segs = file.split('/');
+  const own = file.startsWith(`${layout.features}/`) ? `${layout.features}/${segs[layout.features.split('/').length]}/` : null;
+  return codeFiles(root).filter((r) => r.startsWith(`${layout.library}/`) || (own && r.startsWith(own)));
+}
 import { staticSummarizer, importsOf } from '../contextPicker.mjs';
 import { readLineGraph } from '../graph/build.mjs';
 import { queryGraph } from '../graph/query.mjs';
@@ -104,7 +134,10 @@ function answerImports(root, question) {
   if (!p || !file) return null;
   const allowed = importableFiles(root, p.layout, file).filter((f) => f !== file);
   if (!allowed.length) return null;
-  const items = new Map([...p.library.map((l) => [l.file, { ...l, kind: l.kind, feature: null }]), ...p.features.flatMap((f) => f.items.map((i) => [i.file, { ...i, feature: f.name }]))]);
+  /** @type {Map<string, any>} */
+  const items = new Map();
+  for (const l of p.library) items.set(l.file, { ...l, feature: null });
+  for (const f of p.features) for (const i of f.items) items.set(i.file, { ...i, feature: f.name });
   const facts = [{ english: `${path.posix.basename(file)} may import ${allowed.length} files: the library and its own feature.`, cites: [file] }];
   for (const f of allowed.slice(0, 6)) {
     const s = staticSummarizer.summarize(root, f, { item: items.get(f) });

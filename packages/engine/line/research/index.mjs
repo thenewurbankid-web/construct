@@ -27,6 +27,7 @@ export const DEFAULT_VIEW_BUDGET = 600;
 
 /**
  * A strict FIFO: each job starts only after the previous one settled. `peak` is the most jobs ever running at once.
+ * @returns {{run: <T>(job: () => Promise<T>) => Promise<T>, readonly peak: number}}
  */
 export function createQueue() {
   let tail = Promise.resolve();
@@ -65,7 +66,11 @@ const LEDGERS = new WeakMap();
  * @property {number} [viewBudget]         Tokens of ledger view a sub-agent starts with.
  */
 
-/** @param {ResearchContext} ctx */
+/**
+ * The run's one ledger: the context's own, or one made (and stored in its log folder) on first use.
+ * @param {ResearchContext} ctx
+ * @returns {ReturnType<typeof createLedger>}
+ */
 export function ledgerOf(ctx) {
   if (ctx.ledger) return ctx.ledger;
   let l = LEDGERS.get(ctx);
@@ -79,7 +84,12 @@ export function ledgerOf(ctx) {
   return l;
 }
 
-/** The ledger as compact English inside `budget` tokens (open questions, decisions, facts newest first). */
+/**
+ * The ledger as compact English inside `budget` tokens (open questions, decisions, facts newest first).
+ * @param {ResearchContext} ctx
+ * @param {number} [budget]
+ * @returns {string}
+ */
 export const ledgerView = (ctx, budget = DEFAULT_VIEW_BUDGET) => ledgerOf(ctx).view(budget).text;
 
 export const RESEARCH_SCHEMA = Object.freeze({ type: 'function', function: { name: 'research', description: 'Ask one question about the project (what a feature has, what a file may import, who uses a file, where something is defined, which atom fits). Read-only; the answer lands in your research notes with the files that back it.', parameters: { type: 'object', properties: { question: { type: 'string', description: 'One plain-English question' }, feature: { type: 'string', description: 'The feature it is about (optional)' } }, required: ['question'] } } });
@@ -87,6 +97,7 @@ export const RESEARCH_SCHEMA = Object.freeze({ type: 'function', function: { nam
 /**
  * The research tool.
  * @param {ResearchContext} ctx
+ * @returns {{schema: typeof RESEARCH_SCHEMA, handle: (args: {question?: string, feature?: string}, at?: {turn?: number}) => Promise<any>}}
  */
 export function researchTool(ctx) {
   const queue = ctx.queue ?? SHARED_QUEUE;
@@ -126,6 +137,7 @@ export function researchTool(ctx) {
 /**
  * The builder hooks behind qwen-agent.mjs's opt-in --research flag.
  * @param {ResearchContext & {viewBudget?: number}} ctx
+ * @returns {{tools: (list: any[]) => any[], message: () => ({role: string, content: string}|null), handles: (name: string) => boolean, handle: (args: any, turn: number) => Promise<any>, record: (name: string, args: any, result: any, turn: number) => any[]}}
  */
 export function researchHooks(ctx) {
   const tool = researchTool(ctx);
