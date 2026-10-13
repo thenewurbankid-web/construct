@@ -79,7 +79,7 @@ const LABELS = {
   'L-enum-free': '1.5b free text at r1 failure points', 'L-enum': '1.5b picks from the completionsAt enum',
   H: 'blocks: briefBuilder -> 1.5b best-of-5 (rerun)', 'L-brief': 'H with quickInfo/signatureAt types in the brief',
   'L-gate': 'H + atomicGate as the third filter', 'L-norm': 'L-gate + atomic-codemod plug() on a gate-failing fill',
-  'L-gather-files': 'context by reading files (B driver input)', 'L-gather': 'qwen3:4b gatherer, definition/references only',
+  'L-gather-files': 'context by reading files (B driver input)', 'L-gather-det': 'definition + quickInfo per context export, no model', 'L-gather': 'qwen3:4b gatherer, definition/references only',
   'L-rules-free': 'K3: 1.5b, free schema (steps x targets x reasons)', 'L-rules': 'K3: 1.5b picks from the nextSteps enum', 'L-rules-det': 'K3: nextSteps alone, no model',
   'L-smith-exact': 'smithDiagnostics, exact template match', 'L-smith-embed': 'smithDiagnostics + nomic-embed-text fallback',
 };
@@ -357,7 +357,7 @@ async function gatherRuns() {
     ];
     let gathered = ''; let ti = 0; let to = 0; let ms = 0; let calls = 0; let lookups = 0; let toolMs = 0;
     for (let turn = 0; turn < 7; turn++) {
-      const r = await ollama({ model: config.models.toolDriver, messages, tools, think: false, options: { ...config.sampling.qwen3, num_predict: 512 } });
+      const r = await ollama({ model: config.models.toolDriver, messages, tools, think: false, options: { ...config.sampling.qwen3, num_predict: 2048 } }); // qwen3:4b still thinks in content with think:false; 512 cut it off before the tool call
       ti += r.tokensIn; to += r.tokensOut; ms += r.ms; calls++;
       messages.push(r.message);
       const tc = r.message.tool_calls ?? [];
@@ -378,6 +378,31 @@ async function gatherRuns() {
     rows.push(row('L-gather', task.id, { pass: covered(gathered) === needed.length, detail: `covers ${covered(gathered)}/${needed.length}`, tokensIn: ti, tokensOut: to, tokensByRole: { driver: { in: ti, out: to }, coder: { in: 0, out: 0 } }, modelMs: ms, wallMs: ms, calls,
       lsp: { contextTokens: tok(gathered), filesTokens: filesTok, needed: needed.length, covered: covered(gathered), lookups, toolMs: Math.round(toolMs) } }));
     console.log(`${RUN} L-gather ${task.id}: ${tok(gathered)} vs ${filesTok} tok, covers ${covered(gathered)}/${needed.length}`);
+  }
+}
+
+// L-gather-det: the same two tools driven by a block instead of a model -- every export of every context file gets
+// one definition() (its declaration line) and one quickInfo() (its exact type); no file is read whole.
+async function gatherDetRuns() {
+  for (const task of TASKS) {
+    const ws = wsOf('gather', task);
+    run.makeWorkspace(ws, task);
+    const ref = path.join(task.dir, 'reference', task.target);
+    const needed = fs.existsSync(ref) ? parse(fs.readFileSync(ref, 'utf8'), task.target).statements.filter((s) => ts.isImportDeclaration(s) && /^\./.test(s.moduleSpecifier.text) && !/\.json$/.test(s.moduleSpecifier.text))
+      .flatMap((s) => s.importClause?.namedBindings?.elements?.map((e) => e.name.text) ?? []) : [];
+    const filesTok = task.context.reduce((a, p) => a + tok(run.readWs(ws, p)), 0);
+    const t0 = performance.now();
+    let gathered = ''; let lookups = 0;
+    for (const p of task.context.filter((x) => /\.tsx?$/.test(x))) {
+      const names = parse(run.readWs(ws, p), p).statements.filter((s) => s.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword)).map(declName).filter(Boolean);
+      for (const n of names) {
+        const d = L.definition(ws, p, n, LO); const q = L.quickInfo(ws, p, n, LO); lookups += 2;
+        gathered += `\n${(d.locations ?? []).map((l) => `${l.file}:${l.line}`).join(' ')} ${q.ok ? q.type : n}`;
+      }
+    }
+    const ms = performance.now() - t0;
+    const covered = needed.filter((n) => new RegExp(`\\b${n}\\b`).test(gathered)).length;
+    rows.push(row('L-gather-det', task.id, { pass: covered === needed.length, detail: `covers ${covered}/${needed.length}`, wallMs: Math.round(ms), lsp: { contextTokens: tok(gathered), filesTokens: filesTok, needed: needed.length, covered, lookups } }));
   }
 }
 
@@ -467,8 +492,19 @@ async function collectTriples() {
 // ------------------------------------------------------------------ report
 function report() {
   fs.mkdirSync(RESULTS, { recursive: true });
+  // --merge: rerun some setups and keep every other row (and the notes) from the previous run
+  const notesFile = path.join(RESULTS, `${RUN}.notes.json`);
+  if (args.includes('--merge') && fs.existsSync(path.join(RESULTS, `${RUN}.jsonl`))) {
+    const fresh = new Set(rows.map((r) => r.arm));
+    const old = fs.readFileSync(path.join(RESULTS, `${RUN}.jsonl`), 'utf8').trim().split('\n').map((l) => JSON.parse(l)).filter((r) => !fresh.has(r.arm));
+    rows.unshift(...old);
+    const prev = fs.existsSync(notesFile) ? JSON.parse(fs.readFileSync(notesFile, 'utf8')) : {};
+    for (const [k, v] of Object.entries(prev)) notes[k] ??= v;
+  }
+  fs.writeFileSync(notesFile, JSON.stringify(notes, null, 1) + '\n');
   fs.writeFileSync(path.join(RESULTS, `${RUN}.jsonl`), rows.map((r) => JSON.stringify(r)).join('\n') + '\n');
   const appended = appendTriples(path.join(RESULTS, 'triples.jsonl'), triples);
+  const allTriples = (fs.existsSync(path.join(RESULTS, 'triples.jsonl')) ? fs.readFileSync(path.join(RESULTS, 'triples.jsonl'), 'utf8') : '').trim().split('\n').filter(Boolean).map((l) => JSON.parse(l));
   const by = (a) => rows.filter((r) => r.arm === a);
   const sum = (rs, k) => rs.reduce((x, r) => x + (r[k] ?? 0), 0);
   const line = (a, base) => {
@@ -477,8 +513,9 @@ function report() {
     const p = rs.filter((r) => r.pass).length;
     const tokens = sum(rs, 'tokensIn') + sum(rs, 'tokensOut');
     const bt = sum(b, 'tokensIn') + sum(b, 'tokensOut');
-    const extra = a === 'L-gather' ? `context ${sum(rs.map((r) => ({ v: r.lsp.contextTokens })), 'v')} vs files ${sum(rs.map((r) => ({ v: r.lsp.filesTokens })), 'v')} tok` : a.startsWith('L-brief') || a === 'H' ? `brief ${rs.reduce((x, r) => x + (r.briefTokens ?? []).reduce((y, z) => y + z, 0), 0)} tok` : '';
-    return `| ${a} | ${LABELS[a] ?? ''} | ${p}/${rs.length} | ${base ? `${p - b.filter((r) => r.pass).length >= 0 ? '+' : ''}${p - b.filter((r) => r.pass).length} vs ${base}` : '-'} | ${tokens}${base ? ` (${tokens - bt >= 0 ? '+' : ''}${tokens - bt})` : ''} | ${sum(rs, 'calls')} | ${(sum(rs, 'wallMs') / 1000).toFixed(1)} s | ${extra} |`;
+    const extra = a.startsWith('L-gather') && a !== 'L-gather-files' ? `context ${sum(rs.map((r) => ({ v: r.lsp.contextTokens })), 'v')} vs files ${sum(rs.map((r) => ({ v: r.lsp.filesTokens })), 'v')} tok` : a.startsWith('L-brief') || a === 'H' ? `brief ${rs.reduce((x, r) => x + (r.briefTokens ?? []).reduce((y, z) => y + z, 0), 0)} tok` : '';
+    const fails = (xs) => { const f = {}; for (const r of xs) if (!r.pass && r.failClass) f[r.failClass] = (f[r.failClass] ?? 0) + 1; const s = Object.entries(f).map(([k, v]) => `${k} ${v}`).join(", "); return s ? ` fails: ${s}` : ""; };
+    return `| ${a} | ${LABELS[a] ?? ''} | ${p}/${rs.length} | ${base ? `${p - b.filter((r) => r.pass).length >= 0 ? '+' : ''}${p - b.filter((r) => r.pass).length} vs ${base}` : '-'} | ${tokens}${base ? ` (${tokens - bt >= 0 ? '+' : ''}${tokens - bt})` : ''} | ${sum(rs, 'calls')} | ${(sum(rs, 'wallMs') / 1000).toFixed(1)} s | ${extra}${fails(rs)} |`;
   };
   const gateRs = by('L-gate');
   const gateRecs = gateRs.flatMap((r) => r.lsp?.gate ?? []);
@@ -489,13 +526,13 @@ function report() {
     `# Line LSP isolation ${RUN}`, '',
     `${new Date().toISOString().slice(0, 10)}. #943 (part of #941). Coder ${config.models.coder}, driver ${config.models.driver}, gatherer ${config.models.toolDriver}. Rows: \`${RUN}.jsonl\` (r1.jsonl's row format plus \`lsp\`). Command: see lsp-run.mjs header.`, '',
     '| Setup | | pass | delta | tokens (in+out) | model calls | wall | notes |', '| --- | --- | --- | --- | --- | --- | --- | --- |',
-    ...[['B'], ['L-fix', 'B'], ['L-enum-free'], ['L-enum', 'L-enum-free'], ['H'], ['L-brief', 'H'], ['L-gate', 'H'], ['L-norm', 'L-gate'], ['L-gather-files'], ['L-gather', 'L-gather-files'], ['L-rules-free'], ['L-rules', 'L-rules-free'], ['L-rules-det', 'L-rules-free'], ['L-smith-exact'], ['L-smith-embed', 'L-smith-exact']].map(([a, b]) => line(a, b)).filter(Boolean),
+    ...[['B'], ['L-fix', 'B'], ['L-enum-free'], ['L-enum', 'L-enum-free'], ['H'], ['L-brief', 'H'], ['L-gate', 'H'], ['L-norm', 'L-gate'], ['L-gather-files'], ['L-gather', 'L-gather-files'], ['L-gather-det', 'L-gather-files'], ['L-rules-free'], ['L-rules', 'L-rules-free'], ['L-rules-det', 'L-rules-free'], ['L-smith-exact'], ['L-smith-embed', 'L-smith-exact']].map(([a, b]) => line(a, b)).filter(Boolean),
     '', '## L-gate', '',
     `Samples the judge passed (tsc, and the task check on a task's last function): ${gateRecs.length}; the gate rejected ${gateRecs.filter((g) => !g.pass).length} (${gateRecs.length ? Math.round(100 * gateRecs.filter((g) => !g.pass).length / gateRecs.length) : 0}%). Reasons (a sample can fail several): ${Object.entries(reasons).map(([k, v]) => `${k} ${v}`).join(', ') || '-'}. Template-exempt: ${gateRecs.filter((g) => g.exempt).length}.`,
     `Samples drawn: H ${drawn('H')}, L-gate ${drawn('L-gate')} (+${drawn('L-gate') - drawn('H')}); wall H ${(sum(by('H'), 'wallMs') / 1000).toFixed(0)} s, L-gate ${(sum(gateRs, 'wallMs') / 1000).toFixed(0)} s; gate time ${Math.round(gateRecs.reduce((a, g) => a + g.ms, 0))} ms over ${gateRecs.length} calls.`,
     `L-norm: ${normRecs.length} gate-failing fills normalized by plug(); changed ${normRecs.filter((g) => g.norm.changed).length}, gate pass after ${normRecs.filter((g) => g.norm.gatePass).length}, still tsc-clean ${normRecs.filter((g) => g.norm.tsc).length}, landable ${normRecs.filter((g) => g.norm.landable).length}.`,
     '', '## Gate on every passing fill (triples)', '',
-    ...Object.entries(notes.tripleGate ?? {}).map(([k, v]) => `- ${k}: ${v.pass} function(s) pass, ${v.fail} fail (${Object.entries(v.reasons).map(([a, b]) => `${a} ${b}`).join(', ') || '-'}); triples ${triples.filter((t) => t.setup === k).length}`),
+    ...Object.entries(notes.tripleGate ?? {}).map(([k, v]) => `- ${k}: ${v.pass} function(s) pass, ${v.fail} fail (${Object.entries(v.reasons).map(([a, b]) => `${a} ${b}`).join(', ') || '-'}); triples in triples.jsonl ${allTriples.filter((t) => t.setup === k).length}`),
     `- appended to results/triples.jsonl this run: ${appended}`,
     '', '## Call latency (ms; cold = first call on a fresh service, warm = median of 5)', '',
     '| call | cold | warm | output tokens |', '| --- | --- | --- | --- |',
@@ -513,6 +550,7 @@ if (want('smith')) await smithRuns(!only || only.has('embed'));
 if (want('rules')) await rulesRuns();
 if (want('enum')) await enumRuns();
 if (want('gather')) await gatherRuns();
+if (want('gather') || want('gatherdet')) await gatherDetRuns();
 await armRuns();
 await collectTriples();
 report();
