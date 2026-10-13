@@ -1,0 +1,315 @@
+{
+  "summary": {
+    "model": "qwen2.5-coder:1.5b",
+    "method": "ollama format (closed enum JSON schema), T=0, seed 7",
+    "n": 8,
+    "rightPct": 38,
+    "stepPct": 38,
+    "targetPct": 75,
+    "reasonPct": 38,
+    "deterministicRight": "8/8",
+    "killBelow": 60,
+    "verdict": "kill"
+  },
+  "rows": [
+    {
+      "id": "k3-1",
+      "expect": {
+        "step": "complete_stub",
+        "target": "book/domains/formatAvailability",
+        "reason_id": "STUB_OPEN"
+      },
+      "deterministic": {
+        "step": "complete_stub",
+        "target": "book/domains/formatAvailability",
+        "reason_id": "STUB_OPEN"
+      },
+      "answer": {
+        "step": "complete_stub",
+        "target": "book/domains/formatAvailability",
+        "reason_id": "STUB_OPEN"
+      },
+      "stepRight": true,
+      "targetRight": true,
+      "reasonRight": true,
+      "right": true,
+      "promptTokens": 322,
+      "evalTokens": 22,
+      "ms": 271,
+      "facts": [
+        "need book/domains/formatAvailability",
+        "asking_feature book",
+        "feature book index_exports []",
+        "feature browse index_exports []",
+        "feature loans index_exports []",
+        "feature picks index_exports []",
+        "feature request index_exports []",
+        "module:book/domains exists",
+        "function book/domains/formatAvailability stub_check OPEN,UNUSED_INPUT",
+        "feature book imports_features []"
+      ]
+    },
+    {
+      "id": "k3-2",
+      "expect": {
+        "step": "complete_stub",
+        "target": "picks/services/removePick",
+        "reason_id": "STUB_OPEN"
+      },
+      "deterministic": {
+        "step": "complete_stub",
+        "target": "picks/services/removePick",
+        "reason_id": "STUB_OPEN"
+      },
+      "answer": {
+        "step": "complete_stub",
+        "target": "picks/services/removePick",
+        "reason_id": "STUB_OPEN"
+      },
+      "stepRight": true,
+      "targetRight": true,
+      "reasonRight": true,
+      "right": true,
+      "promptTokens": 317,
+      "evalTokens": 22,
+      "ms": 171,
+      "facts": [
+        "need picks/services/removePick",
+        "asking_feature picks",
+        "feature book index_exports []",
+        "feature browse index_exports []",
+        "feature loans index_exports []",
+        "feature picks index_exports []",
+        "feature request index_exports []",
+        "module:picks/services exists",
+        "function picks/services/removePick stub_check UNUSED_INPUT",
+        "feature picks imports_features []"
+      ]
+    },
+    {
+      "id": "k3-3",
+      "expect": {
+        "step": "reuse",
+        "target": "browse/domains/sortByTitle",
+        "reason_id": "STABLE_ID_FINISHED"
+      },
+      "deterministic": {
+        "step": "reuse",
+        "target": "browse/domains/sortByTitle",
+        "reason_id": "STABLE_ID_FINISHED"
+      },
+      "answer": {
+        "step": "reuse",
+        "target": "browse/domains/sortByTitle",
+        "reason_id": "STABLE_ID_FINISHED"
+      },
+      "stepRight": true,
+      "targetRight": true,
+      "reasonRight": true,
+      "right": true,
+      "promptTokens": 323,
+      "evalTokens": 25,
+      "ms": 207,
+      "facts": [
+        "need browse/domains/sortByTitle",
+        "asking_feature browse",
+        "feature book index_exports []",
+        "feature browse index_exports []",
+        "feature loans index_exports []",
+        "feature picks index_exports []",
+        "feature request index_exports []",
+        "module:browse/domains exists",
+        "function browse/domains/sortByTitle stub_check PASS",
+        "feature browse imports_features []"
+      ]
+    },
+    {
+      "id": "k3-4",
+      "expect": {
+        "step": "reuse",
+        "target": "book/domains/formatPages",
+        "reason_id": "STABLE_ID_FINISHED"
+      },
+      "deterministic": {
+        "step": "reuse",
+        "target": "book/domains/formatPages",
+        "reason_id": "STABLE_ID_FINISHED"
+      },
+      "answer": {
+        "step": "complete_stub",
+        "target": "book/domains/formatPages",
+        "reason_id": "STUB_OPEN"
+      },
+      "stepRight": false,
+      "targetRight": true,
+      "reasonRight": false,
+      "right": false,
+      "promptTokens": 332,
+      "evalTokens": 22,
+      "ms": 178,
+      "facts": [
+        "need book/domains/formatPages",
+        "asking_feature book",
+        "feature book index_exports []",
+        "feature browse index_exports []",
+        "feature loans index_exports []",
+        "feature picks index_exports []",
+        "feature request index_exports []",
+        "module:book/domains exists",
+        "function book/domains/formatAuthor stub_check OPEN,UNUSED_INPUT",
+        "function book/domains/formatPages stub_check PASS",
+        "feature book imports_features []"
+      ]
+    },
+    {
+      "id": "k3-5",
+      "expect": {
+        "step": "add_to_scope",
+        "target": "picks/services/addPick",
+        "reason_id": "EXPORTED_BY_OTHER_FEATURE"
+      },
+      "deterministic": {
+        "step": "add_to_scope",
+        "target": "picks/services/addPick",
+        "reason_id": "EXPORTED_BY_OTHER_FEATURE"
+      },
+      "answer": {
+        "step": "reuse",
+        "target": "picks/services/addPick",
+        "reason_id": "STABLE_ID_FINISHED"
+      },
+      "stepRight": false,
+      "targetRight": true,
+      "reasonRight": false,
+      "right": false,
+      "promptTokens": 319,
+      "evalTokens": 23,
+      "ms": 181,
+      "facts": [
+        "need picks/services/addPick",
+        "asking_feature book",
+        "feature book index_exports []",
+        "feature browse index_exports []",
+        "feature loans index_exports []",
+        "feature picks index_exports [addPick]",
+        "feature request index_exports []",
+        "module:picks/services exists",
+        "function picks/services/addPick stub_check PASS",
+        "feature book imports_features []"
+      ]
+    },
+    {
+      "id": "k3-6",
+      "expect": {
+        "step": "add_to_scope",
+        "target": "picks/services/listPicks",
+        "reason_id": "EXPORTED_BY_OTHER_FEATURE"
+      },
+      "deterministic": {
+        "step": "add_to_scope",
+        "target": "picks/services/listPicks",
+        "reason_id": "EXPORTED_BY_OTHER_FEATURE"
+      },
+      "answer": {
+        "step": "reuse",
+        "target": "picks/services/listPicks",
+        "reason_id": "STABLE_ID_FINISHED"
+      },
+      "stepRight": false,
+      "targetRight": true,
+      "reasonRight": false,
+      "right": false,
+      "promptTokens": 339,
+      "evalTokens": 24,
+      "ms": 205,
+      "facts": [
+        "need picks/services/listPicks",
+        "asking_feature request",
+        "feature book index_exports []",
+        "feature browse index_exports []",
+        "feature loans index_exports []",
+        "feature picks index_exports [listPicks]",
+        "feature request index_exports []",
+        "module:picks/services exists",
+        "module:request/services exists",
+        "function picks/services/listPicks stub_check PASS",
+        "function request/services/sendRequest stub_check OPEN,UNUSED_INPUT",
+        "feature request imports_features []"
+      ]
+    },
+    {
+      "id": "k3-7",
+      "expect": {
+        "step": "create",
+        "target": "browse/domains/pageOf",
+        "reason_id": "HOME_MODULE_EXISTS"
+      },
+      "deterministic": {
+        "step": "create",
+        "target": "browse/domains/pageOf",
+        "reason_id": "HOME_MODULE_EXISTS"
+      },
+      "answer": {
+        "step": "reuse",
+        "target": "browse/domains/sortByTitle",
+        "reason_id": "STABLE_ID_FINISHED"
+      },
+      "stepRight": false,
+      "targetRight": false,
+      "reasonRight": false,
+      "right": false,
+      "promptTokens": 321,
+      "evalTokens": 25,
+      "ms": 207,
+      "facts": [
+        "need browse/domains/pageOf",
+        "asking_feature browse",
+        "feature book index_exports []",
+        "feature browse index_exports []",
+        "feature loans index_exports []",
+        "feature picks index_exports []",
+        "feature request index_exports []",
+        "module:browse/domains exists",
+        "function browse/domains/sortByTitle stub_check PASS",
+        "feature browse imports_features []"
+      ]
+    },
+    {
+      "id": "k3-8",
+      "expect": {
+        "step": "create_module",
+        "target": "module:request/services",
+        "reason_id": "NO_MODULE"
+      },
+      "deterministic": {
+        "step": "create_module",
+        "target": "module:request/services",
+        "reason_id": "NO_MODULE"
+      },
+      "answer": {
+        "step": "reuse",
+        "target": "request/domains/formatBranch",
+        "reason_id": "STABLE_ID_FINISHED"
+      },
+      "stepRight": false,
+      "targetRight": false,
+      "reasonRight": false,
+      "right": false,
+      "promptTokens": 317,
+      "evalTokens": 23,
+      "ms": 180,
+      "facts": [
+        "need request/services/requestLoan",
+        "asking_feature request",
+        "feature book index_exports []",
+        "feature browse index_exports []",
+        "feature loans index_exports []",
+        "feature picks index_exports []",
+        "feature request index_exports []",
+        "module:request/domains exists",
+        "function request/domains/formatBranch stub_check PASS",
+        "feature request imports_features []"
+      ]
+    }
+  ]
+}

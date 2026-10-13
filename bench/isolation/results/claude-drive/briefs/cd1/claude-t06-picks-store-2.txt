@@ -1,0 +1,26 @@
+Reply with exactly this TypeScript in one ```ts fenced block and nothing else:
+
+```ts
+export function listPicks(): string[] {
+  const raw = localStorage.getItem("picks");
+  if (!raw) return [];
+  try {
+    const v = JSON.parse(raw);
+    return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+export function addPick(id: string): void {
+  const picks = listPicks();
+  if (picks.includes(id)) return;
+  picks.push(id);
+  localStorage.setItem("picks", JSON.stringify(picks));
+}
+
+export function removePick(id: string): void {
+  const picks = listPicks().filter((p) => p !== id);
+  localStorage.setItem("picks", JSON.stringify(picks));
+}
+```

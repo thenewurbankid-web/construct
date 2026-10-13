@@ -1,0 +1,15 @@
+{
+  "id": "t01-book-by-author",
+  "title": "BookPage: show the author as \"by <author>\"",
+  "kind": "format",
+  "goal": "On the book page, show the author in the form the spec asks for.",
+  "spec": "BK-1: The page at `/books/<id>` has the book's title as its main heading and shows \"by <author>\", its genre, its year, its page count (like \"312 pages\") and its summary.",
+  "target": "features/book/pages/BookPage.tsx",
+  "context": [
+    "features/book/services/findBook.ts",
+    "library/pages/DetailPage.tsx"
+  ],
+  "entries": {
+    "page": "features/book/pages/BookPage.tsx"
+  }
+}

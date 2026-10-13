@@ -1,0 +1,15 @@
+{
+  "id": "t12-browse-genre-filter",
+  "title": "BrowsePage: Genre filter (native select)",
+  "kind": "filter",
+  "goal": "Add the Genre filter to the catalogue. Use a native <label htmlFor> plus <select>, passed as ListPage's toolbar. The page needs 'use client' and React state for the chosen genre. There is no paging yet: list every matching book.",
+  "spec": "BRW-4: A control labelled \"Genre\" offers All genres, Fiction, History and Science; picking a genre shows only that genre's books and goes back to the first page, and All genres shows every book again.",
+  "target": "features/browse/pages/BrowsePage.tsx",
+  "context": [
+    "features/browse/services/listBooks.ts",
+    "library/pages/ListPage.tsx"
+  ],
+  "entries": {
+    "page": "features/browse/pages/BrowsePage.tsx"
+  }
+}

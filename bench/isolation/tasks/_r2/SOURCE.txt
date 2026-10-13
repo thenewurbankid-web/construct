@@ -1,0 +1,3 @@
+Snapshot of lending-seed-r2 (bench-rerun-1013 worktree, bench/lending/runs/lending-seed-r2/project) taken 2026-10-13.
+
+2026-10-14 (#943): pages read books only through their feature service (features/*/services/*.ts, defineService); the fixture imports were replaced. Owner rule for atomicGate.

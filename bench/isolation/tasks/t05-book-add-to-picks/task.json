@@ -1,0 +1,18 @@
+{
+  "id": "t05-book-add-to-picks",
+  "title": "BookPage: \"Add to my picks\" button wired to the picks store",
+  "kind": "button",
+  "goal": "Add the \"Add to my picks\" button to the book page. Use addPick from the picks store (features/picks/store/picksStore.ts) and the Button component (library/components/Button.tsx). The page needs 'use client' and React state for the status message.",
+  "spec": "BK-2: An available book has an \"Add to my picks\" button; pressing it adds the book to the member's picks and a status message says \"Added to your picks\".\n\nBK-3: A book that is on loan says \"On loan\" and cannot be picked (no \"Add to my picks\" button, or a disabled one).",
+  "target": "features/book/pages/BookPage.tsx",
+  "context": [
+    "features/book/services/findBook.ts",
+    "features/picks/store/picksStore.ts",
+    "library/components/Button.tsx",
+    "library/pages/DetailPage.tsx"
+  ],
+  "entries": {
+    "page": "features/book/pages/BookPage.tsx",
+    "store": "features/picks/store/picksStore.ts"
+  }
+}

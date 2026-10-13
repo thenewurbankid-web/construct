@@ -1,0 +1,15 @@
+{
+  "id": "t03-book-availability",
+  "title": "BookPage: render the available boolean as \"Available\" / \"On loan\"",
+  "kind": "format",
+  "goal": "On the book page, show the book's availability as words instead of true/false. (Loans do not exist yet: use the book's available field only.)",
+  "spec": "A book is \"On loan\" when the fixture says so or when it is part of one of the member's loans; otherwise it is \"Available\".\n\nBK-3: A book that is on loan says \"On loan\" and cannot be picked (no \"Add to my picks\" button, or a disabled one); a book that is already picked says \"Already in your picks\" and cannot be picked again.",
+  "target": "features/book/pages/BookPage.tsx",
+  "context": [
+    "features/book/services/findBook.ts",
+    "library/pages/DetailPage.tsx"
+  ],
+  "entries": {
+    "page": "features/book/pages/BookPage.tsx"
+  }
+}

@@ -1,0 +1,23 @@
+Rewrite BookPage exactly like this (no other imports, no hooks):
+
+```tsx
+export function BookPage({ params }: { params: { id: string } }) {
+  const book = (books as Book[]).find((b) => b.id === params.id);
+  if (!book) {
+    return <DetailPage title="Book not found" back={<Link href="/books">Back to books</Link>} />;
+  }
+  const status = book.available ? 'Available' : 'On loan';
+  return (
+    <DetailPage
+      title={book.title}
+      back={<Link href="/books">Back to books</Link>}
+      aside={<p>{status}</p>}
+    >
+      <p>{book.author}</p>
+      <p>{book.genre} · {book.year} · {book.pages} pages</p>
+      <p>{book.summary}</p>
+    </DetailPage>
+  );
+}
+```
+Availability must be the words "Available" or "On loan", never true/false.

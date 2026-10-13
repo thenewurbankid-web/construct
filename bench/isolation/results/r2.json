@@ -1,0 +1,4083 @@
+{
+  "meta": {
+    "run": "r2",
+    "date": "2026-10-13T20:18:18.717Z",
+    "models": {
+      "coder": "qwen2.5-coder:1.5b",
+      "driver": "qwen2.5-coder:7b",
+      "toolDriver": "qwen3:4b"
+    },
+    "sampling": {
+      "A": {
+        "temperature": 0,
+        "seed": 42,
+        "num_ctx": 8192,
+        "num_predict": 2048
+      },
+      "B": {
+        "temperature": 0,
+        "seed": 42,
+        "num_ctx": 8192,
+        "num_predict": 2048
+      },
+      "E": {
+        "temperature": 0.7,
+        "top_p": 0.8,
+        "top_k": 20,
+        "repeat_penalty": 1.1,
+        "num_ctx": 4096,
+        "num_predict": 2048
+      },
+      "F": {
+        "temperature": 0,
+        "seed": 42,
+        "num_ctx": 8192,
+        "num_predict": 2048
+      },
+      "F-sr": {
+        "temperature": 0,
+        "seed": 42,
+        "num_ctx": 8192,
+        "num_predict": 2048
+      },
+      "G": {
+        "temperature": 0,
+        "seed": 42,
+        "num_ctx": 4096,
+        "num_predict": 1024
+      },
+      "H": {
+        "temperature": 0.7,
+        "top_p": 0.8,
+        "top_k": 20,
+        "repeat_penalty": 1.1,
+        "num_ctx": 4096,
+        "num_predict": 2048
+      },
+      "I": {
+        "temperature": 0.7,
+        "top_p": 0.8,
+        "top_k": 20,
+        "repeat_penalty": 1.1,
+        "num_ctx": 4096,
+        "num_predict": 2048
+      }
+    },
+    "arms": {
+      "A": {
+        "label": "1.5b alone",
+        "strategy": "direct",
+        "model": "coder",
+        "sampling": "greedy",
+        "editFormat": "whole-file"
+      },
+      "B": {
+        "label": "7b driver -> 1.5b",
+        "strategy": "driven",
+        "driver": "driver",
+        "coder": "coder",
+        "sampling": "greedy",
+        "editFormat": "whole-file",
+        "repairs": 0
+      },
+      "E": {
+        "label": "7b brief -> 1.5b best-of-5 (tsc+check picker)",
+        "strategy": "bestOfN",
+        "driver": "driver",
+        "coder": "coder",
+        "driverSampling": "greedy",
+        "sampling": "qwen",
+        "n": 5,
+        "seedBase": 1,
+        "editFormat": "whole-file",
+        "coderContext": "signatures",
+        "reportN": [
+          1,
+          3,
+          5
+        ]
+      },
+      "F": {
+        "label": "7b code-shaped brief -> 1.5b function, spliced",
+        "strategy": "codeShaped",
+        "driver": "driver",
+        "coder": "coder",
+        "sampling": "greedy",
+        "editFormat": "splice",
+        "coderContext": "signatures"
+      },
+      "F-sr": {
+        "label": "7b code-shaped brief -> 1.5b search/replace",
+        "strategy": "codeShaped",
+        "driver": "driver",
+        "coder": "coder",
+        "sampling": "greedy",
+        "editFormat": "search-replace",
+        "coderContext": "signatures"
+      },
+      "G": {
+        "label": "7b skeleton -> 1.5b FIM body (instruct tag)",
+        "strategy": "fim",
+        "driver": "driver",
+        "coder": "coder",
+        "driverSampling": "greedy",
+        "sampling": "fim",
+        "editFormat": "fim"
+      },
+      "H": {
+        "label": "blocks: briefBuilder -> 1.5b best-of-5 -> splice (no driver)",
+        "strategy": "blocks",
+        "coder": "coder",
+        "sampling": "qwen",
+        "n": 5,
+        "seedBase": 1,
+        "editFormat": "function-splice",
+        "reportN": [
+          1,
+          3,
+          5
+        ]
+      },
+      "I": {
+        "label": "qwen3:4b tool-calling driver over the blocks",
+        "strategy": "toolDriver",
+        "driver": "toolDriver",
+        "coder": "coder",
+        "driverSampling": "qwen3",
+        "think": false,
+        "sampling": "qwen",
+        "n": 5,
+        "seedBase": 1,
+        "maxTurns": 8,
+        "repairs": 2,
+        "editFormat": "function-splice"
+      }
+    }
+  },
+  "summary": {
+    "A": {
+      "label": "1.5b alone",
+      "pass": 1,
+      "total": 12,
+      "tokensIn": 8669,
+      "tokensOut": 2969,
+      "wallMs": 24303,
+      "fails": {
+        "check": 3,
+        "fragment": 3,
+        "tsc": 5
+      },
+      "coderPromptMax": 1455
+    },
+    "B": {
+      "label": "7b driver -> 1.5b",
+      "pass": 7,
+      "total": 12,
+      "tokensIn": 19231,
+      "tokensOut": 5826,
+      "wallMs": 79315,
+      "fails": {
+        "fragment": 2,
+        "tsc": 2,
+        "check": 1
+      },
+      "coderPromptMax": 2005
+    },
+    "E": {
+      "label": "7b brief -> 1.5b best-of-5 (tsc+check picker)",
+      "pass": 8,
+      "total": 12,
+      "tokensIn": 31254,
+      "tokensOut": 11090,
+      "wallMs": 110855,
+      "fails": {
+        "tsc": 4
+      },
+      "coderPromptMax": 1455,
+      "nStats": {
+        "1": {
+          "pass": 8,
+          "tscPickerPass": 8,
+          "wallMs": 73044,
+          "of": 12
+        },
+        "3": {
+          "pass": 8,
+          "tscPickerPass": 8,
+          "wallMs": 91111,
+          "of": 12
+        },
+        "5": {
+          "pass": 8,
+          "tscPickerPass": 8,
+          "wallMs": 110805,
+          "of": 12
+        }
+      }
+    },
+    "F": {
+      "label": "7b code-shaped brief -> 1.5b function, spliced",
+      "pass": 6,
+      "total": 12,
+      "tokensIn": 18817,
+      "tokensOut": 7081,
+      "wallMs": 106501,
+      "fails": {
+        "tsc": 5,
+        "format": 1
+      },
+      "coderPromptMax": 1360
+    },
+    "F-sr": {
+      "label": "7b code-shaped brief -> 1.5b search/replace",
+      "pass": 0,
+      "total": 12,
+      "tokensIn": 19148,
+      "tokensOut": 6697,
+      "wallMs": 88523,
+      "fails": {
+        "format": 12
+      },
+      "coderPromptMax": 1411
+    },
+    "G": {
+      "label": "7b skeleton -> 1.5b FIM body (instruct tag)",
+      "pass": 2,
+      "total": 12,
+      "tokensIn": 10869,
+      "tokensOut": 5496,
+      "wallMs": 82372,
+      "fails": {
+        "check": 2,
+        "tsc": 2,
+        "format": 6
+      },
+      "coderPromptMax": 435
+    },
+    "H": {
+      "label": "blocks: briefBuilder -> 1.5b best-of-5 -> splice (no driver)",
+      "pass": 8,
+      "total": 12,
+      "tokensIn": 32458,
+      "tokensOut": 11380,
+      "wallMs": 81189,
+      "fails": {
+        "fragment": 2,
+        "tsc": 1,
+        "check": 1
+      },
+      "coderPromptMax": 1297,
+      "nStats": {
+        "1": {
+          "pass": 1,
+          "tscPickerPass": 1,
+          "wallMs": 24402,
+          "of": 11
+        },
+        "3": {
+          "pass": 6,
+          "tscPickerPass": 5,
+          "wallMs": 57337,
+          "of": 11
+        },
+        "5": {
+          "pass": 7,
+          "tscPickerPass": 5,
+          "wallMs": 78783,
+          "of": 11
+        }
+      }
+    },
+    "I": {
+      "label": "qwen3:4b tool-calling driver over the blocks",
+      "pass": 2,
+      "total": 12,
+      "tokensIn": 372844,
+      "tokensOut": 79805,
+      "wallMs": 1199232,
+      "fails": {
+        "check": 10
+      },
+      "coderPromptMax": 1423
+    }
+  },
+  "rows": [
+    {
+      "run": "r2",
+      "arm": "A",
+      "armLabel": "1.5b alone",
+      "task": "t01-book-by-author",
+      "pass": false,
+      "failClass": "check",
+      "detail": null,
+      "attempts": 1,
+      "tokensIn": 619,
+      "tokensOut": 252,
+      "tokensByRole": {
+        "driver": {
+          "in": 0,
+          "out": 0
+        },
+        "coder": {
+          "in": 619,
+          "out": 252
+        }
+      },
+      "modelMs": 2248,
+      "wallMs": 2857,
+      "calls": 1,
+      "coderPromptMax": 716,
+      "tscErrors": [],
+      "checkFailures": [
+        "missing text \"by Ines Okafor\"",
+        "missing text \"by Mara Quill\" (copper-roads)"
+      ],
+      "raw": "results/r2-raw/A/t01-book-by-author"
+    },
+    {
+      "run": "r2",
+      "arm": "A",
+      "armLabel": "1.5b alone",
+      "task": "t02-book-page-count",
+      "pass": false,
+      "failClass": "check",
+      "detail": null,
+      "attempts": 1,
+      "tokensIn": 620,
+      "tokensOut": 252,
+      "tokensByRole": {
+        "driver": {
+          "in": 0,
+          "out": 0
+        },
+        "coder": {
+          "in": 620,
+          "out": 252
+        }
+      },
+      "modelMs": 1472,
+      "wallMs": 1963,
+      "calls": 1,
+      "coderPromptMax": 717,
+      "tscErrors": [],
+      "checkFailures": [
+        "missing text \"312 pages\"",
+        "missing text \"248 pages\" (orchard-at-night)"
+      ],
+      "raw": "results/r2-raw/A/t02-book-page-count"
+    },
+    {
+      "run": "r2",
+      "arm": "A",
+      "armLabel": "1.5b alone",
+      "task": "t03-book-availability",
+      "pass": false,
+      "failClass": "fragment",
+      "detail": "fragment: missing export(s) BookPage",
+      "attempts": 1,
+      "tokensIn": 671,
+      "tokensOut": 197,
+      "tokensByRole": {
+        "driver": {
+          "in": 0,
+          "out": 0
+        },
+        "coder": {
+          "in": 671,
+          "out": 197
+        }
+      },
+      "modelMs": 1180,
+      "wallMs": 1651,
+      "calls": 1,
+      "coderPromptMax": 790,
+      "tscErrors": [],
+      "checkFailures": [
+        "available book does not say \"Available\"",
+        "on-loan book (winter-ferry) does not say \"On loan\""
+      ],
+      "raw": "results/r2-raw/A/t03-book-availability"
+    },
+    {
+      "run": "r2",
+      "arm": "A",
+      "armLabel": "1.5b alone",
+      "task": "t04-book-not-found",
+      "pass": false,
+      "failClass": "tsc",
+      "detail": null,
+      "attempts": 1,
+      "tokensIn": 606,
+      "tokensOut": 328,
+      "tokensByRole": {
+        "driver": {
+          "in": 0,
+          "out": 0
+        },
+        "coder": {
+          "in": 606,
+          "out": 328
+        }
+      },
+      "modelMs": 1858,
+      "wallMs": 2345,
+      "calls": 1,
+      "coderPromptMax": 708,
+      "tscErrors": [
+        "features/book/pages/BookPage.tsx(15,54): error TS2322: Type '{ children: Element[]; title: string; back: Element; unknownBookMessage: string; }' is not assignable to type 'IntrinsicAttributes & DetailPageProps'.",
+        "features/book/pages/BookPage.tsx(16,13): error TS18048: 'item' is possibly 'undefined'.",
+        "features/book/pages/BookPage.tsx(17,13): error TS18048: 'item' is possibly 'undefined'.",
+        "features/book/pages/BookPage.tsx(18,20): error TS18048: 'item' is possibly 'undefined'.",
+        "features/book/pages/BookPage.tsx(19,20): error TS18048: 'item' is possibly 'undefined'.",
+        "features/book/pages/BookPage.tsx(20,13): error TS18048: 'item' is possibly 'undefined'.",
+        "features/book/pages/BookPage.tsx(21,20): error TS18048: 'item' is possibly 'undefined'."
+      ],
+      "checkFailures": [
+        "known book: no link \"Back to the catalogue\" to /",
+        "check threw: Cannot read properties of undefined (reading 'author')"
+      ],
+      "raw": "results/r2-raw/A/t04-book-not-found"
+    },
+    {
+      "run": "r2",
+      "arm": "A",
+      "armLabel": "1.5b alone",
+      "task": "t05-book-add-to-picks",
+      "pass": false,
+      "failClass": "fragment",
+      "detail": "fragment: missing export(s) BookPage",
+      "attempts": 1,
+      "tokensIn": 1229,
+      "tokensOut": 197,
+      "tokensByRole": {
+        "driver": {
+          "in": 0,
+          "out": 0
+        },
+        "coder": {
+          "in": 1229,
+          "out": 197
+        }
+      },
+      "modelMs": 1324,
+      "wallMs": 1805,
+      "calls": 1,
+      "coderPromptMax": 1455,
+      "tscErrors": [],
+      "checkFailures": [
+        "available book: no \"Add to my picks\" button"
+      ],
+      "raw": "results/r2-raw/A/t05-book-add-to-picks"
+    },
+    {
+      "run": "r2",
+      "arm": "A",
+      "armLabel": "1.5b alone",
+      "task": "t06-picks-store",
+      "pass": true,
+      "failClass": null,
+      "detail": null,
+      "attempts": 1,
+      "tokensIn": 275,
+      "tokensOut": 151,
+      "tokensByRole": {
+        "driver": {
+          "in": 0,
+          "out": 0
+        },
+        "coder": {
+          "in": 275,
+          "out": 151
+        }
+      },
+      "modelMs": 863,
+      "wallMs": 1296,
+      "calls": 1,
+      "coderPromptMax": 348,
+      "tscErrors": [],
+      "checkFailures": [],
+      "raw": "results/r2-raw/A/t06-picks-store"
+    },
+    {
+      "run": "r2",
+      "arm": "A",
+      "armLabel": "1.5b alone",
+      "task": "t07-picks-page-list",
+      "pass": false,
+      "failClass": "tsc",
+      "detail": null,
+      "attempts": 1,
+      "tokensIn": 1013,
+      "tokensOut": 140,
+      "tokensByRole": {
+        "driver": {
+          "in": 0,
+          "out": 0
+        },
+        "coder": {
+          "in": 1013,
+          "out": 140
+        }
+      },
+      "modelMs": 958,
+      "wallMs": 1434,
+      "calls": 1,
+      "coderPromptMax": 1211,
+      "tscErrors": [
+        "features/picks/pages/PicksPage.tsx(16,12): error TS2304: Cannot find name 'Button'.",
+        "features/picks/pages/PicksPage.tsx(16,69): error TS2304: Cannot find name 'Button'."
+      ],
+      "checkFailures": [
+        "check threw: Button is not defined"
+      ],
+      "raw": "results/r2-raw/A/t07-picks-page-list"
+    },
+    {
+      "run": "r2",
+      "arm": "A",
+      "armLabel": "1.5b alone",
+      "task": "t08-picks-page-empty",
+      "pass": false,
+      "failClass": "tsc",
+      "detail": null,
+      "attempts": 1,
+      "tokensIn": 653,
+      "tokensOut": 107,
+      "tokensByRole": {
+        "driver": {
+          "in": 0,
+          "out": 0
+        },
+        "coder": {
+          "in": 653,
+          "out": 107
+        }
+      },
+      "modelMs": 709,
+      "wallMs": 1185,
+      "calls": 1,
+      "coderPromptMax": 782,
+      "tscErrors": [
+        "features/picks/pages/PicksPage.tsx(4,17): error TS2304: Cannot find name 'listPicks'."
+      ],
+      "checkFailures": [
+        "check threw: listPicks is not defined"
+      ],
+      "raw": "results/r2-raw/A/t08-picks-page-empty"
+    },
+    {
+      "run": "r2",
+      "arm": "A",
+      "armLabel": "1.5b alone",
+      "task": "t09-browse-heading-availability",
+      "pass": false,
+      "failClass": "fragment",
+      "detail": "fragment: missing export(s) BrowsePage",
+      "attempts": 1,
+      "tokensIn": 650,
+      "tokensOut": 202,
+      "tokensByRole": {
+        "driver": {
+          "in": 0,
+          "out": 0
+        },
+        "coder": {
+          "in": 650,
+          "out": 202
+        }
+      },
+      "modelMs": 1202,
+      "wallMs": 1675,
+      "calls": 1,
+      "coderPromptMax": 778,
+      "tscErrors": [],
+      "checkFailures": [
+        "h1 is not \"Library catalogue\"",
+        "expected \"Available\" 13 times, got 0",
+        "expected \"On loan\" 2 times, got 0",
+        "expected 15 title links to /books/<id>"
+      ],
+      "raw": "results/r2-raw/A/t09-browse-heading-availability"
+    },
+    {
+      "run": "r2",
+      "arm": "A",
+      "armLabel": "1.5b alone",
+      "task": "t10-browse-paging",
+      "pass": false,
+      "failClass": "tsc",
+      "detail": null,
+      "attempts": 1,
+      "tokensIn": 1048,
+      "tokensOut": 512,
+      "tokensByRole": {
+        "driver": {
+          "in": 0,
+          "out": 0
+        },
+        "coder": {
+          "in": 1048,
+          "out": 512
+        }
+      },
+      "modelMs": 2987,
+      "wallMs": 3467,
+      "calls": 1,
+      "coderPromptMax": 1229,
+      "tscErrors": [
+        "features/browse/pages/BrowsePage.tsx(11,41): error TS2304: Cannot find name 'useState'."
+      ],
+      "checkFailures": [
+        "check threw: useState is not defined"
+      ],
+      "raw": "results/r2-raw/A/t10-browse-paging"
+    },
+    {
+      "run": "r2",
+      "arm": "A",
+      "armLabel": "1.5b alone",
+      "task": "t11-browse-sort-title",
+      "pass": false,
+      "failClass": "check",
+      "detail": null,
+      "attempts": 1,
+      "tokensIn": 631,
+      "tokensOut": 250,
+      "tokensByRole": {
+        "driver": {
+          "in": 0,
+          "out": 0
+        },
+        "coder": {
+          "in": 631,
+          "out": 250
+        }
+      },
+      "modelMs": 1486,
+      "wallMs": 1977,
+      "calls": 1,
+      "coderPromptMax": 749,
+      "tscErrors": [],
+      "checkFailures": [
+        "order is not title A-Z: first titles [\"Salt and Lanterns\",\"Orchard at Night\",\"Glass Harbour\",\"Winter Ferry\"]"
+      ],
+      "raw": "results/r2-raw/A/t11-browse-sort-title"
+    },
+    {
+      "run": "r2",
+      "arm": "A",
+      "armLabel": "1.5b alone",
+      "task": "t12-browse-genre-filter",
+      "pass": false,
+      "failClass": "tsc",
+      "detail": null,
+      "attempts": 1,
+      "tokensIn": 654,
+      "tokensOut": 381,
+      "tokensByRole": {
+        "driver": {
+          "in": 0,
+          "out": 0
+        },
+        "coder": {
+          "in": 654,
+          "out": 381
+        }
+      },
+      "modelMs": 2162,
+      "wallMs": 2648,
+      "calls": 1,
+      "coderPromptMax": 795,
+      "tscErrors": [
+        "features/browse/pages/BrowsePage.tsx(11,45): error TS2304: Cannot find name 'useState'."
+      ],
+      "checkFailures": [
+        "check threw: useState is not defined"
+      ],
+      "raw": "results/r2-raw/A/t12-browse-genre-filter"
+    },
+    {
+      "run": "r2",
+      "arm": "B",
+      "armLabel": "7b driver -> 1.5b",
+      "task": "t01-book-by-author",
+      "pass": true,
+      "failClass": null,
+      "detail": null,
+      "attempts": 1,
+      "tokensIn": 1233,
+      "tokensOut": 282,
+      "tokensByRole": {
+        "driver": {
+          "in": 651,
+          "out": 28
+        },
+        "coder": {
+          "in": 582,
+          "out": 254
+        }
+      },
+      "modelMs": 3249,
+      "wallMs": 3740,
+      "calls": 2,
+      "coderPromptMax": 676,
+      "tscErrors": [],
+      "checkFailures": [],
+      "raw": "results/r2-raw/B/t01-book-by-author"
+    },
+    {
+      "run": "r2",
+      "arm": "B",
+      "armLabel": "7b driver -> 1.5b",
+      "task": "t02-book-page-count",
+      "pass": true,
+      "failClass": null,
+      "detail": null,
+      "attempts": 1,
+      "tokensIn": 1325,
+      "tokensOut": 373,
+      "tokensByRole": {
+        "driver": {
+          "in": 652,
+          "out": 118
+        },
+        "coder": {
+          "in": 673,
+          "out": 255
+        }
+      },
+      "modelMs": 3998,
+      "wallMs": 4503,
+      "calls": 2,
+      "coderPromptMax": 764,
+      "tscErrors": [],
+      "checkFailures": [],
+      "raw": "results/r2-raw/B/t02-book-page-count"
+    },
+    {
+      "run": "r2",
+      "arm": "B",
+      "armLabel": "7b driver -> 1.5b",
+      "task": "t03-book-availability",
+      "pass": true,
+      "failClass": null,
+      "detail": null,
+      "attempts": 1,
+      "tokensIn": 1325,
+      "tokensOut": 327,
+      "tokensByRole": {
+        "driver": {
+          "in": 703,
+          "out": 67
+        },
+        "coder": {
+          "in": 622,
+          "out": 260
+        }
+      },
+      "modelMs": 3141,
+      "wallMs": 3636,
+      "calls": 2,
+      "coderPromptMax": 727,
+      "tscErrors": [],
+      "checkFailures": [],
+      "raw": "results/r2-raw/B/t03-book-availability"
+    },
+    {
+      "run": "r2",
+      "arm": "B",
+      "armLabel": "7b driver -> 1.5b",
+      "task": "t04-book-not-found",
+      "pass": true,
+      "failClass": null,
+      "detail": null,
+      "attempts": 1,
+      "tokensIn": 1284,
+      "tokensOut": 347,
+      "tokensByRole": {
+        "driver": {
+          "in": 638,
+          "out": 91
+        },
+        "coder": {
+          "in": 646,
+          "out": 256
+        }
+      },
+      "modelMs": 3511,
+      "wallMs": 4016,
+      "calls": 2,
+      "coderPromptMax": 760,
+      "tscErrors": [],
+      "checkFailures": [],
+      "raw": "results/r2-raw/B/t04-book-not-found"
+    },
+    {
+      "run": "r2",
+      "arm": "B",
+      "armLabel": "7b driver -> 1.5b",
+      "task": "t05-book-add-to-picks",
+      "pass": false,
+      "failClass": "fragment",
+      "detail": "fragment: missing export(s) BookPage",
+      "attempts": 1,
+      "tokensIn": 2917,
+      "tokensOut": 753,
+      "tokensByRole": {
+        "driver": {
+          "in": 1261,
+          "out": 556
+        },
+        "coder": {
+          "in": 1656,
+          "out": 197
+        }
+      },
+      "modelMs": 12092,
+      "wallMs": 12588,
+      "calls": 2,
+      "coderPromptMax": 2005,
+      "tscErrors": [],
+      "checkFailures": [
+        "available book: no \"Add to my picks\" button"
+      ],
+      "raw": "results/r2-raw/B/t05-book-add-to-picks"
+    },
+    {
+      "run": "r2",
+      "arm": "B",
+      "armLabel": "7b driver -> 1.5b",
+      "task": "t06-picks-store",
+      "pass": true,
+      "failClass": null,
+      "detail": null,
+      "attempts": 1,
+      "tokensIn": 681,
+      "tokensOut": 417,
+      "tokensByRole": {
+        "driver": {
+          "in": 307,
+          "out": 258
+        },
+        "coder": {
+          "in": 374,
+          "out": 159
+        }
+      },
+      "modelMs": 5582,
+      "wallMs": 6057,
+      "calls": 2,
+      "coderPromptMax": 467,
+      "tscErrors": [],
+      "checkFailures": [],
+      "raw": "results/r2-raw/B/t06-picks-store"
+    },
+    {
+      "run": "r2",
+      "arm": "B",
+      "armLabel": "7b driver -> 1.5b",
+      "task": "t07-picks-page-list",
+      "pass": false,
+      "failClass": "tsc",
+      "detail": null,
+      "attempts": 1,
+      "tokensIn": 2341,
+      "tokensOut": 615,
+      "tokensByRole": {
+        "driver": {
+          "in": 1044,
+          "out": 391
+        },
+        "coder": {
+          "in": 1297,
+          "out": 224
+        }
+      },
+      "modelMs": 9060,
+      "wallMs": 9561,
+      "calls": 2,
+      "coderPromptMax": 1556,
+      "tscErrors": [
+        "features/picks/pages/PicksPage.tsx(2,39): error TS2307: Cannot find module 'features/picks/store/picksStore' or its corresponding type declarations.",
+        "features/picks/pages/PicksPage.tsx(3,24): error TS2307: Cannot find module 'library/components/Button' or its corresponding type declarations.",
+        "features/picks/pages/PicksPage.tsx(4,19): error TS2307: Cannot find module 'library/fixtures/books.json' or its corresponding type declarations.",
+        "features/picks/pages/PicksPage.tsx(17,19): error TS7006: Parameter 'id' implicitly has an 'any' type.",
+        "features/picks/pages/PicksPage.tsx(18,34): error TS7006: Parameter 'b' implicitly has an 'any' type."
+      ],
+      "checkFailures": [
+        "build/load failed: Build failed with 3 errors: | bench/isolation/.work/r2/B/t07-picks-page-list/features/picks/pages/PicksPage.tsx:2:38: ERROR: Could not resolve \"features/picks/store/picksStore\" | bench/isolation/.work/r2/B/t07-picks-page-list/features/picks/pages/PicksPage.tsx:3:23: ERROR: Could not resolve \"library/components/Button\""
+      ],
+      "raw": "results/r2-raw/B/t07-picks-page-list"
+    },
+    {
+      "run": "r2",
+      "arm": "B",
+      "armLabel": "7b driver -> 1.5b",
+      "task": "t08-picks-page-empty",
+      "pass": false,
+      "failClass": "fragment",
+      "detail": "fragment: missing export(s) PicksPage",
+      "attempts": 1,
+      "tokensIn": 1402,
+      "tokensOut": 351,
+      "tokensByRole": {
+        "driver": {
+          "in": 684,
+          "out": 149
+        },
+        "coder": {
+          "in": 718,
+          "out": 202
+        }
+      },
+      "modelMs": 4254,
+      "wallMs": 4800,
+      "calls": 2,
+      "coderPromptMax": 868,
+      "tscErrors": [],
+      "checkFailures": [
+        "h1 is not \"My picks\"",
+        "missing \"You have not picked any books yet\""
+      ],
+      "raw": "results/r2-raw/B/t08-picks-page-empty"
+    },
+    {
+      "run": "r2",
+      "arm": "B",
+      "armLabel": "7b driver -> 1.5b",
+      "task": "t09-browse-heading-availability",
+      "pass": true,
+      "failClass": null,
+      "detail": null,
+      "attempts": 1,
+      "tokensIn": 1531,
+      "tokensOut": 551,
+      "tokensByRole": {
+        "driver": {
+          "in": 682,
+          "out": 292
+        },
+        "coder": {
+          "in": 849,
+          "out": 259
+        }
+      },
+      "modelMs": 7397,
+      "wallMs": 7939,
+      "calls": 2,
+      "coderPromptMax": 1022,
+      "tscErrors": [],
+      "checkFailures": [],
+      "raw": "results/r2-raw/B/t09-browse-heading-availability"
+    },
+    {
+      "run": "r2",
+      "arm": "B",
+      "armLabel": "7b driver -> 1.5b",
+      "task": "t10-browse-paging",
+      "pass": false,
+      "failClass": "tsc",
+      "detail": null,
+      "attempts": 1,
+      "tokensIn": 2039,
+      "tokensOut": 493,
+      "tokensByRole": {
+        "driver": {
+          "in": 1080,
+          "out": 66
+        },
+        "coder": {
+          "in": 959,
+          "out": 427
+        }
+      },
+      "modelMs": 4372,
+      "wallMs": 4888,
+      "calls": 2,
+      "coderPromptMax": 1143,
+      "tscErrors": [
+        "features/browse/pages/BrowsePage.tsx(11,41): error TS2304: Cannot find name 'useState'.",
+        "features/browse/pages/BrowsePage.tsx(41,12): error TS2304: Cannot find name 'Button'.",
+        "features/browse/pages/BrowsePage.tsx(43,13): error TS2304: Cannot find name 'Button'.",
+        "features/browse/pages/BrowsePage.tsx(46,12): error TS2304: Cannot find name 'Button'.",
+        "features/browse/pages/BrowsePage.tsx(48,13): error TS2304: Cannot find name 'Button'."
+      ],
+      "checkFailures": [
+        "check threw: useState is not defined"
+      ],
+      "raw": "results/r2-raw/B/t10-browse-paging"
+    },
+    {
+      "run": "r2",
+      "arm": "B",
+      "armLabel": "7b driver -> 1.5b",
+      "task": "t11-browse-sort-title",
+      "pass": true,
+      "failClass": null,
+      "detail": null,
+      "attempts": 1,
+      "tokensIn": 1400,
+      "tokensOut": 444,
+      "tokensByRole": {
+        "driver": {
+          "in": 663,
+          "out": 180
+        },
+        "coder": {
+          "in": 737,
+          "out": 264
+        }
+      },
+      "modelMs": 5122,
+      "wallMs": 5631,
+      "calls": 2,
+      "coderPromptMax": 864,
+      "tscErrors": [],
+      "checkFailures": [],
+      "raw": "results/r2-raw/B/t11-browse-sort-title"
+    },
+    {
+      "run": "r2",
+      "arm": "B",
+      "armLabel": "7b driver -> 1.5b",
+      "task": "t12-browse-genre-filter",
+      "pass": false,
+      "failClass": "check",
+      "detail": null,
+      "attempts": 1,
+      "tokensIn": 1753,
+      "tokensOut": 873,
+      "tokensByRole": {
+        "driver": {
+          "in": 686,
+          "out": 510
+        },
+        "coder": {
+          "in": 1067,
+          "out": 363
+        }
+      },
+      "modelMs": 11432,
+      "wallMs": 11956,
+      "calls": 2,
+      "coderPromptMax": 1310,
+      "tscErrors": [],
+      "checkFailures": [
+        "no <select> labelled \"Genre\""
+      ],
+      "raw": "results/r2-raw/B/t12-browse-genre-filter"
+    },
+    {
+      "run": "r2",
+      "arm": "E",
+      "armLabel": "7b brief -> 1.5b best-of-5 (tsc+check picker)",
+      "task": "t01-book-by-author",
+      "pass": true,
+      "failClass": null,
+      "detail": null,
+      "attempts": 1,
+      "tokensIn": 1118,
+      "tokensOut": 264,
+      "tokensByRole": {
+        "driver": {
+          "in": 651,
+          "out": 28
+        },
+        "coder": {
+          "in": 467,
+          "out": 236
+        }
+      },
+      "modelMs": 2471,
+      "wallMs": 2981,
+      "calls": 2,
+      "coderPromptMax": 552,
+      "nStats": {
+        "1": {
+          "pass": true,
+          "tscPickerPass": true,
+          "wallMs": 2974,
+          "drawn": 1
+        },
+        "3": {
+          "pass": true,
+          "tscPickerPass": true,
+          "wallMs": 2974,
+          "drawn": 1
+        },
+        "5": {
+          "pass": true,
+          "tscPickerPass": true,
+          "wallMs": 2974,
+          "drawn": 1
+        }
+      },
+      "sampleClasses": [
+        "pass"
+      ],
+      "tscErrors": [],
+      "checkFailures": [],
+      "raw": "results/r2-raw/E/t01-book-by-author"
+    },
+    {
+      "run": "r2",
+      "arm": "E",
+      "armLabel": "7b brief -> 1.5b best-of-5 (tsc+check picker)",
+      "task": "t02-book-page-count",
+      "pass": true,
+      "failClass": null,
+      "detail": null,
+      "attempts": 1,
+      "tokensIn": 1210,
+      "tokensOut": 360,
+      "tokensByRole": {
+        "driver": {
+          "in": 652,
+          "out": 118
+        },
+        "coder": {
+          "in": 558,
+          "out": 242
+        }
+      },
+      "modelMs": 3497,
+      "wallMs": 4004,
+      "calls": 2,
+      "coderPromptMax": 640,
+      "nStats": {
+        "1": {
+          "pass": true,
+          "tscPickerPass": true,
+          "wallMs": 4002,
+          "drawn": 1
+        },
+        "3": {
+          "pass": true,
+          "tscPickerPass": true,
+          "wallMs": 4002,
+          "drawn": 1
+        },
+        "5": {
+          "pass": true,
+          "tscPickerPass": true,
+          "wallMs": 4002,
+          "drawn": 1
+        }
+      },
+      "sampleClasses": [
+        "pass"
+      ],
+      "tscErrors": [],
+      "checkFailures": [],
+      "raw": "results/r2-raw/E/t02-book-page-count"
+    },
+    {
+      "run": "r2",
+      "arm": "E",
+      "armLabel": "7b brief -> 1.5b best-of-5 (tsc+check picker)",
+      "task": "t03-book-availability",
+      "pass": true,
+      "failClass": null,
+      "detail": null,
+      "attempts": 1,
+      "tokensIn": 1210,
+      "tokensOut": 309,
+      "tokensByRole": {
+        "driver": {
+          "in": 703,
+          "out": 67
+        },
+        "coder": {
+          "in": 507,
+          "out": 242
+        }
+      },
+      "modelMs": 2618,
+      "wallMs": 3117,
+      "calls": 2,
+      "coderPromptMax": 603,
+      "nStats": {
+        "1": {
+          "pass": true,
+          "tscPickerPass": true,
+          "wallMs": 3114,
+          "drawn": 1
+        },
+        "3": {
+          "pass": true,
+          "tscPickerPass": true,
+          "wallMs": 3114,
+          "drawn": 1
+        },
+        "5": {
+          "pass": true,
+          "tscPickerPass": true,
+          "wallMs": 3114,
+          "drawn": 1
+        }
+      },
+      "sampleClasses": [
+        "pass"
+      ],
+      "tscErrors": [],
+      "checkFailures": [],
+      "raw": "results/r2-raw/E/t03-book-availability"
+    },
+    {
+      "run": "r2",
+      "arm": "E",
+      "armLabel": "7b brief -> 1.5b best-of-5 (tsc+check picker)",
+      "task": "t04-book-not-found",
+      "pass": true,
+      "failClass": null,
+      "detail": null,
+      "attempts": 1,
+      "tokensIn": 1169,
+      "tokensOut": 329,
+      "tokensByRole": {
+        "driver": {
+          "in": 638,
+          "out": 91
+        },
+        "coder": {
+          "in": 531,
+          "out": 238
+        }
+      },
+      "modelMs": 3007,
+      "wallMs": 3506,
+      "calls": 2,
+      "coderPromptMax": 636,
+      "nStats": {
+        "1": {
+          "pass": true,
+          "tscPickerPass": true,
+          "wallMs": 3503,
+          "drawn": 1
+        },
+        "3": {
+          "pass": true,
+          "tscPickerPass": true,
+          "wallMs": 3503,
+          "drawn": 1
+        },
+        "5": {
+          "pass": true,
+          "tscPickerPass": true,
+          "wallMs": 3503,
+          "drawn": 1
+        }
+      },
+      "sampleClasses": [
+        "pass"
+      ],
+      "tscErrors": [],
+      "checkFailures": [],
+      "raw": "results/r2-raw/E/t04-book-not-found"
+    },
+    {
+      "run": "r2",
+      "arm": "E",
+      "armLabel": "7b brief -> 1.5b best-of-5 (tsc+check picker)",
+      "task": "t05-book-add-to-picks",
+      "pass": false,
+      "failClass": "tsc",
+      "detail": null,
+      "attempts": 5,
+      "tokensIn": 7116,
+      "tokensOut": 2202,
+      "tokensByRole": {
+        "driver": {
+          "in": 1261,
+          "out": 556
+        },
+        "coder": {
+          "in": 5855,
+          "out": 1646
+        }
+      },
+      "modelMs": 19301,
+      "wallMs": 21662,
+      "calls": 6,
+      "coderPromptMax": 1455,
+      "nStats": {
+        "1": {
+          "pass": false,
+          "tscPickerPass": false,
+          "wallMs": 12504,
+          "drawn": 1
+        },
+        "3": {
+          "pass": false,
+          "tscPickerPass": false,
+          "wallMs": 17036,
+          "drawn": 3
+        },
+        "5": {
+          "pass": false,
+          "tscPickerPass": false,
+          "wallMs": 21651,
+          "drawn": 5
+        }
+      },
+      "sampleClasses": [
+        "tsc",
+        "tsc",
+        "tsc",
+        "tsc",
+        "tsc"
+      ],
+      "tscErrors": [
+        "features/book/pages/BookPage.tsx(25,10): error TS2304: Cannot find name 'Button'.",
+        "features/book/pages/BookPage.tsx(25,50): error TS2304: Cannot find name 'handleAddPick'.",
+        "features/book/pages/BookPage.tsx(27,10): error TS2304: Cannot find name 'Button'.",
+        "features/book/pages/BookPage.tsx(29,8): error TS2304: Cannot find name 'statusMessage'.",
+        "features/book/pages/BookPage.tsx(29,29): error TS2304: Cannot find name 'statusMessage'."
+      ],
+      "checkFailures": [
+        "check threw: Button is not defined"
+      ],
+      "raw": "results/r2-raw/E/t05-book-add-to-picks"
+    },
+    {
+      "run": "r2",
+      "arm": "E",
+      "armLabel": "7b brief -> 1.5b best-of-5 (tsc+check picker)",
+      "task": "t06-picks-store",
+      "pass": true,
+      "failClass": null,
+      "detail": null,
+      "attempts": 1,
+      "tokensIn": 681,
+      "tokensOut": 417,
+      "tokensByRole": {
+        "driver": {
+          "in": 307,
+          "out": 258
+        },
+        "coder": {
+          "in": 374,
+          "out": 159
+        }
+      },
+      "modelMs": 5518,
+      "wallMs": 6007,
+      "calls": 2,
+      "coderPromptMax": 467,
+      "nStats": {
+        "1": {
+          "pass": true,
+          "tscPickerPass": true,
+          "wallMs": 6006,
+          "drawn": 1
+        },
+        "3": {
+          "pass": true,
+          "tscPickerPass": true,
+          "wallMs": 6006,
+          "drawn": 1
+        },
+        "5": {
+          "pass": true,
+          "tscPickerPass": true,
+          "wallMs": 6006,
+          "drawn": 1
+        }
+      },
+      "sampleClasses": [
+        "pass"
+      ],
+      "tscErrors": [],
+      "checkFailures": [],
+      "raw": "results/r2-raw/E/t06-picks-store"
+    },
+    {
+      "run": "r2",
+      "arm": "E",
+      "armLabel": "7b brief -> 1.5b best-of-5 (tsc+check picker)",
+      "task": "t07-picks-page-list",
+      "pass": false,
+      "failClass": "tsc",
+      "detail": null,
+      "attempts": 5,
+      "tokensIn": 5139,
+      "tokensOut": 1481,
+      "tokensByRole": {
+        "driver": {
+          "in": 1044,
+          "out": 391
+        },
+        "coder": {
+          "in": 4095,
+          "out": 1090
+        }
+      },
+      "modelMs": 13292,
+      "wallMs": 15550,
+      "calls": 6,
+      "coderPromptMax": 1015,
+      "nStats": {
+        "1": {
+          "pass": false,
+          "tscPickerPass": false,
+          "wallMs": 8925,
+          "drawn": 1
+        },
+        "3": {
+          "pass": false,
+          "tscPickerPass": false,
+          "wallMs": 12166,
+          "drawn": 3
+        },
+        "5": {
+          "pass": false,
+          "tscPickerPass": false,
+          "wallMs": 15542,
+          "drawn": 5
+        }
+      },
+      "sampleClasses": [
+        "tsc",
+        "tsc",
+        "tsc",
+        "tsc",
+        "tsc"
+      ],
+      "tscErrors": [
+        "features/picks/pages/PicksPage.tsx(2,39): error TS2307: Cannot find module 'features/picks/store/picksStore' or its corresponding type declarations.",
+        "features/picks/pages/PicksPage.tsx(3,24): error TS2307: Cannot find module 'library/components/Button' or its corresponding type declarations.",
+        "features/picks/pages/PicksPage.tsx(4,19): error TS2307: Cannot find module 'library/fixtures/books.json' or its corresponding type declarations.",
+        "features/picks/pages/PicksPage.tsx(17,19): error TS7006: Parameter 'id' implicitly has an 'any' type.",
+        "features/picks/pages/PicksPage.tsx(18,34): error TS7006: Parameter 'b' implicitly has an 'any' type."
+      ],
+      "checkFailures": [
+        "build/load failed: Build failed with 3 errors: | bench/isolation/.work/r2/E/t07-picks-page-list/features/picks/pages/PicksPage.tsx:2:38: ERROR: Could not resolve \"features/picks/store/picksStore\" | bench/isolation/.work/r2/E/t07-picks-page-list/features/picks/pages/PicksPage.tsx:3:23: ERROR: Could not resolve \"library/components/Button\""
+      ],
+      "raw": "results/r2-raw/E/t07-picks-page-list"
+    },
+    {
+      "run": "r2",
+      "arm": "E",
+      "armLabel": "7b brief -> 1.5b best-of-5 (tsc+check picker)",
+      "task": "t08-picks-page-empty",
+      "pass": true,
+      "failClass": null,
+      "detail": null,
+      "attempts": 1,
+      "tokensIn": 1135,
+      "tokensOut": 241,
+      "tokensByRole": {
+        "driver": {
+          "in": 684,
+          "out": 149
+        },
+        "coder": {
+          "in": 451,
+          "out": 92
+        }
+      },
+      "modelMs": 3280,
+      "wallMs": 3776,
+      "calls": 2,
+      "coderPromptMax": 552,
+      "nStats": {
+        "1": {
+          "pass": true,
+          "tscPickerPass": true,
+          "wallMs": 3773,
+          "drawn": 1
+        },
+        "3": {
+          "pass": true,
+          "tscPickerPass": true,
+          "wallMs": 3773,
+          "drawn": 1
+        },
+        "5": {
+          "pass": true,
+          "tscPickerPass": true,
+          "wallMs": 3773,
+          "drawn": 1
+        }
+      },
+      "sampleClasses": [
+        "pass"
+      ],
+      "tscErrors": [],
+      "checkFailures": [],
+      "raw": "results/r2-raw/E/t08-picks-page-empty"
+    },
+    {
+      "run": "r2",
+      "arm": "E",
+      "armLabel": "7b brief -> 1.5b best-of-5 (tsc+check picker)",
+      "task": "t09-browse-heading-availability",
+      "pass": true,
+      "failClass": null,
+      "detail": null,
+      "attempts": 1,
+      "tokensIn": 1423,
+      "tokensOut": 538,
+      "tokensByRole": {
+        "driver": {
+          "in": 682,
+          "out": 292
+        },
+        "coder": {
+          "in": 741,
+          "out": 246
+        }
+      },
+      "modelMs": 6711,
+      "wallMs": 7216,
+      "calls": 2,
+      "coderPromptMax": 908,
+      "nStats": {
+        "1": {
+          "pass": true,
+          "tscPickerPass": true,
+          "wallMs": 7213,
+          "drawn": 1
+        },
+        "3": {
+          "pass": true,
+          "tscPickerPass": true,
+          "wallMs": 7213,
+          "drawn": 1
+        },
+        "5": {
+          "pass": true,
+          "tscPickerPass": true,
+          "wallMs": 7213,
+          "drawn": 1
+        }
+      },
+      "sampleClasses": [
+        "pass"
+      ],
+      "tscErrors": [],
+      "checkFailures": [],
+      "raw": "results/r2-raw/E/t09-browse-heading-availability"
+    },
+    {
+      "run": "r2",
+      "arm": "E",
+      "armLabel": "7b brief -> 1.5b best-of-5 (tsc+check picker)",
+      "task": "t10-browse-paging",
+      "pass": false,
+      "failClass": "tsc",
+      "detail": null,
+      "attempts": 5,
+      "tokensIn": 4280,
+      "tokensOut": 2188,
+      "tokensByRole": {
+        "driver": {
+          "in": 1080,
+          "out": 66
+        },
+        "coder": {
+          "in": 3200,
+          "out": 2122
+        }
+      },
+      "modelMs": 13333,
+      "wallMs": 15549,
+      "calls": 6,
+      "coderPromptMax": 803,
+      "nStats": {
+        "1": {
+          "pass": false,
+          "tscPickerPass": false,
+          "wallMs": 3728,
+          "drawn": 1
+        },
+        "3": {
+          "pass": false,
+          "tscPickerPass": false,
+          "wallMs": 8975,
+          "drawn": 3
+        },
+        "5": {
+          "pass": false,
+          "tscPickerPass": false,
+          "wallMs": 15544,
+          "drawn": 5
+        }
+      },
+      "sampleClasses": [
+        "tsc",
+        "tsc",
+        "tsc",
+        "check",
+        "tsc"
+      ],
+      "tscErrors": [
+        "features/browse/pages/BrowsePage.tsx(11,41): error TS2304: Cannot find name 'useState'.",
+        "features/browse/pages/BrowsePage.tsx(33,12): error TS2304: Cannot find name 'Button'.",
+        "features/browse/pages/BrowsePage.tsx(35,13): error TS2304: Cannot find name 'Button'.",
+        "features/browse/pages/BrowsePage.tsx(36,12): error TS2304: Cannot find name 'Button'.",
+        "features/browse/pages/BrowsePage.tsx(38,13): error TS2304: Cannot find name 'Button'.",
+        "features/browse/pages/BrowsePage.tsx(39,12): error TS2304: Cannot find name 'Button'.",
+        "features/browse/pages/BrowsePage.tsx(41,13): error TS2304: Cannot find name 'Button'.",
+        "features/browse/pages/BrowsePage.tsx(42,12): error TS2304: Cannot find name 'Button'."
+      ],
+      "checkFailures": [
+        "check threw: useState is not defined"
+      ],
+      "raw": "results/r2-raw/E/t10-browse-paging"
+    },
+    {
+      "run": "r2",
+      "arm": "E",
+      "armLabel": "7b brief -> 1.5b best-of-5 (tsc+check picker)",
+      "task": "t11-browse-sort-title",
+      "pass": true,
+      "failClass": null,
+      "detail": null,
+      "attempts": 1,
+      "tokensIn": 1292,
+      "tokensOut": 431,
+      "tokensByRole": {
+        "driver": {
+          "in": 663,
+          "out": 180
+        },
+        "coder": {
+          "in": 629,
+          "out": 251
+        }
+      },
+      "modelMs": 4822,
+      "wallMs": 5356,
+      "calls": 2,
+      "coderPromptMax": 750,
+      "nStats": {
+        "1": {
+          "pass": true,
+          "tscPickerPass": true,
+          "wallMs": 5355,
+          "drawn": 1
+        },
+        "3": {
+          "pass": true,
+          "tscPickerPass": true,
+          "wallMs": 5355,
+          "drawn": 1
+        },
+        "5": {
+          "pass": true,
+          "tscPickerPass": true,
+          "wallMs": 5355,
+          "drawn": 1
+        }
+      },
+      "sampleClasses": [
+        "pass"
+      ],
+      "tscErrors": [],
+      "checkFailures": [],
+      "raw": "results/r2-raw/E/t11-browse-sort-title"
+    },
+    {
+      "run": "r2",
+      "arm": "E",
+      "armLabel": "7b brief -> 1.5b best-of-5 (tsc+check picker)",
+      "task": "t12-browse-genre-filter",
+      "pass": false,
+      "failClass": "tsc",
+      "detail": null,
+      "attempts": 5,
+      "tokensIn": 5481,
+      "tokensOut": 2330,
+      "tokensByRole": {
+        "driver": {
+          "in": 686,
+          "out": 510
+        },
+        "coder": {
+          "in": 4795,
+          "out": 1820
+        }
+      },
+      "modelMs": 19762,
+      "wallMs": 22131,
+      "calls": 6,
+      "coderPromptMax": 1196,
+      "nStats": {
+        "1": {
+          "pass": false,
+          "tscPickerPass": false,
+          "wallMs": 11947,
+          "drawn": 1
+        },
+        "3": {
+          "pass": false,
+          "tscPickerPass": false,
+          "wallMs": 16994,
+          "drawn": 3
+        },
+        "5": {
+          "pass": false,
+          "tscPickerPass": false,
+          "wallMs": 22128,
+          "drawn": 5
+        }
+      },
+      "sampleClasses": [
+        "tsc",
+        "check",
+        "check",
+        "check",
+        "tsc"
+      ],
+      "tscErrors": [
+        "features/browse/pages/BrowsePage.tsx(11,45): error TS2304: Cannot find name 'useState'."
+      ],
+      "checkFailures": [
+        "check threw: useState is not defined"
+      ],
+      "raw": "results/r2-raw/E/t12-browse-genre-filter"
+    },
+    {
+      "run": "r2",
+      "arm": "F",
+      "armLabel": "7b code-shaped brief -> 1.5b function, spliced",
+      "task": "t01-book-by-author",
+      "pass": true,
+      "failClass": null,
+      "detail": null,
+      "attempts": 1,
+      "tokensIn": 1522,
+      "tokensOut": 625,
+      "tokensByRole": {
+        "driver": {
+          "in": 697,
+          "out": 386
+        },
+        "coder": {
+          "in": 825,
+          "out": 239
+        }
+      },
+      "modelMs": 9517,
+      "wallMs": 9995,
+      "calls": 2,
+      "coderPromptMax": 966,
+      "tscErrors": [],
+      "checkFailures": [],
+      "raw": "results/r2-raw/F/t01-book-by-author"
+    },
+    {
+      "run": "r2",
+      "arm": "F",
+      "armLabel": "7b code-shaped brief -> 1.5b function, spliced",
+      "task": "t02-book-page-count",
+      "pass": false,
+      "failClass": "tsc",
+      "detail": null,
+      "attempts": 1,
+      "tokensIn": 1250,
+      "tokensOut": 297,
+      "tokensByRole": {
+        "driver": {
+          "in": 698,
+          "out": 113
+        },
+        "coder": {
+          "in": 552,
+          "out": 184
+        }
+      },
+      "modelMs": 3600,
+      "wallMs": 4090,
+      "calls": 2,
+      "coderPromptMax": 635,
+      "tscErrors": [
+        "features/book/pages/BookPage.tsx(6,30): error TS2307: Cannot find module 'number-format' or its corresponding type declarations."
+      ],
+      "checkFailures": [
+        "build/load failed: Build failed with 1 error: | bench/isolation/.work/r2/F/t02-book-page-count/features/book/pages/BookPage.tsx:6:29: ERROR: Could not resolve \"number-format\""
+      ],
+      "raw": "results/r2-raw/F/t02-book-page-count"
+    },
+    {
+      "run": "r2",
+      "arm": "F",
+      "armLabel": "7b code-shaped brief -> 1.5b function, spliced",
+      "task": "t03-book-availability",
+      "pass": true,
+      "failClass": null,
+      "detail": null,
+      "attempts": 1,
+      "tokensIn": 1503,
+      "tokensOut": 586,
+      "tokensByRole": {
+        "driver": {
+          "in": 749,
+          "out": 315
+        },
+        "coder": {
+          "in": 754,
+          "out": 271
+        }
+      },
+      "modelMs": 7856,
+      "wallMs": 8362,
+      "calls": 2,
+      "coderPromptMax": 894,
+      "tscErrors": [],
+      "checkFailures": [],
+      "raw": "results/r2-raw/F/t03-book-availability"
+    },
+    {
+      "run": "r2",
+      "arm": "F",
+      "armLabel": "7b code-shaped brief -> 1.5b function, spliced",
+      "task": "t04-book-not-found",
+      "pass": true,
+      "failClass": null,
+      "detail": null,
+      "attempts": 1,
+      "tokensIn": 1327,
+      "tokensOut": 443,
+      "tokensByRole": {
+        "driver": {
+          "in": 684,
+          "out": 205
+        },
+        "coder": {
+          "in": 643,
+          "out": 238
+        }
+      },
+      "modelMs": 5583,
+      "wallMs": 6081,
+      "calls": 2,
+      "coderPromptMax": 775,
+      "tscErrors": [],
+      "checkFailures": [],
+      "raw": "results/r2-raw/F/t04-book-not-found"
+    },
+    {
+      "run": "r2",
+      "arm": "F",
+      "armLabel": "7b code-shaped brief -> 1.5b function, spliced",
+      "task": "t05-book-add-to-picks",
+      "pass": false,
+      "failClass": "tsc",
+      "detail": null,
+      "attempts": 1,
+      "tokensIn": 2337,
+      "tokensOut": 704,
+      "tokensByRole": {
+        "driver": {
+          "in": 1307,
+          "out": 415
+        },
+        "coder": {
+          "in": 1030,
+          "out": 289
+        }
+      },
+      "modelMs": 10363,
+      "wallMs": 10854,
+      "calls": 2,
+      "coderPromptMax": 1242,
+      "tscErrors": [
+        "features/book/pages/BookPage.tsx(11,67): error TS2304: Cannot find name 'ReactNode'.",
+        "features/book/pages/BookPage.tsx(22,7): error TS2552: Cannot find name 'setStatus'. Did you mean 'status'?",
+        "features/book/pages/BookPage.tsx(24,7): error TS2552: Cannot find name 'setStatus'. Did you mean 'status'?"
+      ],
+      "checkFailures": [
+        "check threw: status is not defined"
+      ],
+      "raw": "results/r2-raw/F/t05-book-add-to-picks"
+    },
+    {
+      "run": "r2",
+      "arm": "F",
+      "armLabel": "7b code-shaped brief -> 1.5b function, spliced",
+      "task": "t06-picks-store",
+      "pass": false,
+      "failClass": "format",
+      "detail": "no named declaration in the reply",
+      "attempts": 1,
+      "tokensIn": 734,
+      "tokensOut": 341,
+      "tokensByRole": {
+        "driver": {
+          "in": 353,
+          "out": 266
+        },
+        "coder": {
+          "in": 381,
+          "out": 75
+        }
+      },
+      "modelMs": 5471,
+      "wallMs": 5473,
+      "calls": 2,
+      "coderPromptMax": 447,
+      "tscErrors": null,
+      "checkFailures": null,
+      "raw": "results/r2-raw/F/t06-picks-store"
+    },
+    {
+      "run": "r2",
+      "arm": "F",
+      "armLabel": "7b code-shaped brief -> 1.5b function, spliced",
+      "task": "t07-picks-page-list",
+      "pass": false,
+      "failClass": "tsc",
+      "detail": null,
+      "attempts": 1,
+      "tokensIn": 1977,
+      "tokensOut": 741,
+      "tokensByRole": {
+        "driver": {
+          "in": 1090,
+          "out": 461
+        },
+        "coder": {
+          "in": 887,
+          "out": 280
+        }
+      },
+      "modelMs": 10998,
+      "wallMs": 11490,
+      "calls": 2,
+      "coderPromptMax": 1143,
+      "tscErrors": [
+        "features/picks/pages/PicksPage.tsx(5,10): error TS2305: Module '\"library/fixtures/books\"' has no exported member 'books'.",
+        "features/picks/pages/PicksPage.tsx(25,36): error TS7006: Parameter 'b' implicitly has an 'any' type."
+      ],
+      "checkFailures": [
+        "build/load failed: Build failed with 1 error: | bench/isolation/.work/r2/F/t07-picks-page-list/features/picks/pages/PicksPage.tsx:5:9: ERROR: No matching export in \"bench/isolation/.work/r2/F/t07-picks-page-list/library/fixtures/books.json\" for import \"books\""
+      ],
+      "raw": "results/r2-raw/F/t07-picks-page-list"
+    },
+    {
+      "run": "r2",
+      "arm": "F",
+      "armLabel": "7b code-shaped brief -> 1.5b function, spliced",
+      "task": "t08-picks-page-empty",
+      "pass": true,
+      "failClass": null,
+      "detail": null,
+      "attempts": 1,
+      "tokensIn": 1264,
+      "tokensOut": 318,
+      "tokensByRole": {
+        "driver": {
+          "in": 730,
+          "out": 234
+        },
+        "coder": {
+          "in": 534,
+          "out": 84
+        }
+      },
+      "modelMs": 5269,
+      "wallMs": 5750,
+      "calls": 2,
+      "coderPromptMax": 652,
+      "tscErrors": [],
+      "checkFailures": [],
+      "raw": "results/r2-raw/F/t08-picks-page-empty"
+    },
+    {
+      "run": "r2",
+      "arm": "F",
+      "armLabel": "7b code-shaped brief -> 1.5b function, spliced",
+      "task": "t09-browse-heading-availability",
+      "pass": true,
+      "failClass": null,
+      "detail": null,
+      "attempts": 1,
+      "tokensIn": 1451,
+      "tokensOut": 514,
+      "tokensByRole": {
+        "driver": {
+          "in": 728,
+          "out": 275
+        },
+        "coder": {
+          "in": 723,
+          "out": 239
+        }
+      },
+      "modelMs": 6843,
+      "wallMs": 7362,
+      "calls": 2,
+      "coderPromptMax": 859,
+      "tscErrors": [],
+      "checkFailures": [],
+      "raw": "results/r2-raw/F/t09-browse-heading-availability"
+    },
+    {
+      "run": "r2",
+      "arm": "F",
+      "armLabel": "7b code-shaped brief -> 1.5b function, spliced",
+      "task": "t10-browse-paging",
+      "pass": false,
+      "failClass": "tsc",
+      "detail": null,
+      "attempts": 1,
+      "tokensIn": 2219,
+      "tokensOut": 955,
+      "tokensByRole": {
+        "driver": {
+          "in": 1126,
+          "out": 519
+        },
+        "coder": {
+          "in": 1093,
+          "out": 436
+        }
+      },
+      "modelMs": 13155,
+      "wallMs": 13695,
+      "calls": 2,
+      "coderPromptMax": 1360,
+      "tscErrors": [
+        "features/browse/pages/BrowsePage.tsx(4,10): error TS2300: Duplicate identifier 'ListPage'.",
+        "features/browse/pages/BrowsePage.tsx(6,10): error TS2300: Duplicate identifier 'ListPage'.",
+        "features/browse/pages/BrowsePage.tsx(6,34): error TS2307: Cannot find module '../../../library' or its corresponding type declarations."
+      ],
+      "checkFailures": [
+        "build/load failed: Build failed with 1 error: | bench/isolation/.work/r2/F/t10-browse-paging/features/browse/pages/BrowsePage.tsx:6:33: ERROR: Could not resolve \"../../../library\""
+      ],
+      "raw": "results/r2-raw/F/t10-browse-paging"
+    },
+    {
+      "run": "r2",
+      "arm": "F",
+      "armLabel": "7b code-shaped brief -> 1.5b function, spliced",
+      "task": "t11-browse-sort-title",
+      "pass": true,
+      "failClass": null,
+      "detail": null,
+      "attempts": 1,
+      "tokensIn": 1537,
+      "tokensOut": 632,
+      "tokensByRole": {
+        "driver": {
+          "in": 709,
+          "out": 380
+        },
+        "coder": {
+          "in": 828,
+          "out": 252
+        }
+      },
+      "modelMs": 8898,
+      "wallMs": 9534,
+      "calls": 2,
+      "coderPromptMax": 1011,
+      "tscErrors": [],
+      "checkFailures": [],
+      "raw": "results/r2-raw/F/t11-browse-sort-title"
+    },
+    {
+      "run": "r2",
+      "arm": "F",
+      "armLabel": "7b code-shaped brief -> 1.5b function, spliced",
+      "task": "t12-browse-genre-filter",
+      "pass": false,
+      "failClass": "tsc",
+      "detail": null,
+      "attempts": 1,
+      "tokensIn": 1696,
+      "tokensOut": 925,
+      "tokensByRole": {
+        "driver": {
+          "in": 732,
+          "out": 516
+        },
+        "coder": {
+          "in": 964,
+          "out": 409
+        }
+      },
+      "modelMs": 13203,
+      "wallMs": 13815,
+      "calls": 2,
+      "coderPromptMax": 1209,
+      "tscErrors": [
+        "features/browse/pages/BrowsePage.tsx(24,9): error TS2657: JSX expressions must have one parent element."
+      ],
+      "checkFailures": [
+        "build/load failed: Build failed with 1 error: | bench/isolation/.work/r2/F/t12-browse-genre-filter/features/browse/pages/BrowsePage.tsx:25:16: ERROR: Expected \"}\" but found \"id\""
+      ],
+      "raw": "results/r2-raw/F/t12-browse-genre-filter"
+    },
+    {
+      "run": "r2",
+      "arm": "F-sr",
+      "armLabel": "7b code-shaped brief -> 1.5b search/replace",
+      "task": "t01-book-by-author",
+      "pass": false,
+      "failClass": "format",
+      "detail": "no SEARCH/REPLACE block",
+      "attempts": 1,
+      "tokensIn": 1552,
+      "tokensOut": 630,
+      "tokensByRole": {
+        "driver": {
+          "in": 697,
+          "out": 386
+        },
+        "coder": {
+          "in": 855,
+          "out": 244
+        }
+      },
+      "modelMs": 8866,
+      "wallMs": 8868,
+      "calls": 2,
+      "coderPromptMax": 1017,
+      "tscErrors": null,
+      "checkFailures": null,
+      "raw": "results/r2-raw/F-sr/t01-book-by-author"
+    },
+    {
+      "run": "r2",
+      "arm": "F-sr",
+      "armLabel": "7b code-shaped brief -> 1.5b search/replace",
+      "task": "t02-book-page-count",
+      "pass": false,
+      "failClass": "format",
+      "detail": "no SEARCH/REPLACE block",
+      "attempts": 1,
+      "tokensIn": 1280,
+      "tokensOut": 368,
+      "tokensByRole": {
+        "driver": {
+          "in": 698,
+          "out": 113
+        },
+        "coder": {
+          "in": 582,
+          "out": 255
+        }
+      },
+      "modelMs": 3455,
+      "wallMs": 3455,
+      "calls": 2,
+      "coderPromptMax": 686,
+      "tscErrors": null,
+      "checkFailures": null,
+      "raw": "results/r2-raw/F-sr/t02-book-page-count"
+    },
+    {
+      "run": "r2",
+      "arm": "F-sr",
+      "armLabel": "7b code-shaped brief -> 1.5b search/replace",
+      "task": "t03-book-availability",
+      "pass": false,
+      "failClass": "format",
+      "detail": "no SEARCH/REPLACE block",
+      "attempts": 1,
+      "tokensIn": 1533,
+      "tokensOut": 594,
+      "tokensByRole": {
+        "driver": {
+          "in": 749,
+          "out": 315
+        },
+        "coder": {
+          "in": 784,
+          "out": 279
+        }
+      },
+      "modelMs": 7209,
+      "wallMs": 7211,
+      "calls": 2,
+      "coderPromptMax": 945,
+      "tscErrors": null,
+      "checkFailures": null,
+      "raw": "results/r2-raw/F-sr/t03-book-availability"
+    },
+    {
+      "run": "r2",
+      "arm": "F-sr",
+      "armLabel": "7b code-shaped brief -> 1.5b search/replace",
+      "task": "t04-book-not-found",
+      "pass": false,
+      "failClass": "format",
+      "detail": "no SEARCH/REPLACE block",
+      "attempts": 1,
+      "tokensIn": 1357,
+      "tokensOut": 461,
+      "tokensByRole": {
+        "driver": {
+          "in": 684,
+          "out": 205
+        },
+        "coder": {
+          "in": 673,
+          "out": 256
+        }
+      },
+      "modelMs": 5110,
+      "wallMs": 5111,
+      "calls": 2,
+      "coderPromptMax": 826,
+      "tscErrors": null,
+      "checkFailures": null,
+      "raw": "results/r2-raw/F-sr/t04-book-not-found"
+    },
+    {
+      "run": "r2",
+      "arm": "F-sr",
+      "armLabel": "7b code-shaped brief -> 1.5b search/replace",
+      "task": "t05-book-add-to-picks",
+      "pass": false,
+      "failClass": "format",
+      "detail": "no SEARCH/REPLACE block",
+      "attempts": 1,
+      "tokensIn": 2367,
+      "tokensOut": 453,
+      "tokensByRole": {
+        "driver": {
+          "in": 1307,
+          "out": 415
+        },
+        "coder": {
+          "in": 1060,
+          "out": 38
+        }
+      },
+      "modelMs": 7833,
+      "wallMs": 7835,
+      "calls": 2,
+      "coderPromptMax": 1293,
+      "tscErrors": null,
+      "checkFailures": null,
+      "raw": "results/r2-raw/F-sr/t05-book-add-to-picks"
+    },
+    {
+      "run": "r2",
+      "arm": "F-sr",
+      "armLabel": "7b code-shaped brief -> 1.5b search/replace",
+      "task": "t06-picks-store",
+      "pass": false,
+      "failClass": "format",
+      "detail": "no SEARCH/REPLACE block",
+      "attempts": 1,
+      "tokensIn": 764,
+      "tokensOut": 312,
+      "tokensByRole": {
+        "driver": {
+          "in": 353,
+          "out": 266
+        },
+        "coder": {
+          "in": 411,
+          "out": 46
+        }
+      },
+      "modelMs": 5024,
+      "wallMs": 5025,
+      "calls": 2,
+      "coderPromptMax": 498,
+      "tscErrors": null,
+      "checkFailures": null,
+      "raw": "results/r2-raw/F-sr/t06-picks-store"
+    },
+    {
+      "run": "r2",
+      "arm": "F-sr",
+      "armLabel": "7b code-shaped brief -> 1.5b search/replace",
+      "task": "t07-picks-page-list",
+      "pass": false,
+      "failClass": "format",
+      "detail": "no SEARCH/REPLACE block",
+      "attempts": 1,
+      "tokensIn": 2007,
+      "tokensOut": 528,
+      "tokensByRole": {
+        "driver": {
+          "in": 1090,
+          "out": 461
+        },
+        "coder": {
+          "in": 917,
+          "out": 67
+        }
+      },
+      "modelMs": 8718,
+      "wallMs": 8719,
+      "calls": 2,
+      "coderPromptMax": 1194,
+      "tscErrors": null,
+      "checkFailures": null,
+      "raw": "results/r2-raw/F-sr/t07-picks-page-list"
+    },
+    {
+      "run": "r2",
+      "arm": "F-sr",
+      "armLabel": "7b code-shaped brief -> 1.5b search/replace",
+      "task": "t08-picks-page-empty",
+      "pass": false,
+      "failClass": "format",
+      "detail": "no SEARCH/REPLACE block",
+      "attempts": 1,
+      "tokensIn": 1294,
+      "tokensOut": 334,
+      "tokensByRole": {
+        "driver": {
+          "in": 730,
+          "out": 234
+        },
+        "coder": {
+          "in": 564,
+          "out": 100
+        }
+      },
+      "modelMs": 4792,
+      "wallMs": 4796,
+      "calls": 2,
+      "coderPromptMax": 703,
+      "tscErrors": null,
+      "checkFailures": null,
+      "raw": "results/r2-raw/F-sr/t08-picks-page-empty"
+    },
+    {
+      "run": "r2",
+      "arm": "F-sr",
+      "armLabel": "7b code-shaped brief -> 1.5b search/replace",
+      "task": "t09-browse-heading-availability",
+      "pass": false,
+      "failClass": "format",
+      "detail": "no SEARCH/REPLACE block",
+      "attempts": 1,
+      "tokensIn": 1452,
+      "tokensOut": 505,
+      "tokensByRole": {
+        "driver": {
+          "in": 728,
+          "out": 246
+        },
+        "coder": {
+          "in": 724,
+          "out": 259
+        }
+      },
+      "modelMs": 5925,
+      "wallMs": 5925,
+      "calls": 2,
+      "coderPromptMax": 868,
+      "tscErrors": null,
+      "checkFailures": null,
+      "raw": "results/r2-raw/F-sr/t09-browse-heading-availability"
+    },
+    {
+      "run": "r2",
+      "arm": "F-sr",
+      "armLabel": "7b code-shaped brief -> 1.5b search/replace",
+      "task": "t10-browse-paging",
+      "pass": false,
+      "failClass": "format",
+      "detail": "no SEARCH/REPLACE block",
+      "attempts": 1,
+      "tokensIn": 2249,
+      "tokensOut": 955,
+      "tokensByRole": {
+        "driver": {
+          "in": 1126,
+          "out": 519
+        },
+        "coder": {
+          "in": 1123,
+          "out": 436
+        }
+      },
+      "modelMs": 11783,
+      "wallMs": 11785,
+      "calls": 2,
+      "coderPromptMax": 1411,
+      "tscErrors": null,
+      "checkFailures": null,
+      "raw": "results/r2-raw/F-sr/t10-browse-paging"
+    },
+    {
+      "run": "r2",
+      "arm": "F-sr",
+      "armLabel": "7b code-shaped brief -> 1.5b search/replace",
+      "task": "t11-browse-sort-title",
+      "pass": false,
+      "failClass": "format",
+      "detail": "no SEARCH/REPLACE block",
+      "attempts": 1,
+      "tokensIn": 1567,
+      "tokensOut": 632,
+      "tokensByRole": {
+        "driver": {
+          "in": 709,
+          "out": 380
+        },
+        "coder": {
+          "in": 858,
+          "out": 252
+        }
+      },
+      "modelMs": 8243,
+      "wallMs": 8244,
+      "calls": 2,
+      "coderPromptMax": 1062,
+      "tscErrors": null,
+      "checkFailures": null,
+      "raw": "results/r2-raw/F-sr/t11-browse-sort-title"
+    },
+    {
+      "run": "r2",
+      "arm": "F-sr",
+      "armLabel": "7b code-shaped brief -> 1.5b search/replace",
+      "task": "t12-browse-genre-filter",
+      "pass": false,
+      "failClass": "format",
+      "detail": "no SEARCH/REPLACE block",
+      "attempts": 1,
+      "tokensIn": 1726,
+      "tokensOut": 925,
+      "tokensByRole": {
+        "driver": {
+          "in": 732,
+          "out": 516
+        },
+        "coder": {
+          "in": 994,
+          "out": 409
+        }
+      },
+      "modelMs": 11548,
+      "wallMs": 11549,
+      "calls": 2,
+      "coderPromptMax": 1260,
+      "tscErrors": null,
+      "checkFailures": null,
+      "raw": "results/r2-raw/F-sr/t12-browse-genre-filter"
+    },
+    {
+      "run": "r2",
+      "arm": "G",
+      "armLabel": "7b skeleton -> 1.5b FIM body (instruct tag)",
+      "task": "t01-book-by-author",
+      "pass": false,
+      "failClass": "check",
+      "detail": null,
+      "attempts": 1,
+      "tokensIn": 868,
+      "tokensOut": 300,
+      "tokensByRole": {
+        "driver": {
+          "in": 675,
+          "out": 200
+        },
+        "coder": {
+          "in": 193,
+          "out": 100
+        }
+      },
+      "modelMs": 5563,
+      "wallMs": 6169,
+      "calls": 2,
+      "coderPromptMax": 228,
+      "tscErrors": [],
+      "checkFailures": [
+        "missing text \"by Ines Okafor\"",
+        "missing text \"by Mara Quill\" (copper-roads)"
+      ],
+      "raw": "results/r2-raw/G/t01-book-by-author"
+    },
+    {
+      "run": "r2",
+      "arm": "G",
+      "armLabel": "7b skeleton -> 1.5b FIM body (instruct tag)",
+      "task": "t02-book-page-count",
+      "pass": false,
+      "failClass": "check",
+      "detail": null,
+      "attempts": 1,
+      "tokensIn": 916,
+      "tokensOut": 263,
+      "tokensByRole": {
+        "driver": {
+          "in": 676,
+          "out": 253
+        },
+        "coder": {
+          "in": 240,
+          "out": 10
+        }
+      },
+      "modelMs": 4975,
+      "wallMs": 5470,
+      "calls": 2,
+      "coderPromptMax": 275,
+      "tscErrors": [],
+      "checkFailures": [
+        "missing text \"312 pages\"",
+        "missing text \"248 pages\" (orchard-at-night)"
+      ],
+      "raw": "results/r2-raw/G/t02-book-page-count"
+    },
+    {
+      "run": "r2",
+      "arm": "G",
+      "armLabel": "7b skeleton -> 1.5b FIM body (instruct tag)",
+      "task": "t03-book-availability",
+      "pass": false,
+      "failClass": "tsc",
+      "detail": null,
+      "attempts": 1,
+      "tokensIn": 967,
+      "tokensOut": 1271,
+      "tokensByRole": {
+        "driver": {
+          "in": 727,
+          "out": 247
+        },
+        "coder": {
+          "in": 240,
+          "out": 1024
+        }
+      },
+      "modelMs": 10832,
+      "wallMs": 11511,
+      "calls": 2,
+      "coderPromptMax": 274,
+      "tscErrors": [
+        "features/book/pages/BookPage.tsx(3,8): error TS2300: Duplicate identifier 'Link'.",
+        "features/book/pages/BookPage.tsx(4,10): error TS2300: Duplicate identifier 'DetailPage'.",
+        "features/book/pages/BookPage.tsx(5,8): error TS2300: Duplicate identifier 'books'.",
+        "features/book/pages/BookPage.tsx(7,6): error TS2300: Duplicate identifier 'Book'.",
+        "features/book/pages/BookPage.tsx(9,17): error TS2323: Cannot redeclare exported variable 'BookPage'.",
+        "features/book/pages/BookPage.tsx(9,17): error TS2393: Duplicate function implementation.",
+        "features/book/pages/BookPage.tsx(32,8): error TS2300: Duplicate identifier 'Link'.",
+        "features/book/pages/BookPage.tsx(33,10): error TS2300: Duplicate identifier 'DetailPage'."
+      ],
+      "checkFailures": [
+        "build/load failed: Build failed with 8 errors: | bench/isolation/.work/r2/G/t03-book-availability/features/book/pages/BookPage.tsx:38:16: ERROR: Multiple exports with the same name \"BookPage\" | bench/isolation/.work/r2/G/t03-book-availability/features/book/pages/BookPage.tsx:64:16: ERROR: Multiple exports with the same name \"BookPage\""
+      ],
+      "raw": "results/r2-raw/G/t03-book-availability"
+    },
+    {
+      "run": "r2",
+      "arm": "G",
+      "armLabel": "7b skeleton -> 1.5b FIM body (instruct tag)",
+      "task": "t04-book-not-found",
+      "pass": false,
+      "failClass": "format",
+      "detail": "driver skeleton has no /*FILL*/ marker",
+      "attempts": 1,
+      "tokensIn": 662,
+      "tokensOut": 256,
+      "tokensByRole": {
+        "driver": {
+          "in": 662,
+          "out": 256
+        },
+        "coder": {
+          "in": 0,
+          "out": 0
+        }
+      },
+      "modelMs": 5108,
+      "wallMs": 5108,
+      "calls": 1,
+      "coderPromptMax": 0,
+      "tscErrors": null,
+      "checkFailures": null,
+      "raw": "results/r2-raw/G/t04-book-not-found"
+    },
+    {
+      "run": "r2",
+      "arm": "G",
+      "armLabel": "7b skeleton -> 1.5b FIM body (instruct tag)",
+      "task": "t05-book-add-to-picks",
+      "pass": true,
+      "failClass": null,
+      "detail": null,
+      "attempts": 1,
+      "tokensIn": 1653,
+      "tokensOut": 398,
+      "tokensByRole": {
+        "driver": {
+          "in": 1285,
+          "out": 375
+        },
+        "coder": {
+          "in": 368,
+          "out": 23
+        }
+      },
+      "modelMs": 7972,
+      "wallMs": 8615,
+      "calls": 2,
+      "coderPromptMax": 435,
+      "tscErrors": [],
+      "checkFailures": [],
+      "raw": "results/r2-raw/G/t05-book-add-to-picks"
+    },
+    {
+      "run": "r2",
+      "arm": "G",
+      "armLabel": "7b skeleton -> 1.5b FIM body (instruct tag)",
+      "task": "t06-picks-store",
+      "pass": false,
+      "failClass": "format",
+      "detail": "driver skeleton has no /*FILL*/ marker",
+      "attempts": 1,
+      "tokensIn": 331,
+      "tokensOut": 180,
+      "tokensByRole": {
+        "driver": {
+          "in": 331,
+          "out": 180
+        },
+        "coder": {
+          "in": 0,
+          "out": 0
+        }
+      },
+      "modelMs": 3400,
+      "wallMs": 3400,
+      "calls": 1,
+      "coderPromptMax": 0,
+      "tscErrors": null,
+      "checkFailures": null,
+      "raw": "results/r2-raw/G/t06-picks-store"
+    },
+    {
+      "run": "r2",
+      "arm": "G",
+      "armLabel": "7b skeleton -> 1.5b FIM body (instruct tag)",
+      "task": "t07-picks-page-list",
+      "pass": false,
+      "failClass": "format",
+      "detail": "driver skeleton has no /*FILL*/ marker",
+      "attempts": 1,
+      "tokensIn": 1068,
+      "tokensOut": 251,
+      "tokensByRole": {
+        "driver": {
+          "in": 1068,
+          "out": 251
+        },
+        "coder": {
+          "in": 0,
+          "out": 0
+        }
+      },
+      "modelMs": 5289,
+      "wallMs": 5289,
+      "calls": 1,
+      "coderPromptMax": 0,
+      "tscErrors": null,
+      "checkFailures": null,
+      "raw": "results/r2-raw/G/t07-picks-page-list"
+    },
+    {
+      "run": "r2",
+      "arm": "G",
+      "armLabel": "7b skeleton -> 1.5b FIM body (instruct tag)",
+      "task": "t08-picks-page-empty",
+      "pass": false,
+      "failClass": "format",
+      "detail": "driver skeleton has no /*FILL*/ marker",
+      "attempts": 1,
+      "tokensIn": 708,
+      "tokensOut": 116,
+      "tokensByRole": {
+        "driver": {
+          "in": 708,
+          "out": 116
+        },
+        "coder": {
+          "in": 0,
+          "out": 0
+        }
+      },
+      "modelMs": 2547,
+      "wallMs": 2549,
+      "calls": 1,
+      "coderPromptMax": 0,
+      "tscErrors": null,
+      "checkFailures": null,
+      "raw": "results/r2-raw/G/t08-picks-page-empty"
+    },
+    {
+      "run": "r2",
+      "arm": "G",
+      "armLabel": "7b skeleton -> 1.5b FIM body (instruct tag)",
+      "task": "t09-browse-heading-availability",
+      "pass": false,
+      "failClass": "tsc",
+      "detail": null,
+      "attempts": 1,
+      "tokensIn": 945,
+      "tokensOut": 1270,
+      "tokensByRole": {
+        "driver": {
+          "in": 706,
+          "out": 246
+        },
+        "coder": {
+          "in": 239,
+          "out": 1024
+        }
+      },
+      "modelMs": 10510,
+      "wallMs": 10870,
+      "calls": 2,
+      "coderPromptMax": 288,
+      "tscErrors": [
+        "features/browse/pages/BrowsePage.tsx(126,10): error TS17008: JSX element 'h2' has no corresponding closing tag.",
+        "features/browse/pages/BrowsePage.tsx(127,9): error TS1005: '}' expected.",
+        "features/browse/pages/BrowsePage.tsx(128,9): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?"
+      ],
+      "checkFailures": [
+        "build/load failed: Build failed with 1 error: | bench/isolation/.work/r2/G/t09-browse-heading-availability/features/browse/pages/BrowsePage.tsx:127:18: ERROR: Unterminated regular expression"
+      ],
+      "raw": "results/r2-raw/G/t09-browse-heading-availability"
+    },
+    {
+      "run": "r2",
+      "arm": "G",
+      "armLabel": "7b skeleton -> 1.5b FIM body (instruct tag)",
+      "task": "t10-browse-paging",
+      "pass": false,
+      "failClass": "format",
+      "detail": "driver skeleton has no /*FILL*/ marker",
+      "attempts": 1,
+      "tokensIn": 1104,
+      "tokensOut": 506,
+      "tokensByRole": {
+        "driver": {
+          "in": 1104,
+          "out": 506
+        },
+        "coder": {
+          "in": 0,
+          "out": 0
+        }
+      },
+      "modelMs": 9915,
+      "wallMs": 9915,
+      "calls": 1,
+      "coderPromptMax": 0,
+      "tscErrors": null,
+      "checkFailures": null,
+      "raw": "results/r2-raw/G/t10-browse-paging"
+    },
+    {
+      "run": "r2",
+      "arm": "G",
+      "armLabel": "7b skeleton -> 1.5b FIM body (instruct tag)",
+      "task": "t11-browse-sort-title",
+      "pass": true,
+      "failClass": null,
+      "detail": null,
+      "attempts": 1,
+      "tokensIn": 937,
+      "tokensOut": 293,
+      "tokensByRole": {
+        "driver": {
+          "in": 687,
+          "out": 272
+        },
+        "coder": {
+          "in": 250,
+          "out": 21
+        }
+      },
+      "modelMs": 5525,
+      "wallMs": 6037,
+      "calls": 2,
+      "coderPromptMax": 301,
+      "tscErrors": [],
+      "checkFailures": [],
+      "raw": "results/r2-raw/G/t11-browse-sort-title"
+    },
+    {
+      "run": "r2",
+      "arm": "G",
+      "armLabel": "7b skeleton -> 1.5b FIM body (instruct tag)",
+      "task": "t12-browse-genre-filter",
+      "pass": false,
+      "failClass": "format",
+      "detail": "driver skeleton has no /*FILL*/ marker",
+      "attempts": 1,
+      "tokensIn": 710,
+      "tokensOut": 392,
+      "tokensByRole": {
+        "driver": {
+          "in": 710,
+          "out": 392
+        },
+        "coder": {
+          "in": 0,
+          "out": 0
+        }
+      },
+      "modelMs": 7438,
+      "wallMs": 7439,
+      "calls": 1,
+      "coderPromptMax": 0,
+      "tscErrors": null,
+      "checkFailures": null,
+      "raw": "results/r2-raw/G/t12-browse-genre-filter"
+    },
+    {
+      "run": "r2",
+      "arm": "H",
+      "armLabel": "blocks: briefBuilder -> 1.5b best-of-5 -> splice (no driver)",
+      "task": "t01-book-by-author",
+      "pass": true,
+      "failClass": null,
+      "detail": null,
+      "attempts": 2,
+      "tokensIn": 1524,
+      "tokensOut": 516,
+      "tokensByRole": {
+        "driver": {
+          "in": 0,
+          "out": 0
+        },
+        "coder": {
+          "in": 1524,
+          "out": 516
+        }
+      },
+      "modelMs": 3038,
+      "wallMs": 3570,
+      "calls": 2,
+      "coderPromptMax": 903,
+      "nStats": {
+        "1": {
+          "pass": false,
+          "tscPickerPass": false,
+          "wallMs": 2059,
+          "drawn": 1
+        },
+        "3": {
+          "pass": true,
+          "tscPickerPass": true,
+          "wallMs": 3565,
+          "drawn": 2
+        },
+        "5": {
+          "pass": true,
+          "tscPickerPass": true,
+          "wallMs": 3565,
+          "drawn": 2
+        }
+      },
+      "sampleClasses": [
+        "fragment",
+        "pass"
+      ],
+      "briefTokens": [
+        845
+      ],
+      "tscErrors": [],
+      "checkFailures": [],
+      "raw": "results/r2-raw/H/t01-book-by-author"
+    },
+    {
+      "run": "r2",
+      "arm": "H",
+      "armLabel": "blocks: briefBuilder -> 1.5b best-of-5 -> splice (no driver)",
+      "task": "t02-book-page-count",
+      "pass": true,
+      "failClass": null,
+      "detail": null,
+      "attempts": 2,
+      "tokensIn": 1526,
+      "tokensOut": 536,
+      "tokensByRole": {
+        "driver": {
+          "in": 0,
+          "out": 0
+        },
+        "coder": {
+          "in": 1526,
+          "out": 536
+        }
+      },
+      "modelMs": 3121,
+      "wallMs": 3830,
+      "calls": 2,
+      "coderPromptMax": 904,
+      "nStats": {
+        "1": {
+          "pass": false,
+          "tscPickerPass": false,
+          "wallMs": 2032,
+          "drawn": 1
+        },
+        "3": {
+          "pass": true,
+          "tscPickerPass": true,
+          "wallMs": 3828,
+          "drawn": 2
+        },
+        "5": {
+          "pass": true,
+          "tscPickerPass": true,
+          "wallMs": 3828,
+          "drawn": 2
+        }
+      },
+      "sampleClasses": [
+        "fragment",
+        "pass"
+      ],
+      "briefTokens": [
+        846
+      ],
+      "tscErrors": [],
+      "checkFailures": [],
+      "raw": "results/r2-raw/H/t02-book-page-count"
+    },
+    {
+      "run": "r2",
+      "arm": "H",
+      "armLabel": "blocks: briefBuilder -> 1.5b best-of-5 -> splice (no driver)",
+      "task": "t03-book-availability",
+      "pass": true,
+      "failClass": null,
+      "detail": null,
+      "attempts": 3,
+      "tokensIn": 2442,
+      "tokensOut": 726,
+      "tokensByRole": {
+        "driver": {
+          "in": 0,
+          "out": 0
+        },
+        "coder": {
+          "in": 2442,
+          "out": 726
+        }
+      },
+      "modelMs": 4208,
+      "wallMs": 5158,
+      "calls": 3,
+      "coderPromptMax": 976,
+      "nStats": {
+        "1": {
+          "pass": false,
+          "tscPickerPass": false,
+          "wallMs": 2201,
+          "drawn": 1
+        },
+        "3": {
+          "pass": true,
+          "tscPickerPass": false,
+          "wallMs": 5155,
+          "drawn": 3
+        },
+        "5": {
+          "pass": true,
+          "tscPickerPass": false,
+          "wallMs": 5155,
+          "drawn": 3
+        }
+      },
+      "sampleClasses": [
+        "fragment",
+        "check",
+        "pass"
+      ],
+      "briefTokens": [
+        919
+      ],
+      "tscErrors": [],
+      "checkFailures": [],
+      "raw": "results/r2-raw/H/t03-book-availability"
+    },
+    {
+      "run": "r2",
+      "arm": "H",
+      "armLabel": "blocks: briefBuilder -> 1.5b best-of-5 -> splice (no driver)",
+      "task": "t04-book-not-found",
+      "pass": false,
+      "failClass": "fragment",
+      "detail": "reply has 2 top-level statements, expected one function (Book, BookPage)",
+      "attempts": 5,
+      "tokensIn": 3745,
+      "tokensOut": 1097,
+      "tokensByRole": {
+        "driver": {
+          "in": 0,
+          "out": 0
+        },
+        "coder": {
+          "in": 3745,
+          "out": 1097
+        }
+      },
+      "modelMs": 6261,
+      "wallMs": 7703,
+      "calls": 5,
+      "coderPromptMax": 895,
+      "nStats": {
+        "1": {
+          "pass": false,
+          "tscPickerPass": false,
+          "wallMs": 1877,
+          "drawn": 1
+        },
+        "3": {
+          "pass": false,
+          "tscPickerPass": false,
+          "wallMs": 4890,
+          "drawn": 3
+        },
+        "5": {
+          "pass": false,
+          "tscPickerPass": false,
+          "wallMs": 7701,
+          "drawn": 5
+        }
+      },
+      "sampleClasses": [
+        "fragment",
+        "check",
+        "check",
+        "check",
+        "fragment"
+      ],
+      "briefTokens": [
+        837
+      ],
+      "tscErrors": null,
+      "checkFailures": null,
+      "raw": "results/r2-raw/H/t04-book-not-found"
+    },
+    {
+      "run": "r2",
+      "arm": "H",
+      "armLabel": "blocks: briefBuilder -> 1.5b best-of-5 -> splice (no driver)",
+      "task": "t05-book-add-to-picks",
+      "pass": false,
+      "failClass": "fragment",
+      "detail": "reply does not parse: Declaration or statement expected.",
+      "attempts": 5,
+      "tokensIn": 5270,
+      "tokensOut": 2676,
+      "tokensByRole": {
+        "driver": {
+          "in": 0,
+          "out": 0
+        },
+        "coder": {
+          "in": 5270,
+          "out": 2676
+        }
+      },
+      "modelMs": 15720,
+      "wallMs": 16254,
+      "calls": 5,
+      "coderPromptMax": 1297,
+      "nStats": {
+        "1": {
+          "pass": false,
+          "tscPickerPass": false,
+          "wallMs": 3383,
+          "drawn": 1
+        },
+        "3": {
+          "pass": false,
+          "tscPickerPass": false,
+          "wallMs": 10289,
+          "drawn": 3
+        },
+        "5": {
+          "pass": false,
+          "tscPickerPass": false,
+          "wallMs": 16250,
+          "drawn": 5
+        }
+      },
+      "sampleClasses": [
+        "fragment",
+        "fragment",
+        "fragment",
+        "check",
+        "fragment"
+      ],
+      "briefTokens": [
+        1240
+      ],
+      "tscErrors": null,
+      "checkFailures": null,
+      "raw": "results/r2-raw/H/t05-book-add-to-picks"
+    },
+    {
+      "run": "r2",
+      "arm": "H",
+      "armLabel": "blocks: briefBuilder -> 1.5b best-of-5 -> splice (no driver)",
+      "task": "t06-picks-store",
+      "pass": true,
+      "failClass": null,
+      "detail": null,
+      "attempts": 3,
+      "tokensIn": 1279,
+      "tokensOut": 136,
+      "tokensByRole": {
+        "driver": {
+          "in": 0,
+          "out": 0
+        },
+        "coder": {
+          "in": 1279,
+          "out": 136
+        }
+      },
+      "modelMs": 975,
+      "wallMs": 2376,
+      "calls": 3,
+      "coderPromptMax": 559,
+      "sampleClasses": [
+        "pass"
+      ],
+      "briefTokens": [
+        498,
+        498,
+        501
+      ],
+      "tscErrors": [],
+      "checkFailures": [],
+      "raw": "results/r2-raw/H/t06-picks-store"
+    },
+    {
+      "run": "r2",
+      "arm": "H",
+      "armLabel": "blocks: briefBuilder -> 1.5b best-of-5 -> splice (no driver)",
+      "task": "t07-picks-page-list",
+      "pass": true,
+      "failClass": null,
+      "detail": null,
+      "attempts": 1,
+      "tokensIn": 902,
+      "tokensOut": 219,
+      "tokensByRole": {
+        "driver": {
+          "in": 0,
+          "out": 0
+        },
+        "coder": {
+          "in": 902,
+          "out": 219
+        }
+      },
+      "modelMs": 1374,
+      "wallMs": 1884,
+      "calls": 1,
+      "coderPromptMax": 1138,
+      "nStats": {
+        "1": {
+          "pass": true,
+          "tscPickerPass": true,
+          "wallMs": 1883,
+          "drawn": 1
+        },
+        "3": {
+          "pass": true,
+          "tscPickerPass": true,
+          "wallMs": 1883,
+          "drawn": 1
+        },
+        "5": {
+          "pass": true,
+          "tscPickerPass": true,
+          "wallMs": 1883,
+          "drawn": 1
+        }
+      },
+      "sampleClasses": [
+        "pass"
+      ],
+      "briefTokens": [
+        1080
+      ],
+      "tscErrors": [],
+      "checkFailures": [],
+      "raw": "results/r2-raw/H/t07-picks-page-list"
+    },
+    {
+      "run": "r2",
+      "arm": "H",
+      "armLabel": "blocks: briefBuilder -> 1.5b best-of-5 -> splice (no driver)",
+      "task": "t08-picks-page-empty",
+      "pass": false,
+      "failClass": "tsc",
+      "detail": null,
+      "attempts": 5,
+      "tokensIn": 3740,
+      "tokensOut": 1400,
+      "tokensByRole": {
+        "driver": {
+          "in": 0,
+          "out": 0
+        },
+        "coder": {
+          "in": 3740,
+          "out": 1400
+        }
+      },
+      "modelMs": 8116,
+      "wallMs": 10618,
+      "calls": 5,
+      "coderPromptMax": 920,
+      "nStats": {
+        "1": {
+          "pass": false,
+          "tscPickerPass": false,
+          "wallMs": 2380,
+          "drawn": 1
+        },
+        "3": {
+          "pass": false,
+          "tscPickerPass": false,
+          "wallMs": 6388,
+          "drawn": 3
+        },
+        "5": {
+          "pass": false,
+          "tscPickerPass": false,
+          "wallMs": 10615,
+          "drawn": 5
+        }
+      },
+      "sampleClasses": [
+        "fragment",
+        "fragment",
+        "tsc",
+        "tsc",
+        "tsc"
+      ],
+      "briefTokens": [
+        862
+      ],
+      "tscErrors": [
+        "features/picks/pages/PicksPage.tsx(25,14): error TS2304: Cannot find name 'Button'."
+      ],
+      "checkFailures": [],
+      "raw": "results/r2-raw/H/t08-picks-page-empty"
+    },
+    {
+      "run": "r2",
+      "arm": "H",
+      "armLabel": "blocks: briefBuilder -> 1.5b best-of-5 -> splice (no driver)",
+      "task": "t09-browse-heading-availability",
+      "pass": true,
+      "failClass": null,
+      "detail": null,
+      "attempts": 2,
+      "tokensIn": 1588,
+      "tokensOut": 525,
+      "tokensByRole": {
+        "driver": {
+          "in": 0,
+          "out": 0
+        },
+        "coder": {
+          "in": 1588,
+          "out": 525
+        }
+      },
+      "modelMs": 3069,
+      "wallMs": 3578,
+      "calls": 2,
+      "coderPromptMax": 968,
+      "nStats": {
+        "1": {
+          "pass": false,
+          "tscPickerPass": false,
+          "wallMs": 2057,
+          "drawn": 1
+        },
+        "3": {
+          "pass": true,
+          "tscPickerPass": true,
+          "wallMs": 3576,
+          "drawn": 2
+        },
+        "5": {
+          "pass": true,
+          "tscPickerPass": true,
+          "wallMs": 3576,
+          "drawn": 2
+        }
+      },
+      "sampleClasses": [
+        "fragment",
+        "pass"
+      ],
+      "briefTokens": [
+        910
+      ],
+      "tscErrors": [],
+      "checkFailures": [],
+      "raw": "results/r2-raw/H/t09-browse-heading-availability"
+    },
+    {
+      "run": "r2",
+      "arm": "H",
+      "armLabel": "blocks: briefBuilder -> 1.5b best-of-5 -> splice (no driver)",
+      "task": "t10-browse-paging",
+      "pass": true,
+      "failClass": null,
+      "detail": null,
+      "attempts": 5,
+      "tokensIn": 5110,
+      "tokensOut": 1641,
+      "tokensByRole": {
+        "driver": {
+          "in": 0,
+          "out": 0
+        },
+        "coder": {
+          "in": 5110,
+          "out": 1641
+        }
+      },
+      "modelMs": 9869,
+      "wallMs": 12687,
+      "calls": 5,
+      "coderPromptMax": 1265,
+      "nStats": {
+        "1": {
+          "pass": false,
+          "tscPickerPass": false,
+          "wallMs": 2610,
+          "drawn": 1
+        },
+        "3": {
+          "pass": false,
+          "tscPickerPass": false,
+          "wallMs": 7879,
+          "drawn": 3
+        },
+        "5": {
+          "pass": true,
+          "tscPickerPass": false,
+          "wallMs": 12684,
+          "drawn": 5
+        }
+      },
+      "sampleClasses": [
+        "fragment",
+        "check",
+        "check",
+        "check",
+        "pass"
+      ],
+      "briefTokens": [
+        1207
+      ],
+      "tscErrors": [],
+      "checkFailures": [],
+      "raw": "results/r2-raw/H/t10-browse-paging"
+    },
+    {
+      "run": "r2",
+      "arm": "H",
+      "armLabel": "blocks: briefBuilder -> 1.5b best-of-5 -> splice (no driver)",
+      "task": "t11-browse-sort-title",
+      "pass": true,
+      "failClass": null,
+      "detail": null,
+      "attempts": 2,
+      "tokensIn": 1312,
+      "tokensOut": 540,
+      "tokensByRole": {
+        "driver": {
+          "in": 0,
+          "out": 0
+        },
+        "coder": {
+          "in": 1312,
+          "out": 540
+        }
+      },
+      "modelMs": 3217,
+      "wallMs": 3730,
+      "calls": 2,
+      "coderPromptMax": 806,
+      "nStats": {
+        "1": {
+          "pass": false,
+          "tscPickerPass": false,
+          "wallMs": 2112,
+          "drawn": 1
+        },
+        "3": {
+          "pass": true,
+          "tscPickerPass": true,
+          "wallMs": 3728,
+          "drawn": 2
+        },
+        "5": {
+          "pass": true,
+          "tscPickerPass": true,
+          "wallMs": 3728,
+          "drawn": 2
+        }
+      },
+      "sampleClasses": [
+        "fragment",
+        "pass"
+      ],
+      "briefTokens": [
+        748
+      ],
+      "tscErrors": [],
+      "checkFailures": [],
+      "raw": "results/r2-raw/H/t11-browse-sort-title"
+    },
+    {
+      "run": "r2",
+      "arm": "H",
+      "armLabel": "blocks: briefBuilder -> 1.5b best-of-5 -> splice (no driver)",
+      "task": "t12-browse-genre-filter",
+      "pass": false,
+      "failClass": "check",
+      "detail": null,
+      "attempts": 5,
+      "tokensIn": 4020,
+      "tokensOut": 1368,
+      "tokensByRole": {
+        "driver": {
+          "in": 0,
+          "out": 0
+        },
+        "coder": {
+          "in": 4020,
+          "out": 1368
+        }
+      },
+      "modelMs": 7898,
+      "wallMs": 9801,
+      "calls": 5,
+      "coderPromptMax": 1001,
+      "nStats": {
+        "1": {
+          "pass": false,
+          "tscPickerPass": false,
+          "wallMs": 1808,
+          "drawn": 1
+        },
+        "3": {
+          "pass": false,
+          "tscPickerPass": false,
+          "wallMs": 6156,
+          "drawn": 3
+        },
+        "5": {
+          "pass": false,
+          "tscPickerPass": false,
+          "wallMs": 9798,
+          "drawn": 5
+        }
+      },
+      "sampleClasses": [
+        "check",
+        "fragment",
+        "check",
+        "check",
+        "check"
+      ],
+      "briefTokens": [
+        943
+      ],
+      "tscErrors": [],
+      "checkFailures": [
+        "History: got [\"Salt and Lanterns\",\"Orchard at Night\",\"Glass Harbour\",\"Winter Ferry\",\"Kestrel Street\",\"Bridges of Empire\",\"Copper Roads\",\"Cartographers at War\",\"River Kings\",\"Harvest Years\",\"Quiet Atoms\",\"Tides Explained\",\"Deep Time Notes\",\"Moss and Mycelium\",\"Electric Weather\"]"
+      ],
+      "raw": "results/r2-raw/H/t12-browse-genre-filter"
+    },
+    {
+      "run": "r2",
+      "arm": "I",
+      "armLabel": "qwen3:4b tool-calling driver over the blocks",
+      "task": "t01-book-by-author",
+      "pass": true,
+      "failClass": null,
+      "detail": null,
+      "attempts": 1,
+      "tokensIn": 16546,
+      "tokensOut": 3179,
+      "tokensByRole": {
+        "driver": {
+          "in": 15755,
+          "out": 3007
+        },
+        "coder": {
+          "in": 791,
+          "out": 172
+        }
+      },
+      "modelMs": 44182,
+      "wallMs": 46113,
+      "calls": 7,
+      "coderPromptMax": 934,
+      "toolLog": {
+        "turns": 6,
+        "nativeTurns": 5,
+        "toolCalls": 5,
+        "rightTool": 5,
+        "sequence": [
+          "brief",
+          "code",
+          "splice",
+          "check",
+          "done"
+        ],
+        "drawn": 1,
+        "nativeRate": 0.8333333333333334,
+        "rightRate": 1,
+        "repairs": 0,
+        "calledDone": true
+      },
+      "tscErrors": [],
+      "checkFailures": [],
+      "raw": "results/r2-raw/I/t01-book-by-author"
+    },
+    {
+      "run": "r2",
+      "arm": "I",
+      "armLabel": "qwen3:4b tool-calling driver over the blocks",
+      "task": "t02-book-page-count",
+      "pass": true,
+      "failClass": null,
+      "detail": null,
+      "attempts": 1,
+      "tokensIn": 21640,
+      "tokensOut": 3764,
+      "tokensByRole": {
+        "driver": {
+          "in": 20837,
+          "out": 3583
+        },
+        "coder": {
+          "in": 803,
+          "out": 181
+        }
+      },
+      "modelMs": 50615,
+      "wallMs": 52592,
+      "calls": 8,
+      "coderPromptMax": 941,
+      "toolLog": {
+        "turns": 7,
+        "nativeTurns": 5,
+        "toolCalls": 5,
+        "rightTool": 5,
+        "sequence": [
+          "brief",
+          "code",
+          "splice",
+          "check",
+          "done"
+        ],
+        "drawn": 1,
+        "nativeRate": 0.7142857142857143,
+        "rightRate": 1,
+        "repairs": 0,
+        "calledDone": true
+      },
+      "tscErrors": [],
+      "checkFailures": [],
+      "raw": "results/r2-raw/I/t02-book-page-count"
+    },
+    {
+      "run": "r2",
+      "arm": "I",
+      "armLabel": "qwen3:4b tool-calling driver over the blocks",
+      "task": "t03-book-availability",
+      "pass": false,
+      "failClass": "check",
+      "detail": null,
+      "attempts": 2,
+      "tokensIn": 34308,
+      "tokensOut": 7047,
+      "tokensByRole": {
+        "driver": {
+          "in": 32653,
+          "out": 6455
+        },
+        "coder": {
+          "in": 1655,
+          "out": 592
+        }
+      },
+      "modelMs": 99197,
+      "wallMs": 99739,
+      "calls": 10,
+      "coderPromptMax": 1004,
+      "toolLog": {
+        "turns": 8,
+        "nativeTurns": 4,
+        "toolCalls": 4,
+        "rightTool": 4,
+        "sequence": [
+          "brief",
+          "code",
+          "brief",
+          "code"
+        ],
+        "drawn": 2,
+        "nativeRate": 0.5,
+        "rightRate": 1,
+        "repairs": 1,
+        "calledDone": false
+      },
+      "tscErrors": [],
+      "checkFailures": [
+        "available book does not say \"Available\"",
+        "raw true/false still visible",
+        "on-loan book (winter-ferry) does not say \"On loan\""
+      ],
+      "raw": "results/r2-raw/I/t03-book-availability"
+    },
+    {
+      "run": "r2",
+      "arm": "I",
+      "armLabel": "qwen3:4b tool-calling driver over the blocks",
+      "task": "t04-book-not-found",
+      "pass": false,
+      "failClass": "check",
+      "detail": null,
+      "attempts": 1,
+      "tokensIn": 33554,
+      "tokensOut": 7325,
+      "tokensByRole": {
+        "driver": {
+          "in": 32775,
+          "out": 6980
+        },
+        "coder": {
+          "in": 779,
+          "out": 345
+        }
+      },
+      "modelMs": 115200,
+      "wallMs": 116475,
+      "calls": 9,
+      "coderPromptMax": 935,
+      "toolLog": {
+        "turns": 8,
+        "nativeTurns": 3,
+        "toolCalls": 3,
+        "rightTool": 3,
+        "sequence": [
+          "brief",
+          "code",
+          "brief"
+        ],
+        "drawn": 1,
+        "nativeRate": 0.375,
+        "rightRate": 1,
+        "repairs": 1,
+        "calledDone": false
+      },
+      "tscErrors": [],
+      "checkFailures": [
+        "known book: no link \"Back to the catalogue\" to /",
+        "unknown id: missing \"We could not find that book\"",
+        "unknown id: no link \"Back to the catalogue\" to /"
+      ],
+      "raw": "results/r2-raw/I/t04-book-not-found"
+    },
+    {
+      "run": "r2",
+      "arm": "I",
+      "armLabel": "qwen3:4b tool-calling driver over the blocks",
+      "task": "t05-book-add-to-picks",
+      "pass": false,
+      "failClass": "check",
+      "detail": null,
+      "attempts": 1,
+      "tokensIn": 34557,
+      "tokensOut": 7365,
+      "tokensByRole": {
+        "driver": {
+          "in": 33408,
+          "out": 7131
+        },
+        "coder": {
+          "in": 1149,
+          "out": 234
+        }
+      },
+      "modelMs": 113046,
+      "wallMs": 114557,
+      "calls": 9,
+      "coderPromptMax": 1423,
+      "toolLog": {
+        "turns": 8,
+        "nativeTurns": 2,
+        "toolCalls": 2,
+        "rightTool": 2,
+        "sequence": [
+          "brief",
+          "code"
+        ],
+        "drawn": 1,
+        "nativeRate": 0.25,
+        "rightRate": 1,
+        "repairs": 0,
+        "calledDone": false
+      },
+      "tscErrors": [],
+      "checkFailures": [
+        "available book: no \"Add to my picks\" button"
+      ],
+      "raw": "results/r2-raw/I/t05-book-add-to-picks"
+    },
+    {
+      "run": "r2",
+      "arm": "I",
+      "armLabel": "qwen3:4b tool-calling driver over the blocks",
+      "task": "t06-picks-store",
+      "pass": false,
+      "failClass": "check",
+      "detail": null,
+      "attempts": 2,
+      "tokensIn": 28956,
+      "tokensOut": 5759,
+      "tokensByRole": {
+        "driver": {
+          "in": 27968,
+          "out": 5669
+        },
+        "coder": {
+          "in": 988,
+          "out": 90
+        }
+      },
+      "modelMs": 82143,
+      "wallMs": 83863,
+      "calls": 10,
+      "coderPromptMax": 655,
+      "toolLog": {
+        "turns": 8,
+        "nativeTurns": 5,
+        "toolCalls": 5,
+        "rightTool": 5,
+        "sequence": [
+          "brief",
+          "code",
+          "splice",
+          "brief",
+          "code"
+        ],
+        "drawn": 2,
+        "nativeRate": 0.625,
+        "rightRate": 1,
+        "repairs": 0,
+        "calledDone": false
+      },
+      "tscErrors": [],
+      "checkFailures": [
+        "missing export addPick"
+      ],
+      "raw": "results/r2-raw/I/t06-picks-store"
+    },
+    {
+      "run": "r2",
+      "arm": "I",
+      "armLabel": "qwen3:4b tool-calling driver over the blocks",
+      "task": "t07-picks-page-list",
+      "pass": false,
+      "failClass": "check",
+      "detail": null,
+      "attempts": 1,
+      "tokensIn": 30952,
+      "tokensOut": 7016,
+      "tokensByRole": {
+        "driver": {
+          "in": 30041,
+          "out": 6845
+        },
+        "coder": {
+          "in": 911,
+          "out": 171
+        }
+      },
+      "modelMs": 102022,
+      "wallMs": 103284,
+      "calls": 9,
+      "coderPromptMax": 1148,
+      "toolLog": {
+        "turns": 8,
+        "nativeTurns": 2,
+        "toolCalls": 2,
+        "rightTool": 2,
+        "sequence": [
+          "brief",
+          "code"
+        ],
+        "drawn": 1,
+        "nativeRate": 0.25,
+        "rightRate": 1,
+        "repairs": 0,
+        "calledDone": false
+      },
+      "tscErrors": [],
+      "checkFailures": [
+        "h1 is not \"My picks\"",
+        "missing text \"Salt and Lanterns\"",
+        "missing text \"Ines Okafor\"",
+        "missing text \"Copper Roads\"",
+        "missing text \"Mara Quill\"",
+        "no button \"Remove Salt and Lanterns\""
+      ],
+      "raw": "results/r2-raw/I/t07-picks-page-list"
+    },
+    {
+      "run": "r2",
+      "arm": "I",
+      "armLabel": "qwen3:4b tool-calling driver over the blocks",
+      "task": "t08-picks-page-empty",
+      "pass": false,
+      "failClass": "check",
+      "detail": null,
+      "attempts": 1,
+      "tokensIn": 33379,
+      "tokensOut": 8011,
+      "tokensByRole": {
+        "driver": {
+          "in": 32608,
+          "out": 7606
+        },
+        "coder": {
+          "in": 771,
+          "out": 405
+        }
+      },
+      "modelMs": 115590,
+      "wallMs": 116942,
+      "calls": 9,
+      "coderPromptMax": 946,
+      "toolLog": {
+        "turns": 8,
+        "nativeTurns": 2,
+        "toolCalls": 2,
+        "rightTool": 2,
+        "sequence": [
+          "brief",
+          "code"
+        ],
+        "drawn": 1,
+        "nativeRate": 0.25,
+        "rightRate": 1,
+        "repairs": 0,
+        "calledDone": false
+      },
+      "tscErrors": [],
+      "checkFailures": [
+        "h1 is not \"My picks\"",
+        "missing \"You have not picked any books yet\""
+      ],
+      "raw": "results/r2-raw/I/t08-picks-page-empty"
+    },
+    {
+      "run": "r2",
+      "arm": "I",
+      "armLabel": "qwen3:4b tool-calling driver over the blocks",
+      "task": "t09-browse-heading-availability",
+      "pass": false,
+      "failClass": "check",
+      "detail": null,
+      "attempts": 1,
+      "tokensIn": 34856,
+      "tokensOut": 7911,
+      "tokensByRole": {
+        "driver": {
+          "in": 34041,
+          "out": 7567
+        },
+        "coder": {
+          "in": 815,
+          "out": 344
+        }
+      },
+      "modelMs": 118788,
+      "wallMs": 119623,
+      "calls": 9,
+      "coderPromptMax": 994,
+      "toolLog": {
+        "turns": 8,
+        "nativeTurns": 2,
+        "toolCalls": 2,
+        "rightTool": 2,
+        "sequence": [
+          "brief",
+          "code"
+        ],
+        "drawn": 1,
+        "nativeRate": 0.25,
+        "rightRate": 1,
+        "repairs": 0,
+        "calledDone": false
+      },
+      "tscErrors": [],
+      "checkFailures": [
+        "h1 is not \"Library catalogue\"",
+        "expected \"Available\" 13 times, got 0",
+        "expected \"On loan\" 2 times, got 0"
+      ],
+      "raw": "results/r2-raw/I/t09-browse-heading-availability"
+    },
+    {
+      "run": "r2",
+      "arm": "I",
+      "armLabel": "qwen3:4b tool-calling driver over the blocks",
+      "task": "t10-browse-paging",
+      "pass": false,
+      "failClass": "check",
+      "detail": null,
+      "attempts": 1,
+      "tokensIn": 35700,
+      "tokensOut": 7351,
+      "tokensByRole": {
+        "driver": {
+          "in": 34617,
+          "out": 6932
+        },
+        "coder": {
+          "in": 1083,
+          "out": 419
+        }
+      },
+      "modelMs": 111935,
+      "wallMs": 112568,
+      "calls": 9,
+      "coderPromptMax": 1343,
+      "toolLog": {
+        "turns": 8,
+        "nativeTurns": 3,
+        "toolCalls": 3,
+        "rightTool": 3,
+        "sequence": [
+          "brief",
+          "code",
+          "brief"
+        ],
+        "drawn": 1,
+        "nativeRate": 0.375,
+        "rightRate": 1,
+        "repairs": 1,
+        "calledDone": false
+      },
+      "tscErrors": [],
+      "checkFailures": [
+        "page 1: expected 6 book links, got 15",
+        "missing \"Page 1 of 3\"",
+        "no \"Previous page\" button",
+        "no \"Next page\" button"
+      ],
+      "raw": "results/r2-raw/I/t10-browse-paging"
+    },
+    {
+      "run": "r2",
+      "arm": "I",
+      "armLabel": "qwen3:4b tool-calling driver over the blocks",
+      "task": "t11-browse-sort-title",
+      "pass": false,
+      "failClass": "check",
+      "detail": null,
+      "attempts": 2,
+      "tokensIn": 34396,
+      "tokensOut": 7354,
+      "tokensByRole": {
+        "driver": {
+          "in": 32976,
+          "out": 6627
+        },
+        "coder": {
+          "in": 1420,
+          "out": 727
+        }
+      },
+      "modelMs": 105742,
+      "wallMs": 106567,
+      "calls": 10,
+      "coderPromptMax": 870,
+      "toolLog": {
+        "turns": 8,
+        "nativeTurns": 4,
+        "toolCalls": 4,
+        "rightTool": 4,
+        "sequence": [
+          "brief",
+          "code",
+          "brief",
+          "code"
+        ],
+        "drawn": 2,
+        "nativeRate": 0.5,
+        "rightRate": 1,
+        "repairs": 1,
+        "calledDone": false
+      },
+      "tscErrors": [],
+      "checkFailures": [
+        "order is not title A-Z: first titles [\"Salt and Lanterns\",\"Orchard at Night\",\"Glass Harbour\",\"Winter Ferry\"]"
+      ],
+      "raw": "results/r2-raw/I/t11-browse-sort-title"
+    },
+    {
+      "run": "r2",
+      "arm": "I",
+      "armLabel": "qwen3:4b tool-calling driver over the blocks",
+      "task": "t12-browse-genre-filter",
+      "pass": false,
+      "failClass": "check",
+      "detail": null,
+      "attempts": 0,
+      "tokensIn": 34000,
+      "tokensOut": 7723,
+      "tokensByRole": {
+        "driver": {
+          "in": 34000,
+          "out": 7723
+        },
+        "coder": {
+          "in": 0,
+          "out": 0
+        }
+      },
+      "modelMs": 126028,
+      "wallMs": 126909,
+      "calls": 8,
+      "coderPromptMax": 0,
+      "toolLog": {
+        "turns": 8,
+        "nativeTurns": 1,
+        "toolCalls": 1,
+        "rightTool": 1,
+        "sequence": [
+          "brief"
+        ],
+        "drawn": 0,
+        "nativeRate": 0.125,
+        "rightRate": 1,
+        "repairs": 0,
+        "calledDone": false
+      },
+      "tscErrors": [],
+      "checkFailures": [
+        "no <select> labelled \"Genre\""
+      ],
+      "raw": "results/r2-raw/I/t12-browse-genre-filter"
+    }
+  ]
+}

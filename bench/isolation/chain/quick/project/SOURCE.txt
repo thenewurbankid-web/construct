@@ -1,0 +1,1 @@
+/Users/shashank/Repositories/construct/.claude/worktrees/bench-rerun-1013/bench/lending/runs/lending-seed-r2/project (lending-seed-r2, copied 2026-10-13: features/, library/, architecture.yml, tsconfig.json)

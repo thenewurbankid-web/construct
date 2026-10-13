@@ -1,0 +1,626 @@
+{
+  "summary": {
+    "model": "qwen2.5-coder:1.5b",
+    "method": "ollama format {plans:[{function, lines}]}, T=0.7, seeds 100-104",
+    "samples": 20,
+    "matchPct": 0,
+    "perTask": {
+      "availability": 0,
+      "picks-store": 0,
+      "paging": 0,
+      "sort-title": 0
+    },
+    "fullMatchSamples": 0,
+    "killBelow": 50,
+    "verdict": "kill"
+  },
+  "rows": [
+    {
+      "task": "availability",
+      "sample": 0,
+      "plan": {
+        "formatAvailability": [
+          "return 'Available'"
+        ]
+      },
+      "score": 0,
+      "matched": 0,
+      "planN": 2,
+      "gaps": [
+        {
+          "fn": "formatAvailability",
+          "plan": "if available, return 'available'"
+        },
+        {
+          "fn": "formatAvailability",
+          "plan": "it returns 'on loan'"
+        }
+      ],
+      "tokens": 330,
+      "ms": 339
+    },
+    {
+      "task": "availability",
+      "sample": 1,
+      "plan": {
+        "formatAvailability": [
+          "return available === true ? 'Available' : 'On loan'"
+        ]
+      },
+      "score": 0,
+      "matched": 0,
+      "planN": 2,
+      "gaps": [
+        {
+          "fn": "formatAvailability",
+          "plan": "if available, return 'available'"
+        },
+        {
+          "fn": "formatAvailability",
+          "plan": "it returns 'on loan'"
+        }
+      ],
+      "tokens": 339,
+      "ms": 316
+    },
+    {
+      "task": "availability",
+      "sample": 2,
+      "plan": {
+        "formatAvailability": [
+          "return 'Available'"
+        ]
+      },
+      "score": 0,
+      "matched": 0,
+      "planN": 2,
+      "gaps": [
+        {
+          "fn": "formatAvailability",
+          "plan": "if available, return 'available'"
+        },
+        {
+          "fn": "formatAvailability",
+          "plan": "it returns 'on loan'"
+        }
+      ],
+      "tokens": 331,
+      "ms": 252
+    },
+    {
+      "task": "availability",
+      "sample": 3,
+      "plan": {
+        "formatAvailability": [
+          "return available ? 'Available' : 'On loan'"
+        ]
+      },
+      "score": 0,
+      "matched": 0,
+      "planN": 2,
+      "gaps": [
+        {
+          "fn": "formatAvailability",
+          "plan": "if available, return 'available'"
+        },
+        {
+          "fn": "formatAvailability",
+          "plan": "it returns 'on loan'"
+        }
+      ],
+      "tokens": 338,
+      "ms": 310
+    },
+    {
+      "task": "availability",
+      "sample": 4,
+      "plan": {
+        "formatAvailability": [
+          "return 'Available'"
+        ]
+      },
+      "score": 0,
+      "matched": 0,
+      "planN": 2,
+      "gaps": [
+        {
+          "fn": "formatAvailability",
+          "plan": "if available, return 'available'"
+        },
+        {
+          "fn": "formatAvailability",
+          "plan": "it returns 'on loan'"
+        }
+      ],
+      "tokens": 330,
+      "ms": 263
+    },
+    {
+      "task": "picks-store",
+      "sample": 0,
+      "plan": {
+        "addPick": [
+          "let picks be listPicks(picks)",
+          "return addPick(picks, id)"
+        ],
+        "removePick": [
+          "let picks be listPicks(picks)",
+          "return removePick(picks, id)"
+        ],
+        "listPicks": [
+          "let picks be listPicks(picks)",
+          "return picks"
+        ]
+      },
+      "score": 0,
+      "matched": 0,
+      "planN": 5,
+      "gaps": [
+        {
+          "fn": "addPick",
+          "plan": "if picks includes id, return picks"
+        },
+        {
+          "fn": "addPick",
+          "plan": "if picks's length >= 4, return picks"
+        },
+        {
+          "fn": "addPick",
+          "plan": "it returns picks concat id"
+        },
+        {
+          "fn": "removePick",
+          "plan": "it returns picks filter pick !== id"
+        },
+        {
+          "fn": "listPicks",
+          "plan": "it returns picks slice"
+        }
+      ],
+      "tokens": 479,
+      "ms": 813
+    },
+    {
+      "task": "picks-store",
+      "sample": 1,
+      "plan": {
+        "addPick": [
+          "let picks be listPicks(picks)"
+        ],
+        "removePick": [
+          "let picks be listPicks(picks)"
+        ],
+        "listPicks": [
+          "let picks be listPicks(picks)"
+        ]
+      },
+      "score": 0,
+      "matched": 0,
+      "planN": 5,
+      "gaps": [
+        {
+          "fn": "addPick",
+          "plan": "if picks includes id, return picks"
+        },
+        {
+          "fn": "addPick",
+          "plan": "if picks's length >= 4, return picks"
+        },
+        {
+          "fn": "addPick",
+          "plan": "it returns picks concat id"
+        },
+        {
+          "fn": "removePick",
+          "plan": "it returns picks filter pick !== id"
+        },
+        {
+          "fn": "listPicks",
+          "plan": "it returns picks slice"
+        }
+      ],
+      "tokens": 454,
+      "ms": 638
+    },
+    {
+      "task": "picks-store",
+      "sample": 2,
+      "plan": {
+        "addPick": [
+          "let picks be listPicks(picks)",
+          "if picks does not contain id: addPick(picks, id)",
+          "return picks"
+        ],
+        "removePick": [
+          "let picks be listPicks(picks)",
+          "if picks contains id: removePick(picks, id)",
+          "return picks"
+        ],
+        "listPicks": [
+          "return picks"
+        ]
+      },
+      "score": 0,
+      "matched": 0,
+      "planN": 5,
+      "gaps": [
+        {
+          "fn": "addPick",
+          "plan": "if picks includes id, return picks"
+        },
+        {
+          "fn": "addPick",
+          "plan": "if picks's length >= 4, return picks"
+        },
+        {
+          "fn": "addPick",
+          "plan": "it returns picks concat id"
+        },
+        {
+          "fn": "removePick",
+          "plan": "it returns picks filter pick !== id"
+        },
+        {
+          "fn": "listPicks",
+          "plan": "it returns picks slice"
+        }
+      ],
+      "tokens": 488,
+      "ms": 849
+    },
+    {
+      "task": "picks-store",
+      "sample": 3,
+      "plan": {
+        "addPick": [
+          "function addPick(picks: string[], id: string): string[]",
+          "return [...picks, id]"
+        ],
+        "removePick": [
+          "function removePick(picks: string[], id: string): string[]",
+          "return picks.filter(p => p !== id)"
+        ],
+        "listPicks": [
+          "function listPicks(picks: string[]): string[]",
+          "return picks"
+        ]
+      },
+      "score": 0,
+      "matched": 0,
+      "planN": 5,
+      "gaps": [
+        {
+          "fn": "addPick",
+          "plan": "if picks includes id, return picks"
+        },
+        {
+          "fn": "addPick",
+          "plan": "if picks's length >= 4, return picks"
+        },
+        {
+          "fn": "addPick",
+          "plan": "it returns picks concat id"
+        },
+        {
+          "fn": "removePick",
+          "plan": "it returns picks filter pick !== id"
+        },
+        {
+          "fn": "listPicks",
+          "plan": "it returns picks slice"
+        }
+      ],
+      "tokens": 494,
+      "ms": 915
+    },
+    {
+      "task": "picks-store",
+      "sample": 4,
+      "plan": {
+        "addPick": [
+          "let picks be listPicks(picks)",
+          "if picks contains id: removePick(picks, id)",
+          "return addPick(picks, id)"
+        ],
+        "removePick": [
+          "let picks be listPicks(picks)",
+          "if picks contains id: removePick(picks, id)",
+          "return removePick(picks, id)"
+        ],
+        "listPicks": [
+          "return listPicks(picks)"
+        ]
+      },
+      "score": 0,
+      "matched": 0,
+      "planN": 5,
+      "gaps": [
+        {
+          "fn": "addPick",
+          "plan": "if picks includes id, return picks"
+        },
+        {
+          "fn": "addPick",
+          "plan": "if picks's length >= 4, return picks"
+        },
+        {
+          "fn": "addPick",
+          "plan": "it returns picks concat id"
+        },
+        {
+          "fn": "removePick",
+          "plan": "it returns picks filter pick !== id"
+        },
+        {
+          "fn": "listPicks",
+          "plan": "it returns picks slice"
+        }
+      ],
+      "tokens": 500,
+      "ms": 942
+    },
+    {
+      "task": "paging",
+      "sample": 0,
+      "plan": {
+        "pageOf": [
+          "let page be items slice page * 6 and page + 1 * 6",
+          "return page"
+        ],
+        "pageCount": [
+          "return total / 6"
+        ]
+      },
+      "score": 0,
+      "matched": 0,
+      "planN": 3,
+      "gaps": [
+        {
+          "fn": "pageOf",
+          "plan": "let start be page * 6"
+        },
+        {
+          "fn": "pageOf",
+          "plan": "it returns items slice start and start + 6"
+        },
+        {
+          "fn": "pageCount",
+          "plan": "it returns math ceil total / 6"
+        }
+      ],
+      "tokens": 393,
+      "ms": 585
+    },
+    {
+      "task": "paging",
+      "sample": 1,
+      "plan": {
+        "pageOf": [
+          "let result be items slice page * 6 and page * 6 + 6"
+        ],
+        "pageCount": [
+          "return total"
+        ]
+      },
+      "score": 0,
+      "matched": 0,
+      "planN": 3,
+      "gaps": [
+        {
+          "fn": "pageOf",
+          "plan": "let start be page * 6"
+        },
+        {
+          "fn": "pageOf",
+          "plan": "it returns items slice start and start + 6"
+        },
+        {
+          "fn": "pageCount",
+          "plan": "it returns math ceil total / 6"
+        }
+      ],
+      "tokens": 385,
+      "ms": 488
+    },
+    {
+      "task": "paging",
+      "sample": 2,
+      "plan": {
+        "pageOf": [
+          "let items be items slice page * 6 and (page + 1) * 6",
+          "return items"
+        ],
+        "pageCount": [
+          "let total be total / 6",
+          "return total"
+        ]
+      },
+      "score": 0,
+      "matched": 0,
+      "planN": 3,
+      "gaps": [
+        {
+          "fn": "pageOf",
+          "plan": "let start be page * 6"
+        },
+        {
+          "fn": "pageOf",
+          "plan": "it returns items slice start and start + 6"
+        },
+        {
+          "fn": "pageCount",
+          "plan": "it returns math ceil total / 6"
+        }
+      ],
+      "tokens": 402,
+      "ms": 593
+    },
+    {
+      "task": "paging",
+      "sample": 3,
+      "plan": {
+        "pageOf": [
+          "let items be ARG",
+          "let page be ARG",
+          "let sorted be items slice sort a's price - b's price",
+          "return sorted slice 0 and 5"
+        ],
+        "pageCount": [
+          "let total be ARG",
+          "return total"
+        ]
+      },
+      "score": 0,
+      "matched": 0,
+      "planN": 3,
+      "gaps": [
+        {
+          "fn": "pageOf",
+          "plan": "let start be page * 6"
+        },
+        {
+          "fn": "pageOf",
+          "plan": "it returns items slice start and start + 6"
+        },
+        {
+          "fn": "pageCount",
+          "plan": "it returns math ceil total / 6"
+        }
+      ],
+      "tokens": 413,
+      "ms": 664
+    },
+    {
+      "task": "paging",
+      "sample": 4,
+      "plan": {
+        "pageOf": [
+          "return items.slice(page * 6, (page + 1) * 6)"
+        ],
+        "pageCount": [
+          "return total / 6"
+        ]
+      },
+      "score": 0,
+      "matched": 0,
+      "planN": 3,
+      "gaps": [
+        {
+          "fn": "pageOf",
+          "plan": "let start be page * 6"
+        },
+        {
+          "fn": "pageOf",
+          "plan": "it returns items slice start and start + 6"
+        },
+        {
+          "fn": "pageCount",
+          "plan": "it returns math ceil total / 6"
+        }
+      ],
+      "tokens": 388,
+      "ms": 537
+    },
+    {
+      "task": "sort-title",
+      "sample": 0,
+      "plan": {
+        "sortByTitle": [
+          "return books.slice().sort((a, b) => a.title.localeCompare(b.title))",
+          "return books.slice().sort((a, b) => a.title.localeCompare(b.title))"
+        ]
+      },
+      "score": 0,
+      "matched": 0,
+      "planN": 1,
+      "gaps": [
+        {
+          "fn": "sortByTitle",
+          "plan": "it returns books slice sort a's title locale compare b's title"
+        }
+      ],
+      "tokens": 353,
+      "ms": 534
+    },
+    {
+      "task": "sort-title",
+      "sample": 1,
+      "plan": {
+        "sortByTitle": [
+          "let sorted be books slice sort a's title - b's title"
+        ]
+      },
+      "score": 0,
+      "matched": 0,
+      "planN": 1,
+      "gaps": [
+        {
+          "fn": "sortByTitle",
+          "plan": "it returns books slice sort a's title locale compare b's title"
+        }
+      ],
+      "tokens": 327,
+      "ms": 351
+    },
+    {
+      "task": "sort-title",
+      "sample": 2,
+      "plan": {
+        "sortByTitle": [
+          "return books.slice().sort((a, b) => a.title.localeCompare(b.title))"
+        ]
+      },
+      "score": 0,
+      "matched": 0,
+      "planN": 1,
+      "gaps": [
+        {
+          "fn": "sortByTitle",
+          "plan": "it returns books slice sort a's title locale compare b's title"
+        }
+      ],
+      "tokens": 332,
+      "ms": 390
+    },
+    {
+      "task": "sort-title",
+      "sample": 3,
+      "plan": {
+        "sortByTitle": [
+          "let sorted be books slice sort a's title - b's title"
+        ]
+      },
+      "score": 0,
+      "matched": 0,
+      "planN": 1,
+      "gaps": [
+        {
+          "fn": "sortByTitle",
+          "plan": "it returns books slice sort a's title locale compare b's title"
+        }
+      ],
+      "tokens": 327,
+      "ms": 339
+    },
+    {
+      "task": "sort-title",
+      "sample": 4,
+      "plan": {
+        "sortByTitle": [
+          "return books.slice().sort((a, b) => a.title.localeCompare(b.title))"
+        ]
+      },
+      "score": 0,
+      "matched": 0,
+      "planN": 1,
+      "gaps": [
+        {
+          "fn": "sortByTitle",
+          "plan": "it returns books slice sort a's title locale compare b's title"
+        }
+      ],
+      "tokens": 331,
+      "ms": 384
+    }
+  ]
+}

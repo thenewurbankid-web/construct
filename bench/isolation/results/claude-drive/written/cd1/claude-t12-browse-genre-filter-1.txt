@@ -1,0 +1,47 @@
+// @line-base pages/ListPage
+// @line-route /
+'use client';
+
+import { useState } from 'react';
+import Link from 'next/link';
+import { ListPage } from '../../../library/pages/ListPage';
+import books from '../../../library/fixtures/books.json';
+
+type Book = { id: string; title: string; author: string; genre: string; year: number; pages: number; available: boolean };
+
+const GENRES = ['Fiction', 'History', 'Science'];
+
+export function BrowsePage() {
+  const [genre, setGenre] = useState('');
+  const items = (books as Book[]).filter((item) => genre === '' || item.genre === genre);
+  const toolbar = (
+    <div className="flex items-center gap-2">
+      <label htmlFor="genre-filter">Genre</label>
+      <select
+        id="genre-filter"
+        value={genre}
+        onChange={(e) => setGenre(e.target.value)}
+        className="rounded border border-slate-300 px-2 py-1"
+      >
+        <option value="">All genres</option>
+        {GENRES.map((g) => (
+          <option key={g} value={g}>{g}</option>
+        ))}
+      </select>
+    </div>
+  );
+  return (
+    <ListPage title="Books" toolbar={toolbar} empty={<p>No books yet.</p>}>
+      {items.length > 0 && items.map((item) => (
+        <article key={item.id} className="flex flex-col gap-2 rounded-lg border border-slate-200 p-4 shadow-sm">
+          <h2 className="text-lg font-semibold"><Link href={`/books/${item.id}`}>{item.title}</Link></h2>
+          <p>{item.author}</p>
+          <p>{item.genre}</p>
+          <p>{String(item.year)}</p>
+          <p>{String(item.pages)}</p>
+          <p>{String(item.available)}</p>
+        </article>
+      ))}
+    </ListPage>
+  );
+}

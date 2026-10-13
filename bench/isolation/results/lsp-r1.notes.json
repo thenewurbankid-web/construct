@@ -1,0 +1,138 @@
+{
+ "latency": {
+  "diagnostics": {
+   "cold": 204,
+   "warm": 1,
+   "ok": true,
+   "outTokens": 27
+  },
+  "fixes": {
+   "cold": 185,
+   "warm": 48,
+   "ok": true,
+   "outTokens": 199
+  },
+  "completionsAt": {
+   "cold": 115,
+   "warm": 5,
+   "ok": true,
+   "outTokens": 100
+  },
+  "quickInfo": {
+   "cold": 101,
+   "warm": 1,
+   "ok": true,
+   "outTokens": 45
+  },
+  "signatureAt": {
+   "cold": 102,
+   "warm": 1,
+   "ok": false,
+   "outTokens": 13
+  },
+  "definition": {
+   "cold": 113,
+   "warm": 1,
+   "ok": true,
+   "outTokens": 60
+  },
+  "references": {
+   "cold": 93,
+   "warm": 1,
+   "ok": true,
+   "outTokens": 95
+  },
+  "ruleDiagnostics": {
+   "cold": 244,
+   "warm": 42,
+   "ok": true
+  },
+  "nextSteps": {
+   "cold": 5,
+   "warm": 4,
+   "ok": true
+  },
+  "index": {
+   "build": 601,
+   "incremental": 43,
+   "functions": 20,
+   "newInAllLayers": true
+  },
+  "smithReferences": {
+   "cold": 0,
+   "warm": 0,
+   "ok": true
+  },
+  "smithDefinition": {
+   "cold": 0,
+   "warm": 0,
+   "ok": true
+  },
+  "smithCompletions": {
+   "cold": 0,
+   "warm": 1,
+   "ok": true
+  },
+  "smithDiagnostics": {
+   "cold": 0,
+   "warm": 0,
+   "ok": true
+  },
+  "atomicGate": {
+   "cold": 3,
+   "warm": 1,
+   "ok": true
+  }
+ },
+ "tripleGate": {
+  "B": {
+   "pass": 0,
+   "fail": 6,
+   "reasons": {
+    "connections": 6,
+    "smith": 2
+   }
+  },
+  "L-fix": {
+   "pass": 0,
+   "fail": 6,
+   "reasons": {
+    "connections": 6,
+    "smith": 2
+   }
+  },
+  "H": {
+   "pass": 3,
+   "fail": 7,
+   "reasons": {
+    "connections": 7,
+    "smith": 2
+   }
+  },
+  "L-brief": {
+   "pass": 3,
+   "fail": 6,
+   "reasons": {
+    "connections": 6,
+    "smith": 1
+   }
+  },
+  "L-gate": {
+   "pass": 3,
+   "fail": 1,
+   "reasons": {
+    "connections": 1,
+    "smith": 1
+   }
+  },
+  "L-norm": {
+   "pass": 3,
+   "fail": 1,
+   "reasons": {
+    "connections": 1,
+    "smith": 1
+   }
+  }
+ },
+ "enumPoints": 9
+}

@@ -1,0 +1,44 @@
+Write one React TypeScript function component: `export function BrowsePage()`.
+
+Already imported above it (do NOT write imports or 'use client'):
+- `Link` from 'next/link'
+- `ListPage` (props: title: string; toolbar?: ReactNode; children?: ReactNode; empty?: ReactNode)
+- `books` from a JSON file: an array of `{ id: string; title: string; author: string; genre: string; year: number; pages: number; available: boolean }`
+- `useState` from 'react'
+
+Requirements:
+- Keep the chosen genre in state: `const [genre, setGenre] = useState('')`. Empty string means all genres.
+- Toolbar: a `<label htmlFor="genre">Genre</label>` and a `<select id="genre">` with options exactly: "All genres" (value ""), "Fiction", "History", "Science".
+- Show every book whose genre matches (or every book when genre is ""). No paging.
+- Each book is a Link to `/books/${book.id}` showing its title.
+
+Copy this code exactly:
+
+```tsx
+export function BrowsePage() {
+  const [genre, setGenre] = useState('');
+  const shown = books.filter((book) => genre === '' || book.genre === genre);
+  const toolbar = (
+    <div>
+      <label htmlFor="genre">Genre</label>
+      <select id="genre" value={genre} onChange={(e) => setGenre(e.target.value)}>
+        <option value="">All genres</option>
+        <option value="Fiction">Fiction</option>
+        <option value="History">History</option>
+        <option value="Science">Science</option>
+      </select>
+    </div>
+  );
+  return (
+    <ListPage title="Browse" toolbar={toolbar} empty={<p>No books found.</p>}>
+      {shown.map((book) => (
+        <Link key={book.id} href={`/books/${book.id}`}>
+          {book.title}
+        </Link>
+      ))}
+    </ListPage>
+  );
+}
+```
+
+Reply with only the function BrowsePage in one ```tsx fenced code block. No imports, no explanation.
