@@ -1,0 +1,15 @@
+Sort the books by title A-Z before rendering. Write exactly:
+
+export function BrowsePage() {
+  const sorted = [...books].sort((a, b) => a.title.localeCompare(b.title));
+  return (
+    <ListPage title="Browse" empty={<p>No books found.</p>}>
+      {sorted.map((book) => (
+        <Link key={book.id} href={`/books/${book.id}`}>
+          <h2>{book.title}</h2>
+          <p>{book.author}</p>
+        </Link>
+      ))}
+    </ListPage>
+  );
+}

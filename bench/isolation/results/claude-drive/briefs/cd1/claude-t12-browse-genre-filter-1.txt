@@ -1,0 +1,28 @@
+Return exactly this function (no imports, they already exist):
+
+```tsx
+export function BrowsePage() {
+  const [genre, setGenre] = useState('');
+  const shown = (books as Book[]).filter((b) => genre === '' || b.genre === genre);
+  const toolbar = (
+    <div>
+      <label htmlFor="genre">Genre</label>
+      <select id="genre" value={genre} onChange={(e) => setGenre(e.target.value)}>
+        <option value="">All genres</option>
+        <option value="Fiction">Fiction</option>
+        <option value="History">History</option>
+        <option value="Science">Science</option>
+      </select>
+    </div>
+  );
+  return (
+    <ListPage title="Catalogue" toolbar={toolbar} empty={<p>No books match.</p>}>
+      {shown.map((b) => (
+        <Link key={b.id} href={`/books/${b.id}`}>
+          {b.title}
+        </Link>
+      ))}
+    </ListPage>
+  );
+}
+```
