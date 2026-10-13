@@ -29,7 +29,9 @@ are identical; inputs are kept under `results/claude-drive/{briefs,written}/<run
 Bench-local until a measured win moves it into `packages/mcp`.
 
 `harness-drive.sh` runs one fresh headless session per task and arm, with only two MCP tools each and no shell or
-file tools: CD (`task_show` + `task_try`, the harness never sees the file) and CW (`task_show_code` + `task_check`).
+file tools. Default arms: CD (`task_show` + `task_try`, the brief is a note on briefBuilder's brief; the harness
+never sees the file), CD-raw (same tools, `task_try` with `raw: true`: the brief is the whole 1.5b prompt) and CW
+(`task_show_code` + `task_check`).
 
 ```
 bench/isolation/harness-drive.sh --harness claude --run cd1

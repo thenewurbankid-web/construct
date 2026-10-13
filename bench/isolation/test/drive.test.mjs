@@ -7,7 +7,8 @@ import { fileURLToPath } from 'node:url';
 import { Client, InMemoryTransport } from '@modelcontextprotocol/client';
 import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
 import { createDriveMcpServer } from '../drive-mcp.mjs';
-import { summarize, sessionRecord, normalizeOpencode } from '../drive.mjs';
+import { readFileSync, rmSync } from 'node:fs';
+import { summarize, sessionRecord, normalizeOpencode, SESSION_FILE } from '../drive.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -30,6 +31,33 @@ test('lists the four tools and task_show returns the facts, not the file', async
     const bad = await client.callTool({ name: 'task_show', arguments: { task: '../etc' } });
     assert.equal(bad.isError, true);
   } finally { await client.close(); await server.close(); }
+});
+
+test('task_try passes raw through as --raw (default note mode), and CD-raw session files are recognized', async () => {
+  const seen = [];
+  const run = `test-raw-${process.pid}`;
+  const server = createDriveMcpServer({ run, harness: 'test', exec: async (args) => { seen.push(args); return { code: 0, text: 'PASS' }; } });
+  const client = new Client({ name: 'test-client', version: '0.0.1' });
+  const [c, s] = InMemoryTransport.createLinkedPair();
+  await server.connect(s);
+  await client.connect(c);
+  try {
+    const tool = (await client.listTools()).tools.find((t) => t.name === 'task_try');
+    assert.equal(tool.inputSchema.properties.raw.type, 'boolean');
+    assert.ok(!(tool.inputSchema.required ?? []).includes('raw'));
+    await client.callTool({ name: 'task_try', arguments: { task: 't03-book-availability', brief: 'note' } });
+    await client.callTool({ name: 'task_try', arguments: { task: 't03-book-availability', brief: 'whole prompt', raw: true } });
+    assert.equal(seen.length, 2);
+    assert.ok(!seen[0].includes('--raw'));
+    assert.equal(seen[1].at(-1), '--raw');
+    assert.equal(readFileSync(seen[1][seen[1].indexOf('--brief') + 1], 'utf8'), 'whole prompt');
+  } finally {
+    await client.close(); await server.close();
+    rmSync(join(HERE, '..', 'results', 'claude-drive', 'briefs', run), { recursive: true, force: true });
+  }
+  assert.deepEqual('claude-CD-raw-t03-book-availability.json'.match(SESSION_FILE).slice(1), ['claude', 'CD-raw', 't03-book-availability']);
+  assert.deepEqual('opencode-CD-t06-picks-store.json'.match(SESSION_FILE).slice(1), ['opencode', 'CD', 't06-picks-store']);
+  assert.equal('opencode-CD-t06-picks-store.events.jsonl'.match(SESSION_FILE), null);
 });
 
 test('the stdio server starts and answers tools/list', async () => {

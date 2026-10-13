@@ -10,7 +10,7 @@
 //   node bench/isolation/drive.mjs summary --run <id>                   # per-task, per-arm table (+ claude-drive.sh sessions)
 //
 // `try` re-executes itself through packages/tools/dev/heavy.sh (one Ollama job machine-wide), so callers run it plainly.
-// Log: results/claude-drive/<run>.jsonl (try = arm CD, check = arm CW); sessions: results/claude-drive/<run>/<harness>-<arm>-<task>.json
+// Log: results/claude-drive/<run>.jsonl (try = arm CD, try --raw = CD-raw, check = CW); sessions: results/claude-drive/<run>/<harness>-<arm>-<task>.json
 // (harness-drive.sh). MCP: drive-mcp.mjs exposes show/show-code/try/check as task_* tools over stdio.
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync, appendFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
@@ -202,7 +202,7 @@ async function tryBrief(task, briefPath, run, raw = false) {
   } catch (e) { err = String(e?.message ?? e); }
   if (err) ev = { pass: false, failClass: 'error', errors: [err] };
   const row = logLine(run, {
-    arm: 'CD', cmd: 'try', mode: raw ? 'raw' : 'intent', task: task.id, brief: relative(process.cwd(), briefPath), briefChars: brief.length,
+    arm: raw ? 'CD-raw' : 'CD', cmd: 'try', mode: raw ? 'raw' : 'intent', task: task.id, brief: relative(process.cwd(), briefPath), briefChars: brief.length,
     coderPromptChars: Math.max(0, ...calls.map((c) => c.promptChars)), coderCalls: calls.length,
     tokensIn: calls.reduce((a, c) => a + c.tokensIn, 0), tokensOut: calls.reduce((a, c) => a + c.tokensOut, 0),
     wallMs: Date.now() - t0, pass: ev.pass, failClass: ev.failClass, sampleClasses: classes,
@@ -279,20 +279,23 @@ export function normalizeOpencode(lines, { startMs = null, endMs = Date.now(), m
   };
 }
 
+// <harness>-<arm>-<task>.json; arms: CD (note mode), CD-raw (the brief is the whole prompt), CW (harness writes the file).
+export const SESSION_FILE = /^(\w+)-(CD-raw|CD|CW)-(t\d\d-[\w-]+)\.json$/;
+
 function summary(run) {
   const f = join(LOG_DIR, `${run}.jsonl`);
   const rows = existsSync(f) ? readFileSync(f, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l)) : [];
   const dir = join(LOG_DIR, run);
-  const sessions = existsSync(dir) ? readdirSync(dir).filter((n) => /^[\w]+-(CD|CW)-t\d\d-.+\.json$/.test(n)).flatMap((n) => {
-    try { const [, harness, arm, task] = n.match(/^([\w]+)-(CD|CW)-(.+)\.json$/); return [sessionRecord(harness, arm, task, JSON.parse(readFileSync(join(dir, n), 'utf8')))]; } catch { return []; }
+  const sessions = existsSync(dir) ? readdirSync(dir).filter((n) => SESSION_FILE.test(n)).flatMap((n) => {
+    try { const [, harness, arm, task] = n.match(SESSION_FILE); return [sessionRecord(harness, arm, task, JSON.parse(readFileSync(join(dir, n), 'utf8')))]; } catch { return []; }
   }) : [];
   if (!rows.length && !sessions.length) die(`no records for run ${run} (${relative(process.cwd(), f)})`, 1);
   const t = summarize(rows, sessions);
   const k = (n) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n));
   out([
     `run ${run}: ${t.length} task/arm rows, ${rows.length} drive calls, ${sessions.length} claude sessions`,
-    'task                      harness  arm pass tries chars 1.5b-calls 1.5b-tok wall-s | claude in/out/cacheR/cacheW turns cost$ model',
-    ...t.map((r) => [r.task.padEnd(25), r.harness.padEnd(8), r.arm.padEnd(3), (r.pass ? 'PASS' : r.lastFail ?? 'FAIL').padEnd(4), String(r.tries).padStart(5), String(r.chars).padStart(5),
+    'task                      harness  arm    pass tries chars 1.5b-calls 1.5b-tok wall-s | claude in/out/cacheR/cacheW turns cost$ model',
+    ...t.map((r) => [r.task.padEnd(25), r.harness.padEnd(8), r.arm.padEnd(6), (r.pass ? 'PASS' : r.lastFail ?? 'FAIL').padEnd(4), String(r.tries).padStart(5), String(r.chars).padStart(5),
       String(r.coderCalls).padStart(10), k(r.coderTokens).padStart(8), (r.wallMs / 1000).toFixed(0).padStart(6), '|',
       r.claude ? `${k(r.claude.in)}/${k(r.claude.out)}/${k(r.claude.cacheRead)}/${k(r.claude.cacheWrite)} ${r.claude.turns} ${r.claude.cost.toFixed(3)} ${r.claude.model}` : '-'].join(' ')),
   ]);
