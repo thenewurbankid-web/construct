@@ -12,6 +12,8 @@
 //   pointStep(o)              #917: the one concrete next call for an uncovered point: line.setCode on the feature page
 //                             that should show it (its real contentHash), or the line.baseOn that creates the feature's
 //                             page when it has none (pure; the spec->steps pass, #914, may reuse it)
+//   pointSlot(src, point)     #920: the page's real code with one marked slot comment where the point goes (parses)
+//   slotOf(code)              #920: the slot (or the old "<the whole file ...>" placeholder) still in sent code, or null
 //
 // `spec` is the target spec ({features: [{name, story, points: [{id, text}]}]}, e.g. a SPEC.md the builder works from);
 // without one, each feature's own spec.md is the spec (featureText.mjs parseSpec), in folder order.
@@ -23,6 +25,7 @@ import { resolveLayout } from '@line/construct-core/profiles/line/checks';
 import { parseSpec } from './featureText.mjs';
 import { featurePages, isPlaceholderSpec } from './build.mjs';
 import { hashOf } from '../pagesEditor.mjs';
+import { jsxParseError } from '@construct/ast';
 
 const readOrNull = (abs) => { try { return fs.readFileSync(abs, 'utf8'); } catch { return null; } };
 const dirs = (abs) => { try { return fs.readdirSync(abs, { withFileTypes: true }).filter((e) => e.isDirectory() && !e.name.startsWith('.')).map((e) => e.name).sort(); } catch { return []; } };
@@ -169,8 +172,9 @@ export function openWork(root, { spec = null } = {}) {
  * #917 (pilot-qwen-7b-r4-s2 calls.jsonl:17, "CAT-2 is not covered yet" with no step): the one concrete next call for an
  * uncovered spec point. The feature has a page: line.setCode on the page that should show it (the page serving a route
  * the point names, else the page at the feature's spec route, else its first page), with the page's real contentHash
- * and the point in the code placeholder. It has none: the line.baseOn that creates it (DetailPage for a route with a
- * parameter, FormPage for a form, else ListPage; whichever the library has), named after that library page. Pure.
+ * and its code with one marked slot for the point (#920, pointSlot). It has none: the line.baseOn that creates it
+ * (DetailPage for a route with a parameter, FormPage for a form, else ListPage; whichever the library has), named after
+ * that library page. Pure.
  * @param {{feature: string, point: {id: string, text: string}, pages: {file: string, route: string|null, src: string}[],
  *   libraryPages?: string[], pageAt?: string[]}} o `pages`: the feature's pages; `libraryPages`: the library's page ids
  *   ("pages/ListPage"); `pageAt`: the routes the feature's spec puts its pages at.
@@ -180,13 +184,48 @@ export function pointStep({ feature, point, pages, libraryPages = [], pageAt = [
   const named = routesIn(point.text, false);
   const page = pages.find((p) => p.route && named.includes(p.route)) ?? pages.find((p) => p.route && pageAt.includes(p.route)) ?? pages[0] ?? null;
   if (page) {
-    const what = point.text.length > 100 ? `${point.text.slice(0, 97)}...` : point.text;
-    return { tool: 'line.setCode', args: { file: page.file, code: `<the whole file of ${baseName(page.file)}, now also showing ${point.id}: ${what}>`, contentHash: hashOf(page.src) } };
+    return { tool: 'line.setCode', args: { file: page.file, code: pointSlot(page.src, point).code, contentHash: hashOf(page.src) } };
   }
   const want = [...named, ...pageAt].some((r) => /:/.test(r)) ? 'pages/DetailPage' : /\b(form|field|submit|place order|checkout)\b/i.test(point.text) ? 'pages/FormPage' : 'pages/ListPage';
   const libraryId = libraryPages.includes(want) ? want : libraryPages[0];
   if (!libraryId) return null;
   return { tool: 'line.baseOn', args: { libraryId, feature, name: libraryId.split('/').pop() } };
+}
+
+const SLOT = /(\{[ \t]*)?\/\*[ \t]*([A-Z][A-Z0-9]*-\d+): (.*?) [\u2014\u2013-]+ add it here[ \t]*\*\/([ \t]*\})?/;
+/**
+ * #920 (pilot-qwen-7b-r5 calls.jsonl:15, prose sent 8 times as code): `src` with one marked slot for the point: a JSX
+ * comment child before the last closing tag, else a comment above the first export; always code that parses. Pure.
+ * @param {string} src @param {{id: string, text: string}} point
+ * @returns {{code: string, line: number}} `line`: the slot's line (1-based).
+ */
+export function pointSlot(src, { id, text }) {
+  const mark = `/* ${id}: ${(text.length > 100 ? `${text.slice(0, 97)}...` : text).replace(/\*\//g, '* /')} \u2014 add it here */`;
+  const lines = src.split('\n');
+  const at = (i, l) => { const c = [...lines.slice(0, i), l, ...lines.slice(i)].join('\n'); return jsxParseError(c) ? null : { code: c, line: i + 1 }; };
+  const close = lines.map((l) => /^\s*<\/[A-Za-z][\w.]*\s*>/.test(l)).lastIndexOf(true);
+  const exp = Math.max(0, lines.findIndex((l) => /^export\s/.test(l)));
+  return (close >= 0 && at(close, `${/^\s*/.exec(lines[close])?.[0]}  {${mark}}`)) || at(exp, mark) || { code: `${mark}\n${src}`, line: 1 };
+}
+
+/**
+ * #920: the slot a point step's skeleton marks, still in `code` (`rest`: the code without it), or the prose placeholder
+ * of a suggestion or an example ("<the whole file ...>"; `prose`); null when `code` is neither.
+ * @param {unknown} code
+ * @returns {{prose: boolean, id: string|null, text: string|null, line?: number, rest?: string} | null}
+ */
+export function slotOf(code) {
+  if (typeof code !== 'string') return null;
+  const m = SLOT.exec(code);
+  if (m) {
+    const before = code.slice(0, m.index); const after = code.slice(m.index + m[0].length);
+    const start = before.lastIndexOf('\n') + 1; const eol = after.indexOf('\n');
+    const alone = !before.slice(start).trim() && !(eol < 0 ? after : after.slice(0, eol)).trim();
+    return { prose: false, id: m[2], text: m[3], line: before.split('\n').length, rest: alone ? code.slice(0, start) + (eol < 0 ? '' : after.slice(eol + 1)) : before + after };
+  }
+  if (!/^\s*<(?:the|a|an|your|from)\b[^<>=/]*>\s*$/i.test(code)) return null;
+  const p = /showing ([A-Z][A-Z0-9]*-\d+): ([^]*?)>\s*$/.exec(code);
+  return { prose: true, id: p?.[1] ?? null, text: p?.[2] ?? null };
 }
 
 /** The code of every file of one feature folder (its pages, components and the rest), joined. */
@@ -227,11 +266,13 @@ function emptyPage(root, layout, p, fixtures) {
 }
 
 /**
- * One open item as a builder reads it: the sentence, then the exact step when there is one.
- * @param {{sentence: string, step?: {tool: string, args: any}|null}} it An open item.
+ * One open item as a builder reads it: the sentence, then the exact step when there is one (#920: its code in full, never
+ * cut; with `full` false, a code step is only announced: an item above changes its file, so its contentHash too).
+ * @param {{sentence: string, step?: {tool: string, args: any}|null}} it An open item. @param {boolean} [full]
  * @returns {string}
  */
-export const itemText = (it) => (it.step ? `${it.sentence} Step: ${it.step.tool} ${JSON.stringify(it.step.args, (_k, v) => (typeof v === 'string' && v.length > 160 ? `${v.slice(0, 157)}...` : v))}` : it.sentence);
+export const itemText = (it, full = true) => (!it.step ? it.sentence : !full && it.step.args?.code ? `${it.sentence} Its step, with the code, comes once the items above land.`
+  : `${it.sentence} Step: ${it.step.tool} ${JSON.stringify(it.step.args, (k, v) => (typeof v === 'string' && v.length > 160 && k !== 'code' ? `${v.slice(0, 157)}...` : v))}`);
 
 /**
  * The work card: how much is open, the current feature, its next items (up to 3) and its points, open ones first, under
@@ -245,7 +286,7 @@ export function workText(work, { cap = 5, feature } = {}) {
   const per = work.features.filter((x) => x.open.length).map((x) => `${x.name} ${x.open.length}`).join(', ');
   const head = work.count ? `Open work: ${work.count} item${work.count === 1 ? '' : 's'} remain (${per}).` : 'Open work: none; every feature has its pages, routes and points.';
   const lines = [head, `Current feature: ${f.name} (${f.story})`];
-  if (f.open.length) lines.push(`Next in ${f.name}:`, ...f.open.slice(0, 3).map((it, i) => `${i + 1}. ${itemText(it)}`), ...(f.open.length > 3 ? [`(${f.open.length - 3} more)`] : []));
+  if (f.open.length) lines.push(`Next in ${f.name}:`, ...f.open.slice(0, 3).map((it, i) => `${i + 1}. ${itemText(it, !f.open.slice(0, i).some((x) => x.step?.args?.code && x.step.args.file === it.step?.args?.file))}`), ...(f.open.length > 3 ? [`(${f.open.length - 3} more)`] : []));
   const pts = [...f.points.filter((p) => p.covered === false), ...f.points.filter((p) => p.covered !== false)];
   if (pts.length) {
     const shown = pts.slice(0, cap);
