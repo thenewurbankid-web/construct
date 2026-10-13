@@ -6,7 +6,11 @@
 //
 //   node bench/ecommerce/driver/qwen-agent.mjs --project <dir> [--arm line|plain] [--builder qwen-7b]
 //        [--model qwen2.5-coder:7b] [--max-turns 200] [--max-minutes 90] [--num-ctx 16384] [--seed <n>] [--ollama http://127.0.0.1:11434]
-//        [--seed-plan]
+//        [--seed-plan] [--bench <bench-dir>]
+//
+// --bench (or BENCH_DIR; default bench/ecommerce) picks the bench: its SPEC.md (system prompt, plan status, seed), its
+// BUILDER-PROMPT*.md when it has its own (else this bench's), and its results/ folder for the token log. For example
+// --bench bench/lending runs the held-out spec.
 //
 // --seed-plan (#914, Line arm, off by default): before the model's first turn, plan-cli `seed` adds and runs the steps a
 // block can decide from SPEC.md (features, wired pages, routes; specSteps.mjs), so the model starts from a routed, wired
@@ -33,15 +37,17 @@ import { readSpec, overviewWithIndex } from './spec-slice.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const bench = path.join(here, '..');
+const benchOf = (dir) => (dir ? path.resolve(dir) : bench);
 
 export function flags(argv) {
-  const o = { seed: undefined, seedPlan: false, project: process.env.BENCH_PROJECT, arm: 'line', builder: '', model: 'qwen2.5-coder:7b', maxTurns: 200, maxMinutes: 90, numCtx: 16384, maxRepeatRefusals: 10, maxCycleRepeats: 6, cycleWindow: 20, ollama: process.env.OLLAMA_HOST ?? 'http://127.0.0.1:11434', log: process.env.BENCH_LOG };
+  const o = { seed: undefined, seedPlan: false, project: process.env.BENCH_PROJECT, arm: 'line', builder: '', model: 'qwen2.5-coder:7b', maxTurns: 200, maxMinutes: 90, numCtx: 16384, maxRepeatRefusals: 10, maxCycleRepeats: 6, cycleWindow: 20, ollama: process.env.OLLAMA_HOST ?? 'http://127.0.0.1:11434', log: process.env.BENCH_LOG, bench: benchOf(process.env.BENCH_DIR) };
   for (let i = 0; i < argv.length; i += 1) {
     const k = argv[i]; const v = argv[i + 1];
     if (k === '--project') { o.project = v; i += 1; } else if (k === '--arm') { o.arm = v; i += 1; } else if (k === '--builder') { o.builder = v; i += 1; }
     else if (k === '--model') { o.model = v; i += 1; } else if (k === '--max-turns') { o.maxTurns = Number(v); i += 1; } else if (k === '--max-repeat-refusals') { o.maxRepeatRefusals = Number(v); i += 1; } else if (k === '--max-minutes') { o.maxMinutes = Number(v); i += 1; }
     else if (k === '--num-ctx') { o.numCtx = Number(v); i += 1; } else if (k === '--ollama') { o.ollama = v; i += 1; } else if (k === '--log') { o.log = v; i += 1; }
     else if (k === '--seed') { o.seed = Number(v); i += 1; } else if (k === '--max-cycle-repeats') { o.maxCycleRepeats = Number(v); i += 1; } else if (k === '--cycle-window') { o.cycleWindow = Number(v); i += 1; } else if (k === '--seed-plan') o.seedPlan = true;
+    else if (k === '--bench') { o.bench = benchOf(v); i += 1; }
   }
   if (!o.builder) o.builder = o.arm === 'plain' ? 'qwen-7b-plain' : 'qwen-7b';
   return o;
@@ -192,9 +198,10 @@ export function textToolCalls(content) {
  * The system prompt: the arm's BUILDER-PROMPT with the spec in place of {{SPEC}}: all of SPEC.md for the plain arm; for
  * the Line arm (#889) the overview and a feature index only, since plan status carries the current feature's points.
  */
-export function systemPrompt(arm) {
-  const prompt = fs.readFileSync(path.join(bench, arm === 'plain' ? 'BUILDER-PROMPT-PLAIN.md' : 'BUILDER-PROMPT.md'), 'utf8');
-  const spec = arm === 'plain' ? fs.readFileSync(path.join(bench, 'SPEC.md'), 'utf8') : overviewWithIndex(readSpec(path.join(bench, 'SPEC.md')));
+export function systemPrompt(arm, dir = bench) {
+  const name = arm === 'plain' ? 'BUILDER-PROMPT-PLAIN.md' : 'BUILDER-PROMPT.md';
+  const prompt = fs.readFileSync(fs.existsSync(path.join(dir, name)) ? path.join(dir, name) : path.join(bench, name), 'utf8');
+  const spec = arm === 'plain' ? fs.readFileSync(path.join(dir, 'SPEC.md'), 'utf8') : overviewWithIndex(readSpec(path.join(dir, 'SPEC.md')));
   return prompt.slice(prompt.indexOf('\n---\n') + 5).replace('{{SPEC}}', spec);
 }
 
@@ -272,16 +279,17 @@ async function main() {
  * @param {ReturnType<typeof flags>} o
  * @param {{resultsDir?: string}} [opts]
  */
-export async function runAgent(o, { resultsDir = path.join(bench, 'results') } = {}) {
+export async function runAgent(o, { resultsDir = path.join(o.bench ?? bench, 'results') } = {}) {
+  const dir = o.bench ?? bench;
   const runDir = path.dirname(path.resolve(o.project));
   const logDir = path.join(runDir, 'logs');
   fs.mkdirSync(logDir, { recursive: true });
   fs.mkdirSync(resultsDir, { recursive: true });
-  const cli = o.arm === 'plain' ? createPlainCli({ project: o.project, log: o.log ?? path.join(logDir, 'calls.jsonl'), builder: o.builder }) : createPlanCli({ project: o.project, log: o.log ?? path.join(logDir, 'calls.jsonl'), builder: o.builder });
+  const cli = o.arm === 'plain' ? createPlainCli({ project: o.project, log: o.log ?? path.join(logDir, 'calls.jsonl'), builder: o.builder }) : createPlanCli({ project: o.project, log: o.log ?? path.join(logDir, 'calls.jsonl'), builder: o.builder, spec: path.join(dir, 'SPEC.md') });
   const turnsFile = path.join(logDir, 'turns.jsonl');
   const tokensFile = path.join(resultsDir, `${o.builder}.tokens.jsonl`);
   const write = (f, e) => fs.appendFileSync(f, `${JSON.stringify(e)}\n`);
-  const system = { role: 'system', content: systemPrompt(o.arm) };
+  const system = { role: 'system', content: systemPrompt(o.arm, dir) };
   const first = { role: 'user', content: 'Start building. Use only your tools. Call finish when every acceptance point is done or you cannot make more progress.' };
   if (o.seedPlan && o.arm === 'line') {
     const seeded = await seedFirst(/** @type {any} */ (cli));
@@ -297,7 +305,7 @@ export async function runAgent(o, { resultsDir = path.join(bench, 'results') } =
   const streak = refusalStreak(o.maxRepeatRefusals);
   const cycle = cycleWatch({ limit: o.maxCycleRepeats, window: o.cycleWindow });
   const io = createTurnIo({ logDir });
-  write(turnsFile, { kind: 'start', at: new Date().toISOString(), builder: o.builder, model: o.model, arm: o.arm, maxTurns: o.maxTurns, maxMinutes: o.maxMinutes, numCtx: o.numCtx, seed: o.seed ?? null });
+  write(turnsFile, { kind: 'start', at: new Date().toISOString(), builder: o.builder, model: o.model, arm: o.arm, bench: path.basename(dir), maxTurns: o.maxTurns, maxMinutes: o.maxMinutes, numCtx: o.numCtx, seed: o.seed ?? null });
   for (turn = 1; turn <= o.maxTurns; turn += 1) {
     if (Date.now() > deadline) { stop = 'max wall time'; break; }
     // Keep the context inside num_ctx: the system prompt, the first message and the most recent exchanges.

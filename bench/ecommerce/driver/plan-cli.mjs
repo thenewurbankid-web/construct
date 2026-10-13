@@ -22,7 +22,9 @@
 //                                                    decide from SPEC.md (specSteps.mjs: features, wired pages, routes)
 //
 // Project and log: --project <dir> (or BENCH_PROJECT), --log <file> (or BENCH_LOG; default
-// bench/ecommerce/runs/<project folder name>/calls.jsonl), --builder <id> (or BENCH_BUILDER).
+// <bench>/runs/<project folder name>/calls.jsonl), --builder <id> (or BENCH_BUILDER).
+// Bench: --bench <dir> (or BENCH_DIR; default bench/ecommerce) picks the SPEC.md that status, open work and seed read
+// (e.g. --bench bench/lending, the held-out spec); --spec <file> names a SPEC.md directly.
 //
 // Auto (owner's choice for the bench projects only): Cockpit's "Let Auto approve in this session" (ct1) clicks Approve
 // on every step that Construct planned clean. Here the same: a step that joined the plan is approved by the session's
@@ -71,7 +73,7 @@ function inside(root, rel) {
  */
 export function createPlanCli({ project, log, builder = 'unknown', spec = SPEC_FILE, shadowJev = process.env.BENCH_JEV_SHADOW !== '0' }) {
   const root = fs.realpathSync(path.resolve(project));
-  const logFile = log ?? path.join(here, '..', 'runs', path.basename(root), 'calls.jsonl');
+  const logFile = log ?? path.join(spec ? path.dirname(spec) : path.join(here, '..'), 'runs', path.basename(root), 'calls.jsonl');
   fs.mkdirSync(path.dirname(logFile), { recursive: true });
   // R1: the fixes a refused add offered, kept next to calls.jsonl (not in the project), so `add --fix f1` in the next
   // one-shot process picks from them.
@@ -310,9 +312,16 @@ export function createPlanCli({ project, log, builder = 'unknown', spec = SPEC_F
 
 const safeJson = (s) => { try { return JSON.parse(s); } catch { return s ?? null; } };
 
-/** argv -> {cmd, rest, why, project, log, builder}. */
+/**
+ * The SPEC.md a bench folder holds (null for none given: the default, bench/ecommerce/SPEC.md).
+ * @param {string|undefined} bench
+ * @returns {string|null}
+ */
+export const benchSpec = (bench) => (bench ? path.join(path.resolve(bench), 'SPEC.md') : null);
+
+/** argv -> {cmd, rest, why, project, log, builder, spec}. */
 export function parseArgv(argv) {
-  const o = { cmd: '', rest: /** @type {string[]} */ ([]), why: undefined, fix: undefined, project: process.env.BENCH_PROJECT, log: process.env.BENCH_LOG, builder: process.env.BENCH_BUILDER };
+  const o = { cmd: '', rest: /** @type {string[]} */ ([]), why: undefined, fix: undefined, project: process.env.BENCH_PROJECT, log: process.env.BENCH_LOG, builder: process.env.BENCH_BUILDER, spec: benchSpec(process.env.BENCH_DIR) ?? SPEC_FILE };
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i];
     if (a === '--why') o.why = argv[++i];
@@ -320,6 +329,8 @@ export function parseArgv(argv) {
     else if (a === '--project') o.project = argv[++i];
     else if (a === '--log') o.log = argv[++i];
     else if (a === '--builder') o.builder = argv[++i];
+    else if (a === '--bench') o.spec = benchSpec(argv[++i]) ?? o.spec;
+    else if (a === '--spec') o.spec = path.resolve(argv[++i]);
     else if (!o.cmd) o.cmd = a;
     else o.rest.push(a);
   }
@@ -329,10 +340,10 @@ export function parseArgv(argv) {
 if (process.argv[1] && fs.realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const o = parseArgv(process.argv.slice(2));
   if (!o.project || !o.cmd) {
-    console.log(JSON.stringify({ ok: false, sentence: 'Usage: plan-cli.mjs --project <dir> <tools|status|add|run-next|findings|validate|read|ls|rules|seed> [...] (or set BENCH_PROJECT).' }));
+    console.log(JSON.stringify({ ok: false, sentence: 'Usage: plan-cli.mjs --project <dir> [--bench <dir>] <tools|status|add|run-next|findings|validate|read|ls|rules|seed> [...] (or set BENCH_PROJECT).' }));
     process.exit(2);
   }
-  const cli = createPlanCli({ project: o.project, log: o.log, builder: o.builder });
+  const cli = createPlanCli({ project: o.project, log: o.log, builder: o.builder, spec: o.spec });
   const out = await cli.run(o.cmd, o.rest, { why: o.why, fix: o.fix });
   console.log(JSON.stringify(out, null, 1));
   process.exit(out.ok ? 0 : 1);

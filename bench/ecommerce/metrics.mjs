@@ -6,6 +6,9 @@
 //   node bench/ecommerce/metrics.mjs report
 //   node bench/ecommerce/metrics.mjs acceptance <report.json> [acceptance.log]   (run-acceptance.sh's summary)
 //
+// Every command takes --bench <bench-dir> (or BENCH_DIR; default bench/ecommerce): the bench whose acceptance/ specs
+// are counted and whose results/ and RESULTS.md are read and written (e.g. bench/lending, the held-out spec).
+//
 // <run-dir> is what driver/new-run.sh made: <run>/project (the built project, a git repo whose first commit is the
 // starter) and <run>/logs (calls.jsonl from the CLI, turns.jsonl from qwen-agent, acceptance.json from
 // run-acceptance.sh, ui-actions.jsonl or a usage file for the browser builder).
@@ -32,7 +35,9 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const RESULTS = path.join(here, 'results');
+/** The bench folder (--bench or BENCH_DIR; default this one) and its results/. */
+let BENCH = process.env.BENCH_DIR ? path.resolve(process.env.BENCH_DIR) : here;
+let RESULTS = path.join(BENCH, 'results');
 
 /** USD per million tokens. Source: Anthropic list prices as cached in the claude-api skill on 2026-10-06; cache read
  * and write are the published multipliers (read 0.1x input, 5-minute write 1.25x input) unless a price is listed. */
@@ -148,8 +153,7 @@ function tscErrors(project) {
 }
 
 /** The number of acceptance tests (test( calls in acceptance/*.spec.ts). */
-export function acceptanceTotal() {
-  const dir = path.join(here, 'acceptance');
+export function acceptanceTotal(dir = path.join(BENCH, 'acceptance')) {
   return fs.readdirSync(dir).filter((f) => f.endsWith('.spec.ts')).reduce((n, f) => n + (fs.readFileSync(path.join(dir, f), 'utf8').match(/^test\(/gm)?.length ?? 0), 0);
 }
 
@@ -305,12 +309,13 @@ function report() {
     '- Acceptance totals count Playwright tests; CHK-4 and CHK-5 share one test.',
   );
   for (const r of rows.filter((x) => x.contention)) L.push(`- ${r.builder}: ${r.contention}`);
-  fs.writeFileSync(path.join(here, 'RESULTS.md'), `${L.join('\n')}\n`);
+  fs.writeFileSync(path.join(BENCH, 'RESULTS.md'), `${L.join('\n')}\n`);
   console.log(JSON.stringify({ ok: true, file: 'RESULTS.md', builders: rows.length }));
 }
 
 if (process.argv[1] && fs.realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const o = flags(process.argv.slice(2));
+  if (typeof o.bench === 'string') { BENCH = path.resolve(o.bench); RESULTS = path.join(BENCH, 'results'); }
   if (o._[0] === 'collect') await collect(o);
   else if (o._[0] === 'report') report();
   else if (o._[0] === 'acceptance') {
