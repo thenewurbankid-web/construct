@@ -22,6 +22,11 @@ export const WRITE_CODE = 'Write the code for this step';
 export const ASK = 'Ask a question';
 
 const safeParse = (s) => { try { return JSON.parse(s); } catch { return undefined; } };
+/**
+ * A tool's name, from an Ollama tool ({function: {name}}) or a plain {name}.
+ * @param {any} t The tool.
+ * @returns {string|undefined} Its name.
+ */
 export const toolName = (t) => t?.function?.name ?? t?.name;
 const toolSchema = (t) => t?.function?.parameters ?? { type: 'object', properties: {} };
 
@@ -60,7 +65,11 @@ export function validate(schema, value, at = 'arguments') {
   return errs;
 }
 
-/** One example value that validates against `schema` (required properties only), for a refusal's "A correct call". */
+/**
+ * One example value that validates against `schema` (required properties only), for a refusal's "A correct call".
+ * @param {any} schema A JSON Schema (the subset `validate` reads).
+ * @returns {any} A value that validates.
+ */
 export function exampleOf(schema) {
   if (!schema || typeof schema !== 'object') return {};
   if ('const' in schema) return schema.const;
@@ -80,7 +89,10 @@ export function exampleOf(schema) {
  * L3: the arguments of a native call against its tool's schema, then `check(name, args)` (the caller's own: the path
  * exists, the path is in scope; returns an error sentence or null). Null when the call is fine, else a refusal in the
  * house shape ({ok: false, code: 'BAD_ARGS', sentence}) ending with an example of a correct call.
- * @param {any} tool @param {any} args @param {{check?: (name: string, args: any) => string|null}} [o]
+ * @param {any} tool The offered tool.
+ * @param {any} args The call's arguments.
+ * @param {{check?: (name: string, args: any) => string|null}} [o] The caller's own check.
+ * @returns {{ok: false, code: 'BAD_ARGS', sentence: string, errors: string[]}|null} The refusal, or null.
  */
 export function checkArgs(tool, args, { check } = {}) {
   const name = toolName(tool);
@@ -114,7 +126,9 @@ export async function callNative({ model, messages, tools, options, ollama = 'ht
 /**
  * The one line the next turn starts with when this one produced no usable call (null when it did): the model wrote
  * text, or called a tool that was not offered. Either way it names the same small tool set.
- * @param {{calls: any[], wrong: any[]}} result @param {any[]} tools
+ * @param {{calls: any[], wrong: any[]}} result A callNative result.
+ * @param {any[]} tools The tools this turn offered.
+ * @returns {string|null} The line, or null when a call came back.
  */
 export function nudge(result, tools) {
   if (result.calls.length) return null;
@@ -123,10 +137,20 @@ export function nudge(result, tools) {
   return `You answered in text; call one of your tools: ${names}.`;
 }
 
-/** L1's format: the reply is exactly {"next": <one of the intent sentences>}. */
+/**
+ * L1's format: the reply is exactly {"next": <one of the intent sentences>}.
+ * @param {string[]} sentences The intent sentences.
+ * @returns {object} The JSON Schema for Ollama's `format`.
+ */
 export const intentSchema = (sentences) => ({ type: 'object', properties: { next: { type: 'string', enum: sentences } }, required: ['next'] });
 
-/** The default L4: one sentence for the ledger from a tool call and its answer. */
+/**
+ * The default L4: one sentence for the ledger from a tool call and its answer.
+ * @param {string} name The tool.
+ * @param {any} args Its arguments.
+ * @param {any} out Its answer ({ok, code, sentence}).
+ * @returns {string} The sentence.
+ */
 export function recordSentence(name, args, out) {
   const first = String(out?.sentence ?? '').split('\n').find((l) => l.trim()) ?? '';
   const what = args?.path ?? args?.file ?? args?.tool ?? '';
