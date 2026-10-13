@@ -94,34 +94,74 @@ function typeBlocks(ctx) {
   ];
 }
 
-const REDUCERS = {
+// #927: one small pure handler per action, in a map keyed by the action's `type`; the reducer only looks its handler up. One `switch` over every action scored cognitive 18 and
+// CRAP 210 (critical) in fallow's health check on a fresh `create store` -- a developer's first validate after a generator must be clean, by simpler code, not an exclusion.
+const HANDLERS = {
   value: () => [
-    "    case 'set':", "      return { status: 'set', value: action.value };", "    case 'clear':", "      return { status: 'empty' };",
+    "  set: (_state, action) => ({ status: 'set', value: action.value }),",
+    "  clear: () => ({ status: 'empty' }),",
   ],
   list: () => [
-    "    case 'add': {", "      const items = state.status === 'ready' ? state.items : [];",
-    '      const next = items.some((item) => item.id === action.item.id) ? items.map((item) => (item.id === action.item.id ? action.item : item)) : [...items, action.item];',
-    "      return { status: 'ready', items: next, selectedId: state.status === 'ready' ? state.selectedId : null };", '    }',
-    "    case 'remove': {", "      if (state.status === 'empty') return state;", '      const items = state.items.filter((item) => item.id !== action.id);',
-    "      if (items.length === 0) return { status: 'empty' };", "      return { status: 'ready', items, selectedId: state.selectedId === action.id ? null : state.selectedId };", '    }',
-    "    case 'select': {", "      if (state.status === 'empty') return state;", '      if (action.id !== null && !state.items.some((item) => item.id === action.id)) return state;', '      return { ...state, selectedId: action.id };', '    }',
-    "    case 'clear':", "      return { status: 'empty' };",
+    '  add: (state, action) => {',
+    "    const items = state.status === 'ready' ? state.items : [];",
+    "    return { status: 'ready', items: upsert(items, action.item), selectedId: state.status === 'ready' ? state.selectedId : null };",
+    '  },',
+    '  remove: (state, action) => {',
+    "    if (state.status === 'empty') return state;",
+    '    const items = state.items.filter((item) => item.id !== action.id);',
+    "    if (items.length === 0) return { status: 'empty' };",
+    "    return { status: 'ready', items, selectedId: state.selectedId === action.id ? null : state.selectedId };",
+    '  },',
+    '  select: (state, action) => {',
+    "    if (state.status === 'empty') return state;",
+    '    if (action.id !== null && !state.items.some((item) => item.id === action.id)) return state;',
+    '    return { ...state, selectedId: action.id };',
+    '  },',
+    "  clear: () => ({ status: 'empty' }),",
   ],
   keyed: () => [
-    "    case 'set': {", "      const byId = state.status === 'ready' ? state.byId : {};", "      return { status: 'ready', byId: { ...byId, [String(action.item.id)]: action.item } };", '    }',
-    "    case 'remove': {", "      if (state.status === 'empty') return state;", '      const rest = Object.fromEntries(Object.entries(state.byId).filter(([key]) => key !== String(action.id)));',
-    "      return Object.keys(rest).length === 0 ? { status: 'empty' } : { status: 'ready', byId: rest };", '    }',
-    "    case 'clear':", "      return { status: 'empty' };",
+    '  set: (state, action) => {',
+    "    const byId = state.status === 'ready' ? state.byId : {};",
+    "    return { status: 'ready', byId: { ...byId, [String(action.item.id)]: action.item } };",
+    '  },',
+    '  remove: (state, action) => {',
+    "    if (state.status === 'empty') return state;",
+    '    const rest = Object.fromEntries(Object.entries(state.byId).filter(([key]) => key !== String(action.id)));',
+    "    return Object.keys(rest).length === 0 ? { status: 'empty' } : { status: 'ready', byId: rest };",
+    '  },',
+    "  clear: () => ({ status: 'empty' }),",
   ],
+};
+
+/** Helpers a shape's handlers share, written above the handler map (the list's add-or-replace). */
+const HELPERS = {
+  value: () => [],
+  list: (E) => [
+    '/** The items with `item` added at the end, or in place of the item with its id. */',
+    `const upsert = (items: ${E}[], item: ${E}): ${E}[] =>`,
+    '  items.some((each) => each.id === item.id) ? items.map((each) => (each.id === item.id ? item : each)) : [...items, item];',
+    '',
+  ],
+  keyed: () => [],
 };
 
 function domainText(ctx) {
   const { names, shape, label } = ctx;
+  const S = names.state;
+  const A = names.action;
+  const types = shape === 'list' ? [A, names.entity, S] : [A, S];
   return lines(
-    importLine('defineDomain'), `import type { ${names.action}, ${names.state} } from '../types';`, '',
-    `/** The next state of the ${label} store for one action: pure, the state it is given is never changed, and every action has its own case. */`,
-    `export const ${names.reduce} = defineDomain<{ state: ${names.state}; action: ${names.action} }, ${names.state}>('${names.reduce}', ({ state, action }) => {`,
-    '  switch (action.type) {', REDUCERS[shape](), '  }', '});',
+    importLine('defineDomain'), `import type { ${types.join(', ')} } from '../types';`, '',
+    `/** Each action of the ${label} store, by its \`type\`. */`,
+    `type ActionByType = { [T in ${A} as T['type']]: T };`,
+    '/** One pure function per action: the state and that action in, the next state out. */',
+    `type Handlers = { [K in keyof ActionByType]: (state: ${S}, action: ActionByType[K]) => ${S} };`, '',
+    HELPERS[shape](names.entity),
+    'const handlers: Handlers = {', HANDLERS[shape](), '};', '',
+    "/** Runs the handler of the action's own type (typed per type, so no cast). */",
+    `const handle = <K extends keyof ActionByType>(state: ${S}, type: K, action: ActionByType[K]): ${S} => handlers[type](state, action);`, '',
+    `/** The next state of the ${label} store for one action: pure, the state it is given is never changed, and every action has its own handler. */`,
+    `export const ${names.reduce} = defineDomain<{ state: ${S}; action: ${A} }, ${S}>('${names.reduce}', ({ state, action }) => handle(state, action.type, action));`,
   );
 }
 
