@@ -7,7 +7,7 @@
    "maxTools": 5,
    "note": "0% native tool_calls in every configuration (writes the call as JSON text without <tool_call> tags); cannot drive the native-only builder.",
    "measured": {
-    "file": "bench/lending/results/tool-harness-r1.json",
+    "file": "bench/lending/results/tool-harness/r1.json",
     "at": "2026-10-13",
     "table": [
      "current/full: native 0%, right 0%, valid 0%, 1 calls/step, text named a right tool 60%, median 1842 ms",
@@ -23,7 +23,7 @@
    "maxTools": 3,
    "note": "0% native tool_calls in every configuration; cannot drive the native-only builder.",
    "measured": {
-    "file": "bench/lending/results/tool-harness-r1.json",
+    "file": "bench/lending/results/tool-harness/r1.json",
     "at": "2026-10-13",
     "table": [
      "current/full: native 0%, right 0%, valid 0%, 1 calls/step, text named a right tool 40%, median 387 ms",
@@ -39,7 +39,7 @@
    "maxTools": 5,
    "note": "100% native tool_calls; clean prompt ties current on right tool (80%); the subset (60%) and layered (20%) lose.",
    "measured": {
-    "file": "bench/lending/results/tool-harness-r1.json",
+    "file": "bench/lending/results/tool-harness/r1.json",
     "at": "2026-10-13",
     "table": [
      "current/full: native 100%, right 80%, valid 100%, 1 calls/step, text named a right tool 0%, median 17767 ms",

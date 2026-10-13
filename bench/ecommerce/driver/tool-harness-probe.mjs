@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // #938: how well each local model PICKS the right tool with Ollama's native tool calling. A small replay set: five
 // fixed builder turns (each needs one specific call: plan_status, plan_add line.setCode with args, read_file,
-// plan_run_next, finish) and five real lending-qwen-7b-r1 turn inputs (bench/lending/results/tool-harness-replay.json,
+// plan_run_next, finish) and five real lending-qwen-7b-r1 turn inputs (bench/lending/results/tool-harness/replay.json,
 // each with the tools that are a right next call). Every case runs in four configurations:
 //
 //   current/full    the r1 system prompt and qwen-agent's TOOLS.line (today's builder)
@@ -11,7 +11,7 @@
 //
 // Scores: native % (the reply had native tool_calls), right % (the first call is a right tool, with the right key
 // arguments on the fixed cases), valid % (its arguments pass the schema and the path-scope check), calls per step
-// (Ollama requests per case), median latency. Writes bench/lending/results/tool-harness-r1.json and the table into
+// (Ollama requests per case), median latency. Writes bench/lending/results/tool-harness/r1.json and the table into
 // driver/model-profiles.json. Every Ollama call is sequential; run it in the heavy slot:
 //
 //   packages/tools/dev/heavy.sh node bench/ecommerce/driver/tool-harness-probe.mjs [--models a,b] [--ollama URL]
@@ -28,8 +28,8 @@ const root = path.resolve(here, '../../..');
 const arg = (k, d) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : d; };
 const OLLAMA = arg('--ollama', process.env.OLLAMA_HOST ?? 'http://127.0.0.1:11434');
 const MODELS = arg('--models', 'qwen2.5-coder:7b,qwen2.5-coder:1.5b,qwen3:4b').split(',');
-const OUT = path.resolve(arg('--out', path.join(root, 'bench/lending/results/tool-harness-r1.json')));
-const REPLAY = path.join(root, 'bench/lending/results/tool-harness-replay.json');
+const OUT = path.resolve(arg('--out', path.join(root, 'bench/lending/results/tool-harness/r1.json')));
+const REPLAY = path.join(root, 'bench/lending/results/tool-harness/replay.json');
 const PROFILES = path.join(here, 'model-profiles.json');
 const OPTIONS = { num_ctx: 16384, temperature: 0.2, seed: 7 };
 /** Tools per turn in the subset configurations (fewer for the small model). */
