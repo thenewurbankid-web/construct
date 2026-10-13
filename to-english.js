@@ -192,19 +192,35 @@ function walkMember(node, out) {
     return walkDetached(node.property, out);
   }
   glue(out, "'s", { glueL: true });
-  return chip(out, camelToWords(node.property.name || (node.property.id && node.property.id.name) || ''), 'verb', node.property);
+  return chip(out, propertyWords(node.property), 'verb', node.property);
+}
+
+function propertyWords(prop) {
+  return camelToWords(prop.name || (prop.id && prop.id.name) || '');
 }
 
 function walkCall(node, out) {
   const callee = node.callee;
-  if (callee.type === 'MemberExpression' || callee.type === 'OptionalMemberExpression') {
+  if ((callee.type === 'MemberExpression' || callee.type === 'OptionalMemberExpression') && !callee.computed) {
     walkSubject(callee.object, out);
-    chip(out, camelToWords(callee.property.name || ''), 'verb', callee.property);
+    chip(out, propertyWords(callee.property), 'verb', callee.property);
     return walkArgs(node.arguments, out);
   }
-  chip(out, camelToWords(callee.name || ''), 'verb', callee);
+  if (callee.type === 'Identifier') {
+    chip(out, camelToWords(callee.name), 'verb', callee);
+    if (node.arguments.length) {
+      chip(out, 'of', 'connective');
+      walkArgs(node.arguments, out);
+    }
+    return;
+  }
+  // Any other callee -- a computed lookup (handlers[name](e)), an IIFE, a
+  // call result (f(a)(b)), super(...) -- has no name to use as a verb (it
+  // used to render as an empty one), so it reads "call <callee> with <args>".
+  chip(out, 'call', 'connective');
+  walkExpr(callee, out);
   if (node.arguments.length) {
-    chip(out, 'of', 'connective');
+    chip(out, 'with', 'connective');
     walkArgs(node.arguments, out);
   }
 }
@@ -356,7 +372,17 @@ const EXPR_RULES = {
   },
   NewExpression: (node, out) => {
     chip(out, 'a new', 'connective');
-    chip(out, node.callee.name, 'verb', node.callee, { en: String(node.callee.name) });
+    const callee = node.callee;
+    if (callee.type === 'Identifier') {
+      chip(out, callee.name, 'verb', callee);
+    } else if ((callee.type === 'MemberExpression') && !callee.computed) {
+      // new a.B() used to read "a new undefined": the class is B, from a.
+      chip(out, callee.property.name, 'verb', callee.property);
+      chip(out, 'from', 'connective');
+      walkSubject(callee.object, out);
+    } else {
+      walkExpr(callee, out);
+    }
     if (node.arguments.length) {
       chip(out, 'of', 'connective');
       walkArgs(node.arguments, out);
@@ -742,8 +768,10 @@ const STMT_RULES = {
 function walkForEach(node, out) {
   chip(out, 'for each', 'connective');
   if (node.left.declarations) {
+    // patternName, not id.name: a destructured loop variable
+    // (for (const [k, v] of ...)) has no .name and used to read "undefined".
     const id = node.left.declarations[0].id;
-    chip(out, id.name, 'subject', id, { en: String(id.name) });
+    chip(out, patternName(id, out), 'subject', id);
   } else {
     walkExpr(node.left, out);
   }
