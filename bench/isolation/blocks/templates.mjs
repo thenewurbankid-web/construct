@@ -50,15 +50,11 @@ export const templates = {
     change: [
       'Keep the data in localStorage under the key the task names, as a JSON array of strings.',
       'Read with JSON.parse and fall back to [] when the key is missing; write with JSON.stringify.',
-      'Write only this one function; the other store functions are written separately.',
+      'Write only this one function, reading localStorage itself.',
     ],
-    example: `export function listCart(): string[] {
+    example: `export function addToCart(id: string): void {
   const raw = localStorage.getItem('cart');
-  return raw ? (JSON.parse(raw) as string[]) : [];
-}
-
-export function addToCart(id: string): void {
-  const cart = listCart();
+  const cart: string[] = raw ? (JSON.parse(raw) as string[]) : [];
   if (!cart.includes(id)) localStorage.setItem('cart', JSON.stringify([...cart, id]));
 }`,
   },
