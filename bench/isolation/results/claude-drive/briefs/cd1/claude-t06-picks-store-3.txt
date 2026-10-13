@@ -1,0 +1,41 @@
+Write three exported TypeScript functions for a browser store of picked book ids. The ids are kept in localStorage under the key "picks" as a JSON array of strings, so they survive a page reload.
+
+Exact signatures:
+export function listPicks(): string[]
+export function addPick(id: string): void
+export function removePick(id: string): void
+
+Rules:
+- listPicks returns the picked ids in the order they were added. If localStorage has no "picks" key, or its value is not valid JSON or not an array, return [].
+- addPick appends id to the end; if id is already in the list it does nothing.
+- removePick removes id from the list (does nothing if absent).
+- Always write back with localStorage.setItem("picks", JSON.stringify(list)).
+
+Write exactly this code:
+
+```ts
+export function listPicks(): string[] {
+  try {
+    const raw = localStorage.getItem("picks");
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((x) => typeof x === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+export function addPick(id: string): void {
+  const list = listPicks();
+  if (list.includes(id)) return;
+  list.push(id);
+  localStorage.setItem("picks", JSON.stringify(list));
+}
+
+export function removePick(id: string): void {
+  const list = listPicks().filter((x) => x !== id);
+  localStorage.setItem("picks", JSON.stringify(list));
+}
+```
+
+Reply with only these three functions in one fenced ```ts code block. No imports, no other text.
