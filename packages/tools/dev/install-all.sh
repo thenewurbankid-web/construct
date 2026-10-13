@@ -8,6 +8,8 @@
 #
 # Skips a folder with no package.json, and a folder whose node_modules is a symlink (a git worktree linked to the
 # main checkout's install by link-worktree-node-modules.sh): `npm ci` there would replace the shared install.
+# Safe to run under heavy.sh itself (`heavy.sh npm run install:all`): each inner heavy.sh sees it is nested and runs
+# `npm ci` directly instead of waiting for the lock its ancestor holds (#939).
 # Stops at the first folder whose install fails, with its exit status.
 set -u
 here=$(cd "$(dirname "$0")" && pwd -P)
