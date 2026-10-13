@@ -59,3 +59,18 @@ work/2026-09-23 or later (older copies fail on macOS without flock). Previous ca
 1. Read cd1 results; board update. 2. Smith: owner push -> q2 -> og pin bump + suite -> close tracker.
 3. LSP report -> decide what moves into Line/MCP. 4. Human/Claude driver with blocks on t07/t10/t12 (logic gaps).
 5. Issues #940-#944 open; close only when verified (rule 2: no comment needed).
+
+## Late additions (after hand-over)
+- Claude Code harness cd1 finished (NOT committed: worktree agent-a1face930fad09995,
+  bench/isolation/results/claude-drive/cd1/). CD-raw 4/4 (incl. t12, which every 7b arm failed), CD note-mode 3/4
+  (t06 fragment), CW 4/4. ~$0.16-0.29 per task; ~110k cached Claude Code overhead per session dominates, so no Claude
+  token saving on tasks this small. Commit it and put it on the board.
+- Line LSP (#943) done: exp/line-lsp afe4e30e, packages/engine/lsp/{host,index,smith,rules,gate,server}.mjs, results
+  bench/isolation/results/lsp-r1.md. Wins: L-rules (nextSteps 8/8 vs 1.5b 3/8), L-enum (6/9 vs free text 0/9),
+  L-gather-det (-68% context tokens, no model), smithDiagnostics exact (12/12; embed fallback worse, 8/12). L-fix clears
+  tsc but pass unchanged. L-brief, model-driven gatherer lose. Agent recommends moving nextSteps, completionsAt+enum,
+  definition/quickInfo gatherer, smithDiagnostics (exact), fixes into Line/MCP.
+- OWNER DECISION PENDING: atomicGate's "connections only through functions" rejects bench pages that read the books
+  fixture directly (even the reference solutions): change the gate's page rule or the tasks? L-gate 2/12 vs H 8/12
+  until settled. atomic-codemod plug() can transform but its atom calls aren't imported (L-norm 0 compile).
+- Smith: owner pushed smith-hardening to ~/Desktop/atomic-codemod (new branch); merge into its main still open.
