@@ -1,0 +1,4 @@
+[
+  { "id": "a", "title": "A", "year": 2001, "available": true },
+  { "id": "b", "title": "B", "year": 2002, "available": false }
+]
