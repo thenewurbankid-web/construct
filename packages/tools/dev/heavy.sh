@@ -16,7 +16,8 @@
 #      CONSTRUCT_HEAVY_RAM_WAIT_SEC (default 1800: give up waiting for RAM after this),
 #      CONSTRUCT_HEAVY_POLL_SEC (default 15: pause between RAM checks),
 #      CONSTRUCT_HEAVY_TMP (default $TMPDIR or /tmp: where construct-* dirs are pruned),
-#      CONSTRUCT_HEAVY_MEMINFO / CONSTRUCT_HEAVY_VMSTAT (test overrides for the free-RAM probe).
+#      CONSTRUCT_HEAVY_MEMINFO / CONSTRUCT_HEAVY_VMSTAT (test overrides for the free-RAM probe),
+#      CONSTRUCT_HEAVY_HELD (set by heavy.sh itself for its command: a nested heavy.sh runs directly, #939).
 #
 # Exit status: the command's own; 75 (EX_TEMPFAIL) when the lock or the RAM never
 # came within the wait; 2 on usage or when the lock's folder does not exist.
@@ -199,6 +200,55 @@ free_mb() {
   echo ''
 }
 
+# ---- re-entrancy (#939) ------------------------------------------------------------------------
+# A heavy command may itself call heavy.sh (`heavy.sh npm run install:all` runs install-all.sh, which runs
+# `heavy.sh npm ci`). The inner call used to wait for the lock its own ancestor holds: a self-deadlock that
+# blocked every heavy job on the machine for CONSTRUCT_HEAVY_LOCK_WAIT_SEC. The outer heavy.sh exports
+# CONSTRUCT_HEAVY_HELD="<its pid>:<lock path>" to its command; an inner heavy.sh runs its command directly
+# (no lock, no RAM wait, no prune: the outer one already did all three) only when every part checks out:
+#   - the marker names this same lock path,
+#   - that pid is an ancestor of this process (a forged or inherited-elsewhere marker is not),
+#   - and the lock is still held by that pid right now (mkdir lock: its pid file; flock: the holder file).
+# Anything else -- stale, foreign, malformed -- falls through to the normal lock wait.
+
+# 0 when $1 is this process or one of its ancestors.
+is_ancestor() {
+  local want="$1" p="$$" i=0
+  while [ -n "$p" ] && [ "$p" -gt 1 ] 2>/dev/null && [ "$i" -lt 64 ]; do
+    [ "$p" = "$want" ] && return 0
+    p=$(ps -o ppid= -p "$p" 2>/dev/null | tr -cd '0-9')
+    i=$((i + 1))
+  done
+  return 1
+}
+
+# 0 when the lock at $LOCK is currently held by pid $1.
+lock_held_by() {
+  local holder_pid
+  if [ "$HAVE_FLOCK" = 1 ]; then
+    holder_pid=$(sed -n -E '1s/^pid ([0-9]+) .*/\1/p' "$HOLDER" 2>/dev/null)
+    [ "$holder_pid" = "$1" ] || return 1
+    # The holder file is written only after flock succeeds; confirm the lock really is taken now.
+    ! flock -n "$LOCK" true 2>/dev/null
+  else
+    holder_pid=$(tr -cd '0-9' <"$LOCKDIR/pid" 2>/dev/null)
+    [ "$holder_pid" = "$1" ]
+  fi
+}
+
+if [ -n "${CONSTRUCT_HEAVY_HELD:-}" ]; then
+  held_pid="${CONSTRUCT_HEAVY_HELD%%:*}"
+  held_lock="${CONSTRUCT_HEAVY_HELD#*:}"
+  case "$held_pid" in '' | *[!0-9]*) held_pid='' ;; esac
+  if [ -n "$held_pid" ] && [ "$held_lock" = "$LOCK" ] && ! pid_gone "$held_pid" \
+    && is_ancestor "$held_pid" && lock_held_by "$held_pid"; then
+    say "nested under heavy.sh pid $held_pid, which already holds $LOCK: running directly."
+    exec "$@"
+  fi
+  say "ignoring CONSTRUCT_HEAVY_HELD=$CONSTRUCT_HEAVY_HELD (not a live ancestor holding $LOCK); taking the lock normally."
+  unset CONSTRUCT_HEAVY_HELD
+fi
+
 [ "$HAVE_FLOCK" = 1 ] && exec 9>>"$LOCK"
 started=$(date +%s)
 ram_deadline=$((started + RAM_WAIT_SEC))
@@ -231,6 +281,7 @@ printf 'pid %s since %s: %s\n' "$$" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" >"$HOL
 trap 'rm -f "$HOLDER" 2>/dev/null; [ "$HAVE_FLOCK" = 1 ] || rm -rf "$LOCKDIR" 2>/dev/null' EXIT
 
 export NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=${HEAP_MB}}"
+export CONSTRUCT_HEAVY_HELD="$$:$LOCK" # lets a heavy.sh inside this command run without re-taking the lock
 nice -n 10 "$@"
 status=$?
 prune_stale

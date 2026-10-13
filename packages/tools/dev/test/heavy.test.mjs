@@ -413,3 +413,56 @@ test('#854 status.sh reports the heavy queue from the mkdir lock where flock is 
   fs.writeFileSync(`${env.CONSTRUCT_HEAVY_LOCK}.d/pid`, String(process.pid));
   assert.match(queue(run().stdout), /^HELD by pid /);
 });
+
+// ---- #939: re-entrancy -- a heavy command that itself calls heavy.sh (install:all -> install-all.sh -> heavy.sh npm ci)
+// used to wait for the lock its own ancestor held, for the whole CONSTRUCT_HEAVY_LOCK_WAIT_SEC. Each case runs with
+// this machine's own lock (flock or mkdir) and with flock hidden (the mkdir lock), so both paths are covered here.
+for (const [label, pathFor] of [['native lock', () => process.env.PATH], ['flock missing (mkdir lock)', pathWithoutFlock]]) {
+  test(`#939 ${label}: a heavy.sh nested inside a heavy.sh command runs directly, finishes, and the lock is released`, () => {
+    const { env } = sandbox({ CONSTRUCT_HEAVY_LOCK_WAIT_SEC: '3' });
+    env.PATH = pathFor();
+    delete env.CONSTRUCT_HEAVY_HELD;
+    const started = Date.now();
+    const r = run(['bash', '-c', `bash "${HEAVY}" sh -c 'echo inner-ran'; echo outer-done`], env);
+    assert.equal(r.status, 0, r.stderr);
+    assert.match(r.stdout, /inner-ran[\s\S]*outer-done/);
+    assert.match(r.stderr, /nested under heavy\.sh pid \d+, which already holds .*: running directly/);
+    assert.doesNotMatch(r.stderr, /could not get the heavy-job lock/);
+    assert.ok(Date.now() - started < 3_000, 'did not wait out the lock');
+    assert.equal(fs.existsSync(`${env.CONSTRUCT_HEAVY_LOCK}.d`), false, 'mkdir lock released');
+    assert.equal(fs.existsSync(`${env.CONSTRUCT_HEAVY_LOCK}.holder`), false, 'holder file removed');
+    const again = run(['sh', '-c', 'echo free'], { ...env, CONSTRUCT_HEAVY_LOCK_WAIT_SEC: '1' });
+    assert.equal(again.status, 0, `lock is free afterwards: ${again.stderr}`);
+  });
+}
+
+test('#939 a forged marker naming a live lock holder that is not an ancestor does not bypass the lock (exit 75)', async () => {
+  const { env } = sandbox({ CONSTRUCT_HEAVY_LOCK_WAIT_SEC: '1' });
+  const noFlock = { ...env, PATH: pathWithoutFlock() };
+  const lockDir = `${env.CONSTRUCT_HEAVY_LOCK}.d`;
+  const holderProc = spawn('sleep', ['30']); // a live pid holding the lock, unrelated to the caller
+  try {
+    await new Promise((res) => setTimeout(res, 50));
+    fs.mkdirSync(lockDir);
+    fs.writeFileSync(path.join(lockDir, 'pid'), `${holderProc.pid}\n`);
+    fs.writeFileSync(`${env.CONSTRUCT_HEAVY_LOCK}.holder`, `pid ${holderProc.pid} since 2026-01-01T00:00:00Z: sleep\n`);
+    const forged = { ...noFlock, CONSTRUCT_HEAVY_HELD: `${holderProc.pid}:${env.CONSTRUCT_HEAVY_LOCK}` };
+    const r = run(['sh', '-c', 'echo must-not-run'], forged);
+    assert.equal(r.status, 75, r.stderr);
+    assert.doesNotMatch(r.stdout, /must-not-run/);
+    assert.match(r.stderr, /ignoring CONSTRUCT_HEAVY_HELD/);
+    assert.doesNotMatch(r.stderr, /nested under/);
+  } finally {
+    holderProc.kill('SIGKILL');
+  }
+});
+
+test('#939 a stale marker (dead pid) or one for another lock is ignored and the lock is taken normally', () => {
+  const { env } = sandbox();
+  for (const marker of [`${deadPid()}:${env.CONSTRUCT_HEAVY_LOCK}`, `${process.pid}:/elsewhere/heavy.lock`, 'garbage']) {
+    const r = run(['sh', '-c', `cat "${env.CONSTRUCT_HEAVY_LOCK}.holder"`], { ...env, CONSTRUCT_HEAVY_HELD: marker });
+    assert.equal(r.status, 0, r.stderr);
+    assert.match(r.stderr, /ignoring CONSTRUCT_HEAVY_HELD/);
+    assert.match(r.stdout, /^pid \d+ since /, 'took the lock itself (holder file written)');
+  }
+});
