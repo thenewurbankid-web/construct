@@ -1,0 +1,4 @@
+# t11-browse-sort-title: BRW-3 default order Title A-Z. Written by Claude from task.json goal + spec only.
+mode: page
+fn: BrowsePage
+sort a's title locale compare b's title

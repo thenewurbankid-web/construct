@@ -1,0 +1,6 @@
+# t04-book-not-found: BK-4 back link and unknown-book message. Written by Claude from task.json goal + spec only.
+mode: page
+fn: BookPage
+a <Link> with href as '/' containing 'Back to the catalogue'
+if not (item), return shows a <DetailPage>
+'We could not find that book'

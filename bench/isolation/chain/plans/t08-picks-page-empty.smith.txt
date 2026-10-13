@@ -1,0 +1,6 @@
+# t08-picks-page-empty: PCK-2 heading, PCK-5 empty text. Written by Claude from task.json goal + spec only.
+mode: page
+fn: PicksPage
+list picks
+with title as 'My picks'
+'You have not picked any books yet'

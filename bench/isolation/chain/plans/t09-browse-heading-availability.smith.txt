@@ -1,0 +1,5 @@
+# t09-browse-heading-availability: BRW-1 heading and availability words. Written by Claude from task.json goal + spec only.
+mode: page
+fn: BrowsePage
+with title as 'Library catalogue'
+a <p> containing if item's available then 'Available', otherwise 'On loan'

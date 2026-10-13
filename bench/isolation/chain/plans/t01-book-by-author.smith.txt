@@ -1,0 +1,5 @@
+# t01-book-by-author: BK-1 "by <author>". Written by Claude from task.json goal + spec only (no reference read).
+# mode page: every line must appear in Smith's English of the function (canonical); extra elements are allowed.
+mode: page
+fn: BookPage
+a <p> containing 'by' and item's author
