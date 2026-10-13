@@ -86,7 +86,8 @@ export function arrayFixtures(root, layout) {
  * @param {string} feature The feature name.
  * @param {string} spec The feature's spec.md text.
  * @param {'list'|'detail'|null} [shape] For a list page (issue 919) the fixture must be the feature's own (its name) or one
- *   the spec says the page lists (shows) all or every one of; "lists each product in it" (a cart) is state, not the fixture.
+ *   the spec says the page lists (shows) all or every one of, or shows "the <fixture>" (#933); "lists each product in it"
+ *   (a cart) is state, not the fixture.
  * @returns {{stem: string, rel: string, rows: Record<string, unknown>[], score: number}|null} The best fit with its score.
  */
 export function fixtureFor(fixtures, feature, spec, shape = null) {
@@ -97,7 +98,8 @@ export function fixtureFor(fixtures, feature, spec, shape = null) {
     let score = forms.includes(String(feature).toLowerCase()) ? 1000 : 0;
     const re = new RegExp(`\\b(?:${[...new Set(forms)].map((x) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})\\b`, 'gi');
     score += (spec.match(re) || []).length;
-    if (shape === 'list' && score < 1000 && !new RegExp(`\\b(?:lists?|shows?|displays?)\\s+(?:all|every)\\b[^.\\n]*?${re.source}`, 'i').test(spec)) continue;
+    // #933: or "shows the books six at a time": the page shows the fixture's records themselves ("the <fixture>").
+    if (shape === 'list' && score < 1000 && !new RegExp(`\\b(?:lists?|shows?|displays?)\\s+(?:(?:all|every)\\b[^.\\n]*?|the\\s+(?:\\d+\\s+)?)${re.source}`, 'i').test(spec)) continue;
     if (score > 0 && (!best || score > best.score)) best = { ...f, score };
   }
   return best;
@@ -216,7 +218,10 @@ export function basePageSource(root, layout, o) {
   const has = (n) => Boolean(props?.some((p) => p.name === n));
   const head = `// @line-base ${o.libraryId}\n`;
   const shape = /List/.test(o.libName) ? 'list' : /Detail/.test(o.libName) ? 'detail' : null;
-  const fixture = props && has('title') && has('children') ? fixtureFor(arrayFixtures(root, layout), o.feature, text, shape) : null;
+  // #933: a detail page shows one fixture record by its id, so only a feature whose spec names a route with a parameter
+  // (`/books/<id>`) gets one; a confirmation or summary page (`/request/done`) is not a fixture record.
+  const byId = shape !== 'detail' || /`\/[^`]*(?:<\w+>|:\w+|\[\w+\])[^`]*`/.test(text);
+  const fixture = props && has('title') && has('children') && byId ? fixtureFor(arrayFixtures(root, layout), o.feature, text, shape) : null;
   if (fixture && shape) {
     const wired = wiredPage(root, layout, o, { fixture, shape, text, props, has, head });
     if (wired) return wired;

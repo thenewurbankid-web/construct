@@ -6,7 +6,7 @@
 //   atomSteps(root, {spec, planned})   the steps (line.useAtom, line.setCode, line.setLayoutSlot, line.baseOn, line.addRoute)
 //                                      whose inputs are all decided and whose files are on disk, in dependency order;
 //                                      `open`: the points left for the model, each with why; `claimed`: every point a
-//                                      block or recipe took (decided or not)
+//                                      block or recipe took (decided or not); `claimedRoutes`: the routes a recipe pages
 // Blocks: filter-sort (a "filter labelled", a "search box labelled", the no-match text; atom filter-sort; no debounce:
 // the spec gives no delay and the list is client-side), and the recipes of examples/*.json (#933): a recipe is a worked
 // example of the mapping (a shop's selection with totals, and the validated form that submits it), data, not code. Its
@@ -198,7 +198,7 @@ export function pointBlocks(spec, fixtures, recipes = RECIPES) {
  * The atom and block steps for the project at `root` (see the header).
  * @param {string} root Project root.
  * @param {{spec: any, planned?: {tool: string, args?: any, state?: string}[]}} o
- * @returns {{steps: any[], skipped: {kind: string, feature: string, reason: string}[], open: {point: string, feature: string, reason: string}[], claimed: string[]}}
+ * @returns {{steps: any[], skipped: {kind: string, feature: string, reason: string}[], open: {point: string, feature: string, reason: string}[], claimed: string[], claimedRoutes: string[]}}
  */
 export function atomSteps(root, { spec, planned = [] }) {
   const { library: lib, features } = resolveLayout(root, normalizeLineConfig(/** @type {any} */ (loadConfig(root)).line));
@@ -340,5 +340,6 @@ export function atomSteps(root, { spec, planned = [] }) {
     }
   }
   const covered = new Set(['page']);
-  return { steps, skipped, open: points.filter((p) => !p.decided && !covered.has(String(p.block))).map((p) => ({ point: p.id, feature: p.feature, reason: p.reason })), claimed: points.map((p) => p.id) };
+  return { steps, skipped, open: points.filter((p) => !p.decided && !covered.has(String(p.block))).map((p) => ({ point: p.id, feature: p.feature, reason: p.reason })), claimed: points.map((p) => p.id),
+    claimedRoutes: Object.values(blocks).map((b) => b.done?.route).filter(Boolean) };
 }
