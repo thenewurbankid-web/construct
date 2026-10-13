@@ -15,7 +15,7 @@
 // a page whose base is only the list fallback (no :param, no Detail or form-ish name) is seeded only when the spec says
 // it lists something.
 // A route a point only mentions ("opens `/cart`") is never seeded: which feature and page serve it is the builder's
-// call. Behaviour points (filters, forms, cart state) get no step. Idempotent: a step whose effect is on disk (the
+// call. Behaviour points (filters, forms, cart state) are atomSteps.mjs's (#919): wired from atoms when a block decides them. Idempotent: a step whose effect is on disk (the
 // feature, the page, the served route) or that the plan already holds (`planned`, not done) is skipped, with why.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -25,6 +25,7 @@ import { resolveLayout } from '@line/construct-core/profiles/line/checks';
 import { openWork } from '../openWork.mjs';
 import { baseRank, appDirOf, routeFolders, featurePages } from '../build.mjs';
 import { arrayFixtures, fixtureFor } from '../basePage.mjs';
+import { atomSteps } from './atomSteps.mjs';
 
 const posix = path.posix;
 const readOrNull = (abs) => { try { return fs.readFileSync(abs, 'utf8'); } catch { return null; } };
@@ -124,7 +125,7 @@ function plannedLike(planned, step) {
  * @param {string} root Project root.
  * @param {{spec: SeedSpec, planned?: {tool: string, args?: any, state?: string}[]}} o `planned`: the current plan's
  *   steps (a done or cancelled one is ignored; its effect is on disk or nowhere).
- * @returns {{steps: SeedStep[], skipped: SeedSkip[]}}
+ * @returns {{steps: SeedStep[], skipped: SeedSkip[], open: {point: string, feature: string, reason: string}[]}}
  */
 export function specSteps(root, { spec, planned = [] }) {
   const layout = resolveLayout(root, normalizeLineConfig(/** @type {any} */ (loadConfig(root)).line));
@@ -187,7 +188,7 @@ export function specSteps(root, { spec, planned = [] }) {
           skipped.push({ kind: 'page', feature: f.name, route, reason: 'the spec does not say which library page fits it' }); return;
         }
         const shape = /List/.test(lib.id) ? 'list' : /Detail/.test(lib.id) ? 'detail' : null;
-        const fx = shape ? fixtureFor(fixtures, f.name, textForFixture) : null;
+        const fx = shape ? fixtureFor(fixtures, f.name, textForFixture, shape) : null;
         file = `${layout.features}/${f.name}/pages/${name}${posix.extname(lib.n)}`;
         push({ tool: 'line.baseOn', args: { libraryId: lib.id, feature: f.name, name }, kind: 'page', feature: f.name, point: pid, route, base: lib.id, ...(fx ? { fixture: fx.rel } : {}),
           why: `${said}: ${name} is based on the library ${lib.id.split('/')[1]}${fx ? `, wired to ${fx.rel}` : ''}.` });
@@ -195,7 +196,11 @@ export function specSteps(root, { spec, planned = [] }) {
       push({ tool: 'line.addRoute', args: { route, page: file }, kind: 'route', feature: f.name, point: pid, route, why: `${said}: serve ${posix.basename(file).replace(/\.[^.]+$/, '')} there.` });
     });
   }
-  return { steps, skipped };
+  // #919: then the behaviour points a block decides (atomSteps.mjs), once their pages are on disk; the rest stay open.
+  const more = atomSteps(root, { spec, planned: open });
+  const same = (a, b) => a.tool === b.tool && JSON.stringify(a.args) === JSON.stringify(b.args);
+  for (const s of more.steps) if (!steps.some((x) => same(x, s))) steps.push(s);
+  return { steps, skipped: [...skipped, ...more.skipped], open: more.open };
 }
 
 /**

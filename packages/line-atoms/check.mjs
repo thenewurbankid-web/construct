@@ -73,7 +73,8 @@ export function atomSignals(text, atoms = listAtoms()) {
 }
 
 /**
- * The atoms a module imports from @line/atoms (`@line/atoms/<id>`), with the import's line.
+ * The atoms a module imports from @line/atoms (`@line/atoms/<id>`), or (#919) from a copy line.useAtom made in a
+ * project's atoms kind (a relative `.../atoms/<id>` naming a shipped atom), with the import's line.
  * @param {any} ast
  * @returns {{id: string, line: number}[]}
  */
@@ -82,7 +83,9 @@ export function atomImportsIn(ast) {
   for (const node of ast?.body ?? []) {
     if ((node.type === 'ImportDeclaration' || node.type === 'ExportNamedDeclaration' || node.type === 'ExportAllDeclaration') && typeof node.source?.value === 'string') {
       const spec = node.source.value;
+      const copy = /^\.{1,2}\/(?:[^'"]*\/)?atoms\/([a-z][a-z0-9]*(?:-[a-z0-9]+)*)(?:\.ts)?$/.exec(spec);
       if (spec.startsWith(`${PACKAGE}/`)) out.push({ id: spec.slice(PACKAGE.length + 1), line: node.loc?.start?.line ?? 1 });
+      else if (copy && listAtoms().some((a) => a.id === copy[1])) out.push({ id: copy[1], line: node.loc?.start?.line ?? 1 });
     }
   }
   return out;
