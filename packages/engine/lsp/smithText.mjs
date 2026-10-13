@@ -65,12 +65,16 @@ export function smithInput(fn) {
   return cls?.members[0]?.getText(sf) ?? out;
 }
 
+/** Smith's two gap markers: "(...)" (pinned atomic-codemod) and "(a step that does not translate cleanly)" (hardened). */
+const PLACEHOLDER_RE = /\(\.\.\.\)|\(a step that does not translate cleanly\)/g;
+
 /**
- * Words left once Smith's placeholders ("(...)", "?") and punctuation are removed.
+ * Words left once Smith's placeholders ("(...)", "(a step that does not translate cleanly)", "?") and punctuation are
+ * removed.
  * @param {string} english
  * @returns {string[]}
  */
-export const contentWords = (english) => english.replace(/\(\.\.\.\)|\?/g, ' ').replace(/[^\w'\s]/g, ' ').split(/\s+/).filter(Boolean);
+export const contentWords = (english) => english.replace(PLACEHOLDER_RE, ' ').replace(/\?/g, ' ').replace(/[^\w'\s]/g, ' ').split(/\s+/).filter(Boolean);
 
 /** Smith's stock words: they say how the code is laid out, not what it does. */
 const STOCK = new Set('it returns return and react create element nothing let be if not then the a of is works in step steps using'.split(' '));
@@ -79,7 +83,8 @@ export const PLACEHOLDER_EMPTY_RATIO = 0.5;
 
 /**
  * Why a Smith output counts as empty, or null when it carries meaning: `blank` (fewer than 3 words once the
- * placeholders go) or `placeholder` (after the title sentence, at least one "(...)" per two meaningful words: e.g.
+ * placeholders go) or `placeholder` (after the title sentence, at least one gap marker -- "(...)" or "(a step that does
+ * not translate cleanly)" -- per two meaningful words: e.g.
  * "Next using state works in 1 step. It returns (...)", or a React page whose every prop and child is "(...)").
  * @param {string} english
  * @returns {null|'blank'|'placeholder'}
@@ -87,7 +92,7 @@ export const PLACEHOLDER_EMPTY_RATIO = 0.5;
 export function smithEmptyReason(english) {
   if (contentWords(english).length < 3) return 'blank';
   const body = english.split(/(?<=\.)\s+/).slice(1).join(' ');
-  const placeholders = (body.match(/\(\.\.\.\)/g) ?? []).length;
+  const placeholders = (body.match(PLACEHOLDER_RE) ?? []).length;
   const meaningful = contentWords(body).map((w) => w.replace(/\W/g, '').toLowerCase()).filter((w) => w && !STOCK.has(w)).length;
   return placeholders > 0 && placeholders >= PLACEHOLDER_EMPTY_RATIO * Math.max(1, meaningful) ? 'placeholder' : null;
 }

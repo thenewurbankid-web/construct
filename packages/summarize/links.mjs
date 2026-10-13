@@ -19,8 +19,30 @@ export const SMITH_TABLE_FILES = Object.freeze({
   codemod: path.join(LINKS_DIR, 'atomic-codemod.json'),
 });
 
+/** @type {Map<string, any>} */
+const tables = new Map();
 /** @param {'smith'|'codemod'} which @param {{env?: NodeJS.ProcessEnv}} [options] */
-const optionsFor = (which, options = {}) => ({ ...options, table: readLinks(SMITH_TABLE_FILES[which]) });
+const optionsFor = (which, options = {}) => {
+  if (!tables.has(which)) tables.set(which, readLinks(SMITH_TABLE_FILES[which]));
+  return { ...options, table: tables.get(which) };
+};
+
+/** @type {Map<string, Promise<any>>} */
+const linkedOnce = new Map();
+/**
+ * importLinked, checked once per process per source folder (the link check reads the source's git files and may run
+ * `git diff`; summarizeCode is called per function). Keyed by the env values the check depends on, so a caller passing
+ * another env still gets its own answer.
+ * @param {string} name @param {'smith'|'codemod'} which @param {{env?: NodeJS.ProcessEnv}} [options]
+ * @returns {Promise<{ ok: true, module: any } | { ok: false, reason: string }>}
+ */
+function linkedOnceFor(name, which, options = {}) {
+  const o = optionsFor(which, options);
+  const env = o.env ?? process.env;
+  const key = [name, env[o.table.source.env] ?? '', env.LINE_LINKS_ALLOW_DRIFT ?? ''].join('\0');
+  if (!linkedOnce.has(key)) linkedOnce.set(key, importLinked(name, o));
+  return /** @type {Promise<any>} */ (linkedOnce.get(key));
+}
 
 /**
  * Where Smith and atomic-codemod stand. Never throws.
@@ -37,7 +59,7 @@ export function smithLinks(options = {}) {
  * @returns {Promise<{linked: boolean, words: string[], reason?: string}>}
  */
 export async function smithConnectors(options = {}) {
-  const r = await importLinked('@smith/core', optionsFor('smith', options));
+  const r = await linkedOnceFor('@smith/core', 'smith', options);
   if (!r.ok) return { linked: false, words: [...SMITH_CONNECTORS], reason: /** @type {any} */ (r).reason };
   const own = (C) => Object.getOwnPropertyNames(C.prototype).filter((n) => n !== 'constructor');
   return { linked: true, words: [...own(r.module.Chain), ...own(r.module.Organism)] };
@@ -53,7 +75,7 @@ export async function smithConnectors(options = {}) {
  */
 export async function summarizeCode(code, options = {}) {
   const { kind = 'function', toEnglishOptions, ...rest } = options;
-  const r = await importLinked('@smith/to-english', optionsFor('codemod', rest));
+  const r = await linkedOnceFor('@smith/to-english', 'codemod', rest);
   if (!r.ok) {
     return { sentences: ['This code is not put into words because atomic-codemod is not linked; the code and the reason are under Details.'], details: [{ label: 'Code', text: code }, { label: 'Why', text: /** @type {any} */ (r).reason }], via: 'static' };
   }
@@ -76,7 +98,7 @@ export async function summarizeCode(code, options = {}) {
  */
 export async function toEnglishRaw(code, options = {}) {
   const { kind = 'function', toEnglishOptions, ...rest } = options;
-  const r = await importLinked('@smith/to-english', optionsFor('codemod', rest));
+  const r = await linkedOnceFor('@smith/to-english', 'codemod', rest);
   if (!r.ok) return { ok: false, reason: /** @type {any} */ (r).reason };
   const toEnglish = r.module.toEnglish ?? r.module.default?.toEnglish;
   try { return { ok: true, result: toEnglishOptions ? toEnglish(code, kind, toEnglishOptions) : toEnglish(code, kind) }; } catch (e) {

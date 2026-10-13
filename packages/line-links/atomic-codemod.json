@@ -5,7 +5,7 @@
     "branch": "master",
     "env": "ATOMIC_CODEMOD_SOURCE_DIR",
     "default": "~/Desktop/atomic-codemod",
-    "commit": "885b32e6c7105eab317ae9f1e5e6ae9643da010b"
+    "commit": "a9191a5f691f9fe8f90c32e4d77af594b991818e"
   },
   "links": {
     "@smith/to-english": { "path": ".", "entry": "to-english.js", "what": "atomic-codemod's to-english step" }

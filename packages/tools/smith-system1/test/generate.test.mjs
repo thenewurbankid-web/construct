@@ -149,6 +149,8 @@ test('Smith empties: placeholder-only and blank outputs are skipped and counted'
   assert.equal(smithEmptyReason('Next using state works in 1 step. It returns (...)'), 'placeholder');
   assert.equal(smithEmptyReason('(...)'), 'blank');
   assert.equal(smithEmptyReason('Price label using amount works in 3 steps. If amount < 0, return \'invalid\'. It returns amount times rate.'), null);
+  assert.equal(smithEmptyReason('Next using state works in 1 step. It returns (a step that does not translate cleanly).'), 'placeholder');
+  assert.equal(smithEmptyReason('(a step that does not translate cleanly)'), 'blank');
   const fns = functionsOf(toJs('export const f = (x: number) => x + 1;\nexport function g() { return <b>hi</b>; }', 'a.tsx'));
   assert.deepEqual(fns.map((f) => [f.name, f.kind, !!f.fromArrow]), [['f', 'function', true], ['g', 'function', false]]);
   const empty = async () => ({ via: 'smith', sentences: ['F works in 1 step.', 'It returns (...)'] });
