@@ -7,7 +7,8 @@ loans live in the browser (localStorage), and sending a request calls a mock loa
 
 Stack (already in the starter): Next.js app router, React 18, Tailwind CSS, base components on Radix UI primitives
 (Button, TextField, Card, Dialog, Select, Checkbox, Toast) and base pages (ListPage, DetailPage, FormPage). Books: the
-fixture file `library/fixtures/books.json` with 15 books in 3 genres (Fiction, History, Science), 5 each. Each book
+fixture file with 15 books in 3 genres (Fiction, History, Science), 5 each (Line arm: `library/fixtures/books.json`;
+plain arm: `lib/books.json`). Each book
 has an id, a title, an author, a genre, a publication year, a page count, a one-line summary and `available` (two
 books start out on loan). Dates are shown as `YYYY-MM-DD` in the member's local time, for example `2026-11-03`.
 
