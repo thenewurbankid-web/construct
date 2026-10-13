@@ -45,7 +45,11 @@ export function failurePoint(text, err, file = 'x.tsx') {
   return { kind, code, wrong: w, text: `${text.slice(0, pos)}${HOLE}${text.slice(pos + w.length)}`, names: kind === 'name' ? [w] : [] };
 }
 
-/** The names a project module exports (its own declarations and `export { }` lists), or null when it is not a file. */
+/**
+ * The names a project module exports (its own declarations and `export { }` lists), or null when it is not a file.
+ * @param {string} abs An absolute file.
+ * @returns {Set<string>|null}
+ */
 export function exportsOf(abs) {
   let text;
   try { text = fs.readFileSync(abs, 'utf8'); } catch { return null; }

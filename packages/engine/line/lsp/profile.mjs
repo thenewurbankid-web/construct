@@ -13,7 +13,11 @@ export const LSP_DEFAULTS = Object.freeze({ nextSteps: 'on', completions: 'shado
 export const LSP_PROFILE_FILE = 'line/lsp-profile.json';
 export const LSP_SHADOW_LOG = 'line/log/lsp-shadow.jsonl';
 
-/** The profile flag name of a call: lsp.nextSteps, ... */
+/**
+ * The profile flag name of a call: lsp.nextSteps, ...
+ * @param {string} call One of LSP_CALLS.
+ * @returns {string}
+ */
 export const flagOf = (call) => `lsp.${call}`;
 const valid = (m) => (LSP_MODES.includes(m) ? m : null);
 /** A mode from a map keyed by call or by flag ({nextSteps: 'off'} or {'lsp.nextSteps': 'off'}); booleans read as on/off. */
@@ -48,13 +52,20 @@ export function lspMode(root, call, override = null, env = process.env) {
   return /** @type {any} */ (pick(override, call) ?? fromEnv(call, env) ?? fromProject(root, call) ?? LSP_DEFAULTS[call]);
 }
 
-/** Every call's flag, mode and default, for one project. */
+/**
+ * Every call's flag, mode and default, for one project.
+ * @param {string|null} root The project root.
+ * @param {Record<string, unknown>|null} [override]
+ * @param {NodeJS.ProcessEnv} [env]
+ * @returns {{flag: string, mode: string, default: string}[]}
+ */
 export const lspProfile = (root, override = null, env = process.env) => LSP_CALLS.map((call) => ({ flag: flagOf(call), mode: lspMode(root, call, override, env), default: LSP_DEFAULTS[call] }));
 
 /**
  * One shadow row (what the call would have done), appended to line/log/lsp-shadow.jsonl when the project has line/.
  * Never throws; returns the row so a caller can also carry it in its result.
  * @param {string} root @param {string} call @param {Record<string, unknown>} row
+ * @returns {Record<string, unknown>} The row as logged.
  */
 export function shadowLog(root, call, row) {
   const rec = { at: new Date().toISOString(), flag: flagOf(call), ...row };

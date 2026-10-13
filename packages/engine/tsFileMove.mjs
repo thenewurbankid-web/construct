@@ -27,6 +27,8 @@ export { MAX_FILES, MAX_CACHED };
  * harness's importFixer asks it for code fixes). `readRoots` are extra folders the host may read, e.g. a node_modules
  * above the project so `react` resolves; nothing is ever written. Callers apply any edits themselves.
  * @returns {{ok:true, service:import('typescript').LanguageService, files:string[], options:object} | {ok:false, reason:string}}
+ * @param {string} root The project root.
+ * @param {{readRoots?: string[]}} [o] Read-only folders outside the project (e.g. the node_modules that holds React).
  */
 export function projectLanguageService(root, { readRoots = [] } = {}) {
   try {
@@ -206,7 +208,12 @@ function ownCallEdits(source, oldAbs, newAbs) {
   return edits;
 }
 
-/** Apply `edits` (all for one file) to `source`; ranges are the ORIGINAL offsets, applied from the end so they stay valid. */
+/**
+ * Apply `edits` (all for one file) to `source`; ranges are the ORIGINAL offsets, applied from the end so they stay valid.
+ * @param {string} source
+ * @param {{start: number, end: number, newText: string}[]} edits
+ * @returns {string}
+ */
 export function applyEdits(source, edits) {
   let out = source;
   for (const e of [...edits].sort((a, b) => b.start - a.start)) {

@@ -24,8 +24,10 @@ const hash = (t) => crypto.createHash('sha1').update(t).digest('hex').slice(0, 1
 const posix = (p) => p.split(path.sep).join('/');
 
 /**
+ * The Line LSP over one project: its index across the TS, Smith and rules layers, kept current by update().
  * @param {string} root Project root (tsconfig.json at it).
  * @param {{extraRoots?: string[], smith?: boolean, rules?: boolean}} [o] `smith: false` skips layer 1 (no atomic-codemod).
+ * @returns {Promise<any>} The server: its index and calls (update, ...).
  */
 export async function createLineLsp(root, o = {}) {
   const r = path.resolve(root);

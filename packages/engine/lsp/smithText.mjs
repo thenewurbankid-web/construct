@@ -4,7 +4,12 @@
 // (smithEmptyReason, PLACEHOLDER_EMPTY_RATIO). packages/tools/smith-system1/sources.mjs re-exports them.
 import { ts } from './host.mjs';
 
-/** TS/TSX/JS -> JS with JSX kept (types removed). */
+/**
+ * TS/TSX/JS -> JS with JSX kept (types removed).
+ * @param {string} code
+ * @param {string} [fileName]
+ * @returns {string}
+ */
 export function toJs(code, fileName = 'x.tsx') {
   const jsx = /\.(tsx|jsx)$/.test(fileName) || /\.m?js$/.test(fileName);
   return ts.transpileModule(code, {
@@ -46,7 +51,11 @@ export function functionsOf(js) {
   return out;
 }
 
-/** What Smith reads: the same function with JSX turned into React.createElement (Smith's parser has no JSX). */
+/**
+ * What Smith reads: the same function with JSX turned into React.createElement (Smith's parser has no JSX).
+ * @param {{kind: string, code: string}} fn One of functionsOf's functions.
+ * @returns {string}
+ */
 export function smithInput(fn) {
   const wrap = fn.kind === 'method' ? `class __W__ {\n${fn.code}\n}` : fn.code;
   const out = ts.transpileModule(wrap, { fileName: 'x.jsx', compilerOptions: { jsx: ts.JsxEmit.React, target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.ESNext }, reportDiagnostics: false }).outputText.trim();
@@ -56,7 +65,11 @@ export function smithInput(fn) {
   return cls?.members[0]?.getText(sf) ?? out;
 }
 
-/** Words left once Smith's placeholders ("(...)", "?") and punctuation are removed. */
+/**
+ * Words left once Smith's placeholders ("(...)", "?") and punctuation are removed.
+ * @param {string} english
+ * @returns {string[]}
+ */
 export const contentWords = (english) => english.replace(/\(\.\.\.\)|\?/g, ' ').replace(/[^\w'\s]/g, ' ').split(/\s+/).filter(Boolean);
 
 /** Smith's stock words: they say how the code is laid out, not what it does. */

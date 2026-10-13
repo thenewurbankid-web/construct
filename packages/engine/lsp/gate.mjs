@@ -25,7 +25,11 @@ export { PLACEHOLDER_EMPTY_RATIO };
 export const PURE_LAYERS = Object.freeze(new Set(['domain', 'expression']));
 const LAYER_OF = { domains: 'domain', expressions: 'expression', services: 'service', usecases: 'workflow', workflows: 'workflow', hooks: 'hook', controllers: 'controller', pages: 'page', components: 'component', store: 'service', providers: 'hook', contracts: 'domain' };
 
-/** The layer of a root-relative file from its folder (features/<f>/<kind>/... or library/<kind>/...). */
+/**
+ * The layer of a root-relative file from its folder (features/<f>/<kind>/... or library/<kind>/...).
+ * @param {string} rel Root-relative file.
+ * @returns {string|null}
+ */
 export function layerOf(rel) {
   for (const part of rel.split('/').slice(0, -1).reverse()) if (LAYER_OF[part]) return LAYER_OF[part];
   return /\.tsx$/.test(rel) ? 'component' : 'service';
@@ -40,7 +44,11 @@ function findFn(sf, fn) {
   return null;
 }
 
-/** Dumb JSX: the body is destructuring plus one `return <jsx>`, and every `{...}` in it is a name, a field read or a call of them. */
+/**
+ * Dumb JSX: the body is destructuring plus one `return <jsx>`, and every `{...}` in it is a name, a field read or a call of them.
+ * @param {any} node A TypeScript function node.
+ * @returns {boolean}
+ */
 export function isTemplate(node) {
   const body = node.body;
   if (!body) return false;
@@ -65,7 +73,12 @@ function simple(e) {
   return false;
 }
 
-/** Imported bindings read as data inside `node` (not called, not a JSX tag, not a type). */
+/**
+ * Imported bindings read as data inside `node` (not called, not a JSX tag, not a type).
+ * @param {any} sf The TypeScript source file.
+ * @param {any} node A function node in it.
+ * @returns {string[]} The imported names read as data.
+ */
 export function dataConnections(sf, node) {
   const imported = new Set();
   for (const st of sf.statements) {
@@ -94,6 +107,7 @@ export function dataConnections(sf, node) {
 /**
  * The gate for one function of one file.
  * @param {{rel: string, source: string, fn: string, layer?: string, smith?: Function}} a `smith` overrides the round trip (tests).
+ * @returns {Promise<any>} {pass, exempt, layer, checks, failed, smith, ms}.
  */
 export async function atomicGate({ rel, source, fn, layer = layerOf(rel), smith = smithOfFunction }) {
   const t0 = Date.now();
@@ -133,7 +147,11 @@ export async function atomicGate({ rel, source, fn, layer = layerOf(rel), smith 
   return { pass: failed.length === 0, exempt, layer, checks: checks.map(({ check, ok, line }) => ({ check, ok, line })), failed, smith: checks.smith?.steps ?? [], ms: Date.now() - t0 };
 }
 
-/** The gate for every top-level function of a file, as diagnostics lines (`<rel>:<fn> GATE <check> <why>`). */
+/**
+ * The gate for every top-level function of a file, as diagnostics lines (`<rel>:<fn> GATE <check> <why>`).
+ * @param {{rel: string, source: string}} a
+ * @returns {Promise<any>} {ok, lines, ...}.
+ */
 export async function gateDiagnostics({ rel, source }) {
   const sf = parse(rel, source);
   const names = [];

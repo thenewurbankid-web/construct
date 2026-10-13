@@ -26,7 +26,12 @@ function violationsOf(root, rel) {
   return r.violations.filter((v) => v.file === rel || v.file === path.join(root, rel));
 }
 
-/** One line per violation of `file`: `<file>:<line> <RULE> <message>`. */
+/**
+ * One line per violation of `file`: `<file>:<line> <RULE> <message>`.
+ * @param {string} root Project root.
+ * @param {string} file Absolute or root-relative.
+ * @returns {any} {ok, file, count, rules, lines, more?, ms} or {ok: false, reason}.
+ */
 export function ruleDiagnostics(root, file) {
   return guard(() => {
     const t0 = Date.now();
@@ -38,7 +43,12 @@ export function ruleDiagnostics(root, file) {
   });
 }
 
-/** The typed fix(es) of each violation where one exists: { rule, line, fixes: [{id, sentence, tool}] }; advice-only fixes have tool null. */
+/**
+ * The typed fix(es) of each violation where one exists: { rule, line, fixes: [{id, sentence, tool}] }; advice-only fixes have tool null.
+ * @param {string} root Project root.
+ * @param {string} file Absolute or root-relative.
+ * @returns {any} {ok, file, violations, withFixes, items, more?, ms} or {ok: false, reason}.
+ */
 export function ruleFixes(root, file) {
   return guard(() => {
     const t0 = Date.now();
@@ -61,9 +71,13 @@ const featuresOf = (root) => { try { return fs.readdirSync(path.join(root, 'feat
 /**
  * The project's Line facts by stable id: each logic function (with its stub check) and each logic module, and what
  * each feature's index exports. Read from moduleScope + stubProblems on disk.
+ * @param {string} root A Line project root.
+ * @returns {{fns: Map<string, any>, modules: Set<string>, exportsBy: Record<string, string[]>}}
  */
 export function lineFacts(root) {
-  const fns = new Map(); const modules = new Set(); const exportsBy = {};
+  const fns = new Map(); const modules = new Set();
+  /** @type {Record<string, string[]>} */
+  const exportsBy = {};
   for (const f of featuresOf(root)) {
     const s = moduleScope(root, f);
     exportsBy[f] = s.exports.map((e) => e.name);

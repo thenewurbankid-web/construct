@@ -21,25 +21,45 @@ import { ts } from './host.mjs';
 
 const ATOMS_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'line-atoms', 'atoms');
 
-/** The stable id of function `name` in root-relative file `rel`. */
+/**
+ * The stable id of function `name` in root-relative file `rel`.
+ * @param {string} rel Root-relative file.
+ * @param {string} name Function name.
+ * @returns {string}
+ */
 export function stableIdOf(rel, name) {
   const m = /^features\/([^/]+)\/([^/]+)\//.exec(rel);
   return m ? `${m[1]}/${m[2]}/${name}` : `${rel}#${name}`;
 }
 
+/**
+ * Whether atomic-codemod (to-english) is linked, so Smith can read code.
+ * @returns {boolean}
+ */
 export const smithReady = () => !!smithLinks().codemod.ok;
-/** The atomic-codemod commit to-english is linked from (null when not linked). */
+/**
+ * The atomic-codemod commit to-english is linked from (null when not linked).
+ * @returns {string|null}
+ */
 export const smithHead = () => smithLinks().codemod.head ?? null;
 /**
  * LSP_SMITH_RAW=1 (or CHAIN_SMITH_RAW=1, exp/english-loop-chain's name): the hardened to-english (atomic-codemod
  * smith-hardening) parses TS/TSX itself, so a function goes in as written -- no type stripping, no JSX rewrite.
  */
 export const RAW = process.env.LSP_SMITH_RAW === '1' || process.env.CHAIN_SMITH_RAW === '1';
+/**
+ * A sentence as compared: lower case, single spaces, no trailing period.
+ * @param {string} s
+ * @returns {string}
+ */
 export const normSentence = (s) => String(s).toLowerCase().replace(/\s+/g, ' ').trim().replace(/[.\s]+$/, '');
 
 /**
  * Smith's sentences for one function's code (TS or JS, JSX allowed). The "<name> works in N steps" title is kept as
  * sentence 0 in `all`; `steps` is the rest. `empty` is smith-system1's placeholder rule (blank | placeholder | null).
+ * @param {string} code One function, TS or JS.
+ * @param {{kind?: string, fileName?: string, canonical?: boolean, raw?: boolean}} [o] `canonical`: to-english's canonical mode.
+ * @returns {Promise<{all: string[], steps: string[], empty: string|null}>}
  */
 export async function smithOfFunction(code, { kind = 'function', fileName = 'x.tsx', canonical = false, raw = RAW } = {}) {
   let input = code; let k = kind;
@@ -62,8 +82,14 @@ function rawFunctionsOf(rel, source) {
   return out;
 }
 
-/** Index one file: each top-level function (declarations, arrow consts, class methods) to its Smith sentences; a
- * function that returns JSX also gets `elements` (smithElements: one sentence per element). */
+/**
+ * Index one file: each top-level function (declarations, arrow consts, class methods) to its Smith sentences; a
+ * function that returns JSX also gets `elements` (smithElements: one sentence per element).
+ * @param {string} rel Root-relative file.
+ * @param {string} source Its text.
+ * @param {{canonical?: boolean}} [o]
+ * @returns {Promise<any[]>} [{id, file, name, sentences, title, empty, elements?}].
+ */
 export async function smithIndexFile(rel, source, { canonical = false } = {}) {
   const out = [];
   let fns = [];
@@ -83,7 +109,11 @@ export async function smithIndexFile(rel, source, { canonical = false } = {}) {
 
 // ---------------------------------------------------------------------------------------------- per JSX element
 const tsx = (code) => ts.createSourceFile('x.tsx', code, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
-/** Whether a function's code (TS/TSX as written) returns JSX: a page or a component, matched per element. */
+/**
+ * Whether a function's code (TS/TSX as written) returns JSX: a page or a component, matched per element.
+ * @param {string} code
+ * @returns {boolean}
+ */
 export function returnsJsx(code) {
   let hit = false;
   const visit = (n) => { if (hit) return; if (ts.isJsxElement(n) || ts.isJsxSelfClosingElement(n) || ts.isJsxFragment(n)) { hit = true; return; } ts.forEachChild(n, visit); };
@@ -135,7 +165,10 @@ export const TEMPLATES = Object.freeze([
   'SUBJECT VERB ARG and ARG', 'FUNCTION of ARG', 'not (X)', 'A OP B', "'TEXT'",
 ]);
 let atomsCache;
-/** Line atoms (packages/line-atoms/atoms/<id>/atom.json): id, kind, english. */
+/**
+ * Line atoms (packages/line-atoms/atoms/<id>/atom.json): id, kind, english.
+ * @returns {{id: string, kind: string, english: string, name: string}[]}
+ */
 export function lineAtoms() {
   if (atomsCache) return atomsCache;
   const out = [];
@@ -151,6 +184,8 @@ const overlap = (a, b) => { const A = words(a); const B = words(b); let n = 0; f
  * Sentence templates and atoms that fit a Trace node. `context`: { kind ('function' | 'component' | ...), names (the
  * identifiers in scope: params, fields), intent (the spec line or need) }. Templates are instantiated with the scope's
  * names ("return book's pages"); atoms are ranked by word overlap with the intent; logic atoms only for logic nodes.
+ * @param {{kind?: string, names?: string[], intent?: string}} [context]
+ * @returns {{ok: true, items: any[], schema: object, ms: number}}
  */
 export function smithCompletions(context = {}) {
   const t0 = Date.now();
@@ -175,6 +210,10 @@ export function smithCompletions(context = {}) {
  * Proposal (`{ fnOrId: sentences[] }`) against the indexed code (`index`: Map id -> entry, or an array of entries).
  * Exact normalized match first; when `embed(texts) -> vectors` is passed, an unmatched pair whose cosine is at least
  * `threshold` counts as a fuzzy match (reported as such). -> missing (proposal, no code), extra (code, no proposal).
+ * @param {Record<string, string[]>} proposal Function name or stable id -> plan sentences.
+ * @param {Map<string, any>|any[]} index smithIndexFile entries.
+ * @param {{embed?: Function|null, threshold?: number}} [o]
+ * @returns {Promise<any>} {ok, exact, fuzzy, missing, extra, modes, more?, ms}.
  */
 export async function smithDiagnostics(proposal, index, { embed = null, threshold = 0.9 } = {}) {
   const t0 = Date.now();
@@ -220,9 +259,20 @@ export async function smithDiagnostics(proposal, index, { embed = null, threshol
   const m = capList(missing); const x = capList(extra);
   return { ok: true, exact, fuzzy, missing: m.kept, extra: x.kept, modes, ...(m.dropped + x.dropped ? { more: m.dropped + x.dropped } : {}), ms: Date.now() - t0 };
 }
+/**
+ * Cosine similarity of two vectors.
+ * @param {number[]} a
+ * @param {number[]} b
+ * @returns {number}
+ */
 export const cosine = (a, b) => { let d = 0, x = 0, y = 0; for (let i = 0; i < a.length; i++) { d += a[i] * b[i]; x += a[i] * a[i]; y += b[i] * b[i]; } return d / Math.sqrt(x * y || 1); };
 
-/** The function(s) a sentence describes: exact sentence match by stable id, else the best word overlap (>= 0.6). */
+/**
+ * The function(s) a sentence describes: exact sentence match by stable id, else the best word overlap (>= 0.6).
+ * @param {string} sentence
+ * @param {Map<string, any>|any[]} index smithIndexFile entries.
+ * @returns {{ok: true, ids: any[]}}
+ */
 export function smithDefinition(sentence, index) {
   const entries = index instanceof Map ? [...index.values()] : index;
   const n = normSentence(sentence);
@@ -233,7 +283,12 @@ export function smithDefinition(sentence, index) {
   return { ok: true, ids: scored };
 }
 
-/** A function's sentences, by stable id (or bare name). */
+/**
+ * A function's sentences, by stable id (or bare name).
+ * @param {string} id A stable id or a bare function name.
+ * @param {Map<string, any>|any[]} index smithIndexFile entries.
+ * @returns {any} {ok, id, file, title, sentences, empty, more?} or {ok: false, reason}.
+ */
 export function smithReferences(id, index) {
   const entries = index instanceof Map ? [...index.values()] : index;
   const e = entries.find((x) => x.id === id) ?? entries.find((x) => x.name === id);

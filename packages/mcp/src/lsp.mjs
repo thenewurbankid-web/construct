@@ -33,29 +33,59 @@ const answer = (r) => {
   return r;
 };
 
-/** `line_next_steps`: the Trace step legal next for a stable id, in Line order, plus the Ollama enum of the options. */
+/**
+ * `line_next_steps`: the Trace step legal next for a stable id, in Line order, plus the Ollama enum of the options.
+ * @param {{root: string}} ctx The server context (its real root).
+ * @param {{need: string, from: string}} args The checked input.
+ * @returns {Promise<any>} The answer.
+ * @throws {ToolError} PATH_OUTSIDE_ROOT, NOT_FOUND.
+ */
 export async function lineNextSteps(ctx, { need, from }) {
   assertContained(ctx.root);
   return answer((await tools()).lspNextSteps(ctx.root, { need, from }));
 }
 
-/** `line_completions`: the names valid at a point (a marker, an offset, line/col) or at a tsc failure (code). */
+/**
+ * `line_completions`: the names valid at a point (a marker, an offset, line/col) or at a tsc failure (code).
+ * @param {{root: string}} ctx The server context (its real root).
+ * @param {{file: string, text?: string, at?: any, line?: number, col?: number, code?: number|string}} args The checked input.
+ * @returns {Promise<any>} The answer.
+ * @throws {ToolError} PATH_OUTSIDE_ROOT, NOT_FOUND.
+ */
 export async function lineCompletions(ctx, args) {
   const file = projectFile(ctx.root, args.file);
   return answer((await tools()).lspCompletions(ctx.root, { ...args, file }));
 }
 
-/** `line_symbol_info`: one symbol's type and declaration, or every export of the file. */
+/**
+ * `line_symbol_info`: one symbol's type and declaration, or every export of the file.
+ * @param {{root: string}} ctx The server context (its real root).
+ * @param {{file: string, symbol?: string}} args The checked input.
+ * @returns {Promise<any>} The answer.
+ * @throws {ToolError} PATH_OUTSIDE_ROOT, NOT_FOUND.
+ */
 export async function lineSymbolInfo(ctx, { file, symbol }) {
   return answer((await tools()).lspSymbolInfo(ctx.root, { file: projectFile(ctx.root, file), symbol }));
 }
 
-/** `line_smith_check`: a function's Smith sentences against its Smith test plan (exact match). */
+/**
+ * `line_smith_check`: a function's Smith sentences against its Smith test plan (exact match).
+ * @param {{root: string}} ctx The server context (its real root).
+ * @param {{file: string, fn: string, plan: string[], text?: string}} args The checked input.
+ * @returns {Promise<any>} The answer.
+ * @throws {ToolError} PATH_OUTSIDE_ROOT, NOT_FOUND.
+ */
 export async function lineSmithCheck(ctx, { file, fn, plan, text }) {
   return answer(await (await tools()).lspSmithCheck(ctx.root, { file: projectFile(ctx.root, file), fn, plan, text }));
 }
 
-/** `line_fixes`: the deterministic fixes as edits, never applied. */
+/**
+ * `line_fixes`: the deterministic fixes as edits, never applied.
+ * @param {{root: string}} ctx The server context (its real root).
+ * @param {{file: string, text?: string}} args The checked input.
+ * @returns {Promise<any>} The answer.
+ * @throws {ToolError} PATH_OUTSIDE_ROOT, NOT_FOUND.
+ */
 export async function lineFixes(ctx, { file, text }) {
   return answer((await tools()).lspFixes(ctx.root, { file: projectFile(ctx.root, file), text }));
 }

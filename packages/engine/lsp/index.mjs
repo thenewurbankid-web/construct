@@ -19,13 +19,23 @@ import { ts, openProject, withOverlay, inside } from './host.mjs';
 
 export const MAX_LINES = 40;
 export const MAX_TOKENS = 1500;
+/**
+ * About how many tokens a text is (3.2 characters a token), the budget the caps use.
+ * @param {string} s
+ * @returns {number}
+ */
 export const approxTokens = (s) => Math.ceil(s.length / 3.2);
 const MAX_ITEMS = 30;
 const FORMAT = { ...ts.getDefaultFormatCodeSettings('\n'), indentSize: 2, tabSize: 2, convertTabsToSpaces: true, newLineCharacter: '\n', semicolons: ts.SemicolonPreference.Insert };
 /** @type {import('typescript').UserPreferences} */
 const PREFS = { quotePreference: 'single', importModuleSpecifierEnding: 'minimal', includeCompletionsForModuleExports: true, includeCompletionsWithInsertText: true, allowIncompleteCompletions: false };
 
-/** Keep at most MAX_LINES entries and about MAX_TOKENS tokens of JSON; the rest is counted, not sent. */
+/**
+ * Keep at most MAX_LINES entries and about MAX_TOKENS tokens of JSON; the rest is counted, not sent.
+ * @param {any[]} list
+ * @param {(x: any) => string} [render] How one entry is counted (JSON by default).
+ * @returns {{kept: any[], dropped: number}}
+ */
 export function capList(list, render = (x) => JSON.stringify(x)) {
   const out = []; let tok = 0;
   for (const x of list) {
@@ -64,7 +74,13 @@ function resolveAt(text, at) {
   throw new Error('at must be an offset, a marker or { symbol }');
 }
 
-/** The offset of identifier `name` in `text`: its declaration when the file declares it, else its first use. */
+/**
+ * The offset of identifier `name` in `text`: its declaration when the file declares it, else its first use.
+ * @param {string} text The file text.
+ * @param {string} name An identifier (a dotted name uses its last part).
+ * @param {string} [fileName]
+ * @returns {number} The offset, or -1.
+ */
 export function findIdentifier(text, name, fileName = 'x.tsx') {
   const last = String(name).split('.').pop();
   const sf = ts.createSourceFile(fileName, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
@@ -99,6 +115,13 @@ function diagLines(c, abs, text) {
 }
 
 // ------------------------------------------------------------------------------------------------ 5. diagnostics
+/**
+ * Syntactic and semantic errors of one file, one line each (`file:line:col TSxxxx message`), capped.
+ * @param {string} root Project root (tsconfig.json at it).
+ * @param {string} file Absolute or root-relative.
+ * @param {{text?: string, extraRoots?: string[], includeDts?: boolean}} [o] `text`: an unsaved buffer.
+ * @returns {any} {ok, file, count, lines, more?, ms} or {ok: false, reason}.
+ */
 export function diagnostics(root, file, o = {}) {
   return guard(() => {
     const c = ctx(root, file, o);
@@ -117,7 +140,12 @@ const DID_YOU_MEAN = [2551, 2552, 2724, 2561];
 
 const applyText = (text, edits) => [...edits].sort((a, b) => b.start - a.start).reduce((t, e) => t.slice(0, e.start) + e.newText + t.slice(e.end), text);
 
-/** Minimal line-level edits that turn `a` into `b` (LCS over lines; files here are small). */
+/**
+ * Minimal line-level edits that turn `a` into `b` (LCS over lines; files here are small).
+ * @param {string} a The original text.
+ * @param {string} b The new text.
+ * @returns {{start: number, end: number, newText: string}[]} Edits against `a`.
+ */
 export function diffEdits(a, b) {
   if (a === b) return [];
   const A = a.split(/(?<=\n)/); const B = b.split(/(?<=\n)/);
@@ -167,6 +195,10 @@ function importPathFixes(c, text) {
  * file, (1) every missing import in one combined fix (getCombinedCodeFix 'fixMissingImport'), (2) a single-candidate
  * fix (spelling, add missing member) at a remaining error, one at a time, each kept only when the error count drops.
  * Returns line-level edits against the ORIGINAL text, not applied; `other` holds edits another file would need.
+ * @param {string} root Project root.
+ * @param {string} file Absolute or root-relative.
+ * @param {{text?: string, extraRoots?: string[], includeDts?: boolean}} [o]
+ * @returns {any} {ok, file, edits, other, applied, unfixed, moreUnfixed?, ms} or {ok: false, reason}.
  */
 export function fixes(root, file, o = {}) {
   return guard(() => {
@@ -224,6 +256,11 @@ const PRIORITY = (s) => Number(String(s).slice(0, 2)) || 99;
  * Names valid at `at`: locals, members, props, module exports and import paths, filtered by the prefix already typed,
  * ranked (TypeScript's sort priority, then name), keywords and lib globals dropped unless nothing else fits. Capped at
  * about 30. `schema` is an Ollama `format` JSON schema whose `name` enum is exactly these names.
+ * @param {string} root Project root.
+ * @param {string} file Absolute or root-relative.
+ * @param {any} at An offset, a marker string in the text, or {symbol}.
+ * @param {{text?: string, extraRoots?: string[], includeDts?: boolean}} [o]
+ * @returns {any} {ok, file, at, member, typed, total, items, schema, ms} or {ok: false, reason}.
  */
 export function completionsAt(root, file, at, o = {}) {
   return guard(() => {
@@ -275,11 +312,23 @@ function importSpecifierAt(text, pos, fileName) {
   return null;
 }
 
-/** An Ollama `format` JSON schema that lets the model answer only one of `names`. */
+/**
+ * An Ollama `format` JSON schema that lets the model answer only one of `names`.
+ * @param {string[]} names
+ * @returns {object}
+ */
 export const completionSchema = (names) => ({ type: 'object', properties: { name: { type: 'string', enum: names.length ? names : [''] } }, required: ['name'] });
 
 // ------------------------------------------------------------------------------------------------ 3. quickInfo / signatureAt
 const short = (s, n = 400) => (s.length > n ? `${s.slice(0, n)}...` : s);
+/**
+ * One symbol's exact type as a short string (an import answers with the type where it is declared).
+ * @param {string} root Project root.
+ * @param {string} file Absolute or root-relative: where to look first.
+ * @param {string} symbol An identifier.
+ * @param {{extraRoots?: string[], includeDts?: boolean}} [o]
+ * @returns {any} {ok, symbol, kind, type, file, ms} or {ok: false, reason}.
+ */
 export function quickInfo(root, file, symbol, o = {}) {
   return guard(() => {
     const c = ctx(root, file, o);
@@ -296,6 +345,14 @@ export function quickInfo(root, file, symbol, o = {}) {
   });
 }
 
+/**
+ * The call signature at a position, a marker or the first call of a symbol.
+ * @param {string} root Project root.
+ * @param {string} file Absolute or root-relative.
+ * @param {any} at An offset, a marker string in the text, or {symbol}.
+ * @param {{text?: string, extraRoots?: string[], includeDts?: boolean}} [o]
+ * @returns {any} {ok, signature, argument, overloads, ms} or {ok: false, reason}.
+ */
 export function signatureAt(root, file, at, o = {}) {
   return guard(() => {
     const c = ctx(root, file, o);
@@ -329,6 +386,14 @@ function locations(c, spans) {
   }
   return capList(out, (x) => `${x.file}:${x.line} ${x.text}`);
 }
+/**
+ * Where a symbol is declared: file:line and a one-line excerpt each (never a lib or node_modules location).
+ * @param {string} root Project root.
+ * @param {string} file Absolute or root-relative: where to look first.
+ * @param {string} symbol An identifier.
+ * @param {{extraRoots?: string[], includeDts?: boolean}} [o]
+ * @returns {any} {ok, symbol, locations, more?, ms} or {ok: false, reason}.
+ */
 export function definition(root, file, symbol, o = {}) {
   return guard(() => {
     const c = ctx(root, file, o);
@@ -340,6 +405,14 @@ export function definition(root, file, symbol, o = {}) {
     return { ok: true, symbol, locations: kept, ...(dropped ? { more: dropped } : {}), ms: Date.now() - t0 };
   });
 }
+/**
+ * Where a symbol is used (its declaration left out): file:line and a one-line excerpt each.
+ * @param {string} root Project root.
+ * @param {string} file Absolute or root-relative: where to look first.
+ * @param {string} symbol An identifier.
+ * @param {{extraRoots?: string[], includeDts?: boolean}} [o]
+ * @returns {any} {ok, symbol, locations, more?, ms} or {ok: false, reason}.
+ */
 export function references(root, file, symbol, o = {}) {
   return guard(() => {
     const c = ctx(root, file, o);
