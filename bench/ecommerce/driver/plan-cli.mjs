@@ -18,7 +18,9 @@
 //   plan-cli.mjs read <path>                         one project file with its contentHash (for line.setCode)
 //   plan-cli.mjs ls [dir]                            the entries of one project folder
 //   plan-cli.mjs rules <tool> [file]                 #888: the 2-4 rules a step of that tool and layer must keep
-//   plan-cli.mjs seed                                #914: add, Auto-approve and run, one by one, the steps a block can
+//   plan-cli.mjs finish [summary]                    #931: the builder is done; refused (STEPS_WAITING, f1 run-next)
+//                                                    while approved steps wait to run
+//   plan-cli.mjs seed                              #914: add, Auto-approve and run, one by one, the steps a block can
 //                                                    decide from SPEC.md (specSteps.mjs: features, wired pages, routes;
 //                                                    #919 atomSteps.mjs: behaviour points wired from atoms)
 //
@@ -41,7 +43,7 @@ import { readLineProject } from '../../../packages/engine/line/model.mjs';
 import { aggregateValidation } from '../../../packages/core/registry.mjs';
 import { enforcersForRoot } from '../../../packages/core/profiles/index.mjs';
 import { hashOf } from '../../../packages/engine/pagesEditor.mjs';
-import { rulesCard, layerOf, jevShadow } from '../../../packages/engine/line/hints.mjs';
+import { rulesCard, layerOf, jevShadow, finishRefusal } from '../../../packages/engine/line/hints.mjs';
 import { SPEC_FILE, readSpec } from './spec-slice.mjs';
 import { workText } from '../../../packages/engine/line/openWork.mjs';
 import { parseSpecMd, specSteps } from '../../../packages/engine/line/seed/specSteps.mjs';
@@ -205,6 +207,15 @@ export function createPlanCli({ project, log, builder = 'unknown', spec = SPEC_F
       const before = await svc.view();
       return ranOut(before, /** @type {any} */ (await svc.runNext('agent')));
     },
+    // #931: finish is refused while approved steps wait to run; f1 (also {"fix":"f1"} on add) runs the next one.
+    async finish(summary = '') {
+      const v = /** @type {any} */ (await svc.view());
+      const r = finishRefusal(v.steps.filter((s) => s.state === 'ready'));
+      if (!r) return { ok: true, finished: true, summary: String(summary), sentence: `Finished: ${String(summary).trim() || 'no summary'}` };
+      const fixes = r.choices.map((c) => ({ ref: c.ref, id: c.id, sentence: c.sentence, step: c.step, why: c.why }));
+      offers.set(fixes);
+      return { ok: false, code: r.code, sentence: r.text, waiting: r.waiting, fixes: fixes.map((f, i) => ({ ...f, ...(i === 0 ? { recommended: true } : {}) })) };
+    },
     // #914: the spec's decidable steps, each added (Auto approves it) and run before the next is computed, so a step that
     // needs the one before it (baseOn needs its feature) is planned against the project as it is then. Stops at the
     // first step that is refused or does not land; recorded once in calls.jsonl as {kind: "seed"}.
@@ -341,7 +352,7 @@ export function parseArgv(argv) {
 if (process.argv[1] && fs.realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const o = parseArgv(process.argv.slice(2));
   if (!o.project || !o.cmd) {
-    console.log(JSON.stringify({ ok: false, sentence: 'Usage: plan-cli.mjs --project <dir> [--bench <dir>] <tools|status|add|run-next|findings|validate|read|ls|rules|seed> [...] (or set BENCH_PROJECT).' }));
+    console.log(JSON.stringify({ ok: false, sentence: 'Usage: plan-cli.mjs --project <dir> [--bench <dir>] <tools|status|add|run-next|finish|findings|validate|read|ls|rules|seed> [...] (or set BENCH_PROJECT).' }));
     process.exit(2);
   }
   const cli = createPlanCli({ project: o.project, log: o.log, builder: o.builder, spec: o.spec });
