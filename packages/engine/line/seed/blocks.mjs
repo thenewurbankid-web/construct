@@ -175,8 +175,22 @@ export function clearCart(): void {
 }
 
 /**
+ * #935: the import of a fixture as `rows`: from its file, or, when it belongs to another feature (`via`), through that
+ * feature's public index (features/<name>/index.ts), the one way into another feature.
+ * @param {string} file The importing file. @param {{rel: string, via?: {feature: string, name: string}}} f
+ * @returns {string}
+ */
+function fixtureImport(file, f) {
+  if (!f.via) return `import rows from '${spec(file, f.rel)}';`;
+  const at = f.rel.indexOf(`/${f.via.feature}/`);
+  const index = `${f.rel.slice(0, at + f.via.feature.length + 1)}/index`;
+  return `import { ${f.via.name === 'rows' ? 'rows' : `${f.via.name} as rows`} } from '${spec(file, index)}';`;
+}
+
+/**
  * The cart as a page uses it: its items joined with the fixture, the totals (the spec's shipping rule) and the changes.
- * @param {{file: string, serviceFile: string, fixture: {rel: string, idKey: string, nameKey: string, amountKey: string},
+ * A based fixture keeps its rows under "value" (`wrapped`, #935 `{ "$lineBase": "fixtures/<name>", "value": [...] }`).
+ * @param {{file: string, serviceFile: string, fixture: {rel: string, idKey: string, nameKey: string, amountKey: string, wrapped?: boolean, via?: {feature: string, name: string}},
  *   rule: {fee: number, freeFrom: number}|null}} o
  * @returns {string}
  */
@@ -188,7 +202,7 @@ export function cartUsecase(o) {
   return `// The cart for a page: each line with its ${f.nameKey} and ${f.amountKey} from ${posix.basename(f.rel)}, the item count, the subtotal,
 // the shipping${o.rule ? ` (${o.rule.fee} under ${o.rule.freeFrom}, else free)` : ''} and the total, and the changes a page makes.
 import { useSyncExternalStore } from 'react';
-import rows from '${spec(o.file, f.rel)}';
+${fixtureImport(o.file, f)}
 import { addToCart, cartLines, clearCart, removeFromCart, serverCartLines, setCartQty, subscribeCart } from '${spec(o.file, o.serviceFile)}';
 import type { CartLine } from '${spec(o.file, o.serviceFile)}';
 
@@ -201,7 +215,7 @@ const round = (n: number) => Math.round(n * 100) / 100;
 export function cartSummary(lines: CartLine[]): CartSummary {
   const items: CartItem[] = [];
   for (const line of lines) {
-    const row = (rows as Row[]).find((r) => r.${f.idKey} === line.id);
+    const row = (${f.wrapped ? '(rows as unknown as { value: Row[] }).value' : 'rows as Row[]'}).find((r) => r.${f.idKey} === line.id);
     if (row) {
       items.push({ id: line.id, name: row.${f.nameKey}, price: row.${f.amountKey}, qty: line.qty, lineTotal: round(row.${f.amountKey} * line.qty) });
     }

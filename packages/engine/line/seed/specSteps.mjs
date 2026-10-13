@@ -139,7 +139,9 @@ export function specSteps(root, { spec, planned = [] }) {
   const pages = featurePages(root).map((file) => ({ file, src: readOrNull(path.join(root, file)) ?? '' }));
   const served = new Set(pages.map((p) => /@line-route\s+(\S+)/.exec(p.src)?.[1]).filter(Boolean));
   const app = appDirOf(root);
-  const fixtures = arrayFixtures(root, layout);
+  // #935: each feature sees its own fixtures, those its imported features export from their index, then the library's.
+  const seen = new Map();
+  const fixturesOf = (name) => { if (!seen.has(name)) seen.set(name, arrayFixtures(root, layout, name)); return seen.get(name); };
   /** @type {SeedStep[]} */
   const steps = [];
   /** @type {SeedSkip[]} */
@@ -192,7 +194,7 @@ export function specSteps(root, { spec, planned = [] }) {
         // A list or record of the member's own selection is a store, not the fixture (#933, open below).
         const own = sh.shape !== 'form' ? memberState(spec, f.name, routes) : null;
         // A detail page is a fixture record only when its route names the record (/x/:id); a confirmation is not.
-        const fx = sh.shape !== 'form' && !own && (sh.shape === 'list' || route.includes(':')) ? fixtureFor(fixtures, f.name, textForFixture, sh.shape) : null;
+        const fx = sh.shape !== 'form' && !own && (sh.shape === 'list' || route.includes(':')) ? fixtureFor(fixturesOf(f.name), f.name, textForFixture, sh.shape) : null;
         file = `${layout.features}/${f.name}/pages/${name}${posix.extname(lib.n)}`;
         push({ tool: 'line.baseOn', args: { libraryId: lib.id, feature: f.name, name }, kind: 'page', feature: f.name, point: pid, route, base: lib.id, ...(fx ? { fixture: fx.rel } : {}),
           why: `${said}: ${name} is based on the library ${lib.id.split('/')[1]}${fx ? `, wired to ${fx.rel}` : ''}.` });

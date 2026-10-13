@@ -55,7 +55,8 @@ function fieldsOf(fx, amount) {
   const idKey = ID_KEYS.find((k) => typeof row[k] === 'string');
   const nameKey = NAME_KEYS.find((k) => typeof row[k] === 'string');
   const amountKey = keys.find((k) => typeof row[k] === 'number' && amount.test(k));
-  return idKey && nameKey && amountKey ? { rel: fx.rel, idKey, nameKey, amountKey, rows: fx.rows } : null;
+  // #935: `wrapped` (rows under "value") and `via` (another feature's index export) travel with it to the generated import.
+  return idKey && nameKey && amountKey ? { rel: fx.rel, idKey, nameKey, amountKey, rows: fx.rows, ...(fx.wrapped ? { wrapped: true } : {}), ...(fx.via ? { via: fx.via } : {}) } : null;
 }
 
 /** A validated form's fields from the quoted labels, checkbox and messages: each message mapped to its field and rule. */
@@ -82,11 +83,13 @@ function formFields(labels, boxLabel, messages, hasMessages) {
 /**
  * Every point's block, and each block's inputs, from the point text and the fixtures.
  * @param {{features: {name: string, story: string, points: {id: string, text: string}[]}[], routes?: {route: string, feature: string}[]}} spec
- * @param {{stem: string, rel: string, rows: Record<string, unknown>[]}[]} fixtures From basePage arrayFixtures.
+ * @param {{stem: string, rel: string, rows: Record<string, unknown>[]}[]|((feature: string) => {stem: string, rel: string, rows: Record<string, unknown>[]}[])} fixtures
+ *   From basePage arrayFixtures: one list for every feature, or (#935 feature modules) the list a feature sees.
  * @param {any[]} [recipes] The worked examples to apply (default: examples/*.json).
  * @returns {{points: {id: string, feature: string, block: string|null, atom: string|null, decided: boolean, reason: string}[], blocks: Record<string, any>}}
  */
 export function pointBlocks(spec, fixtures, recipes = RECIPES) {
+  const fixturesOf = typeof fixtures === 'function' ? fixtures : () => fixtures;
   /** @type {{id: string, feature: string, block: string|null, atom: string|null, decided: boolean, reason: string}[]} */
   const points = [];
   const all = spec.features.flatMap((f) => f.points.map((p) => ({ ...p, feature: f.name, f })));
@@ -101,7 +104,7 @@ export function pointBlocks(spec, fixtures, recipes = RECIPES) {
     const filterP = f.points.find((p) => /\bfilter labelled "[^"]+" offers /i.test(p.text));
     const searchP = f.points.find((p) => /\bsearch box labelled "[^"]+" filters the list by /i.test(p.text));
     if (!filterP && !searchP) continue;
-    const fx = fixtureFor(fixtures, f.name, textOf(f), 'list');
+    const fx = fixtureFor(fixturesOf(f.name), f.name, textOf(f), 'list');
     const row = fx?.rows[0] ?? {};
     let filter = null;
     if (filterP && fx) {
@@ -159,7 +162,7 @@ export function pointBlocks(spec, fixtures, recipes = RECIPES) {
     let have = { ...inp, route };
     let block = null;
     if (rc.kind === 'selection') {
-      const fx = fieldsOf(fixtureFor(fixtures, f.name, textOf(f)), rx(rc.fixtureNumber));
+      const fx = fieldsOf(fixtureFor(fixturesOf(f.name), f.name, textOf(f)), rx(rc.fixtureNumber));
       const tl = inp.totals ? quotedList(inp.totals) : [];
       const rule = inp.fee ? { fee: Number(inp.fee), freeFrom: Number(inp.freeFrom) } : null;
       const add = inp.status ? { qtyLabel: inp.qtyLabel, def: Number(inp.def), min: Number(inp.min), button: inp.button, status: inp.status, feature: pts.add.feature } : null;
@@ -202,7 +205,10 @@ export function pointBlocks(spec, fixtures, recipes = RECIPES) {
  */
 export function atomSteps(root, { spec, planned = [] }) {
   const { library: lib, features } = resolveLayout(root, normalizeLineConfig(/** @type {any} */ (loadConfig(root)).line));
-  const { points, blocks } = pointBlocks(spec, arrayFixtures(root, { library: lib }));
+  // #935: each feature sees its own fixtures, those its imported features export from their index, then the library's.
+  const seen = new Map();
+  const fixturesOf = (name) => { if (!seen.has(name)) seen.set(name, arrayFixtures(root, { library: lib, features }, name)); return seen.get(name); };
+  const { points, blocks } = pointBlocks(spec, fixturesOf);
   const open = planned.filter((s) => !['done', 'cancelled', 'skipped'].includes(String(s.state ?? '')));
   const disk = (rel) => readOrNull(path.join(root, rel));
   const pages = featurePages(root).map((file) => ({ file, src: disk(file) ?? '' }));
