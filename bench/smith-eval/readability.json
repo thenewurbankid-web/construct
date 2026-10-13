@@ -1,0 +1,161 @@
+{
+  "smith": {
+    "atomicCodemod": "cbc2567",
+    "smith": "f70eecf"
+  },
+  "glossModel": "qwen2.5-coder:1.5b",
+  "dropped": 2,
+  "n": 10,
+  "rows": [
+    {
+      "file": "examples/import-sample/src/alerts/pages/AlertDetailPage.tsx",
+      "name": "AlertDetailPage",
+      "group": "page",
+      "band": "long",
+      "lines": 11,
+      "code": "function AlertDetailPage() {\n  const { id } = useParams();\n  const alert = useAlerts().find((a) => a.id === id);\n  if (!alert) return <p>No such alert.</p>;\n  return (\n    <article>\n      <h1>{alert.title}</h1>\n      <SeverityBadge severity={alert.severity} />\n    </article>\n  );\n}",
+      "smith": "Alert detail page works in 4 steps. Let {id} be use params. Let alert be use alerts find a's id === id. If not (alert), return shows a <p> containing 'No such alert.' It returns shows a <article> containing a <h1> containing alert's title and a <SeverityBadge> with severity as alert's severity.",
+      "gloss": {
+        "gloss": null,
+        "dropped": true,
+        "reason": "introduces number \"1\" not in Smith's text",
+        "rejected": "When a user clicks on an alert detail page, it follows these steps: 1. It retrieves the alert's ID from the URL parameters."
+      }
+    },
+    {
+      "file": "bench/ecommerce/starter/library/pages/FormPage.tsx",
+      "name": "FormPage",
+      "group": "page",
+      "band": "long",
+      "lines": 15,
+      "code": "function FormPage({ title, onSubmit, submitLabel, children, aside }: FormPageProps) {\n  const submit = (e: FormEvent) => { e.preventDefault(); onSubmit(); };\n  return (\n    <main className=\"flex flex-col gap-4\">\n      <h1 className=\"text-2xl font-bold\">{title}</h1>\n      <div className=\"grid gap-6 md:grid-cols-[2fr_1fr]\">\n        <form noValidate onSubmit={submit} className=\"flex flex-col gap-4\" aria-label={title}>\n          {children}\n          <Button type=\"submit\" label={submitLabel} />\n        </form>\n        {aside ? <aside className=\"flex flex-col gap-3\">{aside}</aside> : null}\n      </div>\n    </main>\n  );\n}",
+      "smith": "Form page using {title, on submit, submit label, children, aside} works in 2 steps. Let submit be e prevent default, then on submit. It returns shows a <main> with class name as 'flex flex-col gap-4' containing a <h1> with class name as 'text-2xl font-bold' containing title and a <div> with class name as 'grid gap-6 md:grid-cols-[2fr_1fr]' containing a <form> with no validate and on submit as submit and class name as 'flex flex-col gap-4' and aria-label as title containing children and a <Button> with type as 'submit' and label as submit label and if aside then a <aside> with class name as 'flex flex-col gap-3' containing aside, otherwise nothing.",
+      "gloss": {
+        "gloss": "This code creates a form page with a title, submit button, and optional aside content. When the form is submitted, it prevents the default action and performs an action defined by the `on submit` function.",
+        "dropped": false,
+        "reason": null,
+        "rejected": null
+      }
+    },
+    {
+      "file": "examples/line-heldout-clinic/library/components/Row.tsx",
+      "name": "Row",
+      "group": "page",
+      "band": "long",
+      "lines": 7,
+      "code": "function Row({ name, state }: { name: string; state: string }) {\n  return (\n    <li>\n      {name} <Pill text={state} />\n    </li>\n  );\n}",
+      "smith": "Row using {name, state} works in 1 step. It returns shows a <li> containing name and a <Pill> with text as state.",
+      "gloss": {
+        "gloss": "The code snippet takes a row with a name and state, and returns a list item with the name and a pill with the state text.",
+        "dropped": false,
+        "reason": null,
+        "rejected": null
+      }
+    },
+    {
+      "file": "test/fixtures/line-import-clash/src/opp/components/Badge.tsx",
+      "name": "Badge",
+      "group": "page",
+      "band": "short",
+      "lines": 3,
+      "code": "function Badge({ label }: { label: string }) {\n  return <span className=\"badge\">{label}</span>;\n}",
+      "smith": "Badge using {label} works in 1 step. It returns shows a <span> with class name as 'badge' containing label.",
+      "gloss": {
+        "gloss": "This code snippet defines a function that takes a label as input and returns a HTML span element with the class 'badge' containing the label.",
+        "dropped": false,
+        "reason": null,
+        "rejected": null
+      }
+    },
+    {
+      "file": "example/app/page.tsx",
+      "name": "Page",
+      "group": "page",
+      "band": "short",
+      "lines": 3,
+      "code": "function Page() {\n  return <CoreController />;\n}",
+      "smith": "Page works in 1 step. It returns shows a <CoreController>.",
+      "gloss": {
+        "gloss": "This code snippet performs a single operation, which is to display the `<CoreController ` component on the page.",
+        "dropped": false,
+        "reason": null,
+        "rejected": null
+      }
+    },
+    {
+      "file": "example/features/signup/services/Signup.tsx",
+      "name": "registerUser",
+      "group": "logic",
+      "band": "long",
+      "lines": 8,
+      "code": "async function registerUser(username: string, email: string, password: string) {\n  const response = await fetch('/api/signup', {\n    method: 'POST',\n    body: JSON.stringify({ username, email, password }),\n  });\n  if (!response.ok) throw new Error('Signup failed');\n  return response.json();\n}",
+      "smith": "Register user using username and email and password works in 3 steps. Let response be wait for fetch of '/api/signup' and an object with method as 'POST' and body as JSON stringify an object with username and email and password. If not (response's ok), fail with a new Error of 'Signup failed'. It returns response json.",
+      "gloss": {
+        "gloss": "This code allows a user to register by providing their username, email, and password. It sends a POST request to the '/api/signup' endpoint with the user's information in JSON format.",
+        "dropped": false,
+        "reason": null,
+        "rejected": null
+      }
+    },
+    {
+      "file": "packages/line-atoms/atoms/validated-submit/index.ts",
+      "name": "validatedSubmit",
+      "group": "logic",
+      "band": "long",
+      "lines": 12,
+      "code": "async function validatedSubmit<V, O, R>(state: SubmitState<V, O, R>, submit: (data: O) => Promise<R>, values?: V): Promise<SubmitState<V, O, R>> {\n  const checked = machine.send(state, { type: 'SUBMIT', values }) as SubmitState<V, O, R>;\n  if (checked.status !== 'submitting') {\n    return checked;\n  }\n  try {\n    const result = await submit(checked.data as O);\n    return machine.send(checked, { type: 'RESOLVE', result }) as SubmitState<V, O, R>;\n  } catch (error) {\n    return machine.send(checked, { type: 'REJECT', error }) as SubmitState<V, O, R>;\n  }\n}",
+      "smith": "Validated submit using state and submit and values works in 3 steps. Let checked be machine send state and an object with type as 'SUBMIT' and values. If checked's status !== 'submitting', return checked. Try, let result be wait for submit of checked's data, then return machine send checked and an object with type as 'RESOLVE' and result, if it fails with error, return machine send checked and an object with type as 'REJECT' and error.",
+      "gloss": {
+        "gloss": "This code snippet validates a submit request by checking the machine's state and waiting for the submit data. If the state is not 'submitting', it returns the current state.",
+        "dropped": false,
+        "reason": null,
+        "rejected": null
+      }
+    },
+    {
+      "file": "packages/line-atoms/atoms/async-status/index.ts",
+      "name": "isCurrent",
+      "group": "logic",
+      "band": "long",
+      "lines": 9,
+      "code": "function isCurrent(state: AsyncState<unknown>, request: number | undefined): boolean {\n  if (!state.fetching) {\n    return false;\n  }\n  if (request === undefined) {\n    return true;\n  }\n  return request === state.request;\n}",
+      "smith": "Is current using state and request works in 3 steps. If not (state's fetching), return false. If request === undefined, return true. It returns request === state's request.",
+      "gloss": {
+        "gloss": "This function checks if the current state and request are the same. If they're not, it returns false.",
+        "dropped": false,
+        "reason": null,
+        "rejected": null
+      }
+    },
+    {
+      "file": "packages/line-atoms/atoms/multi-step-flow/index.ts",
+      "name": "at",
+      "group": "logic",
+      "band": "short",
+      "lines": 3,
+      "code": "function at<D>(state: FlowState<D>, index: number, data: D, blocked: string | null): FlowState<D> {\n  return { ...state, status: positionOf(index, state.steps.length), index, data, visited: Math.max(state.visited, index), blocked };\n}",
+      "smith": "At using state and index and data and blocked works in 1 step. It returns an object with everything in state and status as position of of index and state's steps's length and index and data and visited as Math max state's visited and index and blocked.",
+      "gloss": {
+        "gloss": "This function takes a state object, an index, data, and a blocked array as inputs. It returns an object with the current state, the current index, the current data, the length of the state's steps, the current index, the current data, and the maximum visited value from the state's blocked array.",
+        "dropped": false,
+        "reason": null,
+        "rejected": null
+      }
+    },
+    {
+      "file": "packages/line-atoms/atoms/undo-history/index.ts",
+      "name": "canUndo",
+      "group": "logic",
+      "band": "short",
+      "lines": 3,
+      "code": "function canUndo(state: HistoryState<unknown>): boolean {\n  return state.past.length > 0;\n}",
+      "smith": "Can undo using state works in 1 step. It returns state's past's length > 0.",
+      "gloss": {
+        "gloss": null,
+        "dropped": true,
+        "reason": "introduces code \"canUndo\" not in Smith's text",
+        "rejected": "The function `canUndo` checks if the state can be undone in one step. It returns `true` if the state's past length is greater than 0, indicating that there is a previous state that can be restored."
+      }
+    }
+  ]
+}

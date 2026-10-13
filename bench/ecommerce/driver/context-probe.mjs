@@ -73,13 +73,33 @@ async function englishOf(code) {
   return text;
 }
 
+const englishTsCache = new Map();
+/**
+ * The hardened Smith's English of code (atomic-codemod smith-hardening parses TS and JSX): the same top-level function
+ * declarations as englishOf, but each passed to summarizeCode as its own TS/TSX source (no transpile, no JSX ->
+ * React.createElement).
+ */
+async function englishOfTs(code) {
+  if (englishTsCache.has(code)) return englishTsCache.get(code);
+  const sf = ts.createSourceFile('x.tsx', code, ts.ScriptTarget.ES2020, true, ts.ScriptKind.TSX);
+  const out = [];
+  for (const st of sf.statements) {
+    if (!ts.isFunctionDeclaration(st) || !st.body) continue;
+    const s = await summarizeCode(st.getText(sf).replace(/^export\s+(default\s+)?/, ''));
+    out.push(s.sentences.join(' '));
+  }
+  const text = out.length ? out.join(' ') : '(no function to put into words)';
+  englishTsCache.set(code, text);
+  return text;
+}
+
 /** Replace every JSON `"code": "<string>"` field in a text by the code's English. */
-async function englishifyCodeFields(text) {
+async function englishifyCodeFields(text, en = englishOf) {
   const re = /"code":\s*"((?:[^"\\]|\\.)*)"/g;
   const parts = []; let last = 0; let m;
   while ((m = re.exec(text))) {
     let code; try { code = JSON.parse(`"${m[1]}"`); } catch { continue; }
-    parts.push(text.slice(last, m.index), `"code":${JSON.stringify(`(code, in English) ${await englishOf(code)}`)}`);
+    parts.push(text.slice(last, m.index), `"code":${JSON.stringify(`(code, in English) ${await en(code)}`)}`);
     last = m.index + m[0].length;
   }
   parts.push(text.slice(last));
@@ -203,21 +223,21 @@ const landedCode = read(path.join(PROJ, landed));
 const PCK1 = pointText('picks', 'PCK-1');
 
 /** The context pack: current file + hash, ListPage props/signature, the picks points, a landed page; English optional. */
-async function pack({ english = false, englishOnly = false } = {}) {
+async function pack({ english = false, englishOnly = false, en = englishOf } = {}) {
   const lines = ['Context for this fix:'];
   lines.push(`- The file you are editing, ${PICKS} (contentHash ${failing.contentHash}), now:\n\`\`\`tsx\n${currentPicks.trimEnd()}\n\`\`\``);
-  if (english) lines.push(`  In English: ${await englishOf(currentPicks)}`);
-  if (english || englishOnly) lines.push(`- What your last attempt does, in English: ${await englishOf(failing.code)}`);
-  if (englishOnly) lines.push(`- library/pages/ListPage.tsx, in English: ${await englishOf(read(path.join(PROJ, 'library/pages/ListPage.tsx')))}`);
+  if (english) lines.push(`  In English: ${await en(currentPicks)}`);
+  if (english || englishOnly) lines.push(`- What your last attempt does, in English: ${await en(failing.code)}`);
+  if (englishOnly) lines.push(`- library/pages/ListPage.tsx, in English: ${await en(read(path.join(PROJ, 'library/pages/ListPage.tsx')))}`);
   else {
     lines.push(`- It renders library/pages/ListPage.tsx:\n\`\`\`tsx\n${signatureOf('library/pages/ListPage.tsx')}\n\`\`\``);
-    if (english) lines.push(`  In English: ${await englishOf(read(path.join(PROJ, 'library/pages/ListPage.tsx')))}`);
+    if (english) lines.push(`  In English: ${await en(read(path.join(PROJ, 'library/pages/ListPage.tsx')))}`);
   }
   lines.push(`- Points of picks:\n${pointsOf('picks').join('\n')}`);
-  if (englishOnly) lines.push(`- A page that landed (${landed}), in English: ${await englishOf(landedCode)}`);
+  if (englishOnly) lines.push(`- A page that landed (${landed}), in English: ${await en(landedCode)}`);
   else {
     lines.push(`- A page that landed (${landed}):\n\`\`\`tsx\n${landedCode.trimEnd()}\n\`\`\``);
-    if (english) lines.push(`  In English: ${await englishOf(landedCode)}`);
+    if (english) lines.push(`  In English: ${await en(landedCode)}`);
   }
   return lines.join('\n');
 }
@@ -243,6 +263,17 @@ const withRefusal = (msgs, sentence, keepFields = true) => {
   return m;
 };
 
+async function buildV8(en) {
+  const m = clone(C1x.messages);
+  for (let i = 2; i < m.length; i += 1) {
+    if (i === refusalIdx) continue;
+    if (m[i].role === 'assistant') m[i].content = await englishifyCodeFields(m[i].content, en);
+    else { const o = parse(m[i].content); if (o?.sentence) { o.sentence = await englishifyCodeFields(o.sentence, en); m[i].content = JSON.stringify(o); } }
+  }
+  m[refusalIdx] = { role: 'tool', content: JSON.stringify({ ok: false, code: 'TYPE_ERROR', sentence: `${englishRefusal()}\n${await pack({ englishOnly: true, en })}` }) };
+  return m;
+}
+
 const VARIANTS = {
   V0: { case: 1, what: 'control: turn-input/12 as sent', numCtx: 16384, build: async () => T12.messages },
   V1: { case: 1, what: 'compacted: repeats collapsed + (repeated N times), old tool outputs -> first line, done steps -> count', build: async () => C1x.messages },
@@ -251,16 +282,8 @@ const VARIANTS = {
   V4: { case: 1, what: 'V3 with the refusal shortened to error + example fix + one-line rule', build: async () => withRefusal(C1x.messages, `${shortRefusal()}\n${await pack()}`, false) },
   V5: { case: 1, what: 'best of V2-V4 + English (Smith translation) beside each code block of the pack', dependsOnBest: true },
   V7: { case: 1, what: 'best of V2-V4, then compare loop: its code in English beside the PCK-1 text, ask once more (2 calls)', dependsOnBest: true, compare: true },
-  V8: { case: 1, what: 'V1 with every code block replaced by English; raw code only the edited file + error line; English refusal + example fix', build: async () => {
-    const m = clone(C1x.messages);
-    for (let i = 2; i < m.length; i += 1) {
-      if (i === refusalIdx) continue;
-      if (m[i].role === 'assistant') m[i].content = await englishifyCodeFields(m[i].content);
-      else { const o = parse(m[i].content); if (o?.sentence) { o.sentence = await englishifyCodeFields(o.sentence); m[i].content = JSON.stringify(o); } }
-    }
-    m[refusalIdx] = { role: 'tool', content: JSON.stringify({ ok: false, code: 'TYPE_ERROR', sentence: `${englishRefusal()}\n${await pack({ englishOnly: true })}` }) };
-    return m;
-  } },
+  V8: { case: 1, what: 'V1 with every code block replaced by English; raw code only the edited file + error line; English refusal + example fix', build: async () => buildV8(englishOf) },
+  H1: { case: 1, what: 'V8 with the hardened Smith\'s English (TS/TSX fed directly)', build: async () => buildV8(englishOfTs) },
   'V8+V7': { case: 1, what: 'V8, then the compare loop (2 calls)', base: 'V8', compare: true },
   V9a: { case: 1, what: 'V8 context + ask for PCK-1 as an ordered list of registered atom sentences (prompt only, no tools)', atoms: true, build: async () => [...(await VARIANTS.V8.build()), { role: 'user', content: atomAsk([PCK1]) }] },
   V9b: { case: 1, what: 'V9a with Ollama `format` = JSON Schema enum of the atom sentences (enforced)', atoms: true, enforced: true, build: async () => VARIANTS.V9a.build() },
@@ -272,12 +295,12 @@ const seedUser = T1.messages[1].content;
 const noWrongSuggestion = seedUser.replace(/ Step: line\.baseOn \{[^\n]*"pages\/DetailPage"[^\n]*\}/g, '');
 const LIB_PAGES = ['ListPage', 'DetailPage', 'FormPage'];
 const BRW12 = [pointText('browse', 'BRW-1'), pointText('browse', 'BRW-2')];
-async function libBlock({ code = true, english = false }) {
+async function libBlock({ code = true, english = false, en = englishOf }) {
   const parts = ['Library pages you can base the browse page on:'];
   for (const p of LIB_PAGES) {
     parts.push(`- pages/${p} (library/pages/${p}.tsx)${code ? '' : ', in English'}:`);
     if (code) parts.push(`\`\`\`tsx\n${signatureOf(`library/pages/${p}.tsx`)}\n\`\`\``);
-    if (english || !code) parts.push(`${code ? '  In English: ' : '  '}${await englishOf(read(path.join(PROJ, `library/pages/${p}.tsx`)))}`);
+    if (english || !code) parts.push(`${code ? '  In English: ' : '  '}${await en(read(path.join(PROJ, `library/pages/${p}.tsx`)))}`);
   }
   parts.push(`The browse page must show:\n${BRW12.map((s) => `- ${s}`).join('\n')}`);
   return parts.join('\n');
@@ -307,6 +330,7 @@ Object.assign(VARIANTS, {
   C2: { case: 2, what: 'C1 + one worked example of a ListPage-based page', numCtx: 16384, build: async () => c2(`${noWrongSuggestion}\n\n${await libBlock({})}\n\n${WORKED}`) },
   C3: { case: 2, what: 'C2 + English (Smith translation) of each library page', numCtx: 16384, build: async () => c2(`${noWrongSuggestion}\n\n${await libBlock({ english: true })}\n\n${WORKED}`) },
   C4: { case: 2, what: 'C1 with the library pages only as English (no code)', numCtx: 16384, build: async () => c2(`${noWrongSuggestion}\n\n${await libBlock({ code: false })}`) },
+  H2: { case: 2, what: 'C4 with the hardened Smith\'s English (TS/TSX fed directly)', numCtx: 16384, build: async () => c2(`${noWrongSuggestion}\n\n${await libBlock({ code: false, en: englishOfTs })}`) },
   C9a: { case: 2, what: 'C4 context + ask for BRW-1/BRW-2 as an ordered list of registered atom sentences (prompt only, no tools)', numCtx: 16384, atoms: true, build: async () => [...(await VARIANTS.C4.build()), { role: 'user', content: atomAsk(BRW12) }] },
   C9b: { case: 2, what: 'C9a with Ollama `format` = JSON Schema enum of the atom sentences (enforced)', numCtx: 16384, atoms: true, enforced: true, build: async () => VARIANTS.C9a.build() },
 });
@@ -369,7 +393,17 @@ Object.assign(VARIANTS, {
   CL9a: { case: 2, what: 'CL context + ask for BRW-1/BRW-2 as registered atom sentences (prompt only, no tools)', numCtx: 16384, atoms: true, build: async () => [...(await L2()), { role: 'user', content: atomAsk(BRW12) }] },
   CL9b: { case: 2, what: 'CL9a with the `format` JSON Schema enum (enforced)', numCtx: 16384, atoms: true, enforced: true, build: async () => VARIANTS.CL9a.build() },
 });
-const L_IDS = ['L', 'L+tools', 'L9a', 'L9b', 'CL', 'CL+tools', 'CL9a', 'CL9b'];
+// CLr1: the r1 winner CL replayed with the exact user text r1 sent (its English pack is the pinned Smith's), so it can
+// run beside the H arms in a process linked to the hardened Smith.
+const R1_PROMPTS = (() => { try { return readJson(path.join(REPO, 'bench/lending/results/context-probe-r1.json')).prompts ?? {}; } catch { return {}; } })();
+Object.assign(VARIANTS, {
+  CLr1: { case: 2, what: 'CL replayed with the exact text r1 sent (pinned Smith English pack)', numCtx: 16384, tools: L_TOOLS, build: async () => {
+    const last = R1_PROMPTS[`CL@${MODELS[0]}`]?.last;
+    if (!last) throw new Error('CLr1 needs prompts["CL@<model>"] in bench/lending/results/context-probe-r1.json');
+    return lMsgs(last);
+  } },
+});
+const L_IDS = ['L', 'L+tools', 'L9a', 'L9b', 'CL', 'CLr1', 'CL+tools', 'CL9a', 'CL9b'];
 
 /** A fetch tool answered from the run's project/ (read-only), the way plan-cli would. */
 function simulateTool(name, args, caseNo) {
@@ -661,7 +695,7 @@ async function main() {
       if (want('V7')) await runCompare(model, 'V7', best, bestMsgs);
       if (want('V8')) { built.V8 = await VARIANTS.V8.build(); await run1(model, 'V8', built.V8); }
       if (want('V8+V7') && built.V8) await runCompare(model, 'V8+V7', 'V8', built.V8);
-      for (const id of ['V9a', 'V9b', 'V10', 'C0', 'C1', 'C2', 'C3', 'C4', 'C9a', 'C9b']) if (want(id)) await run1(model, id, await VARIANTS[id].build());
+      for (const id of ['V9a', 'V9b', 'V10', 'H1', 'C0', 'C1', 'C2', 'C3', 'C4', 'H2', 'C9a', 'C9b']) if (want(id)) await run1(model, id, await VARIANTS[id].build());
     }
   } finally {
     fs.rmSync(PROBE_DIR, { recursive: true, force: true });

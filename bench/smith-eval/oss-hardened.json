@@ -1,0 +1,971 @@
+{
+  "overall": {
+    "coverage": {
+      "all": {
+        "clean": {
+          "full": 539,
+          "n": 539,
+          "pct": 100
+        },
+        "full": {
+          "full": 539,
+          "n": 539,
+          "pct": 100
+        }
+      },
+      "component": {
+        "clean": {
+          "full": 341,
+          "n": 341,
+          "pct": 100
+        },
+        "full": {
+          "full": 341,
+          "n": 341,
+          "pct": 100
+        }
+      },
+      "hook": {
+        "clean": {
+          "full": 20,
+          "n": 20,
+          "pct": 100
+        },
+        "full": {
+          "full": 20,
+          "n": 20,
+          "pct": 100
+        }
+      },
+      "server": {
+        "clean": {
+          "full": 52,
+          "n": 52,
+          "pct": 100
+        },
+        "full": {
+          "full": 52,
+          "n": 52,
+          "pct": 100
+        }
+      },
+      "store": {
+        "clean": {
+          "full": 8,
+          "n": 8,
+          "pct": 100
+        },
+        "full": {
+          "full": 8,
+          "n": 8,
+          "pct": 100
+        }
+      },
+      "util": {
+        "clean": {
+          "full": 118,
+          "n": 118,
+          "pct": 100
+        },
+        "full": {
+          "full": 118,
+          "n": 118,
+          "pct": 100
+        }
+      }
+    },
+    "gaps": {
+      "expr": 0,
+      "pattern": 0,
+      "stmt": 0
+    },
+    "logic": {
+      "component": {
+        "empty": 0,
+        "full": 145,
+        "parseError": 0,
+        "placeholder": 0
+      },
+      "hook": {
+        "empty": 0,
+        "full": 20,
+        "parseError": 0,
+        "placeholder": 0
+      },
+      "server": {
+        "empty": 0,
+        "full": 52,
+        "parseError": 0,
+        "placeholder": 0
+      },
+      "store": {
+        "empty": 0,
+        "full": 6,
+        "parseError": 0,
+        "placeholder": 0
+      },
+      "util": {
+        "empty": 0,
+        "full": 118,
+        "parseError": 0,
+        "placeholder": 0
+      }
+    },
+    "logicCoverage": {
+      "all": {
+        "clean": {
+          "full": 341,
+          "n": 341,
+          "pct": 100
+        },
+        "full": {
+          "full": 341,
+          "n": 341,
+          "pct": 100
+        }
+      },
+      "component": {
+        "clean": {
+          "full": 145,
+          "n": 145,
+          "pct": 100
+        },
+        "full": {
+          "full": 145,
+          "n": 145,
+          "pct": 100
+        }
+      },
+      "hook": {
+        "clean": {
+          "full": 20,
+          "n": 20,
+          "pct": 100
+        },
+        "full": {
+          "full": 20,
+          "n": 20,
+          "pct": 100
+        }
+      },
+      "server": {
+        "clean": {
+          "full": 52,
+          "n": 52,
+          "pct": 100
+        },
+        "full": {
+          "full": 52,
+          "n": 52,
+          "pct": 100
+        }
+      },
+      "store": {
+        "clean": {
+          "full": 6,
+          "n": 6,
+          "pct": 100
+        },
+        "full": {
+          "full": 6,
+          "n": 6,
+          "pct": 100
+        }
+      },
+      "util": {
+        "clean": {
+          "full": 118,
+          "n": 118,
+          "pct": 100
+        },
+        "full": {
+          "full": 118,
+          "n": 118,
+          "pct": 100
+        }
+      }
+    },
+    "pairs": {
+      "cleanUniqueCode": 515,
+      "passing": 539,
+      "uniqueCode": 515
+    },
+    "table": {
+      "component": {
+        "empty": 0,
+        "full": 341,
+        "parseError": 0,
+        "placeholder": 0
+      },
+      "hook": {
+        "empty": 0,
+        "full": 20,
+        "parseError": 0,
+        "placeholder": 0
+      },
+      "server": {
+        "empty": 0,
+        "full": 52,
+        "parseError": 0,
+        "placeholder": 0
+      },
+      "store": {
+        "empty": 0,
+        "full": 8,
+        "parseError": 0,
+        "placeholder": 0
+      },
+      "util": {
+        "empty": 0,
+        "full": 118,
+        "parseError": 0,
+        "placeholder": 0
+      }
+    },
+    "unhandledTypes": {}
+  },
+  "parent": 944,
+  "pinned": {
+    "logicOnly": 75.4,
+    "overall": 57.5
+  },
+  "repos": [
+    {
+      "counts": {
+        "fileParseErrors": 0,
+        "files": 123,
+        "filesSkipped": {
+          "outOfScope": 2,
+          "tooBig": 0
+        },
+        "functions": 220,
+        "gaps": {
+          "expr": 0,
+          "pattern": 0,
+          "stmt": 0
+        },
+        "templates": 144,
+        "tsSourceFound": 220,
+        "unhandledTypes": {}
+      },
+      "coverage": {
+        "all": {
+          "clean": {
+            "full": 220,
+            "n": 220,
+            "pct": 100
+          },
+          "full": {
+            "full": 220,
+            "n": 220,
+            "pct": 100
+          }
+        },
+        "component": {
+          "clean": {
+            "full": 175,
+            "n": 175,
+            "pct": 100
+          },
+          "full": {
+            "full": 175,
+            "n": 175,
+            "pct": 100
+          }
+        },
+        "hook": {
+          "clean": {
+            "full": 4,
+            "n": 4,
+            "pct": 100
+          },
+          "full": {
+            "full": 4,
+            "n": 4,
+            "pct": 100
+          }
+        },
+        "server": {
+          "clean": {
+            "full": 16,
+            "n": 16,
+            "pct": 100
+          },
+          "full": {
+            "full": 16,
+            "n": 16,
+            "pct": 100
+          }
+        },
+        "store": {
+          "clean": {
+            "full": 1,
+            "n": 1,
+            "pct": 100
+          },
+          "full": {
+            "full": 1,
+            "n": 1,
+            "pct": 100
+          }
+        },
+        "util": {
+          "clean": {
+            "full": 24,
+            "n": 24,
+            "pct": 100
+          },
+          "full": {
+            "full": 24,
+            "n": 24,
+            "pct": 100
+          }
+        }
+      },
+      "license": {
+        "file": "LICENSE.md",
+        "type": "MIT"
+      },
+      "logic": {
+        "component": {
+          "empty": 0,
+          "full": 32,
+          "parseError": 0,
+          "placeholder": 0
+        },
+        "hook": {
+          "empty": 0,
+          "full": 4,
+          "parseError": 0,
+          "placeholder": 0
+        },
+        "server": {
+          "empty": 0,
+          "full": 16,
+          "parseError": 0,
+          "placeholder": 0
+        },
+        "store": {
+          "empty": 0,
+          "full": 0,
+          "parseError": 0,
+          "placeholder": 0
+        },
+        "util": {
+          "empty": 0,
+          "full": 24,
+          "parseError": 0,
+          "placeholder": 0
+        }
+      },
+      "logicCoverage": {
+        "all": {
+          "clean": {
+            "full": 76,
+            "n": 76,
+            "pct": 100
+          },
+          "full": {
+            "full": 76,
+            "n": 76,
+            "pct": 100
+          }
+        },
+        "component": {
+          "clean": {
+            "full": 32,
+            "n": 32,
+            "pct": 100
+          },
+          "full": {
+            "full": 32,
+            "n": 32,
+            "pct": 100
+          }
+        },
+        "hook": {
+          "clean": {
+            "full": 4,
+            "n": 4,
+            "pct": 100
+          },
+          "full": {
+            "full": 4,
+            "n": 4,
+            "pct": 100
+          }
+        },
+        "server": {
+          "clean": {
+            "full": 16,
+            "n": 16,
+            "pct": 100
+          },
+          "full": {
+            "full": 16,
+            "n": 16,
+            "pct": 100
+          }
+        },
+        "store": {
+          "clean": {
+            "full": 0,
+            "n": 0,
+            "pct": null
+          },
+          "full": {
+            "full": 0,
+            "n": 0,
+            "pct": null
+          }
+        },
+        "util": {
+          "clean": {
+            "full": 24,
+            "n": 24,
+            "pct": 100
+          },
+          "full": {
+            "full": 24,
+            "n": 24,
+            "pct": 100
+          }
+        }
+      },
+      "name": "taxonomy",
+      "pairs": {
+        "cleanUniqueCode": 220,
+        "passing": 220,
+        "uniqueCode": 220
+      },
+      "sha": "298a8857c7128a0d121e7f699dfd729f23b3966d",
+      "subdir": ".",
+      "table": {
+        "component": {
+          "empty": 0,
+          "full": 175,
+          "parseError": 0,
+          "placeholder": 0
+        },
+        "hook": {
+          "empty": 0,
+          "full": 4,
+          "parseError": 0,
+          "placeholder": 0
+        },
+        "server": {
+          "empty": 0,
+          "full": 16,
+          "parseError": 0,
+          "placeholder": 0
+        },
+        "store": {
+          "empty": 0,
+          "full": 1,
+          "parseError": 0,
+          "placeholder": 0
+        },
+        "util": {
+          "empty": 0,
+          "full": 24,
+          "parseError": 0,
+          "placeholder": 0
+        }
+      },
+      "url": "https://github.com/shadcn-ui/taxonomy"
+    },
+    {
+      "counts": {
+        "fileParseErrors": 0,
+        "files": 64,
+        "filesSkipped": {
+          "outOfScope": 1,
+          "tooBig": 0
+        },
+        "functions": 105,
+        "gaps": {
+          "expr": 0,
+          "pattern": 0,
+          "stmt": 0
+        },
+        "templates": 25,
+        "tsSourceFound": 105,
+        "unhandledTypes": {}
+      },
+      "coverage": {
+        "all": {
+          "clean": {
+            "full": 105,
+            "n": 105,
+            "pct": 100
+          },
+          "full": {
+            "full": 105,
+            "n": 105,
+            "pct": 100
+          }
+        },
+        "component": {
+          "clean": {
+            "full": 54,
+            "n": 54,
+            "pct": 100
+          },
+          "full": {
+            "full": 54,
+            "n": 54,
+            "pct": 100
+          }
+        },
+        "hook": {
+          "clean": {
+            "full": 1,
+            "n": 1,
+            "pct": 100
+          },
+          "full": {
+            "full": 1,
+            "n": 1,
+            "pct": 100
+          }
+        },
+        "server": {
+          "clean": {
+            "full": 32,
+            "n": 32,
+            "pct": 100
+          },
+          "full": {
+            "full": 32,
+            "n": 32,
+            "pct": 100
+          }
+        },
+        "store": {
+          "clean": {
+            "full": 7,
+            "n": 7,
+            "pct": 100
+          },
+          "full": {
+            "full": 7,
+            "n": 7,
+            "pct": 100
+          }
+        },
+        "util": {
+          "clean": {
+            "full": 11,
+            "n": 11,
+            "pct": 100
+          },
+          "full": {
+            "full": 11,
+            "n": 11,
+            "pct": 100
+          }
+        }
+      },
+      "license": {
+        "file": "license.md",
+        "type": "MIT"
+      },
+      "logic": {
+        "component": {
+          "empty": 0,
+          "full": 30,
+          "parseError": 0,
+          "placeholder": 0
+        },
+        "hook": {
+          "empty": 0,
+          "full": 1,
+          "parseError": 0,
+          "placeholder": 0
+        },
+        "server": {
+          "empty": 0,
+          "full": 32,
+          "parseError": 0,
+          "placeholder": 0
+        },
+        "store": {
+          "empty": 0,
+          "full": 6,
+          "parseError": 0,
+          "placeholder": 0
+        },
+        "util": {
+          "empty": 0,
+          "full": 11,
+          "parseError": 0,
+          "placeholder": 0
+        }
+      },
+      "logicCoverage": {
+        "all": {
+          "clean": {
+            "full": 80,
+            "n": 80,
+            "pct": 100
+          },
+          "full": {
+            "full": 80,
+            "n": 80,
+            "pct": 100
+          }
+        },
+        "component": {
+          "clean": {
+            "full": 30,
+            "n": 30,
+            "pct": 100
+          },
+          "full": {
+            "full": 30,
+            "n": 30,
+            "pct": 100
+          }
+        },
+        "hook": {
+          "clean": {
+            "full": 1,
+            "n": 1,
+            "pct": 100
+          },
+          "full": {
+            "full": 1,
+            "n": 1,
+            "pct": 100
+          }
+        },
+        "server": {
+          "clean": {
+            "full": 32,
+            "n": 32,
+            "pct": 100
+          },
+          "full": {
+            "full": 32,
+            "n": 32,
+            "pct": 100
+          }
+        },
+        "store": {
+          "clean": {
+            "full": 6,
+            "n": 6,
+            "pct": 100
+          },
+          "full": {
+            "full": 6,
+            "n": 6,
+            "pct": 100
+          }
+        },
+        "util": {
+          "clean": {
+            "full": 11,
+            "n": 11,
+            "pct": 100
+          },
+          "full": {
+            "full": 11,
+            "n": 11,
+            "pct": 100
+          }
+        }
+      },
+      "name": "commerce",
+      "pairs": {
+        "cleanUniqueCode": 105,
+        "passing": 105,
+        "uniqueCode": 105
+      },
+      "sha": "3761e52e60df9c6a316e067dbfd7032e494d3634",
+      "subdir": ".",
+      "table": {
+        "component": {
+          "empty": 0,
+          "full": 54,
+          "parseError": 0,
+          "placeholder": 0
+        },
+        "hook": {
+          "empty": 0,
+          "full": 1,
+          "parseError": 0,
+          "placeholder": 0
+        },
+        "server": {
+          "empty": 0,
+          "full": 32,
+          "parseError": 0,
+          "placeholder": 0
+        },
+        "store": {
+          "empty": 0,
+          "full": 7,
+          "parseError": 0,
+          "placeholder": 0
+        },
+        "util": {
+          "empty": 0,
+          "full": 11,
+          "parseError": 0,
+          "placeholder": 0
+        }
+      },
+      "url": "https://github.com/vercel/commerce"
+    },
+    {
+      "counts": {
+        "fileParseErrors": 0,
+        "files": 118,
+        "filesSkipped": {
+          "outOfScope": 22,
+          "tooBig": 0
+        },
+        "functions": 214,
+        "gaps": {
+          "expr": 0,
+          "pattern": 0,
+          "stmt": 0
+        },
+        "templates": 29,
+        "tsSourceFound": 214,
+        "unhandledTypes": {}
+      },
+      "coverage": {
+        "all": {
+          "clean": {
+            "full": 214,
+            "n": 214,
+            "pct": 100
+          },
+          "full": {
+            "full": 214,
+            "n": 214,
+            "pct": 100
+          }
+        },
+        "component": {
+          "clean": {
+            "full": 112,
+            "n": 112,
+            "pct": 100
+          },
+          "full": {
+            "full": 112,
+            "n": 112,
+            "pct": 100
+          }
+        },
+        "hook": {
+          "clean": {
+            "full": 15,
+            "n": 15,
+            "pct": 100
+          },
+          "full": {
+            "full": 15,
+            "n": 15,
+            "pct": 100
+          }
+        },
+        "server": {
+          "clean": {
+            "full": 4,
+            "n": 4,
+            "pct": 100
+          },
+          "full": {
+            "full": 4,
+            "n": 4,
+            "pct": 100
+          }
+        },
+        "store": {
+          "clean": {
+            "full": 0,
+            "n": 0,
+            "pct": null
+          },
+          "full": {
+            "full": 0,
+            "n": 0,
+            "pct": null
+          }
+        },
+        "util": {
+          "clean": {
+            "full": 83,
+            "n": 83,
+            "pct": 100
+          },
+          "full": {
+            "full": 83,
+            "n": 83,
+            "pct": 100
+          }
+        }
+      },
+      "license": {
+        "file": "LICENSE",
+        "type": "MIT"
+      },
+      "logic": {
+        "component": {
+          "empty": 0,
+          "full": 83,
+          "parseError": 0,
+          "placeholder": 0
+        },
+        "hook": {
+          "empty": 0,
+          "full": 15,
+          "parseError": 0,
+          "placeholder": 0
+        },
+        "server": {
+          "empty": 0,
+          "full": 4,
+          "parseError": 0,
+          "placeholder": 0
+        },
+        "store": {
+          "empty": 0,
+          "full": 0,
+          "parseError": 0,
+          "placeholder": 0
+        },
+        "util": {
+          "empty": 0,
+          "full": 83,
+          "parseError": 0,
+          "placeholder": 0
+        }
+      },
+      "logicCoverage": {
+        "all": {
+          "clean": {
+            "full": 185,
+            "n": 185,
+            "pct": 100
+          },
+          "full": {
+            "full": 185,
+            "n": 185,
+            "pct": 100
+          }
+        },
+        "component": {
+          "clean": {
+            "full": 83,
+            "n": 83,
+            "pct": 100
+          },
+          "full": {
+            "full": 83,
+            "n": 83,
+            "pct": 100
+          }
+        },
+        "hook": {
+          "clean": {
+            "full": 15,
+            "n": 15,
+            "pct": 100
+          },
+          "full": {
+            "full": 15,
+            "n": 15,
+            "pct": 100
+          }
+        },
+        "server": {
+          "clean": {
+            "full": 4,
+            "n": 4,
+            "pct": 100
+          },
+          "full": {
+            "full": 4,
+            "n": 4,
+            "pct": 100
+          }
+        },
+        "store": {
+          "clean": {
+            "full": 0,
+            "n": 0,
+            "pct": null
+          },
+          "full": {
+            "full": 0,
+            "n": 0,
+            "pct": null
+          }
+        },
+        "util": {
+          "clean": {
+            "full": 83,
+            "n": 83,
+            "pct": 100
+          },
+          "full": {
+            "full": 83,
+            "n": 83,
+            "pct": 100
+          }
+        }
+      },
+      "name": "query",
+      "pairs": {
+        "cleanUniqueCode": 190,
+        "passing": 214,
+        "uniqueCode": 190
+      },
+      "sha": "0fbbc6213641ef2d7cec7d4bfd2f1044c561dde8",
+      "subdir": "examples/react",
+      "table": {
+        "component": {
+          "empty": 0,
+          "full": 112,
+          "parseError": 0,
+          "placeholder": 0
+        },
+        "hook": {
+          "empty": 0,
+          "full": 15,
+          "parseError": 0,
+          "placeholder": 0
+        },
+        "server": {
+          "empty": 0,
+          "full": 4,
+          "parseError": 0,
+          "placeholder": 0
+        },
+        "store": {
+          "empty": 0,
+          "full": 0,
+          "parseError": 0,
+          "placeholder": 0
+        },
+        "util": {
+          "empty": 0,
+          "full": 83,
+          "parseError": 0,
+          "placeholder": 0
+        }
+      },
+      "url": "https://github.com/TanStack/query"
+    }
+  ],
+  "smith": {
+    "atomicCodemod": "cbc2567",
+    "placeholderCutoff": 0.5,
+    "smith": "f70eecf"
+  }
+}
