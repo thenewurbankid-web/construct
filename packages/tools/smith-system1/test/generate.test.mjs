@@ -3,7 +3,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { assertPair, buildDataset, leakKeys, leaks, makePair, normalizeCode, splitOf, toJsonl } from '../lib.mjs';
-import { functionsOf, ledgerEval, smithEmptyReason, smithPairs, toJs } from '../sources.mjs';
+import fs from 'node:fs';
+import path from 'node:path';
+import { EVAL_FACTS_FILE, REPO, functionsOf, ledgerEval, pagesEval, smithEmptyReason, smithPairs, toJs } from '../sources.mjs';
 import { generate } from '../generate.mjs';
 
 /** A stand-in for summarizeCode: deterministic, always meaningful English. */
@@ -44,6 +46,42 @@ test('eval: the probe-winning ledger facts with code, never in train/val/test', 
   const res = buildDataset([copy], ds.eval);
   assert.equal(res.stats.total, 0);
   assert.equal(res.stats.perSource.smith.leakHeldOut, 1);
+});
+
+test('eval slices: every probe fact has code, the page slice is current, and no slice reaches train/val/test', async () => {
+  const ev = ledgerEval();
+  assert.equal(ev.counts.ledgerFactsWithoutCode, 0, ev.unresolvedFacts.join(' | '));
+  const bySlice = (pairs) => pairs.reduce((o, p) => ({ ...o, [p.meta.slice]: (o[p.meta.slice] ?? 0) + 1 }), {});
+  assert.deepEqual(bySlice(ev.pairs), { 'ledger-probe': 4, 'ledger-written': 9 });
+  // eval-facts.json holds exactly the probe's codeless facts, word for word (ledgerEval throws on a stray one).
+  const written = JSON.parse(fs.readFileSync(path.join(REPO, EVAL_FACTS_FILE), 'utf8')).facts.map((f) => f.fact).sort();
+  assert.deepEqual(ev.pairs.filter((p) => p.meta.slice === 'ledger-written').map((p) => p.english).sort(), written);
+
+  // Each page in eval-pages.json is still the function of that name in its source file.
+  const pages = pagesEval();
+  assert.equal(pages.pairs.length, 15);
+  for (const p of pages.entries) {
+    const fn = functionsOf(toJs(fs.readFileSync(path.join(REPO, p.file), 'utf8'), path.basename(p.file))).find((f) => f.name === p.name && normalizeCode(f.code) === normalizeCode(p.code));
+    assert.ok(fn, `${p.file} ${p.name} changed since eval-pages.json was written`);
+    assert.ok(p.english.length > 20 && !/\(\.\.\.\)/.test(p.english));
+  }
+
+  // Smith (faked as always non-empty) over the folders the pages and facts come from: all of them are candidates now.
+  const roots = ['bench/lending/starter', 'example', 'examples', 'packages/core/profiles/line/fixtures', 'test/fixtures'];
+  const ds = await generate({ summarizeCode: fakeSmith, roots });
+  assert.deepEqual(ds.stats.evalSlices, { 'ledger-probe': 4, 'ledger-written': 9, pages: 15 });
+  assert.equal(ds.eval.length, 28);
+  const keys = leakKeys(ds.eval);
+  const evalNames = new Set(ds.eval.flatMap((p) => p.meta.names));
+  for (const n of ['RequestPage', 'checkBooks', 'Login', 'VisitsPage', 'InvoiceCard']) assert.ok(evalNames.has(n), `eval names ${n}`);
+  for (const split of ['train', 'val', 'test']) {
+    for (const p of ds[split]) {
+      assert.ok(!leaks(p, keys), `${split} pair ${p.meta.file} ${p.meta.name} leaks eval`);
+      assert.ok(!evalNames.has(p.meta.name), `${split} pair ${p.meta.file} carries eval name ${p.meta.name}`);
+      assert.ok(!keys.code.has(normalizeCode(p.code)));
+    }
+  }
+  assert.ok(ds.stats.perSource.smith.leakHeldOut >= 15, JSON.stringify(ds.stats.perSource.smith));
 });
 
 test('dedupe: one pair per normalized code, hand-written source first', () => {

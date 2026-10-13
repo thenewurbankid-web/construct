@@ -12,7 +12,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildDataset, toJsonl } from './lib.mjs';
-import { atomPairs, contractPairs, ledgerEval, probePairs, readProbe, smithPairs } from './sources.mjs';
+import { atomPairs, contractPairs, ledgerEval, pagesEval, probePairs, readProbe, smithPairs } from './sources.mjs';
 
 export const DEFAULT_OUT = '/tmp/construct-smith-system1';
 
@@ -23,12 +23,16 @@ export const DEFAULT_OUT = '/tmp/construct-smith-system1';
 export async function generate(o = {}) {
   const probe = readProbe();
   const ev = ledgerEval(probe);
+  const pages = pagesEval();
+  const evalPairs = [...ev.pairs, ...pages.pairs];
+  const evalSlices = {};
+  for (const p of evalPairs) evalSlices[p.meta.slice] = (evalSlices[p.meta.slice] ?? 0) + 1;
   const atoms = await atomPairs();
   const contracts = contractPairs();
   const samples = probePairs(probe);
   const smith = o.smith === false ? { pairs: [], counts: { smithSkipped: true } } : await smithPairs(o);
-  const extra = { ...atoms.counts, ...contracts.counts, ...samples.counts, ...smith.counts, ...ev.counts, ledgerFactsWithoutCodeList: ev.unresolvedFacts };
-  return buildDataset([...atoms.pairs, ...contracts.pairs, ...samples.pairs, ...smith.pairs], ev.pairs, extra);
+  const extra = { ...atoms.counts, ...contracts.counts, ...samples.counts, ...smith.counts, ...ev.counts, ledgerFactsWithoutCodeList: ev.unresolvedFacts, evalSlices };
+  return buildDataset([...atoms.pairs, ...contracts.pairs, ...samples.pairs, ...smith.pairs], evalPairs, extra);
 }
 
 /** Write a dataset to a folder; returns the file paths. */

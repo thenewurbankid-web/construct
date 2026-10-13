@@ -12,7 +12,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { makePair, ts } from './lib.mjs';
+import { makePair, normalizeCode, sha256, ts } from './lib.mjs';
 
 export const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const rel = (f) => path.relative(REPO, f).split(path.sep).join('/');
@@ -220,13 +220,16 @@ export function ledgerOf(text) {
 
 /**
  * Held-out eval: the ledger facts of the winning L and CL prompts. A fact gets code when it (or its citation) names
- * .tsx files we have: library files from the lending starter, feature files from the probe's own prompts; a
- * citation of the `library/pages` folder means its three pages. Facts without code are counted, not paired, and
- * their English still guards against leaks.
+ * .tsx files we have (slice `ledger-probe`): library files from the lending starter, feature files from the probe's
+ * own prompts; a citation of the `library/pages` folder means its three pages. A fact that names no existing code
+ * takes its hand-written target from eval-facts.json (slice `ledger-written`). Throws when eval-facts.json holds a
+ * fact the probe does not have (the two drifted apart).
  */
 export function ledgerEval(probe = readProbe(), md = undefined) {
   const won = probeWinners(md);
   const blocks = probeCodeBlocks(probe);
+  const written = new Map(JSON.parse(read(path.join(REPO, EVAL_FACTS_FILE))).facts.map((f) => [f.fact, f]));
+  const used = new Set();
   const resolve = (p) => {
     const starter = path.join(REPO, LENDING_STARTER, p);
     if (p.startsWith('library/') && fs.existsSync(starter)) return { code: read(starter), from: `${LENDING_STARTER}/${p}` };
@@ -241,16 +244,41 @@ export function ledgerEval(probe = readProbe(), md = undefined) {
       let files = [...new Set([...`${fact} ${cite}`.matchAll(/(?:features|library)\/[\w/.-]+\.tsx/g)].map((m) => m[0]))];
       if (!files.length && /(^|;\s*)library\/pages$/.test(cite)) files = ['library/pages/ListPage.tsx', 'library/pages/DetailPage.tsx', 'library/pages/FormPage.tsx'];
       const got = files.map(resolve);
-      if (!files.length || got.some((g) => !g)) { unresolved.push({ ledger: name, fact }); continue; }
+      if (!files.length || got.some((g) => !g)) {
+        const w = written.get(fact);
+        if (!w) { unresolved.push({ ledger: name, fact }); continue; }
+        used.add(fact);
+        const js = toJs(w.code.join('\n'), path.basename(w.file).replace(/\.js$/, '.jsx')).trim();
+        const fns = functionsOf(js);
+        pairs.push(makePair({
+          source: 'ledger', direction: 'js->en', code: js, english: fact,
+          meta: { cite, files: [w.file], from: [EVAL_FACTS_FILE], ledger: name, names: fns.map((f) => f.name), parts: fns.map((f) => f.code), slice: 'ledger-written', wonBy: `${winner} ${won[winner]}/5` },
+        }));
+        continue;
+      }
       const parts = got.map((g, i) => toJs(g.code, path.basename(files[i])).trim());
       const fnParts = parts.flatMap((js) => functionsOf(js).map((f) => f.code));
       pairs.push(makePair({
         source: 'ledger', direction: 'js->en', code: parts.join('\n\n'), english: fact,
-        meta: { cite, files, from: got.map((g) => g.from), ledger: name, names: parts.flatMap((js) => functionsOf(js).map((f) => f.name)), parts: [...parts, ...fnParts], wonBy: `${winner} ${won[winner]}/5` },
+        meta: { cite, files, from: got.map((g) => g.from), ledger: name, names: parts.flatMap((js) => functionsOf(js).map((f) => f.name)), parts: [...parts, ...fnParts], slice: 'ledger-probe', wonBy: `${winner} ${won[winner]}/5` },
       }));
     }
   }
+  const stray = [...written.keys()].filter((f) => !used.has(f));
+  if (stray.length) throw new Error(`${EVAL_FACTS_FILE}: not a codeless probe ledger fact: ${stray.join(' | ')}`);
   return { pairs, counts: { ledgerFacts: pairs.length + unresolved.length, ledgerFactsWithoutCode: unresolved.length }, unresolvedFacts: unresolved.map((u) => u.fact) };
+}
+
+export const EVAL_FACTS_FILE = 'packages/tools/smith-system1/eval-facts.json';
+
+/** The React-page eval slice from eval-pages.json (slice `pages`): a page/component Smith left empty -> hand-written English. */
+export function pagesEval() {
+  const doc = JSON.parse(read(path.join(REPO, EVAL_PAGES_FILE)));
+  const pairs = doc.pages.map((p) => makePair({
+    source: 'ledger', direction: 'js->en', code: p.code, english: p.english,
+    meta: { files: [p.file], from: [EVAL_PAGES_FILE], names: [p.name], parts: [p.code], slice: 'pages' },
+  }));
+  return { pairs, entries: doc.pages };
 }
 
 /** Probe samples: the step's point text -> each sample's code that passed tsc and was useful. */
@@ -310,7 +338,8 @@ export async function smithPairs(o = {}) {
   }
   const counts = { smithFiles: 0, smithFunctions: 0, smithEmpty: { failed: 0, blank: 0, placeholder: 0, total: 0 }, smithNonEmpty: 0, smithLinked: linked, smithLink: linkMessage };
   const pairs = [];
-  if (!linked) return { pairs, counts };
+  const skipped = [];
+  if (!linked) return { pairs, counts, skipped };
   for (const root of roots) {
     for (const file of walk(root)) {
       counts.smithFiles += 1;
@@ -322,12 +351,47 @@ export async function smithPairs(o = {}) {
         const english = (s.sentences ?? []).join(' ').trim();
         if (s.via === 'static' && s.details?.some((d) => d.label === 'Why')) { counts.smithEmpty.failed += 1; continue; }
         const empty = smithEmptyReason(english);
-        if (empty) { counts.smithEmpty[empty] += 1; continue; }
+        if (empty) { counts.smithEmpty[empty] += 1; skipped.push({ file, name: fn.name, kind: fn.kind, code: fn.code, reason: empty }); continue; }
         counts.smithNonEmpty += 1;
         pairs.push(makePair({ source: 'smith', direction: 'js->en', code: fn.code, english, meta: { file, fromArrow: !!fn.fromArrow, kind: fn.kind, name: fn.name, placeholders: (english.match(/\(\.\.\.\)/g) ?? []).length } }));
       }
     }
   }
   counts.smithEmpty.total = counts.smithEmpty.failed + counts.smithEmpty.blank + counts.smithEmpty.placeholder;
-  return { pairs, counts };
+  return { pairs, counts, skipped };
+}
+
+// ---------- React-page eval slice ----------
+
+export const EVAL_PAGES_FILE = 'packages/tools/smith-system1/eval-pages.json';
+/** Longest page/component code the slice takes (chars): a hand-written English target stays one short paragraph. */
+export const PAGE_MAX_CHARS = 2000;
+
+/**
+ * The deterministic pick for the React-page eval slice, from the functions Smith left empty: components (capitalized
+ * name, JSX in the body, at most PAGE_MAX_CHARS), one per normalized code, spread across folders: folders in
+ * sha256 order, one function per folder per round (sha256 of its normalized code), until `n`.
+ * @param {{file: string, name: string, kind: string, code: string}[]} skipped smithPairs().skipped
+ */
+export function pickPages(skipped, n = 15) {
+  const seen = new Set();
+  const groups = new Map();
+  for (const s of skipped) {
+    if (s.kind !== 'function' || !/^[A-Z]/.test(s.name) || !/<[A-Za-z>]/.test(s.code) || s.code.length > PAGE_MAX_CHARS) continue;
+    const key = normalizeCode(s.code);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const g = path.posix.dirname(s.file);
+    if (!groups.has(g)) groups.set(g, []);
+    groups.get(g).push({ ...s, h: sha256(key) });
+  }
+  const order = [...groups.keys()].sort((a, b) => (sha256(a) < sha256(b) ? -1 : 1));
+  for (const g of order) groups.get(g).sort((a, b) => (a.h < b.h ? -1 : 1));
+  const out = [];
+  for (let round = 0; out.length < n; round += 1) {
+    const before = out.length;
+    for (const g of order) if (out.length < n && groups.get(g)[round]) out.push(groups.get(g)[round]);
+    if (out.length === before) break;
+  }
+  return out.map(({ h, ...s }) => s);
 }
