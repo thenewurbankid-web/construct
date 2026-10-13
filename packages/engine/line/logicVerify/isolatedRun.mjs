@@ -268,3 +268,23 @@ export async function isolatedPair({ beforeRoot, afterRoot, before, after, seeds
   if (notFaked.size) return done({ outcome: 'cant-tell', reason: `not faked, so not executed: ${[...notFaked].sort().join(', ')}${low ? `; ${low}` : ''}` });
   return done({ outcome: 'same-behaviour', ...(low ? { reason: low } : {}) });
 }
+
+/**
+ * #921 (path-first proof): one unit run on GIVEN cases (no before/after pair) in the same sandbox and fakes, so a
+ * filled stub's examples execute with its effects recorded. The child always runs two sides; both are this unit, and
+ * the second side's records are returned, one per case: {value (primitives only), thrown (the error name), effects,
+ * notFaked}. A time limit, a sandbox exit or a load failure is `{error}`.
+ * @param {{root: string, unit: {file: string, fn: string}, cases: unknown[][], runAs?: import('./contract.mjs').RunAs, timeoutMs?: number}} args
+ * @returns {Promise<{runs?: {value: unknown, thrown: string|null, effects: object[], notFaked: string[]}[], error?: string, ms: number}>}
+ */
+export async function isolatedRun({ root, unit, cases, runAs = 'function', timeoutMs = ISOLATED_TIMEOUT_MS }) {
+  const t0 = performance.now();
+  const ms = () => Math.round(performance.now() - t0);
+  const side = { ...sideRequest(root, unit.file, unit.fn), runAs };
+  const child = await runChild({ env: FAKE_ENV, cases, before: side, after: side }, timeoutMs);
+  if (child.timedOut) return { error: `the run was killed at the ${timeoutMs} ms time limit`, ms: ms() };
+  const line = child.stdout.trim().split('\n').pop();
+  if (child.code !== 0 || !line) return { error: `the sandbox exited with code ${child.code}: ${child.stderr.trim().split('\n')[0] ?? ''}`, ms: ms() };
+  const runs = JSON.parse(line).after.map((r) => ({ value: r.value ?? null, thrown: r.run.thrown, effects: r.run.effects.map(({ seq, ...e }) => e), notFaked: r.notFaked }));
+  return { runs, ms: ms() };
+}

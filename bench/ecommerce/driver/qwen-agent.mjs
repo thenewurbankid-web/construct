@@ -12,6 +12,10 @@
 // BUILDER-PROMPT*.md when it has its own (else this bench's), and its results/ folder for the token log. For example
 // --bench bench/lending runs the held-out spec.
 //
+// --arm path (#921, the path-first proof): the project already has Trace's path installed (plan-cli seed, then
+// path-cli install); the model's tools are path-cli's (fill one stub body at a time, signature locked; check a point
+// end to end; read a file), and its system prompt lists the open stubs bottom-up with signature, context and examples.
+//
 // --seed-plan (#914, Line arm, off by default): before the model's first turn, plan-cli `seed` adds and runs the steps a
 // block can decide from SPEC.md (features, wired pages, routes; specSteps.mjs), so the model starts from a routed, wired
 // app and fills the gaps. What was seeded is in calls.jsonl ({kind: "seed"}), turns.jsonl and the first message.
@@ -33,6 +37,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createPlanCli } from './plan-cli.mjs';
 import { createPlainCli } from './plain-cli.mjs';
+import { createPathCli, pathPrompt } from './path-cli.mjs';
 import { readSpec, overviewWithIndex } from './spec-slice.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -49,7 +54,7 @@ export function flags(argv) {
     else if (k === '--seed') { o.seed = Number(v); i += 1; } else if (k === '--max-cycle-repeats') { o.maxCycleRepeats = Number(v); i += 1; } else if (k === '--cycle-window') { o.cycleWindow = Number(v); i += 1; } else if (k === '--seed-plan') o.seedPlan = true;
     else if (k === '--bench') { o.bench = benchOf(v); i += 1; }
   }
-  if (!o.builder) o.builder = o.arm === 'plain' ? 'qwen-7b-plain' : 'qwen-7b';
+  if (!o.builder) o.builder = o.arm === 'plain' ? 'qwen-7b-plain' : o.arm === 'path' ? 'qwen-7b-path' : 'qwen-7b';
   return o;
 }
 
@@ -73,6 +78,13 @@ export const TOOLS = {
     fn('list_dir', 'plan-cli ls: the entries of one project folder.', { path: S('Project-relative folder, "." for the root') }, ['path']),
     fn('finish', 'Stop: you believe every acceptance point is done, or you cannot make more progress.', { summary: S('What you built and what is left.') }, ['summary']),
   ],
+  path: [
+    fn('path_status', 'path-cli status: the open stubs, bottom-up, each with its locked signature, context and examples.'),
+    fn('fill', 'path-cli fill: replace ONE stub body (signature and imports locked); answers pass, or the first failing example (input, expected, got) or the tsc error at its line.', { stubId: S('The stub id, e.g. cart.domain.itemCount'), body: S('Only the function body: the statements between its braces') }, ['stubId', 'body']),
+    fn('check_path', 'path-cli check: one point end to end (edges, tsc, every stub, the end-to-end render).', { point: { type: 'string', enum: ['CAT-2', 'CART-1'] } }, ['point']),
+    fn('read_file', 'path-cli read: one project file.', { path: S('Project-relative path') }, ['path']),
+    fn('finish', 'Stop: every stub passes, or you cannot make more progress.', { summary: S('What passes and what is left.') }, ['summary']),
+  ],
   plain: [
     fn('list_dir', 'plain-cli ls: the entries of one project folder.', { path: S('Project-relative folder, "." for the root') }, ['path']),
     fn('tree', 'plain-cli tree: every file under a folder.', { path: S('Project-relative folder') }, ['path']),
@@ -86,7 +98,12 @@ export const TOOLS = {
 /** A tool call -> the CLI call. */
 async function callTool(cli, arm, name, a) {
   const args = a && typeof a === 'object' ? a : {};
-  if (arm === 'line') {
+  if (arm === 'path') {
+    if (name === 'path_status') return cli.run('status');
+    if (name === 'fill') return cli.run('fill', [String(args.stubId ?? '')], { body: typeof args.body === 'string' ? args.body : '' });
+    if (name === 'check_path') return cli.run('check', [String(args.point ?? '')]);
+    if (name === 'read_file') return cli.run('read', [String(args.path ?? '')]);
+  } else if (arm === 'line') {
     if (name === 'plan_tools') return cli.run('tools');
     if (name === 'plan_status') return cli.run('status', typeof args.feature === 'string' && args.feature ? [args.feature] : []);
     if (name === 'plan_add') return cli.run('add', [String(args.tool ?? ''), JSON.stringify(typeof args.args === 'string' ? safeParse(args.args) : args.args ?? {})], { why: typeof args.why === 'string' ? args.why : undefined, fix: typeof args.fix === 'string' && args.fix.trim() ? args.fix.trim() : undefined });
@@ -285,12 +302,13 @@ export async function runAgent(o, { resultsDir = path.join(o.bench ?? bench, 're
   const logDir = path.join(runDir, 'logs');
   fs.mkdirSync(logDir, { recursive: true });
   fs.mkdirSync(resultsDir, { recursive: true });
-  const cli = o.arm === 'plain' ? createPlainCli({ project: o.project, log: o.log ?? path.join(logDir, 'calls.jsonl'), builder: o.builder }) : createPlanCli({ project: o.project, log: o.log ?? path.join(logDir, 'calls.jsonl'), builder: o.builder, spec: path.join(dir, 'SPEC.md') });
+  const cliArgs = { project: o.project, log: o.log ?? path.join(logDir, 'calls.jsonl'), builder: o.builder };
+  const cli = o.arm === 'plain' ? createPlainCli(cliArgs) : o.arm === 'path' ? createPathCli(cliArgs) : createPlanCli({ ...cliArgs, spec: path.join(dir, 'SPEC.md') });
   const turnsFile = path.join(logDir, 'turns.jsonl');
   const tokensFile = path.join(resultsDir, `${o.builder}.tokens.jsonl`);
   const write = (f, e) => fs.appendFileSync(f, `${JSON.stringify(e)}\n`);
-  const system = { role: 'system', content: systemPrompt(o.arm, dir) };
-  const first = { role: 'user', content: 'Start building. Use only your tools. Call finish when every acceptance point is done or you cannot make more progress.' };
+  const system = { role: 'system', content: o.arm === 'path' ? pathPrompt(path.resolve(o.project)) : systemPrompt(o.arm, dir) };
+  const first = { role: 'user', content: o.arm === 'path' ? 'Fill the open stubs in order, one fill per stub until it passes. Use only your tools. Call finish when every stub passes or you cannot make more progress.' : 'Start building. Use only your tools. Call finish when every acceptance point is done or you cannot make more progress.' };
   if (o.seedPlan && o.arm === 'line') {
     const seeded = await seedFirst(/** @type {any} */ (cli));
     write(turnsFile, { kind: 'seed', at: new Date().toISOString(), ok: seeded.ok, code: seeded.code ?? null, landed: (seeded.steps ?? []).filter((s) => s.landed).length, steps: (seeded.steps ?? []).map((s) => ({ tool: s.tool, landed: s.landed, point: s.point ?? null })) });
@@ -301,7 +319,7 @@ export async function runAgent(o, { resultsDir = path.join(o.bench ?? bench, 're
   let history = [];
   const t0 = Date.now();
   const deadline = t0 + o.maxMinutes * 60_000;
-  let idle = 0; let stop = 'max turns'; let turn = 0;
+  let idle = 0; let stop = 'max turns'; let turn = 0; let allPass = false;
   const streak = refusalStreak(o.maxRepeatRefusals);
   const cycle = cycleWatch({ limit: o.maxCycleRepeats, window: o.cycleWindow });
   const io = createTurnIo({ logDir });
@@ -344,6 +362,7 @@ export async function runAgent(o, { resultsDir = path.join(o.bench ?? bench, 're
       const name = c.function?.name; const args = typeof c.function?.arguments === 'string' ? safeParse(c.function.arguments) : c.function?.arguments;
       if (name === 'finish') { finished = String(args?.summary ?? ''); outcomes.push({ name, ok: true }); break; }
       const out = await callTool(cli, o.arm, name, args);
+      if (o.arm === 'path' && name === 'fill' && out.pass && out.next === null) allPass = true;
       streak.see(name, args, out);
       cycle.see(turn, name, args, out);
       outcomes.push({ name, args: clip(JSON.stringify(args ?? {}), 400), ok: out.ok, code: out.code ?? null, sentence: out.sentence });
@@ -357,6 +376,7 @@ export async function runAgent(o, { resultsDir = path.join(o.bench ?? bench, 're
     if (idle >= 8) { stop = '8 turns without a tool call'; break; }
     if (streak.hit) { stop = 'repeated refusal'; break; }
     if (cycle.hit) { stop = 'repeated cycle'; break; }
+    if (allPass) { stop = 'every stub passes'; break; }
   }
   write(turnsFile, { kind: 'end', at: new Date().toISOString(), turns: Math.min(turn, o.maxTurns), wallMs: Date.now() - t0, stop, ...(stop === 'repeated refusal' ? { repeated: { times: streak.count, call: streak.call } } : {}), ...(stop === 'repeated cycle' ? { cycle: { times: cycle.count, window: o.cycleWindow, ...cycle.pair } } : {}) });
   const cycled = stop === 'repeated cycle' ? { cycle: { times: cycle.count, window: o.cycleWindow, ...cycle.pair } } : {};
