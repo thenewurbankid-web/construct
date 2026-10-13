@@ -69,6 +69,23 @@ test('logic map: editing a condition makes the branch changed, not missing', () 
   assert.equal(diff.changed[0].sentence, `The branch in buildOpportunityUrlParams changed from "if (activeTab !== 'all')" to "if (activeTab !== 'recent')".`);
 });
 
+test('#923 logic map: each unit carries its enclosing function\'s complexity signature; the diff reports complexity deltas', () => {
+  const map = mapOf(ORIGINAL);
+  const sig = { cyclomatic: 3, cognitive: null, maxNesting: 1, params: 2, returns: 1 }; // cyclomatic from ESLint; cognitive null without fallow
+  const inBuild = map.units.filter((u) => u.fn === 'buildOpportunityUrlParams');
+  assert.ok(inBuild.length >= 2 && inBuild.every((u) => assert.deepEqual(u.complexity, sig) ?? true));
+  assert.ok(map.units.filter((u) => u.fn === '<module>').every((u) => !('complexity' in u)), 'module-level units have no function signature');
+  assert.deepEqual(compareLogicMaps(map, mapOf(ORIGINAL)).complexity, [], 'no change, no delta');
+  const diff = compareLogicMaps(map, mapOf(edit(CLIENT, "if (activeTab !== 'all')", "if (activeTab !== 'all' && activeTab)")));
+  assertMapDiff(diff);
+  assert.deepEqual(diff.complexity, [{
+    file: CLIENT, fn: 'buildOpportunityUrlParams', before: sig,
+    after: { ...sig, cyclomatic: 4 },
+    delta: { cyclomatic: 1, cognitive: null, maxNesting: 0, params: 0, returns: 0 },
+  }]);
+  assert.equal(map.units[0].fingerprint, mapOf(ORIGINAL).units[0].fingerprint, 'the signature is not part of the fingerprint');
+});
+
 test('logic map: a rename through the table keeps fingerprints', () => {
   const renames = { OpportunityClient: 'OpportunityView', buildOpportunityUrlParams: 'buildParams' };
   const renamed = { ...ORIGINAL, [CLIENT]: ORIGINAL[CLIENT].replaceAll('OpportunityClient', 'OpportunityView').replaceAll('buildOpportunityUrlParams', 'buildParams'), [PAGE]: ORIGINAL[PAGE].replaceAll('OpportunityClient', 'OpportunityView') };

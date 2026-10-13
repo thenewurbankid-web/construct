@@ -34,3 +34,5 @@ export { semanticDiff, SEMANTIC_DIFF_VERDICTS, SEMANTIC_DIFF_OPERATIONS } from '
 export { pureExportEquivalence } from './pureExportEquivalence.mjs';
 // LIN-148 ask #2 (TYPE-002): untyped boundaries (implicit any) on an exported function's params/return.
 export { collectUntypedExportedBoundaries } from './typedBoundary.mjs';
+// #923: per-function complexity -- cyclomatic from ESLint's `complexity` rule, cognitive from fallow when given.
+export { functionComplexity, fileCyclomatic, complexityByName, complexityFunctionName, eslintCyclomatic, fallowFunctions } from './functionComplexity.mjs';

@@ -160,6 +160,12 @@ export const RULE_METADATA = {
     expected: ['import the frozen component and forward props'],
     fix: 'Delete the duplicated markup and import the frozen source instead: render it from a controller and forward props (`<Frozen {...props} />`); put data/gating in hooks/workflows/domain.',
   },
+  'FUNC-001': {
+    module: MODULES.ARCHITECTURE, layers: ['domain', 'service', 'workflow', 'hook', 'controller', 'page', 'component', 'expression', 'route'], scope: SCOPE.BUFFER,
+    why: "A function past its layer's complexity budget has more paths than one test file and one reviewer can cover; splitting it keeps each piece small enough to test and to read.",
+    expected: ['cyclomatic and cognitive complexity within the layer budget, per function'],
+    fix: "Extract the branches into smaller named functions (a guard clause, a lookup table, or a domain/expression unit), or raise the layer's FUNC-001 budget in architecture.yml.",
+  },
   'COMPONENT-005': {
     module: MODULES.ARCHITECTURE, layers: ['component'], scope: SCOPE.BUFFER,
     why: 'Conditional/loop rendering is control flow, not presentation — extract it into a named @expression unit so it stays visible, testable and reusable on its own.',

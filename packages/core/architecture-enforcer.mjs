@@ -21,7 +21,7 @@ import { loadLayerGraph, canImport, classifyFile } from './architecture-graph.mj
 import { makeViolation, ConstructError, EXIT_CODES } from './diagnostics.mjs';
 import { walk, rel } from './fs.mjs';
 import { globToRegExp, matchGlob } from './glob.mjs';
-import { parseToAst, extractImports, extractExports, staticImportEntries, lineOf, collectCalls, collectBareIdentifierUsages, collectControlFlowNodes, collectInlineJsxLogic, computeJsxComplexity, walkAst, collectImpureDomainReferences, collectLocallyBoundNames, collectBagOfFlagsStates, collectControllerStateCalls, collectUncleanedSubscriptions, collectParamsReads, collectUntypedExportedBoundaries } from '@construct/ast';
+import { parseToAst, extractImports, extractExports, staticImportEntries, lineOf, collectCalls, collectBareIdentifierUsages, collectControlFlowNodes, collectInlineJsxLogic, computeJsxComplexity, walkAst, collectImpureDomainReferences, collectLocallyBoundNames, collectBagOfFlagsStates, collectControllerStateCalls, collectUncleanedSubscriptions, collectParamsReads, collectUntypedExportedBoundaries, functionComplexity, fallowFunctions } from '@construct/ast';
 import { extractMachines } from '@line/construct-engine/workflow-extractor';
 import { findHealthIssues } from '@line/construct-engine/workflow-scenarios';
 import { exceptionApplies, validateExceptionsShape, expiredExceptionViolations } from './exceptions.mjs';
@@ -58,6 +58,42 @@ const DEFAULT_PAGE_MAX_JSX_BRANCHES = 3;
 // decision, not a whole composed screen.
 const DEFAULT_EXPRESSION_MAX_JSX_DEPTH = 4;
 const DEFAULT_EXPRESSION_MAX_JSX_BRANCHES = 2;
+
+// #923 -- FUNC-001's default per-function budgets, {cyclomatic, cognitive} per layer. Cyclomatic is ESLint's core
+// `complexity` rule (which counts `??`, `?.` and default parameter values too); cognitive is fallow's and is only
+// checked when fallow's results are passed. On by default as a warning; override per layer in architecture.yml:
+// `FUNC-001: { severity: warning, budgets: { domain: { cyclomatic: 12 } } }` (a field left out keeps its default; a
+// layer not listed here, e.g. a custom one, is not checked unless the project names it).
+// Picked so generated code raises none (owner, #923): the `construct init` scaffold with every generated layer, the
+// `construct store` slices (the list-shape reducer is cyclomatic 14: one case per action, each with its own guards --
+// hence domain 15), the 40 Line primitives a new Line project starts from (Field is 18, mostly destructured prop
+// defaults, which ESLint counts -- hence component 20, ESLint's own default max), every fixture project and the bench
+// starter. Cognitive budgets follow SonarSource's default of 15 where a layer holds real logic, tighter elsewhere.
+export const DEFAULT_FUNCTION_BUDGETS = Object.freeze({
+  domain: { cyclomatic: 15, cognitive: 15 },
+  service: { cyclomatic: 10, cognitive: 10 },
+  workflow: { cyclomatic: 10, cognitive: 10 },
+  hook: { cyclomatic: 10, cognitive: 10 },
+  controller: { cyclomatic: 10, cognitive: 10 },
+  page: { cyclomatic: 10, cognitive: 10 },
+  component: { cyclomatic: 20, cognitive: 15 },
+  expression: { cyclomatic: 8, cognitive: 5 },
+  route: { cyclomatic: 5, cognitive: 5 },
+});
+
+/**
+ * FUNC-001's budget for one layer: the project's `budgets[layer]` fields over the default's, or null when neither
+ * names the layer.
+ * @param {string} layer
+ * @param {Record<string, {cyclomatic?: number, cognitive?: number}>} [budgets] The rule's `budgets` option from architecture.yml.
+ * @returns {{cyclomatic: number, cognitive: number}|null}
+ */
+export function functionBudgetFor(layer, budgets = {}) {
+  const base = DEFAULT_FUNCTION_BUDGETS[layer];
+  const own = budgets?.[layer];
+  if (!base && !own) return null;
+  return { cyclomatic: own?.cyclomatic ?? base?.cyclomatic ?? Infinity, cognitive: own?.cognitive ?? base?.cognitive ?? Infinity };
+}
 
 // EXPR-003 -- generic/ambiguous names a real Expression unit must not be published under
 // (case-insensitive): the bare name of the control-flow *kind* itself (If/Switch/ForEach/
@@ -437,7 +473,7 @@ function findMissingAbortSignal(ast, source) {
  *
  * @param {string} layer One of the known layer names.
  * @param {string} source The file's source text.
- * @param {{maxJsxDepth?: number, maxJsxBranches?: number, domainPurityAllowlist?: boolean, workflowTransitionTable?: boolean, stateUnion?: boolean, serviceAbortSignal?: boolean, controllerNoState?: boolean, hookEffectCleanup?: boolean, routeForwardParams?: boolean, exportedTypeAnnotations?: boolean}} [opts]
+ * @param {{maxJsxDepth?: number, maxJsxBranches?: number, functionBudget?: {cyclomatic: number, cognitive: number}|null, fallowFunctions?: Array<{line: number, name: string|null, cognitive: number|null, cyclomatic: number|null}>, domainPurityAllowlist?: boolean, workflowTransitionTable?: boolean, stateUnion?: boolean, serviceAbortSignal?: boolean, controllerNoState?: boolean, hookEffectCleanup?: boolean, routeForwardParams?: boolean, exportedTypeAnnotations?: boolean}} [opts]
  *   COMPONENT-006/PAGE-009's complexity budget overrides (#508/#505), DOMAIN-002's opt-in
  *   flag (#506), WORKFLOW-004's opt-in flag (#578), STATE-001's opt-in flag (#581) and
  *   SERVICE-003's opt-in flag (#594) and CONTROLLER-003/HOOK-003/ROUTE-003's opt-in flags
@@ -467,6 +503,26 @@ export function detectLayerViolations(layer, source, opts = {}) {
         why: 'an untyped exported boundary is an implicit any -- the no-code tool traces a field by its declared type alone, and a gap here breaks that trace for everything downstream.',
         suggestedFix: hit.kind === 'param' ? `annotate ${hit.paramName} with its real type` : `annotate ${hit.functionName === '(anonymous)' ? 'the function' : hit.functionName}'s return type`,
         expected: ['an explicit type on every exported parameter and return value'],
+      });
+    }
+  }
+
+  // #923 -- FUNC-001: every function in the file (handlers and callbacks included, each on its own body) within its
+  // layer's budget: cyclomatic from ESLint's `complexity` rule always, cognitive only when fallow's per-function results
+  // for this file were passed (`opts.fallowFunctions`). `opts.functionBudget` is set by layerViolationOptsFor unless off.
+  if (opts.functionBudget) {
+    const { cyclomatic: maxCyc, cognitive: maxCog } = opts.functionBudget;
+    for (const f of functionComplexity(source, { ast, fallow: opts.fallowFunctions ?? [] })) {
+      const overCog = f.cognitive !== null && f.cognitive > maxCog;
+      if (f.cyclomatic <= maxCyc && !overCog) continue;
+      const label = f.name ? `Function "${f.name}"` : 'An anonymous function';
+      const cog = f.cognitive === null ? '' : `, cognitive ${f.cognitive}/${maxCog}`;
+      out.push({
+        rule: 'FUNC-001', line: f.line,
+        message: `${label} is over the ${layer} budget (cyclomatic ${f.cyclomatic}/${maxCyc}${cog}, nesting ${f.maxNesting}).`,
+        why: 'A function past its layer\'s complexity budget has more paths than one test file and one reviewer can cover; splitting it keeps each piece small enough to test and to read.',
+        suggestedFix: 'extract the branches into smaller named functions (a guard clause, a lookup table, or a domain/expression unit), or raise this layer\'s FUNC-001 budget in architecture.yml',
+        expected: [`cyclomatic <= ${maxCyc}${f.cognitive === null ? '' : ` and cognitive <= ${maxCog}`} per function`],
       });
     }
   }
@@ -1247,6 +1303,7 @@ export function layerViolationOptsFor(config, layer) {
     hookEffectCleanup: config.rules['HOOK-003']?.severity !== 'off',
     routeForwardParams: config.rules['ROUTE-003']?.severity !== 'off',
     exportedTypeAnnotations: config.rules['TYPE-002']?.severity !== 'off',
+    functionBudget: config.rules['FUNC-001'] && config.rules['FUNC-001'].severity !== 'off' ? functionBudgetFor(layer, config.rules['FUNC-001'].budgets) : null,
   };
 }
 
@@ -1256,7 +1313,8 @@ export function layerViolationOptsFor(config, layer) {
  * `construct validate` command.
  *
  * @param {string} root - project root.
- * @param {{files?: string[]}} [opts] - restrict checking to these files
+ * @param {{files?: string[], fallowHealth?: any}} [opts] - `fallowHealth`: a parsed `fallow health --format json`
+ *   report (#923), whose per-function cognitive complexity FUNC-001 then checks too. `files`: restrict checking to these files
  *   (relative to root, or absolute) instead of walking the whole project;
  *   used by the composer's post-generation self-check.
  * @returns {{violations: object[], ok: boolean}}
@@ -1271,6 +1329,8 @@ export function validateArchitecture(root, opts = {}) {
     : walk(root).filter((p) => FILE_EXTENSIONS.has(path.extname(p)));
 
   const out = [];
+  // #923: fallow's per-function results keyed by root-relative path (fallow may print absolute ones).
+  const fallowByFile = opts.fallowHealth ? new Map([...fallowFunctions(opts.fallowHealth)].map(([k, v]) => [path.isAbsolute(k) ? rel(root, k) : k, v])) : null;
   // #23: only when `frozen:` is configured. The index (read-only parse of the
   // frozen sources) is built lazily on the first page/component/controller.
   const frozenGlobs = config.frozen || [];
@@ -1291,6 +1351,7 @@ export function validateArchitecture(root, opts = {}) {
     }
     const source = fs.readFileSync(abs, 'utf8');
     const layerOpts = layerViolationOptsFor(config, layer);
+    if (fallowByFile) layerOpts.fallowFunctions = fallowByFile.get(r) ?? [];
     let violations;
     try {
       violations = detectLayerViolations(layer, source, layerOpts);
