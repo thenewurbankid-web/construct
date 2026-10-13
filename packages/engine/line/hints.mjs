@@ -249,17 +249,21 @@ export const badArgsField = (sentence) => /: ([A-Za-z_$][\w$.]*) (?:must|is not)
  * @property {string|null} apply (4) How to apply one: {"fix":"f1"}.
  * @property {string|null} example  With no choices: a concrete correct call.
  * @property {string[]} context  #886: lines that are about the refusal, not one choice.
+ * @property {string[]} [exampleFixes] The offending lines corrected (issue 932).
+ * @property {string} [pack]     The targeted file's context pack (issue 932).
  * @property {string} text       All of it, as the builder reads it.
  */
 
 /**
  * The refusal as the builder sees it.
  * @param {{code: string, sentence: string, tool?: string, args?: any, why?: string, fix?: string, answer?: string, option?: string,
- *   fixes?: any[], tools?: string[], context?: string[], example?: string, resolve?: ((call: any, near?: string|null) => any) | null}} o
+ *   fixes?: any[], tools?: string[], context?: string[], example?: string, resolve?: ((call: any, near?: string|null) => any) | null,
+ *   exampleFixes?: string[], pack?: string}} o
  *   `fixes`: the typed fixes (ref, step, why/effect/context when known), recommended first; `tools`: the tool names
  *   (UNKNOWN_TOOL's nearest one); `context`: refusal lines; `example`: the correct call, when the caller knows a better
  *   one than the tool's; `resolve` (#916, createExampleResolver's call): makes the correct call's paths real for the project,
- *   or returns null to drop it (no "A correct call" line then).
+ *   or returns null to drop it (no "A correct call" line then). #932: `exampleFixes`: "Example fix for line N: ..." lines
+ *   (exampleFix.mjs); `pack`: the context pack text of the targeted file (contextPack.mjs), rendered last.
  * @returns {RefusalShape}
  */
 export function shapeRefusal(o) {
@@ -288,7 +292,7 @@ export function shapeRefusal(o) {
     example = real ? callText(real) : null;
   }
   const apply = choices.length ? `To apply one, send {"fix":"${choices[0].ref}"}.` : null;
-  const shape = { code, wrong, rule: hint.ruleOf?.(String(o.sentence ?? '')) ?? hint.rule, choices, apply, example, context: o.context ?? [] };
+  const shape = { code, wrong, rule: hint.ruleOf?.(String(o.sentence ?? '')) ?? hint.rule, choices, apply, example, context: o.context ?? [], ...(o.exampleFixes?.length ? { exampleFixes: o.exampleFixes } : {}), ...(o.pack ? { pack: o.pack } : {}) };
   return { ...shape, text: renderRefusal(shape) };
 }
 
@@ -310,12 +314,16 @@ const clean = (s) => String(s).replace(/\s*\((?:fixes|options)\[\d*\](?:\.step)?
 export function renderRefusal(s) {
   const out = [`Refused (${s.code}): ${s.wrong}`, `Rule: ${s.rule}.`];
   for (const c of s.context ?? []) out.push(`  ${c}`);
+  // #932: the offending line corrected (exampleFix.mjs), shown before the choices or the correct call.
+  for (const f of s.exampleFixes ?? []) out.push(f);
   if (s.choices.length) {
     out.push(...choiceLines(s.choices));
     out.push(s.apply ?? '');
   } else if (s.example) {
     out.push(`A correct call: ${s.example}`);
   }
+  // #932: the context pack for the file the refused step targets (contextPack.mjs), last.
+  if (s.pack) out.push(s.pack);
   return out.filter(Boolean).join('\n');
 }
 
