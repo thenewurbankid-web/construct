@@ -16,6 +16,14 @@ function camelToWords(name) {
     .toLowerCase();
 }
 
+// Placeholder sink: while toEnglish() renders a step, every fallback branch
+// below records {kind, type, start, end} here, so callers get a structured
+// list of what did not translate instead of having to grep the English.
+let missSink = null;
+function miss(kind, node) {
+  if (missSink) missSink.push({ kind, type: node ? node.type : 'unknown', start: node && node.start != null ? node.start : null, end: node && node.end != null ? node.end : null });
+}
+
 function exprToEnglish(node) {
   if (!node) return '';
   switch (node.type) {
@@ -76,6 +84,7 @@ function exprToEnglish(node) {
     case 'BinaryExpression':
       return `${exprToEnglish(node.left)} ${node.operator} ${exprToEnglish(node.right)}`;
     default:
+      miss('expr', node);
       return '(...)';
   }
 }
@@ -89,6 +98,7 @@ function patternName(id) {
   if (id.type === 'Identifier') return id.name;
   if (id.type === 'ArrayPattern') return `[${id.elements.map((el) => (el ? patternName(el) : '')).join(', ')}]`;
   if (id.type === 'ObjectPattern') return `{${id.properties.map((p) => (p.key ? patternName(p.key) : '')).join(', ')}}`;
+  miss('pattern', id);
   return '?';
 }
 
@@ -123,6 +133,7 @@ function stmtToEnglish(node, depth = 0) {
     case 'BlockStatement':
       return blockToEnglish(node, depth);
     default:
+      miss('stmt', node);
       return '(a step that does not translate cleanly)';
   }
 }
@@ -285,30 +296,42 @@ function toEnglish(code, kind) {
   let name = null;
   let params = [];
   let body = null;
+  const paramMisses = [];
 
   traverse(ast, {
     ClassMethod(path) {
       name = path.node.key.name;
-      params = path.node.params.map((p) => p.name || '?');
+      params = path.node.params.map((p) => p.name || (paramMisses.push({ kind: 'pattern', type: p.type, start: p.start, end: p.end }), '?'));
       body = path.node.body;
       path.stop();
     },
     FunctionDeclaration(path) {
       if (!path.parentPath.isProgram()) return;
       name = path.node.id ? path.node.id.name : '(anonymous)';
-      params = path.node.params.map((p) => p.name || '?');
+      params = path.node.params.map((p) => p.name || (paramMisses.push({ kind: 'pattern', type: p.type, start: p.start, end: p.end }), '?'));
       body = path.node.body;
       path.stop();
     },
   });
 
   if (!body) {
-    return { english: '(could not find a function/method to describe)', steps: [], title: null };
+    return { english: '(could not find a function/method to describe)', steps: [], title: null, unhandled: [] };
   }
 
   const title = `${camelToWords(name)}${params.length ? ' using ' + params.join(' and ') : ''}`;
-  const steps = body.body.map((s) => ({
-    english: stmtToEnglish(s),
+  const shift = (u) => ({ ...u, start: u.start != null ? u.start - prefixLen : null, end: u.end != null ? u.end - prefixLen : null });
+  const steps = body.body.map((s) => {
+    missSink = [];
+    let english;
+    try {
+      english = stmtToEnglish(s);
+    } finally {
+      var stepMisses = missSink.map(shift);
+      missSink = null;
+    }
+    return {
+    english,
+    unhandled: stepMisses,
     code: wrapped.slice(s.start, s.end),
     start: s.start - prefixLen,
     end: s.end - prefixLen,
@@ -321,9 +344,10 @@ function toEnglish(code, kind) {
       start: tok.start != null ? tok.start - prefixLen : null,
       end: tok.end != null ? tok.end - prefixLen : null,
     })),
-  }));
+    };
+  });
   const english = `${title}: ${steps.map((s) => s.english).join('; then ')}.`;
-  return { english, steps, title };
+  return { english, steps, title, unhandled: [...paramMisses.map(shift), ...steps.flatMap((s) => s.unhandled)] };
 }
 
 // Every method/function actually CALLED in the refactored code -- the real
