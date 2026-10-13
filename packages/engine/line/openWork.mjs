@@ -23,6 +23,7 @@ import { loadConfig } from '@line/construct-core/config';
 import { normalizeLineConfig, CODE_EXTENSIONS } from '@line/construct-core/profiles/line/contract';
 import { resolveLayout } from '@line/construct-core/profiles/line/checks';
 import { parseSpec } from './featureText.mjs';
+import { moduleScope } from './moduleScope.mjs';
 import { featurePages, isPlaceholderSpec } from './build.mjs';
 import { hashOf } from '../pagesEditor.mjs';
 import { jsxParseError } from '@construct/ast';
@@ -148,7 +149,9 @@ export function openWork(root, { spec = null } = {}) {
         ? { kind: /** @type {const} */ ('route'), feature: name, file: p.file, sentence: `${baseName(p.file)} is served at no route; serve it at ${route}.`, step: { tool: 'line.addRoute', args: { route, page: p.file } } }
         : { kind: /** @type {const} */ ('route'), feature: name, file: p.file, sentence: `${baseName(p.file)} is served at no route, and the spec names none left for it; serve it with line.addRoute {"route": "/<route>", "page": "${p.file}"}.` };
     });
-    const dataItems = own.map((p) => emptyPage(root, layout, p, fixtures)).filter(Boolean);
+    // #935: the fixtures this feature module may use: its own and those the features it imports export, then the library's.
+    const scoped = (() => { if (!exists) return []; try { return moduleScope(root, name).fixtures.filter((x) => x.from !== 'library').map((x) => x.file); } catch { return []; } })();
+    const dataItems = own.map((p) => emptyPage(root, layout, p, fixtures, scoped)).filter(Boolean);
     // A page that only forwards its props (a fresh line.baseOn wrapper) cannot be routed until it has its own content.
     const forwards = (file) => { const src = own.find((p) => p.file === file)?.src ?? ''; return /export\s+(?:default\s+)?function\s+\w+\s*\(\s*(?:props\b|\{)/.test(src); };
     for (const r of routeItems) {
@@ -250,7 +253,7 @@ function featureSources(root, rel) {
  * no children prop, no .map) and imports nothing but the library's pages and components. Null when it renders content.
  * @returns {OpenItem|null}
  */
-function emptyPage(root, layout, p, fixtures) {
+function emptyPage(root, layout, p, fixtures, scoped = []) {
   if (!p.base) return null;
   const name = p.base.split('/').pop();
   const ext = CODE_EXTENSIONS.find((x) => fs.existsSync(path.join(root, layout.library, `${p.base}${x}`)));
@@ -260,7 +263,8 @@ function emptyPage(root, layout, p, fixtures) {
   const specs = [...p.src.matchAll(/\bfrom\s+['"]([^'"]+)['"]/g)].map((m) => m[1]);
   const data = specs.filter((s) => s.startsWith('.') && !new RegExp(`/${layout.library.split('/').pop()}/(pages|components)/`).test(s));
   const page = baseName(p.file);
-  const hint = data.length ? '' : ` and imports no data${fixtures.length ? ` (the library has ${fixtures.join(', ')})` : ''}`;
+  const has = [scoped.length ? `its module has ${scoped.join(', ')}` : '', fixtures.length ? `the library has ${fixtures.join(', ')}` : ''].filter(Boolean).join(' and ');
+  const hint = data.length ? '' : ` and imports no data${has ? ` (${has})` : ''}`;
   return { kind: 'data', feature: p.feature, file: p.file,
     sentence: `${page} renders ${name} with no content: it passes no children${hint}. Write ${page} with line.setCode on ${p.file}: load the items and render one per item as ${name}'s children.` };
 }
