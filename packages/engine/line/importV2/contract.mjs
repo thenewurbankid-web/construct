@@ -31,6 +31,23 @@
  *                                 compareLogicMaps re-hash through a rename table given after the map was built).
  * @property {'pure'|'impure'} [purity]  The enclosing function's purity class (buildLogicMap `classify`; #861).
  * @property {string[]} [effects]  Its effect names (logicVerify/purity.mjs classifyFile); the chain length is the count.
+ * @property {ComplexitySignature} [complexity]  The enclosing named function's complexity (#923; @construct/ast functionComplexity).
+ */
+
+/**
+ * A function's complexity signature (#923): the counting rules are in packages/ast/functionComplexity.mjs's header.
+ * Cyclomatic is ESLint's `complexity` rule; cognitive is fallow's, null until fallow's results are given.
+ * @typedef {{cyclomatic: number, cognitive: number|null, maxNesting: number, params: number, returns: number}} ComplexitySignature
+ */
+
+/**
+ * How one function's complexity moved between two maps (#923).
+ * @typedef {object} ComplexityDelta
+ * @property {string} file  The after-side file.
+ * @property {string} fn    The after-side function name.
+ * @property {ComplexitySignature} before
+ * @property {ComplexitySignature} after
+ * @property {{[K in keyof ComplexitySignature]: number|null}} delta  after minus before, per field (null where a side has no number).
  */
 
 /**
@@ -63,6 +80,7 @@
  * @property {MissingUnit[]} missing                  In before, nowhere in after; each has one sentence.
  * @property {ChangedUnit[]} changed                  Same place (fn + kind + order) but different logic.
  * @property {LogicUnit[]} added                      In after only.
+ * @property {ComplexityDelta[]} [complexity]          Functions whose complexity signature changed, one entry per function.
  */
 
 /**

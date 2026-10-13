@@ -18,7 +18,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { parseToAst, walkAst, collectInlineJsxLogic, collectControllerStateCalls, collectParamsReads, collectBagOfFlagsStates, collectImpureDomainReferences, parseJsxTree } from '@construct/ast';
+import { parseToAst, walkAst, collectInlineJsxLogic, collectControllerStateCalls, collectParamsReads, collectBagOfFlagsStates, collectImpureDomainReferences, parseJsxTree, complexityByName } from '@construct/ast';
 import { readSignals } from '@line/construct-core/mechanical-plan';
 import { extractMachines } from '../workflowExtractor.mjs';
 import { writeLineState } from '../transactionalWriter.mjs';
@@ -114,7 +114,7 @@ const oneLine = (/** @type {string} */ s, n = 140) => s.replace(/\s+/g, ' ').tri
  * @param {string} source
  * @param {string} rel App-root-relative path.
  * @param {RenameTable} renames
- * @returns {{kind: LogicUnitKind, fn: string, line: number, detail: string, anchor: string, start: number, exportName?: string}[]}
+ * @returns {{kind: LogicUnitKind, fn: string, line: number, detail: string, anchor: string, start: number, exportName?: string, complexity?: import('./importV2/contract.mjs').ComplexitySignature}[]}
  */
 export function fileUnits(source, rel, renames = {}) {
   const ast = parseToAst(source);
@@ -251,6 +251,7 @@ export function fileUnits(source, rel, renames = {}) {
     }
   }
 
+  const sigs = complexityByName(source, { ast }); // #923: each unit carries its enclosing function's complexity signature
   const units = [...found].map(([node, u]) => ({
     kind: u.kind,
     fn: info.get(node)?.fn ?? '<module>',
@@ -259,6 +260,7 @@ export function fileUnits(source, rel, renames = {}) {
     anchor: normalizeNode(u.anchorNode, renames),
     start: node.range[0],
     ...(u.exportName ? { exportName: u.exportName } : {}),
+    ...(sigs.has(info.get(node)?.fn) ? { complexity: sigs.get(info.get(node).fn) } : {}),
   }));
   return [...units.sort((a, b) => a.start - b.start), ...machineUnits];
 }
@@ -292,7 +294,7 @@ export function buildLogicMap(appRoot, files, { renames = {}, read = (abs) => fs
       const key = `${rel}#${u.fn}:${u.kind}`;
       counters.set(key, (counters.get(key) ?? 0) + 1);
       const c = classes?.get(u.fn);
-      units.push({ id: `${key}:${counters.get(key)}`, fingerprint: k === 1 ? base : hash(`${base}#${k}`), kind: u.kind, file: rel, fn: u.fn, line: u.line, detail: u.detail, anchor: u.anchor, ...(u.exportName ? { exportName: u.exportName } : {}), ...(c ? { purity: c.purity, effects: c.effects } : {}) });
+      units.push({ id: `${key}:${counters.get(key)}`, fingerprint: k === 1 ? base : hash(`${base}#${k}`), kind: u.kind, file: rel, fn: u.fn, line: u.line, detail: u.detail, anchor: u.anchor, ...(u.exportName ? { exportName: u.exportName } : {}), ...(c ? { purity: c.purity, effects: c.effects } : {}), ...(u.complexity ? { complexity: u.complexity } : {}) });
     }
   }
   /** @type {Partial<Record<LogicUnitKind, number>>} */

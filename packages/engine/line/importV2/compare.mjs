@@ -101,10 +101,13 @@ export function compareLogicMaps(before, after, { renames = {}, fileRenames = {}
   const diff = { kept: [], moved: [], missing: [], changed: [], added: [] };
   const used = new Set();
   const left = [];
+  /** @type {[LogicUnit, LogicUnit][]} */
+  const pairs = [];
   b.forEach((u, i) => {
     const a = byFp.get(u.fingerprint);
     if (a && !used.has(a)) {
       used.add(a);
+      pairs.push([before.units[i], a]);
       if (a.file === u.file) diff.kept.push(a);
       else diff.moved.push({ from: before.units[i], to: a });
     } else left.push(i);
@@ -121,11 +124,36 @@ export function compareLogicMaps(before, after, { renames = {}, fileRenames = {}
     }
     if (best) {
       used.add(best);
+      pairs.push([u, best]);
       diff.changed.push({ before: u, after: best, sentence: `The ${LOGIC_UNIT_WORDS[u.kind]} in ${fn} changed from ${quote(u.detail)} to ${quote(best.detail)}.` });
     } else {
       diff.missing.push({ ...u, sentence: missingSentence(u) });
     }
   }
   diff.added = rest.filter((a) => !used.has(a));
+  diff.complexity = complexityDeltas(pairs);
   return diff;
+}
+
+const SIGNATURE_FIELDS = ['cyclomatic', 'cognitive', 'maxNesting', 'params', 'returns'];
+
+/**
+ * #923: one entry per after-side function whose complexity signature differs across its matched (kept, moved or
+ * changed) units, with the per-field delta (after minus before; null where either side has no number, as cognitive
+ * before fallow has run). Units without a signature are skipped.
+ * @param {[LogicUnit, LogicUnit][]} pairs Matched before/after units.
+ * @returns {import('./contract.mjs').ComplexityDelta[]}
+ */
+function complexityDeltas(pairs) {
+  const out = [];
+  const seen = new Set();
+  for (const [x, y] of pairs) {
+    const key = `${y.file}#${y.fn}`;
+    if (!x.complexity || !y.complexity || seen.has(key)) continue;
+    seen.add(key);
+    // a field either side lacks (cognitive before fallow ran) has a null delta
+    const delta = /** @type {any} */ (Object.fromEntries(SIGNATURE_FIELDS.map((f) => [f, typeof y.complexity[f] === 'number' && typeof x.complexity[f] === 'number' ? y.complexity[f] - x.complexity[f] : null])));
+    if (SIGNATURE_FIELDS.some((f) => delta[f])) out.push({ file: y.file, fn: y.fn, before: x.complexity, after: y.complexity, delta });
+  }
+  return out;
 }
