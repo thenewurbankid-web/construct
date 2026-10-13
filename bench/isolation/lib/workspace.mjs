@@ -12,11 +12,14 @@ const TSC = createRequire(import.meta.url).resolve('typescript/bin/tsc');
 
 export const loadTask = (id) => ({ ...JSON.parse(readFileSync(join(TASKS, id, 'task.json'), 'utf8')), dir: join(TASKS, id) });
 
-export function makeWorkspace(ws, task, override) {
+// `overlays`: extra task folders copied after _r2 (r3's fixer arms add `_scope`: the picks feature's index.ts, the
+// one import path Line's cross-feature rule allows into another feature).
+export function makeWorkspace(ws, task, override, { overlays = [] } = {}) {
   rmSync(ws, { recursive: true, force: true });
   mkdirSync(ws, { recursive: true });
   cpSync(join(TASKS, '_shared'), ws, { recursive: true });
   cpSync(join(TASKS, '_r2'), ws, { recursive: true });
+  for (const o of overlays) cpSync(join(TASKS, o), ws, { recursive: true });
   if (existsSync(join(task.dir, 'start'))) cpSync(join(task.dir, 'start'), ws, { recursive: true });
   if (override != null) writeFileSync(join(ws, task.target), override);
   writeFileSync(join(ws, 'tsconfig.json'), JSON.stringify({

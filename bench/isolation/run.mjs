@@ -49,7 +49,7 @@ const exportsOf = (src) => [...src.matchAll(/export\s+(?:default\s+)?(?:async\s+
 function evaluate(ws, task, startBody, parsed, opts = {}) {
   if (!parsed.ok) return { pass: false, failClass: 'format', detail: parsed.detail, tsc: null, check: null };
   const missing = exportsOf(startBody).filter((n) => !exportsOf(parsed.body).includes(n));
-  makeWorkspace(ws, task, parsed.body);
+  makeWorkspace(ws, task, parsed.body, { overlays: opts.fixer ? ['_scope'] : [] });
   let tsc = runTsc(ws);
   let check = runCheck(ws, task);
   const fragment = missing.length ? `fragment: missing export(s) ${missing.join(', ')}` : null;
@@ -106,9 +106,10 @@ async function codeRound(arm, ctx, brief, file, final, label) {
       const t0 = Date.now();
       const sp = spliceFunction(file, reply, brief.name, ctx.material.task.target);
       if (!sp.ok) return { pass: false, tscOk: false, failClass: sp.failClass, ev: { pass: false, failClass: sp.failClass, detail: sp.detail }, ms: Date.now() - t0 };
-      const ev = ctx.evaluate({ ok: true, body: sp.body }, `${label}-s${i + 1}`);
+      const cand = { ok: true, body: sp.body };
+      const ev = ctx.evaluate(cand, `${label}-s${i + 1}`);
       const pass = final ? ev.pass : ev.tsc?.ok === true;
-      return { pass, tscOk: ev.tsc?.ok === true, failClass: pass ? null : ev.failClass ?? 'tsc', ev, body: sp.body, ms: Date.now() - t0 };
+      return { pass, tscOk: ev.tsc?.ok === true, failClass: pass ? null : ev.failClass ?? 'tsc', ev, body: cand.body, ms: Date.now() - t0 };
     },
   });
 }

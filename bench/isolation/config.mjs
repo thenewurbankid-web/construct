@@ -157,9 +157,17 @@ Object.assign(prompts, {
     `Task: ${task.goal}\n\nSpec excerpt (SPEC.md):\n${task.spec}\n\nFile ${target.path}:\n\`\`\`${target.path.endsWith('.tsx') ? 'tsx' : 'ts'}\n${target.body.replace(/\n$/, '')}\n\`\`\`\n\nStart with the brief tool.`,
 });
 
+// ---- r3: the same arms with blocks/importFixer.mjs between the edit and tsc (owner, after r1's C/D failures turned
+// out to be wiring). `baseline` names the run and arm without the fixer, for the delta table. E is the best r2 arm
+// besides H (both 8/12).
+for (const [key, base, run] of [['C', 'C', 'r1'], ['D', 'D', 'r1'], ['H', 'H', 'r2'], ['E', 'E', 'r2']]) {
+  arms[`${key}+fix`] = { ...arms[base], label: `${arms[base].label} + importFixer`, fixer: true, baseline: { run, arm: base } };
+}
+
 export const runs = {
   r1: ['A', 'B', 'C', 'D'],
   r2: ['A', 'B', 'E', 'F', 'F-sr', 'G', 'H', 'I'],
+  r3: ['C+fix', 'D+fix', 'H+fix', 'E+fix'],
 };
 
 // Failure classes, first failing stage wins: format (reply did not yield a file) -> fragment (a whole-file reply
