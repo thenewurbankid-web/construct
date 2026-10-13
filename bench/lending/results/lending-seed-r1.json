@@ -1,0 +1,83 @@
+{
+  "builder": "lending-seed-r1",
+  "arm": "line",
+  "model": null,
+  "at": "2026-10-13T02:14:30.106Z",
+  "wallMs": 5963,
+  "turns": null,
+  "tokens": {
+    "input": null,
+    "output": null,
+    "cacheRead": null,
+    "cacheWrite": null,
+    "source": "none recorded",
+    "total": null,
+    "costUsd": null,
+    "priceDate": "2026-10-06"
+  },
+  "tokensPerLandedStep": null,
+  "tokensPerPassedTest": null,
+  "plan": {
+    "added": 11,
+    "landed": 11,
+    "refusedAtRun": 0,
+    "refusedAtAdd": 0,
+    "refusedByRule": {},
+    "fixesApplied": 0,
+    "fixesById": {
+      "sent": 0,
+      "added": 0,
+      "landed": 0
+    },
+    "leftAsIs": 0,
+    "approvals": {
+      "auto": 11
+    },
+    "byTool": {
+      "line.setCode": 1,
+      "line.createFeature": 4,
+      "line.baseOn": 3,
+      "line.addRoute": 3
+    }
+  },
+  "validate": {
+    "profile": "line",
+    "errors": 0,
+    "warnings": 10,
+    "byRule": {
+      "COMPONENT-005": 6,
+      "COMPONENT-006": 1,
+      "PAGE-008": 3
+    }
+  },
+  "tsc": {
+    "errors": 0
+  },
+  "acceptance": {
+    "passed": 0,
+    "total": 24,
+    "ran": true,
+    "status": "0/24",
+    "passedIds": []
+  },
+  "loc": 33,
+  "filesChanged": 11,
+  "duplicates": {
+    "pairs": 0,
+    "examples": []
+  },
+  "libraryReuse": {
+    "featureItems": 3,
+    "basedOnLibrary": 3,
+    "share": 1
+  },
+  "humanInterventions": 0,
+  "directWrites": [],
+  "lineModelUse": {
+    "calls": 0,
+    "tokensIn": 0,
+    "tokensOut": 0,
+    "note": "no model call recorded in line/ (drafter off: LINE_DRAFTER unset; no jev or Qwen step ran inside Construct)"
+  },
+  "contention": null
+}

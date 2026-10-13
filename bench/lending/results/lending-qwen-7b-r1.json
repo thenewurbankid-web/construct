@@ -1,0 +1,86 @@
+{
+  "builder": "lending-qwen-7b-r1",
+  "arm": "line",
+  "model": "qwen2.5-coder:7b",
+  "at": "2026-10-13T02:25:36.158Z",
+  "wallMs": 128672,
+  "turns": 16,
+  "tokens": {
+    "input": 170786,
+    "output": 2579,
+    "cacheRead": 0,
+    "cacheWrite": 0,
+    "source": "ollama prompt_eval_count/eval_count",
+    "total": 173365,
+    "costUsd": 0,
+    "priceDate": "2026-10-06"
+  },
+  "tokensPerLandedStep": 15760,
+  "tokensPerPassedTest": null,
+  "plan": {
+    "added": 13,
+    "landed": 11,
+    "refusedAtRun": 0,
+    "refusedAtAdd": 9,
+    "refusedByRule": {
+      "add:NO_CHANGE": 1,
+      "add:TYPE_ERROR": 8
+    },
+    "fixesApplied": 0,
+    "fixesById": {
+      "sent": 0,
+      "added": 0,
+      "landed": 0
+    },
+    "leftAsIs": 0,
+    "approvals": {
+      "auto": 13
+    },
+    "byTool": {
+      "line.setCode": 1,
+      "line.createFeature": 4,
+      "line.baseOn": 3,
+      "line.addRoute": 3
+    }
+  },
+  "validate": {
+    "profile": "line",
+    "errors": 0,
+    "warnings": 10,
+    "byRule": {
+      "COMPONENT-005": 6,
+      "COMPONENT-006": 1,
+      "PAGE-008": 3
+    }
+  },
+  "tsc": {
+    "errors": 0
+  },
+  "acceptance": {
+    "passed": 0,
+    "total": 24,
+    "ran": true,
+    "status": "0/24",
+    "passedIds": []
+  },
+  "loc": 33,
+  "filesChanged": 11,
+  "duplicates": {
+    "pairs": 0,
+    "examples": []
+  },
+  "libraryReuse": {
+    "featureItems": 3,
+    "basedOnLibrary": 3,
+    "share": 1
+  },
+  "humanInterventions": 0,
+  "directWrites": [],
+  "lineModelUse": {
+    "calls": 0,
+    "tokensIn": 0,
+    "tokensOut": 0,
+    "note": "no model call recorded in line/ (drafter off: LINE_DRAFTER unset; no jev or Qwen step ran inside Construct)"
+  },
+  "contention": null
+}
