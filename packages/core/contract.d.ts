@@ -59,6 +59,8 @@ export * as llm from './llm.mjs';
 export * as textDiff from './text-diff.mjs';
 /** `@line/construct-core/diagnostics` */
 export * as diagnostics from './diagnostics.mjs';
+/** `@line/construct-core/fallow` */
+export * as fallow from './fallow.mjs';
 /** `@line/construct-core/dir-browser` */
 export * as dirBrowser from './dir-browser.mjs';
 /** `@line/construct-core/file-change-tracker` */

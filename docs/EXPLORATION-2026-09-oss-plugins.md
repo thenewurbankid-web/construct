@@ -46,6 +46,7 @@ dependencies (dev-only); `ui/server` has `express`, `ws`, `cors` and `ipaddr.js@
 | 10 | Job durability (#410) | **SKIP** libraries | no queue library fixes the actual gaps; fix semantics in `processEngine` |
 | 11 | SSRF and secrets | **ADOPT FOR THE FEATURE** (safe fetch); secret scan **SPIKE FIRST** | one core `safeFetch` block: connect-time DNS check plus `ipaddr.js` as a direct dependency |
 | 12 | Live preview and sandboxing | **SPIKE FIRST** | reverse proxy for hosted preview; threat-model cloned-repo dev servers first |
+| 13 | Dead code and complexity (#924, added 2026-10-13) | **ADOPTED** | `fallow` 3.33.1 (MIT) behind `packages/core/fallow.mjs`; on by default in `construct validate` as FALLOW-* warnings |
 
 Ranked shortlist, do-not-adopt list, licence flags and open questions are at the end.
 
@@ -568,6 +569,28 @@ preview is proxied under it, and port collisions across agents.
 **Verdict: SPIKE FIRST.** Smallest first step: write the threat model (cloned repo, install scripts, dev server
 on the host) and decide the trust boundary with the owner (open question 5) before any proxy work; then a
 half-day spike of `http-proxy-middleware` with the WS upgrade for hosted preview. No sub-issue until then.
+
+---
+
+## 13. Dead code and complexity analysis: fallow (#924, added 2026-10-13)
+
+**What we have [V].** Our enforcers judge layer boundaries, separation of concerns and naming; nothing reported unused
+exports, unreachable files, unused dependencies, import cycles inside one layer, or function complexity.
+
+**Candidate.** [fallow](https://github.com/fallow-rs/fallow), MIT (repo LICENSE; the npm tarball ships none, its
+package.json says MIT), a native Rust binary distributed through npm with per-platform optional packages. One module
+graph gives dead code (`fallow dead-code`), complexity/CRAP (`fallow health`), duplication, and an architecture mode.
+
+**How it is wrapped [V].** `packages/core/fallow.mjs` runs `dead-code` and `health` with `--format json --quiet
+--no-cache` (read-only) and maps them to FALLOW-* warnings with fallow's fingerprint kept. Off, on purpose: the
+architecture/boundaries and policy detectors (our validator stays the authority for layer rules; any such finding is
+dropped), the similar-code model, `--type-aware`, telemetry (FALLOW_TELEMETRY_DISABLED, DO_NOT_TRACK). On by default
+in `construct validate` for a root with a package.json; `--no-fallow` or `fallow: false` in architecture.yml turns it
+off; a missing binary is one info line. `construct fallow [path] [--json]` runs it alone. About 0.1 s added on a
+scaffold (dead-code and health run in parallel).
+
+**Verdict: ADOPTED (#924).** Follow-ups worth weighing: a Construct-aware default fallow config (entry points for
+feature `index.ts` barrels, ignore `.dependency-cruiser.cjs`) so a fresh scaffold is not reported as ~20 unused files.
 
 ---
 

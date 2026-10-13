@@ -11,7 +11,7 @@
 import {
   init, feature, generate, sync, validate, summarize, doctor, create, refactor, research, review,
   testCommand, template, importCommand, pipeline, traces, decide, processCommand,
-  checkChange, mutationCheck, addRuleCommand, exportCommand, rulesCommand, rename,
+  checkChange, mutationCheck, addRuleCommand, exportCommand, rulesCommand, rename, fallowCommand,
 } from './cli.mjs';
 
 /** `construct import ...` (the retired `--route` wizard is refused by importCommand with one sentence). */
@@ -42,6 +42,7 @@ export function registerBuiltinCommands(registry) {
   registry.register({ name: 'sync', summary: 'Sync dependency-cruiser config and every feature\'s public API', handler: sync, source: SOURCE });
   registry.register({ name: 'export', summary: 'construct export ci --target <dependency-cruiser|eslint-boundaries>: export architecture.yml to a CI tool config', handler: exportCommand, source: SOURCE });
   registry.register({ name: 'validate', summary: 'Run the architecture enforcers and report violations', handler: validate, source: SOURCE });
+  registry.register({ name: 'fallow', summary: 'Dead code and complexity findings from fallow (FALLOW-*), the same ones validate adds by default', handler: fallowCommand, source: SOURCE });
   registry.register({ name: 'summarize', summary: 'Deterministic, LLM-free summaries of a unit, feature or project', handler: summarize, source: SOURCE });
   registry.register({ name: 'doctor', summary: 'Report environment and enforcer module availability', handler: doctor, source: SOURCE });
   registry.register({ name: 'create', summary: 'Scaffold a feature, a layer, or a whole vertical slice', handler: create, source: SOURCE });

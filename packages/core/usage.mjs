@@ -181,8 +181,13 @@ Commands:
     same directory: @xstate/graph walks every reachable state and user-event transition under
     node's test runner, no browser; run with npx tsx --test <file>)
   construct sync [--dir <path>]
-  construct validate [--profile strict-nextjs|line] [--format json] [--dir <path>]
+  construct validate [--profile strict-nextjs|line] [--format json] [--no-fallow] [--dir <path>]
     (--profile line runs the Line rules, docs/line-architecture.md; default is architecture.yml's preset:)
+    (also runs fallow's dead-code and health analyses as FALLOW-* warnings when the project has a package.json;
+    --no-fallow or fallow: false in architecture.yml turns that off; a missing fallow is one info line, never a failure)
+  construct fallow [path] [--json] [--dir <path>]
+    (the fallow block alone: unused exports/files/dependencies/props, unresolved imports, cycles, duplicate exports,
+    cyclomatic/cognitive complexity and CRAP as FALLOW-* warnings; read-only; exit 2 when fallow is not installed)
   construct add-rule <id> [--module architecture|separation-of-concerns|readability] [--layers a,b] [--scope buffer|project] [--severity error|warning|info|off] [--why "..."] [--dir <path>]
     (scaffolds a project-local rule, local-rules/<id>/rule.yml, plus a violates.ts / passes.ts fixture pair whose
     marker already agrees with the generated detector; never edits architecture.yml -- add the printed rule.yml

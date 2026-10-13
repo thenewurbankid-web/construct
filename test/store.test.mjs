@@ -16,7 +16,7 @@ import { suggest } from '../packages/core/decision-provider.mjs';
 import { NEEDS_RUNTIME, cardOf, featureTree, initProject, run, shapeProject, typeCheck } from '../test-utils/shapeChain.mjs';
 
 const store = (dir, ...more) => run(['create', 'store', 'Cart', '--feature', 'shop', ...more], dir);
-const featureViolations = (dir) => JSON.parse(run(['validate', '--format', 'json'], dir).stdout).violations.filter((v) => v.file.startsWith('features/')).map((v) => `${v.severity} ${v.rule} ${v.file}`);
+const featureViolations = (dir) => JSON.parse(run(['validate', '--format', 'json', '--no-fallow'], dir).stdout).violations.filter((v) => v.file.startsWith('features/')).map((v) => `${v.severity} ${v.rule} ${v.file}`);
 
 test('the request is checked by named reasons: the shape is closed, names and fields are plain', () => {
   const ok = { name: 'Cart', feature: 'shop', shape: 'list' };

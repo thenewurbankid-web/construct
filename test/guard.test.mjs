@@ -87,7 +87,7 @@ test('the CLI writes the guard, wires the route, is idempotent, and every file i
   const fallback = fs.readFileSync(path.join(dir, 'features/shop/components/ProductsFallback.component.tsx'), 'utf8');
   assert.match(fallback, /<a href="\/sign-in">Go to \/sign-in<\/a>/);
   assert.match(fallback, /'wrong-role': 'You need one of these roles to open the products screen: admin, manager\.'/);
-  const validated = JSON.parse(run(['validate', '--format', 'json'], dir).stdout);
+  const validated = JSON.parse(run(['validate', '--format', 'json', '--no-fallow'], dir).stdout);
   assert.deepEqual(validated.violations, [], 'the written slice passes the default rules');
   const snapshot = featureTree(dir);
   const app = fs.readFileSync(routeFile(dir), 'utf8');
@@ -172,7 +172,7 @@ test('the session comes from the project\'s own provider when it has a session p
   assert.match(hook, /import \{ useSessionProvider \} from '\.\/useSessionProvider\.provider';/);
   assert.match(hook, /export function useProductsSession\(\): Session \{\n {2}return useSessionProvider\(\);\n\}/);
   assert.equal(fs.existsSync(path.join(dir, 'features/shop/hooks/useSession.hook.ts')), false, 'no stub beside a real provider');
-  assert.deepEqual(JSON.parse(run(['validate', '--format', 'json'], dir).stdout).violations, []);
+  assert.deepEqual(JSON.parse(run(['validate', '--format', 'json', '--no-fallow'], dir).stdout).violations, []);
   const proof = fs.readFileSync(path.join(dir, 'features/shop/tests/generated/ProductsGuard.proof.test.ts'), 'utf8');
   assert.doesNotMatch(proof, /SessionContext/, 'the proof drives the decision and the expression: the session is the project\'s');
   // A provider whose value is not a Session is not used.

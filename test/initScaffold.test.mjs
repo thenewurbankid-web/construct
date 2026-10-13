@@ -78,7 +78,7 @@ test('scaffolded project does not add violations: validate reports only the know
   for (const framework of Object.keys(SHELL)) {
     const dir = makeTempDir('construct-scaffold-');
     run(['init', '--framework', framework], dir);
-    const res = run(['validate', '--format', 'json'], dir);
+    const res = run(['validate', '--format', 'json', '--no-fallow'], dir);
     const violations = JSON.parse(res.stdout).violations;
     const entry = framework === 'nextjs' ? 'app/page.tsx' : 'src/App.tsx';
     // READ-003 used to be here too (the scaffolded index.ts export had no JSDoc); createFeature now writes one.

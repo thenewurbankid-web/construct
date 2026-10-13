@@ -184,9 +184,14 @@ export const HELP_TOPICS = {
       Regenerate .dependency-cruiser.cjs and each feature's index.ts public
       API from its actual exports (controllers + hooks, by default).`,
 
-  validate: `validate [--format json] [--dir <path>]
+  validate: `validate [--format json] [--no-fallow] [--dir <path>]
       Run every enforcer (architecture boundaries, separation of concerns,
-      readability, public-API drift) and report violations.`,
+      readability, public-API drift) and report violations. When the project
+      has a package.json it also runs fallow (dead code, cycles, complexity)
+      and adds its findings as FALLOW-* warnings; --no-fallow or
+      "fallow: false" in architecture.yml turns that off. A missing fallow
+      binary is one info line, never a failure. "construct fallow [path]
+      [--json]" runs the fallow block on its own.`,
 
   summarize: `summarize [--feature <name>] [--format json|md|compact|prose] [--since <ref>] [--dir <path>]
       The flat form of "research summarize". --since <ref> scopes the report
