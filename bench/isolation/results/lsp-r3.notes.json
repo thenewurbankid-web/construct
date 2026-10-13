@@ -1,0 +1,30 @@
+{
+ "smith": {
+  "head": "cbc25671d1a64fe825402d3ce19433657b945f4c",
+  "dir": "/Users/shashank/Repositories/atomic-codemod-hardening",
+  "raw": true,
+  "drift": true
+ },
+ "t09": {
+  "pass": true,
+  "failed": [],
+  "sentences": [
+   "Browse page works in 2 steps.",
+   "Let items be list books of an empty object.",
+   "It returns shows a <ListPage> with title as 'Library catalogue' and empty as a <p> containing 'No books yet.' containing items's length > 0 and items map a <article> with key as item's id and class name as 'flex flex-col gap-2 rounded-lg border border-slate-200 p-4 shadow-sm' containing a <h2> with class name as 'text-lg font-semibold' containing a <Link> with href as text of '/books/' and item's id containing item's title and a <p> containing item's author and a <p> containing item's genre and a <p> containing string of item's year and a <p> containing if item's available then 'Available', otherwise 'On loan'."
+  ],
+  "empty": null
+ },
+ "tripleGate": {
+  "H": {
+   "pass": 9,
+   "fail": 0,
+   "reasons": {}
+  },
+  "L-gate": {
+   "pass": 9,
+   "fail": 0,
+   "reasons": {}
+  }
+ }
+}
