@@ -6,6 +6,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { replaceBody, stubParts } from './stubs.mjs';
 import { readPath, unitOf, bottomUp, checkStub, pageSnapshot, visualDiff, FILLS_FILE } from './check.mjs';
+import { fixesStep } from '../lsp/spliceFixes.mjs';
+import { smithCheckStep } from '../lsp/smithCheck.mjs';
+import { nextOpenStub } from '../lsp/traceStep.mjs';
+import { completionsStep } from '../coder/completions.mjs';
 
 /** The last page snapshot per point (the "before" of the next step's visual diff). */
 export const SNAP_DIR = 'line/path/snapshots';
@@ -40,6 +44,7 @@ export function failureText(f) {
   if (!f) return '';
   const lines = [`Failed at ${f.layer}${f.code && f.layer === 'static' ? ` (${f.code})` : ''}${f.sentence ? `: ${f.sentence}` : ''}`];
   if (f.layer === 'tsc' && f.code) lines.push(`At the line: ${f.code}`);
+  if (f.completions?.items?.length) lines.push(`Pick the ${f.completions.kind === 'path' || f.completions.kind === 'import-source' ? 'import path' : 'name'} for ${f.completions.wrong} from: ${f.completions.items.slice(0, 12).join(', ')}`);
   if (f.example) {
     lines.push(`Example ${f.example}:`);
     if (f.input) lines.push(`  input: ${typeof f.input === 'string' ? f.input : JSON.stringify(f.input)}`);
@@ -68,12 +73,18 @@ export function stubCard(root, u) {
     `The file imports (locked):\n${imports}`, 'Examples:', ...ex].filter(Boolean).join('\n');
 }
 
+/** tsc's `file:line:col TSxxxx message` sentence as {line, col, code}, or null. */
+const tscPoint = (f) => { const m = /:(\d+):(\d+) (TS\d+) /.exec(String(f?.sentence ?? '')); return m ? { line: Number(m[1]), col: Number(m[2]), code: m[3] } : null; };
+
 /**
- * Fill one stub.
- * @param {{root: string, stubId: string, body: string}} args
- * @returns {Promise<{ok: boolean, code?: string, stubId: string, pass?: boolean, failure?: object, ms?: object, sentence: string, next?: string|null}>}
+ * Fill one stub. #945, each under its lsp.* switch (lsp/profile.mjs; `lsp` overrides it per call): the Line LSP's
+ * fixes run on the spliced file before tsc (on), a tsc failure in the stub's file carries the closed choice of names
+ * or import paths at that point (shadow), a passing fill is checked against the stub's Smith test plan (`smith`,
+ * shadow), and the next stub is the nextSteps block's (on).
+ * @param {{root: string, stubId: string, body: string, lsp?: Record<string, unknown>|null}} args
+ * @returns {Promise<{ok: boolean, code?: string, stubId: string, pass?: boolean, failure?: object, ms?: object, sentence: string, next?: string|null, nextStep?: object|null, fixes?: any[]}>}
  */
-export async function fill({ root, stubId, body }) {
+export async function fill({ root, stubId, body, lsp = null }) {
   const p = readPath(root);
   const u = unitOf(p, stubId);
   const log = (e) => fs.appendFileSync(path.join(root, FILLS_FILE), `${JSON.stringify({ at: new Date().toISOString(), stubId, ...e })}\n`);
@@ -94,8 +105,17 @@ export async function fill({ root, stubId, body }) {
   if (visual) {
     try { beforeSnap = JSON.parse(fs.readFileSync(snapFile, 'utf8')); } catch { beforeSnap = (await pageSnapshot(root, visual)).snapshots ?? null; }
   }
-  fs.writeFileSync(file, r.source);
+  const fx = fixesStep(root, u.file, r.source, { fn: u.fn, lsp, id: stubId });
+  fs.writeFileSync(file, fx.source);
   const v = await checkStub(root, p, stubId, { prevSource: prev?.source ?? null });
+  if (!v.pass && v.failure?.layer === 'tsc' && tscPoint(v.failure)) {
+    const c = completionsStep(root, u.file, fx.source, tscPoint(v.failure), { lsp, id: stubId });
+    if (c.offer) v.failure.completions = c.offer;
+  }
+  if (v.pass) {
+    const sm = await smithCheckStep(root, u, fx.source, { lsp });
+    if (sm.failure) { v.pass = false; v.failure = sm.failure; }
+  }
   if (v.pass && visual) {
     // the visual diff: the point's page before and after this step; the step must show the change its point predicts.
     // While other stubs of the point are open the page may not render yet: the verdict is "pending", not a failure.
@@ -109,8 +129,11 @@ export async function fill({ root, stubId, body }) {
     v.visual = err ? { outcome: othersOpen ? 'pending' : 'failed', reason: `the page does not render: ${err}` } : d.ok ? { outcome: 'expected-change', added: d.added.length, removed: d.removed.length } : { outcome: othersOpen ? 'pending' : 'failed', reason: `the expected change is missing: ${d.missing.join('; ')}`, added: d.added.slice(0, 8) };
     if (v.visual.outcome === 'failed') { v.pass = false; v.failure = { layer: 'visual', sentence: `${v.visual.reason}${v.visual.added?.length ? ` (the diff added: ${v.visual.added.join(', ')})` : ''}` }; }
   }
-  log({ n, pass: v.pass, ...(v.failure ? { failure: v.failure } : {}), ms: v.ms, ...(v.c ? { c: v.c } : {}), ...(v.visual ? { visual: v.visual } : {}), body: r.body, ...(v.pass ? { source: r.source } : {}) });
-  const next = openStubs(root, p)[0]?.id ?? null;
-  return { ok: true, stubId, pass: v.pass, ...(v.failure ? { failure: v.failure } : {}), ms: v.ms,
-    sentence: v.pass ? `${stubId} passes (stub check, tsc and its ${u.examples.length} examples).${next ? ` Next open stub: ${next}.` : ' Every stub passes.'}` : `${stubId} does not pass yet.\n${failureText(v.failure)}`, next };
+  const { schema: _schema, ...logged } = v.failure?.completions ?? {};
+  const failureLog = v.failure ? { ...v.failure, ...(v.failure.completions ? { completions: logged } : {}) } : null;
+  log({ n, pass: v.pass, ...(failureLog ? { failure: failureLog } : {}), ms: v.ms, ...(v.c ? { c: v.c } : {}), ...(v.visual ? { visual: v.visual } : {}), body: r.body, ...(fx.applied.length ? { fixes: fx.applied } : {}), ...(v.pass ? { source: fx.source } : {}) });
+  const nx = nextOpenStub(root, openStubs(root, p), { lsp });
+  const next = nx.id;
+  return { ok: true, stubId, pass: v.pass, ...(v.failure ? { failure: v.failure } : {}), ms: v.ms, ...(fx.applied.length ? { fixes: fx.applied } : {}),
+    sentence: v.pass ? `${stubId} passes (stub check, tsc and its ${u.examples.length} examples).${next ? ` Next open stub: ${next}.` : ' Every stub passes.'}` : `${stubId} does not pass yet.\n${failureText(v.failure)}`, next, ...(nx.step ? { nextStep: nx.step } : {}) };
 }

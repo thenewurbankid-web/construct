@@ -37,10 +37,15 @@ const factsOut = (a) => (a ? { ok: true, facts: a.facts } : { ok: false, sentenc
  * @type {Record<string, {def: any, run: (root: string, a: any) => any}>}
  */
 export const READ_TOOLS = Object.freeze({
-  read_file: { def: fn('read_file', 'Read one project file (first 3000 characters).', { path: S('Project-relative path') }, ['path']), run: (root, a) => {
+  read_file: { def: fn('read_file', 'Read one project file (first 3000 characters).', { path: S('Project-relative path') }, ['path']), run: async (root, a) => {
     const abs = inside(root, a.path);
     if (!abs) return { ok: false, sentence: 'That path is outside the project.' };
-    try { return { ok: true, path: a.path, text: clip(fs.readFileSync(abs, 'utf8')) }; } catch { return { ok: false, sentence: `There is no file ${a.path}.` }; }
+    let text;
+    try { text = fs.readFileSync(abs, 'utf8'); } catch { return { ok: false, sentence: `There is no file ${a.path}.` }; }
+    // #945 lsp.gatherer: on, a TypeScript file comes back as its exports with their exact types, not its text.
+    const { gatherStep } = await import('../coder/symbols.mjs');
+    const g = gatherStep(root, path.relative(path.resolve(root), abs).split(path.sep).join('/'), text, { where: 'research.read_file' });
+    return g.symbols ? { ok: true, path: a.path, symbols: g.symbols } : { ok: true, path: a.path, text: clip(text) };
   } },
   list_dir: { def: fn('list_dir', 'List one project folder.', { path: S('Project-relative folder, "." for the root') }, ['path']), run: (root, a) => {
     const abs = inside(root, a.path ?? '.');
@@ -135,7 +140,7 @@ export async function runSubagent(o) {
           ? { ok: false, code: 'NOT_GIVEN', sentence: `${name} was not given for this question; your tools are ${chosen.join(', ')} and answer.` }
           : { ok: false, code: 'READ_ONLY', sentence: `Research is read-only; ${name} is not one of your tools (${chosen.join(', ')}, answer).` };
       } else {
-        out = tools[name].run(o.root, args);
+        out = await tools[name].run(o.root, args);
         for (const k of ['path', 'file']) if (typeof args[k] === 'string' && out.ok) read.add(args[k]);
       }
       messages.push({ role: 'tool', content: clip(JSON.stringify(out)) });

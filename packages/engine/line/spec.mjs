@@ -33,6 +33,8 @@ export const SPEC_MODULES = Object.freeze([
   { topic: 'modules', module: 'line-context', what: 'what a refusal carries: its context lines ranked, the context pack of the file a step targets, the offending line corrected', dir: 'packages/engine/line/context', match: /\.mjs$/ },
   // #938: the native-first tool harness sits in its own folder and topic too (line-modules is at its one-call cap).
   { topic: 'modules', module: 'line-harness', what: 'the builder\'s tool harness: Ollama native tool calls first, argument checks, the nudge line, the layered turn', dir: 'packages/engine/line/harness', match: /\.mjs$/ },
+  // #945: the Line LSP wiring (switches, nextSteps block, fixes after splice, Smith check, harness tools), same reason.
+  { topic: 'modules', module: 'line-lsp', what: 'the Line LSP calls in Line\'s surfaces: per-call switches (on, shadow, off), the nextSteps Trace-step block, fixes after a splice, the Smith check, the tools construct-mcp offers', dir: 'packages/engine/line/lsp', match: /\.mjs$/ },
   { topic: 'modules', module: 'line-profile', what: 'the Line validate profile (LINE-* rules)', dir: 'packages/core/profiles/line', match: /\.mjs$/ },
   { topic: 'modules', module: 'line-links', what: 'the linked Line modules (@mx/reason, @mx/plan, ...) and their contracts', dir: 'packages/line-links', match: /\.(mjs|d\.ts)$/ },
   { topic: 'modules', module: 'writer', what: 'Construct\'s transactional writer and the Line-state path', dir: 'packages/engine', match: /^transactionalWriter\.mjs$/ },

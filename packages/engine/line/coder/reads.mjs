@@ -23,6 +23,8 @@ import { importableFiles } from '../typeGate.mjs';
 import { moduleScope } from '../scope/moduleScope.mjs';
 import { matchRequest } from '../traceMatch.mjs';
 import { matchAtoms, getAtom, listAtoms } from '@line/atoms';
+import { lspMode } from '../lsp/profile.mjs';
+import { gatherSymbols } from './symbols.mjs';
 
 const CODE_EXT = ['.ts', '.tsx', '.js', '.jsx', '.mjs'];
 const TEST_FILE = /\.(test|spec)\.[cm]?[jt]sx?$/;
@@ -142,8 +144,13 @@ export function scopeOf(root, { file }) {
     try { exports = moduleContract(path.join(root, x)).exports; } catch { exports = []; }
     return { file: x, import: specifierFor(root, f, x), sentence, exports };
   });
+  // #945 lsp.gatherer on: each export with its exact type (Line LSP definition + quickInfo), not only its name. A read
+  // never writes, so shadow here is the plain list (the research read_file logs the shadow rows).
+  if (lspMode(root, 'gatherer') === 'on' && fs.existsSync(path.join(root, 'tsconfig.json'))) {
+    for (const e of entries) { try { const g = gatherSymbols(root, [e.file]); if (g.lines.length) e.types = g.lines.map((l) => l.replace(/^\S+ /, '')); } catch { /* names only */ } }
+  }
   const head = `${f} may import ${ordered.length} file${ordered.length === 1 ? '' : 's'}: ${own ? `its own feature (${own.slice(0, -1)}) and ` : ''}the library${ordered.length > MAX_SCOPE ? ` (the first ${MAX_SCOPE} are listed)` : ''}.${own ? ' Another feature only through its index (features/<name>/index.ts), never its inner files.' : ' Nothing else: a feature is never imported.'}`;
-  const lines = entries.map((e) => `- ${e.import}: ${e.sentence}${e.exports.length ? ` Exports: ${e.exports.join(', ')}.` : ''}`);
+  const lines = entries.map((e) => `- ${e.import}: ${e.sentence}${e.types ? ` Exports: ${e.types.join('; ')}.` : e.exports.length ? ` Exports: ${e.exports.join(', ')}.` : ''}`);
   return { ok: true, file: f, entries, sentence: [head, ...lines].join('\n') };
 }
 
