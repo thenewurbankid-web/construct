@@ -964,7 +964,7 @@ function describeFunction(fn, wrapped, prefixLen) {
 // behaviour). `{ all: true }` also returns `functions`: one
 // {name, kind, title, english, steps, unhandled, start, end} per describable
 // function in the module, in source order (see topLevelFunctions).
-function toEnglish(code, kind, options = {}) {
+function describeSource(code, kind, options) {
   const prefixLen = kind === 'method' ? `class __W__ {\n`.length : 0;
   const wrapped = kind === 'method' ? `class __W__ {\n${code}\n}` : code;
   const ast = parseForEnglish(wrapped);
@@ -982,6 +982,49 @@ function toEnglish(code, kind, options = {}) {
   const result = { english: first.english, steps: first.steps, title: first.title, unhandled: first.unhandled };
   if (options.all) result.functions = described;
   return result;
+}
+
+// Memoized by a hash of (code, kind, options). toEnglish is pure -- the
+// result depends only on those inputs -- so a repeat call (the demo re-asks
+// for the same function after every keystroke-free action, the golden and
+// property tests walk the same corpus) skips the parse and walk. In memory
+// only, bounded (least recently used entry evicted first), never on disk.
+// Each call returns its own deep copy, so a caller mutating the result can't
+// corrupt the cache. Parse errors are not cached; they throw every time.
+const crypto = require('crypto');
+
+const CACHE_LIMIT = 500;
+const englishCache = new Map();
+const cacheStats = { hits: 0, misses: 0 };
+
+function cacheKey(code, kind, options) {
+  return crypto.createHash('sha256').update(`${kind}\0${options && options.all ? 'all' : 'first'}\0${code}`).digest('hex');
+}
+
+function toEnglish(code, kind, options = {}) {
+  const key = cacheKey(code, kind, options);
+  if (englishCache.has(key)) {
+    const hit = englishCache.get(key);
+    englishCache.delete(key);
+    englishCache.set(key, hit);
+    cacheStats.hits++;
+    return structuredClone(hit);
+  }
+  cacheStats.misses++;
+  const result = describeSource(code, kind, options);
+  englishCache.set(key, result);
+  if (englishCache.size > CACHE_LIMIT) englishCache.delete(englishCache.keys().next().value);
+  return structuredClone(result);
+}
+
+function clearEnglishCache() {
+  englishCache.clear();
+  cacheStats.hits = 0;
+  cacheStats.misses = 0;
+}
+
+function englishCacheStats() {
+  return { ...cacheStats, size: englishCache.size, limit: CACHE_LIMIT };
 }
 
 // Every method/function actually CALLED in the refactored code -- the real
@@ -1413,6 +1456,8 @@ function insertArgument(code, kind, stepIndex, identifierName) {
 
 module.exports = {
   toEnglish,
+  clearEnglishCache,
+  englishCacheStats,
   PARSE_PLUGINS,
   EXPR_RULES,
   STMT_RULES,

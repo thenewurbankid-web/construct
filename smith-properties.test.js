@@ -14,7 +14,7 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fc = require('fast-check');
 const parser = require('@babel/parser');
-const { toEnglish } = require('./to-english');
+const { toEnglish, clearEnglishCache } = require('./to-english');
 const { plug } = require('./plug');
 const { unplug } = require('./unplug');
 const corpus = require('./bench/corpus');
@@ -111,8 +111,10 @@ function parses({ code, kind }) {
 // ---- the properties, as plain checks reused for generated and corpus input --
 function checkDescription({ code, kind }) {
   const r = toEnglish(code, kind); // property 1: must not throw
+  clearEnglishCache(); // recompute from scratch, not a cache hit
   const again = toEnglish(code, kind);
   assert.deepEqual(again, r); // property 2: deterministic
+  assert.deepEqual(toEnglish(code, kind), r); // and the cached answer is the same
   assert.equal(r.english, `${r.title}: ${r.steps.map((s) => s.english).join('; then ')}.`); // property 3
   for (const s of r.steps) {
     assert.equal(code.slice(s.start, s.end), s.code);

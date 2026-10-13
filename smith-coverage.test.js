@@ -116,7 +116,8 @@ test('nested declarations are named, not expanded', () => {
 });
 
 test('the placeholder path still records an unhandled entry for a node type with no rule', () => {
-  const { STMT_RULES: rules } = require('./to-english');
+  const { STMT_RULES: rules, clearEnglishCache } = require('./to-english');
+  clearEnglishCache();
   const saved = rules.EmptyStatement;
   delete rules.EmptyStatement;
   try {
@@ -125,5 +126,6 @@ test('the placeholder path still records an unhandled entry for a node type with
     assert.deepEqual(r.unhandled.map((u) => [u.kind, u.type]), [['stmt', 'EmptyStatement']]);
   } finally {
     rules.EmptyStatement = saved;
+    clearEnglishCache();
   }
 });
