@@ -25,6 +25,11 @@ const POINTS_MAX = 6;
 
 const readOrNull = (abs) => { try { return fs.readFileSync(abs, 'utf8'); } catch { return null; } };
 const clip = (s, n) => (s.length > n ? `${s.slice(0, n)}\n…(${s.length - n} more characters)` : s);
+/**
+ * The project's library and features folders (architecture.yml), or the defaults.
+ * @param {string} root
+ * @returns {{library: string, features: string}}
+ */
 export const packLayout = (root) => { try { return resolveLayout(root, normalizeLineConfig(/** @type {any} */ (loadConfig(root)).line)); } catch { return { library: 'library', features: 'features' }; } };
 
 // ------------------------------------------------------------------------------------------------- representation
@@ -161,6 +166,8 @@ function landedExample(root, layout, file, kind) {
  * The context pack of one file (see the header). `code`: the code a request sent for it (its @line-base and
  * @line-route count when the file is new); `libraryId`: the base a line.baseOn names.
  * @param {string} root @param {string} file @param {{code?: string, libraryId?: string, spec?: {features?: {name: string, points: {id: string, text: string}[]}[]} | null}} [o]
+ * @returns {{file: string, exists: boolean, contentHash: string|null, code: string|null, base: {id: string, file: string|null, props: string|null} | null,
+ *   route: string|null, points: {id: string, text: string}[], example: {file: string, code: string, from: 'project'|'library'} | null}}
  */
 export function contextPack(root, file, { code, libraryId, spec = null } = {}) {
   const layout = packLayout(root);
@@ -178,7 +185,7 @@ export function contextPack(root, file, { code, libraryId, spec = null } = {}) {
   const points = pointsFor(all, route).slice(0, POINTS_MAX);
   const kind = parts.at(-2) ?? 'pages';
   const landed = feature ? landedExample(root, layout, file, kind) : null;
-  const example = landed ? { file: landed.file, code: landed.code, from: 'project' } : baseFile && baseSrc ? { file: baseFile, code: baseSrc, from: 'library' } : null;
+  const example = landed ? { file: landed.file, code: landed.code, from: /** @type {const} */ ('project') } : baseFile && baseSrc ? { file: baseFile, code: baseSrc, from: /** @type {const} */ ('library') } : null;
   return {
     file, exists: current !== null, contentHash: current !== null ? hashOf(current) : null, code: current,
     base: baseId ? { id: baseId, file: baseFile, props } : null, route, points, example,

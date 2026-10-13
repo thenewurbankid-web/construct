@@ -247,8 +247,8 @@ export const badArgsField = (sentence) => /: ([A-Za-z_$][\w$.]*) (?:must|is not)
  * @property {string|null} apply (4) How to apply one: {"fix":"f1"}.
  * @property {string|null} example  With no choices: a concrete correct call.
  * @property {string[]} context  #886: lines that are about the refusal, not one choice.
- * @property {string[]} [exampleFixes] #932: the offending lines corrected.
- * @property {string} [pack]     #932: the targeted file's context pack.
+ * @property {string[]} [exampleFixes] The offending lines corrected (issue 932).
+ * @property {string} [pack]     The targeted file's context pack (issue 932).
  * @property {string} text       All of it, as the builder reads it.
  */
 

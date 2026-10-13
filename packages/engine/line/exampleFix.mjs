@@ -103,7 +103,11 @@ function literalMismatch(message, src) {
 }
 
 const noExt = (p) => p.replace(/\.(tsx?|jsx?|mjs)$/, '').replace(/\/index$/, '');
-/** TS2307 Cannot find module 'x': the nearest existing file's path, relative to the file (same name first). */
+/**
+ * TS2307 Cannot find module 'x': the nearest existing file's path, relative to the file (same name first).
+ * @param {string} message @param {string} src @param {{file?: string, files?: string[]}} o
+ * @returns {string|null}
+ */
 function moduleNotFound(message, src, { file, files = [] }) {
   const spec = /Cannot find module '([^']+)'/.exec(message)?.[1];
   if (!spec || !file || !spec.startsWith('.')) return null;

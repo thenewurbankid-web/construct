@@ -251,19 +251,6 @@ export function choicesOf(step) {
 }
 
 /**
- * #885: a refusal as every caller returns it: the planner's `sentence` stays, `text` is what a builder reads (wrong,
- * rule, choices or a correct call, how to apply) and `hint` its parts (hints.mjs shapeRefusal).
- * @param {any} r The refusal {ok: false, code, sentence, fixes?}.
- * @param {any} [req] The request it answers ({tool, args, fix?}).
- * @param {any[]} [fixes] The choices (default: r.fixes).
- * @param {string[]} [tools] The tool names (UNKNOWN_TOOL's nearest).
- * @param {string[]} [context] Lines about the refusal itself (#886).
- * @param {string} [example] A correct call that beats the tool's own example (#887).
- * @param {((call: any, near?: string|null) => any) | null} [resolve] (#916) Makes the correct call's paths real (or drops it).
- * @param {{exampleFixes?: string[], pack?: string}} [extra] (#932) Example-fix lines and the targeted file's context pack.
- * @returns {any}
- */
-/**
  * #932: the "Example fix for line N: ..." lines of a TYPE_ERROR refusal: the error's line is read from the code the
  * request sent for its file, else from the file on disk; TS2307's nearest path from the project's code files.
  * @param {string} root @param {unknown} detail @param {any} req
@@ -293,6 +280,19 @@ function projectCodeFiles(root) {
   return out;
 }
 
+/**
+ * #885: a refusal as every caller returns it: the planner's `sentence` stays, `text` is what a builder reads (wrong,
+ * rule, choices or a correct call, how to apply) and `hint` its parts (hints.mjs shapeRefusal).
+ * @param {any} r The refusal {ok: false, code, sentence, fixes?}.
+ * @param {any} [req] The request it answers ({tool, args, fix?}).
+ * @param {any[]} [fixes] The choices (default: r.fixes).
+ * @param {string[]} [tools] The tool names (UNKNOWN_TOOL's nearest).
+ * @param {string[]} [context] Lines about the refusal itself (#886).
+ * @param {string} [example] A correct call that beats the tool's own example (#887).
+ * @param {((call: any, near?: string|null) => any) | null} [resolve] (#916) Makes the correct call's paths real (or drops it).
+ * @param {{exampleFixes?: string[], pack?: string}} [extra] (#932) Example-fix lines and the targeted file's context pack.
+ * @returns {any}
+ */
 export function shapedRefusal(r, req, fixes, tools, context, example, resolve, extra = {}) {
   const list = fixes ?? (Array.isArray(r.fixes) ? r.fixes : []);
   const { text, ...hint } = shapeRefusal({ code: r.code, sentence: r.sentence, tool: req?.tool, args: req?.args, why: req?.why, fix: req?.fix, answer: req?.answer, option: req?.option, fixes: list, tools, context, example, resolve, ...extra });
