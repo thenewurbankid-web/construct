@@ -1,0 +1,53 @@
+{
+ "$comment": "Per-model builder profile (#938): only the system-prompt variant (current|clean, prompt-variants.mjs), the per-turn tool set (full|subset, turn-tools.mjs) and maxTools. Call format is always Ollama native tool calls. A choice moves off current/full only on a measured win (tool-harness-probe.mjs; measured.table is rewritten by it).",
+ "models": {
+  "qwen2.5-coder:7b": {
+   "prompt": "current",
+   "toolSet": "full",
+   "maxTools": 5,
+   "note": "0% native tool_calls in every configuration (writes the call as JSON text without <tool_call> tags); cannot drive the native-only builder.",
+   "measured": {
+    "file": "bench/lending/results/tool-harness-r1.json",
+    "at": "2026-10-13",
+    "table": [
+     "current/full: native 0%, right 0%, valid 0%, 1 calls/step, text named a right tool 60%, median 1842 ms",
+     "clean/full: native 0%, right 0%, valid 0%, 1 calls/step, text named a right tool 50%, median 1839 ms",
+     "clean/subset: native 0%, right 0%, valid 0%, 1 calls/step, text named a right tool 50%, median 1529 ms",
+     "layered: native 0%, right 0%, valid 0%, 2.8 calls/step, L1 chose right 50%, median 2544 ms"
+    ]
+   }
+  },
+  "qwen2.5-coder:1.5b": {
+   "prompt": "current",
+   "toolSet": "full",
+   "maxTools": 3,
+   "note": "0% native tool_calls in every configuration; cannot drive the native-only builder.",
+   "measured": {
+    "file": "bench/lending/results/tool-harness-r1.json",
+    "at": "2026-10-13",
+    "table": [
+     "current/full: native 0%, right 0%, valid 0%, 1 calls/step, text named a right tool 40%, median 387 ms",
+     "clean/full: native 0%, right 0%, valid 0%, 1 calls/step, text named a right tool 40%, median 379 ms",
+     "clean/subset: native 0%, right 0%, valid 0%, 1 calls/step, text named a right tool 40%, median 366 ms",
+     "layered: native 0%, right 0%, valid 0%, 3 calls/step, L1 chose right 60%, median 914 ms"
+    ]
+   }
+  },
+  "qwen3:4b": {
+   "prompt": "current",
+   "toolSet": "full",
+   "maxTools": 5,
+   "note": "100% native tool_calls; clean prompt ties current on right tool (80%); the subset (60%) and layered (20%) lose.",
+   "measured": {
+    "file": "bench/lending/results/tool-harness-r1.json",
+    "at": "2026-10-13",
+    "table": [
+     "current/full: native 100%, right 80%, valid 100%, 1 calls/step, text named a right tool 0%, median 17767 ms",
+     "clean/full: native 100%, right 80%, valid 100%, 1 calls/step, text named a right tool 0%, median 15727 ms",
+     "clean/subset: native 100%, right 60%, valid 100%, 1 calls/step, text named a right tool 0%, median 27491 ms",
+     "layered: native 50%, right 20%, valid 50%, 2.2 calls/step, L1 chose right 30%, median 41686 ms"
+    ]
+   }
+  }
+ }
+}
