@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import * as lsp from '../index.mjs';
 import { clearHostCache } from '../host.mjs';
 
-const R = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixture');
+const R = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures');
 const capped = (o) => { const s = JSON.stringify(o); assert.ok(lsp.approxTokens(s) <= lsp.MAX_TOKENS + 200, `over budget: ${s.length}`); };
 
 test('diagnostics: one line per error, syntactic + semantic, unsaved text via overlay', () => {
