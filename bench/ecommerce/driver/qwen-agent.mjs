@@ -37,7 +37,8 @@
 // its count, plan_status done steps become a count, old large answers their first sentence line, then the oldest
 // exchanges go while the estimate is over num_ctx minus --answer-reserve (2048)). The system prompt and the first
 // message are never cut. Each turn row in turns.jsonl carries context: {before, after, budget, collapsed, summarised,
-// dropped} (estimated tokens).
+// dropped} (estimated tokens). --context-representation code|english (default code; LINE_CONTEXT_REPRESENTATION) picks
+// how the context pack shows code blocks (contextPack.mjs renderCodeBlock; english falls back to code until plugged in).
 import fs from 'node:fs';
 import crypto from 'node:crypto';
 import path from 'node:path';
@@ -61,6 +62,7 @@ export function flags(argv) {
     else if (k === '--num-ctx') { o.numCtx = Number(v); i += 1; } else if (k === '--ollama') { o.ollama = v; i += 1; } else if (k === '--log') { o.log = v; i += 1; }
     else if (k === '--seed') { o.seed = Number(v); i += 1; } else if (k === '--max-cycle-repeats') { o.maxCycleRepeats = Number(v); i += 1; } else if (k === '--cycle-window') { o.cycleWindow = Number(v); i += 1; } else if (k === '--seed-plan') o.seedPlan = true;
     else if (k === '--bench') { o.bench = benchOf(v); i += 1; } else if (k === '--answer-reserve') { o.answerReserve = Number(v); i += 1; }
+    else if (k === '--context-representation') { o.contextRepresentation = v; i += 1; }
   }
   if (!o.builder) o.builder = o.arm === 'plain' ? 'qwen-7b-plain' : o.arm === 'path' ? 'qwen-7b-path' : 'qwen-7b';
   return o;
@@ -306,6 +308,8 @@ async function main() {
  */
 export async function runAgent(o, { resultsDir = path.join(o.bench ?? bench, 'results') } = {}) {
   const dir = o.bench ?? bench;
+  // #932: the plan service reads it when it renders a context pack (contextPack.mjs representationOf).
+  if (o.contextRepresentation) process.env.LINE_CONTEXT_REPRESENTATION = o.contextRepresentation;
   const runDir = path.dirname(path.resolve(o.project));
   const logDir = path.join(runDir, 'logs');
   fs.mkdirSync(logDir, { recursive: true });

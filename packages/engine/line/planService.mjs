@@ -43,6 +43,7 @@ import { rankLines, capFor } from './contextScore.mjs';
 import { openWork, workText, itemText, slotOf, pointSlot } from './openWork.mjs';
 import { createRepeatGuard, guardFixes, escalate } from './repeatGuard.mjs';
 import { exampleFixLines } from './exampleFix.mjs';
+import { contextPack, packTarget, packText, packLayout } from './contextPack.mjs';
 
 /** One session per open project, for now. */
 export const SESSION_ID = 'ses-cockpit';
@@ -180,6 +181,8 @@ function slotRefusal(root, req, failed) {
 
 /** The codes a pending step cannot explain: the request itself is malformed. */
 const MALFORMED = new Set(['BAD_ARGS', 'BAD_JSON', 'UNKNOWN_TOOL', 'PLAN_INVALID', 'UNKNOWN_FIX', 'NOTHING_TO_FIX', 'NOTHING_TO_LEAVE', 'NOT_RETRYABLE', 'STOPPED']);
+/** #932: refusals that are not about a file's content get no context pack. */
+const NO_PACK = new Set([...MALFORMED, 'DUPLICATE_STEP', 'NEEDS_YOU', 'NEEDS_FIX']);
 
 /**
  * #915: the run-next choice: a fix whose step is the plan tool that runs the next approved step ({"fix":"f1"} runs it).
@@ -424,9 +427,36 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
     const waiting = waitingOf(plan);
     // Each run-next that ends with this item still first counts once; the first time is not a repeat.
     const repeat = w.first ? Math.max(0, Number(seenNow()[workKey(w.first)] ?? 0) - 1) : 0;
-    const text = [waiting?.text, workText(w, { cap: capFor(repeat) })].filter(Boolean).join('\n');
+    const text = [waiting?.text, workText(w, { cap: capFor(repeat) }), workPack(w)].filter(Boolean).join('\n');
     return { ...w, cap: capFor(repeat), ...(waiting ? { waiting } : {}), text };
   }
+  /** #932: the target spec, when the service was given one. */
+  const specNow = () => { try { return typeof spec === 'function' ? spec() : spec ?? null; } catch { return null; } };
+  /** #932: the context pack text of the file a refused request writes, or null (no file, or a refusal not about it). */
+  const refusalPack = (code, req) => {
+    if (NO_PACK.has(String(code))) return null;
+    try {
+      const file = packTarget(req, packLayout(root));
+      if (!file) return null;
+      return packText(contextPack(root, file, { code: typeof req?.args?.code === 'string' ? req.args.code : undefined, libraryId: req?.args?.libraryId, spec: specNow() }), { root });
+    } catch { return null; }
+  };
+  /**
+   * #932: the context pack of the first of the current feature's shown open items that targets a file (its file, its
+   * setCode's file, or the page its baseOn creates), or null.
+   */
+  const workPack = (w) => {
+    const f = w.features.find((x) => x.name === w.current);
+    for (const it of (f?.open ?? []).slice(0, 3)) {
+      const step = /** @type {any} */ (it).step;
+      const file = (step ? packTarget(step, packLayout(root)) : null) ?? (typeof it.file === 'string' && /\.(tsx?|jsx?)$/.test(it.file) ? it.file : null);
+      if (!file) continue;
+      try {
+        return packText(contextPack(root, file, { code: step?.args?.code, libraryId: step?.args?.libraryId, spec: specNow() }), { root, codeInStep: step?.tool === 'line.setCode' && typeof step.args?.code === 'string' });
+      } catch { return null; }
+    }
+    return null;
+  };
   /** #916: the example resolver for `plan` (files its pending steps create count as real). */
   const examplesFor = (plan) => { try { return createExampleResolver(root, { planned: plannedFiles(plan) }); } catch { return null; } };
   const workKey = (it) => `work|${it.kind}|${it.feature}|${it.file ?? it.point?.id ?? ''}`;
@@ -653,7 +683,9 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
     const hinted = withHints(fixes, { code: r.code, asked }, ctx);
     // #932: a TYPE_ERROR shows the offending line corrected (exampleFix.mjs), when a rule knows its TS code.
     const fixLines = r.code === 'TYPE_ERROR' ? typeErrorExamples(root, r.detail, req) : [];
-    const out0 = shapedRefusal(r, req, hinted.fixes, tools, hinted.context, undefined, examplesFor(plan)?.call ?? null, { exampleFixes: fixLines });
+    // #932: a refusal of a step that writes a file carries that file's context pack (contextPack.mjs).
+    const pack = refusalPack(r.code, req);
+    const out0 = shapedRefusal(r, req, hinted.fixes, tools, hinted.context, undefined, examplesFor(plan)?.call ?? null, { exampleFixes: fixLines, ...(pack ? { pack } : {}) });
     // #915: a refusal a pending step explains says so first.
     const out = lead ? { ...out0, text: `${lead}\n${out0.text}` } : out0;
     return { ...out, hintContext: { via, cap: ctx.cap, repeat, attempt: ctx.attempt, candidates: ctx.candidates, kept: ctx.lines.map((l) => ({ text: l.text, score: l.score, ref: l.ref })) } };
