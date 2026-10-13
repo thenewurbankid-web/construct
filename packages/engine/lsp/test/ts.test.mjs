@@ -35,6 +35,13 @@ test('fixes: combined missing-import fix plus a single-candidate spelling fix, a
   assert.match(after, /book\.pages :/);
   assert.equal(fs.readFileSync(path.join(R, 'src/app/broken.ts'), 'utf8'), before, 'nothing is written');
   assert.equal(lsp.diagnostics(R, 'src/app/broken.ts', { text: after }).count, 0);
+  // an import path that does not resolve is re-pointed when exactly one project file ends with it
+  const wrong = before.replace("'../lib/books'", "'src/lib/books'");
+  const p = lsp.fixes(R, 'src/app/broken.ts', { text: wrong });
+  assert.equal(p.applied[0].fix, 'fixImportPath');
+  assert.match(lsp.applyFixEdits(wrong, p.edits), /from '\.\.\/lib\/books'/);
+  assert.deepEqual(p.unfixed, []);
+  assert.deepEqual(lsp.diffEdits('a\nb\nc\n', 'a\nB\nc\n'), [{ start: 2, end: 4, newText: 'B\n' }]);
 });
 
 test('completionsAt: members, import names and import paths, with an Ollama format enum', () => {

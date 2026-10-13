@@ -6,7 +6,7 @@
 //   node bench/isolation/run.mjs --run r1 --arms A --tasks t01-book-by-author     # a slice
 //   node bench/isolation/run.mjs --selftest      # no model: start files must fail, reference/ must pass
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
-import { dirname, join, relative } from 'node:path';
+import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
@@ -24,7 +24,9 @@ const TSC = require.resolve('typescript/bin/tsc');
 
 const args = process.argv.slice(2);
 const opt = (name, dflt) => { const i = args.indexOf(`--${name}`); return i >= 0 ? args[i + 1] : dflt; };
-const runName = opt('run', 'r1');
+let runName = opt('run', 'r1');
+/** Another harness (lsp-run.mjs) that imports this module names its own run. */
+export function setRunName(name) { runName = name; }
 const selftest = args.includes('--selftest');
 
 const taskIds = (opt('tasks') ?? readdirSync(TASKS).filter((d) => /^t\d\d-/.test(d)).sort().join(',')).split(',');
@@ -112,6 +114,8 @@ function workerContext(arm, material, build) {
 async function codeRound(arm, ctx, brief, file, final, label) {
   return sample({
     n: arm.n, seedBase: arm.seedBase,
+    // #943: arm.gate (lsp-run.mjs) is the sampler's third filter, after tsc and the task check
+    ...(arm.gate && ctx.gate ? { gate: (j) => ctx.gate(j.body, brief.name, final) } : {}),
     generate: (seed) => ctx.call('coder', arm.coder, config.prompts.functionCoderSystem, brief.brief, { seed }),
     judge: (reply, i) => {
       const t0 = Date.now();
@@ -170,18 +174,19 @@ const strategies = {
   // H: deterministic blocks, no driver model. briefBuilder -> 1.5b (sampler, N up to 5) -> spliceApplier.
   async blocks(arm, ctx) {
     const task = ctx.material.task;
-    const { prelude, briefs } = buildBriefs({ task, file: ctx.material.target.body, read: ctx.read });
+    const { prelude, briefs } = (ctx.buildBriefs ?? buildBriefs)({ task, file: ctx.material.target.body, read: ctx.read });
     let file = applyPrelude(ctx.material.target.body, prelude, task.target);
-    let res; let drawn = 0;
+    let res; let drawn = 0; const gateLog = [];
     for (const [k, b] of briefs.entries()) {
       res = await codeRound(arm, ctx, b, file, k === briefs.length - 1, `f${k + 1}`);
       drawn += res.samples.length;
+      gateLog.push(...res.samples.map((x) => ({ fn: b.name, i: x.i, prePass: x.prePass ?? x.pass, gate: x.gate ?? null, ms: x.ms })));
       if (!res.pass) break;
       file = res.picked.result.body;
     }
     const ev = res.picked.result.ev;
     return { ...ev, attempts: drawn, sampleClasses: res.samples.map((x) => x.failClass ?? 'pass'),
-      ...(briefs.length === 1 ? { nStats: res.stats(arm.reportN ?? [arm.n], 0) } : {}), briefTokens: briefs.map((b) => b.approxTokens) };
+      ...(briefs.length === 1 ? { nStats: res.stats(arm.reportN ?? [arm.n], 0) } : {}), briefTokens: briefs.map((b) => b.approxTokens), gateLog, finalBody: file };
   },
 
   // I: a small driver (qwen3:4b) calling native Ollama tools over the same blocks. Expected tool order:
@@ -356,6 +361,7 @@ async function runArm(armKey, task) {
     coderPromptMax: Math.max(0, ...calls.filter((c) => c.role === 'coder').map((c) => c.promptApprox)),
     ...(ev.nStats ? { nStats: ev.nStats } : {}), ...(ev.sampleClasses ? { sampleClasses: ev.sampleClasses } : {}),
     ...(ev.toolLog ? { toolLog: ev.toolLog } : {}), ...(ev.briefTokens ? { briefTokens: ev.briefTokens } : {}),
+    ...(ev.lsp ? { lsp: ev.lsp } : {}), ...(ev.gateLog && arm.gate ? { gateLog: ev.gateLog } : {}),
     tscErrors: ev.tsc?.errors?.slice(0, 8) ?? null, checkFailures: ev.check?.failures ?? null,
     raw: relative(HERE, rawDir),
   };
@@ -425,7 +431,9 @@ function writeReport(rows, armKeys) {
 }
 
 // ---------- main ----------
-if (selftest) runSelftest();
+export { makeWorkspace, readWs, evaluate, errorsText, chat, strategies, codeRound, runArm, writeReport, tasks, runTsc, HERE, RESULTS };
+const isMain = process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1]);
+if (!isMain) { /* imported: the caller drives */ } else if (selftest) runSelftest();
 else {
   const armKeys = (opt('arms') ?? config.runs[runName]?.join(',') ?? '').split(',').filter(Boolean);
   if (!armKeys.length) { console.error(`no arms for run ${runName}`); process.exit(2); }

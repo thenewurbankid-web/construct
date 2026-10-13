@@ -9,13 +9,18 @@
 // Qwen2.5-Coder's published sampling for the 1.5b (generation_config.json).
 export const QWEN_SAMPLING = { temperature: 0.7, top_p: 0.8, top_k: 20, repeat_penalty: 1.1 };
 
-export async function sample({ n, seedBase = 1, generate, judge }) {
+// #943: `gate(judgeResult, i) -> { pass, failed, ... }` is an optional third filter, run only on a sample the judge
+// passed; the sample then passes only when the gate passes too (`prePass` keeps the judge's verdict, `gate` the gate's).
+export async function sample({ n, seedBase = 1, generate, judge, gate = null }) {
   const samples = [];
   let picked = null;
   for (let i = 0; i < n; i++) {
     const g = await generate(seedBase + i, i);
     const j = await judge(g.reply, i);
-    const s = { i, pass: Boolean(j.pass), tscOk: Boolean(j.tscOk), failClass: j.failClass ?? null, ms: (g.ms ?? 0) + (j.ms ?? 0), result: j };
+    let gv = null; let gms = 0;
+    if (gate && j.pass) { const t0 = Date.now(); gv = await gate(j, i); gms = Date.now() - t0; }
+    const pass = Boolean(j.pass) && (!gv || Boolean(gv.pass));
+    const s = { i, pass, prePass: Boolean(j.pass), gate: gv, tscOk: Boolean(j.tscOk), failClass: pass ? null : (j.pass ? 'gate' : j.failClass ?? null), ms: (g.ms ?? 0) + (j.ms ?? 0) + gms, result: j };
     samples.push(s);
     if (s.pass) { picked = s; break; }
   }

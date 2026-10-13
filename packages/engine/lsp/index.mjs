@@ -21,7 +21,7 @@ export const MAX_LINES = 40;
 export const MAX_TOKENS = 1500;
 export const approxTokens = (s) => Math.ceil(s.length / 3.2);
 const MAX_ITEMS = 30;
-const FORMAT = { indentSize: 2, tabSize: 2, convertTabsToSpaces: true, newLineCharacter: '\n', semicolons: ts.SemicolonPreference.Insert };
+const FORMAT = { ...ts.getDefaultFormatCodeSettings('\n'), indentSize: 2, tabSize: 2, convertTabsToSpaces: true, newLineCharacter: '\n', semicolons: ts.SemicolonPreference.Insert };
 const PREFS = { quotePreference: 'single', importModuleSpecifierEnding: 'minimal', includeCompletionsForModuleExports: true, includeCompletionsWithInsertText: true, allowIncompleteCompletions: false };
 
 /** Keep at most MAX_LINES entries and about MAX_TOKENS tokens of JSON; the rest is counted, not sent. */
@@ -114,22 +114,58 @@ const SINGLE_FIX = new Set(['spelling', 'addMissingMember', 'fixMissingMember', 
 const SINGLE_CODES = [2551, 2552, 2724, 2561, 2339, 2741, 2739];
 const DID_YOU_MEAN = [2551, 2552, 2724, 2561];
 
-/** Map an offset in text1 (original + edits1 applied) back to the original; null when it falls in an inserted span. */
-function backMap(edits1, p) {
-  let delta = 0;
-  for (const e of [...edits1].sort((a, b) => a.start - b.start)) {
-    const ns = e.start + delta; const ne = ns + e.newText.length;
-    if (p < ns) return p - delta;
-    if (p <= ne && !(p === ns && e.newText.length === 0)) return p <= ns ? p - delta : null;
-    delta += e.newText.length - (e.end - e.start);
-  }
-  return p - delta;
-}
 const applyText = (text, edits) => [...edits].sort((a, b) => b.start - a.start).reduce((t, e) => t.slice(0, e.start) + e.newText + t.slice(e.end), text);
 
+/** Minimal line-level edits that turn `a` into `b` (LCS over lines; files here are small). */
+export function diffEdits(a, b) {
+  if (a === b) return [];
+  const A = a.split(/(?<=\n)/); const B = b.split(/(?<=\n)/);
+  const n = A.length; const m = B.length;
+  const L = Array.from({ length: n + 1 }, () => new Uint32Array(m + 1));
+  for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--) L[i][j] = A[i] === B[j] ? L[i + 1][j + 1] + 1 : Math.max(L[i + 1][j], L[i][j + 1]);
+  const edits = []; let i = 0; let j = 0; let off = 0; let cur = null;
+  const flush = () => { if (cur) { edits.push(cur); cur = null; } };
+  while (i < n || j < m) {
+    if (i < n && j < m && A[i] === B[j]) { flush(); off += A[i].length; i++; j++; } else if (j < m && (i >= n || L[i][j + 1] >= L[i + 1][j])) { cur ??= { start: off, end: off, newText: '' }; cur.newText += B[j]; j++; } else { cur ??= { start: off, end: off, newText: '' }; cur.end += A[i].length; off += A[i].length; i++; }
+  }
+  flush();
+  return edits;
+}
+
+const errorCount = (c, text) => withOverlay(c.entry, c.abs, text, () => c.svc.getSemanticDiagnostics(c.abs).length + c.svc.getSyntacticDiagnostics(c.abs).length);
+const posixPath = (p) => p.split(path.sep).join('/');
+
 /**
- * Import fixes (getCombinedCodeFix 'fixMissingImport') plus safe single-candidate fixes (spelling, add missing member)
- * at each remaining error. Returns edits against the ORIGINAL text, not applied; `other` holds edits in other files.
+ * Round 0: an import whose module does not resolve (TS2307) is re-pointed when exactly one project file ends with the
+ * specifier's path (`library/components/Button` -> `../../../library/components/Button`); otherwise it is left.
+ */
+function importPathFixes(c, text) {
+  const sf = ts.createSourceFile(c.abs, text, ts.ScriptTarget.Latest, true, /\.tsx$/.test(c.abs) ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
+  const bad = new Set(withOverlay(c.entry, c.abs, text, () => c.svc.getSemanticDiagnostics(c.abs)).filter((d) => d.code === 2307 && d.start != null).map((d) => d.start));
+  const edits = []; const applied = [];
+  const tails = ['', '.ts', '.tsx', '.js', '.jsx', '/index.ts', '/index.tsx'];
+  for (const st of sf.statements) {
+    if (!ts.isImportDeclaration(st) || !ts.isStringLiteral(st.moduleSpecifier)) continue;
+    const ms = st.moduleSpecifier;
+    if (!bad.has(ms.getStart(sf))) continue;
+    const spec = ms.text.replace(/^(\.\.?\/)+/, '').replace(/^[@~]\//, '');
+    const code = c.proj.files.filter((f) => f !== c.abs && tails.some((t) => posixPath(f).endsWith(`/${spec}${t}`)));
+    const json = code.length ? [] : [path.join(c.r, spec)].filter((f) => /\.json$/.test(f) && fs.existsSync(f));
+    const all = [...new Set([...code, ...json])];
+    if (all.length !== 1) continue;
+    let rel = posixPath(path.relative(path.dirname(c.abs), all[0])).replace(/\.(tsx?|jsx?)$/, '').replace(/\/index$/, '');
+    if (!rel.startsWith('.')) rel = `./${rel}`;
+    edits.push({ start: ms.getStart(sf) + 1, end: ms.getEnd() - 1, newText: rel });
+    applied.push({ fix: 'fixImportPath', at: lineCol(text, ms.getStart(sf)).line, desc: `${ms.text} -> ${rel}` });
+  }
+  return { edits, applied };
+}
+
+/**
+ * Deterministic repairs, in rounds on the file's text: (0) unresolved import paths with exactly one matching project
+ * file, (1) every missing import in one combined fix (getCombinedCodeFix 'fixMissingImport'), (2) a single-candidate
+ * fix (spelling, add missing member) at a remaining error, one at a time, each kept only when the error count drops.
+ * Returns line-level edits against the ORIGINAL text, not applied; `other` holds edits another file would need.
  */
 export function fixes(root, file, o = {}) {
   return guard(() => {
@@ -137,35 +173,40 @@ export function fixes(root, file, o = {}) {
     const t0 = Date.now();
     const text0 = read(c, o.text);
     const toEdits = (changes) => changes.flatMap((ch) => ch.textChanges.map((t) => ({ file: path.resolve(ch.fileName), start: t.span.start, end: t.span.start + t.span.length, newText: t.newText })));
-    // round 1: every missing import in the file, in one combined fix
-    const r1 = withOverlay(c.entry, c.abs, text0, () => toEdits(c.svc.getCombinedCodeFix({ type: 'file', fileName: c.abs }, 'fixMissingImport', FORMAT, PREFS).changes));
+    const applied = []; const other = [];
+    const p0 = importPathFixes(c, text0);
+    applied.push(...p0.applied);
+    const textA = applyText(text0, p0.edits);
+    const r1 = withOverlay(c.entry, c.abs, textA, () => toEdits(c.svc.getCombinedCodeFix({ type: 'file', fileName: c.abs }, 'fixMissingImport', FORMAT, PREFS).changes));
     const own1 = r1.filter((e) => e.file === c.abs);
-    const text1 = applyText(text0, own1);
-    // round 2: single-candidate fixes on what is left
-    const own2 = []; const other = r1.filter((e) => e.file !== c.abs).map((e) => ({ ...e, file: c.rel(e.file), fix: 'fixMissingImport' }));
-    const applied = own1.length ? [{ fix: 'fixMissingImport', edits: own1.length }] : [];
-    withOverlay(c.entry, c.abs, text1, () => {
-      for (const d of c.svc.getSemanticDiagnostics(c.abs)) {
-        if (!SINGLE_CODES.includes(d.code) || d.start == null) continue;
-        let cands = c.svc.getCodeFixesAtPosition(c.abs, d.start, d.start + (d.length ?? 0), [d.code], FORMAT, PREFS).filter((f) => SINGLE_FIX.has(f.fixName));
-        if (DID_YOU_MEAN.includes(d.code)) cands = cands.filter((f) => f.fixName === 'spelling'); // TS's own suggestion wins over declaring a new member
-        if (cands.length !== 1) continue; // ambiguous: left for the model
-        const es = toEdits(cands[0].changes);
-        const mine = []; let ok = true;
-        for (const e of es) {
-          if (e.file !== c.abs) { other.push({ ...e, file: c.rel(e.file), fix: cands[0].fixName }); continue; }
-          const s = backMap(own1, e.start); const en = backMap(own1, e.end);
-          if (s == null || en == null || [...own1, ...own2].some((x) => x.start < en && s < x.end)) { ok = false; break; }
-          mine.push({ file: e.file, start: s, end: en, newText: e.newText });
+    other.push(...r1.filter((e) => e.file !== c.abs).map((e) => ({ ...e, file: c.rel(e.file), fix: 'fixMissingImport' })));
+    if (own1.length) applied.push({ fix: 'fixMissingImport', edits: own1.length });
+    let text = applyText(textA, own1);
+    const tried = new Set();
+    for (let round = 0; round < 8; round++) {
+      const before = errorCount(c, text);
+      let next = null;
+      withOverlay(c.entry, c.abs, text, () => {
+        for (const d of c.svc.getSemanticDiagnostics(c.abs)) {
+          if (next || !SINGLE_CODES.includes(d.code) || d.start == null) continue;
+          let cands = c.svc.getCodeFixesAtPosition(c.abs, d.start, d.start + (d.length ?? 0), [d.code], FORMAT, PREFS).filter((f) => SINGLE_FIX.has(f.fixName));
+          if (DID_YOU_MEAN.includes(d.code)) cands = cands.filter((f) => f.fixName === 'spelling'); // TS's own suggestion wins over declaring a new member
+          if (cands.length !== 1) continue; // ambiguous: left for the model
+          const es = toEdits(cands[0].changes);
+          const cand = applyText(text, es.filter((e) => e.file === c.abs));
+          if (tried.has(cand)) continue;
+          tried.add(cand);
+          next = { cand, fix: cands[0], d, others: es.filter((e) => e.file !== c.abs) };
         }
-        if (!ok) continue;
-        own2.push(...mine);
-        applied.push({ fix: cands[0].fixName, at: lineCol(text1, d.start).line, desc: cands[0].description.slice(0, 80) });
-      }
-    });
-    const edits = [...own1, ...own2].sort((a, b) => a.start - b.start).map((e) => ({ start: e.start, end: e.end, newText: e.newText }));
-    const fixed = applyText(text0, edits);
-    const left = withOverlay(c.entry, c.abs, fixed, () => diagLines(c, c.abs, fixed)).map((l) => l.text);
+      });
+      if (!next) break;
+      if (errorCount(c, next.cand) >= before) continue; // a fix that does not reduce the errors is not safe: skipped
+      text = next.cand;
+      other.push(...next.others.map((e) => ({ ...e, file: c.rel(e.file), fix: next.fix.fixName })));
+      applied.push({ fix: next.fix.fixName, at: lineCol(text, next.d.start).line, desc: next.fix.description.slice(0, 80) });
+    }
+    const edits = diffEdits(text0, text);
+    const left = withOverlay(c.entry, c.abs, text, () => diagLines(c, c.abs, text)).map((l) => l.text);
     const { kept, dropped } = capList(left, (s) => s);
     return { ok: true, file: c.rel(c.abs), edits, other, applied, unfixed: kept, ...(dropped ? { moreUnfixed: dropped } : {}), ms: Date.now() - t0 };
   });
