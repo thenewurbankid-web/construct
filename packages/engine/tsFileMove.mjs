@@ -22,6 +22,23 @@ import { ts, MAX_FILES, MAX_CACHED, SOURCE_EXT, inside, openProject, clearHostCa
 // The contained, cached language-service host lives in lsp/host.mjs (#943), shared with the Line LSP.
 export { MAX_FILES, MAX_CACHED };
 
+/**
+ * The same contained, cached language service planFileMove uses, for other read-only analyses (#941: the isolation
+ * harness's importFixer asks it for code fixes). `readRoots` are extra folders the host may read, e.g. a node_modules
+ * above the project so `react` resolves; nothing is ever written. Callers apply any edits themselves.
+ * @returns {{ok:true, service:import('typescript').LanguageService, files:string[], options:object} | {ok:false, reason:string}}
+ */
+export function projectLanguageService(root, { readRoots = [] } = {}) {
+  try {
+    // #943: the shared host (lsp/host.mjs), readRoots as its read-only extraRoots
+    const proj = openProject(path.resolve(root), { extraRoots: readRoots.map((x) => path.resolve(x)) });
+    if (!proj.ok) return { ok: false, reason: proj.reason };
+    return { ok: true, service: proj.service, files: proj.entry.files, options: proj.entry.options };
+  } catch (e) {
+    return { ok: false, reason: `TypeScript could not analyse the project (${String(e?.message || e).slice(0, 120)})` };
+  }
+}
+
 /** Drop every cached service (tests, or after the project changed on disk in a way mtimes cannot show). */
 export function clearMoveCache() { clearHostCache(); }
 

@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 # harness-drive.sh (#941): plugs a whole coding harness in as the driver, through MCP only (drive-mcp.mjs).
 # For each task x arm it runs one fresh headless session whose ONLY tools are two isolation MCP tools:
-#   CD  harness drives qwen2.5-coder:1.5b: task_show + task_try        (the harness never sees the file)
+#   CD      harness drives qwen2.5-coder:1.5b: task_show + task_try   (its brief is a note on briefBuilder's brief; never sees the file)
+#   CD-raw  same tools, task_try raw: true                         (its brief is the whole 1.5b prompt)
 #   CW  harness writes the code itself:    task_show_code + task_check (no model)
 # No shell, no file read/write tools. Run from the repo root, NOT under heavy.sh: each task_try takes the heavy
 # slot itself (it may wait for another Ollama job; that is expected).
 #
-#   bench/isolation/harness-drive.sh --harness claude   --run cd1 [--tasks t03-...,t06-...] [--arms CD,CW]
+#   bench/isolation/harness-drive.sh --harness claude   --run cd1 [--tasks t03-...,t06-...] [--arms CD,CD-raw,CW]
 #   bench/isolation/harness-drive.sh --harness opencode --run cd1 [--model ollama/qwen3:4b]
 #   node bench/isolation/drive.mjs summary --run cd1
 #
@@ -16,7 +17,7 @@
 #      MCP_TOOL_TIMEOUT (ms, default 3900000: task_try can wait for the heavy slot).
 set -euo pipefail
 
-HARNESS=claude RUN= MODEL=${OPENCODE_MODEL:-} ARMS=CD,CW
+HARNESS=claude RUN= MODEL=${OPENCODE_MODEL:-} ARMS=CD,CD-raw,CW
 TASKS=t03-book-availability,t06-picks-store,t11-browse-sort-title,t12-browse-genre-filter
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -25,7 +26,7 @@ while [ $# -gt 0 ]; do
     --tasks) TASKS=$2; shift 2 ;;
     --arms) ARMS=$2; shift 2 ;;
     --model) MODEL=$2; shift 2 ;;
-    *) echo "usage: $0 --harness claude|opencode --run <id> [--tasks a,b] [--arms CD,CW] [--model m]" >&2; exit 2 ;;
+    *) echo "usage: $0 --harness claude|opencode --run <id> [--tasks a,b] [--arms CD,CD-raw,CW] [--model m]" >&2; exit 2 ;;
   esac
 done
 [[ "$RUN" =~ ^[A-Za-z0-9_.-]+$ ]] || { echo "--run <id> is required" >&2; exit 2; }
@@ -39,7 +40,15 @@ SERVER="$ROOT/bench/isolation/drive-mcp.mjs"
 export MCP_TOOL_TIMEOUT=${MCP_TOOL_TIMEOUT:-3900000}
 
 prompt() { # arm task
-  if [ "$1" = CD ]; then
+  if [ "$1" = CD-raw ]; then
+    cat <<EOF
+You are the lead on task $2 and a small coder model writes the code. You have only two tools.
+1. Call task_show with task "$2" to see the spec and the function to write.
+2. Write the brief for the coder. The brief you write is the WHOLE prompt the coder sees: it gets nothing else. So include the exact function name, its exact signature, the types it uses, the spec's exact wording for every string to show, and a short code example. Ask it to reply with only that function in one fenced code block, no imports. Call task_try with task "$2", that brief and raw: true.
+3. If it says FAIL, rewrite the brief to fix the reported error and call task_try again with raw: true. At most 2 retries.
+Never try to read source files. Stop at PASS or after 3 task_try calls, and end with one line: PASS or FAIL.
+EOF
+  elif [ "$1" = CD ]; then
     cat <<EOF
 You are the lead on task $2 and a small coder model writes the code. You have only two tools.
 1. Call task_show with task "$2" to see the spec and the function to write.
@@ -57,7 +66,7 @@ Stop at PASS or after 3 task_check calls, and end with one line: PASS or FAIL.
 EOF
   fi
 }
-tools_for() { [ "$1" = CD ] && echo "task_show task_try" || echo "task_show_code task_check"; }
+tools_for() { [ "$1" = CW ] && echo "task_show_code task_check" || echo "task_show task_try"; }
 
 IFS=, read -r -a TASK_LIST <<<"$TASKS"
 IFS=, read -r -a ARM_LIST <<<"$ARMS"

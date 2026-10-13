@@ -21,7 +21,7 @@ const DRIVE = join(HERE, 'drive.mjs');
 const LOG_DIR = join(HERE, 'results', 'claude-drive');
 const TASK = z.string().regex(/^t\d\d-[\w-]+$/).describe('The task id, for example t03-book-availability.');
 
-function runDrive(args, env) {
+export function runDrive(args, env) {
   return new Promise((resolve) => {
     const p = spawn(process.execPath, [DRIVE, ...args], { cwd: join(HERE, '../..'), env: { ...process.env, ...env }, stdio: ['ignore', 'pipe', 'pipe'] });
     let out = ''; let err = '';
@@ -41,22 +41,23 @@ function saveInput(sub, run, harness, task, ext, text) {
   return path;
 }
 
-export function createDriveMcpServer({ run = process.env.DRIVE_RUN || 'default', harness = process.env.DRIVE_HARNESS || 'mcp' } = {}) {
+export function createDriveMcpServer({ run = process.env.DRIVE_RUN || 'default', harness = process.env.DRIVE_HARNESS || 'mcp', exec = runDrive } = {}) {
   if (!/^[\w.-]+$/.test(run) || !/^\w+$/.test(harness)) throw new Error(`bad run "${run}" or harness "${harness}"`);
   const env = { DRIVE_RUN: run, DRIVE_HARNESS: harness };
   const server = new McpServer({ name: 'isolation-drive', version: '0.1.0' });
   const reply = ({ code, text }) => ({ content: [{ type: 'text', text }], ...(code === 0 ? {} : { isError: true }) });
   const tools = [
     ['task_show', 'The task\'s goal and SPEC excerpt plus the facts the harness knows: the function(s) to write, the exact signature, the header already in the file, and the types in scope. Not the file itself.',
-      { task: TASK }, ({ task }) => runDrive(['show', task], env)],
+      { task: TASK }, ({ task }) => exec(['show', task], env)],
     ['task_show_code', 'The task\'s goal and SPEC excerpt plus the complete starting file you will rewrite, and the read-only context files as signatures.',
-      { task: TASK }, ({ task }) => runDrive(['show-code', task], env)],
-    ['task_try', 'Send your brief to the small coder model (qwen2.5-coder:1.5b, up to 5 samples). The harness adds the function\'s signature, types, spec and a worked example; your brief is added as the lead\'s note. The reply is spliced into the file and judged by tsc and the task check. Returns PASS, or FAIL <class> with the first error. Classes: format, fragment, tsc, check, error.',
-      { task: TASK, brief: z.string().min(1).max(8000).describe('Your instructions for the coder: what to change, with the exact strings or code to write.') },
-      ({ task, brief }) => runDrive(['try', task, '--brief', saveInput('briefs', run, harness, task, 'txt', brief), '--run', run], env)],
+      { task: TASK }, ({ task }) => exec(['show-code', task], env)],
+    ['task_try', 'Send your brief to the small coder model (qwen2.5-coder:1.5b, up to 5 samples). By default the harness adds the function\'s signature, types, spec and a worked example, and your brief is added as the lead\'s note. With raw: true your brief is the WHOLE prompt the coder sees. The reply is spliced into the file and judged by tsc and the task check. Returns PASS, or FAIL <class> with the first error. Classes: format, fragment, tsc, check, error.',
+      { task: TASK, brief: z.string().min(1).max(8000).describe('Your instructions for the coder: what to change, with the exact strings or code to write.'),
+        raw: z.boolean().optional().default(false).describe('true: send the brief alone as the whole prompt (same as the CLI\'s --raw). Default false: the brief is a note on the harness\'s own brief.') },
+      ({ task, brief, raw }) => exec(['try', task, '--brief', saveInput('briefs', run, harness, task, 'txt', brief), '--run', run, ...(raw ? ['--raw'] : [])], env)],
     ['task_check', 'Check a complete file you wrote for the task target: tsc plus the task check, no model. Returns PASS, or FAIL <class> with the first error.',
       { task: TASK, content: z.string().min(1).max(60000).describe('The complete new contents of the task\'s target file.') },
-      ({ task, content }) => runDrive(['check', task, '--file', saveInput('written', run, harness, task, 'txt', content), '--run', run], env)],
+      ({ task, content }) => exec(['check', task, '--file', saveInput('written', run, harness, task, 'txt', content), '--run', run], env)],
   ];
   for (const [name, description, shape, fn] of tools) {
     server.registerTool(name, { title: name, description, inputSchema: z.object(shape) }, async (args) => reply(await fn(args)));

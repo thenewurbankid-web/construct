@@ -93,7 +93,7 @@ function serviceFor(key, root, files, options, configMtime, extraRoots) {
       getDefaultLibFileName: (o) => ts.getDefaultLibFilePath(o),
       fileExists: (p) => entry.overlays.has(p) || (readable(p) && ts.sys.fileExists(p)),
       readFile: (p) => entry.overlays.get(p)?.text ?? (readable(p) ? ts.sys.readFile(p) : undefined),
-      directoryExists: (p) => (inside(root, path.resolve(p)) || extraRoots.some((r) => inside(r, path.resolve(p)))) && ts.sys.directoryExists(p),
+      directoryExists: (p) => (inside(root, path.resolve(p)) || extraRoots.some((r) => inside(r, path.resolve(p)) || inside(path.resolve(p), r))) && ts.sys.directoryExists(p),
       getDirectories: (p) => (readable(p) ? ts.sys.getDirectories(p) : []),
       // contained listing (import-path completions); results outside the readable roots are dropped
       readDirectory: (p, ext, exc, inc, depth) => (readable(p) ? ts.sys.readDirectory(p, ext, exc, inc, depth).filter(readable) : []),

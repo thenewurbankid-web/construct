@@ -1,0 +1,29 @@
+// @line-base pages/DetailPage
+// @line-route /books/:id
+import Link from 'next/link';
+import { DetailPage } from '../../../library/pages/DetailPage';
+import books from '../../../library/fixtures/books.json';
+
+type Book = { id: string; title: string; author: string; genre: string; year: number; pages: number; summary: string; available: boolean };
+
+export function BookPage({ params }: { params: { id: string } }) {
+  const { id } = params;
+  const item = (books as Book[]).find((entry) => entry.id === id);
+  const back = <Link href="/">Back to Books</Link>;
+  if (!item) {
+    return <DetailPage title="Book not found" back={back} />;
+  }
+  return (
+    <DetailPage title={item.title} back={back}>
+      <div>
+        <h2>{item.title}</h2>
+        <p>Author: {item.author}</p>
+        <p>Genre: {item.genre}</p>
+        <p>Year: {item.year}</p>
+        <p>Pages: {item.pages}</p>
+        <p>Summary: {item.summary}</p>
+        <p>Available: {item.available ? 'Yes' : 'No'}</p>
+      </div>
+    </DetailPage>
+  );
+}
