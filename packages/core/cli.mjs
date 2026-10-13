@@ -935,7 +935,7 @@ export async function validate(args) {
   // #924: fallow's dead-code and health findings, on by default (`--no-fallow` or `fallow: false` in
   // architecture.yml turns it off). Every FALLOW-* finding is a warning, so `ok` is the enforcers' verdict;
   // a missing binary is one info line on stderr, never a failure and never a change to the JSON report.
-  const fallow = await fallowStage(root, { args });
+  const fallow = await fallowStage(root, { args, constructViolations: enforced.violations });
   if (fallow.notice) console.error(fallow.notice);
   const { ok } = enforced;
   const violations = [...enforced.violations, ...fallow.violations];
