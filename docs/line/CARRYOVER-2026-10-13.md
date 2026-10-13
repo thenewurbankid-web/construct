@@ -13,12 +13,19 @@ agents below report into the previous session. Push to `private` only. Never mod
 - og merges only with `git -C <og-final-1012 worktree> merge --no-ff <ref>` (owner permission rule; no pipe after).
 
 ## State
-- `private/work/2026-09-23` = `private/og/final-2026-10-12` = **3184fe0c** (suite 7059 pass / 0 fail / 52 skip on 3f7f99b3).
-  Merged since ce2c8795: fallow ON by default #924, FUNC-001 complexity #923 (fallow health wired into cognitive),
-  lending plain starter + held-out lending bench #925, path-first proof #921 (types/JSDoc fixed for ratchets),
-  Construct-aware fallow config #926, store generator handlers #927, IMPORT-001/fallow dedupe #928 (CLI + engine),
-  affected-tests pre-merge subset #929 (`node packages/tools/dev/affected-tests.mjs <base> --run`; og still runs
-  the one full suite), fallow as a regular dependency + Node >=22 #930. #923, #924, #926-#930 closed.
+- `private/work/2026-09-23` = `private/og/final-2026-10-12` = **d7d1e14e** (merge wave 2026-10-13, then this doc commit on
+  top; suite on d7d1e14e: 7210 tests, 7152 pass / 0 fail / 52 skip / 6 todo, via heavy.sh). Merged onto 3184fe0c:
+  carry-over docs b816a985, heavy.sh re-entrant #939, finish guard #931 (B), feature modules #935 (E1), coder read
+  tools #937 (E2), seed from the spec #933 (A), builder context #932 (C), research loop #936 (E3), tool harness #938,
+  context probe write-up. #931-#933, #935-#939 closed.
+  Reconciled in follow-up commits: coder `importableFor` reads other features' index via `moduleScope` (bb626736);
+  seed reads module-scoped fixtures, `.value`/index-aware cart import (6e011838); ledger turn ends on the last refusal
+  + fact "No feature has usecases, services or domains yet" (7d9d845b); research imports block uses `importableFor`,
+  its `importableFiles` copy dropped (b38297a0); one ledger per `--research` run via `bridgeLedger` (384112c5);
+  new engine files in subfolders, line-modules 32372/32768 bytes (dd1918e4: `line/harness/toolHarness.mjs`,
+  `line/context/{contextPack,exampleFix,contextScore}.mjs`); knows map flags only a direct import of another
+  feature's file (d7d1e14e). In the harness merge (4464dffe): a native call of a run's tool that the per-turn read
+  selection left out is served and logged as a miss (`read-misses.jsonl`); only an unknown tool gets the nudge.
 - Lending bench r1 (qwen2.5-coder:7b, `bench/lending/RESULTS.md`): **0/24 on every arm** (seed-only, `--seed-plan`,
   `--seed 2`; plain twin failed to build, 58 tsc errors). Owner bar not met: the seed does not generalise.
 - Ecommerce history: r4-s2 1/22, r5 5/22, seed-only 22/22 (tuned to that spec). `bench/ecommerce/results/`.
@@ -33,34 +40,11 @@ agents below report into the previous session. Push to `private` only. Never mod
   instruction, not an example fix.
 - `finish` accepted while 5 approved steps waited (`--seed 2` run).
 
-## In flight / ready (updated 2026-10-13 late; base 3184fe0c / 5201dcb6)
-All verified against git unless marked. og merges each with `git -C <og-final-1012 worktree> merge --no-ff <ref>`.
-| Work | Ref | State |
-|---|---|---|
-| A: seed + open work from the spec (#933) | `private/line/seed-spec-driven` 517879fa | ready |
-| B: finish guard (#931) | `private/line/finish-guard` a8cd0a77 | ready |
-| C: builder context, scratchpad, session log (#932) | `private/line/builder-context` 4fe78129 | ready |
-| E1: feature modules, cross-feature imports via index.ts (#935) | `private/line/feature-modules` 2480d666 | ready |
-| E2: coder read tools via MCP, per turn (#937) | `private/line/coder-read-tools` 3910165c | ready (verified: 6 commits; affected 1439/0/3 on 3910165c). Owner: registry reads take a contained project-relative `file` (exception to #649); read_file offered only on setCode/setFragment steps |
-| E3: research sub-agents + central ledger (#936) | `private/line/research-loop` 13177551 | ready |
-| Harness: native-first tool harness (#938) | `private/line/tool-harness` 0299b3cf | ready (affected 381/0/0). r1 (results/tool-harness/r1.md): qwen2.5-coder 7b/1.5b 0% native calls in every config; qwen3:4b 100% native, 80% right, ~16 s/turn. Nothing beat current prompt + full tools; layered not wired, clean/subset flag-only. Owner: old `textToolCalls` fallback kept for qwen2.5-coder profiles only (`textFallback`), removed once LoRA teaches native calls |
-| heavy.sh re-entrant (#939) | `private/dev/heavy-reentrant` 039709a7 | ready |
-| Context probe write-up | `private/exp/context-probe` 572588b5 | ready (bench/lending/CONTEXT-PROBE.md) |
-
-Merge reconciliation for og:
-- C <-> E3 ledger bridge in bench/ecommerce/driver/ledger.mjs.
-- E1 and E2 both export `importableFiles` from typeGate.mjs (keep one); drop E3's copy. E2's `importableFor`
-  (packages/engine/line/coder/reads.mjs) is the adapter to switch to E1's `moduleScope`.
-- A's seed must call `arrayFixtures(root, layout, feature)` (specSteps.mjs:139, atomSteps.mjs:67,101,193) and unwrap `.value`
-  (E1 fixture format `{ "$lineBase": "fixtures/<name>", "value": [...] }`).
-- line-modules spec topic is at 32765/32768 bytes: new files in packages/engine/line go in subfolders.
-- C's turn builder: last refusal is the FINAL message; add fact "No feature has usecases, services or domains yet".
-- ui/client/.../MapSentences.ts still flags cross-feature imports.
+## In flight / ready
+Nothing in flight: the 2026-10-13 wave (A, B, C, E1, E2, E3, harness, #939, probe write-up) is merged (see State).
 
 ## Next, in order
-1. Verify E2 and the harness (commit/push its probe results first). Then og merges A, B, C, E1, E2, E3, harness, #939,
-   probe write-up, private/work into og/final-2026-10-12; ONE full suite via heavy.sh; ff work; close #931-#933,
-   #935-#939.
+1. Done 2026-10-13: merge wave onto og/final (d7d1e14e), suite green, work fast-forwarded, issues closed.
 2. Bench rerun, one at a time: lending seed-only, lending `--seed-plan`, ecommerce seed-only (must stay 22/22).
 3. CSP discipline (explicit step input/output, one ledger owner, trace wrapper = session log, model-call timeouts).
 4. shortestPlan block (AND-OR graph, Knuth generalized Dijkstra, greedy Steiner merge, typed edges; tool picking first).
