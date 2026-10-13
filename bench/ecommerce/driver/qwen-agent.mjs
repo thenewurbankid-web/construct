@@ -5,7 +5,7 @@
 // for the plain arm; the Line arm gets the overview and a feature index, and each feature's points in plan status (#889).
 //
 //   node bench/ecommerce/driver/qwen-agent.mjs --project <dir> [--arm line|plain] [--builder qwen-7b]
-//        [--model qwen2.5-coder:7b] [--max-turns 200] [--max-minutes 90] [--num-ctx 16384] [--seed <n>] [--ollama http://127.0.0.1:11434]
+//        [--model qwen2.5-coder:7b] [--max-turns 200] [--max-minutes 90] [--num-ctx 32768] [--seed <n>] [--ollama http://127.0.0.1:11434]
 //        [--seed-plan] [--bench <bench-dir>]
 //
 // --bench (or BENCH_DIR; default bench/ecommerce) picks the bench: its SPEC.md (system prompt, plan status, seed), its
@@ -31,6 +31,13 @@
 // results verbatim, model, options) and the raw response to logs/turn-output/<turn>.json (content, thinking, tool
 // calls, the parsed calls). The system prompt is written once to logs/system-prompt.txt and each turn-input refers to
 // it by sha256. turns.jsonl gains inputFile/outputFile (+ bytes). BENCH_LOG_TURN_IO=0 turns it off.
+//
+// #932: the context budget. num_ctx defaults to 32768 (qwen2.5-coder's window; --num-ctx or BENCH_NUM_CTX to change it),
+// and before each request the history is compacted (compact.mjs: identical failed calls collapse to the last one with
+// its count, plan_status done steps become a count, old large answers their first sentence line, then the oldest
+// exchanges go while the estimate is over num_ctx minus --answer-reserve (2048)). The system prompt and the first
+// message are never cut. Each turn row in turns.jsonl carries context: {before, after, budget, collapsed, summarised,
+// dropped} (estimated tokens).
 import fs from 'node:fs';
 import crypto from 'node:crypto';
 import path from 'node:path';
@@ -39,20 +46,21 @@ import { createPlanCli } from './plan-cli.mjs';
 import { createPlainCli } from './plain-cli.mjs';
 import { createPathCli, pathPrompt } from './path-cli.mjs';
 import { readSpec, overviewWithIndex } from './spec-slice.mjs';
+import { compactHistory } from './compact.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const bench = path.join(here, '..');
 const benchOf = (dir) => (dir ? path.resolve(dir) : bench);
 
 export function flags(argv) {
-  const o = { seed: undefined, seedPlan: false, project: process.env.BENCH_PROJECT, arm: 'line', builder: '', model: 'qwen2.5-coder:7b', maxTurns: 200, maxMinutes: 90, numCtx: 16384, maxRepeatRefusals: 10, maxCycleRepeats: 6, cycleWindow: 20, ollama: process.env.OLLAMA_HOST ?? 'http://127.0.0.1:11434', log: process.env.BENCH_LOG, bench: benchOf(process.env.BENCH_DIR) };
+  const o = { seed: undefined, seedPlan: false, project: process.env.BENCH_PROJECT, arm: 'line', builder: '', model: 'qwen2.5-coder:7b', maxTurns: 200, maxMinutes: 90, numCtx: Number(process.env.BENCH_NUM_CTX) || 32768, answerReserve: 2048, maxRepeatRefusals: 10, maxCycleRepeats: 6, cycleWindow: 20, ollama: process.env.OLLAMA_HOST ?? 'http://127.0.0.1:11434', log: process.env.BENCH_LOG, bench: benchOf(process.env.BENCH_DIR) };
   for (let i = 0; i < argv.length; i += 1) {
     const k = argv[i]; const v = argv[i + 1];
     if (k === '--project') { o.project = v; i += 1; } else if (k === '--arm') { o.arm = v; i += 1; } else if (k === '--builder') { o.builder = v; i += 1; }
     else if (k === '--model') { o.model = v; i += 1; } else if (k === '--max-turns') { o.maxTurns = Number(v); i += 1; } else if (k === '--max-repeat-refusals') { o.maxRepeatRefusals = Number(v); i += 1; } else if (k === '--max-minutes') { o.maxMinutes = Number(v); i += 1; }
     else if (k === '--num-ctx') { o.numCtx = Number(v); i += 1; } else if (k === '--ollama') { o.ollama = v; i += 1; } else if (k === '--log') { o.log = v; i += 1; }
     else if (k === '--seed') { o.seed = Number(v); i += 1; } else if (k === '--max-cycle-repeats') { o.maxCycleRepeats = Number(v); i += 1; } else if (k === '--cycle-window') { o.cycleWindow = Number(v); i += 1; } else if (k === '--seed-plan') o.seedPlan = true;
-    else if (k === '--bench') { o.bench = benchOf(v); i += 1; }
+    else if (k === '--bench') { o.bench = benchOf(v); i += 1; } else if (k === '--answer-reserve') { o.answerReserve = Number(v); i += 1; }
   }
   if (!o.builder) o.builder = o.arm === 'plain' ? 'qwen-7b-plain' : o.arm === 'path' ? 'qwen-7b-path' : 'qwen-7b';
   return o;
@@ -326,12 +334,14 @@ export async function runAgent(o, { resultsDir = path.join(o.bench ?? bench, 're
   write(turnsFile, { kind: 'start', at: new Date().toISOString(), builder: o.builder, model: o.model, arm: o.arm, bench: path.basename(dir), maxTurns: o.maxTurns, maxMinutes: o.maxMinutes, numCtx: o.numCtx, seed: o.seed ?? null });
   for (turn = 1; turn <= o.maxTurns; turn += 1) {
     if (Date.now() > deadline) { stop = 'max wall time'; break; }
-    // Keep the context inside num_ctx: the system prompt, the first message and the most recent exchanges.
-    if (history.length > 40) history = history.slice(-40);
+    // #932: keep the request inside num_ctx: the system prompt and the first message always, the history compacted.
+    if (history.length > 400) history = history.slice(-400);
     while (history.length && history[0].role === 'tool') history.shift();
+    const packed = compactHistory(history, { fixed: [system, first], tools: TOOLS[o.arm], budget: o.numCtx - (o.answerReserve ?? 2048) });
+    const context = { before: packed.before, after: packed.after, budget: o.numCtx - (o.answerReserve ?? 2048), collapsed: packed.collapsed, summarised: packed.summarised, dropped: packed.dropped };
     const started = Date.now();
     let res;
-    const sent = JSON.stringify({ model: o.model, stream: false, messages: [system, first, ...history], tools: TOOLS[o.arm], options: chatOptions(o) });
+    const sent = JSON.stringify({ model: o.model, stream: false, messages: [system, first, ...packed.messages], tools: TOOLS[o.arm], options: chatOptions(o) });
     let input = null;
     try {
       const r = await fetch(`${o.ollama}/api/chat`, {
@@ -370,7 +380,7 @@ export async function runAgent(o, { resultsDir = path.join(o.bench ?? bench, 're
     }
     if (!calls.length) { idle += 1; history.push({ role: 'user', content: 'Use one of your tools (or call finish).' }); } else idle = 0;
     write(tokensFile, { builder: o.builder, model: o.model, ...tokens, source: 'ollama prompt_eval_count/eval_count', at: new Date().toISOString() });
-    write(turnsFile, { kind: 'turn', ...tokens, textCalls: fromText.length > 0, calls: outcomes, said: clip(msg.content ?? '', 600), ...ioRefs(input, output) });
+    write(turnsFile, { kind: 'turn', ...tokens, context, textCalls: fromText.length > 0, calls: outcomes, said: clip(msg.content ?? '', 600), ...ioRefs(input, output) });
     console.log(`turn ${turn}: in ${tokens.in} out ${tokens.out} ${tokens.ms} ms; ${outcomes.map((x) => `${x.name}${x.ok ? '' : ` (${x.code})`}`).join(', ') || 'no tool call'}`);
     if (finished !== null) { stop = `finish: ${finished}`; break; }
     if (idle >= 8) { stop = '8 turns without a tool call'; break; }
