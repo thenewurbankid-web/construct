@@ -24,6 +24,7 @@ build step 1, the contract: shapes, expected outputs and tests. The later steps 
 | `layoutMedia.mjs` | Step 5. `parseMediaQuery`, `matchesMedia` (min/max, range syntax, em/rem, `and`, comma lists, `not`/`only`, orientation, fixed user preferences) |
 | `importUnits.mjs` | Step 7. `logicCheck` (verifyImport's `logic` check: a `UnitVerdict` per function unit of the import folder in `units`, the `StepSummary` in `summary`, fails only on `changed`), `verifyImportUnits`, `functionUnits`, `folderCodeFiles`, `readImportBaseline`, `materializeBefore`. Layers come from `verifyPair`'s `RUNNERS` by name and `classifyBefore`, so steps 2 and 4 plug in without a change here. `transformsOf` defaults to `importTransforms` (the import plan's done whole-file moves give their units `move` + `repoint-imports`, so an unchanged moved unit is proven; every other unit is null, tested at best) |
 | `layoutRun.mjs` | Step 5. `layoutReaders` (pure layout closures of a unit), `runLayoutCases` (the helper step 4's runner calls), `verifyLayoutPair` (the `isolated` layer result for layout) |
+| `quickjs/` | #947 spike. `quickjsRun.mjs`: the QuickJS backend of the isolated runner (`isolatedPair` / `isolatedRun` take `sandbox: 'vm' \| 'quickjs'`, default `'vm'`; `SANDBOXES`): `runQuickjsRequest` (runChild's request and result shape), `evalGuest` (one bare script, no globals), one runtime per process (memory limit `QUICKJS_MEMORY_BYTES`, stack `QUICKJS_STACK_BYTES`, an interrupt deadline per run), a fresh context per run. `guest.mjs`: `guestBootstrap`, the guest program; the fakes, hook harness, events and coverage reader are sliced from `isolatedChild.cjs` (and `shapeOf` / `urlPattern` from `recorder.cjs`) by the TypeScript parser, never copied. quickjs-emscripten 0.32.0, MIT, WebAssembly |
 | `devServerRun.mjs` | Step 8, L2. `devServerPair` (the `dev-server` LayerResult: the app's own dev server per side over HTTP), `runDevSide`, `envKeysRead`, `envLineStubs`, `formatEnvLine` (`.env.line`), `startFixtureServer`, `fixtureBody`, `routesForFile`, `serverSpawnSpec`, `unitRan` (NODE_V8_COVERAGE) |
 
 Tests:
@@ -35,6 +36,7 @@ Tests:
 - `test/line-analyze-cache.test.mjs` covers the analyzeClosure cache; `test/line-logic-verify-import.test.mjs` covers verifyImport's `logic` check.
 - `test/line-logic-verify-layout.test.mjs` covers `lib.dom.d.ts`, the layout fakes, DOM, clock, media queries and `verifyLayoutPair`.
 - `test/line-logic-verify-purity.test.mjs` covers `classifyUnit` (pure, direct, transitive, unknown imports) and the fallback.
+- `test/line-logic-verify-quickjs.test.mjs` covers the QuickJS backend (parity with the vm child, the escape set in `test/fixtures/logic-verify/quickjs-escapes.mjs`, determinism); `bench/isolation/quickjs/compare.mjs` is the full vm-vs-QuickJS comparison.
 - `test/line-logic-verify-devserver.test.mjs` covers the L2 level on a small node:http fixture app (a real `next dev` runs only through `packages/tools/dev/heavy.sh`).
 - The fixtures are in `test/fixtures/logic-verify/`. They are small synthetic snippets written for these tests, not
   taken from any app.
