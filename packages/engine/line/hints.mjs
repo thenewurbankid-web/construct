@@ -149,6 +149,8 @@ export const REFUSAL_HINTS = Object.freeze({
   OWNER_ONLY: { rule: 'only a person can waive a logic unit', fields: ['option'] },
   // #915: the same call is already in the plan, approved and waiting: running it is the one way on.
   DUPLICATE_STEP: { rule: 'a step joins the plan once; an approved step lands when the next run runs it', example: () => ex(RUN_NEXT, {}) },
+  // #931 (lending-qwen-7b-r1-s2): finish called while approved steps still waited to run.
+  STEPS_WAITING: { rule: 'finish is accepted once no approved step is waiting to run', example: () => ex(RUN_NEXT, {}) },
   // plan-cli's own (the bench driver).
   UNKNOWN_COMMAND: { rule: 'plan-cli takes one of its commands: tools, status, add, run-next, findings, validate, read, ls, rules' },
   NOT_FOUND: { rule: 'read and ls take a project-relative path that exists', example: () => ({ tool: 'read', args: { path: 'features/catalog/spec.md' } }) },
@@ -343,6 +345,33 @@ export function renderReoffer(fixes) {
   if (!fixes.length) return '';
   const choices = fixes.map((f, i) => ({ ...f, ref: f.ref ?? `f${i + 1}` }));
   return [asSentence(choices[0].sentence ?? `Now add ${choices[0].step.tool} again.`), ...choiceLines(choices), `To apply ${choices.length === 1 ? 'it' : 'one'}, send {"fix":"${choices[0].ref}"}.`].join('\n');
+}
+
+/** "features/loans/pages/ApplyPage.tsx" / "/apply -> ..." / "ApplyPage in loans": what a waiting step is about. */
+const waitingWhat = (a = {}) => a.file ?? (a.page ? `${a.route ?? ''} -> ${a.page}`.trim() : null) ?? (a.name && a.feature ? `${a.name} in ${a.feature}` : a.name) ?? '';
+
+/**
+ * #931: the refusal a builder's `finish` meets while approved steps still wait to run (null when none waits, so finish is
+ * accepted). Lists the waiting steps (n, tool, file); f1 is plan_run_next, the only choice: no builder tool drops a step.
+ * @param {{n: number, tool: string, args?: any}[]} waiting The approved, unrun steps in plan order.
+ * @returns {null | {code: string, wrong: string, rule: string, choices: any[], apply: string, example: string, context: string[], waiting: {n: number, tool: string, file: string}[], text: string}}
+ */
+export function finishRefusal(waiting) {
+  if (!waiting?.length) return null;
+  const list = waiting.map((s) => ({ n: s.n, tool: s.tool, file: waitingWhat(s.args ?? {}) }));
+  const n = list.length;
+  const shown = list.slice(0, 8).map((s) => `step ${s.n} ${s.tool}${s.file ? ` ${s.file}` : ''}`);
+  const context = [...shown, ...(n > 8 ? [`(${n - 8} more)`] : [])];
+  const choices = [{ ref: 'f1', id: 'run-next', step: ex(RUN_NEXT, {}), recommended: true, sentence: `Run step ${list[0].n}, the next waiting step.`,
+    why: `step ${list[0].n} is approved but has not run; ${RUN_NEXT} lands one step per call` }];
+  const shape = {
+    code: 'STEPS_WAITING',
+    wrong: `${n} approved step${n === 1 ? ' is' : 's are'} still waiting to run, so the work is not done.`,
+    rule: REFUSAL_HINTS.STEPS_WAITING.rule, choices,
+    apply: `Send ${RUN_NEXT} {} (or {"fix":"f1"}) once per waiting step, then call finish again. No tool drops a waiting step, so f1 is the only choice.`,
+    example: `${RUN_NEXT} {}`, context,
+  };
+  return { ...shape, waiting: list, text: renderRefusal(shape) };
 }
 
 // ------------------------------------------------------------------------------------------- #886 why, effect, context

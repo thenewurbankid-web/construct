@@ -22,7 +22,7 @@
 //
 // Logs, per turn: tokens in (prompt_eval_count) and out (eval_count), wall time, tool calls and their outcomes, to
 // <run>/logs/turns.jsonl and bench/ecommerce/results/<builder>.tokens.jsonl. Stops at the budget, when the model calls
-// `finish`, after 8 turns in a row without a tool call, or (#912) after --max-repeat-refusals (10) identical refused
+// `finish` (Line arm, #931: refused while approved steps wait to run), after 8 turns in a row without a tool call, or (#912) after --max-repeat-refusals (10) identical refused
 // calls in a row (stop reason "repeated refusal"), or (#918) when the same (tool call, reply) pair comes back
 // --max-cycle-repeats (6) times within --cycle-window (20) turns, other calls between them or not (stop reason
 // "repeated cycle"; the end record names the pair and its count).
@@ -76,7 +76,7 @@ export const TOOLS = {
     fn('plan_rules', 'plan-cli rules: the 2-4 rules a step of this tool must keep for this file, each with an example (read before you write the step).', { tool: S('A Line tool name, e.g. line.setCode'), file: S('The file the step is about, like features/<feature>/pages/<Name>.tsx (optional)') }, ['tool']),
     fn('read_file', 'plan-cli read: one project file and its contentHash (pass it to line.setCode to replace the file).', { path: S('Project-relative path') }, ['path']),
     fn('list_dir', 'plan-cli ls: the entries of one project folder.', { path: S('Project-relative folder, "." for the root') }, ['path']),
-    fn('finish', 'Stop: you believe every acceptance point is done, or you cannot make more progress.', { summary: S('What you built and what is left.') }, ['summary']),
+    fn('finish', 'Stop: you believe every acceptance point is done, or you cannot make more progress. Refused while approved steps still wait for plan_run_next.', { summary: S('What you built and what is left.') }, ['summary']),
   ],
   path: [
     fn('path_status', 'path-cli status: the open stubs, bottom-up, each with its locked signature, context and examples.'),
@@ -360,7 +360,16 @@ export async function runAgent(o, { resultsDir = path.join(o.bench ?? bench, 're
     let finished = null;
     for (const c of calls) {
       const name = c.function?.name; const args = typeof c.function?.arguments === 'string' ? safeParse(c.function.arguments) : c.function?.arguments;
-      if (name === 'finish') { finished = String(args?.summary ?? ''); outcomes.push({ name, ok: true }); break; }
+      // #931: on the Line arm, finish is refused while approved steps wait to run (the refusal goes back like any other).
+      const gate = name === 'finish' && o.arm === 'line' ? await cli.run('finish', [String(args?.summary ?? '')]) : null;
+      if (name === 'finish' && (!gate || gate.ok)) { finished = String(args?.summary ?? ''); outcomes.push({ name, ok: true }); break; }
+      if (gate) {
+        streak.see(name, args, gate);
+        cycle.see(turn, name, args, gate);
+        outcomes.push({ name, args: clip(JSON.stringify(args ?? {}), 400), ok: false, code: gate.code ?? null, sentence: gate.sentence });
+        history.push({ role: 'tool', content: clip(JSON.stringify(toModel(gate))) });
+        continue;
+      }
       const out = await callTool(cli, o.arm, name, args);
       if (o.arm === 'path' && name === 'fill' && out.pass && out.next === null) allPass = true;
       streak.see(name, args, out);
