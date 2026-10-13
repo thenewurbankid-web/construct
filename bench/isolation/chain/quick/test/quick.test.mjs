@@ -40,3 +40,14 @@ test('tasks: stubs are open, references pass tsc and the unit check, mutants fai
     for (const [i, m] of t.mutants.entries()) assert.equal(await unitCheck(`${t.prelude ?? ''}${m}`, t.check), false, `${t.id} mutant ${i + 1}`);
   }
 });
+
+test('K6: every committed plan parses, names a function and has at least one line', async () => {
+  const { PLANS, parsePlan } = await import('../k6.mjs');
+  const files = fs.readdirSync(PLANS).filter((f) => f.endsWith('.smith.txt'));
+  assert.equal(files.length, 12);
+  for (const f of files) {
+    const p = parsePlan(fs.readFileSync(`${PLANS}/${f}`, 'utf8'));
+    assert.ok(['page', 'logic'].includes(p.mode), f);
+    assert.ok(Object.values(p.fns).every((ls) => ls.length > 0), f);
+  }
+});

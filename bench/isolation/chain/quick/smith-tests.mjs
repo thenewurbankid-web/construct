@@ -148,9 +148,18 @@ async function k5({ write }) {
   console.log('K5', JSON.stringify(summary));
 }
 
-const TESTS = { k1, k2, k5 };
+import { k2b, k5b } from './k2b.mjs';
+import { runK6 } from './k6.mjs';
+
+async function k6({ write }) {
+  const r = await runK6();
+  write('k6', r);
+  console.log('K6', JSON.stringify(r.summary));
+}
+
+const TESTS = { k1, k2, k5, k2b, k5b, k6 };
 export async function run(name, ctx) {
-  if (!TESTS[name]) throw new Error(`Unknown test ${name}; use k1..k5.`);
+  if (!TESTS[name]) throw new Error(`Unknown test ${name}; use k1, k2, k5, k2b, k5b or k6.`);
   if (!smithReady()) throw new Error('atomic-codemod is not linked (smithLinks().codemod.ok is false): set ATOMIC_CODEMOD_SOURCE_DIR and SMITH_SOURCE_DIR.');
   await TESTS[name](ctx);
 }
