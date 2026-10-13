@@ -27,11 +27,26 @@ export const FILLS_FILE = 'line/path/fills.jsonl';
 export const LAYER_RANK = Object.freeze({ contract: 0, domain: 1, service: 2, hook: 3, provider: 3, component: 4, page: 5, layout: 6, harness: 7 });
 const EXTS = ['.ts', '.tsx', '.js', '.jsx', '.mjs'];
 
-/** @param {string} root */
+/**
+ * The project's path (line/path/path.json): its units, edges and points.
+ * @param {string} root Project root.
+ * @returns {any} The parsed path.
+ */
 export const readPath = (root) => JSON.parse(fs.readFileSync(path.join(root, PATH_FILE), 'utf8'));
+/**
+ * One unit of the path by id.
+ * @param {any} p The path.
+ * @param {string} id The unit id.
+ * @returns {any} The unit, or null when the path has none with that id.
+ */
 export const unitOf = (p, id) => p.units.find((u) => u.id === id) ?? null;
 
-/** The stubs in bottom-up order: a unit after every unit it depends on, then by layer rank, then path order. */
+/**
+ * The stubs in bottom-up order: a unit after every unit it depends on, then by layer rank, then path order.
+ * @param {any} p The path.
+ * @param {string[]|null} [ids] Only these stubs (all when null).
+ * @returns {any[]} The stub units, in order.
+ */
 export function bottomUp(p, ids = null) {
   const stubs = p.units.filter((u) => u.kind === 'stub' && (!ids || ids.includes(u.id)));
   const out = []; const seen = new Set();
@@ -57,6 +72,9 @@ function resolveImport(root, fromFile, spec) {
 
 /**
  * a) The path's call edges: each `from` unit's file imports the `to` unit's export from its file and uses it.
+ * @param {string} root Project root.
+ * @param {any} p The path.
+ * @param {string[]|null} [ids] Only edges touching these units (all when null).
  * @returns {{from: string, to: string, code: 'NO_UNIT'|'NO_IMPORT'|'UNUSED', sentence: string}[]}
  */
 export function edgeProblems(root, p, ids = null) {
@@ -78,7 +96,8 @@ export function edgeProblems(root, p, ids = null) {
       enter(n, parent, key) {
         if (n.type === 'ImportDeclaration') { this.skip(); return; }
         if (parent?.type === 'MemberExpression' && key === 'property' && !parent.computed) return;
-        if ((n.type === 'Identifier' || n.type === 'JSXIdentifier') && n.name === local) used = true;
+        const id = /** @type {{type: string, name?: string}} */ (n); // JSXIdentifier is not in the walker's node union
+        if ((id.type === 'Identifier' || id.type === 'JSXIdentifier') && id.name === local) used = true;
       },
     });
     if (!used) out.push({ ...e, code: 'UNUSED', sentence: `${from.file} imports ${to.export} but never calls or renders it.` });
@@ -102,7 +121,8 @@ function run(cmd, args, opts = {}) {
 
 /**
  * tsc --noEmit over the project: every error as {file, line, col, code, message}.
- * @param {string} root
+ * @param {string} root Project root.
+ * @returns {Promise<{file: string, line: number, col: number, code: string, message: string}[]>} The errors.
  */
 export async function tscErrors(root) {
   const bin = tscBin(root);
@@ -155,6 +175,8 @@ const projectId = (out) => (Array.isArray(out) ? out.map((x) => (x && typeof x =
 
 /**
  * b) A logic stub's examples, run in the isolated sandbox under the recording fakes. First failing example or null.
+ * @param {string} root Project root.
+ * @param {any} unit The stub unit (file, export, layer, examples).
  * @returns {Promise<{failure: object|null, ms: number}>}
  */
 export async function logicExamples(root, unit) {
@@ -201,12 +223,6 @@ function shims() {
 }
 
 /**
- * b) Render examples for one UI module export, in the jsdom child. First failing example (with its step) or null.
- * @param {string} root
- * @param {{file: string, export: string, examples: object[], id?: string}} unit
- * @returns {Promise<{failure: object|null, ms: number}>}
- */
-/**
  * Bundle one module (esbuild, React from the project's node_modules first, next/link and next/navigation as recording-free
  * shims) and run the jsdom child on `request`. {out} or {error}.
  */
@@ -240,6 +256,8 @@ async function inDom(root, file, request) {
 
 /**
  * The visual snapshot of a point's page (its `visual` spec): per state (cumulative steps), the role/name nodes.
+ * @param {string} root Project root.
+ * @param {any} visual The point's visual spec (file, export, props, states).
  * @returns {Promise<{snapshots?: {label: string, nodes: {role: string, name: string, value?: string}[], error?: string, stepError?: string}[], error?: string, ms: number}>}
  */
 export async function pageSnapshot(root, visual) {
@@ -255,6 +273,9 @@ const countOf = (nodes, role, nameRe) => nodes.filter((n) => n.role === role && 
  * The DOM snapshot diff and whether it holds the EXPECTED change ("expected change happened"; other changes never fail).
  * expect: {appears: {state, role, name}} (absent before, present after) | {count: {state, role, nameRe?, to}} (after has
  * `to`, before had a different count).
+ * @param {any[]|null} before The snapshots before the step (null when there is none).
+ * @param {any[]} after The snapshots after the step.
+ * @param {any[]} expect The expected changes.
  * @returns {{ok: boolean, added: string[], removed: string[], missing: string[]}}
  */
 export function visualDiff(before, after, expect) {
@@ -281,6 +302,12 @@ export function visualDiff(before, after, expect) {
   return { ok: missing.length === 0, added, removed, missing };
 }
 
+/**
+ * b) Render examples for one UI module export, in the jsdom child. First failing example (with its step) or null.
+ * @param {string} root Project root.
+ * @param {{file: string, export: string, examples: any[], id?: string}} unit The UI unit.
+ * @returns {Promise<{failure: object|null, ms: number}>} The first failure (or null) and the time taken.
+ */
 export async function domExamples(root, unit) {
   const t = timer();
   {
@@ -301,10 +328,13 @@ export async function domExamples(root, unit) {
  * @param {object} p the path
  * @param {string} id
  * @param {{prevSource?: string|null, tsc?: boolean}} [opts]
+ * @returns {Promise<{id: string, pass: boolean, failure?: any, ms: Record<string, number>, c?: object, visual?: any}>} The verdict.
  */
 export async function checkStub(root, p, id, { prevSource = null } = {}) {
   const unit = unitOf(p, id);
+  /** @type {Record<string, number>} */
   const ms = {};
+  /** @type {(failure: any, extra?: {c?: object}) => {id: string, pass: boolean, failure?: any, ms: Record<string, number>, c?: object, visual?: any}} */
   const done = (failure, extra = {}) => ({ id, pass: !failure, ...(failure ? { failure } : {}), ms, ...extra });
   if (!unit || unit.kind !== 'stub') return done({ layer: 'static', sentence: `There is no stub ${id}.` });
   const source = fs.readFileSync(path.join(root, unit.file), 'utf8');
@@ -350,12 +380,14 @@ export async function checkStub(root, p, id, { prevSource = null } = {}) {
  * end-to-end render examples through the real filled units (b). Green, or the first failing edge, stub or example.
  * @param {string} root
  * @param {string} point
+ * @returns {Promise<{point: string, green: boolean, failure?: any, stubs?: any[], e2e?: any, ms?: Record<string, number>}>} The point's verdict.
  */
 export async function checkPath(root, point) {
   const p = readPath(root);
   const pt = p.points[point];
   if (!pt) return { point, green: false, failure: { layer: 'static', sentence: `The path has no point ${point}.` } };
   const ids = p.units.filter((u) => u.point === point || (pt.units ?? []).includes(u.id)).map((u) => u.id);
+  /** @type {Record<string, number>} */
   const ms = {};
   let t = timer();
   const edges = edgeProblems(root, p, ids);

@@ -19,11 +19,11 @@ for (const k of ['window', 'document', 'navigator', 'localStorage', 'sessionStor
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 const errors = [];
 const origError = console.error;
-console.error = (...a) => { errors.push(a.map(String).join(' ').slice(0, 300)); };
+Object.assign(console, { error: (...a) => { errors.push(a.map(String).join(' ').slice(0, 300)); } });
 const tl = await import('@testing-library/dom');
 const { M, React, ReactDOMClient, TestUtils } = await import(pathToFileURL(req.bundle).href);
 const act = React.act ?? TestUtils.act;
-console.error = origError;
+Object.assign(console, { error: origError });
 
 const Unit = M[req.export];
 const results = [];
@@ -64,8 +64,9 @@ async function step(c, s, spies) {
     const el = labelled(c, s.choose.label);
     if (!el) return { expected: `a control labelled "${s.choose.label}"`, got: `comboboxes: ${JSON.stringify(names(c, 'combobox'))}, groups: ${JSON.stringify(names(c, 'group'))}` };
     if (el.tagName === 'SELECT') {
-      const opt = [...el.options].find((o) => exact(s.choose.option).test(o.textContent ?? ''));
-      if (!opt) return { expected: `an option "${s.choose.option}" in the "${s.choose.label}" select`, got: `options: ${JSON.stringify([...el.options].map((o) => o.textContent))}` };
+      const sel = /** @type {HTMLSelectElement} */ (el);
+      const opt = Array.from(sel.options).find((o) => exact(s.choose.option).test(o.textContent ?? ''));
+      if (!opt) return { expected: `an option "${s.choose.option}" in the "${s.choose.label}" select`, got: `options: ${JSON.stringify(Array.from(sel.options).map((o) => o.textContent))}` };
       await act(async () => { tl.fireEvent.change(el, { target: { value: opt.value } }); });
       return null;
     }
@@ -80,7 +81,8 @@ async function step(c, s, spies) {
     const found = tl.queryAllByRole(c, e.role, q);
     const want = e.count ?? null;
     if (want !== null ? found.length !== want : !found.length) return { expected: `${want ?? 'a'} ${e.role}${e.name !== undefined ? ` named "${e.name}"` : e.nameRe ? ` named like /${e.nameRe}/` : ''}`, got: `${e.role}s: ${JSON.stringify(names(c, e.role))}` };
-    if (e.value !== undefined && found[0].value !== String(e.value)) return { expected: `${e.role} "${e.name ?? ''}" with value "${e.value}"`, got: `value "${found[0].value}"` };
+    const field = /** @type {HTMLInputElement} */ (found[0]);
+    if (e.value !== undefined && field.value !== String(e.value)) return { expected: `${e.role} "${e.name ?? ''}" with value "${e.value}"`, got: `value "${field.value}"` };
     if (e.href !== undefined && found[0].getAttribute('href') !== e.href) return { expected: `${e.role} "${e.name ?? ''}" with href "${e.href}"`, got: `href "${found[0].getAttribute('href')}"` };
     return null;
   }
@@ -123,7 +125,7 @@ if (req.mode === 'snapshot') {
   let broken = null;
   try {
     if (typeof Unit !== 'function') throw new Error(`${req.export} is not exported as a component`);
-    console.error = () => {};
+    Object.assign(console, { error: () => {} });
     await act(async () => { root.render(React.createElement(Unit, props(req.props ?? {}, spies))); });
   } catch (e) { broken = String(e?.message ?? e).split('\n')[0]; }
   for (const st of req.states) {

@@ -6,7 +6,11 @@ import { findFunction } from '../logicVerify/z3Translate.mjs';
 
 /** The placeholder a stub's body starts as; the stub is open while its body still holds it. */
 export const PLACEHOLDER = 'TODO(path-stub';
-/** The body of a fresh stub with this id. */
+/**
+ * The body of a fresh stub with this id.
+ * @param {string} id The stub id.
+ * @returns {string} The placeholder block.
+ */
 export const placeholderBody = (id) => `{\n  throw new Error('${PLACEHOLDER} ${id})');\n}`;
 
 /**
@@ -56,7 +60,8 @@ function referenced(node) {
     enter(n, parent, key) {
       if (parent?.type === 'MemberExpression' && key === 'property' && !parent.computed) return;
       if (parent?.type === 'Property' && key === 'key' && !parent.computed && !parent.shorthand) return;
-      if (n.type === 'Identifier' || n.type === 'JSXIdentifier') seen.add(n.name);
+      const id = /** @type {{type: string, name?: string}} */ (n); // JSXIdentifier is not in the walker's node union
+      if (id.type === 'Identifier' || id.type === 'JSXIdentifier') seen.add(id.name);
     },
   });
   return seen;
@@ -91,6 +96,7 @@ function returnsVoid(node) {
 export function stubProblems(source, fn) {
   const parts = stubParts(source, fn);
   if (!parts) return [{ code: 'NO_STUB', sentence: `There is no function ${fn} with a block body in the file.` }];
+  /** @type {{code: 'NO_STUB'|'OPEN'|'UNUSED_INPUT'|'NO_RETURN', sentence: string, line?: number}[]} */
   const out = [];
   if (parts.body.includes(PLACEHOLDER)) out.push({ code: 'OPEN', sentence: 'The body still holds the stub placeholder.', line: parts.line });
   const used = referenced(parts.node.body);

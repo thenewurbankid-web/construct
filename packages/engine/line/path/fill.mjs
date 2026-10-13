@@ -10,19 +10,32 @@ import { readPath, unitOf, bottomUp, checkStub, pageSnapshot, visualDiff, FILLS_
 /** The last page snapshot per point (the "before" of the next step's visual diff). */
 export const SNAP_DIR = 'line/path/snapshots';
 
-/** Every fill attempt so far. */
+/**
+ * Every fill attempt so far.
+ * @param {string} root Project root.
+ * @returns {any[]} The fills.jsonl entries, oldest first ([] when there are none).
+ */
 export function fillLog(root) {
   try { return fs.readFileSync(path.join(root, FILLS_FILE), 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l)); } catch { return []; }
 }
 
-/** The stubs not yet passed (no passing fill since the path was installed), bottom-up. */
+/**
+ * The stubs not yet passed (no passing fill since the path was installed), bottom-up.
+ * @param {string} root Project root.
+ * @param {any} [p] The path (read from the project when omitted).
+ * @returns {any[]} The open stub units.
+ */
 export function openStubs(root, p = readPath(root)) {
   const passed = new Set();
   for (const f of fillLog(root)) { if (f.pass) passed.add(f.stubId); else passed.delete(f.stubId); }
   return bottomUp(p).filter((u) => !passed.has(u.id));
 }
 
-/** One failure as plain lines for the model: the first failing example (input, expected, got) or the tsc error at its line. */
+/**
+ * One failure as plain lines for the model: the first failing example (input, expected, got) or the tsc error at its line.
+ * @param {any} f The failure (or null).
+ * @returns {string} The text ('' when there is no failure).
+ */
 export function failureText(f) {
   if (!f) return '';
   const lines = [`Failed at ${f.layer}${f.code && f.layer === 'static' ? ` (${f.code})` : ''}${f.sentence ? `: ${f.sentence}` : ''}`];
@@ -37,7 +50,12 @@ export function failureText(f) {
   return lines.join('\n');
 }
 
-/** One stub as the model reads it: id, file, layer, locked signature, context, the file's imports, its examples. */
+/**
+ * One stub as the model reads it: id, file, layer, locked signature, context, the file's imports, its examples.
+ * @param {string} root Project root.
+ * @param {any} u The stub unit.
+ * @returns {string} The card.
+ */
 export function stubCard(root, u) {
   const source = fs.readFileSync(path.join(root, u.file), 'utf8');
   const parts = stubParts(source, u.fn);
@@ -65,8 +83,9 @@ export async function fill({ root, stubId, body }) {
   const r = replaceBody(before, u.fn, body);
   const n = fillLog(root).filter((f) => f.stubId === stubId).length + 1;
   if (!r.ok) {
-    log({ n, pass: false, refused: r.code, sentence: r.sentence, body: String(body ?? '').slice(0, 4000) });
-    return { ok: false, code: r.code, stubId, sentence: r.sentence };
+    const refused = /** @type {{ok: false, code: string, sentence: string}} */ (r);
+    log({ n, pass: false, refused: refused.code, sentence: refused.sentence, body: String(body ?? '').slice(0, 4000) });
+    return { ok: false, code: refused.code, stubId, sentence: refused.sentence };
   }
   const prev = [...fillLog(root)].reverse().find((f) => f.stubId === stubId && f.pass);
   const visual = p.points?.[u.point]?.visual ?? null;
