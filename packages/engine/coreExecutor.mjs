@@ -26,7 +26,7 @@ import { aggregateValidation } from '@line/construct-core/registry';
 import { formatReport } from '@line/construct-core/diagnostics';
 import { loadConfig } from '@line/construct-core/config';
 import { enforcersForRoot } from '@line/construct-core/profiles';
-import { fallowStage } from '@line/construct-core/fallow';
+import { fallowStage, dedupeFallowFindings } from '@line/construct-core/fallow';
 
 /** Env var naming the `construct` CLI to run in `cli` mode: a path to construct.mjs (source or the built
  * packages/cli/dist/construct.mjs). Absolute, or relative to the Cockpit server's working directory. */
@@ -274,7 +274,7 @@ export async function runValidate(root, { mode = 'engine', env = process.env, bi
     const { violations: fallowViolations, health } = await fallowStage(root, { env });
     const enforced = aggregateValidation(root, enforcersForRoot(root), health ? { fallowHealth: health } : undefined);
     const { ok } = enforced;
-    const violations = [...enforced.violations, ...fallowViolations];
+    const violations = [...enforced.violations, ...dedupeFallowFindings(fallowViolations, enforced.violations)];
     return { mode, status: ok ? 'passed' : 'failed', ok, violations, report: formatReport(violations, { format: 'json' }) };
   }
   if (mode !== 'cli') throw new ExecutionError('CLI_START_FAILED', `Unknown execution mode '${mode}'.`);
