@@ -18,7 +18,7 @@ Status: version 0.9.0 (the MVP release). How versions are numbered is in
 
 ## Quickstart (about 60 seconds)
 
-You need Node 20 or newer.
+You need Node 22 or newer.
 
 ```bash
 git clone https://github.com/thenewurbankid-web/construct.git

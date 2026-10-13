@@ -13,7 +13,7 @@ import path from 'node:path';
 import { resolveStateDir } from '@line/construct-engine/process-store';
 
 /** The oldest Node major version Construct supports (`engines` in package.json). */
-export const MIN_NODE_MAJOR = 20;
+export const MIN_NODE_MAJOR = 22;
 
 /** Where to look for Ollama: this machine only. */
 import { OLLAMA_DEFAULT_URL, normalizeOllamaHost } from './ollama-host.mjs';

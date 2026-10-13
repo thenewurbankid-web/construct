@@ -6,7 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 export const DEFAULT_OLLAMA_URL = 'http://127.0.0.1:11434';
-export const MIN_NODE_MAJOR = 20;
+export const MIN_NODE_MAJOR = 22;
 
 /** The first `baseUrl` (or `ollamaUrl`) string found anywhere in a parsed studio.config.json, else null. */
 export function findOllamaUrl(config) {

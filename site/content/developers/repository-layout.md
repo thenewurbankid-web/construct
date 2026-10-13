@@ -1,4 +1,4 @@
-The repository is an npm workspaces monorepo (ESM, Node 20+) with separately installed sub-projects for the UI.
+The repository is an npm workspaces monorepo (ESM, Node 22+) with separately installed sub-projects for the UI.
 
 ```text
 packages/cli/construct.mjs   CLI entry (bin): dispatches to packages/core/cli.mjs

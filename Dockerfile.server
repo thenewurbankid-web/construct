@@ -12,7 +12,7 @@
 # Separate from ui/client on purpose: one process per container, each
 # restarts/scales independently, matching the two-process topology
 # packages/tools/dev/run-hosted.sh already runs (see docker-compose.yml).
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 WORKDIR /repo
 
 COPY package.json package-lock.json ./
@@ -23,7 +23,7 @@ RUN npm ci --ignore-scripts && npm --prefix ui/server ci --ignore-scripts
 COPY ui/server ./ui/server
 RUN npm --prefix ui/server run build
 
-FROM node:20-alpine AS runtime
+FROM node:22-alpine AS runtime
 WORKDIR /repo
 ENV NODE_ENV=production
 # Binding to loopback would be unreachable through Docker's port mapping;

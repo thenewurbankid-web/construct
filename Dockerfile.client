@@ -5,7 +5,7 @@
 # reachable at the default http://localhost:4000 (docker-compose.yml wires
 # PUBLIC_HOST/SCHEME into these for you). Separate image from ui/server: one
 # process per container (see Dockerfile.server's header for the reasoning).
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 WORKDIR /repo/ui/client
 
 ARG NEXT_PUBLIC_API_BASE=http://localhost:4000
@@ -20,7 +20,7 @@ RUN npm run build \
   && cp -r .next/static .next/standalone/.next/static \
   && ([ -d public ] && cp -r public .next/standalone/public || true)
 
-FROM node:20-alpine AS runtime
+FROM node:22-alpine AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 # 0.0.0.0: reachable through Docker's port mapping (see Dockerfile.server).

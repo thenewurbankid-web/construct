@@ -36,9 +36,12 @@ const fakeExec = (answers) => (cmd, args, opts, cb) => {
   setImmediate(() => cb(a.err ?? null, a.stdout ?? '', a.stderr ?? ''));
 };
 
-test('the pinned version matches package.json devDependencies (exact, no range)', () => {
+test('the pinned version matches package.json dependencies, root and core (exact, no range)', () => {
   const pkg = JSON.parse(fs.readFileSync(path.join(here, '..', 'package.json'), 'utf8'));
-  assert.equal(pkg.devDependencies.fallow, FALLOW_VERSION);
+  assert.equal(pkg.dependencies.fallow, FALLOW_VERSION);
+  assert.equal(pkg.devDependencies?.fallow, undefined, 'a regular dependency, not dev-only (#930)');
+  const core = JSON.parse(fs.readFileSync(path.join(here, '..', 'packages', 'core', 'package.json'), 'utf8'));
+  assert.equal(core.dependencies.fallow, FALLOW_VERSION, 'shipped with the package the runner lives in');
 });
 
 test('mapDeadCode: the recorded scaffold run maps to FALLOW-* warnings with fallow\'s fingerprints kept', () => {
@@ -130,7 +133,7 @@ test('missing binary: unavailable with one clear message, never a throw', async 
   const none = await runFallow(dir, { bin: null });
   assert.equal(none.status, 'unavailable');
   assert.deepEqual(none.violations, []);
-  assert.match(none.message, /^fallow not installed: FALLOW-\* checks skipped \(npm i -D fallow@3\.33\.1\)$/);
+  assert.equal(none.message, "fallow 3.33.1 (a Construct dependency) is missing: FALLOW-* checks skipped -- reinstall Construct's dependencies (run `npm install` where Construct is installed)");
   // a CONSTRUCT_FALLOW_BIN that does not exist resolves to nothing
   assert.equal(resolveFallowBin(dir, { env: { [FALLOW_BIN_ENV]: path.join(dir, 'nope') } }), null);
   // a binary that vanishes between resolve and spawn (ENOENT) is the same result
@@ -222,7 +225,7 @@ test('construct validate: a missing fallow is one info line on stderr; the JSON 
   const off = runValidate(dir, ['--no-fallow']);
   assert.equal(missing.stdout, off.stdout);
   assert.equal(missing.status, off.status);
-  assert.deepEqual(missing.stderr.trim().split('\n'), ['ℹ️ fallow not installed: FALLOW-* checks skipped (npm i -D fallow@3.33.1)']);
+  assert.deepEqual(missing.stderr.trim().split('\n'), ["ℹ️ fallow 3.33.1 (a Construct dependency) is missing: FALLOW-* checks skipped -- reinstall Construct's dependencies (run `npm install` where Construct is installed)"]);
 });
 
 test('construct fallow [path] --json: the block alone; exit 2 when fallow is missing', { skip: process.platform === 'win32' && 'fake binary is a shebang script' }, () => {
@@ -235,7 +238,7 @@ test('construct fallow [path] --json: the block alone; exit 2 when fallow is mis
   assert.equal(doc.violations.length, 27);
   const gone = spawnSync(process.execPath, [CLI, 'fallow', dir], { encoding: 'utf8', env: { ...process.env, [FALLOW_BIN_ENV]: path.join(dir, 'nope') } });
   assert.equal(gone.status, 2);
-  assert.match(gone.stderr, /fallow not installed/);
+  assert.match(gone.stderr, /Construct dependency\) is missing: .*reinstall Construct/);
 });
 
 test('real fallow (when installed): runs on a tiny project and reports its unused export', { skip: !resolveFallowBin(makeTempDir('construct-fallow-probe-'), { env: {} }) && 'fallow is not installed' }, async () => {

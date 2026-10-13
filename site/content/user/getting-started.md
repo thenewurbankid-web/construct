@@ -1,4 +1,4 @@
-**Try it in 60 seconds** (needs Node.js 20 or newer)
+**Try it in 60 seconds** (needs Node.js 22 or newer)
 
 ```bash
 git clone https://github.com/thenewurbankid-web/construct.git && cd construct && npm install && npm link

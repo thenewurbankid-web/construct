@@ -27,7 +27,7 @@ Installing the package does not install these; `studio doctor` checks each one a
 
 | Item | Needed for | Fix |
 |---|---|---|
-| Node 20 or newer | everything | https://nodejs.org |
+| Node 22 or newer | everything | https://nodejs.org |
 | `ffmpeg` and `ffprobe` on PATH (or `FFMPEG=/path`) | video, audio, mixing | `sudo apt install ffmpeg` or `brew install ffmpeg` |
 | A Playwright browser | recording the website | `npx playwright install chromium` |
 | Ollama (optional) | a local chat model for the storyboard | https://ollama.com, then `ollama serve` |
