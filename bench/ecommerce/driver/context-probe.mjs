@@ -438,11 +438,32 @@ function firstCall(ans) {
   const c = calls[0]; if (!c) return null;
   return { name: c.function?.name, args: argsOf(c) };
 }
+/**
+ * Lenient read of a case-1 answer the driver would NOT accept (a direct `line.setCode` call instead of plan_add, or a
+ * call missing its closing braces): the PicksPage code it meant, or null. Reported apart from the strict score.
+ */
+function lenientCode(content) {
+  const text = String(content ?? '').replace(/```(json)?/g, '');
+  let calls = textToolCalls(text);
+  for (let k = 1; !calls.length && k <= 3; k += 1) calls = textToolCalls(text + '}'.repeat(k));
+  const c = calls[0]; if (!c) return null;
+  const a = argsOf(c);
+  if (c.function.name === 'plan_add' && a.args?.file === PICKS && typeof a.args?.code === 'string') return a.args.code;
+  if (c.function.name === 'line.setCode' && a.file === PICKS && typeof a.code === 'string') return a.code;
+  return null;
+}
+function lenientScore(content) {
+  const code = lenientCode(content);
+  if (code == null) return { codeRecovered: false, lenientTscPass: false, lenientUseful: false };
+  const t = norm(code) === norm(failing.code) ? { pass: false } : tscCheck(code);
+  const sk = /— add it here/.test(code) || norm(code) === norm(currentPicks);
+  return { codeRecovered: true, lenientTscPass: t.pass, lenientUseful: t.pass && /My picks/.test(code) && !sk, lenientCode: code };
+}
 function scoreCase1(ans) {
   const c = firstCall(ans);
   const a = c?.args ?? {};
   const isSetCode = c?.name === 'plan_add' && a.tool === 'line.setCode' && a.args?.file === PICKS && typeof a.args?.code === 'string';
-  if (!isSetCode) return { call: c ? `${c.name}${a.tool ? ` ${a.tool}` : ''}${a.fix ? ` fix ${a.fix}` : ''}` : 'none', setCode: false, repeat: false, tscPass: false };
+  if (!isSetCode) return { call: c ? `${c.name}${a.tool ? ` ${a.tool}` : ''}${a.fix ? ` fix ${a.fix}` : ''}` : 'none', setCode: false, repeat: false, tscPass: false, ...lenientScore(ans.content) };
   const repeat = norm(a.args.code) === norm(failing.code);
   const t = repeat ? { pass: false, errors: ['(same code as the failing attempt)'] } : tscCheck(a.args.code);
   const skeleton = /— add it here/.test(a.args.code) || norm(a.args.code) === norm(currentPicks);
@@ -475,8 +496,10 @@ async function scoreAtoms(ans, caseNo, enforced, { nearestFrom = null } = {}) {
   const missing = lines.filter((l) => 'missing' in l).map((l) => l.missing);
   const ref = REFERENCE[`case${caseNo}`];
   // A MISSING line that only restates a registered atom sentence is not a real gap.
-  const missingAtoms = missing.filter((m) => ATOM_SENTENCES.includes(m.trim()));
-  const properMissing = missing.filter((m) => !ATOM_SENTENCES.includes(m.trim()));
+  // ...or paraphrases one ("The page needs to <atom sentence>").
+  const restates = (m) => ATOM_SENTENCES.some((s) => m.trim().toLowerCase().includes(s.toLowerCase().replace(/\.$/, '')));
+  const missingAtoms = missing.filter(restates);
+  const properMissing = missing.filter((m) => !restates(m));
   const refMatch = valid.length === atoms.length && JSON.stringify(valid) === JSON.stringify(ref.atoms) && (!ref.needsMissing || properMissing.length > 0);
   let nearest = nearestFrom ?? [];
   if (!nearestFrom && invalid.length) {
@@ -527,11 +550,15 @@ async function main() {
       if (r.score?.error) continue;
       if (v.atoms) r.score = await scoreAtoms({ content: r.said }, v.case, !!v.enforced, { nearestFrom: r.score.nearest ?? [] });
       else if (v.case === 2 && !v.fetchLoop) r.score = scoreCase2({ content: r.said });
-      else if (v.case === 1 && r.score?.setCode) {
+      else if (v.case === 1 && !r.score?.setCode) {
+        if (!fs.existsSync(PROBE_DIR)) setupProbe();
+        Object.assign(r.score, lenientScore(r.said));
+      } else if (v.case === 1 && r.score?.setCode) {
         const sk = /— add it here/.test(r.score.code) || norm(r.score.code) === norm(currentPicks);
         Object.assign(r.score, { skeleton: sk, pointShown: /My picks/.test(r.score.code), usefulPass: r.score.tscPass && /My picks/.test(r.score.code) && !sk });
       }
     }
+    fs.rmSync(PROBE_DIR, { recursive: true, force: true });
     j.summary = summarize(j.samples);
     fs.writeFileSync(OUT, `${JSON.stringify(j, null, 1)}\n`);
     fs.writeFileSync(MD, markdown(j.meta, j.summary, j.prompts));
@@ -654,7 +681,7 @@ function summarize(rows) {
     const base = { case: v.case, variant, model, n, promptTokens: mean(rs.map((r) => r.promptTokens).filter((x) => x != null)), latencyMs: mean(rs.map((r) => r.latencyMs).filter((x) => x != null)), errors: cnt((r) => r.score?.error) };
     if (v.atoms) return { ...base, validPct: mean(rs.map((r) => r.score.validPct ?? 0)), refMatch: cnt((r) => r.score.refMatch), missingUsed: cnt((r) => r.score.missingUsed), missingRestatesAtom: cnt((r) => r.score.missingRestatesAtom > 0), answered: mean(rs.map((r) => r.score.answered ?? 0)), ...(v.enforced ? { schemaOk: cnt((r) => r.score.schemaOk) } : {}), atomsPicked: [...new Set(rs.flatMap((r) => r.score.atoms ?? []))] };
     if (v.case === 2) return { ...base, listPagePick: cnt((r) => r.score.listPagePick), listPageIntent: cnt((r) => r.score.listPageIntent), picked: rs.map((r) => (r.score.listPagePick ? 'ListPage' : `${r.score.call}${r.score.intentLibraryId ? ` (${r.score.intentLibraryId.replace('pages/', '')})` : ''}`)) };
-    return { ...base, setCode: cnt((r) => r.score.setCode), repeat: cnt((r) => r.score.repeat), tscPass: cnt((r) => r.score.tscPass), usefulPass: cnt((r) => r.score.usefulPass), skeleton: cnt((r) => r.score.skeleton), fetches: mean(rs.map((r) => r.fetches ?? 0)), missingImport: cnt((r) => (r.score.tscErrors ?? []).some((e) => /TS2307/.test(e))), calls: rs.map((r) => (r.score.setCode ? (r.score.repeat ? 'repeat' : (r.score.tscPass ? 'pass' : 'fail')) : r.score.call)) };
+    return { ...base, setCode: cnt((r) => r.score.setCode), repeat: cnt((r) => r.score.repeat), tscPass: cnt((r) => r.score.tscPass), usefulPass: cnt((r) => r.score.usefulPass), lenientUseful: cnt((r) => r.score.usefulPass || r.score.lenientUseful), skeleton: cnt((r) => r.score.skeleton), fetches: mean(rs.map((r) => r.fetches ?? 0)), missingImport: cnt((r) => (r.score.tscErrors ?? []).some((e) => /TS2307/.test(e))), calls: rs.map((r) => (r.score.setCode ? (r.score.repeat ? 'repeat' : (r.score.tscPass ? 'pass' : 'fail')) : r.score.call)) };
   });
 }
 
@@ -668,8 +695,8 @@ function markdown(meta, summary, prompts) {
   L.push(`Source run: \`${path.basename(RUN)}\` (read-only). Ollama ${meta.ollamaVersion}; models ${meta.models.join(', ')}; temperature 0.2, seeds ${meta.seeds.join(',')}, num_predict ${NUM_PREDICT}. Harness: \`bench/ecommerce/driver/context-probe.mjs\`; raw samples: \`bench/lending/results/context-probe-r1.json\`.`, '');
   L.push(`English = "Smith translation": ${meta.english}. ${meta.smithLinks.codemod}`, '');
   L.push(`tsc sanity on the copied project: skeleton ${meta.tscSanity.skeleton.pass ? 'passes' : 'fails'}, failing attempt ${meta.tscSanity.failing.pass ? 'passes' : 'fails'}, example fix ${meta.tscSanity.exampleFix.pass ? 'passes' : 'fails'}.`, '');
-  L.push('## Case 1: PicksPage TS2345 loop (turn 12)', '', '| variant | model | what changed | num_ctx | setCode x/5 | repeat x/5 | tsc-pass x/5 | useful pass x/5 | skeleton resent x/5 | imports a missing module x/5 | prompt tokens | latency ms |', '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |');
-  for (const s of c1) L.push(`| ${s.variant} | ${short(s.model)} | ${VARIANTS[s.variant].what}${VARIANTS[s.variant].dependsOnBest ? ` (best = ${meta[`bestOfV2toV4@${s.model}`]})` : ''} | ${VARIANTS[s.variant].numCtx} | ${s.setCode}/${s.n} | ${s.repeat}/${s.n} | ${s.tscPass}/${s.n} | ${s.usefulPass}/${s.n} | ${s.skeleton}/${s.n} | ${s.missingImport}/${s.n} | ${s.promptTokens} | ${s.latencyMs} |`);
+  L.push('## Case 1: PicksPage TS2345 loop (turn 12)', '', '| variant | model | what changed | num_ctx | setCode x/5 | repeat x/5 | tsc-pass x/5 | useful pass x/5 | lenient useful x/5 | skeleton resent x/5 | imports a missing module x/5 | prompt tokens | latency ms |', '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |');
+  for (const s of c1) L.push(`| ${s.variant} | ${short(s.model)} | ${VARIANTS[s.variant].what}${VARIANTS[s.variant].dependsOnBest ? ` (best = ${meta[`bestOfV2toV4@${s.model}`]})` : ''} | ${VARIANTS[s.variant].numCtx} | ${s.setCode}/${s.n} | ${s.repeat}/${s.n} | ${s.tscPass}/${s.n} | ${s.usefulPass}/${s.n} | ${s.lenientUseful}/${s.n} | ${s.skeleton}/${s.n} | ${s.missingImport}/${s.n} | ${s.promptTokens} | ${s.latencyMs} |`);
   L.push('', 'L+tools / CL+tools: latency sums every call of the fetch loop (up to 4); prompt tokens are the last call\'s.');
   L.push('', 'Compare-loop rows (V7, V8+V7): prompt tokens are the second call\'s; latency is both calls together.', '');
   L.push('## Case 2: base page for browse (turn 1)', '', '| variant | model | what changed | ListPage pick (valid plan_add) x/5 | ListPage intent x/5 | answers | prompt tokens | latency ms |', '| --- | --- | --- | --- | --- | --- | --- | --- |');
