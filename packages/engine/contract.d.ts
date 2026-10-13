@@ -12,6 +12,8 @@ export * as lineSpecSteps from './line/seed/specSteps.mjs';
 export * as lineSpec from './line/spec.mjs';
 /** `@line/construct-engine/line/tool-registry` */
 export * as lineToolRegistry from './line/toolRegistry.mjs';
+/** `@line/construct-engine/line/lsp-tools` */
+export * as lineLspTools from './line/lsp/tools.mjs';
 /** `@line/construct-engine/line/import-agent` */
 export * as lineImportAgent from './line/importAgentDisk.mjs';
 /** `@line/construct-engine/line/import-verify` */
