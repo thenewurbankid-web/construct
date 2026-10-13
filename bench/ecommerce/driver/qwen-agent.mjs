@@ -56,6 +56,7 @@ import { readSpec, overviewWithIndex } from './spec-slice.mjs';
 import { compactHistory } from './compact.mjs';
 import { buildTurn } from './turn.mjs';
 import { loadLedger } from './ledger.mjs';
+import { createScratch, SCRATCH_CAP, SCRATCH_FENCE_LINES } from './scratch.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const bench = path.join(here, '..');
@@ -96,6 +97,8 @@ export const TOOLS = {
     fn('plan_rules', 'plan-cli rules: the 2-4 rules a step of this tool must keep for this file, each with an example (read before you write the step).', { tool: S('A Line tool name, e.g. line.setCode'), file: S('The file the step is about, like features/<feature>/pages/<Name>.tsx (optional)') }, ['tool']),
     fn('read_file', 'plan-cli read: one project file and its contentHash (pass it to line.setCode to replace the file).', { path: S('Project-relative path') }, ['path']),
     fn('list_dir', 'plan-cli ls: the entries of one project folder.', { path: S('Project-relative folder, "." for the root') }, ['path']),
+    fn('scratch_write', `Your own scratchpad (not the project): add one short note in plain English, like your plan, your current hypothesis or what to try next. It never changes a project file. At most ${SCRATCH_CAP} characters in all, and no code block over ${SCRATCH_FENCE_LINES} lines (a code draft goes to plan_add). Notes about a point or file go away once it is covered or its step lands; old notes go after a few turns unless pinned (2 at most).`, { text: S('The note, plain English'), about: S('The file or point id it is about, e.g. PCK-1 (optional; a newer note about the same thing replaces it)'), pin: { type: 'boolean', description: 'Keep it until you replace it (at most 2 pinned)' }, mode: { type: 'string', enum: ['append', 'replace'], description: 'append (default) adds a note; replace clears the unpinned notes first' } }, ['text']),
+    fn('scratch_read', 'Your scratchpad: your notes so far (they are also shown each turn).'),
     fn('finish', 'Stop: you believe every acceptance point is done, or you cannot make more progress.', { summary: S('What you built and what is left.') }, ['summary']),
   ],
   path: [
@@ -346,6 +349,11 @@ export async function runAgent(o, { resultsDir = path.join(o.bench ?? bench, 're
   if (ledger && o.seedPlan) ledger.add({ kind: 'decision', text: String(first.content.split('\n')[1] ?? '').slice(0, 400), cites: ['seed', 'SPEC.md'] });
   /** @type {any[]} */
   let last = [];
+  // #932: the coder's scratchpad (logs/scratch.md), line arm only; garbage-collected before each turn.
+  const scratch = o.arm === 'line' ? createScratch({ file: path.join(logDir, 'scratch.md') }) : null;
+  /** @type {Map<string, number>} file -> the turn its step landed */
+  const landedAt = new Map();
+  let focusNow = { step: null, covered: [] };
   const t0 = Date.now();
   const deadline = t0 + o.maxMinutes * 60_000;
   let idle = 0; let stop = 'max turns'; let turn = 0; let allPass = false;
@@ -360,8 +368,14 @@ export async function runAgent(o, { resultsDir = path.join(o.bench ?? bench, 're
     while (history.length && history[0].role === 'tool') history.shift();
     /** @type {any[]} */
     let messages; let context;
+    // #932: the scratchpad's garbage collection, each removal logged with its reason.
+    let gced = [];
+    if (scratch && typeof (/** @type {any} */ (cli)).focus === 'function') {
+      focusNow = await /** @type {any} */ (cli).focus();
+      gced = scratch.gc({ turn, covered: focusNow.covered, landed: landedAt });
+    }
     if (ledger && L) {
-      const built = buildTurn({ system, ledger, ledgerView: L.ledgerView, card: await /** @type {any} */ (cli).card(), last, tools: TOOLS[o.arm] });
+      const built = buildTurn({ system, ledger, ledgerView: L.ledgerView, card: await /** @type {any} */ (cli).card(), last, tools: TOOLS[o.arm], notes: scratch?.text ?? '' });
       messages = built.messages;
       context = { mode: 'ledger', tokens: built.tokens, parts: built.parts, ledger: ledger.entries.length };
     } else {
@@ -402,19 +416,23 @@ export async function runAgent(o, { resultsDir = path.join(o.bench ?? bench, 're
     for (const c of calls) {
       const name = c.function?.name; const args = typeof c.function?.arguments === 'string' ? safeParse(c.function.arguments) : c.function?.arguments;
       if (name === 'finish') { finished = String(args?.summary ?? ''); outcomes.push({ name, ok: true }); break; }
-      const out = await callTool(cli, o.arm, name, args);
+      // #932: scratch tools are the driver's own: no plan-cli call, no project file, never in calls.jsonl or the ledger.
+      const isScratch = scratch && (name === 'scratch_write' || name === 'scratch_read');
+      const out = isScratch ? (name === 'scratch_write' ? scratch.write(args ?? {}, { turn, step: focusNow.step }) : scratch.read()) : await callTool(cli, o.arm, name, args);
+      if (name === 'plan_run_next' && out?.landed) for (const f of out.files ?? []) landedAt.set(String(f), turn);
       if (o.arm === 'path' && name === 'fill' && out.pass && out.next === null) allPass = true;
       streak.see(name, args, out);
       cycle.see(turn, name, args, out);
       outcomes.push({ name, args: clip(JSON.stringify(args ?? {}), 400), ok: out.ok, code: out.code ?? null, sentence: out.sentence });
       history.push({ role: 'tool', content: clip(JSON.stringify(toModel(out))) });
       // #932: every tool result is distilled into the ledger (one sentence + cites).
-      if (ledger) ledger.distil(name, args, out);
+      if (ledger && !isScratch) ledger.distil(name, args, out);
     }
     if (!calls.length) { idle += 1; history.push({ role: 'user', content: 'Use one of your tools (or call finish).' }); } else idle = 0;
     last = history.slice(turnStart);
     write(tokensFile, { builder: o.builder, model: o.model, ...tokens, source: 'ollama prompt_eval_count/eval_count', at: new Date().toISOString() });
-    write(turnsFile, { kind: 'turn', ...tokens, context, textCalls: fromText.length > 0, calls: outcomes, said: clip(msg.content ?? '', 600), ...ioRefs(input, output) });
+    const scratchRow = scratch && (gced.length || outcomes.some((x) => x.name === 'scratch_write')) ? { scratch: { removed: gced, version: scratch.text } } : {};
+    write(turnsFile, { kind: 'turn', ...tokens, context, ...scratchRow, textCalls: fromText.length > 0, calls: outcomes, said: clip(msg.content ?? '', 600), ...ioRefs(input, output) });
     console.log(`turn ${turn}: in ${tokens.in} out ${tokens.out} ${tokens.ms} ms; ${outcomes.map((x) => `${x.name}${x.ok ? '' : ` (${x.code})`}`).join(', ') || 'no tool call'}`);
     if (finished !== null) { stop = `finish: ${finished}`; break; }
     if (idle >= 8) { stop = '8 turns without a tool call'; break; }

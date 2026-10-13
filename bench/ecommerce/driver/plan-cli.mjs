@@ -316,7 +316,20 @@ export function createPlanCli({ project, log, builder = 'unknown', spec = SPEC_F
   async function card() {
     try { const v = /** @type {any} */ (await svc.view()); return v?.work?.text ?? ''; } catch { return ''; }
   }
-  return { run, card, root, logFile };
+  /**
+   * #932: what the scratchpad's garbage collection needs: the current step (the first open item's point id, else its
+   * file) and the point ids now covered. Read only and not logged.
+   * @returns {Promise<{step: string|null, covered: string[]}>}
+   */
+  async function focus() {
+    try {
+      const w = /** @type {any} */ (await svc.view())?.work;
+      const it = w?.first ?? null;
+      const step = it?.point?.id ?? it?.file ?? it?.step?.args?.file ?? null;
+      return { step, covered: (w?.features ?? []).flatMap((f) => f.points.filter((p) => p.covered === true).map((p) => p.id)) };
+    } catch { return { step: null, covered: [] }; }
+  }
+  return { run, card, focus, root, logFile };
 }
 
 const safeJson = (s) => { try { return JSON.parse(s); } catch { return s ?? null; } };
