@@ -46,14 +46,15 @@ Rules:
   ways:
   - its code equals an eval code, or one of the files or functions that eval code was assembled from;
   - its English equals an eval fact;
-  - its function name equals an eval function name. This catches, for example, the ecommerce starter's own
-    `ListPage`.
+  - it is a function with the same name in the same folder as an eval function. A same-named function in another
+    folder, such as a `Button` elsewhere, stays in training. Eval functions from the probe's lending project count as
+    living in `bench/lending/starter/`.
 
   The tests assert that no train, val or test pair leaks.
 
 ## Eval set: 28 pairs
 
-All eval pairs are JS -> English and have source `ledger`. None of them, and none of their function names, reach
+All eval pairs are JS -> English and have source `ledger`. None of them, and no same-named function in the same folder, reach
 train, val or test; the tests check this.
 
 | slice | pairs | code | English |
@@ -72,12 +73,12 @@ unchanged.
 | atoms | 14 | 0 | 0 | 14 |
 | typed-contracts | 27 | 0 | 1 | 26 |
 | probe | 10 | 0 | 8 | 2 |
-| smith | 233 | 29 | 53 | 151 |
+| smith | 233 | 5 | 63 | 165 |
 
 Smith saw 377 functions in 339 files:
 
 - 233 translations were non-empty.
 - 144 were empty: 144 `placeholder`, 0 `blank`, 0 `failed`.
 
-After the leak guard, the kept pairs split into 155 train, 21 val and 17 test, for 193 in total. The eval set holds
+After the leak guard, the kept pairs split into 168 train, 21 val and 18 test, for 207 in total. The eval set holds
 28 more.

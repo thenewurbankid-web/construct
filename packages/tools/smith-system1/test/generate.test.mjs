@@ -2,7 +2,7 @@
 // summarizer here (the real one is a linked repo that may be absent), except in the one test that skips without it.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { assertPair, buildDataset, leakKeys, leaks, makePair, normalizeCode, splitOf, toJsonl } from '../lib.mjs';
+import { assertPair, buildDataset, leakKeys, leaks, makePair, nameKey, normalizeCode, splitOf, toJsonl } from '../lib.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { EVAL_FACTS_FILE, REPO, functionsOf, ledgerEval, pagesEval, smithEmptyReason, smithPairs, toJs } from '../sources.mjs';
@@ -74,14 +74,40 @@ test('eval slices: every probe fact has code, the page slice is current, and no 
   const keys = leakKeys(ds.eval);
   const evalNames = new Set(ds.eval.flatMap((p) => p.meta.names));
   for (const n of ['RequestPage', 'checkBooks', 'Login', 'VisitsPage', 'InvoiceCard']) assert.ok(evalNames.has(n), `eval names ${n}`);
-  for (const split of ['train', 'val', 'test']) {
-    for (const p of ds[split]) {
-      assert.ok(!leaks(p, keys), `${split} pair ${p.meta.file} ${p.meta.name} leaks eval`);
-      assert.ok(!evalNames.has(p.meta.name), `${split} pair ${p.meta.file} carries eval name ${p.meta.name}`);
-      assert.ok(!keys.code.has(normalizeCode(p.code)));
-    }
+  const kept = [...ds.train, ...ds.val, ...ds.test];
+  for (const p of kept) {
+    assert.ok(!leaks(p, keys), `${p.meta.split} pair ${p.meta.file} ${p.meta.name} leaks eval`);
+    assert.ok(!keys.names.has(nameKey(p.meta.file ?? '', p.meta.name)), `${p.meta.file} ${p.meta.name} is an eval function in the same folder`);
+    assert.ok(!keys.code.has(normalizeCode(p.code)));
   }
   assert.ok(ds.stats.perSource.smith.leakHeldOut >= 15, JSON.stringify(ds.stats.perSource.smith));
+  // The lending starter's own library pages (eval's folder) are held out.
+  assert.ok(!kept.some((p) => p.meta.file?.startsWith('bench/lending/starter/library/pages/')));
+});
+
+test('leak guard by name: same folder held out, another folder kept', () => {
+  const ev = makePair({ source: 'ledger', direction: 'js->en', code: 'function Button() { return 1; }', english: 'An eval button.', meta: { nameKeys: [nameKey('app/ui/Button.tsx', 'Button')], names: ['Button'] } });
+  const keys = leakKeys([ev]);
+  const cand = (file, n) => makePair({ source: 'smith', direction: 'js->en', code: `function Button() { return ${n}; }`, english: `Button ${n} works.`, meta: { file, name: 'Button' } });
+  const sameFolder = cand('app/ui/Other.tsx', 2);
+  const otherFolder = cand('lib/components/Button.tsx', 3);
+  assert.equal(leaks(sameFolder, keys), true);
+  assert.equal(leaks(otherFolder, keys), false);
+  const ds = buildDataset([sameFolder, otherFolder], [ev]);
+  assert.equal(ds.stats.perSource.smith.leakHeldOut, 1);
+  assert.deepEqual([...ds.train, ...ds.val, ...ds.test].map((p) => p.meta.file), ['lib/components/Button.tsx']);
+});
+
+test('leak guard by name on the real data: a Button outside the eval folders stays in training', async () => {
+  const roots = ['example', 'examples', 'test/fixtures'];
+  const ds = await generate({ summarizeCode: fakeSmith, roots });
+  const keys = leakKeys(ds.eval);
+  const evalButtonDirs = [...keys.names].filter((k) => k.endsWith('#Button')).map((k) => k.split('#')[0]);
+  assert.deepEqual(evalButtonDirs, ['test/fixtures/line-graph-alias/library/components']);
+  const kept = [...ds.train, ...ds.val, ...ds.test];
+  const buttons = kept.filter((p) => p.meta.name === 'Button');
+  assert.ok(buttons.length > 0, 'some Button from another folder is kept');
+  assert.ok(buttons.every((p) => !evalButtonDirs.includes(p.meta.file.split('/').slice(0, -1).join('/'))));
 });
 
 test('dedupe: one pair per normalized code, hand-written source first', () => {

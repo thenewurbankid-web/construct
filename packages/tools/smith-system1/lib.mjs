@@ -2,6 +2,7 @@
 // hash splits, dedupe and the eval-leak guard. No file system, no Smith, no model: everything here is a function of
 // its arguments, so the same pairs in always give the same dataset out (the determinism the tests check).
 import crypto from 'node:crypto';
+import path from 'node:path';
 import { createRequire } from 'node:module';
 
 /** TypeScript, from the repo's own install (resolved upward from this file, like every other tool here). */
@@ -84,7 +85,8 @@ export function sortKeys(v) {
 
 /**
  * The eval set's leak keys: every eval code (and every file and function it was assembled from, `meta.parts`), every
- * eval English (normalized) and every eval function name (`meta.names`). A pair matching any of them is held out.
+ * eval English (normalized) and every eval function as `folder#name` (`meta.nameKeys`). A pair matching any of them
+ * is held out.
  * @param {object[]} evalPairs
  */
 export function leakKeys(evalPairs) {
@@ -94,18 +96,22 @@ export function leakKeys(evalPairs) {
   for (const e of evalPairs) {
     if (e.code) code.add(normalizeCode(e.code));
     for (const part of e.meta?.parts ?? []) code.add(normalizeCode(part));
-    for (const n of e.meta?.names ?? []) names.add(n);
+    for (const n of e.meta?.nameKeys ?? []) names.add(n);
     english.add(normalizeEnglish(e.english));
   }
   code.delete('');
   return { code, english, names };
 }
 
+/** A function's `folder#name` key: the folder of its repo-relative file, then its name. */
+export const nameKey = (file, name) => `${path.posix.dirname(file)}#${name}`;
+
 /**
- * True when a pair shares code or English with the eval set, or is a function with the same name as one of the eval
- * files' functions (another copy of ListPage, say, from a different starter: close enough to count as seen).
+ * True when a pair shares code or English with the eval set, or is a function with the same name in the same folder
+ * as an eval function (the same component in a sibling file, say). A same-named function in another folder is not a
+ * leak: a `Button` elsewhere stays in training.
  */
-export const leaks = (p, keys) => keys.code.has(normalizeCode(p.code)) || keys.english.has(normalizeEnglish(p.english)) || (typeof p.meta?.name === 'string' && keys.names.has(p.meta.name));
+export const leaks = (p, keys) => keys.code.has(normalizeCode(p.code)) || keys.english.has(normalizeEnglish(p.english)) || (typeof p.meta?.name === 'string' && typeof p.meta?.file === 'string' && keys.names.has(nameKey(p.meta.file, p.meta.name)));
 
 /**
  * The whole dataset from raw candidate pairs and the eval pairs: leak-filter, dedupe by normalized code (source

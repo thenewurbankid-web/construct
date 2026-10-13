@@ -12,7 +12,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { makePair, normalizeCode, sha256, ts } from './lib.mjs';
+import { makePair, nameKey, normalizeCode, sha256, ts } from './lib.mjs';
 
 export const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const rel = (f) => path.relative(REPO, f).split(path.sep).join('/');
@@ -29,6 +29,8 @@ export const PROBE_MD = 'bench/lending/CONTEXT-PROBE.md';
 export const CONTRACT_EXAMPLES = 'packages/core/typed-contracts/examples';
 /** The probe's project was a copy of this starter: library files resolve here. */
 export const LENDING_STARTER = 'bench/lending/starter';
+/** A file of the probe's lending project (a copy of the starter), as the repo path it lives at in the starter. */
+const inStarter = (f) => `${LENDING_STARTER}/${f}`;
 const CODE_EXT = /\.(ts|tsx|js|jsx|mjs)$/;
 const MAX_BYTES = 64 * 1024;
 
@@ -252,7 +254,7 @@ export function ledgerEval(probe = readProbe(), md = undefined) {
         const fns = functionsOf(js);
         pairs.push(makePair({
           source: 'ledger', direction: 'js->en', code: js, english: fact,
-          meta: { cite, files: [w.file], from: [EVAL_FACTS_FILE], ledger: name, names: fns.map((f) => f.name), parts: fns.map((f) => f.code), slice: 'ledger-written', wonBy: `${winner} ${won[winner]}/5` },
+          meta: { cite, files: [w.file], from: [EVAL_FACTS_FILE], ledger: name, nameKeys: fns.map((f) => nameKey(inStarter(w.file), f.name)), names: fns.map((f) => f.name), parts: fns.map((f) => f.code), slice: 'ledger-written', wonBy: `${winner} ${won[winner]}/5` },
         }));
         continue;
       }
@@ -260,7 +262,7 @@ export function ledgerEval(probe = readProbe(), md = undefined) {
       const fnParts = parts.flatMap((js) => functionsOf(js).map((f) => f.code));
       pairs.push(makePair({
         source: 'ledger', direction: 'js->en', code: parts.join('\n\n'), english: fact,
-        meta: { cite, files, from: got.map((g) => g.from), ledger: name, names: parts.flatMap((js) => functionsOf(js).map((f) => f.name)), parts: [...parts, ...fnParts], slice: 'ledger-probe', wonBy: `${winner} ${won[winner]}/5` },
+        meta: { cite, files, from: got.map((g) => g.from), ledger: name, nameKeys: parts.flatMap((js, i) => functionsOf(js).map((f) => nameKey(inStarter(files[i]), f.name))), names: parts.flatMap((js) => functionsOf(js).map((f) => f.name)), parts: [...parts, ...fnParts], slice: 'ledger-probe', wonBy: `${winner} ${won[winner]}/5` },
       }));
     }
   }
@@ -276,7 +278,7 @@ export function pagesEval() {
   const doc = JSON.parse(read(path.join(REPO, EVAL_PAGES_FILE)));
   const pairs = doc.pages.map((p) => makePair({
     source: 'ledger', direction: 'js->en', code: p.code, english: p.english,
-    meta: { files: [p.file], from: [EVAL_PAGES_FILE], names: [p.name], parts: [p.code], slice: 'pages' },
+    meta: { files: [p.file], from: [EVAL_PAGES_FILE], nameKeys: [nameKey(p.file, p.name)], names: [p.name], parts: [p.code], slice: 'pages' },
   }));
   return { pairs, entries: doc.pages };
 }
