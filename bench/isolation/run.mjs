@@ -174,7 +174,10 @@ const strategies = {
       if (!res.pass) break;
       file = res.picked.result.body;
     }
-    const ev = res.picked.result.ev;
+    // #943: a sample the judge passed but the gate rejected is not a pass (its own ev still says tsc+check passed)
+    const ev = !res.pass && res.picked.result.ev?.pass
+      ? { ...res.picked.result.ev, pass: false, failClass: 'gate', detail: `gate: ${res.picked.gate?.failed?.join(', ') ?? 'rejected'}` }
+      : res.picked.result.ev;
     return { ...ev, attempts: drawn, sampleClasses: res.samples.map((x) => x.failClass ?? 'pass'),
       ...(briefs.length === 1 ? { nStats: res.stats(arm.reportN ?? [arm.n], 0) } : {}), briefTokens: briefs.map((b) => b.approxTokens), gateLog, finalBody: file };
   },
