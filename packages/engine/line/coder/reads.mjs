@@ -20,6 +20,7 @@ import { readLineFeature } from '../feature.mjs';
 import { staticSummarizer } from '../contextPicker.mjs';
 import { moduleContract } from '../spec.mjs';
 import { importableFiles } from '../typeGate.mjs';
+import { moduleScope } from '../scope/moduleScope.mjs';
 import { matchRequest } from '../traceMatch.mjs';
 import { matchAtoms, getAtom, listAtoms } from '@line/atoms';
 
@@ -102,13 +103,20 @@ export function featureSummary(root, { name }) {
 }
 
 /**
- * The files `file` may import. #937 adapter: today the library plus the file's own feature (typeGate importableFiles);
- * line/feature-modules' `moduleScope(root, feature)` (other features' public index) replaces this one function at merge.
+ * The files `file` may import: the library and the file's own feature (typeGate importableFiles), plus, for a feature
+ * file, every other feature's public index as #935's `moduleScope(root, feature)` reads it (the one way into a feature).
  * @param {string} root @param {{library: string, features: string}} layout @param {string} file
  * @returns {string[]}
  */
 export function importableFor(root, layout, file) {
-  return importableFiles(root, layout, file);
+  const fp = `${layout.features}/`;
+  const own = file.startsWith(fp) ? file.slice(fp.length).split('/')[0] : null;
+  const local = importableFiles(root, layout, file).filter((r) => !r.startsWith(fp) || (own && r.startsWith(`${fp}${own}/`)));
+  if (!own) return local;
+  let others = [];
+  try { others = fs.readdirSync(path.join(root, layout.features), { withFileTypes: true }).filter((d) => d.isDirectory() && d.name !== own).map((d) => d.name).sort(); } catch { others = []; }
+  const indexes = others.map((o) => { try { return moduleScope(root, o).index; } catch { return null; } }).filter((x) => typeof x === 'string');
+  return [...local, ...indexes];
 }
 
 /**
@@ -134,7 +142,7 @@ export function scopeOf(root, { file }) {
     try { exports = moduleContract(path.join(root, x)).exports; } catch { exports = []; }
     return { file: x, import: specifierFor(root, f, x), sentence, exports };
   });
-  const head = `${f} may import ${ordered.length} file${ordered.length === 1 ? '' : 's'}: ${own ? `its own feature (${own.slice(0, -1)}) and ` : ''}the library${ordered.length > MAX_SCOPE ? ` (the first ${MAX_SCOPE} are listed)` : ''}. Nothing else: another feature is never imported.`;
+  const head = `${f} may import ${ordered.length} file${ordered.length === 1 ? '' : 's'}: ${own ? `its own feature (${own.slice(0, -1)}) and ` : ''}the library${ordered.length > MAX_SCOPE ? ` (the first ${MAX_SCOPE} are listed)` : ''}.${own ? ' Another feature only through its index (features/<name>/index.ts), never its inner files.' : ' Nothing else: a feature is never imported.'}`;
   const lines = entries.map((e) => `- ${e.import}: ${e.sentence}${e.exports.length ? ` Exports: ${e.exports.join(', ')}.` : ''}`);
   return { ok: true, file: f, entries, sentence: [head, ...lines].join('\n') };
 }
