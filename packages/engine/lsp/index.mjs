@@ -244,12 +244,33 @@ export function completionsAt(root, file, at, o = {}) {
       items.push({ name: e.name, kind: e.kind, ...(src ? { from: src } : {}) });
       if (items.length >= MAX_ITEMS) break;
     }
+    // inside an import's module string: every project module as a specifier from this file (TS lists one folder level)
+    const spec = importSpecifierAt(text, pos, c.abs);
+    if (spec) {
+      items.length = 0;
+      const typedPath = spec.typed;
+      const mods = [...c.proj.files, ...fs.readdirSync(c.r, { recursive: true }).filter((f) => /\.json$/.test(f) && !/node_modules|tsconfig/.test(f)).map((f) => path.join(c.r, f))]
+        .filter((f) => f !== c.abs && inside(c.r, f) && !/\.d\.ts$/.test(f))
+        .map((f) => { let s = posixPath(path.relative(path.dirname(c.abs), f)).replace(/\.(tsx?|jsx?)$/, '').replace(/\/index$/, ''); return s.startsWith('.') ? s : `./${s}`; })
+        .filter((s, k, all) => all.indexOf(s) === k && s.startsWith(typedPath)).sort();
+      for (const m of mods.slice(0, MAX_ITEMS)) items.push({ name: m, kind: 'module' });
+    }
     const names = items.map((i) => i.name);
     return {
       ok: true, file: c.rel(c.abs), at: lineCol(text, pos), member: !!info?.isMemberCompletion, typed, total: (info?.entries ?? []).length, items,
       schema: completionSchema(names), ms: Date.now() - t0,
     };
   });
+}
+
+/** When `pos` is inside an import/export declaration's module string: { typed } (the string's text before pos). */
+function importSpecifierAt(text, pos, fileName) {
+  const sf = ts.createSourceFile(fileName, text, ts.ScriptTarget.Latest, true, /\.tsx$/.test(fileName) ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
+  for (const st of sf.statements) {
+    const ms = (ts.isImportDeclaration(st) || ts.isExportDeclaration(st)) ? st.moduleSpecifier : null;
+    if (ms && ts.isStringLiteral(ms) && pos > ms.getStart(sf) && pos < ms.getEnd()) return { typed: text.slice(ms.getStart(sf) + 1, pos) };
+  }
+  return null;
 }
 
 /** An Ollama `format` JSON schema that lets the model answer only one of `names`. */

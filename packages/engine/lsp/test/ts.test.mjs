@@ -51,7 +51,7 @@ test('completionsAt: members, import names and import paths, with an Ollama form
   const n = lsp.completionsAt(R, 'src/app/view.ts', '/*H*/', { text: "import { /*H*/ } from '../lib/books';\n" });
   assert.deepEqual(n.items.map((i) => i.name).sort(), ['Book', 'findBook', 'pageLabel', 'shelf']);
   const p = lsp.completionsAt(R, 'src/app/view.ts', '/*H*/', { text: "import { findBook } from '../lib//*H*/';\n" });
-  assert.deepEqual(p.items.map((i) => i.name), ['books']);
+  assert.deepEqual(p.items.map((i) => i.name), ['../lib/books']);
   const g = lsp.completionsAt(R, 'src/app/view.ts', '/*H*/', { text: "import { findBook } from '../lib/books';\nexport const y = fin/*H*/" });
   assert.equal(g.items[0].name, 'findBook');
   assert.ok(g.items.length <= 30);
