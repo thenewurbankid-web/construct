@@ -738,6 +738,19 @@
     "root": "fixtures/readability-length",
     "violations": [
       {
+        "rule": "FUNC-001",
+        "module": "architecture",
+        "severity": "warning",
+        "file": "features/demo/services/LongFunctionService.ts",
+        "line": 1,
+        "message": "Function \"processAll\" is over the service budget (cyclomatic 45/10, nesting 1).",
+        "why": "A function past its layer's complexity budget has more paths than one test file and one reviewer can cover; splitting it keeps each piece small enough to test and to read.",
+        "expected": [
+          "cyclomatic <= 10 per function"
+        ],
+        "suggestedFix": "extract the branches into smaller named functions (a guard clause, a lookup table, or a domain/expression unit), or raise this layer's FUNC-001 budget in architecture.yml"
+      },
+      {
         "rule": "READ-002",
         "module": "readability",
         "severity": "error",

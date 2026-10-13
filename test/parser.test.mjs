@@ -97,14 +97,18 @@ test('extractImports follows dynamic import(...) expressions', () => {
   assert.deepEqual(extractImports(source), ['./lazy-module.js']);
 });
 
-test('estimateComplexity counts control-flow/logical tokens and bare ternaries, plus 1', () => {
-  // Rough heuristic, not real cyclomatic complexity: '?.' and '??' are deliberately excluded
-  // so optional chaining / nullish coalescing (common in modern TS) doesn't inflate the count.
+test('estimateComplexity is the file cyclomatic complexity from ESLint\'s complexity rule (#923), not a token count', () => {
   const flat = `export function f() { return 1; }`;
   assert.equal(estimateComplexity(flat), 1);
   const branchy = `export function g(a, b) {\n  if (a && b) {\n    return a ? b : a;\n  }\n  return a?.b ?? b;\n}\n`;
-  // if(+1) && (+1) ternary ? (+1) => 3 + base 1 = 4; the ?. and ?? are excluded.
-  assert.equal(estimateComplexity(branchy), 4);
+  // Deliberate expectation change: ESLint counts if, &&, ?:, ?. and ?? => 5 + base 1 = 6 (the heuristic said 4).
+  assert.equal(estimateComplexity(branchy), 6);
+  // Where the old token heuristic was wrong: it counted `switch` once and ignored cases, and it counted `if`/`&&`
+  // inside strings and comments. ESLint: two cases (+2), default free, strings and comments ignored.
+  const sw = `// if this && that\nexport function h(k) {\n  const s = 'for || while';\n  switch (k) { case 1: return s; case 2: return 2; default: return 0; }\n}\n`;
+  assert.equal(estimateComplexity(sw), 3);
+  // Unparsable source falls back to the token heuristic instead of throwing.
+  assert.equal(estimateComplexity('if (a && { b'), 3);
 });
 
 test('extractExports handles export lists with aliasing', () => {

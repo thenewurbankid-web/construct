@@ -403,6 +403,10 @@ export const DEFAULT_RULES = {
   // silent severity bump to 'error' for existing projects is exactly the
   // kind of non-additive breakage #500 phase 1 rules out. A project can
   // still opt into 'error' itself via architecture.yml.
+  // #923 -- per-function cyclomatic/cognitive budget per layer (packages/ast/functionComplexity.mjs). On by default as
+  // a warning (owner); the per-layer budgets (architecture-enforcer.mjs DEFAULT_FUNCTION_BUDGETS) are overridden with
+  // an options object: `FUNC-001: { severity: warning, budgets: { domain: { cyclomatic: 12, cognitive: 10 } } }`.
+  'FUNC-001': { severity: 'warning', name: 'Per-function complexity budget (cyclomatic / cognitive) per layer' },
   'COMPONENT-005': { severity: 'warning', name: 'Components cannot contain inline conditional/loop logic in JSX — must be a named @expression unit' },
   'COMPONENT-006': { severity: 'warning', name: "Component-level JSX complexity budget (nesting depth / inline conditional-or-loop branch count), separate from any one Expression's own cap" },
   // Numeric threshold overrides for COMPONENT-006, same `numeric: true`

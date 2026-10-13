@@ -7,15 +7,15 @@
 // JSDoc block and the declaration it annotates no longer breaks association,
 // because `extractJsdoc` walks past leading decorators to find the true
 // start of the exported declaration, the same way a human reading the code
-// would. `complexityEstimate` remains a token-count heuristic, not real
-// cyclomatic complexity — that was never in scope for the AST migration.
+// would. `complexityEstimate` is the file's cyclomatic complexity from ESLint's `complexity` rule since #923
+// (@construct/ast fileCyclomatic; the token heuristic is only the fallback for unparsable source).
 import fs from 'node:fs';
 import path from 'node:path';
 import { walk, rel } from './fs.mjs';
 import { loadConfig, DEFAULT_LAYERS } from './config.mjs';
 import { loadLayerGraph, classifyFile, classifyProjectFile } from './architecture-graph.mjs';
 import { readFrozenGlobs } from './frozen.mjs';
-import { parseToAst, extractImports, extractExports, extractJsdoc, lineOf } from '@construct/ast';
+import { parseToAst, extractImports, extractExports, extractJsdoc, lineOf, fileCyclomatic } from '@construct/ast';
 
 // Parsing/extraction now live in the shared AST package (packages/ast). Re-exported here so existing
 // `import ... from './parser.mjs'` call sites keep working unchanged.
@@ -31,10 +31,19 @@ export function classifyLayer(relPath, graph = DEFAULT_LAYERS) {
   return classifyFile(relPath, graph);
 }
 
-/** Rough cyclomatic-complexity-flavored heuristic: count of if/for/while/switch/catch/&&/||
- * tokens plus bare `?` ternaries (optional chaining `?.` and nullish `??` are excluded so
- * modern TS doesn't get wildly over-counted), plus 1. Not a real complexity calculation. */
+/** The file's cyclomatic complexity (#923): 1 + the decisions of every function in it, each function's number from
+ * ESLint's core `complexity` rule (@construct/ast fileCyclomatic; module-scope code outside a function is not
+ * counted). Name kept for existing callers. Source that does not parse falls back to the old token heuristic
+ * (control/logical tokens plus bare `?` ternaries, plus 1), so a summary never throws on it. */
 export function estimateComplexity(source) {
+  try {
+    return fileCyclomatic(source);
+  } catch {
+    return tokenComplexity(source);
+  }
+}
+
+function tokenComplexity(source) {
   const controlAndLogical = source.match(/\b(if|for|while|switch|catch)\b|&&|\|\|/g) || [];
   // Strip '?.' and '??' first so a bare '?' immediately after one of them (e.g. the second
   // '?' in '??') is never miscounted as a ternary by a simple per-character lookahead.
