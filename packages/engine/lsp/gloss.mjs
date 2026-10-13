@@ -21,13 +21,27 @@ export const GLOSS_SYSTEM = [
   'Use only names and values that appear in the description; do not invent any. No code, no lists, no preamble.',
 ].join('\n');
 
-/** The messages sent for a gloss: Smith's sentences and nothing else. */
+/**
+ * The messages sent for a gloss: Smith's sentences and nothing else.
+ * @param {string} smithText Smith's English, joined into one string.
+ * @returns {{role: string, content: string}[]}
+ */
 export const glossMessages = (smithText) => [{ role: 'system', content: GLOSS_SYSTEM }, { role: 'user', content: `Description:\n${smithText}\n\nPlain English:` }];
 
 const asText = (s) => (Array.isArray(s) ? s.join(' ') : String(s ?? '')).replace(/\s+/g, ' ').trim();
+/**
+ * The cache key of a gloss: a sha256 of the model and Smith's text.
+ * @param {string} smithText
+ * @param {string} model
+ * @returns {string}
+ */
 export const glossKey = (smithText, model) => crypto.createHash('sha256').update(`${model}\0${smithText}`).digest('hex');
 
-/** The model's answer, cleaned: no markdown, quotes or preamble, at most two sentences and GLOSS_MAX_CHARS. */
+/**
+ * The model's answer, cleaned: no markdown, quotes or preamble, at most two sentences and GLOSS_MAX_CHARS.
+ * @param {unknown} raw The model's raw answer.
+ * @returns {string}
+ */
 export function cleanGloss(raw) {
   let s = String(raw ?? '').replace(/```[\s\S]*?```/g, ' ').replace(/[*_#>]+/g, ' ').replace(/\s+/g, ' ').trim();
   s = s.replace(/^(plain english|in plain english|summary|here is[^:]*)\s*:\s*/i, '').replace(/^["'“]|["'”]$/g, '').trim();
@@ -37,13 +51,15 @@ export function cleanGloss(raw) {
   return s;
 }
 
+const QUOTED = /(?<![\w])'([^'\n]*)'(?![\w])|"([^"\n]*)"|`([^`\n]*)`/g;
+
 /**
  * The code-like tokens of a text: quoted literals, numbers, `<Tag>`s, backticked spans, and words shaped like
  * identifiers (camelCase, PascalCase with an inner capital, a `_`/`$`/digit, a dotted path, a call `f()`), plus a
  * capitalized word that does not start a sentence.
+ * @param {string} text
+ * @returns {{kind: string, value: string}[]} kind: 'code', 'literal', 'identifier' or 'number'.
  */
-const QUOTED = /(?<![\w])'([^'\n]*)'(?![\w])|"([^"\n]*)"|`([^`\n]*)`/g;
-
 export function codeTokens(text) {
   const out = [];
   const t = String(text);
@@ -72,6 +88,9 @@ export function codeTokens(text) {
 /**
  * The first identifier or literal of `gloss` that Smith's text does not contain, or null. Identifiers are matched
  * case-sensitively as whole words (a dotted path also by its parts); literals by their inner text.
+ * @param {string} gloss The cleaned gloss.
+ * @param {string} smithText Smith's English (the record).
+ * @returns {{kind: string, value: string}|null}
  */
 export function introducedToken(gloss, smithText) {
   const smith = String(smithText);
@@ -100,6 +119,8 @@ const defaultCache = new Map();
  * @param {string|string[]} smithSentences Smith's English (the record).
  * @param {{model?: string, chat?: (model: string, messages: object[], options: object) => Promise<string>, cache?: Map<string, object>}} [o]
  *   `chat` is injectable for tests (default: Ollama /api/chat); `cache` defaults to one in-memory Map per process.
+ * @returns {Promise<{text: string, gloss: string|null, smith: string, model: string, dropped: boolean, reason: string|null, cached: boolean, rejected?: string}>}
+ *   `text` is what to show: the gloss, or Smith's text when the gloss was dropped.
  */
 export async function glossFor(smithSentences, o = {}) {
   const model = o.model ?? GLOSS_MODEL;
