@@ -70,7 +70,7 @@ work/2026-09-23 or later (older copies fail on macOS without flock). Previous ca
   L-gather-det (-68% context tokens, no model), smithDiagnostics exact (12/12; embed fallback worse, 8/12). L-fix clears
   tsc but pass unchanged. L-brief, model-driven gatherer lose. Agent recommends moving nextSteps, completionsAt+enum,
   definition/quickInfo gatherer, smithDiagnostics (exact), fixes into Line/MCP.
-- OWNER DECISION PENDING: atomicGate's "connections only through functions" rejects bench pages that read the books
+- OWNER DECIDED (2026-10-14): keep the gate strict — pages read data through a view-model/service function, never a fixture directly; update the isolation tasks/reference solutions and blocks accordingly, then rerun L-gate. Original issue: atomicGate's "connections only through functions" rejects bench pages that read the books
   fixture directly (even the reference solutions): change the gate's page rule or the tasks? L-gate 2/12 vs H 8/12
   until settled. atomic-codemod plug() can transform but its atom calls aren't imported (L-norm 0 compile).
 - Smith: owner pushed smith-hardening to ~/Desktop/atomic-codemod (new branch); merge into its main still open.
