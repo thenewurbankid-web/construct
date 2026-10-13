@@ -131,10 +131,20 @@ test('#937 builder turn: plan tools + finish + the selected reads; an unoffered 
   assert.notEqual(tree.ok, false);
   assert.equal(reads.miss(4, 'line_pageTree', sel), true);
   assert.equal(reads.miss(4, 'list_dir', sel), true);
+  assert.ok(!sel.names.includes('read_file'), 'read_file only when the open step edits a file');
+  assert.equal(reads.miss(4, 'read_file', sel), true);
   assert.equal(reads.miss(4, 'no_such_tool', sel), false, 'an unknown name is not a selection miss');
   const misses = fs.readFileSync(path.join(logDir, 'read-misses.jsonl'), 'utf8').trim().split('\n').map((l) => JSON.parse(l));
-  assert.deepEqual(misses.map((m) => [m.turn, m.tool, m.offered.join(',')]), [[4, 'line_pageTree', 'scope,feature_summary,atoms'], [4, 'list_dir', 'scope,feature_summary,atoms']]);
+  assert.deepEqual(misses.map((m) => [m.turn, m.tool, m.offered.join(',')]), [[4, 'line_pageTree', 'scope,feature_summary,atoms'], [4, 'list_dir', 'scope,feature_summary,atoms'], [4, 'read_file', 'scope,feature_summary,atoms']]);
   assert.deepEqual(misses[0].open, { kind: 'data', feature: 'orders', tool: null });
+
+  // A step that edits a file (line.setCode, line.setFragment: code + contentHash) is offered read_file, and calling it is no miss.
+  for (const tool of ['line.setCode', 'line.setFragment']) {
+    const edit = await createTurnReads({ root, logDir, base: TOOLS.line, work: () => ({ first: { kind: 'point', feature: 'orders', file: 'features/orders/pages/OrdersPage.tsx', step: { tool, args: { file: 'features/orders/pages/OrdersPage.tsx' } } } }) });
+    const es = edit.select();
+    assert.ok(es.names.includes('read_file'), tool);
+    assert.equal(edit.miss(5, 'read_file', es), false, tool);
+  }
 
   // The tool-schema budget: the per-turn list stays near the old 10 tools.
   assert.ok(toolTokens(sel.tools) < toolTokens(TOOLS.line) + 200, `${toolTokens(sel.tools)} vs ${toolTokens(TOOLS.line)}`);

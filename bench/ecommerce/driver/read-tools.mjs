@@ -1,5 +1,5 @@
-// #937 (epic #934): the Line arm's read tools, chosen per turn. Each turn the builder is offered its plan tools, read_file
-// and finish, plus only the 3-6 registry reads selectReadTools (packages/engine/line/coder/reads.mjs) picks for the open
+// #937 (epic #934): the Line arm's read tools, chosen per turn. Each turn the builder is offered its plan tools (read_file only when
+// the open step edits a file) and finish, plus only the 3-6 registry reads selectReadTools (packages/engine/line/coder/reads.mjs) picks for the open
 // work item (openWork's first item: its kind, its step's tool, its point) and the last refusal. The reads run in-process
 // through the same registry read dispatcher construct-mcp registers (packages/engine/line/toolRegistry.mjs createReadDispatcher), so the
 // registry stays the one source of names, sentences, fields and argument checks; MCP stdio would add a child process
@@ -15,7 +15,12 @@ import { openWork } from '../../../packages/engine/line/openWork.mjs';
 import { readSpec } from './spec-slice.mjs';
 
 /** The Line arm's tools offered every turn (by name, from qwen-agent's TOOLS.line); list_dir is served on a miss only. */
-export const ALWAYS = Object.freeze(['plan_tools', 'plan_status', 'plan_add', 'plan_run_next', 'plan_findings', 'plan_validate', 'plan_rules', 'read_file', 'finish']);
+export const ALWAYS = Object.freeze(['plan_tools', 'plan_status', 'plan_add', 'plan_run_next', 'plan_findings', 'plan_validate', 'plan_rules', 'finish']);
+/**
+ * Owner, #937: read_file is offered only when the open step edits a file (its step needs the file's code and
+ * contentHash); otherwise it is served on a call and logged as a miss, like list_dir.
+ */
+export const EDITS_FILE = Object.freeze(['line.setCode', 'line.setFragment']);
 /** Argument types of registry reads that are not strings. */
 const ARG_TYPES = Object.freeze({ props: { type: 'object' }, steps: { type: 'array', items: { type: 'object' } }, answers: { type: 'object' } });
 const ARG_SAYS = Object.freeze({
@@ -54,7 +59,8 @@ export async function createTurnReads({ root, spec = null, logDir, base, dispatc
       const w = workNow();
       const first = w?.first ?? null;
       const ids = selectReadTools({ openStep: first, point: first?.point ?? null, kind: first?.kind ?? null, lastRefusal }).filter((id) => reads.has(id));
-      const tools = [...base.filter((t) => ALWAYS.includes(t.function.name)), ...ids.map((id) => readFunction(reads.entry(id)))];
+      const edits = EDITS_FILE.includes(first?.step?.tool);
+      const tools = [...base.filter((t) => ALWAYS.includes(t.function.name) || (edits && t.function.name === 'read_file')), ...ids.map((id) => readFunction(reads.entry(id)))];
       return { open: first ? { kind: first.kind, feature: first.feature ?? null, tool: first.step?.tool ?? null } : null, ids, names: tools.map((t) => t.function.name), tools };
     },
     /** Whether `name` is a registry read this run can serve. */
