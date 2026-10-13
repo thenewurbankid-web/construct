@@ -8,6 +8,8 @@
 //                (localStorage, a same-tab change signal), its totals, the nav link, the add control, the cart page
 //   checkout     ordersService, orderUsecase (validated-submit atom), checkoutPage, confirmationPage
 // Every page keeps the @line-base/@line-route lines it has on disk (`head`).
+// #933: these are the shop example's block templates; atomSteps.mjs reaches them only through a recipe in
+// examples/shop.json (its `templates`), never by name, so a spec in other words lands none of them.
 import path from 'node:path';
 
 const posix = path.posix;
@@ -174,23 +176,23 @@ export function clearCart(): void {
 
 /**
  * The cart as a page uses it: its items joined with the fixture, the totals (the spec's shipping rule) and the changes.
- * @param {{file: string, serviceFile: string, fixture: {rel: string, idKey: string, nameKey: string, priceKey: string},
- *   shipping: {fee: number, freeFrom: number}|null}} o
+ * @param {{file: string, serviceFile: string, fixture: {rel: string, idKey: string, nameKey: string, amountKey: string},
+ *   rule: {fee: number, freeFrom: number}|null}} o
  * @returns {string}
  */
 export function cartUsecase(o) {
   const f = o.fixture;
-  const ship = o.shipping
-    ? `  const shipping = items.length === 0 || subtotal >= ${o.shipping.freeFrom} ? 0 : ${o.shipping.fee};`
+  const ship = o.rule
+    ? `  const shipping = items.length === 0 || subtotal >= ${o.rule.freeFrom} ? 0 : ${o.rule.fee};`
     : '  const shipping = 0;';
-  return `// The cart for a page: each line with its ${f.nameKey} and ${f.priceKey} from ${posix.basename(f.rel)}, the item count, the subtotal,
-// the shipping${o.shipping ? ` (${o.shipping.fee} under ${o.shipping.freeFrom}, else free)` : ''} and the total, and the changes a page makes.
+  return `// The cart for a page: each line with its ${f.nameKey} and ${f.amountKey} from ${posix.basename(f.rel)}, the item count, the subtotal,
+// the shipping${o.rule ? ` (${o.rule.fee} under ${o.rule.freeFrom}, else free)` : ''} and the total, and the changes a page makes.
 import { useSyncExternalStore } from 'react';
 import rows from '${spec(o.file, f.rel)}';
 import { addToCart, cartLines, clearCart, removeFromCart, serverCartLines, setCartQty, subscribeCart } from '${spec(o.file, o.serviceFile)}';
 import type { CartLine } from '${spec(o.file, o.serviceFile)}';
 
-type Row = { ${f.idKey}: string; ${f.nameKey}: string; ${f.priceKey}: number };
+type Row = { ${f.idKey}: string; ${f.nameKey}: string; ${f.amountKey}: number };
 export type CartItem = { id: string; name: string; price: number; qty: number; lineTotal: number };
 export type CartSummary = { items: CartItem[]; count: number; subtotal: number; shipping: number; total: number };
 
@@ -201,7 +203,7 @@ export function cartSummary(lines: CartLine[]): CartSummary {
   for (const line of lines) {
     const row = (rows as Row[]).find((r) => r.${f.idKey} === line.id);
     if (row) {
-      items.push({ id: line.id, name: row.${f.nameKey}, price: row.${f.priceKey}, qty: line.qty, lineTotal: round(row.${f.priceKey} * line.qty) });
+      items.push({ id: line.id, name: row.${f.nameKey}, price: row.${f.amountKey}, qty: line.qty, lineTotal: round(row.${f.amountKey} * line.qty) });
     }
   }
   const count = items.reduce((n, i) => n + i.qty, 0);
@@ -284,19 +286,19 @@ export function productWithAdd(src, o) {
   return lines.join('\n');
 }
 
-/** The summary rows (subtotal, shipping, total) as JSX lines. */
-const summaryRows = (labels, ind) => [
-  `${ind}<p className="flex justify-between"><span>${jsx(labels.subtotal)}</span> <span>{money(cart.subtotal)}</span></p>`,
-  ...(labels.shipping ? [`${ind}<p className="flex justify-between"><span>${jsx(labels.shipping)}</span> <span>{money(cart.shipping)}</span></p>`] : []),
-  `${ind}<p className="flex justify-between font-semibold"><span>${jsx(labels.total)}</span> <span>{money(cart.total)}</span></p>`,
+/** The summary rows (the three quoted totals labels; the middle one optional) as JSX lines. */
+const summaryRows = ([sum, fee, total], ind) => [
+  `${ind}<p className="flex justify-between"><span>${jsx(sum)}</span> <span>{money(cart.subtotal)}</span></p>`,
+  ...(fee ? [`${ind}<p className="flex justify-between"><span>${jsx(fee)}</span> <span>{money(cart.shipping)}</span></p>`] : []),
+  `${ind}<p className="flex justify-between font-semibold"><span>${jsx(total)}</span> <span>{money(cart.total)}</span></p>`,
 ];
 
 /**
  * The cart page on the library list page: a line per item (name, unit price, quantity field, line total, remove), the
  * totals and the checkout link; the empty text instead when the cart is empty.
  * @param {{head: string, file: string, lib: string, usecaseFile: string, heading: string, qtyPrefix: string,
- *   removePrefix: string|null, labels: {subtotal: string, shipping: string|null, total: string}, empty: string,
- *   checkout: {label: string, route: string}|null}} o
+ *   removePrefix: string|null, labels: [string, string|null, string], empty: string,
+ *   next: {label: string, route: string}|null}} o
  * @returns {string}
  */
 export function cartPage(o) {
@@ -323,7 +325,7 @@ ${o.removePrefix ? `          <Button variant="secondary" label={\`${o.removePre
       ))}
         <section aria-label="Cart summary" className="flex flex-col gap-2 rounded-lg border border-slate-200 p-4">
 ${summaryRows(o.labels, '          ').join('\n')}
-${o.checkout ? `          <Link href=${str(o.checkout.route)}>${jsx(o.checkout.label)}</Link>\n` : ''}        </section>
+${o.next ? `          <Link href=${str(o.next.route)}>${jsx(o.next.label)}</Link>\n` : ''}        </section>
       </>)}
     </ListPage>
   );
@@ -431,9 +433,9 @@ export function useLastOrder(): Order | null {
 /**
  * The checkout page on the library form page: the fields, the checkbox, the order summary beside them, the submit
  * button; the empty-cart text and a link to the products instead when the cart is empty.
- * @param {{head: string, file: string, lib: string, cartUsecaseFile: string, usecaseFile: string, heading: string,
+ * @param {{head: string, file: string, lib: string, selectionUsecaseFile: string, usecaseFile: string, heading: string,
  *   button: string, fields: {key: string, label: string, rule: string}[], checkbox: {key: string, label: string}|null,
- *   labels: {subtotal: string, shipping: string|null, total: string}, empty: string, productsRoute: string, next: string}} o
+ *   labels: [string, string|null, string], empty: string, listRoute: string, next: string}} o
  * @returns {string}
  */
 export function checkoutPage(o) {
@@ -444,7 +446,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { FormPage } from '${spec(o.file, `${o.lib}/pages/FormPage`)}';
 import { TextField } from '${spec(o.file, `${o.lib}/components/TextField`)}';
-${o.checkbox ? `import { Checkbox } from '${spec(o.file, `${o.lib}/components/Checkbox`)}';\n` : ''}import { useCart } from '${spec(o.file, o.cartUsecaseFile)}';
+${o.checkbox ? `import { Checkbox } from '${spec(o.file, `${o.lib}/components/Checkbox`)}';\n` : ''}import { useCart } from '${spec(o.file, o.selectionUsecaseFile)}';
 import { useCheckoutForm } from '${spec(o.file, o.usecaseFile)}';
 
 ${MONEY}
@@ -462,7 +464,7 @@ export function ${name}() {
       <main className="flex flex-col gap-4">
         <h1 className="text-2xl font-bold">${jsx(o.heading)}</h1>
         <p>${jsx(o.empty)}</p>
-        <Link href=${str(o.productsRoute)}>Back to products</Link>
+        <Link href=${str(o.listRoute)}>Back to products</Link>
       </main>
     );
   }
@@ -486,7 +488,7 @@ ${o.checkbox ? `      <Checkbox label=${str(o.checkbox.label)} checked={values.$
 /**
  * The order confirmation on the library detail page: the heading, the order number, the products and the total paid,
  * and the link back.
- * @param {{head: string, file: string, lib: string, usecaseFile: string, heading: string, orderPrefix: string,
+ * @param {{head: string, file: string, lib: string, usecaseFile: string, heading: string, numberPrefix: string,
  *   link: {label: string, route: string}}} o
  * @returns {string}
  */
@@ -504,7 +506,7 @@ export function ${posix.basename(noExt(o.file))}() {
     <DetailPage title=${str(o.heading)}>
       {order ? (
         <>
-          <p>${jsx(o.orderPrefix)}{order.number}</p>
+          <p>${jsx(o.numberPrefix)}{order.number}</p>
           <ul className="flex flex-col gap-1">
             {order.lines.map((line) => (
               <li key={line.id}>{line.name} x {line.qty}: {money(line.lineTotal)}</li>

@@ -55,8 +55,8 @@ test('pointBlocks on the bench SPEC.md: every behaviour point has its block and 
   assert.deepEqual(blocks.filter.filter, { key: 'category', label: 'Category', all: 'All', values: ['Clothing', 'Home', 'Electronics'] });
   assert.deepEqual(blocks.filter.search, { label: 'Search', key: 'name' });
   assert.equal(blocks.filter.empty, 'No products found');
-  assert.deepEqual(blocks.cart.shipping, { fee: 5, freeFrom: 100 });
-  assert.deepEqual(blocks.cart.labels, { subtotal: 'Subtotal', shipping: 'Shipping', total: 'Total' });
+  assert.deepEqual(blocks.cart.rule, { fee: 5, freeFrom: 100 });
+  assert.deepEqual(blocks.cart.labels, ['Subtotal', 'Shipping', 'Total']);
   assert.equal(blocks.cart.qtyPrefix, 'Quantity for ');
   assert.deepEqual(blocks.cart.add, { qtyLabel: 'Quantity', def: 1, min: 1, button: 'Add to cart', status: 'Added to cart', feature: 'product' });
   assert.deepEqual(blocks.checkout.fields.map((f) => [f.key, f.rule, f.message]), [
@@ -64,7 +64,7 @@ test('pointBlocks on the bench SPEC.md: every behaviour point has its block and 
     ['city', 'required', 'City is required'], ['postalCode', 'digits', 'Postal code must be 5 digits'],
   ]);
   assert.deepEqual(blocks.checkout.checkbox, { key: 'terms', label: 'I accept the terms', message: 'Accept the terms to continue' });
-  assert.deepEqual(blocks.checkout.confirm, { route: '/order/confirmation', heading: 'Thank you for your order', orderPrefix: 'Order #', link: { label: 'Continue shopping', route: '/' } });
+  assert.deepEqual(blocks.checkout.done, { route: '/order/confirmation', heading: 'Thank you for your order', numberPrefix: 'Order #', link: { label: 'Continue shopping', route: '/' } });
 });
 
 test('a point no block can decide stays open for the model, with its reason', () => {

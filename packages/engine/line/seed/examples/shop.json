@@ -1,0 +1,406 @@
+{
+  "about": "A worked example of the spec -> block mapping, from bench/ecommerce/SPEC.md (a shop). atomSteps.mjs reads it as data: a recipe applies only where its anchor point matches the spec; its roles find the points that give a block its inputs (named groups); `templates` names the blocks.mjs code it lands; `files`, `steps` and the role texts are filled with those inputs ({name}) and the matched point ids ({role}), so no point id or domain word is written in code. A spec in other words (another domain) matches no recipe here and is left to the generic seed and the builder.",
+  "recipes": [
+    {
+      "block": "cart",
+      "kind": "selection",
+      "example": {
+        "spec": "bench/ecommerce/SPEC.md",
+        "feature": "cart",
+        "anchor": "CART-2"
+      },
+      "fixtureNumber": {
+        "re": "(price|cost|amount)$",
+        "flags": "i"
+      },
+      "roles": [
+        {
+          "role": "anchor",
+          "find": [
+            {
+              "re": "\\bquantity field labelled \"[^\"<]*<[^>]+>\"",
+              "flags": "i"
+            },
+            {
+              "re": "\\bpage at `\\/"
+            }
+          ],
+          "scope": "all",
+          "extract": [
+            {
+              "re": "\\bpage at `(?<route>\\/[^`\\s]*)`"
+            },
+            {
+              "re": "\\bmain heading \"(?<heading>[^\"]+)\""
+            },
+            {
+              "re": "\\bquantity field labelled \"(?<qtyPrefix>[^\"<]*)<[^>]+>\"",
+              "flags": "i"
+            }
+          ],
+          "decided": "cart block: a line per item with its quantity field and line total on the library list page"
+        },
+        {
+          "role": "line",
+          "find": [
+            {
+              "re": "\\bquantity of 0 removes the line\\b",
+              "flags": "i"
+            }
+          ],
+          "requires": [
+            "totals"
+          ],
+          "decided": "cart block: a quantity change updates the store and every total; 0 removes the line"
+        },
+        {
+          "role": "remove",
+          "find": [
+            {
+              "re": "\\bbutton \"[^\"<]*<[^>]+>\" removes\\b",
+              "flags": "i"
+            }
+          ],
+          "extract": [
+            {
+              "re": "\\bbutton \"(?<removePrefix>[^\"<]*)<[^>]+>\" removes\\b",
+              "flags": "i"
+            }
+          ],
+          "requires": [
+            "removePrefix"
+          ],
+          "decided": "cart block: a Remove button per line"
+        },
+        {
+          "role": "totals",
+          "find": [
+            {
+              "re": "\\bshows \"[^\"]+\", \"[^\"]+\" and \"[^\"]+\""
+            }
+          ],
+          "extract": [
+            {
+              "re": "\\bshows (?<totals>\"[^\"]+\", \"[^\"]+\" and \"[^\"]+\")"
+            },
+            {
+              "re": "\\bshipping is \\$(?<fee>\\d+(?:\\.\\d+)?), or \\$0(?:\\.00)? when the subtotal is \\$(?<freeFrom>\\d+(?:\\.\\d+)?) or more\\b",
+              "flags": "i"
+            }
+          ],
+          "requires": [
+            "fee",
+            "totals3"
+          ],
+          "explain": [
+            "fee"
+          ],
+          "decided": "cart block: the quoted totals and the shipping rule as written",
+          "missing": "the shipping rule is not in the form \"shipping is $X, or $0.00 when the subtotal is $Y or more\""
+        },
+        {
+          "role": "empty",
+          "find": [
+            {
+              "re": "\\bempty cart says \"[^\"]+\"",
+              "flags": "i"
+            }
+          ],
+          "extract": [
+            {
+              "re": "\\bempty cart says \"(?<empty>[^\"]+)\"",
+              "flags": "i"
+            }
+          ],
+          "decided": "cart block: the quoted empty text, and no checkout when empty"
+        },
+        {
+          "role": "kept",
+          "find": [
+            {
+              "re": "\\bkept after the page is reloaded\\b",
+              "flags": "i"
+            }
+          ],
+          "decided": "cart block: the store keeps the lines in localStorage"
+        },
+        {
+          "role": "next",
+          "find": [
+            {
+              "re": "\"[^\"]+\" link or button opens `\\/[^`]*`"
+            }
+          ],
+          "scope": "feature",
+          "extract": [
+            {
+              "re": "\"(?<nextLabel>[^\"]+)\" link or button opens `(?<nextRoute>\\/[^`]*)`"
+            }
+          ],
+          "requires": [
+            "nextLabel"
+          ],
+          "decided": "cart block: the quoted checkout link"
+        },
+        {
+          "role": "link",
+          "find": [
+            {
+              "re": "\\blink whose name starts with \"[^\"]+\"[^;]*number of items[^;]*;\\s*it opens `\\/[^`]*`",
+              "flags": "i"
+            }
+          ],
+          "extract": [
+            {
+              "re": "\\blink whose name starts with \"(?<linkLabel>[^\"]+)\"[^;]*;\\s*it opens `(?<linkRoute>\\/[^`]*)`",
+              "flags": "i"
+            }
+          ],
+          "requires": [
+            "linkLabel"
+          ],
+          "decided": "cart block: a CartLink \"<label> (<count>)\" in the app shell nav"
+        },
+        {
+          "role": "add",
+          "find": [
+            {
+              "re": "\\bfield labelled \"[^\"]+\" \\(default \\d+, at least \\d+\\) and an? \"[^\"]+\" button add",
+              "flags": "i"
+            }
+          ],
+          "scope": "all",
+          "extract": [
+            {
+              "re": "\\bfield labelled \"(?<qtyLabel>[^\"]+)\" \\(default (?<def>\\d+), at least (?<min>\\d+)\\) and an? \"(?<button>[^\"]+)\" button add[^]*?\\bsays \"(?<status>[^\"]+)\"",
+              "flags": "i"
+            }
+          ],
+          "requires": [
+            "status"
+          ],
+          "explain": [
+            "status"
+          ],
+          "decided": "cart block: an AddToCart control (quantity, button, status) beside the detail page",
+          "missing": "the add point does not quote its field, default, minimum, button and status"
+        }
+      ],
+      "ok": [
+        "fixture",
+        "route",
+        "heading",
+        "qtyPrefix",
+        "empty"
+      ],
+      "whyNot": [
+        {
+          "unless": "fixture",
+          "text": "no fixture has the id, name and price a cart line needs"
+        },
+        {
+          "text": "the cart page point does not quote its heading, quantity label and empty text"
+        }
+      ],
+      "defaultLabels": [
+        "Subtotal",
+        null,
+        "Total"
+      ],
+      "storageKey": "line-cart",
+      "templates": {
+        "service": "cartService",
+        "usecase": "cartUsecase",
+        "link": "cartLink",
+        "add": "addToCart",
+        "detail": "productWithAdd",
+        "page": "cartPage"
+      },
+      "files": {
+        "service": "{lib}/services/cart.ts",
+        "usecase": "{lib}/usecases/useCart.ts",
+        "link": "{lib}/components/CartLink.tsx",
+        "linkExport": "CartLink",
+        "add": "{lib}/components/AddToCart.tsx",
+        "addTag": "AddToCart"
+      },
+      "steps": {
+        "service": "{ids}: the cart lives in the browser (localStorage) as lines {id, qty}, shared by every feature, so it is a library service.",
+        "usecase": "The cart's items, count and totals{rule} for pages: useCart.",
+        "rule": " (shipping ${fee}, free from ${freeFrom})",
+        "link": "{#link}: a link \"{linkLabel} (<count>)\" to {linkRoute}, for every page.",
+        "nav": "{#link}: every page shows the cart link: the app shell's nav.",
+        "notShell": "{layout} is not Line's app shell, so the cart link is the builder's call",
+        "add": "{#add}: \"{qtyLabel}\" (default {def}, at least {min}) and \"{button}\" add to the cart and say \"{status}\".",
+        "detail": "{#add}: {page} shows AddToCart beside the {addFeature}.",
+        "page": "{own}: {page} lists the cart's lines with their quantity fields and totals (\"{heading}\")."
+      }
+    },
+    {
+      "block": "checkout",
+      "kind": "submit",
+      "needs": "cart",
+      "example": {
+        "spec": "bench/ecommerce/SPEC.md",
+        "feature": "checkout",
+        "anchor": "CHK-1"
+      },
+      "roles": [
+        {
+          "role": "anchor",
+          "find": [
+            {
+              "re": "\\bfields labelled \""
+            },
+            {
+              "re": "\\bpage at `\\/"
+            }
+          ],
+          "scope": "all",
+          "atom": "validated-submit",
+          "extract": [
+            {
+              "re": "\\bpage at `(?<route>\\/[^`\\s]*)`"
+            },
+            {
+              "re": "\\bmain heading \"(?<heading>[^\"]+)\""
+            },
+            {
+              "re": "\\bfields labelled (?<labels>(?:\"[^\"]+\"(?:,\\s*|\\s+and\\s+)?)+)"
+            },
+            {
+              "re": "\\bcheckbox labelled \"(?<boxLabel>[^\"]+)\""
+            }
+          ],
+          "decided": "validated-submit: the quoted fields and checkbox on the library form page"
+        },
+        {
+          "role": "messages",
+          "find": [
+            {
+              "re": "\\bshows a message for each invalid field \\(",
+              "flags": "i"
+            }
+          ],
+          "scope": "feature",
+          "atom": "validated-submit",
+          "extract": [
+            {
+              "re": "\\bmessage for each[^(]*\\((?<messages>[^)]*)\\)"
+            }
+          ],
+          "decided": "validated-submit: each quoted message as its field's rule (aria-invalid by TextField)"
+        },
+        {
+          "role": "summary",
+          "find": [
+            {
+              "re": "\\border summary with each product, its quantity and the order total\\b",
+              "flags": "i"
+            }
+          ],
+          "scope": "feature",
+          "decided": "cart block: the cart lines and total beside the form"
+        },
+        {
+          "role": "place",
+          "find": [
+            {
+              "re": "\"[^\"]+\" button places the order through a mock order service, empties the cart and opens `\\/[^`]*`"
+            }
+          ],
+          "scope": "feature",
+          "atom": "validated-submit",
+          "extract": [
+            {
+              "re": "\"(?<button>[^\"]+)\" button places the order through a mock order service, empties the cart and opens `(?<next>\\/[^`]*)`"
+            }
+          ],
+          "decided": "validated-submit then a mock order service; the cart is cleared and the route opened"
+        },
+        {
+          "role": "confirm",
+          "find": [
+            {
+              "re": "\\bconfirmation page has the main heading \"[^\"]+\""
+            }
+          ],
+          "scope": "feature",
+          "extract": [
+            {
+              "re": "\\bconfirmation page has the main heading \"(?<doneHeading>[^\"]+)\"[^]*?\\border number \\(text starting \"(?<numberPrefix>[^\"]+)\"\\)[^]*?\\blink \"(?<doneLinkLabel>[^\"]+)\" to `(?<doneLinkRoute>\\/[^`]*)`"
+            }
+          ],
+          "requires": [
+            "doneHeading"
+          ],
+          "explain": [
+            "doneHeading"
+          ],
+          "decided": "the confirmation page on the library detail page, from the last order",
+          "missing": "the confirmation point does not quote its heading, order-number text and link"
+        },
+        {
+          "role": "empty",
+          "find": [
+            {
+              "re": "\\bwith an empty cart says \"[^\"]+\" with a link to the products\\b",
+              "flags": "i"
+            }
+          ],
+          "scope": "feature",
+          "extract": [
+            {
+              "re": "\\bwith an empty cart says \"(?<empty>[^\"]+)\"",
+              "flags": "i"
+            }
+          ],
+          "requires": [
+            "empty"
+          ],
+          "decided": "the cart's empty text and a link to the products instead of the form"
+        }
+      ],
+      "ok": [
+        "needs",
+        "route",
+        "heading",
+        "labels",
+        "mapped",
+        "button"
+      ],
+      "whyNot": [
+        {
+          "unless": "needs",
+          "text": "the {needs} block is not seeded, and the {feature} reads the {needs}"
+        },
+        {
+          "unless": "button",
+          "text": "no point quotes the button that places the order and the route it opens"
+        },
+        {
+          "text": "a message does not name its field, or a rule is not one of required, valid email, N digits"
+        }
+      ],
+      "templates": {
+        "service": "ordersService",
+        "usecase": "orderUsecase",
+        "page": "checkoutPage",
+        "done": "confirmationPage"
+      },
+      "files": {
+        "service": "{features}/{feature}/services/orders.ts",
+        "usecase": "{features}/{feature}/usecases/placeOrder.ts"
+      },
+      "steps": {
+        "atom": "{ids}: the checkout form is validated against its rules before the order is placed, which is the validated-submit atom; copy it into the library atoms.",
+        "service": "{#place}: the order is placed through a mock order service in the app (no network).",
+        "usecase": "{#messages}: the form's rules ({fieldLabels}) as a schema for the validated-submit atom, then the order service.",
+        "page": "{#anchor}, {#summary}, {#empty}: {page} is the \"{heading}\" form with the order summary, or the empty-cart text.",
+        "doneBase": "{#confirm}: the confirmation page shows one order: {name} is based on the library DetailPage.",
+        "doneRoute": "{#place} opens {route}: serve {name} there.",
+        "done": "{#confirm}: {page} says \"{doneHeading}\" with the order number, the products, the total paid and \"{doneLinkLabel}\"."
+      }
+    }
+  ]
+}
