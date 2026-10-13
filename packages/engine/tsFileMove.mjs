@@ -77,9 +77,12 @@ function readOptions(root) {
 
 function mtimeOf(file) { try { return String(fs.statSync(file).mtimeMs); } catch { return '0'; } }
 
-function serviceFor(root, files, options, configMtime) {
-  let entry = cache.get(root);
-  if (entry && entry.configMtime !== configMtime) { entry.service.dispose(); cache.delete(root); entry = undefined; }
+function serviceFor(root, files, options, configMtime, readRoots = []) {
+  const key = readRoots.length ? `${root}\0${readRoots.join('\0')}` : root;
+  // Readable: the project, TypeScript's lib folder, and any extra read-only roots the caller names (never written).
+  const readable = (p) => inside(root, p) || inside(tsLibDir(), p) || readRoots.some((r) => inside(r, p));
+  let entry = cache.get(key);
+  if (entry && entry.configMtime !== configMtime) { entry.service.dispose(); cache.delete(key); entry = undefined; }
   if (!entry) {
     entry = { configMtime, versions: new Map(), files: [], options, service: null };
     const host = {
@@ -87,28 +90,48 @@ function serviceFor(root, files, options, configMtime) {
       getScriptVersion: (f) => entry.versions.get(f) ?? (inside(tsLibDir(), f) ? '1' : mtimeOf(f)),
       getScriptSnapshot: (f) => {
         const abs = path.resolve(f);
-        if (!inside(root, abs) && !inside(tsLibDir(), abs)) return undefined;
+        if (!readable(abs)) return undefined;
         try { return ts.ScriptSnapshot.fromString(fs.readFileSync(abs, 'utf8')); } catch { return undefined; }
       },
       getCurrentDirectory: () => root,
       getCompilationSettings: () => entry.options,
       getDefaultLibFileName: (o) => ts.getDefaultLibFilePath(o),
-      fileExists: (p) => (inside(root, path.resolve(p)) || inside(tsLibDir(), path.resolve(p))) && ts.sys.fileExists(p),
-      readFile: (p) => (inside(root, path.resolve(p)) || inside(tsLibDir(), path.resolve(p)) ? ts.sys.readFile(p) : undefined),
-      directoryExists: (p) => inside(root, path.resolve(p)) && ts.sys.directoryExists(p),
+      fileExists: (p) => readable(path.resolve(p)) && ts.sys.fileExists(p),
+      readFile: (p) => (readable(path.resolve(p)) ? ts.sys.readFile(p) : undefined),
+      directoryExists: (p) => (inside(root, path.resolve(p)) || readRoots.some((r) => inside(r, path.resolve(p)) || inside(path.resolve(p), r))) && ts.sys.directoryExists(p),
       getDirectories: () => [],
       readDirectory: () => [],
       realpath: (p) => p,
       useCaseSensitiveFileNames: () => true,
     };
     entry.service = ts.createLanguageService(host, ts.createDocumentRegistry(true, root));
-    cache.set(root, entry);
+    cache.set(key, entry);
     while (cache.size > MAX_CACHED) { const oldest = cache.keys().next().value; cache.get(oldest).service.dispose(); cache.delete(oldest); }
   }
   entry.options = options;
   entry.files = files;
   for (const f of files) entry.versions.set(f, mtimeOf(f)); // an unchanged file keeps its version, so TS keeps its parse
   return entry;
+}
+
+/**
+ * The same contained, cached language service planFileMove uses, for other read-only analyses (#941: the isolation
+ * harness's importFixer asks it for code fixes). `readRoots` are extra folders the host may read, e.g. a node_modules
+ * above the project so `react` resolves; nothing is ever written. Callers apply any edits themselves.
+ * @returns {{ok:true, service:import('typescript').LanguageService, files:string[], options:object} | {ok:false, reason:string}}
+ */
+export function projectLanguageService(root, { readRoots = [] } = {}) {
+  try {
+    const r = path.resolve(root);
+    const cfg = readOptions(r);
+    if (!cfg.options) return { ok: false, reason: cfg.reason };
+    const files = sourceFiles(r);
+    if (files.length > MAX_FILES) return { ok: false, reason: `the project has more than ${MAX_FILES} source files` };
+    const entry = serviceFor(r, files, cfg.options, mtimeOf(path.join(r, 'tsconfig.json')), readRoots.map((x) => path.resolve(x)));
+    return { ok: true, service: entry.service, files: entry.files, options: entry.options };
+  } catch (e) {
+    return { ok: false, reason: `TypeScript could not analyse the project (${String(e?.message || e).slice(0, 120)})` };
+  }
 }
 
 /** Drop every cached service (tests, or after the project changed on disk in a way mtimes cannot show). */

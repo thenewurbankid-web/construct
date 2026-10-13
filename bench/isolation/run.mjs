@@ -11,6 +11,8 @@ import { fileURLToPath } from 'node:url';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import * as config from './config.mjs';
+import { makeWorkspace, runTsc } from './lib/workspace.mjs';
+import { fixImports } from './blocks/importFixer.mjs';
 import { spliceDeclarations, applySearchReplace, splitSkeleton, signatures } from './lib/edit.mjs';
 import { buildBriefs } from './blocks/briefBuilder.mjs';
 import { applyPrelude, spliceFunction } from './blocks/spliceApplier.mjs';
@@ -30,30 +32,8 @@ const selftest = args.includes('--selftest');
 const taskIds = (opt('tasks') ?? readdirSync(TASKS).filter((d) => /^t\d\d-/.test(d)).sort().join(',')).split(',');
 const tasks = taskIds.map((id) => ({ ...JSON.parse(readFileSync(join(TASKS, id, 'task.json'), 'utf8')), dir: join(TASKS, id) }));
 
-// ---------- workspace ----------
-function makeWorkspace(ws, task, override) {
-  rmSync(ws, { recursive: true, force: true });
-  mkdirSync(ws, { recursive: true });
-  cpSync(join(TASKS, '_shared'), ws, { recursive: true });
-  cpSync(join(TASKS, '_r2'), ws, { recursive: true });
-  if (existsSync(join(task.dir, 'start'))) cpSync(join(task.dir, 'start'), ws, { recursive: true });
-  if (override != null) writeFileSync(join(ws, task.target), override);
-  writeFileSync(join(ws, 'tsconfig.json'), JSON.stringify({
-    compilerOptions: {
-      target: 'ES2020', lib: ['dom', 'dom.iterable', 'esnext'], strict: true, noEmit: true, skipLibCheck: true,
-      esModuleInterop: true, module: 'esnext', moduleResolution: 'bundler', resolveJsonModule: true, isolatedModules: true,
-      jsx: 'react-jsx', types: [], paths: { 'next/link': ['./shims/next-link.tsx'] },
-    },
-    include: ['**/*.ts', '**/*.tsx'], exclude: ['.out'],
-  }, null, 2));
-}
+// ---------- workspace (lib/workspace.mjs) ----------
 const readWs = (ws, p) => readFileSync(join(ws, p), 'utf8');
-
-function runTsc(ws) {
-  const r = spawnSync(process.execPath, [TSC, '-p', join(ws, 'tsconfig.json'), '--pretty', 'false'], { encoding: 'utf8', timeout: 120_000 });
-  const lines = (r.stdout + r.stderr).split('\n').filter((l) => /error TS\d+/.test(l)).map((l) => l.replace(ws + '/', '').replace(relative(process.cwd(), ws) + '/', ''));
-  return { ok: r.status === 0 && lines.length === 0, errors: lines };
-}
 
 function runCheck(ws, task) {
   const r = spawnSync(process.execPath, [join(HERE, 'lib/check-runner.mjs'), ws, task.dir], { encoding: 'utf8', timeout: 60_000 });
@@ -64,15 +44,24 @@ function runCheck(ws, task) {
 const exportsOf = (src) => [...src.matchAll(/export\s+(?:default\s+)?(?:async\s+)?(?:function|const|let|class|type|interface)\s+([A-Za-z_$][\w$]*)/g)].map((m) => m[1]);
 
 // Evaluates one candidate file: format -> fragment -> tsc -> check.
-function evaluate(ws, task, startBody, parsed) {
+// With opts.fixer (r3), importFixer runs after the edit lands and before the final tsc; the class the same candidate
+// had without the fixer is kept as fix.preClass, and parsed.body becomes the fixed file (so a repair edits that).
+function evaluate(ws, task, startBody, parsed, opts = {}) {
   if (!parsed.ok) return { pass: false, failClass: 'format', detail: parsed.detail, tsc: null, check: null };
   const missing = exportsOf(startBody).filter((n) => !exportsOf(parsed.body).includes(n));
   makeWorkspace(ws, task, parsed.body);
-  const tsc = runTsc(ws);
-  const check = runCheck(ws, task);
+  let tsc = runTsc(ws);
+  let check = runCheck(ws, task);
   const fragment = missing.length ? `fragment: missing export(s) ${missing.join(', ')}` : null;
+  let fix = null;
+  if (opts.fixer && !fragment) {
+    const preClass = !tsc.ok ? 'tsc' : !check.ok ? 'check' : null;
+    const r = fixImports(ws, task.target);
+    fix = { changed: r.changed, preClass, log: r.log, unfixed: r.unfixed.slice(0, 8) };
+    if (r.changed) { tsc = runTsc(ws); check = runCheck(ws, task); parsed.body = r.body; }
+  }
   const failClass = fragment ? 'fragment' : !tsc.ok ? 'tsc' : !check.ok ? 'check' : null;
-  return { pass: failClass === null, failClass, detail: fragment, tsc, check };
+  return { pass: failClass === null, failClass, detail: fragment, tsc, check, fix };
 }
 const errorsText = (ev) => [
   ev.detail ? `- ${ev.detail}` : null,
@@ -305,6 +294,8 @@ async function runArm(armKey, task) {
   rmSync(rawDir, { recursive: true, force: true });
   mkdirSync(rawDir, { recursive: true });
   const calls = [];
+  const fixLog = [];
+  const fixedClasses = [];
   const t0 = Date.now();
   const ctx = {
     material, rawDir,
@@ -336,7 +327,8 @@ async function runArm(armKey, task) {
       return c;
     },
     evaluate(parsed, attempt) {
-      const ev = evaluate(ws, task, startBody, parsed);
+      const ev = evaluate(ws, task, startBody, parsed, { fixer: arm.fixer });
+      if (ev.fix) { fixLog.push(...ev.fix.log); if (ev.fix.preClass !== (ev.failClass ?? null)) fixedClasses.push(`${ev.fix.preClass ?? 'pass'}->${ev.failClass ?? 'pass'}`); }
       if (parsed.ok) writeFileSync(join(rawDir, `attempt-${attempt}.${task.target.split('.').pop()}`), parsed.body);
       return { ...ev, attempts: attempt };
     },
@@ -356,6 +348,7 @@ async function runArm(armKey, task) {
     coderPromptMax: Math.max(0, ...calls.filter((c) => c.role === 'coder').map((c) => c.promptApprox)),
     ...(ev.nStats ? { nStats: ev.nStats } : {}), ...(ev.sampleClasses ? { sampleClasses: ev.sampleClasses } : {}),
     ...(ev.toolLog ? { toolLog: ev.toolLog } : {}), ...(ev.briefTokens ? { briefTokens: ev.briefTokens } : {}),
+    ...(arm.fixer ? { fix: ev.fix ?? null, fixesApplied: fixLog.length, fixedClasses: fixedClasses } : {}),
     tscErrors: ev.tsc?.errors?.slice(0, 8) ?? null, checkFailures: ev.check?.failures ?? null,
     raw: relative(HERE, rawDir),
   };
@@ -416,6 +409,25 @@ function writeReport(rows, armKeys) {
         ...rs.map((r) => `| ${r.task} | ${r.pass ? 'pass' : r.failClass} | ${pct(r.toolLog.nativeRate)} | ${r.toolLog.toolCalls ? pct(r.toolLog.rightRate) : '-'} | ${r.toolLog.turns} | ${r.toolLog.sequence.join(' ') || '-'}${r.toolLog.calledDone ? '' : ' (no done)'} | ${(r.wallMs / 1000).toFixed(0)} s | ${r.tokensByRole.driver.in} / ${r.tokensByRole.driver.out} |`),
         `| all | ${rs.filter((r) => r.pass).length}/${rs.length} | ${pct(tot.native / Math.max(1, tot.turns))} | ${pct(tot.right / Math.max(1, tot.calls))} | ${tot.turns} | | | |`];
     }),
+    ...(() => {
+      const withBase = armKeys.filter((a) => config.arms[a].baseline);
+      if (!withBase.length) return [];
+      const classes = (rs) => { const c = {}; for (const r of rs) if (!r.pass) c[r.failClass] = (c[r.failClass] ?? 0) + 1; return Object.entries(c).map(([k, v]) => `${k} ${v}`).join(', ') || '-'; };
+      return ['', 'importFixer delta (same arm without the fixer = its baseline run; per-candidate = the same candidate file judged before and after the fixer):', '',
+        '| Arm | baseline | baseline pass | with fixer | delta | gained | lost | failures before -> after | per-candidate class changes |', '| --- | --- | --- | --- | --- | --- | --- | --- | --- |',
+        ...withBase.map((a) => {
+          const { run, arm } = config.arms[a].baseline;
+          let base = [];
+          try { base = readFileSync(join(RESULTS, `${run}.jsonl`), 'utf8').trim().split('\n').map((l) => JSON.parse(l)).filter((r) => r.arm === arm); } catch {}
+          const mine = rows.filter((r) => r.arm === a);
+          const bp = base.filter((r) => r.pass).length, mp = mine.filter((r) => r.pass).length;
+          const gained = mine.filter((r) => r.pass && !base.find((b) => b.task === r.task)?.pass).map((r) => r.task.slice(0, 3));
+          const lost = mine.filter((r) => !r.pass && base.find((b) => b.task === r.task)?.pass).map((r) => r.task.slice(0, 3));
+          const trans = {};
+          for (const r of mine) for (const t of r.fixedClasses ?? []) trans[t] = (trans[t] ?? 0) + 1;
+          return `| ${a} | ${run} ${arm} | ${bp}/${base.length} | ${mp}/${mine.length} | ${mp - bp >= 0 ? '+' : ''}${mp - bp} | ${gained.join(' ') || '-'} | ${lost.join(' ') || '-'} | ${classes(base)} -> ${classes(mine)} | ${Object.entries(trans).map(([k, v]) => `${k} x${v}`).join(', ') || '-'} |`;
+        })];
+    })(),
     '', `| Task | ${armKeys.join(' | ')} |`, `| --- | ${armKeys.map(() => '---').join(' | ')} |`,
     ...tasks.map((t) => `| ${t.id} | ${armKeys.map((a) => cell(rows.find((r) => r.arm === a && r.task === t.id))).join(' | ')} |`),
     '', 'pass = tsc clean and the task check passed. Fail classes, first failing stage wins: format (the reply did not yield a file: no fence, no SEARCH match, no FILL marker), fragment (a whole-file reply missing an export the file had: a fragment pasted as the file; r1 reported these under format), tsc, check. E\'s cell shows the first passing sample (try n of 5). C\'s pass counts whichever of its up to 3 attempts passed (try n). Tokens are Ollama prompt_eval_count / eval_count summed over every call of the arm (driver + coder). Wall time is per arm, summed over tasks, including checks.', '',
