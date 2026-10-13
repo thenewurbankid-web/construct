@@ -3,6 +3,7 @@ const traverse = require('@babel/traverse').default;
 const generate = require('@babel/generator').default;
 const t = require('@babel/types');
 const { chunkCode } = require('./chunker');
+const { canonicalizeFunction } = require('./canonical');
 
 // Deterministic, no model involved: takes code that's ALREADY been through
 // the atomic refactor (transform.js + the LLM extraction step), and renders
@@ -960,6 +961,10 @@ function describeFunction(fn, wrapped, prefixLen) {
 // around a single statement instead of the whole block. `unhandled` is every
 // placeholder in the description as {kind, type, start, end}.
 //
+// `{ canonical: true }` first rewrites each function into canonical form
+// (canonical.js) so equivalent code reads as the same sentence; off by
+// default, so the plain description reads the code exactly as written.
+//
 // By default only the FIRST function in `code` is described (the original
 // behaviour). `{ all: true }` also returns `functions`: one
 // {name, kind, title, english, steps, unhandled, start, end} per describable
@@ -977,7 +982,11 @@ function describeSource(code, kind, options) {
     const none = { english: '(could not find a function/method to describe)', steps: [], title: null, unhandled: [] };
     return options.all ? { ...none, functions: [] } : none;
   }
-  const described = (options.all ? fns : fns.slice(0, 1)).map((fn) => describeFunction(fn, wrapped, prefixLen));
+  const chosen = options.all ? fns : fns.slice(0, 1);
+  // { canonical: true }: equivalent forms read the same (canonical.js). The
+  // AST here is this call's own fresh parse, so rewriting it in place is safe.
+  if (options.canonical) chosen.forEach((fn) => canonicalizeFunction(fn.node));
+  const described = chosen.map((fn) => describeFunction(fn, wrapped, prefixLen));
   const first = described[0];
   const result = { english: first.english, steps: first.steps, title: first.title, unhandled: first.unhandled };
   if (options.all) result.functions = described;
@@ -998,7 +1007,7 @@ const englishCache = new Map();
 const cacheStats = { hits: 0, misses: 0 };
 
 function cacheKey(code, kind, options) {
-  return crypto.createHash('sha256').update(`${kind}\0${options && options.all ? 'all' : 'first'}\0${code}`).digest('hex');
+  return crypto.createHash('sha256').update(`${kind}\0${options && options.all ? 'all' : 'first'}\0${options && options.canonical ? 'canonical' : 'as-written'}\0${code}`).digest('hex');
 }
 
 function toEnglish(code, kind, options = {}) {

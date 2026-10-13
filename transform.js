@@ -333,6 +333,29 @@ function flattenAndOrChain(node, functionName) {
 // file; every rule below only ever touches expression nodes it recognizes,
 // so turning those parser plugins on doesn't change output for code that
 // doesn't use TS/JSX syntax.
+// `return c ? a : b` rewritten without the ternary (null when the argument
+// isn't a ternary). Shared with canonical.js, Smith's equivalent-form pass.
+// cond ? true : false is just cond -- a redundant tautology, not a real
+// branch. Simplifying it HERE (before any if/else or branch chain gets
+// built) means isWithinRange-style conditions skip the whole
+// ifIt/isTrue/thenItIs/orelseIs machinery entirely and just become
+// `return and(...)` directly, instead of ceremony wrapped around a value
+// that was already the answer.
+function ternaryReturnReplacement(arg) {
+  if (!arg || !t.isConditionalExpression(arg)) return null;
+  if (t.isBooleanLiteral(arg.consequent, { value: true }) && t.isBooleanLiteral(arg.alternate, { value: false })) {
+    return t.returnStatement(arg.test);
+  }
+  if (t.isBooleanLiteral(arg.consequent, { value: false }) && t.isBooleanLiteral(arg.alternate, { value: true })) {
+    return t.returnStatement(t.unaryExpression('!', arg.test));
+  }
+  return t.ifStatement(
+    arg.test,
+    t.blockStatement([t.returnStatement(arg.consequent)]),
+    t.blockStatement([t.returnStatement(arg.alternate)])
+  );
+}
+
 function transform(code, { plugins = [] } = {}) {
   const ast = parser.parse(code, { sourceType: 'module', plugins });
 
@@ -352,30 +375,8 @@ function transform(code, { plugins = [] } = {}) {
 
   traverse(ast, {
     ReturnStatement(path) {
-      const arg = path.node.argument;
-      if (arg && t.isConditionalExpression(arg)) {
-        // cond ? true : false is just cond -- a redundant tautology, not a
-        // real branch. Simplifying it HERE (before any if/else or branch
-        // chain gets built) means isWithinRange-style conditions skip the
-        // whole ifIt/isTrue/thenItIs/orelseIs machinery entirely and just
-        // become `return and(...)` directly, instead of ceremony wrapped
-        // around a value that was already the answer.
-        if (t.isBooleanLiteral(arg.consequent, { value: true }) && t.isBooleanLiteral(arg.alternate, { value: false })) {
-          path.replaceWith(t.returnStatement(arg.test));
-          return;
-        }
-        if (t.isBooleanLiteral(arg.consequent, { value: false }) && t.isBooleanLiteral(arg.alternate, { value: true })) {
-          path.replaceWith(t.returnStatement(t.unaryExpression('!', arg.test)));
-          return;
-        }
-        path.replaceWith(
-          t.ifStatement(
-            arg.test,
-            t.blockStatement([t.returnStatement(arg.consequent)]),
-            t.blockStatement([t.returnStatement(arg.alternate)])
-          )
-        );
-      }
+      const replacement = ternaryReturnReplacement(path.node.argument);
+      if (replacement) path.replaceWith(replacement);
     },
     ExpressionStatement(path) {
       const expr = path.node.expression;
@@ -760,7 +761,7 @@ function main() {
   }
 }
 
-module.exports = { transform };
+module.exports = { transform, ternaryReturnReplacement };
 
 if (require.main === module) {
   main();

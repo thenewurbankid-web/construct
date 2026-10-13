@@ -193,10 +193,10 @@ function measure(functions, describe) {
 
 // Adapter for the current to-english.js: misses come straight from the
 // structured `unhandled` list toEnglish now returns.
-function currentDescriber(toEnglish) {
+function currentDescriber(toEnglish, options = {}) {
   return (fn) => {
     try {
-      const res = toEnglish(fn.code, fn.kind);
+      const res = toEnglish(fn.code, fn.kind, options);
       const chips = res.steps.reduce((n, s) => n + s.tokens.length, 0);
       return { threw: false, steps: res.steps.length, chips, misses: res.unhandled.map((u) => ({ kind: u.kind, type: u.type })) };
     } catch {

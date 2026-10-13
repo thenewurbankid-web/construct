@@ -2,6 +2,11 @@
 
 Newest first.
 
+## Q2 — 2026-10-14 (Smith: equivalent code, same English)
+- `toEnglish(code, kind, { canonical: true })` runs `canonical.js` on each function first, so equivalent forms read as the same sentence. Off by default; the plain reading and the golden snapshot are unchanged. Deterministic AST rewrites, no model. The ternary-return rule is transform.js's own, now exported as `ternaryReturnReplacement` and shared.
+- Normalized: ternary return vs if/else vs early return; `!x` vs `x === false` / `x == false` / `x !== true` and `x` vs `x === true` / `!!x` (only when x is known boolean: a `: boolean` binding bound once, a comparison, a `!`); if/else whose then-branch exits vs early return; `a && f();` and nested ifs vs `if (a && b)`; `x ? x : y` vs `x || y` (x a plain name/path); `&&`/`||` chain association; callback `x => { return e }` vs `x => e`; parentheses re-derived from precedence.
+- `smith-canonical.test.js`: 12 example pairs (incl. the K5 ternary vs if/return plan), fast-check equivalence over generated pairs, two negative properties (swapped branches, negated condition change the English), and the corpus under canonical mode (no placeholders, steps join, chips inside their step). `bench/coverage.mjs --canonical`. `npm test`: 132 passing; coverage 380/380 clean both ways.
+
 ## S1-S10 — 2026-10-13 (Smith hardening)
 - Measured first: `bench/coverage.mjs` (+ `bench/corpus.js`) counts toEnglish placeholders per node type -- `(...)` expr, "does not translate cleanly" stmt, `?` pattern -- over Construct's own TS/TSX functions (`packages/` and `bench/*/starter`, tests excluded, read-only; `SMITH_CORPUS` overrides the checkout). `--impl=pin` loads the pinned 885b32e to-english.js from git, instrumented only to record which fallback fired. Results per milestone in `bench/results/*.json`.
 - Baseline at the pin, 380 functions / 184 files: 330 threw (no TS parse). With only the parse switched to TS: 672 placeholders / 3802 chips, clean functions logic 30.9%, JSX 0%. Now: 0 placeholders / 16.5k chips, 0 throws, logic 100%, JSX 100%.
