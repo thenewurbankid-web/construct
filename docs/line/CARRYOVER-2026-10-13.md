@@ -46,7 +46,7 @@ change must appear); render examples for UI, contract mock for services; models 
 Layers view shows the path.
 
 ## Open items
-- fallow follow-ups (#924 report): a fresh scaffold shows ~20 FALLOW warnings (unused files for unrouted layers, feature index.ts barrels, types.ts, .dependency-cruiser.cjs; CRAP on generated proof tests) → Construct-aware default fallow config, HIGH (dogfood); Cockpit engine-mode validate (ui/server/src/validateApi.mjs handleValidate) doesn't run fallow; IMPORT-001 may report the wrong line (line 1 vs 2 in Score.ts); fallow is a devDependency, so installed users don't get it; fallow needs Node >=22, repo says >=20.
+- fallow follow-ups (#924 report): a fresh scaffold shows ~20 FALLOW warnings (unused files for unrouted layers, feature index.ts barrels, types.ts, .dependency-cruiser.cjs; CRAP on generated proof tests) → Construct-aware default fallow config, HIGH (dogfood); Cockpit engine-mode validate (ui/server/src/validateApi.mjs handleValidate) doesn't run fallow; IMPORT-001 may report the wrong line (line 1 vs 2 in Score.ts); OWNER DECIDED: make fallow a regular dependency (next wave, with the Construct-aware config) so installed users get it; fallow needs Node >=22, repo says >=20.
 - Board fields for #912-#925 (project-manager pass).
 - #881 needs its measured jev-vs-static eval.
 - openWork text check misses PROD-2/PROD-4 after seeding (Quantity label in library component; link case).
