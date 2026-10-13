@@ -4,14 +4,12 @@
 import { useState } from 'react';
 import { ListPage } from '../../../library/pages/ListPage';
 import { Button } from '../../../library/components/Button';
-import books from '../../../library/fixtures/books.json';
+import { pickedBooks, type Book } from '../services/pickedBooks';
 import { listPicks, removePick } from '../store/picksStore';
-
-type Book = { id: string; title: string; author: string };
 
 export function PicksPage() {
   const [picks, setPicks] = useState<string[]>(() => listPicks());
-  const items = picks.map((id) => (books as Book[]).find((b) => b.id === id)).filter((b): b is Book => Boolean(b));
+  const items = pickedBooks({ ids: picks });
   return (
     <ListPage title="My picks" empty={<p>You have not picked any books yet</p>}>
       {items.length > 0 && items.map((item) => (

@@ -7,7 +7,7 @@
 //   read(path) returns a workspace file's text (paths relative to the workspace root).
 import { dirname, relative, basename, extname, join, normalize } from 'node:path';
 import { ts, parse, declName, isDirective, signatures } from '../lib/edit.mjs';
-import { templates } from './templates.mjs';
+import { templates, SERVICE_RULE } from './templates.mjs';
 
 export const approxTokens = (s) => Math.ceil(s.length / 3.2);
 const FIXTURE = 'library/fixtures/books.json';
@@ -19,6 +19,11 @@ const relImport = (fromFile, toFile) => {
 const exportedValueNames = (path, text) => parse(text, path).statements
   .filter((s) => s.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword) && (ts.isFunctionDeclaration(s) || ts.isVariableStatement(s) || ts.isClassDeclaration(s)))
   .map(declName).filter(Boolean);
+// #943: a feature service's exported types come along as `type X` (the page names Book only through its service).
+const exportedTypeNames = (path, text) => parse(text, path).statements
+  .filter((s) => s.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword) && (ts.isTypeAliasDeclaration(s) || ts.isInterfaceDeclaration(s)))
+  .map(declName).filter(Boolean);
+const isService = (p) => /\/services\//.test(p);
 
 // The element type of a JSON array fixture, from its first entry.
 export function fixtureType(name, rows) {
@@ -55,12 +60,14 @@ export function buildBriefs({ task, file, read, targetName = null }) {
   if (tpl.needs.includes('state')) prelude.push("'use client';", "import { useState } from 'react';");
   const contextFiles = task.context.filter((p) => /\.tsx?$/.test(p));
   for (const p of contextFiles) {
-    const names = exportedValueNames(p, read(p));
+    const names = [...exportedValueNames(p, read(p)), ...(isService(p) ? exportedTypeNames(p, read(p)).map((n) => `type ${n}`) : [])];
     if (names.length) prelude.push(`import { ${names.join(', ')} } from '${relImport(task.target, p)}';`);
   }
   let fixtureRows = null;
-  if (tpl.needs.includes('fixture') || /books\.json/.test(file)) fixtureRows = JSON.parse(read(FIXTURE));
-  if (tpl.needs.includes('fixture')) {
+  // #943: a page never imports the fixture; the feature service (a context file) is imported instead, above.
+  const hasService = contextFiles.some(isService);
+  if (!hasService && (tpl.needs.includes('fixture') || /books\.json/.test(file))) fixtureRows = JSON.parse(read(FIXTURE));
+  if (!hasService && tpl.needs.includes('fixture')) {
     prelude.push(`import books from '${relImport(task.target, FIXTURE)}';`);
     if (!sf.statements.some((s) => declName(s) === 'Book')) prelude.push(fixtureType('Book', fixtureRows));
   }
@@ -96,7 +103,7 @@ export function buildBriefs({ task, file, read, targetName = null }) {
       `SPEC:\n${task.spec}`,
       `ALREADY AT THE TOP OF THE FILE:\n${[...parse(file, task.target).statements.filter((s) => ts.isImportDeclaration(s) || isDirective(s)).map((s) => s.getText(sf)), ...prelude.filter((l) => !l.startsWith('type '))].filter((v, i, a) => a.indexOf(v) === i).sort((a, b) => Number(b.startsWith("'use")) - Number(a.startsWith("'use"))).join('\n')}`,
       types ? `TYPES IN SCOPE:\n${types}` : null,
-      `HOW (a ${task.kind} change):\n${tpl.change.map((c) => `- ${c}`).join('\n')}`,
+      `HOW (a ${task.kind} change):\n${[...(hasService ? [SERVICE_RULE] : []), ...tpl.change].map((c) => `- ${c}`).join('\n')}`,
       `EXAMPLE (same pattern, other data):\n\`\`\`${lang}\n${tpl.example}\n\`\`\``,
       t.current ? `CURRENT ${t.name}:\n\`\`\`${lang}\n${t.current}\n\`\`\`` : null,
       `Reply with only the complete new function ${t.name} in one \`\`\`${lang} block: no imports, no other declarations.`,

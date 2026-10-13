@@ -24,14 +24,15 @@ import * as S from '../../packages/engine/lsp/smith.mjs';
 import { nextSteps, ruleDiagnostics } from '../../packages/engine/lsp/rules.mjs';
 import { createLineLsp } from '../../packages/engine/lsp/server.mjs';
 import { buildBriefs } from './blocks/briefBuilder.mjs';
-import { spliceFunction } from './blocks/spliceApplier.mjs';
+import { spliceFunction, applyPrelude } from './blocks/spliceApplier.mjs';
+import { smithCore } from './lib/workspace.mjs';
 import { ts, parse, declName } from './lib/edit.mjs';
 import { CASES as K3, materialize, buildFacts, SYSTEM as K3_SYSTEM, userPrompt as k3Prompt, schemaFor as k3Schema } from './chain/quick/k3.mjs';
 import { TASKS as QUICK } from './chain/quick/tasks.mjs';
 import { planSentence } from './chain/quick/lib/smith.mjs';
 import { makeTriple, appendTriples } from './lsp/triples.mjs';
 
-const RUN = 'lsp-r1';
+const RUN = (() => { const i = process.argv.indexOf('--run'); return i >= 0 ? process.argv[i + 1] : 'lsp-r1'; })();
 run.setRunName(RUN);
 const HERE = run.HERE;
 const RESULTS = run.RESULTS;
@@ -212,6 +213,9 @@ function lspBriefs(a, ws) {
 
 // L-norm: atomic-codemod's plug() on the function, spliced back, then gate + tsc + check again
 let plugMod;
+let smithNames;
+/** The value names Smith's src/index.ts exports (functions and classes). */
+const smithExports = () => (smithNames ??= (() => { const f = smithCore(); return f ? [...fs.readFileSync(f, 'utf8').matchAll(/^export (?:abstract )?(?:function|class) (\w+)/gm)].map((m) => m[1]) : []; })());
 async function normalize(body, fn, task, ctx) {
   try {
     plugMod ??= createRequire(import.meta.url)(path.join(process.env.ATOMIC_CODEMOD_SOURCE_DIR?.replace(/^~/, process.env.HOME) ?? '', 'plug.js'));
@@ -223,15 +227,19 @@ async function normalize(body, fn, task, ctx) {
     if (code.trim() === st.getText(sf).trim()) return { ok: true, changed: false, landable: false };
     const sp = spliceFunction(body, `\`\`\`tsx\n${code}\n\`\`\``, fn, task.target);
     if (!sp.ok) return { ok: false, why: sp.detail };
-    const g = await atomicGate({ rel: task.target, source: sp.body, fn });
-    const ev = ctx.evaluate({ ok: true, body: sp.body }, `norm-${fn}`);
-    return { ok: true, changed: true, gatePass: g.pass, failed: g.failed, tsc: ev.tsc?.ok === true, check: ev.check?.ok === true, landable: g.pass && ev.pass };
+    // the atom calls plug() wrote import their runtime: Smith's own exports (ifIt, and, or, ...) from @smith/core
+    const used = smithExports().filter((n) => new RegExp(`(?<![\\w$.])${n}\\s*\\(`).test(code));
+    const withRuntime = used.length ? applyPrelude(sp.body, [`import { ${used.join(', ')} } from '@smith/core';`], task.target) : sp.body;
+    const g = await atomicGate({ rel: task.target, source: withRuntime, fn });
+    const ev = ctx.evaluate({ ok: true, body: withRuntime }, `norm-${fn}`);
+    return { ok: true, changed: true, runtime: used, gatePass: g.pass, failed: g.failed, tsc: ev.tsc?.ok === true, check: ev.check?.ok === true, landable: g.pass && ev.pass,
+      firstError: (ev.tsc?.errors?.[0] ?? ev.check?.failures?.[0] ?? '').slice(0, 160) };
   } catch (e) { return { ok: false, why: String(e?.message ?? e).slice(0, 120) }; }
 }
 
 async function armRuns() {
   addArms();
-  const plan = [['L-fix', want('fix')], ['H5', want('blocks')], ['L-brief', want('blocks')], ['L-gate', want('gate')], ['L-norm', want('gate') && S.smithReady()]];
+  const plan = [['L-fix', want('fix')], ['H5', want('blocks') || want('h')], ['L-brief', want('blocks')], ['L-gate', want('gate')], ['L-norm', want('gate') && S.smithReady()]];
   for (const [arm, on] of plan) {
     if (!on) continue;
     for (const task of TASKS) {
@@ -530,7 +538,7 @@ function report() {
     '', '## L-gate', '',
     `Samples the judge passed (tsc, and the task check on a task's last function): ${gateRecs.length}; the gate rejected ${gateRecs.filter((g) => !g.pass).length} (${gateRecs.length ? Math.round(100 * gateRecs.filter((g) => !g.pass).length / gateRecs.length) : 0}%). Reasons (a sample can fail several): ${Object.entries(reasons).map(([k, v]) => `${k} ${v}`).join(', ') || '-'}. Template-exempt: ${gateRecs.filter((g) => g.exempt).length}.`,
     `Samples drawn: H ${drawn('H')}, L-gate ${drawn('L-gate')} (+${drawn('L-gate') - drawn('H')}); wall H ${(sum(by('H'), 'wallMs') / 1000).toFixed(0)} s, L-gate ${(sum(gateRs, 'wallMs') / 1000).toFixed(0)} s; gate time ${Math.round(gateRecs.reduce((a, g) => a + g.ms, 0))} ms over ${gateRecs.length} calls.`,
-    `L-norm: ${normRecs.length} gate-failing fills normalized by plug(); changed ${normRecs.filter((g) => g.norm.changed).length}, gate pass after ${normRecs.filter((g) => g.norm.gatePass).length}, still tsc-clean ${normRecs.filter((g) => g.norm.tsc).length}, landable ${normRecs.filter((g) => g.norm.landable).length}.`,
+    `L-norm: ${normRecs.length} gate-failing fills normalized by plug(); changed ${normRecs.filter((g) => g.norm.changed).length}, gate pass after ${normRecs.filter((g) => g.norm.gatePass).length}, still tsc-clean ${normRecs.filter((g) => g.norm.tsc).length}, check ${normRecs.filter((g) => g.norm.check).length}, landable ${normRecs.filter((g) => g.norm.landable).length}; Smith runtime imported in ${normRecs.filter((g) => g.norm.runtime?.length).length} (${[...new Set(normRecs.flatMap((g) => g.norm.runtime ?? []))].join(', ') || '-'}). First errors: ${[...new Set(normRecs.map((g) => (g.norm.firstError ?? g.norm.why ?? '').replace(/^.*?error /, '').slice(0, 90)).filter(Boolean))].slice(0, 4).join(' | ') || '-'}.`,
     '', '## Gate on every passing fill (triples)', '',
     ...Object.entries(notes.tripleGate ?? {}).map(([k, v]) => `- ${k}: ${v.pass} function(s) pass, ${v.fail} fail (${Object.entries(v.reasons).map(([a, b]) => `${a} ${b}`).join(', ') || '-'}); triples in triples.jsonl ${allTriples.filter((t) => t.setup === k).length}`),
     `- appended to results/triples.jsonl this run: ${appended}`,

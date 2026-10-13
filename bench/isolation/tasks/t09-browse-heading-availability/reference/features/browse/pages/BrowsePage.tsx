@@ -2,12 +2,10 @@
 // @line-route /
 import Link from 'next/link';
 import { ListPage } from '../../../library/pages/ListPage';
-import books from '../../../library/fixtures/books.json';
-
-type Book = { id: string; title: string; author: string; genre: string; year: number; pages: number; available: boolean };
+import { listBooks, type Book } from '../services/listBooks';
 
 export function BrowsePage() {
-  const items = books as Book[];
+  const items = listBooks({});
   return (
     <ListPage title="Library catalogue" empty={<p>No books yet.</p>}>
       {items.length > 0 && items.map((item) => (

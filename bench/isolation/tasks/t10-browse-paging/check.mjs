@@ -1,5 +1,6 @@
 // Deterministic check. t: harness helpers (lib/check-runner.mjs); fail(msg) records one failure.
 export default async function check(t, fail) {
+  if (t.readsFixture()) fail('the page imports a fixture; it must read data through its feature service');
   const Page = t.component();
   const c = await t.render(t.h(Page));
   const ids = () => t.links(c).map((l) => l.getAttribute('href')).filter((h) => h.startsWith('/books/'));

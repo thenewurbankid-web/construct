@@ -6,6 +6,7 @@
   "spec": "BRW-3: A control labelled \"Sort by\" orders the books by \"Title A-Z\" (the default), \"Newest first\" or \"Oldest first\" (by year).",
   "target": "features/browse/pages/BrowsePage.tsx",
   "context": [
+    "features/browse/services/listBooks.ts",
     "library/pages/ListPage.tsx"
   ],
   "entries": {

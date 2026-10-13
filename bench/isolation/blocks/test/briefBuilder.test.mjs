@@ -46,10 +46,16 @@ test('button kind adds use client, useState and the context imports to the prelu
   assert.match(out, /import \{ Button \} from '\.\.\/\.\.\/\.\.\/library\/components\/Button';/);
 });
 
-test('list kind brings in the fixture import and its element type', () => {
-  const { prelude } = buildBriefs(load('t07-picks-page-list'));
-  assert.ok(prelude.includes("import books from '../../../library/fixtures/books.json';"));
-  assert.ok(prelude.some((l) => l.startsWith('type Book = { id: string; title: string;')));
+test('#943: a page brief points at the feature service, never the fixture', () => {
+  const { prelude, briefs } = buildBriefs(load('t07-picks-page-list'));
+  assert.ok(prelude.includes("import { pickedBooks, type Book } from '../services/pickedBooks';"));
+  assert.ok(!prelude.some((l) => /fixtures\/books\.json|^type Book =/.test(l)));
+  assert.ok(!/fixtures\/books\.json|products as/.test(briefs[0].brief));
+  assert.match(briefs[0].brief, /never import a fixture file/);
+  for (const id of ['t01-book-by-author', 't09-browse-heading-availability', 't12-browse-genre-filter']) {
+    const b = buildBriefs(load(id));
+    assert.ok(!b.prelude.some((l) => /fixtures\//.test(l)), id);
+  }
 });
 
 test('a stub store gets one brief per function the goal spells out', () => {
