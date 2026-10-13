@@ -14,8 +14,8 @@ import path from 'node:path';
 import os from 'node:os';
 import { execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { jsonlSplitter, joinRun, detectLoop, counters, timeline } from './bench-log.mjs';
-import { RUNS_REL, discoverRuns, pickAutoRun, isRealRun, runBanner } from './runs.mjs';
+import { RUNS_REL, discoverRuns, pickAutoRun, isRealRun } from './runs.mjs';
+import { runTailer } from './run-tailer.mjs';
 import { handleContextRoute } from './context-view.mjs';
 import { readPlanJev } from './plan-jev.mjs';
 
@@ -50,13 +50,15 @@ function run(cmd, args, opts = {}) {
   });
 }
 
-/** Wrap a poller so a slow pass never overlaps the next one. */
+/** Wrap a poller so a slow pass never overlaps the next one; a repeating failure is logged once, not every tick. */
 function every(ms, fn) {
-  let busy = false;
+  let busy = false; let lastErr = null;
   const tick = async () => {
     if (busy) return;
     busy = true;
-    try { await fn(); } catch (e) { logEvent('mc', 'error', `poller failed: ${e.message}`); } finally { busy = false; }
+    try { await fn(); lastErr = null; } catch (e) {
+      if (e.message !== lastErr) { lastErr = e.message; logEvent('mc', 'error', `poller failed: ${e.message}`); }
+    } finally { busy = false; }
   };
   tick();
   return setInterval(tick, ms);
@@ -86,117 +88,6 @@ const EXTRA_ROOTS = process.env.MC_RUNS ? process.env.MC_RUNS.split(':') : [];
 let runList = [];
 let autoRun = null;
 
-/** One tailed file: offset-based, survives partial lines, truncation and replacement (inode change). */
-function fileTail(file, kind) {
-  let offset = 0; let ino = null; const split = jsonlSplitter();
-  return {
-    file, kind,
-    /** @returns {{reset: boolean, chunk: string}|null} */
-    read() {
-      let st;
-      try { st = fs.statSync(file); } catch { if (ino !== null) { ino = null; offset = 0; split.reset(); return { reset: true, chunk: '' }; } return null; }
-      let reset = false;
-      if (ino !== null && (st.ino !== ino || st.size < offset)) { offset = 0; split.reset(); reset = true; }
-      ino = st.ino;
-      if (st.size === offset) return reset ? { reset, chunk: '' } : null;
-      const len = Math.min(st.size - offset, 16 * 1024 * 1024);
-      const buf = Buffer.alloc(len);
-      const fd = fs.openSync(file, 'r');
-      try { fs.readSync(fd, buf, 0, len, offset); } finally { fs.closeSync(fd); }
-      // Never split a UTF-8 sequence: stop at the last newline for JSONL; raw logs take everything.
-      let take = len;
-      if (kind === 'jsonl') { const nl = buf.lastIndexOf(10); take = nl < 0 ? 0 : nl + 1; }
-      offset += take;
-      return { reset, chunk: buf.subarray(0, take).toString('utf8') };
-    },
-    split,
-  };
-}
-
-/** Tails one run dir: calls.jsonl, turns.jsonl, and every other text log as raw console lines. */
-function runTailer(dir) {
-  const logs = path.join(dir, 'logs');
-  const calls = fileTail(path.join(logs, 'calls.jsonl'), 'jsonl');
-  const turns = fileTail(path.join(logs, 'turns.jsonl'), 'jsonl');
-  const raws = new Map();
-  const state = { calls: [], turns: [], rows: [], sent: new Map(), evSeen: new Set(), console: [], stuckKey: null, refusalTotal: 0, landed: 0, lastTurn: 0, ended: false };
-  let watcher = null;
-  // fs.watch makes a write show within ~300 ms; the 1 s poll covers filesystems where watch misses events.
-  try { watcher = fs.watch(logs, () => scheduleBench()); } catch { /* polled anyway */ }
-
-  function refreshRaws() {
-    let names = [];
-    try { names = fs.readdirSync(logs); } catch { return; }
-    for (const n of names) {
-      if (n.endsWith('.jsonl') || n.endsWith('.json') || n === 'prompt.md') continue;
-      if (!raws.has(n)) raws.set(n, fileTail(path.join(logs, n), 'raw'));
-    }
-  }
-
-  /** Read what is new; returns the client payload delta or null. */
-  function poll() {
-    refreshRaws();
-    let changed = false; let reset = false;
-    for (const [t, arr] of [[calls, 'calls'], [turns, 'turns']]) {
-      const r = t.read();
-      if (!r) continue;
-      if (r.reset) { state[arr] = []; reset = true; }
-      const { records, bad } = t.split.push(r.chunk);
-      if (records.length) { state[arr].push(...records); changed = true; }
-      for (const b of bad) state.console.push({ file: path.basename(t.file), line: `[unparsed] ${b}` });
-      if (r.reset) changed = true;
-    }
-    const lines = [];
-    for (const [n, t] of raws) {
-      const r = t.read();
-      if (!r) continue;
-      if (r.reset) lines.push({ file: n, line: '--- file reset ---' });
-      for (const l of r.chunk.split('\n')) if (l.length) lines.push({ file: n, line: l.slice(0, 2000) });
-    }
-    if (lines.length) { state.console.push(...lines); if (state.console.length > 3000) state.console.splice(0, state.console.length - 3000); }
-    if (!changed && !reset) return lines.length ? { console: lines } : null;
-    if (reset) state.sent.clear();
-    state.rows = joinRun(state.calls, state.turns);
-    const upserts = [];
-    const ids = new Set();
-    for (const r of state.rows) {
-      ids.add(r.id);
-      const j = JSON.stringify(r);
-      if (state.sent.get(r.id) !== j) { state.sent.set(r.id, j); upserts.push(r); }
-    }
-    const removed = [...state.sent.keys()].filter((k) => !ids.has(k));
-    for (const k of removed) state.sent.delete(k);
-    return { reset, upserts, removed, console: lines };
-  }
-
-  function growMtime() {
-    let m = null;
-    for (const f of [calls.file, turns.file]) { try { m = Math.max(m ?? 0, fs.statSync(f).mtimeMs); } catch { /* absent */ } }
-    return m;
-  }
-
-  function summary() {
-    const end = state.turns.find((t) => t?.kind === 'end');
-    // MC_RUNS extras count as fixtures even when they look like a run dir: only discovered bench runs are real.
-    const real = isRealRun(dir) && !EXTRA_ROOTS.some((r) => dir.startsWith(path.resolve(r) + path.sep));
-    const banner = runBanner({ real, growMtime: growMtime(), endAt: end?.at ?? null, stop: end?.stop ?? null, nowMs: Date.now() });
-    return { counters: counters(state.rows, state.turns, Date.now()), loop: detectLoop(state.rows), timeline: timeline(state.rows), banner };
-  }
-
-  /** Full detail of one row: the raw call record, its approval, the turn record (model output). */
-  function detail(id) {
-    const row = state.rows.find((r) => r.id === id);
-    if (!row) return null;
-    const callRecs = state.calls.filter((c) => c?.kind === 'call');
-    const call = row.idx != null ? callRecs[row.idx] : null;
-    const turn = row.turn != null ? state.turns.find((t) => t?.kind === 'turn' && t.turn === row.turn) ?? state.turns.find((t) => t?.kind === 'error' && t.turn === row.turn) : null;
-    const approval = call?.result?.stepId ? state.calls.find((c) => c?.kind === 'approval' && c.stepId === call.result.stepId) : null;
-    const outcome = turn?.calls?.find((o) => o && o.name && (row.cmd ? true : o.name === row.tool));
-    return { row, call, approval, turn, outcome };
-  }
-
-  return { dir, state, poll, summary, detail, close() { try { watcher?.close(); } catch { /* closed */ } } };
-}
 
 /** run dir -> tailer, for every run any client watches. */
 const tailers = new Map();
@@ -204,7 +95,8 @@ function tailerFor(dir) {
   if (!dir) return null;
   let t = tailers.get(dir);
   if (!t) {
-    t = runTailer(dir); tailers.set(dir, t); t.poll();
+    t = runTailer(dir, { onChange: scheduleBench, extraRoots: EXTRA_ROOTS, onError: (msg) => logEvent('bench', 'error', `log reader failed (${path.relative(REPO, dir)}): ${msg}`) });
+    tailers.set(dir, t); t.poll();
     // History is shown in the table, not replayed into the event log.
     for (const r of t.state.rows) t.state.evSeen.add(r.id);
     const sum = t.summary();
