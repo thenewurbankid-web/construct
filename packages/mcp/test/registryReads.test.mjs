@@ -1,13 +1,12 @@
 // #937 -- construct-mcp exposes Line's registry reads from the registry itself: every kind:'read' entry with a handler
-// (read-tools.mjs) is a tool named mcpNameOf(entry), with the entry's sentence and fields; Cockpit-only reads are skipped
+// (toolRegistry.mjs readHandlers) is a tool named mcpNameOf(entry), with the entry's sentence and fields; Cockpit-only reads are skipped
 // with a reason. Run for real on a copy of examples/line-sample through the SDK's in-process client.
 import test, { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { makeTempDir } from '../../../test-utils/tmpdir.mjs';
-import { mcpNameOf } from '@line/construct-engine/line/tool-registry';
-import { registryReads, READ_SKIPPED, createReadDispatcher } from '@line/construct-engine/line/read-tools';
+import { mcpNameOf, registryReads, READ_SKIPPED, createReadDispatcher } from '@line/construct-engine/line/tool-registry';
 import { registryReadTools, TOOLS, PLAN_TOOLS, IMPORT_AGENT_TOOLS, TRAIN_MCP_TOOLS } from '../src/server.mjs';
 import { REPO, connectInProcess, callTool } from '../test-utils/harness.mjs';
 

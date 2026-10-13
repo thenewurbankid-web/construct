@@ -1,5 +1,5 @@
 // #937 (epic #934): the coder's read tools (coderReads.mjs: feature_summary, scope, atoms), the per-turn selector, the
-// registry read dispatcher (readTools.mjs), the bench builder's per-turn tool list and miss log (read-tools.mjs), and
+// registry read dispatcher (toolRegistry.mjs), the bench builder's per-turn tool list and miss log (read-tools.mjs), and
 // plan-cli refusing line.project as a step. On a copy of examples/line-sample.
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -8,8 +8,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 import { featureSummary, scopeOf, atomsFor, selectReadTools, projectFile } from '../packages/engine/line/coderReads.mjs';
-import { createReadDispatcher, registryReads, READ_SKIPPED } from '../packages/engine/line/readTools.mjs';
-import { entryById, mcpNameOf } from '../packages/engine/line/toolRegistry.mjs';
+import { entryById, mcpNameOf, createReadDispatcher, registryReads, READ_SKIPPED } from '../packages/engine/line/toolRegistry.mjs';
 import { createTurnReads, readFunction, ALWAYS, toolTokens } from '../bench/ecommerce/driver/read-tools.mjs';
 import { TOOLS } from '../bench/ecommerce/driver/qwen-agent.mjs';
 

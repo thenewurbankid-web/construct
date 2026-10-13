@@ -9,8 +9,7 @@ import { LIMITS, ToolError, createTokenBucket, DEFAULT_RATE_PER_MINUTE } from '.
 import { openRoot, createScrubber, assertContained } from './guard.mjs';
 import * as blocks from './blocks.mjs';
 import * as plan from './plan.mjs';
-import { entryForMcp, mcpNameOf } from '@line/construct-engine/line/tool-registry';
-import { registryReads, READ_SKIPPED, createReadDispatcher } from '@line/construct-engine/line/read-tools';
+import { entryForMcp, mcpNameOf, registryReads, READ_SKIPPED, createReadDispatcher } from '@line/construct-engine/line/tool-registry';
 import * as importAgent from './importAgent.mjs';
 import * as train from './train.mjs';
 
@@ -269,7 +268,7 @@ const LOOSE_ARGS = Object.freeze({
 });
 
 /**
- * #937: every read of Line's tool registry that runs from a project root (read-tools.mjs readHandlers) and is not
+ * #937: every read of Line's tool registry that runs from a project root (toolRegistry.mjs readHandlers) and is not
  * already one of the hand-written tools above, as an MCP tool: its name (mcpNameOf), its sentence and its fields come
  * from the registry entry; the call goes through the registry's read dispatcher (argument check, file arguments kept
  * inside the root). Reads that need Cockpit-only state are listed in READ_SKIPPED with the reason.
