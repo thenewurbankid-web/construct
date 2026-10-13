@@ -23,10 +23,11 @@ import { loadConfig } from '@line/construct-core/config';
 import { normalizeLineConfig, CODE_EXTENSIONS } from '@line/construct-core/profiles/line/contract';
 import { resolveLayout } from '@line/construct-core/profiles/line/checks';
 import { parseSpec } from './featureText.mjs';
-import { moduleScope } from './scope/moduleScope.mjs';
 import { featurePages, isPlaceholderSpec } from './build.mjs';
 import { hashOf } from '../pagesEditor.mjs';
 import { jsxParseError } from '@construct/ast';
+import { arrayFixtures, fixtureFor } from './basePage.mjs';
+import { routeEvidence, pageShape, memberState, storeHint, namedRoutes, pascal } from './seed/pageShape.mjs';
 
 const readOrNull = (abs) => { try { return fs.readFileSync(abs, 'utf8'); } catch { return null; } };
 const dirs = (abs) => { try { return fs.readdirSync(abs, { withFileTypes: true }).filter((e) => e.isDirectory() && !e.name.startsWith('.')).map((e) => e.name).sort(); } catch { return []; } };
@@ -105,7 +106,9 @@ export function openWork(root, { spec = null } = {}) {
   const specs = new Map(order.map((n) => [n, specOf(n)]));
   const pageAt = new Map(order.map((n) => [n, [...new Set(specs.get(n).points.flatMap((p) => routesIn(p.text, true)))]]));
   const libraryPages = (() => { try { return fs.readdirSync(path.join(root, layout.library, 'pages')).filter((n) => CODE_EXTENSIONS.includes(path.extname(n))).map((n) => `pages/${baseName(n)}`).sort(); } catch { return []; } })();
-  const fixtures = (() => { try { return fs.readdirSync(path.join(root, layout.library, 'fixtures')).filter((n) => n.endsWith('.json')).sort().map((n) => `${layout.library}/fixtures/${n}`); } catch { return []; } })();
+  const fixtures = arrayFixtures(root, layout);
+  // #933: the whole spec as the data-source rule reads it (a feature's items may be added to from another feature).
+  const whole = { features: order.map((n) => ({ name: n, story: specs.get(n).story, points: specs.get(n).points })) };
 
   const features = order.map((name) => {
     const sp = specs.get(name);
@@ -136,7 +139,11 @@ export function openWork(root, { spec = null } = {}) {
     }
     if (!own.length) {
       const at = pageAt.get(name)?.[0];
-      open.push({ kind: 'page', feature: name, sentence: `Feature ${name} has no page yet${at ? ` (its spec puts one at ${at})` : ''}; create one with line.baseOn on a library page (${libraryPages.map((l) => l.split('/')[1]).join(', ') || 'none in the library'}), then add its route.` });
+      // #933: the library page of the shape the points give that page; the whole list only when they do not decide it.
+      const sh = at ? pageShape({ route: at, points: routeEvidence(sp, at, pageAt.get(name) ?? []) }) : null;
+      const on = sh?.shape && sh.base && libraryPages.includes(sh.base) ? `the library ${sh.base.split('/')[1]} (${sh.reason})`
+        : `a library page (${libraryPages.map((l) => l.split('/')[1]).join(', ') || 'none in the library'})${sh ? `; ${sh.reason}` : ''}`;
+      open.push({ kind: 'page', feature: name, sentence: `Feature ${name} has no page yet${at ? ` (its spec puts one at ${at})` : ''}; create one with line.baseOn on ${on}, then add its route.` });
     }
     // Routes this feature's pages should serve: its own "page at" routes, then other routes its points name that no
     // other feature's spec claims; minus what is served already.
@@ -150,8 +157,9 @@ export function openWork(root, { spec = null } = {}) {
         : { kind: /** @type {const} */ ('route'), feature: name, file: p.file, sentence: `${baseName(p.file)} is served at no route, and the spec names none left for it; serve it with line.addRoute {"route": "/<route>", "page": "${p.file}"}.` };
     });
     // #935: the fixtures this feature module may use: its own and those the features it imports export, then the library's.
-    const scoped = (() => { if (!exists) return []; try { return moduleScope(root, name).fixtures.filter((x) => x.from !== 'library').map((x) => x.file); } catch { return []; } })();
-    const dataItems = own.map((p) => emptyPage(root, layout, p, fixtures, scoped)).filter(Boolean);
+    const scoped = exists ? arrayFixtures(root, layout, name) : fixtures;
+    const source = { fixtures: scoped, spec: whole, feature: name, text: `${sp.story}\n${sp.points.map((x) => x.text).join('\n')}`, routes: pageAt.get(name) ?? [] };
+    const dataItems = own.map((p) => emptyPage(root, layout, p, source)).filter(Boolean);
     // A page that only forwards its props (a fresh line.baseOn wrapper) cannot be routed until it has its own content.
     const forwards = (file) => { const src = own.find((p) => p.file === file)?.src ?? ''; return /export\s+(?:default\s+)?function\s+\w+\s*\(\s*(?:props\b|\{)/.test(src); };
     for (const r of routeItems) {
@@ -161,7 +169,7 @@ export function openWork(root, { spec = null } = {}) {
     open.push(.../** @type {OpenItem[]} */ (dataItems));
     for (const p of points.filter((x) => x.covered === false)) {
       const missing = p.labels.filter((l) => !hasWord(sources, l));
-      const step = pointStep({ feature: name, point: p, pages: own, libraryPages, pageAt: pageAt.get(name) ?? [] });
+      const step = pointStep({ feature: name, point: p, pages: own, libraryPages, pageAt: pageAt.get(name) ?? [], points: sp.points });
       open.push({ kind: 'point', feature: name, point: { id: p.id, text: p.text, labels: p.labels },
         sentence: `${p.id} is not covered yet: no file of ${name} has ${missing.map((l) => `"${l}"`).join(', ')}.`, ...(step ? { step } : {}) });
     }
@@ -175,24 +183,27 @@ export function openWork(root, { spec = null } = {}) {
  * #917 (pilot-qwen-7b-r4-s2 calls.jsonl:17, "CAT-2 is not covered yet" with no step): the one concrete next call for an
  * uncovered spec point. The feature has a page: line.setCode on the page that should show it (the page serving a route
  * the point names, else the page at the feature's spec route, else its first page), with the page's real contentHash
- * and its code with one marked slot for the point (#920, pointSlot). It has none: the line.baseOn that creates it
- * (DetailPage for a route with a parameter, FormPage for a form, else ListPage; whichever the library has), named after
- * that library page. Pure.
+ * and its code with one marked slot for the point (#920, pointSlot). It has none: the line.baseOn that creates
+ * <Feature>Page on the library page of the shape the points give the feature's page (#933 seed/pageShape.mjs: its
+ * spec route, else a route the point names that is not only a link target; a list, a form or one record). Pure.
  * @param {{feature: string, point: {id: string, text: string}, pages: {file: string, route: string|null, src: string}[],
- *   libraryPages?: string[], pageAt?: string[]}} o `pages`: the feature's pages; `libraryPages`: the library's page ids
- *   ("pages/ListPage"); `pageAt`: the routes the feature's spec puts its pages at.
- * @returns {{tool: string, args: any} | null} Null when there is no page and no library page to base one on.
+ *   libraryPages?: string[], pageAt?: string[], points?: {id: string, text: string}[]}} o `pages`: the feature's pages;
+ *   `libraryPages`: the library's page ids ("pages/ListPage"); `pageAt`: the routes the feature's spec puts its pages
+ *   at; `points`: the feature's points (default: this one).
+ * @returns {{tool: string, args: any} | null} Null when there is no page and the points do not decide its shape, or the
+ *   library has no page of that shape (no guess).
  */
-export function pointStep({ feature, point, pages, libraryPages = [], pageAt = [] }) {
+export function pointStep({ feature, point, pages, libraryPages = [], pageAt = [], points = [point] }) {
   const named = routesIn(point.text, false);
   const page = pages.find((p) => p.route && named.includes(p.route)) ?? pages.find((p) => p.route && pageAt.includes(p.route)) ?? pages[0] ?? null;
   if (page) {
     return { tool: 'line.setCode', args: { file: page.file, code: pointSlot(page.src, point).code, contentHash: hashOf(page.src) } };
   }
-  const want = [...named, ...pageAt].some((r) => /:/.test(r)) ? 'pages/DetailPage' : /\b(form|field|submit|place order|checkout)\b/i.test(point.text) ? 'pages/FormPage' : 'pages/ListPage';
-  const libraryId = libraryPages.includes(want) ? want : libraryPages[0];
-  if (!libraryId) return null;
-  return { tool: 'line.baseOn', args: { libraryId, feature, name: libraryId.split('/').pop() } };
+  const route = pageAt[0] ?? namedRoutes(point.text).find((n) => !n.target)?.route ?? '';
+  const ev = route ? routeEvidence({ points }, route, pageAt.length ? pageAt : [route]) : [point];
+  const { shape, base } = pageShape({ route, points: ev.length ? ev : [point] });
+  if (!shape || !base || !libraryPages.includes(base)) return null;
+  return { tool: 'line.baseOn', args: { libraryId: base, feature, name: `${pascal(feature)}Page` } };
 }
 
 const SLOT = /(\{[ \t]*)?\/\*[ \t]*([A-Z][A-Z0-9]*-\d+): (.*?) [\u2014\u2013-]+ add it here[ \t]*\*\/([ \t]*\})?/;
@@ -248,12 +259,21 @@ function featureSources(root, rel) {
   return out.join('\n');
 }
 
+/** #935: where a page's fixture comes from: the library, its own module, or another feature's public index. */
+function fixtureWhere(layout, fx) {
+  if (fx.via) return `feature ${fx.via.feature} exports it from its index as ${fx.via.name}: ${fx.rel}`;
+  return fx.rel.startsWith(`${layout.library}/`) ? `the library has ${fx.rel}` : `its module has ${fx.rel}`;
+}
+
 /**
  * A page that renders its library page with no content: the base takes children, the page passes none (no closing tag,
  * no children prop, no .map) and imports nothing but the library's pages and components. Null when it renders content.
+ * #933: the data it is told to load follows the spec: the fixture whose records the feature's points are about, or, for
+ * the member's own selection kept across pages, a library store (construct create store), never the whole fixture.
+ * @param {{fixtures: {stem: string, rel: string, rows: Record<string, unknown>[]}[], spec: any, feature: string, text: string, routes: string[]}} source
  * @returns {OpenItem|null}
  */
-function emptyPage(root, layout, p, fixtures, scoped = []) {
+function emptyPage(root, layout, p, source) {
   if (!p.base) return null;
   const name = p.base.split('/').pop();
   const ext = CODE_EXTENSIONS.find((x) => fs.existsSync(path.join(root, layout.library, `${p.base}${x}`)));
@@ -263,8 +283,12 @@ function emptyPage(root, layout, p, fixtures, scoped = []) {
   const specs = [...p.src.matchAll(/\bfrom\s+['"]([^'"]+)['"]/g)].map((m) => m[1]);
   const data = specs.filter((s) => s.startsWith('.') && !new RegExp(`/${layout.library.split('/').pop()}/(pages|components)/`).test(s));
   const page = baseName(p.file);
-  const has = [scoped.length ? `its module has ${scoped.join(', ')}` : '', fixtures.length ? `the library has ${fixtures.join(', ')}` : ''].filter(Boolean).join(' and ');
-  const hint = data.length ? '' : ` and imports no data${has ? ` (${has})` : ''}`;
+  const shape = /List/.test(name) ? 'list' : /Detail/.test(name) ? 'detail' : null;
+  const state = shape ? memberState(source.spec, source.feature, source.routes) : null;
+  // A detail page shows a fixture record only at a route that names it (/x/:id); a confirmation is not one.
+  const fx = shape && !state && (shape === 'list' || /:/.test(p.route ?? '')) ? fixtureFor(source.fixtures, source.feature, source.text, shape) : null;
+  const from = state ? ` (they are the member's own selection, ${state.because[0]}: keep them in a library store, ${storeHint(source.feature)}, not a fixture)` : fx ? ` (${fixtureWhere(layout, fx)})` : '';
+  const hint = data.length ? '' : ` and imports no data${from}`;
   return { kind: 'data', feature: p.feature, file: p.file,
     sentence: `${page} renders ${name} with no content: it passes no children${hint}. Write ${page} with line.setCode on ${p.file}: load the items and render one per item as ${name}'s children.` };
 }

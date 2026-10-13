@@ -86,7 +86,7 @@ test('nothing for points a block cannot decide: behaviour points get no step, a 
     const { steps, skipped } = specSteps(root, { spec: SPEC });
     assert.deepEqual([...new Set(steps.filter((s) => s.kind === 'page' || s.kind === 'route').map((s) => s.point))], ['CAT-1', 'PROD-1', 'CART-2', 'CHK-1']);
     assert.ok(!steps.some((s) => s.route === '/order/confirmation'));
-    assert.deepEqual(skipped.filter((x) => x.kind !== 'behaviour'), [{ kind: 'page', feature: 'checkout', route: '/order/confirmation', reason: 'the spec does not say which library page fits it' }]);
+    assert.deepEqual(skipped.filter((x) => x.kind !== 'behaviour'), [{ kind: 'page', feature: 'checkout', route: '/order/confirmation', reason: 'no point says what the page at /order/confirmation shows (the route table calls it "the order confirmation")' }]);
     // Without the route table, a route a point only mentions ("opens `/order/confirmation`") is not even considered.
     const noTable = { features: SPEC.features };
     const r = specSteps(root, { spec: noTable });

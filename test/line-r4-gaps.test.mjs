@@ -146,7 +146,7 @@ test('(G3) pointStep: the page serving the point\'s route, else the spec route, 
   assert.equal(pointStep({ feature: 'catalog', point: { id: 'CAT-3', text: 'A box "Search".' }, pages })?.args.file, 'features/catalog/pages/A.tsx');
   assert.match(pointStep({ feature: 'catalog', point, pages })?.args.contentHash ?? '', /^[0-9a-f]{64}$/);
   const libs = ['pages/DetailPage', 'pages/FormPage', 'pages/ListPage'];
-  assert.deepEqual(pointStep({ feature: 'catalog', point, pages: [], libraryPages: libs }), { tool: 'line.baseOn', args: { libraryId: 'pages/ListPage', feature: 'catalog', name: 'ListPage' } });
+  assert.deepEqual(pointStep({ feature: 'catalog', point, pages: [], libraryPages: libs }), { tool: 'line.baseOn', args: { libraryId: 'pages/ListPage', feature: 'catalog', name: 'CatalogPage' } });
   assert.equal(pointStep({ feature: 'product', point: { id: 'PROD-2', text: 'Shows "Add to cart".' }, pages: [], libraryPages: libs, pageAt: ['/products/:id'] })?.args.libraryId, 'pages/DetailPage');
   assert.equal(pointStep({ feature: 'checkout', point: { id: 'CHK-1', text: 'A form with a field "Name".' }, pages: [], libraryPages: libs })?.args.libraryId, 'pages/FormPage');
   assert.equal(pointStep({ feature: 'x', point, pages: [], libraryPages: [] }), null);

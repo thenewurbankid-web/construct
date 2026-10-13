@@ -7,13 +7,15 @@
 //                                    the route table's rows (| `/route` | feature | page |), routes in Line's form
 //   specSteps(root, {spec, planned}) the steps, stub-first per feature: its feature steps (openWork's line.createFeature,
 //                                    or line.setCode of a placeholder spec.md), then per page route the spec names:
-//                                    line.baseOn on the fitting library page (detail for a :param route or a Detail
-//                                    name, form for a form-ish name, else list; build.mjs baseRank), data-wired by
+//                                    line.baseOn on the library page of its shape (#933 pageShape.mjs: list, form or
+//                                    detail, read from the points about that page and its route), data-wired by
 //                                    basePage.mjs, then line.addRoute. Each step's `why` names the spec point.
 //
 // Which routes a block can decide: the route table's rows (route, feature) and the points that say "The page at `/x`";
-// a page whose base is only the list fallback (no :param, no Detail or form-ish name) is seeded only when the spec says
-// it lists something.
+// a page whose shape the points do not decide (both a list and one record, or nothing said) is skipped with why, in the
+// spec's words. A list of the member's own selection (a count every page shows, kept on reload, added to by name) is
+// not wired to a fixture: `open` names the store for it (construct create store), its nav count link and its empty text,
+// unless a recipe (atomSteps.mjs) seeds them.
 // A route a point only mentions ("opens `/cart`") is never seeded: which feature and page serve it is the builder's
 // call. Behaviour points (filters, forms, cart state) are atomSteps.mjs's (#919): wired from atoms when a block decides them. Idempotent: a step whose effect is on disk (the
 // feature, the page, the served route) or that the plan already holds (`planned`, not done) is skipped, with why.
@@ -23,9 +25,10 @@ import { loadConfig } from '@line/construct-core/config';
 import { normalizeLineConfig, CODE_EXTENSIONS } from '@line/construct-core/profiles/line/contract';
 import { resolveLayout } from '@line/construct-core/profiles/line/checks';
 import { openWork } from '../openWork.mjs';
-import { baseRank, appDirOf, routeFolders, featurePages } from '../build.mjs';
+import { appDirOf, routeFolders, featurePages } from '../build.mjs';
 import { arrayFixtures, fixtureFor } from '../basePage.mjs';
 import { atomSteps } from './atomSteps.mjs';
+import { routeEvidence, pageShape, pointRole, memberState, storeHint, namedRoutes } from './pageShape.mjs';
 
 const posix = path.posix;
 const readOrNull = (abs) => { try { return fs.readFileSync(abs, 'utf8'); } catch { return null; } };
@@ -141,6 +144,8 @@ export function specSteps(root, { spec, planned = [] }) {
   const steps = [];
   /** @type {SeedSkip[]} */
   const skipped = [];
+  /** @type {{point: string, feature: string, route: string, reason: string}[]} */
+  const undecided = [];
   const push = (step) => {
     if (plannedLike(open, step)) skipped.push({ kind: step.kind, feature: step.feature, ...(step.route ? { route: step.route } : {}), reason: `the plan already has ${step.tool} for it` });
     else steps.push(step);
@@ -179,16 +184,15 @@ export function specSteps(root, { spec, planned = [] }) {
         skipped.push({ kind: 'page', feature: f.name, route, reason: `${file} exists already` });
       } else {
         const name = pageName(f.name, route, i, taken);
-        const rank = baseRank(route, name);
-        const lib = libPages.map((n) => ({ id: `pages/${n.replace(/\.[^.]+$/, '')}`, n })).find(({ id }) => rank(id) === 0);
-        if (!lib) { skipped.push({ kind: 'page', feature: f.name, route, reason: 'the library has no page that fits it' }); return; }
-        // A list base is the fallback, so it is seeded only when the spec says the page lists something ("lists all 12
-        // products", "the product list"); otherwise which page fits is the builder's call.
-        if (/List/.test(lib.id) && !/\blist(s|ed)?\b/i.test(`${page} ${point?.text ?? ''}`)) {
-          skipped.push({ kind: 'page', feature: f.name, route, reason: 'the spec does not say which library page fits it' }); return;
-        }
-        const shape = /List/.test(lib.id) ? 'list' : /Detail/.test(lib.id) ? 'detail' : null;
-        const fx = shape ? fixtureFor(fixtures, f.name, textForFixture, shape) : null;
+        const routes = (byFeature.get(f.name) ?? []).map((x) => x.route);
+        const sh = pageShape({ route, points: routeEvidence(f, route, routes), label: page });
+        if (!sh.shape) { skipped.push({ kind: 'page', feature: f.name, route, reason: sh.reason }); undecided.push({ point: pid ?? route, feature: f.name, route, reason: sh.reason }); return; }
+        const lib = libPages.map((n) => ({ id: `pages/${n.replace(/\.[^.]+$/, '')}`, n })).find(({ id }) => id === sh.base);
+        if (!lib) { skipped.push({ kind: 'page', feature: f.name, route, reason: `${sh.reason}, and the library has no ${sh.base.split('/')[1]}` }); return; }
+        // A list or record of the member's own selection is a store, not the fixture (#933, open below).
+        const own = sh.shape !== 'form' ? memberState(spec, f.name, routes) : null;
+        // A detail page is a fixture record only when its route names the record (/x/:id); a confirmation is not.
+        const fx = sh.shape !== 'form' && !own && (sh.shape === 'list' || route.includes(':')) ? fixtureFor(fixtures, f.name, textForFixture, sh.shape) : null;
         file = `${layout.features}/${f.name}/pages/${name}${posix.extname(lib.n)}`;
         push({ tool: 'line.baseOn', args: { libraryId: lib.id, feature: f.name, name }, kind: 'page', feature: f.name, point: pid, route, base: lib.id, ...(fx ? { fixture: fx.rel } : {}),
           why: `${said}: ${name} is based on the library ${lib.id.split('/')[1]}${fx ? `, wired to ${fx.rel}` : ''}.` });
@@ -200,7 +204,56 @@ export function specSteps(root, { spec, planned = [] }) {
   const more = atomSteps(root, { spec, planned: open });
   const same = (a, b) => a.tool === b.tool && JSON.stringify(a.args) === JSON.stringify(b.args);
   for (const s of more.steps) if (!steps.some((x) => same(x, s))) steps.push(s);
-  return { steps, skipped: [...skipped, ...more.skipped], open: more.open };
+  return { steps, skipped: [...skipped, ...more.skipped], open: [...more.open, ...selectionOpen(spec, byFeature, more, undecided)] };
+}
+
+/**
+ * #933: what the seed leaves to the builder that no recipe takes, each in the spec's own words: a page whose shape the
+ * points do not decide; a feature whose items are the member's own selection (the store to keep them in, never the
+ * fixture); the nav link every page shows with their count (the app shell's nav slot); a list page's empty text (its
+ * empty slot).
+ * @param {SeedSpec} spec @param {Map<string, {route: string, point: SpecPoint|null, page: string}[]>} byFeature
+ * @param {{claimed: string[], claimedRoutes: string[]}} more @param {{point: string, feature: string, route: string, reason: string}[]} undecided
+ * @returns {{point: string, feature: string, reason: string}[]}
+ */
+function selectionOpen(spec, byFeature, more, undecided) {
+  const claimed = new Set(more.claimed);
+  /** @type {{point: string, feature: string, reason: string}[]} */
+  const out = undecided.filter((u) => !more.claimedRoutes.includes(u.route)).map(({ point, feature, reason }) => ({ point, feature, reason: `which library page fits is the builder's call: ${reason}` }));
+  const all = spec.features.flatMap((g) => g.points.map((p) => ({ p, feature: g.name })));
+  /** One item per point: a second reason for the same point is added to it. */
+  const add = (p, feature, reason) => {
+    if (claimed.has(p.id)) return;
+    const had = out.find((o) => o.point === p.id);
+    if (had) had.reason = `${had.reason}; and ${reason}`; else out.push({ point: p.id, feature, reason });
+  };
+  // The member's own selections first (the store is what the nav link and the list page read), then the empty slots.
+  for (const f of spec.features) {
+    const routes = (byFeature.get(f.name) ?? []).map((x) => x.route);
+    const st = memberState(spec, f.name, routes);
+    if (!st) continue;
+    const route = routes.find((r) => pageShape({ route: r, points: routeEvidence(f, r, routes) }).shape !== 'form');
+    const first = route ? routeEvidence(f, route, routes)[0] : null;
+    if (!first || claimed.has(first.id)) continue;
+    add(first, f.name, `the ${f.name} are the member's own selection (${st.because.join('; ')}): keep them in a library store (${storeHint(f.name)}) and list it at ${route}, not a fixture`);
+    for (const { p, feature } of all) {
+      const r = pointRole(p.text);
+      const to = namedRoutes(p.text).find((n) => routes.includes(n.route))?.route;
+      if (r?.role === 'nav-count' && to) add(p, feature, `every page shows a link "${r.label ?? f.name} (<count>)" to ${to}: a component in the app shell's nav slot (line.setLayoutSlot nav) that counts the ${f.name} store`);
+    }
+  }
+  for (const f of spec.features) {
+    const routes = (byFeature.get(f.name) ?? []).map((x) => x.route);
+    routes.forEach((route, i) => {
+      const ev = routeEvidence(f, route, routes);
+      if (pageShape({ route, points: ev, label: byFeature.get(f.name)?.[i]?.page ?? '' }).shape !== 'list') return;
+      for (const p of ev) {
+        const r = pointRole(p.text);
+        if (r?.role === 'empty') add(p, f.name, `"${r.text}" is the empty slot of the list page at ${route} (the library ListPage's empty prop)`);
+      }
+    });
+  }
+  return out;
 }
 
 /**
