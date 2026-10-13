@@ -131,7 +131,9 @@ test('(G2, G3, r4-s2) NO_CHANGE names the same page, never a missing one; status
     const st = await cli.run('status', ['catalog']);
     const pts = st.sentence.split('\n').filter((l) => /^\d+\. CAT-\d+ is not covered yet/.test(l));
     assert.ok(pts.length >= 1, st.sentence);
-    for (const l of pts) assert.match(l, new RegExp(`Step: line\\.setCode \\{"file":"features/catalog/pages/ListPage\\.tsx","code":"<the whole file of ListPage, now also showing CAT-\\d+: .*","contentHash":"${read.contentHash}"\\}$`));
+    // #920: the first one carries ListPage's real code with a marked slot; the later ones wait for it to land.
+    assert.match(pts[0], new RegExp(`Step: line\\.setCode \\{"file":"features/catalog/pages/ListPage\\.tsx","code":".*CAT-\\d+: .* \u2014 add it here .*","contentHash":"${read.contentHash}"\\}$`));
+    for (const l of pts.slice(1)) assert.match(l, /Its step, with the code, comes once the items above land\.$/);
     for (const p of featurePaths(st.sentence)) assert.ok(fs.existsSync(path.join(root, p)), `${p} exists`);
   } finally { done(); }
 });

@@ -25,6 +25,8 @@
 //
 // Nothing here writes a project file: a step's write happens only when the plan runner calls the registry
 // (planTools.mjs -> applyChange -> Construct's transactional writer).
+import fs from 'node:fs';
+import path from 'node:path';
 import { importLinked } from '../../line-links/index.mjs';
 import { summarize } from '@line/summarize';
 import { CHANGE_TOOLS, DEFAULT_EXPECT, REAL_PLAN_OPS, createLinePlanRegistry, constructCommandTools, gapOf, isDeferred, previewStep, requestOf, rootOf } from './planTools.mjs';
@@ -38,7 +40,7 @@ import { createSessionTrace, refusalOfStep, matchFix, sourceOf, traceArgs } from
 import { memoryOf, memoryBy } from './memory/index.mjs';
 import { SHOWN_CHOICES, RUN_NEXT, renderReoffer, shapeRefusal, contextFor, withHints, badValueOf, badArgsField, targetOf, rulesCard, hintsJevOn, jevScores, renderQuestion, answerCall, stepText, createExampleResolver, plannedFiles } from './hints.mjs';
 import { rankLines, capFor } from './contextScore.mjs';
-import { openWork, workText, itemText } from './openWork.mjs';
+import { openWork, workText, itemText, slotOf, pointSlot } from './openWork.mjs';
 import { createRepeatGuard, guardFixes, escalate } from './repeatGuard.mjs';
 
 /** One session per open project, for now. */
@@ -151,6 +153,28 @@ export function pendingDependency(plan, req, features = 'features') {
     }
   }
   return null;
+}
+
+/**
+ * #920 (pilot-qwen-7b-r5 calls.jsonl:15): a setCode whose code is still a suggestion's placeholder or skeleton, named in
+ * one sentence: prose (BAD_CODE), the skeleton unchanged (NO_CHANGE), or, with `failed` BAD_CODE, a slot still marked in
+ * code that does not parse. Null when the code is the builder's own.
+ * @param {string} root @param {any} req @param {string|null} failed The code the step was refused with, if any.
+ * @returns {{ok: false, code: string, sentence: string} | null}
+ */
+function slotRefusal(root, req, failed) {
+  const a = req?.tool === 'line.setCode' ? req.args ?? {} : {};
+  const s = typeof a.file === 'string' ? slotOf(a.code) : null;
+  if (!s) return null;
+  let cur = '';
+  try { cur = fs.readFileSync(path.join(root, a.file), 'utf8'); } catch { /* a new file */ }
+  const line = s.line ?? (s.id ? pointSlot(cur, { id: s.id, text: s.text ?? '' }).line : 0);
+  const at = line ? ` at line ${line} of ${a.file}` : '';
+  const shows = s.id ? `the code that shows ${s.id}: ${String(s.text).replace(/[.\s]+$/, '')}` : 'your code';
+  if (s.prose) return refusal('BAD_CODE', s.id ? `You sent the suggestion's placeholder, not code, so nothing was saved; replace the marked slot${at} with ${shows}` : `You sent the example's placeholder, not code, so nothing was saved; send the whole file of ${a.file} as real code`);
+  const same = (x) => x.replace(/\s+/g, ' ').trim(); // plan-cli collapses spaces inside a line, so indents may be gone
+  if (!failed && same(s.rest ?? '') === same(cur)) return refusal('NO_CHANGE', `You sent the suggestion's skeleton unchanged, so nothing changed; fill the slot${at} (the /* ${s.id}: ... */ comment) with ${shows}`);
+  return failed === 'BAD_CODE' ? refusal('BAD_CODE', `This code does not parse, so nothing was saved; the slot${at} is still marked: replace it with ${shows}`) : null;
 }
 
 /** The codes a pending step cannot explain: the request itself is malformed. */
@@ -704,7 +728,9 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
     }
     // A picked fix is its step, sent as if with tool and args (a tool or args sent alongside are ignored).
     const req = picked?.ok ? { tool: picked.fix.step.tool, args: picked.fix.step.args, why: typeof req0?.why === 'string' && req0.why.trim() ? req0.why : picked.fix.sentence } : req0;
-    const r0 = await addStepInner(req, by);
+    const pre = slotRefusal(root, req, null);
+    let r0 = pre ?? await addStepInner(req, by);
+    if (!pre && !r0.ok && /** @type {any} */ (r0).code === 'BAD_CODE') r0 = { ...r0, ...slotRefusal(root, req, 'BAD_CODE') };
     let r = r0;
     if (!r0.ok) {
       const { api, registry } = await init();
