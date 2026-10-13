@@ -16,28 +16,121 @@ function camelToWords(name) {
     .toLowerCase();
 }
 
-// Placeholder sink: while toEnglish() renders a step, every fallback branch
-// below records {kind, type, start, end} here, so callers get a structured
-// list of what did not translate instead of having to grep the English.
-let missSink = null;
-function miss(kind, node) {
-  if (missSink) missSink.push({ kind, type: node ? node.type : 'unknown', start: node && node.start != null ? node.start : null, end: node && node.end != null ? node.end : null });
+// ONE walker, two views. Every rule below emits into a single ordered item
+// list; each item is either a CHIP ({text, type, start?, end?} -- start/end
+// are the SOURCE node the chip came from, omitted for connectives that don't
+// correspond to a single node) or GLUE (punctuation that only exists in the
+// flat sentence: "'s", "(", ")"). A chip may also carry `en`, its spelling in
+// the flat sentence when that differs from the chip label ("then" chip reads
+// "; then"). `render()` joins the items into the flat English string and
+// `chipsOf()` keeps only the chips -- so the sentence and the chips can never
+// drift apart: there is no second switch to forget to update.
+//
+// A multi-word atom/verb name (camelToWords splits it into several English
+// words) is still ONE chip, mapped to the one callee/property node it came
+// from -- the words belong together and must move together.
+//
+// Spacing: items are joined with one space, except an item with glueL sticks
+// to the item before it and an item with glueR sticks to the item after it.
+function makeOut() {
+  return { items: [], unhandled: [] };
 }
 
-function exprToEnglish(node) {
-  if (!node) return '';
+function chip(out, text, type, node, opts) {
+  const c = { text, type };
+  if (node) {
+    c.start = node.start;
+    c.end = node.end;
+  }
+  out.items.push({
+    chip: c,
+    en: opts && opts.en !== undefined ? opts.en : text,
+    glueL: !!(opts && opts.glueL),
+    glueR: !!(opts && opts.glueR),
+  });
+}
+
+function glue(out, en, opts) {
+  out.items.push({ chip: null, en, glueL: !!(opts && opts.glueL), glueR: !!(opts && opts.glueR) });
+}
+
+// The one place a construct with no English rule is recorded: the
+// placeholder chip itself, plus a structured {kind, type, start, end} entry.
+const PLACEHOLDER_TEXT = { expr: '(...)', stmt: '(a step that does not translate cleanly)', pattern: '?' };
+
+function noteUnhandled(out, kind, node) {
+  out.unhandled.push({
+    kind,
+    type: node ? node.type : 'unknown',
+    start: node && node.start != null ? node.start : null,
+    end: node && node.end != null ? node.end : null,
+  });
+}
+
+function placeholder(out, kind, node) {
+  noteUnhandled(out, kind, node);
+  chip(out, PLACEHOLDER_TEXT[kind], 'connective');
+}
+
+function render(items) {
+  let s = '';
+  let stickNext = true;
+  for (const it of items) {
+    const en = it.en == null ? '' : String(it.en);
+    if (en === '') continue;
+    if (s && !it.glueL && !stickNext) s += ' ';
+    s += en;
+    stickNext = it.glueR;
+  }
+  return s;
+}
+
+function chipsOf(items) {
+  return items.filter((it) => it.chip).map((it) => it.chip);
+}
+
+// A declarator's `id` isn't always a plain Identifier -- destructuring
+// (const [a, b] = args, the shape transform.js's extraction step itself
+// produces for a multi-param original) gives an ArrayPattern/ObjectPattern
+// instead, whose .name is undefined. Recurses so nested patterns
+// ([a, [b, c]]) still render as something readable instead of "undefined".
+function patternName(id, out) {
+  if (id.type === 'Identifier') return id.name;
+  if (id.type === 'ArrayPattern') return `[${id.elements.map((el) => (el ? patternName(el, out) : '')).join(', ')}]`;
+  if (id.type === 'ObjectPattern') return `{${id.properties.map((p) => (p.key ? patternName(p.key, out) : '')).join(', ')}}`;
+  noteUnhandled(out, 'pattern', id);
+  return '?';
+}
+
+// Identifier/this read as the SUBJECT of whatever follows (a.equals(b): "a"
+// is the subject); anything else is just an expression in that position.
+function walkSubject(node, out) {
+  if (node.type === 'Identifier') return chip(out, node.name === 'this' ? 'it' : node.name, 'subject', node);
+  if (node.type === 'ThisExpression') return chip(out, 'it', 'subject', node);
+  return walkExpr(node, out);
+}
+
+function walkArgs(nodes, out) {
+  nodes.forEach((n, i) => {
+    if (i > 0) chip(out, 'and', 'connective');
+    walkExpr(n, out);
+  });
+}
+
+function walkExpr(node, out) {
+  if (!node) return;
   switch (node.type) {
     case 'Identifier':
-      return node.name === 'this' ? 'it' : node.name;
+      return chip(out, node.name === 'this' ? 'it' : node.name, 'arg', node);
     case 'ThisExpression':
-      return 'it';
+      return chip(out, 'it', 'arg', node);
     case 'StringLiteral':
-      return `'${node.value}'`;
+      return chip(out, `'${node.value}'`, 'arg', node);
     case 'NumericLiteral':
     case 'BooleanLiteral':
-      return String(node.value);
+      return chip(out, String(node.value), 'arg', node);
     case 'NullLiteral':
-      return 'nothing';
+      return chip(out, 'nothing', 'arg', node);
     case 'MemberExpression':
       // computed: true is bracket notation with a dynamic key (obj[x]) --
       // property is a VALUE expression (a variable, a literal), not a fixed
@@ -46,237 +139,139 @@ function exprToEnglish(node) {
       // this.rules[name] rendered as "rules's name" (implying a literal
       // nested field this.rules.name), when it's actually a lookup BY the
       // variable name -- a different meaning entirely.
+      walkSubject(node.object, out);
       if (node.computed) {
-        return `${exprToEnglish(node.object)} at ${exprToEnglish(node.property)}`;
+        chip(out, 'at', 'connective');
+        return walkExpr(node.property, out);
       }
-      return `${exprToEnglish(node.object)}'s ${camelToWords(node.property.name || '')}`;
+      glue(out, "'s", { glueL: true });
+      return chip(out, camelToWords(node.property.name || ''), 'verb', node.property);
     case 'UnaryExpression':
-      if (node.operator === '!') return `not (${exprToEnglish(node.argument)})`;
-      return `${node.operator}${exprToEnglish(node.argument)}`;
+      if (node.operator === '!') {
+        chip(out, 'not', 'connective');
+        glue(out, '(', { glueR: true });
+        walkExpr(node.argument, out);
+        return glue(out, ')', { glueL: true });
+      }
+      chip(out, node.operator, 'connective', null, { glueR: true });
+      return walkExpr(node.argument, out);
     case 'CallExpression': {
       const callee = node.callee;
-      const args = node.arguments.map(exprToEnglish).join(' and ');
       if (callee.type === 'MemberExpression') {
-        const subject = exprToEnglish(callee.object);
-        const verb = camelToWords(callee.property.name || '');
-        return args ? `${subject} ${verb} ${args}` : `${subject} ${verb}`;
+        walkSubject(callee.object, out);
+        chip(out, camelToWords(callee.property.name || ''), 'verb', callee.property);
+        return walkArgs(node.arguments, out);
       }
-      const fn = camelToWords(callee.name || '');
-      return `${fn} of ${args}`;
+      chip(out, camelToWords(callee.name || ''), 'verb', callee);
+      if (node.arguments.length) {
+        chip(out, 'of', 'connective');
+        walkArgs(node.arguments, out);
+      }
+      return;
     }
     case 'ArrowFunctionExpression':
       // Renders the closure's BODY, not the closure itself -- "() => x"
       // reads as just "x". Without this, any call taking a callback (like
-      // ifIt/elseIfIt/elseIt below) rendered every argument as a bare "(...)"
+      // ifIt/elseIfIt/elseIt) rendered every argument as a bare "(...)"
       // placeholder, losing the actual condition/result entirely.
-      if (node.body.type === 'BlockStatement') {
-        return blockToEnglish(node.body);
+      if (node.body.type === 'BlockStatement') return walkBlock(node.body, out);
+      return walkExpr(node.body, out);
+    case 'NewExpression':
+      chip(out, 'a new', 'connective');
+      chip(out, node.callee.name, 'verb', node.callee, { en: String(node.callee.name) });
+      if (node.arguments.length) {
+        chip(out, 'of', 'connective');
+        walkArgs(node.arguments, out);
       }
-      return exprToEnglish(node.body);
-    case 'NewExpression': {
-      const args = node.arguments.map(exprToEnglish).join(' and ');
-      return `a new ${node.callee.name}${args ? ' of ' + args : ''}`;
-    }
+      return;
     case 'BinaryExpression':
-      return `${exprToEnglish(node.left)} ${node.operator} ${exprToEnglish(node.right)}`;
+      walkExpr(node.left, out);
+      chip(out, node.operator, 'connective');
+      return walkExpr(node.right, out);
     case 'AssignmentExpression':
-      return `set ${exprToEnglish(node.left)} to ${exprToEnglish(node.right)}`;
-    case 'BinaryExpression':
-      return `${exprToEnglish(node.left)} ${node.operator} ${exprToEnglish(node.right)}`;
+      chip(out, 'set', 'connective');
+      walkExpr(node.left, out);
+      chip(out, 'to', 'connective');
+      return walkExpr(node.right, out);
     default:
-      miss('expr', node);
-      return '(...)';
+      return placeholder(out, 'expr', node);
   }
 }
 
-// A declarator's `id` isn't always a plain Identifier -- destructuring
-// (const [a, b] = args, the shape transform.js's extraction step itself
-// produces for a multi-param original) gives an ArrayPattern/ObjectPattern
-// instead, whose .name is undefined. Recurses so nested patterns
-// ([a, [b, c]]) still render as something readable instead of "undefined".
-function patternName(id) {
-  if (id.type === 'Identifier') return id.name;
-  if (id.type === 'ArrayPattern') return `[${id.elements.map((el) => (el ? patternName(el) : '')).join(', ')}]`;
-  if (id.type === 'ObjectPattern') return `{${id.properties.map((p) => (p.key ? patternName(p.key) : '')).join(', ')}}`;
-  miss('pattern', id);
-  return '?';
-}
-
-function blockToEnglish(node, depth) {
-  if (!node) return '';
+function walkBlock(node, out) {
+  if (!node) return;
   if (node.type === 'BlockStatement') {
-    return node.body.map((s) => stmtToEnglish(s, depth)).join('; then ');
-  }
-  return stmtToEnglish(node, depth);
-}
-
-function stmtToEnglish(node, depth = 0) {
-  switch (node.type) {
-    case 'ReturnStatement':
-      return node.argument ? `return ${exprToEnglish(node.argument)}` : 'return';
-    case 'ExpressionStatement':
-      return exprToEnglish(node.expression);
-    case 'VariableDeclaration':
-      return node.declarations
-        .map((d) => `let ${patternName(d.id)} be ${d.init ? exprToEnglish(d.init) : 'undefined'}`)
-        .join(', ');
-    case 'IfStatement': {
-      const cond = `if ${exprToEnglish(node.test)}`;
-      const then = blockToEnglish(node.consequent, depth + 1);
-      const alt = node.alternate ? `, otherwise ${blockToEnglish(node.alternate, depth + 1)}` : '';
-      return `${cond}: ${then}${alt}`;
-    }
-    case 'ForInStatement':
-      return `for each ${node.left.declarations ? node.left.declarations[0].id.name : exprToEnglish(node.left)} in ${exprToEnglish(node.right)}: ${blockToEnglish(node.body, depth + 1)}`;
-    case 'ForOfStatement':
-      return `for each ${node.left.declarations ? node.left.declarations[0].id.name : exprToEnglish(node.left)} of ${exprToEnglish(node.right)}: ${blockToEnglish(node.body, depth + 1)}`;
-    case 'BlockStatement':
-      return blockToEnglish(node, depth);
-    default:
-      miss('stmt', node);
-      return '(a step that does not translate cleanly)';
-  }
-}
-
-// Token-producing mirror of exprToEnglish/stmtToEnglish below: same shape of
-// switch, but instead of concatenating a string, each branch emits chips --
-// {text, type, start, end} -- start/end are the SOURCE node this chip came
-// from (so the demo can map a chip back to code), omitted for connectives
-// that don't correspond to a single node ("and", ":", "otherwise", ...).
-// A multi-word atom/verb name (camelToWords splits it into several English
-// words) is still ONE chip, mapped to the one callee/property node it came
-// from -- the words belong together and must move together.
-function tokenizeSubject(node) {
-  if (node.type === 'Identifier') {
-    return [{ text: node.name === 'this' ? 'it' : node.name, type: 'subject', start: node.start, end: node.end }];
-  }
-  if (node.type === 'ThisExpression') {
-    return [{ text: 'it', type: 'subject', start: node.start, end: node.end }];
-  }
-  return tokenizeExpr(node);
-}
-
-function tokenizeArgs(nodes) {
-  const out = [];
-  nodes.map(tokenizeExpr).forEach((tokens, i) => {
-    if (i > 0) out.push({ text: 'and', type: 'connective' });
-    out.push(...tokens);
-  });
-  return out;
-}
-
-function tokenizeExpr(node) {
-  if (!node) return [];
-  switch (node.type) {
-    case 'Identifier':
-      return [{ text: node.name === 'this' ? 'it' : node.name, type: 'arg', start: node.start, end: node.end }];
-    case 'ThisExpression':
-      return [{ text: 'it', type: 'arg', start: node.start, end: node.end }];
-    case 'StringLiteral':
-      return [{ text: `'${node.value}'`, type: 'arg', start: node.start, end: node.end }];
-    case 'NumericLiteral':
-    case 'BooleanLiteral':
-      return [{ text: String(node.value), type: 'arg', start: node.start, end: node.end }];
-    case 'NullLiteral':
-      return [{ text: 'nothing', type: 'arg', start: node.start, end: node.end }];
-    case 'MemberExpression':
-      if (node.computed) {
-        return [...tokenizeSubject(node.object), { text: 'at', type: 'connective' }, ...tokenizeExpr(node.property)];
-      }
-      return [...tokenizeSubject(node.object), { text: camelToWords(node.property.name || ''), type: 'verb', start: node.property.start, end: node.property.end }];
-    case 'UnaryExpression':
-      if (node.operator === '!') return [{ text: 'not', type: 'connective' }, ...tokenizeExpr(node.argument)];
-      return [{ text: node.operator, type: 'connective' }, ...tokenizeExpr(node.argument)];
-    case 'CallExpression': {
-      const callee = node.callee;
-      const argTokens = tokenizeArgs(node.arguments);
-      if (callee.type === 'MemberExpression') {
-        const subject = tokenizeSubject(callee.object);
-        const verb = { text: camelToWords(callee.property.name || ''), type: 'verb', start: callee.property.start, end: callee.property.end };
-        return [...subject, verb, ...argTokens];
-      }
-      const fn = { text: camelToWords(callee.name || ''), type: 'verb', start: callee.start, end: callee.end };
-      return argTokens.length ? [fn, { text: 'of', type: 'connective' }, ...argTokens] : [fn];
-    }
-    case 'ArrowFunctionExpression':
-      if (node.body.type === 'BlockStatement') return tokenizeBlock(node.body);
-      return tokenizeExpr(node.body);
-    case 'NewExpression': {
-      const argTokens = tokenizeArgs(node.arguments);
-      const head = [{ text: 'a new', type: 'connective' }, { text: node.callee.name, type: 'verb', start: node.callee.start, end: node.callee.end }];
-      return argTokens.length ? [...head, { text: 'of', type: 'connective' }, ...argTokens] : head;
-    }
-    case 'BinaryExpression':
-      return [...tokenizeExpr(node.left), { text: node.operator, type: 'connective' }, ...tokenizeExpr(node.right)];
-    case 'AssignmentExpression':
-      return [{ text: 'set', type: 'connective' }, ...tokenizeExpr(node.left), { text: 'to', type: 'connective' }, ...tokenizeExpr(node.right)];
-    default:
-      return [{ text: '(...)', type: 'connective' }];
-  }
-}
-
-function tokenizeBlock(node, depth) {
-  if (!node) return [];
-  if (node.type === 'BlockStatement') {
-    const out = [];
     node.body.forEach((s, i) => {
-      if (i > 0) out.push({ text: 'then', type: 'connective' });
-      out.push(...tokenizeStmt(s, depth));
+      if (i > 0) chip(out, 'then', 'connective', null, { en: '; then', glueL: true });
+      walkStmt(s, out);
     });
-    return out;
+    return;
   }
-  return tokenizeStmt(node, depth);
+  walkStmt(node, out);
 }
 
-function tokenizeStmt(node, depth = 0) {
+function walkStmt(node, out) {
   switch (node.type) {
     case 'ReturnStatement':
-      return node.argument
-        ? [{ text: 'return', type: 'connective' }, ...tokenizeExpr(node.argument)]
-        : [{ text: 'return', type: 'connective' }];
+      chip(out, 'return', 'connective');
+      return walkExpr(node.argument, out);
     case 'ExpressionStatement':
-      return tokenizeExpr(node.expression);
-    case 'VariableDeclaration': {
-      const out = [];
+      return walkExpr(node.expression, out);
+    case 'VariableDeclaration':
       node.declarations.forEach((d, i) => {
-        if (i > 0) out.push({ text: ',', type: 'connective' });
-        out.push({ text: 'let', type: 'connective' });
-        out.push({ text: patternName(d.id), type: 'subject', start: d.id.start, end: d.id.end });
-        out.push({ text: 'be', type: 'connective' });
-        out.push(...(d.init ? tokenizeExpr(d.init) : [{ text: 'undefined', type: 'arg' }]));
+        if (i > 0) chip(out, ',', 'connective', null, { glueL: true });
+        chip(out, 'let', 'connective');
+        chip(out, patternName(d.id, out), 'subject', d.id);
+        chip(out, 'be', 'connective');
+        if (d.init) walkExpr(d.init, out);
+        else chip(out, 'undefined', 'arg');
       });
-      return out;
-    }
-    case 'IfStatement': {
-      const out = [
-        { text: 'if', type: 'connective' },
-        ...tokenizeExpr(node.test),
-        { text: ':', type: 'connective' },
-        ...tokenizeBlock(node.consequent, depth + 1),
-      ];
-      if (node.alternate) out.push({ text: 'otherwise', type: 'connective' }, ...tokenizeBlock(node.alternate, depth + 1));
-      return out;
-    }
+      return;
+    case 'IfStatement':
+      chip(out, 'if', 'connective');
+      walkExpr(node.test, out);
+      chip(out, ':', 'connective', null, { glueL: true });
+      walkBlock(node.consequent, out);
+      if (node.alternate) {
+        chip(out, 'otherwise', 'connective', null, { en: ', otherwise', glueL: true });
+        walkBlock(node.alternate, out);
+      }
+      return;
     case 'ForInStatement':
     case 'ForOfStatement': {
-      const kw = node.type === 'ForInStatement' ? 'in' : 'of';
-      const varTokens = node.left.declarations
-        ? [{ text: node.left.declarations[0].id.name, type: 'subject', start: node.left.declarations[0].id.start, end: node.left.declarations[0].id.end }]
-        : tokenizeExpr(node.left);
-      return [
-        { text: 'for each', type: 'connective' },
-        ...varTokens,
-        { text: kw, type: 'connective' },
-        ...tokenizeExpr(node.right),
-        { text: ':', type: 'connective' },
-        ...tokenizeBlock(node.body, depth + 1),
-      ];
+      chip(out, 'for each', 'connective');
+      if (node.left.declarations) {
+        const id = node.left.declarations[0].id;
+        chip(out, id.name, 'subject', id, { en: String(id.name) });
+      } else {
+        walkExpr(node.left, out);
+      }
+      chip(out, node.type === 'ForInStatement' ? 'in' : 'of', 'connective');
+      walkExpr(node.right, out);
+      chip(out, ':', 'connective', null, { glueL: true });
+      return walkBlock(node.body, out);
     }
     case 'BlockStatement':
-      return tokenizeBlock(node, depth);
+      return walkBlock(node, out);
     default:
-      return [{ text: '(a step that does not translate cleanly)', type: 'connective' }];
+      return placeholder(out, 'stmt', node);
   }
+}
+
+// Chips for one statement -- the step's word chips the demo edits, and what
+// reorderChip() re-derives to find which chips moved.
+function tokenizeStmt(node) {
+  const out = makeOut();
+  walkStmt(node, out);
+  return chipsOf(out.items);
+}
+
+// The same statement as a flat sentence plus its chips and unhandled list,
+// all from one walk.
+function describeStmt(node) {
+  const out = makeOut();
+  walkStmt(node, out);
+  return { english: render(out.items), tokens: chipsOf(out.items), unhandled: out.unhandled };
 }
 
 // kind: 'method' | 'function' -- same convention as the rest of the tool,
@@ -321,29 +316,22 @@ function toEnglish(code, kind) {
   const title = `${camelToWords(name)}${params.length ? ' using ' + params.join(' and ') : ''}`;
   const shift = (u) => ({ ...u, start: u.start != null ? u.start - prefixLen : null, end: u.end != null ? u.end - prefixLen : null });
   const steps = body.body.map((s) => {
-    missSink = [];
-    let english;
-    try {
-      english = stmtToEnglish(s);
-    } finally {
-      var stepMisses = missSink.map(shift);
-      missSink = null;
-    }
+    const d = describeStmt(s);
     return {
-    english,
-    unhandled: stepMisses,
-    code: wrapped.slice(s.start, s.end),
-    start: s.start - prefixLen,
-    end: s.end - prefixLen,
-    // Same step, as chips instead of a flat string -- each chip's start/end
-    // (when present) are shifted by the same class-wrapper offset as the
-    // step's own start/end, so both stay in the same coordinate space as
-    // `code` above.
-    tokens: tokenizeStmt(s).map((tok) => ({
-      ...tok,
-      start: tok.start != null ? tok.start - prefixLen : null,
-      end: tok.end != null ? tok.end - prefixLen : null,
-    })),
+      english: d.english,
+      unhandled: d.unhandled.map(shift),
+      code: wrapped.slice(s.start, s.end),
+      start: s.start - prefixLen,
+      end: s.end - prefixLen,
+      // Same step, as chips instead of a flat string -- each chip's start/end
+      // (when present) are shifted by the same class-wrapper offset as the
+      // step's own start/end, so both stay in the same coordinate space as
+      // `code` above.
+      tokens: d.tokens.map((tok) => ({
+        ...tok,
+        start: tok.start != null ? tok.start - prefixLen : null,
+        end: tok.end != null ? tok.end - prefixLen : null,
+      })),
     };
   });
   const english = `${title}: ${steps.map((s) => s.english).join('; then ')}.`;
