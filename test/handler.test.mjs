@@ -16,7 +16,7 @@ import { suggest } from '../packages/core/decision-provider.mjs';
 import { NEEDS_RUNTIME, cardOf, featureTree, initProject, projectFiles, run, shapeProject, typeCheck } from '../test-utils/shapeChain.mjs';
 
 const handler = (dir, ...more) => run(['create', 'handler', 'Products', '--feature', 'shop', ...more], dir);
-const featureViolations = (dir) => JSON.parse(run(['validate', '--format', 'json'], dir).stdout).violations.filter((v) => v.file.startsWith('features/') || v.file.startsWith('app/api')).map((v) => `${v.severity} ${v.rule} ${v.file}`);
+const featureViolations = (dir) => JSON.parse(run(['validate', '--format', 'json', '--no-fallow'], dir).stdout).violations.filter((v) => v.file.startsWith('features/') || v.file.startsWith('app/api')).map((v) => `${v.severity} ${v.rule} ${v.file}`);
 
 test('the request is checked by named reasons: the method is closed, the path is /api/ and plain, names are PascalCase', () => {
   const ok = { name: 'Products', feature: 'shop', method: 'GET', path: '/api/products' };

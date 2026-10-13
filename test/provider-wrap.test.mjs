@@ -201,7 +201,7 @@ test('the CLI: refactor wrap prints the closed list without --provider, previews
   assert.match(listed.stderr, /Which provider\? Run again with --provider <id>:\n {2}useAuthProvider {2}Wraps with <AuthProviderRoot> from auth\.\n {2}useCartProvider {2}Wraps with <CartProviderRoot> from cart\./);
   assert.equal(read(dir, 'features/cart/controllers/CartController.tsx'), CONTROLLER, 'listing writes nothing');
 
-  const violationsOf = () => JSON.parse(run(['validate', '--format', 'json'], dir).stdout).violations.map((v) => `${v.severity} ${v.rule} ${v.file}`).sort();
+  const violationsOf = () => JSON.parse(run(['validate', '--format', 'json', '--no-fallow'], dir).stdout).violations.map((v) => `${v.severity} ${v.rule} ${v.file}`).sort();
   const before = violationsOf(); // the init scaffold and the hand-written fixture files have findings of their own (a dangling CoreController route, no barrel yet)
   const dry = run(['refactor', 'wrap', 'CartPage', '--feature', 'cart', '--provider', 'useCartProvider', '--dry-run'], dir);
   assert.equal(dry.status, 0, dry.stderr);

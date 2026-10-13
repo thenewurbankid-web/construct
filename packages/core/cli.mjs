@@ -12,6 +12,7 @@ import { loadConfig, findProjectRoot, resolveDirRoot, DEFAULT_RULES, NEW_PROJECT
 import { listRules } from './rules-catalog.mjs';
 import { formatReport, exitCodeForViolations, ConstructError, EXIT_CODES, setExitCode } from './diagnostics.mjs';
 import { aggregateValidation } from './registry.mjs';
+import { fallowStage, runFallow } from './fallow.mjs';
 import { selectProfile, enforcersForProfile } from './profiles/index.mjs';
 import { validateArchitecture } from './architecture-enforcer.mjs';
 import { syncPublicApi } from './api-composer.mjs';
@@ -893,6 +894,35 @@ export async function exportCommand(args) {
   }
 }
 
+const FALLOW_USAGE = 'Usage: construct fallow [path] [--json] [--dir <path>]';
+
+/**
+ * Run the fallow block on its own: fallow's dead-code and health analyses mapped to FALLOW-* findings,
+ * the same ones `construct validate` adds by default. Read-only (fallow runs with --no-cache); all
+ * findings are warnings, so the exit code is 0 unless fallow is missing (2) or could not finish (3).
+ *
+ * @example
+ * construct fallow
+ * construct fallow ./my-app --json
+ * @param {string[]} args - an optional project path, `--json`, `--dir <path>`.
+ * @returns {Promise<void>} Resolves after printing the findings.
+ */
+export async function fallowCommand(args) {
+  if (args.includes('--help')) { console.log(FALLOW_USAGE); return; }
+  const positional = args.find((a, i) => !a.startsWith('--') && args[i - 1] !== '--dir');
+  const root = positional ? path.resolve(positional) : getRoot(args);
+  if (!fs.existsSync(root)) throw new ConstructError(`No such directory: ${root}\n${FALLOW_USAGE}`, { exitCode: EXIT_CODES.USAGE_ERROR });
+  const result = await runFallow(root);
+  if (args.includes('--json')) {
+    console.log(JSON.stringify({ status: result.status, version: result.version, durationMs: result.durationMs, message: result.message, violations: result.violations }, null, 2));
+  } else {
+    if (result.status !== 'ok') console.error(`ℹ️ ${result.message}`);
+    if (result.status !== 'unavailable') console.log(formatReport(result.violations));
+  }
+  if (result.status === 'unavailable') setExitCode(EXIT_CODES.USAGE_ERROR);
+  else if (result.status === 'failed') setExitCode(EXIT_CODES.INTERNAL_ERROR);
+}
+
 export async function validate(args) {
   const root = getRoot(args);
   // ca1: `--profile line` (or `preset: line` in architecture.yml) runs the Line profile's enforcers.
@@ -901,7 +931,14 @@ export async function validate(args) {
     throw new ConstructError('--profile needs a profile name, for example "construct validate --profile line".', { exitCode: EXIT_CODES.USAGE_ERROR });
   }
   const profile = selectProfile(root, pi >= 0 ? args[pi + 1] : undefined);
-  const { violations, ok } = aggregateValidation(root, enforcersForProfile(profile));
+  const enforced = aggregateValidation(root, enforcersForProfile(profile));
+  // #924: fallow's dead-code and health findings, on by default (`--no-fallow` or `fallow: false` in
+  // architecture.yml turns it off). Every FALLOW-* finding is a warning, so `ok` is the enforcers' verdict;
+  // a missing binary is one info line on stderr, never a failure and never a change to the JSON report.
+  const fallow = await fallowStage(root, { args });
+  if (fallow.notice) console.error(fallow.notice);
+  const { ok } = enforced;
+  const violations = [...enforced.violations, ...fallow.violations];
   const fi = args.indexOf('--format');
   const format = fi >= 0 && args[fi + 1] === 'json' ? 'json' : 'text';
   let report = violations;

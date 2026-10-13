@@ -38,6 +38,7 @@
     "./llm": "./llm.mjs",
     "./text-diff": "./text-diff.mjs",
     "./diagnostics": "./diagnostics.mjs",
+    "./fallow": "./fallow.mjs",
     "./dir-browser": "./dir-browser.mjs",
     "./file-change-tracker": "./file-change-tracker.mjs",
     "./story": "./story.mjs",

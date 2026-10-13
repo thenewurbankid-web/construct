@@ -117,7 +117,7 @@ export const featureFiles = (dir) => Object.fromEntries(fs.readdirSync(path.join
 export const projectFiles = (dir) => Object.fromEntries(fs.readdirSync(dir, { recursive: true }).filter((f) => !/^node_modules(\/|$)/.test(f) && fs.statSync(path.join(dir, f)).isFile()).sort().map((f) => [f.split(path.sep).join('/'), fs.readFileSync(path.join(dir, f), 'utf8')]));
 
 /** `construct validate --format json` in the project, parsed. */
-export const validateJson = (dir) => JSON.parse(run(['validate', '--format', 'json'], dir).stdout);
+export const validateJson = (dir) => JSON.parse(run(['validate', '--format', 'json', '--no-fallow'], dir).stdout);
 
 /**
  * `tsc --noEmit` on the features, the route entry and the offline stand-ins for the two modules this fixture has not installed.

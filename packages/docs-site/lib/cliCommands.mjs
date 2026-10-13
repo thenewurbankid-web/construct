@@ -103,6 +103,7 @@ const EXTRA_COMMANDS = [
   { name: 'mutation-check', fn: 'mutationCheck' },
   { name: 'rules', fn: 'rulesCommand' },
   { name: 'rename', fn: 'rename' },
+  { name: 'fallow', fn: 'fallowCommand' },
 ];
 
 /**

@@ -26,6 +26,7 @@ import { aggregateValidation } from '@line/construct-core/registry';
 import { formatReport } from '@line/construct-core/diagnostics';
 import { loadConfig } from '@line/construct-core/config';
 import { enforcersForRoot } from '@line/construct-core/profiles';
+import { fallowStage } from '@line/construct-core/fallow';
 
 /** Env var naming the `construct` CLI to run in `cli` mode: a path to construct.mjs (source or the built
  * packages/cli/dist/construct.mjs). Absolute, or relative to the Cockpit server's working directory. */
@@ -105,6 +106,7 @@ export const CLI_ENV = Object.freeze([
   'CONSTRUCT_TEMPLATES_DIR', 'CONSTRUCT_STATE_DIR', 'CONSTRUCT_CLI_VERSION',
   'CONSTRUCT_LLM_TIMEOUT_SEC', 'CONSTRUCT_OLLAMA_URL', 'CONSTRUCT_OLLAMA_MODEL', 'CONSTRUCT_BOT_CONCURRENCY',
   'CONSTRUCT_TEST_BASE_URL', 'CONSTRUCT_MEDIA_CACHE', 'CONSTRUCT_MEDIA_PYTHON', 'CONSTRUCT_REASON_MAX_TOKENS',
+  'CONSTRUCT_FALLOW_BIN', 'CONSTRUCT_FALLOW_TIMEOUT_MS',
 ]);
 /** Never forwarded, whatever list names it. */
 const SECRET_SHAPED = /(_SECRET|_TOKEN|_PASSWORD|_KEY)$/i;
@@ -267,7 +269,12 @@ export function resolveExecutionMode(root) {
  */
 export async function runValidate(root, { mode = 'engine', env = process.env, bin, timeoutMs, spawnImpl } = {}) {
   if (mode === 'engine') {
-    const { violations, ok } = aggregateValidation(root, enforcersForRoot(root));
+    const enforced = aggregateValidation(root, enforcersForRoot(root));
+    // #924: the same fallow stage `construct validate` runs (on by default, warnings only), so the #541
+    // engine/cli parity contract still holds byte for byte.
+    const { violations: fallowViolations } = await fallowStage(root, { env });
+    const { ok } = enforced;
+    const violations = [...enforced.violations, ...fallowViolations];
     return { mode, status: ok ? 'passed' : 'failed', ok, violations, report: formatReport(violations, { format: 'json' }) };
   }
   if (mode !== 'cli') throw new ExecutionError('CLI_START_FAILED', `Unknown execution mode '${mode}'.`);

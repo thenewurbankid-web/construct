@@ -92,7 +92,7 @@ function execute(dir, plan) {
 const featureFiles = (dir) => Object.fromEntries(fs.readdirSync(path.join(dir, 'features'), { recursive: true }).filter((f) => fs.statSync(path.join(dir, 'features', f)).isFile()).sort().map((f) => [`features/${f}`, fs.readFileSync(path.join(dir, 'features', f), 'utf8')]));
 /** Every file of the project (not node_modules) with its bytes, to tell what a run changed. */
 const projectFiles = (dir) => Object.fromEntries(fs.readdirSync(dir, { recursive: true }).filter((f) => !/^node_modules(\/|$)/.test(f) && fs.statSync(path.join(dir, f)).isFile()).sort().map((f) => [f.split(path.sep).join('/'), fs.readFileSync(path.join(dir, f), 'utf8')]));
-const validateJson = (dir) => JSON.parse(run(['validate', '--format', 'json'], dir).stdout);
+const validateJson = (dir) => JSON.parse(run(['validate', '--format', 'json', '--no-fallow'], dir).stdout);
 
 test('the sentence becomes a plan of 13 steps, runs, and gives a screen that validates, type-checks, renders and is PROVEN', NEEDS_RUNTIME, async (t) => {
   const dir = initProject('react-spa');
