@@ -100,6 +100,7 @@ export async function atomicGate({ rel, source, fn, layer = layerOf(rel), smith 
   const sf = parse(rel, source);
   const node = findFn(sf, fn);
   if (!node) return { pass: false, exempt: false, checks: [{ check: 'found', ok: false, line: `no function ${fn} in ${rel}` }], failed: ['found'], ms: Date.now() - t0 };
+  /** @type {any[] & {smith?: any}} */
   const checks = [];
   const add = (check, ok, line) => checks.push({ check, ok, line: `${ok ? 'ok  ' : 'FAIL'} ${check}: ${line}` });
   const code = (ts.isFunctionDeclaration(node) ? node : node.parent.parent.parent).getText(sf);

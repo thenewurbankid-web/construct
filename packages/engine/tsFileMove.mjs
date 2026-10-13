@@ -32,7 +32,7 @@ export function projectLanguageService(root, { readRoots = [] } = {}) {
   try {
     // #943: the shared host (lsp/host.mjs), readRoots as its read-only extraRoots
     const proj = openProject(path.resolve(root), { extraRoots: readRoots.map((x) => path.resolve(x)) });
-    if (!proj.ok) return { ok: false, reason: proj.reason };
+    if (proj.ok === false) return { ok: false, reason: proj.reason };
     return { ok: true, service: proj.service, files: proj.entry.files, options: proj.entry.options };
   } catch (e) {
     return { ok: false, reason: `TypeScript could not analyse the project (${String(e?.message || e).slice(0, 120)})` };
@@ -56,7 +56,7 @@ export function planFileMove(root, oldAbs, newAbs) {
     if (!inside(r, from) || !inside(r, to)) return { ok: false, reason: 'the file is outside the project' };
     if (!SOURCE_EXT.has(path.extname(from))) return { ok: false, reason: 'not a TypeScript/JavaScript source file' };
     const proj = openProject(r, { extraFiles: [from] });
-    if (!proj.ok) return { ok: false, reason: proj.reason };
+    if (proj.ok === false) return { ok: false, reason: proj.reason };
     const { files } = proj;
     const changes = proj.service.getEditsForFileRename(from, to, {}, { importModuleSpecifierEnding: 'minimal' });
     const edits = [];

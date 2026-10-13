@@ -63,7 +63,7 @@ export async function createLineLsp(root, o = {}) {
   // full build (once)
   const t0 = Date.now();
   const proj = openProject(r, opts);
-  if (!proj.ok) throw new Error(proj.reason);
+  if (proj.ok === false) throw new Error(proj.reason);
   for (const abs of sourceFiles(r, { includeDts: false })) await indexFile(rel(abs));
   stats.builds++;
   const buildMs = Date.now() - t0;
@@ -79,7 +79,7 @@ export async function createLineLsp(root, o = {}) {
       const layers = { ts: 0, smith: 0, rules: 0 };
       const absChanged = changed.map((f) => (path.isAbsolute(f) ? path.resolve(f) : path.join(r, f))).filter((a) => inside(r, a));
       const p = openProject(r, opts);
-      layers.ts = updateFiles(p.entry, absChanged).length;
+      layers.ts = p.ok === false ? 0 : updateFiles(p.entry, absChanged).length;
       for (const abs of absChanged) {
         const f = rel(abs);
         let text = null;

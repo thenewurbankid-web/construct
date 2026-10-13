@@ -44,7 +44,7 @@ export function ruleFixes(root, file) {
     const t0 = Date.now();
     const r = path.resolve(root);
     const rel = relOf(r, file);
-    const withFx = withViolationFixes(r, violationsOf(r, rel));
+    const withFx = withViolationFixes(r, /** @type {any[]} */ (violationsOf(r, rel)));
     const items = withFx.filter((v) => v.fixes?.length).map((v) => ({
       rule: v.rule, line: v.line ?? 1, key: v.key,
       fixes: v.fixes.slice(0, 3).map((f) => ({ id: f.id, sentence: String(f.sentence).slice(0, 160), tool: f.step?.tool ?? null })),
@@ -86,7 +86,8 @@ export function lineFacts(root) {
  * is a fact on disk; an option whose precondition fails is not offered, so the enum only holds legal moves.
  * @param {string} root Project root (a Line project: features/<f>/...).
  * @param {{need: string, from: string}} node `need` is the stable id the node must produce; `from` the asking feature.
- * @returns {{ok: true, options: {step: string, target: string, reason_id: string}[], schema: object, facts: string[]} | {ok: false, reason: string}}
+ * @param {{facts?: any}} [o] `facts`: lineFacts(root), when the caller already has them.
+ * @returns {{ok: true, need: string, from: string, options: {step: string, target: string, reason_id: string, why?: string}[], schema: any, ms: number} | {ok: false, reason: string}}
  */
 export function nextSteps(root, node, { facts = null } = {}) {
   return guard(() => {

@@ -44,7 +44,7 @@ export const normSentence = (s) => String(s).toLowerCase().replace(/\s+/g, ' ').
 export async function smithOfFunction(code, { kind = 'function', fileName = 'x.tsx', canonical = false, raw = RAW } = {}) {
   let input = code; let k = kind;
   if (!raw) { const js = toJs(code, fileName); const fn = functionsOf(js)[0] ?? { kind, code: js }; input = smithInput(fn); k = fn.kind; }
-  const s = await summarizeCode(input, { kind: k, ...(canonical ? { toEnglishOptions: { canonical: true } } : {}) });
+  const s = await summarizeCode(input, { kind: /** @type {'function'|'method'} */ (k), ...(canonical ? { toEnglishOptions: { canonical: true } } : {}) });
   const all = s.sentences ?? [];
   const failed = s.via === 'static' && !/works in \d+ steps?/.test(all[0] ?? '');
   const text = all.join(' ');

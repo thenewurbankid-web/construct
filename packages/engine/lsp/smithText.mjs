@@ -24,6 +24,7 @@ const stripExport = (s) => s.replace(/^export\s+(default\s+)?/, '');
  */
 export function functionsOf(js) {
   const sf = ts.createSourceFile('x.jsx', js, ts.ScriptTarget.ES2020, true, ts.ScriptKind.JSX);
+  /** @type {{name: string, kind: 'function'|'method', code: string, fromArrow?: boolean}[]} */
   const out = [];
   for (const st of sf.statements) {
     if (ts.isFunctionDeclaration(st) && st.body) {

@@ -22,6 +22,7 @@ export const MAX_TOKENS = 1500;
 export const approxTokens = (s) => Math.ceil(s.length / 3.2);
 const MAX_ITEMS = 30;
 const FORMAT = { ...ts.getDefaultFormatCodeSettings('\n'), indentSize: 2, tabSize: 2, convertTabsToSpaces: true, newLineCharacter: '\n', semicolons: ts.SemicolonPreference.Insert };
+/** @type {import('typescript').UserPreferences} */
 const PREFS = { quotePreference: 'single', importModuleSpecifierEnding: 'minimal', includeCompletionsForModuleExports: true, includeCompletionsWithInsertText: true, allowIncompleteCompletions: false };
 
 /** Keep at most MAX_LINES entries and about MAX_TOKENS tokens of JSON; the rest is counted, not sent. */
@@ -41,7 +42,7 @@ function ctx(root, file, o = {}) {
   const abs = path.isAbsolute(file) ? path.resolve(file) : path.resolve(r, file);
   if (!inside(r, abs)) throw new Error('the file is outside the project');
   const proj = openProject(r, projOpts(o));
-  if (!proj.ok) throw new Error(proj.reason);
+  if (proj.ok === false) throw new Error(proj.reason);
   const rel = (f) => path.relative(r, path.resolve(f)).split(path.sep).join('/');
   return { r, abs, proj, entry: proj.entry, svc: proj.service, rel };
 }
@@ -185,6 +186,7 @@ export function fixes(root, file, o = {}) {
     const tried = new Set();
     for (let round = 0; round < 8; round++) {
       const before = errorCount(c, text);
+      /** @type {{cand: string, fix: import('typescript').CodeFixAction, d: import('typescript').Diagnostic, others: any[]} | null} */
       let next = null;
       withOverlay(c.entry, c.abs, text, () => {
         for (const d of c.svc.getSemanticDiagnostics(c.abs)) {
@@ -228,7 +230,7 @@ export function completionsAt(root, file, at, o = {}) {
     const c = ctx(root, file, o);
     const t0 = Date.now();
     const { text, pos } = resolveAt(read(c, o.text), at);
-    const info = withOverlay(c.entry, c.abs, text, () => c.svc.getCompletionsAtPosition(c.abs, pos, { ...PREFS, ...trigger(text, pos) }, FORMAT));
+    const info = withOverlay(c.entry, c.abs, text, () => c.svc.getCompletionsAtPosition(c.abs, pos, /** @type {import('typescript').GetCompletionsAtPositionOptions} */ ({ ...PREFS, ...trigger(text, pos) }), FORMAT));
     const typed = /[\w$]*$/.exec(text.slice(0, pos))[0];
     let all = (info?.entries ?? []).filter((e) => !typed || e.name.startsWith(typed));
     const isString = all.some((e) => e.kind === 'script' || e.kind === 'directory' || e.kind === 'string');
@@ -249,7 +251,7 @@ export function completionsAt(root, file, at, o = {}) {
     if (spec) {
       items.length = 0;
       const typedPath = spec.typed;
-      const mods = [...c.proj.files, ...fs.readdirSync(c.r, { recursive: true }).filter((f) => /\.json$/.test(f) && !/node_modules|tsconfig/.test(f)).map((f) => path.join(c.r, f))]
+      const mods = [...c.proj.files, ...fs.readdirSync(c.r, { recursive: true, encoding: 'utf8' }).filter((f) => /\.json$/.test(f) && !/node_modules|tsconfig/.test(f)).map((f) => path.join(c.r, f))]
         .filter((f) => f !== c.abs && inside(c.r, f) && !/\.d\.ts$/.test(f))
         .map((f) => { let s = posixPath(path.relative(path.dirname(c.abs), f)).replace(/\.(tsx?|jsx?)$/, '').replace(/\/index$/, ''); return s.startsWith('.') ? s : `./${s}`; })
         .filter((s, k, all) => all.indexOf(s) === k && s.startsWith(typedPath)).sort();
