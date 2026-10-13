@@ -31,12 +31,17 @@
 // results verbatim, model, options) and the raw response to logs/turn-output/<turn>.json (content, thinking, tool
 // calls, the parsed calls). The system prompt is written once to logs/system-prompt.txt and each turn-input refers to
 // it by sha256. turns.jsonl gains inputFile/outputFile (+ bytes). BENCH_LOG_TURN_IO=0 turns it off.
+//
+// --research (#936, off by default) adds a read-only `research` tool (packages/engine/line/research): a block answers
+// first, else a few-turn sub-agent (--research-model, default the builder's model); answers land in one ledger
+// (logs/research-ledger.json) whose compact view joins each turn's context, with every tool result distilled into it.
 import fs from 'node:fs';
 import crypto from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createPlanCli } from './plan-cli.mjs';
 import { createPlainCli } from './plain-cli.mjs';
+import { researchHooks } from '../../../packages/engine/line/research/index.mjs';
 import { createPathCli, pathPrompt } from './path-cli.mjs';
 import { readSpec, overviewWithIndex } from './spec-slice.mjs';
 
@@ -53,6 +58,7 @@ export function flags(argv) {
     else if (k === '--num-ctx') { o.numCtx = Number(v); i += 1; } else if (k === '--ollama') { o.ollama = v; i += 1; } else if (k === '--log') { o.log = v; i += 1; }
     else if (k === '--seed') { o.seed = Number(v); i += 1; } else if (k === '--max-cycle-repeats') { o.maxCycleRepeats = Number(v); i += 1; } else if (k === '--cycle-window') { o.cycleWindow = Number(v); i += 1; } else if (k === '--seed-plan') o.seedPlan = true;
     else if (k === '--bench') { o.bench = benchOf(v); i += 1; }
+    else if (k === '--research') o.research = true; else if (k === '--research-model') { o.researchModel = v; i += 1; }
   }
   if (!o.builder) o.builder = o.arm === 'plain' ? 'qwen-7b-plain' : o.arm === 'path' ? 'qwen-7b-path' : 'qwen-7b';
   return o;
@@ -323,6 +329,7 @@ export async function runAgent(o, { resultsDir = path.join(o.bench ?? bench, 're
   const streak = refusalStreak(o.maxRepeatRefusals);
   const cycle = cycleWatch({ limit: o.maxCycleRepeats, window: o.cycleWindow });
   const io = createTurnIo({ logDir });
+  const rs = o.research ? researchHooks({ root: path.resolve(o.project), logDir, ollama: o.ollama, model: o.researchModel ?? o.model }) : null;
   write(turnsFile, { kind: 'start', at: new Date().toISOString(), builder: o.builder, model: o.model, arm: o.arm, bench: path.basename(dir), maxTurns: o.maxTurns, maxMinutes: o.maxMinutes, numCtx: o.numCtx, seed: o.seed ?? null });
   for (turn = 1; turn <= o.maxTurns; turn += 1) {
     if (Date.now() > deadline) { stop = 'max wall time'; break; }
@@ -331,7 +338,7 @@ export async function runAgent(o, { resultsDir = path.join(o.bench ?? bench, 're
     while (history.length && history[0].role === 'tool') history.shift();
     const started = Date.now();
     let res;
-    const sent = JSON.stringify({ model: o.model, stream: false, messages: [system, first, ...history], tools: TOOLS[o.arm], options: chatOptions(o) });
+    const sent = JSON.stringify({ model: o.model, stream: false, messages: [system, first, ...[rs?.message()].filter(Boolean), ...history], tools: rs ? rs.tools(TOOLS[o.arm]) : TOOLS[o.arm], options: chatOptions(o) });
     let input = null;
     try {
       const r = await fetch(`${o.ollama}/api/chat`, {
@@ -361,7 +368,8 @@ export async function runAgent(o, { resultsDir = path.join(o.bench ?? bench, 're
     for (const c of calls) {
       const name = c.function?.name; const args = typeof c.function?.arguments === 'string' ? safeParse(c.function.arguments) : c.function?.arguments;
       if (name === 'finish') { finished = String(args?.summary ?? ''); outcomes.push({ name, ok: true }); break; }
-      const out = await callTool(cli, o.arm, name, args);
+      const out = rs?.handles(name) ? await rs.handle(args, turn) : await callTool(cli, o.arm, name, args);
+      rs?.record(name, args, out, turn);
       if (o.arm === 'path' && name === 'fill' && out.pass && out.next === null) allPass = true;
       streak.see(name, args, out);
       cycle.see(turn, name, args, out);
