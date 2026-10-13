@@ -12,6 +12,7 @@ const registry = require('./registry');
 const { plug } = require('./plug');
 const { unplug } = require('./unplug');
 const { suggest } = require('./autosuggest');
+const { llmExtractionEnabled } = require('./refactor-policy');
 
 const CONFIG_PATH = path.join(__dirname, 'config.json');
 // Two models, two jobs. 1.5b is fast but (measured) never performs extraction
@@ -23,6 +24,10 @@ const DEFAULT_CONFIG = {
   simpleModel: 'qwen2.5-coder:1.5b',
   extractionModel: 'qwen2.5-coder:7b',
   extractionThreshold: 2,
+  // The LLM extraction step in /api/refactor is OFF by default: the refactor
+  // is transform.js's deterministic AST pass unless this is set to true (or a
+  // request sends {"llm": true}). See refactor-policy.js.
+  llmExtraction: false,
 };
 
 function readConfig() {
@@ -390,7 +395,9 @@ app.post('/api/register-atom', async (req, res) => {
   }
 });
 
-// Step 2: send the AST-passed code to the local model for atomic extraction only.
+// Step 2: by default, just the deterministic AST pass. Only when LLM
+// extraction is explicitly enabled (refactor-policy.js) is the AST-passed code
+// sent to the local model for atomic extraction.
 app.post('/api/refactor', async (req, res) => {
   const cfg = readConfig();
   const model = req.body.model || cfg.extractionModel;
@@ -403,6 +410,18 @@ app.post('/api/refactor', async (req, res) => {
     astOutput = unwrap(transform(wrap(rawCode, kind)), kind);
   } catch (e) {
     return res.status(400).json({ error: `AST pass failed: ${e}` });
+  }
+
+  if (!llmExtractionEnabled(cfg, req.body)) {
+    return res.json({
+      astOutput,
+      llmOutput: null,
+      valid: true,
+      output: astOutput,
+      skipped: true,
+      deterministic: true,
+      note: 'Deterministic AST pass only -- LLM extraction is off (set "llmExtraction": true in config.json, or send {"llm": true}, to enable it).',
+    });
   }
 
   if (!likelyNeedsExtraction(rawCode, kind, cfg.extractionThreshold)) {

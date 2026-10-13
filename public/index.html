@@ -264,7 +264,7 @@ async function runLlm(i) {
 
 function showResult(i, text, badge, loading, note) {
   const el = $('result-' + i);
-  const badgeText = { ok: 'LLM output used', skipped: 'model skipped (already simple)' }[badge] || 'fell back to AST-only';
+  const badgeText = { ok: 'LLM output used', skipped: 'model skipped' }[badge] || 'fell back to AST-only';
   el.innerHTML = `
     ${badge ? `<div style="padding:8px 16px 0"><span class="badge ${badge}">${badgeText}</span></div>` : ''}
     <pre class="output">${escapeHtml(text)}</pre>
