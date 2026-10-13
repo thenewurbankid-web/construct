@@ -1,0 +1,803 @@
+{
+  "issue": 944,
+  "overall": {
+    "coverage": {
+      "all": {
+        "full": 310,
+        "n": 539,
+        "pct": 57.5
+      },
+      "component": {
+        "full": 178,
+        "n": 341,
+        "pct": 52.2
+      },
+      "hook": {
+        "full": 13,
+        "n": 20,
+        "pct": 65
+      },
+      "server": {
+        "full": 46,
+        "n": 52,
+        "pct": 88.5
+      },
+      "store": {
+        "full": 6,
+        "n": 8,
+        "pct": 75
+      },
+      "util": {
+        "full": 67,
+        "n": 118,
+        "pct": 56.8
+      }
+    },
+    "logic": {
+      "component": {
+        "empty": 0,
+        "full": 126,
+        "parseError": 0,
+        "placeholder": 19
+      },
+      "hook": {
+        "empty": 0,
+        "full": 13,
+        "parseError": 0,
+        "placeholder": 7
+      },
+      "server": {
+        "empty": 0,
+        "full": 46,
+        "parseError": 0,
+        "placeholder": 6
+      },
+      "store": {
+        "empty": 0,
+        "full": 5,
+        "parseError": 0,
+        "placeholder": 1
+      },
+      "util": {
+        "empty": 0,
+        "full": 67,
+        "parseError": 0,
+        "placeholder": 51
+      }
+    },
+    "logicCoverage": {
+      "all": {
+        "full": 257,
+        "n": 341,
+        "pct": 75.4
+      },
+      "component": {
+        "full": 126,
+        "n": 145,
+        "pct": 86.9
+      },
+      "hook": {
+        "full": 13,
+        "n": 20,
+        "pct": 65
+      },
+      "server": {
+        "full": 46,
+        "n": 52,
+        "pct": 88.5
+      },
+      "store": {
+        "full": 5,
+        "n": 6,
+        "pct": 83.3
+      },
+      "util": {
+        "full": 67,
+        "n": 118,
+        "pct": 56.8
+      }
+    },
+    "pairs": {
+      "passing": 310,
+      "strictUniqueCode": 251,
+      "uniqueCode": 291
+    },
+    "reasons": {
+      "all": [
+        {
+          "functions": 160,
+          "occurrences": 393,
+          "reason": "JSX props"
+        },
+        {
+          "functions": 47,
+          "occurrences": 82,
+          "reason": "await"
+        },
+        {
+          "functions": 35,
+          "occurrences": 39,
+          "reason": "object literal"
+        },
+        {
+          "functions": 11,
+          "occurrences": 11,
+          "reason": "logical && / || / ??"
+        },
+        {
+          "functions": 10,
+          "occurrences": 11,
+          "reason": "ternary (a ? b : c) in JSX"
+        },
+        {
+          "functions": 7,
+          "occurrences": 8,
+          "reason": "logical && / || / ?? in JSX"
+        },
+        {
+          "functions": 6,
+          "occurrences": 6,
+          "reason": "ternary (a ? b : c)"
+        },
+        {
+          "functions": 5,
+          "occurrences": 6,
+          "reason": "template literal in JSX"
+        },
+        {
+          "functions": 3,
+          "occurrences": 3,
+          "reason": "array literal"
+        },
+        {
+          "functions": 3,
+          "occurrences": 3,
+          "reason": "optional chaining (a?.b)"
+        },
+        {
+          "functions": 1,
+          "occurrences": 1,
+          "reason": "function expression"
+        },
+        {
+          "functions": 1,
+          "occurrences": 1,
+          "reason": "optional chaining (a?.b) in JSX"
+        },
+        {
+          "functions": 1,
+          "occurrences": 1,
+          "reason": "statement: throw"
+        },
+        {
+          "functions": 1,
+          "occurrences": 1,
+          "reason": "template literal"
+        }
+      ],
+      "gapFunctions": 229,
+      "gapFunctionsWithNoFoundReason": 0,
+      "top": [
+        {
+          "examples": [
+            "{ a: \"s\" }",
+            "{ a: a, b: c(\"s\", b),...d }"
+          ],
+          "functions": 160,
+          "occurrences": 393,
+          "reason": "JSX props"
+        },
+        {
+          "examples": [
+            "await a.b()",
+            "await a(`…`"
+          ],
+          "functions": 47,
+          "occurrences": 82,
+          "reason": "await"
+        },
+        {
+          "examples": [
+            "{ a:[\"s\", b], c:() => d(b), }",
+            "{ a: { b: { c: 0 * 0, }, d: { e:(f) => g(f) || f.h.i === \"s\", }…"
+          ],
+          "functions": 35,
+          "occurrences": 39,
+          "reason": "object literal"
+        },
+        {
+          "examples": [
+            "a?.b?.c || \"s\"",
+            "!a ||(b && a.c.d(e))"
+          ],
+          "functions": 11,
+          "occurrences": 11,
+          "reason": "logical && / || / ??"
+        },
+        {
+          "examples": [
+            "a ?(React.createElement(\"s\", { b: \"s\" }, a)): null",
+            "a ? \"s\": null"
+          ],
+          "functions": 10,
+          "occurrences": 11,
+          "reason": "ternary (a ? b : c) in JSX"
+        }
+      ]
+    },
+    "table": {
+      "component": {
+        "empty": 0,
+        "full": 178,
+        "parseError": 0,
+        "placeholder": 163
+      },
+      "hook": {
+        "empty": 0,
+        "full": 13,
+        "parseError": 0,
+        "placeholder": 7
+      },
+      "server": {
+        "empty": 0,
+        "full": 46,
+        "parseError": 0,
+        "placeholder": 6
+      },
+      "store": {
+        "empty": 0,
+        "full": 6,
+        "parseError": 0,
+        "placeholder": 2
+      },
+      "util": {
+        "empty": 0,
+        "full": 67,
+        "parseError": 0,
+        "placeholder": 51
+      }
+    }
+  },
+  "parent": 940,
+  "repos": [
+    {
+      "counts": {
+        "fileParseErrors": 0,
+        "files": 123,
+        "filesSkipped": {
+          "outOfScope": 2,
+          "tooBig": 0
+        },
+        "filesWithoutFunctions": 19,
+        "fullWithUntranslatedStep": 16,
+        "functions": 220,
+        "templates": 144,
+        "unwrapped": 99
+      },
+      "coverage": {
+        "all": {
+          "full": 89,
+          "n": 220,
+          "pct": 40.5
+        },
+        "component": {
+          "full": 54,
+          "n": 175,
+          "pct": 30.9
+        },
+        "hook": {
+          "full": 4,
+          "n": 4,
+          "pct": 100
+        },
+        "server": {
+          "full": 15,
+          "n": 16,
+          "pct": 93.8
+        },
+        "store": {
+          "full": 0,
+          "n": 1,
+          "pct": 0
+        },
+        "util": {
+          "full": 16,
+          "n": 24,
+          "pct": 66.7
+        }
+      },
+      "license": {
+        "file": "LICENSE.md",
+        "type": "MIT"
+      },
+      "logic": {
+        "component": {
+          "empty": 0,
+          "full": 23,
+          "parseError": 0,
+          "placeholder": 9
+        },
+        "hook": {
+          "empty": 0,
+          "full": 4,
+          "parseError": 0,
+          "placeholder": 0
+        },
+        "server": {
+          "empty": 0,
+          "full": 15,
+          "parseError": 0,
+          "placeholder": 1
+        },
+        "store": {
+          "empty": 0,
+          "full": 0,
+          "parseError": 0,
+          "placeholder": 0
+        },
+        "util": {
+          "empty": 0,
+          "full": 16,
+          "parseError": 0,
+          "placeholder": 8
+        }
+      },
+      "logicCoverage": {
+        "all": {
+          "full": 58,
+          "n": 76,
+          "pct": 76.3
+        },
+        "component": {
+          "full": 23,
+          "n": 32,
+          "pct": 71.9
+        },
+        "hook": {
+          "full": 4,
+          "n": 4,
+          "pct": 100
+        },
+        "server": {
+          "full": 15,
+          "n": 16,
+          "pct": 93.8
+        },
+        "store": {
+          "full": 0,
+          "n": 0,
+          "pct": null
+        },
+        "util": {
+          "full": 16,
+          "n": 24,
+          "pct": 66.7
+        }
+      },
+      "name": "taxonomy",
+      "pairs": {
+        "passing": 89,
+        "strictUniqueCode": 73,
+        "uniqueCode": 89
+      },
+      "reasons": [
+        {
+          "functions": 120,
+          "reason": "JSX props"
+        },
+        {
+          "functions": 12,
+          "reason": "await"
+        },
+        {
+          "functions": 6,
+          "reason": "logical && / || / ?? in JSX"
+        },
+        {
+          "functions": 4,
+          "reason": "object literal"
+        },
+        {
+          "functions": 4,
+          "reason": "logical && / || / ??"
+        }
+      ],
+      "sha": "298a8857c7128a0d121e7f699dfd729f23b3966d",
+      "subdir": ".",
+      "table": {
+        "component": {
+          "empty": 0,
+          "full": 54,
+          "parseError": 0,
+          "placeholder": 121
+        },
+        "hook": {
+          "empty": 0,
+          "full": 4,
+          "parseError": 0,
+          "placeholder": 0
+        },
+        "server": {
+          "empty": 0,
+          "full": 15,
+          "parseError": 0,
+          "placeholder": 1
+        },
+        "store": {
+          "empty": 0,
+          "full": 0,
+          "parseError": 0,
+          "placeholder": 1
+        },
+        "util": {
+          "empty": 0,
+          "full": 16,
+          "parseError": 0,
+          "placeholder": 8
+        }
+      },
+      "url": "https://github.com/shadcn-ui/taxonomy"
+    },
+    {
+      "counts": {
+        "fileParseErrors": 0,
+        "files": 64,
+        "filesSkipped": {
+          "outOfScope": 1,
+          "tooBig": 0
+        },
+        "filesWithoutFunctions": 12,
+        "fullWithUntranslatedStep": 8,
+        "functions": 105,
+        "templates": 25,
+        "unwrapped": 0
+      },
+      "coverage": {
+        "all": {
+          "full": 69,
+          "n": 105,
+          "pct": 65.7
+        },
+        "component": {
+          "full": 29,
+          "n": 54,
+          "pct": 53.7
+        },
+        "hook": {
+          "full": 1,
+          "n": 1,
+          "pct": 100
+        },
+        "server": {
+          "full": 28,
+          "n": 32,
+          "pct": 87.5
+        },
+        "store": {
+          "full": 6,
+          "n": 7,
+          "pct": 85.7
+        },
+        "util": {
+          "full": 5,
+          "n": 11,
+          "pct": 45.5
+        }
+      },
+      "license": {
+        "file": "license.md",
+        "type": "MIT"
+      },
+      "logic": {
+        "component": {
+          "empty": 0,
+          "full": 21,
+          "parseError": 0,
+          "placeholder": 9
+        },
+        "hook": {
+          "empty": 0,
+          "full": 1,
+          "parseError": 0,
+          "placeholder": 0
+        },
+        "server": {
+          "empty": 0,
+          "full": 28,
+          "parseError": 0,
+          "placeholder": 4
+        },
+        "store": {
+          "empty": 0,
+          "full": 5,
+          "parseError": 0,
+          "placeholder": 1
+        },
+        "util": {
+          "empty": 0,
+          "full": 5,
+          "parseError": 0,
+          "placeholder": 6
+        }
+      },
+      "logicCoverage": {
+        "all": {
+          "full": 60,
+          "n": 80,
+          "pct": 75
+        },
+        "component": {
+          "full": 21,
+          "n": 30,
+          "pct": 70
+        },
+        "hook": {
+          "full": 1,
+          "n": 1,
+          "pct": 100
+        },
+        "server": {
+          "full": 28,
+          "n": 32,
+          "pct": 87.5
+        },
+        "store": {
+          "full": 5,
+          "n": 6,
+          "pct": 83.3
+        },
+        "util": {
+          "full": 5,
+          "n": 11,
+          "pct": 45.5
+        }
+      },
+      "name": "commerce",
+      "pairs": {
+        "passing": 69,
+        "strictUniqueCode": 61,
+        "uniqueCode": 69
+      },
+      "reasons": [
+        {
+          "functions": 23,
+          "reason": "JSX props"
+        },
+        {
+          "functions": 13,
+          "reason": "await"
+        },
+        {
+          "functions": 8,
+          "reason": "object literal"
+        },
+        {
+          "functions": 7,
+          "reason": "ternary (a ? b : c) in JSX"
+        },
+        {
+          "functions": 6,
+          "reason": "logical && / || / ??"
+        }
+      ],
+      "sha": "3761e52e60df9c6a316e067dbfd7032e494d3634",
+      "subdir": ".",
+      "table": {
+        "component": {
+          "empty": 0,
+          "full": 29,
+          "parseError": 0,
+          "placeholder": 25
+        },
+        "hook": {
+          "empty": 0,
+          "full": 1,
+          "parseError": 0,
+          "placeholder": 0
+        },
+        "server": {
+          "empty": 0,
+          "full": 28,
+          "parseError": 0,
+          "placeholder": 4
+        },
+        "store": {
+          "empty": 0,
+          "full": 6,
+          "parseError": 0,
+          "placeholder": 1
+        },
+        "util": {
+          "empty": 0,
+          "full": 5,
+          "parseError": 0,
+          "placeholder": 6
+        }
+      },
+      "url": "https://github.com/vercel/commerce"
+    },
+    {
+      "counts": {
+        "fileParseErrors": 0,
+        "files": 118,
+        "filesSkipped": {
+          "outOfScope": 22,
+          "tooBig": 0
+        },
+        "filesWithoutFunctions": 14,
+        "fullWithUntranslatedStep": 18,
+        "functions": 214,
+        "templates": 29,
+        "unwrapped": 0
+      },
+      "coverage": {
+        "all": {
+          "full": 152,
+          "n": 214,
+          "pct": 71
+        },
+        "component": {
+          "full": 95,
+          "n": 112,
+          "pct": 84.8
+        },
+        "hook": {
+          "full": 8,
+          "n": 15,
+          "pct": 53.3
+        },
+        "server": {
+          "full": 3,
+          "n": 4,
+          "pct": 75
+        },
+        "store": {
+          "full": 0,
+          "n": 0,
+          "pct": null
+        },
+        "util": {
+          "full": 46,
+          "n": 83,
+          "pct": 55.4
+        }
+      },
+      "license": {
+        "file": "LICENSE",
+        "type": "MIT"
+      },
+      "logic": {
+        "component": {
+          "empty": 0,
+          "full": 82,
+          "parseError": 0,
+          "placeholder": 1
+        },
+        "hook": {
+          "empty": 0,
+          "full": 8,
+          "parseError": 0,
+          "placeholder": 7
+        },
+        "server": {
+          "empty": 0,
+          "full": 3,
+          "parseError": 0,
+          "placeholder": 1
+        },
+        "store": {
+          "empty": 0,
+          "full": 0,
+          "parseError": 0,
+          "placeholder": 0
+        },
+        "util": {
+          "empty": 0,
+          "full": 46,
+          "parseError": 0,
+          "placeholder": 37
+        }
+      },
+      "logicCoverage": {
+        "all": {
+          "full": 139,
+          "n": 185,
+          "pct": 75.1
+        },
+        "component": {
+          "full": 82,
+          "n": 83,
+          "pct": 98.8
+        },
+        "hook": {
+          "full": 8,
+          "n": 15,
+          "pct": 53.3
+        },
+        "server": {
+          "full": 3,
+          "n": 4,
+          "pct": 75
+        },
+        "store": {
+          "full": 0,
+          "n": 0,
+          "pct": null
+        },
+        "util": {
+          "full": 46,
+          "n": 83,
+          "pct": 55.4
+        }
+      },
+      "name": "query",
+      "pairs": {
+        "passing": 152,
+        "strictUniqueCode": 117,
+        "uniqueCode": 133
+      },
+      "reasons": [
+        {
+          "functions": 23,
+          "reason": "object literal"
+        },
+        {
+          "functions": 22,
+          "reason": "await"
+        },
+        {
+          "functions": 17,
+          "reason": "JSX props"
+        },
+        {
+          "functions": 3,
+          "reason": "template literal in JSX"
+        },
+        {
+          "functions": 1,
+          "reason": "array literal"
+        }
+      ],
+      "sha": "0fbbc6213641ef2d7cec7d4bfd2f1044c561dde8",
+      "subdir": "examples/react",
+      "table": {
+        "component": {
+          "empty": 0,
+          "full": 95,
+          "parseError": 0,
+          "placeholder": 17
+        },
+        "hook": {
+          "empty": 0,
+          "full": 8,
+          "parseError": 0,
+          "placeholder": 7
+        },
+        "server": {
+          "empty": 0,
+          "full": 3,
+          "parseError": 0,
+          "placeholder": 1
+        },
+        "store": {
+          "empty": 0,
+          "full": 0,
+          "parseError": 0,
+          "placeholder": 0
+        },
+        "util": {
+          "empty": 0,
+          "full": 46,
+          "parseError": 0,
+          "placeholder": 37
+        }
+      },
+      "url": "https://github.com/TanStack/query"
+    }
+  ],
+  "smith": {
+    "atomicCodemod": "885b32e",
+    "placeholderCutoff": 0.5,
+    "smith": "f70eecf"
+  }
+}
