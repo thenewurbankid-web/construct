@@ -28,7 +28,7 @@ test('doctor: each missing required item gives its own fix line and exit 1', asy
     ['ffmpeg', { ffmpeg: () => false }, 'sudo apt install ffmpeg'],
     ['ffprobe', { ffprobe: () => false }, 'sudo apt install ffmpeg'],
     ['chromium', { chromium: () => false }, 'npx playwright install chromium'],
-    ['node', { node: () => '18.19.0' }, 'nvm install 20'],
+    ['node', { node: () => '18.19.0' }, 'nvm install 22'],
   ];
   for (const [id, over, fix] of cases) {
     const r = await runDoctor({ probes: only(over), platform: 'linux', cwd });

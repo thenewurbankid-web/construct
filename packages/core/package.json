@@ -5,7 +5,7 @@
   "type": "module",
   "license": "MIT",
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "exports": {
     ".": "./cli.mjs",
@@ -97,6 +97,7 @@
     "@line/atoms": "^0.1.0",
     "@line/primitives": "^0.1.0",
     "diff": "^9.0.0",
+    "fallow": "3.33.1",
     "js-yaml": "^4.3.2",
     "minimatch": "^10.0.1",
     "proper-lockfile": "^4.1.2",

@@ -187,7 +187,7 @@ Commands:
     --no-fallow or fallow: false in architecture.yml turns that off; a missing fallow is one info line, never a failure)
   construct fallow [path] [--json] [--dir <path>]
     (the fallow block alone: unused exports/files/dependencies/props, unresolved imports, cycles, duplicate exports,
-    cyclomatic/cognitive complexity and CRAP as FALLOW-* warnings; read-only; exit 2 when fallow is not installed)
+    cyclomatic/cognitive complexity and CRAP as FALLOW-* warnings; read-only; exit 2 when fallow is missing from the install)
   construct add-rule <id> [--module architecture|separation-of-concerns|readability] [--layers a,b] [--scope buffer|project] [--severity error|warning|info|off] [--why "..."] [--dir <path>]
     (scaffolds a project-local rule, local-rules/<id>/rule.yml, plus a violates.ts / passes.ts fixture pair whose
     marker already agrees with the generated detector; never edits architecture.yml -- add the printed rule.yml

@@ -25,7 +25,7 @@ test('package.json: name, version, bin, engines, private registry, dependencies'
   assert.equal(pkg.type, 'module');
   assert.deepEqual(pkg.bin, { studio: './bin/studio.mjs' });
   assert.ok(fs.existsSync(path.join(PACKAGE_ROOT, 'bin', 'studio.mjs')));
-  assert.equal(pkg.engines.node, '>=20');
+  assert.equal(pkg.engines.node, '>=22');
   assert.deepEqual(pkg.publishConfig, cliPkg.publishConfig, 'same private registry and restricted access as @line/construct');
   assert.equal(pkg.publishConfig.registry, 'https://npm.pkg.github.com');
   assert.equal(pkg.publishConfig.access, 'restricted');

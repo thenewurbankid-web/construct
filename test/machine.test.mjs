@@ -42,7 +42,7 @@ test('the tier constants: Lite 2 cores 4 GB 1 GB disk, Cockpit use 8 GB, Contrib
   assert.deepEqual([TIERS.lite.cores, TIERS.lite.ramGb, TIERS.lite.diskGb], [2, 4, 1]);
   assert.equal(TIERS.cockpit.ramGb, 8);
   assert.deepEqual([TIERS.contributor.ramGb, TIERS.contributor.comfortableRamGb, TIERS.contributor.diskGb], [8, 16, 6]);
-  assert.equal(MIN_NODE_MAJOR, 20);
+  assert.equal(MIN_NODE_MAJOR, 22);
 });
 
 test('classification of a 2, 4, 8 and 16 GB machine', async () => {
@@ -141,7 +141,7 @@ test('an unreadable machine or an unsupported Node is not supported (doctor exit
   assert.match(noRam.unsupportedReason, /could not be read \(memory\)/);
   const old = buildMachineReport(await detectMachine(laptop(16, { node: () => '18.19.0' })));
   assert.equal(old.supported, false);
-  assert.match(old.unsupportedReason, /Node 18\.19\.0 is too old: Construct needs Node 20 or newer/);
+  assert.match(old.unsupportedReason, /Node 18\.19\.0 is too old: Construct needs Node 22 or newer/);
   assert.equal(buildMachineReport(await detectMachine(laptop(2))).supported, true, 'below Lite is a report, not a failure');
 });
 

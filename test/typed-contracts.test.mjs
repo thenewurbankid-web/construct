@@ -11,7 +11,7 @@
 // so these tests exercise the exact code `tsc` also checks. Type stripping
 // needs `--experimental-strip-types` (Node's own flag, not something this
 // repo can enable from inside a .mjs file) -- since `engines` in
-// package.json is `>=20` and this phase is additive-only, the shared root
+// package.json is `>=22` and this phase is additive-only, the shared root
 // `npm test` script is NOT changed to add that flag (doing so would break
 // the ENTIRE suite, not just these tests, on any Node version/invocation
 // that lacks it). Instead: import dynamically, and skip (not fail) with a

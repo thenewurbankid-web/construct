@@ -1,5 +1,5 @@
 // fallow block (#924): wraps the OSS analyzer fallow (https://github.com/fallow-rs/fallow, MIT, npm
-// `fallow`, pinned exact in package.json) so `construct validate` also reports dead code and complexity
+// `fallow`, a regular dependency of Construct pinned exact in package.json, #930) so `construct validate` also reports dead code and complexity
 // it does not compute itself. Construct runs two fallow commands on a project root --
 // `fallow dead-code --format json` and `fallow health --format json` -- and maps the findings into the
 // same violation shape every enforcer produces (diagnostics.mjs), with `FALLOW-*` rule ids, severity
@@ -21,13 +21,15 @@ import { createRequire } from 'node:module';
 import yaml from 'js-yaml';
 import { assertValidViolation } from './diagnostics.mjs';
 
-/** The fallow version Construct pins and maps (package.json devDependencies). */
+/** The fallow version Construct pins and maps (package.json dependencies, #930). */
 export const FALLOW_VERSION = '3.33.1';
 /** Env var naming a fallow binary to run instead of the resolved one (tests, a system install). */
 export const FALLOW_BIN_ENV = 'CONSTRUCT_FALLOW_BIN';
 const DEFAULT_TIMEOUT_MS = 120_000;
 const DOCS_URL = 'https://fallow.tools/docs/';
-const INSTALL_HINT = `npm i -D fallow@${FALLOW_VERSION}`;
+// fallow ships with Construct (a regular dependency, #930), so a missing binary means a broken or partial
+// install (e.g. `--omit` flags, a hand-copied checkout): the one line tells the user to reinstall.
+const MISSING_MESSAGE = `fallow ${FALLOW_VERSION} (a Construct dependency) is missing: FALLOW-* checks skipped -- reinstall Construct's dependencies (run \`npm install\` where Construct is installed)`;
 
 /**
  * Every FALLOW-* rule this block can report: id, the fallow issue it comes from, module, and why it matters.
@@ -235,9 +237,9 @@ export async function runFallow(root, { env = process.env, timeoutMs, bin, execF
   const ms = timeoutMs ?? (Number(env.CONSTRUCT_FALLOW_TIMEOUT_MS) || DEFAULT_TIMEOUT_MS);
   let healthDoc = null;
   const done = (status, violations, message, version = null) => ({ status, violations, message, durationMs: Date.now() - started, version, health: healthDoc });
-  if (!resolved) return done('unavailable', [], `fallow not installed: FALLOW-* checks skipped (${INSTALL_HINT})`);
+  if (!resolved) return done('unavailable', [], MISSING_MESSAGE);
   const [dc, health] = await Promise.all(['dead-code', 'health'].map((sub) => runOne(resolved, sub, root, { env, timeoutMs: ms, execFileImpl })));
-  if (dc.unavailable || health.unavailable) return done('unavailable', [], `fallow not installed: FALLOW-* checks skipped (${INSTALL_HINT})`);
+  if (dc.unavailable || health.unavailable) return done('unavailable', [], MISSING_MESSAGE);
   healthDoc = health.doc ?? null;
   const errors = [dc.error, health.error].filter(Boolean);
   const violations = [...(dc.doc ? mapDeadCode(dc.doc) : []), ...(health.doc ? mapHealth(health.doc) : [])];
