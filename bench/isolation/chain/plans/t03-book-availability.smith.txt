@@ -1,0 +1,4 @@
+# t03-book-availability: "Available" / "On loan" from the fixture's available field. Written by Claude from task.json goal + spec only.
+mode: page
+fn: BookPage
+a <p> containing if item's available then 'Available', otherwise 'On loan'

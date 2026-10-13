@@ -1,0 +1,13 @@
+# t06-picks-store: listPicks / addPick / removePick over localStorage key "picks". Written by Claude from task.json goal + spec only.
+# mode logic: per function, Smith's canonical sentences must equal these lines exactly (normalized case and spacing).
+mode: logic
+fn: listPicks
+Let raw be local storage get item 'picks'.
+If raw, return JSON parse raw.
+It returns an empty list.
+fn: addPick
+Let ids be list picks.
+If ids includes id, return.
+Local storage set item 'picks' and JSON stringify a list of everything in ids and id.
+fn: removePick
+Local storage set item 'picks' and JSON stringify list picks filter pick !== id.

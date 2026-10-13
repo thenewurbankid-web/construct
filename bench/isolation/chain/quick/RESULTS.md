@@ -68,3 +68,50 @@ CHAIN_SMITH_RAW=1 LINE_LINKS_ALLOW_DRIFT=1 ATOMIC_CODEMOD_SOURCE_DIR=~/Repositor
   - **Smith against the model's plan:** the plan line is JS (`return available ? ...`), not Smith's sentence form.
   - **Smith against the reference plan:** the plan is in if/return form, while the code is a ternary. The two forms are equivalent, but the exact match treats them as different.
 - What blocks K5 now is the plan writer (K2) and form equivalence, not Smith's coverage.
+
+## K2b, K5b and K6: the plan written as code, then converted by Smith (2026-10-14)
+
+Hardened Smith ran at cbc2567 in canonical mode (`{all: true, canonical: true}`). The harness calls to-english through
+`packages/line-links` `importLinked` (`lib/smith.mjs` `describe`), with `LINE_LINKS_ALLOW_DRIFT=1`; the pin is unchanged.
+This branch now merges exp/small-model-isolation, for its tasks and its r3 fills.
+
+```sh
+CHAIN_SMITH_CANONICAL=1 CHAIN_SMITH_RAW=1 LINE_LINKS_ALLOW_DRIFT=1 ATOMIC_CODEMOD_SOURCE_DIR=~/Repositories/atomic-codemod-hardening \
+  SMITH_SOURCE_DIR=~/Repositories/smith packages/tools/dev/heavy.sh node bench/isolation/chain/quick/run.mjs k6 k2b k5b
+```
+
+### K2b: the model writes a code sketch, Smith turns it into the plan (4 tasks × 5, T 0.7)
+
+| model | 0 gaps after round 0 / 1 / 2 | full match with the reference plan | mean score | rounds | tokens | verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| qwen2.5-coder:7b | 20 / 20 / 20 | 35% (7/20): availability 5/5, sort 2/5, picks 0/5, paging 0/5 | 46% | 0 | 4,151 | kill (`results/k2b.json:12`) |
+| qwen2.5-coder:1.5b | 20 / 20 / 20 | 5% (1/20) | 12% | 0 | 3,915 | kill (`results/k2b.json:658`) |
+
+- Hardened Smith read every sketch with 0 gaps, so the gap-feedback loop never ran.
+- Every miss is a surface difference from the reference plan, not a gap:
+  - a named constant (`Let items per page be 6.`, `results/k2b.json:337`);
+  - a different statement order;
+  - `[...picks, id]` written where the reference uses `picks.concat(id)`.
+
+### K5b: the availability formatter end to end with the K2b plan (5 runs; the coder is always qwen2.5-coder:1.5b)
+
+| plan model | pass (Smith = plan) | pass + unit check | plans right | tsc-clean | verdict |
+| --- | --- | --- | --- | --- | --- |
+| 7b | 5/5 | 5/5 | 5/5 | 5/5 | pass (`results/k5b.json:15`) |
+| 1.5b | 5/5 | **0/5** | 0/5 | 5/5 | pass by the rule (`results/k5b.json:178`) |
+
+- With a 1.5b plan, the fill matches the plan exactly, but the plan swaps the labels: "If available, return 'On loan'." (`results/k5b.json:186`). Smith shows only that the code equals the plan; it says nothing about whether the plan is right.
+
+### K6: Claude-written Smith plans for the 12 isolation tasks (`bench/isolation/chain/plans/`)
+
+- The plans were written from each task's goal and spec, plus the start file for names, and committed (c243569e) before any check ran.
+- **References pass the plans: 7/12.** 31/51 plan elements were found (`results/k6.json:5`).
+- **r3 H+fix fills pass the plans: 4/12.** r3's own check passed 9 of them; the plan verdict agrees with r3's check on 7/12.
+- The misses are naming and shape choices, not wrong logic:
+  - a `KEY` constant instead of `'picks'`;
+  - a `p` or `picks` variable instead of `pick` or `ids`;
+  - paging from 1 with `PAGE_SIZE`, instead of from 0 with 6;
+  - `Button`'s `label` prop instead of children;
+  - `!includes` folded into one if.
+- Canonical mode does not rename variables or inline constants.
+

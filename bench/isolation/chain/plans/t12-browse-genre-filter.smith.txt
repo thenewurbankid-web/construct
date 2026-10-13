@@ -1,0 +1,13 @@
+# t12-browse-genre-filter: BRW-4 Genre control with All genres / Fiction / History / Science. Written by Claude from task.json goal + spec only.
+mode: page
+fn: BrowsePage
+be use state of
+a <label> with html for as
+containing 'Genre'
+a <select>
+'All genres'
+'Fiction'
+'History'
+'Science'
+with toolbar as
+filter item's genre ===

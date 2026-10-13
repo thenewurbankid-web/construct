@@ -1,0 +1,4 @@
+# t02-book-page-count: BK-1 page count like "312 pages". Written by Claude from task.json goal + spec only.
+mode: page
+fn: BookPage
+a <p> containing item's pages and 'pages'

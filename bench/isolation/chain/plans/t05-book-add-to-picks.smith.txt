@@ -1,0 +1,9 @@
+# t05-book-add-to-picks: BK-2 "Add to my picks" button and status, BK-3 no button when on loan. Written by Claude from task.json goal + spec only.
+mode: page
+fn: BookPage
+be use state of
+a <Button> with on click as
+add pick of item's id
+'Add to my picks'
+'Added to your picks'
+if item's available then a <Button>

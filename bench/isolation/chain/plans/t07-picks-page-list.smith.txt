@@ -1,0 +1,11 @@
+# t07-picks-page-list: PCK-2 "My picks" lists title, author and a "Remove <title>" button. Written by Claude from task.json goal + spec only.
+mode: page
+fn: PicksPage
+be use state of list picks
+with title as 'My picks'
+books find
+containing book's title
+containing book's author
+a <Button> with on click as
+remove pick of book's id
+containing 'Remove' and book's title
