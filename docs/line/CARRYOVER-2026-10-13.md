@@ -43,7 +43,7 @@ All verified against git unless marked. og merges each with `git -C <og-final-10
 | E1: feature modules, cross-feature imports via index.ts (#935) | `private/line/feature-modules` 2480d666 | ready |
 | E2: coder read tools via MCP, per turn (#937) | `private/line/coder-read-tools` 3910165c | ready (verified: 6 commits; affected 1439/0/3 on 3910165c). Owner: registry reads take a contained project-relative `file` (exception to #649); read_file offered only on setCode/setFragment steps |
 | E3: research sub-agents + central ledger (#936) | `private/line/research-loop` 13177551 | ready |
-| Harness: native-only tool harness, layered turn (#938) | LOCAL `line/tool-harness` ba641d58 (not pushed) | 2 commits; worktree agent-aecc12095cb64adc0 has UNCOMMITTED model-profiles.json, tool-harness-probe.mjs, results/tool-harness-r1.json, tool-harness-replay.json; a probe rerun (adds qwen3:4b) held the heavy slot at 07:55 — check it finished, commit results + measured table, push |
+| Harness: native-first tool harness (#938) | `private/line/tool-harness` 0299b3cf | ready (affected 381/0/0). r1 (results/tool-harness/r1.md): qwen2.5-coder 7b/1.5b 0% native calls in every config; qwen3:4b 100% native, 80% right, ~16 s/turn. Nothing beat current prompt + full tools; layered not wired, clean/subset flag-only. Owner: old `textToolCalls` fallback kept for qwen2.5-coder profiles only (`textFallback`), removed once LoRA teaches native calls |
 | heavy.sh re-entrant (#939) | `private/dev/heavy-reentrant` 039709a7 | ready |
 | Context probe write-up | `private/exp/context-probe` 572588b5 | ready (bench/lending/CONTEXT-PROBE.md) |
 
@@ -73,6 +73,7 @@ Merge reconciliation for og:
 - CSP: no runtime, discipline only. shortestPlan: deterministic only, no learned ranker.
 - Line transformer: LoRA qwen2.5-coder:1.5b via MLX-LM -> GGUF -> Ollama; after merge + bench rerun.
 - Attention: coder's own attention (MLX) as a context-pruning signal for ledger facts, not path detection.
+- LoRA targets now include native `tool_calls` for qwen2.5-coder (it writes calls as text today).
 - **Smith System 1** (new): a learned English<->JS translator, CodeT5+ 220M fine-tuned, the fast intuitive
   counterpart to Smith's deterministic translation (System 2). Smith stays the checker/fallback; System 1 covers
   where Smith returns nothing (React pages). Data: Smith's own non-empty translations, atom registry `english` +
