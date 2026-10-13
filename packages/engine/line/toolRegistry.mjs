@@ -34,6 +34,8 @@ export function fieldsSchema(required, optional = [], o = {}) {
   const allowed = new Set([...required, ...optional]);
   return Object.freeze({
     fields: [...required, ...optional],
+    required: [...required],
+    open: o.open === true,
     safeParse(value) {
       const v = value ?? {};
       if (!isObj(v)) return failed([], 'must be an object');
@@ -176,6 +178,10 @@ export const TOOL_ENTRIES = Object.freeze(/** @type {any[]} */ ([
   { id: 'plan.runNext', kind: 'write', writes: 'line', inputSchema: fieldsSchema([], ['stepId']), outputSchema: 'PlanView', sentence: 'Runs exactly one ready step; a change runs only after a person approved it.', surfaces: { http: http('POST', '/plan/run'), mcp: 'plan_run_next' } },
   { id: 'plan.retry', kind: 'write', writes: 'line', inputSchema: fieldsSchema(['stepId']), outputSchema: 'PlanView & {stepId}', sentence: 'A person tries a step that needs them again, as a new step.', personOnly: true, surfaces: {} },
   { id: 'line.trace', kind: 'read', writes: null, inputSchema: fieldsSchema([], ['request', 'steps']), outputSchema: 'TraceMatch', sentence: 'Says which tools a request or the plan\'s open steps need, and which controls do them; plans and writes nothing.', surfaces: { http: http('POST', '/trace') } },
+  // #937: the coder's read tools (coder/reads.mjs), thin English wrappers over readLineFeature, importableFiles and matchAtoms.
+  { id: 'line.featureSummary', kind: 'read', writes: null, inputSchema: fieldsSchema(['name']), outputSchema: 'FeatureSummary', sentence: 'Reads one feature in a few English lines: each item with its base and what it imports, how much of its spec is covered, and its findings.', surfaces: { mcp: 'feature_summary' } },
+  { id: 'line.scope', kind: 'read', writes: null, inputSchema: fieldsSchema(['file']), outputSchema: 'ImportScope', sentence: 'Lists what one file may import, each with its import path, one sentence and its exports.', surfaces: { mcp: 'scope' } },
+  { id: 'line.atoms', kind: 'read', writes: null, inputSchema: fieldsSchema(['request']), outputSchema: 'AtomMatches', sentence: 'Finds the logic atoms a request means, each with what it takes and gives and the line.useAtom step that adds it.', surfaces: { mcp: 'atoms' } },
   // construct-mcp's read-only blocks.
   { id: 'blocks.requirementParse', kind: 'read', writes: null, inputSchema: fieldsSchema(['text']), outputSchema: 'RequirementCard', sentence: 'Reads one plain-English requirement into a requirement card.', surfaces: { mcp: 'requirement_parse' } },
   { id: 'blocks.placementPlace', kind: 'read', writes: null, inputSchema: fieldsSchema(['text'], ['answers']), outputSchema: 'Placement', sentence: 'Places a requirement in the project\'s layers and previews its plan.', surfaces: { mcp: 'placement_place' } },
@@ -424,3 +430,7 @@ export function studioHandlers(registry) {
     return r;
   }]));
 }
+
+// #937: the registry reads that run from a project root (coder/registryReads.mjs: mcpNameOf, READ_SKIPPED, registryReads,
+// readHandlers, createReadDispatcher), re-exported so every surface imports the registry from one place.
+export * from './coder/registryReads.mjs';

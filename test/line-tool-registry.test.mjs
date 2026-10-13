@@ -15,7 +15,7 @@ import { createMockToolRegistry } from '../packages/engine/line/toolRegistryMock
 import { createLinePlanService, loadPlanApi } from '../packages/engine/line/planService.mjs';
 import { createLinePlanRegistry, constructCommandTools } from '../packages/engine/line/planTools.mjs';
 import { importLinked } from '../packages/line-links/index.mjs';
-import { TOOLS, PLAN_TOOLS, IMPORT_AGENT_TOOLS, TRAIN_MCP_TOOLS } from '../packages/mcp/src/server.mjs';
+import { TOOLS, PLAN_TOOLS, IMPORT_AGENT_TOOLS, TRAIN_MCP_TOOLS, registryReadTools } from '../packages/mcp/src/server.mjs';
 
 const SAMPLE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../examples/line-sample');
 const NO_LINK = { env: { ...process.env, LINE_SOURCE_DIR: path.join(makeTempDir('no-source-'), 'nope') } };
@@ -48,7 +48,9 @@ test('MCP: every construct-mcp tool maps to exactly one registry entry; read-onl
     assert.notEqual(m[0].writes, 'project', `${t.name} never writes project files`);
     assert.ok(!m[0].personOnly);
   }
-  const mcpEntries = TOOL_ENTRIES.filter((e) => e.surfaces.mcp).map((e) => e.surfaces.mcp).sort();
+  // #937: the registry reads construct-mcp adds by mcpNameOf (feature_summary, scope, atoms carry their own mcp name).
+  const fromRegistry = registryReadTools().map((t) => t.name);
+  const mcpEntries = TOOL_ENTRIES.filter((e) => e.surfaces.mcp && !fromRegistry.includes(e.surfaces.mcp)).map((e) => e.surfaces.mcp).sort();
   assert.deepEqual(mcpEntries, [...TOOLS, ...PLAN_TOOLS, ...IMPORT_AGENT_TOOLS, ...TRAIN_MCP_TOOLS].map((t) => t.name).sort());
 });
 

@@ -27,6 +27,8 @@ export const SPEC_MODULES = Object.freeze([
   { topic: 'modules', module: 'line-seed', what: 'spec -> steps: the plan steps a block decides from SPEC.md (pages, routes, atom-wired behaviour; line.useAtom)', dir: 'packages/engine/line/seed', match: /\.mjs$/ },
   // #935: feature-module reads (moduleScope) sit in their own folder for the same reason.
   { topic: 'modules', module: 'line-scope', what: 'a feature read as a module: what it declares, exports and imports, and the fixtures it sees', dir: 'packages/engine/line/scope', match: /\.mjs$/ },
+  // #937: the coder's read tools sit in their own folder and topic too, for the same reason.
+  { topic: 'modules', module: 'line-coder', what: 'the coder\'s read tools (feature_summary, scope, atoms), per-turn read selection, and the registry reads that run from a root', dir: 'packages/engine/line/coder', match: /\.mjs$/ },
   { topic: 'modules', module: 'line-profile', what: 'the Line validate profile (LINE-* rules)', dir: 'packages/core/profiles/line', match: /\.mjs$/ },
   { topic: 'modules', module: 'line-links', what: 'the linked Line modules (@mx/reason, @mx/plan, ...) and their contracts', dir: 'packages/line-links', match: /\.(mjs|d\.ts)$/ },
   { topic: 'modules', module: 'writer', what: 'Construct\'s transactional writer and the Line-state path', dir: 'packages/engine', match: /^transactionalWriter\.mjs$/ },

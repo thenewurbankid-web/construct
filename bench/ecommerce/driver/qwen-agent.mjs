@@ -39,6 +39,7 @@ import { createPlanCli } from './plan-cli.mjs';
 import { createPlainCli } from './plain-cli.mjs';
 import { createPathCli, pathPrompt } from './path-cli.mjs';
 import { readSpec, overviewWithIndex } from './spec-slice.mjs';
+import { createTurnReads } from './read-tools.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const bench = path.join(here, '..');
@@ -323,6 +324,9 @@ export async function runAgent(o, { resultsDir = path.join(o.bench ?? bench, 're
   const streak = refusalStreak(o.maxRepeatRefusals);
   const cycle = cycleWatch({ limit: o.maxCycleRepeats, window: o.cycleWindow });
   const io = createTurnIo({ logDir });
+  // #937: the Line arm gets its plan tools plus the 3-6 read tools this turn needs (read-tools.mjs).
+  const reads = o.arm === 'line' ? await createTurnReads({ root: path.resolve(o.project), spec: path.join(dir, 'SPEC.md'), logDir, base: TOOLS.line }) : null;
+  let lastRefusal = null;
   write(turnsFile, { kind: 'start', at: new Date().toISOString(), builder: o.builder, model: o.model, arm: o.arm, bench: path.basename(dir), maxTurns: o.maxTurns, maxMinutes: o.maxMinutes, numCtx: o.numCtx, seed: o.seed ?? null });
   for (turn = 1; turn <= o.maxTurns; turn += 1) {
     if (Date.now() > deadline) { stop = 'max wall time'; break; }
@@ -331,7 +335,8 @@ export async function runAgent(o, { resultsDir = path.join(o.bench ?? bench, 're
     while (history.length && history[0].role === 'tool') history.shift();
     const started = Date.now();
     let res;
-    const sent = JSON.stringify({ model: o.model, stream: false, messages: [system, first, ...history], tools: TOOLS[o.arm], options: chatOptions(o) });
+    const sel = reads ? reads.select({ lastRefusal }) : null;
+    const sent = JSON.stringify({ model: o.model, stream: false, messages: [system, first, ...history], tools: sel ? sel.tools : TOOLS[o.arm], options: chatOptions(o) });
     let input = null;
     try {
       const r = await fetch(`${o.ollama}/api/chat`, {
@@ -364,22 +369,25 @@ export async function runAgent(o, { resultsDir = path.join(o.bench ?? bench, 're
       const gate = name === 'finish' && o.arm === 'line' ? await cli.run('finish', [String(args?.summary ?? '')]) : null;
       if (name === 'finish' && (!gate || gate.ok)) { finished = String(args?.summary ?? ''); outcomes.push({ name, ok: true }); break; }
       if (gate) {
+        lastRefusal = { code: gate.code ?? null, sentence: String(gate.sentence ?? '') };
         streak.see(name, args, gate);
         cycle.see(turn, name, args, gate);
         outcomes.push({ name, args: clip(JSON.stringify(args ?? {}), 400), ok: false, code: gate.code ?? null, sentence: gate.sentence });
         history.push({ role: 'tool', content: clip(JSON.stringify(toModel(gate))) });
         continue;
       }
-      const out = await callTool(cli, o.arm, name, args);
+      const out = reads?.serves(name) ? await reads.call(name, args) : await callTool(cli, o.arm, name, args);
+      const miss = sel ? reads.miss(turn, name, sel) : false;
+      if (out.ok === false) lastRefusal = { code: out.code ?? null, sentence: String(out.sentence ?? '') }; else if (name === 'plan_add' || name === 'plan_run_next') lastRefusal = null;
       if (o.arm === 'path' && name === 'fill' && out.pass && out.next === null) allPass = true;
       streak.see(name, args, out);
       cycle.see(turn, name, args, out);
-      outcomes.push({ name, args: clip(JSON.stringify(args ?? {}), 400), ok: out.ok, code: out.code ?? null, sentence: out.sentence });
+      outcomes.push({ name, args: clip(JSON.stringify(args ?? {}), 400), ok: out.ok, code: out.code ?? null, sentence: out.sentence, ...(miss ? { miss: true } : {}) });
       history.push({ role: 'tool', content: clip(JSON.stringify(toModel(out))) });
     }
     if (!calls.length) { idle += 1; history.push({ role: 'user', content: 'Use one of your tools (or call finish).' }); } else idle = 0;
     write(tokensFile, { builder: o.builder, model: o.model, ...tokens, source: 'ollama prompt_eval_count/eval_count', at: new Date().toISOString() });
-    write(turnsFile, { kind: 'turn', ...tokens, textCalls: fromText.length > 0, calls: outcomes, said: clip(msg.content ?? '', 600), ...ioRefs(input, output) });
+    write(turnsFile, { kind: 'turn', ...tokens, textCalls: fromText.length > 0, ...(sel ? { offered: sel.ids, open: sel.open } : {}), calls: outcomes, said: clip(msg.content ?? '', 600), ...ioRefs(input, output) });
     console.log(`turn ${turn}: in ${tokens.in} out ${tokens.out} ${tokens.ms} ms; ${outcomes.map((x) => `${x.name}${x.ok ? '' : ` (${x.code})`}`).join(', ') || 'no tool call'}`);
     if (finished !== null) { stop = `finish: ${finished}`; break; }
     if (idle >= 8) { stop = '8 turns without a tool call'; break; }

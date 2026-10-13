@@ -49,8 +49,14 @@ import { workText } from '../../../packages/engine/line/openWork.mjs';
 import { parseSpecMd, specSteps } from '../../../packages/engine/line/seed/specSteps.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-/** Tools a builder may add (Import's tools are for bringing an existing app in, not for building one). */
-export const BUILDER_TOOLS = Object.freeze(lineToolSpecs().filter((t) => !t.name.startsWith('line.import.')).map((t) => t.name));
+/**
+ * Tools a builder may add (Import's tools are for bringing an existing app in, not for building one). #937: no read
+ * (line.project): a read step's answer never reached the builder (run-next answers with files and checks only); the
+ * builder reads through its read tools (feature_summary, scope, atoms, ...) instead.
+ */
+export const BUILDER_TOOLS = Object.freeze(lineToolSpecs().filter((t) => !t.name.startsWith('line.import.') && t.kind !== 'read').map((t) => t.name));
+/** #937: plan tools that are reads, and the read tools to use instead. */
+const READ_INSTEAD = Object.freeze({ 'line.project': 'feature_summary {"name": "<feature>"} (or plan_findings for every feature)' });
 const SKIP = new Set(['node_modules', '.next', '.git']);
 const MAX_READ = 64 * 1024;
 
@@ -176,6 +182,7 @@ export function createPlanCli({ project, log, builder = 'unknown', spec = SPEC_F
         sentence: [open ? `Step ${open.n} needs a fix first: ${open.sentence}` : `The plan has ${steps.length} steps.`, again?.text, text, card?.text].filter(Boolean).join('\n') };
     },
     async add(tool, json, why, fix) {
+      if (!fix && READ_INSTEAD[tool]) return { ok: false, code: 'READ_NOT_A_STEP', sentence: `${tool} is a read, not a plan step; call ${READ_INSTEAD[tool]} instead.` };
       let args;
       if (fix) args = {};
       else { try { args = json ? JSON.parse(json) : {}; } catch (e) { return { ok: false, code: 'BAD_JSON', sentence: `The arguments are not JSON: ${/** @type {Error} */ (e).message}` }; } }
