@@ -24,7 +24,7 @@ agents below report into the previous session. Push to `private` only. Never mod
 ## In flight (branches to expect on private)
 | Work | Branch | Notes |
 |---|---|---|
-| fallow wrapper, ON by default in validate (FALLOW-*, warnings, `--no-fallow`) | `oss/fallow` | MIT, pinned; boundaries/model/type-aware off |
+| fallow wrapper, ON by default in validate (FALLOW-*, warnings, `--no-fallow`) | `oss/fallow` @ 6ea01662 (DONE, #924) | fallow 3.33.1 MIT pinned devDependency; runs only when the root has package.json; +0.1 s; 8 enforcer tests now pass `--no-fallow` |
 | per-function complexity via OSS only (ESLint core `complexity` in-process + fallow health for cognitive), FUNC-001 ON by default, logicMap signature | `ast/function-complexity` | owner: no hand-written counter |
 | lending plain-arm starter | `bench/lending-plain` @ 2bb51072 (DONE) | from 359f6deb, refs #925; owner kept its one-line fixture-path edit to bench/lending/SPEC.md |
 | path-first proof (CAT-2 + CART-1, 11 stubs, fill tool, `--arm path`) | `exp/path-first-proof` @ 07ddd3d2 (#921) | steps 1-3 done; step 4 (qwen fill run) waits |
@@ -46,6 +46,7 @@ change must appear); render examples for UI, contract mock for services; models 
 Layers view shows the path.
 
 ## Open items
+- fallow follow-ups (#924 report): a fresh scaffold shows ~20 FALLOW warnings (unused files for unrouted layers, feature index.ts barrels, types.ts, .dependency-cruiser.cjs; CRAP on generated proof tests) → Construct-aware default fallow config, HIGH (dogfood); Cockpit engine-mode validate (ui/server/src/validateApi.mjs handleValidate) doesn't run fallow; IMPORT-001 may report the wrong line (line 1 vs 2 in Score.ts); fallow is a devDependency, so installed users don't get it; fallow needs Node >=22, repo says >=20.
 - Board fields for #912-#925 (project-manager pass).
 - #881 needs its measured jev-vs-static eval.
 - openWork text check misses PROD-2/PROD-4 after seeding (Quantity label in library component; link case).
