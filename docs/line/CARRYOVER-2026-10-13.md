@@ -41,7 +41,7 @@ All verified against git unless marked. og merges each with `git -C <og-final-10
 | B: finish guard (#931) | `private/line/finish-guard` a8cd0a77 | ready |
 | C: builder context, scratchpad, session log (#932) | `private/line/builder-context` 4fe78129 | ready |
 | E1: feature modules, cross-feature imports via index.ts (#935) | `private/line/feature-modules` 2480d666 | ready |
-| E2: coder read tools via MCP, per turn (#937) | `private/line/coder-read-tools` af1bfbe1 | ready (verified: 5 commits, 14 files +755/-17; affected 1439/0/3). Owner to confirm: registry reads take a project-relative `file` (exempt from #649 no-path rule); read_file still offered every turn |
+| E2: coder read tools via MCP, per turn (#937) | `private/line/coder-read-tools` 3910165c | ready (verified: 6 commits; affected 1439/0/3 on 3910165c). Owner: registry reads take a contained project-relative `file` (exception to #649); read_file offered only on setCode/setFragment steps |
 | E3: research sub-agents + central ledger (#936) | `private/line/research-loop` 13177551 | ready |
 | Harness: native-only tool harness, layered turn (#938) | LOCAL `line/tool-harness` ba641d58 (not pushed) | 2 commits; worktree agent-aecc12095cb64adc0 has UNCOMMITTED model-profiles.json, tool-harness-probe.mjs, results/tool-harness-r1.json, tool-harness-replay.json; a probe rerun (adds qwen3:4b) held the heavy slot at 07:55 — check it finished, commit results + measured table, push |
 | heavy.sh re-entrant (#939) | `private/dev/heavy-reentrant` 039709a7 | ready |
