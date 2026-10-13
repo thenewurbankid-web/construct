@@ -37,7 +37,7 @@ line/                       Line's own state: plans, memory, session state (writ
   index. What the index exports is all another feature may import from it, and only through the
   index (`import { CartLink } from '../../cart'`), never from a file inside it. Its fixtures are
   scoped to it: a page sees its own feature's fixtures, the fixtures exported by the features it
-  imports, and the library's. `moduleScope(root, feature)` (packages/engine/line/moduleScope.mjs)
+  imports, and the library's. `moduleScope(root, feature)` (packages/engine/line/scope/moduleScope.mjs)
   reads one feature as a module: what it declares, exports and imports, and the fixtures it sees.
 
 ### Base links and routes

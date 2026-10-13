@@ -23,7 +23,7 @@ import { loadConfig } from '@line/construct-core/config';
 import { normalizeLineConfig, CODE_EXTENSIONS } from '@line/construct-core/profiles/line/contract';
 import { resolveLayout } from '@line/construct-core/profiles/line/checks';
 import { parseSpec } from './featureText.mjs';
-import { moduleScope } from './moduleScope.mjs';
+import { moduleScope } from './scope/moduleScope.mjs';
 import { featurePages, isPlaceholderSpec } from './build.mjs';
 import { hashOf } from '../pagesEditor.mjs';
 import { jsxParseError } from '@construct/ast';

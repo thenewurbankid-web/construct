@@ -16,7 +16,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { ts } from '@construct/ast/lazy';
 import { fixtureRows } from '@line/construct-core/profiles/line/checks';
-import { moduleScope } from './moduleScope.mjs';
+import { moduleScope } from './scope/moduleScope.mjs';
 
 const posix = path.posix;
 const MONEY = /(price|cost|amount|total|fee)$/i;

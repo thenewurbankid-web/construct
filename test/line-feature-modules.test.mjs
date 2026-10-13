@@ -10,7 +10,7 @@ import { validateLine } from '../packages/core/profiles/line/index.mjs';
 import { moduleEdges, fixtureRows } from '../packages/core/profiles/line/checks.mjs';
 import { parseToAst } from '../packages/ast/index.mjs';
 import { arrayFixtures } from '../packages/engine/line/basePage.mjs';
-import { moduleScope } from '../packages/engine/line/moduleScope.mjs';
+import { moduleScope } from '../packages/engine/line/scope/moduleScope.mjs';
 import { importableFiles } from '../packages/engine/line/typeGate.mjs';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
