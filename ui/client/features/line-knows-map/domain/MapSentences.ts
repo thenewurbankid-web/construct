@@ -1,5 +1,6 @@
 // Pure (DOMAIN-001): what the graph says about one item, as sentences a person reads ("OrdersPage is based on
-// ListPage."). A feature item using an item of another feature is called out: a feature may use only the library.
+// ListPage."). A feature item importing an inner file of another feature is called out: another feature is used only
+// through its public index (features/<name>/index.ts, #935 feature modules).
 import type { GraphEdge, GraphLayer, GraphNode, LineGraph, NeighbourSentence } from '@/lib/lineKnowsContract';
 
 type Index = { byId: Map<string, GraphNode>; out: Map<string, GraphEdge[]>; inn: Map<string, GraphEdge[]> };
@@ -20,11 +21,16 @@ const featureOf = (n: GraphNode | undefined) => (n && typeof n.attrs?.feature ==
 const nameOf = (ix: Index, id: string) => ix.byId.get(id)?.label ?? id.replace(/^[a-z]+:/, '');
 const where = (e: GraphEdge) => ('test' in e.evidence ? `seen in test ${e.evidence.test}` : `${e.evidence.file}:${e.evidence.line}`);
 
-/** True when `from` is a feature item that uses an item of another feature. */
+/**
+ * True when `from` is a feature item that uses an item of another feature by importing that item's own file. A use
+ * through the other feature's public index is allowed (#935): the graph's IMPORTS edges join items only, so an import of
+ * features/<name>/index.ts leaves no item-to-item IMPORTS edge, and the renders or calls it leads to are not flagged.
+ */
 export function isCrossFeature(ix: Index, e: GraphEdge): boolean {
   const a = featureOf(ix.byId.get(e.from));
   const b = featureOf(ix.byId.get(e.to));
-  return a !== null && b !== null && a !== b && ['IMPORTS', 'RENDERS', 'CALLS', 'USES_HOOK', 'HANDLES_EVENT', 'CALLED_AT_RUNTIME'].includes(e.type);
+  if (a === null || b === null || a === b || !['IMPORTS', 'RENDERS', 'CALLS', 'USES_HOOK', 'HANDLES_EVENT', 'CALLED_AT_RUNTIME'].includes(e.type)) return false;
+  return e.type === 'IMPORTS' || (ix.out.get(e.from) ?? []).some((x) => x.type === 'IMPORTS' && x.to === e.to);
 }
 
 const USE_TYPES = new Set(['IMPORTS', 'RENDERS', 'CALLS', 'USES_HOOK']);
@@ -38,6 +44,7 @@ function sentenceOf(ix: Index, e: GraphEdge): string | null {
     case 'BASED_ON': return `${a} is based on ${b}.`;
     case 'IMPORTS': case 'RENDERS': case 'CALLS': case 'USES_HOOK': {
       if (isCrossFeature(ix, e)) return `${a} uses ${b} from feature ${featureOf(to)}, which a feature may not do.`;
+      if (featureOf(to) !== null && featureOf(ix.byId.get(e.from)) !== null && featureOf(to) !== featureOf(ix.byId.get(e.from))) return `${a} uses ${b} from feature ${featureOf(to)} through its index.`;
       return `${a} uses ${b}${to?.attrs?.area === 'library' ? ' from the library' : ''}.`;
     }
     case 'HANDLES_EVENT': return `${a} handles what happens in ${b}.`;

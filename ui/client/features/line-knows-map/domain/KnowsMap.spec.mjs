@@ -68,3 +68,12 @@ test('the picture: dagre places the item and its neighbours left to right, the c
   assert.deepEqual(mapPicture(g, 'item:orders/components/OrderButton', ALL_LAYERS), p);
   assert.deepEqual(mapPicture(g, 'item:nope', ALL_LAYERS).nodes, []);
 });
+
+test('#935: a use of another feature through its index (no item-to-item import) is not called out', () => {
+  const viaIndex = { ...g, edges: g.edges.filter((e) => !(e.type === 'IMPORTS' && e.from === 'item:billing/pages/InvoicesPage' && e.to === 'item:orders/components/OrderButton')) };
+  assert.ok(viaIndex.edges.some((e) => e.from === 'item:billing/pages/InvoicesPage' && e.to === 'item:orders/components/OrderButton'), 'the render stays');
+  const s = neighbourSentences(viaIndex, 'item:billing/pages/InvoicesPage', ALL_LAYERS);
+  assert.ok(!s.some((x) => /may not do/.test(x.text)), s.map((x) => x.text).join('\n'));
+  assert.ok(s.some((x) => x.text === 'InvoicesPage uses OrderButton from feature orders through its index.'));
+  assert.deepEqual(mapPicture(viaIndex, 'item:orders/components/OrderButton', ALL_LAYERS).edges.filter((e) => e.bad), []);
+});
