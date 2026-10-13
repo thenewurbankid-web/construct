@@ -19,7 +19,10 @@ export function functionsOf(source) {
 /** to-english's raw line as the sentence summarize() makes of it (packages/summarize/index.mjs:141 codeLine). */
 export const planSentence = (line) => plainSentence(String(line).replace(/^return\b/, 'it returns').replace(/: /g, ', ').replace(/; then /g, ', then ')).sentence;
 
-export const norm = (s) => String(s).toLowerCase().replace(/\s+/g, ' ').trim().replace(/[.\s]+$/, '');
+/** A Smith sentence that is not real English: a placeholder for an expression or a statement to-english cannot read. */
+export const isUnhandled = (s) => /\(\.\.\.\)|\(a step that does not translate cleanly\)/.test(String(s));
+
+export const norm =(s) => String(s).toLowerCase().replace(/\s+/g, ' ').trim().replace(/[.\s]+$/, '');
 
 /** Smith's step sentences per function (the "<name> works in N steps" head is dropped). */
 export async function smithOf(source) {

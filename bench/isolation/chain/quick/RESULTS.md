@@ -18,6 +18,14 @@ Models: qwen2.5-coder:1.5b (Ollama `format`, closed JSON schema) and nomic-embed
 | K2: the 1.5b writes the plan (4 x 5, T 0.7) | 0% match, 0/20 full matches | >= 50% | kill | `results/k2.json:6` |
 | K5: availability end to end (5 runs) | 0/5 pass. 3/5 passed tsc and 2/5 passed the unit check, but Smith read every passing body as "It returns (...)". | > 0/5 | kill | `results/k5.json:5` |
 
+How the tests feed Smith (`lib/smith.mjs`): the types are stripped with `ts.transpileModule`, `export` is dropped, and
+each top-level `function` declaration goes in on its own, so to-english sees one non-exported FunctionDeclaration. The
+4 tasks have no JSX and no arrow-bound functions, so the JSX and arrow rewrites from exp/smith-system1-data's
+`smithInput` were not needed. Merge that branch before running pages or components.
+
+Unhandled Smith output is any `(...)` or "(a step that does not translate cleanly)" (`isUnhandled` in `lib/smith.mjs`).
+K1 has 0 unhandled sentences. K5 has 3, one for each body that passed tsc, all `(...)` from a ternary.
+
 Findings:
 
 - **K3.** The model follows rules 1 and 2: it completes an open stub or reuses a finished function. It answers `reuse` for every case in rules 3 to 5: add_to_scope, create and create_module (`results/k3.json:177`, `:214`, `:253`). This decision is a fixed rule order over facts that moduleScope and stubProblems already compute, so it should be deterministic code, not a model role.
