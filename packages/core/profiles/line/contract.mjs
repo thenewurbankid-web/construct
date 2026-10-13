@@ -5,7 +5,7 @@
 // A Line project:
 //
 //   <library>/            components/ pages/ workflows/ fixtures/ usecases/ services/ domains/ expressions/ atoms/   (complete, usable items)
-//   <features>/<name>/    the same kind folders, plus spec.md
+//   <features>/<name>/    the same kind folders, plus spec.md and index.ts (the feature module's public exports)
 //   line/                 plans, memory, state (Line's own state; only the writer touches it)
 //
 // <library> and <features> default to `library` and `features`, or `src/library` and `src/features`
@@ -42,8 +42,9 @@ export const KIND_SINGULAR = Object.freeze({ components: 'component', pages: 'pa
 export const KIND_LAYER = Object.freeze({ components: 'component', pages: 'page', workflows: 'workflow' });
 
 /** Files a feature folder may hold next to its kind folders. spec.md is the user's spec (LINE-BASE exempt); openapi.json|yaml|yml
- * is the feature's API contract, where Trace reads the endpoints a page's interactions are bound to (cu5). */
-export const FEATURE_FILES = Object.freeze(['spec.md', 'README.md', 'openapi.json', 'openapi.yaml', 'openapi.yml']);
+ * is the feature's API contract, where Trace reads the endpoints a page's interactions are bound to (cu5). index.ts (or
+ * another code extension) is the feature module's public index (#935): what it exports is what other features may import. */
+export const FEATURE_FILES = Object.freeze(['spec.md', 'README.md', 'openapi.json', 'openapi.yaml', 'openapi.yml', 'index.ts', 'index.tsx', 'index.js', 'index.jsx', 'index.mjs']);
 /** Files the library folder may hold next to its kind folders. */
 export const LIBRARY_FILES = Object.freeze(['README.md']);
 
@@ -109,9 +110,9 @@ export const LINE_RULES = Object.freeze({
   'LINE-DIR': {
     id: 'LINE-DIR',
     defaultSeverity: 'error',
-    why: 'A feature uses the library and never another feature, and the library never depends on a feature, so features stay independent and items can be promoted.',
-    expected: ['an import from the library', 'promoting the shared item to the library'],
-    check: 'Every import, re-export, dynamic import and require in a feature or library file is resolved (relative, @/, ~/ and src/ forms); a feature reaching into another feature, or the library reaching into any feature, is a violation.',
+    why: 'A feature uses the library, and uses another feature only through what that feature exports from its public index, and the library never depends on a feature, so features stay independent modules and items can be promoted.',
+    expected: ['an import from the library', 'an import of another feature\'s public index (features/<other>/index.ts) naming an export it has', 'promoting the shared item to the library'],
+    check: 'Every import, re-export, dynamic import and require in a feature or library file is resolved (relative, @/, ~/ and src/ forms); a feature may import another feature only through that feature\'s folder or its index file (features/<other>/index.ts), and every name it imports must be exported there; a deep import into another feature\'s files, a missing index, a missing export, a stale export line in an index another feature imports, and the library reaching into any feature are violations.',
   },
   'LINE-WRITER': {
     id: 'LINE-WRITER',

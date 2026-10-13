@@ -227,7 +227,7 @@ export function checkLayout(project, line = {}) {
     for (const c of read(rel) || []) {
       const crel = `${rel}/${c.name}`;
       if (c.isDirectory() && !ITEM_KINDS.includes(c.name)) hit(crel, `Feature "${e.name}" has a "${c.name}" folder, but a feature holds only ${kinds} plus spec.md; move these files into one of those folders or into the library.`);
-      else if (!c.isDirectory() && !FEATURE_FILES.includes(c.name)) hit(crel, `Feature "${e.name}" has the file "${c.name}" at its top level, but only spec.md and the API contract (openapi.json) may sit there; move it into one of ${kinds}.`);
+      else if (!c.isDirectory() && !FEATURE_FILES.includes(c.name)) hit(crel, `Feature "${e.name}" has the file "${c.name}" at its top level, but only spec.md, the API contract (openapi.json) and the public index (index.ts) may sit there; move it into one of ${kinds}.`);
     }
   }
   for (const f of project.files) {
@@ -262,7 +262,8 @@ function pragmas(project, rel, re) {
  * The base links a feature item declares: `@line-base` comments in code, `"$lineBase"` in a JSON fixture.
  * @param {ReturnType<typeof loadProject>} project The loaded project.
  * @param {string} rel Root-relative file path.
- * @returns {{links: {value: string, line: number}[], invalid?: boolean}} The links, and whether a JSON fixture failed to parse.
+ * @returns {{links: {value: string, line: number}[], invalid?: boolean, array?: boolean}} The links, whether a JSON fixture failed
+ *   to parse, and whether it is a bare array (which cannot hold a base until it is wrapped as `{ "$lineBase", "value" }`).
  */
 export function baseLinks(project, rel) {
   if (posix.extname(rel) !== '.json') return { links: pragmas(project, rel, BASE_PRAGMA) };
@@ -271,10 +272,24 @@ export function baseLinks(project, rel) {
   try { data = JSON.parse(src); } catch { return { links: [], invalid: true }; }
   const at = src.indexOf('"$lineBase"');
   const line = at >= 0 ? lineOf(src, at) : 1;
-  const value = data && typeof data === 'object' && !Array.isArray(data) ? data.$lineBase : undefined;
+  if (Array.isArray(data)) return { links: [], array: true };
+  const value = data && typeof data === 'object' ? data.$lineBase : undefined;
   if (typeof value === 'string') return { links: [{ value, line }] };
   if (Array.isArray(value)) return { links: value.filter((v) => typeof v === 'string').map((v) => ({ value: v, line })) };
   return { links: [] };
+}
+
+/**
+ * The rows of a fixture's JSON (#935): a bare array, or the based form `{ "$lineBase": "fixtures/<name>", "value": [...] }`
+ * a feature fixture uses to carry its base (the same wrapper line.baseOn and line.setBase write for an array fixture).
+ * Null when the data is neither.
+ * @param {unknown} data Parsed fixture JSON.
+ * @returns {unknown[]|null}
+ */
+export function fixtureRows(data) {
+  if (Array.isArray(data)) return data;
+  if (data && typeof data === 'object' && '$lineBase' in data && Array.isArray(/** @type {any} */ (data).value)) return /** @type {any} */ (data).value;
+  return null;
 }
 
 /**
@@ -308,12 +323,13 @@ export function checkBase(project) {
     if (file.area !== 'feature' || !isItemFile(file) || LOGIC_KINDS.includes(String(file.kind))) continue;
     const what = `feature ${SINGULAR[file.kind]}`;
     const isJson = posix.extname(file.rel) === '.json';
-    const { links, invalid } = baseLinks(project, file.rel);
+    const { links, invalid, array } = baseLinks(project, file.rel);
     const add = (line, message) => hits.push({ rule: 'LINE-BASE', file: file.rel, line, message });
     if (!links.length && !invalid && BASE_OPTIONAL_KINDS.includes(String(file.kind))) continue;
     if (invalid) { add(1, `The fixture "${file.rel}" is not valid JSON, so its library base cannot be read; fix the JSON and keep one "$lineBase" link.`); continue; }
     if (!links.length) {
-      const how = isJson ? `a "$lineBase": "${file.kind}/<name>" field` : `one "@line-base ${file.kind}/<Name>" comment`;
+      const how = array ? `a base by wrapping its rows as { "$lineBase": "${file.kind}/<name>", "value": [ ...rows ] }`
+        : isJson ? `a "$lineBase": "${file.kind}/<name>" field` : `one "@line-base ${file.kind}/<Name>" comment`;
       add(1, `The ${what} "${file.rel}" has no library base; add ${how} naming the library item it is based on, and create that library item first if none fits.`);
       continue;
     }
@@ -423,9 +439,11 @@ export function checkOwner(project) {
 // LINE-DIR
 
 /**
- * Every module edge of a parsed file: imports (type-only included), re-exports, dynamic imports and require().
+ * Every module edge of a parsed file: imports (type-only included), re-exports, dynamic imports and require(). `names`
+ * lists what a static import or re-export takes from the module (`default` for a default import, `*` for a namespace
+ * import or `export *`); it is null for dynamic imports and require(), which name nothing statically.
  * @param {object} ast A parsed Program.
- * @returns {{specifier: string, line: number}[]} The edges in source order.
+ * @returns {{specifier: string, line: number, names: string[]|null}[]} The edges in source order.
  */
 export function moduleEdges(ast) {
   const edges = [];
@@ -433,11 +451,16 @@ export function moduleEdges(ast) {
   walkAst(ast, {
     enter(/** @type {any} */ node) {
       let spec = null;
+      let names = null;
+      const id = (n) => (n.type === 'Identifier' ? n.name : String(n.value));
+      if (node.type === 'ImportDeclaration') names = node.specifiers.map((x) => (x.type === 'ImportDefaultSpecifier' ? 'default' : x.type === 'ImportNamespaceSpecifier' ? '*' : id(x.imported)));
+      else if (node.type === 'ExportNamedDeclaration' && node.source) names = node.specifiers.map((x) => id(x.local));
+      else if (node.type === 'ExportAllDeclaration') names = ['*'];
       if ((node.type === 'ImportDeclaration' || node.type === 'ExportAllDeclaration' || node.type === 'ExportNamedDeclaration') && node.source) spec = literal(node.source);
       else if (node.type === 'ImportExpression') spec = literal(node.source);
       else if (node.type === 'CallExpression' && node.callee.type === 'Identifier' && node.callee.name === 'require' && node.arguments.length === 1) spec = literal(node.arguments[0]);
       else if (node.type === 'TSImportType' || node.type === 'TSExternalModuleReference') spec = literal(node.argument?.literal ?? node.argument ?? node.expression);
-      if (spec !== null) edges.push({ specifier: spec, line: node.loc.start.line });
+      if (spec !== null) edges.push({ specifier: spec, line: node.loc.start.line, names });
     },
   });
   return edges;
@@ -461,14 +484,119 @@ export function resolveSpecifier(layout, fromRel, spec) {
   return null;
 }
 
+// Feature modules (#935): a feature's public index (features/<f>/index.ts) is the only way into it from another feature.
+
+const RESOLVE_EXTS = [...CODE_EXTENSIONS, '.json'];
+const fileSets = new WeakMap();
+/** The project's root-relative file paths as a set (cached per project). */
+function fileSet(project) {
+  if (!fileSets.has(project)) fileSets.set(project, new Set(project.files.map((f) => f.rel)));
+  return fileSets.get(project);
+}
+
 /**
- * LINE-DIR: a feature imports only from the library, and the library never imports a feature.
+ * The project file a root-relative import target names: itself, with a code or JSON extension, or its folder's index.
+ * @param {{files: {rel: string}[]}} project The loaded project.
+ * @param {string} target Root-relative path, as resolveSpecifier returns it.
+ * @returns {string|null} The file, or null when none exists.
+ */
+export function resolveProjectFile(project, target) {
+  const have = fileSet(project);
+  if (have.has(target)) return target;
+  for (const x of RESOLVE_EXTS) if (have.has(target + x)) return target + x;
+  for (const x of CODE_EXTENSIONS) if (have.has(`${target}/index${x}`)) return `${target}/index${x}`;
+  const js = /\.[cm]?jsx?$/.exec(target); // ESM-style `./Foo.js` naming Foo.ts
+  if (js) for (const x of CODE_EXTENSIONS) if (have.has(target.slice(0, -js[0].length) + x)) return target.slice(0, -js[0].length) + x;
+  return null;
+}
+
+/**
+ * A feature's public index file (features/<feature>/index.ts, or another code extension), or null when it has none.
+ * @param {{files: {rel: string}[], layout: {features: string}}} project The loaded project.
+ * @param {string} feature The feature name.
+ * @returns {string|null} Root-relative path.
+ */
+export function featureIndexFile(project, feature) {
+  const have = fileSet(project);
+  const base = `${project.layout.features}/${feature}/index`;
+  const ext = CODE_EXTENSIONS.find((x) => have.has(base + x));
+  return ext ? base + ext : null;
+}
+
+/**
+ * What one file exports, statically: each exported name with the file it comes from, following `export *` through
+ * project files. `open` is true when an `export *` reaches outside the project (a package) or the file does not parse,
+ * so names not listed may still exist; `stale` lists export lines whose relative module does not exist.
+ * @param {ReturnType<typeof loadProject>} project The loaded project.
+ * @param {string} rel Root-relative file.
+ * @param {Set<string>} [seen] Files already visited (cycle guard).
+ * @returns {{names: Map<string, {from: string, line: number}>, stale: {specifier: string, line: number}[], open: boolean}}
+ */
+export function fileExports(project, rel, seen = new Set()) {
+  /** @type {Map<string, {from: string, line: number}>} */
+  const names = new Map();
+  /** @type {{specifier: string, line: number}[]} */
+  const stale = [];
+  let open = false;
+  if (seen.has(rel)) return { names, stale, open };
+  seen.add(rel);
+  if (posix.extname(rel) === '.json') { names.set('default', { from: rel, line: 1 }); return { names, stale, open }; }
+  const ast = project.ast(rel);
+  if (ast instanceof Error) return { names, stale, open: true };
+  const id = (n) => (n.type === 'Identifier' ? n.name : String(n.value));
+  /** The project file a module specifier names; null when it names a missing project file, undefined for a package. */
+  const target = (spec) => {
+    const t = resolveSpecifier(project.layout, rel, spec);
+    return t === null ? undefined : resolveProjectFile(project, t);
+  };
+  for (const node of ast.body || []) {
+    const line = node.loc?.start.line ?? 1;
+    const src = node.source && typeof node.source.value === 'string' ? node.source.value : null;
+    if (!/^Export/.test(node.type)) continue;
+    const from = src === null ? rel : target(src);
+    if (src !== null && from === null) { stale.push({ specifier: src, line }); continue; }
+    if (node.type === 'ExportDefaultDeclaration') names.set('default', { from: rel, line });
+    else if (node.type === 'ExportNamedDeclaration') {
+      const d = node.declaration;
+      if (d?.type === 'VariableDeclaration') { for (const v of d.declarations) if (v.id.type === 'Identifier') names.set(v.id.name, { from: rel, line }); }
+      else if (d?.id?.name) names.set(d.id.name, { from: rel, line });
+      for (const x of node.specifiers || []) names.set(id(x.exported), { from: from ?? rel, line });
+    } else if (node.type === 'ExportAllDeclaration') {
+      if (node.exported) { names.set(id(node.exported), { from: from ?? rel, line }); continue; }
+      if (from === undefined) { open = true; continue; }
+      const inner = fileExports(project, /** @type {string} */ (from), seen);
+      for (const [n, at] of inner.names) if (n !== 'default' && !names.has(n)) names.set(n, at);
+      open ||= inner.open;
+    }
+  }
+  return { names, stale, open };
+}
+
+/**
+ * A feature module's public exports: its index file and what that file exports (fileExports), or null when the
+ * feature has no index.
+ * @param {ReturnType<typeof loadProject>} project The loaded project.
+ * @param {string} feature The feature name.
+ * @returns {({file: string} & ReturnType<typeof fileExports>)|null}
+ */
+export function indexExports(project, feature) {
+  const file = featureIndexFile(project, feature);
+  return file ? { file, ...fileExports(project, file) } : null;
+}
+
+/**
+ * LINE-DIR: a feature imports the library, its own files, and another feature only through that feature's public index
+ * (naming exports the index has); the library never imports a feature. A stale export line in an index another
+ * feature imports is reported on the index.
  * @param {ReturnType<typeof loadProject>} project The loaded project.
  * @returns {{rule: string, file: string, line: number, message: string}[]} The hits.
  */
 export function checkDirection(project) {
   const { layout } = project;
   const hits = [];
+  const staleSeen = new Set();
+  const indexes = new Map();
+  const exportsOf = (f) => { if (!indexes.has(f)) indexes.set(f, indexExports(project, f)); return indexes.get(f); };
   for (const file of project.files) {
     if ((file.area !== 'feature' && file.area !== 'library') || !isCode(file.rel)) continue;
     if (file.area === 'feature' && !file.feature) continue;
@@ -478,13 +606,41 @@ export function checkDirection(project) {
       const target = resolveSpecifier(layout, file.rel, e.specifier);
       if (!target) continue;
       const t = classify(target, layout);
-      // A specifier that names a feature folder itself (`../../orders`, `@/features/orders`) reaches its barrel.
+      // A specifier that names a feature folder itself (`../../orders`, `@/features/orders`) reaches its index.
       if (t.area === 'feature' && !t.feature) t.feature = target.slice(layout.features.length + 1).split('/')[0] || undefined;
       if (t.area !== 'feature' || !t.feature) continue;
-      if (file.area === 'feature' && t.feature !== file.feature) {
-        hits.push({ rule: 'LINE-DIR', file: file.rel, line: e.line, message: `Feature "${file.feature}" imports "${e.specifier}" from feature "${t.feature}"; a feature may use only the library, so promote that item to ${layout.library}/ and import it from there.` });
-      } else if (file.area === 'library') {
-        hits.push({ rule: 'LINE-DIR', file: file.rel, line: e.line, message: `The library file "${file.rel}" imports "${e.specifier}" from feature "${t.feature}"; the library must not depend on any feature, so move what it needs into the library.` });
+      const add = (message, at = { file: file.rel, line: e.line }) => hits.push({ rule: 'LINE-DIR', file: at.file, line: at.line, message });
+      if (file.area === 'library') {
+        add(`The library file "${file.rel}" imports "${e.specifier}" from feature "${t.feature}"; the library must not depend on any feature, so move what it needs into the library.`);
+        continue;
+      }
+      if (t.feature === file.feature) continue;
+      const folder = `${layout.features}/${t.feature}`;
+      let via = posix.relative(posix.dirname(file.rel), folder);
+      if (!via.startsWith('.')) via = `./${via}`;
+      const indexTarget = target === folder || target.replace(/\.[cm]?[jt]sx?$/, '') === `${folder}/index`;
+      const what = (e.names || []).filter((n) => n !== '*' && n !== 'default');
+      const named = what.length ? `{ ${what.join(', ')} }` : '{ ... }';
+      if (!indexTarget) {
+        add(`Feature "${file.feature}" imports "${e.specifier}", a file inside feature "${t.feature}"; another feature is used only through its public index, so import it as \`import ${named} from '${via}'\` and export it from ${folder}/index.ts if it is not exported there yet (or promote it to ${layout.library}/ when several features share it).`);
+        continue;
+      }
+      const ex = exportsOf(t.feature);
+      if (!ex) {
+        add(`Feature "${file.feature}" imports "${e.specifier}", but feature "${t.feature}" has no public index; create ${folder}/index.ts exporting what other features may use (for example \`export ${named} from './components/<Name>';\`).`);
+        continue;
+      }
+      for (const s of ex.stale) {
+        const key = `${ex.file}:${s.line}`;
+        if (staleSeen.has(key)) continue;
+        staleSeen.add(key);
+        add(`The public index "${ex.file}" exports "${s.specifier}", which does not exist, and feature "${file.feature}" imports this index; remove the line or restore the file it names.`, { file: ex.file, line: s.line });
+      }
+      if (ex.open) continue;
+      for (const n of (e.names || []).filter((x) => x !== '*')) {
+        if (ex.names.has(n)) continue;
+        const has = ex.names.size ? ` (it exports ${[...ex.names.keys()].slice(0, 6).join(', ')})` : '';
+        add(`Feature "${file.feature}" imports "${n}" from feature "${t.feature}", but ${ex.file} does not export it; add \`export { ${n} } from './<kind>/<Name>';\` to ${ex.file} (feature "${t.feature}" decides what it exports), or import something it does export${has}.`);
       }
     }
   }

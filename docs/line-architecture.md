@@ -33,6 +33,12 @@ line/                       Line's own state: plans, memory, session state (writ
   files under `fixtures/`. Tests (`*.test.*`, `*.spec.*`), stories (`*.stories.*`) and `index.*`
   barrels are not items.
 - `spec.md` is the user's spec for the feature. It is not an item and needs no base.
+- A feature is a module (#935): it owns its items, and `<features>/<name>/index.ts` is its public
+  index. What the index exports is all another feature may import from it, and only through the
+  index (`import { CartLink } from '../../cart'`), never from a file inside it. Its fixtures are
+  scoped to it: a page sees its own feature's fixtures, the fixtures exported by the features it
+  imports, and the library's. `moduleScope(root, feature)` (packages/engine/line/moduleScope.mjs)
+  reads one feature as a module: what it declares, exports and imports, and the fixtures it sees.
 
 ### Base links and routes
 
@@ -44,6 +50,13 @@ A feature item names its library base with one pragma:
 
 ```json
 { "$lineBase": "fixtures/user", "id": "u1" }
+```
+
+An array fixture carries its base by wrapping its rows (the form `line.baseOn` and `line.setBase`
+write, and the form Line's fixture readers unwrap):
+
+```json
+{ "$lineBase": "fixtures/products", "value": [{ "id": "p1", "name": "Shirt" }] }
 ```
 
 The value is `<kind>/<path>` relative to the library (a leading `library/` is accepted). It resolves
@@ -88,7 +101,8 @@ file and says what to do.
   exactly one base link (`@line-base` in a code comment, `"$lineBase"` in JSON). The link must
   resolve to an existing file in `<library>/<same kind>/`. Missing link, more than one link, a link
   to another kind, a link to a missing library item, and a fixture that is not valid JSON are each
-  reported. `spec.md` is exempt.
+  reported; a bare array fixture is told to wrap its rows as `{ "$lineBase": ..., "value": [...] }`.
+  `spec.md` is exempt.
 
 ### LINE-OWNER
 
@@ -103,13 +117,18 @@ file and says what to do.
 
 ### LINE-DIR
 
-- **Message (why):** A feature uses the library and never another feature, and the library never
-  depends on a feature, so features stay independent and items can be promoted.
+- **Message (why):** A feature uses the library, and uses another feature only through what that
+  feature exports from its public index, and the library never depends on a feature, so features stay
+  independent modules and items can be promoted.
 - **Check:** every import, type-only import, re-export, dynamic `import()`, `require()` and
   `import("x")` type in a library or feature code file is resolved. Relative specifiers resolve
   against the file; `@/`, `~/` and `#/` aliases and `src/`-less forms resolve against the library
-  and features folders. A feature file reaching into another feature, or a library file reaching
-  into any feature, is reported.
+  and features folders. A feature may import another feature only through that feature's folder or
+  its index file (`<features>/<other>/index.ts`), and every name it imports must be exported there.
+  A deep import into another feature's files, a feature with no index, a name the index does not
+  export, a stale export line (a module that no longer exists) in an index another feature imports,
+  and a library file reaching into any feature are reported. Allowed:
+  `import { CartLink } from '../../cart';`; reported: `import { CartLink } from '../../cart/components/CartLink';`.
 
 ### LINE-WRITER
 

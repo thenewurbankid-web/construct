@@ -42,7 +42,7 @@ editor on the project. Every call is recorded; a direct write counts as a human 
 - Every feature component, page, workflow and fixture is based on exactly one library item of the same kind: its first
   line is `// @line-base <kind>/<Name>` (for example `// @line-base pages/ListPage`). Services, domains and usecases need
   no base.
-- A feature imports from the library and its own folder, never from another feature. Something two features need goes
+- A feature imports from the library, its own folder, and another feature only through that feature's public index (`import { X } from '../../other'`, exported from `features/other/index.ts`), never from a file inside it. Something two features need goes
   in the library.
 - `app/` is the Next.js app router: `app/layout.tsx` (the root layout, which renders the library's `AppLayout` and
   which `line.setLayoutSlot` writes for you) and one route entry per page, which `line.addRoute` writes for you.

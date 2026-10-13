@@ -13,6 +13,8 @@
 //                 framework route file (app/../page.tsx) none: keep it a thin route that renders a feature page
 //                 one route claimed by two features      none: give one of the pages its own route
 //   LINE-DIR      feature or library imports a feature   line.promote the imported item
+//                 (past another feature's index)
+//                 a missing export / stale index line    none: export it from that feature's index.ts / remove the line
 //   LINE-WRITER   direct fs write                        none: route the write through Construct's writer, or declare a writer
 //   LINE-SHARED   own copy of a shared concern           none: import the shared module
 //   LINE-ATOM     hand-written copy of a logic atom      none ("use atom X", typed with the atom and its import): call the atom
@@ -199,14 +201,23 @@ function dirFixes(ctx, file, line) {
     const target = resolveSpecifier(ctx.layout, file, e.specifier);
     if (!target) continue;
     const t = classify(target, ctx.layout);
+    if (t.area === 'feature' && !t.feature) t.feature = target.slice(ctx.layout.features.length + 1).split('/')[0] || undefined;
     if (t.area !== 'feature' || (from.area === 'feature' && t.feature === from.feature)) continue;
+    // #935: an import of another feature's public index that names a missing export (or finds no index).
+    const folder = `${ctx.layout.features}/${t.feature}`;
+    if (from.area === 'feature' && (target === folder || stripExt(target) === `${folder}/index`)) {
+      return [none('LINE-DIR/export', `Export what "${e.specifier}" is asked for from ${folder}/index.ts (feature ${t.feature} decides what it exports), or import something that index already exports.`)];
+    }
     const item = featureItemAt(ctx, target);
     if (!item) return [none('LINE-DIR/move-by-hand', `Move what "${e.specifier}" provides into ${ctx.layout.library}/ and import it from there; it is not a single feature item Line can promote.`)];
     const fix = promoteFix(ctx, item.id, item.rel, `Move ${posix.basename(item.rel)} from feature ${item.id.split('/')[0]} into the library and point every import at the library copy.`);
     return fix ? ranked([{ ...fix, id: 'LINE-DIR/promote' }])
       : [none('LINE-DIR/rename-first', `Rename ${posix.basename(item.rel)} first: the library already has an item with that name, so it cannot be promoted as is.`)];
   }
-  return [none('LINE-DIR/move-by-hand', `Import this from ${ctx.layout.library}/ instead of another feature; Line could not find the imported item to promote.`)];
+  if (from.area === 'feature' && from.feature && /^index\.[cm]?[jt]sx?$/.test(posix.basename(file)) && posix.dirname(file) === `${ctx.layout.features}/${from.feature}`) {
+    return [none('LINE-DIR/stale-export', `Remove the export line ${line} of ${file}, or restore the file it names; another feature imports this public index.`)];
+  }
+  return [none('LINE-DIR/move-by-hand', `Import this from ${ctx.layout.library}/ or through the other feature's public index (its index.ts); Line could not find the imported item to promote.`)];
 }
 
 /** The kind a loose library or feature file most likely is. */
