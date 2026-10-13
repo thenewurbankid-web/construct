@@ -3,8 +3,12 @@
 // the message history. This is an adapter with the interface of the central research ledger being built on branch
 // line/research-loop (packages/engine/line/research/: `ledgerView(ctx, budget)`); when that module is on the branch,
 // loadLedger() uses it, else this local one. Deterministic, no model call.
+// With --research (#936) the run keeps ONE ledger, the research one: bridgeLedger puts it behind this adapter's shape
+// and bridgedView prints its own view, so research answers, the coder's results and the turn builder share it.
 //
 //   createLedger()                 {entries, add(entry), distil(name, args, out)}
+//   bridgeLedger(research)         the research ledger behind the same {entries, add, distil}
+//   bridgedView(ctx, budget)       the research ledger's view when bridged, else ledgerView
 //   distil(name, args, out)        a tool call and its answer -> {kind, text, cites} (one sentence)
 //   ledgerView(ctx, budget)        the ledger as text under `budget` tokens: newest first kept, printed oldest first,
 //                                  identical sentences once with "(xN)"
@@ -77,6 +81,31 @@ export function ledgerView(ctx, budget) {
   const out = [...group('decision', 'Decisions'), ...group('fact', 'Facts'), ...group('question', 'Open questions')];
   return out.length ? out.join('\n') : 'Ledger: empty (nothing done yet).';
 }
+
+/**
+ * #932 x #936 bridge: the research ledger (packages/engine/line/research/ledger.mjs: add({kind, english, cites, source}),
+ * view(budget), entries) behind this adapter's {entries, add, distil}, so a --research run has one ledger owner.
+ * `distil` returns the sentence (for the session log) without adding it: the research hooks' record() already put the
+ * coder's result in (research/distill.mjs), and a second copy would be a duplicate.
+ * @param {{add: (x: any) => any, view: (budget?: number) => {text: string}, entries: any[]}} research
+ * @returns {{research: any, entries: LedgerEntry[], add: (e: LedgerEntry) => void, distil: (name: string, args: any, out: any) => LedgerEntry}}
+ */
+export function bridgeLedger(research) {
+  return {
+    research,
+    get entries() { return research.entries.filter((e) => !e.supersededBy).map((e) => ({ kind: e.kind, text: e.english, cites: e.cites ?? [] })); },
+    add: (e) => { research.add({ kind: e.kind, english: e.text, cites: e.cites, source: 'coder' }); },
+    distil: (name, args, out) => distil(name, args, out),
+  };
+}
+
+/**
+ * The ledger view the turn builder reads: the research ledger's own (its header, open questions first) when bridged,
+ * else this adapter's.
+ * @param {{ledger: any}} ctx @param {number} budget Tokens.
+ * @returns {string}
+ */
+export const bridgedView = (ctx, budget) => (ctx.ledger?.research ? ctx.ledger.research.view(budget).text : ledgerView(ctx, budget));
 
 /**
  * The central research ledger (packages/engine/line/research/index.mjs, branch line/research-loop) when it is on this

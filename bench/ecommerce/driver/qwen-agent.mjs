@@ -58,13 +58,13 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createPlanCli } from './plan-cli.mjs';
 import { createPlainCli } from './plain-cli.mjs';
-import { researchHooks } from '../../../packages/engine/line/research/index.mjs';
+import { researchHooks, ledgerOf } from '../../../packages/engine/line/research/index.mjs';
 import { createPathCli, pathPrompt } from './path-cli.mjs';
 import { readSpec, overviewWithIndex } from './spec-slice.mjs';
 import { createTurnReads } from './read-tools.mjs';
 import { compactHistory } from './compact.mjs';
 import { buildTurn, projectFacts } from './turn.mjs';
-import { loadLedger } from './ledger.mjs';
+import { loadLedger, bridgeLedger, bridgedView } from './ledger.mjs';
 import { createScratch, SCRATCH_CAP, SCRATCH_FENCE_LINES } from './scratch.mjs';
 import { createSessionLog, toolEvents, sessionLogSlice, selectTurnTools } from './session-log.mjs';
 
@@ -359,7 +359,7 @@ export async function runAgent(o, { resultsDir = path.join(o.bench ?? bench, 're
   // #932: the ledger turn builder's state: the ledger and the last turn's messages.
   const ledgerMode = o.context === 'ledger' && typeof (/** @type {any} */ (cli)).card === 'function';
   const L = ledgerMode ? await loadLedger() : null;
-  const ledger = L ? L.createLedger() : null;
+  let ledger = L ? L.createLedger() : null;
   if (ledger && o.seedPlan) {
     const text = String(first.content.split('\n')[1] ?? '').slice(0, 400);
     ledger.add({ kind: 'decision', text, cites: ['seed', 'SPEC.md'] });
@@ -382,7 +382,10 @@ export async function runAgent(o, { resultsDir = path.join(o.bench ?? bench, 're
   // #937: the Line arm gets its plan tools plus the 3-6 read tools this turn needs (read-tools.mjs).
   const reads = o.arm === 'line' ? await createTurnReads({ root: path.resolve(o.project), spec: path.join(dir, 'SPEC.md'), logDir, base: TOOLS.line }) : null;
   let lastRefusal = null;
-  const rs = o.research ? researchHooks({ root: path.resolve(o.project), logDir, ollama: o.ollama, model: o.researchModel ?? o.model }) : null;
+  // #932 x #936: with --research in ledger mode the research ledger is the run's one ledger (bridged into the turn builder).
+  const researchLedger = o.research && ledger ? ledgerOf({ root: path.resolve(o.project), logDir }) : null;
+  const rs = o.research ? researchHooks({ root: path.resolve(o.project), logDir, ollama: o.ollama, model: o.researchModel ?? o.model, ...(researchLedger ? { ledger: researchLedger } : {}) }) : null;
+  if (researchLedger) ledger = bridgeLedger(researchLedger);
   write(turnsFile, { kind: 'start', at: new Date().toISOString(), builder: o.builder, model: o.model, arm: o.arm, bench: path.basename(dir), maxTurns: o.maxTurns, maxMinutes: o.maxMinutes, numCtx: o.numCtx, seed: o.seed ?? null });
   for (turn = 1; turn <= o.maxTurns; turn += 1) {
     if (Date.now() > deadline) { stop = 'max wall time'; break; }
@@ -407,7 +410,7 @@ export async function runAgent(o, { resultsDir = path.join(o.bench ?? bench, 're
     const turnTools = o.arm === 'line' ? selectTurnTools(sel ? sel.tools : TOOLS.line, { refused: refusedLast }) : TOOLS[o.arm];
     if (ledger && L) {
       const card = await /** @type {any} */ (cli).card();
-      const built = buildTurn({ system, ledger, ledgerView: L.ledgerView, card, last, tools: turnTools, notes: scratch?.text ?? '', facts: projectFacts(path.resolve(o.project)) });
+      const built = buildTurn({ system, ledger, ledgerView: researchLedger ? bridgedView : L.ledgerView, card, last, tools: turnTools, notes: scratch?.text ?? '', facts: projectFacts(path.resolve(o.project)) });
       messages = built.messages;
       context = { mode: 'ledger', tokens: built.tokens, parts: built.parts, ledger: ledger.entries.length };
       const head = String(card).split('\n').find((l) => l.startsWith('Open work:')) ?? '';
