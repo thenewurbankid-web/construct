@@ -45,6 +45,10 @@
 // sentence with cites), the current step/point and its context pack (plan-cli card()), and only the last turn's call
 // and tool result. --context history keeps the compacted-history path above, for comparison. Turn rows carry
 // context: {mode: 'ledger', tokens, parts: {system, ledger, card, last}} in ledger mode.
+//
+// #932: logs/session.jsonl indexes the run in English, one event per line per layer (seed, open-work, coder, tool,
+// gate, refusal, plan, context, ledger, scratch; session-log.mjs), pointing at turn-input/turn-output instead of
+// copying them. The read-only session_log tool answers a small slice of it; it is offered after a refusal (line arm).
 import fs from 'node:fs';
 import crypto from 'node:crypto';
 import path from 'node:path';
@@ -57,6 +61,7 @@ import { compactHistory } from './compact.mjs';
 import { buildTurn } from './turn.mjs';
 import { loadLedger } from './ledger.mjs';
 import { createScratch, SCRATCH_CAP, SCRATCH_FENCE_LINES } from './scratch.mjs';
+import { createSessionLog, toolEvents, sessionLogSlice, selectTurnTools } from './session-log.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const bench = path.join(here, '..');
@@ -334,8 +339,11 @@ export async function runAgent(o, { resultsDir = path.join(o.bench ?? bench, 're
   const write = (f, e) => fs.appendFileSync(f, `${JSON.stringify(e)}\n`);
   const system = { role: 'system', content: o.arm === 'path' ? pathPrompt(path.resolve(o.project)) : systemPrompt(o.arm, dir) };
   const first = { role: 'user', content: o.arm === 'path' ? 'Fill the open stubs in order, one fill per stub until it passes. Use only your tools. Call finish when every stub passes or you cannot make more progress.' : 'Start building. Use only your tools. Call finish when every acceptance point is done or you cannot make more progress.' };
+  // #932: the layered session log (line and plain arms; the path arm too, it costs nothing).
+  const slog = createSessionLog({ file: path.join(logDir, 'session.jsonl') });
   if (o.seedPlan && o.arm === 'line') {
     const seeded = await seedFirst(/** @type {any} */ (cli));
+    slog.add({ turn: 0, layer: 'seed', kind: seeded.ok ? 'seeded' : String(seeded.code ?? 'stopped'), english: seeded.sentence.split('\n')[0] || 'The seed ran.', ref: 'SPEC.md', detail: { steps: (seeded.steps ?? []).length, landed: (seeded.steps ?? []).filter((x) => x.landed).length } });
     write(turnsFile, { kind: 'seed', at: new Date().toISOString(), ok: seeded.ok, code: seeded.code ?? null, landed: (seeded.steps ?? []).filter((s) => s.landed).length, steps: (seeded.steps ?? []).map((s) => ({ tool: s.tool, landed: s.landed, point: s.point ?? null })) });
     first.content = seeded.content;
     console.log(`seed: ${seeded.sentence.split('\n')[0]}`);
@@ -346,7 +354,12 @@ export async function runAgent(o, { resultsDir = path.join(o.bench ?? bench, 're
   const ledgerMode = o.context === 'ledger' && typeof (/** @type {any} */ (cli)).card === 'function';
   const L = ledgerMode ? await loadLedger() : null;
   const ledger = L ? L.createLedger() : null;
-  if (ledger && o.seedPlan) ledger.add({ kind: 'decision', text: String(first.content.split('\n')[1] ?? '').slice(0, 400), cites: ['seed', 'SPEC.md'] });
+  if (ledger && o.seedPlan) {
+    const text = String(first.content.split('\n')[1] ?? '').slice(0, 400);
+    ledger.add({ kind: 'decision', text, cites: ['seed', 'SPEC.md'] });
+    slog.add({ turn: 0, layer: 'ledger', kind: 'added', english: `Ledger decision: ${text}`, ref: 'SPEC.md' });
+  }
+  let refusedLast = false; let workHead = '';
   /** @type {any[]} */
   let last = [];
   // #932: the coder's scratchpad (logs/scratch.md), line arm only; garbage-collected before each turn.
@@ -373,19 +386,27 @@ export async function runAgent(o, { resultsDir = path.join(o.bench ?? bench, 're
     if (scratch && typeof (/** @type {any} */ (cli)).focus === 'function') {
       focusNow = await /** @type {any} */ (cli).focus();
       gced = scratch.gc({ turn, covered: focusNow.covered, landed: landedAt });
+      for (const g of gced) slog.add({ turn, layer: 'scratch', kind: 'removed', english: `Note ${g.id} removed: ${g.reason}.`, ref: g.id });
     }
+    const turnTools = o.arm === 'line' ? selectTurnTools(TOOLS.line, { refused: refusedLast }) : TOOLS[o.arm];
     if (ledger && L) {
-      const built = buildTurn({ system, ledger, ledgerView: L.ledgerView, card: await /** @type {any} */ (cli).card(), last, tools: TOOLS[o.arm], notes: scratch?.text ?? '' });
+      const card = await /** @type {any} */ (cli).card();
+      const built = buildTurn({ system, ledger, ledgerView: L.ledgerView, card, last, tools: turnTools, notes: scratch?.text ?? '' });
       messages = built.messages;
       context = { mode: 'ledger', tokens: built.tokens, parts: built.parts, ledger: ledger.entries.length };
+      const head = String(card).split('\n').find((l) => l.startsWith('Open work:')) ?? '';
+      if (head && head !== workHead) { slog.add({ turn, layer: 'open-work', kind: 'card', english: head, ref: focusNow.step }); workHead = head; }
+      const pack = /Context for (\S+)/.exec(card)?.[1] ?? null;
+      slog.add({ turn, layer: 'context', kind: 'built', english: `Turn ${turn} was built fresh: ${built.tokens} tokens (system ${built.parts.system}, ledger ${built.parts.ledger} in ${ledger.entries.length} lines, step card ${built.parts.card}${pack ? ` with the pack for ${pack}` : ''}, notes ${built.parts.notes}, last result ${built.parts.last}).`, ref: pack, detail: built.parts });
     } else {
       const packed = compactHistory(history, { fixed: [system, first], tools: TOOLS[o.arm], budget: o.numCtx - (o.answerReserve ?? 2048) });
       messages = [system, first, ...packed.messages];
       context = { mode: 'history', before: packed.before, after: packed.after, budget: o.numCtx - (o.answerReserve ?? 2048), collapsed: packed.collapsed, summarised: packed.summarised, dropped: packed.dropped };
+      slog.add({ turn, layer: 'context', kind: 'compacted', english: `Turn ${turn} sent the compacted history: ${packed.before} -> ${packed.after} tokens (${packed.collapsed} repeats collapsed, ${packed.summarised} answers summarised, ${packed.dropped} dropped).`, ref: null });
     }
     const started = Date.now();
     let res;
-    const sent = JSON.stringify({ model: o.model, stream: false, messages, tools: TOOLS[o.arm], options: chatOptions(o) });
+    const sent = JSON.stringify({ model: o.model, stream: false, messages, tools: turnTools, options: chatOptions(o) });
     let input = null;
     try {
       const r = await fetch(`${o.ollama}/api/chat`, {
@@ -409,6 +430,8 @@ export async function runAgent(o, { resultsDir = path.join(o.bench ?? bench, 're
     if (fromText.length) calls = fromText;
     const output = io.output(turn, res, calls);
     const tokens = { turn, in: res.prompt_eval_count ?? 0, out: res.eval_count ?? 0, ms: Date.now() - started, evalMs: Math.round((res.eval_duration ?? 0) / 1e6), promptMs: Math.round((res.prompt_eval_duration ?? 0) / 1e6) };
+    slog.add({ turn, layer: 'coder', kind: 'model call', english: `The model (${o.model}) read ${tokens.in} tokens and answered with ${calls.map((c) => c.function?.name).join(', ') || 'no tool call'}${fromText.length ? ' (written as text)' : ''}.`, ref: input?.file ?? `turn-input/${turn}.json`, detail: { input: input?.file ?? null, output: output?.file ?? null, in: tokens.in, out: tokens.out } });
+    refusedLast = false;
     history.push({ role: 'assistant', content: msg.content ?? '', ...(msg.tool_calls ? { tool_calls: msg.tool_calls } : {}) });
     const turnStart = history.length - 1;
     const outcomes = [];
@@ -418,7 +441,12 @@ export async function runAgent(o, { resultsDir = path.join(o.bench ?? bench, 're
       if (name === 'finish') { finished = String(args?.summary ?? ''); outcomes.push({ name, ok: true }); break; }
       // #932: scratch tools are the driver's own: no plan-cli call, no project file, never in calls.jsonl or the ledger.
       const isScratch = scratch && (name === 'scratch_write' || name === 'scratch_read');
-      const out = isScratch ? (name === 'scratch_write' ? scratch.write(args ?? {}, { turn, step: focusNow.step }) : scratch.read()) : await callTool(cli, o.arm, name, args);
+      // #932: session_log is read-only and the driver's own too; its answer never goes into the ledger.
+      const isLog = name === 'session_log';
+      const out = isLog ? sessionLogSlice(slog.events, args ?? {}) : isScratch ? (name === 'scratch_write' ? scratch.write(args ?? {}, { turn, step: focusNow.step }) : scratch.read()) : await callTool(cli, o.arm, name, args);
+      if (isScratch && name === 'scratch_write') slog.add({ turn, layer: 'scratch', kind: out.ok ? 'write' : 'refused', english: out.ok ? `The model wrote note ${out.id}${args?.about ? ` about ${args.about}` : ''}${(out.removed ?? []).length ? `, removing ${out.removed.map((x) => `${x.id} (${x.reason})`).join(', ')}` : ''}.` : `A scratch note was refused (${out.code}).`, ref: args?.about ?? out.id ?? null });
+      else if (!isScratch) for (const ev of toolEvents(turn, name, args, out)) slog.add(ev);
+      if (out?.ok === false) refusedLast = true;
       if (name === 'plan_run_next' && out?.landed) for (const f of out.files ?? []) landedAt.set(String(f), turn);
       if (o.arm === 'path' && name === 'fill' && out.pass && out.next === null) allPass = true;
       streak.see(name, args, out);
@@ -426,7 +454,10 @@ export async function runAgent(o, { resultsDir = path.join(o.bench ?? bench, 're
       outcomes.push({ name, args: clip(JSON.stringify(args ?? {}), 400), ok: out.ok, code: out.code ?? null, sentence: out.sentence });
       history.push({ role: 'tool', content: clip(JSON.stringify(toModel(out))) });
       // #932: every tool result is distilled into the ledger (one sentence + cites).
-      if (ledger && !isScratch) ledger.distil(name, args, out);
+      if (ledger && !isScratch && !isLog) {
+        const e = ledger.distil(name, args, out);
+        slog.add({ turn, layer: 'ledger', kind: 'added', english: `Ledger ${e?.kind ?? 'entry'}: ${e?.text ?? ''}`, ref: e?.cites?.[1] ?? null });
+      }
     }
     if (!calls.length) { idle += 1; history.push({ role: 'user', content: 'Use one of your tools (or call finish).' }); } else idle = 0;
     last = history.slice(turnStart);

@@ -88,7 +88,10 @@ export async function loadLedger() {
   if (fs.existsSync(central)) {
     try {
       const m = await import(pathToFileURL(central).href);
-      if (typeof m.ledgerView === 'function' && typeof m.createLedger === 'function') return { createLedger: m.createLedger, ledgerView: m.ledgerView };
+      // Only when it has this adapter's shape (add, distil, entries); line/research-loop's createLedger(file) does not
+      // yet, so merging that branch needs a small bridge here.
+      const probe = typeof m.createLedger === 'function' ? (() => { try { return m.createLedger(); } catch { return null; } })() : null;
+      if (typeof m.ledgerView === 'function' && probe && typeof probe.add === 'function' && typeof probe.distil === 'function' && Array.isArray(probe.entries)) return { createLedger: m.createLedger, ledgerView: m.ledgerView };
     } catch { /* fall back to the adapter */ }
   }
   return { createLedger, ledgerView };
