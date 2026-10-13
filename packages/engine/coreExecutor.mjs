@@ -269,10 +269,10 @@ export function resolveExecutionMode(root) {
  */
 export async function runValidate(root, { mode = 'engine', env = process.env, bin, timeoutMs, spawnImpl } = {}) {
   if (mode === 'engine') {
-    const enforced = aggregateValidation(root, enforcersForRoot(root));
     // #924: the same fallow stage `construct validate` runs (on by default, warnings only), so the #541
-    // engine/cli parity contract still holds byte for byte.
-    const { violations: fallowViolations } = await fallowStage(root, { env });
+    // engine/cli parity contract still holds byte for byte; #923: its health report feeds FUNC-001's cognitive score.
+    const { violations: fallowViolations, health } = await fallowStage(root, { env });
+    const enforced = aggregateValidation(root, enforcersForRoot(root), health ? { fallowHealth: health } : undefined);
     const { ok } = enforced;
     const violations = [...enforced.violations, ...fallowViolations];
     return { mode, status: ok ? 'passed' : 'failed', ok, violations, report: formatReport(violations, { format: 'json' }) };

@@ -95,6 +95,25 @@ test('FUNC-001 through validateArchitecture: a fallow health report adds the cog
   assert.equal(hits(root, { fallowHealth: { functions: [{ file: 'features/grades/services/grade.ts', line: 1, cognitive: 11 }] } }).length, 1);
 });
 
+test('FUNC-001 end to end: construct validate (CLI and engine) passes fallow\'s health report through, so cognitive is scored; --no-fallow degrades to cyclomatic only', { skip: process.platform === 'win32' && 'fake binary is a shebang script' }, async () => {
+  const root = project('version: 1\n', NESTED);
+  fs.writeFileSync(path.join(root, 'package.json'), '{"name":"p","private":true}\n');
+  const binDir = makeTempDir('func001-fallow-bin-');
+  const bin = path.join(binDir, 'fallow');
+  const healthDoc = { kind: 'health', version: '3.33.1', findings: [{ path: 'features/grades/services/grade.ts', name: 'pick', line: 1, cyclomatic: 4, cognitive: 11 }] };
+  fs.writeFileSync(bin, `#!/usr/bin/env node\nprocess.stdout.write(process.argv[2] === 'health' ? ${JSON.stringify(JSON.stringify(healthDoc))} : '{"kind":"dead-code","version":"3.33.1"}');\n`);
+  fs.chmodSync(bin, 0o755);
+  const env = { ...process.env, CONSTRUCT_FALLOW_BIN: bin };
+  const func001Of = (args) => JSON.parse(spawnSync(process.execPath, [CLI, 'validate', '--format', 'json', '--dir', root, ...args], { encoding: 'utf8', env }).stdout).violations.filter((v) => v.rule === 'FUNC-001');
+  const on = func001Of([]);
+  assert.equal(on.length, 1);
+  assert.match(on[0].message, /cognitive 11\/10/);
+  assert.deepEqual(func001Of(['--no-fallow']), [], 'without fallow, cognitive is not scored and cyclomatic 4 is under budget');
+  const { runValidate } = await import('../packages/engine/coreExecutor.mjs');
+  const engine = (await runValidate(root, { mode: 'engine', env })).violations.filter((v) => v.rule === 'FUNC-001');
+  assert.deepEqual(JSON.parse(JSON.stringify(engine)), on, 'engine mode matches the CLI (#541 parity)');
+});
+
 test('FUNC-001: the construct init scaffold (both frameworks, with generated layers) and the bench starter raise none', () => {
   for (const framework of ['nextjs', 'react-spa']) {
     const root = makeTempDir(`func001-init-${framework}-`);

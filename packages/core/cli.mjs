@@ -931,12 +931,13 @@ export async function validate(args) {
     throw new ConstructError('--profile needs a profile name, for example "construct validate --profile line".', { exitCode: EXIT_CODES.USAGE_ERROR });
   }
   const profile = selectProfile(root, pi >= 0 ? args[pi + 1] : undefined);
-  const enforced = aggregateValidation(root, enforcersForProfile(profile));
   // #924: fallow's dead-code and health findings, on by default (`--no-fallow` or `fallow: false` in
   // architecture.yml turns it off). Every FALLOW-* finding is a warning, so `ok` is the enforcers' verdict;
   // a missing binary is one info line on stderr, never a failure and never a change to the JSON report.
+  // #923: it runs first so its health report reaches FUNC-001's cognitive score; without it cognitive is null.
   const fallow = await fallowStage(root, { args });
   if (fallow.notice) console.error(fallow.notice);
+  const enforced = aggregateValidation(root, enforcersForProfile(profile), fallow.health ? { fallowHealth: fallow.health } : undefined);
   const { ok } = enforced;
   const violations = [...enforced.violations, ...fallow.violations];
   const fi = args.indexOf('--format');

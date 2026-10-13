@@ -225,16 +225,20 @@ function runOne(bin, sub, root, { env, timeoutMs, execFileImpl }) {
  *
  * @param {string} root Project root.
  * @param {{env?: Record<string, string|undefined>, timeoutMs?: number, bin?: {command: string, args: string[]}|null, execFileImpl?: Function}} [opts]
- * @returns {Promise<{status: 'ok'|'unavailable'|'failed', violations: object[], message: string, durationMs: number, version: string|null}>}
+ * @returns {Promise<{status: 'ok'|'unavailable'|'failed', violations: object[], message: string, durationMs: number, version: string|null, health: any}>}
+ *   `health` is the parsed `fallow health --format json` document (null when it did not run or printed no JSON),
+ *   which `validateArchitecture(root, { fallowHealth })` reads for FUNC-001's cognitive score (#923).
  */
 export async function runFallow(root, { env = process.env, timeoutMs, bin, execFileImpl = execFile } = {}) {
   const started = Date.now();
   const resolved = bin === undefined ? resolveFallowBin(root, { env }) : bin;
   const ms = timeoutMs ?? (Number(env.CONSTRUCT_FALLOW_TIMEOUT_MS) || DEFAULT_TIMEOUT_MS);
-  const done = (status, violations, message, version = null) => ({ status, violations, message, durationMs: Date.now() - started, version });
+  let healthDoc = null;
+  const done = (status, violations, message, version = null) => ({ status, violations, message, durationMs: Date.now() - started, version, health: healthDoc });
   if (!resolved) return done('unavailable', [], `fallow not installed: FALLOW-* checks skipped (${INSTALL_HINT})`);
   const [dc, health] = await Promise.all(['dead-code', 'health'].map((sub) => runOne(resolved, sub, root, { env, timeoutMs: ms, execFileImpl })));
   if (dc.unavailable || health.unavailable) return done('unavailable', [], `fallow not installed: FALLOW-* checks skipped (${INSTALL_HINT})`);
+  healthDoc = health.doc ?? null;
   const errors = [dc.error, health.error].filter(Boolean);
   const violations = [...(dc.doc ? mapDeadCode(dc.doc) : []), ...(health.doc ? mapHealth(health.doc) : [])];
   const version = str(dc.doc?.version) || str(health.doc?.version) || null;
@@ -249,16 +253,17 @@ export async function runFallow(root, { env = process.env, timeoutMs, bin, execF
  *
  * @param {string} root Project root.
  * @param {{args?: string[], env?: Record<string, string|undefined>, timeoutMs?: number, bin?: object|null, execFileImpl?: Function}} [opts]
- * @returns {Promise<{violations: object[], notice: string|null, ran: boolean, durationMs: number}>}
+ * @returns {Promise<{violations: object[], notice: string|null, ran: boolean, durationMs: number, health: any}>} `health`: the
+ *   parsed health report to hand to validateArchitecture as `fallowHealth` (null when fallow is off or did not report).
  */
 export async function fallowStage(root, { args = [], ...opts } = {}) {
   const setting = fallowSetting(root, args);
-  if (!setting.enabled) return { violations: [], notice: null, ran: false, durationMs: 0 };
+  if (!setting.enabled) return { violations: [], notice: null, ran: false, durationMs: 0, health: null };
   try {
     const r = await runFallow(root, opts);
     const notice = r.status === 'ok' ? null : `ℹ️ ${r.message}`;
-    return { violations: r.violations, notice, ran: r.status !== 'unavailable', durationMs: r.durationMs };
+    return { violations: r.violations, notice, ran: r.status !== 'unavailable', durationMs: r.durationMs, health: r.health ?? null };
   } catch (e) {
-    return { violations: [], notice: `ℹ️ fallow could not run: ${e.message}`, ran: false, durationMs: 0 };
+    return { violations: [], notice: `ℹ️ fallow could not run: ${e.message}`, ran: false, durationMs: 0, health: null };
   }
 }
