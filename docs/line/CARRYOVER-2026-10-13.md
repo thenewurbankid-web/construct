@@ -25,7 +25,7 @@ agents below report into the previous session. Push to `private` only. Never mod
 | Work | Branch | Notes |
 |---|---|---|
 | fallow wrapper, ON by default in validate (FALLOW-*, warnings, `--no-fallow`) | `oss/fallow` | MIT, pinned; boundaries/model/type-aware off |
-| per-function cyclomatic + cognitive, FUNC-001 ON by default, logicMap signature | `ast/function-complexity` | packages/ast; budgets in architecture.yml |
+| per-function complexity via OSS only (ESLint core `complexity` in-process + fallow health for cognitive), FUNC-001 ON by default, logicMap signature | `ast/function-complexity` | owner: no hand-written counter |
 | lending plain-arm starter | `bench/lending-plain` @ 2bb51072 (DONE) | from 359f6deb, refs #925; owner kept its one-line fixture-path edit to bench/lending/SPEC.md |
 | path-first proof (CAT-2 + CART-1, 11 stubs, fill tool, `--arm path`) | `exp/path-first-proof` @ 07ddd3d2 (#921) | steps 1-3 done; step 4 (qwen fill run) waits |
 
