@@ -18,7 +18,7 @@
 set -euo pipefail
 
 HARNESS=claude RUN= MODEL=${OPENCODE_MODEL:-} ARMS=CD,CD-raw,CW
-TASKS=t03-book-availability,t06-picks-store,t11-browse-sort-title,t12-browse-genre-filter
+TASKS=t03-book-availability,t05-book-add-to-picks,t06-picks-store,t07-picks-page-list,t09-browse-heading-availability,t10-browse-paging,t11-browse-sort-title,t12-browse-genre-filter
 while [ $# -gt 0 ]; do
   case "$1" in
     --harness) HARNESS=$2; shift 2 ;;
@@ -43,18 +43,20 @@ prompt() { # arm task
   if [ "$1" = CD-raw ]; then
     cat <<EOF
 You are the lead on task $2 and a small coder model writes the code. You have only two tools.
-1. Call task_show with task "$2" to see the spec and the function to write.
-2. Write the brief for the coder. The brief you write is the WHOLE prompt the coder sees: it gets nothing else. So include the exact function name, its exact signature, the types it uses, the spec's exact wording for every string to show, and a short code example. Ask it to reply with only that function in one fenced code block, no imports. Call task_try with task "$2", that brief and raw: true.
-3. If it says FAIL, rewrite the brief to fix the reported error and call task_try again with raw: true. At most 2 retries.
-Never try to read source files. Stop at PASS or after 3 task_try calls, and end with one line: PASS or FAIL.
+1. Call task_show with task "$2" to see the spec and the function(s) to write.
+2. Describe intent; never write the implementation; the 1.5b writes the code. The brief you write is the WHOLE prompt the coder sees: it gets nothing else. So include the function's exact name, its exact signature, the types it uses, what it must do, and the spec's exact wording for every string to show; at most a 3-line shape example from a different domain. A brief with a function body or more than 3 lines of code is rejected. The coder's reply starts with the signature already written, so it writes only the body. Call task_try with task "$2", that brief and raw: true.
+3. If the task has several functions, write one brief per function, in the order task_show gives, and call task_try with fn set to that function. A brief must not name the other functions. OK means that function is done: go on to the next one.
+4. If it says FAIL, rewrite that brief to fix the reported error and call task_try again with raw: true.
+Never try to read source files. Stop at PASS, or after 3 FAIL results in total, and end with one line: PASS or FAIL.
 EOF
   elif [ "$1" = CD ]; then
     cat <<EOF
 You are the lead on task $2 and a small coder model writes the code. You have only two tools.
-1. Call task_show with task "$2" to see the spec and the function to write.
-2. Write a short intent brief for the coder (a few lines: what to change and the exact strings or code to write) and call task_try with task "$2" and that brief.
-3. If it says FAIL, rewrite the brief to fix the reported error and call task_try again. At most 2 retries.
-Never try to read source files. Stop at PASS or after 3 task_try calls, and end with one line: PASS or FAIL.
+1. Call task_show with task "$2" to see the spec and the function(s) to write.
+2. Describe intent; never write the implementation; the 1.5b writes the code. The harness already gives the coder the signature, the types, the spec and a worked example; your brief is a short note on top: what the function must do and the spec's exact strings, in a few lines. A brief with a function body or more than 3 lines of code is rejected. Call task_try with task "$2" and that brief.
+3. If the task has several functions, write one note per function, in the order task_show gives, and call task_try with fn set to that function. A note must not name the other functions. OK means that function is done: go on to the next one.
+4. If it says FAIL, rewrite that note to fix the reported error and call task_try again.
+Never try to read source files. Stop at PASS, or after 3 FAIL results in total, and end with one line: PASS or FAIL.
 EOF
   else
     cat <<EOF

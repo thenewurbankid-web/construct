@@ -5,7 +5,7 @@
 //
 //   node bench/isolation/drive.mjs show <task>                          # SPEC excerpt + briefBuilder facts (no file)
 //   node bench/isolation/drive.mjs show-code <task>                     # SPEC excerpt + full starting file(s)
-//   node bench/isolation/drive.mjs try <task> --brief <file> [--run <id>] [--raw]  # brief -> 1.5b (N<=5) -> splice -> tsc+check
+//   node bench/isolation/drive.mjs try <task> --brief <file> [--run <id>] [--raw] [--fn <name>]  # note -> 1.5b body (prefilled, N<=5) -> splice -> tsc+check
 //   node bench/isolation/drive.mjs check <task> --file <path> [--run <id>]  # tsc+check on a file Claude wrote, no model
 //   node bench/isolation/drive.mjs summary --run <id>                   # per-task, per-arm table (+ claude-drive.sh sessions)
 //
@@ -21,7 +21,9 @@ import * as config from './config.mjs';
 import { buildBriefs } from './blocks/briefBuilder.mjs';
 import { applyPrelude, spliceFunction } from './blocks/spliceApplier.mjs';
 import { sample } from './blocks/sampler.mjs';
-import { ts, parse, declName, isDirective, fencedBlocks, signatures } from './lib/edit.mjs';
+import { checkBrief } from './blocks/briefGuard.mjs';
+import { STOP, fnGoal, chatmlPrompt, prefillFor, completeFunction } from './blocks/prefill.mjs';
+import { signatures } from './lib/edit.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const TASKS = join(HERE, 'tasks');
@@ -109,12 +111,14 @@ function show(task) {
   rmSync(ws, { recursive: true, force: true });
   out([
     `TASK ${task.id} (${task.kind}): ${task.goal}`,
-    `SPEC:\n${task.spec}`,
+    `SPEC:\n${task.spec.replace(/\n\s*\n/g, "\n")}`,
     `FILE: ${task.target}`,
     ...briefs.map((b) => `FUNCTION: ${b.name} (${b.exists ? 'exists, rewrite it' : 'new'})\nSIGNATURE: ${sections(b.brief).SIGNATURE}`),
-    `ALREADY AT THE TOP (prelude added by the harness):\n${s['ALREADY AT THE TOP OF THE FILE'] ?? prelude.join('\n')}`,
-    s['TYPES IN SCOPE'] ? `TYPES IN SCOPE:\n${s['TYPES IN SCOPE']}` : 'TYPES IN SCOPE: none',
-    `REPLY: the 1.5b must return ${briefs.length > 1 ? `the functions ${briefs.map((b) => b.name).join(', ')}` : `only function ${briefs[0]?.name}`} in one fenced block.`,
+    briefs.length > 1
+      ? `ONE FUNCTION PER NOTE: call try once per function with fn set, in this order: ${briefs.map((b) => b.name).join(', ')}. A note must not name the other functions.`
+      : `REPLY: the 1.5b writes only the body of ${briefs[0]?.name} (its signature is prefilled).`,
+    `ALREADY AT THE TOP (prelude added by the harness):\n${(s['ALREADY AT THE TOP OF THE FILE'] ?? prelude.join('\n')).trim() || 'nothing'}`,
+    s['TYPES IN SCOPE'] ? `TYPES IN SCOPE:\n${s['TYPES IN SCOPE'].split('\n').filter((l) => l.trim() && !/^\s*\/\*\*.*\*\/\s*$/.test(l)).join('\n')}` : 'TYPES IN SCOPE: none',
   ]);
 }
 
@@ -127,87 +131,105 @@ function showCode(task) {
   process.stdout.write(lines.join('\n') + '\n'); // whole starting files: exempt from the 40-line cap
 }
 
-// The reply's fenced block holds one or more target functions; each is spliced by name with spliceFunction.
-function spliceReply(file, reply, names, path) {
-  const blocks = fencedBlocks(reply);
-  if (!blocks.length) return { ok: false, failClass: 'format', detail: /```/.test(reply) ? 'unclosed code fence' : 'no code fence' };
-  const block = blocks.reduce((a, b) => (b.length > a.length ? b : a));
-  const inc = parse(block, path);
-  const fns = inc.statements.filter((st) => !ts.isImportDeclaration(st) && !isDirective(st));
-  if (names.length === 1 || fns.length <= 1) return spliceFunction(file, reply, names.length === 1 ? names[0] : declName(fns[0]) ?? names[0], path);
-  let body = file;
-  for (const st of fns) {
-    const name = declName(st);
-    if (!names.includes(name)) return { ok: false, failClass: 'fragment', detail: `reply declares ${name ?? ts.SyntaxKind[st.kind]}, expected only ${names.join(', ')}` };
-    const r = spliceFunction(body, `\`\`\`\n${st.getText(inc)}\n\`\`\``, name, path);
-    if (!r.ok) return r;
-    body = r.body;
-  }
-  return { ok: true, body };
-}
-
-async function chat(system, user, seed) {
+// The 1.5b call: Ollama /api/generate with raw: true and the ChatML template applied here, the assistant turn
+// prefilled with the signature + `{`, stopped at a column-0 `}`. Returns the completed function as a fenced reply.
+async function prefilledCall({ system, user, signature, lang, seed }) {
   const model = config.models.coder;
   if (model === 'fable') throw new Error('model "fable" is not allowed');
   const t0 = Date.now();
-  const res = await fetch(`${config.ollama.url}/api/chat`, {
+  const prompt = chatmlPrompt({ system, user, prefill: prefillFor(signature, lang) });
+  const res = await fetch(`${config.ollama.url}/api/generate`, {
     method: 'POST', headers: { 'content-type': 'application/json' }, signal: AbortSignal.timeout(config.ollama.timeoutMs),
-    body: JSON.stringify({ model, stream: false, keep_alive: config.ollama.keepAlive, options: { ...config.sampling.qwen, seed },
-      messages: [{ role: 'system', content: system }, { role: 'user', content: user }] }),
+    body: JSON.stringify({ model, raw: true, stream: false, keep_alive: config.ollama.keepAlive, prompt,
+      options: { ...config.sampling.qwen, seed, stop: STOP } }),
   });
   if (!res.ok) throw new Error(`ollama ${res.status}: ${(await res.text()).slice(0, 200)}`);
   const j = await res.json();
-  return { reply: j.message?.content ?? '', tokensIn: j.prompt_eval_count ?? 0, tokensOut: j.eval_count ?? 0, ms: Date.now() - t0 };
+  return { reply: completeFunction(signature, j.response ?? '', lang), tokensIn: j.prompt_eval_count ?? 0, tokensOut: j.eval_count ?? 0,
+    ms: Date.now() - t0, promptChars: prompt.length };
 }
 
-// Two modes. intent (default, arm I's pattern): each function's briefBuilder brief plus the driver's text as
-// "LEAD'S NOTE", one sampled round per function (earlier rounds judged by tsc, the last by tsc + check).
-// raw (--raw): the driver's text is the whole 1.5b prompt; the reply may hold every target function at once.
-async function tryBrief(task, briefPath, run, raw = false) {
+// The 1.5b prompt for one function: briefBuilder's brief with the TASK line narrowed to that function (fnGoal),
+// plus the note (intent mode), or the note alone (raw mode). It never mentions the other target functions.
+export function fnPrompt({ task, brief, names, note, raw }) {
+  if (raw) return note;
+  const own = brief.brief.replace(/^TASK: .*$/m, `TASK: ${fnGoal(task.goal, brief.name, names)}`);
+  return `${own}\n\nLEAD'S NOTE: ${note.trim()}`;
+}
+
+// One function per request. The note (intent mode: added to briefBuilder's brief for that function as "LEAD'S
+// NOTE"; raw mode: the whole 1.5b prompt) first passes briefGuard: intent only, and on a multi-function task it
+// must not name the other target functions. A rejected note is logged as a try (failClass "brief").
+// Multi-function tasks need --fn: that function's round runs on the file the earlier --fn rounds built (kept per
+// run, harness, arm and task under results/claude-drive/state/), judged by tsc, or by tsc + check once every
+// other function is done. Each sample is a prefilled body (prefilledCall), spliced strictly by name.
+async function tryBrief(task, briefPath, run, raw = false, fn = null) {
   if (!briefPath || !existsSync(briefPath)) die(`--brief file not found: ${briefPath ?? ''}`);
-  const brief = readFileSync(briefPath, 'utf8');
-  if (!brief.trim()) die('the brief is empty');
+  const note = readFileSync(briefPath, 'utf8');
+  if (!note.trim()) die('the brief is empty');
   const t0 = Date.now();
+  const arm = raw ? 'CD-raw' : 'CD';
   const { ws, read } = startWorkspace(task, run);
   const startBody = read(task.target);
   const { prelude, briefs } = buildBriefs({ task, file: startBody, read });
   const names = briefs.map((b) => b.name);
-  let file = applyPrelude(startBody, prelude, task.target);
-  const multiSystem = config.prompts.functionCoderSystem.replace('only the one function you are asked for, complete,', `only the functions you are asked for (${names.join(', ')}), complete,`);
-  const rounds = raw
-    ? [{ names, user: brief, system: names.length > 1 ? multiSystem : config.prompts.functionCoderSystem }]
-    : briefs.map((b) => ({ names: [b.name], user: `${b.brief}\n\nLEAD'S NOTE: ${brief.trim()}`, system: config.prompts.functionCoderSystem }));
-  const calls = []; const classes = [];
-  let ev = null; let err = null;
+  if (fn && !names.includes(fn)) die(`fn "${fn}" is not a target function of ${task.id} (${names.join(', ')})`);
+  const target = fn ?? (names.length === 1 ? names[0] : null);
+  const base = { arm, cmd: 'try', mode: raw ? 'raw' : 'intent', task: task.id, ...(fn ? { fn } : {}), brief: relative(process.cwd(), briefPath), briefChars: note.length };
+  const reject = (reason) => {
+    const row = logLine(run, { ...base, rejected: reason, coderPromptChars: 0, coderCalls: 0, tokensIn: 0, tokensOut: 0,
+      wallMs: Date.now() - t0, pass: false, failClass: 'brief', sampleClasses: [] });
+    out([`FAIL brief (attempt ${row.attempt}, 0 1.5b calls: brief rejected)`, `  ${reason}`]);
+  };
+  if (!target) return reject(`this task has ${names.length} functions (${names.join(', ')}): call try once per function with fn set, one note per function.`);
+  const guard = checkBrief(note, { fn: target, others: names });
+  if (!guard.ok) return reject(guard.reason);
+
+  const multi = names.length > 1;
+  const stateFile = join(LOG_DIR, 'state', run, `${HARNESS}-${arm}-${task.id}.json`);
+  const state = multi && existsSync(stateFile) ? JSON.parse(readFileSync(stateFile, 'utf8')) : { file: applyPrelude(startBody, prelude, task.target), done: [] };
+  const b = briefs.find((x) => x.name === target);
+  const signature = sections(b.brief).SIGNATURE.trim();
+  const lang = task.target.endsWith('.tsx') ? 'tsx' : 'ts';
+  const user = fnPrompt({ task, brief: b, names, note, raw });
+  const final = names.every((n) => n === target || state.done.includes(n));
+  const calls = [];
+  let res = null; let ev = null; let err = null;
   try {
-    for (const [k, r] of rounds.entries()) {
-      const final = k === rounds.length - 1;
-      const res = await sample({
-        n: TRY_N, seedBase: 1,
-        generate: async (seed) => { const c = await chat(r.system, r.user, seed); calls.push({ ...c, promptChars: r.system.length + r.user.length }); return c; },
-        judge: (reply) => {
-          const sp = spliceReply(file, reply, r.names, task.target);
-          if (!sp.ok) return { pass: false, tscOk: false, failClass: sp.failClass, ev: { pass: false, failClass: sp.failClass, errors: [sp.detail] } };
-          const e = evaluate(ws, task, startBody, sp.body);
-          const pass = final ? e.pass : e.tscOk === true;
-          return { pass, tscOk: e.tscOk === true, failClass: pass ? null : e.failClass, ev: { ...e, pass, failClass: pass ? null : e.failClass }, body: sp.body };
-        },
-      });
-      classes.push(...res.samples.map((x) => x.failClass ?? 'pass'));
-      ev = res.picked.result.ev;
-      if (res.picked.result.body) writeFileSync(join(ws, 'candidate.' + task.target.split('.').pop()), res.picked.result.body);
-      if (!res.pass) { if (rounds.length > 1) ev = { ...ev, errors: [`function ${r.names[0]}: ${ev.errors?.[0] ?? ''}`] }; break; }
-      file = res.picked.result.body;
-    }
+    res = await sample({
+      n: TRY_N, seedBase: 1,
+      generate: async (seed) => { const c = await prefilledCall({ system: config.prompts.functionCoderSystem, user, signature, lang, seed }); calls.push(c); return c; },
+      judge: (reply) => {
+        const sp = spliceFunction(state.file, reply, target, task.target);
+        if (!sp.ok) return { pass: false, tscOk: false, failClass: sp.failClass, ev: { pass: false, failClass: sp.failClass, errors: [sp.detail] } };
+        const e = evaluate(ws, task, startBody, sp.body);
+        const pass = final ? e.pass : e.tscOk === true;
+        return { pass, tscOk: e.tscOk === true, failClass: pass ? null : e.failClass, ev: { ...e, pass, failClass: pass ? null : e.failClass }, body: sp.body };
+      },
+    });
+    ev = res.picked.result.ev;
+    if (res.picked.result.body) writeFileSync(join(ws, `candidate.${lang}`), res.picked.result.body);
   } catch (e) { err = String(e?.message ?? e); }
   if (err) ev = { pass: false, failClass: 'error', errors: [err] };
+  if (multi && !ev.pass && !err) ev = { ...ev, errors: [`function ${target}: ${ev.errors?.[0] ?? ''}`] };
+  let partial = null;
+  if (multi && res?.pass) {
+    const done = [...new Set([...state.done, target])];
+    mkdirSync(dirname(stateFile), { recursive: true });
+    writeFileSync(stateFile, JSON.stringify({ file: res.picked.result.body, done }));
+    if (!final) partial = { done, left: names.filter((n) => !done.includes(n)) };
+  }
+  const classes = res?.samples.map((x) => x.failClass ?? 'pass') ?? [];
   const row = logLine(run, {
-    arm: raw ? 'CD-raw' : 'CD', cmd: 'try', mode: raw ? 'raw' : 'intent', task: task.id, brief: relative(process.cwd(), briefPath), briefChars: brief.length,
-    coderPromptChars: Math.max(0, ...calls.map((c) => c.promptChars)), coderCalls: calls.length,
+    ...base, coderPromptChars: Math.max(0, ...calls.map((c) => c.promptChars)), coderCalls: calls.length,
     tokensIn: calls.reduce((a, c) => a + c.tokensIn, 0), tokensOut: calls.reduce((a, c) => a + c.tokensOut, 0),
-    wallMs: Date.now() - t0, pass: ev.pass, failClass: ev.failClass, sampleClasses: classes,
+    wallMs: Date.now() - t0, pass: partial ? false : ev.pass, ...(multi ? { fnPass: Boolean(res?.pass) } : {}),
+    failClass: partial ? null : ev.failClass, sampleClasses: classes,
   });
-  out(verdict(ev, ` (attempt ${row.attempt}, ${calls.length} 1.5b call(s), samples: ${classes.join(',') || '-'})`));
+  const tail = ` (attempt ${row.attempt}, ${calls.length} 1.5b call(s), samples: ${classes.join(',') || '-'})`;
+  out(partial
+    ? [`OK ${target}: tsc clean, ${partial.done.length} of ${names.length} functions done${tail}`, `  next: try with fn ${partial.left[0]} (left: ${partial.left.join(', ')})`]
+    : verdict(ev, tail));
 }
 
 function checkFile(task, filePath, run) {
@@ -317,7 +339,7 @@ if (isMain) {
   }
   if (cmd === 'show') show(loadTask(taskArg));
   else if (cmd === 'show-code') showCode(loadTask(taskArg));
-  else if (cmd === 'try') await tryBrief(loadTask(taskArg), opt('brief'), run, rest.includes('--raw'));
+  else if (cmd === 'try') await tryBrief(loadTask(taskArg), opt('brief'), run, rest.includes('--raw'), opt('fn', null));
   else if (cmd === 'check') checkFile(loadTask(taskArg), opt('file'), run);
   else if (cmd === 'summary') summary(run);
   else if (cmd === 'opencode-normalize') { // harness-drive.sh: <events.jsonl> <out.json> <startMs> <model label>

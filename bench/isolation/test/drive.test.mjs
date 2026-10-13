@@ -8,7 +8,66 @@ import { Client, InMemoryTransport } from '@modelcontextprotocol/client';
 import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
 import { createDriveMcpServer } from '../drive-mcp.mjs';
 import { readFileSync, rmSync } from 'node:fs';
-import { summarize, sessionRecord, normalizeOpencode, SESSION_FILE } from '../drive.mjs';
+import { summarize, sessionRecord, normalizeOpencode, SESSION_FILE, fnPrompt } from '../drive.mjs';
+import { checkBrief } from '../blocks/briefGuard.mjs';
+import { STOP, fnGoal, chatmlPrompt, prefillFor, completeFunction } from '../blocks/prefill.mjs';
+import { spliceFunction } from '../blocks/spliceApplier.mjs';
+import { buildBriefs } from '../blocks/briefBuilder.mjs';
+
+const T06 = ['listPicks', 'addPick', 'removePick'];
+const T06_GOAL = 'Write the picks store. Export exactly these functions: listPicks(): string[] (the picked book ids, in the order they were added), addPick(id: string): void (adds it; adding an id that is already there does nothing), removePick(id: string): void. Keep the ids in localStorage under the key "picks" as a JSON array of strings.';
+
+test('briefGuard rejects a brief with a full body or a long code block', () => {
+  const full = 'Rewrite it like this:\n```tsx\nexport function BookPage({ params }: { params: { id: string } }) {\n  const book = books.find((b) => b.id === params.id);\n  if (!book) return null;\n  const s = book.available ? "Available" : "On loan";\n  return <p>{s}</p>;\n}\n```';
+  const r = checkBrief(full);
+  assert.equal(r.ok, false);
+  assert.match(r.reason, /implementation \(BookPage has a 4-statement body\)/);
+  assert.match(r.reason, /never write the implementation; the 1\.5b writes the code/);
+  const arrow = 'Use:\nconst listX = () => {\n  const raw = localStorage.getItem("x");\n  if (!raw) return [];\n  return JSON.parse(raw);\n};';
+  assert.match(checkBrief(arrow).reason, /listX has a 3-statement body/);
+  const jsx = '```tsx\nreturn (\n  <DetailPage title={book.title}>\n    <p>{book.author}</p>\n  </DetailPage>\n);\n```';
+  assert.match(checkBrief(jsx).reason, /5 consecutive lines of code/);
+});
+
+test('briefGuard passes a signature plus intent, types and a short shape example', () => {
+  assert.deepEqual(checkBrief('SIGNATURE: export function BookPage({ params }: { params: { id: string } })\nShow "Available" when book.available is true, otherwise "On loan". Never print true or false.'), { ok: true });
+  assert.deepEqual(checkBrief('export function listPicks(): string[]\nRead the JSON array stored under the key "picks"; return [] when it is missing.'), { ok: true });
+  assert.deepEqual(checkBrief('```ts\ntype Book = {\n  id: string;\n  title: string;\n  available: boolean;\n};\n```\nShape, from a shop:\n```tsx\n<p>{item.inStock ? "In stock" : "Sold out"}</p>\n```'), { ok: true });
+});
+
+test('per-function routing: one note per function, a prompt that never names the other targets', () => {
+  assert.deepEqual(checkBrief('Add the id unless it is already there; keep the order.', { fn: 'addPick', others: T06 }), { ok: true });
+  assert.equal(checkBrief('Call listPicks() first, then add the id.', { fn: 'addPick', others: T06 }).reason, 'one function per note: write the note for addPick only (it names listPicks).');
+  assert.equal(fnGoal(T06_GOAL, 'addPick', T06), 'Write the picks store. Export addPick(id: string): void (adds it; adding an id that is already there does nothing). Keep the ids in localStorage under the key "picks" as a JSON array of strings.');
+  const task = JSON.parse(readFileSync(join(HERE, '..', 'tasks', 't06-picks-store', 'task.json'), 'utf8'));
+  const read = (p) => { for (const d of ['t06-picks-store/start', '_r2', '_shared']) { try { return readFileSync(join(HERE, '..', 'tasks', d, p), 'utf8'); } catch {} } throw new Error(p); };
+  const { briefs } = buildBriefs({ task, file: read(task.target), read });
+  assert.deepEqual(briefs.map((b) => b.name), T06);
+  for (const b of briefs) {
+    const p = fnPrompt({ task, brief: b, names: T06, note: 'Keep the order they were added.', raw: false });
+    assert.ok(p.includes(`SIGNATURE: export function ${b.name}(`));
+    assert.ok(p.endsWith("LEAD'S NOTE: Keep the order they were added."));
+    assert.deepEqual(T06.filter((n) => n !== b.name && p.includes(n)), [], `${b.name}'s prompt names another target`);
+  }
+  assert.equal(fnPrompt({ task, brief: briefs[0], names: T06, note: 'whole', raw: true }), 'whole');
+});
+
+test('prefilled reply: a fake model that writes a second function is cut at the first function\'s end', () => {
+  const signature = 'export function addPick(id: string): void';
+  const prompt = chatmlPrompt({ system: 'S', user: 'U', prefill: prefillFor(signature, 'ts') });
+  assert.ok(prompt.endsWith('<|im_start|>assistant\n```ts\nexport function addPick(id: string): void {\n'));
+  const greedy = '  const s = `${id}}`;\n  if (!s) { return; }\n  localStorage.setItem("picks", JSON.stringify([s]));\n}\n\nexport function removePick(id: string): void {\n  localStorage.removeItem(id);\n}\n```\n';
+  // Ollama's stop sequence (a column-0 `}`) ends the generation before the second function...
+  const stopped = greedy.slice(0, greedy.indexOf(STOP[0]));
+  // ...and brace depth cuts it when the stop sequence is not applied.
+  for (const generated of [stopped, greedy]) {
+    const reply = completeFunction(signature, generated, 'ts');
+    assert.doesNotMatch(reply, /removePick/);
+    const sp = spliceFunction('// store\nexport {};\n', reply, 'addPick', 'x.ts');
+    assert.equal(sp.ok, true, sp.detail);
+    assert.match(sp.body, /export function addPick\(id: string\): void \{\n  const s = `\$\{id\}\}`;[\s\S]*\n\}\n$/);
+  }
+});
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -47,10 +106,12 @@ test('task_try passes raw through as --raw (default note mode), and CD-raw sessi
     assert.ok(!(tool.inputSchema.required ?? []).includes('raw'));
     await client.callTool({ name: 'task_try', arguments: { task: 't03-book-availability', brief: 'note' } });
     await client.callTool({ name: 'task_try', arguments: { task: 't03-book-availability', brief: 'whole prompt', raw: true } });
-    assert.equal(seen.length, 2);
-    assert.ok(!seen[0].includes('--raw'));
+    await client.callTool({ name: 'task_try', arguments: { task: 't06-picks-store', brief: 'note', fn: 'addPick' } });
+    assert.equal(seen.length, 3);
+    assert.ok(!seen[0].includes('--raw') && !seen[0].includes('--fn'));
     assert.equal(seen[1].at(-1), '--raw');
     assert.equal(readFileSync(seen[1][seen[1].indexOf('--brief') + 1], 'utf8'), 'whole prompt');
+    assert.deepEqual(seen[2].slice(-2), ['--fn', 'addPick']);
   } finally {
     await client.close(); await server.close();
     rmSync(join(HERE, '..', 'results', 'claude-drive', 'briefs', run), { recursive: true, force: true });
