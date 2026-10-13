@@ -22,11 +22,25 @@
 //   "the <x> number (text starting", a table page called "one <x>"     -> detail, unless it also reads as a list
 //   both list and one record, or neither                               -> null: the builder's call, with why
 const esc = (x) => String(x).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-/** "/books/<id>" or "/books/[id]" -> "/books/:id". */
+/**
+ * A spec route in Line's form: "/books/<id>" or "/books/[id]" -> "/books/:id".
+ * @param {string} r
+ * @returns {string}
+ */
 export const lineRoute = (r) => String(r).trim().replace(/<([A-Za-z]\w*)>/g, ':$1').replace(/\[([A-Za-z]\w*)\]/g, ':$1');
+/**
+ * A name in PascalCase: "my picks" -> "MyPicks".
+ * @param {string} s
+ * @returns {string}
+ */
 export const pascal = (s) => String(s).split(/[^A-Za-z0-9]+/).filter(Boolean).map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join('');
 
-/** The routes a point names in backticks, each with whether it is only a link target ("opens `/x`", "to `/x`"). */
+/**
+ * The routes a point names in backticks, each with whether it puts a page there ("page at") or is only a link target
+ * ("opens `/x`", "to `/x`").
+ * @param {string} text
+ * @returns {{route: string, at: boolean, target: boolean}[]}
+ */
 export function namedRoutes(text) {
   return [...String(text).matchAll(/`(\/[^`\s]*)`/g)].map((m) => {
     const before = String(text).slice(Math.max(0, m.index - 24), m.index);
@@ -38,7 +52,12 @@ export function namedRoutes(text) {
 const NAV_COUNT = /\bevery page shows a link\b[^.]*?(?:\(\d+\)|number of|count)/i;
 const EMPTY_TEXT = /\b(?:with no \w+|with none|when (?:it is |there is )?(?:empty|nothing)|an empty \w+|when nothing is left)\b[^"]*?\bsays? "([^"]+)"/i;
 
-/** 'nav-count' | 'empty' | null, and the quoted empty text for 'empty'. */
+/**
+ * A point's slot role: 'nav-count' (every page shows a link with a count: the layout's nav slot, with its label) or
+ * 'empty' (the quoted text a page shows when it has nothing: its empty slot); null for any other point.
+ * @param {string} text
+ * @returns {{role: 'nav-count', label: string|null} | {role: 'empty', text: string} | null}
+ */
 export function pointRole(text) {
   if (NAV_COUNT.test(String(text))) return { role: 'nav-count', label: /\blink whose name starts with "([^"]+)"/i.exec(String(text))?.[1] ?? null };
   const e = EMPTY_TEXT.exec(String(text));
@@ -47,7 +66,7 @@ export function pointRole(text) {
 
 /**
  * The points of a feature that are about its page at `route` (see the header).
- * @param {{name: string, points: {id: string, text: string}[]}} feature
+ * @param {{points: {id: string, text: string}[]}} feature
  * @param {string} route In Line's form.
  * @param {string[]} routes The feature's page routes, in spec order.
  * @returns {{id: string, text: string}[]}
@@ -127,5 +146,9 @@ export function memberState(spec, feature, routes) {
   return because.length ? { because } : null;
 }
 
-/** The store generator call for a feature's member selection (packages/core/store.mjs, #927). */
+/**
+ * The store generator call for a feature's member selection (packages/core/store.mjs, #927).
+ * @param {string} feature
+ * @returns {string}
+ */
 export const storeHint = (feature) => `construct create store ${pascal(feature)} --feature ${feature} --shape list`;

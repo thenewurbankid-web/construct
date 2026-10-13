@@ -218,9 +218,10 @@ export function basePageSource(root, layout, o) {
   const has = (n) => Boolean(props?.some((p) => p.name === n));
   const head = `// @line-base ${o.libraryId}\n`;
   const shape = /List/.test(o.libName) ? 'list' : /Detail/.test(o.libName) ? 'detail' : null;
-  // #933: a detail page shows one fixture record by its id, so only a feature whose spec names a route with a parameter
-  // (`/books/<id>`) gets one; a confirmation or summary page (`/request/done`) is not a fixture record.
-  const byId = shape !== 'detail' || /`\/[^`]*(?:<\w+>|:\w+|\[\w+\])[^`]*`/.test(text);
+  // #933: a detail page shows one fixture record by its id, so a feature whose spec names its routes and none with a
+  // parameter (`/request`, `/request/done`: a confirmation, not a record) is not wired to the fixture.
+  const routesNamed = [...text.matchAll(/`(\/[^`\s]*)`/g)].map((m) => m[1]);
+  const byId = shape !== 'detail' || !routesNamed.length || routesNamed.some((r) => /<\w+>|:\w+|\[\w+\]/.test(r));
   const fixture = props && has('title') && has('children') && byId ? fixtureFor(arrayFixtures(root, layout), o.feature, text, shape) : null;
   if (fixture && shape) {
     const wired = wiredPage(root, layout, o, { fixture, shape, text, props, has, head });
