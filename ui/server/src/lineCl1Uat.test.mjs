@@ -90,7 +90,7 @@ test('UAT cl1: spec from code, two Cockpit sessions with the same refusal, then 
   assert.equal(files.length, 1);
   const md = fs.readFileSync(path.join(dir, files.find((f) => f.includes('setfragment'))), 'utf8');
   assert.match(md, /^# \[Framework\] Editing a code fragment \(line\.setFragment\) is refused with LINE-DIR and no typed fix works\n\n> Draft only/);
-  assert.match(md, /## Spec slice \(rules\)\n- \*\*LINE-DIR\*\* \(error\): A feature uses the library and never another feature/);
+  assert.match(md, /## Spec slice \(rules\)\n- \*\*LINE-DIR\*\* \(error\): A feature uses the library, and uses another feature only through what that feature exports from its public index/);
   assert.match(md, /- `features\/billing\/pages\/InvoicesPage\.tsx`: The refused code imports InvoicesPage\.tsx\./);
 
   // Step 5: the context Line hands Claude for the latest miss.

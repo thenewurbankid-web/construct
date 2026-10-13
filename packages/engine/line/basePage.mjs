@@ -15,6 +15,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { ts } from '@construct/ast/lazy';
+import { fixtureRows } from '@line/construct-core/profiles/line/checks';
+import { moduleScope } from './scope/moduleScope.mjs';
 
 const posix = path.posix;
 const MONEY = /(price|cost|amount|total|fee)$/i;
@@ -61,22 +63,46 @@ function mentions(text, key) {
 }
 
 /**
- * The library's array fixtures (library/fixtures/*.json holding a non-empty array of objects).
- * @param {string} root Project root.
- * @param {{library: string}} layout The project layout (its library folder).
- * @returns {{stem: string, rel: string, rows: Record<string, unknown>[]}[]}
+ * @typedef {{stem: string, rel: string, rows: Record<string, unknown>[], wrapped?: boolean, via?: {feature: string, name: string}}} ArrayFixture
+ *   An array fixture: `wrapped` when its rows sit under "value" next to its "$lineBase" (a based feature fixture);
+ *   `via` when it belongs to another feature and is imported as `name` from that feature's public index.
  */
-export function arrayFixtures(root, layout) {
+
+/** The array fixture in one JSON file (a non-empty array of objects, bare or wrapped with its base), or null. */
+function readArrayFixture(root, rel) {
+  let data;
+  try { data = JSON.parse(fs.readFileSync(path.join(root, rel), 'utf8')); } catch { return null; }
+  const rows = fixtureRows(data);
+  if (!rows || !rows.length || !rows.every((r) => r && typeof r === 'object' && !Array.isArray(r))) return null;
+  return { stem: posix.basename(rel, '.json'), rel, rows: /** @type {Record<string, unknown>[]} */ (rows), ...(Array.isArray(data) ? {} : { wrapped: true }) };
+}
+
+/**
+ * The array fixtures a page may use (*.json holding a non-empty array of objects, bare or as `{ "$lineBase", "value" }`).
+ * Without `feature`: the library's (library/fixtures). With `feature` (#935 feature modules): that feature's own
+ * fixtures first, then the fixtures exported from the public index of each feature it imports, then the library's.
+ * @param {string} root Project root.
+ * @param {{library: string, features?: string}} layout The project layout (its library folder).
+ * @param {string} [feature] The feature whose module scope to read.
+ * @returns {ArrayFixture[]}
+ */
+export function arrayFixtures(root, layout, feature) {
   const dir = `${layout.library}/fixtures`;
   let names = [];
-  try { names = fs.readdirSync(path.join(root, dir)).filter((n) => n.endsWith('.json')).sort(); } catch { return []; }
-  const out = [];
-  for (const n of names) {
-    let data;
-    try { data = JSON.parse(fs.readFileSync(path.join(root, dir, n), 'utf8')); } catch { continue; }
-    if (Array.isArray(data) && data.length && data.every((r) => r && typeof r === 'object' && !Array.isArray(r))) out.push({ stem: n.slice(0, -5), rel: `${dir}/${n}`, rows: data });
+  try { names = fs.readdirSync(path.join(root, dir)).filter((n) => n.endsWith('.json')).sort(); } catch { /* no library fixtures */ }
+  const library = /** @type {ArrayFixture[]} */ (names.map((n) => readArrayFixture(root, `${dir}/${n}`)).filter(Boolean));
+  if (!feature) return library;
+  let scope;
+  try { scope = moduleScope(root, feature); } catch { return library; }
+  const scoped = [];
+  for (const f of scope.fixtures) {
+    if (f.from === 'library') continue;
+    const fx = readArrayFixture(root, f.file);
+    if (!fx) continue;
+    if (f.from === 'own') { scoped.push(fx); continue; }
+    if (f.export && f.export !== 'default') scoped.push({ ...fx, via: { feature: f.from, name: f.export } });
   }
-  return out;
+  return [...scoped, ...library];
 }
 
 /**
@@ -216,7 +242,7 @@ export function basePageSource(root, layout, o) {
   const has = (n) => Boolean(props?.some((p) => p.name === n));
   const head = `// @line-base ${o.libraryId}\n`;
   const shape = /List/.test(o.libName) ? 'list' : /Detail/.test(o.libName) ? 'detail' : null;
-  const fixture = props && has('title') && has('children') ? fixtureFor(arrayFixtures(root, layout), o.feature, text, shape) : null;
+  const fixture = props && has('title') && has('children') ? fixtureFor(arrayFixtures(root, layout, o.feature), o.feature, text, shape) : null;
   if (fixture && shape) {
     const wired = wiredPage(root, layout, o, { fixture, shape, text, props, has, head });
     if (wired) return wired;
@@ -254,12 +280,16 @@ function wiredPage(root, layout, o, { fixture, shape, text, props, has, head }) 
   const lines = [
     `${head}${client}import Link from 'next/link';`,
     `import ${o.binding} from '${o.spec}';`,
-    `import ${data} from '${fixtureSpec}';`,
+    // #935: another feature's fixture comes through that feature's public index, never from its file.
+    fixture.via ? `import { ${fixture.via.name === data ? data : `${fixture.via.name} as ${data}`} } from '${(() => { const r = posix.relative(posix.dirname(o.dest), `${layout.features}/${fixture.via.feature}`); return r.startsWith('.') ? r : `./${r}`; })()}';`
+      : `import ${data} from '${fixtureSpec}';`,
     '',
   ];
   if (typed) lines.push(`type ${Type} = { ${used.map((f) => `${f.key}: ${f.type}`).join('; ')} };`, '');
   if (money) lines.push(typed ? 'const money = (n: number) => `$${n.toFixed(2)}`;' : 'const money = (n) => `$${n.toFixed(2)}`;', '');
-  const rows = typed ? `${data} as ${Type}[]` : data;
+  // A based fixture keeps its rows under "value" ({ "$lineBase", "value": [...] }).
+  const raw = fixture.wrapped ? `${data}.value` : data;
+  const rows = typed ? `${raw} as ${Type}[]` : raw;
   const ex = extra.map((f) => ` ${f}`).join('');
   if (shape === 'list') {
     const key = id.type === 'string' ? `item.${id.key}` : `String(item.${id.key})`;

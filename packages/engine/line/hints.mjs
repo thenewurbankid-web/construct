@@ -607,7 +607,7 @@ const TOOL_RULES = Object.freeze({
 /** @type {Readonly<Record<string, CardExample>>} */
 const RULE_EXAMPLES = Object.freeze({
   'LINE-BASE': '// @line-base pages/ListPage   (the first line of a feature page)',
-  'LINE-DIR': "import { Button } from '../../../library/components/Button';   (never ../../other-feature/...)",
+  'LINE-DIR': "import { Button } from '../../../library/components/Button'; another feature only through its index: import { CartLink } from '../../cart';   (never ../../cart/components/...)",
   'LINE-OWNER': (x, own) => { const pg = cardPage(x, own); return pg ? `${pg} belongs to feature ${featureOfPath(pg) ?? '<its feature>'} only` : null; },
   'LINE-LAYOUT': 'features/<feature>/{components,pages,usecases,services,domains,expressions,fixtures}/',
   'PAGE-003': "a page imports components and usecases: import { useCart } from '../usecases/useCart';",

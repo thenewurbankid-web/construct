@@ -229,12 +229,24 @@ export function refuseRouteProps(root, layout, files, page) {
   throw new LineOpError(sentence, 'TYPE_ERROR', detail, page.then ? fixes.map((f) => ({ ...f, sentence: `${f.sentence} ${page.then}` })) : fixes);
 }
 
-/** Code files of the library and of `feature` (the places a feature or library file may import from). */
-function importableFiles(root, layout, file) {
+/**
+ * The code files `file` may import from: the library, its own feature, and (for a feature file, #935 feature modules)
+ * every other feature's public index (features/<other>/index.ts), the one way into another feature.
+ * @param {string} root Project root.
+ * @param {{library: string, features: string}} layout The project layout.
+ * @param {string} file Root-relative path of the importing file.
+ * @returns {string[]} Root-relative paths.
+ */
+export function importableFiles(root, layout, file) {
   const segs = file.split('/');
   const fBase = layout.features.split('/').length;
   const own = file.startsWith(`${layout.features}/`) ? `${layout.features}/${segs[fBase]}/` : null;
-  return codeFiles(root).filter((r) => r.startsWith(`${layout.library}/`) || (own && r.startsWith(own)));
+  const otherIndex = (r) => {
+    if (!own || !r.startsWith(`${layout.features}/`) || r.startsWith(own)) return false;
+    const rest = r.slice(layout.features.length + 1).split('/');
+    return rest.length === 2 && /^index\.[cm]?[jt]sx?$/.test(rest[1]);
+  };
+  return codeFiles(root).filter((r) => r.startsWith(`${layout.library}/`) || (own && r.startsWith(own)) || otherIndex(r));
 }
 
 /** `spec` re-pointed at `target` from `file` (a relative specifier with no extension). */

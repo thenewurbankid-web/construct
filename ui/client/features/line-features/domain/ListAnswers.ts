@@ -31,7 +31,7 @@ export function listExplain(project: LineProject, id: string): ChatMessage {
   return {
     id,
     from: 'line',
-    text: `Your library holds ${plural(lib, 'complete item', 'complete items')} (components, pages, workflows and fixtures). Each feature owns its own items, and every one of them is based on exactly one library item. A feature uses the library, never another feature, and keeps its spec in its own folder.`,
+    text: `Your library holds ${plural(lib, 'complete item', 'complete items')} (components, pages, workflows and fixtures). Each feature owns its own items, and every one of them is based on exactly one library item. A feature uses the library, and another feature only through what that feature exports from its public index, and keeps its spec in its own folder.`,
     details: [`library: ${project.layout.library}/`, `features: ${project.layout.features}/`],
   };
 }
