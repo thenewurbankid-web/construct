@@ -13,13 +13,21 @@ import { gatherSymbols } from '../coder/symbols.mjs';
 const textOf = (root, file, text) => (typeof text === 'string' ? text : fs.readFileSync(path.join(root, file), 'utf8'));
 const offsetOf = (text, line, col) => text.split('\n').slice(0, line - 1).reduce((a, l) => a + l.length + 1, 0) + col - 1;
 
-/** line_next_steps: the Trace step for a stable id, every legal option, and the Ollama enum. */
+/**
+ * line_next_steps: the Trace step for a stable id, every legal option, and the Ollama enum.
+ * @param {string} root A Line project root.
+ * @param {{need: string, from: string}} a
+ * @returns {any} traceStep(): {ok, need, from, step, options, schema, via} or {ok: false, reason}.
+ */
 export const lspNextSteps = (root, { need, from }) => traceStep(root, { need, from });
 
 /**
  * line_completions: the names valid at a point, with the Ollama `format` enum. `code` (a tsc error code) asks for the
  * closed choice at that failure (import paths ranked by exports); else `at` (a marker in `text`, or an offset) or
  * line/col is the point.
+ * @param {string} root Project root.
+ * @param {{file: string, text?: string, at?: any, line?: number, col?: number, code?: number|string}} a
+ * @returns {any} {ok, items, schema, ...} or {ok: false, reason}.
  */
 export function lspCompletions(root, { file, text, at, line, col, code }) {
   const t = textOf(root, file, text);
@@ -30,7 +38,12 @@ export function lspCompletions(root, { file, text, at, line, col, code }) {
   return c.ok ? { ...c, schema: completionSchema(c.items.map((i) => i.name)) } : c;
 }
 
-/** line_symbol_info: one symbol's exact type and where it is declared, or (no symbol) every export of the file. */
+/**
+ * line_symbol_info: one symbol's exact type and where it is declared, or (no symbol) every export of the file.
+ * @param {string} root Project root.
+ * @param {{file: string, symbol?: string}} a
+ * @returns {any} {ok, symbol, type, kind, locations}, gatherSymbols() for a whole file, or {ok: false, reason}.
+ */
 export function lspSymbolInfo(root, { file, symbol }) {
   if (!symbol) return gatherSymbols(root, [file]);
   const q = quickInfo(root, file, symbol); const d = definition(root, file, symbol);
@@ -38,10 +51,20 @@ export function lspSymbolInfo(root, { file, symbol }) {
   return { ok: true, symbol, type: q.ok ? q.type : null, kind: q.ok ? q.kind : null, locations: d.ok ? d.locations : [] };
 }
 
-/** line_smith_check: a function's Smith sentences against a Smith test plan, exact match only. */
+/**
+ * line_smith_check: a function's Smith sentences against a Smith test plan, exact match only.
+ * @param {string} root Project root.
+ * @param {{file: string, fn: string, plan: string[], text?: string}} a
+ * @returns {Promise<any>} smithCheck().
+ */
 export const lspSmithCheck = (root, { file, fn, plan, text }) => smithCheck(file, textOf(root, file, text), fn, plan);
 
-/** line_fixes: the deterministic fixes as edits against the text (start, end, newText), never applied. */
+/**
+ * line_fixes: the deterministic fixes as edits against the text (start, end, newText), never applied.
+ * @param {string} root Project root.
+ * @param {{file: string, text?: string}} a
+ * @returns {any} {ok, file, edits, applied, other, unfixed, applies: false} or {ok: false, reason}.
+ */
 export function lspFixes(root, { file, text }) {
   const f = fixes(root, file, typeof text === 'string' ? { text } : {});
   return f.ok ? { ok: true, file: f.file, edits: f.edits, applied: f.applied, other: f.other, unfixed: f.unfixed, applies: false } : f;

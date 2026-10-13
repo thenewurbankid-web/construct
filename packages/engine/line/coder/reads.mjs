@@ -125,7 +125,7 @@ export function importableFor(root, layout, file) {
  * What one file may import, in English: each importable file's specifier, one sentence and its exports.
  * @param {string} root
  * @param {{file: string}} a
- * @returns {{ok: true, file: string, entries: {file: string, import: string, sentence: string, exports: string[]}[], sentence: string}}
+ * @returns {{ok: true, file: string, entries: {file: string, import: string, sentence: string, exports: string[], types?: string[]}[], sentence: string}}
  */
 export function scopeOf(root, { file }) {
   const f = projectFile(file);
@@ -142,7 +142,9 @@ export function scopeOf(root, { file }) {
     const sentence = staticSummarizer.summarize(root, x, { item: items.get(x) }).sentence.replace(/, exporting [^.]*\./, '.');
     let exports = [];
     try { exports = moduleContract(path.join(root, x)).exports; } catch { exports = []; }
-    return { file: x, import: specifierFor(root, f, x), sentence, exports };
+    /** @type {{file: string, import: string, sentence: string, exports: string[], types?: string[]}} */
+    const entry = { file: x, import: specifierFor(root, f, x), sentence, exports };
+    return entry;
   });
   // #945 lsp.gatherer on: each export with its exact type (Line LSP definition + quickInfo), not only its name. A read
   // never writes, so shadow here is the plain list (the research read_file logs the shadow rows).

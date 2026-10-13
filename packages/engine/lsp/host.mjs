@@ -17,15 +17,29 @@ export const MAX_CACHED = 3;
 export const SOURCE_EXT = new Set(['.ts', '.tsx', '.js', '.jsx', '.mts', '.cts', '.mjs', '.cjs']);
 const SKIP_DIRS = new Set(['node_modules', '.next', '.git', 'dist', 'build', 'coverage', '.out']);
 let tsLibDirCache;
+/**
+ * TypeScript's own lib folder (lib.*.d.ts), the one read outside the project the host allows.
+ * @returns {string} The absolute folder.
+ */
 export const tsLibDir = () => (tsLibDirCache ??= path.dirname(ts.getDefaultLibFilePath({})));
 export { ts };
 
 const cache = new Map(); // key -> entry
 
-/** True when `p` is `root` itself or something beneath it. */
+/**
+ * True when `p` is `root` itself or something beneath it.
+ * @param {string} root An absolute folder.
+ * @param {string} p An absolute path.
+ * @returns {boolean}
+ */
 export const inside = (root, p) => p === root || p.startsWith(root + path.sep);
 
-/** Every source file under `root` (no symlinks followed, build/vendor folders skipped); `.d.ts` only with includeDts. */
+/**
+ * Every source file under `root` (no symlinks followed, build/vendor folders skipped); `.d.ts` only with includeDts.
+ * @param {string} root The project root.
+ * @param {{includeDts?: boolean}} [o]
+ * @returns {string[]} Absolute paths.
+ */
 export function sourceFiles(root, { includeDts = false } = {}) {
   const out = [];
   const visit = (dir) => {
@@ -42,7 +56,11 @@ export function sourceFiles(root, { includeDts = false } = {}) {
   return out;
 }
 
-/** Read the tsconfig with every read confined to `root`. -> { options } | { reason } */
+/**
+ * Read the tsconfig with every read confined to `root`. -> { options } | { reason }
+ * @param {string} root The project root.
+ * @returns {{options?: any, reason?: string}}
+ */
 export function readOptions(root) {
   const configPath = path.join(root, 'tsconfig.json');
   if (!fs.existsSync(configPath)) return { reason: 'the project has no tsconfig.json at its root' };
@@ -70,6 +88,11 @@ export function readOptions(root) {
   return { options: { ...parsed.options, noEmit: true, allowJs: true, checkJs: false, skipLibCheck: true, types: [] } };
 }
 
+/**
+ * A file's version for the host: its mtime and size.
+ * @param {string} file An absolute path.
+ * @returns {string} `mtime:size`, or "0" when the file cannot be read.
+ */
 export function mtimeOf(file) { try { const s = fs.statSync(file); return `${s.mtimeMs}:${s.size}`; } catch { return '0'; } }
 const hashOf = (text) => crypto.createHash('sha1').update(text).digest('hex').slice(0, 16);
 
@@ -132,6 +155,9 @@ export function openProject(root, { includeDts = false, extraRoots = [], extraFi
 /**
  * Re-version only the files that changed (content hash), adding new ones and dropping deleted ones; the service
  * re-parses those files and nothing else. -> the files whose version actually changed.
+ * @param {any} entry A cached host entry (openProject().entry).
+ * @param {string[]} changed Absolute paths of the files that changed.
+ * @returns {string[]} The files whose version changed.
  */
 export function updateFiles(entry, changed) {
   const touched = [];
@@ -149,7 +175,15 @@ export function updateFiles(entry, changed) {
   return touched;
 }
 
-/** Run `fn()` while `file` reads as `text` (an unsaved buffer); the overlay is always removed afterwards. */
+/**
+ * Run `fn()` while `file` reads as `text` (an unsaved buffer); the overlay is always removed afterwards.
+ * @template T
+ * @param {any} entry A cached host entry (openProject().entry).
+ * @param {string} file An absolute path.
+ * @param {string|null|undefined} text The unsaved text; null runs fn on the disk version.
+ * @param {() => T} fn
+ * @returns {T} What fn returns.
+ */
 export function withOverlay(entry, file, text, fn) {
   if (text == null) return fn();
   const f = path.resolve(file);

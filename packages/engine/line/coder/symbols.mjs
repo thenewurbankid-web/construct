@@ -14,7 +14,12 @@ const declName = (st) => {
   return null;
 };
 
-/** The names one TS file exports by declaration. */
+/**
+ * The names one TS file exports by declaration.
+ * @param {string} rel Root-relative file (its extension picks TS or TSX).
+ * @param {string} text
+ * @returns {string[]}
+ */
 export function exportedNames(rel, text) {
   const sf = ts.createSourceFile(rel, text, ts.ScriptTarget.Latest, true, /\.tsx$/.test(rel) ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
   return sf.statements.filter((s) => /** @type {any} */ (s).modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword)).map(declName).filter(Boolean);

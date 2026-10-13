@@ -15,11 +15,11 @@ import { lspMode, shadowLog } from './profile.mjs';
  * @param {string} root A Line project root.
  * @param {{need: string, from: string}} node `need` the stable id <feature>/<kind>/<name>; `from` the asking feature.
  * @param {{facts?: any}} [o]
- * @returns {{ok: true, step: {step: string, target: string, reason_id: string, why?: string}|null, options: any[], schema: object} | {ok: false, reason: string}}
+ * @returns {{ok: true, need: string, from: string, step: {step: string, target: string, reason_id: string, why?: string}|null, options: any[], schema: any, via: 'nextSteps'} | {ok: false, reason: string}}
  */
 export function traceStep(root, node, o = {}) {
   const n = nextSteps(root, node, o);
-  if (!n.ok) return n;
+  if (n.ok === false) return n;
   return { ok: true, need: n.need, from: n.from, step: n.options[0] ?? null, options: n.options, schema: n.schema, via: 'nextSteps' };
 }
 

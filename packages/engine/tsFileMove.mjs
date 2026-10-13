@@ -27,12 +27,14 @@ export { MAX_FILES, MAX_CACHED };
  * harness's importFixer asks it for code fixes). `readRoots` are extra folders the host may read, e.g. a node_modules
  * above the project so `react` resolves; nothing is ever written. Callers apply any edits themselves.
  * @returns {{ok:true, service:import('typescript').LanguageService, files:string[], options:object} | {ok:false, reason:string}}
+ * @param {string} root The project root.
+ * @param {{readRoots?: string[]}} [o] Read-only folders outside the project (e.g. the node_modules that holds React).
  */
 export function projectLanguageService(root, { readRoots = [] } = {}) {
   try {
     // #943: the shared host (lsp/host.mjs), readRoots as its read-only extraRoots
     const proj = openProject(path.resolve(root), { extraRoots: readRoots.map((x) => path.resolve(x)) });
-    if (!proj.ok) return { ok: false, reason: proj.reason };
+    if (proj.ok === false) return { ok: false, reason: proj.reason };
     return { ok: true, service: proj.service, files: proj.entry.files, options: proj.entry.options };
   } catch (e) {
     return { ok: false, reason: `TypeScript could not analyse the project (${String(e?.message || e).slice(0, 120)})` };
@@ -56,7 +58,7 @@ export function planFileMove(root, oldAbs, newAbs) {
     if (!inside(r, from) || !inside(r, to)) return { ok: false, reason: 'the file is outside the project' };
     if (!SOURCE_EXT.has(path.extname(from))) return { ok: false, reason: 'not a TypeScript/JavaScript source file' };
     const proj = openProject(r, { extraFiles: [from] });
-    if (!proj.ok) return { ok: false, reason: proj.reason };
+    if (proj.ok === false) return { ok: false, reason: proj.reason };
     const { files } = proj;
     const changes = proj.service.getEditsForFileRename(from, to, {}, { importModuleSpecifierEnding: 'minimal' });
     const edits = [];
@@ -206,7 +208,12 @@ function ownCallEdits(source, oldAbs, newAbs) {
   return edits;
 }
 
-/** Apply `edits` (all for one file) to `source`; ranges are the ORIGINAL offsets, applied from the end so they stay valid. */
+/**
+ * Apply `edits` (all for one file) to `source`; ranges are the ORIGINAL offsets, applied from the end so they stay valid.
+ * @param {string} source
+ * @param {{start: number, end: number, newText: string}[]} edits
+ * @returns {string}
+ */
 export function applyEdits(source, edits) {
   let out = source;
   for (const e of [...edits].sort((a, b) => b.start - a.start)) {

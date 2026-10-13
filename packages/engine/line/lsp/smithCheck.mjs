@@ -8,13 +8,17 @@ import { smithIndexFile, smithDiagnostics, smithReady, returnsJsx } from '../../
 import { lspMode, shadowLog } from './profile.mjs';
 
 /**
+ * @typedef {{ok: boolean, skipped?: string, reason?: string, pass?: boolean, mode?: 'exact'|'elements', exact?: number, missing?: any[], extra?: any[], sentence?: string}} SmithCheckResult
+ */
+
+/**
  * Compare one filled function with its Smith test plan.
  * @param {string} rel Root-relative file of the function.
  * @param {string} source The file's text.
  * @param {string} fn The function's name.
  * @param {string[]|null|undefined} plan The Smith test plan sentences.
  * @param {{ready?: () => boolean}} [o]
- * @returns {Promise<{ok: true, skipped: string} | {ok: true, pass: boolean, exact: number, missing: any[], extra: any[], sentence: string}>}
+ * @returns {Promise<SmithCheckResult>}
  */
 export async function smithCheck(rel, source, fn, plan, o = {}) {
   if (!Array.isArray(plan) || !plan.length) return { ok: true, skipped: 'the step has no Smith test plan' };
@@ -37,11 +41,16 @@ export async function smithCheck(rel, source, fn, plan, o = {}) {
 
 /**
  * smithCheck under the lsp.smithCheck switch. on: a mismatch is a failure (layer smith); shadow: logged, never fails.
+ * @param {string} root Project root.
+ * @param {{id: string, file: string, fn: string, smith?: string[]}} unit The path unit (its `smith` is the plan).
+ * @param {string} source The filled file.
+ * @param {{lsp?: Record<string, unknown>|null, ready?: () => boolean}} [o]
  * @returns {Promise<{mode: string, failure: object|null, result: any}>}
  */
 export async function smithCheckStep(root, unit, source, o = {}) {
   const mode = lspMode(root, 'smithCheck', o.lsp ?? null);
   if (mode === 'off') return { mode, failure: null, result: null };
+  /** @type {SmithCheckResult} */
   let result;
   try { result = await smithCheck(unit.file, source, unit.fn, unit.smith, o); } catch (e) { result = { ok: false, reason: String(/** @type {any} */ (e)?.message ?? e).slice(0, 200) }; }
   if (mode === 'shadow') {

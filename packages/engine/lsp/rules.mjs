@@ -26,7 +26,12 @@ function violationsOf(root, rel) {
   return r.violations.filter((v) => v.file === rel || v.file === path.join(root, rel));
 }
 
-/** One line per violation of `file`: `<file>:<line> <RULE> <message>`. */
+/**
+ * One line per violation of `file`: `<file>:<line> <RULE> <message>`.
+ * @param {string} root Project root.
+ * @param {string} file Absolute or root-relative.
+ * @returns {any} {ok, file, count, rules, lines, more?, ms} or {ok: false, reason}.
+ */
 export function ruleDiagnostics(root, file) {
   return guard(() => {
     const t0 = Date.now();
@@ -38,13 +43,18 @@ export function ruleDiagnostics(root, file) {
   });
 }
 
-/** The typed fix(es) of each violation where one exists: { rule, line, fixes: [{id, sentence, tool}] }; advice-only fixes have tool null. */
+/**
+ * The typed fix(es) of each violation where one exists: { rule, line, fixes: [{id, sentence, tool}] }; advice-only fixes have tool null.
+ * @param {string} root Project root.
+ * @param {string} file Absolute or root-relative.
+ * @returns {any} {ok, file, violations, withFixes, items, more?, ms} or {ok: false, reason}.
+ */
 export function ruleFixes(root, file) {
   return guard(() => {
     const t0 = Date.now();
     const r = path.resolve(root);
     const rel = relOf(r, file);
-    const withFx = withViolationFixes(r, violationsOf(r, rel));
+    const withFx = withViolationFixes(r, /** @type {any[]} */ (violationsOf(r, rel)));
     const items = withFx.filter((v) => v.fixes?.length).map((v) => ({
       rule: v.rule, line: v.line ?? 1, key: v.key,
       fixes: v.fixes.slice(0, 3).map((f) => ({ id: f.id, sentence: String(f.sentence).slice(0, 160), tool: f.step?.tool ?? null })),
@@ -61,9 +71,13 @@ const featuresOf = (root) => { try { return fs.readdirSync(path.join(root, 'feat
 /**
  * The project's Line facts by stable id: each logic function (with its stub check) and each logic module, and what
  * each feature's index exports. Read from moduleScope + stubProblems on disk.
+ * @param {string} root A Line project root.
+ * @returns {{fns: Map<string, any>, modules: Set<string>, exportsBy: Record<string, string[]>}}
  */
 export function lineFacts(root) {
-  const fns = new Map(); const modules = new Set(); const exportsBy = {};
+  const fns = new Map(); const modules = new Set();
+  /** @type {Record<string, string[]>} */
+  const exportsBy = {};
   for (const f of featuresOf(root)) {
     const s = moduleScope(root, f);
     exportsBy[f] = s.exports.map((e) => e.name);
@@ -86,7 +100,8 @@ export function lineFacts(root) {
  * is a fact on disk; an option whose precondition fails is not offered, so the enum only holds legal moves.
  * @param {string} root Project root (a Line project: features/<f>/...).
  * @param {{need: string, from: string}} node `need` is the stable id the node must produce; `from` the asking feature.
- * @returns {{ok: true, options: {step: string, target: string, reason_id: string}[], schema: object, facts: string[]} | {ok: false, reason: string}}
+ * @param {{facts?: any}} [o] `facts`: lineFacts(root), when the caller already has them.
+ * @returns {{ok: true, need: string, from: string, options: {step: string, target: string, reason_id: string, why?: string}[], schema: any, ms: number} | {ok: false, reason: string}}
  */
 export function nextSteps(root, node, { facts = null } = {}) {
   return guard(() => {
