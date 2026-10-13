@@ -17,102 +17,13 @@
 // project is answered from memory) and dropped when the tsconfig changes.
 import fs from 'node:fs';
 import path from 'node:path';
-import { ts } from '@construct/ast/lazy';
+import { ts, MAX_FILES, MAX_CACHED, SOURCE_EXT, inside, openProject, clearHostCache } from './lsp/host.mjs';
 
-export const MAX_FILES = 4000;
-export const MAX_CACHED = 3;
-const SOURCE_EXT = new Set(['.ts', '.tsx', '.js', '.jsx', '.mts', '.cts', '.mjs', '.cjs']);
-const SKIP_DIRS = new Set(['node_modules', '.next', '.git', 'dist', 'build', 'coverage']);
-let tsLibDirCache;
-const tsLibDir = () => (tsLibDirCache ??= path.dirname(ts.getDefaultLibFilePath({})));
-
-const cache = new Map(); // root -> { configMtime, service, versions:Map<file, string>, files:string[] }
-
-/** True when `p` is `root` itself or something beneath it. */
-const inside = (root, p) => p === root || p.startsWith(root + path.sep);
-
-function sourceFiles(root) {
-  const out = [];
-  const visit = (dir) => {
-    if (out.length > MAX_FILES) return;
-    let entries = [];
-    try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
-    for (const e of entries) {
-      const p = path.join(dir, e.name);
-      if (e.isSymbolicLink()) continue; // never follow a link out of the project
-      if (e.isDirectory()) { if (!SKIP_DIRS.has(e.name)) visit(p); } else if (SOURCE_EXT.has(path.extname(e.name)) && !e.name.endsWith('.d.ts')) out.push(p);
-    }
-  };
-  visit(root);
-  return out;
-}
-
-/** Read the tsconfig with every read confined to `root`. -> { options } | { reason } */
-function readOptions(root) {
-  const configPath = path.join(root, 'tsconfig.json');
-  if (!fs.existsSync(configPath)) return { reason: 'the project has no tsconfig.json at its root' };
-  let escaped = null;
-  const confined = (p) => {
-    const abs = path.resolve(p);
-    if (inside(root, abs) || inside(tsLibDir(), abs)) return true;
-    escaped = escaped || abs;
-    return false;
-  };
-  const host = {
-    ...ts.sys,
-    useCaseSensitiveFileNames: true,
-    readFile: (p) => (confined(p) ? ts.sys.readFile(p) : undefined),
-    fileExists: (p) => confined(p) && ts.sys.fileExists(p),
-    readDirectory: () => [], // the file list is ours (sourceFiles), not the config's include globs
-  };
-  const read = ts.readConfigFile(configPath, host.readFile);
-  if (read.error) return { reason: `tsconfig.json cannot be read (${ts.flattenDiagnosticMessageText(read.error.messageText, ' ').slice(0, 120)})` };
-  const parsed = ts.parseJsonConfigFileContent(read.config, host, root, undefined, configPath);
-  if (escaped) return { reason: 'tsconfig.json (or something it extends) points outside the project, which is never read' };
-  const fatal = parsed.errors.find((d) => d.code !== 18003); // 18003: "no inputs were found" is fine, the file list is ours
-  if (fatal) return { reason: `tsconfig.json is not usable (${ts.flattenDiagnosticMessageText(fatal.messageText, ' ').slice(0, 120)})` };
-  // a checker option set that never emits and never resolves types from outside the project's own reach
-  return { options: { ...parsed.options, noEmit: true, allowJs: true, checkJs: false, skipLibCheck: true, types: [] } };
-}
-
-function mtimeOf(file) { try { return String(fs.statSync(file).mtimeMs); } catch { return '0'; } }
-
-function serviceFor(root, files, options, configMtime) {
-  let entry = cache.get(root);
-  if (entry && entry.configMtime !== configMtime) { entry.service.dispose(); cache.delete(root); entry = undefined; }
-  if (!entry) {
-    entry = { configMtime, versions: new Map(), files: [], options, service: null };
-    const host = {
-      getScriptFileNames: () => entry.files,
-      getScriptVersion: (f) => entry.versions.get(f) ?? (inside(tsLibDir(), f) ? '1' : mtimeOf(f)),
-      getScriptSnapshot: (f) => {
-        const abs = path.resolve(f);
-        if (!inside(root, abs) && !inside(tsLibDir(), abs)) return undefined;
-        try { return ts.ScriptSnapshot.fromString(fs.readFileSync(abs, 'utf8')); } catch { return undefined; }
-      },
-      getCurrentDirectory: () => root,
-      getCompilationSettings: () => entry.options,
-      getDefaultLibFileName: (o) => ts.getDefaultLibFilePath(o),
-      fileExists: (p) => (inside(root, path.resolve(p)) || inside(tsLibDir(), path.resolve(p))) && ts.sys.fileExists(p),
-      readFile: (p) => (inside(root, path.resolve(p)) || inside(tsLibDir(), path.resolve(p)) ? ts.sys.readFile(p) : undefined),
-      directoryExists: (p) => inside(root, path.resolve(p)) && ts.sys.directoryExists(p),
-      getDirectories: () => [],
-      readDirectory: () => [],
-      realpath: (p) => p,
-      useCaseSensitiveFileNames: () => true,
-    };
-    entry.service = ts.createLanguageService(host, ts.createDocumentRegistry(true, root));
-    cache.set(root, entry);
-    while (cache.size > MAX_CACHED) { const oldest = cache.keys().next().value; cache.get(oldest).service.dispose(); cache.delete(oldest); }
-  }
-  entry.options = options;
-  entry.files = files;
-  for (const f of files) entry.versions.set(f, mtimeOf(f)); // an unchanged file keeps its version, so TS keeps its parse
-  return entry;
-}
+// The contained, cached language-service host lives in lsp/host.mjs (#943), shared with the Line LSP.
+export { MAX_FILES, MAX_CACHED };
 
 /** Drop every cached service (tests, or after the project changed on disk in a way mtimes cannot show). */
-export function clearMoveCache() { for (const e of cache.values()) e.service.dispose(); cache.clear(); }
+export function clearMoveCache() { clearHostCache(); }
 
 /**
  * Every edit needed to move `oldAbs` to `newAbs` (both absolute, inside `root`; `oldAbs` must exist, `newAbs` need not).
@@ -127,13 +38,10 @@ export function planFileMove(root, oldAbs, newAbs) {
     const to = path.resolve(newAbs);
     if (!inside(r, from) || !inside(r, to)) return { ok: false, reason: 'the file is outside the project' };
     if (!SOURCE_EXT.has(path.extname(from))) return { ok: false, reason: 'not a TypeScript/JavaScript source file' };
-    const cfg = readOptions(r);
-    if (!cfg.options) return { ok: false, reason: cfg.reason };
-    const files = sourceFiles(r);
-    if (files.length > MAX_FILES) return { ok: false, reason: `the project has more than ${MAX_FILES} source files` };
-    if (!files.includes(from)) files.push(from);
-    const entry = serviceFor(r, files, cfg.options, mtimeOf(path.join(r, 'tsconfig.json')));
-    const changes = entry.service.getEditsForFileRename(from, to, {}, { importModuleSpecifierEnding: 'minimal' });
+    const proj = openProject(r, { extraFiles: [from] });
+    if (!proj.ok) return { ok: false, reason: proj.reason };
+    const { files } = proj;
+    const changes = proj.service.getEditsForFileRename(from, to, {}, { importModuleSpecifierEnding: 'minimal' });
     const edits = [];
     for (const c of changes) {
       const file = path.resolve(c.fileName);
