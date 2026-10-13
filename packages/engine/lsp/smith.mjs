@@ -4,7 +4,9 @@
 //
 //   smithIndexFile(root, rel, source)     -> [{ id, file, name, sentences, empty }]   one file's functions
 //   smithCompletions(context)             -> { items, schema }   sentence templates + Line atoms that fit the node
-//   smithDiagnostics(proposal, index, o)  -> { missing, extra }  proposal sentences with no code, code with no proposal
+//   smithDiagnostics(proposal, index, o)  -> { missing, extra }  proposal sentences with no code, code with no proposal;
+//                                         a JSX-returning function (page, component) is matched per element instead
+//   smithElements(code)                   -> [{ tag, sentence }]  one sentence per JSX element, from to-english's chips
 //   smithDefinition(sentence, index)      -> { ids }             the function(s) a sentence describes
 //   smithReferences(id, index)            -> { sentences }       a function's sentences
 //
@@ -12,7 +14,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { summarizeCode, smithLinks } from '../../summarize/links.mjs';
+import { summarizeCode, smithLinks, toEnglishRaw } from '../../summarize/links.mjs';
 import { toJs, functionsOf, smithInput, smithEmptyReason } from '../../tools/smith-system1/sources.mjs';
 import { capList } from './index.mjs';
 import { ts } from './host.mjs';
@@ -60,19 +62,71 @@ function rawFunctionsOf(rel, source) {
   return out;
 }
 
-/** Index one file: each top-level function (declarations, arrow consts, class methods) to its Smith sentences. */
+/** Index one file: each top-level function (declarations, arrow consts, class methods) to its Smith sentences; a
+ * function that returns JSX also gets `elements` (smithElements: one sentence per element). */
 export async function smithIndexFile(rel, source, { canonical = false } = {}) {
   const out = [];
   let fns = [];
   try { fns = RAW ? rawFunctionsOf(rel, source) : functionsOf(toJs(source, rel)); } catch { fns = []; }
+  let written = [];
+  try { written = rawFunctionsOf(rel, source); } catch { written = []; }
   for (const fn of fns) {
     const s = await summarizeCode(RAW ? fn.code : smithInput(fn), { kind: fn.kind, ...(canonical ? { toEnglishOptions: { canonical: true } } : {}) });
     const all = s.sentences ?? [];
     const failed = s.via === 'static' && !/works in \d+ steps?/.test(all[0] ?? '');
-    out.push({ id: stableIdOf(rel, fn.name), file: rel, name: fn.name, sentences: all.slice(1), title: all[0] ?? '', empty: failed ? 'failed' : smithEmptyReason(all.join(' ')) });
+    const asWritten = written.find((w) => w.name === fn.name)?.code ?? null;
+    const elements = asWritten && returnsJsx(asWritten) ? await smithElements(asWritten) : null;
+    out.push({ id: stableIdOf(rel, fn.name), file: rel, name: fn.name, sentences: all.slice(1), title: all[0] ?? '', empty: failed ? 'failed' : smithEmptyReason(all.join(' ')), ...(elements ? { elements } : {}) });
   }
   return out;
 }
+
+// ---------------------------------------------------------------------------------------------- per JSX element
+const tsx = (code) => ts.createSourceFile('x.tsx', code, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+/** Whether a function's code (TS/TSX as written) returns JSX: a page or a component, matched per element. */
+export function returnsJsx(code) {
+  let hit = false;
+  const visit = (n) => { if (hit) return; if (ts.isJsxElement(n) || ts.isJsxSelfClosingElement(n) || ts.isJsxFragment(n)) { hit = true; return; } ts.forEachChild(n, visit); };
+  visit(tsx(code));
+  return hit;
+}
+const LEAD = new Set(['return', 'shows a', 'a', 'and', 'shows a group', 'a group', 'it returns']);
+const TRAIL = new Set(['containing', 'and', 'with', 'as']);
+/**
+ * One sentence per JSX element of a function (as written), from to-english's step chips: each chip belongs to the
+ * innermost element whose source range holds it (a chip without a range, a connective, to the next chip that has
+ * one), so an element's sentence is its own tag, attributes and direct content, never its children's. e.g.
+ * `<h2>{book.title}</h2>` -> "<h2> containing book title". Null when atomic-codemod cannot read the code.
+ * @param {string} code
+ * @returns {Promise<{tag: string, sentence: string}[] | null>}
+ */
+export async function smithElements(code) {
+  const r = await toEnglishRaw(code, { kind: 'function' });
+  if (!r.ok || !Array.isArray(r.result?.steps)) return null;
+  const sf = tsx(code);
+  const els = [];
+  const visit = (n) => {
+    if (ts.isJsxElement(n)) els.push({ tag: `<${n.openingElement.tagName.getText(sf)}>`, start: n.getStart(sf), end: n.getEnd() });
+    else if (ts.isJsxSelfClosingElement(n)) els.push({ tag: `<${n.tagName.getText(sf)}>`, start: n.getStart(sf), end: n.getEnd() });
+    ts.forEachChild(n, visit);
+  };
+  visit(sf);
+  if (!els.length) return [];
+  const ownerOf = (pos) => { let best = -1; els.forEach((e, i) => { if (pos >= e.start && pos < e.end && (best < 0 || e.start >= els[best].start)) best = i; }); return best; };
+  const chips = r.result.steps.flatMap((st) => st.tokens ?? []);
+  const owners = chips.map((c) => (typeof c.start === 'number' ? ownerOf(c.start) : null));
+  for (let i = owners.length - 1, next = -1; i >= 0; i--) { if (owners[i] === null) owners[i] = next; else next = owners[i]; }
+  const own = els.map(() => []);
+  chips.forEach((c, i) => { if (owners[i] >= 0) own[owners[i]].push(String(c.text)); });
+  return els.map((e, i) => {
+    const at = own[i].indexOf(e.tag);
+    const t = at >= 0 ? own[i].slice(at) : [...own[i]]; // the connectives before an element's tag are its parent's
+    while (t.length && LEAD.has(t[0].toLowerCase())) t.shift();
+    while (t.length && TRAIL.has(t[t.length - 1].toLowerCase())) t.pop();
+    return { tag: e.tag, sentence: t.join(' ') };
+  });
+}
+const tagOf = (sentence) => (/<[\w.:-]+>/.exec(String(sentence)) ?? [null])[0];
 
 // ---------------------------------------------------------------------------------------------- completions
 /** Smith's to-english templates (what a step sentence can look like); X/NAME/... are filled from the node's scope. */
@@ -128,8 +182,17 @@ export async function smithDiagnostics(proposal, index, { embed = null, threshol
   const byKey = (k) => entries.find((e) => e.id === k || e.name === k);
   const missing = []; const extra = []; const fuzzy = []; let exact = 0;
   const pending = [];
+  const modes = {};
   for (const [k, want] of Object.entries(proposal)) {
     const e = byKey(k);
+    if (Array.isArray(e?.elements) && e.elements.length) {
+      // a page or component: every element the plan names must have its sentence; extra elements are allowed
+      modes[e.id] = 'elements';
+      const have = e.elements.map((x) => normSentence(x.sentence));
+      for (const w of want) { if (have.includes(normSentence(w))) exact++; else missing.push({ id: e.id, element: tagOf(w), sentence: normSentence(w) }); }
+      continue;
+    }
+    modes[e?.id ?? k] = 'exact';
     const got = (e?.sentences ?? []).map(normSentence);
     const pool = [...got];
     const left = [];
@@ -155,7 +218,7 @@ export async function smithDiagnostics(proposal, index, { embed = null, threshol
     for (const g of p.pool) extra.push({ id: p.id, sentence: g });
   }
   const m = capList(missing); const x = capList(extra);
-  return { ok: true, exact, fuzzy, missing: m.kept, extra: x.kept, ...(m.dropped + x.dropped ? { more: m.dropped + x.dropped } : {}), ms: Date.now() - t0 };
+  return { ok: true, exact, fuzzy, missing: m.kept, extra: x.kept, modes, ...(m.dropped + x.dropped ? { more: m.dropped + x.dropped } : {}), ms: Date.now() - t0 };
 }
 export const cosine = (a, b) => { let d = 0, x = 0, y = 0; for (let i = 0; i < a.length; i++) { d += a[i] * b[i]; x += a[i] * a[i]; y += b[i] * b[i]; } return d / Math.sqrt(x * y || 1); };
 

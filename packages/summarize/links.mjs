@@ -66,3 +66,20 @@ export async function summarizeCode(code, options = {}) {
   }
   return summarize({ kind: 'code', english, code });
 }
+
+/**
+ * #945: atomic-codemod's to-english result as it comes ({english, steps (each with its chips: text, type, start, end),
+ * title, unhandled}), for a caller that reads the chips (the Line LSP's per-element Smith check of a page). Never
+ * throws: {ok: false, reason} when it is not linked or the code cannot be read.
+ * @param {string} code @param {{kind?: 'function'|'method', env?: NodeJS.ProcessEnv, toEnglishOptions?: object}} [options]
+ * @returns {Promise<{ok: true, result: any} | {ok: false, reason: string}>}
+ */
+export async function toEnglishRaw(code, options = {}) {
+  const { kind = 'function', toEnglishOptions, ...rest } = options;
+  const r = await importLinked('@smith/to-english', optionsFor('codemod', rest));
+  if (!r.ok) return { ok: false, reason: /** @type {any} */ (r).reason };
+  const toEnglish = r.module.toEnglish ?? r.module.default?.toEnglish;
+  try { return { ok: true, result: toEnglishOptions ? toEnglish(code, kind, toEnglishOptions) : toEnglish(code, kind) }; } catch (e) {
+    return { ok: false, reason: String(/** @type {any} */ (e)?.message ?? e).split('\n')[0] };
+  }
+}

@@ -1,8 +1,10 @@
-// #945 -- the Line LSP's smithDiagnostics (packages/engine/lsp/smith.mjs) as a check step after a fill lands: the
-// filled function's Smith sentences against the step's Smith test plan (`smith`: the sentences the step promises),
-// exact normalized match only (lsp-r1: exact 12/12, the embed fallback 8/12, so no embed here). A step without a
-// plan, or atomic-codemod not linked, is skipped and says why.
-import { smithIndexFile, smithDiagnostics, smithReady } from '../../lsp/smith.mjs';
+// #945 -- the Line LSP's smithDiagnostics (packages/engine/lsp/smith.mjs) as a check step after a fill lands, against
+// the step's Smith test plan (`smith`). Owner rule: logic exact, pages per element. A logic unit's sentences must
+// equal the plan's exactly, in canonical mode (to-english {canonical: true}: an equivalent form reads the same); a
+// page or component (returns JSX) passes when every element the plan names has its sentence (extra elements are
+// fine), and a miss is named by its element. No embed fallback (lsp-r1: exact 12/12, embed 8/12). No plan, or
+// atomic-codemod not linked: skipped, with why.
+import { smithIndexFile, smithDiagnostics, smithReady, returnsJsx } from '../../lsp/smith.mjs';
 import { lspMode, shadowLog } from './profile.mjs';
 
 /**
@@ -17,14 +19,20 @@ import { lspMode, shadowLog } from './profile.mjs';
 export async function smithCheck(rel, source, fn, plan, o = {}) {
   if (!Array.isArray(plan) || !plan.length) return { ok: true, skipped: 'the step has no Smith test plan' };
   if (!(o.ready ?? smithReady)()) return { ok: true, skipped: 'atomic-codemod is not linked, so Smith cannot read the code' };
-  const index = await smithIndexFile(rel, source);
+  const index = await smithIndexFile(rel, source, { canonical: true });
+  const entry = index.find((e) => e.name === fn);
+  if (!entry) return { ok: true, skipped: `Smith found no function ${fn} in ${rel}` };
+  if (!entry.elements && /\.[jt]sx$/.test(rel) && returnsJsx(source)) return { ok: true, skipped: 'this Smith cannot read a page per element (atomic-codemod smith-hardening reads TSX as written)' };
   const d = await smithDiagnostics({ [fn]: plan }, index);
+  const mode = Object.values(d.modes ?? {})[0] ?? 'exact';
   const pass = !d.missing.length && !d.extra.length;
-  const sentence = pass ? `${fn} does what its Smith test plan says.` : [
-    d.missing.length ? `The plan says ${d.missing.map((m) => `"${m.sentence}"`).join(', ')}, which the code does not do` : '',
-    d.extra.length ? `the code does ${d.extra.map((m) => `"${m.sentence}"`).join(', ')}, which the plan does not say` : '',
-  ].filter(Boolean).join('; ').replace(/^t/, 'T') + '.';
-  return { ok: true, pass, exact: d.exact, missing: d.missing, extra: d.extra, sentence };
+  const sentence = pass ? `${fn} does what its Smith test plan says.` : mode === 'elements'
+    ? `${fn} is missing ${d.missing.map((m) => `${m.element ?? 'an element'} ("${m.sentence}")`).join(', ')} from its Smith test plan.`
+    : [
+      d.missing.length ? `The plan says ${d.missing.map((m) => `"${m.sentence}"`).join(', ')}, which the code does not do` : '',
+      d.extra.length ? `the code does ${d.extra.map((m) => `"${m.sentence}"`).join(', ')}, which the plan does not say` : '',
+    ].filter(Boolean).join('; ').replace(/^t/, 'T') + '.';
+  return { ok: true, pass, mode, exact: d.exact, missing: d.missing, extra: d.extra, sentence };
 }
 
 /**
