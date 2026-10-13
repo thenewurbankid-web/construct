@@ -41,7 +41,7 @@ All verified against git unless marked. og merges each with `git -C <og-final-10
 | B: finish guard (#931) | `private/line/finish-guard` a8cd0a77 | ready |
 | C: builder context, scratchpad, session log (#932) | `private/line/builder-context` 4fe78129 | ready |
 | E1: feature modules, cross-feature imports via index.ts (#935) | `private/line/feature-modules` 2480d666 | ready |
-| E2: coder read tools via MCP, per turn | `private/line/coder-read-tools` 2a9492df | agent was still running; verify report vs git |
+| E2: coder read tools via MCP, per turn (#937) | `private/line/coder-read-tools` af1bfbe1 | ready (verified: 5 commits, 14 files +755/-17; affected 1439/0/3). Owner to confirm: registry reads take a project-relative `file` (exempt from #649 no-path rule); read_file still offered every turn |
 | E3: research sub-agents + central ledger (#936) | `private/line/research-loop` 13177551 | ready |
 | Harness: native-only tool harness, layered turn (#938) | LOCAL `line/tool-harness` ba641d58 (not pushed) | 2 commits; worktree agent-aecc12095cb64adc0 has UNCOMMITTED model-profiles.json, tool-harness-probe.mjs, results/tool-harness-r1.json, tool-harness-replay.json; a probe rerun (adds qwen3:4b) held the heavy slot at 07:55 — check it finished, commit results + measured table, push |
 | heavy.sh re-entrant (#939) | `private/dev/heavy-reentrant` 039709a7 | ready |
@@ -49,7 +49,8 @@ All verified against git unless marked. og merges each with `git -C <og-final-10
 
 Merge reconciliation for og:
 - C <-> E3 ledger bridge in bench/ecommerce/driver/ledger.mjs.
-- E1 exports `importableFiles` from typeGate.mjs; drop E3's copy.
+- E1 and E2 both export `importableFiles` from typeGate.mjs (keep one); drop E3's copy. E2's `importableFor`
+  (packages/engine/line/coder/reads.mjs) is the adapter to switch to E1's `moduleScope`.
 - A's seed must call `arrayFixtures(root, layout, feature)` (specSteps.mjs:139, atomSteps.mjs:67,101,193) and unwrap `.value`
   (E1 fixture format `{ "$lineBase": "fixtures/<name>", "value": [...] }`).
 - line-modules spec topic is at 32765/32768 bytes: new files in packages/engine/line go in subfolders.
@@ -59,7 +60,7 @@ Merge reconciliation for og:
 ## Next, in order
 1. Verify E2 and the harness (commit/push its probe results first). Then og merges A, B, C, E1, E2, E3, harness, #939,
    probe write-up, private/work into og/final-2026-10-12; ONE full suite via heavy.sh; ff work; close #931-#933,
-   #935, #936, #938, #939.
+   #935-#939.
 2. Bench rerun, one at a time: lending seed-only, lending `--seed-plan`, ecommerce seed-only (must stay 22/22).
 3. CSP discipline (explicit step input/output, one ledger owner, trace wrapper = session log, model-call timeouts).
 4. shortestPlan block (AND-OR graph, Knuth generalized Dijkstra, greedy Steiner merge, typed edges; tool picking first).
