@@ -32,3 +32,39 @@ Findings:
 - **K4.** Embeddings work for the gap-to-atom step. The one miss was filter-sort ranked below date-range. The scores do not separate right from wrong: the lowest right top-1 score is 0.68 and the highest wrong one is 0.68. So top-3 plus a check is the safe use; a single cosine threshold is not.
 - **K1.** Smith works as a checker on code written in its templates. A cosine fallback is unsafe for checking, though: a mutant's step scores up to 0.996 cosine against the plan line it breaks.
 - **K2 and K5.** The 1.5b writes plan lines in JS rather than in Smith's templates: ternaries, `listPicks(picks)`, `a.title.localeCompare` (`results/k2.json:47`). The coder then writes `available ? ... : ...`. Smith cannot render a ternary and returns `(...)` (`results/k5.json:29`). The plan language and the code the model writes do not meet.
+
+## Rerun: K1 and K5 on hardened Smith (atomic-codemod `smith-hardening` 72e4c09)
+
+```sh
+CHAIN_SMITH_RAW=1 LINE_LINKS_ALLOW_DRIFT=1 ATOMIC_CODEMOD_SOURCE_DIR=~/Repositories/atomic-codemod-hardening \
+  SMITH_SOURCE_DIR=~/Repositories/smith packages/tools/dev/heavy.sh node bench/isolation/chain/quick/run.mjs k1 k5 --suffix=-hardened
+```
+
+- The `packages/line-links` pin is unchanged at 885b32e. `LINE_LINKS_ALLOW_DRIFT=1` is the drift switch that already exists in line-links.
+- With `CHAIN_SMITH_RAW=1`, each top-level function goes in as written TS: types and `export` kept, with no type stripping.
+- Results are in `results/k1-hardened.json` and `results/k5-hardened.json`.
+- The primary signal is still exact template match. Cosine is diagnostic only.
+
+### K1: plan-match score per mutant (pinned 885b32e to hardened 72e4c09)
+
+| task | reference | mutant 1 | mutant 2 | tie with reference? |
+| --- | --- | --- | --- | --- |
+| availability | 1 to 1 | 0 to 0 | 0.5 to 0.5 | no |
+| picks-store | 1 to 1 | 0.8 to 0.8 | 0.8 to 0.8 | no |
+| paging | 1 to 1 | 0.667 to 0.667 | 0 to 0 | no |
+| sort-title | 1 to 1 | 0 to 0 | 0 to 0 | no |
+
+- The verdict stays **pass**: 8/8 mutants are separated (`results/k1-hardened.json:6`), with 0 unhandled sentences.
+- Every Smith sentence is identical between the two versions on these if/return/call-shaped solutions.
+- No mutant ties its reference.
+
+### K5 (pinned to hardened)
+
+- The verdict stays **kill**: 0/5 pass, as before. 3/5 bodies are tsc-clean and 2/5 pass the unit check, both unchanged. Unhandled sentences dropped from 3 to 0.
+- Hardened Smith now reads the ternary and tells the right body from the wrong one:
+  - right: "It returns if available then 'Available', otherwise 'On loan'." (`results/k5-hardened.json:59`)
+  - labels swapped: "It returns if available then 'On loan', otherwise 'Available'." (`:32`)
+- Two things still score 0:
+  - **Smith against the model's plan:** the plan line is JS (`return available ? ...`), not Smith's sentence form.
+  - **Smith against the reference plan:** the plan is in if/return form, while the code is a ternary. The two forms are equivalent, but the exact match treats them as different.
+- What blocks K5 now is the plan writer (K2) and form equivalence, not Smith's coverage.
