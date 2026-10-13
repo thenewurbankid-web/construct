@@ -347,23 +347,49 @@ export async function runFallow(root, { env = process.env, timeoutMs, bin, execF
   return done('ok', violations, `fallow ${version ?? ''}: ${violations.length} finding(s)`.replace('  ', ' '), version);
 }
 
+/** The import specifier a finding's message quotes (`Import "<specifier>" ...`, IMPORT-001's and FALLOW-UNRESOLVED-IMPORT's shape), or null. */
+const importSpecifierOf = (v) => /^Import "([^"]*)"/.exec(String(v?.message ?? ''))?.[1] ?? null;
+
+/**
+ * #928: drop the fallow findings Construct already reports, so one problem is not listed twice. Today one
+ * pair: a FALLOW-UNRESOLVED-IMPORT is dropped only when an IMPORT-001 names the same file and the same
+ * import specifier (not the line: IMPORT-001 reports line 1). Every other fallow finding is kept, including
+ * unresolved imports IMPORT-001 does not see (a bare package, a file outside the layer graph).
+ *
+ * @param {object[]} fallowViolations FALLOW-* violations (`mapDeadCode` / `mapHealth` output).
+ * @param {object[]} [constructViolations] The enforcers' violations for the same root.
+ * @returns {object[]} `fallowViolations` without the duplicates, order kept.
+ *
+ * @example
+ * dedupeFallowFindings([{ rule: 'FALLOW-UNRESOLVED-IMPORT', file: 'app/page.tsx', message: 'Import "../x" resolves to no file or package.' }],
+ *   [{ rule: 'IMPORT-001', file: 'app/page.tsx', message: 'Import "../x" does not resolve to an existing file.' }]); // => []
+ */
+export function dedupeFallowFindings(fallowViolations, constructViolations = []) {
+  const key = (v) => `${v.file}\u0000${importSpecifierOf(v)}`;
+  const reported = new Set(constructViolations.filter((v) => v?.rule === 'IMPORT-001' && importSpecifierOf(v) !== null).map(key));
+  return fallowViolations.filter((v) => v?.rule !== 'FALLOW-UNRESOLVED-IMPORT' || !reported.has(key(v)));
+}
+
 /**
  * The fallow stage of `construct validate`: respects `fallowSetting`, runs fallow, and returns its
  * violations plus at most one info line for the caller to print (to stderr, so `--format json` stays the
  * exact report). Never throws and never fails a validate: every FALLOW-* finding is a warning.
  *
+ * With `constructViolations` (the enforcers' findings), fallow findings Construct already reports are
+ * dropped (`dedupeFallowFindings`).
+ *
  * @param {string} root Project root.
- * @param {{args?: string[], env?: Record<string, string|undefined>, timeoutMs?: number, bin?: object|null, execFileImpl?: Function}} [opts]
+ * @param {{args?: string[], constructViolations?: object[], env?: Record<string, string|undefined>, timeoutMs?: number, bin?: object|null, execFileImpl?: Function}} [opts]
  * @returns {Promise<{violations: object[], notice: string|null, ran: boolean, durationMs: number, health: any}>} `health`: the
  *   parsed health report to hand to validateArchitecture as `fallowHealth` (null when fallow is off or did not report).
  */
-export async function fallowStage(root, { args = [], ...opts } = {}) {
+export async function fallowStage(root, { args = [], constructViolations = [], ...opts } = {}) {
   const setting = fallowSetting(root, args);
   if (!setting.enabled) return { violations: [], notice: null, ran: false, durationMs: 0, health: null };
   try {
     const r = await runFallow(root, opts);
     const notice = r.status === 'ok' ? null : `ℹ️ ${r.message}`;
-    return { violations: r.violations, notice, ran: r.status !== 'unavailable', durationMs: r.durationMs, health: r.health ?? null };
+    return { violations: dedupeFallowFindings(r.violations, constructViolations), notice, ran: r.status !== 'unavailable', durationMs: r.durationMs, health: r.health ?? null };
   } catch (e) {
     return { violations: [], notice: `ℹ️ fallow could not run: ${e.message}`, ran: false, durationMs: 0, health: null };
   }

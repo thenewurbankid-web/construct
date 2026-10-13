@@ -1664,7 +1664,7 @@ flag-bag warning of #573 (`STATE-001`) stays silent.
 | File | Unit | What it is |
 |---|---|---|
 | `types.ts` | `CartItem`, `CartState`, `CartAction` | appended once (an entity the feature already declares is reused when its fields are the same, else the store refuses; a `CartState` or `CartAction` that means something else is a refusal) |
-| `domain/CartStore.domain.ts` | `reduceCart` (`defineDomain`) | the pure reducer: `{ state, action } -> state`; every action has its own case; the state it is given is never changed |
+| `domain/CartStore.domain.ts` | `reduceCart` (`defineDomain`) | the pure reducer: `{ state, action } -> state`; every action has its own handler (one small pure function per action in a map keyed by `type`, #927); the state it is given is never changed |
 | `hooks/useCartState.state.ts` | `useCartState` (`useTrackedState<CartState>('cart', { status: 'empty' })`) | returns `{ state, add, remove, select, clear }`: one function per action, each through the reducer; nothing else in the hook (HOOK-001); a `'use client'` file on Next.js |
 | `tests/generated/CartStore.proof.test.ts` | the proof | locked; see below |
 

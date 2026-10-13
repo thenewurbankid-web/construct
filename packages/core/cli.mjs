@@ -12,7 +12,7 @@ import { loadConfig, findProjectRoot, resolveDirRoot, DEFAULT_RULES, NEW_PROJECT
 import { listRules } from './rules-catalog.mjs';
 import { formatReport, exitCodeForViolations, ConstructError, EXIT_CODES, setExitCode } from './diagnostics.mjs';
 import { aggregateValidation } from './registry.mjs';
-import { fallowStage, runFallow } from './fallow.mjs';
+import { fallowStage, runFallow, dedupeFallowFindings } from './fallow.mjs';
 import { selectProfile, enforcersForProfile } from './profiles/index.mjs';
 import { validateArchitecture } from './architecture-enforcer.mjs';
 import { syncPublicApi } from './api-composer.mjs';
@@ -935,11 +935,12 @@ export async function validate(args) {
   // architecture.yml turns it off). Every FALLOW-* finding is a warning, so `ok` is the enforcers' verdict;
   // a missing binary is one info line on stderr, never a failure and never a change to the JSON report.
   // #923: it runs first so its health report reaches FUNC-001's cognitive score; without it cognitive is null.
+  // #928: its findings Construct already reports are dropped once the enforcers' violations exist (below).
   const fallow = await fallowStage(root, { args });
   if (fallow.notice) console.error(fallow.notice);
   const enforced = aggregateValidation(root, enforcersForProfile(profile), fallow.health ? { fallowHealth: fallow.health } : undefined);
   const { ok } = enforced;
-  const violations = [...enforced.violations, ...fallow.violations];
+  const violations = [...enforced.violations, ...dedupeFallowFindings(fallow.violations, enforced.violations)];
   const fi = args.indexOf('--format');
   const format = fi >= 0 && args[fi + 1] === 'json' ? 'json' : 'text';
   let report = violations;
