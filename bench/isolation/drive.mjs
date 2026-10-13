@@ -74,7 +74,7 @@ function evaluate(ws, task, startBody, body) {
   if (missing.length) return { pass: false, failClass: 'fragment', errors: [`missing export(s) ${missing.join(', ')}`] };
   makeWorkspace(ws, task, body);
   const t = spawnSync(process.execPath, [TSC, '-p', join(ws, 'tsconfig.json'), '--pretty', 'false'], { encoding: 'utf8', timeout: 120_000 });
-  const tscErr = (t.stdout + t.stderr).split('\n').filter((l) => /error TS\d+/.test(l)).map((l) => l.replace(ws + '/', ''));
+  const tscErr = (t.stdout + t.stderr).split('\n').filter((l) => /error TS\d+/.test(l)).map((l) => l.replace(ws + '/', '').replace(relative(process.cwd(), ws) + '/', ''));
   if (t.status !== 0 || tscErr.length) return { pass: false, failClass: 'tsc', tscOk: false, errors: tscErr.length ? tscErr : [`tsc exited ${t.status}`] };
   const c = spawnSync(process.execPath, [join(HERE, 'lib/check-runner.mjs'), ws, task.dir], { encoding: 'utf8', timeout: 60_000 });
   let check;
