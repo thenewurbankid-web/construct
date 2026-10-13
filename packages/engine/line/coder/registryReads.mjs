@@ -62,9 +62,9 @@ const FILE_ARGS = ['file'];
  * @returns {Promise<Record<string, (args: any) => unknown>>}
  */
 export async function readHandlers(root) {
-  const [ops, coder, workflows, components, imp, trace, model] = await Promise.all([
+  const [ops, coder, workflows, components, imp, trace, model, lsp] = await Promise.all([
     realLineOps(), import('./reads.mjs'), import('../workflows.mjs'), import('../components.mjs'), import('../import.mjs'),
-    import('../traceMatch.mjs'), import('../model.mjs'),
+    import('../traceMatch.mjs'), import('../model.mjs'), import('../lsp/tools.mjs'),
   ]);
   const line = lineHandlers(root, ops);
   /** @type {Record<string, (args: any) => unknown>} */
@@ -85,6 +85,12 @@ export async function readHandlers(root) {
     'line.featureSummary': (a) => coder.featureSummary(root, a),
     'line.scope': (a) => coder.scopeOf(root, a),
     'line.atoms': (a) => coder.atomsFor(a),
+    // #945: the Line LSP calls (lsp/tools.mjs), in process for Line's own coder; construct-mcp lists them by hand.
+    'lsp.nextSteps': (a) => lsp.lspNextSteps(root, a),
+    'lsp.completions': (a) => lsp.lspCompletions(root, a),
+    'lsp.symbolInfo': (a) => lsp.lspSymbolInfo(root, a),
+    'lsp.smithCheck': (a) => lsp.lspSmithCheck(root, a),
+    'lsp.fixes': (a) => lsp.lspFixes(root, a),
   };
   for (const id of Object.keys(out)) if (typeof out[id] !== 'function' || id in READ_SKIPPED) delete out[id];
   return out;

@@ -12,6 +12,7 @@ import * as plan from './plan.mjs';
 import { entryForMcp, mcpNameOf, registryReads, READ_SKIPPED, createReadDispatcher } from '@line/construct-engine/line/tool-registry';
 import * as importAgent from './importAgent.mjs';
 import * as train from './train.mjs';
+import * as lsp from './lsp.mjs';
 
 const PACKAGE = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
 
@@ -259,6 +260,57 @@ export const TRAIN_MCP_TOOLS = Object.freeze([
   },
 ]);
 
+/**
+ * #945 -- the Line LSP tools a coding harness (Claude Code, OpenCode) plugs in through: the same calls Line's own coder
+ * and path-first fill use. Each reads one project-relative file (checked inside the root) or the project's Line facts;
+ * line_fixes returns edits and never applies them.
+ */
+const LSP_FILE = z.string().min(1).max(300).describe('A project-relative file, for example features/book/domains/formatPages.ts.');
+const LSP_TEXT = z.string().max(64 * 1024).optional().describe('The file\'s unsaved text (read from disk when left out); never written.');
+const STABLE_ID = z.string().min(5).max(200).regex(/^[\w-]+\/[\w-]+\/[\w$-]+$/);
+export const LSP_TOOLS = Object.freeze([
+  {
+    name: 'line_next_steps',
+    title: 'Next Trace step (Line LSP)',
+    description: 'The Trace steps legal at one path node, in Line order (complete_stub, reuse, add_to_scope, create, create_module), each from a fact on disk, plus an Ollama format enum of exactly those options; the first is the step. Reads the project\'s features; writes nothing.',
+    inputSchema: z.object({ need: STABLE_ID.describe('The stable id the node must produce: <feature>/<kind>/<name>, for example book/domains/formatPages.'), from: z.string().min(1).max(LIMITS.nameChars).regex(/^[\w-]+$/).describe('The asking feature.') }),
+    run: lsp.lineNextSteps,
+  },
+  {
+    name: 'line_completions',
+    title: 'Names valid at a point (Line LSP)',
+    description: 'The names, members or import paths valid at one point of a file, ranked, with an Ollama format enum so a model picks one instead of typing it. Give a marker in text, an offset, line and col, or a tsc code at line and col (import paths then ranked by whether the module exports the needed names). Reads only.',
+    inputSchema: z.object({
+      file: LSP_FILE, text: LSP_TEXT,
+      at: z.union([z.string().min(1).max(40), z.number().int().min(0)]).optional().describe('A marker string in text (removed before analysis, for example /*HOLE*/) or a character offset.'),
+      line: z.number().int().min(1).max(100000).optional(), col: z.number().int().min(1).max(10000).optional(),
+      code: z.union([z.number().int(), z.string().regex(/^(TS)?\d{4}$/)]).optional().describe('A tsc error code at line/col: 2307, 2305, 2724, 2339, 2551 or 2304.'),
+    }),
+    run: lsp.lineCompletions,
+  },
+  {
+    name: 'line_symbol_info',
+    title: 'Symbol type and declaration (Line LSP)',
+    description: 'One symbol\'s exact type and the file:line it is declared at, or, without a symbol, every export of the file as one line each: a few lines instead of the file\'s text. Reads only.',
+    inputSchema: z.object({ file: LSP_FILE, symbol: z.string().min(1).max(120).regex(/^[\w$.]+$/).optional().describe('An identifier, for example formatPages.') }),
+    run: lsp.lineSymbolInfo,
+  },
+  {
+    name: 'line_smith_check',
+    title: 'Code against its Smith plan (Line LSP)',
+    description: 'One function\'s Smith sentences (what the code does, in English) against its Smith test plan, exact match only: the plan sentences the code does not do, and what the code does that the plan does not say. Reads only.',
+    inputSchema: z.object({ file: LSP_FILE, fn: z.string().min(1).max(120).regex(/^[\w$]+$/), plan: z.array(z.string().min(1).max(300)).min(1).max(40).describe('The plan sentences, for example ["return pages followed by \' pages\'"].'), text: LSP_TEXT }),
+    run: lsp.lineSmithCheck,
+  },
+  {
+    name: 'line_fixes',
+    title: 'Deterministic fixes as edits (Line LSP)',
+    description: 'The fixes TypeScript is sure of for one file (every missing import, an import path re-pointed at the one project file that matches, a single-candidate spelling fix), as edits {start, end, newText} against the text, plus what stays unfixed. Applies nothing; writes nothing.',
+    inputSchema: z.object({ file: LSP_FILE, text: LSP_TEXT }),
+    run: lsp.lineFixes,
+  },
+]);
+
 /** Argument names a registry read takes that are not strings (everything else is one bounded string). */
 const LOOSE_ARGS = Object.freeze({
   props: () => z.record(z.string(), z.unknown()),
@@ -293,10 +345,10 @@ export function registryReadTools(taken = HAND_NAMES()) {
 
 /** The hand-written tools' names (a registry read never shadows one). */
 function HAND_NAMES() {
-  return new Set([...TOOLS, ...PLAN_TOOLS, ...IMPORT_AGENT_TOOLS, ...TRAIN_MCP_TOOLS].map((t) => t.name));
+  return new Set([...TOOLS, ...PLAN_TOOLS, ...IMPORT_AGENT_TOOLS, ...TRAIN_MCP_TOOLS, ...LSP_TOOLS].map((t) => t.name));
 }
 
-const INSTRUCTIONS ='Construct blocks, read-only and plan-only. Start with requirement_parse, then placement_place (answer its closed questions and call again), then plan_validate. summarize and validate describe the project before you read files; line_spec says what Line is (rules, tools, plan protocol), from its code. Every tool is bounded and path-free; none writes. A plan preview is applied through the Cockpit\'s per-diff approval, never here. To change a Line project, add a step with plan_add_step, ask the user to approve it in Cockpit, then plan_run_next; plan_status shows the plan.';
+const INSTRUCTIONS ='Construct blocks, read-only and plan-only. Start with requirement_parse, then placement_place (answer its closed questions and call again), then plan_validate. summarize and validate describe the project before you read files; line_spec says what Line is (rules, tools, plan protocol), from its code. Every tool is bounded and path-free; none writes. A plan preview is applied through the Cockpit\'s per-diff approval, never here. To change a Line project, add a step with plan_add_step, ask the user to approve it in Cockpit, then plan_run_next; plan_status shows the plan. The line_* LSP tools (line_next_steps, line_completions, line_symbol_info, line_smith_check, line_fixes) answer about one file or path node in a few lines; line_fixes returns edits, never applies them.';
 
 /** A server class whose own errors (input the schema refused, an unexpected throw) come out typed, like every other refusal. */
 class ConstructMcpServer extends McpServer {
@@ -363,7 +415,7 @@ export function createConstructMcpServer(options = {}) {
     return fail(invalid ? 'INVALID_INPUT' : 'TOOL_FAILED', invalid ? message.replace(/^Input validation error: /i, '') : 'The tool could not answer.');
   });
 
-  for (const tool of [...TOOLS, ...PLAN_TOOLS, ...IMPORT_AGENT_TOOLS, ...TRAIN_MCP_TOOLS]) {
+  for (const tool of [...TOOLS, ...PLAN_TOOLS, ...IMPORT_AGENT_TOOLS, ...TRAIN_MCP_TOOLS, ...LSP_TOOLS]) {
     // cu3: every MCP tool is one entry of Line's tool registry; an agent never writes project files directly.
     const entry = entryForMcp(tool.name);
     if (!entry) throw new Error(`construct-mcp: ${tool.name} is not in Line's tool registry.`);
