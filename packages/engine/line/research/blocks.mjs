@@ -2,7 +2,7 @@
 // the Construct block that answers it with no model. Each answer is a few facts (one sentence + cites) for the ledger.
 //   feature  "what is in feature orders?"                 readLineFeature (feature.mjs) summary sentences
 //   atom     "is there an atom for pagination?"           matchAtoms (line-atoms)
-//   imports  "what can OrdersPage import?"                importableFiles (typeGate.mjs) + staticSummarizer
+//   imports  "what can OrdersPage import?"                importableFor (coder/reads.mjs) + staticSummarizer
 //   callers  "who uses OrderCard?"                        the stored graph's whoCalls (graph/query.mjs), else the
 //                                                         reverse of contextPicker's importsOf over the code files
 //   defines  "where is OrderCard defined?"                an export scan over the code files
@@ -13,8 +13,9 @@ import { readLineFeature } from '../feature.mjs';
 import { readLineProject } from '../model.mjs';
 import { matchAtoms } from '@line/atoms';
 
-// typeGate.mjs's codeFiles and importableFiles, mirrored: exporting them from typeGate puts the engine's spec topic
-// (line-modules) over its one-MCP-call cap. Keep the two in step with typeGate.mjs.
+// typeGate.mjs's codeFiles, mirrored (it is not exported). What a file may import is the coder's own read
+// (coder/reads.mjs importableFor: typeGate importableFiles plus other features' index via #935 moduleScope), so the
+// research answer and the coder's scope tool never disagree.
 const TS_EXT = /\.(tsx?|mts|cts)$/;
 const SCAN_SKIP = new Set(['node_modules', '.git', '.next', 'dist', 'out', 'build', 'coverage', 'line']);
 /**
@@ -37,12 +38,7 @@ function codeFiles(root) {
   walk('');
   return out;
 }
-/** Code files of the library and of the file's own feature (the places a feature or library file may import from). */
-function importableFiles(root, layout, file) {
-  const segs = file.split('/');
-  const own = file.startsWith(`${layout.features}/`) ? `${layout.features}/${segs[layout.features.split('/').length]}/` : null;
-  return codeFiles(root).filter((r) => r.startsWith(`${layout.library}/`) || (own && r.startsWith(own)));
-}
+import { importableFor } from '../coder/reads.mjs';
 import { staticSummarizer, importsOf } from '../contextPicker.mjs';
 import { readLineGraph } from '../graph/build.mjs';
 import { queryGraph } from '../graph/query.mjs';
@@ -132,13 +128,13 @@ function answerImports(root, question) {
   const files = codeFiles(root);
   const file = targetFile(root, question, files);
   if (!p || !file) return null;
-  const allowed = importableFiles(root, p.layout, file).filter((f) => f !== file);
+  const allowed = importableFor(root, p.layout, file).filter((f) => f !== file && TS_EXT.test(f));
   if (!allowed.length) return null;
   /** @type {Map<string, any>} */
   const items = new Map();
   for (const l of p.library) items.set(l.file, { ...l, feature: null });
   for (const f of p.features) for (const i of f.items) items.set(i.file, { ...i, feature: f.name });
-  const facts = [{ english: `${path.posix.basename(file)} may import ${allowed.length} files: the library and its own feature.`, cites: [file] }];
+  const facts = [{ english: `${path.posix.basename(file)} may import ${allowed.length} files: the library and its own feature${p.features.length > 1 ? ', and another feature only through its index' : ''}.`, cites: [file] }];
   for (const f of allowed.slice(0, 6)) {
     const s = staticSummarizer.summarize(root, f, { item: items.get(f) });
     facts.push({ english: s.sentence.split(/(?<=[.?!])\s/)[0], cites: [f] });
