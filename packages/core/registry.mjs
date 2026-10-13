@@ -9,7 +9,7 @@
 
 /**
  * @typedef {{violations: Array<Record<string, any>>}} EnforcerResult
- * @typedef {{name: string, validate: (root: string, opts?: {files?: string[]}) => EnforcerResult}} Enforcer
+ * @typedef {{name: string, validate: (root: string, opts?: {files?: string[], fallowHealth?: any}) => EnforcerResult}} Enforcer
  */
 
 /**
@@ -17,7 +17,7 @@
  *
  * @param {string} root - project root to validate.
  * @param {Enforcer[]} [enforcers]
- * @param {{files?: string[]}} [opts] - forwarded to each enforcer as its second argument (#548); an
+ * @param {{files?: string[], fallowHealth?: any}} [opts] - forwarded to each enforcer as its second argument (#548); an
  *   enforcer that does not accept `opts.files` yet just ignores the extra argument and checks the
  *   whole project, exactly as before.
  * @returns {{violations: Array<Record<string, any>>, ok: boolean}}
