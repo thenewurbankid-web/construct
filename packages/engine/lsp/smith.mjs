@@ -15,7 +15,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { summarizeCode, smithLinks, toEnglishRaw } from '../../summarize/links.mjs';
-import { toJs, functionsOf, smithInput, smithEmptyReason } from '../../tools/smith-system1/sources.mjs';
+import { toJs, functionsOf, smithInput, smithEmptyReason } from './smithText.mjs';
 import { capList } from './index.mjs';
 import { ts } from './host.mjs';
 

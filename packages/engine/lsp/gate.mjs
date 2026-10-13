@@ -19,7 +19,7 @@ import { classifyFile } from '../line/logicVerify/purity.mjs';
 import { functionComplexity } from '@construct/ast';
 import { functionBudgetFor } from '@line/construct-core/architecture-enforcer';
 import { smithOfFunction } from './smith.mjs';
-import { PLACEHOLDER_EMPTY_RATIO } from '../../tools/smith-system1/sources.mjs';
+import { PLACEHOLDER_EMPTY_RATIO } from './smithText.mjs';
 
 export { PLACEHOLDER_EMPTY_RATIO };
 export const PURE_LAYERS = Object.freeze(new Set(['domain', 'expression']));
