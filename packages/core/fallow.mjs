@@ -14,12 +14,24 @@
 //
 // Never a crash: no binary is an `unavailable` result with one message, a run that times out or prints
 // something that is not JSON is a `failed` result with the reason; neither throws.
+//
+// Construct-aware default config (#926): fallow alone does not know Construct's layout, so a fresh
+// `construct init` scaffold showed ~20 false positives (layer units not routed yet, feature barrels,
+// types.ts, `.dependency-cruiser.cjs`, CRAP on generated proof tests). When the project has an
+// architecture.yml and no fallow config of its own, every run gets `--config <temp file>` holding
+// `constructFallowConfig(root)` -- derived from that architecture.yml, never a fixed list of paths. A
+// fallow config the project ships (`.fallowrc.json`, `.fallowrc.jsonc`, `fallow.toml`, `.fallow.toml`,
+// found the way fallow finds it) always wins: then no `--config` is passed at all.
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { createRequire } from 'node:module';
 import yaml from 'js-yaml';
 import { assertValidViolation } from './diagnostics.mjs';
+import { loadConfig } from './config.mjs';
+import { GENERATED_TESTS_GLOB } from './nonLayer.mjs';
+import { KNOWN_GENERATED_DEPENDENCIES } from './generated-dependencies.mjs';
 
 /** The fallow version Construct pins and maps (package.json devDependencies). */
 export const FALLOW_VERSION = '3.33.1';
@@ -202,9 +214,91 @@ export function fallowSetting(root, args = []) {
   return { enabled: true };
 }
 
-function runOne(bin, sub, root, { env, timeoutMs, execFileImpl }) {
+/** fallow's own config file names, in its precedence order (`fallow config --help`). */
+export const FALLOW_CONFIG_FILES = ['.fallowrc.json', '.fallowrc.jsonc', 'fallow.toml', '.fallow.toml'];
+/** Tool config files Construct itself writes into a project (`construct sync` writes the dependency-cruiser one). */
+export const CONSTRUCT_TOOL_CONFIG_FILES = ['.dependency-cruiser.cjs'];
+
+/**
+ * The fallow config file the project ships, or `null`. Walks up from `root` like fallow does, stopping
+ * after the first directory that holds `.git` (the repository root) or at the filesystem root.
+ *
+ * @param {string} root Project root.
+ * @returns {string|null} Absolute path of the user's fallow config.
+ */
+export function findUserFallowConfig(root) {
+  let dir = path.resolve(root);
+  for (;;) {
+    for (const name of FALLOW_CONFIG_FILES) {
+      const file = path.join(dir, name);
+      if (fs.existsSync(file)) return file;
+    }
+    const parent = path.dirname(dir);
+    if (parent === dir || fs.existsSync(path.join(dir, '.git'))) return null;
+    dir = parent;
+  }
+}
+
+const inside = (g) => typeof g === 'string' && g && !g.startsWith('/') && !g.split('/').includes('..');
+const uniq = (xs) => [...new Set(xs)];
+
+/**
+ * The default fallow config for a Construct project, derived from its architecture.yml (`null` when the
+ * root has no architecture.yml or it does not load -- fallow then runs on its own defaults):
+ *
+ * - `entry`: every layer's `pattern` (a unit is a Construct unit before a route reaches it -- generated
+ *   but not yet wired is a normal state, not dead code), each feature's `index.*` barrel (the feature's
+ *   public API, which re-exports `types.ts`), and every frozen glob plus the generated-tests region
+ *   (Construct-locked files a runner or Construct itself loads: a generated `.spec.ts` included).
+ * - `ignorePatterns`: the tool config files Construct writes (`.dependency-cruiser.cjs`).
+ * - `ignoreDependencies`: the packages Construct's generators import (`xstate`, `@xstate/graph`, ...)
+ *   and a scaffold declares before the first unit that uses them exists.
+ * - `health.ignore`: the frozen globs and generated-tests region -- complexity or CRAP on code a user
+ *   cannot edit is not actionable.
+ *
+ * A dead file anywhere outside those regions (a helper nothing imports, a stale module) is still an
+ * unused-file finding; unused exports, cycles and unresolved imports are untouched.
+ *
+ * @param {string} root Project root.
+ * @returns {object|null} A fallow config object (`.fallowrc.json` shape).
+ */
+export function constructFallowConfig(root) {
+  if (!fs.existsSync(path.join(root, 'architecture.yml'))) return null;
+  let c;
+  try { c = loadConfig(root); } catch { return null; }
+  const featuresRoot = String(c.features?.root || 'features').replace(/^\.\/|\/+$/g, '');
+  const layerGlobs = Object.values(c.layers || {}).map((l) => l?.pattern).filter(inside);
+  const generated = uniq([...(c.frozen || []), GENERATED_TESTS_GLOB.replace(/^features\//, `${featuresRoot}/`)].filter(inside));
+  return {
+    entry: uniq([...layerGlobs, `${featuresRoot}/*/index.{ts,tsx,js,jsx,mts,mjs}`, ...generated]),
+    ignorePatterns: [...CONSTRUCT_TOOL_CONFIG_FILES],
+    ignoreDependencies: Object.keys(KNOWN_GENERATED_DEPENDENCIES),
+    health: { ignore: generated },
+  };
+}
+
+/**
+ * The `--config` file to run fallow with: `null` when the project ships its own fallow config (it wins)
+ * or there is no Construct default for it; otherwise a temp `.fallowrc.json` holding
+ * `constructFallowConfig(root)`, outside the project so a validate stays read-only. Call `cleanup()`.
+ *
+ * @param {string} root Project root.
+ * @returns {{file: string|null, cleanup: () => void}}
+ */
+export function prepareFallowConfig(root) {
+  const none = { file: null, cleanup: () => {} };
+  if (findUserFallowConfig(root)) return none;
+  const config = constructFallowConfig(root);
+  if (!config) return none;
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'construct-fallow-config-'));
+  const file = path.join(dir, '.fallowrc.json');
+  fs.writeFileSync(file, `${JSON.stringify(config, null, 2)}\n`);
+  return { file, cleanup: () => fs.rmSync(dir, { recursive: true, force: true }) };
+}
+
+function runOne(bin, sub, root, { env, timeoutMs, execFileImpl, configFile }) {
   return new Promise((resolve) => {
-    const args = [...bin.args, sub, '--root', root, '--format', 'json', '--quiet', '--no-cache'];
+    const args = [...bin.args, sub, '--root', root, '--format', 'json', '--quiet', '--no-cache', ...(configFile ? ['--config', configFile] : [])];
     const childEnv = { ...env, FALLOW_TELEMETRY_DISABLED: '1', DO_NOT_TRACK: '1' };
     execFileImpl(bin.command, args, { cwd: root, env: childEnv, timeout: timeoutMs, maxBuffer: 64 * 1024 * 1024, encoding: 'utf8' }, (err, stdout, stderr) => {
       if (err && (err.killed || err.signal)) return resolve({ error: `fallow ${sub} timed out after ${timeoutMs} ms` });
@@ -236,7 +330,14 @@ export async function runFallow(root, { env = process.env, timeoutMs, bin, execF
   let healthDoc = null;
   const done = (status, violations, message, version = null) => ({ status, violations, message, durationMs: Date.now() - started, version, health: healthDoc });
   if (!resolved) return done('unavailable', [], `fallow not installed: FALLOW-* checks skipped (${INSTALL_HINT})`);
-  const [dc, health] = await Promise.all(['dead-code', 'health'].map((sub) => runOne(resolved, sub, root, { env, timeoutMs: ms, execFileImpl })));
+  const cfg = prepareFallowConfig(root);
+  let dc;
+  let health;
+  try {
+    [dc, health] = await Promise.all(['dead-code', 'health'].map((sub) => runOne(resolved, sub, root, { env, timeoutMs: ms, execFileImpl, configFile: cfg.file })));
+  } finally {
+    cfg.cleanup();
+  }
   if (dc.unavailable || health.unavailable) return done('unavailable', [], `fallow not installed: FALLOW-* checks skipped (${INSTALL_HINT})`);
   healthDoc = health.doc ?? null;
   const errors = [dc.error, health.error].filter(Boolean);
