@@ -69,6 +69,23 @@ shared `node_modules` itself.
 - Tests that bind ports pick an unused range first (`grep -rn "PORT_BASE\|listen(" ui/server/src/*.test.mjs`); 47300-47999 are taken by the dev-server tests.
 - Clean up `/tmp/construct-*` and any process you started.
 
+## Pre-merge self-check (affected tests)
+
+Agents do not run the full suite. Before handing a branch to og, run the tests
+the branch can actually break:
+
+```
+node packages/tools/dev/affected-tests.mjs <base-ref> --list   # what and why
+node packages/tools/dev/affected-tests.mjs <base-ref> --run    # through heavy.sh, one pass/fail/skip line
+```
+
+It selects changed tests, every test whose import graph reaches a changed file
+(TypeScript's own `preProcessFile`/`resolveModuleName`), the tsc-error and
+api-coverage ratchets always, and golden/characterization tests when
+`packages/core` or `packages/engine` changed. A `package.json`/lockfile, the
+test runner or a widely shared helper/fixture prints `FULL SUITE ADVISED`.
+og still runs the one full `packages/tools/dev/heavy.sh npm test` before push.
+
 ## Brief template
 
 One deliverable a fresh session finishes in 10-15 minutes. Larger work is
