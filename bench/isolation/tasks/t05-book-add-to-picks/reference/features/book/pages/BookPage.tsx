@@ -6,14 +6,12 @@ import Link from 'next/link';
 import { Button } from '../../../library/components/Button';
 import { addPick } from '../../picks/store/picksStore';
 import { DetailPage } from '../../../library/pages/DetailPage';
-import books from '../../../library/fixtures/books.json';
-
-type Book = { id: string; title: string; author: string; genre: string; year: number; pages: number; summary: string; available: boolean };
+import { findBook, type Book } from '../services/findBook';
 
 export function BookPage({ params }: { params: { id: string } }) {
   const { id } = params;
   const [status, setStatus] = useState('');
-  const item = (books as Book[]).find((entry) => entry.id === id);
+  const item = findBook({ id });
   const back = <Link href="/">Back to Books</Link>;
   if (!item) {
     return <DetailPage title="Book not found" back={back} />;

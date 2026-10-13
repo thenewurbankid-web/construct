@@ -1,0 +1,33 @@
+Write one React + TypeScript function component named BrowsePage. Signature exactly:
+
+export function BrowsePage()
+
+These are already imported at the top of the file (do NOT write any imports):
+import Link from 'next/link';
+import { ListPage } from '../../../library/pages/ListPage';
+import books from '../../../library/fixtures/books.json';
+
+Types:
+type Book = { id: string; title: string; author: string; genre: string; year: number; pages: number; available: boolean };
+ListPage props: { title: string; toolbar?: ReactNode; children?: ReactNode; empty?: ReactNode }
+
+Requirement: the catalogue lists all books in the default order "Title A-Z": sorted by title alphabetically, using a.title.localeCompare(b.title). Copy the array before sorting (do not mutate books). Render them inside ListPage with title "Browse", each book as a Link to `/books/${book.id}` showing its title. Show "No books" as empty when the list is empty.
+
+Write exactly this code:
+
+```tsx
+export function BrowsePage() {
+  const sorted = [...(books as Book[])].sort((a, b) => a.title.localeCompare(b.title));
+  return (
+    <ListPage title="Browse" empty={sorted.length === 0 ? <p>No books</p> : undefined}>
+      {sorted.map((book) => (
+        <Link key={book.id} href={`/books/${book.id}`}>
+          {book.title}
+        </Link>
+      ))}
+    </ListPage>
+  );
+}
+```
+
+Reply with only the BrowsePage function in one fenced ```tsx code block. No imports, no type definitions, no explanation.

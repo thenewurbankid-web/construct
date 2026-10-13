@@ -6,6 +6,7 @@
   "spec": "BK-2: An available book has an \"Add to my picks\" button; pressing it adds the book to the member's picks and a status message says \"Added to your picks\".\n\nBK-3: A book that is on loan says \"On loan\" and cannot be picked (no \"Add to my picks\" button, or a disabled one).",
   "target": "features/book/pages/BookPage.tsx",
   "context": [
+    "features/book/services/findBook.ts",
     "features/picks/store/picksStore.ts",
     "library/components/Button.tsx",
     "library/pages/DetailPage.tsx"

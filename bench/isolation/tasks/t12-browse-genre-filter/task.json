@@ -6,6 +6,7 @@
   "spec": "BRW-4: A control labelled \"Genre\" offers All genres, Fiction, History and Science; picking a genre shows only that genre's books and goes back to the first page, and All genres shows every book again.",
   "target": "features/browse/pages/BrowsePage.tsx",
   "context": [
+    "features/browse/services/listBooks.ts",
     "library/pages/ListPage.tsx"
   ],
   "entries": {

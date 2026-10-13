@@ -1,5 +1,6 @@
 // Deterministic check. t: harness helpers (lib/check-runner.mjs); fail(msg) records one failure.
 export default async function check(t, fail) {
+  if (t.readsFixture()) fail('the page imports a fixture; it must read data through its feature service');
   const Page = t.component();
   localStorage.clear();
   localStorage.setItem('picks', JSON.stringify(['salt-and-lanterns', 'copper-roads']));

@@ -1,6 +1,8 @@
 // Static per-kind templates for briefBuilder (#941, arm H). Each kind says what the change usually looks like
 // and gives one worked example on a different domain (a shop), so the brief shows the pattern without the answer.
-// `needs`: state -> 'use client' + useState import; fixture -> the books fixture import and its element type.
+// `needs`: state -> 'use client' + useState import. Pages read data only through their feature's service function
+// (defineService units such as findBook({ id }) or listBooks({})), never from a fixture (#943, owner rule for atomicGate).
+export const SERVICE_RULE = 'Read the data only through the feature service function listed in TYPES IN SCOPE (call it with one props object); never import a fixture file.';
 
 export const templates = {
   format: {
@@ -12,7 +14,7 @@ export const templates = {
       'Keep everything else in the function as it is.',
     ],
     example: `export function ProductPage({ params }: { params: { id: string } }) {
-  const item = (products as Product[]).find((p) => p.id === params.id);
+  const item = findProduct({ id: params.id });
   const back = <Link href="/">Back to the shop</Link>;
   if (!item) return <DetailPage title="We could not find that product" back={back} />;
   return (
@@ -34,7 +36,7 @@ export const templates = {
     ],
     example: `export function ProductPage({ params }: { params: { id: string } }) {
   const [status, setStatus] = useState('');
-  const item = (products as Product[]).find((p) => p.id === params.id);
+  const item = findProduct({ id: params.id });
   if (!item) return <DetailPage title="Not found" />;
   const aside = item.inStock ? (
     <>
@@ -63,16 +65,16 @@ export function addToCart(id: string): void {
 }`,
   },
   list: {
-    needs: ['state', 'fixture'],
+    needs: ['state'],
     change: [
       'Read the store into state at the top: const [ids, setIds] = useState<string[]>(() => listX()).',
-      'Look each id up in the fixture and drop ids that are not found.',
+      'Turn the ids into items with the feature service (it drops ids that are not found).',
       'Give the page component the SPEC\'s heading as title and the SPEC\'s empty text as its empty prop; pass children only when there are items.',
       'Each item shows its fields; a remove button\'s label is the SPEC\'s words plus the title. After removing, set state from the store again.',
     ],
     example: `export function CartPage() {
   const [ids, setIds] = useState<string[]>(() => listCart());
-  const items = ids.map((id) => (products as Product[]).find((p) => p.id === id)).filter((p): p is Product => Boolean(p));
+  const items = cartProducts({ ids });
   return (
     <ListPage title="My cart" empty={<p>Your cart is empty</p>}>
       {items.length > 0 && items.map((item) => (
@@ -97,7 +99,7 @@ export function addToCart(id: string): void {
     example: `export function ShopPage() {
   const PAGE_SIZE = 4;
   const [page, setPage] = useState(1);
-  const items = products as Product[];
+  const items = listProducts({});
   const pageCount = Math.max(1, Math.ceil(items.length / PAGE_SIZE));
   const shown = items.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   return (
@@ -113,12 +115,12 @@ export function addToCart(id: string): void {
   sort: {
     needs: [],
     change: [
-      'Sort a copy of the items, never the fixture itself: [...items].sort(...).',
+      'Sort a copy of the items the service returns: [...items].sort(...).',
       'Compare text with localeCompare (A-Z) and numbers by subtraction.',
       'Render the sorted copy where the list was rendered.',
     ],
     example: `export function ShopPage() {
-  const items = [...(products as Product[])].sort((a, b) => a.name.localeCompare(b.name));
+  const items = [...listProducts({})].sort((a, b) => a.name.localeCompare(b.name));
   return <ListPage title="Shop">{items.map((item) => <article key={item.id}>{item.name}</article>)}</ListPage>;
 }`,
   },
@@ -131,7 +133,7 @@ export function addToCart(id: string): void {
     ],
     example: `export function ShopPage() {
   const [maker, setMaker] = useState('all');
-  const items = (products as Product[]).filter((p) => maker === 'all' || p.maker === maker);
+  const items = listProducts({}).filter((p) => maker === 'all' || p.maker === maker);
   const toolbar = (
     <>
       <label htmlFor="maker">Maker</label>

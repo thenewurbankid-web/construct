@@ -10,8 +10,8 @@
 | L-enum | 1.5b picks from the completionsAt enum | 6/9 | +6 vs L-enum-free | 3670 (+256) | 9 | 2.1 s |  fails: wrong 3 |
 | H | blocks: briefBuilder -> 1.5b best-of-5 (rerun) | 8/12 | - | 43838 | 40 | 89.2 s | brief 11934 tok fails: fragment 2, tsc 1, check 1 |
 | L-brief | H with quickInfo/signatureAt types in the brief | 7/12 | -1 vs H | 39760 (-4078) | 39 | 76.6 s | brief 11220 tok fails: check 1, fragment 3, tsc 1 |
-| L-gate | H + atomicGate as the third filter | 2/12 | -6 vs H | 62124 (+18286) | 58 | 112.1 s |  fails: fragment 7, tsc 2, check 1 |
-| L-norm | L-gate + atomic-codemod plug() on a gate-failing fill | 2/12 | +0 vs L-gate | 62124 (+0) | 58 | 116.6 s |  fails: fragment 7, tsc 2, check 1 |
+| L-gate | H + atomicGate as the third filter | 1/12 | -7 vs H | 62124 (+18286) | 58 | 112.1 s |  fails: fragment 7, tsc 2, gate 1, check 1 |
+| L-norm | L-gate + atomic-codemod plug() on a gate-failing fill | 1/12 | +0 vs L-gate | 62124 (+0) | 58 | 116.6 s |  fails: fragment 7, tsc 2, gate 1, check 1 |
 | L-gather-files | context by reading files (B driver input) | 12/12 | - | 0 | 0 | 0.0 s |  |
 | L-gather | qwen3:4b gatherer, definition/references only | 1/12 | -11 vs L-gather-files | 35953 (+35953) | 13 | 395.4 s | context 25 vs files 4313 tok |
 | L-gather-det | definition + quickInfo per context export, no model | 12/12 | +0 vs L-gather-files | 0 (+0) | 0 | 1.2 s | context 1392 vs files 4313 tok |
@@ -25,16 +25,16 @@
 
 Samples the judge passed (tsc, and the task check on a task's last function): 18; the gate rejected 15 (83%). Reasons (a sample can fail several): connections 15, smith 6. Template-exempt: 0.
 Samples drawn: H 40, L-gate 58 (+18); wall H 89 s, L-gate 112 s; gate time 87 ms over 18 calls.
-L-norm: 15 gate-failing fills normalized by plug(); changed 15, gate pass after 0, still tsc-clean 0, landable 0.
+L-norm: 15 gate-failing fills normalized by plug(); changed 15, gate pass after 0, still tsc-clean 0, check 0, landable 0; Smith runtime imported in 0 (-). First errors: -.
 
 ## Gate on every passing fill (triples)
 
 - B: 0 function(s) pass, 6 fail (connections 6, smith 2); triples in triples.jsonl 0
 - L-fix: 0 function(s) pass, 6 fail (connections 6, smith 2); triples in triples.jsonl 0
-- H: 3 function(s) pass, 7 fail (connections 7, smith 2); triples in triples.jsonl 3
+- H: 3 function(s) pass, 7 fail (connections 7, smith 2); triples in triples.jsonl 7
 - L-brief: 3 function(s) pass, 6 fail (connections 6, smith 1); triples in triples.jsonl 3
-- L-gate: 3 function(s) pass, 1 fail (connections 1, smith 1); triples in triples.jsonl 3
-- L-norm: 3 function(s) pass, 1 fail (connections 1, smith 1); triples in triples.jsonl 3
+- L-gate: 3 function(s) pass, 1 fail (connections 1, smith 1); triples in triples.jsonl 7
+- L-norm: 3 function(s) pass, 1 fail (connections 1, smith 1); triples in triples.jsonl 7
 - appended to results/triples.jsonl this run: 0
 
 ## Call latency (ms; cold = first call on a fresh service, warm = median of 5)

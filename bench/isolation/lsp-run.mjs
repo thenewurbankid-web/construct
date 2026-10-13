@@ -24,14 +24,15 @@ import * as S from '../../packages/engine/lsp/smith.mjs';
 import { nextSteps, ruleDiagnostics } from '../../packages/engine/lsp/rules.mjs';
 import { createLineLsp } from '../../packages/engine/lsp/server.mjs';
 import { buildBriefs } from './blocks/briefBuilder.mjs';
-import { spliceFunction } from './blocks/spliceApplier.mjs';
+import { spliceFunction, applyPrelude } from './blocks/spliceApplier.mjs';
+import { smithCore } from './lib/workspace.mjs';
 import { ts, parse, declName } from './lib/edit.mjs';
 import { CASES as K3, materialize, buildFacts, SYSTEM as K3_SYSTEM, userPrompt as k3Prompt, schemaFor as k3Schema } from './chain/quick/k3.mjs';
 import { TASKS as QUICK } from './chain/quick/tasks.mjs';
 import { planSentence } from './chain/quick/lib/smith.mjs';
 import { makeTriple, appendTriples } from './lsp/triples.mjs';
 
-const RUN = 'lsp-r1';
+const RUN = (() => { const i = process.argv.indexOf('--run'); return i >= 0 ? process.argv[i + 1] : 'lsp-r1'; })();
 run.setRunName(RUN);
 const HERE = run.HERE;
 const RESULTS = run.RESULTS;
@@ -78,7 +79,7 @@ const LABELS = {
   B: '7b driver -> 1.5b (r1 B, rerun)', 'L-fix': 'B + LSP fixes() after the reply',
   'L-enum-free': '1.5b free text at r1 failure points', 'L-enum': '1.5b picks from the completionsAt enum',
   H: 'blocks: briefBuilder -> 1.5b best-of-5 (rerun)', 'L-brief': 'H with quickInfo/signatureAt types in the brief',
-  'L-gate': 'H + atomicGate as the third filter', 'L-norm': 'L-gate + atomic-codemod plug() on a gate-failing fill',
+  'L-gate': 'H + atomicGate as the third filter', 'L-gate-canon': 'L-gate + Smith plan check (canonical mode, reference plan)', 'L-norm': 'L-gate + atomic-codemod plug() on a gate-failing fill',
   'L-gather-files': 'context by reading files (B driver input)', 'L-gather-det': 'definition + quickInfo per context export, no model', 'L-gather': 'qwen3:4b gatherer, definition/references only',
   'L-rules-free': 'K3: 1.5b, free schema (steps x targets x reasons)', 'L-rules': 'K3: 1.5b picks from the nextSteps enum', 'L-rules-det': 'K3: nextSteps alone, no model',
   'L-smith-exact': 'smithDiagnostics, exact template match', 'L-smith-embed': 'smithDiagnostics + nomic-embed-text fallback',
@@ -145,6 +146,7 @@ function addArms() {
     H5: { ...config.arms.H, key: 'H', strategy: 'lspBlocks' },
     'L-brief': { ...config.arms.H, label: LABELS['L-brief'], key: 'L-brief', strategy: 'lspBlocks', lspBrief: true },
     'L-gate': { ...config.arms.H, label: LABELS['L-gate'], key: 'L-gate', strategy: 'lspBlocks', gate: true },
+    'L-gate-canon': { ...config.arms.H, label: 'L-gate-canon', key: 'L-gate-canon', strategy: 'lspBlocks', gate: true, canon: true },
     'L-norm': { ...config.arms.H, label: LABELS['L-norm'], key: 'L-norm', strategy: 'lspBlocks', gate: true, norm: true },
   });
   run.strategies.drivenFix = async (arm, ctx) => {
@@ -168,6 +170,17 @@ function addArms() {
     return { ...ev, lsp: { base: baseRow, applied: f.applied, unfixed: f.unfixed.length, fixMs: Math.round(fixMs) } };
   };
 
+  // The task's reference plan: Smith's canonical sentences for each function of the reference solution
+  // (the 12 tasks carry no hand-written plan; this makes the reference the oracle, so L-gate-canon is an upper bound).
+  const plans = new Map();
+  const referencePlan = async (task) => {
+    if (plans.has(task.id)) return plans.get(task.id);
+    const ref = path.join(task.dir, 'reference', task.target);
+    const p = fs.existsSync(ref) ? await S.smithIndexFile(task.target, fs.readFileSync(ref, 'utf8'), { canonical: true }) : null;
+    plans.set(task.id, p);
+    return p;
+  };
+
   // H / L-brief / L-gate / L-norm: the blocks strategy, with the LSP brief and the gate plugged in through ctx
   run.strategies.lspBlocks = async (arm, ctx) => {
     const task = ctx.material.task;
@@ -177,10 +190,22 @@ function addArms() {
     if (arm.gate) {
       ctx.gate = async (body, fn) => {
         const g = await atomicGate({ rel: task.target, source: body, fn });
-        const rec = { fn, pass: g.pass, failed: g.failed, exempt: g.exempt, ms: g.ms };
+        const rec = { fn, pass: g.pass, failed: [...g.failed], exempt: g.exempt, ms: g.ms };
         if (!g.pass && arm.norm) rec.norm = await normalize(body, fn, task, ctx);
+        // L-gate-canon: Smith test-plan check in canonical mode -- the fill's canonical sentences must equal the plan's
+        if (g.pass && arm.canon) {
+          const t0 = performance.now();
+          const plan = await referencePlan(task);
+          const want = plan?.find((e) => e.name === fn);
+          if (want) {
+            const got = await S.smithIndexFile(task.target, body, { canonical: true });
+            const d = await S.smithDiagnostics({ [fn]: want.sentences }, got.filter((e) => e.name === fn));
+            rec.canon = { pass: !d.missing.length && !d.extra.length, missing: d.missing.map((x) => x.sentence).slice(0, 3), extra: d.extra.map((x) => x.sentence).slice(0, 3), ms: Math.round(performance.now() - t0) };
+            if (!rec.canon.pass) { rec.pass = false; rec.failed.push('plan'); }
+          }
+        }
         lspInfo.gate.push(rec);
-        return { pass: g.pass || (arm.norm && rec.norm?.landable), failed: g.failed, smith: g.smith };
+        return { pass: rec.pass || (arm.norm && rec.norm?.landable), failed: rec.failed, smith: g.smith };
       };
     }
     const ev = await run.strategies.blocks(arm, ctx);
@@ -212,6 +237,9 @@ function lspBriefs(a, ws) {
 
 // L-norm: atomic-codemod's plug() on the function, spliced back, then gate + tsc + check again
 let plugMod;
+let smithNames;
+/** The value names Smith's src/index.ts exports (functions and classes). */
+const smithExports = () => (smithNames ??= (() => { const f = smithCore(); return f ? [...fs.readFileSync(f, 'utf8').matchAll(/^export (?:abstract )?(?:function|class) (\w+)/gm)].map((m) => m[1]) : []; })());
 async function normalize(body, fn, task, ctx) {
   try {
     plugMod ??= createRequire(import.meta.url)(path.join(process.env.ATOMIC_CODEMOD_SOURCE_DIR?.replace(/^~/, process.env.HOME) ?? '', 'plug.js'));
@@ -223,15 +251,19 @@ async function normalize(body, fn, task, ctx) {
     if (code.trim() === st.getText(sf).trim()) return { ok: true, changed: false, landable: false };
     const sp = spliceFunction(body, `\`\`\`tsx\n${code}\n\`\`\``, fn, task.target);
     if (!sp.ok) return { ok: false, why: sp.detail };
-    const g = await atomicGate({ rel: task.target, source: sp.body, fn });
-    const ev = ctx.evaluate({ ok: true, body: sp.body }, `norm-${fn}`);
-    return { ok: true, changed: true, gatePass: g.pass, failed: g.failed, tsc: ev.tsc?.ok === true, check: ev.check?.ok === true, landable: g.pass && ev.pass };
+    // the atom calls plug() wrote import their runtime: Smith's own exports (ifIt, and, or, ...) from @smith/core
+    const used = smithExports().filter((n) => new RegExp(`(?<![\\w$.])${n}\\s*\\(`).test(code));
+    const withRuntime = used.length ? applyPrelude(sp.body, [`import { ${used.join(', ')} } from '@smith/core';`], task.target) : sp.body;
+    const g = await atomicGate({ rel: task.target, source: withRuntime, fn });
+    const ev = ctx.evaluate({ ok: true, body: withRuntime }, `norm-${fn}`);
+    return { ok: true, changed: true, runtime: used, gatePass: g.pass, failed: g.failed, tsc: ev.tsc?.ok === true, check: ev.check?.ok === true, landable: g.pass && ev.pass,
+      firstError: (ev.tsc?.errors?.[0] ?? ev.check?.failures?.[0] ?? '').slice(0, 160) };
   } catch (e) { return { ok: false, why: String(e?.message ?? e).slice(0, 120) }; }
 }
 
 async function armRuns() {
   addArms();
-  const plan = [['L-fix', want('fix')], ['H5', want('blocks')], ['L-brief', want('blocks')], ['L-gate', want('gate')], ['L-norm', want('gate') && S.smithReady()]];
+  const plan = [['L-fix', want('fix')], ['H5', want('blocks') || want('h')], ['L-brief', want('blocks')], ['L-gate', want('gate')], ['L-gate-canon', want('gate') && S.smithReady()], ['L-norm', want('norm') && S.smithReady()]];
   for (const [arm, on] of plan) {
     if (!on) continue;
     for (const task of TASKS) {
@@ -526,11 +558,20 @@ function report() {
     `# Line LSP isolation ${RUN}`, '',
     `${new Date().toISOString().slice(0, 10)}. #943 (part of #941). Coder ${config.models.coder}, driver ${config.models.driver}, gatherer ${config.models.toolDriver}. Rows: \`${RUN}.jsonl\` (r1.jsonl's row format plus \`lsp\`). Command: see lsp-run.mjs header.`, '',
     '| Setup | | pass | delta | tokens (in+out) | model calls | wall | notes |', '| --- | --- | --- | --- | --- | --- | --- | --- |',
-    ...[['B'], ['L-fix', 'B'], ['L-enum-free'], ['L-enum', 'L-enum-free'], ['H'], ['L-brief', 'H'], ['L-gate', 'H'], ['L-norm', 'L-gate'], ['L-gather-files'], ['L-gather', 'L-gather-files'], ['L-gather-det', 'L-gather-files'], ['L-rules-free'], ['L-rules', 'L-rules-free'], ['L-rules-det', 'L-rules-free'], ['L-smith-exact'], ['L-smith-embed', 'L-smith-exact']].map(([a, b]) => line(a, b)).filter(Boolean),
-    '', '## L-gate', '',
-    `Samples the judge passed (tsc, and the task check on a task's last function): ${gateRecs.length}; the gate rejected ${gateRecs.filter((g) => !g.pass).length} (${gateRecs.length ? Math.round(100 * gateRecs.filter((g) => !g.pass).length / gateRecs.length) : 0}%). Reasons (a sample can fail several): ${Object.entries(reasons).map(([k, v]) => `${k} ${v}`).join(', ') || '-'}. Template-exempt: ${gateRecs.filter((g) => g.exempt).length}.`,
-    `Samples drawn: H ${drawn('H')}, L-gate ${drawn('L-gate')} (+${drawn('L-gate') - drawn('H')}); wall H ${(sum(by('H'), 'wallMs') / 1000).toFixed(0)} s, L-gate ${(sum(gateRs, 'wallMs') / 1000).toFixed(0)} s; gate time ${Math.round(gateRecs.reduce((a, g) => a + g.ms, 0))} ms over ${gateRecs.length} calls.`,
-    `L-norm: ${normRecs.length} gate-failing fills normalized by plug(); changed ${normRecs.filter((g) => g.norm.changed).length}, gate pass after ${normRecs.filter((g) => g.norm.gatePass).length}, still tsc-clean ${normRecs.filter((g) => g.norm.tsc).length}, landable ${normRecs.filter((g) => g.norm.landable).length}.`,
+    ...[['B'], ['L-fix', 'B'], ['L-enum-free'], ['L-enum', 'L-enum-free'], ['H'], ['L-brief', 'H'], ['L-gate', 'H'], ['L-gate-canon', 'H'], ['L-norm', 'L-gate'], ['L-gather-files'], ['L-gather', 'L-gather-files'], ['L-gather-det', 'L-gather-files'], ['L-rules-free'], ['L-rules', 'L-rules-free'], ['L-rules-det', 'L-rules-free'], ['L-smith-exact'], ['L-smith-embed', 'L-smith-exact']].map(([a, b]) => line(a, b)).filter(Boolean),
+    ...(notes.smith ? ['', `Smith for every gate setup (${['L-gate', 'L-gate-canon', 'L-norm'].filter((a) => by(a).length).join(', ') || '-'}) and for the triples: atomic-codemod ${notes.smith.head ?? 'not linked'} (${notes.smith.dir ?? '-'}), input ${notes.smith.raw ? 'raw TS/TSX as written (LSP_SMITH_RAW=1)' : 'types stripped (smithInput)'}, drift allowed: ${notes.smith.drift}. H runs no Smith.`] : []),
+    ...['L-gate', 'L-gate-canon'].filter((a) => by(a).length).flatMap((a) => {
+      const recs = by(a).flatMap((r) => r.lsp?.gate ?? []);
+      const rs = {}; for (const g of recs.filter((x) => !x.pass)) for (const f of g.failed) rs[f] = (rs[f] ?? 0) + 1;
+      return ['', `## ${a}`, '',
+        `Samples the judge passed (tsc, and the task check on a task's last function): ${recs.length}; rejected ${recs.filter((g) => !g.pass).length} (${recs.length ? Math.round(100 * recs.filter((g) => !g.pass).length / recs.length) : 0}%). Reasons (a sample can fail several): ${Object.entries(rs).map(([k, v]) => `${k} ${v}`).join(', ') || '-'}. Template-exempt: ${recs.filter((g) => g.exempt).length}.`,
+        `Samples drawn: H ${drawn('H')}, ${a} ${drawn(a)} (+${drawn(a) - drawn('H')}); wall H ${(sum(by('H'), 'wallMs') / 1000).toFixed(0)} s, ${a} ${(sum(by(a), 'wallMs') / 1000).toFixed(0)} s; gate time ${Math.round(recs.reduce((x, g) => x + g.ms + (g.canon?.ms ?? 0), 0))} ms over ${recs.length} calls.`,
+        ...(a === 'L-gate-canon' ? [`Plan check (canonical Smith of the fill vs canonical Smith of the task's reference, which makes the reference the oracle): ${recs.filter((g) => g.canon).length} checked, ${recs.filter((g) => g.canon && !g.canon.pass).length} rejected. Examples: ${recs.filter((g) => g.canon && !g.canon.pass).slice(0, 2).map((g) => `${g.fn}: missing "${g.canon.missing[0] ?? '-'}", extra "${g.canon.extra[0] ?? '-'}"`).join('; ') || '-'}.`] : [])];
+    }),
+    ...(notes.t09 ? ['', '## t09 reference under this Smith', '', `Gate: ${notes.t09.pass ? 'pass' : `FAIL (${notes.t09.failed.join(', ')})`}. Smith: ${notes.t09.sentences.map((s) => `"${s}"`).join(' ')}`] : []),
+    ...(by('L-norm').length ? [] : ['', '## L-norm: dropped', '',
+      'plug() cannot normalize a fill that works on plain data rows, so L-norm is dropped. Evidence from lsp-r2 (`lsp-r2.md`): all 8 gate-failing fills were changed by plug() and then passed the gate, but 0 compiled and 0 passed the check, even with Smith\'s runtime (`ifIt`, from @smith/core) imported. plug() turns property reads into accessor calls (`items.length` -> `items.lengthOfItems()`, `item.title` -> `item.titleOfItem()`; TS2339 on `Book[]`/`Book`), and Smith\'s comparisons delegate to the value itself (`Subject.greaterThan` calls `value.greaterThan`, smith src/index.ts). Those methods exist only on Smith objects (Organism / Chain) that carry them, never on the JSON rows a service returns, so a runtime import cannot make the normalized fill run.']),
+    ...[normRecs.length ? `L-norm: ${normRecs.length} gate-failing fills normalized by plug(); changed ${normRecs.filter((g) => g.norm.changed).length}, gate pass after ${normRecs.filter((g) => g.norm.gatePass).length}, still tsc-clean ${normRecs.filter((g) => g.norm.tsc).length}, check ${normRecs.filter((g) => g.norm.check).length}, landable ${normRecs.filter((g) => g.norm.landable).length}; Smith runtime imported in ${normRecs.filter((g) => g.norm.runtime?.length).length} (${[...new Set(normRecs.flatMap((g) => g.norm.runtime ?? []))].join(', ') || '-'}). First errors: ${[...new Set(normRecs.map((g) => (g.norm.firstError ?? g.norm.why ?? '').replace(/^.*?error /, '').slice(0, 90)).filter(Boolean))].slice(0, 4).join(' | ') || '-'}.` : null].filter(Boolean),
     '', '## Gate on every passing fill (triples)', '',
     ...Object.entries(notes.tripleGate ?? {}).map(([k, v]) => `- ${k}: ${v.pass} function(s) pass, ${v.fail} fail (${Object.entries(v.reasons).map(([a, b]) => `${a} ${b}`).join(', ') || '-'}); triples in triples.jsonl ${allTriples.filter((t) => t.setup === k).length}`),
     `- appended to results/triples.jsonl this run: ${appended}`,
@@ -545,6 +586,18 @@ function report() {
 }
 
 // ------------------------------------------------------------------ main
+if (S.smithReady()) {
+  const { smithLinks } = await import('../../packages/summarize/links.mjs');
+  const st = smithLinks().codemod;
+  notes.smith = { head: st.head, dir: st.sourceDir, raw: S.RAW, drift: process.env.LINE_LINKS_ALLOW_DRIFT === '1' };
+  const t09 = run.tasks.find((t) => t.id === 't09-browse-heading-availability');
+  if (t09) {
+    const src = fs.readFileSync(path.join(t09.dir, 'reference', t09.target), 'utf8');
+    const g = await atomicGate({ rel: t09.target, source: src, fn: 'BrowsePage' });
+    const sm = await S.smithOfFunction(parse(src, t09.target).statements.find((x) => declName(x) === 'BrowsePage').getText(), { fileName: t09.target });
+    notes.t09 = { pass: g.pass, failed: g.failed, sentences: sm.all, empty: sm.empty };
+  }
+}
 if (want('latency')) await latency();
 if (want('smith')) await smithRuns(!only || only.has('embed'));
 if (want('rules')) await rulesRuns();

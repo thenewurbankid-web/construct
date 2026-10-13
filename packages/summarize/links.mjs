@@ -48,11 +48,11 @@ export async function smithConnectors(options = {}) {
  * Never throws: when atomic-codemod is not linked or the code cannot be parsed, one sentence says so and the code
  * and the reason sit under Details.
  * @param {string} code One function (kind "function") or class method (kind "method").
- * @param {{kind?: 'function'|'method', env?: NodeJS.ProcessEnv}} [options]
+ * @param {{kind?: 'function'|'method', env?: NodeJS.ProcessEnv, toEnglishOptions?: object}} [options] `toEnglishOptions`: passed to to-english as its third argument (e.g. {canonical: true} on atomic-codemod smith-hardening; the pinned commit ignores it)
  * @returns {Promise<import('./contract.mjs').Summary>}
  */
 export async function summarizeCode(code, options = {}) {
-  const { kind = 'function', ...rest } = options;
+  const { kind = 'function', toEnglishOptions, ...rest } = options;
   const r = await importLinked('@smith/to-english', optionsFor('codemod', rest));
   if (!r.ok) {
     return { sentences: ['This code is not put into words because atomic-codemod is not linked; the code and the reason are under Details.'], details: [{ label: 'Code', text: code }, { label: 'Why', text: /** @type {any} */ (r).reason }], via: 'static' };
@@ -60,7 +60,7 @@ export async function summarizeCode(code, options = {}) {
   const toEnglish = r.module.toEnglish ?? r.module.default?.toEnglish;
   let english;
   try {
-    english = toEnglish(code, kind);
+    english = toEnglishOptions ? toEnglish(code, kind, toEnglishOptions) : toEnglish(code, kind);
   } catch (e) {
     return { sentences: ['This code could not be read, so it is not put into words; the code and the reason are under Details.'], details: [{ label: 'Code', text: code }, { label: 'Why', text: String(/** @type {any} */ (e)?.message ?? e).split('\n')[0] }], via: 'static' };
   }

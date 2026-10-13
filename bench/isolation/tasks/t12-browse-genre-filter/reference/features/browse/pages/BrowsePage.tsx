@@ -4,13 +4,11 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { ListPage } from '../../../library/pages/ListPage';
-import books from '../../../library/fixtures/books.json';
-
-type Book = { id: string; title: string; author: string; genre: string; year: number; pages: number; available: boolean };
+import { listBooks, type Book } from '../services/listBooks';
 
 export function BrowsePage() {
   const [genre, setGenre] = useState('all');
-  const items = (books as Book[]).filter((b) => genre === 'all' || b.genre === genre);
+  const items = listBooks({}).filter((b) => genre === 'all' || b.genre === genre);
   const toolbar = (
     <>
       <label htmlFor="genre">Genre</label>

@@ -6,6 +6,7 @@
   "spec": "BK-4: Every book page has a link \"Back to the catalogue\" to `/`; an unknown id shows \"We could not find that book\" and the same link.",
   "target": "features/book/pages/BookPage.tsx",
   "context": [
+    "features/book/services/findBook.ts",
     "library/pages/DetailPage.tsx"
   ],
   "entries": {

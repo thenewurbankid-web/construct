@@ -1,0 +1,25 @@
+{
+ "tripleGate": {
+  "H": {
+   "pass": 7,
+   "fail": 2,
+   "reasons": {
+    "smith": 2
+   }
+  },
+  "L-gate": {
+   "pass": 7,
+   "fail": 1,
+   "reasons": {
+    "smith": 1
+   }
+  },
+  "L-norm": {
+   "pass": 7,
+   "fail": 1,
+   "reasons": {
+    "smith": 1
+   }
+  }
+ }
+}

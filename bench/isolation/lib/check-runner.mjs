@@ -32,7 +32,7 @@ try {
   await build({
     entryPoints: [entry], outfile: join(outDir, 'entry.mjs'), bundle: true, format: 'esm', platform: 'node',
     jsx: 'automatic', external: ['react', 'react-dom', 'react/*', 'react-dom/*', '@radix-ui/*', 'jsdom'],
-    alias: { 'next/link': join(ws, 'shims/next-link.tsx') }, logLevel: 'silent',
+    alias: { 'next/link': join(ws, 'shims/next-link.tsx'), '@line/construct-core/typed-contracts': join(ws, 'typed-contracts/index.ts'), '@smith/core': join(ws, 'smith-core/index.ts') }, logLevel: 'silent',
   });
   const mod = await import(pathToFileURL(join(outDir, 'entry.mjs')).href);
   const React = await import('react');
@@ -64,6 +64,8 @@ try {
       });
     },
     text: (node) => norm(node.textContent),
+    // #943: a page reads data only through a feature service (owner rule); the check fails a page that imports a fixture
+    readsFixture: () => /from\s+['"][^'"]*fixtures\/[^'"]+\.json['"]/.test(readFileSync(join(ws, task.target), 'utf8')),
     norm,
     buttons: (c, name) => [...c.querySelectorAll('button')].filter((b) => norm(b.textContent) === name || b.getAttribute('aria-label') === name),
     links: (c) => [...c.querySelectorAll('a[href]')],

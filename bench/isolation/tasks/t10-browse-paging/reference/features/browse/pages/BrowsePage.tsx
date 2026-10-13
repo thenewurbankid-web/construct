@@ -5,14 +5,12 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { ListPage } from '../../../library/pages/ListPage';
 import { Button } from '../../../library/components/Button';
-import books from '../../../library/fixtures/books.json';
-
-type Book = { id: string; title: string; author: string; genre: string; year: number; pages: number; available: boolean };
+import { listBooks, type Book } from '../services/listBooks';
 
 const PAGE_SIZE = 6;
 
 export function BrowsePage() {
-  const items = books as Book[];
+  const items = listBooks({});
   const [page, setPage] = useState(1);
   const pageCount = Math.max(1, Math.ceil(items.length / PAGE_SIZE));
   const shown = items.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);

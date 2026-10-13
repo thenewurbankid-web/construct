@@ -22,6 +22,7 @@ import { buildBriefs } from './blocks/briefBuilder.mjs';
 import { applyPrelude, spliceFunction } from './blocks/spliceApplier.mjs';
 import { sample } from './blocks/sampler.mjs';
 import { ts, parse, declName, isDirective, fencedBlocks, signatures } from './lib/edit.mjs';
+import { makeWorkspace as sharedWorkspace } from './lib/workspace.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const TASKS = join(HERE, 'tasks');
@@ -45,21 +46,8 @@ function loadTask(id) {
   return { ...JSON.parse(readFileSync(join(TASKS, id, 'task.json'), 'utf8')), dir: join(TASKS, id) };
 }
 
-// ---------- workspace (same layout as run.mjs's makeWorkspace: _shared, then _r2, then the task's start/) ----------
-function makeWorkspace(ws, task, override) {
-  rmSync(ws, { recursive: true, force: true });
-  mkdirSync(ws, { recursive: true });
-  for (const d of [join(TASKS, '_shared'), join(TASKS, '_r2'), join(task.dir, 'start')]) if (existsSync(d)) cpSync(d, ws, { recursive: true });
-  if (override != null) writeFileSync(join(ws, task.target), override);
-  writeFileSync(join(ws, 'tsconfig.json'), JSON.stringify({
-    compilerOptions: {
-      target: 'ES2020', lib: ['dom', 'dom.iterable', 'esnext'], strict: true, noEmit: true, skipLibCheck: true,
-      esModuleInterop: true, module: 'esnext', moduleResolution: 'bundler', resolveJsonModule: true, isolatedModules: true,
-      jsx: 'react-jsx', types: [], paths: { 'next/link': ['./shims/next-link.tsx'] },
-    },
-    include: ['**/*.ts', '**/*.tsx'], exclude: ['.out'],
-  }));
-}
+// ---------- workspace: the same one run.mjs builds (lib/workspace.mjs) ----------
+const makeWorkspace = (ws, task, override) => sharedWorkspace(ws, task, override);
 const startWorkspace = (task, tag) => {
   const ws = join(HERE, '.work', 'claude-drive', tag, task.id);
   makeWorkspace(ws, task);

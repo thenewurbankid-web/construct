@@ -1,0 +1,39 @@
+Write one React TypeScript function named BookPage. Reply with ONLY this function in one ```tsx fenced code block. No imports, no other code, no explanation.
+
+Exact signature:
+export function BookPage({ params }: { params: { id: string } })
+
+Already imported in the file (do not import again):
+- Link from 'next/link'
+- DetailPage from '../../../library/pages/DetailPage'  (props: title: string; back?: ReactNode; children?: ReactNode; aside?: ReactNode)
+- books from '../../../library/fixtures/books.json'  (an array of Book)
+
+type Book = { id: string; title: string; author: string; genre: string; year: number; pages: number; summary: string; available: boolean };
+
+What it must do:
+- Find the book whose id equals params.id.
+- If not found, return <p>Book not found</p>.
+- Show availability as words, never true/false: if book.available is false show exactly "On loan", otherwise show exactly "Available".
+
+Write it exactly like this:
+
+```tsx
+export function BookPage({ params }: { params: { id: string } }) {
+  const book = (books as Book[]).find((b) => b.id === params.id);
+  if (!book) {
+    return <p>Book not found</p>;
+  }
+  const availability = book.available ? 'Available' : 'On loan';
+  return (
+    <DetailPage
+      title={book.title}
+      back={<Link href="/books">Back to books</Link>}
+      aside={<p>{availability}</p>}
+    >
+      <p>{book.author}</p>
+      <p>{book.genre}, {book.year}, {book.pages} pages</p>
+      <p>{book.summary}</p>
+    </DetailPage>
+  );
+}
+```

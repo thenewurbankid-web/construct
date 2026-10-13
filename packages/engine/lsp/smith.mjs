@@ -15,6 +15,7 @@ import { fileURLToPath } from 'node:url';
 import { summarizeCode, smithLinks } from '../../summarize/links.mjs';
 import { toJs, functionsOf, smithInput, smithEmptyReason } from '../../tools/smith-system1/sources.mjs';
 import { capList } from './index.mjs';
+import { ts } from './host.mjs';
 
 const ATOMS_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'line-atoms', 'atoms');
 
@@ -25,29 +26,47 @@ export function stableIdOf(rel, name) {
 }
 
 export const smithReady = () => !!smithLinks().codemod.ok;
+/** The atomic-codemod commit to-english is linked from (null when not linked). */
+export const smithHead = () => smithLinks().codemod.head ?? null;
+/**
+ * LSP_SMITH_RAW=1 (or CHAIN_SMITH_RAW=1, exp/english-loop-chain's name): the hardened to-english (atomic-codemod
+ * smith-hardening) parses TS/TSX itself, so a function goes in as written -- no type stripping, no JSX rewrite.
+ */
+export const RAW = process.env.LSP_SMITH_RAW === '1' || process.env.CHAIN_SMITH_RAW === '1';
 export const normSentence = (s) => String(s).toLowerCase().replace(/\s+/g, ' ').trim().replace(/[.\s]+$/, '');
 
 /**
  * Smith's sentences for one function's code (TS or JS, JSX allowed). The "<name> works in N steps" title is kept as
  * sentence 0 in `all`; `steps` is the rest. `empty` is smith-system1's placeholder rule (blank | placeholder | null).
  */
-export async function smithOfFunction(code, { kind = 'function', fileName = 'x.tsx' } = {}) {
-  const js = toJs(code, fileName);
-  const fn = functionsOf(js)[0] ?? { kind, code: js };
-  const s = await summarizeCode(smithInput(fn), { kind: fn.kind });
+export async function smithOfFunction(code, { kind = 'function', fileName = 'x.tsx', canonical = false, raw = RAW } = {}) {
+  let input = code; let k = kind;
+  if (!raw) { const js = toJs(code, fileName); const fn = functionsOf(js)[0] ?? { kind, code: js }; input = smithInput(fn); k = fn.kind; }
+  const s = await summarizeCode(input, { kind: k, ...(canonical ? { toEnglishOptions: { canonical: true } } : {}) });
   const all = s.sentences ?? [];
   const failed = s.via === 'static' && !/works in \d+ steps?/.test(all[0] ?? '');
   const text = all.join(' ');
   return { all, steps: all.slice(1), empty: failed ? 'failed' : smithEmptyReason(text) };
 }
 
+/** Raw mode: each top-level function declaration (or arrow const) as written TS/TSX, `export` kept. */
+function rawFunctionsOf(rel, source) {
+  const sf = ts.createSourceFile(rel, source, ts.ScriptTarget.Latest, true, /\.tsx$/.test(rel) ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
+  const out = [];
+  for (const st of sf.statements) {
+    if (ts.isFunctionDeclaration(st) && st.body && st.name) out.push({ name: st.name.text, kind: 'function', code: st.getText(sf) });
+    else if (ts.isVariableStatement(st)) for (const d of st.declarationList.declarations) if (ts.isIdentifier(d.name) && d.initializer && (ts.isArrowFunction(d.initializer) || ts.isFunctionExpression(d.initializer))) out.push({ name: d.name.text, kind: 'function', code: st.getText(sf) });
+  }
+  return out;
+}
+
 /** Index one file: each top-level function (declarations, arrow consts, class methods) to its Smith sentences. */
-export async function smithIndexFile(rel, source) {
+export async function smithIndexFile(rel, source, { canonical = false } = {}) {
   const out = [];
   let fns = [];
-  try { fns = functionsOf(toJs(source, rel)); } catch { fns = []; }
+  try { fns = RAW ? rawFunctionsOf(rel, source) : functionsOf(toJs(source, rel)); } catch { fns = []; }
   for (const fn of fns) {
-    const s = await summarizeCode(smithInput(fn), { kind: fn.kind });
+    const s = await summarizeCode(RAW ? fn.code : smithInput(fn), { kind: fn.kind, ...(canonical ? { toEnglishOptions: { canonical: true } } : {}) });
     const all = s.sentences ?? [];
     const failed = s.via === 'static' && !/works in \d+ steps?/.test(all[0] ?? '');
     out.push({ id: stableIdOf(rel, fn.name), file: rel, name: fn.name, sentences: all.slice(1), title: all[0] ?? '', empty: failed ? 'failed' : smithEmptyReason(all.join(' ')) });
