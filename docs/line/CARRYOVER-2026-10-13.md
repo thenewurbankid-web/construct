@@ -25,12 +25,12 @@ agents below report into the previous session. Push to `private` only. Never mod
 | Work | Branch | Notes |
 |---|---|---|
 | fallow wrapper, ON by default in validate (FALLOW-*, warnings, `--no-fallow`) | `oss/fallow` @ 6ea01662 (DONE, #924) | fallow 3.33.1 MIT pinned devDependency; runs only when the root has package.json; +0.1 s; 8 enforcer tests now pass `--no-fallow` |
-| per-function complexity via OSS only (ESLint core `complexity` in-process + fallow health for cognitive), FUNC-001 ON by default, logicMap signature | `ast/function-complexity` | owner: no hand-written counter |
+| per-function complexity via OSS only (ESLint core `complexity` in-process + fallow health for cognitive), FUNC-001 ON by default, logicMap signature | `ast/function-complexity` @ 588a088b (DONE, #923) | ESLint core `complexity` in-process (eslint + @typescript-eslint/parser moved to dependencies) + fallow cognitive via `validateArchitecture(root, { fallowHealth })` — WIRE the oss/fallow runner's health report into it at merge; budgets raised (domain 15, component 20) so generated code has 0 warnings; package.json/lock will conflict with oss/fallow |
 | lending plain-arm starter | `bench/lending-plain` @ 2bb51072 (DONE) | from 359f6deb, refs #925; owner kept its one-line fixture-path edit to bench/lending/SPEC.md |
 | path-first proof (CAT-2 + CART-1, 11 stubs, fill tool, `--arm path`) | `exp/path-first-proof` @ 07ddd3d2 (#921) | steps 1-3 done; step 4 (qwen fill run) waits |
 
 ## Next, in order
-1. When the three in-flight branches are on private: og merges them into og/final-2026-10-12 (fallow + FUNC-001
+1. All three in-flight branches are DONE on private (oss/fallow 6ea01662, ast/function-complexity 588a088b, bench/lending-plain 2bb51072). og merges them into og/final-2026-10-12 (fallow + FUNC-001
    change validate defaults and golden fixtures), then ONE full suite via heavy.sh, then fast-forward work.
 2. Lending bench on that tree, one at a time: seed-only acceptance, Line `--seed-plan`, Line `--seed-plan --seed 2`,
    plain twin (`--bench bench/lending`; reset BENCH_DIR per run). Report vs owner bar and per-point open reasons.
