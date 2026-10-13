@@ -280,3 +280,23 @@ test('insertArgument rejects a step with no call to add to', () => {
   const code = `function run(a, b) {\n  let x = a;\n  return x;\n}`;
   assert.throws(() => insertArgument(code, 'function', 0, 'b'));
 });
+
+test('toEnglish reports each placeholder as a structured unhandled entry, per step and overall', () => {
+  const code = `function run(a) {\n  let x = a;\n  return { a: x };\n}`;
+  const res = toEnglish(code, 'function');
+  assert.deepEqual(res.steps[0].unhandled, []);
+  assert.equal(res.steps[1].unhandled.length, res.steps[1].english.split('(...)').length - 1);
+  for (const u of res.unhandled) {
+    assert.equal(typeof u.type, 'string');
+    assert.ok(u.start >= res.steps[1].start && u.end <= res.steps[1].end);
+  }
+  assert.deepEqual(res.unhandled, res.steps.flatMap((s) => s.unhandled));
+});
+
+test('unhandled offsets for a class method are in the unwrapped method coordinate space', () => {
+  const code = `run(a) {\n  return { a };\n}`;
+  const res = toEnglish(code, 'method');
+  for (const u of res.unhandled) {
+    if (u.start != null) assert.ok(code.slice(u.start, u.end).length > 0);
+  }
+});

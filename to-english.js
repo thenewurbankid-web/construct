@@ -3,6 +3,7 @@ const traverse = require('@babel/traverse').default;
 const generate = require('@babel/generator').default;
 const t = require('@babel/types');
 const { chunkCode } = require('./chunker');
+const { canonicalizeFunction } = require('./canonical');
 
 // Deterministic, no model involved: takes code that's ALREADY been through
 // the atomic refactor (transform.js + the LLM extraction step), and renders
@@ -16,314 +17,1023 @@ function camelToWords(name) {
     .toLowerCase();
 }
 
-function exprToEnglish(node) {
-  if (!node) return '';
-  switch (node.type) {
-    case 'Identifier':
-      return node.name === 'this' ? 'it' : node.name;
-    case 'ThisExpression':
-      return 'it';
-    case 'StringLiteral':
-      return `'${node.value}'`;
-    case 'NumericLiteral':
-    case 'BooleanLiteral':
-      return String(node.value);
-    case 'NullLiteral':
-      return 'nothing';
-    case 'MemberExpression':
-      // computed: true is bracket notation with a dynamic key (obj[x]) --
-      // property is a VALUE expression (a variable, a literal), not a fixed
-      // field name, so it must be rendered as an expression, not word-split
-      // like a property name. Treating both cases the same was the bug:
-      // this.rules[name] rendered as "rules's name" (implying a literal
-      // nested field this.rules.name), when it's actually a lookup BY the
-      // variable name -- a different meaning entirely.
-      if (node.computed) {
-        return `${exprToEnglish(node.object)} at ${exprToEnglish(node.property)}`;
-      }
-      return `${exprToEnglish(node.object)}'s ${camelToWords(node.property.name || '')}`;
-    case 'UnaryExpression':
-      if (node.operator === '!') return `not (${exprToEnglish(node.argument)})`;
-      return `${node.operator}${exprToEnglish(node.argument)}`;
-    case 'CallExpression': {
-      const callee = node.callee;
-      const args = node.arguments.map(exprToEnglish).join(' and ');
-      if (callee.type === 'MemberExpression') {
-        const subject = exprToEnglish(callee.object);
-        const verb = camelToWords(callee.property.name || '');
-        return args ? `${subject} ${verb} ${args}` : `${subject} ${verb}`;
-      }
-      const fn = camelToWords(callee.name || '');
-      return `${fn} of ${args}`;
-    }
-    case 'ArrowFunctionExpression':
-      // Renders the closure's BODY, not the closure itself -- "() => x"
-      // reads as just "x". Without this, any call taking a callback (like
-      // ifIt/elseIfIt/elseIt below) rendered every argument as a bare "(...)"
-      // placeholder, losing the actual condition/result entirely.
-      if (node.body.type === 'BlockStatement') {
-        return blockToEnglish(node.body);
-      }
-      return exprToEnglish(node.body);
-    case 'NewExpression': {
-      const args = node.arguments.map(exprToEnglish).join(' and ');
-      return `a new ${node.callee.name}${args ? ' of ' + args : ''}`;
-    }
-    case 'BinaryExpression':
-      return `${exprToEnglish(node.left)} ${node.operator} ${exprToEnglish(node.right)}`;
-    case 'AssignmentExpression':
-      return `set ${exprToEnglish(node.left)} to ${exprToEnglish(node.right)}`;
-    case 'BinaryExpression':
-      return `${exprToEnglish(node.left)} ${node.operator} ${exprToEnglish(node.right)}`;
-    default:
-      return '(...)';
-  }
-}
-
-// A declarator's `id` isn't always a plain Identifier -- destructuring
-// (const [a, b] = args, the shape transform.js's extraction step itself
-// produces for a multi-param original) gives an ArrayPattern/ObjectPattern
-// instead, whose .name is undefined. Recurses so nested patterns
-// ([a, [b, c]]) still render as something readable instead of "undefined".
-function patternName(id) {
-  if (id.type === 'Identifier') return id.name;
-  if (id.type === 'ArrayPattern') return `[${id.elements.map((el) => (el ? patternName(el) : '')).join(', ')}]`;
-  if (id.type === 'ObjectPattern') return `{${id.properties.map((p) => (p.key ? patternName(p.key) : '')).join(', ')}}`;
-  return '?';
-}
-
-function blockToEnglish(node, depth) {
-  if (!node) return '';
-  if (node.type === 'BlockStatement') {
-    return node.body.map((s) => stmtToEnglish(s, depth)).join('; then ');
-  }
-  return stmtToEnglish(node, depth);
-}
-
-function stmtToEnglish(node, depth = 0) {
-  switch (node.type) {
-    case 'ReturnStatement':
-      return node.argument ? `return ${exprToEnglish(node.argument)}` : 'return';
-    case 'ExpressionStatement':
-      return exprToEnglish(node.expression);
-    case 'VariableDeclaration':
-      return node.declarations
-        .map((d) => `let ${patternName(d.id)} be ${d.init ? exprToEnglish(d.init) : 'undefined'}`)
-        .join(', ');
-    case 'IfStatement': {
-      const cond = `if ${exprToEnglish(node.test)}`;
-      const then = blockToEnglish(node.consequent, depth + 1);
-      const alt = node.alternate ? `, otherwise ${blockToEnglish(node.alternate, depth + 1)}` : '';
-      return `${cond}: ${then}${alt}`;
-    }
-    case 'ForInStatement':
-      return `for each ${node.left.declarations ? node.left.declarations[0].id.name : exprToEnglish(node.left)} in ${exprToEnglish(node.right)}: ${blockToEnglish(node.body, depth + 1)}`;
-    case 'ForOfStatement':
-      return `for each ${node.left.declarations ? node.left.declarations[0].id.name : exprToEnglish(node.left)} of ${exprToEnglish(node.right)}: ${blockToEnglish(node.body, depth + 1)}`;
-    case 'BlockStatement':
-      return blockToEnglish(node, depth);
-    default:
-      return '(a step that does not translate cleanly)';
-  }
-}
-
-// Token-producing mirror of exprToEnglish/stmtToEnglish below: same shape of
-// switch, but instead of concatenating a string, each branch emits chips --
-// {text, type, start, end} -- start/end are the SOURCE node this chip came
-// from (so the demo can map a chip back to code), omitted for connectives
-// that don't correspond to a single node ("and", ":", "otherwise", ...).
+// ONE walker, two views. Every rule below emits into a single ordered item
+// list; each item is either a CHIP ({text, type, start?, end?} -- start/end
+// are the SOURCE node the chip came from, omitted for connectives that don't
+// correspond to a single node) or GLUE (punctuation that only exists in the
+// flat sentence: "'s", "(", ")"). A chip may also carry `en`, its spelling in
+// the flat sentence when that differs from the chip label ("then" chip reads
+// "; then"). `render()` joins the items into the flat English string and
+// `chipsOf()` keeps only the chips -- so the sentence and the chips can never
+// drift apart: there is no second switch to forget to update.
+//
 // A multi-word atom/verb name (camelToWords splits it into several English
 // words) is still ONE chip, mapped to the one callee/property node it came
 // from -- the words belong together and must move together.
-function tokenizeSubject(node) {
-  if (node.type === 'Identifier') {
-    return [{ text: node.name === 'this' ? 'it' : node.name, type: 'subject', start: node.start, end: node.end }];
-  }
-  if (node.type === 'ThisExpression') {
-    return [{ text: 'it', type: 'subject', start: node.start, end: node.end }];
-  }
-  return tokenizeExpr(node);
+//
+// Spacing: items are joined with one space, except an item with glueL sticks
+// to the item before it and an item with glueR sticks to the item after it.
+function makeOut() {
+  return { items: [], unhandled: [], optDepth: 0, jsxDepth: 0 };
 }
 
-function tokenizeArgs(nodes) {
-  const out = [];
-  nodes.map(tokenizeExpr).forEach((tokens, i) => {
-    if (i > 0) out.push({ text: 'and', type: 'connective' });
-    out.push(...tokens);
+function chip(out, text, type, node, opts) {
+  const c = { text, type };
+  if (node) {
+    c.start = node.start;
+    c.end = node.end;
+  }
+  out.items.push({
+    chip: c,
+    en: opts && opts.en !== undefined ? opts.en : text,
+    glueL: !!(opts && opts.glueL),
+    glueR: !!(opts && opts.glueR),
   });
-  return out;
 }
 
-function tokenizeExpr(node) {
-  if (!node) return [];
-  switch (node.type) {
+function glue(out, en, opts) {
+  out.items.push({ chip: null, en, glueL: !!(opts && opts.glueL), glueR: !!(opts && opts.glueR) });
+}
+
+// The one place a construct with no English rule is recorded: the
+// placeholder chip itself, plus a structured {kind, type, start, end} entry.
+const PLACEHOLDER_TEXT = { expr: '(...)', stmt: '(a step that does not translate cleanly)', pattern: '?' };
+
+function noteUnhandled(out, kind, node) {
+  out.unhandled.push({
+    kind,
+    type: node ? node.type : 'unknown',
+    start: node && node.start != null ? node.start : null,
+    end: node && node.end != null ? node.end : null,
+  });
+}
+
+function placeholder(out, kind, node) {
+  noteUnhandled(out, kind, node);
+  chip(out, PLACEHOLDER_TEXT[kind], 'connective');
+}
+
+function render(items) {
+  let s = '';
+  let stickNext = true;
+  for (const it of items) {
+    const en = it.en == null ? '' : String(it.en);
+    if (en === '') continue;
+    if (s && !it.glueL && !stickNext) s += ' ';
+    s += en;
+    stickNext = it.glueR;
+  }
+  return s;
+}
+
+function chipsOf(items) {
+  return items.filter((it) => it.chip).map((it) => it.chip);
+}
+
+// Renders a sub-expression to a plain string inside a pattern label (a
+// default value, a computed key), keeping any unhandled entries it hits.
+function inlineEnglish(node, out) {
+  const sub = makeOut();
+  walkExpr(node, sub);
+  out.unhandled.push(...sub.unhandled);
+  return render(sub.items);
+}
+
+function keyName(key) {
+  if (key.type === 'Identifier') return key.name;
+  if (key.type === 'PrivateName') return key.id.name;
+  if (key.type === 'StringLiteral') return `'${key.value}'`;
+  if (key.value != null) return String(key.value);
+  return null;
+}
+
+// A binding pattern as one label: the name(s) it binds, in code-like
+// shape. `const [a, b] = args` -> "[a, b]"; `{ a, b: c, d = 1, ...rest }`
+// -> "{a, b as c, d (default 1), ...rest}" -- rename-aware: `b: c` binds c,
+// read from b, so both names appear.
+function patternName(id, out) {
+  switch (id.type) {
     case 'Identifier':
-      return [{ text: node.name === 'this' ? 'it' : node.name, type: 'arg', start: node.start, end: node.end }];
-    case 'ThisExpression':
-      return [{ text: 'it', type: 'arg', start: node.start, end: node.end }];
-    case 'StringLiteral':
-      return [{ text: `'${node.value}'`, type: 'arg', start: node.start, end: node.end }];
-    case 'NumericLiteral':
-    case 'BooleanLiteral':
-      return [{ text: String(node.value), type: 'arg', start: node.start, end: node.end }];
-    case 'NullLiteral':
-      return [{ text: 'nothing', type: 'arg', start: node.start, end: node.end }];
+      return id.name;
+    case 'ArrayPattern':
+      return `[${id.elements.map((el) => (el ? patternName(el, out) : '')).join(', ')}]`;
+    case 'ObjectPattern':
+      return `{${id.properties.map((p) => {
+        if (p.type === 'RestElement') return patternName(p, out);
+        const value = patternName(p.value, out);
+        if (p.shorthand) return value;
+        const key = p.computed ? `[${inlineEnglish(p.key, out)}]` : keyName(p.key);
+        return `${key} as ${value}`;
+      }).join(', ')}}`;
+    case 'RestElement':
+      return `...${patternName(id.argument, out)}`;
+    case 'AssignmentPattern':
+      return `${patternName(id.left, out)} (default ${inlineEnglish(id.right, out)})`;
+    case 'TSParameterProperty':
+      return patternName(id.parameter, out);
+    case 'TSAsExpression':
+    case 'TSSatisfiesExpression':
+    case 'TSTypeAssertion':
+    case 'TSNonNullExpression':
+      return patternName(id.expression, out);
     case 'MemberExpression':
-      if (node.computed) {
-        return [...tokenizeSubject(node.object), { text: 'at', type: 'connective' }, ...tokenizeExpr(node.property)];
-      }
-      return [...tokenizeSubject(node.object), { text: camelToWords(node.property.name || ''), type: 'verb', start: node.property.start, end: node.property.end }];
-    case 'UnaryExpression':
-      if (node.operator === '!') return [{ text: 'not', type: 'connective' }, ...tokenizeExpr(node.argument)];
-      return [{ text: node.operator, type: 'connective' }, ...tokenizeExpr(node.argument)];
-    case 'CallExpression': {
-      const callee = node.callee;
-      const argTokens = tokenizeArgs(node.arguments);
-      if (callee.type === 'MemberExpression') {
-        const subject = tokenizeSubject(callee.object);
-        const verb = { text: camelToWords(callee.property.name || ''), type: 'verb', start: callee.property.start, end: callee.property.end };
-        return [...subject, verb, ...argTokens];
-      }
-      const fn = { text: camelToWords(callee.name || ''), type: 'verb', start: callee.start, end: callee.end };
-      return argTokens.length ? [fn, { text: 'of', type: 'connective' }, ...argTokens] : [fn];
-    }
-    case 'ArrowFunctionExpression':
-      if (node.body.type === 'BlockStatement') return tokenizeBlock(node.body);
-      return tokenizeExpr(node.body);
-    case 'NewExpression': {
-      const argTokens = tokenizeArgs(node.arguments);
-      const head = [{ text: 'a new', type: 'connective' }, { text: node.callee.name, type: 'verb', start: node.callee.start, end: node.callee.end }];
-      return argTokens.length ? [...head, { text: 'of', type: 'connective' }, ...argTokens] : head;
-    }
-    case 'BinaryExpression':
-      return [...tokenizeExpr(node.left), { text: node.operator, type: 'connective' }, ...tokenizeExpr(node.right)];
-    case 'AssignmentExpression':
-      return [{ text: 'set', type: 'connective' }, ...tokenizeExpr(node.left), { text: 'to', type: 'connective' }, ...tokenizeExpr(node.right)];
+    case 'OptionalMemberExpression':
+      return inlineEnglish(id, out);
+    case 'VoidPattern':
+      return '(ignored)';
     default:
-      return [{ text: '(...)', type: 'connective' }];
+      noteUnhandled(out, 'pattern', id);
+      return PLACEHOLDER_TEXT.pattern;
   }
 }
 
-function tokenizeBlock(node, depth) {
-  if (!node) return [];
-  if (node.type === 'BlockStatement') {
-    const out = [];
-    node.body.forEach((s, i) => {
-      if (i > 0) out.push({ text: 'then', type: 'connective' });
-      out.push(...tokenizeStmt(s, depth));
-    });
-    return out;
-  }
-  return tokenizeStmt(node, depth);
+// Identifier/this read as the SUBJECT of whatever follows (a.equals(b): "a"
+// is the subject); anything else is just an expression in that position.
+function walkSubject(node, out) {
+  if (node.type === 'Identifier') return chip(out, node.name === 'this' ? 'it' : node.name, 'subject', node);
+  if (node.type === 'ThisExpression') return chip(out, 'it', 'subject', node);
+  return walkExpr(node, out);
 }
 
-function tokenizeStmt(node, depth = 0) {
-  switch (node.type) {
-    case 'ReturnStatement':
-      return node.argument
-        ? [{ text: 'return', type: 'connective' }, ...tokenizeExpr(node.argument)]
-        : [{ text: 'return', type: 'connective' }];
-    case 'ExpressionStatement':
-      return tokenizeExpr(node.expression);
-    case 'VariableDeclaration': {
-      const out = [];
-      node.declarations.forEach((d, i) => {
-        if (i > 0) out.push({ text: ',', type: 'connective' });
-        out.push({ text: 'let', type: 'connective' });
-        out.push({ text: patternName(d.id), type: 'subject', start: d.id.start, end: d.id.end });
-        out.push({ text: 'be', type: 'connective' });
-        out.push(...(d.init ? tokenizeExpr(d.init) : [{ text: 'undefined', type: 'arg' }]));
+// An expression that is NOT part of the current optional chain's spine (a
+// call argument, a computed key, a list element): it starts its own chain.
+function walkDetached(node, out) {
+  const saved = out.optDepth;
+  out.optDepth = 0;
+  walkExpr(node, out);
+  out.optDepth = saved;
+}
+
+function walkList(nodes, out, sep = 'and') {
+  nodes.forEach((n, i) => {
+    if (i > 0) chip(out, sep, 'connective');
+    if (n === null) chip(out, 'an empty slot', 'arg');
+    else walkDetached(n, out);
+  });
+}
+
+function walkArgs(nodes, out) {
+  walkList(nodes, out);
+}
+
+// `a?.b`, `a?.()`: the whole chain is "nothing" when any optional link is
+// missing, so "(if any)" is said once, after the outermost link.
+function walkOptionalRoot(node, out, walkInner) {
+  if (out.optDepth > 0) return walkInner();
+  out.optDepth++;
+  walkInner();
+  out.optDepth--;
+  chip(out, '(if any)', 'connective');
+}
+
+function walkMember(node, out) {
+  walkSubject(node.object, out);
+  if (node.computed) {
+    chip(out, 'at', 'connective');
+    return walkDetached(node.property, out);
+  }
+  glue(out, "'s", { glueL: true });
+  return chip(out, propertyWords(node.property), 'verb', node.property);
+}
+
+function propertyWords(prop) {
+  return camelToWords(prop.name || (prop.id && prop.id.name) || '');
+}
+
+function walkCall(node, out) {
+  const callee = node.callee;
+  if ((callee.type === 'MemberExpression' || callee.type === 'OptionalMemberExpression') && !callee.computed) {
+    walkSubject(callee.object, out);
+    chip(out, propertyWords(callee.property), 'verb', callee.property);
+    return walkArgs(node.arguments, out);
+  }
+  if (callee.type === 'Identifier') {
+    chip(out, camelToWords(callee.name), 'verb', callee);
+    if (node.arguments.length) {
+      chip(out, 'of', 'connective');
+      walkArgs(node.arguments, out);
+    }
+    return;
+  }
+  // Any other callee -- a computed lookup (handlers[name](e)), an IIFE, a
+  // call result (f(a)(b)), super(...) -- has no name to use as a verb (it
+  // used to render as an empty one), so it reads "call <callee> with <args>".
+  chip(out, 'call', 'connective');
+  walkExpr(callee, out);
+  if (node.arguments.length) {
+    chip(out, 'with', 'connective');
+    walkArgs(node.arguments, out);
+  }
+}
+
+// A template's text pieces and ${} values, in order: "text of 'Hi ' and name".
+function walkTemplateParts(tpl, out) {
+  const parts = [];
+  tpl.quasis.forEach((q, i) => {
+    const text = q.value.cooked != null ? q.value.cooked : q.value.raw;
+    if (text !== '') parts.push({ q, text });
+    if (i < tpl.expressions.length) parts.push({ e: tpl.expressions[i] });
+  });
+  parts.forEach((p, i) => {
+    if (i > 0) chip(out, 'and', 'connective');
+    if (p.e) walkDetached(p.e, out);
+    else chip(out, `'${p.text}'`, 'arg', p.q);
+  });
+}
+
+const LOGICAL_WORDS = { '&&': 'and', '||': 'or', '??': 'if present, otherwise' };
+const UNARY_WORDS = { typeof: 'the type of', void: 'nothing, after', delete: 'delete' };
+
+function walkFunctionValue(node, out) {
+  // Renders the closure's BODY, not the closure itself -- "() => x" reads as
+  // just "x". Without this, any call taking a callback (like
+  // ifIt/elseIfIt/elseIt) rendered every argument as a bare "(...)"
+  // placeholder, losing the actual condition/result entirely.
+  const saved = out.optDepth;
+  out.optDepth = 0;
+  if (node.body.type === 'BlockStatement') walkBlock(node.body, out);
+  else walkExpr(node.body, out);
+  out.optDepth = saved;
+}
+
+// ---- JSX -----------------------------------------------------------------
+// "shows a <Tag> with attr as value and flag containing 'text' and a <Child>".
+// Only the outermost element says "shows"; nested ones read "a <li> ...".
+function jsxName(n) {
+  if (n.type === 'JSXIdentifier') return n.name;
+  if (n.type === 'JSXMemberExpression') return `${jsxName(n.object)}.${jsxName(n.property)}`;
+  if (n.type === 'JSXNamespacedName') return `${n.namespace.name}:${n.name.name}`;
+  return '?';
+}
+
+function meaningfulChildren(children) {
+  return children.filter((c) => {
+    if (c.type === 'JSXText') return c.value.trim() !== '';
+    if (c.type === 'JSXExpressionContainer') return c.expression.type !== 'JSXEmptyExpression';
+    return true;
+  });
+}
+
+function walkJsxValue(node, out) {
+  if (node.type === 'JSXExpressionContainer') {
+    if (node.expression.type === 'JSXEmptyExpression') return chip(out, 'nothing', 'arg', node);
+    return walkDetached(node.expression, out);
+  }
+  if (node.type === 'JSXText') return chip(out, `'${node.value.replace(/\s+/g, ' ').trim()}'`, 'arg', node);
+  if (node.type === 'JSXSpreadChild') {
+    chip(out, 'everything in', 'connective');
+    return walkDetached(node.expression, out);
+  }
+  return walkDetached(node, out);
+}
+
+function walkJsx(node, out) {
+  const nested = out.jsxDepth > 0;
+  out.jsxDepth++;
+  if (node.type === 'JSXFragment') {
+    chip(out, nested ? 'a group' : 'shows a group', 'connective');
+  } else {
+    const open = node.openingElement;
+    chip(out, nested ? 'a' : 'shows a', 'connective');
+    chip(out, `<${jsxName(open.name)}>`, 'verb', open.name);
+    if (open.attributes.length) {
+      chip(out, 'with', 'connective');
+      open.attributes.forEach((a, i) => {
+        if (i > 0) chip(out, 'and', 'connective');
+        if (a.type === 'JSXSpreadAttribute') {
+          chip(out, 'everything in', 'connective');
+          return walkDetached(a.argument, out);
+        }
+        chip(out, jsxName(a.name), 'subject', a.name);
+        if (a.value) {
+          chip(out, 'as', 'connective');
+          walkJsxValue(a.value, out);
+        }
       });
-      return out;
     }
-    case 'IfStatement': {
-      const out = [
-        { text: 'if', type: 'connective' },
-        ...tokenizeExpr(node.test),
-        { text: ':', type: 'connective' },
-        ...tokenizeBlock(node.consequent, depth + 1),
-      ];
-      if (node.alternate) out.push({ text: 'otherwise', type: 'connective' }, ...tokenizeBlock(node.alternate, depth + 1));
-      return out;
-    }
-    case 'ForInStatement':
-    case 'ForOfStatement': {
-      const kw = node.type === 'ForInStatement' ? 'in' : 'of';
-      const varTokens = node.left.declarations
-        ? [{ text: node.left.declarations[0].id.name, type: 'subject', start: node.left.declarations[0].id.start, end: node.left.declarations[0].id.end }]
-        : tokenizeExpr(node.left);
-      return [
-        { text: 'for each', type: 'connective' },
-        ...varTokens,
-        { text: kw, type: 'connective' },
-        ...tokenizeExpr(node.right),
-        { text: ':', type: 'connective' },
-        ...tokenizeBlock(node.body, depth + 1),
-      ];
-    }
-    case 'BlockStatement':
-      return tokenizeBlock(node, depth);
-    default:
-      return [{ text: '(a step that does not translate cleanly)', type: 'connective' }];
   }
+  const kids = meaningfulChildren(node.children);
+  if (kids.length) {
+    chip(out, 'containing', 'connective');
+    kids.forEach((c, i) => {
+      if (i > 0) chip(out, 'and', 'connective');
+      walkJsxValue(c, out);
+    });
+  }
+  out.jsxDepth--;
+}
+
+// ---- expressions ----------------------------------------------------------
+// One rule per Babel Expression type (smith-coverage.test.js checks the
+// table against @babel/types, so a new node type can't silently fall back to
+// "(...)").
+const transparent = (node, out) => walkExpr(node.expression, out);
+
+const EXPR_RULES = {
+  Identifier: (node, out) => chip(out, node.name === 'this' ? 'it' : node.name, 'arg', node),
+  ThisExpression: (node, out) => chip(out, 'it', 'arg', node),
+  Super: (node, out) => chip(out, 'the parent', 'subject', node),
+  Import: (node, out) => chip(out, 'import', 'verb', node),
+  PrivateName: (node, out) => chip(out, camelToWords(node.id.name), 'verb', node),
+  StringLiteral: (node, out) => chip(out, `'${node.value}'`, 'arg', node),
+  NumericLiteral: (node, out) => chip(out, String(node.value), 'arg', node),
+  BooleanLiteral: (node, out) => chip(out, String(node.value), 'arg', node),
+  BigIntLiteral: (node, out) => chip(out, String(node.value), 'arg', node),
+  NullLiteral: (node, out) => chip(out, 'nothing', 'arg', node),
+  RegExpLiteral: (node, out) => chip(out, `the pattern /${node.pattern}/${node.flags}`, 'arg', node),
+  TemplateLiteral: (node, out) => {
+    if (!node.expressions.length) {
+      const q = node.quasis[0];
+      return chip(out, `'${q.value.cooked != null ? q.value.cooked : q.value.raw}'`, 'arg', node);
+    }
+    chip(out, 'text of', 'connective');
+    return walkTemplateParts(node, out);
+  },
+  TaggedTemplateExpression: (node, out) => {
+    if (node.tag.type === 'Identifier') chip(out, camelToWords(node.tag.name), 'verb', node.tag);
+    else walkExpr(node.tag, out);
+    chip(out, 'of', 'connective');
+    if (!node.quasi.expressions.length) return EXPR_RULES.TemplateLiteral(node.quasi, out);
+    return walkTemplateParts(node.quasi, out);
+  },
+  // computed: true is bracket notation with a dynamic key (obj[x]) --
+  // property is a VALUE expression (a variable, a literal), not a fixed
+  // field name, so it must be rendered as an expression, not word-split
+  // like a property name. Treating both cases the same was the bug:
+  // this.rules[name] rendered as "rules's name" (implying a literal nested
+  // field this.rules.name), when it's actually a lookup BY the variable name.
+  MemberExpression: walkMember,
+  OptionalMemberExpression: (node, out) => walkOptionalRoot(node, out, () => walkMember(node, out)),
+  CallExpression: walkCall,
+  OptionalCallExpression: (node, out) => walkOptionalRoot(node, out, () => walkCall(node, out)),
+  ImportExpression: (node, out) => {
+    chip(out, 'load module', 'verb', null);
+    chip(out, 'of', 'connective');
+    return walkArgs(node.options ? [node.source, node.options] : [node.source], out);
+  },
+  NewExpression: (node, out) => {
+    chip(out, 'a new', 'connective');
+    const callee = node.callee;
+    if (callee.type === 'Identifier') {
+      chip(out, callee.name, 'verb', callee);
+    } else if ((callee.type === 'MemberExpression') && !callee.computed) {
+      // new a.B() used to read "a new undefined": the class is B, from a.
+      chip(out, callee.property.name, 'verb', callee.property);
+      chip(out, 'from', 'connective');
+      walkSubject(callee.object, out);
+    } else {
+      walkExpr(callee, out);
+    }
+    if (node.arguments.length) {
+      chip(out, 'of', 'connective');
+      walkArgs(node.arguments, out);
+    }
+  },
+  UnaryExpression: (node, out) => {
+    if (node.operator === '!') {
+      chip(out, 'not', 'connective');
+      if (isGrouped(node.argument)) return walkExpr(node.argument, out);
+      glue(out, '(', { glueR: true });
+      walkExpr(node.argument, out);
+      return glue(out, ')', { glueL: true });
+    }
+    if (UNARY_WORDS[node.operator]) {
+      chip(out, UNARY_WORDS[node.operator], 'connective');
+      return walkExpr(node.argument, out);
+    }
+    chip(out, node.operator, 'connective', null, { glueR: true });
+    return walkExpr(node.argument, out);
+  },
+  UpdateExpression: (node, out) => {
+    chip(out, node.operator === '++' ? 'increase' : 'decrease', 'connective');
+    walkExpr(node.argument, out);
+    chip(out, 'by 1', 'connective');
+  },
+  BinaryExpression: (node, out) => {
+    walkExpr(node.left, out);
+    chip(out, node.operator, 'connective');
+    walkExpr(node.right, out);
+  },
+  LogicalExpression: (node, out) => {
+    walkExpr(node.left, out);
+    chip(out, LOGICAL_WORDS[node.operator] || node.operator, 'connective');
+    walkExpr(node.right, out);
+  },
+  ConditionalExpression: (node, out) => {
+    chip(out, 'if', 'connective');
+    walkExpr(node.test, out);
+    chip(out, 'then', 'connective');
+    walkExpr(node.consequent, out);
+    chip(out, 'otherwise', 'connective', null, { en: ', otherwise', glueL: true });
+    walkExpr(node.alternate, out);
+  },
+  AssignmentExpression: (node, out) => {
+    const op = node.operator;
+    if (op === '+=' || op === '-=') {
+      chip(out, op === '+=' ? 'add' : 'subtract', 'connective');
+      walkExpr(node.right, out);
+      chip(out, op === '+=' ? 'to' : 'from', 'connective');
+      return walkExpr(node.left, out);
+    }
+    chip(out, 'set', 'connective');
+    walkExpr(node.left, out);
+    chip(out, 'to', 'connective');
+    if (op !== '=') {
+      const bare = op.slice(0, -1);
+      walkExpr(node.left, out);
+      chip(out, LOGICAL_WORDS[bare] || bare, 'connective');
+    }
+    walkExpr(node.right, out);
+  },
+  SequenceExpression: (node, out) => {
+    node.expressions.forEach((e, i) => {
+      if (i > 0) chip(out, 'then', 'connective', null, { en: ', then', glueL: true });
+      walkExpr(e, out);
+    });
+  },
+  ParenthesizedExpression: transparent,
+  ArrowFunctionExpression: walkFunctionValue,
+  FunctionExpression: walkFunctionValue,
+  ClassExpression: (node, out) => {
+    chip(out, 'a class', 'connective');
+    if (node.id) chip(out, node.id.name, 'verb', node.id);
+  },
+  MetaProperty: (node, out) => chip(out, `${node.meta.name}.${node.property.name}`, 'arg', node),
+  YieldExpression: (node, out) => {
+    chip(out, node.delegate ? 'yield each of' : 'yield', 'connective');
+    walkExpr(node.argument, out);
+  },
+  AwaitExpression: (node, out) => {
+    chip(out, 'wait for', 'connective');
+    walkExpr(node.argument, out);
+  },
+  SpreadElement: (node, out) => {
+    chip(out, 'everything in', 'connective');
+    walkExpr(node.argument, out);
+  },
+  ArgumentPlaceholder: (node, out) => chip(out, 'a value given later', 'arg', node),
+  ObjectExpression: (node, out) => {
+    if (!node.properties.length) return chip(out, 'an empty object', 'arg', node);
+    chip(out, 'an object with', 'connective');
+    node.properties.forEach((p, i) => {
+      if (i > 0) chip(out, 'and', 'connective');
+      if (p.type === 'SpreadElement') return EXPR_RULES.SpreadElement(p, out);
+      if (p.type === 'ObjectProperty' && p.shorthand) return walkDetached(p.value, out);
+      if (p.computed) {
+        chip(out, 'key', 'connective');
+        walkDetached(p.key, out);
+      } else {
+        chip(out, keyName(p.key), 'subject', p.key);
+      }
+      chip(out, 'as', 'connective');
+      if (p.type === 'ObjectMethod') return walkFunctionValue(p, out);
+      return walkDetached(p.value, out);
+    });
+  },
+  ArrayExpression: (node, out) => {
+    if (!node.elements.length) return chip(out, 'an empty list', 'arg', node);
+    chip(out, 'a list of', 'connective');
+    walkList(node.elements, out);
+  },
+  JSXElement: walkJsx,
+  JSXFragment: walkJsx,
+  // Types are erased at runtime, so a type assertion reads as its value.
+  TSAsExpression: transparent,
+  TSSatisfiesExpression: transparent,
+  TSTypeAssertion: transparent,
+  TSNonNullExpression: transparent,
+  TSInstantiationExpression: transparent,
+  TypeCastExpression: transparent,
+  BindExpression: (node, out) => {
+    if (node.object) walkSubject(node.object, out);
+    chip(out, 'bound to', 'connective');
+    walkExpr(node.callee, out);
+  },
+  DoExpression: (node, out) => walkBlock(node.body, out),
+  ModuleExpression: (node, out) => chip(out, 'an inline module', 'arg', node),
+  TopicReference: (node, out) => chip(out, 'the piped value', 'arg', node),
+  PipelineBareFunction: (node, out) => walkExpr(node.callee, out),
+  PipelinePrimaryTopicReference: (node, out) => chip(out, 'the piped value', 'arg', node),
+  PipelineTopicExpression: transparent,
+};
+
+// Operators whose grouping changes the meaning: when the source wrote them in
+// parentheses, the sentence keeps the parentheses (glue only, never a chip),
+// so `sum * (1 - d)` doesn't read as "sum * 1 - d".
+const GROUPED = new Set(['BinaryExpression', 'LogicalExpression', 'ConditionalExpression', 'AssignmentExpression', 'SequenceExpression']);
+
+function isGrouped(node) {
+  return !!(node && node.extra && node.extra.parenthesized && GROUPED.has(node.type));
+}
+
+function walkExpr(node, out) {
+  if (!node) return;
+  const rule = EXPR_RULES[node.type];
+  if (!rule) return placeholder(out, 'expr', node);
+  if (!isGrouped(node)) return rule(node, out);
+  glue(out, '(', { glueR: true });
+  rule(node, out);
+  glue(out, ')', { glueL: true });
+}
+
+function walkBlock(node, out) {
+  if (!node) return;
+  if (node.type === 'BlockStatement') {
+    walkStmtList(node.body, out);
+    return;
+  }
+  walkStmt(node, out);
+}
+
+function walkStmtList(stmts, out) {
+  stmts.forEach((s, i) => {
+    if (i > 0) chip(out, 'then', 'connective', null, { en: '; then', glueL: true });
+    walkStmt(s, out);
+  });
+}
+
+function colon(out) {
+  chip(out, ':', 'connective', null, { glueL: true });
+}
+
+function walkParams(params, out) {
+  params.forEach((p, i) => {
+    if (i > 0) chip(out, 'and', 'connective');
+    chip(out, patternName(p, out), 'subject', p);
+  });
+}
+
+// "define the type Props", "define a class Store" -- a declaration inside a
+// body is named, not expanded.
+function definesNamed(label) {
+  return (node, out) => {
+    chip(out, label, 'connective');
+    const id = node.id;
+    if (id) chip(out, id.type === 'StringLiteral' ? id.value : id.name || jsxName(id), 'verb', id);
+  };
+}
+
+// switch cases with an empty body fall through into the next one, so they
+// share its sentence: "when 'a' or 'b': ...".
+function walkSwitch(node, out) {
+  chip(out, 'depending on', 'connective');
+  walkExpr(node.discriminant, out);
+  colon(out);
+  let pending = [];
+  let first = true;
+  node.cases.forEach((c, idx) => {
+    pending.push(c);
+    const isLast = idx === node.cases.length - 1;
+    if (!c.consequent.length && !isLast) return;
+    if (!first) glue(out, ';', { glueL: true });
+    first = false;
+    const tests = pending.filter((p) => p.test);
+    const hasDefault = pending.some((p) => !p.test);
+    if (tests.length) {
+      chip(out, 'when', 'connective');
+      tests.forEach((p, i) => {
+        if (i > 0) chip(out, 'or', 'connective');
+        walkExpr(p.test, out);
+      });
+    }
+    if (hasDefault) chip(out, tests.length ? 'or otherwise' : 'otherwise', 'connective');
+    colon(out);
+    let body = c.consequent.length === 1 && c.consequent[0].type === 'BlockStatement' ? c.consequent[0].body : c.consequent;
+    const last = body[body.length - 1];
+    if (last && last.type === 'BreakStatement' && !last.label) body = body.slice(0, -1);
+    if (body.length) walkStmtList(body, out);
+    else chip(out, 'nothing', 'connective');
+    pending = [];
+  });
+}
+
+const STMT_RULES = {
+  ReturnStatement: (node, out) => {
+    chip(out, 'return', 'connective');
+    walkExpr(node.argument, out);
+  },
+  ExpressionStatement: (node, out) => walkExpr(node.expression, out),
+  VariableDeclaration: (node, out) => {
+    node.declarations.forEach((d, i) => {
+      if (i > 0) chip(out, ',', 'connective', null, { glueL: true });
+      chip(out, 'let', 'connective');
+      chip(out, patternName(d.id, out), 'subject', d.id);
+      chip(out, 'be', 'connective');
+      if (d.init) walkExpr(d.init, out);
+      else chip(out, 'undefined', 'arg');
+    });
+  },
+  IfStatement: (node, out) => {
+    chip(out, 'if', 'connective');
+    walkExpr(node.test, out);
+    colon(out);
+    walkBlock(node.consequent, out);
+    if (node.alternate) {
+      chip(out, 'otherwise', 'connective', null, { en: ', otherwise', glueL: true });
+      walkBlock(node.alternate, out);
+    }
+  },
+  ForInStatement: walkForEach,
+  ForOfStatement: walkForEach,
+  ForStatement: (node, out) => {
+    if (node.init) {
+      chip(out, 'starting with', 'connective');
+      if (node.init.type === 'VariableDeclaration') walkStmt(node.init, out);
+      else walkExpr(node.init, out);
+    }
+    const lead = !!node.init;
+    if (node.test) {
+      chip(out, 'repeat while', 'connective', null, lead && { en: ', repeat while', glueL: true });
+      walkExpr(node.test, out);
+    } else {
+      chip(out, 'repeat forever', 'connective', null, lead && { en: ', repeat forever', glueL: true });
+    }
+    if (node.update) {
+      chip(out, 'after each pass', 'connective', null, { en: ', after each pass', glueL: true });
+      walkExpr(node.update, out);
+    }
+    colon(out);
+    walkBlock(node.body, out);
+  },
+  WhileStatement: (node, out) => {
+    chip(out, 'while', 'connective');
+    walkExpr(node.test, out);
+    colon(out);
+    walkBlock(node.body, out);
+  },
+  DoWhileStatement: (node, out) => {
+    chip(out, 'repeat', 'connective');
+    colon(out);
+    walkBlock(node.body, out);
+    chip(out, 'as long as', 'connective', null, { en: ', as long as', glueL: true });
+    walkExpr(node.test, out);
+  },
+  SwitchStatement: walkSwitch,
+  TryStatement: (node, out) => {
+    chip(out, 'try', 'connective');
+    colon(out);
+    walkBlock(node.block, out);
+    if (node.handler) {
+      chip(out, 'if it fails', 'connective', null, { en: ', if it fails', glueL: true });
+      if (node.handler.param) {
+        chip(out, 'with', 'connective');
+        chip(out, patternName(node.handler.param, out), 'subject', node.handler.param);
+      }
+      colon(out);
+      walkBlock(node.handler.body, out);
+    }
+    if (node.finalizer) {
+      chip(out, 'finally', 'connective', null, { en: ', finally', glueL: true });
+      colon(out);
+      walkBlock(node.finalizer, out);
+    }
+  },
+  ThrowStatement: (node, out) => {
+    chip(out, 'fail with', 'connective');
+    walkExpr(node.argument, out);
+  },
+  BreakStatement: (node, out) => chip(out, node.label ? `stop ${node.label.name}` : 'stop the loop', 'connective', node),
+  ContinueStatement: (node, out) => chip(out, node.label ? `continue ${node.label.name}` : 'skip to the next pass', 'connective', node),
+  EmptyStatement: (node, out) => chip(out, 'do nothing', 'connective', node),
+  DebuggerStatement: (node, out) => chip(out, 'pause for the debugger', 'connective', node),
+  LabeledStatement: (node, out) => {
+    chip(out, `at ${node.label.name}`, 'connective', node.label);
+    colon(out);
+    walkStmt(node.body, out);
+  },
+  WithStatement: (node, out) => {
+    chip(out, 'with the fields of', 'connective');
+    walkExpr(node.object, out);
+    colon(out);
+    walkBlock(node.body, out);
+  },
+  BlockStatement: (node, out) => walkBlock(node, out),
+  FunctionDeclaration: (node, out) => {
+    chip(out, 'define', 'connective');
+    if (node.id) chip(out, camelToWords(node.id.name), 'verb', node.id);
+    if (node.params.length) {
+      chip(out, 'using', 'connective');
+      walkParams(node.params, out);
+    }
+    colon(out);
+    walkBlock(node.body, out);
+  },
+  ClassDeclaration: definesNamed('define a class'),
+  TSDeclareFunction: definesNamed('declare the function'),
+  TSTypeAliasDeclaration: definesNamed('define the type'),
+  TSInterfaceDeclaration: definesNamed('define the type'),
+  TSEnumDeclaration: definesNamed('define the choices'),
+  TSModuleDeclaration: definesNamed('define the namespace'),
+  TSImportEqualsDeclaration: definesNamed('import'),
+  TSNamespaceExportDeclaration: definesNamed('export the namespace'),
+  TSExportAssignment: (node, out) => {
+    chip(out, 'export', 'connective');
+    walkExpr(node.expression, out);
+  },
+  ImportDeclaration: (node, out) => {
+    chip(out, 'import from', 'connective');
+    walkExpr(node.source, out);
+  },
+  ExportAllDeclaration: (node, out) => {
+    chip(out, 'export everything from', 'connective');
+    walkExpr(node.source, out);
+  },
+  ExportNamedDeclaration: (node, out) => {
+    chip(out, 'export', 'connective');
+    if (node.declaration) return walkStmt(node.declaration, out);
+    node.specifiers.forEach((s, i) => {
+      if (i > 0) chip(out, 'and', 'connective');
+      chip(out, keyName(s.exported) || 'names', 'subject', s.exported);
+    });
+    if (node.source) {
+      chip(out, 'from', 'connective');
+      walkExpr(node.source, out);
+    }
+  },
+  ExportDefaultDeclaration: (node, out) => {
+    chip(out, 'export as the default', 'connective');
+    const d = node.declaration;
+    if (STMT_RULES[d.type] && !EXPR_RULES[d.type]) return walkStmt(d, out);
+    return walkExpr(d, out);
+  },
+  // Flow declarations: named, like the TS ones above.
+  DeclareClass: definesNamed('declare a class'),
+  DeclareFunction: definesNamed('declare the function'),
+  DeclareInterface: definesNamed('declare the type'),
+  DeclareModule: definesNamed('declare the module'),
+  DeclareModuleExports: (node, out) => chip(out, 'declare the module exports', 'connective', node),
+  DeclareTypeAlias: definesNamed('declare the type'),
+  DeclareOpaqueType: definesNamed('declare the type'),
+  DeclareVariable: definesNamed('declare'),
+  DeclareExportDeclaration: (node, out) => {
+    chip(out, 'declare an export', 'connective');
+    if (node.declaration) walkStmt(node.declaration, out);
+  },
+  DeclareExportAllDeclaration: (node, out) => {
+    chip(out, 'declare an export of everything from', 'connective');
+    walkExpr(node.source, out);
+  },
+  InterfaceDeclaration: definesNamed('define the type'),
+  OpaqueType: definesNamed('define the type'),
+  TypeAlias: definesNamed('define the type'),
+  EnumDeclaration: definesNamed('define the choices'),
+};
+
+function walkForEach(node, out) {
+  chip(out, 'for each', 'connective');
+  if (node.left.declarations) {
+    // patternName, not id.name: a destructured loop variable
+    // (for (const [k, v] of ...)) has no .name and used to read "undefined".
+    const id = node.left.declarations[0].id;
+    chip(out, patternName(id, out), 'subject', id);
+  } else {
+    walkExpr(node.left, out);
+  }
+  chip(out, node.type === 'ForInStatement' ? 'in' : 'of', 'connective');
+  walkExpr(node.right, out);
+  colon(out);
+  walkBlock(node.body, out);
+}
+
+function walkStmt(node, out) {
+  const rule = STMT_RULES[node.type];
+  if (rule) return rule(node, out);
+  return placeholder(out, 'stmt', node);
+}
+
+// Chips for one statement -- the step's word chips the demo edits, and what
+// reorderChip() re-derives to find which chips moved.
+function tokenizeStmt(node) {
+  const out = makeOut();
+  walkStmt(node, out);
+  return chipsOf(out.items);
+}
+
+// The same statement as a flat sentence plus its chips and unhandled list,
+// all from one walk.
+function describeStmt(node) {
+  const out = makeOut();
+  walkStmt(node, out);
+  return { english: render(out.items), tokens: chipsOf(out.items), unhandled: out.unhandled };
+}
+
+function describeImplicitReturn(expr) {
+  const out = makeOut();
+  chip(out, 'return', 'connective');
+  walkExpr(expr, out);
+  return { english: render(out.items), tokens: chipsOf(out.items), unhandled: out.unhandled };
+}
+
+// Every parse in Smith reads TypeScript and JSX: Construct's own code is
+// .ts/.tsx, and plain JS parses the same way under these plugins.
+const PARSE_PLUGINS = ['typescript', 'jsx'];
+const PARSE_OPTS = { sourceType: 'module', plugins: PARSE_PLUGINS };
+
+// A method chunk lifted out of its class (`find(id) { return this.#items.get(id); }`)
+// refers to private fields the throwaway wrapper class doesn't declare. That
+// one complaint is about the wrapper, not the code, so it is tolerated; any
+// other syntax error still throws, same as before.
+const TOLERATED_PARSE_ERRORS = new Set(['InvalidPrivateFieldResolution']);
+
+function parseForEnglish(wrapped) {
+  const ast = parser.parse(wrapped, { ...PARSE_OPTS, errorRecovery: true });
+  const fatal = (ast.errors || []).find((e) => !TOLERATED_PARSE_ERRORS.has(e.reasonCode));
+  if (fatal) throw fatal;
+  return ast;
+}
+
+function isFnExpr(node) {
+  return !!node && (node.type === 'ArrowFunctionExpression' || node.type === 'FunctionExpression');
+}
+
+function methodName(node) {
+  const k = node.key;
+  if (!k) return '(anonymous)';
+  if (k.type === 'PrivateName') return k.id.name;
+  return k.name || (k.value != null ? String(k.value) : '(computed)');
+}
+
+// Every describable function at the top of a module, in source order:
+// function declarations, class methods (of top-level classes), and
+// arrow/function expressions bound to a top-level name -- each also when
+// wrapped in `export` / `export default`. Bodiless shapes (TS overloads,
+// abstract methods, `declare function`) are skipped.
+function topLevelFunctions(program) {
+  const found = [];
+  const fromClass = (cls) => {
+    for (const m of cls.body.body) {
+      if ((m.type === 'ClassMethod' || m.type === 'ClassPrivateMethod') && m.body) {
+        found.push({ name: methodName(m), kind: 'method', node: m, decl: m });
+      }
+    }
+  };
+  const fromDecl = (d, outer, defaultName) => {
+    if (!d) return;
+    if (d.type === 'FunctionDeclaration' && d.body) {
+      found.push({ name: d.id ? d.id.name : defaultName || '(anonymous)', kind: 'function', node: d, decl: outer });
+    } else if (d.type === 'ClassDeclaration' || d.type === 'ClassExpression') {
+      fromClass(d);
+    } else if (d.type === 'VariableDeclaration') {
+      for (const v of d.declarations) {
+        if (v.id.type === 'Identifier' && isFnExpr(v.init)) found.push({ name: v.id.name, kind: 'function', node: v.init, decl: outer });
+      }
+    } else if (isFnExpr(d)) {
+      found.push({ name: defaultName || '(anonymous)', kind: 'function', node: d, decl: outer });
+    }
+  };
+  for (const stmt of program.body) {
+    if (stmt.type === 'ExportNamedDeclaration') fromDecl(stmt.declaration, stmt);
+    else if (stmt.type === 'ExportDefaultDeclaration') fromDecl(stmt.declaration, stmt, 'default');
+    else fromDecl(stmt, stmt);
+  }
+  return found;
+}
+
+// The pre-TS lookup, kept as a fallback so anything the old toEnglish found
+// is still found: the first class method anywhere, or a top-level function.
+function legacyFirstFunction(ast) {
+  let hit = null;
+  traverse(ast, {
+    ClassMethod(path) {
+      if (!path.node.body) return;
+      hit = { name: methodName(path.node), kind: 'method', node: path.node, decl: path.node };
+      path.stop();
+    },
+    FunctionDeclaration(path) {
+      if (!path.parentPath.isProgram()) return;
+      hit = { name: path.node.id ? path.node.id.name : '(anonymous)', kind: 'function', node: path.node, decl: path.node };
+      path.stop();
+    },
+  });
+  return hit;
+}
+
+function paramText(p, out) {
+  return patternName(p, out);
+}
+
+function describeFunction(fn, wrapped, prefixLen) {
+  const shiftN = (n) => (n != null ? n - prefixLen : null);
+  const shift = (u) => ({ ...u, start: shiftN(u.start), end: shiftN(u.end) });
+  const node = fn.node;
+  const paramsOut = makeOut();
+  const params = node.params.map((p) => paramText(p, paramsOut));
+  const title = `${camelToWords(fn.name)}${params.length ? ' using ' + params.join(' and ') : ''}`;
+  const stepOf = (s, d) => ({
+    english: d.english,
+    unhandled: d.unhandled.map(shift),
+    code: wrapped.slice(s.start, s.end),
+    start: shiftN(s.start),
+    end: shiftN(s.end),
+    // Same step, as chips instead of a flat string -- each chip's start/end
+    // (when present) are shifted by the same class-wrapper offset as the
+    // step's own start/end, so both stay in the same coordinate space as
+    // `code` above.
+    tokens: d.tokens.map((tok) => ({ ...tok, start: shiftN(tok.start), end: shiftN(tok.end) })),
+  });
+  const steps = node.body.type === 'BlockStatement'
+    ? node.body.body.map((s) => stepOf(s, describeStmt(s)))
+    // An expression-bodied arrow (`const f = (a) => a.b`) is one implicit
+    // return step whose code is the expression itself.
+    : [stepOf(node.body, describeImplicitReturn(node.body))];
+  const english = `${title}: ${steps.map((s) => s.english).join('; then ')}.`;
+  return {
+    name: fn.name,
+    kind: fn.kind,
+    title,
+    english,
+    steps,
+    unhandled: [...paramsOut.unhandled.map(shift), ...steps.flatMap((s) => s.unhandled)],
+    start: shiftN(fn.decl.start),
+    end: shiftN(fn.decl.end),
+  };
 }
 
 // kind: 'method' | 'function' -- same convention as the rest of the tool,
 // so the caller can pass a chunk straight from /api/chunk.
 //
-// Returns { english, steps, title }. `english` is the original flat string
-// ("title: step1; then step2; ...") kept for compatibility with existing
-// callers. `steps` is the same information un-flattened -- one entry per
-// top-level statement of the body, each with its own English, its own code
-// slice, and its node range -- so a caller (the demo's step-row editor) can
-// address, reorder, or rebuild around a single statement instead of the
-// whole block.
-function toEnglish(code, kind) {
+// Returns { english, steps, title, unhandled }. `english` is the original
+// flat string ("title: step1; then step2; ...") kept for compatibility with
+// existing callers. `steps` is the same information un-flattened -- one
+// entry per top-level statement of the body, each with its own English, its
+// own code slice, its node range, its chips and its `unhandled` list -- so a
+// caller (the demo's step-row editor) can address, reorder, or rebuild
+// around a single statement instead of the whole block. `unhandled` is every
+// placeholder in the description as {kind, type, start, end}.
+//
+// `{ canonical: true }` first rewrites each function into canonical form
+// (canonical.js) so equivalent code reads as the same sentence; off by
+// default, so the plain description reads the code exactly as written.
+//
+// By default only the FIRST function in `code` is described (the original
+// behaviour). `{ all: true }` also returns `functions`: one
+// {name, kind, title, english, steps, unhandled, start, end} per describable
+// function in the module, in source order (see topLevelFunctions).
+function describeSource(code, kind, options) {
   const prefixLen = kind === 'method' ? `class __W__ {\n`.length : 0;
   const wrapped = kind === 'method' ? `class __W__ {\n${code}\n}` : code;
-  const ast = parser.parse(wrapped, { sourceType: 'module' });
-  let name = null;
-  let params = [];
-  let body = null;
-
-  traverse(ast, {
-    ClassMethod(path) {
-      name = path.node.key.name;
-      params = path.node.params.map((p) => p.name || '?');
-      body = path.node.body;
-      path.stop();
-    },
-    FunctionDeclaration(path) {
-      if (!path.parentPath.isProgram()) return;
-      name = path.node.id ? path.node.id.name : '(anonymous)';
-      params = path.node.params.map((p) => p.name || '?');
-      body = path.node.body;
-      path.stop();
-    },
-  });
-
-  if (!body) {
-    return { english: '(could not find a function/method to describe)', steps: [], title: null };
+  const ast = parseForEnglish(wrapped);
+  let fns = topLevelFunctions(ast.program);
+  if (!fns.length) {
+    const legacy = legacyFirstFunction(ast);
+    if (legacy) fns = [legacy];
   }
+  if (!fns.length) {
+    const none = { english: '(could not find a function/method to describe)', steps: [], title: null, unhandled: [] };
+    return options.all ? { ...none, functions: [] } : none;
+  }
+  const chosen = options.all ? fns : fns.slice(0, 1);
+  // { canonical: true }: equivalent forms read the same (canonical.js). The
+  // AST here is this call's own fresh parse, so rewriting it in place is safe.
+  if (options.canonical) chosen.forEach((fn) => canonicalizeFunction(fn.node));
+  const described = chosen.map((fn) => describeFunction(fn, wrapped, prefixLen));
+  const first = described[0];
+  const result = { english: first.english, steps: first.steps, title: first.title, unhandled: first.unhandled };
+  if (options.all) result.functions = described;
+  return result;
+}
 
-  const title = `${camelToWords(name)}${params.length ? ' using ' + params.join(' and ') : ''}`;
-  const steps = body.body.map((s) => ({
-    english: stmtToEnglish(s),
-    code: wrapped.slice(s.start, s.end),
-    start: s.start - prefixLen,
-    end: s.end - prefixLen,
-    // Same step, as chips instead of a flat string -- each chip's start/end
-    // (when present) are shifted by the same class-wrapper offset as the
-    // step's own start/end, so both stay in the same coordinate space as
-    // `code` above.
-    tokens: tokenizeStmt(s).map((tok) => ({
-      ...tok,
-      start: tok.start != null ? tok.start - prefixLen : null,
-      end: tok.end != null ? tok.end - prefixLen : null,
-    })),
-  }));
-  const english = `${title}: ${steps.map((s) => s.english).join('; then ')}.`;
-  return { english, steps, title };
+// Memoized by a hash of (code, kind, options). toEnglish is pure -- the
+// result depends only on those inputs -- so a repeat call (the demo re-asks
+// for the same function after every keystroke-free action, the golden and
+// property tests walk the same corpus) skips the parse and walk. In memory
+// only, bounded (least recently used entry evicted first), never on disk.
+// Each call returns its own deep copy, so a caller mutating the result can't
+// corrupt the cache. Parse errors are not cached; they throw every time.
+const crypto = require('crypto');
+
+const CACHE_LIMIT = 500;
+const englishCache = new Map();
+const cacheStats = { hits: 0, misses: 0 };
+
+function cacheKey(code, kind, options) {
+  return crypto.createHash('sha256').update(`${kind}\0${options && options.all ? 'all' : 'first'}\0${options && options.canonical ? 'canonical' : 'as-written'}\0${code}`).digest('hex');
+}
+
+function toEnglish(code, kind, options = {}) {
+  const key = cacheKey(code, kind, options);
+  if (englishCache.has(key)) {
+    const hit = englishCache.get(key);
+    englishCache.delete(key);
+    englishCache.set(key, hit);
+    cacheStats.hits++;
+    return structuredClone(hit);
+  }
+  cacheStats.misses++;
+  const result = describeSource(code, kind, options);
+  englishCache.set(key, result);
+  if (englishCache.size > CACHE_LIMIT) englishCache.delete(englishCache.keys().next().value);
+  return structuredClone(result);
+}
+
+function clearEnglishCache() {
+  englishCache.clear();
+  cacheStats.hits = 0;
+  cacheStats.misses = 0;
+}
+
+function englishCacheStats() {
+  return { ...cacheStats, size: englishCache.size, limit: CACHE_LIMIT };
 }
 
 // Every method/function actually CALLED in the refactored code -- the real
@@ -331,7 +1041,7 @@ function toEnglish(code, kind) {
 // not a guess. Deterministic AST walk, same as everything else here.
 function extractAtoms(code, kind) {
   const wrapped = kind === 'method' ? `class __W__ {\n${code}\n}` : code;
-  const ast = parser.parse(wrapped, { sourceType: 'module' });
+  const ast = parser.parse(wrapped, PARSE_OPTS);
   const names = new Set();
   traverse(ast, {
     CallExpression(path) {
@@ -358,7 +1068,7 @@ function extractAtoms(code, kind) {
 // unique per call and increases left-to-right, matching reading order.
 function extractAtomUsage(code, kind) {
   const wrapped = kind === 'method' ? `class __W__ {\n${code}\n}` : code;
-  const ast = parser.parse(wrapped, { sourceType: 'module' });
+  const ast = parser.parse(wrapped, PARSE_OPTS);
   const counts = {};
   const firstStart = {};
   traverse(ast, {
@@ -487,7 +1197,7 @@ function reorderSteps(code, kind, order, { plugins = [] } = {}) {
 // function source -- so a step calling it never has to carry its own copy
 // of the signature that could drift out of sync.
 function atomParamNames(atomCode) {
-  const ast = parser.parse(atomCode, { sourceType: 'module' });
+  const ast = parser.parse(atomCode, PARSE_OPTS);
   let params = [];
   traverse(ast, {
     FunctionDeclaration(path) {
@@ -755,6 +1465,11 @@ function insertArgument(code, kind, stepIndex, identifierName) {
 
 module.exports = {
   toEnglish,
+  clearEnglishCache,
+  englishCacheStats,
+  PARSE_PLUGINS,
+  EXPR_RULES,
+  STMT_RULES,
   camelToWords,
   extractAtoms,
   extractAtomUsage,
