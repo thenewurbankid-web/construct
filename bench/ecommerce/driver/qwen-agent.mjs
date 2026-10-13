@@ -49,12 +49,16 @@
 // #932: logs/session.jsonl indexes the run in English, one event per line per layer (seed, open-work, coder, tool,
 // gate, refusal, plan, context, ledger, scratch; session-log.mjs), pointing at turn-input/turn-output instead of
 // copying them. The read-only session_log tool answers a small slice of it; it is offered after a refusal (line arm).
+// --research (#936, off by default) adds a read-only `research` tool (packages/engine/line/research): a block answers
+// first, else a few-turn sub-agent (--research-model, default the builder's model); answers land in one ledger
+// (logs/research-ledger.json) whose compact view joins each turn's context, with every tool result distilled into it.
 import fs from 'node:fs';
 import crypto from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createPlanCli } from './plan-cli.mjs';
 import { createPlainCli } from './plain-cli.mjs';
+import { researchHooks } from '../../../packages/engine/line/research/index.mjs';
 import { createPathCli, pathPrompt } from './path-cli.mjs';
 import { readSpec, overviewWithIndex } from './spec-slice.mjs';
 import { createTurnReads } from './read-tools.mjs';
@@ -78,6 +82,7 @@ export function flags(argv) {
     else if (k === '--seed') { o.seed = Number(v); i += 1; } else if (k === '--max-cycle-repeats') { o.maxCycleRepeats = Number(v); i += 1; } else if (k === '--cycle-window') { o.cycleWindow = Number(v); i += 1; } else if (k === '--seed-plan') o.seedPlan = true;
     else if (k === '--bench') { o.bench = benchOf(v); i += 1; } else if (k === '--answer-reserve') { o.answerReserve = Number(v); i += 1; }
     else if (k === '--context-representation') { o.contextRepresentation = v; i += 1; } else if (k === '--context') { o.context = v; i += 1; }
+    else if (k === '--research') o.research = true; else if (k === '--research-model') { o.researchModel = v; i += 1; }
   }
   // #932: the line arm builds each turn fresh from the ledger (--context ledger); --context history is the old path.
   if (!o.context) o.context = o.arm === 'line' ? 'ledger' : 'history';
@@ -377,6 +382,7 @@ export async function runAgent(o, { resultsDir = path.join(o.bench ?? bench, 're
   // #937: the Line arm gets its plan tools plus the 3-6 read tools this turn needs (read-tools.mjs).
   const reads = o.arm === 'line' ? await createTurnReads({ root: path.resolve(o.project), spec: path.join(dir, 'SPEC.md'), logDir, base: TOOLS.line }) : null;
   let lastRefusal = null;
+  const rs = o.research ? researchHooks({ root: path.resolve(o.project), logDir, ollama: o.ollama, model: o.researchModel ?? o.model }) : null;
   write(turnsFile, { kind: 'start', at: new Date().toISOString(), builder: o.builder, model: o.model, arm: o.arm, bench: path.basename(dir), maxTurns: o.maxTurns, maxMinutes: o.maxMinutes, numCtx: o.numCtx, seed: o.seed ?? null });
   for (turn = 1; turn <= o.maxTurns; turn += 1) {
     if (Date.now() > deadline) { stop = 'max wall time'; break; }
@@ -410,13 +416,14 @@ export async function runAgent(o, { resultsDir = path.join(o.bench ?? bench, 're
       slog.add({ turn, layer: 'context', kind: 'built', english: `Turn ${turn} was built fresh: ${built.tokens} tokens (system ${built.parts.system}, ledger ${built.parts.ledger} in ${ledger.entries.length} lines, step card ${built.parts.card}${pack ? ` with the pack for ${pack}` : ''}, notes ${built.parts.notes}, last result ${built.parts.last}).`, ref: pack, detail: built.parts });
     } else {
       const packed = compactHistory(history, { fixed: [system, first], tools: TOOLS[o.arm], budget: o.numCtx - (o.answerReserve ?? 2048) });
-      messages = [system, first, ...packed.messages];
+      messages = [system, first, ...[rs?.message()].filter(Boolean), ...packed.messages];
       context = { mode: 'history', before: packed.before, after: packed.after, budget: o.numCtx - (o.answerReserve ?? 2048), collapsed: packed.collapsed, summarised: packed.summarised, dropped: packed.dropped };
       slog.add({ turn, layer: 'context', kind: 'compacted', english: `Turn ${turn} sent the compacted history: ${packed.before} -> ${packed.after} tokens (${packed.collapsed} repeats collapsed, ${packed.summarised} answers summarised, ${packed.dropped} dropped).`, ref: null });
     }
     const started = Date.now();
     let res;
-    const sent = JSON.stringify({ model: o.model, stream: false, messages, tools: turnTools, options: chatOptions(o) });
+    // #936: --research adds the research tool (before finish); its ledger view is a message of its own in history mode.
+    const sent = JSON.stringify({ model: o.model, stream: false, messages, tools: rs ? rs.tools(turnTools) : turnTools, options: chatOptions(o) });
     let input = null;
     try {
       const r = await fetch(`${o.ollama}/api/chat`, {
@@ -456,8 +463,10 @@ export async function runAgent(o, { resultsDir = path.join(o.bench ?? bench, 're
       // #932: session_log is read-only and the driver's own too; its answer never goes into the ledger.
       const isLog = name === 'session_log';
       const out = gate ?? (isLog ? sessionLogSlice(slog.events, args ?? {}) : isScratch ? (name === 'scratch_write' ? scratch.write(args ?? {}, { turn, step: focusNow.step }) : scratch.read())
-        : reads?.serves(name) ? await reads.call(name, args) : await callTool(cli, o.arm, name, args));
+        : rs?.handles(name) ? await rs.handle(args, turn) : reads?.serves(name) ? await reads.call(name, args) : await callTool(cli, o.arm, name, args));
       const miss = sel && !gate ? reads.miss(turn, name, sel) : false;
+      // #936: the coder's own results go into the research ledger too (research answers are there already).
+      if (!isScratch && !isLog) rs?.record(name, args, out, turn);
       if (out.ok === false) lastRefusal = { code: out.code ?? null, sentence: String(out.sentence ?? '') }; else if (name === 'plan_add' || name === 'plan_run_next') lastRefusal = null;
       if (isScratch && name === 'scratch_write') slog.add({ turn, layer: 'scratch', kind: out.ok ? 'write' : 'refused', english: out.ok ? `The model wrote note ${out.id}${args?.about ? ` about ${args.about}` : ''}${(out.removed ?? []).length ? `, removing ${out.removed.map((x) => `${x.id} (${x.reason})`).join(', ')}` : ''}.` : `A scratch note was refused (${out.code}).`, ref: args?.about ?? out.id ?? null });
       else if (!isScratch) for (const ev of toolEvents(turn, name, args, out)) slog.add(ev);
