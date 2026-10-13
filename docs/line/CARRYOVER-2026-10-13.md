@@ -24,13 +24,13 @@ agents below report into the previous session. Push to `private` only. Never mod
 ## In flight (branches to expect on private)
 | Work | Branch | Notes |
 |---|---|---|
-| fallow wrapper, ON by default in validate (FALLOW-*, warnings, `--no-fallow`) | `oss/fallow` | MIT, pinned; boundaries/model/type-aware off |
-| per-function cyclomatic + cognitive, FUNC-001 ON by default, logicMap signature | `ast/function-complexity` | packages/ast; budgets in architecture.yml |
-| lending plain-arm starter | `bench/lending-plain` | from 359f6deb, refs #925 |
+| fallow wrapper, ON by default in validate (FALLOW-*, warnings, `--no-fallow`) | `oss/fallow` @ 6ea01662 (DONE, #924) | fallow 3.33.1 MIT pinned devDependency; runs only when the root has package.json; +0.1 s; 8 enforcer tests now pass `--no-fallow` |
+| per-function complexity via OSS only (ESLint core `complexity` in-process + fallow health for cognitive), FUNC-001 ON by default, logicMap signature | `ast/function-complexity` @ 588a088b (DONE, #923) | ESLint core `complexity` in-process (eslint + @typescript-eslint/parser moved to dependencies) + fallow cognitive via `validateArchitecture(root, { fallowHealth })` — WIRE the oss/fallow runner's health report into it at merge; budgets raised (domain 15, component 20) so generated code has 0 warnings; package.json/lock will conflict with oss/fallow |
+| lending plain-arm starter | `bench/lending-plain` @ 2bb51072 (DONE) | from 359f6deb, refs #925; owner kept its one-line fixture-path edit to bench/lending/SPEC.md |
 | path-first proof (CAT-2 + CART-1, 11 stubs, fill tool, `--arm path`) | `exp/path-first-proof` @ 07ddd3d2 (#921) | steps 1-3 done; step 4 (qwen fill run) waits |
 
 ## Next, in order
-1. When the three in-flight branches are on private: og merges them into og/final-2026-10-12 (fallow + FUNC-001
+1. All three in-flight branches are DONE on private (oss/fallow 6ea01662, ast/function-complexity 588a088b, bench/lending-plain 2bb51072). og merges them into og/final-2026-10-12 (fallow + FUNC-001
    change validate defaults and golden fixtures), then ONE full suite via heavy.sh, then fast-forward work.
 2. Lending bench on that tree, one at a time: seed-only acceptance, Line `--seed-plan`, Line `--seed-plan --seed 2`,
    plain twin (`--bench bench/lending`; reset BENCH_DIR per run). Report vs owner bar and per-point open reasons.
@@ -46,6 +46,7 @@ change must appear); render examples for UI, contract mock for services; models 
 Layers view shows the path.
 
 ## Open items
+- fallow follow-ups (#924 report): a fresh scaffold shows ~20 FALLOW warnings (unused files for unrouted layers, feature index.ts barrels, types.ts, .dependency-cruiser.cjs; CRAP on generated proof tests) → Construct-aware default fallow config, HIGH (dogfood); Cockpit engine-mode validate (ui/server/src/validateApi.mjs handleValidate) doesn't run fallow; IMPORT-001 may report the wrong line (line 1 vs 2 in Score.ts); OWNER DECIDED: make fallow a regular dependency (next wave, with the Construct-aware config) so installed users get it; fallow needs Node >=22, repo says >=20.
 - Board fields for #912-#925 (project-manager pass).
 - #881 needs its measured jev-vs-static eval.
 - openWork text check misses PROD-2/PROD-4 after seeding (Quantity label in library component; link case).
