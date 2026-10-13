@@ -1,0 +1,15 @@
+{
+  "id": "t10-browse-paging",
+  "title": "BrowsePage: six books per page with Previous/Next page buttons",
+  "kind": "paging",
+  "goal": "Page the catalogue six books at a time with the spec's page line and buttons. The page needs 'use client' and React state for the current page.",
+  "spec": "BRW-1: The page at `/` has the main heading \"Library catalogue\" and shows the books six at a time, each with its title, its author, its genre, its year and \"Available\" or \"On loan\"; each title is a link to the book's page at `/books/<id>`.\n\nBRW-2: Under the list, a line like \"Page 1 of 3\" and two buttons, \"Previous page\" and \"Next page\", move through the pages; \"Previous page\" is disabled on the first page and \"Next page\" on the last.",
+  "target": "features/browse/pages/BrowsePage.tsx",
+  "context": [
+    "library/pages/ListPage.tsx",
+    "library/components/Button.tsx"
+  ],
+  "entries": {
+    "page": "features/browse/pages/BrowsePage.tsx"
+  }
+}

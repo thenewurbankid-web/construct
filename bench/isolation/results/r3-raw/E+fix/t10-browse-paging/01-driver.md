@@ -1,0 +1,1 @@
+Add `use client` at the top of `BrowsePage.tsx`. Import `useState` from React. Add state for the current page number. Map over the books array to display six books per page. Add the page line and buttons below the book list. Ensure the buttons are disabled on the first and last pages.

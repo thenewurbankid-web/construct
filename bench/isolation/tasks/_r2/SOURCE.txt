@@ -1,0 +1,1 @@
+Snapshot of lending-seed-r2 (bench-rerun-1013 worktree, bench/lending/runs/lending-seed-r2/project) taken 2026-10-13.

@@ -1,0 +1,16 @@
+Sort the books by title A-Z (case-insensitive) and render only the title inside each link. Write exactly:
+
+export function BrowsePage() {
+  const sorted = [...books].sort((a, b) =>
+    a.title.toLowerCase().localeCompare(b.title.toLowerCase())
+  );
+  return (
+    <ListPage title="Browse">
+      {sorted.map((book) => (
+        <Link key={book.id} href={`/books/${book.id}`}>
+          {book.title}
+        </Link>
+      ))}
+    </ListPage>
+  );
+}

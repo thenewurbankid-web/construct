@@ -1,0 +1,36 @@
+```tsx
+import { ListPage } from '../../../library/pages/ListPage';
+import { useState } from 'react';
+import { listPicks, addPick, removePick } from '../store/picksStore';
+import books from '../../../library/fixtures/books.json';
+
+export function PicksPage() {
+  const [ids, setIds] = useState<string[]>(() => listPicks());
+
+  if (ids.length === 0) {
+    return (
+      <ListPage title="My picks" empty={<p>You have not picked any books yet</p>}>
+        {children}
+      </ListPage>
+    );
+  }
+
+  const items = ids.map((id) => {
+    const book = books.find((b) => b.id === id);
+    if (book) return { ...book, title: book.title };
+    return null;
+  }).filter(Boolean);
+
+  return (
+    <ListPage title="My picks">
+      {items.length > 0 && items.map((item) => (
+        <article key={item.id}>
+          <h2>{item.title}</h2>
+          <p>{item.author}</p>
+          <Button label={`Remove ${item.title}`} onClick={() => removePick(item.id)} />
+        </article>
+      ))}
+    </ListPage>
+  );
+}
+```
