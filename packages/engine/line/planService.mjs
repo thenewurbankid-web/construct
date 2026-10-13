@@ -42,6 +42,7 @@ import { SHOWN_CHOICES, RUN_NEXT, renderReoffer, shapeRefusal, contextFor, withH
 import { rankLines, capFor } from './contextScore.mjs';
 import { openWork, workText, itemText, slotOf, pointSlot } from './openWork.mjs';
 import { createRepeatGuard, guardFixes, escalate } from './repeatGuard.mjs';
+import { exampleFixLines } from './exampleFix.mjs';
 
 /** One session per open project, for now. */
 export const SESSION_ID = 'ses-cockpit';
@@ -256,11 +257,42 @@ export function choicesOf(step) {
  * @param {string[]} [context] Lines about the refusal itself (#886).
  * @param {string} [example] A correct call that beats the tool's own example (#887).
  * @param {((call: any, near?: string|null) => any) | null} [resolve] (#916) Makes the correct call's paths real (or drops it).
+ * @param {{exampleFixes?: string[], pack?: string}} [extra] (#932) Example-fix lines and the targeted file's context pack.
  * @returns {any}
  */
-export function shapedRefusal(r, req, fixes, tools, context, example, resolve) {
+/**
+ * #932: the "Example fix for line N: ..." lines of a TYPE_ERROR refusal: the error's line is read from the code the
+ * request sent for its file, else from the file on disk; TS2307's nearest path from the project's code files.
+ * @param {string} root @param {unknown} detail @param {any} req
+ * @returns {string[]}
+ */
+export function typeErrorExamples(root, detail, req) {
+  if (typeof detail !== 'string' || !detail) return [];
+  const sent = typeof req?.args?.file === 'string' && typeof req?.args?.code === 'string' ? { file: req.args.file, code: req.args.code } : null;
+  const sourceOf = (f) => { if (sent && sent.file === f) return sent.code; try { return fs.readFileSync(path.join(root, f), 'utf8'); } catch { return null; } };
+  try { return exampleFixLines(detail, { sourceOf, files: projectCodeFiles(root) }).text; } catch { return []; }
+}
+
+/** The project's code files under library/ and features/ (project-relative, bounded), for TS2307's nearest path. */
+function projectCodeFiles(root) {
+  const out = [];
+  const walk = (rel, depth) => {
+    let es = [];
+    try { es = fs.readdirSync(path.join(root, rel), { withFileTypes: true }); } catch { return; }
+    for (const e of es) {
+      if (out.length >= 600 || e.name.startsWith('.') || e.name === 'node_modules') continue;
+      const r = rel ? `${rel}/${e.name}` : e.name;
+      if (e.isDirectory() && depth < 5) walk(r, depth + 1);
+      else if (e.isFile() && /\.(tsx?|jsx?|mjs|json)$/.test(e.name)) out.push(r);
+    }
+  };
+  for (const d of ['library', 'features']) walk(d, 0);
+  return out;
+}
+
+export function shapedRefusal(r, req, fixes, tools, context, example, resolve, extra = {}) {
   const list = fixes ?? (Array.isArray(r.fixes) ? r.fixes : []);
-  const { text, ...hint } = shapeRefusal({ code: r.code, sentence: r.sentence, tool: req?.tool, args: req?.args, why: req?.why, fix: req?.fix, answer: req?.answer, option: req?.option, fixes: list, tools, context, example, resolve });
+  const { text, ...hint } = shapeRefusal({ code: r.code, sentence: r.sentence, tool: req?.tool, args: req?.args, why: req?.why, fix: req?.fix, answer: req?.answer, option: req?.option, fixes: list, tools, context, example, resolve, ...extra });
   return { ...r, ...(list.length ? { fixes: list } : {}), hint, text };
 }
 
@@ -619,7 +651,9 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
       }
     }
     const hinted = withHints(fixes, { code: r.code, asked }, ctx);
-    const out0 = shapedRefusal(r, req, hinted.fixes, tools, hinted.context, undefined, examplesFor(plan)?.call ?? null);
+    // #932: a TYPE_ERROR shows the offending line corrected (exampleFix.mjs), when a rule knows its TS code.
+    const fixLines = r.code === 'TYPE_ERROR' ? typeErrorExamples(root, r.detail, req) : [];
+    const out0 = shapedRefusal(r, req, hinted.fixes, tools, hinted.context, undefined, examplesFor(plan)?.call ?? null, { exampleFixes: fixLines });
     // #915: a refusal a pending step explains says so first.
     const out = lead ? { ...out0, text: `${lead}\n${out0.text}` } : out0;
     return { ...out, hintContext: { via, cap: ctx.cap, repeat, attempt: ctx.attempt, candidates: ctx.candidates, kept: ctx.lines.map((l) => ({ text: l.text, score: l.score, ref: l.ref })) } };

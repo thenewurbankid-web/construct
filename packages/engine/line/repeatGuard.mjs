@@ -101,10 +101,14 @@ export function escalate(r, req, times, at = REPEAT_ESCALATE_AT) {
   if (times < at) return out;
   const call = stepText({ tool: String(req.tool), args: plainArgs(req.args) });
   const first = (out.fixes ?? [])[0];
+  // #932: when Line knows the corrected line (exampleFix.mjs), the stop shows it: the change that gets past it.
+  const known = Array.isArray(r.hint?.exampleFixes) ? r.hint.exampleFixes : [];
+  const shown = known.length ? ` Change the code where the error points, then send the whole file again. ${known.join(' ')}` : '';
   const instead = first?.step
     ? `Do this instead: ${first.ref ?? 'f1'}: ${stepText(first.step)}${first.sentence ? ` (${String(first.sentence).replace(/[.]$/, '')})` : ''}. Send {"fix":"${first.ref ?? 'f1'}"}.`
-    : 'Do not send it again: change the request (another page, tool or feature), or read plan status for what is open.';
-  const line = `Stop: this exact call was already refused ${times} times with ${r.code} and will not succeed if sent again: ${call}. ${instead}`;
+    : known.length ? 'Do not send it again unchanged.'
+      : 'Do not send it again: change the request (another page, tool or feature), or read plan status for what is open.';
+  const line = `Stop: this exact call was already refused ${times} times with ${r.code} and will not succeed if sent again: ${call}. ${instead}${shown}`;
   return {
     ...out,
     text: [line, out.text ?? out.sentence].filter(Boolean).join('\n'),
