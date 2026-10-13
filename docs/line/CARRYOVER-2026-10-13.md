@@ -1,4 +1,4 @@
-# Carry-over 2026-10-13
+# Carry-over 2026-10-13 (updated after the fallow wave and lending r1)
 
 Read this first. Check agent work by **branch state with git** (`git ls-remote private`), not transcripts — the
 agents below report into the previous session. Push to `private` only. Never model "fable".
@@ -13,29 +13,73 @@ agents below report into the previous session. Push to `private` only. Never mod
 - og merges only with `git -C <og-final-1012 worktree> merge --no-ff <ref>` (owner permission rule; no pipe after).
 
 ## State
-- `private/work/2026-09-23` = **ce2c8795** (suite 7060/0 fail). Includes: loop breaker #912, r4 gaps #915-#918,
-  turn I/O #913, spec->steps seed #914, point skeleton #920, seed atoms #919 (shop spec seed-only 22/22, likely
-  tuned to that spec's wording, e.g. atomSteps.mjs:110), MC poller fix #922.
-- `private/og/final-2026-10-12` = **359f6deb** = ce2c8795 + held-out lending bench #925 (`bench/lending/`,
-  drivers take `--bench`). Worktree: `.claude/worktrees/og-final-1012`.
-- Bench history: r4-s2 1/22 (first pass), r5 5/22 (seed only, model added 0: pasted our placeholder -> BAD_CODE,
-  fixed by #920). Results in `bench/ecommerce/results/`, `RESULTS.md`.
+- `private/work/2026-09-23` = `private/og/final-2026-10-12` = **3184fe0c** (suite 7059 pass / 0 fail / 52 skip on 3f7f99b3).
+  Merged since ce2c8795: fallow ON by default #924, FUNC-001 complexity #923 (fallow health wired into cognitive),
+  lending plain starter + held-out lending bench #925, path-first proof #921 (types/JSDoc fixed for ratchets),
+  Construct-aware fallow config #926, store generator handlers #927, IMPORT-001/fallow dedupe #928 (CLI + engine),
+  affected-tests pre-merge subset #929 (`node packages/tools/dev/affected-tests.mjs <base> --run`; og still runs
+  the one full suite), fallow as a regular dependency + Node >=22 #930. #923, #924, #926-#930 closed.
+- Lending bench r1 (qwen2.5-coder:7b, `bench/lending/RESULTS.md`): **0/24 on every arm** (seed-only, `--seed-plan`,
+  `--seed 2`; plain twin failed to build, 58 tsc errors). Owner bar not met: the seed does not generalise.
+- Ecommerce history: r4-s2 1/22, r5 5/22, seed-only 22/22 (tuned to that spec). `bench/ecommerce/results/`.
 
-## In flight (branches to expect on private)
-| Work | Branch | Notes |
+## Diagnosis of lending r1 (verified from run logs)
+- Seed is shop recipes (atomSteps.mjs: ~39 ecommerce refs, CART-1/CHK-5 hard-coded, cart wording at :172): browse
+  `/` and loans get no page, browse list suggested on DetailPage, request on ListPage, picks told to load all
+  books.json, "cart" text leaks into lending output.
+- Wrong builder context (owner: "show more context to the coder model, they are good at these things"):
+  prompt_eval_count 3.6k -> 16.2k against num_ctx 16384 by turn 14 (silent truncation); ~40% of turn 12 is one
+  failed setCode repeated 3x; the model never saw PicksPage's code or ListPage props; TYPE_ERROR refusals give an
+  instruction, not an example fix.
+- `finish` accepted while 5 approved steps waited (`--seed 2` run).
+
+## In flight / ready (updated 2026-10-13 late; base 3184fe0c / 5201dcb6)
+All verified against git unless marked. og merges each with `git -C <og-final-1012 worktree> merge --no-ff <ref>`.
+| Work | Ref | State |
 |---|---|---|
-| fallow wrapper, ON by default in validate (FALLOW-*, warnings, `--no-fallow`) | `oss/fallow` @ 6ea01662 (DONE, #924) | fallow 3.33.1 MIT pinned devDependency; runs only when the root has package.json; +0.1 s; 8 enforcer tests now pass `--no-fallow` |
-| per-function complexity via OSS only (ESLint core `complexity` in-process + fallow health for cognitive), FUNC-001 ON by default, logicMap signature | `ast/function-complexity` @ 588a088b (DONE, #923) | ESLint core `complexity` in-process (eslint + @typescript-eslint/parser moved to dependencies) + fallow cognitive via `validateArchitecture(root, { fallowHealth })` — WIRE the oss/fallow runner's health report into it at merge; budgets raised (domain 15, component 20) so generated code has 0 warnings; package.json/lock will conflict with oss/fallow |
-| lending plain-arm starter | `bench/lending-plain` @ 2bb51072 (DONE) | from 359f6deb, refs #925; owner kept its one-line fixture-path edit to bench/lending/SPEC.md |
-| path-first proof (CAT-2 + CART-1, 11 stubs, fill tool, `--arm path`) | `exp/path-first-proof` @ 07ddd3d2 (#921) | steps 1-3 done; step 4 (qwen fill run) waits |
+| A: seed + open work from the spec (#933) | `private/line/seed-spec-driven` 517879fa | ready |
+| B: finish guard (#931) | `private/line/finish-guard` a8cd0a77 | ready |
+| C: builder context, scratchpad, session log (#932) | `private/line/builder-context` 4fe78129 | ready |
+| E1: feature modules, cross-feature imports via index.ts (#935) | `private/line/feature-modules` 2480d666 | ready |
+| E2: coder read tools via MCP, per turn (#937) | `private/line/coder-read-tools` 3910165c | ready (verified: 6 commits; affected 1439/0/3 on 3910165c). Owner: registry reads take a contained project-relative `file` (exception to #649); read_file offered only on setCode/setFragment steps |
+| E3: research sub-agents + central ledger (#936) | `private/line/research-loop` 13177551 | ready |
+| Harness: native-first tool harness (#938) | `private/line/tool-harness` 0299b3cf | ready (affected 381/0/0). r1 (results/tool-harness/r1.md): qwen2.5-coder 7b/1.5b 0% native calls in every config; qwen3:4b 100% native, 80% right, ~16 s/turn. Nothing beat current prompt + full tools; layered not wired, clean/subset flag-only. Owner: old `textToolCalls` fallback kept for qwen2.5-coder profiles only (`textFallback`), removed once LoRA teaches native calls |
+| heavy.sh re-entrant (#939) | `private/dev/heavy-reentrant` 039709a7 | ready |
+| Context probe write-up | `private/exp/context-probe` 572588b5 | ready (bench/lending/CONTEXT-PROBE.md) |
+
+Merge reconciliation for og:
+- C <-> E3 ledger bridge in bench/ecommerce/driver/ledger.mjs.
+- E1 and E2 both export `importableFiles` from typeGate.mjs (keep one); drop E3's copy. E2's `importableFor`
+  (packages/engine/line/coder/reads.mjs) is the adapter to switch to E1's `moduleScope`.
+- A's seed must call `arrayFixtures(root, layout, feature)` (specSteps.mjs:139, atomSteps.mjs:67,101,193) and unwrap `.value`
+  (E1 fixture format `{ "$lineBase": "fixtures/<name>", "value": [...] }`).
+- line-modules spec topic is at 32765/32768 bytes: new files in packages/engine/line go in subfolders.
+- C's turn builder: last refusal is the FINAL message; add fact "No feature has usecases, services or domains yet".
+- ui/client/.../MapSentences.ts still flags cross-feature imports.
 
 ## Next, in order
-1. All three in-flight branches are DONE on private (oss/fallow 6ea01662, ast/function-complexity 588a088b, bench/lending-plain 2bb51072). og merges them into og/final-2026-10-12 (fallow + FUNC-001
-   change validate defaults and golden fixtures), then ONE full suite via heavy.sh, then fast-forward work.
-2. Lending bench on that tree, one at a time: seed-only acceptance, Line `--seed-plan`, Line `--seed-plan --seed 2`,
-   plain twin (`--bench bench/lending`; reset BENCH_DIR per run). Report vs owner bar and per-point open reasons.
-   This is the generality test for the seed.
-3. Path-first proof step 4 (path-cli install -> qwen-agent `--arm path` -> path-cli report), through heavy.sh.
+1. Verify E2 and the harness (commit/push its probe results first). Then og merges A, B, C, E1, E2, E3, harness, #939,
+   probe write-up, private/work into og/final-2026-10-12; ONE full suite via heavy.sh; ff work; close #931-#933,
+   #935-#939.
+2. Bench rerun, one at a time: lending seed-only, lending `--seed-plan`, ecommerce seed-only (must stay 22/22).
+3. CSP discipline (explicit step input/output, one ledger owner, trace wrapper = session log, model-call timeouts).
+4. shortestPlan block (AND-OR graph, Knuth generalized Dijkstra, greedy Steiner merge, typed edges; tool picking first).
+5. Smith System 1 (below), LoRA 1.5b coder, attention pruning via MLX; path-first step 4.
+
+## Decisions (owner, 2026-10-13, full text in memory project-english-as-context)
+- Probe result: fresh small context wins (L+tools 7b 4/5 at 1.5k tokens vs 0/5 at 14.9k); code->English via Smith and
+  atom-sentence thinking 0/5 (Smith to-english near-empty on React pages).
+- Tool harness: native Ollama tools only, no custom call parsing; layered turn ships only on a measured win.
+- CSP: no runtime, discipline only. shortestPlan: deterministic only, no learned ranker.
+- Line transformer: LoRA qwen2.5-coder:1.5b via MLX-LM -> GGUF -> Ollama; after merge + bench rerun.
+- Attention: coder's own attention (MLX) as a context-pruning signal for ledger facts, not path detection.
+- LoRA targets now include native `tool_calls` for qwen2.5-coder (it writes calls as text today).
+- **Smith System 1** (new): a learned English<->JS translator, CodeT5+ 220M fine-tuned, the fast intuitive
+  counterpart to Smith's deterministic translation (System 2). Smith stays the checker/fallback; System 1 covers
+  where Smith returns nothing (React pages). Data: Smith's own non-empty translations, atom registry `english` +
+  code, typed-contract examples, probe samples. Eval: JS->English vs the hand-written ledger facts that won the probe;
+  then re-run probe V5/V8 with System 1 English. Ships only on a measured win. Data generator is dev work (now);
+  training is a heavy job after merge + bench rerun.
 
 ## Path-first decisions (owner, 2026-10-13)
 In memory `project-path-first-plan`: Trace builds typed path per point (beam always forks, deterministic prune
@@ -46,10 +90,11 @@ change must appear); render examples for UI, contract mock for services; models 
 Layers view shows the path.
 
 ## Open items
-- fallow follow-ups (#924 report): a fresh scaffold shows ~20 FALLOW warnings (unused files for unrouted layers, feature index.ts barrels, types.ts, .dependency-cruiser.cjs; CRAP on generated proof tests) → Construct-aware default fallow config, HIGH (dogfood); Cockpit engine-mode validate (ui/server/src/validateApi.mjs handleValidate) doesn't run fallow; IMPORT-001 may report the wrong line (line 1 vs 2 in Score.ts); OWNER DECIDED: make fallow a regular dependency (next wave, with the Construct-aware config) so installed users get it; fallow needs Node >=22, repo says >=20.
-- Board fields for #912-#925 (project-manager pass).
+- fallow: Cockpit engine-mode validate (ui/server/src/validateApi.mjs handleValidate) doesn't run fallow; IMPORT-001
+  may report the wrong line (line 1 vs 2 in Score.ts); a dead file inside a layer folder is not flagged (owner
+  accepted for now, #926). Node 20 left only in trace/ (Termux, paused) and historical design docs.
+- Epic #884 is closed with #921/#925 open under it (owner: leave as is).
+- Board fields for #926-#939 (project-manager pass).
 - #881 needs its measured jev-vs-static eval.
-- openWork text check misses PROD-2/PROD-4 after seeding (Quantity label in library component; link case).
+- openWork text check misses PROD-2/PROD-4 after seeding (may be covered by A).
 - docs/MEDIA.md still uses Playwright recording — ask the owner before using it.
-- `.claude/launch.json` (Mission Control) in the carryover worktree points at the MC-fix worktree; repoint to
-  og-final-1012 now that #922 is merged.
