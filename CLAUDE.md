@@ -16,7 +16,8 @@ projects. Ignore them here.
   before every push, never force-resolve a conflict (stop and report).
 - Heavy commands (`npm test`, Playwright, `next dev`, `npm ci`) run through
   `packages/tools/dev/heavy.sh` (15 GB, no swap). Single test files run
-  directly. Playwright: `--workers=1`, one dev server, no lingering processes.
+  directly. Where Playwright is still allowed (atom crawl, bench acceptance):
+  `--workers=1`, one dev server, no lingering processes.
 - One checkout per concurrent Playwright run — two suites in the same checkout race on
   `ui/client/.next` (full detail: `ui/README.md` "Ports and concurrent runs (#140)",
   `docs/E2E-LANES.md`); `/tmp` on this box is already `tmpfs` (RAM-backed), so no `TMPDIR`
@@ -115,8 +116,11 @@ block's work?
    (security tradeoff, ambiguous requirement, credentials).
 9. Parallel, isolated streams by default (`isolation: "worktree"`, merge back
    explicitly once verified). One deliverable per delegation, 10-15 minutes.
-10. Every UI feature has a Playwright spec under `ui/e2e/` that actually ran
-    before closing; `src/` and CLI work is covered by `npm test`. Screenshots
+10. No Playwright in local dev or for UI features (owner, 2026-10-13). UI work is
+    verified with unit tests, fast DOM render checks (no browser) and AST dry
+    runs; `src/` and CLI work is covered by `npm test`. Playwright is used only
+    to crawl sites for collecting default atoms, and by the ecommerce bench's
+    acceptance step (comparable scores). Screenshots
     exist only for the docs site (`site/`, curated by `demo-curator`), never
     in issues, comments or chat.
 
