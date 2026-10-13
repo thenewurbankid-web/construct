@@ -1,0 +1,95 @@
+{
+  "$comment": "#940 React-page eval slice (eval only, never train/val/test). Picked by sources.mjs pickPages(smithPairs().skipped, 15): components Smith left empty, capitalized name, JSX, at most 2000 chars, one per normalized code, spread across folders by sha256. English hand-written in the style of the probe's winning ledger facts. The test checks each code still matches its source function.",
+  "pages": [
+    {
+      "file": "examples/line-sample/features/billing/components/InvoiceCard.tsx",
+      "name": "InvoiceCard",
+      "english": "features/billing/components/InvoiceCard.tsx takes {id} and renders a Card titled \"Invoice <id>\" with the action \"Pay\".",
+      "code": "function InvoiceCard({ id }) {\n    return <Card title={`Invoice ${id}`} action=\"Pay\"/>;\n}"
+    },
+    {
+      "file": "packages/core/profiles/line/fixtures/LINE-BASE/features/billing/pages/InvoicesPage.tsx",
+      "name": "InvoicesPage",
+      "english": "features/billing/pages/InvoicesPage.tsx renders ListPage titled \"Invoices\" with nothing else.",
+      "code": "function InvoicesPage() {\n    return <ListPage title=\"Invoices\"/>;\n}"
+    },
+    {
+      "file": "example/app/layout.tsx",
+      "name": "RootLayout",
+      "english": "app/layout.tsx takes {children} and renders the html element (lang \"en\", with the Geist sans and mono font variables, full height, antialiased) around a full-height column body that shows the children.",
+      "code": "function RootLayout({ children }) {\n    return (<html lang=\"en\" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>\n      <body className=\"min-h-full flex flex-col\">{children}</body>\n    </html>);\n}"
+    },
+    {
+      "file": "packages/core/profiles/line/fixtures/LINE-DIR/features/billing/pages/InvoicesPage.tsx",
+      "name": "InvoicesPage",
+      "english": "features/billing/pages/InvoicesPage.tsx renders ListPage titled with OrderButton turned into a string, with nothing else.",
+      "code": "function InvoicesPage() {\n    return <ListPage title={String(OrderButton)}/>;\n}"
+    },
+    {
+      "file": "examples/line-sample/features/orders/components/OrderButton.tsx",
+      "name": "OrderButton",
+      "english": "features/orders/components/OrderButton.tsx renders a Button labelled \"Order\" with no handler.",
+      "code": "function OrderButton() {\n    return <Button label=\"Order\"/>;\n}"
+    },
+    {
+      "file": "test/fixtures/line-graph-alias/library/components/Button.tsx",
+      "name": "Button",
+      "english": "library/components/Button.tsx takes {label, onPress} and renders a plain button (type \"button\") that shows label and calls onPress when clicked.",
+      "code": "function Button({ label, onPress }) {\n    return (<button type=\"button\" onClick={onPress}>\n      {label}\n    </button>);\n}"
+    },
+    {
+      "file": "examples/line-heldout-clinic/features/patients/components/PatientRow.tsx",
+      "name": "PatientRow",
+      "english": "features/patients/components/PatientRow.tsx takes {name} and renders a Row with that name and the state \"Waiting\".",
+      "code": "function PatientRow({ name }) {\n    return <Row name={name} state=\"Waiting\"/>;\n}"
+    },
+    {
+      "file": "packages/core/profiles/line/fixtures/LINE-BASE/features/orders/pages/OrdersPage.tsx",
+      "name": "OrdersPage",
+      "english": "features/orders/pages/OrdersPage.tsx renders ListPage titled \"Orders\" with nothing else.",
+      "code": "function OrdersPage() {\n    return <ListPage title=\"Orders\"/>;\n}"
+    },
+    {
+      "file": "test/fixtures/line-import-clash/src/opp/components/Badge.tsx",
+      "name": "Badge",
+      "english": "src/opp/components/Badge.tsx takes {label} and renders a span with the class \"badge\" that shows label.",
+      "code": "function Badge({ label }) {\n    return <span className=\"badge\">{label}</span>;\n}"
+    },
+    {
+      "file": "test/fixtures/line-graph-alias/features/shop/pages/ShopPage.tsx",
+      "name": "ShopPage",
+      "english": "features/shop/pages/ShopPage.tsx gets the shown total from useTotal([3]) and renders a Button labelled \"Buy <total>\" that calls handleBuy when pressed.",
+      "code": "function ShopPage() {\n    const shown = useTotal([3]);\n    return <Button label={`Buy ${shown}`} onPress={handleBuy}/>;\n}"
+    },
+    {
+      "file": "examples/line-sample/features/orders/pages/OrdersPage.tsx",
+      "name": "OrdersPage",
+      "english": "features/orders/pages/OrdersPage.tsx renders ListPage titled \"Orders\" whose onMore logs \"Show more orders\".",
+      "code": "function OrdersPage() {\n    return <ListPage title=\"Orders\" onMore={() => console.log('Show more orders')}/>;\n}"
+    },
+    {
+      "file": "test/fixtures/annotator/Page.expected.tsx",
+      "name": "Page",
+      "english": "features/x/pages/Page.tsx takes {items} and renders a main element (class \"page\") with the heading \"Title\", a Card titled \"x\" listing each item as a list entry, a fragment with a span saying \"hi\", and a text input; each element carries its data-cx-src source location.",
+      "code": "function Page({ items }) {\n    return (<main data-cx-src=\"features/x/pages/Page.tsx:3:5\" className=\"page\">\n      <h1 data-cx-src=\"features/x/pages/Page.tsx:4:7\">Title</h1>\n      <Card title=\"x\">\n        <ul data-cx-src=\"features/x/pages/Page.tsx:6:9\">{items.map((i) => <li data-cx-src=\"features/x/pages/Page.tsx:6:31\" key={i}>{i}</li>)}</ul>\n      </Card>\n      <><span data-cx-src=\"keep:1:1\">hi</span></>\n      <input data-cx-src=\"features/x/pages/Page.tsx:9:7\" type=\"text\"/>\n    </main>);\n}"
+    },
+    {
+      "file": "examples/line-heldout-clinic/features/visits/pages/VisitsPage.tsx",
+      "name": "VisitsPage",
+      "english": "features/visits/pages/VisitsPage.tsx renders a TablePage headed \"Visits\" followed by a PatientRow named \"Today\".",
+      "code": "function VisitsPage() {\n    return (<>\n      <TablePage heading=\"Visits\"/>\n      <PatientRow name=\"Today\"/>\n    </>);\n}"
+    },
+    {
+      "file": "example/features/login/components/Login.tsx",
+      "name": "Login",
+      "english": "features/login/components/Login.tsx takes {username, setUsername, password, setPassword, onSubmit, error} and renders a form with a Username input and a Password input, each kept in step with its value and setter; it shows error in an alert when there is one, and \"Log in\" stops the page reload and calls onSubmit.",
+      "code": "function Login({ username, setUsername, password, setPassword, onSubmit, error }) {\n    return (<form onSubmit={(e) => {\n            e.preventDefault();\n            onSubmit();\n        }}>\n      <label>\n        Username\n        <input value={username} onChange={(e) => setUsername(e.target.value)} autoComplete=\"username\"/>\n      </label>\n      <label>\n        Password\n        <input type=\"password\" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete=\"current-password\"/>\n      </label>\n      {error && <p role=\"alert\">{error}</p>}\n      <button type=\"submit\">Log in</button>\n    </form>);\n}"
+    },
+    {
+      "file": "test/fixtures/logic-map/app/src/opportunity/page.tsx",
+      "name": "OpportunityPage",
+      "english": "src/opportunity/page.tsx renders OpportunityClient with an empty item list.",
+      "code": "function OpportunityPage() {\n    return <OpportunityClient items={[]}/>;\n}"
+    }
+  ]
+}

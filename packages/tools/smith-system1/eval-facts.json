@@ -1,0 +1,123 @@
+{
+  "$comment": "#940 Hand-written target code for the probe ledger facts that cite no existing code (eval only, never train/val/test). Written from bench/lending/SPEC.md, the lending starter and its fixtures (acceptance/ not read), to say exactly what each fact says. `fact` must equal the ledger line in bench/lending/results/context-probe-r1.json; the test checks it. `code` is one string per line.",
+  "facts": [
+    {
+      "ledger": "L",
+      "fact": "Features book, picks, request and loans exist, each with its spec.md.",
+      "file": "line/features.js",
+      "code": [
+        "export const features = {",
+        "  book: { spec: 'features/book/spec.md' },",
+        "  picks: { spec: 'features/picks/spec.md' },",
+        "  request: { spec: 'features/request/spec.md' },",
+        "  loans: { spec: 'features/loans/spec.md' },",
+        "};"
+      ]
+    },
+    {
+      "ledger": "L",
+      "fact": "browse has no page yet; a step basing a DetailPage on it is approved and waits to run.",
+      "file": "line/plan.js",
+      "code": [
+        "export const browse = { feature: 'browse', pages: [] };",
+        "export const waiting = [",
+        "  { n: 12, tool: 'line.baseOn', state: 'ready', args: { libraryId: 'pages/DetailPage', feature: 'browse' } },",
+        "];"
+      ]
+    },
+    {
+      "ledger": "L",
+      "fact": "features/request/pages/RequestPage.tsx is based on ListPage, served at /request, and is empty.",
+      "file": "features/request/pages/RequestPage.tsx",
+      "code": [
+        "// @line-base pages/ListPage",
+        "// @line-route /request",
+        "import { ListPage } from '../../../library/pages/ListPage';",
+        "",
+        "export function RequestPage() {",
+        "  return <ListPage title=\"Request\" />;",
+        "}"
+      ]
+    },
+    {
+      "ledger": "L",
+      "fact": "No feature has usecases, services or domains yet.",
+      "file": "line/layers.js",
+      "code": [
+        "export const layers = {",
+        "  book: { usecases: [], services: [], domains: [] },",
+        "  picks: { usecases: [], services: [], domains: [] },",
+        "  request: { usecases: [], services: [], domains: [] },",
+        "  loans: { usecases: [], services: [], domains: [] },",
+        "};"
+      ]
+    },
+    {
+      "ledger": "L",
+      "fact": "The library has components Button, TextField, Card, Dialog, Select, Checkbox, Toast; pages ListPage, DetailPage, FormPage; library/fixtures/books.json with 15 books {id, title, author, genre, year, pages, summary, available}.",
+      "file": "library/index.js",
+      "code": [
+        "export { Button } from './components/Button';",
+        "export { TextField } from './components/TextField';",
+        "export { Card } from './components/Card';",
+        "export { Dialog } from './components/Dialog';",
+        "export { Select } from './components/Select';",
+        "export { Checkbox } from './components/Checkbox';",
+        "export { Toast } from './components/Toast';",
+        "export { ListPage } from './pages/ListPage';",
+        "export { DetailPage } from './pages/DetailPage';",
+        "export { FormPage } from './pages/FormPage';",
+        "import books from './fixtures/books.json';",
+        "export { books };",
+        "export const BOOK_FIELDS = ['id', 'title', 'author', 'genre', 'year', 'pages', 'summary', 'available'];",
+        "export const BOOK_COUNT = 15;"
+      ]
+    },
+    {
+      "ledger": "L",
+      "fact": "Your last 5 attempts at PicksPage.tsx were refused with the same type error (below).",
+      "file": "line/refusals.js",
+      "code": [
+        "const refusal = { file: 'features/picks/pages/PicksPage.tsx', ok: false, code: 'TYPE_ERROR', line: 7 };",
+        "export const lastAttempts = [refusal, refusal, refusal, refusal, refusal];"
+      ]
+    },
+    {
+      "ledger": "CL",
+      "fact": "Line seeded features book, picks, request and loans with their specs; BookPage (on DetailPage) at /books/:id, PicksPage (on ListPage) at /picks and RequestPage (on ListPage) at /request exist with no content yet.",
+      "file": "line/seed.js",
+      "code": [
+        "export const seeded = {",
+        "  features: ['book', 'picks', 'request', 'loans'].map((name) => ({ name, spec: `features/${name}/spec.md` })),",
+        "  pages: [",
+        "    { name: 'BookPage', base: 'pages/DetailPage', route: '/books/:id', content: null },",
+        "    { name: 'PicksPage', base: 'pages/ListPage', route: '/picks', content: null },",
+        "    { name: 'RequestPage', base: 'pages/ListPage', route: '/request', content: null },",
+        "  ],",
+        "};"
+      ]
+    },
+    {
+      "ledger": "CL",
+      "fact": "browse has its spec (features/browse/spec.md) but no page and no route yet.",
+      "file": "line/browse.js",
+      "code": [
+        "export const browse = { spec: 'features/browse/spec.md', pages: [], route: null };"
+      ]
+    },
+    {
+      "ledger": "CL",
+      "fact": "library/fixtures/books.json has 15 books {id, title, author, genre, year, pages, summary, available}.",
+      "file": "library/fixtures/checkBooks.js",
+      "code": [
+        "import books from './books.json';",
+        "",
+        "const FIELDS = ['id', 'title', 'author', 'genre', 'year', 'pages', 'summary', 'available'];",
+        "",
+        "export function checkBooks() {",
+        "  return books.length === 15 && books.every((book) => FIELDS.every((field) => field in book));",
+        "}"
+      ]
+    }
+  ]
+}
