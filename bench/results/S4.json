@@ -1,0 +1,122 @@
+{
+  "impl": "current",
+  "corpus": {
+    "roots": [
+      "/Users/shashank/Repositories/construct/.claude/worktrees/og-final-1012/packages",
+      "/Users/shashank/Repositories/construct/.claude/worktrees/og-final-1012/bench/ecommerce/starter",
+      "/Users/shashank/Repositories/construct/.claude/worktrees/og-final-1012/bench/lending/starter"
+    ],
+    "files": 184,
+    "unparsedFiles": 0,
+    "functions": 380
+  },
+  "overall": {
+    "functions": 380,
+    "throws": 0,
+    "clean": 64,
+    "steps": 752,
+    "chips": 3802,
+    "placeholders": 672,
+    "byKind": {
+      "expr": 491,
+      "stmt": 26,
+      "pattern": 155
+    },
+    "byType": {
+      "JSXElement": 186,
+      "ObjectPattern": 145,
+      "LogicalExpression": 84,
+      "ObjectExpression": 69,
+      "ConditionalExpression": 40,
+      "OptionalCallExpression": 33,
+      "TSAsExpression": 24,
+      "ArrayExpression": 20,
+      "TemplateLiteral": 15,
+      "SwitchStatement": 13,
+      "AssignmentPattern": 9,
+      "JSXFragment": 7,
+      "OptionalMemberExpression": 6,
+      "TryStatement": 6,
+      "AwaitExpression": 3,
+      "FunctionDeclaration": 3,
+      "RegExpLiteral": 3,
+      "ThrowStatement": 2,
+      "ForStatement": 1,
+      "RestElement": 1,
+      "SpreadElement": 1,
+      "TSTypeAliasDeclaration": 1
+    },
+    "placeholderRate": 0.17674907943187795,
+    "cleanRate": 0.16842105263157894,
+    "throwRate": 0,
+    "rendered": 380
+  },
+  "logic": {
+    "functions": 207,
+    "throws": 0,
+    "clean": 64,
+    "steps": 392,
+    "chips": 2196,
+    "placeholders": 243,
+    "byKind": {
+      "expr": 206,
+      "stmt": 26,
+      "pattern": 11
+    },
+    "byType": {
+      "ObjectExpression": 65,
+      "LogicalExpression": 53,
+      "TSAsExpression": 24,
+      "ConditionalExpression": 17,
+      "OptionalCallExpression": 16,
+      "SwitchStatement": 13,
+      "ArrayExpression": 10,
+      "AssignmentPattern": 9,
+      "TemplateLiteral": 9,
+      "TryStatement": 6,
+      "OptionalMemberExpression": 5,
+      "AwaitExpression": 3,
+      "FunctionDeclaration": 3,
+      "RegExpLiteral": 3,
+      "ThrowStatement": 2,
+      "ForStatement": 1,
+      "ObjectPattern": 1,
+      "RestElement": 1,
+      "SpreadElement": 1,
+      "TSTypeAliasDeclaration": 1
+    },
+    "placeholderRate": 0.11065573770491803,
+    "cleanRate": 0.30917874396135264,
+    "throwRate": 0,
+    "rendered": 207
+  },
+  "jsx": {
+    "functions": 173,
+    "throws": 0,
+    "clean": 0,
+    "steps": 360,
+    "chips": 1606,
+    "placeholders": 429,
+    "byKind": {
+      "expr": 285,
+      "stmt": 0,
+      "pattern": 144
+    },
+    "byType": {
+      "JSXElement": 186,
+      "ObjectPattern": 144,
+      "LogicalExpression": 31,
+      "ConditionalExpression": 23,
+      "OptionalCallExpression": 17,
+      "ArrayExpression": 10,
+      "JSXFragment": 7,
+      "TemplateLiteral": 6,
+      "ObjectExpression": 4,
+      "OptionalMemberExpression": 1
+    },
+    "placeholderRate": 0.2671232876712329,
+    "cleanRate": 0,
+    "throwRate": 0,
+    "rendered": 173
+  }
+}

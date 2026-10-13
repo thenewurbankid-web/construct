@@ -274,68 +274,162 @@ function describeStmt(node) {
   return { english: render(out.items), tokens: chipsOf(out.items), unhandled: out.unhandled };
 }
 
-// kind: 'method' | 'function' -- same convention as the rest of the tool,
-// so the caller can pass a chunk straight from /api/chunk.
-//
-// Returns { english, steps, title }. `english` is the original flat string
-// ("title: step1; then step2; ...") kept for compatibility with existing
-// callers. `steps` is the same information un-flattened -- one entry per
-// top-level statement of the body, each with its own English, its own code
-// slice, and its node range -- so a caller (the demo's step-row editor) can
-// address, reorder, or rebuild around a single statement instead of the
-// whole block.
-function toEnglish(code, kind) {
-  const prefixLen = kind === 'method' ? `class __W__ {\n`.length : 0;
-  const wrapped = kind === 'method' ? `class __W__ {\n${code}\n}` : code;
-  const ast = parser.parse(wrapped, { sourceType: 'module' });
-  let name = null;
-  let params = [];
-  let body = null;
-  const paramMisses = [];
+function describeImplicitReturn(expr) {
+  const out = makeOut();
+  chip(out, 'return', 'connective');
+  walkExpr(expr, out);
+  return { english: render(out.items), tokens: chipsOf(out.items), unhandled: out.unhandled };
+}
 
+// Every parse in Smith reads TypeScript and JSX: Construct's own code is
+// .ts/.tsx, and plain JS parses the same way under these plugins.
+const PARSE_PLUGINS = ['typescript', 'jsx'];
+const PARSE_OPTS = { sourceType: 'module', plugins: PARSE_PLUGINS };
+
+function isFnExpr(node) {
+  return !!node && (node.type === 'ArrowFunctionExpression' || node.type === 'FunctionExpression');
+}
+
+function methodName(node) {
+  const k = node.key;
+  if (!k) return '(anonymous)';
+  if (k.type === 'PrivateName') return k.id.name;
+  return k.name || (k.value != null ? String(k.value) : '(computed)');
+}
+
+// Every describable function at the top of a module, in source order:
+// function declarations, class methods (of top-level classes), and
+// arrow/function expressions bound to a top-level name -- each also when
+// wrapped in `export` / `export default`. Bodiless shapes (TS overloads,
+// abstract methods, `declare function`) are skipped.
+function topLevelFunctions(program) {
+  const found = [];
+  const fromClass = (cls) => {
+    for (const m of cls.body.body) {
+      if ((m.type === 'ClassMethod' || m.type === 'ClassPrivateMethod') && m.body) {
+        found.push({ name: methodName(m), kind: 'method', node: m, decl: m });
+      }
+    }
+  };
+  const fromDecl = (d, outer, defaultName) => {
+    if (!d) return;
+    if (d.type === 'FunctionDeclaration' && d.body) {
+      found.push({ name: d.id ? d.id.name : defaultName || '(anonymous)', kind: 'function', node: d, decl: outer });
+    } else if (d.type === 'ClassDeclaration' || d.type === 'ClassExpression') {
+      fromClass(d);
+    } else if (d.type === 'VariableDeclaration') {
+      for (const v of d.declarations) {
+        if (v.id.type === 'Identifier' && isFnExpr(v.init)) found.push({ name: v.id.name, kind: 'function', node: v.init, decl: outer });
+      }
+    } else if (isFnExpr(d)) {
+      found.push({ name: defaultName || '(anonymous)', kind: 'function', node: d, decl: outer });
+    }
+  };
+  for (const stmt of program.body) {
+    if (stmt.type === 'ExportNamedDeclaration') fromDecl(stmt.declaration, stmt);
+    else if (stmt.type === 'ExportDefaultDeclaration') fromDecl(stmt.declaration, stmt, 'default');
+    else fromDecl(stmt, stmt);
+  }
+  return found;
+}
+
+// The pre-TS lookup, kept as a fallback so anything the old toEnglish found
+// is still found: the first class method anywhere, or a top-level function.
+function legacyFirstFunction(ast) {
+  let hit = null;
   traverse(ast, {
     ClassMethod(path) {
-      name = path.node.key.name;
-      params = path.node.params.map((p) => p.name || (paramMisses.push({ kind: 'pattern', type: p.type, start: p.start, end: p.end }), '?'));
-      body = path.node.body;
+      if (!path.node.body) return;
+      hit = { name: methodName(path.node), kind: 'method', node: path.node, decl: path.node };
       path.stop();
     },
     FunctionDeclaration(path) {
       if (!path.parentPath.isProgram()) return;
-      name = path.node.id ? path.node.id.name : '(anonymous)';
-      params = path.node.params.map((p) => p.name || (paramMisses.push({ kind: 'pattern', type: p.type, start: p.start, end: p.end }), '?'));
-      body = path.node.body;
+      hit = { name: path.node.id ? path.node.id.name : '(anonymous)', kind: 'function', node: path.node, decl: path.node };
       path.stop();
     },
   });
+  return hit;
+}
 
-  if (!body) {
-    return { english: '(could not find a function/method to describe)', steps: [], title: null, unhandled: [] };
-  }
+function paramText(p, out) {
+  if (p.type === 'TSParameterProperty') return paramText(p.parameter, out);
+  if (p.name) return p.name;
+  noteUnhandled(out, 'pattern', p);
+  return PLACEHOLDER_TEXT.pattern;
+}
 
-  const title = `${camelToWords(name)}${params.length ? ' using ' + params.join(' and ') : ''}`;
-  const shift = (u) => ({ ...u, start: u.start != null ? u.start - prefixLen : null, end: u.end != null ? u.end - prefixLen : null });
-  const steps = body.body.map((s) => {
-    const d = describeStmt(s);
-    return {
-      english: d.english,
-      unhandled: d.unhandled.map(shift),
-      code: wrapped.slice(s.start, s.end),
-      start: s.start - prefixLen,
-      end: s.end - prefixLen,
-      // Same step, as chips instead of a flat string -- each chip's start/end
-      // (when present) are shifted by the same class-wrapper offset as the
-      // step's own start/end, so both stay in the same coordinate space as
-      // `code` above.
-      tokens: d.tokens.map((tok) => ({
-        ...tok,
-        start: tok.start != null ? tok.start - prefixLen : null,
-        end: tok.end != null ? tok.end - prefixLen : null,
-      })),
-    };
+function describeFunction(fn, wrapped, prefixLen) {
+  const shiftN = (n) => (n != null ? n - prefixLen : null);
+  const shift = (u) => ({ ...u, start: shiftN(u.start), end: shiftN(u.end) });
+  const node = fn.node;
+  const paramsOut = makeOut();
+  const params = node.params.map((p) => paramText(p, paramsOut));
+  const title = `${camelToWords(fn.name)}${params.length ? ' using ' + params.join(' and ') : ''}`;
+  const stepOf = (s, d) => ({
+    english: d.english,
+    unhandled: d.unhandled.map(shift),
+    code: wrapped.slice(s.start, s.end),
+    start: shiftN(s.start),
+    end: shiftN(s.end),
+    // Same step, as chips instead of a flat string -- each chip's start/end
+    // (when present) are shifted by the same class-wrapper offset as the
+    // step's own start/end, so both stay in the same coordinate space as
+    // `code` above.
+    tokens: d.tokens.map((tok) => ({ ...tok, start: shiftN(tok.start), end: shiftN(tok.end) })),
   });
+  const steps = node.body.type === 'BlockStatement'
+    ? node.body.body.map((s) => stepOf(s, describeStmt(s)))
+    // An expression-bodied arrow (`const f = (a) => a.b`) is one implicit
+    // return step whose code is the expression itself.
+    : [stepOf(node.body, describeImplicitReturn(node.body))];
   const english = `${title}: ${steps.map((s) => s.english).join('; then ')}.`;
-  return { english, steps, title, unhandled: [...paramMisses.map(shift), ...steps.flatMap((s) => s.unhandled)] };
+  return {
+    name: fn.name,
+    kind: fn.kind,
+    title,
+    english,
+    steps,
+    unhandled: [...paramsOut.unhandled.map(shift), ...steps.flatMap((s) => s.unhandled)],
+    start: shiftN(fn.decl.start),
+    end: shiftN(fn.decl.end),
+  };
+}
+
+// kind: 'method' | 'function' -- same convention as the rest of the tool,
+// so the caller can pass a chunk straight from /api/chunk.
+//
+// Returns { english, steps, title, unhandled }. `english` is the original
+// flat string ("title: step1; then step2; ...") kept for compatibility with
+// existing callers. `steps` is the same information un-flattened -- one
+// entry per top-level statement of the body, each with its own English, its
+// own code slice, its node range, its chips and its `unhandled` list -- so a
+// caller (the demo's step-row editor) can address, reorder, or rebuild
+// around a single statement instead of the whole block. `unhandled` is every
+// placeholder in the description as {kind, type, start, end}.
+//
+// By default only the FIRST function in `code` is described (the original
+// behaviour). `{ all: true }` also returns `functions`: one
+// {name, kind, title, english, steps, unhandled, start, end} per describable
+// function in the module, in source order (see topLevelFunctions).
+function toEnglish(code, kind, options = {}) {
+  const prefixLen = kind === 'method' ? `class __W__ {\n`.length : 0;
+  const wrapped = kind === 'method' ? `class __W__ {\n${code}\n}` : code;
+  const ast = parser.parse(wrapped, PARSE_OPTS);
+  let fns = topLevelFunctions(ast.program);
+  if (!fns.length) {
+    const legacy = legacyFirstFunction(ast);
+    if (legacy) fns = [legacy];
+  }
+  if (!fns.length) {
+    const none = { english: '(could not find a function/method to describe)', steps: [], title: null, unhandled: [] };
+    return options.all ? { ...none, functions: [] } : none;
+  }
+  const described = (options.all ? fns : fns.slice(0, 1)).map((fn) => describeFunction(fn, wrapped, prefixLen));
+  const first = described[0];
+  const result = { english: first.english, steps: first.steps, title: first.title, unhandled: first.unhandled };
+  if (options.all) result.functions = described;
+  return result;
 }
 
 // Every method/function actually CALLED in the refactored code -- the real
@@ -343,7 +437,7 @@ function toEnglish(code, kind) {
 // not a guess. Deterministic AST walk, same as everything else here.
 function extractAtoms(code, kind) {
   const wrapped = kind === 'method' ? `class __W__ {\n${code}\n}` : code;
-  const ast = parser.parse(wrapped, { sourceType: 'module' });
+  const ast = parser.parse(wrapped, PARSE_OPTS);
   const names = new Set();
   traverse(ast, {
     CallExpression(path) {
@@ -370,7 +464,7 @@ function extractAtoms(code, kind) {
 // unique per call and increases left-to-right, matching reading order.
 function extractAtomUsage(code, kind) {
   const wrapped = kind === 'method' ? `class __W__ {\n${code}\n}` : code;
-  const ast = parser.parse(wrapped, { sourceType: 'module' });
+  const ast = parser.parse(wrapped, PARSE_OPTS);
   const counts = {};
   const firstStart = {};
   traverse(ast, {
@@ -499,7 +593,7 @@ function reorderSteps(code, kind, order, { plugins = [] } = {}) {
 // function source -- so a step calling it never has to carry its own copy
 // of the signature that could drift out of sync.
 function atomParamNames(atomCode) {
-  const ast = parser.parse(atomCode, { sourceType: 'module' });
+  const ast = parser.parse(atomCode, PARSE_OPTS);
   let params = [];
   traverse(ast, {
     FunctionDeclaration(path) {
@@ -767,6 +861,7 @@ function insertArgument(code, kind, stepIndex, identifierName) {
 
 module.exports = {
   toEnglish,
+  PARSE_PLUGINS,
   camelToWords,
   extractAtoms,
   extractAtomUsage,
