@@ -1,6 +1,9 @@
 // K1, K2, K5 (#942): the kill-tests that need Smith (atomic-codemod linked). Called by run.mjs.
 import { TASKS, PLAN_EXAMPLES, TEMPLATES } from './tasks.mjs';
-import { smithOf, smithReady, matchPlan, planSentence, norm } from './lib/smith.mjs';
+import { smithOf, smithReady, matchPlan, planSentence, norm, isUnhandled } from './lib/smith.mjs';
+import { smithLinks } from '../../../../packages/summarize/links.mjs';
+
+const smithAt = () => ({ smithHead: smithLinks().codemod.head, smithRaw: process.env.CHAIN_SMITH_RAW === '1' });
 import { tscGate, unitCheck } from './lib/gates.mjs';
 import { chat, embed, cosine, MODELS } from './lib/ollama.mjs';
 import { replaceBody, stubProblems } from '../../../../packages/engine/line/path/stubs.mjs';
@@ -49,6 +52,7 @@ async function k1({ write }) {
     maxMutantFallbackCosine: cos.length ? Math.max(...cos) : null,
     note: 'A cosine fallback must sit above maxMutantFallbackCosine or it lets a mutant step count as matched.',
   };
+  Object.assign(summary, smithAt(), { unhandledSentences: rows.reduce((a, r) => a + Object.values(r.referenceSmith).flat().filter(isUnhandled).length + r.mutants.reduce((b, m) => b + Object.values(m.smith).flat().filter(isUnhandled).length, 0), 0) });
   summary.verdict = rows.every((r) => r.separated) ? 'pass' : 'kill';
   write('k1', { summary, rows });
   console.log('K1', JSON.stringify(summary));
@@ -138,6 +142,7 @@ async function k5({ write }) {
     unitOnly: runs.filter((x) => x.unit).length, tscPassed: runs.filter((x) => x.code).length,
     rule: 'pass = a tsc-clean, stub-clean body (best of 5) whose Smith English matches the model\'s own plan exactly',
   };
+  Object.assign(summary, smithAt(), { unhandledSentences: runs.reduce((a, x) => a + (x.smith ? Object.values(x.smith).flat().filter(isUnhandled).length : 0), 0) });
   summary.verdict = summary.pass > 0 ? 'pass' : 'kill';
   write('k5', { summary, runs });
   console.log('K5', JSON.stringify(summary));

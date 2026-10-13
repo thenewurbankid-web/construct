@@ -1,0 +1,315 @@
+{
+  "summary": {
+    "method": "exact template match (plan line -> summarize sentence form, normalized)",
+    "tasks": 4,
+    "referenceFullMatch": 4,
+    "mutantsSeparated": "8/8",
+    "maxMutantFallbackCosine": 0.996,
+    "note": "A cosine fallback must sit above maxMutantFallbackCosine or it lets a mutant step count as matched.",
+    "smithHead": "72e4c09419061466e8e66cd433d80371f24b936c",
+    "smithRaw": true,
+    "unhandledSentences": 0,
+    "verdict": "pass"
+  },
+  "rows": [
+    {
+      "task": "availability",
+      "referenceUnit": true,
+      "referenceScore": 1,
+      "referenceGaps": [],
+      "referenceSmith": {
+        "formatAvailability": [
+          "If available, return 'Available'.",
+          "It returns 'On loan'."
+        ]
+      },
+      "mutants": [
+        {
+          "i": 1,
+          "unit": false,
+          "score": 0,
+          "gaps": [
+            {
+              "fn": "formatAvailability",
+              "plan": "if available, return 'available'"
+            },
+            {
+              "fn": "formatAvailability",
+              "plan": "it returns 'on loan'"
+            }
+          ],
+          "smith": {
+            "formatAvailability": [
+              "If available, return 'On loan'.",
+              "It returns 'Available'."
+            ]
+          },
+          "fallback": [
+            {
+              "fn": "formatAvailability",
+              "plan": "if available, return 'available'",
+              "best": 0.8888
+            },
+            {
+              "fn": "formatAvailability",
+              "plan": "it returns 'on loan'",
+              "best": 0.8183
+            }
+          ]
+        },
+        {
+          "i": 2,
+          "unit": false,
+          "score": 0.5,
+          "gaps": [
+            {
+              "fn": "formatAvailability",
+              "plan": "if available, return 'available'"
+            }
+          ],
+          "smith": {
+            "formatAvailability": [
+              "If not (available), return 'Available'.",
+              "It returns 'On loan'."
+            ]
+          },
+          "fallback": [
+            {
+              "fn": "formatAvailability",
+              "plan": "if available, return 'available'",
+              "best": 0.9634
+            }
+          ]
+        }
+      ],
+      "separated": true
+    },
+    {
+      "task": "picks-store",
+      "referenceUnit": true,
+      "referenceScore": 1,
+      "referenceGaps": [],
+      "referenceSmith": {
+        "addPick": [
+          "If picks includes id, return picks.",
+          "If picks's length >= 4, return picks.",
+          "It returns picks concat id."
+        ],
+        "removePick": [
+          "It returns picks filter pick !== id."
+        ],
+        "listPicks": [
+          "It returns picks slice."
+        ]
+      },
+      "mutants": [
+        {
+          "i": 1,
+          "unit": false,
+          "score": 0.8,
+          "gaps": [
+            {
+              "fn": "addPick",
+              "plan": "if picks's length >= 4, return picks"
+            }
+          ],
+          "smith": {
+            "addPick": [
+              "If picks includes id, return picks.",
+              "It returns picks concat id."
+            ],
+            "removePick": [
+              "It returns picks filter pick !== id."
+            ],
+            "listPicks": [
+              "It returns picks slice."
+            ]
+          },
+          "fallback": []
+        },
+        {
+          "i": 2,
+          "unit": false,
+          "score": 0.8,
+          "gaps": [
+            {
+              "fn": "removePick",
+              "plan": "it returns picks filter pick !== id"
+            }
+          ],
+          "smith": {
+            "addPick": [
+              "If picks includes id, return picks.",
+              "If picks's length >= 4, return picks.",
+              "It returns picks concat id."
+            ],
+            "removePick": [
+              "It returns picks filter pick === id."
+            ],
+            "listPicks": [
+              "It returns picks slice."
+            ]
+          },
+          "fallback": [
+            {
+              "fn": "removePick",
+              "plan": "it returns picks filter pick !== id",
+              "best": 0.9835
+            }
+          ]
+        }
+      ],
+      "separated": true
+    },
+    {
+      "task": "paging",
+      "referenceUnit": true,
+      "referenceScore": 1,
+      "referenceGaps": [],
+      "referenceSmith": {
+        "pageOf": [
+          "Let start be page * 6.",
+          "It returns items slice start and start + 6."
+        ],
+        "pageCount": [
+          "It returns Math ceil total / 6."
+        ]
+      },
+      "mutants": [
+        {
+          "i": 1,
+          "unit": false,
+          "score": 0.667,
+          "gaps": [
+            {
+              "fn": "pageOf",
+              "plan": "it returns items slice start and start + 6"
+            }
+          ],
+          "smith": {
+            "pageOf": [
+              "Let start be page * 6.",
+              "It returns items slice start and 6."
+            ],
+            "pageCount": [
+              "It returns Math ceil total / 6."
+            ]
+          },
+          "fallback": [
+            {
+              "fn": "pageOf",
+              "plan": "it returns items slice start and start + 6",
+              "best": 0.9791
+            }
+          ]
+        },
+        {
+          "i": 2,
+          "unit": false,
+          "score": 0,
+          "gaps": [
+            {
+              "fn": "pageOf",
+              "plan": "let start be page * 6"
+            },
+            {
+              "fn": "pageOf",
+              "plan": "it returns items slice start and start + 6"
+            },
+            {
+              "fn": "pageCount",
+              "plan": "it returns math ceil total / 6"
+            }
+          ],
+          "smith": {
+            "pageOf": [
+              "Let start be page * 5.",
+              "It returns items slice start and start + 5."
+            ],
+            "pageCount": [
+              "It returns Math floor total / 6."
+            ]
+          },
+          "fallback": [
+            {
+              "fn": "pageOf",
+              "plan": "let start be page * 6",
+              "best": 0.9232
+            },
+            {
+              "fn": "pageOf",
+              "plan": "it returns items slice start and start + 6",
+              "best": 0.9447
+            },
+            {
+              "fn": "pageCount",
+              "plan": "it returns math ceil total / 6",
+              "best": 0.8115
+            }
+          ]
+        }
+      ],
+      "separated": true
+    },
+    {
+      "task": "sort-title",
+      "referenceUnit": true,
+      "referenceScore": 1,
+      "referenceGaps": [],
+      "referenceSmith": {
+        "sortByTitle": [
+          "It returns books slice sort a's title locale compare b's title."
+        ]
+      },
+      "mutants": [
+        {
+          "i": 1,
+          "unit": false,
+          "score": 0,
+          "gaps": [
+            {
+              "fn": "sortByTitle",
+              "plan": "it returns books slice sort a's title locale compare b's title"
+            }
+          ],
+          "smith": {
+            "sortByTitle": [
+              "It returns books slice sort b's title locale compare a's title."
+            ]
+          },
+          "fallback": [
+            {
+              "fn": "sortByTitle",
+              "plan": "it returns books slice sort a's title locale compare b's title",
+              "best": 0.996
+            }
+          ]
+        },
+        {
+          "i": 2,
+          "unit": false,
+          "score": 0,
+          "gaps": [
+            {
+              "fn": "sortByTitle",
+              "plan": "it returns books slice sort a's title locale compare b's title"
+            }
+          ],
+          "smith": {
+            "sortByTitle": [
+              "It returns books sort a's author locale compare b's author."
+            ]
+          },
+          "fallback": [
+            {
+              "fn": "sortByTitle",
+              "plan": "it returns books slice sort a's title locale compare b's title",
+              "best": 0.8763
+            }
+          ]
+        }
+      ],
+      "separated": true
+    }
+  ]
+}

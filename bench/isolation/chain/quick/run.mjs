@@ -9,7 +9,9 @@ import { chat, embed, cosine, MODELS } from './lib/ollama.mjs';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const OUT = path.join(HERE, 'results');
 fs.mkdirSync(OUT, { recursive: true });
-const write = (name, data) => fs.writeFileSync(path.join(OUT, `${name}.json`), `${JSON.stringify(data, null, 2)}\n`);
+// --suffix=<s> writes results/<test><s>.json (e.g. --suffix=-hardened), leaving earlier runs in place.
+const SUFFIX = (process.argv.find((a) => a.startsWith('--suffix=')) ?? '').slice('--suffix='.length);
+const write = (name, data) => fs.writeFileSync(path.join(OUT, `${name}${SUFFIX}.json`), `${JSON.stringify(data, null, 2)}\n`);
 
 async function k3() {
   const k = await import('./k3.mjs');
@@ -65,7 +67,7 @@ async function k4() {
 }
 
 const TESTS = { k3, k4 };
-const want = process.argv.slice(2);
+const want = process.argv.slice(2).filter((a) => !a.startsWith('--'));
 for (const t of want.length ? want : Object.keys(TESTS)) {
   if (!TESTS[t]) { const m = await import('./smith-tests.mjs'); await m.run(t, { write }); continue; }
   await TESTS[t]();

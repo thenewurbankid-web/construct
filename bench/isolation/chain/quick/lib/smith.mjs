@@ -9,8 +9,16 @@ import { plainSentence } from '../../../../../packages/summarize/index.mjs';
 
 const ts = createRequire(import.meta.url)('typescript');
 
+/** CHAIN_SMITH_RAW=1: the hardened to-english (atomic-codemod smith-hardening) parses TS/TSX itself, so each top-level
+ * function goes in as written (types and `export` kept); one function per call, since to-english describes the first. */
+const RAW = process.env.CHAIN_SMITH_RAW === '1';
+
 /** Top-level function declarations of a TS source, as JS without `export`. */
 export function functionsOf(source) {
+  if (RAW) {
+    const sf = ts.createSourceFile('x.tsx', source, ts.ScriptTarget.ES2022, true, ts.ScriptKind.TSX);
+    return sf.statements.filter(ts.isFunctionDeclaration).map((st) => ({ name: st.name?.text ?? '', code: st.getText(sf) }));
+  }
   const js = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.ESNext }, reportDiagnostics: false }).outputText;
   const sf = ts.createSourceFile('x.js', js, ts.ScriptTarget.ES2020, true, ts.ScriptKind.JS);
   return sf.statements.filter(ts.isFunctionDeclaration).map((st) => ({ name: st.name?.text ?? '', code: st.getText(sf).replace(/^export\s+/, '') }));
