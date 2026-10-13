@@ -1,11 +1,11 @@
 {
   "note": "Exported functions/classes lacking a description, @param or @returns, per file. Only ever decreases: node packages/tools/api-coverage/check.mjs --update",
-  "total": 249,
+  "total": 246,
   "files": {
     "packages/core/api-composer.mjs": 1,
     "packages/core/architecture-enforcer.mjs": 2,
     "packages/core/architecture-graph.mjs": 1,
-    "packages/core/cli.mjs": 13,
+    "packages/core/cli.mjs": 11,
     "packages/core/config.mjs": 4,
     "packages/core/diagnostics.mjs": 2,
     "packages/core/dir-browser.mjs": 4,
@@ -14,7 +14,7 @@
     "packages/core/frozen.mjs": 6,
     "packages/core/generators.mjs": 1,
     "packages/core/glob.mjs": 1,
-    "packages/core/import.mjs": 3,
+    "packages/core/import.mjs": 2,
     "packages/core/llm-fill.mjs": 3,
     "packages/core/llm.mjs": 3,
     "packages/core/nonLayer.mjs": 3,
