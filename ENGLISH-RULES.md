@@ -103,6 +103,23 @@ existing atoms; larger flows are organisms. The sentence calls it by name. Smith
 and only new atoms need the owner's approval. A molecule or organism built only from approved atoms needs no approval,
 once tests show it matches the original JS. Open: how a molecule is declared (e.g. a `defineMolecule` factory).
 
+**The gate for accepting a molecule without approval (owner, 2026-10-15).** All six checks are deterministic:
+1. *Only approved parts:* a static check that the body calls only approved atoms or already-accepted molecules; no
+   raw operators, no globals.
+2. *Same results:* a fast-check property test of the original JS against the molecule, 1,000 seeded runs, plus a
+   fixed edge-case set per input type: numbers `0`, `-0`, `NaN`, `±Infinity`, `MAX_SAFE_INTEGER`, fractions; text
+   `''`, whitespace, emoji and surrogate pairs; lists `[]`, one item, duplicates, holes; objects with a missing key,
+   `null`, `undefined`; an invalid `Date`.
+3. *Same behaviour:* the same error type thrown, inputs changed the same way (deep compare afterwards), impure atoms
+   called in the same order. A pure original needs a pure molecule (the catalog's `pure` flag).
+4. *Same types:* the molecule's TypeScript signature equals the original's inferred input and output types.
+5. *Deterministic:* two runs with the same seed give the same answer.
+6. *No duplicates:* the molecule's shape, with parameter names normalised, is hashed; a match reuses the existing
+   molecule instead of adding a new one.
+
+A molecule that fails any check is not dropped and does not go to the owner: it goes to the developer as a reviewable
+diff, with the failing seed and the counterexample.
+
 ## Examples with real atoms
 
 | Atom today | `reads` today | Fluent today | Fluent under these rules |
