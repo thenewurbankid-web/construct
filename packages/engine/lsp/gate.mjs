@@ -6,13 +6,15 @@
 //   atomic shape       stubProblems clean (nothing unused, it returns what it declares; line/path/stubs.mjs)
 //                      purity where the layer requires it (domain, expression: logicVerify/purity.mjs classifyFile)
 //                      one job: ESLint core `complexity` (@construct/ast functionComplexity, FUNC-001's counter) within
-//                      the layer's FUNC-001 budget (architecture-enforcer DEFAULT_FUNCTION_BUDGETS)
+//                      the layer's FUNC-001 budget (architecture-enforcer DEFAULT_FUNCTION_BUDGETS); and as a WHOLE:
+//                      nested callbacks rolled up within budget x UNIT_BUDGET_FACTOR, at most CONCERN_LIMIT concerns
 //                      connections only through functions: an imported binding is only called, rendered as a JSX tag
 //                      (dotted too: <React.Fragment>, <SideNav.NavItem>) or used as a type -- never read as data
 //   templates exempt   dumb JSX that only binds view-model fields (a body of `return <jsx/>`, plus destructuring, with
 //                      only names, field reads and calls inside braces) is checked by DOM render, not Smith
 //
 //   atomicGate({ rel, source, fn, layer? }) -> { pass, exempt, checks: [{ check, ok, line }], failed: string[] }
+import path from 'node:path';
 import { ts } from './host.mjs';
 import { stubProblems } from '../line/path/stubs.mjs';
 import { classifyFile } from '../line/logicVerify/purity.mjs';
@@ -152,6 +154,82 @@ export function dataConnections(sf, node) {
 }
 
 /**
+ * The unit budget is FUNC-001's per-function budget times this. Construct's own corpus (bench starters, examples/,
+ * typed-contracts examples, line-atoms, trace/examples: 149 top-level units, 36 with nested functions) rolls up to at
+ * most 0.8x its layer's budget (p95 0.5x), so every unit Line shows as an example passes with room for a hook that
+ * bundles a few small handlers; 1.5x still flags max-ai-ui's spread-out hooks (8 of 47 with callbacks, e.g.
+ * useAdminNavigation 16/15, useUserDataStep 51/15).
+ */
+export const UNIT_BUDGET_FACTOR = 1.5;
+/**
+ * The most distinct concerns one unit may call into (modules outside its own feature, plus the browser). Construct's
+ * corpus: at most 3 (p95 1), so 4; max-ai-ui has 5 units above it, useAdminNavigation at 8 (router, intl, profile,
+ * breadcrumbs, side-nav sync, data loads, analytics, browser scroll).
+ */
+export const CONCERN_LIMIT = 4;
+/** Browser globals: calling or reading one is the `browser` concern (DOM, storage, location, timers aside). */
+const BROWSER = new Set(['window', 'document', 'getComputedStyle', 'localStorage', 'sessionStorage', 'navigator', 'location', 'history', 'matchMedia', 'requestAnimationFrame', 'IntersectionObserver', 'ResizeObserver', 'fetch']);
+/** Framework modules every hook or component uses: never a concern of their own. */
+const FRAMEWORK = new Set(['react', 'react-dom']);
+
+/**
+ * A unit's complexity as a WHOLE: ESLint's per-function cyclomatic (functionComplexity, FUNC-001's counter) of the unit
+ * and of every function nested in it, rolled up as one function would count them (1 + the decisions of each).
+ * @param {string} source The file.
+ * @param {string} fn The unit's name.
+ * @returns {{whole: number, own: number, parts: {name: string, line: number, cyclomatic: number}[]} | null}
+ */
+export function wholeComplexity(source, fn) {
+  let all;
+  try { all = functionComplexity(source); } catch { return null; }
+  const unit = all.filter((f) => f.name === fn).sort((a, b) => b.loc - a.loc)[0];
+  if (!unit) return null;
+  const nested = all.filter((f) => f !== unit && f.line >= unit.line && f.endLine <= unit.endLine);
+  const parts = nested.map((f) => ({ name: f.name ?? `callback L${f.line}`, line: f.line, cyclomatic: f.cyclomatic }));
+  return { whole: 1 + [unit, ...nested].reduce((n, f) => n + f.cyclomatic - 1, 0), own: unit.cyclomatic, parts };
+}
+
+/**
+ * The distinct concerns a unit calls into: each module outside its own feature an imported binding it calls or reads
+ * comes from (type-only imports, react, the unit's own feature's files and components it only renders as JSX tags left
+ * out: composing views is one job), plus `browser` for a browser global.
+ * @param {any} sf The TypeScript source file.
+ * @param {any} node The unit's function node.
+ * @param {string} rel Root-relative file (its features/<f>/ folder is the unit's own feature).
+ * @returns {string[]} Module specifiers (and `browser`), in first-use order.
+ */
+export function concernsOf(sf, node, rel) {
+  const from = new Map();
+  for (const st of sf.statements) {
+    if (!ts.isImportDeclaration(st) || !st.importClause || st.importClause.isTypeOnly || !ts.isStringLiteral(st.moduleSpecifier)) continue;
+    const spec = st.moduleSpecifier.text;
+    const c = st.importClause;
+    const names = [c.name?.text, c.namedBindings && ts.isNamespaceImport(c.namedBindings) ? c.namedBindings.name.text : null,
+      ...(c.namedBindings && ts.isNamedImports(c.namedBindings) ? c.namedBindings.elements.filter((e) => !e.isTypeOnly).map((e) => e.name.text) : [])];
+    for (const n of names) if (n) from.set(n, spec);
+  }
+  const feature = /(?:^|\/)features\/[^/]+\//.exec(rel)?.[0] ?? null;
+  const own = (spec) => {
+    if (!spec.startsWith('.')) return false;
+    if (!feature) return true;
+    const abs = path.posix.normalize(path.posix.join(path.posix.dirname(rel), spec));
+    return abs.includes(feature.replace(/^\//, ''));
+  };
+  const out = [];
+  const add = (c) => { if (!out.includes(c)) out.push(c); };
+  const visit = (n) => {
+    if (ts.isIdentifier(n) && !(ts.isPropertyAccessExpression(n.parent) && n.parent.name === n) && !ts.isTypeReferenceNode(n.parent) && !isJsxTag(n)) {
+      const spec = from.get(n.text);
+      if (spec && !FRAMEWORK.has(spec) && !own(spec)) add(spec);
+      else if (!spec && BROWSER.has(n.text)) add('browser');
+    }
+    ts.forEachChild(n, visit);
+  };
+  visit(node);
+  return out;
+}
+
+/**
  * The gate for one function of one file.
  * @param {{rel: string, source: string, fn: string, layer?: string, smith?: Function}} a `smith` overrides the round trip (tests).
  * @returns {Promise<any>} {pass, exempt, layer, checks, failed, smith, ms}.
@@ -178,6 +256,15 @@ export async function atomicGate({ rel, source, fn, layer = layerOf(rel), smith 
   const budget = functionBudgetFor(layer) ?? { cyclomatic: 10 };
   const cx = functionComplexity(source).filter((f) => f.name === fn).sort((a, b) => b.cyclomatic - a.cyclomatic)[0];
   if (cx) add('complexity', cx.cyclomatic <= budget.cyclomatic, `cyclomatic ${cx.cyclomatic}/${budget.cyclomatic} (${layer})`);
+  // one job, measured on the unit as a whole: its nested callbacks rolled up, and how many concerns it calls into
+  const w = wholeComplexity(source, fn);
+  const unitBudget = Math.round(budget.cyclomatic * UNIT_BUDGET_FACTOR);
+  const concerns = concernsOf(sf, node, rel);
+  if (w) {
+    const okW = w.whole <= unitBudget; const okC = concerns.length <= CONCERN_LIMIT;
+    const parts = [`${fn} ${w.own}`, ...w.parts.map((p) => `${p.name} ${p.cyclomatic}`)].join(', ');
+    add('one-job', okW && okC, `whole cyclomatic ${w.whole}/${unitBudget} (${layer} ${budget.cyclomatic} x ${UNIT_BUDGET_FACTOR}: ${parts}); concerns ${concerns.length}/${CONCERN_LIMIT}${concerns.length ? ` (${concerns.join(', ')})` : ''}`);
+  }
   const data = dataConnections(sf, node);
   add('connections', data.length === 0, data.length ? `reads imported ${data.join(', ')} as data, not through a function` : 'only through functions');
 

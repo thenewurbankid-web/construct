@@ -46,3 +46,38 @@ test('layers come from the profiles: domain/ (singular, Construct) and domains/ 
   const svc = await gate('src/features/admin-navigation/services/x.ts', src, 'stamp');
   assert.equal(check(svc, 'purity'), undefined, 'a service is not purity-checked');
 });
+
+test('one job as a whole: a hook whose work sits in nested callbacks fails with the breakdown; a small hook passes', async () => {
+  const { wholeComplexity, UNIT_BUDGET_FACTOR, CONCERN_LIMIT } = await import('../gate.mjs');
+  const branchy = (name, n) => `  const ${name} = (x: number) => {\n${Array.from({ length: n }, (_, i) => `    if (x === ${i}) track(${i});`).join('\n')}\n  };\n`;
+  const source = `import { track } from '@/libs/analytics';
+import { useRouter } from 'next/navigation';
+import { useCrumbs } from '@/libs/breadcrumbs';
+import { useProfile } from '@/hooks/useProfile';
+import { pageOf } from '../domain/pages';
+export function useFrame() {
+  const router = useRouter();
+  const crumbs = useCrumbs();
+  const me = useProfile();
+${branchy('onA', 6)}${branchy('onB', 5)}${branchy('onC', 4)}  const onScroll = () => { window.scrollTo(0, 0); };
+  return { router, crumbs, me, onA, onB, onC, onScroll, page: pageOf(1) };
+}
+export function useSmall() {
+  const router = useRouter();
+  const go = (x: number) => { if (x > 0) router.push('/a'); };
+  return { go };
+}
+`;
+  const rel = 'src/features/frame/hooks/useFrame.ts';
+  const w = wholeComplexity(source, 'useFrame');
+  assert.equal(w.own, 1, 'alone, the hook body is trivial');
+  assert.equal(w.whole, 1 + 6 + 5 + 4);
+  const g = await gate(rel, source, 'useFrame');
+  const one = check(g, 'one-job');
+  assert.equal(one.ok, false);
+  assert.match(one.line, new RegExp(`whole cyclomatic 16/${10 * UNIT_BUDGET_FACTOR} \\(hook 10 x 1\\.5: useFrame 1, onA 7, onB 6, onC 5, onScroll 1\\)`));
+  assert.match(one.line, new RegExp(`concerns 5/${CONCERN_LIMIT} \\(next/navigation, @/libs/breadcrumbs, @/hooks/useProfile, @/libs/analytics, browser\\)`));
+  assert.ok(!/domain\/pages/.test(one.line), 'the unit\'s own feature is not a concern');
+  assert.ok(g.failed.includes('one-job'));
+  assert.equal(check(await gate(rel, source, 'useSmall'), 'one-job').ok, true);
+});
