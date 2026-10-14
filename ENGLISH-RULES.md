@@ -88,6 +88,20 @@ picks, as in `the().sum().of(xs)`. Any other `reduce` starts with `folds()`, the
 `xs.reduce((total, x) => total + x, 0)` reads
 `folds().every(x).in(xs).into(total).starting().at(0).by().adding(x).to(total)`.
 
+**The other callback shapes (owner, 2026-10-15):**
+- *Index:* `xs.map((x, i) => …)` reads `every(x).at(i).in(xs)…`; `i` is an imported placeholder, typed `number`.
+- *Effects only:* `xs.forEach((x) => log(x))` starts with `does()`, the first word for "returns nothing":
+  `does().every(x).in(xs).by().logging(x)`. Always an organism, since it has effects.
+- *Async:* an async body makes the chain return a Promise and run **one at a time** by default; parallel is said
+  out loud with `all().at().once()`. The converter writes `all().at().once()` for `Promise.all(xs.map(async …))`, so
+  behaviour matches the original.
+- *Early return:* a branch, so more than one atom: a molecule using `when().yields().otherwise()`.
+- *`this`:* the converter rewrites it as an explicit parameter when its value is provable (class method, `.bind(obj)`,
+  object-literal method); otherwise it refuses and the developer gets a diff.
+
+First words are now five, each with one result kind: `checks()` yes/no, `every()` list, `the().first()` one item,
+`folds()` one value, `does()` nothing.
+
 **`to().clone()` copies the list, not the items (owner, 2026-10-15).** It says out loud that `xs` is left alone (R5),
 exactly as `map` behaves; each item of the new list is whatever the body returns. A deep copy of the items is a
 separate atom (`structuredClone`), never implied by `clone()`.
