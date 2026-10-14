@@ -74,3 +74,18 @@ work/2026-09-23 or later (older copies fail on macOS without flock). Previous ca
   fixture directly (even the reference solutions): change the gate's page rule or the tasks? L-gate 2/12 vs H 8/12
   until settled. atomic-codemod plug() can transform but its atom calls aren't imported (L-norm 0 compile).
 - Smith: owner pushed smith-hardening to ~/Desktop/atomic-codemod (new branch); merge into its main still open.
+
+## State after merge wave 2 (2026-10-14)
+- work/2026-09-23 = og/final-2026-10-12 = 67dfe77b. Suite 7238 pass / 0 fail / 52 skip / 6 todo (Smith linked).
+  Merged: smith-system1-data, smith-oss-coverage, lsp-into-line 0b421213 (LSP #943 + wiring #945 + isolation
+  harness #941), english-loop-chain fbce3355, smith-eval-hardened e85b92a0. Closed #940, #941, #942, #943-#946.
+- Smith pin a9191a5 (owner merged smith-hardening cbc2567 into ~/Desktop/atomic-codemod master). Untranslated-step
+  marker counts as a gap; link checked once per process. Smith tracker closed.
+- Fix later: `link.mjs --pin` covers only links.json (atomic-codemod.json edited by hand).
+- Not yet merged: exp/small-model-isolation 7e3d7646+ (modelled-I/O harness fixes), exp/english-loop-chain
+  62efd4c1+ (one-unit plan writer, k2b fix pending), exp/smith-eval-hardened 1e87be0b (facts compiler: matches
+  hand-written facts on every probe case), Claude Code cd2 run (running).
+- In flight: line/modelled-io (product audit fixes), exp/quickjs-sandbox, exp/lsp-speed (scoped + excalidraw +
+  background index), line/trace-beam (beam + structure/types/behaviour prune), Smith plain-English style on
+  smith-hardening (owner pushes), max-ai-ui admin-navigation chain report (read-only).
+- Owner rule (memory feedback-modelled-model-io): no free-form model I/O anywhere.
