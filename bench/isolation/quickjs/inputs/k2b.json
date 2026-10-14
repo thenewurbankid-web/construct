@@ -1,0 +1,1343 @@
+{
+  "qwen2.5-coder:7b": {
+    "summary": {
+      "model": "qwen2.5-coder:7b",
+      "method": "code sketch (fenced ts) -> hardened Smith canonical; gaps fed back up to 2 rounds; T=0.7 seeds 200-204",
+      "samples": 20,
+      "zeroGapsAfterRound": {
+        "0": 20,
+        "1": 20,
+        "2": 20
+      },
+      "matchPct": 35,
+      "meanScorePct": 46,
+      "perTaskMatch": {
+        "availability": "5/5",
+        "picks-store": "0/5",
+        "paging": "0/5",
+        "sort-title": "2/5"
+      },
+      "meanRounds": 0,
+      "tokens": 4151,
+      "calls": 20,
+      "killBelow": 50,
+      "verdict": "kill"
+    },
+    "rows": [
+      {
+        "task": "availability",
+        "sample": 0,
+        "sketch": "export function formatAvailability(available: boolean): string {\n    return available ? \"Available\" : \"On loan\";\n}",
+        "plan": {
+          "formatAvailability": [
+            "If available, return 'Available'.",
+            "It returns 'On loan'."
+          ]
+        },
+        "gaps": [],
+        "gapsByRound": [
+          0
+        ],
+        "rounds": 0,
+        "tokens": 142,
+        "calls": 1,
+        "score": 1,
+        "match": true,
+        "misses": []
+      },
+      {
+        "task": "availability",
+        "sample": 1,
+        "sketch": "export function formatAvailability(available: boolean): string {\n    return available ? \"Available\" : \"On loan\";\n}",
+        "plan": {
+          "formatAvailability": [
+            "If available, return 'Available'.",
+            "It returns 'On loan'."
+          ]
+        },
+        "gaps": [],
+        "gapsByRound": [
+          0
+        ],
+        "rounds": 0,
+        "tokens": 142,
+        "calls": 1,
+        "score": 1,
+        "match": true,
+        "misses": []
+      },
+      {
+        "task": "availability",
+        "sample": 2,
+        "sketch": "export function formatAvailability(available: boolean): string {\n    return available ? \"Available\" : \"On loan\";\n}",
+        "plan": {
+          "formatAvailability": [
+            "If available, return 'Available'.",
+            "It returns 'On loan'."
+          ]
+        },
+        "gaps": [],
+        "gapsByRound": [
+          0
+        ],
+        "rounds": 0,
+        "tokens": 142,
+        "calls": 1,
+        "score": 1,
+        "match": true,
+        "misses": []
+      },
+      {
+        "task": "availability",
+        "sample": 3,
+        "sketch": "export function formatAvailability(available: boolean): string {\n    return available ? \"Available\" : \"On loan\";\n}",
+        "plan": {
+          "formatAvailability": [
+            "If available, return 'Available'.",
+            "It returns 'On loan'."
+          ]
+        },
+        "gaps": [],
+        "gapsByRound": [
+          0
+        ],
+        "rounds": 0,
+        "tokens": 142,
+        "calls": 1,
+        "score": 1,
+        "match": true,
+        "misses": []
+      },
+      {
+        "task": "availability",
+        "sample": 4,
+        "sketch": "export function formatAvailability(available: boolean): string {\n  return available ? \"Available\" : \"On loan\";\n}",
+        "plan": {
+          "formatAvailability": [
+            "If available, return 'Available'.",
+            "It returns 'On loan'."
+          ]
+        },
+        "gaps": [],
+        "gapsByRound": [
+          0
+        ],
+        "rounds": 0,
+        "tokens": 142,
+        "calls": 1,
+        "score": 1,
+        "match": true,
+        "misses": []
+      },
+      {
+        "task": "picks-store",
+        "sample": 0,
+        "sketch": "export function addPick(picks: string[], id: string): string[] {\n    if (picks.length >= 4) return picks; // BK-3: A member can pick at most 4 books\n    if (picks.includes(id)) return picks; // BK-3: A book already picked cannot be picked again\n    return [...picks, id]; // Add the new book id to the list of picks\n}\n\nexport function removePick(picks: string[], id: string): string[] {\n    return picks.filter(pick => pick !== id); // Remove the book id from the list of picks\n}\n\nexport function listPicks(picks: string[]): string[] {\n    return picks; // Return the current list of picks\n}",
+        "plan": {
+          "addPick": [
+            "If picks's length >= 4, return picks.",
+            "If picks includes id, return picks.",
+            "It returns a list of everything in picks and id."
+          ],
+          "removePick": [
+            "It returns picks filter pick !== id."
+          ],
+          "listPicks": [
+            "It returns picks."
+          ]
+        },
+        "gaps": [],
+        "gapsByRound": [
+          0
+        ],
+        "rounds": 0,
+        "tokens": 333,
+        "calls": 1,
+        "score": 0.6,
+        "match": false,
+        "misses": [
+          {
+            "fn": "addPick",
+            "plan": "it returns picks concat id"
+          },
+          {
+            "fn": "listPicks",
+            "plan": "it returns picks slice"
+          }
+        ]
+      },
+      {
+        "task": "picks-store",
+        "sample": 1,
+        "sketch": "export function addPick(picks: string[], id: string): string[] {\n    if (picks.length >= 4) {\n        return picks;\n    }\n    if (picks.includes(id)) {\n        return picks;\n    }\n    return [...picks, id];\n}\n\nexport function removePick(picks: string[], id: string): string[] {\n    return picks.filter(pick => pick !== id);\n}\n\nexport function listPicks(picks: string[]): string[] {\n    return picks;\n}",
+        "plan": {
+          "addPick": [
+            "If picks's length >= 4, return picks.",
+            "If picks includes id, return picks.",
+            "It returns a list of everything in picks and id."
+          ],
+          "removePick": [
+            "It returns picks filter pick !== id."
+          ],
+          "listPicks": [
+            "It returns picks."
+          ]
+        },
+        "gaps": [],
+        "gapsByRound": [
+          0
+        ],
+        "rounds": 0,
+        "tokens": 281,
+        "calls": 1,
+        "score": 0.6,
+        "match": false,
+        "misses": [
+          {
+            "fn": "addPick",
+            "plan": "it returns picks concat id"
+          },
+          {
+            "fn": "listPicks",
+            "plan": "it returns picks slice"
+          }
+        ]
+      },
+      {
+        "task": "picks-store",
+        "sample": 2,
+        "sketch": "export function addPick(picks: string[], id: string): string[] {\n  if (picks.length >= 4) return picks; // BK-3: a member can pick at most 4 books\n  if (picks.includes(id)) return picks; // BK-3: a book already picked cannot be picked again\n  picks.push(id);\n  return picks;\n}\n\nexport function removePick(picks: string[], id: string): string[] {\n  const index = picks.indexOf(id);\n  if (index !== -1) {\n    picks.splice(index, 1);\n  }\n  return picks;\n}\n\nexport function listPicks(picks: string[]): string[] {\n  return picks;\n}",
+        "plan": {
+          "addPick": [
+            "If picks's length >= 4, return picks.",
+            "If picks includes id, return picks.",
+            "Picks push id.",
+            "It returns picks."
+          ],
+          "removePick": [
+            "Let index be picks index of id.",
+            "If index !== -1, picks splice index and 1.",
+            "It returns picks."
+          ],
+          "listPicks": [
+            "It returns picks."
+          ]
+        },
+        "gaps": [],
+        "gapsByRound": [
+          0
+        ],
+        "rounds": 0,
+        "tokens": 323,
+        "calls": 1,
+        "score": 0.25,
+        "match": false,
+        "misses": [
+          {
+            "fn": "addPick",
+            "plan": "it returns picks concat id"
+          },
+          {
+            "fn": "removePick",
+            "plan": "it returns picks filter pick !== id"
+          },
+          {
+            "fn": "listPicks",
+            "plan": "it returns picks slice"
+          }
+        ]
+      },
+      {
+        "task": "picks-store",
+        "sample": 3,
+        "sketch": "export function addPick(picks: string[], id: string): string[] {\n    if (picks.includes(id)) {\n        return picks; // BK-3: a book already picked cannot be picked again\n    }\n    if (picks.length >= 4) {\n        return picks; // PCK-3: a member can pick at most 4 books\n    }\n    return [...picks, id];\n}\n\nexport function removePick(picks: string[], id: string): string[] {\n    return picks.filter(pick => pick !== id); // PCK-2: each picked book has a button \"Remove <title>\" that takes it off the list\n}\n\nexport function listPicks(picks: string[]): string[] {\n    return picks; // Returns the current list of picks\n}",
+        "plan": {
+          "addPick": [
+            "If picks includes id, return picks.",
+            "If picks's length >= 4, return picks.",
+            "It returns a list of everything in picks and id."
+          ],
+          "removePick": [
+            "It returns picks filter pick !== id."
+          ],
+          "listPicks": [
+            "It returns picks."
+          ]
+        },
+        "gaps": [],
+        "gapsByRound": [
+          0
+        ],
+        "rounds": 0,
+        "tokens": 343,
+        "calls": 1,
+        "score": 0.6,
+        "match": false,
+        "misses": [
+          {
+            "fn": "addPick",
+            "plan": "it returns picks concat id"
+          },
+          {
+            "fn": "listPicks",
+            "plan": "it returns picks slice"
+          }
+        ]
+      },
+      {
+        "task": "picks-store",
+        "sample": 4,
+        "sketch": "export function addPick(picks: string[], id: string): string[] {\n  if (picks.length < 4 && !picks.includes(id)) {\n    return [...picks, id];\n  }\n  return picks;\n}\n\nexport function removePick(picks: string[], id: string): string[] {\n  return picks.filter(pick => pick !== id);\n}\n\nexport function listPicks(picks: string[]): string[] {\n  return picks;\n}",
+        "plan": {
+          "addPick": [
+            "If picks's length < 4 and not (picks includes id), return a list of everything in picks and id.",
+            "It returns picks."
+          ],
+          "removePick": [
+            "It returns picks filter pick !== id."
+          ],
+          "listPicks": [
+            "It returns picks."
+          ]
+        },
+        "gaps": [],
+        "gapsByRound": [
+          0
+        ],
+        "rounds": 0,
+        "tokens": 272,
+        "calls": 1,
+        "score": 0.2,
+        "match": false,
+        "misses": [
+          {
+            "fn": "addPick",
+            "plan": "if picks includes id, return picks"
+          },
+          {
+            "fn": "addPick",
+            "plan": "if picks's length >= 4, return picks"
+          },
+          {
+            "fn": "addPick",
+            "plan": "it returns picks concat id"
+          },
+          {
+            "fn": "listPicks",
+            "plan": "it returns picks slice"
+          }
+        ]
+      },
+      {
+        "task": "paging",
+        "sample": 0,
+        "sketch": "export function pageOf<T>(items: T[], page: number): T[] {\n  const itemsPerPage = 6;\n  const start = page * itemsPerPage;\n  const end = start + itemsPerPage;\n  return items.slice(start, end);\n}\n\nexport function pageCount(total: number): number {\n  const itemsPerPage = 6;\n  return Math.ceil(total / itemsPerPage);\n}",
+        "plan": {
+          "pageOf": [
+            "Let items per page be 6.",
+            "Let start be page * items per page.",
+            "Let end be start + items per page.",
+            "It returns items slice start and end."
+          ],
+          "pageCount": [
+            "Let items per page be 6.",
+            "It returns Math ceil total / items per page."
+          ]
+        },
+        "gaps": [],
+        "gapsByRound": [
+          0
+        ],
+        "rounds": 0,
+        "tokens": 215,
+        "calls": 1,
+        "score": 0,
+        "match": false,
+        "misses": [
+          {
+            "fn": "pageOf",
+            "plan": "let start be page * 6"
+          },
+          {
+            "fn": "pageOf",
+            "plan": "it returns items slice start and start + 6"
+          },
+          {
+            "fn": "pageCount",
+            "plan": "it returns math ceil total / 6"
+          }
+        ]
+      },
+      {
+        "task": "paging",
+        "sample": 1,
+        "sketch": "export function pageOf<T>(items: T[], page: number): T[] {\n    const itemsPerPage = 6;\n    const startIndex = page * itemsPerPage;\n    const endIndex = startIndex + itemsPerPage;\n    return items.slice(startIndex, endIndex);\n}\n\nexport function pageCount(total: number): number {\n    const itemsPerPage = 6;\n    return Math.ceil(total / itemsPerPage);\n}",
+        "plan": {
+          "pageOf": [
+            "Let items per page be 6.",
+            "Let start index be page * items per page.",
+            "Let end index be start index + items per page.",
+            "It returns items slice start index and end index."
+          ],
+          "pageCount": [
+            "Let items per page be 6.",
+            "It returns Math ceil total / items per page."
+          ]
+        },
+        "gaps": [],
+        "gapsByRound": [
+          0
+        ],
+        "rounds": 0,
+        "tokens": 216,
+        "calls": 1,
+        "score": 0,
+        "match": false,
+        "misses": [
+          {
+            "fn": "pageOf",
+            "plan": "let start be page * 6"
+          },
+          {
+            "fn": "pageOf",
+            "plan": "it returns items slice start and start + 6"
+          },
+          {
+            "fn": "pageCount",
+            "plan": "it returns math ceil total / 6"
+          }
+        ]
+      },
+      {
+        "task": "paging",
+        "sample": 2,
+        "sketch": "export function pageOf<T>(items: T[], page: number): T[] {\n  const itemsPerPage = 6;\n  const startIndex = page * itemsPerPage;\n  const endIndex = startIndex + itemsPerPage;\n  return items.slice(startIndex, endIndex);\n}\n\nexport function pageCount(total: number): number {\n  const itemsPerPage = 6;\n  return Math.ceil(total / itemsPerPage);\n}",
+        "plan": {
+          "pageOf": [
+            "Let items per page be 6.",
+            "Let start index be page * items per page.",
+            "Let end index be start index + items per page.",
+            "It returns items slice start index and end index."
+          ],
+          "pageCount": [
+            "Let items per page be 6.",
+            "It returns Math ceil total / items per page."
+          ]
+        },
+        "gaps": [],
+        "gapsByRound": [
+          0
+        ],
+        "rounds": 0,
+        "tokens": 216,
+        "calls": 1,
+        "score": 0,
+        "match": false,
+        "misses": [
+          {
+            "fn": "pageOf",
+            "plan": "let start be page * 6"
+          },
+          {
+            "fn": "pageOf",
+            "plan": "it returns items slice start and start + 6"
+          },
+          {
+            "fn": "pageCount",
+            "plan": "it returns math ceil total / 6"
+          }
+        ]
+      },
+      {
+        "task": "paging",
+        "sample": 3,
+        "sketch": "export function pageOf<T>(items: T[], page: number): T[] {\n  const itemsPerPage = 6;\n  const startIndex = page * itemsPerPage;\n  const endIndex = startIndex + itemsPerPage;\n  return items.slice(startIndex, endIndex);\n}\n\nexport function pageCount(total: number): number {\n  const itemsPerPage = 6;\n  return Math.ceil(total / itemsPerPage);\n}",
+        "plan": {
+          "pageOf": [
+            "Let items per page be 6.",
+            "Let start index be page * items per page.",
+            "Let end index be start index + items per page.",
+            "It returns items slice start index and end index."
+          ],
+          "pageCount": [
+            "Let items per page be 6.",
+            "It returns Math ceil total / items per page."
+          ]
+        },
+        "gaps": [],
+        "gapsByRound": [
+          0
+        ],
+        "rounds": 0,
+        "tokens": 216,
+        "calls": 1,
+        "score": 0,
+        "match": false,
+        "misses": [
+          {
+            "fn": "pageOf",
+            "plan": "let start be page * 6"
+          },
+          {
+            "fn": "pageOf",
+            "plan": "it returns items slice start and start + 6"
+          },
+          {
+            "fn": "pageCount",
+            "plan": "it returns math ceil total / 6"
+          }
+        ]
+      },
+      {
+        "task": "paging",
+        "sample": 4,
+        "sketch": "export function pageOf<T>(items: T[], page: number): T[] {\n  const pageSize = 6;\n  const startIndex = page * pageSize;\n  const endIndex = startIndex + pageSize;\n  return items.slice(startIndex, endIndex);\n}\n\nexport function pageCount(total: number): number {\n  const pageSize = 6;\n  return Math.ceil(total / pageSize);\n}",
+        "plan": {
+          "pageOf": [
+            "Let page size be 6.",
+            "Let start index be page * page size.",
+            "Let end index be start index + page size.",
+            "It returns items slice start index and end index."
+          ],
+          "pageCount": [
+            "Let page size be 6.",
+            "It returns Math ceil total / page size."
+          ]
+        },
+        "gaps": [],
+        "gapsByRound": [
+          0
+        ],
+        "rounds": 0,
+        "tokens": 211,
+        "calls": 1,
+        "score": 0,
+        "match": false,
+        "misses": [
+          {
+            "fn": "pageOf",
+            "plan": "let start be page * 6"
+          },
+          {
+            "fn": "pageOf",
+            "plan": "it returns items slice start and start + 6"
+          },
+          {
+            "fn": "pageCount",
+            "plan": "it returns math ceil total / 6"
+          }
+        ]
+      },
+      {
+        "task": "sort-title",
+        "sample": 0,
+        "sketch": "export function sortByTitle(books: Book[]): Book[] {\n    return books.slice().sort((a, b) => a.title.localeCompare(b.title));\n}",
+        "plan": {
+          "sortByTitle": [
+            "It returns books slice sort a's title locale compare b's title."
+          ]
+        },
+        "gaps": [],
+        "gapsByRound": [
+          0
+        ],
+        "rounds": 0,
+        "tokens": 163,
+        "calls": 1,
+        "score": 1,
+        "match": true,
+        "misses": []
+      },
+      {
+        "task": "sort-title",
+        "sample": 1,
+        "sketch": "export function sortByTitle(books: Book[]): Book[] {\n    return [...books].sort((a, b) => a.title.localeCompare(b.title));\n}",
+        "plan": {
+          "sortByTitle": [
+            "It returns a list of everything in books sort a's title locale compare b's title."
+          ]
+        },
+        "gaps": [],
+        "gapsByRound": [
+          0
+        ],
+        "rounds": 0,
+        "tokens": 163,
+        "calls": 1,
+        "score": 0,
+        "match": false,
+        "misses": [
+          {
+            "fn": "sortByTitle",
+            "plan": "it returns books slice sort a's title locale compare b's title"
+          }
+        ]
+      },
+      {
+        "task": "sort-title",
+        "sample": 2,
+        "sketch": "export function sortByTitle(books: Book[]): Book[] {\n    return books.slice().sort((a, b) => a.title.localeCompare(b.title));\n}",
+        "plan": {
+          "sortByTitle": [
+            "It returns books slice sort a's title locale compare b's title."
+          ]
+        },
+        "gaps": [],
+        "gapsByRound": [
+          0
+        ],
+        "rounds": 0,
+        "tokens": 163,
+        "calls": 1,
+        "score": 1,
+        "match": true,
+        "misses": []
+      },
+      {
+        "task": "sort-title",
+        "sample": 3,
+        "sketch": "export function sortByTitle(books: Book[]): Book[] {\n    return [...books].sort((a, b) => a.title.localeCompare(b.title));\n}",
+        "plan": {
+          "sortByTitle": [
+            "It returns a list of everything in books sort a's title locale compare b's title."
+          ]
+        },
+        "gaps": [],
+        "gapsByRound": [
+          0
+        ],
+        "rounds": 0,
+        "tokens": 163,
+        "calls": 1,
+        "score": 0,
+        "match": false,
+        "misses": [
+          {
+            "fn": "sortByTitle",
+            "plan": "it returns books slice sort a's title locale compare b's title"
+          }
+        ]
+      },
+      {
+        "task": "sort-title",
+        "sample": 4,
+        "sketch": "export function sortByTitle(books: Book[]): Book[] {\n    return [...books].sort((a, b) => a.title.localeCompare(b.title));\n}",
+        "plan": {
+          "sortByTitle": [
+            "It returns a list of everything in books sort a's title locale compare b's title."
+          ]
+        },
+        "gaps": [],
+        "gapsByRound": [
+          0
+        ],
+        "rounds": 0,
+        "tokens": 163,
+        "calls": 1,
+        "score": 0,
+        "match": false,
+        "misses": [
+          {
+            "fn": "sortByTitle",
+            "plan": "it returns books slice sort a's title locale compare b's title"
+          }
+        ]
+      }
+    ]
+  },
+  "qwen2.5-coder:1.5b": {
+    "summary": {
+      "model": "qwen2.5-coder:1.5b",
+      "method": "code sketch (fenced ts) -> hardened Smith canonical; gaps fed back up to 2 rounds; T=0.7 seeds 200-204",
+      "samples": 20,
+      "zeroGapsAfterRound": {
+        "0": 20,
+        "1": 20,
+        "2": 20
+      },
+      "matchPct": 5,
+      "meanScorePct": 12,
+      "perTaskMatch": {
+        "availability": "0/5",
+        "picks-store": "0/5",
+        "paging": "0/5",
+        "sort-title": "1/5"
+      },
+      "meanRounds": 0,
+      "tokens": 3915,
+      "calls": 20,
+      "killBelow": 50,
+      "verdict": "kill"
+    },
+    "rows": [
+      {
+        "task": "availability",
+        "sample": 0,
+        "sketch": "export function formatAvailability(available: boolean): string {\n  if (available) {\n    return \"On loan\";\n  } else {\n    return \"Available\";\n  }\n}",
+        "plan": {
+          "formatAvailability": [
+            "If available, return 'On loan'.",
+            "It returns 'Available'."
+          ]
+        },
+        "gaps": [],
+        "gapsByRound": [
+          0
+        ],
+        "rounds": 0,
+        "tokens": 153,
+        "calls": 1,
+        "score": 0,
+        "match": false,
+        "misses": [
+          {
+            "fn": "formatAvailability",
+            "plan": "if available, return 'available'"
+          },
+          {
+            "fn": "formatAvailability",
+            "plan": "it returns 'on loan'"
+          }
+        ]
+      },
+      {
+        "task": "availability",
+        "sample": 1,
+        "sketch": "export function formatAvailability(available: boolean): string {\n  if (available) {\n    return \"On loan\";\n  } else {\n    return \"Available\";\n  }\n}",
+        "plan": {
+          "formatAvailability": [
+            "If available, return 'On loan'.",
+            "It returns 'Available'."
+          ]
+        },
+        "gaps": [],
+        "gapsByRound": [
+          0
+        ],
+        "rounds": 0,
+        "tokens": 153,
+        "calls": 1,
+        "score": 0,
+        "match": false,
+        "misses": [
+          {
+            "fn": "formatAvailability",
+            "plan": "if available, return 'available'"
+          },
+          {
+            "fn": "formatAvailability",
+            "plan": "it returns 'on loan'"
+          }
+        ]
+      },
+      {
+        "task": "availability",
+        "sample": 2,
+        "sketch": "export function formatAvailability(available: boolean): string {\n  if (available) {\n    return \"On loan\";\n  } else {\n    return \"Available\";\n  }\n}",
+        "plan": {
+          "formatAvailability": [
+            "If available, return 'On loan'.",
+            "It returns 'Available'."
+          ]
+        },
+        "gaps": [],
+        "gapsByRound": [
+          0
+        ],
+        "rounds": 0,
+        "tokens": 153,
+        "calls": 1,
+        "score": 0,
+        "match": false,
+        "misses": [
+          {
+            "fn": "formatAvailability",
+            "plan": "if available, return 'available'"
+          },
+          {
+            "fn": "formatAvailability",
+            "plan": "it returns 'on loan'"
+          }
+        ]
+      },
+      {
+        "task": "availability",
+        "sample": 3,
+        "sketch": "function formatAvailability(available: boolean): string {\n    if (available) {\n        return \"On loan\";\n    } else {\n        return \"Available\";\n    }\n}",
+        "plan": {
+          "formatAvailability": [
+            "If available, return 'On loan'.",
+            "It returns 'Available'."
+          ]
+        },
+        "gaps": [],
+        "gapsByRound": [
+          0
+        ],
+        "rounds": 0,
+        "tokens": 152,
+        "calls": 1,
+        "score": 0,
+        "match": false,
+        "misses": [
+          {
+            "fn": "formatAvailability",
+            "plan": "if available, return 'available'"
+          },
+          {
+            "fn": "formatAvailability",
+            "plan": "it returns 'on loan'"
+          }
+        ]
+      },
+      {
+        "task": "availability",
+        "sample": 4,
+        "sketch": "export function formatAvailability(available: boolean): string {\n    if (available) {\n        return 'On loan';\n    } else {\n        return 'Available';\n    }\n}",
+        "plan": {
+          "formatAvailability": [
+            "If available, return 'On loan'.",
+            "It returns 'Available'."
+          ]
+        },
+        "gaps": [],
+        "gapsByRound": [
+          0
+        ],
+        "rounds": 0,
+        "tokens": 153,
+        "calls": 1,
+        "score": 0,
+        "match": false,
+        "misses": [
+          {
+            "fn": "formatAvailability",
+            "plan": "if available, return 'available'"
+          },
+          {
+            "fn": "formatAvailability",
+            "plan": "it returns 'on loan'"
+          }
+        ]
+      },
+      {
+        "task": "picks-store",
+        "sample": 0,
+        "sketch": "export function addPick(picks: string[], id: string): string[] {\n  const updatedPicks = [...picks, id];\n  return updatedPicks;\n}\n\nexport function removePick(picks: string[], id: string): string[] {\n  const updatedPicks = picks.filter(pick => pick !== id);\n  return updatedPicks;\n}\n\nexport function listPicks(picks: string[]): string[] {\n  return picks;\n}",
+        "plan": {
+          "addPick": [
+            "Let updated picks be a list of everything in picks and id.",
+            "It returns updated picks."
+          ],
+          "removePick": [
+            "Let updated picks be picks filter pick !== id.",
+            "It returns updated picks."
+          ],
+          "listPicks": [
+            "It returns picks."
+          ]
+        },
+        "gaps": [],
+        "gapsByRound": [
+          0
+        ],
+        "rounds": 0,
+        "tokens": 269,
+        "calls": 1,
+        "score": 0,
+        "match": false,
+        "misses": [
+          {
+            "fn": "addPick",
+            "plan": "if picks includes id, return picks"
+          },
+          {
+            "fn": "addPick",
+            "plan": "if picks's length >= 4, return picks"
+          },
+          {
+            "fn": "addPick",
+            "plan": "it returns picks concat id"
+          },
+          {
+            "fn": "removePick",
+            "plan": "it returns picks filter pick !== id"
+          },
+          {
+            "fn": "listPicks",
+            "plan": "it returns picks slice"
+          }
+        ]
+      },
+      {
+        "task": "picks-store",
+        "sample": 1,
+        "sketch": "export function addPick(picks: string[], id: string): string[] {\n  if (picks.length < 4) {\n    return [...picks, id];\n  }\n  return picks;\n}\n\nexport function removePick(picks: string[], id: string): string[] {\n  return picks.filter(p => p !== id);\n}\n\nexport function listPicks(picks: string[]): string[] {\n  return picks;\n}",
+        "plan": {
+          "addPick": [
+            "If picks's length < 4, return a list of everything in picks and id.",
+            "It returns picks."
+          ],
+          "removePick": [
+            "It returns picks filter p !== id."
+          ],
+          "listPicks": [
+            "It returns picks."
+          ]
+        },
+        "gaps": [],
+        "gapsByRound": [
+          0
+        ],
+        "rounds": 0,
+        "tokens": 265,
+        "calls": 1,
+        "score": 0,
+        "match": false,
+        "misses": [
+          {
+            "fn": "addPick",
+            "plan": "if picks includes id, return picks"
+          },
+          {
+            "fn": "addPick",
+            "plan": "if picks's length >= 4, return picks"
+          },
+          {
+            "fn": "addPick",
+            "plan": "it returns picks concat id"
+          },
+          {
+            "fn": "removePick",
+            "plan": "it returns picks filter pick !== id"
+          },
+          {
+            "fn": "listPicks",
+            "plan": "it returns picks slice"
+          }
+        ]
+      },
+      {
+        "task": "picks-store",
+        "sample": 2,
+        "sketch": "export function addPick(picks: string[], id: string): string[] {\n  // Ensure the picks array does not exceed the limit of 4 books\n  if (picks.length >= 4) {\n    throw new Error(\"Cannot add more than 4 books to the list.\");\n  }\n  return [...picks, id];\n}\n\nexport function removePick(picks: string[], id: string): string[] {\n  // Remove the specified book from the picks list\n  return picks.filter(book => book !== id);\n}\n\nexport function listPicks(picks: string[]): string[] {\n  // Return the list of picked books\n  return picks;\n}",
+        "plan": {
+          "addPick": [
+            "If picks's length >= 4, fail with a new Error of 'Cannot add more than 4 books to the list.'",
+            "It returns a list of everything in picks and id."
+          ],
+          "removePick": [
+            "It returns picks filter book !== id."
+          ],
+          "listPicks": [
+            "It returns picks."
+          ]
+        },
+        "gaps": [],
+        "gapsByRound": [
+          0
+        ],
+        "rounds": 0,
+        "tokens": 313,
+        "calls": 1,
+        "score": 0,
+        "match": false,
+        "misses": [
+          {
+            "fn": "addPick",
+            "plan": "if picks includes id, return picks"
+          },
+          {
+            "fn": "addPick",
+            "plan": "if picks's length >= 4, return picks"
+          },
+          {
+            "fn": "addPick",
+            "plan": "it returns picks concat id"
+          },
+          {
+            "fn": "removePick",
+            "plan": "it returns picks filter pick !== id"
+          },
+          {
+            "fn": "listPicks",
+            "plan": "it returns picks slice"
+          }
+        ]
+      },
+      {
+        "task": "picks-store",
+        "sample": 3,
+        "sketch": "export function addPick(picks: string[], id: string): string[] {\n  return [...picks, id];\n}\n\nexport function removePick(picks: string[], id: string): string[] {\n  return picks.filter(bookId => bookId !== id);\n}\n\nexport function listPicks(picks: string[]): string[] {\n  return picks.slice();\n}",
+        "plan": {
+          "addPick": [
+            "It returns a list of everything in picks and id."
+          ],
+          "removePick": [
+            "It returns picks filter book id !== id."
+          ],
+          "listPicks": [
+            "It returns picks slice."
+          ]
+        },
+        "gaps": [],
+        "gapsByRound": [
+          0
+        ],
+        "rounds": 0,
+        "tokens": 251,
+        "calls": 1,
+        "score": 0.2,
+        "match": false,
+        "misses": [
+          {
+            "fn": "addPick",
+            "plan": "if picks includes id, return picks"
+          },
+          {
+            "fn": "addPick",
+            "plan": "if picks's length >= 4, return picks"
+          },
+          {
+            "fn": "addPick",
+            "plan": "it returns picks concat id"
+          },
+          {
+            "fn": "removePick",
+            "plan": "it returns picks filter pick !== id"
+          }
+        ]
+      },
+      {
+        "task": "picks-store",
+        "sample": 4,
+        "sketch": "export function addPick(picks: string[], id: string): string[] {\n    return [...picks, id];\n}\n\nexport function removePick(picks: string[], id: string): string[] {\n    return picks.filter(p => p !== id);\n}\n\nexport function listPicks(picks: string[]): string[] {\n    return picks;\n}",
+        "plan": {
+          "addPick": [
+            "It returns a list of everything in picks and id."
+          ],
+          "removePick": [
+            "It returns picks filter p !== id."
+          ],
+          "listPicks": [
+            "It returns picks."
+          ]
+        },
+        "gaps": [],
+        "gapsByRound": [
+          0
+        ],
+        "rounds": 0,
+        "tokens": 248,
+        "calls": 1,
+        "score": 0,
+        "match": false,
+        "misses": [
+          {
+            "fn": "addPick",
+            "plan": "if picks includes id, return picks"
+          },
+          {
+            "fn": "addPick",
+            "plan": "if picks's length >= 4, return picks"
+          },
+          {
+            "fn": "addPick",
+            "plan": "it returns picks concat id"
+          },
+          {
+            "fn": "removePick",
+            "plan": "it returns picks filter pick !== id"
+          },
+          {
+            "fn": "listPicks",
+            "plan": "it returns picks slice"
+          }
+        ]
+      },
+      {
+        "task": "paging",
+        "sample": 0,
+        "sketch": "export function pageOf<T>(items: T[], page: number): T[] {\n    return items.slice(page * 6, page * 6 + 6);\n}\n\nexport function pageCount(total: number): number {\n    return Math.ceil(total / 6);\n}",
+        "plan": {
+          "pageOf": [
+            "It returns items slice page * 6 and page * 6 + 6."
+          ],
+          "pageCount": [
+            "It returns Math ceil total / 6."
+          ]
+        },
+        "gaps": [],
+        "gapsByRound": [
+          0
+        ],
+        "rounds": 0,
+        "tokens": 190,
+        "calls": 1,
+        "score": 0.333,
+        "match": false,
+        "misses": [
+          {
+            "fn": "pageOf",
+            "plan": "let start be page * 6"
+          },
+          {
+            "fn": "pageOf",
+            "plan": "it returns items slice start and start + 6"
+          }
+        ]
+      },
+      {
+        "task": "paging",
+        "sample": 1,
+        "sketch": "export function pageOf<T>(items: T[], page: number): T[] {\n  return items.slice(page * 6, (page + 1) * 6);\n}\n\nexport function pageCount(total: number): number {\n  return Math.ceil(total / 6);\n}",
+        "plan": {
+          "pageOf": [
+            "It returns items slice page * 6 and (page + 1) * 6."
+          ],
+          "pageCount": [
+            "It returns Math ceil total / 6."
+          ]
+        },
+        "gaps": [],
+        "gapsByRound": [
+          0
+        ],
+        "rounds": 0,
+        "tokens": 192,
+        "calls": 1,
+        "score": 0.333,
+        "match": false,
+        "misses": [
+          {
+            "fn": "pageOf",
+            "plan": "let start be page * 6"
+          },
+          {
+            "fn": "pageOf",
+            "plan": "it returns items slice start and start + 6"
+          }
+        ]
+      },
+      {
+        "task": "paging",
+        "sample": 2,
+        "sketch": "export function pageOf<T>(items: T[], page: number): T[] {\n    // Implementation logic here\n}\n\nexport function pageCount(total: number): number {\n    // Implementation logic here\n}",
+        "plan": {
+          "pageOf": [],
+          "pageCount": []
+        },
+        "gaps": [],
+        "gapsByRound": [
+          0
+        ],
+        "rounds": 0,
+        "tokens": 176,
+        "calls": 1,
+        "score": 0,
+        "match": false,
+        "misses": [
+          {
+            "fn": "pageOf",
+            "plan": "let start be page * 6"
+          },
+          {
+            "fn": "pageOf",
+            "plan": "it returns items slice start and start + 6"
+          },
+          {
+            "fn": "pageCount",
+            "plan": "it returns math ceil total / 6"
+          }
+        ]
+      },
+      {
+        "task": "paging",
+        "sample": 3,
+        "sketch": "function pageOf<T>(items: T[], page: number): T[] {\n  return items.slice(page * 6, (page + 1) * 6);\n}\n\nfunction pageCount(total: number): number {\n  return Math.ceil(total / 6);\n}",
+        "plan": {
+          "pageOf": [
+            "It returns items slice page * 6 and (page + 1) * 6."
+          ],
+          "pageCount": [
+            "It returns Math ceil total / 6."
+          ]
+        },
+        "gaps": [],
+        "gapsByRound": [
+          0
+        ],
+        "rounds": 0,
+        "tokens": 190,
+        "calls": 1,
+        "score": 0.333,
+        "match": false,
+        "misses": [
+          {
+            "fn": "pageOf",
+            "plan": "let start be page * 6"
+          },
+          {
+            "fn": "pageOf",
+            "plan": "it returns items slice start and start + 6"
+          }
+        ]
+      },
+      {
+        "task": "paging",
+        "sample": 4,
+        "sketch": "export function pageOf<T>(items: T[], page: number): T[] {\n  const pageSize = 6; // Assuming the catalogue shows 6 books at a time\n  const start = page * pageSize;\n  const end = Math.min(start + pageSize, items.length);\n  return items.slice(start, end);\n}\n\nexport function pageCount(total: number): number {\n  return Math.ceil(total / 6); // Assuming the catalogue shows 6 books at a time\n}",
+        "plan": {
+          "pageOf": [
+            "Let page size be 6.",
+            "Let start be page * page size.",
+            "Let end be Math min start + page size and items's length.",
+            "It returns items slice start and end."
+          ],
+          "pageCount": [
+            "It returns Math ceil total / 6."
+          ]
+        },
+        "gaps": [],
+        "gapsByRound": [
+          0
+        ],
+        "rounds": 0,
+        "tokens": 233,
+        "calls": 1,
+        "score": 0.2,
+        "match": false,
+        "misses": [
+          {
+            "fn": "pageOf",
+            "plan": "let start be page * 6"
+          },
+          {
+            "fn": "pageOf",
+            "plan": "it returns items slice start and start + 6"
+          }
+        ]
+      },
+      {
+        "task": "sort-title",
+        "sample": 0,
+        "sketch": "export function sortByTitle(books: Book[]): Book[] {\n  // The default behavior of the \"Sort by\" control is to order books by title in ascending order.\n  return books.sort((a, b) => a.title.localeCompare(b.title));\n}",
+        "plan": {
+          "sortByTitle": [
+            "It returns books sort a's title locale compare b's title."
+          ]
+        },
+        "gaps": [],
+        "gapsByRound": [
+          0
+        ],
+        "rounds": 0,
+        "tokens": 183,
+        "calls": 1,
+        "score": 0,
+        "match": false,
+        "misses": [
+          {
+            "fn": "sortByTitle",
+            "plan": "it returns books slice sort a's title locale compare b's title"
+          }
+        ]
+      },
+      {
+        "task": "sort-title",
+        "sample": 1,
+        "sketch": "export function sortByTitle(books: Book[]): Book[] {\n  // Sort the books by title in ascending order\n  return books.slice().sort((a, b) => a.title.localeCompare(b.title));\n}",
+        "plan": {
+          "sortByTitle": [
+            "It returns books slice sort a's title locale compare b's title."
+          ]
+        },
+        "gaps": [],
+        "gapsByRound": [
+          0
+        ],
+        "rounds": 0,
+        "tokens": 174,
+        "calls": 1,
+        "score": 1,
+        "match": true,
+        "misses": []
+      },
+      {
+        "task": "sort-title",
+        "sample": 2,
+        "sketch": "export function sortByTitle(books: Book[]): Book[] {\n  return books.slice();\n}",
+        "plan": {
+          "sortByTitle": [
+            "It returns books slice."
+          ]
+        },
+        "gaps": [],
+        "gapsByRound": [
+          0
+        ],
+        "rounds": 0,
+        "tokens": 149,
+        "calls": 1,
+        "score": 0,
+        "match": false,
+        "misses": [
+          {
+            "fn": "sortByTitle",
+            "plan": "it returns books slice sort a's title locale compare b's title"
+          }
+        ]
+      },
+      {
+        "task": "sort-title",
+        "sample": 3,
+        "sketch": "export function sortByTitle(books: Book[]): Book[] {\n  // No changes to the input list are expected.\n  return books;\n}",
+        "plan": {
+          "sortByTitle": [
+            "It returns books."
+          ]
+        },
+        "gaps": [],
+        "gapsByRound": [
+          0
+        ],
+        "rounds": 0,
+        "tokens": 159,
+        "calls": 1,
+        "score": 0,
+        "match": false,
+        "misses": [
+          {
+            "fn": "sortByTitle",
+            "plan": "it returns books slice sort a's title locale compare b's title"
+          }
+        ]
+      },
+      {
+        "task": "sort-title",
+        "sample": 4,
+        "sketch": "export function sortByTitle(books: Book[]): Book[] {\n  // No changes are made to the input list\n  return books;\n}",
+        "plan": {
+          "sortByTitle": [
+            "It returns books."
+          ]
+        },
+        "gaps": [],
+        "gapsByRound": [
+          0
+        ],
+        "rounds": 0,
+        "tokens": 159,
+        "calls": 1,
+        "score": 0,
+        "match": false,
+        "misses": [
+          {
+            "fn": "sortByTitle",
+            "plan": "it returns books slice sort a's title locale compare b's title"
+          }
+        ]
+      }
+    ]
+  }
+}

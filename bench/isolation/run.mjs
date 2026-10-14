@@ -105,6 +105,8 @@ async function codeRound(arm, ctx, brief, file, final, label) {
     n: arm.n, seedBase: arm.seedBase,
     // #943: arm.gate (lsp-run.mjs) is the sampler's third filter, after tsc and the task check
     ...(arm.gate && ctx.gate ? { gate: (j) => ctx.gate(j.body, brief.name, final) } : {}),
+    // #947: arm.pre (q-run.mjs) runs before the judge: Q-exec drops a candidate that fails the task's examples in QuickJS
+    ...(arm.pre && ctx.pre ? { pre: (reply) => ctx.pre(reply, brief.name, final, file) } : {}),
     generate: (seed) => ctx.call('coder', arm.coder, config.prompts.functionCoderSystem, brief.brief, { seed }),
     judge: (reply, i) => {
       const t0 = Date.now();

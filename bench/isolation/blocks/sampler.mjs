@@ -11,16 +11,25 @@ export const QWEN_SAMPLING = { temperature: 0.7, top_p: 0.8, top_k: 20, repeat_p
 
 // #943: `gate(judgeResult, i) -> { pass, failed, ... }` is an optional third filter, run only on a sample the judge
 // passed; the sample then passes only when the gate passes too (`prePass` keeps the judge's verdict, `gate` the gate's).
-export async function sample({ n, seedBase = 1, generate, judge, gate = null }) {
+// #947: `pre(reply, i) -> { drop, verdict, detail }` is an optional filter BEFORE the judge (Q-exec: the candidate run
+// on the task's examples in QuickJS); a dropped sample is never judged (no tsc, no check) and fails with class 'q-exec'.
+export async function sample({ n, seedBase = 1, generate, judge, gate = null, pre = null }) {
   const samples = [];
   let picked = null;
   for (let i = 0; i < n; i++) {
     const g = await generate(seedBase + i, i);
+    let pv = null; let pms = 0;
+    if (pre) { const t0 = Date.now(); pv = await pre(g.reply, i); pms = Date.now() - t0; }
+    if (pv?.drop) {
+      const ev = { pass: false, failClass: 'q-exec', detail: pv.detail ?? null };
+      samples.push({ i, pass: false, prePass: false, gate: null, pre: pv, tscOk: false, failClass: 'q-exec', ms: (g.ms ?? 0) + pms, result: { pass: false, tscOk: false, failClass: 'q-exec', ev } });
+      continue;
+    }
     const j = await judge(g.reply, i);
     let gv = null; let gms = 0;
     if (gate && j.pass) { const t0 = Date.now(); gv = await gate(j, i); gms = Date.now() - t0; }
     const pass = Boolean(j.pass) && (!gv || Boolean(gv.pass));
-    const s = { i, pass, prePass: Boolean(j.pass), gate: gv, tscOk: Boolean(j.tscOk), failClass: pass ? null : (j.pass ? 'gate' : j.failClass ?? null), ms: (g.ms ?? 0) + (j.ms ?? 0) + gms, result: j };
+    const s = { i, pass, prePass: Boolean(j.pass), gate: gv, ...(pv ? { pre: pv } : {}), tscOk: Boolean(j.tscOk), failClass: pass ? null : (j.pass ? 'gate' : j.failClass ?? null), ms: (g.ms ?? 0) + (j.ms ?? 0) + gms + pms, result: j };
     samples.push(s);
     if (s.pass) { picked = s; break; }
   }
