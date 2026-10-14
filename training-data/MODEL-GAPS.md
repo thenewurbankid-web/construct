@@ -59,3 +59,25 @@ that fails is dropped and the original is kept. A record made with the model's h
 3. Then the untranslated parts.
 4. For each existing guard, turn it off, let the check and the model handle that case, and
    remove the guard if the results are no worse.
+
+## Result: picking atoms (2026-10-14)
+
+`node bench/atoms/model-eval.js --model <m>`: 98 cases with known answers, taken from the
+places the check settled (49 where an atom is right, and the same 49 with that atom removed,
+so "neither" is right). Each is asked in both option orders and counts only when both agree:
+the check settles ties in catalog order, so the right atom is listed first in 47 of 49, and
+the 1.5B took the first option in 93 of 98 answers.
+
+| model / arm | right picks (of 49) | right "neither" (of 49) | wrong atom (of 98) |
+|---|---|---|---|
+| qwen2.5-coder 1.5B, free | 16 | 0 | 52 |
+| 1.5B, constrained | 6 | 2 | 53 |
+| 1.5B, checker types | 21 | 5 | 58 |
+| qwen2.5-coder 7B, free | 23 | 38 | 18 |
+| 7B, constrained | 27 | 42 | 10 |
+| 7B, checker types | 31 | 37 | 20 |
+
+The 1.5B cannot refuse: given one wrong option it takes it. The 7B is wrong about one time
+in ten. At places no input reaches, the check cannot catch either, so picking stays out of the
+model's job. Next: the checker's types fed to input generation, so those places are reached
+and the existing try-each settles them by running.
