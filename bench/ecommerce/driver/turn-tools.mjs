@@ -8,6 +8,7 @@
 //                               likely first, cut to the model profile's `maxTools`
 //   INTENTS                     the layered turn's L1 sentences -> tool (packages/engine/line/harness/toolHarness.mjs)
 import { BUILDER_TOOLS } from './plan-cli.mjs';
+import { legacyIo } from '../../../packages/core/modelled-io.mjs';
 
 const fn = (name, description, properties = {}, required = []) => ({ type: 'function', function: { name, description, parameters: { type: 'object', properties, required } } });
 const S = (description) => ({ type: 'string', description });
@@ -16,7 +17,9 @@ const LINE_TOOL = { type: 'string', enum: [...BUILDER_TOOLS], description: 'The 
 /** @type {Record<string, any>} */
 export const CHOOSING_TOOLS = Object.fromEntries([
   fn('plan_status', 'Use this when you need to see the plan, the steps waiting to run and the acceptance points of the feature you work on.', { feature: S('Another feature, e.g. picks (optional)') }),
-  fn('plan_add', 'Use this when you want to change the project: add one step {tool, args, why}, or {fix, why} to take a fix a refusal offered.', { tool: LINE_TOOL, args: { type: 'object', description: 'The Line tool\'s arguments, e.g. {"file": "...", "code": "..."} for line.setCode' }, why: S('One sentence: why this step'), fix: S('A fix ref from the last refusal, e.g. f1') }, ['why']),
+  // #948: never code in a call's JSON; code goes through write_function (one function per request, signature prefilled).
+  fn('plan_add', 'Use this when you want to change the project: add one step {tool, args, why} (names, ids and choices, never code), or {fix, why} to take a fix a refusal offered.', { tool: LINE_TOOL, args: { type: 'object', description: 'The Line tool\'s arguments, e.g. {"libraryId": "pages/ListPage", "feature": "picks", "name": "PicksPage"} for line.baseOn' }, why: S('One sentence: why this step'), fix: S('A fix ref from the last refusal, e.g. f1') }, ['why']),
+  fn('write_function', 'Use this when you need to write code: ONE function of a file, its signature already written by Line.', { file: S('Project-relative file, e.g. features/picks/pages/PicksPage.tsx'), name: S('The function, e.g. PicksPage'), signature: S('Only for a new function: its one-line signature, e.g. export function itemCount(items: Item[]): number'), why: S('One sentence: why this function') }, ['file', 'name', 'why']),
   fn('plan_run_next', 'Use this when a step is approved and waiting: it lands the next step and says whether it passed its checks.'),
   fn('read_file', 'Use this when you need the current code of one project file (and its contentHash, to replace it).', { path: S('Project-relative path, e.g. features/picks/pages/PicksPage.tsx') }, ['path']),
   fn('list_dir', 'Use this when you need to know which files a folder has.', { path: S('Project-relative folder, e.g. features/picks') }, ['path']),
@@ -32,11 +35,11 @@ export const CHOOSING_TOOLS = Object.fromEntries([
 
 /** The tool order per situation, most likely first (`max` cuts from the end). */
 export const TURN_SETS = Object.freeze({
-  start: ['plan_status', 'plan_add', 'read_file', 'list_dir', 'plan_tools', 'finish'],
+  start: ['plan_status', 'plan_add', 'write_function', 'read_file', 'list_dir', 'plan_tools', 'finish'],
   waiting: ['plan_run_next', 'plan_status', 'plan_add', 'finish'],
-  refused: ['plan_add', 'read_file', 'plan_rules', 'plan_status', 'finish'],
-  landed: ['plan_add', 'plan_status', 'finish', 'plan_validate', 'read_file'],
-  read: ['plan_add', 'read_file', 'plan_rules', 'list_dir', 'plan_status', 'finish'],
+  refused: ['write_function', 'plan_add', 'read_file', 'plan_rules', 'plan_status', 'finish'],
+  landed: ['plan_add', 'write_function', 'plan_status', 'finish', 'plan_validate', 'read_file'],
+  read: ['write_function', 'plan_add', 'read_file', 'plan_rules', 'list_dir', 'plan_status', 'finish'],
 });
 
 /**
@@ -59,14 +62,15 @@ export function situation(last) {
  * @param {{name: string, out: any} | null} last @param {{max?: number}} [o]
  */
 export function toolsForTurn(last, { max = 6 } = {}) {
-  return TURN_SETS[situation(last)].slice(0, Math.max(1, max)).map((n) => CHOOSING_TOOLS[n]);
+  // #948: LINE_LEGACY_IO=1 has no write_function (code goes in plan_add's JSON there).
+  return TURN_SETS[situation(last)].filter((n) => !legacyIo() || n !== 'write_function').slice(0, Math.max(1, max)).map((n) => CHOOSING_TOOLS[n]);
 }
 
 /** L1 intent sentences -> tool (null: not a tool call). */
 export const INTENTS = Object.freeze({
   'See the plan and the acceptance points': 'plan_status',
   'Add a step that changes the project': 'plan_add',
-  'Write the code for this step': 'plan_add',
+  'Write the code for this step': legacyIo() ? 'plan_add' : 'write_function',
   'Land the next approved step': 'plan_run_next',
   'Read a project file': 'read_file',
   'List a project folder': 'list_dir',
@@ -81,5 +85,5 @@ export const INTENTS = Object.freeze({
 /** The intents of one turn's tool set, plus "Write the code for this step" and "Ask a question". */
 export function intentsFor(tools) {
   const names = new Set(tools.map((t) => t.function.name));
-  return Object.fromEntries(Object.entries(INTENTS).filter(([s, n]) => n === null || (names.has(n) && (s !== 'Write the code for this step' || names.has('plan_add')))));
+  return Object.fromEntries(Object.entries(INTENTS).filter(([s, n]) => n === null || (names.has(n) && (s !== 'Write the code for this step' || names.has(n)))));
 }

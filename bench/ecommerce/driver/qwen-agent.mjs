@@ -10,9 +10,13 @@
 //        [--prompt-variant current|clean|bare] [--tool-set full|subset] [--max-tools <n>]
 //
 // Tool calls (#938, packages/engine/line/harness/toolHarness.mjs) are Ollama's native ones first: the `tools` param in,
-// message.tool_calls out. Only for a model whose profile has textFallback (qwen2.5-coder, which writes its calls as
-// text) the old textToolCalls recovery reads a call from the content; otherwise a text answer or a call of a tool not
-// offered gets one line naming the same tools next turn. --prompt-variant (prompt-variants.mjs) and, on the Line arm, --tool-set subset (only
+// message.tool_calls out. Only for a model whose profile has textFallback the old textToolCalls recovery reads a call
+// from the content (#948: off by default; qwen2.5-coder keeps it as textFallbackLegacy, on again with LINE_LEGACY_IO=1);
+// otherwise a text answer or a call of a tool not offered gets one line naming the same tools next turn.
+// #948 modelled I/O (default; LINE_LEGACY_IO=1 is the old path for one release): no code inside a tool call's JSON.
+// Code is written by write_function (line, plain) or fill {stubId} (path): one function per request over Ollama
+// /api/generate, its signature prefilled, stopped at its closing brace, checked (packages/engine/line/coder/prefill),
+// then through the arm's one write path. A call with code in its arguments is refused with an example (codeRefusal). --prompt-variant (prompt-variants.mjs) and, on the Line arm, --tool-set subset (only
 // the tools the turn's situation needs, turn-tools.mjs, cut to --max-tools) default to the model's entry in
 // driver/model-profiles.json (measured by tool-harness-probe.mjs), else current and full.
 //
@@ -78,6 +82,8 @@ import { createSessionLog, toolEvents, sessionLogSlice, selectTurnTools } from '
 import { callNative, nudge } from '../../../packages/engine/line/harness/toolHarness.mjs';
 import { promptVariant } from './prompt-variants.mjs';
 import { toolsForTurn } from './turn-tools.mjs';
+import { codeInArgs, fillOne, functionsIn, isCodeTool, legacyIo, ollamaGenerate } from '../../../packages/engine/line/coder/prefill/index.mjs';
+import { openStubs, stubCard } from '../../../packages/engine/line/path/fill.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const bench = path.join(here, '..');
@@ -108,8 +114,8 @@ export const chatOptions = (o) => ({ num_ctx: o.numCtx, temperature: 0.2, ...(Nu
 const fn = (name, description, properties = {}, required = []) => ({ type: 'function', function: { name, description, parameters: { type: 'object', properties, required } } });
 const S = (description) => ({ type: 'string', description });
 
-/** The tools per arm: each is one CLI command. */
-export const TOOLS = {
+/** The old tools per arm (LINE_LEGACY_IO=1, one release): code travels inside the call's JSON. */
+export const LEGACY_TOOLS = {
   line: [
     fn('plan_tools', 'plan-cli tools: list the Line plan tools you can add, each with its JSON Schema.'),
     fn('plan_status', 'plan-cli status: the plan, each step with its state and sentence, and the acceptance points of the feature you are working on.', { feature: S('Another feature whose acceptance points you want, e.g. cart (optional)') }),
@@ -140,6 +146,75 @@ export const TOOLS = {
     fn('finish', 'Stop: you believe every acceptance point is done, or you cannot make more progress.', { summary: S('What you built and what is left.') }, ['summary']),
   ],
 };
+
+// #948 modelled I/O: tools carry names, ids and choices, never code. Code is written by write_function (line, plain) or
+// fill (path): Line asks for that ONE function in its own request, its signature prefilled, stopped at its closing brace.
+const WRITE_FUNCTION = (fileArg) => fn('write_function', `Write ONE function of a project file. Line asks for that function alone, its signature already written, and checks it before the file is written${fileArg === 'file' ? ' (through plan_add line.setCode)' : ''}. Give the function name; for a function the file does not have yet, also its one-line signature.`,
+  { [fileArg]: S('Project-relative file, e.g. features/cart/pages/CartPage.tsx'), name: S('The function, e.g. CartPage'), signature: S('Only for a new function: its one-line signature, no body, e.g. export function itemCount(items: Item[]): number'), ...(fileArg === 'file' ? { why: S('One plain-English sentence: why this function.') } : {}) },
+  fileArg === 'file' ? ['file', 'name', 'why'] : [fileArg, 'name']);
+const swap = (list, name, tool) => list.flatMap((t) => (t.function.name === name ? (tool ? [tool] : []) : [t]));
+
+/** The tools per arm (modelled I/O, the default): each is one CLI command; code goes through write_function or fill. */
+export const TOOLS = {
+  line: swap(LEGACY_TOOLS.line, 'plan_add', fn('plan_add', 'plan-cli add: add one plan step, either {tool, args, why} or {fix} to add a typed fix the last refusal offered. Never code in args: line.setCode and line.setFragment are refused here; write code with write_function. Auto approves the step when Construct planned it clean; then call plan_run_next to land it.', { tool: S('A Line tool name, e.g. line.baseOn (leave out when you send fix)'), args: { type: 'object', description: 'The tool arguments: names, ids and choices, never code (leave out when you send fix)' }, why: S('One plain-English sentence: why this step.'), fix: S('The ref of a fix the last refused plan_add offered, e.g. "f1" (its recommended fix); adds that fix\'s step instead of tool and args') }, ['why']))
+    .flatMap((t) => (t.function.name === 'plan_add' ? [t, WRITE_FUNCTION('file')] : [t])),
+  path: swap(LEGACY_TOOLS.path, 'fill', fn('fill', 'path-cli fill: Line asks for ONE stub body (its locked signature already written) and fills it; answers pass, or the first failing example (input, expected, got) or the tsc error at its line.', { stubId: S('The stub id, e.g. cart.domain.itemCount') }, ['stubId'])),
+  plain: swap(LEGACY_TOOLS.plain, 'write_file', WRITE_FUNCTION('path')),
+};
+
+/**
+ * #948: the refusal for code inside a tool call's JSON (a code tool through plan_add, or any string argument that
+ * reads as code), with an example of the call that writes code instead; null when the call carries none.
+ * @param {string} arm @param {string} name @param {any} args
+ * @returns {{ok: false, code: 'CODE_IN_JSON', sentence: string}|null}
+ */
+export function codeRefusal(arm, name, args) {
+  const example = arm === 'path' ? 'fill {"stubId": "cart.domain.itemCount"}' : arm === 'plain' ? 'write_function {"path": "features/cart/pages/CartPage.tsx", "name": "CartPage"}' : 'write_function {"file": "features/cart/pages/CartPage.tsx", "name": "CartPage", "why": "The cart page lists the items."}';
+  const say = (why) => ({ ok: /** @type {false} */ (false), code: /** @type {'CODE_IN_JSON'} */ ('CODE_IN_JSON'), sentence: `Refused (CODE_IN_JSON): ${why}. Code never goes inside a tool call: Line asks for one function at a time with its signature prefilled.\nA correct call: ${example}` });
+  if (name === 'plan_add' && isCodeTool(args?.tool) && !args?.fix) return say(`${args.tool} carries code`);
+  if (name === 'scratch_write') return null; // the driver's own notes, capped by scratch.mjs
+  const hit = codeInArgs(args ?? {});
+  return hit ? say(hit.reason) : null;
+}
+
+/**
+ * #948: one function written through the prefilled request (line arm: then plan_add line.setCode; plain arm: then
+ * plain-cli write). A function the file does not have needs its one-line signature; it is appended with an empty body.
+ * @param {any} cli @param {string} arm @param {any} args
+ * @param {{generate: any, card?: string, gate?: any}} o
+ */
+export async function writeFunction(cli, arm, args, { generate, card = '', gate } = {}) {
+  const file = String((arm === 'plain' ? args?.path : args?.file) ?? '');
+  const name = String(args?.name ?? '');
+  const read = await cli.run('read', [file]);
+  let source = read.ok ? String(read.content ?? '') : '';
+  const has = functionsIn(source, file).some((f) => f.name === name);
+  if (!has) {
+    const sig = String(args?.signature ?? '').trim().replace(/\s*\{?\s*\}?\s*$/, '');
+    const ok = sig && !sig.includes('\n') && functionsIn(`${sig} {\n}\n`, file).some((f) => f.name === name);
+    if (!ok) return { ok: false, code: 'NO_FUNCTION', sentence: `Refused (NO_FUNCTION): ${file || 'the file'} has no function ${name || '(no name)'}; to add one, give its one-line signature (no body).\nA correct call: write_function {"${arm === 'plain' ? 'path' : 'file'}": "${file || 'features/cart/domain/cart.ts'}", "name": "${name || 'itemCount'}", "signature": "export function ${name || 'itemCount'}(items: Item[]): number"${arm === 'plain' ? '' : ', "why": "..."'}}` };
+    source = `${source.replace(/\s*$/, source ? '\n\n' : '')}${sig} {\n}\n`;
+  }
+  const user = [`File ${file}:\n${source}`, card ? `Now:\n${card}` : '', args?.why ? `Why: ${args.why}` : ''].filter(Boolean).join('\n\n');
+  const r = await fillOne({ source, file, target: { name }, generate, user, ...(gate !== undefined ? { gate } : {}) });
+  if (!r.ok) return { ok: false, code: r.code, sentence: r.sentence };
+  if (arm === 'plain') return cli.run('write', [file], { content: r.source });
+  return cli.run('add', ['line.setCode', JSON.stringify({ file, code: r.source, ...(read.ok && read.contentHash ? { contentHash: read.contentHash } : {}) })], { why: typeof args?.why === 'string' ? args.why : `Write ${name}.` });
+}
+
+/**
+ * #948: the path arm's fill, modelled: the stub's locked signature is prefilled and only the body comes back.
+ * @param {any} cli @param {string} root @param {any} args @param {{generate: any}} o
+ */
+export async function fillStub(cli, root, args, { generate }) {
+  const stubId = String(args?.stubId ?? '');
+  const u = openStubs(root).find((x) => x.id === stubId);
+  if (!u) return cli.run('fill', [stubId], { body: '' });
+  const source = fs.readFileSync(path.join(root, u.file), 'utf8');
+  const r = await fillOne({ source, file: u.file, target: { name: u.fn }, generate, user: stubCard(root, u), gate: false });
+  if (!r.ok) return { ok: false, code: r.code, stubId, sentence: r.sentence };
+  return cli.run('fill', [stubId], { body: r.body });
+}
 
 /** A tool call -> the CLI call. */
 async function callTool(cli, arm, name, a) {
@@ -340,10 +415,15 @@ async function main() {
 /**
  * One agent run (main() without the argv parsing), exported for tests.
  * @param {ReturnType<typeof flags>} o
- * @param {{resultsDir?: string}} [opts]
+ * @param {{resultsDir?: string, generate?: (q: {system: string, user: string, prefill: string, stop: readonly string[]}) => Promise<string>}} [opts]
+ *   `generate`: the prefilled one-function request (#948; default Ollama /api/generate with the builder's model).
  */
-export async function runAgent(o, { resultsDir = path.join(o.bench ?? bench, 'results') } = {}) {
+export async function runAgent(o, { resultsDir = path.join(o.bench ?? bench, 'results'), generate } = {}) {
   const dir = o.bench ?? bench;
+  // #948: modelled I/O unless LINE_LEGACY_IO=1 (the old tools, code inside the call's JSON, for one release).
+  const legacy = legacyIo();
+  const T = legacy ? LEGACY_TOOLS : TOOLS;
+  const gen = generate ?? ollamaGenerate({ model: o.model, ollama: o.ollama });
   // #932: the plan service reads it when it renders a context pack (contextPack.mjs representationOf).
   if (o.contextRepresentation) process.env.LINE_CONTEXT_REPRESENTATION = o.contextRepresentation;
   const runDir = path.dirname(path.resolve(o.project));
@@ -360,7 +440,7 @@ export async function runAgent(o, { resultsDir = path.join(o.bench ?? bench, 're
   const variant = o.promptVariant ?? profile.prompt ?? 'current';
   const subset = o.arm === 'line' && (o.toolSet ?? profile.toolSet) === 'subset';
   const maxTools = o.maxTools ?? profile.maxTools ?? 6;
-  const textFallback = profile.textFallback === true;
+  const textFallback = profile.textFallback === true || (legacy && profile.textFallbackLegacy === true);
   /** @type {{name: string, out: any} | null} */
   let lastTool = null;
   const system = { role: 'system', content: o.arm === 'path' ? pathPrompt(path.resolve(o.project)) : promptVariant(systemPrompt(o.arm, dir), variant) };
@@ -400,7 +480,7 @@ export async function runAgent(o, { resultsDir = path.join(o.bench ?? bench, 're
   const cycle = cycleWatch({ limit: o.maxCycleRepeats, window: o.cycleWindow });
   const io = createTurnIo({ logDir });
   // #937: the Line arm gets its plan tools plus the 3-6 read tools this turn needs (read-tools.mjs).
-  const reads = o.arm === 'line' ? await createTurnReads({ root: path.resolve(o.project), spec: path.join(dir, 'SPEC.md'), logDir, base: TOOLS.line }) : null;
+  const reads = o.arm === 'line' ? await createTurnReads({ root: path.resolve(o.project), spec: path.join(dir, 'SPEC.md'), logDir, base: T.line }) : null;
   let lastRefusal = null;
   // #932 x #936: with --research in ledger mode the research ledger is the run's one ledger (bridged into the turn builder).
   const researchLedger = o.research && ledger ? ledgerOf({ root: path.resolve(o.project), logDir }) : null;
@@ -424,10 +504,10 @@ export async function runAgent(o, { resultsDir = path.join(o.bench ?? bench, 're
     // #937 x #932: the Line arm's per-turn read selection, plus the driver's own scratch tools (and session_log after a refusal).
     const sel = reads ? reads.select({ lastRefusal }) : null;
     if (sel) {
-      sel.tools = [...sel.tools, ...TOOLS.line.filter((t) => t.function.name === 'scratch_write' || t.function.name === 'scratch_read')];
+      sel.tools = [...sel.tools, ...T.line.filter((t) => t.function.name === 'scratch_write' || t.function.name === 'scratch_read')];
       sel.names = sel.tools.map((t) => t.function.name);
     }
-    const turnTools = o.arm === 'line' ? selectTurnTools(sel ? sel.tools : TOOLS.line, { refused: refusedLast }) : TOOLS[o.arm];
+    const turnTools = o.arm === 'line' ? selectTurnTools(sel ? sel.tools : T.line, { refused: refusedLast }) : T[o.arm];
     // #938: --tool-set subset narrows the turn to the tools the last tool's situation needs (the same small set repeats
     // until a tool runs); #936: --research adds the research tool (before finish).
     const baseTools = subset ? toolsForTurn(lastTool, { max: maxTools }) : turnTools;
@@ -442,7 +522,7 @@ export async function runAgent(o, { resultsDir = path.join(o.bench ?? bench, 're
       const pack = /Context for (\S+)/.exec(card)?.[1] ?? null;
       slog.add({ turn, layer: 'context', kind: 'built', english: `Turn ${turn} was built fresh: ${built.tokens} tokens (system ${built.parts.system}, ledger ${built.parts.ledger} in ${ledger.entries.length} lines, step card ${built.parts.card}${pack ? ` with the pack for ${pack}` : ''}, notes ${built.parts.notes}, last result ${built.parts.last}).`, ref: pack, detail: built.parts });
     } else {
-      const packed = compactHistory(history, { fixed: [system, first], tools: TOOLS[o.arm], budget: o.numCtx - (o.answerReserve ?? 2048) });
+      const packed = compactHistory(history, { fixed: [system, first], tools: T[o.arm], budget: o.numCtx - (o.answerReserve ?? 2048) });
       messages = [system, first, ...[rs?.message()].filter(Boolean), ...packed.messages];
       context = { mode: 'history', before: packed.before, after: packed.after, budget: o.numCtx - (o.answerReserve ?? 2048), collapsed: packed.collapsed, summarised: packed.summarised, dropped: packed.dropped };
       slog.add({ turn, layer: 'context', kind: 'compacted', english: `Turn ${turn} sent the compacted history: ${packed.before} -> ${packed.after} tokens (${packed.collapsed} repeats collapsed, ${packed.summarised} answers summarised, ${packed.dropped} dropped).`, ref: null });
@@ -493,7 +573,11 @@ export async function runAgent(o, { resultsDir = path.join(o.bench ?? bench, 're
       const isScratch = scratch && (name === 'scratch_write' || name === 'scratch_read');
       // #932: session_log is read-only and the driver's own too; its answer never goes into the ledger.
       const isLog = name === 'session_log';
-      const out = gate ?? (isLog ? sessionLogSlice(slog.events, args ?? {}) : isScratch ? (name === 'scratch_write' ? scratch.write(args ?? {}, { turn, step: focusNow.step }) : scratch.read())
+      // #948: modelled I/O refuses code inside the call's JSON; write_function / fill {stubId} ask for one function.
+      const codeOut = !legacy && !gate ? codeRefusal(o.arm, name, args) : null;
+      const modelled = !legacy && !codeOut && !gate && (name === 'write_function' || (o.arm === 'path' && name === 'fill'));
+      const out = gate ?? codeOut ?? (modelled ? (name === 'fill' ? await fillStub(cli, path.resolve(o.project), args, { generate: gen }) : await writeFunction(cli, o.arm, args, { generate: gen, card: o.arm === 'line' && typeof (/** @type {any} */ (cli)).card === 'function' ? await /** @type {any} */ (cli).card() : '' }))
+        : isLog ? sessionLogSlice(slog.events, args ?? {}) : isScratch ? (name === 'scratch_write' ? scratch.write(args ?? {}, { turn, step: focusNow.step }) : scratch.read())
         : rs?.handles(name) ? await rs.handle(args, turn) : reads?.serves(name) ? await reads.call(name, args) : await callTool(cli, o.arm, name, args));
       const miss = sel && !gate ? reads.miss(turn, name, sel) : false;
       // #938: the tool that ran last picks the next turn's subset (--tool-set subset).

@@ -1,12 +1,13 @@
 {
- "$comment": "Per-model builder profile (#938): only the system-prompt variant (current|clean, prompt-variants.mjs), the per-turn tool set (full|subset, turn-tools.mjs), maxTools and textFallback (native tool_calls first; the old text recovery only where this is true). Native tool_calls are always asked for. A choice moves off current/full only on a measured win (tool-harness-probe.mjs; measured.table is rewritten by it).",
+ "$comment": "Per-model builder profile (#938): only the system-prompt variant (current|clean, prompt-variants.mjs), the per-turn tool set (full|subset, turn-tools.mjs), maxTools and textFallback (native tool_calls first; the old text recovery only where this is true). Native tool_calls are always asked for. A choice moves off current/full only on a measured win (tool-harness-probe.mjs; measured.table is rewritten by it). #948 (modelled I/O, 2026-10-14): textFallback is off by default; textFallbackLegacy keeps the owner's earlier choice (on for qwen2.5-coder until a LoRA teaches native calls) and applies only with LINE_LEGACY_IO=1.",
  "models": {
   "qwen2.5-coder:7b": {
    "prompt": "current",
    "toolSet": "full",
    "maxTools": 5,
    "note": "0% native tool_calls in every configuration (writes the call as JSON text without <tool_call> tags). textFallback: the old textToolCalls recovery reads the call from the text; removed once the LoRA teaches native calls.",
-   "textFallback": true,
+   "textFallback": false,
+   "textFallbackLegacy": true,
    "measured": {
     "file": "bench/lending/results/tool-harness/r1.json",
     "at": "2026-10-13",
@@ -23,7 +24,8 @@
    "toolSet": "full",
    "maxTools": 3,
    "note": "0% native tool_calls in every configuration. textFallback: the old textToolCalls recovery reads the call from the text; removed once the LoRA teaches native calls.",
-   "textFallback": true,
+   "textFallback": false,
+   "textFallbackLegacy": true,
    "measured": {
     "file": "bench/lending/results/tool-harness/r1.json",
     "at": "2026-10-13",

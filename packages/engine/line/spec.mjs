@@ -29,6 +29,8 @@ export const SPEC_MODULES = Object.freeze([
   { topic: 'modules', module: 'line-scope', what: 'a feature read as a module: what it declares, exports and imports, and the fixtures it sees', dir: 'packages/engine/line/scope', match: /\.mjs$/ },
   // #937: the coder's read tools sit in their own folder and topic too, for the same reason.
   { topic: 'modules', module: 'line-coder', what: 'the coder\'s read tools (feature_summary, scope, atoms), per-turn read selection, and the registry reads that run from a root', dir: 'packages/engine/line/coder', match: /\.mjs$/ },
+  // #948: modelled model I/O for code (one function per request, signature prefilled, stopped at its closing brace).
+  { topic: 'modules', module: 'line-prefill', what: 'modelled model I/O for code: one function per request, its signature prefilled and stopped at its closing brace, checked (parse, locked signature, tsc) and refused with an example; never code inside tool-call JSON', dir: 'packages/engine/line/coder/prefill', match: /\.mjs$/ },
   // #932: the refusal's context pack and example fix sit in their own folder and topic too.
   { topic: 'modules', module: 'line-context', what: 'what a refusal carries: its context lines ranked, the context pack of the file a step targets, the offending line corrected', dir: 'packages/engine/line/context', match: /\.mjs$/ },
   // #938: the native-first tool harness sits in its own folder and topic too (line-modules is at its one-call cap).

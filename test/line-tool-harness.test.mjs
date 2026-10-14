@@ -98,7 +98,9 @@ test('layeredTurn: L1 forces only the choice; L2 offers only that tool, retries 
   assert.equal('tools' in f.bodies[0], false);
   for (const b of f.bodies.slice(1)) { assert.deepEqual(b.tools.map((t) => t.function.name), ['read_file']); assert.equal('format' in b, false); }
   assert.match(f.bodies[3].messages[0].content, /Refused \(BAD_ARGS\): arguments\.path must be string/);
-  assert.ok(Object.keys(intents).includes('Write the code for this step') && Object.keys(intents).includes(ASK));
+  // #948: 'Write the code for this step' is write_function's (code never goes in plan_add's JSON), offered with it.
+  assert.ok(!Object.keys(intents).includes('Write the code for this step') && Object.keys(intents).includes(ASK));
+  assert.equal(intentsFor([...tools, CHOOSING_TOOLS.write_function])['Write the code for this step'], 'write_function');
 });
 
 test('layeredTurn: "Ask a question" is a miss without an L2 call; two calls-less L2 replies are a miss', async () => {
@@ -182,9 +184,13 @@ test('textToolCalls (the old recovery): balanced {name, arguments} spans in text
   assert.deepEqual(textToolCalls('no call here'), []);
 });
 
-test('qwen-agent: a model whose profile has textFallback (qwen2.5-coder:7b) gets its text call run, logged as textCalls', async () => {
-  assert.equal(modelProfile('qwen2.5-coder:7b').textFallback, true);
+test('qwen-agent (LINE_LEGACY_IO=1): a model whose profile keeps textFallbackLegacy (qwen2.5-coder:7b) gets its text call run, logged as textCalls', async () => {
+  // #948: textFallback is off by default; the owner's earlier choice for qwen2.5-coder is textFallbackLegacy, on with LINE_LEGACY_IO=1.
+  assert.equal(modelProfile('qwen2.5-coder:7b').textFallback, false);
+  assert.equal(modelProfile('qwen2.5-coder:7b').textFallbackLegacy, true);
   assert.equal(modelProfile('qwen3:4b').textFallback, false);
+  const prevLegacy = process.env.LINE_LEGACY_IO;
+  process.env.LINE_LEGACY_IO = '1';
   const parent = fs.realpathSync(makeTempDir('tool-harness-'));
   const project = path.join(parent, 'project');
   fs.mkdirSync(project);
@@ -201,5 +207,5 @@ test('qwen-agent: a model whose profile has textFallback (qwen2.5-coder:7b) gets
     assert.equal(turns[0].textCalls, true);
     assert.deepEqual(turns[0].calls.map((c) => [c.name, c.ok]), [['read_file', true]]);
     assert.equal(ollama.bodies[1].messages.at(-1).role, 'tool');
-  } finally { await ollama.close(); }
+  } finally { await ollama.close(); if (prevLegacy === undefined) delete process.env.LINE_LEGACY_IO; else process.env.LINE_LEGACY_IO = prevLegacy; }
 });
