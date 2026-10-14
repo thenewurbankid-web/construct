@@ -2231,7 +2231,6 @@
   "reads": "a list from source",
   "js": [
    "Array.from(source)",
-   "[...source]",
    "Array.from(source, fn)"
   ],
   "pure": true,
@@ -2239,6 +2238,7 @@
   "covers": [
    "Array.from"
   ],
+  "note": "not [...source]: spread throws for a value that is not iterable, Array.from reads its length instead",
   "check": [
    {
     "params": [
@@ -2248,8 +2248,7 @@
      ]
     ],
     "js": [
-     "Array.from(source)",
-     "[...source]"
+     "Array.from(source)"
     ]
    },
    {

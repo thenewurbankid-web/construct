@@ -451,7 +451,7 @@ for (const d of decisions) {
     verified: Boolean(verification.check),
   };
   if (impure) entry.impureReason = impure;
-  if (mode === 'copy' || mode === 'staticCopy') entry.replacesMutation = m.id;
+  if (mode === 'copy' || mode === 'staticCopy' || mode === 'copyReceiver') entry.replacesMutation = m.id;
   // A dedicated test (verifiedBy) replaces the derived check: the generic property can't drive these members.
   if (naming.verifiedBy[m.id]) {
     entry.verified = true;
