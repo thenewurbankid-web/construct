@@ -135,8 +135,8 @@ test('runAgent (plain arm, fake Ollama): write_file with code is not offered; wr
   assert.deepEqual(turns[0].wrongCalls, ['write_file'], 'a call of the code tool is not run');
 });
 
-test('textToolCalls is off by default; qwen2.5-coder keeps it as textFallbackLegacy (LINE_LEGACY_IO=1)', async () => {
-  assert.equal(modelProfile('qwen2.5-coder:7b').textFallback, false);
-  assert.equal(modelProfile('qwen2.5-coder:7b').textFallbackLegacy, true);
+test('textToolCalls is off by default; on for qwen2.5-coder only (sanctioned exception until LoRA native calls)', async () => {
+  for (const m of ['qwen2.5-coder:7b', 'qwen2.5-coder:1.5b']) { assert.equal(modelProfile(m).textFallback, true); assert.equal('textFallbackLegacy' in modelProfile(m), false); }
+  assert.equal(modelProfile('qwen3:4b').textFallback, false);
   await withLegacy(async () => assert.ok(names((await import('../bench/ecommerce/driver/qwen-agent.mjs')).LEGACY_TOOLS.plain).includes('write_file')));
 });

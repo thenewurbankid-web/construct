@@ -184,13 +184,10 @@ test('textToolCalls (the old recovery): balanced {name, arguments} spans in text
   assert.deepEqual(textToolCalls('no call here'), []);
 });
 
-test('qwen-agent (LINE_LEGACY_IO=1): a model whose profile keeps textFallbackLegacy (qwen2.5-coder:7b) gets its text call run, logged as textCalls', async () => {
-  // #948: textFallback is off by default; the owner's earlier choice for qwen2.5-coder is textFallbackLegacy, on with LINE_LEGACY_IO=1.
-  assert.equal(modelProfile('qwen2.5-coder:7b').textFallback, false);
-  assert.equal(modelProfile('qwen2.5-coder:7b').textFallbackLegacy, true);
+test('qwen-agent: a model whose profile has textFallback (qwen2.5-coder:7b) gets its text call run, logged as textCalls', async () => {
+  // #948: sanctioned exception (owner 2026-10-14) until LoRA native calls; remove then. Off for every other profile.
+  assert.equal(modelProfile('qwen2.5-coder:7b').textFallback, true);
   assert.equal(modelProfile('qwen3:4b').textFallback, false);
-  const prevLegacy = process.env.LINE_LEGACY_IO;
-  process.env.LINE_LEGACY_IO = '1';
   const parent = fs.realpathSync(makeTempDir('tool-harness-'));
   const project = path.join(parent, 'project');
   fs.mkdirSync(project);
@@ -207,5 +204,5 @@ test('qwen-agent (LINE_LEGACY_IO=1): a model whose profile keeps textFallbackLeg
     assert.equal(turns[0].textCalls, true);
     assert.deepEqual(turns[0].calls.map((c) => [c.name, c.ok]), [['read_file', true]]);
     assert.equal(ollama.bodies[1].messages.at(-1).role, 'tool');
-  } finally { await ollama.close(); if (prevLegacy === undefined) delete process.env.LINE_LEGACY_IO; else process.env.LINE_LEGACY_IO = prevLegacy; }
+  } finally { await ollama.close(); }
 });

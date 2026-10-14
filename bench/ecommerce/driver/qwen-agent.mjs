@@ -11,7 +11,7 @@
 //
 // Tool calls (#938, packages/engine/line/harness/toolHarness.mjs) are Ollama's native ones first: the `tools` param in,
 // message.tool_calls out. Only for a model whose profile has textFallback the old textToolCalls recovery reads a call
-// from the content (#948: off by default; qwen2.5-coder keeps it as textFallbackLegacy, on again with LINE_LEGACY_IO=1);
+// from the content (#948: off by default; on for qwen2.5-coder only: sanctioned exception (owner 2026-10-14) until LoRA native calls; remove then);
 // otherwise a text answer or a call of a tool not offered gets one line naming the same tools next turn.
 // #948 modelled I/O (default; LINE_LEGACY_IO=1 is the old path for one release): no code inside a tool call's JSON.
 // Code is written by write_function (line, plain) or fill {stubId} (path): one function per request over Ollama
@@ -440,7 +440,8 @@ export async function runAgent(o, { resultsDir = path.join(o.bench ?? bench, 're
   const variant = o.promptVariant ?? profile.prompt ?? 'current';
   const subset = o.arm === 'line' && (o.toolSet ?? profile.toolSet) === 'subset';
   const maxTools = o.maxTools ?? profile.maxTools ?? 6;
-  const textFallback = profile.textFallback === true || (legacy && profile.textFallbackLegacy === true);
+  // #948: sanctioned exception (owner 2026-10-14) until LoRA native calls; remove then.
+  const textFallback = profile.textFallback === true;
   /** @type {{name: string, out: any} | null} */
   let lastTool = null;
   const system = { role: 'system', content: o.arm === 'path' ? pathPrompt(path.resolve(o.project)) : promptVariant(systemPrompt(o.arm, dir), variant) };
@@ -552,6 +553,7 @@ export async function runAgent(o, { resultsDir = path.join(o.bench ?? bench, 're
       if (served.length) h = { ...h, calls: [...h.calls, ...served], wrong: h.wrong.filter((c) => !served.includes(c)) };
     }
     let calls = h.calls;
+    // #948: sanctioned exception (owner 2026-10-14) until LoRA native calls; remove then.
     // The old text recovery, only for a model whose profile says textFallback (qwen2.5-coder writes its calls as text;
     // removed once a LoRA teaches it native calls). Native tool_calls stay the first path.
     const fromText = textFallback && !calls.length && !h.wrong.length ? textToolCalls(msg.content) : [];
