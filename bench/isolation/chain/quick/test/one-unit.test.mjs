@@ -6,6 +6,49 @@ import { TASKS, TEMPLATES } from '../tasks.mjs';
 import { planSchemaFor, renderLine, templateForms } from '../lib/plan-lines.mjs';
 import { fillBody } from '../lib/fill.mjs';
 import { writePlan, writePlanFor } from '../smith-tests.mjs';
+import { sketchFn, sigOf, gapUser } from '../k2b.mjs';
+
+// A fake Ollama /api/generate that writes the body, then keeps going with extra functions.
+const greedyModel = (seen) => async (url, init) => {
+  seen.push(JSON.parse(init.body));
+  return { ok: true, json: async () => ({ response: '  const n = 1;\n  return n;\n}\n\nexport function extraOne() {\n  return 2;\n}\n\nfunction extraTwo() {}\n', prompt_eval_count: 3, eval_count: 4 }) };
+};
+
+test('K2b sketch: one function per request, prefilled; extra functions the model writes are cut', async () => {
+  const t = TASKS.find((x) => x.functions.length > 1);
+  for (const fn of t.functions) {
+    const seen = [];
+    const r = await sketchFn(t, fn, 'qwen2.5-coder:7b', 1, null, greedyModel(seen));
+    assert.equal(seen.length, 1);
+    assert.equal(seen[0].raw, true);
+    assert.equal(seen[0].model, 'qwen2.5-coder:7b');
+    assert.ok(seen[0].prompt.endsWith(`\`\`\`ts\n${sigOf(t, fn)} {\n`));
+    const user = seen[0].prompt.split('<|im_start|>user\n')[1].split('<|im_end|>')[0];
+    assert.deepEqual(t.functions.filter((o) => o !== fn && new RegExp(`\\b${o}\\(`).test(user)), [], `${fn}'s sketch prompt names another function`);
+    assert.equal(r.code, `${sigOf(t, fn)} {\n  const n = 1;\n  return n;\n}`);
+    assert.doesNotMatch(r.code, /extraOne|extraTwo/);
+  }
+});
+
+test('K2b gap rewrite: same prefill, the feedback lists only that function\'s unhandled pieces', async () => {
+  const t = TASKS.find((x) => x.functions.length > 1);
+  const fn = t.functions[0];
+  const gaps = [{ fn, type: 'ConditionalExpression', code: 'a ? b : c' }];
+  const seen = [];
+  const r = await sketchFn(t, fn, 'qwen2.5-coder:1.5b', 2, { code: 'export function x() {}', gaps }, greedyModel(seen));
+  assert.ok(seen[0].prompt.endsWith(`\`\`\`ts\n${sigOf(t, fn)} {\n`));
+  assert.ok(seen[0].prompt.includes(gapUser(t, fn, 'export function x() {}', gaps)));
+  assert.match(gapUser(t, fn, 'c', gaps), /for example \(node type: code\):\n- ConditionalExpression: a \? b : c\nWrite /);
+  assert.doesNotMatch(r.code, /extraOne/);
+});
+
+test('K5b fill: prefilled with a custom example, extra functions cut', async () => {
+  const seen = [];
+  const r = await fillBody({ signature: 'function f(): number', plan: ['It returns n.'], seed: 1, system: 'SYS', example: 'EX', fetchImpl: greedyModel(seen) });
+  assert.ok(seen[0].prompt.startsWith('<|im_start|>system\nSYS<|im_end|>'));
+  assert.ok(seen[0].prompt.includes('EX\n\nStub: function f(): number'));
+  assert.equal(r.body, '  const n = 1;\n  return n;');
+});
 
 test('plan lines are an enum of the Smith template sentences, each with its own slots', () => {
   const items = planSchemaFor().properties.lines.items.anyOf;
