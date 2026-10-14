@@ -751,7 +751,7 @@
      ]
     }
    ],
-   "verifiedBy": "test/core.test.ts (short-circuit)",
+   "verifiedBy": "test/core.test.mjs (short-circuit)",
    "fluent": "checks().if(a).and(() => b)",
    "verified": true
   },
@@ -779,7 +779,7 @@
      ]
     }
    ],
-   "verifiedBy": "test/core.test.ts (short-circuit)",
+   "verifiedBy": "test/core.test.mjs (short-circuit)",
    "verified": true
   },
   {
@@ -806,7 +806,7 @@
      ]
     }
    ],
-   "verifiedBy": "test/core.test.ts (short-circuit)",
+   "verifiedBy": "test/core.test.mjs (short-circuit)",
    "verified": true
   },
   {
@@ -855,7 +855,7 @@
    ],
    "pure": true,
    "mutates": false,
-   "verifiedBy": "test/core.test.ts (if/else-if chain property)",
+   "verifiedBy": "test/core.test.mjs (if/else-if chain property)",
    "fluent": "choose().when(c1, () => a).when(c2, () => b).otherwise(() => fallback)",
    "verified": true
   },
@@ -869,7 +869,7 @@
    ],
    "pure": true,
    "mutates": false,
-   "verifiedBy": "test/core.test.ts (switch property)",
+   "verifiedBy": "test/core.test.mjs (switch property)",
    "fluent": "match(value).on(k, () => a).otherwise(() => fallback)",
    "verified": true
   },
@@ -883,7 +883,7 @@
    ],
    "pure": true,
    "mutates": false,
-   "verifiedBy": "test/core.test.ts (try/catch/finally order property)",
+   "verifiedBy": "test/core.test.mjs (try/catch/finally order property)",
    "fluent": "attempt(() => body).onFailure((e) => recover).finally(() => cleanup)",
    "verified": true
   },
@@ -897,7 +897,7 @@
    ],
    "pure": true,
    "mutates": false,
-   "verifiedBy": "test/core.test.ts (async try/catch/finally order property)",
+   "verifiedBy": "test/core.test.mjs (async try/catch/finally order property)",
    "verified": true
   },
   {
@@ -969,7 +969,7 @@
    ],
    "pure": true,
    "mutates": false,
-   "verifiedBy": "test/core.test.ts (limit property)",
+   "verifiedBy": "test/core.test.mjs (limit property)",
    "verified": true
   },
   {
@@ -982,7 +982,7 @@
    ],
    "pure": true,
    "mutates": false,
-   "verifiedBy": "test/core.test.ts (limit property)",
+   "verifiedBy": "test/core.test.mjs (limit property)",
    "verified": true
   },
   {
@@ -3205,7 +3205,7 @@
    ],
    "pure": true,
    "mutates": false,
-   "verifiedBy": "test/core.test.ts (Result property)",
+   "verifiedBy": "test/core.test.mjs (Result property)",
    "note": "returns { ok, value | error } instead of throwing; the throwing form is parseJsonOrThrow",
    "verified": true
   },
@@ -8862,22 +8862,8 @@
    "covers": [
     "new Promise"
    ],
-   "verified": true,
-   "check": {
-    "native": {
-     "kind": "construct",
-     "owner": "Promise",
-     "member": "new"
-    },
-    "params": [
-     {
-      "name": "executor",
-      "gen": "fn",
-      "optional": false,
-      "rest": false
-     }
-    ]
-   }
+   "verified": false,
+   "unverifiedReason": "the executor must call its resolve/reject callbacks, which a generated function never does (it would never settle); covered by an example test"
   },
   {
    "atom": "rejectPromise",

@@ -20,3 +20,4 @@ export * from './async';
 export * from './collections';
 export * from './impure';
 export * from './adapters';
+export * from './generated';

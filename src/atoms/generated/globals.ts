@@ -8,7 +8,7 @@
  */
 export function parseInteger(string: string, radix?: number): number;
 export function parseInteger(...args: any[]): any {
-  return (parseInt as any)(...args);
+  return (globalThis as any).parseInt(...args);
 }
 
 /**
@@ -17,7 +17,7 @@ export function parseInteger(...args: any[]): any {
  */
 export function isNaN(number: number): boolean;
 export function isNaN(...args: any[]): any {
-  return (isNaN as any)(...args);
+  return (globalThis as any).isNaN(...args);
 }
 
 /**
@@ -26,7 +26,7 @@ export function isNaN(...args: any[]): any {
  */
 export function isFinite(number: number): boolean;
 export function isFinite(...args: any[]): any {
-  return (isFinite as any)(...args);
+  return (globalThis as any).isFinite(...args);
 }
 
 /**
@@ -35,7 +35,7 @@ export function isFinite(...args: any[]): any {
  */
 export function decodeURI(encodedURI: string): string;
 export function decodeURI(...args: any[]): any {
-  return (decodeURI as any)(...args);
+  return (globalThis as any).decodeURI(...args);
 }
 
 /**
@@ -44,7 +44,7 @@ export function decodeURI(...args: any[]): any {
  */
 export function decodeURIComponent(encodedURIComponent: string): string;
 export function decodeURIComponent(...args: any[]): any {
-  return (decodeURIComponent as any)(...args);
+  return (globalThis as any).decodeURIComponent(...args);
 }
 
 /**
@@ -53,7 +53,7 @@ export function decodeURIComponent(...args: any[]): any {
  */
 export function encodeURI(uri: string): string;
 export function encodeURI(...args: any[]): any {
-  return (encodeURI as any)(...args);
+  return (globalThis as any).encodeURI(...args);
 }
 
 /**
@@ -62,5 +62,5 @@ export function encodeURI(...args: any[]): any {
  */
 export function encodeURIComponent(uriComponent: string | number | boolean): string;
 export function encodeURIComponent(...args: any[]): any {
-  return (encodeURIComponent as any)(...args);
+  return (globalThis as any).encodeURIComponent(...args);
 }

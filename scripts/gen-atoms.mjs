@@ -25,7 +25,7 @@ const checkOnly = process.argv.includes('--check');
 const readJson = (p) => JSON.parse(readFileSync(join(root, p), 'utf8'));
 const naming = readJson('src/atoms/naming.json');
 // Lookups by member/method name must ignore Object.prototype (names like toString, hasOwnProperty).
-for (const k of ['readsOverrides', 'renames', 'participles', 'overrides', 'aliases', 'impure', 'excludeMembers', 'propertyCovers', 'mutatorEquivalents']) {
+for (const k of ['unverifiable', 'readsOverrides', 'renames', 'participles', 'overrides', 'aliases', 'impure', 'excludeMembers', 'propertyCovers', 'mutatorEquivalents']) {
   naming[k] = Object.assign(Object.create(null), naming[k]);
 }
 const curated = readJson('src/atoms/curated.json');
@@ -328,7 +328,7 @@ function bodyFor(m) {
   if (m.kind === 'static') return { mode: 'static', code: `return (${o.id} as any).${v}(...args);` };
   if (m.kind === 'construct') return { mode: 'construct', code: `return new (${o.id} as any)(...args);` };
   if (m.kind === 'call') return { mode: 'call', code: `return (${o.id} as any)(...args);` };
-  return { mode: 'global', code: `return (${v} as any)(...args);` };
+  return { mode: 'global', code: `return (globalThis as any).${v}(...args);` };
 }
 
 function jsFor(m, paramNames) {
@@ -372,6 +372,7 @@ function readsFor(m, paramNames, mode) {
 function deriveCheck(m, sigs, mode) {
   const o = m.owner;
   if (naming.impure[m.id] && /random|clock/.test(naming.impure[m.id])) return { unverified: `impure: ${naming.impure[m.id]}` };
+  if (naming.unverifiable[m.id]) return { unverified: naming.unverifiable[m.id] };
   if (m.method === 'bind') return { unverified: 'returns a function, which cannot be compared for equivalence' };
   if (m.kind === 'instance' && !o.gen) return { unverified: `no generator for ${o.id} receivers` };
   let lastReason = 'no signature';

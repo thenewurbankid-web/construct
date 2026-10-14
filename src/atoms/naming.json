@@ -768,5 +768,8 @@
     "Object.is": "whether value1 is the same value as value2",
     "RegExp#test": "whether pattern matches string",
     "Array.isArray": "whether arg is a list"
+  },
+  "unverifiable": {
+    "new Promise": "the executor must call its resolve/reject callbacks, which a generated function never does (it would never settle); covered by an example test"
   }
 }
