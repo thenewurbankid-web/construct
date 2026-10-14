@@ -243,3 +243,22 @@ test('outline: exported signatures, one line each', () => {
   assert.deepEqual(ex.map((e) => [e.name, e.kind]), [['f', 'function'], ['g', 'function'], ['I', 'interface'], ['T', 'type'], ['h', 'reexport']]);
   assert.equal(ex[0].signature, 'function f(a: number): string');
 });
+
+test('run-next: the files a landed step saved go to the live index (lsp.update) before the answer returns', async () => {
+  const { createLinePlanService } = await import('../../line/planService.mjs');
+  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'construct-lsp-runnext-')));
+  try {
+    fs.cpSync(path.join(HERE, '..', '..', '..', '..', 'examples', 'line-sample'), root, { recursive: true });
+    const calls = [];
+    const lsp = { update: async (files) => { calls.push(files); return { touched: files }; } };
+    const svc = createLinePlanService({ root, commands: null, lsp: () => lsp, trace: null, records: null, memory: null });
+    const added = await svc.addStep({ tool: 'line.baseOn', args: { libraryId: 'components/Badge', feature: 'orders', name: 'StatusBadge' } }, 'agent');
+    assert.equal(added.ok, true, JSON.stringify(added).slice(0, 300));
+    assert.equal((await svc.approve(added.stepId, 'ui')).ok, true);
+    assert.deepEqual(calls, [], 'nothing landed yet');
+    const ran = await svc.runNext('ui');
+    assert.equal(ran.ok, true);
+    assert.equal(calls.length, 1);
+    assert.ok(calls[0].includes('features/orders/components/StatusBadge.tsx'), JSON.stringify(calls));
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});

@@ -342,6 +342,7 @@ export function stepView(root, plan, s, ops = REAL_PLAN_OPS) {
 /**
  * The plan service for one project: the session plan Cockpit and agents share, over @mx/plan when linked, else the static store.
  * @param {{root: string, ops?: typeof REAL_PLAN_OPS, afterSave?: (root: string, file: string) => unknown,
+ *   lsp?: {update: (files: string[]) => unknown} | (() => ({update: (files: string[]) => unknown} | null)) | null,
  *   commands?: any, load?: (o: {root: string, registry: any}) => Promise<{api: any, store: {linked: boolean, sentence: string}}>,
  *   linkOptions?: object, trace?: {id: string, record: (e: any) => any, problem: string|null} | null, records?: any, memory?: any,
  *   offers?: {get: () => any[] | null, set: (fixes: any[]) => void}, hintState?: {get: () => any, set: (v: any) => void},
@@ -361,9 +362,20 @@ export function stepView(root, plan, s, ops = REAL_PLAN_OPS) {
  *   `imports` (#887): the import agents an answer goes to (default: the folder's agent on disk, importAgentDisk.mjs): the
  *   waiting question, or any scan (classify) question by id until the first import step runs.
  *   `spec` (#908): the target spec open work is measured against (or a function returning it); default each feature's spec.md.
+ *   `lsp` (#950): the live Line LSP index (lsp/server.mjs createLineLsp, or a getter for it): when run-next lands a
+ *   step, its saved files go to lsp.update(files) before the answer returns, so the next LSP call sees them.
  * @returns The plan service.
  */
-export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, commands, load = loadPlanApi, linkOptions, trace, records, memory, offers, hintState, blocked, repeats: repeatState, repeatAt, imports, spec }) {
+export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, lsp = null, commands, load = loadPlanApi, linkOptions, trace, records, memory, offers, hintState, blocked, repeats: repeatState, repeatAt, imports, spec }) {
+  // #950: the files a step saved, handed to the live Line LSP index (lsp.update) once the run that saved them ends
+  const saved = [];
+  const onSave = (r, file) => { saved.push(file); return afterSave?.(r, file); };
+  const refreshIndex = async () => {
+    if (!saved.length) return;
+    const files = [...new Set(saved.splice(0))];
+    if (!lsp) return;
+    try { await (typeof lsp === 'function' ? lsp() : lsp)?.update?.(files); } catch { /* the index catches up from disk (its watcher, its next update) */ }
+  };
   const tr = trace === undefined ? createSessionTrace(root, { sessionId: SESSION_ID }) : trace;
   const mem = memory === undefined ? memoryOf(root) : memory;
   /** im3: remember plan feedback (best effort: a memory that cannot be saved never stops the plan). */
@@ -376,7 +388,7 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
   let ready = null;
   const init = () => (ready ??= (async () => {
     const cmd = commands === undefined ? await constructCommandTools().catch(() => null) : commands;
-    const registry = createLinePlanRegistry({ root, ops, commands: cmd, afterSave });
+    const registry = createLinePlanRegistry({ root, ops, commands: cmd, afterSave: onSave });
     const loaded = await load({ root, registry, ...(linkOptions ? { linkOptions } : {}) });
     return { ...loaded, registry };
   })());
@@ -937,7 +949,8 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
     const before = tr || rec ? await current((await init()).api) : null;
     const open = new Set((before?.steps ?? []).filter((s) => s.status === 'planned' || s.status === 'approved').map((s) => s.id));
     const state = rec && open.size ? rec.snapshot() : null;
-    const r0 = await runNextInner(by, stepId);
+    let r0;
+    try { r0 = await runNextInner(by, stepId); } finally { await refreshIndex(); }
     // #885: a step Construct refused when it ran offers its choices like a refused add: {"fix": "f1"} adds one.
     let r = r0;
     const stuck = r0.ok ? r0.steps.find((s) => open.has(s.id) && (s.state === 'needs-fix' || s.state === 'needs-you')) : null;
