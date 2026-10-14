@@ -39,7 +39,9 @@ test('repairLoop: the model gets only the error, the finding, the typed fixes an
   assert.equal(a.tries[0].reason, 'The feature ordrs does not exist; orders does.', 'the reason is on the trace');
   assert.equal(a.model, 'qwen2.5-coder:1.5b');
   const prompt = q.calls[0].prompt;
-  assert.equal(prompt, repairPrompt(OPTION, REFUSAL));
+  // #948: the prompt also carries one example of a valid change (the value the error names is the slot to change).
+  assert.equal(prompt.replace(/\nExample of a valid change[^\n]*/, ''), repairPrompt(OPTION, REFUSAL));
+  assert.match(prompt, /Example of a valid change .*"feature":"<the value the error or the fixes give>"/);
   assert.match(prompt, /^Construct refused this change\.\nError: There is no feature "ordrs"/);
   assert.match(prompt, /Finding: UNKNOWN_FEATURE/);
   assert.match(prompt, /Typed fix 1: Use the feature orders\./);
@@ -64,7 +66,9 @@ test('repairLoop: mock Qwen lands on attempt 3; each attempt sees every earlier 
   assert.deepEqual(a.option, fixed);
   assert.equal(a.sentence, 'The local model repaired the change on attempt 3 of 4, and Construct accepts it.');
   assert.doesNotMatch(q.calls[0].prompt, /Attempt 1:/);
-  assert.match(q.calls[2].prompt, /Attempt 1: .*"feature":"order".* was refused too: There is no feature "order"\.\nAttempt 2: .*"feature":"ordres".* was refused too: There is no feature "ordres"\.\nDo not repeat a change that was already refused\./);
+  // #948: the history is capped: the last refused attempt only, then the example (LINE_LEGACY_IO=1 lists them all).
+  assert.match(q.calls[2].prompt, /Last attempt: .*"feature":"ordres".* was refused too: There is no feature "ordres"\.\nExample of a valid change[^\n]*\nDo not repeat a change that was already refused\./);
+  assert.doesNotMatch(q.calls[2].prompt, /"feature":"order"[,}]/);
   assert.deepEqual(progress, [
     [1, 'Line is asking the local model to repair it (1 of 4): the feature is orders, not ordrs; trying order.'],
     [2, 'Line is trying again (2 of 4): attempt 1 was refused; trying ordres.'],
