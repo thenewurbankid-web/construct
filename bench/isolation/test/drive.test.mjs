@@ -9,7 +9,7 @@ import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
 import { createDriveMcpServer } from '../drive-mcp.mjs';
 import { readFileSync, rmSync } from 'node:fs';
 import { summarize, sessionRecord, normalizeOpencode, SESSION_FILE, fnPrompt } from '../drive.mjs';
-import { checkBrief } from '../blocks/briefGuard.mjs';
+import { checkBrief, SAMPLE_NOTE } from '../blocks/briefGuard.mjs';
 import { STOP, fnGoal, chatmlPrompt, prefillFor, completeFunction } from '../blocks/prefill.mjs';
 import { spliceFunction } from '../blocks/spliceApplier.mjs';
 import { buildBriefs } from '../blocks/briefBuilder.mjs';
@@ -29,6 +29,20 @@ test('briefGuard rejects a brief with a full body or a long code block', () => {
   assert.match(checkBrief(jsx).reason, /5 consecutive lines of code/);
 });
 
+test('every briefGuard rejection carries one short valid sample note, and the sample itself passes', () => {
+  const rejected = [
+    checkBrief('```ts\nfunction f() {\n  a();\n  b();\n  c();\n}\n```'),
+    checkBrief('```tsx\nreturn (\n  <A>\n    <B />\n  </A>\n);\n```'),
+    checkBrief('Use listPicks.', { fn: 'addPick', others: T06 }),
+  ];
+  for (const r of rejected) {
+    assert.equal(r.ok, false);
+    assert.ok(r.reason.endsWith(`Example of a valid note: '${SAMPLE_NOTE}'`), r.reason);
+  }
+  assert.deepEqual(checkBrief(SAMPLE_NOTE), { ok: true });
+  assert.ok(SAMPLE_NOTE.length < 200);
+});
+
 test('briefGuard passes a signature plus intent, types and a short shape example', () => {
   assert.deepEqual(checkBrief('SIGNATURE: export function BookPage({ params }: { params: { id: string } })\nShow "Available" when book.available is true, otherwise "On loan". Never print true or false.'), { ok: true });
   assert.deepEqual(checkBrief('export function listPicks(): string[]\nRead the JSON array stored under the key "picks"; return [] when it is missing.'), { ok: true });
@@ -37,7 +51,7 @@ test('briefGuard passes a signature plus intent, types and a short shape example
 
 test('per-function routing: one note per function, a prompt that never names the other targets', () => {
   assert.deepEqual(checkBrief('Add the id unless it is already there; keep the order.', { fn: 'addPick', others: T06 }), { ok: true });
-  assert.equal(checkBrief('Call listPicks() first, then add the id.', { fn: 'addPick', others: T06 }).reason, 'one function per note: write the note for addPick only (it names listPicks).');
+  assert.ok(checkBrief('Call listPicks() first, then add the id.', { fn: 'addPick', others: T06 }).reason.startsWith('one function per note: write the note for addPick only (it names listPicks).'));
   assert.equal(fnGoal(T06_GOAL, 'addPick', T06), 'Write the picks store. Export addPick(id: string): void (adds it; adding an id that is already there does nothing). Keep the ids in localStorage under the key "picks" as a JSON array of strings.');
   const task = JSON.parse(readFileSync(join(HERE, '..', 'tasks', 't06-picks-store', 'task.json'), 'utf8'));
   const read = (p) => { for (const d of ['t06-picks-store/start', '_r2', '_shared']) { try { return readFileSync(join(HERE, '..', 'tasks', d, p), 'utf8'); } catch {} } throw new Error(p); };

@@ -47,10 +47,14 @@ function bodyName(node, sf) {
 
 const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
+// Every rejection ends with one short valid note (another domain), as an example rather than another instruction.
+export const SAMPLE_NOTE = 'Show the words "Sold out" when inStock is false and "In stock" otherwise; never print true or false. Keep the rest of the function as it is.';
+const reject = (reason) => ({ ok: false, reason: `${reason} Example of a valid note: '${SAMPLE_NOTE}'` });
+
 // fn + others (multi-function tasks): the note is for fn alone and must not name another target function.
 export function checkBrief(brief, { fn = null, others = [] } = {}) {
   const named = others.filter((o) => o !== fn && new RegExp(`\\b${escapeRe(o)}\\b`).test(String(brief ?? '')));
-  if (named.length) return { ok: false, reason: `one function per note: write the note for ${fn} only (it names ${named.join(', ')}).` };
+  if (named.length) return reject(`one function per note: write the note for ${fn} only (it names ${named.join(', ')}).`);
   for (const seg of segments(String(brief ?? ''))) {
     const text = seg.lines.join('\n');
     const sf = parse(text, 'brief.tsx');
@@ -66,7 +70,7 @@ export function checkBrief(brief, { fn = null, others = [] } = {}) {
       ts.forEachChild(node, walk);
     };
     walk(sf);
-    if (impl) return { ok: false, reason: `the brief contains an implementation (${impl}). Describe intent; never write the implementation; the 1.5b writes the code.` };
+    if (impl) return reject(`the brief contains an implementation (${impl}). Describe intent; never write the implementation; the 1.5b writes the code.`);
 
     // 2. Consecutive code lines: every non-blank, non-comment line, except those inside type/interface
     //    declarations and bodiless function signatures (allowed at any length).
@@ -85,7 +89,7 @@ export function checkBrief(brief, { fn = null, others = [] } = {}) {
       runLen = code ? runLen + 1 : (t ? 0 : runLen); // blank lines inside a block do not break the run
       max = Math.max(max, runLen);
     });
-    if (max > MAX_CODE_LINES) return { ok: false, reason: `the brief has ${max} consecutive lines of code (at most ${MAX_CODE_LINES}). Describe intent; never write the implementation; the 1.5b writes the code. Names, signatures, types, the spec's strings and a ${MAX_CODE_LINES}-line shape example from another domain are fine.` };
+    if (max > MAX_CODE_LINES) return reject(`the brief has ${max} consecutive lines of code (at most ${MAX_CODE_LINES}). Describe intent; never write the implementation; the 1.5b writes the code. Names, signatures, types, the spec's strings and a ${MAX_CODE_LINES}-line shape example from another domain are fine.`);
   }
   return { ok: true };
 }
