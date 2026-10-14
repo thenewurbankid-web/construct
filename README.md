@@ -42,18 +42,19 @@ Connector words (`and`, `but`, `also`, `if`, `then`, `is`) that just `return thi
 
 ### Fluent facade (`smith/fluent`)
 
-The same atoms, read as a sentence. Each chain ends in a plain value and delegates to one atom, so the two forms are interchangeable; the catalog's `fluent` field lists every form.
+The same atoms, read as a sentence. Each chain ends in a plain value and delegates to one atom, so the two forms are interchangeable; the catalog's `fluent` field is each atom's sentence and its `reads` is that sentence read aloud. Sentences follow Atomic English ([ENGLISH-RULES.md](ENGLISH-RULES.md)): third-person verbs, one argument per word, questions split into words, and a changed copy said out loud first with `clones()`.
 
 ```ts
-import { equals, mapEach, when } from 'smith';
-import { checks, list, when as whenIt } from 'smith/fluent';
+import { greaterThan, sortedBy, trimmed, when } from 'smith';
+import { checks, clones, when as whenIt } from 'smith/fluent';
 
-equals(a, b);                 checks().if(a).is().equalTo(b);
-mapEach(xs, fn);              list(xs).mapEach(fn);
+greaterThan(n, 100);          checks().if(n).is().greater().than(100);
+sortedBy(xs, order);          clones().list(xs).and().sorts().by(order);
+trimmed(s);                   clones().text(s).and().trims();
 when(c, () => a, () => b);    whenIt(c).yields(() => a).otherwise(() => b);
 ```
 
-Entry points: `checks`, `text`, `list`, `when`, `choose`, `match`, `attempt`. The last four share their names with the atoms they wrap, which is why the facade has its own import path.
+Entry points: `checks`, `clones`, `text`, `list`, `when`, `chooses`, `matches`, `attempts`. `when` shares its name with the atom it wraps, which is why the facade has its own import path. The forms from before Atomic English (`is().equalTo(b)`, `list(xs).sortedBy(order)`, `choose`, `match`, `attempt`) still work, are marked `@deprecated`, and are listed in the catalog as `fluentDeprecated`. Each atom's Atomic English plain name (R8, such as `isGreaterThan` for `greaterThan`) is in the catalog as `plainName` and in `naming.json` under `grammar.plainNames`; the atoms keep their existing names.
 
 ## Example
 

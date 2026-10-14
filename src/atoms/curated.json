@@ -2,7 +2,6 @@
  {
   "atom": "equals",
   "module": "comparison",
-  "reads": "a equals b",
   "js": [
    "a === b"
   ],
@@ -34,12 +33,12 @@
     ]
    }
   ],
-  "fluent": "checks().if(a).is().equalTo(b)"
+  "fluent": "checks().if(a).is().equal().to(b)",
+  "fluentDeprecated": "checks().if(a).is().equalTo(b)"
  },
  {
   "atom": "differs",
   "module": "comparison",
-  "reads": "a differs from b",
   "js": [
    "a !== b"
   ],
@@ -59,12 +58,12 @@
     ]
    }
   ],
-  "fluent": "checks().if(a).is().not().equalTo(b)"
+  "fluent": "checks().if(a).is().not().equal().to(b)",
+  "fluentDeprecated": "checks().if(a).is().not().equalTo(b)"
  },
  {
   "atom": "lessThan",
   "module": "comparison",
-  "reads": "a is less than b",
   "js": [
    "a < b"
   ],
@@ -120,12 +119,12 @@
     ]
    }
   ],
-  "fluent": "checks().if(a).is().lessThan(b)"
+  "fluent": "checks().if(a).is().less().than(b)",
+  "fluentDeprecated": "checks().if(a).is().lessThan(b)"
  },
  {
   "atom": "atMost",
   "module": "comparison",
-  "reads": "a is at most b",
   "js": [
    "a <= b"
   ],
@@ -181,12 +180,12 @@
     ]
    }
   ],
-  "fluent": "checks().if(a).is().atMost(b)"
+  "fluent": "checks().if(a).is().at().most(b)",
+  "fluentDeprecated": "checks().if(a).is().atMost(b)"
  },
  {
   "atom": "greaterThan",
   "module": "comparison",
-  "reads": "a is greater than b",
   "js": [
    "a > b"
   ],
@@ -242,12 +241,12 @@
     ]
    }
   ],
-  "fluent": "checks().if(a).is().greaterThan(b)"
+  "fluent": "checks().if(a).is().greater().than(b)",
+  "fluentDeprecated": "checks().if(a).is().greaterThan(b)"
  },
  {
   "atom": "atLeast",
   "module": "comparison",
-  "reads": "a is at least b",
   "js": [
    "a >= b"
   ],
@@ -303,7 +302,8 @@
     ]
    }
   ],
-  "fluent": "checks().if(a).is().atLeast(b)"
+  "fluent": "checks().if(a).is().at().least(b)",
+  "fluentDeprecated": "checks().if(a).is().atLeast(b)"
  },
  {
   "atom": "plus",
@@ -637,7 +637,6 @@
  {
   "atom": "and",
   "module": "logic",
-  "reads": "a and b",
   "js": [
    "a && b"
   ],
@@ -713,7 +712,6 @@
  {
   "atom": "when",
   "module": "branching",
-  "reads": "when c, a, otherwise b",
   "js": [
    "c ? a : b",
    "if (c) { a } else { b }"
@@ -746,7 +744,6 @@
  {
   "atom": "choose",
   "module": "branching",
-  "reads": "choose a when c1, b when c2, otherwise fallback",
   "js": [
    "if (c1) { a } else if (c2) { b } else { fallback }",
    "c1 ? a : c2 ? b : fallback"
@@ -754,31 +751,32 @@
   "pure": true,
   "mutates": false,
   "verifiedBy": "test/core.test.mjs (if/else-if chain property)",
-  "fluent": "choose().when(c1, () => a).when(c2, () => b).otherwise(() => fallback)"
+  "fluent": "chooses().when(c1).yields(() => a).when(c2).yields(() => b).otherwise(() => fallback)",
+  "fluentDeprecated": "choose().when(c1, () => a).when(c2, () => b).otherwise(() => fallback)"
  },
  {
   "atom": "match",
   "module": "branching",
-  "reads": "match value against cases, otherwise fallback",
   "js": [
    "switch (value) { case k: \u2026 default: \u2026 }"
   ],
   "pure": true,
   "mutates": false,
   "verifiedBy": "test/core.test.mjs (switch property)",
-  "fluent": "match(value).on(k, () => a).otherwise(() => fallback)"
+  "fluent": "matches().value(value).on(k).yields(() => a).otherwise(() => fallback)",
+  "fluentDeprecated": "match(value).on(k, () => a).otherwise(() => fallback)"
  },
  {
   "atom": "attempt",
   "module": "errors",
-  "reads": "attempt body, recover from an error, then clean up",
   "js": [
    "try { body } catch (e) { recover(e) } finally { cleanup }"
   ],
   "pure": true,
   "mutates": false,
   "verifiedBy": "test/core.test.mjs (try/catch/finally order property)",
-  "fluent": "attempt(() => body).onFailure((e) => recover).finally(() => cleanup)"
+  "fluent": "attempts().to(() => body).and().recovers().with((e) => recover).and().cleans().up().with(() => cleanup)",
+  "fluentDeprecated": "attempt(() => body).onFailure((e) => recover).finally(() => cleanup)"
  },
  {
   "atom": "attemptAsync",
@@ -871,7 +869,6 @@
  {
   "atom": "isText",
   "module": "checks",
-  "reads": "whether value is text",
   "js": [
    "typeof value === 'string'"
   ],
@@ -892,7 +889,6 @@
  {
   "atom": "isNumber",
   "module": "checks",
-  "reads": "whether value is a number",
   "js": [
    "typeof value === 'number'"
   ],
@@ -913,7 +909,6 @@
  {
   "atom": "isBoolean",
   "module": "checks",
-  "reads": "whether value is a yes/no value",
   "js": [
    "typeof value === 'boolean'"
   ],
@@ -934,7 +929,6 @@
  {
   "atom": "isNothing",
   "module": "checks",
-  "reads": "whether value is nothing",
   "js": [
    "value == null",
    "value === null || value === undefined"
@@ -956,7 +950,6 @@
  {
   "atom": "hasKey",
   "module": "checks",
-  "reads": "whether obj has key",
   "js": [
    "Object.hasOwn(obj, key)",
    "Object.prototype.hasOwnProperty.call(obj, key)",
@@ -1077,7 +1070,6 @@
  {
   "atom": "isA",
   "module": "checks",
-  "reads": "whether value is a Type",
   "js": [
    "value instanceof type"
   ],
@@ -1097,7 +1089,8 @@
     ]
    }
   ],
-  "fluent": "checks().if(value).is().a(Type)"
+  "fluent": "checks().if(value).is().an().instance().of(Type)",
+  "fluentDeprecated": "checks().if(value).is().a(Type)"
  },
  {
   "atom": "get",
@@ -1236,7 +1229,6 @@
  {
   "atom": "hasItem",
   "module": "sequences",
-  "reads": "whether list has item in it",
   "js": [
    "list.includes(item, fromIndex)"
   ],
@@ -1263,17 +1255,18 @@
     ]
    }
   ],
-  "fluent": "list(xs).hasItem(x)"
+  "fluent": "checks().if(xs).has().item(x)",
+  "fluentDeprecated": "list(xs).hasItem(x)"
  },
  {
   "atom": "lowerCase",
   "module": "text",
-  "reads": "text in lower case",
   "js": [
    "text.toLowerCase()"
   ],
   "pure": true,
   "mutates": false,
+  "returnsCopy": true,
   "covers": [
    "String#toLowerCase"
   ],
@@ -1287,17 +1280,18 @@
     ]
    }
   ],
-  "fluent": "text(s).lowerCase()"
+  "fluent": "clones().text(s).and().lowercases()",
+  "fluentDeprecated": "text(s).lowerCase()"
  },
  {
   "atom": "upperCase",
   "module": "text",
-  "reads": "text in upper case",
   "js": [
    "text.toUpperCase()"
   ],
   "pure": true,
   "mutates": false,
+  "returnsCopy": true,
   "covers": [
    "String#toUpperCase"
   ],
@@ -1311,17 +1305,18 @@
     ]
    }
   ],
-  "fluent": "text(s).upperCase()"
+  "fluent": "clones().text(s).and().uppercases()",
+  "fluentDeprecated": "text(s).upperCase()"
  },
  {
   "atom": "trimmed",
   "module": "text",
-  "reads": "text without surrounding spaces",
   "js": [
    "text.trim()"
   ],
   "pure": true,
   "mutates": false,
+  "returnsCopy": true,
   "covers": [
    "String#trim"
   ],
@@ -1335,7 +1330,8 @@
     ]
    }
   ],
-  "fluent": "text(s).trimmed()"
+  "fluent": "clones().text(s).and().trims()",
+  "fluentDeprecated": "text(s).trimmed()"
  },
  {
   "atom": "doesStartWith",
@@ -1402,7 +1398,6 @@
  {
   "atom": "splitBy",
   "module": "text",
-  "reads": "text split by separator",
   "js": [
    "text.split(separator, limit)"
   ],
@@ -1445,12 +1440,12 @@
     ]
    }
   ],
-  "fluent": "text(s).splitBy(sep)"
+  "fluent": "text(s).splits().by(sep)",
+  "fluentDeprecated": "text(s).splitBy(sep)"
  },
  {
   "atom": "joinWith",
   "module": "text",
-  "reads": "list joined with separator",
   "js": [
    "list.join(separator)"
   ],
@@ -1485,17 +1480,18 @@
     ]
    }
   ],
-  "fluent": "list(xs).joinWith(sep)"
+  "fluent": "list(xs).joins().with(sep)",
+  "fluentDeprecated": "list(xs).joinWith(sep)"
  },
  {
   "atom": "replaceEvery",
   "module": "text",
-  "reads": "text with every pattern replaced by replacement",
   "js": [
    "text.replaceAll(pattern, replacement)"
   ],
   "pure": true,
   "mutates": false,
+  "returnsCopy": true,
   "covers": [
    "String#replaceAll"
   ],
@@ -1534,17 +1530,18 @@
    }
   ],
   "note": "a RegExp without the g flag is made global instead of throwing",
-  "fluent": "text(s).replaceEvery(p, r)"
+  "fluent": "clones().text(s).and().replaces().every(p).with(r)",
+  "fluentDeprecated": "text(s).replaceEvery(p, r)"
  },
  {
   "atom": "replaceFirst",
   "module": "text",
-  "reads": "text with the first pattern replaced by replacement",
   "js": [
    "text.replace(pattern, replacement)"
   ],
   "pure": true,
   "mutates": false,
+  "returnsCopy": true,
   "check": [
    {
     "params": [
@@ -1580,7 +1577,8 @@
    }
   ],
   "note": "a global RegExp still replaces only the first match, so String#replace with a global RegExp maps to replaceText instead",
-  "fluent": "text(s).replaceFirst(p, r)"
+  "fluent": "clones().text(s).and().replaces().first(p).with(r)",
+  "fluentDeprecated": "text(s).replaceFirst(p, r)"
  },
  {
   "atom": "padLeft",
@@ -1732,7 +1730,6 @@
  {
   "atom": "firstOf",
   "module": "lists",
-  "reads": "the first item of list",
   "js": [
    "list[0]",
    "list.at(0)"
@@ -1749,12 +1746,12 @@
     ]
    }
   ],
-  "fluent": "list(xs).firstOf()"
+  "fluent": "list(xs).takes().first()",
+  "fluentDeprecated": "list(xs).firstOf()"
  },
  {
   "atom": "lastOf",
   "module": "lists",
-  "reads": "the last item of list",
   "js": [
    "list[list.length - 1]",
    "list.at(-1)"
@@ -1771,7 +1768,8 @@
     ]
    }
   ],
-  "fluent": "list(xs).lastOf()"
+  "fluent": "list(xs).takes().last()",
+  "fluentDeprecated": "list(xs).lastOf()"
  },
  {
   "atom": "positionOf",
@@ -1834,12 +1832,12 @@
  {
   "atom": "mapEach",
   "module": "lists",
-  "reads": "each item of list mapped to result",
   "js": [
    "list.map(fn)"
   ],
   "pure": true,
   "mutates": false,
+  "returnsCopy": true,
   "covers": [
    "Array#map"
   ],
@@ -1858,17 +1856,18 @@
    }
   ],
   "note": "thisArg is not supported (use an arrow function)",
-  "fluent": "list(xs).mapEach(fn)"
+  "fluent": "clones().list(xs).and().maps().each().with(fn)",
+  "fluentDeprecated": "list(xs).mapEach(fn)"
  },
  {
   "atom": "keepWhere",
   "module": "lists",
-  "reads": "the items of list where test holds",
   "js": [
    "list.filter(test)"
   ],
   "pure": true,
   "mutates": false,
+  "returnsCopy": true,
   "covers": [
    "Array#filter"
   ],
@@ -1886,7 +1885,8 @@
     ]
    }
   ],
-  "fluent": "list(xs).keepWhere(test)"
+  "fluent": "clones().list(xs).and().keeps().where(test)",
+  "fluentDeprecated": "list(xs).keepWhere(test)"
  },
  {
   "atom": "reduceTo",
@@ -1923,7 +1923,6 @@
  {
   "atom": "findFirst",
   "module": "lists",
-  "reads": "the first item of list where test holds",
   "js": [
    "list.find(test)"
   ],
@@ -1946,12 +1945,12 @@
     ]
    }
   ],
-  "fluent": "list(xs).findFirst(test)"
+  "fluent": "list(xs).finds().first().where(test)",
+  "fluentDeprecated": "list(xs).findFirst(test)"
  },
  {
   "atom": "hasAnyWhere",
   "module": "lists",
-  "reads": "whether any item of list passes test",
   "js": [
    "list.some(test)"
   ],
@@ -1974,12 +1973,12 @@
     ]
    }
   ],
-  "fluent": "list(xs).hasAnyWhere(test)"
+  "fluent": "checks().if(xs).has().any().where(test)",
+  "fluentDeprecated": "list(xs).hasAnyWhere(test)"
  },
  {
   "atom": "isEveryWhere",
   "module": "lists",
-  "reads": "whether every item of list passes test",
   "js": [
    "list.every(test)"
   ],
@@ -2002,18 +2001,19 @@
     ]
    }
   ],
-  "fluent": "list(xs).isEveryWhere(test)"
+  "fluent": "checks().if(xs).has().only().items().where(test)",
+  "fluentDeprecated": "list(xs).isEveryWhere(test)"
  },
  {
   "atom": "sortedBy",
   "module": "lists",
-  "reads": "list sorted by order",
   "js": [
    "list.toSorted(order)",
    "[...list].sort(order)"
   ],
   "pure": true,
   "mutates": false,
+  "returnsCopy": true,
   "covers": [
    "Array#toSorted",
    "Array#sort"
@@ -2045,18 +2045,19 @@
    }
   ],
   "note": "also takes a property name or a one-argument key selector; a compare function with exactly one declared parameter is treated as a key selector",
-  "fluent": "list(xs).sortedBy(order)"
+  "fluent": "clones().list(xs).and().sorts().by(order)",
+  "fluentDeprecated": "list(xs).sortedBy(order)"
  },
  {
   "atom": "reversed",
   "module": "lists",
-  "reads": "list reversed",
   "js": [
    "list.toReversed()",
    "[...list].reverse()"
   ],
   "pure": true,
   "mutates": false,
+  "returnsCopy": true,
   "covers": [
    "Array#toReversed",
    "Array#reverse"
@@ -2071,17 +2072,18 @@
     ]
    }
   ],
-  "fluent": "list(xs).reversed()"
+  "fluent": "clones().list(xs).and().reverses()",
+  "fluentDeprecated": "list(xs).reversed()"
  },
  {
   "atom": "part",
   "module": "lists",
-  "reads": "the part of list from from to to",
   "js": [
    "list.slice(from, to)"
   ],
   "pure": true,
   "mutates": false,
+  "returnsCopy": true,
   "covers": [
    "Array#slice"
   ],
@@ -2103,7 +2105,8 @@
     ]
    }
   ],
-  "fluent": "list(xs).part(from, to)"
+  "fluent": "clones().list(xs).and().keeps().from(from).to(to)",
+  "fluentDeprecated": "list(xs).part(from, to)"
  },
  {
   "atom": "concatenated",
@@ -2133,12 +2136,12 @@
  {
   "atom": "flattened",
   "module": "lists",
-  "reads": "list flattened depth levels",
   "js": [
    "list.flat(depth)"
   ],
   "pure": true,
   "mutates": false,
+  "returnsCopy": true,
   "covers": [
    "Array#flat"
   ],
@@ -2156,7 +2159,8 @@
     ]
    }
   ],
-  "fluent": "list(xs).flattened()"
+  "fluent": "clones().list(xs).and().flattens()",
+  "fluentDeprecated": "list(xs).flattened()"
  },
  {
   "atom": "flatMapEach",
@@ -2188,13 +2192,13 @@
  {
   "atom": "uniqueOf",
   "module": "lists",
-  "reads": "the unique items of list",
   "js": [
    "[...new Set(list)]",
    "Array.from(new Set(list))"
   ],
   "pure": true,
   "mutates": false,
+  "returnsCopy": true,
   "check": [
    {
     "params": [
@@ -2205,7 +2209,8 @@
     ]
    }
   ],
-  "fluent": "list(xs).uniqueOf()"
+  "fluent": "clones().list(xs).and().drops().duplicates()",
+  "fluentDeprecated": "list(xs).uniqueOf()"
  },
  {
   "atom": "countOf",

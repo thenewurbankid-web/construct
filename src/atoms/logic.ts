@@ -30,7 +30,7 @@ export function not(a: unknown): boolean {
 }
 
 /**
- * and(a, () => b) reads "a and b".
+ * and(a, () => b) reads "checks if a and b".
  * Exactly `a && b`: returns a when a is falsy (b is never evaluated), else b.
  * The legacy eager form and(a: boolean, b: boolean) is kept for older Smith callers.
  */

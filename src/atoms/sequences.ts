@@ -17,7 +17,7 @@ export function hasText(text: string, part: string, position?: number): boolean 
 }
 
 /**
- * hasItem(list, item, fromIndex) reads "whether list has item in it".
+ * hasItem(list, item, fromIndex) reads "checks if xs has item x".
  * Exactly `list.includes(item, fromIndex)` (SameValueZero, so it finds NaN).
  */
 export function hasItem<T>(list: readonly T[], item: T, fromIndex?: number): boolean {

@@ -16,6 +16,7 @@ import { readFileSync, writeFileSync, mkdirSync, readdirSync, rmSync, existsSync
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { extractLib } from './lib-extract.mjs';
+import { reading } from './lib-sentence.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const atomsDir = join(root, 'src/atoms');
@@ -474,7 +475,18 @@ for (const d of decisions) {
 // Curated entries come first in the catalog; every curated atom is hand-verified by
 // its own check sets or a dedicated test (verifiedBy), or carries an unverified reason.
 const catalog = [];
-for (const c of curated) catalog.push({ generated: false, ...c, verified: Boolean(c.check || c.verifiedBy) });
+// An atom with an Atomic English sentence reads as that sentence (ENGLISH-RULES.md), and records
+// its R8 plain name; the atom keeps its existing name, which the codemod and the dataset use.
+for (const c of curated) {
+  let entry = { generated: false, ...c };
+  if (c.fluent) {
+    if (c.reads) throw new Error(`curated ${c.atom}: an atom with a fluent sentence reads as the sentence, so it gives no reads`);
+    const { generated, atom, module, ...rest } = entry;
+    entry = { generated, atom, module, reads: reading(c.fluent), ...rest };
+    if (naming.grammar.plainNames[c.atom]) entry.plainName = naming.grammar.plainNames[c.atom];
+  }
+  catalog.push({ ...entry, verified: Boolean(c.check || c.verifiedBy) });
+}
 catalog.push(...entries);
 const excluded = [];
 for (const d of decisions) if (d.status === 'excluded') excluded.push({ atom: null, js: [d.member.id], module: d.member.owner.module, excluded: d.reason });

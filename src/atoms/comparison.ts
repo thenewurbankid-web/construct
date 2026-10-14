@@ -4,7 +4,7 @@
 export type Ordered = number | string | bigint | Date;
 
 /**
- * equals(a, b) reads "a equals b".
+ * equals(a, b) reads "checks if a is equal to b".
  * Exactly `a === b`: NaN never equals itself, 0 equals -0, objects compare by reference.
  */
 export function equals<T>(a: T, b: T): boolean {
@@ -12,7 +12,7 @@ export function equals<T>(a: T, b: T): boolean {
 }
 
 /**
- * differs(a, b) reads "a differs from b".
+ * differs(a, b) reads "checks if a is not equal to b".
  * Exactly `a !== b`.
  */
 export function differs<T>(a: T, b: T): boolean {
@@ -20,7 +20,7 @@ export function differs<T>(a: T, b: T): boolean {
 }
 
 /**
- * lessThan(a, b) reads "a is less than b".
+ * lessThan(a, b) reads "checks if a is less than b".
  * Exactly `a < b`.
  */
 export function lessThan<T extends Ordered>(a: T, b: T): boolean {
@@ -28,7 +28,7 @@ export function lessThan<T extends Ordered>(a: T, b: T): boolean {
 }
 
 /**
- * atMost(a, b) reads "a is at most b".
+ * atMost(a, b) reads "checks if a is at most b".
  * Exactly `a <= b`.
  */
 export function atMost<T extends Ordered>(a: T, b: T): boolean {
@@ -36,7 +36,7 @@ export function atMost<T extends Ordered>(a: T, b: T): boolean {
 }
 
 /**
- * greaterThan(a, b) reads "a is greater than b".
+ * greaterThan(a, b) reads "checks if a is greater than b".
  * Exactly `a > b`.
  */
 export function greaterThan<T extends Ordered>(a: T, b: T): boolean {
@@ -44,7 +44,7 @@ export function greaterThan<T extends Ordered>(a: T, b: T): boolean {
 }
 
 /**
- * atLeast(a, b) reads "a is at least b".
+ * atLeast(a, b) reads "checks if a is at least b".
  * Exactly `a >= b`.
  */
 export function atLeast<T extends Ordered>(a: T, b: T): boolean {

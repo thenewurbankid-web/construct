@@ -1,7 +1,7 @@
 // Error atoms: try/catch/finally and throw as expressions.
 
 /**
- * attempt(() => body, (e) => recover, () => cleanup) reads "attempt body, recover from an error, then clean up".
+ * attempt(() => body, (e) => recover, () => cleanup) reads "attempts to body and recovers with recover and cleans up with cleanup".
  * Exactly `try { return body } catch (e) { return recover(e) } finally { cleanup }`:
  * cleanup always runs last; without recover the error is rethrown (try/finally).
  */

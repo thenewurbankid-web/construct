@@ -1,7 +1,7 @@
 // Text atoms (String.prototype / String). Pure; strings are immutable anyway.
 
 /**
- * lowerCase(text) reads "text in lower case".
+ * lowerCase(text) reads "clones text s and lowercases".
  * Exactly `text.toLowerCase()`.
  */
 export function lowerCase(text: string): string {
@@ -9,7 +9,7 @@ export function lowerCase(text: string): string {
 }
 
 /**
- * upperCase(text) reads "text in upper case".
+ * upperCase(text) reads "clones text s and uppercases".
  * Exactly `text.toUpperCase()`.
  */
 export function upperCase(text: string): string {
@@ -17,7 +17,7 @@ export function upperCase(text: string): string {
 }
 
 /**
- * trimmed(text) reads "text without surrounding spaces".
+ * trimmed(text) reads "clones text s and trims".
  * Exactly `text.trim()`.
  */
 export function trimmed(text: string): string {
@@ -41,7 +41,7 @@ export function doesEndWith(text: string, part: string, endPosition?: number): b
 }
 
 /**
- * splitBy(text, separator, limit) reads "text split by separator".
+ * splitBy(text, separator, limit) reads "text s splits by sep".
  * Exactly `text.split(separator, limit)`.
  */
 export function splitBy(text: string, separator: string | RegExp, limit?: number): string[] {
@@ -49,7 +49,7 @@ export function splitBy(text: string, separator: string | RegExp, limit?: number
 }
 
 /**
- * joinWith(list, separator) reads "list joined with separator".
+ * joinWith(list, separator) reads "list xs joins with sep".
  * Exactly `list.join(separator)` (separator defaults to ",").
  */
 export function joinWith(list: readonly unknown[], separator?: string): string {
@@ -65,7 +65,7 @@ function nonGlobalCopy(pattern: RegExp): RegExp {
 }
 
 /**
- * replaceEvery(text, pattern, replacement) reads "text with every pattern replaced by replacement".
+ * replaceEvery(text, pattern, replacement) reads "clones text s and replaces every p with r".
  * Exactly `text.replaceAll(pattern, replacement)`; a RegExp without the g flag is treated as
  * global (replaceAll would throw), and the caller's RegExp is never touched.
  */
@@ -74,7 +74,7 @@ export function replaceEvery(text: string, pattern: string | RegExp, replacement
 }
 
 /**
- * replaceFirst(text, pattern, replacement) reads "text with the first pattern replaced by replacement".
+ * replaceFirst(text, pattern, replacement) reads "clones text s and replaces first p with r".
  * Exactly `text.replace(pattern, replacement)` for a string or non-global RegExp; a global
  * RegExp still only replaces the first match.
  */

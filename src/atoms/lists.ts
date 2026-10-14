@@ -4,7 +4,7 @@ import type { Ordered } from './comparison';
 type Visit<T, R> = (item: T, index: number, list: readonly T[]) => R;
 
 /**
- * firstOf(list) reads "the first item of list".
+ * firstOf(list) reads "list xs takes first".
  * Exactly `list[0]` (undefined when empty).
  */
 export function firstOf<T>(list: readonly T[]): T | undefined {
@@ -12,7 +12,7 @@ export function firstOf<T>(list: readonly T[]): T | undefined {
 }
 
 /**
- * lastOf(list) reads "the last item of list".
+ * lastOf(list) reads "list xs takes last".
  * Exactly `list[list.length - 1]` (undefined when empty).
  */
 export function lastOf<T>(list: readonly T[]): T | undefined {
@@ -36,7 +36,7 @@ export function positionWhere<T>(list: readonly T[], test: Visit<T, unknown>): n
 }
 
 /**
- * mapEach(list, (item) => result) reads "each item of list mapped to result".
+ * mapEach(list, (item) => result) reads "clones list xs and maps each with fn".
  * Exactly `list.map(fn)`.
  */
 export function mapEach<T, R>(list: readonly T[], fn: Visit<T, R>): R[] {
@@ -44,7 +44,7 @@ export function mapEach<T, R>(list: readonly T[], fn: Visit<T, R>): R[] {
 }
 
 /**
- * keepWhere(list, test) reads "the items of list where test holds".
+ * keepWhere(list, test) reads "clones list xs and keeps where test".
  * Exactly `list.filter(test)`.
  */
 export function keepWhere<T, S extends T>(list: readonly T[], test: (item: T, index: number, list: readonly T[]) => item is S): S[];
@@ -62,7 +62,7 @@ export function reduceTo<T, R>(list: readonly T[], fn: (total: R, item: T, index
 }
 
 /**
- * findFirst(list, test) reads "the first item of list where test holds".
+ * findFirst(list, test) reads "list xs finds first where test".
  * Exactly `list.find(test)` (undefined when none).
  */
 export function findFirst<T, S extends T>(list: readonly T[], test: (item: T, index: number, list: readonly T[]) => item is S): S | undefined;
@@ -72,7 +72,7 @@ export function findFirst<T>(list: readonly T[], test: Visit<T, unknown>): T | u
 }
 
 /**
- * hasAnyWhere(list, test) reads "whether any item of list passes test".
+ * hasAnyWhere(list, test) reads "checks if xs has any where test".
  * Exactly `list.some(test)`.
  */
 export function hasAnyWhere<T>(list: readonly T[], test: Visit<T, unknown>): boolean {
@@ -80,7 +80,7 @@ export function hasAnyWhere<T>(list: readonly T[], test: Visit<T, unknown>): boo
 }
 
 /**
- * isEveryWhere(list, test) reads "whether every item of list passes test".
+ * isEveryWhere(list, test) reads "checks if xs has only items where test".
  * Exactly `list.every(test)`.
  */
 export function isEveryWhere<T, S extends T>(list: readonly T[], test: (item: T, index: number, list: readonly T[]) => item is S): list is readonly S[];
@@ -101,7 +101,7 @@ function byKey<T>(key: (item: T) => any): (a: T, b: T) => number {
 }
 
 /**
- * sortedBy(list, order) reads "list sorted by order".
+ * sortedBy(list, order) reads "clones list xs and sorts by order".
  * Returns a sorted COPY, never sorting in place. order is a property name ('title'), a
  * one-argument key selector (b => b.title), or a two-argument compare ((a, b) => a.id - b.id),
  * which makes it exactly `list.toSorted(compare)`. With no order it is `list.toSorted()`.
@@ -122,7 +122,7 @@ export function sortedBy<T>(list: readonly T[], order?: SortOrder<T>): T[] {
 }
 
 /**
- * reversed(list) reads "list reversed".
+ * reversed(list) reads "clones list xs and reverses".
  * Exactly `list.toReversed()`: a reversed copy.
  */
 export function reversed<T>(list: readonly T[]): T[] {
@@ -130,7 +130,7 @@ export function reversed<T>(list: readonly T[]): T[] {
 }
 
 /**
- * part(list, from, to) reads "the part of list from from to to".
+ * part(list, from, to) reads "clones list xs and keeps from from to to".
  * Exactly `list.slice(from, to)`.
  */
 export function part<T>(list: readonly T[], from?: number, to?: number): T[] {
@@ -150,7 +150,7 @@ export function concatenated<T>(...lists: ReadonlyArray<readonly T[]>): T[] {
 }
 
 /**
- * flattened(list, depth) reads "list flattened depth levels".
+ * flattened(list, depth) reads "clones list xs and flattens".
  * Exactly `list.flat(depth)` (depth defaults to 1).
  */
 export function flattened<A extends readonly unknown[], D extends number = 1>(list: A, depth?: D): FlatArray<A, D>[] {
@@ -166,7 +166,7 @@ export function flatMapEach<T, R>(list: readonly T[], fn: Visit<T, R | readonly 
 }
 
 /**
- * uniqueOf(list) reads "the unique items of list".
+ * uniqueOf(list) reads "clones list xs and drops duplicates".
  * Exactly `[...new Set(list)]` (first occurrence kept; SameValueZero, so NaN dedupes).
  */
 export function uniqueOf<T>(list: readonly T[]): T[] {

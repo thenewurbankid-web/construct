@@ -1,7 +1,7 @@
 // Type-check atoms: all are type guards.
 
 /**
- * isText(value) reads "whether value is text".
+ * isText(value) reads "checks if value is text".
  * Exactly `typeof value === 'string'`.
  */
 export function isText(value: unknown): value is string {
@@ -9,7 +9,7 @@ export function isText(value: unknown): value is string {
 }
 
 /**
- * isNumber(value) reads "whether value is a number".
+ * isNumber(value) reads "checks if value is number".
  * Exactly `typeof value === 'number'` (NaN included, as typeof does).
  */
 export function isNumber(value: unknown): value is number {
@@ -17,7 +17,7 @@ export function isNumber(value: unknown): value is number {
 }
 
 /**
- * isBoolean(value) reads "whether value is a yes/no value".
+ * isBoolean(value) reads "checks if value is boolean".
  * Exactly `typeof value === 'boolean'`.
  */
 export function isBoolean(value: unknown): value is boolean {
@@ -25,7 +25,7 @@ export function isBoolean(value: unknown): value is boolean {
 }
 
 /**
- * isNothing(value) reads "whether value is nothing".
+ * isNothing(value) reads "checks if value is nothing".
  * Exactly `value == null` (null or undefined, nothing else).
  */
 export function isNothing(value: unknown): value is null | undefined {
@@ -33,7 +33,7 @@ export function isNothing(value: unknown): value is null | undefined {
 }
 
 /**
- * hasKey(obj, key) reads "whether obj has key".
+ * hasKey(obj, key) reads "checks if obj has key key".
  * Exactly `Object.hasOwn(obj, key)` for objects (own keys only, inherited ones don't count);
  * false for null, undefined and primitives.
  */
@@ -75,7 +75,7 @@ export function isObjectType(value: unknown): value is object | null {
 }
 
 /**
- * isA(value, Type) reads "whether value is a Type".
+ * isA(value, Type) reads "checks if value is an instance of Type".
  * Exactly `value instanceof Type`.
  */
 export function isA<C extends abstract new (...args: any[]) => unknown>(value: unknown, type: C): value is InstanceType<C> {

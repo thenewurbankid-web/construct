@@ -1,6 +1,13 @@
 // The fluent facade: the same atoms, read as a sentence. Every chain here ends in a plain
-// value and delegates to exactly one atom, so `checks().if(a).is().equalTo(b)` is `equals(a, b)`.
-// The catalog's `fluent` field is the list of forms; test/fluent.test.mjs holds each one to its atom.
+// value and delegates to exactly one atom, so `checks().if(a).is().greater().than(b)` is
+// `greaterThan(a, b)`. The catalog's `fluent` field is each atom's sentence; test/fluent.test.mjs
+// holds each one to its atom, and test/grammar.test.mjs holds it to the Atomic English rules
+// (ENGLISH-RULES.md): third-person verbs, one argument per word, questions split into words,
+// and a copy said out loud first with `clones()`.
+//
+// The forms before Atomic English (`is().equalTo(b)`, `list(xs).sortedBy(order)`, `choose()`,
+// `match()`, `attempt()`) still work, marked @deprecated; the catalog lists each as
+// `fluentDeprecated`.
 //
 // Imported as `smith/fluent`, apart from the plain atoms: when, choose, match and attempt
 // share their names with the atoms they wrap.
@@ -11,6 +18,63 @@ import type { SortOrder } from '../atoms/lists';
 
 type Visit<T, R> = (item: T, index: number, list: readonly T[]) => R;
 type Constructor = abstract new (...args: any[]) => unknown;
+type ItemOf<A> = A extends readonly (infer T)[] ? T : never;
+/** Turns an atom's yes or no into the question's answer (flipped after `not()`). */
+type Answer = (result: boolean) => boolean;
+
+// ---------------------------------------------------------------- questions: checks().if(x)
+
+/** `is().equal()`: waits for `to(other)`. */
+export class Equal<A> {
+  constructor(private readonly value: A, private readonly answer: Answer) {}
+
+  to(other: A): boolean {
+    return this.answer(atoms.equals(this.value, other));
+  }
+}
+
+/** `is().less()` / `is().greater()`: waits for `than(other)`. */
+export class Than<A> {
+  constructor(
+    private readonly value: A,
+    private readonly answer: Answer,
+    private readonly compare: (a: A & Ordered, b: A & Ordered) => boolean,
+  ) {}
+
+  than(other: A & Ordered): boolean {
+    return this.answer(this.compare(this.value as A & Ordered, other));
+  }
+}
+
+/** `is().at()`: waits for `most(bound)` or `least(bound)`. */
+export class At<A> {
+  constructor(private readonly value: A, private readonly answer: Answer) {}
+
+  most(bound: A & Ordered): boolean {
+    return this.answer(atoms.atMost(this.value as A & Ordered, bound));
+  }
+
+  least(bound: A & Ordered): boolean {
+    return this.answer(atoms.atLeast(this.value as A & Ordered, bound));
+  }
+}
+
+/** `is().an().instance()`: waits for `of(Type)`. */
+export class InstanceOf<A> {
+  constructor(private readonly value: A, private readonly answer: Answer) {}
+
+  of(type: Constructor): boolean {
+    return this.answer(atoms.isA(this.value, type));
+  }
+}
+
+export class An<A> {
+  constructor(private readonly value: A, private readonly answer: Answer) {}
+
+  instance(): InstanceOf<A> {
+    return new InstanceOf<A>(this.value, this.answer);
+  }
+}
 
 /** The comparisons and type checks after `is()`; `not()` flips the answer of the one that follows. */
 export class Is<A> {
@@ -20,28 +84,32 @@ export class Is<A> {
     return this.negated ? !result : result;
   }
 
+  private get answers(): Answer {
+    return (result) => this.answer(result);
+  }
+
   not(): Is<A> {
     return new Is<A>(this.value, !this.negated);
   }
 
-  equalTo(other: A): boolean {
-    return this.answer(atoms.equals(this.value, other));
+  equal(): Equal<A> {
+    return new Equal<A>(this.value, this.answers);
   }
 
-  lessThan(other: A & Ordered): boolean {
-    return this.answer(atoms.lessThan(this.value as A & Ordered, other));
+  less(): Than<A> {
+    return new Than<A>(this.value, this.answers, atoms.lessThan);
   }
 
-  atMost(other: A & Ordered): boolean {
-    return this.answer(atoms.atMost(this.value as A & Ordered, other));
+  greater(): Than<A> {
+    return new Than<A>(this.value, this.answers, atoms.greaterThan);
   }
 
-  greaterThan(other: A & Ordered): boolean {
-    return this.answer(atoms.greaterThan(this.value as A & Ordered, other));
+  at(): At<A> {
+    return new At<A>(this.value, this.answers);
   }
 
-  atLeast(other: A & Ordered): boolean {
-    return this.answer(atoms.atLeast(this.value as A & Ordered, other));
+  an(): An<A> {
+    return new An<A>(this.value, this.answers);
   }
 
   text(): boolean {
@@ -60,17 +128,81 @@ export class Is<A> {
     return this.answer(atoms.isNothing(this.value));
   }
 
+  /** @deprecated Use `is().equal().to(other)`. */
+  equalTo(other: A): boolean {
+    return this.equal().to(other);
+  }
+
+  /** @deprecated Use `is().less().than(other)`. */
+  lessThan(other: A & Ordered): boolean {
+    return this.less().than(other);
+  }
+
+  /** @deprecated Use `is().at().most(other)`. */
+  atMost(other: A & Ordered): boolean {
+    return this.at().most(other);
+  }
+
+  /** @deprecated Use `is().greater().than(other)`. */
+  greaterThan(other: A & Ordered): boolean {
+    return this.greater().than(other);
+  }
+
+  /** @deprecated Use `is().at().least(other)`. */
+  atLeast(other: A & Ordered): boolean {
+    return this.at().least(other);
+  }
+
+  /** @deprecated Use `is().an().instance().of(Type)`. */
   a(type: Constructor): boolean {
-    return this.answer(atoms.isA(this.value, type));
+    return this.an().instance().of(type);
   }
 }
 
-/** The ownership checks after `has()`. */
+/** `has().any()`: waits for `where(test)`. */
+export class HasAny<A> {
+  constructor(private readonly value: A) {}
+
+  where(test: Visit<ItemOf<A>, unknown>): boolean {
+    return atoms.hasAnyWhere(this.value as readonly ItemOf<A>[], test);
+  }
+}
+
+/** `has().only().items()`: waits for `where(test)`; true for an empty list, like `every`. */
+export class HasOnlyItems<A> {
+  constructor(private readonly value: A) {}
+
+  where(test: Visit<ItemOf<A>, unknown>): boolean {
+    return atoms.isEveryWhere(this.value as readonly ItemOf<A>[], test);
+  }
+}
+
+export class HasOnly<A> {
+  constructor(private readonly value: A) {}
+
+  items(): HasOnlyItems<A> {
+    return new HasOnlyItems<A>(this.value);
+  }
+}
+
+/** The ownership and membership checks after `has()`. */
 export class Has<A> {
   constructor(private readonly value: A) {}
 
   key(key: PropertyKey): boolean {
     return atoms.hasKey(this.value, key);
+  }
+
+  item(item: ItemOf<A>): boolean {
+    return atoms.hasItem(this.value as readonly ItemOf<A>[], item);
+  }
+
+  any(): HasAny<A> {
+    return new HasAny<A>(this.value);
+  }
+
+  only(): HasOnly<A> {
+    return new HasOnly<A>(this.value);
   }
 }
 
@@ -98,108 +230,350 @@ export class Checks {
   }
 }
 
-/** checks().if(a).is().equalTo(b) reads "checks if a is equal to b". */
+/** checks().if(a).is().greater().than(b) reads "checks if a is greater than b". */
 export function checks(): Checks {
   return new Checks();
+}
+
+// ---------------------------------------------------------------- copies: clones().<subject>.and()
+
+/** `replaces().every(p)` / `replaces().first(p)`: waits for `with(replacement)`. */
+export class Replacing {
+  constructor(
+    private readonly text: string,
+    private readonly pattern: string | RegExp,
+    private readonly replace: (text: string, pattern: string | RegExp, replacement: string) => string,
+  ) {}
+
+  with(replacement: string): string {
+    return this.replace(this.text, this.pattern, replacement);
+  }
+}
+
+export class Replaces {
+  constructor(private readonly text: string) {}
+
+  every(pattern: string | RegExp): Replacing {
+    return new Replacing(this.text, pattern, atoms.replaceEvery);
+  }
+
+  first(pattern: string | RegExp): Replacing {
+    return new Replacing(this.text, pattern, atoms.replaceFirst);
+  }
+}
+
+/** What a copy of a text does: each verb returns the changed copy. */
+export class TextCopy {
+  constructor(private readonly value: string) {}
+
+  lowercases(): string {
+    return atoms.lowerCase(this.value);
+  }
+
+  uppercases(): string {
+    return atoms.upperCase(this.value);
+  }
+
+  trims(): string {
+    return atoms.trimmed(this.value);
+  }
+
+  replaces(): Replaces {
+    return new Replaces(this.value);
+  }
+}
+
+export class SortsCopy<T> {
+  constructor(private readonly items: readonly T[]) {}
+
+  by(order: SortOrder<T> | undefined): T[] {
+    return atoms.sortedBy(this.items, order);
+  }
+}
+
+export class MapsEach<T> {
+  constructor(private readonly items: readonly T[]) {}
+
+  with<R>(fn: Visit<T, R>): R[] {
+    return atoms.mapEach(this.items, fn);
+  }
+}
+
+export class Maps<T> {
+  constructor(private readonly items: readonly T[]) {}
+
+  each(): MapsEach<T> {
+    return new MapsEach<T>(this.items);
+  }
+}
+
+/** `keeps().from(from)`: waits for `to(to)`. */
+export class KeepsFrom<T> {
+  constructor(private readonly items: readonly T[], private readonly from: number | undefined) {}
+
+  to(to: number | undefined): T[] {
+    return atoms.part(this.items, this.from, to);
+  }
+}
+
+export class Keeps<T> {
+  constructor(private readonly items: readonly T[]) {}
+
+  where<S extends T>(test: (item: T, index: number, list: readonly T[]) => item is S): S[];
+  where(test: Visit<T, unknown>): T[];
+  where(test: Visit<T, unknown>): T[] {
+    return atoms.keepWhere(this.items, test);
+  }
+
+  from(from: number | undefined): KeepsFrom<T> {
+    return new KeepsFrom<T>(this.items, from);
+  }
+}
+
+export class Drops<T> {
+  constructor(private readonly items: readonly T[]) {}
+
+  duplicates(): T[] {
+    return atoms.uniqueOf(this.items);
+  }
+}
+
+/** What a copy of a list does: each verb returns the changed copy. */
+export class ListCopy<T> {
+  constructor(private readonly items: readonly T[]) {}
+
+  sorts(): SortsCopy<T> {
+    return new SortsCopy<T>(this.items);
+  }
+
+  reverses(): T[] {
+    return atoms.reversed(this.items);
+  }
+
+  flattens(): FlatArray<readonly T[], 1>[] {
+    return atoms.flattened(this.items);
+  }
+
+  maps(): Maps<T> {
+    return new Maps<T>(this.items);
+  }
+
+  keeps(): Keeps<T> {
+    return new Keeps<T>(this.items);
+  }
+
+  drops(): Drops<T> {
+    return new Drops<T>(this.items);
+  }
+}
+
+/** `clones().<subject>`: the copy, waiting for `and()` and the verb that changes it. */
+export class Cloned<Copy> {
+  constructor(private readonly copy: Copy) {}
+
+  and(): Copy {
+    return this.copy;
+  }
+}
+
+export class Clones {
+  text(value: string): Cloned<TextCopy> {
+    return new Cloned(new TextCopy(value));
+  }
+
+  list<T>(items: readonly T[]): Cloned<ListCopy<T>> {
+    return new Cloned(new ListCopy<T>(items));
+  }
+}
+
+/** clones().list(xs).and().sorts().by(order) reads "clones list xs and sorts by order"; xs is untouched. */
+export function clones(): Clones {
+  return new Clones();
+}
+
+// ---------------------------------------------------------------- subjects: text(s), list(xs)
+
+export class Splits {
+  constructor(private readonly text: string) {}
+
+  by(separator: string | RegExp): string[] {
+    return atoms.splitBy(this.text, separator);
+  }
 }
 
 export class Text {
   constructor(private readonly value: string) {}
 
+  splits(): Splits {
+    return new Splits(this.value);
+  }
+
+  /** @deprecated Use `clones().text(s).and().lowercases()`. */
   lowerCase(): string {
     return atoms.lowerCase(this.value);
   }
 
+  /** @deprecated Use `clones().text(s).and().uppercases()`. */
   upperCase(): string {
     return atoms.upperCase(this.value);
   }
 
+  /** @deprecated Use `clones().text(s).and().trims()`. */
   trimmed(): string {
     return atoms.trimmed(this.value);
   }
 
+  /** @deprecated Use `text(s).splits().by(separator)`. */
   splitBy(separator: string | RegExp, limit?: number): string[] {
     return atoms.splitBy(this.value, separator, limit);
   }
 
+  /** @deprecated Use `clones().text(s).and().replaces().every(pattern).with(replacement)`. */
   replaceEvery(pattern: string | RegExp, replacement: string): string {
     return atoms.replaceEvery(this.value, pattern, replacement);
   }
 
+  /** @deprecated Use `clones().text(s).and().replaces().first(pattern).with(replacement)`. */
   replaceFirst(pattern: string | RegExp, replacement: string): string {
     return atoms.replaceFirst(this.value, pattern, replacement);
   }
 }
 
-/** text(s).lowerCase() reads "text s, lower case". */
+/** text(s).splits().by(sep) reads "text s splits by sep". */
 export function text(value: string): Text {
   return new Text(value);
+}
+
+export class Joins {
+  constructor(private readonly items: readonly unknown[]) {}
+
+  with(separator: string | undefined): string {
+    return atoms.joinWith(this.items, separator);
+  }
+}
+
+export class Takes<T> {
+  constructor(private readonly items: readonly T[]) {}
+
+  first(): T | undefined {
+    return atoms.firstOf(this.items);
+  }
+
+  last(): T | undefined {
+    return atoms.lastOf(this.items);
+  }
+}
+
+export class FindsFirst<T> {
+  constructor(private readonly items: readonly T[]) {}
+
+  where<S extends T>(test: (item: T, index: number, list: readonly T[]) => item is S): S | undefined;
+  where(test: Visit<T, unknown>): T | undefined;
+  where(test: Visit<T, unknown>): T | undefined {
+    return atoms.findFirst(this.items, test);
+  }
+}
+
+export class Finds<T> {
+  constructor(private readonly items: readonly T[]) {}
+
+  first(): FindsFirst<T> {
+    return new FindsFirst<T>(this.items);
+  }
 }
 
 export class List<T> {
   constructor(private readonly items: readonly T[]) {}
 
+  joins(): Joins {
+    return new Joins(this.items);
+  }
+
+  takes(): Takes<T> {
+    return new Takes<T>(this.items);
+  }
+
+  finds(): Finds<T> {
+    return new Finds<T>(this.items);
+  }
+
+  /** @deprecated Use `checks().if(xs).has().item(x)`. */
   hasItem(item: T, fromIndex?: number): boolean {
     return atoms.hasItem(this.items, item, fromIndex);
   }
 
+  /** @deprecated Use `list(xs).joins().with(separator)`. */
   joinWith(separator?: string): string {
     return atoms.joinWith(this.items, separator);
   }
 
+  /** @deprecated Use `list(xs).takes().first()`. */
   firstOf(): T | undefined {
     return atoms.firstOf(this.items);
   }
 
+  /** @deprecated Use `list(xs).takes().last()`. */
   lastOf(): T | undefined {
     return atoms.lastOf(this.items);
   }
 
+  /** @deprecated Use `clones().list(xs).and().maps().each().with(fn)`. */
   mapEach<R>(fn: Visit<T, R>): R[] {
     return atoms.mapEach(this.items, fn);
   }
 
+  /** @deprecated Use `clones().list(xs).and().keeps().where(test)`. */
   keepWhere(test: Visit<T, unknown>): T[] {
     return atoms.keepWhere(this.items, test);
   }
 
+  /** @deprecated Use `list(xs).finds().first().where(test)`. */
   findFirst(test: Visit<T, unknown>): T | undefined {
     return atoms.findFirst(this.items, test);
   }
 
+  /** @deprecated Use `checks().if(xs).has().any().where(test)`. */
   hasAnyWhere(test: Visit<T, unknown>): boolean {
     return atoms.hasAnyWhere(this.items, test);
   }
 
+  /** @deprecated Use `checks().if(xs).has().only().items().where(test)`. */
   isEveryWhere(test: Visit<T, unknown>): boolean {
     return atoms.isEveryWhere(this.items, test);
   }
 
+  /** @deprecated Use `clones().list(xs).and().sorts().by(order)`. */
   sortedBy(order?: SortOrder<T>): T[] {
     return atoms.sortedBy(this.items, order);
   }
 
+  /** @deprecated Use `clones().list(xs).and().reverses()`. */
   reversed(): T[] {
     return atoms.reversed(this.items);
   }
 
+  /** @deprecated Use `clones().list(xs).and().keeps().from(from).to(to)`. */
   part(from?: number, to?: number): T[] {
     return atoms.part(this.items, from, to);
   }
 
+  /** @deprecated Use `clones().list(xs).and().flattens()`. */
   flattened<D extends number = 1>(depth?: D): FlatArray<readonly T[], D>[] {
     return atoms.flattened(this.items, depth);
   }
 
+  /** @deprecated Use `clones().list(xs).and().drops().duplicates()`. */
   uniqueOf(): T[] {
     return atoms.uniqueOf(this.items);
   }
 }
 
-/** list(xs).mapEach(fn) reads "list xs, map each with fn". */
+/** list(xs).joins().with(sep) reads "list xs joins with sep". */
 export function list<T>(items: readonly T[]): List<T> {
   return new List<T>(items);
 }
+
+// ---------------------------------------------------------------- control flow
 
 export class Yielding<A> {
   constructor(private readonly condition: unknown, private readonly then: Lazy<A>) {}
@@ -217,15 +591,50 @@ export class When {
   }
 }
 
-/** when(c).yields(() => a).otherwise(() => b) reads "when c yields a, otherwise b". */
+/** when(c).yields(() => a).otherwise(() => b) reads "when c yields a otherwise b". */
 export function when(condition: unknown): When {
   return new When(condition);
 }
 
-export class Choice<R> {
-  constructor(private readonly cases: ReadonlyArray<readonly [atoms.Condition, Lazy<unknown>]>) {}
+type Cases = ReadonlyArray<readonly [atoms.Condition, Lazy<unknown>]>;
+
+/** `chooses().when(c)`: waits for `yields(() => body)`. */
+export class ChoosingWhen<R> {
+  constructor(private readonly cases: Cases, private readonly condition: atoms.Condition) {}
+
+  yields<A>(body: Lazy<A>): Choosing<R | A> {
+    return new Choosing<R | A>([...this.cases, [this.condition, body]]);
+  }
+}
+
+export class Choosing<R> {
+  constructor(private readonly cases: Cases) {}
 
   /** A condition may be a thunk, so it is only evaluated when reached, as in a real else-if. */
+  when(condition: atoms.Condition): ChoosingWhen<R> {
+    return new ChoosingWhen<R>(this.cases, condition);
+  }
+
+  otherwise<F>(fallback: Lazy<F>): R | F {
+    return atoms.choose(this.cases, fallback) as R | F;
+  }
+}
+
+export class Chooses {
+  when(condition: atoms.Condition): ChoosingWhen<never> {
+    return new ChoosingWhen<never>([], condition);
+  }
+}
+
+/** chooses().when(c1).yields(() => a).when(c2).yields(() => b).otherwise(() => fallback). */
+export function chooses(): Chooses {
+  return new Chooses();
+}
+
+/** @deprecated The pre-Atomic-English form of `chooses()`. */
+export class Choice<R> {
+  constructor(private readonly cases: Cases) {}
+
   when<A>(condition: atoms.Condition, body: Lazy<A>): Choice<R | A> {
     return new Choice<R | A>([...this.cases, [condition, body]]);
   }
@@ -235,16 +644,31 @@ export class Choice<R> {
   }
 }
 
-/** choose().when(c1, () => a).when(c2, () => b).otherwise(() => fallback) reads "choose: when c1, a; when c2, b; otherwise fallback". */
+/** @deprecated Use `chooses().when(c1).yields(() => a).otherwise(() => fallback)`. */
 export function choose(): Choice<never> {
   return new Choice<never>([]);
 }
 
-export class Matching<R> {
-  constructor(private readonly value: string | number, private readonly cases: Readonly<Record<string, Lazy<unknown>>>) {}
+type MatchCases = Readonly<Record<string, Lazy<unknown>>>;
 
-  on<A>(key: string | number, body: Lazy<A>): Matching<R | A> {
-    return new Matching<R | A>(this.value, { ...this.cases, [key]: body });
+/** `matches().value(v).on(k)`: waits for `yields(() => body)`. */
+export class MatchingOn<R> {
+  constructor(private readonly value: string | number, private readonly cases: MatchCases, private readonly key: string | number) {}
+
+  yields<A>(body: Lazy<A>): Matching<R | A> {
+    return new Matching<R | A>(this.value, { ...this.cases, [this.key]: body });
+  }
+}
+
+export class Matching<R> {
+  constructor(private readonly value: string | number, private readonly cases: MatchCases) {}
+
+  on(key: string | number): MatchingOn<R>;
+  /** @deprecated Use `on(key).yields(() => body)`. */
+  on<A>(key: string | number, body: Lazy<A>): Matching<R | A>;
+  on(key: string | number, body?: Lazy<unknown>): MatchingOn<R> | Matching<unknown> {
+    const next = new MatchingOn<R>(this.value, this.cases, key);
+    return body === undefined ? next : next.yields(body);
   }
 
   otherwise<F>(fallback: Lazy<F>): R | F {
@@ -252,20 +676,106 @@ export class Matching<R> {
   }
 }
 
-/** match(value).on(k, () => a).otherwise(() => fallback) reads "match value: on k, a; otherwise fallback". */
+export class Matches {
+  value(value: string | number): Matching<never> {
+    return new Matching<never>(value, {});
+  }
+}
+
+/** matches().value(v).on(k).yields(() => a).otherwise(() => fallback). */
+export function matches(): Matches {
+  return new Matches();
+}
+
+/** @deprecated Use `matches().value(value).on(k).yields(() => a).otherwise(() => fallback)`. */
 export function match(value: string | number): Matching<never> {
   return new Matching<never>(value, {});
 }
 
-export class Recovering<T, C> {
+/** `cleans().up()`: waits for `with(() => cleanup)`, then runs the attempt. */
+export class CleansUp<R> {
+  constructor(private readonly run: (cleanup: () => void) => R) {}
+
+  with(cleanup: () => void): R {
+    return this.run(cleanup);
+  }
+}
+
+export class Cleans<R> {
+  constructor(private readonly run: (cleanup: () => void) => R) {}
+
+  up(): CleansUp<R> {
+    return new CleansUp<R>(this.run);
+  }
+}
+
+export class AttemptsAndRecovering<T, C> {
   constructor(private readonly body: () => T, private readonly recover: (error: unknown) => C) {}
 
   /** Runs the body, then recover on an error, then cleanup, always last. */
+  cleans(): Cleans<T | C> {
+    return new Cleans<T | C>((cleanup) => atoms.attempt(this.body, this.recover, cleanup));
+  }
+}
+
+export class AttemptsRecovering<T, C> {
+  constructor(private readonly body: () => T, private readonly recover: (error: unknown) => C) {}
+
+  and(): AttemptsAndRecovering<T, C> {
+    return new AttemptsAndRecovering<T, C>(this.body, this.recover);
+  }
+}
+
+export class Recovers<T> {
+  constructor(private readonly body: () => T) {}
+
+  with<C>(recover: (error: unknown) => C): AttemptsRecovering<T, C> {
+    return new AttemptsRecovering<T, C>(this.body, recover);
+  }
+}
+
+export class AttemptsAnd<T> {
+  constructor(private readonly body: () => T) {}
+
+  recovers(): Recovers<T> {
+    return new Recovers<T>(this.body);
+  }
+
+  /** try/finally: runs the body, then cleanup; an error is rethrown. */
+  cleans(): Cleans<T> {
+    return new Cleans<T>((cleanup) => atoms.attempt(this.body, undefined, cleanup));
+  }
+}
+
+export class AttemptsTo<T> {
+  constructor(private readonly body: () => T) {}
+
+  and(): AttemptsAnd<T> {
+    return new AttemptsAnd<T>(this.body);
+  }
+}
+
+export class Attempts {
+  to<T>(body: () => T): AttemptsTo<T> {
+    return new AttemptsTo<T>(body);
+  }
+}
+
+/** attempts().to(() => body).and().recovers().with((e) => recover).and().cleans().up().with(() => cleanup). */
+export function attempts(): Attempts {
+  return new Attempts();
+}
+
+/** @deprecated The pre-Atomic-English form of `attempts()`. */
+export class Recovering<T, C> {
+  constructor(private readonly body: () => T, private readonly recover: (error: unknown) => C) {}
+
   finally(cleanup: () => void): T | C {
     return atoms.attempt(this.body, this.recover, cleanup);
   }
 }
 
+/** @deprecated The pre-Atomic-English form of `attempts()`. */
 export class Attempt<T> {
   constructor(private readonly body: () => T) {}
 
@@ -273,13 +783,12 @@ export class Attempt<T> {
     return new Recovering<T, C>(this.body, recover);
   }
 
-  /** try/finally: runs the body, then cleanup; an error is rethrown. */
   finally(cleanup: () => void): T {
     return atoms.attempt(this.body, undefined, cleanup);
   }
 }
 
-/** attempt(() => body).onFailure((e) => recover).finally(() => cleanup) reads "attempt body; on failure, recover; finally, clean up". */
+/** @deprecated Use `attempts().to(() => body).and().recovers().with((e) => recover).and().cleans().up().with(() => cleanup)`. */
 export function attempt<T>(body: () => T): Attempt<T> {
   return new Attempt<T>(body);
 }

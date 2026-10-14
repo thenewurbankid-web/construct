@@ -9,7 +9,7 @@ function test(condition: Condition): unknown {
 }
 
 /**
- * when(c, () => a, () => b) reads "when c, a, otherwise b".
+ * when(c, () => a, () => b) reads "when c yields a otherwise b".
  * Exactly `c ? a : b` (and if/else as an expression); only the chosen branch runs.
  * Without the third argument it is `if (c) a` and returns undefined when c is falsy.
  */
@@ -23,7 +23,7 @@ export function when(condition: unknown, then: Lazy<unknown>, otherwise?: Lazy<u
 }
 
 /**
- * choose([[c1, () => a], [c2, () => b]], () => fallback) reads "choose a when c1, b when c2, otherwise fallback".
+ * choose([[c1, () => a], [c2, () => b]], () => fallback) reads "chooses when c1 yields a when c2 yields b otherwise fallback".
  * Exactly an `if (c1) … else if (c2) … else …` chain: the first truthy condition wins, later
  * conditions and bodies never run. A condition may be a thunk (`() => c2`) so it is only
  * evaluated when reached, as in a real else-if; a plain value is tested as-is.
@@ -47,7 +47,7 @@ type ResultOf<B> = B extends Lazy<infer R> ? R : never;
 const own = Object.prototype.hasOwnProperty;
 
 /**
- * match(value, cases, () => fallback) reads "match value against cases, otherwise fallback".
+ * match(value, cases, () => fallback) reads "matches value value on k yields a otherwise fallback".
  * Exactly `switch (value) { case k: … default: … }` with === matching on string or number keys.
  * Without a fallback the cases must cover every member of a string/number literal union
  * (a missing case is a compile error), and a value outside the union throws TypeError at runtime.

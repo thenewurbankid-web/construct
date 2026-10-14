@@ -66,7 +66,7 @@
    "generated": false,
    "atom": "equals",
    "module": "comparison",
-   "reads": "a equals b",
+   "reads": "checks if a is equal to b",
    "js": [
     "a === b"
    ],
@@ -98,14 +98,16 @@
      ]
     }
    ],
-   "fluent": "checks().if(a).is().equalTo(b)",
+   "fluent": "checks().if(a).is().equal().to(b)",
+   "fluentDeprecated": "checks().if(a).is().equalTo(b)",
+   "plainName": "isEqualTo",
    "verified": true
   },
   {
    "generated": false,
    "atom": "differs",
    "module": "comparison",
-   "reads": "a differs from b",
+   "reads": "checks if a is not equal to b",
    "js": [
     "a !== b"
    ],
@@ -125,14 +127,16 @@
      ]
     }
    ],
-   "fluent": "checks().if(a).is().not().equalTo(b)",
+   "fluent": "checks().if(a).is().not().equal().to(b)",
+   "fluentDeprecated": "checks().if(a).is().not().equalTo(b)",
+   "plainName": "isNotEqualTo",
    "verified": true
   },
   {
    "generated": false,
    "atom": "lessThan",
    "module": "comparison",
-   "reads": "a is less than b",
+   "reads": "checks if a is less than b",
    "js": [
     "a < b"
    ],
@@ -188,14 +192,16 @@
      ]
     }
    ],
-   "fluent": "checks().if(a).is().lessThan(b)",
+   "fluent": "checks().if(a).is().less().than(b)",
+   "fluentDeprecated": "checks().if(a).is().lessThan(b)",
+   "plainName": "isLessThan",
    "verified": true
   },
   {
    "generated": false,
    "atom": "atMost",
    "module": "comparison",
-   "reads": "a is at most b",
+   "reads": "checks if a is at most b",
    "js": [
     "a <= b"
    ],
@@ -251,14 +257,16 @@
      ]
     }
    ],
-   "fluent": "checks().if(a).is().atMost(b)",
+   "fluent": "checks().if(a).is().at().most(b)",
+   "fluentDeprecated": "checks().if(a).is().atMost(b)",
+   "plainName": "isAtMost",
    "verified": true
   },
   {
    "generated": false,
    "atom": "greaterThan",
    "module": "comparison",
-   "reads": "a is greater than b",
+   "reads": "checks if a is greater than b",
    "js": [
     "a > b"
    ],
@@ -314,14 +322,16 @@
      ]
     }
    ],
-   "fluent": "checks().if(a).is().greaterThan(b)",
+   "fluent": "checks().if(a).is().greater().than(b)",
+   "fluentDeprecated": "checks().if(a).is().greaterThan(b)",
+   "plainName": "isGreaterThan",
    "verified": true
   },
   {
    "generated": false,
    "atom": "atLeast",
    "module": "comparison",
-   "reads": "a is at least b",
+   "reads": "checks if a is at least b",
    "js": [
     "a >= b"
    ],
@@ -377,7 +387,9 @@
      ]
     }
    ],
-   "fluent": "checks().if(a).is().atLeast(b)",
+   "fluent": "checks().if(a).is().at().least(b)",
+   "fluentDeprecated": "checks().if(a).is().atLeast(b)",
+   "plainName": "isAtLeast",
    "verified": true
   },
   {
@@ -731,7 +743,7 @@
    "generated": false,
    "atom": "and",
    "module": "logic",
-   "reads": "a and b",
+   "reads": "checks if a and b",
    "js": [
     "a && b"
    ],
@@ -813,7 +825,7 @@
    "generated": false,
    "atom": "when",
    "module": "branching",
-   "reads": "when c, a, otherwise b",
+   "reads": "when c yields a otherwise b",
    "js": [
     "c ? a : b",
     "if (c) { a } else { b }"
@@ -848,7 +860,7 @@
    "generated": false,
    "atom": "choose",
    "module": "branching",
-   "reads": "choose a when c1, b when c2, otherwise fallback",
+   "reads": "chooses when c1 yields a when c2 yields b otherwise fallback",
    "js": [
     "if (c1) { a } else if (c2) { b } else { fallback }",
     "c1 ? a : c2 ? b : fallback"
@@ -856,35 +868,38 @@
    "pure": true,
    "mutates": false,
    "verifiedBy": "test/core.test.mjs (if/else-if chain property)",
-   "fluent": "choose().when(c1, () => a).when(c2, () => b).otherwise(() => fallback)",
+   "fluent": "chooses().when(c1).yields(() => a).when(c2).yields(() => b).otherwise(() => fallback)",
+   "fluentDeprecated": "choose().when(c1, () => a).when(c2, () => b).otherwise(() => fallback)",
    "verified": true
   },
   {
    "generated": false,
    "atom": "match",
    "module": "branching",
-   "reads": "match value against cases, otherwise fallback",
+   "reads": "matches value value on k yields a otherwise fallback",
    "js": [
     "switch (value) { case k: … default: … }"
    ],
    "pure": true,
    "mutates": false,
    "verifiedBy": "test/core.test.mjs (switch property)",
-   "fluent": "match(value).on(k, () => a).otherwise(() => fallback)",
+   "fluent": "matches().value(value).on(k).yields(() => a).otherwise(() => fallback)",
+   "fluentDeprecated": "match(value).on(k, () => a).otherwise(() => fallback)",
    "verified": true
   },
   {
    "generated": false,
    "atom": "attempt",
    "module": "errors",
-   "reads": "attempt body, recover from an error, then clean up",
+   "reads": "attempts to body and recovers with recover and cleans up with cleanup",
    "js": [
     "try { body } catch (e) { recover(e) } finally { cleanup }"
    ],
    "pure": true,
    "mutates": false,
    "verifiedBy": "test/core.test.mjs (try/catch/finally order property)",
-   "fluent": "attempt(() => body).onFailure((e) => recover).finally(() => cleanup)",
+   "fluent": "attempts().to(() => body).and().recovers().with((e) => recover).and().cleans().up().with(() => cleanup)",
+   "fluentDeprecated": "attempt(() => body).onFailure((e) => recover).finally(() => cleanup)",
    "verified": true
   },
   {
@@ -989,7 +1004,7 @@
    "generated": false,
    "atom": "isText",
    "module": "checks",
-   "reads": "whether value is text",
+   "reads": "checks if value is text",
    "js": [
     "typeof value === 'string'"
    ],
@@ -1012,7 +1027,7 @@
    "generated": false,
    "atom": "isNumber",
    "module": "checks",
-   "reads": "whether value is a number",
+   "reads": "checks if value is number",
    "js": [
     "typeof value === 'number'"
    ],
@@ -1035,7 +1050,7 @@
    "generated": false,
    "atom": "isBoolean",
    "module": "checks",
-   "reads": "whether value is a yes/no value",
+   "reads": "checks if value is boolean",
    "js": [
     "typeof value === 'boolean'"
    ],
@@ -1058,7 +1073,7 @@
    "generated": false,
    "atom": "isNothing",
    "module": "checks",
-   "reads": "whether value is nothing",
+   "reads": "checks if value is nothing",
    "js": [
     "value == null",
     "value === null || value === undefined"
@@ -1082,7 +1097,7 @@
    "generated": false,
    "atom": "hasKey",
    "module": "checks",
-   "reads": "whether obj has key",
+   "reads": "checks if obj has key key",
    "js": [
     "Object.hasOwn(obj, key)",
     "Object.prototype.hasOwnProperty.call(obj, key)",
@@ -1213,7 +1228,7 @@
    "generated": false,
    "atom": "isA",
    "module": "checks",
-   "reads": "whether value is a Type",
+   "reads": "checks if value is an instance of Type",
    "js": [
     "value instanceof type"
    ],
@@ -1233,7 +1248,9 @@
      ]
     }
    ],
-   "fluent": "checks().if(value).is().a(Type)",
+   "fluent": "checks().if(value).is().an().instance().of(Type)",
+   "fluentDeprecated": "checks().if(value).is().a(Type)",
+   "plainName": "isAnInstanceOf",
    "verified": true
   },
   {
@@ -1382,7 +1399,7 @@
    "generated": false,
    "atom": "hasItem",
    "module": "sequences",
-   "reads": "whether list has item in it",
+   "reads": "checks if xs has item x",
    "js": [
     "list.includes(item, fromIndex)"
    ],
@@ -1409,19 +1426,21 @@
      ]
     }
    ],
-   "fluent": "list(xs).hasItem(x)",
+   "fluent": "checks().if(xs).has().item(x)",
+   "fluentDeprecated": "list(xs).hasItem(x)",
    "verified": true
   },
   {
    "generated": false,
    "atom": "lowerCase",
    "module": "text",
-   "reads": "text in lower case",
+   "reads": "clones text s and lowercases",
    "js": [
     "text.toLowerCase()"
    ],
    "pure": true,
    "mutates": false,
+   "returnsCopy": true,
    "covers": [
     "String#toLowerCase"
    ],
@@ -1435,19 +1454,22 @@
      ]
     }
    ],
-   "fluent": "text(s).lowerCase()",
+   "fluent": "clones().text(s).and().lowercases()",
+   "fluentDeprecated": "text(s).lowerCase()",
+   "plainName": "clonesAndLowercases",
    "verified": true
   },
   {
    "generated": false,
    "atom": "upperCase",
    "module": "text",
-   "reads": "text in upper case",
+   "reads": "clones text s and uppercases",
    "js": [
     "text.toUpperCase()"
    ],
    "pure": true,
    "mutates": false,
+   "returnsCopy": true,
    "covers": [
     "String#toUpperCase"
    ],
@@ -1461,19 +1483,22 @@
      ]
     }
    ],
-   "fluent": "text(s).upperCase()",
+   "fluent": "clones().text(s).and().uppercases()",
+   "fluentDeprecated": "text(s).upperCase()",
+   "plainName": "clonesAndUppercases",
    "verified": true
   },
   {
    "generated": false,
    "atom": "trimmed",
    "module": "text",
-   "reads": "text without surrounding spaces",
+   "reads": "clones text s and trims",
    "js": [
     "text.trim()"
    ],
    "pure": true,
    "mutates": false,
+   "returnsCopy": true,
    "covers": [
     "String#trim"
    ],
@@ -1487,7 +1512,9 @@
      ]
     }
    ],
-   "fluent": "text(s).trimmed()",
+   "fluent": "clones().text(s).and().trims()",
+   "fluentDeprecated": "text(s).trimmed()",
+   "plainName": "clonesAndTrims",
    "verified": true
   },
   {
@@ -1560,7 +1587,7 @@
    "generated": false,
    "atom": "splitBy",
    "module": "text",
-   "reads": "text split by separator",
+   "reads": "text s splits by sep",
    "js": [
     "text.split(separator, limit)"
    ],
@@ -1603,14 +1630,16 @@
      ]
     }
    ],
-   "fluent": "text(s).splitBy(sep)",
+   "fluent": "text(s).splits().by(sep)",
+   "fluentDeprecated": "text(s).splitBy(sep)",
+   "plainName": "splitsBy",
    "verified": true
   },
   {
    "generated": false,
    "atom": "joinWith",
    "module": "text",
-   "reads": "list joined with separator",
+   "reads": "list xs joins with sep",
    "js": [
     "list.join(separator)"
    ],
@@ -1645,19 +1674,22 @@
      ]
     }
    ],
-   "fluent": "list(xs).joinWith(sep)",
+   "fluent": "list(xs).joins().with(sep)",
+   "fluentDeprecated": "list(xs).joinWith(sep)",
+   "plainName": "joinsWith",
    "verified": true
   },
   {
    "generated": false,
    "atom": "replaceEvery",
    "module": "text",
-   "reads": "text with every pattern replaced by replacement",
+   "reads": "clones text s and replaces every p with r",
    "js": [
     "text.replaceAll(pattern, replacement)"
    ],
    "pure": true,
    "mutates": false,
+   "returnsCopy": true,
    "covers": [
     "String#replaceAll"
    ],
@@ -1696,19 +1728,22 @@
     }
    ],
    "note": "a RegExp without the g flag is made global instead of throwing",
-   "fluent": "text(s).replaceEvery(p, r)",
+   "fluent": "clones().text(s).and().replaces().every(p).with(r)",
+   "fluentDeprecated": "text(s).replaceEvery(p, r)",
+   "plainName": "clonesAndReplacesEveryWith",
    "verified": true
   },
   {
    "generated": false,
    "atom": "replaceFirst",
    "module": "text",
-   "reads": "text with the first pattern replaced by replacement",
+   "reads": "clones text s and replaces first p with r",
    "js": [
     "text.replace(pattern, replacement)"
    ],
    "pure": true,
    "mutates": false,
+   "returnsCopy": true,
    "check": [
     {
      "params": [
@@ -1744,7 +1779,9 @@
     }
    ],
    "note": "a global RegExp still replaces only the first match, so String#replace with a global RegExp maps to replaceText instead",
-   "fluent": "text(s).replaceFirst(p, r)",
+   "fluent": "clones().text(s).and().replaces().first(p).with(r)",
+   "fluentDeprecated": "text(s).replaceFirst(p, r)",
+   "plainName": "clonesAndReplacesFirstWith",
    "verified": true
   },
   {
@@ -1908,7 +1945,7 @@
    "generated": false,
    "atom": "firstOf",
    "module": "lists",
-   "reads": "the first item of list",
+   "reads": "list xs takes first",
    "js": [
     "list[0]",
     "list.at(0)"
@@ -1925,14 +1962,16 @@
      ]
     }
    ],
-   "fluent": "list(xs).firstOf()",
+   "fluent": "list(xs).takes().first()",
+   "fluentDeprecated": "list(xs).firstOf()",
+   "plainName": "takesFirst",
    "verified": true
   },
   {
    "generated": false,
    "atom": "lastOf",
    "module": "lists",
-   "reads": "the last item of list",
+   "reads": "list xs takes last",
    "js": [
     "list[list.length - 1]",
     "list.at(-1)"
@@ -1949,7 +1988,9 @@
      ]
     }
    ],
-   "fluent": "list(xs).lastOf()",
+   "fluent": "list(xs).takes().last()",
+   "fluentDeprecated": "list(xs).lastOf()",
+   "plainName": "takesLast",
    "verified": true
   },
   {
@@ -2018,12 +2059,13 @@
    "generated": false,
    "atom": "mapEach",
    "module": "lists",
-   "reads": "each item of list mapped to result",
+   "reads": "clones list xs and maps each with fn",
    "js": [
     "list.map(fn)"
    ],
    "pure": true,
    "mutates": false,
+   "returnsCopy": true,
    "covers": [
     "Array#map"
    ],
@@ -2042,19 +2084,22 @@
     }
    ],
    "note": "thisArg is not supported (use an arrow function)",
-   "fluent": "list(xs).mapEach(fn)",
+   "fluent": "clones().list(xs).and().maps().each().with(fn)",
+   "fluentDeprecated": "list(xs).mapEach(fn)",
+   "plainName": "clonesAndMapsEachWith",
    "verified": true
   },
   {
    "generated": false,
    "atom": "keepWhere",
    "module": "lists",
-   "reads": "the items of list where test holds",
+   "reads": "clones list xs and keeps where test",
    "js": [
     "list.filter(test)"
    ],
    "pure": true,
    "mutates": false,
+   "returnsCopy": true,
    "covers": [
     "Array#filter"
    ],
@@ -2072,7 +2117,9 @@
      ]
     }
    ],
-   "fluent": "list(xs).keepWhere(test)",
+   "fluent": "clones().list(xs).and().keeps().where(test)",
+   "fluentDeprecated": "list(xs).keepWhere(test)",
+   "plainName": "clonesAndKeepsWhere",
    "verified": true
   },
   {
@@ -2113,7 +2160,7 @@
    "generated": false,
    "atom": "findFirst",
    "module": "lists",
-   "reads": "the first item of list where test holds",
+   "reads": "list xs finds first where test",
    "js": [
     "list.find(test)"
    ],
@@ -2136,14 +2183,16 @@
      ]
     }
    ],
-   "fluent": "list(xs).findFirst(test)",
+   "fluent": "list(xs).finds().first().where(test)",
+   "fluentDeprecated": "list(xs).findFirst(test)",
+   "plainName": "findsFirstWhere",
    "verified": true
   },
   {
    "generated": false,
    "atom": "hasAnyWhere",
    "module": "lists",
-   "reads": "whether any item of list passes test",
+   "reads": "checks if xs has any where test",
    "js": [
     "list.some(test)"
    ],
@@ -2166,14 +2215,15 @@
      ]
     }
    ],
-   "fluent": "list(xs).hasAnyWhere(test)",
+   "fluent": "checks().if(xs).has().any().where(test)",
+   "fluentDeprecated": "list(xs).hasAnyWhere(test)",
    "verified": true
   },
   {
    "generated": false,
    "atom": "isEveryWhere",
    "module": "lists",
-   "reads": "whether every item of list passes test",
+   "reads": "checks if xs has only items where test",
    "js": [
     "list.every(test)"
    ],
@@ -2196,20 +2246,23 @@
      ]
     }
    ],
-   "fluent": "list(xs).isEveryWhere(test)",
+   "fluent": "checks().if(xs).has().only().items().where(test)",
+   "fluentDeprecated": "list(xs).isEveryWhere(test)",
+   "plainName": "hasOnlyItemsWhere",
    "verified": true
   },
   {
    "generated": false,
    "atom": "sortedBy",
    "module": "lists",
-   "reads": "list sorted by order",
+   "reads": "clones list xs and sorts by order",
    "js": [
     "list.toSorted(order)",
     "[...list].sort(order)"
    ],
    "pure": true,
    "mutates": false,
+   "returnsCopy": true,
    "covers": [
     "Array#toSorted",
     "Array#sort"
@@ -2241,20 +2294,23 @@
     }
    ],
    "note": "also takes a property name or a one-argument key selector; a compare function with exactly one declared parameter is treated as a key selector",
-   "fluent": "list(xs).sortedBy(order)",
+   "fluent": "clones().list(xs).and().sorts().by(order)",
+   "fluentDeprecated": "list(xs).sortedBy(order)",
+   "plainName": "clonesAndSortsBy",
    "verified": true
   },
   {
    "generated": false,
    "atom": "reversed",
    "module": "lists",
-   "reads": "list reversed",
+   "reads": "clones list xs and reverses",
    "js": [
     "list.toReversed()",
     "[...list].reverse()"
    ],
    "pure": true,
    "mutates": false,
+   "returnsCopy": true,
    "covers": [
     "Array#toReversed",
     "Array#reverse"
@@ -2269,19 +2325,22 @@
      ]
     }
    ],
-   "fluent": "list(xs).reversed()",
+   "fluent": "clones().list(xs).and().reverses()",
+   "fluentDeprecated": "list(xs).reversed()",
+   "plainName": "clonesAndReverses",
    "verified": true
   },
   {
    "generated": false,
    "atom": "part",
    "module": "lists",
-   "reads": "the part of list from from to to",
+   "reads": "clones list xs and keeps from from to to",
    "js": [
     "list.slice(from, to)"
    ],
    "pure": true,
    "mutates": false,
+   "returnsCopy": true,
    "covers": [
     "Array#slice"
    ],
@@ -2303,7 +2362,9 @@
      ]
     }
    ],
-   "fluent": "list(xs).part(from, to)",
+   "fluent": "clones().list(xs).and().keeps().from(from).to(to)",
+   "fluentDeprecated": "list(xs).part(from, to)",
+   "plainName": "clonesAndKeepsFromTo",
    "verified": true
   },
   {
@@ -2337,12 +2398,13 @@
    "generated": false,
    "atom": "flattened",
    "module": "lists",
-   "reads": "list flattened depth levels",
+   "reads": "clones list xs and flattens",
    "js": [
     "list.flat(depth)"
    ],
    "pure": true,
    "mutates": false,
+   "returnsCopy": true,
    "covers": [
     "Array#flat"
    ],
@@ -2360,7 +2422,9 @@
      ]
     }
    ],
-   "fluent": "list(xs).flattened()",
+   "fluent": "clones().list(xs).and().flattens()",
+   "fluentDeprecated": "list(xs).flattened()",
+   "plainName": "clonesAndFlattens",
    "verified": true
   },
   {
@@ -2396,13 +2460,14 @@
    "generated": false,
    "atom": "uniqueOf",
    "module": "lists",
-   "reads": "the unique items of list",
+   "reads": "clones list xs and drops duplicates",
    "js": [
     "[...new Set(list)]",
     "Array.from(new Set(list))"
    ],
    "pure": true,
    "mutates": false,
+   "returnsCopy": true,
    "check": [
     {
      "params": [
@@ -2413,7 +2478,9 @@
      ]
     }
    ],
-   "fluent": "list(xs).uniqueOf()",
+   "fluent": "clones().list(xs).and().drops().duplicates()",
+   "fluentDeprecated": "list(xs).uniqueOf()",
+   "plainName": "clonesAndDropsDuplicates",
    "verified": true
   },
   {
