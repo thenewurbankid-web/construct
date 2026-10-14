@@ -20,7 +20,7 @@ const ENTRY = ['checks', 'clones', 'text', 'list', 'when', 'chooses', 'matches',
 const DEPRECATED_ENTRY = ['choose', 'match', 'attempt'];
 const ENTRIES = [...ENTRY, ...DEPRECATED_ENTRY];
 // R9: the starts that only every() sentences use, and the placeholders their bodies name.
-const EVERY_ENTRY = ['every', 'the', 'folds'];
+const EVERY_ENTRY = ['every', 'the', 'folds', 'does'];
 const PLACEHOLDERS = everyGrammar.placeholders;
 // The fluent forms use shorter names than the atoms' parameters.
 const SHORT = { list: 'xs', item: 'x', text: 's', separator: 'sep', pattern: 'p', replacement: 'r', compare: 'order', type: 'Type' };
@@ -194,10 +194,11 @@ describe('every() sentences (R9)', () => {
   const names = [...ENTRIES, ...EVERY_ENTRY, ...PLACEHOLDERS, 'xs', 'rows'];
   const sentence = (source) => new Function(...names, `return (${source});`);
   const say = (source, xs) => sentence(source)(...[...ENTRIES, ...EVERY_ENTRY, ...PLACEHOLDERS].map((k) => fluent[k]), xs, xs);
-  const plain = (js, xs) => new Function('xs', 'rows', `return (${js});`)(xs, xs);
+  const plain = (js, xs) => new Function('xs', 'rows', 'delay', `return (${js});`)(xs, xs, smith.delay);
   // Every kind of primitive, so a TypeError the plain callback throws (5n * 2) is thrown here too.
   const lists = { list: arb('list'), nums: arb('nums'), ints: fc.array(fc.integer({ min: -9, max: 9 }), { maxLength: 8 }) };
   const kinds = {
+    nothing: (r) => r === undefined,
     list: (r, xs) => Array.isArray(r) && r !== xs,
     boolean: (r) => typeof r === 'boolean',
     item: (r, xs) => r === undefined || xs.some((v) => Object.is(v, r)),
@@ -242,6 +243,111 @@ describe('every() sentences (R9)', () => {
       });
     }
   }
+
+  // The index (at(i)) and does() forms.
+  for (const { js, fluent: form } of everyGrammar.shapes) {
+    const kind = everyGrammar.starts[form.match(/^(\w+)/)[1]];
+    for (const [gen, arbitrary] of Object.entries(lists)) {
+      test(`${form} == ${js} [${gen}]`, async () => {
+        await fc.assert(
+          fc.asyncProperty(arbitrary, async (xs) => {
+            const input = clone(xs);
+            const got = await outcome(() => say(form, input));
+            sameOutcome(got, await outcome(() => plain(js, clone(xs))), `${form} vs ${js}`);
+            assert.deepStrictEqual(input, xs, 'xs is left alone');
+            if ('ok' in got) assert.ok(kinds[kind](say(form, input), input), `${form} returns ${kind}`);
+          }),
+          { numRuns: NUM_RUNS },
+        );
+      });
+    }
+  }
+
+  // Async bodies, on a fake setTimeout (delay reads it on every call): a timer fires on a later
+  // macrotask, shortest first, so the log shows when each timer is set (s) and fires (f), and
+  // `most` how many were waiting at once. The sentence and its plain-JS twin must give the same
+  // result and the same log: one at a time by default, all at once after all().at().once().
+  async function timed(fn) {
+    const real = globalThis.setTimeout;
+    const pending = [];
+    const log = [];
+    let seq = 0;
+    let most = 0;
+    globalThis.setTimeout = (callback, ms) => {
+      pending.push({ callback, ms, seq: seq++ });
+      most = Math.max(most, pending.length);
+      log.push(`s${ms}`);
+      setImmediate(() => {
+        pending.sort((a, b) => a.ms - b.ms || a.seq - b.seq);
+        const t = pending.shift();
+        log.push(`f${t.ms}`);
+        t.callback();
+      });
+    };
+    try {
+      const result = fn();
+      const promised = result instanceof Promise;
+      return { promised, outcome: await outcome(() => result), log, most };
+    } finally {
+      globalThis.setTimeout = real;
+    }
+  }
+  const waits = { ms: fc.array(fc.integer({ min: 0, max: 30 }), { maxLength: 6 }) };
+  const waitRows = { rows: fc.array(waits.ms, { maxLength: 4 }) };
+  for (const [group, gens] of [[everyGrammar.async, waits], [everyGrammar.nestedAsync, waitRows]]) {
+    for (const { js, kind, fluent: form } of group) {
+      const together = form.includes('all().at().once()');
+      test(`${form} == ${js}`, async () => {
+        await fc.assert(
+          fc.asyncProperty(Object.values(gens)[0], async (xs) => {
+            const got = await timed(() => say(form, clone(xs)));
+            const want = await timed(() => plain(js, clone(xs)));
+            assert.ok(got.promised, `${form} returns a Promise`);
+            sameOutcome(got.outcome, want.outcome, `${form} vs ${js}`);
+            assert.deepEqual(got.log, want.log, 'the same timers, set and fired in the same order');
+            if ('ok' in got.outcome) assert.ok(kinds[kind](got.outcome.ok, xs), `${form} resolves to ${kind}`);
+            const n = form.startsWith('every(x).in(rows)') ? Math.min(1, xs.flat().length) : together ? xs.length : Math.min(1, xs.length);
+            assert.equal(got.most, n, together ? 'all at once' : 'one at a time');
+          }),
+          { numRuns: NUM_RUNS },
+        );
+      });
+    }
+  }
+
+  test('one at a time vs all().at().once(), on real timers: finishing order and wall time', async () => {
+    const { every, does, x } = fluent;
+    const run = async (sentence) => {
+      const real = globalThis.setTimeout;
+      const fired = [];
+      globalThis.setTimeout = (callback, ms) => real(() => (fired.push(ms), callback()), ms);
+      const started = performance.now();
+      try {
+        await sentence();
+      } finally {
+        globalThis.setTimeout = real;
+      }
+      return { fired, ms: performance.now() - started };
+    };
+    const ms = [60, 20, 40];
+    const one = await run(() => every(x).in(ms).is().mapped().to().clone().by().waiting(x));
+    const all = await run(() => every(x).in(ms).all().at().once().is().mapped().to().clone().by().waiting(x));
+    const each = await run(() => does().every(x).in(ms).by().waiting(x));
+    assert.deepEqual(one.fired, [60, 20, 40]);
+    assert.deepEqual(each.fired, [60, 20, 40]);
+    assert.deepEqual(all.fired, [20, 40, 60]);
+    assert.ok(one.ms >= 115 && each.ms >= 115, `one at a time waits for the sum (${one.ms.toFixed(0)}, ${each.ms.toFixed(0)} ms)`);
+    assert.ok(all.ms < 115, `all at once waits for the longest (${all.ms.toFixed(0)} ms)`);
+  });
+
+  test('an async body on an empty list still returns a Promise; a sync body never does', async () => {
+    const { every, does, x } = fluent;
+    const empty = does().every(x).in([]).by().waiting(x);
+    assert.ok(empty instanceof Promise);
+    assert.equal(await empty, undefined);
+    assert.deepEqual(await every(x).in([]).all().at().once().is().mapped().to().clone().by().waiting(x), []);
+    assert.equal(does().every(x).in([1]).all().at().once().by().multiplying(x).by(2), undefined);
+  });
 
   test('to().clone() is a new list, never xs; the items are what the body returns', () => {
     const xs = [1, 2];

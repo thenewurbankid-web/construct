@@ -918,23 +918,25 @@
       "uniqueOf": "clonesAndDropsDuplicates"
     },
     "every": {
-      "$comment": "R9: arrow functions become every() sentences. A binder (every, any, first) takes an imported placeholder and is followed by in(list); everything after that in() is inside the every() sentence, where participles, -ing forms and is()-actions are allowed (R1, R4) and the copy is said as to().clone() (R5). `starts` is the first word of each sentence and the one kind of result it decides. `bodyAtoms` are the body words, one atom each; a body is exactly one of them. `sentences` is the R9 table and `nested` the nested callbacks (every(y).in(x)), each with its plain-JS twin; test/fluent.test.mjs runs both, test/grammar.test.mjs holds them to the rules.",
+      "$comment": "R9: arrow functions become every() sentences. A binder (every, any, first) takes an imported placeholder and is followed by in(list); everything after that in() is inside the every() sentence, where participles, -ing forms and is()-actions are allowed (R1, R4) and the copy is said as to().clone() (R5). `starts` is the first word of each sentence and the one kind of result it decides. `bodyAtoms` are the body words, one atom each; a body is exactly one of them. `sentences` is the R9 table and `nested` the nested callbacks (every(y).in(x)), `shapes` the index (at(i)) and does() forms, `async` and `nestedAsync` the async bodies (one at a time, or all().at().once()), each with its plain-JS twin; test/fluent.test.mjs runs both, test/grammar.test.mjs holds them to the rules.",
       "starts": {
         "every": "list",
         "checks": "boolean",
         "the": "item",
-        "folds": "value"
+        "folds": "value",
+        "does": "nothing"
       },
       "binders": ["every", "any", "first"],
-      "placeholders": ["x", "y", "item", "total"],
+      "placeholders": ["x", "y", "item", "total", "i"],
       "participles": ["mapped", "kept"],
-      "gerunds": ["multiplying", "adding"],
-      "roleWords": ["in", "into", "multiplying", "adding"],
-      "words": ["clone", "positive", "that", "starting", "the", "folds"],
+      "gerunds": ["multiplying", "adding", "waiting"],
+      "roleWords": ["in", "into", "multiplying", "adding", "waiting"],
+      "words": ["clone", "positive", "that", "starting", "the", "folds", "all", "once"],
       "bodyAtoms": {
         "multiplying": "times",
         "adding": "plus",
-        "positive": "greaterThan"
+        "positive": "greaterThan",
+        "waiting": "delay"
       },
       "sentences": [
         { "js": "xs.map((x) => x * 2)", "fluent": "every(x).in(xs).is().mapped().to().clone().by().multiplying(x).by(2)" },
@@ -949,6 +951,23 @@
         { "js": "rows.map((x) => x.filter((y) => y > 0))", "fluent": "every(x).in(rows).is().mapped().to().clone().by().every(y).in(x).is().kept().if(y).is().positive()" },
         { "js": "rows.filter((x) => x.some((y) => y > 0))", "fluent": "every(x).in(rows).is().kept().if().any(y).in(x).is().positive()" },
         { "js": "rows.filter((x) => x.every((y) => y > 0))", "fluent": "every(x).in(rows).is().kept().if().every(y).in(x).is().positive()" }
+      ],
+      "shapes": [
+        { "js": "xs.map((x, i) => x * i)", "fluent": "every(x).at(i).in(xs).is().mapped().to().clone().by().multiplying(x).by(i)" },
+        { "js": "xs.filter((x, i) => i > 0)", "fluent": "every(x).at(i).in(xs).is().kept().if(i).is().positive()" },
+        { "js": "xs.reduce((total, x, i) => total + i, 0)", "fluent": "folds().every(x).at(i).in(xs).into(total).starting().at(0).by().adding(i).to(total)" },
+        { "js": "xs.forEach((x) => x * 2)", "fluent": "does().every(x).in(xs).by().multiplying(x).by(2)" },
+        { "js": "xs.forEach((x, i) => x * i)", "fluent": "does().every(x).at(i).in(xs).by().multiplying(x).by(i)" }
+      ],
+      "async": [
+        { "kind": "list", "js": "(async () => { const out = []; for (const x of xs) out.push(await delay(x)); return out; })()", "fluent": "every(x).in(xs).is().mapped().to().clone().by().waiting(x)" },
+        { "kind": "list", "js": "Promise.all(xs.map(async (x) => delay(x)))", "fluent": "every(x).in(xs).all().at().once().is().mapped().to().clone().by().waiting(x)" },
+        { "kind": "nothing", "js": "(async () => { for (const x of xs) await delay(x); })()", "fluent": "does().every(x).in(xs).by().waiting(x)" },
+        { "kind": "nothing", "js": "Promise.all(xs.map(async (x) => { await delay(x); })).then(() => undefined)", "fluent": "does().every(x).in(xs).all().at().once().by().waiting(x)" },
+        { "kind": "nothing", "js": "(async () => { for (const [i, x] of xs.entries()) await delay(i); })()", "fluent": "does().every(x).at(i).in(xs).by().waiting(i)" }
+      ],
+      "nestedAsync": [
+        { "kind": "list", "js": "(async () => { const out = []; for (const x of rows) { const inner = []; for (const y of x) inner.push(await delay(y)); out.push(inner); } return out; })()", "fluent": "every(x).in(rows).is().mapped().to().clone().by().every(y).in(x).is().mapped().to().clone().by().waiting(y)" }
       ]
     }
   }
