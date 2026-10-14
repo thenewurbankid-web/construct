@@ -262,3 +262,32 @@ test('run-next: the files a landed step saved go to the live index (lsp.update) 
     assert.ok(calls[0].includes('features/orders/components/StatusBadge.tsx'), JSON.stringify(calls));
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
+
+test('read-only: warm reuse of stored entries, misses kept in memory, nothing written until makeWritable()', async () => {
+  const p = project();
+  try {
+    await createLineLsp(p.root, base(p, { smithModule: p.stub })); // writes the store
+    const tree = () => fs.readdirSync(p.root, { recursive: true }).sort().map((f) => { const a = path.join(p.root, f); return fs.statSync(a).isFile() ? `${f}:${fs.statSync(a).mtimeMs}:${fs.readFileSync(a, 'utf8').length}` : f; }).join('|');
+    p.w('features/browse/domains/count.ts', 'export function count(xs: string[]): number {\n  return xs.length * 1;\n}\n');
+    const before = tree();
+    clearHostCache();
+    const c = await counting(p.stub);
+    const ro = await createLineLsp(p.root, base(p, { smithIndex: c.fn, readOnly: true, background: true, watch: true }));
+    assert.equal(ro.readOnly, true);
+    assert.equal(ro.cold.misses, 1, 'only the changed file is computed');
+    assert.ok(ro.cold.hits >= 3, 'the rest is reused from the store');
+    assert.equal(c.calls, 2);
+    assert.equal(ro.background, null);
+    assert.equal(ro.watching, false);
+    assert.deepEqual(ro.symbol('browse/domains/count').smith, ['it does count']);
+    assert.equal(tree(), before, 'nothing was written');
+    const w = await ro.makeWritable({ background: false, watch: false });
+    assert.equal(w.flushed, 1);
+    assert.equal(ro.readOnly, false);
+    clearHostCache();
+    const c2 = await counting(p.stub);
+    const again = await createLineLsp(p.root, base(p, { smithIndex: c2.fn }));
+    assert.equal(again.cold.misses, 0, 'the flushed entry is on disk');
+    assert.equal(c2.calls, 0);
+  } finally { fs.rmSync(p.root, { recursive: true, force: true }); }
+});

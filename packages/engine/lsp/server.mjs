@@ -17,6 +17,9 @@
 //                entry and recomputes only the misses (`store: false` turns it off).
 //   background   `background: true` (the MCP server session; one-shot CLI runs leave it off) starts indexer.mjs: a nice-19
 //                child under a 1.5 GB cap, 50 files a tick outward from the scope, pausing on heavy.sh's lock or low RAM.
+//   read-only    `readOnly: true` (construct-mcp's line_* reads): stored entries are read, misses computed in memory,
+//                nothing is written, no background indexer, no watcher. makeWritable() flushes the misses to the store,
+//                then starts the background indexer and the watcher (as the options asked, or as makeWritable's).
 //   live         update(changedFiles) when a step lands (planService runNext calls it); `watch: true` adds an fs.watch
 //                watcher (watch.mjs) for outside edits, debounced. close() stops both.
 //
@@ -51,7 +54,7 @@ const MAX_WIDEN = 5;
  * @param {string} root Project root (tsconfig.json at it).
  * @param {{extraRoots?: string[], smith?: boolean, rules?: boolean, exact?: boolean,
  *   scope?: 'scoped'|'full'|{feature?: string, folder?: string, files?: string[]},
- *   store?: boolean, storeDir?: string, background?: boolean | object, watch?: boolean, debounceMs?: number,
+ *   store?: boolean, storeDir?: string, readOnly?: boolean, background?: boolean | object, watch?: boolean, debounceMs?: number,
  *   smithIndex?: (rel: string, text: string, o?: {canonical?: boolean}) => Promise<any[]>, smithModule?: string,
  *   smithPin?: string, rulesVersion?: string}} [o]
  *   `smith: false` skips layer 1 (no atomic-codemod); `exact: false` stores the plain style only. `smithIndex` /
@@ -89,7 +92,8 @@ export async function createLineLsp(root, o = {}) {
   const opts = { extraRoots: o.extraRoots ?? [], includeDts: true, rootFiles: scoped ? [...scope.files] : null };
   const tsOptions = readOptions(r).options ?? null;
   const pin = { smith: o.smithPin ?? (await smithPin({ smith: useSmith })), rules: o.rulesVersion ?? (await rulesVersion(r, { rules: useRules })) };
-  const store = o.store === false ? null : openStore(r, { pin, dir: o.storeDir });
+  let readOnly = !!o.readOnly;
+  const store = o.store === false ? null : openStore(r, { pin, dir: o.storeDir, readOnly });
   const countingSmith = smithFn ? async (f, text, x) => { stats.smithCalls++; return smithFn(f, text, x); } : null;
 
   const drop = (f) => {
@@ -163,14 +167,21 @@ export async function createLineLsp(root, o = {}) {
 
   // background indexer (MCP session) and outside-edit watcher
   let bg = null;
-  if (o.background && store) {
-    const b = typeof o.background === 'object' ? o.background : {};
+  const startBackground = (opt) => {
+    if (!opt || !store || bg || readOnly) return;
+    const b = typeof opt === 'object' ? opt : {};
     bg = startBackgroundIndexer({
       root: r, scope: [...scope.files], pin, storeDir: o.storeDir, smith: useSmith, smithModule: o.smithModule ?? null, exact, rules: useRules, ...b,
       onIndexed: (files) => { for (const x of files) if (!scope.files.has(x.rel)) known.set(x.rel, x.hash); },
     });
-  }
+  };
+  startBackground(o.background);
   let watcher = null;
+  const startWatch = (on, debounceMs) => {
+    if (!on || watcher || readOnly) return;
+    const w = watchProject(r, (files) => api.update(files), { debounceMs });
+    watcher = w.ok ? w : null;
+  };
 
   const api = {
     root: r, buildMs, stats, cold, pin,
@@ -178,6 +189,20 @@ export async function createLineLsp(root, o = {}) {
     get size() { return { files: versions.size, functions: smithIdx.size, ruleFiles: rulesByFile.size }; },
     get store() { return store ? { dir: store.dir, pinKey: store.pinKey, ...store.stats } : null; },
     get background() { return bg ? bg.status : null; },
+    get readOnly() { return readOnly; },
+    get watching() { return !!watcher; },
+    /**
+     * Leave read-only mode: flush the entries computed in memory to the store, then start the background indexer and
+     * the watcher (`o` overrides the createLineLsp options). -> { flushed }.
+     */
+    async makeWritable(x = {}) {
+      await pending;
+      readOnly = false;
+      const flushed = store ? store.setWritable() : 0;
+      startBackground(x.background ?? o.background);
+      startWatch(x.watch ?? o.watch, x.debounceMs ?? o.debounceMs);
+      return { flushed };
+    },
     /** Whether a file is in the scope. */
     inScope: (file) => scope.files.has(rel(file)),
     widen: (files) => widen(files),
@@ -305,9 +330,6 @@ export async function createLineLsp(root, o = {}) {
     /** Stop the background indexer and the watcher. */
     close() { bg?.stop(); watcher?.close(); watcher = null; },
   };
-  if (o.watch) {
-    const w = watchProject(r, (files) => api.update(files), { debounceMs: o.debounceMs });
-    watcher = w.ok ? w : null;
-  }
+  startWatch(o.watch, o.debounceMs);
   return api;
 }

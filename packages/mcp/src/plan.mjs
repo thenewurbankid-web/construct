@@ -11,7 +11,7 @@ const services = new WeakMap();
 async function serviceOf(ctx) {
   if (!services.has(ctx)) {
     const { createLinePlanService } = await import('@line/construct-engine/line/plan-service');
-    startLiveIndex(ctx); // #950: the session's live LSP index, built in the background
+    startLiveIndex(ctx, 'write'); // #950: the session's live LSP index read-write (a read-only one is switched and flushed)
     services.set(ctx, createLinePlanService({ root: ctx.root, lsp: () => liveIndexNow(ctx) }));
   }
   return services.get(ctx);

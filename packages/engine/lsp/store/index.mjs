@@ -6,6 +6,8 @@
 //   store.get(rel, hash)          -> record | null     a hit only when (content hash, file, Smith pin, rules version) match
 //   store.put(rel, hash, data)    -> record            atomic: written to a temp file, then renamed into place
 //   store.prune({ live, days })   -> { removed, kept, tmp }   entries matching no live (file, hash) for `days` go
+//   readOnly: true                -> reads stored entries, keeps new ones in memory, writes NOTHING to disk;
+//   store.setWritable()           -> leaves read-only mode and flushes the in-memory entries (store.flush())
 //
 // Layout: <root>/line/.index/v1/<hh>/<contentHash>-<fileHash>-<pinKey>.json, one small JSON file per entry, sharded by
 // the content hash's first two hex characters. One file per entry means two writers (the foreground LSP and the
@@ -57,15 +59,18 @@ export function atomicWrite(file, text) {
 /**
  * Open (create on first write) the persistent index of a project.
  * @param {string} root Project root.
- * @param {{pin: {smith?: string, rules?: string}, dir?: string, now?: () => number}} o `dir`: another folder (tests).
+ * @param {{pin: {smith?: string, rules?: string}, dir?: string, now?: () => number, readOnly?: boolean}} o `dir`: another
+ *   folder (tests). `readOnly`: nothing is written (no entry, no folder, no touch) until setWritable().
  * @returns {any} The store: { dir, pin, pinKey, get, put, has, prune, stats }.
  */
-export function openStore(root, { pin, dir, now = Date.now } = /** @type {any} */ ({})) {
+export function openStore(root, { pin, dir, now = Date.now, readOnly = false } = /** @type {any} */ ({})) {
   const base = dir ?? path.join(path.resolve(root), INDEX_DIR);
   const vdir = path.join(base, `v${STORE_VERSION}`);
   const pinKey = pinKeyOf(pin);
   const stats = { hits: 0, misses: 0, writes: 0, errors: 0 };
   let ready = false;
+  let ro = !!readOnly;
+  const memory = new Map(); // read-only mode: name -> record, written by flush()
   const ensure = () => {
     if (ready) return;
     fs.mkdirSync(vdir, { recursive: true });
@@ -86,23 +91,42 @@ export function openStore(root, { pin, dir, now = Date.now } = /** @type {any} *
      */
     get(rel, hash) {
       const p = pathOf(rel, hash);
+      const mem = memory.get(nameOf(rel, hash));
+      if (mem) { stats.hits++; return mem; }
       let rec = null;
       try { rec = JSON.parse(fs.readFileSync(p, 'utf8')); } catch { rec = null; }
       if (!rec || rec.file !== rel || rec.hash !== hash || rec.pinKey !== pinKey) { stats.misses++; return null; }
       stats.hits++;
       // a hit keeps the entry young for prune(), touched at most once a day so a warm start stays read-only
-      try { const t = now(); if (t - fs.statSync(p).mtimeMs > DAY) fs.utimesSync(p, t / 1000, t / 1000); } catch { /* best effort */ }
+      if (!ro) try { const t = now(); if (t - fs.statSync(p).mtimeMs > DAY) fs.utimesSync(p, t / 1000, t / 1000); } catch { /* best effort */ }
       return rec;
     },
     /** Whether an entry exists (no parse). */
-    has: (rel, hash) => fs.existsSync(pathOf(rel, hash)),
+    has: (rel, hash) => memory.has(nameOf(rel, hash)) || fs.existsSync(pathOf(rel, hash)),
+    get readOnly() { return ro; },
+    /** Entries held in memory (read-only mode), not yet on disk. */
+    get pending() { return memory.size; },
+    /** Write every in-memory entry (nothing in read-only mode). -> how many were written. */
+    flush() {
+      if (ro || !memory.size) return 0;
+      ensure();
+      let n = 0;
+      for (const [name, rec] of memory) {
+        try { atomicWrite(path.join(vdir, name.slice(0, 2), name), JSON.stringify(rec)); stats.writes++; n++; } catch { stats.errors++; }
+      }
+      memory.clear();
+      return n;
+    },
+    /** Leave read-only mode and flush what was computed meanwhile. -> how many entries were written. */
+    setWritable() { ro = false; return store.flush(); },
     /**
      * Store what was computed for `rel` at `hash`.
      * @param {string} rel @param {string} hash @param {object} data
      */
     put(rel, hash, data) {
-      ensure();
       const rec = { v: STORE_VERSION, file: rel, hash, pinKey, pin, at: now(), ...data };
+      if (ro) { memory.set(nameOf(rel, hash), rec); return rec; }
+      ensure();
       try { atomicWrite(pathOf(rel, hash), JSON.stringify(rec)); stats.writes++; } catch { stats.errors++; }
       return rec;
     },
@@ -113,6 +137,7 @@ export function openStore(root, { pin, dir, now = Date.now } = /** @type {any} *
      * @returns {{removed: number, kept: number, tmp: number}}
      */
     prune({ live = new Map(), days = PRUNE_DAYS } = {}) {
+      if (ro) return { removed: 0, kept: 0, tmp: 0 };
       const want = new Set();
       for (const [rel, hash] of live instanceof Map ? live : Object.entries(live)) want.add(nameOf(rel, hash));
       const cutoff = now() - days * DAY;
