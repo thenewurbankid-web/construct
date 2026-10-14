@@ -19,6 +19,13 @@ node bench/isolation/drive.mjs summary --run cd1
 - `try` runs itself under `packages/tools/dev/heavy.sh` (it may wait for another Ollama job). By default the brief is
   an intent note: the 1.5b gets briefBuilder's brief for each function plus the note as `LEAD'S NOTE` (arm I's
   pattern), one sampled round per function. `--raw` sends the brief alone as the whole prompt.
+- One function per request. `blocks/briefGuard.mjs` rejects a brief that holds an implementation (a function body
+  over 2 statements, or more than 3 consecutive code lines) or, on a multi-function task, names another target
+  function; a rejection is logged as a try (`FAIL brief`). Multi-function tasks need `--fn <name>` (MCP `fn`): each
+  call runs that function's round on the file the earlier rounds built, `OK <fn>` until the last one is checked.
+- `blocks/prefill.mjs`: the 1.5b is called through `/api/generate` with `raw: true` and the ChatML template applied
+  here, the assistant turn prefilled with the exact signature plus `{`, stopped at a column-0 `}` and cut by brace
+  depth; the prompt names only that function (`fnGoal` narrows the task statement). spliceApplier stays strict.
 - Output: `PASS (...)` or `FAIL <format|fragment|tsc|check|error> (...)` plus the first error (at most 5 lines).
 - Log: `results/claude-drive/<run>.jsonl`, one line per try (arm CD) or check (arm CW): task, harness, attempt,
   brief or written chars, 1.5b calls, tokens in/out, wall ms, pass, failure class.
@@ -30,7 +37,7 @@ Bench-local until a measured win moves it into `packages/mcp`.
 
 `harness-drive.sh` runs one fresh headless session per task and arm, with only two MCP tools each and no shell or
 file tools. Default arms: CD (`task_show` + `task_try`, the brief is a note on briefBuilder's brief; the harness
-never sees the file), CD-raw (same tools, `task_try` with `raw: true`: the brief is the whole 1.5b prompt) and CW
+never sees the file), CD-raw (same tools, `task_try` with `raw: true`: the 1.5b sees only FUNCTION, SIGNATURE, SPEC and the brief as INTENT) and CW
 (`task_show_code` + `task_check`).
 
 ```
