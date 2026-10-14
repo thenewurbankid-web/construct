@@ -34,7 +34,7 @@ const FIXTURE = [
   { atom: 'now', js: ['new Date()', 'new Date(Date.now())'], params: ['clock?'] },
   { atom: 'randomBetween', js: ['Math.random()'], params: ['min', 'max'] },
   { atom: 'dateFromParts', js: ['new Date(value)', 'new Date()', 'new Date(year, monthIndex, day)'], params: ['year', 'monthIndex', 'day?'], firstKinds: ['number'] },
-  { atom: 'sortedBy', js: ['list.toSorted(order)', '[...list].sort(order)'], params: ['list', 'order?'] },
+  { atom: 'sortedBy', js: ['list.toSorted(order)', '[...list].sort(order)'], params: ['list', 'order?'], check: [{ params: [['list', 'list'], ['order', 'cmp']] }, { params: [['list', 'list'], ['order', 'undef']] }] },
   { atom: 'listFrom', js: ['[...source]'], params: ['source'] },
   { atom: 'syntaxErrorFrom', js: ['new SyntaxError(message, options)'], params: ['message?', 'options?'] },
   { atom: 'encodeURI', js: ['encodeURI(uri)'], params: ['uri'] },
@@ -134,7 +134,9 @@ describe('rest arguments, constant forms and called names', () => {
   test('a method called without its optional argument still converts', () => {
     assert.equal(body('const s = names.toSorted();'), 'const s = sortedBy(names);');
     assert.equal(body('const s = [...names].sort();'), 'const s = sortedBy(listFrom(names));');
-    assert.equal(body('const s = [...names].sort(byAge);'), 'const s = sortedBy(listFrom(names), byAge);');
+    // an order whose shape is not seen stays a sort: sortedBy would read a one-parameter function as a key
+    assert.equal(body('const s = [...names].sort((a, b) => a.age - b.age);'), 'const s = sortedBy(listFrom(names), (a, b) => a.age - b.age);');
+    assert.equal(body('const s = [...names].sort(byAge);'), 'const s = listFrom(names).sort(byAge);');
   });
 
   test('the function a form calls by name is that global, never an argument', () => {
@@ -172,6 +174,14 @@ describe('found by the equivalence check (bench/atoms/equivalence.js)', () => {
   test('...except a pattern literal without g or y, which has no state to change', () => {
     assert.equal(body('const ok = /^[=+@-]/.test(text);'), 'const ok = doesPatternMatch(/^[=+@-]/, text);');
     assert.equal(body('const ok = /a/g.test(text);'), 'const ok = /a/g.test(text);');
+  });
+
+  test('sortedBy only where the order is seen to be a compare function: it reads one parameter as a key', () => {
+    assert.equal(body('const s = xs.toSorted((a, b) => a - b);'), 'const s = sortedBy(xs, (a, b) => a - b);');
+    assert.equal(body('const s = xs.toSorted();'), 'const s = sortedBy(xs);');
+    for (const code of ['const s = xs.toSorted((a) => (a > 2 ? -1 : 1));', 'const s = xs.toSorted((a, b = 0) => a - b);', 'const s = xs.toSorted(compare);', "const s = xs.toSorted('id');"]) {
+      assert.match(body(code), /^const s = xs\.toSorted\(/);
+    }
   });
 
   test('replaceFirst only where the pattern is seen to be text or a RegExp without g; anything else is replaceText', () => {

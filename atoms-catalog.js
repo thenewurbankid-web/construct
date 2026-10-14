@@ -290,7 +290,10 @@ function compileCatalog(catalog, { signatures = {} } = {}) {
     const checks = Array.isArray(entry.check) ? entry.check.flatMap((c) => c.params || []) : [];
     const gensOf = (name) => checks.filter(([n]) => n === name).map(([, g]) => g);
     const nonGlobalOnly = [...new Set(checks.map(([n]) => n))].filter((n) => gensOf(n).includes('ngregex') && !gensOf(n).includes('gregex'));
-    const info = { atom: entry.atom, entry, params, minArity, firstKinds, nonGlobalOnly, module: entry.module || null };
+    // a parameter only checked with a two-argument compare function (sortedBy's order): the
+    // atom reads a one-parameter function as a key and anything else as a property name
+    const compareOnly = [...new Set(checks.map(([n]) => n))].filter((n) => gensOf(n).includes('cmp') && gensOf(n).every((g) => g === 'cmp' || g === 'undef'));
+    const info = { atom: entry.atom, entry, params, minArity, firstKinds, nonGlobalOnly, compareOnly, module: entry.module || null };
     atoms.set(entry.atom, info);
     for (const form of [].concat(entry.js || [])) {
       const src = stripForm(form);

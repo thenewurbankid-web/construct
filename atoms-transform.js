@@ -395,6 +395,10 @@ function toAtoms(code, options = {}) {
       // to be text or a RegExp without g; anything else is left to an atom that holds for all
       const notGlobal = (n) => n && (n.type === 'StringLiteral' || n.type === 'TemplateLiteral' || (n.type === 'RegExpLiteral' && !/g/.test(n.flags)));
       if ((p.info.nonGlobalOnly || []).some((nm) => nm in mt.bindings && !notGlobal(mt.bindings[nm]))) continue;
+      // a compare argument must be seen to be a function whose declared length is not 1
+      const declaredLength = (f) => { const at = f.params.findIndex((q) => q.type === 'AssignmentPattern' || q.type === 'RestElement'); return at < 0 ? f.params.length : at; };
+      const compares = (n) => n && /^(ArrowFunctionExpression|FunctionExpression)$/.test(n.type) && declaredLength(n) !== 1;
+      if ((p.info.compareOnly || []).some((nm) => nm in mt.bindings && !compares(mt.bindings[nm]))) continue;
       // every missing argument must be an optional parameter of the atom
       const params = p.info.params;
       if (p.constant && p.info.minArity !== 0) continue;
