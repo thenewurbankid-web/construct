@@ -9,6 +9,7 @@ import { readPath, unitOf, bottomUp, checkStub, pageSnapshot, visualDiff, FILLS_
 import { fixesStep } from '../lsp/spliceFixes.mjs';
 import { smithCheckStep } from '../lsp/smithCheck.mjs';
 import { nextOpenStub } from '../lsp/traceStep.mjs';
+import { beamOnFail } from './beam/fillReplan.mjs';
 import { completionsStep } from '../coder/completions.mjs';
 
 /** The last page snapshot per point (the "before" of the next step's visual diff). */
@@ -80,7 +81,8 @@ const tscPoint = (f) => { const m = /:(\d+):(\d+) (TS\d+) /.exec(String(f?.sente
  * Fill one stub. #945, each under its lsp.* switch (lsp/profile.mjs; `lsp` overrides it per call): the Line LSP's
  * fixes run on the spliced file before tsc (on), a tsc failure in the stub's file carries the closed choice of names
  * or import paths at that point (shadow), a passing fill is checked against the stub's Smith test plan (`smith`,
- * shadow), and the next stub is the nextSteps block's (on).
+ * shadow), the next stub is the nextSteps block's (on), and a stub failing 3 fills in a row re-plans its point through
+ * the Trace beam (`beam`, shadow: path/beam/fillReplan.mjs).
  * @param {{root: string, stubId: string, body: string, lsp?: Record<string, unknown>|null}} args
  * @returns {Promise<{ok: boolean, code?: string, stubId: string, pass?: boolean, failure?: object, ms?: object, sentence: string, next?: string|null, nextStep?: object|null, fixes?: any[]}>}
  */
@@ -134,6 +136,8 @@ export async function fill({ root, stubId, body, lsp = null }) {
   log({ n, pass: v.pass, ...(failureLog ? { failure: failureLog } : {}), ms: v.ms, ...(v.c ? { c: v.c } : {}), ...(v.visual ? { visual: v.visual } : {}), body: r.body, ...(fx.applied.length ? { fixes: fx.applied } : {}), ...(v.pass ? { source: fx.source } : {}) });
   const nx = nextOpenStub(root, openStubs(root, p), { lsp });
   const next = nx.id;
-  return { ok: true, stubId, pass: v.pass, ...(v.failure ? { failure: v.failure } : {}), ms: v.ms, ...(fx.applied.length ? { fixes: fx.applied } : {}),
+  // #949: a stub that failed 3 fills in a row re-plans its point through the beam (lsp.beam; shadow: logged only)
+  const rp = v.pass ? null : beamOnFail(root, p, u, { lsp });
+  return { ok: true, stubId, pass: v.pass, ...(v.failure ? { failure: v.failure } : {}), ms: v.ms, ...(fx.applied.length ? { fixes: fx.applied } : {}), ...(rp?.mode === 'on' ? { replan: rp.would } : {}),
     sentence: v.pass ? `${stubId} passes (stub check, tsc and its ${u.examples.length} examples).${next ? ` Next open stub: ${next}.` : ' Every stub passes.'}` : `${stubId} does not pass yet.\n${failureText(v.failure)}`, next, ...(nx.step ? { nextStep: nx.step } : {}) };
 }
