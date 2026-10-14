@@ -46,6 +46,7 @@
     "./controller-binder": "./controllerBinder.mjs",
     "./page-transformer": "./pageTransformer.mjs",
     "./default-enforcers": "./defaultEnforcers.mjs",
+    "./lsp/boolean-names": "./lsp/booleanNames.mjs",
     "./workflow-narrator": "./workflowNarrator.mjs",
     "./workflow-scenarios": "./workflowScenarios.mjs",
     "./workflow-explain": "./workflowExplain.mjs",
