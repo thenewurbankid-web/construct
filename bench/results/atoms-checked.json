@@ -1,12 +1,12 @@
 {
  "summary": {
-  "runtime": "414cdbd",
+  "runtime": "09aa375",
   "functions": 207,
   "same": 207,
   "different": 0,
   "unchecked": 0,
-  "conversionsWithoutCheck": 709,
-  "conversionsWithCheck": 758,
+  "conversionsWithoutCheck": 712,
+  "conversionsWithCheck": 761,
   "rewritesTakenBack": 0,
   "ambiguousPlaces": 76,
   "ambiguousResolved": 49
@@ -615,12 +615,12 @@
    "name": "checkResponse",
    "file": "schema.ts",
    "status": "same",
-   "convertedUnchecked": 6,
-   "converted": 6,
+   "convertedUnchecked": 7,
+   "converted": 7,
    "ambiguousBefore": 0,
    "decisions": [],
    "rejected": [],
-   "body": "function checkResponse<S extends ResponseSchema>(schema: S, value: unknown): ServiceResult<SchemaOutput<S>> | Promise<ServiceResult<SchemaOutput<S>>> {\n  type Out = SchemaOutput<S>;\n  const toResult = (r: StandardSchemaResult<unknown>): ServiceResult<Out> => when(r.issues, () => schemaError(normalizeIssues(r.issues)), () => ({\n    status: 'ok',\n    value: r.value as Out\n  }));\n  return attempt(() => when('~standard' in schema, () => {\n    const raw = schema['~standard'].validate(value);\n    return when(isThenable(raw), () => thenPromise(Promise.resolve(raw), toResult, (e: unknown) => schemaError([{\n      message: `schema threw: ${describe(e)}`,\n      path: []\n    }])), () => toResult(raw));\n  }, () => {\n    const parsed = schema.safeParse(value);\n    return when(parsed.success, () => ({\n      status: 'ok',\n      value: parsed.data as Out\n    }), () => schemaError(normalizeIssues(parsed.error.issues)));\n  }), e => schemaError([{\n    message: `schema threw: ${describe(e)}`,\n    path: []\n  }]));\n}"
+   "body": "function checkResponse<S extends ResponseSchema>(schema: S, value: unknown): ServiceResult<SchemaOutput<S>> | Promise<ServiceResult<SchemaOutput<S>>> {\n  type Out = SchemaOutput<S>;\n  const toResult = (r: StandardSchemaResult<unknown>): ServiceResult<Out> => when(r.issues, () => schemaError(normalizeIssues(r.issues)), () => ({\n    status: 'ok',\n    value: r.value as Out\n  }));\n  return attempt(() => when('~standard' in schema, () => {\n    const raw = schema['~standard'].validate(value);\n    return when(isThenable(raw), () => thenPromise(resolvePromise(raw), toResult, (e: unknown) => schemaError([{\n      message: `schema threw: ${describe(e)}`,\n      path: []\n    }])), () => toResult(raw));\n  }, () => {\n    const parsed = schema.safeParse(value);\n    return when(parsed.success, () => ({\n      status: 'ok',\n      value: parsed.data as Out\n    }), () => schemaError(normalizeIssues(parsed.error.issues)));\n  }), e => schemaError([{\n    message: `schema threw: ${describe(e)}`,\n    path: []\n  }]));\n}"
   },
   {
    "name": "toResult",
@@ -637,12 +637,12 @@
    "name": "checkServiceReturn",
    "file": "schema.ts",
    "status": "same",
-   "convertedUnchecked": 4,
-   "converted": 4,
+   "convertedUnchecked": 6,
+   "converted": 6,
    "ambiguousBefore": 0,
    "decisions": [],
    "rejected": [],
-   "body": "function checkServiceReturn<S extends ResponseSchema>(schema: S, raw: unknown): ServiceResult<SchemaOutput<S>> | Promise<ServiceResult<SchemaOutput<S>>> {\n  return when(isThenable(raw), () => thenPromise(Promise.resolve(raw), v => checkResponse(schema, v)), () => {\n    const result = checkResponse(schema, raw);\n    return when(isThenable(result), () => {\n      // Nothing can await this; settle it quietly so an async validator's own rejection never\n      // surfaces as an unhandled rejection either.\n      thenPromise(Promise.resolve(result), undefined, () => undefined);\n      return schemaError([{\n        message: 'schema validates asynchronously but the service returned synchronously; make the service async (return a Promise) or use a synchronous schema',\n        path: []\n      }]);\n    }, () => result);\n  });\n}"
+   "body": "function checkServiceReturn<S extends ResponseSchema>(schema: S, raw: unknown): ServiceResult<SchemaOutput<S>> | Promise<ServiceResult<SchemaOutput<S>>> {\n  return when(isThenable(raw), () => thenPromise(resolvePromise(raw), v => checkResponse(schema, v)), () => {\n    const result = checkResponse(schema, raw);\n    return when(isThenable(result), () => {\n      // Nothing can await this; settle it quietly so an async validator's own rejection never\n      // surfaces as an unhandled rejection either.\n      thenPromise(resolvePromise(result), undefined, () => undefined);\n      return schemaError([{\n        message: 'schema validates asynchronously but the service returned synchronously; make the service async (return a Promise) or use a synchronous schema',\n        path: []\n      }]);\n    }, () => result);\n  });\n}"
   },
   {
    "name": "describe",

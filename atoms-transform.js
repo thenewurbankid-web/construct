@@ -412,7 +412,8 @@ function toAtoms(code, options = {}) {
       return first;
     };
     let chosen = null;
-    const verdicts = hits.map((h) => ({ h, v: kindsCompatible(h.p.info.firstKinds, hintOf(firstArg(h))) }));
+    // a form with nothing to bind has no value whose kind could decide: catalog order does
+    const verdicts = hits.map((h) => ({ h, v: h.p.constant ? 'yes' : kindsCompatible(h.p.info.firstKinds, hintOf(firstArg(h))) }));
     const yes = verdicts.filter((x) => x.v === 'yes');
     const maybe = verdicts.filter((x) => x.v === 'maybe');
     const told = site && choices[site.id] && maybe.find((x) => x.h.p.atom === choices[site.id]);

@@ -33,6 +33,7 @@ const FIXTURE = [
   { atom: 'nowTime', js: ['Date.now()'], params: ['clock?'] },
   { atom: 'now', js: ['new Date()', 'new Date(Date.now())'], params: ['clock?'] },
   { atom: 'randomBetween', js: ['Math.random()'], params: ['min', 'max'] },
+  { atom: 'dateFromParts', js: ['new Date(value)', 'new Date()', 'new Date(year, monthIndex, day)'], params: ['year', 'monthIndex', 'day?'], firstKinds: ['number'] },
   { atom: 'sortedBy', js: ['list.toSorted(order)', '[...list].sort(order)'], params: ['list', 'order?'] },
   { atom: 'listFrom', js: ['[...source]'], params: ['source'] },
   { atom: 'syntaxErrorFrom', js: ['new SyntaxError(message, options)'], params: ['message?', 'options?'] },
@@ -108,7 +109,17 @@ describe('rest arguments, constant forms and called names', () => {
     assert.equal(body('const at = Date.now();'), 'const at = nowTime();');
     assert.equal(body('const at = new Date();'), 'const at = now();');
     assert.equal(body('const at = new Date(Date.now());'), 'const at = now();');
-    assert.equal(body('const at = new Date(stamp);'), 'const at = new Date(stamp);');
+    assert.equal(body('const at = new Date(stamp);'), 'const at = dateFromParts(stamp);');
+  });
+
+  test('when two atoms claim the same call with nothing to bind, the first in the catalog is used', () => {
+    const out = atoms('const at = new Date();');
+    assert.equal(flat(out.body), 'const at = now();');
+    assert.deepEqual(out.ambiguous, []);
+  });
+
+  test('an atom may list one form per overload: each arity finds its own', () => {
+    assert.equal(body('const d = new Date(2020, 0, 15);'), 'const d = dateFromParts(2020, 0, 15);');
   });
 
   test('...and stays as it is when the atom requires arguments', () => {

@@ -1,6 +1,6 @@
 {
  "summary": {
-  "runtime": "414cdbd",
+  "runtime": "09aa375",
   "functions": 380,
   "checked": 139,
   "same": 139,
@@ -11,7 +11,7 @@
   "runsCompared": 5560,
   "runsExercised": 4271,
   "runsTimedOut": 0,
-  "conversionsChecked": 709
+  "conversionsChecked": 712
  },
  "functions": [
   {
@@ -1116,9 +1116,10 @@
    "name": "checkResponse",
    "kind": "function",
    "file": "packages/core/typed-contracts/schema.ts",
-   "conversions": 6,
+   "conversions": 7,
    "atoms": [
     "attempt",
+    "resolvePromise",
     "thenPromise",
     "when"
    ],
@@ -1137,6 +1138,11 @@
     },
     "when": {
      "calls": 19,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "resolvePromise": {
+     "calls": 1,
      "wrongKind": 0,
      "unknown": 0
     },
@@ -1174,8 +1180,9 @@
    "name": "checkServiceReturn",
    "kind": "function",
    "file": "packages/core/typed-contracts/schema.ts",
-   "conversions": 4,
+   "conversions": 6,
    "atoms": [
+    "resolvePromise",
     "thenPromise",
     "when"
    ],
@@ -1191,6 +1198,11 @@
      "calls": 56,
      "wrongKind": 0,
      "unknown": 21
+    },
+    "resolvePromise": {
+     "calls": 35,
+     "wrongKind": 0,
+     "unknown": 10
     },
     "thenPromise": {
      "calls": 35,
