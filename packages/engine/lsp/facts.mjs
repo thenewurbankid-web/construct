@@ -22,6 +22,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { approxTokens } from './index.mjs';
 import { ts } from './host.mjs';
+import { compileFeatureFacts } from './featureFacts.mjs';
 
 export const FACTS_MAX_TOKENS = 1500;
 const LOGIC = ['domains', 'services', 'usecases', 'expressions', 'hooks', 'controllers', 'providers', 'contracts'];
@@ -39,13 +40,21 @@ export const smithWords = (name) => name.replace(/([a-z0-9])([A-Z])/g, '$1 $2').
 export function valueOf(v) {
   const s = v.trim();
   if (/^'[^']*'$/.test(s)) return `"${s.slice(1, -1)}"`;
+  const el = /^an? <([\w.]+)>/.exec(s);
+  if (el) return `{<${el[1]} …>}`;
   return `{${s.replace(/(\w+)'s (\w+)/g, '$1.$2')}}`;
 }
 /** `with a as v and b as w` -> [[a, v], [b, w]] (Smith splits camelCase attribute names; they are rejoined). */
 export function attrsOf(withText) {
   if (!withText) return [];
-  return withText.split(/ and (?=[\w -]+? as )/).map((p) => p.split(' as ')).filter((p) => p.length >= 2)
-    .map(([k, ...v]) => [k.trim().replace(/ (\w)/g, (_, c) => c.toUpperCase()), valueOf(v.join(' as '))]);
+  const out = [];
+  for (const p of withText.split(/ and (?=[\w -]+? as )/).map((x) => x.split(' as ')).filter((x) => x.length >= 2)) {
+    const [k, ...v] = p;
+    const value = v.join(' as ');
+    out.push([k.trim().replace(/ (\w)/g, (_, c) => c.toUpperCase()), valueOf(value)]);
+    if (/^an? <[\w.]+>/.test(value.trim())) break; // a nested element: what follows are its attributes, not ours
+  }
+  return out;
 }
 const tagWith = (s) => /^shows an? <([\w.]+)>(?: with (.+?))?(?= containing |$)/.exec(s);
 const elementCode = (tag, attrs) => `<${tag}${attrs.map(([k, v]) => ` ${k}=${v}`).join('')}>`;
@@ -224,6 +233,7 @@ function libraryPageFact(p) {
  * @param {{index: any, target: {feature: string, file?: string, name?: string}, libraryPages?: string[], step: any, refusal?: any, fetch?: boolean}} input
  */
 export function compileFacts(input) {
+  if (input.index.mode === 'feature') return compileFeatureFacts(input);
   const { index, target, step, refusal } = input;
   const facts = [];
   const feats = index.features;
@@ -263,7 +273,7 @@ export const refusalFact = (refusal) => `Your last ${refusal.repeat} attempts at
  */
 export function assembleFacts(facts, input) {
   const { index, step, refusal } = input;
-  const order = input.libraryPages ?? index.library.pages.map((p) => p.name);
+  const order = input.libraryPages ?? (index.library?.pages ?? []).map((p) => p.name);
   const stepLine = step.kind === 'setCode'
     ? `Current step: ${step.point} Write it in ${step.file} with plan_add line.setCode (the whole file, contentHash ${step.contentHash}).`
     : `Current step: ${step.feature} has no page yet (its spec puts one at ${step.route}). Create it with plan_add line.baseOn {"libraryId": "pages/<${order.join('|')}>", "feature": "${step.feature}", "name": "<Name>"} on the library page that fits these points, then add its route:\n${step.points.map((x) => `- ${x}`).join('\n')}`;

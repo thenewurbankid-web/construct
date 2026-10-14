@@ -48,11 +48,11 @@ export async function smithConnectors(options = {}) {
  * Never throws: when atomic-codemod is not linked or the code cannot be parsed, one sentence says so and the code
  * and the reason sit under Details.
  * @param {string} code One function (kind "function") or class method (kind "method").
- * @param {{kind?: 'function'|'method', env?: NodeJS.ProcessEnv}} [options]
+ * @param {{kind?: 'function'|'method', env?: NodeJS.ProcessEnv, toEnglishOptions?: object}} [options] `toEnglishOptions`: passed to to-english as its third argument (e.g. {canonical: true} on atomic-codemod smith-hardening; the pinned commit ignores it)
  * @returns {Promise<import('./contract.mjs').Summary>}
  */
 export async function summarizeCode(code, options = {}) {
-  const { kind = 'function', ...rest } = options;
+  const { kind = 'function', toEnglishOptions, ...rest } = options;
   const r = await importLinked('@smith/to-english', optionsFor('codemod', rest));
   if (!r.ok) {
     return { sentences: ['This code is not put into words because atomic-codemod is not linked; the code and the reason are under Details.'], details: [{ label: 'Code', text: code }, { label: 'Why', text: /** @type {any} */ (r).reason }], via: 'static' };
@@ -60,9 +60,26 @@ export async function summarizeCode(code, options = {}) {
   const toEnglish = r.module.toEnglish ?? r.module.default?.toEnglish;
   let english;
   try {
-    english = toEnglish(code, kind);
+    english = toEnglishOptions ? toEnglish(code, kind, toEnglishOptions) : toEnglish(code, kind);
   } catch (e) {
     return { sentences: ['This code could not be read, so it is not put into words; the code and the reason are under Details.'], details: [{ label: 'Code', text: code }, { label: 'Why', text: String(/** @type {any} */ (e)?.message ?? e).split('\n')[0] }], via: 'static' };
   }
   return summarize({ kind: 'code', english, code });
+}
+
+/**
+ * #945: atomic-codemod's to-english result as it comes ({english, steps (each with its chips: text, type, start, end),
+ * title, unhandled}), for a caller that reads the chips (the Line LSP's per-element Smith check of a page). Never
+ * throws: {ok: false, reason} when it is not linked or the code cannot be read.
+ * @param {string} code @param {{kind?: 'function'|'method', env?: NodeJS.ProcessEnv, toEnglishOptions?: object}} [options]
+ * @returns {Promise<{ok: true, result: any} | {ok: false, reason: string}>}
+ */
+export async function toEnglishRaw(code, options = {}) {
+  const { kind = 'function', toEnglishOptions, ...rest } = options;
+  const r = await importLinked('@smith/to-english', optionsFor('codemod', rest));
+  if (!r.ok) return { ok: false, reason: /** @type {any} */ (r).reason };
+  const toEnglish = r.module.toEnglish ?? r.module.default?.toEnglish;
+  try { return { ok: true, result: toEnglishOptions ? toEnglish(code, kind, toEnglishOptions) : toEnglish(code, kind) }; } catch (e) {
+    return { ok: false, reason: String(/** @type {any} */ (e)?.message ?? e).split('\n')[0] };
+  }
 }
