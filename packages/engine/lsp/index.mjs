@@ -12,7 +12,8 @@
 // `file` is absolute or root-relative; `text` (optional) is an unsaved buffer for that file (an overlay, never written).
 // `at` is a character offset, a marker string present in the text (removed before analysis, e.g. '/*HOLE*/'), or
 // { symbol } (the first occurrence of that identifier). Project options: { extraRoots } (read-only folders, e.g. the
-// node_modules that holds React's types), { includeDts } (ambient .d.ts files under the root).
+// node_modules that holds React's types), { includeDts } (ambient .d.ts files under the root), { rootFiles } (the
+// scoped LSP's root files, #950: TypeScript follows their imports).
 import fs from 'node:fs';
 import path from 'node:path';
 import { ts, openProject, withOverlay, inside } from './host.mjs';
@@ -46,7 +47,7 @@ export function capList(list, render = (x) => JSON.stringify(x)) {
   return { kept: out, dropped: list.length - out.length };
 }
 
-const projOpts = (o = {}) => ({ includeDts: o.includeDts ?? true, extraRoots: o.extraRoots ?? [] });
+const projOpts = (o = {}) => ({ includeDts: o.includeDts ?? true, extraRoots: o.extraRoots ?? [], rootFiles: o.rootFiles ?? null });
 function ctx(root, file, o = {}) {
   const r = path.resolve(root);
   const abs = path.isAbsolute(file) ? path.resolve(file) : path.resolve(r, file);
