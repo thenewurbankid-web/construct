@@ -103,6 +103,12 @@ function signaturesFromSource(src, file = 'atoms.ts') {
   }
   for (const e of Object.values(out)) {
     if (!e.params.length && e.overloads.length) e.params = e.overloads[e.overloads.length - 1];
+    // A generated wrapper implements its overloads as `(...args: any[])`: the parameters a
+    // caller sees are the declared ones, so take the widest overload.
+    const declared = e.overloads.slice(0, -1);
+    if (declared.length && e.params.length === 1 && e.params[0].rest) {
+      e.params = declared.reduce((widest, ps) => (ps.length > widest.length ? ps : widest));
+    }
     // An implementation signature (typed any/unknown) is not one a caller sees; use the overloads when there are several.
     const visible = e.overloads.length > 1 ? e.overloads.slice(0, -1) : e.overloads;
     e.firstKinds = [...new Set(visible.map((ps) => kindOfTypeText(ps[0] && ps[0].type)))].sort();
@@ -110,14 +116,21 @@ function signaturesFromSource(src, file = 'atoms.ts') {
   return out;
 }
 
-// Every exported function of every .ts file under the runtime's src/atoms.
+// Every exported function of every .ts file under the runtime's src/atoms,
+// subfolders included (src/atoms/generated holds the generated wrappers).
 function paramsFromSource(root) {
   const dir = fs.existsSync(path.join(root, 'src', 'atoms')) ? path.join(root, 'src', 'atoms') : root;
   const out = {};
   if (!fs.existsSync(dir)) return out;
-  for (const f of fs.readdirSync(dir).filter((n) => n.endsWith('.ts') && !n.endsWith('.d.ts')).sort()) {
-    Object.assign(out, signaturesFromSource(fs.readFileSync(path.join(dir, f), 'utf8'), f));
-  }
+  const walk = (d, prefix) => {
+    for (const e of fs.readdirSync(d, { withFileTypes: true }).sort((a, b) => (a.name < b.name ? -1 : 1))) {
+      if (e.isDirectory()) walk(path.join(d, e.name), `${prefix}${e.name}/`);
+      else if (e.name.endsWith('.ts') && !e.name.endsWith('.d.ts')) {
+        Object.assign(out, signaturesFromSource(fs.readFileSync(path.join(d, e.name), 'utf8'), `${prefix}${e.name}`));
+      }
+    }
+  };
+  walk(dir, '');
   return out;
 }
 

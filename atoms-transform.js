@@ -688,6 +688,9 @@ function toAtoms(code, options = {}) {
       if (through.length === 0) return { why: 'unreachable statements after the if' };
       if (through.length > 1) return { why: 'the statements after the if would run from several branches' };
       if (hasHoisted(rest)) return { why: 'hoisted declaration after the if' };
+      // the statements after the if move into a plain (non-async, non-generator) thunk
+      const after = scan(t.blockStatement(rest));
+      if (after.awaits || after.yields) return { why: 'await/yield after the if would move into a branch' };
       const i = through[0];
       lists[i] = lists[i].length ? [t.blockStatement(lists[i]), ...rest] : rest;
       if (lists[i][0] && lists[i][0].type === 'BlockStatement' && !lists[i][0].body.some((x) => x.type === 'VariableDeclaration' || x.type === 'ClassDeclaration' || x.type === 'FunctionDeclaration')) {
