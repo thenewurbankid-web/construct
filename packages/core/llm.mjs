@@ -11,6 +11,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import { ConstructError, EXIT_CODES } from './diagnostics.mjs';
 import { OLLAMA_DEFAULT_URL, normalizeOllamaHost } from './ollama-host.mjs';
 import { chatmlPrompt } from '../engine/line/coder/prefill/prefill.mjs';
+import { legacyIo } from './modelled-io.mjs';
 
 // Defaults for the `ollama` provider below — overridable per call via its
 // `options` parameter (see `callLlm`), which is how #100 (per-capability
@@ -453,6 +454,13 @@ export async function callLlm(provider, prompt, options) {
   if (!impl) {
     throw new ConstructError(
       `Unknown --llm provider "${provider}". Supported: ${Object.keys(PROVIDERS).join(', ')}`,
+      { exitCode: EXIT_CODES.USAGE_ERROR },
+    );
+  }
+  // #948: no free-form exchange: every call declares its output shape (LINE_LEGACY_IO=1 lifts this for one release).
+  if (!legacyIo() && !outputShape(options)) {
+    throw new ConstructError(
+      'A model call needs an output shape: options.output = {format: <JSON Schema>} for a choice (for example {format: {type: "object", properties: {pick: {enum: ["a", "b"]}}, required: ["pick"]}}), or {prefill: "<the signature> {\\n", stop: ["\\n}"]} for one function. LINE_LEGACY_IO=1 allows the old free-form call for one release.',
       { exitCode: EXIT_CODES.USAGE_ERROR },
     );
   }

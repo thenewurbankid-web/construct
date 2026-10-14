@@ -103,7 +103,7 @@ export const factsOnly = (prompt) => String(prompt ?? '').split('\n').filter((l)
  * `filled` leaves the caller's file as it was. A file with no function is `rejected` without a model call.
  * @param {string} llm Provider name.
  * @param {string} prompt The unit's facts (the caller's prompt; its whole-file output line is dropped).
- * @param {object} [llmOptions]
+ * @param {object|undefined} llmOptions
  * @param {{source: string, file?: string, lines?: number[]|null}} unit The file to fill, and the lines to aim at.
  * @returns {Promise<{status: 'filled', code: string, attempts: number, functions: string[]} | {status: 'rejected'|'failed'|'cancelled', reason: string, attempts: number}>}
  */
@@ -125,8 +125,9 @@ export async function fillByFunction(llm, prompt, llmOptions, { source, file = '
 /**
  * The fill the callers use: fillByFunction (modelled, the default), or requestFileText's whole-file request with
  * LINE_LEGACY_IO=1.
- * @param {string} llm @param {string} prompt @param {object} [llmOptions]
+ * @param {string} llm @param {string} prompt @param {object|undefined} llmOptions
  * @param {{source: string, file?: string, lines?: number[]|null}} unit
+ * @returns {Promise<any>} requestFileText's outcome shape.
  */
 export function fillFile(llm, prompt, llmOptions, unit) {
   return legacyIo() ? requestFileText(llm, prompt, llmOptions) : fillByFunction(llm, prompt, llmOptions, unit);

@@ -170,7 +170,7 @@ export async function fillEach(o) {
   if (!names.length) return { ok: false, source, filled: [], failed: [{ name: null, code: 'NO_FUNCTION', sentence: `There is no function${o.lines?.length ? ` at line ${o.lines.join(', ')}` : ''} to fill in ${file}; a model is only asked for one function body at a time.` }], attempts: 0 };
   const filled = []; const failed = []; let attempts = 0;
   for (const name of [...new Set(names)]) {
-    const r = await fillOne({ ...o, source, file, target: { name } });
+    const r = /** @type {any} */ (await fillOne({ ...o, source, file, target: { name } }));
     attempts += r.attempts;
     if (r.ok) { source = r.source; filled.push(name); } else failed.push({ name, code: r.code, sentence: r.sentence });
   }

@@ -270,8 +270,11 @@ test('buildStoryCitePrompt lists only the given acceptance ids and code unit nam
   assert.match(prompt, /do not invent/i);
 });
 
-test('buildStoryCiteWillSend reports exactly one file and one call, sized from the real prompt', () => {
-  const willSend = buildStoryCiteWillSend(ACCEPTANCE, CODE_UNITS);
+test('buildStoryCiteWillSend reports one file and one call per acceptance line (#948); the legacy single call', () => {
+  const lines = buildStoryCiteWillSend(ACCEPTANCE, CODE_UNITS);
+  assert.equal(lines.files, 1);
+  assert.equal(lines.calls, ACCEPTANCE.length);
+  const willSend = buildStoryCiteWillSend(ACCEPTANCE, CODE_UNITS, { perLine: false });
   assert.equal(willSend.files, 1);
   assert.equal(willSend.calls, 1);
   assert.equal(willSend.bytes, Buffer.byteLength(buildStoryCitePrompt(ACCEPTANCE, CODE_UNITS), 'utf8'));

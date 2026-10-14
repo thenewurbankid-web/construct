@@ -14,6 +14,8 @@ import { validateMachineSpec, renderMachineSpecReport } from './machine-spec.mjs
 const THIS_DIR = path.dirname(fileURLToPath(import.meta.url));
 const SCHEMA_TEXT = fs.readFileSync(path.join(THIS_DIR, 'machine-spec.v1.schema.json'), 'utf8');
 const EXAMPLE_TEXT = fs.readFileSync(path.join(THIS_DIR, 'examples', 'machine-spec.v1.example.json'), 'utf8');
+// #948: the v1 schema itself is the call's output shape (Ollama `format`: the reply is one machine-spec, one machine per request).
+const SCHEMA = JSON.parse(SCHEMA_TEXT);
 
 const OUTPUT_CONTRACT = [
   'How your reply is used: it is captured from stdout and parsed as JSON, byte for byte. You have no file or tool access and never need any.',
@@ -120,7 +122,7 @@ export async function draftMachineSpec(llm, requirement, { feature, llmOptions, 
     attempts++;
     let raw;
     try {
-      raw = await callLlm(llm, buildDraftPrompt(requirement, { feature, previous }), llmOptions);
+      raw = await callLlm(llm, buildDraftPrompt(requirement, { feature, previous }), { ...(llmOptions ?? {}), output: { format: SCHEMA } });
     } catch (e) {
       if (e?.exitCode === 2) throw e; // a usage/config mistake, not a per-attempt failure
       return { status: 'failed', reason: e?.message || String(e), attempts };

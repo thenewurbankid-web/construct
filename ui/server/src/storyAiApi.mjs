@@ -64,10 +64,15 @@ function extractPrompt(text, fields) {
   ].join('\n');
 }
 
-async function callModelJson(callLlmImpl, provider, prompt, timeoutMs) {
+// #948: each call's output shape, sent as `format`: a selector per field (propose), or the quoted values (extract).
+const SELECTOR = { anyOf: [{ type: 'string', maxLength: 300 }, { type: 'object', properties: { xpath: { type: 'string', maxLength: 300 } }, required: ['xpath'], additionalProperties: false }] };
+const proposeSchema = (fields) => ({ type: 'object', properties: Object.fromEntries(fields.map((f) => [f, SELECTOR])), additionalProperties: false });
+const extractSchema = (fields) => ({ type: 'object', properties: Object.fromEntries(fields.map((f) => [f, LIST_FIELDS.includes(f) ? { type: 'array', items: { type: 'string' } } : { type: 'string' }])), additionalProperties: false });
+
+async function callModelJson(callLlmImpl, provider, prompt, timeoutMs, format = 'json') {
   let raw;
   try {
-    raw = await callLlmImpl(provider, prompt, timeoutMs ? { timeoutMs } : {});
+    raw = await callLlmImpl(provider, prompt, { ...(timeoutMs ? { timeoutMs } : {}), output: { format } });
   } catch (e) {
     return { ok: false, code: 'MODEL_ERROR', message: String(e?.message || e).slice(0, 300) };
   }
@@ -134,7 +139,7 @@ export function createStoryAiRouter({
     const stripped = buildStrippedText(v.html);
     if (!stripped.ok) return res.status(400).json({ ok: false, code: stripped.code, error: stripped.message });
 
-    const modelOut = await callModelJson(callLlmImpl, provider, proposePrompt(stripped.text, ALL_FIELDS), llmTimeoutMs);
+    const modelOut = await callModelJson(callLlmImpl, provider, proposePrompt(stripped.text, ALL_FIELDS), llmTimeoutMs, proposeSchema(ALL_FIELDS));
     if (!modelOut.ok) return res.status(502).json({ ok: false, code: modelOut.code, error: modelOut.message });
 
     let selectors;
@@ -174,7 +179,7 @@ export function createStoryAiRouter({
     const stripped = buildStrippedText(v.html);
     if (!stripped.ok) return res.status(400).json({ ok: false, code: stripped.code, error: stripped.message });
 
-    const modelOut = await callModelJson(callLlmImpl, provider, extractPrompt(stripped.text, fields), llmTimeoutMs);
+    const modelOut = await callModelJson(callLlmImpl, provider, extractPrompt(stripped.text, fields), llmTimeoutMs, extractSchema(fields));
     if (!modelOut.ok) return res.status(502).json({ ok: false, code: modelOut.code, error: modelOut.message });
 
     const { verified, rejected } = verifyExtraction(stripped.text, modelOut.value);

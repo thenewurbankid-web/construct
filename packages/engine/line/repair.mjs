@@ -34,7 +34,7 @@ export function toolArgsSchema(tool) {
 /**
  * runChange's refusal as repairLoop reads it: the sentence, the first finding's rule and message, the typed fixes.
  * @param {any} res A runChange result whose apply was refused.
- * @returns {{sentence: string, rule: string|null, code: string|null, finding: string|null, fixes: {id: string, sentence: string, rank: number, step: any}[]}}
+ * @returns {{sentence: string, rule: string|null, code: string|null, finding: string|null, fixes: {id: string, sentence: string, rank: number, step: any}[], line?: number|null}}
  */
 export function refusalOf(res) {
   const first = res.apply.findings?.find((f) => f.severity === 'error') ?? res.apply.findings?.[0] ?? null;
