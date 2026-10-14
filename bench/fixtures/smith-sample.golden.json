@@ -2,7 +2,7 @@
   {
     "name": "totalPrice",
     "kind": "function",
-    "english": "total price using items and {discount (default 0), currency as code}: let sum be 0; then for each {price} of items: add price if present, otherwise 0 to sum; then let net be if discount > 0 then sum * (1 - discount), otherwise sum; then return text of net to fixed 2 and ' ' and code."
+    "english": "total price using items and {discount (default 0), currency as code}: let sum be 0; then for each {price} of items: add price or else 0 to sum; then let net be if discount is greater than 0 then sum * (1 - discount), otherwise sum; then return the text \"{net as fixed with 2} {code}\"."
   },
   {
     "name": "byTag",
@@ -12,12 +12,12 @@
   {
     "name": "loadAll",
     "kind": "function",
-    "english": "load all using ids and fetchOne: let out be an empty list; then starting with let i be 0, repeat while i < ids's length, after each pass increase i by 1: try: let item be wait for fetch one of ids at i; then if not (item): skip to the next pass; then out push an object with everything in item and name as item's name trim, if it fails with err: fail with a new Error of text of 'failed on ' and ids at i and ': ' and err's message; then return out."
+    "english": "load all using ids and fetchOne: let out be an empty list; then starting with let i be 0, repeat while i is less than ids's length, after each pass increase i by 1: try: let item be wait for fetch one of ids at i; then if there is no item, skip to the next pass; then out push an object with everything in item and name as item's name trim, if it fails with err: fail with a new Error of the text \"failed on {ids at i}: {err's message}\"; then return out."
   },
   {
     "name": "reducer",
     "kind": "function",
-    "english": "reducer using state and action: depending on action's type: when 'inc' or 'add': return an object with everything in state and count as state's count + (action's by if present, otherwise 1) and last as action's type; when 'reset': return an object with count as 0; otherwise: return state."
+    "english": "reducer using state and action: depending on action's type: when 'inc' or 'add': return an object with everything in state and count as state's count + (action's by or else 1) and last as action's type; when 'reset': return an object with count as 0; otherwise: return state."
   },
   {
     "name": "add",
@@ -37,7 +37,7 @@
   {
     "name": "PriceTag",
     "kind": "function",
-    "english": "price tag using {item, onBuy, children}: if not (item's price): return nothing; then return shows a <div> with className as 'price-tag' and data-id as item's id containing a <span> containing item's name and item's tags's length > 0 and a <ul> containing item's tags map a <li> with key as t containing t and a <button> with type as 'button' and disabled as not (onBuy) and onClick as on buy (if any) containing 'Buy for' and item's price and children."
+    "english": "price tag using {item, onBuy, children}: if there is no item's price, return nothing; then return shows a <div> with className as 'price-tag' and data-id as item's id containing a <span> containing item's name and item's tags's length is greater than 0 and a <ul> containing item's tags map a <li> with key as t containing t and a <button> with type as 'button' and disabled as there is no onBuy and onClick as on buy (if any) containing 'Buy for' and item's price and children."
   },
   {
     "name": "List",

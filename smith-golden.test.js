@@ -11,9 +11,7 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
-const { toEnglish: toEnglishAnyStyle } = require('./to-english');
-// These tests pin the original word-for-word reading: { style: 'exact' }.
-const toEnglish = (code, kind, options = {}) => toEnglishAnyStyle(code, kind, { style: 'exact', ...options });
+const { toEnglish } = require('./to-english');
 
 const corpus = require('./bench/corpus');
 
@@ -26,7 +24,12 @@ const THRESHOLDS = {
 const OWNER_BAR = { minCleanLogic: 0.95, minCleanJsx: 0.8 };
 
 const FIXTURE = path.join(__dirname, 'bench/fixtures/smith-sample.tsx');
-const GOLDEN = path.join(__dirname, 'bench/fixtures/smith-sample.golden.json');
+// One snapshot per style: plain (the default) and exact (the original wording).
+const GOLDEN = {
+  plain: path.join(__dirname, 'bench/fixtures/smith-sample.golden.json'),
+  exact: path.join(__dirname, 'bench/fixtures/smith-sample.golden.exact.json'),
+};
+const STYLES = ['plain', 'exact'];
 
 function assertBucket(name, b, minClean) {
   const leftovers = JSON.stringify(b.byType);
@@ -37,25 +40,25 @@ function assertBucket(name, b, minClean) {
 
 const live = corpus.loadCorpus();
 
-test('golden: Construct corpus placeholder rate stays at or under the measured threshold', { skip: !live.files.length && 'no corpus (set SMITH_CORPUS)' }, () => {
-  const m = corpus.measure(live.functions, corpus.currentDescriber(toEnglish));
+for (const style of STYLES) test(`golden (${style}): Construct corpus placeholder rate stays at or under the measured threshold`, { skip: !live.files.length && 'no corpus (set SMITH_CORPUS)' }, () => {
+  const m = corpus.measure(live.functions, corpus.currentDescriber(toEnglish, { style }));
   assert.ok(live.functions.length >= 300, `corpus shrank to ${live.functions.length} functions`);
   assertBucket('overall', m.overall, 0);
   assertBucket('logic', m.logic, Math.max(THRESHOLDS.minCleanLogic, OWNER_BAR.minCleanLogic));
   assertBucket('jsx', m.jsx, Math.max(THRESHOLDS.minCleanJsx, OWNER_BAR.minCleanJsx));
 });
 
-test('golden: in-repo fixture has no placeholders, in logic or JSX', () => {
+for (const style of STYLES) test(`golden (${style}): in-repo fixture has no placeholders, in logic or JSX`, () => {
   const fns = corpus.extractFunctions(fs.readFileSync(FIXTURE, 'utf8'));
   assert.ok(fns.some((f) => f.jsx) && fns.some((f) => !f.jsx));
-  const m = corpus.measure(fns, corpus.currentDescriber(toEnglish));
+  const m = corpus.measure(fns, corpus.currentDescriber(toEnglish, { style }));
   assertBucket('fixture logic', m.logic, THRESHOLDS.minCleanLogic);
   assertBucket('fixture jsx', m.jsx, THRESHOLDS.minCleanJsx);
 });
 
-test('golden: in-repo fixture English matches the snapshot (whole file, {all: true})', () => {
-  const r = toEnglish(fs.readFileSync(FIXTURE, 'utf8'), 'function', { all: true });
+for (const style of STYLES) test(`golden (${style}): in-repo fixture English matches the snapshot (whole file, {all: true})`, () => {
+  const r = toEnglish(fs.readFileSync(FIXTURE, 'utf8'), 'function', { all: true, style });
   const actual = r.functions.map((f) => ({ name: f.name, kind: f.kind, english: f.english }));
-  if (process.env.SMITH_UPDATE_GOLDEN) fs.writeFileSync(GOLDEN, `${JSON.stringify(actual, null, 2)}\n`);
-  assert.deepEqual(actual, JSON.parse(fs.readFileSync(GOLDEN, 'utf8')));
+  if (process.env.SMITH_UPDATE_GOLDEN) fs.writeFileSync(GOLDEN[style], `${JSON.stringify(actual, null, 2)}\n`);
+  assert.deepEqual(actual, JSON.parse(fs.readFileSync(GOLDEN[style], 'utf8')));
 });
