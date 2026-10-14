@@ -52,6 +52,42 @@ describe('the probe', () => {
     assert.match(bad.why, /^cannot prepare/);
   });
 
+  test('hooks: observable runs hooks as stand-ins: a useEffect that fetches is a call to fetch; hooks leave `outside`', () => {
+    const code = 'function useUser(id: string) { const [u, setU] = useState(null); useEffect(() => { fetch("/u/" + id).then(setU); }, [id]); return u; }';
+    const r = sandbox.probe(code, { runs: 5, seed: 1, hooks: 'observable' });
+    assert.equal(r.status, 'ran');
+    assert.deepEqual(r.outside, ['fetch']);
+    assert.deepEqual(r.hooks, ['useEffect', 'useState']);
+    assert.ok(r.effects.calls.includes('fetch'));
+    assert.ok(!r.effects.calls.some((c) => /^use/.test(c)));
+    // off (the default), the same hook is outside calls only, and the effect never runs
+    const off = sandbox.probe(code, { runs: 5, seed: 1 });
+    assert.deepEqual(off.outside, ['fetch', 'useEffect', 'useState']);
+    assert.equal(off.hooks, undefined);
+    assert.ok(!off.effects.calls.includes('fetch'));
+  });
+
+  test('hooks: a pure useMemo, useCallback and useRef touch nothing outside', () => {
+    const r = sandbox.probe('function useTotal(items: number[]) { const t = useMemo(() => items.reduce((a, b) => a + b, 0), [items]); const f = useCallback((x) => x + t, [t]); const ref = useRef(0); ref.current = t; return f(1); }', { runs: 8, seed: 2, hooks: 'observable' });
+    assert.equal(r.exercised, 8);
+    assert.deepEqual(r.outside, []);
+    assert.deepEqual(r.effects, { calls: [], writes: [], deletes: [], reads: [] });
+  });
+
+  test('hooks: a setter is fired with a generated value, so an effect that waits on its state is seen; cleanups run', () => {
+    const saved = sandbox.probe('function useQuery() { const [q, setQ] = useState(""); useEffect(() => { if (q) localStorage.setItem("q", q); }, [q]); return [q, setQ]; }', { runs: 8, seed: 3, hooks: 'observable' });
+    assert.deepEqual(saved.effects.calls, ['localStorage.setItem']);
+    const cleaned = sandbox.probe('function useTick() { useEffect(() => { const t = setInterval(tick, 10); return () => clearInterval(t); }, []); return 1; }', { runs: 3, seed: 1, hooks: 'observable' });
+    assert.deepEqual(cleaned.effects.calls, ['clearInterval', 'setInterval']);
+    const reduced = sandbox.probe('function useCount() { const [n, add] = useReducer((s, a) => s + 1, 0); useLayoutEffect(() => { if (n) document.title = String(n); }); return n; }', { runs: 3, seed: 1, hooks: 'observable' });
+    assert.deepEqual(reduced.effects.writes, ['document.title'], 'a dispatch runs the reducer, and the new state re-runs the effect');
+    const late = sandbox.probe('function useLate() { const [v, setV] = useState(0); useEffect(() => { (async () => { setV(await load()); })(); }, []); useEffect(() => { if (v) track(v); }, [v]); return v; }', { runs: 5, seed: 1, hooks: 'observable' });
+    assert.ok(late.effects.calls.includes('track'), 'a state set after an await re-renders on the next microtask');
+    const loop = sandbox.probe('function useLoop() { const [n, setN] = useState(0); useEffect(() => { setN(n + 1); }); return n; }', { runs: 3, seed: 1, hooks: 'observable' });
+    assert.deepEqual([loop.status, loop.exercised, loop.timeouts], ['ran', 3, 0], 'an effect that sets state on every render stops at the render cap');
+    assert.equal(sandbox.probe('function f() { return 1; }', { hooks: 'react' }).status, 'not-runnable');
+  });
+
   test('the same seed gives the same evidence', () => {
     const code = 'function pick(o) { return o.a ? send(o.b) : o.c; }';
     assert.deepEqual(sandbox.probe(code, { runs: 8, seed: 9 }), sandbox.probe(code, { runs: 8, seed: 9 }));

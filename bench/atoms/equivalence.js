@@ -4,8 +4,9 @@
 //   const sandbox = await createSandbox({ bundle })       bundle = bundleRuntime(dir)
 //   sandbox.checkPair({ original, converted, importDecl, kind, types, runs, seed, paramTypes })
 //     -> { status: 'same' | 'different' | 'not-runnable', runs, compared, exercised, mismatches, why? }
-//   sandbox.probe(code, { kind, types, runs, seed, paramTypes })
-//     -> { status: 'ran' | 'not-runnable', runs, exercised, threw, outside, effects: { calls, writes, deletes, reads }, why? }
+//   sandbox.probe(code, { kind, types, runs, seed, paramTypes, hooks })
+//     -> { status: 'ran' | 'not-runnable', runs, exercised, threw, outside, hooks?, effects: { calls, writes, deletes, reads }, why? }
+//     hooks: 'observable' runs React hooks as observable stand-ins (no React) instead of stubs
 //   checkCorpus({ runs })  -> { summary, functions: [...] }   (CLI: node bench/atoms/equivalence.js)
 //
 // What is compared, per run: how the call ends (the value returned, the value a
@@ -367,6 +368,120 @@ globalThis.__h = (function () {
     return out;
   }
 
+  // Hook stand-ins (a probe with hooks: 'observable'), no React: each state slot is a BehaviorSubject-like box (a value
+  // and a setter that emits), and the function under test is its one subscriber, so an emit calls it again ("a
+  // render"). Slots are matched by call order, as React does. An effect subscribes to its dependencies: it runs after
+  // the first call and after any call where a dependency changed (Object.is), its last cleanup first; every cleanup
+  // runs at the end. useMemo and useCallback are values derived the same way; useRef is a plain {current} box.
+  var HOOKS = ['useState', 'useReducer', 'useEffect', 'useLayoutEffect', 'useMemo', 'useCallback', 'useRef'];
+  var MAX_RENDERS = 25;
+  // a descriptor for a value of the same shape as v, so a setter is fired with something a state of that kind holds
+  function describeValue(v, depth) {
+    var t = typeof v;
+    if (t === 'string' || t === 'number' || t === 'boolean') return { k: t };
+    if (depth < 2 && Array.isArray(v)) return { k: 'array', of: v.length ? describeValue(v[0], depth + 1) : { k: 'unknown' } };
+    if (depth < 2 && v && t === 'object' && !stubs.has(v) && Object.getPrototypeOf(v) === Object.prototype) {
+      return { k: 'object', fields: Object.keys(v).map(function (f) { return { name: f, d: describeValue(v[f], depth + 1) }; }) };
+    }
+    return { k: 'unknown' };
+  }
+  function hostOf(render, rng, ctx) {
+    var slots = [], at = 0, setters = [], effects = [], dirty = false, driving = false, queued = false, gone = false, renders = 0;
+    var changed = function (slot, deps) {
+      if (!slot.seen || !deps || !slot.deps || deps.length !== slot.deps.length) return true;
+      for (var i = 0; i < deps.length; i++) if (!Object.is(deps[i], slot.deps[i])) return true;
+      return false;
+    };
+    var slotOf = function (make) { var i = at++; if (!slots[i]) slots[i] = make(i); return slots[i]; };
+    function box(i, value) {
+      var s = { value: value };
+      s.emit = function (v) {
+        if (gone) return;
+        var next = typeof v === 'function' ? v(s.value) : v;
+        if (Object.is(next, s.value)) return;
+        s.value = next; dirty = true;
+        // an emit outside the driver (after an await in an effect) re-renders on the next microtask
+        if (!driving && !queued) { queued = true; Promise.resolve().then(function () { queued = false; settle(); }); }
+      };
+      s.describe = function () { return describeValue(s.value, 0); };
+      s.path = 'state' + i;
+      setters.push(s);
+      return s;
+    }
+    function flush() {
+      var run = effects; effects = [];
+      ['layout', 'passive'].forEach(function (when) {
+        run.forEach(function (e) {
+          if (e.when !== when) return;
+          try {
+            if (typeof e.slot.cleanup === 'function') e.slot.cleanup();
+            var r = e.fn();
+            e.slot.cleanup = typeof r === 'function' ? r : null;
+          } catch (x) { ctx.note('effect throws ' + thrown(x).out.slice(7)); }
+        });
+      });
+    }
+    // one render: the function called with its slots from the start; the first one's result is the run's
+    function once() { at = 0; renders++; var r = render(); flush(); return r; }
+    function settle() {
+      if (gone) return;
+      driving = true;
+      try { while (dirty && renders < MAX_RENDERS) { dirty = false; try { once(); } catch (x) { ctx.note('render throws ' + thrown(x).out.slice(7)); } } } finally { driving = false; }
+    }
+    function effect(when) {
+      return function (fn, deps) {
+        var slot = slotOf(function () { return {}; });
+        if (changed(slot, deps)) effects.push({ slot: slot, fn: fn, when: when });
+        slot.seen = true; slot.deps = deps;
+      };
+    }
+    function memo(fn, deps) {
+      var slot = slotOf(function () { return {}; });
+      if (changed(slot, deps)) slot.value = fn();
+      slot.seen = true; slot.deps = deps;
+      return slot.value;
+    }
+    var hooks = {
+      useState: function (init) { var s = slotOf(function (i) { return box(i, typeof init === 'function' ? init() : init); }); return [s.value, s.emit]; },
+      useReducer: function (reducer, arg, init) {
+        var s = slotOf(function (i) { var b = box(i, init ? init(arg) : arg); b.dispatch = function (a) { b.emit(function (v) { return b.reducer(v, a); }); }; b.action = true; return b; });
+        s.reducer = reducer;
+        return [s.value, s.dispatch];
+      },
+      useEffect: effect('passive'),
+      useLayoutEffect: effect('layout'),
+      useMemo: memo,
+      useCallback: function (fn, deps) { return memo(function () { return fn; }, deps); },
+      useRef: function (init) { return slotOf(function () { return { current: init }; }); },
+    };
+    return {
+      hooks: hooks,
+      // the first render: the call under test, then its effects
+      first: function () { driving = true; try { return once(); } finally { driving = false; } },
+      // every setter fired once with a generated value (a dispatch with a generated action), each followed by the renders it causes
+      fire: function () {
+        settle();
+        setters.slice().forEach(function (s) {
+          var d = s.describe();
+          // an unknown state is fired with a plain value: a stub is a function, which a setter takes as an updater
+          var v = s.action ? gen({ k: 'unknown' }, rng, ctx, 'action' + s.path.slice(5), 1) : d.k === 'unknown' ? primitive(Math.floor(rng() * 1e9)) : gen(d, rng, ctx, s.path, 0);
+          driving = true;
+          try { (s.action ? s.dispatch : s.emit)(v); } catch (x) { ctx.note('setter throws ' + thrown(x).out.slice(7)); } finally { driving = false; }
+          settle();
+        });
+      },
+      // the end: once the jobs queued so far are done (an effect's awaits), every cleanup, and no more renders
+      unmount: function () {
+        var ticks = 0;
+        (function later() {
+          if (++ticks < 20) { Promise.resolve().then(later); return; }
+          gone = true;
+          slots.forEach(function (s) { if (s && typeof s.cleanup === 'function') { try { s.cleanup(); } catch (x) { ctx.note('cleanup throws ' + thrown(x).out.slice(7)); } } });
+        })();
+      },
+    };
+  }
+
   function step(side, run) {
     var seed = (spec.seed + run * 7919) >>> 0;
     var trace = [];
@@ -397,12 +512,15 @@ globalThis.__h = (function () {
     });
     rec.input = ser(args);
     var before = spec.probe ? args.map(function (a) { return ser(a); }) : null;
-    var free = sides[side].free.map(function (name) { return stub(name, ctx); });
     var self = spec.method ? stub('this', ctx) : undefined;
+    var fn;
+    // with hook stand-ins, the hooks the function names are the host's, and the call under test is its first render
+    var host = spec.hooks ? hostOf(function () { return fn.apply(self, args); }, rng, ctx) : null;
+    var free = sides[side].free.map(function (name) { return host && HOOKS.indexOf(name) >= 0 ? host.hooks[name] : stub(name, ctx); });
     var settle = function (how) { return function (v) { rec.out = how + ' ' + ser(v); rec.args = ser(args); }; };
     try {
-      var fn = sides[side].factory.apply(undefined, free);
-      var r = fn.apply(self, args);
+      fn = sides[side].factory.apply(undefined, free);
+      var r = host ? host.first() : fn.apply(self, args);
       if (r instanceof Promise) {
         r.then(settle('resolves'), function (e) { var x = thrown(e); rec.out = 'rejects ' + x.out.slice(7); rec.detail = x.detail; rec.args = ser(args); });
       } else {
@@ -412,6 +530,7 @@ globalThis.__h = (function () {
       var x = thrown(e);
       rec.out = x.out; rec.detail = x.detail;
     }
+    if (host && /^returns/.test(rec.out)) { host.fire(); host.unmount(); }
     rec.args = ser(args);
     if (before) rec.changed = args.map(function (a, i) { return ser(a) !== before[i] ? 'arg' + i : null; }).filter(Boolean);
     return rec.out;
@@ -467,6 +586,9 @@ globalThis.__h = (function () {
 `;
 
 // ---------------------------------------------------------------------------
+
+/** The React hooks the probe has a stand-in for (probe option hooks: 'observable'); HOOKS in the harness. */
+const HOOK_STAND_INS = Object.freeze(['useState', 'useReducer', 'useEffect', 'useLayoutEffect', 'useMemo', 'useCallback', 'useRef']);
 
 async function createSandbox({ bundle }) {
   const { getQuickJS } = require('quickjs-emscripten');
@@ -546,10 +668,14 @@ async function createSandbox({ bundle }) {
 
   // One function on its own, on generated inputs, with every free name and untyped parameter a recording stub: what it
   // touched across the runs. Evidence, not proof: an effect no generated input reaches is not seen.
-  //   -> { status: 'ran' | 'not-runnable', runs, exercised, threw, timeouts, outside, effects: { calls, writes, deletes, reads }, why? }
+  //   -> { status: 'ran' | 'not-runnable', runs, exercised, threw, timeouts, outside, hooks?, effects: { calls, writes, deletes, reads }, why? }
   //   outside: the free names the function uses that the sandbox does not define (imports, module state, React ...)
   //   effects: paths over those stubs and the parameters (`arg0` ...); writes include a parameter the call changed
-  function probe(code, { kind = 'function', types = new Map(), runs = 25, seed = 1, paramTypes = null } = {}) {
+  //   hooks: 'observable' -> the React hooks it names that have a stand-in (HOOK_STAND_INS) run as stand-ins, not stubs:
+  //     after the call, each state setter is fired with a generated value and its effects run; those hooks are left
+  //     out of `outside` and listed in `hooks`. Off (the default), a hook is an outside call like any other.
+  function probe(code, { kind = 'function', types = new Map(), runs = 25, seed = 1, paramTypes = null, hooks = null } = {}) {
+    if (hooks !== null && hooks !== 'observable') return { status: 'not-runnable', why: `unknown hooks option ${JSON.stringify(hooks)}` };
     let a;
     let params;
     try {
@@ -567,7 +693,10 @@ async function createSandbox({ bundle }) {
       if (r.error) return { status: 'not-runnable', why: `harness: ${r.error.message}` };
       const known = new Set(JSON.parse(evaluate(vm, `__h.known(${JSON.stringify(a.free)})`).value));
       const free = a.free.filter((n) => !known.has(n));
-      r = evaluate(vm, `__h.define(${JSON.stringify({ params, runs, seed, method: kind === 'method', atoms: {}, aliases: {}, probe: true })}, { original: { free: ${JSON.stringify(free)}, factory: function (${free.join(', ')}) {\n${a.body}\n} } }); 0`);
+      const standIns = hooks ? free.filter((n) => HOOK_STAND_INS.includes(n)) : [];
+      const outside = free.filter((n) => !standIns.includes(n));
+      const extra = hooks ? { hooks: standIns } : {};
+      r = evaluate(vm, `__h.define(${JSON.stringify({ params, runs, seed, method: kind === 'method', atoms: {}, aliases: {}, probe: true, hooks: standIns.length > 0 })}, { original: { free: ${JSON.stringify(free)}, factory: function (${free.join(', ')}) {\n${a.body}\n} } }); 0`);
       if (r.error) return { status: 'not-runnable', why: `cannot load: ${r.error.message}` };
       for (let run = 0; run < runs; run++) {
         r = evaluate(vm, `__h.step('original', ${run})`);
@@ -576,8 +705,8 @@ async function createSandbox({ bundle }) {
       r = evaluate(vm, '__h.probeReport()');
       if (r.error) return { status: 'not-runnable', why: `report: ${r.error.message}` };
       const rep = JSON.parse(r.value);
-      if (!rep.ran) return { status: 'not-runnable', runs, exercised: 0, threw: 0, timeouts: rep.timeouts, outside: free, effects: rep.effects, why: 'every run timed out' };
-      return { status: 'ran', runs, exercised: rep.exercised, threw: rep.threw, timeouts: rep.timeouts, outside: free, effects: rep.effects };
+      if (!rep.ran) return { status: 'not-runnable', runs, exercised: 0, threw: 0, timeouts: rep.timeouts, outside, ...extra, effects: rep.effects, why: 'every run timed out' };
+      return { status: 'ran', runs, exercised: rep.exercised, threw: rep.threw, timeouts: rep.timeouts, outside, ...extra, effects: rep.effects };
     } finally {
       vm.dispose();
     }
@@ -662,4 +791,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createSandbox, checkCorpus, describeType, typesOfSource, prepareSide, atomBindings };
+module.exports = { createSandbox, HOOK_STAND_INS, checkCorpus, describeType, typesOfSource, prepareSide, atomBindings };
