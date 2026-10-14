@@ -145,7 +145,7 @@ function atomBindings(importDecl) {
   });
 }
 
-function prepareSide(code, kind, importDecl) {
+function prepareSide(code, kind, importDecl, countLocals = false) {
   const js = ts.transpileModule(wrap(code, kind), {
     compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext, jsx: ts.JsxEmit.Preserve },
   }).outputText;
@@ -162,7 +162,8 @@ function prepareSide(code, kind, importDecl) {
     member = m.key.type === 'Identifier' ? m.key.name : String(m.key.value);
   }
   const fn = kind === 'method' ? decl.properties[0] : decl;
-  const bind = atoms.length ? `const { ${atoms.map((a) => (a.atom === a.local ? a.atom : `${a.atom}: ${a.local}`)).join(', ')} } = __atoms;\n` : '';
+  const key = (a) => (countLocals ? a.local : a.atom);
+  const bind = atoms.length ? `const { ${atoms.map((a) => (key(a) === a.local ? a.local : `${key(a)}: ${a.local}`)).join(', ')} } = __atoms;\n` : '';
   const tail = kind === 'method' ? `return __w[${JSON.stringify(member)}];` : 'return __f;';
   return {
     free: globals.filter((g) => !locals.has(g)).sort(),
@@ -345,10 +346,10 @@ globalThis.__h = (function () {
   }
   // The atoms the converted side calls, counted: how often each ran, and how often its
   // first argument was not a kind of value the atom is declared for.
-  function counted(atoms) {
+  function counted(atoms, aliases) {
     var out = {};
     Object.keys(atoms).forEach(function (name) {
-      var real = __smith[name], kinds = atoms[name];
+      var real = __smith[aliases[name] || name], kinds = atoms[name];
       out[name] = function () {
         if (cur) {
           var c = cur.atoms[name] || (cur.atoms[name] = { calls: 0, wrongKind: 0, unknown: 0 });
@@ -408,7 +409,7 @@ globalThis.__h = (function () {
   }
 
   return {
-    define: function (s, factories) { spec = s; sides = factories; records = {}; globalThis.__atoms = counted(s.atoms || {}); },
+    define: function (s, factories) { spec = s; sides = factories; records = {}; globalThis.__atoms = counted(s.atoms || {}, s.aliases || {}); },
     step: step,
     timedOut: function (side, run) { (records[side + ':' + run] = records[side + ':' + run] || { trace: [], args: '' }).out = 'timeout'; },
     report: function () {
@@ -473,13 +474,15 @@ async function createSandbox({ bundle }) {
   // atomKinds: {atom: [kinds its first parameter takes]} for the atoms the converted side imports
   // paramTypes: [descriptor | null] per parameter (bench/atoms/checker-types.js), used where a
   //   parameter has no type of its own
-  function checkPair({ original, converted, importDecl = '', kind = 'function', types = new Map(), runs = 25, seed = 1, atomKinds = {}, paramTypes = null }) {
+  // countLocals: count `plus as plusNew` apart from `plus`, under its local name, so calls at
+  //   some places can be told from the rest (atomCalls is keyed by local name then)
+  function checkPair({ original, converted, importDecl = '', kind = 'function', types = new Map(), runs = 25, seed = 1, atomKinds = {}, paramTypes = null, countLocals = false }) {
     let a;
     let b;
     let params;
     try {
       a = prepareSide(original, kind, '');
-      b = prepareSide(converted, kind, importDecl);
+      b = prepareSide(converted, kind, importDecl, countLocals);
       params = paramsOf(original, kind, types);
       if (paramTypes) params = params.map((p, i) => (!p.rest && p.d.k === 'unknown' && paramTypes[i] ? { ...p, d: paramTypes[i] } : p));
     } catch (e) {
@@ -498,8 +501,10 @@ async function createSandbox({ bundle }) {
         const free = s.free.filter((n) => !known.has(n));
         return `{ free: ${JSON.stringify(free)}, factory: function (${free.join(', ')}) {\n${s.body}\n} }`;
       };
-      const atoms = Object.fromEntries(atomBindings(importDecl).map((x) => [x.atom, atomKinds[x.atom] || ['any']]));
-      r = evaluate(vm, `__h.define(${JSON.stringify({ params, runs, seed, method: kind === 'method', atoms })}, { original: ${side(a)}, converted: ${side(b)} }); 0`);
+      const bound = atomBindings(importDecl);
+      const atoms = Object.fromEntries(bound.map((x) => [countLocals ? x.local : x.atom, atomKinds[x.atom] || ['any']]));
+      const aliases = countLocals ? Object.fromEntries(bound.map((x) => [x.local, x.atom])) : {};
+      r = evaluate(vm, `__h.define(${JSON.stringify({ params, runs, seed, method: kind === 'method', atoms, aliases })}, { original: ${side(a)}, converted: ${side(b)} }); 0`);
       if (r.error) return { status: 'not-runnable', why: `cannot load: ${r.error.message}` };
       for (let run = 0; run < runs; run++) {
         for (const which of ['original', 'converted']) {

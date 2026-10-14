@@ -86,3 +86,22 @@ in ten. At places no input reaches, the check cannot catch either, so picking st
 model's job. Done next: the checker's types fed to input generation reached 16 of the 27 places, and
 try-each settled them by running. Of the 11 left, 2 receive two kinds of value (no single
 atom is right) and 9 are still not reached.
+
+## Result: filling untranslated parts (2026-10-14)
+
+`node bench/atoms/model-fill.js --model <m>`: the 18 corpus functions the dataset drops as
+`untranslated`. The model rewrites the whole function; it is kept only when it parses (same
+kind, same parameters), calls only atoms or the original's names, leaves fewer gaps, behaves
+the same as the original with the checker's types, and every atom call it wrote runs with a
+real value of the atom's kind (counted apart: `plus as plus__new`, `checkPair({ countLocals })`).
+Tests: `atoms-model-fill.test.js` (canned answers, no Ollama).
+
+| model | accepted | rejected at: parses | names | fewer gaps | same | reached |
+|---|---|---|---|---|---|---|
+| qwen2.5-coder 1.5B | 1 of 18 | 0 | 1 | 16 | 0 | 0 |
+| qwen2.5-coder 7B | 3 of 18 | 1 | 0 | 6 | 4 | 4 |
+
+The 1.5B hands the code back almost unchanged (16 of 18). The 7B writes real rewrites; the
+checks turned down 8 of them (4 behave differently, 4 put atoms where no input goes) and kept
+3 (`send` in async-status, `applyView` with sortedBy for a mutating sort, `toXStateConfig`
+with each). Nothing is added to the dataset yet.
