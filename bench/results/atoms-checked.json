@@ -8,6 +8,7 @@
   "conversionsWithoutCheck": 712,
   "conversionsWithCheck": 761,
   "rewritesTakenBack": 0,
+  "takenBackByCause": {},
   "ambiguousPlaces": 76,
   "ambiguousResolved": 49
  },

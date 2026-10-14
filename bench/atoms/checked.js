@@ -7,7 +7,8 @@
 // 1. Convert and run both versions (bench/atoms/equivalence.js). When they behave
 //    differently, take rewrites back one at a time until they agree. Each one taken
 //    back is listed in `rejected` with the input that showed the difference and what
-//    each version did: the reason to fix the transform or the catalog.
+//    each version did, and a `diagnosis` (bench/atoms/diagnose.js): whether the atom,
+//    the kind of value, or the transform is at fault, and what to change.
 // 2. Where several atoms fit and no type says which (`a + b` is plus or join,
 //    `x.slice(1)` is a list or a text), try each one and keep the one that works:
 //    the code still behaves the same, the atom actually ran, and every value it was
@@ -19,11 +20,13 @@ const fs = require('fs');
 const path = require('path');
 const { toAtoms } = require('../../atoms-transform');
 const { createSandbox, typesOfSource } = require('./equivalence');
+const { createDiagnoser } = require('./diagnose');
 const { snapshotRuntime, catalogFor, bundleRuntime } = require('./runtime');
 
 async function createCheckedConverter({ compiled, bundle }) {
   const sandbox = await createSandbox({ bundle });
   const atomKinds = Object.fromEntries([...compiled.atoms].map(([name, info]) => [name, info.firstKinds || ['any']]));
+  const diagnose = createDiagnoser({ compiled, sandbox });
 
   function convert(code, { kind = 'function', types = new Map(), runs = 25, seed = 1, typeHint = null } = {}) {
     const skip = new Set();
@@ -61,12 +64,12 @@ async function createCheckedConverter({ compiled, bundle }) {
       // no single rewrite accounts for it and none helps: leave the function as it was
       if (!best || best.tried.res.mismatchCount >= cur.res.mismatchCount) {
         sites.forEach((s) => skip.add(s.id));
-        rejected.push({ atom: null, form: 'every rewrite', why: 'no single rewrite accounts for the difference', evidence: cur.res.mismatches[0] });
+        rejected.push({ atom: null, form: 'every rewrite', why: 'no single rewrite accounts for the difference', evidence: cur.res.mismatches[0], diagnosis: diagnose(null, cur.res.mismatches[0]) });
         cur = attempt();
         break;
       }
       skip.add(best.site.id);
-      rejected.push({ atom: best.site.atom, form: best.site.form, start: best.site.start, end: best.site.end, source: code.slice(best.site.start, best.site.end), evidence: cur.res.mismatches[0] });
+      rejected.push({ atom: best.site.atom, form: best.site.form, start: best.site.start, end: best.site.end, source: code.slice(best.site.start, best.site.end), evidence: cur.res.mismatches[0], diagnosis: diagnose(best.site, cur.res.mismatches[0]) });
       cur = best.tried;
     }
 
@@ -151,6 +154,7 @@ async function checkedCorpus({ runs = 25, only = null } = {}) {
     conversionsWithoutCheck: sum((x) => x.convertedUnchecked),
     conversionsWithCheck: sum((x) => x.converted),
     rewritesTakenBack: sum((x) => x.rejected.length),
+    takenBackByCause: functions.flatMap((x) => x.rejected).reduce((n, r) => ({ ...n, [r.diagnosis.cause]: (n[r.diagnosis.cause] || 0) + 1 }), {}),
     ambiguousPlaces: sum((x) => x.decisions.length),
     ambiguousResolved: sum((x) => x.decisions.filter((d) => d.chosen).length),
   };
@@ -173,6 +177,8 @@ if (require.main === module) {
       for (const r of f.rejected) {
         console.log(`\nTAKEN BACK in ${f.name} (${f.file}): ${r.atom || r.form}  \`${(r.source || '').replace(/\s+/g, ' ').slice(0, 80)}\``);
         if (r.evidence) console.log(`  input ${r.evidence.input.slice(0, 120)}\n  original  ${r.evidence.original.out.slice(0, 120)}\n  converted ${r.evidence.converted.out.slice(0, 120)}`);
+        console.log(`  cause     ${r.diagnosis.cause}: ${r.diagnosis.why}\n  fix       ${r.diagnosis.fix}`);
+        if (r.diagnosis.probe) console.log(`  alone     ${r.diagnosis.probe.code}\n            input ${r.diagnosis.probe.input.slice(0, 100)}: ${r.diagnosis.probe.original.slice(0, 60)} / ${r.diagnosis.probe.converted.slice(0, 60)}`);
       }
     }
     const top = (o) => Object.entries(o).sort((a, b) => b[1] - a[1]).map(([k, n]) => `  ${String(n).padStart(3)}  ${k}`).join('\n');

@@ -6,6 +6,7 @@ const assert = require('node:assert/strict');
 const { compileCatalog } = require('./atoms-catalog');
 const { createSandbox, typesOfSource, describeType } = require('./bench/atoms/equivalence');
 const { createCheckedConverter } = require('./bench/atoms/checked');
+const { classifyCause } = require('./bench/atoms/diagnose');
 
 const BUNDLE = `globalThis.__smith = {
   plus: (a, b) => a + b,
@@ -15,6 +16,8 @@ const BUNDLE = `globalThis.__smith = {
   when: (c, a, b) => (c ? a() : b ? b() : undefined),
   part: (list, start, end) => list.slice(start, end),
   sliceText: (text, start, end) => text.slice(start, end),
+  merged: (target, source) => ({ ...target, ...source }),
+  count: (list) => (Array.isArray(list) ? list.length : 0),
 };`;
 const catalog = (extra = []) => compileCatalog([
   { atom: 'plus', js: ['a + b'], params: ['a', 'b'], firstKinds: ['number'] },
@@ -149,5 +152,35 @@ describe('convert, check, repair', () => {
     assert.equal(out.rejected[0].source, 'a === b');
     assert.notEqual(out.rejected[0].evidence.original.out, out.rejected[0].evidence.converted.out);
     assert.deepEqual(out.untranslated.map((u) => u.reason), ['failed the check']);
+    // the form alone already differs, so the catalog entry or the atom is at fault
+    assert.equal(out.rejected[0].diagnosis.cause, 'atom');
+    assert.match(out.rejected[0].diagnosis.fix, /take `a === b` out of the catalog forms of sameAs/);
+    assert.match(out.rejected[0].diagnosis.probe.code, /return a === b;/);
+  });
+
+  test('an atom that copies where the built-in changes what it is given is diagnosed as a mutation', async () => {
+    const c = await converterFor(catalog([{ atom: 'merged', js: ['Object.assign(target, source)'], params: ['target', 'source'] }]));
+    const out = c.convert('function fill(box: { a: number }, extra: { b: number }) { Object.assign(box, extra); return box; }', { runs: 60 });
+    assert.equal(out.check.status, 'same');
+    assert.equal(out.rejected[0].atom, 'merged');
+    assert.equal(out.rejected[0].diagnosis.cause, 'mutation');
+    assert.match(out.rejected[0].diagnosis.fix, /replacesMutation/);
+  });
+
+  test('an atom given a kind of value it is not for is diagnosed as the kind, not the atom', async () => {
+    const c = await converterFor(catalog([{ atom: 'count', js: ['list.length'], params: ['list'], firstKinds: ['list'] }]));
+    const out = c.convert('function width(label: string) { return label.length; }', { runs: 60 });
+    assert.match(out.body, /label\.length/);
+    assert.equal(out.rejected[0].diagnosis.cause, 'kind');
+    assert.match(out.rejected[0].diagnosis.why, /for list, and not for the other kinds/);
+  });
+
+  test('a form that agrees on its own puts the fault in the transform, by what differed', () => {
+    const same = { status: 'same', exercised: 40, mismatches: [] };
+    const d = classifyCause({ atom: 'both', form: 'a && b', evidence: { differs: 'trace' }, declared: null, open: same });
+    assert.equal(d.cause, 'transform');
+    assert.match(d.why, /evaluated early, late or twice/);
+    // a probe no input gets through proves nothing either way
+    assert.equal(classifyCause({ atom: 'both', form: 'a && b', open: { status: 'same', exercised: 0, mismatches: [] } }).cause, 'unknown');
   });
 });
