@@ -93,3 +93,11 @@ export function checkBrief(brief, { fn = null, others = [] } = {}) {
   }
   return { ok: true };
 }
+
+// A tool-calling driver's `intent` (run.mjs arm I's brief tool): checked like a harness note. Empty intent is fine
+// (the brief goes out as briefBuilder made it); a rejected one comes back as the tool's reply, sample note included.
+export function checkIntent(intent, { fn, others }) {
+  if (intent == null || !String(intent).trim()) return { ok: true, note: null };
+  const g = checkBrief(String(intent), { fn, others });
+  return g.ok ? { ok: true, note: String(intent).slice(0, 1200) } : { ok: false, text: `Brief not built: ${g.reason} Call brief again with an intent like that.` };
+}

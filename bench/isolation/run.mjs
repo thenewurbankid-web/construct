@@ -18,6 +18,7 @@ import { buildBriefs } from './blocks/briefBuilder.mjs';
 import { applyPrelude, spliceFunction } from './blocks/spliceApplier.mjs';
 import { sample } from './blocks/sampler.mjs';
 import { prefilledGenerate, briefSignature } from './blocks/prefill.mjs';
+import { checkIntent } from './blocks/briefGuard.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const TASKS = join(HERE, 'tasks');
@@ -199,6 +200,10 @@ const strategies = {
     };
     const exec = {
       async brief({ intent } = {}) {
+        // The driver's intent is checked like a harness note (intent only, this function only); a rejection
+        // comes back with a valid sample note and uses no repair.
+        const guard = checkIntent(intent, { fn: names[Math.min(st.fn, names.length - 1)], others: names });
+        if (!guard.ok) return { ok: false, text: guard.text };
         if (st.failed) {
           if (st.repairs >= arm.repairs) return { ok: false, text: 'Repair limit reached. Call done.' };
           st.repairs++; st.failed = false;
@@ -206,7 +211,7 @@ const strategies = {
         }
         if (st.fn >= names.length) return { ok: false, text: 'Every function is written. Call check.' };
         const b = buildBriefs({ task, file: st.file, read: ctx.read, targetName: names[st.fn] }).briefs[0];
-        st.brief = { ...b, brief: intent ? `${b.brief}\n\nLEAD'S NOTE: ${String(intent).slice(0, 1200)}` : b.brief };
+        st.brief = { ...b, brief: guard.note ? `${b.brief}\n\nLEAD'S NOTE: ${guard.note}` : b.brief };
         st.candidate = null;
         return { ok: true, text: `Brief ready for function ${b.name} (about ${config.approxTokens(st.brief.brief)} tokens). Next: code.` };
       },
