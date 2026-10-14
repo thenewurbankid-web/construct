@@ -8,6 +8,7 @@ import { validateSeparationOfConcerns } from '@line/construct-core/soc-enforcer'
 import { validateReadability } from '@line/construct-core/readability-enforcer';
 import { checkPublicApiDrift } from '@line/construct-core/api-composer';
 import { validateLocalRules } from '@line/construct-core/local-rules';
+import { validateBooleanNames } from './lsp/booleanNames.mjs';
 
 export const DEFAULT_ENFORCERS = [
   { name: 'architecture', validate: validateArchitecture },
@@ -17,4 +18,6 @@ export const DEFAULT_ENFORCERS = [
   // #553 -- project-local rules from architecture.yml's `localRules:` list; a no-op enforcer
   // (empty violations) for every project that doesn't declare any.
   { name: 'local-rules', validate: validateLocalRules },
+  // NAME-002: boolean functions named is/has/can/should/does, read through the TypeScript language service.
+  { name: 'boolean-names', validate: validateBooleanNames },
 ];

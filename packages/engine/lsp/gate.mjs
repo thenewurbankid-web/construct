@@ -23,6 +23,7 @@ import { functionBudgetFor } from '@line/construct-core/architecture-enforcer';
 import { DEFAULT_LAYERS } from '@line/construct-core/config';
 import { ITEM_KINDS, KIND_LAYER } from '@line/construct-core/profiles/line/contract';
 import { smithOfFunction } from './smith.mjs';
+import { booleanNameOf, name002Severity, NAME_002_DEFAULTS, BOOLEAN_PREFIXES } from './booleanNames.mjs';
 import { PLACEHOLDER_EMPTY_RATIO } from './smithText.mjs';
 
 export { PLACEHOLDER_EMPTY_RATIO };
@@ -243,10 +244,11 @@ export function concernsOf(sf, node, rel) {
 
 /**
  * The gate for one function of one file.
- * @param {{rel: string, source: string, fn: string, layer?: string, smith?: Function}} a `smith` overrides the round trip (tests).
+ * @param {{rel: string, source: string, fn: string, layer?: string, smith?: Function, root?: string|null}} a `smith` overrides the round trip (tests);
+ *   `root` (optional) types the function against its project and reads NAME-002's `generated` severity from it.
  * @returns {Promise<any>} {pass, exempt, layer, checks, failed, smith, ms}.
  */
-export async function atomicGate({ rel, source, fn, layer = layerOf(rel), smith = smithOfFunction }) {
+export async function atomicGate({ rel, source, fn, layer = layerOf(rel), smith = smithOfFunction, root = null }) {
   const t0 = Date.now();
   const sf = parse(rel, source);
   const node = findFn(sf, fn);
@@ -276,6 +278,13 @@ export async function atomicGate({ rel, source, fn, layer = layerOf(rel), smith 
     const okW = w.whole <= unitBudget; const okC = concerns.length <= CONCERN_LIMIT;
     const parts = [`${fn} ${w.own}`, ...w.parts.map((p) => `${p.name} ${p.cyclomatic}`)].join(', ');
     add('one-job', okW && okC, `whole cyclomatic ${w.whole}/${unitBudget} (${layer} ${budget.cyclomatic} x ${UNIT_BUDGET_FACTOR}: ${parts}); concerns ${concerns.length}/${CONCERN_LIMIT}${concerns.length ? ` (${concerns.join(', ')})` : ''}`);
+  }
+  // NAME-002 on generated code: a boolean function (or type guard) is named is/has/can/should/does (default error)
+  const nameSev = root ? name002Severity(root).generated : NAME_002_DEFAULTS.generated;
+  if (nameSev !== 'off') {
+    let bad = null;
+    try { bad = booleanNameOf(rel, source, fn, { root }); } catch { bad = null; }
+    add('naming', !bad || nameSev !== 'error', bad ? `${nameSev === 'error' ? '' : 'warning: '}NAME-002 ${fn} ${bad.guard ? 'is a boolean type guard' : 'returns boolean'}; name it ${bad.suggested} (${BOOLEAN_PREFIXES.join('/')})` : 'NAME-002: not a boolean function, or named for one');
   }
   const data = dataConnections(sf, node);
   add('connections', data.length === 0, data.length ? `reads imported ${data.join(', ')} as data, not through a function` : 'only through functions');
