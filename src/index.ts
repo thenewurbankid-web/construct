@@ -249,13 +249,7 @@ export function ifIt<T, S>(subject: S): Subject<T, S> {
   return new Subject<T, S>(null, subject);
 }
 
-// && / || as free functions, not methods -- a.and(b) would assume `a` has
-// its own .and() method, but && and || almost always combine plain
-// booleans (the result of a comparison), and booleans have no such method.
-export function and(a: boolean, b: boolean): boolean {
-  return a && b;
-}
-
-export function or(a: boolean, b: boolean): boolean {
-  return a || b;
-}
+// && / || ?? and every other operator, keyword and built-in now live in the
+// plain-function atom runtime (./atoms). and()/or() there keep the old eager
+// (boolean, boolean) form as an overload, so existing callers are unaffected.
+export * from './atoms';

@@ -18,6 +18,7 @@
   ],
   "license": "ISC",
   "devDependencies": {
+    "fast-check": "^4.10.2",
     "typescript": "^7.0.2"
   }
 }
