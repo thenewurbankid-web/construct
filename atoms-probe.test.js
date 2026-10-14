@@ -88,6 +88,41 @@ describe('the probe', () => {
     assert.equal(sandbox.probe('function f() { return 1; }', { hooks: 'react' }).status, 'not-runnable');
   });
 
+  // Hooks in the shape Construct's Trace emits for a Controller (trace/src/emit.mjs emitController), each wrapped in a
+  // hook of its own. The service one is Trace's text verbatim; Trace emits no direct fetch and no useMemo, so those two
+  // keep its shape with fetch in place of the service, and useMemo over the state.
+  const TRACE_SERVICE = `function useCartSummary() {
+  const [summary, setSummary] = useState(null);
+  useEffect(() => {
+    service.getCartSummary().then(setSummary);
+  }, []);
+  return summary;
+}`;
+  const TRACE_FETCH = `function useCartTotal() {
+  const [total, setTotal] = useState(undefined);
+  useEffect(() => {
+    fetch("/api/cart/total").then(setTotal);
+  }, []);
+  return total;
+}`;
+  const TRACE_PURE = `function useItemCount() {
+  const [count, setCount] = useState(undefined);
+  const doubled = useMemo(() => (count ?? 0) * 2, [count]);
+  return { count, doubled, setCount };
+}`;
+
+  test('hooks: Trace\'s Controller hooks: the service one calls the service, the direct fetch is fetch, the pure one touches nothing', () => {
+    const svc = sandbox.probe(TRACE_SERVICE, { runs: 5, seed: 1, hooks: 'observable' });
+    assert.deepEqual([svc.status, svc.outside, svc.hooks], ['ran', ['service'], ['useEffect', 'useState']]);
+    assert.ok(svc.effects.calls.includes('service.getCartSummary'), svc.effects.calls.join());
+    const io = sandbox.probe(TRACE_FETCH, { runs: 5, seed: 1, hooks: 'observable' });
+    assert.deepEqual([io.outside, io.hooks], [['fetch'], ['useEffect', 'useState']]);
+    assert.ok(io.effects.calls.includes('fetch'));
+    const pure = sandbox.probe(TRACE_PURE, { runs: 5, seed: 1, hooks: 'observable' });
+    assert.deepEqual([pure.exercised, pure.outside, pure.hooks], [5, [], ['useMemo', 'useState']]);
+    assert.deepEqual(pure.effects, { calls: [], writes: [], deletes: [], reads: [] });
+  });
+
   test('the same seed gives the same evidence', () => {
     const code = 'function pick(o) { return o.a ? send(o.b) : o.c; }';
     assert.deepEqual(sandbox.probe(code, { runs: 8, seed: 9 }), sandbox.probe(code, { runs: 8, seed: 9 }));
