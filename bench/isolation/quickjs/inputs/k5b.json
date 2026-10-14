@@ -1,0 +1,328 @@
+{
+  "qwen2.5-coder:7b": {
+    "summary": {
+      "planModel": "qwen2.5-coder:7b",
+      "coder": "qwen2.5-coder:1.5b",
+      "runs": 5,
+      "pass": 5,
+      "passAndUnit": 5,
+      "plansRight": 5,
+      "tscClean": 5,
+      "unit": 5,
+      "tokens": 1540,
+      "calls": 10,
+      "rule": "pass = tsc- and stub-clean fill whose canonical Smith sentences equal the plan sentences, in order",
+      "verdict": "pass"
+    },
+    "runs": [
+      {
+        "run": 0,
+        "planModel": "qwen2.5-coder:7b",
+        "sketch": "export function formatAvailability(available: boolean): string {\n  return available ? \"Available\" : \"On loan\";\n}",
+        "plan": [
+          "If available, return 'Available'.",
+          "It returns 'On loan'."
+        ],
+        "planGaps": 0,
+        "planRight": true,
+        "tries": [
+          {
+            "k": 0,
+            "tsc": 0,
+            "stub": []
+          }
+        ],
+        "code": "export function formatAvailability(available: boolean): string {\nif (available) {\n  return 'Available';\n}\nreturn 'On loan';\n}\n",
+        "smith": [
+          "If available, return 'Available'.",
+          "It returns 'On loan'."
+        ],
+        "pass": true,
+        "unit": true,
+        "passAndUnit": true,
+        "vsRef": 1,
+        "calls": 2,
+        "tokens": 308
+      },
+      {
+        "run": 1,
+        "planModel": "qwen2.5-coder:7b",
+        "sketch": "export function formatAvailability(available: boolean): string {\n  return available ? \"Available\" : \"On loan\";\n}",
+        "plan": [
+          "If available, return 'Available'.",
+          "It returns 'On loan'."
+        ],
+        "planGaps": 0,
+        "planRight": true,
+        "tries": [
+          {
+            "k": 0,
+            "tsc": 0,
+            "stub": []
+          }
+        ],
+        "code": "export function formatAvailability(available: boolean): string {\nif (available) {\n  return 'Available';\n}\nreturn 'On loan';\n}\n",
+        "smith": [
+          "If available, return 'Available'.",
+          "It returns 'On loan'."
+        ],
+        "pass": true,
+        "unit": true,
+        "passAndUnit": true,
+        "vsRef": 1,
+        "calls": 2,
+        "tokens": 308
+      },
+      {
+        "run": 2,
+        "planModel": "qwen2.5-coder:7b",
+        "sketch": "export function formatAvailability(available: boolean): string {\n  return available ? \"Available\" : \"On loan\";\n}",
+        "plan": [
+          "If available, return 'Available'.",
+          "It returns 'On loan'."
+        ],
+        "planGaps": 0,
+        "planRight": true,
+        "tries": [
+          {
+            "k": 0,
+            "tsc": 0,
+            "stub": []
+          }
+        ],
+        "code": "export function formatAvailability(available: boolean): string {\nif (available) {\n  return 'Available';\n}\nreturn 'On loan';\n}\n",
+        "smith": [
+          "If available, return 'Available'.",
+          "It returns 'On loan'."
+        ],
+        "pass": true,
+        "unit": true,
+        "passAndUnit": true,
+        "vsRef": 1,
+        "calls": 2,
+        "tokens": 308
+      },
+      {
+        "run": 3,
+        "planModel": "qwen2.5-coder:7b",
+        "sketch": "export function formatAvailability(available: boolean): string {\n  return available ? \"Available\" : \"On loan\";\n}",
+        "plan": [
+          "If available, return 'Available'.",
+          "It returns 'On loan'."
+        ],
+        "planGaps": 0,
+        "planRight": true,
+        "tries": [
+          {
+            "k": 0,
+            "tsc": 0,
+            "stub": []
+          }
+        ],
+        "code": "export function formatAvailability(available: boolean): string {\nif (available) {\n  return 'Available';\n}\nreturn 'On loan';\n}\n",
+        "smith": [
+          "If available, return 'Available'.",
+          "It returns 'On loan'."
+        ],
+        "pass": true,
+        "unit": true,
+        "passAndUnit": true,
+        "vsRef": 1,
+        "calls": 2,
+        "tokens": 308
+      },
+      {
+        "run": 4,
+        "planModel": "qwen2.5-coder:7b",
+        "sketch": "export function formatAvailability(available: boolean): string {\n  return available ? \"Available\" : \"On loan\";\n}",
+        "plan": [
+          "If available, return 'Available'.",
+          "It returns 'On loan'."
+        ],
+        "planGaps": 0,
+        "planRight": true,
+        "tries": [
+          {
+            "k": 0,
+            "tsc": 0,
+            "stub": []
+          }
+        ],
+        "code": "export function formatAvailability(available: boolean): string {\nif (available) {\n  return 'Available';\n}\nreturn 'On loan';\n}\n",
+        "smith": [
+          "If available, return 'Available'.",
+          "It returns 'On loan'."
+        ],
+        "pass": true,
+        "unit": true,
+        "passAndUnit": true,
+        "vsRef": 1,
+        "calls": 2,
+        "tokens": 308
+      }
+    ]
+  },
+  "qwen2.5-coder:1.5b": {
+    "summary": {
+      "planModel": "qwen2.5-coder:1.5b",
+      "coder": "qwen2.5-coder:1.5b",
+      "runs": 5,
+      "pass": 5,
+      "passAndUnit": 0,
+      "plansRight": 0,
+      "tscClean": 5,
+      "unit": 0,
+      "tokens": 1595,
+      "calls": 10,
+      "rule": "pass = tsc- and stub-clean fill whose canonical Smith sentences equal the plan sentences, in order",
+      "verdict": "pass"
+    },
+    "runs": [
+      {
+        "run": 0,
+        "planModel": "qwen2.5-coder:1.5b",
+        "sketch": "export function formatAvailability(available: boolean): string {\n  if (available) {\n    return 'On loan';\n  } else {\n    return 'Available';\n  }\n}",
+        "plan": [
+          "If available, return 'On loan'.",
+          "It returns 'Available'."
+        ],
+        "planGaps": 0,
+        "planRight": false,
+        "tries": [
+          {
+            "k": 0,
+            "tsc": 0,
+            "stub": []
+          }
+        ],
+        "code": "export function formatAvailability(available: boolean): string {\nif (available) {\n  return 'On loan';\n}\nreturn 'Available';\n}\n",
+        "smith": [
+          "If available, return 'On loan'.",
+          "It returns 'Available'."
+        ],
+        "pass": true,
+        "unit": false,
+        "passAndUnit": false,
+        "vsRef": 0,
+        "calls": 2,
+        "tokens": 319
+      },
+      {
+        "run": 1,
+        "planModel": "qwen2.5-coder:1.5b",
+        "sketch": "export function formatAvailability(available: boolean): string {\n  if (available) {\n    return \"On loan\";\n  } else {\n    return \"Available\";\n  }\n}",
+        "plan": [
+          "If available, return 'On loan'.",
+          "It returns 'Available'."
+        ],
+        "planGaps": 0,
+        "planRight": false,
+        "tries": [
+          {
+            "k": 0,
+            "tsc": 0,
+            "stub": []
+          }
+        ],
+        "code": "export function formatAvailability(available: boolean): string {\nif (available) {\n  return 'On loan';\n}\nreturn 'Available';\n}\n",
+        "smith": [
+          "If available, return 'On loan'.",
+          "It returns 'Available'."
+        ],
+        "pass": true,
+        "unit": false,
+        "passAndUnit": false,
+        "vsRef": 0,
+        "calls": 2,
+        "tokens": 319
+      },
+      {
+        "run": 2,
+        "planModel": "qwen2.5-coder:1.5b",
+        "sketch": "export function formatAvailability(available: boolean): string {\n    if (available) {\n        return \"On loan\";\n    } else {\n        return \"Available\";\n    }\n}",
+        "plan": [
+          "If available, return 'On loan'.",
+          "It returns 'Available'."
+        ],
+        "planGaps": 0,
+        "planRight": false,
+        "tries": [
+          {
+            "k": 0,
+            "tsc": 0,
+            "stub": []
+          }
+        ],
+        "code": "export function formatAvailability(available: boolean): string {\nif (available) {\n  return 'On loan';\n}\nreturn 'Available';\n}\n",
+        "smith": [
+          "If available, return 'On loan'.",
+          "It returns 'Available'."
+        ],
+        "pass": true,
+        "unit": false,
+        "passAndUnit": false,
+        "vsRef": 0,
+        "calls": 2,
+        "tokens": 319
+      },
+      {
+        "run": 3,
+        "planModel": "qwen2.5-coder:1.5b",
+        "sketch": "export function formatAvailability(available: boolean): string {\n  if (available) {\n    return \"On loan\";\n  } else {\n    return \"Available\";\n  }\n}",
+        "plan": [
+          "If available, return 'On loan'.",
+          "It returns 'Available'."
+        ],
+        "planGaps": 0,
+        "planRight": false,
+        "tries": [
+          {
+            "k": 0,
+            "tsc": 0,
+            "stub": []
+          }
+        ],
+        "code": "export function formatAvailability(available: boolean): string {\nif (available) {\n  return 'On loan';\n}\nreturn 'Available';\n}\n",
+        "smith": [
+          "If available, return 'On loan'.",
+          "It returns 'Available'."
+        ],
+        "pass": true,
+        "unit": false,
+        "passAndUnit": false,
+        "vsRef": 0,
+        "calls": 2,
+        "tokens": 319
+      },
+      {
+        "run": 4,
+        "planModel": "qwen2.5-coder:1.5b",
+        "sketch": "export function formatAvailability(available: boolean): string {\n  if (available) {\n    return \"On loan\";\n  } else {\n    return \"Available\";\n  }\n}",
+        "plan": [
+          "If available, return 'On loan'.",
+          "It returns 'Available'."
+        ],
+        "planGaps": 0,
+        "planRight": false,
+        "tries": [
+          {
+            "k": 0,
+            "tsc": 0,
+            "stub": []
+          }
+        ],
+        "code": "export function formatAvailability(available: boolean): string {\nif (available) {\n  return 'On loan';\n}\nreturn 'Available';\n}\n",
+        "smith": [
+          "If available, return 'On loan'.",
+          "It returns 'Available'."
+        ],
+        "pass": true,
+        "unit": false,
+        "passAndUnit": false,
+        "vsRef": 0,
+        "calls": 2,
+        "tokens": 319
+      }
+    ]
+  }
+}

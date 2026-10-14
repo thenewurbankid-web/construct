@@ -1,0 +1,1414 @@
+{
+  "plans": [
+    {
+      "task": "t01-book-by-author",
+      "plan": true,
+      "planWhy": [],
+      "wrongCaught": true,
+      "wrongWhy": "example 0: missing text \"by Ines Okafor\"",
+      "ms": 15
+    },
+    {
+      "task": "t02-book-page-count",
+      "plan": true,
+      "planWhy": [],
+      "wrongCaught": true,
+      "wrongWhy": "example 0: missing text \"312 pages\"",
+      "ms": 3
+    },
+    {
+      "task": "t03-book-availability",
+      "plan": true,
+      "planWhy": [],
+      "wrongCaught": true,
+      "wrongWhy": "example 0: missing text \"Available\"",
+      "ms": 3
+    },
+    {
+      "task": "t04-book-not-found",
+      "plan": true,
+      "planWhy": [],
+      "wrongCaught": true,
+      "wrongWhy": "example 0: no link \"Back to the catalogue\" to /",
+      "ms": 2
+    },
+    {
+      "task": "t05-book-add-to-picks",
+      "plan": true,
+      "planWhy": [],
+      "wrongCaught": true,
+      "wrongWhy": "example 0: missing text \"Added to your picks\"",
+      "ms": 2
+    },
+    {
+      "task": "t06-picks-store",
+      "plan": true,
+      "planWhy": [],
+      "wrongCaught": true,
+      "wrongWhy": "example 0: lists [[],[\"a\",\"b\",\"a\"],[\"b\"],[\"x\",\"y\"]], expected [[],[\"a\",\"b\"],[\"b\"],[\"x\",\"y\"]]",
+      "ms": 3
+    },
+    {
+      "task": "t07-picks-page-list",
+      "plan": true,
+      "planWhy": [],
+      "wrongCaught": true,
+      "wrongWhy": "example 0: no button \"Remove Salt and Lanterns\"",
+      "ms": 2
+    },
+    {
+      "task": "t08-picks-page-empty",
+      "plan": true,
+      "planWhy": [],
+      "wrongCaught": true,
+      "wrongWhy": "example 0: missing text \"You have not picked any books yet\"",
+      "ms": 2
+    },
+    {
+      "task": "t09-browse-heading-availability",
+      "plan": true,
+      "planWhy": [],
+      "wrongCaught": true,
+      "wrongWhy": "example 0: h1 is \"Books\", expected \"Library catalogue\"",
+      "ms": 2
+    },
+    {
+      "task": "t10-browse-paging",
+      "plan": true,
+      "planWhy": [],
+      "wrongCaught": true,
+      "wrongWhy": "example 0: 5 book links, expected 6",
+      "ms": 3
+    },
+    {
+      "task": "t11-browse-sort-title",
+      "plan": true,
+      "planWhy": [],
+      "wrongCaught": true,
+      "wrongWhy": "example 0: book links 15 [\"River Kings -> /books/river-kings\",\"Moss and Mycelium -> /books/moss-and-mycelium\",\"Kestrel Street -> /books/kestrel-street\"]..., expected 15 [\"Bridges of Empire -> /books/bridges-of-empire\",\"Cartographers at War -> /books/cartographers-at-war\",\"Copper Roads -> /books/copper-roads\"]...",
+      "ms": 3
+    },
+    {
+      "task": "t12-browse-genre-filter",
+      "plan": true,
+      "planWhy": [],
+      "wrongCaught": true,
+      "wrongWhy": "example 0: select Genre options [\"Fiction\",\"History\",\"Science\"]",
+      "ms": 2
+    }
+  ],
+  "quick": {
+    "k2b": {
+      "qwen2.5-coder:7b": [
+        {
+          "task": "availability",
+          "sample": 0,
+          "exec": "pass",
+          "textMatch": true
+        },
+        {
+          "task": "availability",
+          "sample": 1,
+          "exec": "pass",
+          "textMatch": true
+        },
+        {
+          "task": "availability",
+          "sample": 2,
+          "exec": "pass",
+          "textMatch": true
+        },
+        {
+          "task": "availability",
+          "sample": 3,
+          "exec": "pass",
+          "textMatch": true
+        },
+        {
+          "task": "availability",
+          "sample": 4,
+          "exec": "pass",
+          "textMatch": true
+        },
+        {
+          "task": "picks-store",
+          "sample": 0,
+          "exec": "pass",
+          "textMatch": false
+        },
+        {
+          "task": "picks-store",
+          "sample": 1,
+          "exec": "pass",
+          "textMatch": false
+        },
+        {
+          "task": "picks-store",
+          "sample": 2,
+          "exec": "pass",
+          "textMatch": false
+        },
+        {
+          "task": "picks-store",
+          "sample": 3,
+          "exec": "pass",
+          "textMatch": false
+        },
+        {
+          "task": "picks-store",
+          "sample": 4,
+          "exec": "pass",
+          "textMatch": false
+        },
+        {
+          "task": "paging",
+          "sample": 0,
+          "exec": "pass",
+          "textMatch": false
+        },
+        {
+          "task": "paging",
+          "sample": 1,
+          "exec": "pass",
+          "textMatch": false
+        },
+        {
+          "task": "paging",
+          "sample": 2,
+          "exec": "pass",
+          "textMatch": false
+        },
+        {
+          "task": "paging",
+          "sample": 3,
+          "exec": "pass",
+          "textMatch": false
+        },
+        {
+          "task": "paging",
+          "sample": 4,
+          "exec": "pass",
+          "textMatch": false
+        },
+        {
+          "task": "sort-title",
+          "sample": 0,
+          "exec": "pass",
+          "textMatch": true
+        },
+        {
+          "task": "sort-title",
+          "sample": 1,
+          "exec": "pass",
+          "textMatch": false
+        },
+        {
+          "task": "sort-title",
+          "sample": 2,
+          "exec": "pass",
+          "textMatch": true
+        },
+        {
+          "task": "sort-title",
+          "sample": 3,
+          "exec": "pass",
+          "textMatch": false
+        },
+        {
+          "task": "sort-title",
+          "sample": 4,
+          "exec": "pass",
+          "textMatch": false
+        }
+      ],
+      "qwen2.5-coder:1.5b": [
+        {
+          "task": "availability",
+          "sample": 0,
+          "exec": "fail",
+          "textMatch": false
+        },
+        {
+          "task": "availability",
+          "sample": 1,
+          "exec": "fail",
+          "textMatch": false
+        },
+        {
+          "task": "availability",
+          "sample": 2,
+          "exec": "fail",
+          "textMatch": false
+        },
+        {
+          "task": "availability",
+          "sample": 3,
+          "exec": "threw TypeError",
+          "textMatch": false
+        },
+        {
+          "task": "availability",
+          "sample": 4,
+          "exec": "fail",
+          "textMatch": false
+        },
+        {
+          "task": "picks-store",
+          "sample": 0,
+          "exec": "fail",
+          "textMatch": false
+        },
+        {
+          "task": "picks-store",
+          "sample": 1,
+          "exec": "fail",
+          "textMatch": false
+        },
+        {
+          "task": "picks-store",
+          "sample": 2,
+          "exec": "fail",
+          "textMatch": false
+        },
+        {
+          "task": "picks-store",
+          "sample": 3,
+          "exec": "fail",
+          "textMatch": false
+        },
+        {
+          "task": "picks-store",
+          "sample": 4,
+          "exec": "fail",
+          "textMatch": false
+        },
+        {
+          "task": "paging",
+          "sample": 0,
+          "exec": "pass",
+          "textMatch": false
+        },
+        {
+          "task": "paging",
+          "sample": 1,
+          "exec": "pass",
+          "textMatch": false
+        },
+        {
+          "task": "paging",
+          "sample": 2,
+          "exec": "threw TypeError",
+          "textMatch": false
+        },
+        {
+          "task": "paging",
+          "sample": 3,
+          "exec": "threw TypeError",
+          "textMatch": false
+        },
+        {
+          "task": "paging",
+          "sample": 4,
+          "exec": "pass",
+          "textMatch": false
+        },
+        {
+          "task": "sort-title",
+          "sample": 0,
+          "exec": "fail",
+          "textMatch": false
+        },
+        {
+          "task": "sort-title",
+          "sample": 1,
+          "exec": "pass",
+          "textMatch": true
+        },
+        {
+          "task": "sort-title",
+          "sample": 2,
+          "exec": "fail",
+          "textMatch": false
+        },
+        {
+          "task": "sort-title",
+          "sample": 3,
+          "exec": "fail",
+          "textMatch": false
+        },
+        {
+          "task": "sort-title",
+          "sample": 4,
+          "exec": "fail",
+          "textMatch": false
+        }
+      ]
+    },
+    "k5b": {
+      "qwen2.5-coder:7b": [
+        {
+          "run": 0,
+          "sketchExec": "pass",
+          "fillExec": "pass",
+          "textPass": true,
+          "planRight": true,
+          "unit": true
+        },
+        {
+          "run": 1,
+          "sketchExec": "pass",
+          "fillExec": "pass",
+          "textPass": true,
+          "planRight": true,
+          "unit": true
+        },
+        {
+          "run": 2,
+          "sketchExec": "pass",
+          "fillExec": "pass",
+          "textPass": true,
+          "planRight": true,
+          "unit": true
+        },
+        {
+          "run": 3,
+          "sketchExec": "pass",
+          "fillExec": "pass",
+          "textPass": true,
+          "planRight": true,
+          "unit": true
+        },
+        {
+          "run": 4,
+          "sketchExec": "pass",
+          "fillExec": "pass",
+          "textPass": true,
+          "planRight": true,
+          "unit": true
+        }
+      ],
+      "qwen2.5-coder:1.5b": [
+        {
+          "run": 0,
+          "sketchExec": "fail",
+          "fillExec": "fail",
+          "textPass": true,
+          "planRight": false,
+          "unit": false
+        },
+        {
+          "run": 1,
+          "sketchExec": "fail",
+          "fillExec": "fail",
+          "textPass": true,
+          "planRight": false,
+          "unit": false
+        },
+        {
+          "run": 2,
+          "sketchExec": "fail",
+          "fillExec": "fail",
+          "textPass": true,
+          "planRight": false,
+          "unit": false
+        },
+        {
+          "run": 3,
+          "sketchExec": "fail",
+          "fillExec": "fail",
+          "textPass": true,
+          "planRight": false,
+          "unit": false
+        },
+        {
+          "run": 4,
+          "sketchExec": "fail",
+          "fillExec": "fail",
+          "textPass": true,
+          "planRight": false,
+          "unit": false
+        }
+      ]
+    },
+    "refs": {
+      "availability": "pass",
+      "picks-store": "pass",
+      "paging": "pass",
+      "sort-title": "pass"
+    },
+    "mutants": {
+      "availability": [
+        "fail",
+        "fail"
+      ],
+      "picks-store": [
+        "fail",
+        "fail"
+      ],
+      "paging": [
+        "fail",
+        "fail"
+      ],
+      "sort-title": [
+        "fail",
+        "fail"
+      ]
+    }
+  },
+  "refs": [
+    {
+      "task": "t01-book-by-author",
+      "refExec": "pass",
+      "refExecWhy": null,
+      "refDiff": "pass",
+      "refDiffWhy": null,
+      "startExec": "fail",
+      "k6RefText": true,
+      "fillFile": "results/r3-raw/H+fix/t01-book-by-author/attempt-f1-s2.tsx",
+      "r3Check": true,
+      "k6FillText": true,
+      "fillExec": "pass",
+      "fillDiff": "pass",
+      "fillDiffWhy": null,
+      "ms": {
+        "refExec": 191,
+        "refDiff": 10
+      }
+    },
+    {
+      "task": "t02-book-page-count",
+      "refExec": "pass",
+      "refExecWhy": null,
+      "refDiff": "pass",
+      "refDiffWhy": null,
+      "startExec": "fail",
+      "k6RefText": true,
+      "fillFile": "results/r3-raw/H+fix/t02-book-page-count/attempt-f1-s2.tsx",
+      "r3Check": true,
+      "k6FillText": false,
+      "fillExec": "pass",
+      "fillDiff": "pass",
+      "fillDiffWhy": null,
+      "ms": {
+        "refExec": 8,
+        "refDiff": 13
+      }
+    },
+    {
+      "task": "t03-book-availability",
+      "refExec": "pass",
+      "refExecWhy": null,
+      "refDiff": "pass",
+      "refDiffWhy": null,
+      "startExec": "fail",
+      "k6RefText": true,
+      "fillFile": "results/r3-raw/H+fix/t03-book-availability/attempt-f1-s3.tsx",
+      "r3Check": true,
+      "k6FillText": true,
+      "fillExec": "pass",
+      "fillDiff": "pass",
+      "fillDiffWhy": null,
+      "ms": {
+        "refExec": 9,
+        "refDiff": 12
+      }
+    },
+    {
+      "task": "t04-book-not-found",
+      "refExec": "pass",
+      "refExecWhy": null,
+      "refDiff": "pass",
+      "refDiffWhy": null,
+      "startExec": "fail",
+      "k6RefText": true,
+      "fillFile": "results/r3-raw/H+fix/t04-book-not-found/attempt-f1-s4.tsx",
+      "r3Check": false,
+      "k6FillText": false,
+      "fillExec": "fail",
+      "fillDiff": "fail",
+      "fillDiffWhy": "scenario 0: no link \"Back to the catalogue\" to /",
+      "ms": {
+        "refExec": 10,
+        "refDiff": 10
+      }
+    },
+    {
+      "task": "t05-book-add-to-picks",
+      "refExec": "pass",
+      "refExecWhy": null,
+      "refDiff": "pass",
+      "refDiffWhy": null,
+      "startExec": "fail",
+      "k6RefText": false,
+      "fillFile": "results/r3-raw/H+fix/t05-book-add-to-picks/attempt-f1-s4.tsx",
+      "r3Check": false,
+      "k6FillText": false,
+      "fillExec": "fail",
+      "fillDiff": "fail",
+      "fillDiffWhy": "scenario 6: enabled button \"Add to my picks\"",
+      "ms": {
+        "refExec": 8,
+        "refDiff": 15
+      }
+    },
+    {
+      "task": "t06-picks-store",
+      "refExec": "pass",
+      "refExecWhy": null,
+      "refDiff": "pass",
+      "refDiffWhy": null,
+      "startExec": "fail",
+      "k6RefText": false,
+      "fillFile": "results/r3-raw/H+fix/t06-picks-store/attempt-f3-s1.ts",
+      "r3Check": true,
+      "k6FillText": false,
+      "fillExec": "pass",
+      "fillDiff": "pass",
+      "fillDiffWhy": null,
+      "ms": {
+        "refExec": 3,
+        "refDiff": 3
+      }
+    },
+    {
+      "task": "t07-picks-page-list",
+      "refExec": "pass",
+      "refExecWhy": null,
+      "refDiff": "pass",
+      "refDiffWhy": null,
+      "startExec": "fail",
+      "k6RefText": false,
+      "fillFile": "results/r3-raw/H+fix/t07-picks-page-list/attempt-f1-s1.tsx",
+      "r3Check": true,
+      "k6FillText": false,
+      "fillExec": "pass",
+      "fillDiff": "pass",
+      "fillDiffWhy": null,
+      "ms": {
+        "refExec": 6,
+        "refDiff": 7
+      }
+    },
+    {
+      "task": "t08-picks-page-empty",
+      "refExec": "pass",
+      "refExecWhy": null,
+      "refDiff": "pass",
+      "refDiffWhy": null,
+      "startExec": "fail",
+      "k6RefText": true,
+      "fillFile": "results/r3-raw/H+fix/t08-picks-page-empty/attempt-f1-s5.tsx",
+      "r3Check": true,
+      "k6FillText": true,
+      "fillExec": "pass",
+      "fillDiff": "pass",
+      "fillDiffWhy": null,
+      "ms": {
+        "refExec": 4,
+        "refDiff": 4
+      }
+    },
+    {
+      "task": "t09-browse-heading-availability",
+      "refExec": "pass",
+      "refExecWhy": null,
+      "refDiff": "pass",
+      "refDiffWhy": null,
+      "startExec": "fail",
+      "k6RefText": true,
+      "fillFile": "results/r3-raw/H+fix/t09-browse-heading-availability/attempt-f1-s2.tsx",
+      "r3Check": true,
+      "k6FillText": false,
+      "fillExec": "pass",
+      "fillDiff": "pass",
+      "fillDiffWhy": null,
+      "ms": {
+        "refExec": 7,
+        "refDiff": 7
+      }
+    },
+    {
+      "task": "t10-browse-paging",
+      "refExec": "pass",
+      "refExecWhy": null,
+      "refDiff": "pass",
+      "refDiffWhy": null,
+      "startExec": "fail",
+      "k6RefText": false,
+      "fillFile": "results/r3-raw/H+fix/t10-browse-paging/attempt-f1-s5.tsx",
+      "r3Check": true,
+      "k6FillText": false,
+      "fillExec": "pass",
+      "fillDiff": "pass",
+      "fillDiffWhy": null,
+      "ms": {
+        "refExec": 17,
+        "refDiff": 20
+      }
+    },
+    {
+      "task": "t11-browse-sort-title",
+      "refExec": "pass",
+      "refExecWhy": null,
+      "refDiff": "pass",
+      "refDiffWhy": null,
+      "startExec": "fail",
+      "k6RefText": true,
+      "fillFile": "results/r3-raw/H+fix/t11-browse-sort-title/attempt-f1-s2.tsx",
+      "r3Check": true,
+      "k6FillText": true,
+      "fillExec": "pass",
+      "fillDiff": "pass",
+      "fillDiffWhy": null,
+      "ms": {
+        "refExec": 12,
+        "refDiff": 12
+      }
+    },
+    {
+      "task": "t12-browse-genre-filter",
+      "refExec": "pass",
+      "refExecWhy": null,
+      "refDiff": "pass",
+      "refDiffWhy": null,
+      "startExec": "fail",
+      "k6RefText": false,
+      "fillFile": "results/r3-raw/H+fix/t12-browse-genre-filter/attempt-f1-s5.tsx",
+      "r3Check": false,
+      "k6FillText": false,
+      "fillExec": "fail",
+      "fillDiff": "fail",
+      "fillDiffWhy": "scenario 1: book links 15 [\"Salt and Lanterns -> /books/salt-and-lanterns\",\"Orchard at Night -> /books/orchard-at-night\",\"Glass Harbour -> /books/glass-harbour\"]..., expected 5 [\"Salt and Lanterns -> /books/salt-and-lanterns\",\"Orchard at Night -> /books/orchard-at-night\",\"Glass Harbour -> /books/glass-harbour\"]...",
+      "ms": {
+        "refExec": 17,
+        "refDiff": 16
+      }
+    }
+  ],
+  "census": [
+    {
+      "task": "t01-book-by-author",
+      "i": 0,
+      "cached": true,
+      "correct": false,
+      "failClass": "tsc",
+      "judgeMs": 847,
+      "qExec": "cant-tell",
+      "qExecMs": 19,
+      "qDiff": "cant-tell",
+      "qDiffWhy": "ReferenceError: 'id' is not defined",
+      "text": false
+    },
+    {
+      "task": "t01-book-by-author",
+      "i": 1,
+      "cached": true,
+      "correct": true,
+      "failClass": null,
+      "judgeMs": 893,
+      "qExec": "pass",
+      "qExecMs": 14,
+      "qDiff": "pass",
+      "qDiffWhy": null,
+      "text": false
+    },
+    {
+      "task": "t01-book-by-author",
+      "i": 2,
+      "cached": true,
+      "correct": true,
+      "failClass": null,
+      "judgeMs": 913,
+      "qExec": "pass",
+      "qExecMs": 13,
+      "qDiff": "pass",
+      "qDiffWhy": null,
+      "text": false
+    },
+    {
+      "task": "t01-book-by-author",
+      "i": 3,
+      "cached": true,
+      "correct": true,
+      "failClass": null,
+      "judgeMs": 928,
+      "qExec": "pass",
+      "qExecMs": 15,
+      "qDiff": "pass",
+      "qDiffWhy": null,
+      "text": false
+    },
+    {
+      "task": "t01-book-by-author",
+      "i": 4,
+      "cached": true,
+      "correct": true,
+      "failClass": null,
+      "judgeMs": 910,
+      "qExec": "pass",
+      "qExecMs": 15,
+      "qDiff": "pass",
+      "qDiffWhy": null,
+      "text": false
+    },
+    {
+      "task": "t02-book-page-count",
+      "i": 0,
+      "cached": true,
+      "correct": true,
+      "failClass": null,
+      "judgeMs": 964,
+      "qExec": "pass",
+      "qExecMs": 14,
+      "qDiff": "pass",
+      "qDiffWhy": null,
+      "text": false
+    },
+    {
+      "task": "t02-book-page-count",
+      "i": 1,
+      "cached": true,
+      "correct": true,
+      "failClass": null,
+      "judgeMs": 881,
+      "qExec": "pass",
+      "qExecMs": 15,
+      "qDiff": "pass",
+      "qDiffWhy": null,
+      "text": false
+    },
+    {
+      "task": "t02-book-page-count",
+      "i": 2,
+      "cached": true,
+      "correct": true,
+      "failClass": null,
+      "judgeMs": 858,
+      "qExec": "pass",
+      "qExecMs": 26,
+      "qDiff": "pass",
+      "qDiffWhy": null,
+      "text": false
+    },
+    {
+      "task": "t02-book-page-count",
+      "i": 3,
+      "cached": true,
+      "correct": true,
+      "failClass": null,
+      "judgeMs": 934,
+      "qExec": "pass",
+      "qExecMs": 16,
+      "qDiff": "pass",
+      "qDiffWhy": null,
+      "text": false
+    },
+    {
+      "task": "t02-book-page-count",
+      "i": 4,
+      "cached": true,
+      "correct": true,
+      "failClass": null,
+      "judgeMs": 889,
+      "qExec": "pass",
+      "qExecMs": 10,
+      "qDiff": "pass",
+      "qDiffWhy": null,
+      "text": false
+    },
+    {
+      "task": "t03-book-availability",
+      "i": 0,
+      "cached": true,
+      "correct": false,
+      "failClass": "tsc",
+      "judgeMs": 913,
+      "qExec": "fail",
+      "qExecMs": 13,
+      "qDiff": "fail",
+      "qDiffWhy": "scenario 0: missing text \"Available\"",
+      "text": false
+    },
+    {
+      "task": "t03-book-availability",
+      "i": 1,
+      "cached": true,
+      "correct": false,
+      "failClass": "check",
+      "judgeMs": 900,
+      "qExec": "fail",
+      "qExecMs": 12,
+      "qDiff": "fail",
+      "qDiffWhy": "scenario 0: missing text \"Available\"",
+      "text": false
+    },
+    {
+      "task": "t03-book-availability",
+      "i": 2,
+      "cached": true,
+      "correct": false,
+      "failClass": "check",
+      "judgeMs": 845,
+      "qExec": "fail",
+      "qExecMs": 9,
+      "qDiff": "fail",
+      "qDiffWhy": "scenario 0: missing text \"Available\"",
+      "text": false
+    },
+    {
+      "task": "t03-book-availability",
+      "i": 3,
+      "cached": true,
+      "correct": false,
+      "failClass": "check",
+      "judgeMs": 869,
+      "qExec": "fail",
+      "qExecMs": 23,
+      "qDiff": "fail",
+      "qDiffWhy": "scenario 0: missing text \"Available\"",
+      "text": false
+    },
+    {
+      "task": "t03-book-availability",
+      "i": 4,
+      "cached": true,
+      "correct": false,
+      "failClass": "check",
+      "judgeMs": 874,
+      "qExec": "fail",
+      "qExecMs": 34,
+      "qDiff": "fail",
+      "qDiffWhy": "scenario 0: missing text \"Available\"",
+      "text": false
+    },
+    {
+      "task": "t04-book-not-found",
+      "i": 0,
+      "cached": true,
+      "correct": false,
+      "failClass": "tsc",
+      "judgeMs": 927,
+      "qExec": "cant-tell",
+      "qExecMs": 17,
+      "qDiff": "cant-tell",
+      "qDiffWhy": "ReferenceError: 'id' is not defined",
+      "text": false
+    },
+    {
+      "task": "t04-book-not-found",
+      "i": 1,
+      "cached": true,
+      "correct": false,
+      "failClass": "check",
+      "judgeMs": 969,
+      "qExec": "fail",
+      "qExecMs": 23,
+      "qDiff": "fail",
+      "qDiffWhy": "scenario 0: no link \"Back to the catalogue\" to /",
+      "text": false
+    },
+    {
+      "task": "t04-book-not-found",
+      "i": 2,
+      "cached": true,
+      "correct": false,
+      "failClass": "check",
+      "judgeMs": 913,
+      "qExec": "fail",
+      "qExecMs": 16,
+      "qDiff": "fail",
+      "qDiffWhy": "scenario 0: no link \"Back to the catalogue\" to /",
+      "text": false
+    },
+    {
+      "task": "t04-book-not-found",
+      "i": 3,
+      "cached": true,
+      "correct": false,
+      "failClass": "check",
+      "judgeMs": 829,
+      "qExec": "fail",
+      "qExecMs": 34,
+      "qDiff": "fail",
+      "qDiffWhy": "scenario 0: no link \"Back to the catalogue\" to /",
+      "text": false
+    },
+    {
+      "task": "t04-book-not-found",
+      "i": 4,
+      "cached": true,
+      "correct": false,
+      "failClass": "check",
+      "judgeMs": 973,
+      "qExec": "fail",
+      "qExecMs": 7,
+      "qDiff": "fail",
+      "qDiffWhy": "scenario 0: no link \"Back to the catalogue\" to /",
+      "text": false
+    },
+    {
+      "task": "t05-book-add-to-picks",
+      "i": 0,
+      "cached": true,
+      "correct": false,
+      "failClass": "tsc",
+      "judgeMs": 1590,
+      "qExec": "cant-tell",
+      "qExecMs": 11,
+      "qDiff": "cant-tell",
+      "qDiffWhy": "ReferenceError: 'id' is not defined",
+      "text": false
+    },
+    {
+      "task": "t05-book-add-to-picks",
+      "i": 1,
+      "cached": true,
+      "correct": false,
+      "failClass": "tsc",
+      "judgeMs": 1563,
+      "qExec": "cant-tell",
+      "qExecMs": 13,
+      "qDiff": "cant-tell",
+      "qDiffWhy": "ReferenceError: 'id' is not defined",
+      "text": false
+    },
+    {
+      "task": "t05-book-add-to-picks",
+      "i": 2,
+      "cached": true,
+      "correct": false,
+      "failClass": "tsc",
+      "judgeMs": 1596,
+      "qExec": "cant-tell",
+      "qExecMs": 16,
+      "qDiff": "cant-tell",
+      "qDiffWhy": "ReferenceError: 'id' is not defined",
+      "text": false
+    },
+    {
+      "task": "t05-book-add-to-picks",
+      "i": 3,
+      "cached": true,
+      "correct": false,
+      "failClass": "tsc",
+      "judgeMs": 1638,
+      "qExec": "cant-tell",
+      "qExecMs": 14,
+      "qDiff": "cant-tell",
+      "qDiffWhy": "ReferenceError: 'setStatus' is not defined",
+      "text": false
+    },
+    {
+      "task": "t05-book-add-to-picks",
+      "i": 4,
+      "splice": "fragment"
+    },
+    {
+      "task": "t06-picks-store",
+      "i": 0,
+      "cached": true,
+      "correct": true,
+      "failClass": null,
+      "judgeMs": 806,
+      "qExec": "pass",
+      "qExecMs": 13,
+      "qDiff": "pass",
+      "qDiffWhy": null,
+      "text": false
+    },
+    {
+      "task": "t06-picks-store",
+      "i": 1,
+      "cached": true,
+      "correct": true,
+      "failClass": null,
+      "judgeMs": 753,
+      "qExec": "pass",
+      "qExecMs": 11,
+      "qDiff": "pass",
+      "qDiffWhy": null,
+      "text": false
+    },
+    {
+      "task": "t06-picks-store",
+      "i": 2,
+      "cached": true,
+      "correct": false,
+      "failClass": "tsc",
+      "judgeMs": 848,
+      "qExec": "pass",
+      "qExecMs": 14,
+      "qDiff": "pass",
+      "qDiffWhy": null,
+      "text": false
+    },
+    {
+      "task": "t06-picks-store",
+      "i": 3,
+      "cached": true,
+      "correct": true,
+      "failClass": null,
+      "judgeMs": 850,
+      "qExec": "pass",
+      "qExecMs": 16,
+      "qDiff": "pass",
+      "qDiffWhy": null,
+      "text": false
+    },
+    {
+      "task": "t06-picks-store",
+      "i": 4,
+      "cached": true,
+      "correct": false,
+      "failClass": "tsc",
+      "judgeMs": 810,
+      "qExec": "pass",
+      "qExecMs": 8,
+      "qDiff": "pass",
+      "qDiffWhy": null,
+      "text": false
+    },
+    {
+      "task": "t07-picks-page-list",
+      "i": 0,
+      "splice": "fragment"
+    },
+    {
+      "task": "t07-picks-page-list",
+      "i": 1,
+      "splice": "fragment"
+    },
+    {
+      "task": "t07-picks-page-list",
+      "i": 2,
+      "splice": "fragment"
+    },
+    {
+      "task": "t07-picks-page-list",
+      "i": 3,
+      "cached": true,
+      "correct": true,
+      "failClass": null,
+      "judgeMs": 909,
+      "qExec": "pass",
+      "qExecMs": 13,
+      "qDiff": "pass",
+      "qDiffWhy": null,
+      "text": false
+    },
+    {
+      "task": "t07-picks-page-list",
+      "i": 4,
+      "cached": true,
+      "correct": true,
+      "failClass": null,
+      "judgeMs": 870,
+      "qExec": "pass",
+      "qExecMs": 18,
+      "qDiff": "pass",
+      "qDiffWhy": null,
+      "text": false
+    },
+    {
+      "task": "t08-picks-page-empty",
+      "i": 0,
+      "cached": true,
+      "correct": false,
+      "failClass": "tsc",
+      "judgeMs": 1661,
+      "qExec": "cant-tell",
+      "qExecMs": 9,
+      "qDiff": "cant-tell",
+      "qDiffWhy": "ReferenceError: 'cartProducts' is not defined",
+      "text": false
+    },
+    {
+      "task": "t08-picks-page-empty",
+      "i": 1,
+      "cached": true,
+      "correct": false,
+      "failClass": "tsc",
+      "judgeMs": 1668,
+      "qExec": "cant-tell",
+      "qExecMs": 11,
+      "qDiff": "cant-tell",
+      "qDiffWhy": "ReferenceError: 'cartProducts' is not defined",
+      "text": false
+    },
+    {
+      "task": "t08-picks-page-empty",
+      "i": 2,
+      "cached": true,
+      "correct": false,
+      "failClass": "tsc",
+      "judgeMs": 1683,
+      "qExec": "cant-tell",
+      "qExecMs": 13,
+      "qDiff": "cant-tell",
+      "qDiffWhy": "ReferenceError: 'cartProducts' is not defined",
+      "text": false
+    },
+    {
+      "task": "t08-picks-page-empty",
+      "i": 3,
+      "cached": true,
+      "correct": false,
+      "failClass": "tsc",
+      "judgeMs": 1754,
+      "qExec": "fail",
+      "qExecMs": 5,
+      "qDiff": "cant-tell",
+      "qDiffWhy": "ReferenceError: 'cartProducts' is not defined",
+      "text": false
+    },
+    {
+      "task": "t08-picks-page-empty",
+      "i": 4,
+      "cached": true,
+      "correct": true,
+      "failClass": null,
+      "judgeMs": 1626,
+      "qExec": "pass",
+      "qExecMs": 11,
+      "qDiff": "cant-tell",
+      "qDiffWhy": "ReferenceError: 'Button' is not defined",
+      "text": false
+    },
+    {
+      "task": "t09-browse-heading-availability",
+      "i": 0,
+      "cached": true,
+      "correct": true,
+      "failClass": null,
+      "judgeMs": 848,
+      "qExec": "pass",
+      "qExecMs": 7,
+      "qDiff": "pass",
+      "qDiffWhy": null,
+      "text": false
+    },
+    {
+      "task": "t09-browse-heading-availability",
+      "i": 1,
+      "cached": true,
+      "correct": true,
+      "failClass": null,
+      "judgeMs": 885,
+      "qExec": "pass",
+      "qExecMs": 18,
+      "qDiff": "pass",
+      "qDiffWhy": null,
+      "text": false
+    },
+    {
+      "task": "t09-browse-heading-availability",
+      "i": 2,
+      "cached": true,
+      "correct": true,
+      "failClass": null,
+      "judgeMs": 921,
+      "qExec": "pass",
+      "qExecMs": 20,
+      "qDiff": "pass",
+      "qDiffWhy": null,
+      "text": false
+    },
+    {
+      "task": "t09-browse-heading-availability",
+      "i": 3,
+      "cached": true,
+      "correct": true,
+      "failClass": null,
+      "judgeMs": 842,
+      "qExec": "pass",
+      "qExecMs": 14,
+      "qDiff": "pass",
+      "qDiffWhy": null,
+      "text": false
+    },
+    {
+      "task": "t09-browse-heading-availability",
+      "i": 4,
+      "cached": true,
+      "correct": true,
+      "failClass": null,
+      "judgeMs": 828,
+      "qExec": "pass",
+      "qExecMs": 12,
+      "qDiff": "pass",
+      "qDiffWhy": null,
+      "text": false
+    },
+    {
+      "task": "t10-browse-paging",
+      "i": 0,
+      "cached": true,
+      "correct": false,
+      "failClass": "check",
+      "judgeMs": 860,
+      "qExec": "fail",
+      "qExecMs": 16,
+      "qDiff": "fail",
+      "qDiffWhy": "scenario 0: no button \"Previous page\"",
+      "text": false
+    },
+    {
+      "task": "t10-browse-paging",
+      "i": 1,
+      "cached": true,
+      "correct": false,
+      "failClass": "check",
+      "judgeMs": 833,
+      "qExec": "fail",
+      "qExecMs": 16,
+      "qDiff": "fail",
+      "qDiffWhy": "scenario 0: no button \"Previous page\"",
+      "text": false
+    },
+    {
+      "task": "t10-browse-paging",
+      "i": 2,
+      "cached": true,
+      "correct": true,
+      "failClass": null,
+      "judgeMs": 793,
+      "qExec": "pass",
+      "qExecMs": 17,
+      "qDiff": "pass",
+      "qDiffWhy": null,
+      "text": false
+    },
+    {
+      "task": "t10-browse-paging",
+      "i": 3,
+      "splice": "fragment"
+    },
+    {
+      "task": "t10-browse-paging",
+      "i": 4,
+      "splice": "fragment"
+    },
+    {
+      "task": "t11-browse-sort-title",
+      "i": 0,
+      "cached": true,
+      "correct": true,
+      "failClass": null,
+      "judgeMs": 741,
+      "qExec": "pass",
+      "qExecMs": 15,
+      "qDiff": "pass",
+      "qDiffWhy": null,
+      "text": false
+    },
+    {
+      "task": "t11-browse-sort-title",
+      "i": 1,
+      "cached": true,
+      "correct": true,
+      "failClass": null,
+      "judgeMs": 635,
+      "qExec": "pass",
+      "qExecMs": 6,
+      "qDiff": "pass",
+      "qDiffWhy": null,
+      "text": false
+    },
+    {
+      "task": "t11-browse-sort-title",
+      "i": 2,
+      "cached": true,
+      "correct": false,
+      "failClass": "check",
+      "judgeMs": 616,
+      "qExec": "fail",
+      "qExecMs": 26,
+      "qDiff": "fail",
+      "qDiffWhy": "scenario 0: book links 15 [\"Salt and Lanterns -> /books/salt-and-lanterns\",\"Orchard at Night -> /books/orchard-at-night\",\"Glass Harbour -> /books/glass-harbour\"]..., expected 15 [\"Bridges of Empire -> /books/bridges-of-empire\",\"Cartographers at War -> /books/cartographers-at-war\",\"Copper Roads -> /books/copper-roads\"]...",
+      "text": false
+    },
+    {
+      "task": "t11-browse-sort-title",
+      "i": 3,
+      "cached": true,
+      "correct": true,
+      "failClass": null,
+      "judgeMs": 622,
+      "qExec": "pass",
+      "qExecMs": 6,
+      "qDiff": "pass",
+      "qDiffWhy": null,
+      "text": false
+    },
+    {
+      "task": "t11-browse-sort-title",
+      "i": 4,
+      "cached": true,
+      "correct": false,
+      "failClass": "check",
+      "judgeMs": 613,
+      "qExec": "fail",
+      "qExecMs": 7,
+      "qDiff": "fail",
+      "qDiffWhy": "scenario 0: book links 15 [\"Salt and Lanterns -> /books/salt-and-lanterns\",\"Orchard at Night -> /books/orchard-at-night\",\"Glass Harbour -> /books/glass-harbour\"]..., expected 15 [\"Bridges of Empire -> /books/bridges-of-empire\",\"Cartographers at War -> /books/cartographers-at-war\",\"Copper Roads -> /books/copper-roads\"]...",
+      "text": false
+    },
+    {
+      "task": "t12-browse-genre-filter",
+      "i": 0,
+      "cached": true,
+      "correct": false,
+      "failClass": "tsc",
+      "judgeMs": 672,
+      "qExec": "fail",
+      "qExecMs": 11,
+      "qDiff": "fail",
+      "qDiffWhy": "scenario 0: no select labelled \"Genre\"",
+      "text": false
+    },
+    {
+      "task": "t12-browse-genre-filter",
+      "i": 1,
+      "cached": true,
+      "correct": false,
+      "failClass": "tsc",
+      "judgeMs": 693,
+      "qExec": "pass",
+      "qExecMs": 11,
+      "qDiff": "pass",
+      "qDiffWhy": null,
+      "text": false
+    },
+    {
+      "task": "t12-browse-genre-filter",
+      "i": 2,
+      "cached": true,
+      "correct": false,
+      "failClass": "tsc",
+      "judgeMs": 601,
+      "qExec": "fail",
+      "qExecMs": 11,
+      "qDiff": "fail",
+      "qDiffWhy": "scenario 0: no select labelled \"Genre\"",
+      "text": false
+    },
+    {
+      "task": "t12-browse-genre-filter",
+      "i": 3,
+      "splice": "fragment"
+    },
+    {
+      "task": "t12-browse-genre-filter",
+      "i": 4,
+      "cached": true,
+      "correct": false,
+      "failClass": "tsc",
+      "judgeMs": 601,
+      "qExec": "fail",
+      "qExecMs": 8,
+      "qDiff": "fail",
+      "qDiffWhy": "scenario 0: no select labelled \"Genre\"",
+      "text": false
+    }
+  ]
+}

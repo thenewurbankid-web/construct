@@ -29,6 +29,20 @@ test('N stats come from the same draw', async () => {
   assert.equal(s[5].tscPickerPass, false); // the first tsc-clean sample failed the check
 });
 
+test('#947 pre: a dropped sample is never judged and fails as q-exec; the next one is', async () => {
+  const judged = [];
+  const r = await sample({
+    n: 3, seedBase: 1,
+    generate: async (seed) => ({ reply: `r${seed}`, ms: 1 }),
+    pre: async (reply) => ({ drop: reply === 'r1', verdict: reply === 'r1' ? 'fail' : 'pass' }),
+    judge: async (reply) => { judged.push(reply); return { pass: true, tscOk: true, ms: 1 }; },
+  });
+  assert.deepEqual(judged, ['r2']);
+  assert.equal(r.samples[0].failClass, 'q-exec');
+  assert.equal(r.samples[0].result.ev.failClass, 'q-exec');
+  assert.equal(r.picked.i, 1);
+});
+
 test('no pass: draws all N and reports the last sample', async () => {
   const r = await run(Array.from({ length: 5 }, () => ({ pass: false, failClass: 'fragment' })));
   assert.equal(r.pass, false);
