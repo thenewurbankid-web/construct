@@ -52,7 +52,7 @@ test('import fix loop: the fix construct.fix picked is refused; the model lands 
   v = await approveAlong(agent, planService, v, 1);
   assert.equal(asked.length, 2, 'two attempts: the second landed');
   assert.match(asked[0], /^Construct refused this change\.\nError: Construct refused the fix: the library has no components\/AlertRow\./);
-  assert.match(asked[1], /Attempt 1: .*components\/Row.* was refused too: Construct refused the fix: the library has no components\/Row\./);
+  assert.match(asked[1], /Last attempt: .*components\/Row.* was refused too: Construct refused the fix: the library has no components\/Row\./); // #948: last attempt only
   const d = v.decisions.find((x) => x.id.startsWith('repair:'));
   assert.deepEqual([d.picked, d.by], ['repair', 'model']);
   assert.match(d.reason, /^Attempt 1: AlertRow is not in the library; trying Row; refused: .* Attempt 2: Row was refused too; the base is AlertRowBase\.$/);

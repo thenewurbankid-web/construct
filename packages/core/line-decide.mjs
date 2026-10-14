@@ -18,6 +18,7 @@
 // No outside reasoning engine is in this loop. Local models only: nothing here pulls, loads or stops a model.
 import { stepProfile, reasonPairOf, stepOn } from './ai-profiles.mjs';
 import { importLinked } from '../line-links/index.mjs';
+import { legacyIo, isCodeTool } from './modelled-io.mjs';
 
 export const DECIDER_VERSION = 'line-decide-2';
 
@@ -235,7 +236,8 @@ function fits(v, s) {
  * @param {{tool: string, args: any}} option
  * @param {{sentence: string, rule?: string|null, code?: string|null, finding?: string|null, fixes?: {id?: string, sentence: string, step?: any}[]}} refusal
  * @param {{reason?: string, option: {tool: string, args: any}|null, refusal?: {sentence: string}|null, outcome: string}[]} [earlier]
- * @param {{reason?: boolean}} [o] `reason: false` asks for the option only (no reason field).
+ * @param {{reason?: boolean, example?: {tool: string, args: any}|null}} [o] `reason: false` asks for the option only (no reason
+ *   field); `example` (#948): one valid change, shown under the last attempt (the only earlier attempt shown).
  * @returns {string}
  */
 export function repairPrompt(option, refusal, earlier = [], o = {}) {
@@ -246,7 +248,13 @@ export function repairPrompt(option, refusal, earlier = [], o = {}) {
   if (refusal.rule || refusal.code) lines.push(`Finding: ${[refusal.rule, refusal.code].filter(Boolean).join(' ')}${refusal.finding ? `: ${one(refusal.finding)}` : ''}`);
   (refusal.fixes ?? []).slice(0, 5).forEach((f, i) => lines.push(`Typed fix ${i + 1}: ${one(f.sentence)}${f.step ? ` ${JSON.stringify(f.step)}` : ''}`));
   lines.push(`Change: ${JSON.stringify({ tool: option.tool, args: option.args })}`);
-  earlier.forEach((t, i) => lines.push(`Attempt ${i + 1}: ${t.option ? JSON.stringify(t.option.args) : 'no valid change'} was refused too: ${one(t.refusal?.sentence ?? t.outcome)}`));
+  if (legacyIo()) earlier.forEach((t, i) => lines.push(`Attempt ${i + 1}: ${t.option ? JSON.stringify(t.option.args) : 'no valid change'} was refused too: ${one(t.refusal?.sentence ?? t.outcome)}`));
+  else {
+    // #948: the history is capped: the last refused attempt only (with its refusal), plus one example of a valid change.
+    const last = earlier[earlier.length - 1];
+    if (last) lines.push(`Last attempt: ${last.option ? JSON.stringify(last.option.args) : 'no valid change'} was refused too: ${one(last.refusal?.sentence ?? last.outcome)}`);
+    if (o.example) lines.push(`Example of a valid change (its shape; take the values from the error and the fixes): ${JSON.stringify(o.example)}`);
+  }
   if (earlier.length) lines.push('Do not repeat a change that was already refused.');
   lines.push(o.reason === false
     ? 'The change above is wrong. Answer with the corrected change as JSON {"tool", "args"}: keep the tool, and change the argument the error names to a value the error or the fixes give.'
@@ -282,6 +290,21 @@ function withReason(schema) {
   return { ...schema, properties: { reason: { type: 'string', minLength: 3, maxLength: 160 }, ...schema.properties }, required: ['reason', ...(schema.required ?? ['tool', 'args'])] };
 }
 
+/**
+ * #948: one valid change for the repair prompt's example: Construct's own typed fix for the same tool when it offers one,
+ * else the option with the value the error names shown as the slot to change.
+ * @param {{tool: string, args: any}} option @param {any} refusal
+ * @returns {{tool: string, args: any}}
+ */
+function exampleChange(option, refusal) {
+  const fix = (refusal?.fixes ?? []).find((f) => f?.step?.tool === option.tool && f.step.args && typeof f.step.args === 'object');
+  if (fix) return { tool: option.tool, args: fix.step.args };
+  // No typed fix carries the step: the option itself, with each value the error names as the slot to change.
+  const said = one(refusal?.sentence);
+  const slot = (v) => (typeof v === 'string' && v && said.includes(v) ? '<the value the error or the fixes give>' : v);
+  return { tool: option.tool, args: Object.fromEntries(Object.entries(option.args ?? {}).map(([k, v]) => [k, slot(v)])) };
+}
+
 /** One progress sentence for the person, per attempt. */
 function progressSentence(n, max, reason) {
   const why = one(reason).replace(/[.!?]+$/, '');
@@ -300,7 +323,10 @@ function progressSentence(n, max, reason) {
  * @param {{sentence: string, rule?: string|null, code?: string|null, finding?: string|null, fixes?: any[]}} refusal Construct's refusal.
  * @param {{ schema?: any, check?: (option: {tool: string, args: any}) => Promise<{ok: boolean, refusal?: any, passed?: number}> | {ok: boolean, refusal?: any, passed?: number},
  *   propose?: (q: {prompt: string, schema: any, model: string, maxTokens: number}) => Promise<string>, profiles?: object, now?: () => number,
- *   maxAttempts?: number, onProgress?: (sentence: string, attempt: number) => void, model?: string, reason?: boolean }} [o]
+ *   maxAttempts?: number, onProgress?: (sentence: string, attempt: number) => void, model?: string, reason?: boolean,
+ *   fill?: (option: {tool: string, args: any}, refusal: any, c: {attempt: number}) => Promise<{args: any, reason?: string}|null> }} [o]
+ *   `fill` (#948): the prefilled one-function repair of a code tool's option (line.setCode, line.setFragment); the
+ *   JSON repair never carries code. The prompt shows only the last refused attempt plus an example of a valid change.
  *   `model` and `reason` (ask for a short reason first) default to the construct.repair profile (its `reason` is false:
  *   measured faster and no worse without it); with neither set, a reason is asked for.
  *   Without `check` only one repair is proposed (outcome "proposed"): the caller checks it as a plan step.
@@ -310,8 +336,12 @@ export async function repairLoop(option, refusal, o = {}) {
   const profile = /** @type {any} */ (stepProfile(REPAIR_STEP, o.profiles));
   const model = o.model ?? profile.model ?? 'qwen2.5-coder:1.5b';
   // The profile is the only switch: construct.repair off (or not measured) means no model is asked and the person decides.
-  if (!stepOn(profile)) {
-    return { v: 2, step: REPAIR_STEP, model, attempts: 0, maxAttempts: 1, outcome: 'off', before: { tool: option.tool, args: option.args }, option: null, refusal: { sentence: sentence(refusal?.sentence ?? 'Construct refused the change.'), rule: refusal?.rule ?? null, code: refusal?.code ?? null, fixes: [] }, after: null, tries: [], progress: [], sentence: 'The repair step is off in its profile (no measured win), so Line did not ask a model and you decide.', ms: 0 };
+  // #948: a code tool (line.setCode, line.setFragment) is never repaired as JSON: its code goes through the prefilled
+  // one-function fill (`o.fill`, from the engine); without one, no model is asked and the person decides.
+  const codeFill = !legacyIo() && isCodeTool(option.tool);
+  if (!stepOn(profile) || (codeFill && typeof o.fill !== 'function')) {
+    const said = stepOn(profile) ? `${option.tool} carries code, so it is not repaired as JSON; no prefilled fill is linked here, so Line did not ask a model and you decide.` : 'The repair step is off in its profile (no measured win), so Line did not ask a model and you decide.';
+    return { v: 2, step: REPAIR_STEP, model, attempts: 0, maxAttempts: 1, outcome: 'off', before: { tool: option.tool, args: option.args }, option: null, refusal: { sentence: sentence(refusal?.sentence ?? 'Construct refused the change.'), rule: refusal?.rule ?? null, code: refusal?.code ?? null, fixes: [] }, after: null, tries: [], progress: [], sentence: said, ms: 0 };
   }
   const useReason = o.reason ?? profile.reason ?? true;
   const max = o.check ? Math.max(1, Math.min(o.maxAttempts ?? profile.maxAttempts ?? 4, 8)) : 1;
@@ -340,7 +370,12 @@ export async function repairLoop(option, refusal, o = {}) {
   for (let n = 1; n <= max; n++) {
     let text;
     try {
-      text = await (o.propose ?? ((q) => ollamaPropose(q)))({ prompt: repairPrompt(option, refusal, tries, { reason: useReason }), schema, model, maxTokens: profile.maxTokens ?? 300 });
+      // #948: a code tool's repair is the prefilled fill (one function, the last refusal only); its args come back as data.
+      if (codeFill) {
+        const lastRefused = [...tries].reverse().find((t) => t.refusal)?.refusal ?? refusal;
+        const r = await /** @type {any} */ (o.fill)(option, lastRefused, { attempt: n });
+        text = r?.args ? JSON.stringify({ reason: one(r.reason ?? 'The prefilled fill rewrote the function the error points at.'), tool: option.tool, args: r.args }) : '';
+      } else text = await (o.propose ?? ((q) => ollamaPropose(q)))({ prompt: repairPrompt(option, refusal, tries, { reason: useReason, example: legacyIo() ? null : exampleChange(option, refusal) }), schema, model, maxTokens: profile.maxTokens ?? 300 });
     } catch (e) {
       if (n === 1) {
         const no = /** @type {any} */ (e)?.code === 'NO_MODEL';

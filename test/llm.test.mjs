@@ -19,7 +19,7 @@ test('callLlm dispatches to the named provider and returns its output', async ()
   const original = PROVIDERS.claude;
   PROVIDERS.claude = (prompt) => `echo:${prompt}`;
   try {
-    assert.equal(await callLlm('claude', 'hello'), 'echo:hello');
+    assert.equal(await callLlm('claude', 'hello', { output: { format: 'json' } }), 'echo:hello'); // #948: every call declares its output shape
   } finally {
     PROVIDERS.claude = original;
   }
@@ -29,7 +29,7 @@ test('callLlm awaits an async provider just as readily as a sync one', async () 
   const original = PROVIDERS.claude;
   PROVIDERS.claude = async (prompt) => `async-echo:${prompt}`;
   try {
-    assert.equal(await callLlm('claude', 'hello'), 'async-echo:hello');
+    assert.equal(await callLlm('claude', 'hello', { output: { format: 'json' } }), 'async-echo:hello');
   } finally {
     PROVIDERS.claude = original;
   }
@@ -196,7 +196,7 @@ test('callLlm("ollama", prompt, options) threads options through to the provider
     calls.push({ url, init });
     return { ok: true, status: 200, text: async () => JSON.stringify({ response: 'ok' }) };
   }, async () => {
-    const out = await callLlm('ollama', 'hi', { model: 'qwen2.5-coder:32b' });
+    const out = await callLlm('ollama', 'hi', { model: 'qwen2.5-coder:32b', output: { format: 'json' } });
     assert.equal(out, 'ok');
   });
   assert.equal(JSON.parse(calls[0].init.body).model, 'qwen2.5-coder:32b');
@@ -276,7 +276,7 @@ async function withStubClaude(script, fn) {
 test('PROVIDERS.claude: a CLI that never answers is killed at the timeout with an error naming it', async () => {
   await withStubClaude('cat >/dev/null; sleep 30; echo late', async () => {
     const started = Date.now();
-    await assert.rejects(() => callLlm('claude', 'hi', { timeoutMs: 300 }), (err) => {
+    await assert.rejects(() => callLlm('claude', 'hi', { timeoutMs: 300, output: { format: 'json' } }), (err) => {
       assert.ok(err instanceof ConstructError);
       assert.match(err.message, /"claude" model did not answer within 0\.3 seconds/);
       assert.match(err.message, /CONSTRUCT_LLM_TIMEOUT_SEC/);
@@ -292,7 +292,7 @@ test('PROVIDERS.claude: the environment variable bounds the call when no per-cal
   try {
     await withStubClaude('cat >/dev/null; sleep 30', async () => {
       // `callLlm` (async) rather than the sync provider: assert.rejects treats a synchronous throw as a failure.
-      await assert.rejects(() => callLlm('claude', 'hi'), /did not answer within 0\.3 seconds/);
+      await assert.rejects(() => callLlm('claude', 'hi', { output: { format: 'json' } }), /did not answer within 0\.3 seconds/);
     });
   } finally {
     if (prior === undefined) delete process.env.CONSTRUCT_LLM_TIMEOUT_SEC; else process.env.CONSTRUCT_LLM_TIMEOUT_SEC = prior;

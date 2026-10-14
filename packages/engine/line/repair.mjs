@@ -12,7 +12,9 @@ import { projectWordIn } from './slots.mjs';
 import { lineStateDir } from './workspace.mjs';
 import { writeLineState } from '../transactionalWriter.mjs';
 import { assertRepairAttempt } from './contract.mjs';
-import { repairLoop, optionSchema } from '@line/construct-core/line-decide';
+import { repairLoop, optionSchema, REPAIR_STEP } from '@line/construct-core/line-decide';
+import { stepProfile } from '@line/construct-core/ai-profiles';
+import { fillOne, ollamaGenerate } from './coder/prefill/index.mjs';
 
 const PLAN_ONLY = new Set(['expect', 'retry', 'fixOf']);
 const one = (s) => String(s ?? '').replace(/\s+/g, ' ').trim();
@@ -32,12 +34,12 @@ export function toolArgsSchema(tool) {
 /**
  * runChange's refusal as repairLoop reads it: the sentence, the first finding's rule and message, the typed fixes.
  * @param {any} res A runChange result whose apply was refused.
- * @returns {{sentence: string, rule: string|null, code: string|null, finding: string|null, fixes: {id: string, sentence: string, rank: number, step: any}[]}}
+ * @returns {{sentence: string, rule: string|null, code: string|null, finding: string|null, fixes: {id: string, sentence: string, rank: number, step: any}[], line?: number|null}}
  */
 export function refusalOf(res) {
   const first = res.apply.findings?.find((f) => f.severity === 'error') ?? res.apply.findings?.[0] ?? null;
   const fixes = (res.options ?? []).filter((o) => o.id === 'fix').map((o, i) => ({ id: String(o.fixId ?? `fix${i + 1}`), sentence: one(o.sentence), rank: o.recommended ? 1 : i + 2, step: o.step ?? null }));
-  return { sentence: one(res.apply.sentence) || 'Construct refused the change.', rule: first?.rule ?? null, code: res.apply.code ?? null, finding: first ? one(first.message ?? first.sentence ?? '') || null : null, fixes };
+  return { sentence: one(res.apply.sentence) || 'Construct refused the change.', rule: first?.rule ?? null, code: res.apply.code ?? null, finding: first ? one(first.message ?? first.sentence ?? '') || null : null, fixes, line: first?.line ?? null };
 }
 
 /**
@@ -106,19 +108,36 @@ export function recordRepair(root, attempt, o = {}) {
   }
 }
 
+// #948: a code tool's repair (line.setCode, line.setFragment) as the prefilled one-function fill: the function the
+// finding's line points at (else the file's first), its signature prefilled, only the last refusal in the request.
+const codeFill = (generate) => async (option, refusal) => {
+  const a = option.args ?? {};
+  const file = String(a.file ?? 'x.tsx');
+  const facts = [`Construct refused this change to ${file}: ${one(refusal?.sentence)}`, refusal?.finding ? `Finding: ${[refusal.rule, refusal.finding].filter(Boolean).join(': ')}` : '', ...(refusal?.fixes ?? []).slice(0, 3).map((f) => `Typed fix: ${one(f.sentence)}`)].filter(Boolean).join('\n');
+  if (option.tool === 'line.setFragment') {
+    const r = await fillOne({ source: `const fragment = () => {\n  return (${a.code});\n};\n`, file: 'fragment.tsx', target: { name: 'fragment' }, generate, gate: false, maxAttempts: 2, user: `${facts}\n\nThe fragment now: ${a.code}\nReturn the corrected expression.` });
+    const expr = r.ok ? r.body.trim().replace(/^return\s*/, '').replace(/;\s*$/, '') : '';
+    return expr ? { args: { ...a, code: expr }, reason: 'The prefilled fill rewrote the fragment the error points at.' } : null;
+  }
+  const r = await fillOne({ source: String(a.code ?? ''), file, target: { line: refusal?.line ?? null }, generate, maxAttempts: 2, user: `${facts}\n\nThe file:\n${a.code ?? ''}` });
+  return r.ok ? { args: { ...a, code: r.source }, reason: `The prefilled fill rewrote ${r.name}, the function the error points at.` } : null;
+};
+
 /**
  * The repair loop for a project: repairLoop with the tool's own schema, Construct's check (`check`, default on a scratch
  * copy of the project), up to the profile's maxAttempts, and the attempt kept slotted in the plan records.
  * @param {string} root
- * @param {{propose?: (q: any) => Promise<string>, where?: string, record?: boolean, write?: (line: string) => void, maxAttempts?: number}} [o]
- *   `propose`: the model call (tests pass a mock; default Ollama with the construct.repair profile's model).
+ * @param {{propose?: (q: any) => Promise<string>, generate?: (q: any) => Promise<string>, where?: string, record?: boolean, write?: (line: string) => void, maxAttempts?: number}} [o]
+ *   `propose`: the model call (tests pass a mock; default Ollama with the construct.repair profile's model). `generate`
+ *   (#948): the prefilled one-function request a code tool's repair uses (default Ollama /api/generate, same model).
  * @returns {(option: {tool: string, args: any}, refusal: any, c?: {check?: ((option: any) => any) | null, onProgress?: (sentence: string, n: number) => void}) => Promise<import('./contract.mjs').RepairAttempt>}
  *   `check: null` skips the check (one proposal; the caller checks it as a plan step); `onProgress`: one sentence per attempt.
  */
 export function createRepairer(root, o = {}) {
   return async (option, refusal, c = {}) => {
     const check = c.check === null ? undefined : c.check ?? ((x) => checkOnCopy(root, x));
-    const attempt = await repairLoop(option, refusal, { schema: optionSchema(option, toolArgsSchema(option.tool)), check, onProgress: c.onProgress, ...(o.maxAttempts ? { maxAttempts: o.maxAttempts } : {}), ...(o.propose ? { propose: o.propose } : {}) });
+    const generate = o.generate ?? ollamaGenerate({ model: /** @type {any} */ (stepProfile(REPAIR_STEP)).model ?? 'qwen2.5-coder:1.5b' });
+    const attempt = await repairLoop(option, refusal, { schema: optionSchema(option, toolArgsSchema(option.tool)), check, onProgress: c.onProgress, fill: codeFill(generate), ...(o.maxAttempts ? { maxAttempts: o.maxAttempts } : {}), ...(o.propose ? { propose: o.propose } : {}) });
     if (o.record !== false && !['no-model', 'off'].includes(attempt.outcome)) recordRepair(root, attempt, { where: o.where, write: o.write });
     return attempt;
   };

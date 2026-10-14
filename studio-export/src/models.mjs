@@ -250,7 +250,8 @@ export function createOllamaProvider(options = {}, deps = {}) {
     },
     async chat({ model, messages, json = false, temperature = 0.2, signal }) {
       if (!model) throw new ModelError(MODEL_ERR.MISSING, 'no model is chosen; pick one in the settings');
-      const body = { model, messages, stream: false, options: { temperature }, ...(json ? { format: 'json' } : {}) };
+      // #948: `json` is true (any JSON) or a JSON Schema (the reply's exact shape).
+      const body = { model, messages, stream: false, options: { temperature }, ...(json ? { format: json === true ? 'json' : json } : {}) };
       const res = await timed(fetchFn, `${base}/api/chat`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }, chatTimeout, signal);
       if (res.status === 404) throw new ModelError(MODEL_ERR.MISSING, `ollama does not have the model "${model}" (ollama pull ${model})`);
       if (!res.ok) throw new ModelError(MODEL_ERR.HTTP, `ollama answered HTTP ${res.status} to /api/chat`);

@@ -15,7 +15,7 @@ import { openWork } from '../../../packages/engine/line/openWork.mjs';
 import { readSpec } from './spec-slice.mjs';
 
 /** The Line arm's tools offered every turn (by name, from qwen-agent's TOOLS.line); list_dir is served on a miss only. */
-export const ALWAYS = Object.freeze(['plan_tools', 'plan_status', 'plan_add', 'plan_run_next', 'plan_findings', 'plan_validate', 'plan_rules', 'finish']);
+export const ALWAYS = Object.freeze(['plan_tools', 'plan_status', 'plan_add', 'write_function', 'plan_run_next', 'plan_findings', 'plan_validate', 'plan_rules', 'finish']);
 /**
  * Owner, #937: read_file is offered only when the open step edits a file (its step needs the file's code and
  * contentHash); otherwise it is served on a call and logged as a miss, like list_dir.

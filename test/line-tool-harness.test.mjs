@@ -98,7 +98,9 @@ test('layeredTurn: L1 forces only the choice; L2 offers only that tool, retries 
   assert.equal('tools' in f.bodies[0], false);
   for (const b of f.bodies.slice(1)) { assert.deepEqual(b.tools.map((t) => t.function.name), ['read_file']); assert.equal('format' in b, false); }
   assert.match(f.bodies[3].messages[0].content, /Refused \(BAD_ARGS\): arguments\.path must be string/);
-  assert.ok(Object.keys(intents).includes('Write the code for this step') && Object.keys(intents).includes(ASK));
+  // #948: 'Write the code for this step' is write_function's (code never goes in plan_add's JSON), offered with it.
+  assert.ok(!Object.keys(intents).includes('Write the code for this step') && Object.keys(intents).includes(ASK));
+  assert.equal(intentsFor([...tools, CHOOSING_TOOLS.write_function])['Write the code for this step'], 'write_function');
 });
 
 test('layeredTurn: "Ask a question" is a miss without an L2 call; two calls-less L2 replies are a miss', async () => {
@@ -183,6 +185,7 @@ test('textToolCalls (the old recovery): balanced {name, arguments} spans in text
 });
 
 test('qwen-agent: a model whose profile has textFallback (qwen2.5-coder:7b) gets its text call run, logged as textCalls', async () => {
+  // #948: sanctioned exception (owner 2026-10-14) until LoRA native calls; remove then. Off for every other profile.
   assert.equal(modelProfile('qwen2.5-coder:7b').textFallback, true);
   assert.equal(modelProfile('qwen3:4b').textFallback, false);
   const parent = fs.realpathSync(makeTempDir('tool-harness-'));

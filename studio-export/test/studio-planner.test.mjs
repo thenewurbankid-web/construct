@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { validateConfig } from '../src/models.mjs';
 import { MAX_ATTEMPTS, buildSystemPrompt, extractJson, planStoryboard, probeHtml } from '../src/planner.mjs';
-import { validateStoryboard } from '../src/storyboard.mjs';
+import { validateStoryboard, storyboardSchema } from '../src/storyboard.mjs';
 import { goodStoryboard, mockOllama, staticSite } from './studio-helpers.mjs';
 
 const ask = [{ role: 'user', content: 'Show the shop, say hello, and finish.' }];
@@ -22,7 +22,8 @@ test('good JSON: one attempt, a validated storyboard, a hash and a plain reply',
     // what was sent: the closed action set, the schema, the chat, JSON mode, the model from config
     const sent = ollama.calls[0];
     assert.equal(sent.stream, false);
-    assert.equal(sent.format, 'json');
+    // #948: the reply's shape is the storyboard schema (LINE_LEGACY_IO=1: plain JSON mode).
+    assert.deepEqual(sent.format, storyboardSchema());
     assert.equal(sent.model, 'llama3.2');
     assert.equal(sent.messages[0].role, 'system');
     for (const a of ['goto', 'click', 'fill', 'press', 'scroll', 'wait', 'hover', 'highlight', 'caption', 'card']) assert.match(sent.messages[0].content, new RegExp(`- ${a}:`));

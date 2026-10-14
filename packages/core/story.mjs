@@ -325,9 +325,64 @@ export function storyTemplate(featureName) {
  * @example
  * buildStoryCiteWillSend([{ id: 'S1', text: 'a' }], ['Happy path']).calls; // => 1
  */
-export function buildStoryCiteWillSend(acceptance, codeUnits) {
+export function buildStoryCiteWillSend(acceptance, codeUnits, { perLine = process.env.LINE_LEGACY_IO !== '1' } = {}) {
+  // #948: modelled, one request per acceptance line (LINE_LEGACY_IO=1: the old single request).
+  if (perLine) return { files: 1, bytes: (acceptance ?? []).reduce((n, a) => n + Buffer.byteLength(buildStoryCiteLinePrompt(a, codeUnits), 'utf8'), 0), calls: (acceptance ?? []).length };
   const prompt = buildStoryCitePrompt(acceptance, codeUnits);
   return { files: 1, bytes: Buffer.byteLength(prompt, 'utf8'), calls: 1 };
+}
+
+/** #948: the codeUnit a model picks when no listed code unit implements the line. */
+export const NO_CODE_UNIT = '(none)';
+
+/**
+ * #948 -- the output shape of one AI-compare request: the one acceptance id, a code unit from the closed list (or
+ * NO_CODE_UNIT), and a short note. Sent as Ollama's `format`, so the reply can only name what is listed.
+ *
+ * @param {string} acceptanceId The line this request is about.
+ * @param {string[]} codeUnits The candidate code units.
+ * @returns {object} A JSON Schema.
+ */
+export function storyCiteSchema(acceptanceId, codeUnits) {
+  return {
+    type: 'object',
+    properties: { acceptanceId: { type: 'string', enum: [acceptanceId] }, codeUnit: { type: 'string', enum: [...(codeUnits ?? []), NO_CODE_UNIT] }, note: { type: 'string', maxLength: 120 } },
+    required: ['acceptanceId', 'codeUnit'],
+    additionalProperties: false,
+  };
+}
+
+/**
+ * #948 -- the prompt for ONE acceptance line: that line and the code unit names, nothing else.
+ *
+ * @param {{id: string, text: string}} item One acceptance item.
+ * @param {string[]} codeUnits The candidate code units.
+ * @returns {string}
+ */
+export function buildStoryCiteLinePrompt(item, codeUnits) {
+  return [
+    `Which code unit implements this acceptance line? Pick exactly one from the list, or "${NO_CODE_UNIT}" when none does.`,
+    `Reply with one JSON object, for example {"acceptanceId": "${item.id}", "codeUnit": "${(codeUnits ?? [])[0] ?? NO_CODE_UNIT}", "note": "<short reason>"}.`,
+    '',
+    `Acceptance: ${item.id} ${item.text}`,
+    '',
+    'Code units:',
+    ...(codeUnits ?? []).map((u) => `- ${u}`),
+  ].join('\n');
+}
+
+/**
+ * #948 -- one AI-compare reply as a candidate citation: the parsed object, null for a NO_CODE_UNIT pick, or
+ * `{invalid: raw}` when the reply is not one JSON object (verification drops it with its reason).
+ *
+ * @param {string} raw
+ * @returns {{acceptanceId: any, codeUnit: any, note?: any} | {invalid: string} | null}
+ */
+export function parseStoryCitation(raw) {
+  let v;
+  try { v = JSON.parse(stripCodeFence(String(raw ?? ''))); } catch { return { invalid: String(raw ?? '').slice(0, 120) }; }
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return { invalid: String(raw ?? '').slice(0, 120) };
+  return v.codeUnit === NO_CODE_UNIT ? null : v;
 }
 
 /**

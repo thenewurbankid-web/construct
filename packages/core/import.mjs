@@ -10,7 +10,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { generateVertical, LAYER_ORDER, LAYER_PREREQUISITES, LAYER_CONSTRAINTS, layerFromGeneratedFile, extractExpressionHint } from './generators.mjs';
 import { PROVIDERS } from './llm.mjs';
-import { requestFileText } from './llm-fill.mjs';
+import { fillFile } from './llm-fill.mjs';
+import { legacyIo } from './modelled-io.mjs';
 import { ConstructError, EXIT_CODES } from './diagnostics.mjs';
 import { startTimer, elapsedSeconds } from './timing.mjs';
 // #787 -- existingRealFiles is a deterministic, network-free collision check split into its own
@@ -202,8 +203,10 @@ export async function autoFixViolations(root, relFiles, validate, { llm, llmOpti
       const siblings = siblingFiles
         .filter((f) => f !== relFile && fs.existsSync(path.join(root, f)))
         .map((f) => ({ relFile: f, content: fs.readFileSync(path.join(root, f), 'utf8') }));
-      const prompt = buildFixPrompt({ layer, relFile, currentContent, violations: mine, history, siblings });
-      const outcome = await requestFileText(llm, prompt, llmOptions);
+      // #948: modelled, the functions the violations' lines are in, one request each (no growing history: each
+      // retry carries only its first error); LINE_LEGACY_IO=1 is the old whole-file request with every earlier attempt.
+      const prompt = buildFixPrompt({ layer, relFile, currentContent, violations: mine, history: legacyIo() ? history : [], siblings });
+      const outcome = await fillFile(llm, prompt, llmOptions, { source: currentContent, file: relFile, lines: mine.map((v) => v.line).filter(Number.isFinite) });
       if (outcome.status === 'cancelled') cancelled = true; // #599
       if (outcome.status !== 'filled') {
         reason = outcome.status === 'cancelled' ? 'cancelled' : outcome.reason || outcome.status;
@@ -320,7 +323,8 @@ export async function importVertical(root, name, feature, layers, fromPath, { ll
       siblings: filledSiblings,
     });
     const fillStart = startTimer();
-    const outcome = await requestFileText(llm, prompt, llmOptions);
+    // #948: modelled, one function of the stub at a time (signature prefilled); LINE_LEGACY_IO=1, the whole file.
+    const outcome = await fillFile(llm, prompt, llmOptions, { source: stubContent, file: path.relative(root, file) });
     const llmSeconds = elapsedSeconds(fillStart);
     fileTimings.push({ file, llmSeconds });
     if (outcome.status === 'filled') {

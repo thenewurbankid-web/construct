@@ -17,6 +17,12 @@
 // Engine code takes no JSON-Schema dependency at runtime (packages/engine/envelope.mjs does the same), so `validate`
 // is a small validator for the subset tool schemas use: type, properties, required, additionalProperties, enum, const,
 // items, oneOf/anyOf.
+//
+// #948 modelled I/O (default; LINE_LEGACY_IO=1 is the old path for one release): never code inside a call's JSON.
+// checkArgs refuses a string argument that carries code (briefGuard's codeInArgs) with an example; layeredTurn never
+// offers a code-bearing tool (an argument named code/content/body/source, or line.setCode/line.setFragment) as an L2
+// native call: it calls the caller's `fill(name, intent)` (the prefilled one-function request) instead.
+import { codeInArgs, legacyIo, isCodeTool, CODE_ARG_NAMES } from '../coder/prefill/index.mjs';
 
 export const WRITE_CODE = 'Write the code for this step';
 export const ASK = 'Ask a question';
@@ -97,6 +103,9 @@ export function exampleOf(schema) {
 export function checkArgs(tool, args, { check } = {}) {
   const name = toolName(tool);
   const errors = validate({ ...toolSchema(tool), type: 'object' }, args ?? {}).map((e) => e.message);
+  // #948: never code inside JSON (names, ids and choices only); code goes through the prefilled fill.
+  const code = !legacyIo() && !errors.length ? codeInArgs(args ?? {}) : null;
+  if (code) errors.push(`${code.reason}; code never goes inside a tool call, Line asks for it one function at a time with its signature prefilled`);
   if (!errors.length && check) { const e = check(name, args ?? {}); if (e) errors.push(e); }
   if (!errors.length) return null;
   const example = { ...exampleOf(toolSchema(tool)), ...(args && typeof args === 'object' ? Object.fromEntries(Object.entries(args).filter(([k, v]) => validate(toolSchema(tool).properties?.[k], v).length === 0 && !errors.some((m) => m.includes(`.${k}`)))) : {}) };
@@ -142,6 +151,13 @@ export function nudge(result, tools) {
  * @param {string[]} sentences The intent sentences.
  * @returns {object} The JSON Schema for Ollama's `format`.
  */
+/**
+ * #948: whether a tool's arguments carry code (an argument named code/content/body/source, or a plan code tool).
+ * @param {any} tool
+ * @returns {boolean}
+ */
+export const codeBearing = (tool) => isCodeTool(toolName(tool)) || Object.keys(toolSchema(tool).properties ?? {}).some((k) => CODE_ARG_NAMES.includes(k));
+
 export const intentSchema = (sentences) => ({ type: 'object', properties: { next: { type: 'string', enum: sentences } }, required: ['next'] });
 
 /**
@@ -165,11 +181,14 @@ export function recordSentence(name, args, out) {
  * @param {{model: string, tools: any[], intents: Record<string, string|null>, decideMessages: any[],
  *   callMessages: (tool: any, refusal: any) => any[], check?: (name: string, args: any) => string|null,
  *   run?: (name: string, args: any) => Promise<any>, record?: (name: string, args: any, out: any) => string,
+ *   fill?: (name: string, intent: string) => Promise<any>,
  *   options?: object, ollama?: string, fetch?: typeof fetch, signal?: AbortSignal}} o
+ *   `fill` (#948): runs a code-bearing tool's step as the prefilled one-function request (its answer is `out`); without
+ *   it a code-bearing choice is a miss, never an L2 call with code in its JSON.
  * @returns {Promise<{intent: string|null, tool: string|null, call: any|null, out: any, requests: number, native: boolean,
  *   valid: boolean, miss: boolean, refusals: any[], sentence: string}>}
  */
-export async function layeredTurn({ model, tools, intents, decideMessages, callMessages, check, run, record = recordSentence, options, ollama, fetch: doFetch, signal }) {
+export async function layeredTurn({ model, tools, intents, decideMessages, callMessages, check, run, record = recordSentence, fill, options, ollama, fetch: doFetch, signal }) {
   const sentences = Object.keys(intents);
   const net = { options, ollama, fetch: doFetch, signal };
   // L1 decide: only the choice is forced.
@@ -179,6 +198,12 @@ export async function layeredTurn({ model, tools, intents, decideMessages, callM
   const name = intent && Object.hasOwn(intents, intent) ? intents[intent] : null;
   const tool = tools.find((t) => toolName(t) === name) ?? null;
   if (!tool) return { intent, tool: null, call: null, out: null, requests, native: false, valid: false, miss: true, refusals: [], sentence: intent === ASK ? 'The coder asked a question instead of a step.' : `No tool for the intent ${JSON.stringify(intent)}.` };
+  // #948: a code-bearing tool is never an L2 native call (its code would travel in the JSON): the prefilled fill runs it.
+  if (!legacyIo() && codeBearing(tool)) {
+    if (!fill) return { intent, tool: name, call: null, out: null, requests, native: false, valid: false, miss: true, refusals: [], sentence: `${name}: code goes through the prefilled fill, and this turn has none.` };
+    const out = await fill(String(name), String(intent));
+    return { intent, tool: name, call: null, out, requests: requests + (out?.requests ?? 1), native: false, valid: out?.ok !== false, miss: false, refusals: out?.ok === false ? [out] : [], sentence: record(String(name), {}, out) };
+  }
   // L2 call (one retry when no call comes back) and L3 check (a failure repeats L2 with the refusal).
   /** @type {any[]} */ const refusals = [];
   let call = null; let native = false; let noCall = 0;

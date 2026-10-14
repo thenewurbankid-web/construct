@@ -95,7 +95,7 @@ export function createJudges(opts) {
     }
     const userPrompt = `Input:\n${JSON.stringify(input, null, 2)}\n`;
     calls++;
-    const output = mode === "fake" ? await llm(system, userPrompt, { step, role }) : await callLlm("claude", userPrompt, { model, systemPrompt: system });
+    const output = mode === "fake" ? await llm(system, userPrompt, { step, role }) : await callLlm("claude", userPrompt, { model, systemPrompt: system, output: { format: "json" } }); // #948: an output shape on every call
     const transcript = {
       step, role,
       promptFile: prompt.file, promptVersion: prompt.version, promptSha: prompt.sha,

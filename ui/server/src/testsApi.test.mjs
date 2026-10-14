@@ -311,14 +311,13 @@ test('story-compare-ai: 400 when the feature has no story.md; the model is never
 
 test('story-compare-ai: a real citation is verified, an invented id and an invented code unit are dropped and reported', async () => {
   const original = PROVIDERS.ollama;
-  let sentPrompt = null;
-  PROVIDERS.ollama = async (prompt) => {
-    sentPrompt = prompt;
-    return JSON.stringify([
-      { acceptanceId: 'S1', codeUnit: 'Happy path' },
-      { acceptanceId: 'S9', codeUnit: 'Happy path' },
-      { acceptanceId: 'S2', codeUnit: 'Nonexistent scenario' },
-    ]);
+  // #948: one request per acceptance line, its reply shaped by `format`; this fake misbehaves on S2: it answers an
+  // array with an invented id instead of one object, which is dropped with its reason.
+  const sent = [];
+  PROVIDERS.ollama = async (prompt, options) => {
+    sent.push({ prompt, options });
+    if (/Acceptance: S1 /.test(prompt)) return JSON.stringify({ acceptanceId: 'S1', codeUnit: 'Happy path' });
+    return JSON.stringify([{ acceptanceId: 'S9', codeUnit: 'Happy path' }]);
   };
   try {
     await withStack({}, async ({ dir, json }) => {
@@ -327,12 +326,17 @@ test('story-compare-ai: a real citation is verified, an invented id and an inven
       assert.equal(r.status, 200);
       assert.equal(r.body.ok, true);
       assert.deepEqual(r.body.verified, [{ acceptanceId: 'S1', codeUnit: 'Happy path', note: '' }]);
-      assert.equal(r.body.dropped.length, 2);
-      assert.match(r.body.summary, /1 citation verified, 2 unverifiable citations dropped/);
-      // the prompt names only the real acceptance ids and code units -- never file contents
-      assert.match(sentPrompt, /S1 A job can be started/);
-      assert.match(sentPrompt, /Happy path/);
-      assert.doesNotMatch(sentPrompt, /architecture\.yml/);
+      assert.equal(r.body.dropped.length, 1);
+      assert.match(r.body.dropped[0].reason, /the reply for S2 is not one JSON object of its schema/);
+      assert.match(r.body.summary, /1 citation verified, 1 unverifiable citation dropped/);
+      // one request per line; each names only its line and the code units -- never file contents
+      assert.equal(sent.length, 2);
+      assert.match(sent[0].prompt, /S1 A job can be started/);
+      assert.doesNotMatch(sent[0].prompt, /S2 /);
+      assert.match(sent[0].prompt, /Happy path/);
+      assert.doesNotMatch(sent[0].prompt, /architecture\.yml/);
+      assert.deepEqual(sent[0].options.output.format.properties.acceptanceId.enum, ['S1']);
+      assert.ok(sent[0].options.output.format.properties.codeUnit.enum.includes('Happy path'));
     });
   } finally {
     PROVIDERS.ollama = original;

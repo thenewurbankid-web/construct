@@ -229,6 +229,24 @@ export const canonicalJson = (sb) => JSON.stringify(sb);
 export const hashStoryboard = (sb) => crypto.createHash('sha256').update(canonicalJson(sb)).digest('hex');
 
 /** The action set as JSON Schema-like text for a model's system prompt and for the UI's editor. */
+/**
+ * #948 (Construct's modelled model I/O): the storyboard's JSON Schema, sent as Ollama's `format`, so the planner's reply
+ * can only be a storyboard over the closed action set. validateStoryboard still checks every bound and the URL policy.
+ */
+export function storyboardSchema() {
+  const argSchema = (d) => (d.type === 'ms' || d.type === 'px' ? { type: 'integer' } : d.type === 'key' ? { type: 'string', enum: [...KEYS] } : d.type === 'to' ? { type: 'string', enum: ['top', 'bottom'] } : { type: 'string', maxLength: d.max ?? (d.type === 'selector' ? LIMITS.selector : 2048) });
+  const step = (name, spec) => ({ type: 'object', properties: { action: { type: 'string', enum: [name] }, ...Object.fromEntries(Object.entries(spec.args).map(([k, d]) => [k, argSchema(d)])) }, required: ['action', ...Object.entries(spec.args).filter(([, d]) => d.required).map(([k]) => k)], additionalProperties: false });
+  return {
+    type: 'object',
+    properties: {
+      title: { type: 'string', maxLength: LIMITS.title },
+      scenes: { type: 'array', minItems: 1, maxItems: LIMITS.maxScenes, items: { type: 'object', properties: { caption: { type: 'string', maxLength: LIMITS.caption }, steps: { type: 'array', minItems: 1, items: { anyOf: Object.entries(ACTIONS).map(([n, s]) => step(n, s)) } } }, required: ['caption', 'steps'], additionalProperties: false } },
+    },
+    required: ['title', 'scenes'],
+    additionalProperties: false,
+  };
+}
+
 export function describeActions() {
   return Object.entries(ACTIONS).map(([name, spec]) => ({
     action: name,

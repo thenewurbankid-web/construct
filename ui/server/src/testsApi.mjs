@@ -42,7 +42,8 @@ import { applyStepEdit, previewStepEdit, readStepDocument } from '../../../packa
 import { environmentState } from './testsEnv.mjs';
 import { DEFAULT_BASE_URL, parseBaseUrl, resolveSpecs } from '../../../packages/engine/testRunner.mjs';
 import { ConstructError } from '../../../packages/core/diagnostics.mjs';
-import { buildStoryCitePrompt, parseStoryCitations, verifyStoryCitations } from '../../../packages/core/story.mjs';
+import { buildStoryCitePrompt, parseStoryCitations, verifyStoryCitations, buildStoryCiteLinePrompt, storyCiteSchema, parseStoryCitation } from '../../../packages/core/story.mjs';
+import { legacyIo } from '../../../packages/core/modelled-io.mjs';
 import { callLlm, DEFAULT_OLLAMA_MODEL } from '../../../packages/core/llm.mjs';
 
 const NAME = /^[A-Za-z0-9][A-Za-z0-9_-]{0,99}$/;
@@ -157,10 +158,20 @@ export function createTestsRouter({ getRoot, clientOrigin, runs = null }) {
     if (!listing.story.declared) return { status: 400, body: { ok: false, error: 'This feature has no story.md, so there is nothing to compare against.' } };
     const { acceptance } = listing.story;
     const codeUnits = listing.coverage.map((r) => r.title);
-    const prompt = buildStoryCitePrompt(acceptance, codeUnits);
-    return callLlm('ollama', prompt, { model: DEFAULT_OLLAMA_MODEL })
-      .then((raw) => {
-        const { verified, dropped } = verifyStoryCitations(parseStoryCitations(raw), { acceptanceIds: acceptance.map((a) => a.id), codeUnitIds: codeUnits });
+    // #948: modelled, one request per acceptance line, its reply shaped by `format` (that id, a listed code unit);
+    // LINE_LEGACY_IO=1 is the old single free-form request.
+    const ask = legacyIo()
+      ? callLlm('ollama', buildStoryCitePrompt(acceptance, codeUnits), { model: DEFAULT_OLLAMA_MODEL }).then((raw) => ({ cites: parseStoryCitations(raw), invalid: [] }))
+      : acceptance.reduce((p, a) => p.then(async (acc) => {
+        const c = parseStoryCitation(await callLlm('ollama', buildStoryCiteLinePrompt(a, codeUnits), { model: DEFAULT_OLLAMA_MODEL, output: { format: storyCiteSchema(a.id, codeUnits), numPredict: 200 } }));
+        if (c && 'invalid' in c) acc.invalid.push({ citation: c.invalid, reason: `the reply for ${a.id} is not one JSON object of its schema` }); else if (c) acc.cites.push(c);
+        return acc;
+      }), Promise.resolve({ cites: [], invalid: [] }));
+    return ask
+      .then(({ cites, invalid }) => {
+        const checked = verifyStoryCitations(cites, { acceptanceIds: acceptance.map((a) => a.id), codeUnitIds: codeUnits });
+        const verified = checked.verified;
+        const dropped = [...checked.dropped, ...invalid];
         const summary = dropped.length > 0 ? `${verified.length} citation${verified.length === 1 ? '' : 's'} verified, ${dropped.length} unverifiable citation${dropped.length === 1 ? '' : 's'} dropped` : `${verified.length} citation${verified.length === 1 ? '' : 's'} verified`;
         return { status: 200, body: { ok: true, verified, dropped, summary } };
       })
