@@ -2,8 +2,8 @@
 // built-in calls into calls of the atom runtime's plain-function atoms
 // (smith-functional, src/atoms/catalog.json). No model involved.
 //
-//   toAtoms(code, { catalog, kind, typeHint, importFrom })
-//     -> { code, body, imports, importDecl, atoms, untranslated, converted }
+//   toAtoms(code, { catalog, kind, typeHint, importFrom, choices, skip })
+//     -> { code, body, imports, importDecl, atoms, untranslated, converted, sites, ambiguous }
 //
 // catalog    a compiled catalog (atoms-catalog.js compileCatalog/loadCatalog)
 // kind       'module' (default) | 'function' | 'method' (a class method lifted
@@ -14,6 +14,13 @@
 //            (the verifier fills this from the TypeScript checker). Used to
 //            pick plus() vs join() for `+`, and to leave methods of non-list,
 //            non-text values alone.
+//
+// choices    optional {siteId: atom}: which atom to use where several fit and no type
+//            says which (`a + b` is plus or join). Such places are listed in
+//            `ambiguous: [{id, alternatives, form, start, end}]`.
+// skip       optional Set of site ids to leave as they are. Every rewrite made is
+//            listed in `sites: [{id, atom, form, start, end}]`, so a caller that checks
+//            the result (bench/atoms/checked.js) can take single rewrites back.
 //
 // Rules (each has unit tests in atoms-transform.test.js):
 //  1. Expressions: any node matching a catalog form (`a + b`, `list.map(fn)`,
@@ -307,7 +314,7 @@ function collectBound(ast) {
 }
 
 function toAtoms(code, options = {}) {
-  const { catalog, kind = 'module', typeHint = null, importFrom = 'smith' } = options;
+  const { catalog, kind = 'module', typeHint = null, importFrom = 'smith', choices = {}, skip = new Set() } = options;
   if (!catalog) throw new Error('toAtoms: options.catalog is required (atoms-catalog.js compileCatalog/loadCatalog)');
   const prefix = kind === 'method' ? 'class __W__ {\n' : '';
   const wrapped = kind === 'method' ? `${prefix}${code}\n}` : code;
@@ -318,7 +325,11 @@ function toAtoms(code, options = {}) {
   const has = (atom) => catalog.atoms.has(atom);
   const used = new Map(); // atom -> local name
   const untranslated = [];
+  const sites = [];
+  const ambiguous = [];
   let converted = 0;
+  // a rewrite is named by the source range it replaces
+  const siteOf = (n, form) => (n && n.start != null ? { id: `${n.start - offset}-${n.end - offset}:${form}`, form, start: n.start - offset, end: n.end - offset } : null);
 
   const byKey = new Map();
   for (const p of catalog.patterns) {
@@ -365,6 +376,8 @@ function toAtoms(code, options = {}) {
     let list = byKey.get(key) || [];
     if (keyNode.type === 'OptionalMemberExpression' && !keyNode.computed) list = list.concat(byKey.get('OptionalMemberExpression [computed]') || []);
     if (!list.length) return null;
+    const site = siteOf(node, key);
+    if (site && skip.has(site.id)) return { skipped: true };
     let level = null;
     let mutates = false;
     const hits = [];
@@ -402,7 +415,9 @@ function toAtoms(code, options = {}) {
     const verdicts = hits.map((h) => ({ h, v: kindsCompatible(h.p.info.firstKinds, hintOf(firstArg(h))) }));
     const yes = verdicts.filter((x) => x.v === 'yes');
     const maybe = verdicts.filter((x) => x.v === 'maybe');
-    if (yes.length === 1) chosen = yes[0].h;
+    const told = site && choices[site.id] && maybe.find((x) => x.h.p.atom === choices[site.id]);
+    if (told) chosen = told.h;
+    else if (yes.length === 1) chosen = yes[0].h;
     else if (yes.length > 1) chosen = yes[0].h; // same kind twice: catalog order (largest form first)
     else if (maybe.length === 1) chosen = maybe[0].h;
     else if (maybe.length > 1) {
@@ -413,10 +428,14 @@ function toAtoms(code, options = {}) {
       const want = textSide ? 'string' : numSide ? 'number' : null;
       const pick = want && maybe.find((x) => (x.h.p.info.firstKinds || []).includes(want));
       if (pick) chosen = pick.h;
-      else return { ambiguous: true };
+      else {
+        if (site && !ambiguous.some((x) => x.id === site.id)) ambiguous.push({ ...site, alternatives: [...new Set(maybe.map((x) => x.h.p.atom))] });
+        return { ambiguous: true };
+      }
     } else {
       return { wrongKind: true };
     }
+    if (site) sites.push({ ...site, atom: chosen.p.atom });
     return chosen;
   }
 
@@ -609,6 +628,7 @@ function toAtoms(code, options = {}) {
       if (hit && hit.p) return buildCall(hit, ctx);
       if (hit && hit.ambiguous) record(n, null, 'ambiguous type');
       else if (hit && hit.mutates) record(n, null, 'mutates');
+      else if (hit && hit.skipped) record(n, null, 'failed the check');
       else if (RECORDED_TYPES.has(n.type) || ((n.type === 'TemplateLiteral') && n.expressions.length)) record(n);
       else if ((n.type === 'CallExpression' || n.type === 'NewExpression' || n.type === 'OptionalCallExpression') && isBuiltinCall(n)) record(n);
       else if ((n.type === 'OptionalMemberExpression' || n.type === 'OptionalCallExpression') && n.optional) record(n);
@@ -835,7 +855,9 @@ function toAtoms(code, options = {}) {
       const st = stmts[i];
       const rest = stmts.slice(i + 1);
       let res = null;
-      if (st.type === 'IfStatement') res = convertIf(st, rest, ctx);
+      const site = siteOf(st, st.type);
+      if (site && skip.has(site.id)) res = { why: 'failed the check' };
+      else if (st.type === 'IfStatement') res = convertIf(st, rest, ctx);
       else if (st.type === 'SwitchStatement') res = convertSwitch(st, rest, ctx);
       else if (st.type === 'TryStatement') res = convertTry(st, rest, ctx);
       else if (st.type === 'ForOfStatement') res = convertForOf(st, ctx);
@@ -851,6 +873,7 @@ function toAtoms(code, options = {}) {
         res = { why: 'labeled statement' };
       }
       if (res && res.stmt) {
+        if (site) sites.push({ ...site, atom: null });
         if (st.leadingComments) res.stmt.leadingComments = st.leadingComments;
         out.push(res.stmt);
         if (res.consumed) break;
@@ -945,7 +968,8 @@ function toAtoms(code, options = {}) {
   }
   const out = importDecl ? `${importDecl}\n\n${body}` : body;
   untranslated.sort((a, b) => a.start - b.start || a.end - b.end);
-  return { code: out, body, imports, importDecl, atoms: Object.fromEntries(used), untranslated, converted };
+  sites.sort((a, b) => a.start - b.start || b.end - a.end);
+  return { code: out, body, imports, importDecl, atoms: Object.fromEntries(used), untranslated, converted, sites, ambiguous };
 }
 
 module.exports = { toAtoms, scan, terminal };

@@ -71,7 +71,19 @@
    "exercised": 40,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "equals": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "when": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "InvoicesPage",
@@ -130,7 +142,19 @@
    "exercised": 40,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "equals": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "when": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "InvoicesPage",
@@ -196,7 +220,19 @@
    "exercised": 40,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "equals": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "when": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "InvoicesPage",
@@ -255,7 +291,19 @@
    "exercised": 40,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "equals": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "when": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "About",
@@ -321,7 +369,19 @@
    "exercised": 40,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "equals": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "when": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "InvoicesPage",
@@ -380,7 +440,19 @@
    "exercised": 40,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "equals": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "when": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "InvoicesPage",
@@ -439,7 +511,19 @@
    "exercised": 40,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "equals": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "when": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "InvoicesPage",
@@ -498,7 +582,19 @@
    "exercised": 40,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "equals": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "when": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "Page",
@@ -577,7 +673,14 @@
    "exercised": 11,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "lengthOf": {
+     "calls": 13,
+     "wrongKind": 0,
+     "unknown": 10
+    }
+   }
   },
   {
    "name": "consume",
@@ -596,7 +699,19 @@
    "exercised": 18,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "equals": {
+     "calls": 29,
+     "wrongKind": 0,
+     "unknown": 14
+    },
+    "when": {
+     "calls": 29,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "validate",
@@ -614,7 +729,24 @@
    "exercised": 40,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "differs": {
+     "calls": 80,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "when": {
+     "calls": 120,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "lengthOf": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "safeParse",
@@ -631,7 +763,19 @@
    "exercised": 40,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "isNumber": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 9
+    },
+    "when": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "consume",
@@ -650,7 +794,19 @@
    "exercised": 18,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "equals": {
+     "calls": 29,
+     "wrongKind": 0,
+     "unknown": 14
+    },
+    "when": {
+     "calls": 29,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "useCartState",
@@ -666,7 +822,14 @@
    "exercised": 1,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "equals": {
+     "calls": 1,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "assertType",
@@ -746,7 +909,19 @@
    "exercised": 39,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "not": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 2
+    },
+    "when": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "checked",
@@ -794,7 +969,8 @@
    "exercised": 17,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {}
   },
   {
    "name": "ProviderComponent",
@@ -821,7 +997,19 @@
    "exercised": 21,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "equals": {
+     "calls": 28,
+     "wrongKind": 0,
+     "unknown": 11
+    },
+    "when": {
+     "calls": 28,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "normalizeIssues",
@@ -843,7 +1031,44 @@
    "exercised": 40,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "mapEach": {
+     "calls": 101,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "textFrom": {
+     "calls": 61,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "orElse": {
+     "calls": 61,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "equals": {
+     "calls": 17,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "and": {
+     "calls": 17,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "when": {
+     "calls": 17,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "differs": {
+     "calls": 4,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "schemaError",
@@ -868,7 +1093,24 @@
    "exercised": 40,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "equals": {
+     "calls": 52,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "and": {
+     "calls": 80,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "differs": {
+     "calls": 15,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "checkResponse",
@@ -886,7 +1128,24 @@
    "exercised": 40,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "attempt": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "when": {
+     "calls": 19,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "thenPromise": {
+     "calls": 1,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "toResult",
@@ -902,7 +1161,14 @@
    "exercised": 34,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "when": {
+     "calls": 34,
+     "wrongKind": 0,
+     "unknown": 9
+    }
+   }
   },
   {
    "name": "checkServiceReturn",
@@ -919,7 +1185,19 @@
    "exercised": 40,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "when": {
+     "calls": 56,
+     "wrongKind": 0,
+     "unknown": 21
+    },
+    "thenPromise": {
+     "calls": 35,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "describe",
@@ -937,7 +1215,24 @@
    "exercised": 40,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "isA": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 8
+    },
+    "when": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "textFrom": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 8
+    }
+   }
   },
   {
    "name": "useTrackedState",
@@ -962,7 +1257,24 @@
    "exercised": 38,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "not": {
+     "calls": 38,
+     "wrongKind": 0,
+     "unknown": 7
+    },
+    "when": {
+     "calls": 45,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "equals": {
+     "calls": 11,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "init",
@@ -989,7 +1301,14 @@
    "exercised": 36,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "match": {
+     "calls": 36,
+     "wrongKind": 0,
+     "unknown": 7
+    }
+   }
   },
   {
    "name": "stateOf",
@@ -1013,7 +1332,19 @@
    "exercised": 22,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "attemptAsync": {
+     "calls": 27,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "nowTime": {
+     "calls": 7,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "flags",
@@ -1030,7 +1361,19 @@
    "exercised": 36,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "equals": {
+     "calls": 144,
+     "wrongKind": 0,
+     "unknown": 48
+    },
+    "and": {
+     "calls": 36,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "pageCount",
@@ -1049,7 +1392,29 @@
    "exercised": 40,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "atMost": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "when": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "dividedBy": {
+     "calls": 30,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "ceilingOf": {
+     "calls": 30,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "clampPage",
@@ -1067,7 +1432,24 @@
    "exercised": 40,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "minus": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 22
+    },
+    "when": {
+     "calls": 73,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "floorOf": {
+     "calls": 10,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "positionOf",
@@ -1086,7 +1468,29 @@
    "exercised": 40,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "atMost": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "when": {
+     "calls": 126,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "equals": {
+     "calls": 86,
+     "wrongKind": 0,
+     "unknown": 14
+    },
+    "minus": {
+     "calls": 26,
+     "wrongKind": 0,
+     "unknown": 14
+    }
+   }
   },
   {
    "name": "at",
@@ -1110,7 +1514,19 @@
    "exercised": 40,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "times": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "smallestOf": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "pageItems",
@@ -1134,7 +1550,19 @@
    "exercised": 40,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "equals": {
+     "calls": 71,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "or": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "canPrevious",
@@ -1151,7 +1579,19 @@
    "exercised": 40,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "equals": {
+     "calls": 67,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "or": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "init",
@@ -1167,7 +1607,14 @@
    "exercised": 35,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "orElse": {
+     "calls": 70,
+     "wrongKind": 0,
+     "unknown": 17
+    }
+   }
   },
   {
    "name": "send",
@@ -1190,7 +1637,14 @@
    "exercised": 36,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "match": {
+     "calls": 36,
+     "wrongKind": 0,
+     "unknown": 7
+    }
+   }
   },
   {
    "name": "stateOf",
@@ -1213,7 +1667,14 @@
    "exercised": 20,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "lengthOf": {
+     "calls": 60,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "csvCell",
@@ -1239,7 +1700,59 @@
    "exercised": 29,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "orElse": {
+     "calls": 80,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "isA": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 10
+    },
+    "choose": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "differs": {
+     "calls": 76,
+     "wrongKind": 0,
+     "unknown": 20
+    },
+    "and": {
+     "calls": 80,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "textFrom": {
+     "calls": 32,
+     "wrongKind": 0,
+     "unknown": 10
+    },
+    "when": {
+     "calls": 58,
+     "wrongKind": 0,
+     "unknown": 10
+    },
+    "or": {
+     "calls": 87,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "hasText": {
+     "calls": 84,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "replaceFirst": {
+     "calls": 1,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "cellOf",
@@ -1256,7 +1769,19 @@
    "exercised": 28,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "equals": {
+     "calls": 36,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "when": {
+     "calls": 36,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "toCsv",
@@ -1275,7 +1800,29 @@
    "exercised": 33,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "orElse": {
+     "calls": 80,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "mapEach": {
+     "calls": 92,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "joinWith": {
+     "calls": 118,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "each": {
+     "calls": 33,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "csvFileName",
@@ -1295,7 +1842,34 @@
    "exercised": 40,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "trimmed": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "lowerCase": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "replaceFirst": {
+     "calls": 80,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "or": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "dateAsIsoText": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "createCsvMachine",
@@ -1314,7 +1888,8 @@
    "exercised": 40,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {}
   },
   {
    "name": "init",
@@ -1340,7 +1915,19 @@
    "exercised": 36,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "differs": {
+     "calls": 36,
+     "wrongKind": 0,
+     "unknown": 7
+    },
+    "when": {
+     "calls": 36,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "stateOf",
@@ -1375,7 +1962,19 @@
    "exercised": 36,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "differs": {
+     "calls": 36,
+     "wrongKind": 0,
+     "unknown": 7
+    },
+    "when": {
+     "calls": 36,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "stateOf",
@@ -1408,7 +2007,29 @@
    "exercised": 40,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "timeOfDate": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "dividedBy": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "floorOf": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "times": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "endOfDay",
@@ -1425,7 +2046,19 @@
    "exercised": 9,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "timeOfDate": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 16
+    },
+    "minus": {
+     "calls": 9,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "isValidDate",
@@ -1445,7 +2078,19 @@
    "exercised": 40,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "isA": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 12
+    },
+    "and": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "statusOf",
@@ -1466,7 +2111,39 @@
    "exercised": 40,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "equals": {
+     "calls": 109,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "and": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "when": {
+     "calls": 85,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "or": {
+     "calls": 61,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "not": {
+     "calls": 29,
+     "wrongKind": 0,
+     "unknown": 17
+    },
+    "isAfter": {
+     "calls": 10,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "range",
@@ -1484,7 +2161,24 @@
    "exercised": 40,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "differs": {
+     "calls": 80,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "and": {
+     "calls": 80,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "when": {
+     "calls": 80,
+     "wrongKind": 0,
+     "unknown": 17
+    }
+   }
   },
   {
    "name": "contains",
@@ -1505,7 +2199,24 @@
    "exercised": 29,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "differs": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "when": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "timeOfDate": {
+     "calls": 22,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "daysIn",
@@ -1526,7 +2237,24 @@
    "exercised": 31,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "differs": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "when": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "timeOfDate": {
+     "calls": 9,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "overlaps",
@@ -1547,7 +2275,29 @@
    "exercised": 36,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "differs": {
+     "calls": 51,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "or": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "when": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "timeOfDate": {
+     "calls": 4,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "lastDays",
@@ -1565,7 +2315,24 @@
    "exercised": 11,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "timeOfDate": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 26
+    },
+    "minus": {
+     "calls": 22,
+     "wrongKind": 0,
+     "unknown": 5
+    },
+    "times": {
+     "calls": 11,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "init",
@@ -1581,7 +2348,14 @@
    "exercised": 40,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "orElse": {
+     "calls": 80,
+     "wrongKind": 0,
+     "unknown": 15
+    }
+   }
   },
   {
    "name": "send",
@@ -1599,7 +2373,14 @@
    "exercised": 36,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "match": {
+     "calls": 36,
+     "wrongKind": 0,
+     "unknown": 7
+    }
+   }
   },
   {
    "name": "stateOf",
@@ -1631,7 +2412,24 @@
    "exercised": 40,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "trimmed": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "lengthOf": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "when": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "waitFor",
@@ -1650,7 +2448,29 @@
    "exercised": 40,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "equals": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "when": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "minus": {
+     "calls": 23,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "largestOf": {
+     "calls": 23,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "settle",
@@ -1673,7 +2493,14 @@
    "exercised": 40,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "orElse": {
+     "calls": 80,
+     "wrongKind": 0,
+     "unknown": 13
+    }
+   }
   },
   {
    "name": "send",
@@ -1693,7 +2520,14 @@
    "exercised": 36,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "match": {
+     "calls": 36,
+     "wrongKind": 0,
+     "unknown": 7
+    }
+   }
   },
   {
    "name": "stateOf",
@@ -1716,7 +2550,14 @@
    "exercised": 9,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "each": {
+     "calls": 24,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "isNoFilter",
@@ -1733,7 +2574,19 @@
    "exercised": 40,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "equals": {
+     "calls": 98,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "or": {
+     "calls": 80,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "statusOf",
@@ -1755,7 +2608,44 @@
    "exercised": 40,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "valuesOf": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "hasAnyWhere": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "not": {
+     "calls": 53,
+     "wrongKind": 0,
+     "unknown": 29
+    },
+    "or": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "trimmed": {
+     "calls": 27,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "differs": {
+     "calls": 27,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "when": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "view",
@@ -1780,7 +2670,24 @@
    "exercised": 40,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "isNothing": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 13
+    },
+    "or": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "equals": {
+     "calls": 36,
+     "wrongKind": 0,
+     "unknown": 13
+    }
+   }
   },
   {
    "name": "compareValues",
@@ -1803,7 +2710,39 @@
    "exercised": 40,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "and": {
+     "calls": 42,
+     "wrongKind": 0,
+     "unknown": 22
+    },
+    "when": {
+     "calls": 72,
+     "wrongKind": 0,
+     "unknown": 30
+    },
+    "isA": {
+     "calls": 1,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "isNumber": {
+     "calls": 2,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "textFrom": {
+     "calls": 2,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "localeCompareText": {
+     "calls": 1,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "matchesSearch",
@@ -1825,7 +2764,44 @@
    "exercised": 35,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "trimmed": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "lowerCase": {
+     "calls": 83,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "equals": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "when": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "hasAnyWhere": {
+     "calls": 35,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "orElse": {
+     "calls": 43,
+     "wrongKind": 0,
+     "unknown": 7
+    },
+    "textFrom": {
+     "calls": 43,
+     "wrongKind": 0,
+     "unknown": 7
+    }
+   }
   },
   {
    "name": "applyView",
@@ -1850,7 +2826,54 @@
    "exercised": 34,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "entriesOf": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "keepWhere": {
+     "calls": 80,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "not": {
+     "calls": 66,
+     "wrongKind": 0,
+     "unknown": 33
+    },
+    "isEveryWhere": {
+     "calls": 56,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "equals": {
+     "calls": 51,
+     "wrongKind": 0,
+     "unknown": 4
+    },
+    "and": {
+     "calls": 55,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "when": {
+     "calls": 39,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "mapEach": {
+     "calls": 33,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "negate": {
+     "calls": 1,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "init",
@@ -1866,7 +2889,14 @@
    "exercised": 40,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "orElse": {
+     "calls": 120,
+     "wrongKind": 0,
+     "unknown": 23
+    }
+   }
   },
   {
    "name": "send",
@@ -1889,7 +2919,14 @@
    "exercised": 36,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "match": {
+     "calls": 36,
+     "wrongKind": 0,
+     "unknown": 7
+    }
+   }
   },
   {
    "name": "stateOf",
@@ -1912,7 +2949,14 @@
    "exercised": 29,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "orElse": {
+     "calls": 29,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "nextCursor",
@@ -1931,7 +2975,29 @@
    "exercised": 5,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "lengthOf": {
+     "calls": 33,
+     "wrongKind": 0,
+     "unknown": 5
+    },
+    "equals": {
+     "calls": 5,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "when": {
+     "calls": 5,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "lastOf": {
+     "calls": 4,
+     "wrongKind": 0,
+     "unknown": 4
+    }
+   }
   },
   {
    "name": "hasNextPage",
@@ -1949,7 +3015,24 @@
    "exercised": 11,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "lengthOf": {
+     "calls": 32,
+     "wrongKind": 0,
+     "unknown": 10
+    },
+    "and": {
+     "calls": 11,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "differs": {
+     "calls": 2,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "isFetchingNextPage",
@@ -1967,7 +3050,24 @@
    "exercised": 27,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "differs": {
+     "calls": 27,
+     "wrongKind": 0,
+     "unknown": 5
+    },
+    "and": {
+     "calls": 27,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "lengthOf": {
+     "calls": 6,
+     "wrongKind": 0,
+     "unknown": 4
+    }
+   }
   },
   {
    "name": "items",
@@ -1983,7 +3083,14 @@
    "exercised": 5,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "flatMapEach": {
+     "calls": 36,
+     "wrongKind": 0,
+     "unknown": 6
+    }
+   }
   },
   {
    "name": "init",
@@ -2012,7 +3119,14 @@
    "exercised": 36,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "match": {
+     "calls": 36,
+     "wrongKind": 0,
+     "unknown": 7
+    }
+   }
   },
   {
    "name": "stateOf",
@@ -2038,7 +3152,29 @@
    "exercised": 2,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "lengthOf": {
+     "calls": 22,
+     "wrongKind": 0,
+     "unknown": 3
+    },
+    "equals": {
+     "calls": 6,
+     "wrongKind": 0,
+     "unknown": 1
+    },
+    "when": {
+     "calls": 3,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "attemptAsync": {
+     "calls": 2,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "positionOf",
@@ -2057,7 +3193,29 @@
    "exercised": 40,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "atLeast": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "when": {
+     "calls": 81,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "minus": {
+     "calls": 22,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "equals": {
+     "calls": 41,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "canLeave",
@@ -2074,7 +3232,19 @@
    "exercised": 31,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "equals": {
+     "calls": 35,
+     "wrongKind": 0,
+     "unknown": 6
+    },
+    "when": {
+     "calls": 35,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "at",
@@ -2091,7 +3261,19 @@
    "exercised": 6,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "lengthOf": {
+     "calls": 34,
+     "wrongKind": 0,
+     "unknown": 5
+    },
+    "largestOf": {
+     "calls": 6,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "currentStep",
@@ -2108,7 +3290,19 @@
    "exercised": 5,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "equals": {
+     "calls": 34,
+     "wrongKind": 0,
+     "unknown": 6
+    },
+    "when": {
+     "calls": 34,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "progress",
@@ -2125,7 +3319,19 @@
    "exercised": 13,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "lengthOf": {
+     "calls": 32,
+     "wrongKind": 0,
+     "unknown": 7
+    },
+    "dividedBy": {
+     "calls": 13,
+     "wrongKind": 0,
+     "unknown": 8
+    }
+   }
   },
   {
    "name": "init",
@@ -2145,7 +3351,34 @@
    "exercised": 5,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "lengthOf": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 10
+    },
+    "equals": {
+     "calls": 9,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "when": {
+     "calls": 9,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "typeErrorFrom": {
+     "calls": 4,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "fail": {
+     "calls": 4,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "send",
@@ -2171,7 +3404,29 @@
    "exercised": 26,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "equals": {
+     "calls": 30,
+     "wrongKind": 0,
+     "unknown": 8
+    },
+    "and": {
+     "calls": 30,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "when": {
+     "calls": 30,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "match": {
+     "calls": 26,
+     "wrongKind": 0,
+     "unknown": 5
+    }
+   }
   },
   {
    "name": "stateOf",
@@ -2194,7 +3449,14 @@
    "exercised": 22,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "reduceTo": {
+     "calls": 25,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "toXStateConfig",
@@ -2215,7 +3477,29 @@
    "exercised": 22,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "lengthOf": {
+     "calls": 46,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "minus": {
+     "calls": 62,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "when": {
+     "calls": 86,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "firstOf": {
+     "calls": 33,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "merged",
@@ -2232,7 +3516,19 @@
    "exercised": 34,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "orElse": {
+     "calls": 34,
+     "wrongKind": 0,
+     "unknown": 7
+    },
+    "merged": {
+     "calls": 34,
+     "wrongKind": 0,
+     "unknown": 10
+    }
+   }
   },
   {
    "name": "init",
@@ -2258,7 +3554,14 @@
    "exercised": 36,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "match": {
+     "calls": 36,
+     "wrongKind": 0,
+     "unknown": 7
+    }
+   }
   },
   {
    "name": "stateOf",
@@ -2283,7 +3586,24 @@
    "exercised": 30,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "attemptAsync": {
+     "calls": 30,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "equals": {
+     "calls": 26,
+     "wrongKind": 0,
+     "unknown": 9
+    },
+    "when": {
+     "calls": 26,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "pageRequest",
@@ -2299,7 +3619,14 @@
    "exercised": 34,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "times": {
+     "calls": 34,
+     "wrongKind": 0,
+     "unknown": 11
+    }
+   }
   },
   {
    "name": "hasNextPage",
@@ -2315,7 +3642,14 @@
    "exercised": 32,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "minus": {
+     "calls": 32,
+     "wrongKind": 0,
+     "unknown": 15
+    }
+   }
   },
   {
    "name": "hasPreviousPage",
@@ -2339,7 +3673,19 @@
    "exercised": 34,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "equals": {
+     "calls": 68,
+     "wrongKind": 0,
+     "unknown": 7
+    },
+    "when": {
+     "calls": 34,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "init",
@@ -2355,7 +3701,14 @@
    "exercised": 40,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "orElse": {
+     "calls": 80,
+     "wrongKind": 0,
+     "unknown": 17
+    }
+   }
   },
   {
    "name": "send",
@@ -2380,7 +3733,14 @@
    "exercised": 36,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "match": {
+     "calls": 36,
+     "wrongKind": 0,
+     "unknown": 7
+    }
+   }
   },
   {
    "name": "stateOf",
@@ -2403,7 +3763,14 @@
    "exercised": 18,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "attemptAsync": {
+     "calls": 30,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "permissionsOf",
@@ -2424,7 +3791,34 @@
    "exercised": 40,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "setOf": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "equals": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "when": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "each": {
+     "calls": 63,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "orElse": {
+     "calls": 37,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "covers",
@@ -2444,7 +3838,29 @@
    "exercised": 40,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "equals": {
+     "calls": 80,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "or": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "when": {
+     "calls": 74,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "doesEndWith": {
+     "calls": 34,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "missingPermissions",
@@ -2462,7 +3878,24 @@
    "exercised": 4,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "keepWhere": {
+     "calls": 4,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "hasAnyWhere": {
+     "calls": 10,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "not": {
+     "calls": 10,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "can",
@@ -2481,7 +3914,29 @@
    "exercised": 28,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "flattened": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "equals": {
+     "calls": 58,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "when": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "lengthOf": {
+     "calls": 50,
+     "wrongKind": 0,
+     "unknown": 16
+    }
+   }
   },
   {
    "name": "init",
@@ -2507,7 +3962,14 @@
    "exercised": 36,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "match": {
+     "calls": 36,
+     "wrongKind": 0,
+     "unknown": 7
+    }
+   }
   },
   {
    "name": "stateOf",
@@ -2530,7 +3992,14 @@
    "exercised": 17,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "equals": {
+     "calls": 17,
+     "wrongKind": 0,
+     "unknown": 6
+    }
+   }
   },
   {
    "name": "backoffDelay",
@@ -2550,7 +4019,34 @@
    "exercised": 40,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "minus": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "largestOf": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "power": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "times": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "smallestOf": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "init",
@@ -2567,7 +4063,19 @@
    "exercised": 35,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "orElse": {
+     "calls": 105,
+     "wrongKind": 0,
+     "unknown": 19
+    },
+    "times": {
+     "calls": 26,
+     "wrongKind": 0,
+     "unknown": 1
+    }
+   }
   },
   {
    "name": "send",
@@ -2588,7 +4096,14 @@
    "exercised": 36,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "match": {
+     "calls": 36,
+     "wrongKind": 0,
+     "unknown": 7
+    }
+   }
   },
   {
    "name": "stateOf",
@@ -2612,7 +4127,19 @@
    "exercised": 17,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "each": {
+     "calls": 17,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "when": {
+     "calls": 33,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "statusOf",
@@ -2630,7 +4157,24 @@
    "exercised": 40,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "lengthOf": {
+     "calls": 95,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "and": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "when": {
+     "calls": 64,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "history",
@@ -2653,7 +4197,14 @@
    "exercised": 4,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "lengthOf": {
+     "calls": 32,
+     "wrongKind": 0,
+     "unknown": 2
+    }
+   }
   },
   {
    "name": "canRedo",
@@ -2669,7 +4220,14 @@
    "exercised": 10,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "lengthOf": {
+     "calls": 30,
+     "wrongKind": 0,
+     "unknown": 9
+    }
+   }
   },
   {
    "name": "init",
@@ -2685,7 +4243,14 @@
    "exercised": 35,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "orElse": {
+     "calls": 35,
+     "wrongKind": 0,
+     "unknown": 5
+    }
+   }
   },
   {
    "name": "send",
@@ -2709,7 +4274,14 @@
    "exercised": 36,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "match": {
+     "calls": 36,
+     "wrongKind": 0,
+     "unknown": 7
+    }
+   }
   },
   {
    "name": "stateOf",
@@ -2732,7 +4304,14 @@
    "exercised": 24,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "reduceTo": {
+     "calls": 29,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "fieldErrors",
@@ -2752,7 +4331,34 @@
    "exercised": 40,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "each": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "mapEach": {
+     "calls": 63,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "joinWith": {
+     "calls": 63,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "not": {
+     "calls": 63,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "when": {
+     "calls": 63,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "fromValibot",
@@ -2770,7 +4376,8 @@
    "exercised": 40,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {}
   },
   {
    "name": "safeParse",
@@ -2788,7 +4395,24 @@
    "exercised": 32,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "when": {
+     "calls": 33,
+     "wrongKind": 0,
+     "unknown": 12
+    },
+    "orElse": {
+     "calls": 17,
+     "wrongKind": 0,
+     "unknown": 5
+    },
+    "mapEach": {
+     "calls": 17,
+     "wrongKind": 0,
+     "unknown": 5
+    }
+   }
   },
   {
    "name": "validate",
@@ -2804,7 +4428,14 @@
    "exercised": 0,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "when": {
+     "calls": 1,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "clearEdited",
@@ -2825,7 +4456,39 @@
    "exercised": 40,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "entriesOf": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "each": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "splitBy": {
+     "calls": 71,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "firstOf": {
+     "calls": 71,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "isSameValue": {
+     "calls": 71,
+     "wrongKind": 0,
+     "unknown": 13
+    },
+    "when": {
+     "calls": 71,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "init",
@@ -2852,7 +4515,14 @@
    "exercised": 36,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "match": {
+     "calls": 36,
+     "wrongKind": 0,
+     "unknown": 7
+    }
+   }
   },
   {
    "name": "stateOf",
@@ -2876,7 +4546,14 @@
    "exercised": 17,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "differs": {
+     "calls": 17,
+     "wrongKind": 0,
+     "unknown": 6
+    }
+   }
   },
   {
    "name": "Accordion",
@@ -2928,7 +4605,54 @@
    "exercised": 40,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "trimmed": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "splitBy": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "keepWhere": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "firstOf": {
+     "calls": 44,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "orElse": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "lengthOf": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "when": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "upperCase": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "lastOf": {
+     "calls": 4,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "Avatar",
@@ -3014,7 +4738,14 @@
    "exercised": 9,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "when": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 40
+    }
+   }
   },
   {
    "name": "ButtonInner",
@@ -3079,7 +4810,14 @@
    "exercised": 40,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "when": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 40
+    }
+   }
   },
   {
    "name": "CheckboxError",
@@ -3103,7 +4841,19 @@
    "exercised": 40,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "lowerCase": {
+     "calls": 80,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "trimmed": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "Combobox",
@@ -3129,7 +4879,29 @@
    "exercised": 40,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "differs": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "and": {
+     "calls": 80,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "not": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 17
+    },
+    "when": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "choose",
@@ -3159,7 +4931,24 @@
    "exercised": 34,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "equals": {
+     "calls": 136,
+     "wrongKind": 0,
+     "unknown": 52
+    },
+    "choose": {
+     "calls": 34,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "and": {
+     "calls": 102,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "optionId",
@@ -3203,7 +4992,14 @@
    "exercised": 40,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "when": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 40
+    }
+   }
   },
   {
    "name": "choose",
@@ -3235,7 +5031,24 @@
    "exercised": 40,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "and": {
+     "calls": 53,
+     "wrongKind": 0,
+     "unknown": 53
+    },
+    "or": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 18
+    },
+    "isTruthy": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 23
+    }
+   }
   },
   {
    "name": "onKeyDown",
@@ -3254,7 +5067,24 @@
    "exercised": 14,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "when": {
+     "calls": 46,
+     "wrongKind": 0,
+     "unknown": 21
+    },
+    "equals": {
+     "calls": 18,
+     "wrongKind": 0,
+     "unknown": 6
+    },
+    "or": {
+     "calls": 6,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "DayCell",
@@ -3292,7 +5122,19 @@
    "exercised": 40,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "not": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 40
+    },
+    "when": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "DialogTrigger",
@@ -3351,7 +5193,19 @@
    "exercised": 40,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "not": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 40
+    },
+    "when": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "DrawerTrigger",
@@ -3476,7 +5330,24 @@
    "exercised": 40,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "not": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 40
+    },
+    "and": {
+     "calls": 80,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "when": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "remove",
@@ -3493,7 +5364,14 @@
    "exercised": 26,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "keepWhere": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 40
+    }
+   }
   },
   {
    "name": "onDrop",
@@ -3509,7 +5387,14 @@
    "exercised": 6,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "listFrom": {
+     "calls": 10,
+     "wrongKind": 0,
+     "unknown": 5
+    }
+   }
   },
   {
    "name": "FileList",
@@ -3582,7 +5467,14 @@
    "exercised": 2,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "when": {
+     "calls": 2,
+     "wrongKind": 0,
+     "unknown": 2
+    }
+   }
   },
   {
    "name": "FormError",
@@ -3626,7 +5518,14 @@
    "exercised": 9,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "when": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 40
+    }
+   }
   },
   {
    "name": "IconGlyph",
@@ -3684,7 +5583,49 @@
    "exercised": 40,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "setOf": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "minus": {
+     "calls": 202,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "atMost": {
+     "calls": 2295,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "sortedBy": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "and": {
+     "calls": 1244,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "when": {
+     "calls": 1244,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "atLeast": {
+     "calls": 1156,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "addToWeakSet": {
+     "calls": 19,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "Pagination",
@@ -3711,7 +5652,34 @@
    "exercised": 40,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "differs": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "and": {
+     "calls": 80,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "atLeast": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "atMost": {
+     "calls": 28,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "when": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "PageItem",
@@ -3762,7 +5730,14 @@
    "exercised": 40,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "when": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 40
+    }
+   }
   },
   {
    "name": "Select",
@@ -3835,7 +5810,19 @@
    "exercised": 40,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "when": {
+     "calls": 62,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "equals": {
+     "calls": 22,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "Stepper",
@@ -3879,7 +5866,14 @@
    "exercised": 40,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "when": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 40
+    }
+   }
   },
   {
    "name": "SwitchError",
@@ -3904,7 +5898,24 @@
    "exercised": 40,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "equals": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "and": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    },
+    "when": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "Table",
@@ -3930,7 +5941,24 @@
    "exercised": 19,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "when": {
+     "calls": 32,
+     "wrongKind": 0,
+     "unknown": 18
+    },
+    "keepWhere": {
+     "calls": 24,
+     "wrongKind": 0,
+     "unknown": 24
+    },
+    "added": {
+     "calls": 8,
+     "wrongKind": 0,
+     "unknown": 8
+    }
+   }
   },
   {
    "name": "HeaderCell",
@@ -3992,7 +6020,24 @@
    "exercised": 40,
    "timeouts": 0,
    "mismatchCount": 0,
-   "mismatches": []
+   "mismatches": [],
+   "atomCalls": {
+    "and": {
+     "calls": 80,
+     "wrongKind": 0,
+     "unknown": 40
+    },
+    "not": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 40
+    },
+    "when": {
+     "calls": 40,
+     "wrongKind": 0,
+     "unknown": 0
+    }
+   }
   },
   {
    "name": "TagLabel",

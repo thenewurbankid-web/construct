@@ -159,7 +159,7 @@ function prepareSide(code, kind, importDecl) {
     member = m.key.type === 'Identifier' ? m.key.name : String(m.key.value);
   }
   const fn = kind === 'method' ? decl.properties[0] : decl;
-  const bind = atoms.length ? `const { ${atoms.map((a) => (a.atom === a.local ? a.atom : `${a.atom}: ${a.local}`)).join(', ')} } = __smith;\n` : '';
+  const bind = atoms.length ? `const { ${atoms.map((a) => (a.atom === a.local ? a.atom : `${a.atom}: ${a.local}`)).join(', ')} } = __atoms;\n` : '';
   const tail = kind === 'method' ? `return __w[${JSON.stringify(member)}];` : 'return __f;';
   return {
     free: globals.filter((g) => !locals.has(g)).sort(),
@@ -318,7 +318,40 @@ globalThis.__h = (function () {
     return { out: 'throws ' + ser(e) };
   }
 
-  var sides = {}, spec = null, records = {};
+  var sides = {}, spec = null, records = {}, cur = null;
+
+  function kindOf(v) {
+    if (stubs.has(v)) return null;
+    if (Array.isArray(v)) return 'list';
+    if (v instanceof Set) return 'set';
+    if (v instanceof Map) return 'map';
+    if (v instanceof RealDate) return 'date';
+    var t = typeof v;
+    return t === 'string' || t === 'number' || t === 'bigint' || t === 'boolean' || t === 'function' ? t : 'other';
+  }
+  function fits(kinds, kind) {
+    return kinds.indexOf('any') >= 0 || kinds.indexOf(kind) >= 0
+      || (kinds.indexOf('text-or-list') >= 0 && (kind === 'string' || kind === 'list'))
+      || (kinds.indexOf('collection') >= 0 && (kind === 'set' || kind === 'map'));
+  }
+  // The atoms the converted side calls, counted: how often each ran, and how often its
+  // first argument was not a kind of value the atom is declared for.
+  function counted(atoms) {
+    var out = {};
+    Object.keys(atoms).forEach(function (name) {
+      var real = __smith[name], kinds = atoms[name];
+      out[name] = function () {
+        if (cur) {
+          var c = cur.atoms[name] || (cur.atoms[name] = { calls: 0, wrongKind: 0, unknown: 0 });
+          var kind = arguments.length ? kindOf(arguments[0]) : 'other';
+          c.calls++;
+          if (kind === null) c.unknown++; else if (!fits(kinds, kind)) c.wrongKind++;
+        }
+        return real.apply(this, arguments);
+      };
+    });
+    return out;
+  }
 
   function step(side, run) {
     var seed = (spec.seed + run * 7919) >>> 0;
@@ -337,8 +370,9 @@ globalThis.__h = (function () {
     var rnd = rngOf(seed ^ 0x9e3779b9);
     Math.random = function () { return rnd(); };
 
-    var rec = { out: 'pending', trace: trace, args: '' };
+    var rec = { out: 'pending', trace: trace, args: '', atoms: {} };
     records[side + ':' + run] = rec;
+    cur = rec;
     var args = [];
     spec.params.forEach(function (p, i) {
       var v = gen(p.d, rng, ctx, 'arg' + i, 0);
@@ -365,15 +399,19 @@ globalThis.__h = (function () {
   }
 
   return {
-    define: function (s, factories) { spec = s; sides = factories; records = {}; },
+    define: function (s, factories) { spec = s; sides = factories; records = {}; globalThis.__atoms = counted(s.atoms || {}); },
     step: step,
     timedOut: function (side, run) { (records[side + ':' + run] = records[side + ':' + run] || { trace: [], args: '' }).out = 'timeout'; },
     report: function () {
-      var mismatches = [], compared = 0, exercised = 0, timeouts = 0;
+      var mismatches = [], compared = 0, exercised = 0, timeouts = 0, atoms = {};
       for (var run = 0; run < spec.runs; run++) {
         var a = records['original:' + run], b = records['converted:' + run];
         if (!a || !b || a.out === 'timeout' || b.out === 'timeout') { timeouts++; continue; }
         compared++;
+        Object.keys(b.atoms).forEach(function (name) {
+          var sum = atoms[name] || (atoms[name] = { calls: 0, wrongKind: 0, unknown: 0 });
+          sum.calls += b.atoms[name].calls; sum.wrongKind += b.atoms[name].wrongKind; sum.unknown += b.atoms[name].unknown;
+        });
         if (/^(returns|resolves)/.test(a.out)) exercised++;
         var ta = a.trace.join('\n'), tb = b.trace.join('\n');
         if (a.out !== b.out || a.args !== b.args || ta !== tb) {
@@ -388,7 +426,7 @@ globalThis.__h = (function () {
           });
         }
       }
-      return JSON.stringify({ compared: compared, exercised: exercised, timeouts: timeouts, mismatchCount: mismatches.length, mismatches: mismatches.slice(0, 3) });
+      return JSON.stringify({ compared: compared, exercised: exercised, timeouts: timeouts, mismatchCount: mismatches.length, mismatches: mismatches.slice(0, 3), atomCalls: atoms });
     },
     known: function (names) { return JSON.stringify(names.filter(function (n) { return n in globalThis; })); },
   };
@@ -423,7 +461,8 @@ async function createSandbox({ bundle }) {
     return { value };
   }
 
-  function checkPair({ original, converted, importDecl = '', kind = 'function', types = new Map(), runs = 25, seed = 1 }) {
+  // atomKinds: {atom: [kinds its first parameter takes]} for the atoms the converted side imports
+  function checkPair({ original, converted, importDecl = '', kind = 'function', types = new Map(), runs = 25, seed = 1, atomKinds = {} }) {
     let a;
     let b;
     let params;
@@ -447,7 +486,8 @@ async function createSandbox({ bundle }) {
         const free = s.free.filter((n) => !known.has(n));
         return `{ free: ${JSON.stringify(free)}, factory: function (${free.join(', ')}) {\n${s.body}\n} }`;
       };
-      r = evaluate(vm, `__h.define(${JSON.stringify({ params, runs, seed, method: kind === 'method' })}, { original: ${side(a)}, converted: ${side(b)} }); 0`);
+      const atoms = Object.fromEntries(atomBindings(importDecl).map((x) => [x.atom, atomKinds[x.atom] || ['any']]));
+      r = evaluate(vm, `__h.define(${JSON.stringify({ params, runs, seed, method: kind === 'method', atoms })}, { original: ${side(a)}, converted: ${side(b)} }); 0`);
       if (r.error) return { status: 'not-runnable', why: `cannot load: ${r.error.message}` };
       for (let run = 0; run < runs; run++) {
         for (const which of ['original', 'converted']) {
@@ -543,4 +583,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createSandbox, checkCorpus, describeType, typesOfSource, prepareSide };
+module.exports = { createSandbox, checkCorpus, describeType, typesOfSource, prepareSide, atomBindings };
