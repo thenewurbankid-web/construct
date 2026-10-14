@@ -20,7 +20,8 @@ const REACT_TYPES = { '@types/react': '^19', '@types/react-dom': '^19' };
 const UNIT_TESTS = { '@types/node': '^20', '@xstate/graph': '^3.0.4', tsx: '^4.19.0' };
 const TEST_UNIT_SCRIPT = 'tsx --test "features/**/tests/generated/*.test.ts"';
 
-const GITIGNORE = 'node_modules\ndist\n.next\nout\n*.tsbuildinfo\n.env*.local\n.DS_Store\nnpm-debug.log*\n';
+// line/.index/: the Line LSP's persistent hash index (#950), a cache rebuilt from the code (it also ignores itself)
+const GITIGNORE = 'node_modules\ndist\n.next\nout\n*.tsbuildinfo\n.env*.local\n.DS_Store\nnpm-debug.log*\nline/.index/\n';
 
 const TEMPLATES = {
   'react-spa': {

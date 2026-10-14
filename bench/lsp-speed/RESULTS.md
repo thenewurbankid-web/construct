@@ -159,3 +159,34 @@ The thresholds are: under 100 ms is instant, under 1 s is fine, over 1 s is noti
 - **Pieces needed for large projects, based on these numbers:**
   - **Needed now:** the persistent hash index, then scoped first load with a background warm-up. The warm-up is a separate nice-19 shadow process, N = 50 files per tick, behind the heavy-lock and RAM gate. It filled excalidraw in 29 s of active time for +7.5 ms foreground p95.
   - **Not needed yet:** per-feature TS services with eviction. TS is 0.55 s and 865 MB peak at 700 files. Revisit at about 2000+ files, or once real `node_modules` and `@types` are in the program.
+
+## 5. The shipped live index (#950), re-measured
+
+- **Run:** 2026-10-14, once, through `heavy.sh`, `LSP_SPEED_PHASES=live` (phase `live` in `measure.mjs`; raw numbers under `projects.<name>.live` in `results.json`).
+- **Construct:** `line/live-index` at `8c1b9123` (base `private/work/2026-09-23` `c363018c`). Same machine, Node, TypeScript and Smith settings as above; excalidraw re-cloned shallow (`541653c7`, same commit) into a new `/tmp/construct-lsp-speed-<pid>/`, parsed only, deleted afterwards.
+- **What runs:** the product `createLineLsp` with its persistent hash index (`packages/engine/lsp/store`). Cold = an empty store. Warm = a fresh process over the store the cold run left. "Ready" = build + the first TS call (which builds the program). The stored record holds both Smith styles (plain and exact), so a cold miss pays Smith twice.
+- **Scopes:** the same as section 3 (lending `features/browse/**` + library, primitives `library/components` + direct imports, excalidraw `packages/excalidraw/actions` + direct imports).
+
+| project | mode | cold ready (build + first TS) | warm ready from the index | warm: stored hits / Smith calls | one-file change: update + next diag | revert to stored content | peak RSS cold / warm |
+|---|---|--:|--:|---|---|--:|--:|
+| line-primitives | scoped (40 files) | 6.42 s (6309 + 114 ms) | **0.22 s** (105 + 113 ms) | 40/40, 0 | 245 + 21 ms (ts 1, smith 3, rules 1) | 0.6 ms | 662 / 436 MB |
+| line-primitives | full (94 files) | 14.24 s | **0.30 s** (124 + 174 ms) | 94/94, 0 | 255 + 19 ms | 0.9 ms | 677 / 438 MB |
+| lending-starter | scoped (13 files) | 0.65 s | **0.14 s** (31 + 110 ms) | 13/13, 0 | 45 + 18 ms | 0.5 ms | 387 / 369 MB |
+| lending-starter | full (17 files) | 0.71 s | **0.14 s** (30 + 111 ms) | 17/17, 0 | 46 + 14 ms | 0.8 ms | 416 / 369 MB |
+| excalidraw | scoped (100 files) | 1.15 s (784 + 366 ms) | **0.48 s** (85 + 394 ms) | 100/100, 0 | 8 + 97 ms | 0.9 ms | 466 / 548 MB |
+| excalidraw | full (697 files) | 4.25 s (3765 + 488 ms) | **0.66 s** (99 + 561 ms) | 697/697, 0 | 14 + 105 ms | 6 ms | 596 / 637 MB |
+
+Against the earlier numbers (sections 1 and 3):
+
+| project | cold before: full / scoped | cold now: full / scoped | warm start now: full / scoped | earlier simulated persistent index: full / scoped |
+|---|--:|--:|--:|--:|
+| line-primitives | 17.2 / 9.1 s | 14.2 / 6.4 s | **0.30 / 0.22 s** | 0.17 / 0.14 s |
+| lending-starter | 0.85 / 0.86 s | 0.71 / 0.65 s | **0.14 / 0.14 s** | 0.12 / 0.13 s |
+| excalidraw | 19.3 / 3.4 s | 4.3 / 1.15 s | **0.66 / 0.48 s** | 0.57 / 0.42 s |
+
+- **A warm start does zero Smith calls and zero rule runs.** Every file was a stored hit in all six warm runs. What is left is TS (the first call builds the program: 110 to 560 ms) plus reading the entries (30 to 125 ms).
+- **The warm start is within 0.1 s of the simulated index** of section 3. The difference is the first TS call, which the simulation counted as `getProgram` alone, and reading one entry file per source file.
+- **Excalidraw's cold build fell from 19.3 s to 4.3 s mostly before this work:** base commit `ee260aff` checks the Smith link once a process instead of on every call. The exact style doubles Smith on a cold miss and is still inside that 4.3 s. Line-primitives' cold time is the rules layer (about 146 ms a file), which the index skips on a warm start.
+- **Reverting a file to content the index has seen costs under 1 ms** (6 ms on excalidraw full): the entry is read back, nothing is recomputed.
+- **The one-file change** is the same as before (8 to 255 ms, then 14 to 105 ms for the next diagnostics). The next-diagnostics cost on excalidraw is TS re-checking the file.
+- **Not measured here:** the background indexer's foreground cost (section 4 measured the prototype at N = 50: +7.5 ms completions p95) and an installed project with `node_modules` (TS numbers are still lower bounds).

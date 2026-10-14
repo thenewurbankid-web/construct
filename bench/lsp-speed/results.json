@@ -244,6 +244,226 @@
         "rulesMs": 0,
         "maxRssMb": 266,
         "wallMs": 358.4
+      },
+      "live": {
+        "cold-scoped": {
+          "ok": true,
+          "variant": "cold-scoped",
+          "buildMs": 6309,
+          "firstTsMs": 114.2,
+          "readyMs": 6423.2,
+          "cold": {
+            "ms": 6308,
+            "files": 40,
+            "hits": 0,
+            "misses": 40,
+            "smithCalls": 80,
+            "mode": "scoped",
+            "how": "library/components/** (40 files) + their direct imports inside the project (0)"
+          },
+          "store": {
+            "dir": "/tmp/construct-lsp-speed-2475/store-line-primitives-scoped",
+            "pinKey": "40774657",
+            "hits": 0,
+            "misses": 40,
+            "writes": 40,
+            "errors": 0
+          },
+          "scope": {
+            "mode": "scoped",
+            "how": "library/components/** (40 files) + their direct imports inside the project (0)",
+            "focus": "library/components",
+            "files": 40
+          },
+          "size": {
+            "files": 40,
+            "functions": 109,
+            "ruleFiles": 40
+          },
+          "stats": {
+            "builds": 1,
+            "updates": 0,
+            "smithCalls": 80,
+            "computed": 40,
+            "reused": 0,
+            "widened": 0
+          },
+          "change": null,
+          "maxRssMb": 662,
+          "wallMs": 6647.2
+        },
+        "warm-scoped": {
+          "ok": true,
+          "variant": "warm-scoped",
+          "buildMs": 105.4,
+          "firstTsMs": 112.6,
+          "readyMs": 218,
+          "cold": {
+            "ms": 105,
+            "files": 40,
+            "hits": 40,
+            "misses": 0,
+            "smithCalls": 0,
+            "mode": "scoped",
+            "how": "library/components/** (40 files) + their direct imports inside the project (0)"
+          },
+          "store": {
+            "dir": "/tmp/construct-lsp-speed-2475/store-line-primitives-scoped",
+            "pinKey": "40774657",
+            "hits": 41,
+            "misses": 1,
+            "writes": 1,
+            "errors": 0
+          },
+          "scope": {
+            "mode": "scoped",
+            "how": "library/components/** (40 files) + their direct imports inside the project (0)",
+            "focus": "library/components",
+            "files": 40
+          },
+          "size": {
+            "files": 40,
+            "functions": 109,
+            "ruleFiles": 40
+          },
+          "stats": {
+            "builds": 1,
+            "updates": 2,
+            "smithCalls": 2,
+            "computed": 1,
+            "reused": 41,
+            "widened": 0
+          },
+          "change": {
+            "updateMs": 244.5,
+            "layers": {
+              "ts": 1,
+              "smith": 3,
+              "rules": 1
+            },
+            "touched": [
+              "library/components/Button.tsx"
+            ],
+            "nextDiagnosticsMs": 20.5,
+            "revertMs": 0.6,
+            "revertLayers": {
+              "ts": 1,
+              "smith": 0,
+              "rules": 0
+            }
+          },
+          "maxRssMb": 436,
+          "wallMs": 958.5
+        },
+        "cold-full": {
+          "ok": true,
+          "variant": "cold-full",
+          "buildMs": 14108.2,
+          "firstTsMs": 130,
+          "readyMs": 14238.2,
+          "cold": {
+            "ms": 14108,
+            "files": 94,
+            "hits": 0,
+            "misses": 94,
+            "smithCalls": 175,
+            "mode": "full",
+            "how": "full: every source file"
+          },
+          "store": {
+            "dir": "/tmp/construct-lsp-speed-2475/store-line-primitives-full",
+            "pinKey": "40774657",
+            "hits": 0,
+            "misses": 94,
+            "writes": 94,
+            "errors": 0
+          },
+          "scope": {
+            "mode": "full",
+            "how": "full: every source file",
+            "focus": null,
+            "files": 94
+          },
+          "size": {
+            "files": 94,
+            "functions": 200,
+            "ruleFiles": 94
+          },
+          "stats": {
+            "builds": 1,
+            "updates": 0,
+            "smithCalls": 175,
+            "computed": 94,
+            "reused": 0,
+            "widened": 0
+          },
+          "change": null,
+          "maxRssMb": 677,
+          "wallMs": 14470.7
+        },
+        "warm-full": {
+          "ok": true,
+          "variant": "warm-full",
+          "buildMs": 123.9,
+          "firstTsMs": 173.9,
+          "readyMs": 297.9,
+          "cold": {
+            "ms": 124,
+            "files": 94,
+            "hits": 94,
+            "misses": 0,
+            "smithCalls": 0,
+            "mode": "full",
+            "how": "full: every source file"
+          },
+          "store": {
+            "dir": "/tmp/construct-lsp-speed-2475/store-line-primitives-full",
+            "pinKey": "40774657",
+            "hits": 95,
+            "misses": 1,
+            "writes": 1,
+            "errors": 0
+          },
+          "scope": {
+            "mode": "full",
+            "how": "full: every source file",
+            "focus": null,
+            "files": 94
+          },
+          "size": {
+            "files": 94,
+            "functions": 200,
+            "ruleFiles": 94
+          },
+          "stats": {
+            "builds": 1,
+            "updates": 2,
+            "smithCalls": 2,
+            "computed": 1,
+            "reused": 95,
+            "widened": 0
+          },
+          "change": {
+            "updateMs": 254.9,
+            "layers": {
+              "ts": 1,
+              "smith": 3,
+              "rules": 1
+            },
+            "touched": [
+              "library/components/Button.tsx"
+            ],
+            "nextDiagnosticsMs": 19.1,
+            "revertMs": 0.9,
+            "revertLayers": {
+              "ts": 1,
+              "smith": 0,
+              "rules": 0
+            }
+          },
+          "maxRssMb": 438,
+          "wallMs": 1106.7
+        }
       }
     },
     "lending-starter": {
@@ -466,6 +686,226 @@
         "rulesMs": 0,
         "maxRssMb": 263,
         "wallMs": 332.1
+      },
+      "live": {
+        "cold-scoped": {
+          "ok": true,
+          "variant": "cold-scoped",
+          "buildMs": 530,
+          "firstTsMs": 115.6,
+          "readyMs": 645.7,
+          "cold": {
+            "ms": 530,
+            "files": 13,
+            "hits": 0,
+            "misses": 13,
+            "smithCalls": 24,
+            "mode": "scoped",
+            "how": "features/browse/** + 0 other feature index file(s) + library/**"
+          },
+          "store": {
+            "dir": "/tmp/construct-lsp-speed-2475/store-lending-starter-scoped",
+            "pinKey": "40774657",
+            "hits": 0,
+            "misses": 13,
+            "writes": 13,
+            "errors": 0
+          },
+          "scope": {
+            "mode": "scoped",
+            "how": "features/browse/** + 0 other feature index file(s) + library/**",
+            "focus": "browse",
+            "files": 13
+          },
+          "size": {
+            "files": 13,
+            "functions": 12,
+            "ruleFiles": 13
+          },
+          "stats": {
+            "builds": 1,
+            "updates": 0,
+            "smithCalls": 24,
+            "computed": 13,
+            "reused": 0,
+            "widened": 0
+          },
+          "change": null,
+          "maxRssMb": 387,
+          "wallMs": 856.3
+        },
+        "warm-scoped": {
+          "ok": true,
+          "variant": "warm-scoped",
+          "buildMs": 31.4,
+          "firstTsMs": 110.1,
+          "readyMs": 141.5,
+          "cold": {
+            "ms": 31,
+            "files": 13,
+            "hits": 13,
+            "misses": 0,
+            "smithCalls": 0,
+            "mode": "scoped",
+            "how": "features/browse/** + 0 other feature index file(s) + library/**"
+          },
+          "store": {
+            "dir": "/tmp/construct-lsp-speed-2475/store-lending-starter-scoped",
+            "pinKey": "40774657",
+            "hits": 14,
+            "misses": 1,
+            "writes": 1,
+            "errors": 0
+          },
+          "scope": {
+            "mode": "scoped",
+            "how": "features/browse/** + 0 other feature index file(s) + library/**",
+            "focus": "browse",
+            "files": 13
+          },
+          "size": {
+            "files": 13,
+            "functions": 12,
+            "ruleFiles": 13
+          },
+          "stats": {
+            "builds": 1,
+            "updates": 2,
+            "smithCalls": 2,
+            "computed": 1,
+            "reused": 14,
+            "widened": 0
+          },
+          "change": {
+            "updateMs": 45,
+            "layers": {
+              "ts": 1,
+              "smith": 1,
+              "rules": 1
+            },
+            "touched": [
+              "library/pages/ListPage.tsx"
+            ],
+            "nextDiagnosticsMs": 17.7,
+            "revertMs": 0.5,
+            "revertLayers": {
+              "ts": 1,
+              "smith": 0,
+              "rules": 0
+            }
+          },
+          "maxRssMb": 369,
+          "wallMs": 593.5
+        },
+        "cold-full": {
+          "ok": true,
+          "variant": "cold-full",
+          "buildMs": 593.4,
+          "firstTsMs": 111.9,
+          "readyMs": 705.3,
+          "cold": {
+            "ms": 593,
+            "files": 17,
+            "hits": 0,
+            "misses": 17,
+            "smithCalls": 29,
+            "mode": "full",
+            "how": "full: every source file"
+          },
+          "store": {
+            "dir": "/tmp/construct-lsp-speed-2475/store-lending-starter-full",
+            "pinKey": "40774657",
+            "hits": 0,
+            "misses": 17,
+            "writes": 17,
+            "errors": 0
+          },
+          "scope": {
+            "mode": "full",
+            "how": "full: every source file",
+            "focus": null,
+            "files": 17
+          },
+          "size": {
+            "files": 17,
+            "functions": 13,
+            "ruleFiles": 17
+          },
+          "stats": {
+            "builds": 1,
+            "updates": 0,
+            "smithCalls": 29,
+            "computed": 17,
+            "reused": 0,
+            "widened": 0
+          },
+          "change": null,
+          "maxRssMb": 416,
+          "wallMs": 918.8
+        },
+        "warm-full": {
+          "ok": true,
+          "variant": "warm-full",
+          "buildMs": 30.4,
+          "firstTsMs": 111.4,
+          "readyMs": 141.8,
+          "cold": {
+            "ms": 30,
+            "files": 17,
+            "hits": 17,
+            "misses": 0,
+            "smithCalls": 0,
+            "mode": "full",
+            "how": "full: every source file"
+          },
+          "store": {
+            "dir": "/tmp/construct-lsp-speed-2475/store-lending-starter-full",
+            "pinKey": "40774657",
+            "hits": 18,
+            "misses": 1,
+            "writes": 1,
+            "errors": 0
+          },
+          "scope": {
+            "mode": "full",
+            "how": "full: every source file",
+            "focus": null,
+            "files": 17
+          },
+          "size": {
+            "files": 17,
+            "functions": 13,
+            "ruleFiles": 17
+          },
+          "stats": {
+            "builds": 1,
+            "updates": 2,
+            "smithCalls": 2,
+            "computed": 1,
+            "reused": 18,
+            "widened": 0
+          },
+          "change": {
+            "updateMs": 45.7,
+            "layers": {
+              "ts": 1,
+              "smith": 1,
+              "rules": 1
+            },
+            "touched": [
+              "library/pages/ListPage.tsx"
+            ],
+            "nextDiagnosticsMs": 13.6,
+            "revertMs": 0.8,
+            "revertLayers": {
+              "ts": 1,
+              "smith": 0,
+              "rules": 0
+            }
+          },
+          "maxRssMb": 369,
+          "wallMs": 576.3
+        }
       }
     },
     "vercel-commerce": {
@@ -1077,6 +1517,226 @@
         "pickN": 50,
         "pickRule": "largest N with added p95 foreground latency < 20 ms and peak RSS < cap",
         "wallMs": 970652
+      },
+      "live": {
+        "cold-scoped": {
+          "ok": true,
+          "variant": "cold-scoped",
+          "buildMs": 783.9,
+          "firstTsMs": 365.6,
+          "readyMs": 1149.5,
+          "cold": {
+            "ms": 783,
+            "files": 100,
+            "hits": 0,
+            "misses": 100,
+            "smithCalls": 157,
+            "mode": "scoped",
+            "how": "packages/excalidraw/actions/** (49 files) + their direct imports inside the project (51)"
+          },
+          "store": {
+            "dir": "/tmp/construct-lsp-speed-2475/store-excalidraw-scoped",
+            "pinKey": "664b26e4",
+            "hits": 0,
+            "misses": 100,
+            "writes": 100,
+            "errors": 0
+          },
+          "scope": {
+            "mode": "scoped",
+            "how": "packages/excalidraw/actions/** (49 files) + their direct imports inside the project (51)",
+            "focus": "packages/excalidraw/actions",
+            "files": 100
+          },
+          "size": {
+            "files": 100,
+            "functions": 311,
+            "ruleFiles": 100
+          },
+          "stats": {
+            "builds": 1,
+            "updates": 0,
+            "smithCalls": 157,
+            "computed": 100,
+            "reused": 0,
+            "widened": 0
+          },
+          "change": null,
+          "maxRssMb": 466,
+          "wallMs": 1354.1
+        },
+        "warm-scoped": {
+          "ok": true,
+          "variant": "warm-scoped",
+          "buildMs": 85.3,
+          "firstTsMs": 393.6,
+          "readyMs": 478.9,
+          "cold": {
+            "ms": 86,
+            "files": 100,
+            "hits": 100,
+            "misses": 0,
+            "smithCalls": 0,
+            "mode": "scoped",
+            "how": "packages/excalidraw/actions/** (49 files) + their direct imports inside the project (51)"
+          },
+          "store": {
+            "dir": "/tmp/construct-lsp-speed-2475/store-excalidraw-scoped",
+            "pinKey": "664b26e4",
+            "hits": 101,
+            "misses": 1,
+            "writes": 1,
+            "errors": 0
+          },
+          "scope": {
+            "mode": "scoped",
+            "how": "packages/excalidraw/actions/** (49 files) + their direct imports inside the project (51)",
+            "focus": "packages/excalidraw/actions",
+            "files": 100
+          },
+          "size": {
+            "files": 100,
+            "functions": 311,
+            "ruleFiles": 100
+          },
+          "stats": {
+            "builds": 1,
+            "updates": 2,
+            "smithCalls": 2,
+            "computed": 1,
+            "reused": 101,
+            "widened": 0
+          },
+          "change": {
+            "updateMs": 7.9,
+            "layers": {
+              "ts": 1,
+              "smith": 2,
+              "rules": 1
+            },
+            "touched": [
+              "packages/excalidraw/actions/actionAlign.tsx"
+            ],
+            "nextDiagnosticsMs": 97,
+            "revertMs": 0.9,
+            "revertLayers": {
+              "ts": 1,
+              "smith": 0,
+              "rules": 0
+            }
+          },
+          "maxRssMb": 548,
+          "wallMs": 1031.1
+        },
+        "cold-full": {
+          "ok": true,
+          "variant": "cold-full",
+          "buildMs": 3764.5,
+          "firstTsMs": 488.2,
+          "readyMs": 4252.7,
+          "cold": {
+            "ms": 3765,
+            "files": 697,
+            "hits": 0,
+            "misses": 697,
+            "smithCalls": 1156,
+            "mode": "full",
+            "how": "full: every source file"
+          },
+          "store": {
+            "dir": "/tmp/construct-lsp-speed-2475/store-excalidraw-full",
+            "pinKey": "664b26e4",
+            "hits": 0,
+            "misses": 697,
+            "writes": 697,
+            "errors": 0
+          },
+          "scope": {
+            "mode": "full",
+            "how": "full: every source file",
+            "focus": null,
+            "files": 697
+          },
+          "size": {
+            "files": 697,
+            "functions": 2047,
+            "ruleFiles": 693
+          },
+          "stats": {
+            "builds": 1,
+            "updates": 0,
+            "smithCalls": 1156,
+            "computed": 697,
+            "reused": 0,
+            "widened": 0
+          },
+          "change": null,
+          "maxRssMb": 596,
+          "wallMs": 4464.8
+        },
+        "warm-full": {
+          "ok": true,
+          "variant": "warm-full",
+          "buildMs": 99.3,
+          "firstTsMs": 561,
+          "readyMs": 660.3,
+          "cold": {
+            "ms": 99,
+            "files": 697,
+            "hits": 697,
+            "misses": 0,
+            "smithCalls": 0,
+            "mode": "full",
+            "how": "full: every source file"
+          },
+          "store": {
+            "dir": "/tmp/construct-lsp-speed-2475/store-excalidraw-full",
+            "pinKey": "664b26e4",
+            "hits": 698,
+            "misses": 1,
+            "writes": 1,
+            "errors": 0
+          },
+          "scope": {
+            "mode": "full",
+            "how": "full: every source file",
+            "focus": null,
+            "files": 697
+          },
+          "size": {
+            "files": 697,
+            "functions": 2047,
+            "ruleFiles": 693
+          },
+          "stats": {
+            "builds": 1,
+            "updates": 2,
+            "smithCalls": 2,
+            "computed": 1,
+            "reused": 698,
+            "widened": 0
+          },
+          "change": {
+            "updateMs": 13.7,
+            "layers": {
+              "ts": 1,
+              "smith": 2,
+              "rules": 1
+            },
+            "touched": [
+              "packages/excalidraw/actions/actionAlign.tsx"
+            ],
+            "nextDiagnosticsMs": 105.4,
+            "revertMs": 6,
+            "revertLayers": {
+              "ts": 1,
+              "smith": 0,
+              "rules": 0
+            }
+          },
+          "maxRssMb": 637,
+          "wallMs": 1256.7
+        }
       }
     }
   },
@@ -1086,6 +1746,12 @@
       "when": "2026-10-13T23:59:01.923Z",
       "phases": [
         "throttle"
+      ]
+    },
+    {
+      "when": "2026-10-14T00:37:33.023Z",
+      "phases": [
+        "live"
       ]
     }
   ]

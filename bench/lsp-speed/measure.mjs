@@ -16,6 +16,8 @@
 //   persisted  (full | scoped) cold start with Smith + rules served from the stored hash index: only TS + hashing cost
 //   throttle   (excalidraw) foreground scoped LSP + a nice-19 background shadow indexer child, N = 5 / 20 / 50 files a
 //              tick, pausing while another heavy.sh job holds the lock or free RAM is below heavy.sh's threshold
+//   live       (#950) the shipped live index: createLineLsp with its persistent hash index (lsp/store), scoped and full,
+//              cold (empty store), warm (a fresh process over the stored index), one-file change; LSP_SPEED_PHASES=live
 //
 // Env (as the hardened Smith needs): LSP_SMITH_RAW=1 LINE_LINKS_ALLOW_DRIFT=1
 //   ATOMIC_CODEMOD_SOURCE_DIR=~/Repositories/atomic-codemod-hardening SMITH_SOURCE_DIR=~/Repositories/smith
@@ -308,6 +310,35 @@ async function phasePersisted(p, root, work, mode) {
   return { ok: true, mode, totalMs: ms(now() - t0), memoLoadMs: ms(loadMs), tsMs: ms(tsMs), hashMs: layers.hashMs, hits: layers.hits, misses: files.filter(isCode).length - layers.hits, smithMs: layers.smithMs, rulesMs: layers.rulesMs, maxRssMb: maxRssMb() };
 }
 
+// ------------------------------------------------------------------------------------------------ live (#950)
+/** The shipped live index: `variant` = cold-scoped | warm-scoped | cold-full | warm-full. A cold run starts from an
+ * empty store; a warm run is a fresh process over the store the cold run of the same scope left. Ready = build + the
+ * first TS call (it builds the program). The warm runs also time a one-file change: update([file]) + next diagnostics. */
+async function phaseLive(p, root, work, variant) {
+  const { server, ts } = await load();
+  const [temp, kind] = variant.split('-');
+  const storeDir = path.join(work, `store-${p.name}-${kind}`);
+  if (temp === 'cold') fs.rmSync(storeDir, { recursive: true, force: true });
+  const scope = kind === 'full' ? 'full' : p.line ? { feature: p.feature } : { folder: p.feature };
+  const [buildMs, lsp] = await timed(() => server.createLineLsp(root, { scope, storeDir }));
+  const rel = p.marker; const abs = path.join(root, rel);
+  const text = fs.readFileSync(abs, 'utf8');
+  const spots = spotsOf(ts, rel, text);
+  const [firstTsMs] = await timed(() => lsp.quickInfo(rel, spots.symbol));
+  let change = null;
+  if (temp === 'warm') {
+    await lsp.diagnostics(rel); // warm the gate cache for the unchanged file, as a running session has it
+    fs.writeFileSync(abs, `${text}\n// lsp-speed probe\n`);
+    const [updMs, u] = await timed(() => lsp.update([rel]));
+    const [nextDiagMs] = await timed(() => lsp.diagnostics(rel));
+    fs.writeFileSync(abs, text);
+    const [revertMs, u2] = await timed(() => lsp.update([rel]));
+    change = { updateMs: ms(updMs), layers: u.layers, touched: u.touched, nextDiagnosticsMs: ms(nextDiagMs), revertMs: ms(revertMs), revertLayers: u2.layers };
+  }
+  lsp.close();
+  return { ok: true, variant, buildMs: ms(buildMs), firstTsMs: ms(firstTsMs), readyMs: ms(buildMs + firstTsMs), cold: lsp.cold, store: lsp.store, scope: lsp.scope, size: lsp.size, stats: lsp.stats, change, maxRssMb: maxRssMb() };
+}
+
 // ------------------------------------------------------------------------------------------------ throttle
 function freeMb() {
   try {
@@ -463,6 +494,10 @@ async function driver() {
         rec.persistedFull = runPhase(['persisted', p.name, root, work, 'full']);
         rec.persistedScoped = runPhase(['persisted', p.name, root, work, 'scoped']);
       }
+      if (want('live')) {
+        rec.live = {};
+        for (const v of ['cold-scoped', 'warm-scoped', 'cold-full', 'warm-full']) { process.stderr.write(`[lsp-speed] ${p.name}: live ${v}\n`); rec.live[v] = runPhase(['live', p.name, root, work, v]); }
+      }
       if (p.throttle && want('throttle')) { process.stderr.write(`[lsp-speed] ${p.name}: throttle\n`); rec.throttle = runPhase(['throttle', p.name, root, work], 90 * 60000); }
       out.projects[p.name] = rec;
       fs.writeFileSync(RESULTS, `${JSON.stringify(out, null, 2)}\n`);
@@ -478,7 +513,7 @@ async function driver() {
 async function phase([name, project, root, work, extra]) {
   const p = PROJECTS.find((x) => x.name === project);
   const fns = { split: () => phaseSplit(p, root, work), full: () => phaseFull(p, root), scoped: () => phaseScoped(p, root),
-    persisted: () => phasePersisted(p, root, work, extra), throttle: () => phaseThrottle(p, root, work), shadow: () => phaseShadow(p, root, Number(extra), 100) };
+    persisted: () => phasePersisted(p, root, work, extra), live: () => phaseLive(p, root, work, extra), throttle: () => phaseThrottle(p, root, work), shadow: () => phaseShadow(p, root, Number(extra), 100) };
   let res;
   try { res = await fns[name](); } catch (e) { res = { ok: false, reason: String(e?.stack || e).split('\n').slice(0, 3).join(' | ').slice(0, 400) }; }
   process.stdout.write(`\n${JSON.stringify(res)}\n`);
