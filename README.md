@@ -40,6 +40,21 @@ Connector words (`and`, `but`, `also`, `if`, `then`, `is`) that just `return thi
 
 `will()` — the one connector that starts a chain at the entry point (a page, a form, whatever your top-level object is).
 
+### Fluent facade (`smith/fluent`)
+
+The same atoms, read as a sentence. Each chain ends in a plain value and delegates to one atom, so the two forms are interchangeable; the catalog's `fluent` field lists every form.
+
+```ts
+import { equals, mapEach, when } from 'smith';
+import { checks, list, when as whenIt } from 'smith/fluent';
+
+equals(a, b);                 checks().if(a).is().equalTo(b);
+mapEach(xs, fn);              list(xs).mapEach(fn);
+when(c, () => a, () => b);    whenIt(c).yields(() => a).otherwise(() => b);
+```
+
+Entry points: `checks`, `text`, `list`, `when`, `choose`, `match`, `attempt`. The last four share their names with the atoms they wrap, which is why the facade has its own import path.
+
 ## Example
 
 ```ts
