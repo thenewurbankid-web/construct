@@ -1,0 +1,4110 @@
+{
+ "summary": {
+  "runtime": "939c25c",
+  "functions": 207,
+  "same": 207,
+  "different": 0,
+  "unchecked": 0,
+  "conversionsWithoutCheck": 718,
+  "conversionsWithCheck": 783,
+  "rewritesTakenBack": 0,
+  "takenBackByCause": {},
+  "ambiguousPlaces": 76,
+  "ambiguousResolved": 65
+ },
+ "functions": [
+  {
+   "name": "advance",
+   "file": "orderCheckout.ts",
+   "status": "same",
+   "convertedUnchecked": 0,
+   "converted": 0,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function advance(state: string): string {\n  return state;\n}"
+  },
+  {
+   "name": "next",
+   "file": "checkout.ts",
+   "status": "same",
+   "convertedUnchecked": 2,
+   "converted": 2,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function next(state: CheckoutState): CheckoutState {\n  return when(equals(state, 'cart'), () => 'paying', () => 'done');\n}"
+  },
+  {
+   "name": "advance",
+   "file": "orderCheckout.ts",
+   "status": "same",
+   "convertedUnchecked": 0,
+   "converted": 0,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function advance(state: CheckoutState): CheckoutState {\n  return next(state);\n}"
+  },
+  {
+   "name": "next",
+   "file": "checkout.ts",
+   "status": "same",
+   "convertedUnchecked": 2,
+   "converted": 2,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function next(state: CheckoutState): CheckoutState {\n  return when(equals(state, 'cart'), () => 'paying', () => 'done');\n}"
+  },
+  {
+   "name": "advance",
+   "file": "orderCheckout.ts",
+   "status": "same",
+   "convertedUnchecked": 0,
+   "converted": 0,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function advance(state: CheckoutState): CheckoutState {\n  return next(state);\n}"
+  },
+  {
+   "name": "useThing",
+   "file": "useThing.ts",
+   "status": "same",
+   "convertedUnchecked": 0,
+   "converted": 0,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function useThing() {\n  return 1;\n}"
+  },
+  {
+   "name": "next",
+   "file": "checkout.ts",
+   "status": "same",
+   "convertedUnchecked": 2,
+   "converted": 2,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function next(state: CheckoutState): CheckoutState {\n  return when(equals(state, 'cart'), () => 'paying', () => 'done');\n}"
+  },
+  {
+   "name": "advance",
+   "file": "orderCheckout.ts",
+   "status": "same",
+   "convertedUnchecked": 0,
+   "converted": 0,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function advance(state: CheckoutState): CheckoutState {\n  return next(state);\n}"
+  },
+  {
+   "name": "next",
+   "file": "checkout.ts",
+   "status": "same",
+   "convertedUnchecked": 2,
+   "converted": 2,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function next(state: CheckoutState): CheckoutState {\n  return when(equals(state, 'cart'), () => 'paying', () => 'done');\n}"
+  },
+  {
+   "name": "advance",
+   "file": "orderCheckout.ts",
+   "status": "same",
+   "convertedUnchecked": 0,
+   "converted": 0,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function advance(state: CheckoutState): CheckoutState {\n  return next(state);\n}"
+  },
+  {
+   "name": "next",
+   "file": "checkout.ts",
+   "status": "same",
+   "convertedUnchecked": 2,
+   "converted": 2,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function next(state: CheckoutState): CheckoutState {\n  return when(equals(state, 'cart'), () => 'paying', () => 'done');\n}"
+  },
+  {
+   "name": "advance",
+   "file": "orderCheckout.ts",
+   "status": "same",
+   "convertedUnchecked": 0,
+   "converted": 0,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function advance(state: CheckoutState): CheckoutState {\n  return next(state);\n}"
+  },
+  {
+   "name": "next",
+   "file": "checkout.ts",
+   "status": "same",
+   "convertedUnchecked": 2,
+   "converted": 2,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function next(state: CheckoutState): CheckoutState {\n  return when(equals(state, 'cart'), () => 'paying', () => 'done');\n}"
+  },
+  {
+   "name": "advance",
+   "file": "orderCheckout.ts",
+   "status": "same",
+   "convertedUnchecked": 0,
+   "converted": 0,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function advance(state: CheckoutState): CheckoutState {\n  return next(state);\n}"
+  },
+  {
+   "name": "next",
+   "file": "checkout.ts",
+   "status": "same",
+   "convertedUnchecked": 2,
+   "converted": 2,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function next(state: CheckoutState): CheckoutState {\n  return when(equals(state, 'cart'), () => 'paying', () => 'done');\n}"
+  },
+  {
+   "name": "advance",
+   "file": "orderCheckout.ts",
+   "status": "same",
+   "convertedUnchecked": 0,
+   "converted": 0,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function advance(state: CheckoutState): CheckoutState {\n  return next(state);\n}"
+  },
+  {
+   "name": "next",
+   "file": "checkout.ts",
+   "status": "same",
+   "convertedUnchecked": 2,
+   "converted": 2,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function next(state: CheckoutState): CheckoutState {\n  return when(equals(state, 'cart'), () => 'paying', () => 'done');\n}"
+  },
+  {
+   "name": "checkout",
+   "file": "passes.tsx",
+   "status": "same",
+   "convertedUnchecked": 0,
+   "converted": 0,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "async function checkout(orderId: string) {\n  return fetch(`/api/checkout/${orderId}`);\n}"
+  },
+  {
+   "name": "CheckoutService",
+   "file": "violates.tsx",
+   "status": "same",
+   "convertedUnchecked": 0,
+   "converted": 0,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function CheckoutService() {\n  return React.createElement('div');\n}"
+  },
+  {
+   "name": "checkoutMachine",
+   "file": "passes.tsx",
+   "status": "same",
+   "convertedUnchecked": 0,
+   "converted": 0,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function checkoutMachine() {\n  return {\n    id: 'checkout',\n    initial: 'idle',\n    states: {\n      idle: {}\n    }\n  };\n}"
+  },
+  {
+   "name": "checkoutMachine",
+   "file": "violates.tsx",
+   "status": "same",
+   "convertedUnchecked": 0,
+   "converted": 0,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function checkoutMachine() {\n  return React.createElement('div');\n}"
+  },
+  {
+   "name": "releaseTotalBadge",
+   "file": "feature-branded-valid.ts",
+   "status": "same",
+   "convertedUnchecked": 0,
+   "converted": 0,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function releaseTotalBadge(): ComponentUnit<TotalBadgeProps> {\n  return TotalBadge;\n}"
+  },
+  {
+   "name": "unguarded",
+   "file": "service-schema-invalid.ts",
+   "status": "same",
+   "convertedUnchecked": 1,
+   "converted": 1,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "async function unguarded(): Promise<string> {\n  const result = await fetchUser({\n    id: 'u1'\n  });\n  // TS2339: Property 'value' does not exist on type '{ status: \"error\"; kind: \"schema\"; issues }'.\n  const name: string = result.value.name;\n  // TS2339: Property 'issues' does not exist on type '{ status: \"ok\"; value: User }'.\n  const count: number = lengthOf(result.issues);\n  return `${name}:${count}`;\n}"
+  },
+  {
+   "name": "consume",
+   "file": "service-schema-zod.ts",
+   "status": "same",
+   "convertedUnchecked": 4,
+   "converted": 4,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "async function consume(): Promise<string> {\n  const result = await fetchUser({\n    id: 'u1'\n  });\n  return when(equals(result.status, 'error'), () => joinWith(mapEach(result.issues, i => i.message), ', '), () => {\n    const user: User = result.value;\n    return `${user.name} (${user.role})`;\n  });\n}"
+  },
+  {
+   "name": "validate",
+   "file": "service-schema.ts",
+   "status": "same",
+   "convertedUnchecked": 8,
+   "converted": 10,
+   "ambiguousBefore": 2,
+   "decisions": [
+    {
+     "form": "OptionalMemberExpression .id",
+     "start": 130,
+     "end": 135,
+     "source": "v?.id",
+     "tried": [
+      {
+       "atom": "get",
+       "status": "same",
+       "ran": 22,
+       "wrongKind": 0,
+       "works": true
+      },
+      {
+       "atom": "at",
+       "status": "same",
+       "ran": 22,
+       "wrongKind": 19,
+       "works": false
+      }
+     ],
+     "chosen": "get"
+    },
+    {
+     "form": "OptionalMemberExpression .name",
+     "start": 226,
+     "end": 233,
+     "source": "v?.name",
+     "tried": [
+      {
+       "atom": "get",
+       "status": "same",
+       "ran": 22,
+       "wrongKind": 0,
+       "works": true
+      },
+      {
+       "atom": "at",
+       "status": "different",
+       "ran": 22,
+       "wrongKind": 19,
+       "works": false
+      }
+     ],
+     "chosen": "get"
+    }
+   ],
+   "rejected": [],
+   "body": "validate(value) {\n  const v = value as Partial<User> | null;\n  const issues: StandardSchemaIssue[] = [];\n  when(differs(typeOf(get(v, \"id\")), 'string'), () => issues.push({\n    message: 'expected string',\n    path: ['id']\n  }));\n  when(differs(typeOf(get(v, \"name\")), 'string'), () => issues.push({\n    message: 'expected string',\n    path: [{\n      key: 'name'\n    }]\n  }));\n  return when(lengthOf(issues), () => ({\n    issues\n  }), () => ({\n    value: v as User\n  }));\n}"
+  },
+  {
+   "name": "safeParse",
+   "file": "service-schema.ts",
+   "status": "same",
+   "convertedUnchecked": 2,
+   "converted": 2,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "safeParse(value: unknown) {\n  return when(isNumber(value), () => ({\n    success: true,\n    data: value\n  }) as const, () => ({\n    success: false,\n    error: {\n      issues: [{\n        message: 'expected number'\n      }]\n    }\n  }) as const);\n}"
+  },
+  {
+   "name": "consume",
+   "file": "service-schema.ts",
+   "status": "same",
+   "convertedUnchecked": 5,
+   "converted": 5,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "async function consume(): Promise<string> {\n  const result = await fetchUser({\n    id: 'u1'\n  });\n  return when(equals(result.status, 'error'), () => {\n    // `kind` and `issues` are only reachable on the error branch.\n    const _kind: 'schema' = result.kind;\n    void _kind;\n    return joinWith(mapEach(result.issues, i => `${joinWith(i.path, '.')}: ${i.message}`), ', ');\n  }, () => {\n    const user: User = result.value; // narrowed to the schema's output, not `unknown`\n    return user.name;\n  });\n}"
+  },
+  {
+   "name": "useCartState",
+   "file": "tracked-state.ts",
+   "status": "same",
+   "convertedUnchecked": 1,
+   "converted": 1,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function useCartState(): CartState {\n  const [total, setTotal] = useTrackedState<number>('total', 0);\n  return {\n    total,\n    setTotal,\n    isEmpty: equals(total, 0)\n  };\n}"
+  },
+  {
+   "name": "assertType",
+   "file": "workflow.ts",
+   "status": "same",
+   "convertedUnchecked": 0,
+   "converted": 0,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function assertType<_T extends true>(): void {\n  return undefined;\n}"
+  },
+  {
+   "name": "tagUnit",
+   "file": "factories.ts",
+   "status": "same",
+   "convertedUnchecked": 0,
+   "converted": 0,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function tagUnit<Fn extends (...args: any[]) => any, Branded>(name: string, fn: Fn, unitLayer: string): Branded {\n  function unit(...args: any[]) {\n    return fn(...args);\n  }\n  Object.defineProperty(unit, 'name', {\n    value: name,\n    configurable: true\n  });\n  return Object.assign(unit, {\n    unitName: name,\n    unitLayer\n  }) as unknown as Branded;\n}"
+  },
+  {
+   "name": "unit",
+   "file": "factories.ts",
+   "status": "same",
+   "convertedUnchecked": 0,
+   "converted": 0,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function unit(...args: any[]) {\n  return fn(...args);\n}"
+  },
+  {
+   "name": "defineComponent",
+   "file": "factories.ts",
+   "status": "same",
+   "convertedUnchecked": 0,
+   "converted": 0,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function defineComponent<Props extends Forbid<Props, ComponentUnitAny>>(name: string, fn: Template<Props>): ComponentUnit<Props> {\n  return tagUnit(name, fn, 'component');\n}"
+  },
+  {
+   "name": "definePage",
+   "file": "factories.ts",
+   "status": "same",
+   "convertedUnchecked": 0,
+   "converted": 0,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function definePage<Props extends Forbid<Props, ComponentUnitAny>>(name: string, fn: Template<Props>): PageUnit<Props> {\n  return tagUnit(name, fn, 'page');\n}"
+  },
+  {
+   "name": "defineExpression",
+   "file": "factories.ts",
+   "status": "same",
+   "convertedUnchecked": 0,
+   "converted": 0,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function defineExpression<Props extends Forbid<Props, ComponentUnitAny>>(name: string, fn: Template<Props & {\n  children?: ReactNode;\n}>): ExpressionUnit<Props> {\n  return tagUnit(name, fn, 'expression');\n}"
+  },
+  {
+   "name": "defineController",
+   "file": "factories.ts",
+   "status": "same",
+   "convertedUnchecked": 0,
+   "converted": 0,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function defineController<Props extends Forbid<Props, ControllerAllowed>>(name: string, fn: Template<Props>): ControllerUnit<Props> {\n  return tagUnit(name, fn, 'controller');\n}"
+  },
+  {
+   "name": "defineRoute",
+   "file": "factories.ts",
+   "status": "same",
+   "convertedUnchecked": 0,
+   "converted": 0,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function defineRoute<Props extends Forbid<Props, ControllerUnitAny>>(name: string, fn: Template<Props>): RouteUnit {\n  return tagUnit(name, fn as unknown as Template<RouteProps>, 'route');\n}"
+  },
+  {
+   "name": "defineWorkflow",
+   "file": "factories.ts",
+   "status": "same",
+   "convertedUnchecked": 0,
+   "converted": 0,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function defineWorkflow<Props extends Forbid<Props, WorkflowAllowed>, Machine extends WorkflowMachine = WorkflowConfig>(name: string, fn: (props: Props) => Machine): WorkflowUnit<(props: Props) => Machine> {\n  return tagUnit(name, fn, 'workflow');\n}"
+  },
+  {
+   "name": "defineService",
+   "file": "factories.ts",
+   "status": "same",
+   "convertedUnchecked": 2,
+   "converted": 3,
+   "ambiguousBefore": 1,
+   "decisions": [
+    {
+     "form": "OptionalMemberExpression .schema",
+     "start": 242,
+     "end": 257,
+     "source": "options?.schema",
+     "tried": [
+      {
+       "atom": "get",
+       "status": "same",
+       "ran": 22,
+       "wrongKind": 0,
+       "works": true
+      },
+      {
+       "atom": "at",
+       "status": "different",
+       "ran": 22,
+       "wrongKind": 17,
+       "works": false
+      }
+     ],
+     "chosen": "get"
+    }
+   ],
+   "rejected": [],
+   "body": "function defineService<Props extends Forbid<Props, DomainUnitAny>, Return, Schema extends ResponseSchema>(name: string, fn: (props: Props) => Return, options?: ServiceOptions<Schema>): ServiceUnit<(props: Props) => unknown> {\n  return when(not(get(options, \"schema\")), () => tagUnit(name, fn, 'service'), () => {\n    const {\n      schema\n    } = options;\n    const checked = (props: Props) => checkServiceReturn(schema, fn(props));\n    const unit = tagUnit<typeof checked, ServiceUnit<typeof checked>>(name, checked, 'service');\n    return Object.assign(unit, {\n      schema\n    });\n  });\n}"
+  },
+  {
+   "name": "checked",
+   "file": "factories.ts",
+   "status": "same",
+   "convertedUnchecked": 0,
+   "converted": 0,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function checked(props: Props) {\n  return checkServiceReturn(schema, fn(props));\n}"
+  },
+  {
+   "name": "defineDomain",
+   "file": "factories.ts",
+   "status": "same",
+   "convertedUnchecked": 0,
+   "converted": 0,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function defineDomain<Props extends Forbid<Props, never>, Return>(name: string, fn: (props: Props) => Return): DomainUnit<(props: Props) => Return> {\n  return tagUnit(name, fn, 'domain');\n}"
+  },
+  {
+   "name": "withFeature",
+   "file": "feature.ts",
+   "status": "same",
+   "convertedUnchecked": 0,
+   "converted": 0,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function withFeature<U extends LayerTag<LayerName>, Feature extends string>(unit: U, feature: Feature): FeatureBrand<U, Feature> {\n  return unit as FeatureBrand<U, Feature>;\n}"
+  },
+  {
+   "name": "propRef",
+   "file": "propRef.ts",
+   "status": "same",
+   "convertedUnchecked": 0,
+   "converted": 0,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function propRef<T>(value: T): PropRef<T> {\n  return value as PropRef<T>;\n}"
+  },
+  {
+   "name": "defineProvider",
+   "file": "provider.ts",
+   "status": "same",
+   "convertedUnchecked": 5,
+   "converted": 5,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function defineProvider<Props extends Forbid<Props, ProviderAllowed>, Value>(name: string, fn: (props: Props) => Value): ProviderUnit<Props, Value> {\n  const Context = React.createContext<{\n    value: Value;\n  } | typeof NOT_PROVIDED>(NOT_PROVIDED);\n  Context.displayName = name;\n  function ProviderComponent(props: Props & {\n    children?: React.ReactNode;\n  }): JSX.Element {\n    const {\n      children,\n      ...rest\n    } = props;\n    const value = fn(rest as Props);\n    return React.createElement(Context.Provider, {\n      value: {\n        value\n      }\n    }, children as React.ReactNode);\n  }\n  Object.defineProperty(ProviderComponent, 'name', {\n    value: `${name}ProviderComponent`,\n    configurable: true\n  });\n  function useProvider(): Value {\n    const ctx = React.useContext(Context);\n    when(equals(ctx, NOT_PROVIDED), () => {\n      fail(errorFrom(join(`${name}: useProvider() was called outside its ProviderComponent's subtree -- render `, `${name}ProviderComponent somewhere above the component calling useProvider().`)));\n    });\n    return (ctx as {\n      value: Value;\n    }).value;\n  }\n  Object.defineProperty(useProvider, 'name', {\n    value: `use${name}Provider`,\n    configurable: true\n  });\n  return {\n    ProviderComponent,\n    useProvider,\n    unitName: name,\n    unitLayer: 'hook'\n  } as unknown as ProviderUnit<Props, Value>;\n}"
+  },
+  {
+   "name": "ProviderComponent",
+   "file": "provider.ts",
+   "status": "same",
+   "convertedUnchecked": 0,
+   "converted": 0,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function ProviderComponent(props: Props & {\n  children?: React.ReactNode;\n}): JSX.Element {\n  const {\n    children,\n    ...rest\n  } = props;\n  const value = fn(rest as Props);\n  return React.createElement(Context.Provider, {\n    value: {\n      value\n    }\n  }, children as React.ReactNode);\n}"
+  },
+  {
+   "name": "useProvider",
+   "file": "provider.ts",
+   "status": "same",
+   "convertedUnchecked": 5,
+   "converted": 5,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function useProvider(): Value {\n  const ctx = React.useContext(Context);\n  when(equals(ctx, NOT_PROVIDED), () => {\n    fail(errorFrom(join(`${name}: useProvider() was called outside its ProviderComponent's subtree -- render `, `${name}ProviderComponent somewhere above the component calling useProvider().`)));\n  });\n  return (ctx as {\n    value: Value;\n  }).value;\n}"
+  },
+  {
+   "name": "normalizeIssues",
+   "file": "schema.ts",
+   "status": "same",
+   "convertedUnchecked": 8,
+   "converted": 8,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function normalizeIssues(issues: ReadonlyArray<StandardSchemaIssue>): SchemaIssue[] {\n  return mapEach(issues, issue => ({\n    message: textFrom(issue.message),\n    path: mapEach(orElse(issue.path, () => []), segment => when(and(isObjectType(segment), () => differs(segment, null)), () => segment.key, () => segment))\n  }));\n}"
+  },
+  {
+   "name": "schemaError",
+   "file": "schema.ts",
+   "status": "same",
+   "convertedUnchecked": 0,
+   "converted": 0,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function schemaError(issues: ReadonlyArray<SchemaIssue>): ServiceResult<never> {\n  return {\n    status: 'error',\n    kind: 'schema',\n    issues\n  };\n}"
+  },
+  {
+   "name": "isThenable",
+   "file": "schema.ts",
+   "status": "same",
+   "convertedUnchecked": 5,
+   "converted": 5,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function isThenable(value: unknown): value is PromiseLike<unknown> {\n  return and(and(isObjectType(value), () => differs(value, null)), () => isFunction((value as {\n    then?: unknown;\n  }).then));\n}"
+  },
+  {
+   "name": "checkResponse",
+   "file": "schema.ts",
+   "status": "same",
+   "convertedUnchecked": 8,
+   "converted": 8,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function checkResponse<S extends ResponseSchema>(schema: S, value: unknown): ServiceResult<SchemaOutput<S>> | Promise<ServiceResult<SchemaOutput<S>>> {\n  type Out = SchemaOutput<S>;\n  const toResult = (r: StandardSchemaResult<unknown>): ServiceResult<Out> => when(r.issues, () => schemaError(normalizeIssues(r.issues)), () => ({\n    status: 'ok',\n    value: r.value as Out\n  }));\n  return attempt(() => when(hasProperty(schema, '~standard'), () => {\n    const raw = schema['~standard'].validate(value);\n    return when(isThenable(raw), () => thenPromise(resolvePromise(raw), toResult, (e: unknown) => schemaError([{\n      message: `schema threw: ${describe(e)}`,\n      path: []\n    }])), () => toResult(raw));\n  }, () => {\n    const parsed = schema.safeParse(value);\n    return when(parsed.success, () => ({\n      status: 'ok',\n      value: parsed.data as Out\n    }), () => schemaError(normalizeIssues(parsed.error.issues)));\n  }), e => schemaError([{\n    message: `schema threw: ${describe(e)}`,\n    path: []\n  }]));\n}"
+  },
+  {
+   "name": "toResult",
+   "file": "schema.ts",
+   "status": "same",
+   "convertedUnchecked": 1,
+   "converted": 1,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function toResult(r: StandardSchemaResult<unknown>): ServiceResult<Out> {\n  return when(r.issues, () => schemaError(normalizeIssues(r.issues)), () => ({\n    status: 'ok',\n    value: r.value as Out\n  }));\n}"
+  },
+  {
+   "name": "checkServiceReturn",
+   "file": "schema.ts",
+   "status": "same",
+   "convertedUnchecked": 6,
+   "converted": 6,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function checkServiceReturn<S extends ResponseSchema>(schema: S, raw: unknown): ServiceResult<SchemaOutput<S>> | Promise<ServiceResult<SchemaOutput<S>>> {\n  return when(isThenable(raw), () => thenPromise(resolvePromise(raw), v => checkResponse(schema, v)), () => {\n    const result = checkResponse(schema, raw);\n    return when(isThenable(result), () => {\n      // Nothing can await this; settle it quietly so an async validator's own rejection never\n      // surfaces as an unhandled rejection either.\n      thenPromise(resolvePromise(result), undefined, () => undefined);\n      return schemaError([{\n        message: 'schema validates asynchronously but the service returned synchronously; make the service async (return a Promise) or use a synchronous schema',\n        path: []\n      }]);\n    }, () => result);\n  });\n}"
+  },
+  {
+   "name": "describe",
+   "file": "schema.ts",
+   "status": "same",
+   "convertedUnchecked": 3,
+   "converted": 3,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function describe(e: unknown): string {\n  return when(isA(e, Error), () => e.message, () => textFrom(e));\n}"
+  },
+  {
+   "name": "useTrackedState",
+   "file": "trackedState.ts",
+   "status": "same",
+   "convertedUnchecked": 0,
+   "converted": 0,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function useTrackedState<T>(name: string, initial: T): TrackedState<T> {\n  const state = React.useState<T>(initial);\n  React.useDebugValue(name);\n  return state;\n}"
+  },
+  {
+   "name": "isCurrent",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 5,
+   "converted": 5,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function isCurrent(state: AsyncState<unknown>, request: number | undefined): boolean {\n  return when(not(state.fetching), () => false, () => when(equals(request, undefined), () => true, () => equals(request, state.request)));\n}"
+  },
+  {
+   "name": "init",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 0,
+   "converted": 0,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "init() {\n  return {\n    status: 'idle',\n    data: null,\n    error: null,\n    fetching: false,\n    request: 0,\n    updatedAt: null\n  };\n}"
+  },
+  {
+   "name": "send",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 8,
+   "converted": 9,
+   "ambiguousBefore": 2,
+   "decisions": [
+    {
+     "form": "BinaryExpression +",
+     "start": 165,
+     "end": 182,
+     "source": "state.request + 1",
+     "tried": [
+      {
+       "atom": "plus",
+       "status": "same",
+       "ran": 0,
+       "wrongKind": 0,
+       "works": false
+      },
+      {
+       "atom": "join",
+       "status": "same",
+       "ran": 0,
+       "wrongKind": 0,
+       "works": false
+      }
+     ],
+     "chosen": null,
+     "note": "no input reached it with a real value"
+    },
+    {
+     "form": "BinaryExpression +",
+     "start": 280,
+     "end": 297,
+     "source": "state.request + 1",
+     "tried": [
+      {
+       "atom": "plus",
+       "status": "same",
+       "ran": 5,
+       "wrongKind": 0,
+       "works": true
+      },
+      {
+       "atom": "join",
+       "status": "same",
+       "ran": 5,
+       "wrongKind": 5,
+       "works": false
+      }
+     ],
+     "chosen": "plus"
+    }
+   ],
+   "rejected": [],
+   "body": "send(state, event) {\n  return match(event.type, {\n    FETCH: () => when(equals(state.status, 'success'), () => ({\n      ...state,\n      fetching: true,\n      request: state.request + 1\n    }), () => ({\n      ...state,\n      status: 'pending',\n      error: null,\n      fetching: true,\n      request: plus(state.request, 1)\n    })),\n    RESOLVE: () => when(not(isCurrent(state, event.request)), () => state, () => ({\n      ...state,\n      status: 'success',\n      data: event.data,\n      error: null,\n      fetching: false,\n      updatedAt: orElse(event.at, () => null)\n    })),\n    REJECT: () => when(not(isCurrent(state, event.request)), () => state, () => ({\n      ...state,\n      status: 'error',\n      error: event.error,\n      fetching: false\n    })),\n    RESET: () => machine.init()\n  }, () => state);\n}"
+  },
+  {
+   "name": "stateOf",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 0,
+   "converted": 0,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "stateOf(state) {\n  return state.status;\n}"
+  },
+  {
+   "name": "loadAsync",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 2,
+   "converted": 2,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "async function loadAsync<D>(state: AsyncState<D>, load: () => Promise<D>, now: () => number = () => nowTime()): Promise<AsyncState<D>> {\n  const started = machine.send(state, {\n    type: 'FETCH'\n  }) as AsyncState<D>;\n  return await attemptAsync(async () => {\n    const data = await load();\n    return machine.send(started, {\n      type: 'RESOLVE',\n      data,\n      request: started.request,\n      at: now()\n    }) as AsyncState<D>;\n  }, async error => machine.send(started, {\n    type: 'REJECT',\n    error,\n    request: started.request\n  }) as AsyncState<D>);\n}"
+  },
+  {
+   "name": "flags",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 5,
+   "converted": 5,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function flags(state: AsyncState<unknown>): {\n  isLoading: boolean;\n  isError: boolean;\n  isSuccess: boolean;\n  isRefetching: boolean;\n} {\n  return {\n    isLoading: equals(state.status, 'pending'),\n    isError: equals(state.status, 'error'),\n    isSuccess: equals(state.status, 'success'),\n    isRefetching: and(equals(state.status, 'success'), () => state.fetching)\n  };\n}"
+  },
+  {
+   "name": "pageCount",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 4,
+   "converted": 4,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function pageCount(total: number, pageSize: number): number {\n  return when(atMost(total, 0), () => 1, () => ceilingOf(dividedBy(total, pageSize)));\n}"
+  },
+  {
+   "name": "clampPage",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 4,
+   "converted": 6,
+   "ambiguousBefore": 2,
+   "decisions": [
+    {
+     "form": "BinaryExpression >",
+     "start": 175,
+     "end": 191,
+     "source": "pageIndex > last",
+     "tried": [
+      {
+       "atom": "greaterThan",
+       "status": "same",
+       "ran": 19,
+       "wrongKind": 0,
+       "works": true
+      },
+      {
+       "atom": "isAfter",
+       "status": "different",
+       "ran": 19,
+       "wrongKind": 19,
+       "works": false
+      }
+     ],
+     "chosen": "greaterThan"
+    },
+    {
+     "form": "BinaryExpression <",
+     "start": 134,
+     "end": 147,
+     "source": "pageIndex < 0",
+     "tried": [
+      {
+       "atom": "lessThan",
+       "status": "same",
+       "ran": 25,
+       "wrongKind": 0,
+       "works": true
+      },
+      {
+       "atom": "isBefore",
+       "status": "different",
+       "ran": 25,
+       "wrongKind": 25,
+       "works": false
+      }
+     ],
+     "chosen": "lessThan"
+    }
+   ],
+   "rejected": [],
+   "body": "function clampPage(pageIndex: number, total: number, pageSize: number): number {\n  const last = minus(pageCount(total, pageSize), 1);\n  return when(lessThan(pageIndex, 0), () => 0, () => when(greaterThan(pageIndex, last), () => last, () => floorOf(pageIndex)));\n}"
+  },
+  {
+   "name": "positionOf",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 9,
+   "converted": 9,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function positionOf(pageIndex: number, total: number, pageSize: number): PagePosition {\n  const count = pageCount(total, pageSize);\n  return when(atMost(total, 0), () => 'empty', () => when(equals(count, 1), () => 'only', () => when(equals(pageIndex, 0), () => 'first', () => when(equals(pageIndex, minus(count, 1)), () => 'last', () => 'middle'))));\n}"
+  },
+  {
+   "name": "at",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 0,
+   "converted": 0,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function at(pageIndex: number, total: number, pageSize: number): PageState {\n  const index = clampPage(pageIndex, total, pageSize);\n  return {\n    status: positionOf(index, total, pageSize),\n    pageIndex: index,\n    pageSize,\n    total\n  };\n}"
+  },
+  {
+   "name": "sliceBounds",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 2,
+   "converted": 3,
+   "ambiguousBefore": 1,
+   "decisions": [
+    {
+     "form": "BinaryExpression +",
+     "start": 155,
+     "end": 177,
+     "source": "start + state.pageSize",
+     "tried": [
+      {
+       "atom": "plus",
+       "status": "same",
+       "ran": 25,
+       "wrongKind": 0,
+       "works": true
+      },
+      {
+       "atom": "join",
+       "status": "same",
+       "ran": 25,
+       "wrongKind": 25,
+       "works": false
+      }
+     ],
+     "chosen": "plus"
+    }
+   ],
+   "rejected": [],
+   "body": "function sliceBounds(state: PageState): {\n  start: number;\n  end: number;\n} {\n  const start = times(state.pageIndex, state.pageSize);\n  return {\n    start,\n    end: smallestOf([plus(start, state.pageSize), state.total])\n  };\n}"
+  },
+  {
+   "name": "pageItems",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 0,
+   "converted": 1,
+   "ambiguousBefore": 1,
+   "decisions": [
+    {
+     "form": "CallExpression .slice()",
+     "start": 112,
+     "end": 134,
+     "source": "rows.slice(start, end)",
+     "tried": [
+      {
+       "atom": "sliceText",
+       "status": "same",
+       "ran": 17,
+       "wrongKind": 17,
+       "works": false
+      },
+      {
+       "atom": "part",
+       "status": "same",
+       "ran": 17,
+       "wrongKind": 0,
+       "works": true
+      }
+     ],
+     "chosen": "part"
+    }
+   ],
+   "rejected": [],
+   "body": "function pageItems<T>(rows: T[], state: PageState): T[] {\n  const {\n    start,\n    end\n  } = sliceBounds(state);\n  return part(rows, start, end);\n}"
+  },
+  {
+   "name": "canNext",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 3,
+   "converted": 3,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function canNext(state: PageState): boolean {\n  return or(equals(state.status, 'first'), () => equals(state.status, 'middle'));\n}"
+  },
+  {
+   "name": "canPrevious",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 3,
+   "converted": 3,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function canPrevious(state: PageState): boolean {\n  return or(equals(state.status, 'middle'), () => equals(state.status, 'last'));\n}"
+  },
+  {
+   "name": "init",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 2,
+   "converted": 2,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "init(input) {\n  return at(orElse(input.pageIndex, () => 0), input.total, orElse(input.pageSize, () => 10));\n}"
+  },
+  {
+   "name": "send",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 12,
+   "converted": 14,
+   "ambiguousBefore": 2,
+   "decisions": [
+    {
+     "form": "BinaryExpression +",
+     "start": 149,
+     "end": 168,
+     "source": "state.pageIndex + 1",
+     "tried": [
+      {
+       "atom": "plus",
+       "status": "same",
+       "ran": 4,
+       "wrongKind": 0,
+       "works": true
+      },
+      {
+       "atom": "join",
+       "status": "same",
+       "ran": 4,
+       "wrongKind": 4,
+       "works": false
+      }
+     ],
+     "chosen": "plus"
+    },
+    {
+     "form": "BinaryExpression <",
+     "start": 609,
+     "end": 627,
+     "source": "event.pageSize < 1",
+     "tried": [
+      {
+       "atom": "lessThan",
+       "status": "same",
+       "ran": 5,
+       "wrongKind": 0,
+       "works": true
+      },
+      {
+       "atom": "isBefore",
+       "status": "different",
+       "ran": 5,
+       "wrongKind": 5,
+       "works": false
+      }
+     ],
+     "chosen": "lessThan"
+    }
+   ],
+   "rejected": [],
+   "body": "send(state, event) {\n  return match(event.type, {\n    NEXT: () => when(not(canNext(state)), () => state, () => at(plus(state.pageIndex, 1), state.total, state.pageSize)),\n    PREVIOUS: () => when(not(canPrevious(state)), () => state, () => at(minus(state.pageIndex, 1), state.total, state.pageSize)),\n    GO_TO: () => {\n      const next = at(event.pageIndex, state.total, state.pageSize);\n      return when(equals(next.pageIndex, state.pageIndex), () => state, () => next);\n    },\n    SET_PAGE_SIZE: () => when(lessThan(event.pageSize, 1), () => state, () => {\n      // Keep the first row of the current page on screen.\n      const firstRow = times(state.pageIndex, state.pageSize);\n      return at(floorOf(dividedBy(firstRow, event.pageSize)), state.total, event.pageSize);\n    }),\n    SET_TOTAL: () => at(state.pageIndex, event.total, state.pageSize)\n  }, () => state);\n}"
+  },
+  {
+   "name": "stateOf",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 0,
+   "converted": 0,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "stateOf(state) {\n  return state.status;\n}"
+  },
+  {
+   "name": "paginate",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 2,
+   "converted": 2,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function paginate<T>(rows: T[], pageIndex: number, pageSize: number): {\n  items: T[];\n  pageIndex: number;\n  pageCount: number;\n  canNext: boolean;\n  canPrevious: boolean;\n} {\n  const state = machine.init({\n    total: lengthOf(rows),\n    pageSize,\n    pageIndex\n  });\n  return {\n    items: pageItems(rows, state),\n    pageIndex: state.pageIndex,\n    pageCount: pageCount(lengthOf(rows), pageSize),\n    canNext: canNext(state),\n    canPrevious: canPrevious(state)\n  };\n}"
+  },
+  {
+   "name": "csvCell",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 19,
+   "converted": 20,
+   "ambiguousBefore": 1,
+   "decisions": [
+    {
+     "form": "CallExpression .includes()",
+     "start": 372,
+     "end": 396,
+     "source": "text.includes(separator)",
+     "tried": [
+      {
+       "atom": "hasText",
+       "status": "same",
+       "ran": 17,
+       "wrongKind": 0,
+       "works": true
+      },
+      {
+       "atom": "hasItem",
+       "status": "same",
+       "ran": 17,
+       "wrongKind": 17,
+       "works": false
+      }
+     ],
+     "chosen": "hasText"
+    }
+   ],
+   "rejected": [],
+   "body": "function csvCell(value: unknown, options: CsvOptions = {}): string {\n  const separator = orElse(options.separator, () => ',');\n  let text = '';\n  choose([[isA(value, Date), () => text = dateAsIsoText(value)], [() => and(differs(value, null), () => differs(value, undefined)), () => text = textFrom(value)]]);\n  when(and(orElse(options.safe, () => true), () => FORMULA_START.test(text)), () => text = `'${text}`);\n  return when(or(or(or(hasText(text, separator), () => hasText(text, '\"')), () => hasText(text, '\\n')), () => hasText(text, '\\r')), () => `\"${replaceText(text, /\"/g, '\"\"')}\"`, () => text);\n}"
+  },
+  {
+   "name": "cellOf",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 2,
+   "converted": 2,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function cellOf<T>(row: T, column: Column<T>): unknown {\n  return when(isFunction(column.accessor), () => column.accessor(row), () => row[column.accessor]);\n}"
+  },
+  {
+   "name": "toCsv",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 8,
+   "converted": 9,
+   "ambiguousBefore": 1,
+   "decisions": [
+    {
+     "form": "BinaryExpression +",
+     "start": 379,
+     "end": 400,
+     "source": "lines.join(eol) + eol",
+     "tried": [
+      {
+       "atom": "plus",
+       "status": "same",
+       "ran": 20,
+       "wrongKind": 20,
+       "works": false
+      },
+      {
+       "atom": "join",
+       "status": "same",
+       "ran": 20,
+       "wrongKind": 0,
+       "works": true
+      }
+     ],
+     "chosen": "join"
+    }
+   ],
+   "rejected": [],
+   "body": "function toCsv<T>(rows: T[], columns: Column<T>[], options: CsvOptions = {}): string {\n  const separator = orElse(options.separator, () => ',');\n  const eol = orElse(options.eol, () => '\\r\\n');\n  const lines = [joinWith(mapEach(columns, c => csvCell(c.header, options)), separator)];\n  each(rows, row => {\n    lines.push(joinWith(mapEach(columns, c => csvCell(cellOf(row, c), options)), separator));\n  });\n  return join(joinWith(lines, eol), eol);\n}"
+  },
+  {
+   "name": "csvFileName",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 6,
+   "converted": 7,
+   "ambiguousBefore": 1,
+   "decisions": [
+    {
+     "form": "CallExpression .slice()",
+     "start": 183,
+     "end": 214,
+     "source": "date.toISOString().slice(0, 10)",
+     "tried": [
+      {
+       "atom": "sliceText",
+       "status": "same",
+       "ran": 25,
+       "wrongKind": 0,
+       "works": true
+      },
+      {
+       "atom": "part",
+       "status": "same",
+       "ran": 25,
+       "wrongKind": 25,
+       "works": false
+      }
+     ],
+     "chosen": "sliceText"
+    }
+   ],
+   "rejected": [],
+   "body": "function csvFileName(base: string, date: Date): string {\n  const slug = replaceText(replaceText(lowerCase(trimmed(base)), /[^a-z0-9]+/g, '-'), /^-+|-+$/g, '');\n  return `${or(slug, () => 'export')}-${sliceText(dateAsIsoText(date), 0, 10)}.csv`;\n}"
+  },
+  {
+   "name": "createCsvMachine",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 8,
+   "converted": 8,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function createCsvMachine<T>(columns: Column<T>[], options: CsvOptions = {}): AtomMachine<CsvState, CsvEvent<T>, void> {\n  const m: AtomMachine<CsvState, CsvEvent<T>, void> = {\n    id: 'csv-export',\n    init() {\n      return {\n        status: 'empty',\n        csv: '',\n        rows: 0\n      };\n    },\n    send(state, event) {\n      return when(differs(event.type, 'EXPORT'), () => state, () => when(equals(lengthOf(event.rows), 0), () => when(equals(state.status, 'empty'), () => state, () => m.init()), () => ({\n        status: 'ready',\n        csv: toCsv(event.rows, columns, options),\n        rows: lengthOf(event.rows)\n      })));\n    },\n    stateOf(state) {\n      return state.status;\n    }\n  };\n  return m;\n}"
+  },
+  {
+   "name": "init",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 0,
+   "converted": 0,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "init() {\n  return {\n    status: 'empty',\n    csv: '',\n    rows: 0\n  };\n}"
+  },
+  {
+   "name": "send",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 8,
+   "converted": 8,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "send(state, event) {\n  return when(differs(event.type, 'EXPORT'), () => state, () => when(equals(lengthOf(event.rows), 0), () => when(equals(state.status, 'empty'), () => state, () => m.init()), () => ({\n    status: 'ready',\n    csv: toCsv(event.rows, columns, options),\n    rows: lengthOf(event.rows)\n  })));\n}"
+  },
+  {
+   "name": "stateOf",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 0,
+   "converted": 0,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "stateOf(state) {\n  return state.status;\n}"
+  },
+  {
+   "name": "init",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 0,
+   "converted": 0,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "init() {\n  return {\n    status: 'empty',\n    csv: '',\n    rows: 0\n  };\n}"
+  },
+  {
+   "name": "send",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 6,
+   "converted": 6,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "send(state, event) {\n  return when(differs(event.type, 'EXPORT'), () => state, () => {\n    const keys = keysOf(orElse(firstOf(event.rows), () => ({})));\n    return createCsvMachine<Record<string, unknown>>(mapEach(keys, k => ({\n      header: k,\n      accessor: k\n    }))).send(state, event);\n  });\n}"
+  },
+  {
+   "name": "stateOf",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 0,
+   "converted": 0,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "stateOf(state) {\n  return state.status;\n}"
+  },
+  {
+   "name": "exportCsv",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 0,
+   "converted": 0,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function exportCsv<T>(rows: T[], columns: Column<T>[], name: string, date: Date, options: CsvOptions = {}): {\n  fileName: string;\n  csv: string;\n  mime: string;\n} {\n  return {\n    fileName: csvFileName(name, date),\n    csv: toCsv(rows, columns, options),\n    mime: 'text/csv;charset=utf-8'\n  };\n}"
+  },
+  {
+   "name": "startOfDay",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 4,
+   "converted": 5,
+   "ambiguousBefore": 1,
+   "decisions": [
+    {
+     "form": "NewExpression new Date()",
+     "start": 46,
+     "end": 91,
+     "source": "new Date(Math.floor(d.getTime() / DAY) * DAY)",
+     "tried": [
+      {
+       "atom": "dateFrom",
+       "status": "same",
+       "ran": 25,
+       "wrongKind": 0,
+       "works": true
+      },
+      {
+       "atom": "dateFromParts",
+       "status": "same",
+       "ran": 25,
+       "wrongKind": 0,
+       "works": true
+      }
+     ],
+     "chosen": "dateFrom",
+     "note": "more than one works; the first in catalog order was kept"
+    }
+   ],
+   "rejected": [],
+   "body": "function startOfDay(d: Date): Date {\n  return dateFrom(times(floorOf(dividedBy(timeOfDate(d), DAY)), DAY));\n}"
+  },
+  {
+   "name": "endOfDay",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 2,
+   "converted": 3,
+   "ambiguousBefore": 2,
+   "decisions": [
+    {
+     "form": "NewExpression new Date()",
+     "start": 44,
+     "end": 87,
+     "source": "new Date(startOfDay(d).getTime() + DAY - 1)",
+     "tried": [
+      {
+       "atom": "dateFrom",
+       "status": "same",
+       "ran": 5,
+       "wrongKind": 0,
+       "works": true
+      },
+      {
+       "atom": "dateFromParts",
+       "status": "same",
+       "ran": 5,
+       "wrongKind": 0,
+       "works": true
+      }
+     ],
+     "chosen": "dateFrom",
+     "note": "more than one works; the first in catalog order was kept"
+    },
+    {
+     "form": "BinaryExpression +",
+     "start": 53,
+     "end": 82,
+     "source": "startOfDay(d).getTime() + DAY",
+     "tried": [
+      {
+       "atom": "plus",
+       "status": "same",
+       "ran": 0,
+       "wrongKind": 0,
+       "works": false
+      },
+      {
+       "atom": "join",
+       "status": "same",
+       "ran": 0,
+       "wrongKind": 0,
+       "works": false
+      }
+     ],
+     "chosen": null,
+     "note": "no input reached it with a real value"
+    }
+   ],
+   "rejected": [],
+   "body": "function endOfDay(d: Date): Date {\n  return dateFrom(minus(timeOfDate(startOfDay(d)) + DAY, 1));\n}"
+  },
+  {
+   "name": "isValidDate",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 5,
+   "converted": 5,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function isValidDate(d: unknown): boolean {\n  return and(isA(d, Date), () => not(isNaNNumber(timeOfDate(d))));\n}"
+  },
+  {
+   "name": "statusOf",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 14,
+   "converted": 14,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function statusOf(start: Date | null, end: Date | null): RangeState['status'] {\n  return when(and(equals(start, null), () => equals(end, null)), () => 'empty', () => when(or(equals(start, null), () => equals(end, null)), () => 'partial', () => when(or(or(not(isValidDate(start)), () => not(isValidDate(end))), () => isAfter(start, end)), () => 'invalid', () => 'complete')));\n}"
+  },
+  {
+   "name": "range",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 6,
+   "converted": 6,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function range(start: Date | null, end: Date | null): RangeState {\n  let s = start;\n  let e = end;\n  when(and(differs(s, null), () => isValidDate(s)), () => s = startOfDay(s));\n  when(and(differs(e, null), () => isValidDate(e)), () => e = endOfDay(e));\n  return {\n    status: statusOf(s, e),\n    start: s,\n    end: e\n  };\n}"
+  },
+  {
+   "name": "contains",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 8,
+   "converted": 8,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function contains(r: RangeState, d: Date): boolean {\n  return when(differs(r.status, 'complete'), () => false, () => {\n    const t = timeOfDate(d);\n    return and(atLeast(t, timeOfDate(r.start as Date)), () => atMost(t, timeOfDate(r.end as Date)));\n  });\n}"
+  },
+  {
+   "name": "daysIn",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 7,
+   "converted": 7,
+   "ambiguousBefore": 1,
+   "decisions": [
+    {
+     "form": "BinaryExpression +",
+     "start": 113,
+     "end": 142,
+     "source": "(r.end as Date).getTime() + 1",
+     "tried": [
+      {
+       "atom": "plus",
+       "status": "same",
+       "ran": 0,
+       "wrongKind": 0,
+       "works": false
+      },
+      {
+       "atom": "join",
+       "status": "same",
+       "ran": 0,
+       "wrongKind": 0,
+       "works": false
+      }
+     ],
+     "chosen": null,
+     "note": "no input reached it with a real value"
+    }
+   ],
+   "rejected": [],
+   "body": "function daysIn(r: RangeState): number {\n  return when(differs(r.status, 'complete'), () => 0, () => round(dividedBy(minus(timeOfDate(r.end as Date) + 1, timeOfDate(r.start as Date)), DAY)));\n}"
+  },
+  {
+   "name": "overlaps",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 11,
+   "converted": 11,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function overlaps(a: RangeState, b: RangeState): boolean {\n  return when(or(differs(a.status, 'complete'), () => differs(b.status, 'complete')), () => false, () => and(atMost(timeOfDate(a.start as Date), timeOfDate(b.end as Date)), () => atMost(timeOfDate(b.start as Date), timeOfDate(a.end as Date))));\n}"
+  },
+  {
+   "name": "lastDays",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 4,
+   "converted": 5,
+   "ambiguousBefore": 1,
+   "decisions": [
+    {
+     "form": "NewExpression new Date()",
+     "start": 74,
+     "end": 130,
+     "source": "new Date(startOfDay(today).getTime() - (days - 1) * DAY)",
+     "tried": [
+      {
+       "atom": "dateFrom",
+       "status": "same",
+       "ran": 6,
+       "wrongKind": 0,
+       "works": true
+      },
+      {
+       "atom": "dateFromParts",
+       "status": "same",
+       "ran": 6,
+       "wrongKind": 0,
+       "works": true
+      }
+     ],
+     "chosen": "dateFrom",
+     "note": "more than one works; the first in catalog order was kept"
+    }
+   ],
+   "rejected": [],
+   "body": "function lastDays(days: number, today: Date): RangeState {\n  return range(dateFrom(minus(timeOfDate(startOfDay(today)), times(minus(days, 1), DAY))), today);\n}"
+  },
+  {
+   "name": "init",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 2,
+   "converted": 4,
+   "ambiguousBefore": 2,
+   "decisions": [
+    {
+     "form": "OptionalMemberExpression .start",
+     "start": 31,
+     "end": 43,
+     "source": "input?.start",
+     "tried": [
+      {
+       "atom": "get",
+       "status": "same",
+       "ran": 25,
+       "wrongKind": 0,
+       "works": true
+      },
+      {
+       "atom": "at",
+       "status": "different",
+       "ran": 25,
+       "wrongKind": 25,
+       "works": false
+      }
+     ],
+     "chosen": "get"
+    },
+    {
+     "form": "OptionalMemberExpression .end",
+     "start": 53,
+     "end": 63,
+     "source": "input?.end",
+     "tried": [
+      {
+       "atom": "get",
+       "status": "same",
+       "ran": 25,
+       "wrongKind": 0,
+       "works": true
+      },
+      {
+       "atom": "at",
+       "status": "different",
+       "ran": 25,
+       "wrongKind": 25,
+       "works": false
+      }
+     ],
+     "chosen": "get"
+    }
+   ],
+   "rejected": [],
+   "body": "init(input) {\n  return range(orElse(get(input, \"start\"), () => null), orElse(get(input, \"end\"), () => null));\n}"
+  },
+  {
+   "name": "send",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 4,
+   "converted": 5,
+   "ambiguousBefore": 1,
+   "decisions": [
+    {
+     "form": "BinaryExpression <",
+     "start": 218,
+     "end": 232,
+     "source": "event.days < 1",
+     "tried": [
+      {
+       "atom": "lessThan",
+       "status": "same",
+       "ran": 5,
+       "wrongKind": 0,
+       "works": true
+      },
+      {
+       "atom": "isBefore",
+       "status": "different",
+       "ran": 5,
+       "wrongKind": 5,
+       "works": false
+      }
+     ],
+     "chosen": "lessThan"
+    }
+   ],
+   "rejected": [],
+   "body": "send(state, event) {\n  return match(event.type, {\n    SET_START: () => range(event.date, state.end),\n    SET_END: () => range(state.start, event.date),\n    PRESET: () => when(lessThan(event.days, 1), () => state, () => lastDays(event.days, event.today)),\n    CLEAR: () => when(equals(state.status, 'empty'), () => state, () => range(null, null))\n  }, () => state);\n}"
+  },
+  {
+   "name": "stateOf",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 0,
+   "converted": 0,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "stateOf(state) {\n  return state.status;\n}"
+  },
+  {
+   "name": "dateRange",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 0,
+   "converted": 0,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function dateRange(start: Date | null, end: Date | null): RangeState {\n  return machine.init({\n    start,\n    end\n  });\n}"
+  },
+  {
+   "name": "settledQuery",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 3,
+   "converted": 4,
+   "ambiguousBefore": 1,
+   "decisions": [
+    {
+     "form": "BinaryExpression <",
+     "start": 96,
+     "end": 116,
+     "source": "t.length < minLength",
+     "tried": [
+      {
+       "atom": "lessThan",
+       "status": "same",
+       "ran": 25,
+       "wrongKind": 0,
+       "works": true
+      },
+      {
+       "atom": "isBefore",
+       "status": "different",
+       "ran": 25,
+       "wrongKind": 25,
+       "works": false
+      }
+     ],
+     "chosen": "lessThan"
+    }
+   ],
+   "rejected": [],
+   "body": "function settledQuery(text: string, minLength: number): string {\n  const t = trimmed(text);\n  return when(lessThan(lengthOf(t), minLength), () => '', () => t);\n}"
+  },
+  {
+   "name": "waitFor",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 4,
+   "converted": 4,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function waitFor(state: DebounceState, now: number): number | null {\n  return when(equals(state.dueAt, null), () => null, () => largestOf([0, minus(state.dueAt, now)]));\n}"
+  },
+  {
+   "name": "settle",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 0,
+   "converted": 0,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function settle(state: DebounceState): DebounceState {\n  return {\n    ...state,\n    status: 'settled',\n    query: settledQuery(state.text, state.minLength),\n    dueAt: null\n  };\n}"
+  },
+  {
+   "name": "init",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 2,
+   "converted": 4,
+   "ambiguousBefore": 2,
+   "decisions": [
+    {
+     "form": "OptionalMemberExpression .delay",
+     "start": 84,
+     "end": 96,
+     "source": "input?.delay",
+     "tried": [
+      {
+       "atom": "get",
+       "status": "same",
+       "ran": 25,
+       "wrongKind": 0,
+       "works": true
+      },
+      {
+       "atom": "at",
+       "status": "different",
+       "ran": 25,
+       "wrongKind": 25,
+       "works": false
+      }
+     ],
+     "chosen": "get"
+    },
+    {
+     "form": "OptionalMemberExpression .minLength",
+     "start": 116,
+     "end": 132,
+     "source": "input?.minLength",
+     "tried": [
+      {
+       "atom": "get",
+       "status": "same",
+       "ran": 25,
+       "wrongKind": 0,
+       "works": true
+      },
+      {
+       "atom": "at",
+       "status": "different",
+       "ran": 25,
+       "wrongKind": 25,
+       "works": false
+      }
+     ],
+     "chosen": "get"
+    }
+   ],
+   "rejected": [],
+   "body": "init(input) {\n  return {\n    status: 'idle',\n    text: '',\n    query: '',\n    dueAt: null,\n    delay: orElse(get(input, \"delay\"), () => 300),\n    minLength: orElse(get(input, \"minLength\"), () => 0)\n  };\n}"
+  },
+  {
+   "name": "send",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 10,
+   "converted": 12,
+   "ambiguousBefore": 2,
+   "decisions": [
+    {
+     "form": "BinaryExpression +",
+     "start": 137,
+     "end": 159,
+     "source": "event.at + state.delay",
+     "tried": [
+      {
+       "atom": "plus",
+       "status": "same",
+       "ran": 5,
+       "wrongKind": 0,
+       "works": true
+      },
+      {
+       "atom": "join",
+       "status": "same",
+       "ran": 5,
+       "wrongKind": 5,
+       "works": false
+      }
+     ],
+     "chosen": "plus"
+    },
+    {
+     "form": "BinaryExpression <",
+     "start": 248,
+     "end": 270,
+     "source": "event.at < state.dueAt",
+     "tried": [
+      {
+       "atom": "lessThan",
+       "status": "same",
+       "ran": 2,
+       "wrongKind": 0,
+       "works": true
+      },
+      {
+       "atom": "isBefore",
+       "status": "different",
+       "ran": 2,
+       "wrongKind": 2,
+       "works": false
+      }
+     ],
+     "chosen": "lessThan"
+    }
+   ],
+   "rejected": [],
+   "body": "send(state, event) {\n  return match(event.type, {\n    TYPE: () => ({\n      ...state,\n      status: 'waiting',\n      text: event.text,\n      dueAt: plus(event.at, state.delay)\n    }),\n    TICK: () => when(or(or(differs(state.status, 'waiting'), () => equals(state.dueAt, null)), () => lessThan(event.at, state.dueAt)), () => state, () => settle(state)),\n    FLUSH: () => when(differs(state.status, 'waiting'), () => state, () => settle(state)),\n    CLEAR: () => when(equals(state.status, 'idle'), () => state, () => machine.init({\n      delay: state.delay,\n      minLength: state.minLength\n    }))\n  }, () => state);\n}"
+  },
+  {
+   "name": "stateOf",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 0,
+   "converted": 0,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "stateOf(state) {\n  return state.status;\n}"
+  },
+  {
+   "name": "debouncedSearch",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 1,
+   "converted": 1,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function debouncedSearch(typed: {\n  text: string;\n  at: number;\n}[], now: number, options?: {\n  delay?: number;\n  minLength?: number;\n}): string {\n  let s = machine.init(options);\n  each(typed, k => {\n    s = machine.send(s, {\n      type: 'TICK',\n      at: k.at\n    });\n    s = machine.send(s, {\n      type: 'TYPE',\n      text: k.text,\n      at: k.at\n    });\n  });\n  return machine.send(s, {\n    type: 'TICK',\n    at: now\n  }).query;\n}"
+  },
+  {
+   "name": "isNoFilter",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 5,
+   "converted": 5,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function isNoFilter(value: FilterValue): boolean {\n  return or(or(equals(value, undefined), () => equals(value, '')), () => equals(value, 'all'));\n}"
+  },
+  {
+   "name": "statusOf",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 7,
+   "converted": 7,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function statusOf(filters: Record<string, FilterValue>, search: string): View['status'] {\n  const active = hasAnyWhere(valuesOf(filters), v => not(isNoFilter(v)));\n  return when(or(active, () => differs(trimmed(search), '')), () => 'filtered', () => 'unfiltered');\n}"
+  },
+  {
+   "name": "view",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 0,
+   "converted": 0,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function view(filters: Record<string, FilterValue>, search: string, sort: Sort | null): View {\n  return {\n    status: statusOf(filters, search),\n    filters,\n    search,\n    sort\n  };\n}"
+  },
+  {
+   "name": "isEmptyValue",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 3,
+   "converted": 3,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function isEmptyValue(v: unknown): boolean {\n  return or(isNothing(v), () => equals(v, ''));\n}"
+  },
+  {
+   "name": "compareValues",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 19,
+   "converted": 19,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function compareValues(a: unknown, b: unknown): number {\n  const emptyA = isEmptyValue(a);\n  const emptyB = isEmptyValue(b);\n  return when(and(emptyA, () => emptyB), () => 0, () => when(emptyA, () => 1, () => when(emptyB, () => -1, () => when(and(isA(a, Date), () => isA(b, Date)), () => minus(timeOfDate(a), timeOfDate(b)), () => when(and(isNumber(a), () => isNumber(b)), () => minus(a, b), () => localeCompareText(textFrom(a), textFrom(b), undefined, {\n    sensitivity: 'base',\n    numeric: true\n  }))))));\n}"
+  },
+  {
+   "name": "matchesSearch",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 8,
+   "converted": 9,
+   "ambiguousBefore": 1,
+   "decisions": [
+    {
+     "form": "CallExpression .includes()",
+     "start": 196,
+     "end": 247,
+     "source": "String(row[f] ?? '').toLowerCase().includes(needle)",
+     "tried": [
+      {
+       "atom": "hasText",
+       "status": "same",
+       "ran": 29,
+       "wrongKind": 0,
+       "works": true
+      },
+      {
+       "atom": "hasItem",
+       "status": "same",
+       "ran": 29,
+       "wrongKind": 29,
+       "works": false
+      }
+     ],
+     "chosen": "hasText"
+    }
+   ],
+   "rejected": [],
+   "body": "function matchesSearch<T>(row: T, text: string, fields: (keyof T)[]): boolean {\n  const needle = lowerCase(trimmed(text));\n  return when(equals(needle, ''), () => true, () => hasAnyWhere(fields, f => hasText(lowerCase(textFrom(orElse(row[f], () => ''))), needle)));\n}"
+  },
+  {
+   "name": "applyView",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 20,
+   "converted": 20,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function applyView<T extends Record<string, unknown>>(rows: T[], v: View, searchFields: (keyof T)[] = []): T[] {\n  const active = keepWhere(entriesOf(v.filters), ([, value]) => not(isNoFilter(value)));\n  const kept = keepWhere(rows, row => and(isEveryWhere(active, ([id, value]) => equals(row[id], value)), () => matchesSearch(row, v.search, searchFields)));\n  return when(equals(v.sort, null), () => kept, () => {\n    const {\n      id,\n      desc\n    } = v.sort;\n    const indexed = mapEach(kept, (row, i) => ({\n      row,\n      i\n    }));\n    indexed.sort((x, y) => {\n      const c = compareValues(x.row[id], y.row[id]);\n      return when(equals(c, 0), () => minus(x.i, y.i), () => when(and(and(desc, () => not(isEmptyValue(x.row[id]))), () => not(isEmptyValue(y.row[id]))), () => negate(c), () => c));\n    });\n    return mapEach(indexed, x => x.row);\n  });\n}"
+  },
+  {
+   "name": "init",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 3,
+   "converted": 6,
+   "ambiguousBefore": 3,
+   "decisions": [
+    {
+     "form": "OptionalMemberExpression .filters",
+     "start": 36,
+     "end": 50,
+     "source": "input?.filters",
+     "tried": [
+      {
+       "atom": "get",
+       "status": "same",
+       "ran": 25,
+       "wrongKind": 0,
+       "works": true
+      },
+      {
+       "atom": "at",
+       "status": "different",
+       "ran": 25,
+       "wrongKind": 25,
+       "works": false
+      }
+     ],
+     "chosen": "get"
+    },
+    {
+     "form": "OptionalMemberExpression .search",
+     "start": 61,
+     "end": 74,
+     "source": "input?.search",
+     "tried": [
+      {
+       "atom": "get",
+       "status": "same",
+       "ran": 25,
+       "wrongKind": 0,
+       "works": true
+      },
+      {
+       "atom": "at",
+       "status": "different",
+       "ran": 25,
+       "wrongKind": 25,
+       "works": false
+      }
+     ],
+     "chosen": "get"
+    },
+    {
+     "form": "OptionalMemberExpression .sort",
+     "start": 82,
+     "end": 93,
+     "source": "input?.sort",
+     "tried": [
+      {
+       "atom": "get",
+       "status": "same",
+       "ran": 25,
+       "wrongKind": 0,
+       "works": true
+      },
+      {
+       "atom": "at",
+       "status": "different",
+       "ran": 25,
+       "wrongKind": 25,
+       "works": false
+      }
+     ],
+     "chosen": "get"
+    }
+   ],
+   "rejected": [],
+   "body": "init(input) {\n  return view({\n    ...orElse(get(input, \"filters\"), () => ({}))\n  }, orElse(get(input, \"search\"), () => ''), orElse(get(input, \"sort\"), () => null));\n}"
+  },
+  {
+   "name": "send",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 16,
+   "converted": 16,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "send(state, event) {\n  return match(event.type, {\n    SET_FILTER: () => when(equals(state.filters[event.id], event.value), () => state, () => view(withKey(state.filters, event.id, event.value), state.search, state.sort)),\n    CLEAR_FILTER: () => when(not(hasProperty(state.filters, event.id)), () => state, () => {\n      const filters = {\n        ...state.filters\n      };\n      delete filters[event.id];\n      return view(filters, state.search, state.sort);\n    }),\n    SET_SEARCH: () => when(equals(event.text, state.search), () => state, () => view(state.filters, event.text, state.sort)),\n    SORT_BY: () => view(state.filters, state.search, {\n      id: event.id,\n      desc: orElse(event.desc, () => false)\n    }),\n    TOGGLE_SORT: () => when(or(equals(state.sort, null), () => differs(state.sort.id, event.id)), () => view(state.filters, state.search, {\n      id: event.id,\n      desc: false\n    }), () => when(not(state.sort.desc), () => view(state.filters, state.search, {\n      id: event.id,\n      desc: true\n    }), () => view(state.filters, state.search, null))),\n    RESET: () => machine.init()\n  }, () => state);\n}"
+  },
+  {
+   "name": "stateOf",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 0,
+   "converted": 0,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "stateOf(state) {\n  return state.status;\n}"
+  },
+  {
+   "name": "filterSort",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 1,
+   "converted": 1,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function filterSort<T extends Record<string, unknown>>(rows: T[], options: {\n  filters?: Record<string, FilterValue>;\n  search?: string;\n  searchFields?: (keyof T)[];\n  sort?: Sort | null;\n}): T[] {\n  return applyView(rows, machine.init({\n    filters: options.filters,\n    search: options.search,\n    sort: options.sort\n  }), orElse(options.searchFields, () => []));\n}"
+  },
+  {
+   "name": "nextCursor",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 4,
+   "converted": 4,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function nextCursor(state: InfiniteState<unknown>): Cursor {\n  return when(equals(lengthOf(state.pages), 0), () => null, () => lastOf(state.pages).nextCursor);\n}"
+  },
+  {
+   "name": "hasNextPage",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 3,
+   "converted": 4,
+   "ambiguousBefore": 1,
+   "decisions": [
+    {
+     "form": "BinaryExpression >",
+     "start": 72,
+     "end": 94,
+     "source": "state.pages.length > 0",
+     "tried": [
+      {
+       "atom": "greaterThan",
+       "status": "same",
+       "ran": 6,
+       "wrongKind": 0,
+       "works": true
+      },
+      {
+       "atom": "isAfter",
+       "status": "different",
+       "ran": 6,
+       "wrongKind": 6,
+       "works": false
+      }
+     ],
+     "chosen": "greaterThan"
+    }
+   ],
+   "rejected": [],
+   "body": "function hasNextPage(state: InfiniteState<unknown>): boolean {\n  return and(greaterThan(lengthOf(state.pages), 0), () => differs(nextCursor(state), null));\n}"
+  },
+  {
+   "name": "isFetchingNextPage",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 3,
+   "converted": 4,
+   "ambiguousBefore": 1,
+   "decisions": [
+    {
+     "form": "BinaryExpression >",
+     "start": 110,
+     "end": 132,
+     "source": "state.pages.length > 0",
+     "tried": [
+      {
+       "atom": "greaterThan",
+       "status": "same",
+       "ran": 2,
+       "wrongKind": 0,
+       "works": true
+      },
+      {
+       "atom": "isAfter",
+       "status": "different",
+       "ran": 2,
+       "wrongKind": 2,
+       "works": false
+      }
+     ],
+     "chosen": "greaterThan"
+    }
+   ],
+   "rejected": [],
+   "body": "function isFetchingNextPage(state: InfiniteState<unknown>): boolean {\n  return and(differs(state.loading, undefined), () => greaterThan(lengthOf(state.pages), 0));\n}"
+  },
+  {
+   "name": "items",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 1,
+   "converted": 1,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function items<T>(state: InfiniteState<T>): T[] {\n  return flatMapEach(state.pages, p => p.items);\n}"
+  },
+  {
+   "name": "init",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 0,
+   "converted": 0,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "init() {\n  return {\n    status: 'pending',\n    pages: [],\n    loading: undefined,\n    error: null\n  };\n}"
+  },
+  {
+   "name": "send",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 16,
+   "converted": 16,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "send(state, event) {\n  return match(event.type, {\n    FETCH_FIRST: () => when(differs(state.loading, undefined), () => state, () => ({\n      status: 'pending',\n      pages: [],\n      loading: null,\n      error: null\n    })),\n    FETCH_NEXT: () => when(or(differs(state.loading, undefined), () => not(hasNextPage(state))), () => state, () => ({\n      ...state,\n      loading: nextCursor(state),\n      error: null\n    })),\n    RESOLVE: () => when(or(equals(state.loading, undefined), () => differs(event.cursor, state.loading)), () => state, () => ({\n      status: 'success',\n      pages: added(state.pages, {\n        items: event.items,\n        cursor: event.cursor,\n        nextCursor: event.nextCursor\n      }),\n      loading: undefined,\n      error: null\n    })),\n    REJECT: () => when(or(equals(state.loading, undefined), () => differs(event.cursor, state.loading)), () => state, () => ({\n      ...state,\n      status: 'error',\n      loading: undefined,\n      error: event.error\n    })),\n    RESET: () => machine.init()\n  }, () => state);\n}"
+  },
+  {
+   "name": "stateOf",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 0,
+   "converted": 0,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "stateOf(state) {\n  return state.status;\n}"
+  },
+  {
+   "name": "loadMore",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 5,
+   "converted": 5,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "async function loadMore<T>(state: InfiniteState<T>, load: (cursor: Cursor) => Promise<{\n  items: T[];\n  nextCursor: Cursor;\n}>): Promise<InfiniteState<T>> {\n  let asking = machine.send(state, {\n    type: 'FETCH_NEXT'\n  }) as InfiniteState<T>;\n  when(equals(lengthOf(state.pages), 0), () => asking = machine.send(state, {\n    type: 'FETCH_FIRST'\n  }) as InfiniteState<T>);\n  if (equals(asking, state)) {\n    return state;\n  }\n  const cursor = asking.loading as Cursor;\n  return await attemptAsync(async () => {\n    const page = await load(cursor);\n    return machine.send(asking, {\n      type: 'RESOLVE',\n      cursor,\n      items: page.items,\n      nextCursor: page.nextCursor\n    }) as InfiniteState<T>;\n  }, async error => machine.send(asking, {\n    type: 'REJECT',\n    cursor,\n    error\n  }) as InfiniteState<T>);\n}"
+  },
+  {
+   "name": "positionOf",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 7,
+   "converted": 7,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function positionOf(index: number, count: number): FlowPosition {\n  return when(atLeast(index, count), () => 'done', () => when(equals(index, minus(count, 1)), () => 'last', () => when(equals(index, 0), () => 'first', () => 'middle')));\n}"
+  },
+  {
+   "name": "canLeave",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 2,
+   "converted": 2,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function canLeave<D>(step: Step<D>, data: D): boolean {\n  return when(equals(step.canLeave, undefined), () => true, () => step.canLeave(data));\n}"
+  },
+  {
+   "name": "at",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 2,
+   "converted": 2,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function at<D>(state: FlowState<D>, index: number, data: D, blocked: string | null): FlowState<D> {\n  return {\n    ...state,\n    status: positionOf(index, lengthOf(state.steps)),\n    index,\n    data,\n    visited: largestOf([state.visited, index]),\n    blocked\n  };\n}"
+  },
+  {
+   "name": "currentStep",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 2,
+   "converted": 2,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function currentStep(state: FlowState<unknown>): string {\n  return when(equals(state.status, 'done'), () => 'done', () => state.steps[state.index].id);\n}"
+  },
+  {
+   "name": "progress",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 2,
+   "converted": 2,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function progress(state: FlowState<unknown>): number {\n  return dividedBy(state.index, lengthOf(state.steps));\n}"
+  },
+  {
+   "name": "init",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 6,
+   "converted": 6,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "init(input) {\n  when(equals(lengthOf(input.steps), 0), () => {\n    fail(typeErrorFrom('A multi-step flow needs at least one step.'));\n  });\n  return {\n    status: positionOf(0, lengthOf(input.steps)),\n    steps: input.steps,\n    index: 0,\n    data: input.data,\n    visited: 0,\n    blocked: null\n  };\n}"
+  },
+  {
+   "name": "send",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 18,
+   "converted": 21,
+   "ambiguousBefore": 3,
+   "decisions": [
+    {
+     "form": "BinaryExpression +",
+     "start": 393,
+     "end": 408,
+     "source": "state.index + 1",
+     "tried": [
+      {
+       "atom": "plus",
+       "status": "same",
+       "ran": 5,
+       "wrongKind": 0,
+       "works": true
+      },
+      {
+       "atom": "join",
+       "status": "same",
+       "ran": 5,
+       "wrongKind": 5,
+       "works": false
+      }
+     ],
+     "chosen": "plus"
+    },
+    {
+     "form": "BinaryExpression <",
+     "start": 773,
+     "end": 782,
+     "source": "index < 0",
+     "tried": [
+      {
+       "atom": "lessThan",
+       "status": "same",
+       "ran": 4,
+       "wrongKind": 0,
+       "works": true
+      },
+      {
+       "atom": "isBefore",
+       "status": "different",
+       "ran": 4,
+       "wrongKind": 4,
+       "works": false
+      }
+     ],
+     "chosen": "lessThan"
+    },
+    {
+     "form": "BinaryExpression >",
+     "start": 786,
+     "end": 807,
+     "source": "index > state.visited",
+     "tried": [
+      {
+       "atom": "greaterThan",
+       "status": "same",
+       "ran": 1,
+       "wrongKind": 0,
+       "works": true
+      },
+      {
+       "atom": "isAfter",
+       "status": "different",
+       "ran": 1,
+       "wrongKind": 1,
+       "works": false
+      }
+     ],
+     "chosen": "greaterThan"
+    }
+   ],
+   "rejected": [],
+   "body": "send(state, event) {\n  return when(and(equals(state.status, 'done'), () => differs(event.type, 'RESET')), () => state, () => match(event.type, {\n    NEXT: () => {\n      const data = merged(state.data, orElse(event.data, () => ({})));\n      const step = state.steps[state.index];\n      return when(not(canLeave(step, data)), () => at(state, state.index, data, step.id), () => at(state, plus(state.index, 1), data, null));\n    },\n    BACK: () => when(equals(state.index, 0), () => state, () => at(state, minus(state.index, 1), state.data, null)),\n    GO_TO: () => {\n      // Only a step already reached can be jumped to, so no step's check is skipped.\n      const index = positionWhere(state.steps, s => equals(s.id, event.step));\n      return when(or(or(lessThan(index, 0), () => greaterThan(index, state.visited)), () => equals(index, state.index)), () => state, () => at(state, index, state.data, null));\n    },\n    RESET: () => machine.init({\n      steps: state.steps,\n      data: state.data\n    })\n  }, () => state));\n}"
+  },
+  {
+   "name": "stateOf",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 0,
+   "converted": 0,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "stateOf(state) {\n  return state.status;\n}"
+  },
+  {
+   "name": "multiStepFlow",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 1,
+   "converted": 1,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function multiStepFlow<D>(steps: Step<D>[], data: D, events: FlowEvent<D>[]): FlowState<D> {\n  return reduceTo(events, (s, e) => machine.send(s, e), machine.init({\n    steps,\n    data\n  })) as FlowState<D>;\n}"
+  },
+  {
+   "name": "toXStateConfig",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 8,
+   "converted": 11,
+   "ambiguousBefore": 4,
+   "decisions": [
+    {
+     "form": "CallExpression .forEach()",
+     "start": 362,
+     "end": 832,
+     "source": "steps.forEach((step, i) => {\n    let target = 'done';\n    if (i < steps.length - 1) {\n      target = steps[i + 1].id;\n    }\n    const on: Record<string, unknown> = {\n      NEXT: [\n        { target, guard: (args: { context: { data: D }; event: any }) => canLeave(step, merged(args).data), actions: assign(merged) },\n        { actions: assign(merged) },\n      ],\n    };\n    if (i > 0) {\n      on.BACK = { target: steps[i - 1].id };\n    }\n    states[step.id] = { on };\n  })",
+     "tried": [
+      {
+       "atom": "eachMap",
+       "status": "same",
+       "ran": 25,
+       "wrongKind": 25,
+       "works": false
+      },
+      {
+       "atom": "eachSet",
+       "status": "same",
+       "ran": 25,
+       "wrongKind": 25,
+       "works": false
+      }
+     ],
+     "chosen": null,
+     "note": "it receives more than one kind of value"
+    },
+    {
+     "form": "BinaryExpression +",
+     "start": 469,
+     "end": 474,
+     "source": "i + 1",
+     "tried": [
+      {
+       "atom": "plus",
+       "status": "same",
+       "ran": 16,
+       "wrongKind": 0,
+       "works": true
+      },
+      {
+       "atom": "join",
+       "status": "same",
+       "ran": 16,
+       "wrongKind": 16,
+       "works": false
+      }
+     ],
+     "chosen": "plus"
+    },
+    {
+     "form": "BinaryExpression <",
+     "start": 424,
+     "end": 444,
+     "source": "i < steps.length - 1",
+     "tried": [
+      {
+       "atom": "lessThan",
+       "status": "same",
+       "ran": 31,
+       "wrongKind": 0,
+       "works": true
+      },
+      {
+       "atom": "isBefore",
+       "status": "different",
+       "ran": 18,
+       "wrongKind": 18,
+       "works": false
+      }
+     ],
+     "chosen": "lessThan"
+    },
+    {
+     "form": "BinaryExpression >",
+     "start": 738,
+     "end": 743,
+     "source": "i > 0",
+     "tried": [
+      {
+       "atom": "greaterThan",
+       "status": "same",
+       "ran": 28,
+       "wrongKind": 0,
+       "works": true
+      },
+      {
+       "atom": "isAfter",
+       "status": "different",
+       "ran": 15,
+       "wrongKind": 15,
+       "works": false
+      }
+     ],
+     "chosen": "greaterThan"
+    }
+   ],
+   "rejected": [],
+   "body": "function toXStateConfig<D>(id: string, steps: Step<D>[], data: D, assign: (fn: (args: {\n  context: {\n    data: D;\n  };\n  event: any;\n}) => {\n  data: D;\n}) => unknown): Record<string, unknown> {\n  const merged = ({\n    context,\n    event\n  }: {\n    context: {\n      data: D;\n    };\n    event: any;\n  }) => ({\n    data: mergedAtom(context.data, orElse(event.data, () => ({})))\n  });\n  const states: Record<string, unknown> = {};\n  steps.forEach((step, i) => {\n    let target = 'done';\n    when(lessThan(i, minus(lengthOf(steps), 1)), () => target = steps[plus(i, 1)].id);\n    const on: Record<string, unknown> = {\n      NEXT: [{\n        target,\n        guard: (args: {\n          context: {\n            data: D;\n          };\n          event: any;\n        }) => canLeave(step, merged(args).data),\n        actions: assign(merged)\n      }, {\n        actions: assign(merged)\n      }]\n    };\n    when(greaterThan(i, 0), () => on.BACK = {\n      target: steps[minus(i, 1)].id\n    });\n    states[step.id] = {\n      on\n    };\n  });\n  states.done = {\n    type: 'final'\n  };\n  return {\n    id,\n    initial: firstOf(steps).id,\n    context: {\n      data\n    },\n    states\n  };\n}"
+  },
+  {
+   "name": "merged",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 2,
+   "converted": 2,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function merged({\n  context,\n  event\n}: {\n  context: {\n    data: D;\n  };\n  event: any;\n}) {\n  return {\n    data: mergedAtom(context.data, orElse(event.data, () => ({})))\n  };\n}"
+  },
+  {
+   "name": "init",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 0,
+   "converted": 0,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "init(input) {\n  return {\n    status: 'idle',\n    value: input.value,\n    snapshot: null,\n    error: null\n  };\n}"
+  },
+  {
+   "name": "send",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 9,
+   "converted": 9,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "send(state, event) {\n  return match(event.type, {\n    APPLY: () => when(equals(state.status, 'applied'), () => ({\n      ...state,\n      value: event.update(state.value)\n    }), () => ({\n      status: 'applied',\n      value: event.update(state.value),\n      snapshot: state.value,\n      error: null\n    })),\n    COMMIT: () => when(differs(state.status, 'applied'), () => state, () => when(equals(event.value, undefined), () => ({\n      status: 'committed',\n      value: state.value,\n      snapshot: null,\n      error: null\n    }), () => ({\n      status: 'committed',\n      value: event.value,\n      snapshot: null,\n      error: null\n    }))),\n    ROLLBACK: () => when(differs(state.status, 'applied'), () => state, () => ({\n      status: 'rolledBack',\n      value: state.snapshot,\n      snapshot: null,\n      error: event.error\n    }))\n  }, () => state);\n}"
+  },
+  {
+   "name": "stateOf",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 0,
+   "converted": 0,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "stateOf(state) {\n  return state.status;\n}"
+  },
+  {
+   "name": "optimisticUpdate",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 3,
+   "converted": 3,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "async function optimisticUpdate<V>(state: OptimisticState<V>, update: (value: V) => V, write: (value: V) => Promise<V | void>): Promise<OptimisticState<V>> {\n  const applied = machine.send(state, {\n    type: 'APPLY',\n    update\n  }) as OptimisticState<V>;\n  return await attemptAsync(async () => {\n    const saved = await write(applied.value);\n    return when(equals(saved, undefined), () => machine.send(applied, {\n      type: 'COMMIT'\n    }) as OptimisticState<V>, () => machine.send(applied, {\n      type: 'COMMIT',\n      value: saved\n    }) as OptimisticState<V>);\n  }, async error => machine.send(applied, {\n    type: 'ROLLBACK',\n    error\n  }) as OptimisticState<V>);\n}"
+  },
+  {
+   "name": "pageRequest",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 1,
+   "converted": 1,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function pageRequest(state: PageQueryState<unknown>): {\n  pageIndex: number;\n  pageSize: number;\n  offset: number;\n} {\n  return {\n    pageIndex: state.pageIndex,\n    pageSize: state.pageSize,\n    offset: times(state.pageIndex, state.pageSize)\n  };\n}"
+  },
+  {
+   "name": "hasNextPage",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 1,
+   "converted": 2,
+   "ambiguousBefore": 1,
+   "decisions": [
+    {
+     "form": "BinaryExpression <",
+     "start": 73,
+     "end": 133,
+     "source": "state.pageIndex < pageCount(state.total, state.pageSize) - 1",
+     "tried": [
+      {
+       "atom": "lessThan",
+       "status": "same",
+       "ran": 16,
+       "wrongKind": 0,
+       "works": true
+      },
+      {
+       "atom": "isBefore",
+       "status": "different",
+       "ran": 16,
+       "wrongKind": 16,
+       "works": false
+      }
+     ],
+     "chosen": "lessThan"
+    }
+   ],
+   "rejected": [],
+   "body": "function hasNextPage(state: PageQueryState<unknown>): boolean {\n  return lessThan(state.pageIndex, minus(pageCount(state.total, state.pageSize), 1));\n}"
+  },
+  {
+   "name": "hasPreviousPage",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 0,
+   "converted": 1,
+   "ambiguousBefore": 1,
+   "decisions": [
+    {
+     "form": "BinaryExpression >",
+     "start": 77,
+     "end": 96,
+     "source": "state.pageIndex > 0",
+     "tried": [
+      {
+       "atom": "greaterThan",
+       "status": "same",
+       "ran": 18,
+       "wrongKind": 0,
+       "works": true
+      },
+      {
+       "atom": "isAfter",
+       "status": "different",
+       "ran": 18,
+       "wrongKind": 18,
+       "works": false
+      }
+     ],
+     "chosen": "greaterThan"
+    }
+   ],
+   "rejected": [],
+   "body": "function hasPreviousPage(state: PageQueryState<unknown>): boolean {\n  return greaterThan(state.pageIndex, 0);\n}"
+  },
+  {
+   "name": "moveTo",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 3,
+   "converted": 3,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function moveTo<T>(state: PageQueryState<T>, pageIndex: number): PageQueryState<T> {\n  return when(equals(pageIndex, state.pageIndex), () => state, () => {\n    const keeps = equals(state.status, 'success');\n    return {\n      ...state,\n      pageIndex,\n      fetching: true,\n      placeholder: keeps,\n      error: null\n    };\n  });\n}"
+  },
+  {
+   "name": "init",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 2,
+   "converted": 4,
+   "ambiguousBefore": 2,
+   "decisions": [
+    {
+     "form": "OptionalMemberExpression .pageIndex",
+     "start": 57,
+     "end": 73,
+     "source": "input?.pageIndex",
+     "tried": [
+      {
+       "atom": "get",
+       "status": "same",
+       "ran": 25,
+       "wrongKind": 0,
+       "works": true
+      },
+      {
+       "atom": "at",
+       "status": "different",
+       "ran": 25,
+       "wrongKind": 25,
+       "works": false
+      }
+     ],
+     "chosen": "get"
+    },
+    {
+     "form": "OptionalMemberExpression .pageSize",
+     "start": 90,
+     "end": 105,
+     "source": "input?.pageSize",
+     "tried": [
+      {
+       "atom": "get",
+       "status": "same",
+       "ran": 25,
+       "wrongKind": 0,
+       "works": true
+      },
+      {
+       "atom": "at",
+       "status": "different",
+       "ran": 25,
+       "wrongKind": 25,
+       "works": false
+      }
+     ],
+     "chosen": "get"
+    }
+   ],
+   "rejected": [],
+   "body": "init(input) {\n  return {\n    status: 'pending',\n    pageIndex: orElse(get(input, \"pageIndex\"), () => 0),\n    pageSize: orElse(get(input, \"pageSize\"), () => 10),\n    items: [],\n    total: 0,\n    fetching: false,\n    placeholder: false,\n    error: null\n  };\n}"
+  },
+  {
+   "name": "send",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 22,
+   "converted": 24,
+   "ambiguousBefore": 2,
+   "decisions": [
+    {
+     "form": "BinaryExpression +",
+     "start": 866,
+     "end": 885,
+     "source": "state.pageIndex + 1",
+     "tried": [
+      {
+       "atom": "plus",
+       "status": "same",
+       "ran": 2,
+       "wrongKind": 0,
+       "works": true
+      },
+      {
+       "atom": "join",
+       "status": "same",
+       "ran": 2,
+       "wrongKind": 2,
+       "works": false
+      }
+     ],
+     "chosen": "plus"
+    },
+    {
+     "form": "BinaryExpression <",
+     "start": 1184,
+     "end": 1202,
+     "source": "event.pageSize < 1",
+     "tried": [
+      {
+       "atom": "lessThan",
+       "status": "same",
+       "ran": 5,
+       "wrongKind": 0,
+       "works": true
+      },
+      {
+       "atom": "isBefore",
+       "status": "different",
+       "ran": 5,
+       "wrongKind": 5,
+       "works": false
+      }
+     ],
+     "chosen": "lessThan"
+    }
+   ],
+   "rejected": [],
+   "body": "send(state, event) {\n  return match(event.type, {\n    FETCH: () => when(state.fetching, () => state, () => ({\n      ...state,\n      fetching: true,\n      error: null\n    })),\n    RESOLVE: () => when(or(not(state.fetching), () => differs(event.pageIndex, state.pageIndex)), () => state, () => ({\n      ...state,\n      status: 'success',\n      items: event.items,\n      total: event.total,\n      pageIndex: clampPage(event.pageIndex, event.total, state.pageSize),\n      fetching: false,\n      placeholder: false,\n      error: null\n    })),\n    REJECT: () => when(or(not(state.fetching), () => differs(event.pageIndex, state.pageIndex)), () => state, () => ({\n      ...state,\n      status: 'error',\n      error: event.error,\n      fetching: false,\n      placeholder: false\n    })),\n    NEXT: () => when(not(hasNextPage(state)), () => state, () => moveTo(state, plus(state.pageIndex, 1))),\n    PREVIOUS: () => when(not(hasPreviousPage(state)), () => state, () => moveTo(state, minus(state.pageIndex, 1))),\n    GO_TO: () => moveTo(state, clampPage(event.pageIndex, state.total, state.pageSize)),\n    SET_PAGE_SIZE: () => when(or(lessThan(event.pageSize, 1), () => equals(event.pageSize, state.pageSize)), () => state, () => {\n      const pageIndex = floorOf(dividedBy(times(state.pageIndex, state.pageSize), event.pageSize));\n      return {\n        ...state,\n        pageSize: event.pageSize,\n        pageIndex,\n        fetching: true,\n        placeholder: equals(state.status, 'success'),\n        error: null\n      };\n    })\n  }, () => state);\n}"
+  },
+  {
+   "name": "stateOf",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 0,
+   "converted": 0,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "stateOf(state) {\n  return state.status;\n}"
+  },
+  {
+   "name": "loadPage",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 1,
+   "converted": 1,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "async function loadPage<T>(state: PageQueryState<T>, load: (req: {\n  pageIndex: number;\n  pageSize: number;\n  offset: number;\n}) => Promise<{\n  items: T[];\n  total: number;\n}>): Promise<PageQueryState<T>> {\n  const asking = machine.send(state, {\n    type: 'FETCH'\n  }) as PageQueryState<T>;\n  const req = pageRequest(asking);\n  return await attemptAsync(async () => {\n    const page = await load(req);\n    return machine.send(asking, {\n      type: 'RESOLVE',\n      pageIndex: req.pageIndex,\n      items: page.items,\n      total: page.total\n    }) as PageQueryState<T>;\n  }, async error => machine.send(asking, {\n    type: 'REJECT',\n    pageIndex: req.pageIndex,\n    error\n  }) as PageQueryState<T>);\n}"
+  },
+  {
+   "name": "permissionsOf",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 7,
+   "converted": 7,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function permissionsOf(user: User | null, table: RoleTable): Set<string> {\n  const out = setOf();\n  return when(equals(user, null), () => out, () => {\n    each(user.roles, role => {\n      each(orElse(table[role], () => []), p => {\n        addToWeakSet(out, p);\n      });\n    });\n    return out;\n  });\n}"
+  },
+  {
+   "name": "covers",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 7,
+   "converted": 7,
+   "ambiguousBefore": 1,
+   "decisions": [
+    {
+     "form": "CallExpression .slice()",
+     "start": 183,
+     "end": 200,
+     "source": "held.slice(0, -1)",
+     "tried": [
+      {
+       "atom": "sliceText",
+       "status": "same",
+       "ran": 0,
+       "wrongKind": 0,
+       "works": false
+      },
+      {
+       "atom": "part",
+       "status": "same",
+       "ran": 0,
+       "wrongKind": 0,
+       "works": false
+      }
+     ],
+     "chosen": null,
+     "note": "no input reached it with a real value"
+    }
+   ],
+   "rejected": [],
+   "body": "function covers(held: string, required: string): boolean {\n  return when(or(equals(held, '*'), () => equals(held, required)), () => true, () => when(doesEndWith(held, ':*'), () => doesStartWith(required, held.slice(0, -1)), () => false));\n}"
+  },
+  {
+   "name": "missingPermissions",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 3,
+   "converted": 3,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function missingPermissions(user: User | null, table: RoleTable, required: string[]): string[] {\n  const held = [...permissionsOf(user, table)];\n  return keepWhere(required, r => not(hasAnyWhere(held, h => covers(h, r))));\n}"
+  },
+  {
+   "name": "can",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 7,
+   "converted": 8,
+   "ambiguousBefore": 1,
+   "decisions": [
+    {
+     "form": "BinaryExpression <",
+     "start": 245,
+     "end": 273,
+     "source": "missing.length < list.length",
+     "tried": [
+      {
+       "atom": "lessThan",
+       "status": "same",
+       "ran": 10,
+       "wrongKind": 0,
+       "works": true
+      },
+      {
+       "atom": "isBefore",
+       "status": "different",
+       "ran": 10,
+       "wrongKind": 10,
+       "works": false
+      }
+     ],
+     "chosen": "lessThan"
+    }
+   ],
+   "rejected": [],
+   "body": "function can(user: User | null, table: RoleTable, required: string | string[], mode: 'all' | 'any' = 'all'): boolean {\n  const list = flattened([required]);\n  const missing = missingPermissions(user, table, list);\n  return when(equals(mode, 'any'), () => lessThan(lengthOf(missing), lengthOf(list)), () => equals(lengthOf(missing), 0));\n}"
+  },
+  {
+   "name": "init",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 0,
+   "converted": 0,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "init(input) {\n  return {\n    status: 'unchecked',\n    user: input.user,\n    table: input.table,\n    required: [],\n    missing: []\n  };\n}"
+  },
+  {
+   "name": "send",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 4,
+   "converted": 4,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "send(state, event) {\n  return match(event.type, {\n    CHECK: () => {\n      const required = flattened([event.require]);\n      const missing = missingPermissions(state.user, state.table, required);\n      let status: PermissionState['status'] = 'denied';\n      when(can(state.user, state.table, required, orElse(event.mode, () => 'all')), () => status = 'allowed');\n      return {\n        ...state,\n        status,\n        required,\n        missing\n      };\n    },\n    SET_USER: () => ({\n      ...state,\n      status: 'unchecked',\n      user: event.user,\n      required: [],\n      missing: []\n    })\n  }, () => state);\n}"
+  },
+  {
+   "name": "stateOf",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 0,
+   "converted": 0,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "stateOf(state) {\n  return state.status;\n}"
+  },
+  {
+   "name": "checkPermission",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 1,
+   "converted": 1,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function checkPermission(user: User | null, table: RoleTable, required: string | string[], mode: 'all' | 'any' = 'all'): {\n  allowed: boolean;\n  missing: string[];\n} {\n  const s = machine.send(machine.init({\n    user,\n    table\n  }), {\n    type: 'CHECK',\n    require: required,\n    mode\n  });\n  return {\n    allowed: equals(s.status, 'allowed'),\n    missing: s.missing\n  };\n}"
+  },
+  {
+   "name": "backoffDelay",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 5,
+   "converted": 5,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function backoffDelay(interval: number, failures: number, maxBackoff: number): number {\n  return smallestOf([maxBackoff, times(interval, power(2, largestOf([0, minus(failures, 1)])))]);\n}"
+  },
+  {
+   "name": "init",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 4,
+   "converted": 4,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "init(input) {\n  return {\n    status: 'stopped',\n    data: null,\n    error: null,\n    failures: 0,\n    attempts: 0,\n    nextDelay: null,\n    interval: input.interval,\n    maxBackoff: orElse(input.maxBackoff, () => times(input.interval, 8)),\n    maxFailures: orElse(input.maxFailures, () => 5),\n    isDone: orElse(input.isDone, () => () => false)\n  };\n}"
+  },
+  {
+   "name": "send",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 18,
+   "converted": 21,
+   "ambiguousBefore": 3,
+   "decisions": [
+    {
+     "form": "BinaryExpression +",
+     "start": 274,
+     "end": 292,
+     "source": "state.attempts + 1",
+     "tried": [
+      {
+       "atom": "plus",
+       "status": "same",
+       "ran": 1,
+       "wrongKind": 0,
+       "works": true
+      },
+      {
+       "atom": "join",
+       "status": "same",
+       "ran": 1,
+       "wrongKind": 1,
+       "works": false
+      }
+     ],
+     "chosen": "plus"
+    },
+    {
+     "form": "BinaryExpression +",
+     "start": 655,
+     "end": 673,
+     "source": "state.attempts + 1",
+     "tried": [
+      {
+       "atom": "plus",
+       "status": "same",
+       "ran": 4,
+       "wrongKind": 0,
+       "works": true
+      },
+      {
+       "atom": "join",
+       "status": "same",
+       "ran": 4,
+       "wrongKind": 4,
+       "works": false
+      }
+     ],
+     "chosen": "plus"
+    },
+    {
+     "form": "BinaryExpression +",
+     "start": 1182,
+     "end": 1200,
+     "source": "state.failures + 1",
+     "tried": [
+      {
+       "atom": "plus",
+       "status": "same",
+       "ran": 1,
+       "wrongKind": 0,
+       "works": true
+      },
+      {
+       "atom": "join",
+       "status": "same",
+       "ran": 1,
+       "wrongKind": 1,
+       "works": false
+      }
+     ],
+     "chosen": "plus"
+    }
+   ],
+   "rejected": [],
+   "body": "send(state, event) {\n  return match(event.type, {\n    START: () => when(and(differs(state.status, 'stopped'), () => differs(state.status, 'finished')), () => state, () => ({\n      ...state,\n      status: 'fetching',\n      failures: 0,\n      error: null,\n      nextDelay: null,\n      attempts: plus(state.attempts, 1)\n    })),\n    STOP: () => when(equals(state.status, 'stopped'), () => state, () => ({\n      ...state,\n      status: 'stopped',\n      nextDelay: null\n    })),\n    TICK: () => when(and(differs(state.status, 'waiting'), () => differs(state.status, 'backoff')), () => state, () => ({\n      ...state,\n      status: 'fetching',\n      nextDelay: null,\n      attempts: plus(state.attempts, 1)\n    })),\n    RESOLVE: () => when(differs(state.status, 'fetching'), () => state, () => when(state.isDone(event.data), () => ({\n      ...state,\n      status: 'finished',\n      data: event.data,\n      failures: 0,\n      error: null,\n      nextDelay: null\n    }), () => ({\n      ...state,\n      status: 'waiting',\n      data: event.data,\n      failures: 0,\n      error: null,\n      nextDelay: state.interval\n    }))),\n    REJECT: () => when(differs(state.status, 'fetching'), () => state, () => {\n      const failures = plus(state.failures, 1);\n      return when(atLeast(failures, state.maxFailures), () => ({\n        ...state,\n        status: 'stopped',\n        error: event.error,\n        failures,\n        nextDelay: null\n      }), () => ({\n        ...state,\n        status: 'backoff',\n        error: event.error,\n        failures,\n        nextDelay: backoffDelay(state.interval, failures, state.maxBackoff)\n      }));\n    })\n  }, () => state);\n}"
+  },
+  {
+   "name": "stateOf",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 0,
+   "converted": 0,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "stateOf(state) {\n  return state.status;\n}"
+  },
+  {
+   "name": "polling",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 3,
+   "converted": 3,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function polling<D>(input: PollInput<D>, answers: ({\n  data: D;\n} | {\n  error: unknown;\n})[]): PollState<D> {\n  let s = machine.send(machine.init(input), {\n    type: 'START'\n  }) as PollState<D>;\n  each(answers, a => {\n    when(hasProperty(a, 'data'), () => s = machine.send(s, {\n      type: 'RESOLVE',\n      data: a.data\n    }) as PollState<D>, () => s = machine.send(s, {\n      type: 'REJECT',\n      error: a.error\n    }) as PollState<D>);\n    s = machine.send(s, {\n      type: 'TICK'\n    }) as PollState<D>;\n  });\n  return s;\n}"
+  },
+  {
+   "name": "statusOf",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 8,
+   "converted": 12,
+   "ambiguousBefore": 4,
+   "decisions": [
+    {
+     "form": "BinaryExpression >",
+     "start": 216,
+     "end": 233,
+     "source": "future.length > 0",
+     "tried": [
+      {
+       "atom": "greaterThan",
+       "status": "same",
+       "ran": 7,
+       "wrongKind": 0,
+       "works": true
+      },
+      {
+       "atom": "isAfter",
+       "status": "different",
+       "ran": 7,
+       "wrongKind": 7,
+       "works": false
+      }
+     ],
+     "chosen": "greaterThan"
+    },
+    {
+     "form": "BinaryExpression >",
+     "start": 164,
+     "end": 179,
+     "source": "past.length > 0",
+     "tried": [
+      {
+       "atom": "greaterThan",
+       "status": "same",
+       "ran": 9,
+       "wrongKind": 0,
+       "works": true
+      },
+      {
+       "atom": "isAfter",
+       "status": "different",
+       "ran": 9,
+       "wrongKind": 9,
+       "works": false
+      }
+     ],
+     "chosen": "greaterThan"
+    },
+    {
+     "form": "BinaryExpression >",
+     "start": 95,
+     "end": 110,
+     "source": "past.length > 0",
+     "tried": [
+      {
+       "atom": "greaterThan",
+       "status": "same",
+       "ran": 25,
+       "wrongKind": 0,
+       "works": true
+      },
+      {
+       "atom": "isAfter",
+       "status": "different",
+       "ran": 25,
+       "wrongKind": 25,
+       "works": false
+      }
+     ],
+     "chosen": "greaterThan"
+    },
+    {
+     "form": "BinaryExpression >",
+     "start": 114,
+     "end": 131,
+     "source": "future.length > 0",
+     "tried": [
+      {
+       "atom": "greaterThan",
+       "status": "same",
+       "ran": 18,
+       "wrongKind": 0,
+       "works": true
+      },
+      {
+       "atom": "isAfter",
+       "status": "different",
+       "ran": 18,
+       "wrongKind": 18,
+       "works": false
+      }
+     ],
+     "chosen": "greaterThan"
+    }
+   ],
+   "rejected": [],
+   "body": "function statusOf(past: unknown[], future: unknown[]): HistoryState<unknown>['status'] {\n  return when(and(greaterThan(lengthOf(past), 0), () => greaterThan(lengthOf(future), 0)), () => 'both', () => when(greaterThan(lengthOf(past), 0), () => 'undoable', () => when(greaterThan(lengthOf(future), 0), () => 'redoable', () => 'clean')));\n}"
+  },
+  {
+   "name": "history",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 0,
+   "converted": 0,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function history<V>(past: V[], present: V, future: V[], limit: number): HistoryState<V> {\n  return {\n    status: statusOf(past, future),\n    past,\n    present,\n    future,\n    limit\n  };\n}"
+  },
+  {
+   "name": "canUndo",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 1,
+   "converted": 2,
+   "ambiguousBefore": 1,
+   "decisions": [
+    {
+     "form": "BinaryExpression >",
+     "start": 67,
+     "end": 88,
+     "source": "state.past.length > 0",
+     "tried": [
+      {
+       "atom": "greaterThan",
+       "status": "same",
+       "ran": 3,
+       "wrongKind": 0,
+       "works": true
+      },
+      {
+       "atom": "isAfter",
+       "status": "different",
+       "ran": 3,
+       "wrongKind": 3,
+       "works": false
+      }
+     ],
+     "chosen": "greaterThan"
+    }
+   ],
+   "rejected": [],
+   "body": "function canUndo(state: HistoryState<unknown>): boolean {\n  return greaterThan(lengthOf(state.past), 0);\n}"
+  },
+  {
+   "name": "canRedo",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 1,
+   "converted": 2,
+   "ambiguousBefore": 1,
+   "decisions": [
+    {
+     "form": "BinaryExpression >",
+     "start": 67,
+     "end": 90,
+     "source": "state.future.length > 0",
+     "tried": [
+      {
+       "atom": "greaterThan",
+       "status": "same",
+       "ran": 4,
+       "wrongKind": 0,
+       "works": true
+      },
+      {
+       "atom": "isAfter",
+       "status": "different",
+       "ran": 4,
+       "wrongKind": 4,
+       "works": false
+      }
+     ],
+     "chosen": "greaterThan"
+    }
+   ],
+   "rejected": [],
+   "body": "function canRedo(state: HistoryState<unknown>): boolean {\n  return greaterThan(lengthOf(state.future), 0);\n}"
+  },
+  {
+   "name": "init",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 1,
+   "converted": 1,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "init(input) {\n  return history([], input.value, [], orElse(input.limit, () => 100));\n}"
+  },
+  {
+   "name": "send",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 14,
+   "converted": 16,
+   "ambiguousBefore": 2,
+   "decisions": [
+    {
+     "form": "CallExpression .slice()",
+     "start": 175,
+     "end": 225,
+     "source": "[...state.past, state.present].slice(-state.limit)",
+     "tried": [
+      {
+       "atom": "sliceText",
+       "status": "same",
+       "ran": 7,
+       "wrongKind": 7,
+       "works": false
+      },
+      {
+       "atom": "part",
+       "status": "same",
+       "ran": 7,
+       "wrongKind": 0,
+       "works": true
+      }
+     ],
+     "chosen": "part"
+    },
+    {
+     "form": "CallExpression .slice()",
+     "start": 464,
+     "end": 487,
+     "source": "state.past.slice(0, -1)",
+     "tried": [
+      {
+       "atom": "sliceText",
+       "status": "same",
+       "ran": 4,
+       "wrongKind": 4,
+       "works": false
+      },
+      {
+       "atom": "part",
+       "status": "same",
+       "ran": 4,
+       "wrongKind": 0,
+       "works": true
+      }
+     ],
+     "chosen": "part"
+    }
+   ],
+   "rejected": [],
+   "body": "send(state, event) {\n  return match(event.type, {\n    SET: () => when(isSameValue(event.value, state.present), () => state, () => {\n      const past = part(added(state.past, state.present), negate(state.limit));\n      return history(past, event.value, [], state.limit);\n    }),\n    UNDO: () => when(not(canUndo(state)), () => state, () => {\n      const previous = lastOf(state.past);\n      return history(part(state.past, 0, -1), previous, prepended(state.future, state.present), state.limit);\n    }),\n    REDO: () => when(not(canRedo(state)), () => state, () => {\n      const [next, ...rest] = state.future;\n      return history(added(state.past, state.present), next, rest, state.limit);\n    }),\n    CLEAR: () => when(equals(state.status, 'clean'), () => state, () => history([], state.present, [], state.limit))\n  }, () => state);\n}"
+  },
+  {
+   "name": "stateOf",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 0,
+   "converted": 0,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "stateOf(state) {\n  return state.status;\n}"
+  },
+  {
+   "name": "undoHistory",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 1,
+   "converted": 1,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function undoHistory<V>(value: V, events: HistoryEvent<V>[], limit?: number): HistoryState<V> {\n  return reduceTo(events, (s, e) => machine.send(s, e), machine.init({\n    value,\n    limit\n  })) as HistoryState<V>;\n}"
+  },
+  {
+   "name": "fieldErrors",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 6,
+   "converted": 6,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function fieldErrors(issues: Issue[]): Record<string, string> {\n  const out: Record<string, string> = {};\n  each(issues, issue => {\n    const key = joinWith(mapEach(issue.path, String), '.');\n    when(not(hasProperty(out, key)), () => out[key] = issue.message);\n  });\n  return out;\n}"
+  },
+  {
+   "name": "fromValibot",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 5,
+   "converted": 5,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function fromValibot<V, O>(safeParse: (values: V) => {\n  success: boolean;\n  output?: O;\n  issues?: {\n    path?: {\n      key: string | number;\n    }[];\n    message: string;\n  }[];\n}): Schema<V, O> {\n  return {\n    safeParse(values: V): ParseResult<O> {\n      const r = safeParse(values);\n      return when(r.success, () => ({\n        success: true,\n        data: r.output as O\n      }), () => {\n        const issues = mapEach(orElse(r.issues, () => []), i => ({\n          path: mapEach(orElse(i.path, () => []), p => p.key),\n          message: i.message\n        }));\n        return {\n          success: false,\n          error: {\n            issues\n          }\n        };\n      });\n    }\n  };\n}"
+  },
+  {
+   "name": "safeParse",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 5,
+   "converted": 5,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "safeParse(values: V): ParseResult<O> {\n  const r = safeParse(values);\n  return when(r.success, () => ({\n    success: true,\n    data: r.output as O\n  }), () => {\n    const issues = mapEach(orElse(r.issues, () => []), i => ({\n      path: mapEach(orElse(i.path, () => []), p => p.key),\n      message: i.message\n    }));\n    return {\n      success: false,\n      error: {\n        issues\n      }\n    };\n  });\n}"
+  },
+  {
+   "name": "validate",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 1,
+   "converted": 1,
+   "ambiguousBefore": 1,
+   "decisions": [
+    {
+     "form": "BinaryExpression +",
+     "start": 271,
+     "end": 289,
+     "source": "state.attempts + 1",
+     "tried": [
+      {
+       "atom": "plus",
+       "status": "same",
+       "ran": 0,
+       "wrongKind": 0,
+       "works": false
+      },
+      {
+       "atom": "join",
+       "status": "same",
+       "ran": 0,
+       "wrongKind": 0,
+       "works": false
+      }
+     ],
+     "chosen": null,
+     "note": "no input reached it with a real value"
+    }
+   ],
+   "rejected": [],
+   "body": "function validate<V, O, R>(state: SubmitState<V, O, R>, values: V): SubmitState<V, O, R> {\n  const parsed = state.schema.safeParse(values);\n  return when(parsed.success, () => ({\n    ...state,\n    status: 'submitting',\n    values,\n    errors: {},\n    data: parsed.data,\n    error: null,\n    attempts: state.attempts + 1\n  }), () => ({\n    ...state,\n    status: 'invalid',\n    values,\n    errors: fieldErrors(parsed.error.issues),\n    data: null\n  }));\n}"
+  },
+  {
+   "name": "clearEdited",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 6,
+   "converted": 8,
+   "ambiguousBefore": 2,
+   "decisions": [
+    {
+     "form": "OptionalMemberExpression [computed]",
+     "start": 262,
+     "end": 304,
+     "source": "(before as Record<string, unknown>)?.[top]",
+     "tried": [
+      {
+       "atom": "get",
+       "status": "same",
+       "ran": 32,
+       "wrongKind": 0,
+       "works": true
+      },
+      {
+       "atom": "at",
+       "status": "different",
+       "ran": 32,
+       "wrongKind": 23,
+       "works": false
+      }
+     ],
+     "chosen": "get"
+    },
+    {
+     "form": "OptionalMemberExpression [computed]",
+     "start": 322,
+     "end": 363,
+     "source": "(after as Record<string, unknown>)?.[top]",
+     "tried": [
+      {
+       "atom": "get",
+       "status": "same",
+       "ran": 28,
+       "wrongKind": 0,
+       "works": true
+      },
+      {
+       "atom": "at",
+       "status": "different",
+       "ran": 28,
+       "wrongKind": 20,
+       "works": false
+      }
+     ],
+     "chosen": "get"
+    }
+   ],
+   "rejected": [],
+   "body": "function clearEdited(errors: Record<string, string>, before: unknown, after: unknown): Record<string, string> {\n  const out: Record<string, string> = {};\n  each(entriesOf(errors), ([key, message]) => {\n    const top = firstOf(splitBy(key, '.'));\n    const was = get(before as Record<string, unknown>, top);\n    const now = get(after as Record<string, unknown>, top);\n    when(isSameValue(was, now), () => out[key] = message);\n  });\n  return out;\n}"
+  },
+  {
+   "name": "init",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 0,
+   "converted": 0,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "init(input) {\n  return {\n    status: 'idle',\n    schema: input.schema,\n    values: input.values,\n    errors: {},\n    data: null,\n    result: null,\n    error: null,\n    attempts: 0\n  };\n}"
+  },
+  {
+   "name": "send",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 11,
+   "converted": 11,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "send(state, event) {\n  return match(event.type, {\n    SUBMIT: () => when(equals(state.status, 'submitting'), () => state, () => validate(state, orElse(event.values, () => state.values))),\n    RESOLVE: () => when(differs(state.status, 'submitting'), () => state, () => ({\n      ...state,\n      status: 'submitted',\n      result: event.result\n    })),\n    REJECT: () => when(differs(state.status, 'submitting'), () => state, () => ({\n      ...state,\n      status: 'failed',\n      error: event.error\n    })),\n    EDIT: () => when(equals(state.status, 'submitting'), () => state, () => ({\n      ...state,\n      values: event.values,\n      errors: clearEdited(state.errors, state.values, event.values)\n    })),\n    RESET: () => machine.init({\n      schema: state.schema,\n      values: orElse(event.values, () => state.values)\n    })\n  }, () => state);\n}"
+  },
+  {
+   "name": "stateOf",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 0,
+   "converted": 0,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "stateOf(state) {\n  return state.status;\n}"
+  },
+  {
+   "name": "validatedSubmit",
+   "file": "index.ts",
+   "status": "same",
+   "convertedUnchecked": 2,
+   "converted": 2,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "async function validatedSubmit<V, O, R>(state: SubmitState<V, O, R>, submit: (data: O) => Promise<R>, values?: V): Promise<SubmitState<V, O, R>> {\n  const checked = machine.send(state, {\n    type: 'SUBMIT',\n    values\n  }) as SubmitState<V, O, R>;\n  if (differs(checked.status, 'submitting')) {\n    return checked;\n  }\n  return await attemptAsync(async () => {\n    const result = await submit(checked.data as O);\n    return machine.send(checked, {\n      type: 'RESOLVE',\n      result\n    }) as SubmitState<V, O, R>;\n  }, async error => machine.send(checked, {\n    type: 'REJECT',\n    error\n  }) as SubmitState<V, O, R>);\n}"
+  },
+  {
+   "name": "initialsOf",
+   "file": "Avatar.tsx",
+   "status": "same",
+   "convertedUnchecked": 10,
+   "converted": 12,
+   "ambiguousBefore": 2,
+   "decisions": [
+    {
+     "form": "OptionalMemberExpression [computed]",
+     "start": 118,
+     "end": 131,
+     "source": "words[0]?.[0]",
+     "tried": [
+      {
+       "atom": "get",
+       "status": "same",
+       "ran": 25,
+       "wrongKind": 0,
+       "works": true
+      },
+      {
+       "atom": "at",
+       "status": "same",
+       "ran": 25,
+       "wrongKind": 25,
+       "works": false
+      }
+     ],
+     "chosen": "get"
+    },
+    {
+     "form": "BinaryExpression >",
+     "start": 154,
+     "end": 170,
+     "source": "words.length > 1",
+     "tried": [
+      {
+       "atom": "greaterThan",
+       "status": "same",
+       "ran": 25,
+       "wrongKind": 0,
+       "works": true
+      },
+      {
+       "atom": "isAfter",
+       "status": "different",
+       "ran": 25,
+       "wrongKind": 25,
+       "works": false
+      }
+     ],
+     "chosen": "greaterThan"
+    }
+   ],
+   "rejected": [],
+   "body": "function initialsOf(name: string): string {\n  const words = keepWhere(splitBy(trimmed(name), /\\s+/), Boolean);\n  const first = orElse(get(firstOf(words), 0), () => '');\n  const last = when(greaterThan(lengthOf(words), 1), () => firstOf(lastOf(words)), () => '');\n  return upperCase(`${first}${last}`);\n}"
+  },
+  {
+   "name": "handleClick",
+   "file": "Button.tsx",
+   "status": "same",
+   "convertedUnchecked": 1,
+   "converted": 1,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function handleClick(event: MouseEvent<HTMLButtonElement>) {\n  return when(loading, () => {\n    event.preventDefault();\n    return;\n  }, () => {\n    onClick?.(event);\n  });\n}"
+  },
+  {
+   "name": "change",
+   "file": "Checkbox.tsx",
+   "status": "same",
+   "convertedUnchecked": 1,
+   "converted": 1,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function change(next: boolean) {\n  return when(readOnly, () => undefined, () => {\n    setOwn(next);\n    onCheckedChange?.(next);\n  });\n}"
+  },
+  {
+   "name": "contains",
+   "file": "Combobox.tsx",
+   "status": "same",
+   "convertedUnchecked": 3,
+   "converted": 4,
+   "ambiguousBefore": 1,
+   "decisions": [
+    {
+     "form": "CallExpression .includes()",
+     "start": 62,
+     "end": 119,
+     "source": "o.label.toLowerCase().includes(text.trim().toLowerCase())",
+     "tried": [
+      {
+       "atom": "hasText",
+       "status": "same",
+       "ran": 25,
+       "wrongKind": 0,
+       "works": true
+      },
+      {
+       "atom": "hasItem",
+       "status": "same",
+       "ran": 25,
+       "wrongKind": 25,
+       "works": false
+      }
+     ],
+     "chosen": "hasText"
+    }
+   ],
+   "rejected": [],
+   "body": "function contains(o: ComboboxOption, text: string) {\n  return hasText(lowerCase(o.label), lowerCase(trimmed(text)));\n}"
+  },
+  {
+   "name": "setOpen",
+   "file": "Combobox.tsx",
+   "status": "same",
+   "convertedUnchecked": 5,
+   "converted": 5,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function setOpen(next: boolean) {\n  when(and(differs(next, open), () => not(and(next, () => readOnly))), () => {\n    setOpenState(next);\n    onOpenChange?.(next);\n  });\n}"
+  },
+  {
+   "name": "choose",
+   "file": "Combobox.tsx",
+   "status": "same",
+   "convertedUnchecked": 0,
+   "converted": 0,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function choose(o: ComboboxOption) {\n  setOwn(o.value);\n  setText(o.label);\n  setOpen(false);\n  onValueChange?.(o.value);\n}"
+  },
+  {
+   "name": "onKeyDown",
+   "file": "Combobox.tsx",
+   "status": "same",
+   "convertedUnchecked": 14,
+   "converted": 14,
+   "ambiguousBefore": 1,
+   "decisions": [
+    {
+     "form": "BinaryExpression +",
+     "start": 188,
+     "end": 193,
+     "source": "i + 1",
+     "tried": [
+      {
+       "atom": "plus",
+       "status": "same",
+       "ran": 0,
+       "wrongKind": 0,
+       "works": false
+      },
+      {
+       "atom": "join",
+       "status": "same",
+       "ran": 0,
+       "wrongKind": 0,
+       "works": false
+      }
+     ],
+     "chosen": null,
+     "note": "no input reached it with a real value"
+    }
+   ],
+   "rejected": [],
+   "body": "function onKeyDown(e: KeyboardEvent<HTMLInputElement>) {\n  if (equals(e.key, 'ArrowDown')) {\n    e.preventDefault();\n    if (not(open)) {\n      setOpen(true);\n      setActive(0);\n      return;\n    }\n    setActive(i => smallestOf([i + 1, minus(lengthOf(matches), 1)]));\n  } else chooseAtom([[equals(e.key, 'ArrowUp'), () => {\n    e.preventDefault();\n    setActive(i => largestOf([minus(i, 1), 0]));\n  }], [() => and(and(equals(e.key, 'Enter'), () => open), () => matches[active]), () => {\n    e.preventDefault();\n    choose(matches[active]);\n  }], [() => and(equals(e.key, 'Escape'), () => open), () => {\n    e.preventDefault();\n    setOpen(false);\n  }]]);\n}"
+  },
+  {
+   "name": "optionId",
+   "file": "Combobox.tsx",
+   "status": "same",
+   "convertedUnchecked": 0,
+   "converted": 0,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function optionId(i: number) {\n  return `${listId}-option-${i}`;\n}"
+  },
+  {
+   "name": "setOpen",
+   "file": "DatePicker.tsx",
+   "status": "same",
+   "convertedUnchecked": 1,
+   "converted": 1,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function setOpen(next: boolean) {\n  return when(readOnly, () => undefined, () => {\n    setOwnOpen(next);\n    onOpenChange?.(next);\n  });\n}"
+  },
+  {
+   "name": "choose",
+   "file": "DatePicker.tsx",
+   "status": "same",
+   "convertedUnchecked": 0,
+   "converted": 0,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function choose(d: Date) {\n  setOwn(d);\n  onValueChange?.(d);\n  setOpen(false);\n}"
+  },
+  {
+   "name": "outOfRange",
+   "file": "DatePicker.tsx",
+   "status": "same",
+   "convertedUnchecked": 4,
+   "converted": 4,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function outOfRange(d: Date) {\n  return isTruthy(or(and(min, () => isBefore(d, startOfDay(min))), () => and(max, () => isAfter(d, startOfDay(max)))));\n}"
+  },
+  {
+   "name": "onKeyDown",
+   "file": "DatePicker.tsx",
+   "status": "same",
+   "convertedUnchecked": 9,
+   "converted": 9,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function onKeyDown(e: KeyboardEvent<HTMLTableElement>) {\n  const move = KEY_MOVES[e.key];\n  return when(move, () => {\n    e.preventDefault();\n    setFocused(move(focused));\n    return;\n  }, () => when(or(equals(e.key, 'Enter'), () => equals(e.key, ' ')), () => {\n    e.preventDefault();\n    when(not(outOfRange(focused)), () => onChoose(focused));\n    return;\n  }, () => {\n    when(equals(e.key, 'Escape'), () => {\n      e.preventDefault();\n      onClose();\n    });\n  }));\n}"
+  },
+  {
+   "name": "guard",
+   "file": "Dialog.tsx",
+   "status": "same",
+   "convertedUnchecked": 2,
+   "converted": 2,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function guard(event: Event) {\n  onDismiss?.(event);\n  when(not(dismissible), () => event.preventDefault());\n}"
+  },
+  {
+   "name": "guard",
+   "file": "Drawer.tsx",
+   "status": "same",
+   "convertedUnchecked": 2,
+   "converted": 2,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function guard(event: Event) {\n  onDismiss?.(event);\n  when(not(dismissible), () => event.preventDefault());\n}"
+  },
+  {
+   "name": "update",
+   "file": "FileUpload.tsx",
+   "status": "same",
+   "convertedUnchecked": 0,
+   "converted": 0,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function update(next: File[]) {\n  setOwn(next);\n  onFilesChange?.(next);\n}"
+  },
+  {
+   "name": "add",
+   "file": "FileUpload.tsx",
+   "status": "same",
+   "convertedUnchecked": 8,
+   "converted": 8,
+   "ambiguousBefore": 1,
+   "decisions": [
+    {
+     "form": "CallExpression .slice()",
+     "start": 117,
+     "end": 135,
+     "source": "picked.slice(0, 1)",
+     "tried": [
+      {
+       "atom": "sliceText",
+       "status": "same",
+       "ran": 0,
+       "wrongKind": 0,
+       "works": false
+      },
+      {
+       "atom": "part",
+       "status": "same",
+       "ran": 0,
+       "wrongKind": 0,
+       "works": false
+      }
+     ],
+     "chosen": null,
+     "note": "no input reached it with a real value"
+    }
+   ],
+   "rejected": [],
+   "body": "function add(picked: File[]) {\n  when(and(and(not(disabled), () => not(readOnly)), () => lengthOf(picked)), () => update(when(multiple, () => concatenated(list, picked), () => picked.slice(0, 1))));\n}"
+  },
+  {
+   "name": "remove",
+   "file": "FileUpload.tsx",
+   "status": "same",
+   "convertedUnchecked": 2,
+   "converted": 2,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function remove(f: File) {\n  update(keepWhere(list, x => differs(x, f)));\n  onRemove?.(f);\n}"
+  },
+  {
+   "name": "onDrop",
+   "file": "FileUpload.tsx",
+   "status": "same",
+   "convertedUnchecked": 1,
+   "converted": 1,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function onDrop(e: DragEvent<HTMLDivElement>) {\n  e.preventDefault();\n  setDragOver(false);\n  add(listFrom(e.dataTransfer.files));\n}"
+  },
+  {
+   "name": "submit",
+   "file": "Form.tsx",
+   "status": "same",
+   "convertedUnchecked": 2,
+   "converted": 2,
+   "ambiguousBefore": 1,
+   "decisions": [
+    {
+     "form": "CallExpression .entries()",
+     "start": 135,
+     "end": 174,
+     "source": "new FormData(e.currentTarget).entries()",
+     "tried": [
+      {
+       "atom": "entriesOfList",
+       "status": "same",
+       "ran": 0,
+       "wrongKind": 0,
+       "works": false
+      },
+      {
+       "atom": "entriesOfMap",
+       "status": "same",
+       "ran": 0,
+       "wrongKind": 0,
+       "works": false
+      },
+      {
+       "atom": "entriesOfSet",
+       "status": "same",
+       "ran": 0,
+       "wrongKind": 0,
+       "works": false
+      }
+     ],
+     "chosen": null,
+     "note": "no input reached it with a real value"
+    }
+   ],
+   "rejected": [],
+   "body": "function submit(e: FormEvent<HTMLFormElement>) {\n  e.preventDefault();\n  return when(submitting, () => undefined, () => {\n    onSubmit?.(fromEntries(new FormData(e.currentTarget).entries()));\n  });\n}"
+  },
+  {
+   "name": "handleClick",
+   "file": "IconButton.tsx",
+   "status": "same",
+   "convertedUnchecked": 1,
+   "converted": 1,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function handleClick(event: MouseEvent<HTMLButtonElement>) {\n  return when(loading, () => {\n    event.preventDefault();\n    return;\n  }, () => {\n    onClick?.(event);\n  });\n}"
+  },
+  {
+   "name": "pageItems",
+   "file": "Pagination.tsx",
+   "status": "same",
+   "convertedUnchecked": 14,
+   "converted": 18,
+   "ambiguousBefore": 5,
+   "decisions": [
+    {
+     "form": "BinaryExpression +",
+     "start": 167,
+     "end": 182,
+     "source": "page + siblings",
+     "tried": [
+      {
+       "atom": "plus",
+       "status": "same",
+       "ran": 93,
+       "wrongKind": 0,
+       "works": true
+      },
+      {
+       "atom": "join",
+       "status": "same",
+       "ran": 93,
+       "wrongKind": 93,
+       "works": false
+      }
+     ],
+     "chosen": "plus"
+    },
+    {
+     "form": "BinaryExpression +",
+     "start": 184,
+     "end": 190,
+     "source": "p += 1",
+     "tried": [
+      {
+       "atom": "plus",
+       "status": "same",
+       "ran": 68,
+       "wrongKind": 0,
+       "works": true
+      },
+      {
+       "atom": "join",
+       "status": "same",
+       "ran": 68,
+       "wrongKind": 68,
+       "works": false
+      }
+     ],
+     "chosen": "plus"
+    },
+    {
+     "form": "CallExpression .forEach()",
+     "start": 329,
+     "end": 424,
+     "source": "sorted.forEach((p, i) => { if (i > 0 && p - sorted[i - 1] > 1) out.push('gap'); out.push(p); })",
+     "tried": [
+      {
+       "atom": "eachMap",
+       "status": "same",
+       "ran": 25,
+       "wrongKind": 25,
+       "works": false
+      },
+      {
+       "atom": "eachSet",
+       "status": "same",
+       "ran": 25,
+       "wrongKind": 25,
+       "works": false
+      }
+     ],
+     "chosen": null,
+     "note": "it receives more than one kind of value"
+    },
+    {
+     "form": "BinaryExpression >",
+     "start": 360,
+     "end": 365,
+     "source": "i > 0",
+     "tried": [
+      {
+       "atom": "greaterThan",
+       "status": "same",
+       "ran": 49,
+       "wrongKind": 0,
+       "works": true
+      },
+      {
+       "atom": "isAfter",
+       "status": "different",
+       "ran": 25,
+       "wrongKind": 25,
+       "works": false
+      }
+     ],
+     "chosen": "greaterThan"
+    },
+    {
+     "form": "BinaryExpression >",
+     "start": 369,
+     "end": 390,
+     "source": "p - sorted[i - 1] > 1",
+     "tried": [
+      {
+       "atom": "greaterThan",
+       "status": "same",
+       "ran": 24,
+       "wrongKind": 0,
+       "works": true
+      },
+      {
+       "atom": "isAfter",
+       "status": "different",
+       "ran": 22,
+       "wrongKind": 22,
+       "works": false
+      }
+     ],
+     "chosen": "greaterThan"
+    }
+   ],
+   "rejected": [],
+   "body": "function pageItems(page: number, pageCount: number, siblings = 1): (number | 'gap')[] {\n  const wanted = setOf([1, pageCount]);\n  for (let p = minus(page, siblings); atMost(p, plus(page, siblings)); p = plus(p, 1)) when(and(atLeast(p, 1), () => atMost(p, pageCount)), () => addToWeakSet(wanted, p));\n  const sorted = sortedBy([...wanted], (a, b) => minus(a, b));\n  const out: (number | 'gap')[] = [];\n  sorted.forEach((p, i) => {\n    when(and(greaterThan(i, 0), () => greaterThan(minus(p, sorted[minus(i, 1)]), 1)), () => out.push('gap'));\n    out.push(p);\n  });\n  return out;\n}"
+  },
+  {
+   "name": "go",
+   "file": "Pagination.tsx",
+   "status": "same",
+   "convertedUnchecked": 6,
+   "converted": 6,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function go(p: number) {\n  when(and(and(differs(p, page), () => atLeast(p, 1)), () => atMost(p, pageCount)), () => onPageChange?.(p));\n}"
+  },
+  {
+   "name": "change",
+   "file": "Radio.tsx",
+   "status": "same",
+   "convertedUnchecked": 1,
+   "converted": 1,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function change(next: string) {\n  return when(readOnly, () => undefined, () => {\n    setOwn(next);\n    onValueChange?.(next);\n  });\n}"
+  },
+  {
+   "name": "stateOf",
+   "file": "Stepper.tsx",
+   "status": "same",
+   "convertedUnchecked": 3,
+   "converted": 4,
+   "ambiguousBefore": 1,
+   "decisions": [
+    {
+     "form": "BinaryExpression <",
+     "start": 67,
+     "end": 78,
+     "source": "i < current",
+     "tried": [
+      {
+       "atom": "lessThan",
+       "status": "same",
+       "ran": 25,
+       "wrongKind": 0,
+       "works": true
+      },
+      {
+       "atom": "isBefore",
+       "status": "different",
+       "ran": 25,
+       "wrongKind": 25,
+       "works": false
+      }
+     ],
+     "chosen": "lessThan"
+    }
+   ],
+   "rejected": [],
+   "body": "function stateOf(i: number, current: number): StepState {\n  return when(lessThan(i, current), () => 'complete', () => when(equals(i, current), () => 'current', () => 'upcoming'));\n}"
+  },
+  {
+   "name": "change",
+   "file": "Switch.tsx",
+   "status": "same",
+   "convertedUnchecked": 1,
+   "converted": 1,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function change(next: boolean) {\n  return when(readOnly, () => undefined, () => {\n    setOwn(next);\n    onCheckedChange?.(next);\n  });\n}"
+  },
+  {
+   "name": "nextDirection",
+   "file": "Table.tsx",
+   "status": "same",
+   "convertedUnchecked": 4,
+   "converted": 5,
+   "ambiguousBefore": 1,
+   "decisions": [
+    {
+     "form": "OptionalMemberExpression .column",
+     "start": 103,
+     "end": 115,
+     "source": "sort?.column",
+     "tried": [
+      {
+       "atom": "get",
+       "status": "same",
+       "ran": 25,
+       "wrongKind": 0,
+       "works": true
+      },
+      {
+       "atom": "at",
+       "status": "same",
+       "ran": 25,
+       "wrongKind": 25,
+       "works": false
+      }
+     ],
+     "chosen": "get"
+    }
+   ],
+   "rejected": [],
+   "body": "function nextDirection(sort: TableSort | undefined, column: string): TableSort['direction'] {\n  return when(and(equals(get(sort, \"column\"), column), () => equals(sort.direction, 'ascending')), () => 'descending', () => 'ascending');\n}"
+  },
+  {
+   "name": "toggle",
+   "file": "Table.tsx",
+   "status": "same",
+   "convertedUnchecked": 4,
+   "converted": 4,
+   "ambiguousBefore": 1,
+   "decisions": [
+    {
+     "form": "CallExpression .includes()",
+     "start": 59,
+     "end": 80,
+     "source": "selected.includes(id)",
+     "tried": [
+      {
+       "atom": "hasText",
+       "status": "different",
+       "ran": 0,
+       "wrongKind": 0,
+       "works": false
+      },
+      {
+       "atom": "hasItem",
+       "status": "different",
+       "ran": 0,
+       "wrongKind": 0,
+       "works": false
+      }
+     ],
+     "chosen": null,
+     "note": "no input reached it with a real value"
+    }
+   ],
+   "rejected": [],
+   "body": "function toggle(id: string) {\n  return onSelectionChange?.(when(selected.includes(id), () => keepWhere(selected, x => differs(x, id)), () => added(selected, id)));\n}"
+  },
+  {
+   "name": "onKeyDown",
+   "file": "Tag.tsx",
+   "status": "same",
+   "convertedUnchecked": 7,
+   "converted": 7,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function onKeyDown(e: KeyboardEvent<HTMLElement>) {\n  when(and(and(onRemove, () => not(disabled)), () => or(equals(e.key, 'Backspace'), () => equals(e.key, 'Delete'))), () => {\n    e.preventDefault();\n    onRemove();\n  });\n}"
+  },
+  {
+   "name": "useToast",
+   "file": "Toast.tsx",
+   "status": "same",
+   "convertedUnchecked": 0,
+   "converted": 0,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function useToast() {\n  return useContext(ToastContext);\n}"
+  },
+  {
+   "name": "submit",
+   "file": "FormPage.tsx",
+   "status": "same",
+   "convertedUnchecked": 0,
+   "converted": 0,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function submit(e: FormEvent) {\n  e.preventDefault();\n  onSubmit();\n}"
+  },
+  {
+   "name": "useToast",
+   "file": "Toast.tsx",
+   "status": "same",
+   "convertedUnchecked": 0,
+   "converted": 0,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function useToast() {\n  return useContext(ToastContext);\n}"
+  },
+  {
+   "name": "submit",
+   "file": "FormPage.tsx",
+   "status": "same",
+   "convertedUnchecked": 0,
+   "converted": 0,
+   "ambiguousBefore": 0,
+   "decisions": [],
+   "rejected": [],
+   "body": "function submit(e: FormEvent) {\n  e.preventDefault();\n  onSubmit();\n}"
+  }
+ ]
+}

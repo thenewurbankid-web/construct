@@ -1,0 +1,81 @@
+{
+  "impl": "pin",
+  "corpus": {
+    "roots": [
+      "/Users/shashank/Repositories/construct/.claude/worktrees/og-final-1012/packages",
+      "/Users/shashank/Repositories/construct/.claude/worktrees/og-final-1012/bench/ecommerce/starter",
+      "/Users/shashank/Repositories/construct/.claude/worktrees/og-final-1012/bench/lending/starter"
+    ],
+    "files": 184,
+    "unparsedFiles": 0,
+    "functions": 380
+  },
+  "overall": {
+    "functions": 380,
+    "throws": 330,
+    "clean": 20,
+    "steps": 56,
+    "chips": 191,
+    "placeholders": 39,
+    "byKind": {
+      "expr": 26,
+      "stmt": 13,
+      "pattern": 0
+    },
+    "byType": {
+      "ObjectExpression": 14,
+      "SwitchStatement": 12,
+      "LogicalExpression": 9,
+      "ArrayExpression": 2,
+      "SequenceExpression": 1,
+      "ThrowStatement": 1
+    },
+    "placeholderRate": 0.20418848167539266,
+    "cleanRate": 0.05263157894736842,
+    "throwRate": 0.868421052631579,
+    "rendered": 50
+  },
+  "logic": {
+    "functions": 207,
+    "throws": 157,
+    "clean": 20,
+    "steps": 56,
+    "chips": 191,
+    "placeholders": 39,
+    "byKind": {
+      "expr": 26,
+      "stmt": 13,
+      "pattern": 0
+    },
+    "byType": {
+      "ObjectExpression": 14,
+      "SwitchStatement": 12,
+      "LogicalExpression": 9,
+      "ArrayExpression": 2,
+      "SequenceExpression": 1,
+      "ThrowStatement": 1
+    },
+    "placeholderRate": 0.20418848167539266,
+    "cleanRate": 0.0966183574879227,
+    "throwRate": 0.7584541062801933,
+    "rendered": 50
+  },
+  "jsx": {
+    "functions": 173,
+    "throws": 173,
+    "clean": 0,
+    "steps": 0,
+    "chips": 0,
+    "placeholders": 0,
+    "byKind": {
+      "expr": 0,
+      "stmt": 0,
+      "pattern": 0
+    },
+    "byType": {},
+    "placeholderRate": 0,
+    "cleanRate": 0,
+    "throwRate": 1,
+    "rendered": 0
+  }
+}

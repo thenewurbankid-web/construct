@@ -1,0 +1,671 @@
+{
+ "summary": {
+  "runtime": "939c25c",
+  "runs": 40,
+  "allowUntranslated": [
+   "TemplateLiteral",
+   "OptionalCallExpression"
+  ],
+  "functions": 207,
+  "jsxSkipped": 173,
+  "kept": 88,
+  "dropped": 119,
+  "byReason": {
+   "no rewrite": 66,
+   "few runs exercised": 30,
+   "untranslated": 13,
+   "atom renamed": 1,
+   "duplicate": 9
+  }
+ },
+ "dropped": [
+  {
+   "name": "advance",
+   "file": "packages/core/profiles/line/fixtures/LINE-BASE/features/orders/workflows/orderCheckout.ts",
+   "reason": "no rewrite"
+  },
+  {
+   "name": "advance",
+   "file": "packages/core/profiles/line/fixtures/LINE-DIR/features/orders/workflows/orderCheckout.ts",
+   "reason": "no rewrite"
+  },
+  {
+   "name": "next",
+   "file": "packages/core/profiles/line/fixtures/LINE-DIR/library/workflows/checkout.ts",
+   "reason": "duplicate",
+   "detail": "6d4f37e3063c30257cc9e3906d2f2f1b9a1b417f"
+  },
+  {
+   "name": "advance",
+   "file": "packages/core/profiles/line/fixtures/LINE-LAYOUT/features/orders/workflows/orderCheckout.ts",
+   "reason": "no rewrite"
+  },
+  {
+   "name": "useThing",
+   "file": "packages/core/profiles/line/fixtures/LINE-LAYOUT/library/hooks/useThing.ts",
+   "reason": "no rewrite"
+  },
+  {
+   "name": "next",
+   "file": "packages/core/profiles/line/fixtures/LINE-LAYOUT/library/workflows/checkout.ts",
+   "reason": "duplicate",
+   "detail": "6d4f37e3063c30257cc9e3906d2f2f1b9a1b417f"
+  },
+  {
+   "name": "advance",
+   "file": "packages/core/profiles/line/fixtures/LINE-MODULE/features/orders/workflows/orderCheckout.ts",
+   "reason": "no rewrite"
+  },
+  {
+   "name": "next",
+   "file": "packages/core/profiles/line/fixtures/LINE-MODULE/library/workflows/checkout.ts",
+   "reason": "duplicate",
+   "detail": "6d4f37e3063c30257cc9e3906d2f2f1b9a1b417f"
+  },
+  {
+   "name": "advance",
+   "file": "packages/core/profiles/line/fixtures/LINE-OWNER/features/orders/workflows/orderCheckout.ts",
+   "reason": "no rewrite"
+  },
+  {
+   "name": "next",
+   "file": "packages/core/profiles/line/fixtures/LINE-OWNER/library/workflows/checkout.ts",
+   "reason": "duplicate",
+   "detail": "6d4f37e3063c30257cc9e3906d2f2f1b9a1b417f"
+  },
+  {
+   "name": "advance",
+   "file": "packages/core/profiles/line/fixtures/LINE-SHARED/features/orders/workflows/orderCheckout.ts",
+   "reason": "no rewrite"
+  },
+  {
+   "name": "next",
+   "file": "packages/core/profiles/line/fixtures/LINE-SHARED/library/workflows/checkout.ts",
+   "reason": "duplicate",
+   "detail": "6d4f37e3063c30257cc9e3906d2f2f1b9a1b417f"
+  },
+  {
+   "name": "advance",
+   "file": "packages/core/profiles/line/fixtures/LINE-WRITER/features/orders/workflows/orderCheckout.ts",
+   "reason": "no rewrite"
+  },
+  {
+   "name": "next",
+   "file": "packages/core/profiles/line/fixtures/LINE-WRITER/library/workflows/checkout.ts",
+   "reason": "duplicate",
+   "detail": "6d4f37e3063c30257cc9e3906d2f2f1b9a1b417f"
+  },
+  {
+   "name": "advance",
+   "file": "packages/core/profiles/line/fixtures/passing/features/orders/workflows/orderCheckout.ts",
+   "reason": "no rewrite"
+  },
+  {
+   "name": "next",
+   "file": "packages/core/profiles/line/fixtures/passing/library/workflows/checkout.ts",
+   "reason": "duplicate",
+   "detail": "6d4f37e3063c30257cc9e3906d2f2f1b9a1b417f"
+  },
+  {
+   "name": "checkout",
+   "file": "packages/core/rules/fixtures/SERVICE-002/passes.tsx",
+   "reason": "no rewrite"
+  },
+  {
+   "name": "CheckoutService",
+   "file": "packages/core/rules/fixtures/SERVICE-002/violates.tsx",
+   "reason": "no rewrite"
+  },
+  {
+   "name": "checkoutMachine",
+   "file": "packages/core/rules/fixtures/WORKFLOW-001/passes.tsx",
+   "reason": "no rewrite"
+  },
+  {
+   "name": "checkoutMachine",
+   "file": "packages/core/rules/fixtures/WORKFLOW-001/violates.tsx",
+   "reason": "no rewrite"
+  },
+  {
+   "name": "releaseTotalBadge",
+   "file": "packages/core/typed-contracts/examples/feature-branded-valid.ts",
+   "reason": "no rewrite"
+  },
+  {
+   "name": "unguarded",
+   "file": "packages/core/typed-contracts/examples/service-schema-invalid.ts",
+   "reason": "few runs exercised",
+   "detail": "11 of 40"
+  },
+  {
+   "name": "consume",
+   "file": "packages/core/typed-contracts/examples/service-schema-zod.ts",
+   "reason": "few runs exercised",
+   "detail": "18 of 40"
+  },
+  {
+   "name": "validate",
+   "file": "packages/core/typed-contracts/examples/service-schema.ts",
+   "reason": "untranslated",
+   "detail": "CallExpression .push() (mutates)"
+  },
+  {
+   "name": "consume",
+   "file": "packages/core/typed-contracts/examples/service-schema.ts",
+   "reason": "few runs exercised",
+   "detail": "18 of 40"
+  },
+  {
+   "name": "useCartState",
+   "file": "packages/core/typed-contracts/examples/tracked-state.ts",
+   "reason": "few runs exercised",
+   "detail": "1 of 40"
+  },
+  {
+   "name": "assertType",
+   "file": "packages/core/typed-contracts/examples/workflow.ts",
+   "reason": "no rewrite"
+  },
+  {
+   "name": "tagUnit",
+   "file": "packages/core/typed-contracts/factories.ts",
+   "reason": "no rewrite"
+  },
+  {
+   "name": "unit",
+   "file": "packages/core/typed-contracts/factories.ts",
+   "reason": "no rewrite"
+  },
+  {
+   "name": "defineComponent",
+   "file": "packages/core/typed-contracts/factories.ts",
+   "reason": "no rewrite"
+  },
+  {
+   "name": "definePage",
+   "file": "packages/core/typed-contracts/factories.ts",
+   "reason": "no rewrite"
+  },
+  {
+   "name": "defineExpression",
+   "file": "packages/core/typed-contracts/factories.ts",
+   "reason": "no rewrite"
+  },
+  {
+   "name": "defineController",
+   "file": "packages/core/typed-contracts/factories.ts",
+   "reason": "no rewrite"
+  },
+  {
+   "name": "defineRoute",
+   "file": "packages/core/typed-contracts/factories.ts",
+   "reason": "no rewrite"
+  },
+  {
+   "name": "defineWorkflow",
+   "file": "packages/core/typed-contracts/factories.ts",
+   "reason": "no rewrite"
+  },
+  {
+   "name": "defineService",
+   "file": "packages/core/typed-contracts/factories.ts",
+   "reason": "untranslated",
+   "detail": "CallExpression Object.assign()"
+  },
+  {
+   "name": "checked",
+   "file": "packages/core/typed-contracts/factories.ts",
+   "reason": "no rewrite"
+  },
+  {
+   "name": "defineDomain",
+   "file": "packages/core/typed-contracts/factories.ts",
+   "reason": "no rewrite"
+  },
+  {
+   "name": "withFeature",
+   "file": "packages/core/typed-contracts/feature.ts",
+   "reason": "no rewrite"
+  },
+  {
+   "name": "propRef",
+   "file": "packages/core/typed-contracts/propRef.ts",
+   "reason": "no rewrite"
+  },
+  {
+   "name": "defineProvider",
+   "file": "packages/core/typed-contracts/provider.ts",
+   "reason": "few runs exercised",
+   "detail": "17 of 40"
+  },
+  {
+   "name": "ProviderComponent",
+   "file": "packages/core/typed-contracts/provider.ts",
+   "reason": "no rewrite"
+  },
+  {
+   "name": "schemaError",
+   "file": "packages/core/typed-contracts/schema.ts",
+   "reason": "no rewrite"
+  },
+  {
+   "name": "useTrackedState",
+   "file": "packages/core/typed-contracts/trackedState.ts",
+   "reason": "no rewrite"
+  },
+  {
+   "name": "init",
+   "file": "packages/line-atoms/atoms/async-status/index.ts",
+   "reason": "no rewrite"
+  },
+  {
+   "name": "send",
+   "file": "packages/line-atoms/atoms/async-status/index.ts",
+   "reason": "untranslated",
+   "detail": "BinaryExpression + (ambiguous type)"
+  },
+  {
+   "name": "stateOf",
+   "file": "packages/line-atoms/atoms/async-status/index.ts",
+   "reason": "no rewrite"
+  },
+  {
+   "name": "at",
+   "file": "packages/line-atoms/atoms/client-pagination/index.ts",
+   "reason": "no rewrite"
+  },
+  {
+   "name": "stateOf",
+   "file": "packages/line-atoms/atoms/client-pagination/index.ts",
+   "reason": "no rewrite"
+  },
+  {
+   "name": "csvCell",
+   "file": "packages/line-atoms/atoms/csv-export/index.ts",
+   "reason": "untranslated",
+   "detail": "CallExpression .test() (mutates)"
+  },
+  {
+   "name": "toCsv",
+   "file": "packages/line-atoms/atoms/csv-export/index.ts",
+   "reason": "untranslated",
+   "detail": "CallExpression .push() (mutates)"
+  },
+  {
+   "name": "init",
+   "file": "packages/line-atoms/atoms/csv-export/index.ts",
+   "reason": "no rewrite"
+  },
+  {
+   "name": "stateOf",
+   "file": "packages/line-atoms/atoms/csv-export/index.ts",
+   "reason": "no rewrite"
+  },
+  {
+   "name": "init",
+   "file": "packages/line-atoms/atoms/csv-export/index.ts",
+   "reason": "no rewrite"
+  },
+  {
+   "name": "send",
+   "file": "packages/line-atoms/atoms/csv-export/index.ts",
+   "reason": "few runs exercised",
+   "detail": "4 of 40"
+  },
+  {
+   "name": "stateOf",
+   "file": "packages/line-atoms/atoms/csv-export/index.ts",
+   "reason": "no rewrite"
+  },
+  {
+   "name": "exportCsv",
+   "file": "packages/line-atoms/atoms/csv-export/index.ts",
+   "reason": "no rewrite"
+  },
+  {
+   "name": "endOfDay",
+   "file": "packages/line-atoms/atoms/date-range/index.ts",
+   "reason": "few runs exercised",
+   "detail": "9 of 40"
+  },
+  {
+   "name": "daysIn",
+   "file": "packages/line-atoms/atoms/date-range/index.ts",
+   "reason": "untranslated",
+   "detail": "BinaryExpression + (ambiguous type)"
+  },
+  {
+   "name": "lastDays",
+   "file": "packages/line-atoms/atoms/date-range/index.ts",
+   "reason": "few runs exercised",
+   "detail": "11 of 40"
+  },
+  {
+   "name": "stateOf",
+   "file": "packages/line-atoms/atoms/date-range/index.ts",
+   "reason": "no rewrite"
+  },
+  {
+   "name": "dateRange",
+   "file": "packages/line-atoms/atoms/date-range/index.ts",
+   "reason": "no rewrite"
+  },
+  {
+   "name": "settle",
+   "file": "packages/line-atoms/atoms/debounced-search/index.ts",
+   "reason": "no rewrite"
+  },
+  {
+   "name": "stateOf",
+   "file": "packages/line-atoms/atoms/debounced-search/index.ts",
+   "reason": "no rewrite"
+  },
+  {
+   "name": "debouncedSearch",
+   "file": "packages/line-atoms/atoms/debounced-search/index.ts",
+   "reason": "few runs exercised",
+   "detail": "9 of 40"
+  },
+  {
+   "name": "view",
+   "file": "packages/line-atoms/atoms/filter-sort/index.ts",
+   "reason": "no rewrite"
+  },
+  {
+   "name": "applyView",
+   "file": "packages/line-atoms/atoms/filter-sort/index.ts",
+   "reason": "untranslated",
+   "detail": "CallExpression .sort() (mutates)"
+  },
+  {
+   "name": "send",
+   "file": "packages/line-atoms/atoms/filter-sort/index.ts",
+   "reason": "untranslated",
+   "detail": "UnaryExpression delete (mutates)"
+  },
+  {
+   "name": "stateOf",
+   "file": "packages/line-atoms/atoms/filter-sort/index.ts",
+   "reason": "no rewrite"
+  },
+  {
+   "name": "nextCursor",
+   "file": "packages/line-atoms/atoms/infinite-list/index.ts",
+   "reason": "few runs exercised",
+   "detail": "5 of 40"
+  },
+  {
+   "name": "hasNextPage",
+   "file": "packages/line-atoms/atoms/infinite-list/index.ts",
+   "reason": "few runs exercised",
+   "detail": "11 of 40"
+  },
+  {
+   "name": "items",
+   "file": "packages/line-atoms/atoms/infinite-list/index.ts",
+   "reason": "few runs exercised",
+   "detail": "5 of 40"
+  },
+  {
+   "name": "init",
+   "file": "packages/line-atoms/atoms/infinite-list/index.ts",
+   "reason": "no rewrite"
+  },
+  {
+   "name": "stateOf",
+   "file": "packages/line-atoms/atoms/infinite-list/index.ts",
+   "reason": "no rewrite"
+  },
+  {
+   "name": "loadMore",
+   "file": "packages/line-atoms/atoms/infinite-list/index.ts",
+   "reason": "few runs exercised",
+   "detail": "2 of 40"
+  },
+  {
+   "name": "at",
+   "file": "packages/line-atoms/atoms/multi-step-flow/index.ts",
+   "reason": "few runs exercised",
+   "detail": "6 of 40"
+  },
+  {
+   "name": "currentStep",
+   "file": "packages/line-atoms/atoms/multi-step-flow/index.ts",
+   "reason": "few runs exercised",
+   "detail": "5 of 40"
+  },
+  {
+   "name": "progress",
+   "file": "packages/line-atoms/atoms/multi-step-flow/index.ts",
+   "reason": "few runs exercised",
+   "detail": "13 of 40"
+  },
+  {
+   "name": "stateOf",
+   "file": "packages/line-atoms/atoms/multi-step-flow/index.ts",
+   "reason": "no rewrite"
+  },
+  {
+   "name": "toXStateConfig",
+   "file": "packages/line-atoms/atoms/multi-step-flow/index.ts",
+   "reason": "untranslated",
+   "detail": "CallExpression .forEach() (ambiguous type)"
+  },
+  {
+   "name": "merged",
+   "file": "packages/line-atoms/atoms/multi-step-flow/index.ts",
+   "reason": "atom renamed",
+   "detail": "merged as mergedAtom"
+  },
+  {
+   "name": "init",
+   "file": "packages/line-atoms/atoms/optimistic-update/index.ts",
+   "reason": "no rewrite"
+  },
+  {
+   "name": "stateOf",
+   "file": "packages/line-atoms/atoms/optimistic-update/index.ts",
+   "reason": "no rewrite"
+  },
+  {
+   "name": "stateOf",
+   "file": "packages/line-atoms/atoms/paginated-query/index.ts",
+   "reason": "no rewrite"
+  },
+  {
+   "name": "loadPage",
+   "file": "packages/line-atoms/atoms/paginated-query/index.ts",
+   "reason": "few runs exercised",
+   "detail": "18 of 40"
+  },
+  {
+   "name": "covers",
+   "file": "packages/line-atoms/atoms/permission-check/index.ts",
+   "reason": "untranslated",
+   "detail": "CallExpression .slice() (ambiguous type)"
+  },
+  {
+   "name": "missingPermissions",
+   "file": "packages/line-atoms/atoms/permission-check/index.ts",
+   "reason": "few runs exercised",
+   "detail": "4 of 40"
+  },
+  {
+   "name": "init",
+   "file": "packages/line-atoms/atoms/permission-check/index.ts",
+   "reason": "no rewrite"
+  },
+  {
+   "name": "stateOf",
+   "file": "packages/line-atoms/atoms/permission-check/index.ts",
+   "reason": "no rewrite"
+  },
+  {
+   "name": "checkPermission",
+   "file": "packages/line-atoms/atoms/permission-check/index.ts",
+   "reason": "few runs exercised",
+   "detail": "17 of 40"
+  },
+  {
+   "name": "stateOf",
+   "file": "packages/line-atoms/atoms/polling/index.ts",
+   "reason": "no rewrite"
+  },
+  {
+   "name": "polling",
+   "file": "packages/line-atoms/atoms/polling/index.ts",
+   "reason": "few runs exercised",
+   "detail": "17 of 40"
+  },
+  {
+   "name": "history",
+   "file": "packages/line-atoms/atoms/undo-history/index.ts",
+   "reason": "no rewrite"
+  },
+  {
+   "name": "canUndo",
+   "file": "packages/line-atoms/atoms/undo-history/index.ts",
+   "reason": "few runs exercised",
+   "detail": "4 of 40"
+  },
+  {
+   "name": "canRedo",
+   "file": "packages/line-atoms/atoms/undo-history/index.ts",
+   "reason": "few runs exercised",
+   "detail": "10 of 40"
+  },
+  {
+   "name": "stateOf",
+   "file": "packages/line-atoms/atoms/undo-history/index.ts",
+   "reason": "no rewrite"
+  },
+  {
+   "name": "validate",
+   "file": "packages/line-atoms/atoms/validated-submit/index.ts",
+   "reason": "few runs exercised",
+   "detail": "0 of 40"
+  },
+  {
+   "name": "init",
+   "file": "packages/line-atoms/atoms/validated-submit/index.ts",
+   "reason": "no rewrite"
+  },
+  {
+   "name": "stateOf",
+   "file": "packages/line-atoms/atoms/validated-submit/index.ts",
+   "reason": "no rewrite"
+  },
+  {
+   "name": "validatedSubmit",
+   "file": "packages/line-atoms/atoms/validated-submit/index.ts",
+   "reason": "few runs exercised",
+   "detail": "17 of 40"
+  },
+  {
+   "name": "handleClick",
+   "file": "packages/line-primitives/library/components/Button.tsx",
+   "reason": "few runs exercised",
+   "detail": "9 of 40"
+  },
+  {
+   "name": "choose",
+   "file": "packages/line-primitives/library/components/Combobox.tsx",
+   "reason": "no rewrite"
+  },
+  {
+   "name": "onKeyDown",
+   "file": "packages/line-primitives/library/components/Combobox.tsx",
+   "reason": "untranslated",
+   "detail": "IfStatement (a branch returns on some paths only); IfStatement (return inside an if that is not directly in a function body); BinaryExpression + (ambiguous type)"
+  },
+  {
+   "name": "optionId",
+   "file": "packages/line-primitives/library/components/Combobox.tsx",
+   "reason": "no rewrite"
+  },
+  {
+   "name": "choose",
+   "file": "packages/line-primitives/library/components/DatePicker.tsx",
+   "reason": "no rewrite"
+  },
+  {
+   "name": "onKeyDown",
+   "file": "packages/line-primitives/library/components/DatePicker.tsx",
+   "reason": "few runs exercised",
+   "detail": "14 of 40"
+  },
+  {
+   "name": "guard",
+   "file": "packages/line-primitives/library/components/Drawer.tsx",
+   "reason": "duplicate",
+   "detail": "ab83d754a1316cb806a15b45304a789aba96ae88"
+  },
+  {
+   "name": "update",
+   "file": "packages/line-primitives/library/components/FileUpload.tsx",
+   "reason": "no rewrite"
+  },
+  {
+   "name": "add",
+   "file": "packages/line-primitives/library/components/FileUpload.tsx",
+   "reason": "untranslated",
+   "detail": "CallExpression .slice() (ambiguous type)"
+  },
+  {
+   "name": "onDrop",
+   "file": "packages/line-primitives/library/components/FileUpload.tsx",
+   "reason": "few runs exercised",
+   "detail": "6 of 40"
+  },
+  {
+   "name": "submit",
+   "file": "packages/line-primitives/library/components/Form.tsx",
+   "reason": "few runs exercised",
+   "detail": "2 of 40"
+  },
+  {
+   "name": "handleClick",
+   "file": "packages/line-primitives/library/components/IconButton.tsx",
+   "reason": "few runs exercised",
+   "detail": "9 of 40"
+  },
+  {
+   "name": "pageItems",
+   "file": "packages/line-primitives/library/components/Pagination.tsx",
+   "reason": "untranslated",
+   "detail": "ForStatement (no exact loop atom (repeatWhile needs a limit)); CallExpression .forEach() (ambiguous type); CallExpression .push() (mutates)"
+  },
+  {
+   "name": "change",
+   "file": "packages/line-primitives/library/components/Switch.tsx",
+   "reason": "duplicate",
+   "detail": "a941bce03c53025595056ca2192348c01b800cea"
+  },
+  {
+   "name": "toggle",
+   "file": "packages/line-primitives/library/components/Table.tsx",
+   "reason": "few runs exercised",
+   "detail": "19 of 40"
+  },
+  {
+   "name": "useToast",
+   "file": "bench/ecommerce/starter/library/components/Toast.tsx",
+   "reason": "no rewrite"
+  },
+  {
+   "name": "submit",
+   "file": "bench/ecommerce/starter/library/pages/FormPage.tsx",
+   "reason": "no rewrite"
+  },
+  {
+   "name": "useToast",
+   "file": "bench/lending/starter/library/components/Toast.tsx",
+   "reason": "no rewrite"
+  },
+  {
+   "name": "submit",
+   "file": "bench/lending/starter/library/pages/FormPage.tsx",
+   "reason": "no rewrite"
+  }
+ ]
+}

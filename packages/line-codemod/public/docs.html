@@ -1,0 +1,257 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>smith — Reference</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; background: #05060a; color: #e4e6eb; font-family: -apple-system, sans-serif; }
+  header {
+    display: flex; align-items: center; gap: 18px; padding: 14px 24px;
+    border-bottom: 1px solid #1c1f26; position: sticky; top: 0; background: #05060a; z-index: 2;
+  }
+  .brand { font-size: 15px; font-weight: 800; }
+  .brand span { color: #5eead4; }
+  nav a { color: #9aa0ac; font-size: 13px; text-decoration: none; margin-right: 4px; }
+  nav a:hover { color: #5eead4; }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 40px 24px 100px; }
+  h1 { font-size: 22px; margin: 0 0 8px; }
+  p.lede { color: #9aa0ac; font-size: 14px; line-height: 1.7; max-width: 64ch; }
+  h2 { font-size: 17px; margin: 48px 0 6px; padding-top: 16px; border-top: 1px solid #1c1f26; }
+  h2 code { color: #5eead4; font-family: ui-monospace, Menlo, monospace; font-size: 15px; }
+  p.desc { color: #9aa0ac; font-size: 13.5px; line-height: 1.7; margin: 6px 0 14px; }
+  pre { background: #0b0d11; border: 1px solid #1c1f26; border-radius: 8px; padding: 14px 16px; font-size: 12.5px; color: #b7f7c8; overflow-x: auto; font-family: ui-monospace, Menlo, monospace; white-space: pre; }
+  .verified { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: #6fe397; margin: 10px 0 0; }
+  .verified::before { content: '✓'; }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">smith<span>docs</span></div>
+  <nav><a href="/demo.html">← try it in the demo</a></nav>
+</header>
+<div class="wrap">
+  <h1>Reference</h1>
+  <p class="lede">
+    Every export in <code>smith</code>, with its actual source (not a signature summary) and what it's for.
+    Nothing here is invented for this page — each block is copied directly from <code>src/index.ts</code>,
+    and every usage example below has been compiled under <code>--strict</code> and run.
+  </p>
+
+  <h2><code>Chain</code></h2>
+  <p class="desc">Connector words. Every method just <code>return this</code> — pure structure, no meaning of its own. Extend it once; every fluent builder in your app shares these instead of redefining them.</p>
+  <pre>export abstract class Chain {
+  and(): this {
+    return this;
+  }
+
+  but(): this {
+    return this;
+  }
+
+  also(): this {
+    return this;
+  }
+
+  if(): this {
+    return this;
+  }
+
+  then(): this {
+    return this;
+  }
+
+  is(): this {
+    return this;
+  }
+}</pre>
+  <p class="desc" style="margin-top:10px;"><code>if()</code> is a method, not a function — "if" is a reserved word in JS/TS and can only exist as a property name.</p>
+
+  <h2><code>Organism</code></h2>
+  <p class="desc">The one connector that starts a chain at your entry point.</p>
+  <pre>export abstract class Organism {
+  will(): this {
+    return this;
+  }
+}</pre>
+
+  <h2><code>Comparable&lt;T&gt;</code></h2>
+  <p class="desc">Implement <code>compareTo()</code> once per value type; every comparison method comes free. The single place raw <code>===</code>/<code>&gt;</code>/<code>&lt;</code> is allowed to exist — everywhere else calls one of these instead of repeating that logic per type.</p>
+  <pre>export abstract class Comparable&lt;T&gt; {
+  protected abstract compareTo(other: T): number;
+
+  equals(other: T): boolean {
+    return this.compareTo(other) === 0;
+  }
+
+  greaterThan(other: T): boolean {
+    return this.compareTo(other) &gt; 0;
+  }
+
+  lessThan(other: T): boolean {
+    return this.compareTo(other) &lt; 0;
+  }
+
+  greaterThanOrEqual(other: T): boolean {
+    return this.compareTo(other) &gt;= 0;
+  }
+
+  lessThanOrEqual(other: T): boolean {
+    return this.compareTo(other) &lt;= 0;
+  }
+}</pre>
+  <p class="desc" style="margin-top:10px;">Negative = less than, zero = equal, positive = greater than — same contract as Java's <code>Comparable</code> or <code>Array.prototype.sort</code>'s comparator.</p>
+
+  <h2><code>Conditional</code> / <code>Subject</code> / <code>Clause</code> / <code>ifIt()</code></h2>
+  <p class="desc">
+    The branch-chain system — what the <code>atomic-codemod</code> tool's transform actually generates. It turns
+    <code>if (subject.method(arg)) { return a; } else { return b; }</code> into
+    <code>ifIt(subject).method(arg).thenItIs(a).orelseIs(b)</code>, with <strong>zero closures</strong> and every
+    method zero- or one-arg, same rule as <code>Comparable</code>/<code>Chain</code>.
+  </p>
+  <p class="desc">
+    <code>equals()</code>/<code>greaterThan()</code>/etc. <strong>delegate</strong> to the same-named method on the
+    wrapped subject — <code>ifIt(x).equals(y)</code> behaves exactly like <code>x.equals(y)</code>, just deferred
+    through the chain. <code>isSameAs()</code>/<code>isEqualTo()</code> are the raw <code>===</code> alternative,
+    for primitives without their own <code>.equals()</code> (e.g. <code>ifIt(rule).isSameAs(null)</code>).
+  </p>
+  <pre>export class Conditional&lt;T&gt; {
+  constructor(readonly matched: boolean, readonly result: T | undefined) {}
+
+  orifIt&lt;S&gt;(subject: S): Subject&lt;T, S&gt; {
+    return new Subject&lt;T, S&gt;(this, subject);
+  }
+
+  orelseIs(value: T): T {
+    return this.matched ? (this.result as T) : value;
+  }
+}
+
+export class Subject&lt;T, S&gt; {
+  constructor(readonly parent: Conditional&lt;T&gt; | null, readonly value: S) {}
+
+  equals(other: unknown): Clause&lt;T, S&gt; {
+    return new Clause&lt;T, S&gt;(this.parent, (this.value as any).equals(other));
+  }
+
+  greaterThan(other: unknown): Clause&lt;T, S&gt; {
+    return new Clause&lt;T, S&gt;(this.parent, (this.value as any).greaterThan(other));
+  }
+
+  lessThan(other: unknown): Clause&lt;T, S&gt; {
+    return new Clause&lt;T, S&gt;(this.parent, (this.value as any).lessThan(other));
+  }
+
+  greaterThanOrEqual(other: unknown): Clause&lt;T, S&gt; {
+    return new Clause&lt;T, S&gt;(this.parent, (this.value as any).greaterThanOrEqual(other));
+  }
+
+  lessThanOrEqual(other: unknown): Clause&lt;T, S&gt; {
+    return new Clause&lt;T, S&gt;(this.parent, (this.value as any).lessThanOrEqual(other));
+  }
+
+  isSameAs(other: S): Clause&lt;T, S&gt; {
+    return new Clause&lt;T, S&gt;(this.parent, this.value === other);
+  }
+
+  isEqualTo(other: S): Clause&lt;T, S&gt; {
+    return new Clause&lt;T, S&gt;(this.parent, this.value === other);
+  }
+
+  // Only callable when S is boolean -- for a compound and(...)/or(...)
+  // condition that's already a yes/no value, with no "other" to compare.
+  isTrue(this: Subject&lt;T, boolean&gt;): Clause&lt;T, boolean&gt; {
+    return new Clause&lt;T, boolean&gt;(this.parent, this.value);
+  }
+}
+
+export class Clause&lt;T, S&gt; {
+  constructor(readonly parent: Conditional&lt;T&gt; | null, readonly matched: boolean) {}
+
+  thenItIs(value: T): Conditional&lt;T&gt; {
+    if (this.parent &amp;&amp; this.parent.matched) {
+      return this.parent; // an earlier clause already matched -- keep its result
+    }
+    return new Conditional&lt;T&gt;(this.matched, this.matched ? value : undefined);
+  }
+}
+
+export function ifIt&lt;T, S&gt;(subject: S): Subject&lt;T, S&gt; {
+  return new Subject&lt;T, S&gt;(null, subject);
+}</pre>
+
+  <h2><code>and()</code> / <code>or()</code></h2>
+  <p class="desc">
+    <code>&amp;&amp;</code>/<code>||</code> as free functions, not methods. <code>a.and(b)</code> would assume
+    <code>a</code> has its own <code>.and()</code> method, but <code>&amp;&amp;</code>/<code>||</code> almost always
+    combine plain booleans (the result of a comparison), and booleans have no such method.
+  </p>
+  <pre>export function and(a: boolean, b: boolean): boolean {
+  return a &amp;&amp; b;
+}
+
+export function or(a: boolean, b: boolean): boolean {
+  return a || b;
+}</pre>
+
+  <h2>Putting it together</h2>
+  <p class="desc">Two verified examples — <code>Chain</code>/<code>Organism</code>/<code>Comparable</code>, then the branch-chain system on its own.</p>
+  <pre>import { Chain, Organism, Comparable } from 'smith';
+
+class PageText extends Comparable&lt;PageText&gt; {
+  constructor(private readonly value: string) { super(); }
+  protected compareTo(other: PageText): number {
+    return this.value.localeCompare(other.value);
+  }
+}
+
+type TextResult = 'static' | 'dynamic';
+
+class TextCheck extends Chain {
+  constructor(private readonly current: PageText) { super(); }
+  equalTo(expected: PageText): TextResult {
+    if (this.current.equals(expected)) {
+      return 'static';
+    } else {
+      return 'dynamic';
+    }
+  }
+}
+
+class Page extends Organism {
+  checkText(current: PageText): TextCheck {
+    return new TextCheck(current);
+  }
+}
+
+const page = new Page();
+page.will().checkText(new PageText('hello')).and().if().is().equalTo(new PageText('hello'));
+// -&gt; 'static'</pre>
+  <div class="verified">compiled under --strict, run, printed 'static'</div>
+
+  <pre>import { ifIt, and } from 'smith';
+
+// subject.method(arg) -&gt; ifIt(subject).method(arg) -- this is exactly
+// what the atomic-codemod tool generates from:
+//   return rule == null ? 'unrated' : value === rule.expected ? 'valid' : 'invalid';
+function validateField(rule: Rule, value: Comparable): string {
+  const expected = rule?.expected.value ?? null;
+  return ifIt&lt;string, Rule&gt;(rule).equals(null).thenItIs('unrated')
+    .orifIt&lt;Comparable&gt;(value).equals(expected).thenItIs('valid')
+    .orelseIs('invalid');
+}
+
+validateField(new Rule(null), new Comparable('anything'));       // 'unrated'
+validateField(new Rule({ expected: 'red' }), new Comparable('red'));  // 'valid'
+validateField(new Rule({ expected: 'red' }), new Comparable('blue')); // 'invalid'
+
+function isWithinRange(value: number, min: number, max: number): boolean {
+  return and(value &gt;= min, value &lt;= max);
+}
+
+isWithinRange(5, 0, 10);  // true
+isWithinRange(15, 0, 10); // false</pre>
+  <div class="verified">compiled under --strict against the real installed package, run, printed 'unrated' / 'valid' / 'invalid' / true / false</div>
+</div>
+</body>
+</html>

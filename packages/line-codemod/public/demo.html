@@ -1,0 +1,1160 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Atomic — Live Demo</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; height: 100vh; overflow: hidden;
+    background: #05060a; color: #e4e6eb;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+  #app { display: grid; grid-template-columns: 1fr 400px; height: 100vh; }
+
+  /* ---- left: output (top) + code (bottom) ---- */
+  #left { display: flex; flex-direction: column; min-width: 0; border-right: 1px solid #1c1f26; }
+  .panel-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 18px; border-bottom: 1px solid #1c1f26; flex-shrink: 0;
+  }
+  .panel-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #5eead4; }
+  .brand { font-size: 14px; font-weight: 800; padding: 12px 18px; border-bottom: 1px solid #1c1f26; }
+  .brand span { color: #5eead4; }
+
+  #output { flex: 1; overflow-y: auto; padding: 20px 24px; min-height: 0; }
+  .block { margin-bottom: 26px; }
+  .block-tag { font-size: 10px; color: #6c7480; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; font-family: ui-monospace, Menlo, monospace; }
+  .block-sentence { font-size: 22px; line-height: 1.6; font-weight: 400; letter-spacing: -0.01em; color: #e4e6eb; }
+  .block-sentence .loading { color: #6c7480; font-style: italic; font-size: 15px; }
+  .block-sentence .verb { color: #fff; font-weight: 700; }
+  .block-sentence .connector { color: #6c7480; font-style: italic; }
+  .block-sentence .literal { color: #6fe397; font-weight: 500; }
+  .block-sentence .result { color: #7aa2f7; font-weight: 600; }
+  .block-code-toggle { font-size: 11px; color: #6c7480; cursor: pointer; margin-top: 6px; display: inline-block; font-family: ui-monospace, Menlo, monospace; }
+  .block-code-toggle:hover { color: #9aa0ac; }
+  .step-list { list-style: none; margin: 0; padding: 0; }
+  .step-row {
+    display: flex; align-items: flex-start; gap: 8px; padding: 5px 6px 5px 2px; margin: 0 -6px;
+    border-radius: 6px; border: 1px solid transparent; cursor: grab; outline: none;
+  }
+  .step-row:hover { background: #0e1015; }
+  .step-row:focus { border-color: #5eead4; }
+  .step-row.dragging { opacity: .35; }
+  .step-row.drag-over { border-top: 2px solid #5eead4; }
+  .step-row.broken { background: rgba(240, 96, 96, .08); }
+  .step-row.broken .step-sentence { color: #f26161; text-decoration: underline wavy #f26161; text-underline-offset: 3px; }
+  .step-handle { color: #3d424c; font-size: 13px; line-height: 1.6; user-select: none; padding-top: 1px; }
+  .step-sentence { flex: 1; font-size: 22px; line-height: 1.6; font-weight: 400; letter-spacing: -0.01em; color: #e4e6eb; }
+  .step-sentence .verb { color: #fff; font-weight: 700; }
+  .step-sentence .connector { color: #6c7480; font-style: italic; }
+  .step-sentence .literal { color: #6fe397; font-weight: 500; }
+  .step-delete { background: none; border: none; color: #4a4f58; font-size: 15px; padding: 0 4px; line-height: 1.8; opacity: 0; }
+  .step-row:hover .step-delete, .step-row:focus .step-delete { opacity: 1; }
+  .step-delete:hover { color: #f26161; }
+  .step-actions { display: flex; align-items: center; gap: 10px; margin-top: 4px; }
+  .step-undo { font-size: 11px; color: #6c7480; cursor: pointer; background: none; border: none; padding: 0; }
+  .step-undo:hover { color: #5eead4; }
+  .step-undo:disabled { color: #33363d; cursor: default; }
+  .code-preview {
+    display: none; margin: 8px 0 0; padding: 10px 12px; background: #0b0d11; border: 1px solid #1c1f26;
+    border-radius: 6px; font-family: ui-monospace, Menlo, monospace; font-size: 11.5px; color: #7de8a4; white-space: pre-wrap;
+  }
+  .code-preview.show { display: block; }
+  .code-preview mark.code-broken { background: rgba(242, 97, 97, .18); color: #f26161; border-radius: 3px; }
+  .chip-strip { display: flex; flex-wrap: wrap; gap: 5px; margin: 4px 0 0 24px; }
+  .chip {
+    font-size: 11px; font-family: ui-monospace, Menlo, monospace; padding: 3px 8px; border-radius: 999px;
+    border: 1px solid #22252e; background: #14171d; cursor: grab; outline: none; user-select: none;
+  }
+  .chip:focus { border-color: #5eead4; box-shadow: 0 0 0 1px #5eead4; }
+  .chip.dragging { opacity: .35; }
+  .chip.drag-over { border-left: 2px solid #5eead4; }
+  .chip-verb { color: #fff; font-weight: 700; }
+  .chip-subject { color: #7aa2f7; }
+  .chip-arg { color: #6fe397; }
+  .chip-connective { color: #6c7480; font-style: italic; }
+  .chip-add { font-size: 11px; font-family: ui-monospace, Menlo, monospace; padding: 3px 8px; border-radius: 999px; border: 1px dashed #33363d; color: #55595f; cursor: pointer; }
+  .chip-add:hover, .chip-add:focus { color: #5eead4; border-color: #5eead4; outline: none; }
+  .chip-add-input {
+    font-size: 11px; font-family: ui-monospace, Menlo, monospace; padding: 3px 8px; border-radius: 999px;
+    border: 1px solid #5eead4; background: #0b0d11; color: #e4e6eb; outline: none; width: 140px;
+  }
+  .chip-add-wrap { position: relative; display: inline-block; }
+  .suggest-dropdown {
+    display: none; position: absolute; top: 100%; left: 0; margin-top: 4px; z-index: 20;
+    background: #12151a; border: 1px solid #2c2f36; border-radius: 6px; min-width: 220px;
+    max-height: 220px; overflow-y: auto; box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+  }
+  .suggest-item {
+    padding: 4px 10px; font-size: 12px; font-family: ui-monospace, Menlo, monospace; cursor: pointer;
+    display: flex; justify-content: space-between; gap: 10px; white-space: nowrap;
+  }
+  .suggest-item.active, .suggest-item:hover { background: #1c2028; }
+  .suggest-item.add-implementation { color: #f2b86a; font-style: italic; }
+  .suggest-reason { color: #6c7480; font-size: 10px; }
+  .step-sentence[contenteditable] { outline: none; border-bottom: 1px dashed #3d424c; cursor: text; }
+  .step-sentence[contenteditable]:focus { border-bottom-color: #5eead4; }
+  .word-unknown { text-decoration: underline wavy #f2b86a; text-underline-offset: 3px; }
+  .step-extra { list-style: none; padding: 2px 0 8px 24px; }
+  .add-impl-link { font-size: 11.5px; color: #5eead4; cursor: pointer; }
+  .add-impl-link:hover { text-decoration: underline; }
+  .atom-form { padding: 8px 10px; background: #0e1015; border: 1px solid #22252e; border-radius: 6px; display: flex; flex-direction: column; gap: 6px; max-width: 420px; }
+  .atom-form label { font-size: 10px; color: #6c7480; text-transform: uppercase; letter-spacing: .05em; }
+  .atom-form input, .atom-form textarea {
+    background: #0b0d11; border: 1px solid #1c1f26; color: #e4e6eb; border-radius: 5px;
+    padding: 5px 8px; font-family: ui-monospace, Menlo, monospace; font-size: 11.5px; outline: none;
+  }
+  .atom-form textarea { min-height: 54px; resize: vertical; }
+  .atom-form-actions { display: flex; gap: 6px; margin-top: 2px; }
+  .atom-form-error { color: #f26161; font-size: 11px; }
+  .atom-tags { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; }
+  .atom-tag { font-size: 10.5px; font-family: ui-monospace, Menlo, monospace; background: #14171d; border: 1px solid #22252e; color: #5eead4; padding: 3px 8px; border-radius: 999px; }
+
+  #atomsSummary:not(:empty) { margin-bottom: 24px; padding-bottom: 18px; border-bottom: 1px solid #1c1f26; }
+  .atoms-summary-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .atom-sort-toggle { display: flex; gap: 4px; }
+  .atom-sort-btn { background: #14171d; color: #6c7480; border: 1px solid #22252e; font-size: 10.5px; padding: 4px 9px; border-radius: 6px; }
+  .atom-sort-btn.active { color: #5eead4; border-color: #5eead4; }
+  .atom-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+  .atom-row-head { display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 6px 4px; border-radius: 6px; }
+  .atom-row-head:hover { background: #0e1015; }
+  .atom-toggle { color: #6c7480; font-size: 11px; width: 10px; display: inline-block; transition: transform .15s; }
+  .atom-row.open .atom-toggle { transform: rotate(90deg); }
+  .atom-name { font-size: 13.5px; color: #e4e6eb; }
+  .atom-fn { font-size: 11px; color: #5eead4; font-family: ui-monospace, Menlo, monospace; }
+  .atom-count { font-size: 10.5px; color: #6c7480; margin-left: auto; }
+  .atom-used-in { font-size: 10.5px; color: #6c7480; padding: 0 4px 0 26px; }
+  .atom-used-in a.atom-jump { color: #7aa2f7; text-decoration: none; cursor: pointer; }
+  .atom-used-in a.atom-jump:hover { text-decoration: underline; }
+  .atom-impl { display: none; padding: 6px 4px 4px 26px; }
+  .atom-row.open .atom-impl { display: block; }
+  .atom-impl-code { margin: 0; padding: 10px 12px; background: #0b0d11; border: 1px solid #1c1f26; border-radius: 6px; font-family: ui-monospace, Menlo, monospace; font-size: 11.5px; color: #e4e6eb; white-space: pre-wrap; }
+  .atom-impl-missing { font-size: 11.5px; color: #f2b86a; font-style: italic; }
+  .block.flash { animation: flashBlock .9s ease; }
+  @keyframes flashBlock { 0% { background: rgba(94, 234, 212, .14); } 100% { background: transparent; } }
+  .block pre { display: none; margin: 8px 0 0; padding: 10px 12px; background: #0b0d11; border: 1px solid #1c1f26; border-radius: 6px; font-size: 11.5px; color: #7de8a4; white-space: pre-wrap; }
+  .block.open pre { display: block; }
+  .block-edit {
+    display: none; width: 100%; margin: 8px 0 0; padding: 10px 12px;
+    background: #0b0d11; border: 1px solid #1c1f26; border-radius: 6px;
+    font-family: ui-monospace, Menlo, monospace; font-size: 11.5px; color: #7de8a4;
+    resize: vertical; outline: none; min-height: 90px;
+  }
+  .block-edit:focus { border-color: #5eead4; }
+  .block.open .block-edit { display: block; }
+  .block-edit-hint { display: none; font-size: 10px; color: #55595f; margin-top: 4px; }
+  .block.open .block-edit-hint { display: block; }
+
+  #codeWrap { height: 42%; display: flex; flex-direction: column; border-top: 1px solid #1c1f26; flex-shrink: 0; }
+  #codeInput {
+    flex: 1; width: 100%; background: #0b0d11; color: #e4e6eb; border: none; resize: none; outline: none;
+    font-family: ui-monospace, Menlo, monospace; font-size: 12.5px; padding: 16px; line-height: 1.6;
+  }
+  #codeActions { display: flex; gap: 8px; align-items: center; padding: 10px 16px; border-top: 1px solid #1c1f26; }
+  button { font-family: inherit; cursor: pointer; border-radius: 7px; border: 1px solid transparent; }
+  .btn-primary { background: #5eead4; color: #05060a; font-weight: 700; font-size: 12.5px; padding: 8px 16px; }
+  .btn-ghost { background: #14171d; color: #e4e6eb; border-color: #22252e; font-size: 12px; padding: 7px 13px; }
+  .btn-ghost:hover { border-color: #5eead4; }
+  #analyzeStatus { font-size: 11px; color: #6c7480; margin-left: auto; }
+
+  /* ---- right: chat ---- */
+  #chat { display: flex; flex-direction: column; min-width: 0; }
+  #chatHead { padding: 12px 18px; border-bottom: 1px solid #1c1f26; display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+  .model-dot { width: 8px; height: 8px; border-radius: 999px; background: #6c7480; transition: background .3s; flex-shrink: 0; }
+  .model-dot.ready { background: #5eead4; box-shadow: 0 0 8px #5eead4; }
+  #modelLine { font-size: 11.5px; color: #9aa0ac; flex: 1; }
+
+  #messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 14px; min-height: 0; }
+  .msg { max-width: 92%; }
+  .msg.user { align-self: flex-end; }
+  .msg.assistant { align-self: flex-start; }
+  .msg-bubble { padding: 10px 13px; border-radius: 12px; font-size: 13px; line-height: 1.55; }
+  .msg.user .msg-bubble { background: #2b6cf6; color: white; border-bottom-right-radius: 3px; }
+  .msg.assistant .msg-bubble { background: #14171d; border: 1px solid #22252e; border-bottom-left-radius: 3px; }
+  .msg-bubble pre { margin: 8px 0 0; padding: 10px 11px; background: #0b0d11; border-radius: 7px; font-size: 11px; color: #7de8a4; white-space: pre-wrap; overflow-x: auto; }
+  .msg-time { font-size: 9.5px; color: #55595f; margin-top: 4px; }
+  .msg.user .msg-time { text-align: right; }
+  .msg-actions { margin-top: 8px; display: flex; gap: 6px; }
+
+  .typing { display: inline-flex; gap: 3px; padding: 2px 0; }
+  .typing span { width: 5px; height: 5px; border-radius: 999px; background: #6c7480; animation: bounce 1.2s infinite; }
+  .typing span:nth-child(2) { animation-delay: .15s; }
+  .typing span:nth-child(3) { animation-delay: .3s; }
+  @keyframes bounce { 0%, 60%, 100% { transform: translateY(0); opacity: .5; } 30% { transform: translateY(-4px); opacity: 1; } }
+
+  #chatInputWrap { border-top: 1px solid #1c1f26; padding: 12px; flex-shrink: 0; }
+  #chatForm { display: flex; gap: 8px; }
+  #chatInput {
+    flex: 1; background: #14171d; border: 1px solid #22252e; color: #e4e6eb;
+    border-radius: 20px; padding: 10px 16px; font-size: 13px; outline: none; resize: none;
+    font-family: inherit; max-height: 100px;
+  }
+  #chatInput:focus { border-color: #5eead4; }
+  #sendBtn {
+    width: 38px; height: 38px; border-radius: 999px; background: #5eead4; color: #05060a;
+    display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0;
+  }
+  #sendBtn:disabled { opacity: .4; cursor: default; }
+  .hint { font-size: 10.5px; color: #55595f; text-align: center; margin-top: 8px; }
+
+  ::-webkit-scrollbar { width: 8px; }
+  ::-webkit-scrollbar-thumb { background: #22252e; border-radius: 4px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="left">
+    <div class="brand" style="display:flex; align-items:center; gap:14px;">
+      Atomic<span>Demo</span>
+      <a href="/docs.html" style="font-size:11px; font-weight:400; color:#6c7480; text-decoration:none;">docs →</a>
+      <a href="/plug.html" style="font-size:11px; font-weight:400; color:#6c7480; text-decoration:none;">plug/unplug →</a>
+    </div>
+    <div class="panel-head">
+      <span class="panel-title">Output — in English</span>
+      <span id="analyzeStatus"></span>
+    </div>
+    <div id="output"><div id="atomsSummary"></div><div style="color:#6c7480; font-size:13px;">Click "Analyze" below to translate the code into English, block by block.</div></div>
+    <div id="codeWrap">
+      <div class="panel-head" style="border-top:1px solid #1c1f26; border-bottom:none;">
+        <span class="panel-title">Code</span>
+      </div>
+      <textarea id="codeInput" spellcheck="false"></textarea>
+      <div id="codeActions">
+        <button class="btn-primary" id="analyzeBtn">▸ Analyze</button>
+        <button class="btn-ghost" id="resetBtn">Reset to default</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="chat">
+    <div id="chatHead">
+      <div class="model-dot" id="modelDot"></div>
+      <div id="modelLine">model not loaded</div>
+      <button class="btn-ghost" id="loadBtn" style="padding:5px 10px; font-size:11px;">Load model</button>
+    </div>
+    <div id="messages"></div>
+    <div id="chatInputWrap">
+      <form id="chatForm">
+        <textarea id="chatInput" rows="1" placeholder="Ask for a messy example… (load the model first)" disabled></textarea>
+        <button id="sendBtn" type="submit" disabled>➤</button>
+      </form>
+      <div class="hint">Runs entirely in this tab via WebGPU. Nothing here touches our server.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const DEFAULT_CODE = `class FormValidator {
+  constructor(rules) {
+    this.rules = rules;
+    this.errors = [];
+  }
+
+  validateField(name, value) {
+    const rule = this.rules[name];
+    return rule == null ? 'unrated' : value === rule.expected ? 'valid' : 'invalid';
+  }
+
+  validateAll(values) {
+    let allValid = true;
+    for (const name in values) {
+      const status = this.validateField(name, values[name]);
+      if (status !== 'valid') {
+        allValid = false;
+        this.errors.push(name + ' is ' + status);
+      }
+    }
+    return allValid;
+  }
+
+  describeLength(value) {
+    return value.length === 0 ? 'empty' : value.length < 5 ? 'short' : value.length < 20 ? 'medium' : 'long';
+  }
+
+  isWithinRange(value, min, max) {
+    return value >= min && value <= max ? true : false;
+  }
+
+  summarize() {
+    return this.errors.length === 0 ? 'no errors' : this.errors.length === 1 ? '1 error' : this.errors.length + ' errors';
+  }
+}`;
+
+function escapeHtml(s) {
+  return s.replace(/[&<>]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[ch]));
+}
+
+document.getElementById('codeInput').value = DEFAULT_CODE;
+document.getElementById('resetBtn').onclick = () => { document.getElementById('codeInput').value = DEFAULT_CODE; };
+
+let engine = null;
+
+function timeNow() {
+  return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function addMessage(role, html) {
+  const wrap = document.createElement('div');
+  wrap.className = 'msg ' + role;
+  wrap.innerHTML = `<div class="msg-bubble">${html}</div><div class="msg-time">${timeNow()}</div>`;
+  document.getElementById('messages').appendChild(wrap);
+  document.getElementById('messages').scrollTop = 1e9;
+  return wrap;
+}
+
+function addTyping() {
+  const wrap = document.createElement('div');
+  wrap.className = 'msg assistant';
+  wrap.innerHTML = `<div class="msg-bubble"><div class="typing"><span></span><span></span><span></span></div></div>`;
+  document.getElementById('messages').appendChild(wrap);
+  document.getElementById('messages').scrollTop = 1e9;
+  return wrap;
+}
+
+async function llmSay(userText, systemPrompt) {
+  const reply = await engine.chat.completions.create({
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userText },
+    ],
+  });
+  return reply.choices[0].message.content.trim();
+}
+
+document.getElementById('loadBtn').onclick = async () => {
+  const btn = document.getElementById('loadBtn');
+  const line = document.getElementById('modelLine');
+  btn.disabled = true;
+  line.textContent = 'loading web-llm…';
+  try {
+    const webllm = await import("https://esm.run/@mlc-ai/web-llm");
+    const chatCapable = webllm.prebuiltAppConfig.model_list.filter(m => !/embed/i.test(m.model_id));
+    const smallest = [...chatCapable].sort((a, b) => (a.vram_required_MB || Infinity) - (b.vram_required_MB || Infinity))[0];
+    if (!smallest) throw new Error('no chat-capable model in the prebuilt catalog');
+    line.textContent = 'loading ' + smallest.model_id + '…';
+    engine = await webllm.CreateMLCEngine(smallest.model_id, {
+      initProgressCallback: (r) => { line.textContent = r.text; },
+    });
+    line.textContent = 'ready: ' + smallest.model_id;
+    document.getElementById('modelDot').classList.add('ready');
+    document.getElementById('chatInput').disabled = false;
+    document.getElementById('sendBtn').disabled = false;
+    addMessage('assistant', 'Model loaded. Ask me for a messy example function, or anything else.');
+  } catch (e) {
+    line.textContent = 'failed: ' + e.message + ' (needs a WebGPU-capable browser, e.g. recent Chrome/Edge)';
+    btn.disabled = false;
+  }
+};
+
+const CHAT_SYSTEM = 'You generate short, deliberately messy JavaScript functions for a refactoring demo, OR answer plain questions. When asked for messy/example code, use ternaries, ===, !==, >, <, >=, <=, &&, || liberally and mix concerns. Reply with ONLY the code (no markdown fences) when code is requested; otherwise reply normally in plain text.';
+
+document.getElementById('chatForm').onsubmit = async (e) => {
+  e.preventDefault();
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if (!text || !engine) return;
+  input.value = '';
+  document.getElementById('sendBtn').disabled = true;
+
+  addMessage('user', escapeHtml(text));
+  const typing = addTyping();
+
+  try {
+    const reply = await llmSay(text, CHAT_SYSTEM);
+    typing.remove();
+    const looksLikeCode = /[{};]/.test(reply) && reply.split('\n').length > 1;
+    if (looksLikeCode) {
+      const bubble = addMessage('assistant', `<pre>${escapeHtml(reply)}</pre><div class="msg-actions"><button class="btn-ghost" style="font-size:11px;padding:5px 10px;">Use this code</button></div>`);
+      bubble.querySelector('button').onclick = () => {
+        document.getElementById('codeInput').value = reply;
+        document.getElementById('analyzeBtn').click();
+      };
+    } else {
+      addMessage('assistant', escapeHtml(reply));
+    }
+  } catch (err) {
+    typing.remove();
+    addMessage('assistant', 'generation failed: ' + escapeHtml(err.message));
+  }
+
+  document.getElementById('sendBtn').disabled = false;
+};
+
+document.getElementById('chatInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    document.getElementById('chatForm').requestSubmit();
+  }
+});
+
+// Deterministic, no model: refactor the block to atoms server-side, then
+// render THAT (not the original code) as English. Readability comes from
+// the atom shape itself, not an LLM's paraphrase of arbitrary code.
+const CONNECTOR_WORDS = ['if', 'otherwise', 'then', 'and', 'or', 'of', 'is', 'not', 'for each', 'in', 'while', 'let', 'be', 'set', 'to'];
+
+function markupSegment(segment) {
+  let html = escapeHtml(segment);
+  html = html.replace(/'[^']*'|\b\d+(\.\d+)?\b|\btrue\b|\bfalse\b/g, m => `<span class="literal">${m}</span>`);
+  const connectorPattern = new RegExp('\\b(' + CONNECTOR_WORDS.join('|').replace(' ', '\\s') + ')\\b', 'gi');
+  html = html.replace(connectorPattern, m => `<span class="connector">${m}</span>`);
+  return html;
+}
+
+// Marks each broken step's own code slice red in a readonly preview, using
+// the same start/end offsets toEnglish attached to the step -- so the
+// highlight is exactly the statement flagged, not a guess from text search.
+// Shown only when at least one step is broken; otherwise stays hidden so
+// the editable textarea below (revealed by "show atoms") is the only view.
+function highlightBrokenCode(i, code, steps) {
+  const preview = document.getElementById('codepreview-' + i);
+  if (!preview) return;
+  const anyBroken = steps.some((s) => s.broken);
+  preview.classList.toggle('show', anyBroken);
+  if (!anyBroken) { preview.innerHTML = ''; return; }
+
+  let html = '';
+  let cursor = 0;
+  [...steps].sort((a, b) => a.start - b.start).forEach((s) => {
+    html += escapeHtml(code.slice(cursor, s.start));
+    const slice = escapeHtml(code.slice(s.start, s.end));
+    html += s.broken ? `<mark class="code-broken" title="${escapeHtml(s.broken.reason)}">${slice}</mark>` : slice;
+    cursor = s.end;
+  });
+  html += escapeHtml(code.slice(cursor));
+  preview.innerHTML = html;
+}
+
+function titleHtml(title) {
+  return `<span class="verb">${escapeHtml(title || '')}</span>:`;
+}
+
+async function describeBlock(code, kind) {
+  const res = await fetch('/api/to-english', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code, kind }),
+  }).then(r => r.json());
+  if (res.error) return { html: `(couldn't refactor: ${escapeHtml(res.error)})`, refactored: null, atoms: [], atomUsage: [], steps: [], title: null };
+  return { html: titleHtml(res.title), refactored: res.refactored, atoms: res.atoms || [], atomUsage: res.atomUsage || [], steps: res.steps || [], title: res.title };
+}
+
+async function reorderBlockSteps(code, kind, order) {
+  return fetch('/api/reorder-steps', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code, kind, order }),
+  }).then(r => r.json());
+}
+
+function renderAtomTags(atoms) {
+  if (!atoms.length) return '';
+  return `<div class="atom-tags">${atoms.map(a => `<span class="atom-tag">${escapeHtml(a)}()</span>`).join('')}</div>`;
+}
+
+// One deduplicated, cross-example list of every atom actually called,
+// instead of the per-block tags above -- built from each block's
+// `atomUsage` (name/count in first-use order, `atomParamNames`'s
+// implementation lookup already attached server-side). Rebuilt from
+// scratch from `blockState` on every change (initial analyze, live edit,
+// reorder/delete, undo) rather than patched incrementally, since any of
+// those can add or remove atom calls and there are at most a handful of
+// blocks -- a full rebuild is cheap and can never drift from what's
+// actually in the blocks.
+let globalAtoms = [];
+let atomSortMode = 'first-use';
+
+function rebuildGlobalAtoms() {
+  globalAtoms = [];
+  Object.keys(blockState).map(Number).sort((a, b) => a - b).forEach((i) => {
+    const state = blockState[i];
+    if (!state || !state.atomUsage) return;
+    state.atomUsage.forEach((u) => {
+      let entry = globalAtoms.find((a) => a.name === u.name);
+      if (!entry) {
+        entry = { name: u.name, count: 0, chunks: [], implementation: null };
+        globalAtoms.push(entry);
+      }
+      entry.count += u.count;
+      if (!entry.implementation && u.implementation) entry.implementation = u.implementation;
+      if (!entry.chunks.some((c) => c.blockIndex === i)) {
+        entry.chunks.push({ blockIndex: i, name: state.name });
+      }
+    });
+  });
+}
+
+// Same split as to-english.js's own camelToWords (server-side) -- kept in
+// sync by hand since it's one line; only used here to render an atom's
+// readable name (e.g. "is within range") next to its function name.
+function camelToWords(name) {
+  return name.replace(/([a-z0-9])([A-Z])/g, '$1 $2').toLowerCase();
+}
+
+const JS_KEYWORD_PATTERN = /(['"][^'"]*['"]|\b\d+(?:\.\d+)?\b|\b(?:function|return|const|let|var|if|else|class|new|this|typeof|true|false|null|undefined|for|while|of|in|extends|static|get|set)\b)/g;
+
+// Same lightweight "color the obvious tokens" approach as markupSegment
+// uses for English sentences, applied to real code instead -- one regex
+// pass over the already-escaped string, so there's no risk of a later
+// pass matching text inside a span this pass just inserted.
+function highlightCode(code) {
+  return escapeHtml(code).replace(JS_KEYWORD_PATTERN, (m) => (
+    /^['"]/.test(m) || /^\d/.test(m) ? `<span class="literal">${m}</span>` : `<span class="connector">${m}</span>`
+  ));
+}
+
+function atomRowHtml(a, idx) {
+  const usedIn = a.chunks.map((c) => `<a href="#" class="atom-jump" data-block="${c.blockIndex}">${escapeHtml(c.name)}</a>`).join(', ');
+  const impl = a.implementation
+    ? `<pre class="atom-impl-code">${highlightCode(a.implementation.code)}</pre>`
+    : `<div class="atom-impl-missing">no implementation yet</div>`;
+  return `
+    <li class="atom-row" data-idx="${idx}">
+      <div class="atom-row-head" data-idx="${idx}">
+        <span class="atom-toggle">▸</span>
+        <span class="atom-name">${escapeHtml(camelToWords(a.name))}</span>
+        <code class="atom-fn">${escapeHtml(a.name)}()</code>
+        <span class="atom-count">×${a.count}</span>
+      </div>
+      <div class="atom-used-in">used in: ${usedIn}</div>
+      <div class="atom-impl">${impl}</div>
+    </li>`;
+}
+
+function renderAtomsSummary() {
+  const container = document.getElementById('atomsSummary');
+  if (!container) return;
+  if (!globalAtoms.length) { container.innerHTML = ''; return; }
+
+  const list = atomSortMode === 'az' ? [...globalAtoms].sort((a, b) => a.name.localeCompare(b.name)) : globalAtoms;
+
+  container.innerHTML = `
+    <div class="atoms-summary-head">
+      <span class="panel-title" style="color:#9aa0ac;">Atoms used in this example (${globalAtoms.length})</span>
+      <span class="atom-sort-toggle">
+        <button class="atom-sort-btn${atomSortMode === 'first-use' ? ' active' : ''}" data-mode="first-use">first use</button>
+        <button class="atom-sort-btn${atomSortMode === 'az' ? ' active' : ''}" data-mode="az">A–Z</button>
+      </span>
+    </div>
+    <ul class="atom-list">${list.map((a, idx) => atomRowHtml(a, idx)).join('')}</ul>
+  `;
+
+  container.querySelectorAll('.atom-row-head').forEach((el) => {
+    el.onclick = () => el.closest('.atom-row').classList.toggle('open');
+  });
+  container.querySelectorAll('.atom-sort-btn').forEach((btn) => {
+    btn.onclick = () => { atomSortMode = btn.dataset.mode; renderAtomsSummary(); };
+  });
+  container.querySelectorAll('.atom-jump').forEach((a) => {
+    a.onclick = (e) => {
+      e.preventDefault();
+      const target = document.getElementById('block-' + a.dataset.block);
+      if (!target) return;
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      target.classList.add('flash');
+      setTimeout(() => target.classList.remove('flash'), 900);
+    };
+  });
+}
+
+// Per-block state for the step-row editor (reorder/delete/undo). Keyed by
+// block index. `code`/`kind` is the CURRENT refactored source -- every
+// mutation rebuilds from it server-side and replaces it, so the English is
+// always re-derived from the code that's actually there, never hand-edited
+// in place.
+const blockState = {};
+
+// Wraps any word in `text` that's in `words` (the unrecognized list the
+// server returned) with a wavy-underline span -- the visual half of
+// "unrecognised words are underlined with Add implementation".
+function underlineUnknown(text, words) {
+  const known = new Set((words || []).map((w) => w.toLowerCase()));
+  return escapeHtml(text).replace(/[a-z0-9']+/gi, (w) => (known.has(w.toLowerCase()) ? `<span class="word-unknown">${w}</span>` : w));
+}
+
+function suggestName(words) {
+  if (!words || !words.length) return 'step';
+  return words[0] + words.slice(1).map((w) => w[0].toUpperCase() + w.slice(1)).join('');
+}
+
+function atomFormHtml(idx, pending) {
+  return `
+    <li class="step-extra">
+      <div class="atom-form" data-idx="${idx}">
+        <label>Name</label>
+        <input class="atom-name" value="${escapeHtml(suggestName(pending.unrecognizedWords))}" spellcheck="false" />
+        <label>Params (comma-separated)</label>
+        <input class="atom-params" placeholder="e.g. value, min, max" spellcheck="false" />
+        <label>Body</label>
+        <textarea class="atom-body" spellcheck="false" placeholder="return value;"></textarea>
+        ${pending.error ? `<div class="atom-form-error">${escapeHtml(pending.error)}</div>` : ''}
+        <div class="atom-form-actions">
+          <button class="btn-primary atom-save" data-idx="${idx}" style="font-size:11px;padding:5px 10px;">Save</button>
+          <button class="btn-ghost atom-cancel" data-idx="${idx}" style="font-size:11px;padding:5px 10px;">Cancel</button>
+        </div>
+      </div>
+    </li>`;
+}
+
+// Every token keeps a stable `origIdx` -- its position in the token array
+// AS LAST RETURNED BY THE SERVER -- so a chip's identity survives any
+// number of local-only (broken) moves without the client and server ever
+// disagreeing about what "the original order" means. Call this on every
+// steps array that comes fresh from a server response.
+function tagOrigIdx(steps) {
+  (steps || []).forEach((s) => { (s.tokens || []).forEach((tok, idx) => { tok.origIdx = idx; }); });
+  return steps;
+}
+
+// Chip strip: the same step rendered as one draggable/keyboard-navigable
+// chip per token (chip types verb/subject/arg/connective from tokenizeStmt
+// in to-english.js -- a multi-word atom name is already one chip there, so
+// there's nothing extra to merge here). Sits below the free-text sentence
+// span (block 4, unchanged) rather than replacing it. Moving a chip always
+// updates the display right away (moveChip below); POST /api/reorder-chip
+// (block 6) decides whether that move also regenerates the code (only a
+// swap of two argument chips from the same call does) or the step turns red
+// with a reason, same red-on-break UX as whole-step reorder (block 3).
+// "+ word" (block 7): typing a new word/phrase here is matched against the
+// library server-side (POST /api/insert-word) -- a known atom's own name
+// becomes a new chain link, an in-scope identifier becomes a new argument,
+// anything else falls into the same underline + Add implementation flow
+// block 4 already built (see submitInsertWord below).
+// The dropdown (block 8) lives inside the same wrapper as the input so it
+// can be positioned relative to it and re-rendered from state, same as
+// everything else on this page -- no imperative DOM node creation.
+function chipStripHtml(idx, tokens, addingWord) {
+  const adder = addingWord
+    ? `<span class="chip-add-wrap"><input class="chip-add-input" data-idx="${idx}" spellcheck="false" placeholder="a word or phrase" /><div class="suggest-dropdown" data-idx="${idx}"></div></span>`
+    : `<span class="chip-add" tabindex="0" data-idx="${idx}" title="Type a word: a known atom becomes a call, an in-scope name becomes an argument">+ word</span>`;
+  return `
+    <div class="chip-strip" data-idx="${idx}">
+      ${tokens.map((tok, tokIdx) => `<span class="chip chip-${tok.type}" tabindex="0" draggable="true" data-idx="${idx}" data-tok="${tokIdx}" title="${escapeHtml(tok.type)}">${escapeHtml(tok.text)}</span>`).join('')}
+      ${adder}
+    </div>`;
+}
+
+// One step row, plus (when this step's wording is mid-edit and unresolved)
+// a second <li> for the underline explanation / "add implementation" form.
+// A pending row is NOT contenteditable -- it's showing the draft wording
+// with its unrecognized words marked, not inviting another edit on top of
+// an edit that hasn't resolved yet.
+function stepRowHtml(i, idx, s) {
+  const state = blockState[i];
+  const pending = state.pending && state.pending.idx === idx ? state.pending : null;
+  const rowClass = 'step-row' + (s.broken ? ' broken' : '') + (pending ? ' editing' : '');
+  const titleAttr = s.broken ? ` title="${escapeHtml(s.broken.reason)}"` : '';
+  const sentenceHtml = pending ? underlineUnknown(pending.english, pending.unrecognizedWords) : markupSegment(s.english);
+  const editableAttr = pending ? '' : ' contenteditable="true" spellcheck="false"';
+
+  let html = `
+    <li class="${rowClass}" draggable="${pending ? 'false' : 'true'}" tabindex="0" data-idx="${idx}"${titleAttr}>
+      <span class="step-handle">⠿</span>
+      <span class="step-sentence"${editableAttr} data-idx="${idx}">${sentenceHtml}</span>
+      <button class="step-delete" title="Remove this step" data-idx="${idx}">×</button>
+    </li>${pending ? '' : chipStripHtml(idx, s.tokens || [], state.addingWord === idx)}`;
+
+  if (pending) {
+    if (pending.showForm) {
+      html += atomFormHtml(idx, pending);
+    } else {
+      html += `
+    <li class="step-extra">
+      <span class="add-impl-link" data-idx="${idx}">+ Add implementation for the underlined word${pending.unrecognizedWords.length === 1 ? '' : 's'}</span>
+      ${pending.error ? `<div class="atom-form-error">${escapeHtml(pending.error)}</div>` : ''}
+    </li>`;
+    }
+  }
+  return html;
+}
+
+// Resolving a step's edited wording: exact match on a registered atom's
+// english, then embedding similarity (server-side, registry.js) -- if
+// either hits, the step's code is swapped for a call to that atom and the
+// edit is done. If neither hits, the row switches into "pending" display
+// (underlined unknown words + add-implementation) instead of reverting.
+async function submitWording(i, idx, newText) {
+  const state = blockState[i];
+  const original = state.steps[idx];
+  const text = newText.trim();
+  if (!text || text === original.english.trim()) {
+    state.pending = null;
+    renderSteps(i, state.steps);
+    return;
+  }
+
+  const res = await fetch('/api/resolve-wording', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code: state.code, kind: state.kind, stepIndex: idx, english: text }),
+  }).then((r) => r.json());
+
+  if (res.error) {
+    state.pending = { idx, english: text, unrecognizedWords: [], error: res.error };
+    renderSteps(i, state.steps);
+    return;
+  }
+
+  if (res.resolved) {
+    state.undoStack.push({ code: state.code, steps: state.steps, atomUsage: state.atomUsage });
+    state.code = res.refactored;
+    state.steps = tagOrigIdx(res.steps);
+    state.atomUsage = res.atomUsage || [];
+    state.pending = null;
+    const codeEl = document.getElementById('code-' + i);
+    if (codeEl) codeEl.value = res.refactored;
+    renderSteps(i, res.steps);
+    rebuildGlobalAtoms();
+    renderAtomsSummary();
+    return;
+  }
+
+  state.pending = { idx, english: text, unrecognizedWords: res.unrecognizedWords, showForm: false };
+  renderSteps(i, state.steps);
+}
+
+// Block 7's counterpart to submitWording above: a typed word/phrase either
+// resolves (atom -> new chain link, in-scope identifier -> new argument) or
+// falls into the same "pending" underline + Add implementation display,
+// tagged `mode: 'insert'` so saveAtom below knows to retry via this
+// function rather than submitWording once the atom is registered.
+async function submitInsertWord(i, idx, word) {
+  const state = blockState[i];
+  const text = word.trim();
+  state.addingWord = null;
+  if (!text) { renderSteps(i, state.steps); return; }
+
+  const res = await fetch('/api/insert-word', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code: state.code, kind: state.kind, stepIndex: idx, word: text }),
+  }).then((r) => r.json());
+
+  if (res.error) {
+    state.pending = { idx, english: text, unrecognizedWords: [], error: res.error, mode: 'insert' };
+    renderSteps(i, state.steps);
+    return;
+  }
+
+  if (res.resolved) {
+    state.undoStack.push({ code: state.code, steps: state.steps, atomUsage: state.atomUsage });
+    state.code = res.refactored;
+    state.steps = tagOrigIdx(res.steps);
+    state.atomUsage = res.atomUsage || [];
+    const codeEl = document.getElementById('code-' + i);
+    if (codeEl) codeEl.value = res.refactored;
+    renderSteps(i, state.steps);
+    rebuildGlobalAtoms();
+    renderAtomsSummary();
+    return;
+  }
+
+  state.pending = { idx, english: text, unrecognizedWords: res.unrecognizedWords, showForm: false, mode: 'insert' };
+  renderSteps(i, state.steps);
+}
+
+async function saveAtom(i, idx) {
+  const state = blockState[i];
+  const form = document.querySelector(`.atom-form[data-idx="${idx}"]`);
+  const name = form.querySelector('.atom-name').value.trim();
+  const params = form.querySelector('.atom-params').value.split(',').map((p) => p.trim()).filter(Boolean);
+  const body = form.querySelector('.atom-body').value;
+
+  const res = await fetch('/api/register-atom', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, params, body, english: state.pending.english }),
+  }).then((r) => r.json());
+
+  if (res.error) {
+    state.pending.error = res.error;
+    state.pending.showForm = true;
+    renderSteps(i, state.steps);
+    return;
+  }
+
+  // Registered under the same wording that was just typed -- resolving it
+  // again now hits the exact match and applies it.
+  if (state.pending.mode === 'insert') await submitInsertWord(i, idx, state.pending.english);
+  else await submitWording(i, idx, state.pending.english);
+}
+
+function renderSteps(i, steps) {
+  const state = blockState[i];
+  const list = document.getElementById('steps-' + i);
+  if (!list) return;
+  list.innerHTML = steps.map((s, idx) => stepRowHtml(i, idx, s)).join('');
+
+  highlightBrokenCode(i, state.code, steps);
+
+  list.querySelectorAll('.step-sentence[contenteditable]').forEach((el) => {
+    const idx = Number(el.dataset.idx);
+    el.addEventListener('mousedown', () => { el.closest('.step-row').draggable = false; });
+    el.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); el.blur(); }
+      if (e.key === 'Escape') { e.preventDefault(); el.textContent = state.steps[idx].english; el.blur(); }
+    });
+    el.addEventListener('blur', () => {
+      el.closest('.step-row').draggable = true;
+      submitWording(i, idx, el.textContent);
+    });
+  });
+
+  list.querySelectorAll('.add-impl-link').forEach((el) => {
+    el.onclick = () => {
+      state.pending.showForm = true;
+      renderSteps(i, state.steps);
+    };
+  });
+
+  list.querySelectorAll('.atom-save').forEach((btn) => {
+    btn.onclick = () => saveAtom(i, Number(btn.dataset.idx));
+  });
+
+  list.querySelectorAll('.atom-cancel').forEach((btn) => {
+    btn.onclick = () => { state.pending = null; renderSteps(i, state.steps); };
+  });
+
+  const rows = [...list.querySelectorAll('.step-row')];
+  let dragIdx = null;
+
+  rows.forEach((row) => {
+    row.addEventListener('dragstart', () => {
+      dragIdx = Number(row.dataset.idx);
+      row.classList.add('dragging');
+    });
+    row.addEventListener('dragend', () => row.classList.remove('dragging'));
+    row.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      row.classList.add('drag-over');
+    });
+    row.addEventListener('dragleave', () => row.classList.remove('drag-over'));
+    row.addEventListener('drop', (e) => {
+      e.preventDefault();
+      row.classList.remove('drag-over');
+      const targetIdx = Number(row.dataset.idx);
+      if (dragIdx === null || dragIdx === targetIdx) return;
+      // Move dragIdx to just after targetIdx (or before, if it was already
+      // past targetIdx) -- indices are into the CURRENT steps array.
+      const order = state.steps.map((_, n) => n).filter((n) => n !== dragIdx);
+      const insertAt = order.indexOf(targetIdx) + (dragIdx < targetIdx ? 1 : 0);
+      order.splice(insertAt, 0, dragIdx);
+      applyOrder(i, order);
+    });
+    row.addEventListener('keydown', (e) => {
+      const idx = Number(row.dataset.idx);
+      if (e.altKey && e.key === 'ArrowUp' && idx > 0) {
+        e.preventDefault();
+        const order = state.steps.map((_, n) => n);
+        [order[idx - 1], order[idx]] = [order[idx], order[idx - 1]];
+        applyOrder(i, order, idx - 1);
+      } else if (e.altKey && e.key === 'ArrowDown' && idx < state.steps.length - 1) {
+        e.preventDefault();
+        const order = state.steps.map((_, n) => n);
+        [order[idx], order[idx + 1]] = [order[idx + 1], order[idx]];
+        applyOrder(i, order, idx + 1);
+      }
+    });
+  });
+
+  list.querySelectorAll('.step-delete').forEach((btn) => {
+    btn.onclick = () => {
+      const idx = Number(btn.dataset.idx);
+      const order = state.steps.map((_, n) => n).filter((n) => n !== idx);
+      applyOrder(i, order);
+    };
+  });
+
+  wireChipStrips(i, list);
+
+  const undoBtn = document.getElementById('undo-' + i);
+  if (undoBtn) undoBtn.disabled = state.undoStack.length === 0;
+}
+
+// Swaps tokens[from] and tokens[to] -- the move always happens visually,
+// right away, regardless of what the server says (per spec). `order` is
+// then sent to /api/reorder-chip as a permutation of each chip's stable
+// origIdx: if it resolves to a real argument swap the code/English/atoms
+// summary all update from the server's rebuilt source (same "re-derive,
+// never hand-patch" rule as every other mutation here); otherwise the
+// step's `broken` reason is set and the row turns red, same as block 3.
+async function moveChip(i, stepIdx, from, to, focusToken) {
+  const state = blockState[i];
+  const tokens = state.steps[stepIdx].tokens;
+  if (to < 0 || to >= tokens.length || from === to) return;
+  [tokens[from], tokens[to]] = [tokens[to], tokens[from]];
+  renderSteps(i, state.steps);
+  if (focusToken != null) {
+    const chip = document.querySelector(`.chip-strip[data-idx="${stepIdx}"] .chip[data-tok="${focusToken}"]`);
+    if (chip) chip.focus();
+  }
+
+  const order = tokens.map((tok) => tok.origIdx);
+  const res = await fetch('/api/reorder-chip', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code: state.code, kind: state.kind, stepIndex: stepIdx, order }),
+  }).then((r) => r.json());
+  if (res.error) return;
+
+  if (!res.broken) {
+    state.undoStack.push({ code: state.code, steps: state.steps, atomUsage: state.atomUsage });
+    state.code = res.refactored;
+    state.steps = tagOrigIdx(res.steps);
+    state.atomUsage = res.atomUsage || [];
+    const codeEl = document.getElementById('code-' + i);
+    if (codeEl) codeEl.value = res.refactored;
+    renderSteps(i, state.steps);
+    rebuildGlobalAtoms();
+    renderAtomsSummary();
+  } else {
+    state.steps[stepIdx].broken = res.broken;
+    renderSteps(i, state.steps);
+  }
+}
+
+function wireChipStrips(i, list) {
+  if (!list) return;
+  let dragChip = null;
+  list.querySelectorAll('.chip').forEach((chip) => {
+    chip.addEventListener('dragstart', (e) => {
+      e.stopPropagation();
+      dragChip = { stepIdx: Number(chip.dataset.idx), tok: Number(chip.dataset.tok) };
+      chip.classList.add('dragging');
+    });
+    chip.addEventListener('dragend', () => chip.classList.remove('dragging'));
+    chip.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      chip.classList.add('drag-over');
+    });
+    chip.addEventListener('dragleave', () => chip.classList.remove('drag-over'));
+    chip.addEventListener('drop', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      chip.classList.remove('drag-over');
+      const stepIdx = Number(chip.dataset.idx);
+      const targetTok = Number(chip.dataset.tok);
+      if (!dragChip || dragChip.stepIdx !== stepIdx || dragChip.tok === targetTok) return;
+      moveChip(i, stepIdx, dragChip.tok, targetTok, targetTok);
+    });
+    chip.addEventListener('keydown', (e) => {
+      const stepIdx = Number(chip.dataset.idx);
+      const tok = Number(chip.dataset.tok);
+      if (e.altKey && e.key === 'ArrowLeft') { e.preventDefault(); moveChip(i, stepIdx, tok, tok - 1, tok - 1); }
+      else if (e.altKey && e.key === 'ArrowRight') { e.preventDefault(); moveChip(i, stepIdx, tok, tok + 1, tok + 1); }
+    });
+  });
+
+  const state = blockState[i];
+  list.querySelectorAll('.chip-add').forEach((span) => {
+    const open = () => {
+      state.addingWord = Number(span.dataset.idx);
+      renderSteps(i, state.steps);
+      const input = list.querySelector(`.chip-add-input[data-idx="${state.addingWord}"]`);
+      if (input) input.focus();
+    };
+    span.addEventListener('click', open);
+    span.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } });
+  });
+
+  list.querySelectorAll('.chip-add-input').forEach((input) => {
+    const idx = Number(input.dataset.idx);
+    const dropdown = input.parentElement.querySelector('.suggest-dropdown');
+    let cancelled = false;
+    let accepted = false;
+    let suggestions = [];
+    let selected = -1;
+
+    function renderDropdown() {
+      if (!suggestions.length) { dropdown.style.display = 'none'; dropdown.innerHTML = ''; return; }
+      dropdown.innerHTML = suggestions
+        .map((s, n) => `<div class="suggest-item${s.kind === 'add-implementation' ? ' add-implementation' : ''}${n === selected ? ' active' : ''}" data-n="${n}"><span>${escapeHtml(s.label)}</span>${s.reason ? `<span class="suggest-reason">${escapeHtml(s.reason)}</span>` : ''}</div>`)
+        .join('');
+      dropdown.style.display = 'block';
+    }
+
+    // Block 8: fires on every keystroke -- autosuggest.js is local/offline
+    // (no network call, no LLM) so a request per keystroke stays well
+    // within the ~20ms budget from the spec.
+    async function fetchSuggestions() {
+      const q = input.value;
+      if (!q.trim()) { suggestions = []; selected = -1; renderDropdown(); return; }
+      const params = new URLSearchParams({ code: state.code, kind: state.kind, stepIndex: String(idx), q });
+      const res = await fetch('/api/autosuggest?' + params.toString()).then((r) => r.json());
+      if (input.value !== q) return; // a newer keystroke already superseded this request
+      suggestions = res.suggestions || [];
+      selected = -1;
+      renderDropdown();
+    }
+
+    function accept(s) {
+      accepted = true;
+      cancelled = true; // suppress the plain blur-submit below; accept() drives submission itself
+      if (s.kind !== 'add-implementation') input.value = s.text;
+      suggestions = [];
+      renderDropdown();
+      submitInsertWord(i, idx, input.value);
+    }
+
+    input.addEventListener('input', fetchSuggestions);
+
+    input.addEventListener('keydown', (e) => {
+      if (suggestions.length && dropdown.style.display === 'block') {
+        if (e.key === 'ArrowDown') { e.preventDefault(); selected = Math.min(selected + 1, suggestions.length - 1); renderDropdown(); return; }
+        if (e.key === 'ArrowUp') { e.preventDefault(); selected = Math.max(selected - 1, -1); renderDropdown(); return; }
+        if ((e.key === 'Enter' || e.key === 'Tab') && selected >= 0) { e.preventDefault(); accept(suggestions[selected]); return; }
+        if (e.key === 'Escape') { e.preventDefault(); suggestions = []; renderDropdown(); return; }
+      }
+      if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+      else if (e.key === 'Escape') { e.preventDefault(); cancelled = true; state.addingWord = null; renderSteps(i, state.steps); }
+    });
+
+    // mousedown (not click) fires before the input's blur, so a dropdown
+    // click doesn't get preempted by the blur handler closing everything first.
+    dropdown.addEventListener('mousedown', (e) => {
+      const item = e.target.closest('.suggest-item');
+      if (!item) return;
+      e.preventDefault();
+      accept(suggestions[Number(item.dataset.n)]);
+    });
+
+    input.addEventListener('blur', () => {
+      if (accepted) return;
+      suggestions = [];
+      if (cancelled) return;
+      submitInsertWord(i, idx, input.value);
+    });
+  });
+}
+
+async function applyOrder(i, order, focusIdx) {
+  const state = blockState[i];
+  state.undoStack.push({ code: state.code, steps: state.steps, atomUsage: state.atomUsage });
+  const res = await reorderBlockSteps(state.code, state.kind, order);
+  if (res.error) { state.undoStack.pop(); return; }
+  state.code = res.refactored;
+  state.steps = tagOrigIdx(res.steps);
+  state.atomUsage = res.atomUsage || [];
+  const codeEl = document.getElementById('code-' + i);
+  if (codeEl) codeEl.value = res.refactored;
+  renderSteps(i, state.steps);
+  rebuildGlobalAtoms();
+  renderAtomsSummary();
+  if (focusIdx != null) {
+    const row = document.querySelectorAll(`#steps-${i} .step-row`)[focusIdx];
+    if (row) row.focus();
+  }
+}
+
+function undoBlock(i) {
+  const state = blockState[i];
+  const prev = state.undoStack.pop();
+  if (!prev) return;
+  state.code = prev.code;
+  state.steps = prev.steps;
+  state.atomUsage = prev.atomUsage || [];
+  const codeEl = document.getElementById('code-' + i);
+  if (codeEl) codeEl.value = prev.code;
+  renderSteps(i, prev.steps);
+  rebuildGlobalAtoms();
+  renderAtomsSummary();
+}
+
+document.getElementById('analyzeBtn').onclick = async () => {
+  const code = document.getElementById('codeInput').value;
+  const status = document.getElementById('analyzeStatus');
+  const output = document.getElementById('output');
+  status.textContent = 'chunking…';
+
+  const chunkRes = await fetch('/api/chunk', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code }),
+  }).then(r => r.json());
+
+  if (chunkRes.error || !chunkRes.chunks.length) {
+    output.innerHTML = `<div style="color:#f2b86a; font-size:13px;">${chunkRes.error ? escapeHtml(chunkRes.error) : 'No chunks found -- is this valid JS with at least one function/method?'}</div>`;
+    status.textContent = '';
+    return;
+  }
+
+  output.innerHTML = '<div id="atomsSummary"></div>';
+  globalAtoms = [];
+  chunkRes.chunks.forEach((c, i) => {
+    blockState[i] = { code: c.code, kind: c.kind, name: c.name, steps: [], undoStack: [], atomUsage: [] };
+    const block = document.createElement('div');
+    block.className = 'block';
+    block.id = 'block-' + i;
+    block.innerHTML = `
+      <div class="block-tag">${c.kind} · ${c.name}</div>
+      <div class="block-sentence" id="sentence-${i}"><span class="loading">refactoring to atoms…</span></div>
+      <ol class="step-list" id="steps-${i}"></ol>
+      <pre class="code-preview" id="codepreview-${i}"></pre>
+      <div class="step-actions"><button class="step-undo" id="undo-${i}" disabled>↺ undo</button></div>
+      <div id="atoms-${i}"></div>
+      <span class="block-code-toggle" data-i="${i}">▸ show atoms (editable)</span>
+      <textarea class="block-edit" id="code-${i}" data-kind="${c.kind}" spellcheck="false">${escapeHtml(c.code)}</textarea>
+      <div class="block-edit-hint">Edit the atom code above — the sentence re-renders as you type.</div>
+    `;
+    output.appendChild(block);
+    document.getElementById('undo-' + i).onclick = () => undoBlock(i);
+  });
+
+  output.querySelectorAll('.block-code-toggle').forEach(el => {
+    el.onclick = () => el.closest('.block').classList.toggle('open');
+  });
+
+  // Editing the refactored code re-renders its own sentence live -- debounced
+  // so it doesn't fire a request on every keystroke. Deterministic either way:
+  // this hits the same /api/to-english endpoint, no model involved.
+  const debounceTimers = {};
+  output.querySelectorAll('.block-edit').forEach((el, i) => {
+    el.addEventListener('input', () => {
+      clearTimeout(debounceTimers[i]);
+      const sentenceEl = document.getElementById('sentence-' + i);
+      if (sentenceEl) sentenceEl.innerHTML = '<span class="loading">updating…</span>';
+      debounceTimers[i] = setTimeout(async () => {
+        const { html, refactored, atoms, atomUsage, steps, title } = await describeBlock(el.value, el.dataset.kind);
+        const current = document.getElementById('sentence-' + i);
+        if (current) current.innerHTML = html;
+        const atomsEl = document.getElementById('atoms-' + i);
+        if (atomsEl) atomsEl.innerHTML = renderAtomTags(atoms);
+        // re-refactoring an already-refactored edit is idempotent when the
+        // edit didn't introduce new raw operators/ternaries; when it does,
+        // this keeps the textarea in sync with what was actually rendered.
+        if (refactored && document.activeElement !== el) el.value = refactored;
+        if (refactored && blockState[i]) {
+          blockState[i].code = refactored;
+          blockState[i].steps = tagOrigIdx(steps);
+          blockState[i].atomUsage = atomUsage;
+          blockState[i].undoStack = [];
+          renderSteps(i, blockState[i].steps);
+          rebuildGlobalAtoms();
+          renderAtomsSummary();
+        }
+      }, 500);
+    });
+  });
+
+  status.textContent = 'refactoring blocks to atoms…';
+
+  for (let i = 0; i < chunkRes.chunks.length; i++) {
+    const { html, refactored, atoms, atomUsage, steps } = await describeBlock(chunkRes.chunks[i].code, chunkRes.chunks[i].kind);
+    const sentenceEl = document.getElementById('sentence-' + i);
+    if (sentenceEl) sentenceEl.innerHTML = html;
+    const atomsEl = document.getElementById('atoms-' + i);
+    if (atomsEl) atomsEl.innerHTML = renderAtomTags(atoms);
+    if (refactored) {
+      const codeEl = document.getElementById('code-' + i);
+      if (codeEl) codeEl.value = refactored;
+      if (blockState[i]) {
+        blockState[i].code = refactored;
+        blockState[i].steps = tagOrigIdx(steps);
+        blockState[i].atomUsage = atomUsage;
+        renderSteps(i, blockState[i].steps);
+        rebuildGlobalAtoms();
+        renderAtomsSummary();
+      }
+    }
+  }
+
+  status.textContent = 'done — no model used for this, pure AST';
+};
+</script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+{
+  "groups": [
+    ["check", "verify", "validate", "test"],
+    ["count", "number of", "how many"],
+    ["remove", "delete", "drop"],
+    ["get", "fetch", "read", "load"],
+    ["is empty", "has no"],
+    ["is within range", "within range", "in range", "between"]
+  ]
+}

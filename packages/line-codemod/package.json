@@ -1,0 +1,30 @@
+{
+  "name": "atomic-codemod",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "bin": {
+    "atomic-codemod": "transform.js"
+  },
+  "scripts": {
+    "codemod:check": "node transform.js \"src/**/*.{js,ts}\" --check",
+    "codemod:write": "node transform.js \"src/**/*.{js,ts}\" --write",
+    "test": "node --test *.test.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@babel/generator": "^8.0.6",
+    "@babel/parser": "^8.0.6",
+    "@babel/traverse": "^8.0.6",
+    "@babel/types": "^8.0.6",
+    "express": "^5.2.1"
+  },
+  "devDependencies": {
+    "fast-check": "^4.10.2",
+    "quickjs-emscripten": "0.32.0",
+    "typescript": "5.9.3"
+  }
+}

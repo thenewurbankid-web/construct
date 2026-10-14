@@ -1,0 +1,7 @@
+{
+  "ollamaUrl": "http://localhost:11434",
+  "simpleModel": "qwen2.5-coder:1.5b",
+  "extractionModel": "qwen2.5-coder:7b",
+  "extractionThreshold": 2,
+  "llmExtraction": false
+}

@@ -1,0 +1,68 @@
+{
+  "impl": "current",
+  "canonical": true,
+  "corpus": {
+    "roots": [
+      "/Users/shashank/Repositories/construct/.claude/worktrees/og-final-1012/packages",
+      "/Users/shashank/Repositories/construct/.claude/worktrees/og-final-1012/bench/ecommerce/starter",
+      "/Users/shashank/Repositories/construct/.claude/worktrees/og-final-1012/bench/lending/starter"
+    ],
+    "files": 184,
+    "unparsedFiles": 0,
+    "functions": 380
+  },
+  "overall": {
+    "functions": 380,
+    "throws": 0,
+    "clean": 380,
+    "steps": 767,
+    "chips": 16515,
+    "placeholders": 0,
+    "byKind": {
+      "expr": 0,
+      "stmt": 0,
+      "pattern": 0
+    },
+    "byType": {},
+    "placeholderRate": 0,
+    "cleanRate": 1,
+    "throwRate": 0,
+    "rendered": 380
+  },
+  "logic": {
+    "functions": 207,
+    "throws": 0,
+    "clean": 207,
+    "steps": 407,
+    "chips": 6592,
+    "placeholders": 0,
+    "byKind": {
+      "expr": 0,
+      "stmt": 0,
+      "pattern": 0
+    },
+    "byType": {},
+    "placeholderRate": 0,
+    "cleanRate": 1,
+    "throwRate": 0,
+    "rendered": 207
+  },
+  "jsx": {
+    "functions": 173,
+    "throws": 0,
+    "clean": 173,
+    "steps": 360,
+    "chips": 9923,
+    "placeholders": 0,
+    "byKind": {
+      "expr": 0,
+      "stmt": 0,
+      "pattern": 0
+    },
+    "byType": {},
+    "placeholderRate": 0,
+    "cleanRate": 1,
+    "throwRate": 0,
+    "rendered": 173
+  }
+}

@@ -1,0 +1,8 @@
+node_modules/
+*.log
+.DS_Store
+atoms-registry.json
+bench/atoms/.runtime/
+bench/atoms/atoms-page/site/
+bench/atoms/atoms-page/entry.mjs
+bench/atoms/js-reference/site/

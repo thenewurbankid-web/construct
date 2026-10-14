@@ -1,0 +1,301 @@
+<title>Smith Atoms</title>
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout: the JS Reference Atlas's manual layout. Module rail on the left; each atom shows its three forms side by side. */
+:root {
+  --paper: #f6f7f4; --card: #ffffff; --ink: #1b2124; --muted: #5d686d; --rule: #d9dedb;
+  --accent: #0b6e69; --accent-soft: #dcefec; --code-bg: #f0f2ee;
+  --ok: #2e7a3c; --ok-bg: #e2f1e4; --err: #a8431f; --err-bg: #f8e6dd; --na: #66707a; --na-bg: #e8ebee; --nd: #7a5a0c; --nd-bg: #f6edd3;
+  --kw: #7a3e9d; --str: #2e7a3c; --num: #a8431f; --com: #7d8a8f;
+  --font-head: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --paper: #121618; --card: #1a2023; --ink: #e3e8e6; --muted: #9aa6aa; --rule: #2c3538; --accent: #5cc6bd; --accent-soft: #173a37; --code-bg: #151a1c;
+    --ok: #82cf8e; --ok-bg: #1a3320; --err: #f0a07c; --err-bg: #3a2218; --na: #a4adb5; --na-bg: #262e33; --nd: #e8c66a; --nd-bg: #352c12;
+    --kw: #c8a0e8; --str: #82cf8e; --num: #f0a07c; --com: #6f7c80;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --paper: #121618; --card: #1a2023; --ink: #e3e8e6; --muted: #9aa6aa; --rule: #2c3538; --accent: #5cc6bd; --accent-soft: #173a37; --code-bg: #151a1c;
+  --ok: #82cf8e; --ok-bg: #1a3320; --err: #f0a07c; --err-bg: #3a2218; --na: #a4adb5; --na-bg: #262e33; --nd: #e8c66a; --nd-bg: #352c12;
+  --kw: #c8a0e8; --str: #82cf8e; --num: #f0a07c; --com: #6f7c80;
+}
+body { background: var(--paper); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.5; padding-inline: 16px; }
+.wrap { max-width: 1280px; margin: 0 auto; padding-block: 24px 64px; }
+header { display: grid; gap: 12px; padding-bottom: 18px; border-bottom: 1px solid var(--rule); margin-bottom: 20px; }
+h1 { font-family: var(--font-head); font-size: clamp(1.8rem, 4vw, 2.5rem); margin: 0; letter-spacing: -0.01em; }
+.sub { color: var(--muted); margin: 0; max-width: 78ch; }
+.stats { display: flex; flex-wrap: wrap; gap: 8px 20px; font-family: var(--font-mono); font-size: 0.82rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.stats b { color: var(--ink); font-weight: 600; }
+.bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
+.layout { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 28px; align-items: start; }
+@media (max-width: 860px) { .layout { grid-template-columns: 1fr; } aside { position: static !important; max-height: none !important; } .modules { max-height: 240px; } }
+aside { position: sticky; top: env(safe-area-inset-top, 0px); max-height: 100vh; display: grid; grid-template-rows: auto auto 1fr; gap: 12px; padding-top: 4px; }
+input[type="search"] { width: 100%; box-sizing: border-box; font: inherit; padding: 9px 12px; border: 1px solid var(--rule); border-radius: 6px; background: var(--card); color: var(--ink); }
+input[type="search"]:focus-visible, button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font: 500 0.8rem var(--font-mono); padding: 4px 10px; border-radius: 999px; border: 1px solid var(--rule); background: var(--card); color: var(--muted); cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--paper); }
+.modules { overflow-y: auto; border-top: 1px solid var(--rule); padding-block: 8px 24px; }
+.modules a { display: flex; justify-content: space-between; gap: 8px; padding: 3px 8px; border-radius: 4px; color: var(--ink); text-decoration: none; font: 0.84rem var(--font-mono); }
+.modules a:hover { background: var(--accent-soft); }
+.modules a[aria-current="true"] { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.modules a span { color: var(--muted); font-variant-numeric: tabular-nums; }
+main h2 { font-family: var(--font-head); font-size: 1.6rem; margin: 0 0 4px; }
+.lead { color: var(--muted); margin: 0; font-size: 0.92rem; }
+.entries { display: grid; gap: 14px; margin-top: 16px; }
+.entry { background: var(--card); border: 1px solid var(--rule); border-radius: 8px; overflow: hidden; }
+.entry-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; padding: 10px 14px; border-bottom: 1px solid var(--rule); }
+.key { font: 600 0.98rem var(--font-mono); }
+.reads { color: var(--muted); font-size: 0.9rem; }
+.tags { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.tag { font: 500 0.7rem var(--font-mono); padding: 2px 8px; border-radius: 999px; background: var(--na-bg); color: var(--na); white-space: nowrap; }
+.tag.ok { background: var(--ok-bg); color: var(--ok); }
+.tag.bad { background: var(--err-bg); color: var(--err); }
+.tag.todo { background: var(--nd-bg); color: var(--nd); }
+.btn { font: 600 0.75rem var(--font-mono); padding: 3px 10px; border-radius: 5px; border: 1px solid var(--accent); background: transparent; color: var(--accent); cursor: pointer; }
+.btn:hover { background: var(--accent-soft); }
+.btn.primary { background: var(--accent); color: var(--paper); padding: 6px 12px; font-size: 0.8rem; }
+.btn:disabled { opacity: 0.5; cursor: progress; }
+.panes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 1000px) { .panes { grid-template-columns: 1fr; } .pane + .pane { border-left: 0 !important; border-top: 1px solid var(--rule); } }
+.pane { min-width: 0; background: var(--code-bg); }
+.pane + .pane { border-left: 1px solid var(--rule); }
+.pane.sentence { background: var(--accent-soft); }
+.label { font: 600 0.68rem var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); padding: 8px 14px 0; }
+pre { margin: 0; padding: 6px 14px 10px; overflow-x: auto; font: 0.82rem/1.55 var(--font-mono); white-space: pre; }
+.result { border-top: 1px dashed var(--rule); }
+.inputs { padding: 8px 14px; border-top: 1px solid var(--rule); font: 0.8rem var(--font-mono); color: var(--muted); overflow-x: auto; white-space: pre; }
+.out-err { color: var(--err); } .out-na { color: var(--na); font-style: italic; }
+.k { color: var(--kw); } .s { color: var(--str); } .n { color: var(--num); } .c { color: var(--com); }
+.empty { color: var(--muted); padding: 40px 0; }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Smith Atoms</h1>
+    <p class="sub">Every atom in Smith's catalog, written three ways: the native JavaScript it replaces, the atom called plainly, and its Atomic English sentence. Each form is a real function. Run draws inputs with Smith's own generators and checks the three agree.</p>
+    <div class="stats" id="stats"></div>
+    <div class="bar"><button class="btn primary" id="run-everything">Run every atom</button><span class="lead" id="everything"></span></div>
+  </header>
+  <div class="layout">
+    <aside>
+      <input type="search" id="q" placeholder="Search atoms, e.g. trimmed, greaterThan" aria-label="Search atoms">
+      <div class="chips" id="filters" aria-label="Sentence"></div>
+      <nav class="modules" id="modules" aria-label="Modules"></nav>
+    </aside>
+    <main id="main"></main>
+  </div>
+</div>
+
+<script type="application/json" id="data">__DATA__</script>
+<script type="module">
+import { forms } from './forms.mjs';
+import { arb, fc } from './smith-bundle.mjs';
+
+const { stats, atoms } = JSON.parse(document.getElementById('data').textContent);
+const FILTERS = { all: 'All', sentence: 'Has a sentence', todo: 'Sentence not yet' };
+const state = { filter: 'all', module: null, q: '' };
+const seeds = new Map();
+const results = new Map();
+
+document.getElementById('stats').innerHTML = [
+  `<span><b>${stats.atoms}</b> atoms</span>`, `<span><b>${stats.sentences}</b> with a sentence</span>`,
+  `<span><b>${stats.atoms - stats.sentences}</b> sentence not yet</span>`, `<span><b>${stats.runnable}</b> runnable here</span>`,
+  `<span><b>${stats.modules}</b> modules</span>`, `<span>built ${stats.built} UTC</span>`,
+].join('');
+
+const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+function highlight(code) {
+  const re = /(\/\/[^\n]*|\/\*[\s\S]*?\*\/)|('(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*"|`(?:\\.|[^`\\])*`)|\b(\d[\d_]*(?:\.\d+)?n?)\b|\b(const|let|return|function|async|await|new|if|else|for|of|in|while|try|catch|finally|throw|typeof|instanceof|true|false|null|undefined|this)\b/g;
+  let out = '', last = 0, m;
+  while ((m = re.exec(code))) { out += esc(code.slice(last, m.index)); out += `<span class="${m[1] ? 'c' : m[2] ? 's' : m[3] ? 'n' : 'k'}">${esc(m[0])}</span>`; last = re.lastIndex; }
+  return out + esc(code.slice(last));
+}
+
+// A plain-data picture of any value, so the three answers can be compared.
+function describe(v, depth = 0, seen = new Set()) {
+  if (depth > 4) return '[deep]';
+  const t = typeof v;
+  if (v === null) return null;
+  if (t === 'undefined') return { undefined: true };
+  if (t === 'number') return Number.isNaN(v) ? { number: 'NaN' } : Object.is(v, -0) ? { number: '-0' } : Number.isFinite(v) ? v : { number: String(v) };
+  if (t === 'string' || t === 'boolean') return v;
+  if (t === 'bigint') return { bigint: String(v) };
+  if (t === 'symbol') return { symbol: v.description ?? '' };
+  if (t === 'function') return { function: v.name || '(anonymous)' };
+  if (seen.has(v)) return '[circular]';
+  seen.add(v);
+  const d = (x) => describe(x, depth + 1, seen);
+  try {
+    if (v instanceof Error) return { error: v.name, message: v.message };
+    if (v instanceof Date) return { date: Number.isNaN(v.getTime()) ? 'Invalid Date' : v.toISOString() };
+    if (v instanceof RegExp) return { regexp: String(v), lastIndex: v.lastIndex };
+    if (v instanceof Map) return { map: [...v].slice(0, 20).map(([k, x]) => [d(k), d(x)]) };
+    if (v instanceof Set) return { set: [...v].slice(0, 20).map(d) };
+    if (ArrayBuffer.isView(v) && !(v instanceof DataView)) return { [v.constructor.name]: [...v].slice(0, 32).map(d) };
+    if (v instanceof Promise) return { promise: true };
+    if (Array.isArray(v)) return v.slice(0, 40).map(d);
+    const out = {};
+    for (const k of Object.keys(v).sort().slice(0, 30)) out[k] = d(v[k]);
+    return out;
+  } catch (e) { return { describeError: String(e?.message ?? e) }; }
+}
+function show(d) {
+  if (d === null) return 'null';
+  if (typeof d === 'string') return JSON.stringify(d);
+  if (typeof d !== 'object') return String(d);
+  if (Array.isArray(d)) return `[${d.map(show).join(', ')}]`;
+  const k = Object.keys(d);
+  if (d.undefined) return 'undefined';
+  if ('bigint' in d && k.length === 1) return `${d.bigint}n`;
+  if ('number' in d && k.length === 1) return d.number;
+  if ('error' in d) return `${d.error}: ${d.message}`;
+  if ('date' in d && k.length === 1) return `Date ${d.date}`;
+  if ('regexp' in d) return d.regexp;
+  if (Array.isArray(d.map)) return `Map {${d.map.map(([a, b]) => `${show(a)} => ${show(b)}`).join(', ')}}`;
+  if (Array.isArray(d.set)) return `Set {${d.set.map(show).join(', ')}}`;
+  if ('function' in d) return `[Function ${d.function}]`;
+  return `{ ${k.map((key) => `${key}: ${show(d[key])}`).join(', ')} }`;
+}
+// Each form gets its own copy of the inputs, so a form that changes its input can't affect the others.
+function clone(v) {
+  if (Array.isArray(v)) return v.map(clone);
+  if (v instanceof Date) return new Date(v.getTime());
+  if (v instanceof RegExp) return new RegExp(v.source, v.flags);
+  if (v instanceof Map) return new Map([...v].map(([k, x]) => [clone(k), clone(x)]));
+  if (v instanceof Set) return new Set([...v].map(clone));
+  if (v && typeof v === 'object' && Object.getPrototypeOf(v) === Object.prototype) return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, clone(x)]));
+  return v;
+}
+async function outcome(fn, values) {
+  try {
+    let r = fn(...values.map(clone));
+    if (r && typeof r.then === 'function') r = await Promise.race([r, new Promise((_, no) => setTimeout(() => no(new Error('timed out')), 2000))]);
+    return { ok: describe(r) };
+  } catch (e) { return { throws: e?.name ?? String(e) }; }
+}
+const text = (o) => (o === null ? '—' : o.throws ? `throws ${o.throws}` : show(o.ok));
+const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+
+async function runAtom(i) {
+  const a = atoms[i];
+  const set = 0;
+  const f = forms[a.atom]?.[set];
+  if (!f) return null;
+  const meta = a.sets[set];
+  const seed = seeds.get(i) ?? i * 7919 + 1;
+  const [values] = fc.sample(fc.tuple(...meta.gens.map(arb)), { numRuns: 1, seed });
+  const plain = await outcome(f.plain, values);
+  const short = f.short ? await outcome(f.short, values) : plain;
+  const native = f.native ? await outcome(f.native, values) : null;
+  const sentence = f.sentence ? await outcome(f.sentence, values) : null;
+  // The native form is held to the atom with every argument; a sentence that leaves out trailing optional
+  // arguments is held to the atom called without them.
+  const agree = (native === null || same(native, plain)) && (sentence === null || same(sentence, short));
+  const r = { values, plain, native, sentence, agree };
+  results.set(i, r);
+  return r;
+}
+
+function paint(i) {
+  const r = results.get(i);
+  const el = document.querySelector(`[data-i="${i}"]`);
+  if (!r || !el) return;
+  const a = atoms[i];
+  el.querySelector('.inputs').textContent = `inputs: ${a.sets[0].names.map((n, k) => `${n} = ${show(describe(r.values[k]))}`).join(', ')}`;
+  el.querySelector('[data-r="native"]').textContent = text(r.native);
+  el.querySelector('[data-r="plain"]').textContent = text(r.plain);
+  el.querySelector('[data-r="sentence"]').textContent = a.fluent ? text(r.sentence) : '—';
+  el.querySelector('.agree').innerHTML = `<span class="tag ${r.agree ? 'ok' : 'bad'}">${r.agree ? 'all forms agree' : 'forms differ'}</span>`;
+}
+
+function visible() {
+  const q = state.q.trim().toLowerCase();
+  return atoms.map((a, i) => [a, i]).filter(([a]) => (state.filter === 'all' || (state.filter === 'sentence') === Boolean(a.fluent))
+    && (!q || a.atom.toLowerCase().includes(q) || (a.reads ?? '').toLowerCase().includes(q) || (a.fluent ?? '').toLowerCase().includes(q)));
+}
+
+function card(a, i) {
+  const f = forms[a.atom]?.[0];
+  const tags = [a.fluent ? '<span class="tag ok">sentence</span>' : '<span class="tag todo">sentence not yet</span>'];
+  if (a.mutates) tags.push('<span class="tag">changes input</span>');
+  if (!a.pure) tags.push('<span class="tag">impure</span>');
+  if (a.generated) tags.push('<span class="tag">generated</span>');
+  const code = (fn, missing) => (fn ? highlight(fn.toString()) : `<span class="out-na">${missing}</span>`);
+  return `<article class="entry" data-i="${i}">
+    <div class="entry-head"><span class="key">${esc(a.atom)}</span><span class="reads">${esc(a.reads ?? '')}</span>
+      <span class="tags">${tags.join('')}<span class="agree"></span>${f ? `<button class="btn" data-run="${i}">Run</button><button class="btn" data-new="${i}">New inputs</button>` : ''}</span></div>
+    ${f ? `<div class="panes">
+      <div class="pane"><div class="label">Native JavaScript</div><pre>${code(f.native, `not an expression: ${esc(a.js[0] ?? '')}`)}</pre><pre class="result" data-r="native"></pre></div>
+      <div class="pane"><div class="label">Atom</div><pre>${code(f.plain)}</pre><pre class="result" data-r="plain"></pre></div>
+      <div class="pane sentence"><div class="label">Atomic English</div><pre>${code(f.sentence, 'not written yet')}</pre><pre class="result" data-r="sentence"></pre></div>
+    </div><div class="inputs">Press Run to draw inputs with Smith's generators.</div>`
+    : `<div class="inputs">Not runnable here: ${esc(a.why)}. Native form: ${esc(a.js[0] ?? '—')}${a.fluent ? ` · Sentence: ${esc(a.fluent)}` : ''}</div>`}
+  </article>`;
+}
+
+function render() {
+  const fl = document.getElementById('filters');
+  fl.innerHTML = Object.entries(FILTERS).map(([v, l]) => `<button class="chip" data-v="${v}" aria-pressed="${state.filter === v}">${l}</button>`).join('');
+  const list = visible();
+  const counts = new Map();
+  for (const [a] of list) counts.set(a.module, (counts.get(a.module) ?? 0) + 1);
+  if (!state.q && (!state.module || !counts.has(state.module))) state.module = [...counts.keys()].sort()[0] ?? null;
+  document.getElementById('modules').innerHTML = [...counts].sort((x, y) => x[0].localeCompare(y[0]))
+    .map(([m, n]) => `<a href="#${encodeURIComponent(m)}" data-m="${esc(m)}" aria-current="${state.module === m}">${esc(m)}<span>${n}</span></a>`).join('');
+  const shown = state.q ? list : list.filter(([a]) => a.module === state.module);
+  const main = document.getElementById('main');
+  if (!shown.length) { main.innerHTML = '<p class="empty">No atoms match. Clear the search or change the filter.</p>'; return; }
+  main.innerHTML = `<h2>${state.q ? `Results for “${esc(state.q)}”` : esc(state.module)}</h2>
+    <div class="bar"><p class="lead">${shown.length} atoms · ${shown.filter(([a]) => a.fluent).length} with a sentence</p><button class="btn" id="run-here">Run these ${shown.length}</button><span class="lead" id="here"></span></div>
+    <div class="entries">${shown.map(([a, i]) => card(a, i)).join('')}</div>`;
+  for (const [, i] of shown) paint(i);
+  document.getElementById('run-here').onclick = async () => {
+    let ok = 0, ran = 0;
+    for (const [, i] of shown) { const r = await runAtom(i); if (r) { ran++; if (r.agree) ok++; paint(i); } }
+    document.getElementById('here').textContent = `${ok} of ${ran} agree`;
+  };
+}
+
+document.getElementById('filters').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) { state.filter = b.dataset.v; render(); } });
+document.getElementById('modules').addEventListener('click', (e) => {
+  const a = e.target.closest('a'); if (!a) return;
+  e.preventDefault(); state.module = a.dataset.m; state.q = ''; document.getElementById('q').value = '';
+  history.replaceState(null, '', `#${encodeURIComponent(state.module)}`); render();
+});
+let timer;
+document.getElementById('q').addEventListener('input', (e) => { clearTimeout(timer); timer = setTimeout(() => { state.q = e.target.value; render(); }, 120); });
+document.getElementById('main').addEventListener('click', async (e) => {
+  const run = e.target.closest('[data-run]'); const fresh = e.target.closest('[data-new]');
+  if (fresh) seeds.set(Number(fresh.dataset.new), Math.floor(Math.random() * 2 ** 31));
+  const i = Number((run ?? fresh)?.dataset.run ?? (run ?? fresh)?.dataset.new);
+  if (run || fresh) { await runAtom(i); paint(i); }
+});
+document.getElementById('run-everything').onclick = async (e) => {
+  const button = e.currentTarget; button.disabled = true;
+  const out = document.getElementById('everything');
+  let ok = 0, ran = 0;
+  const differ = [];
+  for (const [i] of atoms.entries()) {
+    const r = await runAtom(i);
+    if (!r) continue;
+    ran++; if (r.agree) ok++; else differ.push(atoms[i].atom);
+    paint(i);
+    if (ran % 20 === 0) out.textContent = `running… ${ran}`;
+  }
+  out.textContent = `${ok} of ${ran} runnable atoms agree across all their forms${differ.length ? `; differ: ${differ.slice(0, 8).join(', ')}${differ.length > 8 ? '…' : ''}` : ''}`;
+  button.disabled = false;
+};
+const fromHash = decodeURIComponent(location.hash.slice(1));
+if (fromHash) state.module = fromHash;
+render();
+</script>

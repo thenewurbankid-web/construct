@@ -1,0 +1,431 @@
+<title>JS Reference Atlas</title>
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout: a reference manual. Sticky index rail on the left, entries on the right; each entry pairs its example with Node's answer. */
+:root {
+  --paper: #f6f7f4;
+  --card: #ffffff;
+  --ink: #1b2124;
+  --muted: #5d686d;
+  --rule: #d9dedb;
+  --accent: #0b6e69;
+  --accent-soft: #dcefec;
+  --code-bg: #f0f2ee;
+  --ok: #2e7a3c; --ok-bg: #e2f1e4;
+  --err: #a8431f; --err-bg: #f8e6dd;
+  --na: #66707a; --na-bg: #e8ebee;
+  --nd: #7a5a0c; --nd-bg: #f6edd3;
+  --kw: #7a3e9d; --str: #2e7a3c; --num: #a8431f; --com: #7d8a8f;
+  --font-head: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --paper: #121618; --card: #1a2023; --ink: #e3e8e6; --muted: #9aa6aa; --rule: #2c3538;
+    --accent: #5cc6bd; --accent-soft: #173a37; --code-bg: #151a1c;
+    --ok: #82cf8e; --ok-bg: #1a3320; --err: #f0a07c; --err-bg: #3a2218; --na: #a4adb5; --na-bg: #262e33; --nd: #e8c66a; --nd-bg: #352c12;
+    --kw: #c8a0e8; --str: #82cf8e; --num: #f0a07c; --com: #6f7c80;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --paper: #121618; --card: #1a2023; --ink: #e3e8e6; --muted: #9aa6aa; --rule: #2c3538;
+  --accent: #5cc6bd; --accent-soft: #173a37; --code-bg: #151a1c;
+  --ok: #82cf8e; --ok-bg: #1a3320; --err: #f0a07c; --err-bg: #3a2218; --na: #a4adb5; --na-bg: #262e33; --nd: #e8c66a; --nd-bg: #352c12;
+  --kw: #c8a0e8; --str: #82cf8e; --num: #f0a07c; --com: #6f7c80;
+}
+body { background: var(--paper); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.5; padding-inline: 16px; }
+.wrap { max-width: 1280px; margin: 0 auto; padding-block: 24px 64px; }
+header { display: grid; gap: 12px; padding-bottom: 18px; border-bottom: 1px solid var(--rule); margin-bottom: 20px; }
+h1 { font-family: var(--font-head); font-size: clamp(1.8rem, 4vw, 2.5rem); margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+.sub { color: var(--muted); margin: 0; max-width: 75ch; }
+.stats { display: flex; flex-wrap: wrap; gap: 8px 20px; font-family: var(--font-mono); font-size: 0.82rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.stats b { color: var(--ink); font-weight: 600; }
+.layout { display: grid; grid-template-columns: 290px minmax(0, 1fr); gap: 28px; align-items: start; }
+@media (max-width: 860px) { .layout { grid-template-columns: 1fr; } aside { position: static !important; max-height: none !important; } .sections { max-height: 260px; } }
+aside { position: sticky; top: env(safe-area-inset-top, 0px); max-height: 100vh; display: grid; grid-template-rows: auto auto auto 1fr; gap: 12px; padding-top: 4px; }
+input[type="search"] { width: 100%; box-sizing: border-box; font: inherit; padding: 9px 12px; border: 1px solid var(--rule); border-radius: 6px; background: var(--card); color: var(--ink); }
+input[type="search"]:focus-visible, button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font: 500 0.8rem var(--font-mono); padding: 4px 10px; border-radius: 999px; border: 1px solid var(--rule); background: var(--card); color: var(--muted); cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--paper); }
+.sections { overflow-y: auto; border-top: 1px solid var(--rule); padding-top: 8px; padding-bottom: 24px; }
+.group { font: 600 0.72rem var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 12px 0 4px; }
+.sections a { display: flex; justify-content: space-between; gap: 8px; padding: 3px 8px; border-radius: 4px; color: var(--ink); text-decoration: none; font-family: var(--font-mono); font-size: 0.84rem; }
+.sections a:hover { background: var(--accent-soft); }
+.sections a[aria-current="true"] { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.sections a span { color: var(--muted); font-variant-numeric: tabular-nums; }
+main h2 { font-family: var(--font-head); font-size: 1.6rem; margin: 0 0 4px; }
+.lead { color: var(--muted); margin: 0 0 18px; font-size: 0.92rem; }
+.entries { display: grid; gap: 14px; }
+.entry { background: var(--card); border: 1px solid var(--rule); border-radius: 8px; overflow: hidden; }
+.entry-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; padding: 10px 14px; border-bottom: 1px solid var(--rule); }
+.key { font: 600 0.95rem var(--font-mono); overflow-wrap: anywhere; }
+.sig { font: 0.84rem var(--font-mono); color: var(--muted); overflow-wrap: anywhere; }
+.tags { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; }
+.tag { font: 500 0.7rem var(--font-mono); padding: 2px 8px; border-radius: 999px; background: var(--na-bg); color: var(--na); white-space: nowrap; }
+.tag.returns { background: var(--ok-bg); color: var(--ok); }
+.tag.throws { background: var(--err-bg); color: var(--err); }
+.tag.nd { background: var(--nd-bg); color: var(--nd); }
+.panes { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1fr); }
+@media (max-width: 1000px) { .panes { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .pane.code { grid-column: 1 / -1; } .pane.code + .pane { border-left: 0; border-top: 1px solid var(--rule); } .pane.browser { border-top: 1px solid var(--rule); } }
+@media (max-width: 700px) { .panes { grid-template-columns: 1fr; } }
+.run { font: 600 0.75rem var(--font-mono); padding: 3px 10px; border-radius: 5px; border: 1px solid var(--accent); background: transparent; color: var(--accent); cursor: pointer; }
+.run:hover { background: var(--accent-soft); }
+.run-all { font: 600 0.8rem var(--font-mono); padding: 6px 12px; border-radius: 6px; border: 1px solid var(--accent); background: var(--accent); color: var(--paper); cursor: pointer; }
+.tag.same { background: var(--ok-bg); color: var(--ok); }
+.tag.differs { background: var(--nd-bg); color: var(--nd); }
+.section-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin: 0 0 18px; }
+.section-bar .lead { margin: 0; }
+.pane { min-width: 0; }
+.pane + .pane { border-left: 1px solid var(--rule); }
+@media (max-width: 700px) { .pane + .pane { border-left: 0; border-top: 1px solid var(--rule); } }
+.pane-label { font: 600 0.68rem var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); padding: 8px 14px 0; }
+pre { margin: 0; padding: 6px 14px 12px; overflow-x: auto; font: 0.82rem/1.55 var(--font-mono); background: transparent; white-space: pre; }
+.pane.code { background: var(--code-bg); }
+.out-err { color: var(--err); }
+.out-na { color: var(--na); font-style: italic; }
+.k { color: var(--kw); } .s { color: var(--str); } .n { color: var(--num); } .c { color: var(--com); }
+.empty { color: var(--muted); padding: 40px 0; }
+.more { font: inherit; margin-top: 8px; padding: 8px 14px; border: 1px solid var(--rule); background: var(--card); color: var(--ink); border-radius: 6px; cursor: pointer; }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>JS Reference Atlas</h1>
+    <p class="sub">Every entry of the JavaScript reference (built-ins up to ES2025, the Web APIs Node provides, and the syntax). Each example is a real function imported from the input Smith will convert: press Run to execute it in this browser and compare with what Node returned.</p>
+    <div class="stats" id="stats"></div>
+    <div class="section-bar"><button class="run-all" id="run-everything">Run all entries</button><span class="lead" id="everything-summary">Runs every example in this browser and compares each with Node.</span></div>
+  </header>
+  <div class="layout">
+    <aside>
+      <input type="search" id="q" placeholder="Search, e.g. padStart, Promise.try, for await" aria-label="Search the reference">
+      <div class="chips" id="layers" aria-label="Layer"></div>
+      <div class="chips" id="statuses" aria-label="Result"></div>
+      <nav class="sections" id="sections" aria-label="Sections"></nav>
+    </aside>
+    <main id="main"></main>
+  </div>
+</div>
+
+<script type="application/json" id="data">__DATA__</script>
+<script>
+const { stats, items } = JSON.parse(document.getElementById('data').textContent);
+const LAYERS = { all: 'All', es: 'ECMAScript', web: 'Web APIs', syntax: 'Syntax' };
+const STATUSES = { all: 'Any result', returns: 'Returns', throws: 'Throws', unavailable: 'Not in Node' };
+const state = { layer: 'all', status: 'all', section: null, q: '', limit: 120 };
+
+document.getElementById('stats').innerHTML = [
+  `<span><b>${stats.total.toLocaleString('en-US')}</b> entries</span>`,
+  `<span><b>${stats.es.toLocaleString('en-US')}</b> ECMAScript</span>`,
+  `<span><b>${stats.web}</b> Web API</span>`,
+  `<span><b>${stats.syntax}</b> syntax</span>`,
+  `<span><b>${stats.sections}</b> sections</span>`,
+  `<span><b>${stats.returns.toLocaleString('en-US')}</b> return a value</span>`,
+  `<span><b>${stats.throws}</b> throw</span>`,
+  `<span><b>${stats.unavailable}</b> not in Node</span>`,
+  `<span>run on Node ${stats.node}</span>`,
+].join('');
+
+function chips(el, options, key) {
+  el.innerHTML = Object.entries(options).map(([v, label]) => `<button class="chip" data-v="${v}" aria-pressed="${state[key] === v}">${label}</button>`).join('');
+  el.onclick = (ev) => {
+    const b = ev.target.closest('button'); if (!b) return;
+    state[key] = b.dataset.v; state.limit = 120;
+    if (key === 'layer') state.section = null;
+    render();
+  };
+}
+
+const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+function highlight(code) {
+  const re = /(\/\/[^\n]*|\/\*[\s\S]*?\*\/)|('(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*"|`(?:\\.|[^`\\])*`)|\b(\d[\d_]*(?:\.\d+)?n?)\b|\b(const|let|var|return|function|async|await|new|class|extends|if|else|for|of|in|while|do|try|catch|finally|throw|yield|typeof|instanceof|void|delete|export|import|from|true|false|null|undefined|this|super|switch|case|default|break|continue)\b/g;
+  let out = '', last = 0, m;
+  while ((m = re.exec(code))) {
+    out += esc(code.slice(last, m.index));
+    const cls = m[1] ? 'c' : m[2] ? 's' : m[3] ? 'n' : 'k';
+    out += `<span class="${cls}">${esc(m[0])}</span>`;
+    last = re.lastIndex;
+  }
+  return out + esc(code.slice(last));
+}
+
+function visible() {
+  const q = state.q.trim().toLowerCase();
+  return items.filter((x) => (state.layer === 'all' || x.l === state.layer)
+    && (state.status === 'all' || x.st === state.status)
+    && (!q || x.k.toLowerCase().includes(q) || x.s.toLowerCase().includes(q)));
+}
+
+function renderSections(list) {
+  const counts = new Map();
+  for (const x of list) counts.set(x.s, (counts.get(x.s) ?? 0) + 1);
+  const groups = { es: [], web: [], syntax: [] };
+  const layerOf = new Map(items.map((x) => [x.s, x.l]));
+  for (const [s, n] of [...counts].sort((a, b) => a[0].localeCompare(b[0]))) groups[layerOf.get(s)].push([s, n]);
+  const nav = document.getElementById('sections');
+  nav.innerHTML = Object.entries(groups).filter(([, g]) => g.length).map(([l, g]) =>
+    `<div class="group">${LAYERS[l]}</div>` + g.map(([s, n]) => `<a href="#${encodeURIComponent(s)}" data-s="${esc(s)}" aria-current="${state.section === s}">${esc(s)}<span>${n}</span></a>`).join('')).join('');
+}
+
+// ---- Running the real example functions ----
+const modules = new Map();
+function loadModule(file) {
+  if (!modules.has(file)) {
+    modules.set(file, file.endsWith('.cjs')
+      ? new Promise((resolve, reject) => {
+          // sloppy.cjs is a classic script (it needs `with`); it fills a CommonJS-style exports object.
+          window.exports = {};
+          const tag = document.createElement('script');
+          tag.src = 'input/sloppy.js';
+          tag.onload = () => resolve(window.exports);
+          tag.onerror = () => reject(new Error('could not load sloppy.js'));
+          document.head.append(tag);
+        })
+      : import(`./input/${file}`));
+  }
+  return modules.get(file);
+}
+
+// The browser's twin of run.mjs describe(): the same plain-data shape, so the two answers can be compared.
+const tagOf = (v) => Object.prototype.toString.call(v).slice(8, -1);
+function describe(value, depth = 0, seen = new Set()) {
+  if (depth > 4) return '[deep]';
+  const t = typeof value;
+  if (value === null) return null;
+  if (t === 'undefined') return { undefined: true };
+  if (t === 'number') return Number.isNaN(value) ? { number: 'NaN' } : Object.is(value, -0) ? { number: '-0' } : Number.isFinite(value) ? value : { number: String(value) };
+  if (t === 'string' || t === 'boolean') return value;
+  if (t === 'bigint') return { bigint: String(value) };
+  if (t === 'symbol') return { symbol: value.description ?? '' };
+  if (t === 'function') return { function: value.name || '(anonymous)', length: value.length };
+  if (seen.has(value)) return '[circular]';
+  seen.add(value);
+  const d = (v) => describe(v, depth + 1, seen);
+  try {
+    if (value instanceof Error) return { error: value.name, message: value.message, ...(value.cause !== undefined ? { cause: d(value.cause) } : {}) };
+    if (value instanceof Date) return { date: Number.isNaN(value.getTime()) ? 'Invalid Date' : value.toISOString() };
+    if (value instanceof RegExp) return { regexp: String(value), lastIndex: value.lastIndex };
+    if (value instanceof Map) return { map: [...value].slice(0, 20).map(([k, v]) => [d(k), d(v)]) };
+    if (value instanceof Set) return { set: [...value].slice(0, 20).map(d) };
+    if (ArrayBuffer.isView(value) && !(value instanceof DataView)) return { [value.constructor.name]: [...value].slice(0, 32).map(d) };
+    if (value instanceof ArrayBuffer || (typeof SharedArrayBuffer !== 'undefined' && value instanceof SharedArrayBuffer)) return { [value.constructor.name]: [...new Uint8Array(value)].slice(0, 32), byteLength: value.byteLength };
+    if (value instanceof DataView) return { DataView: value.byteLength };
+    if (value instanceof Promise) return { promise: true };
+    if (value instanceof WeakMap || value instanceof WeakSet) return { [value.constructor.name]: true };
+    if (Array.isArray(value)) {
+      const out = value.slice(0, 40).map(d);
+      const extra = Object.keys(value).filter((k) => !/^\d+$/.test(k));
+      return extra.length ? { array: out, props: Object.fromEntries(extra.map((k) => [k, d(value[k])])) } : out;
+    }
+    if (typeof value.next === 'function' && typeof value[Symbol.iterator] === 'function' && !(Symbol.asyncIterator in value)) {
+      const items = [];
+      for (const v of value) { items.push(d(v)); if (items.length >= 20) break; }
+      return { iterator: Object.prototype.toString.call(value), items };
+    }
+    const tag = tagOf(value);
+    const out = {};
+    for (const k of Object.keys(value).filter((key) => key !== 'constructor').slice(0, 30)) out[k] = d(value[k]);
+    return tag === 'Object' ? out : { [tag]: out };
+  } catch (error) {
+    return { describeError: String(error?.message ?? error) };
+  }
+}
+
+function within(ms, promise) {
+  let timer;
+  const timeout = new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(`timed out after ${ms} ms`)), ms); });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
+async function runEntry(x) {
+  const mod = await loadModule(x.f);
+  const fn = mod[x.fn];
+  if (typeof fn !== 'function') return { throws: { name: 'Missing', message: `${x.fn} is not exported by ${x.f}` } };
+  try {
+    let v = fn();
+    if (v && typeof v.then === 'function') v = await within(3000, v);
+    if (v && typeof v[Symbol.asyncIterator] === 'function' && typeof v.next === 'function') {
+      try {
+        const items = [];
+        for await (const item of v) { items.push(describe(item)); if (items.length >= 20) break; }
+        return { ok: { asyncIterator: items } };
+      } catch { return { ok: describe(v) }; }
+    }
+    return { ok: describe(v) };
+  } catch (error) {
+    return { throws: { name: error?.name ?? typeof error, message: String(error?.message ?? error).split('\n')[0] } };
+  }
+}
+
+// Same JavaScript-looking text as site.mjs uses for Node's answer.
+function show(d, indent = '') {
+  if (d === null) return 'null';
+  if (typeof d === 'string') return JSON.stringify(d);
+  if (typeof d !== 'object') return String(d);
+  const next = indent + '  ';
+  const list = (items, open, close) => (items.length === 0 ? `${open.trim()}${close.trim()}` : items.join(', ').length < 70 ? `${open}${items.join(', ')}${close}` : `${open}\n${items.map((x) => next + x).join(',\n')}\n${indent}${close}`);
+  if (Array.isArray(d)) return list(d.map((x) => show(x, next)), '[', ']');
+  const k = Object.keys(d);
+  if (d.undefined) return 'undefined';
+  if ('bigint' in d && k.length === 1) return `${d.bigint}n`;
+  if ('number' in d && k.length === 1) return d.number;
+  if ('symbol' in d && k.length === 1) return `Symbol(${d.symbol})`;
+  if ('function' in d) return `[Function ${d.function}]`;
+  if ('error' in d) return `${d.error}: ${d.message}${d.cause !== undefined ? ` { cause: ${show(d.cause)} }` : ''}`;
+  if ('date' in d && k.length === 1) return `Date ${d.date}`;
+  if ('regexp' in d) return d.regexp;
+  if (Array.isArray(d.map) && k.length === 1) return list(d.map.map(([a, b]) => `${show(a)} => ${show(b, next)}`), 'Map {', '}');
+  if (Array.isArray(d.set) && k.length === 1) return list(d.set.map((x) => show(x, next)), 'Set {', '}');
+  if (Array.isArray(d.items) && 'iterator' in d) return list(d.items.map((x) => show(x, next)), `${d.iterator.slice(8, -1)} [`, ']');
+  if (Array.isArray(d.asyncIterator)) return list(d.asyncIterator.map((x) => show(x, next)), 'async iterator [', ']');
+  if ('promise' in d && k.length === 1) return 'Promise { <pending> }';
+  if (Array.isArray(d.array)) return `${show(d.array, indent)} ${show(d.props, indent)}`;
+  if (k.length === 1 && /^[A-Z]/.test(k[0])) return `${k[0]} ${show(d[k[0]], indent)}`;
+  return list(k.map((key) => `${/^[A-Za-z_$][\w$]*$/.test(key) ? key : JSON.stringify(key)}: ${show(d[key], next)}`), '{ ', ' }');
+}
+const outcomeText = (r) => (r.ok !== undefined ? show(r.ok) : r.throws.message ? `${r.throws.name}: ${r.throws.message}` : `throws ${r.throws.name}`);
+// Key order is not a difference: both answers are compared with their object keys sorted.
+const canonical = (v) => JSON.stringify(v, (key, val) => (val && typeof val === 'object' && !Array.isArray(val) ? Object.fromEntries(Object.keys(val).sort().map((k) => [k, val[k]])) : val));
+const sameAsNode = (x, r) => Boolean(x.r) && canonical(x.nd ? kindOnly(r) : r) === canonical(x.r);
+function kindOnly(r) {
+  if (r.throws) return { throws: { name: r.throws.name } };
+  if (r.ok === null || typeof r.ok !== 'object') return { ok: { kind: typeof r.ok } };
+  return { ok: { kind: Array.isArray(r.ok) ? 'array' : Object.keys(r.ok)[0] ?? 'object' } };
+}
+
+const byKey = new Map(items.map((x, i) => [String(i), x]));
+const results = new Map();
+
+function entryHtml(x, i) {
+  const tags = [`<span class="tag">${x.t}</span>`];
+  if (x.lib) tags.push(`<span class="tag">${esc(x.lib)}</span>`);
+  if (x.st === 'returns') tags.push('<span class="tag returns">returns</span>');
+  if (x.st === 'throws') tags.push('<span class="tag throws">throws</span>');
+  if (x.st === 'unavailable') tags.push('<span class="tag">not in Node</span>');
+  if (x.nd) tags.push('<span class="tag nd">changes every run</span>');
+  const outClass = x.st === 'throws' ? 'out-err' : x.st === 'unavailable' ? 'out-na' : '';
+  return `<article class="entry" data-i="${i}"><div class="entry-head"><span class="key">${esc(x.k)}</span><span class="sig">${esc(x.g)}</span><span class="tags">${tags.join('')}<button class="run" data-run="${i}">Run</button></span></div>
+    <div class="panes"><div class="pane code"><div class="pane-label">Function · ${esc(x.f)}</div><pre data-code="${i}"><span class="c">// loading ${esc(x.fn)}…</span></pre></div>
+    <div class="pane"><div class="pane-label">Node ${esc(stats.node)} says</div><pre><span class="${outClass}">${esc(x.o)}</span></pre></div>
+    <div class="pane browser"><div class="pane-label" data-label="${i}">This browser says</div><pre data-out="${i}"><span class="out-na">Press Run</span></pre></div></div></article>`;
+}
+
+async function fillCode(list, offset) {
+  for (const [n, x] of list.entries()) {
+    const i = offset[n];
+    const pre = document.querySelector(`[data-code="${i}"]`);
+    if (!pre) continue;
+    try {
+      const mod = await loadModule(x.f);
+      const fn = mod[x.fn];
+      pre.innerHTML = typeof fn === 'function' ? highlight(fn.toString()) : `<span class="out-err">${esc(x.fn)} is not exported by ${esc(x.f)}</span>`;
+    } catch (error) {
+      pre.innerHTML = `<span class="out-err">${esc(x.f)} did not load in this browser: ${esc(String(error.message ?? error))}</span>`;
+    }
+  }
+}
+
+async function runAndShow(i) {
+  const x = byKey.get(String(i));
+  const out = document.querySelector(`[data-out="${i}"]`);
+  const label = document.querySelector(`[data-label="${i}"]`);
+  if (out) out.innerHTML = '<span class="out-na">running…</span>';
+  const r = await runEntry(x);
+  results.set(String(i), r);
+  paint(i, r);
+  return r;
+}
+
+// Show a browser result in its entry, when that entry is on screen.
+function paint(i, r) {
+  const x = byKey.get(String(i));
+  const out = document.querySelector(`[data-out="${i}"]`);
+  const label = document.querySelector(`[data-label="${i}"]`);
+  if (!out || !label) return;
+  out.innerHTML = `<span class="${r.throws ? 'out-err' : ''}">${esc(outcomeText(r))}</span>`;
+  const same = sameAsNode(x, r);
+  label.innerHTML = `This browser says <span class="tag ${same ? 'same' : 'differs'}">${same ? 'same as Node' : 'differs from Node'}</span>`;
+}
+
+function render() {
+  chips(document.getElementById('layers'), LAYERS, 'layer');
+  chips(document.getElementById('statuses'), STATUSES, 'status');
+  const list = visible();
+  if (!state.section && !state.q && list.length) state.section = list[0].s;
+  renderSections(list);
+  const shown = state.q ? list : list.filter((x) => x.s === state.section);
+  const main = document.getElementById('main');
+  if (!shown.length) { main.innerHTML = '<p class="empty">Nothing matches. Clear the search or pick another filter.</p>'; return; }
+  const title = state.q ? `Results for “${esc(state.q)}”` : esc(state.section);
+  const layer = shown[0].l;
+  const page = shown.slice(0, state.limit);
+  const index = page.map((x) => items.indexOf(x));
+  main.innerHTML = `<h2>${title}</h2><div class="section-bar"><p class="lead">${shown.length} ${shown.length === 1 ? 'entry' : 'entries'}${state.q ? '' : ` · ${LAYERS[layer]}`}</p><button class="run-all" id="run-all">Run this section (${page.length})</button><span class="lead" id="run-summary"></span></div>
+    <div class="entries">${page.map((x, n) => entryHtml(x, index[n])).join('')}</div>
+    ${shown.length > state.limit ? `<button class="more" id="more">Show ${Math.min(120, shown.length - state.limit)} more of ${shown.length - state.limit}</button>` : ''}`;
+  const more = document.getElementById('more');
+  if (more) more.onclick = () => { state.limit += 120; render(); };
+  document.getElementById('run-all').onclick = async () => {
+    const summary = document.getElementById('run-summary');
+    let same = 0;
+    for (const [n, i] of index.entries()) {
+      summary.textContent = `running ${n + 1} of ${index.length}…`;
+      const r = await runAndShow(i);
+      if (sameAsNode(items[i], r)) same++;
+    }
+    summary.textContent = `${same} of ${index.length} match Node`;
+  };
+  fillCode(page, index);
+  for (const i of index) if (results.has(String(i))) paint(i, results.get(String(i)));
+}
+
+document.getElementById('run-everything').textContent = `Run all ${items.length.toLocaleString('en-US')} entries`;
+document.getElementById('run-everything').onclick = async (ev) => {
+  const button = ev.currentTarget;
+  const summary = document.getElementById('everything-summary');
+  button.disabled = true;
+  let same = 0;
+  const differs = [];
+  for (const [i, x] of items.entries()) {
+    if (i % 25 === 0) summary.textContent = `running ${i + 1} of ${items.length}…`;
+    let r;
+    try { r = await within(4000, runEntry(x)); } catch (error) { r = { throws: { name: 'Timeout', message: String(error.message) } }; }
+    results.set(String(i), r);
+    paint(i, r);
+    if (sameAsNode(x, r)) same++; else differs.push(x.s);
+  }
+  const sections = new Set(differs).size;
+  summary.textContent = `${same.toLocaleString('en-US')} of ${items.length.toLocaleString('en-US')} match Node; ${differs.length} differ, in ${sections} sections.`;
+  button.disabled = false;
+};
+
+document.getElementById('main').addEventListener('click', (ev) => {
+  const b = ev.target.closest('[data-run]');
+  if (b) runAndShow(b.dataset.run);
+});
+
+document.getElementById('sections').addEventListener('click', (ev) => {
+  const a = ev.target.closest('a'); if (!a) return;
+  ev.preventDefault();
+  state.section = a.dataset.s; state.q = ''; state.limit = 120;
+  document.getElementById('q').value = '';
+  history.replaceState(null, '', '#' + encodeURIComponent(state.section));
+  render();
+  document.getElementById('main').scrollIntoView({ block: 'start' });
+});
+let timer;
+document.getElementById('q').addEventListener('input', (ev) => {
+  clearTimeout(timer);
+  timer = setTimeout(() => { state.q = ev.target.value; state.limit = 120; render(); }, 120);
+});
+const fromHash = decodeURIComponent(location.hash.slice(1));
+if (fromHash && items.some((x) => x.s === fromHash)) state.section = fromHash;
+else state.section = 'String';
+render();
+</script>

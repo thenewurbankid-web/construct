@@ -1,0 +1,363 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Atomic Codemod</title>
+<style>
+  :root { color-scheme: light dark; }
+  body {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    margin: 0;
+    background: #0f1115;
+    color: #e4e6eb;
+  }
+  header {
+    padding: 14px 20px;
+    border-bottom: 1px solid #262a33;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  header h1 { font-size: 15px; margin: 0; font-weight: 600; }
+  .settings { display: flex; gap: 8px; align-items: center; margin-left: auto; font-size: 12px; }
+  select, input[type=text] {
+    background: #1a1d24; color: #e4e6eb; border: 1px solid #333844;
+    border-radius: 6px; padding: 5px 8px; font-size: 12px; font-family: inherit;
+  }
+  button {
+    background: #2b6cf6; color: white; border: none; border-radius: 6px;
+    padding: 6px 12px; font-size: 12px; cursor: pointer; font-family: inherit;
+  }
+  button.secondary { background: #262a33; }
+  button:disabled { opacity: .5; cursor: default; }
+  main { display: grid; grid-template-columns: 1fr 1fr; gap: 0; height: calc(100vh - 53px); }
+  .pane { display: flex; flex-direction: column; min-height: 0; }
+  .pane + .pane { border-left: 1px solid #262a33; }
+  .pane-header { padding: 10px 16px; font-size: 12px; color: #9aa0ac; border-bottom: 1px solid #1c1f26; display:flex; justify-content:space-between; align-items:center;}
+  textarea {
+    flex: 1; background: #0b0d11; color: #e4e6eb; border: none; padding: 16px;
+    font-family: inherit; font-size: 13px; resize: none; outline: none;
+  }
+  .chunks { flex: 1; overflow-y: auto; }
+  .chunk { border-bottom: 1px solid #1c1f26; }
+  .chunk-head { padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .chunk-name { font-size: 12px; color: #e4e6eb; }
+  .chunk-kind { font-size: 10px; color: #6c7480; text-transform: uppercase; letter-spacing: .04em; }
+  .chunk-actions { display: flex; gap: 6px; }
+  pre { margin: 0; padding: 12px 16px; font-size: 12px; white-space: pre-wrap; word-break: break-word; }
+  pre.original { color: #9aa0ac; background: #0b0d11; }
+  pre.output { color: #b7f7c8; background: #0b0d11; }
+  .badge { font-size: 10px; padding: 2px 6px; border-radius: 999px; }
+  .badge.ok { background: #1e3a2b; color: #6fe397; }
+  .badge.fallback { background: #3a2a1e; color: #f2b86a; }
+  .badge.skipped { background: #262a33; color: #9aa0ac; }
+  .empty { padding: 24px 16px; color: #6c7480; font-size: 12px; }
+  .overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,.6);
+    align-items: center; justify-content: center; z-index: 10;
+  }
+  .overlay[hidden] { display: none; }
+  .overlay:not([hidden]) { display: flex; }
+  .overlay-panel {
+    background: #14171d; border: 1px solid #262a33; border-radius: 10px;
+    width: min(900px, 92vw); max-height: 85vh; display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+  .overlay-head { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; border-bottom: 1px solid #262a33; }
+  .overlay-head h2 { font-size: 14px; margin: 0; font-weight: 600; }
+  .overlay-hint { font-size: 11px; color: #9aa0ac; padding: 10px 18px 0; }
+  .atom-groups { overflow-y: auto; padding: 8px 18px 18px; }
+  .atom-group { margin-top: 16px; }
+  .atom-group-title { font-size: 11px; color: #6fe397; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 6px; }
+  .atom-card { background: #0b0d11; border: 1px solid #1c1f26; border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; }
+  .atom-card-head { display: flex; justify-content: space-between; font-size: 11px; color: #9aa0ac; margin-bottom: 6px; }
+  .atom-card-head .atom-name { color: #e4e6eb; font-weight: 600; }
+  .atom-card pre { padding: 0; background: none; color: #b7f7c8; font-size: 12px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Atomic Codemod</h1>
+  <button id="chunkBtn">Chunk</button>
+  <button id="refactorAllBtn" class="secondary">Refactor all (AST + LLM)</button>
+  <button id="loadExampleBtn" class="secondary">Load complex example</button>
+  <button id="scanAtomsBtn" class="secondary">Scan atoms across modules</button>
+  <div class="settings">
+    <span>Ollama</span>
+    <input id="ollamaUrl" type="text" value="http://localhost:11434" size="20" />
+    <span>simple</span>
+    <select id="simpleModel"></select>
+    <span>extraction</span>
+    <select id="extractionModel"></select>
+    <span>escalate above</span>
+    <input id="extractionThreshold" type="text" size="2" value="2" />
+    <span>stmts</span>
+    <button id="saveSettings" class="secondary">Save</button>
+  </div>
+</header>
+<main>
+  <div class="pane">
+    <div class="pane-header">Input</div>
+    <textarea id="input" spellcheck="false"></textarea>
+  </div>
+  <div class="pane">
+    <div class="pane-header">Chunks</div>
+    <div class="chunks" id="chunks"><div class="empty">Paste code on the left and click Chunk.</div></div>
+  </div>
+</main>
+<div id="atomsOverlay" class="overlay" hidden>
+  <div class="overlay-panel">
+    <div class="overlay-head">
+      <h2>Atoms across modules, grouped by usage count</h2>
+      <div style="display:flex; gap:8px;">
+        <button id="findSimilarBtn" class="secondary">Find similar shapes</button>
+        <button id="closeAtomsBtn" class="secondary">Close</button>
+      </div>
+    </div>
+    <div class="overlay-hint">Higher usage count = shared by more organisms/tissues (a core atom). Usage count 1 = specific to a single tissue.</div>
+    <div id="atomGroups" class="atom-groups"></div>
+    <div id="similarGroups" class="atom-groups"></div>
+  </div>
+</div>
+<script>
+const $ = (id) => document.getElementById(id);
+let currentChunks = [];
+
+const COMPLEX_EXAMPLE = `class FormValidator {
+  constructor(rules) {
+    this.rules = rules;
+    this.errors = [];
+  }
+
+  validateField(name, value) {
+    const rule = this.rules[name];
+    return rule == null ? 'unrated' : value === rule.expected ? 'valid' : 'invalid';
+  }
+
+  validateAll(values) {
+    let allValid = true;
+    for (const name in values) {
+      const status = this.validateField(name, values[name]);
+      if (status !== 'valid') {
+        allValid = false;
+        this.errors.push(name + ' is ' + status);
+      }
+    }
+    return allValid;
+  }
+
+  describeLength(value) {
+    return value.length === 0 ? 'empty' : value.length < 5 ? 'short' : value.length < 20 ? 'medium' : 'long';
+  }
+
+  isWithinRange(value, min, max) {
+    return value >= min && value <= max ? true : false;
+  }
+
+  summarize() {
+    return this.errors.length === 0 ? 'no errors' : this.errors.length === 1 ? '1 error' : this.errors.length + ' errors';
+  }
+}`;
+
+$('loadExampleBtn').onclick = () => {
+  $('input').value = COMPLEX_EXAMPLE;
+};
+
+async function loadConfig() {
+  const cfg = await fetch('/api/config').then(r => r.json());
+  $('ollamaUrl').value = cfg.ollamaUrl;
+  $('extractionThreshold').value = cfg.extractionThreshold;
+  await loadModels(cfg.simpleModel, cfg.extractionModel);
+}
+
+async function loadModels(simpleSelected, extractionSelected) {
+  try {
+    const models = await fetch('/api/models').then(r => r.json());
+    const options = models.map(m => `<option value="${m}">${m}</option>`).join('');
+    $('simpleModel').innerHTML = options;
+    $('extractionModel').innerHTML = options;
+    if (simpleSelected) $('simpleModel').value = simpleSelected;
+    if (extractionSelected) $('extractionModel').value = extractionSelected;
+  } catch (e) {
+    $('simpleModel').innerHTML = `<option value="qwen2.5-coder:1.5b">qwen2.5-coder:1.5b</option>`;
+    $('extractionModel').innerHTML = `<option value="qwen2.5-coder:7b">qwen2.5-coder:7b</option>`;
+  }
+}
+
+$('saveSettings').onclick = async () => {
+  await fetch('/api/config', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      ollamaUrl: $('ollamaUrl').value,
+      simpleModel: $('simpleModel').value,
+      extractionModel: $('extractionModel').value,
+      extractionThreshold: Number($('extractionThreshold').value) || 2,
+    }),
+  });
+};
+
+function renderChunks() {
+  const container = $('chunks');
+  if (!currentChunks.length) {
+    container.innerHTML = '<div class="empty">No chunks yet.</div>';
+    return;
+  }
+  container.innerHTML = '';
+  currentChunks.forEach((c, i) => {
+    const el = document.createElement('div');
+    el.className = 'chunk';
+    el.innerHTML = `
+      <div class="chunk-head">
+        <div>
+          <div class="chunk-name">${c.name}</div>
+          <div class="chunk-kind">${c.kind}</div>
+        </div>
+        <div class="chunk-actions">
+          <button class="secondary" data-act="ast" data-i="${i}">AST only</button>
+          <button data-act="llm" data-i="${i}">AST + LLM</button>
+        </div>
+      </div>
+      <pre class="original">${escapeHtml(c.code)}</pre>
+      <div class="result" id="result-${i}"></div>
+    `;
+    container.appendChild(el);
+  });
+}
+
+function escapeHtml(s) {
+  return s.replace(/[&<>]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[ch]));
+}
+
+$('chunkBtn').onclick = async () => {
+  const code = $('input').value;
+  const res = await fetch('/api/chunk', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code }),
+  }).then(r => r.json());
+  if (res.error) { alert(res.error); return; }
+  currentChunks = res.chunks;
+  renderChunks();
+};
+
+async function runAst(i) {
+  const c = currentChunks[i];
+  const res = await fetch('/api/ast-pass', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code: c.code, kind: c.kind }),
+  }).then(r => r.json());
+  showResult(i, res.output || res.error, null);
+}
+
+async function runLlm(i) {
+  const c = currentChunks[i];
+  showResult(i, 'Refactoring...', null, true);
+  const res = await fetch('/api/refactor', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code: c.code, kind: c.kind, model: $('extractionModel').value, ollamaUrl: $('ollamaUrl').value }),
+  }).then(r => r.json());
+  if (res.error) { showResult(i, res.error, null); return; }
+  const badge = res.skipped ? 'skipped' : res.valid ? 'ok' : 'fallback';
+  showResult(i, res.output, badge, false, res.note);
+}
+
+function showResult(i, text, badge, loading, note) {
+  const el = $('result-' + i);
+  const badgeText = { ok: 'LLM output used', skipped: 'model skipped' }[badge] || 'fell back to AST-only';
+  el.innerHTML = `
+    ${badge ? `<div style="padding:8px 16px 0"><span class="badge ${badge}">${badgeText}</span></div>` : ''}
+    <pre class="output">${escapeHtml(text)}</pre>
+    ${note ? `<div style="padding:0 16px 10px;color:#f2b86a;font-size:11px">${note}</div>` : ''}
+  `;
+}
+
+$('chunks').addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-act]');
+  if (!btn) return;
+  const i = Number(btn.dataset.i);
+  if (btn.dataset.act === 'ast') runAst(i);
+  else runLlm(i);
+});
+
+$('refactorAllBtn').onclick = async () => {
+  // Sequential on purpose: firing every chunk's LLM call at once floods a
+  // local model with concurrent generations and can stall the whole page.
+  $('refactorAllBtn').disabled = true;
+  for (let i = 0; i < currentChunks.length; i++) {
+    await runLlm(i);
+  }
+  $('refactorAllBtn').disabled = false;
+};
+
+async function scanAtoms() {
+  const res = await fetch('/api/scan-atoms').then(r => r.json());
+  if (res.error) { alert(res.error); return; }
+
+  const groups = new Map();
+  for (const atom of res.atoms) {
+    if (!groups.has(atom.usageCount)) groups.set(atom.usageCount, []);
+    groups.get(atom.usageCount).push(atom);
+  }
+  const counts = [...groups.keys()].sort((a, b) => b - a);
+
+  $('atomGroups').innerHTML = counts.map(count => `
+    <div class="atom-group">
+      <div class="atom-group-title">used by ${count} organism${count === 1 ? '' : 's'}/tissue${count === 1 ? '' : 's'}${count === counts[0] && count > 1 ? ' — core atoms' : ''}</div>
+      ${groups.get(count).map(a => `
+        <div class="atom-card">
+          <div class="atom-card-head">
+            <span class="atom-name">${a.name}</span>
+            <span>${a.definedIn} · ${a.file}</span>
+          </div>
+          <pre>${escapeHtml(a.code)}</pre>
+        </div>
+      `).join('')}
+    </div>
+  `).join('');
+
+  $('similarGroups').innerHTML = '';
+  $('atomsOverlay').hidden = false;
+}
+
+async function findSimilarShapes() {
+  $('findSimilarBtn').disabled = true;
+  $('findSimilarBtn').textContent = 'Finding...';
+  const res = await fetch('/api/similar-shapes').then(r => r.json());
+  $('findSimilarBtn').disabled = false;
+  $('findSimilarBtn').textContent = 'Find similar shapes';
+  if (res.error) { alert(res.error); return; }
+
+  if (!res.groups.length) {
+    $('similarGroups').innerHTML = '<div class="atom-group-title" style="margin-top:16px">no duplicate shapes found</div>';
+    return;
+  }
+
+  $('similarGroups').innerHTML = `
+    <div class="atom-group-title" style="margin-top:16px">same shape, different classes (not yet sharing a base class) — detected by AST comparison alone, named by the local model</div>
+    ${res.groups.map(g => `
+      <div class="atom-card">
+        <div class="atom-card-head">
+          <span class="atom-name">suggested name: ${escapeHtml(g.suggestedName)}</span>
+        </div>
+        ${g.members.map(m => `
+          <div style="margin-bottom:6px; font-size:11px; color:#9aa0ac;">${m.definedIn} · ${m.file}</div>
+          <pre>${escapeHtml(m.code)}</pre>
+        `).join('')}
+      </div>
+    `).join('')}
+  `;
+}
+
+$('findSimilarBtn').onclick = findSimilarShapes;
+$('scanAtomsBtn').onclick = scanAtoms;
+$('closeAtomsBtn').onclick = () => { $('atomsOverlay').hidden = true; };
+$('atomsOverlay').addEventListener('click', (e) => {
+  if (e.target.id === 'atomsOverlay') $('atomsOverlay').hidden = true;
+});
+
+$('input').value = COMPLEX_EXAMPLE;
+loadConfig();
+</script>
+</body>
+</html>

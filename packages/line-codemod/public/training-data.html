@@ -1,0 +1,101 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Embedding Fine-Tune Data</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; background: #0f1115; color: #e4e6eb; font-family: -apple-system, sans-serif; padding: 40px 24px 80px; }
+  .wrap { max-width: 760px; margin: 0 auto; }
+  h1 { font-size: 20px; margin: 0 0 8px; }
+  p.lede { color: #9aa0ac; font-size: 14px; line-height: 1.6; max-width: 62ch; }
+  .stats { display: flex; gap: 24px; margin: 28px 0; }
+  .stat-num { font-size: 28px; font-weight: 700; color: #5eead4; }
+  .stat-label { font-size: 11px; color: #6c7480; text-transform: uppercase; letter-spacing: .05em; }
+  .pair { background: #14171d; border: 1px solid #262a33; border-radius: 8px; padding: 14px 16px; margin-bottom: 12px; }
+  .pair-label { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 8px; }
+  .pair-label.pos { color: #6fe397; }
+  .pair-label.neg { color: #f2b86a; }
+  pre { margin: 6px 0; padding: 8px 10px; background: #0b0d11; border-radius: 6px; font-size: 11.5px; color: #b7f7c8; overflow-x: auto; white-space: pre-wrap; }
+  a.dl { display: inline-block; margin: 8px 0 32px; color: #7aa2f7; font-size: 13px; text-decoration: none; }
+  a.dl:hover { text-decoration: underline; }
+  .plan { background: #14171d; border: 1px solid #262a33; border-radius: 10px; padding: 18px 20px; margin-top: 32px; font-size: 13px; line-height: 1.7; color: #9aa0ac; }
+  .plan h2 { font-size: 14px; color: #e4e6eb; margin: 0 0 10px; }
+  .plan code { color: #7aa2f7; }
+  footer { margin-top: 40px; }
+  footer a { color: #7aa2f7; font-size: 13px; text-decoration: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Embedding fine-tune data</h1>
+  <p class="lede">
+    Every time "Find similar shapes" runs, the (shape-A, shape-B, same-or-not) pairs it finds are logged here automatically &mdash;
+    a free byproduct of the deterministic AST detection already running. Nothing is trained yet; this is the dataset a future
+    fine-tune of <code>nomic-embed-text</code> would learn from, so the embedding model itself eventually recognizes AST shape,
+    not just word similarity.
+  </p>
+
+  <div class="stats" id="stats"></div>
+  <a class="dl" href="/api/training-data/download">↓ download pairs.jsonl</a>
+
+  <div id="samples"></div>
+
+  <div class="plan">
+    <h2>Why not just fine-tune now?</h2>
+    Fine-tuning needs a real training pipeline (sentence-transformers, GPU time) and, more importantly, enough pairs to
+    generalize from &mdash; a handful of examples from one small codebase would just memorize these specific snippets, not learn
+    "AST shape" as a concept. The plan is: keep collecting pairs for free as the atom library grows (every new organism adds more
+    positive/negative examples automatically), and once there's a meaningfully sized dataset, run the fine-tune below.
+    Until then, the deterministic AST comparison in <code>module-scanner.js</code> already does this job exactly and for free
+    &mdash; the fine-tuned model's win, if it works, would be catching near-shapes that aren't byte-identical after normalization
+    (e.g. an extra intermediate variable, a slightly different control-flow ordering) which today's exact-fingerprint match misses.
+  </div>
+
+  <div class="plan">
+    <h2>The fine-tuning script (documented, not run or verified here)</h2>
+    Needs Python + <code>pip install sentence-transformers</code> &mdash; I have no way to run or verify a real training job from
+    this environment, so treat this as a documented starting point, not a tested result:
+    <pre>from sentence_transformers import SentenceTransformer, InputExample, losses
+from torch.utils.data import DataLoader
+import json
+
+model = SentenceTransformer('nomic-ai/nomic-embed-text-v1.5')
+
+examples = []
+with open('pairs.jsonl') as f:
+    for line in f:
+        row = json.loads(line)
+        examples.append(InputExample(texts=[row['textA'], row['textB']], label=float(row['label'])))
+
+loader = DataLoader(examples, shuffle=True, batch_size=8)
+loss = losses.ContrastiveLoss(model)
+model.fit(train_objectives=[(loader, loss)], epochs=3, warmup_steps=10)
+model.save('nomic-embed-code-shape-v1')</pre>
+  </div>
+
+  <footer><a href="/">← back to the tool</a></footer>
+</div>
+
+<script>
+function escapeHtml(s) {
+  return s.replace(/[&<>]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[ch]));
+}
+
+fetch('/api/training-data').then(r => r.json()).then(d => {
+  document.getElementById('stats').innerHTML = `
+    <div><div class="stat-num">${d.total}</div><div class="stat-label">total pairs</div></div>
+    <div><div class="stat-num">${d.positive}</div><div class="stat-label">same shape</div></div>
+    <div><div class="stat-num">${d.negative}</div><div class="stat-label">different shape</div></div>
+  `;
+  document.getElementById('samples').innerHTML = d.sample.slice().reverse().map(p => `
+    <div class="pair">
+      <div class="pair-label ${p.label === 1 ? 'pos' : 'neg'}">${p.label === 1 ? 'same shape' : 'different shape'}${p.suggestedName ? ' — suggested: ' + escapeHtml(p.suggestedName) : ''}</div>
+      <pre>${escapeHtml(p.textA)}</pre>
+      <pre>${escapeHtml(p.textB)}</pre>
+    </div>
+  `).join('') || '<p style="color:#6c7480;font-size:13px;">No pairs recorded yet — run "Find similar shapes" in the tool first.</p>';
+});
+</script>
+</body>
+</html>

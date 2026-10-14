@@ -1,0 +1,848 @@
+/**
+ * THE IDEA, in one file.
+ *
+ * Problem: comparison logic tends to sprawl -- ternaries and === scattered
+ * everywhere, each call site reinventing "how do I compare these two things
+ * and decide what to do."
+ *
+ * Fix: two rules, applied consistently.
+ *   1. No ternaries -- use if/else. Easier to read, easier to extend.
+ *   2. No === in business logic -- delegate comparison to a dedicated
+ *      .equals() method. There's exactly ONE place that ever compares raw
+ *      values, and everything else calls it instead of repeating the logic.
+ *
+ * Bonus: once comparisons are reduced to a handful of tiny, single-purpose
+ * methods (call them "atoms" -- and(), if(), is(), will()), those atoms can
+ * be shared across unrelated features via a common base class. Any new
+ * "organism" (a page, a form, a button...) just inherits them for free, and
+ * you get a fluent, English-readable call chain for free too.
+ */
+
+// ---------------------------------------------------------------------------
+// BEFORE: the kind of code this pattern replaces.
+//
+// function checkText(a: string, b: string) {
+//   return a === b ? 'static' : 'dynamic';
+// }
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// AFTER
+// ---------------------------------------------------------------------------
+
+// The one place comparison logic is allowed to live.
+// (Named TextValue, not Text -- TypeScript's DOM types already define a
+// global `Text` for DOM nodes, and colliding with it breaks type-checking.)
+class TextValue {
+  constructor(private readonly value: string) {}
+
+  equals(other: TextValue): boolean {
+    return this.value === other.value;
+  }
+
+  // A real transform, not a connector: returns a NEW TextValue holding
+  // DIFFERENT data, so whatever runs next in the chain sees the trimmed
+  // value, not the original.
+  trim(): TextValue {
+    return new TextValue(this.value.trim());
+  }
+}
+
+// Shared "atoms": tiny connector words, reusable by ANY feature below.
+abstract class Chain {
+  and(): this {
+    return this;
+  }
+  if(): this {
+    return this;
+  }
+  is(): this {
+    return this;
+  }
+}
+
+type Result = 'static' | 'dynamic';
+
+class TextCheck extends Chain {
+  constructor(private readonly current: TextValue) {
+    super();
+  }
+
+  // Transform step: prepares the data for whatever comes next in the chain
+  // by returning a NEW TextCheck wrapping the transformed value, instead of
+  // just returning `this` unchanged like and()/is()/if() do.
+  trimmed(): TextCheck {
+    return new TextCheck(this.current.trim());
+  }
+
+  equalTo(expected: TextValue): Result {
+    if (this.current.equals(expected)) {
+      return 'static';
+    } else {
+      return 'dynamic';
+    }
+  }
+}
+
+class Page {
+  checkText(current: TextValue): TextCheck {
+    return new TextCheck(current);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// USAGE -- reads like a sentence, and Page never had to write and()/is() itself.
+// ---------------------------------------------------------------------------
+
+const page = new Page();
+
+const result = page.checkText(new TextValue('hello')).and().is().equalTo(new TextValue('hello'));
+
+console.log(result); // 'static'
+
+// Proof the transform step actually changes what the next call sees:
+const withoutTrim = page.checkText(new TextValue('  hello  ')).and().is().equalTo(new TextValue('hello'));
+const withTrim = page.checkText(new TextValue('  hello  ')).trimmed().and().is().equalTo(new TextValue('hello'));
+
+console.log(withoutTrim); // 'dynamic' -- untrimmed, whitespace makes it not equal
+console.log(withTrim); // 'static' -- trimmed() ran first, equalTo() now sees the trimmed value
+
+
+
+// ---------------------------------------------------------------------------
+// A second, unrelated feature -- reusing the same and() atom from Chain.
+// Type-state trick: distance() returns a DIFFERENT class that only exposes
+// and()/time(), so "time() before distance()" is a compile error, not a
+// runtime null check.
+// ---------------------------------------------------------------------------
+
+class SpeedCalculationWithDistance extends Chain {
+  constructor(private readonly distanceValue: number) {
+    super();
+  }
+
+  time(timeValue: number): number {
+    return this.distanceValue / timeValue;
+  }
+}
+
+class SpeedCalculation extends Chain {
+  using(): this {
+    return this;
+  }
+
+  distance(distanceValue: number): SpeedCalculationWithDistance {
+    return new SpeedCalculationWithDistance(distanceValue);
+  }
+}
+
+function calculateSpeed(): SpeedCalculation {
+  return new SpeedCalculation();
+}
+
+// reads as: "calculate speed, using distance 100 and time 20"
+const speed = calculateSpeed().using().distance(100).and().time(20);
+
+console.log(speed); // 5
+
+// ---------------------------------------------------------------------------
+// A third feature -- reusing is() from Chain again. "if" itself can't be a
+// function name (reserved word in JS/TS), so it becomes a method the same
+// way "and"/"is"/"will" already are.
+// ---------------------------------------------------------------------------
+
+class ConditionResult extends Chain {
+  constructor(private readonly result: boolean) {
+    super();
+  }
+
+  then(): this {
+    return this;
+  }
+
+  itIs(expected: boolean): boolean {
+    return this.result === expected;
+  }
+}
+
+class NumberCheck extends Chain {
+  constructor(private readonly value: number) {
+    super();
+  }
+
+  greaterThan(other: number): ConditionResult {
+    return new ConditionResult(this.value > other);
+  }
+}
+
+function check(value: number): NumberCheck {
+  return new NumberCheck(value);
+}
+
+// reads as: "check 1, is greater than 2, then it is false"
+const assertion = check(1).is().greaterThan(2).then().itIs(false);
+
+// Simplified variant: is()+greaterThan() merged into one isGreaterThan()
+// call. New name (when/isGreaterThan), not a rewrite of check/greaterThan.
+class NumberCheckMerged extends Chain {
+  constructor(private readonly value: number) {
+    super();
+  }
+
+  isGreaterThan(other: number): ConditionResult {
+    return new ConditionResult(this.value > other);
+  }
+}
+
+function when(value: number): NumberCheckMerged {
+  return new NumberCheckMerged(value);
+}
+
+// reads as: "when 1 is greater than 2, then it is false"
+const assertionMerged = when(1).isGreaterThan(2).then().itIs(false);
+
+console.log(assertionMerged); // true
+
+// ---------------------------------------------------------------------------
+// A fourth feature -- "if rule equals to null". rule()/equals() are pure
+// connectors (like text()/value() elsewhere); to() is the one terminal that
+// actually compares, same "one place the real work happens" rule as every
+// other atom in this file.
+// ---------------------------------------------------------------------------
+
+class RuleCheck extends Chain {
+  constructor(private readonly ruleValue: string | null) {
+    super();
+  }
+
+  rule(): this {
+    return this;
+  }
+
+  equals(): this {
+    return this;
+  }
+
+  to(value: string | null): boolean {
+    return this.ruleValue === value;
+  }
+}
+
+function checkRule(rule: string | null): RuleCheck {
+  return new RuleCheck(rule);
+}
+
+// reads as: "check rule: if rule equals to null"
+const isUnrated = checkRule(null).if().rule().equals().to(null);
+
+console.log(isUnrated); // true
+
+// ---------------------------------------------------------------------------
+// A fifth feature -- progressive builder. Starts with both fields null;
+// each with*() step returns a NEW instance with one more field filled AND
+// its own logic (not just storage) -- normalizing whatever came in. matches()
+// is the terminal, and only produces a real answer once both are filled.
+// ---------------------------------------------------------------------------
+
+class RuleMatch extends Chain {
+  constructor(
+    private readonly ruleValue: string | null = null,
+    private readonly inputValue: string | null = null
+  ) {
+    super();
+  }
+
+  // Logic lives here too: trims and lowercases, not just stores the rule.
+  withRule(rule: string): RuleMatch {
+    return new RuleMatch(rule.trim().toLowerCase(), this.inputValue);
+  }
+
+  // Same -- its own normalization logic, independent of withRule()'s.
+  withValue(value: string): RuleMatch {
+    return new RuleMatch(this.ruleValue, value.trim().toLowerCase());
+  }
+
+  matches(): boolean {
+    if (this.ruleValue === null || this.inputValue === null) {
+      return false;
+    } else {
+      return this.ruleValue === this.inputValue;
+    }
+  }
+}
+
+function startMatch(): RuleMatch {
+  return new RuleMatch();
+}
+
+// reads as: "start match, with rule 'Valid' and with value ' valid ', matches"
+const filled = startMatch().withRule('Valid').and().withValue(' valid ').matches();
+
+// proof each step's own logic (trim + lowercase) actually ran, not just storage:
+// 'Valid' -> 'valid', ' valid ' -> 'valid' -- they match despite differing
+// case/whitespace in the ORIGINAL inputs.
+console.log(filled); // true
+
+// proof the terminal correctly handles an incomplete chain (only one filled):
+const incomplete = startMatch().withRule('valid').matches();
+console.log(incomplete); // false -- inputValue is still null
+
+// ---------------------------------------------------------------------------
+// A sixth feature -- validateField(), fully converted: the null check reuses
+// the if()/equals()/to() pattern (a fresh NullCheck<T>, not a rewrite of the
+// existing RuleCheck -- different value type, so it's a new atom, not a
+// redefinition), and then() is a named function replacing the remaining
+// ternary/if-else, same idea as and()/or() replacing &&/||.
+// ---------------------------------------------------------------------------
+
+function then<T>(condition: boolean, ifTrue: T, ifFalse: T): T {
+  if (condition) {
+    return ifTrue;
+  } else {
+    return ifFalse;
+  }
+}
+
+class NullCheck<T> extends Chain {
+  constructor(private readonly heldValue: T | null) {
+    super();
+  }
+
+  value(): this {
+    return this;
+  }
+
+  equals(): this {
+    return this;
+  }
+
+  to(target: null): boolean {
+    return this.heldValue === target;
+  }
+}
+
+function checkValue<T>(value: T | null): NullCheck<T> {
+  return new NullCheck<T>(value);
+}
+
+class Rule {
+  constructor(public readonly expected: string) {}
+}
+
+class Validator {
+  constructor(private readonly rules: Record<string, Rule | null>) {}
+
+  validateField(name: string, value: string): string {
+    const rule = this.rules[name];
+    return then(
+      checkValue(rule).if().value().equals().to(null),
+      'unrated',
+      then(rule!.expected === value, 'valid', 'invalid')
+    );
+  }
+}
+
+// reads as: "check value: if value equals to null, then 'unrated',
+// otherwise: if rule's expected equals value, then 'valid' else 'invalid'"
+const v = new Validator({ color: new Rule('red'), size: null });
+
+console.log(v.validateField('color', 'red')); // 'valid'
+console.log(v.validateField('color', 'blue')); // 'invalid'
+try {
+  console.log(v.validateField('size', 'anything')); // never gets here
+} catch (e) {
+  console.log('CRASHED as predicted:', (e as Error).message);
+}
+
+// ---------------------------------------------------------------------------
+// The fix: ifIt/elseIfIt/elseIt take CLOSURES, not values. A closure's body
+// doesn't run until it's actually CALLED -- so an unmatched branch's code
+// never executes at all, unlike then()'s eager arguments above. Named
+// ifIt/elseIfIt/elseIt (not if/elseIf/else) since if/else are reserved words.
+// ---------------------------------------------------------------------------
+
+// One param (or zero) per step: ifIt()/elseIfIt() are now pure zero-arg
+// connectors (like Chain's and()/if()/then()/is()), and the condition moves
+// into its own one-param is(condition) step -- not bundled into ifIt()
+// itself. Still lazy (still closures) throughout; only the call SHAPE
+// changed again, not the safety property.
+class ConditionSet<T> {
+  constructor(private readonly parent: Branching<T>) {}
+
+  is(condition: () => boolean): PendingBranch<T> {
+    return new PendingBranch(this.parent, condition);
+  }
+}
+
+class PendingBranch<T> {
+  constructor(private readonly parent: Branching<T>, private readonly condition: () => boolean) {}
+
+  // reads as "if it is [condition], will be [result]"
+  willBe(thenFn: () => T): Branching<T> {
+    return this.parent.resolve(this.condition, thenFn);
+  }
+}
+
+// New overload, not a redefinition: ifIt() (zero-arg, unchanged) still
+// returns ConditionSet for the is(condition) style; ifIt(subject) is an
+// ADDED signature for "ifIt(num).isGreaterThan(zero)" -- passing the
+// subject directly instead of wrapping the whole condition in a closure.
+class NumberSubjectCondition<T> {
+  constructor(private readonly parent: Branching<T>, private readonly subject: NumberValue) {}
+
+  isGreaterThan(other: NumberValue): PendingBranch<T> {
+    return new PendingBranch(this.parent, () => this.subject.greaterThan(other));
+  }
+}
+
+class Branching<T> {
+  private result: T | undefined = undefined;
+  private matched = false;
+
+  ifIt(): ConditionSet<T>;
+  ifIt(subject: NumberValue): NumberSubjectCondition<T>;
+  ifIt(subject?: NumberValue): ConditionSet<T> | NumberSubjectCondition<T> {
+    if (subject !== undefined) {
+      return new NumberSubjectCondition(this, subject);
+    }
+    return new ConditionSet(this);
+  }
+
+  elseIfIt(): ConditionSet<T>;
+  elseIfIt(subject: NumberValue): NumberSubjectCondition<T>;
+  elseIfIt(subject?: NumberValue): ConditionSet<T> | NumberSubjectCondition<T> {
+    return subject !== undefined ? this.ifIt(subject) : this.ifIt();
+  }
+
+  resolve(condition: () => boolean, thenFn: () => T): this {
+    if (!this.matched && condition()) {
+      this.result = thenFn();
+      this.matched = true;
+    }
+    return this;
+  }
+
+  elseIt(thenFn: () => T): T {
+    if (this.matched) {
+      return this.result as T;
+    } else {
+      return thenFn();
+    }
+  }
+}
+
+function branch<T>(): Branching<T> {
+  return new Branching<T>();
+}
+
+class ValidatorFixed {
+  constructor(private readonly rules: Record<string, Rule | null>) {}
+
+  validateField(name: string, value: string): string {
+    const rule = this.rules[name];
+    return branch<string>()
+      .ifIt()
+      .is(() => checkValue(rule).if().value().equals().to(null))
+      .willBe(() => 'unrated')
+      .elseIfIt()
+      .is(() => rule!.expected === value)
+      .willBe(() => 'valid')
+      .elseIt(() => 'invalid');
+  }
+}
+
+const vFixed = new ValidatorFixed({ color: new Rule('red'), size: null });
+
+console.log(vFixed.validateField('color', 'red')); // 'valid'
+console.log(vFixed.validateField('color', 'blue')); // 'invalid'
+console.log(vFixed.validateField('size', 'anything')); // 'unrated' -- no crash: elseIfIt's condition closure never runs
+
+// ---------------------------------------------------------------------------
+// A seventh feature -- "simple yet identifiable" type info: a tagged union.
+// Each value carries a small literal `kind` field. is() switches on it --
+// simple (just a string), identifiable (TypeScript narrows the type AND you
+// can check it at runtime), no registry/Map needed to "connect" to the
+// right next step.
+// ---------------------------------------------------------------------------
+
+class TaggedText {
+  readonly kind = 'text' as const;
+  constructor(readonly value: string) {}
+}
+
+class TaggedNumber {
+  readonly kind = 'number' as const;
+  constructor(readonly value: number) {}
+}
+
+type TaggedValue = TaggedText | TaggedNumber;
+
+class TextConnection extends Chain {
+  constructor(private readonly current: TaggedText) {
+    super();
+  }
+
+  equalTo(expected: TaggedText): boolean {
+    return this.current.value === expected.value;
+  }
+}
+
+class NumberConnection extends Chain {
+  constructor(private readonly current: TaggedNumber) {
+    super();
+  }
+
+  greaterThan(expected: TaggedNumber): boolean {
+    return this.current.value > expected.value;
+  }
+}
+
+// Generic conditional type: maps the specific input type to its specific
+// connection type, so the CALLER gets TextConnection or NumberConnection
+// exactly, never the union -- that's what makes .equalTo()/.greaterThan()
+// visible afterward.
+type ConnectionFor<T extends TaggedValue> = T extends TaggedText ? TextConnection : NumberConnection;
+
+class Connect extends Chain {
+  // Named type(), not is() -- Chain already has is(): this (no args), and a
+  // method can't override that with a different, required-argument
+  // signature, generic or not.
+  type<T extends TaggedValue>(value: T): ConnectionFor<T> {
+    // TS can't correlate the runtime `.kind` check with the generic
+    // conditional-type return automatically (a known TS limitation) -- the
+    // assertion is internal only, it doesn't weaken what the CALLER sees.
+    if (value.kind === 'text') {
+      return new TextConnection(value) as ConnectionFor<T>;
+    } else {
+      return new NumberConnection(value) as ConnectionFor<T>;
+    }
+  }
+}
+
+function connect(): Connect {
+  return new Connect();
+}
+
+// reads as: "connect, type text 'hello', equal to 'hello'"
+const textConnected = connect().type(new TaggedText('hello')).equalTo(new TaggedText('hello'));
+
+// reads as: "connect, type number 5, greater than 3"
+const numberConnected = connect().type(new TaggedNumber(5)).greaterThan(new TaggedNumber(3));
+
+console.log(textConnected); // true
+console.log(numberConnected); // true
+
+// ---------------------------------------------------------------------------
+// An eighth feature -- if/else (via branch()/ifIt()/is()/willBe()) alongside
+// try/catch. try/catch stays as plain JS, same reasoning as loops: an
+// exception can happen anywhere in the try block, not from one condition
+// check, so it doesn't fit the lazy-branch pattern -- only the if/else
+// INSIDE the try gets converted.
+// ---------------------------------------------------------------------------
+
+class NumberValue {
+  constructor(private readonly value: number) {}
+
+  greaterThan(other: NumberValue): boolean {
+    return this.value > other.value;
+  }
+
+  greaterThanOrEqual(other: NumberValue): boolean {
+    return this.value >= other.value;
+  }
+
+  lessThanOrEqual(other: NumberValue): boolean {
+    return this.value <= other.value;
+  }
+}
+
+// The one free function this pattern needs, same as transform.js's own
+// and()/or() generation: booleans have no .and() method, so combining two
+// of them needs a plain function, not a chained call.
+function and(a: boolean, b: boolean): boolean {
+  return a && b;
+}
+
+function parseAndCheck(input: string): string {
+  try {
+    const parsed: unknown = JSON.parse(input);
+    if (typeof parsed !== 'number') {
+      throw new Error('not a number');
+    }
+    const num = new NumberValue(parsed);
+    const zero = new NumberValue(0);
+    return branch<string>()
+      .ifIt(num)
+      .isGreaterThan(zero)
+      .willBe(() => 'positive')
+      .elseIt(() => 'non-positive');
+  } catch (e) {
+    return 'invalid';
+  }
+}
+
+// reads as: "parse and check '5': try, if num is greater than 0, will be
+// 'positive', else 'non-positive'; catch: 'invalid'"
+console.log(parseAndCheck('5')); // 'positive'
+console.log(parseAndCheck('-3')); // 'non-positive'
+console.log(parseAndCheck('not valid json')); // 'invalid' -- JSON.parse throws, caught
+
+// ---------------------------------------------------------------------------
+// A ninth feature -- a self-validating value object. Not just a wrapper:
+// the constructor is the ONE place validity is checked, ever. If an Email
+// exists at all, it's already guaranteed valid -- nothing downstream needs
+// to re-check, unlike a raw string that could be anything.
+// ---------------------------------------------------------------------------
+
+class Email {
+  private readonly value: string;
+
+  constructor(value: string) {
+    if (!Email.isValidFormat(value)) {
+      throw new Error(`Invalid email: "${value}"`);
+    }
+    this.value = value;
+  }
+
+  private static isValidFormat(value: string): boolean {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+  }
+
+  toString(): string {
+    return this.value;
+  }
+}
+
+// registerUser only ever sees an Email -- it never checks validity itself,
+// because by the time an Email object exists, that check already happened.
+function registerUser(email: Email): string {
+  return `registered ${email}`;
+}
+
+console.log(registerUser(new Email('shashank@example.com'))); // 'registered shashank@example.com'
+
+try {
+  new Email('not-an-email');
+} catch (e) {
+  console.log('rejected as predicted:', (e as Error).message);
+}
+
+// ---------------------------------------------------------------------------
+// A tenth feature -- pipe/composition. The other gap from the reference
+// material: chaining atoms via a generic pipe utility (works on ANY
+// functions) rather than fluent this-returning methods (only works within
+// one class hierarchy). Reuses Email/registerUser as-is -- neither was
+// written with piping in mind, which is the point: pipe composes existing
+// atoms, it doesn't require them to be designed for it.
+// ---------------------------------------------------------------------------
+
+function pipe<A, B, C>(fn1: (a: A) => B, fn2: (b: B) => C): (a: A) => C {
+  return (a: A) => fn2(fn1(a));
+}
+
+const registerFromString = pipe(
+  (raw: string) => new Email(raw),
+  registerUser
+);
+
+console.log(registerFromString('pipeline@example.com')); // 'registered pipeline@example.com'
+
+try {
+  registerFromString('not-an-email');
+} catch (e) {
+  console.log('pipe rejected as predicted:', (e as Error).message);
+}
+
+// ---------------------------------------------------------------------------
+// An eleventh feature -- named-variable extraction instead of closures, with
+// the types themselves named after what they actually are grammatically:
+//
+//   Subject<S>    -- "what we're talking about" (rule, value, num...).
+//                    Introduced by ifIt()/orifIt(). A subject alone isn't a
+//                    complete thought yet -- it needs a predicate.
+//   Clause<T,S>   -- Subject + Predicate (isSameAs/isEqualTo), evaluated to
+//                    a truth value. A clause is a complete thought, but not
+//                    yet a RESULT -- it still needs a consequent.
+//   Conditional<T> -- the whole accumulating if/then/else SENTENCE. Built
+//                    up one clause at a time via thenItIs(); orelseIs()
+//                    closes the sentence.
+//
+// This isn't decoration -- it's the same "function words vs. content words"
+// split from earlier, made literal: Subject and the connector words
+// (ifIt/orifIt/orelseIs) are structure; the predicate methods
+// (isSameAs/isEqualTo) are where meaning lives.
+// ---------------------------------------------------------------------------
+
+class Conditional<T> {
+  constructor(readonly matched: boolean, readonly result: T | undefined) {}
+
+  orifIt<S>(subject: S): Subject<T, S> {
+    return new Subject<T, S>(this, subject);
+  }
+
+  orelseIs(value: T): T {
+    return this.matched ? (this.result as T) : value;
+  }
+}
+
+class Subject<T, S> {
+  constructor(readonly parent: Conditional<T> | null, readonly value: S) {}
+
+  isSameAs(other: S): Clause<T, S> {
+    return new Clause<T, S>(this.parent, this.value === other);
+  }
+
+  isEqualTo(other: S): Clause<T, S> {
+    return new Clause<T, S>(this.parent, this.value === other);
+  }
+
+  // For a compound condition (and(...)/or(...)) that's already a boolean --
+  // there's no "other value" to compare against, the subject itself IS the
+  // claim. Only callable when S is boolean (the `this` parameter enforces
+  // that at compile time), since asking "is this true" only makes sense for
+  // something that's already a yes/no value.
+  isTrue(this: Subject<T, boolean>): Clause<T, boolean> {
+    return new Clause<T, boolean>(this.parent, this.value);
+  }
+}
+
+class Clause<T, S> {
+  constructor(readonly parent: Conditional<T> | null, readonly matched: boolean) {}
+
+  thenItIs(value: T): Conditional<T> {
+    if (this.parent && this.parent.matched) {
+      return this.parent; // an earlier clause already matched -- keep its result
+    }
+    return new Conditional<T>(this.matched, this.matched ? value : undefined);
+  }
+}
+
+function ifIt<T, S>(subject: S): Subject<T, S> {
+  return new Subject<T, S>(null, subject);
+}
+
+class RuleForField {
+  constructor(readonly expected: string) {}
+}
+
+function validateFieldNamed(rules: Record<string, RuleForField | null>, name: string, value: string): string {
+  const rule = rules[name];
+  const expected = rule?.expected; // meaningful, readable, safe -- no closures needed
+  const validaton = ifIt<string, RuleForField | null>(rule)
+    .isSameAs(null)
+    .thenItIs('unrated')
+    .orifIt<string | undefined>(value)
+    .isEqualTo(expected)
+    .thenItIs('valid')
+    .orelseIs('invalid');
+  return validaton;
+}
+
+const fieldRules: Record<string, RuleForField | null> = { color: new RuleForField('red'), size: null };
+
+console.log(validateFieldNamed(fieldRules, 'color', 'red')); // 'valid'
+console.log(validateFieldNamed(fieldRules, 'color', 'blue')); // 'invalid'
+console.log(validateFieldNamed(fieldRules, 'size', 'anything')); // 'unrated'
+
+// isTrue() proof -- a compound condition (no single "other" to compare
+// against) still fits the Subject/Clause/Conditional shape.
+function isWithinRangeNamed(value: number, min: number, max: number): boolean {
+  const val = new NumberValue(value);
+  const lower = new NumberValue(min);
+  const upper = new NumberValue(max);
+  return ifIt<boolean, boolean>(and(val.greaterThanOrEqual(lower), val.lessThanOrEqual(upper)))
+    .isTrue()
+    .thenItIs(true)
+    .orelseIs(false);
+}
+
+console.log(isWithinRangeNamed(5, 0, 10)); // true
+console.log(isWithinRangeNamed(15, 0, 10)); // false
+
+// ---------------------------------------------------------------------------
+// A twelfth feature -- validateAll(), the one case that couldn't fit the
+// branch-chain pattern (its body has side effects, not a bare return). The
+// real fix isn't forcing it into ifIt/thenItIs -- it's removing the reason
+// for a loop and a mutable flag to exist at all: .map()/.filter() compute
+// the answer instead of accumulating it. `let allValid` is gone entirely,
+// not converted -- there's nothing left to convert once invalid.length===0
+// IS the answer. this.errors = ... stays a plain property assignment
+// (never in question -- only local variable reassignment was the hard
+// limit, discussed much earlier this session).
+// ---------------------------------------------------------------------------
+
+class FormValidatorNamed {
+  errors: string[] = [];
+
+  constructor(private readonly rules: Record<string, RuleForField | null>) {}
+
+  validateAll(values: Record<string, string>): boolean {
+    const statuses = Object.keys(values).map((name) => ({
+      name,
+      status: validateFieldNamed(this.rules, name, values[name]),
+    }));
+    const invalid = statuses.filter((s) => !new TextValue(s.status).equals(new TextValue('valid')));
+    this.errors = invalid.map((s) => `${s.name} is ${s.status}`);
+    return invalid.length === 0;
+  }
+}
+
+const formValidator = new FormValidatorNamed(fieldRules);
+
+console.log(formValidator.validateAll({ color: 'red' })); // true
+console.log(formValidator.errors); // []
+
+console.log(formValidator.validateAll({ color: 'blue', size: 'anything' })); // false
+console.log(formValidator.errors); // ['color is invalid', 'size is unrated']
+
+// ---------------------------------------------------------------------------
+// A thirteenth feature -- switch. Every case compares the SAME subject
+// (status never changes), so there's no nested data-dependency at all --
+// this is actually SAFER than the if/else case, not harder. Flat, no
+// closures, verified correct for all four cases.
+// ---------------------------------------------------------------------------
+
+function classifyStatus(status: string): string {
+  return ifIt<string, string>(status)
+    .isEqualTo('valid')
+    .thenItIs('OK')
+    .orelseIs(
+      ifIt<string, string>(status)
+        .isEqualTo('invalid')
+        .thenItIs('BAD')
+        .orelseIs(ifIt<string, string>(status).isEqualTo('unrated').thenItIs('PENDING').orelseIs('UNKNOWN'))
+    );
+}
+
+console.log(classifyStatus('valid')); // 'OK'
+console.log(classifyStatus('invalid')); // 'BAD'
+console.log(classifyStatus('unrated')); // 'PENDING'
+console.log(classifyStatus('mystery')); // 'UNKNOWN'
+
+// ---------------------------------------------------------------------------
+// A fourteenth feature -- basic recursion. Tested first, expecting it to
+// break: it does, immediately and unconditionally. and(a, recurse()) as a
+// plain orelseIs() argument calls the recursive branch EAGERLY regardless
+// of whether the base case already matched (same root cause as the
+// eager-argument crash from before, but here it's not just wrong values --
+// it's an unconditional recursive call, so a real base case would recurse
+// forever, not just throw once). Recursion is a hard boundary, same
+// category as try/catch: it needs genuine deferred control flow, which
+// only a real if/else (or an explicit closure) can provide. No named-
+// variable extraction fixes this -- there's no way to "pre-compute" a call
+// that must conditionally not happen at all.
+// ---------------------------------------------------------------------------
+
+function allValidNamed(statuses: TextValue[]): boolean {
+  if (statuses.length === 0) {
+    return true;
+  } else {
+    return and(statuses[0].equals(new TextValue('valid')), allValidNamed(statuses.slice(1)));
+  }
+}
+
+console.log(allValidNamed([])); // true
+console.log(allValidNamed([new TextValue('valid'), new TextValue('valid')])); // true
+console.log(allValidNamed([new TextValue('valid'), new TextValue('invalid')])); // false
+
+console.log(assertion); // true (1 is not greater than 2, so the expectation holds)
