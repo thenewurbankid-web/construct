@@ -1,0 +1,1703 @@
+[
+  {
+    "kind": "isolation",
+    "id": "t01-book-by-author",
+    "forked": 12,
+    "enumerated": 12,
+    "survivors": 1,
+    "decision": "take",
+    "chosen": {
+      "vm": "computed",
+      "layers": [
+        "page",
+        "computed",
+        "service"
+      ],
+      "steps": [
+        "reuse book/services/findBook",
+        "create_module module:book/expressions"
+      ]
+    },
+    "pruned": {
+      "structure": 9,
+      "types": 2,
+      "behaviour": 0,
+      "cost": 0
+    },
+    "proven": [
+      "book/services/findBook"
+    ],
+    "ms": {
+      "structure": 0,
+      "types": 221.8,
+      "behaviour": 11.8,
+      "cost": 1.2,
+      "total": 242.1
+    },
+    "ref": {
+      "layers": [
+        "service"
+      ],
+      "ids": [
+        "book/services/findBook"
+      ],
+      "stateInPage": false
+    },
+    "match": {
+      "layersBelowPage": true,
+      "reusedIds": true,
+      "vm": "ref binds no view-model"
+    }
+  },
+  {
+    "kind": "isolation",
+    "id": "t02-book-page-count",
+    "forked": 12,
+    "enumerated": 12,
+    "survivors": 1,
+    "decision": "take",
+    "chosen": {
+      "vm": "computed",
+      "layers": [
+        "page",
+        "computed",
+        "service"
+      ],
+      "steps": [
+        "reuse book/services/findBook",
+        "create_module module:book/expressions"
+      ]
+    },
+    "pruned": {
+      "structure": 9,
+      "types": 2,
+      "behaviour": 0,
+      "cost": 0
+    },
+    "proven": [
+      "book/services/findBook"
+    ],
+    "ms": {
+      "structure": 0,
+      "types": 141.2,
+      "behaviour": 3.9,
+      "cost": 0.2,
+      "total": 147.6
+    },
+    "ref": {
+      "layers": [
+        "service"
+      ],
+      "ids": [
+        "book/services/findBook"
+      ],
+      "stateInPage": false
+    },
+    "match": {
+      "layersBelowPage": true,
+      "reusedIds": true,
+      "vm": "ref binds no view-model"
+    }
+  },
+  {
+    "kind": "isolation",
+    "id": "t03-book-availability",
+    "forked": 108,
+    "enumerated": 108,
+    "survivors": 1,
+    "decision": "take",
+    "chosen": {
+      "vm": "controller",
+      "layers": [
+        "page",
+        "controller",
+        "service",
+        "contract",
+        "domain"
+      ],
+      "steps": [
+        "reuse book/services/findBook",
+        "create_module module:book/controllers",
+        "create_module module:book/domains",
+        "create_module module:picks/index#addPick",
+        "create_module module:picks/index#listPicks"
+      ]
+    },
+    "pruned": {
+      "structure": 81,
+      "types": 25,
+      "behaviour": 0,
+      "cost": 1
+    },
+    "proven": [
+      "book/services/findBook",
+      "picks/store/listPicks"
+    ],
+    "ms": {
+      "structure": 0,
+      "types": 145.9,
+      "behaviour": 5.2,
+      "cost": 1.3,
+      "total": 153.7
+    },
+    "ref": {
+      "layers": [
+        "service"
+      ],
+      "ids": [
+        "book/services/findBook"
+      ],
+      "stateInPage": false
+    },
+    "match": {
+      "layersBelowPage": false,
+      "reusedIds": true,
+      "vm": "ref binds no view-model"
+    }
+  },
+  {
+    "kind": "isolation",
+    "id": "t04-book-not-found",
+    "forked": 12,
+    "enumerated": 12,
+    "survivors": 1,
+    "decision": "take",
+    "chosen": {
+      "vm": "computed",
+      "layers": [
+        "page",
+        "computed",
+        "service"
+      ],
+      "steps": [
+        "reuse book/services/findBook",
+        "create_module module:book/expressions"
+      ]
+    },
+    "pruned": {
+      "structure": 9,
+      "types": 2,
+      "behaviour": 0,
+      "cost": 0
+    },
+    "proven": [
+      "book/services/findBook"
+    ],
+    "ms": {
+      "structure": 0,
+      "types": 92.7,
+      "behaviour": 2.8,
+      "cost": 0.2,
+      "total": 97.1
+    },
+    "ref": {
+      "layers": [
+        "service"
+      ],
+      "ids": [
+        "book/services/findBook"
+      ],
+      "stateInPage": false
+    },
+    "match": {
+      "layersBelowPage": true,
+      "reusedIds": true,
+      "vm": "ref binds no view-model"
+    }
+  },
+  {
+    "kind": "isolation",
+    "id": "t05-book-add-to-picks",
+    "forked": 108,
+    "enumerated": 108,
+    "survivors": 2,
+    "decision": "compare",
+    "chosen": {
+      "vm": "controller",
+      "layers": [
+        "page",
+        "controller",
+        "service",
+        "contract",
+        "domain"
+      ],
+      "steps": [
+        "reuse book/services/findBook",
+        "create_module module:book/controllers",
+        "create_module module:book/domains",
+        "create_module module:picks/index#addPick",
+        "create_module module:picks/index#listPicks"
+      ]
+    },
+    "pruned": {
+      "structure": 54,
+      "types": 50,
+      "behaviour": 0,
+      "cost": 2
+    },
+    "proven": [
+      "book/services/findBook",
+      "picks/store/listPicks"
+    ],
+    "ms": {
+      "structure": 0,
+      "types": 137.8,
+      "behaviour": 4,
+      "cost": 1.1,
+      "total": 144.1
+    },
+    "ref": {
+      "layers": [
+        "contract",
+        "service"
+      ],
+      "ids": [
+        "book/services/findBook",
+        "picks/store/addPick"
+      ],
+      "stateInPage": true
+    },
+    "match": {
+      "layersBelowPage": true,
+      "reusedIds": true,
+      "vm": "ref keeps state in the page"
+    }
+  },
+  {
+    "kind": "isolation",
+    "id": "t06-picks-store",
+    "forked": 1,
+    "enumerated": 1,
+    "survivors": 1,
+    "decision": "take",
+    "chosen": {
+      "vm": null,
+      "layers": [
+        "contract"
+      ],
+      "steps": [
+        "create picks/store/listPicks",
+        "create picks/store/removePick"
+      ]
+    },
+    "pruned": {
+      "structure": 0,
+      "types": 0,
+      "behaviour": 0,
+      "cost": 0
+    },
+    "proven": [],
+    "ms": {
+      "structure": 0,
+      "types": 0,
+      "behaviour": 0,
+      "cost": 0,
+      "total": 0.9
+    },
+    "ref": {
+      "layers": [
+        "contract"
+      ],
+      "ids": [
+        "picks/store/addPick",
+        "picks/store/listPicks",
+        "picks/store/removePick"
+      ],
+      "stateInPage": false
+    },
+    "match": {
+      "layersBelowPage": true,
+      "reusedIds": false,
+      "vm": "ref binds no view-model"
+    }
+  },
+  {
+    "kind": "isolation",
+    "id": "t07-picks-page-list",
+    "forked": 108,
+    "enumerated": 108,
+    "survivors": 1,
+    "decision": "take",
+    "chosen": {
+      "vm": "controller",
+      "layers": [
+        "page",
+        "controller",
+        "service",
+        "contract"
+      ],
+      "steps": [
+        "create_module module:picks/controllers",
+        "reuse picks/services/pickedBooks",
+        "reuse picks/store/listPicks",
+        "reuse picks/store/removePick"
+      ]
+    },
+    "pruned": {
+      "structure": 81,
+      "types": 25,
+      "behaviour": 0,
+      "cost": 1
+    },
+    "proven": [
+      "picks/services/pickedBooks",
+      "picks/store/listPicks"
+    ],
+    "ms": {
+      "structure": 0,
+      "types": 137.6,
+      "behaviour": 2.8,
+      "cost": 0.9,
+      "total": 142.7
+    },
+    "ref": {
+      "layers": [
+        "contract",
+        "service"
+      ],
+      "ids": [
+        "picks/services/pickedBooks",
+        "picks/store/listPicks",
+        "picks/store/removePick"
+      ],
+      "stateInPage": true
+    },
+    "match": {
+      "layersBelowPage": true,
+      "reusedIds": true,
+      "vm": "ref keeps state in the page"
+    }
+  },
+  {
+    "kind": "isolation",
+    "id": "t08-picks-page-empty",
+    "forked": 36,
+    "enumerated": 36,
+    "survivors": 1,
+    "decision": "take",
+    "chosen": {
+      "vm": "computed",
+      "layers": [
+        "page",
+        "computed",
+        "service",
+        "contract"
+      ],
+      "steps": [
+        "create_module module:picks/expressions",
+        "reuse picks/services/pickedBooks",
+        "reuse picks/store/listPicks"
+      ]
+    },
+    "pruned": {
+      "structure": 27,
+      "types": 8,
+      "behaviour": 0,
+      "cost": 0
+    },
+    "proven": [
+      "picks/services/pickedBooks",
+      "picks/store/listPicks"
+    ],
+    "ms": {
+      "structure": 0,
+      "types": 121,
+      "behaviour": 2.7,
+      "cost": 0.3,
+      "total": 125.3
+    },
+    "ref": {
+      "layers": [
+        "contract"
+      ],
+      "ids": [
+        "picks/store/listPicks"
+      ],
+      "stateInPage": true
+    },
+    "match": {
+      "layersBelowPage": false,
+      "reusedIds": true,
+      "vm": "ref keeps state in the page"
+    }
+  },
+  {
+    "kind": "isolation",
+    "id": "t09-browse-heading-availability",
+    "forked": 12,
+    "enumerated": 12,
+    "survivors": 1,
+    "decision": "take",
+    "chosen": {
+      "vm": "hook",
+      "layers": [
+        "page",
+        "hook",
+        "service",
+        "domain"
+      ],
+      "steps": [
+        "reuse browse/services/listBooks",
+        "create_module module:browse/domains",
+        "create_module module:browse/domains",
+        "create_module module:browse/hooks"
+      ]
+    },
+    "pruned": {
+      "structure": 9,
+      "types": 2,
+      "behaviour": 0,
+      "cost": 0
+    },
+    "proven": [
+      "browse/services/listBooks"
+    ],
+    "ms": {
+      "structure": 0,
+      "types": 98.6,
+      "behaviour": 1.4,
+      "cost": 0.3,
+      "total": 101.5
+    },
+    "ref": {
+      "layers": [
+        "service"
+      ],
+      "ids": [
+        "browse/services/listBooks"
+      ],
+      "stateInPage": false
+    },
+    "match": {
+      "layersBelowPage": true,
+      "reusedIds": true,
+      "vm": "ref binds no view-model"
+    }
+  },
+  {
+    "kind": "isolation",
+    "id": "t10-browse-paging",
+    "forked": 12,
+    "enumerated": 12,
+    "survivors": 2,
+    "decision": "compare",
+    "chosen": {
+      "vm": "controller",
+      "layers": [
+        "page",
+        "controller",
+        "service",
+        "domain"
+      ],
+      "steps": [
+        "reuse browse/services/listBooks",
+        "create_module module:browse/controllers",
+        "create_module module:browse/domains",
+        "create_module module:browse/domains"
+      ]
+    },
+    "pruned": {
+      "structure": 6,
+      "types": 4,
+      "behaviour": 0,
+      "cost": 0
+    },
+    "proven": [
+      "browse/services/listBooks"
+    ],
+    "ms": {
+      "structure": 0,
+      "types": 92.1,
+      "behaviour": 1.5,
+      "cost": 0.2,
+      "total": 95.1
+    },
+    "ref": {
+      "layers": [
+        "service"
+      ],
+      "ids": [
+        "browse/services/listBooks"
+      ],
+      "stateInPage": true
+    },
+    "match": {
+      "layersBelowPage": true,
+      "reusedIds": true,
+      "vm": "ref keeps state in the page"
+    }
+  },
+  {
+    "kind": "isolation",
+    "id": "t11-browse-sort-title",
+    "forked": 12,
+    "enumerated": 12,
+    "survivors": 1,
+    "decision": "take",
+    "chosen": {
+      "vm": "hook",
+      "layers": [
+        "page",
+        "hook",
+        "service",
+        "domain"
+      ],
+      "steps": [
+        "reuse browse/services/listBooks",
+        "create_module module:browse/domains",
+        "create_module module:browse/hooks"
+      ]
+    },
+    "pruned": {
+      "structure": 9,
+      "types": 2,
+      "behaviour": 0,
+      "cost": 0
+    },
+    "proven": [
+      "browse/services/listBooks"
+    ],
+    "ms": {
+      "structure": 0,
+      "types": 105.2,
+      "behaviour": 1.5,
+      "cost": 0.2,
+      "total": 108.1
+    },
+    "ref": {
+      "layers": [
+        "service"
+      ],
+      "ids": [
+        "browse/services/listBooks"
+      ],
+      "stateInPage": false
+    },
+    "match": {
+      "layersBelowPage": true,
+      "reusedIds": true,
+      "vm": "ref binds no view-model"
+    }
+  },
+  {
+    "kind": "isolation",
+    "id": "t12-browse-genre-filter",
+    "forked": 12,
+    "enumerated": 12,
+    "survivors": 1,
+    "decision": "take",
+    "chosen": {
+      "vm": "hook",
+      "layers": [
+        "page",
+        "hook",
+        "service",
+        "domain"
+      ],
+      "steps": [
+        "reuse browse/services/listBooks",
+        "create_module module:browse/domains",
+        "create_module module:browse/hooks"
+      ]
+    },
+    "pruned": {
+      "structure": 9,
+      "types": 2,
+      "behaviour": 0,
+      "cost": 0
+    },
+    "proven": [
+      "browse/services/listBooks"
+    ],
+    "ms": {
+      "structure": 0,
+      "types": 93.1,
+      "behaviour": 1.5,
+      "cost": 0.2,
+      "total": 96.1
+    },
+    "ref": {
+      "layers": [
+        "service"
+      ],
+      "ids": [
+        "browse/services/listBooks"
+      ],
+      "stateInPage": true
+    },
+    "match": {
+      "layersBelowPage": true,
+      "reusedIds": true,
+      "vm": "ref keeps state in the page"
+    }
+  },
+  {
+    "kind": "lending",
+    "id": "BRW-1",
+    "forked": 4,
+    "enumerated": 4,
+    "survivors": 1,
+    "decision": "take",
+    "chosen": {
+      "vm": "hook",
+      "layers": [
+        "page",
+        "hook",
+        "service",
+        "contract",
+        "domain"
+      ],
+      "steps": [
+        "reuse library/fixtures/books",
+        "create_module module:browse/domains",
+        "create_module module:browse/domains",
+        "create_module module:browse/hooks",
+        "create_module module:browse/services"
+      ]
+    },
+    "pruned": {
+      "structure": 3,
+      "types": 0,
+      "behaviour": 0,
+      "cost": 0
+    },
+    "proven": [],
+    "ms": {
+      "structure": 0,
+      "types": 0,
+      "behaviour": 0,
+      "cost": 0.1,
+      "total": 1
+    },
+    "ref": {
+      "layers": [
+        "service"
+      ],
+      "ids": [
+        "browse/services/listBooks"
+      ],
+      "stateInPage": false
+    },
+    "match": {
+      "layersBelowPage": true,
+      "reusedIds": false,
+      "vm": "ref binds no view-model"
+    }
+  },
+  {
+    "kind": "lending",
+    "id": "BRW-2",
+    "forked": 4,
+    "enumerated": 4,
+    "survivors": 2,
+    "decision": "compare",
+    "chosen": {
+      "vm": "controller",
+      "layers": [
+        "page",
+        "controller",
+        "service",
+        "contract",
+        "domain"
+      ],
+      "steps": [
+        "reuse library/fixtures/books",
+        "create_module module:browse/controllers",
+        "create_module module:browse/domains",
+        "create_module module:browse/services"
+      ]
+    },
+    "pruned": {
+      "structure": 2,
+      "types": 0,
+      "behaviour": 0,
+      "cost": 0
+    },
+    "proven": [],
+    "ms": {
+      "structure": 0,
+      "types": 0,
+      "behaviour": 0,
+      "cost": 0.1,
+      "total": 0.7
+    },
+    "ref": {
+      "layers": [
+        "service"
+      ],
+      "ids": [
+        "browse/services/listBooks"
+      ],
+      "stateInPage": true
+    },
+    "match": {
+      "layersBelowPage": true,
+      "reusedIds": false,
+      "vm": "ref keeps state in the page"
+    }
+  },
+  {
+    "kind": "lending",
+    "id": "BRW-3",
+    "forked": 4,
+    "enumerated": 4,
+    "survivors": 1,
+    "decision": "take",
+    "chosen": {
+      "vm": "hook",
+      "layers": [
+        "page",
+        "hook",
+        "service",
+        "contract",
+        "domain"
+      ],
+      "steps": [
+        "reuse library/fixtures/books",
+        "create_module module:browse/domains",
+        "create_module module:browse/hooks",
+        "create_module module:browse/services"
+      ]
+    },
+    "pruned": {
+      "structure": 3,
+      "types": 0,
+      "behaviour": 0,
+      "cost": 0
+    },
+    "proven": [],
+    "ms": {
+      "structure": 0,
+      "types": 0,
+      "behaviour": 0,
+      "cost": 0.1,
+      "total": 0.6
+    },
+    "ref": {
+      "layers": [
+        "service"
+      ],
+      "ids": [
+        "browse/services/listBooks"
+      ],
+      "stateInPage": false
+    },
+    "match": {
+      "layersBelowPage": true,
+      "reusedIds": false,
+      "vm": "ref binds no view-model"
+    }
+  },
+  {
+    "kind": "lending",
+    "id": "BRW-4",
+    "forked": 4,
+    "enumerated": 4,
+    "survivors": 1,
+    "decision": "take",
+    "chosen": {
+      "vm": "hook",
+      "layers": [
+        "page",
+        "hook",
+        "service",
+        "contract",
+        "domain"
+      ],
+      "steps": [
+        "reuse library/fixtures/books",
+        "create_module module:browse/domains",
+        "create_module module:browse/hooks",
+        "create_module module:browse/services"
+      ]
+    },
+    "pruned": {
+      "structure": 3,
+      "types": 0,
+      "behaviour": 0,
+      "cost": 0
+    },
+    "proven": [],
+    "ms": {
+      "structure": 0,
+      "types": 0,
+      "behaviour": 0,
+      "cost": 0.1,
+      "total": 0.8
+    },
+    "ref": {
+      "layers": [
+        "service"
+      ],
+      "ids": [
+        "browse/services/listBooks"
+      ],
+      "stateInPage": true
+    },
+    "match": {
+      "layersBelowPage": true,
+      "reusedIds": false,
+      "vm": "ref keeps state in the page"
+    }
+  },
+  {
+    "kind": "lending",
+    "id": "BRW-5",
+    "forked": 4,
+    "enumerated": 4,
+    "survivors": 1,
+    "decision": "take",
+    "chosen": {
+      "vm": "hook",
+      "layers": [
+        "page",
+        "hook",
+        "service",
+        "contract",
+        "domain"
+      ],
+      "steps": [
+        "reuse library/fixtures/books",
+        "create_module module:browse/domains",
+        "create_module module:browse/hooks",
+        "create_module module:browse/services"
+      ]
+    },
+    "pruned": {
+      "structure": 3,
+      "types": 0,
+      "behaviour": 0,
+      "cost": 0
+    },
+    "proven": [],
+    "ms": {
+      "structure": 0,
+      "types": 0,
+      "behaviour": 0,
+      "cost": 0.1,
+      "total": 0.7
+    },
+    "ref": null,
+    "match": null
+  },
+  {
+    "kind": "lending",
+    "id": "BK-1",
+    "forked": 4,
+    "enumerated": 4,
+    "survivors": 1,
+    "decision": "take",
+    "chosen": {
+      "vm": "computed",
+      "layers": [
+        "page",
+        "computed",
+        "service",
+        "contract"
+      ],
+      "steps": [
+        "reuse library/fixtures/books",
+        "create_module module:book/expressions",
+        "create_module module:book/services"
+      ]
+    },
+    "pruned": {
+      "structure": 3,
+      "types": 0,
+      "behaviour": 0,
+      "cost": 0
+    },
+    "proven": [],
+    "ms": {
+      "structure": 0,
+      "types": 0,
+      "behaviour": 0,
+      "cost": 0.1,
+      "total": 1.2
+    },
+    "ref": {
+      "layers": [
+        "service"
+      ],
+      "ids": [
+        "book/services/findBook"
+      ],
+      "stateInPage": false
+    },
+    "match": {
+      "layersBelowPage": true,
+      "reusedIds": false,
+      "vm": "ref binds no view-model"
+    }
+  },
+  {
+    "kind": "lending",
+    "id": "BK-2",
+    "forked": 4,
+    "enumerated": 4,
+    "survivors": 2,
+    "decision": "compare",
+    "chosen": {
+      "vm": "controller",
+      "layers": [
+        "page",
+        "controller",
+        "service",
+        "contract"
+      ],
+      "steps": [
+        "reuse library/fixtures/books",
+        "create_module module:book/controllers",
+        "create_module module:book/services",
+        "create_module module:picks/store",
+        "create_module module:picks/store"
+      ]
+    },
+    "pruned": {
+      "structure": 2,
+      "types": 0,
+      "behaviour": 0,
+      "cost": 0
+    },
+    "proven": [],
+    "ms": {
+      "structure": 0,
+      "types": 0,
+      "behaviour": 0,
+      "cost": 0.1,
+      "total": 0.8
+    },
+    "ref": {
+      "layers": [
+        "contract",
+        "service"
+      ],
+      "ids": [
+        "book/services/findBook",
+        "picks/store/addPick"
+      ],
+      "stateInPage": true
+    },
+    "match": {
+      "layersBelowPage": true,
+      "reusedIds": false,
+      "vm": "ref keeps state in the page"
+    }
+  },
+  {
+    "kind": "lending",
+    "id": "BK-3",
+    "forked": 4,
+    "enumerated": 4,
+    "survivors": 1,
+    "decision": "take",
+    "chosen": {
+      "vm": "controller",
+      "layers": [
+        "page",
+        "controller",
+        "service",
+        "contract",
+        "domain"
+      ],
+      "steps": [
+        "reuse library/fixtures/books",
+        "create_module module:book/controllers",
+        "create_module module:book/domains",
+        "create_module module:book/services",
+        "create_module module:picks/store",
+        "create_module module:picks/store"
+      ]
+    },
+    "pruned": {
+      "structure": 3,
+      "types": 0,
+      "behaviour": 0,
+      "cost": 0
+    },
+    "proven": [],
+    "ms": {
+      "structure": 0,
+      "types": 0,
+      "behaviour": 0,
+      "cost": 0.1,
+      "total": 0.7
+    },
+    "ref": {
+      "layers": [
+        "service"
+      ],
+      "ids": [
+        "book/services/findBook"
+      ],
+      "stateInPage": false
+    },
+    "match": {
+      "layersBelowPage": false,
+      "reusedIds": false,
+      "vm": "ref binds no view-model"
+    }
+  },
+  {
+    "kind": "lending",
+    "id": "BK-4",
+    "forked": 4,
+    "enumerated": 4,
+    "survivors": 1,
+    "decision": "take",
+    "chosen": {
+      "vm": "computed",
+      "layers": [
+        "page",
+        "computed",
+        "service",
+        "contract"
+      ],
+      "steps": [
+        "reuse library/fixtures/books",
+        "create_module module:book/expressions",
+        "create_module module:book/services"
+      ]
+    },
+    "pruned": {
+      "structure": 3,
+      "types": 0,
+      "behaviour": 0,
+      "cost": 0
+    },
+    "proven": [],
+    "ms": {
+      "structure": 0,
+      "types": 0,
+      "behaviour": 0,
+      "cost": 0.1,
+      "total": 0.6
+    },
+    "ref": {
+      "layers": [
+        "service"
+      ],
+      "ids": [
+        "book/services/findBook"
+      ],
+      "stateInPage": false
+    },
+    "match": {
+      "layersBelowPage": true,
+      "reusedIds": false,
+      "vm": "ref binds no view-model"
+    }
+  },
+  {
+    "kind": "lending",
+    "id": "PCK-1",
+    "forked": 4,
+    "enumerated": 4,
+    "survivors": 2,
+    "decision": "compare",
+    "chosen": {
+      "vm": "computed",
+      "layers": [
+        "page",
+        "computed",
+        "contract"
+      ],
+      "steps": [
+        "create_module module:picks/expressions",
+        "create_module module:picks/store"
+      ]
+    },
+    "pruned": {
+      "structure": 2,
+      "types": 0,
+      "behaviour": 0,
+      "cost": 0
+    },
+    "proven": [],
+    "ms": {
+      "structure": 0,
+      "types": 0,
+      "behaviour": 0,
+      "cost": 0.1,
+      "total": 0.6
+    },
+    "ref": null,
+    "match": null
+  },
+  {
+    "kind": "lending",
+    "id": "PCK-2",
+    "forked": 4,
+    "enumerated": 4,
+    "survivors": 1,
+    "decision": "take",
+    "chosen": {
+      "vm": "controller",
+      "layers": [
+        "page",
+        "controller",
+        "service",
+        "contract"
+      ],
+      "steps": [
+        "reuse library/fixtures/books",
+        "create_module module:picks/controllers",
+        "create_module module:picks/services",
+        "create_module module:picks/store",
+        "create_module module:picks/store"
+      ]
+    },
+    "pruned": {
+      "structure": 3,
+      "types": 0,
+      "behaviour": 0,
+      "cost": 0
+    },
+    "proven": [],
+    "ms": {
+      "structure": 0,
+      "types": 0,
+      "behaviour": 0,
+      "cost": 0.1,
+      "total": 0.5
+    },
+    "ref": {
+      "layers": [
+        "contract",
+        "service"
+      ],
+      "ids": [
+        "picks/services/pickedBooks",
+        "picks/store/listPicks",
+        "picks/store/removePick"
+      ],
+      "stateInPage": true
+    },
+    "match": {
+      "layersBelowPage": true,
+      "reusedIds": false,
+      "vm": "ref keeps state in the page"
+    }
+  },
+  {
+    "kind": "lending",
+    "id": "PCK-3",
+    "forked": 4,
+    "enumerated": 4,
+    "survivors": 2,
+    "decision": "compare",
+    "chosen": {
+      "vm": "controller",
+      "layers": [
+        "page",
+        "controller",
+        "service",
+        "contract",
+        "domain"
+      ],
+      "steps": [
+        "reuse library/fixtures/books",
+        "create_module module:picks/controllers",
+        "create_module module:picks/domains",
+        "create_module module:picks/services",
+        "create_module module:picks/store",
+        "create_module module:picks/store"
+      ]
+    },
+    "pruned": {
+      "structure": 2,
+      "types": 0,
+      "behaviour": 0,
+      "cost": 0
+    },
+    "proven": [],
+    "ms": {
+      "structure": 0,
+      "types": 0,
+      "behaviour": 0,
+      "cost": 0.1,
+      "total": 0.5
+    },
+    "ref": null,
+    "match": null
+  },
+  {
+    "kind": "lending",
+    "id": "PCK-4",
+    "forked": 4,
+    "enumerated": 4,
+    "survivors": 1,
+    "decision": "take",
+    "chosen": {
+      "vm": "computed",
+      "layers": [
+        "page",
+        "computed",
+        "service",
+        "contract",
+        "domain"
+      ],
+      "steps": [
+        "reuse library/fixtures/books",
+        "create_module module:picks/domains",
+        "create_module module:picks/expressions",
+        "create_module module:picks/services"
+      ]
+    },
+    "pruned": {
+      "structure": 3,
+      "types": 0,
+      "behaviour": 0,
+      "cost": 0
+    },
+    "proven": [],
+    "ms": {
+      "structure": 0,
+      "types": 0,
+      "behaviour": 0,
+      "cost": 0.1,
+      "total": 0.5
+    },
+    "ref": null,
+    "match": null
+  },
+  {
+    "kind": "lending",
+    "id": "PCK-5",
+    "forked": 4,
+    "enumerated": 4,
+    "survivors": 1,
+    "decision": "take",
+    "chosen": {
+      "vm": "computed",
+      "layers": [
+        "page",
+        "computed",
+        "service",
+        "contract"
+      ],
+      "steps": [
+        "reuse library/fixtures/books",
+        "create_module module:picks/expressions",
+        "create_module module:picks/services",
+        "create_module module:picks/store"
+      ]
+    },
+    "pruned": {
+      "structure": 3,
+      "types": 0,
+      "behaviour": 0,
+      "cost": 0
+    },
+    "proven": [],
+    "ms": {
+      "structure": 0,
+      "types": 0,
+      "behaviour": 0,
+      "cost": 0.1,
+      "total": 0.4
+    },
+    "ref": {
+      "layers": [
+        "contract"
+      ],
+      "ids": [
+        "picks/store/listPicks"
+      ],
+      "stateInPage": true
+    },
+    "match": {
+      "layersBelowPage": false,
+      "reusedIds": false,
+      "vm": "ref keeps state in the page"
+    }
+  },
+  {
+    "kind": "lending",
+    "id": "PCK-6",
+    "forked": 4,
+    "enumerated": 4,
+    "survivors": 1,
+    "decision": "take",
+    "chosen": {
+      "vm": "computed",
+      "layers": [
+        "page",
+        "computed",
+        "service",
+        "contract"
+      ],
+      "steps": [
+        "reuse library/fixtures/books",
+        "create_module module:picks/expressions",
+        "create_module module:picks/services",
+        "create_module module:picks/store"
+      ]
+    },
+    "pruned": {
+      "structure": 3,
+      "types": 0,
+      "behaviour": 0,
+      "cost": 0
+    },
+    "proven": [],
+    "ms": {
+      "structure": 0,
+      "types": 0,
+      "behaviour": 0,
+      "cost": 0.1,
+      "total": 0.4
+    },
+    "ref": null,
+    "match": null
+  },
+  {
+    "kind": "lending",
+    "id": "REQ-1",
+    "forked": 4,
+    "enumerated": 4,
+    "survivors": 1,
+    "decision": "take",
+    "chosen": {
+      "vm": "hook",
+      "layers": [
+        "page",
+        "hook",
+        "service",
+        "contract",
+        "domain"
+      ],
+      "steps": [
+        "reuse library/fixtures/books",
+        "create_module module:picks/store",
+        "create_module module:request/domains",
+        "create_module module:request/hooks",
+        "create_module module:request/services"
+      ]
+    },
+    "pruned": {
+      "structure": 3,
+      "types": 0,
+      "behaviour": 0,
+      "cost": 0
+    },
+    "proven": [],
+    "ms": {
+      "structure": 0,
+      "types": 0,
+      "behaviour": 0,
+      "cost": 0.1,
+      "total": 0.7
+    },
+    "ref": null,
+    "match": null
+  },
+  {
+    "kind": "lending",
+    "id": "REQ-2",
+    "forked": 4,
+    "enumerated": 4,
+    "survivors": 1,
+    "decision": "take",
+    "chosen": {
+      "vm": "controller",
+      "layers": [
+        "page",
+        "controller",
+        "domain"
+      ],
+      "steps": [
+        "create_module module:request/controllers",
+        "create_module module:request/domains"
+      ]
+    },
+    "pruned": {
+      "structure": 3,
+      "types": 0,
+      "behaviour": 0,
+      "cost": 0
+    },
+    "proven": [],
+    "ms": {
+      "structure": 0,
+      "types": 0,
+      "behaviour": 0,
+      "cost": 0.1,
+      "total": 0.6
+    },
+    "ref": null,
+    "match": null
+  },
+  {
+    "kind": "lending",
+    "id": "REQ-3",
+    "forked": 4,
+    "enumerated": 4,
+    "survivors": 1,
+    "decision": "take",
+    "chosen": {
+      "vm": "controller",
+      "layers": [
+        "page",
+        "controller",
+        "service",
+        "contract",
+        "domain"
+      ],
+      "steps": [
+        "reuse library/fixtures/books",
+        "create_module module:loans/store",
+        "create_module module:picks/store",
+        "create_module module:request/controllers",
+        "create_module module:request/domains",
+        "create_module module:request/services",
+        "create_module module:request/services"
+      ]
+    },
+    "pruned": {
+      "structure": 3,
+      "types": 0,
+      "behaviour": 0,
+      "cost": 0
+    },
+    "proven": [],
+    "ms": {
+      "structure": 0,
+      "types": 0,
+      "behaviour": 0,
+      "cost": 0.1,
+      "total": 0.8
+    },
+    "ref": null,
+    "match": null
+  },
+  {
+    "kind": "lending",
+    "id": "REQ-4",
+    "forked": 4,
+    "enumerated": 4,
+    "survivors": 1,
+    "decision": "take",
+    "chosen": {
+      "vm": "computed",
+      "layers": [
+        "page",
+        "computed",
+        "service",
+        "contract",
+        "domain"
+      ],
+      "steps": [
+        "reuse library/fixtures/books",
+        "create_module module:loans/store",
+        "create_module module:request/domains",
+        "create_module module:request/expressions",
+        "create_module module:request/services"
+      ]
+    },
+    "pruned": {
+      "structure": 3,
+      "types": 0,
+      "behaviour": 0,
+      "cost": 0
+    },
+    "proven": [],
+    "ms": {
+      "structure": 0,
+      "types": 0,
+      "behaviour": 0,
+      "cost": 0.1,
+      "total": 0.9
+    },
+    "ref": null,
+    "match": null
+  },
+  {
+    "kind": "lending",
+    "id": "REQ-5",
+    "forked": 4,
+    "enumerated": 4,
+    "survivors": 1,
+    "decision": "take",
+    "chosen": {
+      "vm": "computed",
+      "layers": [
+        "page",
+        "computed",
+        "service",
+        "contract"
+      ],
+      "steps": [
+        "reuse library/fixtures/books",
+        "create_module module:picks/store",
+        "create_module module:request/expressions",
+        "create_module module:request/services"
+      ]
+    },
+    "pruned": {
+      "structure": 3,
+      "types": 0,
+      "behaviour": 0,
+      "cost": 0
+    },
+    "proven": [],
+    "ms": {
+      "structure": 0,
+      "types": 0,
+      "behaviour": 0,
+      "cost": 0.1,
+      "total": 0.7
+    },
+    "ref": null,
+    "match": null
+  },
+  {
+    "kind": "lending",
+    "id": "LN-1",
+    "forked": 4,
+    "enumerated": 4,
+    "survivors": 1,
+    "decision": "take",
+    "chosen": {
+      "vm": "computed",
+      "layers": [
+        "page",
+        "computed",
+        "contract",
+        "domain"
+      ],
+      "steps": [
+        "create_module module:loans/domains",
+        "create_module module:loans/expressions",
+        "create_module module:loans/store"
+      ]
+    },
+    "pruned": {
+      "structure": 3,
+      "types": 0,
+      "behaviour": 0,
+      "cost": 0
+    },
+    "proven": [],
+    "ms": {
+      "structure": 0,
+      "types": 0,
+      "behaviour": 0,
+      "cost": 0.1,
+      "total": 0.5
+    },
+    "ref": null,
+    "match": null
+  },
+  {
+    "kind": "lending",
+    "id": "LN-2",
+    "forked": 4,
+    "enumerated": 4,
+    "survivors": 1,
+    "decision": "take",
+    "chosen": {
+      "vm": "controller",
+      "layers": [
+        "page",
+        "controller",
+        "contract",
+        "domain"
+      ],
+      "steps": [
+        "create_module module:loans/controllers",
+        "create_module module:loans/domains",
+        "create_module module:loans/domains",
+        "create_module module:loans/store"
+      ]
+    },
+    "pruned": {
+      "structure": 3,
+      "types": 0,
+      "behaviour": 0,
+      "cost": 0
+    },
+    "proven": [],
+    "ms": {
+      "structure": 0,
+      "types": 0,
+      "behaviour": 0,
+      "cost": 0.1,
+      "total": 0.5
+    },
+    "ref": null,
+    "match": null
+  },
+  {
+    "kind": "lending",
+    "id": "LN-3",
+    "forked": 4,
+    "enumerated": 4,
+    "survivors": 2,
+    "decision": "compare",
+    "chosen": {
+      "vm": "controller",
+      "layers": [
+        "page",
+        "controller",
+        "contract"
+      ],
+      "steps": [
+        "create_module module:loans/controllers",
+        "create_module module:loans/store"
+      ]
+    },
+    "pruned": {
+      "structure": 2,
+      "types": 0,
+      "behaviour": 0,
+      "cost": 0
+    },
+    "proven": [],
+    "ms": {
+      "structure": 0,
+      "types": 0,
+      "behaviour": 0,
+      "cost": 0,
+      "total": 0.4
+    },
+    "ref": null,
+    "match": null
+  },
+  {
+    "kind": "lending",
+    "id": "LN-4",
+    "forked": 4,
+    "enumerated": 4,
+    "survivors": 2,
+    "decision": "compare",
+    "chosen": {
+      "vm": "controller",
+      "layers": [
+        "page",
+        "controller",
+        "contract"
+      ],
+      "steps": [
+        "create_module module:loans/controllers",
+        "create_module module:loans/store"
+      ]
+    },
+    "pruned": {
+      "structure": 2,
+      "types": 0,
+      "behaviour": 0,
+      "cost": 0
+    },
+    "proven": [],
+    "ms": {
+      "structure": 0,
+      "types": 0,
+      "behaviour": 0,
+      "cost": 0,
+      "total": 0.4
+    },
+    "ref": null,
+    "match": null
+  }
+]

@@ -40,9 +40,9 @@ function project(files = {}, { line = true } = {}) {
 const shadowRows = (root) => { try { return fs.readFileSync(path.join(root, LSP_SHADOW_LOG), 'utf8').trim().split('\n').filter(Boolean).map((l) => JSON.parse(l)); } catch { return []; } };
 
 test('profile: nextSteps and fixes default on, the rest shadow; override > env > project file > default; shadow rows only with line/', () => {
-  assert.deepEqual(LSP_DEFAULTS, { nextSteps: 'on', completions: 'shadow', gatherer: 'shadow', smithCheck: 'shadow', fixes: 'on' });
+  assert.deepEqual(LSP_DEFAULTS, { nextSteps: 'on', completions: 'shadow', gatherer: 'shadow', smithCheck: 'shadow', fixes: 'on', beam: 'shadow' });
   const root = project();
-  assert.deepEqual(lspProfile(root, null, {}).map((p) => [p.flag, p.mode]), [['lsp.nextSteps', 'on'], ['lsp.completions', 'shadow'], ['lsp.gatherer', 'shadow'], ['lsp.smithCheck', 'shadow'], ['lsp.fixes', 'on']]);
+  assert.deepEqual(lspProfile(root, null, {}).map((p) => [p.flag, p.mode]), [['lsp.nextSteps', 'on'], ['lsp.completions', 'shadow'], ['lsp.gatherer', 'shadow'], ['lsp.smithCheck', 'shadow'], ['lsp.fixes', 'on'], ['lsp.beam', 'shadow']]);
   fs.writeFileSync(path.join(root, LSP_PROFILE_FILE), JSON.stringify({ v: 1, calls: { 'lsp.fixes': 'off', gatherer: 'on' } }));
   assert.equal(lspMode(root, 'fixes', null, {}), 'off');
   assert.equal(lspMode(root, 'gatherer', null, {}), 'on');
