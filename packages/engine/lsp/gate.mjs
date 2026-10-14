@@ -123,6 +123,18 @@ export function isJsxTag(n) {
 }
 
 /**
+ * Whether `n` is only a name, not a reference to a binding: the member of a property access (`DropdownMenu` in
+ * `SubframeCore.DropdownMenu.Root`), an object key, a JSX attribute name, a declaration's own name.
+ * @param {any} n An identifier.
+ * @returns {boolean}
+ */
+function isNameOnly(n) {
+  const p = n.parent;
+  return (ts.isPropertyAccessExpression(p) && p.name === n) || (ts.isPropertyAssignment(p) && p.name === n) || ts.isJsxAttribute(p)
+    || ((ts.isVariableDeclaration(p) || ts.isParameter(p) || ts.isFunctionDeclaration(p) || ts.isBindingElement(p)) && p.name === n);
+}
+
+/**
  * Imported bindings read as data inside `node` (not called, not a JSX tag, not a type).
  * @param {any} sf The TypeScript source file.
  * @param {any} node A function node in it.
@@ -139,7 +151,7 @@ export function dataConnections(sf, node) {
   }
   const hits = new Set();
   const visit = (n) => {
-    if (ts.isIdentifier(n) && imported.has(n.text)) {
+    if (ts.isIdentifier(n) && imported.has(n.text) && !isNameOnly(n)) {
       const p = n.parent;
       const ok = (ts.isCallExpression(p) && p.expression === n)
         || isJsxTag(n)

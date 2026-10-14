@@ -81,3 +81,18 @@ export function useSmall() {
   assert.ok(g.failed.includes('one-job'));
   assert.equal(check(await gate(rel, source, 'useSmall'), 'one-job').ok, true);
 });
+
+test('connections: a member name that matches an import (SubframeCore.DropdownMenu.Root, DropdownMenu imported) is not a read', async () => {
+  const source = `import * as SubframeCore from '@subframe/core';
+import { DropdownMenu } from './DropdownMenu';
+export function Menu({ label }: { label: string }) {
+  return (
+    <SubframeCore.DropdownMenu.Root>
+      <DropdownMenu><DropdownMenu.DropdownItem>{label}</DropdownMenu.DropdownItem></DropdownMenu>
+    </SubframeCore.DropdownMenu.Root>
+  );
+}
+`;
+  const g = await gate('features/a/components/Menu.tsx', source, 'Menu');
+  assert.equal(check(g, 'connections').ok, true, check(g, 'connections').line);
+});
