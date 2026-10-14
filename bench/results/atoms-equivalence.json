@@ -1,0 +1,4271 @@
+{
+ "summary": {
+  "runtime": "414cdbd",
+  "functions": 380,
+  "checked": 139,
+  "same": 139,
+  "different": 0,
+  "skipped": 241,
+  "notRunnable": 0,
+  "runsPerFunction": 40,
+  "runsCompared": 5560,
+  "runsExercised": 4271,
+  "runsTimedOut": 0,
+  "conversionsChecked": 709
+ },
+ "functions": [
+  {
+   "name": "InvoicesPage",
+   "kind": "function",
+   "file": "packages/core/profiles/line/fixtures/LINE-BASE/features/billing/pages/InvoicesPage.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "OrderButton",
+   "kind": "function",
+   "file": "packages/core/profiles/line/fixtures/LINE-BASE/features/orders/components/OrderButton.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "OrdersPage",
+   "kind": "function",
+   "file": "packages/core/profiles/line/fixtures/LINE-BASE/features/orders/pages/OrdersPage.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "advance",
+   "kind": "function",
+   "file": "packages/core/profiles/line/fixtures/LINE-BASE/features/orders/workflows/orderCheckout.ts",
+   "status": "skipped",
+   "why": "nothing converted"
+  },
+  {
+   "name": "Button",
+   "kind": "function",
+   "file": "packages/core/profiles/line/fixtures/LINE-BASE/library/components/Button.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "ListPage",
+   "kind": "function",
+   "file": "packages/core/profiles/line/fixtures/LINE-BASE/library/pages/ListPage.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "next",
+   "kind": "function",
+   "file": "packages/core/profiles/line/fixtures/LINE-BASE/library/workflows/checkout.ts",
+   "conversions": 2,
+   "atoms": [
+    "equals",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 40,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "InvoicesPage",
+   "kind": "function",
+   "file": "packages/core/profiles/line/fixtures/LINE-DIR/features/billing/pages/InvoicesPage.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "OrderButton",
+   "kind": "function",
+   "file": "packages/core/profiles/line/fixtures/LINE-DIR/features/orders/components/OrderButton.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "OrdersPage",
+   "kind": "function",
+   "file": "packages/core/profiles/line/fixtures/LINE-DIR/features/orders/pages/OrdersPage.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "advance",
+   "kind": "function",
+   "file": "packages/core/profiles/line/fixtures/LINE-DIR/features/orders/workflows/orderCheckout.ts",
+   "status": "skipped",
+   "why": "nothing converted"
+  },
+  {
+   "name": "Button",
+   "kind": "function",
+   "file": "packages/core/profiles/line/fixtures/LINE-DIR/library/components/Button.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "ListPage",
+   "kind": "function",
+   "file": "packages/core/profiles/line/fixtures/LINE-DIR/library/pages/ListPage.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "next",
+   "kind": "function",
+   "file": "packages/core/profiles/line/fixtures/LINE-DIR/library/workflows/checkout.ts",
+   "conversions": 2,
+   "atoms": [
+    "equals",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 40,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "InvoicesPage",
+   "kind": "function",
+   "file": "packages/core/profiles/line/fixtures/LINE-LAYOUT/features/billing/pages/InvoicesPage.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "OrderButton",
+   "kind": "function",
+   "file": "packages/core/profiles/line/fixtures/LINE-LAYOUT/features/orders/components/OrderButton.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "OrdersPage",
+   "kind": "function",
+   "file": "packages/core/profiles/line/fixtures/LINE-LAYOUT/features/orders/pages/OrdersPage.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "advance",
+   "kind": "function",
+   "file": "packages/core/profiles/line/fixtures/LINE-LAYOUT/features/orders/workflows/orderCheckout.ts",
+   "status": "skipped",
+   "why": "nothing converted"
+  },
+  {
+   "name": "Button",
+   "kind": "function",
+   "file": "packages/core/profiles/line/fixtures/LINE-LAYOUT/library/components/Button.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "useThing",
+   "kind": "function",
+   "file": "packages/core/profiles/line/fixtures/LINE-LAYOUT/library/hooks/useThing.ts",
+   "status": "skipped",
+   "why": "nothing converted"
+  },
+  {
+   "name": "ListPage",
+   "kind": "function",
+   "file": "packages/core/profiles/line/fixtures/LINE-LAYOUT/library/pages/ListPage.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "next",
+   "kind": "function",
+   "file": "packages/core/profiles/line/fixtures/LINE-LAYOUT/library/workflows/checkout.ts",
+   "conversions": 2,
+   "atoms": [
+    "equals",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 40,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "InvoicesPage",
+   "kind": "function",
+   "file": "packages/core/profiles/line/fixtures/LINE-MODULE/features/billing/pages/InvoicesPage.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "OrderButton",
+   "kind": "function",
+   "file": "packages/core/profiles/line/fixtures/LINE-MODULE/features/orders/components/OrderButton.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "OrdersPage",
+   "kind": "function",
+   "file": "packages/core/profiles/line/fixtures/LINE-MODULE/features/orders/pages/OrdersPage.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "advance",
+   "kind": "function",
+   "file": "packages/core/profiles/line/fixtures/LINE-MODULE/features/orders/workflows/orderCheckout.ts",
+   "status": "skipped",
+   "why": "nothing converted"
+  },
+  {
+   "name": "Button",
+   "kind": "function",
+   "file": "packages/core/profiles/line/fixtures/LINE-MODULE/library/components/Button.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "ListPage",
+   "kind": "function",
+   "file": "packages/core/profiles/line/fixtures/LINE-MODULE/library/pages/ListPage.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "next",
+   "kind": "function",
+   "file": "packages/core/profiles/line/fixtures/LINE-MODULE/library/workflows/checkout.ts",
+   "conversions": 2,
+   "atoms": [
+    "equals",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 40,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "About",
+   "kind": "function",
+   "file": "packages/core/profiles/line/fixtures/LINE-OWNER/app/about/page.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "InvoicesPage",
+   "kind": "function",
+   "file": "packages/core/profiles/line/fixtures/LINE-OWNER/features/billing/pages/InvoicesPage.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "OrderButton",
+   "kind": "function",
+   "file": "packages/core/profiles/line/fixtures/LINE-OWNER/features/orders/components/OrderButton.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "OrdersPage",
+   "kind": "function",
+   "file": "packages/core/profiles/line/fixtures/LINE-OWNER/features/orders/pages/OrdersPage.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "advance",
+   "kind": "function",
+   "file": "packages/core/profiles/line/fixtures/LINE-OWNER/features/orders/workflows/orderCheckout.ts",
+   "status": "skipped",
+   "why": "nothing converted"
+  },
+  {
+   "name": "Button",
+   "kind": "function",
+   "file": "packages/core/profiles/line/fixtures/LINE-OWNER/library/components/Button.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "ListPage",
+   "kind": "function",
+   "file": "packages/core/profiles/line/fixtures/LINE-OWNER/library/pages/ListPage.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "next",
+   "kind": "function",
+   "file": "packages/core/profiles/line/fixtures/LINE-OWNER/library/workflows/checkout.ts",
+   "conversions": 2,
+   "atoms": [
+    "equals",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 40,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "InvoicesPage",
+   "kind": "function",
+   "file": "packages/core/profiles/line/fixtures/LINE-SHARED/features/billing/pages/InvoicesPage.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "OrderButton",
+   "kind": "function",
+   "file": "packages/core/profiles/line/fixtures/LINE-SHARED/features/orders/components/OrderButton.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "OrdersPage",
+   "kind": "function",
+   "file": "packages/core/profiles/line/fixtures/LINE-SHARED/features/orders/pages/OrdersPage.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "advance",
+   "kind": "function",
+   "file": "packages/core/profiles/line/fixtures/LINE-SHARED/features/orders/workflows/orderCheckout.ts",
+   "status": "skipped",
+   "why": "nothing converted"
+  },
+  {
+   "name": "Button",
+   "kind": "function",
+   "file": "packages/core/profiles/line/fixtures/LINE-SHARED/library/components/Button.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "ListPage",
+   "kind": "function",
+   "file": "packages/core/profiles/line/fixtures/LINE-SHARED/library/pages/ListPage.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "next",
+   "kind": "function",
+   "file": "packages/core/profiles/line/fixtures/LINE-SHARED/library/workflows/checkout.ts",
+   "conversions": 2,
+   "atoms": [
+    "equals",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 40,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "InvoicesPage",
+   "kind": "function",
+   "file": "packages/core/profiles/line/fixtures/LINE-WRITER/features/billing/pages/InvoicesPage.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "OrderButton",
+   "kind": "function",
+   "file": "packages/core/profiles/line/fixtures/LINE-WRITER/features/orders/components/OrderButton.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "OrdersPage",
+   "kind": "function",
+   "file": "packages/core/profiles/line/fixtures/LINE-WRITER/features/orders/pages/OrdersPage.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "advance",
+   "kind": "function",
+   "file": "packages/core/profiles/line/fixtures/LINE-WRITER/features/orders/workflows/orderCheckout.ts",
+   "status": "skipped",
+   "why": "nothing converted"
+  },
+  {
+   "name": "Button",
+   "kind": "function",
+   "file": "packages/core/profiles/line/fixtures/LINE-WRITER/library/components/Button.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "ListPage",
+   "kind": "function",
+   "file": "packages/core/profiles/line/fixtures/LINE-WRITER/library/pages/ListPage.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "next",
+   "kind": "function",
+   "file": "packages/core/profiles/line/fixtures/LINE-WRITER/library/workflows/checkout.ts",
+   "conversions": 2,
+   "atoms": [
+    "equals",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 40,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "InvoicesPage",
+   "kind": "function",
+   "file": "packages/core/profiles/line/fixtures/passing/features/billing/pages/InvoicesPage.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "OrderButton",
+   "kind": "function",
+   "file": "packages/core/profiles/line/fixtures/passing/features/orders/components/OrderButton.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "OrdersPage",
+   "kind": "function",
+   "file": "packages/core/profiles/line/fixtures/passing/features/orders/pages/OrdersPage.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "advance",
+   "kind": "function",
+   "file": "packages/core/profiles/line/fixtures/passing/features/orders/workflows/orderCheckout.ts",
+   "status": "skipped",
+   "why": "nothing converted"
+  },
+  {
+   "name": "Button",
+   "kind": "function",
+   "file": "packages/core/profiles/line/fixtures/passing/library/components/Button.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "ListPage",
+   "kind": "function",
+   "file": "packages/core/profiles/line/fixtures/passing/library/pages/ListPage.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "next",
+   "kind": "function",
+   "file": "packages/core/profiles/line/fixtures/passing/library/workflows/checkout.ts",
+   "conversions": 2,
+   "atoms": [
+    "equals",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 40,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "Page",
+   "kind": "function",
+   "file": "packages/core/rules/fixtures/ROUTE-001/passes.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "Page",
+   "kind": "function",
+   "file": "packages/core/rules/fixtures/ROUTE-001/violates.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "Page",
+   "kind": "function",
+   "file": "packages/core/rules/fixtures/ROUTE-002/passes.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "Page",
+   "kind": "function",
+   "file": "packages/core/rules/fixtures/ROUTE-002/violates.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "checkout",
+   "kind": "function",
+   "file": "packages/core/rules/fixtures/SERVICE-002/passes.tsx",
+   "status": "skipped",
+   "why": "nothing converted"
+  },
+  {
+   "name": "CheckoutService",
+   "kind": "function",
+   "file": "packages/core/rules/fixtures/SERVICE-002/violates.tsx",
+   "status": "skipped",
+   "why": "nothing converted"
+  },
+  {
+   "name": "checkoutMachine",
+   "kind": "function",
+   "file": "packages/core/rules/fixtures/WORKFLOW-001/passes.tsx",
+   "status": "skipped",
+   "why": "nothing converted"
+  },
+  {
+   "name": "checkoutMachine",
+   "kind": "function",
+   "file": "packages/core/rules/fixtures/WORKFLOW-001/violates.tsx",
+   "status": "skipped",
+   "why": "nothing converted"
+  },
+  {
+   "name": "releaseTotalBadge",
+   "kind": "function",
+   "file": "packages/core/typed-contracts/examples/feature-branded-valid.ts",
+   "status": "skipped",
+   "why": "nothing converted"
+  },
+  {
+   "name": "unguarded",
+   "kind": "function",
+   "file": "packages/core/typed-contracts/examples/service-schema-invalid.ts",
+   "conversions": 1,
+   "atoms": [
+    "lengthOf"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 11,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "consume",
+   "kind": "function",
+   "file": "packages/core/typed-contracts/examples/service-schema-zod.ts",
+   "conversions": 4,
+   "atoms": [
+    "equals",
+    "joinWith",
+    "mapEach",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 18,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "validate",
+   "kind": "method",
+   "file": "packages/core/typed-contracts/examples/service-schema.ts",
+   "conversions": 6,
+   "atoms": [
+    "differs",
+    "lengthOf",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 40,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "safeParse",
+   "kind": "method",
+   "file": "packages/core/typed-contracts/examples/service-schema.ts",
+   "conversions": 2,
+   "atoms": [
+    "isNumber",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 40,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "consume",
+   "kind": "function",
+   "file": "packages/core/typed-contracts/examples/service-schema.ts",
+   "conversions": 5,
+   "atoms": [
+    "equals",
+    "joinWith",
+    "mapEach",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 18,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "useCartState",
+   "kind": "function",
+   "file": "packages/core/typed-contracts/examples/tracked-state.ts",
+   "conversions": 1,
+   "atoms": [
+    "equals"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 1,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "assertType",
+   "kind": "function",
+   "file": "packages/core/typed-contracts/examples/workflow.ts",
+   "status": "skipped",
+   "why": "nothing converted"
+  },
+  {
+   "name": "tagUnit",
+   "kind": "function",
+   "file": "packages/core/typed-contracts/factories.ts",
+   "status": "skipped",
+   "why": "nothing converted"
+  },
+  {
+   "name": "unit",
+   "kind": "function",
+   "file": "packages/core/typed-contracts/factories.ts",
+   "status": "skipped",
+   "why": "nothing converted"
+  },
+  {
+   "name": "defineComponent",
+   "kind": "function",
+   "file": "packages/core/typed-contracts/factories.ts",
+   "status": "skipped",
+   "why": "nothing converted"
+  },
+  {
+   "name": "definePage",
+   "kind": "function",
+   "file": "packages/core/typed-contracts/factories.ts",
+   "status": "skipped",
+   "why": "nothing converted"
+  },
+  {
+   "name": "defineExpression",
+   "kind": "function",
+   "file": "packages/core/typed-contracts/factories.ts",
+   "status": "skipped",
+   "why": "nothing converted"
+  },
+  {
+   "name": "defineController",
+   "kind": "function",
+   "file": "packages/core/typed-contracts/factories.ts",
+   "status": "skipped",
+   "why": "nothing converted"
+  },
+  {
+   "name": "defineRoute",
+   "kind": "function",
+   "file": "packages/core/typed-contracts/factories.ts",
+   "status": "skipped",
+   "why": "nothing converted"
+  },
+  {
+   "name": "defineWorkflow",
+   "kind": "function",
+   "file": "packages/core/typed-contracts/factories.ts",
+   "status": "skipped",
+   "why": "nothing converted"
+  },
+  {
+   "name": "defineService",
+   "kind": "function",
+   "file": "packages/core/typed-contracts/factories.ts",
+   "conversions": 2,
+   "atoms": [
+    "not",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 39,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "checked",
+   "kind": "function",
+   "file": "packages/core/typed-contracts/factories.ts",
+   "status": "skipped",
+   "why": "nothing converted"
+  },
+  {
+   "name": "defineDomain",
+   "kind": "function",
+   "file": "packages/core/typed-contracts/factories.ts",
+   "status": "skipped",
+   "why": "nothing converted"
+  },
+  {
+   "name": "withFeature",
+   "kind": "function",
+   "file": "packages/core/typed-contracts/feature.ts",
+   "status": "skipped",
+   "why": "nothing converted"
+  },
+  {
+   "name": "propRef",
+   "kind": "function",
+   "file": "packages/core/typed-contracts/propRef.ts",
+   "status": "skipped",
+   "why": "nothing converted"
+  },
+  {
+   "name": "defineProvider",
+   "kind": "function",
+   "file": "packages/core/typed-contracts/provider.ts",
+   "conversions": 5,
+   "atoms": [
+    "equals",
+    "errorFrom",
+    "fail",
+    "join",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 17,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "ProviderComponent",
+   "kind": "function",
+   "file": "packages/core/typed-contracts/provider.ts",
+   "status": "skipped",
+   "why": "nothing converted"
+  },
+  {
+   "name": "useProvider",
+   "kind": "function",
+   "file": "packages/core/typed-contracts/provider.ts",
+   "conversions": 5,
+   "atoms": [
+    "equals",
+    "errorFrom",
+    "fail",
+    "join",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 21,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "normalizeIssues",
+   "kind": "function",
+   "file": "packages/core/typed-contracts/schema.ts",
+   "conversions": 8,
+   "atoms": [
+    "and",
+    "differs",
+    "equals",
+    "mapEach",
+    "orElse",
+    "textFrom",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 40,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "schemaError",
+   "kind": "function",
+   "file": "packages/core/typed-contracts/schema.ts",
+   "status": "skipped",
+   "why": "nothing converted"
+  },
+  {
+   "name": "isThenable",
+   "kind": "function",
+   "file": "packages/core/typed-contracts/schema.ts",
+   "conversions": 5,
+   "atoms": [
+    "and",
+    "differs",
+    "equals"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 40,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "checkResponse",
+   "kind": "function",
+   "file": "packages/core/typed-contracts/schema.ts",
+   "conversions": 6,
+   "atoms": [
+    "attempt",
+    "thenPromise",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 40,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "toResult",
+   "kind": "function",
+   "file": "packages/core/typed-contracts/schema.ts",
+   "conversions": 1,
+   "atoms": [
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 34,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "checkServiceReturn",
+   "kind": "function",
+   "file": "packages/core/typed-contracts/schema.ts",
+   "conversions": 4,
+   "atoms": [
+    "thenPromise",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 40,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "describe",
+   "kind": "function",
+   "file": "packages/core/typed-contracts/schema.ts",
+   "conversions": 3,
+   "atoms": [
+    "isA",
+    "textFrom",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 40,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "useTrackedState",
+   "kind": "function",
+   "file": "packages/core/typed-contracts/trackedState.ts",
+   "status": "skipped",
+   "why": "nothing converted"
+  },
+  {
+   "name": "isCurrent",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/async-status/index.ts",
+   "conversions": 5,
+   "atoms": [
+    "equals",
+    "not",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 38,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "init",
+   "kind": "method",
+   "file": "packages/line-atoms/atoms/async-status/index.ts",
+   "status": "skipped",
+   "why": "nothing converted"
+  },
+  {
+   "name": "send",
+   "kind": "method",
+   "file": "packages/line-atoms/atoms/async-status/index.ts",
+   "conversions": 8,
+   "atoms": [
+    "equals",
+    "match",
+    "not",
+    "orElse",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 36,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "stateOf",
+   "kind": "method",
+   "file": "packages/line-atoms/atoms/async-status/index.ts",
+   "status": "skipped",
+   "why": "nothing converted"
+  },
+  {
+   "name": "loadAsync",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/async-status/index.ts",
+   "conversions": 2,
+   "atoms": [
+    "attemptAsync",
+    "nowTime"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 22,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "flags",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/async-status/index.ts",
+   "conversions": 5,
+   "atoms": [
+    "and",
+    "equals"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 36,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "pageCount",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/client-pagination/index.ts",
+   "conversions": 4,
+   "atoms": [
+    "atMost",
+    "ceilingOf",
+    "dividedBy",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 40,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "clampPage",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/client-pagination/index.ts",
+   "conversions": 4,
+   "atoms": [
+    "floorOf",
+    "minus",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 40,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "positionOf",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/client-pagination/index.ts",
+   "conversions": 9,
+   "atoms": [
+    "atMost",
+    "equals",
+    "minus",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 40,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "at",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/client-pagination/index.ts",
+   "status": "skipped",
+   "why": "nothing converted"
+  },
+  {
+   "name": "sliceBounds",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/client-pagination/index.ts",
+   "conversions": 2,
+   "atoms": [
+    "smallestOf",
+    "times"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 40,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "pageItems",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/client-pagination/index.ts",
+   "status": "skipped",
+   "why": "nothing converted"
+  },
+  {
+   "name": "canNext",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/client-pagination/index.ts",
+   "conversions": 3,
+   "atoms": [
+    "equals",
+    "or"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 40,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "canPrevious",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/client-pagination/index.ts",
+   "conversions": 3,
+   "atoms": [
+    "equals",
+    "or"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 40,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "init",
+   "kind": "method",
+   "file": "packages/line-atoms/atoms/client-pagination/index.ts",
+   "conversions": 2,
+   "atoms": [
+    "orElse"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 35,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "send",
+   "kind": "method",
+   "file": "packages/line-atoms/atoms/client-pagination/index.ts",
+   "conversions": 12,
+   "atoms": [
+    "dividedBy",
+    "equals",
+    "floorOf",
+    "match",
+    "minus",
+    "not",
+    "times",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 36,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "stateOf",
+   "kind": "method",
+   "file": "packages/line-atoms/atoms/client-pagination/index.ts",
+   "status": "skipped",
+   "why": "nothing converted"
+  },
+  {
+   "name": "paginate",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/client-pagination/index.ts",
+   "conversions": 2,
+   "atoms": [
+    "lengthOf"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 20,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "csvCell",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/csv-export/index.ts",
+   "conversions": 19,
+   "atoms": [
+    "and",
+    "choose",
+    "dateAsIsoText",
+    "differs",
+    "hasText",
+    "isA",
+    "or",
+    "orElse",
+    "replaceFirst",
+    "textFrom",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 29,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "cellOf",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/csv-export/index.ts",
+   "conversions": 2,
+   "atoms": [
+    "equals",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 28,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "toCsv",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/csv-export/index.ts",
+   "conversions": 8,
+   "atoms": [
+    "each",
+    "joinWith",
+    "mapEach",
+    "orElse"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 33,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "csvFileName",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/csv-export/index.ts",
+   "conversions": 6,
+   "atoms": [
+    "dateAsIsoText",
+    "lowerCase",
+    "or",
+    "replaceFirst",
+    "trimmed"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 40,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "createCsvMachine",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/csv-export/index.ts",
+   "conversions": 8,
+   "atoms": [
+    "differs",
+    "equals",
+    "lengthOf",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 40,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "init",
+   "kind": "method",
+   "file": "packages/line-atoms/atoms/csv-export/index.ts",
+   "status": "skipped",
+   "why": "nothing converted"
+  },
+  {
+   "name": "send",
+   "kind": "method",
+   "file": "packages/line-atoms/atoms/csv-export/index.ts",
+   "conversions": 8,
+   "atoms": [
+    "differs",
+    "equals",
+    "lengthOf",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 36,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "stateOf",
+   "kind": "method",
+   "file": "packages/line-atoms/atoms/csv-export/index.ts",
+   "status": "skipped",
+   "why": "nothing converted"
+  },
+  {
+   "name": "init",
+   "kind": "method",
+   "file": "packages/line-atoms/atoms/csv-export/index.ts",
+   "status": "skipped",
+   "why": "nothing converted"
+  },
+  {
+   "name": "send",
+   "kind": "method",
+   "file": "packages/line-atoms/atoms/csv-export/index.ts",
+   "conversions": 6,
+   "atoms": [
+    "differs",
+    "firstOf",
+    "keysOf",
+    "mapEach",
+    "orElse",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 36,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "stateOf",
+   "kind": "method",
+   "file": "packages/line-atoms/atoms/csv-export/index.ts",
+   "status": "skipped",
+   "why": "nothing converted"
+  },
+  {
+   "name": "exportCsv",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/csv-export/index.ts",
+   "status": "skipped",
+   "why": "nothing converted"
+  },
+  {
+   "name": "startOfDay",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/date-range/index.ts",
+   "conversions": 4,
+   "atoms": [
+    "dividedBy",
+    "floorOf",
+    "timeOfDate",
+    "times"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 40,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "endOfDay",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/date-range/index.ts",
+   "conversions": 2,
+   "atoms": [
+    "minus",
+    "timeOfDate"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 9,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "isValidDate",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/date-range/index.ts",
+   "conversions": 5,
+   "atoms": [
+    "and",
+    "isA",
+    "isNaNNumber",
+    "not",
+    "timeOfDate"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 40,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "statusOf",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/date-range/index.ts",
+   "conversions": 14,
+   "atoms": [
+    "and",
+    "equals",
+    "isAfter",
+    "not",
+    "or",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 40,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "range",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/date-range/index.ts",
+   "conversions": 6,
+   "atoms": [
+    "and",
+    "differs",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 40,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "contains",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/date-range/index.ts",
+   "conversions": 8,
+   "atoms": [
+    "and",
+    "atLeast",
+    "atMost",
+    "differs",
+    "timeOfDate",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 29,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "daysIn",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/date-range/index.ts",
+   "conversions": 7,
+   "atoms": [
+    "differs",
+    "dividedBy",
+    "minus",
+    "round",
+    "timeOfDate",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 31,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "overlaps",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/date-range/index.ts",
+   "conversions": 11,
+   "atoms": [
+    "and",
+    "atMost",
+    "differs",
+    "or",
+    "timeOfDate",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 36,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "lastDays",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/date-range/index.ts",
+   "conversions": 4,
+   "atoms": [
+    "minus",
+    "timeOfDate",
+    "times"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 11,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "init",
+   "kind": "method",
+   "file": "packages/line-atoms/atoms/date-range/index.ts",
+   "conversions": 2,
+   "atoms": [
+    "orElse"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 40,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "send",
+   "kind": "method",
+   "file": "packages/line-atoms/atoms/date-range/index.ts",
+   "conversions": 4,
+   "atoms": [
+    "equals",
+    "match",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 36,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "stateOf",
+   "kind": "method",
+   "file": "packages/line-atoms/atoms/date-range/index.ts",
+   "status": "skipped",
+   "why": "nothing converted"
+  },
+  {
+   "name": "dateRange",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/date-range/index.ts",
+   "status": "skipped",
+   "why": "nothing converted"
+  },
+  {
+   "name": "settledQuery",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/debounced-search/index.ts",
+   "conversions": 3,
+   "atoms": [
+    "lengthOf",
+    "trimmed",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 40,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "waitFor",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/debounced-search/index.ts",
+   "conversions": 4,
+   "atoms": [
+    "equals",
+    "largestOf",
+    "minus",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 40,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "settle",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/debounced-search/index.ts",
+   "status": "skipped",
+   "why": "nothing converted"
+  },
+  {
+   "name": "init",
+   "kind": "method",
+   "file": "packages/line-atoms/atoms/debounced-search/index.ts",
+   "conversions": 2,
+   "atoms": [
+    "orElse"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 40,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "send",
+   "kind": "method",
+   "file": "packages/line-atoms/atoms/debounced-search/index.ts",
+   "conversions": 10,
+   "atoms": [
+    "differs",
+    "equals",
+    "match",
+    "or",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 36,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "stateOf",
+   "kind": "method",
+   "file": "packages/line-atoms/atoms/debounced-search/index.ts",
+   "status": "skipped",
+   "why": "nothing converted"
+  },
+  {
+   "name": "debouncedSearch",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/debounced-search/index.ts",
+   "conversions": 1,
+   "atoms": [
+    "each"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 9,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "isNoFilter",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/filter-sort/index.ts",
+   "conversions": 5,
+   "atoms": [
+    "equals",
+    "or"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 40,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "statusOf",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/filter-sort/index.ts",
+   "conversions": 7,
+   "atoms": [
+    "differs",
+    "hasAnyWhere",
+    "not",
+    "or",
+    "trimmed",
+    "valuesOf",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 40,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "view",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/filter-sort/index.ts",
+   "status": "skipped",
+   "why": "nothing converted"
+  },
+  {
+   "name": "isEmptyValue",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/filter-sort/index.ts",
+   "conversions": 3,
+   "atoms": [
+    "equals",
+    "isNothing",
+    "or"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 40,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "compareValues",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/filter-sort/index.ts",
+   "conversions": 19,
+   "atoms": [
+    "and",
+    "isA",
+    "isNumber",
+    "localeCompareText",
+    "minus",
+    "textFrom",
+    "timeOfDate",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 40,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "matchesSearch",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/filter-sort/index.ts",
+   "conversions": 8,
+   "atoms": [
+    "equals",
+    "hasAnyWhere",
+    "lowerCase",
+    "orElse",
+    "textFrom",
+    "trimmed",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 35,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "applyView",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/filter-sort/index.ts",
+   "conversions": 20,
+   "atoms": [
+    "and",
+    "entriesOf",
+    "equals",
+    "isEveryWhere",
+    "keepWhere",
+    "mapEach",
+    "minus",
+    "negate",
+    "not",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 34,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "init",
+   "kind": "method",
+   "file": "packages/line-atoms/atoms/filter-sort/index.ts",
+   "conversions": 3,
+   "atoms": [
+    "orElse"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 40,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "send",
+   "kind": "method",
+   "file": "packages/line-atoms/atoms/filter-sort/index.ts",
+   "conversions": 15,
+   "atoms": [
+    "differs",
+    "equals",
+    "match",
+    "not",
+    "or",
+    "orElse",
+    "when",
+    "withKey"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 36,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "stateOf",
+   "kind": "method",
+   "file": "packages/line-atoms/atoms/filter-sort/index.ts",
+   "status": "skipped",
+   "why": "nothing converted"
+  },
+  {
+   "name": "filterSort",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/filter-sort/index.ts",
+   "conversions": 1,
+   "atoms": [
+    "orElse"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 29,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "nextCursor",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/infinite-list/index.ts",
+   "conversions": 4,
+   "atoms": [
+    "equals",
+    "lastOf",
+    "lengthOf",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 5,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "hasNextPage",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/infinite-list/index.ts",
+   "conversions": 3,
+   "atoms": [
+    "and",
+    "differs",
+    "lengthOf"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 11,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "isFetchingNextPage",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/infinite-list/index.ts",
+   "conversions": 3,
+   "atoms": [
+    "and",
+    "differs",
+    "lengthOf"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 27,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "items",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/infinite-list/index.ts",
+   "conversions": 1,
+   "atoms": [
+    "flatMapEach"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 5,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "init",
+   "kind": "method",
+   "file": "packages/line-atoms/atoms/infinite-list/index.ts",
+   "status": "skipped",
+   "why": "nothing converted"
+  },
+  {
+   "name": "send",
+   "kind": "method",
+   "file": "packages/line-atoms/atoms/infinite-list/index.ts",
+   "conversions": 16,
+   "atoms": [
+    "added",
+    "differs",
+    "equals",
+    "match",
+    "not",
+    "or",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 36,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "stateOf",
+   "kind": "method",
+   "file": "packages/line-atoms/atoms/infinite-list/index.ts",
+   "status": "skipped",
+   "why": "nothing converted"
+  },
+  {
+   "name": "loadMore",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/infinite-list/index.ts",
+   "conversions": 5,
+   "atoms": [
+    "attemptAsync",
+    "equals",
+    "lengthOf",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 2,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "positionOf",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/multi-step-flow/index.ts",
+   "conversions": 7,
+   "atoms": [
+    "atLeast",
+    "equals",
+    "minus",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 40,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "canLeave",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/multi-step-flow/index.ts",
+   "conversions": 2,
+   "atoms": [
+    "equals",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 31,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "at",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/multi-step-flow/index.ts",
+   "conversions": 2,
+   "atoms": [
+    "largestOf",
+    "lengthOf"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 6,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "currentStep",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/multi-step-flow/index.ts",
+   "conversions": 2,
+   "atoms": [
+    "equals",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 5,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "progress",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/multi-step-flow/index.ts",
+   "conversions": 2,
+   "atoms": [
+    "dividedBy",
+    "lengthOf"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 13,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "init",
+   "kind": "method",
+   "file": "packages/line-atoms/atoms/multi-step-flow/index.ts",
+   "conversions": 6,
+   "atoms": [
+    "equals",
+    "fail",
+    "lengthOf",
+    "typeErrorFrom",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 5,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "send",
+   "kind": "method",
+   "file": "packages/line-atoms/atoms/multi-step-flow/index.ts",
+   "conversions": 18,
+   "atoms": [
+    "and",
+    "differs",
+    "equals",
+    "match",
+    "merged",
+    "minus",
+    "not",
+    "or",
+    "orElse",
+    "positionWhere",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 26,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "stateOf",
+   "kind": "method",
+   "file": "packages/line-atoms/atoms/multi-step-flow/index.ts",
+   "status": "skipped",
+   "why": "nothing converted"
+  },
+  {
+   "name": "multiStepFlow",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/multi-step-flow/index.ts",
+   "conversions": 1,
+   "atoms": [
+    "reduceTo"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 22,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "toXStateConfig",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/multi-step-flow/index.ts",
+   "conversions": 8,
+   "atoms": [
+    "firstOf",
+    "lengthOf",
+    "merged",
+    "minus",
+    "orElse",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 22,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "merged",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/multi-step-flow/index.ts",
+   "conversions": 2,
+   "atoms": [
+    "merged",
+    "orElse"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 34,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "init",
+   "kind": "method",
+   "file": "packages/line-atoms/atoms/optimistic-update/index.ts",
+   "status": "skipped",
+   "why": "nothing converted"
+  },
+  {
+   "name": "send",
+   "kind": "method",
+   "file": "packages/line-atoms/atoms/optimistic-update/index.ts",
+   "conversions": 9,
+   "atoms": [
+    "differs",
+    "equals",
+    "match",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 36,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "stateOf",
+   "kind": "method",
+   "file": "packages/line-atoms/atoms/optimistic-update/index.ts",
+   "status": "skipped",
+   "why": "nothing converted"
+  },
+  {
+   "name": "optimisticUpdate",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/optimistic-update/index.ts",
+   "conversions": 3,
+   "atoms": [
+    "attemptAsync",
+    "equals",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 30,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "pageRequest",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/paginated-query/index.ts",
+   "conversions": 1,
+   "atoms": [
+    "times"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 34,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "hasNextPage",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/paginated-query/index.ts",
+   "conversions": 1,
+   "atoms": [
+    "minus"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 32,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "hasPreviousPage",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/paginated-query/index.ts",
+   "status": "skipped",
+   "why": "nothing converted"
+  },
+  {
+   "name": "moveTo",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/paginated-query/index.ts",
+   "conversions": 3,
+   "atoms": [
+    "equals",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 34,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "init",
+   "kind": "method",
+   "file": "packages/line-atoms/atoms/paginated-query/index.ts",
+   "conversions": 2,
+   "atoms": [
+    "orElse"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 40,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "send",
+   "kind": "method",
+   "file": "packages/line-atoms/atoms/paginated-query/index.ts",
+   "conversions": 22,
+   "atoms": [
+    "differs",
+    "dividedBy",
+    "equals",
+    "floorOf",
+    "match",
+    "minus",
+    "not",
+    "or",
+    "times",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 36,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "stateOf",
+   "kind": "method",
+   "file": "packages/line-atoms/atoms/paginated-query/index.ts",
+   "status": "skipped",
+   "why": "nothing converted"
+  },
+  {
+   "name": "loadPage",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/paginated-query/index.ts",
+   "conversions": 1,
+   "atoms": [
+    "attemptAsync"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 18,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "permissionsOf",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/permission-check/index.ts",
+   "conversions": 7,
+   "atoms": [
+    "addToWeakSet",
+    "each",
+    "equals",
+    "orElse",
+    "setOf",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 40,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "covers",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/permission-check/index.ts",
+   "conversions": 7,
+   "atoms": [
+    "doesEndWith",
+    "doesStartWith",
+    "equals",
+    "or",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 40,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "missingPermissions",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/permission-check/index.ts",
+   "conversions": 3,
+   "atoms": [
+    "hasAnyWhere",
+    "keepWhere",
+    "not"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 4,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "can",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/permission-check/index.ts",
+   "conversions": 7,
+   "atoms": [
+    "equals",
+    "flattened",
+    "lengthOf",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 28,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "init",
+   "kind": "method",
+   "file": "packages/line-atoms/atoms/permission-check/index.ts",
+   "status": "skipped",
+   "why": "nothing converted"
+  },
+  {
+   "name": "send",
+   "kind": "method",
+   "file": "packages/line-atoms/atoms/permission-check/index.ts",
+   "conversions": 4,
+   "atoms": [
+    "flattened",
+    "match",
+    "orElse",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 36,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "stateOf",
+   "kind": "method",
+   "file": "packages/line-atoms/atoms/permission-check/index.ts",
+   "status": "skipped",
+   "why": "nothing converted"
+  },
+  {
+   "name": "checkPermission",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/permission-check/index.ts",
+   "conversions": 1,
+   "atoms": [
+    "equals"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 17,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "backoffDelay",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/polling/index.ts",
+   "conversions": 5,
+   "atoms": [
+    "largestOf",
+    "minus",
+    "power",
+    "smallestOf",
+    "times"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 40,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "init",
+   "kind": "method",
+   "file": "packages/line-atoms/atoms/polling/index.ts",
+   "conversions": 4,
+   "atoms": [
+    "orElse",
+    "times"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 35,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "send",
+   "kind": "method",
+   "file": "packages/line-atoms/atoms/polling/index.ts",
+   "conversions": 18,
+   "atoms": [
+    "and",
+    "atLeast",
+    "differs",
+    "equals",
+    "match",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 36,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "stateOf",
+   "kind": "method",
+   "file": "packages/line-atoms/atoms/polling/index.ts",
+   "status": "skipped",
+   "why": "nothing converted"
+  },
+  {
+   "name": "polling",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/polling/index.ts",
+   "conversions": 2,
+   "atoms": [
+    "each",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 17,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "statusOf",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/undo-history/index.ts",
+   "conversions": 8,
+   "atoms": [
+    "and",
+    "lengthOf",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 40,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "history",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/undo-history/index.ts",
+   "status": "skipped",
+   "why": "nothing converted"
+  },
+  {
+   "name": "canUndo",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/undo-history/index.ts",
+   "conversions": 1,
+   "atoms": [
+    "lengthOf"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 4,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "canRedo",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/undo-history/index.ts",
+   "conversions": 1,
+   "atoms": [
+    "lengthOf"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 10,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "init",
+   "kind": "method",
+   "file": "packages/line-atoms/atoms/undo-history/index.ts",
+   "conversions": 1,
+   "atoms": [
+    "orElse"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 35,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "send",
+   "kind": "method",
+   "file": "packages/line-atoms/atoms/undo-history/index.ts",
+   "conversions": 14,
+   "atoms": [
+    "added",
+    "equals",
+    "isSameValue",
+    "lastOf",
+    "match",
+    "negate",
+    "not",
+    "prepended",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 36,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "stateOf",
+   "kind": "method",
+   "file": "packages/line-atoms/atoms/undo-history/index.ts",
+   "status": "skipped",
+   "why": "nothing converted"
+  },
+  {
+   "name": "undoHistory",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/undo-history/index.ts",
+   "conversions": 1,
+   "atoms": [
+    "reduceTo"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 24,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "fieldErrors",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/validated-submit/index.ts",
+   "conversions": 5,
+   "atoms": [
+    "each",
+    "joinWith",
+    "mapEach",
+    "not",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 40,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "fromValibot",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/validated-submit/index.ts",
+   "conversions": 5,
+   "atoms": [
+    "mapEach",
+    "orElse",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 40,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "safeParse",
+   "kind": "method",
+   "file": "packages/line-atoms/atoms/validated-submit/index.ts",
+   "conversions": 5,
+   "atoms": [
+    "mapEach",
+    "orElse",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 32,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "validate",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/validated-submit/index.ts",
+   "conversions": 1,
+   "atoms": [
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 0,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "clearEdited",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/validated-submit/index.ts",
+   "conversions": 6,
+   "atoms": [
+    "each",
+    "entriesOf",
+    "firstOf",
+    "isSameValue",
+    "splitBy",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 40,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "init",
+   "kind": "method",
+   "file": "packages/line-atoms/atoms/validated-submit/index.ts",
+   "status": "skipped",
+   "why": "nothing converted"
+  },
+  {
+   "name": "send",
+   "kind": "method",
+   "file": "packages/line-atoms/atoms/validated-submit/index.ts",
+   "conversions": 11,
+   "atoms": [
+    "differs",
+    "equals",
+    "match",
+    "orElse",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 36,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "stateOf",
+   "kind": "method",
+   "file": "packages/line-atoms/atoms/validated-submit/index.ts",
+   "status": "skipped",
+   "why": "nothing converted"
+  },
+  {
+   "name": "validatedSubmit",
+   "kind": "function",
+   "file": "packages/line-atoms/atoms/validated-submit/index.ts",
+   "conversions": 2,
+   "atoms": [
+    "attemptAsync",
+    "differs"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 17,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "Accordion",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Accordion.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "Alert",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Alert.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "AlertDescription",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Alert.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "AlertDismiss",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Alert.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "initialsOf",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Avatar.tsx",
+   "conversions": 10,
+   "atoms": [
+    "firstOf",
+    "keepWhere",
+    "lastOf",
+    "lengthOf",
+    "orElse",
+    "splitBy",
+    "trimmed",
+    "upperCase",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 40,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "Avatar",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Avatar.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "AvatarImage",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Avatar.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "AvatarFallback",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Avatar.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "Badge",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Badge.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "BadgeDot",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Badge.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "Breadcrumbs",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Breadcrumbs.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "CrumbItem",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Breadcrumbs.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "Separator",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Breadcrumbs.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "CrumbLabel",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Breadcrumbs.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "Button",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Button.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "handleClick",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Button.tsx",
+   "conversions": 1,
+   "atoms": [
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 9,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "ButtonInner",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Button.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "ButtonGlyph",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Button.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "Card",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Card.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "CardTitle",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Card.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "CardDescription",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Card.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "CardSlot",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Card.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "Checkbox",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Checkbox.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "change",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Checkbox.tsx",
+   "conversions": 1,
+   "atoms": [
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 40,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "CheckboxError",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Checkbox.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "contains",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Combobox.tsx",
+   "conversions": 3,
+   "atoms": [
+    "lowerCase",
+    "trimmed"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 40,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "Combobox",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Combobox.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "setOpen",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Combobox.tsx",
+   "conversions": 5,
+   "atoms": [
+    "and",
+    "differs",
+    "not",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 40,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "choose",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Combobox.tsx",
+   "status": "skipped",
+   "why": "nothing converted"
+  },
+  {
+   "name": "onKeyDown",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Combobox.tsx",
+   "conversions": 14,
+   "atoms": [
+    "and",
+    "choose",
+    "equals",
+    "largestOf",
+    "lengthOf",
+    "minus",
+    "not",
+    "smallestOf"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 34,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "optionId",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Combobox.tsx",
+   "status": "skipped",
+   "why": "nothing converted"
+  },
+  {
+   "name": "ComboboxList",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Combobox.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "ComboboxEmpty",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Combobox.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "DatePicker",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/DatePicker.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "setOpen",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/DatePicker.tsx",
+   "conversions": 1,
+   "atoms": [
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 40,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "choose",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/DatePicker.tsx",
+   "status": "skipped",
+   "why": "nothing converted"
+  },
+  {
+   "name": "Calendar",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/DatePicker.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "outOfRange",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/DatePicker.tsx",
+   "conversions": 4,
+   "atoms": [
+    "and",
+    "isTruthy",
+    "or"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 40,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "onKeyDown",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/DatePicker.tsx",
+   "conversions": 9,
+   "atoms": [
+    "equals",
+    "not",
+    "or",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 14,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "DayCell",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/DatePicker.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "ReadOnlyHint",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/DatePicker.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "Dialog",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Dialog.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "guard",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Dialog.tsx",
+   "conversions": 2,
+   "atoms": [
+    "not",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 40,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "DialogTrigger",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Dialog.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "DialogDescription",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Dialog.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "DialogBody",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Dialog.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "DialogClose",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Dialog.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "Divider",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Divider.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "Drawer",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Drawer.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "guard",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Drawer.tsx",
+   "conversions": 2,
+   "atoms": [
+    "not",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 40,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "DrawerTrigger",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Drawer.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "DrawerDescription",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Drawer.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "DrawerBody",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Drawer.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "DrawerClose",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Drawer.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "EmptyState",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/EmptyState.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "EmptyIcon",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/EmptyState.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "EmptyDescription",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/EmptyState.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "EmptyAction",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/EmptyState.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "Field",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Field.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "RequiredMark",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Field.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "RequiredText",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Field.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "LoadingMark",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Field.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "FieldText",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Field.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "FileUpload",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/FileUpload.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "update",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/FileUpload.tsx",
+   "status": "skipped",
+   "why": "nothing converted"
+  },
+  {
+   "name": "add",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/FileUpload.tsx",
+   "conversions": 8,
+   "atoms": [
+    "and",
+    "concatenated",
+    "lengthOf",
+    "not",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 40,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "remove",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/FileUpload.tsx",
+   "conversions": 2,
+   "atoms": [
+    "differs",
+    "keepWhere"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 26,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "onDrop",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/FileUpload.tsx",
+   "conversions": 1,
+   "atoms": [
+    "listFrom"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 6,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "FileList",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/FileUpload.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "PickButton",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/FileUpload.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "RequiredHint",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/FileUpload.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "DropHint",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/FileUpload.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "RemoveFile",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/FileUpload.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "Hint",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/FileUpload.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "ErrorText",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/FileUpload.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "Form",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Form.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "submit",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Form.tsx",
+   "conversions": 2,
+   "atoms": [
+    "fromEntries",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 2,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "FormError",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Form.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "ResetButton",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Form.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "Grid",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Grid.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "IconButton",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/IconButton.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "handleClick",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/IconButton.tsx",
+   "conversions": 1,
+   "atoms": [
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 9,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "IconGlyph",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/IconButton.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "Link",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Link.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "ExternalHint",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Link.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "Menu",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Menu.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "MenuEntry",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Menu.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "pageItems",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Pagination.tsx",
+   "conversions": 14,
+   "atoms": [
+    "addToWeakSet",
+    "and",
+    "atLeast",
+    "atMost",
+    "minus",
+    "setOf",
+    "sortedBy",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 40,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "Pagination",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Pagination.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "go",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Pagination.tsx",
+   "conversions": 6,
+   "atoms": [
+    "and",
+    "atLeast",
+    "atMost",
+    "differs",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 40,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "PageItem",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Pagination.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "Popover",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Popover.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "Progress",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Progress.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "ValueText",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Progress.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "Radio",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Radio.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "change",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Radio.tsx",
+   "conversions": 1,
+   "atoms": [
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 40,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "Select",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Select.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "SelectList",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Select.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "Skeleton",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Skeleton.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "Placeholders",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Skeleton.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "Slider",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Slider.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "SliderError",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Slider.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "Spinner",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Spinner.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "Stack",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Stack.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "stateOf",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Stepper.tsx",
+   "conversions": 3,
+   "atoms": [
+    "equals",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 40,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "Stepper",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Stepper.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "StepItem",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Stepper.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "StepLabel",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Stepper.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "Switch",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Switch.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "change",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Switch.tsx",
+   "conversions": 1,
+   "atoms": [
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 40,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "SwitchError",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Switch.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "nextDirection",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Table.tsx",
+   "conversions": 4,
+   "atoms": [
+    "and",
+    "equals",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 40,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "Table",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Table.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "toggle",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Table.tsx",
+   "conversions": 4,
+   "atoms": [
+    "added",
+    "differs",
+    "keepWhere",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 19,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "HeaderCell",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Table.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "SelectHeader",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Table.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "SelectCell",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Table.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "TableNotice",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Table.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "Tabs",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Tabs.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "Tag",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Tag.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "onKeyDown",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Tag.tsx",
+   "conversions": 7,
+   "atoms": [
+    "and",
+    "equals",
+    "not",
+    "or",
+    "when"
+   ],
+   "status": "same",
+   "runs": 40,
+   "compared": 40,
+   "exercised": 40,
+   "timeouts": 0,
+   "mismatchCount": 0,
+   "mismatches": []
+  },
+  {
+   "name": "TagLabel",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Tag.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "RemoveButton",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Tag.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "Text",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Text.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "TextArea",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/TextArea.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "Counter",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/TextArea.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "TextField",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/TextField.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "Toast",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Toast.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "ToastDescription",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Toast.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "ToastAction",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Toast.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "ToastClose",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Toast.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "Tooltip",
+   "kind": "function",
+   "file": "packages/line-primitives/library/components/Tooltip.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "RootLayout",
+   "kind": "function",
+   "file": "bench/ecommerce/starter/app/layout.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "AppLayout",
+   "kind": "function",
+   "file": "bench/ecommerce/starter/library/components/AppLayout.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "Button",
+   "kind": "function",
+   "file": "bench/ecommerce/starter/library/components/Button.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "Card",
+   "kind": "function",
+   "file": "bench/ecommerce/starter/library/components/Card.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "Checkbox",
+   "kind": "function",
+   "file": "bench/ecommerce/starter/library/components/Checkbox.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "Dialog",
+   "kind": "function",
+   "file": "bench/ecommerce/starter/library/components/Dialog.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "Select",
+   "kind": "function",
+   "file": "bench/ecommerce/starter/library/components/Select.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "TextField",
+   "kind": "function",
+   "file": "bench/ecommerce/starter/library/components/TextField.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "ToastProvider",
+   "kind": "function",
+   "file": "bench/ecommerce/starter/library/components/Toast.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "useToast",
+   "kind": "function",
+   "file": "bench/ecommerce/starter/library/components/Toast.tsx",
+   "status": "skipped",
+   "why": "nothing converted"
+  },
+  {
+   "name": "DetailPage",
+   "kind": "function",
+   "file": "bench/ecommerce/starter/library/pages/DetailPage.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "FormPage",
+   "kind": "function",
+   "file": "bench/ecommerce/starter/library/pages/FormPage.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "submit",
+   "kind": "function",
+   "file": "bench/ecommerce/starter/library/pages/FormPage.tsx",
+   "status": "skipped",
+   "why": "nothing converted"
+  },
+  {
+   "name": "ListPage",
+   "kind": "function",
+   "file": "bench/ecommerce/starter/library/pages/ListPage.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "RootLayout",
+   "kind": "function",
+   "file": "bench/lending/starter/app/layout.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "AppLayout",
+   "kind": "function",
+   "file": "bench/lending/starter/library/components/AppLayout.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "Button",
+   "kind": "function",
+   "file": "bench/lending/starter/library/components/Button.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "Card",
+   "kind": "function",
+   "file": "bench/lending/starter/library/components/Card.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "Checkbox",
+   "kind": "function",
+   "file": "bench/lending/starter/library/components/Checkbox.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "Dialog",
+   "kind": "function",
+   "file": "bench/lending/starter/library/components/Dialog.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "Select",
+   "kind": "function",
+   "file": "bench/lending/starter/library/components/Select.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "TextField",
+   "kind": "function",
+   "file": "bench/lending/starter/library/components/TextField.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "ToastProvider",
+   "kind": "function",
+   "file": "bench/lending/starter/library/components/Toast.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "useToast",
+   "kind": "function",
+   "file": "bench/lending/starter/library/components/Toast.tsx",
+   "status": "skipped",
+   "why": "nothing converted"
+  },
+  {
+   "name": "DetailPage",
+   "kind": "function",
+   "file": "bench/lending/starter/library/pages/DetailPage.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "FormPage",
+   "kind": "function",
+   "file": "bench/lending/starter/library/pages/FormPage.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  },
+  {
+   "name": "submit",
+   "kind": "function",
+   "file": "bench/lending/starter/library/pages/FormPage.tsx",
+   "status": "skipped",
+   "why": "nothing converted"
+  },
+  {
+   "name": "ListPage",
+   "kind": "function",
+   "file": "bench/lending/starter/library/pages/ListPage.tsx",
+   "status": "skipped",
+   "why": "JSX"
+  }
+ ]
+}

@@ -60,7 +60,7 @@ const GLOBAL_FUNCS = new Set(['parseInt', 'parseFloat', 'isNaN', 'isFinite', 'St
 const STATIC_OBJECTS = new Set(['Math', 'JSON', 'Object', 'Array', 'Number', 'String', 'Promise', 'Date', 'Reflect']);
 const NEW_BUILTINS = new Set(['Map', 'Set', 'Date', 'Error', 'TypeError', 'RangeError', 'RegExp', 'URL', 'URLSearchParams', 'Promise', 'Array', 'WeakMap', 'WeakSet']);
 // mutating method -> its copy-returning JS spelling (whose catalog form is then used)
-const COPY_OF = { sort: 'toSorted', reverse: 'toReversed', splice: 'toSpliced' };
+const COPY_OF = Object.assign(Object.create(null), { sort: 'toSorted', reverse: 'toReversed', splice: 'toSpliced' });
 const NEVER_COPY = new Set(['push', 'pop', 'shift', 'unshift', 'fill', 'copyWithin']);
 // calls whose result is a fresh array nobody else holds
 const FRESH_METHODS = new Set(['slice', 'map', 'filter', 'concat', 'flat', 'flatMap', 'toSorted', 'toReversed', 'toSpliced', 'split', 'keys', 'values', 'entries', 'from', 'of']);
@@ -169,6 +169,7 @@ function makeMatcher(names, boundNames, vars = []) {
   const pv = new Set(vars);
   const vb = {};
   const b = {};
+  const rest = {}; // placeholder of a `...rest` argument -> the call's remaining arguments
   const missing = new Set();
   const m = (p, n) => {
     if (!p || !n) return p === n || (p == null && n == null);
@@ -197,8 +198,18 @@ function makeMatcher(names, boundNames, vars = []) {
     if (/CallExpression$|^NewExpression$/.test(p.type) && p.type === n.type) {
       if (!!p.optional !== !!n.optional) return false;
       if (!m(p.callee, n.callee)) return false;
-      if (n.arguments.length > p.arguments.length) return false;
-      for (let i = 0; i < p.arguments.length; i++) {
+      // `f(a, ...rest)`: the last placeholder takes every remaining argument, spread or not
+      const tail = p.arguments[p.arguments.length - 1];
+      const restName = tail && tail.type === 'SpreadElement' && tail.argument.type === 'Identifier' && ph.has(tail.argument.name) ? tail.argument.name : null;
+      const fixed = restName ? p.arguments.length - 1 : p.arguments.length;
+      if (restName) {
+        if (Object.prototype.hasOwnProperty.call(b, restName)) return false;
+        const more = n.arguments.slice(fixed);
+        if (n.arguments.slice(0, fixed).some((a) => a.type === 'SpreadElement')) return false;
+        rest[restName] = more;
+        b[restName] = more.length === 1 && more[0].type === 'SpreadElement' ? more[0].argument : t.arrayExpression(more);
+      } else if (n.arguments.length > p.arguments.length) return false;
+      for (let i = 0; i < fixed; i++) {
         const pa = p.arguments[i];
         const na = n.arguments[i];
         if (!na) {
@@ -225,7 +236,7 @@ function makeMatcher(names, boundNames, vars = []) {
     }
     return true;
   };
-  return { match: (p, n) => m(p, n), bindings: b, missing };
+  return { match: (p, n) => m(p, n), bindings: b, missing, rest };
 }
 
 // ---------------------------------------------------------------------------
@@ -355,22 +366,32 @@ function toAtoms(code, options = {}) {
     if (keyNode.type === 'OptionalMemberExpression' && !keyNode.computed) list = list.concat(byKey.get('OptionalMemberExpression [computed]') || []);
     if (!list.length) return null;
     let level = null;
+    let mutates = false;
     const hits = [];
     for (const p of list) {
       if (level !== null && p.size < level) break;
       const mt = makeMatcher(p.placeholders, bound, p.vars);
       if (!mt.match(p.pattern, keyNode)) continue;
+      // An atom that returns a changed copy where the built-in changes its receiver is not a
+      // rewrite of that call. The one exception: a pattern literal without g/y has no state to change.
+      if (p.copying) {
+        const receiver = mt.bindings[p.placeholders[0]];
+        if (!(receiver && receiver.type === 'RegExpLiteral' && !/[gy]/.test(receiver.flags))) { mutates = true; continue; }
+      }
       // every missing argument must be an optional parameter of the atom
       const params = p.info.params;
+      if (p.constant && p.info.minArity !== 0) continue;
+      // a form whose placeholders are not the atom's parameters maps by position, so it must fit
+      if (params && !p.placeholders.every((nm) => params.some((q) => q.name === nm)) && !params.some((q) => q.rest) && p.placeholders.length > params.length) continue;
       if (mt.missing.size) {
         if (!params) continue;
         const ok = [...mt.missing].every((nm) => { const q = params.find((x) => x.name === nm); return q && q.optional; });
         if (!ok) continue;
       }
       level = p.size;
-      hits.push({ p, b: mt.bindings, missing: mt.missing });
+      hits.push({ p, b: mt.bindings, missing: mt.missing, rest: mt.rest });
     }
-    if (!hits.length) return null;
+    if (!hits.length) return mutates ? { mutates: true } : null;
     // pick by the kind of the first bound value
     const firstArg = (h) => {
       const params = h.p.info.params;
@@ -410,11 +431,19 @@ function toAtoms(code, options = {}) {
     } else {
       order = p.placeholders.filter((nm) => Object.prototype.hasOwnProperty.call(b, nm));
     }
-    const args = order.map((nm) => {
-      if (!Object.prototype.hasOwnProperty.call(b, nm)) return undef();
-      const arg = rewriteExpr(b[nm], { ...ctx, used: true, lvalue: false, callee: false });
-      return p.lazy.has(nm) ? thunk(arg) : arg;
-    });
+    // A `...rest` placeholder is passed on as it was written when the atom itself takes rest
+    // parameters (hypot(a, b)), and as one list when the atom takes a list (largestOf([a, b])).
+    const restParam = params && params.find((q) => q.rest);
+    const spreadsOut = (nm) => hit.rest && hit.rest[nm] && restParam && (restParam.name === nm || !params.some((q) => q.name === nm));
+    const args = [];
+    for (const nm of order) {
+      if (!Object.prototype.hasOwnProperty.call(b, nm)) args.push(undef());
+      else if (spreadsOut(nm)) args.push(...hit.rest[nm].map((a) => rewriteAny(a, null, 'arguments', { ...ctx, callee: false, inChain: false })));
+      else {
+        const arg = rewriteExpr(b[nm], { ...ctx, used: true, lvalue: false, callee: false });
+        args.push(p.lazy.has(nm) ? thunk(arg) : arg);
+      }
+    }
     return call(p.atom, args);
   }
 
@@ -579,6 +608,7 @@ function toAtoms(code, options = {}) {
       const hit = tryPatterns(n, ctx);
       if (hit && hit.p) return buildCall(hit, ctx);
       if (hit && hit.ambiguous) record(n, null, 'ambiguous type');
+      else if (hit && hit.mutates) record(n, null, 'mutates');
       else if (RECORDED_TYPES.has(n.type) || ((n.type === 'TemplateLiteral') && n.expressions.length)) record(n);
       else if ((n.type === 'CallExpression' || n.type === 'NewExpression' || n.type === 'OptionalCallExpression') && isBuiltinCall(n)) record(n);
       else if ((n.type === 'OptionalMemberExpression' || n.type === 'OptionalCallExpression') && n.optional) record(n);
