@@ -4,6 +4,8 @@
 //   const sandbox = await createSandbox({ bundle })       bundle = bundleRuntime(dir)
 //   sandbox.checkPair({ original, converted, importDecl, kind, types, runs, seed, paramTypes })
 //     -> { status: 'same' | 'different' | 'not-runnable', runs, compared, exercised, mismatches, why? }
+//   sandbox.probe(code, { kind, types, runs, seed, paramTypes })
+//     -> { status: 'ran' | 'not-runnable', runs, exercised, threw, outside, effects: { calls, writes, deletes, reads }, why? }
 //   checkCorpus({ runs })  -> { summary, functions: [...] }   (CLI: node bench/atoms/equivalence.js)
 //
 // What is compared, per run: how the call ends (the value returned, the value a
@@ -231,6 +233,7 @@ globalThis.__h = (function () {
       get: function (t, key) {
         if (key === Symbol.toPrimitive) return function (hint) { return hint === 'number' ? hash(path, ctx.seed) % 7 : '<' + path + '>'; };
         if (typeof key === 'symbol' || key === 'then' || key === 'prototype') return key === 'prototype' ? t.prototype : undefined;
+        if (ctx.touch) ctx.touch('reads', path + '.' + key);
         if (key in memo) return memo[key];
         var h = hash(path + '.' + key, ctx.seed);
         var v;
@@ -241,16 +244,17 @@ globalThis.__h = (function () {
         return v;
       },
       set: function (t, key, value) {
-        if (typeof key !== 'symbol') { ctx.note('set ' + path + '.' + key + ' = ' + ser(value)); memo[key] = value; }
+        if (typeof key !== 'symbol') { ctx.note('set ' + path + '.' + key + ' = ' + ser(value)); if (ctx.touch) ctx.touch('writes', path + '.' + key); memo[key] = value; }
         return true;
       },
-      has: function (t, key) { return typeof key === 'symbol' ? false : key in memo || hash(path + '?' + key, ctx.seed) % 2 === 0; },
-      deleteProperty: function (t, key) { if (typeof key !== 'symbol') { ctx.note('delete ' + path + '.' + key); delete memo[key]; } return true; },
+      has: function (t, key) { if (typeof key !== 'symbol' && ctx.touch) ctx.touch('reads', path + '.' + key); return typeof key === 'symbol' ? false : key in memo || hash(path + '?' + key, ctx.seed) % 2 === 0; },
+      deleteProperty: function (t, key) { if (typeof key !== 'symbol') { ctx.note('delete ' + path + '.' + key); if (ctx.touch) ctx.touch('deletes', path + '.' + key); delete memo[key]; } return true; },
       apply: function (t, self, args) { return answer('call', args); },
       construct: function (t, args) { var r = answer('new', args); return r !== null && (typeof r === 'object' || typeof r === 'function') ? r : stub(path + '{}', ctx); },
     });
     function answer(how, args) {
       var n = calls++;
+      if (ctx.touch) ctx.touch('calls', path);
       ctx.note(how + ' ' + path + '(' + Array.prototype.map.call(args, function (a) { return ser(a); }).join(', ') + ')');
       var h = hash(path + '#' + n, ctx.seed);
       return deep || h % 2 === 0 ? primitive(h >>> 1) : stub(path + '()' + (n ? n : ''), ctx);
@@ -381,6 +385,9 @@ globalThis.__h = (function () {
     Math.random = function () { return rnd(); };
 
     var rec = { out: 'pending', trace: trace, args: '', atoms: {} };
+    // a probe (spec.probe) also records what the run touched (calls, writes, deletes, reads of the outside), and which
+    // arguments the call changed; ctx.touch exists only then, so a pair's trace is as it always was
+    if (spec.probe) { rec.touched = { calls: {}, writes: {}, deletes: {}, reads: {} }; ctx.touch = function (what, p) { rec.touched[what][p] = 1; }; }
     records[side + ':' + run] = rec;
     cur = rec;
     var args = [];
@@ -389,6 +396,7 @@ globalThis.__h = (function () {
       if (p.rest) args.push.apply(args, v); else args.push(v);
     });
     rec.input = ser(args);
+    var before = spec.probe ? args.map(function (a) { return ser(a); }) : null;
     var free = sides[side].free.map(function (name) { return stub(name, ctx); });
     var self = spec.method ? stub('this', ctx) : undefined;
     var settle = function (how) { return function (v) { rec.out = how + ' ' + ser(v); rec.args = ser(args); }; };
@@ -405,6 +413,7 @@ globalThis.__h = (function () {
       rec.out = x.out; rec.detail = x.detail;
     }
     rec.args = ser(args);
+    if (before) rec.changed = args.map(function (a, i) { return ser(a) !== before[i] ? 'arg' + i : null; }).filter(Boolean);
     return rec.out;
   }
 
@@ -437,6 +446,20 @@ globalThis.__h = (function () {
         }
       }
       return JSON.stringify({ compared: compared, exercised: exercised, timeouts: timeouts, mismatchCount: mismatches.length, mismatches: mismatches.slice(0, 3), atomCalls: atoms });
+    },
+    // a probe's runs, one side only: what the function touched, as sets over every run
+    probeReport: function () {
+      var exercised = 0, threw = 0, timeouts = 0, ran = 0, calls = {}, writes = {}, deletes = {}, reads = {};
+      for (var run = 0; run < spec.runs; run++) {
+        var a = records['original:' + run];
+        if (!a || a.out === 'timeout') { timeouts++; continue; }
+        ran++;
+        if (/^(returns|resolves)/.test(a.out)) exercised++; else if (/^(throws|rejects)/.test(a.out)) threw++;
+        ['calls', 'writes', 'deletes', 'reads'].forEach(function (k) { var src = (a.touched || {})[k] || {}, dst = ({ calls: calls, writes: writes, deletes: deletes, reads: reads })[k]; Object.keys(src).forEach(function (p) { dst[p] = 1; }); });
+        (a.changed || []).forEach(function (p) { writes[p] = 1; });
+      }
+      var list = function (o) { return Object.keys(o).sort().slice(0, 100); };
+      return JSON.stringify({ ran: ran, exercised: exercised, threw: threw, timeouts: timeouts, effects: { calls: list(calls), writes: list(writes), deletes: list(deletes), reads: list(reads) } });
     },
     known: function (names) { return JSON.stringify(names.filter(function (n) { return n in globalThis; })); },
   };
@@ -521,7 +544,46 @@ async function createSandbox({ bundle }) {
     }
   }
 
-  return { checkPair, dispose: () => runtime.dispose() };
+  // One function on its own, on generated inputs, with every free name and untyped parameter a recording stub: what it
+  // touched across the runs. Evidence, not proof: an effect no generated input reaches is not seen.
+  //   -> { status: 'ran' | 'not-runnable', runs, exercised, threw, timeouts, outside, effects: { calls, writes, deletes, reads }, why? }
+  //   outside: the free names the function uses that the sandbox does not define (imports, module state, React ...)
+  //   effects: paths over those stubs and the parameters (`arg0` ...); writes include a parameter the call changed
+  function probe(code, { kind = 'function', types = new Map(), runs = 25, seed = 1, paramTypes = null } = {}) {
+    let a;
+    let params;
+    try {
+      a = prepareSide(code, kind, '');
+      params = paramsOf(code, kind, types);
+      if (paramTypes) params = params.map((p, i) => (!p.rest && p.d.k === 'unknown' && paramTypes[i] ? { ...p, d: paramTypes[i] } : p));
+    } catch (e) {
+      return { status: 'not-runnable', why: `cannot prepare: ${e.message.split('\n')[0]}` };
+    }
+    if (a.skip) return { status: 'not-runnable', why: a.skip };
+    if (a.generator) return { status: 'not-runnable', why: 'generator' };
+    const vm = runtime.newContext();
+    try {
+      let r = evaluate(vm, `${bundle}\n${HARNESS}\n0`, 5000);
+      if (r.error) return { status: 'not-runnable', why: `harness: ${r.error.message}` };
+      const known = new Set(JSON.parse(evaluate(vm, `__h.known(${JSON.stringify(a.free)})`).value));
+      const free = a.free.filter((n) => !known.has(n));
+      r = evaluate(vm, `__h.define(${JSON.stringify({ params, runs, seed, method: kind === 'method', atoms: {}, aliases: {}, probe: true })}, { original: { free: ${JSON.stringify(free)}, factory: function (${free.join(', ')}) {\n${a.body}\n} } }); 0`);
+      if (r.error) return { status: 'not-runnable', why: `cannot load: ${r.error.message}` };
+      for (let run = 0; run < runs; run++) {
+        r = evaluate(vm, `__h.step('original', ${run})`);
+        if (r.error) evaluate(vm, `__h.timedOut('original', ${run}); 0`);
+      }
+      r = evaluate(vm, '__h.probeReport()');
+      if (r.error) return { status: 'not-runnable', why: `report: ${r.error.message}` };
+      const rep = JSON.parse(r.value);
+      if (!rep.ran) return { status: 'not-runnable', runs, exercised: 0, threw: 0, timeouts: rep.timeouts, outside: free, effects: rep.effects, why: 'every run timed out' };
+      return { status: 'ran', runs, exercised: rep.exercised, threw: rep.threw, timeouts: rep.timeouts, outside: free, effects: rep.effects };
+    } finally {
+      vm.dispose();
+    }
+  }
+
+  return { checkPair, probe, dispose: () => runtime.dispose() };
 }
 
 // ---------------------------------------------------------------------------

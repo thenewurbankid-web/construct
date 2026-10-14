@@ -5,6 +5,7 @@
 //     -> { ...toAtoms result, check, rejected, decisions }
 //   converter.alone(atom, form) -> the form run on its own (bench/atoms/diagnose.js)
 //   converter.checkPair(...)     -> the equivalence check itself, on the same sandbox
+//   converter.probe(code, o)     -> one function run on its own: what it touches (equivalence.js probe)
 //
 // 1. Convert and run both versions (bench/atoms/equivalence.js). When they behave
 //    differently, take rewrites back one at a time until they agree. Each one taken
@@ -109,7 +110,7 @@ async function createCheckedConverter({ compiled, bundle, runtimeTypes = new Map
     return { ...cur.out, check: { status, runs, compared, exercised, mismatchCount }, rejected, decisions };
   }
 
-  return { convert, alone: diagnose.alone, checkPair: sandbox.checkPair, dispose: () => sandbox.dispose() };
+  return { convert, alone: diagnose.alone, checkPair: sandbox.checkPair, probe: sandbox.probe, dispose: () => sandbox.dispose() };
 }
 
 async function checkedCorpus({ runs = 25, only = null } = {}) {
