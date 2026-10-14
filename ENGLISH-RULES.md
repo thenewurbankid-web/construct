@@ -131,6 +131,20 @@ once tests show it matches the original JS. Open: how a molecule is declared (e.
 A molecule that fails any check is not dropped and does not go to the owner: it goes to the developer as a reviewable
 diff, with the failing seed and the counterexample.
 
+**Level and placement: static plus a small model (owner, 2026-10-15).** A unit's level is decided by complexity,
+functionality and semantic relevance to the block it is in.
+- *Static (deterministic)* measures the shape (steps, branches, effects, number of purposes) and gives a candidate
+  level: a molecule is 2-5 atom steps with at most one branch and one purpose; beyond that, composing molecules, or
+  with effects, it is an organism. Thresholds are tunable.
+- *A small model answers one closed question:* given the unit's Atomic English, its name and the block's purpose
+  sentence, does it `belongs`, need to be `separate`, or need a `split`? The answer must be one of the three, and a
+  `split` must name split points that exist in the shape (deterministic check).
+- Static sets the level, the model sets placement; when they disagree, the unit goes to the developer as a diff.
+- The model runs in shadow until it beats a static-only baseline on a labelled set; until then placement is static.
+- *A block's purpose is derived only (owner, 2026-10-15):* one sentence in a fixed shape (third-person verb + object,
+  R1), built deterministically from the block's name and the English of the atoms it uses, e.g. "lineTotal: multiplies
+  price by quantity". No docs or Trace path are used. It describes what the block does, not why.
+
 ## Examples with real atoms
 
 | Atom today | `reads` today | Fluent today | Fluent under these rules |
