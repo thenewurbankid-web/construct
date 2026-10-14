@@ -6,7 +6,7 @@
 //   steinerMerge(plans)            several points sharing nodes: greedy Steiner merge (a shared node is built once)
 // Prune order is cheapest first: structure (out of scope, stub-first, nothing unused, typed contracts), types (the
 // LSP probe of typeFit.mjs on every reused function), behaviour (runExamples.mjs on every finished one).
-import { buildGraph, knuthCosts, solutionGraphs, STEP_COST, LAYER_DIR, tokens } from './graph.mjs';
+import { buildGraph, knuthCosts, solutionGraphs, LAYER_DIR, tokens } from './graph.mjs';
 import { beamFacts, inScopeOf } from './facts.mjs';
 import { typeFit } from './typeFit.mjs';
 import { runOnExamples } from './runExamples.mjs';
@@ -62,11 +62,11 @@ export function shortestPlan(root, point, o = {}) {
   t = clock();
   const sigs = new Map();
   for (const n of g.nodes.values()) {
-    if (n.type !== 'LEAF' || !REUSE.has(n.step) || !n.slot || blocked.has(n.id) || o.types === false) continue;
-    const fn = facts.fns.get(n.target);
+    if (n.type !== 'LEAF' || !(REUSE.has(n.step) || n.via) || !n.slot || blocked.has(n.id) || o.types === false) continue;
+    const fn = facts.fns.get(n.via ?? n.target);
     if (!fn) continue;
     const r = typeFit(root, fn, slotOf(n.slot));
-    if (r.signature) sigs.set(n.target, r.signature);
+    if (r.signature) sigs.set(fn.id, r.signature);
     if (!r.ok) blocked.set(n.id, { stage: 'types', code: 'TYPE_MISFIT', why: r.message });
   }
   ms.types = t();
@@ -76,8 +76,8 @@ export function shortestPlan(root, point, o = {}) {
   const proven = new Set();
   const runs = new Map();
   for (const n of g.nodes.values()) {
-    if (n.type !== 'LEAF' || !REUSE.has(n.step) || !n.slot || blocked.has(n.id) || o.behaviour === false) continue;
-    const fn = facts.fns.get(n.target); const ex = slotOf(n.slot)?.examples ?? [];
+    if (n.type !== 'LEAF' || !(REUSE.has(n.step) || n.via) || !n.slot || blocked.has(n.id) || o.behaviour === false) continue;
+    const fn = facts.fns.get(n.via ?? n.target); const ex = slotOf(n.slot)?.examples ?? [];
     if (!fn || fn.problems.length || !ex.length) continue;
     const r = runOnExamples(root, fn, ex, { sandbox: o.sandbox });
     runs.set(n.id, r);
@@ -107,18 +107,26 @@ export function shortestPlan(root, point, o = {}) {
   ms.cost = t();
 
   const plan = { point: point.id, forked: forked.length, enumerated: all.length, candidates: forked, pruned, survivors, fallbacks,
-    proven: forked.filter((c) => c.provenReuse).map((c) => c.key), provenSlots: [...proven].map((id) => g.nodes.get(id).target).sort(),
+    proven: forked.filter((c) => c.provenReuse).map((c) => c.key), provenSlots: [...proven].map((id) => g.nodes.get(id).via ?? g.nodes.get(id).target).sort(),
     knuthCost: knuth.cost.get(g.root), signatures: Object.fromEntries([...sigs].sort()), tried: [] };
   plan.decision = decide(plan, facts, point);
   plan.ms = { ...ms, total: total() };
   return plan;
 }
 
+/** Per step key (`<step> <target>`) its weight; one step taken twice (shared) counts once, at its dearest. */
+function weights(list) {
+  const m = new Map();
+  for (const { key, weight } of list) m.set(key, Math.max(m.get(key) ?? 0, weight));
+  return m;
+}
+
 /** One solution graph as a candidate path: its nodes, layers, cost, fit facts and the first prune that hits it. */
 function describe(g, s, facts, blocked, proven, point) {
   const nodes = s.leaves.map((id) => g.nodes.get(id));
-  const keys = [...new Set(nodes.map(leafKey))].sort();
-  const cost = keys.reduce((sum, k) => sum + (STEP_COST[k.split(' ')[0]] ?? 9), 0);
+  const weightOf = weights(nodes.map((n) => ({ key: leafKey(n), weight: n.weight })));
+  const keys = [...weightOf.keys()].sort();
+  const cost = keys.reduce((sum, k) => sum + weightOf.get(k), 0);
   const vm = Object.values(s.choice).map((id) => g.nodes.get(id)).find((n) => n.vm)?.vm ?? null;
   const hit = [...Object.values(s.choice), ...s.leaves].map((id) => (blocked.has(id) ? { id, ...blocked.get(id) } : null)).filter(Boolean)
     .sort((a, b) => STAGES.indexOf(a.stage) - STAGES.indexOf(b.stage) || a.id.localeCompare(b.id))[0] ?? null;
@@ -134,7 +142,7 @@ function describe(g, s, facts, blocked, proven, point) {
   const reuseLeaves = nodes.filter((n) => REUSE.has(n.step) && n.slot);
   return {
     key: `${vm ?? '-'}| ${keys.join(' + ')}`, cost, vm, layers,
-    nodes: nodes.map((n) => ({ step: n.step, target: n.target, layer: n.layer, ...(n.slot ? { slot: n.slot } : {}) })).sort((a, b) => a.target.localeCompare(b.target) || a.step.localeCompare(b.step)),
+    nodes: nodes.map((n) => ({ step: n.step, target: n.target, layer: n.layer, weight: n.weight, ...(n.slot ? { slot: n.slot } : {}), ...(n.via ? { via: n.via } : {}) })).sort((a, b) => a.target.localeCompare(b.target) || a.step.localeCompare(b.step)),
     stubs: nodes.filter((n) => n.step === 'complete_stub' || NEW.has(n.step)).map((n) => n.target).sort(),
     fit, prunedAt: hit ? { stage: hit.stage, code: hit.code, why: hit.why, at: g.nodes.get(hit.id).target ?? hit.id, ...(hit.example ? { example: hit.example } : {}) } : null,
     provenReuse: !hit && nodes.every((n) => REUSE.has(n.step) || n.step === 'bind') && reuseLeaves.every((n) => proven.has(n.id)) && reuseLeaves.length > 0,
@@ -219,7 +227,8 @@ export function replan(plan, { current = null, stuckStub, failure = null }) {
  */
 export function steinerMerge(plans) {
   const live = (p) => [...p.survivors, ...p.fallbacks];
-  const keysOf = (c) => [...new Set(c.nodes.map((n) => `${n.step} ${n.target}`))];
+  const keysOf = (c) => [...weights(c.nodes.map((n) => ({ key: leafKey(n), weight: n.weight }))).keys()];
+  const wOf = (c) => weights(c.nodes.map((n) => ({ key: leafKey(n), weight: n.weight })));
   const order = plans.filter((p) => live(p).length)
     .sort((a, b) => live(a).length - live(b).length || live(b)[0].cost - live(a)[0].cost || a.point.localeCompare(b.point));
   const built = new Map(); const chosen = /** @type {Record<string, string>} */ ({});
@@ -227,7 +236,8 @@ export function steinerMerge(plans) {
   for (const p of order) {
     let pick = null;
     for (const c of live(p)) {
-      const e = keysOf(c).filter((k) => !built.has(k)).reduce((s, k) => s + (STEP_COST[k.split(' ')[0]] ?? 9), 0);
+      const w = wOf(c);
+      const e = [...w.keys()].filter((k) => !built.has(k)).reduce((s, k) => s + w.get(k), 0);
       if (!pick || e < pick.e) pick = { c, e };
     }
     chosen[p.point] = pick.c.key; total += pick.e;

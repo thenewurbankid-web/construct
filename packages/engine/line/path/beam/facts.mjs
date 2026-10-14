@@ -1,6 +1,7 @@
 // #949 Trace beam: the facts the beam reads, Line's own (lsp/rules.mjs lineFacts: logic functions by stable id with
 // their stub check, modules, index exports) plus the browser-storage stores (features/<f>/store/*.ts, one stable id
-// per exported function), which the lending projects use as their contract layer and lineFacts does not list.
+// per exported function), which the lending projects use as their contract layer and lineFacts does not list. A
+// typed-contracts unit written as `defineX('name', arrow)` reads as finished (stubProblems finds no block body: NO_STUB).
 import fs from 'node:fs';
 import path from 'node:path';
 import { lineFacts } from '../../../lsp/rules.mjs';
@@ -15,6 +16,14 @@ import { moduleScope } from '../../scope/moduleScope.mjs';
 export function beamFacts(root) {
   let F;
   try { F = lineFacts(root); } catch { F = { fns: new Map(), modules: new Set(), exportsBy: {} }; }
+  // a typed-contracts unit (`export const findBook = defineService('findBook', (...) => ...)`) has no named block-body
+  // function, so stubProblems says NO_STUB; it is finished when nothing else is wrong, not a stub to complete
+  for (const f of F.fns.values()) {
+    if (!f.problems.includes('NO_STUB')) continue;
+    let src = '';
+    try { src = fs.readFileSync(path.join(root, f.file), 'utf8'); } catch { continue; }
+    if (new RegExp(`export\\s+const\\s+${f.name}\\s*=\\s*define\\w+\\(`).test(src) && !src.includes('TODO(path-stub')) f.problems = f.problems.filter((p) => p !== 'NO_STUB');
+  }
   let features = [];
   try { features = fs.readdirSync(path.join(root, 'features'), { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name).sort(); } catch { /* none */ }
   for (const f of features) {

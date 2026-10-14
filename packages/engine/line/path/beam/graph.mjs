@@ -9,6 +9,8 @@ import { nextSteps } from '../../../lsp/rules.mjs';
 
 /** Step costs: reuse is cheaper than completing a stub, and both are cheaper than creating. */
 export const STEP_COST = Object.freeze({ bind: 1, reuse: 1, add_to_scope: 1.5, complete_stub: 2, create: 4, create_module: 5 });
+/** Using a function matched only by name words, not by the slot's own stable id, costs this much more. */
+export const NEAR_MATCH_COST = 0.5;
 /** The view-model kinds the beam always forks over, and the folder each lives in. */
 export const VM_KINDS = Object.freeze({ hook: 'hooks', controller: 'controllers', provider: 'providers', computed: 'expressions' });
 /** The folder of each data layer. */
@@ -55,7 +57,7 @@ export function buildGraph(point, facts, o = {}) {
   const add = (n) => { if (!nodes.has(n.id)) nodes.set(n.id, { weight: 0, children: [], ...n }); return n.id; };
   const leaf = (stepOpt, extra = {}) => {
     const id = `leaf:${extra.slot ?? extra.vm ?? extra.layer ?? '-'}:${stepOpt.step}:${stepOpt.target}`;
-    return add({ id, type: 'LEAF', step: stepOpt.step, target: stepOpt.target, weight: STEP_COST[stepOpt.step] ?? 9, reason_id: stepOpt.reason_id, why: stepOpt.why ?? null, ...extra });
+    return add({ id, type: 'LEAF', step: stepOpt.step, target: stepOpt.target, weight: (STEP_COST[stepOpt.step] ?? 9) + (extra.near ? NEAR_MATCH_COST : 0), reason_id: stepOpt.reason_id, why: stepOpt.why ?? null, ...extra });
   };
   const stepsFor = (need, layer, extra = {}) => {
     const n = nextSteps(o.root ?? '.', { need, from: point.feature }, { facts });
@@ -81,8 +83,12 @@ export function buildGraph(point, facts, o = {}) {
     const kids = [];
     for (const need of ids) {
       const fn = facts.fns.get(need);
-      const opts = fn ? stepsFor(need, slot.layer, { slot: slot.id }) : need === ownId ? stepsFor(need, slot.layer, { slot: slot.id }) : [];
-      if (fn && !opts.length) kids.push(leaf({ step: 'out_of_scope', target: need, reason_id: 'NOT_EXPORTED' }, { need, layer: slot.layer, slot: slot.id, weight: Infinity }));
+      const near = need === ownId ? {} : { near: true };
+      const opts = fn ? stepsFor(need, slot.layer, { slot: slot.id, ...near }) : need === ownId ? stepsFor(need, slot.layer, { slot: slot.id }) : [];
+      // another feature's finished function its index does not export: export it through that index (create_module
+      // on the index), then use it; an unfinished one there is out of scope
+      if (fn && !opts.length && !fn.problems.length) kids.push(leaf({ step: 'create_module', target: `module:${fn.feature}/index#${fn.name}`, reason_id: 'EXPORT_THROUGH_INDEX' }, { need, via: need, layer: slot.layer, slot: slot.id, ...near }));
+      else if (fn && !opts.length) kids.push(leaf({ step: 'out_of_scope', target: need, reason_id: 'NOT_EXPORTED' }, { need, layer: slot.layer, slot: slot.id, weight: Infinity }));
       for (const l of opts) {
         const s = nodes.get(l).step;
         // a function still to write needs what it reads: a service its contract, a computed value the api fields it uses
