@@ -403,7 +403,38 @@ Object.assign(VARIANTS, {
     return lMsgs(last);
   } },
 });
-const L_IDS = ['L', 'L+tools', 'L9a', 'L9b', 'CL', 'CLr1', 'CL+tools', 'CL9a', 'CL9b'];
+// F arms: the hand-written ledgers replaced by compiled facts. F1/CF1 = packages/engine/lsp/facts.mjs compileFacts
+// (deterministic: hardened Smith steps + LSP index); F2/CF2 = glossFacts (qwen2.5-coder:1.5b from Smith's sentences
+// plus the index, guarded, falling back to the compiler). Same system, tools and shape as L+tools (case 1) and CL (case 2).
+let factsIndex = null;
+const FACTS_BUILT = {};
+async function factsTask(caseNo) {
+  const { buildIndex } = await import('../../../packages/engine/lsp/facts.mjs');
+  factsIndex ??= await buildIndex(PROJ, { smith: async (code, kind) => ((await summarizeCode(code, { kind })).sentences ?? []).slice(1) });
+  const task = caseNo === 1
+    ? { target: { feature: 'picks', file: PICKS }, libraryPages: ['ListPage'], fetch: true, step: { kind: 'setCode', file: PICKS, contentHash: failing.contentHash, point: PCK1 }, refusal: { code: 'TYPE_ERROR', repeat: repeatN, file: PICKS, line: 7, message: errLine.replace(/^\S+ TS\d+ /, ''), caret: caretLine, exampleFix: EXAMPLE_FIX, contentHash: failing.contentHash } }
+    : { target: { feature: 'browse' }, libraryPages: LIB_PAGES, step: { kind: 'baseOn', feature: 'browse', route: '/', points: BRW12 } };
+  return { index: factsIndex, task };
+}
+async function factsText(caseNo, translator) {
+  const key = `${caseNo}:${translator}`;
+  if (FACTS_BUILT[key]) return FACTS_BUILT[key].text;
+  const { index, task } = await factsTask(caseNo);
+  if (!translator) { const { compileFacts } = await import('../../../packages/engine/lsp/facts.mjs'); FACTS_BUILT[key] = { ...compileFacts({ ...task, index }), dropped: false, reason: null }; }
+  else {
+    const { glossFacts } = await import('../../../packages/engine/lsp/glossFacts.mjs');
+    const steps = [...index.units.map((u) => ({ file: u.file, id: u.id, sentences: u.steps })), ...index.library.pages.filter((p) => task.libraryPages.includes(p.name)).map((p) => ({ file: p.file, id: p.id, sentences: p.steps }))];
+    FACTS_BUILT[key] = await glossFacts(steps, index, { task });
+  }
+  return FACTS_BUILT[key].text;
+}
+Object.assign(VARIANTS, {
+  F1: { case: 1, what: 'L+tools with the ledger compiled by facts.mjs (hardened Smith steps + LSP index, no model)', numCtx: 16384, tools: L_FETCH_TOOLS, fetchLoop: true, build: async () => lMsgs(await factsText(1, false)) },
+  F2: { case: 1, what: 'L+tools with the ledger from the 1.5b translator (glossFacts, guarded; compiler on a drop)', numCtx: 16384, tools: L_FETCH_TOOLS, fetchLoop: true, build: async () => lMsgs(await factsText(1, true)) },
+  CF1: { case: 2, what: 'CL with the ledger compiled by facts.mjs (hardened Smith steps + LSP index, no model)', numCtx: 16384, tools: L_TOOLS, build: async () => lMsgs(await factsText(2, false)) },
+  CF2: { case: 2, what: 'CL with the ledger from the 1.5b translator (glossFacts, guarded; compiler on a drop)', numCtx: 16384, tools: L_TOOLS, build: async () => lMsgs(await factsText(2, true)) },
+});
+const L_IDS = ['L', 'L+tools', 'F1', 'F2', 'L9a', 'L9b', 'CL', 'CLr1', 'CF1', 'CF2', 'CL+tools', 'CL9a', 'CL9b'];
 
 /** A fetch tool answered from the run's project/ (read-only), the way plan-cli would. */
 function simulateTool(name, args, caseNo) {
@@ -577,6 +608,7 @@ async function main() {
     variants: Object.fromEntries(Object.entries(VARIANTS).map(([k, v]) => [k, { case: v.case, what: v.what, numCtx: v.numCtx }])),
   };
   const want = (v) => !ONLY || ONLY.has(v);
+  meta.facts = FACTS_BUILT; // F arms: each compiled/translated ledger, with the translator's guard verdict
   if (argv.includes('--rescore')) { // recompute scores from the saved answers (no model call, no tsc), then rewrite JSON + MD
     const j = readJson(OUT);
     for (const r of j.samples) {

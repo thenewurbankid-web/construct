@@ -1,0 +1,416 @@
+{
+  "app": "src/features/admin-navigation",
+  "smith": {
+    "atomicCodemod": "a9191a5f691f9fe8f90c32e4d77af594b991818e",
+    "smith": "f70eecfcf14c8859da784b66922605269b225cd9",
+    "canonical": true
+  },
+  "rows": [
+    {
+      "id": "admin-navigation/components/AdminNavigation",
+      "name": "AdminNavigation",
+      "file": "src/features/admin-navigation/components/AdminNavigation.tsx",
+      "layer": "component",
+      "lines": 160,
+      "code": "function AdminNavigation({\n  children,\n  crumbs,\n  displayName,\n  initials,\n  sections,\n  selectedItemId,\n  isSideNavCollapsed,\n  contentRef,\n  onNavItemClick,\n  onToggleSideNav,\n  onLogout,\n}: AdminNavigationProps) {\n  return (\n    <PageLayoutTopBar\n      header={\n        <TopbarWithRightNav\n          leftSlot={\n            <>\n              {crumbs.map((crumb, index) => (\n                <React.Fragment key={crumb.key}>\n                  <Button\n                    variant={crumb.variant}\n                    size=\"small\"\n                    icon={crumb.icon}\n                    onClick={crumb.onClick}\n                    data-testid={crumb.testId}\n                  >\n                    {crumb.label}\n                  </Button>\n                  {index < crumbs.length - 1 && (\n                    <FeatherChevronRight className=\"font-body-2 text-body-2 text-subtext-color\" />\n                  )}\n                </React.Fragment>\n              ))}\n            </>\n          }\n          rightSlot={\n            <SubframeCore.DropdownMenu.Root>\n              <SubframeCore.DropdownMenu.Trigger asChild={true}>\n                <button\n                  type=\"button\"\n                  className=\"flex h-10 cursor-pointer items-center justify-center gap-2 rounded-rounded-sm border-none bg-default-background px-3.5 shadow-sm\"\n                  aria-label={`Account menu for ${displayName}`}\n                  data-testid=\"btn-topbar-profile-menu\"\n                >\n                  <Avatar variant=\"brand\" size=\"small\" image=\"\">\n                    {initials}\n                  </Avatar>\n                  <span className=\"font-button text-button whitespace-nowrap text-neutral-700\">\n                    {displayName}\n                  </span>\n                  <FeatherChevronDown className=\"font-body-2 text-body-2 text-default-font\" />\n                </button>\n              </SubframeCore.DropdownMenu.Trigger>\n              <SubframeCore.DropdownMenu.Portal>\n                <SubframeCore.DropdownMenu.Content\n                  side=\"bottom\"\n                  align=\"end\"\n                  sideOffset={8}\n                  asChild={true}\n                  className=\"z-50\"\n                >\n                  <DropdownMenu>\n                    <div className=\"flex w-full items-center px-4 py-2.5\">\n                      <span className=\"font-body-2-bold text-body-2-bold text-neutral-900\">\n                        {displayName || \"—\"}\n                      </span>\n                    </div>\n                    <DropdownMenu.DropdownDivider />\n                    <DropdownMenu.DropdownItem\n                      icon={<FeatherLogOut />}\n                      variant=\"destructive\"\n                      onClick={onLogout}\n                      data-testid=\"btn-profile-menu-logout\"\n                    >\n                      Log out\n                    </DropdownMenu.DropdownItem>\n                  </DropdownMenu>\n                </SubframeCore.DropdownMenu.Content>\n              </SubframeCore.DropdownMenu.Portal>\n            </SubframeCore.DropdownMenu.Root>\n          }\n        />\n      }\n      sideNav={\n        <SideNav\n          className=\"items-stretch overflow-x-hidden overflow-y-auto overscroll-y-contain\"\n          collapsed={isSideNavCollapsed}\n          header={\n            <div className=\"flex w-full items-center justify-between gap-2\">\n              <Image\n                className=\"h-14 w-auto flex-none object-contain\"\n                src={LOGO_URL}\n                alt=\"Beroe Max\"\n                width={120}\n                height={56}\n                unoptimized={true}\n              />\n              <IconButton\n                variant=\"outline\"\n                size=\"xsmall\"\n                className=\"flex-none\"\n                icon={<FeatherPanelLeft />}\n                onClick={onToggleSideNav}\n                aria-label=\"Collapse sidebar\"\n                title=\"Collapse sidebar\"\n                data-testid=\"btn-sidenav-toggle-collapse\"\n              />\n            </div>\n          }\n          // Collapsed-state toggle; the expanded-state one lives in `header`.\n          topMenu={\n            isSideNavCollapsed ? (\n              <SideNav.NavItem\n                icon={<FeatherPanelLeft />}\n                collapsed={true}\n                onClick={onToggleSideNav}\n                aria-label=\"Expand sidebar\"\n                title=\"Expand sidebar\"\n                data-testid=\"btn-sidenav-toggle-collapse\"\n              />\n            ) : null\n          }\n          mainMenu={\n            <>\n              {sections.map((section, index) => (\n                <React.Fragment key={section.id}>\n                  {/* Divider between sections while collapsed (section labels are hidden then). */}\n                  {index > 0 && isSideNavCollapsed && (\n                    <div className=\"flex h-px w-full flex-none items-start bg-neutral-200\" />\n                  )}\n                  <SideNav.NavSection label={section.label}>\n                    {section.items.map(item => (\n                      <SideNav.NavItem\n                        key={item.id}\n                        icon={NAV_ICONS[item.icon]}\n                        selected={item.id === selectedItemId}\n                        collapsed={isSideNavCollapsed}\n                        onClick={() => onNavItemClick(item)}\n                        title={isSideNavCollapsed ? item.label : undefined}\n                        data-testid={item.testId}\n                      >\n                        {item.label}\n                      </SideNav.NavItem>\n                    ))}\n                  </SideNav.NavSection>\n                </React.Fragment>\n              ))}\n            </>\n          }\n        />\n      }\n    >\n      <div ref={contentRef} className=\"contents\">\n        {children}\n      </div>\n    </PageLayoutTopBar>\n  );\n}",
+      "smith": {
+        "sentences": 2,
+        "chars": 3810,
+        "gaps": 0,
+        "unhandled": [],
+        "english": "Admin navigation using {children, crumbs, display name, initials, sections, selected item id, is side nav collapsed, content ref, on nav item click, on toggle side nav, onLogout} works in 1 step. It returns shows a <PageLayoutTopBar> with header as a <TopbarWithRightNav> with left slot as a group containing crumbs map a <React.Fragment> with key as crumb's key containing a <Button> with variant as crumb's variant and size as 'small' and icon as crumb's icon and on click as crumb's on click and data-testid as crumb's test id containing crumb's label and index < crumbs's length - 1 and a <FeatherChevronRight> with class name as 'font-body-2 text-body-2 text-subtext-color' and right slot as a <SubframeCore.DropdownMenu.Root> containing a <SubframeCore.DropdownMenu.Trigger> with as child as true containing a <button> with type as 'button' and class name as 'flex h-10 cursor-pointer items-center justify-center gap-2 rounded-rounded-sm border-none bg-default-background px-3.5 shadow-sm' and aria-label as text of 'Account menu for ' and display name and data-testid as 'btn-topbar-profile-menu' containing a <Avatar> with variant as 'brand' and size as 'small' and image as '' containing initials and a <span> with class name as 'font-button text-button whitespace-nowrap text-neutral-700' containing display name and a <FeatherChevronDown> with class name as 'font-body-2 text-body-2 text-default-font' and a <SubframeCore.DropdownMenu.Portal> containing a <SubframeCore.DropdownMenu.Content> with side as 'bottom' and align as 'end' and side offset as 8 and as child as true and class name as 'z-50' containing a <DropdownMenu> containing a <div> with class name as 'flex w-full items-center px-4 py-2.5' containing a <span> with class name as 'font-body-2-bold text-body-2-bold text-neutral-900' containing display name or '—' and a <DropdownMenu.DropdownDivider> and a <DropdownMenu.DropdownItem> with icon as a <FeatherLogOut> and variant as 'destructive' and on click as on logout and data-testid as 'btn-profile-menu-logout' containing 'Log out' and side nav as a <SideNav> with class name as 'items-stretch overflow-x-hidden overflow-y-auto overscroll-y-contain' and collapsed as is side nav collapsed and header as a <div> with class name as 'flex w-full items-center justify-between gap-2' containing a <Image> with class name as 'h-14 w-auto flex-none object-contain' and src as LOGO_URL and alt as 'Beroe Max' and width as 120 and height as 56 and unoptimized as true and a <IconButton> with variant as 'outline' and size as 'xsmall' and class name as 'flex-none' and icon as a <FeatherPanelLeft> and on click as on toggle side nav and aria-label as 'Collapse sidebar' and title as 'Collapse sidebar' and data-testid as 'btn-sidenav-toggle-collapse' and top menu as if is side nav collapsed then a <SideNav.NavItem> with icon as a <FeatherPanelLeft> and collapsed as true and on click as on toggle side nav and aria-label as 'Expand sidebar' and title as 'Expand sidebar' and data-testid as 'btn-sidenav-toggle-collapse', otherwise nothing and main menu as a group containing sections map a <React.Fragment> with key as section's id containing index > 0 and is side nav collapsed and a <div> with class name as 'flex h-px w-full flex-none items-start bg-neutral-200' and a <SideNav.NavSection> with label as section's label containing section's items map a <SideNav.NavItem> with key as item's id and icon as NAV_ICONS at item's icon and selected as item's id === selected item id and collapsed as is side nav collapsed and on click as on nav item click of item and title as if is side nav collapsed then item's label, otherwise undefined and data-testid as item's test id containing item's label containing a <div> with ref as content ref and class name as 'contents' containing children."
+      },
+      "gloss": {
+        "text": "This code handles the navigation for an admin panel, displaying a top bar with breadcrumbs, a profile menu, and a side navigation. It updates the side navigation based on user interactions and provides logout functionality.",
+        "dropped": false,
+        "reason": null,
+        "rejected": null
+      },
+      "facts": {
+        "tokens": 1583,
+        "text": "Facts so far (each with where it comes from):\n- Scope: feature admin-navigation = the folder src/features/admin-navigation (7 files, tests left out; not a Line project, so no moduleScope: read with the TS language service); its public surface is src/features/admin-navigation/index.ts exporting AdminNavigationLayout. [ls; quickInfo]\n- THE TARGET admin-navigation/components/AdminNavigation (src/features/admin-navigation/components/AdminNavigation.tsx): component; `function AdminNavigation({ children, crumbs, displayName, initials, sections, selectedItemId, isSideNavCollapsed, contentRef, onNavItemClick, onToggleSideNav, …`; renders <PageLayoutTopBar header={<TopbarWithRightNav …>}>. [quickInfo; Smith]\n- admin-navigation/controllers/AdminNavigationInner (src/features/admin-navigation/controllers/AdminNavigationController.tsx): controller; `function AdminNavigationInner({ children }: AdminNavigationLayoutProps): React.JSX.Element`; renders <AdminNavigation>; uses AdminNavigation and useAdminNavigation. [quickInfo; Smith]\n- Also in the feature (not used by or using the target): AdminNavigationController (controller), stripLocale (domain), isWithinPath (domain), getAdminNavigation (domain), getSelectedAdminNavItemId (domain), breadcrumbTestId (domain), isDataLoadsItem (domain), useAdminNavigation (hook) and AdminNavigationLayout (page). [ls]\n- Type AdminNavigationProps (src/features/admin-navigation/types.ts): `type AdminNavigationProps = AdminNavigationViewData & { children: React.ReactNode; }`. [quickInfo]\n- Outside the feature, from @subframe/core: SubframeCore: `import SubframeCore`. [quickInfo]\n- Outside the feature, from @subframe/core: FeatherChevronDown: `const SvgFeatherChevronDown: React.ForwardRefExoticComponent<React.HTMLAttributes<HTMLSpanElement> & React.Re…`; FeatherChevronRight: `const SvgFeatherChevronRight: React.ForwardRefExoticComponent<React.HTMLAttributes<HTMLSpanElement> & React.R…`; FeatherLogOut: `const SvgFeatherLogOut: React.ForwardRefExoticComponent<React.HTMLAttributes<HTMLSpanElement> & React.RefAttr…`; FeatherPanelLeft: `const SvgFeatherPanelLeft: React.ForwardRefExoticComponent<React.HTMLAttributes<HTMLSpanElement> & React.RefA…`. [quickInfo]\n- Outside the feature, from next/image: Image: `const Image: React.ForwardRefExoticComponent<Omit<React.DetailedHTMLProps<React.ImgHTMLAttributes<HTMLImageEl…`. [quickInfo]\n- Outside the feature, from react: React: `namespace React`. [quickInfo]\n- Outside the feature, from @/ui-v2/components/Avatar: Avatar: `const Avatar: ForwardRefExoticComponent<AvatarRootProps & RefAttributes<HTMLDivElement>>`. [quickInfo]\n- Outside the feature, from @/ui-v2/components/Button: Button: `const Button: ForwardRefExoticComponent<ButtonRootProps & RefAttributes<HTMLButtonElement>>`. [quickInfo]\n- Outside the feature, from @/ui-v2/components/DropdownMenu: DropdownMenu: `const DropdownMenu: ForwardRefExoticComponent<DropdownMenuRootProps & RefAttributes<HTMLDivElement>> & { Drop…`. [quickInfo]\n- Outside the feature, from @/ui-v2/components/IconButton: IconButton: `const IconButton: ForwardRefExoticComponent<IconButtonRootProps & RefAttributes<HTMLButtonElement>>`. [quickInfo]\n- Outside the feature, from @/ui-v2/components/PageLayoutTopBar: PageLayoutTopBar: `const PageLayoutTopBar: ForwardRefExoticComponent<PageLayoutTopBarRootProps & RefAttributes<HTMLDivElement>>`. [quickInfo]\n- Outside the feature, from @/ui-v2/components/SideNav: SideNav: `const SideNav: ForwardRefExoticComponent<SideNavRootProps & RefAttributes<HTMLElement>> & { NavItem: ForwardR…`. [quickInfo]\n- Outside the feature, from @/ui-v2/components/TopbarWithRightNav: TopbarWithRightNav: `const TopbarWithRightNav: ForwardRefExoticComponent<TopbarWithRightNavRootProps & RefAttributes<HTMLElement>>…`. [quickInfo]\n- Nothing the target names is missing: its imports resolve and its stub check is clean. [quickInfo; stubs]\n- Use exactly: import type { AdminNavigationProps } from \"../types\"; import * as SubframeCore from \"@subframe/core\"; import { FeatherBuilding2, FeatherChevronDown, FeatherChevronRight, FeatherDatabaseZap, FeatherLogOut, FeatherPanelLeft, } from \"@subframe/core\"; import Image from \"next/image\"; import React from \"react\"; import { Avatar } from \"@/ui-v2/components/Avatar\"; import { Button } from \"@/ui-v2/components/Button\"; import { DropdownMenu } from \"@/ui-v2/components/DropdownMenu\"; import { IconButton } from \"@/ui-v2/components/IconButton\"; import { PageLayoutTopBar } from \"@/ui-v2/components/PageLayoutTopBar\"; import { SideNav } from \"@/ui-v2/components/SideNav\"; import { TopbarWithRightNav } from \"@/ui-v2/components/TopbarWithRightNav\"; [src/features/admin-navigation/components/AdminNavigation.tsx]\n\nCurrent step: Fill admin-navigation/components/AdminNavigation: Renders the admin console frame — collapsible side nav, topbar with breadcrumbs and profile menu — around page content. Mirrors the CPO frame. Write it in src/features/admin-navigation/components/AdminNavigation.tsx with plan_add line.setCode (the whole file, contentHash 0df49db8804db6d4)."
+      },
+      "gate": {
+        "pass": false,
+        "exempt": false,
+        "failed": [
+          "connections"
+        ],
+        "checks": [
+          "ok   stub: nothing unused, it returns what it declares",
+          "ok   complexity: cyclomatic 3/20 (component)",
+          "FAIL connections: reads imported React, SubframeCore, DropdownMenu, SideNav as data, not through a function",
+          "ok   smith: 1 sentence(s): It returns shows a <PageLayoutTopBar> with header as a <TopbarWithRightNav> with"
+        ]
+      }
+    },
+    {
+      "id": "admin-navigation/controllers/AdminNavigationInner",
+      "name": "AdminNavigationInner",
+      "file": "src/features/admin-navigation/controllers/AdminNavigationController.tsx",
+      "layer": "controller",
+      "lines": 4,
+      "code": "function AdminNavigationInner({ children }: AdminNavigationLayoutProps) {\n  const viewData = useAdminNavigation();\n  return <AdminNavigation {...viewData}>{children}</AdminNavigation>;\n}",
+      "smith": {
+        "sentences": 3,
+        "chars": 183,
+        "gaps": 0,
+        "unhandled": [],
+        "english": "Admin navigation inner using {children} works in 2 steps. Let view data be use admin navigation. It returns shows a <AdminNavigation> with everything in view data containing children."
+      },
+      "gloss": {
+        "text": "This code snippet is designed to render an `AdminNavigation` component based on the data provided. It takes the `children` prop, which presumably contains the data to be displayed, and uses it to render the `AdminNavigation` component with all the data included.",
+        "dropped": false,
+        "reason": null,
+        "rejected": null
+      },
+      "facts": {
+        "tokens": 858,
+        "text": "Facts so far (each with where it comes from):\n- Scope: feature admin-navigation = the folder src/features/admin-navigation (7 files, tests left out; not a Line project, so no moduleScope: read with the TS language service); its public surface is src/features/admin-navigation/index.ts exporting AdminNavigationLayout. [ls; quickInfo]\n- admin-navigation/components/AdminNavigation (src/features/admin-navigation/components/AdminNavigation.tsx): component; `function AdminNavigation({ children, crumbs, displayName, initials, sections, selectedItemId, isSideNavCollapsed, contentRef, onNavItemClick, onToggleSideNav, …`; renders <PageLayoutTopBar header={<TopbarWithRightNav …>}>. [quickInfo; Smith]\n- THE TARGET admin-navigation/controllers/AdminNavigationInner (src/features/admin-navigation/controllers/AdminNavigationController.tsx): controller; `function AdminNavigationInner({ children }: AdminNavigationLayoutProps): React.JSX.Element`; renders <AdminNavigation>; uses AdminNavigation and useAdminNavigation. [quickInfo; Smith]\n- admin-navigation/controllers/AdminNavigationController (src/features/admin-navigation/controllers/AdminNavigationController.tsx): controller; `function AdminNavigationController({ children }: AdminNavigationLayoutProps): React.JSX.Element`; renders <BreadcrumbProvider>; uses AdminNavigationInner. [quickInfo; Smith]\n- admin-navigation/hooks/useAdminNavigation (src/features/admin-navigation/hooks/useAdminNavigation.ts): hook; `function useAdminNavigation(): AdminNavigationViewData`; uses getAdminNavigation, getSelectedAdminNavItemId, breadcrumbTestId and isDataLoadsItem. [quickInfo; Smith]\n- Also in the feature (not used by or using the target): stripLocale (domain), isWithinPath (domain), getAdminNavigation (domain), getSelectedAdminNavItemId (domain), breadcrumbTestId (domain), isDataLoadsItem (domain) and AdminNavigationLayout (page). [ls]\n- Type AdminNavigationLayoutProps (src/features/admin-navigation/types.ts): `type AdminNavigationLayoutProps = { children: React.ReactNode; }`. [quickInfo]\n- Nothing the target names is missing: its imports resolve and its stub check is clean. [quickInfo; stubs]\n- Use exactly: import type { AdminNavigationLayoutProps } from \"../types\"; import AdminNavigation from \"../components/AdminNavigation\"; import { useAdminNavigation } from \"../hooks/useAdminNavigation\"; [src/features/admin-navigation/controllers/AdminNavigationController.tsx]\n\nCurrent step: Fill admin-navigation/controllers/AdminNavigationInner: Wires the admin-navigation hook to its component; must render inside BreadcrumbProvider. Write it in src/features/admin-navigation/controllers/AdminNavigationController.tsx with plan_add line.setCode (the whole file, contentHash 45d2013dc14ab039)."
+      },
+      "gate": {
+        "pass": true,
+        "exempt": false,
+        "failed": [],
+        "checks": [
+          "ok   stub: nothing unused, it returns what it declares",
+          "ok   complexity: cyclomatic 1/10 (controller)",
+          "ok   connections: only through functions",
+          "ok   smith: 2 sentence(s): Let view data be use admin navigation."
+        ]
+      }
+    },
+    {
+      "id": "admin-navigation/controllers/AdminNavigationController",
+      "name": "AdminNavigationController",
+      "file": "src/features/admin-navigation/controllers/AdminNavigationController.tsx",
+      "layer": "controller",
+      "lines": 7,
+      "code": "function AdminNavigationController({ children }: AdminNavigationLayoutProps) {\n  return (\n    <BreadcrumbProvider>\n      <AdminNavigationInner>{children}</AdminNavigationInner>\n    </BreadcrumbProvider>\n  );\n}",
+      "smith": {
+        "sentences": 2,
+        "chars": 158,
+        "gaps": 0,
+        "unhandled": [],
+        "english": "Admin navigation controller using {children} works in 1 step. It returns shows a <BreadcrumbProvider> containing a <AdminNavigationInner> containing children."
+      },
+      "gloss": {
+        "text": "This code snippet is a simple navigation controller for an admin interface. It takes a list of children and returns a breadcrumb provider with an inner navigation component that displays these children.",
+        "dropped": false,
+        "reason": null,
+        "rejected": null
+      },
+      "facts": {
+        "tokens": 796,
+        "text": "Facts so far (each with where it comes from):\n- Scope: feature admin-navigation = the folder src/features/admin-navigation (7 files, tests left out; not a Line project, so no moduleScope: read with the TS language service); its public surface is src/features/admin-navigation/index.ts exporting AdminNavigationLayout. [ls; quickInfo]\n- admin-navigation/controllers/AdminNavigationInner (src/features/admin-navigation/controllers/AdminNavigationController.tsx): controller; `function AdminNavigationInner({ children }: AdminNavigationLayoutProps): React.JSX.Element`; renders <AdminNavigation>; uses AdminNavigation and useAdminNavigation. [quickInfo; Smith]\n- THE TARGET admin-navigation/controllers/AdminNavigationController (src/features/admin-navigation/controllers/AdminNavigationController.tsx): controller; `function AdminNavigationController({ children }: AdminNavigationLayoutProps): React.JSX.Element`; renders <BreadcrumbProvider>; uses AdminNavigationInner. [quickInfo; Smith]\n- admin-navigation/pages/AdminNavigationLayout (src/features/admin-navigation/pages/AdminNavigationLayout.tsx): page; `function AdminNavigationLayout({ children }: AdminNavigationLayoutProps): React.JSX.Element`; renders <AdminNavigationController>; uses AdminNavigationController. [quickInfo; Smith]\n- Also in the feature (not used by or using the target): AdminNavigation (component), stripLocale (domain), isWithinPath (domain), getAdminNavigation (domain), getSelectedAdminNavItemId (domain), breadcrumbTestId (domain), isDataLoadsItem (domain) and useAdminNavigation (hook). [ls]\n- Type AdminNavigationLayoutProps (src/features/admin-navigation/types.ts): `type AdminNavigationLayoutProps = { children: React.ReactNode; }`. [quickInfo]\n- Outside the feature, from @/libs/context/BreadcrumbContext: BreadcrumbProvider: `function BreadcrumbProvider({ children }: { children: React.ReactNode; }): React.JSX.Element`. [quickInfo]\n- Nothing the target names is missing: its imports resolve and its stub check is clean. [quickInfo; stubs]\n- Use exactly: import type { AdminNavigationLayoutProps } from \"../types\"; import { BreadcrumbProvider } from \"@/libs/context/BreadcrumbContext\"; [src/features/admin-navigation/controllers/AdminNavigationController.tsx]\n\nCurrent step: Fill admin-navigation/controllers/AdminNavigationController: Provides breadcrumb context, then renders the admin console frame. Write it in src/features/admin-navigation/controllers/AdminNavigationController.tsx with plan_add line.setCode (the whole file, contentHash 45d2013dc14ab039)."
+      },
+      "gate": {
+        "pass": true,
+        "exempt": true,
+        "failed": [],
+        "checks": [
+          "ok   stub: nothing unused, it returns what it declares",
+          "ok   complexity: cyclomatic 1/10 (controller)",
+          "ok   connections: only through functions",
+          "ok   smith: template: dumb JSX, checked by DOM render"
+        ]
+      }
+    },
+    {
+      "id": "admin-navigation/domain/stripLocale",
+      "name": "stripLocale",
+      "file": "src/features/admin-navigation/domain/adminNavigation.ts",
+      "layer": "domain",
+      "lines": 3,
+      "code": "function stripLocale(pathname: string): string {\n  return pathname.replace(LOCALE_PREFIX, \"\");\n}",
+      "smith": {
+        "sentences": 2,
+        "chars": 94,
+        "gaps": 0,
+        "unhandled": [],
+        "english": "Strip locale using pathname works in 1 step. It returns pathname replace LOCALE_PREFIX and ''."
+      },
+      "gloss": {
+        "text": "The code snippet takes a pathname and removes the locale prefix and an empty string, effectively stripping the locale from the path.",
+        "dropped": false,
+        "reason": null,
+        "rejected": null
+      },
+      "facts": {
+        "tokens": 486,
+        "text": "Facts so far (each with where it comes from):\n- Scope: feature admin-navigation = the folder src/features/admin-navigation (7 files, tests left out; not a Line project, so no moduleScope: read with the TS language service); its public surface is src/features/admin-navigation/index.ts exporting AdminNavigationLayout. [ls; quickInfo]\n- THE TARGET admin-navigation/domain/stripLocale (src/features/admin-navigation/domain/adminNavigation.ts): domain; `function stripLocale(pathname: string): string`. [quickInfo; Smith]\n- admin-navigation/domain/isWithinPath (src/features/admin-navigation/domain/adminNavigation.ts): domain; `function isWithinPath(pathname: string | null, href: string): boolean`; uses stripLocale. [quickInfo; Smith]\n- Also in the feature (not used by or using the target): AdminNavigation (component), AdminNavigationInner (controller), AdminNavigationController (controller), getAdminNavigation (domain), getSelectedAdminNavItemId (domain), breadcrumbTestId (domain), isDataLoadsItem (domain), useAdminNavigation (hook) and AdminNavigationLayout (page). [ls]\n- Nothing the target names is missing: its imports resolve and its stub check is clean. [quickInfo; stubs]\n- Use exactly: (no imports) [src/features/admin-navigation/domain/adminNavigation.ts]\n\nCurrent step: Fill admin-navigation/domain/stripLocale: Removes a leading locale segment (e.g. \"/en\") so paths compare against plain hrefs. Write it in src/features/admin-navigation/domain/adminNavigation.ts with plan_add line.setCode (the whole file, contentHash 10852af48953b382)."
+      },
+      "gate": {
+        "pass": true,
+        "exempt": false,
+        "failed": [],
+        "checks": [
+          "ok   stub: nothing unused, it returns what it declares",
+          "ok   purity: pure (domain layer)",
+          "ok   complexity: cyclomatic 1/15 (domain)",
+          "ok   connections: only through functions",
+          "ok   smith: 1 sentence(s): It returns pathname replace LOCALE_PREFIX and ''."
+        ]
+      }
+    },
+    {
+      "id": "admin-navigation/domain/isWithinPath",
+      "name": "isWithinPath",
+      "file": "src/features/admin-navigation/domain/adminNavigation.ts",
+      "layer": "domain",
+      "lines": 5,
+      "code": "function isWithinPath(pathname: string | null, href: string): boolean {\n  if (!pathname) return false;\n  const path = stripLocale(pathname);\n  return path === href || path.startsWith(`${href}/`);\n}",
+      "smith": {
+        "sentences": 4,
+        "chars": 194,
+        "gaps": 0,
+        "unhandled": [],
+        "english": "Is within path using pathname and href works in 3 steps. If not (pathname), return false. Let path be strip locale of pathname. It returns path === href or path starts with text of href and '/'."
+      },
+      "gloss": {
+        "text": null,
+        "dropped": true,
+        "reason": "introduces identifier \"URL's\" not in Smith's text",
+        "rejected": "This function checks if a given URL is within the current path. It first checks if the URL's pathname matches the current path."
+      },
+      "facts": {
+        "tokens": 559,
+        "text": "Facts so far (each with where it comes from):\n- Scope: feature admin-navigation = the folder src/features/admin-navigation (7 files, tests left out; not a Line project, so no moduleScope: read with the TS language service); its public surface is src/features/admin-navigation/index.ts exporting AdminNavigationLayout. [ls; quickInfo]\n- admin-navigation/domain/stripLocale (src/features/admin-navigation/domain/adminNavigation.ts): domain; `function stripLocale(pathname: string): string`. [quickInfo; Smith]\n- THE TARGET admin-navigation/domain/isWithinPath (src/features/admin-navigation/domain/adminNavigation.ts): domain; `function isWithinPath(pathname: string | null, href: string): boolean`; uses stripLocale. [quickInfo; Smith]\n- admin-navigation/domain/getSelectedAdminNavItemId (src/features/admin-navigation/domain/adminNavigation.ts): domain; `function getSelectedAdminNavItemId(sections: AdminNavSection[], pathname: string | null): string | null`; uses isWithinPath. [quickInfo; Smith]\n- Also in the feature (not used by or using the target): AdminNavigation (component), AdminNavigationInner (controller), AdminNavigationController (controller), getAdminNavigation (domain), breadcrumbTestId (domain), isDataLoadsItem (domain), useAdminNavigation (hook) and AdminNavigationLayout (page). [ls]\n- Nothing the target names is missing: its imports resolve and its stub check is clean. [quickInfo; stubs]\n- Use exactly: (no imports) [src/features/admin-navigation/domain/adminNavigation.ts]\n\nCurrent step: Fill admin-navigation/domain/isWithinPath: Whether a path is `href` itself or a page beneath it (segment-aware, locale-agnostic). Write it in src/features/admin-navigation/domain/adminNavigation.ts with plan_add line.setCode (the whole file, contentHash 10852af48953b382)."
+      },
+      "gate": {
+        "pass": true,
+        "exempt": false,
+        "failed": [],
+        "checks": [
+          "ok   stub: nothing unused, it returns what it declares",
+          "ok   purity: pure (domain layer)",
+          "ok   complexity: cyclomatic 3/15 (domain)",
+          "ok   connections: only through functions",
+          "ok   smith: 3 sentence(s): If not (pathname), return false."
+        ]
+      }
+    },
+    {
+      "id": "admin-navigation/domain/getAdminNavigation",
+      "name": "getAdminNavigation",
+      "file": "src/features/admin-navigation/domain/adminNavigation.ts",
+      "layer": "domain",
+      "lines": 3,
+      "code": "function getAdminNavigation(): AdminNavSection[] {\n  return BEROE_ADMIN_NAVIGATION;\n}",
+      "smith": {
+        "sentences": 2,
+        "chars": 72,
+        "gaps": 0,
+        "unhandled": [],
+        "english": "Get admin navigation works in 1 step. It returns BEROE_ADMIN_NAVIGATION."
+      },
+      "gloss": {
+        "text": null,
+        "dropped": true,
+        "reason": "introduces literal \"BEROE ADMIN NAVIGATION\" not in Smith's text",
+        "rejected": "The code snippet provides a straightforward way to access the admin navigation, returning the value \"BEROE ADMIN NAVIGATION\"."
+      },
+      "facts": {
+        "tokens": 549,
+        "text": "Facts so far (each with where it comes from):\n- Scope: feature admin-navigation = the folder src/features/admin-navigation (7 files, tests left out; not a Line project, so no moduleScope: read with the TS language service); its public surface is src/features/admin-navigation/index.ts exporting AdminNavigationLayout. [ls; quickInfo]\n- THE TARGET admin-navigation/domain/getAdminNavigation (src/features/admin-navigation/domain/adminNavigation.ts): domain; `function getAdminNavigation(): AdminNavSection[]`. [quickInfo; Smith]\n- admin-navigation/hooks/useAdminNavigation (src/features/admin-navigation/hooks/useAdminNavigation.ts): hook; `function useAdminNavigation(): AdminNavigationViewData`; uses getAdminNavigation, getSelectedAdminNavItemId, breadcrumbTestId and isDataLoadsItem. [quickInfo; Smith]\n- Also in the feature (not used by or using the target): AdminNavigation (component), AdminNavigationInner (controller), AdminNavigationController (controller), stripLocale (domain), isWithinPath (domain), getSelectedAdminNavItemId (domain), breadcrumbTestId (domain), isDataLoadsItem (domain) and AdminNavigationLayout (page). [ls]\n- Type AdminNavSection (src/features/admin-navigation/domain/adminNavigation.ts): `type AdminNavSection = { id: string; label: string; items: AdminNavItem[]; }`. [quickInfo]\n- Nothing the target names is missing: its imports resolve and its stub check is clean. [quickInfo; stubs]\n- Use exactly: (no imports) [src/features/admin-navigation/domain/adminNavigation.ts]\n\nCurrent step: Fill admin-navigation/domain/getAdminNavigation: Returns the Beroe Admin side-nav sections. Write it in src/features/admin-navigation/domain/adminNavigation.ts with plan_add line.setCode (the whole file, contentHash 10852af48953b382)."
+      },
+      "gate": {
+        "pass": true,
+        "exempt": false,
+        "failed": [],
+        "checks": [
+          "ok   stub: nothing unused, it returns what it declares",
+          "ok   purity: pure (domain layer)",
+          "ok   complexity: cyclomatic 1/15 (domain)",
+          "ok   connections: only through functions",
+          "ok   smith: 1 sentence(s): It returns BEROE_ADMIN_NAVIGATION."
+        ]
+      }
+    },
+    {
+      "id": "admin-navigation/domain/getSelectedAdminNavItemId",
+      "name": "getSelectedAdminNavItemId",
+      "file": "src/features/admin-navigation/domain/adminNavigation.ts",
+      "layer": "domain",
+      "lines": 7,
+      "code": "function getSelectedAdminNavItemId(sections: AdminNavSection[], pathname: string | null): string | null {\n  const matches = sections\n    .flatMap(section => section.items)\n    .flatMap(item => (item.href && isWithinPath(pathname, item.href) ? [{ id: item.id, href: item.href }] : []));\n  if (matches.length === 0) return null;\n  return matches.reduce((best, item) => (item.href.length > best.href.length ? item : best)).id;\n}",
+      "smith": {
+        "sentences": 4,
+        "chars": 450,
+        "gaps": 0,
+        "unhandled": [],
+        "english": "Get selected admin nav item id using sections and pathname works in 3 steps. Let matches be sections flat map section's items flat map if item's href and is within path of pathname and item's href, return a list of an object with id as item's id and href as item's href, then return an empty list. If matches's length === 0, return nothing. It returns matches reduce if item's href's length > best's href's length, return item, then return best's id."
+      },
+      "gloss": {
+        "text": "This function retrieves the ID of the selected admin navigation item based on the current section and pathname. It first flattens the sections and items, then filters the items to find those whose href matches the pathname and is within the path.",
+        "dropped": false,
+        "reason": null,
+        "rejected": null
+      },
+      "facts": {
+        "tokens": 663,
+        "text": "Facts so far (each with where it comes from):\n- Scope: feature admin-navigation = the folder src/features/admin-navigation (7 files, tests left out; not a Line project, so no moduleScope: read with the TS language service); its public surface is src/features/admin-navigation/index.ts exporting AdminNavigationLayout. [ls; quickInfo]\n- admin-navigation/domain/isWithinPath (src/features/admin-navigation/domain/adminNavigation.ts): domain; `function isWithinPath(pathname: string | null, href: string): boolean`; uses stripLocale. [quickInfo; Smith]\n- THE TARGET admin-navigation/domain/getSelectedAdminNavItemId (src/features/admin-navigation/domain/adminNavigation.ts): domain; `function getSelectedAdminNavItemId(sections: AdminNavSection[], pathname: string | null): string | null`; uses isWithinPath. [quickInfo; Smith]\n- admin-navigation/hooks/useAdminNavigation (src/features/admin-navigation/hooks/useAdminNavigation.ts): hook; `function useAdminNavigation(): AdminNavigationViewData`; uses getAdminNavigation, getSelectedAdminNavItemId, breadcrumbTestId and isDataLoadsItem. [quickInfo; Smith]\n- Also in the feature (not used by or using the target): AdminNavigation (component), AdminNavigationInner (controller), AdminNavigationController (controller), stripLocale (domain), getAdminNavigation (domain), breadcrumbTestId (domain), isDataLoadsItem (domain) and AdminNavigationLayout (page). [ls]\n- Type AdminNavSection (src/features/admin-navigation/domain/adminNavigation.ts): `type AdminNavSection = { id: string; label: string; items: AdminNavItem[]; }`. [quickInfo]\n- Nothing the target names is missing: its imports resolve and its stub check is clean. [quickInfo; stubs]\n- Use exactly: (no imports) [src/features/admin-navigation/domain/adminNavigation.ts]\n\nCurrent step: Fill admin-navigation/domain/getSelectedAdminNavItemId: Id of the page link the path belongs to (the Data Loads entry is never selected) — the most specific match wins; null when none match. Write it in src/features/admin-navigation/domain/adminNavigation.ts with plan_add line.setCode (the whole file, contentHash 10852af48953b382)."
+      },
+      "gate": {
+        "pass": true,
+        "exempt": false,
+        "failed": [],
+        "checks": [
+          "ok   stub: nothing unused, it returns what it declares",
+          "ok   purity: pure (domain layer)",
+          "ok   complexity: cyclomatic 2/15 (domain)",
+          "ok   connections: only through functions",
+          "ok   smith: 3 sentence(s): Let matches be sections flat map section's items flat map if item's href and is "
+        ]
+      }
+    },
+    {
+      "id": "admin-navigation/domain/breadcrumbTestId",
+      "name": "breadcrumbTestId",
+      "file": "src/features/admin-navigation/domain/adminNavigation.ts",
+      "layer": "domain",
+      "lines": 3,
+      "code": "function breadcrumbTestId(label: string): string {\n  return `btn-breadcrumb-${label.toLowerCase().replace(/[^a-z0-9]+/g, \"-\")}`;\n}",
+      "smith": {
+        "sentences": 2,
+        "chars": 151,
+        "gaps": 0,
+        "unhandled": [],
+        "english": "Breadcrumb test id using label works in 1 step. It returns text of 'btn-breadcrumb-' and label to lower case replace the pattern /[^a-z0-9]+/g and '-'."
+      },
+      "gloss": {
+        "text": "The code snippet finds a breadcrumb button by its label, converts the text to lowercase, removes any non-alphanumeric characters, and replaces the hyphens with underscores.",
+        "dropped": false,
+        "reason": null,
+        "rejected": null
+      },
+      "facts": {
+        "tokens": 499,
+        "text": "Facts so far (each with where it comes from):\n- Scope: feature admin-navigation = the folder src/features/admin-navigation (7 files, tests left out; not a Line project, so no moduleScope: read with the TS language service); its public surface is src/features/admin-navigation/index.ts exporting AdminNavigationLayout. [ls; quickInfo]\n- THE TARGET admin-navigation/domain/breadcrumbTestId (src/features/admin-navigation/domain/adminNavigation.ts): domain; `function breadcrumbTestId(label: string): string`. [quickInfo; Smith]\n- admin-navigation/hooks/useAdminNavigation (src/features/admin-navigation/hooks/useAdminNavigation.ts): hook; `function useAdminNavigation(): AdminNavigationViewData`; uses getAdminNavigation, getSelectedAdminNavItemId, breadcrumbTestId and isDataLoadsItem. [quickInfo; Smith]\n- Also in the feature (not used by or using the target): AdminNavigation (component), AdminNavigationInner (controller), AdminNavigationController (controller), stripLocale (domain), isWithinPath (domain), getAdminNavigation (domain), getSelectedAdminNavItemId (domain), isDataLoadsItem (domain) and AdminNavigationLayout (page). [ls]\n- Nothing the target names is missing: its imports resolve and its stub check is clean. [quickInfo; stubs]\n- Use exactly: (no imports) [src/features/admin-navigation/domain/adminNavigation.ts]\n\nCurrent step: Fill admin-navigation/domain/breadcrumbTestId: data-testid for a breadcrumb crumb, derived from its label. Write it in src/features/admin-navigation/domain/adminNavigation.ts with plan_add line.setCode (the whole file, contentHash 10852af48953b382)."
+      },
+      "gate": {
+        "pass": true,
+        "exempt": false,
+        "failed": [],
+        "checks": [
+          "ok   stub: nothing unused, it returns what it declares",
+          "ok   purity: pure (domain layer)",
+          "ok   complexity: cyclomatic 1/15 (domain)",
+          "ok   connections: only through functions",
+          "ok   smith: 1 sentence(s): It returns text of 'btn-breadcrumb-' and label to lower case replace the pattern"
+        ]
+      }
+    },
+    {
+      "id": "admin-navigation/domain/isDataLoadsItem",
+      "name": "isDataLoadsItem",
+      "file": "src/features/admin-navigation/domain/adminNavigation.ts",
+      "layer": "domain",
+      "lines": 3,
+      "code": "function isDataLoadsItem(item: AdminNavItem): boolean {\n  return item.href === null;\n}",
+      "smith": {
+        "sentences": 2,
+        "chars": 82,
+        "gaps": 0,
+        "unhandled": [],
+        "english": "Is data loads item using item works in 1 step. It returns item's href === nothing."
+      },
+      "gloss": {
+        "text": null,
+        "dropped": true,
+        "reason": "introduces code \"isDataLoadsItemUsingItem\" not in Smith's text",
+        "rejected": "The function `isDataLoadsItemUsingItem` checks if an item's `href` property is empty. If it is, the function returns `true`; otherwise, it returns `false`."
+      },
+      "facts": {
+        "tokens": 569,
+        "text": "Facts so far (each with where it comes from):\n- Scope: feature admin-navigation = the folder src/features/admin-navigation (7 files, tests left out; not a Line project, so no moduleScope: read with the TS language service); its public surface is src/features/admin-navigation/index.ts exporting AdminNavigationLayout. [ls; quickInfo]\n- THE TARGET admin-navigation/domain/isDataLoadsItem (src/features/admin-navigation/domain/adminNavigation.ts): domain; `function isDataLoadsItem(item: AdminNavItem): boolean`. [quickInfo; Smith]\n- admin-navigation/hooks/useAdminNavigation (src/features/admin-navigation/hooks/useAdminNavigation.ts): hook; `function useAdminNavigation(): AdminNavigationViewData`; uses getAdminNavigation, getSelectedAdminNavItemId, breadcrumbTestId and isDataLoadsItem. [quickInfo; Smith]\n- Also in the feature (not used by or using the target): AdminNavigation (component), AdminNavigationInner (controller), AdminNavigationController (controller), stripLocale (domain), isWithinPath (domain), getAdminNavigation (domain), getSelectedAdminNavItemId (domain), breadcrumbTestId (domain) and AdminNavigationLayout (page). [ls]\n- Type AdminNavItem (src/features/admin-navigation/domain/adminNavigation.ts): `type AdminNavItem = { id: string; label: string; icon: AdminNavIconName; href: string | null; testId: string; }`. [quickInfo]\n- Nothing the target names is missing: its imports resolve and its stub check is clean. [quickInfo; stubs]\n- Use exactly: (no imports) [src/features/admin-navigation/domain/adminNavigation.ts]\n\nCurrent step: Fill admin-navigation/domain/isDataLoadsItem: Whether a nav entry opens the external Data Loads app rather than a page. Write it in src/features/admin-navigation/domain/adminNavigation.ts with plan_add line.setCode (the whole file, contentHash 10852af48953b382)."
+      },
+      "gate": {
+        "pass": true,
+        "exempt": false,
+        "failed": [],
+        "checks": [
+          "ok   stub: nothing unused, it returns what it declares",
+          "ok   purity: pure (domain layer)",
+          "ok   complexity: cyclomatic 1/15 (domain)",
+          "ok   connections: only through functions",
+          "ok   smith: 1 sentence(s): It returns item's href === nothing."
+        ]
+      }
+    },
+    {
+      "id": "admin-navigation/hooks/useAdminNavigation",
+      "name": "useAdminNavigation",
+      "file": "src/features/admin-navigation/hooks/useAdminNavigation.ts",
+      "layer": "hook",
+      "lines": 110,
+      "code": "function useAdminNavigation(): AdminNavigationViewData {\n  const router = useRouter();\n  const pathname = usePathname();\n  const locale = useLocale();\n  const { displayName, initials } = useUserProfile();\n  const trail = useBreadcrumbTrail();\n  // SideNav collapse/expand, persisted via a `sidenav` query param (same as the CPO frame).\n  const [isSideNavCollapsed, toggleSideNavCollapsed] = useSideNavCollapsedUrlSync();\n\n  // \"Data Loads\" opens the external app's home in a new, signed-in tab.\n  const dataLoads = useDataLoadsLauncher({\n    onError: () =>\n      analyticsService.trackEvent({\n        eventType: \"open-data-loads-failure\",\n        eventParams: { source: \"sidebar\", target: \"data-loads-button\", action: matomo.ACTION_TYPES.FAILURE },\n      }),\n  });\n\n  // PageLayoutTopBar scrolls its own internal div, not the window — reset it on\n  // every route change, before paint, to avoid a flash of the old position.\n  const contentRef = React.useRef<HTMLDivElement>(null);\n  React.useLayoutEffect(() => {\n    let node = contentRef.current?.parentElement ?? null;\n    while (node) {\n      const style = getComputedStyle(node);\n      if (/auto|scroll/.test(style.overflowY) && node.scrollHeight > node.clientHeight) {\n        node.scrollTop = 0;\n        break;\n      }\n      node = node.parentElement;\n    }\n  }, [pathname]);\n\n  const sections = getAdminNavigation();\n\n  const crumbs: AdminBreadcrumbCrumb[] = trail.map((item, index) => {\n    const isLast = index === trail.length - 1;\n    // Ghost only marks the current page within a nested trail; a single-item\n    // trail (a top-level page on its own) is always white.\n    const isCurrentNested = isLast && trail.length > 1;\n    // A label derived from unloaded API data can be empty — never crash the frame.\n    const safeLabel = item.label || \"item\";\n    const href = item.href;\n    return {\n      key: `${safeLabel}-${href ?? \"current\"}`,\n      label: item.label,\n      icon: item.icon,\n      variant: isCurrentNested ? \"ghost\" : \"white\",\n      testId: breadcrumbTestId(safeLabel),\n      onClick: !isLast && href\n        ? () => {\n            analyticsService.trackClick({\n              source: \"breadcrumbs\",\n              target: safeLabel,\n              action: matomo.ACTION_TYPES.VIEW,\n            });\n            router.push(href);\n          }\n        : () => {},\n    };\n  });\n\n  const onNavItemClick = (item: AdminNavItem) => {\n    if (isDataLoadsItem(item)) {\n      if (dataLoads.isOpening) return;\n      analyticsService.trackClick({ source: \"sidebar\", target: \"data-loads-button\", action: matomo.ACTION_TYPES.OPEN });\n      dataLoads.open();\n      return;\n    }\n    analyticsService.trackClick({\n      source: \"sidebar\",\n      target: `${item.id}-button`,\n      action: matomo.ACTION_TYPES.VIEW,\n    });\n    if (item.href) router.push(item.href);\n  };\n\n  const onToggleSideNav = () => {\n    analyticsService.trackClick({\n      source: \"sidebar\",\n      target: \"collapse-toggle\",\n      action: isSideNavCollapsed ? matomo.ACTION_TYPES.OPEN : matomo.ACTION_TYPES.CLOSE,\n    });\n    toggleSideNavCollapsed();\n  };\n\n  // Same session teardown as v1 (revokes tokens, clears storage, redirects to\n  // sign-in), reused via the /logout route.\n  const onLogout = () => {\n    analyticsService.trackClick({\n      source: ANALYTICS_SOURCE,\n      target: \"logout-button\",\n      action: matomo.ACTION_TYPES.ACCESS,\n    });\n    router.push(`/${locale}/logout`);\n  };\n\n  return {\n    crumbs,\n    displayName,\n    initials,\n    sections,\n    selectedItemId: getSelectedAdminNavItemId(sections, pathname),\n    isSideNavCollapsed,\n    contentRef,\n    onNavItemClick,\n    onToggleSideNav,\n    onLogout,\n  };\n}",
+      "smith": {
+        "sentences": 16,
+        "chars": 2977,
+        "gaps": 0,
+        "unhandled": [],
+        "english": "Use admin navigation works in 15 steps. Let router be use router. Let pathname be use pathname. Let locale be use locale. Let {displayName, initials} be use user profile. Let trail be use breadcrumb trail. Let [isSideNavCollapsed, toggleSideNavCollapsed] be use side nav collapsed url sync. Let data loads be use data loads launcher of an object with on error as analytics service track event an object with event type as 'open-data-loads-failure' and event params as an object with source as 'sidebar' and target as 'data-loads-button' and action as matomo's action_types's failure. Let content ref be React use ref nothing. React use layout effect let node be contentRef's current's parent element (if any) if present, otherwise nothing, then while node, let style be get computed style of node, then if the pattern /auto|scroll/ test style's overflow y and node's scroll height > node's client height, set node's scroll top to 0, then stop the loop, then set node to node's parent element and a list of pathname. Let sections be get admin navigation. Let crumbs be trail map let is last be index === trail's length - 1, then let is current nested be is last and trail's length > 1, then let safe label be item's label or 'item', then let href be item's href, then return an object with key as text of safe label and '-' and href if present, otherwise 'current' and label as item's label and icon as item's icon and variant as if is current nested then 'ghost', otherwise 'white' and test id as breadcrumb test id of safe label and on click as if not (is last) and href then analytics service track click an object with source as 'breadcrumbs' and target as safe label and action as matomo's action_types's view, then router push href, otherwise. Let on nav item click be if is data loads item of item, if data loads's is opening, return, then analytics service track click an object with source as 'sidebar' and target as 'data-loads-button' and action as matomo's action_types's open, then data loads open, then return, then analytics service track click an object with source as 'sidebar' and target as text of item's id and '-button' and action as matomo's action_types's view, then if item's href, router push item's href. Let on toggle side nav be analytics service track click an object with source as 'sidebar' and target as 'collapse-toggle' and action as if is side nav collapsed then matomo's action_types's open, otherwise matomo's action_types's close, then toggle side nav collapsed. Let on logout be analytics service track click an object with source as ANALYTICS_SOURCE and target as 'logout-button' and action as matomo's action_types's access, then router push text of '/' and locale and '/logout'. It returns an object with crumbs and display name and initials and sections and selected item id as get selected admin nav item id of sections and pathname and is side nav collapsed and content ref and on nav item click and on toggle side nav and on logout."
+      },
+      "gloss": {
+        "text": "This code snippet is a React component that handles navigation in an admin interface. It uses a router to navigate to different pages, manages a breadcrumb trail, and provides side navigation functionality.",
+        "dropped": false,
+        "reason": null,
+        "rejected": null
+      },
+      "facts": {
+        "tokens": 1633,
+        "text": "Facts so far (each with where it comes from):\n- Scope: feature admin-navigation = the folder src/features/admin-navigation (7 files, tests left out; not a Line project, so no moduleScope: read with the TS language service); its public surface is src/features/admin-navigation/index.ts exporting AdminNavigationLayout. [ls; quickInfo]\n- admin-navigation/controllers/AdminNavigationInner (src/features/admin-navigation/controllers/AdminNavigationController.tsx): controller; `function AdminNavigationInner({ children }: AdminNavigationLayoutProps): React.JSX.Element`; renders <AdminNavigation>; uses AdminNavigation and useAdminNavigation. [quickInfo; Smith]\n- admin-navigation/domain/getAdminNavigation (src/features/admin-navigation/domain/adminNavigation.ts): domain; `function getAdminNavigation(): AdminNavSection[]`. [quickInfo; Smith]\n- admin-navigation/domain/getSelectedAdminNavItemId (src/features/admin-navigation/domain/adminNavigation.ts): domain; `function getSelectedAdminNavItemId(sections: AdminNavSection[], pathname: string | null): string | null`; uses isWithinPath. [quickInfo; Smith]\n- admin-navigation/domain/breadcrumbTestId (src/features/admin-navigation/domain/adminNavigation.ts): domain; `function breadcrumbTestId(label: string): string`. [quickInfo; Smith]\n- admin-navigation/domain/isDataLoadsItem (src/features/admin-navigation/domain/adminNavigation.ts): domain; `function isDataLoadsItem(item: AdminNavItem): boolean`. [quickInfo; Smith]\n- THE TARGET admin-navigation/hooks/useAdminNavigation (src/features/admin-navigation/hooks/useAdminNavigation.ts): hook; `function useAdminNavigation(): AdminNavigationViewData`; uses getAdminNavigation, getSelectedAdminNavItemId, breadcrumbTestId and isDataLoadsItem. [quickInfo; Smith]\n- Also in the feature (not used by or using the target): AdminNavigation (component), AdminNavigationController (controller), stripLocale (domain), isWithinPath (domain) and AdminNavigationLayout (page). [ls]\n- Type AdminNavItem (src/features/admin-navigation/domain/adminNavigation.ts): `type AdminNavItem = { id: string; label: string; icon: AdminNavIconName; href: string | null; testId: string; }`. [quickInfo]\n- Type AdminBreadcrumbCrumb (src/features/admin-navigation/types.ts): `type AdminBreadcrumbCrumb = { key: string; label: string; icon?: React.ReactNode; variant: \"ghost\" | \"white\"; testId: string; onClick: () => void; }`. [quickInfo]\n- Type AdminNavigationViewData (src/features/admin-navigation/types.ts): `type AdminNavigationViewData = { crumbs: AdminBreadcrumbCrumb[]; displayName: string; initials: string; sections: AdminNavSection[]; selectedItemId: string | null; isSideNavCollapsed: boolean; contentRef: React.RefObject<HTMLDivElement | null>; onNavItemClick: (item: AdminNavItem) => void; onToggleSideNav: () => void; onLogout: () => void; }`. [quickInfo]\n- Outside the feature, from next-intl: useLocale: `function useLocale(): Locale`. [quickInfo]\n- Outside the feature, from next/navigation: usePathname: `function usePathname(): string`; useRouter: `function useRouter(): AppRouterInstance`. [quickInfo]\n- Outside the feature, from react: React: `namespace React`. [quickInfo]\n- Outside the feature, from @/hooks/v2/common/useDataLoadsLauncher: useDataLoadsLauncher: `function useDataLoadsLauncher({ onError }?: DataLoadsLauncherOptions): DataLoadsLauncher`. [quickInfo]\n- Outside the feature, from @/hooks/v2/common/useSideNavCollapsedUrlSync: useSideNavCollapsedUrlSync: `function useSideNavCollapsedUrlSync(): [boolean, () => void]`. [quickInfo]\n- Outside the feature, from @/hooks/v2/common/useUserProfile: useUserProfile: `function useUserProfile(): UserProfile`. [quickInfo]\n- Outside the feature, from @/libs/context/BreadcrumbContext: useBreadcrumbTrail: `function useBreadcrumbTrail(): BreadcrumbItem[]`. [quickInfo]\n- Outside the feature, from @/libs/matomo: analyticsService: `const analyticsService: MatomoAnalyticsService`; matomo: `const matomo: Matomo`. [quickInfo]\n- Nothing the target names is missing: its imports resolve and its stub check is clean. [quickInfo; stubs]\n- Use exactly: import type { AdminNavItem } from \"../domain/adminNavigation\"; import type { AdminBreadcrumbCrumb, AdminNavigationViewData } from \"../types\"; import { useLocale } from \"next-intl\"; import { usePathname, useRouter } from \"next/navigation\"; import React from \"react\"; import { useDataLoadsLauncher } from \"@/hooks/v2/common/useDataLoadsLauncher\"; import { useSideNavCollapsedUrlSync } from \"@/hooks/v2/common/useSideNavCollapsedUrlSync\"; import { useUserProfile } from \"@/hooks/v2/common/useUserProfile\"; import { useBreadcrumbTrail } from \"@/libs/context/BreadcrumbContext\"; import { analyticsService, matomo } from \"@/libs/matomo\"; import { breadcrumbTestId, getAdminNavigation, getSelectedAdminNavItemId, isDataLoadsItem } from \"../domain/adminNavigation\"; [src/features/admin-navigation/hooks/useAdminNavigation.ts]\n\nCurrent step: Fill admin-navigation/hooks/useAdminNavigation: Exposes the admin console frame's state — side nav, breadcrumbs, collapse and profile — to its component. Write it in src/features/admin-navigation/hooks/useAdminNavigation.ts with plan_add line.setCode (the whole file, contentHash c4d921c9a0a91af3)."
+      },
+      "gate": {
+        "pass": false,
+        "exempt": false,
+        "failed": [
+          "connections"
+        ],
+        "checks": [
+          "ok   stub: nothing unused, it returns what it declares",
+          "ok   complexity: cyclomatic 1/10 (hook)",
+          "FAIL connections: reads imported matomo as data, not through a function",
+          "ok   smith: 15 sentence(s): Let router be use router."
+        ]
+      }
+    },
+    {
+      "id": "admin-navigation/pages/AdminNavigationLayout",
+      "name": "AdminNavigationLayout",
+      "file": "src/features/admin-navigation/pages/AdminNavigationLayout.tsx",
+      "layer": "page",
+      "lines": 3,
+      "code": "function AdminNavigationLayout({ children }: AdminNavigationLayoutProps) {\n  return <AdminNavigationController>{children}</AdminNavigationController>;\n}",
+      "smith": {
+        "sentences": 2,
+        "chars": 125,
+        "gaps": 0,
+        "unhandled": [],
+        "english": "Admin navigation layout using {children} works in 1 step. It returns shows a <AdminNavigationController> containing children."
+      },
+      "gloss": {
+        "text": "This code snippet defines a layout for an admin navigation system. It takes a set of children components and renders them within an `<AdminNavigationController ` component.",
+        "dropped": false,
+        "reason": null,
+        "rejected": null
+      },
+      "facts": {
+        "tokens": 636,
+        "text": "Facts so far (each with where it comes from):\n- Scope: feature admin-navigation = the folder src/features/admin-navigation (7 files, tests left out; not a Line project, so no moduleScope: read with the TS language service); its public surface is src/features/admin-navigation/index.ts exporting AdminNavigationLayout. [ls; quickInfo]\n- admin-navigation/controllers/AdminNavigationController (src/features/admin-navigation/controllers/AdminNavigationController.tsx): controller; `function AdminNavigationController({ children }: AdminNavigationLayoutProps): React.JSX.Element`; renders <BreadcrumbProvider>; uses AdminNavigationInner. [quickInfo; Smith]\n- THE TARGET admin-navigation/pages/AdminNavigationLayout (src/features/admin-navigation/pages/AdminNavigationLayout.tsx): page; `function AdminNavigationLayout({ children }: AdminNavigationLayoutProps): React.JSX.Element`; renders <AdminNavigationController>; uses AdminNavigationController. [quickInfo; Smith]\n- Also in the feature (not used by or using the target): AdminNavigation (component), AdminNavigationInner (controller), stripLocale (domain), isWithinPath (domain), getAdminNavigation (domain), getSelectedAdminNavItemId (domain), breadcrumbTestId (domain), isDataLoadsItem (domain) and useAdminNavigation (hook). [ls]\n- Type AdminNavigationLayoutProps (src/features/admin-navigation/types.ts): `type AdminNavigationLayoutProps = { children: React.ReactNode; }`. [quickInfo]\n- Nothing the target names is missing: its imports resolve and its stub check is clean. [quickInfo; stubs]\n- Use exactly: import type { AdminNavigationLayoutProps } from \"../types\"; import AdminNavigationController from \"../controllers/AdminNavigationController\"; [src/features/admin-navigation/pages/AdminNavigationLayout.tsx]\n\nCurrent step: Fill admin-navigation/pages/AdminNavigationLayout: Route-group layout for the v2 Beroe Admin console. Write it in src/features/admin-navigation/pages/AdminNavigationLayout.tsx with plan_add line.setCode (the whole file, contentHash 27ca060254b38492)."
+      },
+      "gate": {
+        "pass": true,
+        "exempt": true,
+        "failed": [],
+        "checks": [
+          "ok   stub: nothing unused, it returns what it declares",
+          "ok   complexity: cyclomatic 1/10 (page)",
+          "ok   connections: only through functions",
+          "ok   smith: template: dumb JSX, checked by DOM render"
+        ]
+      }
+    }
+  ]
+}
