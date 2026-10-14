@@ -1,0 +1,3 @@
+Keep a `page` state starting at 1 (useState). Page size is 6; total pages = Math.ceil(books.length / 6); show only the slice of `books` for the current page.
+Return <ListPage title="Library catalogue"> wrapping a list: per book a <Link href={`/books/${book.id}`}> with the title, then the author, genre, year, and "Available" if book.available else "On loan".
+Below the list render the text `Page ${page} of ${totalPages}` and two Buttons: label "Previous page" (disabled when page === 1, onClick goes to page - 1) and label "Next page" (disabled when page === totalPages, onClick goes to page + 1).

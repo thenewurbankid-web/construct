@@ -1,0 +1,1 @@
+Read the current ids from localStorage key "picks" (JSON array of strings; treat missing or invalid as []). Remove every entry equal to id, keep the rest in order, and write it back with localStorage.setItem("picks", JSON.stringify(ids)).

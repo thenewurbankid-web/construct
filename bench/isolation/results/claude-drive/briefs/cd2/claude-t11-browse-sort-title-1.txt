@@ -1,0 +1,3 @@
+Make a sorted copy of the imported `books` (never mutate the import), ordered by title A-Z using localeCompare on `title` (the spec's default "Title A-Z").
+Return a ListPage with title "Browse" whose children are a <ul> with one <li key={book.id}> per sorted book, containing a Link to `/books/${book.id}` showing the book title.
+Keep it a plain function component with no state and no hooks.

@@ -1,0 +1,9 @@
+Write the body of this TypeScript function:
+
+export function addPick(id: string): void
+
+The picked book ids are stored in the browser's localStorage under the key "picks" as a JSON array of strings (in the order they were added).
+- Read localStorage.getItem("picks"); if it is null, or JSON.parse throws, or the parsed value is not an array, start from an empty array [].
+- If the array already includes id, do nothing and return.
+- Otherwise push id to the end of the array and save it back with localStorage.setItem("picks", JSON.stringify(array)).
+Do not import anything. Do not call any other helper function. Write only the function body.

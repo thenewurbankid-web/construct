@@ -1,0 +1,16 @@
+You are completing a TSX file. The line `export function BrowsePage() {` is already written; write only the body and the closing `}`. Output plain TSX code only, no markdown, no explanation, no imports.
+
+In scope already (do not import or redeclare):
+- `Link` (from 'next/link')
+- `ListPage`, a component with props `title: string` and `children`
+- `books`, an array of objects with fields `id: string`, `title: string`, `author: string`, `year: number`
+
+The body has exactly two statements:
+1. `const sorted = ` a copy of `books` (spread into a new array) sorted by `title` A-Z using `localeCompare`.
+2. `return` a `ListPage` with `title="Books"` whose child is a `<ul>`; for each book in `sorted`, an `<li key={book.id}>` containing `<Link href={'/books/' + book.id}>{book.title}</Link>`.
+
+Use no hooks, no state, no type annotations.
+
+Shape example (different domain):
+const ordered = [...cities].sort((a, b) => a.name.localeCompare(b.name));
+return <Panel heading="Cities"><ul>{ordered.map((c) => <li key={c.id}>{c.name}</li>)}</ul></Panel>;

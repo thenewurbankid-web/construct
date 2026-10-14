@@ -1,0 +1,18 @@
+Write the body of a React client component in TypeScript (Next.js). Reply with the body only; the signature below is already written:
+export function BookPage({ params }: { params: { id: string } }) {
+
+Already imported and in scope: Link (next/link), DetailPage, books (a JSON array of Book), useState (react), addPick(id: string): void, Button.
+type Book = { id: string; title: string; author: string; genre: string; year: number; pages: number; summary: string; available: boolean };
+DetailPage props: { title: string; back?: ReactNode; children?: ReactNode; aside?: ReactNode }.
+Button props: { label?: string; onClick?: () => void; disabled?: boolean }.
+
+What the body must do:
+1. Keep a status message string in React state (useState), starting as an empty string. Call the hook first, before any early return.
+2. Find the book in `books` whose id equals params.id (cast books as Book[]). If none is found, return a paragraph saying "Book not found".
+3. Return a DetailPage with title set to the book's title, back set to a Link to "/books" with text "Back to books", and children showing the author, genre, year, pages and summary.
+4. If the book is available: render a Button with label "Add to my picks"; its onClick calls addPick with the book's id and sets the status message to exactly "Added to your picks". Show the status message in a paragraph with role="status" when it is not empty.
+5. If the book is not available: show the text "On loan" and render no "Add to my picks" button.
+
+Shape example from another domain (not this code):
+const [note, setNote] = useState('');
+<Button label="Save draft" onClick={() => { saveDraft(d.id); setNote('Draft saved'); }} />

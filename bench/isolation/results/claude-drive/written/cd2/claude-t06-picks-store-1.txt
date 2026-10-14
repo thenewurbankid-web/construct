@@ -1,0 +1,38 @@
+// Picks store: the member's picked book ids, kept in localStorage under the key "picks".
+const KEY = "picks";
+
+function read(): string[] {
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (!raw) return [];
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+function write(ids: string[]): void {
+  try {
+    localStorage.setItem(KEY, JSON.stringify(ids));
+  } catch {
+    // storage unavailable
+  }
+}
+
+export function listPicks(): string[] {
+  return read();
+}
+
+export function addPick(id: string): void {
+  const ids = read();
+  if (ids.includes(id)) return;
+  ids.push(id);
+  write(ids);
+}
+
+export function removePick(id: string): void {
+  const ids = read();
+  const next = ids.filter((x) => x !== id);
+  if (next.length !== ids.length) write(next);
+}
