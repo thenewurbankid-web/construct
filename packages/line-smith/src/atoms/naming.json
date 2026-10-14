@@ -1,0 +1,974 @@
+{
+  "$comment": "Naming rule for generated atoms (scripts/gen-atoms.mjs). Order: overrides > aliases > curated `covers` (hand-written names win) > rule. A name collision fails the build.",
+  "booleanPrefixes": [
+    "is",
+    "has",
+    "can",
+    "should",
+    "does"
+  ],
+  "booleanFallbackPrefix": "does",
+  "booleanExempt": [
+    "equals",
+    "differs",
+    "lessThan",
+    "atMost",
+    "greaterThan",
+    "atLeast",
+    "not",
+    "and",
+    "or"
+  ],
+  "rule": {
+    "instance": "{verb}{Noun}",
+    "static": "{verb}{StaticNoun}",
+    "getter": "get<Rest> -> {rest}Of{Noun} (static: {rest}Of; a Rest already ending in Of keeps one Of)",
+    "setter": "set<Rest> on a copy -> {noun}With{Rest}",
+    "staticFrom": "from<Rest> (static) -> {noun}From{Rest}",
+    "dropTo": "to<Rest> -> {rest}{Noun} for the methods listed in dropTo",
+    "mutator": "mutating method -> {participle}{Noun}, returning the mutated COPY",
+    "boolean": "a boolean or type-guard result whose name lacks a booleanPrefixes prefix gets booleanFallbackPrefix + Name",
+    "UTC": "a leading UTC becomes utc"
+  },
+  "dropTo": [
+    "toLocaleLowerCase",
+    "toLocaleUpperCase",
+    "toFixed",
+    "toExponential",
+    "toPrecision",
+    "toSpliced"
+  ],
+  "renames": {
+    "includes": "has{Noun}",
+    "indexOf": "positionOf{Noun}",
+    "lastIndexOf": "lastPositionOf{Noun}",
+    "findLast": "lastWhere",
+    "findLastIndex": "lastPositionWhere",
+    "forEach": "each{Noun}",
+    "entries": "entriesOf{Noun}",
+    "keys": "keysOf{Noun}",
+    "values": "valuesOf{Noun}",
+    "toString": "{noun}AsText",
+    "toLocaleString": "{noun}AsLocaleText",
+    "toDateString": "{noun}AsDateText",
+    "toTimeString": "{noun}AsTimeText",
+    "toLocaleDateString": "{noun}AsLocaleDateText",
+    "toLocaleTimeString": "{noun}AsLocaleTimeText",
+    "toUTCString": "{noun}AsUtcText",
+    "toISOString": "{noun}AsIsoText",
+    "toJSON": "{noun}AsJson",
+    "valueOf": "primitiveOf{Noun}",
+    "of": "{noun}Of",
+    "get": "getFrom{Noun}"
+  },
+  "participles": {
+    "push": "pushed",
+    "pop": "popped",
+    "shift": "shifted",
+    "unshift": "unshifted",
+    "fill": "filled",
+    "copyWithin": "copiedWithin",
+    "clear": "emptied",
+    "freeze": "frozen",
+    "seal": "sealed",
+    "preventExtensions": "nonExtensible",
+    "defineProperty": "withProperty",
+    "defineProperties": "withProperties",
+    "setPrototypeOf": "withPrototype"
+  },
+  "mutatorEquivalents": {
+    "Array#splice": "Array#toSpliced",
+    "Array#sort": "Array#toSorted",
+    "Array#reverse": "Array#toReversed"
+  },
+  "overrides": {
+    "Object.is": "isSameValue",
+    "Object.create": "objectFrom",
+    "Object.freeze": "frozenCopy",
+    "Object.seal": "sealedCopy",
+    "Object.preventExtensions": "nonExtensibleCopy",
+    "Object.defineProperty": "withProperty",
+    "Object.defineProperties": "withProperties",
+    "Object.setPrototypeOf": "withPrototype",
+    "Object#propertyIsEnumerable": "isEnumerableKey",
+    "Array.isArray": "isList",
+    "String.raw": "rawText",
+    "BigInt.asIntN": "bigIntAsIntN",
+    "BigInt.asUintN": "bigIntAsUintN",
+    "Date.UTC": "utcTime",
+    "JSON.parse": "parseJsonOrThrow",
+    "Promise.any": "firstFulfilled",
+    "RegExp#test": "doesPatternMatch",
+    "Map#has": "hasKeyInMap",
+    "Map#delete": "withoutEntry",
+    "Set#delete": "withoutMember",
+    "WeakMap#has": "hasKeyInWeakMap",
+    "WeakMap#set": "setInWeakMap",
+    "WeakMap#delete": "doesDeleteFromWeakMap",
+    "WeakSet#has": "isInWeakSet",
+    "WeakSet#add": "addToWeakSet",
+    "WeakSet#delete": "doesDeleteFromWeakSet",
+    "parseInt": "parseInteger",
+    "Boolean()": "isTruthy",
+    "Date#getDate": "dayOfMonthOfDate",
+    "Date#getUTCDate": "utcDayOfMonthOfDate",
+    "Date#setDate": "dateWithDayOfMonth",
+    "Date#setUTCDate": "dateWithUtcDayOfMonth",
+    "Date#getDay": "weekdayOfDate",
+    "Date#getUTCDay": "utcWeekdayOfDate"
+  },
+  "aliases": {
+    "Number.parseInt": "parseInt"
+  },
+  "owners": [
+    {
+      "id": "String",
+      "instance": [
+        "String"
+      ],
+      "static": "StringConstructor",
+      "module": "text",
+      "noun": "Text",
+      "staticNoun": "Text",
+      "receiver": "text",
+      "receiverTypes": {
+        "String": "string"
+      },
+      "gen": "text",
+      "call": "textFrom"
+    },
+    {
+      "id": "Array",
+      "instance": [
+        "ReadonlyArray",
+        "Array"
+      ],
+      "static": "ArrayConstructor",
+      "module": "lists",
+      "noun": "List",
+      "staticNoun": "List",
+      "receiver": "list",
+      "receiverTypes": {
+        "ReadonlyArray": "readonly T[]",
+        "Array": "T[]"
+      },
+      "copyReceiverType": "readonly T[]",
+      "copyReturnType": "T[]",
+      "copy": "{r}.slice()",
+      "gen": "list",
+      "mutators": [
+        "copyWithin",
+        "fill",
+        "pop",
+        "push",
+        "reverse",
+        "shift",
+        "sort",
+        "splice",
+        "unshift"
+      ]
+    },
+    {
+      "id": "Object",
+      "instance": [
+        "Object"
+      ],
+      "static": "ObjectConstructor",
+      "module": "objects",
+      "noun": "Value",
+      "staticNoun": "",
+      "receiver": "value",
+      "receiverTypes": {
+        "Object": "Object"
+      },
+      "gen": "mixed",
+      "staticMutators": [
+        "defineProperty",
+        "defineProperties",
+        "freeze",
+        "seal",
+        "preventExtensions",
+        "setPrototypeOf"
+      ]
+    },
+    {
+      "id": "Function",
+      "instance": [
+        "Function"
+      ],
+      "module": "functions",
+      "noun": "Function",
+      "staticNoun": "Function",
+      "receiver": "fn",
+      "receiverTypes": {
+        "Function": "Function"
+      },
+      "gen": "fn"
+    },
+    {
+      "id": "Number",
+      "instance": [
+        "Number"
+      ],
+      "static": "NumberConstructor",
+      "module": "numbers",
+      "noun": "Number",
+      "staticNoun": "Number",
+      "receiver": "n",
+      "receiverTypes": {
+        "Number": "number"
+      },
+      "gen": "num",
+      "call": "numberFrom"
+    },
+    {
+      "id": "Boolean",
+      "instance": [
+        "Boolean"
+      ],
+      "static": "BooleanConstructor",
+      "module": "values",
+      "noun": "Boolean",
+      "staticNoun": "Boolean",
+      "receiver": "flag",
+      "receiverTypes": {
+        "Boolean": "boolean"
+      },
+      "gen": "bool",
+      "call": "booleanFrom"
+    },
+    {
+      "id": "BigInt",
+      "instance": [
+        "BigInt"
+      ],
+      "static": "BigIntConstructor",
+      "module": "numbers",
+      "noun": "BigInt",
+      "staticNoun": "BigInt",
+      "receiver": "big",
+      "receiverTypes": {
+        "BigInt": "bigint"
+      },
+      "gen": "bigint",
+      "call": "bigIntFrom"
+    },
+    {
+      "id": "Math",
+      "static": "Math",
+      "module": "math",
+      "staticNoun": ""
+    },
+    {
+      "id": "Date",
+      "instance": [
+        "Date"
+      ],
+      "static": "DateConstructor",
+      "module": "dates",
+      "noun": "Date",
+      "staticNoun": "Date",
+      "receiver": "date",
+      "receiverTypes": {
+        "Date": "Date"
+      },
+      "copyReceiverType": "Date",
+      "copyReturnType": "Date",
+      "copy": "new Date({r}.getTime())",
+      "gen": "date",
+      "construct": "dateFromParts",
+      "setterMutators": true
+    },
+    {
+      "id": "RegExp",
+      "instance": [
+        "RegExp"
+      ],
+      "static": "RegExpConstructor",
+      "module": "patterns",
+      "noun": "Pattern",
+      "staticNoun": "Pattern",
+      "receiver": "pattern",
+      "receiverTypes": {
+        "RegExp": "RegExp"
+      },
+      "gen": "regex",
+      "construct": "patternFrom",
+      "copyReceiver": {
+        "exec": "new RegExp({r})",
+        "test": "new RegExp({r})"
+      }
+    },
+    {
+      "id": "JSON",
+      "static": "JSON",
+      "module": "json",
+      "staticNoun": "Json"
+    },
+    {
+      "id": "Promise",
+      "instance": [
+        "Promise"
+      ],
+      "static": "PromiseConstructor",
+      "module": "promises",
+      "noun": "Promise",
+      "staticNoun": "Promise",
+      "receiver": "promise",
+      "receiverTypes": {
+        "Promise": "Promise<T>"
+      },
+      "gen": "promise",
+      "construct": "promiseFrom"
+    },
+    {
+      "id": "Map",
+      "instance": [
+        "ReadonlyMap",
+        "Map"
+      ],
+      "static": "MapConstructor",
+      "module": "collections",
+      "noun": "Map",
+      "staticNoun": "Map",
+      "receiver": "map",
+      "receiverTypes": {
+        "ReadonlyMap": "ReadonlyMap<K, V>",
+        "Map": "Map<K, V>"
+      },
+      "copyReceiverType": "ReadonlyMap<K, V>",
+      "copyReturnType": "Map<K, V>",
+      "copy": "new Map({r})",
+      "gen": "map",
+      "mutators": [
+        "clear",
+        "delete",
+        "set"
+      ]
+    },
+    {
+      "id": "Set",
+      "instance": [
+        "ReadonlySet",
+        "Set"
+      ],
+      "static": "SetConstructor",
+      "module": "collections",
+      "noun": "Set",
+      "staticNoun": "Set",
+      "receiver": "set",
+      "receiverTypes": {
+        "ReadonlySet": "ReadonlySet<T>",
+        "Set": "Set<T>"
+      },
+      "copyReceiverType": "ReadonlySet<T>",
+      "copyReturnType": "Set<T>",
+      "copy": "new Set({r})",
+      "gen": "set",
+      "mutators": [
+        "add",
+        "clear",
+        "delete"
+      ]
+    },
+    {
+      "id": "WeakMap",
+      "instance": [
+        "WeakMap"
+      ],
+      "static": "WeakMapConstructor",
+      "module": "collections",
+      "noun": "WeakMap",
+      "staticNoun": "WeakMap",
+      "receiver": "weakMap",
+      "receiverTypes": {
+        "WeakMap": "WeakMap<K, V>"
+      },
+      "gen": "weakmap",
+      "construct": "weakMapFrom",
+      "inPlaceMutators": [
+        "delete",
+        "set"
+      ],
+      "inPlaceReason": "a weak collection cannot be copied, so this mutates in place"
+    },
+    {
+      "id": "WeakSet",
+      "instance": [
+        "WeakSet"
+      ],
+      "static": "WeakSetConstructor",
+      "module": "collections",
+      "noun": "WeakSet",
+      "staticNoun": "WeakSet",
+      "receiver": "weakSet",
+      "receiverTypes": {
+        "WeakSet": "WeakSet<T>"
+      },
+      "gen": "weakset",
+      "construct": "weakSetFrom",
+      "inPlaceMutators": [
+        "add",
+        "delete"
+      ],
+      "inPlaceReason": "a weak collection cannot be copied, so this mutates in place"
+    },
+    {
+      "id": "Error",
+      "static": "ErrorConstructor",
+      "instance": [
+        "Error"
+      ],
+      "module": "errors",
+      "noun": "Error",
+      "staticNoun": "Error",
+      "receiver": "error",
+      "receiverTypes": {
+        "Error": "Error"
+      },
+      "construct": "errorFrom"
+    },
+    {
+      "id": "TypeError",
+      "static": "TypeErrorConstructor",
+      "module": "errors",
+      "staticNoun": "TypeError",
+      "construct": "typeErrorFrom"
+    },
+    {
+      "id": "RangeError",
+      "static": "RangeErrorConstructor",
+      "module": "errors",
+      "staticNoun": "RangeError",
+      "construct": "rangeErrorFrom"
+    },
+    {
+      "id": "SyntaxError",
+      "static": "SyntaxErrorConstructor",
+      "module": "errors",
+      "staticNoun": "SyntaxError",
+      "construct": "syntaxErrorFrom"
+    },
+    {
+      "id": "ReferenceError",
+      "static": "ReferenceErrorConstructor",
+      "module": "errors",
+      "staticNoun": "ReferenceError",
+      "construct": "referenceErrorFrom"
+    },
+    {
+      "id": "EvalError",
+      "static": "EvalErrorConstructor",
+      "module": "errors",
+      "staticNoun": "EvalError",
+      "construct": "evalErrorFrom"
+    },
+    {
+      "id": "URIError",
+      "static": "URIErrorConstructor",
+      "module": "errors",
+      "staticNoun": "URIError",
+      "construct": "uriErrorFrom"
+    },
+    {
+      "id": "AggregateError",
+      "static": "AggregateErrorConstructor",
+      "module": "errors",
+      "staticNoun": "AggregateError",
+      "construct": "aggregateErrorFrom"
+    },
+    {
+      "id": "globalThis",
+      "globals": true,
+      "module": "globals",
+      "staticNoun": ""
+    }
+  ],
+  "impure": {
+    "Math.random": "random: a new value every call",
+    "Date.now": "reads the clock",
+    "new Date": "with no arguments it reads the clock; with parts it uses the machine's local time zone",
+    "String#localeCompare": "depends on the runtime's default locale when none is passed",
+    "String#toLocaleLowerCase": "depends on the runtime's default locale when none is passed",
+    "String#toLocaleUpperCase": "depends on the runtime's default locale when none is passed",
+    "Array#toLocaleString": "depends on the runtime's default locale",
+    "Object#toLocaleString": "depends on the runtime's default locale",
+    "Number#toLocaleString": "depends on the runtime's default locale when none is passed",
+    "BigInt#toLocaleString": "depends on the runtime's default locale when none is passed",
+    "Date#toLocaleString": "depends on the runtime's default locale and time zone",
+    "Date#toLocaleDateString": "depends on the runtime's default locale and time zone",
+    "Date#toLocaleTimeString": "depends on the runtime's default locale and time zone",
+    "Date#toString": "depends on the machine's local time zone",
+    "Date#toDateString": "depends on the machine's local time zone",
+    "Date#toTimeString": "depends on the machine's local time zone",
+    "Date#getDate": "depends on the machine's local time zone",
+    "Date#getDay": "depends on the machine's local time zone",
+    "Date#getFullYear": "depends on the machine's local time zone",
+    "Date#getHours": "depends on the machine's local time zone",
+    "Date#getMinutes": "depends on the machine's local time zone",
+    "Date#getMonth": "depends on the machine's local time zone",
+    "Date#getSeconds": "depends on the machine's local time zone",
+    "Date#getTimezoneOffset": "depends on the machine's local time zone",
+    "Date#setDate": "depends on the machine's local time zone",
+    "Date#setFullYear": "depends on the machine's local time zone",
+    "Date#setHours": "depends on the machine's local time zone",
+    "Date#setMinutes": "depends on the machine's local time zone",
+    "Date#setMonth": "depends on the machine's local time zone",
+    "Date#setSeconds": "depends on the machine's local time zone",
+    "Date.parse": "date-only and local formats depend on the machine's local time zone"
+  },
+  "excludeMembers": {
+    "eval": "executes a string as code",
+    "String#toString": "identity on a primitive",
+    "String#valueOf": "identity on a primitive",
+    "Number#valueOf": "identity on a primitive",
+    "Boolean#valueOf": "identity on a primitive",
+    "BigInt#valueOf": "identity on a primitive",
+    "new String": "boxed primitive: low app use",
+    "new Number": "boxed primitive: low app use",
+    "new Boolean": "boxed primitive: low app use",
+    "new Object": "boxed primitive: low app use",
+    "Object()": "boxed primitive: low app use",
+    "new Array": "creates a list with holes; use range / listFrom",
+    "Array()": "creates a list with holes; use range / listFrom",
+    "Date()": "same as dateAsText(now()); impure",
+    "RegExp()": "same as new RegExp (patternFrom)",
+    "Error()": "same as new Error (errorFrom)",
+    "TypeError()": "same as new TypeError (typeErrorFrom)",
+    "RangeError()": "same as new RangeError (rangeErrorFrom)",
+    "SyntaxError()": "same as new SyntaxError (syntaxErrorFrom)",
+    "ReferenceError()": "same as new ReferenceError (referenceErrorFrom)",
+    "EvalError()": "same as new EvalError (evalErrorFrom)",
+    "URIError()": "same as new URIError (uriErrorFrom)",
+    "AggregateError()": "same as new AggregateError (aggregateErrorFrom)"
+  },
+  "excludeObjects": {
+    "Proxy": {
+      "interfaces": [
+        "ProxyConstructor",
+        "ProxyHandler"
+      ],
+      "reason": "excluded: low app use (metaprogramming)"
+    },
+    "Reflect": {
+      "namespace": "Reflect",
+      "reason": "excluded: low app use (metaprogramming)"
+    },
+    "Symbol": {
+      "interfaces": [
+        "Symbol",
+        "SymbolConstructor"
+      ],
+      "reason": "excluded: Symbol internals (protocol keys, not app data)"
+    },
+    "WeakRef": {
+      "interfaces": [
+        "WeakRef",
+        "WeakRefConstructor"
+      ],
+      "reason": "excluded: low app use (GC-observable)"
+    },
+    "FinalizationRegistry": {
+      "interfaces": [
+        "FinalizationRegistry",
+        "FinalizationRegistryConstructor"
+      ],
+      "reason": "excluded: low app use (GC-observable)"
+    },
+    "Atomics": {
+      "interfaces": [
+        "Atomics"
+      ],
+      "reason": "excluded: low app use (shared-memory concurrency)"
+    },
+    "SharedArrayBuffer": {
+      "interfaces": [
+        "SharedArrayBuffer",
+        "SharedArrayBufferConstructor"
+      ],
+      "reason": "excluded: low app use (shared memory)"
+    },
+    "ArrayBuffer": {
+      "interfaces": [
+        "ArrayBuffer",
+        "ArrayBufferConstructor"
+      ],
+      "reason": "excluded: low app use (binary data; typed arrays may be added later)"
+    },
+    "DataView": {
+      "interfaces": [
+        "DataView",
+        "DataViewConstructor"
+      ],
+      "reason": "excluded: low app use (binary data)"
+    },
+    "TypedArrays": {
+      "interfaces": [
+        "Int8Array",
+        "Uint8Array",
+        "Uint8ClampedArray",
+        "Int16Array",
+        "Uint16Array",
+        "Int32Array",
+        "Uint32Array",
+        "Float32Array",
+        "Float64Array",
+        "BigInt64Array",
+        "BigUint64Array",
+        "Int8ArrayConstructor",
+        "Uint8ArrayConstructor",
+        "Uint8ClampedArrayConstructor",
+        "Int16ArrayConstructor",
+        "Uint16ArrayConstructor",
+        "Int32ArrayConstructor",
+        "Uint32ArrayConstructor",
+        "Float32ArrayConstructor",
+        "Float64ArrayConstructor",
+        "BigInt64ArrayConstructor",
+        "BigUint64ArrayConstructor"
+      ],
+      "reason": "excluded: low app use (typed arrays may be added later)"
+    },
+    "Intl": {
+      "namespace": "Intl",
+      "reason": "excluded: low app use beyond formatNumber/formatDate, which wrap Intl with fixed defaults"
+    },
+    "Function constructor": {
+      "interfaces": [
+        "FunctionConstructor"
+      ],
+      "reason": "excluded: new Function executes a string as code"
+    },
+    "Iterator protocol": {
+      "interfaces": [
+        "Iterator",
+        "IterableIterator",
+        "AsyncIterator",
+        "AsyncIterableIterator",
+        "Generator",
+        "AsyncGenerator",
+        "GeneratorFunction",
+        "AsyncGeneratorFunction",
+        "GeneratorFunctionConstructor",
+        "AsyncGeneratorFunctionConstructor"
+      ],
+      "reason": "excluded: iterator/generator protocol (next/return/throw), not app operations; the es2023 lib has no iterator helpers (map/filter/take arrive in es2025)"
+    }
+  },
+  "syntax": [
+    {
+      "js": "return",
+      "reason": "stays as syntax: a function's result"
+    },
+    {
+      "js": "function",
+      "reason": "stays as syntax: declares a function"
+    },
+    {
+      "js": "=>",
+      "reason": "stays as syntax: the thunks the atoms take"
+    },
+    {
+      "js": "class",
+      "reason": "stays as syntax: declares a type"
+    },
+    {
+      "js": "await",
+      "reason": "stays as syntax: suspends an async function"
+    },
+    {
+      "js": "yield",
+      "reason": "stays as syntax: suspends a generator"
+    },
+    {
+      "js": "label:",
+      "reason": "stays as syntax: labels can't be values"
+    },
+    {
+      "js": "get x() / set x(v)",
+      "reason": "stays as syntax: accessors are declarations"
+    },
+    {
+      "js": "const { a, b } = obj",
+      "reason": "stays as syntax: destructuring binds names"
+    },
+    {
+      "js": "...spread",
+      "reason": "stays as syntax in calls and literals; merged/concatenated cover the copy idioms"
+    },
+    {
+      "js": "new",
+      "reason": "stays as syntax for user classes; built-in constructors have From atoms"
+    },
+    {
+      "js": "this / super",
+      "reason": "stays as syntax: atoms work on plain data passed in explicitly"
+    },
+    {
+      "js": "import / export",
+      "reason": "stays as syntax: module structure"
+    },
+    {
+      "js": "let / const / var",
+      "reason": "stays as syntax: bindings"
+    },
+    {
+      "js": "typeof",
+      "reason": "covered by isText / isNumber / isBoolean / isNothing; other typeof checks stay as syntax"
+    },
+    {
+      "js": "delete obj[k]",
+      "reason": "covered by withoutKey (copy); in-place delete stays as syntax"
+    },
+    {
+      "js": "for / for\u2026of / for\u2026in",
+      "reason": "covered by each / mapEach / repeatWhile; a loop with break/continue stays as syntax"
+    },
+    {
+      "js": "break / continue",
+      "reason": "stays as syntax: loop control"
+    },
+    {
+      "js": "void / comma operator",
+      "reason": "stays as syntax: low app use"
+    },
+    {
+      "js": "++ / -- / += and other compound assignment",
+      "reason": "stays as syntax: assignment to a binding; use plus/minus and rebind"
+    },
+    {
+      "js": "x = y",
+      "reason": "stays as syntax: assignment; copy atoms (withKey, replacedAt) replace mutation"
+    },
+    {
+      "js": "in",
+      "reason": "not an atom: inherited keys make it unsafe on plain data; hasKey covers own keys"
+    },
+    {
+      "js": "a?.b()",
+      "reason": "optional call stays as syntax; get/at cover optional reads"
+    },
+    {
+      "js": "template literal `${a}`",
+      "reason": "stays as syntax (join covers a + b)"
+    },
+    {
+      "js": "bitwise & | ^ ~ << >> >>>",
+      "reason": "stays as syntax: low app use"
+    }
+  ],
+  "propertyCovers": {
+    "String#length": "lengthOf",
+    "Array#length": "lengthOf",
+    "Map#size": "sizeOf",
+    "Set#size": "sizeOf"
+  },
+  "readsOverrides": {
+    "Boolean()": "whether value is truthy",
+    "Object.is": "whether value1 is the same value as value2",
+    "RegExp#test": "whether pattern matches string",
+    "Array.isArray": "whether arg is a list"
+  },
+  "unverifiable": {},
+  "verifiedBy": {
+    "Function#bind": "test/core.test.mjs (bound call property)",
+    "new Promise": "test/core.test.mjs (executor property)"
+  },
+  "typeGens": {
+    "{ raw: readonly string[] | ArrayLike<string>; }": "rawtemplate",
+    "PropertyDescriptor & ThisType<any>": "descriptor",
+    "PropertyDescriptorMap & ThisType<any>": "descriptormap"
+  },
+  "checkSignature": {
+    "new Date": "the year/monthIndex/... overload: the zero-argument form reads the clock"
+  },
+  "grammar": {
+    "$comment": "Atomic English (ENGLISH-RULES.md). Every word of a catalog `fluent` sentence belongs to one class below; test/grammar.test.mjs holds each sentence to R1, R3, R4 and R5.",
+    "verbs": [
+      "adds",
+      "attempts",
+      "checks",
+      "chooses",
+      "cleans",
+      "clones",
+      "compares",
+      "drops",
+      "finds",
+      "flattens",
+      "joins",
+      "keeps",
+      "lowercases",
+      "maps",
+      "matches",
+      "parses",
+      "recovers",
+      "replaces",
+      "reverses",
+      "sends",
+      "sorts",
+      "splits",
+      "takes",
+      "trims",
+      "uppercases",
+      "waits",
+      "yields"
+    ],
+    "irregularBaseForms": {
+      "has": "have",
+      "is": "be",
+      "does": "do"
+    },
+    "questionWords": [
+      "is",
+      "has",
+      "can",
+      "does"
+    ],
+    "subjects": [
+      "text",
+      "list",
+      "number",
+      "date",
+      "record",
+      "map",
+      "set",
+      "value"
+    ],
+    "connectors": [
+      "and",
+      "then",
+      "also",
+      "but",
+      "otherwise"
+    ],
+    "roleWords": [
+      "and",
+      "at",
+      "between",
+      "by",
+      "days",
+      "every",
+      "first",
+      "from",
+      "if",
+      "item",
+      "key",
+      "least",
+      "most",
+      "of",
+      "on",
+      "otherwise",
+      "than",
+      "to",
+      "value",
+      "when",
+      "where",
+      "with"
+    ],
+    "argumentVerbs": {
+      "yields": "the approved `when(c).yields(() => a).otherwise(() => b)` form: the branch value is the object of yields"
+    },
+    "words": [
+      "an",
+      "any",
+      "at",
+      "boolean",
+      "case",
+      "duplicates",
+      "each",
+      "equal",
+      "first",
+      "greater",
+      "instance",
+      "items",
+      "last",
+      "less",
+      "not",
+      "nothing",
+      "number",
+      "only",
+      "text",
+      "up"
+    ],
+    "plainNames": {
+      "equals": "isEqualTo",
+      "differs": "isNotEqualTo",
+      "lessThan": "isLessThan",
+      "atMost": "isAtMost",
+      "greaterThan": "isGreaterThan",
+      "atLeast": "isAtLeast",
+      "isA": "isAnInstanceOf",
+      "lowerCase": "clonesAndLowercases",
+      "upperCase": "clonesAndUppercases",
+      "trimmed": "clonesAndTrims",
+      "splitBy": "splitsBy",
+      "joinWith": "joinsWith",
+      "replaceEvery": "clonesAndReplacesEveryWith",
+      "replaceFirst": "clonesAndReplacesFirstWith",
+      "firstOf": "takesFirst",
+      "lastOf": "takesLast",
+      "mapEach": "clonesAndMapsEachWith",
+      "keepWhere": "clonesAndKeepsWhere",
+      "findFirst": "findsFirstWhere",
+      "isEveryWhere": "hasOnlyItemsWhere",
+      "sortedBy": "clonesAndSortsBy",
+      "reversed": "clonesAndReverses",
+      "part": "clonesAndKeepsFromTo",
+      "flattened": "clonesAndFlattens",
+      "uniqueOf": "clonesAndDropsDuplicates"
+    },
+    "every": {
+      "$comment": "R9: arrow functions become every() sentences. A binder (every, any, first) takes an imported placeholder and is followed by in(list); everything after that in() is inside the every() sentence, where participles, -ing forms and is()-actions are allowed (R1, R4) and the copy is said as to().clone() (R5). `starts` is the first word of each sentence and the one kind of result it decides. `bodyAtoms` are the body words, one atom each; a body is exactly one of them. `sentences` is the R9 table and `nested` the nested callbacks (every(y).in(x)), `shapes` the index (at(i)) and does() forms, `async` and `nestedAsync` the async bodies (one at a time, or all().at().once()), each with its plain-JS twin; test/fluent.test.mjs runs both, test/grammar.test.mjs holds them to the rules.",
+      "starts": {
+        "every": "list",
+        "checks": "boolean",
+        "the": "item",
+        "folds": "value",
+        "does": "nothing"
+      },
+      "binders": ["every", "any", "first"],
+      "placeholders": ["x", "y", "item", "total", "i"],
+      "participles": ["mapped", "kept"],
+      "gerunds": ["multiplying", "adding", "waiting"],
+      "roleWords": ["in", "into", "multiplying", "adding", "waiting"],
+      "words": ["clone", "positive", "that", "starting", "the", "folds", "all", "once"],
+      "bodyAtoms": {
+        "multiplying": "times",
+        "adding": "plus",
+        "positive": "greaterThan",
+        "waiting": "delay"
+      },
+      "sentences": [
+        { "js": "xs.map((x) => x * 2)", "fluent": "every(x).in(xs).is().mapped().to().clone().by().multiplying(x).by(2)" },
+        { "js": "xs.filter((x) => x > 0)", "fluent": "every(x).in(xs).is().kept().if(x).is().positive()" },
+        { "js": "xs.every((x) => x > 0)", "fluent": "checks().if().every(x).in(xs).is().positive()" },
+        { "js": "xs.some((x) => x > 0)", "fluent": "checks().if().any(x).in(xs).is().positive()" },
+        { "js": "xs.find((x) => x > 0)", "fluent": "the().first(x).in(xs).that().is().positive()" },
+        { "js": "xs.reduce((total, x) => total + x, 0)", "fluent": "folds().every(x).in(xs).into(total).starting().at(0).by().adding(x).to(total)" }
+      ],
+      "nested": [
+        { "js": "rows.map((x) => x.map((y) => y * 2))", "fluent": "every(x).in(rows).is().mapped().to().clone().by().every(y).in(x).is().mapped().to().clone().by().multiplying(y).by(2)" },
+        { "js": "rows.map((x) => x.filter((y) => y > 0))", "fluent": "every(x).in(rows).is().mapped().to().clone().by().every(y).in(x).is().kept().if(y).is().positive()" },
+        { "js": "rows.filter((x) => x.some((y) => y > 0))", "fluent": "every(x).in(rows).is().kept().if().any(y).in(x).is().positive()" },
+        { "js": "rows.filter((x) => x.every((y) => y > 0))", "fluent": "every(x).in(rows).is().kept().if().every(y).in(x).is().positive()" }
+      ],
+      "shapes": [
+        { "js": "xs.map((x, i) => x * i)", "fluent": "every(x).at(i).in(xs).is().mapped().to().clone().by().multiplying(x).by(i)" },
+        { "js": "xs.filter((x, i) => i > 0)", "fluent": "every(x).at(i).in(xs).is().kept().if(i).is().positive()" },
+        { "js": "xs.reduce((total, x, i) => total + i, 0)", "fluent": "folds().every(x).at(i).in(xs).into(total).starting().at(0).by().adding(i).to(total)" },
+        { "js": "xs.forEach((x) => x * 2)", "fluent": "does().every(x).in(xs).by().multiplying(x).by(2)" },
+        { "js": "xs.forEach((x, i) => x * i)", "fluent": "does().every(x).at(i).in(xs).by().multiplying(x).by(i)" }
+      ],
+      "async": [
+        { "kind": "list", "js": "(async () => { const out = []; for (const x of xs) out.push(await delay(x)); return out; })()", "fluent": "every(x).in(xs).is().mapped().to().clone().by().waiting(x)" },
+        { "kind": "list", "js": "Promise.all(xs.map(async (x) => delay(x)))", "fluent": "every(x).in(xs).all().at().once().is().mapped().to().clone().by().waiting(x)" },
+        { "kind": "nothing", "js": "(async () => { for (const x of xs) await delay(x); })()", "fluent": "does().every(x).in(xs).by().waiting(x)" },
+        { "kind": "nothing", "js": "Promise.all(xs.map(async (x) => { await delay(x); })).then(() => undefined)", "fluent": "does().every(x).in(xs).all().at().once().by().waiting(x)" },
+        { "kind": "nothing", "js": "(async () => { for (const [i, x] of xs.entries()) await delay(i); })()", "fluent": "does().every(x).at(i).in(xs).by().waiting(i)" }
+      ],
+      "nestedAsync": [
+        { "kind": "list", "js": "(async () => { const out = []; for (const x of rows) { const inner = []; for (const y of x) inner.push(await delay(y)); out.push(inner); } return out; })()", "fluent": "every(x).in(rows).is().mapped().to().clone().by().every(y).in(x).is().mapped().to().clone().by().waiting(y)" }
+      ]
+    }
+  }
+}

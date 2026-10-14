@@ -1,0 +1,42 @@
+{
+  "name": "smith",
+  "version": "0.1.0",
+  "description": "A small framework for the atomic pattern: shared connector atoms (Chain, Organism) and single-source comparison logic (Comparable), for new projects/modules to build on from day one.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "gen:atoms": "node scripts/gen-atoms.mjs",
+    "gen:check": "node scripts/gen-atoms.mjs --check",
+    "build": "node scripts/gen-atoms.mjs --check && tsc && cp src/atoms/catalog.json dist/atoms/catalog.json",
+    "test": "tsc && node --test test/*.test.mjs && npm run test:types",
+    "test:types": "tsc -p test/types/tsconfig.json",
+    "bench": "tsc && node bench/thunk-overhead.mjs",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "fluent-interface",
+    "comparable",
+    "atomic-pattern"
+  ],
+  "license": "ISC",
+  "devDependencies": {
+    "fast-check": "^4.10.2",
+    "typescript": "^7.0.2"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./fluent": {
+      "types": "./dist/fluent/index.d.ts",
+      "default": "./dist/fluent/index.js"
+    },
+    "./catalog.json": "./dist/atoms/catalog.json",
+    "./package.json": "./package.json"
+  },
+  "sideEffects": false
+}

@@ -1,0 +1,3686 @@
+[
+ {
+  "atom": "equals",
+  "module": "comparison",
+  "js": [
+   "a === b"
+  ],
+  "pure": true,
+  "mutates": false,
+  "check": [
+   {
+    "params": [
+     [
+      "a",
+      "mixed"
+     ],
+     [
+      "b",
+      "mixed"
+     ]
+    ]
+   },
+   {
+    "params": [
+     [
+      "a",
+      "prim"
+     ],
+     [
+      "b",
+      "prim"
+     ]
+    ]
+   }
+  ],
+  "fluent": "checks().if(a).is().equal().to(b)",
+  "fluentDeprecated": "checks().if(a).is().equalTo(b)"
+ },
+ {
+  "atom": "differs",
+  "module": "comparison",
+  "js": [
+   "a !== b"
+  ],
+  "pure": true,
+  "mutates": false,
+  "check": [
+   {
+    "params": [
+     [
+      "a",
+      "prim"
+     ],
+     [
+      "b",
+      "prim"
+     ]
+    ]
+   }
+  ],
+  "fluent": "checks().if(a).is().not().equal().to(b)",
+  "fluentDeprecated": "checks().if(a).is().not().equalTo(b)"
+ },
+ {
+  "atom": "lessThan",
+  "module": "comparison",
+  "js": [
+   "a < b"
+  ],
+  "pure": true,
+  "mutates": false,
+  "check": [
+   {
+    "params": [
+     [
+      "a",
+      "num"
+     ],
+     [
+      "b",
+      "num"
+     ]
+    ]
+   },
+   {
+    "params": [
+     [
+      "a",
+      "text"
+     ],
+     [
+      "b",
+      "text"
+     ]
+    ]
+   },
+   {
+    "params": [
+     [
+      "a",
+      "bigint"
+     ],
+     [
+      "b",
+      "bigint"
+     ]
+    ]
+   },
+   {
+    "params": [
+     [
+      "a",
+      "date"
+     ],
+     [
+      "b",
+      "date"
+     ]
+    ]
+   }
+  ],
+  "fluent": "checks().if(a).is().less().than(b)",
+  "fluentDeprecated": "checks().if(a).is().lessThan(b)"
+ },
+ {
+  "atom": "atMost",
+  "module": "comparison",
+  "js": [
+   "a <= b"
+  ],
+  "pure": true,
+  "mutates": false,
+  "check": [
+   {
+    "params": [
+     [
+      "a",
+      "num"
+     ],
+     [
+      "b",
+      "num"
+     ]
+    ]
+   },
+   {
+    "params": [
+     [
+      "a",
+      "text"
+     ],
+     [
+      "b",
+      "text"
+     ]
+    ]
+   },
+   {
+    "params": [
+     [
+      "a",
+      "bigint"
+     ],
+     [
+      "b",
+      "bigint"
+     ]
+    ]
+   },
+   {
+    "params": [
+     [
+      "a",
+      "date"
+     ],
+     [
+      "b",
+      "date"
+     ]
+    ]
+   }
+  ],
+  "fluent": "checks().if(a).is().at().most(b)",
+  "fluentDeprecated": "checks().if(a).is().atMost(b)"
+ },
+ {
+  "atom": "greaterThan",
+  "module": "comparison",
+  "js": [
+   "a > b"
+  ],
+  "pure": true,
+  "mutates": false,
+  "check": [
+   {
+    "params": [
+     [
+      "a",
+      "num"
+     ],
+     [
+      "b",
+      "num"
+     ]
+    ]
+   },
+   {
+    "params": [
+     [
+      "a",
+      "text"
+     ],
+     [
+      "b",
+      "text"
+     ]
+    ]
+   },
+   {
+    "params": [
+     [
+      "a",
+      "bigint"
+     ],
+     [
+      "b",
+      "bigint"
+     ]
+    ]
+   },
+   {
+    "params": [
+     [
+      "a",
+      "date"
+     ],
+     [
+      "b",
+      "date"
+     ]
+    ]
+   }
+  ],
+  "fluent": "checks().if(a).is().greater().than(b)",
+  "fluentDeprecated": "checks().if(a).is().greaterThan(b)"
+ },
+ {
+  "atom": "atLeast",
+  "module": "comparison",
+  "js": [
+   "a >= b"
+  ],
+  "pure": true,
+  "mutates": false,
+  "check": [
+   {
+    "params": [
+     [
+      "a",
+      "num"
+     ],
+     [
+      "b",
+      "num"
+     ]
+    ]
+   },
+   {
+    "params": [
+     [
+      "a",
+      "text"
+     ],
+     [
+      "b",
+      "text"
+     ]
+    ]
+   },
+   {
+    "params": [
+     [
+      "a",
+      "bigint"
+     ],
+     [
+      "b",
+      "bigint"
+     ]
+    ]
+   },
+   {
+    "params": [
+     [
+      "a",
+      "date"
+     ],
+     [
+      "b",
+      "date"
+     ]
+    ]
+   }
+  ],
+  "fluent": "checks().if(a).is().at().least(b)",
+  "fluentDeprecated": "checks().if(a).is().atLeast(b)"
+ },
+ {
+  "atom": "plus",
+  "module": "arithmetic",
+  "reads": "a plus b",
+  "js": [
+   "a + b"
+  ],
+  "pure": true,
+  "mutates": false,
+  "check": [
+   {
+    "params": [
+     [
+      "a",
+      "num"
+     ],
+     [
+      "b",
+      "num"
+     ]
+    ],
+    "js": [
+     "a + b"
+    ]
+   },
+   {
+    "params": [
+     [
+      "a",
+      "bigint"
+     ],
+     [
+      "b",
+      "smallbigint"
+     ]
+    ],
+    "js": [
+     "a + b"
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "minus",
+  "module": "arithmetic",
+  "reads": "a minus b",
+  "js": [
+   "a - b"
+  ],
+  "pure": true,
+  "mutates": false,
+  "check": [
+   {
+    "params": [
+     [
+      "a",
+      "num"
+     ],
+     [
+      "b",
+      "num"
+     ]
+    ],
+    "js": [
+     "a - b"
+    ]
+   },
+   {
+    "params": [
+     [
+      "a",
+      "bigint"
+     ],
+     [
+      "b",
+      "smallbigint"
+     ]
+    ],
+    "js": [
+     "a - b"
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "times",
+  "module": "arithmetic",
+  "reads": "a times b",
+  "js": [
+   "a * b"
+  ],
+  "pure": true,
+  "mutates": false,
+  "check": [
+   {
+    "params": [
+     [
+      "a",
+      "num"
+     ],
+     [
+      "b",
+      "num"
+     ]
+    ],
+    "js": [
+     "a * b"
+    ]
+   },
+   {
+    "params": [
+     [
+      "a",
+      "bigint"
+     ],
+     [
+      "b",
+      "smallbigint"
+     ]
+    ],
+    "js": [
+     "a * b"
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "dividedBy",
+  "module": "arithmetic",
+  "reads": "a divided by b",
+  "js": [
+   "a / b"
+  ],
+  "pure": true,
+  "mutates": false,
+  "check": [
+   {
+    "params": [
+     [
+      "a",
+      "num"
+     ],
+     [
+      "b",
+      "num"
+     ]
+    ],
+    "js": [
+     "a / b"
+    ]
+   },
+   {
+    "params": [
+     [
+      "a",
+      "bigint"
+     ],
+     [
+      "b",
+      "smallbigint"
+     ]
+    ],
+    "js": [
+     "a / b"
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "remainder",
+  "module": "arithmetic",
+  "reads": "the remainder of a divided by b",
+  "js": [
+   "a % b"
+  ],
+  "pure": true,
+  "mutates": false,
+  "check": [
+   {
+    "params": [
+     [
+      "a",
+      "num"
+     ],
+     [
+      "b",
+      "num"
+     ]
+    ],
+    "js": [
+     "a % b"
+    ]
+   },
+   {
+    "params": [
+     [
+      "a",
+      "bigint"
+     ],
+     [
+      "b",
+      "smallbigint"
+     ]
+    ],
+    "js": [
+     "a % b"
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "power",
+  "module": "arithmetic",
+  "reads": "a to the power of b",
+  "js": [
+   "a ** b",
+   "Math.pow(a, b)"
+  ],
+  "pure": true,
+  "mutates": false,
+  "covers": [
+   "Math.pow"
+  ],
+  "check": [
+   {
+    "params": [
+     [
+      "a",
+      "num"
+     ],
+     [
+      "b",
+      "num"
+     ]
+    ],
+    "js": [
+     "a ** b"
+    ]
+   },
+   {
+    "params": [
+     [
+      "a",
+      "bigint"
+     ],
+     [
+      "b",
+      "smallbigint"
+     ]
+    ],
+    "js": [
+     "a ** b"
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "join",
+  "module": "arithmetic",
+  "reads": "a joined with b",
+  "js": [
+   "a + b",
+   "a.concat(b)"
+  ],
+  "pure": true,
+  "mutates": false,
+  "check": [
+   {
+    "params": [
+     [
+      "a",
+      "text"
+     ],
+     [
+      "b",
+      "text"
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "negate",
+  "module": "arithmetic",
+  "reads": "negative a",
+  "js": [
+   "-a"
+  ],
+  "pure": true,
+  "mutates": false,
+  "check": [
+   {
+    "params": [
+     [
+      "a",
+      "num"
+     ]
+    ]
+   },
+   {
+    "params": [
+     [
+      "a",
+      "bigint"
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "not",
+  "module": "logic",
+  "reads": "not a",
+  "js": [
+   "!a"
+  ],
+  "pure": true,
+  "mutates": false,
+  "check": [
+   {
+    "params": [
+     [
+      "a",
+      "prim"
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "and",
+  "module": "logic",
+  "js": [
+   "a && b"
+  ],
+  "pure": true,
+  "mutates": false,
+  "check": [
+   {
+    "params": [
+     [
+      "a",
+      "prim"
+     ],
+     [
+      "b",
+      "lazy:prim"
+     ]
+    ]
+   }
+  ],
+  "verifiedBy": "test/core.test.mjs (short-circuit)",
+  "fluent": "checks().if(a).and(() => b)"
+ },
+ {
+  "atom": "or",
+  "module": "logic",
+  "reads": "a or b",
+  "js": [
+   "a || b"
+  ],
+  "pure": true,
+  "mutates": false,
+  "check": [
+   {
+    "params": [
+     [
+      "a",
+      "prim"
+     ],
+     [
+      "b",
+      "lazy:prim"
+     ]
+    ]
+   }
+  ],
+  "verifiedBy": "test/core.test.mjs (short-circuit)"
+ },
+ {
+  "atom": "orElse",
+  "module": "logic",
+  "reads": "a, or else b",
+  "js": [
+   "a ?? b"
+  ],
+  "pure": true,
+  "mutates": false,
+  "check": [
+   {
+    "params": [
+     [
+      "a",
+      "nullish"
+     ],
+     [
+      "b",
+      "lazy:prim"
+     ]
+    ]
+   }
+  ],
+  "verifiedBy": "test/core.test.mjs (short-circuit)"
+ },
+ {
+  "atom": "when",
+  "module": "branching",
+  "js": [
+   "c ? a : b",
+   "if (c) { a } else { b }"
+  ],
+  "pure": true,
+  "mutates": false,
+  "check": [
+   {
+    "params": [
+     [
+      "c",
+      "prim"
+     ],
+     [
+      "a",
+      "lazy:prim"
+     ],
+     [
+      "b",
+      "lazy:prim"
+     ]
+    ],
+    "js": [
+     "c ? a : b"
+    ]
+   }
+  ],
+  "fluent": "when(c).yields(() => a).otherwise(() => b)"
+ },
+ {
+  "atom": "choose",
+  "module": "branching",
+  "js": [
+   "if (c1) { a } else if (c2) { b } else { fallback }",
+   "c1 ? a : c2 ? b : fallback"
+  ],
+  "pure": true,
+  "mutates": false,
+  "verifiedBy": "test/core.test.mjs (if/else-if chain property)",
+  "fluent": "chooses().when(c1).yields(() => a).when(c2).yields(() => b).otherwise(() => fallback)",
+  "fluentDeprecated": "choose().when(c1, () => a).when(c2, () => b).otherwise(() => fallback)"
+ },
+ {
+  "atom": "match",
+  "module": "branching",
+  "js": [
+   "switch (value) { case k: \u2026 default: \u2026 }"
+  ],
+  "pure": true,
+  "mutates": false,
+  "verifiedBy": "test/core.test.mjs (switch property)",
+  "fluent": "matches().value(value).on(k).yields(() => a).otherwise(() => fallback)",
+  "fluentDeprecated": "match(value).on(k, () => a).otherwise(() => fallback)"
+ },
+ {
+  "atom": "attempt",
+  "module": "errors",
+  "js": [
+   "try { body } catch (e) { recover(e) } finally { cleanup }"
+  ],
+  "pure": true,
+  "mutates": false,
+  "verifiedBy": "test/core.test.mjs (try/catch/finally order property)",
+  "fluent": "attempts().to(() => body).and().recovers().with((e) => recover).and().cleans().up().with(() => cleanup)",
+  "fluentDeprecated": "attempt(() => body).onFailure((e) => recover).finally(() => cleanup)"
+ },
+ {
+  "atom": "attemptAsync",
+  "module": "errors",
+  "reads": "attempt body asynchronously, recover from an error, then clean up",
+  "js": [
+   "try { await body } catch (e) { await recover(e) } finally { await cleanup }"
+  ],
+  "pure": true,
+  "mutates": false,
+  "verifiedBy": "test/core.test.mjs (async try/catch/finally order property)"
+ },
+ {
+  "atom": "fail",
+  "module": "errors",
+  "reads": "fail with error",
+  "js": [
+   "throw error"
+  ],
+  "pure": true,
+  "mutates": false,
+  "check": [
+   {
+    "params": [
+     [
+      "error",
+      "prim"
+     ]
+    ],
+    "js": [
+     "(() => { throw error; })()"
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "each",
+  "module": "loops",
+  "reads": "for each item of list, effect",
+  "js": [
+   "list.forEach(fn)",
+   "for (const item of list) { fn(item) }"
+  ],
+  "pure": false,
+  "mutates": false,
+  "covers": [
+   "Array#forEach"
+  ],
+  "check": [
+   {
+    "params": [
+     [
+      "list",
+      "list"
+     ],
+     [
+      "fn",
+      "fn"
+     ]
+    ],
+    "js": [
+     "list.forEach(fn)"
+    ]
+   }
+  ],
+  "impureReason": "exists only for the callback's side effects"
+ },
+ {
+  "atom": "repeatWhile",
+  "module": "loops",
+  "reads": "repeat step while condition, at most limit times",
+  "js": [
+   "while (condition) { step }"
+  ],
+  "pure": true,
+  "mutates": false,
+  "verifiedBy": "test/core.test.mjs (limit property)"
+ },
+ {
+  "atom": "iterateWhile",
+  "module": "loops",
+  "reads": "starting from start, step to next while condition, at most limit times",
+  "js": [
+   "let s = start; while (condition(s)) { s = next(s) }"
+  ],
+  "pure": true,
+  "mutates": false,
+  "verifiedBy": "test/core.test.mjs (limit property)"
+ },
+ {
+  "atom": "isText",
+  "module": "checks",
+  "js": [
+   "typeof value === 'string'"
+  ],
+  "pure": true,
+  "mutates": false,
+  "check": [
+   {
+    "params": [
+     [
+      "value",
+      "mixed"
+     ]
+    ]
+   }
+  ],
+  "fluent": "checks().if(value).is().text()"
+ },
+ {
+  "atom": "isNumber",
+  "module": "checks",
+  "js": [
+   "typeof value === 'number'"
+  ],
+  "pure": true,
+  "mutates": false,
+  "check": [
+   {
+    "params": [
+     [
+      "value",
+      "mixed"
+     ]
+    ]
+   }
+  ],
+  "fluent": "checks().if(value).is().number()"
+ },
+ {
+  "atom": "isBoolean",
+  "module": "checks",
+  "js": [
+   "typeof value === 'boolean'"
+  ],
+  "pure": true,
+  "mutates": false,
+  "check": [
+   {
+    "params": [
+     [
+      "value",
+      "mixed"
+     ]
+    ]
+   }
+  ],
+  "fluent": "checks().if(value).is().boolean()"
+ },
+ {
+  "atom": "isNothing",
+  "module": "checks",
+  "js": [
+   "value == null",
+   "value === null || value === undefined"
+  ],
+  "pure": true,
+  "mutates": false,
+  "check": [
+   {
+    "params": [
+     [
+      "value",
+      "mixed"
+     ]
+    ]
+   }
+  ],
+  "fluent": "checks().if(value).is().nothing()"
+ },
+ {
+  "atom": "hasKey",
+  "module": "checks",
+  "js": [
+   "Object.hasOwn(obj, key)",
+   "Object.prototype.hasOwnProperty.call(obj, key)",
+   "obj.hasOwnProperty(key)"
+  ],
+  "pure": true,
+  "mutates": false,
+  "covers": [
+   "Object.hasOwn",
+   "Object#hasOwnProperty"
+  ],
+  "check": [
+   {
+    "params": [
+     [
+      "obj",
+      "obj"
+     ],
+     [
+      "key",
+      "key"
+     ]
+    ],
+    "js": [
+     "Object.hasOwn(obj, key)",
+     "Object.prototype.hasOwnProperty.call(obj, key)"
+    ]
+   }
+  ],
+  "fluent": "checks().if(obj).has().key(key)"
+ },
+ {
+  "atom": "hasProperty",
+  "module": "checks",
+  "reads": "whether obj has the property key",
+  "js": [
+   "key in obj"
+  ],
+  "pure": true,
+  "mutates": false,
+  "check": [
+   {
+    "params": [
+     [
+      "obj",
+      "obj"
+     ],
+     [
+      "key",
+      "key"
+     ]
+    ]
+   }
+  ],
+  "note": "own and inherited keys, as `in`; hasKey is own keys only"
+ },
+ {
+  "atom": "typeOf",
+  "module": "checks",
+  "reads": "the type of value",
+  "js": [
+   "typeof value"
+  ],
+  "pure": true,
+  "mutates": false,
+  "check": [
+   {
+    "params": [
+     [
+      "value",
+      "mixed"
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "isFunction",
+  "module": "checks",
+  "reads": "whether value is a function",
+  "js": [
+   "typeof value === 'function'"
+  ],
+  "pure": true,
+  "mutates": false,
+  "check": [
+   {
+    "params": [
+     [
+      "value",
+      "mixed"
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "isObjectType",
+  "module": "checks",
+  "reads": "whether the type of value is object",
+  "js": [
+   "typeof value === 'object'"
+  ],
+  "pure": true,
+  "mutates": false,
+  "check": [
+   {
+    "params": [
+     [
+      "value",
+      "mixed"
+     ]
+    ]
+   }
+  ],
+  "note": "true for null, as typeof is"
+ },
+ {
+  "atom": "isA",
+  "module": "checks",
+  "js": [
+   "value instanceof type"
+  ],
+  "pure": true,
+  "mutates": false,
+  "check": [
+   {
+    "params": [
+     [
+      "value",
+      "mixed"
+     ],
+     [
+      "type",
+      "ctor"
+     ]
+    ]
+   }
+  ],
+  "fluent": "checks().if(value).is().an().instance().of(Type)",
+  "fluentDeprecated": "checks().if(value).is().a(Type)"
+ },
+ {
+  "atom": "get",
+  "module": "access",
+  "reads": "the key of obj",
+  "js": [
+   "obj?.[key]",
+   "obj?.key"
+  ],
+  "pure": true,
+  "mutates": false,
+  "check": [
+   {
+    "params": [
+     [
+      "obj",
+      "objornull"
+     ],
+     [
+      "key",
+      "key"
+     ]
+    ],
+    "js": [
+     "obj?.[key]"
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "at",
+  "module": "access",
+  "reads": "the item at index of list",
+  "js": [
+   "list?.at(index)",
+   "list?.[index]"
+  ],
+  "pure": true,
+  "mutates": false,
+  "covers": [
+   "Array#at"
+  ],
+  "check": [
+   {
+    "params": [
+     [
+      "list",
+      "listornull"
+     ],
+     [
+      "index",
+      "num"
+     ]
+    ],
+    "js": [
+     "list?.at(index)"
+    ]
+   },
+   {
+    "params": [
+     [
+      "list",
+      "list"
+     ],
+     [
+      "index",
+      "nat"
+     ]
+    ],
+    "js": [
+     "list?.[index]"
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "lengthOf",
+  "module": "sequences",
+  "reads": "the length of textOrList",
+  "js": [
+   "value.length"
+  ],
+  "pure": true,
+  "mutates": false,
+  "check": [
+   {
+    "params": [
+     [
+      "value",
+      "text"
+     ]
+    ]
+   },
+   {
+    "params": [
+     [
+      "value",
+      "list"
+     ]
+    ]
+   }
+  ],
+  "note": "also covers the String#length and Array#length properties"
+ },
+ {
+  "atom": "hasText",
+  "module": "sequences",
+  "reads": "whether text has part in it",
+  "js": [
+   "text.includes(part, position)"
+  ],
+  "pure": true,
+  "mutates": false,
+  "covers": [
+   "String#includes"
+  ],
+  "check": [
+   {
+    "params": [
+     [
+      "text",
+      "shorttext"
+     ],
+     [
+      "part",
+      "shorttext"
+     ],
+     [
+      "position",
+      "num"
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "hasItem",
+  "module": "sequences",
+  "js": [
+   "list.includes(item, fromIndex)"
+  ],
+  "pure": true,
+  "mutates": false,
+  "covers": [
+   "Array#includes"
+  ],
+  "check": [
+   {
+    "params": [
+     [
+      "list",
+      "list"
+     ],
+     [
+      "item",
+      "prim"
+     ],
+     [
+      "fromIndex",
+      "num"
+     ]
+    ]
+   }
+  ],
+  "fluent": "checks().if(xs).has().item(x)",
+  "fluentDeprecated": "list(xs).hasItem(x)"
+ },
+ {
+  "atom": "lowerCase",
+  "module": "text",
+  "js": [
+   "text.toLowerCase()"
+  ],
+  "pure": true,
+  "mutates": false,
+  "returnsCopy": true,
+  "covers": [
+   "String#toLowerCase"
+  ],
+  "check": [
+   {
+    "params": [
+     [
+      "text",
+      "text"
+     ]
+    ]
+   }
+  ],
+  "fluent": "clones().text(s).and().lowercases()",
+  "fluentDeprecated": "text(s).lowerCase()"
+ },
+ {
+  "atom": "upperCase",
+  "module": "text",
+  "js": [
+   "text.toUpperCase()"
+  ],
+  "pure": true,
+  "mutates": false,
+  "returnsCopy": true,
+  "covers": [
+   "String#toUpperCase"
+  ],
+  "check": [
+   {
+    "params": [
+     [
+      "text",
+      "text"
+     ]
+    ]
+   }
+  ],
+  "fluent": "clones().text(s).and().uppercases()",
+  "fluentDeprecated": "text(s).upperCase()"
+ },
+ {
+  "atom": "trimmed",
+  "module": "text",
+  "js": [
+   "text.trim()"
+  ],
+  "pure": true,
+  "mutates": false,
+  "returnsCopy": true,
+  "covers": [
+   "String#trim"
+  ],
+  "check": [
+   {
+    "params": [
+     [
+      "text",
+      "spacedtext"
+     ]
+    ]
+   }
+  ],
+  "fluent": "clones().text(s).and().trims()",
+  "fluentDeprecated": "text(s).trimmed()"
+ },
+ {
+  "atom": "doesStartWith",
+  "module": "text",
+  "reads": "whether text starts with part",
+  "js": [
+   "text.startsWith(part, position)"
+  ],
+  "pure": true,
+  "mutates": false,
+  "covers": [
+   "String#startsWith"
+  ],
+  "check": [
+   {
+    "params": [
+     [
+      "text",
+      "shorttext"
+     ],
+     [
+      "part",
+      "shorttext"
+     ],
+     [
+      "position",
+      "num"
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "doesEndWith",
+  "module": "text",
+  "reads": "whether text ends with part",
+  "js": [
+   "text.endsWith(part, endPosition)"
+  ],
+  "pure": true,
+  "mutates": false,
+  "covers": [
+   "String#endsWith"
+  ],
+  "check": [
+   {
+    "params": [
+     [
+      "text",
+      "shorttext"
+     ],
+     [
+      "part",
+      "shorttext"
+     ],
+     [
+      "endPosition",
+      "num"
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "splitBy",
+  "module": "text",
+  "js": [
+   "text.split(separator, limit)"
+  ],
+  "pure": true,
+  "mutates": false,
+  "covers": [
+   "String#split"
+  ],
+  "check": [
+   {
+    "params": [
+     [
+      "text",
+      "shorttext"
+     ],
+     [
+      "separator",
+      "shorttext"
+     ],
+     [
+      "limit",
+      "nat"
+     ]
+    ]
+   },
+   {
+    "params": [
+     [
+      "text",
+      "shorttext"
+     ],
+     [
+      "separator",
+      "regex"
+     ],
+     [
+      "limit",
+      "nat"
+     ]
+    ]
+   }
+  ],
+  "fluent": "text(s).splits().by(sep)",
+  "fluentDeprecated": "text(s).splitBy(sep)"
+ },
+ {
+  "atom": "joinWith",
+  "module": "text",
+  "js": [
+   "list.join(separator)"
+  ],
+  "pure": true,
+  "mutates": false,
+  "covers": [
+   "Array#join"
+  ],
+  "check": [
+   {
+    "params": [
+     [
+      "list",
+      "list"
+     ],
+     [
+      "separator",
+      "shorttext"
+     ]
+    ]
+   },
+   {
+    "params": [
+     [
+      "list",
+      "list"
+     ],
+     [
+      "separator",
+      "undef"
+     ]
+    ]
+   }
+  ],
+  "fluent": "list(xs).joins().with(sep)",
+  "fluentDeprecated": "list(xs).joinWith(sep)"
+ },
+ {
+  "atom": "replaceEvery",
+  "module": "text",
+  "js": [
+   "text.replaceAll(pattern, replacement)"
+  ],
+  "pure": true,
+  "mutates": false,
+  "returnsCopy": true,
+  "covers": [
+   "String#replaceAll"
+  ],
+  "check": [
+   {
+    "params": [
+     [
+      "text",
+      "shorttext"
+     ],
+     [
+      "pattern",
+      "shorttext"
+     ],
+     [
+      "replacement",
+      "shorttext"
+     ]
+    ]
+   },
+   {
+    "params": [
+     [
+      "text",
+      "shorttext"
+     ],
+     [
+      "pattern",
+      "gregex"
+     ],
+     [
+      "replacement",
+      "shorttext"
+     ]
+    ]
+   }
+  ],
+  "note": "a RegExp without the g flag is made global instead of throwing",
+  "fluent": "clones().text(s).and().replaces().every(p).with(r)",
+  "fluentDeprecated": "text(s).replaceEvery(p, r)"
+ },
+ {
+  "atom": "replaceFirst",
+  "module": "text",
+  "js": [
+   "text.replace(pattern, replacement)"
+  ],
+  "pure": true,
+  "mutates": false,
+  "returnsCopy": true,
+  "check": [
+   {
+    "params": [
+     [
+      "text",
+      "shorttext"
+     ],
+     [
+      "pattern",
+      "shorttext"
+     ],
+     [
+      "replacement",
+      "shorttext"
+     ]
+    ]
+   },
+   {
+    "params": [
+     [
+      "text",
+      "shorttext"
+     ],
+     [
+      "pattern",
+      "ngregex"
+     ],
+     [
+      "replacement",
+      "shorttext"
+     ]
+    ]
+   }
+  ],
+  "note": "a global RegExp still replaces only the first match, so String#replace with a global RegExp maps to replaceText instead",
+  "fluent": "clones().text(s).and().replaces().first(p).with(r)",
+  "fluentDeprecated": "text(s).replaceFirst(p, r)"
+ },
+ {
+  "atom": "padLeft",
+  "module": "text",
+  "reads": "text padded on the left to length with fill",
+  "js": [
+   "text.padStart(length, fill)"
+  ],
+  "pure": true,
+  "mutates": false,
+  "covers": [
+   "String#padStart"
+  ],
+  "check": [
+   {
+    "params": [
+     [
+      "text",
+      "shorttext"
+     ],
+     [
+      "length",
+      "nat"
+     ],
+     [
+      "fill",
+      "shorttext"
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "padRight",
+  "module": "text",
+  "reads": "text padded on the right to length with fill",
+  "js": [
+   "text.padEnd(length, fill)"
+  ],
+  "pure": true,
+  "mutates": false,
+  "covers": [
+   "String#padEnd"
+  ],
+  "check": [
+   {
+    "params": [
+     [
+      "text",
+      "shorttext"
+     ],
+     [
+      "length",
+      "nat"
+     ],
+     [
+      "fill",
+      "shorttext"
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "sliceText",
+  "module": "text",
+  "reads": "the part of text from from to to",
+  "js": [
+   "text.slice(from, to)"
+  ],
+  "pure": true,
+  "mutates": false,
+  "covers": [
+   "String#slice"
+  ],
+  "check": [
+   {
+    "params": [
+     [
+      "text",
+      "text"
+     ],
+     [
+      "from",
+      "num"
+     ],
+     [
+      "to",
+      "num"
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "letterAt",
+  "module": "text",
+  "reads": "the letter at index of text",
+  "js": [
+   "text.charAt(index)"
+  ],
+  "pure": true,
+  "mutates": false,
+  "covers": [
+   "String#charAt"
+  ],
+  "check": [
+   {
+    "params": [
+     [
+      "text",
+      "text"
+     ],
+     [
+      "index",
+      "num"
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "repeatText",
+  "module": "text",
+  "reads": "text repeated count times",
+  "js": [
+   "text.repeat(count)"
+  ],
+  "pure": true,
+  "mutates": false,
+  "covers": [
+   "String#repeat"
+  ],
+  "check": [
+   {
+    "params": [
+     [
+      "text",
+      "shorttext"
+     ],
+     [
+      "count",
+      "smallint"
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "firstOf",
+  "module": "lists",
+  "js": [
+   "list[0]",
+   "list.at(0)"
+  ],
+  "pure": true,
+  "mutates": false,
+  "check": [
+   {
+    "params": [
+     [
+      "list",
+      "list"
+     ]
+    ]
+   }
+  ],
+  "fluent": "list(xs).takes().first()",
+  "fluentDeprecated": "list(xs).firstOf()"
+ },
+ {
+  "atom": "lastOf",
+  "module": "lists",
+  "js": [
+   "list[list.length - 1]",
+   "list.at(-1)"
+  ],
+  "pure": true,
+  "mutates": false,
+  "check": [
+   {
+    "params": [
+     [
+      "list",
+      "list"
+     ]
+    ]
+   }
+  ],
+  "fluent": "list(xs).takes().last()",
+  "fluentDeprecated": "list(xs).lastOf()"
+ },
+ {
+  "atom": "positionOf",
+  "module": "lists",
+  "reads": "the position of item in list",
+  "js": [
+   "list.indexOf(item, fromIndex)"
+  ],
+  "pure": true,
+  "mutates": false,
+  "covers": [
+   "Array#indexOf"
+  ],
+  "check": [
+   {
+    "params": [
+     [
+      "list",
+      "list"
+     ],
+     [
+      "item",
+      "prim"
+     ],
+     [
+      "fromIndex",
+      "num"
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "positionWhere",
+  "module": "lists",
+  "reads": "the position of the first item in list where test holds",
+  "js": [
+   "list.findIndex(test)"
+  ],
+  "pure": true,
+  "mutates": false,
+  "covers": [
+   "Array#findIndex"
+  ],
+  "check": [
+   {
+    "params": [
+     [
+      "list",
+      "list"
+     ],
+     [
+      "test",
+      "pred"
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "mapEach",
+  "module": "lists",
+  "js": [
+   "list.map(fn)"
+  ],
+  "pure": true,
+  "mutates": false,
+  "returnsCopy": true,
+  "covers": [
+   "Array#map"
+  ],
+  "check": [
+   {
+    "params": [
+     [
+      "list",
+      "list"
+     ],
+     [
+      "fn",
+      "fn"
+     ]
+    ]
+   }
+  ],
+  "note": "thisArg is not supported (use an arrow function)",
+  "fluent": "clones().list(xs).and().maps().each().with(fn)",
+  "fluentDeprecated": "list(xs).mapEach(fn)"
+ },
+ {
+  "atom": "keepWhere",
+  "module": "lists",
+  "js": [
+   "list.filter(test)"
+  ],
+  "pure": true,
+  "mutates": false,
+  "returnsCopy": true,
+  "covers": [
+   "Array#filter"
+  ],
+  "check": [
+   {
+    "params": [
+     [
+      "list",
+      "list"
+     ],
+     [
+      "test",
+      "pred"
+     ]
+    ]
+   }
+  ],
+  "fluent": "clones().list(xs).and().keeps().where(test)",
+  "fluentDeprecated": "list(xs).keepWhere(test)"
+ },
+ {
+  "atom": "reduceTo",
+  "module": "lists",
+  "reads": "list reduced to a total, starting from start",
+  "js": [
+   "list.reduce(fn, start)"
+  ],
+  "pure": true,
+  "mutates": false,
+  "covers": [
+   "Array#reduce"
+  ],
+  "check": [
+   {
+    "params": [
+     [
+      "list",
+      "list"
+     ],
+     [
+      "fn",
+      "fn"
+     ],
+     [
+      "start",
+      "prim"
+     ]
+    ]
+   }
+  ],
+  "note": "the start value is required; reduce without one throws on an empty list"
+ },
+ {
+  "atom": "findFirst",
+  "module": "lists",
+  "js": [
+   "list.find(test)"
+  ],
+  "pure": true,
+  "mutates": false,
+  "covers": [
+   "Array#find"
+  ],
+  "check": [
+   {
+    "params": [
+     [
+      "list",
+      "list"
+     ],
+     [
+      "test",
+      "pred"
+     ]
+    ]
+   }
+  ],
+  "fluent": "list(xs).finds().first().where(test)",
+  "fluentDeprecated": "list(xs).findFirst(test)"
+ },
+ {
+  "atom": "hasAnyWhere",
+  "module": "lists",
+  "js": [
+   "list.some(test)"
+  ],
+  "pure": true,
+  "mutates": false,
+  "covers": [
+   "Array#some"
+  ],
+  "check": [
+   {
+    "params": [
+     [
+      "list",
+      "list"
+     ],
+     [
+      "test",
+      "pred"
+     ]
+    ]
+   }
+  ],
+  "fluent": "checks().if(xs).has().any().where(test)",
+  "fluentDeprecated": "list(xs).hasAnyWhere(test)"
+ },
+ {
+  "atom": "isEveryWhere",
+  "module": "lists",
+  "js": [
+   "list.every(test)"
+  ],
+  "pure": true,
+  "mutates": false,
+  "covers": [
+   "Array#every"
+  ],
+  "check": [
+   {
+    "params": [
+     [
+      "list",
+      "list"
+     ],
+     [
+      "test",
+      "pred"
+     ]
+    ]
+   }
+  ],
+  "fluent": "checks().if(xs).has().only().items().where(test)",
+  "fluentDeprecated": "list(xs).isEveryWhere(test)"
+ },
+ {
+  "atom": "sortedBy",
+  "module": "lists",
+  "js": [
+   "list.toSorted(order)",
+   "[...list].sort(order)"
+  ],
+  "pure": true,
+  "mutates": false,
+  "returnsCopy": true,
+  "covers": [
+   "Array#toSorted",
+   "Array#sort"
+  ],
+  "check": [
+   {
+    "params": [
+     [
+      "list",
+      "list"
+     ],
+     [
+      "order",
+      "cmp"
+     ]
+    ]
+   },
+   {
+    "params": [
+     [
+      "list",
+      "list"
+     ],
+     [
+      "order",
+      "undef"
+     ]
+    ]
+   }
+  ],
+  "note": "also takes a property name or a one-argument key selector; a compare function with exactly one declared parameter is treated as a key selector",
+  "fluent": "clones().list(xs).and().sorts().by(order)",
+  "fluentDeprecated": "list(xs).sortedBy(order)"
+ },
+ {
+  "atom": "reversed",
+  "module": "lists",
+  "js": [
+   "list.toReversed()",
+   "[...list].reverse()"
+  ],
+  "pure": true,
+  "mutates": false,
+  "returnsCopy": true,
+  "covers": [
+   "Array#toReversed",
+   "Array#reverse"
+  ],
+  "check": [
+   {
+    "params": [
+     [
+      "list",
+      "list"
+     ]
+    ]
+   }
+  ],
+  "fluent": "clones().list(xs).and().reverses()",
+  "fluentDeprecated": "list(xs).reversed()"
+ },
+ {
+  "atom": "part",
+  "module": "lists",
+  "js": [
+   "list.slice(from, to)"
+  ],
+  "pure": true,
+  "mutates": false,
+  "returnsCopy": true,
+  "covers": [
+   "Array#slice"
+  ],
+  "check": [
+   {
+    "params": [
+     [
+      "list",
+      "list"
+     ],
+     [
+      "from",
+      "num"
+     ],
+     [
+      "to",
+      "num"
+     ]
+    ]
+   }
+  ],
+  "fluent": "clones().list(xs).and().keeps().from(from).to(to)",
+  "fluentDeprecated": "list(xs).part(from, to)"
+ },
+ {
+  "atom": "concatenated",
+  "module": "lists",
+  "reads": "a followed by b",
+  "js": [
+   "[...a, ...b]"
+  ],
+  "pure": true,
+  "mutates": false,
+  "check": [
+   {
+    "params": [
+     [
+      "a",
+      "list"
+     ],
+     [
+      "b",
+      "list"
+     ]
+    ]
+   }
+  ],
+  "note": "for lists only; Array#concat (which also takes single items) is concatList"
+ },
+ {
+  "atom": "flattened",
+  "module": "lists",
+  "js": [
+   "list.flat(depth)"
+  ],
+  "pure": true,
+  "mutates": false,
+  "returnsCopy": true,
+  "covers": [
+   "Array#flat"
+  ],
+  "check": [
+   {
+    "params": [
+     [
+      "list",
+      "nested"
+     ],
+     [
+      "depth",
+      "smallint"
+     ]
+    ]
+   }
+  ],
+  "fluent": "clones().list(xs).and().flattens()",
+  "fluentDeprecated": "list(xs).flattened()"
+ },
+ {
+  "atom": "flatMapEach",
+  "module": "lists",
+  "reads": "each item of list mapped to results, flattened",
+  "js": [
+   "list.flatMap(fn)"
+  ],
+  "pure": true,
+  "mutates": false,
+  "covers": [
+   "Array#flatMap"
+  ],
+  "check": [
+   {
+    "params": [
+     [
+      "list",
+      "list"
+     ],
+     [
+      "fn",
+      "fnnested"
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "uniqueOf",
+  "module": "lists",
+  "js": [
+   "[...new Set(list)]",
+   "Array.from(new Set(list))"
+  ],
+  "pure": true,
+  "mutates": false,
+  "returnsCopy": true,
+  "check": [
+   {
+    "params": [
+     [
+      "list",
+      "list"
+     ]
+    ]
+   }
+  ],
+  "fluent": "clones().list(xs).and().drops().duplicates()",
+  "fluentDeprecated": "list(xs).uniqueOf()"
+ },
+ {
+  "atom": "countOf",
+  "module": "lists",
+  "reads": "how many items of list pass test",
+  "js": [
+   "list.filter(test).length"
+  ],
+  "pure": true,
+  "mutates": false,
+  "check": [
+   {
+    "params": [
+     [
+      "list",
+      "list"
+     ],
+     [
+      "test",
+      "pred"
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "groupedBy",
+  "module": "lists",
+  "reads": "list grouped by key",
+  "js": [
+   "Object.groupBy(list, key)"
+  ],
+  "pure": true,
+  "mutates": false,
+  "check": [
+   {
+    "params": [
+     [
+      "list",
+      "list"
+     ],
+     [
+      "key",
+      "keyfn"
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "chunked",
+  "module": "lists",
+  "reads": "list in chunks of size",
+  "js": [
+   "Array.from({ length: Math.ceil(list.length / size) }, (_, i) => list.slice(i * size, i * size + size))"
+  ],
+  "pure": true,
+  "mutates": false,
+  "check": [
+   {
+    "params": [
+     [
+      "list",
+      "list"
+     ],
+     [
+      "size",
+      "pos"
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "range",
+  "module": "lists",
+  "reads": "the numbers from from up to (not including) to, by step",
+  "js": [
+   "Array.from({ length: Math.max(0, Math.ceil((to - from) / step)) }, (_, i) => from + i * step)",
+   "for (let i = from; i < to; i += step)"
+  ],
+  "pure": true,
+  "mutates": false,
+  "check": [
+   {
+    "params": [
+     [
+      "from",
+      "smallint"
+     ],
+     [
+      "to",
+      "smallint"
+     ],
+     [
+      "step",
+      "nzint"
+     ]
+    ],
+    "js": [
+     "Array.from({ length: Math.max(0, Math.ceil((to - from) / step)) }, (_, i) => from + i * step)"
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "listFrom",
+  "module": "lists",
+  "reads": "a list from source",
+  "js": [
+   "Array.from(source)",
+   "Array.from(source, fn)"
+  ],
+  "pure": true,
+  "mutates": false,
+  "covers": [
+   "Array.from"
+  ],
+  "note": "not [...source]: spread throws for a value that is not iterable, Array.from reads its length instead",
+  "check": [
+   {
+    "params": [
+     [
+      "source",
+      "list"
+     ]
+    ],
+    "js": [
+     "Array.from(source)"
+    ]
+   },
+   {
+    "params": [
+     [
+      "source",
+      "list"
+     ],
+     [
+      "fn",
+      "fn"
+     ]
+    ],
+    "js": [
+     "Array.from(source, fn)"
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "added",
+  "module": "lists",
+  "reads": "list with item added at the end",
+  "js": [
+   "[...list, item]",
+   "list.concat([item])"
+  ],
+  "pure": true,
+  "mutates": false,
+  "check": [
+   {
+    "params": [
+     [
+      "list",
+      "list"
+     ],
+     [
+      "item",
+      "prim"
+     ]
+    ]
+   }
+  ],
+  "note": "the copy-returning list.push(item); several items: pushedList"
+ },
+ {
+  "atom": "prepended",
+  "module": "lists",
+  "reads": "list with item added at the start",
+  "js": [
+   "[item, ...list]"
+  ],
+  "pure": true,
+  "mutates": false,
+  "check": [
+   {
+    "params": [
+     [
+      "list",
+      "list"
+     ],
+     [
+      "item",
+      "prim"
+     ]
+    ]
+   }
+  ],
+  "note": "the copy-returning list.unshift(item)"
+ },
+ {
+  "atom": "removedAt",
+  "module": "lists",
+  "reads": "list without the item at index",
+  "js": [
+   "list.toSpliced(index, 1)"
+  ],
+  "pure": true,
+  "mutates": false,
+  "check": [
+   {
+    "params": [
+     [
+      "list",
+      "list"
+     ],
+     [
+      "index",
+      "num"
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "insertedAt",
+  "module": "lists",
+  "reads": "list with item inserted at index",
+  "js": [
+   "list.toSpliced(index, 0, item)"
+  ],
+  "pure": true,
+  "mutates": false,
+  "check": [
+   {
+    "params": [
+     [
+      "list",
+      "list"
+     ],
+     [
+      "index",
+      "num"
+     ],
+     [
+      "item",
+      "prim"
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "replacedAt",
+  "module": "lists",
+  "reads": "list with the item at index replaced by item",
+  "js": [
+   "list.with(index, item)"
+  ],
+  "pure": true,
+  "mutates": false,
+  "covers": [
+   "Array#with"
+  ],
+  "check": [
+   {
+    "params": [
+     [
+      "list",
+      "list"
+     ],
+     [
+      "index",
+      "num"
+     ],
+     [
+      "item",
+      "prim"
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "keysOf",
+  "module": "objects",
+  "reads": "the keys of obj",
+  "js": [
+   "Object.keys(obj)"
+  ],
+  "pure": true,
+  "mutates": false,
+  "covers": [
+   "Object.keys"
+  ],
+  "check": [
+   {
+    "params": [
+     [
+      "obj",
+      "obj"
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "valuesOf",
+  "module": "objects",
+  "reads": "the values of obj",
+  "js": [
+   "Object.values(obj)"
+  ],
+  "pure": true,
+  "mutates": false,
+  "covers": [
+   "Object.values"
+  ],
+  "check": [
+   {
+    "params": [
+     [
+      "obj",
+      "obj"
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "entriesOf",
+  "module": "objects",
+  "reads": "the key/value pairs of obj",
+  "js": [
+   "Object.entries(obj)"
+  ],
+  "pure": true,
+  "mutates": false,
+  "covers": [
+   "Object.entries"
+  ],
+  "check": [
+   {
+    "params": [
+     [
+      "obj",
+      "obj"
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "fromEntries",
+  "module": "objects",
+  "reads": "an object from pairs",
+  "js": [
+   "Object.fromEntries(pairs)"
+  ],
+  "pure": true,
+  "mutates": false,
+  "covers": [
+   "Object.fromEntries"
+  ],
+  "check": [
+   {
+    "params": [
+     [
+      "pairs",
+      "pairs"
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "merged",
+  "module": "objects",
+  "reads": "a merged with b",
+  "js": [
+   "{ ...a, ...b }",
+   "Object.assign({}, a, b)"
+  ],
+  "pure": true,
+  "mutates": false,
+  "covers": [
+   "Object.assign"
+  ],
+  "check": [
+   {
+    "params": [
+     [
+      "a",
+      "obj"
+     ],
+     [
+      "b",
+      "obj"
+     ]
+    ]
+   }
+  ],
+  "note": "Object.assign mutates its first argument; merged never does (Object.assign(target, \u2026) maps to merged(target, \u2026) as a copy)"
+ },
+ {
+  "atom": "withKey",
+  "module": "objects",
+  "reads": "obj with key set to value",
+  "js": [
+   "({ ...obj, [key]: value })"
+  ],
+  "pure": true,
+  "mutates": false,
+  "check": [
+   {
+    "params": [
+     [
+      "obj",
+      "obj"
+     ],
+     [
+      "key",
+      "key"
+     ],
+     [
+      "value",
+      "prim"
+     ]
+    ]
+   }
+  ],
+  "note": "the copy-returning obj[key] = value"
+ },
+ {
+  "atom": "withoutKey",
+  "module": "objects",
+  "reads": "obj without key",
+  "js": [
+   "(({ [key]: _omit, ...rest }) => rest)(obj)"
+  ],
+  "pure": true,
+  "mutates": false,
+  "check": [
+   {
+    "params": [
+     [
+      "obj",
+      "obj"
+     ],
+     [
+      "key",
+      "key"
+     ]
+    ]
+   }
+  ],
+  "note": "the copy-returning delete obj[key]"
+ },
+ {
+  "atom": "pick",
+  "module": "objects",
+  "reads": "only keys of obj",
+  "js": [
+   "Object.fromEntries(keys.filter((k) => Object.hasOwn(obj, k)).map((k) => [k, obj[k]]))"
+  ],
+  "pure": true,
+  "mutates": false,
+  "check": [
+   {
+    "params": [
+     [
+      "obj",
+      "obj"
+     ],
+     [
+      "keys",
+      "keys"
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "omit",
+  "module": "objects",
+  "reads": "obj without keys",
+  "js": [
+   "Object.fromEntries(Object.entries(obj).filter(([k]) => !keys.includes(k)))"
+  ],
+  "pure": true,
+  "mutates": false,
+  "check": [
+   {
+    "params": [
+     [
+      "obj",
+      "obj"
+     ],
+     [
+      "keys",
+      "keys"
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "largestOf",
+  "module": "numbers",
+  "reads": "the largest of numbers",
+  "js": [
+   "Math.max(...numbers)"
+  ],
+  "pure": true,
+  "mutates": false,
+  "covers": [
+   "Math.max"
+  ],
+  "check": [
+   {
+    "params": [
+     [
+      "numbers",
+      "nums"
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "smallestOf",
+  "module": "numbers",
+  "reads": "the smallest of numbers",
+  "js": [
+   "Math.min(...numbers)"
+  ],
+  "pure": true,
+  "mutates": false,
+  "covers": [
+   "Math.min"
+  ],
+  "check": [
+   {
+    "params": [
+     [
+      "numbers",
+      "nums"
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "roundedTo",
+  "module": "numbers",
+  "reads": "n rounded to digits decimal places",
+  "js": [
+   "Math.round(n * 10 ** digits) / 10 ** digits"
+  ],
+  "pure": true,
+  "mutates": false,
+  "check": [
+   {
+    "params": [
+     [
+      "n",
+      "num"
+     ],
+     [
+      "digits",
+      "digits"
+     ]
+    ]
+   }
+  ],
+  "note": "shares that idiom's floating-point edge cases"
+ },
+ {
+  "atom": "floorOf",
+  "module": "numbers",
+  "reads": "n rounded down",
+  "js": [
+   "Math.floor(n)"
+  ],
+  "pure": true,
+  "mutates": false,
+  "covers": [
+   "Math.floor"
+  ],
+  "check": [
+   {
+    "params": [
+     [
+      "n",
+      "num"
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "ceilingOf",
+  "module": "numbers",
+  "reads": "n rounded up",
+  "js": [
+   "Math.ceil(n)"
+  ],
+  "pure": true,
+  "mutates": false,
+  "covers": [
+   "Math.ceil"
+  ],
+  "check": [
+   {
+    "params": [
+     [
+      "n",
+      "num"
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "absoluteOf",
+  "module": "numbers",
+  "reads": "the absolute value of n",
+  "js": [
+   "Math.abs(n)"
+  ],
+  "pure": true,
+  "mutates": false,
+  "covers": [
+   "Math.abs"
+  ],
+  "check": [
+   {
+    "params": [
+     [
+      "n",
+      "num"
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "clamp",
+  "module": "numbers",
+  "reads": "n kept between min and max",
+  "js": [
+   "Math.min(Math.max(n, min), max)"
+  ],
+  "pure": true,
+  "mutates": false,
+  "check": [
+   {
+    "params": [
+     [
+      "n",
+      "num"
+     ],
+     [
+      "min",
+      "num"
+     ],
+     [
+      "max",
+      "num"
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "sumOf",
+  "module": "numbers",
+  "reads": "the sum of numbers",
+  "js": [
+   "numbers.reduce((a, b) => a + b, 0)"
+  ],
+  "pure": true,
+  "mutates": false,
+  "check": [
+   {
+    "params": [
+     [
+      "numbers",
+      "nums"
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "averageOf",
+  "module": "numbers",
+  "reads": "the average of numbers",
+  "js": [
+   "numbers.reduce((a, b) => a + b, 0) / numbers.length"
+  ],
+  "pure": true,
+  "mutates": false,
+  "check": [
+   {
+    "params": [
+     [
+      "numbers",
+      "nums"
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "isWhole",
+  "module": "numbers",
+  "reads": "whether value is a whole number",
+  "js": [
+   "Number.isInteger(value)"
+  ],
+  "pure": true,
+  "mutates": false,
+  "covers": [
+   "Number.isInteger"
+  ],
+  "check": [
+   {
+    "params": [
+     [
+      "value",
+      "mixed"
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "parseNumber",
+  "module": "numbers",
+  "reads": "the number written in text",
+  "js": [
+   "Number.parseFloat(text)",
+   "parseFloat(text)"
+  ],
+  "pure": true,
+  "mutates": false,
+  "covers": [
+   "Number.parseFloat",
+   "parseFloat"
+  ],
+  "check": [
+   {
+    "params": [
+     [
+      "text",
+      "numtext"
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "parseWhole",
+  "module": "numbers",
+  "reads": "the whole number written in text",
+  "js": [
+   "Number.parseInt(text, 10)",
+   "parseInt(text, 10)"
+  ],
+  "pure": true,
+  "mutates": false,
+  "check": [
+   {
+    "params": [
+     [
+      "text",
+      "numtext"
+     ]
+    ]
+   }
+  ],
+  "note": "parseInt with a radix is parseInteger"
+ },
+ {
+  "atom": "formatNumber",
+  "module": "numbers",
+  "reads": "n formatted for locale",
+  "js": [
+   "new Intl.NumberFormat(locale, options).format(n)",
+   "n.toLocaleString(locale, options)"
+  ],
+  "pure": true,
+  "mutates": false,
+  "check": [
+   {
+    "params": [
+     [
+      "n",
+      "num"
+     ]
+    ],
+    "js": [
+     "new Intl.NumberFormat('en-US').format(n)",
+     "n.toLocaleString('en-US')"
+    ]
+   }
+  ],
+  "note": "locale defaults to en-US, not the machine's locale"
+ },
+ {
+  "atom": "parseJson",
+  "module": "json",
+  "reads": "the value written as JSON in text",
+  "js": [
+   "try { return { ok: true, value: JSON.parse(text) } } catch (error) { return { ok: false, error } }"
+  ],
+  "pure": true,
+  "mutates": false,
+  "verifiedBy": "test/core.test.mjs (Result property)",
+  "note": "not JSON.parse(text) itself: it returns { ok, value | error } instead of throwing. The exact wrapper of JSON.parse is parseJsonOrThrow"
+ },
+ {
+  "atom": "toJson",
+  "module": "json",
+  "reads": "value written as JSON",
+  "js": [
+   "JSON.stringify(value, null, indent)"
+  ],
+  "pure": true,
+  "mutates": false,
+  "check": [
+   {
+    "params": [
+     [
+      "value",
+      "jsonvalue"
+     ],
+     [
+      "indent",
+      "digits"
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "dateFrom",
+  "module": "dates",
+  "reads": "the date given by input",
+  "js": [
+   "new Date(input)"
+  ],
+  "pure": true,
+  "mutates": false,
+  "check": [
+   {
+    "params": [
+     [
+      "input",
+      "num"
+     ]
+    ]
+   },
+   {
+    "params": [
+     [
+      "input",
+      "date"
+     ]
+    ]
+   },
+   {
+    "params": [
+     [
+      "input",
+      "isotext"
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "formatDate",
+  "module": "dates",
+  "reads": "date formatted for locale",
+  "js": [
+   "new Intl.DateTimeFormat(locale, options).format(date)"
+  ],
+  "pure": true,
+  "mutates": false,
+  "check": [
+   {
+    "params": [
+     [
+      "date",
+      "date"
+     ]
+    ],
+    "js": [
+     "new Intl.DateTimeFormat('en-US', { timeZone: 'UTC' }).format(date)"
+    ]
+   }
+  ],
+  "note": "defaults: en-US and UTC, so the result never depends on the machine"
+ },
+ {
+  "atom": "addDays",
+  "module": "dates",
+  "reads": "date plus days days",
+  "js": [
+   "new Date(date.getTime() + days * 86400000)"
+  ],
+  "pure": true,
+  "mutates": false,
+  "check": [
+   {
+    "params": [
+     [
+      "date",
+      "date"
+     ],
+     [
+      "days",
+      "smallint"
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "daysBetween",
+  "module": "dates",
+  "reads": "the number of days from from to to",
+  "js": [
+   "Math.trunc((to.getTime() - from.getTime()) / 86400000)"
+  ],
+  "pure": true,
+  "mutates": false,
+  "check": [
+   {
+    "params": [
+     [
+      "from",
+      "date"
+     ],
+     [
+      "to",
+      "date"
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "isBefore",
+  "module": "dates",
+  "reads": "whether a is before b",
+  "js": [
+   "a.getTime() < b.getTime()",
+   "a < b"
+  ],
+  "pure": true,
+  "mutates": false,
+  "check": [
+   {
+    "params": [
+     [
+      "a",
+      "date"
+     ],
+     [
+      "b",
+      "date"
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "isAfter",
+  "module": "dates",
+  "reads": "whether a is after b",
+  "js": [
+   "a.getTime() > b.getTime()",
+   "a > b"
+  ],
+  "pure": true,
+  "mutates": false,
+  "check": [
+   {
+    "params": [
+     [
+      "a",
+      "date"
+     ],
+     [
+      "b",
+      "date"
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "allOf",
+  "module": "async",
+  "reads": "all of promises, once they all succeed",
+  "js": [
+   "Promise.all(promises)"
+  ],
+  "pure": true,
+  "mutates": false,
+  "covers": [
+   "Promise.all"
+  ],
+  "check": [
+   {
+    "params": [
+     [
+      "promises",
+      "list"
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "firstSettled",
+  "module": "async",
+  "reads": "whichever of promises settles first",
+  "js": [
+   "Promise.race(promises)"
+  ],
+  "pure": true,
+  "mutates": false,
+  "covers": [
+   "Promise.race"
+  ],
+  "check": [
+   {
+    "params": [
+     [
+      "promises",
+      "list1"
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "settledAll",
+  "module": "async",
+  "reads": "the outcome of every one of promises",
+  "js": [
+   "Promise.allSettled(promises)"
+  ],
+  "pure": true,
+  "mutates": false,
+  "covers": [
+   "Promise.allSettled"
+  ],
+  "check": [
+   {
+    "params": [
+     [
+      "promises",
+      "list"
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "setOf",
+  "module": "collections",
+  "reads": "the set of items",
+  "js": [
+   "new Set(items)"
+  ],
+  "pure": true,
+  "mutates": false,
+  "covers": [
+   "new Set"
+  ],
+  "check": [
+   {
+    "params": [
+     [
+      "items",
+      "list"
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "isInSet",
+  "module": "collections",
+  "reads": "whether item is in set",
+  "js": [
+   "set.has(item)"
+  ],
+  "pure": true,
+  "mutates": false,
+  "covers": [
+   "Set#has"
+  ],
+  "check": [
+   {
+    "params": [
+     [
+      "set",
+      "set"
+     ],
+     [
+      "item",
+      "prim"
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "withMember",
+  "module": "collections",
+  "reads": "set with item added",
+  "js": [
+   "new Set(set).add(item)"
+  ],
+  "pure": true,
+  "mutates": false,
+  "covers": [
+   "Set#add"
+  ],
+  "check": [
+   {
+    "params": [
+     [
+      "set",
+      "set"
+     ],
+     [
+      "item",
+      "prim"
+     ]
+    ]
+   }
+  ],
+  "note": "the copy-returning set.add(item)"
+ },
+ {
+  "atom": "mapOf",
+  "module": "collections",
+  "reads": "the map of pairs",
+  "js": [
+   "new Map(pairs)"
+  ],
+  "pure": true,
+  "mutates": false,
+  "covers": [
+   "new Map"
+  ],
+  "check": [
+   {
+    "params": [
+     [
+      "pairs",
+      "anypairs"
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "getFrom",
+  "module": "collections",
+  "reads": "the value for key in map",
+  "js": [
+   "map.get(key)"
+  ],
+  "pure": true,
+  "mutates": false,
+  "covers": [
+   "Map#get"
+  ],
+  "check": [
+   {
+    "params": [
+     [
+      "map",
+      "map"
+     ],
+     [
+      "key",
+      "prim"
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "withEntry",
+  "module": "collections",
+  "reads": "map with key set to value",
+  "js": [
+   "new Map(map).set(key, value)"
+  ],
+  "pure": true,
+  "mutates": false,
+  "covers": [
+   "Map#set"
+  ],
+  "check": [
+   {
+    "params": [
+     [
+      "map",
+      "map"
+     ],
+     [
+      "key",
+      "prim"
+     ],
+     [
+      "value",
+      "prim"
+     ]
+    ]
+   }
+  ],
+  "note": "the copy-returning map.set(key, value)"
+ },
+ {
+  "atom": "sizeOf",
+  "module": "collections",
+  "reads": "the size of mapOrSet",
+  "js": [
+   "collection.size"
+  ],
+  "pure": true,
+  "mutates": false,
+  "check": [
+   {
+    "params": [
+     [
+      "collection",
+      "set"
+     ]
+    ]
+   },
+   {
+    "params": [
+     [
+      "collection",
+      "map"
+     ]
+    ]
+   }
+  ],
+  "note": "also covers the Map#size and Set#size properties"
+ },
+ {
+  "atom": "now",
+  "module": "impure",
+  "reads": "the current date and time",
+  "js": [
+   "new Date()",
+   "new Date(Date.now())"
+  ],
+  "pure": false,
+  "mutates": false,
+  "impureReason": "reads the clock (inject one to make it deterministic)",
+  "check": [
+   {
+    "params": [
+     [
+      "clock",
+      "lazy:num"
+     ]
+    ],
+    "js": [
+     "new Date(clock)"
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "nowTime",
+  "module": "impure",
+  "reads": "the current time in milliseconds",
+  "js": [
+   "Date.now()"
+  ],
+  "pure": false,
+  "mutates": false,
+  "covers": [
+   "Date.now"
+  ],
+  "impureReason": "reads the clock (inject one to make it deterministic)",
+  "check": [
+   {
+    "params": [
+     [
+      "clock",
+      "lazy:num"
+     ]
+    ],
+    "js": [
+     "clock"
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "random",
+  "module": "impure",
+  "reads": "a random number from 0 up to 1",
+  "js": [
+   "Math.random()"
+  ],
+  "pure": false,
+  "mutates": false,
+  "covers": [
+   "Math.random"
+  ],
+  "impureReason": "random (inject a source, e.g. seededSource(seed), to make it deterministic)",
+  "check": [
+   {
+    "params": [
+     [
+      "source",
+      "lazy:unit"
+     ]
+    ],
+    "js": [
+     "source"
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "seededSource",
+  "module": "impure",
+  "reads": "a repeatable random source started from seed",
+  "js": [
+   "/* no built-in: a seeded PRNG (mulberry32) */"
+  ],
+  "pure": true,
+  "mutates": false,
+  "verifiedBy": "test/core.test.mjs (same seed, same sequence; values in [0, 1))",
+  "note": "the returned source is stateful; seededSource itself is pure"
+ },
+ {
+  "atom": "randomBetween",
+  "module": "impure",
+  "reads": "a random number from min up to max",
+  "js": [
+   "min + Math.random() * (max - min)"
+  ],
+  "pure": false,
+  "mutates": false,
+  "impureReason": "random (inject a source to make it deterministic)",
+  "check": [
+   {
+    "params": [
+     [
+      "min",
+      "num"
+     ],
+     [
+      "max",
+      "num"
+     ],
+     [
+      "random",
+      "lazy:unit"
+     ]
+    ],
+    "js": [
+     "min + random * (max - min)"
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "delay",
+  "module": "impure",
+  "reads": "value after ms milliseconds",
+  "js": [
+   "new Promise((resolve) => setTimeout(() => resolve(value), ms))"
+  ],
+  "pure": false,
+  "mutates": false,
+  "impureReason": "timer",
+  "verifiedBy": "test/core.test.mjs (fake-timer property)"
+ },
+ {
+  "atom": "fetchJson",
+  "module": "adapters",
+  "reads": "the JSON at url",
+  "js": [
+   "fetch(url, init).then((r) => r.json())"
+  ],
+  "pure": false,
+  "mutates": false,
+  "impureReason": "host adapter (network); the host object can be injected",
+  "verifiedBy": "test/examples.test.mjs (stub host)"
+ },
+ {
+  "atom": "readStorage",
+  "module": "adapters",
+  "reads": "the stored value for key",
+  "js": [
+   "localStorage.getItem(key)"
+  ],
+  "pure": false,
+  "mutates": false,
+  "impureReason": "host adapter (storage); the host object can be injected",
+  "verifiedBy": "test/core.test.mjs (in-memory storage property)"
+ },
+ {
+  "atom": "writeStorage",
+  "module": "adapters",
+  "reads": "store value under key",
+  "js": [
+   "localStorage.setItem(key, value)"
+  ],
+  "pure": false,
+  "mutates": false,
+  "impureReason": "host adapter (storage); the host object can be injected",
+  "verifiedBy": "test/examples.test.mjs (stub host)"
+ },
+ {
+  "atom": "urlFrom",
+  "module": "adapters",
+  "reads": "the URL for path, relative to base",
+  "js": [
+   "new URL(path, base).href"
+  ],
+  "pure": false,
+  "mutates": false,
+  "impureReason": "host adapter (host URL parser); the host object can be injected",
+  "check": [
+   {
+    "params": [
+     [
+      "path",
+      "urlpath"
+     ],
+     [
+      "base",
+      "urlbase"
+     ]
+    ],
+    "js": [
+     "new URL(path, base).href"
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "withQuery",
+  "module": "adapters",
+  "reads": "url with the query params set",
+  "js": [
+   "const u = new URL(url); u.searchParams.set(k, v); u.href"
+  ],
+  "pure": false,
+  "mutates": false,
+  "impureReason": "host adapter (host URL parser); the host object can be injected",
+  "verifiedBy": "test/examples.test.mjs (stub host)"
+ }
+]
