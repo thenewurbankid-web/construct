@@ -36,7 +36,9 @@ const STEP_MS = 400;
 // ---------------------------------------------------------------------------
 // TypeScript types -> value descriptors the sandbox can generate from
 
-function typesOfSource(src) {
+// generic: keep generic aliases too (their parameters stay unknown), as the runtime's own
+// Lazy<T> or Visit<T, R>, which are function types whatever T is
+function typesOfSource(src, { generic = false } = {}) {
   const env = new Map();
   let ast;
   try {
@@ -46,8 +48,8 @@ function typesOfSource(src) {
   }
   for (const st of ast.program.body) {
     const d = st.type === 'ExportNamedDeclaration' && st.declaration ? st.declaration : st;
-    if (d.type === 'TSTypeAliasDeclaration' && !d.typeParameters) env.set(d.id.name, d.typeAnnotation);
-    if (d.type === 'TSInterfaceDeclaration' && !d.typeParameters) env.set(d.id.name, d.body);
+    if (d.type === 'TSTypeAliasDeclaration' && (generic || !d.typeParameters)) env.set(d.id.name, d.typeAnnotation);
+    if (d.type === 'TSInterfaceDeclaration' && (generic || !d.typeParameters)) env.set(d.id.name, d.body);
   }
   return env;
 }
@@ -100,6 +102,7 @@ function describeType(node, env, depth = 0) {
       if (name === 'Set' || name === 'ReadonlySet') return { k: 'set', of: sub(args[0]) };
       if (name === 'Map' || name === 'ReadonlyMap') return { k: 'map', key: sub(args[0]), of: sub(args[1]) };
       if (name === 'Date') return { k: 'date' };
+      if (name === 'RegExp') return { k: 'regexp' };
       if (name === 'Readonly' || name === 'Required' || name === 'NonNullable') return sub(args[0]);
       if (name === 'Partial') {
         const inner = sub(args[0]);
@@ -205,6 +208,8 @@ globalThis.__h = (function () {
     '  padded\t', '\tlead', 'trail ', 'MiXeD Case', 'Ünïcode', 'a,b;c', 'two\nlines', '-3.5'];
   var NUMBERS = [0, 1, -1, 2, 3.5, 10, 100, 7];
   var KEYS = ['id', 'name', 'value', 'a', 'b'];
+  // made new each time: a g or y pattern carries lastIndex from one use to the next
+  var PATTERNS = [['-', ''], ['a', 'g'], ['\\s+', ''], ['[aeiou]', 'gi'], ['^x', '']];
 
   function primitive(h) {
     switch (h % 5) {
@@ -264,6 +269,7 @@ globalThis.__h = (function () {
       case 'undefined': return undefined;
       case 'lit': return d.v;
       case 'date': return new RealDate(1700000000000 + Math.floor(rng() * 5) * 86400000);
+      case 'regexp': { var pat = pick(PATTERNS); return new RegExp(pat[0], pat[1]); }
       case 'fn': return stub(path, ctx);
       case 'array': out = []; for (i = 0, n = count(); i < n; i++) out.push(gen(d.of, rng, ctx, path + '[' + i + ']', depth + 1)); return out;
       case 'tuple': return d.of.map(function (e, j) { return gen(e, rng, ctx, path + '[' + j + ']', depth + 1); });

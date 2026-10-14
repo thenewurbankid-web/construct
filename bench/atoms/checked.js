@@ -20,13 +20,14 @@ const fs = require('fs');
 const path = require('path');
 const { toAtoms } = require('../../atoms-transform');
 const { createSandbox, typesOfSource } = require('./equivalence');
-const { createDiagnoser } = require('./diagnose');
+const { createDiagnoser, typesOfRuntime } = require('./diagnose');
 const { snapshotRuntime, catalogFor, bundleRuntime } = require('./runtime');
 
-async function createCheckedConverter({ compiled, bundle }) {
+// runtimeTypes: the runtime's own type names (typesOfRuntime(dir)), for the diagnosis probes
+async function createCheckedConverter({ compiled, bundle, runtimeTypes = new Map() }) {
   const sandbox = await createSandbox({ bundle });
   const atomKinds = Object.fromEntries([...compiled.atoms].map(([name, info]) => [name, info.firstKinds || ['any']]));
-  const diagnose = createDiagnoser({ compiled, sandbox });
+  const diagnose = createDiagnoser({ compiled, sandbox, types: runtimeTypes });
 
   function convert(code, { kind = 'function', types = new Map(), runs = 25, seed = 1, typeHint = null } = {}) {
     const skip = new Set();
@@ -113,7 +114,7 @@ async function checkedCorpus({ runs = 25, only = null } = {}) {
   const { loadCorpus } = require('../corpus');
   const snap = snapshotRuntime();
   const { compiled } = catalogFor(snap.dir, snap.sha);
-  const converter = await createCheckedConverter({ compiled, bundle: bundleRuntime(snap.dir) });
+  const converter = await createCheckedConverter({ compiled, bundle: bundleRuntime(snap.dir), runtimeTypes: typesOfRuntime(snap.dir) });
   const corpus = loadCorpus();
   const sources = new Map(corpus.sources.map((s) => [s.file, s.src]));
   const envs = new Map();

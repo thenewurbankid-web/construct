@@ -95,6 +95,22 @@ describe('the equivalence check', () => {
     assert.equal(res.timeouts, 2);
   });
 
+  test('a RegExp argument is generated as a new pattern each run, some global', () => {
+    assert.deepEqual(describeType(typesOfSource('type P = string | RegExp;').get('P'), new Map()), { k: 'union', of: [{ k: 'string' }, { k: 'regexp' }] });
+    const res = sandbox.checkPair({
+      original: "function first(text: string, p: RegExp) { return text.replace(p, '+'); }",
+      converted: "function first(text: string, p: RegExp) { return text.replace(new RegExp(p.source, p.flags.replace('g', '')), '+'); }",
+      runs: 40,
+    });
+    assert.equal(res.status, 'different');
+  });
+
+  test('generic type names are kept only when asked for, as the runtime types are read', () => {
+    const src = 'type Lazy<T> = () => T;';
+    assert.equal(typesOfSource(src).has('Lazy'), false);
+    assert.deepEqual(describeType({ type: 'TSTypeReference', typeName: { type: 'Identifier', name: 'Lazy' } }, typesOfSource(src, { generic: true })), { k: 'fn' });
+  });
+
   test('argument types come from the annotations, resolved in the same file', () => {
     const env = typesOfSource("type Status = 'open' | 'closed';\ninterface Ticket { id: string; status: Status; tags?: string[] }\nfunction f(t: Ticket) {}");
     assert.deepEqual(describeType(env.get('Ticket'), env), {
@@ -185,6 +201,10 @@ describe('convert, check, repair', () => {
     const swapped = classifyCause({ atom: 'minus', form: 'a - b', open: { status: 'different', mismatches: [m], direct: { status: 'same', exercised: 40 } } });
     assert.equal(swapped.cause, 'transform');
     assert.equal(classifyCause({ atom: 'minus', form: 'a - b', open: { status: 'different', mismatches: [m], direct: { status: 'different', mismatches: [m] } } }).cause, 'atom');
+    // agrees with every argument of its declared type, differs with any later argument: the kind
+    const later = classifyCause({ atom: 'isAfter', form: 'a > b', declared: same, open: same, loose: { status: 'different', mismatches: [m] } });
+    assert.equal(later.cause, 'kind');
+    assert.match(later.why, /an argument after the first/);
     // a probe no input gets through proves nothing either way
     assert.equal(classifyCause({ atom: 'both', form: 'a && b', open: { status: 'same', exercised: 0, mismatches: [] } }).cause, 'unknown');
   });
