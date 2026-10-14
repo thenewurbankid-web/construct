@@ -8,7 +8,7 @@
 //                      one job: ESLint core `complexity` (@construct/ast functionComplexity, FUNC-001's counter) within
 //                      the layer's FUNC-001 budget (architecture-enforcer DEFAULT_FUNCTION_BUDGETS)
 //                      connections only through functions: an imported binding is only called, rendered as a JSX tag
-//                      or used as a type -- never read as data
+//                      (dotted too: <React.Fragment>, <SideNav.NavItem>) or used as a type -- never read as data
 //   templates exempt   dumb JSX that only binds view-model fields (a body of `return <jsx/>`, plus destructuring, with
 //                      only names, field reads and calls inside braces) is checked by DOM render, not Smith
 //
@@ -74,6 +74,19 @@ function simple(e) {
 }
 
 /**
+ * Whether `n` names a JSX tag: the whole tag (`<Button>`), or the root of a dotted one (`<React.Fragment>`,
+ * `<SubframeCore.DropdownMenu.Root>`, `<SideNav.NavItem>`): a component reference, not a data read.
+ * @param {any} n An identifier.
+ * @returns {boolean}
+ */
+export function isJsxTag(n) {
+  let top = n;
+  while (ts.isPropertyAccessExpression(top.parent) && top.parent.expression === top) top = top.parent;
+  const p = top.parent;
+  return !!p && (ts.isJsxOpeningElement(p) || ts.isJsxSelfClosingElement(p) || ts.isJsxClosingElement(p)) && p.tagName === top;
+}
+
+/**
  * Imported bindings read as data inside `node` (not called, not a JSX tag, not a type).
  * @param {any} sf The TypeScript source file.
  * @param {any} node A function node in it.
@@ -93,7 +106,7 @@ export function dataConnections(sf, node) {
     if (ts.isIdentifier(n) && imported.has(n.text)) {
       const p = n.parent;
       const ok = (ts.isCallExpression(p) && p.expression === n)
-        || ((ts.isJsxOpeningElement(p) || ts.isJsxSelfClosingElement(p) || ts.isJsxClosingElement(p)) && p.tagName === n)
+        || isJsxTag(n)
         || ts.isTypeReferenceNode(p) || ts.isTypeQueryNode(p) || ts.isQualifiedName(p) || ts.isExpressionWithTypeArguments(p)
         || (ts.isPropertyAccessExpression(p) && p.expression === n && ts.isCallExpression(p.parent) && p.parent.expression === p); // ns.fn()
       if (!ok) hits.add(n.text);
