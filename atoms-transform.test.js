@@ -43,6 +43,9 @@ const FIXTURE = [
   { atom: 'withProperty', js: ['Object.defineProperty(o, p, attributes)'], params: ['o', 'p', 'attributes'], replacesMutation: 'Object.defineProperty' },
   { atom: 'dateWithHours', js: ['date.setHours(hours)'], params: ['date', 'hours'], replacesMutation: 'Date#setHours' },
   { atom: 'doesPatternMatch', js: ['pattern.test(string)'], params: ['pattern', 'string'], replacesMutation: 'RegExp#test' },
+  // checked only with a non-global RegExp, as in the runtime's catalog: a global one replaces every match
+  { atom: 'replaceFirst', js: ['text.replace(pattern, replacement)'], params: ['text', 'pattern', 'replacement'], firstKinds: ['string'], check: [{ params: [['text', 'shorttext'], ['pattern', 'shorttext'], ['replacement', 'shorttext']] }, { params: [['text', 'shorttext'], ['pattern', 'ngregex'], ['replacement', 'shorttext']] }] },
+  { atom: 'replaceText', js: ['text.replace(searchValue, replaceValue)'], params: ['text', 'searchValue', 'replaceValue'], firstKinds: ['string'] },
 ];
 const catalog = compileCatalog(FIXTURE);
 const flat = (code) => code.replace(/\s+/g, ' ').trim();
@@ -169,6 +172,13 @@ describe('found by the equivalence check (bench/atoms/equivalence.js)', () => {
   test('...except a pattern literal without g or y, which has no state to change', () => {
     assert.equal(body('const ok = /^[=+@-]/.test(text);'), 'const ok = doesPatternMatch(/^[=+@-]/, text);');
     assert.equal(body('const ok = /a/g.test(text);'), 'const ok = /a/g.test(text);');
+  });
+
+  test('replaceFirst only where the pattern is seen to be text or a RegExp without g; anything else is replaceText', () => {
+    assert.equal(body("const s = text.replace('-', '+');"), "const s = replaceFirst(text, '-', '+');");
+    assert.equal(body("const s = text.replace(/-/, '+');"), "const s = replaceFirst(text, /-/, '+');");
+    assert.equal(body(`const s = text.replace(/"/g, '""');`), `const s = replaceText(text, /"/g, '""');`);
+    assert.equal(body("const s = text.replace(pattern, '+');"), "const s = replaceText(text, pattern, '+');");
   });
 });
 

@@ -285,7 +285,12 @@ function compileCatalog(catalog, { signatures = {} } = {}) {
       : sig.params || null;
     const firstKinds = entry.firstKinds || sig.firstKinds || ['any'];
     const minArity = entry.params ? params.filter((q) => !q.optional).length : sig.minArity == null ? null : sig.minArity;
-    const info = { atom: entry.atom, entry, params, minArity, firstKinds, module: entry.module || null };
+    // a parameter the atom was only checked with a non-global RegExp for (replaceFirst's pattern):
+    // the form holds there for text and for a RegExp without g, and not for one with it
+    const checks = Array.isArray(entry.check) ? entry.check.flatMap((c) => c.params || []) : [];
+    const gensOf = (name) => checks.filter(([n]) => n === name).map(([, g]) => g);
+    const nonGlobalOnly = [...new Set(checks.map(([n]) => n))].filter((n) => gensOf(n).includes('ngregex') && !gensOf(n).includes('gregex'));
+    const info = { atom: entry.atom, entry, params, minArity, firstKinds, nonGlobalOnly, module: entry.module || null };
     atoms.set(entry.atom, info);
     for (const form of [].concat(entry.js || [])) {
       const src = stripForm(form);

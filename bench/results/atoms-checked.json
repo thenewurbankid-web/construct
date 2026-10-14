@@ -6,11 +6,9 @@
   "different": 0,
   "unchecked": 0,
   "conversionsWithoutCheck": 712,
-  "conversionsWithCheck": 760,
-  "rewritesTakenBack": 1,
-  "takenBackByCause": {
-   "atom": 1
-  },
+  "conversionsWithCheck": 761,
+  "rewritesTakenBack": 0,
+  "takenBackByCause": {},
   "ambiguousPlaces": 76,
   "ambiguousResolved": 49
  },
@@ -1093,7 +1091,7 @@
     }
    ],
    "rejected": [],
-   "body": "function csvCell(value: unknown, options: CsvOptions = {}): string {\n  const separator = orElse(options.separator, () => ',');\n  let text = '';\n  choose([[isA(value, Date), () => text = dateAsIsoText(value)], [() => and(differs(value, null), () => differs(value, undefined)), () => text = textFrom(value)]]);\n  when(and(orElse(options.safe, () => true), () => FORMULA_START.test(text)), () => text = `'${text}`);\n  return when(or(or(or(hasText(text, separator), () => hasText(text, '\"')), () => hasText(text, '\\n')), () => hasText(text, '\\r')), () => `\"${replaceFirst(text, /\"/g, '\"\"')}\"`, () => text);\n}"
+   "body": "function csvCell(value: unknown, options: CsvOptions = {}): string {\n  const separator = orElse(options.separator, () => ',');\n  let text = '';\n  choose([[isA(value, Date), () => text = dateAsIsoText(value)], [() => and(differs(value, null), () => differs(value, undefined)), () => text = textFrom(value)]]);\n  when(and(orElse(options.safe, () => true), () => FORMULA_START.test(text)), () => text = `'${text}`);\n  return when(or(or(or(hasText(text, separator), () => hasText(text, '\"')), () => hasText(text, '\\n')), () => hasText(text, '\\r')), () => `\"${replaceText(text, /\"/g, '\"\"')}\"`, () => text);\n}"
   },
   {
    "name": "cellOf",
@@ -1146,7 +1144,7 @@
    "file": "index.ts",
    "status": "same",
    "convertedUnchecked": 6,
-   "converted": 6,
+   "converted": 7,
    "ambiguousBefore": 1,
    "decisions": [
     {
@@ -1173,41 +1171,8 @@
      "chosen": "sliceText"
     }
    ],
-   "rejected": [
-    {
-     "atom": "replaceFirst",
-     "form": "CallExpression .replace()",
-     "start": 72,
-     "end": 125,
-     "source": "base.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-')",
-     "evidence": {
-      "run": 12,
-      "differs": "outcome",
-      "input": "[\"a,b;c\", Date(1700000000000)]",
-      "original": {
-       "out": "returns \"a-b-c-2023-11-14.csv\"",
-       "args": "[\"a,b;c\", Date(1700000000000)]"
-      },
-      "converted": {
-       "out": "returns \"a-b;c-2023-11-14.csv\"",
-       "args": "[\"a,b;c\", Date(1700000000000)]"
-      }
-     },
-     "diagnosis": {
-      "cause": "atom",
-      "why": "replaceFirst fails on a value `text.replace(pattern, replacement)` accepts, with nothing else around it",
-      "fix": "take `text.replace(pattern, replacement)` out of the catalog forms of replaceFirst, or change replaceFirst in the runtime to match it; the input shown is the test case",
-      "probe": {
-       "code": "function probe(text: string, pattern: unknown, replacement: unknown) { return text.replace(pattern, replacement); }",
-       "differs": "outcome",
-       "input": "[\"trail \", null, <arg2>]",
-       "original": "returns \"trail \"",
-       "converted": "throws TypeError"
-      }
-     }
-    }
-   ],
-   "body": "function csvFileName(base: string, date: Date): string {\n  const slug = replaceFirst(lowerCase(trimmed(base)).replace(/[^a-z0-9]+/g, '-'), /^-+|-+$/g, '');\n  return `${or(slug, () => 'export')}-${sliceText(dateAsIsoText(date), 0, 10)}.csv`;\n}"
+   "rejected": [],
+   "body": "function csvFileName(base: string, date: Date): string {\n  const slug = replaceText(replaceText(lowerCase(trimmed(base)), /[^a-z0-9]+/g, '-'), /^-+|-+$/g, '');\n  return `${or(slug, () => 'export')}-${sliceText(dateAsIsoText(date), 0, 10)}.csv`;\n}"
   },
   {
    "name": "createCsvMachine",

@@ -391,6 +391,10 @@ function toAtoms(code, options = {}) {
         const receiver = mt.bindings[p.placeholders[0]];
         if (!(receiver && receiver.type === 'RegExpLiteral' && !/[gy]/.test(receiver.flags))) { mutates = true; continue; }
       }
+      // a pattern the atom only matches the built-in for when it is not global must be seen
+      // to be text or a RegExp without g; anything else is left to an atom that holds for all
+      const notGlobal = (n) => n && (n.type === 'StringLiteral' || n.type === 'TemplateLiteral' || (n.type === 'RegExpLiteral' && !/g/.test(n.flags)));
+      if ((p.info.nonGlobalOnly || []).some((nm) => nm in mt.bindings && !notGlobal(mt.bindings[nm]))) continue;
       // every missing argument must be an optional parameter of the atom
       const params = p.info.params;
       if (p.constant && p.info.minArity !== 0) continue;
