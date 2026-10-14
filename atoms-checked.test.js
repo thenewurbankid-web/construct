@@ -7,6 +7,10 @@ const { compileCatalog } = require('./atoms-catalog');
 const { createSandbox, typesOfSource, describeType } = require('./bench/atoms/equivalence');
 const { createCheckedConverter } = require('./bench/atoms/checked');
 const { classifyCause } = require('./bench/atoms/diagnose');
+const { createCheckerTypes } = require('./bench/atoms/checker-types');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
 
 const BUNDLE = `globalThis.__smith = {
   plus: (a, b) => a + b,
@@ -121,6 +125,23 @@ describe('the equivalence check', () => {
         { name: 'tags', optional: true, d: { k: 'array', of: { k: 'string' } } },
       ],
     });
+  });
+
+  test('a parameter typed only by its context gets the checker type, and the code past the switch is reached', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'checker-types-'));
+    const file = path.join(dir, 'machine.ts');
+    const method = "send(state, event) {\n    switch (event.type) {\n      case 'ADD': return state.count * 2;\n      default: return 0;\n    }\n  }";
+    fs.writeFileSync(file, `type Ev = { type: 'ADD' } | { type: 'RESET' };\ninterface M<S, E> { send(state: S, event: E): number }\nexport const m: M<{ count: number }, Ev> = {\n  ${method},\n};\n`);
+    const types = createCheckerTypes().paramTypes(file, method, 'method');
+    assert.deepEqual(types, [
+      { k: 'object', fields: [{ name: 'count', optional: false, d: { k: 'number' } }] },
+      { k: 'union', of: [{ k: 'object', fields: [{ name: 'type', optional: false, d: { k: 'lit', v: 'ADD' } }] }, { k: 'object', fields: [{ name: 'type', optional: false, d: { k: 'lit', v: 'RESET' } }] }] },
+    ]);
+    const pair = { original: method, converted: method.replace('state.count * 2', 'times(state.count, 2)'), importDecl: "import { times } from 'smith';", kind: 'method', runs: 20 };
+    const ran = (res) => { const t = (res.atomCalls || {}).times || { calls: 0, unknown: 0 }; return t.calls - t.unknown; };
+    assert.equal(ran(sandbox.checkPair(pair)), 0, 'without types no run reaches the atom with a real value');
+    assert.ok(ran(sandbox.checkPair({ ...pair, paramTypes: types })) > 0, 'with them it does');
+    fs.rmSync(dir, { recursive: true });
   });
 });
 

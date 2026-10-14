@@ -66,8 +66,8 @@ function programOf(code, kind) {
     .join('\n');
 }
 
-function recordFor(fn, { converter, types, runs = 40, seed = 1, runtime, origin = null, allowUntranslated = BY_DESIGN }) {
-  const res = converter.convert(fn.code, { kind: fn.kind, types, runs, seed });
+function recordFor(fn, { converter, types, runs = 40, seed = 1, runtime, origin = null, allowUntranslated = BY_DESIGN, paramTypes = null }) {
+  const res = converter.convert(fn.code, { kind: fn.kind, types, runs, seed, paramTypes });
   const { status, exercised = 0 } = res.check;
   if (status !== 'same') return { dropped: 'not same', detail: res.check.why || status };
   if (!res.converted) return { dropped: 'no rewrite' };
@@ -118,6 +118,7 @@ async function buildDataset({ runs = 40, allowUntranslated = BY_DESIGN } = {}) {
   const { compiled } = catalogFor(snap.dir, snap.sha);
   const converter = await createCheckedConverter({ compiled, bundle: bundleRuntime(snap.dir), runtimeTypes: typesOfRuntime(snap.dir) });
   const corpus = loadCorpus();
+  const checker = require('./checker-types').createCheckerTypes();
   const base = corpus.roots.length ? path.dirname(corpus.roots[0]) : '';
   const repo = repoName(base);
   const sources = new Map(corpus.sources.map((s) => [s.file, s.src]));
@@ -136,7 +137,7 @@ async function buildDataset({ runs = 40, allowUntranslated = BY_DESIGN } = {}) {
     for (const f of corpus.functions) {
       if (f.jsx) { jsx++; continue; }
       const where = { name: f.name, file: path.relative(base, f.file) };
-      const out = recordFor(f, { converter, types: typesFor(f.file), runs, seed: hash(f.name), runtime, origin: { repo, file: where.file, name: where.name }, allowUntranslated });
+      const out = recordFor(f, { converter, types: typesFor(f.file), runs, seed: hash(f.name), runtime, origin: { repo, file: where.file, name: where.name }, allowUntranslated, paramTypes: checker.paramTypes(f.file, f.code) });
       if (out.dropped) dropped.push({ ...where, reason: out.dropped, detail: out.detail });
       else if (ids.has(out.record.id)) dropped.push({ ...where, reason: 'duplicate', detail: out.record.id });
       else { ids.add(out.record.id); records.push(out.record); }

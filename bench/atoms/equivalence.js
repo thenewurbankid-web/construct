@@ -2,7 +2,7 @@
 // form on the same generated inputs, isolated in QuickJS, and compare what they do.
 //
 //   const sandbox = await createSandbox({ bundle })       bundle = bundleRuntime(dir)
-//   sandbox.checkPair({ original, converted, importDecl, kind, types, runs, seed })
+//   sandbox.checkPair({ original, converted, importDecl, kind, types, runs, seed, paramTypes })
 //     -> { status: 'same' | 'different' | 'not-runnable', runs, compared, exercised, mismatches, why? }
 //   checkCorpus({ runs })  -> { summary, functions: [...] }   (CLI: node bench/atoms/equivalence.js)
 //
@@ -471,7 +471,9 @@ async function createSandbox({ bundle }) {
   }
 
   // atomKinds: {atom: [kinds its first parameter takes]} for the atoms the converted side imports
-  function checkPair({ original, converted, importDecl = '', kind = 'function', types = new Map(), runs = 25, seed = 1, atomKinds = {} }) {
+  // paramTypes: [descriptor | null] per parameter (bench/atoms/checker-types.js), used where a
+  //   parameter has no type of its own
+  function checkPair({ original, converted, importDecl = '', kind = 'function', types = new Map(), runs = 25, seed = 1, atomKinds = {}, paramTypes = null }) {
     let a;
     let b;
     let params;
@@ -479,6 +481,7 @@ async function createSandbox({ bundle }) {
       a = prepareSide(original, kind, '');
       b = prepareSide(converted, kind, importDecl);
       params = paramsOf(original, kind, types);
+      if (paramTypes) params = params.map((p, i) => (!p.rest && p.d.k === 'unknown' && paramTypes[i] ? { ...p, d: paramTypes[i] } : p));
     } catch (e) {
       return { status: 'not-runnable', why: `cannot prepare: ${e.message.split('\n')[0]}` };
     }

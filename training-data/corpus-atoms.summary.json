@@ -8,12 +8,12 @@
   ],
   "functions": 207,
   "jsxSkipped": 173,
-  "kept": 76,
-  "dropped": 131,
+  "kept": 83,
+  "dropped": 124,
   "byReason": {
    "no rewrite": 66,
    "few runs exercised": 30,
-   "untranslated": 25,
+   "untranslated": 18,
    "atom renamed": 1,
    "duplicate": 9
   }
@@ -293,12 +293,6 @@
    "reason": "no rewrite"
   },
   {
-   "name": "send",
-   "file": "packages/line-atoms/atoms/client-pagination/index.ts",
-   "reason": "untranslated",
-   "detail": "BinaryExpression + (ambiguous type); BinaryExpression < (ambiguous type)"
-  },
-  {
    "name": "stateOf",
    "file": "packages/line-atoms/atoms/client-pagination/index.ts",
    "reason": "no rewrite"
@@ -337,6 +331,12 @@
    "reason": "no rewrite"
   },
   {
+   "name": "send",
+   "file": "packages/line-atoms/atoms/csv-export/index.ts",
+   "reason": "few runs exercised",
+   "detail": "4 of 40"
+  },
+  {
    "name": "stateOf",
    "file": "packages/line-atoms/atoms/csv-export/index.ts",
    "reason": "no rewrite"
@@ -365,12 +365,6 @@
    "detail": "11 of 40"
   },
   {
-   "name": "send",
-   "file": "packages/line-atoms/atoms/date-range/index.ts",
-   "reason": "untranslated",
-   "detail": "BinaryExpression < (ambiguous type)"
-  },
-  {
    "name": "stateOf",
    "file": "packages/line-atoms/atoms/date-range/index.ts",
    "reason": "no rewrite"
@@ -384,12 +378,6 @@
    "name": "settle",
    "file": "packages/line-atoms/atoms/debounced-search/index.ts",
    "reason": "no rewrite"
-  },
-  {
-   "name": "send",
-   "file": "packages/line-atoms/atoms/debounced-search/index.ts",
-   "reason": "untranslated",
-   "detail": "BinaryExpression + (ambiguous type); BinaryExpression < (ambiguous type)"
   },
   {
    "name": "stateOf",
@@ -477,18 +465,6 @@
    "detail": "13 of 40"
   },
   {
-   "name": "init",
-   "file": "packages/line-atoms/atoms/multi-step-flow/index.ts",
-   "reason": "few runs exercised",
-   "detail": "5 of 40"
-  },
-  {
-   "name": "send",
-   "file": "packages/line-atoms/atoms/multi-step-flow/index.ts",
-   "reason": "untranslated",
-   "detail": "BinaryExpression + (ambiguous type); BinaryExpression < (ambiguous type); BinaryExpression > (ambiguous type)"
-  },
-  {
    "name": "stateOf",
    "file": "packages/line-atoms/atoms/multi-step-flow/index.ts",
    "reason": "no rewrite"
@@ -514,12 +490,6 @@
    "name": "stateOf",
    "file": "packages/line-atoms/atoms/optimistic-update/index.ts",
    "reason": "no rewrite"
-  },
-  {
-   "name": "send",
-   "file": "packages/line-atoms/atoms/paginated-query/index.ts",
-   "reason": "untranslated",
-   "detail": "BinaryExpression + (ambiguous type); BinaryExpression < (ambiguous type)"
   },
   {
    "name": "stateOf",
@@ -561,12 +531,6 @@
    "detail": "17 of 40"
   },
   {
-   "name": "send",
-   "file": "packages/line-atoms/atoms/polling/index.ts",
-   "reason": "untranslated",
-   "detail": "BinaryExpression + (ambiguous type)"
-  },
-  {
    "name": "stateOf",
    "file": "packages/line-atoms/atoms/polling/index.ts",
    "reason": "no rewrite"
@@ -593,12 +557,6 @@
    "file": "packages/line-atoms/atoms/undo-history/index.ts",
    "reason": "few runs exercised",
    "detail": "10 of 40"
-  },
-  {
-   "name": "send",
-   "file": "packages/line-atoms/atoms/undo-history/index.ts",
-   "reason": "untranslated",
-   "detail": "CallExpression .slice() (ambiguous type)"
   },
   {
    "name": "stateOf",

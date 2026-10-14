@@ -3,15 +3,15 @@
  "arms": {
   "free": {
    "score": {
-    "cases": 98,
-    "pickRight": 16,
+    "cases": 130,
+    "pickRight": 26,
     "pickSaidNeither": 30,
     "neitherRight": 0,
-    "wrongAtom": 52,
-    "listedOrderRight": 46,
+    "wrongAtom": 74,
+    "listedOrderRight": 56,
     "ordersDisagree": 30,
-    "picks": 49,
-    "neithers": 49
+    "picks": 65,
+    "neithers": 65
    },
    "rows": [
     {
@@ -28,7 +28,7 @@
       "at"
      ],
      "got": "neither",
-     "ms": 125
+     "ms": 1260
     },
     {
      "id": "validate:130:neither",
@@ -43,7 +43,7 @@
       "at"
      ],
      "got": "at",
-     "ms": 55
+     "ms": 59
     },
     {
      "id": "validate:226:pick",
@@ -59,7 +59,7 @@
       "get"
      ],
      "got": "get",
-     "ms": 83
+     "ms": 81
     },
     {
      "id": "validate:226:neither",
@@ -90,7 +90,7 @@
       "at"
      ],
      "got": "neither",
-     "ms": 85
+     "ms": 112
     },
     {
      "id": "defineService:242:neither",
@@ -105,7 +105,38 @@
       "at"
      ],
      "got": "at",
-     "ms": 55
+     "ms": 54
+    },
+    {
+     "id": "send:280:pick",
+     "type": "pick",
+     "place": "state.request + 1",
+     "options": [
+      "plus",
+      "join"
+     ],
+     "answer": "plus",
+     "asked": [
+      "plus",
+      "plus"
+     ],
+     "got": "plus",
+     "ms": 132
+    },
+    {
+     "id": "send:280:neither",
+     "type": "neither",
+     "place": "state.request + 1",
+     "options": [
+      "join"
+     ],
+     "answer": "neither",
+     "asked": [
+      "add",
+      "add"
+     ],
+     "got": "add",
+     "ms": 54
     },
     {
      "id": "clampPage:175:pick",
@@ -121,7 +152,7 @@
       "greaterThan"
      ],
      "got": "greaterThan",
-     "ms": 109
+     "ms": 119
     },
     {
      "id": "clampPage:175:neither",
@@ -136,7 +167,7 @@
       "isAfter"
      ],
      "got": "isAfter",
-     "ms": 65
+     "ms": 63
     },
     {
      "id": "clampPage:134:pick",
@@ -152,7 +183,7 @@
       "isBefore"
      ],
      "got": "neither",
-     "ms": 92
+     "ms": 89
     },
     {
      "id": "clampPage:134:neither",
@@ -167,7 +198,7 @@
       "isBefore"
      ],
      "got": "isBefore",
-     "ms": 64
+     "ms": 65
     },
     {
      "id": "sliceBounds:155:pick",
@@ -183,7 +214,7 @@
       "plus"
      ],
      "got": "plus",
-     "ms": 81
+     "ms": 80
     },
     {
      "id": "sliceBounds:155:neither",
@@ -198,7 +229,7 @@
       "add"
      ],
      "got": "add",
-     "ms": 53
+     "ms": 51
     },
     {
      "id": "pageItems:112:pick",
@@ -214,7 +245,7 @@
       "sliceText"
      ],
      "got": "sliceText",
-     "ms": 96
+     "ms": 93
     },
     {
      "id": "pageItems:112:neither",
@@ -229,7 +260,69 @@
       "sliceText"
      ],
      "got": "sliceText",
-     "ms": 64
+     "ms": 65
+    },
+    {
+     "id": "send:149:pick",
+     "type": "pick",
+     "place": "state.pageIndex + 1",
+     "options": [
+      "plus",
+      "join"
+     ],
+     "answer": "plus",
+     "asked": [
+      "plus",
+      "plus"
+     ],
+     "got": "plus",
+     "ms": 79
+    },
+    {
+     "id": "send:149:neither",
+     "type": "neither",
+     "place": "state.pageIndex + 1",
+     "options": [
+      "join"
+     ],
+     "answer": "neither",
+     "asked": [
+      "join",
+      "join"
+     ],
+     "got": "join",
+     "ms": 55
+    },
+    {
+     "id": "send:609:pick",
+     "type": "pick",
+     "place": "event.pageSize < 1",
+     "options": [
+      "lessThan",
+      "isBefore"
+     ],
+     "answer": "lessThan",
+     "asked": [
+      "lessThan",
+      "lessThan"
+     ],
+     "got": "lessThan",
+     "ms": 90
+    },
+    {
+     "id": "send:609:neither",
+     "type": "neither",
+     "place": "event.pageSize < 1",
+     "options": [
+      "isBefore"
+     ],
+     "answer": "neither",
+     "asked": [
+      "isBefore",
+      "isBefore"
+     ],
+     "got": "isBefore",
+     "ms": 65
     },
     {
      "id": "csvCell:372:pick",
@@ -245,7 +338,7 @@
       "hasItem"
      ],
      "got": "neither",
-     "ms": 97
+     "ms": 120
     },
     {
      "id": "csvCell:372:neither",
@@ -276,7 +369,7 @@
       "plus"
      ],
      "got": "neither",
-     "ms": 78
+     "ms": 94
     },
     {
      "id": "toCsv:379:neither",
@@ -291,7 +384,7 @@
       "plus"
      ],
      "got": "plus",
-     "ms": 54
+     "ms": 53
     },
     {
      "id": "csvFileName:183:pick",
@@ -307,7 +400,7 @@
       "sliceText"
      ],
      "got": "sliceText",
-     "ms": 90
+     "ms": 105
     },
     {
      "id": "csvFileName:183:neither",
@@ -322,7 +415,7 @@
       "slice"
      ],
      "got": "slice",
-     "ms": 55
+     "ms": 54
     },
     {
      "id": "startOfDay:46:pick",
@@ -338,7 +431,7 @@
       "dateFromParts"
      ],
      "got": "neither",
-     "ms": 100
+     "ms": 113
     },
     {
      "id": "startOfDay:46:neither",
@@ -369,7 +462,7 @@
       "dateFromParts"
      ],
      "got": "neither",
-     "ms": 98
+     "ms": 97
     },
     {
      "id": "endOfDay:44:neither",
@@ -384,7 +477,7 @@
       "dateFromParts"
      ],
      "got": "dateFromParts",
-     "ms": 74
+     "ms": 73
     },
     {
      "id": "lastDays:74:pick",
@@ -415,7 +508,7 @@
       "dateFromParts"
      ],
      "got": "dateFromParts",
-     "ms": 76
+     "ms": 74
     },
     {
      "id": "init:31:pick",
@@ -431,7 +524,7 @@
       "at"
      ],
      "got": "neither",
-     "ms": 83
+     "ms": 80
     },
     {
      "id": "init:31:neither",
@@ -446,7 +539,7 @@
       "at"
      ],
      "got": "at",
-     "ms": 52
+     "ms": 53
     },
     {
      "id": "init:53:pick",
@@ -462,7 +555,7 @@
       "at"
      ],
      "got": "neither",
-     "ms": 79
+     "ms": 80
     },
     {
      "id": "init:53:neither",
@@ -477,7 +570,38 @@
       "at"
      ],
      "got": "at",
-     "ms": 54
+     "ms": 53
+    },
+    {
+     "id": "send:218:pick",
+     "type": "pick",
+     "place": "event.days < 1",
+     "options": [
+      "lessThan",
+      "isBefore"
+     ],
+     "answer": "lessThan",
+     "asked": [
+      "isBefore",
+      "isBefore"
+     ],
+     "got": "isBefore",
+     "ms": 117
+    },
+    {
+     "id": "send:218:neither",
+     "type": "neither",
+     "place": "event.days < 1",
+     "options": [
+      "isBefore"
+     ],
+     "answer": "neither",
+     "asked": [
+      "isBefore",
+      "isBefore"
+     ],
+     "got": "isBefore",
+     "ms": 65
     },
     {
      "id": "settledQuery:96:pick",
@@ -493,7 +617,7 @@
       "lessThan"
      ],
      "got": "lessThan",
-     "ms": 92
+     "ms": 117
     },
     {
      "id": "settledQuery:96:neither",
@@ -508,7 +632,7 @@
       "isBefore"
      ],
      "got": "isBefore",
-     "ms": 67
+     "ms": 63
     },
     {
      "id": "init:84:pick",
@@ -524,7 +648,7 @@
       "at"
      ],
      "got": "neither",
-     "ms": 81
+     "ms": 82
     },
     {
      "id": "init:84:neither",
@@ -555,7 +679,7 @@
       "at"
      ],
      "got": "neither",
-     "ms": 79
+     "ms": 77
     },
     {
      "id": "init:116:neither",
@@ -570,7 +694,69 @@
       "at"
      ],
      "got": "at",
+     "ms": 53
+    },
+    {
+     "id": "send:137:pick",
+     "type": "pick",
+     "place": "event.at + state.delay",
+     "options": [
+      "plus",
+      "join"
+     ],
+     "answer": "plus",
+     "asked": [
+      "plus",
+      "plus"
+     ],
+     "got": "plus",
+     "ms": 105
+    },
+    {
+     "id": "send:137:neither",
+     "type": "neither",
+     "place": "event.at + state.delay",
+     "options": [
+      "join"
+     ],
+     "answer": "neither",
+     "asked": [
+      "join",
+      "join"
+     ],
+     "got": "join",
      "ms": 54
+    },
+    {
+     "id": "send:248:pick",
+     "type": "pick",
+     "place": "event.at < state.dueAt",
+     "options": [
+      "lessThan",
+      "isBefore"
+     ],
+     "answer": "lessThan",
+     "asked": [
+      "isBefore",
+      "isBefore"
+     ],
+     "got": "isBefore",
+     "ms": 91
+    },
+    {
+     "id": "send:248:neither",
+     "type": "neither",
+     "place": "event.at < state.dueAt",
+     "options": [
+      "isBefore"
+     ],
+     "answer": "neither",
+     "asked": [
+      "isBefore",
+      "isBefore"
+     ],
+     "got": "isBefore",
+     "ms": 63
     },
     {
      "id": "matchesSearch:196:pick",
@@ -586,7 +772,7 @@
       "hasText"
      ],
      "got": "hasText",
-     "ms": 95
+     "ms": 123
     },
     {
      "id": "matchesSearch:196:neither",
@@ -601,7 +787,7 @@
       "hasItem"
      ],
      "got": "hasItem",
-     "ms": 67
+     "ms": 64
     },
     {
      "id": "init:36:pick",
@@ -617,7 +803,7 @@
       "at"
      ],
      "got": "neither",
-     "ms": 82
+     "ms": 83
     },
     {
      "id": "init:36:neither",
@@ -632,7 +818,7 @@
       "at"
      ],
      "got": "at",
-     "ms": 54
+     "ms": 53
     },
     {
      "id": "init:61:pick",
@@ -648,7 +834,7 @@
       "at"
      ],
      "got": "neither",
-     "ms": 80
+     "ms": 79
     },
     {
      "id": "init:61:neither",
@@ -663,7 +849,7 @@
       "at"
      ],
      "got": "at",
-     "ms": 54
+     "ms": 52
     },
     {
      "id": "init:82:pick",
@@ -679,7 +865,7 @@
       "at"
      ],
      "got": "neither",
-     "ms": 80
+     "ms": 79
     },
     {
      "id": "init:82:neither",
@@ -710,7 +896,7 @@
       "isAfter"
      ],
      "got": "neither",
-     "ms": 93
+     "ms": 118
     },
     {
      "id": "hasNextPage:72:neither",
@@ -725,7 +911,7 @@
       "isAfter"
      ],
      "got": "isAfter",
-     "ms": 63
+     "ms": 62
     },
     {
      "id": "isFetchingNextPage:110:pick",
@@ -741,12 +927,105 @@
       "greaterThan"
      ],
      "got": "greaterThan",
-     "ms": 93
+     "ms": 92
     },
     {
      "id": "isFetchingNextPage:110:neither",
      "type": "neither",
      "place": "state.pages.length > 0",
+     "options": [
+      "isAfter"
+     ],
+     "answer": "neither",
+     "asked": [
+      "isAfter",
+      "isAfter"
+     ],
+     "got": "isAfter",
+     "ms": 64
+    },
+    {
+     "id": "send:393:pick",
+     "type": "pick",
+     "place": "state.index + 1",
+     "options": [
+      "plus",
+      "join"
+     ],
+     "answer": "plus",
+     "asked": [
+      "plus",
+      "plus"
+     ],
+     "got": "plus",
+     "ms": 106
+    },
+    {
+     "id": "send:393:neither",
+     "type": "neither",
+     "place": "state.index + 1",
+     "options": [
+      "join"
+     ],
+     "answer": "neither",
+     "asked": [
+      "join",
+      "join"
+     ],
+     "got": "join",
+     "ms": 53
+    },
+    {
+     "id": "send:773:pick",
+     "type": "pick",
+     "place": "index < 0",
+     "options": [
+      "lessThan",
+      "isBefore"
+     ],
+     "answer": "lessThan",
+     "asked": [
+      "isBefore",
+      "isBefore"
+     ],
+     "got": "isBefore",
+     "ms": 90
+    },
+    {
+     "id": "send:773:neither",
+     "type": "neither",
+     "place": "index < 0",
+     "options": [
+      "isBefore"
+     ],
+     "answer": "neither",
+     "asked": [
+      "isBefore",
+      "isBefore"
+     ],
+     "got": "isBefore",
+     "ms": 65
+    },
+    {
+     "id": "send:786:pick",
+     "type": "pick",
+     "place": "index > state.visited",
+     "options": [
+      "greaterThan",
+      "isAfter"
+     ],
+     "answer": "greaterThan",
+     "asked": [
+      "isAfter",
+      "isAfter"
+     ],
+     "got": "isAfter",
+     "ms": 91
+    },
+    {
+     "id": "send:786:neither",
+     "type": "neither",
+     "place": "index > state.visited",
      "options": [
       "isAfter"
      ],
@@ -772,7 +1051,7 @@
       "plus"
      ],
      "got": "plus",
-     "ms": 84
+     "ms": 165
     },
     {
      "id": "toXStateConfig:469:neither",
@@ -787,7 +1066,7 @@
       "join"
      ],
      "got": "join",
-     "ms": 54
+     "ms": 55
     },
     {
      "id": "toXStateConfig:424:pick",
@@ -849,7 +1128,7 @@
       "isAfter"
      ],
      "got": "isAfter",
-     "ms": 66
+     "ms": 64
     },
     {
      "id": "hasNextPage:73:pick",
@@ -896,7 +1175,7 @@
       "isAfter"
      ],
      "got": "neither",
-     "ms": 92
+     "ms": 119
     },
     {
      "id": "hasPreviousPage:77:neither",
@@ -927,7 +1206,7 @@
       "at"
      ],
      "got": "neither",
-     "ms": 80
+     "ms": 82
     },
     {
      "id": "init:57:neither",
@@ -958,7 +1237,7 @@
       "at"
      ],
      "got": "neither",
-     "ms": 78
+     "ms": 79
     },
     {
      "id": "init:90:neither",
@@ -976,6 +1255,68 @@
      "ms": 53
     },
     {
+     "id": "send:866:pick",
+     "type": "pick",
+     "place": "state.pageIndex + 1",
+     "options": [
+      "plus",
+      "join"
+     ],
+     "answer": "plus",
+     "asked": [
+      "plus",
+      "plus"
+     ],
+     "got": "plus",
+     "ms": 106
+    },
+    {
+     "id": "send:866:neither",
+     "type": "neither",
+     "place": "state.pageIndex + 1",
+     "options": [
+      "join"
+     ],
+     "answer": "neither",
+     "asked": [
+      "join",
+      "join"
+     ],
+     "got": "join",
+     "ms": 53
+    },
+    {
+     "id": "send:1184:pick",
+     "type": "pick",
+     "place": "event.pageSize < 1",
+     "options": [
+      "lessThan",
+      "isBefore"
+     ],
+     "answer": "lessThan",
+     "asked": [
+      "lessThan",
+      "lessThan"
+     ],
+     "got": "lessThan",
+     "ms": 90
+    },
+    {
+     "id": "send:1184:neither",
+     "type": "neither",
+     "place": "event.pageSize < 1",
+     "options": [
+      "isBefore"
+     ],
+     "answer": "neither",
+     "asked": [
+      "isBefore",
+      "isBefore"
+     ],
+     "got": "isBefore",
+     "ms": 64
+    },
+    {
      "id": "can:245:pick",
      "type": "pick",
      "place": "missing.length < list.length",
@@ -989,7 +1330,7 @@
       "isBefore"
      ],
      "got": "neither",
-     "ms": 90
+     "ms": 118
     },
     {
      "id": "can:245:neither",
@@ -1004,7 +1345,100 @@
       "isBefore"
      ],
      "got": "isBefore",
-     "ms": 65
+     "ms": 64
+    },
+    {
+     "id": "send:274:pick",
+     "type": "pick",
+     "place": "state.attempts + 1",
+     "options": [
+      "plus",
+      "join"
+     ],
+     "answer": "plus",
+     "asked": [
+      "plus",
+      "plus"
+     ],
+     "got": "plus",
+     "ms": 80
+    },
+    {
+     "id": "send:274:neither",
+     "type": "neither",
+     "place": "state.attempts + 1",
+     "options": [
+      "join"
+     ],
+     "answer": "neither",
+     "asked": [
+      "join",
+      "join"
+     ],
+     "got": "join",
+     "ms": 54
+    },
+    {
+     "id": "send:655:pick",
+     "type": "pick",
+     "place": "state.attempts + 1",
+     "options": [
+      "plus",
+      "join"
+     ],
+     "answer": "plus",
+     "asked": [
+      "plus",
+      "plus"
+     ],
+     "got": "plus",
+     "ms": 76
+    },
+    {
+     "id": "send:655:neither",
+     "type": "neither",
+     "place": "state.attempts + 1",
+     "options": [
+      "join"
+     ],
+     "answer": "neither",
+     "asked": [
+      "join",
+      "join"
+     ],
+     "got": "join",
+     "ms": 52
+    },
+    {
+     "id": "send:1182:pick",
+     "type": "pick",
+     "place": "state.failures + 1",
+     "options": [
+      "plus",
+      "join"
+     ],
+     "answer": "plus",
+     "asked": [
+      "plus",
+      "plus"
+     ],
+     "got": "plus",
+     "ms": 79
+    },
+    {
+     "id": "send:1182:neither",
+     "type": "neither",
+     "place": "state.failures + 1",
+     "options": [
+      "join"
+     ],
+     "answer": "neither",
+     "asked": [
+      "join",
+      "join"
+     ],
+     "got": "join",
+     "ms": 54
     },
     {
      "id": "statusOf:216:pick",
@@ -1020,7 +1454,7 @@
       "isAfter"
      ],
      "got": "neither",
-     "ms": 106
+     "ms": 104
     },
     {
      "id": "statusOf:216:neither",
@@ -1035,7 +1469,7 @@
       "isAfter"
      ],
      "got": "isAfter",
-     "ms": 64
+     "ms": 63
     },
     {
      "id": "statusOf:164:pick",
@@ -1066,7 +1500,7 @@
       "isAfter"
      ],
      "got": "isAfter",
-     "ms": 64
+     "ms": 62
     },
     {
      "id": "statusOf:95:pick",
@@ -1082,7 +1516,7 @@
       "isAfter"
      ],
      "got": "neither",
-     "ms": 89
+     "ms": 87
     },
     {
      "id": "statusOf:95:neither",
@@ -1097,7 +1531,7 @@
       "isAfter"
      ],
      "got": "isAfter",
-     "ms": 65
+     "ms": 64
     },
     {
      "id": "statusOf:114:pick",
@@ -1144,7 +1578,7 @@
       "isAfter"
      ],
      "got": "neither",
-     "ms": 94
+     "ms": 107
     },
     {
      "id": "canUndo:67:neither",
@@ -1159,7 +1593,7 @@
       "isAfter"
      ],
      "got": "isAfter",
-     "ms": 65
+     "ms": 64
     },
     {
      "id": "canRedo:67:pick",
@@ -1175,7 +1609,7 @@
       "greaterThan"
      ],
      "got": "greaterThan",
-     "ms": 90
+     "ms": 92
     },
     {
      "id": "canRedo:67:neither",
@@ -1190,7 +1624,69 @@
       "isAfter"
      ],
      "got": "isAfter",
-     "ms": 64
+     "ms": 63
+    },
+    {
+     "id": "send:175:pick",
+     "type": "pick",
+     "place": "[...state.past, state.present].slice(-state.limit)",
+     "options": [
+      "sliceText",
+      "part"
+     ],
+     "answer": "part",
+     "asked": [
+      "sliceText",
+      "sliceText"
+     ],
+     "got": "sliceText",
+     "ms": 92
+    },
+    {
+     "id": "send:175:neither",
+     "type": "neither",
+     "place": "[...state.past, state.present].slice(-state.limit)",
+     "options": [
+      "sliceText"
+     ],
+     "answer": "neither",
+     "asked": [
+      "sliceText",
+      "sliceText"
+     ],
+     "got": "sliceText",
+     "ms": 66
+    },
+    {
+     "id": "send:464:pick",
+     "type": "pick",
+     "place": "state.past.slice(0, -1)",
+     "options": [
+      "sliceText",
+      "part"
+     ],
+     "answer": "part",
+     "asked": [
+      "sliceText",
+      "sliceText"
+     ],
+     "got": "sliceText",
+     "ms": 91
+    },
+    {
+     "id": "send:464:neither",
+     "type": "neither",
+     "place": "state.past.slice(0, -1)",
+     "options": [
+      "sliceText"
+     ],
+     "answer": "neither",
+     "asked": [
+      "sliceText",
+      "sliceText"
+     ],
+     "got": "sliceText",
+     "ms": 65
     },
     {
      "id": "clearEdited:262:pick",
@@ -1206,7 +1702,7 @@
       "get"
      ],
      "got": "get",
-     "ms": 85
+     "ms": 137
     },
     {
      "id": "clearEdited:262:neither",
@@ -1237,7 +1733,7 @@
       "get"
      ],
      "got": "get",
-     "ms": 82
+     "ms": 81
     },
     {
      "id": "clearEdited:322:neither",
@@ -1252,7 +1748,7 @@
       "at"
      ],
      "got": "at",
-     "ms": 55
+     "ms": 54
     },
     {
      "id": "initialsOf:118:pick",
@@ -1268,7 +1764,7 @@
       "at"
      ],
      "got": "neither",
-     "ms": 81
+     "ms": 105
     },
     {
      "id": "initialsOf:118:neither",
@@ -1314,7 +1810,7 @@
       "isAfter"
      ],
      "got": "isAfter",
-     "ms": 65
+     "ms": 63
     },
     {
      "id": "contains:62:pick",
@@ -1330,7 +1826,7 @@
       "hasItem"
      ],
      "got": "neither",
-     "ms": 94
+     "ms": 143
     },
     {
      "id": "contains:62:neither",
@@ -1361,7 +1857,7 @@
       "plus"
      ],
      "got": "plus",
-     "ms": 81
+     "ms": 106
     },
     {
      "id": "pageItems:167:neither",
@@ -1376,7 +1872,7 @@
       "join"
      ],
      "got": "join",
-     "ms": 53
+     "ms": 51
     },
     {
      "id": "pageItems:184:pick",
@@ -1392,7 +1888,7 @@
       "plus"
      ],
      "got": "plus",
-     "ms": 78
+     "ms": 76
     },
     {
      "id": "pageItems:184:neither",
@@ -1407,7 +1903,7 @@
       "join"
      ],
      "got": "join",
-     "ms": 53
+     "ms": 54
     },
     {
      "id": "pageItems:360:pick",
@@ -1423,7 +1919,7 @@
       "isAfter"
      ],
      "got": "neither",
-     "ms": 91
+     "ms": 90
     },
     {
      "id": "pageItems:360:neither",
@@ -1438,7 +1934,7 @@
       "isAfter"
      ],
      "got": "isAfter",
-     "ms": 65
+     "ms": 63
     },
     {
      "id": "pageItems:369:pick",
@@ -1454,7 +1950,7 @@
       "greaterThan"
      ],
      "got": "greaterThan",
-     "ms": 90
+     "ms": 91
     },
     {
      "id": "pageItems:369:neither",
@@ -1469,7 +1965,7 @@
       "isAfter"
      ],
      "got": "isAfter",
-     "ms": 64
+     "ms": 63
     },
     {
      "id": "stateOf:67:pick",
@@ -1485,7 +1981,7 @@
       "isBefore"
      ],
      "got": "neither",
-     "ms": 92
+     "ms": 109
     },
     {
      "id": "stateOf:67:neither",
@@ -1516,7 +2012,7 @@
       "get"
      ],
      "got": "get",
-     "ms": 82
+     "ms": 109
     },
     {
      "id": "nextDirection:103:neither",
@@ -1537,15 +2033,15 @@
   },
   "constrained": {
    "score": {
-    "cases": 98,
+    "cases": 130,
     "pickRight": 6,
-    "pickSaidNeither": 37,
+    "pickSaidNeither": 52,
     "neitherRight": 2,
-    "wrongAtom": 53,
-    "listedOrderRight": 42,
-    "ordersDisagree": 37,
-    "picks": 49,
-    "neithers": 49
+    "wrongAtom": 70,
+    "listedOrderRight": 55,
+    "ordersDisagree": 52,
+    "picks": 65,
+    "neithers": 65
    },
    "rows": [
     {
@@ -1577,7 +2073,7 @@
       "at"
      ],
      "got": "at",
-     "ms": 117
+     "ms": 116
     },
     {
      "id": "validate:226:pick",
@@ -1593,7 +2089,7 @@
       "at"
      ],
      "got": "neither",
-     "ms": 143
+     "ms": 141
     },
     {
      "id": "validate:226:neither",
@@ -1608,7 +2104,7 @@
       "at"
      ],
      "got": "at",
-     "ms": 117
+     "ms": 116
     },
     {
      "id": "defineService:242:pick",
@@ -1639,7 +2135,38 @@
       "at"
      ],
      "got": "at",
-     "ms": 116
+     "ms": 113
+    },
+    {
+     "id": "send:280:pick",
+     "type": "pick",
+     "place": "state.request + 1",
+     "options": [
+      "plus",
+      "join"
+     ],
+     "answer": "plus",
+     "asked": [
+      "plus",
+      "join"
+     ],
+     "got": "neither",
+     "ms": 141
+    },
+    {
+     "id": "send:280:neither",
+     "type": "neither",
+     "place": "state.request + 1",
+     "options": [
+      "join"
+     ],
+     "answer": "neither",
+     "asked": [
+      "join",
+      "join"
+     ],
+     "got": "join",
+     "ms": 115
     },
     {
      "id": "clampPage:175:pick",
@@ -1655,7 +2182,7 @@
       "isAfter"
      ],
      "got": "neither",
-     "ms": 176
+     "ms": 177
     },
     {
      "id": "clampPage:175:neither",
@@ -1670,7 +2197,7 @@
       "isAfter"
      ],
      "got": "isAfter",
-     "ms": 138
+     "ms": 135
     },
     {
      "id": "clampPage:134:pick",
@@ -1686,7 +2213,7 @@
       "isBefore"
      ],
      "got": "neither",
-     "ms": 164
+     "ms": 162
     },
     {
      "id": "clampPage:134:neither",
@@ -1701,7 +2228,7 @@
       "isBefore"
      ],
      "got": "isBefore",
-     "ms": 139
+     "ms": 135
     },
     {
      "id": "sliceBounds:155:pick",
@@ -1717,7 +2244,7 @@
       "join"
      ],
      "got": "neither",
-     "ms": 157
+     "ms": 153
     },
     {
      "id": "sliceBounds:155:neither",
@@ -1732,7 +2259,7 @@
       "join"
      ],
      "got": "join",
-     "ms": 128
+     "ms": 125
     },
     {
      "id": "pageItems:112:pick",
@@ -1748,7 +2275,7 @@
       "sliceText"
      ],
      "got": "sliceText",
-     "ms": 176
+     "ms": 174
     },
     {
      "id": "pageItems:112:neither",
@@ -1763,7 +2290,69 @@
       "sliceText"
      ],
      "got": "sliceText",
-     "ms": 139
+     "ms": 136
+    },
+    {
+     "id": "send:149:pick",
+     "type": "pick",
+     "place": "state.pageIndex + 1",
+     "options": [
+      "plus",
+      "join"
+     ],
+     "answer": "plus",
+     "asked": [
+      "plus",
+      "join"
+     ],
+     "got": "neither",
+     "ms": 141
+    },
+    {
+     "id": "send:149:neither",
+     "type": "neither",
+     "place": "state.pageIndex + 1",
+     "options": [
+      "join"
+     ],
+     "answer": "neither",
+     "asked": [
+      "join",
+      "join"
+     ],
+     "got": "join",
+     "ms": 115
+    },
+    {
+     "id": "send:609:pick",
+     "type": "pick",
+     "place": "event.pageSize < 1",
+     "options": [
+      "lessThan",
+      "isBefore"
+     ],
+     "answer": "lessThan",
+     "asked": [
+      "lessThan",
+      "isBefore"
+     ],
+     "got": "neither",
+     "ms": 152
+    },
+    {
+     "id": "send:609:neither",
+     "type": "neither",
+     "place": "event.pageSize < 1",
+     "options": [
+      "isBefore"
+     ],
+     "answer": "neither",
+     "asked": [
+      "isBefore",
+      "isBefore"
+     ],
+     "got": "isBefore",
+     "ms": 126
     },
     {
      "id": "csvCell:372:pick",
@@ -1779,7 +2368,7 @@
       "hasItem"
      ],
      "got": "neither",
-     "ms": 166
+     "ms": 163
     },
     {
      "id": "csvCell:372:neither",
@@ -1794,7 +2383,7 @@
       "hasItem"
      ],
      "got": "hasItem",
-     "ms": 140
+     "ms": 136
     },
     {
      "id": "toCsv:379:pick",
@@ -1810,7 +2399,7 @@
       "join"
      ],
      "got": "neither",
-     "ms": 141
+     "ms": 139
     },
     {
      "id": "toCsv:379:neither",
@@ -1825,7 +2414,7 @@
       "plus"
      ],
      "got": "plus",
-     "ms": 119
+     "ms": 115
     },
     {
      "id": "csvFileName:183:pick",
@@ -1841,7 +2430,7 @@
       "sliceText"
      ],
      "got": "sliceText",
-     "ms": 161
+     "ms": 156
     },
     {
      "id": "csvFileName:183:neither",
@@ -1856,7 +2445,7 @@
       "part"
      ],
      "got": "part",
-     "ms": 129
+     "ms": 126
     },
     {
      "id": "startOfDay:46:pick",
@@ -1872,7 +2461,7 @@
       "dateFromParts"
      ],
      "got": "dateFromParts",
-     "ms": 175
+     "ms": 172
     },
     {
      "id": "startOfDay:46:neither",
@@ -1887,7 +2476,7 @@
       "dateFromParts"
      ],
      "got": "dateFromParts",
-     "ms": 149
+     "ms": 145
     },
     {
      "id": "endOfDay:44:pick",
@@ -1903,7 +2492,7 @@
       "dateFromParts"
      ],
      "got": "dateFromParts",
-     "ms": 167
+     "ms": 162
     },
     {
      "id": "endOfDay:44:neither",
@@ -1918,7 +2507,7 @@
       "dateFromParts"
      ],
      "got": "dateFromParts",
-     "ms": 138
+     "ms": 136
     },
     {
      "id": "lastDays:74:pick",
@@ -1934,7 +2523,7 @@
       "dateFromParts"
      ],
      "got": "dateFromParts",
-     "ms": 177
+     "ms": 173
     },
     {
      "id": "lastDays:74:neither",
@@ -1949,7 +2538,7 @@
       "dateFromParts"
      ],
      "got": "dateFromParts",
-     "ms": 138
+     "ms": 134
     },
     {
      "id": "init:31:pick",
@@ -1965,7 +2554,7 @@
       "at"
      ],
      "got": "neither",
-     "ms": 155
+     "ms": 153
     },
     {
      "id": "init:31:neither",
@@ -1980,7 +2569,7 @@
       "at"
      ],
      "got": "at",
-     "ms": 128
+     "ms": 124
     },
     {
      "id": "init:53:pick",
@@ -1996,7 +2585,7 @@
       "at"
      ],
      "got": "neither",
-     "ms": 155
+     "ms": 150
     },
     {
      "id": "init:53:neither",
@@ -2011,7 +2600,38 @@
       "at"
      ],
      "got": "at",
-     "ms": 129
+     "ms": 125
+    },
+    {
+     "id": "send:218:pick",
+     "type": "pick",
+     "place": "event.days < 1",
+     "options": [
+      "lessThan",
+      "isBefore"
+     ],
+     "answer": "lessThan",
+     "asked": [
+      "lessThan",
+      "isBefore"
+     ],
+     "got": "neither",
+     "ms": 180
+    },
+    {
+     "id": "send:218:neither",
+     "type": "neither",
+     "place": "event.days < 1",
+     "options": [
+      "isBefore"
+     ],
+     "answer": "neither",
+     "asked": [
+      "isBefore",
+      "isBefore"
+     ],
+     "got": "isBefore",
+     "ms": 125
     },
     {
      "id": "settledQuery:96:pick",
@@ -2027,7 +2647,7 @@
       "isBefore"
      ],
      "got": "neither",
-     "ms": 158
+     "ms": 157
     },
     {
      "id": "settledQuery:96:neither",
@@ -2042,7 +2662,7 @@
       "isBefore"
      ],
      "got": "isBefore",
-     "ms": 137
+     "ms": 135
     },
     {
      "id": "init:84:pick",
@@ -2058,7 +2678,7 @@
       "at"
      ],
      "got": "neither",
-     "ms": 153
+     "ms": 154
     },
     {
      "id": "init:84:neither",
@@ -2073,7 +2693,7 @@
       "at"
      ],
      "got": "at",
-     "ms": 128
+     "ms": 124
     },
     {
      "id": "init:116:pick",
@@ -2104,7 +2724,69 @@
       "at"
      ],
      "got": "at",
-     "ms": 129
+     "ms": 125
+    },
+    {
+     "id": "send:137:pick",
+     "type": "pick",
+     "place": "event.at + state.delay",
+     "options": [
+      "plus",
+      "join"
+     ],
+     "answer": "plus",
+     "asked": [
+      "plus",
+      "join"
+     ],
+     "got": "neither",
+     "ms": 168
+    },
+    {
+     "id": "send:137:neither",
+     "type": "neither",
+     "place": "event.at + state.delay",
+     "options": [
+      "join"
+     ],
+     "answer": "neither",
+     "asked": [
+      "join",
+      "join"
+     ],
+     "got": "join",
+     "ms": 114
+    },
+    {
+     "id": "send:248:pick",
+     "type": "pick",
+     "place": "event.at < state.dueAt",
+     "options": [
+      "lessThan",
+      "isBefore"
+     ],
+     "answer": "lessThan",
+     "asked": [
+      "lessThan",
+      "isBefore"
+     ],
+     "got": "neither",
+     "ms": 153
+    },
+    {
+     "id": "send:248:neither",
+     "type": "neither",
+     "place": "event.at < state.dueAt",
+     "options": [
+      "isBefore"
+     ],
+     "answer": "neither",
+     "asked": [
+      "isBefore",
+      "isBefore"
+     ],
+     "got": "isBefore",
+     "ms": 127
     },
     {
      "id": "matchesSearch:196:pick",
@@ -2120,7 +2802,7 @@
       "hasItem"
      ],
      "got": "neither",
-     "ms": 166
+     "ms": 163
     },
     {
      "id": "matchesSearch:196:neither",
@@ -2135,7 +2817,7 @@
       "hasItem"
      ],
      "got": "hasItem",
-     "ms": 139
+     "ms": 136
     },
     {
      "id": "init:36:pick",
@@ -2151,7 +2833,7 @@
       "at"
      ],
      "got": "neither",
-     "ms": 155
+     "ms": 154
     },
     {
      "id": "init:36:neither",
@@ -2166,7 +2848,7 @@
       "at"
      ],
      "got": "at",
-     "ms": 127
+     "ms": 123
     },
     {
      "id": "init:61:pick",
@@ -2182,7 +2864,7 @@
       "at"
      ],
      "got": "neither",
-     "ms": 154
+     "ms": 153
     },
     {
      "id": "init:61:neither",
@@ -2197,7 +2879,7 @@
       "at"
      ],
      "got": "at",
-     "ms": 127
+     "ms": 125
     },
     {
      "id": "init:82:pick",
@@ -2213,7 +2895,7 @@
       "at"
      ],
      "got": "neither",
-     "ms": 155
+     "ms": 152
     },
     {
      "id": "init:82:neither",
@@ -2228,7 +2910,7 @@
       "at"
      ],
      "got": "at",
-     "ms": 130
+     "ms": 127
     },
     {
      "id": "hasNextPage:72:pick",
@@ -2244,7 +2926,7 @@
       "isAfter"
      ],
      "got": "neither",
-     "ms": 156
+     "ms": 153
     },
     {
      "id": "hasNextPage:72:neither",
@@ -2259,7 +2941,7 @@
       "isAfter"
      ],
      "got": "isAfter",
-     "ms": 126
+     "ms": 125
     },
     {
      "id": "isFetchingNextPage:110:pick",
@@ -2275,7 +2957,7 @@
       "isAfter"
      ],
      "got": "isAfter",
-     "ms": 158
+     "ms": 159
     },
     {
      "id": "isFetchingNextPage:110:neither",
@@ -2290,7 +2972,100 @@
       "isAfter"
      ],
      "got": "isAfter",
-     "ms": 126
+     "ms": 125
+    },
+    {
+     "id": "send:393:pick",
+     "type": "pick",
+     "place": "state.index + 1",
+     "options": [
+      "plus",
+      "join"
+     ],
+     "answer": "plus",
+     "asked": [
+      "plus",
+      "join"
+     ],
+     "got": "neither",
+     "ms": 167
+    },
+    {
+     "id": "send:393:neither",
+     "type": "neither",
+     "place": "state.index + 1",
+     "options": [
+      "join"
+     ],
+     "answer": "neither",
+     "asked": [
+      "join",
+      "join"
+     ],
+     "got": "join",
+     "ms": 114
+    },
+    {
+     "id": "send:773:pick",
+     "type": "pick",
+     "place": "index < 0",
+     "options": [
+      "lessThan",
+      "isBefore"
+     ],
+     "answer": "lessThan",
+     "asked": [
+      "lessThan",
+      "isBefore"
+     ],
+     "got": "neither",
+     "ms": 153
+    },
+    {
+     "id": "send:773:neither",
+     "type": "neither",
+     "place": "index < 0",
+     "options": [
+      "isBefore"
+     ],
+     "answer": "neither",
+     "asked": [
+      "isBefore",
+      "isBefore"
+     ],
+     "got": "isBefore",
+     "ms": 124
+    },
+    {
+     "id": "send:786:pick",
+     "type": "pick",
+     "place": "index > state.visited",
+     "options": [
+      "greaterThan",
+      "isAfter"
+     ],
+     "answer": "greaterThan",
+     "asked": [
+      "isAfter",
+      "isAfter"
+     ],
+     "got": "isAfter",
+     "ms": 153
+    },
+    {
+     "id": "send:786:neither",
+     "type": "neither",
+     "place": "index > state.visited",
+     "options": [
+      "isAfter"
+     ],
+     "answer": "neither",
+     "asked": [
+      "isAfter",
+      "isAfter"
+     ],
+     "got": "isAfter",
+     "ms": 125
     },
     {
      "id": "toXStateConfig:469:pick",
@@ -2321,7 +3096,7 @@
       "join"
      ],
      "got": "join",
-     "ms": 118
+     "ms": 117
     },
     {
      "id": "toXStateConfig:424:pick",
@@ -2337,7 +3112,7 @@
       "isBefore"
      ],
      "got": "neither",
-     "ms": 156
+     "ms": 155
     },
     {
      "id": "toXStateConfig:424:neither",
@@ -2352,7 +3127,7 @@
       "isBefore"
      ],
      "got": "isBefore",
-     "ms": 140
+     "ms": 137
     },
     {
      "id": "toXStateConfig:738:pick",
@@ -2368,7 +3143,7 @@
       "isAfter"
      ],
      "got": "neither",
-     "ms": 162
+     "ms": 159
     },
     {
      "id": "toXStateConfig:738:neither",
@@ -2383,7 +3158,7 @@
       "isAfter"
      ],
      "got": "isAfter",
-     "ms": 139
+     "ms": 138
     },
     {
      "id": "hasNextPage:73:pick",
@@ -2414,7 +3189,7 @@
       "isBefore"
      ],
      "got": "isBefore",
-     "ms": 137
+     "ms": 135
     },
     {
      "id": "hasPreviousPage:77:pick",
@@ -2445,7 +3220,7 @@
       "isAfter"
      ],
      "got": "isAfter",
-     "ms": 138
+     "ms": 137
     },
     {
      "id": "init:57:pick",
@@ -2461,7 +3236,7 @@
       "at"
      ],
      "got": "neither",
-     "ms": 153
+     "ms": 154
     },
     {
      "id": "init:57:neither",
@@ -2476,7 +3251,7 @@
       "at"
      ],
      "got": "at",
-     "ms": 126
+     "ms": 125
     },
     {
      "id": "init:90:pick",
@@ -2492,7 +3267,7 @@
       "at"
      ],
      "got": "neither",
-     "ms": 153
+     "ms": 150
     },
     {
      "id": "init:90:neither",
@@ -2508,6 +3283,68 @@
      ],
      "got": "at",
      "ms": 124
+    },
+    {
+     "id": "send:866:pick",
+     "type": "pick",
+     "place": "state.pageIndex + 1",
+     "options": [
+      "plus",
+      "join"
+     ],
+     "answer": "plus",
+     "asked": [
+      "plus",
+      "join"
+     ],
+     "got": "neither",
+     "ms": 168
+    },
+    {
+     "id": "send:866:neither",
+     "type": "neither",
+     "place": "state.pageIndex + 1",
+     "options": [
+      "join"
+     ],
+     "answer": "neither",
+     "asked": [
+      "join",
+      "join"
+     ],
+     "got": "join",
+     "ms": 115
+    },
+    {
+     "id": "send:1184:pick",
+     "type": "pick",
+     "place": "event.pageSize < 1",
+     "options": [
+      "lessThan",
+      "isBefore"
+     ],
+     "answer": "lessThan",
+     "asked": [
+      "lessThan",
+      "isBefore"
+     ],
+     "got": "neither",
+     "ms": 153
+    },
+    {
+     "id": "send:1184:neither",
+     "type": "neither",
+     "place": "event.pageSize < 1",
+     "options": [
+      "isBefore"
+     ],
+     "answer": "neither",
+     "asked": [
+      "isBefore",
+      "isBefore"
+     ],
+     "got": "isBefore",
+     "ms": 125
     },
     {
      "id": "can:245:pick",
@@ -2538,7 +3375,100 @@
       "isBefore"
      ],
      "got": "isBefore",
-     "ms": 137
+     "ms": 135
+    },
+    {
+     "id": "send:274:pick",
+     "type": "pick",
+     "place": "state.attempts + 1",
+     "options": [
+      "plus",
+      "join"
+     ],
+     "answer": "plus",
+     "asked": [
+      "plus",
+      "join"
+     ],
+     "got": "neither",
+     "ms": 142
+    },
+    {
+     "id": "send:274:neither",
+     "type": "neither",
+     "place": "state.attempts + 1",
+     "options": [
+      "join"
+     ],
+     "answer": "neither",
+     "asked": [
+      "join",
+      "join"
+     ],
+     "got": "join",
+     "ms": 116
+    },
+    {
+     "id": "send:655:pick",
+     "type": "pick",
+     "place": "state.attempts + 1",
+     "options": [
+      "plus",
+      "join"
+     ],
+     "answer": "plus",
+     "asked": [
+      "plus",
+      "join"
+     ],
+     "got": "neither",
+     "ms": 139
+    },
+    {
+     "id": "send:655:neither",
+     "type": "neither",
+     "place": "state.attempts + 1",
+     "options": [
+      "join"
+     ],
+     "answer": "neither",
+     "asked": [
+      "join",
+      "join"
+     ],
+     "got": "join",
+     "ms": 115
+    },
+    {
+     "id": "send:1182:pick",
+     "type": "pick",
+     "place": "state.failures + 1",
+     "options": [
+      "plus",
+      "join"
+     ],
+     "answer": "plus",
+     "asked": [
+      "plus",
+      "join"
+     ],
+     "got": "neither",
+     "ms": 140
+    },
+    {
+     "id": "send:1182:neither",
+     "type": "neither",
+     "place": "state.failures + 1",
+     "options": [
+      "join"
+     ],
+     "answer": "neither",
+     "asked": [
+      "join",
+      "join"
+     ],
+     "got": "join",
+     "ms": 116
     },
     {
      "id": "statusOf:216:pick",
@@ -2554,7 +3484,7 @@
       "isAfter"
      ],
      "got": "neither",
-     "ms": 179
+     "ms": 177
     },
     {
      "id": "statusOf:216:neither",
@@ -2585,7 +3515,7 @@
       "isAfter"
      ],
      "got": "neither",
-     "ms": 164
+     "ms": 163
     },
     {
      "id": "statusOf:164:neither",
@@ -2616,7 +3546,7 @@
       "isAfter"
      ],
      "got": "neither",
-     "ms": 163
+     "ms": 162
     },
     {
      "id": "statusOf:95:neither",
@@ -2631,7 +3561,7 @@
       "isAfter"
      ],
      "got": "isAfter",
-     "ms": 136
+     "ms": 135
     },
     {
      "id": "statusOf:114:pick",
@@ -2647,7 +3577,7 @@
       "isAfter"
      ],
      "got": "neither",
-     "ms": 163
+     "ms": 162
     },
     {
      "id": "statusOf:114:neither",
@@ -2662,7 +3592,7 @@
       "isAfter"
      ],
      "got": "isAfter",
-     "ms": 136
+     "ms": 137
     },
     {
      "id": "canUndo:67:pick",
@@ -2693,7 +3623,7 @@
       "isAfter"
      ],
      "got": "isAfter",
-     "ms": 136
+     "ms": 137
     },
     {
      "id": "canRedo:67:pick",
@@ -2709,7 +3639,7 @@
       "isAfter"
      ],
      "got": "neither",
-     "ms": 165
+     "ms": 166
     },
     {
      "id": "canRedo:67:neither",
@@ -2724,7 +3654,69 @@
       "isAfter"
      ],
      "got": "isAfter",
-     "ms": 136
+     "ms": 135
+    },
+    {
+     "id": "send:175:pick",
+     "type": "pick",
+     "place": "[...state.past, state.present].slice(-state.limit)",
+     "options": [
+      "sliceText",
+      "part"
+     ],
+     "answer": "part",
+     "asked": [
+      "sliceText",
+      "part"
+     ],
+     "got": "neither",
+     "ms": 149
+    },
+    {
+     "id": "send:175:neither",
+     "type": "neither",
+     "place": "[...state.past, state.present].slice(-state.limit)",
+     "options": [
+      "sliceText"
+     ],
+     "answer": "neither",
+     "asked": [
+      "sliceText",
+      "sliceText"
+     ],
+     "got": "sliceText",
+     "ms": 126
+    },
+    {
+     "id": "send:464:pick",
+     "type": "pick",
+     "place": "state.past.slice(0, -1)",
+     "options": [
+      "sliceText",
+      "part"
+     ],
+     "answer": "part",
+     "asked": [
+      "sliceText",
+      "part"
+     ],
+     "got": "neither",
+     "ms": 149
+    },
+    {
+     "id": "send:464:neither",
+     "type": "neither",
+     "place": "state.past.slice(0, -1)",
+     "options": [
+      "sliceText"
+     ],
+     "answer": "neither",
+     "asked": [
+      "sliceText",
+      "sliceText"
+     ],
+     "got": "sliceText",
+     "ms": 127
     },
     {
      "id": "clearEdited:262:pick",
@@ -2755,7 +3747,7 @@
       "at"
      ],
      "got": "at",
-     "ms": 128
+     "ms": 129
     },
     {
      "id": "clearEdited:322:pick",
@@ -2771,7 +3763,7 @@
       "at"
      ],
      "got": "neither",
-     "ms": 156
+     "ms": 154
     },
     {
      "id": "clearEdited:322:neither",
@@ -2786,7 +3778,7 @@
       "at"
      ],
      "got": "at",
-     "ms": 130
+     "ms": 129
     },
     {
      "id": "initialsOf:118:pick",
@@ -2802,7 +3794,7 @@
       "at"
      ],
      "got": "at",
-     "ms": 144
+     "ms": 142
     },
     {
      "id": "initialsOf:118:neither",
@@ -2817,7 +3809,7 @@
       "at"
      ],
      "got": "at",
-     "ms": 116
+     "ms": 115
     },
     {
      "id": "initialsOf:154:pick",
@@ -2833,7 +3825,7 @@
       "neither"
      ],
      "got": "neither",
-     "ms": 155
+     "ms": 152
     },
     {
      "id": "initialsOf:154:neither",
@@ -2848,7 +3840,7 @@
       "neither"
      ],
      "got": "neither",
-     "ms": 127
+     "ms": 125
     },
     {
      "id": "contains:62:pick",
@@ -2864,7 +3856,7 @@
       "neither"
      ],
      "got": "neither",
-     "ms": 162
+     "ms": 159
     },
     {
      "id": "contains:62:neither",
@@ -2879,7 +3871,7 @@
       "neither"
      ],
      "got": "neither",
-     "ms": 139
+     "ms": 137
     },
     {
      "id": "pageItems:167:pick",
@@ -2895,7 +3887,7 @@
       "plus"
      ],
      "got": "plus",
-     "ms": 143
+     "ms": 140
     },
     {
      "id": "pageItems:167:neither",
@@ -2910,7 +3902,7 @@
       "join"
      ],
      "got": "join",
-     "ms": 118
+     "ms": 115
     },
     {
      "id": "pageItems:184:pick",
@@ -2926,7 +3918,7 @@
       "plus"
      ],
      "got": "plus",
-     "ms": 143
+     "ms": 141
     },
     {
      "id": "pageItems:184:neither",
@@ -2941,7 +3933,7 @@
       "join"
      ],
      "got": "join",
-     "ms": 116
+     "ms": 115
     },
     {
      "id": "pageItems:360:pick",
@@ -2957,7 +3949,7 @@
       "greaterThan"
      ],
      "got": "greaterThan",
-     "ms": 155
+     "ms": 152
     },
     {
      "id": "pageItems:360:neither",
@@ -2988,7 +3980,7 @@
       "greaterThan"
      ],
      "got": "greaterThan",
-     "ms": 155
+     "ms": 151
     },
     {
      "id": "pageItems:369:neither",
@@ -3003,7 +3995,7 @@
       "isAfter"
      ],
      "got": "isAfter",
-     "ms": 126
+     "ms": 128
     },
     {
      "id": "stateOf:67:pick",
@@ -3019,7 +4011,7 @@
       "lessThan"
      ],
      "got": "lessThan",
-     "ms": 164
+     "ms": 151
     },
     {
      "id": "stateOf:67:neither",
@@ -3034,7 +4026,7 @@
       "isBefore"
      ],
      "got": "isBefore",
-     "ms": 129
+     "ms": 125
     },
     {
      "id": "nextDirection:103:pick",
@@ -3050,7 +4042,7 @@
       "at"
      ],
      "got": "neither",
-     "ms": 149
+     "ms": 146
     },
     {
      "id": "nextDirection:103:neither",
@@ -3065,21 +4057,21 @@
       "at"
      ],
      "got": "at",
-     "ms": 119
+     "ms": 116
     }
    ]
   },
   "checker": {
    "score": {
-    "cases": 98,
-    "pickRight": 21,
-    "pickSaidNeither": 14,
+    "cases": 130,
+    "pickRight": 33,
+    "pickSaidNeither": 16,
     "neitherRight": 5,
-    "wrongAtom": 58,
-    "listedOrderRight": 37,
-    "ordersDisagree": 14,
-    "picks": 49,
-    "neithers": 49
+    "wrongAtom": 76,
+    "listedOrderRight": 51,
+    "ordersDisagree": 16,
+    "picks": 65,
+    "neithers": 65
    },
    "rows": [
     {
@@ -3096,7 +4088,7 @@
       "at"
      ],
      "got": "neither",
-     "ms": 309
+     "ms": 348
     },
     {
      "id": "validate:130:neither",
@@ -3111,7 +4103,7 @@
       "neither"
      ],
      "got": "neither",
-     "ms": 128
+     "ms": 126
     },
     {
      "id": "validate:226:pick",
@@ -3127,7 +4119,7 @@
       "at"
      ],
      "got": "neither",
-     "ms": 154
+     "ms": 163
     },
     {
      "id": "validate:226:neither",
@@ -3142,7 +4134,7 @@
       "neither"
      ],
      "got": "neither",
-     "ms": 136
+     "ms": 126
     },
     {
      "id": "defineService:242:pick",
@@ -3158,7 +4150,7 @@
       "at"
      ],
      "got": "at",
-     "ms": 263
+     "ms": 286
     },
     {
      "id": "defineService:242:neither",
@@ -3173,7 +4165,38 @@
       "at"
      ],
      "got": "at",
-     "ms": 118
+     "ms": 116
+    },
+    {
+     "id": "send:280:pick",
+     "type": "pick",
+     "place": "state.request + 1",
+     "options": [
+      "plus",
+      "join"
+     ],
+     "answer": "plus",
+     "asked": [
+      "plus",
+      "plus"
+     ],
+     "got": "plus",
+     "ms": 277
+    },
+    {
+     "id": "send:280:neither",
+     "type": "neither",
+     "place": "state.request + 1",
+     "options": [
+      "join"
+     ],
+     "answer": "neither",
+     "asked": [
+      "join",
+      "join"
+     ],
+     "got": "join",
+     "ms": 127
     },
     {
      "id": "clampPage:175:pick",
@@ -3189,7 +4212,7 @@
       "greaterThan"
      ],
      "got": "greaterThan",
-     "ms": 244
+     "ms": 276
     },
     {
      "id": "clampPage:175:neither",
@@ -3204,7 +4227,7 @@
       "isAfter"
      ],
      "got": "isAfter",
-     "ms": 129
+     "ms": 124
     },
     {
      "id": "clampPage:134:pick",
@@ -3220,7 +4243,7 @@
       "lessThan"
      ],
      "got": "lessThan",
-     "ms": 153
+     "ms": 166
     },
     {
      "id": "clampPage:134:neither",
@@ -3235,7 +4258,7 @@
       "isBefore"
      ],
      "got": "isBefore",
-     "ms": 128
+     "ms": 124
     },
     {
      "id": "sliceBounds:155:pick",
@@ -3251,7 +4274,7 @@
       "plus"
      ],
      "got": "plus",
-     "ms": 141
+     "ms": 154
     },
     {
      "id": "sliceBounds:155:neither",
@@ -3266,7 +4289,7 @@
       "join"
      ],
      "got": "join",
-     "ms": 125
+     "ms": 124
     },
     {
      "id": "pageItems:112:pick",
@@ -3282,7 +4305,7 @@
       "sliceText"
      ],
      "got": "sliceText",
-     "ms": 160
+     "ms": 171
     },
     {
      "id": "pageItems:112:neither",
@@ -3300,6 +4323,68 @@
      "ms": 126
     },
     {
+     "id": "send:149:pick",
+     "type": "pick",
+     "place": "state.pageIndex + 1",
+     "options": [
+      "plus",
+      "join"
+     ],
+     "answer": "plus",
+     "asked": [
+      "plus",
+      "plus"
+     ],
+     "got": "plus",
+     "ms": 167
+    },
+    {
+     "id": "send:149:neither",
+     "type": "neither",
+     "place": "state.pageIndex + 1",
+     "options": [
+      "join"
+     ],
+     "answer": "neither",
+     "asked": [
+      "join",
+      "join"
+     ],
+     "got": "join",
+     "ms": 125
+    },
+    {
+     "id": "send:609:pick",
+     "type": "pick",
+     "place": "event.pageSize < 1",
+     "options": [
+      "lessThan",
+      "isBefore"
+     ],
+     "answer": "lessThan",
+     "asked": [
+      "lessThan",
+      "lessThan"
+     ],
+     "got": "lessThan",
+     "ms": 151
+    },
+    {
+     "id": "send:609:neither",
+     "type": "neither",
+     "place": "event.pageSize < 1",
+     "options": [
+      "isBefore"
+     ],
+     "answer": "neither",
+     "asked": [
+      "isBefore",
+      "isBefore"
+     ],
+     "got": "isBefore",
+     "ms": 124
+    },
+    {
      "id": "csvCell:372:pick",
      "type": "pick",
      "place": "text.includes(separator)",
@@ -3313,7 +4398,7 @@
       "hasItem"
      ],
      "got": "neither",
-     "ms": 257
+     "ms": 285
     },
     {
      "id": "csvCell:372:neither",
@@ -3328,7 +4413,7 @@
       "hasItem"
      ],
      "got": "hasItem",
-     "ms": 125
+     "ms": 126
     },
     {
      "id": "toCsv:379:pick",
@@ -3344,7 +4429,7 @@
       "plus"
      ],
      "got": "plus",
-     "ms": 153
+     "ms": 167
     },
     {
      "id": "toCsv:379:neither",
@@ -3375,7 +4460,7 @@
       "sliceText"
      ],
      "got": "sliceText",
-     "ms": 155
+     "ms": 168
     },
     {
      "id": "csvFileName:183:neither",
@@ -3390,7 +4475,7 @@
       "neither"
      ],
      "got": "neither",
-     "ms": 138
+     "ms": 136
     },
     {
      "id": "startOfDay:46:pick",
@@ -3406,7 +4491,7 @@
       "dateFromParts"
      ],
      "got": "dateFromParts",
-     "ms": 248
+     "ms": 290
     },
     {
      "id": "startOfDay:46:neither",
@@ -3437,7 +4522,7 @@
       "dateFromParts"
      ],
      "got": "dateFromParts",
-     "ms": 163
+     "ms": 174
     },
     {
      "id": "endOfDay:44:neither",
@@ -3452,7 +4537,7 @@
       "dateFromParts"
      ],
      "got": "dateFromParts",
-     "ms": 136
+     "ms": 133
     },
     {
      "id": "lastDays:74:pick",
@@ -3468,7 +4553,7 @@
       "dateFromParts"
      ],
      "got": "dateFromParts",
-     "ms": 162
+     "ms": 173
     },
     {
      "id": "lastDays:74:neither",
@@ -3483,7 +4568,7 @@
       "dateFromParts"
      ],
      "got": "dateFromParts",
-     "ms": 136
+     "ms": 134
     },
     {
      "id": "init:31:pick",
@@ -3499,7 +4584,7 @@
       "at"
      ],
      "got": "at",
-     "ms": 228
+     "ms": 143
     },
     {
      "id": "init:31:neither",
@@ -3545,7 +4630,38 @@
       "at"
      ],
      "got": "at",
-     "ms": 115
+     "ms": 114
+    },
+    {
+     "id": "send:218:pick",
+     "type": "pick",
+     "place": "event.days < 1",
+     "options": [
+      "lessThan",
+      "isBefore"
+     ],
+     "answer": "lessThan",
+     "asked": [
+      "lessThan",
+      "lessThan"
+     ],
+     "got": "lessThan",
+     "ms": 152
+    },
+    {
+     "id": "send:218:neither",
+     "type": "neither",
+     "place": "event.days < 1",
+     "options": [
+      "isBefore"
+     ],
+     "answer": "neither",
+     "asked": [
+      "isBefore",
+      "isBefore"
+     ],
+     "got": "isBefore",
+     "ms": 125
     },
     {
      "id": "settledQuery:96:pick",
@@ -3561,7 +4677,7 @@
       "lessThan"
      ],
      "got": "lessThan",
-     "ms": 235
+     "ms": 278
     },
     {
      "id": "settledQuery:96:neither",
@@ -3576,7 +4692,7 @@
       "isBefore"
      ],
      "got": "isBefore",
-     "ms": 126
+     "ms": 124
     },
     {
      "id": "init:84:pick",
@@ -3592,7 +4708,7 @@
       "at"
      ],
      "got": "neither",
-     "ms": 140
+     "ms": 141
     },
     {
      "id": "init:84:neither",
@@ -3607,7 +4723,7 @@
       "at"
      ],
      "got": "at",
-     "ms": 114
+     "ms": 111
     },
     {
      "id": "init:116:pick",
@@ -3623,7 +4739,7 @@
       "at"
      ],
      "got": "at",
-     "ms": 141
+     "ms": 139
     },
     {
      "id": "init:116:neither",
@@ -3638,7 +4754,69 @@
       "at"
      ],
      "got": "at",
-     "ms": 115
+     "ms": 114
+    },
+    {
+     "id": "send:137:pick",
+     "type": "pick",
+     "place": "event.at + state.delay",
+     "options": [
+      "plus",
+      "join"
+     ],
+     "answer": "plus",
+     "asked": [
+      "plus",
+      "plus"
+     ],
+     "got": "plus",
+     "ms": 140
+    },
+    {
+     "id": "send:137:neither",
+     "type": "neither",
+     "place": "event.at + state.delay",
+     "options": [
+      "join"
+     ],
+     "answer": "neither",
+     "asked": [
+      "join",
+      "join"
+     ],
+     "got": "join",
+     "ms": 113
+    },
+    {
+     "id": "send:248:pick",
+     "type": "pick",
+     "place": "event.at < state.dueAt",
+     "options": [
+      "lessThan",
+      "isBefore"
+     ],
+     "answer": "lessThan",
+     "asked": [
+      "lessThan",
+      "lessThan"
+     ],
+     "got": "lessThan",
+     "ms": 151
+    },
+    {
+     "id": "send:248:neither",
+     "type": "neither",
+     "place": "event.at < state.dueAt",
+     "options": [
+      "isBefore"
+     ],
+     "answer": "neither",
+     "asked": [
+      "isBefore",
+      "isBefore"
+     ],
+     "got": "isBefore",
+     "ms": 126
     },
     {
      "id": "matchesSearch:196:pick",
@@ -3654,7 +4832,7 @@
       "hasText"
      ],
      "got": "hasText",
-     "ms": 239
+     "ms": 276
     },
     {
      "id": "matchesSearch:196:neither",
@@ -3669,7 +4847,7 @@
       "hasItem"
      ],
      "got": "hasItem",
-     "ms": 135
+     "ms": 137
     },
     {
      "id": "init:36:pick",
@@ -3685,7 +4863,7 @@
       "at"
      ],
      "got": "at",
-     "ms": 141
+     "ms": 140
     },
     {
      "id": "init:36:neither",
@@ -3700,7 +4878,7 @@
       "at"
      ],
      "got": "at",
-     "ms": 115
+     "ms": 114
     },
     {
      "id": "init:61:pick",
@@ -3716,7 +4894,7 @@
       "at"
      ],
      "got": "at",
-     "ms": 140
+     "ms": 139
     },
     {
      "id": "init:61:neither",
@@ -3731,7 +4909,7 @@
       "at"
      ],
      "got": "at",
-     "ms": 115
+     "ms": 112
     },
     {
      "id": "init:82:pick",
@@ -3747,7 +4925,7 @@
       "at"
      ],
      "got": "at",
-     "ms": 140
+     "ms": 139
     },
     {
      "id": "init:82:neither",
@@ -3762,7 +4940,7 @@
       "at"
      ],
      "got": "at",
-     "ms": 115
+     "ms": 114
     },
     {
      "id": "hasNextPage:72:pick",
@@ -3778,7 +4956,7 @@
       "greaterThan"
      ],
      "got": "greaterThan",
-     "ms": 258
+     "ms": 270
     },
     {
      "id": "hasNextPage:72:neither",
@@ -3793,7 +4971,7 @@
       "isAfter"
      ],
      "got": "isAfter",
-     "ms": 125
+     "ms": 124
     },
     {
      "id": "isFetchingNextPage:110:pick",
@@ -3809,7 +4987,7 @@
       "greaterThan"
      ],
      "got": "greaterThan",
-     "ms": 153
+     "ms": 152
     },
     {
      "id": "isFetchingNextPage:110:neither",
@@ -3824,7 +5002,100 @@
       "isAfter"
      ],
      "got": "isAfter",
-     "ms": 125
+     "ms": 124
+    },
+    {
+     "id": "send:393:pick",
+     "type": "pick",
+     "place": "state.index + 1",
+     "options": [
+      "plus",
+      "join"
+     ],
+     "answer": "plus",
+     "asked": [
+      "plus",
+      "plus"
+     ],
+     "got": "plus",
+     "ms": 141
+    },
+    {
+     "id": "send:393:neither",
+     "type": "neither",
+     "place": "state.index + 1",
+     "options": [
+      "join"
+     ],
+     "answer": "neither",
+     "asked": [
+      "join",
+      "join"
+     ],
+     "got": "join",
+     "ms": 126
+    },
+    {
+     "id": "send:773:pick",
+     "type": "pick",
+     "place": "index < 0",
+     "options": [
+      "lessThan",
+      "isBefore"
+     ],
+     "answer": "lessThan",
+     "asked": [
+      "lessThan",
+      "isBefore"
+     ],
+     "got": "neither",
+     "ms": 151
+    },
+    {
+     "id": "send:773:neither",
+     "type": "neither",
+     "place": "index < 0",
+     "options": [
+      "isBefore"
+     ],
+     "answer": "neither",
+     "asked": [
+      "isBefore",
+      "isBefore"
+     ],
+     "got": "isBefore",
+     "ms": 115
+    },
+    {
+     "id": "send:786:pick",
+     "type": "pick",
+     "place": "index > state.visited",
+     "options": [
+      "greaterThan",
+      "isAfter"
+     ],
+     "answer": "greaterThan",
+     "asked": [
+      "greaterThan",
+      "isAfter"
+     ],
+     "got": "neither",
+     "ms": 152
+    },
+    {
+     "id": "send:786:neither",
+     "type": "neither",
+     "place": "index > state.visited",
+     "options": [
+      "isAfter"
+     ],
+     "answer": "neither",
+     "asked": [
+      "isAfter",
+      "isAfter"
+     ],
+     "got": "isAfter",
+     "ms": 124
     },
     {
      "id": "toXStateConfig:469:pick",
@@ -3840,7 +5111,7 @@
       "plus"
      ],
      "got": "plus",
-     "ms": 226
+     "ms": 304
     },
     {
      "id": "toXStateConfig:469:neither",
@@ -3855,7 +5126,7 @@
       "join"
      ],
      "got": "join",
-     "ms": 129
+     "ms": 130
     },
     {
      "id": "toXStateConfig:424:pick",
@@ -3871,7 +5142,7 @@
       "lessThan"
      ],
      "got": "lessThan",
-     "ms": 158
+     "ms": 203
     },
     {
      "id": "toXStateConfig:424:neither",
@@ -3886,7 +5157,7 @@
       "isBefore"
      ],
      "got": "isBefore",
-     "ms": 129
+     "ms": 126
     },
     {
      "id": "toXStateConfig:738:pick",
@@ -3902,7 +5173,7 @@
       "greaterThan"
      ],
      "got": "greaterThan",
-     "ms": 159
+     "ms": 204
     },
     {
      "id": "toXStateConfig:738:neither",
@@ -3917,7 +5188,7 @@
       "isAfter"
      ],
      "got": "isAfter",
-     "ms": 130
+     "ms": 126
     },
     {
      "id": "hasNextPage:73:pick",
@@ -3933,7 +5204,7 @@
       "lessThan"
      ],
      "got": "lessThan",
-     "ms": 154
+     "ms": 167
     },
     {
      "id": "hasNextPage:73:neither",
@@ -3948,7 +5219,7 @@
       "neither"
      ],
      "got": "neither",
-     "ms": 127
+     "ms": 124
     },
     {
      "id": "hasPreviousPage:77:pick",
@@ -3964,7 +5235,7 @@
       "greaterThan"
      ],
      "got": "greaterThan",
-     "ms": 244
+     "ms": 274
     },
     {
      "id": "hasPreviousPage:77:neither",
@@ -3979,7 +5250,7 @@
       "isAfter"
      ],
      "got": "isAfter",
-     "ms": 127
+     "ms": 125
     },
     {
      "id": "init:57:pick",
@@ -3995,7 +5266,7 @@
       "at"
      ],
      "got": "at",
-     "ms": 144
+     "ms": 140
     },
     {
      "id": "init:57:neither",
@@ -4010,7 +5281,7 @@
       "at"
      ],
      "got": "at",
-     "ms": 119
+     "ms": 113
     },
     {
      "id": "init:90:pick",
@@ -4026,7 +5297,7 @@
       "at"
      ],
      "got": "at",
-     "ms": 141
+     "ms": 138
     },
     {
      "id": "init:90:neither",
@@ -4041,7 +5312,69 @@
       "at"
      ],
      "got": "at",
-     "ms": 115
+     "ms": 113
+    },
+    {
+     "id": "send:866:pick",
+     "type": "pick",
+     "place": "state.pageIndex + 1",
+     "options": [
+      "plus",
+      "join"
+     ],
+     "answer": "plus",
+     "asked": [
+      "plus",
+      "plus"
+     ],
+     "got": "plus",
+     "ms": 140
+    },
+    {
+     "id": "send:866:neither",
+     "type": "neither",
+     "place": "state.pageIndex + 1",
+     "options": [
+      "join"
+     ],
+     "answer": "neither",
+     "asked": [
+      "join",
+      "join"
+     ],
+     "got": "join",
+     "ms": 126
+    },
+    {
+     "id": "send:1184:pick",
+     "type": "pick",
+     "place": "event.pageSize < 1",
+     "options": [
+      "lessThan",
+      "isBefore"
+     ],
+     "answer": "lessThan",
+     "asked": [
+      "lessThan",
+      "lessThan"
+     ],
+     "got": "lessThan",
+     "ms": 151
+    },
+    {
+     "id": "send:1184:neither",
+     "type": "neither",
+     "place": "event.pageSize < 1",
+     "options": [
+      "isBefore"
+     ],
+     "answer": "neither",
+     "asked": [
+      "isBefore",
+      "isBefore"
+     ],
+     "got": "isBefore",
+     "ms": 124
     },
     {
      "id": "can:245:pick",
@@ -4057,7 +5390,7 @@
       "lessThan"
      ],
      "got": "lessThan",
-     "ms": 251
+     "ms": 275
     },
     {
      "id": "can:245:neither",
@@ -4072,7 +5405,100 @@
       "isBefore"
      ],
      "got": "isBefore",
-     "ms": 137
+     "ms": 136
+    },
+    {
+     "id": "send:274:pick",
+     "type": "pick",
+     "place": "state.attempts + 1",
+     "options": [
+      "plus",
+      "join"
+     ],
+     "answer": "plus",
+     "asked": [
+      "plus",
+      "plus"
+     ],
+     "got": "plus",
+     "ms": 141
+    },
+    {
+     "id": "send:274:neither",
+     "type": "neither",
+     "place": "state.attempts + 1",
+     "options": [
+      "join"
+     ],
+     "answer": "neither",
+     "asked": [
+      "join",
+      "join"
+     ],
+     "got": "join",
+     "ms": 126
+    },
+    {
+     "id": "send:655:pick",
+     "type": "pick",
+     "place": "state.attempts + 1",
+     "options": [
+      "plus",
+      "join"
+     ],
+     "answer": "plus",
+     "asked": [
+      "plus",
+      "plus"
+     ],
+     "got": "plus",
+     "ms": 138
+    },
+    {
+     "id": "send:655:neither",
+     "type": "neither",
+     "place": "state.attempts + 1",
+     "options": [
+      "join"
+     ],
+     "answer": "neither",
+     "asked": [
+      "join",
+      "join"
+     ],
+     "got": "join",
+     "ms": 124
+    },
+    {
+     "id": "send:1182:pick",
+     "type": "pick",
+     "place": "state.failures + 1",
+     "options": [
+      "plus",
+      "join"
+     ],
+     "answer": "plus",
+     "asked": [
+      "plus",
+      "plus"
+     ],
+     "got": "plus",
+     "ms": 141
+    },
+    {
+     "id": "send:1182:neither",
+     "type": "neither",
+     "place": "state.failures + 1",
+     "options": [
+      "join"
+     ],
+     "answer": "neither",
+     "asked": [
+      "join",
+      "join"
+     ],
+     "got": "join",
+     "ms": 124
     },
     {
      "id": "statusOf:216:pick",
@@ -4088,7 +5514,7 @@
       "isAfter"
      ],
      "got": "neither",
-     "ms": 155
+     "ms": 163
     },
     {
      "id": "statusOf:216:neither",
@@ -4103,7 +5529,7 @@
       "isAfter"
      ],
      "got": "isAfter",
-     "ms": 127
+     "ms": 124
     },
     {
      "id": "statusOf:164:pick",
@@ -4119,7 +5545,7 @@
       "isAfter"
      ],
      "got": "neither",
-     "ms": 153
+     "ms": 151
     },
     {
      "id": "statusOf:164:neither",
@@ -4134,7 +5560,7 @@
       "isAfter"
      ],
      "got": "isAfter",
-     "ms": 128
+     "ms": 123
     },
     {
      "id": "statusOf:95:pick",
@@ -4150,7 +5576,7 @@
       "isAfter"
      ],
      "got": "neither",
-     "ms": 153
+     "ms": 150
     },
     {
      "id": "statusOf:95:neither",
@@ -4165,7 +5591,7 @@
       "isAfter"
      ],
      "got": "isAfter",
-     "ms": 128
+     "ms": 125
     },
     {
      "id": "statusOf:114:pick",
@@ -4181,7 +5607,7 @@
       "isAfter"
      ],
      "got": "neither",
-     "ms": 153
+     "ms": 149
     },
     {
      "id": "statusOf:114:neither",
@@ -4196,7 +5622,7 @@
       "isAfter"
      ],
      "got": "isAfter",
-     "ms": 127
+     "ms": 124
     },
     {
      "id": "canUndo:67:pick",
@@ -4212,7 +5638,7 @@
       "greaterThan"
      ],
      "got": "greaterThan",
-     "ms": 240
+     "ms": 275
     },
     {
      "id": "canUndo:67:neither",
@@ -4227,7 +5653,7 @@
       "isAfter"
      ],
      "got": "isAfter",
-     "ms": 127
+     "ms": 124
     },
     {
      "id": "canRedo:67:pick",
@@ -4243,7 +5669,7 @@
       "greaterThan"
      ],
      "got": "greaterThan",
-     "ms": 156
+     "ms": 164
     },
     {
      "id": "canRedo:67:neither",
@@ -4258,7 +5684,69 @@
       "isAfter"
      ],
      "got": "isAfter",
-     "ms": 129
+     "ms": 125
+    },
+    {
+     "id": "send:175:pick",
+     "type": "pick",
+     "place": "[...state.past, state.present].slice(-state.limit)",
+     "options": [
+      "sliceText",
+      "part"
+     ],
+     "answer": "part",
+     "asked": [
+      "sliceText",
+      "sliceText"
+     ],
+     "got": "sliceText",
+     "ms": 157
+    },
+    {
+     "id": "send:175:neither",
+     "type": "neither",
+     "place": "[...state.past, state.present].slice(-state.limit)",
+     "options": [
+      "sliceText"
+     ],
+     "answer": "neither",
+     "asked": [
+      "sliceText",
+      "sliceText"
+     ],
+     "got": "sliceText",
+     "ms": 124
+    },
+    {
+     "id": "send:464:pick",
+     "type": "pick",
+     "place": "state.past.slice(0, -1)",
+     "options": [
+      "sliceText",
+      "part"
+     ],
+     "answer": "part",
+     "asked": [
+      "sliceText",
+      "sliceText"
+     ],
+     "got": "sliceText",
+     "ms": 153
+    },
+    {
+     "id": "send:464:neither",
+     "type": "neither",
+     "place": "state.past.slice(0, -1)",
+     "options": [
+      "sliceText"
+     ],
+     "answer": "neither",
+     "asked": [
+      "sliceText",
+      "sliceText"
+     ],
+     "got": "sliceText",
+     "ms": 126
     },
     {
      "id": "clearEdited:262:pick",
@@ -4274,7 +5762,7 @@
       "at"
      ],
      "got": "neither",
-     "ms": 237
+     "ms": 271
     },
     {
      "id": "clearEdited:262:neither",
@@ -4289,7 +5777,7 @@
       "at"
      ],
      "got": "at",
-     "ms": 117
+     "ms": 116
     },
     {
      "id": "clearEdited:322:pick",
@@ -4305,7 +5793,7 @@
       "at"
      ],
      "got": "neither",
-     "ms": 145
+     "ms": 159
     },
     {
      "id": "clearEdited:322:neither",
@@ -4320,7 +5808,7 @@
       "at"
      ],
      "got": "at",
-     "ms": 119
+     "ms": 114
     },
     {
      "id": "initialsOf:118:pick",
@@ -4336,7 +5824,7 @@
       "at"
      ],
      "got": "at",
-     "ms": 238
+     "ms": 327
     },
     {
      "id": "initialsOf:118:neither",
@@ -4367,7 +5855,7 @@
       "neither"
      ],
      "got": "neither",
-     "ms": 152
+     "ms": 166
     },
     {
      "id": "initialsOf:154:neither",
@@ -4382,7 +5870,7 @@
       "neither"
      ],
      "got": "neither",
-     "ms": 125
+     "ms": 124
     },
     {
      "id": "contains:62:pick",
@@ -4398,7 +5886,7 @@
       "hasItem"
      ],
      "got": "neither",
-     "ms": 224
+     "ms": 264
     },
     {
      "id": "contains:62:neither",
@@ -4429,7 +5917,7 @@
       "plus"
      ],
      "got": "plus",
-     "ms": 232
+     "ms": 276
     },
     {
      "id": "pageItems:167:neither",
@@ -4444,7 +5932,7 @@
       "join"
      ],
      "got": "join",
-     "ms": 128
+     "ms": 115
     },
     {
      "id": "pageItems:184:pick",
@@ -4460,7 +5948,7 @@
       "plus"
      ],
      "got": "plus",
-     "ms": 143
+     "ms": 158
     },
     {
      "id": "pageItems:184:neither",
@@ -4475,7 +5963,7 @@
       "join"
      ],
      "got": "join",
-     "ms": 127
+     "ms": 123
     },
     {
      "id": "pageItems:360:pick",
@@ -4491,7 +5979,7 @@
       "greaterThan"
      ],
      "got": "greaterThan",
-     "ms": 160
+     "ms": 186
     },
     {
      "id": "pageItems:360:neither",
@@ -4522,7 +6010,7 @@
       "greaterThan"
      ],
      "got": "greaterThan",
-     "ms": 154
+     "ms": 179
     },
     {
      "id": "pageItems:369:neither",
@@ -4537,7 +6025,7 @@
       "isAfter"
      ],
      "got": "isAfter",
-     "ms": 127
+     "ms": 125
     },
     {
      "id": "stateOf:67:pick",
@@ -4553,7 +6041,7 @@
       "lessThan"
      ],
      "got": "lessThan",
-     "ms": 228
+     "ms": 258
     },
     {
      "id": "stateOf:67:neither",
@@ -4568,7 +6056,7 @@
       "isBefore"
      ],
      "got": "isBefore",
-     "ms": 125
+     "ms": 124
     },
     {
      "id": "nextDirection:103:pick",
@@ -4584,7 +6072,7 @@
       "at"
      ],
      "got": "neither",
-     "ms": 214
+     "ms": 263
     },
     {
      "id": "nextDirection:103:neither",
@@ -4599,7 +6087,7 @@
       "at"
      ],
      "got": "at",
-     "ms": 114
+     "ms": 115
     }
    ]
   }

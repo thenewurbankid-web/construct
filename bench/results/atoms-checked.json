@@ -6,11 +6,11 @@
   "different": 0,
   "unchecked": 0,
   "conversionsWithoutCheck": 712,
-  "conversionsWithCheck": 761,
+  "conversionsWithCheck": 777,
   "rewritesTakenBack": 0,
   "takenBackByCause": {},
   "ambiguousPlaces": 76,
-  "ambiguousResolved": 49
+  "ambiguousResolved": 65
  },
  "functions": [
   {
@@ -694,7 +694,7 @@
    "file": "index.ts",
    "status": "same",
    "convertedUnchecked": 8,
-   "converted": 8,
+   "converted": 9,
    "ambiguousBefore": 2,
    "decisions": [
     {
@@ -730,24 +730,23 @@
       {
        "atom": "plus",
        "status": "same",
-       "ran": 0,
+       "ran": 5,
        "wrongKind": 0,
-       "works": false
+       "works": true
       },
       {
        "atom": "join",
        "status": "same",
-       "ran": 0,
-       "wrongKind": 0,
+       "ran": 5,
+       "wrongKind": 5,
        "works": false
       }
      ],
-     "chosen": null,
-     "note": "no input reached it with a real value"
+     "chosen": "plus"
     }
    ],
    "rejected": [],
-   "body": "send(state, event) {\n  return match(event.type, {\n    FETCH: () => when(equals(state.status, 'success'), () => ({\n      ...state,\n      fetching: true,\n      request: state.request + 1\n    }), () => ({\n      ...state,\n      status: 'pending',\n      error: null,\n      fetching: true,\n      request: state.request + 1\n    })),\n    RESOLVE: () => when(not(isCurrent(state, event.request)), () => state, () => ({\n      ...state,\n      status: 'success',\n      data: event.data,\n      error: null,\n      fetching: false,\n      updatedAt: orElse(event.at, () => null)\n    })),\n    REJECT: () => when(not(isCurrent(state, event.request)), () => state, () => ({\n      ...state,\n      status: 'error',\n      error: event.error,\n      fetching: false\n    })),\n    RESET: () => machine.init()\n  }, () => state);\n}"
+   "body": "send(state, event) {\n  return match(event.type, {\n    FETCH: () => when(equals(state.status, 'success'), () => ({\n      ...state,\n      fetching: true,\n      request: state.request + 1\n    }), () => ({\n      ...state,\n      status: 'pending',\n      error: null,\n      fetching: true,\n      request: plus(state.request, 1)\n    })),\n    RESOLVE: () => when(not(isCurrent(state, event.request)), () => state, () => ({\n      ...state,\n      status: 'success',\n      data: event.data,\n      error: null,\n      fetching: false,\n      updatedAt: orElse(event.at, () => null)\n    })),\n    REJECT: () => when(not(isCurrent(state, event.request)), () => state, () => ({\n      ...state,\n      status: 'error',\n      error: event.error,\n      fetching: false\n    })),\n    RESET: () => machine.init()\n  }, () => state);\n}"
   },
   {
    "name": "stateOf",
@@ -981,7 +980,7 @@
    "file": "index.ts",
    "status": "same",
    "convertedUnchecked": 12,
-   "converted": 12,
+   "converted": 14,
    "ambiguousBefore": 2,
    "decisions": [
     {
@@ -993,20 +992,19 @@
       {
        "atom": "plus",
        "status": "same",
-       "ran": 0,
+       "ran": 4,
        "wrongKind": 0,
-       "works": false
+       "works": true
       },
       {
        "atom": "join",
        "status": "same",
-       "ran": 0,
-       "wrongKind": 0,
+       "ran": 4,
+       "wrongKind": 4,
        "works": false
       }
      ],
-     "chosen": null,
-     "note": "no input reached it with a real value"
+     "chosen": "plus"
     },
     {
      "form": "BinaryExpression <",
@@ -1017,24 +1015,23 @@
       {
        "atom": "lessThan",
        "status": "same",
-       "ran": 0,
+       "ran": 5,
        "wrongKind": 0,
-       "works": false
+       "works": true
       },
       {
        "atom": "isBefore",
-       "status": "same",
-       "ran": 0,
-       "wrongKind": 0,
+       "status": "different",
+       "ran": 5,
+       "wrongKind": 5,
        "works": false
       }
      ],
-     "chosen": null,
-     "note": "no input reached it with a real value"
+     "chosen": "lessThan"
     }
    ],
    "rejected": [],
-   "body": "send(state, event) {\n  return match(event.type, {\n    NEXT: () => when(not(canNext(state)), () => state, () => at(state.pageIndex + 1, state.total, state.pageSize)),\n    PREVIOUS: () => when(not(canPrevious(state)), () => state, () => at(minus(state.pageIndex, 1), state.total, state.pageSize)),\n    GO_TO: () => {\n      const next = at(event.pageIndex, state.total, state.pageSize);\n      return when(equals(next.pageIndex, state.pageIndex), () => state, () => next);\n    },\n    SET_PAGE_SIZE: () => when(event.pageSize < 1, () => state, () => {\n      // Keep the first row of the current page on screen.\n      const firstRow = times(state.pageIndex, state.pageSize);\n      return at(floorOf(dividedBy(firstRow, event.pageSize)), state.total, event.pageSize);\n    }),\n    SET_TOTAL: () => at(state.pageIndex, event.total, state.pageSize)\n  }, () => state);\n}"
+   "body": "send(state, event) {\n  return match(event.type, {\n    NEXT: () => when(not(canNext(state)), () => state, () => at(plus(state.pageIndex, 1), state.total, state.pageSize)),\n    PREVIOUS: () => when(not(canPrevious(state)), () => state, () => at(minus(state.pageIndex, 1), state.total, state.pageSize)),\n    GO_TO: () => {\n      const next = at(event.pageIndex, state.total, state.pageSize);\n      return when(equals(next.pageIndex, state.pageIndex), () => state, () => next);\n    },\n    SET_PAGE_SIZE: () => when(lessThan(event.pageSize, 1), () => state, () => {\n      // Keep the first row of the current page on screen.\n      const firstRow = times(state.pageIndex, state.pageSize);\n      return at(floorOf(dividedBy(firstRow, event.pageSize)), state.total, event.pageSize);\n    }),\n    SET_TOTAL: () => at(state.pageIndex, event.total, state.pageSize)\n  }, () => state);\n}"
   },
   {
    "name": "stateOf",
@@ -1502,15 +1499,15 @@
       {
        "atom": "get",
        "status": "same",
-       "ran": 19,
+       "ran": 25,
        "wrongKind": 0,
        "works": true
       },
       {
        "atom": "at",
        "status": "different",
-       "ran": 19,
-       "wrongKind": 15,
+       "ran": 25,
+       "wrongKind": 25,
        "works": false
       }
      ],
@@ -1525,15 +1522,15 @@
       {
        "atom": "get",
        "status": "same",
-       "ran": 19,
+       "ran": 25,
        "wrongKind": 0,
        "works": true
       },
       {
        "atom": "at",
        "status": "different",
-       "ran": 19,
-       "wrongKind": 15,
+       "ran": 25,
+       "wrongKind": 25,
        "works": false
       }
      ],
@@ -1548,7 +1545,7 @@
    "file": "index.ts",
    "status": "same",
    "convertedUnchecked": 4,
-   "converted": 4,
+   "converted": 5,
    "ambiguousBefore": 1,
    "decisions": [
     {
@@ -1560,24 +1557,23 @@
       {
        "atom": "lessThan",
        "status": "same",
-       "ran": 0,
+       "ran": 5,
        "wrongKind": 0,
-       "works": false
+       "works": true
       },
       {
        "atom": "isBefore",
-       "status": "same",
-       "ran": 0,
-       "wrongKind": 0,
+       "status": "different",
+       "ran": 5,
+       "wrongKind": 5,
        "works": false
       }
      ],
-     "chosen": null,
-     "note": "no input reached it with a real value"
+     "chosen": "lessThan"
     }
    ],
    "rejected": [],
-   "body": "send(state, event) {\n  return match(event.type, {\n    SET_START: () => range(event.date, state.end),\n    SET_END: () => range(state.start, event.date),\n    PRESET: () => when(event.days < 1, () => state, () => lastDays(event.days, event.today)),\n    CLEAR: () => when(equals(state.status, 'empty'), () => state, () => range(null, null))\n  }, () => state);\n}"
+   "body": "send(state, event) {\n  return match(event.type, {\n    SET_START: () => range(event.date, state.end),\n    SET_END: () => range(state.start, event.date),\n    PRESET: () => when(lessThan(event.days, 1), () => state, () => lastDays(event.days, event.today)),\n    CLEAR: () => when(equals(state.status, 'empty'), () => state, () => range(null, null))\n  }, () => state);\n}"
   },
   {
    "name": "stateOf",
@@ -1675,15 +1671,15 @@
       {
        "atom": "get",
        "status": "same",
-       "ran": 19,
+       "ran": 25,
        "wrongKind": 0,
        "works": true
       },
       {
        "atom": "at",
        "status": "different",
-       "ran": 19,
-       "wrongKind": 15,
+       "ran": 25,
+       "wrongKind": 25,
        "works": false
       }
      ],
@@ -1698,15 +1694,15 @@
       {
        "atom": "get",
        "status": "same",
-       "ran": 19,
+       "ran": 25,
        "wrongKind": 0,
        "works": true
       },
       {
        "atom": "at",
        "status": "different",
-       "ran": 19,
-       "wrongKind": 15,
+       "ran": 25,
+       "wrongKind": 25,
        "works": false
       }
      ],
@@ -1721,7 +1717,7 @@
    "file": "index.ts",
    "status": "same",
    "convertedUnchecked": 10,
-   "converted": 10,
+   "converted": 12,
    "ambiguousBefore": 2,
    "decisions": [
     {
@@ -1733,20 +1729,19 @@
       {
        "atom": "plus",
        "status": "same",
-       "ran": 0,
+       "ran": 5,
        "wrongKind": 0,
-       "works": false
+       "works": true
       },
       {
        "atom": "join",
        "status": "same",
-       "ran": 0,
-       "wrongKind": 0,
+       "ran": 5,
+       "wrongKind": 5,
        "works": false
       }
      ],
-     "chosen": null,
-     "note": "no input reached it with a real value"
+     "chosen": "plus"
     },
     {
      "form": "BinaryExpression <",
@@ -1757,24 +1752,23 @@
       {
        "atom": "lessThan",
        "status": "same",
-       "ran": 0,
+       "ran": 2,
        "wrongKind": 0,
-       "works": false
+       "works": true
       },
       {
        "atom": "isBefore",
-       "status": "same",
-       "ran": 0,
-       "wrongKind": 0,
+       "status": "different",
+       "ran": 2,
+       "wrongKind": 2,
        "works": false
       }
      ],
-     "chosen": null,
-     "note": "no input reached it with a real value"
+     "chosen": "lessThan"
     }
    ],
    "rejected": [],
-   "body": "send(state, event) {\n  return match(event.type, {\n    TYPE: () => ({\n      ...state,\n      status: 'waiting',\n      text: event.text,\n      dueAt: event.at + state.delay\n    }),\n    TICK: () => when(or(or(differs(state.status, 'waiting'), () => equals(state.dueAt, null)), () => event.at < state.dueAt), () => state, () => settle(state)),\n    FLUSH: () => when(differs(state.status, 'waiting'), () => state, () => settle(state)),\n    CLEAR: () => when(equals(state.status, 'idle'), () => state, () => machine.init({\n      delay: state.delay,\n      minLength: state.minLength\n    }))\n  }, () => state);\n}"
+   "body": "send(state, event) {\n  return match(event.type, {\n    TYPE: () => ({\n      ...state,\n      status: 'waiting',\n      text: event.text,\n      dueAt: plus(event.at, state.delay)\n    }),\n    TICK: () => when(or(or(differs(state.status, 'waiting'), () => equals(state.dueAt, null)), () => lessThan(event.at, state.dueAt)), () => state, () => settle(state)),\n    FLUSH: () => when(differs(state.status, 'waiting'), () => state, () => settle(state)),\n    CLEAR: () => when(equals(state.status, 'idle'), () => state, () => machine.init({\n      delay: state.delay,\n      minLength: state.minLength\n    }))\n  }, () => state);\n}"
   },
   {
    "name": "stateOf",
@@ -1916,15 +1910,15 @@
       {
        "atom": "get",
        "status": "same",
-       "ran": 19,
+       "ran": 25,
        "wrongKind": 0,
        "works": true
       },
       {
        "atom": "at",
        "status": "different",
-       "ran": 19,
-       "wrongKind": 15,
+       "ran": 25,
+       "wrongKind": 25,
        "works": false
       }
      ],
@@ -1939,15 +1933,15 @@
       {
        "atom": "get",
        "status": "same",
-       "ran": 19,
+       "ran": 25,
        "wrongKind": 0,
        "works": true
       },
       {
        "atom": "at",
        "status": "different",
-       "ran": 19,
-       "wrongKind": 15,
+       "ran": 25,
+       "wrongKind": 25,
        "works": false
       }
      ],
@@ -1962,15 +1956,15 @@
       {
        "atom": "get",
        "status": "same",
-       "ran": 19,
+       "ran": 25,
        "wrongKind": 0,
        "works": true
       },
       {
        "atom": "at",
        "status": "different",
-       "ran": 19,
-       "wrongKind": 15,
+       "ran": 25,
+       "wrongKind": 25,
        "works": false
       }
      ],
@@ -2220,7 +2214,7 @@
    "file": "index.ts",
    "status": "same",
    "convertedUnchecked": 18,
-   "converted": 18,
+   "converted": 21,
    "ambiguousBefore": 3,
    "decisions": [
     {
@@ -2232,20 +2226,19 @@
       {
        "atom": "plus",
        "status": "same",
-       "ran": 0,
+       "ran": 5,
        "wrongKind": 0,
-       "works": false
+       "works": true
       },
       {
        "atom": "join",
        "status": "same",
-       "ran": 0,
-       "wrongKind": 0,
+       "ran": 5,
+       "wrongKind": 5,
        "works": false
       }
      ],
-     "chosen": null,
-     "note": "no input reached it with a real value"
+     "chosen": "plus"
     },
     {
      "form": "BinaryExpression <",
@@ -2256,20 +2249,19 @@
       {
        "atom": "lessThan",
        "status": "same",
-       "ran": 0,
+       "ran": 4,
        "wrongKind": 0,
-       "works": false
+       "works": true
       },
       {
        "atom": "isBefore",
-       "status": "same",
-       "ran": 0,
-       "wrongKind": 0,
+       "status": "different",
+       "ran": 4,
+       "wrongKind": 4,
        "works": false
       }
      ],
-     "chosen": null,
-     "note": "no input reached it with a real value"
+     "chosen": "lessThan"
     },
     {
      "form": "BinaryExpression >",
@@ -2280,24 +2272,23 @@
       {
        "atom": "greaterThan",
        "status": "same",
-       "ran": 0,
+       "ran": 1,
        "wrongKind": 0,
-       "works": false
+       "works": true
       },
       {
        "atom": "isAfter",
-       "status": "same",
-       "ran": 0,
-       "wrongKind": 0,
+       "status": "different",
+       "ran": 1,
+       "wrongKind": 1,
        "works": false
       }
      ],
-     "chosen": null,
-     "note": "no input reached it with a real value"
+     "chosen": "greaterThan"
     }
    ],
    "rejected": [],
-   "body": "send(state, event) {\n  return when(and(equals(state.status, 'done'), () => differs(event.type, 'RESET')), () => state, () => match(event.type, {\n    NEXT: () => {\n      const data = merged(state.data, orElse(event.data, () => ({})));\n      const step = state.steps[state.index];\n      return when(not(canLeave(step, data)), () => at(state, state.index, data, step.id), () => at(state, state.index + 1, data, null));\n    },\n    BACK: () => when(equals(state.index, 0), () => state, () => at(state, minus(state.index, 1), state.data, null)),\n    GO_TO: () => {\n      // Only a step already reached can be jumped to, so no step's check is skipped.\n      const index = positionWhere(state.steps, s => equals(s.id, event.step));\n      return when(or(or(index < 0, () => index > state.visited), () => equals(index, state.index)), () => state, () => at(state, index, state.data, null));\n    },\n    RESET: () => machine.init({\n      steps: state.steps,\n      data: state.data\n    })\n  }, () => state));\n}"
+   "body": "send(state, event) {\n  return when(and(equals(state.status, 'done'), () => differs(event.type, 'RESET')), () => state, () => match(event.type, {\n    NEXT: () => {\n      const data = merged(state.data, orElse(event.data, () => ({})));\n      const step = state.steps[state.index];\n      return when(not(canLeave(step, data)), () => at(state, state.index, data, step.id), () => at(state, plus(state.index, 1), data, null));\n    },\n    BACK: () => when(equals(state.index, 0), () => state, () => at(state, minus(state.index, 1), state.data, null)),\n    GO_TO: () => {\n      // Only a step already reached can be jumped to, so no step's check is skipped.\n      const index = positionWhere(state.steps, s => equals(s.id, event.step));\n      return when(or(or(lessThan(index, 0), () => greaterThan(index, state.visited)), () => equals(index, state.index)), () => state, () => at(state, index, state.data, null));\n    },\n    RESET: () => machine.init({\n      steps: state.steps,\n      data: state.data\n    })\n  }, () => state));\n}"
   },
   {
    "name": "stateOf",
@@ -2590,15 +2581,15 @@
       {
        "atom": "get",
        "status": "same",
-       "ran": 19,
+       "ran": 25,
        "wrongKind": 0,
        "works": true
       },
       {
        "atom": "at",
        "status": "different",
-       "ran": 19,
-       "wrongKind": 15,
+       "ran": 25,
+       "wrongKind": 25,
        "works": false
       }
      ],
@@ -2613,15 +2604,15 @@
       {
        "atom": "get",
        "status": "same",
-       "ran": 19,
+       "ran": 25,
        "wrongKind": 0,
        "works": true
       },
       {
        "atom": "at",
        "status": "different",
-       "ran": 19,
-       "wrongKind": 15,
+       "ran": 25,
+       "wrongKind": 25,
        "works": false
       }
      ],
@@ -2636,7 +2627,7 @@
    "file": "index.ts",
    "status": "same",
    "convertedUnchecked": 22,
-   "converted": 22,
+   "converted": 24,
    "ambiguousBefore": 2,
    "decisions": [
     {
@@ -2648,20 +2639,19 @@
       {
        "atom": "plus",
        "status": "same",
-       "ran": 0,
+       "ran": 2,
        "wrongKind": 0,
-       "works": false
+       "works": true
       },
       {
        "atom": "join",
        "status": "same",
-       "ran": 0,
-       "wrongKind": 0,
+       "ran": 2,
+       "wrongKind": 2,
        "works": false
       }
      ],
-     "chosen": null,
-     "note": "no input reached it with a real value"
+     "chosen": "plus"
     },
     {
      "form": "BinaryExpression <",
@@ -2672,24 +2662,23 @@
       {
        "atom": "lessThan",
        "status": "same",
-       "ran": 0,
+       "ran": 5,
        "wrongKind": 0,
-       "works": false
+       "works": true
       },
       {
        "atom": "isBefore",
-       "status": "same",
-       "ran": 0,
-       "wrongKind": 0,
+       "status": "different",
+       "ran": 5,
+       "wrongKind": 5,
        "works": false
       }
      ],
-     "chosen": null,
-     "note": "no input reached it with a real value"
+     "chosen": "lessThan"
     }
    ],
    "rejected": [],
-   "body": "send(state, event) {\n  return match(event.type, {\n    FETCH: () => when(state.fetching, () => state, () => ({\n      ...state,\n      fetching: true,\n      error: null\n    })),\n    RESOLVE: () => when(or(not(state.fetching), () => differs(event.pageIndex, state.pageIndex)), () => state, () => ({\n      ...state,\n      status: 'success',\n      items: event.items,\n      total: event.total,\n      pageIndex: clampPage(event.pageIndex, event.total, state.pageSize),\n      fetching: false,\n      placeholder: false,\n      error: null\n    })),\n    REJECT: () => when(or(not(state.fetching), () => differs(event.pageIndex, state.pageIndex)), () => state, () => ({\n      ...state,\n      status: 'error',\n      error: event.error,\n      fetching: false,\n      placeholder: false\n    })),\n    NEXT: () => when(not(hasNextPage(state)), () => state, () => moveTo(state, state.pageIndex + 1)),\n    PREVIOUS: () => when(not(hasPreviousPage(state)), () => state, () => moveTo(state, minus(state.pageIndex, 1))),\n    GO_TO: () => moveTo(state, clampPage(event.pageIndex, state.total, state.pageSize)),\n    SET_PAGE_SIZE: () => when(or(event.pageSize < 1, () => equals(event.pageSize, state.pageSize)), () => state, () => {\n      const pageIndex = floorOf(dividedBy(times(state.pageIndex, state.pageSize), event.pageSize));\n      return {\n        ...state,\n        pageSize: event.pageSize,\n        pageIndex,\n        fetching: true,\n        placeholder: equals(state.status, 'success'),\n        error: null\n      };\n    })\n  }, () => state);\n}"
+   "body": "send(state, event) {\n  return match(event.type, {\n    FETCH: () => when(state.fetching, () => state, () => ({\n      ...state,\n      fetching: true,\n      error: null\n    })),\n    RESOLVE: () => when(or(not(state.fetching), () => differs(event.pageIndex, state.pageIndex)), () => state, () => ({\n      ...state,\n      status: 'success',\n      items: event.items,\n      total: event.total,\n      pageIndex: clampPage(event.pageIndex, event.total, state.pageSize),\n      fetching: false,\n      placeholder: false,\n      error: null\n    })),\n    REJECT: () => when(or(not(state.fetching), () => differs(event.pageIndex, state.pageIndex)), () => state, () => ({\n      ...state,\n      status: 'error',\n      error: event.error,\n      fetching: false,\n      placeholder: false\n    })),\n    NEXT: () => when(not(hasNextPage(state)), () => state, () => moveTo(state, plus(state.pageIndex, 1))),\n    PREVIOUS: () => when(not(hasPreviousPage(state)), () => state, () => moveTo(state, minus(state.pageIndex, 1))),\n    GO_TO: () => moveTo(state, clampPage(event.pageIndex, state.total, state.pageSize)),\n    SET_PAGE_SIZE: () => when(or(lessThan(event.pageSize, 1), () => equals(event.pageSize, state.pageSize)), () => state, () => {\n      const pageIndex = floorOf(dividedBy(times(state.pageIndex, state.pageSize), event.pageSize));\n      return {\n        ...state,\n        pageSize: event.pageSize,\n        pageIndex,\n        fetching: true,\n        placeholder: equals(state.status, 'success'),\n        error: null\n      };\n    })\n  }, () => state);\n}"
   },
   {
    "name": "stateOf",
@@ -2877,7 +2866,7 @@
    "file": "index.ts",
    "status": "same",
    "convertedUnchecked": 18,
-   "converted": 18,
+   "converted": 21,
    "ambiguousBefore": 3,
    "decisions": [
     {
@@ -2889,20 +2878,19 @@
       {
        "atom": "plus",
        "status": "same",
-       "ran": 0,
+       "ran": 1,
        "wrongKind": 0,
-       "works": false
+       "works": true
       },
       {
        "atom": "join",
        "status": "same",
-       "ran": 0,
-       "wrongKind": 0,
+       "ran": 1,
+       "wrongKind": 1,
        "works": false
       }
      ],
-     "chosen": null,
-     "note": "no input reached it with a real value"
+     "chosen": "plus"
     },
     {
      "form": "BinaryExpression +",
@@ -2913,20 +2901,19 @@
       {
        "atom": "plus",
        "status": "same",
-       "ran": 0,
+       "ran": 4,
        "wrongKind": 0,
-       "works": false
+       "works": true
       },
       {
        "atom": "join",
        "status": "same",
-       "ran": 0,
-       "wrongKind": 0,
+       "ran": 4,
+       "wrongKind": 4,
        "works": false
       }
      ],
-     "chosen": null,
-     "note": "no input reached it with a real value"
+     "chosen": "plus"
     },
     {
      "form": "BinaryExpression +",
@@ -2937,24 +2924,23 @@
       {
        "atom": "plus",
        "status": "same",
-       "ran": 0,
+       "ran": 1,
        "wrongKind": 0,
-       "works": false
+       "works": true
       },
       {
        "atom": "join",
        "status": "same",
-       "ran": 0,
-       "wrongKind": 0,
+       "ran": 1,
+       "wrongKind": 1,
        "works": false
       }
      ],
-     "chosen": null,
-     "note": "no input reached it with a real value"
+     "chosen": "plus"
     }
    ],
    "rejected": [],
-   "body": "send(state, event) {\n  return match(event.type, {\n    START: () => when(and(differs(state.status, 'stopped'), () => differs(state.status, 'finished')), () => state, () => ({\n      ...state,\n      status: 'fetching',\n      failures: 0,\n      error: null,\n      nextDelay: null,\n      attempts: state.attempts + 1\n    })),\n    STOP: () => when(equals(state.status, 'stopped'), () => state, () => ({\n      ...state,\n      status: 'stopped',\n      nextDelay: null\n    })),\n    TICK: () => when(and(differs(state.status, 'waiting'), () => differs(state.status, 'backoff')), () => state, () => ({\n      ...state,\n      status: 'fetching',\n      nextDelay: null,\n      attempts: state.attempts + 1\n    })),\n    RESOLVE: () => when(differs(state.status, 'fetching'), () => state, () => when(state.isDone(event.data), () => ({\n      ...state,\n      status: 'finished',\n      data: event.data,\n      failures: 0,\n      error: null,\n      nextDelay: null\n    }), () => ({\n      ...state,\n      status: 'waiting',\n      data: event.data,\n      failures: 0,\n      error: null,\n      nextDelay: state.interval\n    }))),\n    REJECT: () => when(differs(state.status, 'fetching'), () => state, () => {\n      const failures = state.failures + 1;\n      return when(atLeast(failures, state.maxFailures), () => ({\n        ...state,\n        status: 'stopped',\n        error: event.error,\n        failures,\n        nextDelay: null\n      }), () => ({\n        ...state,\n        status: 'backoff',\n        error: event.error,\n        failures,\n        nextDelay: backoffDelay(state.interval, failures, state.maxBackoff)\n      }));\n    })\n  }, () => state);\n}"
+   "body": "send(state, event) {\n  return match(event.type, {\n    START: () => when(and(differs(state.status, 'stopped'), () => differs(state.status, 'finished')), () => state, () => ({\n      ...state,\n      status: 'fetching',\n      failures: 0,\n      error: null,\n      nextDelay: null,\n      attempts: plus(state.attempts, 1)\n    })),\n    STOP: () => when(equals(state.status, 'stopped'), () => state, () => ({\n      ...state,\n      status: 'stopped',\n      nextDelay: null\n    })),\n    TICK: () => when(and(differs(state.status, 'waiting'), () => differs(state.status, 'backoff')), () => state, () => ({\n      ...state,\n      status: 'fetching',\n      nextDelay: null,\n      attempts: plus(state.attempts, 1)\n    })),\n    RESOLVE: () => when(differs(state.status, 'fetching'), () => state, () => when(state.isDone(event.data), () => ({\n      ...state,\n      status: 'finished',\n      data: event.data,\n      failures: 0,\n      error: null,\n      nextDelay: null\n    }), () => ({\n      ...state,\n      status: 'waiting',\n      data: event.data,\n      failures: 0,\n      error: null,\n      nextDelay: state.interval\n    }))),\n    REJECT: () => when(differs(state.status, 'fetching'), () => state, () => {\n      const failures = plus(state.failures, 1);\n      return when(atLeast(failures, state.maxFailures), () => ({\n        ...state,\n        status: 'stopped',\n        error: event.error,\n        failures,\n        nextDelay: null\n      }), () => ({\n        ...state,\n        status: 'backoff',\n        error: event.error,\n        failures,\n        nextDelay: backoffDelay(state.interval, failures, state.maxBackoff)\n      }));\n    })\n  }, () => state);\n}"
   },
   {
    "name": "stateOf",
@@ -3179,7 +3165,7 @@
    "file": "index.ts",
    "status": "same",
    "convertedUnchecked": 14,
-   "converted": 14,
+   "converted": 16,
    "ambiguousBefore": 2,
    "decisions": [
     {
@@ -3191,20 +3177,19 @@
       {
        "atom": "sliceText",
        "status": "same",
-       "ran": 0,
-       "wrongKind": 0,
+       "ran": 7,
+       "wrongKind": 7,
        "works": false
       },
       {
        "atom": "part",
        "status": "same",
-       "ran": 0,
+       "ran": 7,
        "wrongKind": 0,
-       "works": false
+       "works": true
       }
      ],
-     "chosen": null,
-     "note": "no input reached it with a real value"
+     "chosen": "part"
     },
     {
      "form": "CallExpression .slice()",
@@ -3215,24 +3200,23 @@
       {
        "atom": "sliceText",
        "status": "same",
-       "ran": 0,
-       "wrongKind": 0,
+       "ran": 4,
+       "wrongKind": 4,
        "works": false
       },
       {
        "atom": "part",
        "status": "same",
-       "ran": 0,
+       "ran": 4,
        "wrongKind": 0,
-       "works": false
+       "works": true
       }
      ],
-     "chosen": null,
-     "note": "no input reached it with a real value"
+     "chosen": "part"
     }
    ],
    "rejected": [],
-   "body": "send(state, event) {\n  return match(event.type, {\n    SET: () => when(isSameValue(event.value, state.present), () => state, () => {\n      const past = added(state.past, state.present).slice(negate(state.limit));\n      return history(past, event.value, [], state.limit);\n    }),\n    UNDO: () => when(not(canUndo(state)), () => state, () => {\n      const previous = lastOf(state.past);\n      return history(state.past.slice(0, -1), previous, prepended(state.future, state.present), state.limit);\n    }),\n    REDO: () => when(not(canRedo(state)), () => state, () => {\n      const [next, ...rest] = state.future;\n      return history(added(state.past, state.present), next, rest, state.limit);\n    }),\n    CLEAR: () => when(equals(state.status, 'clean'), () => state, () => history([], state.present, [], state.limit))\n  }, () => state);\n}"
+   "body": "send(state, event) {\n  return match(event.type, {\n    SET: () => when(isSameValue(event.value, state.present), () => state, () => {\n      const past = part(added(state.past, state.present), negate(state.limit));\n      return history(past, event.value, [], state.limit);\n    }),\n    UNDO: () => when(not(canUndo(state)), () => state, () => {\n      const previous = lastOf(state.past);\n      return history(part(state.past, 0, -1), previous, prepended(state.future, state.present), state.limit);\n    }),\n    REDO: () => when(not(canRedo(state)), () => state, () => {\n      const [next, ...rest] = state.future;\n      return history(added(state.past, state.present), next, rest, state.limit);\n    }),\n    CLEAR: () => when(equals(state.status, 'clean'), () => state, () => history([], state.present, [], state.limit))\n  }, () => state);\n}"
   },
   {
    "name": "stateOf",

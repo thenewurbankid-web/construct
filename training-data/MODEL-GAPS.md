@@ -30,8 +30,8 @@ shows they can go.
 
 | gap | today | with the model |
 |---|---|---|
-| ambiguous places no input settles | 27 of 76 left as they were | the model picks the atom from the code around it; the check confirms |
-| syntax with no rule (`untranslated`) | 25 corpus functions dropped; template literals (97 places) and optional calls have no atoms | the model writes the atom version of that part, or says there is none |
+| ambiguous places no input settles | 11 of 76 left as they were (27 before the checker's types) | the model picks the atom from the code around it; the check confirms |
+| syntax with no rule (`untranslated`) | 18 corpus functions dropped (25 before); template literals (97 places) and optional calls have no atoms | the model writes the atom version of that part, or says there is none |
 | English for a program | one fixed `toEnglish` sentence | paraphrase and intent passes (`DESIGN.md`, step 4) |
 
 The contract is the same for each gap: the model proposes, the checks run, and a proposal
@@ -77,7 +77,12 @@ the 1.5B took the first option in 93 of 98 answers.
 | 7B, constrained | 27 | 42 | 10 |
 | 7B, checker types | 31 | 37 | 20 |
 
+Rerun after the checker's types settled 16 more places (65 picks, 130 cases; the committed
+`bench/results/model-eval-*.json` are this run): 1.5B wrong atom 74 / 70 / 76, 7B 20 / 11 / 22
+(free / constrained / checker). Same picture.
+
 The 1.5B cannot refuse: given one wrong option it takes it. The 7B is wrong about one time
 in ten. At places no input reaches, the check cannot catch either, so picking stays out of the
-model's job. Next: the checker's types fed to input generation, so those places are reached
-and the existing try-each settles them by running.
+model's job. Done next: the checker's types fed to input generation reached 16 of the 27 places, and
+try-each settled them by running. Of the 11 left, 2 receive two kinds of value (no single
+atom is right) and 9 are still not reached.

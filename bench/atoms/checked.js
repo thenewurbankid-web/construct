@@ -1,7 +1,7 @@
 // Convert, check, repair: toAtoms() with every result run against the original.
 //
 //   const converter = await createCheckedConverter({ compiled, bundle })
-//   converter.convert(code, { kind, types, runs, seed })
+//   converter.convert(code, { kind, types, runs, seed, paramTypes })
 //     -> { ...toAtoms result, check, rejected, decisions }
 //   converter.alone(atom, form) -> the form run on its own (bench/atoms/diagnose.js)
 //
@@ -30,7 +30,7 @@ async function createCheckedConverter({ compiled, bundle, runtimeTypes = new Map
   const atomKinds = Object.fromEntries([...compiled.atoms].map(([name, info]) => [name, info.firstKinds || ['any']]));
   const diagnose = createDiagnoser({ compiled, sandbox, types: runtimeTypes });
 
-  function convert(code, { kind = 'function', types = new Map(), runs = 25, seed = 1, typeHint = null } = {}) {
+  function convert(code, { kind = 'function', types = new Map(), runs = 25, seed = 1, typeHint = null, paramTypes = null } = {}) {
     const skip = new Set();
     const choices = {};
     const attempt = (extraSkip, extraChoice) => {
@@ -42,7 +42,7 @@ async function createCheckedConverter({ compiled, bundle, runtimeTypes = new Map
         choices: extraChoice ? { ...choices, ...extraChoice } : choices,
       });
       const res = out.converted
-        ? sandbox.checkPair({ original: code, converted: out.body, importDecl: out.importDecl, kind, types, runs, seed, atomKinds })
+        ? sandbox.checkPair({ original: code, converted: out.body, importDecl: out.importDecl, kind, types, runs, seed, atomKinds, paramTypes })
         : { status: 'same', compared: 0, exercised: 0, mismatchCount: 0, atomCalls: {} };
       return { out, res };
     };
@@ -117,6 +117,8 @@ async function checkedCorpus({ runs = 25, only = null } = {}) {
   const { compiled } = catalogFor(snap.dir, snap.sha);
   const converter = await createCheckedConverter({ compiled, bundle: bundleRuntime(snap.dir), runtimeTypes: typesOfRuntime(snap.dir) });
   const corpus = loadCorpus();
+  // parameters typed only by their context get the checker's types (bench/atoms/checker-types.js)
+  const checker = require('./checker-types').createCheckerTypes();
   const sources = new Map(corpus.sources.map((s) => [s.file, s.src]));
   const envs = new Map();
   const typesFor = (file) => {
@@ -129,7 +131,7 @@ async function checkedCorpus({ runs = 25, only = null } = {}) {
     for (const f of corpus.functions) {
       if (f.jsx || (only && !only.test(f.name))) continue;
       const plain = toAtoms(f.code, { catalog: compiled, kind: f.kind });
-      const res = converter.convert(f.code, { kind: f.kind, types: typesFor(f.file), runs, seed: hash(f.name) });
+      const res = converter.convert(f.code, { kind: f.kind, types: typesFor(f.file), runs, seed: hash(f.name), paramTypes: checker.paramTypes(f.file, f.code) });
       functions.push({
         name: f.name,
         file: path.basename(f.file),

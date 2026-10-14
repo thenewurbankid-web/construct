@@ -2,7 +2,6 @@
 // whose answer is already known (training-data/MODEL-GAPS.md, steps 1 and 2).
 //
 //   casesFromChecked(results, corpus) -> [{ id, fn, file, code, place, start, end, options, answer }]
-//   createTypeLookup()                -> (case) -> lines `expr: type` from the TypeScript checker
 //   evaluate({ model, arms, cases })  -> { arms: { name: { score, rows } } }
 //
 // Cases come from bench/results/atoms-checked.json (node bench/atoms/checked.js):
@@ -31,7 +30,7 @@
 const fs = require('fs');
 const path = require('path');
 const parser = require('@babel/parser');
-const ts = require('typescript');
+const { createCheckerTypes } = require('./checker-types');
 
 const PARSE_OPTS = { sourceType: 'module', plugins: ['typescript', 'jsx'] };
 const NEITHER = 'neither';
@@ -64,44 +63,6 @@ function declarationsOf(src) {
     if (n.type === 'VariableDeclaration') for (const d of n.declarations) if (d.id.typeAnnotation) out.push(`const ${src.slice(d.id.start, d.id.end)} = ...`);
   }
   return out.join('\n');
-}
-
-// The types the checker gives the parts of a place: the place itself, its operands or its
-// receiver and arguments. One program per file, with its real imports, so a method typed
-// only by its context (`send(state, event)` inside an AtomMachine) gets its types too.
-function createTypeLookup() {
-  const programs = new Map();
-  const programFor = (file) => {
-    if (!programs.has(file)) {
-      const program = ts.createProgram([file], { noEmit: true, strict: true, allowImportingTsExtensions: true, allowJs: true, skipLibCheck: true, jsx: ts.JsxEmit.Preserve, target: ts.ScriptTarget.ES2023 });
-      programs.set(file, program);
-    }
-    return programs.get(file);
-  };
-  return function typesAt(c) {
-    const program = programFor(c.file);
-    const sf = program.getSourceFile(c.file);
-    const at = sf.text.indexOf(c.code);
-    if (!sf || at < 0) return [];
-    const checker = program.getTypeChecker();
-    const start = at + c.start;
-    const end = at + c.end;
-    let node = null;
-    const find = (n) => {
-      if (n.getStart(sf) <= start && n.end >= end) {
-        if (n.getStart(sf) === start && n.end === end) node = n;
-        ts.forEachChild(n, find);
-      }
-    };
-    find(sf);
-    if (!node) return [];
-    const parts = ts.isBinaryExpression(node) ? [node.left, node.right]
-      : ts.isCallExpression(node) ? [...(ts.isPropertyAccessExpression(node.expression) ? [node.expression.expression] : []), ...node.arguments]
-        : ts.isPropertyAccessExpression(node) || ts.isElementAccessExpression(node) ? [node.expression]
-          : [];
-    const show = (n) => `${n.getText(sf).replace(/\s+/g, ' ').slice(0, 80)}: ${checker.typeToString(checker.getTypeAtLocation(n), undefined, ts.TypeFormatFlags.NoTruncation).slice(0, 160)}`;
-    return [...parts.map(show), show(node)];
-  };
 }
 
 function promptFor(c, { reads, context }) {
@@ -158,7 +119,7 @@ function score(rows) {
 
 async function evaluate({ model, arms = Object.keys(ARMS), cases, reads, onRow = () => {} }) {
   const decls = new Map();
-  const typesAt = createTypeLookup();
+  const { typesAt } = createCheckerTypes();
   const helpers = {
     declarations: (c) => {
       if (!decls.has(c.file)) decls.set(c.file, declarationsOf(fs.readFileSync(c.file, 'utf8')));
@@ -211,4 +172,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { casesFromChecked, declarationsOf, createTypeLookup, promptFor, ask, score, evaluate, ARMS, NEITHER };
+module.exports = { casesFromChecked, declarationsOf, promptFor, ask, score, evaluate, ARMS, NEITHER };
