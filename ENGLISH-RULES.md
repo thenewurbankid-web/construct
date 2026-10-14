@@ -1,6 +1,7 @@
 # Atomic English: grammar rules for Smith atoms (draft, 2026-10-14)
 
-Status: draft for the owner's review. Nothing here is built yet.
+Status: approved by the owner. Build-order steps 1-4 are built (2026-10-15): the 37 atoms that had a fluent
+form now have Atomic English sentences, checked by `test/grammar.test.mjs`. The other 300 atoms have no sentence yet.
 
 Owner, 2026-10-14: "incorporate English grammar into the design, like functions are `compares()` instead of
 `compare()`, and `checks().if()`, and multiple arguments get a description like
