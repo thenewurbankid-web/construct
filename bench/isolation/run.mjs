@@ -17,6 +17,7 @@ import { spliceDeclarations, applySearchReplace, splitSkeleton, signatures } fro
 import { buildBriefs } from './blocks/briefBuilder.mjs';
 import { applyPrelude, spliceFunction } from './blocks/spliceApplier.mjs';
 import { sample } from './blocks/sampler.mjs';
+import { prefilledGenerate, briefSignature } from './blocks/prefill.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const TASKS = join(HERE, 'tasks');
@@ -98,10 +99,14 @@ function workerContext(arm, material, build) {
 
 // ---------- strategies ----------
 // One brief -> up to N 1.5b samples (sampler block) -> spliceApplier -> tsc (+ the task check on the last function).
+// Each sample is a prefilled body (blocks/prefill.mjs, the same call as drive.mjs's try): the signature and `{` are
+// already written, generation stops at the closing brace, so the reply is always exactly that one function.
 async function codeRound(arm, ctx, brief, file, final, label) {
+  const signature = briefSignature(brief.brief);
+  const lang = ctx.material.task.target.endsWith('.tsx') ? 'tsx' : 'ts';
   return sample({
     n: arm.n, seedBase: arm.seedBase,
-    generate: (seed) => ctx.call('coder', arm.coder, config.prompts.functionCoderSystem, brief.brief, { seed }),
+    generate: (seed) => ctx.prefilled(arm.coder, config.prompts.functionCoderSystem, brief.brief, { seed, signature, lang }),
     judge: (reply, i) => {
       const t0 = Date.now();
       const sp = spliceFunction(file, reply, brief.name, ctx.material.task.target);
@@ -319,6 +324,14 @@ async function runArm(armKey, task) {
       const c = await chat(modelKey, options, system, user);
       calls.push({ role, model: c.model, tokensIn: c.tokensIn, tokensOut: c.tokensOut, ms: c.ms, promptApprox: config.approxTokens(system + user) });
       writeFileSync(join(rawDir, `${String(calls.length).padStart(2, '0')}-${role}.md`), c.reply);
+      return c;
+    },
+    // The coder's one-function call: prefilled signature, stopped at the closing brace (blocks/prefill.mjs).
+    async prefilled(modelKey, system, user, { seed, signature, lang }) {
+      const c = await prefilledGenerate({ ollama: config.ollama, model: config.models[modelKey], options: config.sampling[arm.sampling],
+        system, user, signature, lang, seed });
+      calls.push({ role: 'coder', model: config.models[modelKey], tokensIn: c.tokensIn, tokensOut: c.tokensOut, ms: c.ms, promptApprox: config.approxTokens(system + user) });
+      writeFileSync(join(rawDir, `${String(calls.length).padStart(2, '0')}-coder.md`), c.reply);
       return c;
     },
     async fim(modelKey, prefix, suffix) {

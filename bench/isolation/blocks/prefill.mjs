@@ -60,3 +60,27 @@ export function completeFunction(signature, generated, lang = 'tsx') {
   const body = cut >= 0 ? generated.slice(0, cut) : `${generated.replace(/\s*$/, '')}\n}`;
   return `\`\`\`${lang}\n${head}${body}\n\`\`\`\n`;
 }
+
+// The one way the 1.5b is asked for a function (drive.mjs's try, run.mjs's codeRound): Ollama /api/generate,
+// raw: true, ChatML applied here, the assistant turn prefilled with the signature + `{`, stopped at STOP and cut at
+// the closing brace. `fetchImpl` is injectable for tests.
+//   prefilledGenerate({ ollama: { url, keepAlive, timeoutMs }, model, options, system, user, signature, lang, seed })
+//     -> { reply (fenced, complete function), raw (the generation), tokensIn, tokensOut, ms, promptChars }
+export async function prefilledGenerate({ ollama, model, options = {}, system, user, signature, lang = 'tsx', seed, fetchImpl = fetch }) {
+  if (model === 'fable') throw new Error('model "fable" is not allowed');
+  if (!signature) throw new Error('prefilledGenerate needs the function signature');
+  const t0 = Date.now();
+  const prompt = chatmlPrompt({ system, user, prefill: prefillFor(signature, lang) });
+  const res = await fetchImpl(`${ollama.url}/api/generate`, {
+    method: 'POST', headers: { 'content-type': 'application/json' }, signal: AbortSignal.timeout(ollama.timeoutMs ?? 600_000),
+    body: JSON.stringify({ model, raw: true, stream: false, keep_alive: ollama.keepAlive, prompt,
+      options: { ...options, ...(seed != null ? { seed } : {}), stop: STOP } }),
+  });
+  if (!res.ok) throw new Error(`ollama ${res.status}: ${(await res.text()).slice(0, 200)}`);
+  const j = await res.json();
+  return { reply: completeFunction(signature, j.response ?? '', lang), raw: j.response ?? '', tokensIn: j.prompt_eval_count ?? 0,
+    tokensOut: j.eval_count ?? 0, ms: Date.now() - t0, promptChars: prompt.length };
+}
+
+// The SIGNATURE line of a briefBuilder brief.
+export const briefSignature = (brief) => brief.match(/^SIGNATURE: (.+)$/m)?.[1]?.trim() ?? null;

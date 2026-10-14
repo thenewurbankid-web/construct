@@ -22,7 +22,7 @@ import { buildBriefs } from './blocks/briefBuilder.mjs';
 import { applyPrelude, spliceFunction } from './blocks/spliceApplier.mjs';
 import { sample } from './blocks/sampler.mjs';
 import { checkBrief } from './blocks/briefGuard.mjs';
-import { STOP, fnGoal, chatmlPrompt, prefillFor, completeFunction } from './blocks/prefill.mjs';
+import { fnGoal, prefilledGenerate } from './blocks/prefill.mjs';
 import { signatures } from './lib/edit.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -132,22 +132,10 @@ function showCode(task) {
 }
 
 // The 1.5b call: Ollama /api/generate with raw: true and the ChatML template applied here, the assistant turn
-// prefilled with the signature + `{`, stopped at a column-0 `}`. Returns the completed function as a fenced reply.
-async function prefilledCall({ system, user, signature, lang, seed }) {
-  const model = config.models.coder;
-  if (model === 'fable') throw new Error('model "fable" is not allowed');
-  const t0 = Date.now();
-  const prompt = chatmlPrompt({ system, user, prefill: prefillFor(signature, lang) });
-  const res = await fetch(`${config.ollama.url}/api/generate`, {
-    method: 'POST', headers: { 'content-type': 'application/json' }, signal: AbortSignal.timeout(config.ollama.timeoutMs),
-    body: JSON.stringify({ model, raw: true, stream: false, keep_alive: config.ollama.keepAlive, prompt,
-      options: { ...config.sampling.qwen, seed, stop: STOP } }),
-  });
-  if (!res.ok) throw new Error(`ollama ${res.status}: ${(await res.text()).slice(0, 200)}`);
-  const j = await res.json();
-  return { reply: completeFunction(signature, j.response ?? '', lang), tokensIn: j.prompt_eval_count ?? 0, tokensOut: j.eval_count ?? 0,
-    ms: Date.now() - t0, promptChars: prompt.length };
-}
+// prefilled with the signature + `{`, stopped at a column-0 `}` (blocks/prefill.mjs). Returns the completed function
+// as a fenced reply. run.mjs's codeRound (arms H, I) calls the same block.
+export const prefilledCall = ({ system, user, signature, lang, seed }) =>
+  prefilledGenerate({ ollama: config.ollama, model: config.models.coder, options: config.sampling.qwen, system, user, signature, lang, seed });
 
 // The 1.5b prompt for one function: briefBuilder's brief with the TASK line narrowed to that function (fnGoal),
 // plus the note (intent mode), or the note alone (raw mode). It never mentions the other target functions.
