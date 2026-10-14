@@ -916,6 +916,34 @@
       "part": "clonesAndKeepsFromTo",
       "flattened": "clonesAndFlattens",
       "uniqueOf": "clonesAndDropsDuplicates"
+    },
+    "every": {
+      "$comment": "R9: arrow functions become every() sentences. A binder (every, any, first) takes an imported placeholder and is followed by in(list); everything after that in() is inside the every() sentence, where participles, -ing forms and is()-actions are allowed (R1, R4) and the copy is said as to().clone() (R5). `starts` is the first word of each sentence and the one kind of result it decides. `bodyAtoms` are the body words, one atom each; a body is exactly one of them. `sentences` is the R9 table, each with its plain-JS twin; test/fluent.test.mjs runs both, test/grammar.test.mjs holds them to the rules.",
+      "starts": {
+        "every": "list",
+        "checks": "boolean",
+        "the": "item",
+        "folds": "value"
+      },
+      "binders": ["every", "any", "first"],
+      "placeholders": ["x", "y", "item", "total"],
+      "participles": ["mapped", "kept"],
+      "gerunds": ["multiplying", "adding"],
+      "roleWords": ["in", "into", "multiplying", "adding"],
+      "words": ["clone", "positive", "that", "starting", "the", "folds"],
+      "bodyAtoms": {
+        "multiplying": "times",
+        "adding": "plus",
+        "positive": "greaterThan"
+      },
+      "sentences": [
+        { "js": "xs.map((x) => x * 2)", "fluent": "every(x).in(xs).is().mapped().to().clone().by().multiplying(x).by(2)" },
+        { "js": "xs.filter((x) => x > 0)", "fluent": "every(x).in(xs).is().kept().if(x).is().positive()" },
+        { "js": "xs.every((x) => x > 0)", "fluent": "checks().if().every(x).in(xs).is().positive()" },
+        { "js": "xs.some((x) => x > 0)", "fluent": "checks().if().any(x).in(xs).is().positive()" },
+        { "js": "xs.find((x) => x > 0)", "fluent": "the().first(x).in(xs).that().is().positive()" },
+        { "js": "xs.reduce((total, x) => total + x, 0)", "fluent": "folds().every(x).in(xs).into(total).starting().at(0).by().adding(x).to(total)" }
+      ]
     }
   }
 }

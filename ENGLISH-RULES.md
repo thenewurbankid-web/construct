@@ -2,6 +2,8 @@
 
 Status: approved by the owner. Build-order steps 1-4 are built (2026-10-15): the 37 atoms that had a fluent
 form now have Atomic English sentences, checked by `test/grammar.test.mjs`. The other 300 atoms have no sentence yet.
+R9 is built (2026-10-15) for its table (map, filter, every, some, find, and the `folds()` reduce) in
+`src/fluent/every.ts`; molecules (bodies longer than one atom) and nested `every()` are not built yet.
 
 Owner, 2026-10-14: "incorporate English grammar into the design, like functions are `compares()` instead of
 `compare()`, and `checks().if()`, and multiple arguments get a description like

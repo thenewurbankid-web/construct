@@ -5,6 +5,9 @@
 // (ENGLISH-RULES.md): third-person verbs, one argument per word, questions split into words,
 // and a copy said out loud first with `clones()`.
 //
+// Callbacks are every() sentences (R9, ./every.ts): `every(x).in(xs)…`, `checks().if().every(x)…`,
+// `the().first(x)…` and `folds()…`, with the placeholders x, y, item and total.
+//
 // The forms before Atomic English (`is().equalTo(b)`, `list(xs).sortedBy(order)`, `choose()`,
 // `match()`, `attempt()`) still work, marked @deprecated; the catalog lists each as
 // `fluentDeprecated`.
@@ -15,6 +18,9 @@ import * as atoms from '../atoms';
 import type { Ordered } from '../atoms/comparison';
 import type { FalsyOf, Lazy } from '../atoms/logic';
 import type { SortOrder } from '../atoms/lists';
+import { ChecksIfEach } from './every';
+
+export * from './every';
 
 type Visit<T, R> = (item: T, index: number, list: readonly T[]) => R;
 type Constructor = abstract new (...args: any[]) => unknown;
@@ -225,8 +231,11 @@ export class Check<A> {
 }
 
 export class Checks {
-  if<A>(value: A): Check<A> {
-    return new Check<A>(value);
+  /** With no subject, the question is about the items of a list: `checks().if().every(x).in(xs)` (R9). */
+  if(): ChecksIfEach;
+  if<A>(value: A): Check<A>;
+  if<A>(...value: [A?]): Check<A> | ChecksIfEach {
+    return value.length ? new Check<A>(value[0] as A) : new ChecksIfEach();
   }
 }
 
