@@ -989,6 +989,92 @@
   "fluent": "checks().if(obj).has().key(key)"
  },
  {
+  "atom": "hasProperty",
+  "module": "checks",
+  "reads": "whether obj has the property key",
+  "js": [
+   "key in obj"
+  ],
+  "pure": true,
+  "mutates": false,
+  "check": [
+   {
+    "params": [
+     [
+      "obj",
+      "obj"
+     ],
+     [
+      "key",
+      "key"
+     ]
+    ]
+   }
+  ],
+  "note": "own and inherited keys, as `in`; hasKey is own keys only"
+ },
+ {
+  "atom": "typeOf",
+  "module": "checks",
+  "reads": "the type of value",
+  "js": [
+   "typeof value"
+  ],
+  "pure": true,
+  "mutates": false,
+  "check": [
+   {
+    "params": [
+     [
+      "value",
+      "mixed"
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "isFunction",
+  "module": "checks",
+  "reads": "whether value is a function",
+  "js": [
+   "typeof value === 'function'"
+  ],
+  "pure": true,
+  "mutates": false,
+  "check": [
+   {
+    "params": [
+     [
+      "value",
+      "mixed"
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "isObjectType",
+  "module": "checks",
+  "reads": "whether the type of value is object",
+  "js": [
+   "typeof value === 'object'"
+  ],
+  "pure": true,
+  "mutates": false,
+  "check": [
+   {
+    "params": [
+     [
+      "value",
+      "mixed"
+     ]
+    ]
+   }
+  ],
+  "note": "true for null, as typeof is"
+ },
+ {
   "atom": "isA",
   "module": "checks",
   "reads": "whether value is a Type",

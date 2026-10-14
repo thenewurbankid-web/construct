@@ -1117,6 +1117,100 @@
   },
   {
    "generated": false,
+   "atom": "hasProperty",
+   "module": "checks",
+   "reads": "whether obj has the property key",
+   "js": [
+    "key in obj"
+   ],
+   "pure": true,
+   "mutates": false,
+   "check": [
+    {
+     "params": [
+      [
+       "obj",
+       "obj"
+      ],
+      [
+       "key",
+       "key"
+      ]
+     ]
+    }
+   ],
+   "note": "own and inherited keys, as `in`; hasKey is own keys only",
+   "verified": true
+  },
+  {
+   "generated": false,
+   "atom": "typeOf",
+   "module": "checks",
+   "reads": "the type of value",
+   "js": [
+    "typeof value"
+   ],
+   "pure": true,
+   "mutates": false,
+   "check": [
+    {
+     "params": [
+      [
+       "value",
+       "mixed"
+      ]
+     ]
+    }
+   ],
+   "verified": true
+  },
+  {
+   "generated": false,
+   "atom": "isFunction",
+   "module": "checks",
+   "reads": "whether value is a function",
+   "js": [
+    "typeof value === 'function'"
+   ],
+   "pure": true,
+   "mutates": false,
+   "check": [
+    {
+     "params": [
+      [
+       "value",
+       "mixed"
+      ]
+     ]
+    }
+   ],
+   "verified": true
+  },
+  {
+   "generated": false,
+   "atom": "isObjectType",
+   "module": "checks",
+   "reads": "whether the type of value is object",
+   "js": [
+    "typeof value === 'object'"
+   ],
+   "pure": true,
+   "mutates": false,
+   "check": [
+    {
+     "params": [
+      [
+       "value",
+       "mixed"
+      ]
+     ]
+    }
+   ],
+   "note": "true for null, as typeof is",
+   "verified": true
+  },
+  {
+   "generated": false,
    "atom": "isA",
    "module": "checks",
    "reads": "whether value is a Type",

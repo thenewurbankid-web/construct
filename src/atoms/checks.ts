@@ -42,6 +42,39 @@ export function hasKey<T, K extends PropertyKey>(obj: T, key: K): obj is T & Rec
 }
 
 /**
+ * hasProperty(obj, key) reads "whether obj has the property key".
+ * Exactly `key in obj`: own and inherited keys alike (hasKey counts own keys only);
+ * throws on a primitive, as `in` does.
+ */
+export function hasProperty<K extends PropertyKey>(obj: object, key: K): boolean {
+  return key in obj;
+}
+
+/**
+ * typeOf(value) reads "the type of value".
+ * Exactly `typeof value`.
+ */
+export function typeOf(value: unknown): 'string' | 'number' | 'bigint' | 'boolean' | 'symbol' | 'undefined' | 'object' | 'function' {
+  return typeof value;
+}
+
+/**
+ * isFunction(value) reads "whether value is a function".
+ * Exactly `typeof value === 'function'`.
+ */
+export function isFunction(value: unknown): value is (...args: never[]) => unknown {
+  return typeof value === 'function';
+}
+
+/**
+ * isObjectType(value) reads "whether the type of value is object".
+ * Exactly `typeof value === 'object'`: null included, as typeof does, functions not.
+ */
+export function isObjectType(value: unknown): value is object | null {
+  return typeof value === 'object';
+}
+
+/**
  * isA(value, Type) reads "whether value is a Type".
  * Exactly `value instanceof Type`.
  */
