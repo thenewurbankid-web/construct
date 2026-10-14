@@ -9,7 +9,7 @@
   "notRunnable": 0,
   "runsPerFunction": 40,
   "runsCompared": 5560,
-  "runsExercised": 4271,
+  "runsExercised": 4270,
   "runsTimedOut": 0,
   "conversionsChecked": 712
  },
@@ -1702,7 +1702,7 @@
     "isA",
     "or",
     "orElse",
-    "replaceFirst",
+    "replaceText",
     "textFrom",
     "when"
    ],
@@ -1759,7 +1759,7 @@
      "wrongKind": 0,
      "unknown": 0
     },
-    "replaceFirst": {
+    "replaceText": {
      "calls": 1,
      "wrongKind": 0,
      "unknown": 0
@@ -1845,7 +1845,7 @@
     "dateAsIsoText",
     "lowerCase",
     "or",
-    "replaceFirst",
+    "replaceText",
     "trimmed"
    ],
    "status": "same",
@@ -1866,7 +1866,7 @@
      "wrongKind": 0,
      "unknown": 0
     },
-    "replaceFirst": {
+    "replaceText": {
      "calls": 80,
      "wrongKind": 0,
      "unknown": 0
@@ -2589,7 +2589,7 @@
    "mismatches": [],
    "atomCalls": {
     "equals": {
-     "calls": 98,
+     "calls": 99,
      "wrongKind": 0,
      "unknown": 0
     },
@@ -2730,7 +2730,7 @@
      "unknown": 22
     },
     "when": {
-     "calls": 72,
+     "calls": 71,
      "wrongKind": 0,
      "unknown": 30
     },
@@ -2773,7 +2773,7 @@
    "status": "same",
    "runs": 40,
    "compared": 40,
-   "exercised": 35,
+   "exercised": 34,
    "timeouts": 0,
    "mismatchCount": 0,
    "mismatches": [],
@@ -2784,7 +2784,7 @@
      "unknown": 0
     },
     "lowerCase": {
-     "calls": 83,
+     "calls": 84,
      "wrongKind": 0,
      "unknown": 0
     },
@@ -2799,19 +2799,19 @@
      "unknown": 0
     },
     "hasAnyWhere": {
-     "calls": 35,
+     "calls": 37,
      "wrongKind": 0,
      "unknown": 0
     },
     "orElse": {
-     "calls": 43,
+     "calls": 44,
      "wrongKind": 0,
-     "unknown": 7
+     "unknown": 8
     },
     "textFrom": {
-     "calls": 43,
+     "calls": 44,
      "wrongKind": 0,
-     "unknown": 7
+     "unknown": 8
     }
    }
   },
@@ -3863,12 +3863,12 @@
      "unknown": 0
     },
     "when": {
-     "calls": 74,
+     "calls": 76,
      "wrongKind": 0,
      "unknown": 0
     },
     "doesEndWith": {
-     "calls": 34,
+     "calls": 36,
      "wrongKind": 0,
      "unknown": 0
     }
@@ -4635,7 +4635,7 @@
      "unknown": 0
     },
     "firstOf": {
-     "calls": 44,
+     "calls": 45,
      "wrongKind": 0,
      "unknown": 0
     },
@@ -4660,7 +4660,7 @@
      "unknown": 0
     },
     "lastOf": {
-     "calls": 4,
+     "calls": 5,
      "wrongKind": 0,
      "unknown": 0
     }
