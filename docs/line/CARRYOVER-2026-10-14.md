@@ -74,3 +74,38 @@ work/2026-09-23 or later (older copies fail on macOS without flock). Previous ca
   fixture directly (even the reference solutions): change the gate's page rule or the tasks? L-gate 2/12 vs H 8/12
   until settled. atomic-codemod plug() can transform but its atom calls aren't imported (L-norm 0 compile).
 - Smith: owner pushed smith-hardening to ~/Desktop/atomic-codemod (new branch); merge into its main still open.
+
+## State after merge wave 2 (2026-10-14)
+- work/2026-09-23 = og/final-2026-10-12 = 67dfe77b. Suite 7238 pass / 0 fail / 52 skip / 6 todo (Smith linked).
+  Merged: smith-system1-data, smith-oss-coverage, lsp-into-line 0b421213 (LSP #943 + wiring #945 + isolation
+  harness #941), english-loop-chain fbce3355, smith-eval-hardened e85b92a0. Closed #940, #941, #942, #943-#946.
+- Smith pin a9191a5 (owner merged smith-hardening cbc2567 into ~/Desktop/atomic-codemod master). Untranslated-step
+  marker counts as a gap; link checked once per process. Smith tracker closed.
+- Fix later: `link.mjs --pin` covers only links.json (atomic-codemod.json edited by hand).
+- Not yet merged: exp/small-model-isolation 7e3d7646+ (modelled-I/O harness fixes), exp/english-loop-chain
+  62efd4c1+ (one-unit plan writer, k2b fix pending), exp/smith-eval-hardened 1e87be0b (facts compiler: matches
+  hand-written facts on every probe case), Claude Code cd2 run (running).
+- In flight: line/modelled-io (product audit fixes), exp/quickjs-sandbox, exp/lsp-speed (scoped + excalidraw +
+  background index), line/trace-beam (beam + structure/types/behaviour prune), Smith plain-English style on
+  smith-hardening (owner pushes), max-ai-ui admin-navigation chain report (read-only).
+- Owner rule (memory feedback-modelled-model-io): no free-form model I/O anywhere.
+
+## Results since wave 2 (ready for the next og wave)
+- QuickJS sandbox (#947, exp/quickjs-sandbox 293061e4, quickjs-emscripten 0.32.0 MIT): same results as vm on 52
+  cases, 1.3-3.7x faster warm, 13/13 escapes blocked. Execution beats Smith text match as the correctness judge:
+  K2b 7b plans 20/20 (text 7), 1.5b wrong plans 16/16 caught, K5b swapped plan caught, K6 refs 12/12 (text 7), fills
+  9/12 = task check (text 4), 0 correct fills rejected. Q-exec drops 45% early, -35% non-model time. Runs WITH tsc
+  (3 wrong fills passed only on types). vm stays logicVerify default (Intl); QuickJS opt-in + Q-exec/Q-diff executor.
+- Facts compiler (exp/smith-eval-hardened 1e87be0b, packages/engine/lsp/facts.mjs): deterministic Smith+index ->
+  compact context matches hand-written facts on every probe case (7b 4/5, 5/5; 1.5b 5/5 case 2).
+- Harness modelled-I/O fixes: exp/small-model-isolation 7e3d7646; exp/english-loop-chain 62efd4c1, 730b68b1.
+- Validation design now: tsc (types) + QuickJS on spec examples (behaviour, Q-diff vs plan) + Smith (readable
+  record, atomic gate). Context: Smith -> facts compiler, never raw.
+
+## In flight at compaction
+cd2 (Claude Code harness, worktree agent-a1face930fad09995, results bench/isolation/results/claude-drive/cd2);
+line/modelled-io (product audit fixes); exp/lsp-speed (scoped, excalidraw, background index); line/trace-beam
+(beam + structure/types/behaviour prune); Smith plain-English style on smith-hardening (~/Repositories/
+atomic-codemod-hardening, owner pushes); max-ai-ui admin-navigation chain report (exp/smith-eval-hardened,
+read-only on max-ai-ui); functional atom runtime + full-ES atoms generated from lib.d.ts (smith repo,
+~/Repositories/smith-functional branch functional-atoms, owner pushes).
