@@ -1,0 +1,26 @@
+run cd2: 24 task/arm rows, 33 drive calls, 24 claude sessions
+task                      harness  arm    pass tries chars 1.5b-calls 1.5b-tok wall-s | claude in/out/cacheR/cacheW turns cost$ model
+t03-book-availability     claude   CD-raw PASS     1  1464          2     1.2k      4 | 8/949/119.9k/17.6k 4 0.184 claude-opus-5-5
+t03-book-availability     claude   CD     PASS     1   404          1     1.1k      2 | 8/490/100.9k/34.6k 4 0.307 claude-opus-5-5
+t03-book-availability     claude   CW     PASS     1   931          0        0      4 | 8/795/93.9k/32.5k 4 0.295 claude-opus-5-5
+t05-book-add-to-picks     claude   CD-raw check     3  5454         15    10.4k     23 | 12/2.9k/181.0k/18.3k 6 0.239 claude-opus-5-5
+t05-book-add-to-picks     claude   CD     PASS     1   586          4     5.8k      7 | 8/578/112.6k/15.9k 4 0.161 claude-opus-5-5
+t05-book-add-to-picks     claude   CW     PASS     1  1424          0        0      1 | 8/840/111.5k/15.8k 4 0.166 claude-opus-5-5
+t06-picks-store           claude   CD-raw PASS     3  1769          7     1.7k      6 | 12/1.4k/191.7k/18.4k 6 0.214 claude-opus-5-5
+t06-picks-store           claude   CD     PASS     3   723         11     5.6k      7 | 12/938/177.8k/16.0k 6 0.182 claude-opus-5-5
+t06-picks-store           claude   CW     PASS     1   890          0        0      1 | 8/605/110.8k/14.9k 4 0.153 claude-opus-5-5
+t07-picks-page-list       claude   CD-raw PASS     3  4950         14     8.6k     17 | 12/3.1k/181.0k/18.4k 6 0.245 claude-opus-5-5
+t07-picks-page-list       claude   CD     PASS     1   414          4     4.7k      6 | 8/551/112.6k/15.8k 4 0.160 claude-opus-5-5
+t07-picks-page-list       claude   CW     PASS     1  1143          0        0      1 | 8/752/111.3k/15.5k 4 0.161 claude-opus-5-5
+t09-browse-heading-availability claude   CD-raw PASS     1  1338          1      486      1 | 8/888/112.6k/15.9k 4 0.168 claude-opus-5-5
+t09-browse-heading-availability claude   CD     PASS     1   388          1     1.1k      2 | 8/468/112.4k/15.4k 4 0.155 claude-opus-5-5
+t09-browse-heading-availability claude   CW     PASS     1   942          0        0      0 | 8/762/111.3k/15.4k 4 0.161 claude-opus-5-5
+t10-browse-paging         claude   CD-raw PASS     1  1698          2     1.4k      3 | 8/927/112.8k/16.3k 4 0.171 claude-opus-5-5
+t10-browse-paging         claude   CD     PASS     1   599          1     1.5k      2 | 8/513/112.6k/15.8k 4 0.159 claude-opus-5-5
+t10-browse-paging         claude   CW     PASS     1  1745          0        0      1 | 8/1.1k/111.5k/16.0k 4 0.173 claude-opus-5-5
+t11-browse-sort-title     claude   CD-raw PASS     2  2250          6     2.9k      6 | 10/1.6k/145.7k/16.7k 5 0.194 claude-opus-5-5
+t11-browse-sort-title     claude   CD     PASS     1   392          1      932      2 | 8/589/112.3k/15.5k 4 0.158 claude-opus-5-5
+t11-browse-sort-title     claude   CW     PASS     1  1004          0        0      0 | 8/748/111.3k/15.4k 4 0.160 claude-opus-5-5
+t12-browse-genre-filter   claude   CD-raw PASS     1  1758          3     2.1k      5 | 8/1.0k/112.6k/16.1k 4 0.172 claude-opus-5-5
+t12-browse-genre-filter   claude   CD     PASS     1   617          2     2.3k      4 | 8/549/112.4k/15.6k 4 0.158 claude-opus-5-5
+t12-browse-genre-filter   claude   CW     PASS     1  1555          0        0      1 | 8/1.2k/111.3k/15.7k 4 0.172 claude-opus-5-5

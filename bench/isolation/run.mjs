@@ -17,6 +17,8 @@ import { spliceDeclarations, applySearchReplace, splitSkeleton, signatures } fro
 import { buildBriefs } from './blocks/briefBuilder.mjs';
 import { applyPrelude, spliceFunction } from './blocks/spliceApplier.mjs';
 import { sample } from './blocks/sampler.mjs';
+import { prefilledGenerate, briefSignature } from './blocks/prefill.mjs';
+import { checkIntent } from './blocks/briefGuard.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const TASKS = join(HERE, 'tasks');
@@ -100,14 +102,18 @@ function workerContext(arm, material, build) {
 
 // ---------- strategies ----------
 // One brief -> up to N 1.5b samples (sampler block) -> spliceApplier -> tsc (+ the task check on the last function).
+// Each sample is a prefilled body (blocks/prefill.mjs, the same call as drive.mjs's try): the signature and `{` are
+// already written, generation stops at the closing brace, so the reply is always exactly that one function.
 async function codeRound(arm, ctx, brief, file, final, label) {
+  const signature = briefSignature(brief.brief);
+  const lang = ctx.material.task.target.endsWith('.tsx') ? 'tsx' : 'ts';
   return sample({
     n: arm.n, seedBase: arm.seedBase,
     // #943: arm.gate (lsp-run.mjs) is the sampler's third filter, after tsc and the task check
     ...(arm.gate && ctx.gate ? { gate: (j) => ctx.gate(j.body, brief.name, final) } : {}),
     // #947: arm.pre (q-run.mjs) runs before the judge: Q-exec drops a candidate that fails the task's examples in QuickJS
     ...(arm.pre && ctx.pre ? { pre: (reply) => ctx.pre(reply, brief.name, final, file) } : {}),
-    generate: (seed) => ctx.call('coder', arm.coder, config.prompts.functionCoderSystem, brief.brief, { seed }),
+    generate: (seed) => ctx.prefilled(arm.coder, config.prompts.functionCoderSystem, brief.brief, { seed, signature, lang }),
     judge: (reply, i) => {
       const t0 = Date.now();
       const sp = spliceFunction(file, reply, brief.name, ctx.material.task.target);
@@ -204,6 +210,10 @@ const strategies = {
     };
     const exec = {
       async brief({ intent } = {}) {
+        // The driver's intent is checked like a harness note (intent only, this function only); a rejection
+        // comes back with a valid sample note and uses no repair.
+        const guard = checkIntent(intent, { fn: names[Math.min(st.fn, names.length - 1)], others: names });
+        if (!guard.ok) return { ok: false, text: guard.text };
         if (st.failed) {
           if (st.repairs >= arm.repairs) return { ok: false, text: 'Repair limit reached. Call done.' };
           st.repairs++; st.failed = false;
@@ -211,7 +221,7 @@ const strategies = {
         }
         if (st.fn >= names.length) return { ok: false, text: 'Every function is written. Call check.' };
         const b = buildBriefs({ task, file: st.file, read: ctx.read, targetName: names[st.fn] }).briefs[0];
-        st.brief = { ...b, brief: intent ? `${b.brief}\n\nLEAD'S NOTE: ${String(intent).slice(0, 1200)}` : b.brief };
+        st.brief = { ...b, brief: guard.note ? `${b.brief}\n\nLEAD'S NOTE: ${guard.note}` : b.brief };
         st.candidate = null;
         return { ok: true, text: `Brief ready for function ${b.name} (about ${config.approxTokens(st.brief.brief)} tokens). Next: code.` };
       },
@@ -329,6 +339,14 @@ async function runArm(armKey, task) {
       const c = await chat(modelKey, options, system, user);
       calls.push({ role, model: c.model, tokensIn: c.tokensIn, tokensOut: c.tokensOut, ms: c.ms, promptApprox: config.approxTokens(system + user) });
       writeFileSync(join(rawDir, `${String(calls.length).padStart(2, '0')}-${role}.md`), c.reply);
+      return c;
+    },
+    // The coder's one-function call: prefilled signature, stopped at the closing brace (blocks/prefill.mjs).
+    async prefilled(modelKey, system, user, { seed, signature, lang }) {
+      const c = await prefilledGenerate({ ollama: config.ollama, model: config.models[modelKey], options: config.sampling[arm.sampling],
+        system, user, signature, lang, seed });
+      calls.push({ role: 'coder', model: config.models[modelKey], tokensIn: c.tokensIn, tokensOut: c.tokensOut, ms: c.ms, promptApprox: config.approxTokens(system + user) });
+      writeFileSync(join(rawDir, `${String(calls.length).padStart(2, '0')}-coder.md`), c.reply);
       return c;
     },
     async fim(modelKey, prefix, suffix) {

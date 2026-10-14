@@ -1,0 +1,21 @@
+Write the body of a React TSX component: `export function PicksPage()` (signature already written; you write only the body, then the closing brace).
+
+Already imported (do not import again):
+- `useState` from 'react'
+- `ListPage` — props `{ title: string; toolbar?: ReactNode; children?: ReactNode; empty?: ReactNode }`
+- `Button` — props: `label?: string`, `onClick`, and normal button attributes
+- `listPicks(): string[]` — returns the picked book ids
+- `removePick(id: string): void` — removes one id from the store
+- `books` — a JSON array of `{ id: string; title: string; author: string; genre: string; year: number; pages: number; summary: string; available: boolean }`
+
+What the body must do:
+1. Keep the picked ids in React state: `useState<string[]>(listPicks())`.
+2. Build the picked books by filtering `books` itself: keep each book whose `id` is included in the ids state. (Do not use map + find; filtering `books` keeps the element type correct.)
+3. Return a `ListPage` with title exactly "My picks". Its children are a `<ul>` with one `<li key={book.id}>` per picked book, showing the book's title and its author (title in one `<span>`, author in another `<span>`), plus a `Button` whose `label` is exactly `Remove ` followed by the title (e.g. "Remove Dune").
+4. Clicking that button calls `removePick(book.id)` and then sets the ids state to a NEW array: the current ids filtered to drop `book.id` (never re-set the same array, or React will not re-render).
+
+Shape example from another domain (not this code):
+const [skus, setSkus] = useState<string[]>(loadCart());
+<Button label={`Delete ${item.name}`} onClick={() => { dropItem(item.sku); setSkus(skus.filter(s => s !== item.sku)); }} />
+
+Reply with TSX only, no explanation.

@@ -1,0 +1,3 @@
+Keep a genre state string, starting at '' meaning All genres. Filter the imported books: when genre is '' keep all, else keep books whose genre equals it.
+Render ListPage with title "Browse" and as toolbar a <label htmlFor="genre">Genre</label> followed by <select id="genre"> whose onChange sets the state, with options: value "" text "All genres", then "Fiction", "History", "Science" (value equals text).
+As children render a <ul> with one <li key={book.id}> per filtered book containing <Link href={`/books/${book.id}`}>{book.title}</Link> and the author. Pass empty="No books found." No paging: list every match.

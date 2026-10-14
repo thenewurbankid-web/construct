@@ -8,6 +8,7 @@
 import { dirname, relative, basename, extname, join, normalize } from 'node:path';
 import { ts, parse, declName, isDirective, signatures } from '../lib/edit.mjs';
 import { templates, SERVICE_RULE } from './templates.mjs';
+import { fnGoal } from './prefill.mjs';
 
 export const approxTokens = (s) => Math.ceil(s.length / 3.2);
 const FIXTURE = 'library/fixtures/books.json';
@@ -95,11 +96,15 @@ export function buildBriefs({ task, file, read, targetName = null }) {
   }
 
   const lang = task.target.endsWith('.tsx') ? 'tsx' : 'ts';
+  // A function the task statement declares (a store's listX(): T) gets a TASK line narrowed to it alone (fnGoal);
+  // other mentions in a goal (e.g. a store call a page makes) are left as they are.
+  const goalNames = goalSignatures(task.goal).map((g) => g.name);
+  const taskLine = (name) => (goalNames.includes(name) ? fnGoal(task.goal, name, goalNames) : task.goal);
   const briefs = targets.map((t) => {
     const brief = [
       `FUNCTION: ${t.name} in ${task.target}. ${t.exists ? 'Rewrite it.' : 'Write it (it does not exist yet).'}`,
       `SIGNATURE: ${t.signature}`,
-      `TASK: ${task.goal}`,
+      `TASK: ${taskLine(t.name)}`,
       `SPEC:\n${task.spec}`,
       `ALREADY AT THE TOP OF THE FILE:\n${[...parse(file, task.target).statements.filter((s) => ts.isImportDeclaration(s) || isDirective(s)).map((s) => s.getText(sf)), ...prelude.filter((l) => !l.startsWith('type '))].filter((v, i, a) => a.indexOf(v) === i).sort((a, b) => Number(b.startsWith("'use")) - Number(a.startsWith("'use"))).join('\n')}`,
       types ? `TYPES IN SCOPE:\n${types}` : null,

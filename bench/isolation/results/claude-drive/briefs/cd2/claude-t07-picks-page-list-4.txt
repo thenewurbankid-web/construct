@@ -1,0 +1,15 @@
+Write the body of a React TSX component: `export function PicksPage()` (signature already written; you write only the body, then the closing brace).
+
+Already imported (do not import again): `useState` from 'react'; `ListPage` (props `title: string`, `children`); `Button` (props `label?: string`, `onClick`); `listPicks(): string[]` (picked book ids); `removePick(id: string): void`; `books`, a JSON array of `{ id: string; title: string; author: string; ... }`.
+
+The body has exactly three parts, in this order:
+1. A state variable named `ids` with setter `setIds`, typed `string[]`, initialised from `listPicks()`.
+2. A const named `picked`: the `books` array filtered to the books whose `id` is in `ids` (use `ids.includes(book.id)`). It must read the `ids` state variable, NOT call `listPicks()` again.
+3. Return a `ListPage` with title exactly "My picks", whose child is a `<ul>` mapping over `picked`. Each item is `<li key={book.id}>` containing a `<span>` with the title, a `<span>` with the author, and a `Button` with `label` exactly `Remove ` followed by the title (e.g. "Remove Dune"). The button's `onClick` is an arrow function that does two things: calls `removePick(book.id)`, then calls `setIds` with `ids` filtered to drop `book.id`.
+
+Shape example from another domain (not this code):
+const [skus, setSkus] = useState<string[]>(loadCart());
+const shown = products.filter((p) => skus.includes(p.sku));
+<Button label={`Delete ${p.name}`} onClick={() => { dropItem(p.sku); setSkus(skus.filter((s) => s !== p.sku)); }} />
+
+Reply with TSX only, no explanation.

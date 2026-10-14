@@ -1,0 +1,18 @@
+Write the body of a React (Next.js, TSX) component `export function BrowsePage()` in features/browse/pages/BrowsePage.tsx. It takes no props and returns JSX.
+
+Already imported at the top of the file (do not re-import):
+import Link from 'next/link';
+import { ListPage } from '../../../library/pages/ListPage';
+import books from '../../../library/fixtures/books.json';
+
+`books` is an array of: type Book = { id: string; title: string; author: string; genre: string; year: number; pages: number; available: boolean };
+`ListPage` is a component with props { title: string; toolbar?: ReactNode; children?: ReactNode; empty?: ReactNode } and renders `title` as the page's main heading.
+
+What it must do:
+- Return a `<ListPage>` whose title is exactly "Library catalogue".
+- Inside it, render a `<ul>` listing EVERY book in `books` (no paging, no slicing), one `<li>` per book with `key` set to the book's id.
+- Each item shows: the title as a `<Link>` whose href is `/books/` followed by the book's id; then the author, the genre and the year as text; then the exact text "Available" when `available` is true, otherwise the exact text "On loan".
+- Return only JSX; no state, no hooks, no other functions.
+
+Shape example from a different domain (not this task):
+<Section title="Team">{people.map((p) => (<li key={p.id}>{p.name}</li>))}</Section>

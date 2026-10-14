@@ -1,0 +1,1 @@
+Read the current ids from localStorage key "picks" (JSON array of strings; treat missing or invalid as []). If id is already in the array, do nothing. Otherwise append id at the end and write the array back with localStorage.setItem("picks", JSON.stringify(ids)).

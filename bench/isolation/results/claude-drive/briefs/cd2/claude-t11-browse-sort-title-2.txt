@@ -1,0 +1,17 @@
+Write the body of a React (TSX) component: `export function BrowsePage()`. It takes no props and returns JSX.
+
+Already imported at the top of the file (do not re-import):
+- `Link` from 'next/link'
+- `ListPage` (props: `{ title: string; toolbar?: ReactNode; children?: ReactNode; empty?: ReactNode }`)
+- `books` — a JSON array of `Book`: `{ id: string; title: string; author: string; genre: string; year: number; pages: number; available: boolean }`
+
+What it must do:
+- Make a sorted copy of `books` (do not mutate the import; copy with spread first) ordered by `title` alphabetically A-Z, comparing with `localeCompare`. This is the default "Title A-Z" order.
+- Return a `ListPage` with title "Books".
+- As its children, render a `<ul>` with one `<li key={book.id}>` per sorted book, in sorted order. Inside each li, a `Link` with `href={`/books/${book.id}`}` whose text is the book's title, followed by " by " and the author.
+- Pass `empty` as the text "No books found." 
+- No state, no hooks, no sort control.
+
+Shape example (different domain):
+const sorted = [...cities].sort((a, b) => a.name.localeCompare(b.name));
+return <Panel heading="Cities">{sorted.map(c => <p key={c.id}>{c.name}</p>)}</Panel>;

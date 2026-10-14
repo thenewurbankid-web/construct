@@ -1,0 +1,40 @@
+'use client';
+// @line-base pages/ListPage
+// @line-route /
+import { useState } from 'react';
+import Link from 'next/link';
+import { ListPage } from '../../../library/pages/ListPage';
+import { Button } from '../../../library/components/Button';
+import books from '../../../library/fixtures/books.json';
+
+type Book = { id: string; title: string; author: string; genre: string; year: number; pages: number; available: boolean };
+
+const PAGE_SIZE = 6;
+
+export function BrowsePage() {
+  const items = books as Book[];
+  const [page, setPage] = useState(1);
+  const pageCount = Math.max(1, Math.ceil(items.length / PAGE_SIZE));
+  const current = Math.min(page, pageCount);
+  const visible = items.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE);
+  return (
+    <div className="flex flex-col gap-4">
+      <ListPage title="Library catalogue" empty={<p>No books yet.</p>}>
+        {visible.length > 0 && visible.map((item) => (
+          <article key={item.id} className="flex flex-col gap-2 rounded-lg border border-slate-200 p-4 shadow-sm">
+            <h2 className="text-lg font-semibold"><Link href={`/books/${item.id}`}>{item.title}</Link></h2>
+            <p>{item.author}</p>
+            <p>{item.genre}</p>
+            <p>{String(item.year)}</p>
+            <p>{item.available ? 'Available' : 'On loan'}</p>
+          </article>
+        ))}
+      </ListPage>
+      <nav className="flex items-center gap-4">
+        <Button label="Previous page" variant="secondary" disabled={current <= 1} onClick={() => setPage(current - 1)} />
+        <p>{`Page ${current} of ${pageCount}`}</p>
+        <Button label="Next page" variant="secondary" disabled={current >= pageCount} onClick={() => setPage(current + 1)} />
+      </nav>
+    </div>
+  );
+}

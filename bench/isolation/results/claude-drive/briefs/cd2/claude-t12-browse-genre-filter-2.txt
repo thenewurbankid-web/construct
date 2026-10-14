@@ -1,0 +1,23 @@
+Write the body of a React (Next.js, TypeScript) component. The signature is already written:
+export function BrowsePage()
+
+Already imported at the top of the file (do not import anything again):
+- `Link` from 'next/link'
+- `ListPage` (props: title: string; toolbar?: ReactNode; children?: ReactNode; empty?: ReactNode)
+- `books`: an array of Book, where type Book = { id: string; title: string; author: string; genre: string; year: number; pages: number; available: boolean }
+- `useState` from 'react'
+
+What the body must do:
+1. Keep the chosen genre in React state with useState<string>, starting at the empty string '' (meaning All genres).
+2. Compute the visible books: if the chosen genre is '', every book; otherwise only the books whose `genre` equals the chosen genre. No paging: show every matching book.
+3. Return a ListPage with title "Browse".
+   - Its `toolbar` prop is a fragment with a native `<label htmlFor="genre">Genre</label>` followed by `<select id="genre" value={...} onChange={...}>` that sets the state to e.target.value.
+   - The select has exactly four options, in this order, with this exact text: "All genres" (value ""), "Fiction" (value "Fiction"), "History" (value "History"), "Science" (value "Science").
+   - Its `children` is a `<ul>` with one `<li key={book.id}>` per visible book, containing `<Link href={`/books/${book.id}`}>{book.title}</Link>` followed by " by " and the author.
+   - Its `empty` prop is <p>No books match.</p> (only passed when there are no visible books is fine too).
+
+Shape example from another domain (not this task):
+const [size, setSize] = useState<string>('');
+const shown = size === '' ? shirts : shirts.filter((s) => s.size === size);
+
+Reply with only the function body, then the closing brace.

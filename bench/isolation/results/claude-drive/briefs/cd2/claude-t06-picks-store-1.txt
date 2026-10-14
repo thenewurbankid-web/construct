@@ -1,0 +1,1 @@
+Read localStorage key "picks" and parse it as a JSON array of string ids, returned in stored order. If the key is missing, unparseable, or not an array, return []. Guard for typeof localStorage === "undefined" (return []).
