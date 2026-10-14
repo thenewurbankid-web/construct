@@ -4212,7 +4212,8 @@
    "module": "generated/text",
    "reads": "the locale compare that, locales, options of text",
    "js": [
-    "text.localeCompare(that, locales, options)"
+    "text.localeCompare(that, locales, options)",
+    "text.localeCompare(that)"
    ],
    "pure": false,
    "mutates": false,
@@ -4575,7 +4576,8 @@
    "module": "generated/lists",
    "reads": "the to locale string locales, options of list",
    "js": [
-    "list.toLocaleString(locales, options)"
+    "list.toLocaleString(locales, options)",
+    "list.toLocaleString()"
    ],
    "pure": false,
    "mutates": false,
@@ -4754,7 +4756,8 @@
    "module": "generated/lists",
    "reads": "the to spliced start, deleteCount, items of list",
    "js": [
-    "list.toSpliced(start, deleteCount, ...items)"
+    "list.toSpliced(start, deleteCount, ...items)",
+    "list.toSpliced(start, deleteCount)"
    ],
    "pure": true,
    "mutates": false,
@@ -4883,7 +4886,8 @@
    "module": "generated/lists",
    "reads": "the reduce right callbackfn of list",
    "js": [
-    "list.reduceRight(callbackfn)"
+    "list.reduceRight(callbackfn)",
+    "list.reduceRight(callbackfn, initialValue)"
    ],
    "pure": true,
    "mutates": false,
@@ -5554,7 +5558,8 @@
    "module": "generated/objects",
    "reads": "the create of o",
    "js": [
-    "Object.create(o)"
+    "Object.create(o)",
+    "Object.create(o, properties)"
    ],
    "pure": true,
    "mutates": false,
@@ -7277,7 +7282,8 @@
    "module": "generated/dates",
    "reads": "the to locale string locales, options of date",
    "js": [
-    "date.toLocaleString(locales, options)"
+    "date.toLocaleString(locales, options)",
+    "date.toLocaleString()"
    ],
    "pure": false,
    "mutates": false,
@@ -7303,7 +7309,8 @@
    "module": "generated/dates",
    "reads": "the to locale date string locales, options of date",
    "js": [
-    "date.toLocaleDateString(locales, options)"
+    "date.toLocaleDateString(locales, options)",
+    "date.toLocaleDateString()"
    ],
    "pure": false,
    "mutates": false,
@@ -7329,7 +7336,8 @@
    "module": "generated/dates",
    "reads": "the to locale time string locales, options of date",
    "js": [
-    "date.toLocaleTimeString(locales, options)"
+    "date.toLocaleTimeString(locales, options)",
+    "date.toLocaleTimeString()"
    ],
    "pure": false,
    "mutates": false,
@@ -8608,7 +8616,9 @@
    "module": "generated/dates",
    "reads": "a new Date from value",
    "js": [
-    "new Date(value)"
+    "new Date(value)",
+    "new Date()",
+    "new Date(year, monthIndex, dateArg, hours, minutes, seconds, ms)"
    ],
    "pure": false,
    "mutates": false,
@@ -8842,7 +8852,8 @@
    "module": "generated/patterns",
    "reads": "a new RegExp from patternArg, flags",
    "js": [
-    "new RegExp(patternArg, flags)"
+    "new RegExp(patternArg, flags)",
+    "new RegExp(patternArg)"
    ],
    "pure": true,
    "mutates": false,
@@ -9101,7 +9112,8 @@
    "module": "generated/promises",
    "reads": "the resolve of nothing",
    "js": [
-    "Promise.resolve()"
+    "Promise.resolve()",
+    "Promise.resolve(value)"
    ],
    "pure": true,
    "mutates": false,
@@ -9805,7 +9817,8 @@
    "module": "generated/errors",
    "reads": "a new Error from message, options",
    "js": [
-    "new Error(message, options)"
+    "new Error(message, options)",
+    "new Error(message)"
    ],
    "pure": true,
    "mutates": false,
@@ -9835,7 +9848,8 @@
    "module": "generated/errors",
    "reads": "a new TypeError from message, options",
    "js": [
-    "new TypeError(message, options)"
+    "new TypeError(message, options)",
+    "new TypeError(message)"
    ],
    "pure": true,
    "mutates": false,
@@ -9865,7 +9879,8 @@
    "module": "generated/errors",
    "reads": "a new RangeError from message, options",
    "js": [
-    "new RangeError(message, options)"
+    "new RangeError(message, options)",
+    "new RangeError(message)"
    ],
    "pure": true,
    "mutates": false,
@@ -9895,7 +9910,8 @@
    "module": "generated/errors",
    "reads": "a new SyntaxError from message, options",
    "js": [
-    "new SyntaxError(message, options)"
+    "new SyntaxError(message, options)",
+    "new SyntaxError(message)"
    ],
    "pure": true,
    "mutates": false,
@@ -9925,7 +9941,8 @@
    "module": "generated/errors",
    "reads": "a new ReferenceError from message, options",
    "js": [
-    "new ReferenceError(message, options)"
+    "new ReferenceError(message, options)",
+    "new ReferenceError(message)"
    ],
    "pure": true,
    "mutates": false,
@@ -9955,7 +9972,8 @@
    "module": "generated/errors",
    "reads": "a new EvalError from message, options",
    "js": [
-    "new EvalError(message, options)"
+    "new EvalError(message, options)",
+    "new EvalError(message)"
    ],
    "pure": true,
    "mutates": false,
@@ -9985,7 +10003,8 @@
    "module": "generated/errors",
    "reads": "a new URIError from message, options",
    "js": [
-    "new URIError(message, options)"
+    "new URIError(message, options)",
+    "new URIError(message)"
    ],
    "pure": true,
    "mutates": false,
@@ -10015,7 +10034,8 @@
    "module": "generated/errors",
    "reads": "a new AggregateError from errors, message",
    "js": [
-    "new AggregateError(errors, message)"
+    "new AggregateError(errors, message)",
+    "new AggregateError(errors, message, options)"
    ],
    "pure": true,
    "mutates": false,

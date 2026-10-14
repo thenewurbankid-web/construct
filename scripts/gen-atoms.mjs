@@ -421,6 +421,15 @@ for (const d of decisions) {
   const callNames = m.kind === 'instance' ? [m.owner.receiver, ...paramNames] : paramNames;
   const reads = naming.readsOverrides[m.id] ?? readsFor(m, paramNames, mode);
   const js = jsFor(m, paramNames);
+  // One JS form per distinct shape among the overloads (`Promise.resolve()` and `Promise.resolve(value)`),
+  // the first overload's form first: it is the one the doc line and the reading are written from.
+  const shapes = new Map();
+  for (const s of sigs) {
+    const ps = signatureParts(m, s).params;
+    const shape = `${ps.length}${ps.some((q) => q.rest) ? '+' : ''}`;
+    if (!shapes.has(shape)) shapes.set(shape, jsFor(m, ps.map((q) => (q.rest ? '...' : '') + q.name)));
+  }
+  const forms = [...new Set([js, ...shapes.values()])];
   const impure = naming.impure[m.id];
   const notes = [];
   if (mode === 'copy') notes.push(`The built-in mutates ${m.owner.receiver}; this atom applies it to a copy and returns the copy (the original is untouched).`);
@@ -443,7 +452,7 @@ for (const d of decisions) {
     atom: d.atom,
     module: `generated/${mod}`,
     reads,
-    js: [js],
+    js: forms,
     pure: !impure && mode !== 'inplace',
     mutates: mode === 'inplace',
     generated: true,
