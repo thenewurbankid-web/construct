@@ -23,6 +23,8 @@
     "express": "^5.2.1"
   },
   "devDependencies": {
-    "fast-check": "^4.10.2"
+    "fast-check": "^4.10.2",
+    "quickjs-emscripten": "0.32.0",
+    "typescript": "5.9.3"
   }
 }
