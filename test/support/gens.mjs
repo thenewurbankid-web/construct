@@ -28,6 +28,12 @@ const obj = fc.dictionary(key, prim, { maxKeys: 4 });
 const list = fc.array(prim, { maxLength: 6 });
 
 export const gens = {
+  unit: fc.double({ min: 0, max: 1, maxExcluded: true, noNaN: true }),
+  urlpath: fc.oneof(fc.constantFrom('/books', 'books?id=3', '../up', '#top', '?q=a b', 'https://other.test/x', '//cdn.test/y', ''), fc.webPath()),
+  urlbase: fc.constantFrom('https://example.test/a/b', 'https://example.test/', 'http://localhost:8080/app/'),
+  rawtemplate: fc.array(fc.string({ maxLength: 3 }), { maxLength: 4 }).map((raw) => ({ raw })),
+  descriptor: fc.record({ value: prim, writable: fc.boolean(), enumerable: fc.boolean(), configurable: fc.boolean() }, { requiredKeys: [] }),
+  descriptormap: fc.dictionary(key, fc.record({ value: prim, writable: fc.boolean(), enumerable: fc.boolean(), configurable: fc.boolean() }, { requiredKeys: [] }), { maxKeys: 3 }),
   prim,
   text,
   shorttext,

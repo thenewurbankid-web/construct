@@ -3694,9 +3694,93 @@
    ],
    "pure": false,
    "mutates": false,
-   "unverified": "impure: reads the clock; example tests inject a fixed clock",
    "impureReason": "reads the clock (inject one to make it deterministic)",
-   "verified": false
+   "check": [
+    {
+     "params": [
+      [
+       "clock",
+       "lazy:num"
+      ]
+     ],
+     "js": [
+      "new Date(clock)"
+     ]
+    }
+   ],
+   "verified": true
+  },
+  {
+   "generated": false,
+   "atom": "nowTime",
+   "module": "impure",
+   "reads": "the current time in milliseconds",
+   "js": [
+    "Date.now()"
+   ],
+   "pure": false,
+   "mutates": false,
+   "covers": [
+    "Date.now"
+   ],
+   "impureReason": "reads the clock (inject one to make it deterministic)",
+   "check": [
+    {
+     "params": [
+      [
+       "clock",
+       "lazy:num"
+      ]
+     ],
+     "js": [
+      "clock"
+     ]
+    }
+   ],
+   "verified": true
+  },
+  {
+   "generated": false,
+   "atom": "random",
+   "module": "impure",
+   "reads": "a random number from 0 up to 1",
+   "js": [
+    "Math.random()"
+   ],
+   "pure": false,
+   "mutates": false,
+   "covers": [
+    "Math.random"
+   ],
+   "impureReason": "random (inject a source, e.g. seededSource(seed), to make it deterministic)",
+   "check": [
+    {
+     "params": [
+      [
+       "source",
+       "lazy:unit"
+      ]
+     ],
+     "js": [
+      "source"
+     ]
+    }
+   ],
+   "verified": true
+  },
+  {
+   "generated": false,
+   "atom": "seededSource",
+   "module": "impure",
+   "reads": "a repeatable random source started from seed",
+   "js": [
+    "/* no built-in: a seeded PRNG (mulberry32) */"
+   ],
+   "pure": true,
+   "mutates": false,
+   "verifiedBy": "test/core.test.mjs (same seed, same sequence; values in [0, 1))",
+   "note": "the returned source is stateful; seededSource itself is pure",
+   "verified": true
   },
   {
    "generated": false,
@@ -3708,9 +3792,29 @@
    ],
    "pure": false,
    "mutates": false,
-   "unverified": "impure: random; example tests inject a fixed source",
    "impureReason": "random (inject a source to make it deterministic)",
-   "verified": false
+   "check": [
+    {
+     "params": [
+      [
+       "min",
+       "num"
+      ],
+      [
+       "max",
+       "num"
+      ],
+      [
+       "random",
+       "lazy:unit"
+      ]
+     ],
+     "js": [
+      "min + random * (max - min)"
+     ]
+    }
+   ],
+   "verified": true
   },
   {
    "generated": false,
@@ -3722,9 +3826,9 @@
    ],
    "pure": false,
    "mutates": false,
-   "unverified": "impure: timer; example test awaits a short delay",
    "impureReason": "timer",
-   "verified": false
+   "verifiedBy": "test/core.test.mjs (fake-timer property)",
+   "verified": true
   },
   {
    "generated": false,
@@ -3736,9 +3840,9 @@
    ],
    "pure": false,
    "mutates": false,
-   "unverified": "impure host adapter (network); example tests inject a fake host",
    "impureReason": "host adapter (network); the host object can be injected",
-   "verified": false
+   "verifiedBy": "test/examples.test.mjs (stub host)",
+   "verified": true
   },
   {
    "generated": false,
@@ -3750,9 +3854,9 @@
    ],
    "pure": false,
    "mutates": false,
-   "unverified": "impure host adapter (storage); example tests inject a fake host",
    "impureReason": "host adapter (storage); the host object can be injected",
-   "verified": false
+   "verifiedBy": "test/core.test.mjs (in-memory storage property)",
+   "verified": true
   },
   {
    "generated": false,
@@ -3764,9 +3868,9 @@
    ],
    "pure": false,
    "mutates": false,
-   "unverified": "impure host adapter (storage); example tests inject a fake host",
    "impureReason": "host adapter (storage); the host object can be injected",
-   "verified": false
+   "verifiedBy": "test/examples.test.mjs (stub host)",
+   "verified": true
   },
   {
    "generated": false,
@@ -3778,9 +3882,25 @@
    ],
    "pure": false,
    "mutates": false,
-   "unverified": "impure host adapter (host URL parser); example tests inject a fake host",
    "impureReason": "host adapter (host URL parser); the host object can be injected",
-   "verified": false
+   "check": [
+    {
+     "params": [
+      [
+       "path",
+       "urlpath"
+      ],
+      [
+       "base",
+       "urlbase"
+      ]
+     ],
+     "js": [
+      "new URL(path, base).href"
+     ]
+    }
+   ],
+   "verified": true
   },
   {
    "generated": false,
@@ -3792,9 +3912,9 @@
    ],
    "pure": false,
    "mutates": false,
-   "unverified": "impure host adapter (host URL parser); example tests inject a fake host",
    "impureReason": "host adapter (host URL parser); the host object can be injected",
-   "verified": false
+   "verifiedBy": "test/examples.test.mjs (stub host)",
+   "verified": true
   },
   {
    "atom": "codePointAtText",
@@ -4368,8 +4488,28 @@
    "covers": [
     "String.raw"
    ],
-   "verified": false,
-   "unverifiedReason": "no generator for parameter type `{ raw: readonly string[] | ArrayLike<string>; }`"
+   "verified": true,
+   "check": {
+    "native": {
+     "kind": "static",
+     "owner": "String",
+     "member": "raw"
+    },
+    "params": [
+     {
+      "name": "template",
+      "gen": "rawtemplate",
+      "optional": false,
+      "rest": false
+     },
+     {
+      "name": "substitutions",
+      "gen": "list",
+      "optional": false,
+      "rest": true
+     }
+    ]
+   }
   },
   {
    "atom": "textFrom",
@@ -5453,9 +5593,35 @@
    "covers": [
     "Object.defineProperty"
    ],
-   "verified": false,
+   "verified": true,
    "replacesMutation": "Object.defineProperty",
-   "unverifiedReason": "no generator for parameter type `PropertyDescriptor & ThisType<any>`",
+   "check": {
+    "native": {
+     "kind": "staticCopy",
+     "owner": "Object",
+     "member": "defineProperty"
+    },
+    "params": [
+     {
+      "name": "o",
+      "gen": "obj",
+      "optional": false,
+      "rest": false
+     },
+     {
+      "name": "p",
+      "gen": "key",
+      "optional": false,
+      "rest": false
+     },
+     {
+      "name": "attributes",
+      "gen": "descriptor",
+      "optional": false,
+      "rest": false
+     }
+    ]
+   },
    "note": "The built-in mutates its first argument; this atom applies it to a shallow copy and returns the copy."
   },
   {
@@ -5471,9 +5637,29 @@
    "covers": [
     "Object.defineProperties"
    ],
-   "verified": false,
+   "verified": true,
    "replacesMutation": "Object.defineProperties",
-   "unverifiedReason": "no generator for parameter type `PropertyDescriptorMap & ThisType<any>`",
+   "check": {
+    "native": {
+     "kind": "staticCopy",
+     "owner": "Object",
+     "member": "defineProperties"
+    },
+    "params": [
+     {
+      "name": "o",
+      "gen": "obj",
+      "optional": false,
+      "rest": false
+     },
+     {
+      "name": "properties",
+      "gen": "descriptormap",
+      "optional": false,
+      "rest": false
+     }
+    ]
+   },
    "note": "The built-in mutates its first argument; this atom applies it to a shallow copy and returns the copy."
   },
   {
@@ -5749,8 +5935,8 @@
    "covers": [
     "Function#bind"
    ],
-   "verified": false,
-   "unverifiedReason": "returns a function, which cannot be compared for equivalence"
+   "verified": true,
+   "verifiedBy": "test/core.test.mjs (bound call property)"
   },
   {
    "atom": "functionAsText",
@@ -6966,24 +7152,6 @@
      }
     ]
    }
-  },
-  {
-   "atom": "random",
-   "module": "generated/math",
-   "reads": "the random of nothing",
-   "js": [
-    "Math.random()"
-   ],
-   "pure": false,
-   "mutates": false,
-   "generated": true,
-   "covers": [
-    "Math.random"
-   ],
-   "verified": false,
-   "impureReason": "random: a new value every call",
-   "unverifiedReason": "impure: random: a new value every call",
-   "note": "IMPURE: random: a new value every call."
   },
   {
    "atom": "round",
@@ -8449,9 +8617,59 @@
    "covers": [
     "new Date"
    ],
-   "verified": false,
+   "verified": true,
    "impureReason": "with no arguments it reads the clock; with parts it uses the machine's local time zone",
-   "unverifiedReason": "impure: with no arguments it reads the clock; with parts it uses the machine's local time zone",
+   "check": {
+    "native": {
+     "kind": "construct",
+     "owner": "Date",
+     "member": "new"
+    },
+    "params": [
+     {
+      "name": "year",
+      "gen": "num",
+      "optional": false,
+      "rest": false
+     },
+     {
+      "name": "monthIndex",
+      "gen": "num",
+      "optional": false,
+      "rest": false
+     },
+     {
+      "name": "dateArg",
+      "gen": "num",
+      "optional": true,
+      "rest": false
+     },
+     {
+      "name": "hours",
+      "gen": "num",
+      "optional": true,
+      "rest": false
+     },
+     {
+      "name": "minutes",
+      "gen": "num",
+      "optional": true,
+      "rest": false
+     },
+     {
+      "name": "seconds",
+      "gen": "num",
+      "optional": true,
+      "rest": false
+     },
+     {
+      "name": "ms",
+      "gen": "num",
+      "optional": true,
+      "rest": false
+     }
+    ]
+   },
    "note": "IMPURE: with no arguments it reads the clock; with parts it uses the machine's local time zone."
   },
   {
@@ -8551,24 +8769,6 @@
     ]
    },
    "note": "IMPURE: date-only and local formats depend on the machine's local time zone."
-  },
-  {
-   "atom": "nowDate",
-   "module": "generated/dates",
-   "reads": "the now of nothing",
-   "js": [
-    "Date.now()"
-   ],
-   "pure": false,
-   "mutates": false,
-   "generated": true,
-   "covers": [
-    "Date.now"
-   ],
-   "verified": false,
-   "impureReason": "reads the clock",
-   "unverifiedReason": "impure: reads the clock",
-   "note": "IMPURE: reads the clock."
   },
   {
    "atom": "execPattern",
@@ -8862,8 +9062,8 @@
    "covers": [
     "new Promise"
    ],
-   "verified": false,
-   "unverifiedReason": "the executor must call its resolve/reject callbacks, which a generated function never does (it would never settle); covered by an example test"
+   "verified": true,
+   "verifiedBy": "test/core.test.mjs (executor property)"
   },
   {
    "atom": "rejectPromise",

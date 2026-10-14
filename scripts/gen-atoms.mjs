@@ -25,7 +25,7 @@ const checkOnly = process.argv.includes('--check');
 const readJson = (p) => JSON.parse(readFileSync(join(root, p), 'utf8'));
 const naming = readJson('src/atoms/naming.json');
 // Lookups by member/method name must ignore Object.prototype (names like toString, hasOwnProperty).
-for (const k of ['unverifiable', 'readsOverrides', 'renames', 'participles', 'overrides', 'aliases', 'impure', 'excludeMembers', 'propertyCovers', 'mutatorEquivalents']) {
+for (const k of ['verifiedBy', 'typeGens', 'checkSignature', 'unverifiable', 'readsOverrides', 'renames', 'participles', 'overrides', 'aliases', 'impure', 'excludeMembers', 'propertyCovers', 'mutatorEquivalents']) {
   naming[k] = Object.assign(Object.create(null), naming[k]);
 }
 const curated = readJson('src/atoms/curated.json');
@@ -105,6 +105,7 @@ function stripParens(t) {
 
 // Parameter type text -> a generator name the test harness understands, or null.
 function typeGen(type, tps) {
+  if (naming.typeGens[type.trim()]) return naming.typeGens[type.trim()];
   const t = stripParens(type);
   const alts = splitUnion(t).filter((a) => a !== 'undefined' && a !== 'null');
   if (alts.length > 1) {
@@ -371,12 +372,13 @@ function readsFor(m, paramNames, mode) {
 
 function deriveCheck(m, sigs, mode) {
   const o = m.owner;
-  if (naming.impure[m.id] && /random|clock/.test(naming.impure[m.id])) return { unverified: `impure: ${naming.impure[m.id]}` };
   if (naming.unverifiable[m.id]) return { unverified: naming.unverifiable[m.id] };
   if (m.method === 'bind') return { unverified: 'returns a function, which cannot be compared for equivalence' };
   if (m.kind === 'instance' && !o.gen) return { unverified: `no generator for ${o.id} receivers` };
   let lastReason = 'no signature';
-  for (const sig of sigs) {
+  // checkSignature: verify a member through its parameterised overloads only (skip zero-argument forms).
+  const candidates = naming.checkSignature[m.id] ? sigs.filter((s) => s.params.length >= 2) : sigs;
+  for (const sig of candidates) {
     const { params } = signatureParts(m, sig);
     const tps = [...(m.kind === 'instance' ? m.ifaceTps : []), ...sig.typeParams].map(tpName);
     if (topArrow(stripParens(sig.returns)) >= 0) {
@@ -450,7 +452,11 @@ for (const d of decisions) {
   };
   if (impure) entry.impureReason = impure;
   if (mode === 'copy' || mode === 'staticCopy') entry.replacesMutation = m.id;
-  if (verification.check) entry.check = verification.check;
+  // A dedicated test (verifiedBy) replaces the derived check: the generic property can't drive these members.
+  if (naming.verifiedBy[m.id]) {
+    entry.verified = true;
+    entry.verifiedBy = naming.verifiedBy[m.id];
+  } else if (verification.check) entry.check = verification.check;
   else entry.unverifiedReason = verification.unverified;
   if (notes.length) entry.note = notes.join(' ');
   entries.push(entry);

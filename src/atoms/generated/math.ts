@@ -219,16 +219,6 @@ export function log(...args: any[]): any {
 }
 
 /**
- * random() reads "the random of nothing".
- * Generated wrapper: exactly `Math.random()`.
- * IMPURE: random: a new value every call.
- */
-export function random(): number;
-export function random(...args: any[]): any {
-  return (Math as any).random(...args);
-}
-
-/**
  * round(x) reads "the round of x".
  * Generated wrapper: exactly `Math.round(x)`.
  */

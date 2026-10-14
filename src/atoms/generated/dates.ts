@@ -492,13 +492,3 @@ export function parseDate(s: string): number;
 export function parseDate(...args: any[]): any {
   return (Date as any).parse(...args);
 }
-
-/**
- * nowDate() reads "the now of nothing".
- * Generated wrapper: exactly `Date.now()`.
- * IMPURE: reads the clock.
- */
-export function nowDate(): number;
-export function nowDate(...args: any[]): any {
-  return (Date as any).now(...args);
-}

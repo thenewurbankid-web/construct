@@ -769,7 +769,17 @@
     "RegExp#test": "whether pattern matches string",
     "Array.isArray": "whether arg is a list"
   },
-  "unverifiable": {
-    "new Promise": "the executor must call its resolve/reject callbacks, which a generated function never does (it would never settle); covered by an example test"
+  "unverifiable": {},
+  "verifiedBy": {
+    "Function#bind": "test/core.test.mjs (bound call property)",
+    "new Promise": "test/core.test.mjs (executor property)"
+  },
+  "typeGens": {
+    "{ raw: readonly string[] | ArrayLike<string>; }": "rawtemplate",
+    "PropertyDescriptor & ThisType<any>": "descriptor",
+    "PropertyDescriptorMap & ThisType<any>": "descriptormap"
+  },
+  "checkSignature": {
+    "new Date": "the year/monthIndex/... overload: the zero-argument form reads the clock"
   }
 }

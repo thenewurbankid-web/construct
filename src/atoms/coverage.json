@@ -5,7 +5,7 @@
   "curated": 13,
   "generated": 21,
   "excluded": 20,
-  "unverified": 1,
+  "unverified": 0,
   "properties": 2
  },
  {
@@ -23,7 +23,7 @@
   "curated": 7,
   "generated": 21,
   "excluded": 2,
-  "unverified": 2,
+  "unverified": 0,
   "properties": 2
  },
  {
@@ -32,7 +32,7 @@
   "curated": 0,
   "generated": 4,
   "excluded": 1,
-  "unverified": 1,
+  "unverified": 0,
   "properties": 5
  },
  {
@@ -65,19 +65,19 @@
  {
   "object": "Math",
   "operations": 36,
-  "curated": 6,
-  "generated": 29,
+  "curated": 7,
+  "generated": 28,
   "excluded": 1,
-  "unverified": 1,
+  "unverified": 0,
   "properties": 8
  },
  {
   "object": "Date",
   "operations": 49,
-  "curated": 0,
-  "generated": 47,
+  "curated": 1,
+  "generated": 46,
   "excluded": 2,
-  "unverified": 2,
+  "unverified": 0,
   "properties": 1
  },
  {
@@ -104,7 +104,7 @@
   "curated": 3,
   "generated": 7,
   "excluded": 2,
-  "unverified": 1,
+  "unverified": 0,
   "properties": 1
  },
  {

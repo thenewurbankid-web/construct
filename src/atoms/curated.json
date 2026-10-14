@@ -3392,8 +3392,86 @@
   ],
   "pure": false,
   "mutates": false,
-  "unverified": "impure: reads the clock; example tests inject a fixed clock",
-  "impureReason": "reads the clock (inject one to make it deterministic)"
+  "impureReason": "reads the clock (inject one to make it deterministic)",
+  "check": [
+   {
+    "params": [
+     [
+      "clock",
+      "lazy:num"
+     ]
+    ],
+    "js": [
+     "new Date(clock)"
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "nowTime",
+  "module": "impure",
+  "reads": "the current time in milliseconds",
+  "js": [
+   "Date.now()"
+  ],
+  "pure": false,
+  "mutates": false,
+  "covers": [
+   "Date.now"
+  ],
+  "impureReason": "reads the clock (inject one to make it deterministic)",
+  "check": [
+   {
+    "params": [
+     [
+      "clock",
+      "lazy:num"
+     ]
+    ],
+    "js": [
+     "clock"
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "random",
+  "module": "impure",
+  "reads": "a random number from 0 up to 1",
+  "js": [
+   "Math.random()"
+  ],
+  "pure": false,
+  "mutates": false,
+  "covers": [
+   "Math.random"
+  ],
+  "impureReason": "random (inject a source, e.g. seededSource(seed), to make it deterministic)",
+  "check": [
+   {
+    "params": [
+     [
+      "source",
+      "lazy:unit"
+     ]
+    ],
+    "js": [
+     "source"
+    ]
+   }
+  ]
+ },
+ {
+  "atom": "seededSource",
+  "module": "impure",
+  "reads": "a repeatable random source started from seed",
+  "js": [
+   "/* no built-in: a seeded PRNG (mulberry32) */"
+  ],
+  "pure": true,
+  "mutates": false,
+  "verifiedBy": "test/core.test.mjs (same seed, same sequence; values in [0, 1))",
+  "note": "the returned source is stateful; seededSource itself is pure"
  },
  {
   "atom": "randomBetween",
@@ -3404,8 +3482,28 @@
   ],
   "pure": false,
   "mutates": false,
-  "unverified": "impure: random; example tests inject a fixed source",
-  "impureReason": "random (inject a source to make it deterministic)"
+  "impureReason": "random (inject a source to make it deterministic)",
+  "check": [
+   {
+    "params": [
+     [
+      "min",
+      "num"
+     ],
+     [
+      "max",
+      "num"
+     ],
+     [
+      "random",
+      "lazy:unit"
+     ]
+    ],
+    "js": [
+     "min + random * (max - min)"
+    ]
+   }
+  ]
  },
  {
   "atom": "delay",
@@ -3416,8 +3514,8 @@
   ],
   "pure": false,
   "mutates": false,
-  "unverified": "impure: timer; example test awaits a short delay",
-  "impureReason": "timer"
+  "impureReason": "timer",
+  "verifiedBy": "test/core.test.mjs (fake-timer property)"
  },
  {
   "atom": "fetchJson",
@@ -3428,8 +3526,8 @@
   ],
   "pure": false,
   "mutates": false,
-  "unverified": "impure host adapter (network); example tests inject a fake host",
-  "impureReason": "host adapter (network); the host object can be injected"
+  "impureReason": "host adapter (network); the host object can be injected",
+  "verifiedBy": "test/examples.test.mjs (stub host)"
  },
  {
   "atom": "readStorage",
@@ -3440,8 +3538,8 @@
   ],
   "pure": false,
   "mutates": false,
-  "unverified": "impure host adapter (storage); example tests inject a fake host",
-  "impureReason": "host adapter (storage); the host object can be injected"
+  "impureReason": "host adapter (storage); the host object can be injected",
+  "verifiedBy": "test/core.test.mjs (in-memory storage property)"
  },
  {
   "atom": "writeStorage",
@@ -3452,8 +3550,8 @@
   ],
   "pure": false,
   "mutates": false,
-  "unverified": "impure host adapter (storage); example tests inject a fake host",
-  "impureReason": "host adapter (storage); the host object can be injected"
+  "impureReason": "host adapter (storage); the host object can be injected",
+  "verifiedBy": "test/examples.test.mjs (stub host)"
  },
  {
   "atom": "urlFrom",
@@ -3464,8 +3562,24 @@
   ],
   "pure": false,
   "mutates": false,
-  "unverified": "impure host adapter (host URL parser); example tests inject a fake host",
-  "impureReason": "host adapter (host URL parser); the host object can be injected"
+  "impureReason": "host adapter (host URL parser); the host object can be injected",
+  "check": [
+   {
+    "params": [
+     [
+      "path",
+      "urlpath"
+     ],
+     [
+      "base",
+      "urlbase"
+     ]
+    ],
+    "js": [
+     "new URL(path, base).href"
+    ]
+   }
+  ]
  },
  {
   "atom": "withQuery",
@@ -3476,7 +3590,7 @@
   ],
   "pure": false,
   "mutates": false,
-  "unverified": "impure host adapter (host URL parser); example tests inject a fake host",
-  "impureReason": "host adapter (host URL parser); the host object can be injected"
+  "impureReason": "host adapter (host URL parser); the host object can be injected",
+  "verifiedBy": "test/examples.test.mjs (stub host)"
  }
 ]
