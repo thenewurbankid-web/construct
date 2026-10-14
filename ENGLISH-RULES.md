@@ -21,7 +21,8 @@ Owner, 2026-10-14: "incorporate English grammar into the design, like functions 
 ## The rules
 
 **R1. Verbs are third person singular.** `compares`, `joins`, `sorts`, `trims`, `parses`, `sends`, `waits`.
-Never the base form (`compare`, `join`) and never a past participle (`sorted`, `trimmed`) in a fluent chain.
+Never the base form (`compare`, `join`) and never a past participle (`sorted`, `trimmed`) in a fluent chain, except
+inside an `every()` sentence (R9).
 
 **R2. A sentence starts with a third-person verb or its subject.** Verbs: `checks()`, `clones()`, `when()`,
 `chooses()`, `matches()`, `attempts()`. Subjects: `text(s)`, `list(xs)`, `number(n)`, `date(d)`, `record(o)`,
@@ -33,14 +34,15 @@ that carries an argument is a preposition or a role noun: `if(subject)`, `than(x
 
 **R4. Questions use `is`, `has`, `can` or `does`, split into words.** `is().greater().than(x)`,
 `is().equal().to(x)`, `is().not().empty()`, `has().key(k)`. The comparison word and its preposition are separate
-calls, so each argument sits after the word that names it (R3).
+calls, so each argument sits after the word that names it (R3). Inside an `every()` sentence (R9), `is()` also
+introduces what happens to each item, as in `is().mapped()`, and that clause returns a list, not a yes or no.
 
 **R5. A copy is said out loud, first.** An atom that returns a changed value and leaves its input alone reads
 `clones().<subject>.and().<verb>()`: `clones().list(xs).and().sorts().by(order)`,
 `clones().text(s).and().trims()`. This holds for every kind of value, text and numbers included (owner,
 2026-10-14). An atom that really changes its input in place starts with the subject and has no `clones()`:
 `list(xs).sorts().by(order)` sorts `xs` itself. Questions (R4) return a yes or no, not a copy, so they never take
-`clones()`.
+`clones()`. In an `every()` sentence (R9) the copy is said where it happens, as `to().clone()`, not first.
 
 **R6. Connectors join clauses and carry no argument except `if`.** `and()`, `then()`, `also()`, `but()`,
 `otherwise()`.
@@ -52,6 +54,53 @@ already holds; `test/fluent.test.mjs` keeps checking it.
 camelCase, with arguments in the order they appear: `isGreaterThan(n, 100)`, `clonesAndSortsBy(xs, order)`,
 `replacesFirstWith(s, pattern, replacement)`. Existing names (`greaterThan`, `sortedBy`, `replaceFirst`) stay as
 aliases in `naming.json`.
+
+**R9. Arrow functions become `every()` sentences (owner, 2026-10-15).** A callback is not written as an arrow. The
+item gets a name with `every(x)`, the list follows with `in(xs)`, and the body is a chain of atoms on `x`:
+
+| Plain JS | Fluent today | Atomic English |
+|---|---|---|
+| `xs.map((x) => x * 2)` | `list(xs).maps().each((x) => x * 2)` | `every(x).in(xs).is().mapped().to().clone().by().multiplying(x).by(2)` |
+
+Owner's wording, kept as written apart from the spelling of `multiplying`. In this form, past participles
+(`mapped`) and `-ing` forms (`multiplying`) are allowed (R1), `is()` starts the action (R4), and the copy is said as
+`to().clone()` where it happens (R5). Sentences outside `every()` keep R1, R4 and R5 unchanged, so the 37 existing
+sentences and `test/grammar.test.mjs` still hold.
+
+**The first word decides what the sentence returns (owner, 2026-10-15).** `checks()` returns a yes or no,
+`every(x).in(xs)` returns a list, `the().first(x).in(xs)` returns one item, `folds()` returns one value. Never a word deep in the chain: the parser,
+the grammar test and a small model read only the first word to know the kind, so no list of adjectives versus
+participles is needed as atoms grow.
+
+| Plain JS | Atomic English |
+|---|---|
+| `xs.map((x) => x * 2)` | `every(x).in(xs).is().mapped().to().clone().by().multiplying(x).by(2)` |
+| `xs.filter((x) => x > 0)` | `every(x).in(xs).is().kept().if(x).is().positive()` |
+| `xs.every((x) => x > 0)` | `checks().if().every(x).in(xs).is().positive()` |
+| `xs.some((x) => x > 0)` | `checks().if().any(x).in(xs).is().positive()` |
+| `xs.find((x) => x > 0)` | `the().first(x).in(xs).that().is().positive()` |
+
+**`reduce` (owner, 2026-10-15):** the common reductions (sum, count, join, group-by) are named atoms the converter
+picks, as in `the().sum().of(xs)`. Any other `reduce` starts with `folds()`, the first word for "one value":
+`xs.reduce((total, x) => total + x, 0)` reads
+`folds().every(x).in(xs).into(total).starting().at(0).by().adding(x).to(total)`.
+
+**`to().clone()` copies the list, not the items (owner, 2026-10-15).** It says out loud that `xs` is left alone (R5),
+exactly as `map` behaves; each item of the new list is whatever the body returns. A deep copy of the items is a
+separate atom (`structuredClone`), never implied by `clone()`.
+
+How it runs, with no build step: `x` is a placeholder from `smith/fluent`. `multiplying(x).by(2)` records the steps
+instead of computing them, and `every(x).in(xs)` turns the record into `(v) => v * 2` when the chain runs. The body
+can only use atoms, never raw JS, which keeps R7.
+
+**Placeholders are imported (owner, 2026-10-15):** `import { x, y, item, total } from 'smith/fluent'`. No strings, so a
+typo is a compile error; nested callbacks use different names (`every(x).in(rows)…every(y).in(x)…`); TypeScript learns
+the item type at `.in(xs)`, so the body after it is typed.
+
+**Bodies longer than one atom become named helper atoms (owner, 2026-10-15).** `x => x * 2 + 1` is not chained in
+place: it becomes its own atom (named by R8, e.g. `doublesAndAddsOne`), and the sentence calls it by name. Under the
+conversion decision "no atom fits → the converter proposes one, the owner approves it", each such helper goes through
+that approval.
 
 ## Examples with real atoms
 
