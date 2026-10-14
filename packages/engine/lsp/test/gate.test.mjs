@@ -1,7 +1,14 @@
 // atomicGate's checks on small sources (Smith stubbed: these tests are about the atomic shape, not the translation).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { atomicGate } from '../gate.mjs';
+
+const MAX_AI_UI = path.join(os.homedir(), 'Repositories', 'max-ai-ui');
+const ADMIN = 'src/features/admin-navigation';
+const ADMIN_NAV = path.join(MAX_AI_UI, ADMIN);
 
 const smith = async () => ({ steps: ['It returns x.'], empty: null, all: [] });
 const gate = (rel, source, fn, extra = {}) => atomicGate({ rel, source, fn, smith, ...extra });
@@ -95,4 +102,21 @@ export function Menu({ label }: { label: string }) {
 `;
   const g = await gate('features/a/components/Menu.tsx', source, 'Menu');
   assert.equal(check(g, 'connections').ok, true, check(g, 'connections').line);
+});
+
+test('real app (read-only): max-ai-ui admin-navigation', { skip: fs.existsSync(ADMIN_NAV) ? false : `no ${ADMIN_NAV} on this machine` }, async () => {
+  const read = (f) => fs.readFileSync(path.join(MAX_AI_UI, f), 'utf8');
+  const hook = await gate(`${ADMIN}/hooks/useAdminNavigation.ts`, read(`${ADMIN}/hooks/useAdminNavigation.ts`), 'useAdminNavigation');
+  assert.deepEqual([...hook.failed].sort(), ['connections', 'one-job']);
+  assert.match(check(hook, 'connections').line, /reads imported matomo as data/);
+  const nav = await gate(`${ADMIN}/components/AdminNavigation.tsx`, read(`${ADMIN}/components/AdminNavigation.tsx`), 'AdminNavigation');
+  assert.equal(check(nav, 'connections').ok, true, check(nav, 'connections').line);
+  const domainFile = fs.readdirSync(path.join(ADMIN_NAV, 'domain')).find((f) => /\.ts$/.test(f) && !/\.test\./.test(f));
+  const src = read(`${ADMIN}/domain/${domainFile}`);
+  const fns = ['stripLocale', 'isWithinPath', 'getAdminNavigation', 'getSelectedAdminNavItemId', 'breadcrumbTestId', 'isDataLoadsItem'].filter((n) => src.includes(`function ${n}`));
+  assert.ok(fns.length >= 4, `domain functions found: ${fns}`);
+  for (const fn of fns) {
+    const g = await gate(`${ADMIN}/domain/${domainFile}`, src, fn);
+    assert.deepEqual([fn, g.layer, check(g, 'purity')?.ok], [fn, 'domain', true]);
+  }
 });
