@@ -10,6 +10,7 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { ConstructError, EXIT_CODES } from './diagnostics.mjs';
 import { OLLAMA_DEFAULT_URL, normalizeOllamaHost } from './ollama-host.mjs';
+import { chatmlPrompt } from '../engine/line/coder/prefill/prefill.mjs';
 
 // Defaults for the `ollama` provider below — overridable per call via its
 // `options` parameter (see `callLlm`), which is how #100 (per-capability
@@ -221,6 +222,48 @@ function claudeStreaming(prompt, options) {
   });
 }
 
+/**
+ * #948 -- a call's output shape, from `options.output`: `{format}` (a JSON Schema, or 'json') for a choice, or
+ * `{prefill, stop}` for code (one function, its exact signature through its `{` prefilled, stopped at its closing
+ * brace; optional `system`). `numPredict` caps the reply in either. Null when the call declares none.
+ * @param {any} options
+ * @returns {{kind: 'json', format: any, numPredict?: number} | {kind: 'code', prefill: string, stop: string[], system: string, numPredict?: number} | null}
+ */
+export function outputShape(options) {
+  const o = options?.output;
+  if (!o || typeof o !== 'object') return null;
+  const numPredict = Number.isFinite(o.numPredict) && o.numPredict > 0 ? o.numPredict : undefined;
+  if (typeof o.prefill === 'string' && o.prefill && Array.isArray(o.stop) && o.stop.length) return { kind: 'code', prefill: o.prefill, stop: o.stop.map(String), system: String(o.system ?? ''), ...(numPredict ? { numPredict } : {}) };
+  if (o.format === 'json' || (o.format && typeof o.format === 'object')) return { kind: 'json', format: o.format, ...(numPredict ? { numPredict } : {}) };
+  return null;
+}
+
+/**
+ * #948 -- the prompt for a provider that cannot prefill or take a grammar (the `claude` CLI): the output shape stated
+ * after it. Without a shape the prompt is unchanged.
+ * @param {string} prompt
+ * @param {ReturnType<typeof outputShape>} shape
+ * @returns {string}
+ */
+export function shapedPrompt(prompt, shape) {
+  if (!shape) return prompt;
+  if (shape.kind === 'json') return `${prompt}\n\nReply with ONLY one JSON value${shape.format === 'json' ? '' : ` that fits this JSON Schema:\n${JSON.stringify(shape.format)}`}`;
+  return `${prompt}\n\nThe function's signature is already written. Reply with ONLY its body and its closing brace, continuing right after:\n${shape.prefill}`;
+}
+
+/**
+ * #948 -- Ollama's /api/generate body: `format` for a JSON shape; for a code shape `raw: true` with Construct's ChatML
+ * template, the assistant turn prefilled, and `stop`; `num_predict` when the shape caps the reply.
+ * @param {{model: string, prompt: string, stream: boolean, numCtx: number, shape: ReturnType<typeof outputShape>}} o
+ * @returns {object}
+ */
+export function ollamaBody({ model, prompt, stream, numCtx, shape }) {
+  const options = { num_ctx: numCtx, ...(shape?.numPredict ? { num_predict: shape.numPredict } : {}) };
+  if (shape?.kind === 'json') return { model, prompt, stream, format: shape.format, options };
+  if (shape?.kind === 'code') return { model, prompt: chatmlPrompt({ system: shape.system, user: prompt, prefill: shape.prefill }), raw: true, stream, options: { ...options, stop: shape.stop } };
+  return { model, prompt, stream, options };
+}
+
 // Exported (not a private const) so tests can monkey-patch a provider with a
 // fake implementation instead of actually shelling out to a real CLI/HTTP
 // server. Every provider's shape is `(prompt, options?) -> string | Promise<string>`
@@ -238,7 +281,10 @@ export const PROVIDERS = {
   // `timeout` + `killSignal: 'SIGKILL'` (#413): a CLI that never returns is
   // killed outright (SIGTERM could be caught and ignored by a stuck child),
   // and spawnSync reports it as `error.code === 'ETIMEDOUT'`.
-  claude(prompt, options = {}) {
+  claude(rawPrompt, options = {}) {
+    // #948 -- the CLI cannot prefill or take a grammar, so the output shape is stated after the prompt; the caller's
+    // deterministic check (takeBody's cut at the closing brace, the JSON Schema) still decides what is kept.
+    const prompt = shapedPrompt(rawPrompt, outputShape(options));
     // #599 -- with onChunk or a cancel signal the call is async and streams (claudeStreaming above);
     // the blocking spawnSync below is only the plain, callback-free path.
     if (options.onChunk || options.signal) return claudeStreaming(prompt, options);
@@ -343,7 +389,7 @@ export const PROVIDERS = {
         res = await fetch(`${baseUrl}/api/generate`, {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ model, prompt, stream: Boolean(onChunk), options: { num_ctx: numCtx } }),
+          body: JSON.stringify(ollamaBody({ model, prompt, stream: Boolean(onChunk), numCtx, shape: outputShape(options) })),
           signal: controller.signal,
         });
       } catch (e) {
