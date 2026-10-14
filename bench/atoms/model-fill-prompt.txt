@@ -1,0 +1,15 @@
+Rewrite this TypeScript function using the atom functions listed below.
+Atoms are plain functions; they never change their arguments. Keep the same name and parameters
+and keep exactly what the function does. Do not define helpers. Answer with only the function in
+one ```ts block. If a part cannot be written with these atoms without changing what the
+function does, leave that part as it is; if no part can, answer only: NO ATOM
+
+```ts
+{{code}}
+```
+
+Parts still to rewrite:
+{{gaps}}
+
+Atoms you may use (name(params) - what it reads as - the JS it replaces):
+{{atoms}}

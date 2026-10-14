@@ -45,6 +45,22 @@ describe('a model rewrite is kept only when every constraint holds', () => {
     assert.match((await fill(fn.code)).why, /^fewer gaps/);
   });
 
+  test('NO ATOM is a decline, not a failure: the function stays as it was', async () => {
+    const out = await fill('NO ATOM');
+    assert.equal(out.status, 'declined');
+    assert.equal(out.covered, 0, 'no atom has the shape of a bare typeof here');
+  });
+
+  test('the shortlist offers the atoms whose form has the gap shape', () => {
+    const { shortlist } = require('./bench/atoms/model-fill');
+    const gap = { type: 'UnaryExpression', form: 'UnaryExpression typeof' };
+    const shaped = compileCatalog([...entries, { atom: 'typeOf', js: ['typeof value'], params: ['value'] }]);
+    const atoms = [...entries, { atom: 'typeOf', js: ['typeof value'] }];
+    assert.deepEqual(shortlist([gap], atoms, new Set(), shaped).byShape, [true]);
+    assert.equal(shortlist([gap], atoms, new Set(), shaped).list[0].atom, 'typeOf');
+    assert.deepEqual(shortlist([gap], entries, new Set(), compiled).byShape, [false]);
+  });
+
   test('a call to a helper the model made up is rejected', async () => {
     assert.match((await fill("function kind(v: string | number): string {\n  return kindName(v);\n}")).why, /^names: kindName/);
   });

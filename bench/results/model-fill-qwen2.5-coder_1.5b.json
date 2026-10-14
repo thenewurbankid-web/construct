@@ -1,206 +1,250 @@
 {
  "model": "qwen2.5-coder:1.5b",
  "runs": 40,
- "functions": 18,
- "accepted": 1,
- "rejected": 17,
+ "functions": 13,
+ "accepted": 0,
+ "rejected": 3,
+ "declined": 10,
  "rejectedAt": {
-  "fewer gaps": 16,
-  "names": 1
+  "fewer gaps": 3
+ },
+ "withAnAtomOfTheShape": {
+  "functions": 12,
+  "accepted": 0
+ },
+ "byGapKind": {
+  "mutation": {
+   "declined": 5,
+   "rejected": 3
+  },
+  "drop-in": {
+   "declined": 1
+  },
+  "ambiguous": {
+   "declined": 5,
+   "rejected": 2
+  },
+  "control flow": {
+   "rejected": 3
+  }
  },
  "rows": [
   {
    "name": "validate",
    "file": "packages/core/typed-contracts/examples/service-schema.ts",
-   "gaps": "UnaryExpression typeof; CallExpression .push() (mutates)",
-   "ms": 1000,
-   "status": "rejected",
-   "why": "fewer gaps: 4 left of 4",
-   "before": 4,
-   "code": "validate(value) {\n  const v = value as Partial<User> | null;\n  const issues: StandardSchemaIssue[] = [];\n  when(differs(typeof get(v, \"id\"), 'string'), () => issues.push({\n    message: 'expected string',\n    path: ['id']\n  }));\n  when(differs(typeof get(v, \"name\"), 'string'), () => issues.push({\n    message: 'expected string',\n    path: [{\n      key: 'name'\n    }]\n  }));\n  return when(lengthOf(issues), () => ({\n    issues\n  }), () => ({\n    value: v as User\n  }));\n}"
+   "gaps": "CallExpression .push() (mutates)",
+   "ms": 996,
+   "status": "declined",
+   "why": "handed the code back unchanged",
+   "before": 2,
+   "kinds": [
+    "mutation",
+    "mutation"
+   ],
+   "covered": 2,
+   "dropIn": 0,
+   "prompt": "Rewrite this TypeScript function using the atom functions listed below.\nAtoms are plain functions; they never change their arguments. Keep the same name and parameters\nand keep exactly what the function does. Do not define helpers. Answer with only the function in\none ```ts block. If a part cannot be written with these atoms without changing what the\nfunction does, leave that part as it is; if no part can, answer only: NO ATOM\n\n```ts\nvalidate(value) {\n  const v = value as Partial<User> | null;\n  const issues: StandardSchemaIssue[] = [];\n  when(differs(typeOf(get(v, \"id\")), 'string'), () => issues.push({\n    message: 'expected string',\n    path: ['id']\n  }));\n  when(differs(typeOf(get(v, \"name\")), 'string'), () => issues.push({\n    message: 'expected string',\n    path: [{\n      key: 'name'\n    }]\n  }));\n  return when(lengthOf(issues), () => ({\n    issues\n  }), () => ({\n    value: v as User\n  }));\n}\n```\n\nParts still to rewrite:\n- `issues.push({ message: 'expected string', path: ['id'] })` (CallExpression .push(): mutates)\n- `issues.push({ message: 'expected string', path: [{ key: 'name' }] })` (CallExpression .push(): mutates)\n\nAtoms you may use (name(params) - what it reads as - the JS it replaces):\n- pushedList(list, items?) - list after push items, as a copy - list.push(...items)\n- differs(a, b) - a differs from b - a !== b\n- when(condition, then, otherwise?) - when c, a, otherwise b - c ? a : b | if (c) { a } else { b }\n- typeOf(value) - the type of value - typeof value\n- get(obj, key) - the key of obj - obj?.[key] | obj?.key\n- lengthOf(value) - the length of textOrList - value.length",
+   "raw": "validate(value) {\n  const v = value as Partial<User> | null;\n  const issues: StandardSchemaIssue[] = [];\n  when(differs(typeOf(get(v, \"id\")), 'string'), () => issues.push({\n    message: 'expected string',\n    path: ['id']\n  }));\n  when(differs(typeOf(get(v, \"name\")), 'string'), () => issues.push({\n    message: 'expected string',\n    path: [{\n      key: 'name'\n    }]\n  }));\n  return when(lengthOf(issues), () => ({\n    issues\n  }), () => ({\n    value: v as User\n  }));\n}"
   },
   {
    "name": "defineService",
    "file": "packages/core/typed-contracts/factories.ts",
    "gaps": "CallExpression Object.assign()",
-   "ms": 916,
-   "status": "rejected",
-   "why": "fewer gaps: 1 left of 1",
+   "ms": 908,
+   "status": "declined",
+   "why": "handed the code back unchanged",
    "before": 1,
-   "code": "function defineService<Props extends Forbid<Props, DomainUnitAny>, Return, Schema extends ResponseSchema>(name: string, fn: (props: Props) => Return, options?: ServiceOptions<Schema>): ServiceUnit<(props: Props) => unknown> {\n  return when(not(get(options, \"schema\")), () => tagUnit(name, fn, 'service'), () => {\n    const {\n      schema\n    } = options;\n    const checked = (props: Props) => checkServiceReturn(schema, fn(props));\n    const unit = tagUnit<typeof checked, ServiceUnit<typeof checked>>(name, checked, 'service');\n    return Object.assign(unit, { schema });\n  });\n}"
-  },
-  {
-   "name": "normalizeIssues",
-   "file": "packages/core/typed-contracts/schema.ts",
-   "gaps": "UnaryExpression typeof",
-   "ms": 564,
-   "status": "rejected",
-   "why": "fewer gaps: 1 left of 1",
-   "before": 1,
-   "code": "function normalizeIssues(issues: ReadonlyArray<StandardSchemaIssue>): SchemaIssue[] {\n  return mapEach(issues, issue => ({\n    message: textFrom(issue.message),\n    path: mapEach(orElse(issue.path, () => []), segment => when(and(equals(typeof segment, 'object'), () => differs(segment, null)), () => segment.key, () => segment))\n  }));\n}"
-  },
-  {
-   "name": "isThenable",
-   "file": "packages/core/typed-contracts/schema.ts",
-   "gaps": "UnaryExpression typeof",
-   "ms": 361,
-   "status": "rejected",
-   "why": "fewer gaps: 2 left of 2",
-   "before": 2,
-   "code": "function isThenable(value: unknown): value is PromiseLike<unknown> {\n  return and(\n    equals(typeof value, 'object'),\n    () => differs(value, null),\n    () => equals(typeof (value as { then?: unknown }).then, 'function')\n  );\n}"
-  },
-  {
-   "name": "checkResponse",
-   "file": "packages/core/typed-contracts/schema.ts",
-   "gaps": "BinaryExpression in",
-   "ms": 1441,
-   "status": "rejected",
-   "why": "fewer gaps: 1 left of 1",
-   "before": 1,
-   "code": "function checkResponse<S extends ResponseSchema>(schema: S, value: unknown): ServiceResult<SchemaOutput<S>> | Promise<ServiceResult<SchemaOutput<S>>> {\n  type Out = SchemaOutput<S>;\n  const toResult = (r: StandardSchemaResult<unknown>): ServiceResult<Out> => when(r.issues, () => schemaError(normalizeIssues(r.issues)), () => ({\n    status: 'ok',\n    value: r.value as Out\n  }));\n  return attempt(() => when('~standard' in schema, () => {\n    const raw = schema['~standard'].validate(value);\n    return when(isThenable(raw), () => thenPromise(resolvePromise(raw), toResult, (e: unknown) => schemaError([{\n      message: `schema threw: ${describe(e)}`,\n      path: []\n    }])), () => toResult(raw));\n  }, () => {\n    const parsed = schema.safeParse(value);\n    return when(parsed.success, () => ({\n      status: 'ok',\n      value: parsed.data as Out\n    }), () => schemaError(normalizeIssues(parsed.error.issues)));\n  }), e => schemaError([{\n    message: `schema threw: ${describe(e)}`,\n    path: []\n  }]));\n}"
+   "kinds": [
+    "drop-in"
+   ],
+   "covered": 1,
+   "dropIn": 1,
+   "prompt": "Rewrite this TypeScript function using the atom functions listed below.\nAtoms are plain functions; they never change their arguments. Keep the same name and parameters\nand keep exactly what the function does. Do not define helpers. Answer with only the function in\none ```ts block. If a part cannot be written with these atoms without changing what the\nfunction does, leave that part as it is; if no part can, answer only: NO ATOM\n\n```ts\nfunction defineService<Props extends Forbid<Props, DomainUnitAny>, Return, Schema extends ResponseSchema>(name: string, fn: (props: Props) => Return, options?: ServiceOptions<Schema>): ServiceUnit<(props: Props) => unknown> {\n  return when(not(get(options, \"schema\")), () => tagUnit(name, fn, 'service'), () => {\n    const {\n      schema\n    } = options;\n    const checked = (props: Props) => checkServiceReturn(schema, fn(props));\n    const unit = tagUnit<typeof checked, ServiceUnit<typeof checked>>(name, checked, 'service');\n    return Object.assign(unit, {\n      schema\n    });\n  });\n}\n```\n\nParts still to rewrite:\n- `Object.assign(unit, { schema })` (CallExpression Object.assign())\n\nAtoms you may use (name(params) - what it reads as - the JS it replaces):\n- merged(a, b, c) - a merged with b - { ...a, ...b } | Object.assign({}, a, b)\n- not(a) - not a - !a\n- when(condition, then, otherwise?) - when c, a, otherwise b - c ? a : b | if (c) { a } else { b }\n- get(obj, key) - the key of obj - obj?.[key] | obj?.key",
+   "raw": "function defineService<Props extends Forbid<Props, DomainUnitAny>, Return, Schema extends ResponseSchema>(name: string, fn: (props: Props) => Return, options?: ServiceOptions<Schema>): ServiceUnit<(props: Props) => unknown> {\n  return when(not(get(options, \"schema\")), () => tagUnit(name, fn, 'service'), () => {\n    const {\n      schema\n    } = options;\n    const checked = (props: Props) => checkServiceReturn(schema, fn(props));\n    const unit = tagUnit<typeof checked, ServiceUnit<typeof checked>>(name, checked, 'service');\n    return Object.assign(unit, { schema });\n  });\n}"
   },
   {
    "name": "send",
    "file": "packages/line-atoms/atoms/async-status/index.ts",
    "gaps": "BinaryExpression + (ambiguous type)",
-   "ms": 1404,
-   "status": "accepted",
-   "added": [
-    "match",
-    "when",
-    "plus"
-   ],
+   "ms": 217,
+   "status": "declined",
+   "why": "said no atom fits",
    "before": 1,
-   "after": 0,
-   "code": "send(state, event) {\n  return match(event.type, {\n    FETCH: () => when(equals(state.status, 'success'), () => ({\n      ...state,\n      fetching: true,\n      request: plus(state.request, 1)\n    }), () => ({\n      ...state,\n      status: 'pending',\n      error: null,\n      fetching: true,\n      request: plus(state.request, 1)\n    })),\n    RESOLVE: () => when(not(isCurrent(state, event.request)), () => state, () => ({\n      ...state,\n      status: 'success',\n      data: event.data,\n      error: null,\n      fetching: false,\n      updatedAt: orElse(event.at, () => null)\n    })),\n    REJECT: () => when(not(isCurrent(state, event.request)), () => state, () => ({\n      ...state,\n      status: 'error',\n      error: event.error,\n      fetching: false\n    })),\n    RESET: () => machine.init()\n  }, () => state);\n}",
-   "atoms": [
-    "match",
-    "when",
-    "equals",
-    "plus",
-    "not",
-    "orElse"
-   ]
+   "kinds": [
+    "ambiguous"
+   ],
+   "covered": 1,
+   "dropIn": 0,
+   "prompt": "Rewrite this TypeScript function using the atom functions listed below.\nAtoms are plain functions; they never change their arguments. Keep the same name and parameters\nand keep exactly what the function does. Do not define helpers. Answer with only the function in\none ```ts block. If a part cannot be written with these atoms without changing what the\nfunction does, leave that part as it is; if no part can, answer only: NO ATOM\n\n```ts\nsend(state, event) {\n  return match(event.type, {\n    FETCH: () => when(equals(state.status, 'success'), () => ({\n      ...state,\n      fetching: true,\n      request: state.request + 1\n    }), () => ({\n      ...state,\n      status: 'pending',\n      error: null,\n      fetching: true,\n      request: plus(state.request, 1)\n    })),\n    RESOLVE: () => when(not(isCurrent(state, event.request)), () => state, () => ({\n      ...state,\n      status: 'success',\n      data: event.data,\n      error: null,\n      fetching: false,\n      updatedAt: orElse(event.at, () => null)\n    })),\n    REJECT: () => when(not(isCurrent(state, event.request)), () => state, () => ({\n      ...state,\n      status: 'error',\n      error: event.error,\n      fetching: false\n    })),\n    RESET: () => machine.init()\n  }, () => state);\n}\n```\n\nParts still to rewrite:\n- `state.request + 1` (BinaryExpression +: ambiguous type)\n\nAtoms you may use (name(params) - what it reads as - the JS it replaces):\n- plus(a, b) - a plus b - a + b\n- join(a, b) - a joined with b - a + b | a.concat(b)\n- randomBetween(min, max, random?) - a random number from min up to max - min + Math.random() * (max - min)\n- equals(a, b) - a equals b - a === b\n- not(a) - not a - !a\n- orElse(a, b) - a, or else b - a ?? b\n- when(condition, then, otherwise?) - when c, a, otherwise b - c ? a : b | if (c) { a } else { b }\n- match(value, cases, fallback?) - match value against cases, otherwise fallback - switch (value) { case k: … default: … }",
+   "raw": "NO ATOM"
   },
   {
    "name": "csvCell",
    "file": "packages/line-atoms/atoms/csv-export/index.ts",
    "gaps": "CallExpression .test() (mutates)",
-   "ms": 1067,
-   "status": "rejected",
-   "why": "fewer gaps: 1 left of 1",
+   "ms": 152,
+   "status": "declined",
+   "why": "said no atom fits",
    "before": 1,
-   "code": "function csvCell(value: unknown, options: CsvOptions = {}): string {\n  const separator = orElse(options.separator, () => ',');\n  let text = '';\n  choose([[isA(value, Date), () => text = dateAsIsoText(value)], [() => and(differs(value, null), () => differs(value, undefined)), () => text = textFrom(value)]]);\n  when(and(orElse(options.safe, () => true), () => FORMULA_START.test(text)), () => text = `'${text}`);\n  return when(or(or(or(hasText(text, separator), () => hasText(text, '\"')), () => hasText(text, '\\n')), () => hasText(text, '\\r')), () => `\"${replaceText(text, /\"/g, '\"\"')}\"`, () => text);\n}"
-  },
-  {
-   "name": "cellOf",
-   "file": "packages/line-atoms/atoms/csv-export/index.ts",
-   "gaps": "UnaryExpression typeof",
-   "ms": 272,
-   "status": "rejected",
-   "why": "names: isFunction",
-   "before": 1,
-   "code": "function cellOf<T>(row: T, column: Column<T>): unknown {\n  return when(isFunction(column.accessor), () => column.accessor(row), () => row[column.accessor]);\n}"
+   "kinds": [
+    "mutation"
+   ],
+   "covered": 1,
+   "dropIn": 0,
+   "prompt": "Rewrite this TypeScript function using the atom functions listed below.\nAtoms are plain functions; they never change their arguments. Keep the same name and parameters\nand keep exactly what the function does. Do not define helpers. Answer with only the function in\none ```ts block. If a part cannot be written with these atoms without changing what the\nfunction does, leave that part as it is; if no part can, answer only: NO ATOM\n\n```ts\nfunction csvCell(value: unknown, options: CsvOptions = {}): string {\n  const separator = orElse(options.separator, () => ',');\n  let text = '';\n  choose([[isA(value, Date), () => text = dateAsIsoText(value)], [() => and(differs(value, null), () => differs(value, undefined)), () => text = textFrom(value)]]);\n  when(and(orElse(options.safe, () => true), () => FORMULA_START.test(text)), () => text = `'${text}`);\n  return when(or(or(or(hasText(text, separator), () => hasText(text, '\"')), () => hasText(text, '\\n')), () => hasText(text, '\\r')), () => `\"${replaceText(text, /\"/g, '\"\"')}\"`, () => text);\n}\n```\n\nParts still to rewrite:\n- `FORMULA_START.test(text)` (CallExpression .test(): mutates)\n\nAtoms you may use (name(params) - what it reads as - the JS it replaces):\n- doesPatternMatch(pattern, string) - whether pattern matches string - pattern.test(string)\n- differs(a, b) - a differs from b - a !== b\n- and(a, b) - a and b - a && b\n- or(a, b) - a or b - a || b\n- orElse(a, b) - a, or else b - a ?? b\n- when(condition, then, otherwise?) - when c, a, otherwise b - c ? a : b | if (c) { a } else { b }\n- choose(cases, fallback?) - choose a when c1, b when c2, otherwise fallback - if (c1) { a } else if (c2) { b } else { fallback } | c1 ? a : c2 ? b : fallback\n- isA(value, type) - whether value is a Type - value instanceof type\n- hasText(text, part, position?) - whether text has part in it - text.includes(part, position)\n- replaceText(text, searchValue, replaceValue) - the replace searchValue, replaceValue of text - text.replace(searchValue, replaceValue)\n- textFrom(value?) - value as a String - String(value)\n- dateAsIsoText(date) - the to isostring of date - date.toISOString()",
+   "raw": "NO ATOM"
   },
   {
    "name": "toCsv",
    "file": "packages/line-atoms/atoms/csv-export/index.ts",
    "gaps": "CallExpression .push() (mutates)",
-   "ms": 761,
-   "status": "rejected",
-   "why": "fewer gaps: 1 left of 1",
+   "ms": 740,
+   "status": "declined",
+   "why": "handed the code back unchanged",
    "before": 1,
-   "code": "function toCsv<T>(rows: T[], columns: Column<T>[], options: CsvOptions = {}): string {\n  const separator = orElse(options.separator, () => ',');\n  const eol = orElse(options.eol, () => '\\r\\n');\n  const lines = [joinWith(mapEach(columns, c => csvCell(c.header, options)), separator)];\n  each(rows, row => {\n    lines.push(joinWith(mapEach(columns, c => csvCell(cellOf(row, c), options)), separator));\n  });\n  return join(joinWith(lines, eol), eol);\n}"
+   "kinds": [
+    "mutation"
+   ],
+   "covered": 1,
+   "dropIn": 0,
+   "prompt": "Rewrite this TypeScript function using the atom functions listed below.\nAtoms are plain functions; they never change their arguments. Keep the same name and parameters\nand keep exactly what the function does. Do not define helpers. Answer with only the function in\none ```ts block. If a part cannot be written with these atoms without changing what the\nfunction does, leave that part as it is; if no part can, answer only: NO ATOM\n\n```ts\nfunction toCsv<T>(rows: T[], columns: Column<T>[], options: CsvOptions = {}): string {\n  const separator = orElse(options.separator, () => ',');\n  const eol = orElse(options.eol, () => '\\r\\n');\n  const lines = [joinWith(mapEach(columns, c => csvCell(c.header, options)), separator)];\n  each(rows, row => {\n    lines.push(joinWith(mapEach(columns, c => csvCell(cellOf(row, c), options)), separator));\n  });\n  return join(joinWith(lines, eol), eol);\n}\n```\n\nParts still to rewrite:\n- `lines.push(columns.map((c) => csvCell(cellOf(row, c), options)).join(separator))` (CallExpression .push(): mutates)\n\nAtoms you may use (name(params) - what it reads as - the JS it replaces):\n- pushedList(list, items?) - list after push items, as a copy - list.push(...items)\n- join(a, b) - a joined with b - a + b | a.concat(b)\n- orElse(a, b) - a, or else b - a ?? b\n- each(list, fn) - for each item of list, effect - list.forEach(fn) | for (const item of list) { fn(item) }\n- joinWith(list, separator?) - list joined with separator - list.join(separator)\n- mapEach(list, fn) - each item of list mapped to result - list.map(fn)",
+   "raw": "function toCsv<T>(rows: T[], columns: Column<T>[], options: CsvOptions = {}): string {\n  const separator = orElse(options.separator, () => ',');\n  const eol = orElse(options.eol, () => '\\r\\n');\n  const lines = [joinWith(mapEach(columns, c => csvCell(c.header, options)), separator)];\n  each(rows, row => {\n    lines.push(joinWith(mapEach(columns, c => csvCell(cellOf(row, c), options)), separator));\n  });\n  return join(joinWith(lines, eol), eol);\n}"
   },
   {
    "name": "daysIn",
    "file": "packages/line-atoms/atoms/date-range/index.ts",
    "gaps": "BinaryExpression + (ambiguous type)",
-   "ms": 492,
-   "status": "rejected",
-   "why": "fewer gaps: 1 left of 1",
+   "ms": 487,
+   "status": "declined",
+   "why": "handed the code back unchanged",
    "before": 1,
-   "code": "function daysIn(r: RangeState): number {\n  return when(\n    differs(r.status, 'complete'),\n    () => 0,\n    () => round(dividedBy(minus(timeOfDate(r.end as Date) + 1, timeOfDate(r.start as Date)), DAY))\n  );\n}"
+   "kinds": [
+    "ambiguous"
+   ],
+   "covered": 1,
+   "dropIn": 0,
+   "prompt": "Rewrite this TypeScript function using the atom functions listed below.\nAtoms are plain functions; they never change their arguments. Keep the same name and parameters\nand keep exactly what the function does. Do not define helpers. Answer with only the function in\none ```ts block. If a part cannot be written with these atoms without changing what the\nfunction does, leave that part as it is; if no part can, answer only: NO ATOM\n\n```ts\nfunction daysIn(r: RangeState): number {\n  return when(differs(r.status, 'complete'), () => 0, () => round(dividedBy(minus(timeOfDate(r.end as Date) + 1, timeOfDate(r.start as Date)), DAY)));\n}\n```\n\nParts still to rewrite:\n- `(r.end as Date).getTime() + 1` (BinaryExpression +: ambiguous type)\n\nAtoms you may use (name(params) - what it reads as - the JS it replaces):\n- plus(a, b) - a plus b - a + b\n- join(a, b) - a joined with b - a + b | a.concat(b)\n- randomBetween(min, max, random?) - a random number from min up to max - min + Math.random() * (max - min)\n- differs(a, b) - a differs from b - a !== b\n- minus(a, b) - a minus b - a - b\n- dividedBy(a, b) - a divided by b - a / b\n- when(condition, then, otherwise?) - when c, a, otherwise b - c ? a : b | if (c) { a } else { b }\n- round(x) - the round of x - Math.round(x)\n- timeOfDate(date) - the time of date - date.getTime()",
+   "raw": "function daysIn(r: RangeState): number {\n  return when(\n    differs(r.status, 'complete'),\n    () => 0,\n    () => round(dividedBy(minus(timeOfDate(r.end as Date) + 1, timeOfDate(r.start as Date)), DAY))\n  );\n}"
   },
   {
    "name": "applyView",
    "file": "packages/line-atoms/atoms/filter-sort/index.ts",
    "gaps": "CallExpression .sort() (mutates)",
-   "ms": 1475,
+   "ms": 1474,
    "status": "rejected",
    "why": "fewer gaps: 1 left of 1",
    "before": 1,
+   "kinds": [
+    "mutation"
+   ],
+   "covered": 1,
+   "dropIn": 0,
+   "prompt": "Rewrite this TypeScript function using the atom functions listed below.\nAtoms are plain functions; they never change their arguments. Keep the same name and parameters\nand keep exactly what the function does. Do not define helpers. Answer with only the function in\none ```ts block. If a part cannot be written with these atoms without changing what the\nfunction does, leave that part as it is; if no part can, answer only: NO ATOM\n\n```ts\nfunction applyView<T extends Record<string, unknown>>(rows: T[], v: View, searchFields: (keyof T)[] = []): T[] {\n  const active = keepWhere(entriesOf(v.filters), ([, value]) => not(isNoFilter(value)));\n  const kept = keepWhere(rows, row => and(isEveryWhere(active, ([id, value]) => equals(row[id], value)), () => matchesSearch(row, v.search, searchFields)));\n  return when(equals(v.sort, null), () => kept, () => {\n    const {\n      id,\n      desc\n    } = v.sort;\n    const indexed = mapEach(kept, (row, i) => ({\n      row,\n      i\n    }));\n    indexed.sort((x, y) => {\n      const c = compareValues(x.row[id], y.row[id]);\n      return when(equals(c, 0), () => minus(x.i, y.i), () => when(and(and(desc, () => not(isEmptyValue(x.row[id]))), () => not(isEmptyValue(y.row[id]))), () => negate(c), () => c));\n    });\n    return mapEach(indexed, x => x.row);\n  });\n}\n```\n\nParts still to rewrite:\n- `indexed.sort((x, y) => { const c = compareValues(x.row[id], y.row[id]); if (c === 0) { return x.i - ` (CallExpression .sort(): mutates)\n\nAtoms you may use (name(params) - what it reads as - the JS it replaces):\n- sortedBy(list, order?) - list sorted by order - list.toSorted(order) | [...list].sort(order)\n- equals(a, b) - a equals b - a === b\n- minus(a, b) - a minus b - a - b\n- negate(a) - negative a - -a\n- not(a) - not a - !a\n- and(a, b) - a and b - a && b\n- when(condition, then, otherwise?) - when c, a, otherwise b - c ? a : b | if (c) { a } else { b }\n- mapEach(list, fn) - each item of list mapped to result - list.map(fn)\n- keepWhere(list, test) - the items of list where test holds - list.filter(test)\n- isEveryWhere(list, test) - whether every item of list passes test - list.every(test)\n- entriesOf(obj) - the key/value pairs of obj - Object.entries(obj)",
+   "raw": "function applyView<T extends Record<string, unknown>>(rows: T[], v: View, searchFields: (keyof T)[] = []): T[] {\n  const active = keepWhere(entriesOf(v.filters), ([, value]) => not(isNoFilter(value)));\n  const kept = keepWhere(rows, row => and(isEveryWhere(active, ([id, value]) => equals(row[id], value)), () => matchesSearch(row, v.search, searchFields)));\n  return when(equals(v.sort, null), () => kept, () => {\n    const {\n      id,\n      desc\n    } = v.sort;\n    const indexed = mapEach(kept, (row, i) => ({\n      row,\n      i\n    }));\n    indexed.sort((x, y) => {\n      const c = compareValues(x.row[id], y.row[id]);\n      return when(equals(c, 0), () => x.i - y.i, () => when(and(and(desc, () => not(isEmptyValue(x.row[id]))), () => not(isEmptyValue(y.row[id]))), () => negate(c), () => c));\n    });\n    return mapEach(indexed, x => x.row);\n  });\n}",
    "code": "function applyView<T extends Record<string, unknown>>(rows: T[], v: View, searchFields: (keyof T)[] = []): T[] {\n  const active = keepWhere(entriesOf(v.filters), ([, value]) => not(isNoFilter(value)));\n  const kept = keepWhere(rows, row => and(isEveryWhere(active, ([id, value]) => equals(row[id], value)), () => matchesSearch(row, v.search, searchFields)));\n  return when(equals(v.sort, null), () => kept, () => {\n    const {\n      id,\n      desc\n    } = v.sort;\n    const indexed = mapEach(kept, (row, i) => ({\n      row,\n      i\n    }));\n    indexed.sort((x, y) => {\n      const c = compareValues(x.row[id], y.row[id]);\n      return when(equals(c, 0), () => x.i - y.i, () => when(and(and(desc, () => not(isEmptyValue(x.row[id]))), () => not(isEmptyValue(y.row[id]))), () => negate(c), () => c));\n    });\n    return mapEach(indexed, x => x.row);\n  });\n}"
   },
   {
    "name": "send",
    "file": "packages/line-atoms/atoms/filter-sort/index.ts",
-   "gaps": "BinaryExpression in; UnaryExpression delete (mutates)",
+   "gaps": "UnaryExpression delete (mutates)",
    "ms": 1593,
-   "status": "rejected",
-   "why": "fewer gaps: 2 left of 2",
-   "before": 2,
-   "code": "send(state: any, event: any): any {\n  return match(event.type, {\n    SET_FILTER: () => when(equals(state.filters[event.id], event.value), () => state, () => view(withKey(state.filters, event.id, event.value), state.search, state.sort)),\n    CLEAR_FILTER: () => when(not(event.id in state.filters), () => state, () => {\n      const filters = {\n        ...state.filters\n      };\n      delete filters[event.id];\n      return view(filters, state.search, state.sort);\n    }),\n    SET_SEARCH: () => when(equals(event.text, state.search), () => state, () => view(state.filters, event.text, state.sort)),\n    SORT_BY: () => view(state.filters, state.search, {\n      id: event.id,\n      desc: orElse(event.desc, () => false)\n    }),\n    TOGGLE_SORT: () => when(or(equals(state.sort, null), () => differs(state.sort.id, event.id)), () => view(state.filters, state.search, {\n      id: event.id,\n      desc: false\n    }), () => when(not(state.sort.desc), () => view(state.filters, state.search, {\n      id: event.id,\n      desc: true\n    }), () => view(state.filters, state.search, null))),\n    RESET: () => machine.init()\n  }, () => state);\n}"
+   "status": "declined",
+   "why": "handed the code back unchanged",
+   "before": 1,
+   "kinds": [
+    "mutation"
+   ],
+   "covered": 0,
+   "dropIn": 0,
+   "prompt": "Rewrite this TypeScript function using the atom functions listed below.\nAtoms are plain functions; they never change their arguments. Keep the same name and parameters\nand keep exactly what the function does. Do not define helpers. Answer with only the function in\none ```ts block. If a part cannot be written with these atoms without changing what the\nfunction does, leave that part as it is; if no part can, answer only: NO ATOM\n\n```ts\nsend(state, event) {\n  return match(event.type, {\n    SET_FILTER: () => when(equals(state.filters[event.id], event.value), () => state, () => view(withKey(state.filters, event.id, event.value), state.search, state.sort)),\n    CLEAR_FILTER: () => when(not(hasProperty(state.filters, event.id)), () => state, () => {\n      const filters = {\n        ...state.filters\n      };\n      delete filters[event.id];\n      return view(filters, state.search, state.sort);\n    }),\n    SET_SEARCH: () => when(equals(event.text, state.search), () => state, () => view(state.filters, event.text, state.sort)),\n    SORT_BY: () => view(state.filters, state.search, {\n      id: event.id,\n      desc: orElse(event.desc, () => false)\n    }),\n    TOGGLE_SORT: () => when(or(equals(state.sort, null), () => differs(state.sort.id, event.id)), () => view(state.filters, state.search, {\n      id: event.id,\n      desc: false\n    }), () => when(not(state.sort.desc), () => view(state.filters, state.search, {\n      id: event.id,\n      desc: true\n    }), () => view(state.filters, state.search, null))),\n    RESET: () => machine.init()\n  }, () => state);\n}\n```\n\nParts still to rewrite:\n- `delete filters[event.id]` (UnaryExpression delete: mutates)\n\nAtoms you may use (name(params) - what it reads as - the JS it replaces):\n- keysOf(obj) - the keys of obj - Object.keys(obj)\n- valuesOf(obj) - the values of obj - Object.values(obj)\n- entriesOf(obj) - the key/value pairs of obj - Object.entries(obj)\n- fromEntries(pairs) - an object from pairs - Object.fromEntries(pairs)\n- merged(a, b, c) - a merged with b - { ...a, ...b } | Object.assign({}, a, b)\n- withKey(obj, key, value) - obj with key set to value - ({ ...obj, [key]: value })\n- withoutKey(obj, key) - obj without key - (({ [key]: _omit, ...rest }) => rest)(obj)\n- pick(obj, keys) - only keys of obj - Object.fromEntries(keys.filter((k) => Object.hasOwn(obj, k)).map((k) => [k, obj[k]]))\n- omit(obj, keys) - obj without keys - Object.fromEntries(Object.entries(obj).filter(([k]) => !keys.includes(k)))\n- equals(a, b) - a equals b - a === b\n- differs(a, b) - a differs from b - a !== b\n- not(a) - not a - !a\n- or(a, b) - a or b - a || b\n- orElse(a, b) - a, or else b - a ?? b\n- when(condition, then, otherwise?) - when c, a, otherwise b - c ? a : b | if (c) { a } else { b }\n- match(value, cases, fallback?) - match value against cases, otherwise fallback - switch (value) { case k: … default: … }\n- hasProperty(obj, key) - whether obj has the property key - key in obj",
+   "raw": "send(state, event) {\n  return match(event.type, {\n    SET_FILTER: () => when(equals(state.filters[event.id], event.value), () => state, () => view(withKey(state.filters, event.id, event.value), state.search, state.sort)),\n    CLEAR_FILTER: () => when(not(hasProperty(state.filters, event.id)), () => state, () => {\n      const filters = {\n        ...state.filters\n      };\n      delete filters[event.id];\n      return view(filters, state.search, state.sort);\n    }),\n    SET_SEARCH: () => when(equals(event.text, state.search), () => state, () => view(state.filters, event.text, state.sort)),\n    SORT_BY: () => view(state.filters, state.search, {\n      id: event.id,\n      desc: orElse(event.desc, () => false)\n    }),\n    TOGGLE_SORT: () => when(or(equals(state.sort, null), () => differs(state.sort.id, event.id)), () => view(state.filters, state.search, {\n      id: event.id,\n      desc: false\n    }), () => when(not(state.sort.desc), () => view(state.filters, state.search, {\n      id: event.id,\n      desc: true\n    }), () => view(state.filters, state.search, null))),\n    RESET: () => machine.init()\n  }, () => state);\n}"
   },
   {
    "name": "toXStateConfig",
    "file": "packages/line-atoms/atoms/multi-step-flow/index.ts",
    "gaps": "CallExpression .forEach() (ambiguous type)",
-   "ms": 2070,
-   "status": "rejected",
-   "why": "fewer gaps: 1 left of 1",
+   "ms": 320,
+   "status": "declined",
+   "why": "said no atom fits",
    "before": 1,
-   "code": "function toXStateConfig<D>(id: string, steps: Step<D>[], data: D, assign: (fn: (args: {\n  context: {\n    data: D;\n  };\n  event: any;\n}) => {\n  data: D;\n}) => unknown): Record<string, unknown> {\n  const mergedAtom = (context: { data: D }, event: any) => ({\n    data: merged(context.data, orElse(event.data, () => ({})))\n  });\n\n  const states: Record<string, unknown> = {};\n  steps.forEach((step, i) => {\n    let target = 'done';\n    when(lessThan(i, minus(lengthOf(steps), 1)), () => target = steps[plus(i, 1)].id);\n    const on: Record<string, unknown> = {\n      NEXT: [{\n        target,\n        guard: (args: {\n          context: {\n            data: D;\n          };\n          event: any;\n        }) => canLeave(step, mergedAtom(args).data),\n        actions: assign(mergedAtom)\n      }, {\n        actions: assign(mergedAtom)\n      }]\n    };\n    when(greaterThan(i, 0), () => on.BACK = {\n      target: steps[minus(i, 1)].id\n    });\n    states[step.id] = {\n      on\n    };\n  });\n  states.done = {\n    type: 'final'\n  };\n  return {\n    id,\n    initial: firstOf(steps).id,\n    context: {\n      data\n    },\n    states\n  };\n}"
+   "kinds": [
+    "ambiguous"
+   ],
+   "covered": 1,
+   "dropIn": 0,
+   "prompt": "Rewrite this TypeScript function using the atom functions listed below.\nAtoms are plain functions; they never change their arguments. Keep the same name and parameters\nand keep exactly what the function does. Do not define helpers. Answer with only the function in\none ```ts block. If a part cannot be written with these atoms without changing what the\nfunction does, leave that part as it is; if no part can, answer only: NO ATOM\n\n```ts\nfunction toXStateConfig<D>(id: string, steps: Step<D>[], data: D, assign: (fn: (args: {\n  context: {\n    data: D;\n  };\n  event: any;\n}) => {\n  data: D;\n}) => unknown): Record<string, unknown> {\n  const merged = ({\n    context,\n    event\n  }: {\n    context: {\n      data: D;\n    };\n    event: any;\n  }) => ({\n    data: mergedAtom(context.data, orElse(event.data, () => ({})))\n  });\n  const states: Record<string, unknown> = {};\n  steps.forEach((step, i) => {\n    let target = 'done';\n    when(lessThan(i, minus(lengthOf(steps), 1)), () => target = steps[plus(i, 1)].id);\n    const on: Record<string, unknown> = {\n      NEXT: [{\n        target,\n        guard: (args: {\n          context: {\n            data: D;\n          };\n          event: any;\n        }) => canLeave(step, merged(args).data),\n        actions: assign(merged)\n      }, {\n        actions: assign(merged)\n      }]\n    };\n    when(greaterThan(i, 0), () => on.BACK = {\n      target: steps[minus(i, 1)].id\n    });\n    states[step.id] = {\n      on\n    };\n  });\n  states.done = {\n    type: 'final'\n  };\n  return {\n    id,\n    initial: firstOf(steps).id,\n    context: {\n      data\n    },\n    states\n  };\n}\n```\n\nParts still to rewrite:\n- `steps.forEach((step, i) => { let target = 'done'; if (i < steps.length - 1) { target = steps[i + 1].` (CallExpression .forEach(): ambiguous type)\n\nAtoms you may use (name(params) - what it reads as - the JS it replaces):\n- each(list, fn) - for each item of list, effect - list.forEach(fn) | for (const item of list) { fn(item) }\n- eachMap(map, callbackfn, thisArg?) - the for each callbackfn, thisArg of map - map.forEach(callbackfn, thisArg)\n- eachSet(set, callbackfn, thisArg?) - the for each callbackfn, thisArg of set - set.forEach(callbackfn, thisArg)\n- lessThan(a, b) - a is less than b - a < b\n- greaterThan(a, b) - a is greater than b - a > b\n- plus(a, b) - a plus b - a + b\n- minus(a, b) - a minus b - a - b\n- orElse(a, b) - a, or else b - a ?? b\n- when(condition, then, otherwise?) - when c, a, otherwise b - c ? a : b | if (c) { a } else { b }\n- lengthOf(value) - the length of textOrList - value.length\n- firstOf(list) - the first item of list - list[0] | list.at(0)\n- merged(a, b, c) - a merged with b - { ...a, ...b } | Object.assign({}, a, b)",
+   "raw": "NO ATOM"
   },
   {
    "name": "covers",
    "file": "packages/line-atoms/atoms/permission-check/index.ts",
    "gaps": "CallExpression .slice() (ambiguous type)",
-   "ms": 551,
-   "status": "rejected",
-   "why": "fewer gaps: 1 left of 1",
+   "ms": 149,
+   "status": "declined",
+   "why": "said no atom fits",
    "before": 1,
-   "code": "function covers(held: string, required: string): boolean {\n  return when(\n    or(equals(held, '*'), () => equals(held, required)),\n    () => true,\n    () => when(doesEndWith(held, ':*'), () => doesStartWith(required, held.slice(0, -1)), () => false)\n  );\n}"
-  },
-  {
-   "name": "fieldErrors",
-   "file": "packages/line-atoms/atoms/validated-submit/index.ts",
-   "gaps": "BinaryExpression in",
-   "ms": 519,
-   "status": "rejected",
-   "why": "fewer gaps: 1 left of 1",
-   "before": 1,
-   "code": "function fieldErrors(issues: Issue[]): Record<string, string> {\n  const out: Record<string, string> = {};\n  each(issues, issue => {\n    const key = joinWith(mapEach(issue.path, String), '.');\n    when(not(key in out), () => out[key] = issue.message);\n  });\n  return out;\n}"
+   "kinds": [
+    "ambiguous"
+   ],
+   "covered": 1,
+   "dropIn": 0,
+   "prompt": "Rewrite this TypeScript function using the atom functions listed below.\nAtoms are plain functions; they never change their arguments. Keep the same name and parameters\nand keep exactly what the function does. Do not define helpers. Answer with only the function in\none ```ts block. If a part cannot be written with these atoms without changing what the\nfunction does, leave that part as it is; if no part can, answer only: NO ATOM\n\n```ts\nfunction covers(held: string, required: string): boolean {\n  return when(or(equals(held, '*'), () => equals(held, required)), () => true, () => when(doesEndWith(held, ':*'), () => doesStartWith(required, held.slice(0, -1)), () => false));\n}\n```\n\nParts still to rewrite:\n- `held.slice(0, -1)` (CallExpression .slice(): ambiguous type)\n\nAtoms you may use (name(params) - what it reads as - the JS it replaces):\n- sliceText(text, from?, to?) - the part of text from from to to - text.slice(from, to)\n- part(list, from?, to?) - the part of list from from to to - list.slice(from, to)\n- equals(a, b) - a equals b - a === b\n- or(a, b) - a or b - a || b\n- when(condition, then, otherwise?) - when c, a, otherwise b - c ? a : b | if (c) { a } else { b }\n- doesStartWith(text, part, position?) - whether text starts with part - text.startsWith(part, position)\n- doesEndWith(text, part, endPosition?) - whether text ends with part - text.endsWith(part, endPosition)",
+   "raw": "NO ATOM"
   },
   {
    "name": "onKeyDown",
    "file": "packages/line-primitives/library/components/Combobox.tsx",
    "gaps": "IfStatement (a branch returns on some paths only); IfStatement (return inside an if that is not directly in a function body); BinaryExpression + (ambiguous type)",
-   "ms": 908,
+   "ms": 888,
    "status": "rejected",
    "why": "fewer gaps: 4 left of 3",
    "before": 3,
+   "kinds": [
+    "control flow",
+    "control flow",
+    "ambiguous"
+   ],
+   "covered": 1,
+   "dropIn": 0,
+   "prompt": "Rewrite this TypeScript function using the atom functions listed below.\nAtoms are plain functions; they never change their arguments. Keep the same name and parameters\nand keep exactly what the function does. Do not define helpers. Answer with only the function in\none ```ts block. If a part cannot be written with these atoms without changing what the\nfunction does, leave that part as it is; if no part can, answer only: NO ATOM\n\n```ts\nfunction onKeyDown(e: KeyboardEvent<HTMLInputElement>) {\n  if (equals(e.key, 'ArrowDown')) {\n    e.preventDefault();\n    if (not(open)) {\n      setOpen(true);\n      setActive(0);\n      return;\n    }\n    setActive(i => smallestOf([i + 1, minus(lengthOf(matches), 1)]));\n  } else chooseAtom([[equals(e.key, 'ArrowUp'), () => {\n    e.preventDefault();\n    setActive(i => largestOf([minus(i, 1), 0]));\n  }], [() => and(and(equals(e.key, 'Enter'), () => open), () => matches[active]), () => {\n    e.preventDefault();\n    choose(matches[active]);\n  }], [() => and(equals(e.key, 'Escape'), () => open), () => {\n    e.preventDefault();\n    setOpen(false);\n  }]]);\n}\n```\n\nParts still to rewrite:\n- `if (e.key === 'ArrowDown') { e.preventDefault(); if (!open) { setOpen(true); setActive(0); return; }` (IfStatement: a branch returns on some paths only)\n- `if (!open) { setOpen(true); setActive(0); return; }` (IfStatement: return inside an if that is not directly in a function body)\n- `i + 1` (BinaryExpression +: ambiguous type)\n\nAtoms you may use (name(params) - what it reads as - the JS it replaces):\n- plus(a, b) - a plus b - a + b\n- join(a, b) - a joined with b - a + b | a.concat(b)\n- randomBetween(min, max, random?) - a random number from min up to max - min + Math.random() * (max - min)\n- when(condition, then, otherwise?) - when c, a, otherwise b - c ? a : b | if (c) { a } else { b }\n- choose(cases, fallback?) - choose a when c1, b when c2, otherwise fallback - if (c1) { a } else if (c2) { b } else { fallback } | c1 ? a : c2 ? b : fallback\n- match(value, cases, fallback?) - match value against cases, otherwise fallback - switch (value) { case k: … default: … }\n- equals(a, b) - a equals b - a === b\n- minus(a, b) - a minus b - a - b\n- not(a) - not a - !a\n- and(a, b) - a and b - a && b\n- lengthOf(value) - the length of textOrList - value.length\n- largestOf(numbers) - the largest of numbers - Math.max(...numbers)\n- smallestOf(numbers) - the smallest of numbers - Math.min(...numbers)",
+   "raw": "function onKeyDown(e: KeyboardEvent<HTMLInputElement>) {\n  if (equals(e.key, 'ArrowDown')) {\n    e.preventDefault();\n    if (!open) {\n      setOpen(true);\n      setActive(0);\n      return;\n    }\n    setActive(i => smallestOf([i + 1, minus(lengthOf(matches), 1)]));\n  } else if (!open) {\n    setOpen(true);\n    setActive(0);\n    return;\n  } else if (equals(e.key, 'Enter')) {\n    e.preventDefault();\n    choose(matches[active]);\n  } else if (equals(e.key, 'Escape')) {\n    e.preventDefault();\n    setOpen(false);\n  }\n}",
    "code": "function onKeyDown(e: KeyboardEvent<HTMLInputElement>) {\n  if (equals(e.key, 'ArrowDown')) {\n    e.preventDefault();\n    if (!open) {\n      setOpen(true);\n      setActive(0);\n      return;\n    }\n    setActive(i => smallestOf([i + 1, minus(lengthOf(matches), 1)]));\n  } else if (!open) {\n    setOpen(true);\n    setActive(0);\n    return;\n  } else if (equals(e.key, 'Enter')) {\n    e.preventDefault();\n    choose(matches[active]);\n  } else if (equals(e.key, 'Escape')) {\n    e.preventDefault();\n    setOpen(false);\n  }\n}"
   },
   {
    "name": "add",
    "file": "packages/line-primitives/library/components/FileUpload.tsx",
    "gaps": "CallExpression .slice() (ambiguous type)",
-   "ms": 586,
-   "status": "rejected",
-   "why": "fewer gaps: 2 left of 1",
+   "ms": 167,
+   "status": "declined",
+   "why": "said no atom fits",
    "before": 1,
-   "code": "function add(picked: File[]) {\n  when(\n    and(\n      and(not(disabled), () => not(readOnly)),\n      () => lengthOf(picked) > 0\n    ),\n    () => update(\n      when(\n        multiple,\n        () => concatenated(list, picked),\n        () => picked.slice(0, 1)\n      )\n    )\n  );\n}"
+   "kinds": [
+    "ambiguous"
+   ],
+   "covered": 1,
+   "dropIn": 0,
+   "prompt": "Rewrite this TypeScript function using the atom functions listed below.\nAtoms are plain functions; they never change their arguments. Keep the same name and parameters\nand keep exactly what the function does. Do not define helpers. Answer with only the function in\none ```ts block. If a part cannot be written with these atoms without changing what the\nfunction does, leave that part as it is; if no part can, answer only: NO ATOM\n\n```ts\nfunction add(picked: File[]) {\n  when(and(and(not(disabled), () => not(readOnly)), () => lengthOf(picked)), () => update(when(multiple, () => concatenated(list, picked), () => picked.slice(0, 1))));\n}\n```\n\nParts still to rewrite:\n- `picked.slice(0, 1)` (CallExpression .slice(): ambiguous type)\n\nAtoms you may use (name(params) - what it reads as - the JS it replaces):\n- sliceText(text, from?, to?) - the part of text from from to to - text.slice(from, to)\n- part(list, from?, to?) - the part of list from from to to - list.slice(from, to)\n- not(a) - not a - !a\n- and(a, b) - a and b - a && b\n- when(condition, then, otherwise?) - when c, a, otherwise b - c ? a : b | if (c) { a } else { b }\n- lengthOf(value) - the length of textOrList - value.length\n- concatenated(lists?) - a followed by b - [...a, ...b]",
+   "raw": "NO ATOM"
   },
   {
    "name": "pageItems",
    "file": "packages/line-primitives/library/components/Pagination.tsx",
    "gaps": "ForStatement (no exact loop atom (repeatWhile needs a limit)); CallExpression .forEach() (ambiguous type); CallExpression .push() (mutates)",
-   "ms": 1258,
+   "ms": 1280,
    "status": "rejected",
    "why": "fewer gaps: 6 left of 4",
    "before": 4,
-   "code": "function pageItems(page: number, pageCount: number, siblings = 1): (number | 'gap')[] {\n  const wanted = new Set<number>();\n  for (let p = page - siblings; p <= page + siblings; p += 1) when(and(atLeast(p, 1), () => atMost(p, pageCount)), () => wanted.add(p));\n  const sorted = [...wanted].sort((a, b) => minus(a, b));\n  const out: (number | 'gap')[] = [];\n  sorted.forEach((p, i) => {\n    when(and(greaterThan(i, 0), () => greaterThan(minus(p, sorted[minus(i, 1)]), 1)), () => out.push('gap'));\n    out.push(p);\n  });\n  return out;\n}"
+   "kinds": [
+    "control flow",
+    "ambiguous",
+    "mutation",
+    "mutation"
+   ],
+   "covered": 3,
+   "dropIn": 0,
+   "prompt": "Rewrite this TypeScript function using the atom functions listed below.\nAtoms are plain functions; they never change their arguments. Keep the same name and parameters\nand keep exactly what the function does. Do not define helpers. Answer with only the function in\none ```ts block. If a part cannot be written with these atoms without changing what the\nfunction does, leave that part as it is; if no part can, answer only: NO ATOM\n\n```ts\nfunction pageItems(page: number, pageCount: number, siblings = 1): (number | 'gap')[] {\n  const wanted = setOf([1, pageCount]);\n  for (let p = minus(page, siblings); atMost(p, plus(page, siblings)); p = plus(p, 1)) when(and(atLeast(p, 1), () => atMost(p, pageCount)), () => addToWeakSet(wanted, p));\n  const sorted = sortedBy([...wanted], (a, b) => minus(a, b));\n  const out: (number | 'gap')[] = [];\n  sorted.forEach((p, i) => {\n    when(and(greaterThan(i, 0), () => greaterThan(minus(p, sorted[minus(i, 1)]), 1)), () => out.push('gap'));\n    out.push(p);\n  });\n  return out;\n}\n```\n\nParts still to rewrite:\n- `for (let p = page - siblings; p <= page + siblings; p += 1) if (p >= 1 && p <= pageCount) wanted.add` (ForStatement: no exact loop atom (repeatWhile needs a limit))\n- `sorted.forEach((p, i) => { if (i > 0 && p - sorted[i - 1] > 1) out.push('gap'); out.push(p); })` (CallExpression .forEach(): ambiguous type)\n- `out.push('gap')` (CallExpression .push(): mutates)\n- `out.push(p)` (CallExpression .push(): mutates)\n\nAtoms you may use (name(params) - what it reads as - the JS it replaces):\n- each(list, fn) - for each item of list, effect - list.forEach(fn) | for (const item of list) { fn(item) }\n- pushedList(list, items?) - list after push items, as a copy - list.push(...items)\n- eachMap(map, callbackfn, thisArg?) - the for each callbackfn, thisArg of map - map.forEach(callbackfn, thisArg)\n- eachSet(set, callbackfn, thisArg?) - the for each callbackfn, thisArg of set - set.forEach(callbackfn, thisArg)\n- repeatWhile(condition, step, limit) - repeat step while condition, at most limit times - while (condition) { step }\n- iterateWhile(start, condition, next, limit) - starting from start, step to next while condition, at most limit times - let s = start; while (condition(s)) { s = next(s) }\n- atMost(a, b) - a is at most b - a <= b\n- greaterThan(a, b) - a is greater than b - a > b\n- atLeast(a, b) - a is at least b - a >= b\n- plus(a, b) - a plus b - a + b\n- minus(a, b) - a minus b - a - b\n- and(a, b) - a and b - a && b\n- when(condition, then, otherwise?) - when c, a, otherwise b - c ? a : b | if (c) { a } else { b }\n- sortedBy(list, order?) - list sorted by order - list.toSorted(order) | [...list].sort(order)\n- setOf(items?) - the set of items - new Set(items)\n- addToWeakSet(weakSet, value) - the add value of weakSet - weakSet.add(value)",
+   "raw": "function pageItems(page: number, pageCount: number, siblings = 1): (number | 'gap')[] {\n  const wanted = setOf([1, pageCount]);\n  for (let p = page - siblings; p <= page + siblings; p += 1) when(and(atLeast(p, 1), () => atMost(p, pageCount)), () => addToWeakSet(wanted, p));\n  const sorted = sortedBy([...wanted], (a, b) => minus(a, b));\n  const out: (number | 'gap')[] = [];\n  sorted.forEach((p, i) => {\n    when(and(greaterThan(i, 0), () => greaterThan(minus(p, sorted[minus(i, 1)]), 1)), () => out.push('gap'));\n    out.push(p);\n  });\n  return out;\n}",
+   "code": "function pageItems(page: number, pageCount: number, siblings = 1): (number | 'gap')[] {\n  const wanted = setOf([1, pageCount]);\n  for (let p = page - siblings; p <= page + siblings; p += 1) when(and(atLeast(p, 1), () => atMost(p, pageCount)), () => addToWeakSet(wanted, p));\n  const sorted = sortedBy([...wanted], (a, b) => minus(a, b));\n  const out: (number | 'gap')[] = [];\n  sorted.forEach((p, i) => {\n    when(and(greaterThan(i, 0), () => greaterThan(minus(p, sorted[minus(i, 1)]), 1)), () => out.push('gap'));\n    out.push(p);\n  });\n  return out;\n}"
   }
  ]
 }
