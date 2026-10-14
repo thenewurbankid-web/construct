@@ -1,0 +1,1092 @@
+{
+  "when": "2026-10-13T23:51:07.226Z",
+  "node": "v24.19.0",
+  "machine": "Apple M5 Pro x18, 24576 MB",
+  "construct": "83c20cd8aa4034a12523c0e83c24f8dfe1396232",
+  "smith": {
+    "raw": true,
+    "ready": true,
+    "atomicCodemodHead": "cbc25671d1a64fe825402d3ce19433657b945f4c"
+  },
+  "typescript": "5.9.3",
+  "packages": {
+    "codeFiles": 869,
+    "topLevelFunctions": 5327,
+    "tsconfigAtPackagesRoot": false
+  },
+  "projects": {
+    "line-primitives": {
+      "note": "packages/ has no tsconfig.json, so the largest package with one (packages/line-primitives) stands in for it",
+      "feature": "library/components",
+      "widen": "test/kit/harness.tsx",
+      "marker": "library/components/Button.tsx",
+      "source": "packages/line-primitives",
+      "split": {
+        "ok": true,
+        "files": 94,
+        "allSourceFiles": 95,
+        "functions": 200,
+        "ts": {
+          "openProjectMs": 6.5,
+          "programMs": 168.2,
+          "totalMs": 174.7,
+          "loaded": 154,
+          "inProject": 95
+        },
+        "smithMs": 2883.4,
+        "rulesMs": 13760.4,
+        "rssMb": 912,
+        "maxRssMb": 912,
+        "wallMs": 17096.9
+      },
+      "full": {
+        "ok": true,
+        "buildMs": 17227.8,
+        "size": {
+          "files": 94,
+          "functions": 200,
+          "ruleFiles": 94
+        },
+        "programMs": 127.8,
+        "program": {
+          "loaded": 154,
+          "inProject": 95
+        },
+        "spots": {
+          "offset": 1836,
+          "symbol": "Slot"
+        },
+        "product": {
+          "cold": {
+            "diagnostics": 43.7,
+            "completionsAt": 31.4,
+            "quickInfo": 9.8,
+            "definition": 1.2,
+            "fixes": 17.3,
+            "nextSteps": 0.2
+          },
+          "warm": {
+            "diagnostics": {
+              "median": 28,
+              "p95": 36.6
+            },
+            "completionsAt": {
+              "median": 5.4,
+              "p95": 17.1
+            },
+            "quickInfo": {
+              "median": 1.2,
+              "p95": 7.6
+            },
+            "definition": {
+              "median": 0.6,
+              "p95": 0.7
+            },
+            "fixes": {
+              "median": 1.1,
+              "p95": 9.6
+            },
+            "nextSteps": {
+              "median": 0,
+              "p95": 0
+            }
+          }
+        },
+        "raw": {
+          "cold": {
+            "diagnostics": 9.5,
+            "completionsAt": 5.2,
+            "quickInfo": 0.2,
+            "definition": 0.2,
+            "fixes": 0.8
+          },
+          "warm": {
+            "diagnostics": {
+              "median": 0,
+              "p95": 0
+            },
+            "completionsAt": {
+              "median": 3.7,
+              "p95": 6.2
+            },
+            "quickInfo": {
+              "median": 0,
+              "p95": 0.1
+            },
+            "definition": {
+              "median": 0,
+              "p95": 0.1
+            },
+            "fixes": {
+              "median": 0.4,
+              "p95": 0.5
+            }
+          }
+        },
+        "completion": {
+          "productItems": 30,
+          "productTotal": 1121,
+          "rawTotal": 1121
+        },
+        "update": {
+          "ms": 223,
+          "touched": [
+            "library/components/Button.tsx"
+          ],
+          "layers": {
+            "ts": 1,
+            "smith": 3,
+            "rules": 1
+          },
+          "nextDiagnosticsMs": 46.2
+        },
+        "rssAfterBuildMb": 669,
+        "rssEndMb": 679,
+        "maxRssMb": 687,
+        "wallMs": 19103.5
+      },
+      "scoped": {
+        "ok": true,
+        "scope": {
+          "how": "library/components/** (40 files) + their direct imports inside the project (0)",
+          "rootFiles": 40,
+          "codeFiles": 40,
+          "resolveMs": 16.2
+        },
+        "buildMs": 9077.3,
+        "programMs": 129.1,
+        "program": {
+          "loaded": 99,
+          "inProject": 40
+        },
+        "smithMs": 2224.5,
+        "rulesMs": 6702.6,
+        "functions": 109,
+        "raw": {
+          "cold": {
+            "diagnostics": 18.1,
+            "completionsAt": 21.6,
+            "quickInfo": 2.3,
+            "definition": 0.7,
+            "fixes": 3.6
+          },
+          "warm": {
+            "diagnostics": {
+              "median": 0.3,
+              "p95": 5.1
+            },
+            "completionsAt": {
+              "median": 3.2,
+              "p95": 5.7
+            },
+            "quickInfo": {
+              "median": 0.2,
+              "p95": 0.3
+            },
+            "definition": {
+              "median": 0.2,
+              "p95": 0.2
+            },
+            "fixes": {
+              "median": 1.7,
+              "p95": 2.1
+            }
+          }
+        },
+        "completionTotal": 1042,
+        "update": {
+          "ms": 206.6,
+          "layers": {
+            "ts": 1,
+            "smith": 3,
+            "rules": 1
+          },
+          "nextDiagnosticsMs": 23.8
+        },
+        "widen": {
+          "file": "test/kit/harness.tsx",
+          "tsMs": 9.1,
+          "smithMs": 40.8,
+          "rulesMs": 154.1,
+          "totalMs": 204,
+          "loadedBefore": 40,
+          "loadedAfter": 41,
+          "completionTotalAfter": 1044
+        },
+        "rssAfterBuildMb": 869,
+        "maxRssMb": 886,
+        "wallMs": 9970.4
+      },
+      "persistedFull": {
+        "ok": true,
+        "mode": "full",
+        "totalMs": 173.5,
+        "memoLoadMs": 1.2,
+        "tsMs": 168.2,
+        "hashMs": 0.8,
+        "hits": 94,
+        "misses": 0,
+        "smithMs": 0,
+        "rulesMs": 0,
+        "maxRssMb": 284,
+        "wallMs": 440.8
+      },
+      "persistedScoped": {
+        "ok": true,
+        "mode": "scoped",
+        "totalMs": 140.6,
+        "memoLoadMs": 3.2,
+        "tsMs": 135.7,
+        "hashMs": 0.4,
+        "hits": 40,
+        "misses": 0,
+        "smithMs": 0,
+        "rulesMs": 0,
+        "maxRssMb": 266,
+        "wallMs": 358.4
+      }
+    },
+    "lending-starter": {
+      "note": "a Line project with one feature (browse, no code yet): scope = that feature + library/; no second feature to widen to",
+      "feature": "browse",
+      "widen": null,
+      "marker": "library/pages/ListPage.tsx",
+      "source": "bench/lending/starter",
+      "split": {
+        "ok": true,
+        "files": 17,
+        "allSourceFiles": 18,
+        "functions": 13,
+        "ts": {
+          "openProjectMs": 6.4,
+          "programMs": 142.4,
+          "totalMs": 148.8,
+          "loaded": 100,
+          "inProject": 18
+        },
+        "smithMs": 296.8,
+        "rulesMs": 565.1,
+        "rssMb": 459,
+        "maxRssMb": 459,
+        "wallMs": 1268.6
+      },
+      "full": {
+        "ok": true,
+        "buildMs": 846,
+        "size": {
+          "files": 17,
+          "functions": 13,
+          "ruleFiles": 17
+        },
+        "programMs": 106.9,
+        "program": {
+          "loaded": 100,
+          "inProject": 18
+        },
+        "spots": {
+          "offset": 391,
+          "symbol": "ReactNode"
+        },
+        "product": {
+          "cold": {
+            "diagnostics": 22.6,
+            "completionsAt": 36.4,
+            "quickInfo": 10.2,
+            "definition": 1.1,
+            "fixes": 8.9,
+            "nextSteps": 1
+          },
+          "warm": {
+            "diagnostics": {
+              "median": 12,
+              "p95": 22
+            },
+            "completionsAt": {
+              "median": 4.3,
+              "p95": 22.3
+            },
+            "quickInfo": {
+              "median": 0.4,
+              "p95": 8.9
+            },
+            "definition": {
+              "median": 0.4,
+              "p95": 0.6
+            },
+            "fixes": {
+              "median": 0.6,
+              "p95": 6.1
+            },
+            "nextSteps": {
+              "median": 0,
+              "p95": 0
+            }
+          }
+        },
+        "raw": {
+          "cold": {
+            "diagnostics": 5.7,
+            "completionsAt": 3.9,
+            "quickInfo": 0.3,
+            "definition": 0.1,
+            "fixes": 0.6
+          },
+          "warm": {
+            "diagnostics": {
+              "median": 0,
+              "p95": 0
+            },
+            "completionsAt": {
+              "median": 2.6,
+              "p95": 3.7
+            },
+            "quickInfo": {
+              "median": 0,
+              "p95": 0.1
+            },
+            "definition": {
+              "median": 0,
+              "p95": 0.1
+            },
+            "fixes": {
+              "median": 0.3,
+              "p95": 0.5
+            }
+          }
+        },
+        "completion": {
+          "productItems": 25,
+          "productTotal": 1005,
+          "rawTotal": 1005
+        },
+        "update": {
+          "ms": 42,
+          "touched": [
+            "library/pages/ListPage.tsx"
+          ],
+          "layers": {
+            "ts": 1,
+            "smith": 1,
+            "rules": 1
+          },
+          "nextDiagnosticsMs": 15.5
+        },
+        "rssAfterBuildMb": 394,
+        "rssEndMb": 469,
+        "maxRssMb": 471,
+        "wallMs": 1835.1
+      },
+      "scoped": {
+        "ok": true,
+        "scope": {
+          "how": "features/browse/** + 0 other feature index file(s) + library/**",
+          "rootFiles": 13,
+          "codeFiles": 13,
+          "resolveMs": 0.8
+        },
+        "buildMs": 859.6,
+        "programMs": 140.3,
+        "program": {
+          "loaded": 95,
+          "inProject": 13
+        },
+        "smithMs": 287.8,
+        "rulesMs": 424.5,
+        "functions": 12,
+        "raw": {
+          "cold": {
+            "diagnostics": 9.9,
+            "completionsAt": 28.1,
+            "quickInfo": 2.9,
+            "definition": 1.2,
+            "fixes": 3.6
+          },
+          "warm": {
+            "diagnostics": {
+              "median": 0.3,
+              "p95": 0.7
+            },
+            "completionsAt": {
+              "median": 3,
+              "p95": 5.5
+            },
+            "quickInfo": {
+              "median": 0.2,
+              "p95": 0.3
+            },
+            "definition": {
+              "median": 0.2,
+              "p95": 0.2
+            },
+            "fixes": {
+              "median": 1.6,
+              "p95": 1.9
+            }
+          }
+        },
+        "completionTotal": 1000,
+        "update": {
+          "ms": 37.7,
+          "layers": {
+            "ts": 1,
+            "smith": 1,
+            "rules": 1
+          },
+          "nextDiagnosticsMs": 7.8
+        },
+        "widen": null,
+        "rssAfterBuildMb": 428,
+        "maxRssMb": 468,
+        "wallMs": 1277.2
+      },
+      "persistedFull": {
+        "ok": true,
+        "mode": "full",
+        "totalMs": 119.5,
+        "memoLoadMs": 0.1,
+        "tsMs": 117.7,
+        "hashMs": 0.5,
+        "hits": 17,
+        "misses": 0,
+        "smithMs": 0,
+        "rulesMs": 0,
+        "maxRssMb": 263,
+        "wallMs": 320.6
+      },
+      "persistedScoped": {
+        "ok": true,
+        "mode": "scoped",
+        "totalMs": 131,
+        "memoLoadMs": 0.1,
+        "tsMs": 129.9,
+        "hashMs": 0.3,
+        "hits": 13,
+        "misses": 0,
+        "smithMs": 0,
+        "rulesMs": 0,
+        "maxRssMb": 263,
+        "wallMs": 332.1
+      }
+    },
+    "vercel-commerce": {
+      "note": null,
+      "feature": "components/cart",
+      "widen": "lib/shopify/index.ts",
+      "marker": "components/cart/actions.ts",
+      "source": "https://github.com/vercel/commerce",
+      "commit": "3761e52e60df9c6a316e067dbfd7032e494d3634",
+      "license": "The MIT License (MIT)",
+      "split": {
+        "ok": true,
+        "files": 66,
+        "allSourceFiles": 66,
+        "functions": 105,
+        "ts": {
+          "openProjectMs": 4.9,
+          "programMs": 146,
+          "totalMs": 150.9,
+          "loaded": 148,
+          "inProject": 66
+        },
+        "smithMs": 1571.8,
+        "rulesMs": 139,
+        "rssMb": 370,
+        "maxRssMb": 370,
+        "wallMs": 2107.4
+      },
+      "full": {
+        "ok": true,
+        "buildMs": 1773.4,
+        "size": {
+          "files": 66,
+          "functions": 105,
+          "ruleFiles": 66
+        },
+        "programMs": 112,
+        "program": {
+          "loaded": 148,
+          "inProject": 66
+        },
+        "spots": {
+          "offset": 374,
+          "symbol": "TAGS"
+        },
+        "product": {
+          "cold": {
+            "diagnostics": 88.2,
+            "completionsAt": 26.9,
+            "quickInfo": 12.1,
+            "definition": 1.5,
+            "fixes": 12.5,
+            "nextSteps": 0.1
+          },
+          "warm": {
+            "diagnostics": {
+              "median": 59.4,
+              "p95": 76.1
+            },
+            "completionsAt": {
+              "median": 4.2,
+              "p95": 14.9
+            },
+            "quickInfo": {
+              "median": 0.9,
+              "p95": 8.5
+            },
+            "definition": {
+              "median": 0.8,
+              "p95": 0.9
+            },
+            "fixes": {
+              "median": 1.3,
+              "p95": 12.7
+            },
+            "nextSteps": {
+              "median": 0,
+              "p95": 0
+            }
+          }
+        },
+        "raw": {
+          "cold": {
+            "diagnostics": 9.6,
+            "completionsAt": 3.7,
+            "quickInfo": 0.4,
+            "definition": 0.1,
+            "fixes": 0.6
+          },
+          "warm": {
+            "diagnostics": {
+              "median": 0,
+              "p95": 0.1
+            },
+            "completionsAt": {
+              "median": 2.4,
+              "p95": 3.9
+            },
+            "quickInfo": {
+              "median": 0,
+              "p95": 0.2
+            },
+            "definition": {
+              "median": 0,
+              "p95": 0.1
+            },
+            "fixes": {
+              "median": 0.2,
+              "p95": 0.4
+            }
+          }
+        },
+        "completion": {
+          "productItems": 30,
+          "productTotal": 1096,
+          "rawTotal": 1096
+        },
+        "update": {
+          "ms": 48,
+          "touched": [
+            "components/cart/actions.ts"
+          ],
+          "layers": {
+            "ts": 1,
+            "smith": 5,
+            "rules": 1
+          },
+          "nextDiagnosticsMs": 57.6
+        },
+        "rssAfterBuildMb": 339,
+        "rssEndMb": 467,
+        "maxRssMb": 467,
+        "wallMs": 3882.8
+      },
+      "scoped": {
+        "ok": true,
+        "scope": {
+          "how": "components/cart/** (7 files) + their direct imports inside the project (6)",
+          "rootFiles": 13,
+          "codeFiles": 13,
+          "resolveMs": 10.8
+        },
+        "buildMs": 890.8,
+        "programMs": 114.8,
+        "program": {
+          "loaded": 106,
+          "inProject": 24
+        },
+        "smithMs": 758.9,
+        "rulesMs": 3.5,
+        "functions": 50,
+        "raw": {
+          "cold": {
+            "diagnostics": 23.5,
+            "completionsAt": 18.5,
+            "quickInfo": 4,
+            "definition": 1.1,
+            "fixes": 2.4
+          },
+          "warm": {
+            "diagnostics": {
+              "median": 0.3,
+              "p95": 0.4
+            },
+            "completionsAt": {
+              "median": 2.6,
+              "p95": 5.1
+            },
+            "quickInfo": {
+              "median": 0.2,
+              "p95": 0.9
+            },
+            "definition": {
+              "median": 0.2,
+              "p95": 0.4
+            },
+            "fixes": {
+              "median": 1,
+              "p95": 1.3
+            }
+          }
+        },
+        "completionTotal": 1045,
+        "update": {
+          "ms": 42.4,
+          "layers": {
+            "ts": 1,
+            "smith": 5,
+            "rules": 1
+          },
+          "nextDiagnosticsMs": 12.5
+        },
+        "widen": {
+          "file": "lib/shopify/index.ts",
+          "tsMs": 0.2,
+          "smithMs": 186.5,
+          "rulesMs": 0.1,
+          "totalMs": 186.8,
+          "loadedBefore": 24,
+          "loadedAfter": 24,
+          "completionTotalAfter": 1045
+        },
+        "rssAfterBuildMb": 337,
+        "maxRssMb": 364,
+        "wallMs": 1506.4
+      },
+      "persistedFull": {
+        "ok": true,
+        "mode": "full",
+        "totalMs": 138.1,
+        "memoLoadMs": 0.9,
+        "tsMs": 134.4,
+        "hashMs": 0.4,
+        "hits": 66,
+        "misses": 0,
+        "smithMs": 0,
+        "rulesMs": 0,
+        "maxRssMb": 275,
+        "wallMs": 339.2
+      },
+      "persistedScoped": {
+        "ok": true,
+        "mode": "scoped",
+        "totalMs": 124.2,
+        "memoLoadMs": 0.3,
+        "tsMs": 122.9,
+        "hashMs": 0.3,
+        "hits": 13,
+        "misses": 0,
+        "smithMs": 0,
+        "rulesMs": 0,
+        "maxRssMb": 266,
+        "wallMs": 322
+      }
+    },
+    "excalidraw": {
+      "note": null,
+      "feature": "packages/excalidraw/actions",
+      "widen": "packages/math/src/index.ts",
+      "marker": "packages/excalidraw/actions/actionAlign.tsx",
+      "source": "https://github.com/excalidraw/excalidraw",
+      "commit": "541653c7c9d587d463a47daacff9fb30e45a52e7",
+      "license": "MIT License",
+      "split": {
+        "ok": true,
+        "files": 693,
+        "allSourceFiles": 710,
+        "functions": 2047,
+        "ts": {
+          "openProjectMs": 11.5,
+          "programMs": 535.3,
+          "totalMs": 546.8,
+          "loaded": 795,
+          "inProject": 713
+        },
+        "smithMs": 19853.1,
+        "rulesMs": 68.9,
+        "rssMb": 802,
+        "maxRssMb": 802,
+        "wallMs": 20746
+      },
+      "full": {
+        "ok": true,
+        "buildMs": 19326.3,
+        "size": {
+          "files": 697,
+          "functions": 2047,
+          "ruleFiles": 693
+        },
+        "programMs": 454.3,
+        "program": {
+          "loaded": 795,
+          "inProject": 713
+        },
+        "spots": {
+          "offset": 1119,
+          "symbol": "getNonDeletedElements"
+        },
+        "product": {
+          "cold": {
+            "diagnostics": 312.1,
+            "completionsAt": 102.8,
+            "quickInfo": 42.2,
+            "definition": 6.4,
+            "fixes": 81.4,
+            "nextSteps": 0.1
+          },
+          "warm": {
+            "diagnostics": {
+              "median": 30.6,
+              "p95": 99.5
+            },
+            "completionsAt": {
+              "median": 40.7,
+              "p95": 81.8
+            },
+            "quickInfo": {
+              "median": 4.9,
+              "p95": 33.9
+            },
+            "definition": {
+              "median": 4.9,
+              "p95": 6.6
+            },
+            "fixes": {
+              "median": 5.5,
+              "p95": 68.6
+            },
+            "nextSteps": {
+              "median": 0,
+              "p95": 0
+            }
+          }
+        },
+        "raw": {
+          "cold": {
+            "diagnostics": 63.1,
+            "completionsAt": 43.5,
+            "quickInfo": 1.5,
+            "definition": 0.2,
+            "fixes": 4.3
+          },
+          "warm": {
+            "diagnostics": {
+              "median": 0.1,
+              "p95": 0.2
+            },
+            "completionsAt": {
+              "median": 34.3,
+              "p95": 37.4
+            },
+            "quickInfo": {
+              "median": 0.1,
+              "p95": 0.4
+            },
+            "definition": {
+              "median": 0.1,
+              "p95": 0.1
+            },
+            "fixes": {
+              "median": 2.9,
+              "p95": 3.2
+            }
+          }
+        },
+        "completion": {
+          "productItems": 30,
+          "productTotal": 3026,
+          "rawTotal": 3026
+        },
+        "update": {
+          "ms": 25,
+          "touched": [
+            "packages/excalidraw/actions/actionAlign.tsx"
+          ],
+          "layers": {
+            "ts": 1,
+            "smith": 2,
+            "rules": 1
+          },
+          "nextDiagnosticsMs": 100.7
+        },
+        "rssAfterBuildMb": 563,
+        "rssEndMb": 858,
+        "maxRssMb": 865,
+        "wallMs": 23638.2
+      },
+      "scoped": {
+        "ok": true,
+        "scope": {
+          "how": "packages/excalidraw/actions/** (49 files) + their direct imports inside the project (51)",
+          "rootFiles": 100,
+          "codeFiles": 100,
+          "resolveMs": 27
+        },
+        "buildMs": 3433.8,
+        "programMs": 415.4,
+        "program": {
+          "loaded": 548,
+          "inProject": 466
+        },
+        "smithMs": 2969.3,
+        "rulesMs": 10.5,
+        "functions": 311,
+        "raw": {
+          "cold": {
+            "diagnostics": 79.6,
+            "completionsAt": 65.3,
+            "quickInfo": 6.9,
+            "definition": 2,
+            "fixes": 25.9
+          },
+          "warm": {
+            "diagnostics": {
+              "median": 1.9,
+              "p95": 3.5
+            },
+            "completionsAt": {
+              "median": 32.4,
+              "p95": 38.2
+            },
+            "quickInfo": {
+              "median": 1,
+              "p95": 2
+            },
+            "definition": {
+              "median": 1,
+              "p95": 1.1
+            },
+            "fixes": {
+              "median": 22.1,
+              "p95": 23.3
+            }
+          }
+        },
+        "completionTotal": 2871,
+        "update": {
+          "ms": 19.4,
+          "layers": {
+            "ts": 1,
+            "smith": 2,
+            "rules": 1
+          },
+          "nextDiagnosticsMs": 78
+        },
+        "widen": {
+          "file": "packages/math/src/index.ts",
+          "tsMs": 1.2,
+          "smithMs": 0.1,
+          "rulesMs": 0.1,
+          "totalMs": 1.4,
+          "loadedBefore": 466,
+          "loadedAfter": 466,
+          "completionTotalAfter": 2871
+        },
+        "rssAfterBuildMb": 490,
+        "maxRssMb": 569,
+        "wallMs": 5189.1
+      },
+      "persistedFull": {
+        "ok": true,
+        "mode": "full",
+        "totalMs": 569.4,
+        "memoLoadMs": 10.8,
+        "tsMs": 532.6,
+        "hashMs": 6.7,
+        "hits": 693,
+        "misses": 0,
+        "smithMs": 0,
+        "rulesMs": 0,
+        "maxRssMb": 537,
+        "wallMs": 783
+      },
+      "persistedScoped": {
+        "ok": true,
+        "mode": "scoped",
+        "totalMs": 417.2,
+        "memoLoadMs": 5.9,
+        "tsMs": 407.2,
+        "hashMs": 1.5,
+        "hits": 100,
+        "misses": 0,
+        "smithMs": 0,
+        "rulesMs": 0,
+        "maxRssMb": 425,
+        "wallMs": 619.2
+      },
+      "throttle": {
+        "ok": true,
+        "capMb": 1536,
+        "minFreeMb": 3000,
+        "runs": [
+          {
+            "ok": true,
+            "n": 5,
+            "pauseMs": 100,
+            "nice": 20,
+            "files": 593,
+            "reachedFromScope": 364,
+            "indexed": 593,
+            "coverage": "693/693",
+            "totalMs": 476050.4,
+            "avgCpuPct": 6.7,
+            "peakTickCpuPct": 71.5,
+            "maxTickMs": 7428.9,
+            "medianTickMs": 921.7,
+            "ticks": 119,
+            "pausedMs": 300000,
+            "pausedFor": {
+              "lock": 300000,
+              "ram": 0
+            },
+            "capMb": 1536,
+            "capHit": false,
+            "maxRssMb": 623,
+            "freeMbAtEnd": 7962,
+            "foreground": {
+              "completionsAt": {
+                "baseMedian": 33.6,
+                "duringMedian": 61.5,
+                "baseP95": 40.8,
+                "duringP95": 464.2,
+                "addedMedianMs": 27.9,
+                "addedP95Ms": 423.4,
+                "samples": 1264
+              },
+              "quickInfo": {
+                "baseMedian": 1.9,
+                "duringMedian": 3.2,
+                "baseP95": 2.4,
+                "duringP95": 20.1,
+                "addedMedianMs": 1.3,
+                "addedP95Ms": 17.7,
+                "samples": 1264
+              }
+            }
+          },
+          {
+            "ok": true,
+            "n": 20,
+            "pauseMs": 100,
+            "nice": 20,
+            "files": 593,
+            "reachedFromScope": 364,
+            "indexed": 593,
+            "coverage": "693/693",
+            "totalMs": 361154.9,
+            "avgCpuPct": 2.8,
+            "peakTickCpuPct": 28.8,
+            "maxTickMs": 6778.6,
+            "medianTickMs": 1467.5,
+            "ticks": 30,
+            "pausedMs": 300000,
+            "pausedFor": {
+              "lock": 300000,
+              "ram": 0
+            },
+            "capMb": 1536,
+            "capHit": false,
+            "maxRssMb": 543,
+            "freeMbAtEnd": 8853,
+            "foreground": {
+              "completionsAt": {
+                "baseMedian": 33.6,
+                "duringMedian": 37,
+                "baseP95": 40.8,
+                "duringP95": 62.7,
+                "addedMedianMs": 3.4,
+                "addedP95Ms": 21.9,
+                "samples": 1233
+              },
+              "quickInfo": {
+                "baseMedian": 1.9,
+                "duringMedian": 2,
+                "baseP95": 2.4,
+                "duringP95": 3.4,
+                "addedMedianMs": 0.1,
+                "addedP95Ms": 1,
+                "samples": 1233
+              }
+            }
+          },
+          {
+            "ok": true,
+            "n": 50,
+            "pauseMs": 100,
+            "nice": 20,
+            "files": 593,
+            "reachedFromScope": 364,
+            "indexed": 593,
+            "coverage": "693/693",
+            "totalMs": 122895.1,
+            "avgCpuPct": 5.4,
+            "peakTickCpuPct": 27.8,
+            "maxTickMs": 5240.1,
+            "medianTickMs": 1751.5,
+            "ticks": 12,
+            "pausedMs": 94000,
+            "pausedFor": {
+              "lock": 94000,
+              "ram": 0
+            },
+            "capMb": 1536,
+            "capHit": false,
+            "maxRssMb": 531,
+            "freeMbAtEnd": 8945,
+            "foreground": {
+              "completionsAt": {
+                "baseMedian": 33.6,
+                "duringMedian": 36.2,
+                "baseP95": 40.8,
+                "duringP95": 48.3,
+                "addedMedianMs": 2.6,
+                "addedP95Ms": 7.5,
+                "samples": 424
+              },
+              "quickInfo": {
+                "baseMedian": 1.9,
+                "duringMedian": 2,
+                "baseP95": 2.4,
+                "duringP95": 2.9,
+                "addedMedianMs": 0.1,
+                "addedP95Ms": 0.5,
+                "samples": 424
+              }
+            }
+          }
+        ],
+        "pickN": 50,
+        "pickRule": "largest N with added p95 foreground latency < 20 ms and peak RSS < cap",
+        "wallMs": 970652
+      }
+    }
+  },
+  "cleanedUp": true,
+  "reruns": [
+    {
+      "when": "2026-10-13T23:59:01.923Z",
+      "phases": [
+        "throttle"
+      ]
+    }
+  ]
+}
