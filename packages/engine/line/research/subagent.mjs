@@ -2,11 +2,15 @@
 // is the ledger's view plus the question and a small read-tool set (selectTools(question), injectable); it ends with
 // ONE short English answer whose cites are checked against the project (a path that does not exist is dropped).
 // A tool call outside the read set is refused and logged as a miss; the turn cap is hard.
+// #948 modelled I/O (default; LINE_LEGACY_IO=1 is the old path for one release): a text answer is refused, the answer
+// comes only through the `answer` tool, and its cites must be files this sub-agent actually read; a refusal carries an
+// example of a valid answer call built from those files.
 import fs from 'node:fs';
 import path from 'node:path';
 import { matchAtoms } from '@line/atoms';
 import { readLineFeature } from '../feature.mjs';
 import { BLOCK_ANSWERERS } from './blocks.mjs';
+import { legacyIo } from '../../../core/modelled-io.mjs';
 
 export const DEFAULT_RESEARCH_MODEL = 'qwen2.5-coder:7b';
 export const RESEARCH_MODELS = Object.freeze(['qwen2.5-coder:7b', 'qwen2.5-coder:1.5b']);
@@ -117,12 +121,20 @@ export async function runSubagent(o) {
     const kept = [...new Set([...(cites ?? []), ...[...String(text).matchAll(PATHISH)].map((m) => m[1])].map(String))].filter(exists);
     return { ok: true, answer: firstSentences(text), cites: kept.length ? kept : [...read].slice(0, 3), turns, read: [...read], refused, stop: 'answered' };
   };
+  const modelled = !legacyIo();
+  const bare = (c) => String(c).replace(/:\d+(?::\d+)?$/, '');
+  // #948: an example of a valid answer call, cites from what was read (else a read first).
+  const example = () => (read.size
+    ? `A valid call: answer {"answer": "One short sentence that answers the question.", "cites": ${JSON.stringify([...read].slice(0, 2))}}`
+    : `Read the file that backs your answer first (for example read_file {"path": "features/<feature>/spec.md"}), then call answer with that path in cites.`);
+  const refuse = (code, why) => messages.push({ role: 'user', content: `Refused (${code}): ${why}\n${example()}` });
   for (let turn = 1; turn <= maxTurns; turn += 1) {
     const res = await o.chat({ model, messages, tools: defs });
     const msg = res?.message ?? { role: 'assistant', content: '' };
     const calls = Array.isArray(msg.tool_calls) ? msg.tool_calls : [];
     messages.push({ role: 'assistant', content: msg.content ?? '', ...(calls.length ? { tool_calls: calls } : {}) });
     if (!calls.length) {
+      if (modelled) { refuse('TEXT_ANSWER', String(msg.content ?? '').trim() ? 'a text answer is not taken; answer only through the answer tool.' : 'use a read tool, or call answer.'); continue; }
       if (String(msg.content ?? '').trim()) return done(msg.content, [], turn);
       messages.push({ role: 'user', content: 'Use a read tool, or call answer.' });
       continue;
@@ -132,6 +144,14 @@ export async function runSubagent(o) {
       let args = c.function?.arguments;
       if (typeof args === 'string') { try { args = JSON.parse(args); } catch { args = {}; } }
       args = args && typeof args === 'object' ? args : {};
+      if (name === 'answer' && modelled) {
+        const cites = Array.isArray(args.cites) ? args.cites.map(String) : [];
+        const kept = [...new Set(cites.filter((c) => read.has(bare(c))))];
+        if (!String(args.answer ?? '').trim()) { refuse('NO_ANSWER', 'answer is empty.'); continue; }
+        // Only cites of files read here count; an answer with none of them is refused (the others are dropped).
+        if (!kept.length) { refuse('BAD_CITES', cites.length ? `cites must be files you read for this question; you did not read ${cites.join(', ')}.` : 'cites is empty; cite the files you read that back the answer.'); continue; }
+        return { ok: true, answer: firstSentences(args.answer), cites: kept, turns: turn, read: [...read], refused, stop: 'answered' };
+      }
       if (name === 'answer' && String(args.answer ?? '').trim()) return done(args.answer, Array.isArray(args.cites) ? args.cites : [], turn);
       let out;
       if (!chosen.includes(name)) {
