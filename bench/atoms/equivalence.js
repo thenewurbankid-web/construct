@@ -199,7 +199,10 @@ globalThis.__h = (function () {
       return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
     };
   }
-  var STRINGS = ['', 'a', 'hello world', 'Zed', '42', ' x ', 'cart', 'id-7'];
+  // edges a text atom can get wrong: spaces on one side or both, tabs and line breaks,
+  // mixed case, letters outside ASCII, separators, a number written as text
+  var STRINGS = ['', 'a', 'hello world', 'Zed', '42', ' x ', 'cart', 'id-7',
+    '  padded\t', '\tlead', 'trail ', 'MiXeD Case', 'Ünïcode', 'a,b;c', 'two\nlines', '-3.5'];
   var NUMBERS = [0, 1, -1, 2, 3.5, 10, 100, 7];
   var KEYS = ['id', 'name', 'value', 'a', 'b'];
 
