@@ -97,10 +97,11 @@ can only use atoms, never raw JS, which keeps R7.
 typo is a compile error; nested callbacks use different names (`every(x).in(rows)…every(y).in(x)…`); TypeScript learns
 the item type at `.in(xs)`, so the body after it is typed.
 
-**Bodies longer than one atom become named helper atoms (owner, 2026-10-15).** `x => x * 2 + 1` is not chained in
-place: it becomes its own atom (named by R8, e.g. `doublesAndAddsOne`), and the sentence calls it by name. Under the
-conversion decision "no atom fits → the converter proposes one, the owner approves it", each such helper goes through
-that approval.
+**Bodies longer than one atom become named molecules (owner, 2026-10-15).** `x => x.price * qty` is not chained in
+place and is not a new Smith atom: it becomes a molecule in the app, named for its use case (`lineTotal`), composed of
+existing atoms; larger flows are organisms. The sentence calls it by name. Smith's catalog only grows with real atoms,
+and only new atoms need the owner's approval. A molecule or organism built only from approved atoms needs no approval,
+once tests show it matches the original JS. Open: how a molecule is declared (e.g. a `defineMolecule` factory).
 
 ## Examples with real atoms
 
