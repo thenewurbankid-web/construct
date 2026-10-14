@@ -7,6 +7,8 @@
 // the atom's own catalog form is run with nothing around it: `function probe(a, b) {
 // return a === b; }` against the same function converted by the same transform. Twice:
 // once with the first value of the kinds the atom is declared for, once with any value.
+// Where that differs, the atom is also called directly, its arguments placed by the
+// catalog's parameter names and not by the transform, to tell the two apart.
 //
 //   atom       the form alone already differs on the declared kinds: the catalog claims a
 //              form the atom does not do. Fix the catalog entry or the atom.
@@ -14,8 +16,9 @@
 //              the built-in changes what it is given, the atom does not (or the reverse).
 //   kind       the form alone agrees on the declared kinds and differs on others: the
 //              atom is right, this place gives it a kind of value it is not for.
-//   transform  the form alone agrees on everything: the difference comes from how the
-//              rewrite was put together at this place. Fix atoms-transform.js.
+//   transform  the form alone agrees on everything, or differs only when the transform
+//              writes the call and not when the atom is called directly: the difference
+//              comes from how the rewrite was put together. Fix atoms-transform.js.
 //   unknown    the form could not be run alone (a statement rewrite, several rewrites
 //              that only differ together, a probe no input gets through).
 const { toAtoms } = require('../../atoms-transform');
@@ -36,7 +39,8 @@ const KIND_TYPES = {
 const tick = (s) => `\`${s}\``;
 
 // The decision alone, from what the two probes and the original evidence show.
-//   declared / open: null (not run) or { status, exercised, mismatches }
+//   declared / open: null (not run) or { status, exercised, mismatches, direct? }
+//   direct: the same probe with the atom called directly, or null where it cannot be
 function classifyCause({ atom, form, kinds = ['any'], evidence = null, declared = null, open = null }) {
   const differs = (r) => r && r.status === 'different';
   const blind = (r) => !r || r.status === 'not-runnable' || (r.status === 'same' && !r.exercised);
@@ -48,6 +52,16 @@ function classifyCause({ atom, form, kinds = ['any'], evidence = null, declared 
     return { differs: m.differs, mutation: writes(m), input: m.input, original: m.original.out, converted: m.converted.out };
   };
 
+  const faulty = differs(declared) ? declared : differs(open) ? open : null;
+  if (faulty && faulty.direct && faulty.direct.status === 'same' && faulty.direct.exercised) {
+    const { mutation, ...shown } = seen(faulty);
+    return {
+      cause: 'transform',
+      why: `${atom} called directly does what ${tick(form)} does; the call the transform writes for it does not`,
+      fix: 'a fault in atoms-transform.js for this form: the probe shown is the test case',
+      shown,
+    };
+  }
   if (differs(declared) || (differs(open) && !declared)) {
     const { mutation, ...shown } = seen(differs(declared) ? declared : open);
     if (mutation) {
@@ -115,7 +129,27 @@ function createDiagnoser({ compiled, sandbox, runs = 40 }) {
       return { status: 'not-runnable', why: `transform threw: ${e.message}` };
     }
     if (!out.sites.some((s) => s.atom === p.atom)) return { status: 'not-runnable', why: `the transform does not rewrite it to ${p.atom} on its own` };
-    return { code, ...sandbox.checkPair({ original: code, converted: out.body, importDecl: out.importDecl, runs, atomKinds }) };
+    const res = sandbox.checkPair({ original: code, converted: out.body, importDecl: out.importDecl, runs, atomKinds });
+    if (res.status !== 'different') return { code, ...res };
+    const args = directArgs(p);
+    const direct = args && sandbox.checkPair({
+      original: code,
+      converted: code.replace(/\{ return .*; \}$/, () => `{ return __atom(${args.join(', ')}); }`),
+      importDecl: `import { ${p.atom} as __atom } from 'smith';`,
+      runs,
+    });
+    return { code, written: out.body.replace(/\s+/g, ' ').trim(), ...res, direct: direct || null };
+  }
+
+  // the atom's arguments as the catalog names them: each placeholder goes to the parameter
+  // of the same name, or by position where the form uses other names
+  function directArgs(p) {
+    const params = p.info.params;
+    if (p.vars.length || (params && params.some((q) => q.rest))) return null;
+    const named = params && p.placeholders.every((nm) => params.some((q) => q.name === nm));
+    const order = named ? params.map((q) => q.name) : [...p.placeholders];
+    while (order.length && !p.placeholders.includes(order[order.length - 1])) order.pop();
+    return order.map((nm) => (!p.placeholders.includes(nm) ? 'undefined' : p.lazy.has(nm) ? `() => ${nm}` : nm));
   }
 
   function forPattern(p) {
@@ -145,7 +179,7 @@ function createDiagnoser({ compiled, sandbox, runs = 40 }) {
     if (!hit) return { cause: 'unknown', why: `${site.atom} has no catalog form of the shape ${site.form} to run on its own`, fix: 'compare the two versions by hand on the input shown' };
     const { shown, ...verdict } = classifyCause({ atom: site.atom, form: hit.p.form, kinds: hit.kinds, evidence, declared: hit.declared, open: hit.open });
     const ran = shown && (hit.declared && hit.declared.status === 'different' ? hit.declared : hit.open);
-    return shown ? { ...verdict, probe: { code: ran.code, ...shown } } : verdict;
+    return shown ? { ...verdict, probe: { code: ran.code, ...(verdict.cause === 'transform' ? { written: ran.written } : {}), ...shown } } : verdict;
   };
 }
 

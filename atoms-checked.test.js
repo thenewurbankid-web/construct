@@ -180,6 +180,11 @@ describe('convert, check, repair', () => {
     const d = classifyCause({ atom: 'both', form: 'a && b', evidence: { differs: 'trace' }, declared: null, open: same });
     assert.equal(d.cause, 'transform');
     assert.match(d.why, /evaluated early, late or twice/);
+    // the form differs on its own, but not when the atom is called directly: still the transform
+    const m = { differs: 'outcome', input: '[3, 1]', original: { out: 'returns 2' }, converted: { out: 'returns -2' } };
+    const swapped = classifyCause({ atom: 'minus', form: 'a - b', open: { status: 'different', mismatches: [m], direct: { status: 'same', exercised: 40 } } });
+    assert.equal(swapped.cause, 'transform');
+    assert.equal(classifyCause({ atom: 'minus', form: 'a - b', open: { status: 'different', mismatches: [m], direct: { status: 'different', mismatches: [m] } } }).cause, 'atom');
     // a probe no input gets through proves nothing either way
     assert.equal(classifyCause({ atom: 'both', form: 'a && b', open: { status: 'same', exercised: 0, mismatches: [] } }).cause, 'unknown');
   });
