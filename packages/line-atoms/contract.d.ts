@@ -13,6 +13,10 @@ export * as testkit from './testkit.mjs';
 export * as check from './check.mjs';
 /** `@line/atoms/metric` */
 export * as metric from './metric.mjs';
+/** `@line/atoms/runtime` */
+export * as runtime from './runtime.mjs';
+/** `@line/atoms/functional` */
+export * as functional from './functional/index';
 /** `@line/atoms/async-status` */
 export * as asyncStatus from './atoms/async-status/index';
 /** `@line/atoms/client-pagination` */

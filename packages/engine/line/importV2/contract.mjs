@@ -226,9 +226,11 @@
  * @property {number} takenBack      Rewrites the check took back.
  * @property {string} code           The original function (a declaration).
  * @property {string} body           The kept function: the rewrite when it counts, else `code`.
- * @property {string} importDecl     The import of the atoms `body` calls ('' when none).
+ * @property {string} importDecl     The import of the atoms `body` calls, from ATOMS_PACKAGE ('' when none).
  * @property {{form: string, text: string, line: number, reason?: string}[]} untranslated  Parts with no atom.
  * @property {{outcome: string, sentence: string} } [repair]  construct.repair's answer to the refusal, when it was asked.
+ * @property {{file: string, sentence: string}} [written]  The line.import.writeAtoms step wrote `body` into `file` and its
+ *   behaviour test passed (the function as written behaves as `code`); only a converted unit is written.
  * @property {string} sentence
  */
 
@@ -270,6 +272,10 @@ export const ATOMS_FILE = 'line/atoms.json';
 export const ATOM_UNIT_STATUS = Object.freeze(['converted', 'partial', 'unchanged', 'unchecked']);
 /** The refusal shape's tool name for a function's atom rewrite (checked by the breakdown's own check, never run as a plan step). */
 export const ATOMS_TOOL = 'line.import.atoms';
+/** The package an app imports the atoms from (owner, 2026-10-14: through @line/atoms; an app's tsconfig aliases it to its copy). */
+export const ATOMS_PACKAGE = '@line/atoms';
+/** The plan step that writes one converted function into its app file (importV2/writeAtoms.mjs). */
+export const ATOMS_WRITE_TOOL = 'line.import.writeAtoms';
 export const IMPORT_LOOP_RECORDS = 'records/import-loop.jsonl';
 
 // ---------------------------------------------------------------------------------------------
@@ -547,6 +553,7 @@ export function assertAtomUnitResult(u, where = 'The atom breakdown unit') {
   int(u.rewrites, `${where}'s rewrites`); int(u.takenBack, `${where}'s takenBack`);
   str(u.code, `${where}'s code`); str(u.body, `${where}'s body`);
   if (typeof u.importDecl !== 'string') fail(`${where}'s importDecl`, 'be a string');
+  if (u.importDecl && !u.importDecl.endsWith(` from '${ATOMS_PACKAGE}';`)) fail(`${where}'s importDecl`, `import from '${ATOMS_PACKAGE}'`);
   arr(u.untranslated, `${where}'s untranslated`);
   u.untranslated.forEach((p, i) => { str(p.form, `${where}'s untranslated[${i}].form`); str(p.text, `${where}'s untranslated[${i}].text`); int(p.line, `${where}'s untranslated[${i}].line`, 1); });
   // The rule the breakdown exists for: a rewrite counts only when the check says the function behaves the same.
@@ -554,6 +561,10 @@ export function assertAtomUnitResult(u, where = 'The atom breakdown unit') {
   if ((u.status === 'unchanged' || u.status === 'unchecked') && u.body !== u.code) fail(`${where}'s body`, 'be the original when no rewrite counts');
   if (u.status === 'converted' && u.untranslated.length) fail(where, 'leave no part untranslated when converted');
   if (u.repair) { str(u.repair.outcome, `${where}'s repair.outcome`); sentence(u.repair.sentence, `${where}'s repair.sentence`); }
+  if (u.written) {
+    if (u.status !== 'converted') fail(`${where}'s written`, 'be set only on a converted unit');
+    str(u.written.file, `${where}'s written.file`); sentence(u.written.sentence, `${where}'s written.sentence`);
+  }
   sentence(u.sentence, `${where}'s sentence`);
 }
 

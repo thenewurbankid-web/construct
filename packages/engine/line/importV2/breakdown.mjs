@@ -20,7 +20,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ts } from '@construct/ast';
 import { importLinked, linkStatus, readLinks } from '../../../line-links/index.mjs';
-import { ATOMS_TOOL, assertAtomBreakdown } from './contract.mjs';
+import { ATOMS_PACKAGE, ATOMS_TOOL, assertAtomBreakdown } from './contract.mjs';
 
 const LINKS_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..', 'line-links');
 /** The two link tables, beside cu1's links.json. */
@@ -104,6 +104,34 @@ export function functionOf(source, name, file = 'x.ts') {
 }
 
 /**
+ * Where a top-level function of a file sits, for writing it back: the whole statement (an arrow bound to a const is its
+ * `const` statement) and the `export` it carries. Null when the name is not a top-level function with a body, or when it
+ * shares its `const` statement with other names. Pure.
+ * @param {string} source
+ * @param {string} name
+ * @param {string} [file] Only for the parser's file kind.
+ * @returns {{start: number, end: number, prefix: string} | null} `prefix`: '', 'export ' or 'export default '.
+ */
+export function functionStatement(source, name, file = 'x.ts') {
+  const kind = /\.[jt]sx$/.test(file) ? ts.ScriptKind.TSX : ts.ScriptKind.TS;
+  const sf = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, kind);
+  const prefixOf = (st) => {
+    const mods = (ts.getModifiers(st) ?? []).map((m) => m.kind);
+    return mods.includes(ts.SyntaxKind.ExportKeyword) ? (mods.includes(ts.SyntaxKind.DefaultKeyword) ? 'export default ' : 'export ') : '';
+  };
+  for (const st of sf.statements) {
+    if (ts.isFunctionDeclaration(st) && st.body && st.name?.text === name) return { start: st.getStart(sf), end: st.end, prefix: prefixOf(st) };
+    if (!ts.isVariableStatement(st)) continue;
+    const decls = st.declarationList.declarations;
+    const d = decls.find((x) => ts.isIdentifier(x.name) && x.name.text === name);
+    if (!d) continue;
+    if (decls.length !== 1 || !d.initializer || !(ts.isArrowFunction(d.initializer) || ts.isFunctionExpression(d.initializer))) return null;
+    return { start: st.getStart(sf), end: st.end, prefix: prefixOf(st) };
+  }
+  return null;
+}
+
+/**
  * A compact syntax tree of a piece of code, for a model to reason from: node kinds with their names, operators and
  * literals, e.g. `TemplateExpression(head " ", span(BinaryExpression(n + m), " items"))`. Pure; never throws.
  * @param {string} text
@@ -148,14 +176,21 @@ const exportsOf = (mod) => mod.default ?? mod;
 
 /** The names of the atoms a body calls, from the catalog. */
 const atomsCalled = (body, atomNames) => [...new Set([...body.matchAll(/\b([A-Za-z_$][\w$]*)\s*\(/g)].map((m) => m[1]).filter((n) => atomNames.has(n)))].sort();
-const importOf = (atoms) => (atoms.length ? `import { ${atoms.join(', ')} } from 'smith';` : '');
+/**
+ * The import of the atoms a body calls: from @line/atoms (owner, 2026-10-14), the one package an app depends on for them.
+ * @param {string[]} atoms
+ * @returns {string}
+ */
+export const importOf = (atoms) => (atoms.length ? `import { ${atoms.join(', ')} } from '${ATOMS_PACKAGE}';` : '');
+/** The codemod's import (`from 'smith'`, its own runtime's name) as the app writes it: the same names, from @line/atoms. */
+const fromPackage = (decl) => (decl ? decl.replace(/\s+from\s+(['"])[^'"]*\1;?\s*$/, ` from '${ATOMS_PACKAGE}';`) : decl);
 
 /**
  * The linked static breakdown: atomic-codemod's checked converter over the pinned atom runtime. Never throws: when a
  * link is down or the runtime cannot be prepared, `{ok: false, reason}` with one sentence, and the caller keeps its
  * static path (no breakdown).
  * @param {{env?: NodeJS.ProcessEnv, runs?: number}} [options]
- * @returns {Promise<{ok: false, reason: string} | {ok: true, codemod: string|null, runtime: string|null, breakDown: (fn: any) => any, check: (fn: any, body: string) => {ok: boolean, refusal: any, passed: number}, atomsIn: (body: string) => string[], dispose: () => void}>}
+ * @returns {Promise<{ok: false, reason: string} | {ok: true, codemod: string|null, runtime: string|null, breakDown: (fn: any) => any, check: (fn: any, body: string) => {ok: boolean, refusal: any, passed: number}, behaves: (fn: any, written: string) => {ok: boolean, compared: number, sentence: string}, atomsIn: (body: string) => string[], dispose: () => void}>}
  */
 export async function createStaticBreakdown(options = {}) {
   const runs = options.runs ?? BREAKDOWN_RUNS;
@@ -224,7 +259,7 @@ export async function createStaticBreakdown(options = {}) {
     const status = untranslated.length ? 'partial' : 'converted';
     const ran = `checked on ${check.compared} generated input${check.compared === 1 ? '' : 's'}`;
     return {
-      ...base, status, check, atoms, rewrites: r.converted, takenBack: r.rejected.length, body: r.body, importDecl: r.importDecl ?? importOf(atoms), untranslated,
+      ...base, status, check, atoms, rewrites: r.converted, takenBack: r.rejected.length, body: r.body, importDecl: r.importDecl ? fromPackage(r.importDecl) : importOf(atoms), untranslated,
       sentence: end(status === 'converted' ? `${fn.name} is ${plural(atoms.length, 'atom call')} now, ${ran}` : `${fn.name} is ${plural(atoms.length, 'atom')} now, ${ran}; ${plural(untranslated.length, 'part')} with no atom ${untranslated.length === 1 ? 'goes' : 'go'} to the repair step`),
     };
   }
@@ -258,7 +293,29 @@ export async function createStaticBreakdown(options = {}) {
     return { ok: true, refusal: null, passed: before };
   }
 
-  return { ok: true, codemod: links.codemod.head, runtime: links.runtime.head, breakDown, check, atomsIn: (body) => atomsCalled(body, atomNames), dispose: () => { try { converter.dispose(); } catch { /* already gone */ } } };
+  /**
+   * The behaviour test of a written function (line.import.writeAtoms): the function as the app file now has it, run
+   * against the original on the same generated inputs as the breakdown's check (same seed). Passes only when the check
+   * compared at least one input and says same.
+   * @param {{name: string, code: string, source?: string, abs?: string}} fn The original (`code`); `source`/`abs`: the
+   *   written file's text and path (its types and the checker's parameter types).
+   * @param {string} written The function as written.
+   * @returns {{ok: boolean, compared: number, sentence: string}}
+   */
+  function behaves(fn, written) {
+    let res;
+    try {
+      res = converter.checkPair({ original: fn.code, converted: written, importDecl: importOf(atomsCalled(written, atomNames)), kind: 'function', types: typesOf(fn.source ?? ''), runs, seed: hash(fn.name), atomKinds: {}, paramTypes: paramTypesOf({ code: written, abs: fn.abs, exact: Boolean(fn.abs) }) });
+    } catch (e) { return { ok: false, compared: 0, sentence: end(`${fn.name} as written could not be run (${one(/** @type {any} */ (e)?.message ?? e).slice(0, 120)})`) }; }
+    if (res.status === 'same' && res.compared > 0) return { ok: true, compared: res.compared, sentence: end(`${fn.name} as written behaves as the original on ${plural(res.compared, 'generated input')}`) };
+    const m = res.mismatches?.[0];
+    return {
+      ok: false, compared: res.compared ?? 0,
+      sentence: end(res.status === 'different' ? `${fn.name} as written behaves differently from the original${m ? `: on ${one(m.input).slice(0, 60)} the original gives ${one(m.original?.out).slice(0, 40)} and the written one ${one(m.converted?.out).slice(0, 40)}` : ''}` : `${fn.name} as written could not be checked (${one(res.why ?? 'no generated input reached it')})`),
+    };
+  }
+
+  return { ok: true, codemod: links.codemod.head, runtime: links.runtime.head, breakDown, check, behaves, atomsIn: (body) => atomsCalled(body, atomNames), dispose: () => { try { converter.dispose(); } catch { /* already gone */ } } };
 }
 
 // ------------------------------------------------------------------------------------------------- an import's breakdown

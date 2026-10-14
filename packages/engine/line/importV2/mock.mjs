@@ -138,8 +138,8 @@ const lineAt = (code, at) => (code.slice(0, at).match(/\n/g)?.length ?? 0);
 
 /**
  * A mock of createStaticBreakdown: `a + b` becomes plus(a, b), template literals stay untranslated.
- * @param {{down?: string, unchecked?: string[]}} [o] `down`: the reason the link is off. `unchecked`: function names
- *   the mock check cannot run.
+ * @param {{down?: string, unchecked?: string[], different?: string[]}} [o] `down`: the reason the link is off. `unchecked`:
+ *   function names the mock check cannot run. `different`: function names the behaviour test finds different.
  * @returns {Promise<any>} The createStaticBreakdown shape.
  */
 export async function createMockStaticBreakdown(o = {}) {
@@ -154,12 +154,18 @@ export async function createMockStaticBreakdown(o = {}) {
       if (o.unchecked?.includes(fn.name)) return { ...base, status: 'unchecked', check: { status: 'unchecked', runs: 25, compared: 0, exercised: 0, mismatchCount: 0, why: 'mock: not runnable' }, atoms: [], rewrites: 0, takenBack: 0, body: fn.code, importDecl: '', untranslated, sentence: `${fn.name} stays as written: its rewrite could not be checked (mock).` };
       if (!rewrites) return { ...base, status: 'unchanged', check: { status: 'same', ...check0, compared: 0, exercised: 0 }, atoms: [], rewrites: 0, takenBack: 0, body: fn.code, importDecl: '', untranslated, sentence: untranslated.length ? `${fn.name} has nothing an atom covers yet: ${untranslated.length} part${untranslated.length === 1 ? ' goes' : 's go'} to the repair step.` : `${fn.name} has nothing to rewrite.` };
       const body = fn.code.replace(PLUS, 'plus($1, $2)');
-      return { ...base, status: untranslated.length ? 'partial' : 'converted', check: { status: 'same', ...check0 }, atoms: ['plus'], rewrites, takenBack: 0, body, importDecl: "import { plus } from 'smith';", untranslated, sentence: untranslated.length ? `${fn.name} is 1 atom now (mock); ${untranslated.length} part${untranslated.length === 1 ? '' : 's'} with no atom go to the repair step.` : `${fn.name} is 1 atom call now, checked on 25 generated inputs (mock).` };
+      return { ...base, status: untranslated.length ? 'partial' : 'converted', check: { status: 'same', ...check0 }, atoms: ['plus'], rewrites, takenBack: 0, body, importDecl: "import { plus } from '@line/atoms';", untranslated, sentence: untranslated.length ? `${fn.name} is 1 atom now (mock); ${untranslated.length} part${untranslated.length === 1 ? '' : 's'} with no atom go to the repair step.` : `${fn.name} is 1 atom call now, checked on 25 generated inputs (mock).` };
     },
     check(fn, body) {
       const left = [...String(body).matchAll(TEMPLATE)].length + [...String(body).matchAll(PLUS)].length;
       const passed = Math.max(0, (fn.untranslated?.length ?? 0) - [...String(body).matchAll(TEMPLATE)].length);
       return left ? { ok: false, refusal: { sentence: `The repaired function still has ${left} part${left === 1 ? '' : 's'} that are not atom calls.`, rule: 'LINE-ATOMS', code: 'NOT_ATOMIC', finding: null, fixes: [] }, passed } : { ok: true, refusal: null, passed };
+    },
+    // The behaviour test: same when the written function, plus(a, b) read back as a + b, is the original (`export` aside).
+    behaves(fn, written) {
+      const norm = (s) => String(s).replace(/plus\(([\w$]+), ([\w$]+)\)/g, '$1 + $2').replace(/^export\s+(default\s+)?/, '').replace(/\s+/g, ' ').trim();
+      const same = !o.different?.includes(fn.name) && norm(written) === norm(fn.code);
+      return same ? { ok: true, compared: 25, sentence: `${fn.name} as written behaves as the original on 25 generated inputs (mock).` } : { ok: false, compared: 25, sentence: `${fn.name} as written behaves differently from the original (mock).` };
     },
     // Every call except the function's own declaration.
     atomsIn: (body) => [...new Set([...String(body).matchAll(/(?<!function\s)\b([A-Za-z_$][\w$]*)\(/g)].map((m) => m[1]))].sort(),
@@ -171,8 +177,8 @@ export async function createMockStaticBreakdown(o = {}) {
 export const MOCK_ATOM_BREAKDOWN = Object.freeze({
   via: /** @type {'static'} */ ('static'), codemod: '7d1e228', runtime: '939c25c',
   units: [
-    { file: 'src/alerts/rules.ts', name: 'total', block: 'domain:rules', status: /** @type {'converted'} */ ('converted'), check: { status: /** @type {'same'} */ ('same'), runs: 25, compared: 25, exercised: 25, mismatchCount: 0 }, atoms: ['plus'], rewrites: 1, takenBack: 0, code: 'function total(a: number, b: number) {\n  return a + b;\n}', body: 'function total(a: number, b: number) {\n  return plus(a, b);\n}', importDecl: "import { plus } from 'smith';", untranslated: [], sentence: 'total is 1 atom call now, checked on 25 generated inputs.' },
-    { file: 'src/alerts/rules.ts', name: 'label', block: 'domain:rules', status: /** @type {'partial'} */ ('partial'), check: { status: /** @type {'same'} */ ('same'), runs: 25, compared: 25, exercised: 25, mismatchCount: 0 }, atoms: ['plus'], rewrites: 1, takenBack: 0, code: 'function label(n: number, m: number) {\n  return `${n + m} alerts`;\n}', body: 'function label(n: number, m: number) {\n  return `${plus(n, m)} alerts`;\n}', importDecl: "import { plus } from 'smith';", untranslated: [{ form: 'TemplateLiteral', text: '`${n + m} alerts`', line: 6 }], sentence: 'label is 1 atom now, checked on 25 generated inputs; 1 part with no atom goes to the repair step.' },
+    { file: 'src/alerts/rules.ts', name: 'total', block: 'domain:rules', status: /** @type {'converted'} */ ('converted'), check: { status: /** @type {'same'} */ ('same'), runs: 25, compared: 25, exercised: 25, mismatchCount: 0 }, atoms: ['plus'], rewrites: 1, takenBack: 0, code: 'function total(a: number, b: number) {\n  return a + b;\n}', body: 'function total(a: number, b: number) {\n  return plus(a, b);\n}', importDecl: "import { plus } from '@line/atoms';", untranslated: [], sentence: 'total is 1 atom call now, checked on 25 generated inputs.' },
+    { file: 'src/alerts/rules.ts', name: 'label', block: 'domain:rules', status: /** @type {'partial'} */ ('partial'), check: { status: /** @type {'same'} */ ('same'), runs: 25, compared: 25, exercised: 25, mismatchCount: 0 }, atoms: ['plus'], rewrites: 1, takenBack: 0, code: 'function label(n: number, m: number) {\n  return `${n + m} alerts`;\n}', body: 'function label(n: number, m: number) {\n  return `${plus(n, m)} alerts`;\n}', importDecl: "import { plus } from '@line/atoms';", untranslated: [{ form: 'TemplateLiteral', text: '`${n + m} alerts`', line: 6 }], sentence: 'label is 1 atom now, checked on 25 generated inputs; 1 part with no atom goes to the repair step.' },
   ],
   counts: { functions: 2, converted: 1, partial: 1, unchanged: 0, unchecked: 0, rewrites: 2, takenBack: 0, refused: 1, repaired: 0 },
   sentence: '1 of 2 domain functions is atom calls now, each checked against the original in QuickJS; 1 is partly atoms; 1 has parts with no atom, sent to the repair step.',
