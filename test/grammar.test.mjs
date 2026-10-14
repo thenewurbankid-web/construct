@@ -64,8 +64,15 @@ function violations(sentence, kind) {
     return [`does not parse: ${e.message}`];
   }
   // R9: an every() sentence binds its item with a binder and in(list); what follows is inside it.
-  const bound = calls.findIndex((c, i) => binders.has(c.word) && c.args.length === 1 && placeholders.has(c.args[0]) && calls[i + 1]?.word === 'in' && calls[i + 1].args.length === 1);
-  const names = new Set(calls.filter((c, i) => (i === bound || c.word === 'into') && placeholders.has(c.args[0])).map((c) => c.args[0]));
+  const binds = (c, i) => binders.has(c.word) && c.args.length === 1 && placeholders.has(c.args[0]) && calls[i + 1]?.word === 'in' && calls[i + 1].args.length === 1;
+  const bound = calls.findIndex(binds);
+  // The names bound so far: each binder (nested ones too, every(y).in(x)) and into(total) bind theirs.
+  const names = new Set();
+  const boundAt = calls.map((c, i) => {
+    const before = new Set(names);
+    if ((binds(c, i) || c.word === 'into') && placeholders.has(c.args[0])) names.add(c.args[0]);
+    return before;
+  });
   calls.forEach(({ word, args }, i) => {
     const inside = bound >= 0 && i > bound + 1;
     const known = vocabulary.has(word) || (bound >= 0 && everyWords.has(word));
@@ -80,10 +87,11 @@ function violations(sentence, kind) {
     else if (!known) out.push(`grammar: ${word}() is not in naming.json grammar; add it to the class it belongs to`);
     // R3: at most one argument, carried by a role word (or a subject, or an approved argument verb).
     if (args.length > 1) out.push(`R3: ${word}() takes ${args.length} arguments; give each its own word`);
-    const carries = roleWords.has(word) || subjects.has(word) || argumentVerbs.has(word) || i === bound || (bound >= 0 && everyRoleWords.has(word));
+    const carries = roleWords.has(word) || subjects.has(word) || argumentVerbs.has(word) || binds(calls[i], i) || (bound >= 0 && everyRoleWords.has(word));
     if (args.length && !carries) out.push(`R3: ${word}(${args[0]}) carries an argument but is not a role word`);
     // R9: a body names only the placeholders its sentence binds.
-    if (inside) for (const a of args) if (placeholders.has(a) && !names.has(a)) out.push(`R9: ${a} is not bound in this sentence`);
+    if (inside && binds(calls[i], i) && boundAt[i].has(args[0])) out.push(`R9: ${word}(${args[0]}): ${args[0]} is already bound; nested callbacks use different names`);
+    else if (inside && word !== 'into' && !binds(calls[i], i)) for (const a of args) if (placeholders.has(a) && !boundAt[i].has(a)) out.push(`R9: ${a} is not bound in this sentence`);
     // R4: the question word itself carries nothing.
     if (questionWords.has(word) && args.length) out.push(`R4: ${word}() is a question word and takes no argument`);
   });
@@ -202,8 +210,8 @@ describe('Atomic English grammar', () => {
       for (const p of ev.participles) assert.ok(!vocabulary.has(p), `${p} is also allowed outside every()`);
     });
 
-    for (const { js, fluent } of ev.sentences) {
-      const kind = JS_KINDS[js.match(/^xs\.(\w+)/)[1]];
+    for (const { js, fluent } of [...ev.sentences, ...ev.nested]) {
+      const kind = JS_KINDS[js.match(/^(?:xs|rows)\.(\w+)/)[1]];
       test(`${fluent} (${kind}, as ${js})`, () => {
         assert.deepEqual(violations(fluent, kind), []);
       });
@@ -231,6 +239,8 @@ describe('Atomic English grammar', () => {
         ['every(x).in(xs).is().mapped().to().clone().by().multiplying(x).by(2).and().adding(1).to(x)', 'list', 'R9: a body is one atom'],
         ['every(x).in(xs).is().kept().if(y).is().positive()', 'list', 'R9: y is not bound'],
         ['folds().every(x).in(xs).into(total).starting().at(0).by().adding(item).to(total)', 'value', 'R9: item is not bound'],
+        ['every(x).in(rows).is().kept().if().any(x).in(x).is().positive()', 'list', 'R9: any(x): x is already bound'],
+        ['every(x).in(rows).is().mapped().to().clone().by().every(y).in(item).is().mapped().to().clone().by().multiplying(y).by(2)', 'list', 'R9: item is not bound'],
       ];
       for (const [sentence, kind, message] of bad) {
         const found = violations(sentence, kind);

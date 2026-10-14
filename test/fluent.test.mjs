@@ -191,10 +191,10 @@ describe('fluent facade', () => {
 // R9: each every() sentence is its plain-JS callback, on generated lists, and returns the kind of
 // value its first word says.
 describe('every() sentences (R9)', () => {
-  const names = [...ENTRIES, ...EVERY_ENTRY, ...PLACEHOLDERS, 'xs'];
+  const names = [...ENTRIES, ...EVERY_ENTRY, ...PLACEHOLDERS, 'xs', 'rows'];
   const sentence = (source) => new Function(...names, `return (${source});`);
-  const say = (source, xs) => sentence(source)(...[...ENTRIES, ...EVERY_ENTRY, ...PLACEHOLDERS].map((k) => fluent[k]), xs);
-  const plain = (js, xs) => new Function('xs', `return (${js});`)(xs);
+  const say = (source, xs) => sentence(source)(...[...ENTRIES, ...EVERY_ENTRY, ...PLACEHOLDERS].map((k) => fluent[k]), xs, xs);
+  const plain = (js, xs) => new Function('xs', 'rows', `return (${js});`)(xs, xs);
   // Every kind of primitive, so a TypeError the plain callback throws (5n * 2) is thrown here too.
   const lists = { list: arb('list'), nums: arb('nums'), ints: fc.array(fc.integer({ min: -9, max: 9 }), { maxLength: 8 }) };
   const kinds = {
@@ -219,6 +219,23 @@ describe('every() sentences (R9)', () => {
             sameOutcome(got, await outcome(() => plain(js, clone(xs))), `${form} vs ${js}`);
             assert.deepStrictEqual(input, xs, 'xs is left alone');
             if ('ok' in got) assert.ok(kinds[kind](say(form, input), input), `${form} returns a ${kind}`);
+          }),
+          { numRuns: NUM_RUNS },
+        );
+      });
+    }
+  }
+
+  // Nested callbacks (every(y).in(x)) on lists of lists.
+  const rows = { rows: fc.array(arb('list'), { maxLength: 5 }), introws: fc.array(lists.ints, { maxLength: 5 }) };
+  for (const { js, fluent: form } of everyGrammar.nested) {
+    for (const [gen, arbitrary] of Object.entries(rows)) {
+      test(`${form} == ${js} [${gen}]`, async () => {
+        await fc.assert(
+          fc.asyncProperty(arbitrary, async (xs) => {
+            const input = clone(xs);
+            sameOutcome(await outcome(() => say(form, input)), await outcome(() => plain(js, clone(xs))), `${form} vs ${js}`);
+            assert.deepStrictEqual(input, xs, 'rows are left alone');
           }),
           { numRuns: NUM_RUNS },
         );
