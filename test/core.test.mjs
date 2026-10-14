@@ -8,6 +8,7 @@ import { gens } from './support/gens.mjs';
 
 const require = createRequire(import.meta.url);
 const s = require('../dist/index.js');
+const catalog = require('../src/atoms/catalog.json');
 const runs = { numRuns: Number(process.env.SMITH_RUNS ?? 200) };
 const prim = gens.prim;
 
@@ -319,6 +320,12 @@ describe('parseJson is JSON.parse as a Result', () => {
       }),
       runs,
     );
+  });
+
+  test('the catalog does not claim JSON.parse(text) for it (that form belongs to parseJsonOrThrow)', () => {
+    const forms = (name) => catalog.atoms.find((a) => a.atom === name).js;
+    assert.ok(!forms('parseJson').some((js) => /^JSON\.parse\(/.test(js)), forms('parseJson').join(' | '));
+    assert.deepEqual(forms('parseJsonOrThrow'), ['JSON.parse(text, reviver)']);
   });
 });
 

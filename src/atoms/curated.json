@@ -1923,8 +1923,8 @@
   "module": "lists",
   "reads": "list sorted by order",
   "js": [
-   "list.toSorted(compare)",
-   "[...list].sort(compare)"
+   "list.toSorted(order)",
+   "[...list].sort(order)"
   ],
   "pure": true,
   "mutates": false,
@@ -1940,7 +1940,7 @@
       "list"
      ],
      [
-      "compare",
+      "order",
       "cmp"
      ]
     ]
@@ -1952,7 +1952,7 @@
       "list"
      ],
      [
-      "compare",
+      "order",
       "undef"
      ]
     ]
@@ -2935,12 +2935,12 @@
   "module": "json",
   "reads": "the value written as JSON in text",
   "js": [
-   "JSON.parse(text)"
+   "try { return { ok: true, value: JSON.parse(text) } } catch (error) { return { ok: false, error } }"
   ],
   "pure": true,
   "mutates": false,
   "verifiedBy": "test/core.test.mjs (Result property)",
-  "note": "returns { ok, value | error } instead of throwing; the throwing form is parseJsonOrThrow"
+  "note": "not JSON.parse(text) itself: it returns { ok, value | error } instead of throwing. The exact wrapper of JSON.parse is parseJsonOrThrow"
  },
  {
   "atom": "toJson",
