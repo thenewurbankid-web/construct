@@ -18,20 +18,54 @@ import { stubProblems } from '../line/path/stubs.mjs';
 import { classifyFile } from '../line/logicVerify/purity.mjs';
 import { functionComplexity } from '@construct/ast';
 import { functionBudgetFor } from '@line/construct-core/architecture-enforcer';
+import { DEFAULT_LAYERS } from '@line/construct-core/config';
+import { ITEM_KINDS, KIND_LAYER } from '@line/construct-core/profiles/line/contract';
 import { smithOfFunction } from './smith.mjs';
 import { PLACEHOLDER_EMPTY_RATIO } from './smithText.mjs';
 
 export { PLACEHOLDER_EMPTY_RATIO };
 export const PURE_LAYERS = Object.freeze(new Set(['domain', 'expression']));
-const LAYER_OF = { domains: 'domain', expressions: 'expression', services: 'service', usecases: 'workflow', workflows: 'workflow', hooks: 'hook', controllers: 'controller', pages: 'page', components: 'component', store: 'service', providers: 'hook', contracts: 'domain' };
+/**
+ * Line folders that are not a layer's own name and not in the Line profile's KIND_LAYER: what each one holds is a unit
+ * of an existing layer (a use case is a workflow step, a store is a service, a provider is a hook, a contract is
+ * types plus pure helpers, so domain).
+ */
+const FOLDER_ALIASES = Object.freeze({ usecases: 'workflow', store: 'service', providers: 'hook', contracts: 'domain' });
 
 /**
- * The layer of a root-relative file from its folder (features/<f>/<kind>/... or library/<kind>/...).
- * @param {string} rel Root-relative file.
- * @returns {string|null}
+ * Folder -> layer, derived from the profiles rather than written out: every Construct layer whose pattern is
+ * `features/<f>/<folder>/**` (core config DEFAULT_LAYERS: domain/, services/, hooks/, adapters/, viewmodels/, ...),
+ * every Line item kind (ITEM_KINDS, through KIND_LAYER or its singular when that is a layer: domains/ -> domain),
+ * then FOLDER_ALIASES.
+ * @param {Record<string, {pattern?: string}>} [layers] A layer graph (a project's own, or the default).
+ * @returns {Record<string, string>}
  */
-export function layerOf(rel) {
-  for (const part of rel.split('/').slice(0, -1).reverse()) if (LAYER_OF[part]) return LAYER_OF[part];
+export function folderLayers(layers = DEFAULT_LAYERS) {
+  /** @type {Record<string, string>} */
+  const out = {};
+  for (const [name, def] of Object.entries(layers)) {
+    const m = /^features\/\*\/([^/*]+)\/\*\*$/.exec(def?.pattern ?? '');
+    if (m) { out[m[1]] = name; out[name] ??= name; }
+  }
+  for (const kind of ITEM_KINDS) {
+    const one = kind.replace(/s$/, '');
+    const layer = KIND_LAYER[kind] ?? (layers[one] ? one : null);
+    if (layer) out[kind] ??= layer;
+  }
+  for (const [folder, layer] of Object.entries(FOLDER_ALIASES)) out[folder] ??= layer;
+  return out;
+}
+const LAYER_OF = folderLayers();
+
+/**
+ * The layer of a root-relative file from its nearest layer folder (features/<f>/<folder>/..., library/<kind>/...,
+ * src/features/<f>/domain/...); a file in no layer folder is a component (.tsx) or a service.
+ * @param {string} rel Root-relative file.
+ * @param {Record<string, string>} [map] folderLayers() of the project's own layer graph.
+ * @returns {string}
+ */
+export function layerOf(rel, map = LAYER_OF) {
+  for (const part of rel.split('/').slice(0, -1).reverse()) if (map[part]) return map[part];
   return /\.tsx$/.test(rel) ? 'component' : 'service';
 }
 
