@@ -87,7 +87,7 @@ export function averageOf(numbers: readonly number[]): number {
 }
 
 /**
- * isWhole(value) reads "value is a whole number".
+ * isWhole(value) reads "whether value is a whole number".
  * Exactly `Number.isInteger(value)`.
  */
 export function isWhole(value: unknown): value is number {

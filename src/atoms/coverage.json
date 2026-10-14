@@ -1,0 +1,357 @@
+[
+ {
+  "object": "String",
+  "operations": 54,
+  "curated": 13,
+  "generated": 21,
+  "excluded": 20,
+  "unverified": 1,
+  "properties": 2
+ },
+ {
+  "object": "Array",
+  "operations": 46,
+  "curated": 21,
+  "generated": 20,
+  "excluded": 5,
+  "unverified": 0,
+  "properties": 2
+ },
+ {
+  "object": "Object",
+  "operations": 30,
+  "curated": 7,
+  "generated": 21,
+  "excluded": 2,
+  "unverified": 2,
+  "properties": 2
+ },
+ {
+  "object": "Function",
+  "operations": 5,
+  "curated": 0,
+  "generated": 4,
+  "excluded": 1,
+  "unverified": 1,
+  "properties": 5
+ },
+ {
+  "object": "Number",
+  "operations": 14,
+  "curated": 2,
+  "generated": 10,
+  "excluded": 2,
+  "unverified": 0,
+  "properties": 9
+ },
+ {
+  "object": "Boolean",
+  "operations": 3,
+  "curated": 0,
+  "generated": 1,
+  "excluded": 2,
+  "unverified": 0,
+  "properties": 1
+ },
+ {
+  "object": "BigInt",
+  "operations": 7,
+  "curated": 0,
+  "generated": 5,
+  "excluded": 2,
+  "unverified": 0,
+  "properties": 1
+ },
+ {
+  "object": "Math",
+  "operations": 36,
+  "curated": 6,
+  "generated": 29,
+  "excluded": 1,
+  "unverified": 1,
+  "properties": 8
+ },
+ {
+  "object": "Date",
+  "operations": 49,
+  "curated": 0,
+  "generated": 47,
+  "excluded": 2,
+  "unverified": 2,
+  "properties": 1
+ },
+ {
+  "object": "RegExp",
+  "operations": 11,
+  "curated": 0,
+  "generated": 3,
+  "excluded": 8,
+  "unverified": 0,
+  "properties": 30
+ },
+ {
+  "object": "JSON",
+  "operations": 3,
+  "curated": 0,
+  "generated": 2,
+  "excluded": 1,
+  "unverified": 0,
+  "properties": 0
+ },
+ {
+  "object": "Promise",
+  "operations": 12,
+  "curated": 3,
+  "generated": 7,
+  "excluded": 2,
+  "unverified": 0,
+  "properties": 1
+ },
+ {
+  "object": "Map",
+  "operations": 13,
+  "curated": 3,
+  "generated": 7,
+  "excluded": 3,
+  "unverified": 0,
+  "properties": 2
+ },
+ {
+  "object": "Set",
+  "operations": 12,
+  "curated": 3,
+  "generated": 6,
+  "excluded": 3,
+  "unverified": 0,
+  "properties": 2
+ },
+ {
+  "object": "WeakMap",
+  "operations": 6,
+  "curated": 0,
+  "generated": 5,
+  "excluded": 1,
+  "unverified": 0,
+  "properties": 1
+ },
+ {
+  "object": "WeakSet",
+  "operations": 5,
+  "curated": 0,
+  "generated": 4,
+  "excluded": 1,
+  "unverified": 0,
+  "properties": 1
+ },
+ {
+  "object": "Error",
+  "operations": 2,
+  "curated": 0,
+  "generated": 1,
+  "excluded": 1,
+  "unverified": 0,
+  "properties": 5
+ },
+ {
+  "object": "TypeError",
+  "operations": 2,
+  "curated": 0,
+  "generated": 1,
+  "excluded": 1,
+  "unverified": 0,
+  "properties": 1
+ },
+ {
+  "object": "RangeError",
+  "operations": 2,
+  "curated": 0,
+  "generated": 1,
+  "excluded": 1,
+  "unverified": 0,
+  "properties": 1
+ },
+ {
+  "object": "SyntaxError",
+  "operations": 2,
+  "curated": 0,
+  "generated": 1,
+  "excluded": 1,
+  "unverified": 0,
+  "properties": 1
+ },
+ {
+  "object": "ReferenceError",
+  "operations": 2,
+  "curated": 0,
+  "generated": 1,
+  "excluded": 1,
+  "unverified": 0,
+  "properties": 1
+ },
+ {
+  "object": "EvalError",
+  "operations": 2,
+  "curated": 0,
+  "generated": 1,
+  "excluded": 1,
+  "unverified": 0,
+  "properties": 1
+ },
+ {
+  "object": "URIError",
+  "operations": 2,
+  "curated": 0,
+  "generated": 1,
+  "excluded": 1,
+  "unverified": 0,
+  "properties": 1
+ },
+ {
+  "object": "AggregateError",
+  "operations": 2,
+  "curated": 0,
+  "generated": 1,
+  "excluded": 1,
+  "unverified": 0,
+  "properties": 1
+ },
+ {
+  "object": "globalThis",
+  "operations": 11,
+  "curated": 1,
+  "generated": 7,
+  "excluded": 3,
+  "unverified": 0,
+  "properties": 0
+ },
+ {
+  "object": "Proxy",
+  "operations": 15,
+  "curated": 0,
+  "generated": 0,
+  "excluded": 15,
+  "unverified": 0,
+  "properties": 0,
+  "reason": "excluded: low app use (metaprogramming)"
+ },
+ {
+  "object": "Reflect",
+  "operations": 16,
+  "curated": 0,
+  "generated": 0,
+  "excluded": 16,
+  "unverified": 0,
+  "properties": 0,
+  "reason": "excluded: low app use (metaprogramming)"
+ },
+ {
+  "object": "Symbol",
+  "operations": 22,
+  "curated": 0,
+  "generated": 0,
+  "excluded": 22,
+  "unverified": 0,
+  "properties": 0,
+  "reason": "excluded: Symbol internals (protocol keys, not app data)"
+ },
+ {
+  "object": "WeakRef",
+  "operations": 4,
+  "curated": 0,
+  "generated": 0,
+  "excluded": 4,
+  "unverified": 0,
+  "properties": 0,
+  "reason": "excluded: low app use (GC-observable)"
+ },
+ {
+  "object": "FinalizationRegistry",
+  "operations": 5,
+  "curated": 0,
+  "generated": 0,
+  "excluded": 5,
+  "unverified": 0,
+  "properties": 0,
+  "reason": "excluded: low app use (GC-observable)"
+ },
+ {
+  "object": "Atomics",
+  "operations": 24,
+  "curated": 0,
+  "generated": 0,
+  "excluded": 24,
+  "unverified": 0,
+  "properties": 0,
+  "reason": "excluded: low app use (shared-memory concurrency)"
+ },
+ {
+  "object": "SharedArrayBuffer",
+  "operations": 6,
+  "curated": 0,
+  "generated": 0,
+  "excluded": 6,
+  "unverified": 0,
+  "properties": 0,
+  "reason": "excluded: low app use (shared memory)"
+ },
+ {
+  "object": "ArrayBuffer",
+  "operations": 8,
+  "curated": 0,
+  "generated": 0,
+  "excluded": 8,
+  "unverified": 0,
+  "properties": 0,
+  "reason": "excluded: low app use (binary data; typed arrays may be added later)"
+ },
+ {
+  "object": "DataView",
+  "operations": 26,
+  "curated": 0,
+  "generated": 0,
+  "excluded": 26,
+  "unverified": 0,
+  "properties": 0,
+  "reason": "excluded: low app use (binary data)"
+ },
+ {
+  "object": "TypedArrays",
+  "operations": 650,
+  "curated": 0,
+  "generated": 0,
+  "excluded": 650,
+  "unverified": 0,
+  "properties": 0,
+  "reason": "excluded: low app use (typed arrays may be added later)"
+ },
+ {
+  "object": "Intl",
+  "operations": 105,
+  "curated": 0,
+  "generated": 0,
+  "excluded": 105,
+  "unverified": 0,
+  "properties": 0,
+  "reason": "excluded: low app use beyond formatNumber/formatDate, which wrap Intl with fixed defaults"
+ },
+ {
+  "object": "Function constructor",
+  "operations": 3,
+  "curated": 0,
+  "generated": 0,
+  "excluded": 3,
+  "unverified": 0,
+  "properties": 0,
+  "reason": "excluded: new Function executes a string as code"
+ },
+ {
+  "object": "Iterator protocol",
+  "operations": 37,
+  "curated": 0,
+  "generated": 0,
+  "excluded": 37,
+  "unverified": 0,
+  "properties": 0,
+  "reason": "excluded: iterator/generator protocol (next/return/throw), not app operations; the es2023 lib has no iterator helpers (map/filter/take arrive in es2025)"
+ }
+]

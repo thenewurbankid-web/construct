@@ -25,34 +25,34 @@ export function trimmed(text: string): string {
 }
 
 /**
- * startsWith(text, part) reads "text starts with part".
- * Exactly `text.startsWith(part)`.
+ * doesStartWith(text, part, position) reads "whether text starts with part".
+ * Exactly `text.startsWith(part, position)`.
  */
-export function startsWith(text: string, part: string): boolean {
-  return text.startsWith(part);
+export function doesStartWith(text: string, part: string, position?: number): boolean {
+  return text.startsWith(part, position);
 }
 
 /**
- * endsWith(text, part) reads "text ends with part".
- * Exactly `text.endsWith(part)`.
+ * doesEndWith(text, part, endPosition) reads "whether text ends with part".
+ * Exactly `text.endsWith(part, endPosition)`.
  */
-export function endsWith(text: string, part: string): boolean {
-  return text.endsWith(part);
+export function doesEndWith(text: string, part: string, endPosition?: number): boolean {
+  return text.endsWith(part, endPosition);
 }
 
 /**
- * splitBy(text, separator) reads "text split by separator".
- * Exactly `text.split(separator)`.
+ * splitBy(text, separator, limit) reads "text split by separator".
+ * Exactly `text.split(separator, limit)`.
  */
-export function splitBy(text: string, separator: string | RegExp): string[] {
-  return text.split(separator);
+export function splitBy(text: string, separator: string | RegExp, limit?: number): string[] {
+  return text.split(separator, limit);
 }
 
 /**
  * joinWith(list, separator) reads "list joined with separator".
- * Exactly `list.join(separator)`.
+ * Exactly `list.join(separator)` (separator defaults to ",").
  */
-export function joinWith(list: readonly unknown[], separator: string): string {
+export function joinWith(list: readonly unknown[], separator?: string): string {
   return list.join(separator);
 }
 

@@ -9,10 +9,10 @@ export function setOf<T>(items: Iterable<T> = []): Set<T> {
 }
 
 /**
- * inSet(set, item) reads "item is in set".
+ * isInSet(set, item) reads "whether item is in set".
  * Exactly `set.has(item)`.
  */
-export function inSet<T>(set: ReadonlySet<T>, item: T): boolean {
+export function isInSet<T>(set: ReadonlySet<T>, item: T): boolean {
   return set.has(item);
 }
 

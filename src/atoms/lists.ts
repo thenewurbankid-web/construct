@@ -20,11 +20,11 @@ export function lastOf<T>(list: readonly T[]): T | undefined {
 }
 
 /**
- * positionOf(list, item) reads "the position of item in list".
- * Exactly `list.indexOf(item)` (-1 when absent; strict === matching, so never finds NaN).
+ * positionOf(list, item, fromIndex) reads "the position of item in list".
+ * Exactly `list.indexOf(item, fromIndex)` (-1 when absent; strict === matching, so never finds NaN).
  */
-export function positionOf<T>(list: readonly T[], item: T): number {
-  return list.indexOf(item);
+export function positionOf<T>(list: readonly T[], item: T, fromIndex?: number): number {
+  return list.indexOf(item, fromIndex);
 }
 
 /**
@@ -72,18 +72,20 @@ export function findFirst<T>(list: readonly T[], test: Visit<T, unknown>): T | u
 }
 
 /**
- * someWhere(list, test) reads "some item of list passes test".
+ * hasAnyWhere(list, test) reads "whether any item of list passes test".
  * Exactly `list.some(test)`.
  */
-export function someWhere<T>(list: readonly T[], test: Visit<T, unknown>): boolean {
+export function hasAnyWhere<T>(list: readonly T[], test: Visit<T, unknown>): boolean {
   return list.some(test);
 }
 
 /**
- * everyWhere(list, test) reads "every item of list passes test".
+ * isEveryWhere(list, test) reads "whether every item of list passes test".
  * Exactly `list.every(test)`.
  */
-export function everyWhere<T>(list: readonly T[], test: Visit<T, unknown>): boolean {
+export function isEveryWhere<T, S extends T>(list: readonly T[], test: (item: T, index: number, list: readonly T[]) => item is S): list is readonly S[];
+export function isEveryWhere<T>(list: readonly T[], test: Visit<T, unknown>): boolean;
+export function isEveryWhere<T>(list: readonly T[], test: Visit<T, unknown>): boolean {
   return list.every(test);
 }
 
@@ -148,11 +150,11 @@ export function concatenated<T>(...lists: ReadonlyArray<readonly T[]>): T[] {
 }
 
 /**
- * flattened(list) reads "list flattened one level".
- * Exactly `list.flat()`.
+ * flattened(list, depth) reads "list flattened depth levels".
+ * Exactly `list.flat(depth)` (depth defaults to 1).
  */
-export function flattened<T>(list: ReadonlyArray<T | readonly T[]>): T[] {
-  return list.flat() as T[];
+export function flattened<A extends readonly unknown[], D extends number = 1>(list: A, depth?: D): FlatArray<A, D>[] {
+  return list.flat(depth) as FlatArray<A, D>[];
 }
 
 /**

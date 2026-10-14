@@ -36,7 +36,7 @@ export function daysBetween(from: Date, to: Date): number {
 }
 
 /**
- * isBefore(a, b) reads "a is before b".
+ * isBefore(a, b) reads "whether a is before b".
  * Exactly `a.getTime() < b.getTime()`.
  */
 export function isBefore(a: Date, b: Date): boolean {
@@ -44,7 +44,7 @@ export function isBefore(a: Date, b: Date): boolean {
 }
 
 /**
- * isAfter(a, b) reads "a is after b".
+ * isAfter(a, b) reads "whether a is after b".
  * Exactly `a.getTime() > b.getTime()`.
  */
 export function isAfter(a: Date, b: Date): boolean {

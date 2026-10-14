@@ -9,11 +9,17 @@ export function lengthOf(value: string | readonly unknown[]): number {
 }
 
 /**
- * contains(textOrList, part) reads "textOrList contains part".
- * Exactly `x.includes(part)`: substring search for text, SameValueZero search for a list (finds NaN).
+ * hasText(text, part, position) reads "whether text has part in it".
+ * Exactly `text.includes(part, position)` (substring search).
  */
-export function contains(text: string, part: string): boolean;
-export function contains<T>(list: readonly T[], item: T): boolean;
-export function contains(value: any, part: any): boolean {
-  return value.includes(part);
+export function hasText(text: string, part: string, position?: number): boolean {
+  return text.includes(part, position);
+}
+
+/**
+ * hasItem(list, item, fromIndex) reads "whether list has item in it".
+ * Exactly `list.includes(item, fromIndex)` (SameValueZero, so it finds NaN).
+ */
+export function hasItem<T>(list: readonly T[], item: T, fromIndex?: number): boolean {
+  return list.includes(item, fromIndex);
 }
