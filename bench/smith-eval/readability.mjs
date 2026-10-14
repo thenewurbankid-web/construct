@@ -3,7 +3,7 @@
 // repo only), 5 pages/components and 5 logic, each split short (<= 6 lines) and long (7-15 lines). For each: the code,
 // Smith's English (hardened Smith, TS/TSX fed directly) and the 1.5b gloss (packages/engine/lsp/gloss.mjs).
 //
-//   node bench/smith-eval/readability.mjs [--dry]     # --dry: the pick only, no model call
+//   node bench/smith-eval/readability.mjs --gloss [--dry]   # the gloss is off by default (owner 2026-10-14); --dry: the pick only
 //
 // Writes bench/smith-eval/READABILITY.md (the table only, a blank rating column) and readability.json (the same plus
 // each gloss's guard verdict). Calls Ollama: run it through heavy.sh.
@@ -78,6 +78,8 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     console.log(`gloss guard dropped ${j.dropped}/${j.rows.length}`);
     process.exit(0);
   }
+  // The 1.5b gloss is off by default (owner 2026-10-14: readable text is Smith's plain style); --gloss runs it.
+  if (!process.argv.includes('--gloss') && !process.argv.includes('--dry')) { console.error('The gloss is off by default; pass --gloss to run it (calls Ollama).'); process.exit(2); }
   const picks = pick(candidates());
   if (process.argv.includes('--dry')) { for (const p of picks) console.log(p.group, p.band, p.lines, `${p.file}#${p.name}`); process.exit(0); }
   const links = await import('../../packages/summarize/links.mjs');

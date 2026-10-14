@@ -1,5 +1,7 @@
 // Readable gloss: a quick plain-English paraphrase of Smith's sentences, from a small local model (owner rule: every
 // Smith summary comes with one). DISPLAY ONLY: Smith's exact text stays the record and the only thing checked.
+// OFF BY DEFAULT (owner, 2026-10-14): readable text is Smith's plain style; a caller runs a gloss only behind its own
+// opt-in flag (bench/smith-eval: --gloss). Nothing in Line or the MCP surface calls glossFor.
 //
 //   glossFor(smithSentences, {model: 'qwen2.5-coder:1.5b'})
 //     -> {text, gloss, smith, dropped, reason, cached, model}

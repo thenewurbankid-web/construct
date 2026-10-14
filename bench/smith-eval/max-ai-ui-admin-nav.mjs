@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 // The full chain on a real app, read-only: max-ai-ui's src/features/admin-navigation (domain, hook, controller,
 // component, page). For each top-level function: Smith (hardened, canonical, raw TS/TSX), the 1.5b gloss
-// (gloss.mjs), the compact facts a fill would get with it as the target (facts.mjs compileFacts over the feature
+// (gloss.mjs, only with --gloss: off by default, owner 2026-10-14), the compact facts a fill would get with it as the target (facts.mjs compileFacts over the feature
 // folder), and atomicGate (gate.mjs). The app is only parsed and read: nothing is written there, nothing run.
 //
-//   node bench/smith-eval/max-ai-ui-admin-nav.mjs [--app DIR] [--no-gloss]
+//   node bench/smith-eval/max-ai-ui-admin-nav.mjs [--app DIR] [--gloss]
 //
-// Writes bench/smith-eval/MAX-AI-UI-ADMIN-NAV.md and max-ai-ui-admin-nav.json. The gloss calls Ollama: run it
+// Writes bench/smith-eval/MAX-AI-UI-ADMIN-NAV.md and max-ai-ui-admin-nav.json. With --gloss it calls Ollama: run it
 // through heavy.sh.
 import fs from 'node:fs';
 import os from 'node:os';
@@ -39,7 +39,7 @@ for (const u of index.units) {
   const raw = await toEnglishRaw(u.code, { kind: 'function', toEnglishOptions: CANON });
   const unhandled = raw.ok ? (raw.result.unhandled ?? []).map((x) => `${x.kind}:${x.type}`) : [`unreadable: ${raw.reason}`];
   const gaps = english.match(GAP_RE) ?? [];
-  const gloss = argv.includes('--no-gloss') ? { dropped: true, reason: 'not run', gloss: null } : await glossFor(sentences);
+  const gloss = !argv.includes('--gloss') ? { dropped: true, reason: 'off (pass --gloss)', gloss: null } : await glossFor(sentences);
   const src = fs.readFileSync(path.join(APP, u.file), 'utf8');
   const facts = compileFacts({ index, target: { name: u.name, file: u.file }, step: { kind: 'setCode', file: u.file, contentHash: crypto.createHash('sha256').update(src).digest('hex').slice(0, 16), point: `Fill ${u.id}: ${u.doc ?? '(no doc comment)'}` } });
   const gate = await atomicGate({ rel: u.file, source: src, fn: u.name, layer: u.layer, smith: (code, o) => smithOfFunction(code, { ...o, raw: true, canonical: true }) });
