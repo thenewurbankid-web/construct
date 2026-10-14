@@ -1,0 +1,13 @@
+{
+  "$comment": "Import v2's static breakdown: the functional atom runtime (Smith's plain-function atoms and their catalog), linked from its own git repo. Construct never imports it in Node: atomic-codemod's runtime.js snapshots the pinned commit with `git archive` and runs it in QuickJS. The folder is $SMITH_FUNCTIONAL_SOURCE_DIR, else `default`. `commit` pins its HEAD; bump it by hand after checking the change.",
+  "source": {
+    "repo": "smith-functional",
+    "branch": "functional-atoms",
+    "env": "SMITH_FUNCTIONAL_SOURCE_DIR",
+    "default": "~/Repositories/smith-functional",
+    "commit": "939c25ce7ecfa27d20eb7b9e63f0355b82896d7f"
+  },
+  "links": {
+    "@smith/functional-atoms": { "path": "src", "entry": "index.ts", "what": "the atom runtime (337 atoms) and src/atoms/catalog.json" }
+  }
+}

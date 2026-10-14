@@ -76,6 +76,8 @@ Agents ALWAYS work on their own clone of max-ai-ui under their scratch dir: `git
     6. Sample data → fixture.
 - **`ImportLoopState`** (one checked step, fixed-size; reconciled to what the loop writes): `{ step, n, at, tool, mapBefore, mapAfter: {units, counts, hash}, diff: {kept, moved, added, changed, missingCount, missing}, tests: {passed, failed, total, state}, coverage: {covered, uncovered, waived, total}, behaviour, checks, status: 'ok'|'stopped', sentence, fixes }`. A `put-back` fix carries `step`, the extract tool of the unit's FitProposal block. The plan file keeps them in `ImportLogic` (`{route, closure, map, fit, tests, baselineTests, waivers, loop, last}`); the records go to `records/import-loop.jsonl`.
 
+- **`AtomBreakdown`** (static breakdown, 2026-10-14; `importV2/breakdown.mjs`, kept in `<folder>/line/atoms.json`): `{ via: 'static'|'off', codemod, runtime, units: AtomUnitResult[], counts, sentence, reason? }`. `AtomUnitResult`: `{ file, name, block, status: 'converted'|'partial'|'unchanged'|'unchecked', check, atoms, rewrites, takenBack, code, body, importDecl, untranslated: [{form, text, line, reason?}], repair?, sentence }`. A rewrite counts only when the QuickJS check says `same` on at least one generated input. A function with untranslated parts is one refusal (rule `LINE-ATOMS`, option tool `line.import.atoms`) for construct.repair; `ImportLogic.atoms` keeps the counts and the sentence.
+
 ## Invariants
 - Every write goes through Construct's writer. `applyImport` is all-or-nothing: a refused run leaves the target byte-identical.
 - No unit is lost. `missing` must be empty, or each missing unit has an owner waiver.

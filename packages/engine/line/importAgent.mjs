@@ -272,6 +272,33 @@ export function createImportAgent(o) {
     record(doc, 'line', 'classify', `fitted the logic: ${lower(doc.logic.fit.sentence)}`);
   }
 
+  /**
+   * The static breakdown (owner, 2026-10-14): each pure function the fit put in a domain block becomes atom calls, a
+   * rewrite counting only when the QuickJS check says it behaves the same. What it leaves untranslated is a refusal for
+   * the one repair loop (`o.repair`, construct.repair) with the breakdown's check as Construct's check; a repaired body
+   * replaces the kept rewrite, anything else stays for a person. Off (no op, links down): one sentence, and on.
+   */
+  async function breakdownStage(doc) {
+    if (!looping(doc) || !o.logic.breakdown) return;
+    let r;
+    try { r = await o.logic.breakdown(root, folder, doc.logic.closure, await o.logic.load('fit')); } catch (e) {
+      record(doc, 'line', 'classify', `did not break the domain functions down into atoms: ${lower(asSentence(String(/** @type {any} */ (e)?.message ?? e).split('\n')[0]))}`);
+      return;
+    }
+    try {
+      for (const { option, refusal: why } of r.refusals.slice(0, LOOP_LIMITS.fixes)) {
+        if (!o.repair) break;
+        let attempt;
+        try { attempt = await o.repair(option, why, { check: r.check }); } catch { continue; }
+        r.settle(option, attempt);
+      }
+    } finally { r.dispose?.(); }
+    await o.logic.save('atoms', r.breakdown);
+    const { via, counts, sentence } = r.breakdown;
+    doc.logic.atoms = { via, ...counts, sentence };
+    record(doc, 'line', 'classify', via === 'off' ? lower(sentence) : `broke the domain functions down into atoms: ${lower(sentence)}`);
+  }
+
   /** Map the unmodified app (the folder, or the route's closure) and keep it as the baseline. */
   async function mapStage(doc) {
     if (!o.logic) { record(doc, 'line', 'map', 'no logic map is set up for this import, so its units are not checked'); return; }
@@ -600,6 +627,7 @@ export function createImportAgent(o) {
         }
         // Kept (#887 follow-up): a scan question stays answerable by id until the first step runs.
         await fitStage(doc);
+        await breakdownStage(doc);
         go(doc, by, 'CLASSIFIED');
       } else if (doc.state === 'plan') {
         await planStage(doc);

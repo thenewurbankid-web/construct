@@ -456,6 +456,7 @@ export function logicView(logic) {
     kept,
     keptSentence: logic.map ? `${kept} of ${plural(total, 'logic unit')} kept.` : 'The logic map is not built yet.',
     fit: logic.fit ?? null,
+    atoms: logic.atoms ?? null,
     missing: last?.missing ?? [],
     coverage: last?.coverage ?? null,
     tests: last?.tests ?? logic.baselineTests ?? null,
