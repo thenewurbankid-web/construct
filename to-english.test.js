@@ -1,6 +1,10 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { toEnglish, extractAtoms, extractAtomUsage, reorderSteps, atomParamNames, buildStepFromAtom, applyAtomToStep, tokenizeStmt, reorderChip, inScopeIdentifiers, insertAtomCall, insertArgument } = require('./to-english');
+const { toEnglish: toEnglishAnyStyle, extractAtoms, extractAtomUsage, reorderSteps, atomParamNames, buildStepFromAtom, applyAtomToStep, tokenizeStmt, reorderChip: reorderChipAnyStyle, inScopeIdentifiers, insertAtomCall, insertArgument } = require('./to-english');
+// These tests pin the original word-for-word reading: { style: 'exact' }.
+const toEnglish = (code, kind, options = {}) => toEnglishAnyStyle(code, kind, { style: 'exact', ...options });
+const reorderChip = (code, kind, i, order) => reorderChipAnyStyle(code, kind, i, order, { style: 'exact' });
+
 
 test('toEnglish returns the flat english string for a function', () => {
   const code = `function checkAge(age) {\n  return age;\n}`;

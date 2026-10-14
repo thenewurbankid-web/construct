@@ -2,6 +2,13 @@
 
 Newest first.
 
+## P1 — 2026-10-14 (Smith: plain style)
+- `toEnglish(code, kind, { style: 'plain' })` is now the default; the previous wording is `{ style: 'exact' }`. Deterministic word tables in `plain-words.js`, no model.
+- Calls read as their result: verb+noun free functions take a past participle (`stripLocale(pathname)` -> "pathname with locale stripped", regular rules + irregular list, only for a first word in the verb list so `pageCount(x)` keeps "page count of x"); a prefix table for get/find ("the X for a"), is/has/can ("whether a is X"), to ("a as X"), format, build/make/create ("a new X from a"), convert, parse. Method calls keep "a's b" / "a verb b" unless they hit the table.
+- Template literals read as the text "...{part}..."; operators in words (equals, doesn't equal, is less than, is at most, is greater than, is at least, and, or, or else); a boolean return reads "return whether ..."; `!x` reads "not x" only when x is known boolean (canonical.js's inference plus yes/no call names), otherwise "there is no x"; an if takes a comma: "if there is no pathname, return false".
+- isWithinPath now reads: "if there is no pathname, return false; then let path be pathname with locale stripped; then return whether path equals href or path starts with the text "{href}/"."
+- `reorderChip(..., { style })` reads chips in the same style (default plain). Existing tests run under `style: 'exact'`; properties and canonical equivalence run in both styles; `bench/coverage.mjs --style=exact|plain`: 380/380 clean in both. K1 discrimination (`bench/k1/tasks.json`, copied from Construct's private/exp/english-loop-chain): all 8 mutants read differently from their reference in plain, exact and canonical.
+
 ## Q2 — 2026-10-14 (Smith: equivalent code, same English)
 - `toEnglish(code, kind, { canonical: true })` runs `canonical.js` on each function first, so equivalent forms read as the same sentence. Off by default; the plain reading and the golden snapshot are unchanged. Deterministic AST rewrites, no model. The ternary-return rule is transform.js's own, now exported as `ternaryReturnReplacement` and shared.
 - Normalized: ternary return vs if/else vs early return; `!x` vs `x === false` / `x == false` / `x !== true` and `x` vs `x === true` / `!!x` (only when x is known boolean: a `: boolean` binding bound once, a comparison, a `!`); if/else whose then-branch exits vs early return; `a && f();` and nested ifs vs `if (a && b)`; `x ? x : y` vs `x || y` (x a plain name/path); `&&`/`||` chain association; callback `x => { return e }` vs `x => e`; parentheses re-derived from precedence.

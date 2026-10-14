@@ -1,7 +1,10 @@
 // S10: toEnglish is memoized by hash of (code, kind, options): pure, in memory.
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { toEnglish, clearEnglishCache, englishCacheStats } = require('./to-english');
+const { toEnglish: toEnglishAnyStyle, clearEnglishCache, englishCacheStats } = require('./to-english');
+// These tests pin the original word-for-word reading: { style: 'exact' }.
+const toEnglish = (code, kind, options = {}) => toEnglishAnyStyle(code, kind, { style: 'exact', ...options });
+
 
 const code = `function run(a) {\n  return a.equals(1);\n}`;
 

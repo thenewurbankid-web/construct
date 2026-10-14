@@ -294,4 +294,4 @@ function canonicalizeFunction(fnNode) {
   return fnNode;
 }
 
-module.exports = { canonicalizeFunction };
+module.exports = { canonicalizeFunction, booleanBindings, isBoolean };

@@ -1,0 +1,56 @@
+{
+  "source": "construct private/exp/english-loop-chain:bench/isolation/chain/quick/tasks.mjs (62efd4c1)",
+  "tasks": [
+    {
+      "id": "availability",
+      "functions": [
+        "formatAvailability"
+      ],
+      "prelude": "",
+      "reference": "export function formatAvailability(available: boolean): string {\n  if (available) {\n    return 'Available';\n  }\n  return 'On loan';\n}\n",
+      "mutants": [
+        "export function formatAvailability(available: boolean): string {\n  if (available) {\n    return 'On loan';\n  }\n  return 'Available';\n}\n",
+        "export function formatAvailability(available: boolean): string {\n  if (!available) {\n    return 'Available';\n  }\n  return 'On loan';\n}\n"
+      ]
+    },
+    {
+      "id": "picks-store",
+      "functions": [
+        "addPick",
+        "removePick",
+        "listPicks"
+      ],
+      "prelude": "",
+      "reference": "export function addPick(picks: string[], id: string): string[] {\n  if (picks.includes(id)) {\n    return picks;\n  }\n  if (picks.length >= 4) {\n    return picks;\n  }\n  return picks.concat(id);\n}\n\nexport function removePick(picks: string[], id: string): string[] {\n  return picks.filter((pick) => pick !== id);\n}\n\nexport function listPicks(picks: string[]): string[] {\n  return picks.slice();\n}\n",
+      "mutants": [
+        "export function addPick(picks: string[], id: string): string[] {\n  if (picks.includes(id)) {\n    return picks;\n  }\n  return picks.concat(id);\n}\n\nexport function removePick(picks: string[], id: string): string[] {\n  return picks.filter((pick) => pick !== id);\n}\n\nexport function listPicks(picks: string[]): string[] {\n  return picks.slice();\n}\n",
+        "export function addPick(picks: string[], id: string): string[] {\n  if (picks.includes(id)) {\n    return picks;\n  }\n  if (picks.length >= 4) {\n    return picks;\n  }\n  return picks.concat(id);\n}\n\nexport function removePick(picks: string[], id: string): string[] {\n  return picks.filter((pick) => pick === id);\n}\n\nexport function listPicks(picks: string[]): string[] {\n  return picks.slice();\n}\n"
+      ]
+    },
+    {
+      "id": "paging",
+      "functions": [
+        "pageOf",
+        "pageCount"
+      ],
+      "prelude": "",
+      "reference": "export function pageOf<T>(items: T[], page: number): T[] {\n  const start = page * 6;\n  return items.slice(start, start + 6);\n}\n\nexport function pageCount(total: number): number {\n  return Math.ceil(total / 6);\n}\n",
+      "mutants": [
+        "export function pageOf<T>(items: T[], page: number): T[] {\n  const start = page * 6;\n  return items.slice(start, 6);\n}\n\nexport function pageCount(total: number): number {\n  return Math.ceil(total / 6);\n}\n",
+        "export function pageOf<T>(items: T[], page: number): T[] {\n  const start = page * 5;\n  return items.slice(start, start + 5);\n}\n\nexport function pageCount(total: number): number {\n  return Math.floor(total / 6);\n}\n"
+      ]
+    },
+    {
+      "id": "sort-title",
+      "functions": [
+        "sortByTitle"
+      ],
+      "prelude": "type Book = { id: string; title: string; author: string; genre: string; year: number };\n\n",
+      "reference": "export function sortByTitle(books: Book[]): Book[] {\n  return books.slice().sort((a, b) => a.title.localeCompare(b.title));\n}\n",
+      "mutants": [
+        "export function sortByTitle(books: Book[]): Book[] {\n  return books.slice().sort((a, b) => b.title.localeCompare(a.title));\n}\n",
+        "export function sortByTitle(books: Book[]): Book[] {\n  return books.sort((a, b) => a.author.localeCompare(b.author));\n}\n"
+      ]
+    }
+  ]
+}

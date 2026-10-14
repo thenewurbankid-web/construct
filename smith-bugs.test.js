@@ -1,7 +1,10 @@
 // S6: regression tests for the four Smith bugs found in review.
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { toEnglish, EXPR_RULES } = require('./to-english');
+const { toEnglish: toEnglishAnyStyle, EXPR_RULES } = require('./to-english');
+// These tests pin the original word-for-word reading: { style: 'exact' }.
+const toEnglish = (code, kind, options = {}) => toEnglishAnyStyle(code, kind, { style: 'exact', ...options });
+
 
 const steps = (body) => toEnglish(`function run(a, b) {\n${body}\n}`, 'function').steps;
 const noEmptyOrUndefined = (s) => {

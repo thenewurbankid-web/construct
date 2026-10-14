@@ -11,7 +11,10 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
-const { toEnglish } = require('./to-english');
+const { toEnglish: toEnglishAnyStyle } = require('./to-english');
+// These tests pin the original word-for-word reading: { style: 'exact' }.
+const toEnglish = (code, kind, options = {}) => toEnglishAnyStyle(code, kind, { style: 'exact', ...options });
+
 const corpus = require('./bench/corpus');
 
 const THRESHOLDS = {

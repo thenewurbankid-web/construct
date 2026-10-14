@@ -13,6 +13,7 @@
 //   node bench/coverage.mjs --impl=pin         # the pinned 885b32e to-english.js, as shipped
 //   node bench/coverage.mjs --impl=pin-ts      # the pin, with only its parse switched to TS+JSX
 //   node bench/coverage.mjs --canonical        # current, with toEnglish's { canonical: true }
+//   node bench/coverage.mjs --style=exact      # current, word-for-word style (default: plain)
 //   node bench/coverage.mjs --json             # machine-readable summary
 //   SMITH_CORPUS=/path/to/construct node bench/coverage.mjs
 //
@@ -79,7 +80,7 @@ function describer() {
   if (impl === 'pin') return pinDescriber(false);
   if (impl === 'pin-ts') return pinDescriber(true);
   const { toEnglish } = require(path.join(ROOT, 'to-english.js'));
-  return corpus.currentDescriber(toEnglish, { canonical: !!args.canonical });
+  return corpus.currentDescriber(toEnglish, { canonical: !!args.canonical, style: args.style === 'exact' ? 'exact' : 'plain' });
 }
 
 const { roots, files, functions, unparsedFiles } = corpus.loadCorpus(args.corpus ? corpus.defaultRoots(args.corpus) : corpus.defaultRoots());
@@ -91,6 +92,7 @@ const result = corpus.measure(functions, describer());
 const summary = {
   impl,
   canonical: !!args.canonical,
+  style: impl === 'current' ? (args.style === 'exact' ? 'exact' : 'plain') : 'exact',
   corpus: { roots, files: files.length, unparsedFiles: unparsedFiles.length, functions: functions.length },
   ...result,
 };

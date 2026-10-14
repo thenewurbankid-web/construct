@@ -3,7 +3,10 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const t = require('@babel/types');
-const { toEnglish, EXPR_RULES, STMT_RULES } = require('./to-english');
+const { toEnglish: toEnglishAnyStyle, EXPR_RULES, STMT_RULES } = require('./to-english');
+// These tests pin the original word-for-word reading: { style: 'exact' }.
+const toEnglish = (code, kind, options = {}) => toEnglishAnyStyle(code, kind, { style: 'exact', ...options });
+
 
 const step = (body, kind = 'function', i = 0) => {
   const code = kind === 'method' ? `run(a, b) {\n${body}\n}` : `function run(a, b) {\n${body}\n}`;

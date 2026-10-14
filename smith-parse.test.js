@@ -2,7 +2,10 @@
 // describe every function in a module.
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { toEnglish } = require('./to-english');
+const { toEnglish: toEnglishAnyStyle } = require('./to-english');
+// These tests pin the original word-for-word reading: { style: 'exact' }.
+const toEnglish = (code, kind, options = {}) => toEnglishAnyStyle(code, kind, { style: 'exact', ...options });
+
 const { chunkCode } = require('./chunker');
 
 test('toEnglish parses TypeScript annotations instead of throwing', () => {

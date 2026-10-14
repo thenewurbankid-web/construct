@@ -11,7 +11,8 @@ const FC = { seed: SEED, numRuns: RUNS };
 
 const SIG = 'a: number, b: number, flag: boolean, user: User, items: Item[]';
 const fn = (body) => `function run(${SIG}) {\n  ${body}\n}`;
-const canon = (code, kind = 'function') => toEnglish(code, kind, { canonical: true }).english;
+const STYLES = ['plain', 'exact'];
+const canon = (code, kind = 'function', style = 'exact') => toEnglish(code, kind, { canonical: true, style }).english;
 
 // ---- examples: each pair reads identically -------------------------------------
 const PAIRS = {
@@ -33,11 +34,13 @@ const PAIRS = {
   'grouping and chain association': ['return (a > 1) && (flag && b > 2);', 'return a > 1 && flag && b > 2;'],
 };
 
-for (const [name, forms] of Object.entries(PAIRS)) {
-  test(`canonical: ${name} read the same`, () => {
-    const english = forms.map((f) => canon(fn(f)));
-    for (const e of english) assert.equal(e, english[0]);
-  });
+for (const style of STYLES) {
+  for (const [name, forms] of Object.entries(PAIRS)) {
+    test(`canonical (${style}): ${name} read the same`, () => {
+      const english = forms.map((f) => canon(fn(f), 'function', style));
+      for (const e of english) assert.equal(e, english[0]);
+    });
+  }
 }
 
 test('canonical: the K5 shape -- a ternary and the if/return plan read the same', () => {
@@ -45,6 +48,7 @@ test('canonical: the K5 shape -- a ternary and the if/return plan read the same'
   const plan = canon(`function status(book) {\n  if (book.available) {\n    return 'Available';\n  }\n  return 'On loan';\n}`);
   assert.equal(ternary, plan);
   assert.equal(plan, "status using book: if book's available: return 'Available'; then return 'On loan'.");
+  assert.equal(canon(`function status(book) {\n  return book.available ? 'Available' : 'On loan';\n}`, 'function', 'plain'), "status using book: if book's available, return 'Available'; then return 'On loan'.");
 });
 
 test('canonical: an arrow with an expression body and its block twin read the same', () => {
@@ -59,8 +63,9 @@ test('canonical: === false is NOT folded into ! when the value is not known bool
 
 test('canonical is off by default: the plain reading is unchanged', () => {
   const code = fn("return user.isAvailable ? 'Available' : 'On loan';");
-  assert.equal(toEnglish(code, 'function').english, "run using a and b and flag and user and items: return if user's is available then 'Available', otherwise 'On loan'.");
-  assert.notEqual(toEnglish(code, 'function').english, canon(code));
+  assert.equal(toEnglish(code, 'function', { style: 'exact' }).english, "run using a and b and flag and user and items: return if user's is available then 'Available', otherwise 'On loan'.");
+  assert.notEqual(toEnglish(code, 'function', { style: 'exact' }).english, canon(code));
+  assert.notEqual(toEnglish(code, 'function').english, canon(code, 'function', 'plain'));
 });
 
 test('canonical keeps every step and chip pointing into the original source', () => {
@@ -110,20 +115,22 @@ const withContext = fc.tuple(equivalentPair, fc.option(sideEffect), fc.boolean()
   return { a: wrap(x), b: wrap(y), label };
 });
 
-test('property: generated equivalent forms read as the same English (canonical)', () => {
-  fc.assert(
-    fc.property(withContext, ({ a, b }) => {
-      assert.equal(canon(a.code, a.kind), canon(b.code, b.kind));
-    }),
-    FC,
-  );
-});
+for (const style of STYLES) {
+  test(`property (${style}): generated equivalent forms read as the same English (canonical)`, () => {
+    fc.assert(
+      fc.property(withContext, ({ a, b }) => {
+        assert.equal(canon(a.code, a.kind, style), canon(b.code, b.kind, style));
+      }),
+      FC,
+    );
+  });
+}
 
 test('property (negative): swapping the branches changes the English', () => {
   const swapped = fc.tuple(cond, values, fc.nat(3), fc.nat(3)).map(([c, [x, y], i, j]) => [ternaryForms(c, x, y)[i], ternaryForms(c, y, x)[j]]);
   fc.assert(
     fc.property(swapped, ([x, y]) => {
-      assert.notEqual(canon(fn(x)), canon(fn(y)));
+      for (const style of STYLES) assert.notEqual(canon(fn(x), 'function', style), canon(fn(y), 'function', style));
     }),
     FC,
   );
@@ -132,7 +139,7 @@ test('property (negative): swapping the branches changes the English', () => {
 test('property (negative): negating the condition changes the English', () => {
   fc.assert(
     fc.property(fc.constantFrom('a > 1', 'user.isValid', 'flag', 'a === b'), values, (c, [x, y]) => {
-      assert.notEqual(canon(fn(`return ${c} ? ${x} : ${y};`)), canon(fn(`return !(${c}) ? ${x} : ${y};`)));
+      for (const style of STYLES) assert.notEqual(canon(fn(`return ${c} ? ${x} : ${y};`), 'function', style), canon(fn(`return !(${c}) ? ${x} : ${y};`), 'function', style));
     }),
     FC,
   );
@@ -141,11 +148,11 @@ test('property (negative): negating the condition changes the English', () => {
 const live = corpus.loadCorpus();
 
 test('canonical over the corpus: never throws, no placeholders, steps join, chips inside their step', { skip: !live.files.length && 'no corpus (set SMITH_CORPUS)' }, () => {
-  for (const f of live.functions) {
-    const r = toEnglish(f.code, f.kind, { canonical: true });
+  for (const f of live.functions) for (const style of STYLES) {
+    const r = toEnglish(f.code, f.kind, { canonical: true, style });
     assert.deepEqual(r.unhandled, [], `${f.file} :: ${f.name}`);
     assert.equal(r.english, `${r.title}: ${r.steps.map((s) => s.english).join('; then ')}.`);
-    assert.deepEqual(toEnglish(f.code, f.kind, { canonical: true }), r);
+    assert.deepEqual(toEnglish(f.code, f.kind, { canonical: true, style }), r);
     for (const s of r.steps) {
       assert.equal(f.code.slice(s.start, s.end), s.code, `${f.file} :: ${f.name}`);
       for (const tk of s.tokens) if (tk.start != null) assert.ok(tk.start >= s.start && tk.end <= s.end, `${f.file} :: ${f.name} chip ${tk.text}`);

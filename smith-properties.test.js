@@ -8,6 +8,7 @@
 //   3. the steps join back to `english`
 //   4. every chip's (and unhandled entry's) offsets fall inside its step
 //   5. unplug(src, plug(src)) === src
+// Properties 1-4 are checked in both styles ({ style: 'plain' } and 'exact').
 //
 // Seeded so a failure reproduces: SMITH_FC_SEED=<n> SMITH_FC_RUNS=<n>.
 const { test } = require('node:test');
@@ -109,12 +110,18 @@ function parses({ code, kind }) {
 }
 
 // ---- the properties, as plain checks reused for generated and corpus input --
+const STYLES = ['plain', 'exact'];
+
 function checkDescription({ code, kind }) {
-  const r = toEnglish(code, kind); // property 1: must not throw
+  for (const style of STYLES) checkDescriptionIn({ code, kind }, style);
+}
+
+function checkDescriptionIn({ code, kind }, style) {
+  const r = toEnglish(code, kind, { style }); // property 1: must not throw
   clearEnglishCache(); // recompute from scratch, not a cache hit
-  const again = toEnglish(code, kind);
+  const again = toEnglish(code, kind, { style });
   assert.deepEqual(again, r); // property 2: deterministic
-  assert.deepEqual(toEnglish(code, kind), r); // and the cached answer is the same
+  assert.deepEqual(toEnglish(code, kind, { style }), r); // and the cached answer is the same
   assert.equal(r.english, `${r.title}: ${r.steps.map((s) => s.english).join('; then ')}.`); // property 3
   for (const s of r.steps) {
     assert.equal(code.slice(s.start, s.end), s.code);
