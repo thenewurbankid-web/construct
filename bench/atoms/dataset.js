@@ -13,6 +13,9 @@
 //     (template literals, optional calls, loops with break: BY_DESIGN)
 //   - every atom is called by its own name (a function that is itself named `merged`
 //     makes the transform write `mergedAtom`, which is not a catalog name)
+//   - every atom form it uses is also right on its own, every argument of its declared
+//     type (converter.alone): the whole-function check cannot see a wrong atom that later
+//     code hides
 //   - toEnglish said every part of it
 //   - no earlier record has the same English and program (fixture folders copy files, components repeat handlers)
 // The first rule that fails is the reason it is dropped.
@@ -31,7 +34,7 @@ const { toEnglish } = require('../../to-english');
 const PARSE_OPTS = { sourceType: 'module', plugins: ['typescript', 'jsx'] };
 const BY_DESIGN = ['TemplateLiteral', 'OptionalCallExpression'];
 const LOOPS = new Set(['ForStatement', 'ForOfStatement', 'ForInStatement', 'WhileStatement', 'DoWhileStatement']);
-const REASONS = ['not same', 'no rewrite', 'few runs exercised', 'untranslated', 'atom renamed', 'english incomplete', 'duplicate'];
+const REASONS = ['not same', 'no rewrite', 'few runs exercised', 'untranslated', 'atom renamed', 'fails alone', 'english incomplete', 'duplicate'];
 
 const byDesign = (u, allow) => allow.includes(u.type) || (LOOPS.has(u.type) && /\bbreak\b/.test(u.reason || ''));
 
@@ -73,6 +76,9 @@ function recordFor(fn, { converter, types, runs = 40, seed = 1, runtime, origin 
   if (left.length) return { dropped: 'untranslated', detail: [...new Set(left.map((u) => (u.reason ? `${u.form} (${u.reason})` : u.form)))].join('; ') };
   const renamed = Object.entries(res.atoms).filter(([atom, local]) => atom !== local);
   if (renamed.length) return { dropped: 'atom renamed', detail: renamed.map(([atom, local]) => `${atom} as ${local}`).join(', ') };
+  const forms = [...new Map(res.sites.filter((x) => x.atom).map((x) => [`${x.atom}:${x.form}`, x])).values()];
+  const failing = forms.map((x) => ({ ...x, alone: converter.alone(x.atom, x.form) })).filter((x) => x.alone.status === 'different');
+  if (failing.length) return { dropped: 'fails alone', detail: failing.map((x) => `${x.atom} (${x.alone.cause}) on ${x.alone.probe.input}`).join('; ') };
   const english = toEnglish(fn.code, fn.kind);
   if (english.unhandled.length) return { dropped: 'english incomplete', detail: english.unhandled.map((u) => u.type).join(', ') };
   const program = programOf(res.body, fn.kind);

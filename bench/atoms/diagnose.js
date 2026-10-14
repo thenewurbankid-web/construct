@@ -2,6 +2,7 @@
 //
 //   const diagnose = createDiagnoser({ compiled, sandbox })
 //   diagnose(site, evidence) -> { cause, why, fix, probe? }
+//   diagnose.alone(atom, form) -> is the form right on its own? (see alone below)
 //
 // The check (bench/atoms/checked.js) says which rewrite changed behaviour. To say why,
 // the atom's own catalog form is run with nothing around it: `function probe(a, b) {
@@ -208,7 +209,32 @@ function createDiagnoser({ compiled, sandbox, types = new Map(), runs = 40 }) {
     return { kinds, declared, open, loose };
   }
 
-  return function diagnose(site, evidence) {
+  // every catalog form of this atom with this shape, each run alone (memoised: the
+  // diagnosis and the sweep below ask for the same forms)
+  function triedFor(atom, form) {
+    const key = `${atom}:${form}`;
+    if (!memo.has(key)) memo.set(key, compiled.patterns.filter((p) => p.atom === atom && p.key === form && !p.constant).map((p) => ({ p, ...forPattern(p) })));
+    return memo.get(key);
+  }
+
+  // The form alone with every argument of its declared type, whether or not the function
+  // around it was the same: later code can hide a wrong atom (a `trimmed` that only trims
+  // the start passes every corpus function). Differing here is the atom's fault, or the
+  // call the transform writes, never the place's.
+  //   -> { status: 'same' } | { status: 'unchecked', why } | { status: 'different', cause, why, fix, probe }
+  function alone(atom, form) {
+    const tried = triedFor(atom, form);
+    const bad = tried.find((x) => x.declared.status === 'different');
+    if (bad) {
+      const { shown, from, ...verdict } = classifyCause({ atom, form: bad.p.form, kinds: bad.kinds, declared: bad.declared });
+      return { status: 'different', ...verdict, probe: { code: bad.declared.code, ...shown } };
+    }
+    if (tried.some((x) => x.declared.status === 'same' && x.declared.exercised)) return { status: 'same' };
+    const r = tried[0] && tried[0].declared;
+    return { status: 'unchecked', why: !r ? `${atom} has no catalog form of the shape ${form}` : r.status === 'not-runnable' ? r.why : 'no input got through it on its own' };
+  }
+
+  function diagnose(site, evidence) {
     if (!site || !site.atom) {
       return {
         cause: 'unknown',
@@ -216,19 +242,16 @@ function createDiagnoser({ compiled, sandbox, types = new Map(), runs = 40 }) {
         fix: 'compare the two versions by hand on the input shown',
       };
     }
-    const key = `${site.atom}:${site.form}`;
-    if (!memo.has(key)) {
-      const patterns = compiled.patterns.filter((p) => p.atom === site.atom && p.key === site.form && !p.constant);
-      // several forms of one atom can share a shape: the one that differs is the one to report
-      const tried = patterns.map((p) => ({ p, ...forPattern(p) }));
-      memo.set(key, tried.find((x) => [x.declared, x.open, x.loose].some((r) => r && r.status === 'different')) || tried[0] || null);
-    }
-    const hit = memo.get(key);
+    // several forms of one atom can share a shape: the one that differs is the one to report
+    const tried = triedFor(site.atom, site.form);
+    const hit = tried.find((x) => [x.declared, x.open, x.loose].some((r) => r && r.status === 'different')) || tried[0] || null;
     if (!hit) return { cause: 'unknown', why: `${site.atom} has no catalog form of the shape ${site.form} to run on its own`, fix: 'compare the two versions by hand on the input shown' };
     const { shown, from, ...verdict } = classifyCause({ atom: site.atom, form: hit.p.form, kinds: hit.kinds, evidence, declared: hit.declared, open: hit.open, loose: hit.loose });
     const ran = from && hit[from];
     return shown ? { ...verdict, probe: { code: ran.code, ...(verdict.cause === 'transform' ? { written: ran.written } : {}), ...shown } } : verdict;
-  };
+  }
+
+  return Object.assign(diagnose, { alone });
 }
 
 module.exports = { createDiagnoser, classifyCause, typesOfRuntime };

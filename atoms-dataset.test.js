@@ -73,6 +73,36 @@ describe('corpus records', () => {
   });
 });
 
+// `trimmed` is wrong on purpose (it keeps the trailing spaces); compared with itself, the
+// function around it hides that, so only running the form on its own shows it
+describe('atom forms run on their own', () => {
+  let converter;
+  before(async () => {
+    converter = await createCheckedConverter({
+      compiled: compileCatalog([
+        { atom: 'equals', js: ['a === b'], params: ['a', 'b'] },
+        { atom: 'trimmed', js: ['text.trim()'], params: ['text'], firstKinds: ['string'] },
+      ]),
+      bundle: 'globalThis.__smith = { equals: (a, b) => a === b, trimmed: (text) => text.trimStart() };',
+    });
+  });
+  after(() => converter.dispose());
+  const build = (code) => recordFor({ code, kind: 'function' }, { converter, runs: 20, runtime: 'abc1234' });
+
+  test('a wrong atom hidden by the function around it drops the function', () => {
+    const code = 'function tidy(s: string): boolean { return s.trim() === s.trim(); }';
+    assert.equal(converter.convert(code, { runs: 20 }).check.status, 'same', 'the whole function hides it');
+    const out = build(code);
+    assert.equal(out.dropped, 'fails alone');
+    assert.match(out.detail, /^trimmed \(atom\) on /);
+  });
+
+  test('a right atom passes on its own', () => {
+    assert.ok(build('function same(a: number, b: number): boolean { return a === b; }').record);
+    assert.equal(converter.alone('equals', converter.convert('function f(a: number, b: number) { return a === b; }').sites[0].form).status, 'same');
+  });
+});
+
 test('signatureOf and programOf read exported declarations', () => {
   const code = 'export function f(a: number): number {\n  return a;\n}';
   assert.equal(signatureOf(code, 'function'), 'function f(a: number): number');
