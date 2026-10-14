@@ -236,8 +236,8 @@ describe('every() sentences (R9)', () => {
   test('a body longer than one atom is not computed in place', () => {
     const { every, x } = fluent;
     // A placeholder that reaches a plain atom or raw JS throws instead of computing NaN.
-    assert.throws(() => every(x).in([1]).is().mapped().to().clone().by().multiplying(x).by(smith.plus(x, 1)), /placeholder.*molecule/);
-    assert.throws(() => every(x).in([1]).is().kept().if(x).is().positive() && x * 2, /placeholder.*molecule/);
+    assert.throws(() => every(x).in([1]).is().mapped().to().clone().by().multiplying(x).by(smith.plus(x, 1)), /placeholder.*molecule in your app, made of existing atoms.*not a new Smith atom/);
+    assert.throws(() => every(x).in([1]).is().kept().if(x).is().positive() && x * 2, /placeholder.*molecule in your app, made of existing atoms.*not a new Smith atom/);
     assert.throws(() => `${x}`, TypeError);
   });
 

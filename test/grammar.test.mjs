@@ -102,7 +102,7 @@ function violations(sentence, kind) {
       }
     }
     const body = words.slice(bound + 2).filter((w) => bodyAtoms.has(w));
-    if (body.length > 1) out.push(`R9: a body is one atom, and this one is ${body.join(' + ')}; a longer body becomes a named molecule`);
+    if (body.length > 1) out.push(`R9: a body is one atom, and this one is ${body.join(' + ')}; name it as a molecule made of existing atoms (for example lineTotal), not a new atom`);
     return out;
   }
   const clones = words.indexOf('clones');

@@ -15,7 +15,8 @@
 // operator throws instead of computing. How a sentence calls a molecule is still open (R9).
 import * as atoms from '../atoms';
 
-const MULTI_STEP = 'a body is one atom; a longer one becomes a named molecule in the app (R9)';
+const MULTI_STEP =
+  'a body is one atom. Name a longer body as a molecule in your app, made of existing atoms (for example lineTotal), and call it by name; it is not a new Smith atom (R9)';
 
 /** An imported name for the item in a body: `x`, `y`, `item`, `total`. */
 export class Placeholder<N extends string = string> {
