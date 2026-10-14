@@ -84,5 +84,14 @@ A grammar test reads every catalog `fluent` form and fails on:
 4. Add the grammar test.
 5. atomic-codemod: `toAtoms` can write the fluent form, not only the plain call.
 6. Construct: bump the `@line/atoms` pin, and have `line.import.writeAtoms` write fluent sentences.
-7. Re-import the full JS corpus (`atomic-codemod-atoms/bench/atoms/js-all/`) and measure what converts, what is
+7. Re-import the full JS corpus (`atomic-codemod-atoms/bench/atoms/js-reference/`) and measure what converts, what is
    refused, and how readable the output is.
+
+## Proposed, not decided: declarations and reads as sentences (owner, 2026-10-15: "not yet")
+
+Idea: `a().new('price').is().equal().to(100)` declares, `a().changing('total').starts().at(0)` declares a variable
+that can change, `the('total').becomes(…)` assigns, and `the('price')` reads. A function call can't create a variable
+in its caller, so this only works as a compiled form: a Babel plugin turns the sentences into `const` / `let` /
+assignment / plain names before the code runs (with source maps), and the converter writes them from plain code.
+Reading through `the()` means editors never see an undeclared name. Open costs: a build step for every run, and a
+TypeScript plugin so `the('price')` keeps its type in the editor. Would become rules R9 (declarations) and R10 (reads).
