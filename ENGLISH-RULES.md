@@ -99,6 +99,14 @@ can only use atoms, never raw JS, which keeps R7.
 typo is a compile error; nested callbacks use different names (`every(x).in(rows)…every(y).in(x)…`); TypeScript learns
 the item type at `.in(xs)`, so the body after it is typed.
 
+**Types travel along the chain (owner, 2026-10-15).** `x` has the type `Placeholder<'x'>` and only names a slot.
+`every(x)` records `'x'`; `.in(xs: T[])` binds `'x'` to `T` in a type-level map carried by the chain; each body method
+looks its placeholder up there and exists only when the type fits, so `every(x).in(names)…multiplying(x)` is a `tsc`
+error at the call site. Nested callbacks add to the map (`every(y).in(x)` binds `y` to the item type of `x`);
+molecules are typed functions checked the same way. A wrong type reads as a string-literal message, e.g.
+`"multiplying needs a number; x is a string"`. Checked by compiling and non-compiling fixtures. Watch: `tsc` time and
+TypeScript's instantiation-depth limit on long chains (kept short because long bodies are molecules).
+
 **Bodies longer than one atom become named molecules (owner, 2026-10-15).** `x => x.price * qty` is not chained in
 place and is not a new Smith atom: it becomes a molecule in the app, named for its use case (`lineTotal`), composed of
 existing atoms; larger flows are organisms. The sentence calls it by name. Smith's catalog only grows with real atoms,
