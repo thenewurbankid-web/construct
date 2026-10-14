@@ -1,6 +1,6 @@
 {
  "summary": {
-  "runtime": "09aa375",
+  "runtime": "939c25c",
   "runs": 40,
   "allowUntranslated": [
    "TemplateLiteral",
@@ -8,12 +8,12 @@
   ],
   "functions": 207,
   "jsxSkipped": 173,
-  "kept": 83,
-  "dropped": 124,
+  "kept": 88,
+  "dropped": 119,
   "byReason": {
    "no rewrite": 66,
    "few runs exercised": 30,
-   "untranslated": 18,
+   "untranslated": 13,
    "atom renamed": 1,
    "duplicate": 9
   }
@@ -33,7 +33,7 @@
    "name": "next",
    "file": "packages/core/profiles/line/fixtures/LINE-DIR/library/workflows/checkout.ts",
    "reason": "duplicate",
-   "detail": "5c942343b70b19c08f1dc21f4ded71e91a1a19b1"
+   "detail": "6d4f37e3063c30257cc9e3906d2f2f1b9a1b417f"
   },
   {
    "name": "advance",
@@ -49,7 +49,7 @@
    "name": "next",
    "file": "packages/core/profiles/line/fixtures/LINE-LAYOUT/library/workflows/checkout.ts",
    "reason": "duplicate",
-   "detail": "5c942343b70b19c08f1dc21f4ded71e91a1a19b1"
+   "detail": "6d4f37e3063c30257cc9e3906d2f2f1b9a1b417f"
   },
   {
    "name": "advance",
@@ -60,7 +60,7 @@
    "name": "next",
    "file": "packages/core/profiles/line/fixtures/LINE-MODULE/library/workflows/checkout.ts",
    "reason": "duplicate",
-   "detail": "5c942343b70b19c08f1dc21f4ded71e91a1a19b1"
+   "detail": "6d4f37e3063c30257cc9e3906d2f2f1b9a1b417f"
   },
   {
    "name": "advance",
@@ -71,7 +71,7 @@
    "name": "next",
    "file": "packages/core/profiles/line/fixtures/LINE-OWNER/library/workflows/checkout.ts",
    "reason": "duplicate",
-   "detail": "5c942343b70b19c08f1dc21f4ded71e91a1a19b1"
+   "detail": "6d4f37e3063c30257cc9e3906d2f2f1b9a1b417f"
   },
   {
    "name": "advance",
@@ -82,7 +82,7 @@
    "name": "next",
    "file": "packages/core/profiles/line/fixtures/LINE-SHARED/library/workflows/checkout.ts",
    "reason": "duplicate",
-   "detail": "5c942343b70b19c08f1dc21f4ded71e91a1a19b1"
+   "detail": "6d4f37e3063c30257cc9e3906d2f2f1b9a1b417f"
   },
   {
    "name": "advance",
@@ -93,7 +93,7 @@
    "name": "next",
    "file": "packages/core/profiles/line/fixtures/LINE-WRITER/library/workflows/checkout.ts",
    "reason": "duplicate",
-   "detail": "5c942343b70b19c08f1dc21f4ded71e91a1a19b1"
+   "detail": "6d4f37e3063c30257cc9e3906d2f2f1b9a1b417f"
   },
   {
    "name": "advance",
@@ -104,7 +104,7 @@
    "name": "next",
    "file": "packages/core/profiles/line/fixtures/passing/library/workflows/checkout.ts",
    "reason": "duplicate",
-   "detail": "5c942343b70b19c08f1dc21f4ded71e91a1a19b1"
+   "detail": "6d4f37e3063c30257cc9e3906d2f2f1b9a1b417f"
   },
   {
    "name": "checkout",
@@ -147,7 +147,7 @@
    "name": "validate",
    "file": "packages/core/typed-contracts/examples/service-schema.ts",
    "reason": "untranslated",
-   "detail": "UnaryExpression typeof; CallExpression .push() (mutates)"
+   "detail": "CallExpression .push() (mutates)"
   },
   {
    "name": "consume",
@@ -244,27 +244,9 @@
    "reason": "no rewrite"
   },
   {
-   "name": "normalizeIssues",
-   "file": "packages/core/typed-contracts/schema.ts",
-   "reason": "untranslated",
-   "detail": "UnaryExpression typeof"
-  },
-  {
    "name": "schemaError",
    "file": "packages/core/typed-contracts/schema.ts",
    "reason": "no rewrite"
-  },
-  {
-   "name": "isThenable",
-   "file": "packages/core/typed-contracts/schema.ts",
-   "reason": "untranslated",
-   "detail": "UnaryExpression typeof"
-  },
-  {
-   "name": "checkResponse",
-   "file": "packages/core/typed-contracts/schema.ts",
-   "reason": "untranslated",
-   "detail": "BinaryExpression in"
   },
   {
    "name": "useTrackedState",
@@ -302,12 +284,6 @@
    "file": "packages/line-atoms/atoms/csv-export/index.ts",
    "reason": "untranslated",
    "detail": "CallExpression .test() (mutates)"
-  },
-  {
-   "name": "cellOf",
-   "file": "packages/line-atoms/atoms/csv-export/index.ts",
-   "reason": "untranslated",
-   "detail": "UnaryExpression typeof"
   },
   {
    "name": "toCsv",
@@ -405,7 +381,7 @@
    "name": "send",
    "file": "packages/line-atoms/atoms/filter-sort/index.ts",
    "reason": "untranslated",
-   "detail": "BinaryExpression in; UnaryExpression delete (mutates)"
+   "detail": "UnaryExpression delete (mutates)"
   },
   {
    "name": "stateOf",
@@ -564,12 +540,6 @@
    "reason": "no rewrite"
   },
   {
-   "name": "fieldErrors",
-   "file": "packages/line-atoms/atoms/validated-submit/index.ts",
-   "reason": "untranslated",
-   "detail": "BinaryExpression in"
-  },
-  {
    "name": "validate",
    "file": "packages/line-atoms/atoms/validated-submit/index.ts",
    "reason": "few runs exercised",
@@ -628,7 +598,7 @@
    "name": "guard",
    "file": "packages/line-primitives/library/components/Drawer.tsx",
    "reason": "duplicate",
-   "detail": "1933aca242a7249ac027d3705d3d51711fd57198"
+   "detail": "ab83d754a1316cb806a15b45304a789aba96ae88"
   },
   {
    "name": "update",
@@ -669,7 +639,7 @@
    "name": "change",
    "file": "packages/line-primitives/library/components/Switch.tsx",
    "reason": "duplicate",
-   "detail": "05018b22fbb2183e46313ffe273cf05bee1b27b2"
+   "detail": "a941bce03c53025595056ca2192348c01b800cea"
   },
   {
    "name": "toggle",

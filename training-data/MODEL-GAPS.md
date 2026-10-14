@@ -105,3 +105,25 @@ The 1.5B hands the code back almost unchanged (16 of 18). The 7B writes real rew
 checks turned down 8 of them (4 behave differently, 4 put atoms where no input goes) and kept
 3 (`send` in async-status, `applyView` with sortedBy for a mutating sort, `toXStateConfig`
 with each). Nothing is added to the dataset yet.
+
+## Result: filling, after the four new atoms (2026-10-14, runtime 939c25c)
+
+typeOf, isFunction, isObjectType and hasProperty closed every `typeof` and `in` gap with no
+model: 18 untranslated functions became 13. The harness then got a shortlist by the
+catalog's own form shapes, a NO ATOM answer (counted as declined, the function stays as it
+was), every gap labelled by kind, the prompt in `bench/atoms/model-fill-prompt.txt`
+(editable, `--prompt` for another), rest parameters shown as `...items`, and a report per run
+(`bench/results/model-fill-<model>.md`, every case not accepted with prompt and answer).
+
+| model | accepted | declined | rejected |
+|---|---|---|---|
+| 1.5B | 0 of 13 | 10 | 3 |
+| 7B | 2 of 13 | 1 | 10 (6 behave differently, 4 put atoms where no input goes) |
+
+Why: every gap left has an atom of its shape, but almost none can simply take its place.
+7 functions are mutations (`.push`, `.sort`, `delete`, `Object.assign`, `.test`): the atom
+returns a copy, so the data flow has to change (`issues = pushedList(issues, x)`). 6 are the
+ambiguous places, and the 4 no input reaches cannot pass "reached". 2 are control flow. The 7B
+got both reachable ambiguous ones. A static rebinding rule (local, fresh, unshared values) or
+a repair loop with the check's evidence as feedback (construct.repair exists) are the two
+candidates; the owner's direction is the model.

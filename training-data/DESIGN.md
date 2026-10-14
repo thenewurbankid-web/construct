@@ -1,4 +1,12 @@
-# Training data for the English → atoms LoRA
+# Verified JS → atoms pairs (input for Line-1)
+
+Decision 2026-10-14: each record pairs an implementation as written (`code`) with its
+verified atom program (`program`). It was planned as English → atoms training data for a
+LoRA; there is no LoRA now. Line-1 is trained from scratch on synthetic worlds
+(construct `LINE-MODEL-ROADMAP.md`), and these verified pairs from Line's own library are
+an input to that later. The English stays in each record as a description. Sections below
+that assume English as the model's input (paraphrase and intent passes, the mix) are out of
+date until rewritten.
 
 Status: design, 2026-10-14. Built so far: the pieces named under "What already exists"
 and the corpus dataset builder (`bench/atoms/dataset.js`). `pairs.jsonl` in this folder is unrelated (shape-similarity pairs
@@ -6,7 +14,8 @@ for an embedding model).
 
 ## What the model learns
 
-Input: an English description of one function, plus its signature.
+Input: one function's implementation as written (`code`).
+(Before 2026-10-14: an English description plus its signature.)
 Output: the function body written only with Smith atoms (`when`, `equals`, `mapEach` …)
 and the syntax the transform keeps (`return`, `const`, arrows, `await`).
 
@@ -18,7 +27,8 @@ program right.
 
 ```json
 {
-  "id": "sha1 of english + program",
+  "id": "sha1 of code + program",
+  "code": "function next(state: CheckoutState): CheckoutState {\n  if (state === 'cart') return 'paying';\n  return 'done';\n}",
   "english": "next using state: return if state equals 'cart' then 'paying', otherwise 'done'.",
   "signature": "function next(state: CheckoutState): CheckoutState",
   "program": "return when(equals(state, 'cart'), () => 'paying', () => 'done');",

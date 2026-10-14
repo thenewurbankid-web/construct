@@ -1,6 +1,8 @@
-// English -> atoms training set, corpus part (training-data/DESIGN.md, "One record").
-// Each non-JSX corpus function goes through the checked converter (bench/atoms/checked.js);
-// the English is toEnglish() of the ORIGINAL JavaScript, the program is the converted body.
+// Verified JS -> atoms pairs, corpus part (training-data/DESIGN.md, "One record").
+// Each non-JSX corpus function goes through the checked converter (bench/atoms/checked.js).
+// Each record pairs `code` with `program` (training-data/DESIGN.md):
+// `code` is the original function as written, `program` the converted body. `english` is
+// toEnglish() of the original, kept as a description of the same record.
 //
 //   recordFor(fn, { converter, types, runs, seed, runtime, origin, allowUntranslated })
 //     -> { record } | { dropped: reason, detail }
@@ -17,7 +19,7 @@
 //     type (converter.alone): the whole-function check cannot see a wrong atom that later
 //     code hides
 //   - toEnglish said every part of it
-//   - no earlier record has the same English and program (fixture folders copy files, components repeat handlers)
+//   - no earlier record has the same code and program (fixture folders copy files)
 // The first rule that fails is the reason it is dropped.
 //
 // `origin` ({repo, file, name}) names the source function, so splits can keep every
@@ -84,7 +86,8 @@ function recordFor(fn, { converter, types, runs = 40, seed = 1, runtime, origin 
   const program = programOf(res.body, fn.kind);
   return {
     record: {
-      id: crypto.createHash('sha1').update(`${english.english}\n${program}`).digest('hex'),
+      id: crypto.createHash('sha1').update(`${fn.code}\n${program}`).digest('hex'),
+      code: fn.code,
       english: english.english,
       signature: signatureOf(fn.code, fn.kind),
       program,

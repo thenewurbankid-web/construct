@@ -27,9 +27,10 @@ describe('corpus records', () => {
 
   test('a checked function becomes one record in the shape DESIGN.md gives', () => {
     const { record } = build("function next(state: string): string {\n  if (state === 'cart') return 'paying';\n  return 'done';\n}");
-    assert.deepEqual(Object.keys(record), ['id', 'english', 'signature', 'program', 'atoms', 'source', 'origin', 'englishKind', 'check', 'runtime']);
+    assert.deepEqual(Object.keys(record), ['id', 'code', 'english', 'signature', 'program', 'atoms', 'source', 'origin', 'englishKind', 'check', 'runtime']);
     assert.match(record.id, /^[0-9a-f]{40}$/);
     assert.equal(record.english, "next using state: if state equals 'cart', return 'paying'; then return 'done'.");
+    assert.equal(record.code, "function next(state: string): string {\n  if (state === 'cart') return 'paying';\n  return 'done';\n}");
     assert.equal(record.signature, 'function next(state: string): string');
     assert.equal(record.program, "return when(equals(state, 'cart'), () => 'paying', () => 'done');");
     assert.deepEqual(record.atoms, ['equals', 'when']);

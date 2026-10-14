@@ -1,12 +1,12 @@
 {
  "summary": {
-  "runtime": "09aa375",
+  "runtime": "939c25c",
   "functions": 207,
   "same": 207,
   "different": 0,
   "unchecked": 0,
-  "conversionsWithoutCheck": 712,
-  "conversionsWithCheck": 777,
+  "conversionsWithoutCheck": 718,
+  "conversionsWithCheck": 783,
   "rewritesTakenBack": 0,
   "takenBackByCause": {},
   "ambiguousPlaces": 76,
@@ -281,8 +281,8 @@
    "name": "validate",
    "file": "service-schema.ts",
    "status": "same",
-   "convertedUnchecked": 6,
-   "converted": 8,
+   "convertedUnchecked": 8,
+   "converted": 10,
    "ambiguousBefore": 2,
    "decisions": [
     {
@@ -333,7 +333,7 @@
     }
    ],
    "rejected": [],
-   "body": "validate(value) {\n  const v = value as Partial<User> | null;\n  const issues: StandardSchemaIssue[] = [];\n  when(differs(typeof get(v, \"id\"), 'string'), () => issues.push({\n    message: 'expected string',\n    path: ['id']\n  }));\n  when(differs(typeof get(v, \"name\"), 'string'), () => issues.push({\n    message: 'expected string',\n    path: [{\n      key: 'name'\n    }]\n  }));\n  return when(lengthOf(issues), () => ({\n    issues\n  }), () => ({\n    value: v as User\n  }));\n}"
+   "body": "validate(value) {\n  const v = value as Partial<User> | null;\n  const issues: StandardSchemaIssue[] = [];\n  when(differs(typeOf(get(v, \"id\")), 'string'), () => issues.push({\n    message: 'expected string',\n    path: ['id']\n  }));\n  when(differs(typeOf(get(v, \"name\")), 'string'), () => issues.push({\n    message: 'expected string',\n    path: [{\n      key: 'name'\n    }]\n  }));\n  return when(lengthOf(issues), () => ({\n    issues\n  }), () => ({\n    value: v as User\n  }));\n}"
   },
   {
    "name": "safeParse",
@@ -588,7 +588,7 @@
    "ambiguousBefore": 0,
    "decisions": [],
    "rejected": [],
-   "body": "function normalizeIssues(issues: ReadonlyArray<StandardSchemaIssue>): SchemaIssue[] {\n  return mapEach(issues, issue => ({\n    message: textFrom(issue.message),\n    path: mapEach(orElse(issue.path, () => []), segment => when(and(equals(typeof segment, 'object'), () => differs(segment, null)), () => segment.key, () => segment))\n  }));\n}"
+   "body": "function normalizeIssues(issues: ReadonlyArray<StandardSchemaIssue>): SchemaIssue[] {\n  return mapEach(issues, issue => ({\n    message: textFrom(issue.message),\n    path: mapEach(orElse(issue.path, () => []), segment => when(and(isObjectType(segment), () => differs(segment, null)), () => segment.key, () => segment))\n  }));\n}"
   },
   {
    "name": "schemaError",
@@ -610,18 +610,18 @@
    "ambiguousBefore": 0,
    "decisions": [],
    "rejected": [],
-   "body": "function isThenable(value: unknown): value is PromiseLike<unknown> {\n  return and(and(equals(typeof value, 'object'), () => differs(value, null)), () => equals(typeof (value as {\n    then?: unknown;\n  }).then, 'function'));\n}"
+   "body": "function isThenable(value: unknown): value is PromiseLike<unknown> {\n  return and(and(isObjectType(value), () => differs(value, null)), () => isFunction((value as {\n    then?: unknown;\n  }).then));\n}"
   },
   {
    "name": "checkResponse",
    "file": "schema.ts",
    "status": "same",
-   "convertedUnchecked": 7,
-   "converted": 7,
+   "convertedUnchecked": 8,
+   "converted": 8,
    "ambiguousBefore": 0,
    "decisions": [],
    "rejected": [],
-   "body": "function checkResponse<S extends ResponseSchema>(schema: S, value: unknown): ServiceResult<SchemaOutput<S>> | Promise<ServiceResult<SchemaOutput<S>>> {\n  type Out = SchemaOutput<S>;\n  const toResult = (r: StandardSchemaResult<unknown>): ServiceResult<Out> => when(r.issues, () => schemaError(normalizeIssues(r.issues)), () => ({\n    status: 'ok',\n    value: r.value as Out\n  }));\n  return attempt(() => when('~standard' in schema, () => {\n    const raw = schema['~standard'].validate(value);\n    return when(isThenable(raw), () => thenPromise(resolvePromise(raw), toResult, (e: unknown) => schemaError([{\n      message: `schema threw: ${describe(e)}`,\n      path: []\n    }])), () => toResult(raw));\n  }, () => {\n    const parsed = schema.safeParse(value);\n    return when(parsed.success, () => ({\n      status: 'ok',\n      value: parsed.data as Out\n    }), () => schemaError(normalizeIssues(parsed.error.issues)));\n  }), e => schemaError([{\n    message: `schema threw: ${describe(e)}`,\n    path: []\n  }]));\n}"
+   "body": "function checkResponse<S extends ResponseSchema>(schema: S, value: unknown): ServiceResult<SchemaOutput<S>> | Promise<ServiceResult<SchemaOutput<S>>> {\n  type Out = SchemaOutput<S>;\n  const toResult = (r: StandardSchemaResult<unknown>): ServiceResult<Out> => when(r.issues, () => schemaError(normalizeIssues(r.issues)), () => ({\n    status: 'ok',\n    value: r.value as Out\n  }));\n  return attempt(() => when(hasProperty(schema, '~standard'), () => {\n    const raw = schema['~standard'].validate(value);\n    return when(isThenable(raw), () => thenPromise(resolvePromise(raw), toResult, (e: unknown) => schemaError([{\n      message: `schema threw: ${describe(e)}`,\n      path: []\n    }])), () => toResult(raw));\n  }, () => {\n    const parsed = schema.safeParse(value);\n    return when(parsed.success, () => ({\n      status: 'ok',\n      value: parsed.data as Out\n    }), () => schemaError(normalizeIssues(parsed.error.issues)));\n  }), e => schemaError([{\n    message: `schema threw: ${describe(e)}`,\n    path: []\n  }]));\n}"
   },
   {
    "name": "toResult",
@@ -1099,7 +1099,7 @@
    "ambiguousBefore": 0,
    "decisions": [],
    "rejected": [],
-   "body": "function cellOf<T>(row: T, column: Column<T>): unknown {\n  return when(equals(typeof column.accessor, 'function'), () => column.accessor(row), () => row[column.accessor]);\n}"
+   "body": "function cellOf<T>(row: T, column: Column<T>): unknown {\n  return when(isFunction(column.accessor), () => column.accessor(row), () => row[column.accessor]);\n}"
   },
   {
    "name": "toCsv",
@@ -1978,12 +1978,12 @@
    "name": "send",
    "file": "index.ts",
    "status": "same",
-   "convertedUnchecked": 15,
-   "converted": 15,
+   "convertedUnchecked": 16,
+   "converted": 16,
    "ambiguousBefore": 0,
    "decisions": [],
    "rejected": [],
-   "body": "send(state, event) {\n  return match(event.type, {\n    SET_FILTER: () => when(equals(state.filters[event.id], event.value), () => state, () => view(withKey(state.filters, event.id, event.value), state.search, state.sort)),\n    CLEAR_FILTER: () => when(not(event.id in state.filters), () => state, () => {\n      const filters = {\n        ...state.filters\n      };\n      delete filters[event.id];\n      return view(filters, state.search, state.sort);\n    }),\n    SET_SEARCH: () => when(equals(event.text, state.search), () => state, () => view(state.filters, event.text, state.sort)),\n    SORT_BY: () => view(state.filters, state.search, {\n      id: event.id,\n      desc: orElse(event.desc, () => false)\n    }),\n    TOGGLE_SORT: () => when(or(equals(state.sort, null), () => differs(state.sort.id, event.id)), () => view(state.filters, state.search, {\n      id: event.id,\n      desc: false\n    }), () => when(not(state.sort.desc), () => view(state.filters, state.search, {\n      id: event.id,\n      desc: true\n    }), () => view(state.filters, state.search, null))),\n    RESET: () => machine.init()\n  }, () => state);\n}"
+   "body": "send(state, event) {\n  return match(event.type, {\n    SET_FILTER: () => when(equals(state.filters[event.id], event.value), () => state, () => view(withKey(state.filters, event.id, event.value), state.search, state.sort)),\n    CLEAR_FILTER: () => when(not(hasProperty(state.filters, event.id)), () => state, () => {\n      const filters = {\n        ...state.filters\n      };\n      delete filters[event.id];\n      return view(filters, state.search, state.sort);\n    }),\n    SET_SEARCH: () => when(equals(event.text, state.search), () => state, () => view(state.filters, event.text, state.sort)),\n    SORT_BY: () => view(state.filters, state.search, {\n      id: event.id,\n      desc: orElse(event.desc, () => false)\n    }),\n    TOGGLE_SORT: () => when(or(equals(state.sort, null), () => differs(state.sort.id, event.id)), () => view(state.filters, state.search, {\n      id: event.id,\n      desc: false\n    }), () => when(not(state.sort.desc), () => view(state.filters, state.search, {\n      id: event.id,\n      desc: true\n    }), () => view(state.filters, state.search, null))),\n    RESET: () => machine.init()\n  }, () => state);\n}"
   },
   {
    "name": "stateOf",
@@ -2957,12 +2957,12 @@
    "name": "polling",
    "file": "index.ts",
    "status": "same",
-   "convertedUnchecked": 2,
-   "converted": 2,
+   "convertedUnchecked": 3,
+   "converted": 3,
    "ambiguousBefore": 0,
    "decisions": [],
    "rejected": [],
-   "body": "function polling<D>(input: PollInput<D>, answers: ({\n  data: D;\n} | {\n  error: unknown;\n})[]): PollState<D> {\n  let s = machine.send(machine.init(input), {\n    type: 'START'\n  }) as PollState<D>;\n  each(answers, a => {\n    when('data' in a, () => s = machine.send(s, {\n      type: 'RESOLVE',\n      data: a.data\n    }) as PollState<D>, () => s = machine.send(s, {\n      type: 'REJECT',\n      error: a.error\n    }) as PollState<D>);\n    s = machine.send(s, {\n      type: 'TICK'\n    }) as PollState<D>;\n  });\n  return s;\n}"
+   "body": "function polling<D>(input: PollInput<D>, answers: ({\n  data: D;\n} | {\n  error: unknown;\n})[]): PollState<D> {\n  let s = machine.send(machine.init(input), {\n    type: 'START'\n  }) as PollState<D>;\n  each(answers, a => {\n    when(hasProperty(a, 'data'), () => s = machine.send(s, {\n      type: 'RESOLVE',\n      data: a.data\n    }) as PollState<D>, () => s = machine.send(s, {\n      type: 'REJECT',\n      error: a.error\n    }) as PollState<D>);\n    s = machine.send(s, {\n      type: 'TICK'\n    }) as PollState<D>;\n  });\n  return s;\n}"
   },
   {
    "name": "statusOf",
@@ -3244,12 +3244,12 @@
    "name": "fieldErrors",
    "file": "index.ts",
    "status": "same",
-   "convertedUnchecked": 5,
-   "converted": 5,
+   "convertedUnchecked": 6,
+   "converted": 6,
    "ambiguousBefore": 0,
    "decisions": [],
    "rejected": [],
-   "body": "function fieldErrors(issues: Issue[]): Record<string, string> {\n  const out: Record<string, string> = {};\n  each(issues, issue => {\n    const key = joinWith(mapEach(issue.path, String), '.');\n    when(not(key in out), () => out[key] = issue.message);\n  });\n  return out;\n}"
+   "body": "function fieldErrors(issues: Issue[]): Record<string, string> {\n  const out: Record<string, string> = {};\n  each(issues, issue => {\n    const key = joinWith(mapEach(issue.path, String), '.');\n    when(not(hasProperty(out, key)), () => out[key] = issue.message);\n  });\n  return out;\n}"
   },
   {
    "name": "fromValibot",
