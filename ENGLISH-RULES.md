@@ -16,8 +16,11 @@ Owner, 2026-10-14: "incorporate English grammar into the design, like functions 
 
 1. **Where the grammar applies:** the fluent layer (`smith/fluent`) and the names of new atoms. Existing atom names
    stay as aliases, so the catalog, the codemod, the dataset and Construct's `@line/atoms` pin keep working.
-2. **What Import v2 writes into an app:** the fluent sentence, for example
-   `checks().if(n).is().greater().than(100)`, not the plain call `greaterThan(n, 100)`.
+2. **What Import v2 writes into an app (revised by the owner, 2026-10-15):** the app keeps its original typed code;
+   that is what runs, is typed and is debugged. The fluent layer is built from the JS reference and shown as a
+   generated, read-only English view of the code (also the English context for the small model). Sentences can still
+   run where a developer chooses to write them, so the runtime layer (R9 placeholders, chain types) stays. Supersedes
+   the earlier "writes the fluent sentence, for example `checks().if(n).is().greater().than(100)`, not the plain call".
 3. **Verbs:** third person singular everywhere.
 4. **Copies:** an atom that returns a changed copy starts its sentence with `clones()`, before the subject, for
    every kind of value, text and numbers included: `clones().text(s).and().trims()`.
