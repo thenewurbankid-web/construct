@@ -37,7 +37,7 @@ Bench-local until a measured win moves it into `packages/mcp`.
 
 `harness-drive.sh` runs one fresh headless session per task and arm, with only two MCP tools each and no shell or
 file tools. Default arms: CD (`task_show` + `task_try`, the brief is a note on briefBuilder's brief; the harness
-never sees the file), CD-raw (same tools, `task_try` with `raw: true`: the brief is the whole 1.5b prompt) and CW
+never sees the file), CD-raw (same tools, `task_try` with `raw: true`: the 1.5b sees only FUNCTION, SIGNATURE, SPEC and the brief as INTENT) and CW
 (`task_show_code` + `task_check`).
 
 ```

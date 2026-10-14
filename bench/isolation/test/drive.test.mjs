@@ -63,7 +63,16 @@ test('per-function routing: one note per function, a prompt that never names the
     assert.ok(p.endsWith("LEAD'S NOTE: Keep the order they were added."));
     assert.deepEqual(T06.filter((n) => n !== b.name && p.includes(n)), [], `${b.name}'s prompt names another target`);
   }
-  assert.equal(fnPrompt({ task, brief: briefs[0], names: T06, note: 'whole', raw: true }), 'whole');
+  // Raw mode: the fixed bare shape for the one function, the note as INTENT; no types, how or example.
+  for (const b of briefs) {
+    const p = fnPrompt({ task, brief: b, note: 'Return [] when nothing is stored.', raw: true });
+    assert.deepEqual(p.split('\n\n').map((s) => s.match(/^[A-Z]+(?=[: ])/)?.[0] ?? s.split(' ')[0]), ['FUNCTION', 'SIGNATURE', 'SPEC', 'INTENT', 'Write']);
+    assert.ok(p.startsWith(`FUNCTION: ${b.name} in ${task.target}.`));
+    assert.match(p, new RegExp(`^SIGNATURE: export function ${b.name}\\(`, 'm'));
+    assert.match(p, /^INTENT: Return \[\] when nothing is stored\.$/m);
+    assert.doesNotMatch(p, /HOW|EXAMPLE|TYPES IN SCOPE/);
+    assert.deepEqual(T06.filter((n) => n !== b.name && p.includes(n)), [], `${b.name}'s raw prompt names another target`);
+  }
 });
 
 test('prefilled reply: a fake model that writes a second function is cut at the first function\'s end', () => {

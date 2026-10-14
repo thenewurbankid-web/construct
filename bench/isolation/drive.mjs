@@ -22,7 +22,7 @@ import { buildBriefs } from './blocks/briefBuilder.mjs';
 import { applyPrelude, spliceFunction } from './blocks/spliceApplier.mjs';
 import { sample } from './blocks/sampler.mjs';
 import { checkBrief } from './blocks/briefGuard.mjs';
-import { fnGoal, prefilledGenerate } from './blocks/prefill.mjs';
+import { prefilledGenerate, briefSignature } from './blocks/prefill.mjs';
 import { signatures } from './lib/edit.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -137,16 +137,22 @@ function showCode(task) {
 export const prefilledCall = ({ system, user, signature, lang, seed }) =>
   prefilledGenerate({ ollama: config.ollama, model: config.models.coder, options: config.sampling.qwen, system, user, signature, lang, seed });
 
-// The 1.5b prompt for one function: briefBuilder's brief with the TASK line narrowed to that function (fnGoal),
-// plus the note (intent mode), or the note alone (raw mode). It never mentions the other target functions.
-export function fnPrompt({ task, brief, names, note, raw }) {
-  if (raw) return note;
-  const own = brief.brief.replace(/^TASK: .*$/m, `TASK: ${fnGoal(task.goal, brief.name, names)}`);
-  return `${own}\n\nLEAD'S NOTE: ${note.trim()}`;
+// The 1.5b prompt for one function, always a fixed shape that names only that function:
+//   intent mode: briefBuilder's brief (TASK already narrowed by fnGoal; types, how, example) + "LEAD'S NOTE: <note>".
+//   raw mode: the bare shape, FUNCTION + SIGNATURE + SPEC + INTENT (the note); no types, how or example.
+export function fnPrompt({ task, brief, note, raw }) {
+  if (!raw) return `${brief.brief}\n\nLEAD'S NOTE: ${note.trim()}`;
+  return [
+    `FUNCTION: ${brief.name} in ${task.target}. ${brief.exists ? 'Rewrite it.' : 'Write it (it does not exist yet).'}`,
+    `SIGNATURE: ${briefSignature(brief.brief)}`,
+    `SPEC:\n${task.spec.replace(/\n\s*\n/g, '\n')}`,
+    `INTENT: ${note.trim().replace(/\n\s*\n/g, '\n')}`,
+    `Write only the body of ${brief.name}: its signature is already written.`,
+  ].join('\n\n');
 }
 
 // One function per request. The note (intent mode: added to briefBuilder's brief for that function as "LEAD'S
-// NOTE"; raw mode: the whole 1.5b prompt) first passes briefGuard: intent only, and on a multi-function task it
+// NOTE"; raw mode: the INTENT of the bare FUNCTION/SIGNATURE/SPEC shape) first passes briefGuard: intent only, and on a multi-function task it
 // must not name the other target functions. A rejected note is logged as a try (failClass "brief").
 // Multi-function tasks need --fn: that function's round runs on the file the earlier --fn rounds built (kept per
 // run, harness, arm and task under results/claude-drive/state/), judged by tsc, or by tsc + check once every
