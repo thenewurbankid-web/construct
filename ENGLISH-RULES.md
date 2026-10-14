@@ -141,9 +141,10 @@ functionality and semantic relevance to the block it is in.
   `split` must name split points that exist in the shape (deterministic check).
 - Static sets the level, the model sets placement; when they disagree, the unit goes to the developer as a diff.
 - The model runs in shadow until it beats a static-only baseline on a labelled set; until then placement is static.
-- *A block's purpose is derived only (owner, 2026-10-15):* one sentence in a fixed shape (third-person verb + object,
-  R1), built deterministically from the block's name and the English of the atoms it uses, e.g. "lineTotal: multiplies
-  price by quantity". No docs or Trace path are used. It describes what the block does, not why.
+- *A block's purpose (owner, 2026-10-15):* one sentence in a fixed shape (third-person verb + object, R1). It comes
+  from the Trace path step that created the block, which records why it exists. With no Trace path, it is derived
+  deterministically from the block's name and the English of the atoms it uses, e.g. "lineTotal: multiplies price by
+  quantity", which says what the block does, not why. Doc comments are not used.
 
 ## Examples with real atoms
 
