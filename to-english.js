@@ -309,7 +309,7 @@ function plainCall(node, out) {
     }
     return true;
   }
-  if (!rule && !receiver && noun && args.length && plainWords.VERBS.has(verb)) {
+  if (!rule && !receiver && noun && args.length && plainWords.VERBS.has(verb) && !plainWords.NOT_A_NOUN.has(rest[0])) {
     walkJoined(args, out);
     chip(out, 'with', 'connective');
     chip(out, `${noun} ${plainWords.pastParticiple(verb)}`, 'verb', calleeNode);

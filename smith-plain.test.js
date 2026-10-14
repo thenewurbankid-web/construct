@@ -66,6 +66,8 @@ test('method calls keep "a\'s b" / "a verb b" unless they hit the table', () => 
 test('names that are not verbs keep the exact reading', () => {
   assert.equal(step('return pageCount(a);'), 'return page count of a');
   assert.equal(step('return combine(a, b);'), 'return combine of a and b');
+  assert.equal(step('return fetchOne(a);'), 'return fetch one of a');
+  assert.equal(step('return sortBy(a, b);'), 'return sort by of a and b');
 });
 
 test('past participles: regular, doubled, -e, -y and irregular', () => {

@@ -40,6 +40,10 @@ const VERBS = new Set(`
   unmount unpack unwrap update upsert validate verify wrap write zip
 `.trim().split(/\s+/));
 
+// A "noun" that starts with one of these isn't a thing being acted on
+// (fetchOne, loadAll, sortBy, mapToIds), so no participle reading.
+const NOT_A_NOUN = new Set('one all any each every many more most first last next prev previous by of to from with into for if or and else as at in on'.split(' '));
+
 const IRREGULAR = {
   bind: 'bound', break: 'broken', build: 'built', cut: 'cut', fetch: 'fetched', hide: 'hidden', keep: 'kept',
   make: 'made', read: 'read', run: 'run', send: 'sent', set: 'set', show: 'shown', split: 'split', take: 'taken',
@@ -70,4 +74,4 @@ const PLAIN_BINARY = {
 };
 const PLAIN_LOGICAL = { '&&': 'and', '||': 'or', '??': 'or else' };
 
-module.exports = { PREFIX_RULES, VERBS, IRREGULAR, pastParticiple, BOOLEAN_CALL, PLAIN_BINARY, PLAIN_LOGICAL };
+module.exports = { PREFIX_RULES, VERBS, NOT_A_NOUN, IRREGULAR, pastParticiple, BOOLEAN_CALL, PLAIN_BINARY, PLAIN_LOGICAL };
