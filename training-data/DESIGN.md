@@ -1,7 +1,7 @@
 # Training data for the English → atoms LoRA
 
-Status: design, 2026-10-14. Nothing here is built yet except the pieces named under
-"What already exists". `pairs.jsonl` in this folder is unrelated (shape-similarity pairs
+Status: design, 2026-10-14. Built so far: the pieces named under "What already exists"
+and the corpus dataset builder (`bench/atoms/dataset.js`). `pairs.jsonl` in this folder is unrelated (shape-similarity pairs
 for an embedding model).
 
 ## What the model learns
@@ -24,6 +24,7 @@ program right.
   "program": "return when(equals(state, 'cart'), () => 'paying', () => 'done');",
   "atoms": ["equals", "when"],
   "source": "corpus | synthetic | per-atom",
+  "origin": { "repo": "construct", "file": "packages/…/checkout.ts", "name": "next" },
   "englishKind": "mechanical | paraphrase | intent",
   "check": { "status": "same", "runs": 40, "exercised": 31 },
   "runtime": "414cdbd"
@@ -32,6 +33,9 @@ program right.
 
 `check` is the result of `bench/atoms/equivalence.js`. `runtime` is the Smith commit the
 program was checked against, so records can be re-checked or dropped when atoms change.
+`origin` names the source function (file relative to the repository root), so the splits
+below can keep every phrasing of one function on the same side. `signature` is the
+function's header as written, so a method has no `function` keyword.
 
 ## Where the programs come from
 
@@ -51,9 +55,21 @@ Corpus rules:
   input is weak evidence.
 - Keep partial conversions out of the first version: a record's program must have no
   `untranslated` entries other than syntax the atoms do not cover by design
-  (template literals, loops with `break`). Today that removes most of the corpus, which
-  is the main reason more source code is needed.
+  (template literals, optional calls, loops with `break`). Today that removes most of the
+  corpus, which is the main reason more source code is needed.
 - No JSX functions until there is an atom story for JSX.
+- Every atom in the program is called by its own name. A function that is itself named
+  like an atom it uses (`merged`) makes the transform write `mergedAtom`, which is not a
+  catalog name, so the function is dropped (1 in the corpus today).
+- Exact duplicates are dropped: a record whose English and program (its `id`) match an
+  earlier one is left out. Fixture folders copy the same file and components repeat the
+  same handler (9 in the corpus today: 7 copies of `checkout.ts` `next`, plus `Drawer`
+  `guard` = `Dialog` and `Switch` `change` = `Checkbox`).
+
+Built by `node bench/atoms/dataset.js` into `corpus-atoms.jsonl`, with every dropped
+function and its reason in `corpus-atoms.summary.json`. At runtime `09aa375`: 207 non-JSX
+functions, 76 kept; dropped for no rewrite 66, under half the runs exercised 30,
+untranslated 25, duplicate 9, atom renamed 1.
 
 Synthetic programs exist to cover the catalog evenly. Corpus code uses about 80 of the
 333 atoms; a model trained only on it will not know the rest exist.
@@ -110,8 +126,8 @@ applies to model output whenever a reference or tests exist.
 
 ## What has to be built, in order
 
-1. A dataset builder: corpus → checked program → mechanical English → one JSONL file.
-   Small; everything it calls exists.
+1. ~~A dataset builder: corpus → checked program → mechanical English → one JSONL file.~~
+   Built: `bench/atoms/dataset.js` → `corpus-atoms.jsonl` (see "Corpus rules").
 2. A way to pull in more TypeScript (the corpus loader reads one hard-coded repository).
 3. The synthetic program generator.
 4. The paraphrase and intent passes, with the round-trip check and the sampling review.
