@@ -1,0 +1,16 @@
+{
+  "benefit": "Editor and small model read the same lexicon",
+  "branch": "line/fluent/catchup",
+  "contract": "docs/line/fluent/TYPESTATE-v7.md section C step 15",
+  "linesAdded": 0,
+  "linesRemoved": 0,
+  "note": "Waits on plan approval",
+  "order": 15,
+  "parent": "E7",
+  "progress": 0,
+  "quickWin": false,
+  "skipped": true,
+  "status": "todo",
+  "title": "LSP and student on the same data",
+  "version": null
+}

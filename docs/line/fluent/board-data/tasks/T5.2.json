@@ -2,13 +2,14 @@
   "benefit": "Any agent uses it with no setup.",
   "contract": "Two tools over the same LSP/CLI code.",
   "etaAt": "2026-10-15T06:30:00.000Z",
-  "linesAdded": 0,
-  "linesRemoved": 0,
+  "linesAdded": 284,
+  "linesRemoved": 11,
+  "note": "Merged (11644700); mcp fluent 7/7, tools 24/24, startup 3/3, registry 8/8",
   "order": 2,
   "parent": "E5",
-  "progress": 0,
+  "progress": 100,
   "quickWin": false,
-  "status": "todo",
+  "status": "done",
   "title": "MCP tools line_english, line_atoms",
   "version": null
 }

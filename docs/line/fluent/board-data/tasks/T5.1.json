@@ -2,13 +2,14 @@
   "benefit": "New APIs join the library in minutes.",
   "contract": "One reference entry -> C2 via the stage 1 pipeline -> catalog after approval.",
   "etaAt": "2026-10-15T06:00:00.000Z",
-  "linesAdded": 0,
-  "linesRemoved": 0,
+  "linesAdded": 770,
+  "linesRemoved": 91,
+  "note": "Merged 491b1c17 + catalog fix 8c946a93 (approved.json survives gen-atoms); line-fluent 293/293, smith 760/760",
   "order": 1,
   "parent": "E5",
-  "progress": 0,
+  "progress": 100,
   "quickWin": false,
-  "status": "todo",
+  "status": "done",
   "title": "Atom generator for a new JS API",
   "version": null
 }

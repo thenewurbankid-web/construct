@@ -1,0 +1,15 @@
+{
+  "benefit": "An owner-confirmed atom joins the library with its verb, check set and fluent runtime.",
+  "branch": "line/fluent/t1-4-library-run",
+  "contract": "lib-approved.mjs, gen-atoms approved.ts, gaps/cli choose (279719a0, 510ed68e)",
+  "linesAdded": 0,
+  "linesRemoved": 0,
+  "note": "Built by the cloud session",
+  "order": 9,
+  "parent": "E1",
+  "progress": 100,
+  "quickWin": false,
+  "status": "done",
+  "title": "Approved-atom registry",
+  "version": null
+}

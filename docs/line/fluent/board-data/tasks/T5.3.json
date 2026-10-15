@@ -2,13 +2,14 @@
   "benefit": "The no-code reading surface.",
   "contract": "View beside code; technical detail collapsed.",
   "etaAt": "2026-10-15T07:00:00.000Z",
-  "linesAdded": 0,
-  "linesRemoved": 0,
+  "linesAdded": 371,
+  "linesRemoved": 6,
+  "note": "Merged ffe87de2 + registry fix bca4a1da (GET /api/line/english = line.englishView); server+client 23/23, gate 2/2",
   "order": 3,
   "parent": "E5",
-  "progress": 0,
+  "progress": 100,
   "quickWin": false,
-  "status": "todo",
+  "status": "done",
   "title": "Cockpit English panel",
   "version": null
 }

@@ -4,9 +4,10 @@
   "etaAt": "2026-10-15T04:00:00.000Z",
   "linesAdded": 0,
   "linesRemoved": 0,
+  "note": "Merged (66f3286a); hover 7/7",
   "order": 2,
   "parent": "E4",
-  "progress": 0,
+  "progress": 100,
   "quickWin": false,
   "risks": [
     {
@@ -14,7 +15,7 @@
       "risk": "Needs the live index from wave 3, not on private"
     }
   ],
-  "status": "todo",
+  "status": "done",
   "title": "Hover: English view",
-  "version": null
+  "version": "fluent-v0.2.0"
 }

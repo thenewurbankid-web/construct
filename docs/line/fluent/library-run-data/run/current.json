@@ -1,0 +1,1896 @@
+{
+  "done": 650,
+  "entries": 2378,
+  "errors": 0,
+  "inLibrary": 84,
+  "inside": {
+    "calls": 1307,
+    "costUsd": 0.3789,
+    "entries": 1307,
+    "errors": 0,
+    "failedOn": {
+      "equivalence": 271,
+      "grammar": 403,
+      "schema": 90,
+      "types": 4
+    },
+    "minutes": 49.7,
+    "passRate": 0.4973221117061974,
+    "passed": 650,
+    "tokensIn": 598903.0000000007,
+    "tokensOut": 632796.9999999991
+  },
+  "knownGaps": 0,
+  "models": {
+    "inside": "haiku",
+    "outside": "opus"
+  },
+  "outside": {
+    "calls": 0,
+    "costUsd": 0,
+    "entries": 0,
+    "errors": 0,
+    "failedOn": {},
+    "minutes": 0,
+    "passRate": 0,
+    "passed": 0,
+    "tokensIn": 0,
+    "tokensOut": 0
+  },
+  "scope": "Full JS reference: 2,378 entries · paused here to continue on the owner's Mac (1,307 results so far)",
+  "sections": {
+    "AbortController": {
+      "done": 0,
+      "entries": 3,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "AbortSignal": {
+      "done": 0,
+      "entries": 12,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "AggregateError": {
+      "done": 1,
+      "entries": 5,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 1,
+      "outside": 0,
+      "user": 0
+    },
+    "Array": {
+      "done": 59,
+      "entries": 67,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 59,
+      "outside": 0,
+      "user": 0
+    },
+    "ArrayBuffer": {
+      "done": 14,
+      "entries": 14,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 14,
+      "outside": 0,
+      "user": 0
+    },
+    "ArrayBufferTypes": {
+      "done": 0,
+      "entries": 2,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "ArrayBufferView": {
+      "done": 0,
+      "entries": 3,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "ArrayIterator": {
+      "done": 0,
+      "entries": 1,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "ArrayLike": {
+      "done": 0,
+      "entries": 2,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "AsyncGenerator": {
+      "done": 0,
+      "entries": 4,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "AsyncGeneratorFunction": {
+      "done": 0,
+      "entries": 5,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "AsyncGeneratorFunctionConstructor": {
+      "done": 0,
+      "entries": 5,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "AsyncIterable": {
+      "done": 0,
+      "entries": 1,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "AsyncIterableIterator": {
+      "done": 0,
+      "entries": 1,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "AsyncIterator": {
+      "done": 0,
+      "entries": 3,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "AsyncIteratorObject": {
+      "done": 0,
+      "entries": 1,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "Atomics": {
+      "done": 4,
+      "entries": 26,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 4,
+      "outside": 0,
+      "user": 0
+    },
+    "BigInt": {
+      "done": 1,
+      "entries": 7,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 1,
+      "outside": 0,
+      "user": 0
+    },
+    "BigInt64Array": {
+      "done": 14,
+      "entries": 54,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 14,
+      "outside": 0,
+      "user": 0
+    },
+    "BigIntToLocaleStringOptions": {
+      "done": 0,
+      "entries": 15,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "BigUint64Array": {
+      "done": 36,
+      "entries": 54,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 36,
+      "outside": 0,
+      "user": 0
+    },
+    "Blob": {
+      "done": 0,
+      "entries": 8,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "Boolean": {
+      "done": 1,
+      "entries": 3,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 1,
+      "outside": 0,
+      "user": 0
+    },
+    "BroadcastChannel": {
+      "done": 0,
+      "entries": 10,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "ByteLengthQueuingStrategy": {
+      "done": 0,
+      "entries": 3,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "CallableFunction": {
+      "done": 0,
+      "entries": 5,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "CloseEvent": {
+      "done": 0,
+      "entries": 4,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "CompressionStream": {
+      "done": 0,
+      "entries": 3,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "ConcatArray": {
+      "done": 0,
+      "entries": 4,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "CountQueuingStrategy": {
+      "done": 0,
+      "entries": 3,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "Crypto": {
+      "done": 0,
+      "entries": 4,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "CryptoKey": {
+      "done": 0,
+      "entries": 5,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "CustomEvent": {
+      "done": 0,
+      "entries": 3,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "DOMException": {
+      "done": 0,
+      "entries": 54,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "DataView": {
+      "done": 20,
+      "entries": 27,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 20,
+      "outside": 0,
+      "user": 0
+    },
+    "Date": {
+      "done": 32,
+      "entries": 62,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 32,
+      "outside": 0,
+      "user": 0
+    },
+    "DecompressionStream": {
+      "done": 0,
+      "entries": 3,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "Error": {
+      "done": 4,
+      "entries": 8,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 4,
+      "outside": 0,
+      "user": 0
+    },
+    "ErrorOptions": {
+      "done": 0,
+      "entries": 1,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "EvalError": {
+      "done": 2,
+      "entries": 4,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 2,
+      "outside": 0,
+      "user": 0
+    },
+    "Event": {
+      "done": 0,
+      "entries": 27,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "EventTarget": {
+      "done": 0,
+      "entries": 4,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "File": {
+      "done": 0,
+      "entries": 4,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "FinalizationRegistry": {
+      "done": 4,
+      "entries": 4,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 4,
+      "outside": 0,
+      "user": 0
+    },
+    "Float16Array": {
+      "done": 38,
+      "entries": 56,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 38,
+      "outside": 0,
+      "user": 0
+    },
+    "Float32Array": {
+      "done": 31,
+      "entries": 59,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 31,
+      "outside": 0,
+      "user": 0
+    },
+    "Float64Array": {
+      "done": 32,
+      "entries": 59,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 32,
+      "outside": 0,
+      "user": 0
+    },
+    "FormData": {
+      "done": 0,
+      "entries": 12,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "Function": {
+      "done": 1,
+      "entries": 12,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 1,
+      "outside": 0,
+      "user": 0
+    },
+    "Generator": {
+      "done": 0,
+      "entries": 4,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "GeneratorFunction": {
+      "done": 0,
+      "entries": 6,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "GeneratorFunctionConstructor": {
+      "done": 0,
+      "entries": 5,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "Headers": {
+      "done": 0,
+      "entries": 8,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "IArguments": {
+      "done": 0,
+      "entries": 4,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "ImportAssertions": {
+      "done": 0,
+      "entries": 1,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "ImportAttributes": {
+      "done": 0,
+      "entries": 1,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "ImportCallOptions": {
+      "done": 0,
+      "entries": 2,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "Int16Array": {
+      "done": 29,
+      "entries": 59,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 29,
+      "outside": 0,
+      "user": 0
+    },
+    "Int32Array": {
+      "done": 27,
+      "entries": 59,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 27,
+      "outside": 0,
+      "user": 0
+    },
+    "Int8Array": {
+      "done": 38,
+      "entries": 59,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 38,
+      "outside": 0,
+      "user": 0
+    },
+    "Intl": {
+      "done": 0,
+      "entries": 163,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "Iterable": {
+      "done": 0,
+      "entries": 1,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "IterableIterator": {
+      "done": 0,
+      "entries": 1,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "Iterator": {
+      "done": 9,
+      "entries": 19,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 9,
+      "outside": 0,
+      "user": 0
+    },
+    "IteratorReturnResult": {
+      "done": 0,
+      "entries": 2,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "IteratorYieldResult": {
+      "done": 0,
+      "entries": 2,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "JSON": {
+      "done": 2,
+      "entries": 4,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 2,
+      "outside": 0,
+      "user": 0
+    },
+    "Map": {
+      "done": 9,
+      "entries": 18,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 9,
+      "outside": 0,
+      "user": 0
+    },
+    "MapIterator": {
+      "done": 0,
+      "entries": 1,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "Math": {
+      "done": 9,
+      "entries": 45,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 9,
+      "outside": 0,
+      "user": 0
+    },
+    "MessageChannel": {
+      "done": 0,
+      "entries": 3,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "MessageEvent": {
+      "done": 0,
+      "entries": 7,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "MessagePort": {
+      "done": 0,
+      "entries": 9,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "Navigator": {
+      "done": 0,
+      "entries": 21,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "NewableFunction": {
+      "done": 0,
+      "entries": 5,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "Number": {
+      "done": 10,
+      "entries": 23,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 10,
+      "outside": 0,
+      "user": 0
+    },
+    "Object": {
+      "done": 9,
+      "entries": 43,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 9,
+      "outside": 0,
+      "user": 0
+    },
+    "Performance": {
+      "done": 0,
+      "entries": 21,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "PerformanceEntry": {
+      "done": 0,
+      "entries": 6,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "PerformanceMark": {
+      "done": 0,
+      "entries": 2,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "PerformanceMeasure": {
+      "done": 0,
+      "entries": 2,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "PerformanceObserver": {
+      "done": 0,
+      "entries": 5,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "PerformanceObserverEntryList": {
+      "done": 0,
+      "entries": 4,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "PerformanceResourceTiming": {
+      "done": 0,
+      "entries": 21,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "Promise": {
+      "done": 3,
+      "entries": 20,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 3,
+      "outside": 0,
+      "user": 0
+    },
+    "PromiseFulfilledResult": {
+      "done": 0,
+      "entries": 2,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "PromiseLike": {
+      "done": 0,
+      "entries": 1,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "PromiseRejectedResult": {
+      "done": 0,
+      "entries": 2,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "PromiseWithResolvers": {
+      "done": 0,
+      "entries": 3,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "PropertyDescriptor": {
+      "done": 0,
+      "entries": 6,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "PropertyDescriptorMap": {
+      "done": 0,
+      "entries": 1,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "Proxy": {
+      "done": 2,
+      "entries": 2,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 2,
+      "outside": 0,
+      "user": 0
+    },
+    "ProxyHandler": {
+      "done": 0,
+      "entries": 13,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "RangeError": {
+      "done": 0,
+      "entries": 4,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "ReadableByteStreamController": {
+      "done": 0,
+      "entries": 6,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "ReadableStream": {
+      "done": 0,
+      "entries": 11,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "ReadableStreamBYOBReader": {
+      "done": 0,
+      "entries": 3,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "ReadableStreamBYOBRequest": {
+      "done": 0,
+      "entries": 4,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "ReadableStreamDefaultController": {
+      "done": 0,
+      "entries": 5,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "ReadableStreamDefaultReader": {
+      "done": 0,
+      "entries": 3,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "ReadonlyArray": {
+      "done": 0,
+      "entries": 44,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "ReadonlyMap": {
+      "done": 0,
+      "entries": 8,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "ReadonlySet": {
+      "done": 0,
+      "entries": 14,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "ReadonlySetLike": {
+      "done": 0,
+      "entries": 3,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "ReferenceError": {
+      "done": 0,
+      "entries": 4,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "Reflect": {
+      "done": 0,
+      "entries": 16,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "RegExp": {
+      "done": 23,
+      "entries": 47,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 23,
+      "outside": 0,
+      "user": 0
+    },
+    "RegExpExecArray": {
+      "done": 0,
+      "entries": 5,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "RegExpIndicesArray": {
+      "done": 0,
+      "entries": 1,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "RegExpMatchArray": {
+      "done": 0,
+      "entries": 5,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "RegExpStringIterator": {
+      "done": 0,
+      "entries": 1,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "Request": {
+      "done": 0,
+      "entries": 15,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "Response": {
+      "done": 0,
+      "entries": 12,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "Set": {
+      "done": 7,
+      "entries": 21,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 7,
+      "outside": 0,
+      "user": 0
+    },
+    "SetIterator": {
+      "done": 0,
+      "entries": 1,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "SharedArrayBuffer": {
+      "done": 9,
+      "entries": 9,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 9,
+      "outside": 0,
+      "user": 0
+    },
+    "String": {
+      "done": 33,
+      "entries": 71,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 33,
+      "outside": 0,
+      "user": 0
+    },
+    "StringIterator": {
+      "done": 0,
+      "entries": 1,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "SubtleCrypto": {
+      "done": 0,
+      "entries": 19,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "Symbol": {
+      "done": 19,
+      "entries": 21,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 19,
+      "outside": 0,
+      "user": 0
+    },
+    "SyntaxError": {
+      "done": 0,
+      "entries": 4,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "TemplateStringsArray": {
+      "done": 0,
+      "entries": 1,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "TextDecoder": {
+      "done": 0,
+      "entries": 2,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "TextDecoderStream": {
+      "done": 0,
+      "entries": 3,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "TextEncoder": {
+      "done": 0,
+      "entries": 3,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "TextEncoderStream": {
+      "done": 0,
+      "entries": 3,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "TransformStream": {
+      "done": 0,
+      "entries": 3,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "TransformStreamDefaultController": {
+      "done": 0,
+      "entries": 5,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "TypeError": {
+      "done": 0,
+      "entries": 4,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "TypedPropertyDescriptor": {
+      "done": 0,
+      "entries": 6,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "URIError": {
+      "done": 0,
+      "entries": 4,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "URL": {
+      "done": 0,
+      "entries": 19,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "URLSearchParams": {
+      "done": 0,
+      "entries": 11,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "Uint16Array": {
+      "done": 37,
+      "entries": 59,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 37,
+      "outside": 0,
+      "user": 0
+    },
+    "Uint32Array": {
+      "done": 27,
+      "entries": 59,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 27,
+      "outside": 0,
+      "user": 0
+    },
+    "Uint8Array": {
+      "done": 31,
+      "entries": 59,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 31,
+      "outside": 0,
+      "user": 0
+    },
+    "Uint8ClampedArray": {
+      "done": 21,
+      "entries": 59,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 21,
+      "outside": 0,
+      "user": 0
+    },
+    "WeakKeyTypes": {
+      "done": 0,
+      "entries": 2,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "WeakMap": {
+      "done": 2,
+      "entries": 7,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 2,
+      "outside": 0,
+      "user": 0
+    },
+    "WeakRef": {
+      "done": 0,
+      "entries": 3,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "WeakSet": {
+      "done": 0,
+      "entries": 6,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "WebSocket": {
+      "done": 0,
+      "entries": 25,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "WritableStream": {
+      "done": 0,
+      "entries": 5,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "WritableStreamDefaultController": {
+      "done": 0,
+      "entries": 3,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "WritableStreamDefaultWriter": {
+      "done": 0,
+      "entries": 8,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "console": {
+      "done": 0,
+      "entries": 20,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "crypto": {
+      "done": 0,
+      "entries": 3,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "globalThis": {
+      "done": 0,
+      "entries": 11,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "navigator": {
+      "done": 0,
+      "entries": 20,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "performance": {
+      "done": 0,
+      "entries": 20,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "syntax: classes": {
+      "done": 0,
+      "entries": 19,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "syntax: declarations": {
+      "done": 0,
+      "entries": 9,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "syntax: functions": {
+      "done": 0,
+      "entries": 15,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "syntax: lexical": {
+      "done": 0,
+      "entries": 5,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "syntax: literals": {
+      "done": 0,
+      "entries": 30,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "syntax: modules": {
+      "done": 0,
+      "entries": 10,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "syntax: operators": {
+      "done": 0,
+      "entries": 42,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "syntax: statements": {
+      "done": 0,
+      "entries": 26,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "web globals": {
+      "done": 0,
+      "entries": 9,
+      "errors": 0,
+      "gaps": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    }
+  },
+  "startedAt": "2026-10-15T05:50:03.682Z",
+  "status": "stopped",
+  "tail": [
+    {
+      "check": "equivalence",
+      "costUsd": 0.0003,
+      "decision": "existing",
+      "key": "Uint8ClampedArray.prototype.some",
+      "model": "haiku",
+      "reason": null,
+      "refusal": "On input list = [], test = {\"function\":\"f\",\"length\":0}, the answer returns false but the reference throws TypeError.",
+      "result": "refused",
+      "section": "Uint8ClampedArray",
+      "sentence": null,
+      "stage": "inside",
+      "t": "2026-10-15T05:58:28.313Z",
+      "tries": 1
+    },
+    {
+      "check": "equivalence",
+      "costUsd": 0.0003,
+      "decision": "existing",
+      "key": "Uint8ClampedArray.prototype.sort",
+      "model": "haiku",
+      "reason": null,
+      "refusal": "On the reference case list = {\"Uint8ClampedArray\":[3,1,2]}, order = {\"function\":\"(anonymous)\",\"length\":2}, the answer returns [1,2,3] but the reference returns {\"Uint8ClampedArray\":[1,2,3]}.",
+      "result": "refused",
+      "section": "Uint8ClampedArray",
+      "sentence": null,
+      "stage": "inside",
+      "t": "2026-10-15T05:58:28.313Z",
+      "tries": 1
+    },
+    {
+      "check": null,
+      "costUsd": 0.0003,
+      "decision": "not-expressible",
+      "key": "Uint8ClampedArray.prototype.subarray",
+      "model": "haiku",
+      "reason": "subarray returns a live view that shares memory with the original array, which no copy-based sentence can express.",
+      "refusal": null,
+      "result": "pass",
+      "section": "Uint8ClampedArray",
+      "sentence": null,
+      "stage": "inside",
+      "t": "2026-10-15T05:58:28.313Z",
+      "tries": 1
+    },
+    {
+      "check": "grammar",
+      "costUsd": 0.0003,
+      "decision": "existing",
+      "key": "Uint8ClampedArray.prototype.toLocaleString #2",
+      "model": "haiku",
+      "reason": null,
+      "refusal": "The sentence returns its formated (R10); end it with `.andThe().formated()`, not `.formatted()`.",
+      "result": "refused",
+      "section": "Uint8ClampedArray",
+      "sentence": null,
+      "stage": "inside",
+      "t": "2026-10-15T05:58:28.313Z",
+      "tries": 1
+    },
+    {
+      "check": "grammar",
+      "costUsd": 0.0003,
+      "decision": "existing",
+      "key": "Uint8ClampedArray.prototype.toString",
+      "model": "haiku",
+      "reason": null,
+      "refusal": "The sentence `list(xs).becomes().text().andThe().text()` does not fit the grammar: the shape `list(·).VERB().text()` is not one the grammar has. Sentences with the nearest shapes: `list(xs).takes().last().andThe().last()`, `list(xs).joins().with(sep).andThe().joined()`, `list(xs).takes().first().andThe().first()`; write it in one of those shapes.",
+      "result": "refused",
+      "section": "Uint8ClampedArray",
+      "sentence": null,
+      "stage": "inside",
+      "t": "2026-10-15T05:58:28.313Z",
+      "tries": 1
+    },
+    {
+      "check": "grammar",
+      "costUsd": 0.0003,
+      "decision": "existing",
+      "key": "Uint8ClampedArray.prototype.valueOf",
+      "model": "haiku",
+      "reason": null,
+      "refusal": "The sentence `value(v).becomes().primitive().andThe().primitive()` does not fit the grammar: `primitive` is not a word the grammar knows, and only a new verb (a third-person form like `fills`) can join it. Sentences with the nearest shapes: `text(s).splits().by(sep).andThe().parts()`, `list(xs).takes().last().andThe().last()`, `list(xs).joins().with(sep).andThe().joined()`; write it in one of those shapes.",
+      "result": "refused",
+      "section": "Uint8ClampedArray",
+      "sentence": null,
+      "stage": "inside",
+      "t": "2026-10-15T05:58:28.313Z",
+      "tries": 1
+    },
+    {
+      "check": "grammar",
+      "costUsd": 0.0003,
+      "decision": "new-atom",
+      "key": "Uint8ClampedArray.prototype.[index]",
+      "model": "haiku",
+      "reason": null,
+      "refusal": "The sentence returns its taken (R10); end it with `.andThe().taken()`, not `.item()`.",
+      "result": "refused",
+      "section": "Uint8ClampedArray",
+      "sentence": null,
+      "stage": "inside",
+      "t": "2026-10-15T05:58:28.313Z",
+      "tries": 1
+    },
+    {
+      "check": "grammar",
+      "costUsd": 0.0004,
+      "decision": "new-atom",
+      "key": "new Uint8ClampedArray",
+      "model": "haiku",
+      "reason": null,
+      "refusal": "The sentence does not say `new`, `uint8`, `clamped`, `array` (from new Uint8ClampedArray); without it the step reads the same as a different one. Put the word in the sentence.",
+      "result": "refused",
+      "section": "Uint8ClampedArray",
+      "sentence": null,
+      "stage": "inside",
+      "t": "2026-10-15T05:58:28.615Z",
+      "tries": 1
+    },
+    {
+      "check": null,
+      "costUsd": 0.0004,
+      "decision": "existing",
+      "key": "Uint8ClampedArray.from",
+      "model": "haiku",
+      "reason": null,
+      "refusal": null,
+      "result": "pass",
+      "section": "Uint8ClampedArray",
+      "sentence": "clones().list(elements).and().clamps().andThe().clamped()",
+      "stage": "inside",
+      "t": "2026-10-15T05:58:28.615Z",
+      "tries": 1
+    },
+    {
+      "check": null,
+      "costUsd": 0.0004,
+      "decision": "not-expressible",
+      "key": "Uint8ClampedArray.from #2",
+      "model": "haiku",
+      "reason": "The thisArg argument has no slot in any listed shape, so the mapping call cannot be carried faithfully.",
+      "refusal": null,
+      "result": "pass",
+      "section": "Uint8ClampedArray",
+      "sentence": null,
+      "stage": "inside",
+      "t": "2026-10-15T05:58:28.615Z",
+      "tries": 1
+    },
+    {
+      "check": null,
+      "costUsd": 0.0004,
+      "decision": "not-expressible",
+      "key": "new Uint8ClampedArray #2",
+      "model": "haiku",
+      "reason": "Building an empty array takes no input, and every listed shape starts from an existing list or text.",
+      "refusal": null,
+      "result": "pass",
+      "section": "Uint8ClampedArray",
+      "sentence": null,
+      "stage": "inside",
+      "t": "2026-10-15T05:58:28.615Z",
+      "tries": 1
+    },
+    {
+      "check": null,
+      "costUsd": 0.0004,
+      "decision": "not-expressible",
+      "key": "new Uint8ClampedArray #3",
+      "model": "haiku",
+      "reason": "Building a zero-filled array from a length has no shape, since every listed list shape starts from an existing list.",
+      "refusal": null,
+      "result": "pass",
+      "section": "Uint8ClampedArray",
+      "sentence": null,
+      "stage": "inside",
+      "t": "2026-10-15T05:58:28.615Z",
+      "tries": 1
+    },
+    {
+      "check": null,
+      "costUsd": 0.0004,
+      "decision": "existing",
+      "key": "new Uint8ClampedArray #4",
+      "model": "haiku",
+      "reason": null,
+      "refusal": null,
+      "result": "pass",
+      "section": "Uint8ClampedArray",
+      "sentence": "clones().list(array).and().clamps().andThe().clamped()",
+      "stage": "inside",
+      "t": "2026-10-15T05:58:28.615Z",
+      "tries": 1
+    },
+    {
+      "check": null,
+      "costUsd": 0.0004,
+      "decision": "not-expressible",
+      "key": "new Uint8ClampedArray #5",
+      "model": "haiku",
+      "reason": "A view over a buffer shares memory and takes optional offset and length, which no listed shape carries.",
+      "refusal": null,
+      "result": "pass",
+      "section": "Uint8ClampedArray",
+      "sentence": null,
+      "stage": "inside",
+      "t": "2026-10-15T05:58:28.615Z",
+      "tries": 1
+    },
+    {
+      "check": null,
+      "costUsd": 0.0004,
+      "decision": "not-expressible",
+      "key": "new Uint8ClampedArray #6",
+      "model": "haiku",
+      "reason": "A view over a buffer shares memory and takes optional offset and length, which no listed shape carries.",
+      "refusal": null,
+      "result": "pass",
+      "section": "Uint8ClampedArray",
+      "sentence": null,
+      "stage": "inside",
+      "t": "2026-10-15T05:58:28.615Z",
+      "tries": 1
+    },
+    {
+      "check": null,
+      "costUsd": 0.0004,
+      "decision": "not-expressible",
+      "key": "new Uint8ClampedArray #7",
+      "model": "haiku",
+      "reason": "The argument may be either a list or a buffer, and no listed shape chooses between the two kinds of input.",
+      "refusal": null,
+      "result": "pass",
+      "section": "Uint8ClampedArray",
+      "sentence": null,
+      "stage": "inside",
+      "t": "2026-10-15T05:58:28.615Z",
+      "tries": 1
+    },
+    {
+      "check": null,
+      "costUsd": 0.0004,
+      "decision": "not-expressible",
+      "key": "Uint8ClampedArray.BYTES_PER_ELEMENT",
+      "model": "haiku",
+      "reason": "Reading a fixed constant property has no shape in the catalog.",
+      "refusal": null,
+      "result": "pass",
+      "section": "Uint8ClampedArray",
+      "sentence": null,
+      "stage": "inside",
+      "t": "2026-10-15T05:58:28.616Z",
+      "tries": 1
+    },
+    {
+      "check": "equivalence",
+      "costUsd": 0.0004,
+      "decision": "existing",
+      "key": "Uint8ClampedArray.of",
+      "model": "haiku",
+      "reason": null,
+      "refusal": "On the reference case items = 1, the answer throws TypeError but the reference returns {\"Uint8ClampedArray\":[1]}.",
+      "result": "refused",
+      "section": "Uint8ClampedArray",
+      "sentence": null,
+      "stage": "inside",
+      "t": "2026-10-15T05:58:28.616Z",
+      "tries": 1
+    },
+    {
+      "check": null,
+      "costUsd": 0.0004,
+      "decision": "existing",
+      "key": "Uint8ClampedArray.from #3",
+      "model": "haiku",
+      "reason": null,
+      "refusal": null,
+      "result": "pass",
+      "section": "Uint8ClampedArray",
+      "sentence": "clones().list(arrayLike).and().clamps().andThe().clamped()",
+      "stage": "inside",
+      "t": "2026-10-15T05:58:28.616Z",
+      "tries": 1
+    },
+    {
+      "check": null,
+      "costUsd": 0.0004,
+      "decision": "not-expressible",
+      "key": "Uint8ClampedArray.from #4",
+      "model": "haiku",
+      "reason": "The thisArg argument has no slot in any listed shape, so the mapping call cannot be carried faithfully.",
+      "refusal": null,
+      "result": "pass",
+      "section": "Uint8ClampedArray",
+      "sentence": null,
+      "stage": "inside",
+      "t": "2026-10-15T05:58:28.616Z",
+      "tries": 1
+    },
+    {
+      "check": null,
+      "costUsd": 0.0004,
+      "decision": "not-expressible",
+      "key": "Uint8ClampedArray.prototype.toLocaleString",
+      "model": "haiku",
+      "reason": "The locales and options arguments need two slots, and the list-with shape carries only one argument.",
+      "refusal": null,
+      "result": "pass",
+      "section": "Uint8ClampedArray",
+      "sentence": null,
+      "stage": "inside",
+      "t": "2026-10-15T05:58:28.616Z",
+      "tries": 1
+    },
+    {
+      "check": null,
+      "costUsd": 0.0004,
+      "decision": "not-expressible",
+      "key": "Uint8ClampedArray.prototype.[Symbol.iterator]",
+      "model": "haiku",
+      "reason": "Returning a live iterator is not a value shape in the catalog.",
+      "refusal": null,
+      "result": "pass",
+      "section": "Uint8ClampedArray",
+      "sentence": null,
+      "stage": "inside",
+      "t": "2026-10-15T05:58:28.616Z",
+      "tries": 1
+    },
+    {
+      "check": "schema",
+      "costUsd": 0.0004,
+      "decision": "existing",
+      "key": "Uint8ClampedArray.prototype.entries",
+      "model": "haiku",
+      "reason": null,
+      "refusal": "Field `sentence` is empty; write the Atomic English sentence as a non-empty string.",
+      "result": "refused",
+      "section": "Uint8ClampedArray",
+      "sentence": null,
+      "stage": "inside",
+      "t": "2026-10-15T05:58:28.616Z",
+      "tries": 1
+    },
+    {
+      "check": "schema",
+      "costUsd": 0.0004,
+      "decision": "existing",
+      "key": "Uint8ClampedArray.prototype.keys",
+      "model": "haiku",
+      "reason": null,
+      "refusal": "Field `sentence` is empty; write the Atomic English sentence as a non-empty string.",
+      "result": "refused",
+      "section": "Uint8ClampedArray",
+      "sentence": null,
+      "stage": "inside",
+      "t": "2026-10-15T05:58:28.616Z",
+      "tries": 1
+    },
+    {
+      "check": "schema",
+      "costUsd": 0.0004,
+      "decision": "existing",
+      "key": "Uint8ClampedArray.prototype.values",
+      "model": "haiku",
+      "reason": null,
+      "refusal": "Field `sentence` is empty; write the Atomic English sentence as a non-empty string.",
+      "result": "refused",
+      "section": "Uint8ClampedArray",
+      "sentence": null,
+      "stage": "inside",
+      "t": "2026-10-15T05:58:28.616Z",
+      "tries": 1
+    },
+    {
+      "check": null,
+      "costUsd": 0.0004,
+      "decision": "not-expressible",
+      "key": "Uint8ClampedArray.prototype.[Symbol.toStringTag]",
+      "model": "haiku",
+      "reason": "A fixed string property has no shape in the catalog.",
+      "refusal": null,
+      "result": "pass",
+      "section": "Uint8ClampedArray",
+      "sentence": null,
+      "stage": "inside",
+      "t": "2026-10-15T05:58:28.616Z",
+      "tries": 1
+    },
+    {
+      "check": "equivalence",
+      "costUsd": 0.0004,
+      "decision": "existing",
+      "key": "Uint8ClampedArray.prototype.includes",
+      "model": "haiku",
+      "reason": null,
+      "refusal": "On input xs = [], x = 6.4e-323, fromIndex = 0, the answer returns false but the reference throws TypeError.",
+      "result": "refused",
+      "section": "Uint8ClampedArray",
+      "sentence": null,
+      "stage": "inside",
+      "t": "2026-10-15T05:58:28.616Z",
+      "tries": 1
+    }
+  ],
+  "updatedAt": "2026-10-15T05:59:07.754Z",
+  "user": {
+    "calls": 0,
+    "costUsd": 0,
+    "entries": 0,
+    "errors": 0,
+    "failedOn": {},
+    "minutes": 0,
+    "passRate": 0,
+    "passed": 0,
+    "tokensIn": 0,
+    "tokensOut": 0
+  }
+}

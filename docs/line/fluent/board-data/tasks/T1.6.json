@@ -1,0 +1,15 @@
+{
+  "benefit": "Every sentence says what it returns; the library never mutates or has effects.",
+  "branch": "line/fluent/t1-4-library-run",
+  "contract": "ENGLISH-RULES.md R10/R11; lib-return.mjs; returns.ts; gen-atoms excludes impure members (52f92182, 3ccbe7b5)",
+  "linesAdded": 0,
+  "linesRemoved": 0,
+  "note": "Catalog 338 -> 292 atoms under R11",
+  "order": 6,
+  "parent": "E1",
+  "progress": 100,
+  "quickWin": false,
+  "status": "done",
+  "title": "R10 return names and R11 pure library",
+  "version": null
+}

@@ -1,0 +1,15 @@
+{
+  "benefit": "A gap in real code becomes a gated, read-back-checked atom.",
+  "branch": "line/fluent/t1-4-library-run",
+  "contract": "gaps/fill.mjs; toAtoms gaps by type (8e64796c, 77818eda, 6c727d57)",
+  "linesAdded": 0,
+  "linesRemoved": 0,
+  "note": "Map.prototype.set: 9 of 10 kept",
+  "order": 3,
+  "parent": "E6",
+  "progress": 100,
+  "quickWin": false,
+  "status": "done",
+  "title": "Gaps become atoms",
+  "version": null
+}

@@ -4,6 +4,7 @@
   "etaAt": "2026-10-15T06:00:00.000Z",
   "linesAdded": 0,
   "linesRemoved": 0,
+  "note": "Skipped by the owner: no benchmarks",
   "order": 4,
   "parent": "E3",
   "progress": 0,
@@ -14,6 +15,7 @@
       "risk": "The view does not help"
     }
   ],
+  "skipped": true,
   "status": "todo",
   "title": "English-as-context probe",
   "version": null

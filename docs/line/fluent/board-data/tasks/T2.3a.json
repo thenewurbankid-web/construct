@@ -5,10 +5,10 @@
   "etaAt": "2026-10-15T00:34:08.098Z",
   "linesAdded": 0,
   "linesRemoved": 0,
-  "note": "Wave 2; contract in FLUENT-PLAN \"Wave 2 leaves\".",
+  "note": "Merged (e01dca4d); fixture tests 5/5",
   "order": 1,
   "parent": "T2.3",
-  "progress": 5,
+  "progress": 100,
   "quickWin": true,
   "risks": [
     {
@@ -17,7 +17,7 @@
     }
   ],
   "session": "t2-3a-coverage",
-  "status": "running",
+  "status": "done",
   "thoughts": "Read-only over the reference.",
   "title": "Coverage over the JS reference",
   "version": null

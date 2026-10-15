@@ -2,11 +2,12 @@
   "benefit": "Import v2 produces fluent code.",
   "contract": "ENGLISH-RULES steps 6 and 7.",
   "etaAt": "2026-10-15T04:00:00.000Z",
-  "linesAdded": 0,
-  "linesRemoved": 0,
+  "linesAdded": 342,
+  "linesRemoved": 10,
+  "note": "Merged ae0a4d71 with import-v2 (eae0470a); import-v2 tests 35 pass / 3 skipped, line-fluent 293/293. Step 7 (re-import and measure the corpus) not run: no benchmarks for now",
   "order": 4,
   "parent": "E2",
-  "progress": 0,
+  "progress": 100,
   "quickWin": false,
   "risks": [
     {
@@ -14,7 +15,7 @@
       "risk": "Conflicts with import-v2 work not yet pushed"
     }
   ],
-  "status": "todo",
+  "status": "done",
   "title": "writeAtoms writes sentences; re-import corpus",
   "version": null
 }

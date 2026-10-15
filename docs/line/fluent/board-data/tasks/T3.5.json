@@ -4,10 +4,12 @@
   "etaAt": "2026-10-15T08:00:00.000Z",
   "linesAdded": 0,
   "linesRemoved": 0,
+  "note": "Held: training waits for the probe (T3.4)",
   "order": 5,
   "parent": "E3",
   "progress": 0,
   "quickWin": false,
+  "skipped": true,
   "status": "todo",
   "title": "LoRA round 1",
   "version": null

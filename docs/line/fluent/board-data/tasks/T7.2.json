@@ -1,0 +1,16 @@
+{
+  "benefit": "Word forms, agent nouns and splits from one place",
+  "branch": "line/fluent/catchup",
+  "contract": "docs/line/fluent/TYPESTATE-v7.md section C step 2",
+  "linesAdded": 0,
+  "linesRemoved": 0,
+  "note": "Waits on plan approval",
+  "order": 2,
+  "parent": "E7",
+  "progress": 0,
+  "quickWin": false,
+  "skipped": true,
+  "status": "todo",
+  "title": "Morphology in one module",
+  "version": null
+}

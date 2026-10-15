@@ -3,12 +3,12 @@
   "branch": "line/fluent/t1-2d-types",
   "contract": "packages/line-fluent/gate/types/: checkTypes(answer,{entry}) -> CheckResult; C2 params vs the C1 entry's params (count, order, rest/optional) and C2 kind vs the entry kind and catalog param types; set-field fixes. Static, no tsc.",
   "etaAt": "2026-10-15T00:40:00.000Z",
-  "linesAdded": 0,
+  "linesAdded": 573,
   "linesRemoved": 0,
-  "note": "Wave 2, added after the first merge.",
+  "note": "Merged (efcea060); types 27/27, line-fluent 278/278",
   "order": 4,
   "parent": "T1.2",
-  "progress": 5,
+  "progress": 100,
   "quickWin": true,
   "risks": [
     {
@@ -17,7 +17,7 @@
     }
   ],
   "session": "t1-2d-types",
-  "status": "running",
+  "status": "done",
   "thoughts": "Split added to the closest-to-done task (T1.2) after t1-2c landed.",
   "title": "Gate: types check",
   "version": null

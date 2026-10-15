@@ -1,0 +1,15 @@
+{
+  "benefit": "Most of an answer is built by rules; the model only picks or corrects.",
+  "branch": "line/fluent/t1-4-library-run",
+  "contract": "pilot/build/build.mjs (36c79b00)",
+  "linesAdded": 0,
+  "linesRemoved": 0,
+  "note": "Array: 61 of 67 real atoms, $0.097 (Haiku alone: 38)",
+  "order": 8,
+  "parent": "E1",
+  "progress": 100,
+  "quickWin": false,
+  "status": "done",
+  "title": "Rules-built answers; the model picks",
+  "version": null
+}

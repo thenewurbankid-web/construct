@@ -1,12 +1,14 @@
 {
   "benefit": "Full coverage of the reference.",
+  "branch": "line/fluent/t1-4-library-run",
   "contract": "One QW per section batch; owner approves new atoms per batch.",
   "etaAt": "2026-10-15T05:00:00.000Z",
   "linesAdded": 0,
   "linesRemoved": 0,
+  "note": "Stopped at 1,307 of 2,378: 650 passed (84 real atoms: 42 existing, 42 new; 566 not-expressible, which still need turn 2 and the user stage), 657 refused. Resume waits on the owner (TYPESTATE-v7 D5). A separate session re-runs it on qwen2.5-coder:7b.",
   "order": 4,
   "parent": "E1",
-  "progress": 0,
+  "progress": 55,
   "quickWin": false,
   "risks": [
     {
@@ -14,7 +16,7 @@
       "risk": "Grammar cannot express some APIs"
     }
   ],
-  "status": "todo",
-  "title": "Remaining sections in batches",
+  "status": "blocked",
+  "title": "Full library run (2,378 entries)",
   "version": null
 }

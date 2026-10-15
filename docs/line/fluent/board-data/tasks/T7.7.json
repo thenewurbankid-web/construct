@@ -1,0 +1,16 @@
+{
+  "benefit": "The model writes only what code cannot compute",
+  "branch": "line/fluent/catchup",
+  "contract": "docs/line/fluent/TYPESTATE-v7.md section C step 7",
+  "linesAdded": 0,
+  "linesRemoved": 0,
+  "note": "Waits on plan approval",
+  "order": 7,
+  "parent": "E7",
+  "progress": 0,
+  "quickWin": false,
+  "skipped": true,
+  "status": "todo",
+  "title": "Short answer: decision and sentence",
+  "version": null
+}

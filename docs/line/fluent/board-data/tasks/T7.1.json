@@ -1,0 +1,16 @@
+{
+  "benefit": "Both lexicons share one shape",
+  "branch": "line/fluent/catchup",
+  "contract": "docs/line/fluent/TYPESTATE-v7.md section C step 1",
+  "linesAdded": 0,
+  "linesRemoved": 0,
+  "note": "Waits on plan approval",
+  "order": 1,
+  "parent": "E7",
+  "progress": 0,
+  "quickWin": false,
+  "skipped": true,
+  "status": "todo",
+  "title": "LexiconEntry: one interface for JS and domain",
+  "version": null
+}

@@ -1,0 +1,15 @@
+{
+  "benefit": "Code-to-English candidates with no model call; sentences that drop a meaningful word are refused.",
+  "branch": "line/fluent/t1-4-library-run",
+  "contract": "pilot/lexicon/lexicon.mjs: BPE, Dice phrase table, bigram LM, shape-constrained decode (b91f3f8b)",
+  "linesAdded": 0,
+  "linesRemoved": 0,
+  "note": "Built by the cloud session",
+  "order": 7,
+  "parent": "E1",
+  "progress": 100,
+  "quickWin": false,
+  "status": "done",
+  "title": "Lexicon decoder and meaning check",
+  "version": null
+}

@@ -1,0 +1,15 @@
+{
+  "benefit": "line-fluent back to 342/342",
+  "branch": "line/fluent/catchup",
+  "contract": "gate/isolated/isolated.mjs rssMb falls back to ps when there is no /proc; test sentence gains its R10 clause",
+  "linesAdded": 0,
+  "linesRemoved": 0,
+  "note": "The memory watchdog never fired on macOS (it read only /proc). Fixed; line-fluent 342/342.",
+  "order": 10,
+  "parent": "E1",
+  "progress": 100,
+  "quickWin": false,
+  "status": "done",
+  "title": "Gate watchdog on macOS + R10 test fixture",
+  "version": null
+}

@@ -1,12 +1,14 @@
 {
   "benefit": "Real cost and pass-rate numbers before committing to 2,378 entries.",
+  "branch": "line/fluent/t1-4-library-run",
   "contract": "Claude, one entry per request, C2 out, C3 gate, one retry with the refusal. Report pass rate, retries, tokens and minutes per entry, decisions by kind.",
   "etaAt": "2026-10-15T02:30:00.000Z",
   "linesAdded": 0,
   "linesRemoved": 0,
+  "note": "Array pilot run by the cloud session: 61 of 67 real atoms with rules build + Haiku pick, $0.097",
   "order": 3,
   "parent": "E1",
-  "progress": 0,
+  "progress": 100,
   "quickWin": false,
   "risks": [
     {
@@ -18,7 +20,7 @@
       "risk": "Owner review becomes the bottleneck"
     }
   ],
-  "status": "todo",
+  "status": "done",
   "thoughts": "Array is the best-covered section in Smith already, so it shows the ceiling first.",
   "title": "Pilot: the Array section",
   "version": null

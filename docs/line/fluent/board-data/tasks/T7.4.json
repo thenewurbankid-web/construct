@@ -1,0 +1,16 @@
+{
+  "benefit": "One grammar; catalog sentences become fixtures",
+  "branch": "line/fluent/catchup",
+  "contract": "docs/line/fluent/TYPESTATE-v7.md section C step 4",
+  "linesAdded": 0,
+  "linesRemoved": 0,
+  "note": "Waits on plan approval",
+  "order": 4,
+  "parent": "E7",
+  "progress": 0,
+  "quickWin": false,
+  "skipped": true,
+  "status": "todo",
+  "title": "Grammar over parts of speech",
+  "version": null
+}

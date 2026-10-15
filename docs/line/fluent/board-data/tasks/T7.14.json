@@ -1,0 +1,16 @@
+{
+  "benefit": "Wrong sentences are tsc errors; domain sentences run",
+  "branch": "line/fluent/catchup",
+  "contract": "docs/line/fluent/TYPESTATE-v7.md section C step 14",
+  "linesAdded": 0,
+  "linesRemoved": 0,
+  "note": "Waits on plan approval",
+  "order": 14,
+  "parent": "E7",
+  "progress": 0,
+  "quickWin": false,
+  "skipped": true,
+  "status": "todo",
+  "title": "Generated type-state and runtime",
+  "version": null
+}

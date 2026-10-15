@@ -1,0 +1,16 @@
+{
+  "benefit": "Untranslatable code stays JS with a reviewable rename",
+  "branch": "line/fluent/catchup",
+  "contract": "docs/line/fluent/TYPESTATE-v7.md section C step 12",
+  "linesAdded": 0,
+  "linesRemoved": 0,
+  "note": "Waits on plan approval",
+  "order": 12,
+  "parent": "E7",
+  "progress": 0,
+  "quickWin": false,
+  "skipped": true,
+  "status": "todo",
+  "title": "Untranslated classes and rename suggestions",
+  "version": null
+}

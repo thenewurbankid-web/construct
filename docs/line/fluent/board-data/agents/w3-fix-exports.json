@@ -1,0 +1,6 @@
+{
+  "note": "Not a bug: the worktree loaded stale node_modules from the main checkout",
+  "startedAt": "2026-10-15T00:45:00Z",
+  "status": "done",
+  "task": "T0.6"
+}

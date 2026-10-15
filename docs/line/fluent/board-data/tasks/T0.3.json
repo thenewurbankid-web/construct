@@ -4,7 +4,7 @@
   "etaAt": "2026-10-15T01:15:00.000Z",
   "linesAdded": 0,
   "linesRemoved": 0,
-  "note": "Full suite on f3b27614: 7636 tests, 7572 pass, 3 fail, 55 skipped; Smith 757/757. Fails: line-smith contract.d.ts missing; @line/smith ./catalog.json export -> dist/ absent before Smith builds; studio-export volume knobs (timing). fluent-v0.1.0 not tagged; owner decides.",
+  "note": "Skipped by the owner: no benchmarks or baselines",
   "order": 3,
   "parent": "E0",
   "progress": 90,
@@ -16,6 +16,7 @@
     }
   ],
   "session": "this session",
+  "skipped": true,
   "status": "blocked",
   "thoughts": "The R9 session reported 757/757 for Smith; this is the first run inside construct.",
   "title": "Baseline counts",

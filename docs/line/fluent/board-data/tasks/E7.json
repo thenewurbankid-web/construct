@@ -1,0 +1,16 @@
+{
+  "benefit": "One grammar, one lexicon interface, roles from code, behaviour decides.",
+  "branch": "line/fluent/catchup",
+  "contract": "docs/line/fluent/TYPESTATE-v7.md",
+  "linesAdded": 0,
+  "linesRemoved": 0,
+  "note": "Discarded by the owner 2026-10-15: follow the cloud branch only",
+  "order": 7,
+  "parent": null,
+  "progress": 0,
+  "quickWin": false,
+  "skipped": true,
+  "status": "todo",
+  "title": "Type-state plan v7",
+  "version": null
+}

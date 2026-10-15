@@ -1,24 +1,37 @@
 {
-  "etaAt": "2026-10-15T01:15:00.000Z",
-  "goal": "Wave 2: gate runner (3 parts), pilot prep (3), english CLI, coverage, fluent-form spike, student adapter, records, LSP diagnostics + definition, pages rebuild, probe port, in-repo links. 16 agents in parallel.",
+  "etaAt": null,
+  "goal": "Follow the cloud branch (47df541e): R10/R11, sentence shapes, lexicon decoder, rules-built answers, clarify, gap questions, approved-atom registry, library run (stopped). The session type-state plan (v7) is discarded.",
   "items": [
-    "T1.2a",
-    "T1.2b",
-    "T1.2c",
-    "T1.3a",
-    "T1.3b",
-    "T1.3c",
-    "T2.2",
-    "T2.3a",
-    "T2.1a",
-    "T3.2a",
-    "T3.3a",
-    "T4.3a",
-    "T4.4a",
-    "T5.4a",
-    "T0.5",
-    "T0.6"
+    "T1.5",
+    "T1.6",
+    "T1.7",
+    "T1.8",
+    "T1.9",
+    "T6.1",
+    "T6.2",
+    "T6.3",
+    "T1.4"
   ],
   "startedAt": "2026-10-15T00:14:00.000Z",
-  "version": "fluent-v0.2.0"
+  "tagged": [],
+  "tests": [
+    {
+      "pass": 342,
+      "suite": "line-fluent",
+      "total": 342
+    },
+    {
+      "pass": 691,
+      "suite": "smith (+ types)",
+      "total": 691
+    },
+    {
+      "pass": 273,
+      "suite": "codemod",
+      "total": 273
+    }
+  ],
+  "testsAt": "df12913c",
+  "testsNote": "Real runs on line/fluent/catchup (47df541e + the macOS watchdog fix). line-fluent re-run at df12913c; smith and codemod from 47df541e (unchanged since). Other suites not re-run.",
+  "version": "fluent-v0.3.0"
 }

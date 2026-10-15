@@ -1,0 +1,15 @@
+{
+  "benefit": "A new atom with a new verb can pass the grammar, as an alias in a known shape.",
+  "branch": "line/fluent/t1-4-library-run",
+  "contract": "gate/grammar/shapes.mjs: 55 shapes, VERB slot, class shapes (f09a59b5, 77818eda)",
+  "linesAdded": 0,
+  "linesRemoved": 0,
+  "note": "Built by the cloud session",
+  "order": 5,
+  "parent": "E1",
+  "progress": 100,
+  "quickWin": false,
+  "status": "done",
+  "title": "Grammar gate: sentence shapes, verb aliases",
+  "version": null
+}

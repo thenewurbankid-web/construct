@@ -1,0 +1,14 @@
+{
+  "benefit": "A sentence is kept only when it does exactly what the code does on every input.",
+  "branch": "line/fluent/t1-4-library-run",
+  "contract": "clarify/io.mjs, sentences.mjs checkAgainstCode, narrow.mjs, clarify.mjs, cli.mjs (9fb25e7d, eb6453dd, bacae0b9)",
+  "linesAdded": 0,
+  "linesRemoved": 0,
+  "order": 1,
+  "parent": "E6",
+  "progress": 100,
+  "quickWin": false,
+  "status": "done",
+  "title": "Clarify from code, compare on every input",
+  "version": null
+}

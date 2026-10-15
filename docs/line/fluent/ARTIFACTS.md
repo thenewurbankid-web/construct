@@ -7,8 +7,9 @@ the sources here; a link only opens for its owner and anyone it is shared with.
 |---|---|---|---|
 | Fluent Build Board | https://claude.ai/artifact/VYndtXxtfnVBzKVbXSbsHh | `board.html` | db, snapshot in `board-data/` |
 | Fluent English Plan | https://claude.ai/artifact/W7PQWdprAh1gHibHkqUE8y | `plan.html` | none (static) |
-| Smith Atoms | https://claude.ai/artifact/VyLUndJe64ZfZEojij9E7b | built by `packages/line-codemod/bench/atoms/atoms-page/build.mjs` | generated from the Smith catalog |
-| JS Reference Atlas | https://claude.ai/artifact/WgS7uBhJUJVYBYvaYonPao | built by `packages/line-codemod/bench/atoms/js-reference/site.mjs` | generated from `reference.json` |
+| Smith Atoms | https://claude.ai/artifact/VjHVg5gADSmbeNU9XjkXZF | built by `packages/line-codemod/bench/atoms/atoms-page/build.mjs` | generated from the Smith catalog |
+| JS Reference Atlas | https://claude.ai/artifact/UNjWroCdmti4ftqbYMo23X | built by `packages/line-codemod/bench/atoms/js-reference/site.mjs` | generated from `reference.json` |
+| Library Run (from the cloud session) | https://claude.ai/artifact/WRDACxYbY5ggnkt2Fb5P2W | `packages/line-fluent/pilot/library/page/library-run.html` | db (`run`, `events`), snapshot in `library-run-data/`; filled by `page/sync.mjs` |
 
 `packages/line-codemod/bench/atoms/rebuild-pages.mjs` (task T5.4a) rebuilds and checks the last two.
 
@@ -39,3 +40,10 @@ agents read is `docs/line/FLUENT-PLAN-2026-10-15.md`; that file wins when the tw
 ## Notes
 `notes/` holds the shared session notes from 2026-10-14/15: the last-24h survey, the wave 1 hand-over, the R9
 every() build notes and Atomic English steps 1-4 (with the owner's six open questions).
+
+## Library Run
+- Made by the cloud session (T1.4); owned here since 2026-10-15. Runtime contract 0.2.80.
+- Capabilities: `{"db":{"rules":[{"path":"run","read":"view","write":"admin"},{"path":"events","read":"view","write":"admin"}]}}`
+- `run/current` holds totals, per-section counts and the newest log rows (`tail`); `events/eNNNN` hold 40 log rows each.
+- Snapshot of 2026-10-15 in `library-run-data/` (run/current version 46, events e0000-e0031): stopped at 650 of 2,378
+  entries with 84 in the library. Resume and sync commands: `packages/line-fluent/pilot/library/page/README.md`.

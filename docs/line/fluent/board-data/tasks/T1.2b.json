@@ -5,10 +5,10 @@
   "etaAt": "2026-10-15T00:39:08.098Z",
   "linesAdded": 0,
   "linesRemoved": 0,
-  "note": "Wave 2; contract in FLUENT-PLAN \"Wave 2 leaves\".",
+  "note": "Merged (0630d8d0); 17/17; equivalenceFor adapter plugs into runGate",
   "order": 2,
   "parent": "T1.2",
-  "progress": 5,
+  "progress": 100,
   "quickWin": true,
   "risks": [
     {
@@ -21,7 +21,7 @@
     }
   ],
   "session": "t1-2b-equivalence",
-  "status": "running",
+  "status": "done",
   "thoughts": "Riskiest gate part; may need 20 minutes.",
   "title": "Gate: equivalence check",
   "version": null

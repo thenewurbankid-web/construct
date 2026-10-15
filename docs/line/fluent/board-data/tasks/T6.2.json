@@ -1,0 +1,15 @@
+{
+  "benefit": "The model works out the step by running it; the person only confirms.",
+  "branch": "line/fluent/t1-4-library-run",
+  "contract": "gaps/cli.mjs refine, selfAsk, plainOptions, readReply (d33d09da..e5bb98a5)",
+  "linesAdded": 0,
+  "linesRemoved": 0,
+  "note": "stackEntries settled at 0.93 from one self-asked run",
+  "order": 2,
+  "parent": "E6",
+  "progress": 100,
+  "quickWin": false,
+  "status": "done",
+  "title": "Gap questions in plain words",
+  "version": null
+}

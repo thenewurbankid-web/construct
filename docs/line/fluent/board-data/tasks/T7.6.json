@@ -1,0 +1,16 @@
+{
+  "benefit": "The candidate equal to the original at every node wins; library match breaks ties",
+  "branch": "line/fluent/catchup",
+  "contract": "docs/line/fluent/TYPESTATE-v7.md section C step 6",
+  "linesAdded": 0,
+  "linesRemoved": 0,
+  "note": "Waits on plan approval",
+  "order": 6,
+  "parent": "E7",
+  "progress": 0,
+  "quickWin": false,
+  "skipped": true,
+  "status": "todo",
+  "title": "Per-node selection by behaviour",
+  "version": null
+}

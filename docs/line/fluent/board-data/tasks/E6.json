@@ -1,0 +1,13 @@
+{
+  "benefit": "A person settles unclear code in plain words; the code fixes the behaviour, only words are asked.",
+  "branch": "line/fluent/t1-4-library-run",
+  "linesAdded": 0,
+  "linesRemoved": 0,
+  "order": 6,
+  "parent": null,
+  "progress": 100,
+  "quickWin": false,
+  "status": "done",
+  "title": "Clarify and gaps: English with a person",
+  "version": null
+}

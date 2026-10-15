@@ -3,12 +3,12 @@
   "branch": "line/fluent/t2-1-spike",
   "contract": "packages/line-codemod/fluent-form.js: toFluent(atomCall,catalog), fluentFor(code); 20-entry finding report.",
   "etaAt": "2026-10-15T00:34:08.098Z",
-  "linesAdded": 0,
+  "linesAdded": 386,
   "linesRemoved": 0,
-  "note": "Wave 2; contract in FLUENT-PLAN \"Wave 2 leaves\".",
+  "note": "Merged (326384ff); fluent-form 26/26, codemod 268/268. Grammar gap open: no repetition/optional steps (see t2-1-spike note)",
   "order": 1,
   "parent": "T2.1",
-  "progress": 5,
+  "progress": 100,
   "quickWin": true,
   "risks": [
     {
@@ -17,7 +17,7 @@
     }
   ],
   "session": "t2-1-spike",
-  "status": "running",
+  "status": "done",
   "thoughts": "New module only; findings matter more than code.",
   "title": "Spike: toAtoms writes fluent form",
   "version": null

@@ -5,10 +5,10 @@
   "etaAt": "2026-10-15T00:34:08.098Z",
   "linesAdded": 0,
   "linesRemoved": 0,
-  "note": "Wave 2; contract in FLUENT-PLAN \"Wave 2 leaves\".",
+  "note": "Merged",
   "order": 1,
   "parent": "T1.2",
-  "progress": 5,
+  "progress": 100,
   "quickWin": true,
   "risks": [
     {
@@ -21,7 +21,7 @@
     }
   ],
   "session": "t1-2a-grammar",
-  "status": "running",
+  "status": "done",
   "thoughts": "Smallest gate part; reuses C5 so it cannot drift from completions.",
   "title": "Gate: grammar check",
   "version": null

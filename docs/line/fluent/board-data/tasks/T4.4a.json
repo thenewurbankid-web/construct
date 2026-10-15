@@ -5,10 +5,10 @@
   "etaAt": "2026-10-15T00:34:08.098Z",
   "linesAdded": 0,
   "linesRemoved": 0,
-  "note": "Wave 2; contract in FLUENT-PLAN \"Wave 2 leaves\".",
+  "note": "Merged",
   "order": 1,
   "parent": "T4.4",
-  "progress": 5,
+  "progress": 100,
   "quickWin": true,
   "risks": [
     {
@@ -17,7 +17,7 @@
     }
   ],
   "session": "t4-4a-definition",
-  "status": "running",
+  "status": "done",
   "thoughts": "Pure data index.",
   "title": "Sentence -> atom -> JS twin index",
   "version": null
