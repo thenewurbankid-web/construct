@@ -52,6 +52,8 @@ import { importTools } from './importTools.mjs';
 import { planBindPart, planBindInteraction } from './pageBinding.mjs';
 import { COMPONENT_OPS } from './components.mjs';
 import { planExtractStep, EXTRACT_TOOLS } from './importV2/extract.mjs';
+import { ATOMS_WRITE_TOOL } from './importV2/contract.mjs';
+import { planWriteAtoms, runAtomsBehaviour, markWritten, createAtomsTester } from './importV2/writeAtoms.mjs';
 
 /** The real operations (tests pass the contract's mock instead). */
 export const REAL_PLAN_OPS = Object.freeze({ planCreateFeature, planAddRoute, planSetCode, planSetLayoutSlot, planBaseOn, planPromote, planSetProp, planFixByKey, planSetFragment, planStep, planAmended, planImportStep, planExtractStep, applyChange, checkChange, readLineProject, planBaseWorkflowOn, planSetWorkflowRole, planAddWorkflowTransition, planRemoveWorkflowTransition, planBindPart, planBindInteraction, ...COMPONENT_OPS });
@@ -81,11 +83,13 @@ export const CHANGE_TOOLS = Object.freeze({
   'line.extractExpression': 'planStep',
   // #919: copy a shipped logic atom into the project's library atoms (seed/useAtom.mjs)
   'line.useAtom': 'planUseAtom',
+  // Import v2 (importV2/writeAtoms.mjs): one converted function of the static breakdown written into its app file
+  [ATOMS_WRITE_TOOL]: 'planWriteAtoms',
 });
 
 /** Change tools planned only when they run: an import step builds on the steps before it (the library item a feature
  * item is based on is moved there by an earlier step), so it cannot be planned, or its gap worked out, ahead. */
-export const DEFERRED_TOOLS = Object.freeze(['line.import.mark', 'line.import.toLibrary', 'line.import.toFeature', ...EXTRACT_TOOLS]);
+export const DEFERRED_TOOLS = Object.freeze(['line.import.mark', 'line.import.toLibrary', 'line.import.toFeature', ...EXTRACT_TOOLS, ATOMS_WRITE_TOOL]);
 /**
  * Whether a tool's change is planned in its own folder (an import step) rather than at the project root.
  * @param {string} tool The tool name.
@@ -119,6 +123,8 @@ function planWith(ops, root, tool, req, depth = 0) {
   const opName = CHANGE_TOOLS[tool];
   if (opName === 'planImportStep') return ops.planImportStep(rootOf(root, tool, req), { id: tool, tool, args: req });
   if (opName === 'planUseAtom') return (ops.planUseAtom ?? planUseAtom)(root, req);
+  // The behaviour tester runs before anything is written; without one (a preview, a gap) the step is only planned.
+  if (opName === 'planWriteAtoms') return (ops.planWriteAtoms ?? planWriteAtoms)(rootOf(root, tool, req), req, /** @type {any} */ (ops).atomsTester);
   if (opName === 'planExtractStep') return (ops.planExtractStep ?? planExtractStep)(rootOf(root, tool, req), { tool, args: req });
   if (opName === 'planAmended') {
     const { change, fix: one, fixes } = /** @type {any} */ (req);
@@ -137,6 +143,12 @@ export const DEFAULT_EXPECT = Object.freeze([
   Object.freeze({ id: 'validate', sentence: 'Validate (profile line) shows no new problems.', kind: 'validate', expr: DEFAULT_CHECK_EXPRS.validate }),
   Object.freeze({ id: 'files', sentence: 'The planned files exist with the planned content.', kind: 'file', expr: DEFAULT_CHECK_EXPRS.files }),
 ]);
+/** A tool whose step carries its own behaviour test expects it too (line.import.writeAtoms: the function as written). */
+const TOOL_EXPECT = Object.freeze({
+  [ATOMS_WRITE_TOOL]: Object.freeze([...DEFAULT_EXPECT, Object.freeze({ id: 'behaviour', sentence: 'The function as written behaves as the original.', kind: 'tests' })]),
+});
+/** The checks a step expects: its own `expect`, else its tool's, else DEFAULT_EXPECT. */
+const expectOf = (tool, args) => (Array.isArray(args?.expect) ? args.expect : TOOL_EXPECT[tool] ?? DEFAULT_EXPECT);
 
 // ------------------------------------------------------------------------------------------------- schemas
 const failed = (p, message) => ({ success: /** @type {const} */ (false), error: { issues: [{ path: p, message }] } });
@@ -297,6 +309,7 @@ const SCHEMAS = Object.freeze({
   'line.import.extractUsecase': importSchema({ folder: 'string', from: 'string', names: 'names', name: 'string', feature: 'optString' }),
   'line.import.splitPage': importSchema({ folder: 'string', from: 'string', component: 'string', name: 'string', feature: 'optString' }),
   'line.import.extractWorkflow': importSchema({ folder: 'string', from: 'string', component: 'string', name: 'string', feature: 'optString' }),
+  [ATOMS_WRITE_TOOL]: importSchema({ folder: 'string', file: 'string', name: 'string' }),
   'line.amend': objectSchema({ change: 'step', fix: 'optStep', fixes: 'optSteps' }, { change: true }),
   'line.baseWorkflowOn': objectSchema({ libraryId: 'string', feature: 'string', name: 'string' }, { change: true }),
   'line.setWorkflowRole': objectSchema({ file: 'string', role: 'string', page: 'anyString' }, { change: true }),
@@ -338,6 +351,7 @@ const DESCRIBE = Object.freeze({
   'line.import.extractUsecase': 'Import v2: moves the named orchestration functions of a file (one user goal) into a usecase of the import folder, through the checked writer.',
   'line.import.splitPage': 'Import v2: splits a page or component into its presentation and a use<Name> hook (a usecase) holding its logic, through the checked writer.',
   'line.import.extractWorkflow': 'Import v2: makes an xstate workflow of the URL state and navigation of a component, in the library with the feature workflow based on it, through the checked writer.',
+  [ATOMS_WRITE_TOOL]: 'Import v2: writes one function the static breakdown converted into atom calls back into its file, importing the atoms from @line/atoms (the pinned atoms copied into the library atoms, aliased in tsconfig.json), through the checked writer; it counts only when its QuickJS behaviour test passes.',
   'line.amend': 'Applies a change Construct refused together with one typed fix of it, as one change, through the checked writer (for a fix whose file only that change creates).',
   'line.baseWorkflowOn': 'Creates a feature workflow based on one library workflow (a copy of its state machine, its pages not chosen yet), through the checked writer.',
   'line.setWorkflowRole': 'Chooses which page of the feature fills one role of a feature workflow (empty page clears it), through the checked writer.',
@@ -390,7 +404,7 @@ export function fileStates(root, staged) {
 export function gapOf(root, tool, args, ops = REAL_PLAN_OPS) {
   const opName = CHANGE_TOOLS[tool];
   if (!opName) return [];
-  const expect = Array.isArray(args?.expect) ? args.expect : DEFAULT_EXPECT;
+  const expect = expectOf(tool, args);
   if (isDeferred(tool)) return expect.map((c) => ({ checkId: c.id, state: /** @type {const} */ ('missing'), sentence: `To do when it runs (it builds on the steps before it): ${lower(c.sentence)}` }));
   let staged;
   try { staged = planWith(ops, root, tool, requestOf(args)); } catch (e) {
@@ -438,7 +452,7 @@ export function runChecks(root, expect, staged, apply, o = {}) {
   let facts = o.facts ?? null;
   const factsNow = () => (facts ??= stepFacts(root, o.tool ?? '', staged, apply, o.ops));
   return expect.map((c) => {
-    const legacy = legacyCheck(root, c, staged, apply);
+    const legacy = legacyCheck(root, c, staged, apply, o.ops);
     if (c.expr === undefined) return legacy;
     const r = evaluate(factsNow(), c.expr);
     if ((c.kind === 'validate' || c.kind === 'file') && r.ok === legacy.ok) return legacy;
@@ -446,8 +460,8 @@ export function runChecks(root, expect, staged, apply, o = {}) {
   });
 }
 
-/** cp1's check, as it always ran. */
-function legacyCheck(root, c, staged, apply) {
+/** cp1's check, as it always ran; a `tests` check of a step that carries a behaviour test runs it (ops.runBehaviour). */
+function legacyCheck(root, c, staged, apply, ops) {
   if (c.kind === 'validate') {
     if (apply.ok) return { checkId: c.id, ok: true, sentence: 'Validate shows no new problems.' };
     const first = apply.findings.find((f) => f.severity === 'error');
@@ -460,6 +474,11 @@ function legacyCheck(root, c, staged, apply) {
     const names = wrong.map((f) => base(f.path));
     const shown = new Set(names).size === names.length ? names : wrong.map((f) => f.path);
     return { checkId: c.id, ok: false, sentence: `${shown.join(', ')} ${wrong.length === 1 ? 'is' : 'are'} not as planned.` };
+  }
+  if (c.kind === 'tests' && staged?.behaviour && typeof ops?.runBehaviour === 'function') {
+    if (!apply.ok) return { checkId: c.id, ok: false, sentence: 'The behaviour test did not run, because nothing was saved.' };
+    const r = ops.runBehaviour(root, staged.behaviour);
+    return { checkId: c.id, ok: Boolean(r.ok), sentence: r.sentence };
   }
   return { checkId: c.id, ok: false, sentence: `Line cannot run ${c.kind} checks for a step yet, so "${c.sentence.replace(/[.?!]$/, '')}" is not confirmed.` };
 }
@@ -497,7 +516,9 @@ export function fixesAsProposed(root, staged, findings, refused = null) {
  * @returns {import('./contract.mjs').LineStepResult}
  */
 export function runChange(projectRoot, tool, args, ops = REAL_PLAN_OPS, o = {}) {
-  const expect = Array.isArray(args?.expect) ? args.expect : DEFAULT_EXPECT;
+  // line.import.writeAtoms writes only behind its behaviour test: a run without a tester is refused, never ungated.
+  if (tool === ATOMS_WRITE_TOOL && !(/** @type {any} */ (ops).atomsTester)) ops = { ...ops, atomsTester: { ok: false, reason: 'the behaviour test is not set up for this run' } };
+  const expect = expectOf(tool, args);
   // An import step plans and writes inside its folder (the writer's root), and reports project-relative paths.
   let root = projectRoot;
   const folder = isDeferred(tool) ? String(args?.folder ?? '') : '';
@@ -576,6 +597,17 @@ export function runChange(projectRoot, tool, args, ops = REAL_PLAN_OPS, o = {}) 
 export function lineTools({ root, ops = REAL_PLAN_OPS, afterSave }) {
   const run = {
     ...Object.fromEntries(Object.keys(CHANGE_TOOLS).map((tool) => [tool, async (a) => runChange(root, tool, a, ops, { pre: true })])),
+    // The atoms writer loads its QuickJS behaviour tester first (once per process), and the unit counts as written
+    // in line/atoms.json only when every check passed, the behaviour test included.
+    [ATOMS_WRITE_TOOL]: async (a) => {
+      const tester = /** @type {any} */ (ops).atomsTester ?? await createAtomsTester();
+      const r = runChange(root, ATOMS_WRITE_TOOL, a, { ...ops, atomsTester: tester, runBehaviour: (at, b) => runAtomsBehaviour(at, b, tester) }, { pre: true });
+      if (!r.needsYou) {
+        const behaviour = r.checks.find((c) => c.checkId === 'behaviour');
+        if (behaviour?.ok) markWritten(rootOf(root, ATOMS_WRITE_TOOL, a), a, behaviour.sentence, tester);
+      }
+      return r;
+    },
     'line.leaveAsIs': async (a) => ({ left: a.stepId, sentence: 'Carried on; the step was left as it is.' }),
     'line.project': async () => ops.readLineProject(root),
   };

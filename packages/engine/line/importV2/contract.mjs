@@ -205,6 +205,65 @@
  * @property {ImportLoopState[]} loop
  * @property {any} last
  * @property {any} [pending]
+ * @property {AtomBreakdownSummary|null} [atoms]  The static breakdown into atoms (full one: ATOMS_FILE).
+ */
+
+/**
+ * Static breakdown (importV2/breakdown.mjs): one pure function of a domain block, rewritten into calls of the atom
+ * runtime by atomic-codemod's toAtoms and checked by running old and new on the same generated inputs in QuickJS. A
+ * rewrite counts only when the check says `same`; one that changes behaviour is taken back.
+ * @typedef {object} AtomUnitResult
+ * @property {string} file          App-relative.
+ * @property {string} name          The top-level function.
+ * @property {string} block         The FitProposal block, `domain:<name>`.
+ * @property {'converted'|'partial'|'unchanged'|'unchecked'} status
+ *   converted: every part is an atom call and the check says same; partial: the check says same but some parts have no
+ *   atom (they arrive at construct.repair as a refusal); unchanged: nothing to rewrite; unchecked: the check could not
+ *   run it, so no rewrite counts and the original stays.
+ * @property {{status: 'same'|'different'|'unchecked', runs: number, compared: number, exercised: number, mismatchCount: number, why?: string}} check
+ * @property {string[]} atoms        The atoms the kept body calls.
+ * @property {number} rewrites       Rewrites kept (checked).
+ * @property {number} takenBack      Rewrites the check took back.
+ * @property {string} code           The original function (a declaration).
+ * @property {string} body           The kept function: the rewrite when it counts, else `code`.
+ * @property {string} importDecl     The import of the atoms `body` calls, from ATOMS_PACKAGE ('' when none).
+ * @property {{form: string, text: string, line: number, reason?: string}[]} untranslated  Parts with no atom.
+ * @property {{outcome: string, sentence: string} } [repair]  construct.repair's answer to the refusal, when it was asked.
+ * @property {{file: string, sentence: string}} [written]  The line.import.writeAtoms step wrote `body` into `file` and its
+ *   behaviour test passed (the function as written behaves as `code`); only a converted unit is written.
+ * @property {EnglishView} [english]  The read-only English view of `body` as written (ENGLISH-RULES step 6), set with
+ *   `written`; generated, never edited.
+ * @property {string} sentence
+ */
+
+/**
+ * The read-only English view of one written function (importV2/englishView.mjs, fluent plan T2.4): every atom call of
+ * the function as its fluent sentence, innermost first. The app keeps its typed code; this view is generated from it.
+ * @typedef {object} EnglishView
+ * @property {'fluent'|'off'} via    `off`: the fluent writer or the catalog is not set up, so there is no view.
+ * @property {string} code           The function with each atom call that has a sentence replaced by it ('' when off).
+ * @property {{atom: string, sentence: string}[]} sentences  One per atom call written as a sentence, innermost first.
+ * @property {number} plain          Atom calls that stay as code (one entry each in `reasons`).
+ * @property {{atom: string, reason: string}[]} reasons
+ * @property {boolean} full          Every atom call is a sentence, and there is at least one.
+ * @property {string} [reason]       Why it is off.
+ * @property {string} sentence
+ */
+
+/**
+ * @typedef {object} AtomBreakdown
+ * @property {'static'|'off'} via    `off`: the codemod or the runtime is not linked, so nothing was broken down.
+ * @property {string|null} codemod   The linked atomic-codemod commit.
+ * @property {string|null} runtime   The atom runtime commit.
+ * @property {AtomUnitResult[]} units
+ * @property {AtomBreakdownCounts} counts
+ * @property {string} sentence
+ * @property {string} [reason]       Why it is off.
+ */
+
+/**
+ * @typedef {{functions: number, converted: number, partial: number, unchanged: number, unchecked: number, rewrites: number, takenBack: number, refused: number, repaired: number}} AtomBreakdownCounts
+ * @typedef {AtomBreakdownCounts & {via: 'static'|'off', sentence: string}} AtomBreakdownSummary
  */
 
 export const LOGIC_UNIT_KINDS = Object.freeze(['branch', 'render-if', 'state', 'effect', 'derived', 'data', 'navigation', 'url-read', 'handler', 'toast', 'analytics', 'storage', 'io', 'export']);
@@ -223,6 +282,16 @@ export const LOGIC_MAP_FILE = 'line/logic-map.json';
 /** Where the FitProposal is stored, relative to the Line folder. */
 export const FIT_FILE = 'line/fit.json';
 /** The import loop's records, under Line's state folder (one ImportLoopState per line, slotted). */
+/** Where the static breakdown into atoms is kept, in the folder (AtomBreakdown). */
+export const ATOMS_FILE = 'line/atoms.json';
+/** The status of one function's breakdown. */
+export const ATOM_UNIT_STATUS = Object.freeze(['converted', 'partial', 'unchanged', 'unchecked']);
+/** The refusal shape's tool name for a function's atom rewrite (checked by the breakdown's own check, never run as a plan step). */
+export const ATOMS_TOOL = 'line.import.atoms';
+/** The package an app imports the atoms from (owner, 2026-10-14: through @line/atoms; an app's tsconfig aliases it to its copy). */
+export const ATOMS_PACKAGE = '@line/atoms';
+/** The plan step that writes one converted function into its app file (importV2/writeAtoms.mjs). */
+export const ATOMS_WRITE_TOOL = 'line.import.writeAtoms';
 export const IMPORT_LOOP_RECORDS = 'records/import-loop.jsonl';
 
 // ---------------------------------------------------------------------------------------------
@@ -473,6 +542,7 @@ export function assertImportLogic(l, where = 'The import logic') {
   if (l.feature !== undefined && (typeof l.feature !== 'string' || !/^[a-z][a-z0-9-]*$/.test(l.feature))) fail(`${where}'s feature`, 'be a kebab-case feature name');
   if (l.map) assertMapSummary(l.map, `${where}'s map`);
   if (l.fit) { str(l.fit.feature, `${where}'s fit.feature`); sentence(l.fit.sentence, `${where}'s fit.sentence`); }
+  if (l.atoms) { oneOf(l.atoms.via, ['static', 'off'], `${where}'s atoms.via`); sentence(l.atoms.sentence, `${where}'s atoms.sentence`); }
   // Only a person waives a unit: every waiver is the owner's.
   l.waivers.forEach((w, i) => assertUnitWaiver(w, `${where}'s waiver ${i}`));
   l.loop.forEach((st, i) => {
@@ -480,4 +550,80 @@ export function assertImportLogic(l, where = 'The import logic') {
     oneOf(st.status, ['ok', 'stopped'], `${where}'s loop state ${i}'s status`);
     sentence(st.sentence, `${where}'s loop state ${i}'s sentence`);
   });
+}
+
+const ATOM_COUNTS = ['functions', 'converted', 'partial', 'unchanged', 'unchecked', 'rewrites', 'takenBack', 'refused', 'repaired'];
+
+/**
+ * One function's static breakdown (AtomUnitResult): a rewrite that counts has a `same` check.
+ * @param {any} u
+ * @param {string} [where]
+ */
+export function assertAtomUnitResult(u, where = 'The atom breakdown unit') {
+  if (!u || typeof u !== 'object') fail(where, 'be an object');
+  str(u.file, `${where}'s file`); str(u.name, `${where}'s name`); str(u.block, `${where}'s block`);
+  oneOf(u.status, ATOM_UNIT_STATUS, `${where}'s status`);
+  oneOf(u.check?.status, ['same', 'different', 'unchecked'], `${where}'s check.status`);
+  for (const k of ['runs', 'compared', 'exercised', 'mismatchCount']) int(u.check[k], `${where}'s check.${k}`);
+  strs(u.atoms, `${where}'s atoms`);
+  int(u.rewrites, `${where}'s rewrites`); int(u.takenBack, `${where}'s takenBack`);
+  str(u.code, `${where}'s code`); str(u.body, `${where}'s body`);
+  if (typeof u.importDecl !== 'string') fail(`${where}'s importDecl`, 'be a string');
+  if (u.importDecl && !u.importDecl.endsWith(` from '${ATOMS_PACKAGE}';`)) fail(`${where}'s importDecl`, `import from '${ATOMS_PACKAGE}'`);
+  arr(u.untranslated, `${where}'s untranslated`);
+  u.untranslated.forEach((p, i) => { str(p.form, `${where}'s untranslated[${i}].form`); str(p.text, `${where}'s untranslated[${i}].text`); int(p.line, `${where}'s untranslated[${i}].line`, 1); });
+  // The rule the breakdown exists for: a rewrite counts only when the check says the function behaves the same.
+  if ((u.status === 'converted' || u.status === 'partial') && (u.check.status !== 'same' || u.rewrites === 0)) fail(where, 'count a rewrite only when the check says same');
+  if ((u.status === 'unchanged' || u.status === 'unchecked') && u.body !== u.code) fail(`${where}'s body`, 'be the original when no rewrite counts');
+  if (u.status === 'converted' && u.untranslated.length) fail(where, 'leave no part untranslated when converted');
+  if (u.repair) { str(u.repair.outcome, `${where}'s repair.outcome`); sentence(u.repair.sentence, `${where}'s repair.sentence`); }
+  if (u.written) {
+    if (u.status !== 'converted') fail(`${where}'s written`, 'be set only on a converted unit');
+    str(u.written.file, `${where}'s written.file`); sentence(u.written.sentence, `${where}'s written.sentence`);
+  }
+  if (u.english) {
+    if (!u.written) fail(`${where}'s english`, 'be set only on a written unit');
+    assertEnglishView(u.english, `${where}'s english`);
+  }
+  sentence(u.sentence, `${where}'s sentence`);
+}
+
+/**
+ * A function's read-only English view (EnglishView).
+ * @param {any} v
+ * @param {string} [where]
+ */
+export function assertEnglishView(v, where = 'The English view') {
+  if (!v || typeof v !== 'object') fail(where, 'be an object');
+  oneOf(v.via, ['fluent', 'off'], `${where}'s via`);
+  if (typeof v.code !== 'string') fail(`${where}'s code`, 'be a string');
+  arr(v.sentences, `${where}'s sentences`);
+  v.sentences.forEach((x, i) => { str(x?.atom, `${where}'s sentences[${i}].atom`); str(x?.sentence, `${where}'s sentences[${i}].sentence`); });
+  arr(v.reasons, `${where}'s reasons`);
+  v.reasons.forEach((x, i) => { str(x?.atom, `${where}'s reasons[${i}].atom`); str(x?.reason, `${where}'s reasons[${i}].reason`); });
+  int(v.plain, `${where}'s plain`);
+  if (v.plain !== v.reasons.length) fail(`${where}'s plain`, 'count its reasons');
+  if (typeof v.full !== 'boolean') fail(`${where}'s full`, 'be a boolean');
+  if (v.full !== (v.sentences.length > 0 && v.reasons.length === 0)) fail(`${where}'s full`, 'be true exactly when every atom call is a sentence');
+  if (v.via === 'off') {
+    str(v.reason, `${where}'s reason`);
+    if (v.code || v.sentences.length || v.reasons.length) fail(where, 'be empty when off');
+  } else str(v.code, `${where}'s code`);
+  sentence(v.sentence, `${where}'s sentence`);
+}
+
+/**
+ * The static breakdown of an import (AtomBreakdown).
+ * @param {any} b
+ */
+export function assertAtomBreakdown(b) {
+  const where = 'The atom breakdown';
+  if (!b || typeof b !== 'object') fail(where, 'be an object');
+  oneOf(b.via, ['static', 'off'], `${where}'s via`);
+  arr(b.units, `${where}'s units`);
+  b.units.forEach((u, i) => assertAtomUnitResult(u, `${where}'s unit ${i}`));
+  for (const k of ATOM_COUNTS) int(b.counts?.[k], `${where}'s counts.${k}`);
+  if (b.counts.functions !== b.units.length) fail(`${where}'s counts.functions`, 'equal the number of units');
+  if (b.via === 'off') { if (b.units.length) fail(where, 'have no units when off'); sentence(b.reason, `${where}'s reason`); }
+  sentence(b.sentence, `${where}'s sentence`);
 }

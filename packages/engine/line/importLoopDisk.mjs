@@ -33,7 +33,8 @@ import { buildLogicMap, compareLogicMaps, writeLogicMap, readLogicMap, fileUnits
 import { readRouteFamily, familyFeature } from './importV2/route.mjs';
 import { fitLogic, planFitSteps } from './importV2/fit.mjs';
 import { appDependsOn } from './importV2/extract.mjs';
-import { FIT_FILE, assertFitProposal } from './importV2/contract.mjs';
+import { FIT_FILE, ATOMS_FILE, assertFitProposal } from './importV2/contract.mjs';
+import { breakDownImport } from './importV2/breakdown.mjs';
 import { characterize, CHAR_DIR, jestRunnerFor } from './characterize.mjs';
 import { runCharTests, checkBehaviour } from './importVerify.mjs';
 import { createImportLoopRecorder } from './records.mjs';
@@ -112,16 +113,17 @@ const codeFiles = (root, files) => [...new Set(files)].filter((f) => CODE.test(f
  * The import loop's ops on a real project (importLoop.mjs LoopOps), for one folder.
  * @param {string} root
  * @param {string} folder
- * @param {{recorder?: {record: (state: any) => any}, characterize?: object, characterizeWith?: (root: string, folder: string, closure: any, map: any) => Promise<{tests: any[], sentence: string}>, cache?: boolean, log?: (line: string) => void}} [o]
+ * @param {{recorder?: {record: (state: any) => any}, characterize?: object, characterizeWith?: (root: string, folder: string, closure: any, map: any) => Promise<{tests: any[], sentence: string}>, cache?: boolean, log?: (line: string) => void, breakdown?: Parameters<typeof breakDownImport>[2] | false}} [o]
  *   `characterize`: options for characterize.mjs (budgets, seed; tests pass small ones); `characterizeWith` replaces the
  *   characterizer (a test that brings its own tests); `cache: false` turns the content-hash cache off; `log` hears each
- *   stage's time and the cache's hits.
+ *   stage's time and the cache's hits. `breakdown`: options for the static breakdown into atoms (importV2/breakdown.mjs;
+ *   tests pass the mock converter), `false` turns the step off.
  * @returns {any}
  */
 export function createLogicOnDisk(root, folder, o = {}) {
   const recorder = o.recorder ?? createImportLoopRecorder(root);
   const fr = () => folderRootOf(root, folder);
-  const files = { 'logic-map': 'line/logic-map.json', baseline: BASELINE_FILE, fit: FIT_FILE };
+  const files = { 'logic-map': 'line/logic-map.json', baseline: BASELINE_FILE, fit: FIT_FILE, atoms: ATOMS_FILE };
   const load = async (name) => {
     if (name === 'logic-map') return readLogicMap(fr());
     try { return JSON.parse(fs.readFileSync(path.join(root, folder, files[name]), 'utf8')); } catch (e) {
@@ -218,6 +220,9 @@ export function createLogicOnDisk(root, folder, o = {}) {
       const reached = r.runtime ? ` (${r.runtime.reached.length} reached at runtime)` : '';
       return { tests: r.tests, coverage: r.coverage, runtime: r.runtime, sentence: `Line wrote ${r.tests.length} characterization test${r.tests.length === 1 ? '' : 's'} in ${r.files.length - 1} file${r.files.length === 2 ? '' : 's'} (jest), covering ${r.coverage.covered.length} of ${map.units.length} logic units${reached}.${dropped}` };
     },
+    // The static breakdown (owner, 2026-10-14): each domain function of the fit as atom calls, checked in QuickJS against
+    // the original; the parts it leaves untranslated come back as refusals for construct.repair (the agent runs them).
+    ...(o.breakdown === false ? {} : { breakdown: async (_r, _f, _closure, fit) => timed('breakdown', () => breakDownImport(root, fit, o.breakdown || {})) }),
     runTests: async (_r, f, tests, how) => timed('tests', () => runTestsCached(f, tests, how)),
     behaviour: async (_r, f, diff) => checkBehaviour(root, diff, (await load('baseline'))?.sources ?? {}, f),
     // Every import of the app still resolves (importV2/resolve.mjs): the specifiers that name no file now and did before
