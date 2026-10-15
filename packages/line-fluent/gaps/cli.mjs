@@ -16,6 +16,7 @@ import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { fillGap, answerFor, readBack, readBackMatches } from './fill.mjs';
+import { runAnswer } from '../gate/equivalence/equivalence.mjs';
 import { withVerb } from '../clarify/sentences.mjs';
 import { parse } from '../../line-smith/scripts/lib-sentence.mjs';
 import { claudeArgs, runClaude } from '../pilot/runner/claude-model.mjs';
@@ -105,6 +106,67 @@ export async function refine(state, source, { model = 'opus' } = {}) {
   };
 }
 
+// ---- the model asks itself; the code answers; the person only confirms ------------------
+
+/** The block's function as an expression our sandbox can call: `function f(...) {...}`, export removed. */
+function callable(source) {
+  return source.replace(/^\s*export\s+(default\s+)?/m, '').trim();
+}
+
+/**
+ * One self-asked question answered by evidence: the model designs inputs (functions as JS source, since an input
+ * like getInitiativeDescription has no code here), our code runs the real block on them, and the model answers its
+ * own question from what really came out.
+ */
+export async function selfAsk(state, source, { model = 'opus' } = {}) {
+  const design = await claudeJson(
+    [
+      'You are checking your own understanding of a piece of code by running it. Design one small experiment that answers the question.',
+      'Reply with one JSON object only: {"args": [<the arguments to call the function with, in order; a function argument as {"fn": "<a JS arrow function as text>"}>], "why": "<what the result will show>"}.',
+      'Use a handful of realistic, readable values in the code\'s own domain.',
+    ].join('\n'),
+    `The code:\n${source}\nThe question: ${state.question}`,
+    model,
+  );
+  const args = Array.isArray(design.args) ? design.args : [];
+  const fnArgs = args.map((a) => (a && typeof a === 'object' && typeof a.fn === 'string' ? `(${a.fn})` : JSON.stringify(a)));
+  const run = await runAnswer(`(${callable(source)})(${fnArgs.join(', ')})`, [], []);
+  const seen = run.throws ? `it throws ${run.throws.name}` : `it returns ${JSON.stringify(run.ok, (k, v) => (v instanceof Map ? Object.fromEntries(v) : v))}`;
+  const answer = await claudeJson(
+    'You asked yourself a question about some code, ran an experiment, and saw the result. Answer your own question from what really happened, in one or two plain sentences. Reply with one JSON object only: {"answer": "..."}.',
+    `The code:\n${source}\nThe question: ${state.question}\nThe experiment: called with ${fnArgs.join(', ')}\nWhat happened: ${seen}`,
+    model,
+  );
+  return { q: state.question, a: `(answered from a run: called with ${fnArgs.join(', ')}; ${seen}) ${answer.answer ?? ''}`.trim(), self: true };
+}
+
+/** Self-asks until the step is settled, confidence stops rising, or `max` rounds; then the state is ready to confirm. */
+export async function selfLoop(state, source, { model = 'opus', max = 4 } = {}) {
+  let s = state;
+  for (let round = 0; round < max && !s.settled; round++) {
+    const before = s.step?.confidence ?? 0;
+    const h = await selfAsk(s, source, { model });
+    s = { ...s, history: [...(s.history ?? []), h] };
+    Object.assign(s, await refine(s, source, { model }));
+    if (round > 0 && (s.step?.confidence ?? 0) <= before && !s.settled) break; // no longer learning
+  }
+  return s;
+}
+
+/** The one question the person gets: the conclusion, to confirm or correct. */
+export function confirmText(state) {
+  const by = (about) => (state.assumptions ?? []).find((a) => a.about === about)?.statement;
+  const lines = [
+    "Here's what I worked out about this code:",
+    by('block') && `- What it does: ${by('block')}`,
+    by('inputs') && `- What goes in: ${by('inputs')}`,
+    by('output') && `- What comes out: ${by('output')}`,
+    state.step?.meaning && `- The step I wasn't sure about: ${state.step.meaning}`,
+    'Is that right? (yes, or tell me what is wrong)',
+  ];
+  return lines.filter(Boolean).join('\n');
+}
+
 /** What the person reads each turn: the current reading of the code in one line, then the question. */
 export function turnText(state) {
   const block = (state.assumptions ?? []).find((a) => a.about === 'block');
@@ -165,16 +227,24 @@ async function scan(file, { model, outer = 'opus' }) {
   const filled = await fillGap(gap, { gate, model });
   const state = { file, gap, atom: filled.atom, example: filled.example, candidates: filled.candidates, more: found.length - 1 };
   if (!filled.candidates.some((c) => c.ok)) return { state, say: `${plainStep(state)}\nNothing we tried describes it well. What would you call what it does?` };
-  Object.assign(state, { history: [] }, await refine(state, readFileSync(file, 'utf8'), { model: outer }));
-  return { state, say: turnText(state) };
+  const source = readFileSync(file, 'utf8');
+  Object.assign(state, { history: [] }, await refine(state, source, { model: outer }));
+  const done = await selfLoop(state, source, { model: outer });
+  return { state: { ...done, confirming: true }, say: confirmText(done) };
 }
 
 async function choose(state, reply, { model, outer = 'opus' }) {
   const kept = byVerb(state);
-  // Every answer goes back to the outer model, which revises every assumption and picks the next question.
-  state = { ...state, history: [...(state.history ?? []), { q: state.question, a: String(reply) }] };
-  Object.assign(state, await refine(state, readFileSync(state.file, 'utf8'), { model: outer }));
-  if (!state.settled) return { state, say: turnText(state) };
+  // The person confirms or corrects the conclusion. A correction goes back to the outer model, which revises every
+  // assumption and asks itself again before coming back to the person.
+  const source = readFileSync(state.file, 'utf8');
+  const confirmed = /^\s*(y|yes|right|correct|exactly|yep)\b/i.test(String(reply)) && !/\bbut\b/i.test(String(reply));
+  state = { ...state, history: [...(state.history ?? []), { q: confirmText(state), a: String(reply), person: true }] };
+  if (!confirmed || !state.settled) {
+    Object.assign(state, await refine(state, source, { model: outer }));
+    state = await selfLoop(state, source, { model: outer });
+    if (!confirmed || !state.settled) return { state: { ...state, confirming: true }, say: confirmText(state) };
+  }
   const read = { verb: state.step.verb, word: state.step.word };
   const text = read.word ?? '';
   let pick = read.verb ? kept.find((c) => c.verb === read.verb) : null;
