@@ -1,4 +1,27 @@
 {
   "$comment": "Hand-kept: atoms the owner approved from the fluent generator (packages/line-fluent/generator, `approve`). scripts/gen-atoms.mjs reads this file and emits each atom into generated/approved.ts and catalog.json. Edit by approve, or by hand.",
-  "atoms": []
+  "atoms": [
+    {
+      "atom": "createsAtTo",
+      "entry": "Map.prototype.set",
+      "fluent": "map(m).creates().at(key).to(value)",
+      "js": "m.set(key, value)",
+      "params": [
+        [
+          "m",
+          "map"
+        ],
+        [
+          "key",
+          "prim"
+        ],
+        [
+          "value",
+          "prim"
+        ]
+      ],
+      "kind": "in-place",
+      "approvedAt": "2026-10-15T04:08:24.538Z"
+    }
+  ]
 }

@@ -10443,6 +10443,56 @@
      }
     ]
    }
+  },
+  {
+   "atom": "createsAtTo",
+   "module": "generated/approved",
+   "reads": "map m creates at key to value",
+   "js": [
+    "m.set(key, value)"
+   ],
+   "pure": false,
+   "mutates": true,
+   "generated": true,
+   "params": [
+    [
+     "m",
+     "map"
+    ],
+    [
+     "key",
+     "prim"
+    ],
+    [
+     "value",
+     "prim"
+    ]
+   ],
+   "fluent": "map(m).creates().at(key).to(value)",
+   "check": [
+    {
+     "params": [
+      [
+       "m",
+       "map"
+      ],
+      [
+       "key",
+       "prim"
+      ],
+      [
+       "value",
+       "prim"
+      ]
+     ]
+    }
+   ],
+   "verified": true,
+   "verifiedBy": "approved: the C3 gate (equivalence to the JS reference) and the read-back",
+   "approved": {
+    "entry": "Map.prototype.set",
+    "approvedAt": "2026-10-15T04:08:24.538Z"
+   }
   }
  ],
  "excluded": [

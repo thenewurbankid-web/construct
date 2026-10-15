@@ -5,9 +5,11 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('path');
 const { toAtoms } = require('./atoms-transform');
-const { loadCatalog } = require('./atoms-catalog');
+const fs = require('fs');
+const { loadCatalog, compileCatalog, paramsFromSource } = require('./atoms-catalog');
 
-const catalog = loadCatalog(path.join(__dirname, '../line-smith/src/atoms/catalog.json'));
+const CATALOG = path.join(__dirname, '../line-smith/src/atoms/catalog.json');
+const catalog = loadCatalog(CATALOG);
 
 const STACK = `function stackEntries(filteredOpportunities, getInitiativeDescription) {
   const groups = new Map();
@@ -29,13 +31,22 @@ test('a Map declared in the code takes Map atoms: get and entries are decided, n
 });
 
 test('no atom for a Map\'s set: the code stays as written and is a gap naming its reference entry', () => {
-  const r = toAtoms(STACK, { catalog });
+  // The catalog as it was before createsAtTo was registered from this gap (owner, 2026-10-15).
+  const raw = JSON.parse(fs.readFileSync(CATALOG, 'utf8'));
+  const before = compileCatalog({ ...raw, atoms: raw.atoms.filter((a) => a.atom !== 'createsAtTo') }, { signatures: paramsFromSource(path.join(__dirname, '../line-smith')) });
+  const r = toAtoms(STACK, { catalog: before });
   assert.doesNotMatch(r.code, /setInWeakMap/, 'never a neighbouring type\'s atom');
   assert.match(r.code, /groups\.set\(key, \[opp\]\)/);
   assert.deepEqual(r.gaps.map(({ type, member, entry, code }) => ({ type, member, entry, code })), [
     { type: 'map', member: 'set', entry: 'Map.prototype.set', code: 'groups.set(key, [opp])' },
   ]);
   assert.ok(r.untranslated.some((u) => u.reason === 'no atom for a map'));
+});
+
+test('the atom registered from that gap closes it: the next run finds createsAtTo', () => {
+  const r = toAtoms(STACK, { catalog });
+  assert.match(r.code, /createsAtTo\(groups, key, \[opp\]\)/);
+  assert.deepEqual(r.gaps, []);
 });
 
 test('a WeakMap declared in the code still takes the WeakMap atom', () => {

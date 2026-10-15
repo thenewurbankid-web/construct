@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "status": "approved",
+  "entry": "Map.prototype.set",
+  "key": "Map.prototype.set",
+  "model": "gap:haiku+person",
+  "createdAt": "2026-10-15T04:00:03.426Z",
+  "candidates": [],
+  "answer": {
+    "decision": "new-atom",
+    "atom": "createsAtTo"
+  },
+  "gate": {
+    "pass": true
+  },
+  "tries": 1,
+  "adds": true,
+  "approvedEntry": {
+    "atom": "createsAtTo",
+    "entry": "Map.prototype.set",
+    "fluent": "map(m).creates().at(key).to(value)",
+    "js": "m.set(key, value)",
+    "params": [
+      [
+        "m",
+        "map"
+      ],
+      [
+        "key",
+        "prim"
+      ],
+      [
+        "value",
+        "prim"
+      ]
+    ],
+    "kind": "in-place"
+  },
+  "catalogEntry": null,
+  "note": "From the gap `groups.set(key, [opp])` (map) in stackEntries; owner confirmed 2026-10-15 (it starts a new group).",
+  "approvedAt": "2026-10-15T04:08:24.538Z",
+  "approved": "/home/user/construct-private/packages/line-smith/src/atoms/approved.json",
+  "newVerbs": [
+    "creates"
+  ]
+}
