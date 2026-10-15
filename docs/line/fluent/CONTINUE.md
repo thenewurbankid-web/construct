@@ -37,3 +37,10 @@ Stopped by the owner 2026-10-15 ~00:25 UTC ("stop all", "commit ... so that we c
 ## Next
 1. Fix the 2 real suite failures, re-run the full suite, tag fluent-v0.1.0 at the passing commit.
 2. Merge t0-6-links-inrepo after verifying; finish T1.2 (gate) as the one task with full capacity.
+
+## Wave 3 (2026-10-15, dev only)
+Owner rules for this wave: dev work only, no benchmarks or baselines (T0.3, T1.4, T3.4, T3.5 are skipped); run open tasks in parallel, one session each, on its own `line/fluent/<task>` branch; the orchestrator verifies and merges one at a time.
+- Merged into `line/import-smith-codemod` (tip e0d36374): t0-5 probe port, t0-6-links-inrepo, t2-3a-coverage, t1-2b-equivalence, t4-2-hover. All 251 line-fluent tests pass on the combined tree.
+- Running (Claude Desktop sessions), each pushes its branch and reports: t1-2d-types, t2-1-spike (T2.1a), t2-4-writeatoms (merges `line/import-v2-static-breakdown` eae0470a into its branch first, per the owner), t5-1-generator, t5-2-mcp, t5-3-cockpit, and `line/fix-missing-exports` (restores `fixtureRows`, `fallowFunctions`, `complexityByName`, which break 7 test files on the base).
+- Merge recipe: fetch the branch, `git merge --no-ff`, run the changed test files plus `node --test $(find packages/line-fluent -name '*.test.mjs')`, push to private, then set the task to done on the board (ArtifactData `update` with `if_version`).
+- Board shows "When it's 100% done", "How it's done", and "Capabilities by release" (grouped by task `version`, else by `release/current.items`, else Later).
