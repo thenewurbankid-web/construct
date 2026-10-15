@@ -10,7 +10,7 @@ Stopped by the owner 2026-10-15 ~00:25 UTC ("stop all", "commit ... so that we c
 ## Where things are
 - Branch `line/import-smith-codemod` on `private` (construct-private only, never `origin`). Wave 1 tip f3b27614; wave 2 merges on top.
 - Code: `packages/line-smith` (@line/smith), `packages/line-codemod` (@line/codemod), `packages/line-fluent` (@line/fluent: contract/, compare/, grammar/, gate/, pilot/, coverage/, student/, records/, lsp/).
-- Wave 2 agent branches on private: `line/fluent/<task-id>`. Merged: t0-5 probe port, t1-2a, t1-2c, t1-3a-c, t2-2, t2-3a, t3-2a, t3-3a, t4-3a, t4-4a, t5-4a (check `git log f3b27614..private/line/import-smith-codemod`). Pushed, not merged: t0-6-links-inrepo (2ee07648). Stopped mid-work: t2-1 fluent-form spike, t1-2b equivalence, t1-2d types (check their branches before reusing).
+- Wave 2 agent branches on private: `line/fluent/<task-id>`. Merged: t0-5 probe port, t1-2a, t1-2c, t1-3a-c, t2-2, t2-3a, t3-2a, t3-3a, t4-3a, t4-4a, t5-4a (check `git log f3b27614..private/line/import-smith-codemod`). Pushed, not merged: t0-5-probe-port, t2-3a-coverage, t0-6-links-inrepo (2ee07648), t1-2b-equivalence (de0ebf60), t2-1-spike (WIP commit, unverified). Killed with nothing pushed: t1-2d types. The orchestrator's local merge of t0-5 (3fc9e4c1 on claude/fluent-wave2-ffa3a1) was never pushed; redo it from the branch.
 
 ## Board and plan pages
 - Live board (owner's account): https://claude.ai/artifact/RG6vQ6E4ka7eCmcyqrk6wg. Plan page: https://claude.ai/artifact/HwgVFom6D4FBSMe5RSkjZZ.
