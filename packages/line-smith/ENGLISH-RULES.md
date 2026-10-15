@@ -94,8 +94,8 @@ picks, as in `the().sum().of(xs)`. Any other `reduce` starts with `folds()`, the
 
 **The other callback shapes (owner, 2026-10-15):**
 - *Index:* `xs.map((x, i) => …)` reads `every(x).at(i).in(xs)…`; `i` is an imported placeholder, typed `number`.
-- *Effects only:* `xs.forEach((x) => log(x))` starts with `does()`, the first word for "returns nothing":
-  `does().every(x).in(xs).by().logging(x)`. Always an organism, since it has effects.
+- *Effects only:* withdrawn by R11 (effects are not in the library). It was `does().every(x).in(xs)…`, the first
+  word for "returns nothing".
 - *Async:* an async body makes the chain return a Promise and run **one at a time** by default; parallel is said
   out loud with `all().at().once()`. The converter writes `all().at().once()` for `Promise.all(xs.map(async …))`, so
   behaviour matches the original.
@@ -163,6 +163,40 @@ functionality and semantic relevance to the block it is in.
   from the Trace path step that created the block, which records why it exists. With no Trace path, it is derived
   deterministically from the block's name and the English of the atoms it uses, e.g. "lineTotal: multiplies price by
   quantity", which says what the block does, not why. Doc comments are not used.
+
+**R10. Every sentence ends by naming what it returns (owner, 2026-10-15).** The last words are
+`andThe().<name>()`, where `<name>` is the returned value's name and says what it is:
+`clones().text(s).and().lowercases().andThe().lowercased()`. The name is
+- the verb's past participle when the sentence returns the changed thing: `trimmed`, `sorted`, `replaced`, `mapped`,
+  `kept`, `joined`, `found`;
+- a noun when it returns something else: `answer` for every question (R4), `parts` for a split, `first` and `last` for
+  an item taken from a list, `total` for a fold, `index`, `length`, `count`;
+- `chosen` for `when()` and `chooses()`, `matched` for `matches()`, `result` for `attempts()`.
+
+The name is decided by rules, not chosen per atom: the participle comes from the sentence's last content verb
+(`naming.json` `grammar.participles` for irregular ones, `finds` -> `found`); a question always ends in `answer`; the
+exceptions are one table, `grammar.returnNames` (`splits` -> `parts`, `drops().duplicates()` -> `deduplicated`). The
+first word still decides the kind of value (R9); R10 names it. R7 holds: the chain still calls exactly one atom, and
+`.<name>()` returns the plain value. Inside an `every()` body, steps are not sentences and take no return clause; the
+`every()` sentence itself does: `every(x).in(xs).is().mapped().to().clone().by().multiplying(x).by(2).andThe().mapped()`.
+
+**R11. Atoms, molecules and organisms are pure (owner, 2026-10-15).** A unit in the library never changes its inputs,
+never reads anything it is not given, and never has an effect. Same inputs, same result.
+- *In-place built-ins become copies:* `m.set(key, value)` is `new Map(m).set(key, value)`, said with `clones()`
+  (R5): `clones().map(m).and().creates().at(key).to(value).andThe().created()` (the atom `withEntry`). A built-in
+  that cannot be copied (`WeakMap.set`, `WeakSet.add`) is not in the library, nor is any member that returns nothing.
+- *What a unit reads is passed in:* the clock, a random source, the locale and the time zone are parameters
+  (`now(clock)`, `random(source)`). Members that read the machine's locale or time zone (`toLocaleString`,
+  `getHours`, `new Date(y, m, d)`) are not in the library; their UTC or explicit forms are.
+- *Effects stay outside the library:* `forEach` for its effects, timers, network, storage, logging and `does()`
+  sentences belong to app code. The R9 `does()` first word is withdrawn.
+- R5's in-place form (a subject with no `clones()` that changes its input) no longer occurs in the library.
+- Enforced statically: `gen-atoms` excludes members the TypeScript lib shows as impure, in-place or returning nothing,
+  and refuses to write a catalog with any atom marked `mutates` or impure; approving an `in-place` or `effect` atom
+  is refused.
+- The codemod never puts a pure atom where the original code mutates: that changes what the code does. A mutating
+  call stays as written and is reported (`untranslated`, reason `mutates`), so restructuring it (building the value
+  with a fold, say) is a reviewed step, never a silent one.
 
 ## Examples with real atoms
 

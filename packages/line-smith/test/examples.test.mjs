@@ -41,8 +41,6 @@ const examples = {
   match: [[['live', { draft: () => 0, live: () => 1 }], 1], [['gone', { draft: () => 0 }, () => -1], -1]],
   attempt: [[[() => JSON.parse('{'), () => 'bad json', () => {}], 'bad json'], [[() => 7], 7]],
   fail: { run: () => assert.throws(() => s.fail(new RangeError('x')), RangeError) },
-  each: { run: () => { const seen = []; s.each(books, (b) => seen.push(b.id)); assert.deepStrictEqual(seen, [3, 1, 2]); } },
-  repeatWhile: { run: () => { let n = 0; assert.deepStrictEqual(s.repeatWhile(() => n < 3, () => n++, 10), { steps: 3, stoppedByLimit: false }); } },
   iterateWhile: [[[1, (x) => x < 100, (x) => x * 2, 10], 128]],
   isText: [[[dune.title], true], [[dune.id], false]],
   isNumber: [[[NaN], true]],
@@ -131,7 +129,7 @@ const examples = {
   isBefore: [[[day('2026-01-01'), day('2026-01-02')], true]],
   isAfter: [[[day('2026-01-01'), day('2026-01-02')], false]],
   allOf: { run: async () => assert.deepStrictEqual(await s.allOf([1, Promise.resolve(2)]), [1, 2]) },
-  firstSettled: { run: async () => assert.equal(await s.firstSettled([s.delay(20, 'slow'), 'now']), 'now') },
+  firstSettled: { run: async () => assert.equal(await s.firstSettled([new Promise((resolve) => setTimeout(() => resolve('slow'), 20)), 'now']), 'now') },
   settledAll: { run: async () => assert.deepStrictEqual(await s.settledAll([1, Promise.reject(new Error('x')).catch(() => 'caught')]), [{ status: 'fulfilled', value: 1 }, { status: 'fulfilled', value: 'caught' }]) },
   setOf: [[[[1, 1, 2]], new Set([1, 2])]],
   isInSet: [[[new Set([dune.id]), 3], true]],
@@ -146,17 +144,6 @@ const examples = {
   random: [[[() => 0.25], 0.25]],
   seededSource: { run: () => assert.deepStrictEqual([1, 2, 3].map(s.seededSource(7)), [1, 2, 3].map(s.seededSource(7))) },
   randomBetween: [[[10, 20, () => 0.5], 15]],
-  delay: { run: async () => assert.equal(await s.delay(1, 'done'), 'done') },
-  fetchJson: { run: async () => {
-    const fake = async (url) => (url === '/ok' ? { ok: true, status: 200, json: async () => books } : { ok: false, status: 404, json: async () => null });
-    assert.deepStrictEqual(await s.fetchJson('/ok', undefined, fake), { ok: true, value: books });
-    const missing = await s.fetchJson('/missing', undefined, fake);
-    assert.equal(missing.ok, false);
-    const broken = await s.fetchJson('/x', undefined, async () => { throw new TypeError('offline'); });
-    assert.equal(broken.ok, false);
-  } },
-  readStorage: { run: () => { const store = new Map(); const fake = { getItem: (k) => store.get(k) ?? null, setItem: (k, v) => store.set(k, v) }; assert.equal(s.readStorage('k', fake), undefined); s.writeStorage('k', 'v', fake); assert.equal(s.readStorage('k', fake), 'v'); } },
-  writeStorage: { run: () => { const calls = []; s.writeStorage('a', 'b', { getItem: () => null, setItem: (k, v) => calls.push([k, v]) }); assert.deepStrictEqual(calls, [['a', 'b']]); } },
   urlFrom: [[['/books?id=3', 'https://example.test/a/'], 'https://example.test/books?id=3']],
   withQuery: [[['https://example.test/books?id=1', { id: 3, q: 'a b' }], 'https://example.test/books?id=3&q=a+b']],
 };

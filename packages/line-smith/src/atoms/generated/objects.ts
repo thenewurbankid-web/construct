@@ -12,16 +12,6 @@ export function valueAsText(value: any, ...args: any[]): any {
 }
 
 /**
- * valueAsLocaleText(value) reads "the to locale string of value".
- * Generated wrapper: exactly `value.toLocaleString()`.
- * IMPURE: depends on the runtime's default locale.
- */
-export function valueAsLocaleText(value: Object): string;
-export function valueAsLocaleText(value: any, ...args: any[]): any {
-  return (value as any).toLocaleString(...args);
-}
-
-/**
  * primitiveOfValue(value) reads "the value of of value".
  * Generated wrapper: exactly `value.valueOf()`.
  */

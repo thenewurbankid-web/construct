@@ -260,31 +260,8 @@ describe('attempt equals try / catch / finally, including the finally order', ()
 });
 
 describe('loops are bounded', () => {
-  test('repeatWhile equals while (condition) step, but never runs step more than limit times', () => {
-    fc.assert(
-      fc.property(fc.integer({ min: 0, max: 50 }), fc.integer({ min: 0, max: 50 }), (target, limit) => {
-        let i = 0;
-        let steps = 0;
-        const out = s.repeatWhile(() => i < target, () => {
-          i++;
-          steps++;
-        }, limit);
-        assert.ok(steps <= limit);
-        assert.equal(out.steps, steps);
-        assert.equal(steps, Math.min(target, limit));
-        assert.equal(out.stoppedByLimit, target > limit);
-      }),
-      runs,
-    );
-  });
-  test('repeatWhile with an always-true condition stops at the limit', () => {
-    let steps = 0;
-    assert.deepStrictEqual(s.repeatWhile(() => true, () => steps++, 1000), { steps: 1000, stoppedByLimit: true });
-    assert.equal(steps, 1000);
-  });
-  test('repeatWhile and iterateWhile reject a missing or infinite limit', () => {
+  test('iterateWhile rejects a missing or infinite limit', () => {
     for (const bad of [Infinity, -1, 1.5, NaN, undefined]) {
-      assert.throws(() => s.repeatWhile(() => false, () => {}, bad), RangeError);
       assert.throws(() => s.iterateWhile(0, () => false, (x) => x, bad), RangeError);
     }
   });
@@ -344,21 +321,7 @@ describe('sortedBy key forms', () => {
   });
 });
 
-describe('injected sources make the impure atoms checkable', () => {
-  test('delay resolves to value through the injected schedule, asking for ms', async () => {
-    await fc.assert(
-      fc.asyncProperty(fc.nat(10_000), prim, async (ms, value) => {
-        const asked = [];
-        const got = await s.delay(ms, value, (fn, wait) => {
-          asked.push(wait);
-          fn();
-        });
-        assert.deepStrictEqual(got, value);
-        assert.deepStrictEqual(asked, [ms]);
-      }),
-      runs,
-    );
-  });
+describe('time and randomness take their source as a parameter (R11)', () => {
   test('seededSource: the same seed gives the same sequence, always in [0, 1)', () => {
     fc.assert(
       fc.property(fc.integer(), (seed) => {
@@ -372,21 +335,6 @@ describe('injected sources make the impure atoms checkable', () => {
         const r = s.seededSource(seed);
         const v = s.randomBetween(5, 10, r);
         assert.ok(v >= 5 && v < 10);
-      }),
-      runs,
-    );
-  });
-  test('readStorage / writeStorage round-trip through an in-memory storage like getItem/setItem', () => {
-    fc.assert(
-      fc.property(fc.array(fc.tuple(fc.string({ maxLength: 3 }), fc.string()), { maxLength: 8 }), fc.string({ maxLength: 3 }), (writes, probe) => {
-        const store = new Map();
-        const storage = { getItem: (k) => (store.has(k) ? store.get(k) : null), setItem: (k, v) => store.set(k, String(v)) };
-        const model = new Map();
-        for (const [k, v] of writes) {
-          s.writeStorage(k, v, storage);
-          model.set(k, v);
-        }
-        assert.deepStrictEqual(s.readStorage(probe, storage), model.has(probe) ? model.get(probe) : undefined);
       }),
       runs,
     );

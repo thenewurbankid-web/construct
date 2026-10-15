@@ -163,7 +163,7 @@ test('approve adds a new verb to naming.json, sorted, and leaves the rest of the
   try {
     const naming = join(dir, 'naming.json');
     copyFileSync(NAMING_PATH, naming);
-    const approvedEntry = { atom: 'putsAtTo', entry: 'Map.prototype.set', fluent: 'map(m).puts().at(key).to(value)', js: 'm.set(key, value)', params: [['m', 'map'], ['key', 'prim'], ['value', 'prim']], kind: 'in-place' };
+    const approvedEntry = { atom: 'putsAtTo', entry: 'Map.prototype.set', fluent: 'clones().map(m).and().puts().at(key).to(value)', js: 'new Map(m).set(key, value)', params: [['m', 'map'], ['key', 'prim'], ['value', 'prim']], kind: 'copy' };
     const file = join(dir, 'p.json');
     writeFileSync(file, JSON.stringify({ status: 'pending', entry: 'Map.prototype.set', gate: { pass: true }, answer: { decision: 'new-atom' }, approvedEntry }));
     const done = approveProposal(file, { approved: tempApproved(dir), catalog: tempCatalog(dir), naming, now: () => 'A' });

@@ -1,7 +1,7 @@
 // R9 every() sentences that must compile, with the type each one returns. Compiled by
 // `npm run test:types` (test/types/tsconfig.json) and timed by test/every-types.test.mjs; the
 // invalid-*.ts fixtures beside it must not compile, with the messages they name.
-import { checks, does, every, folds, i, item, the, total, x, y } from '../../../src/fluent';
+import { checks, every, folds, i, item, the, total, x, y } from '../../../src/fluent';
 
 type Same<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false;
 const same = <A, B>(_: Same<A, B>): void => {};
@@ -71,23 +71,6 @@ same<typeof firstAt, number | undefined>(true);
 const nestedAt = every(x).at(i).in(rows).is().mapped().to().clone().by().every(y).in(x).is().mapped().to().clone().by().multiplying(y).by(i);
 same<typeof nestedAt, number[][]>(true);
 
-// does(): returns nothing.
-const effects = does().every(x).in(xs).by().multiplying(x).by(2);
-same<typeof effects, void>(true);
-const effectsAt = does().every(x).at(i).in(xs2).by().multiplying(i).by(2);
-same<typeof effectsAt, void>(true);
-
-// An async body makes the sentence a Promise: one at a time, or all().at().once().
-const waited = does().every(x).in(xs).by().waiting(x);
-same<typeof waited, Promise<void>>(true);
-const waitedTogether = does().every(x).in(xs).all().at().once().by().waiting(x);
-same<typeof waitedTogether, Promise<void>>(true);
-const mappedLater = every(x).in(xs).is().mapped().to().clone().by().waiting(x);
-same<typeof mappedLater, Promise<undefined[]>>(true);
-const mappedTogether = every(x).in(xs).all().at().once().is().mapped().to().clone().by().waiting(x);
-same<typeof mappedTogether, Promise<undefined[]>>(true);
-const nestedLater = every(x).in(rows).is().mapped().to().clone().by().every(y).in(x).is().mapped().to().clone().by().waiting(y);
-same<typeof nestedLater, Promise<undefined[][]>>(true);
 // all().at().once() with a sync body changes nothing.
 const syncTogether = every(x).in(xs).all().at().once().is().kept().if(x).is().positive();
 same<typeof syncTogether, number[]>(true);

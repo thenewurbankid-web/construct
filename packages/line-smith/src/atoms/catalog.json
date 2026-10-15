@@ -942,53 +942,6 @@
   },
   {
    "generated": false,
-   "atom": "each",
-   "module": "loops",
-   "reads": "for each item of list, effect",
-   "js": [
-    "list.forEach(fn)",
-    "for (const item of list) { fn(item) }"
-   ],
-   "pure": false,
-   "mutates": false,
-   "covers": [
-    "Array#forEach"
-   ],
-   "check": [
-    {
-     "params": [
-      [
-       "list",
-       "list"
-      ],
-      [
-       "fn",
-       "fn"
-      ]
-     ],
-     "js": [
-      "list.forEach(fn)"
-     ]
-    }
-   ],
-   "impureReason": "exists only for the callback's side effects",
-   "verified": true
-  },
-  {
-   "generated": false,
-   "atom": "repeatWhile",
-   "module": "loops",
-   "reads": "repeat step while condition, at most limit times",
-   "js": [
-    "while (condition) { step }"
-   ],
-   "pure": true,
-   "mutates": false,
-   "verifiedBy": "test/core.test.mjs (limit property)",
-   "verified": true
-  },
-  {
-   "generated": false,
    "atom": "iterateWhile",
    "module": "loops",
    "reads": "starting from start, step to next while condition, at most limit times",
@@ -3809,7 +3762,8 @@
      ]
     }
    ],
-   "note": "the copy-returning map.set(key, value)",
+   "note": "the copy-returning map.set(key, value) Sentence confirmed by the owner 2026-10-15 (first registered as createsAtTo, merged here by R11: the same copy); it waits until clones() takes a map.",
+   "fluentPending": "clones().map(map).and().creates().at(key).to(value)",
    "verified": true
   },
   {
@@ -3849,12 +3803,10 @@
    "module": "impure",
    "reads": "the current date and time",
    "js": [
-    "new Date()",
-    "new Date(Date.now())"
+    "new Date(clock())"
    ],
-   "pure": false,
+   "pure": true,
    "mutates": false,
-   "impureReason": "reads the clock (inject one to make it deterministic)",
    "check": [
     {
      "params": [
@@ -3868,6 +3820,7 @@
      ]
     }
    ],
+   "note": "R11: the clock or random source is a parameter, so the same inputs give the same result",
    "verified": true
   },
   {
@@ -3876,14 +3829,10 @@
    "module": "impure",
    "reads": "the current time in milliseconds",
    "js": [
-    "Date.now()"
+    "clock()"
    ],
-   "pure": false,
+   "pure": true,
    "mutates": false,
-   "covers": [
-    "Date.now"
-   ],
-   "impureReason": "reads the clock (inject one to make it deterministic)",
    "check": [
     {
      "params": [
@@ -3897,6 +3846,7 @@
      ]
     }
    ],
+   "note": "R11: the clock or random source is a parameter, so the same inputs give the same result",
    "verified": true
   },
   {
@@ -3905,14 +3855,10 @@
    "module": "impure",
    "reads": "a random number from 0 up to 1",
    "js": [
-    "Math.random()"
+    "source()"
    ],
-   "pure": false,
+   "pure": true,
    "mutates": false,
-   "covers": [
-    "Math.random"
-   ],
-   "impureReason": "random (inject a source, e.g. seededSource(seed), to make it deterministic)",
    "check": [
     {
      "params": [
@@ -3926,6 +3872,7 @@
      ]
     }
    ],
+   "note": "R11: the clock or random source is a parameter, so the same inputs give the same result",
    "verified": true
   },
   {
@@ -3948,11 +3895,10 @@
    "module": "impure",
    "reads": "a random number from min up to max",
    "js": [
-    "min + Math.random() * (max - min)"
+    "min + source() * (max - min)"
    ],
-   "pure": false,
+   "pure": true,
    "mutates": false,
-   "impureReason": "random (inject a source to make it deterministic)",
    "check": [
     {
      "params": [
@@ -3974,62 +3920,7 @@
      ]
     }
    ],
-   "verified": true
-  },
-  {
-   "generated": false,
-   "atom": "delay",
-   "module": "impure",
-   "reads": "value after ms milliseconds",
-   "js": [
-    "new Promise((resolve) => setTimeout(() => resolve(value), ms))"
-   ],
-   "pure": false,
-   "mutates": false,
-   "impureReason": "timer",
-   "verifiedBy": "test/core.test.mjs (fake-timer property)",
-   "verified": true
-  },
-  {
-   "generated": false,
-   "atom": "fetchJson",
-   "module": "adapters",
-   "reads": "the JSON at url",
-   "js": [
-    "fetch(url, init).then((r) => r.json())"
-   ],
-   "pure": false,
-   "mutates": false,
-   "impureReason": "host adapter (network); the host object can be injected",
-   "verifiedBy": "test/examples.test.mjs (stub host)",
-   "verified": true
-  },
-  {
-   "generated": false,
-   "atom": "readStorage",
-   "module": "adapters",
-   "reads": "the stored value for key",
-   "js": [
-    "localStorage.getItem(key)"
-   ],
-   "pure": false,
-   "mutates": false,
-   "impureReason": "host adapter (storage); the host object can be injected",
-   "verifiedBy": "test/core.test.mjs (in-memory storage property)",
-   "verified": true
-  },
-  {
-   "generated": false,
-   "atom": "writeStorage",
-   "module": "adapters",
-   "reads": "store value under key",
-   "js": [
-    "localStorage.setItem(key, value)"
-   ],
-   "pure": false,
-   "mutates": false,
-   "impureReason": "host adapter (storage); the host object can be injected",
-   "verifiedBy": "test/examples.test.mjs (stub host)",
+   "note": "R11: the clock or random source is a parameter, so the same inputs give the same result",
    "verified": true
   },
   {
@@ -4040,9 +3931,8 @@
    "js": [
     "new URL(path, base).href"
    ],
-   "pure": false,
+   "pure": true,
    "mutates": false,
-   "impureReason": "host adapter (host URL parser); the host object can be injected",
    "check": [
     {
      "params": [
@@ -4070,9 +3960,8 @@
    "js": [
     "const u = new URL(url); u.searchParams.set(k, v); u.href"
    ],
-   "pure": false,
+   "pure": true,
    "mutates": false,
-   "impureReason": "host adapter (host URL parser); the host object can be injected",
    "verifiedBy": "test/examples.test.mjs (stub host)",
    "verified": true
   },
@@ -4315,92 +4204,6 @@
      }
     ]
    }
-  },
-  {
-   "atom": "localeLowerCaseText",
-   "module": "generated/text",
-   "reads": "the to locale lower case locales of text",
-   "js": [
-    "text.toLocaleLowerCase(locales)"
-   ],
-   "pure": false,
-   "mutates": false,
-   "generated": true,
-   "covers": [
-    "String#toLocaleLowerCase"
-   ],
-   "verified": true,
-   "impureReason": "depends on the runtime's default locale when none is passed",
-   "check": {
-    "native": {
-     "kind": "instance",
-     "owner": "String",
-     "member": "toLocaleLowerCase"
-    },
-    "receiver": "text",
-    "params": []
-   },
-   "note": "IMPURE: depends on the runtime's default locale when none is passed."
-  },
-  {
-   "atom": "localeUpperCaseText",
-   "module": "generated/text",
-   "reads": "the to locale upper case locales of text",
-   "js": [
-    "text.toLocaleUpperCase(locales)"
-   ],
-   "pure": false,
-   "mutates": false,
-   "generated": true,
-   "covers": [
-    "String#toLocaleUpperCase"
-   ],
-   "verified": true,
-   "impureReason": "depends on the runtime's default locale when none is passed",
-   "check": {
-    "native": {
-     "kind": "instance",
-     "owner": "String",
-     "member": "toLocaleUpperCase"
-    },
-    "receiver": "text",
-    "params": []
-   },
-   "note": "IMPURE: depends on the runtime's default locale when none is passed."
-  },
-  {
-   "atom": "localeCompareText",
-   "module": "generated/text",
-   "reads": "the locale compare that, locales, options of text",
-   "js": [
-    "text.localeCompare(that, locales, options)",
-    "text.localeCompare(that)"
-   ],
-   "pure": false,
-   "mutates": false,
-   "generated": true,
-   "covers": [
-    "String#localeCompare"
-   ],
-   "verified": true,
-   "impureReason": "depends on the runtime's default locale when none is passed",
-   "check": {
-    "native": {
-     "kind": "instance",
-     "owner": "String",
-     "member": "localeCompare"
-    },
-    "receiver": "text",
-    "params": [
-     {
-      "name": "that",
-      "gen": "text",
-      "optional": false,
-      "rest": false
-     }
-    ]
-   },
-   "note": "IMPURE: depends on the runtime's default locale when none is passed."
   },
   {
    "atom": "atText",
@@ -4731,40 +4534,6 @@
      }
     ]
    }
-  },
-  {
-   "atom": "listAsLocaleText",
-   "module": "generated/lists",
-   "reads": "the to locale string locales, options of list",
-   "js": [
-    "list.toLocaleString(locales, options)",
-    "list.toLocaleString()"
-   ],
-   "pure": false,
-   "mutates": false,
-   "generated": true,
-   "covers": [
-    "Array#toLocaleString"
-   ],
-   "verified": true,
-   "impureReason": "depends on the runtime's default locale",
-   "check": {
-    "native": {
-     "kind": "instance",
-     "owner": "Array",
-     "member": "toLocaleString"
-    },
-    "receiver": "list",
-    "params": [
-     {
-      "name": "locales",
-      "gen": "text",
-      "optional": false,
-      "rest": false
-     }
-    ]
-   },
-   "note": "IMPURE: depends on the runtime's default locale."
   },
   {
    "atom": "entriesOfList",
@@ -5371,32 +5140,6 @@
     "receiver": "mixed",
     "params": []
    }
-  },
-  {
-   "atom": "valueAsLocaleText",
-   "module": "generated/objects",
-   "reads": "the to locale string of value",
-   "js": [
-    "value.toLocaleString()"
-   ],
-   "pure": false,
-   "mutates": false,
-   "generated": true,
-   "covers": [
-    "Object#toLocaleString"
-   ],
-   "verified": true,
-   "impureReason": "depends on the runtime's default locale",
-   "check": {
-    "native": {
-     "kind": "instance",
-     "owner": "Object",
-     "member": "toLocaleString"
-    },
-    "receiver": "mixed",
-    "params": []
-   },
-   "note": "IMPURE: depends on the runtime's default locale."
   },
   {
    "atom": "primitiveOfValue",
@@ -6128,32 +5871,6 @@
    }
   },
   {
-   "atom": "numberAsLocaleText",
-   "module": "generated/numbers",
-   "reads": "the to locale string locales, options of n",
-   "js": [
-    "n.toLocaleString(locales, options)"
-   ],
-   "pure": false,
-   "mutates": false,
-   "generated": true,
-   "covers": [
-    "Number#toLocaleString"
-   ],
-   "verified": true,
-   "impureReason": "depends on the runtime's default locale when none is passed",
-   "check": {
-    "native": {
-     "kind": "instance",
-     "owner": "Number",
-     "member": "toLocaleString"
-    },
-    "receiver": "num",
-    "params": []
-   },
-   "note": "IMPURE: depends on the runtime's default locale when none is passed."
-  },
-  {
    "atom": "numberAsText",
    "module": "generated/numbers",
    "reads": "the to string radix of n",
@@ -6457,32 +6174,6 @@
      }
     ]
    }
-  },
-  {
-   "atom": "bigIntAsLocaleText",
-   "module": "generated/numbers",
-   "reads": "the to locale string locales, options of big",
-   "js": [
-    "big.toLocaleString(locales, options)"
-   ],
-   "pure": false,
-   "mutates": false,
-   "generated": true,
-   "covers": [
-    "BigInt#toLocaleString"
-   ],
-   "verified": true,
-   "impureReason": "depends on the runtime's default locale when none is passed",
-   "check": {
-    "native": {
-     "kind": "instance",
-     "owner": "BigInt",
-     "member": "toLocaleString"
-    },
-    "receiver": "bigint",
-    "params": []
-   },
-   "note": "IMPURE: depends on the runtime's default locale when none is passed."
   },
   {
    "atom": "bigIntFrom",
@@ -7439,165 +7130,6 @@
    }
   },
   {
-   "atom": "dateAsLocaleText",
-   "module": "generated/dates",
-   "reads": "the to locale string locales, options of date",
-   "js": [
-    "date.toLocaleString(locales, options)",
-    "date.toLocaleString()"
-   ],
-   "pure": false,
-   "mutates": false,
-   "generated": true,
-   "covers": [
-    "Date#toLocaleString"
-   ],
-   "verified": true,
-   "impureReason": "depends on the runtime's default locale and time zone",
-   "check": {
-    "native": {
-     "kind": "instance",
-     "owner": "Date",
-     "member": "toLocaleString"
-    },
-    "receiver": "date",
-    "params": []
-   },
-   "note": "IMPURE: depends on the runtime's default locale and time zone."
-  },
-  {
-   "atom": "dateAsLocaleDateText",
-   "module": "generated/dates",
-   "reads": "the to locale date string locales, options of date",
-   "js": [
-    "date.toLocaleDateString(locales, options)",
-    "date.toLocaleDateString()"
-   ],
-   "pure": false,
-   "mutates": false,
-   "generated": true,
-   "covers": [
-    "Date#toLocaleDateString"
-   ],
-   "verified": true,
-   "impureReason": "depends on the runtime's default locale and time zone",
-   "check": {
-    "native": {
-     "kind": "instance",
-     "owner": "Date",
-     "member": "toLocaleDateString"
-    },
-    "receiver": "date",
-    "params": []
-   },
-   "note": "IMPURE: depends on the runtime's default locale and time zone."
-  },
-  {
-   "atom": "dateAsLocaleTimeText",
-   "module": "generated/dates",
-   "reads": "the to locale time string locales, options of date",
-   "js": [
-    "date.toLocaleTimeString(locales, options)",
-    "date.toLocaleTimeString()"
-   ],
-   "pure": false,
-   "mutates": false,
-   "generated": true,
-   "covers": [
-    "Date#toLocaleTimeString"
-   ],
-   "verified": true,
-   "impureReason": "depends on the runtime's default locale and time zone",
-   "check": {
-    "native": {
-     "kind": "instance",
-     "owner": "Date",
-     "member": "toLocaleTimeString"
-    },
-    "receiver": "date",
-    "params": []
-   },
-   "note": "IMPURE: depends on the runtime's default locale and time zone."
-  },
-  {
-   "atom": "dateAsText",
-   "module": "generated/dates",
-   "reads": "the to string of date",
-   "js": [
-    "date.toString()"
-   ],
-   "pure": false,
-   "mutates": false,
-   "generated": true,
-   "covers": [
-    "Date#toString"
-   ],
-   "verified": true,
-   "impureReason": "depends on the machine's local time zone",
-   "check": {
-    "native": {
-     "kind": "instance",
-     "owner": "Date",
-     "member": "toString"
-    },
-    "receiver": "date",
-    "params": []
-   },
-   "note": "IMPURE: depends on the machine's local time zone."
-  },
-  {
-   "atom": "dateAsDateText",
-   "module": "generated/dates",
-   "reads": "the to date string of date",
-   "js": [
-    "date.toDateString()"
-   ],
-   "pure": false,
-   "mutates": false,
-   "generated": true,
-   "covers": [
-    "Date#toDateString"
-   ],
-   "verified": true,
-   "impureReason": "depends on the machine's local time zone",
-   "check": {
-    "native": {
-     "kind": "instance",
-     "owner": "Date",
-     "member": "toDateString"
-    },
-    "receiver": "date",
-    "params": []
-   },
-   "note": "IMPURE: depends on the machine's local time zone."
-  },
-  {
-   "atom": "dateAsTimeText",
-   "module": "generated/dates",
-   "reads": "the to time string of date",
-   "js": [
-    "date.toTimeString()"
-   ],
-   "pure": false,
-   "mutates": false,
-   "generated": true,
-   "covers": [
-    "Date#toTimeString"
-   ],
-   "verified": true,
-   "impureReason": "depends on the machine's local time zone",
-   "check": {
-    "native": {
-     "kind": "instance",
-     "owner": "Date",
-     "member": "toTimeString"
-    },
-    "receiver": "date",
-    "params": []
-   },
-   "note": "IMPURE: depends on the machine's local time zone."
-  },
-  {
    "atom": "primitiveOfDate",
    "module": "generated/dates",
    "reads": "the value of of date",
@@ -7646,32 +7178,6 @@
    }
   },
   {
-   "atom": "fullYearOfDate",
-   "module": "generated/dates",
-   "reads": "the full year of date",
-   "js": [
-    "date.getFullYear()"
-   ],
-   "pure": false,
-   "mutates": false,
-   "generated": true,
-   "covers": [
-    "Date#getFullYear"
-   ],
-   "verified": true,
-   "impureReason": "depends on the machine's local time zone",
-   "check": {
-    "native": {
-     "kind": "instance",
-     "owner": "Date",
-     "member": "getFullYear"
-    },
-    "receiver": "date",
-    "params": []
-   },
-   "note": "IMPURE: depends on the machine's local time zone."
-  },
-  {
    "atom": "utcFullYearOfDate",
    "module": "generated/dates",
    "reads": "the utc full year of date",
@@ -7694,32 +7200,6 @@
     "receiver": "date",
     "params": []
    }
-  },
-  {
-   "atom": "monthOfDate",
-   "module": "generated/dates",
-   "reads": "the month of date",
-   "js": [
-    "date.getMonth()"
-   ],
-   "pure": false,
-   "mutates": false,
-   "generated": true,
-   "covers": [
-    "Date#getMonth"
-   ],
-   "verified": true,
-   "impureReason": "depends on the machine's local time zone",
-   "check": {
-    "native": {
-     "kind": "instance",
-     "owner": "Date",
-     "member": "getMonth"
-    },
-    "receiver": "date",
-    "params": []
-   },
-   "note": "IMPURE: depends on the machine's local time zone."
   },
   {
    "atom": "utcMonthOfDate",
@@ -7746,32 +7226,6 @@
    }
   },
   {
-   "atom": "dayOfMonthOfDate",
-   "module": "generated/dates",
-   "reads": "the date of date",
-   "js": [
-    "date.getDate()"
-   ],
-   "pure": false,
-   "mutates": false,
-   "generated": true,
-   "covers": [
-    "Date#getDate"
-   ],
-   "verified": true,
-   "impureReason": "depends on the machine's local time zone",
-   "check": {
-    "native": {
-     "kind": "instance",
-     "owner": "Date",
-     "member": "getDate"
-    },
-    "receiver": "date",
-    "params": []
-   },
-   "note": "IMPURE: depends on the machine's local time zone."
-  },
-  {
    "atom": "utcDayOfMonthOfDate",
    "module": "generated/dates",
    "reads": "the utc date of date",
@@ -7794,32 +7248,6 @@
     "receiver": "date",
     "params": []
    }
-  },
-  {
-   "atom": "weekdayOfDate",
-   "module": "generated/dates",
-   "reads": "the day of date",
-   "js": [
-    "date.getDay()"
-   ],
-   "pure": false,
-   "mutates": false,
-   "generated": true,
-   "covers": [
-    "Date#getDay"
-   ],
-   "verified": true,
-   "impureReason": "depends on the machine's local time zone",
-   "check": {
-    "native": {
-     "kind": "instance",
-     "owner": "Date",
-     "member": "getDay"
-    },
-    "receiver": "date",
-    "params": []
-   },
-   "note": "IMPURE: depends on the machine's local time zone."
   },
   {
    "atom": "utcWeekdayOfDate",
@@ -7846,32 +7274,6 @@
    }
   },
   {
-   "atom": "hoursOfDate",
-   "module": "generated/dates",
-   "reads": "the hours of date",
-   "js": [
-    "date.getHours()"
-   ],
-   "pure": false,
-   "mutates": false,
-   "generated": true,
-   "covers": [
-    "Date#getHours"
-   ],
-   "verified": true,
-   "impureReason": "depends on the machine's local time zone",
-   "check": {
-    "native": {
-     "kind": "instance",
-     "owner": "Date",
-     "member": "getHours"
-    },
-    "receiver": "date",
-    "params": []
-   },
-   "note": "IMPURE: depends on the machine's local time zone."
-  },
-  {
    "atom": "utcHoursOfDate",
    "module": "generated/dates",
    "reads": "the utc hours of date",
@@ -7896,32 +7298,6 @@
    }
   },
   {
-   "atom": "minutesOfDate",
-   "module": "generated/dates",
-   "reads": "the minutes of date",
-   "js": [
-    "date.getMinutes()"
-   ],
-   "pure": false,
-   "mutates": false,
-   "generated": true,
-   "covers": [
-    "Date#getMinutes"
-   ],
-   "verified": true,
-   "impureReason": "depends on the machine's local time zone",
-   "check": {
-    "native": {
-     "kind": "instance",
-     "owner": "Date",
-     "member": "getMinutes"
-    },
-    "receiver": "date",
-    "params": []
-   },
-   "note": "IMPURE: depends on the machine's local time zone."
-  },
-  {
    "atom": "utcMinutesOfDate",
    "module": "generated/dates",
    "reads": "the utc minutes of date",
@@ -7944,32 +7320,6 @@
     "receiver": "date",
     "params": []
    }
-  },
-  {
-   "atom": "secondsOfDate",
-   "module": "generated/dates",
-   "reads": "the seconds of date",
-   "js": [
-    "date.getSeconds()"
-   ],
-   "pure": false,
-   "mutates": false,
-   "generated": true,
-   "covers": [
-    "Date#getSeconds"
-   ],
-   "verified": true,
-   "impureReason": "depends on the machine's local time zone",
-   "check": {
-    "native": {
-     "kind": "instance",
-     "owner": "Date",
-     "member": "getSeconds"
-    },
-    "receiver": "date",
-    "params": []
-   },
-   "note": "IMPURE: depends on the machine's local time zone."
   },
   {
    "atom": "utcSecondsOfDate",
@@ -8042,32 +7392,6 @@
     "receiver": "date",
     "params": []
    }
-  },
-  {
-   "atom": "timezoneOffsetOfDate",
-   "module": "generated/dates",
-   "reads": "the timezone offset of date",
-   "js": [
-    "date.getTimezoneOffset()"
-   ],
-   "pure": false,
-   "mutates": false,
-   "generated": true,
-   "covers": [
-    "Date#getTimezoneOffset"
-   ],
-   "verified": true,
-   "impureReason": "depends on the machine's local time zone",
-   "check": {
-    "native": {
-     "kind": "instance",
-     "owner": "Date",
-     "member": "getTimezoneOffset"
-    },
-    "receiver": "date",
-    "params": []
-   },
-   "note": "IMPURE: depends on the machine's local time zone."
   },
   {
    "atom": "dateWithTime",
@@ -8172,47 +7496,6 @@
    "note": "The built-in mutates date; this atom applies it to a copy and returns the copy (the original is untouched)."
   },
   {
-   "atom": "dateWithSeconds",
-   "module": "generated/dates",
-   "reads": "date with seconds set to sec, ms",
-   "js": [
-    "date.setSeconds(sec, ms)"
-   ],
-   "pure": false,
-   "mutates": false,
-   "generated": true,
-   "covers": [
-    "Date#setSeconds"
-   ],
-   "verified": true,
-   "impureReason": "depends on the machine's local time zone",
-   "replacesMutation": "Date#setSeconds",
-   "check": {
-    "native": {
-     "kind": "copy",
-     "owner": "Date",
-     "member": "setSeconds",
-     "copy": "new Date({r}.getTime())"
-    },
-    "receiver": "date",
-    "params": [
-     {
-      "name": "sec",
-      "gen": "num",
-      "optional": false,
-      "rest": false
-     },
-     {
-      "name": "ms",
-      "gen": "num",
-      "optional": true,
-      "rest": false
-     }
-    ]
-   },
-   "note": "The built-in mutates date; this atom applies it to a copy and returns the copy (the original is untouched). IMPURE: depends on the machine's local time zone."
-  },
-  {
    "atom": "dateWithUtcSeconds",
    "module": "generated/dates",
    "reads": "date with utc seconds set to sec, ms",
@@ -8251,53 +7534,6 @@
     ]
    },
    "note": "The built-in mutates date; this atom applies it to a copy and returns the copy (the original is untouched)."
-  },
-  {
-   "atom": "dateWithMinutes",
-   "module": "generated/dates",
-   "reads": "date with minutes set to min, sec, ms",
-   "js": [
-    "date.setMinutes(min, sec, ms)"
-   ],
-   "pure": false,
-   "mutates": false,
-   "generated": true,
-   "covers": [
-    "Date#setMinutes"
-   ],
-   "verified": true,
-   "impureReason": "depends on the machine's local time zone",
-   "replacesMutation": "Date#setMinutes",
-   "check": {
-    "native": {
-     "kind": "copy",
-     "owner": "Date",
-     "member": "setMinutes",
-     "copy": "new Date({r}.getTime())"
-    },
-    "receiver": "date",
-    "params": [
-     {
-      "name": "min",
-      "gen": "num",
-      "optional": false,
-      "rest": false
-     },
-     {
-      "name": "sec",
-      "gen": "num",
-      "optional": true,
-      "rest": false
-     },
-     {
-      "name": "ms",
-      "gen": "num",
-      "optional": true,
-      "rest": false
-     }
-    ]
-   },
-   "note": "The built-in mutates date; this atom applies it to a copy and returns the copy (the original is untouched). IMPURE: depends on the machine's local time zone."
   },
   {
    "atom": "dateWithUtcMinutes",
@@ -8344,59 +7580,6 @@
     ]
    },
    "note": "The built-in mutates date; this atom applies it to a copy and returns the copy (the original is untouched)."
-  },
-  {
-   "atom": "dateWithHours",
-   "module": "generated/dates",
-   "reads": "date with hours set to hours, min, sec, ms",
-   "js": [
-    "date.setHours(hours, min, sec, ms)"
-   ],
-   "pure": false,
-   "mutates": false,
-   "generated": true,
-   "covers": [
-    "Date#setHours"
-   ],
-   "verified": true,
-   "impureReason": "depends on the machine's local time zone",
-   "replacesMutation": "Date#setHours",
-   "check": {
-    "native": {
-     "kind": "copy",
-     "owner": "Date",
-     "member": "setHours",
-     "copy": "new Date({r}.getTime())"
-    },
-    "receiver": "date",
-    "params": [
-     {
-      "name": "hours",
-      "gen": "num",
-      "optional": false,
-      "rest": false
-     },
-     {
-      "name": "min",
-      "gen": "num",
-      "optional": true,
-      "rest": false
-     },
-     {
-      "name": "sec",
-      "gen": "num",
-      "optional": true,
-      "rest": false
-     },
-     {
-      "name": "ms",
-      "gen": "num",
-      "optional": true,
-      "rest": false
-     }
-    ]
-   },
-   "note": "The built-in mutates date; this atom applies it to a copy and returns the copy (the original is untouched). IMPURE: depends on the machine's local time zone."
   },
   {
    "atom": "dateWithUtcHours",
@@ -8451,41 +7634,6 @@
    "note": "The built-in mutates date; this atom applies it to a copy and returns the copy (the original is untouched)."
   },
   {
-   "atom": "dateWithDayOfMonth",
-   "module": "generated/dates",
-   "reads": "date with date set to dateArg",
-   "js": [
-    "date.setDate(dateArg)"
-   ],
-   "pure": false,
-   "mutates": false,
-   "generated": true,
-   "covers": [
-    "Date#setDate"
-   ],
-   "verified": true,
-   "impureReason": "depends on the machine's local time zone",
-   "replacesMutation": "Date#setDate",
-   "check": {
-    "native": {
-     "kind": "copy",
-     "owner": "Date",
-     "member": "setDate",
-     "copy": "new Date({r}.getTime())"
-    },
-    "receiver": "date",
-    "params": [
-     {
-      "name": "dateArg",
-      "gen": "num",
-      "optional": false,
-      "rest": false
-     }
-    ]
-   },
-   "note": "The built-in mutates date; this atom applies it to a copy and returns the copy (the original is untouched). IMPURE: depends on the machine's local time zone."
-  },
-  {
    "atom": "dateWithUtcDayOfMonth",
    "module": "generated/dates",
    "reads": "date with utc date set to dateArg",
@@ -8518,47 +7666,6 @@
     ]
    },
    "note": "The built-in mutates date; this atom applies it to a copy and returns the copy (the original is untouched)."
-  },
-  {
-   "atom": "dateWithMonth",
-   "module": "generated/dates",
-   "reads": "date with month set to month, dateArg",
-   "js": [
-    "date.setMonth(month, dateArg)"
-   ],
-   "pure": false,
-   "mutates": false,
-   "generated": true,
-   "covers": [
-    "Date#setMonth"
-   ],
-   "verified": true,
-   "impureReason": "depends on the machine's local time zone",
-   "replacesMutation": "Date#setMonth",
-   "check": {
-    "native": {
-     "kind": "copy",
-     "owner": "Date",
-     "member": "setMonth",
-     "copy": "new Date({r}.getTime())"
-    },
-    "receiver": "date",
-    "params": [
-     {
-      "name": "month",
-      "gen": "num",
-      "optional": false,
-      "rest": false
-     },
-     {
-      "name": "dateArg",
-      "gen": "num",
-      "optional": true,
-      "rest": false
-     }
-    ]
-   },
-   "note": "The built-in mutates date; this atom applies it to a copy and returns the copy (the original is untouched). IMPURE: depends on the machine's local time zone."
   },
   {
    "atom": "dateWithUtcMonth",
@@ -8599,53 +7706,6 @@
     ]
    },
    "note": "The built-in mutates date; this atom applies it to a copy and returns the copy (the original is untouched)."
-  },
-  {
-   "atom": "dateWithFullYear",
-   "module": "generated/dates",
-   "reads": "date with full year set to year, month, dateArg",
-   "js": [
-    "date.setFullYear(year, month, dateArg)"
-   ],
-   "pure": false,
-   "mutates": false,
-   "generated": true,
-   "covers": [
-    "Date#setFullYear"
-   ],
-   "verified": true,
-   "impureReason": "depends on the machine's local time zone",
-   "replacesMutation": "Date#setFullYear",
-   "check": {
-    "native": {
-     "kind": "copy",
-     "owner": "Date",
-     "member": "setFullYear",
-     "copy": "new Date({r}.getTime())"
-    },
-    "receiver": "date",
-    "params": [
-     {
-      "name": "year",
-      "gen": "num",
-      "optional": false,
-      "rest": false
-     },
-     {
-      "name": "month",
-      "gen": "num",
-      "optional": true,
-      "rest": false
-     },
-     {
-      "name": "dateArg",
-      "gen": "num",
-      "optional": true,
-      "rest": false
-     }
-    ]
-   },
-   "note": "The built-in mutates date; this atom applies it to a copy and returns the copy (the original is untouched). IMPURE: depends on the machine's local time zone."
   },
   {
    "atom": "dateWithUtcFullYear",
@@ -8773,76 +7833,6 @@
    }
   },
   {
-   "atom": "dateFromParts",
-   "module": "generated/dates",
-   "reads": "a new Date from value",
-   "js": [
-    "new Date(value)",
-    "new Date()",
-    "new Date(year, monthIndex, dateArg, hours, minutes, seconds, ms)"
-   ],
-   "pure": false,
-   "mutates": false,
-   "generated": true,
-   "covers": [
-    "new Date"
-   ],
-   "verified": true,
-   "impureReason": "with no arguments it reads the clock; with parts it uses the machine's local time zone",
-   "check": {
-    "native": {
-     "kind": "construct",
-     "owner": "Date",
-     "member": "new"
-    },
-    "params": [
-     {
-      "name": "year",
-      "gen": "num",
-      "optional": false,
-      "rest": false
-     },
-     {
-      "name": "monthIndex",
-      "gen": "num",
-      "optional": false,
-      "rest": false
-     },
-     {
-      "name": "dateArg",
-      "gen": "num",
-      "optional": true,
-      "rest": false
-     },
-     {
-      "name": "hours",
-      "gen": "num",
-      "optional": true,
-      "rest": false
-     },
-     {
-      "name": "minutes",
-      "gen": "num",
-      "optional": true,
-      "rest": false
-     },
-     {
-      "name": "seconds",
-      "gen": "num",
-      "optional": true,
-      "rest": false
-     },
-     {
-      "name": "ms",
-      "gen": "num",
-      "optional": true,
-      "rest": false
-     }
-    ]
-   },
-   "note": "IMPURE: with no arguments it reads the clock; with parts it uses the machine's local time zone."
-  },
-  {
    "atom": "utcTime",
    "module": "generated/dates",
    "reads": "the utc of year, monthIndex, dateArg, hours, minutes, seconds, ms",
@@ -8907,38 +7897,6 @@
      }
     ]
    }
-  },
-  {
-   "atom": "parseDate",
-   "module": "generated/dates",
-   "reads": "the parse of s",
-   "js": [
-    "Date.parse(s)"
-   ],
-   "pure": false,
-   "mutates": false,
-   "generated": true,
-   "covers": [
-    "Date.parse"
-   ],
-   "verified": true,
-   "impureReason": "date-only and local formats depend on the machine's local time zone",
-   "check": {
-    "native": {
-     "kind": "static",
-     "owner": "Date",
-     "member": "parse"
-    },
-    "params": [
-     {
-      "name": "s",
-      "gen": "text",
-      "optional": false,
-      "rest": false
-     }
-    ]
-   },
-   "note": "IMPURE: date-only and local formats depend on the machine's local time zone."
   },
   {
    "atom": "execPattern",
@@ -9323,43 +8281,6 @@
    }
   },
   {
-   "atom": "eachMap",
-   "module": "generated/collections",
-   "reads": "the for each callbackfn, thisArg of map",
-   "js": [
-    "map.forEach(callbackfn, thisArg)"
-   ],
-   "pure": true,
-   "mutates": false,
-   "generated": true,
-   "covers": [
-    "Map#forEach"
-   ],
-   "verified": true,
-   "check": {
-    "native": {
-     "kind": "instance",
-     "owner": "Map",
-     "member": "forEach"
-    },
-    "receiver": "map",
-    "params": [
-     {
-      "name": "callbackfn",
-      "gen": "fn",
-      "optional": false,
-      "rest": false
-     },
-     {
-      "name": "thisArg",
-      "gen": "prim",
-      "optional": true,
-      "rest": false
-     }
-    ]
-   }
-  },
-  {
    "atom": "hasKeyInMap",
    "module": "generated/collections",
    "reads": "whether map has key",
@@ -9463,33 +8384,6 @@
    }
   },
   {
-   "atom": "emptiedMap",
-   "module": "generated/collections",
-   "reads": "map after clear, as a copy",
-   "js": [
-    "map.clear()"
-   ],
-   "pure": true,
-   "mutates": false,
-   "generated": true,
-   "covers": [
-    "Map#clear"
-   ],
-   "verified": true,
-   "replacesMutation": "Map#clear",
-   "check": {
-    "native": {
-     "kind": "copy",
-     "owner": "Map",
-     "member": "clear",
-     "copy": "new Map({r})"
-    },
-    "receiver": "map",
-    "params": []
-   },
-   "note": "The built-in mutates map; this atom applies it to a copy and returns the copy (the original is untouched)."
-  },
-  {
    "atom": "withoutEntry",
    "module": "generated/collections",
    "reads": "map after delete key, as a copy",
@@ -9522,43 +8416,6 @@
     ]
    },
    "note": "The built-in mutates map; this atom applies it to a copy and returns the copy (the original is untouched)."
-  },
-  {
-   "atom": "eachSet",
-   "module": "generated/collections",
-   "reads": "the for each callbackfn, thisArg of set",
-   "js": [
-    "set.forEach(callbackfn, thisArg)"
-   ],
-   "pure": true,
-   "mutates": false,
-   "generated": true,
-   "covers": [
-    "Set#forEach"
-   ],
-   "verified": true,
-   "check": {
-    "native": {
-     "kind": "instance",
-     "owner": "Set",
-     "member": "forEach"
-    },
-    "receiver": "set",
-    "params": [
-     {
-      "name": "callbackfn",
-      "gen": "fn",
-      "optional": false,
-      "rest": false
-     },
-     {
-      "name": "thisArg",
-      "gen": "prim",
-      "optional": true,
-      "rest": false
-     }
-    ]
-   }
   },
   {
    "atom": "entriesOfSet",
@@ -9633,33 +8490,6 @@
    }
   },
   {
-   "atom": "emptiedSet",
-   "module": "generated/collections",
-   "reads": "set after clear, as a copy",
-   "js": [
-    "set.clear()"
-   ],
-   "pure": true,
-   "mutates": false,
-   "generated": true,
-   "covers": [
-    "Set#clear"
-   ],
-   "verified": true,
-   "replacesMutation": "Set#clear",
-   "check": {
-    "native": {
-     "kind": "copy",
-     "owner": "Set",
-     "member": "clear",
-     "copy": "new Set({r})"
-    },
-    "receiver": "set",
-    "params": []
-   },
-   "note": "The built-in mutates set; this atom applies it to a copy and returns the copy (the original is untouched)."
-  },
-  {
    "atom": "withoutMember",
    "module": "generated/collections",
    "reads": "set after delete value, as a copy",
@@ -9692,38 +8522,6 @@
     ]
    },
    "note": "The built-in mutates set; this atom applies it to a copy and returns the copy (the original is untouched)."
-  },
-  {
-   "atom": "doesDeleteFromWeakMap",
-   "module": "generated/collections",
-   "reads": "the delete key of weakMap",
-   "js": [
-    "weakMap.delete(key)"
-   ],
-   "pure": false,
-   "mutates": true,
-   "generated": true,
-   "covers": [
-    "WeakMap#delete"
-   ],
-   "verified": true,
-   "check": {
-    "native": {
-     "kind": "inplace",
-     "owner": "WeakMap",
-     "member": "delete"
-    },
-    "receiver": "weakmap",
-    "params": [
-     {
-      "name": "key",
-      "gen": "prim",
-      "optional": false,
-      "rest": false
-     }
-    ]
-   },
-   "note": "MUTATES weakMap: a weak collection cannot be copied, so this mutates in place."
   },
   {
    "atom": "getFromWeakMap",
@@ -9788,131 +8586,6 @@
    }
   },
   {
-   "atom": "setInWeakMap",
-   "module": "generated/collections",
-   "reads": "the set key, value of weakMap",
-   "js": [
-    "weakMap.set(key, value)"
-   ],
-   "pure": false,
-   "mutates": true,
-   "generated": true,
-   "covers": [
-    "WeakMap#set"
-   ],
-   "verified": true,
-   "check": {
-    "native": {
-     "kind": "inplace",
-     "owner": "WeakMap",
-     "member": "set"
-    },
-    "receiver": "weakmap",
-    "params": [
-     {
-      "name": "key",
-      "gen": "prim",
-      "optional": false,
-      "rest": false
-     },
-     {
-      "name": "value",
-      "gen": "prim",
-      "optional": false,
-      "rest": false
-     }
-    ]
-   },
-   "note": "MUTATES weakMap: a weak collection cannot be copied, so this mutates in place."
-  },
-  {
-   "atom": "weakMapFrom",
-   "module": "generated/collections",
-   "reads": "a new WeakMap from entries",
-   "js": [
-    "new WeakMap(entries)"
-   ],
-   "pure": true,
-   "mutates": false,
-   "generated": true,
-   "covers": [
-    "new WeakMap"
-   ],
-   "verified": true,
-   "check": {
-    "native": {
-     "kind": "construct",
-     "owner": "WeakMap",
-     "member": "new"
-    },
-    "params": []
-   }
-  },
-  {
-   "atom": "addToWeakSet",
-   "module": "generated/collections",
-   "reads": "the add value of weakSet",
-   "js": [
-    "weakSet.add(value)"
-   ],
-   "pure": false,
-   "mutates": true,
-   "generated": true,
-   "covers": [
-    "WeakSet#add"
-   ],
-   "verified": true,
-   "check": {
-    "native": {
-     "kind": "inplace",
-     "owner": "WeakSet",
-     "member": "add"
-    },
-    "receiver": "weakset",
-    "params": [
-     {
-      "name": "value",
-      "gen": "prim",
-      "optional": false,
-      "rest": false
-     }
-    ]
-   },
-   "note": "MUTATES weakSet: a weak collection cannot be copied, so this mutates in place."
-  },
-  {
-   "atom": "doesDeleteFromWeakSet",
-   "module": "generated/collections",
-   "reads": "the delete value of weakSet",
-   "js": [
-    "weakSet.delete(value)"
-   ],
-   "pure": false,
-   "mutates": true,
-   "generated": true,
-   "covers": [
-    "WeakSet#delete"
-   ],
-   "verified": true,
-   "check": {
-    "native": {
-     "kind": "inplace",
-     "owner": "WeakSet",
-     "member": "delete"
-    },
-    "receiver": "weakset",
-    "params": [
-     {
-      "name": "value",
-      "gen": "prim",
-      "optional": false,
-      "rest": false
-     }
-    ]
-   },
-   "note": "MUTATES weakSet: a weak collection cannot be copied, so this mutates in place."
-  },
-  {
    "atom": "isInWeakSet",
    "module": "generated/collections",
    "reads": "whether weakSet has value",
@@ -9938,36 +8611,6 @@
       "name": "value",
       "gen": "prim",
       "optional": false,
-      "rest": false
-     }
-    ]
-   }
-  },
-  {
-   "atom": "weakSetFrom",
-   "module": "generated/collections",
-   "reads": "a new WeakSet from values",
-   "js": [
-    "new WeakSet(values)"
-   ],
-   "pure": true,
-   "mutates": false,
-   "generated": true,
-   "covers": [
-    "new WeakSet"
-   ],
-   "verified": true,
-   "check": {
-    "native": {
-     "kind": "construct",
-     "owner": "WeakSet",
-     "member": "new"
-    },
-    "params": [
-     {
-      "name": "values",
-      "gen": "list",
-      "optional": true,
       "rest": false
      }
     ]
@@ -10443,56 +9086,6 @@
      }
     ]
    }
-  },
-  {
-   "atom": "createsAtTo",
-   "module": "generated/approved",
-   "reads": "map m creates at key to value",
-   "js": [
-    "m.set(key, value)"
-   ],
-   "pure": false,
-   "mutates": true,
-   "generated": true,
-   "params": [
-    [
-     "m",
-     "map"
-    ],
-    [
-     "key",
-     "prim"
-    ],
-    [
-     "value",
-     "prim"
-    ]
-   ],
-   "fluent": "map(m).creates().at(key).to(value)",
-   "check": [
-    {
-     "params": [
-      [
-       "m",
-       "map"
-      ],
-      [
-       "key",
-       "prim"
-      ],
-      [
-       "value",
-       "prim"
-      ]
-     ]
-    }
-   ],
-   "verified": true,
-   "verifiedBy": "approved: the C3 gate (equivalence to the JS reference) and the read-back",
-   "approved": {
-    "entry": "Map.prototype.set",
-    "approvedAt": "2026-10-15T04:08:24.538Z"
-   }
   }
  ],
  "excluded": [
@@ -10627,6 +9220,30 @@
   {
    "atom": null,
    "js": [
+    "String#toLocaleLowerCase"
+   ],
+   "module": "text",
+   "excluded": "R11 (pure library): depends on the runtime's default locale when none is passed"
+  },
+  {
+   "atom": null,
+   "js": [
+    "String#toLocaleUpperCase"
+   ],
+   "module": "text",
+   "excluded": "R11 (pure library): depends on the runtime's default locale when none is passed"
+  },
+  {
+   "atom": null,
+   "js": [
+    "String#localeCompare"
+   ],
+   "module": "text",
+   "excluded": "R11 (pure library): depends on the runtime's default locale when none is passed"
+  },
+  {
+   "atom": null,
+   "js": [
     "String#toString"
    ],
    "module": "text",
@@ -10675,6 +9292,14 @@
   {
    "atom": null,
    "js": [
+    "Array#toLocaleString"
+   ],
+   "module": "lists",
+   "excluded": "R11 (pure library): depends on the runtime's default locale"
+  },
+  {
+   "atom": null,
+   "js": [
     "Array#[Symbol.iterator]"
    ],
    "module": "lists",
@@ -10687,6 +9312,14 @@
    ],
    "module": "lists",
    "excluded": "protocol hook ([Symbol.…]): used by syntax (for…of, spread, instanceof, coercion), not called directly"
+  },
+  {
+   "atom": null,
+   "js": [
+    "Array#forEach"
+   ],
+   "module": "lists",
+   "excluded": "R11 (pure library): returns nothing, so it runs only for its effects"
   },
   {
    "atom": null,
@@ -10735,6 +9368,14 @@
    ],
    "module": "objects",
    "excluded": "property read: use get(value, 'constructor')"
+  },
+  {
+   "atom": null,
+   "js": [
+    "Object#toLocaleString"
+   ],
+   "module": "objects",
+   "excluded": "R11 (pure library): depends on the runtime's default locale"
   },
   {
    "atom": null,
@@ -10807,6 +9448,14 @@
    ],
    "module": "functions",
    "excluded": "property read: use get(fn, 'caller')"
+  },
+  {
+   "atom": null,
+   "js": [
+    "Number#toLocaleString"
+   ],
+   "module": "numbers",
+   "excluded": "R11 (pure library): depends on the runtime's default locale when none is passed"
   },
   {
    "atom": null,
@@ -10923,6 +9572,14 @@
   {
    "atom": null,
    "js": [
+    "BigInt#toLocaleString"
+   ],
+   "module": "numbers",
+   "excluded": "R11 (pure library): depends on the runtime's default locale when none is passed"
+  },
+  {
+   "atom": null,
+   "js": [
     "BigInt#valueOf"
    ],
    "module": "numbers",
@@ -11019,10 +9676,186 @@
   {
    "atom": null,
    "js": [
+    "Math.random"
+   ],
+   "module": "math",
+   "excluded": "R11 (pure library): random: a new value every call"
+  },
+  {
+   "atom": null,
+   "js": [
     "Date#[Symbol.toPrimitive]"
    ],
    "module": "dates",
    "excluded": "protocol hook ([Symbol.…]): used by syntax (for…of, spread, instanceof, coercion), not called directly"
+  },
+  {
+   "atom": null,
+   "js": [
+    "Date#toLocaleString"
+   ],
+   "module": "dates",
+   "excluded": "R11 (pure library): depends on the runtime's default locale and time zone"
+  },
+  {
+   "atom": null,
+   "js": [
+    "Date#toLocaleDateString"
+   ],
+   "module": "dates",
+   "excluded": "R11 (pure library): depends on the runtime's default locale and time zone"
+  },
+  {
+   "atom": null,
+   "js": [
+    "Date#toLocaleTimeString"
+   ],
+   "module": "dates",
+   "excluded": "R11 (pure library): depends on the runtime's default locale and time zone"
+  },
+  {
+   "atom": null,
+   "js": [
+    "Date#toString"
+   ],
+   "module": "dates",
+   "excluded": "R11 (pure library): depends on the machine's local time zone"
+  },
+  {
+   "atom": null,
+   "js": [
+    "Date#toDateString"
+   ],
+   "module": "dates",
+   "excluded": "R11 (pure library): depends on the machine's local time zone"
+  },
+  {
+   "atom": null,
+   "js": [
+    "Date#toTimeString"
+   ],
+   "module": "dates",
+   "excluded": "R11 (pure library): depends on the machine's local time zone"
+  },
+  {
+   "atom": null,
+   "js": [
+    "Date#getFullYear"
+   ],
+   "module": "dates",
+   "excluded": "R11 (pure library): depends on the machine's local time zone"
+  },
+  {
+   "atom": null,
+   "js": [
+    "Date#getMonth"
+   ],
+   "module": "dates",
+   "excluded": "R11 (pure library): depends on the machine's local time zone"
+  },
+  {
+   "atom": null,
+   "js": [
+    "Date#getDate"
+   ],
+   "module": "dates",
+   "excluded": "R11 (pure library): depends on the machine's local time zone"
+  },
+  {
+   "atom": null,
+   "js": [
+    "Date#getDay"
+   ],
+   "module": "dates",
+   "excluded": "R11 (pure library): depends on the machine's local time zone"
+  },
+  {
+   "atom": null,
+   "js": [
+    "Date#getHours"
+   ],
+   "module": "dates",
+   "excluded": "R11 (pure library): depends on the machine's local time zone"
+  },
+  {
+   "atom": null,
+   "js": [
+    "Date#getMinutes"
+   ],
+   "module": "dates",
+   "excluded": "R11 (pure library): depends on the machine's local time zone"
+  },
+  {
+   "atom": null,
+   "js": [
+    "Date#getSeconds"
+   ],
+   "module": "dates",
+   "excluded": "R11 (pure library): depends on the machine's local time zone"
+  },
+  {
+   "atom": null,
+   "js": [
+    "Date#getTimezoneOffset"
+   ],
+   "module": "dates",
+   "excluded": "R11 (pure library): depends on the machine's local time zone"
+  },
+  {
+   "atom": null,
+   "js": [
+    "Date#setSeconds"
+   ],
+   "module": "dates",
+   "excluded": "R11 (pure library): depends on the machine's local time zone"
+  },
+  {
+   "atom": null,
+   "js": [
+    "Date#setMinutes"
+   ],
+   "module": "dates",
+   "excluded": "R11 (pure library): depends on the machine's local time zone"
+  },
+  {
+   "atom": null,
+   "js": [
+    "Date#setHours"
+   ],
+   "module": "dates",
+   "excluded": "R11 (pure library): depends on the machine's local time zone"
+  },
+  {
+   "atom": null,
+   "js": [
+    "Date#setDate"
+   ],
+   "module": "dates",
+   "excluded": "R11 (pure library): depends on the machine's local time zone"
+  },
+  {
+   "atom": null,
+   "js": [
+    "Date#setMonth"
+   ],
+   "module": "dates",
+   "excluded": "R11 (pure library): depends on the machine's local time zone"
+  },
+  {
+   "atom": null,
+   "js": [
+    "Date#setFullYear"
+   ],
+   "module": "dates",
+   "excluded": "R11 (pure library): depends on the machine's local time zone"
+  },
+  {
+   "atom": null,
+   "js": [
+    "new Date"
+   ],
+   "module": "dates",
+   "excluded": "R11 (pure library): with no arguments it reads the clock; with parts it uses the machine's local time zone"
   },
   {
    "atom": null,
@@ -11039,6 +9872,22 @@
    ],
    "module": "dates",
    "excluded": "constant or prototype: use the value directly (not an operation)"
+  },
+  {
+   "atom": null,
+   "js": [
+    "Date.parse"
+   ],
+   "module": "dates",
+   "excluded": "R11 (pure library): date-only and local formats depend on the machine's local time zone"
+  },
+  {
+   "atom": null,
+   "js": [
+    "Date.now"
+   ],
+   "module": "dates",
+   "excluded": "R11 (pure library): reads the clock"
   },
   {
    "atom": null,
@@ -11379,10 +10228,26 @@
   {
    "atom": null,
    "js": [
+    "Map#forEach"
+   ],
+   "module": "collections",
+   "excluded": "R11 (pure library): returns nothing, so it runs only for its effects"
+  },
+  {
+   "atom": null,
+   "js": [
     "Map#[Symbol.iterator]"
    ],
    "module": "collections",
    "excluded": "protocol hook ([Symbol.…]): used by syntax (for…of, spread, instanceof, coercion), not called directly"
+  },
+  {
+   "atom": null,
+   "js": [
+    "Map#clear"
+   ],
+   "module": "collections",
+   "excluded": "R11 (pure library): returns nothing, so it runs only for its effects"
   },
   {
    "atom": null,
@@ -11411,10 +10276,26 @@
   {
    "atom": null,
    "js": [
+    "Set#forEach"
+   ],
+   "module": "collections",
+   "excluded": "R11 (pure library): returns nothing, so it runs only for its effects"
+  },
+  {
+   "atom": null,
+   "js": [
     "Set#[Symbol.iterator]"
    ],
    "module": "collections",
    "excluded": "protocol hook ([Symbol.…]): used by syntax (for…of, spread, instanceof, coercion), not called directly"
+  },
+  {
+   "atom": null,
+   "js": [
+    "Set#clear"
+   ],
+   "module": "collections",
+   "excluded": "R11 (pure library): returns nothing, so it runs only for its effects"
   },
   {
    "atom": null,
@@ -11443,10 +10324,34 @@
   {
    "atom": null,
    "js": [
+    "WeakMap#delete"
+   ],
+   "module": "collections",
+   "excluded": "R11 (pure library): a weak collection cannot be copied, so this mutates in place"
+  },
+  {
+   "atom": null,
+   "js": [
+    "WeakMap#set"
+   ],
+   "module": "collections",
+   "excluded": "R11 (pure library): a weak collection cannot be copied, so this mutates in place"
+  },
+  {
+   "atom": null,
+   "js": [
     "WeakMap#[Symbol.toStringTag]"
    ],
    "module": "collections",
    "excluded": "protocol hook ([Symbol.…]): used by syntax (for…of, spread, instanceof, coercion), not called directly"
+  },
+  {
+   "atom": null,
+   "js": [
+    "new WeakMap"
+   ],
+   "module": "collections",
+   "excluded": "R11 (pure library): only useful with mutation or effects, which a pure library has none of"
   },
   {
    "atom": null,
@@ -11459,10 +10364,34 @@
   {
    "atom": null,
    "js": [
+    "WeakSet#add"
+   ],
+   "module": "collections",
+   "excluded": "R11 (pure library): a weak collection cannot be copied, so this mutates in place"
+  },
+  {
+   "atom": null,
+   "js": [
+    "WeakSet#delete"
+   ],
+   "module": "collections",
+   "excluded": "R11 (pure library): a weak collection cannot be copied, so this mutates in place"
+  },
+  {
+   "atom": null,
+   "js": [
     "WeakSet#[Symbol.toStringTag]"
    ],
    "module": "collections",
    "excluded": "protocol hook ([Symbol.…]): used by syntax (for…of, spread, instanceof, coercion), not called directly"
+  },
+  {
+   "atom": null,
+   "js": [
+    "new WeakSet"
+   ],
+   "module": "collections",
+   "excluded": "R11 (pure library): only useful with mutation or effects, which a pure library has none of"
   },
   {
    "atom": null,
@@ -11894,7 +10823,7 @@
     "for / for…of / for…in"
    ],
    "module": "syntax",
-   "excluded": "covered by each / mapEach / repeatWhile; a loop with break/continue stays as syntax"
+   "excluded": "covered by mapEach / iterateWhile; a loop run for its effects, or with break/continue, stays as syntax (R11)"
   },
   {
    "atom": null,

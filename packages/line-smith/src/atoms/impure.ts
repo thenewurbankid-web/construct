@@ -1,5 +1,5 @@
-// IMPURE atoms: results depend on time or randomness. Each takes its source as an
-// optional last argument so tests (and Smith) can inject a fixed clock or generator.
+// Time and randomness, made pure (R11): each atom takes its clock or random source as a parameter, so the same
+// inputs always give the same result. App code passes Date.now or Math.random; tests pass a fixed one.
 
 /** A clock: milliseconds since the Unix epoch, like Date.now. */
 export type Clock = () => number;
@@ -8,26 +8,26 @@ export type Clock = () => number;
 export type RandomSource = () => number;
 
 /**
- * now(clock) reads "the current date and time". IMPURE.
- * Exactly `new Date(Date.now())`; pass a clock to make it deterministic.
+ * now(clock) reads "the current date and time". Pure: the clock or source is a parameter.
+ * Exactly `new Date(clock())`.
  */
-export function now(clock: Clock = Date.now): Date {
+export function now(clock: Clock): Date {
   return new Date(clock());
 }
 
 /**
- * nowTime(clock) reads "the current time in milliseconds". IMPURE.
- * Exactly `Date.now()`; pass a clock to make it deterministic.
+ * nowTime(clock) reads "the current time in milliseconds". Pure: the clock or source is a parameter.
+ * Exactly `clock()`.
  */
-export function nowTime(clock: Clock = Date.now): number {
+export function nowTime(clock: Clock): number {
   return clock();
 }
 
 /**
- * random(source) reads "a random number from 0 up to 1". IMPURE.
- * Exactly `Math.random()`; pass a source (e.g. seededSource(42)) to make it deterministic.
+ * random(source) reads "a random number from 0 up to 1". Pure: the clock or source is a parameter.
+ * Exactly `source()`; seededSource(42) gives a repeatable one.
  */
-export function random(source: RandomSource = Math.random): number {
+export function random(source: RandomSource): number {
   return source();
 }
 
@@ -48,25 +48,9 @@ export function seededSource(seed: number): RandomSource {
 }
 
 /**
- * randomBetween(min, max, random) reads "a random number from min up to max". IMPURE.
- * Exactly `min + Math.random() * (max - min)`: in [min, max); pass random to make it deterministic.
+ * randomBetween(min, max, random) reads "a random number from min up to max". Pure: the clock or source is a parameter.
+ * Exactly `min + random() * (max - min)`: in [min, max).
  */
-export function randomBetween(min: number, max: number, random: RandomSource = Math.random): number {
+export function randomBetween(min: number, max: number, random: RandomSource): number {
   return min + random() * (max - min);
-}
-
-/** A timer: runs fn after ms milliseconds, like setTimeout. */
-export type Schedule = (fn: () => void, ms: number) => unknown;
-
-const realSchedule: Schedule = (fn, ms) => (globalThis as unknown as { setTimeout: Schedule }).setTimeout(fn, ms);
-
-/**
- * delay(ms, value, schedule) reads "value after ms milliseconds". IMPURE (timer).
- * Exactly `new Promise((resolve) => setTimeout(() => resolve(value), ms))`; pass a schedule
- * (a fake timer) to make it deterministic.
- */
-export function delay<T = undefined>(ms: number, value?: T, schedule: Schedule = realSchedule): Promise<T> {
-  return new Promise((resolve) => {
-    schedule(() => resolve(value as T), ms);
-  });
 }

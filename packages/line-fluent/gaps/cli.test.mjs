@@ -39,14 +39,15 @@ const state = async () => {
   };
 };
 
-test('gapsIn: the registered atom closes the stackEntries gap', () => {
+test('gapsIn: R11 keeps the in-place groups.set as written and reports it, with no gap to fill', () => {
   const dir = mkdtempSync(join(tmpdir(), 'gaps-cli-'));
   try {
     const file = join(dir, 'stack.js');
     writeFileSync(file, `export ${SOURCE}\n`);
     const r = gapsIn(file);
     assert.deepEqual(r.gaps, []);
-    assert.match(r.code, /createsAtTo\(groups, key, \[opp\]\)/);
+    assert.match(r.code, /groups\.set\(key, \[opp\]\)/);
+    assert.ok(r.untranslated.some((u) => u.reason === 'mutates'));
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

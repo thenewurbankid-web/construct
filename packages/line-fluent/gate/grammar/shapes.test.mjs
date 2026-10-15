@@ -44,10 +44,10 @@ test('a new shape that follows the word-class rules passes, flagged for the pers
   const r = checkGrammar({ sentence: 'set(s).puts().at(key).to(value)' });
   assert.equal(r.check, 'pass');
   assert.deepEqual(r.newShape, { shape: 'set(·).VERB().at(·).to(·)', like: r.newShape.like });
-  // Once an atom with that shape is approved (createsAtTo, map(m).creates().at(key).to(value)), it is a known shape.
-  const known = checkGrammar({ sentence: 'map(m).sets().at(key).to(value)' });
+  // A new verb in a shape the catalog already has is an alias, not a new shape.
+  const known = checkGrammar({ sentence: 'text(s).cuts().by(sep)' });
   assert.equal(known.newShape, undefined);
-  assert.deepEqual(known.aliases, [{ word: 'sets', class: 'verb' }]);
+  assert.deepEqual(known.aliases, [{ word: 'cuts', class: 'verb' }]);
   assert.equal(checkGrammar({ sentence: 'map(m).removes().at(key)' }).check, 'pass');
   assert.equal(checkGrammar({ sentence: 'map(m).sets().by(key).and(() => value)' }).check, 'fail', 'a connector taking an argument breaks R6');
   assert.equal(checkGrammar({ sentence: 'text(s).pads(n).with(c)' }).check, 'fail', 'a verb taking its own argument breaks R3');

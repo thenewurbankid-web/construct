@@ -40,7 +40,7 @@ const everyRoleWords = new Set(ev.roleWords);
 const everyWords = new Set([...ev.participles, ...ev.gerunds, ...ev.roleWords, ...ev.words, ...ev.binders]);
 const bodyAtoms = new Set(Object.keys(ev.bodyAtoms));
 // The words before the binder, and the binders, each start allows.
-const OPENINGS = { every: ['', ['every']], checks: ['checks.if', ['every', 'any']], the: ['the', ['first']], folds: ['folds', ['every']], does: ['does', ['every']] };
+const OPENINGS = { every: ['', ['every']], checks: ['checks.if', ['every', 'any']], the: ['the', ['first']], folds: ['folds', ['every']] };
 // What each plain-JS callback returns, by its method.
 const JS_KINDS = { map: 'list', filter: 'list', every: 'boolean', some: 'boolean', find: 'item', reduce: 'value', forEach: 'nothing' };
 /** A kind as it is said: "a list", "an item", "nothing". */
@@ -222,8 +222,8 @@ describe('Atomic English grammar', () => {
       for (const p of ev.participles) assert.ok(!vocabulary.has(p), `${p} is also allowed outside every()`);
     });
 
-    test('five first words, each with exactly one result kind', () => {
-      assert.deepEqual(ev.starts, { every: 'list', checks: 'boolean', the: 'item', folds: 'value', does: 'nothing' });
+    test('four first words, each with exactly one result kind (does() withdrawn by R11)', () => {
+      assert.deepEqual(ev.starts, { every: 'list', checks: 'boolean', the: 'item', folds: 'value' });
       assert.equal(new Set(Object.values(ev.starts)).size, Object.keys(ev.starts).length, 'no two first words share a kind');
       assert.deepEqual(Object.keys(OPENINGS).sort(), Object.keys(ev.starts).sort());
       // Every R9 sentence is said by the first word of its kind, and every first word is used.
@@ -250,9 +250,7 @@ describe('Atomic English grammar', () => {
         ['checks().if(n).every(x).in(xs).is().positive()', 'boolean', 'R9: checks() opens as'],
         ['list(xs).every(x).in(xs).is().positive()', 'boolean', 'R9: an every() sentence starts with'],
         ['clones().list(xs).and().maps().each().with(fn)', 'list', 'R9: a sentence that returns a list binds'],
-        ['does().every(x).in(xs).by().multiplying(x).by(2)', 'list', 'R9: does() returns nothing, but this sentence returns a list'],
-        ['every(x).in(xs).is().mapped().to().clone().by().waiting(x)', 'nothing', 'R9: every() returns a list, but this sentence returns nothing'],
-        ['does().first(x).in(xs).by().waiting(x)', 'nothing', 'R9: does() opens as'],
+        ['does().every(x).in(xs).by().multiplying(x).by(2)', 'nothing', 'R9: an every() sentence starts with'],
       ];
       for (const [sentence, kind, message] of bad) {
         const found = violations(sentence, kind);
@@ -269,7 +267,6 @@ describe('Atomic English grammar', () => {
         ['every(x).in(xs).is().mapped().to().clone().by().multiplying(x).by(i)', 'list', 'R9: i is not bound'],
         ['every(x).at(x).in(xs).is().mapped().to().clone().by().multiplying(x).by(2)', 'list', 'R9: at(x): x is already bound'],
         ['every(x).at(i).in(xs).is().mapped().to().clone().by().every(y).at(i).in(x).is().mapped().to().clone().by().multiplying(y).by(i)', 'list', 'R9: at(i): i is already bound'],
-        ['does().every(x).in(xs).by().waiting(x).and().multiplying(x).by(2)', 'nothing', 'R9: a body is one atom'],
         ['every(x).in(rows).is().mapped().to().clone().by().every(y).in(item).is().mapped().to().clone().by().multiplying(y).by(2)', 'list', 'R9: item is not bound'],
       ];
       for (const [sentence, kind, message] of bad) {

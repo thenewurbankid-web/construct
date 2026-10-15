@@ -758,7 +758,7 @@
   "atom": "match",
   "module": "branching",
   "js": [
-   "switch (value) { case k: \u2026 default: \u2026 }"
+   "switch (value) { case k: … default: … }"
   ],
   "pure": true,
   "mutates": false,
@@ -811,49 +811,6 @@
     ]
    }
   ]
- },
- {
-  "atom": "each",
-  "module": "loops",
-  "reads": "for each item of list, effect",
-  "js": [
-   "list.forEach(fn)",
-   "for (const item of list) { fn(item) }"
-  ],
-  "pure": false,
-  "mutates": false,
-  "covers": [
-   "Array#forEach"
-  ],
-  "check": [
-   {
-    "params": [
-     [
-      "list",
-      "list"
-     ],
-     [
-      "fn",
-      "fn"
-     ]
-    ],
-    "js": [
-     "list.forEach(fn)"
-    ]
-   }
-  ],
-  "impureReason": "exists only for the callback's side effects"
- },
- {
-  "atom": "repeatWhile",
-  "module": "loops",
-  "reads": "repeat step while condition, at most limit times",
-  "js": [
-   "while (condition) { step }"
-  ],
-  "pure": true,
-  "mutates": false,
-  "verifiedBy": "test/core.test.mjs (limit property)"
  },
  {
   "atom": "iterateWhile",
@@ -2612,7 +2569,7 @@
     ]
    }
   ],
-  "note": "Object.assign mutates its first argument; merged never does (Object.assign(target, \u2026) maps to merged(target, \u2026) as a copy)"
+  "note": "Object.assign mutates its first argument; merged never does (Object.assign(target, …) maps to merged(target, …) as a copy)"
  },
  {
   "atom": "withKey",
@@ -3441,7 +3398,8 @@
     ]
    }
   ],
-  "note": "the copy-returning map.set(key, value)"
+  "note": "the copy-returning map.set(key, value) Sentence confirmed by the owner 2026-10-15 (first registered as createsAtTo, merged here by R11: the same copy); it waits until clones() takes a map.",
+  "fluentPending": "clones().map(map).and().creates().at(key).to(value)"
  },
  {
   "atom": "sizeOf",
@@ -3477,12 +3435,10 @@
   "module": "impure",
   "reads": "the current date and time",
   "js": [
-   "new Date()",
-   "new Date(Date.now())"
+   "new Date(clock())"
   ],
-  "pure": false,
+  "pure": true,
   "mutates": false,
-  "impureReason": "reads the clock (inject one to make it deterministic)",
   "check": [
    {
     "params": [
@@ -3495,21 +3451,18 @@
      "new Date(clock)"
     ]
    }
-  ]
+  ],
+  "note": "R11: the clock or random source is a parameter, so the same inputs give the same result"
  },
  {
   "atom": "nowTime",
   "module": "impure",
   "reads": "the current time in milliseconds",
   "js": [
-   "Date.now()"
+   "clock()"
   ],
-  "pure": false,
+  "pure": true,
   "mutates": false,
-  "covers": [
-   "Date.now"
-  ],
-  "impureReason": "reads the clock (inject one to make it deterministic)",
   "check": [
    {
     "params": [
@@ -3522,21 +3475,18 @@
      "clock"
     ]
    }
-  ]
+  ],
+  "note": "R11: the clock or random source is a parameter, so the same inputs give the same result"
  },
  {
   "atom": "random",
   "module": "impure",
   "reads": "a random number from 0 up to 1",
   "js": [
-   "Math.random()"
+   "source()"
   ],
-  "pure": false,
+  "pure": true,
   "mutates": false,
-  "covers": [
-   "Math.random"
-  ],
-  "impureReason": "random (inject a source, e.g. seededSource(seed), to make it deterministic)",
   "check": [
    {
     "params": [
@@ -3549,7 +3499,8 @@
      "source"
     ]
    }
-  ]
+  ],
+  "note": "R11: the clock or random source is a parameter, so the same inputs give the same result"
  },
  {
   "atom": "seededSource",
@@ -3568,11 +3519,10 @@
   "module": "impure",
   "reads": "a random number from min up to max",
   "js": [
-   "min + Math.random() * (max - min)"
+   "min + source() * (max - min)"
   ],
-  "pure": false,
+  "pure": true,
   "mutates": false,
-  "impureReason": "random (inject a source to make it deterministic)",
   "check": [
    {
     "params": [
@@ -3593,55 +3543,8 @@
      "min + random * (max - min)"
     ]
    }
-  ]
- },
- {
-  "atom": "delay",
-  "module": "impure",
-  "reads": "value after ms milliseconds",
-  "js": [
-   "new Promise((resolve) => setTimeout(() => resolve(value), ms))"
   ],
-  "pure": false,
-  "mutates": false,
-  "impureReason": "timer",
-  "verifiedBy": "test/core.test.mjs (fake-timer property)"
- },
- {
-  "atom": "fetchJson",
-  "module": "adapters",
-  "reads": "the JSON at url",
-  "js": [
-   "fetch(url, init).then((r) => r.json())"
-  ],
-  "pure": false,
-  "mutates": false,
-  "impureReason": "host adapter (network); the host object can be injected",
-  "verifiedBy": "test/examples.test.mjs (stub host)"
- },
- {
-  "atom": "readStorage",
-  "module": "adapters",
-  "reads": "the stored value for key",
-  "js": [
-   "localStorage.getItem(key)"
-  ],
-  "pure": false,
-  "mutates": false,
-  "impureReason": "host adapter (storage); the host object can be injected",
-  "verifiedBy": "test/core.test.mjs (in-memory storage property)"
- },
- {
-  "atom": "writeStorage",
-  "module": "adapters",
-  "reads": "store value under key",
-  "js": [
-   "localStorage.setItem(key, value)"
-  ],
-  "pure": false,
-  "mutates": false,
-  "impureReason": "host adapter (storage); the host object can be injected",
-  "verifiedBy": "test/examples.test.mjs (stub host)"
+  "note": "R11: the clock or random source is a parameter, so the same inputs give the same result"
  },
  {
   "atom": "urlFrom",
@@ -3650,9 +3553,8 @@
   "js": [
    "new URL(path, base).href"
   ],
-  "pure": false,
+  "pure": true,
   "mutates": false,
-  "impureReason": "host adapter (host URL parser); the host object can be injected",
   "check": [
    {
     "params": [
@@ -3678,9 +3580,8 @@
   "js": [
    "const u = new URL(url); u.searchParams.set(k, v); u.href"
   ],
-  "pure": false,
+  "pure": true,
   "mutates": false,
-  "impureReason": "host adapter (host URL parser); the host object can be injected",
   "verifiedBy": "test/examples.test.mjs (stub host)"
  }
 ]

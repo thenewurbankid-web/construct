@@ -693,6 +693,14 @@ function toAtoms(code, options = {}) {
       }
     }
 
+    // R11: a Map or Set changed in place stays as written and is reported; a pure copy atom (withEntry) would
+    // change what the code does.
+    if (n.type === 'CallExpression' && n.callee.type === 'MemberExpression' && !n.callee.computed && n.callee.object.type === 'Identifier'
+      && /^(map|set|weakmap|weakset)$/.test(declared.get(n.callee.object.name) ?? '') && ['set', 'delete', 'clear', 'add'].includes(n.callee.property.name)) {
+      record(n, `CallExpression .${n.callee.property.name}()`, 'mutates');
+      return rewriteChildren(n, ctx);
+    }
+
     // optional chains: only a whole chain head `a?.b` may become get(a, 'b')
     let chainPart = false;
     if ((n.type === 'OptionalMemberExpression' || n.type === 'OptionalCallExpression') && (!n.optional || ctx.callee || ctx.inChain)) chainPart = true;

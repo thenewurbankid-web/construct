@@ -3,15 +3,6 @@
 /* eslint-disable */
 
 /**
- * eachMap(map, callbackfn, thisArg) reads "the for each callbackfn, thisArg of map".
- * Generated wrapper: exactly `map.forEach(callbackfn, thisArg)`.
- */
-export function eachMap<K, V>(map: ReadonlyMap<K, V>, callbackfn: (value: V, key: K, map: ReadonlyMap<K, V>) => void, thisArg?: any): void;
-export function eachMap(map: any, ...args: any[]): any {
-  return (map as any).forEach(...args);
-}
-
-/**
  * hasKeyInMap(map, key) reads "whether map has key".
  * Generated wrapper: exactly `map.has(key)`.
  */
@@ -48,18 +39,6 @@ export function valuesOfMap(map: any, ...args: any[]): any {
 }
 
 /**
- * emptiedMap(map) reads "map after clear, as a copy".
- * Generated wrapper: exactly `map.clear()` on a copy.
- * The built-in mutates map; this atom applies it to a copy and returns the copy (the original is untouched).
- */
-export function emptiedMap<K, V>(map: ReadonlyMap<K, V>): Map<K, V>;
-export function emptiedMap(map: any, ...args: any[]): any {
-  const copy: any = new Map(map);
-  copy.clear(...args);
-  return copy;
-}
-
-/**
  * withoutEntry(map, key) reads "map after delete key, as a copy".
  * Generated wrapper: exactly `map.delete(key)` on a copy.
  * The built-in mutates map; this atom applies it to a copy and returns the copy (the original is untouched).
@@ -69,15 +48,6 @@ export function withoutEntry(map: any, ...args: any[]): any {
   const copy: any = new Map(map);
   copy.delete(...args);
   return copy;
-}
-
-/**
- * eachSet(set, callbackfn, thisArg) reads "the for each callbackfn, thisArg of set".
- * Generated wrapper: exactly `set.forEach(callbackfn, thisArg)`.
- */
-export function eachSet<T>(set: ReadonlySet<T>, callbackfn: (value: T, value2: T, set: ReadonlySet<T>) => void, thisArg?: any): void;
-export function eachSet(set: any, ...args: any[]): any {
-  return (set as any).forEach(...args);
 }
 
 /**
@@ -108,18 +78,6 @@ export function valuesOfSet(set: any, ...args: any[]): any {
 }
 
 /**
- * emptiedSet(set) reads "set after clear, as a copy".
- * Generated wrapper: exactly `set.clear()` on a copy.
- * The built-in mutates set; this atom applies it to a copy and returns the copy (the original is untouched).
- */
-export function emptiedSet<T>(set: ReadonlySet<T>): Set<T>;
-export function emptiedSet(set: any, ...args: any[]): any {
-  const copy: any = new Set(set);
-  copy.clear(...args);
-  return copy;
-}
-
-/**
  * withoutMember(set, value) reads "set after delete value, as a copy".
  * Generated wrapper: exactly `set.delete(value)` on a copy.
  * The built-in mutates set; this atom applies it to a copy and returns the copy (the original is untouched).
@@ -129,16 +87,6 @@ export function withoutMember(set: any, ...args: any[]): any {
   const copy: any = new Set(set);
   copy.delete(...args);
   return copy;
-}
-
-/**
- * doesDeleteFromWeakMap(weakMap, key) reads "the delete key of weakMap".
- * Generated wrapper: exactly `weakMap.delete(key)`.
- * MUTATES weakMap: a weak collection cannot be copied, so this mutates in place.
- */
-export function doesDeleteFromWeakMap<K extends WeakKey, V>(weakMap: WeakMap<K, V>, key: K): boolean;
-export function doesDeleteFromWeakMap(weakMap: any, ...args: any[]): any {
-  return (weakMap as any).delete(...args);
 }
 
 /**
@@ -160,60 +108,10 @@ export function hasKeyInWeakMap(weakMap: any, ...args: any[]): any {
 }
 
 /**
- * setInWeakMap(weakMap, key, value) reads "the set key, value of weakMap".
- * Generated wrapper: exactly `weakMap.set(key, value)`.
- * MUTATES weakMap: a weak collection cannot be copied, so this mutates in place.
- */
-export function setInWeakMap<K extends WeakKey, V>(weakMap: WeakMap<K, V>, key: K, value: V): (WeakMap<K, V>);
-export function setInWeakMap(weakMap: any, ...args: any[]): any {
-  return (weakMap as any).set(...args);
-}
-
-/**
- * weakMapFrom(entries) reads "a new WeakMap from entries".
- * Generated wrapper: exactly `new WeakMap(entries)`.
- */
-export function weakMapFrom<K extends WeakKey = WeakKey, V = any>(entries?: readonly (readonly [K, V])[] | null): WeakMap<K, V>;
-export function weakMapFrom<K extends WeakKey = WeakKey, V = any>(iterable?: Iterable<readonly [K, V]> | null): WeakMap<K, V>;
-export function weakMapFrom(...args: any[]): any {
-  return new (WeakMap as any)(...args);
-}
-
-/**
- * addToWeakSet(weakSet, value) reads "the add value of weakSet".
- * Generated wrapper: exactly `weakSet.add(value)`.
- * MUTATES weakSet: a weak collection cannot be copied, so this mutates in place.
- */
-export function addToWeakSet<T extends WeakKey>(weakSet: WeakSet<T>, value: T): (WeakSet<T>);
-export function addToWeakSet(weakSet: any, ...args: any[]): any {
-  return (weakSet as any).add(...args);
-}
-
-/**
- * doesDeleteFromWeakSet(weakSet, value) reads "the delete value of weakSet".
- * Generated wrapper: exactly `weakSet.delete(value)`.
- * MUTATES weakSet: a weak collection cannot be copied, so this mutates in place.
- */
-export function doesDeleteFromWeakSet<T extends WeakKey>(weakSet: WeakSet<T>, value: T): boolean;
-export function doesDeleteFromWeakSet(weakSet: any, ...args: any[]): any {
-  return (weakSet as any).delete(...args);
-}
-
-/**
  * isInWeakSet(weakSet, value) reads "whether weakSet has value".
  * Generated wrapper: exactly `weakSet.has(value)`.
  */
 export function isInWeakSet<T extends WeakKey>(weakSet: WeakSet<T>, value: T): boolean;
 export function isInWeakSet(weakSet: any, ...args: any[]): any {
   return (weakSet as any).has(...args);
-}
-
-/**
- * weakSetFrom(values) reads "a new WeakSet from values".
- * Generated wrapper: exactly `new WeakSet(values)`.
- */
-export function weakSetFrom<T extends WeakKey = WeakKey>(values?: readonly T[] | null): WeakSet<T>;
-export function weakSetFrom<T extends WeakKey = WeakKey>(iterable: Iterable<T>): WeakSet<T>;
-export function weakSetFrom(...args: any[]): any {
-  return new (WeakSet as any)(...args);
 }

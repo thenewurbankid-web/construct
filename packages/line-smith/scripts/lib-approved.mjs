@@ -27,6 +27,7 @@ export function checkApproved(atoms, taken = new Map()) {
       throw new Error(`${where}: params must be [name, type] pairs with identifier names`);
     }
     if (!KINDS.includes(a.kind)) throw new Error(`${where}: kind must be one of ${KINDS.join(', ')}`);
+    if (a.kind === 'in-place' || a.kind === 'effect') throw new Error(`${where}: R11 keeps the library pure; an ${a.kind} atom must become a copy (clones()) or stay in app code`);
   }
 }
 

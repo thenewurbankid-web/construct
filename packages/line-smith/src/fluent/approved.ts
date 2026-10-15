@@ -2,9 +2,4 @@
 // Each atom wraps exactly one built-in; see src/atoms/catalog.json for its reading and checks.
 /* eslint-disable */
 
-import { createsAtTo } from '../atoms/generated/approved';
-
-/** Approved sentences starting with map(). */
-export function map(a0: any): any {
-  return { creates: () => ({ at: (a1: any) => ({ to: (a2: any) => createsAtTo(a0, a1, a2) }) }) };
-}
+export {};

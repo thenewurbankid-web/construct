@@ -30,29 +30,23 @@ test('a Map declared in the code takes Map atoms: get and entries are decided, n
   assert.deepEqual(r.ambiguous, []);
 });
 
-test('no atom for a Map\'s set: the code stays as written and is a gap naming its reference entry', () => {
-  // The catalog as it was before createsAtTo was registered from this gap (owner, 2026-10-15).
-  const raw = JSON.parse(fs.readFileSync(CATALOG, 'utf8'));
-  const before = compileCatalog({ ...raw, atoms: raw.atoms.filter((a) => a.atom !== 'createsAtTo') }, { signatures: paramsFromSource(path.join(__dirname, '../line-smith')) });
-  const r = toAtoms(STACK, { catalog: before });
-  assert.doesNotMatch(r.code, /setInWeakMap/, 'never a neighbouring type\'s atom');
-  assert.match(r.code, /groups\.set\(key, \[opp\]\)/);
-  assert.deepEqual(r.gaps.map(({ type, member, entry, code }) => ({ type, member, entry, code })), [
-    { type: 'map', member: 'set', entry: 'Map.prototype.set', code: 'groups.set(key, [opp])' },
-  ]);
-  assert.ok(r.untranslated.some((u) => u.reason === 'no atom for a map'));
-});
-
-test('the atom registered from that gap closes it: the next run finds createsAtTo', () => {
+test('R11: a Map changed in place stays as written and is reported as mutating, never a neighbouring type\'s atom', () => {
   const r = toAtoms(STACK, { catalog });
-  assert.match(r.code, /createsAtTo\(groups, key, \[opp\]\)/);
-  assert.deepEqual(r.gaps, []);
+  assert.doesNotMatch(r.code, /setInWeakMap|withEntry/);
+  assert.match(r.code, /groups\.set\(key, \[opp\]\)/);
+  assert.ok(r.untranslated.some((u) => u.reason === 'mutates' && /\.set\(\)/.test(u.what ?? u.kind ?? JSON.stringify(u))), JSON.stringify(r.untranslated));
 });
 
-test('a WeakMap declared in the code still takes the WeakMap atom', () => {
+test('R11: the pure createsAtTo never stands in for the mutating groups.set; the call stays as written', () => {
+  const r = toAtoms(STACK, { catalog });
+  assert.match(r.code, /groups\.set\(key, \[opp\]\)/);
+  assert.doesNotMatch(r.code, /createsAtTo/, 'a copy would change what the code does');
+});
+
+test('R11: a WeakMap\'s set has no atom (it mutates), so the call stays as written', () => {
   const r = toAtoms('const seen = new WeakMap();\nconst k = {};\nseen.set(k, 1);', { catalog });
-  assert.match(r.code, /setInWeakMap\(seen, k, 1\)/);
-  assert.deepEqual(r.gaps, []);
+  assert.match(r.code, /seen\.set\(k, 1\)/);
+  assert.doesNotMatch(r.code, /setInWeakMap/);
 });
 
 test('a name whose type the code does not show is left to the existing rules (no gap is invented)', () => {

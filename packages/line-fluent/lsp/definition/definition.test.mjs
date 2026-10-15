@@ -8,8 +8,8 @@ const index = buildIndex();
 const at = (sentence, word, n = 0) => definitionAt(index, sentence, sentence.indexOf(word) + n);
 
 test('index counts over the catalog and the C1 reference', () => {
-  assert.deepEqual(index.counts, { atoms: 338, withFluent: 38, withReference: 284 });
-  assert.equal(index.bySentenceWords.size, 38);
+  assert.deepEqual(index.counts, { atoms: 292, withFluent: 37, withReference: 238 });
+  assert.equal(index.bySentenceWords.size, 37);
   assert.equal(index.bySentenceWords.get('checks.if.has.item'), 'hasItem');
   assert.equal(wordKey('list(xs).joins().with(sep)'), 'list.joins.with');
 });

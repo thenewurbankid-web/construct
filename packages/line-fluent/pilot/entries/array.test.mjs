@@ -12,7 +12,7 @@ test('arrayEntries returns every C1 entry in section Array', () => {
 });
 
 test('with-candidate count is recorded', () => {
-  assert.equal(arrayEntries().filter((e) => e.candidates.length > 0).length, 55);
+  assert.equal(arrayEntries().filter((e) => e.candidates.length > 0).length, 54);
 });
 
 test('Array.prototype.includes matches hasItem', () => {

@@ -251,6 +251,16 @@ for (const m of members) {
     Object.assign(d, { status: 'excluded', reason: 'deprecated in the language' });
   } else if (naming.excludeMembers[m.id]) {
     Object.assign(d, { status: 'excluded', reason: naming.excludeMembers[m.id] });
+  } else if (naming.impure[m.id]) {
+    // R11: the library is pure; what a member reads from the environment (clock, locale, time zone) keeps it out.
+    Object.assign(d, { status: 'excluded', reason: `R11 (pure library): ${naming.impure[m.id]}` });
+  } else if (liveSigs(m).every((sig) => /^(void|undefined)$/.test(String(sig.returns).trim()))) {
+    // R11: a member that returns nothing exists for its effects (forEach, console.log).
+    Object.assign(d, { status: 'excluded', reason: 'R11 (pure library): returns nothing, so it runs only for its effects' });
+  } else if (m.kind === 'construct' && /^Weak(Map|Set|Ref)$|^FinalizationRegistry$/.test(m.owner.id ?? '')) {
+    Object.assign(d, { status: 'excluded', reason: 'R11 (pure library): only useful with mutation or effects, which a pure library has none of' });
+  } else if (m.kind === 'instance' && m.owner.inPlaceReason && isInPlace(m)) {
+    Object.assign(d, { status: 'excluded', reason: `R11 (pure library): ${m.owner.inPlaceReason}` });
   } else if (curatedById.has(m.id)) {
     Object.assign(d, { status: 'covered', atom: curatedById.get(m.id) });
   } else if (naming.mutatorEquivalents[m.id]) {
@@ -531,6 +541,13 @@ outputs.set(join(atomsDir, 'catalog.json'), JSON.stringify({ $comment: 'GENERATE
 outputs.set(join(atomsDir, 'coverage.json'), JSON.stringify(coverage, null, 1) + '\n');
 // The fluent facade for approved sentences (lib-approved.mjs emitApprovedFluent), exported by src/fluent/index.ts.
 outputs.set(join(atomsDir, '..', 'fluent', 'approved.ts'), header + '\n' + emitApprovedFluent(approved).code);
+
+// R11 (ENGLISH-RULES.md): the library is pure. Nothing that changes an input or has an effect may be emitted.
+const impureAtoms = catalog.filter((a) => a.mutates || a.pure === false);
+if (impureAtoms.length) {
+  console.error(`gen-atoms: R11 refuses ${impureAtoms.length} atom(s) that are not pure: ${impureAtoms.map((a) => `${a.atom} (${a.impureReason ?? (a.mutates ? 'changes its input' : 'impure')})`).join(', ')}`);
+  process.exit(1);
+}
 
 if (checkOnly) {
   const stale = [...outputs].filter(([p, text]) => !existsSync(p) || readFileSync(p, 'utf8') !== text).map(([p]) => p);

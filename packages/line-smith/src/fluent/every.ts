@@ -7,10 +7,9 @@
 //
 // The first word decides what the sentence returns: `every(x).in(xs)` a list,
 // `checks().if().every(x)` / `checks().if().any(x)` a yes or no, `the().first(x).in(xs)` one item,
-// `folds()` one value, `does()` nothing.
+// `folds()` one value.
 //
-// The other callback shapes: the index is bound with `at(i)` (`every(x).at(i).in(xs)`), `does()`
-// returns nothing (xs.forEach), and an async body makes the sentence return a Promise and run one
+// The other callback shapes: the index is bound with `at(i)` (`every(x).at(i).in(xs)`), and an async body makes the sentence return a Promise and run one
 // item at a time, unless it says `all().at().once()` (Promise.all) right after `in(xs)`.
 //
 // Types travel along the chain: `x` only names a slot. `every(x)` records 'x', `.in(xs)` binds
@@ -194,7 +193,6 @@ const FIND: Shape = {
   settle: (items, answers) => atoms.findFirst(atoms.part(items, 0, answers.length), answered(answers)),
   stop: (answer) => !!answer,
 };
-const EACH: Shape = { sync: atoms.each, settle: () => undefined };
 
 async function oneAtATime(items: readonly unknown[], callback: (value: unknown, index: number) => unknown, shape: Shape): Promise<unknown> {
   const answers: unknown[] = [];
@@ -273,15 +271,6 @@ export class ValueBody<S extends Scope, W extends readonly Layer[]> {
 
   adding<A>(a: Arg<S, A, number, 'adding', 'a number'>): Adding<S, W> {
     return new Adding<S, W>(a, this.finish);
-  }
-
-  /** Waits ms milliseconds (delay, an impure atom): an async body, so the sentence returns a Promise. */
-  waiting<A>(
-    this: Waits<W> extends true ? ValueBody<S, W> : "waiting: only a list (every) or an effect (does) waits, not a fold or a question",
-    ms: Arg<S, A, number, 'waiting', 'a number'>,
-  ): Apply<W, Promise<undefined>> {
-    const self = this as ValueBody<S, W>;
-    return self.finish(later((v) => atoms.delay(valueOf(ms, v) as number))) as Apply<W, Promise<undefined>>;
   }
 
   /** A nested list: each value is itself an every() sentence, `every(y).in(x)…`. Not in a fold's body. */
@@ -542,41 +531,4 @@ export class Folds {
 /** folds().every(x).in(xs).into(total).starting().at(0).by().adding(x).to(total) is `xs.reduce((total, x) => total + x, 0)`. */
 export function folds(): Folds {
   return new Folds();
-}
-
-// ---------------------------------------------------------------- does(): nothing
-
-export class DoesIn<S extends Scope> {
-  constructor(private readonly binding: Binding) {}
-
-  by(): ValueBody<S, ['nothing']> {
-    return new ValueBody<S, ['nothing']>(sentence(this.binding, EACH));
-  }
-
-  all(): AllAtOnce<Omit<DoesIn<S>, 'all'>> {
-    return new AllAtOnce(() => new DoesIn<S>({ ...this.binding, parallel: true }));
-  }
-}
-
-export class DoesEvery<S extends Scope, N extends string> {
-  constructor(private readonly name: N, private readonly index?: string) {}
-
-  at<A>(index: Fresh<Bind<S, N, unknown>, A, 'at'>): Omit<DoesEvery<Bind<S, NameOf<A>, number>, N>, 'at'> {
-    return new DoesEvery<Bind<S, NameOf<A>, number>, N>(this.name, (index as Placeholder).name);
-  }
-
-  in<T>(items: readonly T[]): DoesIn<Bind<S, N, T>> {
-    return new DoesIn<Bind<S, N, T>>({ close: run, name: this.name, index: this.index, items });
-  }
-}
-
-export class Does {
-  every<N extends string>(placeholder: Placeholder<N>): DoesEvery<{}, N> {
-    return new DoesEvery<{}, N>(placeholder.name);
-  }
-}
-
-/** does().every(x).in(xs).by().waiting(x) is `for (const x of xs) await delay(x)`; it returns nothing. */
-export function does(): Does {
-  return new Does();
 }

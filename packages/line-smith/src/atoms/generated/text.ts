@@ -81,40 +81,6 @@ export function matchAllText(text: any, ...args: any[]): any {
 }
 
 /**
- * localeLowerCaseText(text, locales) reads "the to locale lower case locales of text".
- * Generated wrapper: exactly `text.toLocaleLowerCase(locales)`.
- * IMPURE: depends on the runtime's default locale when none is passed.
- */
-export function localeLowerCaseText(text: string, locales?: Intl.LocalesArgument): string;
-export function localeLowerCaseText(text: string, locales?: string | string[]): string;
-export function localeLowerCaseText(text: any, ...args: any[]): any {
-  return (text as any).toLocaleLowerCase(...args);
-}
-
-/**
- * localeUpperCaseText(text, locales) reads "the to locale upper case locales of text".
- * Generated wrapper: exactly `text.toLocaleUpperCase(locales)`.
- * IMPURE: depends on the runtime's default locale when none is passed.
- */
-export function localeUpperCaseText(text: string, locales?: Intl.LocalesArgument): string;
-export function localeUpperCaseText(text: string, locales?: string | string[]): string;
-export function localeUpperCaseText(text: any, ...args: any[]): any {
-  return (text as any).toLocaleUpperCase(...args);
-}
-
-/**
- * localeCompareText(text, that, locales, options) reads "the locale compare that, locales, options of text".
- * Generated wrapper: exactly `text.localeCompare(that, locales, options)`.
- * IMPURE: depends on the runtime's default locale when none is passed.
- */
-export function localeCompareText(text: string, that: string, locales?: Intl.LocalesArgument, options?: Intl.CollatorOptions): number;
-export function localeCompareText(text: string, that: string): number;
-export function localeCompareText(text: string, that: string, locales?: string | string[], options?: Intl.CollatorOptions): number;
-export function localeCompareText(text: any, ...args: any[]): any {
-  return (text as any).localeCompare(...args);
-}
-
-/**
  * atText(text, index) reads "the at index of text".
  * Generated wrapper: exactly `text.at(index)`.
  */

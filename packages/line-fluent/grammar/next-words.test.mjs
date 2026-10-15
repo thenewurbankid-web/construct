@@ -41,7 +41,7 @@ test('every sentence word belongs to a naming.json grammar class', () => {
 
 test('an empty prefix lists the legal first words', () => {
   const { legal, complete } = nextWords('');
-  for (const w of ['checks', 'clones', 'every', 'text', 'list', 'when', 'chooses', 'matches', 'attempts', 'does', 'folds', 'the']) {
+  for (const w of ['checks', 'clones', 'every', 'text', 'list', 'when', 'chooses', 'matches', 'attempts', 'folds', 'the']) {
     assert.ok(legal.includes(w), w);
   }
   assert.equal(complete, false);

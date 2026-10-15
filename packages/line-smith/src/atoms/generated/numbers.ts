@@ -3,17 +3,6 @@
 /* eslint-disable */
 
 /**
- * numberAsLocaleText(n, locales, options) reads "the to locale string locales, options of n".
- * Generated wrapper: exactly `n.toLocaleString(locales, options)`.
- * IMPURE: depends on the runtime's default locale when none is passed.
- */
-export function numberAsLocaleText(n: number, locales?: Intl.LocalesArgument, options?: Intl.NumberFormatOptions): string;
-export function numberAsLocaleText(n: number, locales?: string | string[], options?: Intl.NumberFormatOptions): string;
-export function numberAsLocaleText(n: any, ...args: any[]): any {
-  return (n as any).toLocaleString(...args);
-}
-
-/**
  * numberAsText(n, radix) reads "the to string radix of n".
  * Generated wrapper: exactly `n.toString(radix)`.
  */
@@ -92,16 +81,6 @@ export function numberFrom(...args: any[]): any {
 export function bigIntAsText(big: bigint, radix?: number): string;
 export function bigIntAsText(big: any, ...args: any[]): any {
   return (big as any).toString(...args);
-}
-
-/**
- * bigIntAsLocaleText(big, locales, options) reads "the to locale string locales, options of big".
- * Generated wrapper: exactly `big.toLocaleString(locales, options)`.
- * IMPURE: depends on the runtime's default locale when none is passed.
- */
-export function bigIntAsLocaleText(big: bigint, locales?: Intl.LocalesArgument, options?: BigIntToLocaleStringOptions): string;
-export function bigIntAsLocaleText(big: any, ...args: any[]): any {
-  return (big as any).toLocaleString(...args);
 }
 
 /**

@@ -3,72 +3,6 @@
 /* eslint-disable */
 
 /**
- * dateAsLocaleText(date, locales, options) reads "the to locale string locales, options of date".
- * Generated wrapper: exactly `date.toLocaleString(locales, options)`.
- * IMPURE: depends on the runtime's default locale and time zone.
- */
-export function dateAsLocaleText(date: Date, locales?: Intl.LocalesArgument, options?: Intl.DateTimeFormatOptions): string;
-export function dateAsLocaleText(date: Date): string;
-export function dateAsLocaleText(date: Date, locales?: string | string[], options?: Intl.DateTimeFormatOptions): string;
-export function dateAsLocaleText(date: any, ...args: any[]): any {
-  return (date as any).toLocaleString(...args);
-}
-
-/**
- * dateAsLocaleDateText(date, locales, options) reads "the to locale date string locales, options of date".
- * Generated wrapper: exactly `date.toLocaleDateString(locales, options)`.
- * IMPURE: depends on the runtime's default locale and time zone.
- */
-export function dateAsLocaleDateText(date: Date, locales?: Intl.LocalesArgument, options?: Intl.DateTimeFormatOptions): string;
-export function dateAsLocaleDateText(date: Date): string;
-export function dateAsLocaleDateText(date: Date, locales?: string | string[], options?: Intl.DateTimeFormatOptions): string;
-export function dateAsLocaleDateText(date: any, ...args: any[]): any {
-  return (date as any).toLocaleDateString(...args);
-}
-
-/**
- * dateAsLocaleTimeText(date, locales, options) reads "the to locale time string locales, options of date".
- * Generated wrapper: exactly `date.toLocaleTimeString(locales, options)`.
- * IMPURE: depends on the runtime's default locale and time zone.
- */
-export function dateAsLocaleTimeText(date: Date, locales?: Intl.LocalesArgument, options?: Intl.DateTimeFormatOptions): string;
-export function dateAsLocaleTimeText(date: Date): string;
-export function dateAsLocaleTimeText(date: Date, locales?: string | string[], options?: Intl.DateTimeFormatOptions): string;
-export function dateAsLocaleTimeText(date: any, ...args: any[]): any {
-  return (date as any).toLocaleTimeString(...args);
-}
-
-/**
- * dateAsText(date) reads "the to string of date".
- * Generated wrapper: exactly `date.toString()`.
- * IMPURE: depends on the machine's local time zone.
- */
-export function dateAsText(date: Date): string;
-export function dateAsText(date: any, ...args: any[]): any {
-  return (date as any).toString(...args);
-}
-
-/**
- * dateAsDateText(date) reads "the to date string of date".
- * Generated wrapper: exactly `date.toDateString()`.
- * IMPURE: depends on the machine's local time zone.
- */
-export function dateAsDateText(date: Date): string;
-export function dateAsDateText(date: any, ...args: any[]): any {
-  return (date as any).toDateString(...args);
-}
-
-/**
- * dateAsTimeText(date) reads "the to time string of date".
- * Generated wrapper: exactly `date.toTimeString()`.
- * IMPURE: depends on the machine's local time zone.
- */
-export function dateAsTimeText(date: Date): string;
-export function dateAsTimeText(date: any, ...args: any[]): any {
-  return (date as any).toTimeString(...args);
-}
-
-/**
  * primitiveOfDate(date) reads "the value of of date".
  * Generated wrapper: exactly `date.valueOf()`.
  */
@@ -87,32 +21,12 @@ export function timeOfDate(date: any, ...args: any[]): any {
 }
 
 /**
- * fullYearOfDate(date) reads "the full year of date".
- * Generated wrapper: exactly `date.getFullYear()`.
- * IMPURE: depends on the machine's local time zone.
- */
-export function fullYearOfDate(date: Date): number;
-export function fullYearOfDate(date: any, ...args: any[]): any {
-  return (date as any).getFullYear(...args);
-}
-
-/**
  * utcFullYearOfDate(date) reads "the utc full year of date".
  * Generated wrapper: exactly `date.getUTCFullYear()`.
  */
 export function utcFullYearOfDate(date: Date): number;
 export function utcFullYearOfDate(date: any, ...args: any[]): any {
   return (date as any).getUTCFullYear(...args);
-}
-
-/**
- * monthOfDate(date) reads "the month of date".
- * Generated wrapper: exactly `date.getMonth()`.
- * IMPURE: depends on the machine's local time zone.
- */
-export function monthOfDate(date: Date): number;
-export function monthOfDate(date: any, ...args: any[]): any {
-  return (date as any).getMonth(...args);
 }
 
 /**
@@ -125,32 +39,12 @@ export function utcMonthOfDate(date: any, ...args: any[]): any {
 }
 
 /**
- * dayOfMonthOfDate(date) reads "the date of date".
- * Generated wrapper: exactly `date.getDate()`.
- * IMPURE: depends on the machine's local time zone.
- */
-export function dayOfMonthOfDate(date: Date): number;
-export function dayOfMonthOfDate(date: any, ...args: any[]): any {
-  return (date as any).getDate(...args);
-}
-
-/**
  * utcDayOfMonthOfDate(date) reads "the utc date of date".
  * Generated wrapper: exactly `date.getUTCDate()`.
  */
 export function utcDayOfMonthOfDate(date: Date): number;
 export function utcDayOfMonthOfDate(date: any, ...args: any[]): any {
   return (date as any).getUTCDate(...args);
-}
-
-/**
- * weekdayOfDate(date) reads "the day of date".
- * Generated wrapper: exactly `date.getDay()`.
- * IMPURE: depends on the machine's local time zone.
- */
-export function weekdayOfDate(date: Date): number;
-export function weekdayOfDate(date: any, ...args: any[]): any {
-  return (date as any).getDay(...args);
 }
 
 /**
@@ -163,16 +57,6 @@ export function utcWeekdayOfDate(date: any, ...args: any[]): any {
 }
 
 /**
- * hoursOfDate(date) reads "the hours of date".
- * Generated wrapper: exactly `date.getHours()`.
- * IMPURE: depends on the machine's local time zone.
- */
-export function hoursOfDate(date: Date): number;
-export function hoursOfDate(date: any, ...args: any[]): any {
-  return (date as any).getHours(...args);
-}
-
-/**
  * utcHoursOfDate(date) reads "the utc hours of date".
  * Generated wrapper: exactly `date.getUTCHours()`.
  */
@@ -182,32 +66,12 @@ export function utcHoursOfDate(date: any, ...args: any[]): any {
 }
 
 /**
- * minutesOfDate(date) reads "the minutes of date".
- * Generated wrapper: exactly `date.getMinutes()`.
- * IMPURE: depends on the machine's local time zone.
- */
-export function minutesOfDate(date: Date): number;
-export function minutesOfDate(date: any, ...args: any[]): any {
-  return (date as any).getMinutes(...args);
-}
-
-/**
  * utcMinutesOfDate(date) reads "the utc minutes of date".
  * Generated wrapper: exactly `date.getUTCMinutes()`.
  */
 export function utcMinutesOfDate(date: Date): number;
 export function utcMinutesOfDate(date: any, ...args: any[]): any {
   return (date as any).getUTCMinutes(...args);
-}
-
-/**
- * secondsOfDate(date) reads "the seconds of date".
- * Generated wrapper: exactly `date.getSeconds()`.
- * IMPURE: depends on the machine's local time zone.
- */
-export function secondsOfDate(date: Date): number;
-export function secondsOfDate(date: any, ...args: any[]): any {
-  return (date as any).getSeconds(...args);
 }
 
 /**
@@ -235,16 +99,6 @@ export function millisecondsOfDate(date: any, ...args: any[]): any {
 export function utcMillisecondsOfDate(date: Date): number;
 export function utcMillisecondsOfDate(date: any, ...args: any[]): any {
   return (date as any).getUTCMilliseconds(...args);
-}
-
-/**
- * timezoneOffsetOfDate(date) reads "the timezone offset of date".
- * Generated wrapper: exactly `date.getTimezoneOffset()`.
- * IMPURE: depends on the machine's local time zone.
- */
-export function timezoneOffsetOfDate(date: Date): number;
-export function timezoneOffsetOfDate(date: any, ...args: any[]): any {
-  return (date as any).getTimezoneOffset(...args);
 }
 
 /**
@@ -284,19 +138,6 @@ export function dateWithUtcMilliseconds(date: any, ...args: any[]): any {
 }
 
 /**
- * dateWithSeconds(date, sec, ms) reads "date with seconds set to sec, ms".
- * Generated wrapper: exactly `date.setSeconds(sec, ms)` on a copy.
- * The built-in mutates date; this atom applies it to a copy and returns the copy (the original is untouched).
- * IMPURE: depends on the machine's local time zone.
- */
-export function dateWithSeconds(date: Date, sec: number, ms?: number): Date;
-export function dateWithSeconds(date: any, ...args: any[]): any {
-  const copy: any = new Date(date.getTime());
-  copy.setSeconds(...args);
-  return copy;
-}
-
-/**
  * dateWithUtcSeconds(date, sec, ms) reads "date with utc seconds set to sec, ms".
  * Generated wrapper: exactly `date.setUTCSeconds(sec, ms)` on a copy.
  * The built-in mutates date; this atom applies it to a copy and returns the copy (the original is untouched).
@@ -305,19 +146,6 @@ export function dateWithUtcSeconds(date: Date, sec: number, ms?: number): Date;
 export function dateWithUtcSeconds(date: any, ...args: any[]): any {
   const copy: any = new Date(date.getTime());
   copy.setUTCSeconds(...args);
-  return copy;
-}
-
-/**
- * dateWithMinutes(date, min, sec, ms) reads "date with minutes set to min, sec, ms".
- * Generated wrapper: exactly `date.setMinutes(min, sec, ms)` on a copy.
- * The built-in mutates date; this atom applies it to a copy and returns the copy (the original is untouched).
- * IMPURE: depends on the machine's local time zone.
- */
-export function dateWithMinutes(date: Date, min: number, sec?: number, ms?: number): Date;
-export function dateWithMinutes(date: any, ...args: any[]): any {
-  const copy: any = new Date(date.getTime());
-  copy.setMinutes(...args);
   return copy;
 }
 
@@ -334,19 +162,6 @@ export function dateWithUtcMinutes(date: any, ...args: any[]): any {
 }
 
 /**
- * dateWithHours(date, hours, min, sec, ms) reads "date with hours set to hours, min, sec, ms".
- * Generated wrapper: exactly `date.setHours(hours, min, sec, ms)` on a copy.
- * The built-in mutates date; this atom applies it to a copy and returns the copy (the original is untouched).
- * IMPURE: depends on the machine's local time zone.
- */
-export function dateWithHours(date: Date, hours: number, min?: number, sec?: number, ms?: number): Date;
-export function dateWithHours(date: any, ...args: any[]): any {
-  const copy: any = new Date(date.getTime());
-  copy.setHours(...args);
-  return copy;
-}
-
-/**
  * dateWithUtcHours(date, hours, min, sec, ms) reads "date with utc hours set to hours, min, sec, ms".
  * Generated wrapper: exactly `date.setUTCHours(hours, min, sec, ms)` on a copy.
  * The built-in mutates date; this atom applies it to a copy and returns the copy (the original is untouched).
@@ -355,19 +170,6 @@ export function dateWithUtcHours(date: Date, hours: number, min?: number, sec?: 
 export function dateWithUtcHours(date: any, ...args: any[]): any {
   const copy: any = new Date(date.getTime());
   copy.setUTCHours(...args);
-  return copy;
-}
-
-/**
- * dateWithDayOfMonth(date, dateArg) reads "date with date set to dateArg".
- * Generated wrapper: exactly `date.setDate(dateArg)` on a copy.
- * The built-in mutates date; this atom applies it to a copy and returns the copy (the original is untouched).
- * IMPURE: depends on the machine's local time zone.
- */
-export function dateWithDayOfMonth(date: Date, dateArg: number): Date;
-export function dateWithDayOfMonth(date: any, ...args: any[]): any {
-  const copy: any = new Date(date.getTime());
-  copy.setDate(...args);
   return copy;
 }
 
@@ -384,19 +186,6 @@ export function dateWithUtcDayOfMonth(date: any, ...args: any[]): any {
 }
 
 /**
- * dateWithMonth(date, month, dateArg) reads "date with month set to month, dateArg".
- * Generated wrapper: exactly `date.setMonth(month, dateArg)` on a copy.
- * The built-in mutates date; this atom applies it to a copy and returns the copy (the original is untouched).
- * IMPURE: depends on the machine's local time zone.
- */
-export function dateWithMonth(date: Date, month: number, dateArg?: number): Date;
-export function dateWithMonth(date: any, ...args: any[]): any {
-  const copy: any = new Date(date.getTime());
-  copy.setMonth(...args);
-  return copy;
-}
-
-/**
  * dateWithUtcMonth(date, month, dateArg) reads "date with utc month set to month, dateArg".
  * Generated wrapper: exactly `date.setUTCMonth(month, dateArg)` on a copy.
  * The built-in mutates date; this atom applies it to a copy and returns the copy (the original is untouched).
@@ -405,19 +194,6 @@ export function dateWithUtcMonth(date: Date, month: number, dateArg?: number): D
 export function dateWithUtcMonth(date: any, ...args: any[]): any {
   const copy: any = new Date(date.getTime());
   copy.setUTCMonth(...args);
-  return copy;
-}
-
-/**
- * dateWithFullYear(date, year, month, dateArg) reads "date with full year set to year, month, dateArg".
- * Generated wrapper: exactly `date.setFullYear(year, month, dateArg)` on a copy.
- * The built-in mutates date; this atom applies it to a copy and returns the copy (the original is untouched).
- * IMPURE: depends on the machine's local time zone.
- */
-export function dateWithFullYear(date: Date, year: number, month?: number, dateArg?: number): Date;
-export function dateWithFullYear(date: any, ...args: any[]): any {
-  const copy: any = new Date(date.getTime());
-  copy.setFullYear(...args);
   return copy;
 }
 
@@ -461,19 +237,6 @@ export function dateAsJson(date: any, ...args: any[]): any {
 }
 
 /**
- * dateFromParts(value) reads "a new Date from value".
- * Generated wrapper: exactly `new Date(value)`.
- * IMPURE: with no arguments it reads the clock; with parts it uses the machine's local time zone.
- */
-export function dateFromParts(value: number | string | Date): Date;
-export function dateFromParts(): Date;
-export function dateFromParts(value: number | string): Date;
-export function dateFromParts(year: number, monthIndex: number, dateArg?: number, hours?: number, minutes?: number, seconds?: number, ms?: number): Date;
-export function dateFromParts(...args: any[]): any {
-  return new (Date as any)(...args);
-}
-
-/**
  * utcTime(year, monthIndex, dateArg, hours, minutes, seconds, ms) reads "the utc of year, monthIndex, dateArg, hours, minutes, seconds, ms".
  * Generated wrapper: exactly `Date.UTC(year, monthIndex, dateArg, hours, minutes, seconds, ms)`.
  */
@@ -481,14 +244,4 @@ export function utcTime(year: number, monthIndex?: number, dateArg?: number, hou
 export function utcTime(year: number, monthIndex: number, dateArg?: number, hours?: number, minutes?: number, seconds?: number, ms?: number): number;
 export function utcTime(...args: any[]): any {
   return (Date as any).UTC(...args);
-}
-
-/**
- * parseDate(s) reads "the parse of s".
- * Generated wrapper: exactly `Date.parse(s)`.
- * IMPURE: date-only and local formats depend on the machine's local time zone.
- */
-export function parseDate(s: string): number;
-export function parseDate(...args: any[]): any {
-  return (Date as any).parse(...args);
 }

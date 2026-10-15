@@ -3,17 +3,6 @@
 /* eslint-disable */
 
 /**
- * listAsLocaleText(list, locales, options) reads "the to locale string locales, options of list".
- * Generated wrapper: exactly `list.toLocaleString(locales, options)`.
- * IMPURE: depends on the runtime's default locale.
- */
-export function listAsLocaleText<T>(list: readonly T[], locales: string | string[], options?: Intl.NumberFormatOptions & Intl.DateTimeFormatOptions): string;
-export function listAsLocaleText<T>(list: readonly T[]): string;
-export function listAsLocaleText(list: any, ...args: any[]): any {
-  return (list as any).toLocaleString(...args);
-}
-
-/**
  * entriesOfList(list) reads "the entries of list".
  * Generated wrapper: exactly `list.entries()`.
  */
