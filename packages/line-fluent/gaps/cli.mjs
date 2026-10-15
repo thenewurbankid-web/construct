@@ -17,6 +17,7 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { fillGap, answerFor, readBack, readBackMatches } from './fill.mjs';
 import { withVerb } from '../clarify/sentences.mjs';
+import { parse } from '../../line-smith/scripts/lib-sentence.mjs';
 import { checkGrammar } from '../gate/grammar/grammar.mjs';
 import { gateFor } from '../pilot/library/run.mjs';
 import { makeTypesCheck } from '../gate/types/types.mjs';
@@ -35,10 +36,29 @@ export function gapsIn(file) {
   return toAtoms(code, { catalog: loadCatalog(CATALOG_PATH) });
 }
 
-function question(state) {
+/** The kept candidates, one per verb: the options only differ in the word for what the step does. */
+function byVerb(state) {
+  const out = [];
+  for (const c of state.candidates.filter((x) => x.ok)) {
+    const verb = parse(c.sentence)[1]?.word;
+    if (verb && !out.some((o) => o.verb === verb)) out.push({ ...c, verb });
+  }
+  return out;
+}
+
+/** The step in plain words, from its readable run: "The map has pen → 2. After this step, it has pen → 2 and bag → 30." */
+function plainStep(state) {
   const ex = state.example;
-  const lines = state.candidates.filter((c) => c.ok).map((c, i) => `  ${i + 1}. ${c.sentence}`).join('\n');
-  return `\`${state.gap.code}\`: with ${ex.given}, ${ex.changed.join(' and ') || `it gives ${ex.gives}`}. Which says it best?\n${lines}\nOr tell me your own word.`;
+  const kind = { map: 'a map (a list of names, each with a value)', set: 'a set', list: 'a list', text: 'a piece of text' }[state.gap.type] ?? 'a value';
+  const values = ex.given.split(', ').slice(1).map((g) => g.split(' = ')[1]).join(' and ');
+  const before = ex.given.split(', ')[0].split(' = ')[1].replace(/^a map /, '');
+  const after = (ex.changed[0] ?? '').split(' becomes ')[1]?.replace(/^a map /, '');
+  return `One step in your code changes ${kind}. For example, the map has ${before}; the step is given ${values}; afterwards the map has ${after}.`;
+}
+
+export function question(state) {
+  const options = byVerb(state).map((c, i) => `  ${i + 1}. ${c.verb}`).join('\n');
+  return `${plainStep(state)}\nWhich word describes what the step does?\n${options}\nOr tell me your own word.`;
 }
 
 async function scan(file, { model }) {
@@ -54,7 +74,7 @@ async function scan(file, { model }) {
 }
 
 async function choose(state, reply, { model }) {
-  const kept = state.candidates.filter((c) => c.ok);
+  const kept = byVerb(state);
   const text = String(reply).trim();
   let pick = /^\d+$/.test(text) ? kept[Number(text) - 1] : null;
   if (!pick && /^[a-z]+$/i.test(text) && kept.length) {
