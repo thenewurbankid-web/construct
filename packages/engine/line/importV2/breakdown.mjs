@@ -315,7 +315,7 @@ export async function createStaticBreakdown(options = {}) {
     };
   }
 
-  return { ok: true, codemod: links.codemod.head, runtime: links.runtime.head, breakDown, check, behaves, atomsIn: (body) => atomsCalled(body, atomNames), dispose: () => { try { converter.dispose(); } catch { /* already gone */ } } };
+  return { ok: true, codemod: links.codemod.head, runtime: links.runtime.head, catalog: compiled, breakDown, check, behaves, atomsIn: (body) => atomsCalled(body, atomNames), dispose: () => { try { converter.dispose(); } catch { /* already gone */ } } };
 }
 
 // ------------------------------------------------------------------------------------------------- an import's breakdown

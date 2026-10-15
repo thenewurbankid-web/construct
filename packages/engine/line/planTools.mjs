@@ -604,7 +604,7 @@ export function lineTools({ root, ops = REAL_PLAN_OPS, afterSave }) {
       const r = runChange(root, ATOMS_WRITE_TOOL, a, { ...ops, atomsTester: tester, runBehaviour: (at, b) => runAtomsBehaviour(at, b, tester) }, { pre: true });
       if (!r.needsYou) {
         const behaviour = r.checks.find((c) => c.checkId === 'behaviour');
-        if (behaviour?.ok) markWritten(rootOf(root, ATOMS_WRITE_TOOL, a), a, behaviour.sentence);
+        if (behaviour?.ok) markWritten(rootOf(root, ATOMS_WRITE_TOOL, a), a, behaviour.sentence, tester);
       }
       return r;
     },

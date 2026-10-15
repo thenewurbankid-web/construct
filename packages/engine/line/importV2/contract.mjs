@@ -231,6 +231,22 @@
  * @property {{outcome: string, sentence: string} } [repair]  construct.repair's answer to the refusal, when it was asked.
  * @property {{file: string, sentence: string}} [written]  The line.import.writeAtoms step wrote `body` into `file` and its
  *   behaviour test passed (the function as written behaves as `code`); only a converted unit is written.
+ * @property {EnglishView} [english]  The read-only English view of `body` as written (ENGLISH-RULES step 6), set with
+ *   `written`; generated, never edited.
+ * @property {string} sentence
+ */
+
+/**
+ * The read-only English view of one written function (importV2/englishView.mjs, fluent plan T2.4): every atom call of
+ * the function as its fluent sentence, innermost first. The app keeps its typed code; this view is generated from it.
+ * @typedef {object} EnglishView
+ * @property {'fluent'|'off'} via    `off`: the fluent writer or the catalog is not set up, so there is no view.
+ * @property {string} code           The function with each atom call that has a sentence replaced by it ('' when off).
+ * @property {{atom: string, sentence: string}[]} sentences  One per atom call written as a sentence, innermost first.
+ * @property {number} plain          Atom calls that stay as code (one entry each in `reasons`).
+ * @property {{atom: string, reason: string}[]} reasons
+ * @property {boolean} full          Every atom call is a sentence, and there is at least one.
+ * @property {string} [reason]       Why it is off.
  * @property {string} sentence
  */
 
@@ -565,7 +581,35 @@ export function assertAtomUnitResult(u, where = 'The atom breakdown unit') {
     if (u.status !== 'converted') fail(`${where}'s written`, 'be set only on a converted unit');
     str(u.written.file, `${where}'s written.file`); sentence(u.written.sentence, `${where}'s written.sentence`);
   }
+  if (u.english) {
+    if (!u.written) fail(`${where}'s english`, 'be set only on a written unit');
+    assertEnglishView(u.english, `${where}'s english`);
+  }
   sentence(u.sentence, `${where}'s sentence`);
+}
+
+/**
+ * A function's read-only English view (EnglishView).
+ * @param {any} v
+ * @param {string} [where]
+ */
+export function assertEnglishView(v, where = 'The English view') {
+  if (!v || typeof v !== 'object') fail(where, 'be an object');
+  oneOf(v.via, ['fluent', 'off'], `${where}'s via`);
+  if (typeof v.code !== 'string') fail(`${where}'s code`, 'be a string');
+  arr(v.sentences, `${where}'s sentences`);
+  v.sentences.forEach((x, i) => { str(x?.atom, `${where}'s sentences[${i}].atom`); str(x?.sentence, `${where}'s sentences[${i}].sentence`); });
+  arr(v.reasons, `${where}'s reasons`);
+  v.reasons.forEach((x, i) => { str(x?.atom, `${where}'s reasons[${i}].atom`); str(x?.reason, `${where}'s reasons[${i}].reason`); });
+  int(v.plain, `${where}'s plain`);
+  if (v.plain !== v.reasons.length) fail(`${where}'s plain`, 'count its reasons');
+  if (typeof v.full !== 'boolean') fail(`${where}'s full`, 'be a boolean');
+  if (v.full !== (v.sentences.length > 0 && v.reasons.length === 0)) fail(`${where}'s full`, 'be true exactly when every atom call is a sentence');
+  if (v.via === 'off') {
+    str(v.reason, `${where}'s reason`);
+    if (v.code || v.sentences.length || v.reasons.length) fail(where, 'be empty when off');
+  } else str(v.code, `${where}'s code`);
+  sentence(v.sentence, `${where}'s sentence`);
 }
 
 /**

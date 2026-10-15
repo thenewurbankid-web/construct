@@ -8,10 +8,15 @@
 // functional/, generated) into <library>/atoms/line/ once, and gives the folder's tsconfig.json the alias
 // `@line/atoms` -> that copy. Nothing is published; LINE-ATOM does not read the atoms kind.
 //
+// The written function also gets its read-only English view (ENGLISH-RULES step 6, fluent plan T2.4, englishView.mjs):
+// each atom call as its fluent sentence. The app keeps the typed code; the view is generated from it, shown with the
+// planned change (`english`) and recorded on the unit with `written` once the behaviour test passes.
+//
 //   planWriteAtoms(folderRoot, {folder, file, name}, tester)  -> StagedChange & {behaviour}   (pure, but for tester)
 //   runAtomsBehaviour(folderRoot, behaviour, tester)          -> {ok, sentence}   the test on the written file
-//   markWritten(folderRoot, {folder, file, name}, sentence)   records the passed test on the unit in line/atoms.json
-//   createAtomsTester(o)                                      -> {ok: true, behaves} | {ok: false, reason}, once per process
+//   markWritten(folderRoot, {folder, file, name}, sentence, tester?)  records the passed test and the English view on the
+//                                                             unit in line/atoms.json
+//   createAtomsTester(o)                                      -> {ok: true, behaves, english} | {ok: false, reason}, once per process
 import fs from 'node:fs';
 import path from 'node:path';
 import { ts } from '@construct/ast';
@@ -23,6 +28,7 @@ import { writeLineState } from '../../transactionalWriter.mjs';
 import { LineOpError, assertStagedChange } from '../contract.mjs';
 import { ATOMS_FILE, ATOMS_PACKAGE, assertAtomBreakdown } from './contract.mjs';
 import { createStaticBreakdown, functionOf, functionStatement } from './breakdown.mjs';
+import { englishViewOf, englishWriter } from './englishView.mjs';
 
 /** The folder of the library's atoms kind the functional atoms are copied into. */
 export const ATOMS_COPY_DIR = 'line';
@@ -125,7 +131,7 @@ export function withAtomsAlias(text, entry) {
  * @param {{folder?: string, file?: string, name?: string}} req `file`: project-relative, as the breakdown names it.
  * @param {undefined | {ok: false, reason: string} | {ok: true, behaves: (fn: any, written: string) => {ok: boolean, sentence: string}}} [tester]
  *   undefined: plan only (a preview, a gap); otherwise the behaviour test must run and pass before anything is written.
- * @returns {import('../contract.mjs').StagedChange & {behaviour: {file: string, name: string, code: string}}}
+ * @returns {import('../contract.mjs').StagedChange & {behaviour: {file: string, name: string, code: string}, english: import('./contract.mjs').EnglishView}}
  * @throws {LineOpError} NO_BREAKDOWN, UNKNOWN_FILE, UNKNOWN_ITEM, NOT_CONVERTED, STALE, NAME_TAKEN, BAD_CONFIG,
  *   NOT_CHECKED (the test cannot run) or BEHAVIOUR (the planned function behaves differently).
  */
@@ -162,14 +168,19 @@ export function planWriteAtoms(folderRoot, req = {}, tester) {
   const dir = `${library}/atoms/${ATOMS_COPY_DIR}`;
   const copies = functionalFiles().map((f) => ({ path: `${dir}/${f.rel}`, content: f.content }));
   const alias = withAtomsAlias(readOrNull(path.join(folderRoot, TSCONFIG)), `${dir}/index.ts`);
+  const english = englishOf(unit, tester);
   const change = {
-    summary: `Writes ${name} as atom calls into ${req.file}, importing ${unit.atoms.join(', ')} from ${ATOMS_PACKAGE} (the pinned atoms copied into ${dir}, aliased in ${TSCONFIG}).`,
+    summary: `Writes ${name} as atom calls into ${req.file}, importing ${unit.atoms.join(', ')} from ${ATOMS_PACKAGE} (the pinned atoms copied into ${dir}, aliased in ${TSCONFIG}). ${english.sentence}`,
     files: [{ path: rel, content }, ...copies, ...(alias ? [{ path: TSCONFIG, content: alias }] : [])],
     behaviour: { file: rel, name, code: unit.code },
+    english,
   };
   assertStagedChange(change);
   return change;
 }
+
+/** The read-only English view of the unit's body as written, through the tester's English writer (off without one). */
+const englishOf = (unit, tester) => englishViewOf({ name: unit.name, body: unit.body, atoms: unit.atoms }, tester?.ok ? /** @type {any} */ (tester).english : tester);
 
 /**
  * The behaviour test on the file as the writer left it: the function read back from disk against the original.
@@ -188,17 +199,20 @@ export function runAtomsBehaviour(folderRoot, behaviour, tester) {
 }
 
 /**
- * Record on the unit that it was written and its behaviour test passed (line/atoms.json, through writeLineState).
+ * Record on the unit that it was written and its behaviour test passed (line/atoms.json, through writeLineState), with
+ * the read-only English view of the body as written.
  * @param {string} folderRoot
  * @param {{folder?: string, file?: string, name?: string}} req
  * @param {string} sentence The passed test's sentence.
+ * @param {any} [tester] The run's tester; its `english` writer makes the view (off without one).
  * @returns {boolean} False when the breakdown has no such unit.
  */
-export function markWritten(folderRoot, req, sentence) {
+export function markWritten(folderRoot, req, sentence, tester) {
   const b = breakdownOf(folderRoot);
   const unit = (b.units ?? []).find((u) => u.file === req.file && u.name === req.name);
   if (!unit) return false;
   unit.written = { file: String(req.file), sentence };
+  unit.english = englishOf(unit, tester);
   assertAtomBreakdown(b);
   writeLineState(folderRoot, ATOMS_FILE, `${JSON.stringify(b)}\n`);
   return true;
@@ -211,7 +225,7 @@ const testers = new Map();
  * The behaviour tester: the linked static breakdown's `behaves`, created once per process (QuickJS stays loaded).
  * Never throws: links down -> {ok: false, reason}.
  * @param {{env?: NodeJS.ProcessEnv, create?: typeof createStaticBreakdown}} [o] `create`: tests pass the mock's.
- * @returns {Promise<{ok: true, behaves: (fn: any, written: string) => {ok: boolean, sentence: string}} | {ok: false, reason: string}>}
+ * @returns {Promise<{ok: true, behaves: (fn: any, written: string) => {ok: boolean, sentence: string}, english: ReturnType<typeof englishWriter>} | {ok: false, reason: string}>}
  */
 export function createAtomsTester(o = {}) {
   if (o.create) return /** @type {Promise<any>} */ (o.create(o).then(toTester));
@@ -219,4 +233,5 @@ export function createAtomsTester(o = {}) {
   if (!testers.has(key)) testers.set(key, createStaticBreakdown(o).then(toTester).catch((e) => ({ ok: false, reason: one(e?.message ?? e) || 'the atom runtime could not be prepared' })));
   return /** @type {Promise<any>} */ (testers.get(key));
 }
-const toTester = (sb) => (sb.ok ? { ok: true, behaves: sb.behaves } : { ok: false, reason: sb.reason });
+// The English writer reads the same catalog the breakdown converted with; a breakdown may hand its own (`english`).
+const toTester = (sb) => (sb.ok ? { ok: true, behaves: sb.behaves, english: sb.english ?? englishWriter(sb.catalog) } : { ok: false, reason: sb.reason });
