@@ -2,17 +2,23 @@
 // inside the library run and the run was killed). Answers are gated in worker processes; a watchdog kills a worker
 // that grows past `maxMb` or takes longer than `timeoutMs` on one answer, and that answer is refused with the reason.
 // A new worker takes its place. Heap limits alone would not do: typed-array memory lives outside the JS heap.
-import { fork } from 'node:child_process';
+import { execFileSync, fork } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const WORKER = fileURLToPath(new URL('./gate-worker.mjs', import.meta.url));
 
-/** The resident memory of a process in MB, from /proc (null where /proc is not there). */
+/** The resident memory of a process in MB: /proc on Linux, else `ps` (macOS has no /proc); null when neither works. */
 export function rssMb(pid) {
   try {
     const m = readFileSync(`/proc/${pid}/status`, 'utf8').match(/^VmRSS:\s+(\d+) kB/m);
-    return m ? Number(m[1]) / 1024 : null;
+    if (m) return Number(m[1]) / 1024;
+  } catch {
+    // no /proc: fall through to ps
+  }
+  try {
+    const kb = Number(execFileSync('ps', ['-o', 'rss=', '-p', String(pid)], { encoding: 'utf8' }).trim());
+    return Number.isFinite(kb) && kb > 0 ? kb / 1024 : null;
   } catch {
     return null;
   }
