@@ -13,6 +13,7 @@ import { entryForMcp, mcpNameOf, registryReads, READ_SKIPPED, createReadDispatch
 import * as importAgent from './importAgent.mjs';
 import * as train from './train.mjs';
 import * as lsp from './lsp.mjs';
+import * as fluent from './fluent.mjs';
 
 const PACKAGE = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
 
@@ -311,6 +312,34 @@ export const LSP_TOOLS = Object.freeze([
   },
 ]);
 
+/**
+ * T5.2 -- the fluent tools: the English view `construct english` prints and the deterministic JS -> atoms rewrite over
+ * Smith's catalog, for a project-relative file (checked inside the root) or a snippet. Both read; neither writes.
+ */
+const FLUENT_SOURCE = {
+  file: LSP_FILE.optional(),
+  code: z.string().min(1).max(fluent.FLUENT_LIMITS.sourceChars).optional().describe('A JS or TS snippet, for example "const twice = (n) => n * 2;". Give this or file, not both.'),
+};
+export const FLUENT_TOOLS = Object.freeze([
+  {
+    name: 'line_english',
+    title: 'English view of code (Line fluent)',
+    description: 'The English view of each top-level function of one file or snippet, the same view `construct english` prints: name, line and its English, at most 40 functions. Give exactly one of file and code. Reads only; writes nothing.',
+    inputSchema: z.object(FLUENT_SOURCE),
+    run: fluent.lineEnglish,
+  },
+  {
+    name: 'line_atoms',
+    title: 'Atoms for code (Line fluent)',
+    description: 'The deterministic rewrite of one file or snippet into Smith atoms (no model): the atoms it uses, each rewrite as a site with a stable id, the rewritten code, and every place where several atoms fit as a closed choice (ambiguous[].alternatives). Answer those by id in choices and call again. For an atom that fits a need in words, use atoms. Give exactly one of file and code. Reads only; writes nothing.',
+    inputSchema: z.object({
+      ...FLUENT_SOURCE,
+      choices: z.record(z.string().min(1).max(120), z.string().min(1).max(80).regex(/^[A-Za-z_$][\w$]*$/)).optional().describe('An answer per open place: {"<ambiguous id>": "<one of its alternatives>"}.'),
+    }),
+    run: fluent.lineAtoms,
+  },
+]);
+
 /** Argument names a registry read takes that are not strings (everything else is one bounded string). */
 const LOOSE_ARGS = Object.freeze({
   props: () => z.record(z.string(), z.unknown()),
@@ -345,10 +374,10 @@ export function registryReadTools(taken = HAND_NAMES()) {
 
 /** The hand-written tools' names (a registry read never shadows one). */
 function HAND_NAMES() {
-  return new Set([...TOOLS, ...PLAN_TOOLS, ...IMPORT_AGENT_TOOLS, ...TRAIN_MCP_TOOLS, ...LSP_TOOLS].map((t) => t.name));
+  return new Set([...TOOLS, ...PLAN_TOOLS, ...IMPORT_AGENT_TOOLS, ...TRAIN_MCP_TOOLS, ...LSP_TOOLS, ...FLUENT_TOOLS].map((t) => t.name));
 }
 
-const INSTRUCTIONS ='Construct blocks, read-only and plan-only. Start with requirement_parse, then placement_place (answer its closed questions and call again), then plan_validate. summarize and validate describe the project before you read files; line_spec says what Line is (rules, tools, plan protocol), from its code. Every tool is bounded and path-free; none writes. A plan preview is applied through the Cockpit\'s per-diff approval, never here. To change a Line project, add a step with plan_add_step, ask the user to approve it in Cockpit, then plan_run_next; plan_status shows the plan. The line_* LSP tools (line_next_steps, line_completions, line_symbol_info, line_smith_check, line_fixes) answer about one file or path node in a few lines; line_fixes returns edits, never applies them.';
+const INSTRUCTIONS ='Construct blocks, read-only and plan-only. Start with requirement_parse, then placement_place (answer its closed questions and call again), then plan_validate. summarize and validate describe the project before you read files; line_spec says what Line is (rules, tools, plan protocol), from its code. Every tool is bounded and path-free; none writes. A plan preview is applied through the Cockpit\'s per-diff approval, never here. To change a Line project, add a step with plan_add_step, ask the user to approve it in Cockpit, then plan_run_next; plan_status shows the plan. The line_* LSP tools (line_next_steps, line_completions, line_symbol_info, line_smith_check, line_fixes) answer about one file or path node in a few lines; line_fixes returns edits, never applies them. line_english reads a file or snippet as English; line_atoms rewrites it into Smith atoms and asks, by id, where several fit.';
 
 /** A server class whose own errors (input the schema refused, an unexpected throw) come out typed, like every other refusal. */
 class ConstructMcpServer extends McpServer {
@@ -415,7 +444,7 @@ export function createConstructMcpServer(options = {}) {
     return fail(invalid ? 'INVALID_INPUT' : 'TOOL_FAILED', invalid ? message.replace(/^Input validation error: /i, '') : 'The tool could not answer.');
   });
 
-  for (const tool of [...TOOLS, ...PLAN_TOOLS, ...IMPORT_AGENT_TOOLS, ...TRAIN_MCP_TOOLS, ...LSP_TOOLS]) {
+  for (const tool of [...TOOLS, ...PLAN_TOOLS, ...IMPORT_AGENT_TOOLS, ...TRAIN_MCP_TOOLS, ...LSP_TOOLS, ...FLUENT_TOOLS]) {
     // cu3: every MCP tool is one entry of Line's tool registry; an agent never writes project files directly.
     const entry = entryForMcp(tool.name);
     if (!entry) throw new Error(`construct-mcp: ${tool.name} is not in Line's tool registry.`);

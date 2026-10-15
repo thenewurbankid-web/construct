@@ -9,12 +9,13 @@ import { parseRequirement } from '../../core/requirement-card.mjs';
 import { placeCard, planFromBlocks } from '../../core/placement.mjs';
 import { recordChoices } from '../../core/decision-trace-store.mjs';
 import { LIMITS } from '../src/limits.mjs';
-import { TOOLS, LSP_TOOLS, registryReadTools } from '../src/server.mjs';
+import { TOOLS, LSP_TOOLS, FLUENT_TOOLS, registryReadTools } from '../src/server.mjs';
 import { makeProject, connectInProcess, callTool, hashTree } from '../test-utils/harness.mjs';
 
 const NAMES = ['requirement_parse', 'placement_place', 'plan_validate', 'decide', 'summarize', 'validate', 'machine_capabilities', 'traces_stats', 'line_spec'];
 const REGISTRY = registryReadTools().map((t) => t.name);
 const LSP = LSP_TOOLS.map((t) => t.name);
+const FLUENT = FLUENT_TOOLS.map((t) => t.name);
 const SENTENCE = 'A user wants to see a list of products';
 
 const stateDir = makeTempDir('construct-mcp-state-');
@@ -34,15 +35,15 @@ const call = (name, args) => callTool(session.client, name, args);
 
 test('the tool list is the nine read-only tools plus the three plan tools, the Import agent and Train Line tools (no approve), each with a JSON schema and no path argument', async () => {
   const { tools } = await session.client.listTools();
-  assert.deepEqual(tools.map((t) => t.name), [...NAMES, 'plan_status', 'plan_seed', 'plan_add_step', 'plan_run_next', 'import_status', 'import_start', 'import_plan_edit', 'import_answer', 'import_resume', 'train_propose_case', 'train_list_cases', 'train_run_eval', ...LSP, ...REGISTRY]); // ci2 Import agent, Train Line, #945 Line LSP, #937 registry reads
+  assert.deepEqual(tools.map((t) => t.name), [...NAMES, 'plan_status', 'plan_seed', 'plan_add_step', 'plan_run_next', 'import_status', 'import_start', 'import_plan_edit', 'import_answer', 'import_resume', 'train_propose_case', 'train_list_cases', 'train_run_eval', ...LSP, ...FLUENT, ...REGISTRY]); // ci2 Import agent, Train Line, #945 Line LSP, T5.2 fluent, #937 registry reads
   assert.deepEqual(TOOLS.map((t) => t.name), NAMES);
   for (const tool of tools) {
     assert.equal(tool.inputSchema.type, 'object', tool.name);
     assert.ok(tool.description.length > 40 && tool.description.length < 600, `${tool.name} has a description a model can decide on`);
     const readOnly = !['plan_add_step', 'plan_run_next', 'import_start', 'import_plan_edit', 'import_answer', 'import_resume', 'train_propose_case'].includes(tool.name);
     assert.deepEqual([tool.annotations.readOnlyHint, tool.annotations.destructiveHint, tool.annotations.openWorldHint], [readOnly, false, false], `${tool.name} is annotated ${readOnly ? 'read-only' : 'not read-only, not destructive'}`);
-    // #937/#945: a registry read or a Line LSP tool may take a project-relative file (checked inside the root: registryReads.test.mjs, lsp.test.mjs).
-    for (const key of Object.keys(tool.inputSchema.properties ?? {})) if (!((REGISTRY.includes(tool.name) || LSP.includes(tool.name)) && key === 'file')) assert.doesNotMatch(key, /^(root|projectRoot|project_root|path|dir|directory|file|cwd)$/i, `${tool.name} takes no path: ${key}`);
+    // #937/#945/T5.2: a registry read, a Line LSP or fluent tool may take a project-relative file (checked inside the root: registryReads.test.mjs, lsp.test.mjs).
+    for (const key of Object.keys(tool.inputSchema.properties ?? {})) if (!((REGISTRY.includes(tool.name) || LSP.includes(tool.name) || FLUENT.includes(tool.name)) && key === 'file')) assert.doesNotMatch(key, /^(root|projectRoot|project_root|path|dir|directory|file|cwd)$/i, `${tool.name} takes no path: ${key}`);
   }
 });
 
