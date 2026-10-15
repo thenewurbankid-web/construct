@@ -9,6 +9,7 @@
 
 import { parse } from '../../../line-smith/scripts/lib-sentence.mjs';
 import { nextWords } from '../../grammar/next-words.mjs';
+import { checkShape } from './shapes.mjs';
 
 /** Legal words listed in one error sentence; the rest are counted. */
 const LISTED = 12;
@@ -72,6 +73,24 @@ export function checkGrammar(answer) {
     };
   }
 
+  const exact = walkTrie(sentence, calls);
+  if (exact.check === 'pass') return exact;
+  // Second pass: the sentence's shape (shapes.mjs). A known shape passes, with any new verbs reported as aliases.
+  const shaped = checkShape(calls);
+  if (shaped.check === 'pass') return { check: 'pass', errors: [], fixes: [], aliases: shaped.aliases, shape: shaped.shape };
+  // A slip of a known word keeps the trie's fix; only a new verb in a shape the grammar lacks gets the shape refusal,
+  // with the nearest real sentences as examples. Every other failure is the trie's.
+  if (shaped.typo || !shaped.newVerb) return exact;
+  const examples = shaped.nearest.map((n) => `\`${n.example}\``).join(', ');
+  return {
+    check: 'fail',
+    errors: [`The sentence \`${sentence.trim()}\` does not fit the grammar: ${shaped.reason}. Sentences with the nearest shapes: ${examples}; write it in one of those shapes.`],
+    fixes: [],
+  };
+}
+
+/** The first pass: the sentence word by word through the C5 trie (only word paths a known sentence uses). */
+function walkTrie(sentence, calls) {
   const done = [];
   for (let i = 0; i < calls.length; i++) {
     const { word } = calls[i];

@@ -62,7 +62,7 @@ function costing(model) {
 /** One entry through one model: the runner's result plus stage, section, model and cost. */
 export async function runStage(entry, stage, { model, modelName, gate, catalog, maxRetries = 1 }) {
   const candidates = candidatesFor(entry, catalog).slice(0, MAX_CANDIDATES);
-  const build = (e, { refusal }) => buildRequest(e, { candidates, refusal });
+  const build = (e, { refusal }) => buildRequest(e, { candidates, refusal, shapes: true });
   const priced = costing(model);
   const started = Date.now();
   try {

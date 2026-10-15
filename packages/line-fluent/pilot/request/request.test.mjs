@@ -38,6 +38,7 @@ test('system lists the task, C2 fields in order, closed enums, R1-R9 and reuse-f
   assert.ok(SYSTEM.includes(`kind: one of ${KINDS.join(' | ')}; null only`));
   assert.ok(/Reuse an existing atom first/.test(SYSTEM));
   assert.ok(SYSTEM.endsWith(RULES[8]));
+  assert.ok(!SYSTEM.includes('VERB'), 'shapes are opt-in');
 });
 
 test('first try: exact user text and prefill', () => {
@@ -101,4 +102,10 @@ test(`every reference entry with 5 long candidates and a refusal stays under ${M
   let max = 0;
   for (const e of entries) max = Math.max(max, size(buildRequest(e, { candidates: long, refusal })));
   assert.ok(max < MAX_CHARS, `largest request is ${max} chars`);
+});
+
+test('shapes: true adds every shape the gate accepts, each with a real example', () => {
+  const r = buildRequest({ id: 'Array.prototype.at', section: 'Array', kind: 'method', params: [] }, { shapes: true });
+  assert.ok(r.system.startsWith(SYSTEM));
+  assert.ok(r.system.includes('- clones().list(·).and().VERB()   e.g. '));
 });

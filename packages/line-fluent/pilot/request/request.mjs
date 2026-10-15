@@ -3,6 +3,7 @@
 // fixed deterministic text, no model call. The model's answer is a C2 object, checked by the gate.
 
 import { FIELDS, DECISIONS, KINDS } from '../../contract/validate.mjs';
+import { SHAPES } from '../../gate/grammar/shapes.mjs';
 
 export const MAX_CANDIDATES = 5;
 
@@ -18,6 +19,9 @@ export const RULES = [
   "R8. A new atom's plain name is the chain's words after the subject in camelCase, arguments in order: isGreaterThan, clonesAndSortsBy.",
   'R9. Callbacks become every() sentences: every(x).in(xs).is().mapped()...; the first word gives the result: checks() yes/no, every() list, the().first() one item, folds() one value, does() nothing.',
 ];
+
+// Every sentence shape the grammar gate accepts, each with one real example (gate/grammar/shapes.mjs).
+export const SHAPE_LINES = [...SHAPES.entries()].map(([shape, example]) => `- ${shape}   e.g. ${example}`);
 
 export const SYSTEM = [
   'Task: write one fluent answer for one JavaScript reference entry, in Smith Atomic English.',
@@ -36,7 +40,13 @@ export const SYSTEM = [
 
 const describeParam = (p) => `${p.rest ? '...' : ''}${p.name}${p.optional ? '?' : ''}: ${p.type}`;
 
-export function buildRequest(entry, { candidates = [], refusal = null } = {}) {
+// The shapes section: opt-in, since it doubles the request (the student's budget is 4000 chars; Claude's is not).
+export const SHAPES_SECTION = [
+  'The sentence must have one of these shapes (VERB is a verb slot: a known verb or a new third-person verb such as copies; · marks an argument). Each shape is followed by a real sentence of that shape:',
+  ...SHAPE_LINES,
+].join('\n');
+
+export function buildRequest(entry, { candidates = [], refusal = null, shapes = false } = {}) {
   const params = (entry.params ?? []).map(describeParam);
   const lines = [
     `Entry: ${entry.id}`,
@@ -53,7 +63,7 @@ export function buildRequest(entry, { candidates = [], refusal = null } = {}) {
   }
   if (refusal) lines.push(`Your last answer was refused: ${refusal} Answer again.`);
   return {
-    system: SYSTEM,
+    system: shapes ? `${SYSTEM}\n${SHAPES_SECTION}` : SYSTEM,
     user: lines.join('\n'),
     prefill: `{"entry": ${JSON.stringify(entry.id)}, "decision": "`,
   };
