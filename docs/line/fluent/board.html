@@ -114,6 +114,12 @@ details[open] > summary .chev { transform: rotate(90deg); }
 .rcard button { font: inherit; font-size: .8rem; background: none; border: 0; color: var(--accent); cursor: pointer; padding: 0; }
 .biglist { margin: 0; padding-left: 1.1em; display: grid; gap: 2px; }
 
+.how { margin: 0; padding-left: 1.2em; display: grid; gap: 8px; max-width: 72ch; }
+.how details { margin-top: 4px; }
+.how details > summary { color: var(--accent); font-size: .85rem; }
+.how details > summary::before { content: "› "; display: inline-block; transition: transform .15s; }
+.how details[open] > summary::before { transform: rotate(90deg); }
+.how details ol { margin: 6px 0 2px; padding-left: 1.2em; display: grid; gap: 3px; font-size: .9rem; color: var(--ink); list-style: lower-alpha; }
 .caps { display: grid; gap: 14px; }
 .capgrp { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
 .capgrp > header { display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--line); }
@@ -136,12 +142,47 @@ details[open] > summary .chev { transform: rotate(90deg); }
     <h2 id="doneH">When it's 100% done</h2>
     <p style="margin:0;max-width:68ch">Line reads any JavaScript or TypeScript and shows it as plain English sentences, with no AI model needed. Every sentence is checked to do exactly what the code does. You see it in your editor, from one command, in the Cockpit beside your code, and any AI agent can use it too. A small model on your own machine learns to write the same English.</p>
     <h2 style="font-size:1rem">How it's done</h2>
-    <ol style="margin:0;padding-left:1.2em;display:grid;gap:4px;max-width:68ch">
-      <li><b>Write the library.</b> Claude writes one English sentence and one small building block for each of the 2,378 JavaScript features.</li>
-      <li><b>Check every answer.</b> Automatic checks test the grammar, run the code against real JavaScript and compare types. Anything that fails is refused.</li>
-      <li><b>Translate without AI.</b> A fixed translator uses that checked library to turn your code into English.</li>
-      <li><b>Teach the small model.</b> It does the same job, the same checks grade it, and it trains on its mistakes.</li>
-      <li><b>Put it where you work.</b> The editor, the command line, the Cockpit and AI agents all use the same library.</li>
+    <ol class="how">
+      <li><b>Write the library.</b> Claude writes one English sentence and one small building block for each of the 2,378 JavaScript features.
+        <details><summary>How the algorithm works</summary><ol>
+          <li>Take one entry from the JS reference: its name, sample code and signature.</li>
+          <li>Look for an existing block that already does the job, so it can be reused.</li>
+          <li>Send Claude a fixed request: the entry, the R1–R9 sentence rules and the nearest blocks.</li>
+          <li>Claude answers in one fixed shape: the block, its sentence, the matching JS, and a decision (new block, existing block, a combination, or "can't be expressed, because…").</li>
+          <li>Anything not in that shape is refused before any checking.</li>
+        </ol></details></li>
+      <li><b>Check every answer.</b> Automatic checks test the grammar, run the code against real JavaScript and compare types. Anything that fails is refused.
+        <details><summary>How the algorithm works</summary><ol>
+          <li><b>Grammar:</b> a closed word-by-word state machine checks the sentence follows R1–R9.</li>
+          <li><b>Behaviour:</b> run the answer's JS and the real JS on the saved expected results and on generated inputs; every output must match.</li>
+          <li><b>Types:</b> compare parameter count, order and kind with the reference entry. This check never compiles.</li>
+          <li>The results combine into one verdict. A failure comes back as a plain-English refusal with a suggested fix.</li>
+          <li>The answer gets one retry with that refusal. If it fails again, it is recorded as a known gap.</li>
+        </ol></details></li>
+      <li><b>Translate without AI.</b> A fixed translator uses that checked library to turn your code into English.
+        <details><summary>How the algorithm works</summary><ol>
+          <li>Parse the code and match each call against the library's blocks.</li>
+          <li>Swap each match for its block, then write the block's sentence.</li>
+          <li>Run the converted code in a sandbox (QuickJS) and check it behaves exactly like the original.</li>
+          <li>Anything with no match is marked "untranslated" or "refused", never guessed.</li>
+          <li>The English is a read-only view. Your typed code stays the source.</li>
+        </ol></details></li>
+      <li><b>Teach the small model.</b> It does the same job, the same checks grade it, and it trains on its mistakes.
+        <details><summary>How the algorithm works</summary><ol>
+          <li>The small model gets exactly the request Claude got.</li>
+          <li>The comparison sorts each answer into one of three results: <i>same</i> as Claude's (a hit), <i>equivalent</i> (different wording, passes every check), or <i>wrong</i> (fails a check).</li>
+          <li>Each wrong answer becomes a training record: its answer, the refusal and Claude's answer.</li>
+          <li>Whole sections (for example Intl and Temporal) are held out, so the score shows real learning rather than memory.</li>
+          <li>Train a small add-on (a LoRA) each round. If the held-out score doesn't rise, the loop stops and asks. The model only fills gaps until it beats the fixed translator.</li>
+        </ol></details></li>
+      <li><b>Put it where you work.</b> The editor, the command line, the Cockpit and AI agents all use the same library.
+        <details><summary>How the algorithm works</summary><ol>
+          <li><b>Hover:</b> find the block under the cursor and show its sentence.</li>
+          <li><b>Completions:</b> the grammar state machine lists the next legal words, so every suggestion is valid.</li>
+          <li><b>Errors:</b> the checks' refusals show as squiggles, each with a one-click fix.</li>
+          <li><b>Go to definition:</b> an index links each sentence to its block and the real JS.</li>
+          <li><b>Command line, MCP tools and Cockpit</b> call this same code, and the atom generator runs the step 1 pipeline on a single new API. Nothing joins the library until you approve it.</li>
+        </ol></details></li>
     </ol>
   </section>
 
