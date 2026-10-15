@@ -1,10 +1,10 @@
 {
-  "$comment": "cs1: atomic-codemod's to-english step (code in the atomic pattern -> English, no model), linked from its own git repo like links.json (no source copy). The folder is $ATOMIC_CODEMOD_SOURCE_DIR, else `default`. `commit` pins its HEAD; bump with `node packages/line-links/link.mjs --pin` after checking the change.",
+  "$comment": "cs1/t0-6: atomic-codemod's to-english step (code in the atomic pattern -> English, no model), in this repo at packages/line-codemod. The folder is $ATOMIC_CODEMOD_SOURCE_DIR when set (an outside atomic-codemod checkout, ~ allowed), else `default`, which is repo-relative (resolved from the repo root). An in-repo source moves with the repo, so `commit` is not checked for it; `commit` pins only an outside checkout set by the env var (bump with `node packages/line-links/link.mjs --pin` after checking the change).",
   "source": {
     "repo": "atomic-codemod",
     "branch": "master",
     "env": "ATOMIC_CODEMOD_SOURCE_DIR",
-    "default": "~/Desktop/atomic-codemod",
+    "default": "packages/line-codemod",
     "commit": "a9191a5f691f9fe8f90c32e4d77af594b991818e"
   },
   "links": {

@@ -20,10 +20,12 @@ import { spawnSync } from 'node:child_process';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 /** Where the link table lives. */
 export const LINKS_FILE = path.join(HERE, 'links.json');
+/** This repo's root; a relative `default` in a link table resolves from here (t0-6: Line's own packages live in-repo). */
+export const REPO_ROOT = path.resolve(HERE, '..', '..');
 
 /**
  * @typedef {{ path: string, entry: string, what?: string, watch?: string[] }} LinkEntry
- * @typedef {{ source: { repo: string, branch?: string, env: string, default: string, commit: string }, links: Record<string, LinkEntry> }} LinkTable
+ * @typedef {{ source: { repo: string, branch?: string, env: string, default: string, commit?: string }, links: Record<string, LinkEntry> }} LinkTable
  * @typedef {'ok' | 'missing-source' | 'not-a-repo' | 'wrong-commit' | 'missing-entry'} LinkState
  * @typedef {{ name: string, state: LinkState, ok: boolean, entryFile: string | null, message: string }} PackageLink
  * @typedef {{ ok: boolean, sourceDir: string, head: string | null, pinned: string, drift: boolean, packages: PackageLink[], message: string }} LinkStatus
@@ -41,14 +43,27 @@ export function readLinks(file = LINKS_FILE) {
 const expandHome = (p) => (p === '~' ? os.homedir() : p.startsWith('~/') ? path.join(os.homedir(), p.slice(2)) : p);
 
 /**
- * The source repo folder: the env var named in links.json when set, else its default, `~` expanded.
+ * The source repo folder: the env var named in links.json when set, else its default, `~` expanded. A relative default
+ * (e.g. `packages/line-smith`) is repo-relative, resolved from this repo's root; a relative env value still resolves
+ * from the working folder.
  * @param {LinkTable} table
  * @param {NodeJS.ProcessEnv} [env]
  * @returns {string} An absolute path (it may not exist).
  */
 export function sourceDirOf(table, env = process.env) {
   const given = env[table.source.env];
-  return path.resolve(expandHome(given && given.trim() ? given.trim() : table.source.default));
+  if (given && given.trim()) return path.resolve(expandHome(given.trim()));
+  return path.resolve(REPO_ROOT, expandHome(table.source.default));
+}
+
+/**
+ * Whether `dir` is inside this repo. An in-repo source moves with the repo, so there is no commit pin to check.
+ * @param {string} dir An absolute path.
+ * @param {string} [root] Defaults to REPO_ROOT.
+ */
+export function isInRepo(dir, root = REPO_ROOT) {
+  const rel = path.relative(root, dir);
+  return rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel));
 }
 
 const readText = (file) => { try { return fs.readFileSync(file, 'utf8').trim(); } catch { return null; } };
@@ -87,14 +102,16 @@ const short = (sha) => (sha ? sha.slice(0, 7) : 'unknown');
 
 /**
  * Where each linked package stands, in plain English. Never throws.
- * @param {{ table?: LinkTable, env?: NodeJS.ProcessEnv }} [options]
+ * @param {{ table?: LinkTable, env?: NodeJS.ProcessEnv, repoRoot?: string }} [options] `repoRoot` is for tests.
  * @returns {LinkStatus}
  */
 export function linkStatus(options = {}) {
   const env = options.env ?? process.env;
   const table = options.table ?? readLinks();
   const sourceDir = sourceDirOf(table, env);
-  const pinned = table.source.commit;
+  const pinned = table.source.commit ?? '';
+  const repoRoot = options.repoRoot ?? REPO_ROOT;
+  const inRepo = isInRepo(sourceDir, repoRoot);
   const names = Object.keys(table.links);
   const allowDrift = env.LINE_LINKS_ALLOW_DRIFT === '1';
   const all = (state, message) => names.map((name) => ({ name, state, ok: false, entryFile: null, message: message(name) }));
@@ -104,15 +121,17 @@ export function linkStatus(options = {}) {
     return finish(all('missing-source', (n) => `${n} is not linked because ${why}, so Construct uses its static path.`), null, false,
       `Line links are off because ${why}; Construct runs on its static path.`);
   }
-  const head = readHeadCommit(sourceDir);
-  if (head === null) {
+  // An in-repo source (packages/line-smith, packages/line-codemod) moves with the repo: no pin and no drift. Its head
+  // is the repo's own HEAD, reported only (null outside a checkout, which is fine here).
+  const head = readHeadCommit(inRepo ? repoRoot : sourceDir);
+  if (head === null && !inRepo) {
     const why = `${sourceDir} is not a git checkout of ${table.source.repo}`;
     return finish(all('not-a-repo', (n) => `${n} is not linked because ${why}, so Construct uses its static path.`), null, false,
       `Line links are off because ${why}; Construct runs on its static path.`);
   }
   // The source repo gets docs-only commits all day; a new HEAD whose linked folders are byte-identical to the pinned
   // commit's is the same code, so it stays linked instead of switching every link off.
-  const drift = head !== pinned && !sameLinkedCode(sourceDir, pinned, head, table);
+  const drift = !inRepo && head !== pinned && !sameLinkedCode(sourceDir, pinned, /** @type {string} */ (head), table);
   if (drift && !allowDrift) {
     const why = `the source is at commit ${short(head)} but links.json pins ${short(pinned)} (run "node packages/line-links/link.mjs --pin" after checking the change, or set LINE_LINKS_ALLOW_DRIFT=1)`;
     return finish(all('wrong-commit', (n) => `${n} is not linked because ${why}.`), head, true,
@@ -122,11 +141,11 @@ export function linkStatus(options = {}) {
     const link = table.links[name];
     const entryFile = path.join(sourceDir, link.path, link.entry);
     if (!fs.existsSync(entryFile)) return { name, state: /** @type {LinkState} */ ('missing-entry'), ok: false, entryFile: null, message: `${name} is not linked because ${path.join(link.path, link.entry)} is missing in the source, so Construct uses its static path.` };
-    return { name, state: /** @type {LinkState} */ ('ok'), ok: true, entryFile, message: `${name} is linked from ${path.join(link.path, link.entry)} at commit ${short(head)}${drift ? ' (not the pinned commit, allowed by LINE_LINKS_ALLOW_DRIFT)' : ''}.` };
+    return { name, state: /** @type {LinkState} */ ('ok'), ok: true, entryFile, message: `${name} is linked from ${path.join(link.path, link.entry)}${inRepo ? ' in this repo' : ` at commit ${short(head)}`}${drift ? ' (not the pinned commit, allowed by LINE_LINKS_ALLOW_DRIFT)' : ''}.` };
   });
   const linked = packages.filter((p) => p.ok).length;
   return finish(packages, head, drift, linked === packages.length
-    ? `${linked === 1 ? `The ${table.source.repo} link is` : `All ${linked} Line links are`} ready from ${sourceDir} at commit ${short(head)}.`
+    ? `${linked === 1 ? `The ${table.source.repo} link is` : `All ${linked} Line links are`} ready from ${sourceDir}${inRepo ? ' (in this repo, no commit pin)' : ` at commit ${short(head)}`}.`
     : `${linked} of ${packages.length} Line links are ready; the others use Construct's static path.`);
 }
 
