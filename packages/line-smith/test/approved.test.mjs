@@ -1,0 +1,41 @@
+// scripts/lib-approved.mjs: the hand-kept approved atoms gen-atoms merges into the catalog.
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { checkApproved, emitApproved } from '../scripts/lib-approved.mjs';
+
+const ok = { atom: 'flatMapped', entry: 'Array.prototype.flatMap', fluent: 'clones().list(xs).and().flattens()', js: 'xs.flatMap(f)', params: [['xs', 'list'], ['f', 'fn']], kind: 'copy', approvedAt: 'A' };
+
+test('the committed approved.json is valid', () => {
+  const file = JSON.parse(readFileSync(new URL('../src/atoms/approved.json', import.meta.url), 'utf8'));
+  assert.ok(Array.isArray(file.atoms));
+  checkApproved(file.atoms);
+});
+
+test('checkApproved refuses what gen-atoms could not emit', () => {
+  checkApproved([ok]);
+  const bad = (fields, re) => assert.throws(() => checkApproved([{ ...ok, ...fields }]), re);
+  bad({ atom: 'Flat' }, /camelCase/);
+  bad({ fluent: '' }, /fluent sentence/);
+  bad({ js: 'a;\nb' }, /one expression/);
+  bad({ params: [['x s', 'list']] }, /identifier names/);
+  bad({ kind: 'nope' }, /kind must be/);
+  assert.throws(() => checkApproved([ok, ok]), /name collision with approved/);
+  assert.throws(() => checkApproved([ok], new Map([['flatMapped', 'hand-written']])), /collision with hand-written/);
+});
+
+test('emitApproved writes one typed-any wrapper and one catalog entry per atom', () => {
+  assert.deepEqual(emitApproved([]), { code: null, entries: [] });
+  const { code, entries } = emitApproved([ok, { ...ok, atom: 'logged', kind: 'effect', js: 'console.log(x)', params: [['x', 'mixed']] }]);
+  assert.match(code, /flatMapped\(xs, f\) reads "clones list xs and flattens"\.\n \* Approved atom \(fluent generator, Array\.prototype\.flatMap\): exactly `xs\.flatMap\(f\)`\./);
+  assert.match(code, /export function logged\(x: any\): any \{\n {2}return \(console\.log\(x\)\);\n\}/);
+  assert.deepEqual(entries[0], {
+    atom: 'flatMapped', module: 'generated/approved', reads: 'clones list xs and flattens', js: ['xs.flatMap(f)'],
+    pure: true, mutates: false, generated: true, fluent: ok.fluent, params: ok.params, verified: false,
+    unverifiedReason: 'approved from the fluent generator; no check set yet',
+    approved: { entry: 'Array.prototype.flatMap', approvedAt: 'A' },
+  });
+  assert.equal(entries[1].pure, false);
+  assert.equal(entries[1].impureReason, 'approved as an effect');
+  assert.equal(emitApproved([{ ...ok, kind: 'in-place' }]).entries[0].mutates, true);
+});

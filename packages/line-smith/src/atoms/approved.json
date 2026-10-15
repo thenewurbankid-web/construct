@@ -1,0 +1,4 @@
+{
+  "$comment": "Hand-kept: atoms the owner approved from the fluent generator (packages/line-fluent/generator, `approve`). scripts/gen-atoms.mjs reads this file and emits each atom into generated/approved.ts and catalog.json. Edit by approve, or by hand.",
+  "atoms": []
+}

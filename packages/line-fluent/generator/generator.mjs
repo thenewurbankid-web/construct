@@ -1,14 +1,16 @@
 // T5.1 atom generator (docs/line/FLUENT-PLAN-2026-10-15.md, E5): one C1 reference entry -> C2 answer through the
-// stage 1 pipeline (buildRequest -> runPilot -> runGate) -> a pending proposal file. Only approveProposal writes to
-// the catalog, and only for a proposal that passed the gate and adds a new atom or molecule.
+// stage 1 pipeline (buildRequest -> runPilot -> runGate) -> a pending proposal file. Only approveProposal adds an
+// atom, and only for a proposal that passed the gate and adds a new atom or molecule. It writes line-smith's
+// hand-kept src/atoms/approved.json; gen-atoms merges that into catalog.json on every run.
 //
 //   const { proposal } = await generate('Array.prototype.flatMap', { model: mockModel(fixtures) });
-//   await writeProposal(proposal, dir);        // pending, catalog untouched
-//   approveProposal(file, { catalog });        // owner step: appends the atom, marks the proposal approved
+//   writeProposal(proposal, dir);              // pending, nothing else written
+//   approveProposal(file);                     // owner step: appends to approved.json, marks the proposal approved
+//   node packages/line-smith/scripts/gen-atoms.mjs   // rebuilds catalog.json + generated/approved.ts
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { reading } from '../../line-smith/scripts/lib-sentence.mjs';
+import { checkApproved, emitApproved } from '../../line-smith/scripts/lib-approved.mjs';
 import { runGate } from '../gate/assemble.mjs';
 import { checkGrammar } from '../gate/grammar/grammar.mjs';
 import { buildRequest, MAX_CANDIDATES } from '../pilot/request/request.mjs';
@@ -17,6 +19,8 @@ import { runPilot } from '../pilot/runner/runner.mjs';
 
 export const REFERENCE_PATH = fileURLToPath(new URL('../../line-codemod/bench/atoms/js-reference/reference.json', import.meta.url));
 export const CATALOG_PATH = fileURLToPath(new URL('../../line-smith/src/atoms/catalog.json', import.meta.url));
+export const APPROVED_PATH = fileURLToPath(new URL('../../line-smith/src/atoms/approved.json', import.meta.url));
+export const GEN_ATOMS_PATH = fileURLToPath(new URL('../../line-smith/scripts/gen-atoms.mjs', import.meta.url));
 export const PROPOSALS_DIR = fileURLToPath(new URL('./proposals/', import.meta.url));
 
 /** Decisions that add an atom to the catalog; `existing` and `not-expressible` add nothing. */
@@ -100,30 +104,20 @@ export function defaultGate(checks = {}) {
   return async (answer) => runGate(answer, { grammar: checkGrammar, ...checks });
 }
 
-function moduleFor(entry, candidates) {
-  const named = candidates.find((c) => c.module)?.module;
-  return named ? plainModule(named) : SECTION_MODULES[entry.section] ?? 'fluent';
+/**
+ * The approved.json source entry an answer becomes (line-smith scripts/lib-approved.mjs); null when the decision adds
+ * no atom. gen-atoms derives the catalog entry and the wrapper from it.
+ */
+export function approvedEntry(answer, { entry }) {
+  if (!ADDS_ATOM.includes(answer?.decision)) return null;
+  const out = { atom: answer.atom, entry: entry.id, fluent: answer.sentence, js: answer.js, params: answer.params, kind: answer.kind };
+  if (answer.decision === 'molecule') out.parts = answer.parts;
+  return out;
 }
 
-/** The catalog entry an approved answer becomes; null when the decision adds no atom. */
-export function catalogEntry(answer, { entry, candidates = [] }) {
-  if (!ADDS_ATOM.includes(answer?.decision)) return null;
-  const mutates = answer.kind === 'in-place';
-  const out = {
-    generated: false,
-    atom: answer.atom,
-    module: moduleFor(entry, candidates),
-    reads: reading(answer.sentence),
-    js: [answer.js],
-    pure: !mutates && answer.kind !== 'effect',
-    mutates,
-    fluent: answer.sentence,
-    params: answer.params,
-  };
-  if (answer.decision === 'molecule') out.parts = answer.parts;
-  out.verified = false;
-  out.unverifiedReason = 'added by the fluent generator; no check set yet';
-  return out;
+/** The catalog entry gen-atoms will emit for an approved source entry (a preview; approve does not write it). */
+export function catalogPreview(source) {
+  return emitApproved([source]).entries[0];
 }
 
 /**
@@ -132,7 +126,8 @@ export function catalogEntry(answer, { entry, candidates = [] }) {
  */
 export async function generate(id, {
   model, gate = defaultGate(), maxRetries = 1, modelName,
-  reference, catalog = loadCatalog(CATALOG_PATH), now = () => new Date().toISOString(),
+  reference, catalog = loadCatalog(CATALOG_PATH), approved = loadCatalog(APPROVED_PATH),
+  now = () => new Date().toISOString(),
 } = {}) {
   const entry = findEntry(id, reference ? { reference } : {});
   if (!entry) throw new Error(`No reference entry has the id ${JSON.stringify(id)}.`);
@@ -141,7 +136,7 @@ export async function generate(id, {
   const build = (e, { refusal }) => buildRequest(e, { candidates, refusal });
   const { results } = await runPilot([entry], { model: run, gate, build, maxRetries });
   const result = results[0];
-  const taken = result.answer?.atom && catalog.some((a) => a.atom === result.answer.atom);
+  const taken = result.answer?.atom && [...catalog, ...approved].some((a) => a.atom === result.answer.atom);
   const proposal = {
     version: 1,
     status: 'pending',
@@ -154,8 +149,18 @@ export async function generate(id, {
     gate: result.gate,
     tries: result.tries,
     adds: Boolean(result.gate?.pass && !taken && ADDS_ATOM.includes(result.answer?.decision)),
-    catalogEntry: result.answer && result.gate?.pass ? catalogEntry(result.answer, { entry, candidates }) : null,
+    approvedEntry: result.answer && result.gate?.pass ? approvedEntry(result.answer, { entry }) : null,
+    catalogEntry: null,
   };
+  if (proposal.adds) {
+    try {
+      checkApproved([proposal.approvedEntry]);
+      proposal.catalogEntry = catalogPreview(proposal.approvedEntry);
+    } catch (e) {
+      proposal.adds = false;
+      proposal.note = e.message;
+    }
+  }
   if (taken) proposal.note = `The catalog already has an atom named ${result.answer.atom}.`;
   return { proposal, result };
 }
@@ -173,24 +178,31 @@ export function writeProposal(proposal, dir = PROPOSALS_DIR) {
 }
 
 /**
- * Owner step: append the proposal's catalog entry to the catalog and mark the proposal approved. Throws, writing
- * nothing, unless the proposal is pending, passed the gate, adds an atom, and the atom id is free.
+ * Owner step: add the proposal's atom to line-smith's hand-kept approved.json and mark the proposal approved. Throws,
+ * writing nothing, unless the proposal is pending, passed the gate, adds an atom, and the atom id is free in both the
+ * catalog and approved.json. The catalog itself is rebuilt by line-smith's gen-atoms (`npm run gen:atoms`), which
+ * merges approved.json in, so approved atoms survive every regeneration.
  */
-export function approveProposal(file, { catalog = CATALOG_PATH, now = () => new Date().toISOString() } = {}) {
+export function approveProposal(file, {
+  approved = APPROVED_PATH, catalog = CATALOG_PATH, now = () => new Date().toISOString(),
+} = {}) {
   const proposal = readJson(file);
   if (proposal.status !== 'pending') throw new Error(`The proposal for ${proposal.entry} is ${proposal.status}, not pending.`);
   if (!proposal.gate?.pass) throw new Error(`The proposal for ${proposal.entry} did not pass the gate: ${proposal.gate?.refusal ?? 'no gate result'}`);
   const decision = proposal.answer?.decision;
-  if (!ADDS_ATOM.includes(decision) || !proposal.catalogEntry) {
+  if (!ADDS_ATOM.includes(decision) || !proposal.approvedEntry) {
     throw new Error(`The proposal for ${proposal.entry} is ${decision}; it adds no atom to the catalog.`);
   }
-  const data = readJson(catalog);
-  const atom = proposal.catalogEntry.atom;
-  if (data.atoms.some((a) => a.atom === atom)) throw new Error(`The catalog already has an atom named ${atom}.`);
+  const data = readJson(approved);
+  const atom = proposal.approvedEntry.atom;
+  if (loadCatalog(catalog).some((a) => a.atom === atom)) throw new Error(`The catalog already has an atom named ${atom}.`);
   const approvedAt = now();
-  data.atoms.push({ ...proposal.catalogEntry, source: { by: 'line-fluent/generator', entry: proposal.entry, approvedAt } });
-  writeFileSync(catalog, `${JSON.stringify(data, null, 1)}\n`);
-  const approved = { ...proposal, status: 'approved', approvedAt, catalog };
-  writeFileSync(file, `${JSON.stringify(approved, null, 2)}\n`);
-  return approved;
+  const source = { ...proposal.approvedEntry, approvedAt };
+  // Same rules gen-atoms applies, so an approved atom never breaks the next regeneration.
+  checkApproved([...data.atoms, source]);
+  data.atoms.push(source);
+  writeFileSync(approved, `${JSON.stringify(data, null, 2)}\n`);
+  const done = { ...proposal, status: 'approved', approvedAt, approved };
+  writeFileSync(file, `${JSON.stringify(done, null, 2)}\n`);
+  return done;
 }

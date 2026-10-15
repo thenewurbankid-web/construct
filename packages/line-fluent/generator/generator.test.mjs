@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { mockModel } from '../pilot/runner/mock-model.mjs';
 import {
-  approveProposal, CATALOG_PATH, candidatesFor, catalogEntry, findEntry, generate, proposalName, writeProposal,
+  approvedEntry, approveProposal, CATALOG_PATH, candidatesFor, findEntry, generate, proposalName, writeProposal,
 } from './generator.mjs';
 import { runCli } from './cli.mjs';
 
@@ -26,6 +26,11 @@ const scratch = () => mkdtempSync(join(tmpdir(), 't5-1-'));
 const tempCatalog = (dir) => {
   const file = join(dir, 'catalog.json');
   copyFileSync(CATALOG_PATH, file);
+  return file;
+};
+const tempApproved = (dir, atoms = []) => {
+  const file = join(dir, 'approved.json');
+  writeFileSync(file, JSON.stringify({ atoms }));
   return file;
 };
 const sink = () => {
@@ -64,7 +69,7 @@ test('the default rules-only model reuses a candidate with a sentence, else answ
   assert.equal(none.adds, false);
 });
 
-test('a mock new-atom answer passes the gate and carries the catalog entry approve will write', async () => {
+test('a mock new-atom answer passes the gate and carries the approved.json entry and a catalog preview', async () => {
   const model = mockModel({ [FLAT_MAP]: rest({}) });
   const { proposal } = await generate(FLAT_MAP, { model, modelName: 'mock', catalog, now: () => 'T' });
   assert.equal(proposal.status, 'pending');
@@ -73,12 +78,15 @@ test('a mock new-atom answer passes the gate and carries the catalog entry appro
   assert.deepEqual(proposal.candidates, ['flatMapEach']);
   assert.equal(proposal.gate.pass, true);
   assert.equal(proposal.adds, true);
-  assert.deepEqual(proposal.catalogEntry, {
-    generated: false, atom: 'flatMapped', module: 'lists', reads: 'clones list xs and flattens',
-    js: ['xs.flatMap(f)'], pure: true, mutates: false, fluent: 'clones().list(xs).and().flattens()',
-    params: [['xs', 'list'], ['f', 'fn']], verified: false,
-    unverifiedReason: 'added by the fluent generator; no check set yet',
+  assert.deepEqual(proposal.approvedEntry, {
+    atom: 'flatMapped', entry: FLAT_MAP, fluent: 'clones().list(xs).and().flattens()', js: 'xs.flatMap(f)',
+    params: [['xs', 'list'], ['f', 'fn']], kind: 'copy',
   });
+  const { atom, module, reads, js, pure, mutates, generated, verified } = proposal.catalogEntry;
+  assert.deepEqual(
+    { atom, module, reads, js, pure, mutates, generated, verified },
+    { atom: 'flatMapped', module: 'generated/approved', reads: 'clones list xs and flattens', js: ['xs.flatMap(f)'], pure: true, mutates: false, generated: true, verified: false },
+  );
 });
 
 test('a refused answer is retried with the refusal; a still-refused answer adds nothing', async () => {
@@ -95,29 +103,36 @@ test('a refused answer is retried with the refusal; a still-refused answer adds 
   assert.equal(refused.catalogEntry, null);
 });
 
-test('an answer naming an atom the catalog already has adds nothing', async () => {
+test('an answer naming an atom the catalog or approved.json already has adds nothing', async () => {
   const { proposal } = await generate(FLAT_MAP, { model: mockModel({ [FLAT_MAP]: rest({ atom: 'flattened' }) }), catalog });
   assert.equal(proposal.gate.pass, true);
   assert.equal(proposal.adds, false);
   assert.match(proposal.note, /already has an atom named flattened/);
+  const again = await generate(FLAT_MAP, { model: mockModel({ [FLAT_MAP]: rest({}) }), catalog, approved: [{ atom: 'flatMapped' }] });
+  assert.equal(again.proposal.adds, false);
 });
 
-test('catalogEntry marks in-place and effect answers impure and keeps molecule parts', () => {
+test('an answer gen-atoms could not emit (bad param name) adds nothing', async () => {
+  const { proposal } = await generate(FLAT_MAP, { model: mockModel({ [FLAT_MAP]: rest({ params: [['x s', 'list']] }) }), catalog });
+  assert.equal(proposal.gate.pass, true);
+  assert.equal(proposal.adds, false);
+  assert.match(proposal.note, /identifier names/);
+});
+
+test('approvedEntry keeps molecule parts and is null for answers that add no atom', () => {
   const entry = findEntry(FLAT_MAP);
-  const base = { decision: 'new-atom', atom: 'x', sentence: 'clones().list(xs).and().flattens()', js: 'j', params: [] };
-  assert.deepEqual(
-    [catalogEntry({ ...base, kind: 'in-place' }, { entry }), catalogEntry({ ...base, kind: 'effect' }, { entry })]
-      .map((e) => [e.pure, e.mutates]),
-    [[false, true], [false, false]],
-  );
-  assert.deepEqual(catalogEntry({ ...base, decision: 'molecule', kind: 'copy', parts: ['a', 'b'] }, { entry }).parts, ['a', 'b']);
-  assert.equal(catalogEntry({ ...base, decision: 'existing' }, { entry }), null);
+  const base = { decision: 'new-atom', atom: 'x', sentence: 's()', js: 'j', params: [], kind: 'copy', parts: null };
+  assert.equal(approvedEntry(base, { entry }).parts, undefined);
+  assert.deepEqual(approvedEntry({ ...base, decision: 'molecule', parts: ['a', 'b'] }, { entry }).parts, ['a', 'b']);
+  assert.equal(approvedEntry({ ...base, decision: 'existing' }, { entry }), null);
+  assert.equal(approvedEntry({ ...base, decision: 'not-expressible' }, { entry }), null);
 });
 
-test('generate writes nothing; approve appends one atom and marks the proposal approved, once', async () => {
+test('generate writes nothing; approve appends one atom to approved.json and marks the proposal approved, once', async () => {
   const dir = scratch();
   try {
     const catalogFile = tempCatalog(dir);
+    const approvedFile = tempApproved(dir);
     const before = readFileSync(catalogFile, 'utf8');
     const { proposal } = await generate(FLAT_MAP, { model: mockModel({ [FLAT_MAP]: rest({}) }), catalog });
     assert.equal(readFileSync(catalogFile, 'utf8'), before);
@@ -125,33 +140,38 @@ test('generate writes nothing; approve appends one atom and marks the proposal a
     assert.equal(file, join(dir, 'proposals', 'Array-prototype-flatMap.json'));
     assert.equal(readFileSync(catalogFile, 'utf8'), before);
 
-    const approved = approveProposal(file, { catalog: catalogFile, now: () => 'A' });
+    const approved = approveProposal(file, { approved: approvedFile, catalog: catalogFile, now: () => 'A' });
     assert.equal(approved.status, 'approved');
     assert.equal(approved.approvedAt, 'A');
-    const atoms = JSON.parse(readFileSync(catalogFile, 'utf8')).atoms;
-    assert.equal(atoms.length, catalog.length + 1);
-    assert.deepEqual(atoms.at(-1).source, { by: 'line-fluent/generator', entry: FLAT_MAP, approvedAt: 'A' });
+    assert.equal(readFileSync(catalogFile, 'utf8'), before);
+    const atoms = JSON.parse(readFileSync(approvedFile, 'utf8')).atoms;
+    assert.deepEqual(atoms, [{ ...proposal.approvedEntry, approvedAt: 'A' }]);
     assert.equal(JSON.parse(readFileSync(file, 'utf8')).status, 'approved');
 
-    assert.throws(() => approveProposal(file, { catalog: catalogFile }), /is approved, not pending/);
+    assert.throws(() => approveProposal(file, { approved: approvedFile, catalog: catalogFile }), /is approved, not pending/);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
 });
 
-test('approve refuses gate failures, reuse answers and taken atom ids without touching the catalog', async () => {
+test('approve refuses gate failures, reuse answers and taken atom ids without writing approved.json', async () => {
   const dir = scratch();
   try {
     const catalogFile = tempCatalog(dir);
-    const before = readFileSync(catalogFile, 'utf8');
+    const approvedFile = tempApproved(dir, [{ atom: 'flatMapped', entry: 'x', fluent: 'f()', js: 'x', params: [], kind: 'value' }]);
+    const before = readFileSync(approvedFile, 'utf8');
+    const opts = { approved: approvedFile, catalog: catalogFile };
     const save = async (id, model) => writeProposal((await generate(id, { model, catalog })).proposal, join(dir, id));
     const refused = await save(FLAT_MAP, mockModel({ [FLAT_MAP]: rest({ sentence: 'clones().list(xs).and().flatens()' }) }));
-    assert.throws(() => approveProposal(refused, { catalog: catalogFile }), /did not pass the gate: The word `flatens`/);
+    assert.throws(() => approveProposal(refused, opts), /did not pass the gate: The word `flatens`/);
     const reuse = await save('Array.prototype.includes');
-    assert.throws(() => approveProposal(reuse, { catalog: catalogFile }), /is existing; it adds no atom/);
+    assert.throws(() => approveProposal(reuse, opts), /is existing; it adds no atom/);
     const taken = await save(FLAT_MAP, mockModel({ [FLAT_MAP]: rest({ atom: 'flattened' }) }));
-    assert.throws(() => approveProposal(taken, { catalog: catalogFile }), /already has an atom named flattened/);
-    assert.equal(readFileSync(catalogFile, 'utf8'), before);
+    assert.throws(() => approveProposal(taken, opts), /already has an atom named flattened/);
+    // Generated before flatMapped was approved, so the proposal itself looks free; approve re-checks approved.json.
+    const late = await save(FLAT_MAP, mockModel({ [FLAT_MAP]: rest({}) }));
+    assert.throws(() => approveProposal(late, opts), /name collision/);
+    assert.equal(readFileSync(approvedFile, 'utf8'), before);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -162,15 +182,16 @@ test('proposalName turns a key into a file name', () => {
   assert.equal(proposalName('Array.prototype.[Symbol.iterator]'), 'Array-prototype-Symbol-iterator.json');
 });
 
-test('cli: generate with --fixtures writes a pending proposal, approve writes the catalog', async () => {
+test('cli: generate with --fixtures writes a pending proposal, approve writes approved.json', async () => {
   const dir = scratch();
   try {
     const catalogFile = tempCatalog(dir);
+    const approvedFile = tempApproved(dir);
     const fixtures = join(dir, 'fixtures.json');
     writeFileSync(fixtures, JSON.stringify({ [FLAT_MAP]: rest({}) }));
     const out = sink();
     const err = sink();
-    const code = await runCli(['generate', FLAT_MAP, '--fixtures', fixtures, '--out', join(dir, 'p')], { stdout: out, stderr: err, catalogPath: catalogFile });
+    const code = await runCli(['generate', FLAT_MAP, '--fixtures', fixtures, '--out', join(dir, 'p')], { stdout: out, stderr: err, catalogPath: catalogFile, approvedPath: approvedFile });
     assert.equal(code, 0, err.text);
     assert.match(out.text, /new-atom \(passed the gate, 1 try\)/);
     const file = join(dir, 'p', 'Array-prototype-flatMap.json');
@@ -178,9 +199,10 @@ test('cli: generate with --fixtures writes a pending proposal, approve writes th
     assert.equal(JSON.parse(readFileSync(file, 'utf8')).model, 'mock');
 
     const approveOut = sink();
-    assert.equal(await runCli(['approve', file, '--catalog', catalogFile], { stdout: approveOut, stderr: err }), 0, err.text);
-    assert.match(approveOut.text, /Approved flatMapped for Array.prototype.flatMap/);
-    assert.equal(JSON.parse(readFileSync(catalogFile, 'utf8')).atoms.at(-1).atom, 'flatMapped');
+    assert.equal(await runCli(['approve', file, '--approved', approvedFile, '--catalog', catalogFile], { stdout: approveOut, stderr: err }), 0, err.text);
+    assert.match(approveOut.text, /Approved flatMapped for Array.prototype.flatMap; added to .*approved\.json/);
+    assert.match(approveOut.text, /Rebuild the catalog with: node .*gen-atoms\.mjs/);
+    assert.equal(JSON.parse(readFileSync(approvedFile, 'utf8')).atoms.at(-1).atom, 'flatMapped');
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
