@@ -1,0 +1,24 @@
+{
+  "benefit": "No ~/Desktop clones needed.",
+  "branch": "line/fluent/t0-6-links-inrepo",
+  "contract": "packages/line-links smith.json/atomic-codemod.json default to packages/line-smith and packages/line-codemod; env overrides; no pin for in-repo source.",
+  "etaAt": "2026-10-15T00:34:08.098Z",
+  "linesAdded": 0,
+  "linesRemoved": 0,
+  "note": "Wave 2; contract in FLUENT-PLAN \"Wave 2 leaves\".",
+  "order": 6,
+  "parent": "E0",
+  "progress": 5,
+  "quickWin": true,
+  "risks": [
+    {
+      "mitigation": "Stop and report if line-smith lacks them",
+      "risk": "smith.json links the old smith repo (Chain/Organism/Comparable), not smith-functional"
+    }
+  ],
+  "session": "t0-6-links-inrepo",
+  "status": "running",
+  "thoughts": "Owner decision 2026-10-15.",
+  "title": "line-links default to in-repo",
+  "version": null
+}

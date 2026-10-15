@@ -1,0 +1,65 @@
+{
+  "benefit": "Done means both suites pass, enforced by the same npm test as the rest of construct.",
+  "contract": "@line/smith and @line/codemod are private workspaces; npm test runs line-smith as its own suite (tsc, tests, type fixtures) and globs codemod tests; type fixtures are not run as tests.",
+  "etaAt": "2026-10-15T00:45:00.000Z",
+  "linesAdded": 23,
+  "linesRemoved": 5,
+  "note": "88733ba3 + 9b8e8020. Root lock gains both packages (lockfile lines not counted); TypeScript 7 nested under line-smith, Babel 8 under line-codemod.",
+  "order": 2,
+  "parent": "E0",
+  "progress": 100,
+  "quickWin": true,
+  "report": {
+    "artifacts": [
+      {
+        "label": "wiring",
+        "ref": "88733ba3"
+      },
+      {
+        "label": "bin mode",
+        "ref": "9b8e8020"
+      }
+    ],
+    "baseline": "Package names smith and atomic-codemod, their own lockfiles, root lock out of sync (npm ci would fail), and the root runner globbing 36 files from them, including 8 tsc type fixtures and 2 helpers that are not tests.",
+    "doneAt": "2026-10-15T00:32:00Z",
+    "metrics": [
+      {
+        "after": 19,
+        "before": 36,
+        "name": "files globbed from these packages"
+      },
+      {
+        "after": 0,
+        "before": 8,
+        "name": "type fixtures run as tests"
+      },
+      {
+        "after": 0,
+        "before": 2,
+        "name": "nested lockfiles"
+      }
+    ],
+    "outcome": "@line/smith and @line/codemod; root lock gains them with TypeScript 7 nested under line-smith and Babel 8 under line-codemod; Smith runs as its own suite (tsc, tests, type fixtures) after the globbed files; the codemod's 19 test files are globbed.",
+    "summary": "Smith and the codemod are private workspace packages, and npm test covers both.",
+    "tests": {
+      "fail": 0,
+      "pass": 757,
+      "skipped": 0
+    }
+  },
+  "risks": [
+    {
+      "mitigation": "Nested installs per package; check with npm ls before running tests",
+      "risk": "TypeScript 5 vs 7 and Babel 7 vs 8 clash when hoisted"
+    },
+    {
+      "mitigation": "Run through heavy.sh, one job at a time",
+      "risk": "Root install is heavy on a 15 GB box"
+    }
+  ],
+  "session": "this session",
+  "status": "done",
+  "thoughts": "The root walker already picks up 36 files from these packages, 8 of them type fixtures that must not run. Fix that first.",
+  "title": "Workspace wiring and npm test",
+  "version": "fluent-v0.1.0"
+}

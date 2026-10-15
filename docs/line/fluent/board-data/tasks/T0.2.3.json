@@ -1,0 +1,26 @@
+{
+  "etaAt": "2026-10-15T00:45:00.000Z",
+  "linesAdded": 0,
+  "linesRemoved": 0,
+  "order": 3,
+  "parent": "T0.2",
+  "progress": 100,
+  "quickWin": true,
+  "report": {
+    "artifacts": [
+      {
+        "label": "commit",
+        "ref": "88733ba3"
+      }
+    ],
+    "doneAt": "2026-10-15T00:32:00Z",
+    "summary": "run-tests.mjs gains SUBSUITES: packages/line-smith runs its own npm test after the globbed files; the run's exit code combines both.",
+    "tests": {
+      "fail": 0,
+      "pass": 757
+    }
+  },
+  "status": "done",
+  "title": "run-tests.mjs: line-smith as a sub-suite",
+  "version": null
+}

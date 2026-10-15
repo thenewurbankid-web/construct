@@ -1,0 +1,28 @@
+{
+  "benefit": "Probe (QuickJS runner, hook stand-ins) lives in construct.",
+  "branch": "line/fluent/t0-5-probe-port",
+  "contract": "Port 274083e, 54efe04, 9dc24ab from ~/Repositories/atomic-codemod-probe atoms-probe into packages/line-codemod (subtree pull or cherry-pick -X subtree).",
+  "etaAt": "2026-10-15T00:39:08.098Z",
+  "linesAdded": 0,
+  "linesRemoved": 0,
+  "note": "Wave 2; contract in FLUENT-PLAN \"Wave 2 leaves\".",
+  "order": 5,
+  "parent": "E0",
+  "progress": 5,
+  "quickWin": true,
+  "risks": [
+    {
+      "mitigation": "Fallback cherry-pick; stop on conflicts",
+      "risk": "Subtree history mismatch"
+    },
+    {
+      "mitigation": "Report, do not add to root lockfile",
+      "risk": "New deps (QuickJS)"
+    }
+  ],
+  "session": "t0-5-probe-port",
+  "status": "running",
+  "thoughts": "Owner decision 2026-10-15.",
+  "title": "Port atoms-probe commits",
+  "version": null
+}

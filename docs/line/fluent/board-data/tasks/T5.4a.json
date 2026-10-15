@@ -1,0 +1,24 @@
+{
+  "benefit": "Pages stay in sync after every batch.",
+  "branch": "line/fluent/t5-4a-pages",
+  "contract": "packages/line-codemod/bench/atoms/rebuild-pages.mjs: build Smith if stale, run both page builders, check counts; --check.",
+  "etaAt": "2026-10-15T00:34:08.098Z",
+  "linesAdded": 0,
+  "linesRemoved": 0,
+  "note": "Wave 2; contract in FLUENT-PLAN \"Wave 2 leaves\".",
+  "order": 1,
+  "parent": "T5.4",
+  "progress": 5,
+  "quickWin": true,
+  "risks": [
+    {
+      "mitigation": "Only when dist is stale",
+      "risk": "Smith build slow"
+    }
+  ],
+  "session": "t5-4a-pages",
+  "status": "running",
+  "thoughts": "Publishing stays with the orchestrator.",
+  "title": "Pages rebuild script",
+  "version": null
+}

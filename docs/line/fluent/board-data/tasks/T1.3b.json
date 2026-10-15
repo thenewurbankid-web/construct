@@ -1,0 +1,24 @@
+{
+  "benefit": "Pilot measures pass rate, retries, tokens, minutes per entry.",
+  "branch": "line/fluent/t1-3b-runner",
+  "contract": "packages/line-fluent/pilot/runner/: runPilot(entries,{model,gate,build,maxRetries=1}) -> {results,summary}; mock-model.mjs from fixtures.",
+  "etaAt": "2026-10-15T00:34:08.098Z",
+  "linesAdded": 0,
+  "linesRemoved": 0,
+  "note": "Wave 2; contract in FLUENT-PLAN \"Wave 2 leaves\".",
+  "order": 2,
+  "parent": "T1.3",
+  "progress": 5,
+  "quickWin": true,
+  "risks": [
+    {
+      "mitigation": "model() contract is {text,tokensIn,tokensOut}; adapter later",
+      "risk": "Real model shape differs"
+    }
+  ],
+  "session": "t1-3b-runner",
+  "status": "running",
+  "thoughts": "Injected model so no network in tests.",
+  "title": "Pilot: runner with mock model",
+  "version": null
+}

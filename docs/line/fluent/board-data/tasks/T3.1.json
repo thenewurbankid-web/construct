@@ -1,0 +1,54 @@
+{
+  "benefit": "Teaching signal from checks, not from a judge model.",
+  "branch": "line/fluent/t3-1-compare",
+  "contract": "packages/line-fluent/compare/: compare(gold, student, studentGate) -> same | equivalent | wrong with a reason; fixtures for each verdict.",
+  "etaAt": "2026-10-15T00:20:00.000Z",
+  "linesAdded": 197,
+  "linesRemoved": 0,
+  "note": "f2fd46a0, merged f78b58bb. 12/12 tests, re-run by me.",
+  "order": 1,
+  "parent": "E3",
+  "progress": 100,
+  "quickWin": true,
+  "report": {
+    "artifacts": [
+      {
+        "label": "commit",
+        "ref": "f2fd46a0"
+      },
+      {
+        "label": "merge",
+        "ref": "f78b58bb"
+      },
+      {
+        "label": "files",
+        "ref": "packages/line-fluent/compare/"
+      }
+    ],
+    "baseline": "No way to score a student answer against Claude's.",
+    "doneAt": "2026-10-15T00:30:00Z",
+    "metrics": [
+      {
+        "after": 3,
+        "name": "verdicts"
+      }
+    ],
+    "outcome": "Equivalent needs the student's gate to pass and an injected behaves-same check, so it never rewards an answer that fails a check.",
+    "summary": "Contract C4 is code: compare(gold, student, gate) gives same, equivalent or wrong with a one-sentence reason, plus summarize() for the right rate.",
+    "tests": {
+      "fail": 0,
+      "pass": 12
+    }
+  },
+  "risks": [
+    {
+      "mitigation": "equivalent counts when the student's gate passes and its JS behaves the same",
+      "risk": "Equivalent answers scored as wrong"
+    }
+  ],
+  "session": "t3-1-compare",
+  "status": "done",
+  "thoughts": "Pure function over C2/C3 shapes. Safe in parallel.",
+  "title": "Comparator C4",
+  "version": "fluent-v0.1.0"
+}

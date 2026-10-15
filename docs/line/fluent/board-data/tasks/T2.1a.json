@@ -1,0 +1,24 @@
+{
+  "benefit": "Step 5 of ENGLISH-RULES build order.",
+  "branch": "line/fluent/t2-1-spike",
+  "contract": "packages/line-codemod/fluent-form.js: toFluent(atomCall,catalog), fluentFor(code); 20-entry finding report.",
+  "etaAt": "2026-10-15T00:34:08.098Z",
+  "linesAdded": 0,
+  "linesRemoved": 0,
+  "note": "Wave 2; contract in FLUENT-PLAN \"Wave 2 leaves\".",
+  "order": 1,
+  "parent": "T2.1",
+  "progress": 5,
+  "quickWin": true,
+  "risks": [
+    {
+      "mitigation": "Bind by catalog check params order",
+      "risk": "Catalog fluent params named differently from call args"
+    }
+  ],
+  "session": "t2-1-spike",
+  "status": "running",
+  "thoughts": "New module only; findings matter more than code.",
+  "title": "Spike: toAtoms writes fluent form",
+  "version": null
+}

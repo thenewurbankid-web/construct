@@ -1,0 +1,14 @@
+{
+  "benefit": "New APIs join the library in minutes.",
+  "contract": "One reference entry -> C2 via the stage 1 pipeline -> catalog after approval.",
+  "etaAt": "2026-10-15T06:00:00.000Z",
+  "linesAdded": 0,
+  "linesRemoved": 0,
+  "order": 1,
+  "parent": "E5",
+  "progress": 0,
+  "quickWin": false,
+  "status": "todo",
+  "title": "Atom generator for a new JS API",
+  "version": null
+}
