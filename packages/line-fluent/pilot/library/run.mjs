@@ -25,9 +25,10 @@ import { makeTypesCheck } from '../../gate/types/types.mjs';
 import { validateAnswer } from '../../contract/validate.mjs';
 import { buildRequest, MAX_CANDIDATES } from '../request/request.mjs';
 import { runPilot } from '../runner/runner.mjs';
-import { claudeModel } from '../runner/claude-model.mjs';
+import { claudeModel, claudeSession } from '../runner/claude-model.mjs';
 import { candidatesFor, CATALOG_PATH, REFERENCE_PATH } from '../../generator/generator.mjs';
 import { userStage } from './user-stage.mjs';
+import { batches, answerTurn, askTurn, tellTurn } from './batch.mjs';
 
 const readJson = (p) => JSON.parse(readFileSync(p, 'utf8'));
 const SKIP = Object.freeze({ check: 'skip', errors: [], fixes: [] });
@@ -156,7 +157,7 @@ function readResults(file) {
   return readFileSync(file, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l));
 }
 
-export async function main(argv = process.argv.slice(2), { log = console.log, makeModel = claudeModel } = {}) {
+export async function main(argv = process.argv.slice(2), { log = console.log, makeModel: given, pick = (list) => list } = {}) {
   const { values: o } = parseArgs({
     args: argv,
     options: {
@@ -167,14 +168,20 @@ export async function main(argv = process.argv.slice(2), { log = console.log, ma
       outside: { type: 'string', default: 'opus' },
       user: { type: 'string', default: 'none' },
       rounds: { type: 'string', default: '2' },
+      batch: { type: 'string', default: '0' },
+      'keep-open': { type: 'boolean', default: false },
       out: { type: 'string', default: fileURLToPath(new URL('./runs/latest/', import.meta.url)) },
     },
   });
+  // --keep-open: each model's processes stay open across calls (claudeSession) instead of starting per call.
+  const opened = [];
+  const makeModel = given ?? ((opts) => (o['keep-open'] ? opened[opened.push(claudeSession(opts)) - 1] : claudeModel(opts)));
   const reference = readJson(REFERENCE_PATH).entries;
   const catalog = readJson(CATALOG_PATH).atoms;
   const sections = o.sections ? new Set(o.sections.split(',').map((s) => s.trim())) : null;
   let entries = reference.filter((e) => !sections || sections.has(e.section));
   if (o.limit) entries = entries.slice(0, Number(o.limit));
+  entries = pick(entries);
   mkdirSync(o.out, { recursive: true });
   const resultsFile = `${o.out}/results.jsonl`;
   const all = readResults(resultsFile);
@@ -195,34 +202,39 @@ export async function main(argv = process.argv.slice(2), { log = console.log, ma
   };
   const doneIn = (stage) => new Set(all.filter((r) => r.stage === stage && !r.error).map((r) => r.key));
 
-  const insideDone = doneIn('inside');
-  const insideModel = makeModel({ model: o.inside });
-  await pool(entries.filter((e) => !insideDone.has(e.key)), jobs, async (e) => {
-    record(await runStage(e, 'inside', { model: insideModel, modelName: o.inside, gate: gateFor(e, { typesCheck }), catalog }));
-  }, stopped);
-
-  if (o.outside !== 'none' && !stopped()) {
-    const passedInside = new Set(all.filter((r) => r.stage === 'inside' && r.gate?.pass).map((r) => r.key));
-    const outsideDone = doneIn('outside');
-    const outsideModel = makeModel({ model: o.outside });
-    await pool(entries.filter((e) => insideDone.has(e.key) || all.some((r) => r.key === e.key && r.stage === 'inside' && !r.error))
-      .filter((e) => !passedInside.has(e.key) && !outsideDone.has(e.key)), jobs, async (e) => {
-      record(await runStage(e, 'outside', { model: outsideModel, modelName: o.outside, gate: gateFor(e, { typesCheck }), catalog }));
+  if (Number(o.batch) > 0) {
+    await batchedStages(entries, { o, all, record, doneIn, stopped, jobs, makeModel, typesCheck, catalog });
+  } else {
+    const insideDone = doneIn('inside');
+    const insideModel = makeModel({ model: o.inside });
+    await pool(entries.filter((e) => !insideDone.has(e.key)), jobs, async (e) => {
+      record(await runStage(e, 'inside', { model: insideModel, modelName: o.inside, gate: gateFor(e, { typesCheck }), catalog }));
     }, stopped);
+
+    if (o.outside !== 'none' && !stopped()) {
+      const passedInside = new Set(all.filter((r) => r.stage === 'inside' && r.gate?.pass).map((r) => r.key));
+      const outsideDone = doneIn('outside');
+      const outsideModel = makeModel({ model: o.outside });
+      await pool(entries.filter((e) => insideDone.has(e.key) || all.some((r) => r.key === e.key && r.stage === 'inside' && !r.error))
+        .filter((e) => !passedInside.has(e.key) && !outsideDone.has(e.key)), jobs, async (e) => {
+        record(await runStage(e, 'outside', { model: outsideModel, modelName: o.outside, gate: gateFor(e, { typesCheck }), catalog }));
+      }, stopped);
+    }
+
+    if (o.user !== 'none' && !stopped()) {
+      // The inside model asks, the user model answers as the person; only entries no earlier stage got through.
+      const passed = new Set(all.filter((r) => r.gate?.pass).map((r) => r.key));
+      const userDone = doneIn('user');
+      const asker = makeModel({ model: o.inside });
+      const person = makeModel({ model: o.user });
+      const lastInside = (key) => [...all].reverse().find((r) => r.key === key && r.stage === 'inside' && !r.error);
+      await pool(entries.filter((e) => lastInside(e.key) && !passed.has(e.key) && !userDone.has(e.key)), jobs, async (e) => {
+        record(await userStage(e, lastInside(e.key), { asker, user: person, gate: gateFor(e, { typesCheck }), catalog, rounds: Number(o.rounds), names: { asker: o.inside, user: o.user } }));
+      }, stopped);
+    }
   }
 
-  if (o.user !== 'none' && !stopped()) {
-    // The inside model asks, the user model answers as the person; only entries no earlier stage got through.
-    const passed = new Set(all.filter((r) => r.gate?.pass).map((r) => r.key));
-    const userDone = doneIn('user');
-    const asker = makeModel({ model: o.inside });
-    const person = makeModel({ model: o.user });
-    const lastInside = (key) => [...all].reverse().find((r) => r.key === key && r.stage === 'inside' && !r.error);
-    await pool(entries.filter((e) => lastInside(e.key) && !passed.has(e.key) && !userDone.has(e.key)), jobs, async (e) => {
-      record(await userStage(e, lastInside(e.key), { asker, user: person, gate: gateFor(e, { typesCheck }), catalog, rounds: Number(o.rounds), names: { asker: o.inside, user: o.user } }));
-    }, stopped);
-  }
-
+  for (const m of opened) m.close();
   const { summary, library } = summarize(all, entries);
   summary.stoppedOnErrors = stopped();
   summary.models = { inside: o.inside, outside: o.outside, user: o.user };
@@ -230,6 +242,79 @@ export async function main(argv = process.argv.slice(2), { log = console.log, ma
   writeFileSync(`${o.out}/library.json`, `${JSON.stringify(library, null, 2)}\n`);
   log(`\n${summary.inLibrary} of ${summary.entries} entries in the library (${summary.knownGaps} known gaps). Inside ${o.inside}: ${summary.inside.passed}/${summary.inside.entries}, $${summary.inside.costUsd}, ${summary.inside.minutes} min. Outside ${o.outside}: ${summary.outside.passed}/${summary.outside.entries}, $${summary.outside.costUsd}, ${summary.outside.minutes} min. ${o.inside} with ${o.user} as user: ${summary.user.passed}/${summary.user.entries}, $${summary.user.costUsd}, ${summary.user.minutes} min.${summary.stoppedOnErrors ? ' Stopped on repeated model errors; run again to resume.' : ''}`);
   return summary;
+}
+
+/**
+ * The batched run (--batch n): turn 1 and turn 2 (refused ones, with their refusals) by the inside model, then the
+ * user stage, every turn one call per batch of a section's entries. Results are recorded per entry, as unbatched.
+ */
+async function batchedStages(entries, { o, all, record, doneIn, stopped, jobs, makeModel, typesCheck, catalog }) {
+  const size = Number(o.batch);
+  const inside = makeModel({ model: o.inside });
+  const gateOf = (entry) => gateFor(entry, { typesCheck });
+  const item = (entry, extra = {}) => ({ entry, candidates: candidatesFor(entry, catalog).slice(0, MAX_CANDIDATES), ...extra });
+  const latest = (key, stage) => [...all].reverse().find((r) => r.key === key && r.stage === stage && !r.error);
+  const fail = (group, stage, model, e, started) => group.forEach((it) => record({ key: it.entry.key, section: it.entry.section, stage, model, entry: it.entry.id, error: String(e?.message ?? e).slice(0, 300), costUsd: 0, ms: Date.now() - started }));
+
+  // Turns 1 and 2: every entry not yet through the inside stage, then each refused one with its refusal.
+  for (const turn of [1, 2]) {
+    if (stopped()) return;
+    const todo = turn === 1
+      ? entries.filter((e) => !doneIn('inside').has(e.key))
+      : entries.filter((e) => { const r = latest(e.key, 'inside'); return r && !r.gate?.pass && (r.tries ?? 1) < 2; });
+    await pool(batches(todo, size), Math.ceil(jobs / 2), async (group) => {
+      const started = Date.now();
+      const items = group.map((e) => item(e, turn === 2 ? { refusal: latest(e.key, 'inside')?.gate?.refusal } : {}));
+      try {
+        const out = await answerTurn(items, { model: inside, gateOf });
+        const ms = Math.round((Date.now() - started) / items.length);
+        out.forEach((r, i) => record({ key: items[i].entry.key, section: items[i].entry.section, stage: 'inside', model: o.inside, entry: items[i].entry.id, ...r, tries: turn, ms, batch: items.length }));
+      } catch (e) {
+        fail(items, 'inside', o.inside, e, started);
+      }
+    }, stopped);
+  }
+
+  // The user stage: the inside model asks, the user model answers as the person, the inside model answers again.
+  if (o.user === 'none' || stopped()) return;
+  const person = makeModel({ model: o.user });
+  const passed = () => new Set(all.filter((r) => r.gate?.pass).map((r) => r.key));
+  const todo = entries.filter((e) => latest(e.key, 'inside') && !passed().has(e.key) && !doneIn('user').has(e.key));
+  await pool(batches(todo, size), Math.ceil(jobs / 2), async (group) => {
+    const started = Date.now();
+    const every = group.map((e) => { const r = latest(e.key, 'inside'); return item(e, { answer: r.answer, refusal: r.gate?.refusal, prior: r.gate, dialogue: [], result: null, cost: 0, tries: 0 }); });
+    let items = every;
+    try {
+      for (let round = 0; round < Number(o.rounds) && items.length; round++) {
+        const asked = await askTurn(items, { model: inside });
+        const ready = items.filter((_, i) => asked.questions[i]);
+        const qs = asked.questions.filter(Boolean);
+        if (!ready.length) break;
+        const told = await tellTurn(ready, qs, { model: person });
+        const talk = ready.filter((it, i) => {
+          if (!told.answers[i]) return false;
+          it.dialogue.push({ q: qs[i], a: told.answers[i] });
+          return true;
+        });
+        if (!talk.length) break;
+        const out = await answerTurn(talk, { model: inside, gateOf });
+        const overhead = ((asked.reply?.costUsd ?? 0) + (told.reply?.costUsd ?? 0)) / talk.length;
+        out.forEach((r, i) => Object.assign(talk[i], { result: r, answer: r.answer, refusal: r.gate.refusal, cost: talk[i].cost + r.costUsd + overhead, tries: talk[i].tries + 1 }));
+        items = talk.filter((it) => !it.result.gate.pass);
+      }
+    } catch (e) {
+      fail(every, 'user', `${o.inside}+${o.user} as user`, e, started);
+      return;
+    }
+    const ms = Math.round((Date.now() - started) / every.length);
+    for (const it of every) {
+      record({
+        key: it.entry.key, section: it.entry.section, stage: 'user', model: `${o.inside}+${o.user} as user`, entry: it.entry.id,
+        answer: it.result?.answer ?? it.answer ?? null, gate: it.result?.gate ?? it.prior, dialogue: it.dialogue, tries: it.tries,
+        tokensIn: it.result?.tokensIn ?? 0, tokensOut: it.result?.tokensOut ?? 0, costUsd: Number(it.cost.toFixed(6)), ms, batch: every.length,
+      });
+    }
+  }, stopped);
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {

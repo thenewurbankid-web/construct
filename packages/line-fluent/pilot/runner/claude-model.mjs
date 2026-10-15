@@ -100,3 +100,87 @@ export function claudeModel({ model = 'haiku', run = runClaude, timeoutMs = DEFA
     };
   };
 }
+
+/** The CLI arguments for a kept-open process: the same request flags, streaming JSON both ways. */
+export function sessionArgs({ model, system }) {
+  return [...claudeArgs({ model, system }).map((a) => (a === 'json' ? 'stream-json' : a)), '--input-format', 'stream-json', '--verbose'];
+}
+
+/**
+ * Like claudeModel, but each process stays open across requests instead of starting per call (about 1s saved per
+ * call). Processes are kept per system prompt, one request at a time each, and replaced after `turns` requests so
+ * earlier requests do not pile up in the context (a kept-open process remembers its conversation).
+ */
+export function claudeSession({ model = 'haiku', turns = 4, timeoutMs = DEFAULT_TIMEOUT_MS, spawnFn = spawn } = {}) {
+  const idle = new Map(); // system -> open processes waiting for a request
+  const open = (system) => {
+    const child = spawnFn('claude', sessionArgs({ model, system }), { env: { ...process.env, MAX_THINKING_TOKENS: '0' } });
+    const proc = { child, used: 0, waiter: null, buf: '', dead: null };
+    child.stdout.on('data', (d) => {
+      proc.buf += d;
+      for (let i = proc.buf.indexOf('\n'); i >= 0; i = proc.buf.indexOf('\n')) {
+        const line = proc.buf.slice(0, i);
+        proc.buf = proc.buf.slice(i + 1);
+        let m;
+        try {
+          m = JSON.parse(line);
+        } catch {
+          continue;
+        }
+        if (m.type === 'result' && proc.waiter) {
+          const w = proc.waiter;
+          proc.waiter = null;
+          w.resolve(m);
+        }
+      }
+    });
+    const end = (why) => {
+      proc.dead = why;
+      if (proc.waiter) proc.waiter.reject(new Error(why));
+      proc.waiter = null;
+    };
+    child.on('error', (e) => end(`Could not run the claude CLI (${e.message}). Is it installed and on PATH?`));
+    child.on('close', (code) => end(`claude exited with ${code} mid-request`));
+    return proc;
+  };
+  const take = (system) => {
+    const list = idle.get(system) ?? [];
+    let proc = list.pop();
+    while (proc?.dead) proc = list.pop();
+    return proc ?? open(system);
+  };
+  const release = (system, proc) => {
+    if (proc.dead || proc.used >= turns) {
+      if (!proc.dead) proc.child.stdin.end();
+      return;
+    }
+    (idle.get(system) ?? idle.set(system, []).get(system)).push(proc);
+  };
+  const call = async (request) => {
+    const proc = take(request.system);
+    const m = await new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        proc.child.kill('SIGKILL');
+        reject(new Error(`claude did not answer within ${Math.round(timeoutMs / 1000)} seconds and was stopped.`));
+      }, timeoutMs);
+      proc.waiter = { resolve: (x) => (clearTimeout(timer), resolve(x)), reject: (e) => (clearTimeout(timer), reject(e)) };
+      proc.used += 1;
+      proc.child.stdin.write(`${JSON.stringify({ type: 'user', message: { role: 'user', content: claudePrompt(request) } })}\n`);
+    });
+    release(request.system, proc);
+    if (m.is_error) throw new Error(`claude reported an error: ${String(m.result ?? m.subtype).slice(0, 300)}`);
+    const u = m.usage ?? {};
+    return {
+      text: textAfterPrefill(request.prefill, m.result),
+      tokensIn: (u.input_tokens ?? 0) + (u.cache_creation_input_tokens ?? 0) + (u.cache_read_input_tokens ?? 0),
+      tokensOut: u.output_tokens ?? 0,
+      costUsd: m.total_cost_usd ?? 0,
+      model,
+    };
+  };
+  call.close = () => {
+    for (const list of idle.values()) for (const p of list) if (!p.dead) p.child.stdin.end();
+    idle.clear();
+  };
+  return call;
+}
