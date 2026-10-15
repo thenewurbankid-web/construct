@@ -12,7 +12,10 @@ const parser = require('@babel/parser');
 const traverse = require('@babel/traverse').default;
 
 const TS_PLUGINS = ['typescript', 'jsx'];
-const DEFAULT_CONSTRUCT = '/Users/shashank/Repositories/construct/.claude/worktrees/og-final-1012';
+// This construct checkout. Smith, the codemod and Line's fluent tooling live under packages/ too, but they are the
+// describer, not the corpus, so they are left out.
+const DEFAULT_CONSTRUCT = path.resolve(__dirname, '../../..');
+const NOT_CORPUS = new Set(['line-smith', 'line-codemod', 'line-fluent']);
 const SKIP_DIRS = new Set(['node_modules', 'dist', 'build', '.next', 'coverage', '__tests__', 'test', 'tests', 'e2e', '.git']);
 const TEST_FILE = /\.(test|spec)\.[cm]?[jt]sx?$/;
 
@@ -22,7 +25,8 @@ const PLACEHOLDER_KINDS = ['expr', 'stmt', 'pattern'];
 
 function defaultRoots(base = process.env.SMITH_CORPUS || DEFAULT_CONSTRUCT) {
   if (!fs.existsSync(base)) return [];
-  const roots = [path.join(base, 'packages')];
+  const pkgs = path.join(base, 'packages');
+  const roots = fs.existsSync(pkgs) ? fs.readdirSync(pkgs, { withFileTypes: true }).filter((e) => e.isDirectory() && !NOT_CORPUS.has(e.name)).map((e) => path.join(pkgs, e.name)).sort() : [];
   const bench = path.join(base, 'bench');
   if (fs.existsSync(bench)) {
     for (const name of fs.readdirSync(bench).sort()) {

@@ -4,7 +4,7 @@
 //
 //   node bench/atoms/js-reference/list.mjs [--lib <dir with lib.es2025.d.ts>]
 //
-// The ES2025 lib files ship with TypeScript 7 (smith-functional's install); TS_LIB_DIR or --lib overrides.
+// The ES2025 lib files ship with TypeScript 7 (packages/line-smith's install); TS_LIB_DIR or --lib overrides.
 // Deterministic: sorted output, no network.
 import { readFileSync, writeFileSync, readdirSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
@@ -17,7 +17,12 @@ const here = dirname(fileURLToPath(import.meta.url));
 
 const argLib = process.argv.indexOf('--lib');
 const libDir = argLib > 0 ? process.argv[argLib + 1]
-  : process.env.TS_LIB_DIR ?? join(process.env.HOME, 'Repositories/smith-functional/node_modules/@typescript/typescript-darwin-arm64/lib');
+  : process.env.TS_LIB_DIR ?? ts7LibDir();
+// TypeScript 7's native package for this machine, resolved the way packages/line-smith resolves it.
+function ts7LibDir() {
+  const fromSmith = createRequire(join(here, '../../../../line-smith/package.json'));
+  try { return join(dirname(fromSmith.resolve(`@typescript/typescript-${process.platform}-${process.arch}/package.json`)), 'lib'); } catch { return ''; }
+}
 if (!existsSync(join(libDir, 'lib.es2025.d.ts'))) {
   console.error(`No lib.es2025.d.ts in ${libDir}. Pass --lib <dir> or set TS_LIB_DIR.`);
   process.exit(1);

@@ -1,8 +1,9 @@
-// The atom runtime (smith-functional, branch functional-atoms), read from its
-// COMMITTED state only: `git archive <sha> src` into a local snapshot folder
-// (bench/atoms/.runtime/<sha>, git-ignored). Never writes to that repo.
+// The atom runtime (Smith, packages/line-smith in this construct repo), read from its
+// COMMITTED state only: `git archive <sha>:<subdir> src` into a local snapshot folder
+// (bench/atoms/.runtime/<sha>, git-ignored). Never writes to the repo.
+// SMITH_RUNTIME_REPO (+ SMITH_RUNTIME_SUBDIR, default '') points at another checkout instead.
 //
-//   snapshotRuntime({repo, ref}) -> {sha, dir}
+//   snapshotRuntime({repo, ref, subdir}) -> {sha, dir}
 //   catalogFor(dir, sha)         -> {catalog, compiled, source: 'catalog.json' | 'derived'}
 //   deriveCatalog(dir)           -> catalog entries derived from the sources' "Exactly `form`" doc lines,
 //                                   used only while src/atoms/catalog.json is not committed yet
@@ -13,15 +14,18 @@ const { execFileSync } = require('child_process');
 const parser = require('@babel/parser');
 const { compileCatalog, paramsFromSource } = require('../../atoms-catalog');
 
-const DEFAULT_REPO = path.join(process.env.HOME || '', 'Repositories', 'smith-functional');
+const DEFAULT_REPO = process.env.SMITH_RUNTIME_REPO || path.resolve(__dirname, '../../../..');
+const DEFAULT_SUBDIR = process.env.SMITH_RUNTIME_REPO ? (process.env.SMITH_RUNTIME_SUBDIR || '') : 'packages/line-smith';
 const SNAP_ROOT = path.join(__dirname, '.runtime');
 
-function snapshotRuntime({ repo = DEFAULT_REPO, ref = 'functional-atoms' } = {}) {
+function snapshotRuntime({ repo = DEFAULT_REPO, ref = 'HEAD', subdir = DEFAULT_SUBDIR } = {}) {
   const sha = execFileSync('git', ['-C', repo, 'rev-parse', ref], { encoding: 'utf8' }).trim();
-  const dir = path.join(SNAP_ROOT, sha.slice(0, 12));
+  // The tree of Smith's folder at that commit: the snapshot key, so a construct commit that leaves Smith alone reuses it.
+  const tree = execFileSync('git', ['-C', repo, 'rev-parse', subdir ? `${sha}:${subdir}` : `${sha}^{tree}`], { encoding: 'utf8' }).trim();
+  const dir = path.join(SNAP_ROOT, tree.slice(0, 12));
   if (!fs.existsSync(path.join(dir, 'src', 'index.ts'))) {
     fs.mkdirSync(dir, { recursive: true });
-    const tar = execFileSync('git', ['-C', repo, 'archive', sha, 'src'], { maxBuffer: 64 * 1024 * 1024 });
+    const tar = execFileSync('git', ['-C', repo, 'archive', tree, 'src'], { maxBuffer: 64 * 1024 * 1024 });
     execFileSync('tar', ['-x', '-C', dir], { input: tar });
   }
   return { sha, dir };

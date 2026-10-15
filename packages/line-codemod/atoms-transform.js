@@ -1,6 +1,6 @@
 // JS -> atoms: a deterministic Babel rewrite of operators, control flow and
 // built-in calls into calls of the atom runtime's plain-function atoms
-// (smith-functional, src/atoms/catalog.json). No model involved.
+// (Smith, packages/line-smith/src/atoms/catalog.json). No model involved.
 //
 //   toAtoms(code, { catalog, kind, typeHint, importFrom, choices, skip })
 //     -> { code, body, imports, importDecl, atoms, untranslated, converted, sites, ambiguous }
