@@ -5,8 +5,8 @@ the sources here; a link only opens for its owner and anyone it is shared with.
 
 | Page | Link | Source in repo | Data |
 |---|---|---|---|
-| Fluent Build Board | https://claude.ai/artifact/RG6vQ6E4ka7eCmcyqrk6wg | `board.html` | db, snapshot in `board-data/` |
-| Fluent English Plan | https://claude.ai/artifact/HwgVFom6D4FBSMe5RSkjZZ | `plan.html` | none (static) |
+| Fluent Build Board | https://claude.ai/artifact/VYndtXxtfnVBzKVbXSbsHh | `board.html` | db, snapshot in `board-data/` |
+| Fluent English Plan | https://claude.ai/artifact/W7PQWdprAh1gHibHkqUE8y | `plan.html` | none (static) |
 | Smith Atoms | https://claude.ai/artifact/VyLUndJe64ZfZEojij9E7b | built by `packages/line-codemod/bench/atoms/atoms-page/build.mjs` | generated from the Smith catalog |
 | JS Reference Atlas | https://claude.ai/artifact/WgS7uBhJUJVYBYvaYonPao | built by `packages/line-codemod/bench/atoms/js-reference/site.mjs` | generated from `reference.json` |
 

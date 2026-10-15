@@ -100,7 +100,7 @@ footer { font-size: 0.85rem; color: var(--muted); }
 <header>
   <div class="eyebrow">Line · Smith · plan for the owner · 2026-10-15</div>
   <h1>JavaScript into fluent English, an LSP on top, and a small model that learns it</h1>
-  <p class="lede">Claude writes the full fluent library from the JS reference under the latest Smith rules (R1–R9). That library is the base every app and model uses. The small model does the same work from the same JS, is compared with Claude's answers by checks rather than by opinion, and learns from the differences. Users get it through an LSP and generators, so they never write a sentence or a prompt by hand.</p>
+  <p class="lede">Claude writes the full fluent library from the JS reference under the latest Smith rules (R1–R11). That library is the base every app and model uses. The small model does the same work from the same JS, is compared with Claude's answers by checks rather than by opinion, and learns from the differences. Users get it through an LSP and generators, so they never write a sentence or a prompt by hand.</p>
 </header>
 
 <section class="callout" style="background:var(--accent-soft);border-left-color:var(--accent)">
@@ -138,6 +138,22 @@ footer { font-size: 0.85rem; color: var(--muted); }
   <p>Also in place: the codemod's checked converter (<code>toAtoms</code>, QuickJS check-and-repair), the grammar test for R1–R8, R9 <code>every()</code> sentences with types carried along the chain, and the Line LSP (<code>packages/engine/lsp</code>: host, index, smith, rules, gate, server). This matches ENGLISH-RULES build order steps 5–7, which are not built yet.</p>
 </section>
 
+<section class="callout" style="background:var(--accent-soft);border-left-color:var(--accent)">
+  <h3 style="color:var(--accent)">Catch-up: what the cloud session built (2026-10-15, <code>47df541e</code>)</h3>
+  <ul>
+    <li><b>R10:</b> every sentence ends by naming what it returns, <code>andThe().&lt;name&gt;()</code>, derived by rules; a wrong name is a <code>tsc</code> error.</li>
+    <li><b>R11:</b> atoms, molecules and organisms are pure. In-place built-ins become copies, the clock and random source are parameters, effects and <code>does()</code> leave the library. Catalog 338 → 292 atoms.</li>
+    <li><b>Grammar gate by sentence shapes:</b> 55 shapes with a verb slot, so a new verb passes as an alias in a known shape.</li>
+    <li><b>Lexicon decoder:</b> a small code-to-English model trained on our own corpus, decoding only into grammatical shapes, plus a meaning check that refuses a sentence dropping a meaningful word.</li>
+    <li><b>Rules-built answers:</b> rules build js, params and the sentence; the model only picks or corrects (Array: 61 of 67 real atoms, $0.097).</li>
+    <li><b>Clarify from code:</b> guess inputs and outputs by running the code, keep a sentence only when it matches the code on every input, and ask the person only about words.</li>
+    <li><b>Gap questions in plain words:</b> the model works out an unclear step by running experiments; the person only confirms. Confirmed atoms register through the approved-atom path.</li>
+    <li><b>Library run: stopped</b> at 1,307 of 2,378 entries. 650 passed: <b>84 real atoms</b> (42 existing, 42 new) and 566 not-expressible, which still need turn 2 and the user stage; 657 refused.</li>
+    <li><b>Tests on 47df541e:</b> line-fluent 341/342 (one fixture predates R10), smith 691/691 with types clean, codemod 273/273.</li>
+    <li><b>Next:</b> the type-state plan, revision 7 (<code>docs/line/fluent/TYPESTATE-v7.md</code>): one grammar over parts of speech, one lexicon entry shape for JS and domain words, roles from code, behaviour decides at every node. Waiting on owner approval.</li>
+  </ul>
+</section>
+
 <section class="callout">
   <h3>Before stage 1: where it stands (2026-10-15)</h3>
   <ul>
@@ -159,8 +175,8 @@ footer { font-size: 0.85rem; color: var(--muted); }
 out: { atom: "flatMapped", kind: "copy", sentence: "every(x).in(xs).is().mapped().to(...).and().flattened()",
        js: "xs.flatMap(f)", decision: "new-atom" | "existing:&lt;id&gt;" | "molecule" | "not-expressible:&lt;reason&gt;" }</pre>
       <dl class="kv">
-        <dt>Status</dt><dd><b>Machinery done:</b> answer shape (C2), the three checks (grammar, behaviour, types) and the combined verdict; the pilot's request builder, mock runner and Array entries. <b>Writing the library (T1.4): not started.</b> It waits on your go/no-go on cost.</dd>
-        <dt>Gate</dt><dd>The grammar test (R1–R9) passes. The atom matches its native JS under fast-check and matches <code>expected.json</code>. <code>tsc</code> and the type fixtures stay clean. An answer that fails gets the refusal sentence back once and tries again. If it fails again, it is recorded as a gap.</dd>
+        <dt>Status</dt><dd><b>Machinery done:</b> answer shape (C2), the three checks (grammar by sentence shapes, behaviour, types), the combined verdict, rules-built answers, the lexicon decoder, the meaning check, batched model turns and a user stage. <b>Array pilot done</b> (61 of 67 real atoms). <b>Full library run (T1.4): stopped</b> at 1,307 of 2,378 entries, 84 real atoms. Resuming waits on your call: now, or after the short answer, sanitizer, feedback and generic prompt (plan v7 steps 7–10).</dd>
+        <dt>Gate</dt><dd>The grammar test (R1–R11) passes. The atom matches its native JS under fast-check and matches <code>expected.json</code>. <code>tsc</code> and the type fixtures stay clean. An answer that fails gets the refusal sentence back once and tries again. If it fails again, it is recorded as a gap.</dd>
         <dt>Order</dt><dd>One section first (for example, Array) to measure cost, pass rate and readability. Then es, then syntax, then web.</dd>
         <dt>Owner</dt><dd>Approves new atoms only, in batches on the Smith Atoms page. A molecule that passes the six-check gate needs no approval.</dd>
         <dt>Output</dt><dd>The catalog grows from 37 sentences toward full coverage. The gold set is <code>(js, atom, sentence, decision)</code> for every entry, and refusals are kept as data.</dd>
@@ -264,5 +280,5 @@ out: { atom: "flatMapped", kind: "copy", sentence: "every(x).in(xs).is().mapped(
   </ol>
 </section>
 
-<footer>Sources: <code>packages/line-smith/ENGLISH-RULES.md</code>, <code>packages/line-codemod/bench/atoms/</code>, docs/line/CARRYOVER-2026-10-14.md and -10-15-smith.md, git state of 2026-10-15. Branch <code>line/import-smith-codemod</code> on construct-private.</footer>
+<footer>Sources: <code>packages/line-smith/ENGLISH-RULES.md</code>, <code>packages/line-codemod/bench/atoms/</code>, docs/line/CARRYOVER-2026-10-14.md and -10-15-smith.md, docs/line/fluent/TYPESTATE-v7.md, git state of 2026-10-15. Branch <code>line/fluent/catchup</code> (from the cloud branch <code>line/fluent/t1-4-library-run</code>, 47df541e) on construct-private.</footer>
 </div>
