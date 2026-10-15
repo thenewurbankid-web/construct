@@ -89,7 +89,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Reads one feature: its items by kind, a summary and how much of its spec is covered.",
+        "value": "Reads one feature: its items by kind, a summary and how much of its spec is covered ({name}).",
         "by": "rules"
       }
     },
@@ -119,7 +119,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Reads the parts of one feature page and their props.",
+        "value": "Reads the parts of one feature page and their props ({file}).",
         "by": "rules"
       }
     },
@@ -149,7 +149,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Renders one library component alone with its props.",
+        "value": "Renders one library component alone with its props ({file}).",
         "by": "rules"
       }
     },
@@ -180,7 +180,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Lists the pieces of code in one file that can be changed on their own.",
+        "value": "Lists the pieces of code in one file that can be changed on their own ({file}).",
         "by": "rules"
       }
     },
@@ -210,7 +210,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Reads both bindings of one feature page: each part's library component, and its data, states and actions bound to the API.",
+        "value": "Reads both bindings of one feature page: each part's library component, and its data, states and actions bound to the API ({file}).",
         "by": "rules"
       }
     },
@@ -301,7 +301,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Reads one component for the Components editor: its Behaviour, Events and States, through Studio's Editor parts.",
+        "value": "Reads one component for the Components editor: its Behaviour, Events and States, through Studio's Editor parts ({file}).",
         "by": "rules"
       }
     },
@@ -362,7 +362,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Reads one feature's workflows and the library workflows to start from.",
+        "value": "Reads one feature's workflows and the library workflows to start from ({feature}).",
         "by": "rules"
       }
     },
@@ -514,7 +514,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Starts a new Line project in a folder of the workspace and opens it.",
+        "value": "Starts a new Line project in a folder of the workspace and opens it ({name}, {feature}).",
         "by": "rules"
       }
     },
@@ -545,7 +545,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Copies a project from GitHub into a new folder of the workspace and opens it.",
+        "value": "Copies a project from GitHub into a new folder of the workspace and opens it ({url}).",
         "by": "rules"
       }
     },
@@ -575,7 +575,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Opens a project of the workspace.",
+        "value": "Opens a project of the workspace ({dir}).",
         "by": "rules"
       }
     },
@@ -666,7 +666,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Forgets one step's memory for the open project.",
+        "value": "Forgets one step's memory for the open project ({step}).",
         "by": "rules"
       }
     },
@@ -877,7 +877,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "A person corrects one thing Line remembered.",
+        "value": "A person corrects one thing Line remembered ({id}, {chosen}).",
         "by": "rules"
       }
     },
@@ -908,7 +908,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "A person makes Line forget one record.",
+        "value": "A person makes Line forget one record ({id}).",
         "by": "rules"
       }
     },
@@ -970,7 +970,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "A person imports an exported memory file.",
+        "value": "A person imports an exported memory file ({v}, {kind}, {steps}).",
         "by": "rules"
       }
     },
@@ -1001,7 +1001,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "A person turns embeddings of slotted decision text on or off; code is never embedded.",
+        "value": "A person turns embeddings of slotted decision text on or off; code is never embedded ({on}).",
         "by": "rules"
       }
     },
@@ -1032,7 +1032,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Reads the Import process for one folder: its stage, what it waits for, its plan and record.",
+        "value": "Reads the Import process for one folder: its stage, what it waits for, its plan and record ({folder}).",
         "by": "rules"
       }
     },
@@ -1063,7 +1063,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Starts the Import process for one folder; it stops at the review.",
+        "value": "Starts the Import process for one folder; it stops at the review ({folder}).",
         "by": "rules"
       }
     },
@@ -1094,7 +1094,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Carries the Import process on until it needs someone.",
+        "value": "Carries the Import process on until it needs someone ({folder}).",
         "by": "rules"
       }
     },
@@ -1125,7 +1125,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Pauses the Import process.",
+        "value": "Pauses the Import process ({folder}).",
         "by": "rules"
       }
     },
@@ -1156,7 +1156,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Edits, skips, moves or approves a step of the import plan during the review.",
+        "value": "Edits, skips, moves or approves a step of the import plan during the review ({folder}, {action}).",
         "by": "rules"
       }
     },
@@ -1187,7 +1187,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Answers the one question the Import process asked.",
+        "value": "Answers the one question the Import process asked ({folder}, {questionId}, {optionId}).",
         "by": "rules"
       }
     },
@@ -1248,7 +1248,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Drafts every checked route for a request; writes nothing.",
+        "value": "Drafts every checked route for a request; writes nothing ({request}).",
         "by": "rules"
       }
     },
@@ -1279,7 +1279,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Adds a drafted route's steps to the plan, each waiting for a person's approval.",
+        "value": "Adds a drafted route's steps to the plan, each waiting for a person's approval ({request}, {routeId}).",
         "by": "rules"
       }
     },
@@ -1310,7 +1310,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Saves what an unknown word means in the project's domain map.",
+        "value": "Saves what an unknown word means in the project's domain map ({word}, {key}).",
         "by": "rules"
       }
     },
@@ -1433,7 +1433,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Drafts the routes for a request; writes nothing.",
+        "value": "Drafts the routes for a request; writes nothing ({request}).",
         "by": "rules"
       }
     },
@@ -1585,7 +1585,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Claude proposes one training case as a draft; it is kept only when Construct verifies every route.",
+        "value": "Claude proposes one training case as a draft; it is kept only when Construct verifies every route ({request}, {intent}, {routes}).",
         "by": "rules"
       }
     },
@@ -1616,7 +1616,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "The owner agrees or disagrees with a case.",
+        "value": "The owner agrees or disagrees with a case ({id}, {verdict}).",
         "by": "rules"
       }
     },
@@ -1739,14 +1739,14 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Sets the one folder Line may change; everything outside it stays read-only.",
+        "value": "Sets the one folder Line may change; everything outside it stays read-only ({folder}).",
         "by": "rules"
       }
     },
     "line.baseOn": {
       "kind": {
         "value": "component",
-        "by": "jev"
+        "by": "rules"
       },
       "icon": {
         "value": "block",
@@ -1767,10 +1767,10 @@
       },
       "focus": {
         "value": "self",
-        "by": "jev"
+        "by": "rules"
       },
       "caption": {
-        "value": "Creates a feature component based on one library item.",
+        "value": "Creates a feature component based on one library item ({libraryId}, {feature}, {name}).",
         "by": "rules"
       }
     },
@@ -1801,7 +1801,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Moves a feature item into the library and points its users at the library copy.",
+        "value": "Moves a feature item into the library and points its users at the library copy ({featureItemId}).",
         "by": "rules"
       }
     },
@@ -1832,7 +1832,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Sets one prop of one part of a feature page.",
+        "value": "Sets one prop of one part of a feature page ({file}, {nodeId}, {prop}, {kind}, {value}).",
         "by": "rules"
       }
     },
@@ -1863,7 +1863,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Applies one typed fix of a finding.",
+        "value": "Applies one typed fix of a finding ({findingKey}, {fixId}).",
         "by": "rules"
       }
     },
@@ -1894,7 +1894,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Replaces one piece of code in a file.",
+        "value": "Replaces one piece of code in a file ({file}, {fragmentId}, {code}, {contentHash}).",
         "by": "rules"
       }
     },
@@ -1925,7 +1925,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Points a feature item's base link at one library item.",
+        "value": "Points a feature item's base link at one library item ({file}, {libraryId}).",
         "by": "rules"
       }
     },
@@ -1956,7 +1956,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Moves a file and points every import of it at the new place.",
+        "value": "Moves a file and points every import of it at the new place ({from}, {to}).",
         "by": "rules"
       }
     },
@@ -1994,7 +1994,7 @@
     "line.amend": {
       "kind": {
         "value": "component",
-        "by": "jev"
+        "by": "rules"
       },
       "icon": {
         "value": "block",
@@ -2018,7 +2018,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Applies a change Construct refused together with its typed fix (or a chain of fixes), as one change.",
+        "value": "Applies a change Construct refused together with its typed fix (or a chain of fixes), as one change ({change}).",
         "by": "rules"
       }
     },
@@ -2049,7 +2049,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Import: marks a folder as a Line folder, with a library and its features.",
+        "value": "Import: marks a folder as a Line folder, with a library and its features ({folder}, {features}).",
         "by": "rules"
       }
     },
@@ -2080,7 +2080,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Import: moves one item of the import folder into its library.",
+        "value": "Import: moves one item of the import folder into its library ({folder}, {from}, {kind}, {name}).",
         "by": "rules"
       }
     },
@@ -2111,7 +2111,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Import: moves one item into a feature of the import folder, or adds it based on its library copy.",
+        "value": "Import: moves one item into a feature of the import folder, or adds it based on its library copy ({folder}, {mode}, {kind}, {name}, {feature}, {base}).",
         "by": "rules"
       }
     },
@@ -2142,7 +2142,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Import: applies one typed fix of a refused import step inside the import folder.",
+        "value": "Import: applies one typed fix of a refused import step inside the import folder ({folder}, {tool}, {args}).",
         "by": "rules"
       }
     },
@@ -2173,7 +2173,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Import: saves the import folder as it is, so the whole import can be undone if a later step is refused.",
+        "value": "Import: saves the import folder as it is, so the whole import can be undone if a later step is refused ({folder}).",
         "by": "rules"
       }
     },
@@ -2204,7 +2204,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Import: puts every file of the import folder back as it was before the import, in one transaction of the writer.",
+        "value": "Import: puts every file of the import folder back as it was before the import, in one transaction of the writer ({folder}).",
         "by": "rules"
       }
     },
@@ -2235,7 +2235,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Import: moves the data hooks and adapters of a file into a service of the import folder.",
+        "value": "Import: moves the data hooks and adapters of a file into a service of the import folder ({folder}, {from}, {names}, {name}).",
         "by": "rules"
       }
     },
@@ -2266,7 +2266,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Import: moves the pure rules and transforms of a file into a domain of the import folder.",
+        "value": "Import: moves the pure rules and transforms of a file into a domain of the import folder ({folder}, {from}, {names}, {name}).",
         "by": "rules"
       }
     },
@@ -2297,7 +2297,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Import: moves the orchestration of one user goal into a usecase of the import folder.",
+        "value": "Import: moves the orchestration of one user goal into a usecase of the import folder ({folder}, {from}, {names}, {name}).",
         "by": "rules"
       }
     },
@@ -2328,7 +2328,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Import: splits a page or component into its presentation and a usecase hook holding its logic.",
+        "value": "Import: splits a page or component into its presentation and a usecase hook holding its logic ({folder}, {from}, {component}, {name}).",
         "by": "rules"
       }
     },
@@ -2390,7 +2390,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Import: makes an xstate workflow of the URL state and navigation of a component.",
+        "value": "Import: makes an xstate workflow of the URL state and navigation of a component ({folder}, {from}, {component}, {name}).",
         "by": "rules"
       }
     },
@@ -2418,10 +2418,10 @@
       },
       "focus": {
         "value": "self",
-        "by": "jev"
+        "by": "rules"
       },
       "caption": {
-        "value": "Creates a feature workflow based on one library workflow.",
+        "value": "Creates a feature workflow based on one library workflow ({libraryId}, {feature}, {name}).",
         "by": "rules"
       }
     },
@@ -2452,7 +2452,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Binds one role of a feature workflow to a page of the feature.",
+        "value": "Binds one role of a feature workflow to a page of the feature ({file}, {role}, {page}).",
         "by": "rules"
       }
     },
@@ -2483,7 +2483,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Adds one When -> Do transition to a feature workflow.",
+        "value": "Adds one When -> Do transition to a feature workflow ({file}, {from}, {event}, {to}).",
         "by": "rules"
       }
     },
@@ -2514,7 +2514,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Removes one of a feature workflow's own transitions.",
+        "value": "Removes one of a feature workflow's own transitions ({file}, {from}, {event}).",
         "by": "rules"
       }
     },
@@ -2545,7 +2545,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Creates a new feature with its spec: one story and its acceptance points.",
+        "value": "Creates a new feature with its spec: one story and its acceptance points ({name}, {story}, {points}).",
         "by": "rules"
       }
     },
@@ -2576,7 +2576,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Serves one feature page at a route of the app.",
+        "value": "Serves one feature page at a route of the app ({route}, {page}).",
         "by": "rules"
       }
     },
@@ -2607,7 +2607,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Writes the whole code of one library or feature file.",
+        "value": "Writes the whole code of one library or feature file ({file}, {code}).",
         "by": "rules"
       }
     },
@@ -2638,7 +2638,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Binds one part of a feature page to a library component.",
+        "value": "Binds one part of a feature page to a library component ({file}, {partId}, {libraryId}).",
         "by": "rules"
       }
     },
@@ -2669,7 +2669,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Binds one interaction of a feature page to an API endpoint, a controller function or a marked stub.",
+        "value": "Binds one interaction of a feature page to an API endpoint, a controller function or a marked stub ({file}, {interactionId}, {to}).",
         "by": "rules"
       }
     },
@@ -2700,7 +2700,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Gives a feature component a behaviour (Behaviour tab).",
+        "value": "Gives a feature component a behaviour (Behaviour tab) ({file}, {primitive}).",
         "by": "rules"
       }
     },
@@ -2731,7 +2731,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Adds one When -> Do to a feature component (Events tab).",
+        "value": "Adds one When -> Do to a feature component (Events tab) ({file}, {source}, {action}).",
         "by": "rules"
       }
     },
@@ -2762,7 +2762,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Changes what one When -> Do of a feature component does (Events tab).",
+        "value": "Changes what one When -> Do of a feature component does (Events tab) ({file}, {id}, {action}).",
         "by": "rules"
       }
     },
@@ -2793,7 +2793,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Applies the fix for two When -> Do actions that undo each other (Events tab).",
+        "value": "Applies the fix for two When -> Do actions that undo each other (Events tab) ({file}, {label}, {remove}, {add}).",
         "by": "rules"
       }
     },
@@ -2824,7 +2824,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Sets the state one behaviour of a feature component is in (States tab).",
+        "value": "Sets the state one behaviour of a feature component is in (States tab) ({file}, {ref}, {state}).",
         "by": "rules"
       }
     },
@@ -2855,7 +2855,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Creates a new feature component based on one library component.",
+        "value": "Creates a new feature component based on one library component ({libraryId}, {feature}, {name}).",
         "by": "rules"
       }
     },
@@ -2886,7 +2886,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Fills one slot (header, nav or footer) of the app shell with library or feature components.",
+        "value": "Fills one slot (header, nav or footer) of the app shell with library or feature components ({slot}, {components}).",
         "by": "rules"
       }
     },
@@ -2917,7 +2917,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Imports an application layer through a usecase instead of directly.",
+        "value": "Imports an application layer through a usecase instead of directly ({file}, {specifier}).",
         "by": "rules"
       }
     },
@@ -2948,7 +2948,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Moves an inline conditional or loop of a page or component into a typed expression.",
+        "value": "Moves an inline conditional or loop of a page or component into a typed expression ({file}).",
         "by": "rules"
       }
     },
@@ -3010,7 +3010,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Records that a person chose to carry on after a step that needed them.",
+        "value": "Records that a person chose to carry on after a step that needed them ({stepId}).",
         "by": "rules"
       }
     },
@@ -3102,7 +3102,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Adds one step to the project's plan; a change waits there for approval.",
+        "value": "Adds one step to the project's plan; a change waits there for approval ({tool}).",
         "by": "rules"
       }
     },
@@ -3133,7 +3133,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "A person approves one step of the plan.",
+        "value": "A person approves one step of the plan ({stepId}).",
         "by": "rules"
       }
     },
@@ -3195,7 +3195,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "A person tries a step that needs them again, as a new step.",
+        "value": "A person tries a step that needs them again, as a new step ({stepId}).",
         "by": "rules"
       }
     },
@@ -3346,7 +3346,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Reads one plain-English requirement into a requirement card.",
+        "value": "Reads one plain-English requirement into a requirement card ({text}).",
         "by": "rules"
       }
     },
@@ -3376,7 +3376,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Places a requirement in the project's layers and previews its plan.",
+        "value": "Places a requirement in the project's layers and previews its plan ({text}).",
         "by": "rules"
       }
     },
@@ -3406,7 +3406,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Checks a plan as data against the flow registry.",
+        "value": "Checks a plan as data against the flow registry ({plan}).",
         "by": "rules"
       }
     },
@@ -3797,7 +3797,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Finds real components in the project by words of their file and name.",
+        "value": "Finds real components in the project by words of their file and name ({query}).",
         "by": "rules"
       }
     },
@@ -3827,7 +3827,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Reads a saved draft with its gaps, questions and answers.",
+        "value": "Reads a saved draft with its gaps, questions and answers ({draftId}).",
         "by": "rules"
       }
     },
@@ -3857,7 +3857,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Applies a draft's answers in a scratch copy and verifies every site.",
+        "value": "Applies a draft's answers in a scratch copy and verifies every site ({draftId}).",
         "by": "rules"
       }
     },
@@ -3887,7 +3887,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Reads a draft's reasoning ledger.",
+        "value": "Reads a draft's reasoning ledger ({draftId}).",
         "by": "rules"
       }
     },
@@ -3949,7 +3949,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Records one answer for one gap of a draft.",
+        "value": "Records one answer for one gap of a draft ({draftId}, {gapKey}).",
         "by": "rules"
       }
     },
@@ -3980,7 +3980,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Answers one of a draft's questions.",
+        "value": "Answers one of a draft's questions ({questionId}).",
         "by": "rules"
       }
     },
@@ -4011,7 +4011,7 @@
         "by": "rules"
       },
       "caption": {
-        "value": "Turns a draft's Auto setting on or off.",
+        "value": "Turns a draft's Auto setting on or off ({draftId}, {auto}).",
         "by": "rules"
       }
     }
