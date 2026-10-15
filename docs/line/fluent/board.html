@@ -135,6 +135,14 @@ details[open] > summary .chev { transform: rotate(90deg); }
   <section class="hero" aria-labelledby="doneH" style="border-left:3px solid var(--accent)">
     <h2 id="doneH">When it's 100% done</h2>
     <p style="margin:0;max-width:68ch">Line reads any JavaScript or TypeScript and shows it as plain English sentences, with no AI model needed. Every sentence is checked to do exactly what the code does. You see it in your editor, from one command, in the Cockpit beside your code, and any AI agent can use it too. A small model on your own machine learns to write the same English.</p>
+    <h2 style="font-size:1rem">How it's done</h2>
+    <ol style="margin:0;padding-left:1.2em;display:grid;gap:4px;max-width:68ch">
+      <li><b>Write the library.</b> Claude writes one English sentence and one small building block for each of the 2,378 JavaScript features.</li>
+      <li><b>Check every answer.</b> Automatic checks test the grammar, run the code against real JavaScript and compare types. Anything that fails is refused.</li>
+      <li><b>Translate without AI.</b> A fixed translator uses that checked library to turn your code into English.</li>
+      <li><b>Teach the small model.</b> It does the same job, the same checks grade it, and it trains on its mistakes.</li>
+      <li><b>Put it where you work.</b> The editor, the command line, the Cockpit and AI agents all use the same library.</li>
+    </ol>
   </section>
 
   <section aria-labelledby="capH" style="display:grid;gap:10px">
