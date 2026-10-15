@@ -33,7 +33,7 @@ test('registry: one registry lists the line tools and the construct commands, wi
   assert.deepEqual(kinds, {
     'line.baseOn': 'write', 'line.promote': 'write', 'line.setPageProp': 'write', 'line.fix': 'write', 'line.setFragment': 'write',
     'line.setBase': 'write', 'line.moveFile': 'write', 'line.createLayout': 'write', 'line.amend': 'write', 'line.import.mark': 'write', 'line.import.toLibrary': 'write', 'line.import.toFeature': 'write', 'line.import.fix': 'write', 'line.import.save': 'write', 'line.import.undo': 'write',
-    'line.import.extractService': 'write', 'line.import.extractDomain': 'write', 'line.import.extractUsecase': 'write', 'line.import.splitPage': 'write', 'line.import.extractWorkflow': 'write',
+    'line.import.extractService': 'write', 'line.import.extractDomain': 'write', 'line.import.extractUsecase': 'write', 'line.import.splitPage': 'write', 'line.import.extractWorkflow': 'write', 'line.import.writeAtoms': 'write',
     'line.leaveAsIs': 'write', 'line.createFeature': 'write', 'line.addRoute': 'write', 'line.setCode': 'write', 'line.setLayoutSlot': 'write', 'line.useViaUsecase': 'write', 'line.extractExpression': 'write', 'line.useAtom': 'write',
     'line.baseWorkflowOn': 'write', 'line.setWorkflowRole': 'write', 'line.addWorkflowTransition': 'write', 'line.removeWorkflowTransition': 'write', 'line.bindPart': 'write', 'line.bindInteraction': 'write', 'line.attachComponentPrimitive': 'write', 'line.addComponentEvent': 'write', 'line.changeComponentEvent': 'write', 'line.fixComponentEvent': 'write', 'line.setComponentState': 'write', 'line.newComponent': 'write', 'line.project': 'read', 'construct.validate': 'read',
   });

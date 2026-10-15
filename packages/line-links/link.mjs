@@ -6,8 +6,9 @@
 import path from 'node:path';
 import { importLinked, linkStatus, readLinks, LINKS_FILE } from './index.mjs';
 
-// cs1: Smith and atomic-codemod (the summarizer's sources) are linked the same way, each from its own repo and table.
-const EXTRA_TABLES = ['smith.json', 'atomic-codemod.json'].map((f) => path.join(path.dirname(LINKS_FILE), f));
+// cs1: Smith and atomic-codemod (the summarizer's sources) are linked the same way, each from its own repo and table;
+// so are Import v2's static breakdown into atoms (atomic-codemod's atoms-transform branch) and the atom runtime.
+const EXTRA_TABLES = ['smith.json', 'atomic-codemod.json', 'atomic-codemod-atoms.json', 'smith-functional.json'].map((f) => path.join(path.dirname(LINKS_FILE), f));
 
 const args = process.argv.slice(2);
 const status = linkStatus(args.includes('--pin') ? { env: { ...process.env, LINE_LINKS_ALLOW_DRIFT: '1' } } : {});

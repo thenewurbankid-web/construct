@@ -15,6 +15,8 @@
     "./testkit": "./testkit.mjs",
     "./check": "./check.mjs",
     "./metric": "./metric.mjs",
+    "./runtime": "./runtime.mjs",
+    "./functional": "./functional/index.ts",
     "./async-status": "./atoms/async-status/index.ts",
     "./client-pagination": "./atoms/client-pagination/index.ts",
     "./csv-export": "./atoms/csv-export/index.ts",

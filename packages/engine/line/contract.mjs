@@ -565,6 +565,7 @@ export const LINE_PLAN_TOOLS = Object.freeze([
   { name: 'line.import.extractUsecase', kind: 'write', request: '{folder, from, names, name, feature?}' },
   { name: 'line.import.splitPage', kind: 'write', request: '{folder, from, component, name, feature?}' },
   { name: 'line.import.extractWorkflow', kind: 'write', request: '{folder, from, component, name, feature?}' },
+  { name: 'line.import.writeAtoms', kind: 'write', request: '{folder, file, name} (one converted function of the breakdown, written behind its behaviour test)' },
   // Building an app inside Line (build.mjs).
   { name: 'line.createFeature', kind: 'write', request: 'CreateFeatureRequest' },
   { name: 'line.addRoute', kind: 'write', request: 'AddRouteRequest' },

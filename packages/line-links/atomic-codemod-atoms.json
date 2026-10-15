@@ -1,0 +1,17 @@
+{
+  "$comment": "Import v2's static breakdown: atomic-codemod's JS -> atoms transform and its checked converter (convert, then run old and new in QuickJS on generated inputs; a rewrite counts only when both behave the same), linked from its own git repo like atomic-codemod.json (no source copy). Branch atoms-transform lives beside the to-english pin, so it has its own table. The folder is $ATOMS_CODEMOD_SOURCE_DIR, else `default`. `commit` pins its HEAD; bump it by hand after checking the change (link.mjs --pin covers links.json only).",
+  "source": {
+    "repo": "atomic-codemod",
+    "branch": "atoms-transform",
+    "env": "ATOMS_CODEMOD_SOURCE_DIR",
+    "default": "~/Repositories/atomic-codemod-atoms",
+    "commit": "7d1e228d2e906a2bba6e7c29c154dd5ed651ed6a"
+  },
+  "links": {
+    "@smith/atoms-transform": { "path": ".", "entry": "atoms-transform.js", "what": "atomic-codemod's toAtoms: JS -> atom calls, untranslated parts listed" },
+    "@smith/atoms-checked": { "path": "bench/atoms", "entry": "checked.js", "what": "atomic-codemod's checked converter: convert, check in QuickJS, take back what changes behaviour" },
+    "@smith/atoms-runtime": { "path": "bench/atoms", "entry": "runtime.js", "what": "the atom runtime's committed snapshot, catalog and QuickJS bundle" },
+    "@smith/atoms-equivalence": { "path": "bench/atoms", "entry": "equivalence.js", "what": "the types a file declares, as value descriptors for generated inputs" },
+    "@smith/atoms-checker-types": { "path": "bench/atoms", "entry": "checker-types.js", "what": "parameter types from the TypeScript checker, for parameters typed only by their context" }
+  }
+}
