@@ -15,10 +15,11 @@
 // `(e) => recover`). Slots map to call arguments by name when every slot name is one of the
 // atom's parameters (catalog `check[0].params` order, or the compiled params), else by position.
 // A thunk slot takes a function argument as it is and wraps any other argument in `() =>`.
-// Missing trailing arguments drop the tail of the chain from the first segment that needs them
-// (`when(c, () => a)` -> `when(c).yields(() => a)`). An argument the sentence has no slot for, a
-// spread argument, or a non-trailing gap makes the result null, with the reason in explainFluent.
-// choose and match take a list / object of cases, so they are built case by case.
+// The grammar (line-fluent C5 nextWords, built from the catalog sentences) accepts a catalog
+// sentence's words exactly, so every slot needs its argument: a missing or `undefined` argument
+// (`when(c, () => a)`), an argument the sentence has no slot for, or a spread argument makes the
+// result null, with the reason in explainFluent. choose and match take a list / object of cases,
+// built case by case; they need the catalog's case count and a fallback.
 // No model involved: deterministic.
 const parser = require('@babel/parser');
 const traverse = require('@babel/traverse').default || require('@babel/traverse');
@@ -95,33 +96,46 @@ function parseCall(atomCall) {
 }
 
 const fail = (atom, reason) => ({ sentence: null, atom, reason });
+const missing = (arg) => !arg || (arg.type === 'Identifier' && arg.name === 'undefined');
 
 function thunkOf(arg, s) {
   return isFn(arg) ? s : `() => ${s}`;
 }
 
-function chooseSentence(args) {
+// The grammar takes the catalog sentence's word sequence only, so a call with another number of
+// cases, or no fallback, has no sentence (`want` = the catalog's case count).
+function caseCount(want, have, fallback) {
+  if (have !== want) return `the catalog sentence has ${want} case${want === 1 ? '' : 's'}, this call has ${have}`;
+  if (missing(fallback)) return 'the fallback is missing; the catalog sentence has no form without it';
+  return null;
+}
+
+function chooseSentence(args, want) {
   const [cases, fallback] = args;
   if (!cases || cases.type !== 'ArrayExpression' || args.length > 2) return { reason: 'choose cases are not a list literal' };
+  const off = caseCount(want, cases.elements.length, fallback);
+  if (off) return { reason: off };
   const parts = ['chooses()'];
   for (const c of cases.elements) {
     if (!c || c.type !== 'ArrayExpression' || c.elements.length !== 2 || c.elements.some((x) => !x || x.type === 'SpreadElement')) return { reason: 'choose case is not a [condition, value] pair' };
     parts.push(`when(${src(c.elements[0])})`, `yields(${thunkOf(c.elements[1], src(c.elements[1]))})`);
   }
-  if (fallback) parts.push(`otherwise(${thunkOf(fallback, src(fallback))})`);
+  parts.push(`otherwise(${thunkOf(fallback, src(fallback))})`);
   return { sentence: parts.join('.') };
 }
 
-function matchSentence(args) {
+function matchSentence(args, want) {
   const [value, cases, fallback] = args;
   if (!value || !cases || cases.type !== 'ObjectExpression' || args.length > 3) return { reason: 'match cases are not an object literal' };
+  const off = caseCount(want, cases.properties.length, fallback);
+  if (off) return { reason: off };
   const parts = [`matches()`, `value(${src(value)})`];
   for (const p of cases.properties) {
     if (p.type !== 'ObjectProperty' || p.computed) return { reason: 'match case is computed or spread' };
     const key = p.key.type === 'Identifier' ? JSON.stringify(p.key.name) : src(p.key);
     parts.push(`on(${key})`, `yields(${thunkOf(p.value, src(p.value))})`);
   }
-  if (fallback) parts.push(`otherwise(${thunkOf(fallback, src(fallback))})`);
+  parts.push(`otherwise(${thunkOf(fallback, src(fallback))})`);
   return { sentence: parts.join('.') };
 }
 
@@ -136,7 +150,10 @@ function explainFluent(atomCall, catalog) {
   const args = call.arguments;
   if (args.some((a) => a.type === 'SpreadElement' || a.type === 'ArgumentPlaceholder')) return fail(atom, 'spread argument');
   if (atom === 'choose' || atom === 'match') {
-    const r = atom === 'choose' ? chooseSentence(args) : matchSentence(args);
+    const segs = templateOf(info.fluent);
+    if (!segs) return fail(atom, 'fluent is not a call chain');
+    const want = segs.filter((sg) => sg.name === (atom === 'choose' ? 'when' : 'on')).length;
+    const r = atom === 'choose' ? chooseSentence(args, want) : matchSentence(args, want);
     return r.sentence ? { sentence: r.sentence, atom, reason: null } : fail(atom, r.reason);
   }
   const tpl = templateOf(info.fluent);
@@ -147,44 +164,23 @@ function explainFluent(atomCall, catalog) {
   const covered = new Set(slots.map(argIndex));
   for (let i = 0; i < args.length; i++) {
     const a = args[i];
-    const isUndef = a.type === 'Identifier' && a.name === 'undefined';
-    if (!covered.has(i) && !isUndef) return fail(atom, `argument ${i + 1} has no place in the sentence`);
+    if (!covered.has(i) && !missing(a)) return fail(atom, `argument ${i + 1} has no place in the sentence`);
   }
-  // Groups: the segments up to and including each slot's segment (`.and().recovers().with(recover)`).
-  // A group whose argument is missing (or `undefined`) is left out; the words after the last
-  // slot stay only when that slot's group is kept. A group with two slots needs both or neither.
-  const groups = [];
-  let cur = [];
-  for (const seg of tpl) {
-    cur.push(seg);
-    if (seg.args.some((a) => a.slot)) { groups.push(cur); cur = []; }
-  }
-  const tail = cur;
-  const missing = (arg) => !arg || (arg.type === 'Identifier' && arg.name === 'undefined');
+  // Every slot needs its argument: the grammar (C5, built from the catalog sentences) has no
+  // shorter form, so a sentence that drops a step (`when(c).yields(() => a)`) would not pass it.
   const out = [];
   let slotNo = 0;
-  let lastKept = true;
-  for (let gi = 0; gi < groups.length; gi++) {
-    const rendered = [];
-    let have = 0, lack = 0;
-    for (const seg of groups[gi]) {
-      const parts = [];
-      for (const a of seg.args) {
-        if (!a.slot) { parts.push(a.text); continue; }
-        const arg = args[argIndex(a, slotNo++)];
-        if (missing(arg)) { lack++; continue; }
-        have++;
-        parts.push(a.thunk ? thunkOf(arg, src(arg)) : src(arg));
-      }
-      rendered.push(`${seg.name}(${parts.join(', ')})`);
+  for (const seg of tpl) {
+    const parts = [];
+    for (const a of seg.args) {
+      if (!a.slot) { parts.push(a.text); continue; }
+      const i = argIndex(a, slotNo++);
+      const arg = args[i];
+      if (missing(arg)) return fail(atom, `argument ${i + 1} (${a.slot}) is missing; the catalog sentence has no form without it`);
+      parts.push(a.thunk ? thunkOf(arg, src(arg)) : src(arg));
     }
-    if (have && lack) return fail(atom, 'a step of the sentence is only partly given');
-    if (lack && gi === 0) return fail(atom, 'first argument is missing');
-    lastKept = !lack;
-    if (!lack) out.push(...rendered);
+    out.push(`${seg.name}(${parts.join(', ')})`);
   }
-  if (lastKept) for (const seg of tail) out.push(`${seg.name}(${seg.args.map((a) => a.text).join(', ')})`);
-  if (out.length === 0) return fail(atom, 'first argument is missing');
   return { sentence: out.join('.'), atom, reason: null };
 }
 
