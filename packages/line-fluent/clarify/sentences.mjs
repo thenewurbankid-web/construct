@@ -210,31 +210,34 @@ async function outcome(js, names, values) {
  * @param {string} code The original JS expression, over the same input names.
  * @returns {Promise<object>} checkSentence's verdict, refused with the first case where the two differ.
  */
-export async function checkAgainstCode(sentence, code) {
+export async function checkAgainstCode(sentence, code, io = null) {
   const verdict = await checkSentence(sentence);
   if (!verdict.ok) return verdict;
   const r = resolveSentence(sentence);
-  const names = r.inputs.map((x) => x.name);
-  const cases = [0, 1, 2, 3].map((k) => readableCase(r.inputs, k)).map((c) => names.map((n) => c[n]));
-  for (const set of r.atom.check ?? []) {
-    try {
-      const gens = fc.tuple(...set.params.map(([, g]) => arb(g)));
-      const idx = r.args.map((a, i) => (isName(a) ? i : -1)).filter((i) => i >= 0);
-      for (const values of fc.sample(gens, { numRuns: SAMPLES, seed: 11 })) cases.push(idx.map((i) => values[i]));
-    } catch {
-      // a generator this build does not have: readable cases only
-    }
+  // Every input the code uses is bound, with the kinds the person confirmed (io.mjs); without them, the sentence's.
+  const inputs = io?.inputs?.length ? io.inputs : r.inputs.map((x) => ({ ...x, value: undefined }));
+  const names = inputs.map((x) => x.name);
+  const cases = [names.map((n, i) => inputs[i].value ?? readableCase(r.inputs.filter((x) => x.name === n), 0)[n])];
+  try {
+    const gens = fc.tuple(...inputs.map((x) => arb(x.gen ?? 'prim')));
+    for (const values of fc.sample(gens, { numRuns: SAMPLES, seed: 11 })) cases.push(values);
+  } catch {
+    // a generator this build does not have: the readable case only
   }
+  let compared = 0;
   for (const values of cases) {
-    const mine = await outcome(verdict.js, names, values);
     const theirs = await outcome(code, names, values);
+    if (theirs.gives.startsWith('an error')) continue; // a case the code itself cannot run proves nothing
+    compared++;
+    const mine = await outcome(verdict.js, names, values);
     if (mine.gives !== theirs.gives || mine.after !== theirs.after) {
       const given = names.map((n, i) => `${n} = ${show(values[i])}`).join(', ');
       const what = mine.gives !== theirs.gives ? `the code gives ${theirs.gives} but this gives ${mine.gives}` : `the code leaves the inputs as ${theirs.after} but this leaves them as ${mine.after}`;
       return { ...verdict, ok: false, reason: `it does not do what the code does: with ${given}, ${what}` };
     }
   }
-  return { ...verdict, code };
+  if (!compared) return { ...verdict, ok: false, reason: 'there was no case the code itself runs on, so it could not be compared' };
+  return { ...verdict, code, compared };
 }
 
 /** Step 5: the drafted JS run on the person's example; it must give exactly their output. */

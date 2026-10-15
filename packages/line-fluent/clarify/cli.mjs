@@ -15,6 +15,7 @@ import { nextQuestion, applyAnswer } from './narrow.mjs';
 import { checkAgainstCode, withVerb, checkSentence, dedupeOptions, suggestSentences, runOption, givenText, readableCase, show, DRAFT_SYSTEM } from './sentences.mjs';
 import { claudeArgs, runClaude } from '../pilot/runner/claude-model.mjs';
 import { runAnswer } from '../gate/equivalence/equivalence.mjs';
+import { guessIO, ioQuestions } from './io.mjs';
 import { checkGrammar } from '../gate/grammar/grammar.mjs';
 
 const how = { run: (o, k) => runOption(o, k, CURRENT.all), given: (os, k) => givenText(CURRENT.all, k) };
@@ -29,15 +30,45 @@ async function start(question, { model = 'haiku', n = 10 }) {
   return ask(state);
 }
 
-/** Code mode: the code fixes the behaviour, so only sentences that do exactly what it does are kept. */
-async function startFromCode(code, { model = 'haiku', n = 10 }) {
-  const request = `Say in Atomic English what this JavaScript does, using its input names: ${code}`;
+/**
+ * Code mode, first the input and output: guessed from the code alone (io.mjs) and confirmed with the person before
+ * any sentence is suggested.
+ */
+async function startFromCode(code) {
+  const guess = await guessIO(code);
+  const q = ioQuestions(guess);
+  const state = { source: 'code', code, guess, stage: 'inputs', io: {}, pending: { kind: 'io-inputs', text: q.inputs } };
+  return { state, say: q.inputs };
+}
+
+/** The person's answers to the two input/output questions; after the second, the sentences are suggested. */
+async function answerIO(state, reply, opts) {
+  const text = String(reply).trim();
+  if (state.stage === 'inputs') {
+    const io = { ...state.io, inputs: /^(y|yes|right|correct)\b/i.test(text) ? state.guess.inputs.map((x) => `${x.name}: ${x.kind}`).join('; ') : text };
+    const q = ioQuestions(state.guess);
+    return { state: { ...state, io, stage: 'output', pending: { kind: 'io-output', text: q.output } }, say: q.output };
+  }
+  if (/^(y|yes|ok)\.?$/i.test(text)) return { state, say: 'Please say in a few words what it is for, so the sentence says the same.' };
+  return suggestForCode({ ...state, io: { ...state.io, purpose: text } }, opts);
+}
+
+/** The sentences, from a prompt built from the code, its confirmed input and output, and the person's words. */
+async function suggestForCode(state, { model = 'haiku', n = 10 }) {
+  const g = state.guess;
+  const request = [
+    `Say in Atomic English exactly what this JavaScript does: ${state.code}`,
+    `What goes in (confirmed): ${state.io.inputs}.`,
+    g.fixed.length ? `Fixed parts of the code, which are not inputs: write each one as written, as an argument: ${g.fixed.join(' ; ')}` : '',
+    g.output !== null ? `${g.given}, the code gives ${g.output}${g.changes.length ? ` and changes ${g.changes.join(' and ')} in place` : ''}.` : '',
+    `What it is for, in the person's words: ${state.io.purpose}`,
+  ].filter(Boolean).join('\n');
   const suggestions = await suggestSentences({ model })(request, n, {});
   const checked = [];
-  for (const answer of [...new Set(suggestions)].slice(0, n)) checked.push({ answer, ...(await checkAgainstCode(answer, code)) });
+  for (const answer of [...new Set(suggestions)].slice(0, n)) checked.push({ answer, ...(await checkAgainstCode(answer, state.code, state.guess)) });
   const options = dedupeOptions(checked.filter((c) => c.ok));
-  const state = { source: 'code', code, question: request, options, all: options, facts: [], ruledOut: [], refused: checked.filter((c) => !c.ok), pending: null };
-  return ask(state);
+  const next = { ...state, stage: 'words', question: request, options, all: options, facts: [], ruledOut: [], refused: checked.filter((c) => !c.ok), pending: null };
+  return ask(next);
 }
 
 async function ask(state) {
@@ -78,10 +109,16 @@ export async function main(argv = process.argv.slice(2), { log = console.log } =
   if (cmd === 'start') {
     result = await start(text, { model: o.model ?? 'haiku', n: Number(o.n ?? 10) });
   } else if (cmd === 'code') {
-    result = await startFromCode(text, { model: o.model ?? 'haiku', n: Number(o.n ?? 10) });
+    result = await startFromCode(text);
   } else {
     const state = JSON.parse(readFileSync(o.state, 'utf8'));
-    CURRENT.all = state.all;
+    CURRENT.all = state.all ?? [];
+    if (state.stage === 'inputs' || state.stage === 'output') {
+      result = await answerIO(state, text, { model: o.model ?? 'haiku', n: Number(o.n ?? 10) });
+      writeFileSync(o.state, `${JSON.stringify(result.state, null, 2)}\n`);
+      log(result.say);
+      return result;
+    }
     const applied = applyAnswer(state, state.pending, text);
     if (applied.again) result = { state, say: applied.again };
     else if (applied.done?.status === 'chosen') {

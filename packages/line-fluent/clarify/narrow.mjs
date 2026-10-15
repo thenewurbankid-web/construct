@@ -44,16 +44,22 @@ export async function nextQuestion(state, { run, given, cases = 4 }) {
     const lines = options.map((o, i) => `  ${i + 1}. ${o.plain}`).join('\n');
     if (state.source === 'code') {
       // The code fixes what it does; only the words are open. The question draws out the person's own word for it.
-      const o = options[0];
+      const o = { example: codeExample(state) };
       return { kind: 'wording', text: `This part of the code ${o.example ? `does this: ${o.example}` : 'does one thing'}. Which of these says it best?\n${lines}\nOr tell me your own word for what it does.` };
     }
     return { kind: 'wording', text: `These all do the same thing. Which way of saying it reads best?\n${lines}` };
   }
   const o = options[0];
   if (state.source === 'code' && !o.created) {
-    return { kind: 'wording', text: `This part of the code ${o.example ? `does this: ${o.example}` : 'does one thing'}. Does this say it well?\n  1. ${o.plain}\nAnswer 1, or tell me your own word for what it does.` };
+    return { kind: 'wording', text: `This part of the code ${codeExample(state) ? `does this: ${codeExample(state)}` : 'does one thing'}. Does this say it well?\n  1. ${o.plain}\nAnswer 1, or tell me your own word for what it does.` };
   }
   return { kind: 'confirm', text: `So: ${o.plain}.${o.example ? ` For example, ${o.example}.` : ''} Is that what you want? (yes / no)` };
+}
+
+/** The code's own example from its input/output guess: "with items = [...] and limit = 3, it gives [\"bag\"]". */
+function codeExample(state) {
+  const g = state.guess;
+  return g && g.output !== null ? `${g.given.replace(/^With/, 'with')}, it gives ${g.output}` : null;
 }
 
 function createText(state) {
