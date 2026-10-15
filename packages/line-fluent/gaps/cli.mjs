@@ -18,6 +18,7 @@ import { parseArgs } from 'node:util';
 import { fillGap, answerFor, readBack, readBackMatches } from './fill.mjs';
 import { withVerb } from '../clarify/sentences.mjs';
 import { parse } from '../../line-smith/scripts/lib-sentence.mjs';
+import { claudeArgs, runClaude } from '../pilot/runner/claude-model.mjs';
 import { checkGrammar } from '../gate/grammar/grammar.mjs';
 import { gateFor } from '../pilot/library/run.mjs';
 import { makeTypesCheck } from '../gate/types/types.mjs';
@@ -57,8 +58,53 @@ function plainStep(state) {
 }
 
 export function question(state) {
-  const options = byVerb(state).map((c, i) => `  ${i + 1}. ${c.verb}`).join('\n');
-  return `${plainStep(state)}\nWhich word describes what the step does?\n${options}\nOr tell me your own word.`;
+  const options = byVerb(state).map((c, i) => `  ${i + 1}. ${state.plain?.[c.verb] ?? c.verb}`).join('\n');
+  return `${plainStep(state)}\nWhich of these says best what it does?\n${options}\nOr say it in your own words.`;
+}
+
+// ---- the model as translator, both ways; our code checks every result ----------------
+
+async function claudeJson(system, user, model) {
+  const { stdout } = await runClaude(claudeArgs({ model, system }), user, {});
+  const out = JSON.parse(stdout);
+  if (out.is_error) throw new Error(String(out.result).slice(0, 200));
+  const t = String(out.result);
+  return JSON.parse(t.slice(t.indexOf('{'), t.lastIndexOf('}') + 1));
+}
+
+/**
+ * Each option as one plain-English sentence with the example's real values ("It stores 30 under "bag" in the map.").
+ * A sentence that lost its option's verb is replaced by the bare verb: the verb is the only thing the options differ in.
+ */
+export async function plainOptions(state, { model = 'haiku' } = {}) {
+  const options = byVerb(state);
+  const system = 'You turn short technical step descriptions into one plain, everyday English sentence each, for a person who does not read code. Use the example values, not variable names. Keep each step\'s own verb exactly (its base form or -s form). Reply with one JSON object only: {"sentences": ["...", ...]} in the same order.';
+  const user = [`Example: ${state.example.given}; afterwards ${state.example.changed.join('; ') || 'nothing changes'}.`, 'Steps:', ...options.map((o, i) => `${i + 1}. ${o.sentence}`)].join('\n');
+  const said = (await claudeJson(system, user, model)).sentences ?? [];
+  const plain = {};
+  options.forEach((o, i) => {
+    const base = o.verb.replace(/(ies|es|s)$/, '');
+    const text = String(said[i] ?? '').trim();
+    plain[o.verb] = text && text.toLowerCase().includes(base.slice(0, Math.max(3, base.length - 1))) ? text : o.verb;
+  });
+  return plain;
+}
+
+/**
+ * The person's reply, however it is put ("the second", "I'd say it saves it", "put"), as an option number or their
+ * own word. The model only reads the reply; the number must exist and a new word is still checked by the grammar
+ * and a read-back.
+ */
+export async function readReply(reply, state, { model = 'haiku' } = {}) {
+  const text = String(reply).trim();
+  if (/^\d+$/.test(text)) return { choice: Number(text), word: null };
+  const options = byVerb(state);
+  const system = 'A person was shown numbered options and answered in their own words. Work out what they chose. Reply with one JSON object only: {"choice": <option number or null>, "word": "<the one verb they want instead, base form, or null>"}. Use choice when they picked or described one of the options; use word only when they gave a different word of their own.';
+  const user = [...options.map((o, i) => `${i + 1}. ${state.plain?.[o.verb] ?? o.sentence}`), `Their answer: ${text}`].join('\n');
+  const r = await claudeJson(system, user, model);
+  const choice = Number.isInteger(r.choice) && r.choice >= 1 && r.choice <= options.length ? r.choice : null;
+  const word = !choice && typeof r.word === 'string' && /^[a-z]+$/i.test(r.word.trim()) ? r.word.trim().toLowerCase() : null;
+  return { choice, word };
 }
 
 async function scan(file, { model }) {
@@ -69,15 +115,17 @@ async function scan(file, { model }) {
   const gate = gateFor(ref.find((e) => e.key === gap.entry), { typesCheck: makeTypesCheck(ref) });
   const filled = await fillGap(gap, { gate, model });
   const state = { file, gap, atom: filled.atom, example: filled.example, candidates: filled.candidates, more: found.length - 1 };
-  if (!filled.candidates.some((c) => c.ok)) return { state, say: `No sentence held up for \`${gap.code}\`. Tell me a word for what it does.` };
+  if (!filled.candidates.some((c) => c.ok)) return { state, say: `${plainStep(state)}\nNothing we tried describes it well. What would you call what it does?` };
+  state.plain = await plainOptions(state, { model });
   return { state, say: question(state) };
 }
 
 async function choose(state, reply, { model }) {
   const kept = byVerb(state);
-  const text = String(reply).trim();
-  let pick = /^\d+$/.test(text) ? kept[Number(text) - 1] : null;
-  if (!pick && /^[a-z]+$/i.test(text) && kept.length) {
+  const { choice, word } = await readReply(reply, state, { model });
+  const text = word ?? '';
+  let pick = choice ? kept[choice - 1] : null;
+  if (!pick && text && kept.length) {
     // The person's own word: the first kept sentence with their verb, checked by the grammar and a read-back.
     const sentence = withVerb(kept[0].sentence, text);
     const grammar = sentence ? checkGrammar({ sentence }) : null;
@@ -86,7 +134,7 @@ async function choose(state, reply, { model }) {
     if (!judged.ok) return { state, say: `With “${text}”, ${judged.why}. Pick a number, or another word.` };
     pick = { sentence, answer: answerFor(state.atom, sentence), ok: true };
   }
-  if (!pick) return { state, say: 'Answer with a number from the list, or one word of your own.' };
+  if (!pick) return { state, say: 'I could not tell which one you mean. Which of the sentences above is closest, or what would you call it?' };
 
   // The pick becomes a pending proposal, approved into the registry; gen-atoms regenerates the catalog.
   const entry = reference().find((e) => e.key === state.gap.entry);
