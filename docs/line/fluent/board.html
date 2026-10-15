@@ -58,6 +58,7 @@ header { display: grid; gap: 6px; }
 .s-review { background: var(--warn-soft); color: var(--warn); }
 .s-done { background: var(--ok-soft); color: var(--ok); }
 .s-blocked { background: var(--bad-soft); color: var(--bad); }
+.s-skipped { background: transparent; color: var(--muted); border: 1px dashed var(--line); }
 
 .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
 .filters { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -355,9 +356,11 @@ function nodeHtml(t, lvl) {
 }
 
 // Capabilities by release: each line is one thing the product can do, in plain words, with its status.
-const CAP_STATUS = { done: 'Done', running: 'In progress', review: 'In review', blocked: 'Blocked', todo: 'Not started' };
+const CAP_STATUS = { done: 'Done', running: 'In progress', review: 'In review', blocked: 'Blocked', todo: 'Not started', skipped: 'Skipped' };
 function rollStatus(t) {
-  const lf = leaves(t.id);
+  if (t.skipped) return 'skipped';
+  const lf = leaves(t.id).filter((x) => !x.skipped);
+  if (!lf.length) return 'skipped';
   if (lf.every((x) => x.status === 'done')) return 'done';
   if (lf.some((x) => x.status === 'blocked')) return 'blocked';
   if (lf.some((x) => x.status === 'running' || x.status === 'review' || x.status === 'done')) return 'running';
@@ -402,19 +405,23 @@ function render() {
   } else tree.innerHTML = roots.map((r) => nodeHtml(r, 0)).join('') || '<div class="empty">Nothing matches this filter.</div>';
 
   // Overall KPIs over leaf items
-  const lf = roots.flatMap((r) => leaves(r.id));
+  // Skipped items (owner dropped them) count nowhere: not in totals, blocked or closest-to-done.
+  const lf = roots.flatMap((r) => leaves(r.id)).filter((t) => !t.skipped);
   const done = lf.filter((t) => t.status === 'done').length;
   const running = lf.filter((t) => t.status === 'running').length;
   const blocked = lf.filter((t) => t.status === 'blocked').length;
   const qwDone = lf.filter((t) => t.quickWin && t.status === 'done').length;
   const qwAll = lf.filter((t) => t.quickWin).length;
-  const tot = roots.reduce((acc, r) => { const l = rollLines(r); return { a: acc.a + l.a, r: acc.r + l.r }; }, { a: 0, r: 0 });
-  const versions = new Set(tasks.filter((t) => t.version && t.status === 'done').map((t) => t.version)).size;
+  // Line totals come from git (release.lines), because per-task counts were never filled in for most merges.
+  const gl = release && release.lines;
+  const tot = gl ? { a: Number(gl.added || 0), r: Number(gl.removed || 0) } : roots.reduce((acc, r) => { const l = rollLines(r); return { a: acc.a + l.a, r: acc.r + l.r }; }, { a: 0, r: 0 });
+  // A version counts as shipped only once it is tagged in git (release.tagged).
+  const versions = release && Array.isArray(release.tagged) ? release.tagged.length : 0;
   const pct = roots.length ? Math.round(roots.reduce((a, r) => a + rollProgress(r), 0) / roots.length) : 0;
   const k = document.getElementById('kpis');
   if (!k.children.length) k.innerHTML = [
     ['k-done', '', `items done`], ['k-run', '', 'items running'], ['k-block', '', 'blocked'], ['k-qw', '', 'quick wins shipped'],
-    ['k-add', 'plus', 'lines added'], ['k-rem', 'minus', 'lines removed'], ['k-ver', '', 'versions shipped'], ['k-ag', '', 'agents working'],
+    ['k-add', 'plus', 'lines added (git)'], ['k-rem', 'minus', 'lines removed (git)'], ['k-ver', '', 'versions tagged'], ['k-ag', '', 'agents working'],
   ].map(([id, cls, l]) => `<div class="kpi"><span class="n ${cls}"><span id="${id}">0</span><span id="${id}-of" class="muted" style="font-size:.6em"></span></span><span class="l">${l}</span></div>`).join('');
   tween(document.getElementById('k-done'), done); document.getElementById('k-done-of').textContent = ` / ${lf.length}`;
   tween(document.getElementById('k-run'), running);
@@ -424,12 +431,12 @@ function render() {
   tween(document.getElementById('k-rem'), tot.r);
   tween(document.getElementById('k-ver'), versions);
   tween(document.getElementById('k-ag'), agents.filter((a) => a.status === 'running').length); document.getElementById('k-ag-of').textContent = ` / ${agents.length}`;
-  // Overall countdown: the latest ETA among unfinished items; elapsed since the first release started.
-  const openEtas = tasks.filter((t) => t.status !== 'done' && t.etaAt).map((t) => Date.parse(t.etaAt));
+  // Overall countdown: the latest ETA among items actually running (old guesses on unstarted items are ignored).
+  const openEtas = tasks.filter((t) => t.status === 'running' && !t.skipped && t.etaAt).map((t) => Date.parse(t.etaAt));
   const ac = document.getElementById('allCount');
   ac.dataset.eta = openEtas.length ? new Date(Math.max(...openEtas)).toISOString() : '';
   ac.dataset.status = openEtas.length ? 'running' : 'done';
-  document.getElementById('allEtaText').textContent = openEtas.length ? 'plan ETA ' + new Date(Math.max(...openEtas)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'plan done';
+  document.getElementById('allEtaText').textContent = openEtas.length ? 'ETA of running work ' + new Date(Math.max(...openEtas)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : (done === lf.length ? 'plan done' : 'no ETA set');
   if (release && release.startedAt) document.getElementById('elapsed').dataset.since = release.startedAt;
   document.getElementById('allPct').textContent = pct + '%';
   document.querySelector('#allBar > i').style.width = pct + '%';
@@ -447,7 +454,9 @@ function render() {
     const rb = document.getElementById('relBar'); rb.className = 'bar' + (rp >= 100 ? ' done' : ''); rb.firstElementChild.style.width = rp + '%';
     document.getElementById('relItems').innerHTML = its.map((t) => `<span class="pill s-${esc(t.status || 'todo')}">${esc(t.id)} ${esc(t.title)}</span>`).join('');
     const rc = document.getElementById('relCount'); rc.dataset.eta = release.etaAt || ''; rc.dataset.status = rp >= 100 ? 'done' : 'running';
-    document.getElementById('relEtaText').textContent = release.etaAt ? 'ETA ' + new Date(release.etaAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+    const tagged = Array.isArray(release.tagged) && release.tagged.includes(release.version);
+    document.getElementById('relEtaText').textContent = rp >= 100 ? (tagged ? 'tagged' : 'all merged · not tagged yet') : (release.etaAt ? 'ETA ' + new Date(release.etaAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '');
+    if (rp >= 100) rc.dataset.status = 'done';
   }
   const run = agents.filter((a) => a.status === 'running').length;
   document.getElementById('agCount').textContent = `${run} working · ${agents.length} total`;
@@ -464,7 +473,7 @@ function render() {
     const el = document.querySelector(`details[data-id="${CSS.escape(b.dataset.open)}"]`); if (el) { el.open = true; el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' }); }
   }));
   // Closest-to-done hero: the unfinished leaf with the most progress, then the nearest ETA.
-  const open = lf.filter((t) => t.status !== 'done' && t.status !== 'todo');
+  const open = lf.filter((t) => t.status === 'running' || t.status === 'review');
   open.sort((a, b) => (Number(b.progress || 0) - Number(a.progress || 0)) || (Date.parse(a.etaAt || '9999') - Date.parse(b.etaAt || '9999')));
   const near = open[0];
   const nb = document.getElementById('nearBody'), np = document.getElementById('nearPill');
