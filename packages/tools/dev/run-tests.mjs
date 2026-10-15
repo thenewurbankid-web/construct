@@ -34,8 +34,18 @@ const PATTERNS = [
 export function testFiles(root = ROOT) {
   // Like node's glob: no dot folders or dot files. Unlike it, no `fixtures` folder: `test/**/*.ts` would run a test
   // fixture's .ts source as a test file (two fixtures that import what is not there failed the suite).
-  return walk(root).map((f) => rel(root, f)).filter((f) => !f.split('/').some((s) => s.startsWith('.') || s === 'fixtures') && PATTERNS.some((p) => p.test(f))).sort();
+  // A SUBSUITES folder runs its own `npm test` instead (below), so none of its files are globbed.
+  return walk(root).map((f) => rel(root, f))
+    .filter((f) => !SUBSUITES.some((d) => f.startsWith(`${d}/`)))
+    .filter((f) => !f.split('/').some((s) => s.startsWith('.') || s === 'fixtures') && PATTERNS.some((p) => p.test(f))).sort();
 }
+
+/**
+ * Workspace packages whose tests need a build step first, so `npm test` runs each one's own `npm test` after the
+ * globbed files, one at a time. Smith (packages/line-smith) compiles with TypeScript 7 before its tests import dist/,
+ * and its test/types/*.ts are tsc fixtures, not test files.
+ */
+export const SUBSUITES = ['packages/line-smith'];
 
 /**
  * Every folder whose own dependencies the suite imports (#853). A fresh checkout without `npm ci` in each one does
@@ -77,5 +87,11 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     process.exit(1);
   }
   const r = spawnSync(process.execPath, ['--test', ...args, ...files], { cwd: ROOT, stdio: 'inherit' });
-  process.exit(r.status ?? 1);
+  let status = r.status ?? 1;
+  for (const dir of SUBSUITES) {
+    process.stdout.write(`\n# npm test: ${dir} (its own suite)\n`);
+    const s = spawnSync('npm', ['test'], { cwd: path.join(ROOT, dir), stdio: 'inherit' });
+    if ((s.status ?? 1) !== 0) status = status || (s.status ?? 1);
+  }
+  process.exit(status);
 }

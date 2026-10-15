@@ -1,10 +1,11 @@
 {
-  "name": "atomic-codemod",
+  "name": "@line/codemod",
+  "private": true,
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
   "bin": {
-    "atomic-codemod": "transform.js"
+    "line-codemod": "transform.js"
   },
   "scripts": {
     "codemod:check": "node transform.js \"src/**/*.{js,ts}\" --check",

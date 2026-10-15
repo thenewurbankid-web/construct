@@ -1,5 +1,6 @@
 {
-  "name": "smith",
+  "name": "@line/smith",
+  "private": true,
   "version": "0.1.0",
   "description": "A small framework for the atomic pattern: shared connector atoms (Chain, Organism) and single-source comparison logic (Comparable), for new projects/modules to build on from day one.",
   "main": "dist/index.js",
