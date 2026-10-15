@@ -1,0 +1,14 @@
+{
+  "benefit": "Baseline student score.",
+  "contract": "qwen2.5-coder 1.5b through the prefilled one-unit call; C2 out; C3 gate; C4 vs gold.",
+  "etaAt": "2026-10-15T04:00:00.000Z",
+  "linesAdded": 0,
+  "linesRemoved": 0,
+  "order": 2,
+  "parent": "E3",
+  "progress": 0,
+  "quickWin": false,
+  "status": "todo",
+  "title": "Student runner on the pilot section",
+  "version": null
+}

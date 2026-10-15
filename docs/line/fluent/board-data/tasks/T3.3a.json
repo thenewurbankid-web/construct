@@ -1,0 +1,24 @@
+{
+  "benefit": "Training data is held out by whole sections.",
+  "branch": "line/fluent/t3-3a-records",
+  "contract": "packages/line-fluent/records/: record(), appendRecords JSONL, splitBySection deterministic by section.",
+  "etaAt": "2026-10-15T00:34:08.098Z",
+  "linesAdded": 0,
+  "linesRemoved": 0,
+  "note": "Wave 2; contract in FLUENT-PLAN \"Wave 2 leaves\".",
+  "order": 1,
+  "parent": "T3.3",
+  "progress": 5,
+  "quickWin": true,
+  "risks": [
+    {
+      "mitigation": "No section in both sets, asserted",
+      "risk": "Leakage across sections"
+    }
+  ],
+  "session": "t3-3a-records",
+  "status": "running",
+  "thoughts": "Pure.",
+  "title": "Records writer + held-out split",
+  "version": null
+}

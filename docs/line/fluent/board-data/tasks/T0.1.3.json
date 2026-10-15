@@ -1,0 +1,33 @@
+{
+  "etaAt": "2026-10-15T00:16:00.000Z",
+  "linesAdded": 0,
+  "linesRemoved": 0,
+  "order": 3,
+  "parent": "T0.1",
+  "progress": 100,
+  "quickWin": true,
+  "report": {
+    "artifacts": [
+      {
+        "label": "commit",
+        "ref": "cf76e053"
+      }
+    ],
+    "doneAt": "2026-10-15T00:20:00Z",
+    "metrics": [
+      {
+        "after": 0,
+        "before": 1,
+        "name": "external paths"
+      }
+    ],
+    "summary": "The atom runtime snapshot comes from this repo's committed packages/line-smith (git archive of its tree), not smith-functional's functional-atoms branch.",
+    "tests": {
+      "fail": 0,
+      "pass": 231
+    }
+  },
+  "status": "done",
+  "title": "bench/atoms/runtime.js: snapshot from packages/line-smith",
+  "version": null
+}

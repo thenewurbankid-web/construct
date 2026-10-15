@@ -1,0 +1,420 @@
+<title>Fluent Build Board</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: two heroes (KPIs, current release), then the plan tree: epic > task > subtask rows, each opening to contract, risks and notes. */
+:root {
+  --bg: #f5f6f8; --surface: #ffffff; --ink: #17202c; --muted: #5c6777; --line: #dbe0e7;
+  --accent: #1f5fbf; --accent-soft: #e3ecf9;
+  --ok: #23784a; --ok-soft: #e1f2e8; --run: #1f5fbf; --warn: #9a5b00; --warn-soft: #fbefd9; --bad: #b23a2f; --bad-soft: #f8e2df;
+  --track: #e7ebf0;
+  --display: "Fraunces", Georgia, serif;
+  --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #10141a; --surface: #171d25; --ink: #e4e9ef; --muted: #98a3b2; --line: #2a3340;
+  --accent: #80abf0; --accent-soft: #1c2a3e; --ok: #6cc591; --ok-soft: #173126; --run: #80abf0;
+  --warn: #e3a64a; --warn-soft: #2f2516; --bad: #ec8378; --bad-soft: #3a1f1c; --track: #232b36; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #10141a; --surface: #171d25; --ink: #e4e9ef; --muted: #98a3b2; --line: #2a3340;
+  --accent: #80abf0; --accent-soft: #1c2a3e; --ok: #6cc591; --ok-soft: #173126; --run: #80abf0;
+  --warn: #e3a64a; --warn-soft: #2f2516; --bad: #ec8378; --bad-soft: #3a1f1c; --track: #232b36; color-scheme: dark; }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.5; padding: 28px 18px 64px; }
+.wrap { max-width: 1040px; margin: 0 auto; display: grid; gap: 22px; }
+h1, h2 { font-family: var(--display); font-weight: 600; margin: 0; text-wrap: balance; }
+h1 { font-size: clamp(1.6rem, 4vw, 2.2rem); }
+h2 { font-size: 1.15rem; }
+.mono, code { font-family: var(--mono); font-size: 0.85em; }
+.muted { color: var(--muted); }
+.eyebrow { font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
+header { display: grid; gap: 6px; }
+.live { display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 0.75rem; color: var(--muted); }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+.dot.on { background: var(--ok); box-shadow: 0 0 0 3px var(--ok-soft); }
+
+.heroes { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 14px; }
+.hero { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 18px; display: grid; gap: 14px; min-width: 0; align-content: start; }
+.kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px 10px; }
+.kpi { display: grid; gap: 0; min-width: 0; }
+.kpi .n { font-family: var(--display); font-size: 1.7rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.kpi .l { font-size: 0.76rem; color: var(--muted); }
+.plus { color: var(--ok); } .minus { color: var(--bad); }
+.rel-top { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; align-items: baseline; }
+.rel-ver { font-family: var(--mono); font-size: 1.1rem; font-weight: 500; }
+.count { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.count.big { font-size: 1.6rem; }
+.count.late { color: var(--bad); }
+.fast { font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.bar { height: 8px; background: var(--track); border-radius: 99px; overflow: hidden; }
+.bar > i { display: block; height: 100%; background: var(--accent); border-radius: 99px; transition: width .4s; }
+.bar.done > i { background: var(--ok); }
+.rel-items { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font-family: var(--mono); font-size: 0.72rem; padding: 2px 8px; border-radius: 99px; border: 1px solid var(--line); white-space: nowrap; }
+
+.pill { font-family: var(--mono); font-size: 0.7rem; padding: 1px 8px; border-radius: 99px; white-space: nowrap; }
+.s-todo { background: var(--track); color: var(--muted); }
+.s-running { background: var(--accent-soft); color: var(--run); }
+.s-review { background: var(--warn-soft); color: var(--warn); }
+.s-done { background: var(--ok-soft); color: var(--ok); }
+.s-blocked { background: var(--bad-soft); color: var(--bad); }
+
+.toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
+.filters { display: flex; flex-wrap: wrap; gap: 6px; }
+.filters button { font: inherit; font-size: 0.82rem; background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 99px; padding: 3px 12px; cursor: pointer; }
+.filters button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.tree { display: grid; gap: 10px; }
+.epic { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+details > summary { list-style: none; cursor: pointer; }
+details > summary::-webkit-details-marker { display: none; }
+.row { display: grid; grid-template-columns: minmax(0, 1fr) 92px 112px 96px; gap: 12px; align-items: center; padding: 10px 14px; }
+.row .t { display: flex; gap: 8px; align-items: center; min-width: 0; flex-wrap: wrap; }
+.row .t b { font-weight: 600; }
+.row .id { font-family: var(--mono); font-size: 0.74rem; color: var(--muted); }
+.row .lines { font-family: var(--mono); font-size: 0.78rem; text-align: right; font-variant-numeric: tabular-nums; }
+.row .eta { text-align: right; font-size: 0.8rem; }
+.epic > summary .row { background: var(--accent-soft); }
+.epic > summary .row .t b { font-family: var(--display); font-size: 1.02rem; }
+.lvl1 { border-top: 1px solid var(--line); }
+.lvl2 .row { padding-left: 34px; }
+.lvl2 { border-top: 1px dashed var(--line); }
+.chev { display: inline-block; width: 10px; color: var(--muted); transition: transform .15s; }
+details[open] > summary .chev { transform: rotate(90deg); }
+.detail { padding: 4px 14px 14px 34px; display: grid; gap: 10px; font-size: 0.9rem; }
+.lvl2 .detail { padding-left: 54px; }
+.kv { display: grid; grid-template-columns: 100px minmax(0, 1fr); gap: 4px 12px; }
+.kv dt { font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); padding-top: 3px; }
+.kv dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.risk { display: grid; gap: 2px; padding: 6px 10px; border-left: 3px solid var(--warn); background: var(--warn-soft); border-radius: 3px; }
+.risk .m { color: var(--ink); }
+.risks { display: grid; gap: 6px; }
+.thought { border-left: 3px solid var(--accent); padding: 2px 10px; color: var(--ink); }
+.empty { background: var(--surface); border: 1px dashed var(--line); border-radius: 8px; padding: 24px; color: var(--muted); }
+@media (max-width: 640px) {
+  .row { grid-template-columns: minmax(0, 1fr) 84px; }
+  .row .lines, .row .prog { display: none; }
+  .lvl2 .row { padding-left: 22px; }
+  .detail, .lvl2 .detail { padding-left: 14px; }
+  .kv { grid-template-columns: 1fr; }
+  .kpis { grid-template-columns: repeat(2, 1fr); }
+}
+@media (prefers-reduced-motion: reduce) { .bar > i, .chev { transition: none; } }
+
+.report { display: grid; gap: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 12px 14px; }
+.report h4 { margin: 0; font-family: var(--mono); font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; color: var(--ok); }
+.metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+.metric { border: 1px solid var(--line); border-radius: 4px; padding: 6px 10px; display: grid; gap: 0; min-width: 0; }
+.metric .v { font-family: var(--display); font-size: 1.15rem; font-variant-numeric: tabular-nums; }
+.metric .b { font-size: .74rem; color: var(--muted); }
+.reports { display: grid; gap: 10px; }
+.rcard { background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--ok); border-radius: 6px; padding: 12px 14px; display: grid; gap: 6px; }
+.rcard .top { display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; justify-content: space-between; }
+.rcard button { font: inherit; font-size: .8rem; background: none; border: 0; color: var(--accent); cursor: pointer; padding: 0; }
+.biglist { margin: 0; padding-left: 1.1em; display: grid; gap: 2px; }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Line · Smith fluent English · construct-private</div>
+    <h1>Fluent Build Board</h1>
+    <div class="live"><span class="dot" id="dot"></span><span id="liveText">Connecting to live status…</span></div>
+  </header>
+
+  <div class="heroes">
+    <section class="hero" aria-labelledby="kpiH">
+      <h2 id="kpiH">Overall</h2>
+      <div class="rel-top"><span class="count big fast" id="allCount" data-eta="" data-status="running" data-fast="1">--:--:--.--</span><span class="muted" style="font-size:.8rem" id="allEtaText">plan ETA</span></div>
+      <div class="muted mono" style="font-size:.78rem">elapsed <span class="count fast" id="elapsed" data-since="">--:--:--.--</span></div>
+      <div class="kpis" id="kpis"></div>
+      <div>
+        <div class="rel-top"><span class="muted" style="font-size:.8rem">Plan complete</span><span class="mono" id="allPct">0%</span></div>
+        <div class="bar" id="allBar"><i style="width:0%"></i></div>
+      </div>
+    </section>
+    <section class="hero" aria-labelledby="relH">
+      <div class="rel-top">
+        <h2 id="relH">Current release</h2>
+        <span class="rel-ver" id="relVer">–</span>
+      </div>
+      <div class="muted" id="relGoal">No release set yet.</div>
+      <div class="rel-top">
+        <span class="count big fast" id="relCount" data-fast="1">--:--:--.--</span>
+        <span class="muted" style="font-size:.8rem" id="relEtaText"></span>
+      </div>
+      <div>
+        <div class="rel-top"><span class="muted" style="font-size:.8rem" id="relProgText">0 of 0 items</span><span class="mono" id="relPct">0%</span></div>
+        <div class="bar" id="relBar"><i style="width:0%"></i></div>
+      </div>
+      <div class="rel-items" id="relItems"></div>
+    </section>
+    <section class="hero" aria-labelledby="nearH">
+      <div class="rel-top"><h2 id="nearH">Closest to done</h2><span class="pill s-todo" id="nearPill">–</span></div>
+      <div id="nearBody" class="muted">Nothing in progress yet.</div>
+    </section>
+  </div>
+
+  <section class="hero" aria-labelledby="agH">
+    <div class="rel-top"><h2 id="agH">Agents</h2><span class="mono muted" id="agCount">0 working</span></div>
+    <p class="muted" style="font-size:.85rem;margin:0">Rule: agents go to the task closest to done first, and before each launch Claude checks whether that task can split across more agents.</p>
+    <div class="tablewrap" style="overflow-x:auto"><table id="agTable"><thead><tr><th>Agent</th><th>Task</th><th>Status</th><th>Started</th><th>Latest</th></tr></thead><tbody><tr><td colspan="5" class="muted">No agents yet.</td></tr></tbody></table></div>
+  </section>
+
+  <section aria-labelledby="repH" style="display:grid;gap:10px">
+    <div class="rel-top"><h2 id="repH">Reports</h2><span class="mono muted" id="repCount">0 reports</span></div>
+    <div class="reports" id="reports"><div class="empty">Each task and subtask files a report here when it is done: baseline, results, tests, what it added to the library, and links.</div></div>
+  </section>
+
+  <div class="toolbar">
+    <h2>Plan</h2>
+    <div class="filters" role="group" aria-label="Filter by status">
+      <button type="button" id="f-all" data-f="all" aria-pressed="true">All</button>
+      <button type="button" id="f-running" data-f="running" aria-pressed="false">Running</button>
+      <button type="button" id="f-qw" data-f="qw" aria-pressed="false">Quick wins</button>
+      <button type="button" id="f-blocked" data-f="blocked" aria-pressed="false">Blocked</button>
+      <button type="button" id="f-done" data-f="done" aria-pressed="false">Done</button>
+    </div>
+  </div>
+  <div class="tree" id="tree">
+    <div class="empty">The plan loads from live status. Claude adds each epic, task and subtask here, with its contract, risks, ETA and line counts, and updates them as work lands.</div>
+  </div>
+  <p class="muted" style="font-size:.8rem">Source of truth for scope and contracts: <code>docs/line/FLUENT-PLAN-2026-10-15.md</code> on <code>line/import-smith-codemod</code>. Line counts are git diff stats of each task's branch. Countdowns run to each item's ETA.</p>
+</div>
+
+<script>
+const STATUS = { todo: 'To do', running: 'Running', review: 'Review', done: 'Done', blocked: 'Blocked' };
+let tasks = [], release = null, agents = [], filter = 'all';
+try { filter = localStorage.getItem('fbb-filter') || 'all'; } catch (e) {}
+
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const num = (n) => Number(n || 0).toLocaleString('en-US');
+
+function span(ms, fast) {
+  const s = Math.floor(ms / 1000), d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60), sec = s % 60;
+  const p = (x) => String(x).padStart(2, '0');
+  const cs = fast ? '.' + p(Math.floor(ms % 1000 / 10)) : '';
+  return (d ? `${d}d ` : '') + `${p(h)}:${p(m)}:${p(sec)}${cs}`;
+}
+function countdown(eta, status, fast) {
+  if (status === 'done') return { text: 'done', late: false };
+  if (!eta) return { text: '–', late: false };
+  let ms = new Date(eta).getTime() - Date.now();
+  const late = ms < 0; ms = Math.abs(ms);
+  const body = span(ms, fast);
+  return { text: late ? `+${body} late` : body, late };
+}
+
+function agentChip(id) {
+  const a = agents.filter((x) => x.task === id); if (!a.length) return '';
+  const r = a.filter((x) => x.status === 'running').length;
+  return `<span class="chip">${r ? `${r} running · ` : ''}${a.length} agent${a.length > 1 ? 's' : ''}</span>`;
+}
+function childrenOf(id) { return tasks.filter((t) => (t.parent || null) === id).sort((a, b) => (a.order ?? 0) - (b.order ?? 0)); }
+function leaves(id) { const c = childrenOf(id); return c.length ? c.flatMap((x) => leaves(x.id)) : [tasks.find((t) => t.id === id)].filter(Boolean); }
+function rollProgress(t) {
+  const c = childrenOf(t.id);
+  if (!c.length) return t.status === 'done' ? 100 : Number(t.progress || 0);
+  return Math.round(c.reduce((a, x) => a + rollProgress(x), 0) / c.length);
+}
+function rollLines(t) {
+  const c = childrenOf(t.id);
+  const own = { a: Number(t.linesAdded || 0), r: Number(t.linesRemoved || 0) };
+  return c.reduce((acc, x) => { const l = rollLines(x); return { a: acc.a + l.a, r: acc.r + l.r }; }, own);
+}
+function matches(t) {
+  if (filter === 'all') return true;
+  const set = [t, ...tasks.filter((x) => isUnder(x, t.id))];
+  if (filter === 'qw') return set.some((x) => x.quickWin);
+  return set.some((x) => x.status === filter);
+}
+function isUnder(x, id) { let p = x.parent; while (p) { if (p === id) return true; p = (tasks.find((t) => t.id === p) || {}).parent; } return false; }
+
+function rowHtml(t, lvl) {
+  const prog = rollProgress(t), lines = rollLines(t), cd = countdown(t.etaAt, t.status);
+  const st = t.status || 'todo';
+  return `<div class="row">
+    <div class="t"><span class="chev" aria-hidden="true">›</span><span class="id">${esc(t.id)}</span><b>${esc(t.title)}</b>
+      <span class="pill s-${esc(st)}">${STATUS[st] || esc(st)}</span>
+      ${t.quickWin ? '<span class="chip">15-20 min</span>' : ''}
+      ${t.version ? `<span class="chip">${esc(t.version)}</span>` : ''}
+      ${agentChip(t.id)}</div>
+    <div class="prog"><div class="bar ${prog >= 100 ? 'done' : ''}"><i style="width:${prog}%"></i></div><div class="mono muted" style="font-size:.7rem">${prog}%</div></div>
+    <div class="lines"><span class="plus">+${num(lines.a)}</span> <span class="minus">−${num(lines.r)}</span></div>
+    <div class="eta"><span class="count${cd.late ? ' late' : ''}" data-eta="${esc(t.etaAt || '')}" data-status="${esc(st)}">${esc(cd.text)}</span></div>
+  </div>`;
+}
+function reportHtml(r, compact) {
+  if (!r) return '';
+  const parts = [];
+  if (r.summary) parts.push(`<div>${esc(r.summary)}</div>`);
+  if (!compact && (r.baseline || r.outcome)) parts.push(`<dl class="kv">${r.baseline ? `<dt>Baseline</dt><dd>${esc(r.baseline)}</dd>` : ''}${r.outcome ? `<dt>Outcome</dt><dd>${esc(r.outcome)}</dd>` : ''}</dl>`);
+  const m = Array.isArray(r.metrics) ? r.metrics : [];
+  const tests = r.tests;
+  const cells = m.map((x) => `<div class="metric"><span class="b">${esc(x.name)}</span><span class="v">${esc(x.after)}${x.unit ? ` <span class="b">${esc(x.unit)}</span>` : ''}</span>${x.before !== undefined && x.before !== null && x.before !== '' ? `<span class="b">was ${esc(x.before)}</span>` : ''}</div>`);
+  if (tests) cells.unshift(`<div class="metric"><span class="b">tests</span><span class="v">${esc(tests.pass)} / ${esc(Number(tests.pass || 0) + Number(tests.fail || 0) + Number(tests.skipped || 0))}</span><span class="b">${esc(tests.fail || 0)} fail${tests.skipped ? ` · ${esc(tests.skipped)} skipped` : ''}</span></div>`);
+  if (cells.length) parts.push(`<div class="metrics">${cells.join('')}</div>`);
+  const col = Array.isArray(r.collection) ? r.collection : [];
+  if (col.length && !compact) parts.push(`<div><b>Library collection</b><ul class="biglist">${col.map((c) => `<li><b>${esc(c.count)}</b> ${esc(c.name)}${c.note ? ` · <span class="muted">${esc(c.note)}</span>` : ''}</li>`).join('')}</ul></div>`);
+  const a = Array.isArray(r.artifacts) ? r.artifacts : [];
+  if (a.length && !compact) parts.push(`<div><b>Links</b><ul class="biglist">${a.map((x) => `<li>${esc(x.label)}: ${/^https:\/\//.test(x.ref || '') ? `<a href="${esc(x.ref)}" target="_blank" rel="noopener">${esc(x.ref)}</a>` : `<code>${esc(x.ref)}</code>`}</li>`).join('')}</ul></div>`);
+  const f = Array.isArray(r.followups) ? r.followups : [];
+  if (f.length && !compact) parts.push(`<div><b>Follow-ups</b><ul class="biglist">${f.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>`);
+  return parts.join('');
+}
+function detailHtml(t) {
+  const risks = Array.isArray(t.risks) ? t.risks : [];
+  const parts = [];
+  const kv = [];
+  if (t.contract) kv.push(`<dt>Contract</dt><dd>${esc(t.contract)}</dd>`);
+  if (t.benefit) kv.push(`<dt>Benefit</dt><dd>${esc(t.benefit)}</dd>`);
+  if (t.branch) kv.push(`<dt>Branch</dt><dd><code>${esc(t.branch)}</code></dd>`);
+  if (t.etaAt) kv.push(`<dt>ETA</dt><dd>${esc(new Date(t.etaAt).toLocaleString())}</dd>`);
+  if (t.note) kv.push(`<dt>Latest</dt><dd>${esc(t.note)}</dd>`);
+  if (kv.length) parts.push(`<dl class="kv">${kv.join('')}</dl>`);
+  if (risks.length) parts.push(`<div class="risks">${risks.map((r) => `<div class="risk"><div><b>Risk:</b> ${esc(r.risk)}</div><div class="m"><b>Mitigation:</b> ${esc(r.mitigation)}</div></div>`).join('')}</div>`);
+  if (t.thoughts) parts.push(`<div class="thought"><b>Claude's view:</b> ${esc(t.thoughts)}</div>`);
+  if (t.report) parts.push(`<div class="report"><h4>Report${t.report.doneAt ? ' · ' + esc(new Date(t.report.doneAt).toLocaleString()) : ''}</h4>${reportHtml(t.report)}</div>`);
+  return parts.length ? `<div class="detail">${parts.join('')}</div>` : '';
+}
+let openIds = new Set();
+function nodeHtml(t, lvl) {
+  if (!matches(t)) return '';
+  const kids = childrenOf(t.id).map((c) => nodeHtml(c, Math.min(lvl + 1, 2))).join('');
+  const cls = lvl === 0 ? 'epic' : `lvl${lvl}`;
+  return `<details class="${cls}" data-id="${esc(t.id)}"${openIds.has(t.id) || (lvl === 0 && !openIds.size) ? ' open' : ''}><summary>${rowHtml(t, lvl)}</summary>${detailHtml(t)}${kids}</details>`;
+}
+
+function render() {
+  document.querySelectorAll('details[data-id]').forEach((d) => { if (d.open) openIds.add(d.dataset.id); else openIds.delete(d.dataset.id); });
+  const roots = childrenOf(null);
+  const tree = document.getElementById('tree');
+  if (!roots.length) {
+    tree.innerHTML = '<div class="empty">No plan items yet. Claude adds each epic, task and subtask here with its contract, risks, ETA and line counts.</div>';
+  } else tree.innerHTML = roots.map((r) => nodeHtml(r, 0)).join('') || '<div class="empty">Nothing matches this filter.</div>';
+
+  // Overall KPIs over leaf items
+  const lf = roots.flatMap((r) => leaves(r.id));
+  const done = lf.filter((t) => t.status === 'done').length;
+  const running = lf.filter((t) => t.status === 'running').length;
+  const blocked = lf.filter((t) => t.status === 'blocked').length;
+  const qwDone = lf.filter((t) => t.quickWin && t.status === 'done').length;
+  const qwAll = lf.filter((t) => t.quickWin).length;
+  const tot = roots.reduce((acc, r) => { const l = rollLines(r); return { a: acc.a + l.a, r: acc.r + l.r }; }, { a: 0, r: 0 });
+  const versions = new Set(tasks.filter((t) => t.version && t.status === 'done').map((t) => t.version)).size;
+  const pct = roots.length ? Math.round(roots.reduce((a, r) => a + rollProgress(r), 0) / roots.length) : 0;
+  const k = document.getElementById('kpis');
+  if (!k.children.length) k.innerHTML = [
+    ['k-done', '', `items done`], ['k-run', '', 'items running'], ['k-block', '', 'blocked'], ['k-qw', '', 'quick wins shipped'],
+    ['k-add', 'plus', 'lines added'], ['k-rem', 'minus', 'lines removed'], ['k-ver', '', 'versions shipped'], ['k-ag', '', 'agents working'],
+  ].map(([id, cls, l]) => `<div class="kpi"><span class="n ${cls}"><span id="${id}">0</span><span id="${id}-of" class="muted" style="font-size:.6em"></span></span><span class="l">${l}</span></div>`).join('');
+  tween(document.getElementById('k-done'), done); document.getElementById('k-done-of').textContent = ` / ${lf.length}`;
+  tween(document.getElementById('k-run'), running);
+  tween(document.getElementById('k-block'), blocked);
+  tween(document.getElementById('k-qw'), qwDone); document.getElementById('k-qw-of').textContent = ` / ${qwAll}`;
+  tween(document.getElementById('k-add'), tot.a);
+  tween(document.getElementById('k-rem'), tot.r);
+  tween(document.getElementById('k-ver'), versions);
+  tween(document.getElementById('k-ag'), agents.filter((a) => a.status === 'running').length); document.getElementById('k-ag-of').textContent = ` / ${agents.length}`;
+  // Overall countdown: the latest ETA among unfinished items; elapsed since the first release started.
+  const openEtas = tasks.filter((t) => t.status !== 'done' && t.etaAt).map((t) => Date.parse(t.etaAt));
+  const ac = document.getElementById('allCount');
+  ac.dataset.eta = openEtas.length ? new Date(Math.max(...openEtas)).toISOString() : '';
+  ac.dataset.status = openEtas.length ? 'running' : 'done';
+  document.getElementById('allEtaText').textContent = openEtas.length ? 'plan ETA ' + new Date(Math.max(...openEtas)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'plan done';
+  if (release && release.startedAt) document.getElementById('elapsed').dataset.since = release.startedAt;
+  document.getElementById('allPct').textContent = pct + '%';
+  document.querySelector('#allBar > i').style.width = pct + '%';
+
+  // Release hero
+  if (release) {
+    document.getElementById('relVer').textContent = release.version || '–';
+    document.getElementById('relGoal').textContent = release.goal || '';
+    const ids = Array.isArray(release.items) ? release.items : [];
+    const its = ids.map((id) => tasks.find((t) => t.id === id)).filter(Boolean);
+    const rp = its.length ? Math.round(its.reduce((a, t) => a + rollProgress(t), 0) / its.length) : 0;
+    const rd = its.filter((t) => t.status === 'done').length;
+    document.getElementById('relProgText').textContent = `${rd} of ${its.length} items done`;
+    document.getElementById('relPct').textContent = rp + '%';
+    const rb = document.getElementById('relBar'); rb.className = 'bar' + (rp >= 100 ? ' done' : ''); rb.firstElementChild.style.width = rp + '%';
+    document.getElementById('relItems').innerHTML = its.map((t) => `<span class="pill s-${esc(t.status || 'todo')}">${esc(t.id)} ${esc(t.title)}</span>`).join('');
+    const rc = document.getElementById('relCount'); rc.dataset.eta = release.etaAt || ''; rc.dataset.status = rp >= 100 ? 'done' : 'running';
+    document.getElementById('relEtaText').textContent = release.etaAt ? 'ETA ' + new Date(release.etaAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+  }
+  const run = agents.filter((a) => a.status === 'running').length;
+  document.getElementById('agCount').textContent = `${run} working · ${agents.length} total`;
+  const ag = [...agents].sort((a, b) => (a.status === 'running' ? 0 : 1) - (b.status === 'running' ? 0 : 1) || String(b.startedAt || '').localeCompare(String(a.startedAt || '')));
+  document.querySelector('#agTable tbody').innerHTML = ag.length ? ag.map((a) => `<tr><td class="mono">${esc(a.id)}</td><td class="mono">${esc(a.task)}</td><td><span class="pill s-${a.status === 'running' ? 'running' : a.status === 'failed' ? 'blocked' : a.status === 'done' ? 'done' : 'todo'}">${esc(a.status)}</span></td><td class="mono">${a.startedAt ? esc(new Date(a.startedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })) : '–'}</td><td>${esc(a.note || '')}</td></tr>`).join('') : '<tr><td colspan="5" class="muted">No agents yet.</td></tr>';
+  const reps = tasks.filter((t) => t.report).sort((a, b) => String(b.report.doneAt || '').localeCompare(String(a.report.doneAt || '')));
+  document.getElementById('repCount').textContent = `${reps.length} report${reps.length === 1 ? '' : 's'}`;
+  document.getElementById('reports').innerHTML = reps.length ? reps.map((t) => `<div class="rcard"><div class="top"><span><span class="id mono muted">${esc(t.id)}</span> <b>${esc(t.title)}</b> ${t.version ? `<span class="chip">${esc(t.version)}</span>` : ''}</span><button type="button" data-open="${esc(t.id)}">Full report</button></div>${reportHtml(t.report, true)}</div>`).join('')
+    : '<div class="empty">Each task and subtask files a report here when it is done: baseline, results, tests, what it added to the library, and links.</div>';
+  document.querySelectorAll('[data-open]').forEach((b) => b.addEventListener('click', () => {
+    let id = b.dataset.open; const chain = [];
+    while (id) { chain.unshift(id); id = (tasks.find((t) => t.id === id) || {}).parent; }
+    chain.forEach((c) => openIds.add(c)); filter = 'all'; render();
+    const el = document.querySelector(`details[data-id="${CSS.escape(b.dataset.open)}"]`); if (el) { el.open = true; el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' }); }
+  }));
+  // Closest-to-done hero: the unfinished leaf with the most progress, then the nearest ETA.
+  const open = lf.filter((t) => t.status !== 'done' && t.status !== 'todo');
+  open.sort((a, b) => (Number(b.progress || 0) - Number(a.progress || 0)) || (Date.parse(a.etaAt || '9999') - Date.parse(b.etaAt || '9999')));
+  const near = open[0];
+  const nb = document.getElementById('nearBody'), np = document.getElementById('nearPill');
+  if (near) {
+    const p = Number(near.progress || 0);
+    np.className = 'pill s-' + (near.status || 'todo'); np.textContent = STATUS[near.status] || near.status;
+    nb.className = '';
+    nb.innerHTML = `<div style="display:grid;gap:10px">
+      <div><span class="id mono muted">${esc(near.id)}</span> <b>${esc(near.title)}</b></div>
+      <div class="rel-top"><span class="count big" data-eta="${esc(near.etaAt || '')}" data-status="${esc(near.status)}"></span><span class="mono">${p}%</span></div>
+      <div class="bar"><i style="width:${p}%"></i></div>
+      ${near.note ? `<div class="muted" style="font-size:.85rem">${esc(near.note)}</div>` : ''}
+      <div class="rel-items">${agentChip(near.id) || '<span class="chip">no agents yet</span>'}${near.branch ? `<span class="chip">${esc(near.branch)}</span>` : ''}<span class="chip"><span class="plus">+${num(near.linesAdded)}</span> <span class="minus">−${num(near.linesRemoved)}</span></span></div>
+    </div>`;
+  } else { np.className = 'pill s-todo'; np.textContent = '–'; nb.className = 'muted'; nb.textContent = 'Nothing in progress yet.'; }
+  tick();
+}
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+function tick() {
+  document.querySelectorAll('[data-eta]').forEach((el) => {
+    const cd = countdown(el.dataset.eta, el.dataset.status, !!el.dataset.fast && !reduce);
+    if (el.textContent !== cd.text) el.textContent = cd.text;
+    el.classList.toggle('late', cd.late);
+  });
+  const el = document.getElementById('elapsed');
+  if (el && el.dataset.since) el.textContent = span(Math.max(0, Date.now() - Date.parse(el.dataset.since)), !reduce);
+}
+(function loop() { tick(); reduce ? setTimeout(loop, 1000) : requestAnimationFrame(loop); })();
+// KPI numbers count up to their new value
+const shown = new Map();
+function tween(el, to) {
+  const from = shown.has(el.id) ? shown.get(el.id) : 0; shown.set(el.id, to);
+  if (reduce || from === to) { el.textContent = num(to); return; }
+  const t0 = performance.now(), dur = 900;
+  (function step(t) { const k = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - k, 3);
+    el.textContent = num(Math.round(from + (to - from) * e)); if (k < 1) requestAnimationFrame(step); })(t0);
+}
+
+document.querySelectorAll('.filters button').forEach((b) => {
+  b.setAttribute('aria-pressed', String(b.dataset.f === filter));
+  b.addEventListener('click', () => {
+    filter = b.dataset.f;
+    try { localStorage.setItem('fbb-filter', filter); } catch (e) {}
+    document.querySelectorAll('.filters button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+    render();
+  });
+});
+render();
+
+(async () => {
+  const db = window.claude && window.claude.use ? await window.claude.use('db') : null;
+  const dot = document.getElementById('dot'), txt = document.getElementById('liveText');
+  if (!db) { txt.textContent = 'Live status is not available in this view.'; return; }
+  let last = null;
+  const stamp = () => { dot.classList.add('on'); last = new Date(); txt.textContent = 'Live · updated ' + last.toLocaleTimeString(); };
+  db.collection('tasks').onSnapshot((snap) => { tasks = snap.docs.map((d) => ({ id: d.id, ...d.data() })); stamp(); render(); },
+    () => { dot.classList.remove('on'); txt.textContent = 'Live status disconnected. Reload to reconnect.'; });
+  db.collection('agents').onSnapshot((snap) => { agents = snap.docs.map((d) => ({ id: d.id, ...d.data() })); stamp(); render(); }, () => {});
+  db.doc('release/current').onSnapshot((snap) => { release = snap.exists ? snap.data() : null; stamp(); render(); }, () => {});
+})();
+</script>

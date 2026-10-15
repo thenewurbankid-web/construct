@@ -1,0 +1,24 @@
+{
+  "etaAt": "2026-10-15T01:15:00.000Z",
+  "goal": "Wave 2: gate runner (3 parts), pilot prep (3), english CLI, coverage, fluent-form spike, student adapter, records, LSP diagnostics + definition, pages rebuild, probe port, in-repo links. 16 agents in parallel.",
+  "items": [
+    "T1.2a",
+    "T1.2b",
+    "T1.2c",
+    "T1.3a",
+    "T1.3b",
+    "T1.3c",
+    "T2.2",
+    "T2.3a",
+    "T2.1a",
+    "T3.2a",
+    "T3.3a",
+    "T4.3a",
+    "T4.4a",
+    "T5.4a",
+    "T0.5",
+    "T0.6"
+  ],
+  "startedAt": "2026-10-15T00:14:00.000Z",
+  "version": "fluent-v0.2.0"
+}

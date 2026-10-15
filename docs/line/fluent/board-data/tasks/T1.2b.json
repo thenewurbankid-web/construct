@@ -1,0 +1,28 @@
+{
+  "benefit": "Wrong JS is caught by running it, not by reading it.",
+  "branch": "line/fluent/t1-2b-equivalence",
+  "contract": "packages/line-fluent/gate/equivalence/: checkEquivalence(answer,{entry,runs,seed}) runs answer.js vs the reference function on expected.json + generated inputs; skip for not-expressible/molecule.",
+  "etaAt": "2026-10-15T00:39:08.098Z",
+  "linesAdded": 0,
+  "linesRemoved": 0,
+  "note": "Wave 2; contract in FLUENT-PLAN \"Wave 2 leaves\".",
+  "order": 2,
+  "parent": "T1.2",
+  "progress": 5,
+  "quickWin": true,
+  "risks": [
+    {
+      "mitigation": "Always include Node's recorded case; fixed seed",
+      "risk": "Generated inputs miss edge cases"
+    },
+    {
+      "mitigation": "Sandbox from bench/atoms/equivalence.js",
+      "risk": "Running untrusted js"
+    }
+  ],
+  "session": "t1-2b-equivalence",
+  "status": "running",
+  "thoughts": "Riskiest gate part; may need 20 minutes.",
+  "title": "Gate: equivalence check",
+  "version": null
+}

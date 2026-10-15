@@ -1,0 +1,24 @@
+{
+  "benefit": "One C3 shape for Claude, student and LSP.",
+  "branch": "line/fluent/t1-2c-assemble",
+  "contract": "packages/line-fluent/gate/assemble.mjs: runGate(answer,{grammar,equivalence,types}) -> C3; schema short-circuits; refusal = first error of first failed check; fixes deduped.",
+  "etaAt": "2026-10-15T00:34:08.098Z",
+  "linesAdded": 141,
+  "linesRemoved": 0,
+  "note": "57241c04, merged 2f22686d. 13/13 re-run by me, eslint clean. A failed check with no errors gets 'The <check> check failed.' as refusal.",
+  "order": 3,
+  "parent": "T1.2",
+  "progress": 100,
+  "quickWin": true,
+  "risks": [
+    {
+      "mitigation": "Checks are injected; orchestrator wires gate/index.mjs after merge",
+      "risk": "Siblings not merged yet"
+    }
+  ],
+  "session": "t1-2c-assemble",
+  "status": "done",
+  "thoughts": "Pure composition; fastest leaf.",
+  "title": "Gate: C3 assembler + refusal",
+  "version": "fluent-v0.2.0"
+}

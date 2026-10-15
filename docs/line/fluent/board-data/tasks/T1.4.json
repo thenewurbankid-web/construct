@@ -1,0 +1,20 @@
+{
+  "benefit": "Full coverage of the reference.",
+  "contract": "One QW per section batch; owner approves new atoms per batch.",
+  "etaAt": "2026-10-15T05:00:00.000Z",
+  "linesAdded": 0,
+  "linesRemoved": 0,
+  "order": 4,
+  "parent": "E1",
+  "progress": 0,
+  "quickWin": false,
+  "risks": [
+    {
+      "mitigation": "not-expressible is a first-class answer; gaps go to the owner as one list",
+      "risk": "Grammar cannot express some APIs"
+    }
+  ],
+  "status": "todo",
+  "title": "Remaining sections in batches",
+  "version": null
+}

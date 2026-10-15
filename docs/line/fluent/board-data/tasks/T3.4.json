@@ -1,0 +1,20 @@
+{
+  "benefit": "Proof the English view helps before spending on training.",
+  "contract": "Same tasks with raw code vs the English view as context; pass rate decides.",
+  "etaAt": "2026-10-15T06:00:00.000Z",
+  "linesAdded": 0,
+  "linesRemoved": 0,
+  "order": 4,
+  "parent": "E3",
+  "progress": 0,
+  "quickWin": false,
+  "risks": [
+    {
+      "mitigation": "Then stop training spend; the view still serves people",
+      "risk": "The view does not help"
+    }
+  ],
+  "status": "todo",
+  "title": "English-as-context probe",
+  "version": null
+}

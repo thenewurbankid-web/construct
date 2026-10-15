@@ -1,0 +1,14 @@
+{
+  "benefit": "Self-correcting errors in the editor.",
+  "contract": "C3 refusals as LSP diagnostics; code actions from fixes.",
+  "etaAt": "2026-10-15T05:00:00.000Z",
+  "linesAdded": 0,
+  "linesRemoved": 0,
+  "order": 3,
+  "parent": "E4",
+  "progress": 0,
+  "quickWin": false,
+  "status": "todo",
+  "title": "Diagnostics with typed fixes",
+  "version": null
+}

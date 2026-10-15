@@ -1,0 +1,24 @@
+{
+  "benefit": "Reuse existing atoms first, cutting cost.",
+  "branch": "line/fluent/t1-3c-entries",
+  "contract": "packages/line-fluent/pilot/entries/: arrayEntries() with candidates from catalog atoms using the same member.",
+  "etaAt": "2026-10-15T00:34:08.098Z",
+  "linesAdded": 0,
+  "linesRemoved": 0,
+  "note": "Wave 2; contract in FLUENT-PLAN \"Wave 2 leaves\".",
+  "order": 3,
+  "parent": "T1.3",
+  "progress": 5,
+  "quickWin": true,
+  "risks": [
+    {
+      "mitigation": "Report with-candidate count; 3 known matches asserted",
+      "risk": "Member match too loose"
+    }
+  ],
+  "session": "t1-3c-entries",
+  "status": "running",
+  "thoughts": "Data only.",
+  "title": "Pilot: Array entries + atom lookup",
+  "version": null
+}

@@ -1,0 +1,24 @@
+{
+  "benefit": "Refusals show as squiggles with one-click fixes.",
+  "branch": "line/fluent/t4-3a-diagnostics",
+  "contract": "packages/line-fluent/lsp/diagnostics/: toDiagnostics(c3), codeActions(c3) with WorkspaceEdits from fixes.",
+  "etaAt": "2026-10-15T00:34:08.098Z",
+  "linesAdded": 0,
+  "linesRemoved": 0,
+  "note": "Wave 2; contract in FLUENT-PLAN \"Wave 2 leaves\".",
+  "order": 1,
+  "parent": "T4.3",
+  "progress": 5,
+  "quickWin": true,
+  "risks": [
+    {
+      "mitigation": "Offsets from lib-sentence parse; apply-edit round-trip test",
+      "risk": "Word offsets wrong"
+    }
+  ],
+  "session": "t4-3a-diagnostics",
+  "status": "running",
+  "thoughts": "No LSP library.",
+  "title": "C3 -> LSP diagnostics",
+  "version": null
+}

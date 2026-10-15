@@ -1,0 +1,79 @@
+{
+  "benefit": "Claude and the student answer in one fixed shape; bad output is refused before any gate runs.",
+  "branch": "line/fluent/t1-1-contract",
+  "contract": "packages/line-fluent/contract/: answer.schema.json (C2), validate.mjs (no deps) -> C3 checks.schema; tests with 6 good and 10 bad answers.",
+  "etaAt": "2026-10-15T00:20:00.000Z",
+  "linesAdded": 294,
+  "linesRemoved": 0,
+  "note": "e4e40fbd, merged faffddaa. 29/29 tests, re-run by me.",
+  "order": 1,
+  "parent": "E1",
+  "progress": 100,
+  "quickWin": true,
+  "report": {
+    "artifacts": [
+      {
+        "label": "commit",
+        "ref": "e4e40fbd"
+      },
+      {
+        "label": "merge",
+        "ref": "faffddaa"
+      },
+      {
+        "label": "files",
+        "ref": "packages/line-fluent/contract/"
+      }
+    ],
+    "baseline": "No fixed answer shape; model answers were free text.",
+    "collection": [
+      {
+        "count": "6+",
+        "name": "valid answer fixtures from real catalog atoms"
+      },
+      {
+        "count": "10+",
+        "name": "invalid answer fixtures"
+      }
+    ],
+    "doneAt": "2026-10-15T00:30:00Z",
+    "followups": [
+      "`node --test <dir>` fails on Node 24; run the test file or a glob."
+    ],
+    "metrics": [
+      {
+        "after": 10,
+        "name": "fields"
+      },
+      {
+        "after": 4,
+        "name": "decisions"
+      },
+      {
+        "after": 5,
+        "name": "kinds"
+      }
+    ],
+    "outcome": "10 fields, closed enums, conditional rules per decision; unknown fields refused.",
+    "summary": "Contract C2 is code: a JSON schema and a dependency-free validator whose errors are one plain-English sentence each.",
+    "tests": {
+      "fail": 0,
+      "pass": 29
+    }
+  },
+  "risks": [
+    {
+      "mitigation": "Pilot feedback may add fields; version the schema",
+      "risk": "Schema too strict for real answers"
+    },
+    {
+      "mitigation": "Closed enums for decision and kind; unknown fields refused",
+      "risk": "Free text leaks into fields"
+    }
+  ],
+  "session": "t1-1-contract",
+  "status": "done",
+  "thoughts": "Pure data and one small validator. Safe to run in parallel.",
+  "title": "Answer contract C2 and validator",
+  "version": "fluent-v0.1.0"
+}

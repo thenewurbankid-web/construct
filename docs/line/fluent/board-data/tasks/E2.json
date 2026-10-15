@@ -1,0 +1,14 @@
+{
+  "benefit": "People and models read any function as English with no model in the loop.",
+  "etaAt": "2026-10-15T04:00:00.000Z",
+  "linesAdded": 0,
+  "linesRemoved": 0,
+  "order": 2,
+  "parent": null,
+  "progress": 0,
+  "quickWin": false,
+  "status": "todo",
+  "thoughts": "Static first. This is what ships to users; the model only fills what it leaves.",
+  "title": "Static translator: JS to the English view",
+  "version": null
+}

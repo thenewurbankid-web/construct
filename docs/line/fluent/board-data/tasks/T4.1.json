@@ -1,0 +1,65 @@
+{
+  "benefit": "Exact completions and the base of LSP diagnostics.",
+  "branch": "line/fluent/t4-1-grammar",
+  "contract": "packages/line-fluent/grammar/: nextWords(prefix) -> {legal, complete} from naming.json grammar only; every catalog fluent sentence accepted word by word; illegal words refused.",
+  "etaAt": "2026-10-15T00:20:00.000Z",
+  "linesAdded": 235,
+  "linesRemoved": 0,
+  "note": "147e3d0c, merged f3b27614. 65/65 tests; all 59 catalog sentences accepted word by word.",
+  "order": 1,
+  "parent": "E4",
+  "progress": 100,
+  "quickWin": true,
+  "report": {
+    "artifacts": [
+      {
+        "label": "commit",
+        "ref": "147e3d0c"
+      },
+      {
+        "label": "merge",
+        "ref": "f3b27614"
+      },
+      {
+        "label": "files",
+        "ref": "packages/line-fluent/grammar/"
+      }
+    ],
+    "baseline": "No completions; sentences were checked only after they were written.",
+    "collection": [
+      {
+        "count": 59,
+        "name": "fluent sentences checked word by word"
+      }
+    ],
+    "doneAt": "2026-10-15T00:30:00Z",
+    "metrics": [
+      {
+        "after": 59,
+        "before": 0,
+        "name": "catalog sentences accepted"
+      },
+      {
+        "after": 0,
+        "name": "grammar gaps found"
+      }
+    ],
+    "outcome": "Covers R1-R8 and R9 every(); every catalog sentence is accepted word by word, and illegal continuations are refused.",
+    "summary": "Contract C5 is code: nextWords(prefix) lists the legal next words of a sentence from the grammar data alone, with no model.",
+    "tests": {
+      "fail": 0,
+      "pass": 65
+    }
+  },
+  "risks": [
+    {
+      "mitigation": "Test against every catalog sentence; reuse lib-sentence.mjs",
+      "risk": "Grammar data and the sentence parser disagree"
+    }
+  ],
+  "session": "t4-1-grammar",
+  "status": "done",
+  "thoughts": "Reads only data files, so it runs in parallel with the wiring.",
+  "title": "nextWords C5",
+  "version": "fluent-v0.1.0"
+}
