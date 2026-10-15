@@ -1,0 +1,276 @@
+<title>Library Run 7b</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout: a run console. Status and totals first, sections next, then the live log, newest first. */
+:root {
+  --bg: #f3f5f7; --panel: #ffffff; --ink: #18202a; --muted: #5d6876; --line: #d8dee6; --track: #e6eaef;
+  --inside: #2c5fa8; --inside-soft: #e2ebf8; --outside: #7a3f9e; --outside-soft: #f0e6f6;
+  --pass: #24784a; --pass-soft: #e0f1e7; --refused: #9a5a00; --refused-soft: #fbefd8; --error: #b3382d; --error-soft: #f9e1de;
+  --body: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f141a; --panel: #161d25; --ink: #e3e9ef; --muted: #96a2b1; --line: #29323d; --track: #222b35;
+  --inside: #86adf0; --inside-soft: #1b2a40; --outside: #c79ae6; --outside-soft: #2c1f38;
+  --pass: #6cc893; --pass-soft: #163024; --refused: #e5a84c; --refused-soft: #33270f; --error: #f08277; --error-soft: #3b1e1b; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0f141a; --panel: #161d25; --ink: #e3e9ef; --muted: #96a2b1; --line: #29323d; --track: #222b35;
+  --inside: #86adf0; --inside-soft: #1b2a40; --outside: #c79ae6; --outside-soft: #2c1f38;
+  --pass: #6cc893; --pass-soft: #163024; --refused: #e5a84c; --refused-soft: #33270f; --error: #f08277; --error-soft: #3b1e1b; color-scheme: dark; }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.45;
+  padding-block: 22px 56px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.wrap { max-width: 1120px; margin: 0 auto; display: grid; gap: 18px; }
+h1, h2 { margin: 0; text-wrap: balance; }
+h1 { font-size: clamp(1.5rem, 3.5vw, 2rem); font-weight: 700; letter-spacing: -0.01em; }
+h2 { font-size: 1rem; font-weight: 600; }
+.mono { font-family: var(--mono); font-size: 0.82em; }
+.muted { color: var(--muted); }
+.label { font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.top { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; justify-content: space-between; }
+.live { display: inline-flex; gap: 6px; align-items: center; font-family: var(--mono); font-size: 0.75rem; color: var(--muted); }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+.dot.on { background: var(--pass); box-shadow: 0 0 0 3px var(--pass-soft); }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 16px; display: grid; gap: 14px; min-width: 0; }
+.chip { display: inline-flex; align-items: center; gap: 5px; font-family: var(--mono); font-size: 0.7rem; font-weight: 600; padding: 2px 8px; border-radius: 99px; white-space: nowrap; border: 1px solid transparent; }
+.c-inside { background: var(--inside-soft); color: var(--inside); }
+.c-outside, .c-user { background: var(--outside-soft); color: var(--outside); }
+.talk { margin: 6px 0 2px; display: grid; gap: 4px; font-size: .86rem; }
+.talk div { padding: 6px 9px; border-radius: 6px; }
+.talk .ask { background: var(--inside-soft); }
+.talk .say { background: var(--outside-soft); }
+.talk b { font-weight: 600; margin-right: 6px; }
+.c-pass { background: var(--pass-soft); color: var(--pass); }
+.c-refused { background: var(--refused-soft); color: var(--refused); }
+.c-error { background: var(--error-soft); color: var(--error); }
+.c-plain { border-color: var(--line); color: var(--muted); }
+.status-running { background: var(--inside-soft); color: var(--inside); }
+.status-done { background: var(--pass-soft); color: var(--pass); }
+.status-stopped { background: var(--error-soft); color: var(--error); }
+.status-waiting { border-color: var(--line); color: var(--muted); }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+.kpi { display: grid; gap: 2px; min-width: 0; }
+.kpi .n { font-size: 1.6rem; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.kpi .n small { font-size: 0.55em; color: var(--muted); font-weight: 500; }
+.bar { height: 10px; border-radius: 99px; background: var(--track); overflow: hidden; display: flex; }
+.bar i { display: block; height: 100%; transition: width .4s; }
+.bar .b-in { background: var(--inside); } .bar .b-out { background: var(--outside); } .bar .b-gap { background: var(--refused); opacity: .55; } .bar .b-err { background: var(--error); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 0.8rem; color: var(--muted); }
+.legend span::before { content: ""; display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; background: var(--c); }
+.stages { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.stage { border: 1px solid var(--line); border-radius: 6px; padding: 12px 14px; display: grid; gap: 8px; min-width: 0; }
+.stage.inside { border-left: 4px solid var(--inside); } .stage.outside { border-left: 4px solid var(--outside); }
+.kv { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px 10px; }
+.kv div { display: grid; min-width: 0; }
+.kv b { font-variant-numeric: tabular-nums; font-weight: 600; }
+.fails { display: flex; flex-wrap: wrap; gap: 6px; }
+.tablewrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 0.86rem; }
+th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th { font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+td.num { text-align: right; font-variant-numeric: tabular-nums; font-family: var(--mono); font-size: 0.8rem; }
+td .mini { width: 120px; height: 6px; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
+.filters { display: flex; flex-wrap: wrap; gap: 6px; }
+.filters button { font: inherit; font-size: 0.8rem; background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 99px; padding: 3px 12px; cursor: pointer; }
+.filters button[aria-pressed="true"] { background: var(--ink); color: var(--panel); border-color: var(--ink); }
+input[type="search"] { font: inherit; font-size: 0.85rem; padding: 6px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--ink); min-width: 0; width: 220px; max-width: 100%; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--inside); outline-offset: 2px; }
+.log { display: grid; gap: 0; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--panel); }
+.row { display: grid; grid-template-columns: 74px 128px 86px minmax(0, 1fr); gap: 4px 12px; padding: 9px 12px; border-bottom: 1px solid var(--line); align-items: start; border-left: 4px solid var(--edge, transparent); }
+.row:last-child { border-bottom: 0; }
+.row.pass { --edge: var(--pass); } .row.refused { --edge: var(--refused); } .row.error { --edge: var(--error); }
+.row .t { font-family: var(--mono); font-size: 0.75rem; color: var(--muted); font-variant-numeric: tabular-nums; padding-top: 2px; }
+.row .what { display: grid; gap: 3px; min-width: 0; }
+.row .key { font-family: var(--mono); font-size: 0.84rem; font-weight: 600; overflow-wrap: anywhere; }
+.row .detail { font-size: 0.85rem; color: var(--muted); overflow-wrap: anywhere; }
+.row .sentence { font-family: var(--mono); font-size: 0.78rem; color: var(--ink); overflow-wrap: anywhere; }
+.row .meta { display: flex; flex-wrap: wrap; gap: 6px; }
+.empty { padding: 22px; color: var(--muted); text-align: center; }
+@media (max-width: 640px) {
+  .row { grid-template-columns: 1fr; }
+  .kv { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (prefers-reduced-motion: reduce) { .bar i { transition: none; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div style="display:grid;gap:4px">
+      <div class="label">Line · fluent library · T1.4</div>
+      <h1>Library Run 7b</h1>
+      <div class="muted" id="scope">Every JavaScript reference entry through the gate, with qwen2.5-coder:7b answering and playing the user.</div>
+    </div>
+    <div style="display:grid;gap:6px;justify-items:end">
+      <span class="chip status-waiting" id="status">Waiting for the run</span>
+      <span class="live"><span class="dot" id="dot"></span><span id="liveText">Connecting…</span></span>
+    </div>
+  </header>
+
+  <section class="panel" aria-labelledby="totH">
+    <div class="top"><h2 id="totH">Progress</h2><span class="mono muted" id="elapsed"></span></div>
+    <div class="kpis">
+      <div class="kpi"><span class="label">In the library</span><span class="n" id="k-lib">0</span></div>
+      <div class="kpi"><span class="label">Known gaps</span><span class="n" id="k-gap">0</span></div>
+      <div class="kpi"><span class="label">Errors</span><span class="n" id="k-err">0</span></div>
+      <div class="kpi"><span class="label">Entries finished</span><span class="n" id="k-done">0 <small>/ 0</small></span></div>
+      <div class="kpi"><span class="label">Model calls</span><span class="n" id="k-calls">0</span></div>
+      <div class="kpi"><span class="label">Cost so far</span><span class="n" id="k-cost">$0.00</span></div>
+    </div>
+    <div class="bar" id="bar" role="img" aria-label="Run progress"><i class="b-in"></i><i class="b-out"></i><i class="b-gap"></i><i class="b-err"></i></div>
+    <div class="legend">
+      <span style="--c:var(--inside)">Passed inside</span>
+      <span style="--c:var(--outside)" id="legend-out">Passed with Opus</span>
+      <span style="--c:var(--refused)">Known gap (refused by both)</span>
+      <span style="--c:var(--error)">Error</span>
+    </div>
+    <div class="stages">
+      <div class="stage inside"><div class="top"><span class="chip c-inside">INSIDE</span><span class="mono muted" id="in-model">haiku</span></div>
+        <div class="kv" id="in-kv"></div><div class="fails" id="in-fails"></div></div>
+      <div class="stage outside"><div class="top"><span class="chip c-outside" id="out-label">OUTSIDE</span><span class="mono muted" id="out-model">opus</span></div>
+        <div class="kv" id="out-kv"></div><div class="fails" id="out-fails"></div></div>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="secH">
+    <div class="top"><h2 id="secH">Sections</h2><span class="mono muted" id="secCount"></span></div>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Section</th><th>Progress</th><th class="num">Entries</th><th class="num">Inside</th><th class="num" id="sec-out">Opus</th><th class="num">Gaps</th><th class="num">Errors</th></tr></thead>
+      <tbody id="sections"><tr><td colspan="7" class="muted">Sections appear as their first entries finish.</td></tr></tbody>
+    </table></div>
+  </section>
+
+  <section style="display:grid;gap:10px" aria-labelledby="logH">
+    <div class="toolbar">
+      <h2 id="logH">Live log <span class="mono muted" id="logCount"></span></h2>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+        <div class="filters" role="group" aria-label="Filter the log">
+          <button type="button" data-f="all" aria-pressed="true">All</button>
+          <button type="button" data-f="pass" aria-pressed="false">Passed</button>
+          <button type="button" data-f="refused" aria-pressed="false">Refused</button>
+          <button type="button" data-f="error" aria-pressed="false">Errors</button>
+          <button type="button" data-f="inside" aria-pressed="false">Inside</button>
+          <button type="button" data-f="outside" aria-pressed="false" id="f-out">Opus</button>
+        </div>
+        <input type="search" id="q" placeholder="Search entries" aria-label="Search entries">
+      </div>
+    </div>
+    <div class="log" id="log"><div class="empty">Each entry appears here the moment the gate decides it: which model answered, whether it passed, and if not, which check refused it and why.</div></div>
+  </section>
+</div>
+
+<script>
+let run = null, rows = [], filter = 'all', query = '';
+try { filter = localStorage.getItem('lr-filter') || 'all'; } catch (e) {}
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const num = (n) => Number(n || 0).toLocaleString('en-US');
+const money = (n) => '$' + Number(n || 0).toFixed(2);
+const pct = (a, b) => (b ? (100 * a) / b : 0);
+const CHECK_WORDS = { schema: 'answer shape', grammar: 'grammar', equivalence: 'behaviour', types: 'types' };
+const STATUS = { running: 'Running', done: 'Finished', stopped: 'Stopped', waiting: 'Waiting for the run' };
+
+function stageBox(prefix, t) {
+  t = t || {};
+  document.getElementById(prefix + '-kv').innerHTML = [
+    ['passed', `${num(t.passed)} / ${num(t.entries)}`], ['pass rate', `${Math.round((t.passRate || 0) * 100)}%`], ['calls', num(t.calls)],
+    ['tokens in', num(t.tokensIn)], ['tokens out', num(t.tokensOut)], ['cost', money(t.costUsd)],
+  ].map(([l, v]) => `<div><span class="label">${l}</span><b>${esc(v)}</b></div>`).join('');
+  const f = Object.entries(t.failedOn || {}).sort((a, b) => b[1] - a[1]);
+  document.getElementById(prefix + '-fails').innerHTML = f.length
+    ? f.map(([c, n]) => `<span class="chip c-refused">${esc(CHECK_WORDS[c] || c)} refused ${num(n)}</span>`).join('')
+    : '<span class="muted" style="font-size:.82rem">No refusals yet.</span>';
+}
+
+function render() {
+  const s = run || {};
+  const st = s.status || 'waiting';
+  const el = document.getElementById('status');
+  el.className = 'chip status-' + st; el.textContent = STATUS[st] || st;
+  if (s.scope) document.getElementById('scope').textContent = s.scope;
+  document.getElementById('in-model').textContent = s.models?.inside || 'haiku';
+  // With --user, the second stage is Haiku again, helped by Opus answering as the person who owns the code.
+  const asUser = Boolean(s.models?.user && s.models.user !== 'none');
+  const second = asUser ? s.user : s.outside;
+  document.getElementById('out-model').textContent = asUser ? `${s.models.inside || 'inside'} asks · ${s.models.user} answers` : s.models?.outside || 'opus';
+  document.getElementById('out-label').textContent = asUser ? 'MODEL AS USER' : 'OUTSIDE';
+  document.getElementById('legend-out').textContent = asUser ? 'Passed after the user model answered' : 'Passed outside';
+  document.getElementById('sec-out').textContent = asUser ? 'With user' : 'Opus';
+  document.getElementById('f-out').textContent = asUser ? 'Asked the user' : 'Opus';
+  const total = s.entries || 0, lib = s.inLibrary || 0, gaps = s.knownGaps || 0, errs = s.errors || 0;
+  const inPass = s.inside?.passed || 0, outPass = (s.outside?.passed || 0) + (s.user?.passed || 0);
+  document.getElementById('k-lib').textContent = num(lib);
+  document.getElementById('k-gap').textContent = num(gaps);
+  document.getElementById('k-err').textContent = num(errs);
+  document.getElementById('k-done').innerHTML = `${num(s.done || 0)} <small>/ ${num(total)}</small>`;
+  const stages = [s.inside, s.outside, s.user].filter(Boolean);
+  document.getElementById('k-calls').textContent = num(stages.reduce((a, t) => a + (t.calls || 0), 0));
+  document.getElementById('k-cost').textContent = money(stages.reduce((a, t) => a + (t.costUsd || 0), 0));
+  const parts = document.querySelectorAll('#bar i');
+  [inPass, outPass, gaps, errs].forEach((v, i) => { parts[i].style.width = pct(v, total) + '%'; });
+  document.getElementById('bar').setAttribute('aria-label', `${lib} of ${total} entries in the library`);
+  if (s.startedAt) {
+    const end = st === 'running' ? Date.now() : Date.parse(s.updatedAt || s.startedAt);
+    const m = Math.max(0, Math.round((end - Date.parse(s.startedAt)) / 60000));
+    document.getElementById('elapsed').textContent = `${m} min since start · updated ${s.updatedAt ? new Date(s.updatedAt).toLocaleTimeString() : '–'}`;
+  }
+  stageBox('in', s.inside); stageBox('out', second);
+
+  const secs = Object.entries(s.sections || {}).sort((a, b) => (b[1].entries - b[1].done) - (a[1].entries - a[1].done) || a[0].localeCompare(b[0]));
+  document.getElementById('secCount').textContent = secs.length ? `${secs.filter(([, x]) => x.done >= x.entries).length} of ${secs.length} finished` : '';
+  document.getElementById('sections').innerHTML = secs.length ? secs.map(([name, x]) => {
+    const w = (v) => pct(v, x.entries) + '%';
+    return `<tr><td class="mono">${esc(name)}</td><td><div class="bar mini"><i class="b-in" style="width:${w(x.inside)}"></i><i class="b-out" style="width:${w((x.outside || 0) + (x.user || 0))}"></i><i class="b-gap" style="width:${w(x.gaps)}"></i><i class="b-err" style="width:${w(x.errors)}"></i></div></td>`
+      + `<td class="num">${num(x.done)}/${num(x.entries)}</td><td class="num">${num(x.inside)}</td><td class="num">${num((x.outside || 0) + (x.user || 0))}</td><td class="num">${num(x.gaps)}</td><td class="num">${num(x.errors)}</td></tr>`;
+  }).join('') : '<tr><td colspan="7" class="muted">Sections appear as their first entries finish.</td></tr>';
+
+  const q = query.trim().toLowerCase();
+  const shown = rows.filter((r) => (filter === 'all' || r.result === filter || r.stage === filter || (filter === 'outside' && r.stage === 'user')) && (!q || `${r.key} ${r.section} ${r.refusal || ''} ${r.sentence || ''} ${(r.dialogue || []).map((d) => `${d.q} ${d.a}`).join(' ')}`.toLowerCase().includes(q)));
+  document.getElementById('logCount').textContent = rows.length ? `${num(shown.length)} of ${num(rows.length)}` : '';
+  document.getElementById('log').innerHTML = shown.length ? shown.slice(0, 400).map((r) => {
+    const resChip = r.result === 'pass' ? `<span class="chip c-pass">PASS · ${esc(r.decision || '')}</span>` : r.result === 'error' ? '<span class="chip c-error">ERROR</span>' : `<span class="chip c-refused">REFUSED · ${esc(CHECK_WORDS[r.check] || r.check || 'gate')}</span>`;
+    const detail = r.result === 'pass' ? (r.sentence ? `<div class="sentence">${esc(r.sentence)}</div>` : r.reason ? `<div class="detail">Named as not expressible: ${esc(r.reason)}</div>` : '') : `<div class="detail">${esc(r.refusal || '')}</div>`;
+    const talk = r.dialogue?.length ? `<div class="talk">${r.dialogue.map((d) => `<div class="ask"><b>Model asks</b>${esc(d.q)}</div><div class="say"><b>As the user</b>${esc(d.a)}</div>`).join('')}</div>` : '';
+    return `<div class="row ${esc(r.result)}"><span class="t">${esc(r.t ? new Date(r.t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '')}</span>`
+      + `<span><span class="chip c-${esc(r.stage)}">${r.stage === 'outside' ? 'OUTSIDE' : r.stage === 'user' ? 'ASKED THE USER' : 'INSIDE'} · ${esc(r.model || '')}</span></span>`
+      + `<span>${resChip}</span>`
+      + `<div class="what"><span class="key">${esc(r.key)}</span>${detail}${talk}<div class="meta"><span class="chip c-plain">${esc(r.section)}</span><span class="chip c-plain">${num(r.tries)} ${r.tries === 1 ? 'try' : 'tries'}</span><span class="chip c-plain">${money(r.costUsd)}</span></div></div></div>`;
+  }).join('') + (shown.length > 400 ? `<div class="empty">Showing the newest 400. Search or filter to find older entries.</div>` : '')
+    : `<div class="empty">${rows.length ? 'Nothing matches this filter.' : 'Each entry appears here the moment the gate decides it: which model answered, whether it passed, and if not, which check refused it and why.'}</div>`;
+}
+
+document.querySelectorAll('.filters button').forEach((b) => {
+  b.setAttribute('aria-pressed', String(b.dataset.f === filter));
+  b.addEventListener('click', () => {
+    filter = b.dataset.f;
+    try { localStorage.setItem('lr-filter', filter); } catch (e) {}
+    document.querySelectorAll('.filters button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+    render();
+  });
+});
+document.getElementById('q').addEventListener('input', (e) => { query = e.target.value; render(); });
+render();
+setInterval(() => { if (run && run.status === 'running') render(); }, 30000);
+
+(async () => {
+  const db = window.claude && window.claude.use ? await window.claude.use('db') : null;
+  const dot = document.getElementById('dot'), txt = document.getElementById('liveText');
+  if (!db) { txt.textContent = 'Live updates are not available in this view.'; return; }
+  const stamp = () => { dot.classList.add('on'); txt.textContent = 'Live · ' + new Date().toLocaleTimeString(); };
+  const lost = () => { dot.classList.remove('on'); txt.textContent = 'Disconnected. Reload to reconnect.'; };
+  // Full blocks of 40 log rows live in `events`; the newest, still-filling block rides in run/current as `tail`.
+  let blocks = [];
+  const merge = () => {
+    const seen = new Set();
+    rows = [...blocks, ...(run?.tail || [])].filter((r) => { const k = `${r.key}|${r.stage}|${r.t}`; if (seen.has(k)) return false; seen.add(k); return true; })
+      .sort((a, b) => String(b.t).localeCompare(String(a.t)));
+    stamp(); render();
+  };
+  db.doc('run/current').onSnapshot((snap) => { run = snap.exists ? snap.data() : null; merge(); }, lost);
+  db.collection('events').onSnapshot((snap) => {
+    blocks = snap.docs.flatMap((d) => (d.data().rows || []));
+    merge();
+    stamp(); render();
+  }, lost);
+})();
+</script>

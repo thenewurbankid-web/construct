@@ -2,10 +2,11 @@
 //   run-current.json  (run/current: totals, stages, sections, the newest partial log block as `tail`)
 //   events-eNNNN.json (events/eNNNN: one full block of 40 log rows; written once)
 // State (which blocks were pushed) lives next to the outbox. Usage:
-//   node sync.mjs <runDir> <outbox> <status> <scope text> [sections,comma] [limit]
+//   node sync.mjs <runDir> <outbox> <status> <scope text> [sections,comma] [limit] [models json]
+// models: the run's --inside/--outside/--user, e.g. '{"inside":"qwen2.5-coder:7b","outside":"none","user":"qwen2.5-coder:7b"}'
 import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, rmSync } from 'node:fs';
 import { summarize } from '../run.mjs';
-const [runDir, outbox, status, scope, sectionsArg, limitArg] = process.argv.slice(2);
+const [runDir, outbox, status, scope, sectionsArg, limitArg, modelsArg] = process.argv.slice(2);
 const BLOCK = 40;
 const reference = JSON.parse(readFileSync(new URL('../../../../line-codemod/bench/atoms/js-reference/reference.json', import.meta.url), 'utf8')).entries;
 const want = sectionsArg ? new Set(sectionsArg.split(',')) : null;
@@ -44,7 +45,7 @@ for (const e of entries) {
 const startedAt = all.length ? all.map((r) => r.at).filter(Boolean).sort()[0] ?? null : null;
 const strip = ({ decisions, ...t }) => t;
 const run = {
-  status, scope, models: summary.models ?? { inside: 'haiku', outside: 'opus' },
+  status, scope, models: modelsArg ? JSON.parse(modelsArg) : summary.models ?? { inside: 'haiku', outside: 'opus' },
   startedAt, updatedAt: new Date().toISOString(),
   entries: entries.length, done, inLibrary: summary.inLibrary, knownGaps: Object.values(sections).reduce((a, s) => a + s.gaps, 0), errors,
   inside: strip(summary.inside), outside: strip(summary.outside), user: strip(summary.user), sections,
