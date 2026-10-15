@@ -1,4 +1,9 @@
-# Fluent English grammar and type-state: plan revision 7 (for approval)
+# Fluent English grammar and type-state: plan revision 7 (DISCARDED)
+
+**Discarded by the owner, 2026-10-15:** "follow all cloud things only, discard our session plan". The cloud branch
+(`line/fluent/t1-4-library-run`, 47df541e) is the plan of record. Kept only as a record of what the cloud branch built
+(section A) and the one bug found in it (the R10 fixture in `gate/isolated/isolated.test.mjs`). Nothing below is to
+be built.
 
 Status: **plan, not built** (2026-10-15, branch `line/fluent/catchup`, from the cloud branch
 `line/fluent/t1-4-library-run` at `47df541e`). Revision 6 (`docs/line/fluent/TYPESTATE.md` on
