@@ -202,8 +202,8 @@ function webGlobals() {
   return webCache;
 }
 
-/** Run the answer's js with names bound to values in a fresh context. */
-function runAnswer(js, names, values) {
+/** Run the answer's js with names bound to values in a fresh context (shared with clarify/sentences.mjs). */
+export function runAnswer(js, names, values) {
   const sandbox = Object.fromEntries(webGlobals());
   names.forEach((n, i) => { sandbox[n] = values[i]; });
   const ctx = vm.createContext(sandbox);
