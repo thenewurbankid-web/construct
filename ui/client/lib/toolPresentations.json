@@ -305,6 +305,36 @@
         "by": "rules"
       }
     },
+    "line.englishView": {
+      "kind": {
+        "value": "component",
+        "by": "rules"
+      },
+      "icon": {
+        "value": "block",
+        "by": "rules"
+      },
+      "overlay": {
+        "value": "outline",
+        "by": "rules"
+      },
+      "states": {
+        "value": [
+          "loading",
+          "error",
+          "filled"
+        ],
+        "by": "rules"
+      },
+      "focus": {
+        "value": "self",
+        "by": "rules"
+      },
+      "caption": {
+        "value": "Reads each top-level function of one source file as English beside its code, for the Cockpit English panel (the same englishDetail as construct english) ({file}).",
+        "by": "rules"
+      }
+    },
     "line.workflows": {
       "kind": {
         "value": "workflow",
@@ -2302,6 +2332,37 @@
         "by": "rules"
       }
     },
+    "line.import.writeAtoms": {
+      "kind": {
+        "value": "feature",
+        "by": "rules"
+      },
+      "icon": {
+        "value": "folder",
+        "by": "rules"
+      },
+      "overlay": {
+        "value": "ghost-after",
+        "by": "rules"
+      },
+      "states": {
+        "value": [
+          "loading",
+          "error",
+          "disabled",
+          "filled"
+        ],
+        "by": "rules"
+      },
+      "focus": {
+        "value": "feature",
+        "by": "rules"
+      },
+      "caption": {
+        "value": "Import: writes one function the breakdown turned into atom calls back into its file, behind its behaviour test ({folder}, {file}, {name}).",
+        "by": "rules"
+      }
+    },
     "line.import.extractWorkflow": {
       "kind": {
         "value": "workflow",
@@ -2891,6 +2952,37 @@
         "by": "rules"
       }
     },
+    "line.useAtom": {
+      "kind": {
+        "value": "component",
+        "by": "rules"
+      },
+      "icon": {
+        "value": "block",
+        "by": "rules"
+      },
+      "overlay": {
+        "value": "ghost-after",
+        "by": "rules"
+      },
+      "states": {
+        "value": [
+          "loading",
+          "error",
+          "disabled",
+          "filled"
+        ],
+        "by": "rules"
+      },
+      "focus": {
+        "value": "self",
+        "by": "rules"
+      },
+      "caption": {
+        "value": "Copies one shipped logic atom into the library atoms, for its usecases and services ({atom}).",
+        "by": "rules"
+      }
+    },
     "line.leaveAsIs": {
       "kind": {
         "value": "finding",
@@ -3137,6 +3229,97 @@
         "by": "rules"
       }
     },
+    "line.featureSummary": {
+      "kind": {
+        "value": "feature",
+        "by": "rules"
+      },
+      "icon": {
+        "value": "folder",
+        "by": "rules"
+      },
+      "overlay": {
+        "value": "outline",
+        "by": "rules"
+      },
+      "states": {
+        "value": [
+          "loading",
+          "empty",
+          "error",
+          "filled"
+        ],
+        "by": "rules"
+      },
+      "focus": {
+        "value": "feature",
+        "by": "rules"
+      },
+      "caption": {
+        "value": "Reads one feature in a few English lines: each item with its base and what it imports, how much of its spec is covered, and its findings ({name}).",
+        "by": "rules"
+      }
+    },
+    "line.scope": {
+      "kind": {
+        "value": "component",
+        "by": "rules"
+      },
+      "icon": {
+        "value": "block",
+        "by": "rules"
+      },
+      "overlay": {
+        "value": "outline",
+        "by": "rules"
+      },
+      "states": {
+        "value": [
+          "loading",
+          "error",
+          "filled"
+        ],
+        "by": "rules"
+      },
+      "focus": {
+        "value": "self",
+        "by": "rules"
+      },
+      "caption": {
+        "value": "Lists what one file may import, each with its import path, one sentence and its exports ({file}).",
+        "by": "rules"
+      }
+    },
+    "line.atoms": {
+      "kind": {
+        "value": "component",
+        "by": "rules"
+      },
+      "icon": {
+        "value": "block",
+        "by": "rules"
+      },
+      "overlay": {
+        "value": "outline",
+        "by": "rules"
+      },
+      "states": {
+        "value": [
+          "loading",
+          "error",
+          "filled"
+        ],
+        "by": "rules"
+      },
+      "focus": {
+        "value": "self",
+        "by": "rules"
+      },
+      "caption": {
+        "value": "Finds the logic atoms a request means, each with what it takes and gives and the line.useAtom step that adds it ({request}).",
+        "by": "rules"
+      }
+    },
     "blocks.requirementParse": {
       "kind": {
         "value": "step",
@@ -3344,6 +3527,216 @@
       },
       "caption": {
         "value": "Says what this machine's memory and cores allow.",
+        "by": "rules"
+      }
+    },
+    "lsp.nextSteps": {
+      "kind": {
+        "value": "component",
+        "by": "rules"
+      },
+      "icon": {
+        "value": "block",
+        "by": "rules"
+      },
+      "overlay": {
+        "value": "outline",
+        "by": "rules"
+      },
+      "states": {
+        "value": [
+          "loading",
+          "error",
+          "filled"
+        ],
+        "by": "rules"
+      },
+      "focus": {
+        "value": "self",
+        "by": "rules"
+      },
+      "caption": {
+        "value": "Says which Trace step is legal next for one stable id, in Line order, with an enum of exactly those steps ({need}, {from}).",
+        "by": "rules"
+      }
+    },
+    "lsp.completions": {
+      "kind": {
+        "value": "component",
+        "by": "rules"
+      },
+      "icon": {
+        "value": "block",
+        "by": "rules"
+      },
+      "overlay": {
+        "value": "outline",
+        "by": "rules"
+      },
+      "states": {
+        "value": [
+          "loading",
+          "error",
+          "filled"
+        ],
+        "by": "rules"
+      },
+      "focus": {
+        "value": "self",
+        "by": "rules"
+      },
+      "caption": {
+        "value": "Lists the names or import paths valid at one point of a file, with an enum a model must pick from ({file}).",
+        "by": "rules"
+      }
+    },
+    "lsp.symbolInfo": {
+      "kind": {
+        "value": "component",
+        "by": "rules"
+      },
+      "icon": {
+        "value": "block",
+        "by": "rules"
+      },
+      "overlay": {
+        "value": "outline",
+        "by": "rules"
+      },
+      "states": {
+        "value": [
+          "loading",
+          "error",
+          "filled"
+        ],
+        "by": "rules"
+      },
+      "focus": {
+        "value": "self",
+        "by": "rules"
+      },
+      "caption": {
+        "value": "Reads a symbol's exact type and where it is declared, or every export of a file, instead of the file's text ({file}).",
+        "by": "rules"
+      }
+    },
+    "lsp.smithCheck": {
+      "kind": {
+        "value": "component",
+        "by": "rules"
+      },
+      "icon": {
+        "value": "block",
+        "by": "rules"
+      },
+      "overlay": {
+        "value": "outline",
+        "by": "rules"
+      },
+      "states": {
+        "value": [
+          "loading",
+          "error",
+          "filled"
+        ],
+        "by": "rules"
+      },
+      "focus": {
+        "value": "self",
+        "by": "rules"
+      },
+      "caption": {
+        "value": "Compares one function's Smith sentences with its Smith test plan, exact match only ({file}, {fn}, {plan}).",
+        "by": "rules"
+      }
+    },
+    "lsp.fixes": {
+      "kind": {
+        "value": "finding",
+        "by": "rules"
+      },
+      "icon": {
+        "value": "flag",
+        "by": "rules"
+      },
+      "overlay": {
+        "value": "badge",
+        "by": "rules"
+      },
+      "states": {
+        "value": [
+          "loading",
+          "error",
+          "filled"
+        ],
+        "by": "rules"
+      },
+      "focus": {
+        "value": "target",
+        "by": "rules"
+      },
+      "caption": {
+        "value": "Works out the deterministic fixes for one file (missing imports, import paths, single spelling fixes) as edits, without applying them ({file}).",
+        "by": "rules"
+      }
+    },
+    "fluent.english": {
+      "kind": {
+        "value": "component",
+        "by": "rules"
+      },
+      "icon": {
+        "value": "block",
+        "by": "rules"
+      },
+      "overlay": {
+        "value": "outline",
+        "by": "rules"
+      },
+      "states": {
+        "value": [
+          "loading",
+          "error",
+          "filled"
+        ],
+        "by": "rules"
+      },
+      "focus": {
+        "value": "self",
+        "by": "rules"
+      },
+      "caption": {
+        "value": "Reads each top-level function of a file or snippet as English, the view construct english prints.",
+        "by": "rules"
+      }
+    },
+    "fluent.atoms": {
+      "kind": {
+        "value": "component",
+        "by": "rules"
+      },
+      "icon": {
+        "value": "block",
+        "by": "rules"
+      },
+      "overlay": {
+        "value": "outline",
+        "by": "rules"
+      },
+      "states": {
+        "value": [
+          "loading",
+          "error",
+          "filled"
+        ],
+        "by": "rules"
+      },
+      "focus": {
+        "value": "self",
+        "by": "rules"
+      },
+      "caption": {
+        "value": "Rewrites a file or snippet into Smith atoms with no model, and lists the places where several atoms fit as closed choices.",
         "by": "rules"
       }
     },
