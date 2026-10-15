@@ -1,0 +1,67 @@
+{
+  "benefit": "Page builds, the reference lister and the atom runtime work from any checkout.",
+  "branch": "line/import-smith-codemod",
+  "contract": "git grep for smith-functional | atomic-codemod | construct-worktrees in packages/line-smith and packages/line-codemod shows only docs, history notes and recorded results.",
+  "etaAt": "2026-10-15T00:20:00.000Z",
+  "linesAdded": 35,
+  "linesRemoved": 18,
+  "note": "cf76e053. Codemod suite 231/231 with the new paths.",
+  "order": 1,
+  "parent": "E0",
+  "progress": 100,
+  "quickWin": true,
+  "report": {
+    "artifacts": [
+      {
+        "label": "commit",
+        "ref": "cf76e053"
+      }
+    ],
+    "baseline": "5 hard-coded paths: ~/Repositories/smith-functional (Atoms page, JS reference lister, atom runtime), an esbuild inside the import-v2-probe worktree, and the og-final-1012 worktree as the Smith corpus.",
+    "collection": [
+      {
+        "count": "construct packages minus 3",
+        "name": "corpus roots",
+        "note": "line-smith, line-codemod and line-fluent are the describer, not the corpus"
+      }
+    ],
+    "doneAt": "2026-10-15T00:20:00Z",
+    "followups": [
+      "Recorded bench/results/*.json keep their old paths on purpose (history).",
+      "packages/line-links tables are T0.6 in wave 2."
+    ],
+    "metrics": [
+      {
+        "after": 0,
+        "before": 5,
+        "name": "hard-coded external paths"
+      },
+      {
+        "after": 5,
+        "name": "files changed"
+      }
+    ],
+    "outcome": "All resolve from packages/line-smith or this repo; env vars (SMITH_DIR, ESBUILD, TS_LIB_DIR, SMITH_RUNTIME_REPO, SMITH_CORPUS) still override. The runtime snapshot is keyed by Smith's tree, so a commit that leaves Smith alone reuses it.",
+    "summary": "Everything in Smith and the codemod now resolves inside this construct checkout. No path points at the old repos or other worktrees.",
+    "tests": {
+      "fail": 0,
+      "pass": 231,
+      "skipped": 0
+    }
+  },
+  "risks": [
+    {
+      "mitigation": "Key = construct sha + subdir; .runtime stays git-ignored",
+      "risk": "Runtime snapshot from this repo changes cache keys"
+    },
+    {
+      "mitigation": "Fail loudly with the one env var to set; no HOME defaults",
+      "risk": "A script silently falls back to an old repo"
+    }
+  ],
+  "session": "this session",
+  "status": "done",
+  "thoughts": "Four files plus one comment. Recorded result JSONs keep their old paths on purpose: they are history. The corpus now excludes Smith, the codemod and line-fluent, so the golden rate is measured on construct's own code.",
+  "title": "Paths resolve in-repo",
+  "version": "fluent-v0.1.0"
+}

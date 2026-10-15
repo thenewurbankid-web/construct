@@ -1,0 +1,24 @@
+{
+  "benefit": "People read the English view from the CLI.",
+  "branch": "line/fluent/t2-2-english-cli",
+  "contract": "packages/line-fluent/cli/english.mjs + construct.commands in line-fluent package.json; toEnglish per top-level function; --json.",
+  "etaAt": "2026-10-15T00:34:08.098Z",
+  "linesAdded": 0,
+  "linesRemoved": 0,
+  "note": "Wave 2; contract in FLUENT-PLAN \"Wave 2 leaves\".",
+  "order": 2,
+  "parent": "E2",
+  "progress": 5,
+  "quickWin": true,
+  "risks": [
+    {
+      "mitigation": "Verify via node packages/cli/construct.mjs english",
+      "risk": "Plugin discovery misses workspace package"
+    }
+  ],
+  "session": "t2-2-english-cli",
+  "status": "running",
+  "thoughts": "Only leaf allowed to touch line-fluent/package.json.",
+  "title": "construct english <file>",
+  "version": null
+}

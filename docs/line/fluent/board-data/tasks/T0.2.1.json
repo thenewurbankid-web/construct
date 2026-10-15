@@ -1,0 +1,28 @@
+{
+  "etaAt": "2026-10-15T00:25:00.000Z",
+  "linesAdded": 0,
+  "linesRemoved": 0,
+  "order": 1,
+  "parent": "T0.2",
+  "progress": 100,
+  "quickWin": true,
+  "report": {
+    "artifacts": [
+      {
+        "label": "commit",
+        "ref": "88733ba3"
+      }
+    ],
+    "doneAt": "2026-10-15T00:30:00Z",
+    "metrics": [
+      {
+        "after": 1656,
+        "name": "lockfile lines removed"
+      }
+    ],
+    "summary": "Renamed to @line/smith and @line/codemod (private, bin line-codemod); nested lockfiles removed."
+  },
+  "status": "done",
+  "title": "Rename packages, drop nested lockfiles",
+  "version": null
+}

@@ -1,0 +1,29 @@
+{
+  "etaAt": "2026-10-15T00:11:00.000Z",
+  "linesAdded": 0,
+  "linesRemoved": 0,
+  "order": 2,
+  "parent": "T0.1",
+  "progress": 100,
+  "quickWin": true,
+  "report": {
+    "artifacts": [
+      {
+        "label": "commit",
+        "ref": "cf76e053"
+      }
+    ],
+    "doneAt": "2026-10-15T00:20:00Z",
+    "metrics": [
+      {
+        "after": 0,
+        "before": 1,
+        "name": "external paths"
+      }
+    ],
+    "summary": "js-reference/list.mjs finds TypeScript 7's lib files through packages/line-smith, for the machine's own platform package."
+  },
+  "status": "done",
+  "title": "js-reference/list.mjs: TS 7 lib from line-smith",
+  "version": null
+}

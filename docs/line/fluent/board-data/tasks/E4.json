@@ -1,0 +1,14 @@
+{
+  "benefit": "Completions, hover and fixes in the editor, mostly with no model.",
+  "etaAt": "2026-10-15T06:00:00.000Z",
+  "linesAdded": 0,
+  "linesRemoved": 0,
+  "order": 4,
+  "parent": null,
+  "progress": 0,
+  "quickWin": false,
+  "status": "running",
+  "thoughts": "The grammar is a closed state machine, so completions are exact for free.",
+  "title": "LSP on the fluent layer",
+  "version": null
+}

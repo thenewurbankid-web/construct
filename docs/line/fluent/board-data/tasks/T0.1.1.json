@@ -1,0 +1,29 @@
+{
+  "etaAt": "2026-10-15T00:08:00.000Z",
+  "linesAdded": 0,
+  "linesRemoved": 0,
+  "order": 1,
+  "parent": "T0.1",
+  "progress": 100,
+  "quickWin": true,
+  "report": {
+    "artifacts": [
+      {
+        "label": "commit",
+        "ref": "cf76e053"
+      }
+    ],
+    "doneAt": "2026-10-15T00:20:00Z",
+    "metrics": [
+      {
+        "after": 0,
+        "before": 2,
+        "name": "external paths"
+      }
+    ],
+    "summary": "atoms-page/build.mjs reads Smith from packages/line-smith and esbuild from the repo; fast-check resolved the way Smith resolves it."
+  },
+  "status": "done",
+  "title": "atoms-page/build.mjs: Smith dir and esbuild",
+  "version": null
+}

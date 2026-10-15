@@ -1,0 +1,22 @@
+{
+  "etaAt": "2026-10-15T00:35:00.000Z",
+  "linesAdded": 0,
+  "linesRemoved": 0,
+  "order": 2,
+  "parent": "T0.2",
+  "progress": 100,
+  "quickWin": true,
+  "report": {
+    "artifacts": [
+      {
+        "label": "commit",
+        "ref": "88733ba3"
+      }
+    ],
+    "doneAt": "2026-10-15T00:31:00Z",
+    "summary": "Root lock updated, then npm ci at the root and in ui/server through heavy.sh; trace installs linked from the main checkout (identical package.json)."
+  },
+  "status": "done",
+  "title": "Root install through heavy.sh",
+  "version": null
+}

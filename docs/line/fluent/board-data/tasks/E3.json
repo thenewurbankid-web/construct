@@ -1,0 +1,14 @@
+{
+  "benefit": "A local 1.5b that writes Smith, not JS (K2 today: 0/20).",
+  "etaAt": "2026-10-15T08:00:00.000Z",
+  "linesAdded": 0,
+  "linesRemoved": 0,
+  "order": 3,
+  "parent": null,
+  "progress": 0,
+  "quickWin": false,
+  "status": "running",
+  "thoughts": "Gated by the English-as-context probe: no training spend until the view is shown to help.",
+  "title": "Student: the small model learns by comparison",
+  "version": null
+}

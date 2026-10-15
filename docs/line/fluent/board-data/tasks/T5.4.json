@@ -1,0 +1,14 @@
+{
+  "benefit": "The owner reviews new atoms on a live page.",
+  "contract": "Smith Atoms and JS Reference Atlas regenerate from the catalog.",
+  "etaAt": "2026-10-15T06:40:00.000Z",
+  "linesAdded": 0,
+  "linesRemoved": 0,
+  "order": 4,
+  "parent": "E5",
+  "progress": 0,
+  "quickWin": false,
+  "status": "todo",
+  "title": "Pages rebuild after each batch",
+  "version": null
+}

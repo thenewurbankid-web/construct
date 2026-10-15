@@ -1,0 +1,20 @@
+{
+  "benefit": "Clean, gated training data.",
+  "contract": "Gold + corrected misses + codemod pairs; hold out whole sections (Intl, Temporal).",
+  "etaAt": "2026-10-15T05:00:00.000Z",
+  "linesAdded": 0,
+  "linesRemoved": 0,
+  "order": 3,
+  "parent": "E3",
+  "progress": 0,
+  "quickWin": false,
+  "risks": [
+    {
+      "mitigation": "Held-out sections; equivalent counts as right",
+      "risk": "Student overfits to Claude's style"
+    }
+  ],
+  "status": "todo",
+  "title": "Training records and held-out split",
+  "version": null
+}
