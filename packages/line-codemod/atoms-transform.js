@@ -313,6 +313,51 @@ function collectBound(ast) {
   return out;
 }
 
+// ---------------------------------------------------------------------------
+// Types from the code itself (owner, 2026-10-15): an atom may only be used on the type it is for. A name's type is
+// read from its own declaration (`const groups = new Map()` -> map); an atom's type is its recorded receiver
+// (generated atoms) or the generator of its first parameter (hand-written atoms: getFrom takes a map). When the code
+// shows a type and no atom for that type fits, the code is left as it is and reported as a gap, never given a
+// neighbouring type's atom (`groups.set` on a Map used to become setInWeakMap). A gap names its JS reference entry
+// (Map.prototype.set) so a new atom can be generated for it and registered; the next run then finds it.
+
+const TYPE_OF_NEW = { Map: 'map', WeakMap: 'weakmap', Set: 'set', WeakSet: 'weakset', Date: 'date', URL: 'url', URLSearchParams: 'urlsearchparams', Array: 'list' };
+const TYPE_OF_GEN = { map: 'map', weakmap: 'weakmap', set: 'set', weakset: 'weakset', list: 'list', list1: 'list', listornull: 'list', nums: 'list', nested: 'list', text: 'text', shorttext: 'text', spacedtext: 'text', date: 'date' };
+const OWNER_OF_TYPE = { map: 'Map', weakmap: 'WeakMap', set: 'Set', weakset: 'WeakSet', list: 'Array', text: 'String', date: 'Date', url: 'URL', urlsearchparams: 'URLSearchParams' };
+
+/** const names whose declaration shows their type: name -> 'map' | 'weakmap' | 'set' | 'list' | 'text' | ... */
+function declaredTypes(ast) {
+  const out = new Map();
+  const walk = (n) => {
+    if (!n || typeof n.type !== 'string') return;
+    if (n.type === 'VariableDeclaration' && n.kind === 'const') {
+      for (const d of n.declarations) {
+        if (d.id.type !== 'Identifier' || !d.init) continue;
+        const init = d.init.type === 'TSAsExpression' || d.init.type === 'TSNonNullExpression' ? d.init.expression : d.init;
+        if (init.type === 'NewExpression' && init.callee.type === 'Identifier' && TYPE_OF_NEW[init.callee.name]) out.set(d.id.name, TYPE_OF_NEW[init.callee.name]);
+        else if (init.type === 'ArrayExpression') out.set(d.id.name, 'list');
+        else if (init.type === 'StringLiteral' || (init.type === 'TemplateLiteral')) out.set(d.id.name, 'text');
+      }
+    }
+    for (const k of Object.keys(n)) {
+      if (k === 'loc' || k === 'start' || k === 'end' || k === 'leadingComments' || k === 'trailingComments') continue;
+      const v = n[k];
+      if (Array.isArray(v)) v.forEach(walk);
+      else if (v && typeof v.type === 'string') walk(v);
+    }
+  };
+  walk(ast);
+  return out;
+}
+
+/** The type an atom is for, or null when it takes any value. */
+function atomType(p) {
+  const check = p.info.entry && p.info.entry.check;
+  if (check && !Array.isArray(check) && check.receiver) return TYPE_OF_GEN[check.receiver] || check.receiver;
+  const first = Array.isArray(check) && check[0] && check[0].params && check[0].params[0];
+  return first ? TYPE_OF_GEN[first[1]] || null : null;
+}
+
 function toAtoms(code, options = {}) {
   const { catalog, kind = 'module', typeHint = null, importFrom = 'smith', choices = {}, skip = new Set() } = options;
   if (!catalog) throw new Error('toAtoms: options.catalog is required (atoms-catalog.js compileCatalog/loadCatalog)');
@@ -322,6 +367,8 @@ function toAtoms(code, options = {}) {
   const ast = parser.parse(wrapped, PARSE_OPTS);
   const names = collectNames(ast);
   const bound = collectBound(ast);
+  const declared = declaredTypes(ast);
+  const gaps = [];
   const has = (atom) => catalog.atoms.has(atom);
   const used = new Map(); // atom -> local name
   const untranslated = [];
@@ -350,6 +397,12 @@ function toAtoms(code, options = {}) {
     const e = { type: n.type, form: form || shapeKey(n), start: n.start - offset, end: n.end - offset };
     if (reason) e.reason = reason;
     untranslated.push(e);
+  };
+  // a gap: the code shows a type no atom is for; reported with the reference entry a new atom would be made from
+  const recordGap = (n, hit) => {
+    record(n, null, `no atom for a ${hit.type}`);
+    const owner = OWNER_OF_TYPE[hit.type];
+    gaps.push({ start: n.start - offset, end: n.end - offset, type: hit.type, member: hit.member, entry: owner && hit.member ? `${owner}.prototype.${hit.member}` : null, code: wrapped.slice(n.start, n.end) });
   };
   const atomRef = (atom) => {
     if (!used.has(atom)) used.set(atom, names.has(atom) ? `${atom}Atom` : atom);
@@ -419,6 +472,15 @@ function toAtoms(code, options = {}) {
       const first = params && params.length && h.b[params[0].name] ? h.b[params[0].name] : h.b[h.p.placeholders[0]];
       return first;
     };
+    // the code's own types first: an atom for another type never fits (a Map's .set is not setInWeakMap)
+    const shown = (h) => { const f = firstArg(h); return f && f.type === 'Identifier' ? declared.get(f.name) || null : null; };
+    const typed = hits.filter((h) => { const want = shown(h); const has = atomType(h.p); return !want || !has || has === want; });
+    if (!typed.length) {
+      const want = shown(hits[0]);
+      const member = keyNode.type.endsWith('CallExpression') && keyNode.callee && keyNode.callee.property ? keyNode.callee.property.name : null;
+      return { gap: true, type: want, member };
+    }
+    hits.splice(0, hits.length, ...typed);
     let chosen = null;
     // a form with nothing to bind has no value whose kind could decide: catalog order does
     const verdicts = hits.map((h) => ({ h, v: h.p.constant ? 'yes' : kindsCompatible(h.p.info.firstKinds, hintOf(firstArg(h))) }));
@@ -635,7 +697,8 @@ function toAtoms(code, options = {}) {
     if (!ctx.lvalue && !ctx.callee && !chainPart) {
       const hit = tryPatterns(n, ctx);
       if (hit && hit.p) return buildCall(hit, ctx);
-      if (hit && hit.ambiguous) record(n, null, 'ambiguous type');
+      if (hit && hit.gap) recordGap(n, hit);
+      else if (hit && hit.ambiguous) record(n, null, 'ambiguous type');
       else if (hit && hit.mutates) record(n, null, 'mutates');
       else if (hit && hit.skipped) record(n, null, 'failed the check');
       else if (RECORDED_TYPES.has(n.type) || ((n.type === 'TemplateLiteral') && n.expressions.length)) record(n);
@@ -978,7 +1041,7 @@ function toAtoms(code, options = {}) {
   const out = importDecl ? `${importDecl}\n\n${body}` : body;
   untranslated.sort((a, b) => a.start - b.start || a.end - b.end);
   sites.sort((a, b) => a.start - b.start || b.end - a.end);
-  return { code: out, body, imports, importDecl, atoms: Object.fromEntries(used), untranslated, converted, sites, ambiguous };
+  return { code: out, body, imports, importDecl, atoms: Object.fromEntries(used), untranslated, converted, sites, ambiguous, gaps };
 }
 
 module.exports = { toAtoms, scan, terminal };
