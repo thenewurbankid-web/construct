@@ -18,13 +18,22 @@
 //                with the reason a person is needed.
 //
 // Usage: node packages/tools/grammar-eval/run.mjs [--ask model|user] [--model qwen3:1.7b]
-//          [--write] [--limit N] [--jobs N] [paths...]          (default path: packages/core)
+//          [--write] [--limit N] [--jobs N] [paths...]
+//
+// Batch naming (--placeholders): every atom is extracted at once under a
+// placeholder name, then all placeholders are named in one batch. Each entry
+// shows its code, our English and suggested names (from the code's shape and,
+// with --ask model, the model — which is given the English only). With
+// --ask user the person picks per entry: a number, their own words, or Enter
+// for the first option. With --sheet FILE the batch is written as JSON to fill
+// in later; --apply-sheet FILE applies it.          (default path: packages/core)
 import { readFileSync, writeFileSync, statSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 import { parseArgs } from 'node:util';
 import { evaluateLexicon, evaluateSource, findUserDomainGaps } from '../../core/grammar-eval.mjs';
 import { correctGaps, markFunction, markerTypes, markersIn, DEFAULT_GRAMMAR_MODEL } from '../../core/corrections.mjs';
 import { planAtoms, planAtomsInFiles, atomQuestion, nameFromAnswer, applyAtoms } from '../../core/atoms.mjs';
+import { extractWithPlaceholders, namingSheet, optionsQuestion, parseOptions, applyNames } from '../../core/naming.mjs';
 import { setMarkedFunctions } from '../../core/user-lexicon.mjs';
 import { callLlm } from '../../core/llm.mjs';
 import { makeLineSource } from '../../core/line-source.mjs';
@@ -37,6 +46,9 @@ const { values: opts, positionals } = parseArgs({
     write: { type: 'boolean', default: false },
     limit: { type: 'string', default: '50' },
     jobs: { type: 'string', default: '4' },
+    placeholders: { type: 'boolean', default: false },
+    sheet: { type: 'string' },
+    'apply-sheet': { type: 'string' },
   },
 });
 const limit = Number(opts.limit);
@@ -95,6 +107,53 @@ function report(label, files, { lexicon, source, atoms, statements }) {
 }
 
 const files = sourceFiles(positionals);
+
+if (opts['apply-sheet']) {
+  const sheet = JSON.parse(readFileSync(opts['apply-sheet'], 'utf8'));
+  for (const file of [...new Set(sheet.map((e) => e.file))]) {
+    const { source, applied, skipped } = applyNames(readFileSync(file, 'utf8'), sheet.filter((e) => e.file === file), file);
+    writeFileSync(file, source);
+    for (const a of applied) console.log(`   ${file}: ${a.placeholder} -> ${a.name} ("${a.does}")`);
+    for (const k of skipped) console.log(`   ${file}: ${k.placeholder} kept — ${k.error}`);
+  }
+  process.exit(0);
+}
+
+if (opts.placeholders) {
+  const sheet = [];
+  for (const file of files) {
+    const before = readFileSync(file, 'utf8');
+    const { source } = extractWithPlaceholders(before, file);
+    if (source !== before && opts.write) writeFileSync(file, source);
+    sheet.push(...namingSheet(source, file));
+  }
+  if (opts.ask === 'model') {
+    const replies = await inBatches(sheet, jobs, (e) => ask(optionsQuestion(e)));
+    sheet.forEach((e, i) => (e.options = [...new Set([...parseOptions(replies[i]), ...e.options])].slice(0, 5)));
+  }
+  if (opts.ask === 'user') {
+    for (const e of sheet) {
+      const menu = e.options.map((o, i) => `  ${i + 1}. ${o}`).join('\n');
+      const reply = (await askUser(`${e.file}:${e.line} ${e.placeholder}\n\n    ${e.snippet}\n\n  It works out: ${e.english}\n\nPick a name (number), type your own, or press Enter for 1:\n${menu}`)).trim();
+      e.choice = !reply ? e.options[0] ?? null : /^\d+$/.test(reply) ? e.options[Number(reply) - 1] ?? null : reply;
+    }
+  } else {
+    sheet.forEach((e) => (e.choice ??= null));
+  }
+  if (opts.sheet) {
+    writeFileSync(opts.sheet, `${JSON.stringify(sheet, null, 2)}\n`);
+    console.log(`Wrote ${sheet.length} placeholders to ${opts.sheet}; set each "choice", then run with --apply-sheet ${opts.sheet}.`);
+  }
+  if (opts.ask === 'user' && opts.write) {
+    for (const file of [...new Set(sheet.map((e) => e.file))]) {
+      const { source, applied, skipped } = applyNames(readFileSync(file, 'utf8'), sheet.filter((e) => e.file === file), file);
+      writeFileSync(file, source);
+      console.log(`   ${file}: ${applied.length} named, ${skipped.length} kept as placeholders`);
+    }
+  }
+  if (!opts.sheet && !(opts.ask === 'user' && opts.write)) for (const e of sheet) console.log(`   ${e.file}:${e.line} ${e.placeholder}: ${e.options.join(' | ')}`);
+  process.exit(0);
+}
 const before = sweep(files);
 report('before', files, before);
 

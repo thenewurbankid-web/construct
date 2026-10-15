@@ -7,6 +7,7 @@ import { parseAnswer, questionsFor, correctGaps, markerTypes, markFunction, lemm
 import { setMarkedFunctions, nominalize, mapUserCall } from '../packages/core/user-lexicon.mjs';
 import { planAtoms, applyAtom, applyAtoms, atomQuestion, nameFromAnswer } from '../packages/core/atoms.mjs';
 import { describeImplementation } from '../packages/core/prose.mjs';
+import { extractWithPlaceholders, namingSheet, suggestNames, parseOptions, applyNames, optionsQuestion } from '../packages/core/naming.mjs';
 
 const ref = (js) => ({ english: `\`${js}\``, js, bare: null });
 
@@ -190,4 +191,38 @@ test('corrections: a model can be asked several names at once; results keep the 
   const { accepted } = await correctGaps(gaps, ask, { concurrency: 3 });
   assert.deepEqual(accepted.map((a) => a.name), ['parseToAst', 'frobnicate', 'zorch']);
   assert.equal(peak, 3);
+});
+
+test('batch naming: every atom is lifted at once under a placeholder, and the code still parses', () => {
+  const { source, placeholders } = extractWithPlaceholders(CHECKOUT, 'checkout.ts');
+  assert.deepEqual(placeholders, ['pendingName1', 'pendingName2', 'pendingName3']);
+  assert.match(source, /const total = pendingName1\(order\) \* \(pendingName2\(user\)\) - \(pendingName3\(user, order\)\);/);
+  assert.match(source, /\/\*\* @pending the single value .* \*\/\nfunction pendingName1\(order\)/);
+  assert.deepEqual(ts.createSourceFile('c.ts', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS).parseDiagnostics, []);
+});
+
+test('batch naming: the sheet shows each placeholder\'s code, our English and options read off the code', () => {
+  const { source } = extractWithPlaceholders(CHECKOUT, 'checkout.ts');
+  const sheet = namingSheet(source, 'checkout.ts');
+  assert.deepEqual(sheet.map((e) => e.snippet), ['order.items.reduce((sum, i) => sum + i.price * i.qty, 0)', "1 + (user.region === 'EU' ? 0.2 : 0.07)", 'user.coupon ? Math.min(user.coupon.amount, order.items.length * 5) : 0']);
+  assert.equal(sheet[0].options[0], 'add up the order items');
+  assert.equal(sheet[1].options[0], 'work out the user region');
+  assert.equal(sheet[2].options[0], 'choose the user coupon');
+  assert.deepEqual(suggestNames('{ id: user.id, name: user.fullName }')[0], 'build the user id');
+  assert.doesNotMatch(optionsQuestion(sheet[0]), /`|=>|\(sum/, 'the model is given the English only');
+});
+
+test('batch naming: model replies become options; choices rename placeholders everywhere and become @does markers', () => {
+  assert.deepEqual(parseOptions('1. Add up the prices\n2) "work out the subtotal"\n- totals the cart\nsum(x)'), ['add up the prices', 'work out the subtotal']);
+  const { source } = extractWithPlaceholders(CHECKOUT, 'checkout.ts');
+  const sheet = namingSheet(source, 'checkout.ts');
+  sheet[0].choice = 'add up the item prices';
+  sheet[1].choice = 'work out the tax rate';
+  sheet[2].choice = 'works out the discount';
+  const { source: out, applied, skipped } = applyNames(source, sheet, 'checkout.ts');
+  assert.deepEqual(applied.map((a) => a.name), ['addUpItemPrices', 'workOutTaxRate']);
+  assert.match(skipped[0].error, /plain action word/);
+  assert.match(out, /const total = addUpItemPrices\(order\) \* \(workOutTaxRate\(user\)\) - \(pendingName3\(user, order\)\);/);
+  assert.match(out, /\/\*\* @does adds up the item prices \*\/\nfunction addUpItemPrices\(order\)/);
+  assert.match(out, /\/\*\* @pending .* \*\/\nfunction pendingName3/);
 });
