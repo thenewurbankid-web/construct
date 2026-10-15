@@ -74,7 +74,7 @@ export const SETTLED = 0.8;
  * question: the one that would most improve the least certain assumption that matters for the step, in plain words.
  * Our code checks the result: a settled step needs confidence >= SETTLED and a real candidate or a plain word.
  */
-export async function refine(state, source, { model = 'opus' } = {}) {
+export async function refine(state, source, { model = 'opus', run } = {}) {
   const options = byVerb(state);
   const system = [
     'You help a person who does not read code confirm what their code does. You keep a list of assumptions about the code and improve every one of them each turn, using the code and everything the person has said.',
@@ -91,7 +91,7 @@ export async function refine(state, source, { model = 'opus' } = {}) {
     `Assumptions so far: ${JSON.stringify(state.assumptions ?? [])}`,
     'Conversation so far:', ...(state.history ?? []).map((h) => `Q: ${h.q}\nA: ${h.a}`),
   ].join('\n');
-  const r = await claudeJson(system, user, model);
+  const r = await claudeJson(system, user, model, run);
   const step = r.step ?? {};
   const n = Number(step.candidate);
   const candidate = Number.isInteger(n) && options[n - 1] ? options[n - 1] : null;
@@ -117,7 +117,7 @@ function callable(source) {
  * like getInitiativeDescription has no code here), our code runs the real block on them, and the model answers its
  * own question from what really came out.
  */
-export async function selfAsk(state, source, { model = 'opus' } = {}) {
+export async function selfAsk(state, source, { model = 'opus', run } = {}) {
   const design = await claudeJson(
     [
       'You are checking your own understanding of a piece of code by running it. Design one small experiment that answers the question.',
@@ -126,27 +126,29 @@ export async function selfAsk(state, source, { model = 'opus' } = {}) {
     ].join('\n'),
     `The code:\n${source}\nThe question: ${state.question}`,
     model,
+    run,
   );
   const args = Array.isArray(design.args) ? design.args : [];
   const fnArgs = args.map((a) => (a && typeof a === 'object' && typeof a.fn === 'string' ? `(${a.fn})` : JSON.stringify(a)));
-  const run = await runAnswer(`(${callable(source)})(${fnArgs.join(', ')})`, [], []);
-  const seen = run.throws ? `it throws ${run.throws.name}` : `it returns ${JSON.stringify(run.ok, (k, v) => (v instanceof Map ? Object.fromEntries(v) : v))}`;
+  const ran = await runAnswer(`(${callable(source)})(${fnArgs.join(', ')})`, [], []);
+  const seen = ran.throws ? `it throws ${ran.throws.name}` : `it returns ${JSON.stringify(ran.ok, (k, v) => (v instanceof Map ? Object.fromEntries(v) : v))}`;
   const answer = await claudeJson(
     'You asked yourself a question about some code, ran an experiment, and saw the result. Answer your own question from what really happened, in one or two plain sentences. Reply with one JSON object only: {"answer": "..."}.',
     `The code:\n${source}\nThe question: ${state.question}\nThe experiment: called with ${fnArgs.join(', ')}\nWhat happened: ${seen}`,
     model,
+    run,
   );
   return { q: state.question, a: `(answered from a run: called with ${fnArgs.join(', ')}; ${seen}) ${answer.answer ?? ''}`.trim(), self: true };
 }
 
 /** Self-asks until the step is settled, confidence stops rising, or `max` rounds; then the state is ready to confirm. */
-export async function selfLoop(state, source, { model = 'opus', max = 4 } = {}) {
+export async function selfLoop(state, source, { model = 'opus', max = 4, run } = {}) {
   let s = state;
   for (let round = 0; round < max && !s.settled; round++) {
     const before = s.step?.confidence ?? 0;
-    const h = await selfAsk(s, source, { model });
+    const h = await selfAsk(s, source, { model, run });
     s = { ...s, history: [...(s.history ?? []), h] };
-    Object.assign(s, await refine(s, source, { model }));
+    Object.assign(s, await refine(s, source, { model, run }));
     if (round > 0 && (s.step?.confidence ?? 0) <= before && !s.settled) break; // no longer learning
   }
   return s;
@@ -174,8 +176,8 @@ export function turnText(state) {
 
 // ---- the model as translator, both ways; our code checks every result ----------------
 
-async function claudeJson(system, user, model) {
-  const { stdout } = await runClaude(claudeArgs({ model, system }), user, {});
+async function claudeJson(system, user, model, run = runClaude) {
+  const { stdout } = await run(claudeArgs({ model, system }), user, {});
   const out = JSON.parse(stdout);
   if (out.is_error) throw new Error(String(out.result).slice(0, 200));
   const t = String(out.result);
@@ -186,11 +188,11 @@ async function claudeJson(system, user, model) {
  * Each option as one plain-English sentence with the example's real values ("It stores 30 under "bag" in the map.").
  * A sentence that lost its option's verb is replaced by the bare verb: the verb is the only thing the options differ in.
  */
-export async function plainOptions(state, { model = 'haiku' } = {}) {
+export async function plainOptions(state, { model = 'haiku', run } = {}) {
   const options = byVerb(state);
   const system = 'You turn short technical step descriptions into one plain, everyday English sentence each, for a person who does not read code. Use the example values, not variable names. Keep each step\'s own verb exactly (its base form or -s form). Reply with one JSON object only: {"sentences": ["...", ...]} in the same order.';
   const user = [`Example: ${state.example.given}; afterwards ${state.example.changed.join('; ') || 'nothing changes'}.`, 'Steps:', ...options.map((o, i) => `${i + 1}. ${o.sentence}`)].join('\n');
-  const said = (await claudeJson(system, user, model)).sentences ?? [];
+  const said = (await claudeJson(system, user, model, run)).sentences ?? [];
   const plain = {};
   options.forEach((o, i) => {
     const base = o.verb.replace(/(ies|es|s)$/, '');
@@ -205,13 +207,13 @@ export async function plainOptions(state, { model = 'haiku' } = {}) {
  * own word. The model only reads the reply; the number must exist and a new word is still checked by the grammar
  * and a read-back.
  */
-export async function readReply(reply, state, { model = 'haiku' } = {}) {
+export async function readReply(reply, state, { model = 'haiku', run } = {}) {
   const text = String(reply).trim();
   if (/^\d+$/.test(text)) return { choice: Number(text), word: null };
   const options = byVerb(state);
   const system = 'A person was shown numbered options and answered in their own words. Work out what they chose. Reply with one JSON object only: {"choice": <option number or null>, "word": "<the one verb they want instead, base form, or null>"}. Use choice when they picked or described one of the options; use word only when they gave a different word of their own.';
   const user = [...options.map((o, i) => `${i + 1}. ${state.plain?.[o.verb] ?? o.sentence}`), `Their answer: ${text}`].join('\n');
-  const r = await claudeJson(system, user, model);
+  const r = await claudeJson(system, user, model, run);
   const choice = Number.isInteger(r.choice) && r.choice >= 1 && r.choice <= options.length ? r.choice : null;
   const word = !choice && typeof r.word === 'string' && /^[a-z]+$/i.test(r.word.trim()) ? r.word.trim().toLowerCase() : null;
   return { choice, word };
