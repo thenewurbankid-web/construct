@@ -184,6 +184,7 @@ export async function main(argv = process.argv.slice(2), { log = console.log, ma
     options: {
       sections: { type: 'string' },
       limit: { type: 'string' },
+      keys: { type: 'string' },
       jobs: { type: 'string', default: '6' },
       inside: { type: 'string', default: 'haiku' },
       outside: { type: 'string', default: 'opus' },
@@ -209,6 +210,11 @@ export async function main(argv = process.argv.slice(2), { log = console.log, ma
   const catalog = readJson(CATALOG_PATH).atoms;
   const sections = o.sections ? new Set(o.sections.split(',').map((s) => s.trim())) : null;
   let entries = reference.filter((e) => !sections || sections.has(e.section));
+  // --keys file.json: only these entry keys (a JSON array), e.g. a fixed test set.
+  if (o.keys) {
+    const keys = new Set(readJson(o.keys));
+    entries = entries.filter((e) => keys.has(e.key));
+  }
   if (o.limit) entries = entries.slice(0, Number(o.limit));
   entries = pick(entries);
   mkdirSync(o.out, { recursive: true });
