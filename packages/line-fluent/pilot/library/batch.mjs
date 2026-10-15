@@ -117,3 +117,49 @@ export async function tellTurn(items, questions, { model }) {
   const told = matchUp(items, readList(prefill, reply?.text, 'answers'));
   return { answers: told.map((x) => (typeof x?.answer === 'string' && x.answer.trim() ? x.answer.trim() : null)), reply };
 }
+
+export const PICK_SYSTEM = [
+  'Our rules built candidate Smith Atomic English answers for JavaScript reference entries, and each candidate below already passed every check (grammar, behaviour against the real JavaScript, types).',
+  'For each entry, pick the candidate whose sentence a person would read most naturally as what the step does.',
+  'If you are confident a better sentence says the same thing more plainly, you may correct it: give the whole corrected answer object (the C2 fields), keeping its js and params. It will be checked again; if it fails, your pick stands.',
+  'Give your confidence (0 to 1) that your choice or correction reads best.',
+  'Reply with one JSON object only: {"picks": [{"entry": "<the label after ###, exactly>", "pick": <candidate number>, "confidence": <0..1>, "correction": <answer object or null>}, ...]}, one per entry, same order.',
+  SHAPES_SECTION,
+].join('\n');
+
+/** How sure a correction must be before it is tried. */
+export const CORRECT_AT = 0.8;
+
+/**
+ * The pick turn: for entries the rules could build, the model picks among the gated candidates, or corrects one when
+ * confident. A correction is gated again; the pick (or the first candidate) stands when it does not pass.
+ * @param {{entry: object, built: object[]}[]} items Each with its passing built answers, best first.
+ */
+export async function pickTurn(items, { model, gateOf }) {
+  const user = items.map((it) => [
+    `### ${it.entry.key}`,
+    ...it.built.map((a, i) => `${i + 1}. ${a.sentence}   (${a.decision === 'existing' ? `reuses ${a.existing}` : 'new atom'}; js: ${a.js})`),
+  ].join('\n')).join('\n\n');
+  const prefill = '{"picks": [';
+  const reply = await model({ system: PICK_SYSTEM, user, prefill });
+  const picks = matchUp(items, readList(prefill, reply?.text, 'picks'));
+  const share = (k) => (reply?.[k] ?? 0) / items.length;
+  return Promise.all(items.map(async (it, i) => {
+    const p = picks[i];
+    const n = Number(p?.pick);
+    let answer = Number.isInteger(n) && it.built[n - 1] ? it.built[n - 1] : it.built[0];
+    let how = Number.isInteger(n) && it.built[n - 1] ? 'picked' : 'first built';
+    let gate = { pass: true, checks: { schema: 'pass', grammar: 'pass', equivalence: 'pass', types: 'pass' }, refusal: null, fixes: [] };
+    const confidence = Number(p?.confidence) || 0;
+    if (p?.correction && typeof p.correction === 'object' && confidence >= CORRECT_AT) {
+      const corrected = { ...answer, ...p.correction, entry: it.entry.id, js: answer.js, params: answer.params };
+      const v = await gateOf(it.entry)(corrected);
+      if (v.pass) {
+        answer = corrected;
+        gate = v;
+        how = 'corrected';
+      } else how = `${how}; correction refused: ${v.refusal}`;
+    }
+    return { answer, gate, how, confidence, tokensIn: share('tokensIn'), tokensOut: share('tokensOut'), costUsd: share('costUsd') };
+  }));
+}

@@ -77,3 +77,22 @@ test('a batched run: turn 1, turn 2 with the refusal, then the user stage, all r
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('pickTurn: the model picks among gated built answers, and a confident correction stands only if the gate passes it', async () => {
+  const { pickTurn } = await import('./batch.mjs');
+  const built = (s) => ({ entry: 'Array.prototype.reverse', decision: 'new-atom', atom: 'x', existing: null, kind: 'in-place', sentence: s, js: 'xs.reverse()', params: [['xs', 'list']], parts: null, reason: null });
+  const items = [
+    { entry: e('Array.prototype.reverse', 'Array'), built: [built('list(xs).reverses()'), built('list(xs).flips()')] },
+    { entry: e('Array.prototype.sort', 'Array'), built: [built('list(xs).sorts()')] },
+    { entry: e('Array.prototype.fill', 'Array'), built: [built('list(xs).fills()')] },
+  ];
+  const model = async () => reply('{"entry": "Array.prototype.reverse", "pick": 2, "confidence": 0.6, "correction": null}, {"entry": "Array.prototype.sort", "pick": 1, "confidence": 0.9, "correction": {"sentence": "list(xs).orders()", "js": "evil()"}}, {"entry": "Array.prototype.fill", "pick": 1, "confidence": 0.95, "correction": {"sentence": "list(xs).quickly()"}}]}');
+  const gateOf = () => async (a) => (a.sentence === 'list(xs).quickly()' ? { pass: false, refusal: 'not a verb' } : { pass: true, checks: {}, refusal: null });
+  const out = await pickTurn(items, { model, gateOf });
+  assert.deepEqual(out.map((o) => [o.answer.sentence, o.how]), [
+    ['list(xs).flips()', 'picked'],
+    ['list(xs).orders()', 'corrected'],
+    ['list(xs).fills()', 'picked; correction refused: not a verb'],
+  ]);
+  assert.equal(out[1].answer.js, 'xs.reverse()', 'a correction keeps the built js and params');
+});

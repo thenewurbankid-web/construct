@@ -9,5 +9,8 @@
   },
   "scripts": {
     "test": "node --test"
+  },
+  "dependencies": {
+    "compromise": "^14.14.4"
   }
 }

@@ -28,7 +28,8 @@ import { runPilot } from '../runner/runner.mjs';
 import { claudeModel, claudeSession } from '../runner/claude-model.mjs';
 import { candidatesFor, CATALOG_PATH, REFERENCE_PATH } from '../../generator/generator.mjs';
 import { userStage } from './user-stage.mjs';
-import { batches, answerTurn, askTurn, tellTurn } from './batch.mjs';
+import { batches, answerTurn, askTurn, tellTurn, pickTurn } from './batch.mjs';
+import { builtAnswers } from '../build/build.mjs';
 import { gatePool } from '../../gate/isolated/isolated.mjs';
 
 const readJson = (p) => JSON.parse(readFileSync(p, 'utf8'));
@@ -124,7 +125,9 @@ export function summarize(all, entries) {
     const inside = latest.get(`${e.key}\u0000inside`);
     const outside = latest.get(`${e.key}\u0000outside`);
     const user = latest.get(`${e.key}\u0000user`);
-    const best = [inside, outside, user].find((r) => r?.gate?.pass) ?? user ?? outside ?? inside;
+    const stages = [inside, outside, user];
+    const real = (r) => r?.gate?.pass && r.answer?.decision !== 'not-expressible';
+    const best = stages.find(real) ?? stages.find((r) => r?.gate?.pass) ?? user ?? outside ?? inside;
     if (best) library[e.key] = { entry: e.id, section: e.section, stage: best.stage, model: best.model, pass: Boolean(best.gate?.pass), answer: best.answer ?? null, refusal: best.gate?.refusal ?? best.error ?? null };
   }
   const sections = {};
@@ -141,7 +144,9 @@ export function summarize(all, entries) {
     summary: {
       entries: entries.length,
       done: items.length,
-      inLibrary: items.filter((i) => i.pass).length,
+      // A not-expressible answer passes the gate but adds no atom: it is a gap with a reason, not a library entry.
+      inLibrary: items.filter((i) => i.pass && i.answer?.decision !== 'not-expressible').length,
+      notExpressible: items.filter((i) => i.pass && i.answer?.decision === 'not-expressible').length,
       knownGaps: items.filter((i) => !i.pass).length,
       byDecision: items.filter((i) => i.pass).reduce((a, i) => ((a[i.answer.decision] = (a[i.answer.decision] ?? 0) + 1), a), {}),
       inside: totals(byStage('inside')),
@@ -170,6 +175,7 @@ export async function main(argv = process.argv.slice(2), { log = console.log, ma
       user: { type: 'string', default: 'none' },
       rounds: { type: 'string', default: '2' },
       batch: { type: 'string', default: '0' },
+      build: { type: 'boolean', default: false },
       'keep-open': { type: 'boolean', default: false },
       out: { type: 'string', default: fileURLToPath(new URL('./runs/latest/', import.meta.url)) },
     },
@@ -257,17 +263,48 @@ async function batchedStages(entries, { o, all, record, doneIn, stopped, jobs, m
   const inside = makeModel({ model: o.inside });
   const item = (entry, extra = {}) => ({ entry, candidates: candidatesFor(entry, catalog).slice(0, MAX_CANDIDATES), ...extra });
   const latest = (key, stage) => [...all].reverse().find((r) => r.key === key && r.stage === stage && !r.error);
+  // Not-expressible passes the gate but adds nothing: a last resort, so it gets turn 2 and the user stage too.
+  const dodged = (r) => r?.gate?.pass && r.answer?.decision === 'not-expressible';
+  const refusalOf = (r) => (dodged(r)
+    ? `You answered not-expressible (${r.answer.reason ?? 'no reason'}). That is a last resort: most steps can be said with a subject, a verb and role words; try a sentence.`
+    : r?.gate?.refusal);
   const fail = (group, stage, model, e, started) => group.forEach((it) => record({ key: it.entry.key, section: it.entry.section, stage, model, entry: it.entry.id, error: String(e?.message ?? e).slice(0, 300), costUsd: 0, ms: Date.now() - started }));
+
+  // Built first: the rules build answers (no model), the gate checks each, and where any pass the inside model only
+  // picks among them or corrects one when confident (pickTurn). The rest go on to turns 1 and 2.
+  if (o.build) {
+    const built = new Map();
+    await pool(entries.filter((e) => !doneIn('inside').has(e.key)), Math.max(2, jobs), async (e) => {
+      const passing = [];
+      for (const a of builtAnswers(e, catalog).answers) {
+        if ((await gateOf(e)(a)).pass) passing.push(a);
+        if (passing.length >= 4) break;
+      }
+      if (passing.length) built.set(e.key, passing);
+    }, stopped);
+    await pool(batches(entries.filter((e) => built.has(e.key)), size), Math.ceil(jobs / 2), async (group) => {
+      const started = Date.now();
+      const items = group.map((entry) => ({ entry, built: built.get(entry.key) }));
+      try {
+        const out = await pickTurn(items, { model: inside, gateOf });
+        const ms = Math.round((Date.now() - started) / items.length);
+        out.forEach((r, i) => record({ key: items[i].entry.key, section: items[i].entry.section, stage: 'inside', model: `rules+${o.inside}`, entry: items[i].entry.id, ...r, tries: 1, ms, batch: items.length, built: items[i].built.length }));
+      } catch (e) {
+        // The model is only choosing words here: without it, the first built answer stands.
+        items.forEach((it) => record({ key: it.entry.key, section: it.entry.section, stage: 'inside', model: 'rules', entry: it.entry.id, answer: it.built[0], gate: { pass: true, checks: {}, refusal: null, fixes: [] }, how: `first built (pick failed: ${String(e?.message ?? e).slice(0, 120)})`, tries: 1, costUsd: 0, ms: Date.now() - started, built: it.built.length }));
+      }
+    }, stopped);
+  }
 
   // Turns 1 and 2: every entry not yet through the inside stage, then each refused one with its refusal.
   for (const turn of [1, 2]) {
     if (stopped()) return;
     const todo = turn === 1
       ? entries.filter((e) => !doneIn('inside').has(e.key))
-      : entries.filter((e) => { const r = latest(e.key, 'inside'); return r && !r.gate?.pass && (r.tries ?? 1) < 2; });
+      : entries.filter((e) => { const r = latest(e.key, 'inside'); return r && (!r.gate?.pass || dodged(r)) && (r.tries ?? 1) < 2; });
     await pool(batches(todo, size), Math.ceil(jobs / 2), async (group) => {
       const started = Date.now();
-      const items = group.map((e) => item(e, turn === 2 ? { refusal: latest(e.key, 'inside')?.gate?.refusal } : {}));
+      const items = group.map((e) => item(e, turn === 2 ? { refusal: refusalOf(latest(e.key, 'inside')) } : {}));
       try {
         const out = await answerTurn(items, { model: inside, gateOf });
         const ms = Math.round((Date.now() - started) / items.length);
@@ -281,11 +318,12 @@ async function batchedStages(entries, { o, all, record, doneIn, stopped, jobs, m
   // The user stage: the inside model asks, the user model answers as the person, the inside model answers again.
   if (o.user === 'none' || stopped()) return;
   const person = makeModel({ model: o.user });
-  const passed = () => new Set(all.filter((r) => r.gate?.pass).map((r) => r.key));
+  const passed = () => new Set(all.filter((r) => r.gate?.pass && !dodged(r)).map((r) => r.key));
   const todo = entries.filter((e) => latest(e.key, 'inside') && !passed().has(e.key) && !doneIn('user').has(e.key));
   await pool(batches(todo, size), Math.ceil(jobs / 2), async (group) => {
     const started = Date.now();
     const every = group.map((e) => { const r = latest(e.key, 'inside'); return item(e, { answer: r.answer, refusal: r.gate?.refusal, prior: r.gate, dialogue: [], result: null, cost: 0, tries: 0 }); });
+    for (const it of every) if (dodged({ gate: it.prior, answer: it.answer })) it.refusal = refusalOf({ gate: it.prior, answer: it.answer });
     let items = every;
     try {
       for (let round = 0; round < Number(o.rounds) && items.length; round++) {
