@@ -4,6 +4,9 @@
   "private": true,
   "description": "Line's fluent English tooling over Smith: answer contract, gate runner, comparator, grammar completions. Contracts: docs/line/FLUENT-PLAN-2026-10-15.md.",
   "type": "module",
+  "construct": {
+    "commands": "./cli/english.mjs"
+  },
   "scripts": {
     "test": "node --test"
   }

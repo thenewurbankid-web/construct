@@ -1,0 +1,24 @@
+{
+  "benefit": "Small model gets the same one-unit request as Claude.",
+  "branch": "line/fluent/t3-2a-student",
+  "contract": "packages/line-fluent/student/: studentRequest -> Ollama body (raw, prefill, temp 0, format C2 schema); parseStudent; callStudent with injected fetch.",
+  "etaAt": "2026-10-15T00:34:08.098Z",
+  "linesAdded": 0,
+  "linesRemoved": 0,
+  "note": "Wave 2; contract in FLUENT-PLAN \"Wave 2 leaves\".",
+  "order": 1,
+  "parent": "T3.2",
+  "progress": 5,
+  "quickWin": true,
+  "risks": [
+    {
+      "mitigation": "Snapshot the body; real call later in T3.2",
+      "risk": "Ollama format differences"
+    }
+  ],
+  "session": "t3-2a-student",
+  "status": "running",
+  "thoughts": "No network in tests.",
+  "title": "Student request adapter",
+  "version": null
+}

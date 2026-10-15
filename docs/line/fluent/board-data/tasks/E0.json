@@ -1,0 +1,14 @@
+{
+  "benefit": "One checkout runs everything; no machine-specific paths; both suites count toward done.",
+  "etaAt": "2026-10-15T01:15:00.000Z",
+  "linesAdded": 0,
+  "linesRemoved": 0,
+  "order": 0,
+  "parent": null,
+  "progress": 0,
+  "quickWin": false,
+  "status": "running",
+  "thoughts": "Do this before any wave merges: every later task imports from packages/line-*. Small, mostly mechanical.",
+  "title": "Foundation: Smith and the codemod live in construct",
+  "version": null
+}
