@@ -1,23 +1,23 @@
 // T5.1 generator CLI. `generate` writes a pending proposal and never touches the catalog; `approve` is the owner's
-// step that writes one proposal into the catalog.
+// step that adds one proposal's atom to line-smith's hand-kept approved.json, which gen-atoms merges into the catalog.
 //
 //   node packages/line-fluent/generator/cli.mjs generate <entry-key> [--fixtures f.json] [--real [--model m] [--url u]]
 //        [--retries n] [--out dir]
-//   node packages/line-fluent/generator/cli.mjs approve <proposal.json> [--catalog catalog.json]
+//   node packages/line-fluent/generator/cli.mjs approve <proposal.json> [--approved approved.json] [--catalog catalog.json]
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { mockModel } from '../pilot/runner/mock-model.mjs';
 import { callStudent, studentRequest } from '../student/student.mjs';
-import { approveProposal, CATALOG_PATH, generate, PROPOSALS_DIR, writeProposal } from './generator.mjs';
+import { approveProposal, APPROVED_PATH, CATALOG_PATH, GEN_ATOMS_PATH, generate, PROPOSALS_DIR, writeProposal } from './generator.mjs';
 
 export const USAGE = [
   'Usage:',
   '  generate <entry-key> [--fixtures f.json] [--real [--model m] [--url u]] [--retries n] [--out dir]',
-  '  approve <proposal.json> [--catalog catalog.json]',
+  '  approve <proposal.json> [--approved approved.json] [--catalog catalog.json]',
   '<entry-key> is a C1 key (overloads: "new Array #2") or id. generate uses the rules-only model unless --fixtures (mock model) or --real (local Ollama) is given.',
 ].join('\n');
 
-const VALUED = new Set(['--fixtures', '--model', '--url', '--retries', '--out', '--catalog']);
+const VALUED = new Set(['--fixtures', '--model', '--url', '--retries', '--out', '--catalog', '--approved']);
 
 export function parseArgs(args) {
   const opts = { positional: [] };
@@ -37,7 +37,7 @@ function realModel({ model, url, fetch }) {
 }
 
 /** Returns the exit code; output goes through the injected streams so tests run in-process. */
-export async function runCli(args, { stdout = process.stdout, stderr = process.stderr, fetch, catalogPath } = {}) {
+export async function runCli(args, { stdout = process.stdout, stderr = process.stderr, fetch, catalogPath, approvedPath } = {}) {
   let opts;
   try {
     opts = parseArgs(args);
@@ -52,8 +52,12 @@ export async function runCli(args, { stdout = process.stdout, stderr = process.s
   }
   try {
     if (command === 'approve') {
-      const approved = approveProposal(target, { catalog: opts.catalog ?? catalogPath ?? CATALOG_PATH });
-      stdout.write(`Approved ${approved.catalogEntry.atom} for ${approved.entry}; catalog: ${approved.catalog}\n`);
+      const approved = approveProposal(target, {
+        approved: opts.approved ?? approvedPath ?? APPROVED_PATH,
+        catalog: opts.catalog ?? catalogPath ?? CATALOG_PATH,
+      });
+      stdout.write(`Approved ${approved.approvedEntry.atom} for ${approved.entry}; added to ${approved.approved}\n`);
+      stdout.write(`Rebuild the catalog with: node ${GEN_ATOMS_PATH}\n`);
       return 0;
     }
     if (opts.real && opts.fixtures) throw new Error('Use either --real or --fixtures, not both.');
@@ -68,7 +72,11 @@ export async function runCli(args, { stdout = process.stdout, stderr = process.s
     }
     const maxRetries = opts.retries === undefined ? 1 : Number(opts.retries);
     if (!Number.isInteger(maxRetries) || maxRetries < 0) throw new Error('--retries must be a whole number.');
-    const catalogOpt = catalogPath ? { catalog: JSON.parse(readFileSync(catalogPath, 'utf8')).atoms } : {};
+    const atomsOf = (path) => JSON.parse(readFileSync(path, 'utf8')).atoms;
+    const catalogOpt = {
+      ...(catalogPath ? { catalog: atomsOf(catalogPath) } : {}),
+      ...(approvedPath ? { approved: atomsOf(approvedPath) } : {}),
+    };
     const { proposal } = await generate(target, { model, modelName, maxRetries, ...catalogOpt });
     const file = writeProposal(proposal, opts.out ?? PROPOSALS_DIR);
     const verdict = proposal.gate?.pass ? 'passed the gate' : `refused: ${proposal.gate?.refusal}`;
