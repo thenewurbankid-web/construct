@@ -62,6 +62,55 @@ export function question(state) {
   return `${plainStep(state)}\nWhich of these says best what it does?\n${options}\nOr say it in your own words.`;
 }
 
+// ---- asking about the person's own code, one guess at a time ---------------------------------
+
+/** How sure the step's meaning must be before it is settled. */
+export const SETTLED = 0.8;
+
+/**
+ * One turn of inference, by the outer model: it re-reads the whole block and every answer so far, revises every
+ * assumption (what the block does, what goes in and out, what each name means, what the unclear step does) with a
+ * confidence, says whether the step is settled and which candidate word or own word it is, and picks the next
+ * question: the one that would most improve the least certain assumption that matters for the step, in plain words.
+ * Our code checks the result: a settled step needs confidence >= SETTLED and a real candidate or a plain word.
+ */
+export async function refine(state, source, { model = 'opus' } = {}) {
+  const options = byVerb(state);
+  const system = [
+    'You help a person who does not read code confirm what their code does. You keep a list of assumptions about the code and improve every one of them each turn, using the code and everything the person has said.',
+    'Read the whole block first: what it is for, in the terms of its own domain (its names), not data structures. Assumptions cover: what the block does, what goes in, what comes out, what each name means, and what the one unclear step does within the block.',
+    'Give each assumption a confidence from 0 to 1. Something the person confirmed is near 1; something they contradicted is replaced.',
+    'The step is settled only when you are confident what it does and it fits one of the candidate words (give its number) or a word the person used (give the verb, base form).',
+    'Then choose the next question: the one whose answer would most improve the least certain assumption that matters for describing the step. Ask it in plain, friendly words, about the domain (opportunities, groups...), never about code. One question, answerable in a few words.',
+    'Reply with one JSON object only: {"assumptions": [{"about": "block | inputs | output | name:<name> | step", "statement": "...", "confidence": <0..1>}], "step": {"meaning": "...", "confidence": <0..1>, "candidate": <number or null>, "word": "<verb or null>"}, "question": "..."}.',
+  ].join('\n');
+  const user = [
+    `The code:\n${source}`,
+    `The unclear step: ${state.gap.code}`,
+    'Candidate words that passed every check (technical form):', ...options.map((o, i) => `${i + 1}. ${o.verb}: ${o.sentence}`),
+    `Assumptions so far: ${JSON.stringify(state.assumptions ?? [])}`,
+    'Conversation so far:', ...(state.history ?? []).map((h) => `Q: ${h.q}\nA: ${h.a}`),
+  ].join('\n');
+  const r = await claudeJson(system, user, model);
+  const step = r.step ?? {};
+  const n = Number(step.candidate);
+  const candidate = Number.isInteger(n) && options[n - 1] ? options[n - 1] : null;
+  const word = !candidate && typeof step.word === 'string' && /^[a-z]+$/i.test(step.word.trim()) ? step.word.trim().toLowerCase() : null;
+  const settled = Number(step.confidence) >= SETTLED && Boolean(candidate || word);
+  return {
+    assumptions: Array.isArray(r.assumptions) ? r.assumptions : state.assumptions ?? [],
+    step: { meaning: step.meaning ?? null, confidence: Number(step.confidence) || 0, verb: candidate?.verb ?? null, word },
+    settled,
+    question: typeof r.question === 'string' && r.question.trim() ? r.question.trim() : 'In your own words, what does this step do?',
+  };
+}
+
+/** What the person reads each turn: the current reading of the code in one line, then the question. */
+export function turnText(state) {
+  const block = (state.assumptions ?? []).find((a) => a.about === 'block');
+  return `${block ? `As I read it now: ${block.statement.replace(/\.$/, '')}.\n` : ''}${state.question}`;
+}
+
 // ---- the model as translator, both ways; our code checks every result ----------------
 
 async function claudeJson(system, user, model) {
@@ -107,7 +156,7 @@ export async function readReply(reply, state, { model = 'haiku' } = {}) {
   return { choice, word };
 }
 
-async function scan(file, { model }) {
+async function scan(file, { model, outer = 'opus' }) {
   const found = gapsIn(file).gaps.filter((g) => g.entry);
   if (!found.length) return { state: { file, gap: null }, say: 'No gaps: every part of this code has an atom for its type.' };
   const gap = found[0];
@@ -116,15 +165,19 @@ async function scan(file, { model }) {
   const filled = await fillGap(gap, { gate, model });
   const state = { file, gap, atom: filled.atom, example: filled.example, candidates: filled.candidates, more: found.length - 1 };
   if (!filled.candidates.some((c) => c.ok)) return { state, say: `${plainStep(state)}\nNothing we tried describes it well. What would you call what it does?` };
-  state.plain = await plainOptions(state, { model });
-  return { state, say: question(state) };
+  Object.assign(state, { history: [] }, await refine(state, readFileSync(file, 'utf8'), { model: outer }));
+  return { state, say: turnText(state) };
 }
 
-async function choose(state, reply, { model }) {
+async function choose(state, reply, { model, outer = 'opus' }) {
   const kept = byVerb(state);
-  const { choice, word } = await readReply(reply, state, { model });
-  const text = word ?? '';
-  let pick = choice ? kept[choice - 1] : null;
+  // Every answer goes back to the outer model, which revises every assumption and picks the next question.
+  state = { ...state, history: [...(state.history ?? []), { q: state.question, a: String(reply) }] };
+  Object.assign(state, await refine(state, readFileSync(state.file, 'utf8'), { model: outer }));
+  if (!state.settled) return { state, say: turnText(state) };
+  const read = { verb: state.step.verb, word: state.step.word };
+  const text = read.word ?? '';
+  let pick = read.verb ? kept.find((c) => c.verb === read.verb) : null;
   if (!pick && text && kept.length) {
     // The person's own word: the first kept sentence with their verb, checked by the grammar and a read-back.
     const sentence = withVerb(kept[0].sentence, text);
@@ -134,7 +187,7 @@ async function choose(state, reply, { model }) {
     if (!judged.ok) return { state, say: `With “${text}”, ${judged.why}. Pick a number, or another word.` };
     pick = { sentence, answer: answerFor(state.atom, sentence), ok: true };
   }
-  if (!pick) return { state, say: 'I could not tell which one you mean. Which of the sentences above is closest, or what would you call it?' };
+  if (!pick) return { state, say: turnText(state) };
 
   // The pick becomes a pending proposal, approved into the registry; gen-atoms regenerates the catalog.
   const entry = reference().find((e) => e.key === state.gap.entry);
@@ -157,7 +210,7 @@ async function choose(state, reply, { model }) {
 }
 
 export async function main(argv = process.argv.slice(2), { log = console.log } = {}) {
-  const { values: o, positionals } = parseArgs({ args: argv, allowPositionals: true, options: { state: { type: 'string' }, model: { type: 'string', default: 'haiku' } } });
+  const { values: o, positionals } = parseArgs({ args: argv, allowPositionals: true, options: { state: { type: 'string' }, model: { type: 'string', default: 'haiku' }, outer: { type: 'string', default: 'opus' } } });
   const [cmd, arg] = positionals;
   if (!o.state || !arg || !['scan', 'choose'].includes(cmd)) throw new Error('Usage: cli.mjs scan <file.js> | choose <number | word> --state <file>');
   const result = cmd === 'scan' ? await scan(arg, o) : await choose(JSON.parse(readFileSync(o.state, 'utf8')), arg, o);
