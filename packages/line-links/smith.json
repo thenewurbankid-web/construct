@@ -1,10 +1,10 @@
 {
-  "$comment": "cs1: Smith (the atomic pattern's connector atoms Chain, Organism and Comparable), linked from its own git repo like links.json (no source copy). The folder is $SMITH_SOURCE_DIR, else `default`. `commit` pins its HEAD; bump with `node packages/line-links/link.mjs --pin` after checking the change.",
+  "$comment": "cs1/t0-6: Smith (the atomic pattern's connector atoms Chain, Organism and Comparable), in this repo at packages/line-smith. The folder is $SMITH_SOURCE_DIR when set (an outside smith checkout, ~ allowed), else `default`, which is repo-relative (resolved from the repo root). An in-repo source moves with the repo, so `commit` is not checked for it; `commit` pins only an outside checkout set by the env var (bump with `node packages/line-links/link.mjs --pin` after checking the change).",
   "source": {
     "repo": "smith",
     "branch": "master",
     "env": "SMITH_SOURCE_DIR",
-    "default": "~/Desktop/smith",
+    "default": "packages/line-smith",
     "commit": "f70eecfcf14c8859da784b66922605269b225cd9"
   },
   "links": {

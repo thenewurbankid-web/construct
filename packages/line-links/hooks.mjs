@@ -2,7 +2,8 @@
 // loader flag and no dependency. They act only on linked names and on files under a linked source folder:
 //
 //   resolve   `@mx/<name>` -> its entry file; inside a linked source, a relative `./x.js` that does not exist -> `./x.ts`
-//             (the TypeScript repo imports with `.js` specifiers, as NodeNext asks).
+//             (the TypeScript repo imports with `.js` specifiers, as NodeNext asks); an extensionless `./x` -> `./x.ts`
+//             or `./x/index.ts` (packages/line-smith imports that way).
 //   load      a `.ts`/`.mts` file under a linked source -> JavaScript through Node's own `stripTypeScriptTypes` in
 //             transform mode (the source uses parameter properties, which plain type stripping refuses).
 //
@@ -47,6 +48,13 @@ export function installLinkHooks() {
         const asJs = new URL(specifier, context.parentURL);
         if (!fs.existsSync(fileURLToPath(asJs))) {
           const asTs = new URL(specifier.replace(/\.js$/, '.ts'), context.parentURL);
+          if (fs.existsSync(fileURLToPath(asTs))) return { url: asTs.href, format: 'module', shortCircuit: true };
+        }
+      }
+      // t0-6: the in-repo packages/line-smith imports extensionless (`./atoms`, `./comparison`), as a bundler would.
+      if (underRoot(context.parentURL) && /^\.\.?\//.test(specifier) && !/\.[cm]?[jt]s$|\.json$/.test(specifier)) {
+        for (const suffix of ['.ts', '/index.ts']) {
+          const asTs = new URL(specifier.replace(/\/$/, '') + suffix, context.parentURL);
           if (fs.existsSync(fileURLToPath(asTs))) return { url: asTs.href, format: 'module', shortCircuit: true };
         }
       }
