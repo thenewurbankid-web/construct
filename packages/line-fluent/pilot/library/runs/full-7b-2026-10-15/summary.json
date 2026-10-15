@@ -1,0 +1,1190 @@
+{
+  "entries": 2378,
+  "done": 2378,
+  "inLibrary": 69,
+  "notExpressible": 1061,
+  "knownGaps": 1248,
+  "byDecision": {
+    "not-expressible": 1061,
+    "new-atom": 33,
+    "existing": 36
+  },
+  "inside": {
+    "entries": 2378,
+    "passed": 1060,
+    "passRate": 0.44575273338940286,
+    "errors": 0,
+    "calls": 4701,
+    "tokensIn": 1631028.1999999944,
+    "tokensOut": 229432.2,
+    "costUsd": 0,
+    "minutes": 146.4,
+    "decisions": {
+      "new-atom": 30,
+      "existing": 28,
+      "not-expressible": 1002
+    },
+    "failedOn": {
+      "grammar": 520,
+      "equivalence": 553,
+      "types": 535,
+      "schema": 674
+    }
+  },
+  "outside": {
+    "entries": 0,
+    "passed": 0,
+    "passRate": 0,
+    "errors": 0,
+    "calls": 0,
+    "tokensIn": 0,
+    "tokensOut": 0,
+    "costUsd": 0,
+    "minutes": 0,
+    "decisions": {},
+    "failedOn": {}
+  },
+  "user": {
+    "entries": 2320,
+    "passed": 833,
+    "passRate": 0.359051724137931,
+    "errors": 0,
+    "calls": 3608,
+    "tokensIn": 1930244.9833333325,
+    "tokensOut": 229032.81666666677,
+    "costUsd": 0,
+    "minutes": 2362.9,
+    "decisions": {
+      "not-expressible": 822,
+      "new-atom": 3,
+      "existing": 8
+    },
+    "failedOn": {
+      "equivalence": 645,
+      "types": 644,
+      "grammar": 624,
+      "schema": 728
+    }
+  },
+  "sections": {
+    "AggregateError": {
+      "entries": 5,
+      "passed": 2,
+      "inside": 2,
+      "outside": 0,
+      "user": 0
+    },
+    "Array": {
+      "entries": 67,
+      "passed": 42,
+      "inside": 41,
+      "outside": 0,
+      "user": 1
+    },
+    "ArrayBuffer": {
+      "entries": 14,
+      "passed": 8,
+      "inside": 8,
+      "outside": 0,
+      "user": 0
+    },
+    "Atomics": {
+      "entries": 26,
+      "passed": 26,
+      "inside": 26,
+      "outside": 0,
+      "user": 0
+    },
+    "BigInt": {
+      "entries": 7,
+      "passed": 2,
+      "inside": 2,
+      "outside": 0,
+      "user": 0
+    },
+    "BigInt64Array": {
+      "entries": 54,
+      "passed": 10,
+      "inside": 10,
+      "outside": 0,
+      "user": 0
+    },
+    "BigUint64Array": {
+      "entries": 54,
+      "passed": 14,
+      "inside": 11,
+      "outside": 0,
+      "user": 3
+    },
+    "Boolean": {
+      "entries": 3,
+      "passed": 1,
+      "inside": 1,
+      "outside": 0,
+      "user": 0
+    },
+    "DataView": {
+      "entries": 27,
+      "passed": 15,
+      "inside": 15,
+      "outside": 0,
+      "user": 0
+    },
+    "Date": {
+      "entries": 62,
+      "passed": 20,
+      "inside": 17,
+      "outside": 0,
+      "user": 3
+    },
+    "Error": {
+      "entries": 8,
+      "passed": 5,
+      "inside": 2,
+      "outside": 0,
+      "user": 3
+    },
+    "EvalError": {
+      "entries": 4,
+      "passed": 2,
+      "inside": 2,
+      "outside": 0,
+      "user": 0
+    },
+    "FinalizationRegistry": {
+      "entries": 4,
+      "passed": 4,
+      "inside": 4,
+      "outside": 0,
+      "user": 0
+    },
+    "Float16Array": {
+      "entries": 56,
+      "passed": 11,
+      "inside": 11,
+      "outside": 0,
+      "user": 0
+    },
+    "Float32Array": {
+      "entries": 59,
+      "passed": 20,
+      "inside": 20,
+      "outside": 0,
+      "user": 0
+    },
+    "Float64Array": {
+      "entries": 59,
+      "passed": 16,
+      "inside": 16,
+      "outside": 0,
+      "user": 0
+    },
+    "Function": {
+      "entries": 12,
+      "passed": 9,
+      "inside": 9,
+      "outside": 0,
+      "user": 0
+    },
+    "Int16Array": {
+      "entries": 59,
+      "passed": 12,
+      "inside": 12,
+      "outside": 0,
+      "user": 0
+    },
+    "Int32Array": {
+      "entries": 59,
+      "passed": 15,
+      "inside": 15,
+      "outside": 0,
+      "user": 0
+    },
+    "Int8Array": {
+      "entries": 59,
+      "passed": 25,
+      "inside": 22,
+      "outside": 0,
+      "user": 3
+    },
+    "Iterator": {
+      "entries": 19,
+      "passed": 9,
+      "inside": 9,
+      "outside": 0,
+      "user": 0
+    },
+    "JSON": {
+      "entries": 4,
+      "passed": 2,
+      "inside": 2,
+      "outside": 0,
+      "user": 0
+    },
+    "Map": {
+      "entries": 18,
+      "passed": 3,
+      "inside": 2,
+      "outside": 0,
+      "user": 1
+    },
+    "Math": {
+      "entries": 45,
+      "passed": 3,
+      "inside": 3,
+      "outside": 0,
+      "user": 0
+    },
+    "Number": {
+      "entries": 23,
+      "passed": 1,
+      "inside": 0,
+      "outside": 0,
+      "user": 1
+    },
+    "Object": {
+      "entries": 43,
+      "passed": 7,
+      "inside": 7,
+      "outside": 0,
+      "user": 0
+    },
+    "Promise": {
+      "entries": 20,
+      "passed": 4,
+      "inside": 4,
+      "outside": 0,
+      "user": 0
+    },
+    "Proxy": {
+      "entries": 2,
+      "passed": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "RangeError": {
+      "entries": 4,
+      "passed": 3,
+      "inside": 2,
+      "outside": 0,
+      "user": 1
+    },
+    "ReferenceError": {
+      "entries": 4,
+      "passed": 4,
+      "inside": 3,
+      "outside": 0,
+      "user": 1
+    },
+    "RegExp": {
+      "entries": 47,
+      "passed": 39,
+      "inside": 39,
+      "outside": 0,
+      "user": 0
+    },
+    "Set": {
+      "entries": 21,
+      "passed": 8,
+      "inside": 7,
+      "outside": 0,
+      "user": 1
+    },
+    "SharedArrayBuffer": {
+      "entries": 9,
+      "passed": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "String": {
+      "entries": 71,
+      "passed": 46,
+      "inside": 46,
+      "outside": 0,
+      "user": 0
+    },
+    "Symbol": {
+      "entries": 21,
+      "passed": 11,
+      "inside": 10,
+      "outside": 0,
+      "user": 1
+    },
+    "SyntaxError": {
+      "entries": 4,
+      "passed": 3,
+      "inside": 2,
+      "outside": 0,
+      "user": 1
+    },
+    "TypeError": {
+      "entries": 4,
+      "passed": 2,
+      "inside": 2,
+      "outside": 0,
+      "user": 0
+    },
+    "URIError": {
+      "entries": 4,
+      "passed": 3,
+      "inside": 2,
+      "outside": 0,
+      "user": 1
+    },
+    "Uint16Array": {
+      "entries": 59,
+      "passed": 17,
+      "inside": 15,
+      "outside": 0,
+      "user": 2
+    },
+    "Uint32Array": {
+      "entries": 59,
+      "passed": 24,
+      "inside": 20,
+      "outside": 0,
+      "user": 4
+    },
+    "Uint8Array": {
+      "entries": 59,
+      "passed": 24,
+      "inside": 18,
+      "outside": 0,
+      "user": 6
+    },
+    "Uint8ClampedArray": {
+      "entries": 59,
+      "passed": 14,
+      "inside": 10,
+      "outside": 0,
+      "user": 4
+    },
+    "WeakMap": {
+      "entries": 7,
+      "passed": 3,
+      "inside": 3,
+      "outside": 0,
+      "user": 0
+    },
+    "WeakRef": {
+      "entries": 3,
+      "passed": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "WeakSet": {
+      "entries": 6,
+      "passed": 3,
+      "inside": 3,
+      "outside": 0,
+      "user": 0
+    },
+    "globalThis": {
+      "entries": 11,
+      "passed": 7,
+      "inside": 7,
+      "outside": 0,
+      "user": 0
+    },
+    "Intl": {
+      "entries": 163,
+      "passed": 131,
+      "inside": 127,
+      "outside": 0,
+      "user": 4
+    },
+    "Reflect": {
+      "entries": 16,
+      "passed": 13,
+      "inside": 13,
+      "outside": 0,
+      "user": 0
+    },
+    "ArrayBufferTypes": {
+      "entries": 2,
+      "passed": 2,
+      "inside": 2,
+      "outside": 0,
+      "user": 0
+    },
+    "ArrayBufferView": {
+      "entries": 3,
+      "passed": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "ArrayIterator": {
+      "entries": 1,
+      "passed": 1,
+      "inside": 1,
+      "outside": 0,
+      "user": 0
+    },
+    "ArrayLike": {
+      "entries": 2,
+      "passed": 2,
+      "inside": 2,
+      "outside": 0,
+      "user": 0
+    },
+    "AsyncGenerator": {
+      "entries": 4,
+      "passed": 4,
+      "inside": 4,
+      "outside": 0,
+      "user": 0
+    },
+    "AsyncGeneratorFunction": {
+      "entries": 5,
+      "passed": 5,
+      "inside": 5,
+      "outside": 0,
+      "user": 0
+    },
+    "AsyncGeneratorFunctionConstructor": {
+      "entries": 5,
+      "passed": 5,
+      "inside": 5,
+      "outside": 0,
+      "user": 0
+    },
+    "AsyncIterable": {
+      "entries": 1,
+      "passed": 1,
+      "inside": 1,
+      "outside": 0,
+      "user": 0
+    },
+    "AsyncIterableIterator": {
+      "entries": 1,
+      "passed": 1,
+      "inside": 1,
+      "outside": 0,
+      "user": 0
+    },
+    "AsyncIterator": {
+      "entries": 3,
+      "passed": 3,
+      "inside": 3,
+      "outside": 0,
+      "user": 0
+    },
+    "AsyncIteratorObject": {
+      "entries": 1,
+      "passed": 1,
+      "inside": 1,
+      "outside": 0,
+      "user": 0
+    },
+    "BigIntToLocaleStringOptions": {
+      "entries": 15,
+      "passed": 15,
+      "inside": 15,
+      "outside": 0,
+      "user": 0
+    },
+    "CallableFunction": {
+      "entries": 5,
+      "passed": 4,
+      "inside": 4,
+      "outside": 0,
+      "user": 0
+    },
+    "ConcatArray": {
+      "entries": 4,
+      "passed": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "ErrorOptions": {
+      "entries": 1,
+      "passed": 1,
+      "inside": 1,
+      "outside": 0,
+      "user": 0
+    },
+    "Generator": {
+      "entries": 4,
+      "passed": 3,
+      "inside": 2,
+      "outside": 0,
+      "user": 1
+    },
+    "GeneratorFunction": {
+      "entries": 6,
+      "passed": 6,
+      "inside": 6,
+      "outside": 0,
+      "user": 0
+    },
+    "GeneratorFunctionConstructor": {
+      "entries": 5,
+      "passed": 5,
+      "inside": 5,
+      "outside": 0,
+      "user": 0
+    },
+    "IArguments": {
+      "entries": 4,
+      "passed": 4,
+      "inside": 4,
+      "outside": 0,
+      "user": 0
+    },
+    "ImportAssertions": {
+      "entries": 1,
+      "passed": 1,
+      "inside": 1,
+      "outside": 0,
+      "user": 0
+    },
+    "ImportAttributes": {
+      "entries": 1,
+      "passed": 1,
+      "inside": 1,
+      "outside": 0,
+      "user": 0
+    },
+    "ImportCallOptions": {
+      "entries": 2,
+      "passed": 2,
+      "inside": 2,
+      "outside": 0,
+      "user": 0
+    },
+    "Iterable": {
+      "entries": 1,
+      "passed": 1,
+      "inside": 1,
+      "outside": 0,
+      "user": 0
+    },
+    "IterableIterator": {
+      "entries": 1,
+      "passed": 1,
+      "inside": 1,
+      "outside": 0,
+      "user": 0
+    },
+    "IteratorReturnResult": {
+      "entries": 2,
+      "passed": 2,
+      "inside": 2,
+      "outside": 0,
+      "user": 0
+    },
+    "IteratorYieldResult": {
+      "entries": 2,
+      "passed": 2,
+      "inside": 2,
+      "outside": 0,
+      "user": 0
+    },
+    "MapIterator": {
+      "entries": 1,
+      "passed": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "NewableFunction": {
+      "entries": 5,
+      "passed": 1,
+      "inside": 1,
+      "outside": 0,
+      "user": 0
+    },
+    "PromiseFulfilledResult": {
+      "entries": 2,
+      "passed": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "PromiseLike": {
+      "entries": 1,
+      "passed": 1,
+      "inside": 1,
+      "outside": 0,
+      "user": 0
+    },
+    "PromiseRejectedResult": {
+      "entries": 2,
+      "passed": 1,
+      "inside": 1,
+      "outside": 0,
+      "user": 0
+    },
+    "PromiseWithResolvers": {
+      "entries": 3,
+      "passed": 3,
+      "inside": 3,
+      "outside": 0,
+      "user": 0
+    },
+    "PropertyDescriptor": {
+      "entries": 6,
+      "passed": 3,
+      "inside": 3,
+      "outside": 0,
+      "user": 0
+    },
+    "PropertyDescriptorMap": {
+      "entries": 1,
+      "passed": 1,
+      "inside": 1,
+      "outside": 0,
+      "user": 0
+    },
+    "ProxyHandler": {
+      "entries": 13,
+      "passed": 13,
+      "inside": 13,
+      "outside": 0,
+      "user": 0
+    },
+    "ReadonlyArray": {
+      "entries": 44,
+      "passed": 20,
+      "inside": 16,
+      "outside": 0,
+      "user": 4
+    },
+    "ReadonlyMap": {
+      "entries": 8,
+      "passed": 2,
+      "inside": 2,
+      "outside": 0,
+      "user": 0
+    },
+    "ReadonlySet": {
+      "entries": 14,
+      "passed": 7,
+      "inside": 7,
+      "outside": 0,
+      "user": 0
+    },
+    "ReadonlySetLike": {
+      "entries": 3,
+      "passed": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "RegExpExecArray": {
+      "entries": 5,
+      "passed": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "RegExpIndicesArray": {
+      "entries": 1,
+      "passed": 1,
+      "inside": 1,
+      "outside": 0,
+      "user": 0
+    },
+    "RegExpMatchArray": {
+      "entries": 5,
+      "passed": 5,
+      "inside": 5,
+      "outside": 0,
+      "user": 0
+    },
+    "RegExpStringIterator": {
+      "entries": 1,
+      "passed": 1,
+      "inside": 1,
+      "outside": 0,
+      "user": 0
+    },
+    "SetIterator": {
+      "entries": 1,
+      "passed": 1,
+      "inside": 1,
+      "outside": 0,
+      "user": 0
+    },
+    "StringIterator": {
+      "entries": 1,
+      "passed": 1,
+      "inside": 1,
+      "outside": 0,
+      "user": 0
+    },
+    "TemplateStringsArray": {
+      "entries": 1,
+      "passed": 1,
+      "inside": 1,
+      "outside": 0,
+      "user": 0
+    },
+    "TypedPropertyDescriptor": {
+      "entries": 6,
+      "passed": 6,
+      "inside": 6,
+      "outside": 0,
+      "user": 0
+    },
+    "WeakKeyTypes": {
+      "entries": 2,
+      "passed": 2,
+      "inside": 2,
+      "outside": 0,
+      "user": 0
+    },
+    "AbortController": {
+      "entries": 3,
+      "passed": 3,
+      "inside": 3,
+      "outside": 0,
+      "user": 0
+    },
+    "AbortSignal": {
+      "entries": 12,
+      "passed": 5,
+      "inside": 5,
+      "outside": 0,
+      "user": 0
+    },
+    "Blob": {
+      "entries": 8,
+      "passed": 6,
+      "inside": 6,
+      "outside": 0,
+      "user": 0
+    },
+    "BroadcastChannel": {
+      "entries": 10,
+      "passed": 1,
+      "inside": 0,
+      "outside": 0,
+      "user": 1
+    },
+    "ByteLengthQueuingStrategy": {
+      "entries": 3,
+      "passed": 1,
+      "inside": 1,
+      "outside": 0,
+      "user": 0
+    },
+    "CloseEvent": {
+      "entries": 4,
+      "passed": 1,
+      "inside": 1,
+      "outside": 0,
+      "user": 0
+    },
+    "CompressionStream": {
+      "entries": 3,
+      "passed": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "CountQueuingStrategy": {
+      "entries": 3,
+      "passed": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "Crypto": {
+      "entries": 4,
+      "passed": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "CryptoKey": {
+      "entries": 5,
+      "passed": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "CustomEvent": {
+      "entries": 3,
+      "passed": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "DOMException": {
+      "entries": 54,
+      "passed": 5,
+      "inside": 0,
+      "outside": 0,
+      "user": 5
+    },
+    "DecompressionStream": {
+      "entries": 3,
+      "passed": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "Event": {
+      "entries": 27,
+      "passed": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "EventTarget": {
+      "entries": 4,
+      "passed": 4,
+      "inside": 4,
+      "outside": 0,
+      "user": 0
+    },
+    "File": {
+      "entries": 4,
+      "passed": 3,
+      "inside": 3,
+      "outside": 0,
+      "user": 0
+    },
+    "FormData": {
+      "entries": 12,
+      "passed": 2,
+      "inside": 2,
+      "outside": 0,
+      "user": 0
+    },
+    "Headers": {
+      "entries": 8,
+      "passed": 4,
+      "inside": 3,
+      "outside": 0,
+      "user": 1
+    },
+    "MessageChannel": {
+      "entries": 3,
+      "passed": 3,
+      "inside": 3,
+      "outside": 0,
+      "user": 0
+    },
+    "MessageEvent": {
+      "entries": 7,
+      "passed": 2,
+      "inside": 2,
+      "outside": 0,
+      "user": 0
+    },
+    "MessagePort": {
+      "entries": 9,
+      "passed": 9,
+      "inside": 9,
+      "outside": 0,
+      "user": 0
+    },
+    "Navigator": {
+      "entries": 21,
+      "passed": 15,
+      "inside": 12,
+      "outside": 0,
+      "user": 3
+    },
+    "Performance": {
+      "entries": 21,
+      "passed": 7,
+      "inside": 7,
+      "outside": 0,
+      "user": 0
+    },
+    "PerformanceEntry": {
+      "entries": 6,
+      "passed": 1,
+      "inside": 1,
+      "outside": 0,
+      "user": 0
+    },
+    "PerformanceMark": {
+      "entries": 2,
+      "passed": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "PerformanceMeasure": {
+      "entries": 2,
+      "passed": 2,
+      "inside": 2,
+      "outside": 0,
+      "user": 0
+    },
+    "PerformanceObserver": {
+      "entries": 5,
+      "passed": 3,
+      "inside": 3,
+      "outside": 0,
+      "user": 0
+    },
+    "PerformanceObserverEntryList": {
+      "entries": 4,
+      "passed": 1,
+      "inside": 1,
+      "outside": 0,
+      "user": 0
+    },
+    "PerformanceResourceTiming": {
+      "entries": 21,
+      "passed": 1,
+      "inside": 1,
+      "outside": 0,
+      "user": 0
+    },
+    "ReadableByteStreamController": {
+      "entries": 6,
+      "passed": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "ReadableStream": {
+      "entries": 11,
+      "passed": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "ReadableStreamBYOBReader": {
+      "entries": 3,
+      "passed": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "ReadableStreamBYOBRequest": {
+      "entries": 4,
+      "passed": 1,
+      "inside": 1,
+      "outside": 0,
+      "user": 0
+    },
+    "ReadableStreamDefaultController": {
+      "entries": 5,
+      "passed": 4,
+      "inside": 4,
+      "outside": 0,
+      "user": 0
+    },
+    "ReadableStreamDefaultReader": {
+      "entries": 3,
+      "passed": 3,
+      "inside": 3,
+      "outside": 0,
+      "user": 0
+    },
+    "Request": {
+      "entries": 15,
+      "passed": 6,
+      "inside": 3,
+      "outside": 0,
+      "user": 3
+    },
+    "Response": {
+      "entries": 12,
+      "passed": 3,
+      "inside": 3,
+      "outside": 0,
+      "user": 0
+    },
+    "SubtleCrypto": {
+      "entries": 19,
+      "passed": 17,
+      "inside": 15,
+      "outside": 0,
+      "user": 2
+    },
+    "TextDecoder": {
+      "entries": 2,
+      "passed": 2,
+      "inside": 0,
+      "outside": 0,
+      "user": 2
+    },
+    "TextDecoderStream": {
+      "entries": 3,
+      "passed": 1,
+      "inside": 0,
+      "outside": 0,
+      "user": 1
+    },
+    "TextEncoder": {
+      "entries": 3,
+      "passed": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "TextEncoderStream": {
+      "entries": 3,
+      "passed": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "TransformStream": {
+      "entries": 3,
+      "passed": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "TransformStreamDefaultController": {
+      "entries": 5,
+      "passed": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "URL": {
+      "entries": 19,
+      "passed": 9,
+      "inside": 9,
+      "outside": 0,
+      "user": 0
+    },
+    "URLSearchParams": {
+      "entries": 11,
+      "passed": 3,
+      "inside": 3,
+      "outside": 0,
+      "user": 0
+    },
+    "WebSocket": {
+      "entries": 25,
+      "passed": 5,
+      "inside": 5,
+      "outside": 0,
+      "user": 0
+    },
+    "WritableStream": {
+      "entries": 5,
+      "passed": 3,
+      "inside": 3,
+      "outside": 0,
+      "user": 0
+    },
+    "WritableStreamDefaultController": {
+      "entries": 3,
+      "passed": 1,
+      "inside": 1,
+      "outside": 0,
+      "user": 0
+    },
+    "WritableStreamDefaultWriter": {
+      "entries": 8,
+      "passed": 0,
+      "inside": 0,
+      "outside": 0,
+      "user": 0
+    },
+    "console": {
+      "entries": 20,
+      "passed": 20,
+      "inside": 20,
+      "outside": 0,
+      "user": 0
+    },
+    "crypto": {
+      "entries": 3,
+      "passed": 3,
+      "inside": 3,
+      "outside": 0,
+      "user": 0
+    },
+    "navigator": {
+      "entries": 20,
+      "passed": 18,
+      "inside": 15,
+      "outside": 0,
+      "user": 3
+    },
+    "performance": {
+      "entries": 20,
+      "passed": 12,
+      "inside": 9,
+      "outside": 0,
+      "user": 3
+    },
+    "web globals": {
+      "entries": 9,
+      "passed": 9,
+      "inside": 9,
+      "outside": 0,
+      "user": 0
+    },
+    "syntax: literals": {
+      "entries": 30,
+      "passed": 30,
+      "inside": 30,
+      "outside": 0,
+      "user": 0
+    },
+    "syntax: operators": {
+      "entries": 42,
+      "passed": 31,
+      "inside": 28,
+      "outside": 0,
+      "user": 3
+    },
+    "syntax: declarations": {
+      "entries": 9,
+      "passed": 9,
+      "inside": 9,
+      "outside": 0,
+      "user": 0
+    },
+    "syntax: functions": {
+      "entries": 15,
+      "passed": 15,
+      "inside": 15,
+      "outside": 0,
+      "user": 0
+    },
+    "syntax: classes": {
+      "entries": 19,
+      "passed": 19,
+      "inside": 19,
+      "outside": 0,
+      "user": 0
+    },
+    "syntax: statements": {
+      "entries": 26,
+      "passed": 26,
+      "inside": 26,
+      "outside": 0,
+      "user": 0
+    },
+    "syntax: modules": {
+      "entries": 10,
+      "passed": 10,
+      "inside": 10,
+      "outside": 0,
+      "user": 0
+    },
+    "syntax: lexical": {
+      "entries": 5,
+      "passed": 5,
+      "inside": 5,
+      "outside": 0,
+      "user": 0
+    }
+  },
+  "stoppedOnErrors": false,
+  "models": {
+    "inside": "qwen2.5-coder:7b",
+    "outside": "none",
+    "user": "qwen2.5-coder:7b"
+  }
+}
