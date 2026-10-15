@@ -34,11 +34,16 @@
 // - The answer runs in a fresh vm context (Node's non-ES globals such as URL copied in) with a
 //   1 s limit for its synchronous part; values cross realms, so an answer using
 //   `instanceof Array` on a parameter would see false. Use Array.isArray.
+//
+// Gate wiring: runGate (../assemble.mjs) is synchronous and calls each injected check as
+// (answer) -> CheckResult, so the async check is run first and handed over settled:
+//   runGate(answer, { grammar: checkGrammar, equivalence: await equivalenceFor(answer, { entry }) })
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import fc from 'fast-check';
 import { describe } from '../../../line-codemod/bench/atoms/js-reference/run.mjs';
 import { arb } from '../../../line-smith/test/support/gens.mjs';
+import { validateAnswer } from '../../contract/validate.mjs';
 
 const refDir = new URL('../../../line-codemod/bench/atoms/js-reference/', import.meta.url);
 const readJson = (name) => JSON.parse(readFileSync(new URL(name, refDir), 'utf8'));
@@ -238,6 +243,7 @@ function mismatch(label, names, inputs, answer, ref) {
 }
 
 export async function checkEquivalence(answer, { entry, runs = 50, seed = 1 } = {}) {
+  if (!answer || typeof answer !== 'object') return result('fail', ['The answer is not a C2 object; reply with one JSON object holding the C2 fields.']);
   if (answer.decision === 'not-expressible' || answer.decision === 'molecule') return result('skip');
   const e = findEntry(entry, answer.entry);
   if (!e) return result('fail', [`The entry \`${entry ?? answer.entry}\` is not in reference.json; use a C1 entry id or key.`]);
@@ -301,4 +307,13 @@ export async function checkEquivalence(answer, { entry, runs = 50, seed = 1 } = 
     }
   }
   return result(errors.length ? 'fail' : 'pass', errors);
+}
+
+/**
+ * The settled check for runGate: runs checkEquivalence once now and returns
+ * (answer) -> CheckResult. An answer that fails the C2 schema is not run (runGate skips it anyway).
+ */
+export async function equivalenceFor(answer, options = {}) {
+  const settled = validateAnswer(answer).check === 'fail' ? result('skip') : await checkEquivalence(answer, options);
+  return () => settled;
 }

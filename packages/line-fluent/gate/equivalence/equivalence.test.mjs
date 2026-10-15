@@ -2,7 +2,7 @@
 // ones with one sentence naming the differing input and both outputs.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { checkEquivalence } from './equivalence.mjs';
+import { checkEquivalence, equivalenceFor } from './equivalence.mjs';
 
 const answer = (entry, js, params, decision = 'new-atom') => ({
   entry, decision, atom: decision === 'not-expressible' ? null : 'someAtom', existing: null, kind: 'value',
@@ -80,4 +80,39 @@ test('unparsable js and unknown parameter types fail with one sentence', async (
   assert.match(parse.errors[0], /does not parse/);
   const type = await checkEquivalence(answer('Math.max', 'Math.max(a)', [['a', 'T']]), { entry: 'Math.max' });
   assert.match(type.errors[0], /`a` has type `T`/);
+});
+
+// Gate wiring: the same answer through the real runGate with the real grammar check.
+test('plugs into runGate next to checkGrammar', async () => {
+  const { runGate } = await import('../assemble.mjs');
+  const { checkGrammar } = await import('../grammar/grammar.mjs');
+  // The catalog's includes atom: its sentence passes the grammar, so only `js` decides.
+  const includes = (js) => ({
+    ...answer('Array.prototype.includes', js, [['xs', 'list'], ['x', 'prim']]),
+    atom: 'hasItem', sentence: 'checks().if(xs).has().item(x)',
+  });
+  const gate = async (a) => runGate(a, { grammar: checkGrammar, equivalence: await equivalenceFor(a, { seed: 7 }) });
+
+  const good = await gate(includes('xs.includes(x)'));
+  assert.deepEqual(good, {
+    entry: 'Array.prototype.includes', pass: true,
+    checks: { schema: 'pass', grammar: 'pass', equivalence: 'pass', types: 'skip' }, refusal: null, fixes: [],
+  });
+
+  const bad = await gate(includes('xs.indexOf(x) > 0'));
+  assert.deepEqual(bad.checks, { schema: 'pass', grammar: 'pass', equivalence: 'fail', types: 'skip' });
+  assert.equal(bad.pass, false);
+  assert.match(bad.refusal, /^On (the reference case|input) xs = .*, x = .*, the answer returns .* but the reference returns /);
+  assert.deepEqual(bad.fixes, []);
+
+  const broken = await gate({ ...includes('xs.includes(x)'), extra: 1 });
+  assert.deepEqual(broken.checks, { schema: 'fail', grammar: 'skip', equivalence: 'skip', types: 'skip' });
+});
+
+test('equivalenceFor skips an answer that fails the schema; checkEquivalence refuses a non-object', async () => {
+  const check = await equivalenceFor({ entry: 'Math.max' }, { entry: 'Math.max' });
+  assert.deepEqual(check(), { check: 'skip', errors: [], fixes: [] });
+  const r = await checkEquivalence(null, { entry: 'Math.max' });
+  assert.equal(r.check, 'fail');
+  assert.equal(r.errors.length, 1);
 });
