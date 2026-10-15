@@ -497,6 +497,11 @@ export type DraftView = {
 /** POST /api/line/plan/draft/add: the plan with the route's steps added; `next` is the step to add after the first ones ran. */
 export type DraftAdded = PlanView & { added: string[]; next: number | null; sentence: string };
 
+/** t5-3, GET /api/line/english?file=: each top-level function of a source file in plain English (englishDetail in
+ * packages/line-fluent/cli/english.mjs, the same module as `construct english`), with its line and code. */
+export type LineEnglishFunction = { name: string; line: number; english: string; code: string };
+export type LineEnglishView = { ok: true; file: string; functions: LineEnglishFunction[] };
+
 /** Every LINE_API route, as the client calls it. Bodies come back as the server sent them, refusals included; each
  * screen turns them into what it shows. A network failure rejects. */
 export type LineHttp = {
@@ -507,6 +512,7 @@ export type LineHttp = {
   getWorkspace: () => Promise<LineWorkspace | LineRefusal>;
   getWorkflows: (feature: string) => Promise<LineWorkflowList | LineRefusal>;
   getComponent: (file: string) => Promise<LineComponentEditor | LineRefusal>;
+  getEnglish: (file: string) => Promise<LineEnglishView | LineRefusal>;
   setWorkspace: (req: WorkspaceRequest) => Promise<LineWorkspace | LineRefusal>;
   getPlan: () => Promise<PlanView | LineRefusal>;
   addPlanStep: (req: PlanStepRequest) => Promise<PlanView | LineRefusal>;

@@ -37,12 +37,19 @@ export function topLevelFunctions(source) {
   return out;
 }
 
-export function englishView(source) {
+// The view with each function's code kept beside its English; the Cockpit's English panel (GET /api/line/english,
+// ui/server/src/lineApi.mjs) shows the code as collapsed technical detail.
+export function englishDetail(source) {
   return topLevelFunctions(source).map(({ name, line, code }) => ({
     name,
     line,
     english: toEnglish(code, 'function').english,
+    code,
   }));
+}
+
+export function englishView(source) {
+  return englishDetail(source).map(({ name, line, english }) => ({ name, line, english }));
 }
 
 // Returns the exit code; writes through the injected streams so tests run in-process.
