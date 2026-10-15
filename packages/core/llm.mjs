@@ -69,7 +69,9 @@ export const PROVIDERS = {
   // and spawnSync reports it as `error.code === 'ETIMEDOUT'`.
   claude(prompt, options = {}) {
     const timeout = timeoutOf(options);
-    const res = spawnSync('claude', ['-p', '--output-format', 'text', '--permission-prompts', 'none'], {
+    // `options.model` picks the model (`haiku`, `sonnet`, or a full model id); the CLI's own default otherwise.
+    const modelArgs = options.model ? ['--model', String(options.model)] : [];
+    const res = spawnSync('claude', ['-p', '--output-format', 'text', '--permission-prompts', 'none', ...modelArgs], {
       input: prompt,
       encoding: 'utf8',
       maxBuffer: 10 * 1024 * 1024,

@@ -16,8 +16,14 @@ import { ts } from '../../packages/ast/index.mjs';
 import { action, value, verb, args, opt, target, BE, HAVE, lintSentence } from './grammar.mjs';
 import { splitIdentifier } from './user-lexicon.mjs';
 
-/** The small local model that answers by default. */
-export const DEFAULT_GRAMMAR_MODEL = 'qwen3:1.7b';
+/** Who answers by default: the `claude` CLI on the person's own Claude plan (no API key). */
+export const DEFAULT_GRAMMAR_PROVIDER = 'claude';
+
+/** The model each provider answers with by default: the smallest of each. */
+export const DEFAULT_GRAMMAR_MODELS = Object.freeze({ claude: 'haiku', ollama: 'qwen3:1.7b' });
+
+/** The small local model that answers when the provider is Ollama. */
+export const DEFAULT_GRAMMAR_MODEL = DEFAULT_GRAMMAR_MODELS.ollama;
 
 /** The JSDoc tag that marks a top-level function with its English. */
 export const DOES_TAG = 'does';
@@ -245,6 +251,71 @@ export function markFunction(source, name, does, fileName = 'x.ts') {
   return source.slice(0, doc.getStart(sf)) + next + source.slice(doc.getEnd());
 }
 
+// ---- asking a model many questions in one call ------------------------------------
+
+/**
+ * One prompt carrying many questions, numbered, each on one line; a question
+ * that wants several answers gets them on its line separated by " | ".
+ * @param {string} brief What the model is and how to answer.
+ * @param {string[]} questions The questions, in plain English.
+ * @returns {string} The prompt.
+ */
+export function batchPrompt(brief, questions) {
+  const numbered = questions.map((q, i) => `${i + 1}. ${q.replace(/\s*\n+\s*/g, ' ')}`).join('\n');
+  return (
+    `${brief}\n\nAnswer each numbered question below on its own line, starting with the same number, like “3. turns it into a list”. ` +
+    'When a question asks for several answers, put them all on its one line separated by “ | ”.\n\n' +
+    numbered
+  );
+}
+
+/**
+ * Splits a numbered reply back into one answer per question ('' where missing).
+ * @param {string} reply The model's reply.
+ * @param {number} count How many questions were asked.
+ * @returns {string[]} The answers, in question order.
+ */
+export function parseBatchReply(reply, count) {
+  const answers = Array(count).fill('');
+  for (const line of reply.split('\n')) {
+    const m = /^\s*(\d+)[.):]\s*(.*)$/.exec(line);
+    if (m && Number(m[1]) >= 1 && Number(m[1]) <= count && !answers[Number(m[1]) - 1]) answers[Number(m[1]) - 1] = m[2].trim();
+  }
+  return answers;
+}
+
+/**
+ * An asker that gathers questions asked at about the same time into one model
+ * call (up to `size` per call) — a CLI call costs seconds to start, so hundreds
+ * of questions go in a handful of calls, not hundreds.
+ * @param {(questions: string[]) => Promise<string[]>} callMany Answers a list of questions in one call.
+ * @param {{size?: number, waitMs?: number}} [opts] Questions per call, and how long to wait for more before sending.
+ * @returns {(question: string) => Promise<string>} The asker.
+ */
+export function batchedAsker(callMany, { size = 10, waitMs = 25 } = {}) {
+  let pending = [];
+  let timer = null;
+  const flush = async () => {
+    clearTimeout(timer);
+    timer = null;
+    const batch = pending;
+    pending = [];
+    if (!batch.length) return;
+    try {
+      const answers = await callMany(batch.map((b) => b.question));
+      batch.forEach((b, i) => b.resolve(answers[i] ?? ''));
+    } catch (err) {
+      batch.forEach((b) => b.reject(err));
+    }
+  };
+  return (question) =>
+    new Promise((resolve, reject) => {
+      pending.push({ question, resolve, reject });
+      if (pending.length >= size) flush();
+      else timer ??= setTimeout(flush, waitMs);
+    });
+}
+
 // ---- the loop -----------------------------------------------------------------
 
 /**
@@ -276,7 +347,9 @@ export async function correctGaps(gaps, ask, { retries = 1, concurrency = 1 } = 
       question = `${q.does}\n\nYour last answer was “${answer}”. ${'error' in outcome ? outcome.error : ''}`;
     }
     if (outcome && 'type' in outcome) {
-      const rename = toIdentifier((await ask(q.rename)).trim());
+      // A suggested name is kept only when it is a few plain words.
+      const words = (await ask(q.rename)).trim().replace(/^["“'`]+|["”'`.!]+$/g, '').split(/\s+/).filter(Boolean);
+      const rename = words.length >= 2 && words.length <= 5 && words.every((w) => /^[A-Za-z]+$/.test(w)) ? toIdentifier(words.join(' ')) : '';
       accepted.push({ name: gap.name, does: answer.split('\n')[0].trim(), english: outcome.english, ...(rename ? { rename } : {}) });
     } else {
       rejected.push({ name: gap.name, answer, error: outcome && 'error' in outcome ? outcome.error : 'no answer' });

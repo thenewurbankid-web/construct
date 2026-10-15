@@ -151,7 +151,7 @@ export function optionsQuestion(entry) {
  */
 export function parseOptions(reply) {
   return reply
-    .split('\n')
+    .split(/\n| \| /)
     .map((l) => l.replace(/^\s*(\d+[.)]|[-*•])\s*/, '').replace(/^["“'`]+|["”'`.!]+$/g, '').trim().toLowerCase())
     .filter((l) => l && !('error' in nameFromAnswer(l)))
     .slice(0, 3);

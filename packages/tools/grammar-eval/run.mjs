@@ -5,10 +5,12 @@
 //                top-level declaration in the files (lint + gaps).
 //   2. ask     — every user-domain name the mapper can only guess at, and every
 //                statement that can't be said in one clean sentence (an atom),
-//                as a plain-English question. The answerer is a small local
-//                model (--ask model, default qwen3:1.7b through Ollama) or the
-//                person at the terminal (--ask user). Neither ever sees code.
-//                A model is asked --jobs questions at a time (default 4).
+//                as a plain-English question. The answerer is a small model
+//                (--ask model: by default Claude Haiku through the `claude` CLI,
+//                on the person's own Claude plan; --provider ollama for a local
+//                qwen3:1.7b) or the person at the terminal (--ask user). Neither
+//                ever sees code. A model gets up to --jobs questions per call
+//                (default 10).
 //   3. mark    — with --write, each accepted answer is written onto the
 //                top-level function it describes as a `@does` marker, and each
 //                atom is extracted into its own marked function — every atom
@@ -17,7 +19,7 @@
 //                valid English. The goal is 100%; whatever is left is listed
 //                with the reason a person is needed.
 //
-// Usage: node packages/tools/grammar-eval/run.mjs [--ask model|user] [--model qwen3:1.7b]
+// Usage: node packages/tools/grammar-eval/run.mjs [--ask model|user] [--provider claude|ollama] [--model haiku]
 //          [--write] [--limit N] [--jobs N] [paths...]
 //
 // Batch naming (--placeholders): every atom is extracted at once under a
@@ -31,7 +33,7 @@ import { readFileSync, writeFileSync, statSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 import { parseArgs } from 'node:util';
 import { evaluateLexicon, evaluateSource, findUserDomainGaps } from '../../core/grammar-eval.mjs';
-import { correctGaps, markFunction, markerTypes, markersIn, DEFAULT_GRAMMAR_MODEL } from '../../core/corrections.mjs';
+import { correctGaps, markFunction, markerTypes, markersIn, batchPrompt, parseBatchReply, batchedAsker, DEFAULT_GRAMMAR_PROVIDER, DEFAULT_GRAMMAR_MODELS } from '../../core/corrections.mjs';
 import { planAtoms, planAtomsInFiles, atomQuestion, nameFromAnswer, applyAtoms } from '../../core/atoms.mjs';
 import { extractWithPlaceholders, namingSheet, optionsQuestion, parseOptions, applyNames } from '../../core/naming.mjs';
 import { setMarkedFunctions } from '../../core/user-lexicon.mjs';
@@ -42,10 +44,11 @@ const { values: opts, positionals } = parseArgs({
   allowPositionals: true,
   options: {
     ask: { type: 'string' },
-    model: { type: 'string', default: DEFAULT_GRAMMAR_MODEL },
+    provider: { type: 'string', default: DEFAULT_GRAMMAR_PROVIDER },
+    model: { type: 'string' },
     write: { type: 'boolean', default: false },
     limit: { type: 'string', default: '50' },
-    jobs: { type: 'string', default: '4' },
+    jobs: { type: 'string', default: '10' },
     placeholders: { type: 'boolean', default: false },
     sheet: { type: 'string' },
     'apply-sheet': { type: 'string' },
@@ -69,10 +72,18 @@ const MODEL_BRIEF =
   'You describe parts of a computer program in plain, everyday English for people who do not read code. ' +
   'Reply with one short phrase only: no code, no symbols, no explanation, no quotes.';
 
-async function askModel(question) {
-  const raw = await callLlm('ollama', `${MODEL_BRIEF}\n\n${question} /no_think`, { model: opts.model, timeoutMs: 120000 });
-  return raw.replace(/<think>[\s\S]*?<\/think>/g, '').trim().split('\n')[0];
-}
+const provider = opts.provider;
+const model = opts.model ?? DEFAULT_GRAMMAR_MODELS[provider];
+
+// Questions asked together go out in one call: numbered in, numbered out.
+const askModel = batchedAsker(
+  async (questions) => {
+    const prompt = batchPrompt(MODEL_BRIEF, questions) + (provider === 'ollama' ? ' /no_think' : '');
+    const raw = await callLlm(provider, prompt, { model, timeoutMs: 300000 });
+    return parseBatchReply(raw.replace(/<think>[\s\S]*?<\/think>/g, ''), questions.length);
+  },
+  { size: jobs },
+);
 
 let lines = null;
 async function askUser(question) {
@@ -177,9 +188,20 @@ for (const r of rejected) console.log(`   ${r.name}: unclear — ${r.error}`);
 // Atoms: what would you call this part? One pass names every atom in a file
 // (a model answers --jobs at a time), applies them all, then re-plans: lifting
 // a piece can leave its parent short enough to read.
-async function nameAtom(atom) {
-  let named = nameFromAnswer(await ask(atomQuestion(atom)));
-  if ('error' in named) named = nameFromAnswer(await ask(`${atomQuestion(atom)}\n\n${named.error}`));
+// A name must be new to the file and to this batch: two atoms answered alike
+// would otherwise become two functions with one name.
+async function nameAtom(atom, taken) {
+  let question = atomQuestion(atom);
+  let named = { error: 'no answer' };
+  for (let attempt = 0; attempt < 2; attempt++) {
+    named = nameFromAnswer(await ask(question));
+    if (!('error' in named) && taken.has(named.name)) named = { error: `The name “${named.does}” is already used for another part; please choose a different one.` };
+    if (!('error' in named)) {
+      taken.add(named.name);
+      break;
+    }
+    question = `${atomQuestion(atom)}\n\n${named.error}`;
+  }
   return named;
 }
 
@@ -195,7 +217,8 @@ for (const file of files) {
   for (let pass = 0; pass < 5 && wrapped < limit; pass++) {
     const atoms = planAtoms(source, file).atoms.slice(0, limit - wrapped);
     if (!atoms.length) break;
-    const names = await inBatches(atoms, jobs, nameAtom);
+    const taken = new Set(source.match(/[A-Za-z_$][\w$]*/g));
+    const names = await inBatches(atoms, jobs, (atom) => nameAtom(atom, taken));
     const ready = atoms.map((atom, i) => ({ atom, ...names[i] })).filter((x) => !('error' in x));
     for (const x of atoms.map((atom, i) => ({ atom, named: names[i] })).filter((x) => 'error' in x.named)) console.log(`   ${file}:${x.atom.line} still unnamed — ${x.named.error}`);
     if (!ready.length) break;

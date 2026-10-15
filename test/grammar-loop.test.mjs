@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { execSync } from 'node:child_process';
 import { ts } from '../packages/ast/index.mjs';
 import { evaluateLexicon, evaluateSource, lintSentence } from '../packages/core/grammar-eval.mjs';
-import { parseAnswer, questionsFor, correctGaps, markerTypes, markFunction, lemmaOf } from '../packages/core/corrections.mjs';
+import { parseAnswer, questionsFor, correctGaps, markerTypes, markFunction, lemmaOf, batchPrompt, parseBatchReply, batchedAsker } from '../packages/core/corrections.mjs';
 import { setMarkedFunctions, nominalize, mapUserCall } from '../packages/core/user-lexicon.mjs';
 import { planAtoms, applyAtom, applyAtoms, atomQuestion, nameFromAnswer } from '../packages/core/atoms.mjs';
 import { describeImplementation } from '../packages/core/prose.mjs';
@@ -225,4 +225,23 @@ test('batch naming: model replies become options; choices rename placeholders ev
   assert.match(out, /const total = addUpItemPrices\(order\) \* \(workOutTaxRate\(user\)\) - \(pendingName3\(user, order\)\);/);
   assert.match(out, /\/\*\* @does adds up the item prices \*\/\nfunction addUpItemPrices\(order\)/);
   assert.match(out, /\/\*\* @pending .* \*\/\nfunction pendingName3/);
+});
+
+test('asking a model in batch: numbered questions in one call, numbered answers split back out', async () => {
+  const prompt = batchPrompt('Brief.', ['What does it do?\nStart with an action word.', 'Suggest three names.']);
+  assert.match(prompt, /^Brief\.\n\n/);
+  assert.match(prompt, /\n1\. What does it do\? Start with an action word\.\n2\. Suggest three names\.$/);
+  assert.deepEqual(parseBatchReply('Sure:\n2. add up | total it\n1) turns it into a list\n9. stray', 3), ['turns it into a list', 'add up | total it', '']);
+  assert.deepEqual(parseOptions('add up the prices | work out the subtotal | sum(x)'), ['add up the prices', 'work out the subtotal']);
+  const calls = [];
+  const ask = batchedAsker(async (qs) => (calls.push(qs), qs.map((q) => `answer to ${q}`)), { size: 3 });
+  const answers = await Promise.all(['a', 'b', 'c', 'd'].map(ask));
+  assert.deepEqual(answers, ['answer to a', 'answer to b', 'answer to c', 'answer to d']);
+  assert.deepEqual(calls, [['a', 'b', 'c'], ['d']]);
+});
+
+test('corrections: a suggested name is kept only when it is a few plain words', async () => {
+  const replies = { does: 'turns it into a tree', rename: 'reads the identifiers two to five six seven' };
+  const { accepted } = await correctGaps([{ name: 'parseToAst', inputs: ['x'] }], async (q) => (/clearer name/.test(q) ? replies.rename : replies.does));
+  assert.equal(accepted[0].rename, undefined);
 });

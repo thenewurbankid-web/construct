@@ -120,6 +120,7 @@ export const JS_LEXICON = Object.freeze([
   value('.replaceAll', target(), 'with every', bare(0), 'replaced by', bare(1)),
   predicate('.matches', target(), verb('match'), arg(0)),
   predicate('.test', arg(0), verb('match'), target()),
+  value('.exec', 'the first match of', target(), 'in', arg(0)),
   value('encodeURIComponent', 'the URL-safe form of', arg(0)),
   value('decodeURIComponent', 'the URL-decoded form of', arg(0)),
 
