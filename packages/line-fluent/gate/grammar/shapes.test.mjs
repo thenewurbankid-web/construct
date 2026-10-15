@@ -29,6 +29,7 @@ test('a slip of a known word keeps its fix; a different word may be a new verb',
   assert.ok(isTypo('yeilds', 'yields'), 'reordered letters');
   assert.ok(!isTypo('fills', 'finds'));
   assert.ok(!isTypo('pads', 'has'), 'a different first letter is a different word');
+  assert.ok(!isTypo('removes', 'reverses'), 'two edits apart is a different word');
   const r = checkGrammar({ sentence: 'clones().list(xs).and().flatens()' });
   assert.deepEqual(r.fixes, [{ kind: 'replace-word', from: 'flatens', to: 'flattens' }]);
 });
@@ -37,4 +38,13 @@ test('only a third-person verb form can join as a new verb (R1)', () => {
   for (const w of ['fills', 'copies', 'pushes']) assert.ok(looksLikeVerb(w), w);
   for (const w of ['class', 'fill', 'quickly', 'is', 'status']) assert.ok(!looksLikeVerb(w), w);
   assert.match(checkGrammar({ sentence: 'clones().list(xs).and().quickly()' }).errors[0], /`quickly` is not legal/);
+});
+
+test('a new shape that follows the word-class rules passes, flagged for the person to confirm', () => {
+  const r = checkGrammar({ sentence: 'map(m).sets().at(key).to(value)' });
+  assert.equal(r.check, 'pass');
+  assert.deepEqual(r.newShape, { shape: 'map(·).VERB().at(·).to(·)', like: r.newShape.like });
+  assert.equal(checkGrammar({ sentence: 'map(m).removes().at(key)' }).check, 'pass');
+  assert.equal(checkGrammar({ sentence: 'map(m).sets().by(key).and(() => value)' }).check, 'fail', 'a connector taking an argument breaks R6');
+  assert.equal(checkGrammar({ sentence: 'text(s).pads(n).with(c)' }).check, 'fail', 'a verb taking its own argument breaks R3');
 });

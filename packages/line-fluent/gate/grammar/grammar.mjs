@@ -77,7 +77,7 @@ export function checkGrammar(answer) {
   if (exact.check === 'pass') return exact;
   // Second pass: the sentence's shape (shapes.mjs). A known shape passes, with any new verbs reported as aliases.
   const shaped = checkShape(calls);
-  if (shaped.check === 'pass') return { check: 'pass', errors: [], fixes: [], aliases: shaped.aliases, shape: shaped.shape };
+  if (shaped.check === 'pass') return { check: 'pass', errors: [], fixes: [], aliases: shaped.aliases, shape: shaped.shape, ...(shaped.newShape ? { newShape: shaped.newShape } : {}) };
   // A slip of a known word keeps the trie's fix; only a new verb in a shape the grammar lacks gets the shape refusal,
   // with the nearest real sentences as examples. Every other failure is the trie's.
   if (shaped.typo || !shaped.newVerb) return exact;

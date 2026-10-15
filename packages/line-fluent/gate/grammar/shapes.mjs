@@ -31,14 +31,14 @@ export function looksLikeVerb(word) {
 }
 
 /**
- * Whether `word` reads as a slip of the known word `known`: same first letter and an edit distance of 1 (2 for words
- * of 7+ letters), or the same letters reordered (`yeilds`, `chekcs`). `fills` is not a slip of `finds`, nor `pads` of
+ * Whether `word` reads as a slip of the known word `known`: same first letter and an edit distance of 1, or the same
+ * letters reordered (`yeilds`, `chekcs`). `fills` is not a slip of `finds`, nor `pads` of
  * `has`: those are different words and may be new verbs.
  */
 export function isTypo(word, knownWord) {
   if (word === knownWord || word[0] !== knownWord[0]) return false;
   if ([...word].sort().join() === [...knownWord].sort().join()) return true;
-  return editDistance(word, knownWord) <= (Math.max(word.length, knownWord.length) >= 7 ? 2 : 1);
+  return editDistance(word, knownWord) <= 1; // `removes` is not a slip of `reverses`
 }
 
 /** The known word `word` is a slip of, or null. */
@@ -53,11 +53,38 @@ export function shapeOf(fluent) {
   return parse(fluent).map(({ word, args }) => token(contentVerbs.has(word) ? 'VERB' : word, args)).join('.');
 }
 
+// Class shapes: the third level. Subjects and role words are abstracted too, and a run of role-word arguments is one
+// (R3: every argument is carried by its own role word, so a sentence may carry more than one). A sentence whose exact
+// shape is new but whose class shape is known follows the rules; it passes as a new shape, reported for the person to
+// confirm, and is a known shape once its atom is registered.
+const subjects = new Set(grammar.subjects);
+const roles = new Set(grammar.roleWords.filter((w) => !grammar.connectors.includes(w)));
+
+/** `map(m).sets().at(key).to(value)` -> `SUBJECT(·).VERB().ROLE(·)+` */
+export function classShapeOf(tokens) {
+  const out = [];
+  for (const t of tokens) {
+    const [, word, arg] = /^([^(]+)\((·?)\)$/.exec(t);
+    const cls = subjects.has(word) ? 'SUBJECT' : roles.has(word) ? 'ROLE' : word;
+    const tok = `${cls}(${arg})`;
+    if (tok === 'ROLE(·)' && (out.at(-1) === 'ROLE(·)' || out.at(-1) === 'ROLE(·)+')) out[out.length - 1] = 'ROLE(·)+';
+    else out.push(tok === 'ROLE(·)' ? 'ROLE(·)+' : tok);
+  }
+  return out.join('.');
+}
+
 /** Shape -> one real sentence of that shape (the example a refusal shows). */
 export const SHAPES = new Map();
 for (const { fluent } of sentences) {
   const s = shapeOf(fluent);
   if (!SHAPES.has(s)) SHAPES.set(s, fluent);
+}
+
+/** Class shape -> one real sentence of that class shape. */
+export const CLASS_SHAPES = new Map();
+for (const [shape, example] of SHAPES) {
+  const c = classShapeOf(shape.split('.'));
+  if (!CLASS_SHAPES.has(c)) CLASS_SHAPES.set(c, example);
 }
 
 function tokenDistance(a, b) {
@@ -82,7 +109,7 @@ export function nearestShapes(shape, n = 3) {
  * The shape check for a parsed sentence. `pass` with the new verbs as aliases; `fail` with the reason (an unknown
  * word that is not a verb, a near-miss of a known word, or a shape the grammar does not have) and nearest examples.
  * @param {{word: string, args: string[]}[]} calls The parsed sentence.
- * @returns {{check: 'pass' | 'fail', shape: string, aliases: {word: string, class: 'verb'}[], reason: string | null, typo?: boolean, newVerb?: boolean, nearest: object[]}} The verdict.
+ * @returns {{check: 'pass' | 'fail', shape: string, aliases: {word: string, class: 'verb'}[], newShape?: {shape: string, like: string}, reason: string | null, typo?: boolean, newVerb?: boolean, nearest: object[]}} The verdict.
  */
 export function checkShape(calls) {
   const aliases = [];
@@ -108,6 +135,11 @@ export function checkShape(calls) {
   }
   const shape = tokens.join('.');
   if (!reason && SHAPES.has(shape)) return { check: 'pass', shape, aliases, reason: null, nearest: [] };
+  // A new shape whose word classes follow a known one: it does not break the rules, so it passes, flagged as new.
+  if (!reason) {
+    const cls = classShapeOf(tokens);
+    if (CLASS_SHAPES.has(cls)) return { check: 'pass', shape, aliases, newShape: { shape, like: CLASS_SHAPES.get(cls) }, reason: null, nearest: [] };
+  }
   reason ??= `the shape \`${shape}\` is not one the grammar has`;
   return { check: 'fail', shape, aliases: [], reason, typo, newVerb, nearest: nearestShapes(shape) };
 }

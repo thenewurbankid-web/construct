@@ -4,6 +4,7 @@
 
 import { FIELDS, DECISIONS, KINDS } from '../../contract/validate.mjs';
 import { SHAPES } from '../../gate/grammar/shapes.mjs';
+import { gens } from '../../../line-smith/test/support/gens.mjs';
 
 export const MAX_CANDIDATES = 5;
 
@@ -42,6 +43,8 @@ const describeParam = (p) => `${p.rest ? '...' : ''}${p.name}${p.optional ? '?' 
 
 // The shapes section: opt-in, since it doubles the request (the student's budget is 4000 chars; Claude's is not).
 export const SHAPES_SECTION = [
+  `Each params type must be one of these generator names (the gate tests with them), never a TypeScript type: ${Object.keys(gens).join(', ')}.`,
+  'params must list every name the js uses that is not defined inside it, the receiver first (for m.set(key, value): [["m", "map"], ["key", "prim"], ["value", "prim"]]).',
   'The sentence must have one of these shapes (VERB is a verb slot: a known verb or a new third-person verb such as copies; · marks an argument). Each shape is followed by a real sentence of that shape:',
   ...SHAPE_LINES,
 ].join('\n');
