@@ -119,6 +119,7 @@ export const JS_LEXICON = Object.freeze([
   value('.replace', target(), 'with', bare(0), 'replaced by', bare(1)),
   value('.replaceAll', target(), 'with every', bare(0), 'replaced by', bare(1)),
   predicate('.matches', target(), verb('match'), arg(0)),
+  predicate('.test', arg(0), verb('match'), target()),
   value('encodeURIComponent', 'the URL-safe form of', arg(0)),
   value('decodeURIComponent', 'the URL-decoded form of', arg(0)),
 
@@ -139,12 +140,12 @@ export const JS_LEXICON = Object.freeze([
   value('Promise.reject', 'a promise already rejected', opt('with', arg(0))),
 
   // ---- Timers and scheduling ----------------------------------------------
-  action('setTimeout', verb('schedule'), arg(0), 'to run', opt('after', bare(1), 'milliseconds')),
-  action('setInterval', verb('run'), arg(0), 'repeatedly', opt('every', bare(1), 'milliseconds')),
+  action('setTimeout', verb('schedule'), arg(0), opt('in', bare(1), 'milliseconds')),
+  action('setInterval', verb('repeat'), arg(0), opt('every', bare(1), 'milliseconds')),
   action('clearTimeout', verb('cancel'), 'the scheduled timer', arg(0)),
   action('clearInterval', stop, 'the repeating timer', arg(0)),
-  action('requestAnimationFrame', verb('schedule'), arg(0), 'to run before the next repaint'),
-  action('queueMicrotask', verb('queue'), arg(0), 'to run right after the current task'),
+  action('requestAnimationFrame', verb('schedule'), arg(0), 'before the next repaint'),
+  action('queueMicrotask', verb('queue'), arg(0), 'right after the current task'),
 
   // ---- Dates and ids -------------------------------------------------------
   value('Date.now', 'the current time in milliseconds'),
@@ -172,6 +173,45 @@ export const JS_LEXICON = Object.freeze([
   action('.dispatchEvent', verb('fire'), 'the event', arg(0), 'on', target()),
   action('.preventDefault', stop, "the browser's default handling of", target()),
   action('.stopPropagation', stop, target(), 'from bubbling up to outer elements'),
+
+  // ---- Promises: chaining ---------------------------------------------------
+  value('.then', target(), ', then', arg(0), opt(', or on failure', arg(1))),
+  value('.catch', target(), ', handling a failure with', arg(0)),
+  value('.finally', target(), ', then either way', arg(0)),
+
+  // ---- Node: files ----------------------------------------------------------
+  predicate('existsSync', arg(0), verb('exist')),
+  value('readFileSync', 'the contents of the file', arg(0), opt('read as', bare(1))),
+  action('writeFileSync', verb('write'), arg(1), 'to the file', arg(0), opt('as', bare(2))),
+  action('appendFileSync', verb('append'), arg(1), 'to the file', arg(0), opt('as', bare(2))),
+  action('mkdirSync', verb('create'), 'the folder', arg(0), opt('with', arg(1))),
+  value('readdirSync', 'the entries of the folder', arg(0), opt('with', arg(1))),
+  value('statSync', 'the file details of', arg(0)),
+  value('lstatSync', 'the link details of', arg(0)),
+  action('rmSync', remove, arg(0), opt('with', arg(1))),
+  action('unlinkSync', remove, 'the file', arg(0)),
+  action('renameSync', verb('rename'), arg(0), 'to', arg(1)),
+  action('copyFileSync', verb('copy'), 'the file', arg(0), 'to', arg(1)),
+  value('realpathSync', 'the real path of', arg(0)),
+  value('mkdtempSync', 'a new temporary folder starting with', arg(0)),
+  predicate('.isFile', target(), BE, 'a file'),
+  predicate('.isDirectory', target(), BE, 'a folder'),
+
+  // ---- Node: paths ----------------------------------------------------------
+  value('path.join', 'the path', args(), 'joined'),
+  value('path.resolve', 'the absolute path of', args()),
+  value('path.relative', 'the path to', arg(1), 'from', arg(0)),
+  value('dirname', 'the folder of', arg(0)),
+  value('basename', 'the file name of', arg(0), opt('without', bare(1))),
+  value('extname', 'the extension of', arg(0)),
+  predicate('isAbsolute', arg(0), BE, 'an absolute path'),
+  value('fileURLToPath', 'the file path of the URL', arg(0)),
+
+  // ---- Node: process --------------------------------------------------------
+  action('process.exit', verb('exit'), 'the program', opt('with code', bare(0))),
+  value('process.cwd', 'the current working folder'),
+  action('spawnSync', verb('run'), 'the command', bare(0), opt('with', arg(1)), opt('and', arg(2))),
+  action('execSync', verb('run'), 'the shell command', arg(0), opt('with', arg(1))),
 
   // ---- Browser navigation and dialogs -------------------------------------
   action('history.pushState', add, 'a browser-history entry holding', arg(0), opt('titled', bare(1)), opt('for', bare(2))),

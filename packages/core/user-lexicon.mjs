@@ -11,14 +11,75 @@ import { action, value, predicate, verb, BE, HAVE, args, target, opt } from './g
 
 // First words that read as an action. Irregular conjugations live in Verb.
 const ACTION_VERBS = new Set([
+  'activate', 'deactivate', 'perform', 'execute', 'invoke', 'trigger', 'enable', 'disable',
   'add', 'apply', 'build', 'calculate', 'cancel', 'check', 'clear', 'close', 'compute', 'convert', 'create',
   'delete', 'dispatch', 'emit', 'ensure', 'fetch', 'find', 'format', 'handle', 'hide', 'init', 'initialize',
   'insert', 'load', 'log', 'make', 'merge', 'move', 'navigate', 'normalize', 'notify', 'open', 'parse',
   'persist', 'post', 'process', 'push', 'put', 'read', 'refresh', 'register', 'reload', 'remove', 'render',
   'replace', 'reset', 'resolve', 'restore', 'run', 'save', 'select', 'send', 'set', 'show', 'sort', 'start',
   'stop', 'store', 'submit', 'subscribe', 'sync', 'toggle', 'track', 'transform', 'unsubscribe', 'update',
-  'upload', 'validate', 'write',
+  'upload', 'validate', 'write', 'extract', 'list', 'collect', 'count', 'detect', 'describe', 'derive', 'scan',
+  'split', 'join', 'match', 'wrap', 'strip', 'lint', 'compose', 'compile', 'generate', 'scaffold', 'enforce',
+  'translate', 'summarize', 'plan', 'walk', 'visit', 'pick', 'filter', 'group', 'index', 'measure', 'mark',
+  'print', 'emit', 'fill', 'copy', 'append', 'prepend', 'attach', 'detach', 'mount', 'unmount', 'spawn',
+  'kill', 'wait', 'watch', 'retry', 'test', 'verify', 'assert', 'expect', 'build', 'publish', 'install',
+  'encode', 'decode', 'serialize', 'deserialize', 'escape', 'unescape', 'quote', 'trim', 'pad', 'sort',
+  'map', 'reduce', 'diff', 'patch', 'commit', 'push', 'pull', 'fetch', 'clone', 'checkout', 'merge',
+  'rename', 'move', 'link', 'unlink', 'lock', 'unlock', 'claim', 'release', 'queue', 'schedule', 'dispatch',
 ]);
+
+// Words that start an object phrase without an article: `parseToAst` is not
+// "parses the to ast". A name like that is mapped, but flagged uncertain.
+const PARTICLES = new Set(['to', 'from', 'into', 'as', 'by', 'for', 'with', 'on', 'in', 'of', 'at', 'out', 'up', 'off']);
+
+// Object words that name "some action" rather than a thing: a wrapper like
+// `handleAction(activateAccount)` acts on the action it is handed, so the
+// handed action takes the object's place — "handles activating the account".
+const GENERIC_ACTION_WORDS = new Set(['action', 'callback', 'handler', 'task', 'job', 'step', 'fn', 'func', 'function', 'operation', 'work', 'effect']);
+
+/**
+ * A function reference as a noun phrase: an action handed over, not run, reads
+ * as its gerund — `activateAccount` -> "activating the account". Only names of
+ * two or more words that start with an action word are nominalized; anything
+ * else (a variable, a one-word name) stays a reference.
+ * @param {string} name The referenced function's name.
+ * @returns {string | null} The gerund phrase, or null.
+ */
+export function nominalize(name) {
+  if (corrections.has(name)) {
+    const type = corrections.get(name);
+    return type.verb ? [type.verb.gerund, ...type.parts.filter((p) => p.text).map((p) => p.text)].join(' ') : null;
+  }
+  const [first, ...rest] = splitIdentifier(name);
+  if (!rest.length || !ACTION_VERBS.has(first) || PARTICLES.has(rest[0])) return null;
+  return `${verb(first).gerund} the ${rest.join(' ')}`;
+}
+
+// Marked functions: top-level functions carrying an explicit `@does` marker
+// (corrections.mjs) read by the marker, never by their name or internals.
+// Built from the source each run — the marker lives on the function, so
+// there is no separate store.
+let corrections = new Map();
+let markersGeneration = 0;
+
+/**
+ * Bumped whenever the marked functions change, so cached English built on the old markers is not reused.
+ * @returns {number} The current generation.
+ */
+export function markersVersion() {
+  return markersGeneration;
+}
+
+/**
+ * Installs the marked functions the mapper consults first.
+ * @param {Map<string, typeof import('./grammar.mjs').Sentence>} map Sentence types keyed by function name.
+ * @returns {void}
+ */
+export function setMarkedFunctions(map) {
+  corrections = map;
+  markersGeneration++;
+  cache.clear();
+}
 
 // Phrasal verbs: `logIn`/`login` -> "logs in", `signOut` -> "signs out".
 const PHRASAL = { login: ['log', 'in'], logout: ['log', 'out'], signin: ['sign', 'in'], signout: ['sign', 'out'], signup: ['sign', 'up'] };
@@ -54,6 +115,11 @@ export function mapUserCall(callee) {
   const name = callee.slice(dot + 1);
   const method = dot > 0;
   const call = method ? `.${name}` : callee;
+  if (corrections.has(name)) {
+    const corrected = corrections.get(name);
+    cache.set(callee, corrected);
+    return corrected;
+  }
   let [first, ...restWords] = splitIdentifier(name);
   if (PHRASAL[first + (restWords[0] ?? '')]) [first, ...restWords] = [first + restWords[0], ...restWords.slice(1)];
   const object = restWords.join(' ');
@@ -75,11 +141,19 @@ export function mapUserCall(callee) {
     type = value(call, 'the', object, 'hook', opt('for', args()));
   } else if (first === 'get' && object) {
     type = method ? value(call, 'the', object, 'of', target(), opt('for', args())) : value(call, 'the', object, opt('for', args()));
+  } else if (ACTION_VERBS.has(first) && PARTICLES.has(restWords[0])) {
+    // `parseToAst(source)`: "parses `source` to ast" — readable, but a guess at the meaning.
+    type = action(call, verb(first), opt('', args()), object, ...on);
+    type.uncertain = `"${object}" after "${first}" may not say what it produces`;
+  } else if (ACTION_VERBS.has(first) && GENERIC_ACTION_WORDS.has(object)) {
+    // `handleAction(activateAccount)`: "handles activating the account".
+    type = action(call, verb(first), opt('', args()), ...on);
   } else if (ACTION_VERBS.has(first)) {
     type = action(call, verb(first), ...(object ? [`the ${object}`] : []), opt(object ? 'with' : '', args()), ...on);
   } else {
     // Not a verb: the name is the thing produced. `total(a, b)`: "`total` of `a` and `b`".
     type = method ? value(call, `\`${name}\` of`, target(), opt('applied to', args())) : value(call, `\`${name}\``, opt('of', args()));
+    type.uncertain = `"${splitIdentifier(name).join(' ')}" does not start with an action word`;
   }
   cache.set(callee, type);
   return type;

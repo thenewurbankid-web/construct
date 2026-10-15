@@ -252,6 +252,46 @@ export function joinEnglishList(items) {
   return `${items.slice(0, -1).join(', ')}, and ${items[items.length - 1]}`;
 }
 
+// ---- lint: rules every sentence obeys ------------------------------------
+
+const PARTICLES = 'in|out|up|to|of|with|for|on|from|into|by|at';
+
+/** Grammar rules, as [name, test] pairs; a test returns true on a violation.
+ * Text inside `backticks` and 'quotes' is code or data, not English, and is
+ * masked before testing.
+ * @type {ReadonlyArray<[string, (s: string) => boolean]>} */
+export const LINT_RULES = Object.freeze([
+  ['empty sentence', (s) => !s.trim()],
+  ['double space', (s) => / {2}/.test(s)],
+  ['space before punctuation', (s) => / [,.;:]/.test(s)],
+  ['repeated word', (s) => /\b(\w+) \1\b/i.test(s)],
+  ['article before a particle', (s) => new RegExp(`\\b(the|a|an) (${PARTICLES})\\b`, 'i').test(s)],
+  ['"a" before a vowel sound', (s) => /\ba [aeio]\w/i.test(s)],
+  ['"an" before a consonant', (s) => /\ban [b-df-hj-np-tv-z]/i.test(s)],
+  ['raw code outside backticks', (s) => /=>|[{};]|\w\(/.test(s)],
+  ['dangling preposition', (s) => new RegExp(`\\b(${PARTICLES}|the|a|an|and)[.]?$`, 'i').test(s.trim())],
+]);
+
+/**
+ * Masks code (`x`) and data ('x') spans so lint rules only see the English.
+ * @param {string} sentence The sentence.
+ * @returns {string} The sentence with each span replaced by X.
+ */
+export function maskSpans(sentence) {
+  return sentence.replace(/``.*?``/g, 'X').replace(/`[^`]*`/g, 'X').replace(/'[^']*'/g, 'X');
+}
+
+/**
+ * The lint rules a sentence breaks.
+ * @param {string} sentence One English sentence or phrase.
+ * @returns {string[]} The names of the broken rules; empty when clean.
+ */
+export function lintSentence(sentence) {
+  const masked = maskSpans(sentence);
+  return LINT_RULES.filter(([, broken]) => broken(masked)).map(([name]) => name);
+}
+
+
 // ---- reading canonical English back ---------------------------------------
 
 /** One slot's English, back to JS: "`user.id`" -> user.id, "'open'" or "the

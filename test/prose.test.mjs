@@ -172,8 +172,16 @@ test('JS lexicon: verbs used as values read as "the result of <gerund>"; nouns a
   const id = setInterval(refresh, 5000);
   return Object.keys(state[0]);
 }`);
-  assert.match(text, /Declares `id` as the result of running `refresh` repeatedly every 5000 milliseconds\./);
+  assert.match(text, /Declares `id` as the result of repeating `refresh` every 5000 milliseconds\./);
   assert.match(text, /Returns the keys of item 0 of `state`\.$/);
+});
+
+test('a function handed over, not run, reads as its gerund; a wrapper acts on the handed action', () => {
+  const text = describeImplementation(`export function onSubmit() {
+  handleAction(activateAccount);
+  setTimeout(sendWelcomeEmail, 500);
+}`);
+  assert.equal(text, 'Handles activating the account. Schedules sending the welcome email in 500 milliseconds.');
 });
 
 test('a call no lexicon has a verb for still reads as a noun phrase, never raw code', () => {

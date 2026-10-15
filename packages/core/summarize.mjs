@@ -222,7 +222,11 @@ function getImplementationSource(root, filePath, name) {
     return null;
   }
   const entry = extractExports(source).find((e) => e.name === name);
-  return entry ? extractDeclarationSource(source, entry.index) : null;
+  if (!entry) return null;
+  // Keep a directly-preceding doc comment: a `@does` marker travels with its declaration.
+  const before = source.slice(0, entry.index);
+  const doc = /\/\*\*(?:(?!\*\/)[\s\S])*\*\/\s*$/.exec(before);
+  return (doc ? doc[0] : '') + extractDeclarationSource(source, entry.index);
 }
 
 /** One readable sentence for a single exported name. Uses the file's JSDoc

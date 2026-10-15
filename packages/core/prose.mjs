@@ -17,8 +17,10 @@
 // subtree) rather than ever reprinting raw code.
 import { ts, findNode, findAllNodes } from '../../packages/ast/index.mjs';
 import { JS_LEXICON } from './js-lexicon.mjs';
-import { mapUserCall } from './user-lexicon.mjs';
+import { mapUserCall, nominalize, markersVersion } from './user-lexicon.mjs';
+import { doesMarker, parseAnswer } from './corrections.mjs';
 import { Action, Predicate, joinEnglishList } from './grammar.mjs';
+import { BINARY, ASSIGNMENT, UNARY, EXPRESSIONS, STATEMENTS, TYPES, lookup } from './syntax-lexicon.mjs';
 
 // The AST belongs to whichever snippet describeImplementation is currently
 // translating. Safe as module-level state: this module is synchronous and
@@ -76,7 +78,9 @@ export function mapCall(node) {
     args: node.arguments.map((a) => {
       const inner = unwrapParens(a);
       const bare = ts.isNumericLiteral(inner) ? inner.text : ts.isStringLiteralLike(inner) ? `'${inner.text}'` : null;
-      return { english: describeExpr(a), js: text(a), bare };
+      // A function handed over rather than run reads as its gerund: `activateAccount` -> "activating the account".
+      const nominal = ts.isIdentifier(inner) ? nominalize(inner.text) : null;
+      return { english: nominal ?? describeExpr(a), js: text(a), bare };
     }),
     // The receiver is described, not reprinted: `users.filter(...).map(...)`'s
     // receiver reads as "the items of `users` kept by ...", not as raw code.
@@ -89,8 +93,10 @@ export function mapCall(node) {
     const sentence = new type(binding);
     if (sentence.toEnglish() != null) return sentence;
   }
-  if (!/^[\w$]+(\.[\w$]+)*$/.test(callee)) return null;
-  const sentence = new (mapUserCall(callee))(binding);
+  // A method on a computed receiver (`fs.statSync(p).isFile()`) maps by its name.
+  const mappable = /^[\w$]+(\.[\w$]+)*$/.test(callee) ? callee : receiverNode && ts.isIdentifier(node.expression.name) ? `receiver.${node.expression.name.text}` : null;
+  if (!mappable) return null;
+  const sentence = new (mapUserCall(mappable))(binding);
   return sentence.toEnglish() != null ? sentence : null;
 }
 
@@ -112,7 +118,12 @@ function describeCallNode(node) {
   const sentence = mapCall(node);
   if (sentence) return asPhrase(sentence);
   const argsPhrase = args.length ? ` with ${joinEnglishList(args)}` : '';
-  return { phrase: `calling \`${callee}\`${argsPhrase}`, form: 'verb' }; // already gerund-shaped, but still worth "the result of" when it's a value
+  const fn = unwrapParens(node.expression);
+  if (ts.isArrowFunction(fn) || ts.isFunctionExpression(fn)) {
+    const body = describeFunctionLike(fn).replace(/^a function( \(given [^)]*\))? that:? ?/, '');
+    return { phrase: `runs these steps${argsPhrase}: ${body}`, form: 'verb', gerund: `running these steps${argsPhrase}: ${body}` };
+  }
+  return { phrase: `calling ${describeExpr(node.expression)}${argsPhrase}`, form: 'verb' }; // already gerund-shaped, but still worth "the result of" when it's a value
 }
 
 function describeReturnValue(exprNode) {
@@ -136,15 +147,41 @@ function unwrapParens(node) {
 
 // ---- expressions ----------------------------------------------------------
 
-const BINARY_WORDS = {
-  [ts.SyntaxKind.AmpersandAmpersandToken]: 'and',
-  [ts.SyntaxKind.BarBarToken]: 'or',
-  [ts.SyntaxKind.EqualsEqualsEqualsToken]: 'equals',
-  [ts.SyntaxKind.EqualsEqualsToken]: 'equals',
-  [ts.SyntaxKind.ExclamationEqualsEqualsToken]: 'does not equal',
-  [ts.SyntaxKind.ExclamationEqualsToken]: 'does not equal',
-  [ts.SyntaxKind.QuestionQuestionToken]: 'or, if that is null/undefined,',
+// The translator's toolkit, handed to the syntax lexicon's describers.
+const D = {
+  expr: (n) => describeExpr(n),
+  body: (n) => describeBody(n),
+  func: (n) => describeFunctionLike(n),
+  type: (n) => describeType(n),
+  name: (n) => `\`${text(n)}\``,
+  text: (n) => text(n),
+  quote: (raw) => describeText(raw).replace(/^the text /, ''),
 };
+
+/** A block's sentences, a single statement's, or (a `for` loop's step) an
+ * expression read as a statement. */
+function describeBody(node) {
+  if (!node) return '';
+  if (ts.isBlock(node)) return node.statements.map(describeStatement).filter(Boolean).join(' ') || 'Does nothing.';
+  if (ts.isExpression(node)) return describeStatement(ts.factory.createExpressionStatement(node));
+  return describeStatement(node);
+}
+
+/** A type, read as what a value looks like; a type with no key reads as its name. */
+function describeType(node) {
+  return lookup(TYPES, node, D) ?? `\`${text(node)}\``;
+}
+
+/** Literal text as English data: quoted, apostrophes made typographic so the
+ * quotes stay unambiguous, and long or multi-line text summarized. */
+function describeText(raw) {
+  if (raw === '') return 'an empty string';
+  const lines = raw.split('\n');
+  const quoted = (t) => `'${t.replace(/'/g, '\u2019').replace(/`/g, '\u02cb')}'`; // ’ and ˋ keep the quotes and code spans unambiguous
+  if (lines.length > 1) return `a ${lines.length}-line text starting ${quoted(lines[0].trim().slice(0, 40))}`;
+  if (raw.length > 80) return `a long text starting ${quoted(raw.slice(0, 40).trim())}`;
+  return `the text ${quoted(raw)}`;
+}
 
 function paramNames(params) {
   const names = [];
@@ -170,11 +207,28 @@ function describeFunctionLike(node) {
   return `a function${paramsPhrase} that returns ${describeReturnValue(node.body)}`;
 }
 
+// One tree, described once: each node's English is cached the first time it is
+// built, so a parent reuses its children's phrases instead of re-describing the
+// subtree (the atom planner asks about every node bottom-up). Keyed by node —
+// a re-parsed file is a new tree — and by markers generation, since a marker
+// changes how a call reads.
+const englishCache = new WeakMap();
+
 export function describeExpr(node) {
+  if (!node) return 'nothing';
+  const hit = englishCache.get(node);
+  const generation = markersVersion();
+  if (hit && hit.generation === generation && hit.sourceFile === currentSourceFile) return hit.english;
+  const english = describeExprUncached(node);
+  englishCache.set(node, { english, generation, sourceFile: currentSourceFile });
+  return english;
+}
+
+function describeExprUncached(node) {
   node = unwrapParens(node);
   if (!node) return 'nothing';
 
-  if (ts.isStringLiteralLike(node)) return node.text === '' ? 'an empty string' : `the text '${node.text}'`;
+  if (ts.isStringLiteralLike(node)) return describeText(node.text);
   if (ts.isNumericLiteral(node)) return `the number ${node.text}`;
   if (node.kind === ts.SyntaxKind.TrueKeyword) return 'true';
   if (node.kind === ts.SyntaxKind.FalseKeyword) return 'false';
@@ -189,14 +243,19 @@ export function describeExpr(node) {
     if (eq && ts.isTypeOfExpression(node.left) && ts.isStringLiteralLike(node.right)) {
       return node.right.text === 'undefined' ? `${describeExpr(node.left.expression)} is undefined` : `${describeExpr(node.left.expression)} is of type "${node.right.text}"`;
     }
-    const word = BINARY_WORDS[node.operatorToken.kind];
-    if (word) return `${describeExpr(node.left)} ${word} ${describeExpr(node.right)}`;
+    const op = BINARY[node.operatorToken.kind];
+    if (op) return op.says(describeExpr(node.left), describeExpr(node.right));
     return `${describeExpr(node.left)} (${text(node.operatorToken)}) ${describeExpr(node.right)}`;
   }
 
   if (ts.isPrefixUnaryExpression(node) && node.operator === ts.SyntaxKind.ExclamationToken) {
     const operand = unwrapParens(node.operand);
-    const negated = ts.isCallExpression(operand) ? describeCallNode(operand).negated : null; // a predicate negates by its verb
+    // A predicate or comparison negates by its verb: "does not include", "is not greater than".
+    const negated = ts.isCallExpression(operand)
+      ? describeCallNode(operand).negated
+      : ts.isBinaryExpression(operand) && BINARY[operand.operatorToken.kind]?.negated
+        ? BINARY[operand.operatorToken.kind].negated(describeExpr(operand.left), describeExpr(operand.right))
+        : null;
     return negated ?? `not (${describeExpr(node.operand)})`;
   }
 
@@ -206,7 +265,9 @@ export function describeExpr(node) {
 
   if (ts.isArrowFunction(node)) return describeFunctionLike(node);
 
-  if (ts.isCallExpression(node)) return describeCallNode(node).phrase;
+  if (ts.isCallExpression(node)) return describeReturnValue(node); // a value: "the result of setting ...", never "sets ..."
+
+  if (ts.isJsxElement(node) || ts.isJsxSelfClosingElement(node) || ts.isJsxFragment(node)) return describeJsxTags(node);
 
   if (ts.isNewExpression(node)) {
     const args = (node.arguments || []).map(describeExpr);
@@ -219,6 +280,7 @@ export function describeExpr(node) {
       if (ts.isPropertyAssignment(p)) return `\`${text(p.name)}\` set to ${describeExpr(p.initializer)}`;
       if (ts.isShorthandPropertyAssignment(p)) return `\`${text(p.name)}\``;
       if (ts.isSpreadAssignment(p)) return `everything from ${describeExpr(p.expression)}`;
+      if (ts.isMethodDeclaration(p) || ts.isGetAccessorDeclaration(p)) return `\`${text(p.name)}\` as ${describeFunctionLike(p)}`;
       return `\`${text(p)}\``;
     });
     return `an object with ${joinEnglishList(parts)}`;
@@ -239,10 +301,10 @@ export function describeExpr(node) {
     const of = describeExpr(node.expression);
     if (ts.isNumericLiteral(index)) return `item ${index.text} of ${of}`;
     if (ts.isStringLiteralLike(index)) return `the '${index.text}' entry of ${of}`;
-    return `the ${describeExpr(index)} entry of ${of}`;
+    return `the entry for ${describeExpr(index)} in ${of}`;
   }
 
-  return bareIdentifierPhrase(node);
+  return lookup(EXPRESSIONS, node, D) ?? bareIdentifierPhrase(node);
 }
 
 // ---- statements -------------------------------------------------------
@@ -304,13 +366,25 @@ export function describeStatement(node) {
       if (described.form === 'noun') return `Evaluates ${described.phrase}.`;
       return `${capitalize(described.phrase.replace(/^calling\b/, 'calls'))}.`;
     }
-    if (ts.isBinaryExpression(expr) && expr.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
-      return `Sets ${describeExpr(expr.left)} to ${describeExpr(expr.right)}.`;
+    if (ts.isBinaryExpression(expr) && ASSIGNMENT[expr.operatorToken.kind]) {
+      return ASSIGNMENT[expr.operatorToken.kind](describeExpr(expr.left), describeExpr(expr.right));
     }
-    return `Runs an expression ${bareIdentifierPhrase(expr)}.`;
+    if ((ts.isPostfixUnaryExpression(expr) || ts.isPrefixUnaryExpression(expr)) && UNARY[expr.operator]?.statement) {
+      return UNARY[expr.operator].statement(describeExpr(expr.operand));
+    }
+    if (ts.isBinaryExpression(expr) && expr.operatorToken.kind === ts.SyntaxKind.CommaToken) {
+      return `${describeBody(expr.left)} ${describeBody(expr.right)}`;
+    }
+    if (ts.isConditionalExpression(expr)) {
+      return `If ${describeExpr(expr.condition)}: ${describeBody(expr.whenTrue)} Otherwise: ${describeBody(expr.whenFalse)}`;
+    }
+    if (ts.isBinaryExpression(expr) && expr.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken) {
+      return `If ${describeExpr(expr.left)}: ${describeBody(expr.right)}`;
+    }
+    return `Evaluates ${describeExpr(expr)}.`;
   }
 
-  return `Runs a step ${bareIdentifierPhrase(node)}.`;
+  return lookup(STATEMENTS, node, D) ?? `Runs a step ${bareIdentifierPhrase(node)}.`;
 }
 
 function describeVariableDeclaration(decl) {
@@ -417,6 +491,24 @@ function describeMachine(machineConfig) {
 
 // ---- top-level entry point ----------------------------------------------
 
+/** "Takes `source` as input. Turns `source` into a syntax tree." — from the
+ * declaration's `@does` marker alone; null when it has none (or it no longer
+ * parses, in which case the internals are described as usual). */
+function describeMarked(stmt) {
+  const does = doesMarker(stmt);
+  if (!does) return null;
+  const fn = ts.isFunctionDeclaration(stmt) ? stmt : ts.isVariableStatement(stmt) ? stmt.declarationList.declarations[0]?.initializer : null;
+  if (!fn || !(ts.isFunctionDeclaration(fn) || ts.isArrowFunction(fn) || ts.isFunctionExpression(fn))) return null;
+  const name = fn.name?.text ?? text(stmt.declarationList.declarations[0].name);
+  const parsed = parseAnswer(name, does);
+  if (!('type' in parsed)) return null;
+  const params = paramNames(fn.parameters);
+  const english = new parsed.type({ args: params.map((n) => ({ english: `\`${n}\``, js: n, bare: null })), target: null }).toEnglish();
+  if (english == null) return null;
+  const paramsSentence = params.length ? `Takes ${joinEnglishList(params.map((n) => `\`${n}\``))} as input. ` : '';
+  return `${paramsSentence}${capitalize(english)}.`;
+}
+
 /** Deterministic, template-based English translation of one export's
  * implementation source (as returned by extractDeclarationSource in
  * packages/core/summarize.mjs). No LLM: every sentence traces back to a name or a
@@ -431,6 +523,10 @@ export function describeImplementation(code) {
   try {
     const stmt = sourceFile.statements[0];
     if (!stmt) return 'Defines an export.';
+
+    // A top-level function marked with `@does` reads by its marker; its internals are not parsed.
+    const marked = describeMarked(stmt);
+    if (marked) return marked;
 
     if (ts.isFunctionDeclaration(stmt) && stmt.body) {
       const paramsPhrase = paramNames(stmt.parameters);
@@ -458,11 +554,8 @@ export function describeImplementation(code) {
       return `Defines \`${text(decl.name)}\` as ${initializer ? describeReturnValue(initializer) : 'nothing'}.`;
     }
 
-    if (ts.isClassDeclaration(stmt)) {
-      const methods = stmt.members.filter((m) => ts.isMethodDeclaration(m)).map((m) => text(m.name));
-      return `Defines a class${stmt.name ? ` \`${text(stmt.name)}\`` : ''} with method${methods.length === 1 ? '' : 's'} ${joinEnglishList(methods.map((m) => `\`${m}\``))}.`;
-    }
-
+    const fromSyntax = lookup(STATEMENTS, stmt, D);
+    if (fromSyntax != null) return fromSyntax;
     return bareIdentifierPhrase(stmt) === 'with no named parts' ? 'Defines an export.' : `Defines behavior ${bareIdentifierPhrase(stmt)}.`;
   } finally {
     currentSourceFile = previousSourceFile;

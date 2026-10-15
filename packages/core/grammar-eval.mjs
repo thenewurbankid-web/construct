@@ -18,41 +18,14 @@ import { ts } from '../../packages/ast/index.mjs';
 import { JS_LEXICON } from './js-lexicon.mjs';
 import { Action, Predicate } from './grammar.mjs';
 import { describeImplementation } from './prose.mjs';
+import { mapUserCall, splitIdentifier, setMarkedFunctions } from './user-lexicon.mjs';
+import { markerTypes, withLeadingDoc } from './corrections.mjs';
 
-// ---- lint: rules every sentence obeys ------------------------------------
+// ---- lint ---------------------------------------------------------------
 
-const PARTICLES = 'in|out|up|to|of|with|for|on|from|into|by|at';
-
-/** Grammar rules, as [name, test] pairs; a test returns true on a violation.
- * Text inside `backticks` and 'quotes' is code or data, not English, and is
- * masked before testing.
- * @type {ReadonlyArray<[string, (s: string) => boolean]>} */
-export const LINT_RULES = Object.freeze([
-  ['empty sentence', (s) => !s.trim()],
-  ['double space', (s) => / {2}/.test(s)],
-  ['space before punctuation', (s) => / [,.;:]/.test(s)],
-  ['repeated word', (s) => /\b(\w+) \1\b/i.test(s)],
-  ['article before a particle', (s) => new RegExp(`\\b(the|a|an) (${PARTICLES})\\b`, 'i').test(s)],
-  ['"a" before a vowel sound', (s) => /\ba [aeio]\w/i.test(s)],
-  ['"an" before a consonant', (s) => /\ban [b-df-hj-np-tv-z]/i.test(s)],
-  ['raw code outside backticks', (s) => /=>|[{};]|\w\(/.test(s)],
-  ['dangling preposition', (s) => new RegExp(`\\b(${PARTICLES}|the|a|an|and)[.]?$`, 'i').test(s.trim())],
-]);
-
-/** Masks code and data spans so lint rules only see the English. */
-function maskSpans(sentence) {
-  return sentence.replace(/`[^`]*`/g, 'X').replace(/'[^']*'/g, 'X');
-}
-
-/**
- * The lint rules a sentence breaks.
- * @param {string} sentence One English sentence or phrase.
- * @returns {string[]} The names of the broken rules; empty when clean.
- */
-export function lintSentence(sentence) {
-  const masked = maskSpans(sentence);
-  return LINT_RULES.filter(([, broken]) => broken(masked)).map(([name]) => name);
-}
+// The lint rules live with the grammar (grammar.mjs); re-exported here for the eval loop.
+export { LINT_RULES, lintSentence, maskSpans } from './grammar.mjs';
+import { lintSentence, maskSpans } from './grammar.mjs';
 
 /** Phrases the translator falls back to when no grammar fits: each is a gap. */
 export const GAP_PATTERNS = Object.freeze([
@@ -143,13 +116,15 @@ export function evaluateSource(files) {
   const failures = [];
   const gaps = [];
   let checked = 0;
+  // Marked top-level functions (`@does`) read by their marker everywhere they're called.
+  setMarkedFunctions(markerTypes(files.map((file) => ({ file, source: readFileSync(file, 'utf8') }))));
   for (const file of files) {
     const source = readFileSync(file, 'utf8');
     const sf = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, /x$/.test(file) ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
     for (const stmt of sf.statements) {
       const exported = /** @type {any} */ (stmt).modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword);
       if (!exported) continue;
-      const raw = stmt.getText(sf).replace(/^export\s+(default\s+)?/, '');
+      const raw = withLeadingDoc(stmt, sf).replace(/^((?:\/\*\*[\s\S]*?\*\/\s*)*)export\s+(default\s+)?/, '$1');
       const line = sf.getLineAndCharacterOfPosition(stmt.getStart(sf)).line + 1;
       let english;
       try {
@@ -159,11 +134,59 @@ export function evaluateSource(files) {
         continue;
       }
       checked++;
-      for (const sentence of english.split(/(?<=\.) (?=[A-Z`'])/)) {
-        for (const rule of lintSentence(sentence)) failures.push({ file, line, english: sentence, problem: rule });
-        if (GAP_PATTERNS.some((p) => p.test(sentence))) gaps.push({ file, line, raw: raw.split('\n')[0].slice(0, 120), english: sentence });
-      }
+      for (const rule of lintSentence(english)) failures.push({ file, line, english, problem: rule });
+      if (GAP_PATTERNS.some((p) => p.test(maskSpans(english).replace(/X/g, '`')))) gaps.push({ file, line, raw: raw.split('\n')[0].slice(0, 120), english });
     }
   }
   return { checked, failures, gaps };
+}
+
+// ---- sweep 3: user-domain names our English can only guess at ----------------
+
+const FRAMEWORK_CALLS = new Set(['useState', 'useRouter', 'useMachine', 'useEffect', 'require']);
+
+/** An argument as plain words for a question: `form.user` -> "form user". */
+function inputWords(node) {
+  while (node && (ts.isParenthesizedExpression(node) || ts.isAwaitExpression(node) || ts.isAsExpression(node) || ts.isNonNullExpression(node))) node = node.expression;
+  if (ts.isIdentifier(node) || ts.isPropertyAccessExpression(node)) return splitIdentifier(node.getText().replace(/\W+/g, ' ')).join(' ');
+  if (ts.isStringLiteralLike(node) || ts.isTemplateExpression(node)) return 'some text';
+  if (ts.isNumericLiteral(node)) return 'a number';
+  if (ts.isArrowFunction(node) || ts.isFunctionExpression(node)) return 'a step to run';
+  if (ts.isObjectLiteralExpression(node)) return 'some settings';
+  if (ts.isArrayLiteralExpression(node)) return 'a list';
+  return 'a value';
+}
+
+/**
+ * Every call into a project's own functions whose meaning the mapper can only
+ * guess from the name — the questions corrections.mjs asks, in plain English.
+ * @param {string[]} files Source files.
+ * @returns {{name: string, method: boolean, inputs: string[], reason: string, uses: number, at: string}[]} One gap per name, most-used first.
+ */
+export function findUserDomainGaps(files) {
+  const byName = new Map();
+  for (const file of files) {
+    const source = readFileSync(file, 'utf8');
+    const sf = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, /x$/.test(file) ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
+    const visit = (node) => {
+      if (ts.isCallExpression(node) && (ts.isIdentifier(node.expression) || ts.isPropertyAccessExpression(node.expression))) {
+        const method = ts.isPropertyAccessExpression(node.expression);
+        const name = method ? node.expression.name.text : node.expression.text;
+        const callee = node.expression.getText(sf).replace(/\?\./g, '.').replace(/\s+/g, '');
+        const ours = JS_LEXICON.some((type) => type.covers(callee) && (!type.call.startsWith('.') || method));
+        const mappable = /^[\w$]+(\.[\w$]+)*$/.test(callee) ? callee : `receiver.${name}`;
+        if (!ours && !FRAMEWORK_CALLS.has(name) && !/router\.push$/i.test(callee)) {
+          const type = /** @type {any} */ (mapUserCall(mappable));
+          if (type.uncertain) {
+            const gap = byName.get(name) ?? { name, method, inputs: node.arguments.map(inputWords), reason: type.uncertain, uses: 0, at: `${file}:${sf.getLineAndCharacterOfPosition(node.getStart(sf)).line + 1}` };
+            gap.uses++;
+            byName.set(name, gap);
+          }
+        }
+      }
+      ts.forEachChild(node, visit);
+    };
+    visit(sf);
+  }
+  return [...byName.values()].sort((a, b) => b.uses - a.uses);
 }
