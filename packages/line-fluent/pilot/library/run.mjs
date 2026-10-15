@@ -11,7 +11,10 @@
 // best gated answer. Nothing is approved here: approving into line-smith stays a person's step (generator/cli.mjs).
 //
 //   node packages/line-fluent/pilot/library/run.mjs [--sections Array,String] [--limit n] [--jobs n]
-//        [--inside haiku] [--outside opus|none] [--out dir]
+//        [--inside haiku] [--outside opus|none] [--user opus|none] [--rounds 2] [--out dir]
+//
+//   user     (--user opus) each entry no earlier stage got through: the inside model asks the person one plain
+//            question, the user model answers as the person, the inside model answers again (user-stage.mjs).
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
@@ -24,6 +27,7 @@ import { buildRequest, MAX_CANDIDATES } from '../request/request.mjs';
 import { runPilot } from '../runner/runner.mjs';
 import { claudeModel } from '../runner/claude-model.mjs';
 import { candidatesFor, CATALOG_PATH, REFERENCE_PATH } from '../../generator/generator.mjs';
+import { userStage } from './user-stage.mjs';
 
 const readJson = (p) => JSON.parse(readFileSync(p, 'utf8'));
 const SKIP = Object.freeze({ check: 'skip', errors: [], fixes: [] });
@@ -117,12 +121,13 @@ export function summarize(all, entries) {
   for (const e of entries) {
     const inside = latest.get(`${e.key}\u0000inside`);
     const outside = latest.get(`${e.key}\u0000outside`);
-    const best = inside?.gate?.pass ? inside : outside?.gate?.pass ? outside : outside ?? inside;
+    const user = latest.get(`${e.key}\u0000user`);
+    const best = [inside, outside, user].find((r) => r?.gate?.pass) ?? user ?? outside ?? inside;
     if (best) library[e.key] = { entry: e.id, section: e.section, stage: best.stage, model: best.model, pass: Boolean(best.gate?.pass), answer: best.answer ?? null, refusal: best.gate?.refusal ?? best.error ?? null };
   }
   const sections = {};
   for (const item of Object.values(library)) {
-    const s = (sections[item.section] ??= { entries: 0, passed: 0, inside: 0, outside: 0 });
+    const s = (sections[item.section] ??= { entries: 0, passed: 0, inside: 0, outside: 0, user: 0 });
     s.entries++;
     if (item.pass) {
       s.passed++;
@@ -139,6 +144,7 @@ export function summarize(all, entries) {
       byDecision: items.filter((i) => i.pass).reduce((a, i) => ((a[i.answer.decision] = (a[i.answer.decision] ?? 0) + 1), a), {}),
       inside: totals(byStage('inside')),
       outside: totals(byStage('outside')),
+      user: totals(byStage('user')),
       sections,
     },
     library,
@@ -159,6 +165,8 @@ export async function main(argv = process.argv.slice(2), { log = console.log, ma
       jobs: { type: 'string', default: '6' },
       inside: { type: 'string', default: 'haiku' },
       outside: { type: 'string', default: 'opus' },
+      user: { type: 'string', default: 'none' },
+      rounds: { type: 'string', default: '2' },
       out: { type: 'string', default: fileURLToPath(new URL('./runs/latest/', import.meta.url)) },
     },
   });
@@ -183,6 +191,7 @@ export async function main(argv = process.argv.slice(2), { log = console.log, ma
     streak = r.error ? streak + 1 : 0;
     const mark = r.error ? `error: ${r.error}` : r.gate?.pass ? `pass (${r.answer?.decision}, ${r.tries} tr)` : `refused: ${String(r.gate?.refusal ?? '').slice(0, 90)}`;
     log(`[${r.stage}] ${r.key}: ${mark}`);
+    for (const d of r.dialogue ?? []) log(`    asks: ${d.q}\n    user: ${d.a}`);
   };
   const doneIn = (stage) => new Set(all.filter((r) => r.stage === stage && !r.error).map((r) => r.key));
 
@@ -202,12 +211,24 @@ export async function main(argv = process.argv.slice(2), { log = console.log, ma
     }, stopped);
   }
 
+  if (o.user !== 'none' && !stopped()) {
+    // The inside model asks, the user model answers as the person; only entries no earlier stage got through.
+    const passed = new Set(all.filter((r) => r.gate?.pass).map((r) => r.key));
+    const userDone = doneIn('user');
+    const asker = makeModel({ model: o.inside });
+    const person = makeModel({ model: o.user });
+    const lastInside = (key) => [...all].reverse().find((r) => r.key === key && r.stage === 'inside' && !r.error);
+    await pool(entries.filter((e) => lastInside(e.key) && !passed.has(e.key) && !userDone.has(e.key)), jobs, async (e) => {
+      record(await userStage(e, lastInside(e.key), { asker, user: person, gate: gateFor(e, { typesCheck }), catalog, rounds: Number(o.rounds), names: { asker: o.inside, user: o.user } }));
+    }, stopped);
+  }
+
   const { summary, library } = summarize(all, entries);
   summary.stoppedOnErrors = stopped();
-  summary.models = { inside: o.inside, outside: o.outside };
+  summary.models = { inside: o.inside, outside: o.outside, user: o.user };
   writeFileSync(`${o.out}/summary.json`, `${JSON.stringify(summary, null, 2)}\n`);
   writeFileSync(`${o.out}/library.json`, `${JSON.stringify(library, null, 2)}\n`);
-  log(`\n${summary.inLibrary} of ${summary.entries} entries in the library (${summary.knownGaps} known gaps). Inside ${o.inside}: ${summary.inside.passed}/${summary.inside.entries}, $${summary.inside.costUsd}, ${summary.inside.minutes} min. Outside ${o.outside}: ${summary.outside.passed}/${summary.outside.entries}, $${summary.outside.costUsd}, ${summary.outside.minutes} min.${summary.stoppedOnErrors ? ' Stopped on repeated model errors; run again to resume.' : ''}`);
+  log(`\n${summary.inLibrary} of ${summary.entries} entries in the library (${summary.knownGaps} known gaps). Inside ${o.inside}: ${summary.inside.passed}/${summary.inside.entries}, $${summary.inside.costUsd}, ${summary.inside.minutes} min. Outside ${o.outside}: ${summary.outside.passed}/${summary.outside.entries}, $${summary.outside.costUsd}, ${summary.outside.minutes} min. ${o.inside} with ${o.user} as user: ${summary.user.passed}/${summary.user.entries}, $${summary.user.costUsd}, ${summary.user.minutes} min.${summary.stoppedOnErrors ? ' Stopped on repeated model errors; run again to resume.' : ''}`);
   return summary;
 }
 
