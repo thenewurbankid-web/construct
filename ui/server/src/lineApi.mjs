@@ -2,26 +2,31 @@
 // gate (index.mjs). This part serves the read-only views only: GET /api/line/project answers the contract's
 // LineProject for the open project (readLineProject, packages/engine/line/model.mjs), and GET /api/line/feature?name=
 // one feature's LineFeatureDetail (readLineFeature, packages/engine/line/feature.mjs), and GET /api/line/workflows?feature=
-// its workflows (cw1, readLineWorkflows in packages/engine/line/workflows.mjs). The write
+// its workflows (cw1, readLineWorkflows in packages/engine/line/workflows.mjs), and GET /api/line/english?file= the
+// fluent English view of a source file beside its code (t5-3, englishDetail: the same module as `construct english`). The write
 // routes (base-on, promote, page-prop) are added beside it and go through applyChange (the writer) only.
 // Errors are one plain-English sentence: a LineOpError becomes 400 {ok:false, sentence, code}.
+import fs from 'node:fs';
 import express from 'express';
 import { LineOpError } from '../../../packages/engine/line/contract.mjs';
 import { readLineProject } from '../../../packages/engine/line/model.mjs';
 import { readLineFeature } from '../../../packages/engine/line/feature.mjs';
 import { readLineWorkflows } from '../../../packages/engine/line/workflows.mjs';
 import { readLineComponent } from '../../../packages/engine/line/components.mjs';
+import { englishDetail } from '../../../packages/line-fluent/cli/english.mjs';
+import { WorkspaceError, contain } from './workspace.mjs';
 
 /**
  * @param {{getRoot: () => ({ok: true, root: string} | {ok: false, error: string}),
  *   readProject?: (root: string) => import('../../../packages/engine/line/contract.mjs').LineProject,
  *   readFeature?: (root: string, name: string) => import('../../../packages/engine/line/contract.mjs').LineFeatureDetail,
  *   readWorkflows?: (root: string, feature: string) => import('../../../packages/engine/line/contract.mjs').LineWorkflowList,
- *   readComponent?: (root: string, file: string) => any}} deps
+ *   readComponent?: (root: string, file: string) => any,
+ *   readEnglish?: (root: string, file: string) => {ok: true, file: string, functions: {name: string, line: number, english: string, code: string}[]}}} deps
  *   `readProject`, `readFeature` and `readWorkflows` default to the real model; tests pass the contract's mock.
  * @returns {import('express').Router}
  */
-export function createLineRouter({ getRoot, readProject = readLineProject, readFeature = readLineFeature, readWorkflows = readLineWorkflows, readComponent = readLineComponent }) {
+export function createLineRouter({ getRoot, readProject = readLineProject, readFeature = readLineFeature, readWorkflows = readLineWorkflows, readComponent = readLineComponent, readEnglish = readEnglishView }) {
   const router = express.Router();
   /** One read route: no project, a refusal and a crash are each one sentence. */
   const read = (fn, failed) => (req, res) => {
@@ -52,5 +57,32 @@ export function createLineRouter({ getRoot, readProject = readLineProject, readF
     if (!file || file.includes('..') || file.startsWith('/')) throw new LineOpError('Name the component to open, for example ?file=features/orders/components/OrderButton.tsx.', 'BAD_REQUEST');
     return readComponent(root, file);
   }, 'Cockpit could not read this component.'));
+  // t5-3: the English view of one source file, each top-level function's sentence with its code (englishDetail).
+  router.get('/english', read((root, req) => {
+    const file = typeof req.query.file === 'string' ? req.query.file : '';
+    if (!file || file.startsWith('/') || !SOURCE_FILE.test(file)) throw new LineOpError('Name the source file to read in English, for example ?file=features/orders/services/totals.ts.', 'BAD_REQUEST');
+    return readEnglish(root, file);
+  }, 'Cockpit could not read this file in English.'));
   return router;
+}
+
+const SOURCE_FILE = /\.(?:[cm]?js|jsx|tsx?)$/;
+
+/** The English view of `file` inside `root`: contained like every file-scoped route, then englishDetail. */
+export function readEnglishView(root, file) {
+  let abs;
+  try {
+    abs = contain(root, file, { mustBeFile: true });
+  } catch (e) {
+    if (e instanceof WorkspaceError || e?.code === 'ENOENT') throw new LineOpError(`There is no file ${file} in this project.`, 'UNKNOWN_ITEM');
+    throw e;
+  }
+  let functions;
+  try {
+    functions = englishDetail(fs.readFileSync(abs, 'utf8'));
+  } catch (e) {
+    if (e?.loc) throw new LineOpError(`Cockpit cannot read ${file} as code at line ${e.loc.line}.`, 'PARSE_FAILED');
+    throw e;
+  }
+  return { ok: true, file, functions };
 }
