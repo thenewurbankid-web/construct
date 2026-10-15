@@ -12,6 +12,7 @@
 import nlp from 'compromise';
 import { SHAPES } from '../../gate/grammar/shapes.mjs';
 import { candidatesFor } from '../../generator/generator.mjs';
+import { decode } from '../lexicon/lexicon.mjs';
 
 /** The subject word per receiver generator (R2). */
 export const SUBJECT_OF_GEN = { list: 'list', nums: 'list', texts: 'list', text: 'text', num: 'number', nat: 'number', date: 'date', map: 'map', set: 'set', obj: 'record' };
@@ -39,14 +40,29 @@ export function genOfType(type = '') {
 /** camelCase words: `padStart` -> ['pad', 'start'], `lastIndexOf` -> ['last', 'index', 'of']. */
 export const wordsOf = (name) => String(name).replace(/([a-z0-9])([A-Z])/g, '$1 $2').toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
 
-/** The member's verb, third person (R1), when its first word reads as one in a verb frame; else null. */
-export function verbOf(member) {
+/** Programming verbs the tagger's dictionary misses or reads as nouns (pad, search, push, map ...). Data, extendable. */
+export const PROGRAMMING_VERBS = new Set(['pad', 'search', 'split', 'push', 'pop', 'map', 'slice', 'splice', 'normalize', 'delete', 'filter', 'copy', 'shift', 'unshift', 'match', 'reverse', 'sort', 'flat', 'flatten', 'clear', 'set', 'sign', 'encode', 'decode', 'escape', 'format', 'parse', 'compare', 'concat', 'append', 'prepend', 'merge', 'group', 'chunk', 'zip', 'fill', 'trim', 'test', 'exec', 'freeze', 'seal', 'bind', 'call', 'apply', 'resolve', 'reject', 'sum', 'round', 'floor', 'truncate', 'wrap']);
+const lexicon = nlp.world().model.one.lexicon;
+const SAYS_VERB = new Set(['Infinitive', 'PresentTense', 'Verb']);
+
+/** Whether a base word is a real verb: the dictionary says so, our grammar has it, or it is a known programming verb. */
+export function isVerb(base, grammarVerbs = new Set()) {
+  return SAYS_VERB.has(lexicon[base]) || PROGRAMMING_VERBS.has(base) || grammarVerbs.has(thirdPerson(base));
+}
+
+/** R1, regular forms only: pad -> pads, push -> pushes, copy -> copies. */
+export function thirdPerson(base) {
+  if (/(s|sh|ch|x|z|o)$/.test(base)) return `${base}es`;
+  if (/[^aeiou]y$/.test(base)) return `${base.slice(0, -1)}ies`;
+  return `${base}s`;
+}
+
+/** The member's verb, third person (R1), when its first word is a real verb; else null (a model or person names it). */
+export function verbOf(member, grammarVerbs) {
   const [first] = wordsOf(member);
   if (!first || ['to', 'is', 'has', 'get', 'of', 'at', 'with'].includes(first)) return null;
-  const v = nlp(`you ${first} it`).verbs();
-  if (!v.length) return null;
-  const said = v.toPresentTense().text().replace(/^you\s+/, '').split(/\s+/)[0];
-  return /^[a-z]{3,}s$/.test(said) ? said : null;
+  if (lexicon[first] === 'PresentTense' || grammarVerbs?.has(first)) return first; // includes, already third person
+  return isVerb(first, grammarVerbs) ? thirdPerson(first) : null;
 }
 
 // ---- the shape trie and the pruned shortest-path search ---------------------------------------------------------
@@ -146,6 +162,18 @@ export function buildSentences(params, memberName, { limit = 3 } = {}) {
   return { sentences: shapes.map((s) => fill(s, verb, params.map(([n]) => n))), explored, cut };
 }
 
+/** Words of a member name that carry no meaning of their own (they are role words or the frame). */
+const FILLER = new Set(['to', 'of', 'at', 'by', 'with', 'from', 'is', 'has', 'get', 'set', 'in', 'on', 'for', 'and', 'locale']);
+
+/**
+ * Coverage: every meaningful word of the member name shows in the sentence (inside a word counts: `lowercases`
+ * covers lower and case). `padStart` cannot become `text(s).pads().by(n)`, which would say the same as padEnd.
+ */
+export function covers(sentence, memberName) {
+  const said = sentence.replace(/\([^()]*\)/g, ' ').toLowerCase();
+  return wordsOf(memberName).filter((w) => !FILLER.has(w)).every((w) => said.includes(w.replace(/e$/, '')));
+}
+
 const camel = (words) => words.map((w, i) => (i ? w[0].toUpperCase() + w.slice(1) : w)).join('');
 /** R8: the atom name is the sentence's words after the subject. */
 export const atomName = (sentence) => camel(sentence.replace(/\([^()]*\)/g, '').split('.').filter(Boolean).slice(1));
@@ -164,7 +192,7 @@ function catalogParams(atom) {
  * Every answer the rules can build for an entry, best first: reuse of a covering catalog atom (its own sentence, or
  * a built one), then a new atom from the entry itself. `deadEnds` says why nothing could be built, for the record.
  */
-export function builtAnswers(entry, catalog) {
+export function builtAnswers(entry, catalog, { lexicon = null, verbWords = null } = {}) {
   const out = [];
   const deadEnds = [];
   for (const c of candidatesFor(entry, catalog)) {
@@ -172,7 +200,7 @@ export function builtAnswers(entry, catalog) {
     const params = catalogParams(atom);
     if (!params) continue;
     const js = atom.js.find((j) => j.includes(member(entry))) ?? atom.js[0];
-    const sentences = atom.fluent ? [atom.fluent] : buildSentences(params, member(entry)).sentences;
+    const sentences = atom.fluent ? [atom.fluent] : buildSentences(params, member(entry)).sentences.filter((x) => covers(x, member(entry)));
     for (const sentence of sentences) {
       out.push({ entry: entry.id, decision: 'existing', atom: null, existing: atom.atom, kind: atom.fluent?.startsWith('clones(') ? 'copy' : atom.mutates ? 'in-place' : 'value', sentence, js, params, parts: null, reason: null });
     }
@@ -181,7 +209,13 @@ export function builtAnswers(entry, catalog) {
   if (s) {
     const built = buildSentences(s.params, s.member);
     if (built.deadEnd) deadEnds.push(built.deadEnd);
-    for (const sentence of built.sentences) {
+    // The learned lexicon decodes more candidates (pilot/lexicon): shapes framed by clones() or checks().if() too.
+    const decoded = lexicon ? decode(lexicon, { ...s, verbWords, k: 4 }).map((d) => d.sentence) : [];
+    // A sentence must say every meaningful word of the member, and must not already mean other code.
+    const taken = (sentence) => catalog.some((a) => a.fluent === sentence && !a.js.includes(s.js));
+    const kept = [...new Set([...built.sentences, ...decoded])].filter((x) => covers(x, s.member) && !taken(x));
+    if (!kept.length && (built.sentences.length || decoded.length)) deadEnds.push(`no shape says every word of “${wordsOf(s.member).join(' ')}”`);
+    for (const sentence of kept) {
       out.push({ entry: entry.id, decision: 'new-atom', atom: atomName(sentence), existing: null, kind: s.kind, sentence, js: s.js, params: s.params, parts: null, reason: null });
     }
   } else deadEnds.push(instanceOf(entry) ? `no test inputs for ${entry.section} receivers` : `${entry.kind} entries are not built by rules yet`);

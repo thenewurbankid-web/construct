@@ -29,7 +29,8 @@ import { claudeModel, claudeSession } from '../runner/claude-model.mjs';
 import { candidatesFor, CATALOG_PATH, REFERENCE_PATH } from '../../generator/generator.mjs';
 import { userStage } from './user-stage.mjs';
 import { batches, answerTurn, askTurn, tellTurn, pickTurn } from './batch.mjs';
-import { builtAnswers } from '../build/build.mjs';
+import { builtAnswers, covers, wordsOf } from '../build/build.mjs';
+import { corpusFrom, train } from '../lexicon/lexicon.mjs';
 import { gatePool } from '../../gate/isolated/isolated.mjs';
 
 const readJson = (p) => JSON.parse(readFileSync(p, 'utf8'));
@@ -46,7 +47,15 @@ export function gateFor(entry, { typesCheck, equivalence = checkEquivalence } = 
         eq = { check: 'fail', errors: [`The equivalence check could not run this answer (${String(e?.message ?? e).split('\n')[0]}); give js that runs as written.`], fixes: [] };
       }
     }
-    return runGate(answer, { grammar: checkGrammar, types: typesCheck, equivalence: () => eq });
+    const verdict = await runGate(answer, { grammar: checkGrammar, types: typesCheck, equivalence: () => eq });
+    // Meaning: a new atom's sentence must say every meaningful word of the member, or two steps read the same
+    // (padStart and padEnd both as `pads().by(n)`). Runs only once the rest passed, so it never hides another refusal.
+    const name = entry?.key?.replace(/ #\d+$/, '').split('.').at(-1);
+    if (verdict.pass && answer?.decision === 'new-atom' && name && !covers(answer.sentence ?? '', name)) {
+      const missing = wordsOf(name).filter((w) => !covers(answer.sentence ?? '', w));
+      return { ...verdict, pass: false, checks: { ...verdict.checks, grammar: 'fail' }, refusal: `The sentence does not say ${missing.map((w) => `\`${w}\``).join(', ')} (from ${name}); without it the step reads the same as a different one. Put the word in the sentence.` };
+    }
+    return verdict;
   };
 }
 
@@ -259,6 +268,8 @@ export async function main(argv = process.argv.slice(2), { log = console.log, ma
  * user stage, every turn one call per batch of a section's entries. Results are recorded per entry, as unbatched.
  */
 async function batchedStages(entries, { o, all, record, doneIn, stopped, jobs, makeModel, gateOf, catalog }) {
+  const catalogAll = catalog;
+  const grammarVerbs = readJson(fileURLToPath(new URL('../../../line-smith/src/atoms/naming.json', import.meta.url))).grammar.verbs;
   const size = Number(o.batch);
   const inside = makeModel({ model: o.inside });
   const item = (entry, extra = {}) => ({ entry, candidates: candidatesFor(entry, catalog).slice(0, MAX_CANDIDATES), ...extra });
@@ -273,10 +284,13 @@ async function batchedStages(entries, { o, all, record, doneIn, stopped, jobs, m
   // Built first: the rules build answers (no model), the gate checks each, and where any pass the inside model only
   // picks among them or corrects one when confident (pickTurn). The rest go on to turns 1 and 2.
   if (o.build) {
+    // The lexicon is retrained from the catalog and every answer that passed so far, so each run learns from the last.
+    const lexicon = train(corpusFrom(catalogAll, all.filter((r) => r.gate?.pass && r.answer?.sentence).map((r) => r.answer)));
+    const verbWords = new Set(grammarVerbs);
     const built = new Map();
     await pool(entries.filter((e) => !doneIn('inside').has(e.key)), Math.max(2, jobs), async (e) => {
       const passing = [];
-      for (const a of builtAnswers(e, catalog).answers) {
+      for (const a of builtAnswers(e, catalog, { lexicon, verbWords }).answers) {
         if ((await gateOf(e)(a)).pass) passing.push(a);
         if (passing.length >= 4) break;
       }
