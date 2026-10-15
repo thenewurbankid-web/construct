@@ -34,6 +34,7 @@ import { batches, answerTurn, askTurn, tellTurn, pickTurn } from './batch.mjs';
 import { builtAnswers, covers, wordsOf } from '../build/build.mjs';
 import { corpusFrom, train } from '../lexicon/lexicon.mjs';
 import { gatePool } from '../../gate/isolated/isolated.mjs';
+import { stagedQueue } from './queue.mjs';
 
 const readJson = (p) => JSON.parse(readFileSync(p, 'utf8'));
 const SKIP = Object.freeze({ check: 'skip', errors: [], fixes: [] });
@@ -318,31 +319,27 @@ async function batchedStages(entries, { o, all, record, doneIn, stopped, jobs, m
     }, stopped);
   }
 
-  // Turns 1 and 2: every entry not yet through the inside stage, then each refused one with its refusal.
-  for (const turn of [1, 2]) {
-    if (stopped()) return;
-    const todo = turn === 1
-      ? entries.filter((e) => !doneIn('inside').has(e.key))
-      : entries.filter((e) => { const r = latest(e.key, 'inside'); return r && (!r.gate?.pass || dodged(r)) && (r.tries ?? 1) < 2; });
-    await pool(batches(todo, size), Math.ceil(jobs / 2), async (group) => {
-      const started = Date.now();
-      const items = group.map((e) => item(e, turn === 2 ? { refusal: refusalOf(latest(e.key, 'inside')) } : {}));
-      try {
-        const out = await answerTurn(items, { model: inside, gateOf });
-        const ms = Math.round((Date.now() - started) / items.length);
-        out.forEach((r, i) => record({ key: items[i].entry.key, section: items[i].entry.section, stage: 'inside', model: o.inside, entry: items[i].entry.id, ...r, tries: turn, ms, batch: items.length }));
-      } catch (e) {
-        fail(items, 'inside', o.inside, e, started);
-      }
-    }, stopped);
-  }
-
-  // The user stage: the inside model asks, the user model answers as the person, the inside model answers again.
-  if (o.user === 'none' || stopped()) return;
-  const person = makeModel({ model: o.user });
+  // Turns 1 and 2 and the user stage run side by side through one staged queue (queue.mjs): a batch's refused
+  // entries join the next stage's queue at once, instead of waiting for the whole stage to finish over every entry.
+  const runTurn = (turn) => async (group) => {
+    if (stopped()) return [];
+    const started = Date.now();
+    const items = group.map((e) => item(e, turn === 2 ? { refusal: refusalOf(latest(e.key, 'inside')) } : {}));
+    try {
+      const out = await answerTurn(items, { model: inside, gateOf });
+      const ms = Math.round((Date.now() - started) / items.length);
+      out.forEach((r, i) => record({ key: items[i].entry.key, section: items[i].entry.section, stage: 'inside', model: o.inside, entry: items[i].entry.id, ...r, tries: turn, ms, batch: items.length }));
+    } catch (e) {
+      fail(items, 'inside', o.inside, e, started);
+      return [];
+    }
+    return group.filter((e) => { const r = latest(e.key, 'inside'); return r && (!r.gate?.pass || dodged(r)); });
+  };
+  const userOn = o.user !== 'none';
+  const person = userOn ? makeModel({ model: o.user }) : null;
   const passed = () => new Set(all.filter((r) => r.gate?.pass && !dodged(r)).map((r) => r.key));
-  const todo = entries.filter((e) => latest(e.key, 'inside') && !passed().has(e.key) && !doneIn('user').has(e.key));
-  await pool(batches(todo, size), Math.ceil(jobs / 2), async (group) => {
+  const runUser = async (group) => {
+    if (stopped()) return [];
     const started = Date.now();
     const every = group.map((e) => { const r = latest(e.key, 'inside'); return item(e, { answer: r.answer, refusal: r.gate?.refusal, prior: r.gate, dialogue: [], result: null, cost: 0, tries: 0 }); });
     for (const it of every) if (dodged({ gate: it.prior, answer: it.answer })) it.refusal = refusalOf({ gate: it.prior, answer: it.answer });
@@ -367,7 +364,7 @@ async function batchedStages(entries, { o, all, record, doneIn, stopped, jobs, m
       }
     } catch (e) {
       fail(every, 'user', `${o.inside}+${o.user} as user`, e, started);
-      return;
+      return [];
     }
     const ms = Math.round((Date.now() - started) / every.length);
     for (const it of every) {
@@ -377,7 +374,17 @@ async function batchedStages(entries, { o, all, record, doneIn, stopped, jobs, m
         tokensIn: it.result?.tokensIn ?? 0, tokensOut: it.result?.tokensOut ?? 0, costUsd: Number(it.cost.toFixed(6)), ms, batch: every.length,
       });
     }
-  }, stopped);
+    return [];
+  };
+  // Resuming: each entry starts at the stage its saved results leave it at.
+  const insideDone = doneIn('inside');
+  const owesTurn2 = (e) => { const r = latest(e.key, 'inside'); return r && (!r.gate?.pass || dodged(r)) && (r.tries ?? 1) < 2; };
+  const owesUser = (e) => { const r = latest(e.key, 'inside'); return r && (r.tries ?? 1) >= 2 && !passed().has(e.key) && !doneIn('user').has(e.key); };
+  await stagedQueue([
+    { name: 'turn 1', initial: entries.filter((e) => !insideDone.has(e.key)), run: runTurn(1) },
+    { name: 'turn 2', initial: entries.filter(owesTurn2), run: async (group) => { const left = await runTurn(2)(group); return userOn ? left : []; } },
+    ...(userOn ? [{ name: 'user', initial: entries.filter(owesUser), run: runUser }] : []),
+  ], { size, workers: Math.ceil(jobs / 2), stop: stopped });
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
