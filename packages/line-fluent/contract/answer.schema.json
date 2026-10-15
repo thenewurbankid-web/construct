@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://line.local/fluent/contract/answer.schema.json",
+  "title": "C2 fluent answer",
+  "description": "Contract C2 of docs/line/FLUENT-PLAN-2026-10-15.md: one fluent answer for one JS reference entry, written by Claude or by the student model. Field order and names are fixed (the order of `properties` is the required order); unknown fields are refused. validate.mjs implements these rules by hand with no dependencies; validate.test.mjs keeps the two in sync.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["entry", "decision", "atom", "existing", "kind", "sentence", "js", "params", "parts", "reason"],
+  "properties": {
+    "entry": { "type": "string", "minLength": 1, "description": "C1 reference entry id, e.g. Array.prototype.flatMap." },
+    "decision": { "enum": ["new-atom", "existing", "molecule", "not-expressible"] },
+    "atom": {
+      "type": ["string", "null"],
+      "pattern": "^[a-z][A-Za-z0-9]*$",
+      "description": "camelCase atom id; required for new-atom and molecule."
+    },
+    "existing": { "type": ["string", "null"], "minLength": 1, "description": "Catalog atom id; set iff decision is existing." },
+    "kind": {
+      "enum": ["question", "copy", "in-place", "value", "effect", null],
+      "description": "null only when decision is not-expressible."
+    },
+    "sentence": { "type": ["string", "null"], "minLength": 1, "description": "Atomic English sentence; null iff decision is not-expressible." },
+    "js": { "type": ["string", "null"], "minLength": 1, "description": "The JS the sentence stands for; null iff decision is not-expressible." },
+    "params": {
+      "type": "array",
+      "items": {
+        "type": "array",
+        "prefixItems": [
+          { "type": "string", "minLength": 1 },
+          { "type": "string", "minLength": 1 }
+        ],
+        "minItems": 2,
+        "maxItems": 2
+      },
+      "description": "[name, type] pairs."
+    },
+    "parts": {
+      "type": ["array", "null"],
+      "items": { "type": "string", "minLength": 1 },
+      "description": "Catalog atom ids; non-empty iff decision is molecule, otherwise null or []."
+    },
+    "reason": { "type": ["string", "null"], "minLength": 1, "description": "One plain sentence; set iff decision is not-expressible." }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "decision": { "const": "existing" } } },
+      "then": { "properties": { "existing": { "type": "string" } } },
+      "else": { "properties": { "existing": { "type": "null" } } }
+    },
+    {
+      "if": { "properties": { "decision": { "const": "molecule" } } },
+      "then": { "properties": { "parts": { "type": "array", "minItems": 1 } } },
+      "else": { "properties": { "parts": { "anyOf": [{ "type": "null" }, { "type": "array", "maxItems": 0 }] } } }
+    },
+    {
+      "if": { "properties": { "decision": { "const": "not-expressible" } } },
+      "then": {
+        "properties": { "reason": { "type": "string" }, "sentence": { "type": "null" }, "js": { "type": "null" } }
+      },
+      "else": {
+        "properties": {
+          "reason": { "type": "null" },
+          "sentence": { "type": "string" },
+          "js": { "type": "string" },
+          "kind": { "type": "string" }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "decision": { "enum": ["new-atom", "molecule"] } } },
+      "then": { "properties": { "atom": { "type": "string" } } }
+    }
+  ]
+}
