@@ -1,0 +1,800 @@
+{
+  "new BigInt64Array": {
+    "entry": "new BigInt64Array",
+    "section": "BigInt64Array",
+    "stage": "inside",
+    "model": "qwen2.5-coder:7b",
+    "pass": true,
+    "answer": {
+      "entry": "new BigInt64Array",
+      "decision": "not-expressible",
+      "atom": null,
+      "existing": null,
+      "kind": null,
+      "sentence": null,
+      "js": null,
+      "params": [
+        [
+          "length",
+          "number"
+        ],
+        [
+          "array",
+          "ArrayLike<bigint> | Iterable<bigint>"
+        ],
+        [
+          "buffer",
+          "TArrayBuffer"
+        ],
+        [
+          "byteOffset",
+          "number"
+        ],
+        [
+          "length",
+          "number"
+        ]
+      ],
+      "parts": null,
+      "reason": "BigInt64Array constructor requires specific parameters that cannot be directly expressed in Atomic English."
+    },
+    "refusal": null
+  },
+  "new BigInt64Array #2": {
+    "entry": "new BigInt64Array",
+    "section": "BigInt64Array",
+    "stage": "inside",
+    "model": "qwen2.5-coder:7b",
+    "pass": true,
+    "answer": {
+      "entry": "new BigInt64Array",
+      "decision": "not-expressible",
+      "atom": null,
+      "existing": null,
+      "kind": null,
+      "sentence": null,
+      "js": null,
+      "params": [
+        [
+          "array",
+          "ArrayLike<bigint> | Iterable<bigint>"
+        ],
+        [
+          "buffer",
+          "TArrayBuffer"
+        ],
+        [
+          "byteOffset",
+          "number"
+        ],
+        [
+          "length",
+          "number"
+        ]
+      ],
+      "parts": null,
+      "reason": "BigInt64Array constructor requires specific parameters that cannot be directly expressed in Atomic English."
+    },
+    "refusal": null
+  },
+  "new BigInt64Array #3": {
+    "entry": "new BigInt64Array",
+    "section": "BigInt64Array",
+    "stage": "inside",
+    "model": "qwen2.5-coder:7b",
+    "pass": true,
+    "answer": {
+      "entry": "new BigInt64Array",
+      "decision": "not-expressible",
+      "atom": null,
+      "existing": null,
+      "kind": null,
+      "sentence": null,
+      "js": null,
+      "params": [
+        [
+          "buffer",
+          "TArrayBuffer"
+        ],
+        [
+          "byteOffset",
+          "number"
+        ],
+        [
+          "length",
+          "number"
+        ]
+      ],
+      "parts": null,
+      "reason": "BigInt64Array constructor requires specific parameters that cannot be directly expressed in Atomic English."
+    },
+    "refusal": null
+  },
+  "new BigInt64Array #4": {
+    "entry": "new BigInt64Array",
+    "section": "BigInt64Array",
+    "stage": "inside",
+    "model": "qwen2.5-coder:7b",
+    "pass": true,
+    "answer": {
+      "entry": "new BigInt64Array",
+      "decision": "not-expressible",
+      "atom": null,
+      "existing": null,
+      "kind": null,
+      "sentence": null,
+      "js": null,
+      "params": [
+        [
+          "buffer",
+          "ArrayBuffer"
+        ],
+        [
+          "byteOffset",
+          "number"
+        ],
+        [
+          "length",
+          "number"
+        ]
+      ],
+      "parts": null,
+      "reason": "BigInt64Array constructor requires specific parameters that cannot be directly expressed in Atomic English."
+    },
+    "refusal": null
+  },
+  "new BigInt64Array #5": {
+    "entry": "new BigInt64Array",
+    "section": "BigInt64Array",
+    "stage": "inside",
+    "model": "qwen2.5-coder:7b",
+    "pass": true,
+    "answer": {
+      "entry": "new BigInt64Array",
+      "decision": "not-expressible",
+      "atom": null,
+      "existing": null,
+      "kind": null,
+      "sentence": null,
+      "js": null,
+      "params": [
+        [
+          "array",
+          "ArrayLike<bigint> | ArrayBuffer"
+        ]
+      ],
+      "parts": null,
+      "reason": "BigInt64Array constructor requires specific parameters that cannot be directly expressed in Atomic English."
+    },
+    "refusal": null
+  },
+  "BigInt64Array.BYTES_PER_ELEMENT": {
+    "entry": "BigInt64Array.BYTES_PER_ELEMENT",
+    "section": "BigInt64Array",
+    "stage": "inside",
+    "model": "qwen2.5-coder:7b",
+    "pass": false,
+    "answer": {
+      "entry": "BigInt64Array.BYTES_PER_ELEMENT",
+      "decision": "existing",
+      "atom": "bigInt64ArrayBytesPerElement",
+      "existing": null,
+      "kind": "value",
+      "sentence": null,
+      "js": null,
+      "params": [],
+      "parts": null,
+      "reason": null
+    },
+    "refusal": "Field `existing` is empty; when `decision` is existing, set it to the catalog atom id that already does this."
+  },
+  "BigInt64Array.of": {
+    "entry": "BigInt64Array.of",
+    "section": "BigInt64Array",
+    "stage": "inside",
+    "model": "qwen2.5-coder:7b",
+    "pass": false,
+    "answer": {
+      "entry": "BigInt64Array.of",
+      "decision": "new-atom",
+      "atom": "bigInt64ArrayOf",
+      "existing": null,
+      "kind": "value",
+      "sentence": "clones().list(items).and().bigInt64ArrayOf().andThe().bigInt64Array()",
+      "js": "BigInt64Array.of(...items)",
+      "params": [
+        [
+          "items",
+          "list1<bigint>"
+        ]
+      ],
+      "parts": null,
+      "reason": null
+    },
+    "refusal": "The word `bigInt64ArrayOf` is not legal after `clones().list(items).and()`; legal words there are `drops`, `flattens`, `keeps`, `maps`, `reverses`, `sorts`; remove it."
+  },
+  "BigInt64Array.from": {
+    "entry": "BigInt64Array.from",
+    "section": "BigInt64Array",
+    "stage": "inside",
+    "model": "qwen2.5-coder:7b",
+    "pass": false,
+    "answer": {
+      "entry": "BigInt64Array.from",
+      "decision": "new-atom",
+      "atom": "bigInt64ArrayFrom",
+      "existing": null,
+      "kind": "value",
+      "sentence": "clones().list(arrayLike).and().bigInt64ArrayFrom().andThe().bigInt64Array()",
+      "js": "BigInt64Array.from(arrayLike)",
+      "params": [
+        [
+          "arrayLike",
+          "ArrayLike<bigint>"
+        ]
+      ],
+      "parts": null,
+      "reason": null
+    },
+    "refusal": "The word `bigInt64ArrayFrom` is not legal after `clones().list(arrayLike).and()`; legal words there are `drops`, `flattens`, `keeps`, `maps`, `reverses`, `sorts`; remove it."
+  },
+  "BigInt64Array.from #2": {
+    "entry": "BigInt64Array.from",
+    "section": "BigInt64Array",
+    "stage": "inside",
+    "model": "qwen2.5-coder:7b",
+    "pass": false,
+    "answer": {
+      "entry": "BigInt64Array.from",
+      "decision": "new-atom",
+      "atom": "bigInt64ArrayFromMap",
+      "existing": null,
+      "kind": "value",
+      "sentence": "clones().list(arrayLike).and().bigInt64ArrayFromMap(mapfn).andThe().bigInt64Array()",
+      "js": "BigInt64Array.from(arrayLike, mapfn, thisArg)",
+      "params": [
+        [
+          "arrayLike",
+          "ArrayLike<U>"
+        ],
+        [
+          "mapfn",
+          "fn<U, bigint>"
+        ],
+        [
+          "thisArg",
+          "any"
+        ]
+      ],
+      "parts": null,
+      "reason": null
+    },
+    "refusal": "The word `bigInt64ArrayFromMap` is not legal after `clones().list(arrayLike).and()`; legal words there are `drops`, `flattens`, `keeps`, `maps`, `reverses`, `sorts`; remove it."
+  },
+  "BigInt64Array.from #3": {
+    "entry": "BigInt64Array.from",
+    "section": "BigInt64Array",
+    "stage": "inside",
+    "model": "qwen2.5-coder:7b",
+    "pass": false,
+    "answer": {
+      "entry": "BigInt64Array.from",
+      "decision": "new-atom",
+      "atom": "bigInt64ArrayFromIterable",
+      "existing": null,
+      "kind": "value",
+      "sentence": "clones().list(elements).and().bigInt64ArrayFromIterable().andThe().bigInt64Array()",
+      "js": "BigInt64Array.from(elements)",
+      "params": [
+        [
+          "elements",
+          "Iterable<bigint>"
+        ]
+      ],
+      "parts": null,
+      "reason": null
+    },
+    "refusal": "The word `bigInt64ArrayFromIterable` is not legal after `clones().list(elements).and()`; legal words there are `drops`, `flattens`, `keeps`, `maps`, `reverses`, `sorts`; remove it."
+  },
+  "BigInt64Array.from #4": {
+    "entry": "BigInt64Array.from",
+    "section": "BigInt64Array",
+    "stage": "inside",
+    "model": "qwen2.5-coder:7b",
+    "pass": false,
+    "answer": {
+      "entry": "BigInt64Array.from",
+      "decision": "existing",
+      "atom": null,
+      "existing": "arrayFrom",
+      "kind": "value",
+      "sentence": null,
+      "js": "BigInt64Array.from",
+      "params": [
+        [
+          "elements",
+          "Iterable<T>"
+        ],
+        [
+          "mapfn",
+          "fn"
+        ],
+        [
+          "thisArg",
+          "any"
+        ]
+      ],
+      "parts": null,
+      "reason": null
+    },
+    "refusal": "Field `sentence` is empty; write the Atomic English sentence as a non-empty string."
+  },
+  "BigInt64Array.prototype.BYTES_PER_ELEMENT": {
+    "entry": "BigInt64Array.prototype.BYTES_PER_ELEMENT",
+    "section": "BigInt64Array",
+    "stage": "inside",
+    "model": "qwen2.5-coder:7b",
+    "pass": false,
+    "answer": {
+      "entry": "BigInt64Array.prototype.BYTES_PER_ELEMENT",
+      "decision": "existing",
+      "atom": null,
+      "existing": "bytesPerElement",
+      "kind": "value",
+      "sentence": null,
+      "js": "BigInt64Array.prototype.BYTES_PER_ELEMENT",
+      "params": [],
+      "parts": null,
+      "reason": null
+    },
+    "refusal": "Field `sentence` is empty; write the Atomic English sentence as a non-empty string."
+  },
+  "BigInt64Array.prototype.buffer": {
+    "entry": "BigInt64Array.prototype.buffer",
+    "section": "BigInt64Array",
+    "stage": "inside",
+    "model": "qwen2.5-coder:7b",
+    "pass": false,
+    "answer": {
+      "entry": "BigInt64Array.prototype.buffer",
+      "decision": "existing",
+      "atom": null,
+      "existing": "buffer",
+      "kind": "value",
+      "sentence": null,
+      "js": "BigInt64Array.prototype.buffer",
+      "params": [],
+      "parts": null,
+      "reason": null
+    },
+    "refusal": "Field `sentence` is empty; write the Atomic English sentence as a non-empty string."
+  },
+  "BigInt64Array.prototype.byteLength": {
+    "entry": "BigInt64Array.prototype.byteLength",
+    "section": "BigInt64Array",
+    "stage": "inside",
+    "model": "qwen2.5-coder:7b",
+    "pass": false,
+    "answer": {
+      "entry": "BigInt64Array.prototype.byteLength",
+      "decision": "existing",
+      "atom": null,
+      "existing": "byteLength",
+      "kind": "value",
+      "sentence": null,
+      "js": "BigInt64Array.prototype.byteLength",
+      "params": [],
+      "parts": null,
+      "reason": null
+    },
+    "refusal": "Field `sentence` is empty; write the Atomic English sentence as a non-empty string."
+  },
+  "BigInt64Array.prototype.byteOffset": {
+    "entry": "BigInt64Array.prototype.byteOffset",
+    "section": "BigInt64Array",
+    "stage": "inside",
+    "model": "qwen2.5-coder:7b",
+    "pass": false,
+    "answer": {
+      "entry": "BigInt64Array.prototype.byteOffset",
+      "decision": "existing",
+      "atom": null,
+      "existing": "byteOffset",
+      "kind": "value",
+      "sentence": null,
+      "js": "BigInt64Array.prototype.byteOffset",
+      "params": [],
+      "parts": null,
+      "reason": null
+    },
+    "refusal": "Field `sentence` is empty; write the Atomic English sentence as a non-empty string."
+  },
+  "BigInt64Array.prototype.copyWithin": {
+    "entry": "BigInt64Array.prototype.copyWithin",
+    "section": "BigInt64Array",
+    "stage": "inside",
+    "model": "qwen2.5-coder:7b",
+    "pass": false,
+    "answer": {
+      "entry": "BigInt64Array.prototype.copyWithin",
+      "decision": "existing",
+      "atom": "copiedWithinList",
+      "existing": "copiedWithinList",
+      "kind": "value",
+      "sentence": null,
+      "js": "list.copyWithin(target, start, end)",
+      "params": [
+        [
+          "target",
+          "num"
+        ],
+        [
+          "start",
+          "num"
+        ],
+        [
+          "end",
+          "num"
+        ]
+      ],
+      "parts": null,
+      "reason": null
+    },
+    "refusal": "Field `sentence` is empty; write the Atomic English sentence as a non-empty string."
+  },
+  "BigInt64Array.prototype.entries": {
+    "entry": "BigInt64Array.prototype.entries",
+    "section": "BigInt64Array",
+    "stage": "inside",
+    "model": "qwen2.5-coder:7b",
+    "pass": false,
+    "answer": {
+      "entry": "BigInt64Array.prototype.entries",
+      "decision": "existing",
+      "atom": "entriesOfList",
+      "existing": null,
+      "kind": "value",
+      "sentence": null,
+      "js": "list.entries()",
+      "params": [],
+      "parts": null,
+      "reason": null
+    },
+    "refusal": "Field `existing` is empty; when `decision` is existing, set it to the catalog atom id that already does this."
+  },
+  "BigInt64Array.prototype.every": {
+    "entry": "BigInt64Array.prototype.every",
+    "section": "BigInt64Array",
+    "stage": "inside",
+    "model": "qwen2.5-coder:7b",
+    "pass": false,
+    "answer": {
+      "entry": "BigInt64Array.prototype.every",
+      "decision": "existing",
+      "atom": "isEveryWhere",
+      "existing": "isEveryWhere",
+      "kind": "value",
+      "sentence": "checks().if(xs).has().only().items().where(test).andThe().answer()",
+      "js": "list.every(test)",
+      "params": [
+        [
+          "predicate",
+          "pred"
+        ]
+      ],
+      "parts": null,
+      "reason": null
+    },
+    "refusal": "On the reference case predicate = {\"BigInt64Array\":[{\"bigint\":\"3\"},{\"bigint\":\"1\"},{\"bigint\":\"2\"}]}, the answer throws ReferenceError but the reference throws TypeError."
+  },
+  "BigInt64Array.prototype.fill": {
+    "entry": "BigInt64Array.prototype.fill",
+    "section": "BigInt64Array",
+    "stage": "inside",
+    "model": "qwen2.5-coder:7b",
+    "pass": false,
+    "answer": {
+      "entry": "BigInt64Array.prototype.fill",
+      "decision": "existing",
+      "atom": "filledList",
+      "existing": "filledList",
+      "kind": "value",
+      "sentence": null,
+      "js": "list.fill(value, start, end)",
+      "params": [
+        [
+          "value",
+          "bigint"
+        ],
+        [
+          "start",
+          "num"
+        ],
+        [
+          "end",
+          "num"
+        ]
+      ],
+      "parts": null,
+      "reason": null
+    },
+    "refusal": "Field `sentence` is empty; write the Atomic English sentence as a non-empty string."
+  },
+  "BigInt64Array.prototype.filter": {
+    "entry": "BigInt64Array.prototype.filter",
+    "section": "BigInt64Array",
+    "stage": "inside",
+    "model": "qwen2.5-coder:7b",
+    "pass": false,
+    "answer": {
+      "entry": "BigInt64Array.prototype.filter",
+      "decision": "existing",
+      "atom": "keepWhere",
+      "existing": null,
+      "kind": "value",
+      "sentence": null,
+      "js": "list.filter(test)",
+      "params": [
+        [
+          "predicate",
+          "pred"
+        ]
+      ],
+      "parts": null,
+      "reason": null
+    },
+    "refusal": "Field `existing` is empty; when `decision` is existing, set it to the catalog atom id that already does this."
+  },
+  "BigInt64Array.prototype.find": {
+    "entry": "BigInt64Array.prototype.find",
+    "section": "BigInt64Array",
+    "stage": "inside",
+    "model": "qwen2.5-coder:7b",
+    "pass": false,
+    "answer": {
+      "entry": "BigInt64Array.prototype.find",
+      "decision": "existing",
+      "atom": "findFirst",
+      "existing": "findFirst",
+      "kind": "value",
+      "sentence": "list(xs).finds().first().where(test).andThe().found()",
+      "js": "list.find(test)",
+      "params": [
+        [
+          "predicate",
+          "fn"
+        ]
+      ],
+      "parts": null,
+      "reason": null
+    },
+    "refusal": "On the reference case predicate = {\"BigInt64Array\":[{\"bigint\":\"3\"},{\"bigint\":\"1\"},{\"bigint\":\"2\"}]}, the answer throws ReferenceError but the reference throws TypeError."
+  },
+  "BigInt64Array.prototype.findIndex": {
+    "entry": "BigInt64Array.prototype.findIndex",
+    "section": "BigInt64Array",
+    "stage": "inside",
+    "model": "qwen2.5-coder:7b",
+    "pass": false,
+    "answer": {
+      "entry": "BigInt64Array.prototype.findIndex",
+      "decision": "existing",
+      "atom": "positionWhere",
+      "existing": "positionWhere",
+      "kind": "value",
+      "sentence": "list(xs).finds().position().where(test).andThe().position()",
+      "js": "list.findIndex(test)",
+      "params": [
+        [
+          "predicate",
+          "fn"
+        ]
+      ],
+      "parts": null,
+      "reason": null
+    },
+    "refusal": "The word `position` is not legal after `list(xs).finds()`; legal words there are `first`; remove it."
+  },
+  "BigInt64Array.prototype.forEach": {
+    "entry": "BigInt64Array.prototype.forEach",
+    "section": "BigInt64Array",
+    "stage": "inside",
+    "model": "qwen2.5-coder:7b",
+    "pass": true,
+    "answer": {
+      "entry": "BigInt64Array.prototype.forEach",
+      "decision": "not-expressible",
+      "atom": null,
+      "existing": null,
+      "kind": null,
+      "sentence": null,
+      "js": null,
+      "params": [
+        [
+          "callbackfn",
+          "fn"
+        ]
+      ],
+      "parts": null,
+      "reason": "forEach does not return a value and cannot be directly expressed in Atomic English."
+    },
+    "refusal": null
+  },
+  "BigInt64Array.prototype.includes": {
+    "entry": "BigInt64Array.prototype.includes",
+    "section": "BigInt64Array",
+    "stage": "inside",
+    "model": "qwen2.5-coder:7b",
+    "pass": false,
+    "answer": {
+      "entry": "BigInt64Array.prototype.includes",
+      "decision": "existing",
+      "atom": "hasItem",
+      "existing": "hasItem",
+      "kind": "value",
+      "sentence": "checks().if(xs).has().item(x).andThe().answer()",
+      "js": "list.includes(item, fromIndex)",
+      "params": [
+        [
+          "searchElement",
+          "bigint"
+        ],
+        [
+          "fromIndex",
+          "bigint"
+        ]
+      ],
+      "parts": null,
+      "reason": null
+    },
+    "refusal": "On the reference case searchElement = {\"BigInt64Array\":[{\"bigint\":\"3\"},{\"bigint\":\"1\"},{\"bigint\":\"2\"}]}, fromIndex = {\"bigint\":\"7\"}, the answer throws ReferenceError but the reference returns false."
+  },
+  "BigInt64Array.prototype.indexOf": {
+    "entry": "BigInt64Array.prototype.indexOf",
+    "section": "BigInt64Array",
+    "stage": "inside",
+    "model": "qwen2.5-coder:7b",
+    "pass": false,
+    "answer": {
+      "entry": "BigInt64Array.prototype.indexOf",
+      "decision": "existing",
+      "atom": "positionOf",
+      "existing": "positionOf",
+      "kind": "value",
+      "sentence": "list(xs).finds().position().where(test).andThe().position()",
+      "js": "list.indexOf(item, fromIndex)",
+      "params": [
+        [
+          "searchElement",
+          "bigint"
+        ],
+        [
+          "fromIndex",
+          "bigint"
+        ]
+      ],
+      "parts": null,
+      "reason": null
+    },
+    "refusal": "The word `position` is not legal after `list(xs).finds()`; legal words there are `first`; remove it."
+  },
+  "BigInt64Array.prototype.join": {
+    "entry": "BigInt64Array.prototype.join",
+    "section": "BigInt64Array",
+    "stage": "inside",
+    "model": "qwen2.5-coder:7b",
+    "pass": false,
+    "answer": {
+      "entry": "BigInt64Array.prototype.join",
+      "decision": "existing",
+      "atom": "joinWith",
+      "existing": "joinWith",
+      "kind": "value",
+      "sentence": "list(xs).joins().with(sep).andThe().joined()",
+      "js": "list.join(separator)",
+      "params": [
+        [
+          "separator",
+          "text"
+        ]
+      ],
+      "parts": null,
+      "reason": null
+    },
+    "refusal": "On the reference case separator = {\"BigInt64Array\":[{\"bigint\":\"3\"},{\"bigint\":\"1\"},{\"bigint\":\"2\"}]}, the answer throws ReferenceError but the reference returns \"3,1,2\"."
+  },
+  "BigInt64Array.prototype.keys": {
+    "entry": "BigInt64Array.prototype.keys",
+    "section": "BigInt64Array",
+    "stage": "inside",
+    "model": "qwen2.5-coder:7b",
+    "pass": true,
+    "answer": {
+      "entry": "BigInt64Array.prototype.keys",
+      "decision": "not-expressible",
+      "atom": null,
+      "existing": null,
+      "kind": null,
+      "sentence": null,
+      "js": null,
+      "params": [],
+      "parts": null,
+      "reason": "BigInt64Array does not have a keys method; use Object.keys instead."
+    },
+    "refusal": null
+  },
+  "BigInt64Array.prototype.lastIndexOf": {
+    "entry": "BigInt64Array.prototype.lastIndexOf",
+    "section": "BigInt64Array",
+    "stage": "inside",
+    "model": "qwen2.5-coder:7b",
+    "pass": false,
+    "answer": {
+      "entry": "BigInt64Array.prototype.lastIndexOf",
+      "decision": "existing",
+      "atom": "lastPositionOfList",
+      "existing": null,
+      "kind": "value",
+      "sentence": null,
+      "js": "list.lastIndexOf(searchElement, fromIndex)",
+      "params": [
+        [
+          "searchElement",
+          "bigint"
+        ],
+        [
+          "fromIndex",
+          "num"
+        ]
+      ],
+      "parts": null,
+      "reason": null
+    },
+    "refusal": "Field `existing` is empty; when `decision` is existing, set it to the catalog atom id that already does this."
+  },
+  "BigInt64Array.prototype.length": {
+    "entry": "BigInt64Array.prototype.length",
+    "section": "BigInt64Array",
+    "stage": "inside",
+    "model": "qwen2.5-coder:7b",
+    "pass": false,
+    "answer": {
+      "entry": "BigInt64Array.prototype.length",
+      "decision": "existing",
+      "atom": "lengthOf",
+      "existing": null,
+      "kind": "value",
+      "sentence": null,
+      "js": "value.length",
+      "params": [],
+      "parts": null,
+      "reason": null
+    },
+    "refusal": "Field `existing` is empty; when `decision` is existing, set it to the catalog atom id that already does this."
+  },
+  "BigInt64Array.prototype.map": {
+    "entry": "BigInt64Array.prototype.map",
+    "section": "BigInt64Array",
+    "stage": "inside",
+    "model": "qwen2.5-coder:7b",
+    "pass": false,
+    "answer": {
+      "entry": "BigInt64Array.prototype.map",
+      "decision": "existing",
+      "atom": "mapEach",
+      "existing": null,
+      "kind": "value",
+      "sentence": null,
+      "js": "list.map(fn)",
+      "params": [
+        [
+          "callbackfn",
+          "fn"
+        ]
+      ],
+      "parts": null,
+      "reason": null
+    },
+    "refusal": "Field `existing` is empty; when `decision` is existing, set it to the catalog atom id that already does this."
+  }
+}

@@ -1,0 +1,378 @@
+{
+  "BigInt64Array": {
+    "shared": {
+      "name": "Shared notes for BigInt64Array",
+      "limit": 1600,
+      "keep": 6,
+      "pinned": 3,
+      "notes": [
+        {
+          "tag": "refusal",
+          "text": "BigInt64Array.prototype.forEach: On the reference case callbackfn = {\"BigInt64Array\":[{\"bigint\":\"3\"},{\"bigint\":\"1\"},{\"bigint\":\"2\"}]}, thisArg = {\"function\":\"(anonymous)\",\"le",
+          "outcome": "refused"
+        },
+        {
+          "tag": "refusal",
+          "text": "BigInt64Array.prototype.includes: On the reference case searchElement = {\"BigInt64Array\":[{\"bigint\":\"3\"},{\"bigint\":\"1\"},{\"bigint\":\"2\"}]}, fromIndex = {\"bigint\":\"7\"}, the answ",
+          "outcome": "refused"
+        },
+        {
+          "tag": "refusal",
+          "text": "BigInt64Array.prototype.indexOf: On the reference case searchElement = {\"BigInt64Array\":[{\"bigint\":\"3\"},{\"bigint\":\"1\"},{\"bigint\":\"2\"}]}, fromIndex = {\"bigint\":\"7\"}, the answ",
+          "outcome": "refused"
+        },
+        {
+          "tag": "refusal",
+          "text": "BigInt64Array.prototype.lastIndexOf: On the reference case searchElement = {\"BigInt64Array\":[{\"bigint\":\"3\"},{\"bigint\":\"1\"},{\"bigint\":\"2\"}]}, fromIndex = {\"bigint\":\"7\"}, the answ",
+          "outcome": "refused"
+        },
+        {
+          "tag": "refusal",
+          "text": "BigInt64Array.prototype.map: On input arrayLike = [], mapfn = {\"function\":\"f\",\"length\":0}, thisArg = [], the answer returns {\"BigInt64Array\":\"\"} but the reference throws",
+          "outcome": "refused"
+        },
+        {
+          "tag": "refusal",
+          "text": "BigInt64Array.prototype.length: On the reference case elements = {\"BigInt64Array\":[{\"bigint\":\"3\"},{\"bigint\":\"1\"},{\"bigint\":\"2\"}]}, mapfn = {\"undefined\":true}, thisArg = {\"u",
+          "outcome": "refused"
+        }
+      ],
+      "examples": [
+        "clones().list(elements).and().maps().from(mapfn).to(thisArg).andThe().mapped() = BigInt64Array.from(elements, mapfn, thisArg)",
+        "clones().list(arrayLike).and().maps().from(mapfn).to(thisArg).andThe().mapped() = BigInt64Array.from(arrayLike, mapfn, thisArg)"
+      ],
+      "tally": [
+        [
+          "refusal",
+          {
+            "pass": 0,
+            "refused": 34,
+            "other": 0
+          }
+        ],
+        [
+          "new-atom",
+          {
+            "pass": 4,
+            "refused": 0,
+            "other": 0
+          }
+        ]
+      ],
+      "compactions": 25
+    },
+    "decide": {
+      "name": "Your notes as the decide step",
+      "limit": 1200,
+      "keep": 6,
+      "pinned": 3,
+      "notes": [
+        {
+          "tag": "write a new sentence for it",
+          "text": "BigInt64Array.prototype.findIndex: write a new sentence for it",
+          "outcome": "refused"
+        },
+        {
+          "tag": "write a new sentence for it",
+          "text": "BigInt64Array.prototype.join: write a new sentence for it",
+          "outcome": "refused"
+        },
+        {
+          "tag": "write a new sentence for it",
+          "text": "BigInt64Array.prototype.forEach: write a new sentence for it",
+          "outcome": "refused"
+        },
+        {
+          "tag": "write a new sentence for it",
+          "text": "BigInt64Array.prototype.includes: write a new sentence for it",
+          "outcome": "refused"
+        },
+        {
+          "tag": "write a new sentence for it",
+          "text": "BigInt64Array.prototype.indexOf: write a new sentence for it",
+          "outcome": "refused"
+        },
+        {
+          "tag": "write a new sentence for it",
+          "text": "BigInt64Array.prototype.lastIndexOf: write a new sentence for it",
+          "outcome": "refused"
+        },
+        {
+          "tag": "write a new sentence for it",
+          "text": "BigInt64Array.prototype.map: write a new sentence for it",
+          "outcome": "refused"
+        },
+        {
+          "tag": "write a new sentence for it",
+          "text": "BigInt64Array.prototype.length: write a new sentence for it",
+          "outcome": "refused"
+        }
+      ],
+      "examples": [
+        "BigInt64Array.prototype.keys: write a new sentence for it",
+        "BigInt64Array.prototype.length: write a new sentence for it",
+        "BigInt64Array.from: write a new sentence for it"
+      ],
+      "tally": [
+        [
+          "reuse entriesOf",
+          {
+            "pass": 0,
+            "refused": 1,
+            "other": 0
+          }
+        ],
+        [
+          "write a new sentence for it",
+          {
+            "pass": 18,
+            "refused": 31,
+            "other": 0
+          }
+        ]
+      ],
+      "compactions": 6
+    },
+    "frame": {
+      "name": "Your notes as the frame step",
+      "limit": 1200,
+      "keep": 6,
+      "pinned": 3,
+      "notes": [
+        {
+          "tag": "proposed",
+          "text": "BigInt64Array.prototype.forEach: xs.forEach(callbackfn, thisArg) with callbackfn:fn, thisArg:anypairs",
+          "outcome": "refused"
+        },
+        {
+          "tag": "proposed",
+          "text": "BigInt64Array.prototype.includes: xs.includes(searchElement, fromIndex) with searchElement:bigint, fromIndex:num",
+          "outcome": "refused"
+        },
+        {
+          "tag": "proposed",
+          "text": "BigInt64Array.prototype.indexOf: xs.indexOf(searchElement, fromIndex) with searchElement:bigint, fromIndex:num",
+          "outcome": "refused"
+        },
+        {
+          "tag": "proposed",
+          "text": "BigInt64Array.prototype.lastIndexOf: this.lastIndexOf(searchElement, fromIndex) with searchElement:bigint, fromIndex:num",
+          "outcome": "refused"
+        },
+        {
+          "tag": "proposed",
+          "text": "BigInt64Array.prototype.map: BigInt64Array.from(arrayLike, mapfn, thisArg) with arrayLike:list, mapfn:fn, thisArg:anypairs",
+          "outcome": "refused"
+        },
+        {
+          "tag": "proposed",
+          "text": "BigInt64Array.prototype.length: BigInt64Array.from(elements, mapfn, thisArg) with elements:list, mapfn:fn, thisArg:anypairs",
+          "outcome": "refused"
+        }
+      ],
+      "examples": [
+        "BigInt64Array.from: BigInt64Array.from(elements, mapfn, thisArg) with elements:list, mapfn:fn, thisArg:anypairs",
+        "BigInt64Array.from: BigInt64Array.from(arrayLike, mapfn, thisArg) with arrayLike:list, mapfn:fn, thisArg:anypairs"
+      ],
+      "tally": [
+        [
+          "proposed",
+          {
+            "pass": 4,
+            "refused": 33,
+            "other": 0
+          }
+        ]
+      ],
+      "compactions": 15
+    },
+    "shape": {
+      "name": "Your notes as the shape step",
+      "limit": 1200,
+      "keep": 6,
+      "pinned": 3,
+      "notes": [
+        {
+          "tag": "checks().if(·).has().item(·)",
+          "text": "xs.forEach(callbackfn, thisArg): checks().if(·).has().item(·)",
+          "outcome": "refused"
+        },
+        {
+          "tag": "checks().if(·).has().item(·)",
+          "text": "xs.includes(searchElement, fromIndex): checks().if(·).has().item(·)",
+          "outcome": "refused"
+        },
+        {
+          "tag": "checks().if(·).has().item(·)",
+          "text": "xs.indexOf(searchElement, fromIndex): checks().if(·).has().item(·)",
+          "outcome": "refused"
+        },
+        {
+          "tag": "checks().if(·).has().item(·)",
+          "text": "this.lastIndexOf(searchElement, fromIndex): checks().if(·).has().item(·)",
+          "outcome": "refused"
+        },
+        {
+          "tag": "clones().list(·).and().VERB().from(·).to(·)",
+          "text": "BigInt64Array.from(arrayLike, mapfn, thisArg): clones().list(·).and().VERB().from(·).to(·)",
+          "outcome": "refused"
+        },
+        {
+          "tag": "clones().list(·).and().VERB().from(·).to(·)",
+          "text": "BigInt64Array.from(elements, mapfn, thisArg): clones().list(·).and().VERB().from(·).to(·)",
+          "outcome": "refused"
+        }
+      ],
+      "examples": [
+        "BigInt64Array.from(elements, mapfn, thisArg): clones().list(·).and().VERB().from(·).to(·)",
+        "BigInt64Array.from(arrayLike, mapfn, thisArg): clones().list(·).and().VERB().from(·).to(·)"
+      ],
+      "tally": [
+        [
+          "checks().if(·).is().number()",
+          {
+            "pass": 0,
+            "refused": 1,
+            "other": 0
+          }
+        ],
+        [
+          "checks().if(·).is().nothing()",
+          {
+            "pass": 0,
+            "refused": 5,
+            "other": 0
+          }
+        ],
+        [
+          "clones().list(·).and().VERB().from(·).to(·)",
+          {
+            "pass": 4,
+            "refused": 12,
+            "other": 0
+          }
+        ],
+        [
+          "checks().if(·).has().item(·)",
+          {
+            "pass": 0,
+            "refused": 10,
+            "other": 0
+          }
+        ],
+        [
+          "list(·).VERB().first()",
+          {
+            "pass": 0,
+            "refused": 4,
+            "other": 0
+          }
+        ],
+        [
+          "checks().if(·).is().an().instance().of(·)",
+          {
+            "pass": 0,
+            "refused": 1,
+            "other": 0
+          }
+        ]
+      ],
+      "compactions": 12
+    },
+    "verb": {
+      "name": "Your notes as the verb step",
+      "limit": 1200,
+      "keep": 6,
+      "pinned": 3,
+      "notes": [
+        {
+          "tag": "copies",
+          "text": "this.copyWithin(target, start, end): copies",
+          "outcome": "refused"
+        },
+        {
+          "tag": "constructs",
+          "text": "new BigInt64Array(buffer, byteOffset, length): constructs",
+          "outcome": "refused"
+        },
+        {
+          "tag": "maps",
+          "text": "BigInt64Array.from(arrayLike, mapfn, thisArg): maps",
+          "outcome": "refused"
+        },
+        {
+          "tag": "maps",
+          "text": "BigInt64Array.from(arrayLike, mapfn, thisArg): maps",
+          "outcome": "refused"
+        },
+        {
+          "tag": "fills",
+          "text": "this.fill(value, start, end): fills",
+          "outcome": "refused"
+        },
+        {
+          "tag": "maps",
+          "text": "BigInt64Array.from(arrayLike, mapfn, thisArg): maps",
+          "outcome": "refused"
+        },
+        {
+          "tag": "maps",
+          "text": "BigInt64Array.from(arrayLike, mapfn, thisArg): maps",
+          "outcome": "refused"
+        },
+        {
+          "tag": "maps",
+          "text": "BigInt64Array.from(elements, mapfn, thisArg): maps",
+          "outcome": "refused"
+        }
+      ],
+      "examples": [
+        "BigInt64Array.from(elements, mapfn, thisArg): maps",
+        "BigInt64Array.from(arrayLike, mapfn, thisArg): maps"
+      ],
+      "tally": [
+        [
+          "constructs",
+          {
+            "pass": 0,
+            "refused": 5,
+            "other": 0
+          }
+        ],
+        [
+          "maps",
+          {
+            "pass": 4,
+            "refused": 1,
+            "other": 0
+          }
+        ],
+        [
+          "creates",
+          {
+            "pass": 0,
+            "refused": 2,
+            "other": 0
+          }
+        ],
+        [
+          "copies",
+          {
+            "pass": 0,
+            "refused": 1,
+            "other": 0
+          }
+        ],
+        [
+          "fills",
+          {
+            "pass": 0,
+            "refused": 1,
+            "other": 0
+          }
+        ]
+      ],
+      "compactions": 1
+    }
+  }
+}

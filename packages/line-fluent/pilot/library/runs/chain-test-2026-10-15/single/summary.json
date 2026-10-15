@@ -1,0 +1,71 @@
+{
+  "entries": 30,
+  "done": 30,
+  "inLibrary": 0,
+  "notExpressible": 7,
+  "knownGaps": 23,
+  "byDecision": {
+    "not-expressible": 7
+  },
+  "inside": {
+    "entries": 30,
+    "passed": 7,
+    "passRate": 0.23333333333333334,
+    "errors": 0,
+    "calls": 60,
+    "tokensIn": 21017.000000000004,
+    "tokensOut": 3178,
+    "costUsd": 0,
+    "minutes": 2.9,
+    "decisions": {
+      "not-expressible": 7
+    },
+    "failedOn": {
+      "schema": 13,
+      "equivalence": 10,
+      "types": 10,
+      "grammar": 6
+    }
+  },
+  "outside": {
+    "entries": 0,
+    "passed": 0,
+    "passRate": 0,
+    "errors": 0,
+    "calls": 0,
+    "tokensIn": 0,
+    "tokensOut": 0,
+    "costUsd": 0,
+    "minutes": 0,
+    "decisions": {},
+    "failedOn": {}
+  },
+  "user": {
+    "entries": 0,
+    "passed": 0,
+    "passRate": 0,
+    "errors": 0,
+    "calls": 0,
+    "tokensIn": 0,
+    "tokensOut": 0,
+    "costUsd": 0,
+    "minutes": 0,
+    "decisions": {},
+    "failedOn": {}
+  },
+  "sections": {
+    "BigInt64Array": {
+      "entries": 30,
+      "passed": 7,
+      "inside": 7,
+      "outside": 0,
+      "user": 0
+    }
+  },
+  "stoppedOnErrors": false,
+  "models": {
+    "inside": "qwen2.5-coder:7b",
+    "outside": "none",
+    "user": "none"
+  }
+}
