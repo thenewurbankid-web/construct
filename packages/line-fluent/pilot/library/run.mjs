@@ -29,6 +29,7 @@ import { claudeModel, claudeSession } from '../runner/claude-model.mjs';
 import { candidatesFor, CATALOG_PATH, REFERENCE_PATH } from '../../generator/generator.mjs';
 import { userStage } from './user-stage.mjs';
 import { batches, answerTurn, askTurn, tellTurn } from './batch.mjs';
+import { gatePool } from '../../gate/isolated/isolated.mjs';
 
 const readJson = (p) => JSON.parse(readFileSync(p, 'utf8'));
 const SKIP = Object.freeze({ check: 'skip', errors: [], fixes: [] });
@@ -185,7 +186,9 @@ export async function main(argv = process.argv.slice(2), { log = console.log, ma
   mkdirSync(o.out, { recursive: true });
   const resultsFile = `${o.out}/results.jsonl`;
   const all = readResults(resultsFile);
-  const typesCheck = makeTypesCheck(reference);
+  // Answers are gated in worker processes, so one that allocates gigabytes or loops cannot take the run down.
+  const gates = gatePool({ size: 4 });
+  const gateOf = (entry) => (answer) => gates.gate(entry.key, answer);
   const jobs = Number(o.jobs);
 
   // A run of model errors (a usage limit, the CLI gone) stops the run instead of filling it with failures.
@@ -203,12 +206,12 @@ export async function main(argv = process.argv.slice(2), { log = console.log, ma
   const doneIn = (stage) => new Set(all.filter((r) => r.stage === stage && !r.error).map((r) => r.key));
 
   if (Number(o.batch) > 0) {
-    await batchedStages(entries, { o, all, record, doneIn, stopped, jobs, makeModel, typesCheck, catalog });
+    await batchedStages(entries, { o, all, record, doneIn, stopped, jobs, makeModel, gateOf, catalog });
   } else {
     const insideDone = doneIn('inside');
     const insideModel = makeModel({ model: o.inside });
     await pool(entries.filter((e) => !insideDone.has(e.key)), jobs, async (e) => {
-      record(await runStage(e, 'inside', { model: insideModel, modelName: o.inside, gate: gateFor(e, { typesCheck }), catalog }));
+      record(await runStage(e, 'inside', { model: insideModel, modelName: o.inside, gate: gateOf(e), catalog }));
     }, stopped);
 
     if (o.outside !== 'none' && !stopped()) {
@@ -217,7 +220,7 @@ export async function main(argv = process.argv.slice(2), { log = console.log, ma
       const outsideModel = makeModel({ model: o.outside });
       await pool(entries.filter((e) => insideDone.has(e.key) || all.some((r) => r.key === e.key && r.stage === 'inside' && !r.error))
         .filter((e) => !passedInside.has(e.key) && !outsideDone.has(e.key)), jobs, async (e) => {
-        record(await runStage(e, 'outside', { model: outsideModel, modelName: o.outside, gate: gateFor(e, { typesCheck }), catalog }));
+        record(await runStage(e, 'outside', { model: outsideModel, modelName: o.outside, gate: gateOf(e), catalog }));
       }, stopped);
     }
 
@@ -229,12 +232,13 @@ export async function main(argv = process.argv.slice(2), { log = console.log, ma
       const person = makeModel({ model: o.user });
       const lastInside = (key) => [...all].reverse().find((r) => r.key === key && r.stage === 'inside' && !r.error);
       await pool(entries.filter((e) => lastInside(e.key) && !passed.has(e.key) && !userDone.has(e.key)), jobs, async (e) => {
-        record(await userStage(e, lastInside(e.key), { asker, user: person, gate: gateFor(e, { typesCheck }), catalog, rounds: Number(o.rounds), names: { asker: o.inside, user: o.user } }));
+        record(await userStage(e, lastInside(e.key), { asker, user: person, gate: gateOf(e), catalog, rounds: Number(o.rounds), names: { asker: o.inside, user: o.user } }));
       }, stopped);
     }
   }
 
   for (const m of opened) m.close();
+  gates.close();
   const { summary, library } = summarize(all, entries);
   summary.stoppedOnErrors = stopped();
   summary.models = { inside: o.inside, outside: o.outside, user: o.user };
@@ -248,10 +252,9 @@ export async function main(argv = process.argv.slice(2), { log = console.log, ma
  * The batched run (--batch n): turn 1 and turn 2 (refused ones, with their refusals) by the inside model, then the
  * user stage, every turn one call per batch of a section's entries. Results are recorded per entry, as unbatched.
  */
-async function batchedStages(entries, { o, all, record, doneIn, stopped, jobs, makeModel, typesCheck, catalog }) {
+async function batchedStages(entries, { o, all, record, doneIn, stopped, jobs, makeModel, gateOf, catalog }) {
   const size = Number(o.batch);
   const inside = makeModel({ model: o.inside });
-  const gateOf = (entry) => gateFor(entry, { typesCheck });
   const item = (entry, extra = {}) => ({ entry, candidates: candidatesFor(entry, catalog).slice(0, MAX_CANDIDATES), ...extra });
   const latest = (key, stage) => [...all].reverse().find((r) => r.key === key && r.stage === stage && !r.error);
   const fail = (group, stage, model, e, started) => group.forEach((it) => record({ key: it.entry.key, section: it.entry.section, stage, model, entry: it.entry.id, error: String(e?.message ?? e).slice(0, 300), costUsd: 0, ms: Date.now() - started }));
