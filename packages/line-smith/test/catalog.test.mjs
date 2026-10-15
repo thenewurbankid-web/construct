@@ -92,12 +92,13 @@ function generatedProperty(a) {
 let properties = 0;
 describe('every checkable atom equals its JS form (fast-check)', () => {
   for (const a of catalog.atoms) {
-    if (a.generated && a.check) {
+    if (a.generated && a.check && !Array.isArray(a.check)) {
       properties++;
       test(`${a.atom} == ${a.js[0]}`, async () => {
         await fc.assert(generatedProperty(a), { numRuns: NUM_RUNS });
       });
-    } else if (!a.generated && Array.isArray(a.check)) {
+    } else if (Array.isArray(a.check)) {
+      // Hand-written atoms and approved ones (gen-atoms writes their check set from the approved params).
       a.check.forEach((set, i) => {
         properties++;
         test(`${a.atom} == ${(set.js ?? a.js).join(' == ')}${a.check.length > 1 ? ` [${i + 1}]` : ''}`, async () => {

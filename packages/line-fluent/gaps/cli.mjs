@@ -8,7 +8,9 @@
 // printed. choose: the person's pick (or their own word, re-checked by the grammar and a read-back) is approved into
 // line-smith's approved.json, gen-atoms regenerates the catalog, and toAtoms runs on the file again to show the gap
 // is closed.
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { dirname } from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
@@ -20,7 +22,7 @@ import { claudeArgs, runClaude } from '../pilot/runner/claude-model.mjs';
 import { checkGrammar } from '../gate/grammar/grammar.mjs';
 import { gateFor } from '../pilot/library/run.mjs';
 import { makeTypesCheck } from '../gate/types/types.mjs';
-import { approvedEntry, REFERENCE_PATH, CATALOG_PATH } from '../generator/generator.mjs';
+import { approvedEntry, approveProposal, writeProposal, REFERENCE_PATH, CATALOG_PATH, GEN_ATOMS_PATH } from '../generator/generator.mjs';
 
 const require = createRequire(import.meta.url);
 const reference = () => JSON.parse(readFileSync(REFERENCE_PATH, 'utf8')).entries;
@@ -264,16 +266,15 @@ async function choose(state, reply, { model, outer = 'opus' }) {
     tries: 1, adds: true, approvedEntry: approvedEntry(pick.answer, { entry }), catalogEntry: null,
     note: `From the gap \`${state.gap.code}\` (${state.gap.type}); wording confirmed by the person; read back as “${pick.name ?? 'their word'}”.`,
   };
-  // Full registration (approved.json + gen-atoms) also needs the new verb in naming.json, check sets and the fluent
-  // runtime to speak the sentence; until that path exists, a confirmed atom is parked in docs/line/fluent/pending/ so
-  // nothing breaks Smith's tests. The approved entry is exactly what approve() will write.
-  const pending = fileURLToPath(new URL('../../../docs/line/fluent/pending/approved.json', import.meta.url));
-  const parked = existsSync(pending) ? JSON.parse(readFileSync(pending, 'utf8')) : { $comment: 'Atoms the owner confirmed, waiting for the full registry path (naming.json verb, check sets, fluent runtime).', atoms: [] };
-  parked.atoms = parked.atoms.filter((a) => a.atom !== proposal.approvedEntry.atom).concat({ ...proposal.approvedEntry, confirmedAt: new Date().toISOString(), note: proposal.note });
-  writeFileSync(pending, `${JSON.stringify(parked, null, 2)}\n`);
+  // Registered for real: approved.json (and any new verb into naming.json), gen-atoms regenerates the catalog, its
+  // checks and the fluent runtime, and toAtoms runs on the file again so the person sees the gap close.
+  const done = approveProposal(writeProposal(proposal));
+  execFileSync(process.execPath, [GEN_ATOMS_PATH], { cwd: dirname(dirname(GEN_ATOMS_PATH)), stdio: 'ignore' });
+  const after = gapsIn(state.file);
+  const used = pick.answer.atom in after.atoms;
   return {
-    state: { ...state, registered: null, parked: pick.answer.atom, sentence: pick.sentence },
-    say: `Confirmed the atom ${pick.answer.atom}: ${pick.sentence} (js: ${pick.answer.js}). It is parked in docs/line/fluent/pending/approved.json until the registry can take new verbs end to end.${state.more ? ` ${state.more} more gap(s) in this file; run scan again.` : ''}`,
+    state: { ...state, registered: pick.answer.atom, sentence: pick.sentence, newVerbs: done.newVerbs, gapsLeft: after.gaps.length },
+    say: `Registered the atom ${pick.answer.atom}: ${pick.sentence} (js: ${pick.answer.js}).${done.newVerbs.length ? ` New verb: ${done.newVerbs.join(', ')}.` : ''} ${used ? 'Your code now uses it.' : 'The gap is still open; run scan again.'}${after.gaps.length ? ` ${after.gaps.length} more gap(s) in this file; run scan again.` : ''}`,
   };
 }
 

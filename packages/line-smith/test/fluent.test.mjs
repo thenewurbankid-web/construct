@@ -7,6 +7,7 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import fc from 'fast-check';
 import { arb } from './support/gens.mjs';
+import { emitApprovedFluent } from '../scripts/lib-approved.mjs';
 import { clone, outcome, sameOutcome } from './support/harness.mjs';
 
 const require = createRequire(import.meta.url);
@@ -15,7 +16,9 @@ const fluent = require('../dist/fluent/index.js');
 const catalog = JSON.parse(readFileSync(new URL('../src/atoms/catalog.json', import.meta.url), 'utf8'));
 const everyGrammar = JSON.parse(readFileSync(new URL('../src/atoms/naming.json', import.meta.url), 'utf8')).grammar.every;
 const NUM_RUNS = Number(process.env.SMITH_RUNS ?? 100);
-const ENTRY = ['checks', 'clones', 'text', 'list', 'when', 'chooses', 'matches', 'attempts'];
+// The hand-written entries, plus the entries approved sentences start (src/fluent/approved.ts, generated).
+const APPROVED_ENTRY = emitApprovedFluent(JSON.parse(readFileSync(new URL('../src/atoms/approved.json', import.meta.url), 'utf8')).atoms).entries;
+const ENTRY = ['checks', 'clones', 'text', 'list', 'when', 'chooses', 'matches', 'attempts', ...APPROVED_ENTRY];
 // The forms before Atomic English, kept for one release.
 const DEPRECATED_ENTRY = ['choose', 'match', 'attempt'];
 const ENTRIES = [...ENTRY, ...DEPRECATED_ENTRY];

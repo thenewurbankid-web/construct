@@ -10,7 +10,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { checkApproved, emitApproved } from '../../line-smith/scripts/lib-approved.mjs';
+import { checkApproved, emitApproved, newVerbs } from '../../line-smith/scripts/lib-approved.mjs';
 import { runGate } from '../gate/assemble.mjs';
 import { checkGrammar } from '../gate/grammar/grammar.mjs';
 import { buildRequest, MAX_CANDIDATES } from '../pilot/request/request.mjs';
@@ -20,6 +20,7 @@ import { runPilot } from '../pilot/runner/runner.mjs';
 export const REFERENCE_PATH = fileURLToPath(new URL('../../line-codemod/bench/atoms/js-reference/reference.json', import.meta.url));
 export const CATALOG_PATH = fileURLToPath(new URL('../../line-smith/src/atoms/catalog.json', import.meta.url));
 export const APPROVED_PATH = fileURLToPath(new URL('../../line-smith/src/atoms/approved.json', import.meta.url));
+export const NAMING_PATH = fileURLToPath(new URL('../../line-smith/src/atoms/naming.json', import.meta.url));
 export const GEN_ATOMS_PATH = fileURLToPath(new URL('../../line-smith/scripts/gen-atoms.mjs', import.meta.url));
 export const PROPOSALS_DIR = fileURLToPath(new URL('./proposals/', import.meta.url));
 
@@ -184,7 +185,7 @@ export function writeProposal(proposal, dir = PROPOSALS_DIR) {
  * merges approved.json in, so approved atoms survive every regeneration.
  */
 export function approveProposal(file, {
-  approved = APPROVED_PATH, catalog = CATALOG_PATH, now = () => new Date().toISOString(),
+  approved = APPROVED_PATH, catalog = CATALOG_PATH, naming = NAMING_PATH, now = () => new Date().toISOString(),
 } = {}) {
   const proposal = readJson(file);
   if (proposal.status !== 'pending') throw new Error(`The proposal for ${proposal.entry} is ${proposal.status}, not pending.`);
@@ -202,7 +203,16 @@ export function approveProposal(file, {
   checkApproved([...data.atoms, source]);
   data.atoms.push(source);
   writeFileSync(approved, `${JSON.stringify(data, null, 2)}\n`);
-  const done = { ...proposal, status: 'approved', approvedAt, approved };
+  // A new verb the shape gate let through joins the grammar, so the trie reads the sentence from now on.
+  // Only the verbs array is rewritten, so the rest of the hand-kept file keeps its layout.
+  const text = readFileSync(naming, 'utf8');
+  const { grammar } = JSON.parse(text);
+  const verbs = newVerbs(source.fluent, grammar);
+  if (verbs.length) {
+    const all = [...new Set([...grammar.verbs, ...verbs])].sort();
+    writeFileSync(naming, text.replace(/("verbs": \[)[^\]]*?(\s*\])/, (_, open, close) => `${open}${all.map((v) => `\n      ${JSON.stringify(v)}`).join(',')}${close}`));
+  }
+  const done = { ...proposal, status: 'approved', approvedAt, approved, newVerbs: verbs };
   writeFileSync(file, `${JSON.stringify(done, null, 2)}\n`);
   return done;
 }

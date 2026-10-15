@@ -47,12 +47,13 @@ test('an approved atom is in the catalog after a regeneration, and after the nex
   try {
     const catalogFile = join(root, 'src/atoms/catalog.json');
     const approvedFile = join(root, 'src/atoms/approved.json');
+    regenerate(root); // the copied catalog holds the real approved atoms; start from this scratch's empty approved.json
     const before = atomsOf(root).length;
 
     const { proposal } = await generate(FLAT_MAP, { model: mockModel({ [FLAT_MAP]: answer }), approved: [] });
     assert.equal(proposal.adds, true);
     const file = writeProposal(proposal, join(root, 'proposals'));
-    approveProposal(file, { approved: approvedFile, catalog: catalogFile, now: () => '2026-10-15T00:00:00.000Z' });
+    approveProposal(file, { approved: approvedFile, catalog: catalogFile, naming: join(root, 'src/atoms/naming.json'), now: () => '2026-10-15T00:00:00.000Z' });
     assert.equal(atomsOf(root).length, before, 'approve itself never writes catalog.json');
 
     const out = regenerate(root);

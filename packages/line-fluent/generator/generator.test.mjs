@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { mockModel } from '../pilot/runner/mock-model.mjs';
 import {
-  approvedEntry, approveProposal, CATALOG_PATH, candidatesFor, findEntry, generate, proposalName, writeProposal,
+  approvedEntry, approveProposal, CATALOG_PATH, candidatesFor, findEntry, generate, proposalName, writeProposal, NAMING_PATH,
 } from './generator.mjs';
 import { runCli } from './cli.mjs';
 
@@ -85,7 +85,7 @@ test('a mock new-atom answer passes the gate and carries the approved.json entry
   const { atom, module, reads, js, pure, mutates, generated, verified } = proposal.catalogEntry;
   assert.deepEqual(
     { atom, module, reads, js, pure, mutates, generated, verified },
-    { atom: 'flatMapped', module: 'generated/approved', reads: 'clones list xs and flattens', js: ['xs.flatMap(f)'], pure: true, mutates: false, generated: true, verified: false },
+    { atom: 'flatMapped', module: 'generated/approved', reads: 'clones list xs and flattens', js: ['xs.flatMap(f)'], pure: true, mutates: false, generated: true, verified: true },
   );
 });
 
@@ -140,7 +140,11 @@ test('generate writes nothing; approve appends one atom to approved.json and mar
     assert.equal(file, join(dir, 'proposals', 'Array-prototype-flatMap.json'));
     assert.equal(readFileSync(catalogFile, 'utf8'), before);
 
-    const approved = approveProposal(file, { approved: approvedFile, catalog: catalogFile, now: () => 'A' });
+    const naming = join(dir, 'naming.json');
+    copyFileSync(NAMING_PATH, naming);
+    const approved = approveProposal(file, { approved: approvedFile, catalog: catalogFile, naming, now: () => 'A' });
+    assert.deepEqual(approved.newVerbs, [], 'flattens is a known verb; naming.json is left alone');
+    assert.equal(readFileSync(naming, 'utf8'), readFileSync(NAMING_PATH, 'utf8'));
     assert.equal(approved.status, 'approved');
     assert.equal(approved.approvedAt, 'A');
     assert.equal(readFileSync(catalogFile, 'utf8'), before);
@@ -149,6 +153,26 @@ test('generate writes nothing; approve appends one atom to approved.json and mar
     assert.equal(JSON.parse(readFileSync(file, 'utf8')).status, 'approved');
 
     assert.throws(() => approveProposal(file, { approved: approvedFile, catalog: catalogFile }), /is approved, not pending/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('approve adds a new verb to naming.json, sorted, and leaves the rest of the file as it was', () => {
+  const dir = scratch();
+  try {
+    const naming = join(dir, 'naming.json');
+    copyFileSync(NAMING_PATH, naming);
+    const approvedEntry = { atom: 'putsAtTo', entry: 'Map.prototype.set', fluent: 'map(m).puts().at(key).to(value)', js: 'm.set(key, value)', params: [['m', 'map'], ['key', 'prim'], ['value', 'prim']], kind: 'in-place' };
+    const file = join(dir, 'p.json');
+    writeFileSync(file, JSON.stringify({ status: 'pending', entry: 'Map.prototype.set', gate: { pass: true }, answer: { decision: 'new-atom' }, approvedEntry }));
+    const done = approveProposal(file, { approved: tempApproved(dir), catalog: tempCatalog(dir), naming, now: () => 'A' });
+    assert.deepEqual(done.newVerbs, ['puts']);
+    const before = readFileSync(NAMING_PATH, 'utf8');
+    const after = readFileSync(naming, 'utf8');
+    const verbs = JSON.parse(after).grammar.verbs;
+    assert.deepEqual(verbs, [...JSON.parse(before).grammar.verbs, 'puts'].sort());
+    assert.equal(after.replace('\n      "puts",', ''), before);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
