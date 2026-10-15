@@ -76,9 +76,9 @@ describe('fluent facade', () => {
   test('is().not() flips every check that follows it', () => {
     fc.assert(
       fc.property(prim, prim, (a, b) => {
-        assert.equal(fluent.checks().if(a).is().not().text(), !smith.isText(a));
-        assert.equal(fluent.checks().if(a).is().not().not().equal().to(b), smith.equals(a, b));
-        assert.equal(fluent.checks().if(a).is().not().an().instance().of(Object), !smith.isA(a, Object));
+        assert.equal(fluent.checks().if(a).is().not().text().andThe().answer(), !smith.isText(a));
+        assert.equal(fluent.checks().if(a).is().not().not().equal().to(b).andThe().answer(), smith.equals(a, b));
+        assert.equal(fluent.checks().if(a).is().not().an().instance().of(Object).andThe().answer(), !smith.isA(a, Object));
         assert.equal(fluent.checks().if(a).is().not().not().equalTo(b), smith.equals(a, b));
       }),
       { numRuns: NUM_RUNS },
@@ -89,7 +89,7 @@ describe('fluent facade', () => {
     fc.assert(
       fc.property(prim, prim, (a, b) => {
         let ran = 0;
-        const got = fluent.checks().if(a).and(() => (ran++, b));
+        const got = fluent.checks().if(a).and(() => (ran++, b)).andThe().answer();
         assert.deepStrictEqual(got, smith.and(a, () => b));
         assert.equal(ran, a ? 1 : 0);
         assert.deepStrictEqual(run(form('and'), ['a', 'b'], [a, b]), a && b);
@@ -102,7 +102,7 @@ describe('fluent facade', () => {
     fc.assert(
       fc.property(prim, prim, prim, (c, a, b) => {
         const ran = [];
-        const got = fluent.when(c).yields(() => (ran.push('a'), a)).otherwise(() => (ran.push('b'), b));
+        const got = fluent.when(c).yields(() => (ran.push('a'), a)).otherwise(() => (ran.push('b'), b)).andThe().chosen();
         assert.deepStrictEqual(got, c ? a : b);
         assert.deepEqual(ran, [c ? 'a' : 'b']);
       }),
@@ -115,7 +115,7 @@ describe('fluent facade', () => {
       fc.property(prim, prim, prim, prim, prim, (c1, c2, a, b, fallback) => {
         const ran = [];
         const second = () => (ran.push('c2'), c2);
-        const got = fluent.chooses().when(c1).yields(() => a).when(second).yields(() => b).otherwise(() => fallback);
+        const got = fluent.chooses().when(c1).yields(() => a).when(second).yields(() => b).otherwise(() => fallback).andThe().chosen();
         assert.deepStrictEqual(got, smith.choose([[c1, () => a], [() => c2, () => b]], () => fallback));
         assert.deepStrictEqual(got, c1 ? a : c2 ? b : fallback);
         assert.deepEqual(ran, c1 ? [] : ['c2']);
@@ -135,7 +135,7 @@ describe('fluent facade', () => {
           assert.deepStrictEqual(got, smith.match(value, { [k]: () => a }, () => fallback));
         }
         const want = smith.match(value, { [k]: () => a, other: () => 'other' }, () => fallback);
-        assert.deepStrictEqual(fluent.matches().value(value).on(k).yields(() => a).on('other').yields(() => 'other').otherwise(() => fallback), want);
+        assert.deepStrictEqual(fluent.matches().value(value).on(k).yields(() => a).on('other').yields(() => 'other').otherwise(() => fallback).andThe().matched(), want);
         assert.deepStrictEqual(fluent.match(value).on(k, () => a).on('other', () => 'other').otherwise(() => fallback), want);
       }),
       { numRuns: NUM_RUNS },
@@ -166,10 +166,10 @@ describe('fluent facade', () => {
           }
         };
         const full = [
-          (f) => fluent.attempts().to(f.body).and().recovers().with(f.recover).and().cleans().up().with(f.cleanup),
+          (f) => fluent.attempts().to(f.body).and().recovers().with(f.recover).and().cleans().up().with(f.cleanup).andThe().result(),
           (f) => fluent.attempt(f.body).onFailure(f.recover).finally(f.cleanup),
         ];
-        const bare = [(f) => fluent.attempts().to(f.body).and().cleans().up().with(f.cleanup), (f) => fluent.attempt(f.body).finally(f.cleanup)];
+        const bare = [(f) => fluent.attempts().to(f.body).and().cleans().up().with(f.cleanup).andThe().result(), (f) => fluent.attempt(f.body).finally(f.cleanup)];
         for (const sentence of full) {
           const [fluentLog, atomLog] = [[], []];
           const f = trace(fluentLog);
@@ -270,7 +270,7 @@ describe('every() sentences (R9)', () => {
 
   test('to().clone() is a new list, never xs; the items are what the body returns', () => {
     const xs = [1, 2];
-    const doubled = fluent.every(fluent.x).in(xs).is().mapped().to().clone().by().multiplying(fluent.x).by(1);
+    const doubled = fluent.every(fluent.x).in(xs).is().mapped().to().clone().by().multiplying(fluent.x).by(1).andThe().mapped();
     assert.notEqual(doubled, xs);
     assert.deepEqual(doubled, xs);
   });
@@ -287,11 +287,11 @@ describe('every() sentences (R9)', () => {
     const { every, x, y } = fluent;
     assert.throws(() => every(x).in([1]).is().kept().if(y).is().positive(), { name: 'ReferenceError', message: /y is not bound/ });
     // An empty list never runs the body, like the plain callback.
-    assert.deepEqual(every(x).in([]).is().kept().if(y).is().positive(), []);
+    assert.deepEqual(every(x).in([]).is().kept().if(y).is().positive().andThe().kept(), []);
   });
 
   test('checks().if() with no subject asks about the items; with one, it is the subject', () => {
-    assert.equal(fluent.checks().if(undefined).is().nothing(), true);
+    assert.equal(fluent.checks().if(undefined).is().nothing().andThe().answer(), true);
     assert.ok(fluent.checks().if() instanceof fluent.ChecksIfEach);
   });
 });

@@ -24,7 +24,7 @@ const valid = {
   'new-atom from the plan': answer({}),
   'existing: equals': answer({
     entry: 'Object.is', decision: 'existing', atom: null, existing: 'equals', kind: 'question',
-    sentence: 'checks().if(a).is().equal().to(b)', js: 'a === b', params: [['a', 'mixed'], ['b', 'mixed']],
+    sentence: 'checks().if(a).is().equal().to(b).andThe().answer()', js: 'a === b', params: [['a', 'mixed'], ['b', 'mixed']],
   }),
   'existing: mapEach, atom repeated, parts []': answer({
     entry: 'Array.prototype.map', decision: 'existing', atom: 'mapEach', existing: 'mapEach', kind: 'copy',
@@ -40,7 +40,7 @@ const valid = {
   }),
   'molecule: trimmed + sortedBy': answer({
     entry: 'example.trimAndSort', decision: 'molecule', atom: 'trimmedSorted', kind: 'copy',
-    sentence: 'clones().list(xs).and().sorts().by(order)', js: 'list.map((s) => s.trim()).toSorted(order)',
+    sentence: 'clones().list(xs).and().sorts().by(order).andThe().sorted()', js: 'list.map((s) => s.trim()).toSorted(order)',
     params: [['list', 'list'], ['order', 'cmp']], parts: ['trimmed', 'sortedBy'],
   }),
   'not-expressible with kind null': answer({

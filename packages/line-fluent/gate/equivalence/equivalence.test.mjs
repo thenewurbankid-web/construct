@@ -89,7 +89,7 @@ test('plugs into runGate next to checkGrammar', async () => {
   // The catalog's includes atom: its sentence passes the grammar, so only `js` decides.
   const includes = (js) => ({
     ...answer('Array.prototype.includes', js, [['xs', 'list'], ['x', 'prim']]),
-    atom: 'hasItem', sentence: 'checks().if(xs).has().item(x)',
+    atom: 'hasItem', sentence: 'checks().if(xs).has().item(x).andThe().answer()',
   });
   const gate = async (a) => runGate(a, { grammar: checkGrammar, equivalence: await equivalenceFor(a, { seed: 7 }) });
 

@@ -10,7 +10,7 @@
 // reads as a third-person verb (R1: `fills`, `copies`) and is not a near-miss of a known word (a typo keeps the
 // trie's replace-word fix); it passes as an alias of the verb class, reported in `aliases` for the person approving.
 import { readFileSync } from 'node:fs';
-import { parse } from '../../../line-smith/scripts/lib-sentence.mjs';
+import { actionCalls, parse } from '../../../line-smith/scripts/lib-sentence.mjs';
 import { sentences, wordClasses } from '../../grammar/next-words.mjs';
 import { editDistance } from './grammar.mjs';
 
@@ -50,7 +50,8 @@ const token = (word, args) => `${word}(${args.length ? '·' : ''})`;
 
 /** A known sentence's shape: content verbs as VERB, everything else literal. */
 export function shapeOf(fluent) {
-  return parse(fluent).map(({ word, args }) => token(contentVerbs.has(word) ? 'VERB' : word, args)).join('.');
+  // R10's return clause is checked on its own (grammar.mjs); a shape is the action's.
+  return actionCalls(fluent).map(({ word, args }) => token(contentVerbs.has(word) ? 'VERB' : word, args)).join('.');
 }
 
 // Class shapes: the third level. Subjects and role words are abstracted too, and a run of role-word arguments is one

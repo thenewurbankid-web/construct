@@ -19,6 +19,7 @@ export const RULES = [
   'R7. Every chain ends in a plain value and calls exactly one atom.',
   "R8. A new atom's plain name is the chain's words after the subject in camelCase, arguments in order: isGreaterThan, clonesAndSortsBy.",
   'R9. Callbacks become every() sentences: every(x).in(xs).is().mapped()...; the first word gives the result: checks() yes/no, every() list, the().first() one item, folds() one value, does() nothing.',
+  'R10. End every sentence with .andThe().<name>(), the name of what it returns: a participle (trimmed, sorted) or a noun (answer, parts).',
 ];
 
 // Every sentence shape the grammar gate accepts, each with one real example (gate/grammar/shapes.mjs).

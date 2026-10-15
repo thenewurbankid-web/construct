@@ -918,6 +918,9 @@
       "flattened": "clonesAndFlattens",
       "uniqueOf": "clonesAndDropsDuplicates"
     },
+    "returnWords": ["andThe"],
+    "returnNames": {"splits": "parts", "takes.first": "first", "takes.last": "last", "drops.duplicates": "deduplicated"},
+    "returned": ["answer", "chosen", "created", "deduplicated", "first", "flattened", "found", "joined", "kept", "last", "lowercased", "mapped", "matched", "parts", "replaced", "result", "reversed", "sorted", "total", "trimmed", "uppercased"],
     "every": {
       "$comment": "R9: arrow functions become every() sentences. A binder (every, any, first) takes an imported placeholder and is followed by in(list); everything after that in() is inside the every() sentence, where participles, -ing forms and is()-actions are allowed (R1, R4) and the copy is said as to().clone() (R5). `starts` is the first word of each sentence and the one kind of result it decides. `bodyAtoms` are the body words, one atom each; a body is exactly one of them. `sentences` is the R9 table and `nested` the nested callbacks (every(y).in(x)), `shapes` the index (at(i)) and does() forms, `async` and `nestedAsync` the async bodies (one at a time, or all().at().once()), each with its plain-JS twin; test/fluent.test.mjs runs both, test/grammar.test.mjs holds them to the rules. R11 (2026-10-15): does() and waiting() are withdrawn (effects and timers are not in the library); the async tables are empty until a pure async atom exists.",
       "starts": {
@@ -938,23 +941,23 @@
         "positive": "greaterThan"
       },
       "sentences": [
-        { "js": "xs.map((x) => x * 2)", "fluent": "every(x).in(xs).is().mapped().to().clone().by().multiplying(x).by(2)" },
-        { "js": "xs.filter((x) => x > 0)", "fluent": "every(x).in(xs).is().kept().if(x).is().positive()" },
-        { "js": "xs.every((x) => x > 0)", "fluent": "checks().if().every(x).in(xs).is().positive()" },
-        { "js": "xs.some((x) => x > 0)", "fluent": "checks().if().any(x).in(xs).is().positive()" },
-        { "js": "xs.find((x) => x > 0)", "fluent": "the().first(x).in(xs).that().is().positive()" },
-        { "js": "xs.reduce((total, x) => total + x, 0)", "fluent": "folds().every(x).in(xs).into(total).starting().at(0).by().adding(x).to(total)" }
+        { "js": "xs.map((x) => x * 2)", "fluent": "every(x).in(xs).is().mapped().to().clone().by().multiplying(x).by(2).andThe().mapped()" },
+        { "js": "xs.filter((x) => x > 0)", "fluent": "every(x).in(xs).is().kept().if(x).is().positive().andThe().kept()" },
+        { "js": "xs.every((x) => x > 0)", "fluent": "checks().if().every(x).in(xs).is().positive().andThe().answer()" },
+        { "js": "xs.some((x) => x > 0)", "fluent": "checks().if().any(x).in(xs).is().positive().andThe().answer()" },
+        { "js": "xs.find((x) => x > 0)", "fluent": "the().first(x).in(xs).that().is().positive().andThe().found()" },
+        { "js": "xs.reduce((total, x) => total + x, 0)", "fluent": "folds().every(x).in(xs).into(total).starting().at(0).by().adding(x).to(total).andThe().total()" }
       ],
       "nested": [
-        { "js": "rows.map((x) => x.map((y) => y * 2))", "fluent": "every(x).in(rows).is().mapped().to().clone().by().every(y).in(x).is().mapped().to().clone().by().multiplying(y).by(2)" },
-        { "js": "rows.map((x) => x.filter((y) => y > 0))", "fluent": "every(x).in(rows).is().mapped().to().clone().by().every(y).in(x).is().kept().if(y).is().positive()" },
-        { "js": "rows.filter((x) => x.some((y) => y > 0))", "fluent": "every(x).in(rows).is().kept().if().any(y).in(x).is().positive()" },
-        { "js": "rows.filter((x) => x.every((y) => y > 0))", "fluent": "every(x).in(rows).is().kept().if().every(y).in(x).is().positive()" }
+        { "js": "rows.map((x) => x.map((y) => y * 2))", "fluent": "every(x).in(rows).is().mapped().to().clone().by().every(y).in(x).is().mapped().to().clone().by().multiplying(y).by(2).andThe().mapped()" },
+        { "js": "rows.map((x) => x.filter((y) => y > 0))", "fluent": "every(x).in(rows).is().mapped().to().clone().by().every(y).in(x).is().kept().if(y).is().positive().andThe().mapped()" },
+        { "js": "rows.filter((x) => x.some((y) => y > 0))", "fluent": "every(x).in(rows).is().kept().if().any(y).in(x).is().positive().andThe().kept()" },
+        { "js": "rows.filter((x) => x.every((y) => y > 0))", "fluent": "every(x).in(rows).is().kept().if().every(y).in(x).is().positive().andThe().kept()" }
       ],
       "shapes": [
-        { "js": "xs.map((x, i) => x * i)", "fluent": "every(x).at(i).in(xs).is().mapped().to().clone().by().multiplying(x).by(i)" },
-        { "js": "xs.filter((x, i) => i > 0)", "fluent": "every(x).at(i).in(xs).is().kept().if(i).is().positive()" },
-        { "js": "xs.reduce((total, x, i) => total + i, 0)", "fluent": "folds().every(x).at(i).in(xs).into(total).starting().at(0).by().adding(i).to(total)" }
+        { "js": "xs.map((x, i) => x * i)", "fluent": "every(x).at(i).in(xs).is().mapped().to().clone().by().multiplying(x).by(i).andThe().mapped()" },
+        { "js": "xs.filter((x, i) => i > 0)", "fluent": "every(x).at(i).in(xs).is().kept().if(i).is().positive().andThe().kept()" },
+        { "js": "xs.reduce((total, x, i) => total + i, 0)", "fluent": "folds().every(x).at(i).in(xs).into(total).starting().at(0).by().adding(i).to(total).andThe().total()" }
       ],
       "async": [],
       "nestedAsync": []

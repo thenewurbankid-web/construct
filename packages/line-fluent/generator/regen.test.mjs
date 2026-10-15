@@ -39,7 +39,7 @@ const regenerate = (root, ...args) => execFileSync(process.execPath, [join(root,
 const atomsOf = (root) => JSON.parse(readFileSync(join(root, 'src/atoms/catalog.json'), 'utf8')).atoms;
 
 const answer = 'new-atom", "atom": "flatMapped", "existing": null, "kind": "copy", '
-  + '"sentence": "clones().list(xs).and().flattens()", "js": "xs.flatMap(f)", '
+  + '"sentence": "clones().list(xs).and().flattens().andThe().flattened()", "js": "xs.flatMap(f)", '
   + '"params": [["xs", "list"], ["f", "fn"]], "parts": null, "reason": null}';
 
 test('an approved atom is in the catalog after a regeneration, and after the next one', { skip: !ts7 && 'TypeScript 7 is not installed in packages/line-smith (npm install there)' }, async () => {

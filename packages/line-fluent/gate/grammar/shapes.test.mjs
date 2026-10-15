@@ -11,10 +11,10 @@ test('every known sentence has a shape the grammar holds', () => {
 });
 
 test('a new verb in a known shape passes, reported as a verb alias', () => {
-  assert.deepEqual(checkGrammar({ sentence: 'clones().list(xs).and().copies()' }), {
+  assert.deepEqual(checkGrammar({ sentence: 'clones().list(xs).and().copies().andThe().copied()' }), {
     check: 'pass', errors: [], fixes: [], aliases: [{ word: 'copies', class: 'verb' }], shape: 'clones().list(·).and().VERB()',
   });
-  assert.deepEqual(checkGrammar({ sentence: 'clones().list(xs).and().sorts().by(order)' }), { check: 'pass', errors: [], fixes: [] }, 'a known path still passes on the trie, with no aliases');
+  assert.deepEqual(checkGrammar({ sentence: 'clones().list(xs).and().sorts().by(order).andThe().sorted()' }), { check: 'pass', errors: [], fixes: [] }, 'a known path still passes on the trie, with no aliases');
 });
 
 test('a new verb in a shape the grammar lacks is refused with the nearest real sentences as examples', () => {
@@ -41,14 +41,14 @@ test('only a third-person verb form can join as a new verb (R1)', () => {
 });
 
 test('a new shape that follows the word-class rules passes, flagged for the person to confirm', () => {
-  const r = checkGrammar({ sentence: 'set(s).puts().at(key).to(value)' });
+  const r = checkGrammar({ sentence: 'set(s).puts().at(key).to(value).andThe().put()' });
   assert.equal(r.check, 'pass');
   assert.deepEqual(r.newShape, { shape: 'set(·).VERB().at(·).to(·)', like: r.newShape.like });
   // A new verb in a shape the catalog already has is an alias, not a new shape.
-  const known = checkGrammar({ sentence: 'text(s).cuts().by(sep)' });
+  const known = checkGrammar({ sentence: 'text(s).cuts().by(sep).andThe().cut()' });
   assert.equal(known.newShape, undefined);
   assert.deepEqual(known.aliases, [{ word: 'cuts', class: 'verb' }]);
-  assert.equal(checkGrammar({ sentence: 'map(m).removes().at(key)' }).check, 'pass');
+  assert.equal(checkGrammar({ sentence: 'map(m).removes().at(key).andThe().removed()' }).check, 'pass');
   assert.equal(checkGrammar({ sentence: 'map(m).sets().by(key).and(() => value)' }).check, 'fail', 'a connector taking an argument breaks R6');
   assert.equal(checkGrammar({ sentence: 'text(s).pads(n).with(c)' }).check, 'fail', 'a verb taking its own argument breaks R3');
 });

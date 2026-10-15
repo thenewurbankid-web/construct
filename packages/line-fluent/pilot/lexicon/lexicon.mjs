@@ -10,7 +10,7 @@
 //              output is grammatical), the VERB slot filled from the phrase table or the member's tagged verb; each
 //              candidate scored by how well its words cover the code's units, plus the LM, minus a length penalty
 import { SHAPES } from '../../gate/grammar/shapes.mjs';
-import { parse } from '../../../line-smith/scripts/lib-sentence.mjs';
+import { actionCalls } from '../../../line-smith/scripts/lib-sentence.mjs';
 import { wordsOf, verbOf, SUBJECT_OF_GEN } from '../build/build.mjs';
 
 /** Member names that ask a yes/no question (R4: they take the checks().if() frame). */
@@ -33,7 +33,8 @@ export function tokenizeCode(js, params = []) {
 }
 
 /** Sentence tokens: each call as its word, with · when it takes an argument. */
-export const tokenizeSentence = (fluent) => parse(fluent).map(({ word, args }) => (args.length ? `${word}(·)` : word));
+// The action only: R10's return clause is derived from it, so it carries nothing to learn.
+export const tokenizeSentence = (fluent) => actionCalls(fluent).map(({ word, args }) => (args.length ? `${word}(·)` : word));
 
 /** BPE: learns `rounds` merges of the most frequent adjacent pairs (count >= min) over token sequences. */
 export function learnBpe(seqs, { rounds = 50, min = 3 } = {}) {

@@ -24,9 +24,9 @@ test('index ranks the most direct snippet first, then atoms with a fluent senten
 test('hit: a method call shows the fluent sentence and the atom id', () => {
   const h = at('includes');
   assert.equal(h.atom, 'hasItem');
-  assert.equal(h.fluent, 'checks().if(xs).has().item(x)');
+  assert.equal(h.fluent, 'checks().if(xs).has().item(x).andThe().answer()');
   assert.equal(h.contents.kind, 'markdown');
-  assert.match(h.contents.value, /```line\nchecks\(\)\.if\(xs\)\.has\(\)\.item\(x\)\n```/);
+  assert.match(h.contents.value, /```line\nchecks\(\)\.if\(xs\)\.has\(\)\.item\(x\)\.andThe\(\)\.answer\(\)\n```/);
   assert.match(h.contents.value, /\*\*atom\*\* `hasItem` · sequences/);
   assert.match(h.contents.value, /Also matches: `hasText`, `omit`/);
   assert.deepEqual(h.range, { start: { line: 0, character: 14 }, end: { line: 0, character: 22 } });
@@ -35,7 +35,7 @@ test('hit: a method call shows the fluent sentence and the atom id', () => {
 test('hit: an LSP position works the same as an offset, and chained calls resolve separately', () => {
   const h = hoverAt(index, SRC, { line: 5, character: 25 });
   assert.equal(h.atom, 'sortedBy');
-  assert.equal(h.fluent, 'clones().list(xs).and().sorts().by(order)');
+  assert.equal(h.fluent, 'clones().list(xs).and().sorts().by(order).andThe().sorted()');
   assert.equal(at('map').atom, 'mapEach');
 });
 
@@ -70,5 +70,5 @@ test('no sentence: an atom without a fluent sentence still shows its id and read
 test('fluentFor (T2.1a) is used before the catalog sentence, which stays the fallback', () => {
   const fluentFor = (atom) => (atom === 'largestOf' ? 'takes().the().largest().of(ns)' : null);
   assert.equal(hoverAt(index, SRC, SRC.indexOf('max'), { fluentFor }).fluent, 'takes().the().largest().of(ns)');
-  assert.equal(hoverAt(index, SRC, SRC.indexOf('includes'), { fluentFor }).fluent, 'checks().if(xs).has().item(x)');
+  assert.equal(hoverAt(index, SRC, SRC.indexOf('includes'), { fluentFor }).fluent, 'checks().if(xs).has().item(x).andThe().answer()');
 });

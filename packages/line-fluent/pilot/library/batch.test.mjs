@@ -46,7 +46,7 @@ test('a batched run: turn 1, turn 2 with the refusal, then the user stage, all r
   const dir = mkdtempSync(join(tmpdir(), 'batch-run-'));
   try {
     const seen = [];
-    const good = (key) => `{"entry": "${key}", "decision": "existing", "atom": null, "existing": "getFrom", "kind": "value", "sentence": "map(m).gives().at(key)", "js": "m.get(key)", "params": [["m", "map"], ["key", "prim"]], "parts": null, "reason": null}`;
+    const good = (key) => `{"entry": "${key}", "decision": "existing", "atom": null, "existing": "getFrom", "kind": "value", "sentence": "map(m).gives().at(key).andThe().given()", "js": "m.get(key)", "params": [["m", "map"], ["key", "prim"]], "parts": null, "reason": null}`;
     const bad = (key) => `{"entry": "${key}", "decision": "new-atom"}`;
     // haiku: turn 1 answers get well and has badly; turn 2 still badly; after the person speaks, well.
     const makeModel = ({ model }) => async (req) => {

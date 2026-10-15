@@ -67,14 +67,16 @@ test('illegal continuations are refused', () => {
 test('at() offers least and most; at().most(b) is whole', () => {
   const r = nextWords('checks().if(a).is().at()');
   assert.deepEqual(r.legal, ['least', 'most']);
-  assert.equal(nextWords('checks().if(a).is().at().most(b)').complete, true);
+  assert.deepEqual(nextWords('checks().if(a).is().at().most(b)').legal, ['andThe']);
+  assert.equal(nextWords('checks().if(a).is().at().most(b).andThe().answer()').complete, true);
 });
 
 test('R9 bodies nest deeper than the tables show', () => {
   const two = 'every(x).in(rows).is().mapped().to().clone().by().every(y).in(x).is().mapped().to().clone().by()';
   assert.ok(nextWords(two).legal.includes('every'));
-  assert.equal(nextWords(`${two}.every(z).in(y).is().kept().if(z).is().positive()`).complete, true);
-  assert.equal(nextWords(`${two}.every(z).in(y).is().kept().if().any(w).in(z).is().positive()`).complete, true);
+  // The nested bodies end where the sentence's return clause may start (R10; its name is the gate's to check).
+  assert.ok(nextWords(`${two}.every(z).in(y).is().kept().if(z).is().positive()`).legal.includes('andThe'));
+  assert.ok(nextWords(`${two}.every(z).in(y).is().kept().if().any(w).in(z).is().positive()`).legal.includes('andThe'));
 });
 
 test('a trailing partial word filters the completions', () => {

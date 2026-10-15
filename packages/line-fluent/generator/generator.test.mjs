@@ -15,7 +15,7 @@ const FLAT_MAP = 'Array.prototype.flatMap';
 // Text after the prefill `{"entry": "<id>", "decision": "`.
 const rest = (fields) => {
   const answer = {
-    atom: 'flatMapped', existing: null, kind: 'copy', sentence: 'clones().list(xs).and().flattens()',
+    atom: 'flatMapped', existing: null, kind: 'copy', sentence: 'clones().list(xs).and().flattens().andThe().flattened()',
     js: 'xs.flatMap(f)', params: [['xs', 'list'], ['f', 'fn']], parts: null, reason: null, ...fields,
   };
   const { decision = 'new-atom', ...ordered } = answer;
@@ -79,7 +79,7 @@ test('a mock new-atom answer passes the gate and carries the approved.json entry
   assert.equal(proposal.gate.pass, true);
   assert.equal(proposal.adds, true);
   assert.deepEqual(proposal.approvedEntry, {
-    atom: 'flatMapped', entry: FLAT_MAP, fluent: 'clones().list(xs).and().flattens()', js: 'xs.flatMap(f)',
+    atom: 'flatMapped', entry: FLAT_MAP, fluent: 'clones().list(xs).and().flattens().andThe().flattened()', js: 'xs.flatMap(f)',
     params: [['xs', 'list'], ['f', 'fn']], kind: 'copy',
   });
   const { atom, module, reads, js, pure, mutates, generated, verified } = proposal.catalogEntry;
@@ -163,7 +163,7 @@ test('approve adds a new verb to naming.json, sorted, and leaves the rest of the
   try {
     const naming = join(dir, 'naming.json');
     copyFileSync(NAMING_PATH, naming);
-    const approvedEntry = { atom: 'putsAtTo', entry: 'Map.prototype.set', fluent: 'clones().map(m).and().puts().at(key).to(value)', js: 'new Map(m).set(key, value)', params: [['m', 'map'], ['key', 'prim'], ['value', 'prim']], kind: 'copy' };
+    const approvedEntry = { atom: 'putsAtTo', entry: 'Map.prototype.set', fluent: 'clones().map(m).and().puts().at(key).to(value).andThe().put()', js: 'new Map(m).set(key, value)', params: [['m', 'map'], ['key', 'prim'], ['value', 'prim']], kind: 'copy' };
     const file = join(dir, 'p.json');
     writeFileSync(file, JSON.stringify({ status: 'pending', entry: 'Map.prototype.set', gate: { pass: true }, answer: { decision: 'new-atom' }, approvedEntry }));
     const done = approveProposal(file, { approved: tempApproved(dir), catalog: tempCatalog(dir), naming, now: () => 'A' });
@@ -182,7 +182,7 @@ test('approve refuses gate failures, reuse answers and taken atom ids without wr
   const dir = scratch();
   try {
     const catalogFile = tempCatalog(dir);
-    const approvedFile = tempApproved(dir, [{ atom: 'flatMapped', entry: 'x', fluent: 'f()', js: 'x', params: [], kind: 'value' }]);
+    const approvedFile = tempApproved(dir, [{ atom: 'flatMapped', entry: 'x', fluent: 'array(xs).flattens().andThe().flattened()', js: 'x', params: [], kind: 'value' }]);
     const before = readFileSync(approvedFile, 'utf8');
     const opts = { approved: approvedFile, catalog: catalogFile };
     const save = async (id, model) => writeProposal((await generate(id, { model, catalog })).proposal, join(dir, id));

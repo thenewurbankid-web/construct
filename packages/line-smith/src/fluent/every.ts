@@ -22,6 +22,7 @@
 // becomes a molecule in the app, named for its use case, so the body words end the sentence:
 // nothing chains after them (a type error), and a placeholder that reaches a plain atom or an
 // operator throws instead of computing. How a sentence calls a molecule is still open (R9).
+import { returns, type Returns } from './returns';
 import * as atoms from '../atoms';
 
 const MULTI_STEP =
@@ -123,10 +124,12 @@ type Bound<S, A, Word extends string> =
  * innermost last: 'list' collects the body's values (map), Fixed<O> returns O whatever the body
  * returns (filter, every, some, find, fold).
  */
-interface Fixed<O> {
+interface Fixed<O, N extends string = string> {
   // Not `fixed`: every string has a `fixed()` method (String.prototype.fixed), so 'list' would match.
   readonly layer: 'fixed';
   readonly returns: O;
+  /** R10: what the sentence calls what it returns, when this layer is the outermost. */
+  readonly named: N;
 }
 /** 'list' collects the body's values (map); 'nothing' returns nothing (does); Fixed<O> returns O. */
 type Layer = 'list' | 'nothing' | Fixed<unknown>;
@@ -134,7 +137,12 @@ type Settled<W extends readonly Layer[], R> = W extends readonly [...infer Rest 
   ? Settled<Rest, Last extends Fixed<infer O> ? O : Last extends 'nothing' ? void : R[]>
   : R;
 /** An async body (one that returns a Promise) makes the whole sentence return a Promise. */
-type Apply<W extends readonly Layer[], R> = [R] extends [Promise<infer U>] ? Promise<Settled<W, U>> : Settled<W, R>;
+type Plain<W extends readonly Layer[], R> = [R] extends [Promise<infer U>] ? Promise<Settled<W, U>> : Settled<W, R>;
+/** R10: the name of what the sentence returns, from its outermost layer (a map is `mapped`). */
+type NameOfLayer<L> = L extends 'list' ? 'mapped' : L extends Fixed<unknown, infer N> ? N : never;
+type OuterName<W extends readonly Layer[]> = W extends readonly [infer First, ...unknown[]] ? NameOfLayer<First> : never;
+/** A finished sentence: its value, waiting for `andThe().<name>()` (R10). */
+type Apply<W extends readonly Layer[], R> = Returns<Plain<W, R>, OuterName<W>>;
 /** Where a body may wait: in a list (map) or for nothing (does), never in a fold or a question. */
 type Waits<W extends readonly Layer[]> = W extends readonly [...unknown[], 'list' | 'nothing'] ? true : false;
 
@@ -171,24 +179,29 @@ interface Binding {
  * with an early return would) or all at once, and `settle` hands the atom the awaited answers.
  */
 interface Shape {
+  /** R10: the name of what the sentence returns when it is the outermost. */
+  readonly name: string;
   readonly sync: (items: readonly unknown[], callback: (value: unknown, index: number) => unknown) => unknown;
   readonly settle: (items: readonly unknown[], answers: readonly unknown[]) => unknown;
   readonly stop?: (answer: unknown) => boolean;
 }
 const answered = (answers: readonly unknown[]) => (_: unknown, index: number) => answers[index];
-const MAP: Shape = { sync: atoms.mapEach, settle: (items, answers) => atoms.mapEach(items, answered(answers)) };
-const FILTER: Shape = { sync: atoms.keepWhere, settle: (items, answers) => atoms.keepWhere(items, answered(answers)) };
+const MAP: Shape = { name: 'mapped', sync: atoms.mapEach, settle: (items, answers) => atoms.mapEach(items, answered(answers)) };
+const FILTER: Shape = { name: 'kept', sync: atoms.keepWhere, settle: (items, answers) => atoms.keepWhere(items, answered(answers)) };
 const EVERY: Shape = {
+  name: 'answer',
   sync: atoms.isEveryWhere,
   settle: (items, answers) => atoms.isEveryWhere(atoms.part(items, 0, answers.length), answered(answers)),
   stop: (answer) => !answer,
 };
 const SOME: Shape = {
+  name: 'answer',
   sync: atoms.hasAnyWhere,
   settle: (items, answers) => atoms.hasAnyWhere(atoms.part(items, 0, answers.length), answered(answers)),
   stop: (answer) => !!answer,
 };
 const FIND: Shape = {
+  name: 'found',
   sync: atoms.findFirst,
   settle: (items, answers) => atoms.findFirst(atoms.part(items, 0, answers.length), answered(answers)),
   stop: (answer) => !!answer,
@@ -217,7 +230,9 @@ const sentence =
       if (b.parallel) return atoms.allOf(atoms.mapEach(items, callback)).then((answers) => shape.settle(items, answers));
       return oneAtATime(items, callback, shape);
     };
-    return b.close(body.async ? later(step) : step);
+    const result = b.close(body.async ? later(step) : step);
+    // Only the outermost sentence names what it returns; a nested one is a body (R10).
+    return b.close === run ? returns(result, shape.name) : result;
   };
 
 /** `all().at()`: waits for `once()`. */
@@ -310,8 +325,8 @@ export class BodySubject<K extends string, V, W extends readonly Layer[]> {
 export class Kept<S extends Scope, T, W extends readonly Layer[]> {
   constructor(private readonly finish: Close) {}
 
-  if(): ChecksIfEach<S, [...W, Fixed<T[]>]>;
-  if<A>(subject: Bound<S, A, 'if'>): BodySubject<NameOf<A>, S[NameOf<A> & keyof S], [...W, Fixed<T[]>]>;
+  if(): ChecksIfEach<S, [...W, Fixed<T[], 'kept'>]>;
+  if<A>(subject: Bound<S, A, 'if'>): BodySubject<NameOf<A>, S[NameOf<A> & keyof S], [...W, Fixed<T[], 'kept'>]>;
   if(...subject: [unknown?]): unknown {
     return subject.length ? new BodySubject(subject[0], this.finish) : new ChecksIfEach(this.finish);
   }
@@ -408,7 +423,7 @@ export class All<S extends Scope, N extends string, W extends readonly Layer[]> 
     return new All<Bind<S, NameOf<A>, number>, N, W>(this.close, this.name, this.shape, (index as Placeholder).name);
   }
 
-  in<A>(items: ListArg<S, A>): AllIn<N, ItemIn<S, A>, [...W, Fixed<boolean>]> {
+  in<A>(items: ListArg<S, A>): AllIn<N, ItemIn<S, A>, [...W, Fixed<boolean, 'answer'>]> {
     return new AllIn({ close: this.close, name: this.name, index: this.index, items }, this.shape);
   }
 }
@@ -433,8 +448,8 @@ export class ChecksIfEach<S extends Scope = {}, W extends readonly Layer[] = []>
 export class TheFirstIn<N extends string, T> {
   constructor(private readonly binding: Binding) {}
 
-  that(): BodySubject<N, T, [Fixed<T | undefined>]> {
-    return new BodySubject<N, T, [Fixed<T | undefined>]>(new Placeholder(this.binding.name), sentence(this.binding, FIND));
+  that(): BodySubject<N, T, [Fixed<T | undefined, 'found'>]> {
+    return new BodySubject<N, T, [Fixed<T | undefined, 'found'>]>(new Placeholder(this.binding.name), sentence(this.binding, FIND));
   }
 
   all(): AllAtOnce<Omit<TheFirstIn<N, T>, 'all'>> {
@@ -471,8 +486,8 @@ export function the(): The {
 export class FoldsFrom<S extends Scope, A> {
   constructor(private readonly finish: Close) {}
 
-  by(): ValueBody<S, [Fixed<A>]> {
-    return new ValueBody<S, [Fixed<A>]>(this.finish);
+  by(): ValueBody<S, [Fixed<A, 'total'>]> {
+    return new ValueBody<S, [Fixed<A, 'total'>]>(this.finish);
   }
 }
 
@@ -482,13 +497,16 @@ export class FoldsStarting<S extends Scope, N extends string, T, M extends strin
   at<A>(start: A): FoldsFrom<Bind<Bind<S, N, T>, M, A>, A> {
     const { name, index, items } = this.binding;
     return new FoldsFrom((body) =>
-      atoms.reduceTo(
-        items as readonly T[],
-        (sofar: A, value: T, at: number) => {
-          const values = new Map<string, unknown>([[this.into, sofar], [name, value]]);
-          return body(index === undefined ? values : values.set(index, at)) as A;
-        },
-        start,
+      returns(
+        atoms.reduceTo(
+          items as readonly T[],
+          (sofar: A, value: T, at: number) => {
+            const values = new Map<string, unknown>([[this.into, sofar], [name, value]]);
+            return body(index === undefined ? values : values.set(index, at)) as A;
+          },
+          start,
+        ),
+        'total',
       ),
     );
   }

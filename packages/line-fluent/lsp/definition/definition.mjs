@@ -2,14 +2,15 @@
 // buildIndex() joins the Smith catalog (atoms[]) with the C1 reference (entries[]); definitionAt()
 // finds the catalog atom whose sentence words cover a cursor offset. Deterministic, no model.
 import { readFileSync } from 'node:fs';
-import { parse } from '../../../line-smith/scripts/lib-sentence.mjs';
+import { actionCalls, parse } from '../../../line-smith/scripts/lib-sentence.mjs';
 
 const readJson = (rel) => JSON.parse(readFileSync(new URL(rel, import.meta.url), 'utf8'));
 const defaultCatalog = () => readJson('../../../line-smith/src/atoms/catalog.json');
 const defaultReference = () => readJson('../../../line-codemod/bench/atoms/js-reference/reference.json');
 
 /** A sentence's word key: its words in order, args dropped, joined by '.'. */
-export const wordKey = (sentence) => parse(sentence).map((c) => c.word).join('.');
+// R10's return clause is not part of what a sentence's words look up.
+export const wordKey = (sentence) => actionCalls(sentence).map((c) => c.word).join('.');
 
 const CALL = /(new\s+)?(\.?)([A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*)\s*\(/g;
 

@@ -180,6 +180,13 @@ first word still decides the kind of value (R9); R10 names it. R7 holds: the cha
 `.<name>()` returns the plain value. Inside an `every()` body, steps are not sentences and take no return clause; the
 `every()` sentence itself does: `every(x).in(xs).is().mapped().to().clone().by().multiplying(x).by(2).andThe().mapped()`.
 
+Built (2026-10-15): `scripts/lib-return.mjs` derives the name; every catalog and R9 sentence carries its clause; the
+fluent runtime ends each sentence in `Returns<T, Name>` (`src/fluent/returns.ts`), so `andThe()` offers only the right
+name and any other is a `tsc` error (`test/types/fluent.types.ts`); `test/grammar.test.mjs`, the fluent gate
+(`checkGrammar`, which checks the action first, then the clause) and approval all refuse a missing or wrong clause.
+Builders and models never write the clause: clarify, gap filling and the rules builder add the derived one. Readings
+and R8 plain names come from the action only.
+
 **R11. Atoms, molecules and organisms are pure (owner, 2026-10-15).** A unit in the library never changes its inputs,
 never reads anything it is not given, and never has an effect. Same inputs, same result.
 - *In-place built-ins become copies:* `m.set(key, value)` is `new Map(m).set(key, value)`, said with `clones()`

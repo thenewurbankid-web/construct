@@ -9,7 +9,8 @@
 //                    person's example; check(..., {example}) runs that JS on the example and must reproduce it exactly.
 import { readFileSync } from 'node:fs';
 import fc from 'fast-check';
-import { parse } from '../../line-smith/scripts/lib-sentence.mjs';
+import { actionCalls, parse } from '../../line-smith/scripts/lib-sentence.mjs';
+import { withReturn } from '../../line-smith/scripts/lib-return.mjs';
 import { arb } from '../../line-smith/test/support/gens.mjs';
 import { checkGrammar } from '../gate/grammar/grammar.mjs';
 import { FRAME_VERBS, looksLikeVerb } from '../gate/grammar/shapes.mjs';
@@ -38,6 +39,7 @@ export const READABLE = {
   undef: [undefined],
 };
 
+const RETURN_NAMES = JSON.parse(readFileSync(new URL('../../line-smith/src/atoms/naming.json', import.meta.url), 'utf8')).grammar.returnNames;
 const isName = (arg) => /^[A-Za-z_$][\w$]*$/.test(arg);
 
 const wordsOf = (calls) => calls.map((c) => c.word).join('.');
@@ -47,7 +49,7 @@ const argsOf = (calls) => calls.flatMap((c) => c.args);
 const BY_PATH = new Map();
 for (const atom of CATALOG) {
   if (!atom.fluent) continue;
-  const key = wordsOf(parse(atom.fluent));
+  const key = wordsOf(actionCalls(atom.fluent)); // R10's return clause is the rules', not the person's to say
   if (!BY_PATH.has(key)) BY_PATH.set(key, []);
   BY_PATH.get(key).push(atom);
 }
@@ -73,15 +75,15 @@ const swap = (text, from, to) => from.reduce((t, name, i) => t.replace(new RegEx
 export function resolveSentence(sentence) {
   let calls;
   try {
-    calls = parse(sentence);
+    calls = actionCalls(sentence);
   } catch {
     return null;
   }
   const args = argsOf(calls);
-  const atom = (BY_PATH.get(wordsOf(calls)) ?? []).find((a) => argsOf(parse(a.fluent)).length === args.length);
+  const atom = (BY_PATH.get(wordsOf(calls)) ?? []).find((a) => argsOf(actionCalls(a.fluent)).length === args.length);
   if (!atom) return null;
   const params = (atom.check?.[0]?.params ?? []).map(([name]) => name);
-  const fluentArgs = argsOf(parse(atom.fluent));
+  const fluentArgs = argsOf(actionCalls(atom.fluent));
   const gensOf = (atom.check?.[0]?.params ?? []).map(([, g]) => g);
   // The person's inputs: the sentence's arguments that are names (a literal like 18 is part of the sentence).
   const inputs = args.map((a, i) => ({ name: a, gen: gensOf[i] })).filter((x) => isName(x.name));
@@ -124,7 +126,14 @@ async function holdsUp(atom) {
  * @param {{example?: {inputs: Record<string, any>, output: any} | string, js?: string}} [opts] Step 5's parsed example and drafted JS.
  * @returns {Promise<{ok: boolean, plain: string, example?: string, reason?: string, js?: string, atom?: string, aliases?: object[]}>} The verdict.
  */
-export async function checkSentence(sentence, opts = {}) {
+export async function checkSentence(suggested, opts = {}) {
+  // R10's return clause is derived, never asked for: a suggestion without it (or with a wrong one) gets the rules'.
+  let sentence = suggested;
+  try {
+    sentence = withReturn(suggested, RETURN_NAMES);
+  } catch {
+    // not a chain of calls: the grammar says so below
+  }
   const grammar = checkGrammar({ sentence });
   if (grammar.check !== 'pass') return { ok: false, plain: sentence, reason: `it does not read as Atomic English (${grammar.errors[0]})` };
   if (opts.js) return checkDraft(sentence, opts, grammar);

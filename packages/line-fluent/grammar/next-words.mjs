@@ -43,6 +43,9 @@ const classes = {
   gerund: ev.gerunds,
   everyRole: ev.roleWords,
   everyWord: ev.words,
+  // R10: the return clause, `.andThe().<name>()`.
+  returnWord: grammar.returnWords ?? [],
+  returned: grammar.returned ?? [],
 };
 
 /** The classes `word` belongs to (empty when the data does not know it). */

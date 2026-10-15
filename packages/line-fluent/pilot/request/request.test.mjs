@@ -26,8 +26,8 @@ const candidates = [
   { atom: 'flattened', fluent: 'clones().list(xs).and().flattens()', js: 'xs.flat()' },
 ];
 
-test('system lists the task, C2 fields in order, closed enums, R1-R9 and reuse-first', () => {
-  assert.equal(RULES.length, 9);
+test('system lists the task, C2 fields in order, closed enums, R1-R10 and reuse-first', () => {
+  assert.equal(RULES.length, 10);
   RULES.forEach((line, i) => {
     assert.ok(line.startsWith(`R${i + 1}. `));
     assert.ok(!line.includes('\n'));
@@ -37,7 +37,7 @@ test('system lists the task, C2 fields in order, closed enums, R1-R9 and reuse-f
   assert.ok(SYSTEM.includes(`decision: one of ${DECISIONS.join(' | ')}.`));
   assert.ok(SYSTEM.includes(`kind: one of ${KINDS.join(' | ')}; null only`));
   assert.ok(/Reuse an existing atom first/.test(SYSTEM));
-  assert.ok(SYSTEM.endsWith(RULES[8]));
+  assert.ok(SYSTEM.endsWith(RULES[9]));
   assert.ok(!SYSTEM.includes('VERB'), 'shapes are opt-in');
 });
 

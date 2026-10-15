@@ -17,6 +17,16 @@ import { checkGrammar } from '../gate/grammar/grammar.mjs';
 import { SHAPES_SECTION } from '../pilot/request/request.mjs';
 import { claudeArgs, runClaude } from '../pilot/runner/claude-model.mjs';
 import { show } from '../clarify/sentences.mjs';
+import { withReturn, withoutReturn } from '../../line-smith/scripts/lib-return.mjs';
+
+const RETURN_NAMES = JSON.parse(readFileSync(new URL('../../line-smith/src/atoms/naming.json', import.meta.url), 'utf8')).grammar.returnNames;
+const withClause = (sentence) => {
+  try {
+    return withReturn(sentence, RETURN_NAMES);
+  } catch {
+    return sentence; // not a chain of calls: the grammar refuses it
+  }
+};
 
 const REFERENCE = fileURLToPath(new URL('../../line-codemod/bench/atoms/js-reference/reference.json', import.meta.url));
 
@@ -53,7 +63,7 @@ export function staticAtom(gap, { reference = JSON.parse(readFileSync(REFERENCE,
 
 /** The C2 answer for a sentence over the static atom; the atom's name follows R8 (the words after the subject). */
 export function answerFor(atom, sentence) {
-  const words = sentence.replace(/\([^()]*\)/g, '').split('.').filter(Boolean);
+  const words = withoutReturn(sentence).replace(/\([^()]*\)/g, '').split('.').filter(Boolean);
   const after = words.slice(1);
   const name = after.map((w, i) => (i ? w[0].toUpperCase() + w.slice(1) : w)).join('');
   return { entry: atom.entry.id, decision: 'new-atom', atom: name, existing: null, kind: atom.kind, sentence, js: atom.js, params: atom.params, parts: null, reason: null };
@@ -143,7 +153,8 @@ export function readBackMatches({ said, real }, atom) {
 export async function fillGap(gap, { gate, n = 10, model = 'haiku', run } = {}) {
   const atom = staticAtom(gap);
   const example = await readableRun(atom, gap.type);
-  const sentences = [...new Set(await suggestWords(atom, example, { n, model, run }))].slice(0, n);
+  // R10's return clause is the rules' to add, not the model's: every suggestion gets the derived one.
+  const sentences = [...new Set((await suggestWords(atom, example, { n, model, run })).map(withClause))].slice(0, n);
   const out = [];
   for (const sentence of sentences) {
     const grammar = checkGrammar({ sentence });

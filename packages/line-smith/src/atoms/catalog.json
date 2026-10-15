@@ -98,7 +98,7 @@
      ]
     }
    ],
-   "fluent": "checks().if(a).is().equal().to(b)",
+   "fluent": "checks().if(a).is().equal().to(b).andThe().answer()",
    "fluentDeprecated": "checks().if(a).is().equalTo(b)",
    "plainName": "isEqualTo",
    "verified": true
@@ -127,7 +127,7 @@
      ]
     }
    ],
-   "fluent": "checks().if(a).is().not().equal().to(b)",
+   "fluent": "checks().if(a).is().not().equal().to(b).andThe().answer()",
    "fluentDeprecated": "checks().if(a).is().not().equalTo(b)",
    "plainName": "isNotEqualTo",
    "verified": true
@@ -192,7 +192,7 @@
      ]
     }
    ],
-   "fluent": "checks().if(a).is().less().than(b)",
+   "fluent": "checks().if(a).is().less().than(b).andThe().answer()",
    "fluentDeprecated": "checks().if(a).is().lessThan(b)",
    "plainName": "isLessThan",
    "verified": true
@@ -257,7 +257,7 @@
      ]
     }
    ],
-   "fluent": "checks().if(a).is().at().most(b)",
+   "fluent": "checks().if(a).is().at().most(b).andThe().answer()",
    "fluentDeprecated": "checks().if(a).is().atMost(b)",
    "plainName": "isAtMost",
    "verified": true
@@ -322,7 +322,7 @@
      ]
     }
    ],
-   "fluent": "checks().if(a).is().greater().than(b)",
+   "fluent": "checks().if(a).is().greater().than(b).andThe().answer()",
    "fluentDeprecated": "checks().if(a).is().greaterThan(b)",
    "plainName": "isGreaterThan",
    "verified": true
@@ -387,7 +387,7 @@
      ]
     }
    ],
-   "fluent": "checks().if(a).is().at().least(b)",
+   "fluent": "checks().if(a).is().at().least(b).andThe().answer()",
    "fluentDeprecated": "checks().if(a).is().atLeast(b)",
    "plainName": "isAtLeast",
    "verified": true
@@ -764,7 +764,7 @@
     }
    ],
    "verifiedBy": "test/core.test.mjs (short-circuit)",
-   "fluent": "checks().if(a).and(() => b)",
+   "fluent": "checks().if(a).and(() => b).andThe().answer()",
    "verified": true
   },
   {
@@ -853,7 +853,7 @@
      ]
     }
    ],
-   "fluent": "when(c).yields(() => a).otherwise(() => b)",
+   "fluent": "when(c).yields(() => a).otherwise(() => b).andThe().chosen()",
    "verified": true
   },
   {
@@ -868,7 +868,7 @@
    "pure": true,
    "mutates": false,
    "verifiedBy": "test/core.test.mjs (if/else-if chain property)",
-   "fluent": "chooses().when(c1).yields(() => a).when(c2).yields(() => b).otherwise(() => fallback)",
+   "fluent": "chooses().when(c1).yields(() => a).when(c2).yields(() => b).otherwise(() => fallback).andThe().chosen()",
    "fluentDeprecated": "choose().when(c1, () => a).when(c2, () => b).otherwise(() => fallback)",
    "verified": true
   },
@@ -883,7 +883,7 @@
    "pure": true,
    "mutates": false,
    "verifiedBy": "test/core.test.mjs (switch property)",
-   "fluent": "matches().value(value).on(k).yields(() => a).otherwise(() => fallback)",
+   "fluent": "matches().value(value).on(k).yields(() => a).otherwise(() => fallback).andThe().matched()",
    "fluentDeprecated": "match(value).on(k, () => a).otherwise(() => fallback)",
    "verified": true
   },
@@ -898,7 +898,7 @@
    "pure": true,
    "mutates": false,
    "verifiedBy": "test/core.test.mjs (try/catch/finally order property)",
-   "fluent": "attempts().to(() => body).and().recovers().with((e) => recover).and().cleans().up().with(() => cleanup)",
+   "fluent": "attempts().to(() => body).and().recovers().with((e) => recover).and().cleans().up().with(() => cleanup).andThe().result()",
    "fluentDeprecated": "attempt(() => body).onFailure((e) => recover).finally(() => cleanup)",
    "verified": true
   },
@@ -973,7 +973,7 @@
      ]
     }
    ],
-   "fluent": "checks().if(value).is().text()",
+   "fluent": "checks().if(value).is().text().andThe().answer()",
    "verified": true
   },
   {
@@ -996,7 +996,7 @@
      ]
     }
    ],
-   "fluent": "checks().if(value).is().number()",
+   "fluent": "checks().if(value).is().number().andThe().answer()",
    "verified": true
   },
   {
@@ -1019,7 +1019,7 @@
      ]
     }
    ],
-   "fluent": "checks().if(value).is().boolean()",
+   "fluent": "checks().if(value).is().boolean().andThe().answer()",
    "verified": true
   },
   {
@@ -1043,7 +1043,7 @@
      ]
     }
    ],
-   "fluent": "checks().if(value).is().nothing()",
+   "fluent": "checks().if(value).is().nothing().andThe().answer()",
    "verified": true
   },
   {
@@ -1080,7 +1080,7 @@
      ]
     }
    ],
-   "fluent": "checks().if(obj).has().key(key)",
+   "fluent": "checks().if(obj).has().key(key).andThe().answer()",
    "verified": true
   },
   {
@@ -1201,7 +1201,7 @@
      ]
     }
    ],
-   "fluent": "checks().if(value).is().an().instance().of(Type)",
+   "fluent": "checks().if(value).is().an().instance().of(Type).andThe().answer()",
    "fluentDeprecated": "checks().if(value).is().a(Type)",
    "plainName": "isAnInstanceOf",
    "verified": true
@@ -1379,7 +1379,7 @@
      ]
     }
    ],
-   "fluent": "checks().if(xs).has().item(x)",
+   "fluent": "checks().if(xs).has().item(x).andThe().answer()",
    "fluentDeprecated": "list(xs).hasItem(x)",
    "verified": true
   },
@@ -1407,7 +1407,7 @@
      ]
     }
    ],
-   "fluent": "clones().text(s).and().lowercases()",
+   "fluent": "clones().text(s).and().lowercases().andThe().lowercased()",
    "fluentDeprecated": "text(s).lowerCase()",
    "plainName": "clonesAndLowercases",
    "verified": true
@@ -1436,7 +1436,7 @@
      ]
     }
    ],
-   "fluent": "clones().text(s).and().uppercases()",
+   "fluent": "clones().text(s).and().uppercases().andThe().uppercased()",
    "fluentDeprecated": "text(s).upperCase()",
    "plainName": "clonesAndUppercases",
    "verified": true
@@ -1465,7 +1465,7 @@
      ]
     }
    ],
-   "fluent": "clones().text(s).and().trims()",
+   "fluent": "clones().text(s).and().trims().andThe().trimmed()",
    "fluentDeprecated": "text(s).trimmed()",
    "plainName": "clonesAndTrims",
    "verified": true
@@ -1583,7 +1583,7 @@
      ]
     }
    ],
-   "fluent": "text(s).splits().by(sep)",
+   "fluent": "text(s).splits().by(sep).andThe().parts()",
    "fluentDeprecated": "text(s).splitBy(sep)",
    "plainName": "splitsBy",
    "verified": true
@@ -1627,7 +1627,7 @@
      ]
     }
    ],
-   "fluent": "list(xs).joins().with(sep)",
+   "fluent": "list(xs).joins().with(sep).andThe().joined()",
    "fluentDeprecated": "list(xs).joinWith(sep)",
    "plainName": "joinsWith",
    "verified": true
@@ -1681,7 +1681,7 @@
     }
    ],
    "note": "a RegExp without the g flag is made global instead of throwing",
-   "fluent": "clones().text(s).and().replaces().every(p).with(r)",
+   "fluent": "clones().text(s).and().replaces().every(p).with(r).andThe().replaced()",
    "fluentDeprecated": "text(s).replaceEvery(p, r)",
    "plainName": "clonesAndReplacesEveryWith",
    "verified": true
@@ -1732,7 +1732,7 @@
     }
    ],
    "note": "a global RegExp still replaces only the first match, so String#replace with a global RegExp maps to replaceText instead",
-   "fluent": "clones().text(s).and().replaces().first(p).with(r)",
+   "fluent": "clones().text(s).and().replaces().first(p).with(r).andThe().replaced()",
    "fluentDeprecated": "text(s).replaceFirst(p, r)",
    "plainName": "clonesAndReplacesFirstWith",
    "verified": true
@@ -1915,7 +1915,7 @@
      ]
     }
    ],
-   "fluent": "list(xs).takes().first()",
+   "fluent": "list(xs).takes().first().andThe().first()",
    "fluentDeprecated": "list(xs).firstOf()",
    "plainName": "takesFirst",
    "verified": true
@@ -1941,7 +1941,7 @@
      ]
     }
    ],
-   "fluent": "list(xs).takes().last()",
+   "fluent": "list(xs).takes().last().andThe().last()",
    "fluentDeprecated": "list(xs).lastOf()",
    "plainName": "takesLast",
    "verified": true
@@ -2037,7 +2037,7 @@
     }
    ],
    "note": "thisArg is not supported (use an arrow function)",
-   "fluent": "clones().list(xs).and().maps().each().with(fn)",
+   "fluent": "clones().list(xs).and().maps().each().with(fn).andThe().mapped()",
    "fluentDeprecated": "list(xs).mapEach(fn)",
    "plainName": "clonesAndMapsEachWith",
    "verified": true
@@ -2070,7 +2070,7 @@
      ]
     }
    ],
-   "fluent": "clones().list(xs).and().keeps().where(test)",
+   "fluent": "clones().list(xs).and().keeps().where(test).andThe().kept()",
    "fluentDeprecated": "list(xs).keepWhere(test)",
    "plainName": "clonesAndKeepsWhere",
    "verified": true
@@ -2136,7 +2136,7 @@
      ]
     }
    ],
-   "fluent": "list(xs).finds().first().where(test)",
+   "fluent": "list(xs).finds().first().where(test).andThe().found()",
    "fluentDeprecated": "list(xs).findFirst(test)",
    "plainName": "findsFirstWhere",
    "verified": true
@@ -2168,7 +2168,7 @@
      ]
     }
    ],
-   "fluent": "checks().if(xs).has().any().where(test)",
+   "fluent": "checks().if(xs).has().any().where(test).andThe().answer()",
    "fluentDeprecated": "list(xs).hasAnyWhere(test)",
    "verified": true
   },
@@ -2199,7 +2199,7 @@
      ]
     }
    ],
-   "fluent": "checks().if(xs).has().only().items().where(test)",
+   "fluent": "checks().if(xs).has().only().items().where(test).andThe().answer()",
    "fluentDeprecated": "list(xs).isEveryWhere(test)",
    "plainName": "hasOnlyItemsWhere",
    "verified": true
@@ -2247,7 +2247,7 @@
     }
    ],
    "note": "also takes a property name or a one-argument key selector; a compare function with exactly one declared parameter is treated as a key selector",
-   "fluent": "clones().list(xs).and().sorts().by(order)",
+   "fluent": "clones().list(xs).and().sorts().by(order).andThe().sorted()",
    "fluentDeprecated": "list(xs).sortedBy(order)",
    "plainName": "clonesAndSortsBy",
    "verified": true
@@ -2278,7 +2278,7 @@
      ]
     }
    ],
-   "fluent": "clones().list(xs).and().reverses()",
+   "fluent": "clones().list(xs).and().reverses().andThe().reversed()",
    "fluentDeprecated": "list(xs).reversed()",
    "plainName": "clonesAndReverses",
    "verified": true
@@ -2315,7 +2315,7 @@
      ]
     }
    ],
-   "fluent": "clones().list(xs).and().keeps().from(from).to(to)",
+   "fluent": "clones().list(xs).and().keeps().from(from).to(to).andThe().kept()",
    "fluentDeprecated": "list(xs).part(from, to)",
    "plainName": "clonesAndKeepsFromTo",
    "verified": true
@@ -2375,7 +2375,7 @@
      ]
     }
    ],
-   "fluent": "clones().list(xs).and().flattens()",
+   "fluent": "clones().list(xs).and().flattens().andThe().flattened()",
    "fluentDeprecated": "list(xs).flattened()",
    "plainName": "clonesAndFlattens",
    "verified": true
@@ -2431,7 +2431,7 @@
      ]
     }
    ],
-   "fluent": "clones().list(xs).and().drops().duplicates()",
+   "fluent": "clones().list(xs).and().drops().duplicates().andThe().deduplicated()",
    "fluentDeprecated": "list(xs).uniqueOf()",
    "plainName": "clonesAndDropsDuplicates",
    "verified": true
@@ -3763,7 +3763,7 @@
     }
    ],
    "note": "the copy-returning map.set(key, value) Sentence confirmed by the owner 2026-10-15 (first registered as createsAtTo, merged here by R11: the same copy); it waits until clones() takes a map.",
-   "fluentPending": "clones().map(map).and().creates().at(key).to(value)",
+   "fluentPending": "clones().map(map).and().creates().at(key).to(value).andThe().created()",
    "verified": true
   },
   {

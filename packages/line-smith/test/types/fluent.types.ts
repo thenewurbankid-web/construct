@@ -8,7 +8,7 @@ const isEqual = checks().if(1).is().not().equalTo(2);
 same<typeof isEqual, boolean>(true);
 // @ts-expect-error -- compares a number with text
 checks().if(1).is().equalTo('1');
-const both = checks().if('a' as string | null).and(() => 1);
+const both = checks().if('a' as string | null).and(() => 1).andThe().answer();
 same<typeof both, '' | null | number>(true);
 
 const words = text('a b').splitBy(' ');
@@ -18,7 +18,7 @@ same<typeof lengths, number[]>(true);
 const first = list([1, 2]).firstOf();
 same<typeof first, number | undefined>(true);
 
-const picked = when(true).yields(() => 1).otherwise(() => 'no');
+const picked = when(true).yields(() => 1).otherwise(() => 'no').andThe().chosen();
 same<typeof picked, number | string>(true);
 const chosen = choose().when(true, () => 1).when(false, () => 'b').otherwise(() => null);
 same<typeof chosen, number | string | null>(true);
@@ -28,31 +28,33 @@ const attempted = attempt(() => 1).onFailure(() => 'failed').finally(() => {});
 same<typeof attempted, number | string>(true);
 
 // Atomic English sentences: the same types as the forms above.
-const greater = checks().if(2).is().greater().than(1);
+const greater = checks().if(2).is().greater().than(1).andThe().answer();
 same<typeof greater, boolean>(true);
 // @ts-expect-error -- compares a number with text
 checks().if(1).is().equal().to('1');
 // @ts-expect-error -- a question takes one argument per word
 checks().if(1).is().greater().than(1, 2);
-const has = checks().if([1, 2]).has().item(2);
+const has = checks().if([1, 2]).has().item(2).andThe().answer();
 same<typeof has, boolean>(true);
 // @ts-expect-error -- the item must be of the list's type
 checks().if([1, 2]).has().item('2');
-const sorted = clones().list([3, 1]).and().sorts().by((a, b) => a - b);
+const sorted = clones().list([3, 1]).and().sorts().by((a, b) => a - b).andThe().sorted();
 same<typeof sorted, number[]>(true);
-const trimmed = clones().text(' a ').and().trims();
+const trimmed = clones().text(' a ').and().trims().andThe().trimmed();
 same<typeof trimmed, string>(true);
-const lengthsV2 = clones().list(['a', 'bb']).and().maps().each().with((s) => s.length);
+// @ts-expect-error -- R10: a sentence offers only the name the rules give what it returns
+clones().text(' a ').and().trims().andThe().cleaned();
+const lengthsV2 = clones().list(['a', 'bb']).and().maps().each().with((s) => s.length).andThe().mapped();
 same<typeof lengthsV2, number[]>(true);
-const strings = clones().list([1, 'a']).and().keeps().where((x): x is string => typeof x === 'string');
+const strings = clones().list([1, 'a']).and().keeps().where((x): x is string => typeof x === 'string').andThe().kept();
 same<typeof strings, string[]>(true);
-const firstV2 = list([1, 2]).takes().first();
+const firstV2 = list([1, 2]).takes().first().andThe().first();
 same<typeof firstV2, number | undefined>(true);
-const wordsV2 = text('a b').splits().by(' ');
+const wordsV2 = text('a b').splits().by(' ').andThe().parts();
 same<typeof wordsV2, string[]>(true);
-const chosenV2 = chooses().when(true).yields(() => 1).when(false).yields(() => 'b').otherwise(() => null);
+const chosenV2 = chooses().when(true).yields(() => 1).when(false).yields(() => 'b').otherwise(() => null).andThe().chosen();
 same<typeof chosenV2, number | string | null>(true);
-const matchedV2 = matches().value('k').on('k').yields(() => 1).otherwise(() => false);
+const matchedV2 = matches().value('k').on('k').yields(() => 1).otherwise(() => false).andThe().matched();
 same<typeof matchedV2, number | boolean>(true);
-const attemptedV2 = attempts().to(() => 1).and().recovers().with(() => 'failed').and().cleans().up().with(() => {});
+const attemptedV2 = attempts().to(() => 1).and().recovers().with(() => 'failed').and().cleans().up().with(() => {}).andThe().result();
 same<typeof attemptedV2, number | string>(true);

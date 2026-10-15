@@ -6,7 +6,7 @@ import { every, x } from '../../../src/fluent';
 
 const xs = [3, -1, 4];
 
-// error: TS2339 Property 'and' does not exist on type 'number[]'.
+// error: TS2339 Property 'and' does not exist on type 'Apply<["list"], number>'.
 every(x).in(xs).is().mapped().to().clone().by().multiplying(x).by(2).and();
 // error: TS2769 No overload matches this call.
 every(x).in(xs).is().mapped().to().clone().by().multiplying(x).by(plus(x, 1));

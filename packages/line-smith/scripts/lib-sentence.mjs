@@ -40,12 +40,19 @@ export function parse(sentence) {
   });
 }
 
+/** The calls of the action, without the R10 return clause (`.andThe().<name>()`): what reads and names come from. */
+export function actionCalls(sentence) {
+  const calls = parse(sentence);
+  const k = calls.findIndex((c) => c.word === 'andThe');
+  return k < 0 ? calls : calls.slice(0, k);
+}
+
 /** An argument as it is read: `() => body` and `(e) => recover` read as their result. */
 const spoken = (arg) => arg.replace(/^(?:\(\s*[\w$,\s]*\)|[\w$]+)\s*=>\s*/, '');
 
 /** The sentence read aloud: `checks().if(a).is().greater().than(b)` -> "checks if a is greater than b". */
 export function reading(sentence) {
-  return parse(sentence)
+  return actionCalls(sentence)
     .map(({ word, args }) => [word, ...args.map(spoken)].join(' '))
     .join(' ');
 }
@@ -56,7 +63,7 @@ export function reading(sentence) {
  * the subject. Sentences without a subject (when, chooses, matches, attempts) have no plain name.
  */
 export function plainName(sentence, subjects) {
-  const calls = parse(sentence);
+  const calls = actionCalls(sentence);
   let rest;
   if (calls[0].word === 'checks' && calls[1]?.word === 'if') rest = calls.slice(2);
   else if (calls[0].word === 'clones' && subjects.includes(calls[1]?.word)) rest = [calls[0], ...calls.slice(2)];

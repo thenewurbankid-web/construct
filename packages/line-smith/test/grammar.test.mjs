@@ -3,6 +3,7 @@
 //   R3 one argument per word, and the word that carries it names its role
 //   R4 questions use is / has / can / does, split into words (no greaterThan)
 //   R5 a changed copy starts clones().<subject>(x).and(); in-place atoms and questions never clone
+//   R10 a sentence ends .andThe().<name>(), the name the rules give what it returns (lib-return.mjs)
 // plus R8: naming.json grammar.plainNames is the plain name each sentence gives, and R9: inside an
 // every() sentence (a binder and in(list)), participles, -ing forms and is()-actions are allowed,
 // the body is one atom, and the first word decides the result.
@@ -11,6 +12,7 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { parse, plainName, reading } from '../scripts/lib-sentence.mjs';
+import { RETURN_WORD, returnClauseOf, returnNameOf, withoutReturn } from '../scripts/lib-return.mjs';
 
 const catalog = JSON.parse(readFileSync(new URL('../src/atoms/catalog.json', import.meta.url), 'utf8'));
 const naming = JSON.parse(readFileSync(new URL('../src/atoms/naming.json', import.meta.url), 'utf8'));
@@ -57,7 +59,27 @@ function kindOf(a) {
 }
 
 /** Every rule a sentence breaks, as readable messages; empty when it follows them all. */
+/** R10: the sentence ends with the return clause the rules derive, and nothing after its name. */
+function returnViolations(sentence) {
+  let clause;
+  try {
+    clause = returnClauseOf(sentence);
+  } catch {
+    return [];
+  }
+  const want = returnNameOf(sentence, g.returnNames);
+  if (!clause) return [`R10: the sentence does not say what it returns; end it with .${RETURN_WORD}().${want}()`];
+  const out = [];
+  if (clause.name !== want) out.push(`R10: it returns its ${want}; end it with .${RETURN_WORD}().${want}(), not .${clause.name}()`);
+  if (clause.extra) out.push(`R10: nothing follows .${RETURN_WORD}().${clause.name}()`);
+  return out;
+}
+
 function violations(sentence, kind) {
+  return [...returnViolations(sentence), ...actionViolations(withoutReturn(sentence), kind)];
+}
+
+function actionViolations(sentence, kind) {
   const out = [];
   let calls;
   try {
@@ -193,7 +215,7 @@ describe('Atomic English grammar', () => {
       const found = violations(sentence, kind);
       assert.ok(found.some((v) => v.startsWith(rule)), `${sentence} (${kind}) should break ${rule}, got ${JSON.stringify(found)}`);
     }
-    assert.deepEqual(violations('list(xs).sorts().by(order)', 'inPlace'), []);
+    assert.deepEqual(violations('list(xs).sorts().by(order).andThe().sorted()', 'inPlace'), []);
   });
 
   test('R1/R4/R5 hold outside every(): no participles, -ing forms, is()-actions or every() words there', () => {
@@ -285,6 +307,19 @@ describe('Atomic English grammar', () => {
         if (kindOf(a) === 'question') assert.equal(first, 'checks', `${a.atom}: ${a.fluent}`);
       }
     });
+  });
+
+  test('R10: grammar.returned is exactly the set of names the rules give the sentences', () => {
+    const pending = catalog.atoms.filter((a) => a.fluentPending).map((a) => a.fluentPending);
+    const all = [...withFluent.map((a) => a.fluent), ...pending, ...ev.sentences.map((x) => x.fluent), ...ev.nested.map((x) => x.fluent), ...ev.shapes.map((x) => x.fluent)];
+    assert.deepEqual([...new Set(all.map((x) => returnNameOf(x, g.returnNames)))].sort(), [...g.returned].sort());
+  });
+
+  test('R10: a missing, wrong or trailing return clause is refused', () => {
+    assert.match(returnViolations('clones().text(s).and().trims()')[0], /^R10: the sentence does not say what it returns; end it with \.andThe\(\)\.trimmed\(\)$/);
+    assert.match(returnViolations('clones().text(s).and().trims().andThe().cleaned()')[0], /^R10: it returns its trimmed/);
+    assert.match(returnViolations('checks().if(a).is().text().andThe().answer().and()')[0], /^R10: nothing follows/);
+    assert.deepEqual(returnViolations('text(s).splits().by(sep).andThe().parts()'), []);
   });
 
   test('summary', () => {

@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 // Approved atoms (src/atoms/approved.json): hand-kept source entries the owner approved from the fluent
 // generator (packages/line-fluent/generator). gen-atoms turns each into a typed-`any` wrapper in
 // src/atoms/generated/approved.ts and a catalog entry, so approved atoms survive every regeneration.
@@ -5,10 +6,13 @@
 //   { "atom": "flatMapped", "entry": "Array.prototype.flatMap", "fluent": "clones().list(xs).and().flattens()",
 //     "js": "xs.flatMap(f)", "params": [["xs", "list"], ["f", "fn"]], "kind": "copy", "approvedAt": "..." }
 import { reading, parse } from './lib-sentence.mjs';
+import { returnClauseOf, returnNameOf, withoutReturn } from './lib-return.mjs';
 
 export const APPROVED_MODULE = 'approved';
 const ATOM_ID = /^[a-z][A-Za-z0-9]*$/;
 const PARAM = /^[A-Za-z_$][\w$]*$/;
+/** grammar.returnNames from naming.json: the R10 exceptions. */
+const RETURN_NAMES = JSON.parse(readFileSync(new URL('../src/atoms/naming.json', import.meta.url), 'utf8')).grammar.returnNames;
 const KINDS = ['question', 'copy', 'in-place', 'value', 'effect'];
 /** Entries the hand-written facade (src/fluent) owns; an approved sentence starts a new one. */
 export const HAND_WRITTEN_ENTRIES = ['checks', 'clones', 'text', 'list', 'when', 'chooses', 'matches', 'attempts', 'choose', 'match', 'attempt', 'every', 'the', 'folds', 'does'];
@@ -27,6 +31,9 @@ export function checkApproved(atoms, taken = new Map()) {
       throw new Error(`${where}: params must be [name, type] pairs with identifier names`);
     }
     if (!KINDS.includes(a.kind)) throw new Error(`${where}: kind must be one of ${KINDS.join(', ')}`);
+    const clause = returnClauseOf(a.fluent);
+    const want = returnNameOf(a.fluent, RETURN_NAMES);
+    if (!clause || clause.name !== want || clause.extra) throw new Error(`${where}: R10: the sentence must end .andThe().${want}()`);
     if (a.kind === 'in-place' || a.kind === 'effect') throw new Error(`${where}: R11 keeps the library pure; an ${a.kind} atom must become a copy (clones()) or stay in app code`);
   }
 }
@@ -90,7 +97,7 @@ export function emitApproved(atoms) {
 export function emitApprovedFluent(atoms) {
   const roots = new Map();
   for (const a of atoms.filter((x) => !HAND_WRITTEN_ENTRIES.includes(entryWord(x.fluent)))) {
-    const calls = parse(a.fluent);
+    const calls = parse(withoutReturn(a.fluent));
     const [first, ...steps] = calls;
     if (!roots.has(first.word)) roots.set(first.word, { args: first.args, children: new Map(), end: null });
     let node = roots.get(first.word);
@@ -112,7 +119,7 @@ export function emitApprovedFluent(atoms) {
         if (!v) throw new Error(`approved ${node.end.atom}: the sentence never names the parameter ${name}`);
         return v;
       });
-      return `${node.end.atom}(${order.join(', ')})`;
+      return `returns(${node.end.atom}(${order.join(', ')}), '${returnNameOf(node.end.fluent, RETURN_NAMES)}')`;
     }
     const methods = [...node.children].map(([word, child]) => {
       const next = new Map(bound);
@@ -135,7 +142,7 @@ export function emitApprovedFluent(atoms) {
     });
     lines.push(`/** Approved sentences starting with ${word}(). */\nexport function ${word}(${vars.map((v) => `${v}: any`).join(', ')}): any {\n  return ${emit(root, bound, 1)};\n}\n`);
   }
-  const imports = used.size ? `import { ${[...used].sort().join(', ')} } from '../atoms/generated/approved';\n\n` : '';
+  const imports = used.size ? `import { ${[...used].sort().join(', ')} } from '../atoms/generated/approved';\nimport { returns } from './returns';\n\n` : '';
   return { code: lines.length ? `${imports}${lines.join('\n')}` : 'export {};\n', entries: [...roots.keys()] };
 }
 

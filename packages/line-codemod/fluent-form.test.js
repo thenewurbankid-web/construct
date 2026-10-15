@@ -42,18 +42,18 @@ describe('toFluent: catalog atoms round-trip', () => {
   }
   test('choose and match are built case by case', () => {
     assert.equal(fluent('choose([[c1, () => a], [c2, () => b]], () => fallback)', RAW), fluentOf('choose'));
-    assert.equal(fluent("match(value, { k: () => a }, () => fallback)", RAW), 'matches().value(value).on("k").yields(() => a).otherwise(() => fallback)');
+    assert.equal(fluent("match(value, { k: () => a }, () => fallback)", RAW), 'matches().value(value).on("k").yields(() => a).otherwise(() => fallback).andThe().matched()');
   });
 });
 
 describe('toFluent: arguments', () => {
   test('params are replaced by the call argument source', () => {
-    assert.equal(fluent('lessThan(price, limit + 1)', RAW), 'checks().if(price).is().less().than(limit + 1)');
-    assert.equal(fluent('replaceFirst(name, "-", " ")', RAW), 'clones().text(name).and().replaces().first("-").with(" ")');
+    assert.equal(fluent('lessThan(price, limit + 1)', RAW), 'checks().if(price).is().less().than(limit + 1).andThe().answer()');
+    assert.equal(fluent('replaceFirst(name, "-", " ")', RAW), 'clones().text(name).and().replaces().first("-").with(" ").andThe().replaced()');
   });
   test('a thunk slot wraps a plain value and keeps a function', () => {
-    assert.equal(fluent('and(ok, ready)', RAW), 'checks().if(ok).and(() => ready)');
-    assert.equal(fluent('and(ok, () => ready)', RAW), 'checks().if(ok).and(() => ready)');
+    assert.equal(fluent('and(ok, ready)', RAW), 'checks().if(ok).and(() => ready).andThe().answer()');
+    assert.equal(fluent('and(ok, () => ready)', RAW), 'checks().if(ok).and(() => ready).andThe().answer()');
   });
 });
 
@@ -90,9 +90,9 @@ describe('toFluent: explicit refusals (null, reason in explainFluent)', () => {
   });
   test('accepts a Babel CallExpression and a compiled catalog', () => {
     const node = parser.parseExpression('isNothing(user.name)');
-    assert.equal(fluent(node, RAW), 'checks().if(user.name).is().nothing()');
+    assert.equal(fluent(node, RAW), 'checks().if(user.name).is().nothing().andThe().answer()');
     const compiled = loadCatalog(CATALOG_PATH);
-    assert.equal(fluent('atLeast(n, 2)', compiled), 'checks().if(n).is().at().least(2)');
+    assert.equal(fluent('atLeast(n, 2)', compiled), 'checks().if(n).is().at().least(2).andThe().answer()');
   });
 });
 
@@ -105,7 +105,7 @@ describe('fluentFor', () => {
   };
   test('toAtoms then every atom call becomes a sentence, innermost first', () => {
     const r = run("function f(x) { return typeof x === 'string' && x.trim().toLowerCase(); }");
-    assert.match(r.code, /checks\(\)\.if\(checks\(\)\.if\(x\)\.is\(\)\.text\(\)\)\.and\(\(\) => clones\(\)\.text\(clones\(\)\.text\(x\)\.and\(\)\.trims\(\)\)\.and\(\)\.lowercases\(\)\)/);
+    assert.ok(r.code.includes('checks().if(checks().if(x).is().text().andThe().answer()).and(() => clones().text(clones().text(x).and().trims().andThe().trimmed()).and().lowercases().andThe().lowercased()).andThe().answer()'), r.code);
     assert.equal(r.full, true);
     assert.equal(r.plain, 0);
   });

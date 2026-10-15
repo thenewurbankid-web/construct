@@ -120,7 +120,7 @@ function chooseSentence(args, want) {
     if (!c || c.type !== 'ArrayExpression' || c.elements.length !== 2 || c.elements.some((x) => !x || x.type === 'SpreadElement')) return { reason: 'choose case is not a [condition, value] pair' };
     parts.push(`when(${src(c.elements[0])})`, `yields(${thunkOf(c.elements[1], src(c.elements[1]))})`);
   }
-  parts.push(`otherwise(${thunkOf(fallback, src(fallback))})`);
+  parts.push(`otherwise(${thunkOf(fallback, src(fallback))})`, 'andThe()', 'chosen()'); // R10
   return { sentence: parts.join('.') };
 }
 
@@ -135,7 +135,7 @@ function matchSentence(args, want) {
     const key = p.key.type === 'Identifier' ? JSON.stringify(p.key.name) : src(p.key);
     parts.push(`on(${key})`, `yields(${thunkOf(p.value, src(p.value))})`);
   }
-  parts.push(`otherwise(${thunkOf(fallback, src(fallback))})`);
+  parts.push(`otherwise(${thunkOf(fallback, src(fallback))})`, 'andThe()', 'matched()'); // R10
   return { sentence: parts.join('.') };
 }
 

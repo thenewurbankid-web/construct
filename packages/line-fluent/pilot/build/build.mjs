@@ -9,10 +9,15 @@
 //
 // No path is itself a finding: the entry is a dead end, named by the shape it would need, before any model is asked.
 // Every built answer still goes through the C3 gate; the models only get what the rules cannot build.
+import { readFileSync } from 'node:fs';
 import nlp from 'compromise';
 import { SHAPES } from '../../gate/grammar/shapes.mjs';
 import { candidatesFor } from '../../generator/generator.mjs';
 import { decode } from '../lexicon/lexicon.mjs';
+import { withReturn, withoutReturn } from '../../../line-smith/scripts/lib-return.mjs';
+
+/** grammar.returnNames: the R10 exceptions. */
+const RETURN_NAMES = JSON.parse(readFileSync(new URL('../../../line-smith/src/atoms/naming.json', import.meta.url), 'utf8')).grammar.returnNames;
 
 /** The subject word per receiver generator (R2). */
 export const SUBJECT_OF_GEN = { list: 'list', nums: 'list', texts: 'list', text: 'text', num: 'number', nat: 'number', date: 'date', map: 'map', set: 'set', obj: 'record' };
@@ -170,13 +175,13 @@ const FILLER = new Set(['to', 'of', 'at', 'by', 'with', 'from', 'is', 'has', 'ge
  * covers lower and case). `padStart` cannot become `text(s).pads().by(n)`, which would say the same as padEnd.
  */
 export function covers(sentence, memberName) {
-  const said = sentence.replace(/\([^()]*\)/g, ' ').toLowerCase();
+  const said = withoutReturn(sentence).replace(/\([^()]*\)/g, ' ').toLowerCase();
   return wordsOf(memberName).filter((w) => !FILLER.has(w)).every((w) => said.includes(w.replace(/e$/, '')));
 }
 
 const camel = (words) => words.map((w, i) => (i ? w[0].toUpperCase() + w.slice(1) : w)).join('');
 /** R8: the atom name is the sentence's words after the subject. */
-export const atomName = (sentence) => camel(sentence.replace(/\([^()]*\)/g, '').split('.').filter(Boolean).slice(1));
+export const atomName = (sentence) => camel(withoutReturn(sentence).replace(/\([^()]*\)/g, '').split('.').filter(Boolean).slice(1));
 
 /** Catalog params in [name, gen] form, from a curated check set or a generated check. */
 function catalogParams(atom) {
@@ -202,7 +207,7 @@ export function builtAnswers(entry, catalog, { lexicon = null, verbWords = null 
     const js = atom.js.find((j) => j.includes(member(entry))) ?? atom.js[0];
     const sentences = atom.fluent ? [atom.fluent] : buildSentences(params, member(entry)).sentences.filter((x) => covers(x, member(entry)));
     for (const sentence of sentences) {
-      out.push({ entry: entry.id, decision: 'existing', atom: null, existing: atom.atom, kind: atom.fluent?.startsWith('clones(') ? 'copy' : atom.mutates ? 'in-place' : 'value', sentence, js, params, parts: null, reason: null });
+      out.push({ entry: entry.id, decision: 'existing', atom: null, existing: atom.atom, kind: atom.fluent?.startsWith('clones(') ? 'copy' : atom.mutates ? 'in-place' : 'value', sentence: withReturn(sentence, RETURN_NAMES), js, params, parts: null, reason: null });
     }
   }
   const s = staticAtom(entry);
@@ -212,11 +217,11 @@ export function builtAnswers(entry, catalog, { lexicon = null, verbWords = null 
     // The learned lexicon decodes more candidates (pilot/lexicon): shapes framed by clones() or checks().if() too.
     const decoded = lexicon ? decode(lexicon, { ...s, verbWords, k: 4 }).map((d) => d.sentence) : [];
     // A sentence must say every meaningful word of the member, and must not already mean other code.
-    const taken = (sentence) => catalog.some((a) => a.fluent === sentence && !a.js.includes(s.js));
+    const taken = (sentence) => catalog.some((a) => a.fluent === withReturn(sentence, RETURN_NAMES) && !a.js.includes(s.js));
     const kept = [...new Set([...built.sentences, ...decoded])].filter((x) => covers(x, s.member) && !taken(x));
     if (!kept.length && (built.sentences.length || decoded.length)) deadEnds.push(`no shape says every word of “${wordsOf(s.member).join(' ')}”`);
     for (const sentence of kept) {
-      out.push({ entry: entry.id, decision: 'new-atom', atom: atomName(sentence), existing: null, kind: s.kind, sentence, js: s.js, params: s.params, parts: null, reason: null });
+      out.push({ entry: entry.id, decision: 'new-atom', atom: atomName(sentence), existing: null, kind: s.kind, sentence: withReturn(sentence, RETURN_NAMES), js: s.js, params: s.params, parts: null, reason: null });
     }
   } else deadEnds.push(instanceOf(entry) ? `no test inputs for ${entry.section} receivers` : `${entry.kind} entries are not built by rules yet`);
   return { answers: out, deadEnds };

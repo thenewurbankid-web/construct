@@ -1,8 +1,12 @@
 // Gate check `grammar`: every catalog sentence passes; broken sentences fail with one sentence and a typed fix.
+import { withReturn } from '../../../line-smith/scripts/lib-return.mjs';
+
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { checkGrammar, closestWord, editDistance } from './grammar.mjs';
+
+const RETURN_NAMES = JSON.parse(readFileSync(new URL('../../../line-smith/src/atoms/naming.json', import.meta.url), 'utf8')).grammar.returnNames;
 import { sentences } from '../../grammar/next-words.mjs';
 
 const catalog = JSON.parse(
@@ -108,7 +112,7 @@ test('applying a replace-word or remove-word fix yields a passing sentence', () 
         ? sentence.replace(`${fix.from}(`, `${fix.to}(`)
         : sentence.replace(`${fix.word}().`, '');
     if (fix.word === 'zzzqqq') continue; // removing the only verb leaves no sentence start
-    assert.equal(checkGrammar({ sentence: fixed }).check, 'pass', fixed);
+    assert.equal(checkGrammar({ sentence: withReturn(fixed, RETURN_NAMES) }).check, 'pass', fixed);
   }
 });
 

@@ -50,7 +50,7 @@ test('lookup: the longest run wins (not equal vs equal)', () => {
 test('lookup: a catalog sentence followed by extra words', () => {
   const d = at('clones().list(xs).and().sorts().by(order).then().more()', 'sorts');
   assert.equal(d.atom, 'sortedBy');
-  assert.equal(d.fluent, 'clones().list(xs).and().sorts().by(order)');
+  assert.equal(d.fluent, 'clones().list(xs).and().sorts().by(order).andThe().sorted()');
 });
 
 test('lookup: no match', () => {
