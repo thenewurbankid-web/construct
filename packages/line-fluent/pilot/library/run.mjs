@@ -35,6 +35,9 @@ import { builtAnswers, covers, wordsOf } from '../build/build.mjs';
 import { corpusFrom, train } from '../lexicon/lexicon.mjs';
 import { gatePool } from '../../gate/isolated/isolated.mjs';
 import { stagedQueue } from './queue.mjs';
+import { chainTurn, linkedPicker, ROLES } from '../../chain/chain.mjs';
+import { padBoard } from '../../chain/scratchpad.mjs';
+import { llamaSemifModel } from '../../chain/llama-semif.mjs';
 
 const readJson = (p) => JSON.parse(readFileSync(p, 'utf8'));
 const SKIP = Object.freeze({ check: 'skip', errors: [], fixes: [] });
@@ -188,6 +191,7 @@ export async function main(argv = process.argv.slice(2), { log = console.log, ma
       rounds: { type: 'string', default: '2' },
       batch: { type: 'string', default: '0' },
       build: { type: 'boolean', default: false },
+      chain: { type: 'boolean', default: false },
       'keep-open': { type: 'boolean', default: false },
       engine: { type: 'string', default: 'llama-server' },
       'engine-url': { type: 'string' },
@@ -321,14 +325,19 @@ async function batchedStages(entries, { o, all, record, doneIn, stopped, jobs, m
 
   // Turns 1 and 2 and the user stage run side by side through one staged queue (queue.mjs): a batch's refused
   // entries join the next stage's queue at once, instead of waiting for the whole stage to finish over every entry.
+  // --chain: turns 1 and 2 go through the 7b chain (chain/chain.mjs: decide, frame, shape, verb, each with its own
+  // scratchpad and the section's shared one) instead of one batched answer call. Its letter picks need llama-server.
+  const pads = o.chain ? padBoard(ROLES) : null;
+  const pick = o.chain && o.engine !== 'ollama' ? await linkedPicker(llamaSemifModel({ model: o.inside, ...(o['engine-url'] ? { url: o['engine-url'] } : {}) })) : null;
+  const answer = (items) => (o.chain ? chainTurn(items, { pick, propose: inside, gateOf, pads }) : answerTurn(items, { model: inside, gateOf }));
   const runTurn = (turn) => async (group) => {
     if (stopped()) return [];
     const started = Date.now();
     const items = group.map((e) => item(e, turn === 2 ? { refusal: refusalOf(latest(e.key, 'inside')) } : {}));
     try {
-      const out = await answerTurn(items, { model: inside, gateOf });
+      const out = await answer(items);
       const ms = Math.round((Date.now() - started) / items.length);
-      out.forEach((r, i) => record({ key: items[i].entry.key, section: items[i].entry.section, stage: 'inside', model: o.inside, entry: items[i].entry.id, ...r, tries: turn, ms, batch: items.length }));
+      out.forEach((r, i) => record({ key: items[i].entry.key, section: items[i].entry.section, stage: 'inside', model: o.chain ? `chain:${o.inside}` : o.inside, entry: items[i].entry.id, ...r, tries: turn, ms, batch: items.length }));
     } catch (e) {
       fail(items, 'inside', o.inside, e, started);
       return [];
@@ -385,6 +394,8 @@ async function batchedStages(entries, { o, all, record, doneIn, stopped, jobs, m
     { name: 'turn 2', initial: entries.filter(owesTurn2), run: async (group) => { const left = await runTurn(2)(group); return userOn ? left : []; } },
     ...(userOn ? [{ name: 'user', initial: entries.filter(owesUser), run: runUser }] : []),
   ], { size, workers: Math.ceil(jobs / 2), stop: stopped });
+  // The chain's scratchpads, as they ended, for the record.
+  if (pads) writeFileSync(`${o.out}/scratchpads.json`, `${JSON.stringify(pads, null, 2)}\n`);
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
