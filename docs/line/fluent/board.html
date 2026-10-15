@@ -113,6 +113,16 @@ details[open] > summary .chev { transform: rotate(90deg); }
 .rcard .top { display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; justify-content: space-between; }
 .rcard button { font: inherit; font-size: .8rem; background: none; border: 0; color: var(--accent); cursor: pointer; padding: 0; }
 .biglist { margin: 0; padding-left: 1.1em; display: grid; gap: 2px; }
+
+.caps { display: grid; gap: 14px; }
+.capgrp { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.capgrp > header { display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+.capgrp > header b { font-family: var(--mono); font-size: 1rem; font-weight: 500; }
+.capgrp ul { list-style: none; margin: 0; padding: 0; }
+.capgrp li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 9px 16px; border-top: 1px solid var(--line); }
+.capgrp li:first-child { border-top: 0; }
+.capgrp li .w { min-width: 0; }
+.capgrp li .w small { display: block; font-family: var(--mono); font-size: .72rem; color: var(--muted); }
 </style>
 
 <div class="wrap">
@@ -121,6 +131,11 @@ details[open] > summary .chev { transform: rotate(90deg); }
     <h1>Fluent Build Board</h1>
     <div class="live"><span class="dot" id="dot"></span><span id="liveText">Connecting to live status…</span></div>
   </header>
+
+  <section aria-labelledby="capH" style="display:grid;gap:10px">
+    <div class="rel-top"><h2 id="capH">Capabilities by release</h2><span class="mono muted" id="capCount"></span></div>
+    <div class="caps" id="caps"><div class="empty">Capabilities load from live status.</div></div>
+  </section>
 
   <div class="heroes">
     <section class="hero" aria-labelledby="kpiH">
@@ -285,7 +300,46 @@ function nodeHtml(t, lvl) {
   return `<details class="${cls}" data-id="${esc(t.id)}"${openIds.has(t.id) || (lvl === 0 && !openIds.size) ? ' open' : ''}><summary>${rowHtml(t, lvl)}</summary>${detailHtml(t)}${kids}</details>`;
 }
 
+// Capabilities by release: each line is one thing the product can do, in plain words, with its status.
+const CAP_STATUS = { done: 'Done', running: 'In progress', review: 'In review', blocked: 'Blocked', todo: 'Not started' };
+function rollStatus(t) {
+  const lf = leaves(t.id);
+  if (lf.every((x) => x.status === 'done')) return 'done';
+  if (lf.some((x) => x.status === 'blocked')) return 'blocked';
+  if (lf.some((x) => x.status === 'running' || x.status === 'review' || x.status === 'done')) return 'running';
+  return 'todo';
+}
+function releaseOf(t) {
+  if (t.version) return t.version;
+  if (release && Array.isArray(release.items) && release.items.includes(t.id)) return release.version || 'Current release';
+  return null;
+}
+function renderCaps() {
+  const el = document.getElementById('caps');
+  const groups = new Map();
+  const add = (rel, t) => { if (!groups.has(rel)) groups.set(rel, []); groups.get(rel).push(t); };
+  const hasReleasedAncestor = (t) => { let p = t.parent; while (p) { const a = tasks.find((x) => x.id === p); if (!a) break; if (releaseOf(a)) return true; p = a.parent; } return false; };
+  for (const t of tasks) {
+    if (!t.parent || hasReleasedAncestor(t)) continue;
+    const rel = releaseOf(t);
+    if (rel) add(rel, t);
+    else if (!childrenOf(t.id).length) add('Later', t);
+  }
+  if (!groups.size) { el.innerHTML = '<div class="empty">No capabilities yet.</div>'; document.getElementById('capCount').textContent = ''; return; }
+  const names = [...groups.keys()].sort((a, b) => (a === 'Later') - (b === 'Later') || a.localeCompare(b, undefined, { numeric: true }));
+  let all = 0, allDone = 0;
+  el.innerHTML = names.map((n) => {
+    const items = groups.get(n).sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
+    const st = items.map(rollStatus), d = st.filter((s) => s === 'done').length;
+    all += items.length; allDone += d;
+    const cur = release && n === release.version;
+    return `<div class="capgrp"><header><span><b>${esc(n)}</b>${cur ? ' <span class="chip">current</span>' : ''}</span><span class="mono muted" style="font-size:.8rem">${d} of ${items.length} done</span></header><ul>${items.map((t, i) => `<li><span class="w">${esc(t.benefit || t.title)}<small>${esc(t.id)} · ${esc(t.title)}</small></span><span class="pill s-${st[i]}">${CAP_STATUS[st[i]]}</span></li>`).join('')}</ul></div>`;
+  }).join('');
+  document.getElementById('capCount').textContent = `${allDone} of ${all} done`;
+}
+
 function render() {
+  renderCaps();
   document.querySelectorAll('details[data-id]').forEach((d) => { if (d.open) openIds.add(d.dataset.id); else openIds.delete(d.dataset.id); });
   const roots = childrenOf(null);
   const tree = document.getElementById('tree');
