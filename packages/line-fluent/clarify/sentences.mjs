@@ -12,7 +12,8 @@ import fc from 'fast-check';
 import { parse } from '../../line-smith/scripts/lib-sentence.mjs';
 import { arb } from '../../line-smith/test/support/gens.mjs';
 import { checkGrammar } from '../gate/grammar/grammar.mjs';
-import { FRAME_VERBS } from '../gate/grammar/shapes.mjs';
+import { FRAME_VERBS, looksLikeVerb } from '../gate/grammar/shapes.mjs';
+import { wordClasses } from '../grammar/next-words.mjs';
 import { runAnswer } from '../gate/equivalence/equivalence.mjs';
 import { SHAPES_SECTION } from '../pilot/request/request.mjs';
 import { claudeArgs, runClaude } from '../pilot/runner/claude-model.mjs';
@@ -180,7 +181,8 @@ export function withVerb(sentence, word) {
   if (!/^[a-z]+$/.test(w)) return null;
   const third = w.endsWith('s') ? w : /(ch|sh|x|z|o)$/.test(w) ? `${w}es` : /[^aeiou]y$/.test(w) ? `${w.slice(0, -1)}ies` : `${w}s`;
   const calls = parse(sentence);
-  const i = calls.findIndex((c) => CONTENT_VERBS.has(c.word));
+  // The verb slot holds a known content verb or a new verb (a third-person word no other class claims).
+  const i = calls.findIndex((c) => CONTENT_VERBS.has(c.word) || (looksLikeVerb(c.word) && !wordClasses(c.word).length));
   if (i < 0) return null;
   return sentence.replace(new RegExp(`\\b${calls[i].word}\\(`), `${third}(`);
 }

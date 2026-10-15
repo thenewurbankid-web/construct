@@ -1,0 +1,27 @@
+{
+  "$comment": "Approved by the owner 2026-10-15 from the gap in stackEntries (groups.set on a Map); waiting on the full registry path (naming.json verb, fluent runtime extension, check sets) before it joins approved.json.",
+  "atoms": [
+    {
+      "atom": "createsAtTo",
+      "entry": "Map.prototype.set",
+      "fluent": "map(m).creates().at(key).to(value)",
+      "js": "m.set(key, value)",
+      "params": [
+        [
+          "m",
+          "map"
+        ],
+        [
+          "key",
+          "prim"
+        ],
+        [
+          "value",
+          "prim"
+        ]
+      ],
+      "kind": "in-place",
+      "approvedAt": "2026-10-15T04:00:03.426Z"
+    }
+  ]
+}

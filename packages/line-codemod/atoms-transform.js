@@ -355,7 +355,10 @@ function atomType(p) {
   const check = p.info.entry && p.info.entry.check;
   if (check && !Array.isArray(check) && check.receiver) return TYPE_OF_GEN[check.receiver] || check.receiver;
   const first = Array.isArray(check) && check[0] && check[0].params && check[0].params[0];
-  return first ? TYPE_OF_GEN[first[1]] || null : null;
+  if (first) return TYPE_OF_GEN[first[1]] || null;
+  // approved atoms carry typed params ([['m', 'map'], ...]) before they have check sets
+  const typed = Array.isArray(p.info.entry && p.info.entry.params) && p.info.entry.params[0];
+  return Array.isArray(typed) ? TYPE_OF_GEN[typed[1]] || null : null;
 }
 
 function toAtoms(code, options = {}) {
