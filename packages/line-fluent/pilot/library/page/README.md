@@ -21,5 +21,5 @@ nohup node packages/line-fluent/pilot/library/run.mjs --jobs 12 --batch 20 --bui
 packages/line-fluent/pilot/library/page/tick.sh /tmp/lib-full /tmp/lib-outbox "Full JS reference: 2,378 entries"
 ```
 
-The page's `run/current` was at version 45 and `events` held e0000-e0029 when the run moved; the next sync writes
-e0030 onwards (set `/tmp/lib-outbox.state.json` to `{"pushedBlocks": 30}` before the first sync).
+The page's `run/current` was at version 46 and `events` held e0000-e0031 when the run moved; the next sync writes
+e0032 onwards (set `/tmp/lib-outbox.state.json` to `{"pushedBlocks": 32}` before the first sync).
