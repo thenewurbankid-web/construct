@@ -103,6 +103,12 @@ footer { font-size: 0.85rem; color: var(--muted); }
   <p class="lede">Claude writes the full fluent library from the JS reference under the latest Smith rules (R1–R9). That library is the base every app and model uses. The small model does the same work from the same JS, is compared with Claude's answers by checks rather than by opinion, and learns from the differences. Users get it through an LSP and generators, so they never write a sentence or a prompt by hand.</p>
 </header>
 
+<section class="callout" style="background:var(--accent-soft);border-left-color:var(--accent)">
+  <h3 style="color:var(--accent)">When it's 100% done</h3>
+  <p>Line reads any JavaScript or TypeScript and shows it as plain English sentences, with no AI model needed. Every sentence is checked to do exactly what the code does. You see it in your editor, from one command, in the Cockpit beside your code, and any AI agent can use it too. A small model on your own machine learns to write the same English.</p>
+  <p class="mono" style="font-size:.8rem">Live status, per item: the Fluent Build Board.</p>
+</section>
+
 <section>
   <div class="strip" role="list" aria-label="Pipeline">
     <div class="node" role="listitem"><b>JS reference</b><span>2,378 entries, Node-checked</span></div>
@@ -133,11 +139,11 @@ footer { font-size: 0.85rem; color: var(--muted); }
 </section>
 
 <section class="callout">
-  <h3>Before stage 1: two things only on this machine</h3>
+  <h3>Before stage 1: where it stands (2026-10-15)</h3>
   <ul>
-    <li>Merge wave 3 (<code>og/final-2026-10-12</code> 8d9a23e2, nine branches including the live LSP index #950 and the one-function model calls #948) is not on <code>private</code>, and <code>work/2026-09-23</code> lacks it. The LSP stage builds on #950.</li>
-    <li>Import v2 (11 commits plus an uncommitted section in BUNDLE-READ.md) is not pushed. Its decision 5 pins the codemod at <code>atoms-probe 9dc24ab</code>, while the in-repo <code>packages/line-codemod</code> came from <code>atoms-transform</code> without those 3 commits.</li>
-    <li>Then finish the move-in: Smith and the codemod resolve inside <code>packages/line-*</code>, both suites run under <code>npm test</code>, with exact counts recorded.</li>
+    <li><b>Pushed (T0.4, done):</b> <code>og/final-2026-10-12</code> 8d9a23e2 and import v2 (<code>line/import-v2-static-breakdown</code> eae0470a) are on <code>private</code>. <code>og/final</code>, which holds the live LSP index #950, is <b>not merged</b> into <code>line/import-smith-codemod</code> yet.</li>
+    <li><b>Import v2:</b> T2.4 merges it into its own branch to get <code>writeAtoms</code>. The codemod pin conflict is settled: the atoms-probe commits are ported in-repo (T0.5, merged).</li>
+    <li><b>Move-in (T0.1, T0.2, T0.6, done):</b> Smith and the codemod resolve inside <code>packages/line-*</code>, and both suites run under <code>npm test</code>. Recording exact baseline counts (T0.3) was dropped by the owner.</li>
   </ul>
 </section>
 
@@ -153,6 +159,7 @@ footer { font-size: 0.85rem; color: var(--muted); }
 out: { atom: "flatMapped", kind: "copy", sentence: "every(x).in(xs).is().mapped().to(...).and().flattened()",
        js: "xs.flatMap(f)", decision: "new-atom" | "existing:&lt;id&gt;" | "molecule" | "not-expressible:&lt;reason&gt;" }</pre>
       <dl class="kv">
+        <dt>Status</dt><dd><b>Machinery done:</b> answer shape (C2), the three checks (grammar, behaviour, types) and the combined verdict; the pilot's request builder, mock runner and Array entries. <b>Writing the library (T1.4): not started.</b> It waits on your go/no-go on cost.</dd>
         <dt>Gate</dt><dd>The grammar test (R1–R9) passes. The atom matches its native JS under fast-check and matches <code>expected.json</code>. <code>tsc</code> and the type fixtures stay clean. An answer that fails gets the refusal sentence back once and tries again. If it fails again, it is recorded as a gap.</dd>
         <dt>Order</dt><dd>One section first (for example, Array) to measure cost, pass rate and readability. Then es, then syntax, then web.</dd>
         <dt>Owner</dt><dd>Approves new atoms only, in batches on the Smith Atoms page. A molecule that passes the six-check gate needs no approval.</dd>
@@ -167,6 +174,7 @@ out: { atom: "flatMapped", kind: "copy", sentence: "every(x).in(xs).is().mapped(
       <h3>A static translator from JS to the English view <span class="who static">static</span></h3>
       <p>The codemod's <code>toAtoms</code> writes the fluent form (build-order step 5) using only the catalog from stage 1. No model runs here. The English view is generated and read-only. The app keeps its typed code (decision 2, revised).</p>
       <dl class="kv">
+        <dt>Status</dt><dd><b>Done:</b> the fluent form (<code>toFluent</code>, <code>fluentFor</code>), the <code>construct english</code> CLI, and the coverage module (built, but not run: no benchmarks for now). <b>In progress:</b> <code>writeAtoms</code> writing sentences (T2.4), after merging import v2.</dd>
         <dt>Measure</dt><dd>On the whole JS reference: converts, refused, and untranslated, counted by kind. The same counts on real code: construct's packages, the bench apps, and max-ai-ui.</dd>
         <dt>Gate</dt><dd>Converted code behaves the same (QuickJS, plus Node's expected answers). Every sentence passes the grammar test.</dd>
         <dt>Output</dt><dd><code>line.import.writeAtoms</code> writes fluent sentences (step 6), and the corpus is re-imported and measured (step 7).</dd>
@@ -185,6 +193,7 @@ out: { atom: "flatMapped", kind: "copy", sentence: "every(x).in(xs).is().mapped(
         <li><b>wrong</b>: fails a gate. The pair (its answer, the refusal, Claude's answer) becomes a training record.</li>
       </ul>
       <dl class="kv">
+        <dt>Status</dt><dd><b>Done:</b> the comparator (same / equivalent / wrong), the student request adapter, and the training-records writer with held-out sections. <b>Held:</b> the English-as-context probe (T3.4) and LoRA round 1 (T3.5). No benchmarks for now, and training waits for the probe.</dd>
         <dt>Teach</dt><dd>A LoRA on the 1.5b (the native Line model goal), trained only on gated records: Claude's gold set, the student's corrected misses, the codemod's verified pairs, and translated permissive OSS.</dd>
         <dt>Split</dt><dd>Hold out whole sections (for example, all of Intl and Temporal), so the score shows generalisation rather than memory.</dd>
         <dt>Loop</dt><dd>Each round must raise the held-out score, or the loop stops and asks. The student runs in shadow until it beats the static translator on its own profile (<code>ladder.measured</code>). Until then it only fills the gaps static leaves.</dd>
@@ -197,6 +206,7 @@ out: { atom: "flatMapped", kind: "copy", sentence: "every(x).in(xs).is().mapped(
     <div class="body">
       <h3>An LSP on the fluent layer <span class="who static">static first</span></h3>
       <p>Extend the Line LSP's Smith layer on top of the live index (#950). The grammar is a closed state machine, so most features need no model at all.</p>
+      <p><b>Status:</b> completions (nextWords), diagnostics with fixes, go to definition and hover are done. The live LSP index (#950, on <code>og/final-2026-10-12</code>) is not merged yet.</p>
       <div class="tablewrap"><table>
         <thead><tr><th>Feature</th><th>How</th><th>Model?</th></tr></thead>
         <tbody>
@@ -214,6 +224,7 @@ out: { atom: "flatMapped", kind: "copy", sentence: "every(x).in(xs).is().mapped(
     <div class="num">5</div>
     <div class="body">
       <h3>Generators and tooling, so users do almost nothing <span class="who static">static</span></h3>
+      <p><b>Status:</b> <code>construct english</code> and the page rebuild script are done. The atom generator is merged, with a fix in progress so approved atoms survive catalog rebuilds. The Cockpit English panel is pushed and being merged. The MCP tools are in progress.</p>
       <ul>
         <li><code>construct english &lt;file&gt;</code>: prints the read-only English view of any JS or TS file.</li>
         <li><code>construct atoms suggest</code>: lists the functions that can become atoms or molecules, with the fix as a plan step.</li>
