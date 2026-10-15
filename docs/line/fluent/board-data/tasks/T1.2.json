@@ -1,0 +1,26 @@
+{
+  "benefit": "Every answer, from Claude or a model, is judged by the same deterministic checks.",
+  "branch": "line/fluent/t1-2-gate",
+  "contract": "packages/line-fluent/gate/: grammar via line-smith lib-sentence + naming.json; equivalence on fast-check inputs and expected.json; C3 output with one refusal sentence and typed fixes.",
+  "etaAt": "2026-10-15T01:00:00.000Z",
+  "linesAdded": 0,
+  "linesRemoved": 0,
+  "order": 2,
+  "parent": "E1",
+  "progress": 0,
+  "quickWin": true,
+  "risks": [
+    {
+      "mitigation": "Use Smith's own generators plus Node's recorded answers",
+      "risk": "Equivalence misses edge cases"
+    },
+    {
+      "mitigation": "Name the word and the fix, as ENGLISH-RULES does",
+      "risk": "Refusal text too vague to self-correct"
+    }
+  ],
+  "status": "todo",
+  "thoughts": "Second wave: it needs T0.2 so line-smith resolves as a workspace.",
+  "title": "Gate runner C3",
+  "version": null
+}

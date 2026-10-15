@@ -1,0 +1,24 @@
+{
+  "benefit": "C3's types check stops being a permanent skip; arity and kind mistakes are caught before running code.",
+  "branch": "line/fluent/t1-2d-types",
+  "contract": "packages/line-fluent/gate/types/: checkTypes(answer,{entry}) -> CheckResult; C2 params vs the C1 entry's params (count, order, rest/optional) and C2 kind vs the entry kind and catalog param types; set-field fixes. Static, no tsc.",
+  "etaAt": "2026-10-15T00:40:00.000Z",
+  "linesAdded": 0,
+  "linesRemoved": 0,
+  "note": "Wave 2, added after the first merge.",
+  "order": 4,
+  "parent": "T1.2",
+  "progress": 5,
+  "quickWin": true,
+  "risks": [
+    {
+      "mitigation": "Closed mapping table; unknown types skip with a note, never fail",
+      "risk": "C1 TS types do not map to Smith's type words"
+    }
+  ],
+  "session": "t1-2d-types",
+  "status": "running",
+  "thoughts": "Split added to the closest-to-done task (T1.2) after t1-2c landed.",
+  "title": "Gate: types check",
+  "version": null
+}

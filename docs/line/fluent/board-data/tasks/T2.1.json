@@ -1,0 +1,20 @@
+{
+  "benefit": "Unblocks the English view and writeAtoms.",
+  "contract": "ENGLISH-RULES build step 5; behaviour-equal after conversion (QuickJS + expected.json).",
+  "etaAt": "2026-10-15T03:00:00.000Z",
+  "linesAdded": 0,
+  "linesRemoved": 0,
+  "order": 1,
+  "parent": "E2",
+  "progress": 0,
+  "quickWin": false,
+  "risks": [
+    {
+      "mitigation": "QuickJS check per function; refuse rather than guess",
+      "risk": "Sentences change behaviour"
+    }
+  ],
+  "status": "todo",
+  "title": "toAtoms writes the fluent form",
+  "version": null
+}

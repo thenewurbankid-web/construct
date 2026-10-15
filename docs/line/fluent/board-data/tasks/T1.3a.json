@@ -1,0 +1,24 @@
+{
+  "benefit": "Every Claude call has the same fixed input.",
+  "branch": "line/fluent/t1-3a-request",
+  "contract": "packages/line-fluent/pilot/request/: buildRequest(entry,{candidates,refusal}) -> {system,user,prefill}; one entry per request, fixed text, retry carries the refusal.",
+  "etaAt": "2026-10-15T00:34:08.098Z",
+  "linesAdded": 0,
+  "linesRemoved": 0,
+  "note": "Wave 2; contract in FLUENT-PLAN \"Wave 2 leaves\".",
+  "order": 1,
+  "parent": "T1.3",
+  "progress": 5,
+  "quickWin": true,
+  "risks": [
+    {
+      "mitigation": "Size cap asserted in tests",
+      "risk": "Prompt too large"
+    }
+  ],
+  "session": "t1-3a-request",
+  "status": "running",
+  "thoughts": "Pure text; snapshot tests.",
+  "title": "Pilot: request builder",
+  "version": null
+}
