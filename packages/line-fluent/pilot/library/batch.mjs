@@ -11,6 +11,15 @@
 import { SYSTEM, SHAPES_SECTION, buildRequest } from '../request/request.mjs';
 import { parseFailure } from '../runner/runner.mjs';
 import { describeEntry } from './user-stage.mjs';
+import { tidyAnswer } from '../../contract/tidy.mjs';
+import { C2_SCHEMA } from '../../student/student.mjs';
+
+/** The shape of a batch reply, for models that can be held to a JSON schema while they write (Ollama's format). */
+export const BATCH_ANSWERS_SCHEMA = {
+  type: 'object',
+  properties: { answers: { type: 'array', items: { type: 'object', properties: C2_SCHEMA.properties, required: C2_SCHEMA.required, additionalProperties: false } } },
+  required: ['answers'],
+};
 
 export const BATCH_SIZE = 20;
 
@@ -84,13 +93,14 @@ export async function answerTurn(items, { model, gateOf }) {
     ...(it.dialogue ?? []).map((d) => `You asked the person: ${d.q}\nThey said: ${d.a}`),
   ].join('\n')).join('\n\n');
   const prefill = '{"answers": [';
-  const reply = await model({ system: BATCH_SYSTEM, user, prefill });
+  const reply = await model({ system: BATCH_SYSTEM, user, prefill, schema: BATCH_ANSWERS_SCHEMA });
   const answers = matchUp(items, readList(prefill, reply?.text, 'answers'));
   const share = (k) => (reply?.[k] ?? 0) / items.length;
   return Promise.all(items.map(async (it, i) => {
-    const answer = answers[i];
+    // Shape fix-ups that need no model (contract/tidy.mjs) come before the gate; each is recorded.
+    const { answer, tidied } = answers[i] ? tidyAnswer(answers[i], { candidates: it.candidates }) : { answer: null, tidied: [] };
     const gate = answer ? await gateOf(it.entry)(answer) : parseFailure(it.entry.id, new Error('the batch reply had no answer for this entry'));
-    return { answer: answer ?? null, gate, tokensIn: share('tokensIn'), tokensOut: share('tokensOut'), costUsd: share('costUsd') };
+    return { answer: answer ?? null, gate, ...(tidied.length ? { tidied } : {}), tokensIn: share('tokensIn'), tokensOut: share('tokensOut'), costUsd: share('costUsd') };
   }));
 }
 

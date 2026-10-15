@@ -11,7 +11,7 @@
 // best gated answer. Nothing is approved here: approving into line-smith stays a person's step (generator/cli.mjs).
 //
 //   node packages/line-fluent/pilot/library/run.mjs [--sections Array,String] [--limit n] [--jobs n]
-//        [--inside haiku|qwen2.5-coder:7b] [--outside opus|none] [--user opus|none] [--rounds 2] [--out dir]
+//        [--inside haiku|qwen2.5-coder:7b] [--engine llama-server|ollama] [--engine-url url] [--outside opus|none] [--user opus|none] [--rounds 2] [--out dir]
 //
 //   user     (--user opus) each entry no earlier stage got through: the inside model asks the person one plain
 //            question, the user model answers as the person, the inside model answers again (user-stage.mjs).
@@ -27,6 +27,7 @@ import { buildRequest, MAX_CANDIDATES } from '../request/request.mjs';
 import { runPilot } from '../runner/runner.mjs';
 import { claudeModel, claudeSession } from '../runner/claude-model.mjs';
 import { isOllamaModel, ollamaModel } from '../runner/ollama-model.mjs';
+import { llamaModel } from '../runner/llama-model.mjs';
 import { candidatesFor, CATALOG_PATH, REFERENCE_PATH } from '../../generator/generator.mjs';
 import { userStage } from './user-stage.mjs';
 import { batches, answerTurn, askTurn, tellTurn, pickTurn } from './batch.mjs';
@@ -187,13 +188,17 @@ export async function main(argv = process.argv.slice(2), { log = console.log, ma
       batch: { type: 'string', default: '0' },
       build: { type: 'boolean', default: false },
       'keep-open': { type: 'boolean', default: false },
+      engine: { type: 'string', default: 'llama-server' },
+      'engine-url': { type: 'string' },
       out: { type: 'string', default: fileURLToPath(new URL('./runs/latest/', import.meta.url)) },
     },
   });
   // --keep-open: each model's processes stay open across calls (claudeSession) instead of starting per call.
   const opened = [];
-  // A name with a tag (qwen2.5-coder:7b) is a local Ollama model; the rest go to the claude CLI.
-  const makeModel = given ?? ((opts) => (isOllamaModel(opts.model) ? ollamaModel(opts)
+  // A name with a tag (qwen2.5-coder:7b) is a local model, run by llama-server (default) or Ollama (--engine ollama);
+  // the rest go to the claude CLI.
+  const local = (opts) => (o.engine === 'ollama' ? ollamaModel(opts) : llamaModel({ ...opts, ...(o['engine-url'] ? { url: o['engine-url'] } : {}) }));
+  const makeModel = given ?? ((opts) => (isOllamaModel(opts.model) ? local(opts)
     : o['keep-open'] ? opened[opened.push(claudeSession(opts)) - 1] : claudeModel(opts)));
   const reference = readJson(REFERENCE_PATH).entries;
   const catalog = readJson(CATALOG_PATH).atoms;
