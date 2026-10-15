@@ -70,11 +70,12 @@ button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); 
 .epic { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
 details > summary { list-style: none; cursor: pointer; }
 details > summary::-webkit-details-marker { display: none; }
-.row { display: grid; grid-template-columns: minmax(0, 1fr) 92px 112px 96px; gap: 12px; align-items: center; padding: 10px 14px; }
+.row { display: grid; grid-template-columns: minmax(0, 1fr) 92px 96px; gap: 12px; align-items: center; padding: 10px 14px; }
 .row .t { display: flex; gap: 8px; align-items: center; min-width: 0; flex-wrap: wrap; }
 .row .t b { font-weight: 600; }
 .row .id { font-family: var(--mono); font-size: 0.74rem; color: var(--muted); }
-.row .lines { font-family: var(--mono); font-size: 0.78rem; text-align: right; font-variant-numeric: tabular-nums; }
+.suites { display: flex; flex-wrap: wrap; gap: 6px; font-family: var(--mono); font-size: 0.74rem; }
+.suites .chip b { font-variant-numeric: tabular-nums; }
 .row .eta { text-align: right; font-size: 0.8rem; }
 .epic > summary .row { background: var(--accent-soft); }
 .epic > summary .row .t b { font-family: var(--display); font-size: 1.02rem; }
@@ -95,7 +96,7 @@ details[open] > summary .chev { transform: rotate(90deg); }
 .empty { background: var(--surface); border: 1px dashed var(--line); border-radius: 8px; padding: 24px; color: var(--muted); }
 @media (max-width: 640px) {
   .row { grid-template-columns: minmax(0, 1fr) 84px; }
-  .row .lines, .row .prog { display: none; }
+  .row .prog { display: none; }
   .lvl2 .row { padding-left: 22px; }
   .detail, .lvl2 .detail { padding-left: 14px; }
   .kv { grid-template-columns: 1fr; }
@@ -198,6 +199,7 @@ details[open] > summary .chev { transform: rotate(90deg); }
       <div class="rel-top"><span class="count big fast" id="allCount" data-eta="" data-status="running" data-fast="1">--:--:--.--</span><span class="muted" style="font-size:.8rem" id="allEtaText">plan ETA</span></div>
       <div class="muted mono" style="font-size:.78rem">elapsed <span class="count fast" id="elapsed" data-since="">--:--:--.--</span></div>
       <div class="kpis" id="kpis"></div>
+      <div class="suites" id="suites" aria-label="Tests per suite"></div>
       <div>
         <div class="rel-top"><span class="muted" style="font-size:.8rem">Plan complete</span><span class="mono" id="allPct">0%</span></div>
         <div class="bar" id="allBar"><i style="width:0%"></i></div>
@@ -247,9 +249,9 @@ details[open] > summary .chev { transform: rotate(90deg); }
     </div>
   </div>
   <div class="tree" id="tree">
-    <div class="empty">The plan loads from live status. Claude adds each epic, task and subtask here, with its contract, risks, ETA and line counts, and updates them as work lands.</div>
+    <div class="empty">The plan loads from live status. Claude adds each epic, task and subtask here, with its contract, risks and ETA, and updates them as work lands.</div>
   </div>
-  <p class="muted" style="font-size:.8rem">Source of truth for scope and contracts: <code>docs/line/FLUENT-PLAN-2026-10-15.md</code> on <code>line/import-smith-codemod</code>. Line counts are git diff stats of each task's branch. Countdowns run to each item's ETA.</p>
+  <p class="muted" style="font-size:.8rem">Source of truth for scope and contracts: <code>docs/line/FLUENT-PLAN-2026-10-15.md</code> on <code>line/import-smith-codemod</code>. Tests passing come from the orchestrator's latest runs after each merge (release.tests). Countdowns run to each item's ETA.</p>
 </div>
 
 <script>
@@ -287,11 +289,6 @@ function rollProgress(t) {
   if (!c.length) return t.status === 'done' ? 100 : Number(t.progress || 0);
   return Math.round(c.reduce((a, x) => a + rollProgress(x), 0) / c.length);
 }
-function rollLines(t) {
-  const c = childrenOf(t.id);
-  const own = { a: Number(t.linesAdded || 0), r: Number(t.linesRemoved || 0) };
-  return c.reduce((acc, x) => { const l = rollLines(x); return { a: acc.a + l.a, r: acc.r + l.r }; }, own);
-}
 function matches(t) {
   if (filter === 'all') return true;
   const set = [t, ...tasks.filter((x) => isUnder(x, t.id))];
@@ -301,7 +298,7 @@ function matches(t) {
 function isUnder(x, id) { let p = x.parent; while (p) { if (p === id) return true; p = (tasks.find((t) => t.id === p) || {}).parent; } return false; }
 
 function rowHtml(t, lvl) {
-  const prog = rollProgress(t), lines = rollLines(t), cd = countdown(t.etaAt, t.status);
+  const prog = rollProgress(t), cd = countdown(t.etaAt, t.status);
   const st = t.status || 'todo';
   return `<div class="row">
     <div class="t"><span class="chev" aria-hidden="true">›</span><span class="id">${esc(t.id)}</span><b>${esc(t.title)}</b>
@@ -310,7 +307,6 @@ function rowHtml(t, lvl) {
       ${t.version ? `<span class="chip">${esc(t.version)}</span>` : ''}
       ${agentChip(t.id)}</div>
     <div class="prog"><div class="bar ${prog >= 100 ? 'done' : ''}"><i style="width:${prog}%"></i></div><div class="mono muted" style="font-size:.7rem">${prog}%</div></div>
-    <div class="lines"><span class="plus">+${num(lines.a)}</span> <span class="minus">−${num(lines.r)}</span></div>
     <div class="eta"><span class="count${cd.late ? ' late' : ''}" data-eta="${esc(t.etaAt || '')}" data-status="${esc(st)}">${esc(cd.text)}</span></div>
   </div>`;
 }
@@ -401,7 +397,7 @@ function render() {
   const roots = childrenOf(null);
   const tree = document.getElementById('tree');
   if (!roots.length) {
-    tree.innerHTML = '<div class="empty">No plan items yet. Claude adds each epic, task and subtask here with its contract, risks, ETA and line counts.</div>';
+    tree.innerHTML = '<div class="empty">No plan items yet. Claude adds each epic, task and subtask here with its contract, risks and ETA.</div>';
   } else tree.innerHTML = roots.map((r) => nodeHtml(r, 0)).join('') || '<div class="empty">Nothing matches this filter.</div>';
 
   // Overall KPIs over leaf items
@@ -412,23 +408,23 @@ function render() {
   const blocked = lf.filter((t) => t.status === 'blocked').length;
   const qwDone = lf.filter((t) => t.quickWin && t.status === 'done').length;
   const qwAll = lf.filter((t) => t.quickWin).length;
-  // Line totals come from git (release.lines), because per-task counts were never filled in for most merges.
-  const gl = release && release.lines;
-  const tot = gl ? { a: Number(gl.added || 0), r: Number(gl.removed || 0) } : roots.reduce((acc, r) => { const l = rollLines(r); return { a: acc.a + l.a, r: acc.r + l.r }; }, { a: 0, r: 0 });
+  // Tests passing: the orchestrator's latest real runs, one entry per suite (release.tests: {suite, pass, total, skipped?}).
+  const suites = release && Array.isArray(release.tests) ? release.tests : [];
+  const tp = suites.reduce((a, x) => a + Number(x.pass || 0), 0), tt = suites.reduce((a, x) => a + Number(x.total || 0), 0);
   // A version counts as shipped only once it is tagged in git (release.tagged).
   const versions = release && Array.isArray(release.tagged) ? release.tagged.length : 0;
   const pct = roots.length ? Math.round(roots.reduce((a, r) => a + rollProgress(r), 0) / roots.length) : 0;
   const k = document.getElementById('kpis');
   if (!k.children.length) k.innerHTML = [
     ['k-done', '', `items done`], ['k-run', '', 'items running'], ['k-block', '', 'blocked'], ['k-qw', '', 'quick wins shipped'],
-    ['k-add', 'plus', 'lines added (git)'], ['k-rem', 'minus', 'lines removed (git)'], ['k-ver', '', 'versions tagged'], ['k-ag', '', 'agents working'],
+    ['k-test', 'plus', 'tests passing'], ['k-ver', '', 'versions tagged'], ['k-ag', '', 'agents working'],
   ].map(([id, cls, l]) => `<div class="kpi"><span class="n ${cls}"><span id="${id}">0</span><span id="${id}-of" class="muted" style="font-size:.6em"></span></span><span class="l">${l}</span></div>`).join('');
   tween(document.getElementById('k-done'), done); document.getElementById('k-done-of').textContent = ` / ${lf.length}`;
   tween(document.getElementById('k-run'), running);
   tween(document.getElementById('k-block'), blocked);
   tween(document.getElementById('k-qw'), qwDone); document.getElementById('k-qw-of').textContent = ` / ${qwAll}`;
-  tween(document.getElementById('k-add'), tot.a);
-  tween(document.getElementById('k-rem'), tot.r);
+  tween(document.getElementById('k-test'), tp); document.getElementById('k-test-of').textContent = ` / ${tt}`;
+  document.getElementById('suites').innerHTML = suites.map((x) => `<span class="chip">${esc(x.suite)} <b>${num(x.pass)}/${num(x.total)}</b>${x.skipped ? ` <span class="muted">${num(x.skipped)} skipped</span>` : ''}</span>`).join('');
   tween(document.getElementById('k-ver'), versions);
   tween(document.getElementById('k-ag'), agents.filter((a) => a.status === 'running').length); document.getElementById('k-ag-of').textContent = ` / ${agents.length}`;
   // Overall countdown: the latest ETA among items actually running (old guesses on unstarted items are ignored).
@@ -486,7 +482,7 @@ function render() {
       <div class="rel-top"><span class="count big" data-eta="${esc(near.etaAt || '')}" data-status="${esc(near.status)}"></span><span class="mono">${p}%</span></div>
       <div class="bar"><i style="width:${p}%"></i></div>
       ${near.note ? `<div class="muted" style="font-size:.85rem">${esc(near.note)}</div>` : ''}
-      <div class="rel-items">${agentChip(near.id) || '<span class="chip">no agents yet</span>'}${near.branch ? `<span class="chip">${esc(near.branch)}</span>` : ''}<span class="chip"><span class="plus">+${num(near.linesAdded)}</span> <span class="minus">−${num(near.linesRemoved)}</span></span></div>
+      <div class="rel-items">${agentChip(near.id) || '<span class="chip">no agents yet</span>'}${near.branch ? `<span class="chip">${esc(near.branch)}</span>` : ''}</div>
     </div>`;
   } else { np.className = 'pill s-todo'; np.textContent = '–'; nb.className = 'muted'; nb.textContent = 'Nothing in progress yet.'; }
   tick();
