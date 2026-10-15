@@ -2,7 +2,7 @@
 
 Stopped by the owner 2026-10-15 ~00:25 UTC ("stop all", "commit ... so that we continue from here from any claude account").
 
-## Read first
+## Read first (also ARTIFACTS.md for the pages and CONTRACTS.md for every data shape)
 1. `docs/line/FLUENT-PLAN-2026-10-15.md`: vision, how we work, contracts C1-C5, tasks.
 2. `docs/line/CARRYOVER-2026-10-15-smith.md`: why Smith and the codemod live in construct.
 3. This file.
