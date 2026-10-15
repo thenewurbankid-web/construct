@@ -11,6 +11,7 @@
 import { SYSTEM, SHAPES_SECTION, buildRequest } from '../request/request.mjs';
 import { parseFailure } from '../runner/runner.mjs';
 import { describeEntry } from './user-stage.mjs';
+import { exampleFor } from './atlas-example.mjs';
 import { tidyAnswer } from '../../contract/tidy.mjs';
 import { C2_SCHEMA } from '../../student/student.mjs';
 
@@ -30,17 +31,21 @@ export const BATCH_SYSTEM = [
   'Entries from the same section are given together: keep their sentences consistent with each other.',
 ].join('\n');
 
+// The user stage is an investigation (owner, 2026-10-16): each question should reveal as much as possible about what
+// the step means to the person, never repeat, and lean on a concrete case; the person's side thinks and answers like
+// the real user of the code, grounded in what the code really does (the Atlas example and Node's real result).
 const ASK_SYSTEM = [
-  'You are writing Smith Atomic English sentences for JavaScript built-ins, and the answers below were refused.',
-  'For each entry, ask the person who owns the code ONE question whose answer would help you most to describe what the step does.',
-  'Ask in plain, friendly, non-technical English about what the step does for them: what goes in, what comes out, what changes. Never ask about code, syntax, method names or the sentence format.',
+  'You are writing Smith Atomic English sentences for JavaScript built-ins, and the answers below were refused or said not-expressible.',
+  'For each entry, investigate: ask the person who uses this code the ONE question whose answer would tell you the most about what the step means to them, so that a single answer settles as much as possible.',
+  'Best questions make them walk through a concrete case: "when you have X and do this, what do you get back, and what is it for?" Ask about purpose, what goes in, what comes out, what changes, and when it is used.',
+  'Never repeat or rephrase a question already asked in the conversation; ask about what is still unknown. Plain, friendly words; never ask about code syntax, method names or the sentence format.',
   'Reply with one JSON object only: {"questions": [{"entry": "<the label after ###, exactly>", "question": "..."}, ...]}, one per entry, same order.',
 ].join('\n');
 
 const USER_SYSTEM = [
-  'You are the person who owns some code and know exactly what each step does. Someone describing it for you asks one question per step.',
-  'Answer each in one or two plain, everyday sentences: what goes in, what comes out, what changes, with a small example in plain words if it helps.',
-  'Never write code, never name methods or functions, never suggest wording or a sentence; just say what it does.',
+  'You are the developer who wrote and uses this code every day. Think like them: what you reach for this step to do, what you hand it, what you get back, and why you need it.',
+  'You are given a real example of the step and what it really returned. Answer each question from your own use of it, in one to three plain sentences, and use the real example as your evidence (say the actual input and the actual result).',
+  'Never write code, never name methods or functions, never suggest wording or a sentence for them; say what it does for you.',
   'Reply with one JSON object only: {"answers": [{"entry": "<the label after ###, exactly>", "answer": "..."}, ...]}, one per question, same order.',
 ].join('\n');
 
@@ -121,7 +126,10 @@ export async function askTurn(items, { model }) {
 
 /** The person's side, batched: every question answered in one call, seeing only what each step is. */
 export async function tellTurn(items, questions, { model }) {
-  const user = items.map((it, i) => `### ${it.entry.key}\n${describeEntry(it.entry)}\nTheir question: ${questions[i]}`).join('\n\n');
+  const user = items.map((it, i) => {
+    const ex = exampleFor(it.entry.key);
+    return [`### ${it.entry.key}`, describeEntry(it.entry), ex ? `A real example of it:\n${ex.code}\nWhat it really returned: ${ex.result}` : '', ...(it.dialogue ?? []).map((d) => `Earlier they asked: ${d.q}\nYou said: ${d.a}`), `Their question: ${questions[i]}`].filter(Boolean).join('\n');
+  }).join('\n\n');
   const prefill = '{"answers": [';
   const reply = await model({ system: USER_SYSTEM, user, prefill });
   const told = matchUp(items, readList(prefill, reply?.text, 'answers'));

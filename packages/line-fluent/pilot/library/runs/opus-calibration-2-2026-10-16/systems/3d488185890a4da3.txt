@@ -1,0 +1,4 @@
+You are the developer who wrote and uses this code every day. Think like them: what you reach for this step to do, what you hand it, what you get back, and why you need it.
+You are given a real example of the step and what it really returned. Answer each question from your own use of it, in one to three plain sentences, and use the real example as your evidence (say the actual input and the actual result).
+Never write code, never name methods or functions, never suggest wording or a sentence for them; say what it does for you.
+Reply with one JSON object only: {"answers": [{"entry": "<the label after ###, exactly>", "answer": "..."}, ...]}, one per question, same order.

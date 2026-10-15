@@ -16,6 +16,7 @@
 //   user     (--user opus) each entry no earlier stage got through: the inside model asks the person one plain
 //            question, the user model answers as the person, the inside model answers again (user-stage.mjs).
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { runGate } from '../../gate/assemble.mjs';
@@ -194,6 +195,7 @@ export async function main(argv = process.argv.slice(2), { log = console.log, ma
       build: { type: 'boolean', default: false },
       chain: { type: 'boolean', default: false },
       'keep-open': { type: 'boolean', default: false },
+      'keep-uncheckable': { type: 'boolean', default: false },
       engine: { type: 'string', default: 'llama-server' },
       'engine-url': { type: 'string' },
       out: { type: 'string', default: fileURLToPath(new URL('./runs/latest/', import.meta.url)) },
@@ -204,8 +206,24 @@ export async function main(argv = process.argv.slice(2), { log = console.log, ma
   // A name with a tag (qwen2.5-coder:7b) is a local model, run by llama-server (default) or Ollama (--engine ollama);
   // the rest go to the claude CLI.
   const local = (opts) => (o.engine === 'ollama' ? ollamaModel(opts) : llamaModel({ ...opts, ...(o['engine-url'] ? { url: o['engine-url'] } : {}) }));
-  const makeModel = given ?? ((opts) => (isOllamaModel(opts.model) ? local(opts)
+  const rawMake = given ?? ((opts) => (isOllamaModel(opts.model) ? local(opts)
     : o['keep-open'] ? opened[opened.push(claudeSession(opts)) - 1] : claudeModel(opts)));
+  // Every model call is recorded for the decision graph and for training a Smith reasoning model (owner, 2026-10-16):
+  // records.jsonl holds the request (system prompt by hash, stored once in systems/), the reply and its cost.
+  const recordDir = `${o.out}/systems`;
+  const seenSystems = new Set();
+  const recorded = (model, name) => async (request) => {
+    const started = Date.now();
+    const reply = await model(request);
+    try {
+      mkdirSync(recordDir, { recursive: true });
+      const hash = createHash('sha256').update(request.system ?? '').digest('hex').slice(0, 16);
+      if (!seenSystems.has(hash)) { seenSystems.add(hash); writeFileSync(`${recordDir}/${hash}.txt`, request.system ?? ''); }
+      appendFileSync(`${o.out}/records.jsonl`, `${JSON.stringify({ at: new Date().toISOString(), model: name, system: hash, user: request.user, prefill: request.prefill ?? null, schema: Boolean(request.schema), reply: reply?.text ?? null, tokensIn: reply?.tokensIn ?? 0, tokensOut: reply?.tokensOut ?? 0, costUsd: reply?.costUsd ?? 0, ms: Date.now() - started })}\n`);
+    } catch { /* recording never stops a run */ }
+    return reply;
+  };
+  const makeModel = (opts) => recorded(rawMake(opts), opts.model);
   const reference = readJson(REFERENCE_PATH).entries;
   const catalog = readJson(CATALOG_PATH).atoms;
   const sections = o.sections ? new Set(o.sections.split(',').map((s) => s.trim())) : null;
@@ -217,6 +235,16 @@ export async function main(argv = process.argv.slice(2), { log = console.log, ma
   }
   if (o.limit) entries = entries.slice(0, Number(o.limit));
   entries = pick(entries);
+  // Static dead ends (owner, 2026-10-16): the gate cannot check type, index, class or protocol entries (equivalence
+  // skips them), so no model answer for them could be trusted. They are listed as gaps, not sent to a model.
+  const UNCHECKABLE = new Set(['type', 'index', 'class', 'protocol']);
+  const skipped = o['keep-uncheckable'] ? [] : entries.filter((e) => UNCHECKABLE.has(e.kind));
+  if (skipped.length) {
+    entries = entries.filter((e) => !UNCHECKABLE.has(e.kind));
+    mkdirSync(o.out, { recursive: true });
+    writeFileSync(`${o.out}/skipped.json`, `${JSON.stringify(skipped.map((e) => ({ key: e.key, kind: e.kind, why: `the gate cannot check a ${e.kind} entry` })), null, 2)}\n`);
+    log(`Skipped ${skipped.length} entries the gate cannot check (${[...UNCHECKABLE].join(', ')}); listed in skipped.json.`);
+  }
   mkdirSync(o.out, { recursive: true });
   const resultsFile = `${o.out}/results.jsonl`;
   const all = readResults(resultsFile);
@@ -339,6 +367,11 @@ async function batchedStages(entries, { o, all, record, doneIn, stopped, jobs, m
   const runTurn = (turn) => async (group) => {
     if (stopped()) return [];
     const started = Date.now();
+    // Turn 2 retries only refusals a model can fix (owner, 2026-10-16); a not-expressible answer is passed on to the
+    // user stage without a second ask.
+    const through = turn === 2 ? group.filter((e) => dodged(latest(e.key, 'inside'))) : [];
+    group = group.filter((e) => !through.includes(e));
+    if (!group.length) return through;
     const items = group.map((e) => item(e, turn === 2 ? { refusal: refusalOf(latest(e.key, 'inside')) } : {}));
     try {
       const out = await answer(items);
@@ -348,7 +381,7 @@ async function batchedStages(entries, { o, all, record, doneIn, stopped, jobs, m
       fail(items, 'inside', o.inside, e, started);
       return [];
     }
-    return group.filter((e) => { const r = latest(e.key, 'inside'); return r && (!r.gate?.pass || dodged(r)); });
+    return [...through, ...group.filter((e) => { const r = latest(e.key, 'inside'); return r && (!r.gate?.pass || dodged(r)); })];
   };
   const userOn = o.user !== 'none';
   const person = userOn ? makeModel({ model: o.user }) : null;
@@ -362,6 +395,10 @@ async function batchedStages(entries, { o, all, record, doneIn, stopped, jobs, m
     try {
       for (let round = 0; round < Number(o.rounds) && items.length; round++) {
         const asked = await askTurn(items, { model: inside });
+        // a question that repeats an earlier one (most of its words already asked) ends that entry's investigation
+        const wordsIn = (x) => new Set(String(x).toLowerCase().match(/[a-z]{3,}/g) ?? []);
+        const repeats = (it, q) => it.dialogue.some((d) => { const a = wordsIn(d.q), b = wordsIn(q); const shared = [...b].filter((w) => a.has(w)).length; return b.size && shared / b.size >= 0.7; });
+        items.forEach((it, i) => { if (asked.questions[i] && repeats(it, asked.questions[i])) { asked.questions[i] = null; it.stoppedBecause = 'repeated question'; } });
         const ready = items.filter((_, i) => asked.questions[i]);
         const qs = asked.questions.filter(Boolean);
         if (!ready.length) break;

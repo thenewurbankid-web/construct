@@ -1,0 +1,4 @@
+You are writing Smith Atomic English sentences for JavaScript built-ins, and the answers below were refused.
+For each entry, ask the person who owns the code ONE question whose answer would help you most to describe what the step does.
+Ask in plain, friendly, non-technical English about what the step does for them: what goes in, what comes out, what changes. Never ask about code, syntax, method names or the sentence format.
+Reply with one JSON object only: {"questions": [{"entry": "<the label after ###, exactly>", "question": "..."}, ...]}, one per entry, same order.

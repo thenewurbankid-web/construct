@@ -1,0 +1,236 @@
+{
+  "Array.of": {
+    "entry": "Array.of",
+    "section": "Array",
+    "stage": "inside",
+    "model": "opus",
+    "pass": true,
+    "answer": {
+      "entry": "Array.of",
+      "decision": "new-atom",
+      "atom": "clonesAndWraps",
+      "existing": null,
+      "kind": "copy",
+      "sentence": "clones().list(items).and().wraps().andThe().wrapped()",
+      "js": "Array.of(items)",
+      "params": [
+        [
+          "items",
+          "prim"
+        ]
+      ],
+      "parts": null,
+      "reason": null
+    },
+    "refusal": null
+  },
+  "Array.[Symbol.species]": {
+    "entry": "Array.[Symbol.species]",
+    "section": "Array",
+    "stage": "inside",
+    "model": "opus",
+    "pass": true,
+    "answer": {
+      "entry": "Array.[Symbol.species]",
+      "decision": "not-expressible",
+      "atom": null,
+      "existing": null,
+      "kind": null,
+      "sentence": null,
+      "js": null,
+      "params": [],
+      "parts": null,
+      "reason": "It is a hook that subclasses use to choose a constructor, not an operation that returns a plain value."
+    },
+    "refusal": null
+  },
+  "new Array": {
+    "entry": "new Array",
+    "section": "Array",
+    "stage": "inside",
+    "model": "opus",
+    "pass": true,
+    "answer": {
+      "entry": "new Array",
+      "decision": "not-expressible",
+      "atom": null,
+      "existing": null,
+      "kind": null,
+      "sentence": null,
+      "js": null,
+      "params": [],
+      "parts": null,
+      "reason": "It builds a sparse list of empty holes with no items, which is not a plain value that a sentence can describe."
+    },
+    "refusal": null
+  },
+  "new Array #2": {
+    "entry": "new Array",
+    "section": "Array",
+    "stage": "inside",
+    "model": "opus",
+    "pass": true,
+    "answer": {
+      "entry": "new Array",
+      "decision": "not-expressible",
+      "atom": null,
+      "existing": null,
+      "kind": null,
+      "sentence": null,
+      "js": null,
+      "params": [],
+      "parts": null,
+      "reason": "It builds a sparse list of empty holes of the given length, which is not a plain value that a sentence can describe."
+    },
+    "refusal": null
+  },
+  "new Array #3": {
+    "entry": "new Array",
+    "section": "Array",
+    "stage": "inside",
+    "model": "opus",
+    "pass": true,
+    "answer": {
+      "entry": "new Array",
+      "decision": "not-expressible",
+      "atom": null,
+      "existing": null,
+      "kind": null,
+      "sentence": null,
+      "js": null,
+      "params": [],
+      "parts": null,
+      "reason": "A single number argument is read as a length instead of an item, so the meaning depends on the argument count, and listOf already covers the safe form."
+    },
+    "refusal": null
+  },
+  "Array()": {
+    "entry": "Array()",
+    "section": "Array",
+    "stage": "inside",
+    "model": "opus",
+    "pass": true,
+    "answer": {
+      "entry": "Array()",
+      "decision": "not-expressible",
+      "atom": null,
+      "existing": null,
+      "kind": null,
+      "sentence": null,
+      "js": null,
+      "params": [
+        [
+          "arrayLength",
+          "nat"
+        ]
+      ],
+      "parts": null,
+      "reason": "Calling Array with an optional length either makes an empty list or a list of empty slots, and no sentence shape describes building a list from a bare length."
+    },
+    "refusal": null
+  },
+  "Array() #2": {
+    "entry": "Array()",
+    "section": "Array",
+    "stage": "inside",
+    "model": "opus",
+    "pass": true,
+    "answer": {
+      "entry": "Array()",
+      "decision": "not-expressible",
+      "atom": null,
+      "existing": null,
+      "kind": null,
+      "sentence": null,
+      "js": null,
+      "params": [
+        [
+          "arrayLength",
+          "nat"
+        ]
+      ],
+      "parts": null,
+      "reason": "Making a list of empty slots from a length has no subject list or text to act on, so no sentence shape fits it."
+    },
+    "refusal": null
+  },
+  "Array() #3": {
+    "entry": "Array()",
+    "section": "Array",
+    "stage": "user",
+    "model": "opus+opus as user",
+    "pass": false,
+    "answer": {
+      "entry": "Array()",
+      "decision": "new-atom",
+      "atom": "clonesAndGathers",
+      "existing": null,
+      "kind": "copy",
+      "sentence": "clones().list(items).and().gathers().andThe().gathered()",
+      "js": "Array(...items)",
+      "params": [
+        [
+          "items",
+          "list"
+        ]
+      ],
+      "parts": null,
+      "reason": null
+    },
+    "refusal": "On the reference case items = 1, the answer throws TypeError but the reference returns [null]."
+  },
+  "Array.isArray": {
+    "entry": "Array.isArray",
+    "section": "Array",
+    "stage": "inside",
+    "model": "opus",
+    "pass": true,
+    "answer": {
+      "entry": "Array.isArray",
+      "decision": "existing",
+      "atom": "isList",
+      "existing": "isList",
+      "kind": "question",
+      "sentence": "checks().if(arg).is().an().instance().of(Array).andThe().answer()",
+      "js": "Array.isArray(arg)",
+      "params": [
+        [
+          "arg",
+          "mixed"
+        ]
+      ],
+      "parts": null,
+      "reason": null
+    },
+    "refusal": null
+  },
+  "Array.prototype.findIndex": {
+    "entry": "Array.prototype.findIndex",
+    "section": "Array",
+    "stage": "inside",
+    "model": "opus",
+    "pass": true,
+    "answer": {
+      "entry": "Array.prototype.findIndex",
+      "decision": "existing",
+      "atom": null,
+      "existing": "positionWhere",
+      "kind": "value",
+      "sentence": "list(xs).locates().first().where(test).andThe().located()",
+      "js": "xs.findIndex(test)",
+      "params": [
+        [
+          "xs",
+          "list"
+        ],
+        [
+          "test",
+          "pred"
+        ]
+      ],
+      "parts": null,
+      "reason": null
+    },
+    "refusal": null
+  }
+}

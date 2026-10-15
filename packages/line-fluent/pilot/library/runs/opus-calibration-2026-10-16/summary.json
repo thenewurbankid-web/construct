@@ -1,0 +1,74 @@
+{
+  "entries": 10,
+  "done": 10,
+  "inLibrary": 3,
+  "notExpressible": 0,
+  "knownGaps": 7,
+  "byDecision": {
+    "new-atom": 1,
+    "existing": 2
+  },
+  "inside": {
+    "entries": 10,
+    "passed": 3,
+    "passRate": 0.3,
+    "errors": 0,
+    "calls": 19,
+    "tokensIn": 16126.2,
+    "tokensOut": 4548.6,
+    "costUsd": 0.1596,
+    "minutes": 0.9,
+    "decisions": {
+      "existing": 2,
+      "new-atom": 1
+    },
+    "failedOn": {
+      "grammar": 5,
+      "equivalence": 2
+    }
+  },
+  "outside": {
+    "entries": 0,
+    "passed": 0,
+    "passRate": 0,
+    "errors": 0,
+    "calls": 0,
+    "tokensIn": 0,
+    "tokensOut": 0,
+    "costUsd": 0,
+    "minutes": 0,
+    "decisions": {},
+    "failedOn": {}
+  },
+  "user": {
+    "entries": 7,
+    "passed": 0,
+    "passRate": 0,
+    "errors": 0,
+    "calls": 12,
+    "tokensIn": 18471.2,
+    "tokensOut": 4325.4,
+    "costUsd": 0.5537,
+    "minutes": 2.4,
+    "decisions": {},
+    "failedOn": {
+      "grammar": 6,
+      "equivalence": 1
+    }
+  },
+  "sections": {
+    "Array": {
+      "entries": 10,
+      "passed": 3,
+      "inside": 3,
+      "outside": 0,
+      "user": 0
+    }
+  },
+  "stoppedOnErrors": false,
+  "models": {
+    "inside": "opus",
+    "outside": "opus",
+    "user": "opus"
+  }
+}

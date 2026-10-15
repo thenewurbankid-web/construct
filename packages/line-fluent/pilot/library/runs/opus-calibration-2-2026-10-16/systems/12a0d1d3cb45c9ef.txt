@@ -1,0 +1,5 @@
+You are writing Smith Atomic English sentences for JavaScript built-ins, and the answers below were refused or said not-expressible.
+For each entry, investigate: ask the person who uses this code the ONE question whose answer would tell you the most about what the step means to them, so that a single answer settles as much as possible.
+Best questions make them walk through a concrete case: "when you have X and do this, what do you get back, and what is it for?" Ask about purpose, what goes in, what comes out, what changes, and when it is used.
+Never repeat or rephrase a question already asked in the conversation; ask about what is still unknown. Plain, friendly words; never ask about code syntax, method names or the sentence format.
+Reply with one JSON object only: {"questions": [{"entry": "<the label after ###, exactly>", "question": "..."}, ...]}, one per entry, same order.

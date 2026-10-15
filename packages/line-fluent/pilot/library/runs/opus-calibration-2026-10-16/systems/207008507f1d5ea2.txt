@@ -1,0 +1,72 @@
+Task: write one fluent answer for EACH JavaScript reference entry below, in Smith Atomic English.
+Reply with one JSON object and nothing else: {"answers": [<one answer object per entry, in the same order>]}. Each answer object has the fields below; its entry is the label after ### exactly as written (for example "Array.from #2").
+Fields, in this order: entry, decision, atom, existing, kind, sentence, js, params, parts, reason. No other fields.
+decision: one of new-atom | existing | molecule | not-expressible.
+kind: one of question | copy | in-place | value | effect; null only when decision is not-expressible.
+atom: a camelCase atom id, or null. existing: a catalog atom id when decision is existing, else null.
+sentence: the Atomic English sentence; js: the plain JS it stands for; both null when decision is not-expressible.
+params: a list of [name, type] pairs. parts: catalog atom ids when decision is molecule, else null.
+reason: one plain sentence when decision is not-expressible, else null.
+Reuse an existing atom first: if a candidate already does this, answer decision existing with its id.
+Rules:
+R1. Verbs are third person singular (compares, sorts, trims); no base form or past participle, except inside every() (R9).
+R2. A sentence starts with a verb (checks, clones, when, chooses, matches, attempts) or a subject (text(s), list(xs), number(n), date(d), record(o), map(m), set(s)).
+R3. One argument per word, carried by a preposition or role noun: if, than, to, by, with, from, at, of, between(low).and(high).
+R4. Questions use is, has, can or does, split into words: checks().if(a).is().greater().than(b).
+R5. A changed copy starts with clones(): clones().text(s).and().trims(); in-place changes and questions never take clones().
+R6. Connectors and, then, also, but, otherwise join clauses and take no argument; only if() takes one.
+R7. Every chain ends in a plain value and calls exactly one atom.
+R8. A new atom's plain name is the chain's words after the subject in camelCase, arguments in order: isGreaterThan, clonesAndSortsBy.
+R9. Callbacks become every() sentences: every(x).in(xs).is().mapped()...; the first word gives the result: checks() yes/no, every() list, the().first() one item, folds() one value, does() nothing.
+R10. End every sentence with .andThe().<name>(), the name of what it returns: a participle (trimmed, sorted) or a noun (answer, parts).
+Each params type must be one of these generator names (the gate tests with them), never a TypeScript type: unit, urlpath, urlbase, rawtemplate, descriptor, descriptormap, prim, text, shorttext, spacedtext, num, nat, smallint, pos, nzint, digits, bool, bigint, smallbigint, key, keys, obj, objornull, mixed, nullish, undef, list, list1, listornull, nums, texts, nested, pairs, anypairs, regex, gregex, ngregex, date, isotext, numtext, jsonvalue, pred, fn, cmp, fntext, fnnested, keyfn, ctor, map, set, weakmap, weakset, promise.
+params must list every name the js uses that is not defined inside it, the receiver first (for m.set(key, value): [["m", "map"], ["key", "prim"], ["value", "prim"]]).
+The sentence must have one of these shapes (VERB is a verb slot: a known verb or a new third-person verb such as copies; · marks an argument). Each shape is followed by a real sentence of that shape:
+- checks().if(·).is().equal().to(·)   e.g. checks().if(a).is().equal().to(b).andThe().answer()
+- checks().if(·).is().not().equal().to(·)   e.g. checks().if(a).is().not().equal().to(b).andThe().answer()
+- checks().if(·).is().less().than(·)   e.g. checks().if(a).is().less().than(b).andThe().answer()
+- checks().if(·).is().at().most(·)   e.g. checks().if(a).is().at().most(b).andThe().answer()
+- checks().if(·).is().greater().than(·)   e.g. checks().if(a).is().greater().than(b).andThe().answer()
+- checks().if(·).is().at().least(·)   e.g. checks().if(a).is().at().least(b).andThe().answer()
+- checks().if(·).and(·)   e.g. checks().if(a).and(() => b).andThe().answer()
+- when(·).yields(·).otherwise(·)   e.g. when(c).yields(() => a).otherwise(() => b).andThe().chosen()
+- chooses().when(·).yields(·).when(·).yields(·).otherwise(·)   e.g. chooses().when(c1).yields(() => a).when(c2).yields(() => b).otherwise(() => fallback).andThe().chosen()
+- matches().value(·).on(·).yields(·).otherwise(·)   e.g. matches().value(value).on(k).yields(() => a).otherwise(() => fallback).andThe().matched()
+- attempts().to(·).and().recovers().with(·).and().cleans().up().with(·)   e.g. attempts().to(() => body).and().recovers().with((e) => recover).and().cleans().up().with(() => cleanup).andThe().result()
+- checks().if(·).is().text()   e.g. checks().if(value).is().text().andThe().answer()
+- checks().if(·).is().number()   e.g. checks().if(value).is().number().andThe().answer()
+- checks().if(·).is().boolean()   e.g. checks().if(value).is().boolean().andThe().answer()
+- checks().if(·).is().nothing()   e.g. checks().if(value).is().nothing().andThe().answer()
+- checks().if(·).has().key(·)   e.g. checks().if(obj).has().key(key).andThe().answer()
+- checks().if(·).is().an().instance().of(·)   e.g. checks().if(value).is().an().instance().of(Type).andThe().answer()
+- checks().if(·).has().item(·)   e.g. checks().if(xs).has().item(x).andThe().answer()
+- clones().text(·).and().VERB()   e.g. clones().text(s).and().lowercases().andThe().lowercased()
+- text(·).VERB().by(·)   e.g. text(s).splits().by(sep).andThe().parts()
+- list(·).VERB().with(·)   e.g. list(xs).joins().with(sep).andThe().joined()
+- clones().text(·).and().VERB().every(·).with(·)   e.g. clones().text(s).and().replaces().every(p).with(r).andThe().replaced()
+- clones().text(·).and().VERB().first(·).with(·)   e.g. clones().text(s).and().replaces().first(p).with(r).andThe().replaced()
+- list(·).VERB().first()   e.g. list(xs).takes().first().andThe().first()
+- list(·).VERB().last()   e.g. list(xs).takes().last().andThe().last()
+- clones().list(·).and().VERB().each().with(·)   e.g. clones().list(xs).and().maps().each().with(fn).andThe().mapped()
+- clones().list(·).and().VERB().where(·)   e.g. clones().list(xs).and().keeps().where(test).andThe().kept()
+- list(·).VERB().first().where(·)   e.g. list(xs).finds().first().where(test).andThe().found()
+- checks().if(·).has().any().where(·)   e.g. checks().if(xs).has().any().where(test).andThe().answer()
+- checks().if(·).has().only().items().where(·)   e.g. checks().if(xs).has().only().items().where(test).andThe().answer()
+- clones().list(·).and().VERB().by(·)   e.g. clones().list(xs).and().sorts().by(order).andThe().sorted()
+- clones().list(·).and().VERB()   e.g. clones().list(xs).and().reverses().andThe().reversed()
+- clones().list(·).and().VERB().from(·).to(·)   e.g. clones().list(xs).and().keeps().from(from).to(to).andThe().kept()
+- clones().list(·).and().VERB().duplicates()   e.g. clones().list(xs).and().drops().duplicates().andThe().deduplicated()
+- every(·).in(·).is().mapped().to().clone().by().multiplying(·).by(·)   e.g. every(x).in(xs).is().mapped().to().clone().by().multiplying(x).by(2).andThe().mapped()
+- every(·).in(·).is().kept().if(·).is().positive()   e.g. every(x).in(xs).is().kept().if(x).is().positive().andThe().kept()
+- checks().if().every(·).in(·).is().positive()   e.g. checks().if().every(x).in(xs).is().positive().andThe().answer()
+- checks().if().any(·).in(·).is().positive()   e.g. checks().if().any(x).in(xs).is().positive().andThe().answer()
+- the().first(·).in(·).that().is().positive()   e.g. the().first(x).in(xs).that().is().positive().andThe().found()
+- folds().every(·).in(·).into(·).starting().at(·).by().adding(·).to(·)   e.g. folds().every(x).in(xs).into(total).starting().at(0).by().adding(x).to(total).andThe().total()
+- every(·).in(·).is().mapped().to().clone().by().every(·).in(·).is().mapped().to().clone().by().multiplying(·).by(·)   e.g. every(x).in(rows).is().mapped().to().clone().by().every(y).in(x).is().mapped().to().clone().by().multiplying(y).by(2).andThe().mapped()
+- every(·).in(·).is().mapped().to().clone().by().every(·).in(·).is().kept().if(·).is().positive()   e.g. every(x).in(rows).is().mapped().to().clone().by().every(y).in(x).is().kept().if(y).is().positive().andThe().mapped()
+- every(·).in(·).is().kept().if().any(·).in(·).is().positive()   e.g. every(x).in(rows).is().kept().if().any(y).in(x).is().positive().andThe().kept()
+- every(·).in(·).is().kept().if().every(·).in(·).is().positive()   e.g. every(x).in(rows).is().kept().if().every(y).in(x).is().positive().andThe().kept()
+- every(·).at(·).in(·).is().mapped().to().clone().by().multiplying(·).by(·)   e.g. every(x).at(i).in(xs).is().mapped().to().clone().by().multiplying(x).by(i).andThe().mapped()
+- every(·).at(·).in(·).is().kept().if(·).is().positive()   e.g. every(x).at(i).in(xs).is().kept().if(i).is().positive().andThe().kept()
+- folds().every(·).at(·).in(·).into(·).starting().at(·).by().adding(·).to(·)   e.g. folds().every(x).at(i).in(xs).into(total).starting().at(0).by().adding(i).to(total).andThe().total()
+Entries from the same section are given together: keep their sentences consistent with each other.

@@ -1,0 +1,251 @@
+{
+  "Array.of": {
+    "entry": "Array.of",
+    "section": "Array",
+    "stage": "inside",
+    "model": "opus",
+    "pass": true,
+    "answer": {
+      "entry": "Array.of",
+      "decision": "new-atom",
+      "atom": "wrapsWith",
+      "existing": null,
+      "kind": "value",
+      "sentence": "list([]).wraps().with(items).andThe().wrapped()",
+      "js": "Array.of(items)",
+      "params": [
+        [
+          "items",
+          "prim"
+        ]
+      ],
+      "parts": null,
+      "reason": null
+    },
+    "refusal": null
+  },
+  "Array.[Symbol.species]": {
+    "entry": "Array.[Symbol.species]",
+    "section": "Array",
+    "stage": "user",
+    "model": "opus+opus as user",
+    "pass": false,
+    "answer": {
+      "entry": "Array.[Symbol.species]",
+      "decision": "new-atom",
+      "atom": "readsFirst",
+      "existing": null,
+      "kind": "value",
+      "sentence": "list(Array).reads().first().andThe().species()",
+      "js": "Array[Symbol.species]",
+      "params": [],
+      "parts": null,
+      "reason": null
+    },
+    "refusal": "The sentence returns its read (R10); end it with `.andThe().read()`, not `.species()`."
+  },
+  "new Array": {
+    "entry": "new Array",
+    "section": "Array",
+    "stage": "user",
+    "model": "opus+opus as user",
+    "pass": false,
+    "answer": {
+      "entry": "new Array",
+      "decision": "new-atom",
+      "atom": "clonesAndRenews",
+      "existing": null,
+      "kind": "value",
+      "sentence": "clones().list(arrayLength).and().renews().andThe().newArray()",
+      "js": "new Array(arrayLength)",
+      "params": [
+        [
+          "arrayLength",
+          "smallint"
+        ]
+      ],
+      "parts": null,
+      "reason": null
+    },
+    "refusal": "The sentence returns its renewed (R10); end it with `.andThe().renewed()`, not `.newArray()`."
+  },
+  "new Array #2": {
+    "entry": "new Array",
+    "section": "Array",
+    "stage": "user",
+    "model": "opus+opus as user",
+    "pass": false,
+    "answer": {
+      "entry": "new Array",
+      "decision": "new-atom",
+      "atom": "clonesAndGrowsBy",
+      "existing": null,
+      "kind": "copy",
+      "sentence": "clones().list([]).and().grows().by(arrayLength).andThe().grown()",
+      "js": "new Array(arrayLength)",
+      "params": [
+        [
+          "arrayLength",
+          "nat"
+        ]
+      ],
+      "parts": null,
+      "reason": null
+    },
+    "refusal": "The sentence returns its growed (R10); end it with `.andThe().growed()`, not `.grown()`."
+  },
+  "new Array #3": {
+    "entry": "new Array",
+    "section": "Array",
+    "stage": "user",
+    "model": "opus+opus as user",
+    "pass": false,
+    "answer": {
+      "entry": "new Array",
+      "decision": "new-atom",
+      "atom": "clonesAndHolds",
+      "existing": null,
+      "kind": "copy",
+      "sentence": "clones().list(items).and().holds().andThe().held()",
+      "js": "new Array(...items)",
+      "params": [
+        [
+          "items",
+          "texts"
+        ]
+      ],
+      "parts": null,
+      "reason": null
+    },
+    "refusal": "On the reference case items = 1, the answer throws TypeError but the reference returns [null]."
+  },
+  "Array()": {
+    "entry": "Array()",
+    "section": "Array",
+    "stage": "user",
+    "model": "opus+opus as user",
+    "pass": false,
+    "answer": {
+      "entry": "Array()",
+      "decision": "new-atom",
+      "atom": "clonesAndAllocates",
+      "existing": null,
+      "kind": "value",
+      "sentence": "clones().list(arrayLength).and().allocates().andThe().array()",
+      "js": "Array(arrayLength)",
+      "params": [
+        [
+          "arrayLength",
+          "smallint"
+        ]
+      ],
+      "parts": null,
+      "reason": null
+    },
+    "refusal": "The sentence returns its allocated (R10); end it with `.andThe().allocated()`, not `.array()`."
+  },
+  "Array() #2": {
+    "entry": "Array()",
+    "section": "Array",
+    "stage": "user",
+    "model": "opus+opus as user",
+    "pass": false,
+    "answer": {
+      "entry": "Array()",
+      "decision": "new-atom",
+      "atom": "clonesAndGrowsBy",
+      "existing": null,
+      "kind": "copy",
+      "sentence": "clones().list([]).and().grows().by(arrayLength).andThe().growed()",
+      "js": "Array(arrayLength)",
+      "params": [
+        [
+          "arrayLength",
+          "nat"
+        ]
+      ],
+      "parts": null,
+      "reason": null
+    },
+    "refusal": "The sentence does not say `array` (from Array()); without it the step reads the same as a different one. Put the word in the sentence."
+  },
+  "Array() #3": {
+    "entry": "Array()",
+    "section": "Array",
+    "stage": "user",
+    "model": "opus+opus as user",
+    "pass": false,
+    "answer": {
+      "entry": "Array()",
+      "decision": "new-atom",
+      "atom": "clonesAndGathers",
+      "existing": null,
+      "kind": "copy",
+      "sentence": "clones().list(items).and().gathers().andThe().gathered()",
+      "js": "Array(items)",
+      "params": [
+        [
+          "items",
+          "mixed"
+        ]
+      ],
+      "parts": null,
+      "reason": null
+    },
+    "refusal": "The sentence does not say `array` (from Array()); without it the step reads the same as a different one. Put the word in the sentence."
+  },
+  "Array.isArray": {
+    "entry": "Array.isArray",
+    "section": "Array",
+    "stage": "inside",
+    "model": "opus",
+    "pass": true,
+    "answer": {
+      "entry": "Array.isArray",
+      "decision": "existing",
+      "atom": "isList",
+      "existing": "isList",
+      "kind": "question",
+      "sentence": "checks().if(arg).is().an().instance().of(Array).andThe().answer()",
+      "js": "Array.isArray(arg)",
+      "params": [
+        [
+          "arg",
+          "mixed"
+        ]
+      ],
+      "parts": null,
+      "reason": null
+    },
+    "refusal": null
+  },
+  "Array.prototype.findIndex": {
+    "entry": "Array.prototype.findIndex",
+    "section": "Array",
+    "stage": "inside",
+    "model": "opus",
+    "pass": true,
+    "answer": {
+      "entry": "Array.prototype.findIndex",
+      "decision": "existing",
+      "atom": "positionWhere",
+      "existing": "positionWhere",
+      "kind": "value",
+      "sentence": "list(xs).locates().first().where(test).andThe().located()",
+      "js": "xs.findIndex(test)",
+      "params": [
+        [
+          "xs",
+          "list"
+        ],
+        [
+          "test",
+          "pred"
+        ]
+      ],
+      "parts": null,
+      "reason": null
+    },
+    "refusal": null
+  }
+}

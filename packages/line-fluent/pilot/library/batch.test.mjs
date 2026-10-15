@@ -63,14 +63,15 @@ test('a batched run: turn 1, turn 2 with the refusal, then the user stage, all r
       ['Map.prototype.get', 'inside', 1],
       ['Map.prototype.has', 'inside', 1],
       ['Map.prototype.has', 'inside', 2],
-      ['Map.prototype.has', 'user', 2],
+      ['Map.prototype.has', 'user', 1],
     ]);
     assert.equal(rows[0].gate.pass, true, JSON.stringify(rows[0].gate));
     assert.equal(rows[1].gate.pass, false);
-    // The stand-in answer is get's, so the real gate refuses it for has: two rounds, each asked and answered.
-    assert.equal(rows[3].dialogue.length, 2);
+    // The stand-in answer is get's, so the real gate refuses it for has. The stand-in asks the same question again in
+    // round two; a repeated question ends the investigation, so there is one round.
+    assert.equal(rows[3].dialogue.length, 1);
     assert.deepEqual(rows[3].dialogue[0], { q: 'What do you want to know about the map?', a: 'It says whether the name is in the map.' });
-    assert.match(seen.find((s) => s.model === 'opus').user, /^### Map\.prototype\.has\nThe code step is the JavaScript method Map\.prototype\.has\(key\)\.\nTheir question: What do you want/);
+    assert.match(seen.find((s) => s.model === 'opus').user, /^### Map\.prototype\.has\nThe code step is the JavaScript method Map\.prototype\.has\(key\)\.\n[\s\S]*Their question: What do you want/);
     assert.match(seen[1].user, /Your last answer was refused: /, 'turn 2 carries the refusal');
     assert.equal(summary.user.entries, 1);
   } finally {
