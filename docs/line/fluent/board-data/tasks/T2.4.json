@@ -1,0 +1,20 @@
+{
+  "benefit": "Import v2 produces fluent code.",
+  "contract": "ENGLISH-RULES steps 6 and 7.",
+  "etaAt": "2026-10-15T04:00:00.000Z",
+  "linesAdded": 0,
+  "linesRemoved": 0,
+  "order": 4,
+  "parent": "E2",
+  "progress": 0,
+  "quickWin": false,
+  "risks": [
+    {
+      "mitigation": "Do after T0.4",
+      "risk": "Conflicts with import-v2 work not yet pushed"
+    }
+  ],
+  "status": "todo",
+  "title": "writeAtoms writes sentences; re-import corpus",
+  "version": null
+}

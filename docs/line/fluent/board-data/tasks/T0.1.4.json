@@ -1,0 +1,30 @@
+{
+  "etaAt": "2026-10-15T00:19:00.000Z",
+  "linesAdded": 0,
+  "linesRemoved": 0,
+  "order": 4,
+  "parent": "T0.1",
+  "progress": 100,
+  "quickWin": true,
+  "report": {
+    "artifacts": [
+      {
+        "label": "commit",
+        "ref": "cf76e053"
+      }
+    ],
+    "baseline": "Pointed at the og-final-1012 worktree.",
+    "doneAt": "2026-10-15T00:20:00Z",
+    "metrics": [
+      {
+        "after": 0,
+        "before": 1,
+        "name": "external paths"
+      }
+    ],
+    "summary": "The Smith corpus defaults to this checkout's packages and bench starters, leaving out Smith, the codemod and line-fluent."
+  },
+  "status": "done",
+  "title": "bench/corpus.js: default root is this checkout",
+  "version": null
+}

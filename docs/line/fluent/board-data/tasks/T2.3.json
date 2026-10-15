@@ -1,0 +1,14 @@
+{
+  "benefit": "Measured coverage of real code.",
+  "contract": "Converts / refused / untranslated by kind, on the reference and on construct packages, bench apps and max-ai-ui.",
+  "etaAt": "2026-10-15T03:30:00.000Z",
+  "linesAdded": 0,
+  "linesRemoved": 0,
+  "order": 3,
+  "parent": "E2",
+  "progress": 0,
+  "quickWin": false,
+  "status": "todo",
+  "title": "Coverage report",
+  "version": null
+}

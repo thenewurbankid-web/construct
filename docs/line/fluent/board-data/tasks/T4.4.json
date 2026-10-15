@@ -1,0 +1,14 @@
+{
+  "benefit": "Learn the vocabulary by clicking.",
+  "contract": "Sentence -> atom -> JS twin in the reference.",
+  "etaAt": "2026-10-15T06:00:00.000Z",
+  "linesAdded": 0,
+  "linesRemoved": 0,
+  "order": 4,
+  "parent": "E4",
+  "progress": 0,
+  "quickWin": false,
+  "status": "todo",
+  "title": "Go to definition",
+  "version": null
+}

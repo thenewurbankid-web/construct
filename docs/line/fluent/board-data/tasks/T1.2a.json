@@ -1,0 +1,28 @@
+{
+  "benefit": "The gate and the LSP judge words the same way.",
+  "branch": "line/fluent/t1-2a-grammar",
+  "contract": "packages/line-fluent/gate/grammar/: checkGrammar(answer) -> CheckResult; lib-sentence parse + wave-1 nextWords; replace-word to closest legal word else remove-word.",
+  "etaAt": "2026-10-15T00:34:08.098Z",
+  "linesAdded": 0,
+  "linesRemoved": 0,
+  "note": "Wave 2; contract in FLUENT-PLAN \"Wave 2 leaves\".",
+  "order": 1,
+  "parent": "T1.2",
+  "progress": 5,
+  "quickWin": true,
+  "risks": [
+    {
+      "mitigation": "not-expressible stays first-class; misses go to the owner as a batch",
+      "risk": "Grammar narrower than real answers"
+    },
+    {
+      "mitigation": "Fix is a suggestion; the refusal names the legal words",
+      "risk": "Closest-word fix is wrong"
+    }
+  ],
+  "session": "t1-2a-grammar",
+  "status": "running",
+  "thoughts": "Smallest gate part; reuses C5 so it cannot drift from completions.",
+  "title": "Gate: grammar check",
+  "version": null
+}

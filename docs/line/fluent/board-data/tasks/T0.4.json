@@ -1,0 +1,57 @@
+{
+  "benefit": "Nothing lives only on one disk; the LSP stage can build on the live index (#950).",
+  "contract": "og/final 8d9a23e2 (wave 3), line/import-v2-probe (+ BUNDLE-READ atoms section), import-v2-static-breakdown, ladder-model-gaps pushed to private. No merges.",
+  "etaAt": null,
+  "linesAdded": 0,
+  "linesRemoved": 0,
+  "note": "Owner said yes. Pushed to private: og/final-2026-10-12 8d9a23e2, line/import-v2-probe a80cc554 (BUNDLE-READ section committed), import-v2-static-breakdown eae0470a, ladder-model-gaps 66ca1f42. No merges.",
+  "order": 4,
+  "parent": "E0",
+  "progress": 100,
+  "quickWin": false,
+  "report": {
+    "artifacts": [
+      {
+        "label": "og/final-2026-10-12",
+        "ref": "8d9a23e2"
+      },
+      {
+        "label": "line/import-v2-probe",
+        "ref": "a80cc554"
+      },
+      {
+        "label": "line/import-v2-static-breakdown",
+        "ref": "eae0470a"
+      },
+      {
+        "label": "line/ladder-model-gaps",
+        "ref": "66ca1f42"
+      }
+    ],
+    "baseline": "4 branches local only; private/og/final at 67dfe77b; an uncommitted BUNDLE-READ section.",
+    "doneAt": "2026-10-15T00:50:00Z",
+    "metrics": [
+      {
+        "after": 0,
+        "before": 4,
+        "name": "branches only on this machine"
+      },
+      {
+        "after": 0,
+        "before": 1,
+        "name": "uncommitted doc sections"
+      }
+    ],
+    "summary": "Work that existed only on this machine is now on private, as branches, with no merges."
+  },
+  "risks": [
+    {
+      "mitigation": "Push branches as-is to private only, no merge; owner says yes first",
+      "risk": "Pushing another session's half-done work"
+    }
+  ],
+  "status": "done",
+  "thoughts": "Needs the owner's yes. Blocks T4.2 (hover on the live index).",
+  "title": "Push work that exists only on this machine",
+  "version": "fluent-v0.1.0"
+}
