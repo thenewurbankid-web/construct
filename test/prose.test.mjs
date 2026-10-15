@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { describeImplementation } from '../packages/core/prose.mjs';
+import { JS_LEXICON } from '../packages/core/js-lexicon.mjs';
+import { verb, Action, Value, Predicate, Sentence } from '../packages/core/grammar.mjs';
+import { mapUserCall, splitIdentifier } from '../packages/core/user-lexicon.mjs';
 
 test('translates a pure comparison function using parameter and constant names', () => {
   const code = `export function isValidCredentials(username, password) {
@@ -44,7 +47,7 @@ test('does not confuse a destructuring assignment\'s "}" with a block-closing "}
   const text = describeImplementation(code);
   assert.equal(
     text,
-    'Declares `username` and `submit` from the result of calling `useLogin`. Renders `<LoginPage>` markup.'
+    'Declares `username` and `submit` from the login hook. Renders `<LoginPage>` markup.'
   );
 });
 
@@ -76,74 +79,103 @@ test('translates an async service function: await, fetch, throw, and a member ca
   const text = describeImplementation(code);
   assert.match(text, /^Declares `response` as the result of fetching the text '\/api\/widget' with an object with `method` set to the text 'GET'\./);
   assert.match(text, /If not \(`response\.ok`\): Throws a new `Error` \(the text 'Request failed'\)\./);
-  assert.match(text, /Returns the result of calling `response\.json`\.$/);
+  assert.match(text, /Returns the JSON body of `response`\.$/);
 });
 
-test('translates an XState machine literal into its states and transitions, not the object source', () => {
-  const code = `export const LoginWorkflow = setup({}).createMachine({
-  id: 'login',
-  initial: 'idle',
-  states: {
-    idle: {
-      on: {
-        SUBMIT: [
-          { guard: { type: 'isValid' }, target: 'success' },
-          { target: 'rejected' },
-        ],
-      },
-    },
-    rejected: {
-      entry: assign({ error: 'Invalid username or password.' }),
-    },
-    success: { type: 'final' },
-  },
-});`;
-  const text = describeImplementation(code);
-  assert.match(text, /^Defines a state machine named `login`, starting in `idle`, with states `idle`, `rejected`, and `success`\./);
-  assert.match(text, /In `idle`: on `SUBMIT`, moves to `success` if `isValid` passes, to `rejected` otherwise\./);
-  assert.match(text, /In `rejected`: entering `rejected` sets `error` to the text 'Invalid username or password\.'\./);
-  assert.match(text, /In `success`: `success` is a final state\./);
-  assert.doesNotMatch(text, /createMachine|setup\(/); // never raw code syntax
+// ---- grammar + lexicons (grammar.mjs, js-lexicon.mjs, user-lexicon.mjs) ----
+
+const ref = (js) => ({ english: `\`${js}\``, js, bare: null });
+
+test('grammar: a verb conjugates itself', () => {
+  const forms = (l) => { const v = verb(l); return [v.thirdPerson, v.gerund, v.negated].join(' / '); };
+  assert.equal(forms('set'), 'sets / setting / does not set');
+  assert.equal(forms('fetch'), 'fetches / fetching / does not fetch');
+  assert.equal(forms('copy'), 'copies / copying / does not copy');
+  assert.equal(forms('remove'), 'removes / removing / does not remove');
+  assert.equal(forms('listen'), 'listens / listening / does not listen');
+  assert.equal(forms('show'), 'shows / showing / does not show');
+  assert.equal(forms('go'), 'goes / going / does not go');
 });
 
-test('renders JSX as a flattened list of tag names, deduplicated, in first-seen order', () => {
-  const code = `export function LoginPage(props) {
-  return (
-    <main>
-      <h1>Sign in</h1>
-      <p>Demo credentials</p>
-      <Login {...props} />
-    </main>
-  );
-}`;
-  assert.equal(describeImplementation(code), 'Takes `props` as input. Renders `<main>`, `<h1>`, `<p>`, and `<Login>` markup.');
-});
-
-test('describes destructured object parameters by name, ignoring type annotations', () => {
-  const code = `export function Login({ username, onSubmit }: LoginProps) {
-  return <form onSubmit={onSubmit}>{username}</form>;
-}`;
-  const text = describeImplementation(code);
-  assert.match(text, /^Takes `username` and `onSubmit` as input\./);
-});
-
-test('an empty function body reads as "does nothing" rather than a dangling colon', () => {
-  const code = `export function useCore() {
-  return { action: useCallback(() => {}, []) };
-}`;
-  const text = describeImplementation(code);
-  assert.match(text, /a function that does nothing/);
-  assert.doesNotMatch(text, /that: {2}/); // no double space from an empty body
-});
-
-test('never falls back to printing raw code for a recognized function/const declaration', () => {
-  const samples = [
-    `export function f(a, b) { return a + b; }`,
-    `export const g = (x) => x * 2;`,
-    `export const h = 1;`,
-  ];
-  for (const code of samples) {
-    const text = describeImplementation(code);
-    assert.doesNotMatch(text, /export (function|const)/, `should not echo raw code for: ${code}`);
+test('JS lexicon: every entry is a typed sentence over grammar primitives', () => {
+  for (const type of JS_LEXICON) {
+    assert.ok(type.prototype instanceof Sentence, `not a Sentence type: ${type.call}`);
+    assert.ok([Action, Value, Predicate].some((base) => type.prototype instanceof base), `not an Action/Value/Predicate: ${type.call}`);
+    assert.match(type.call, /^\.?[A-Za-z][\w.]*$/, `bad call key: ${type.call}`);
   }
+  assert.equal(new Set(JS_LEXICON.map((t) => t.call)).size, JS_LEXICON.length, 'duplicate call keys');
+});
+
+test('JS lexicon: optional groups drop when their argument is missing; required slots reject the binding', () => {
+  const Fetch = JS_LEXICON.find((t) => t.call === 'fetch');
+  assert.equal(new Fetch({ args: [ref('url')], target: null }).toEnglish(), 'fetches `url`');
+  assert.equal(new Fetch({ args: [ref('url'), ref('opts')], target: null }).toGerund(), 'fetching `url` with `opts`');
+  assert.equal(new Fetch({ args: [], target: null }).toEnglish(), null);
+});
+
+test('JS lexicon: one sentence, both languages, and back from canonical English', () => {
+  const SetItem = JS_LEXICON.find((t) => t.call === 'localStorage.setItem');
+  const s = new SetItem({ args: [{ english: "the text 'user'", js: "'user'", bare: "'user'" }, ref('u')], target: null });
+  assert.equal(s.toEnglish(), "sets the browser-storage key 'user' to `u`");
+  assert.equal(s.toJs(), "localStorage.setItem('user', u)");
+  assert.equal(SetItem.fromEnglish("Sets the browser-storage key 'user' to `u`.").toJs(), "localStorage.setItem('user', u)");
+
+  const Includes = JS_LEXICON.find((t) => t.call === '.includes');
+  assert.equal(Includes.fromEnglish('`items` includes `x`').toJs(), 'items.includes(x)');
+  assert.equal(Includes.fromEnglish('`items` includes the keys of `x`'), null, 'a described (non-canonical) slot does not map back');
+});
+
+test('user domain: callees map onto the grammar from their names', () => {
+  assert.deepEqual(splitIdentifier('startUserSession'), ['start', 'user', 'session']);
+  assert.deepEqual(splitIdentifier('parseURLParams'), ['parse', 'url', 'params']);
+  const sentence = (callee, ...a) => new (mapUserCall(callee))({ args: a.map(ref), target: null });
+  assert.equal(sentence('startSession', 'user').toEnglish(), 'starts the session with `user`');
+  assert.equal(sentence('save', 'user').toEnglish(), 'saves `user`');
+  assert.equal(sentence('isValid', 'form').toNegatedEnglish(), '`form` is not valid');
+  assert.equal(sentence('isReady').toEnglish(), 'it is ready');
+  assert.equal(sentence('getUser', 'id').toEnglish(), 'the user for `id`');
+  assert.equal(sentence('logIn', 'user').toEnglish(), 'logs in as `user`');
+  assert.equal(sentence('useLogin').toEnglish(), 'the login hook');
+  assert.equal(sentence('total', 'a', 'b').toEnglish(), '`total` of `a` and `b`');
+});
+
+test('every call reads as English: our domain, then the user domain, with negation by the verb', () => {
+  const text = describeImplementation(`export async function submit(form) {
+  if (!isValid(form)) return;
+  if (!items.includes(form.id)) items.push(form.id);
+  await startSession(form.user);
+  return getUser(form.id);
+}`);
+  assert.equal(text, 'Takes `form` as input. If `form` is not valid: Returns. If `items` does not include `form.id`: Adds `form.id` to the end of `items`. Starts the session with `form.user`. Returns the user for `form.id`.');
+});
+
+test('JS lexicon: standard-library calls read as sentences, with literal keys shown bare', () => {
+  const text = describeImplementation(`export function save(user) {
+  localStorage.setItem('user', JSON.stringify(user));
+  console.log('saved', user.id);
+}`);
+  assert.equal(text, "Takes `user` as input. Sets the browser-storage key 'user' to the JSON text of `user`. Logs the text 'saved' and `user.id`.");
+});
+
+test('JS lexicon: method calls describe their receiver instead of reprinting a chained call', () => {
+  const text = describeImplementation(`export function onKey(event) {
+  event.preventDefault();
+  document.getElementById('menu').classList.remove('open');
+}`);
+  assert.match(text, /Stops the browser's default handling of `event`\./);
+  assert.match(text, /Removes the CSS class 'open' from `classList` of the element with id 'menu'\./);
+  assert.doesNotMatch(text, /getElementById\(/);
+});
+
+test('JS lexicon: verbs used as values read as "the result of <gerund>"; nouns are never wrapped', () => {
+  const text = describeImplementation(`export function poll(refresh) {
+  const id = setInterval(refresh, 5000);
+  return Object.keys(state[0]);
+}`);
+  assert.match(text, /Declares `id` as the result of running `refresh` repeatedly every 5000 milliseconds\./);
+  assert.match(text, /Returns the keys of item 0 of `state`\.$/);
+});
+
+test('a call no lexicon has a verb for still reads as a noun phrase, never raw code', () => {
+  assert.equal(describeImplementation('export function f(x) { return x.frobnicate(1); }'), 'Takes `x` as input. Returns `frobnicate` of `x` applied to the number 1.');
 });

@@ -16,6 +16,9 @@
 // generic, still name-based description (the identifiers found in that
 // subtree) rather than ever reprinting raw code.
 import { ts, findNode, findAllNodes } from '../../packages/ast/index.mjs';
+import { JS_LEXICON } from './js-lexicon.mjs';
+import { mapUserCall } from './user-lexicon.mjs';
+import { Action, Predicate, joinEnglishList } from './grammar.mjs';
 
 // The AST belongs to whichever snippet describeImplementation is currently
 // translating. Safe as module-level state: this module is synchronous and
@@ -38,11 +41,7 @@ function bareIdentifierPhrase(node) {
   return names.length ? `involving ${joinEnglishList(names.slice(0, 6).map((n) => `\`${n}\``))}` : 'with no named parts';
 }
 
-export function joinEnglishList(items) {
-  if (items.length <= 1) return items[0] || '';
-  if (items.length === 2) return `${items[0]} and ${items[1]}`;
-  return `${items.slice(0, -1).join(', ')}, and ${items[items.length - 1]}`;
-}
+export { joinEnglishList };
 
 function capitalize(s) {
   return s.length ? s[0].toUpperCase() + s.slice(1) : s;
@@ -55,27 +54,63 @@ function calleeText(callExpr) {
 }
 
 // A call's meaning comes back as either a "verb" phrase — an action, read
-// naturally as an imperative statement ("Sets X to Y.") but needing
-// gerund-conversion + a "the result of" wrapper when it's a value being
-// returned/assigned instead — or a "noun" phrase that already reads fine
-// standalone in a value position ("the app router") and should never be
-// wrapped or converted.
-const ACTION_GERUNDS = { sets: 'setting', reads: 'reading', removes: 'removing', navigates: 'navigating', fetches: 'fetching' };
+// naturally as an imperative statement ("Sets X to Y.") and, when it's a
+// value being returned/assigned instead, as "the result of <gerund>" — or a
+// "noun" phrase that already reads fine standalone in a value position ("the
+// app router") and should never be wrapped or converted.
+//
+// Calls are sentences, not strings: each one is mapped to a typed sentence
+// (grammar.mjs) from our domain — the JS lexicon (js-lexicon.mjs) — or, for a
+// project's own functions, the user domain (user-lexicon.mjs), which derives
+// the sentence from the callee's name. The raw call stays linked to the
+// sentence it maps to (`sentence.raw`); the English is built from the
+// sentence, never from the raw text.
+
+/** The sentence a call maps to, in our domain or the user's. Null only for
+ * callees that aren't a plain name path (`f()()`, `obj[key]()`).
+ * @returns {import('./grammar.mjs').Sentence | null} */
+export function mapCall(node) {
+  const callee = calleeText(node).replace(/\?\./g, '.');
+  const receiverNode = ts.isPropertyAccessExpression(node.expression) ? node.expression.expression : null;
+  const binding = {
+    args: node.arguments.map((a) => {
+      const inner = unwrapParens(a);
+      const bare = ts.isNumericLiteral(inner) ? inner.text : ts.isStringLiteralLike(inner) ? `'${inner.text}'` : null;
+      return { english: describeExpr(a), js: text(a), bare };
+    }),
+    // The receiver is described, not reprinted: `users.filter(...).map(...)`'s
+    // receiver reads as "the items of `users` kept by ...", not as raw code.
+    target: receiverNode ? { english: describeExpr(receiverNode), js: text(receiverNode) } : null,
+    raw: text(node),
+  };
+  const ours = JS_LEXICON.filter((type) => !type.call.startsWith('.') && type.covers(callee));
+  const oursByMethod = binding.target ? JS_LEXICON.filter((type) => type.call.startsWith('.') && type.covers(callee)) : [];
+  for (const type of [...ours, ...oursByMethod]) {
+    const sentence = new type(binding);
+    if (sentence.toEnglish() != null) return sentence;
+  }
+  if (!/^[\w$]+(\.[\w$]+)*$/.test(callee)) return null;
+  const sentence = new (mapUserCall(callee))(binding);
+  return sentence.toEnglish() != null ? sentence : null;
+}
+
+function asPhrase(sentence) {
+  if (sentence instanceof Action) return { phrase: sentence.toEnglish(), form: 'verb', gerund: sentence.toGerund(), sentence };
+  if (sentence instanceof Predicate) return { phrase: sentence.toEnglish(), form: 'noun', negated: sentence.toNegatedEnglish(), sentence };
+  return { phrase: sentence.toEnglish(), form: 'noun', sentence };
+}
 
 function describeCallNode(node) {
   const callee = calleeText(node);
   const args = node.arguments.map(describeExpr);
 
-  if (/(^|\.)localStorage\.setItem$/.test(callee) && args.length >= 2) return { phrase: `sets the browser-storage key ${args[0]} to ${args[1]}`, form: 'verb' };
-  if (/(^|\.)localStorage\.getItem$/.test(callee)) return { phrase: `reads the browser-storage key ${args[0]}`, form: 'verb' };
-  if (/(^|\.)localStorage\.removeItem$/.test(callee)) return { phrase: `removes the browser-storage key ${args[0]}`, form: 'verb' };
-  if (/\.push$/.test(callee) && args.length === 1) return { phrase: `navigates to ${args[0]}`, form: 'verb' };
-  if (callee === 'fetch' && args.length) return { phrase: `fetches ${args[0]}${args[1] ? ` with ${args[1]}` : ''}`, form: 'verb' };
-  if (/\.matches$/.test(callee) && args.length === 1) return { phrase: `\`${callee.replace(/\.matches$/, '')}\` matches ${args[0]}`, form: 'noun' };
+  if (/\.push$/.test(callee) && args.length === 1 && /router/i.test(callee)) return { phrase: `navigates to ${args[0]}`, form: 'verb', gerund: `navigating to ${args[0]}` };
   if (callee === 'useState') return { phrase: `local state starting at ${args[0] ?? 'nothing'}`, form: 'noun' };
   if (callee === 'useRouter') return { phrase: 'the app router', form: 'noun' };
   if (callee === 'useMachine' && node.arguments.length) return { phrase: `running the \`${text(node.arguments[0])}\` state machine`, form: 'noun' };
 
+  const sentence = mapCall(node);
+  if (sentence) return asPhrase(sentence);
   const argsPhrase = args.length ? ` with ${joinEnglishList(args)}` : '';
   return { phrase: `calling \`${callee}\`${argsPhrase}`, form: 'verb' }; // already gerund-shaped, but still worth "the result of" when it's a value
 }
@@ -83,10 +118,9 @@ function describeCallNode(node) {
 function describeReturnValue(exprNode) {
   const inner = unwrapParens(exprNode);
   if (ts.isCallExpression(inner)) {
-    const { phrase, form } = describeCallNode(inner);
+    const { phrase, form, gerund } = describeCallNode(inner);
     if (form === 'noun') return phrase;
-    const gerund = phrase.replace(/^(sets|reads|removes|navigates|fetches)\b/, (w) => ACTION_GERUNDS[w]);
-    return `the result of ${gerund}`;
+    return `the result of ${gerund ?? phrase}`;
   }
   return describeExpr(inner);
 }
@@ -161,7 +195,9 @@ export function describeExpr(node) {
   }
 
   if (ts.isPrefixUnaryExpression(node) && node.operator === ts.SyntaxKind.ExclamationToken) {
-    return `not (${describeExpr(node.operand)})`;
+    const operand = unwrapParens(node.operand);
+    const negated = ts.isCallExpression(operand) ? describeCallNode(operand).negated : null; // a predicate negates by its verb
+    return negated ?? `not (${describeExpr(node.operand)})`;
   }
 
   if (ts.isConditionalExpression(node)) {
@@ -193,7 +229,18 @@ export function describeExpr(node) {
     return `a list containing ${joinEnglishList(node.elements.map(describeExpr))}`;
   }
 
+  if (ts.isPropertyAccessExpression(node) && ts.isCallExpression(unwrapParens(node.expression))) {
+    return `\`${node.name.text}\` of ${describeExpr(node.expression)}`; // `f().x` — never reprint the call
+  }
   if (ts.isPropertyAccessExpression(node) || ts.isIdentifier(node)) return `\`${text(node)}\``;
+
+  if (ts.isElementAccessExpression(node)) {
+    const index = unwrapParens(node.argumentExpression);
+    const of = describeExpr(node.expression);
+    if (ts.isNumericLiteral(index)) return `item ${index.text} of ${of}`;
+    if (ts.isStringLiteralLike(index)) return `the '${index.text}' entry of ${of}`;
+    return `the ${describeExpr(index)} entry of ${of}`;
+  }
 
   return bareIdentifierPhrase(node);
 }
@@ -244,7 +291,7 @@ export function describeStatement(node) {
   }
 
   if (ts.isExpressionStatement(node)) {
-    const expr = node.expression;
+    const expr = unwrapParens(node.expression); // `await f();` reads like `f();`
     if (ts.isCallExpression(expr)) {
       const callee = calleeText(expr);
       if (callee === 'useEffect' && expr.arguments.length >= 1 && ts.isArrowFunction(expr.arguments[0]) && ts.isBlock(expr.arguments[0].body)) {
@@ -253,7 +300,9 @@ export function describeStatement(node) {
         const depsPhrase = deps.length ? `${joinEnglishList(deps.map((d) => `\`${d}\``))} change${deps.length === 1 ? 's' : ''}` : 'it runs (no dependencies)';
         return `Whenever ${depsPhrase}: ${bodyText}`;
       }
-      return `${capitalize(describeCallNode(expr).phrase.replace(/^calling\b/, 'calls'))}.`;
+      const described = describeCallNode(expr);
+      if (described.form === 'noun') return `Evaluates ${described.phrase}.`;
+      return `${capitalize(described.phrase.replace(/^calling\b/, 'calls'))}.`;
     }
     if (ts.isBinaryExpression(expr) && expr.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
       return `Sets ${describeExpr(expr.left)} to ${describeExpr(expr.right)}.`;
