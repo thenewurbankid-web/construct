@@ -1,6 +1,7 @@
 // Clarify a sentence with a person, one turn at a time (state kept in a JSON file between turns):
 //
 //   node packages/line-fluent/clarify/cli.mjs start "<what the person wants>" --state s.json [--model haiku] [--n 10]
+//   node packages/line-fluent/clarify/cli.mjs code "<a JS expression>" --state s.json [--model haiku] [--n 10]
 //   node packages/line-fluent/clarify/cli.mjs answer "<their reply>" --state s.json [--draft-model opus]
 //
 // start: the model suggests n sentences (prompt built for this request), each is built into its atom and tested
@@ -11,7 +12,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { nextQuestion, applyAnswer } from './narrow.mjs';
-import { checkSentence, dedupeOptions, suggestSentences, runOption, givenText, readableCase, show, DRAFT_SYSTEM } from './sentences.mjs';
+import { checkAgainstCode, withVerb, checkSentence, dedupeOptions, suggestSentences, runOption, givenText, readableCase, show, DRAFT_SYSTEM } from './sentences.mjs';
 import { claudeArgs, runClaude } from '../pilot/runner/claude-model.mjs';
 import { runAnswer } from '../gate/equivalence/equivalence.mjs';
 import { checkGrammar } from '../gate/grammar/grammar.mjs';
@@ -25,6 +26,17 @@ async function start(question, { model = 'haiku', n = 10 }) {
   for (const answer of [...new Set(suggestions)].slice(0, n)) checked.push({ answer, ...(await checkSentence(answer)) });
   const options = dedupeOptions(checked.filter((c) => c.ok));
   const state = { question, options, all: options, facts: [], ruledOut: [], refused: checked.filter((c) => !c.ok), pending: null };
+  return ask(state);
+}
+
+/** Code mode: the code fixes the behaviour, so only sentences that do exactly what it does are kept. */
+async function startFromCode(code, { model = 'haiku', n = 10 }) {
+  const request = `Say in Atomic English what this JavaScript does, using its input names: ${code}`;
+  const suggestions = await suggestSentences({ model })(request, n, {});
+  const checked = [];
+  for (const answer of [...new Set(suggestions)].slice(0, n)) checked.push({ answer, ...(await checkAgainstCode(answer, code)) });
+  const options = dedupeOptions(checked.filter((c) => c.ok));
+  const state = { source: 'code', code, question: request, options, all: options, facts: [], ruledOut: [], refused: checked.filter((c) => !c.ok), pending: null };
   return ask(state);
 }
 
@@ -61,10 +73,12 @@ async function create(state, { draftModel = 'opus' }) {
 export async function main(argv = process.argv.slice(2), { log = console.log } = {}) {
   const { values: o, positionals } = parseArgs({ args: argv, allowPositionals: true, options: { state: { type: 'string' }, model: { type: 'string' }, 'draft-model': { type: 'string' }, n: { type: 'string' } } });
   const [cmd, text] = positionals;
-  if (!o.state || !['start', 'answer'].includes(cmd) || !text) throw new Error('Usage: cli.mjs start "<request>" | answer "<reply>" --state <file>');
+  if (!o.state || !['start', 'code', 'answer'].includes(cmd) || !text) throw new Error('Usage: cli.mjs start "<request>" | code "<js expression>" | answer "<reply>" --state <file>');
   let result;
   if (cmd === 'start') {
     result = await start(text, { model: o.model ?? 'haiku', n: Number(o.n ?? 10) });
+  } else if (cmd === 'code') {
+    result = await startFromCode(text, { model: o.model ?? 'haiku', n: Number(o.n ?? 10) });
   } else {
     const state = JSON.parse(readFileSync(o.state, 'utf8'));
     CURRENT.all = state.all;
@@ -72,7 +86,18 @@ export async function main(argv = process.argv.slice(2), { log = console.log } =
     if (applied.again) result = { state, say: applied.again };
     else if (applied.done?.status === 'chosen') {
       const s = applied.done.option;
-      result = { state: { ...applied.state, agreed: s, pending: null }, say: `Agreed sentence: ${s.answer}${s.created ? ` (new; adds the verb ${(s.aliases ?? []).map((a) => a.word).join(', ') || 'none'}; JS: ${s.js})` : ` (atom ${s.atom}; JS: ${s.js})`}` };
+      result = { state: { ...applied.state, agreed: s, pending: null }, say: `Agreed sentence: ${s.answer}${s.created ? ` (new; adds the verb ${(s.aliases ?? []).map((a) => a.word).join(', ') || 'none'}${s.aliasOf ? ` as an alias of the atom ${s.aliasOf}` : ''}; JS: ${s.js})` : ` (atom ${s.atom}; JS: ${s.js})`}` };
+    } else if (applied.done?.status === 'word') {
+      // The person's own word for what the code does: the same sentence with their verb, an alias of the same atom.
+      const base = applied.state.options[0];
+      const sentence = base && withVerb(base.answer, applied.done.word);
+      const grammar = sentence ? checkGrammar({ sentence }) : null;
+      if (!sentence || grammar.check !== 'pass') {
+        result = { state, say: `“${applied.done.word}” does not fit the sentence${grammar ? ` (${grammar.errors[0]})` : ''}. Pick a number, or try one other word.` };
+      } else {
+        const created = { ...base, answer: sentence, plain: sentence, created: true, aliases: grammar.aliases ?? [], aliasOf: base.atom };
+        result = await ask({ ...applied.state, options: [created], all: [created] });
+      }
     } else if (applied.done?.status === 'create') result = await create(applied.state, { draftModel: o['draft-model'] ?? 'opus' });
     else result = await ask(applied.state);
   }

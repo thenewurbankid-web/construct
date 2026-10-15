@@ -12,10 +12,13 @@ import fc from 'fast-check';
 import { parse } from '../../line-smith/scripts/lib-sentence.mjs';
 import { arb } from '../../line-smith/test/support/gens.mjs';
 import { checkGrammar } from '../gate/grammar/grammar.mjs';
+import { FRAME_VERBS } from '../gate/grammar/shapes.mjs';
 import { runAnswer } from '../gate/equivalence/equivalence.mjs';
 import { SHAPES_SECTION } from '../pilot/request/request.mjs';
 import { claudeArgs, runClaude } from '../pilot/runner/claude-model.mjs';
 
+const NAMING = JSON.parse(readFileSync(new URL('../../line-smith/src/atoms/naming.json', import.meta.url), 'utf8')).grammar;
+const CONTENT_VERBS = new Set(NAMING.verbs.filter((v) => !FRAME_VERBS.includes(v)));
 const CATALOG = JSON.parse(readFileSync(new URL('../../line-smith/src/atoms/catalog.json', import.meta.url), 'utf8')).atoms;
 const SAMPLES = 12;
 
@@ -166,6 +169,73 @@ export function readableCase(inputs, k) {
 }
 
 export { show };
+
+/**
+ * The person's own word in place of the sentence's verb: `clones().list(p).and().sorts().by(o)` with "order" ->
+ * `clones().list(p).and().orders().by(o)`. The base form takes R1's third person. Null when the sentence has no
+ * content verb to swap or the word is not one plain word.
+ */
+export function withVerb(sentence, word) {
+  const w = String(word).trim().toLowerCase();
+  if (!/^[a-z]+$/.test(w)) return null;
+  const third = w.endsWith('s') ? w : /(ch|sh|x|z|o)$/.test(w) ? `${w}es` : /[^aeiou]y$/.test(w) ? `${w.slice(0, -1)}ies` : `${w}s`;
+  const calls = parse(sentence);
+  const i = calls.findIndex((c) => CONTENT_VERBS.has(c.word));
+  if (i < 0) return null;
+  return sentence.replace(new RegExp(`\\b${calls[i].word}\\(`), `${third}(`);
+}
+
+// ---- from code: the code fixes the behaviour -------------------------------------------
+
+const cloneValue = (v) => {
+  try {
+    return structuredClone(v);
+  } catch {
+    return v; // functions and the like are not changed by a run
+  }
+};
+
+/** One run as comparable words: what it gives (or the error's name), and the inputs afterwards (a change in place). */
+async function outcome(js, names, values) {
+  const own = values.map(cloneValue);
+  const r = await runAnswer(js, names, own);
+  return { gives: r.throws ? `an error (${r.throws.name})` : show(r.ok), after: own.map(show).join(' | ') };
+}
+
+/**
+ * Code mode (owner, 2026-10-15: Line converts code it parsed, so the code fixes the behaviour). The sentence must hold
+ * up as in checkSentence and do exactly what `code` does: the same result, and the same change to its inputs, on the
+ * readable cases and on generated inputs for the atom's parameter types. No person is asked what should come out.
+ * @param {string} sentence The sentence.
+ * @param {string} code The original JS expression, over the same input names.
+ * @returns {Promise<object>} checkSentence's verdict, refused with the first case where the two differ.
+ */
+export async function checkAgainstCode(sentence, code) {
+  const verdict = await checkSentence(sentence);
+  if (!verdict.ok) return verdict;
+  const r = resolveSentence(sentence);
+  const names = r.inputs.map((x) => x.name);
+  const cases = [0, 1, 2, 3].map((k) => readableCase(r.inputs, k)).map((c) => names.map((n) => c[n]));
+  for (const set of r.atom.check ?? []) {
+    try {
+      const gens = fc.tuple(...set.params.map(([, g]) => arb(g)));
+      const idx = r.args.map((a, i) => (isName(a) ? i : -1)).filter((i) => i >= 0);
+      for (const values of fc.sample(gens, { numRuns: SAMPLES, seed: 11 })) cases.push(idx.map((i) => values[i]));
+    } catch {
+      // a generator this build does not have: readable cases only
+    }
+  }
+  for (const values of cases) {
+    const mine = await outcome(verdict.js, names, values);
+    const theirs = await outcome(code, names, values);
+    if (mine.gives !== theirs.gives || mine.after !== theirs.after) {
+      const given = names.map((n, i) => `${n} = ${show(values[i])}`).join(', ');
+      const what = mine.gives !== theirs.gives ? `the code gives ${theirs.gives} but this gives ${mine.gives}` : `the code leaves the inputs as ${theirs.after} but this leaves them as ${mine.after}`;
+      return { ...verdict, ok: false, reason: `it does not do what the code does: with ${given}, ${what}` };
+    }
+  }
+  return { ...verdict, code };
+}
 
 /** Step 5: the drafted JS run on the person's example; it must give exactly their output. */
 async function checkDraft(sentence, { js, example }, grammar) {

@@ -42,9 +42,17 @@ export async function nextQuestion(state, { run, given, cases = 4 }) {
       };
     }
     const lines = options.map((o, i) => `  ${i + 1}. ${o.plain}`).join('\n');
+    if (state.source === 'code') {
+      // The code fixes what it does; only the words are open. The question draws out the person's own word for it.
+      const o = options[0];
+      return { kind: 'wording', text: `This part of the code ${o.example ? `does this: ${o.example}` : 'does one thing'}. Which of these says it best?\n${lines}\nOr tell me your own word for what it does.` };
+    }
     return { kind: 'wording', text: `These all do the same thing. Which way of saying it reads best?\n${lines}` };
   }
   const o = options[0];
+  if (state.source === 'code' && !o.created) {
+    return { kind: 'wording', text: `This part of the code ${o.example ? `does this: ${o.example}` : 'does one thing'}. Does this say it well?\n  1. ${o.plain}\nAnswer 1, or tell me your own word for what it does.` };
+  }
   return { kind: 'confirm', text: `So: ${o.plain}.${o.example ? ` For example, ${o.example}.` : ''} Is that what you want? (yes / no)` };
 }
 
@@ -78,11 +86,13 @@ export function applyAnswer(state, question, reply) {
     return { state: next };
   }
   if (question.kind === 'wording') {
-    const n = Number(text.match(/\d+/)?.[0]);
-    const option = next.options[n - 1];
+    const n = /^\d+$/.test(text) ? Number(text) : null;
+    const option = n ? next.options[n - 1] : null;
+    if (!option && state.source === 'code' && /^[a-z][a-z ]*$/i.test(text)) return { state: next, done: { status: 'word', word: text.toLowerCase() } };
     if (!option) return { state, again: 'Answer with the number of the wording you like best.' };
     next.ruledOut.push(...next.options.filter((o) => o !== option).map((o) => o.answer));
     next.options = [option];
+    if (state.source === 'code') return { state: next, done: { status: 'chosen', option } }; // behaviour is the code's; the words are now agreed
     return { state: next };
   }
   if (question.kind === 'confirm') {
