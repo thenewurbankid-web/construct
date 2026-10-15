@@ -25,6 +25,15 @@ import { locateUnitDifference } from './canonical.mjs';
 import { FAKE_ENV, sentinel, assertUnitRun } from './fakes.mjs';
 import { instrumentUnit, branchCoverage, coverageLevel } from './instrument.mjs';
 
+/** The sandboxes a run can use: 'vm' (the child process, default) or 'quickjs' (quickjs/quickjsRun.mjs, in-process). */
+export const SANDBOXES = /** @type {const} */ (['vm', 'quickjs']);
+/** Run a request in the chosen sandbox; both return runChild's shape. */
+async function runIn(sandbox, request, timeoutMs) {
+  if (sandbox === 'vm') return runChild(request, timeoutMs);
+  if (sandbox === 'quickjs') return (await import('./quickjs/quickjsRun.mjs')).runQuickjsRequest(request, timeoutMs);
+  throw new Error(`unknown sandbox ${sandbox} (one of ${SANDBOXES.join(', ')})`);
+}
+
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const CHILD = fs.realpathSync(path.join(HERE, 'isolatedChild.cjs'));
 const RECORDER = fs.realpathSync(path.resolve(HERE, '../graph/runtime/recorder.cjs'));
@@ -84,10 +93,11 @@ function sideRequest(root, file, fn) {
     const f = /** @type {string} */ (todo.pop());
     if (f in modules) continue;
     const src = fs.readFileSync(path.join(root, f), 'utf8');
-    const compiled = compile(src, f === file ? fn : null);
+    // a JSON import (a fixture) is its value; it was compiled as an expression statement with no export before
+    const compiled = f.endsWith('.json') ? { code: `module.exports = ${src};`, blocks: 0 } : compile(src, f === file ? fn : null);
     modules[f] = compiled.code;
     if (f === file) blocks = compiled.blocks;
-    resolved[f] = resolveRelative(root, f, src, (missing[f] = []));
+    resolved[f] = f.endsWith('.json') ? {} : resolveRelative(root, f, src, (missing[f] = []));
     todo.push(...Object.values(resolved[f]));
   }
   return { entry: file, fn, modules, resolved, missing, blocks };
@@ -213,9 +223,10 @@ function describeDifference(b, a) {
  * @param {{file: string, fn: string}} args.after
  * @param {{byParam?: Record<string, unknown[]>}} [args.seeds]
  * @param {number} [args.timeoutMs]
+ * @param {'vm'|'quickjs'} [args.sandbox] default 'vm'
  * @returns {Promise<import('./contract.mjs').LayerResult>}
  */
-export async function isolatedPair({ beforeRoot, afterRoot, before, after, seeds, timeoutMs = ISOLATED_TIMEOUT_MS }) {
+export async function isolatedPair({ beforeRoot, afterRoot, before, after, seeds, timeoutMs = ISOLATED_TIMEOUT_MS, sandbox = 'vm' }) {
   const t0 = performance.now();
   /** @type {{runAs?: import('./contract.mjs').RunAs, coverage?: import('./contract.mjs').BranchCoverage}} */
   const extra = {};
@@ -240,7 +251,7 @@ export async function isolatedPair({ beforeRoot, afterRoot, before, after, seeds
     env: FAKE_ENV, cases,
     before: { ...sideRequest(beforeRoot, before.file, before.fn), runAs }, after: { ...sideRequest(afterRoot, after.file, after.fn), runAs },
   };
-  const child = await runChild(request, timeoutMs);
+  const child = await runIn(sandbox, request, timeoutMs);
   if (child.timedOut) return done({ outcome: 'cant-tell', reason: `the run was killed at the ${timeoutMs} ms time limit` });
   const line = child.stdout.trim().split('\n').pop();
   if (child.code !== 0) return done({ outcome: 'cant-tell', reason: `the sandbox exited with code ${child.code}: ${child.stderr.trim().split('\n')[0] ?? ''}` });
@@ -274,14 +285,14 @@ export async function isolatedPair({ beforeRoot, afterRoot, before, after, seeds
  * filled stub's examples execute with its effects recorded. The child always runs two sides; both are this unit, and
  * the second side's records are returned, one per case: {value (primitives only), thrown (the error name), effects,
  * notFaked}. A time limit, a sandbox exit or a load failure is `{error}`.
- * @param {{root: string, unit: {file: string, fn: string}, cases: unknown[][], runAs?: import('./contract.mjs').RunAs, timeoutMs?: number}} args
+ * @param {{root: string, unit: {file: string, fn: string}, cases: unknown[][], runAs?: import('./contract.mjs').RunAs, timeoutMs?: number, sandbox?: 'vm'|'quickjs'}} args
  * @returns {Promise<{runs?: {value: unknown, thrown: string|null, effects: object[], notFaked: string[]}[], error?: string, ms: number}>}
  */
-export async function isolatedRun({ root, unit, cases, runAs = 'function', timeoutMs = ISOLATED_TIMEOUT_MS }) {
+export async function isolatedRun({ root, unit, cases, runAs = 'function', timeoutMs = ISOLATED_TIMEOUT_MS, sandbox = 'vm' }) {
   const t0 = performance.now();
   const ms = () => Math.round(performance.now() - t0);
   const side = { ...sideRequest(root, unit.file, unit.fn), runAs };
-  const child = await runChild({ env: FAKE_ENV, cases, before: side, after: side }, timeoutMs);
+  const child = await runIn(sandbox, { env: FAKE_ENV, cases, before: side, after: side }, timeoutMs);
   if (child.timedOut) return { error: `the run was killed at the ${timeoutMs} ms time limit`, ms: ms() };
   const line = child.stdout.trim().split('\n').pop();
   if (child.code !== 0 || !line) return { error: `the sandbox exited with code ${child.code}: ${child.stderr.trim().split('\n')[0] ?? ''}`, ms: ms() };

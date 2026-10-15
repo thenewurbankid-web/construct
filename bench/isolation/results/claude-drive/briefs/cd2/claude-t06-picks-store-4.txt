@@ -1,0 +1,10 @@
+Write the body of this TypeScript function:
+
+export function listPicks(): string[]
+
+It returns the picked book ids, in the order they were added. The ids are stored in the browser's localStorage under the key "picks" as a JSON array of strings.
+- Read localStorage.getItem("picks").
+- If the value is null, return an empty array [].
+- Otherwise JSON.parse it; if parsing throws or the result is not an array, return [].
+- Return the parsed array of strings.
+Do not import anything. Write only the function body.

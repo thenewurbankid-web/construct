@@ -4,13 +4,15 @@
 // Cockpit, so there is no plan_approve here and the service refuses an agent's approval anyway. Every write a step
 // makes goes through Construct's transactional writer inside the engine; nothing in this package writes a file.
 import { ToolError } from './limits.mjs';
+import { startLiveIndex, liveIndexNow } from './liveIndex.mjs';
 
 /** One plan service per server (its root never changes). */
 const services = new WeakMap();
 async function serviceOf(ctx) {
   if (!services.has(ctx)) {
     const { createLinePlanService } = await import('@line/construct-engine/line/plan-service');
-    services.set(ctx, createLinePlanService({ root: ctx.root }));
+    startLiveIndex(ctx, 'write'); // #950: the session's live LSP index read-write (a read-only one is switched and flushed)
+    services.set(ctx, createLinePlanService({ root: ctx.root, lsp: () => liveIndexNow(ctx) }));
   }
   return services.get(ctx);
 }

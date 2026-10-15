@@ -397,6 +397,12 @@ export const RULE_METADATA = {
     why: 'A filename that encodes its layer (Name.layer.ext) is a cheap, live signal — a plain string match, no tsc pass needed — that the file matches the defineX(...) call inside it, and improves plain file-tree browsability without opening anything. The route layer is exempt (its filename is framework-dictated).',
     expected: [], fix: null,
   },
+  'NAME-002': {
+    module: MODULES.READABILITY, layers: NO_LAYERS, scope: SCOPE.PROJECT,
+    why: 'A boolean answers a yes/no question; an is/has/can/should/does name says so at every call site, without opening the function. The return type is read from the TypeScript language service, never guessed from the name.',
+    expected: ['a name starting with is, has, can, should or does (a hook: useIs..., useHas...)'],
+    fix: 'Rename the function (its typed fix renames every reference through the language service: withinPath -> isWithinPath).',
+  },
 };
 
 /**

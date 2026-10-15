@@ -1,0 +1,23 @@
+Write the body of a React (Next.js, TSX) page component. The signature is already written:
+export function BookPage({ params }: { params: { id: string } })
+
+Already imported at the top of the file (use them, do not re-import):
+import Link from 'next/link';
+import { DetailPage } from '../../../library/pages/DetailPage';
+import books from '../../../library/fixtures/books.json';
+
+Types:
+type Book = { id: string; title: string; author: string; genre: string; year: number; pages: number; summary: string; available: boolean };
+DetailPage takes props { title: string; back?: ReactNode; children?: ReactNode; aside?: ReactNode }.
+
+What the body must do:
+- Find the book in the `books` array whose id equals params.id.
+- If no book is found, return a DetailPage with title "Book not found" and a back link (Link to "/books" with text "Back to books").
+- Otherwise return a DetailPage with title set to the book's title, back set to a Link to "/books" with text "Back to books", and as children: the author, genre, year, pages and summary, each in its own paragraph.
+- Show availability as words, never as true/false: the exact text "Available" when book.available is true, and the exact text "On loan" when it is false. Put it in its own paragraph.
+
+Shape example from another domain (not this code):
+const item = items.find((x) => x.sku === query.sku);
+const label = item.inStock ? "In stock" : "Sold out";
+
+Reply with only the function body, then the closing brace.

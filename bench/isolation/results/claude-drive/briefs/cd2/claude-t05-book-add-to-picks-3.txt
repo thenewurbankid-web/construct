@@ -1,0 +1,19 @@
+Write the body of a React client component in TypeScript (Next.js). Reply with the body only, then the closing brace; the signature below is already written:
+export function BookPage({ params }: { params: { id: string } }) {
+
+Already imported and in scope: Link (next/link), DetailPage, books (a JSON array of Book), useState (react), addPick(id: string): void, Button.
+type Book = { id: string; title: string; author: string; genre: string; year: number; pages: number; summary: string; available: boolean };
+DetailPage props: { title: string; back?: ReactNode; children?: ReactNode; aside?: ReactNode }.
+Button props: { label?: string; onClick?: () => void; disabled?: boolean }.
+
+What the body must do, in this order, all at the top level of the function body (no helper functions, no nested components):
+1. Declare the status state with useState: a variable named `status` and setter `setStatus`, starting as an empty string.
+2. Declare a const named exactly `book` (type Book | undefined) holding the item of `books` (cast as Book[]) whose id equals params.id. Use this same name `book` everywhere below.
+3. If `book` is undefined, return a paragraph saying "Book not found".
+4. Otherwise return one DetailPage with title = book.title, back = a Link to "/books" with text "Back to books", and as children: the author, genre, year, pages and summary, then:
+   - if book.available: a Button with label "Add to my picks" whose onClick calls addPick(book.id) and sets status to exactly "Added to your picks"; plus, when status is not empty, a paragraph with role="status" showing status.
+   - if not book.available: the text "On loan" and no "Add to my picks" button.
+
+Shape example from another domain (not this code):
+const [note, setNote] = useState('');
+<Button label="Save draft" onClick={() => { saveDraft(d.id); setNote('Draft saved'); }} />

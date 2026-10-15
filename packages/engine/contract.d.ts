@@ -78,6 +78,8 @@ export * as controllerBinder from './controllerBinder.mjs';
 export * as pageTransformer from './pageTransformer.mjs';
 /** `@line/construct-engine/default-enforcers` */
 export * as defaultEnforcers from './defaultEnforcers.mjs';
+/** `@line/construct-engine/lsp/boolean-names` */
+export * as lspBooleanNames from './lsp/booleanNames.mjs';
 /** `@line/construct-engine/workflow-narrator` */
 export * as workflowNarrator from './workflowNarrator.mjs';
 /** `@line/construct-engine/workflow-scenarios` */

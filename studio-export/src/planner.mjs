@@ -5,7 +5,7 @@
 // Grounding (mantra: hand the next layer a concrete example, not an abstract spec): before asking, Studio fetches the
 // page once and lists its title, headings, links, buttons and inputs with ready-made selectors, so the model picks from
 // what exists instead of inventing selectors. That is a plain HTTP GET, under the same URL policy as everything else.
-import { ERR, KEYS, LIMITS, describeActions, hashStoryboard, validateStoryboard } from './storyboard.mjs';
+import { ERR, KEYS, LIMITS, describeActions, hashStoryboard, validateStoryboard, storyboardSchema } from './storyboard.mjs';
 import { ModelError, createProvider } from './models.mjs';
 import { checkUrl } from './urlpolicy.mjs';
 
@@ -224,13 +224,18 @@ export async function planStoryboard({ messages, url, config, models, fetch: fet
   let llm;
   try { llm = provider || createProvider(config, { fetch: fetchFn }); } catch (e) { return fallback(e.code || 'NO_PROVIDER', `The model provider is not usable (${e.message}).`); }
   const convo = [{ role: 'system', content: buildSystemPrompt({ url: base.url, page }) }, ...chat];
+  // #948 (Construct's modelled model I/O; LINE_LEGACY_IO=1 is the old path for one release): the reply's shape is the
+  // storyboard schema, and a retry carries only the last rejected reply and its errors, never a growing history.
+  const legacy = process.env.LINE_LEGACY_IO === '1';
+  const shape = legacy ? true : storyboardSchema();
+  let retry = [];
   let lastErrors = [];
   let lastReply = '';
   let attempts = 0;
   while (attempts < MAX_ATTEMPTS) {
     attempts++;
     let raw;
-    try { raw = await llm.chat({ model: modelName, messages: convo, json: true, signal }); } catch (e) {
+    try { raw = await llm.chat({ model: modelName, messages: legacy ? convo : [...convo, ...retry], json: shape, signal }); } catch (e) {
       if (e instanceof ModelError) return { ...fallback(e.code, `The planner model did not answer (${e.message}).`), attempts };
       throw e;
     }
@@ -244,7 +249,8 @@ export async function planStoryboard({ messages, url, config, models, fetch: fet
       return { ok: true, fallback: false, attempts, storyboard: v.storyboard, hash: hashStoryboard(v.storyboard), reply: prose ? `${prose}\n\n${summary}` : summary };
     }
     lastErrors = v.errors;
-    convo.push({ role: 'assistant', content: String(raw).slice(0, MAX_MESSAGE_CHARS) }, { role: 'user', content: `That storyboard was rejected by the validator:\n${errorLines(v.errors)}\nReply again with ONLY the corrected JSON object.` });
+    const again = [{ role: 'assistant', content: String(raw).slice(0, MAX_MESSAGE_CHARS) }, { role: 'user', content: `That storyboard was rejected by the validator:\n${errorLines(v.errors)}\nReply again with ONLY the corrected JSON object.` }];
+    if (legacy) convo.push(...again); else retry = again;
   }
   return {
     ok: false, attempts,

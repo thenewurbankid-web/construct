@@ -7,6 +7,7 @@ import { loadConfig } from '../../config.mjs';
 import { makeViolation } from '../../diagnostics.mjs';
 import { exceptionApplies, validateExceptionsShape } from '../../exceptions.mjs';
 import { detectLayerViolations, layerViolationOptsFor } from '../../architecture-enforcer.mjs';
+import { validateBooleanNames } from '@line/construct-engine/lsp/boolean-names';
 import { LINE_RULES, LINE_RULE_IDS, KIND_LAYER, normalizeLineConfig } from './contract.mjs';
 import {
   resolveLayout, loadProject, isItemFile, checkLayout, checkBase, checkOwner, checkDirection, checkWriter, checkShared, checkModules, checkAtoms, matchesAny, parseFailures,
@@ -102,4 +103,5 @@ export function validateLine(root, opts = {}) {
 }
 
 /** The enforcer list for the "line" profile (registry.mjs's Enforcer shape). */
-export const LINE_ENFORCERS = Object.freeze([{ name: 'line', validate: (root, opts) => validateLine(root, opts) }]);
+// NAME-002 (boolean names, packages/engine/lsp/booleanNames.mjs) runs in the Line profile too: it reads types, not folders.
+export const LINE_ENFORCERS = Object.freeze([{ name: 'line', validate: (root, opts) => validateLine(root, opts) }, { name: 'boolean-names', validate: validateBooleanNames }]);

@@ -14,6 +14,9 @@ import { PROVIDERS } from '../packages/core/llm.mjs';
 import { ConstructError } from '../packages/core/diagnostics.mjs';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
+// #948: these tests pin the old whole-file fill (LINE_LEGACY_IO=1) for its one release; the modelled one-function fill is test/modelled-io-llm-fill.test.mjs.
+process.env.LINE_LEGACY_IO = '1';
+
 const CODE = 'export function Foo() { return 7; }';
 const PROSE = "I wasn't able to write directly to the file, so here is the content, please apply it manually:";
 

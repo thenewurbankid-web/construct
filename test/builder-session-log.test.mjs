@@ -61,6 +61,9 @@ test('session_log is registered for read-tool selection and offered after a refu
 
 test('scripted run with a fake model: events per layer in logs/session.jsonl; the log reaches the model only when asked', async () => {
   const parent = fs.realpathSync(makeTempDir('session-log-'));
+  // #948: this script sends code inside plan_add's JSON, which only the legacy path (LINE_LEGACY_IO=1) still runs.
+  const prevLegacy = process.env.LINE_LEGACY_IO;
+  process.env.LINE_LEGACY_IO = '1';
   const page = 'features/picks/pages/Broken.tsx';
   const SCRIPT = [
     { role: 'assistant', content: '', tool_calls: [{ function: { name: 'plan_add', arguments: { tool: 'line.baseOn', args: { libraryId: 'pages/ListPage', feature: 'picks', name: 'ExtraPage' }, why: 'Another picks page.' } } }] },
@@ -100,5 +103,8 @@ test('scripted run with a fake model: events per layer in logs/session.jsonl; th
     // The log never feeds the ledger turn unless asked: no session-log text in any turn's ledger/card message.
     for (const b of bodies) assert.ok(!b.messages[1].content.includes('Session log:'), 'not in the ledger turn');
     assert.ok(!events.some((e) => e.layer === 'ledger' && /Session log/.test(e.english)), 'its answer is not distilled into the ledger');
-  } finally { await new Promise((r) => server.close(r)); fs.rmSync(parent, { recursive: true, force: true }); }
+  } finally {
+    await new Promise((r) => server.close(r)); fs.rmSync(parent, { recursive: true, force: true });
+    if (prevLegacy === undefined) delete process.env.LINE_LEGACY_IO; else process.env.LINE_LEGACY_IO = prevLegacy;
+  }
 });

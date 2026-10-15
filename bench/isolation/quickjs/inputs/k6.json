@@ -1,0 +1,308 @@
+{
+  "summary": {
+    "smith": "hardened, canonical",
+    "tasks": 12,
+    "referencesPass": "7/12",
+    "fillsPass": "4/12",
+    "fillsAgreeWithR3Check": "7/12",
+    "planElementsMatchedInReferences": "31/51"
+  },
+  "rows": [
+    {
+      "task": "t01-book-by-author",
+      "mode": "page",
+      "reference": {
+        "pass": true,
+        "matched": 1,
+        "total": 1,
+        "missing": [],
+        "unhandled": 0
+      },
+      "fillFile": "results/r3-raw/H+fix/t01-book-by-author/attempt-f1-s2.tsx",
+      "fill": {
+        "pass": true,
+        "matched": 1,
+        "total": 1,
+        "missing": [],
+        "unhandled": 0
+      },
+      "r3Pass": true
+    },
+    {
+      "task": "t02-book-page-count",
+      "mode": "page",
+      "reference": {
+        "pass": true,
+        "matched": 1,
+        "total": 1,
+        "missing": [],
+        "unhandled": 0
+      },
+      "fillFile": "results/r3-raw/H+fix/t02-book-page-count/attempt-f1-s2.tsx",
+      "fill": {
+        "pass": false,
+        "matched": 0,
+        "total": 1,
+        "missing": [
+          "BookPage: a <p> containing item's pages and 'pages'"
+        ],
+        "unhandled": 0
+      },
+      "r3Pass": true
+    },
+    {
+      "task": "t03-book-availability",
+      "mode": "page",
+      "reference": {
+        "pass": true,
+        "matched": 1,
+        "total": 1,
+        "missing": [],
+        "unhandled": 0
+      },
+      "fillFile": "results/r3-raw/H+fix/t03-book-availability/attempt-f1-s3.tsx",
+      "fill": {
+        "pass": true,
+        "matched": 1,
+        "total": 1,
+        "missing": [],
+        "unhandled": 0
+      },
+      "r3Pass": true
+    },
+    {
+      "task": "t04-book-not-found",
+      "mode": "page",
+      "reference": {
+        "pass": true,
+        "matched": 3,
+        "total": 3,
+        "missing": [],
+        "unhandled": 0
+      },
+      "fillFile": "results/r3-raw/H+fix/t04-book-not-found/attempt-f1-s4.tsx",
+      "fill": {
+        "pass": false,
+        "matched": 2,
+        "total": 3,
+        "missing": [
+          "BookPage: a <Link> with href as '/' containing 'Back to the catalogue'"
+        ],
+        "unhandled": 0
+      },
+      "r3Pass": false
+    },
+    {
+      "task": "t05-book-add-to-picks",
+      "mode": "page",
+      "reference": {
+        "pass": false,
+        "matched": 4,
+        "total": 6,
+        "missing": [
+          "BookPage: a <Button> with on click as",
+          "BookPage: if item's available then a <Button>"
+        ],
+        "unhandled": 0
+      },
+      "fillFile": "results/r3-raw/H+fix/t05-book-add-to-picks/attempt-f1-s4.tsx",
+      "fill": {
+        "pass": false,
+        "matched": 4,
+        "total": 6,
+        "missing": [
+          "BookPage: a <Button> with on click as",
+          "BookPage: if item's available then a <Button>"
+        ],
+        "unhandled": 0
+      },
+      "r3Pass": false
+    },
+    {
+      "task": "t06-picks-store",
+      "mode": "logic",
+      "reference": {
+        "pass": false,
+        "matched": 2,
+        "total": 7,
+        "missing": [
+          "listPicks: let raw be local storage get item 'picks'",
+          "addPick: let ids be list picks",
+          "addPick: if ids includes id, return",
+          "addPick: local storage set item 'picks' and json stringify a list of everything in ids and id",
+          "removePick: local storage set item 'picks' and json stringify list picks filter pick !== id"
+        ],
+        "unhandled": 0
+      },
+      "fillFile": "results/r3-raw/H+fix/t06-picks-store/attempt-f3-s1.ts",
+      "fill": {
+        "pass": false,
+        "matched": 3,
+        "total": 8,
+        "missing": [
+          "addPick: let ids be list picks",
+          "addPick: if ids includes id, return",
+          "addPick: local storage set item 'picks' and json stringify a list of everything in ids and id",
+          "removePick: local storage set item 'picks' and json stringify list picks filter pick !== id",
+          "removePick: 1 extra step(s)"
+        ],
+        "unhandled": 0
+      },
+      "r3Pass": true
+    },
+    {
+      "task": "t07-picks-page-list",
+      "mode": "page",
+      "reference": {
+        "pass": false,
+        "matched": 3,
+        "total": 8,
+        "missing": [
+          "PicksPage: containing book's title",
+          "PicksPage: containing book's author",
+          "PicksPage: a <Button> with on click as",
+          "PicksPage: remove pick of book's id",
+          "PicksPage: containing 'Remove' and book's title"
+        ],
+        "unhandled": 0
+      },
+      "fillFile": "results/r3-raw/H+fix/t07-picks-page-list/attempt-f1-s1.tsx",
+      "fill": {
+        "pass": false,
+        "matched": 3,
+        "total": 8,
+        "missing": [
+          "PicksPage: containing book's title",
+          "PicksPage: containing book's author",
+          "PicksPage: a <Button> with on click as",
+          "PicksPage: remove pick of book's id",
+          "PicksPage: containing 'Remove' and book's title"
+        ],
+        "unhandled": 0
+      },
+      "r3Pass": true
+    },
+    {
+      "task": "t08-picks-page-empty",
+      "mode": "page",
+      "reference": {
+        "pass": true,
+        "matched": 3,
+        "total": 3,
+        "missing": [],
+        "unhandled": 0
+      },
+      "fillFile": "results/r3-raw/H+fix/t08-picks-page-empty/attempt-f1-s5.tsx",
+      "fill": {
+        "pass": true,
+        "matched": 3,
+        "total": 3,
+        "missing": [],
+        "unhandled": 0
+      },
+      "r3Pass": true
+    },
+    {
+      "task": "t09-browse-heading-availability",
+      "mode": "page",
+      "reference": {
+        "pass": true,
+        "matched": 2,
+        "total": 2,
+        "missing": [],
+        "unhandled": 0
+      },
+      "fillFile": "results/r3-raw/H+fix/t09-browse-heading-availability/attempt-f1-s2.tsx",
+      "fill": {
+        "pass": false,
+        "matched": 1,
+        "total": 2,
+        "missing": [
+          "BrowsePage: a <p> containing if item's available then 'Available', otherwise 'On loan'"
+        ],
+        "unhandled": 0
+      },
+      "r3Pass": true
+    },
+    {
+      "task": "t10-browse-paging",
+      "mode": "page",
+      "reference": {
+        "pass": false,
+        "matched": 2,
+        "total": 8,
+        "missing": [
+          "BrowsePage: be use state of 0",
+          "BrowsePage: slice page * 6 and page * 6 + 6",
+          "BrowsePage: containing 'Page' and page + 1 and 'of'",
+          "BrowsePage: a <Button> with disabled as page === 0",
+          "BrowsePage: containing 'Previous page'",
+          "BrowsePage: containing 'Next page'"
+        ],
+        "unhandled": 0
+      },
+      "fillFile": "results/r3-raw/H+fix/t10-browse-paging/attempt-f1-s5.tsx",
+      "fill": {
+        "pass": false,
+        "matched": 2,
+        "total": 8,
+        "missing": [
+          "BrowsePage: be use state of 0",
+          "BrowsePage: slice page * 6 and page * 6 + 6",
+          "BrowsePage: containing 'Page' and page + 1 and 'of'",
+          "BrowsePage: a <Button> with disabled as page === 0",
+          "BrowsePage: containing 'Previous page'",
+          "BrowsePage: containing 'Next page'"
+        ],
+        "unhandled": 0
+      },
+      "r3Pass": true
+    },
+    {
+      "task": "t11-browse-sort-title",
+      "mode": "page",
+      "reference": {
+        "pass": true,
+        "matched": 1,
+        "total": 1,
+        "missing": [],
+        "unhandled": 0
+      },
+      "fillFile": "results/r3-raw/H+fix/t11-browse-sort-title/attempt-f1-s2.tsx",
+      "fill": {
+        "pass": true,
+        "matched": 1,
+        "total": 1,
+        "missing": [],
+        "unhandled": 0
+      },
+      "r3Pass": true
+    },
+    {
+      "task": "t12-browse-genre-filter",
+      "mode": "page",
+      "reference": {
+        "pass": false,
+        "matched": 8,
+        "total": 10,
+        "missing": [
+          "BrowsePage: with toolbar as",
+          "BrowsePage: filter item's genre ==="
+        ],
+        "unhandled": 0
+      },
+      "fillFile": "results/r3-raw/H+fix/t12-browse-genre-filter/attempt-f1-s5.tsx",
+      "fill": {
+        "pass": false,
+        "matched": 8,
+        "total": 10,
+        "missing": [
+          "BrowsePage: with toolbar as",
+          "BrowsePage: filter item's genre ==="
+        ],
+        "unhandled": 0
+      },
+      "r3Pass": false
+    }
+  ]
+}

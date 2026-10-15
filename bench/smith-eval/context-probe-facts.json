@@ -1,0 +1,2076 @@
+{
+ "meta": {
+  "experiment": "#925 isolated context probe",
+  "at": "2026-10-13T23:59:06.376Z",
+  "sourceRun": "/Users/shashank/Repositories/construct/.claude/worktrees/og-final-1012/bench/lending/runs/lending-qwen-7b-r1",
+  "models": [
+   "qwen2.5-coder:7b",
+   "qwen2.5-coder:1.5b"
+  ],
+  "seeds": [
+   1,
+   2,
+   3,
+   4,
+   5
+  ],
+  "options": {
+   "num_ctx": 16384,
+   "temperature": 0.2,
+   "num_predict": 1500,
+   "seed": "per sample"
+  },
+  "ollamaVersion": "0.40.0",
+  "smithLinks": {
+   "smith": "The smith link is ready from /Users/shashank/Repositories/smith at commit f70eecf.",
+   "codemod": "The atomic-codemod link is ready from /Users/shashank/Repositories/atomic-codemod-hardening at commit cbc2567."
+  },
+  "english": "TypeScript transpileModule (types and JSX removed) -> each function -> packages/summarize/links.mjs summarizeCode (atomic-codemod to-english via packages/line-links)",
+  "case1": {
+   "turnInput": "logs/turn-input/12.json",
+   "failingCode": "// @line-base pages/ListPage\n// @line-route /picks\nimport { ListPage } from '../../../library/pages/ListPage';\n\n/* PCK-1: Every page shows a link whose name starts with \"My picks\" followed by the number of picked books */\nexport function PicksPage() {\n const pickedBooks = JSON.parse(localStorage.getItem('picks')) || [];\n return <ListPage title={`My picks (${pickedBooks.length})`} />;\n}\n",
+   "contentHash": "ff457f2700d98d2da13d103e6d47abefc2b6f0dd543509ca3adf7c96fce3e659",
+   "repeats": {
+    "plan_add:{\"tool\":\"line.setCode\",\"args\":{\"file\":\"features/picks/pages/PicksPage.tsx\",\"code\":\"// @line-base pages/ListPage\\n// @line-route /picks\\nimport { ListPage } from '../../../library/pages/ListPage';\\n\\n/* PCK-1: Every page shows a link whose name starts with \\\"My picks\\\" followed by the number of picked books */\\nexport function PicksPage() {\\n const pickedBooks = JSON.parse(localStorage.getItem('picks')) || [];\\n return <ListPage title={`My picks (${pickedBooks.length})`} />;\\n}\\n\",\"contentHash\":\"ff457f2700d98d2da13d103e6d47abefc2b6f0dd543509ca3adf7c96fce3e659\"}}": 5,
+    "plan_status:{\"feature\":\"picks\"}": 3
+   },
+   "refusalIndexInCompacted": 9
+  },
+  "case2": {
+   "turnInput": "logs/turn-input/1.json (its answer is the DetailPage baseOn; turn-input/2.json already contains it)"
+  },
+  "atoms": {
+   "candidates": [
+    {
+     "id": "async-status",
+     "english": "Load the data and say whether it is loading, loaded or failed."
+    },
+    {
+     "id": "client-pagination",
+     "english": "Split the list into pages of a fixed size and show one page at a time."
+    },
+    {
+     "id": "csv-export",
+     "english": "Turn the rows into a CSV file with one column per definition, quoting cells safely."
+    },
+    {
+     "id": "date-range",
+     "english": "Keep a range of whole calendar days and say whether it is complete and which dates fall in it."
+    },
+    {
+     "id": "debounced-search",
+     "english": "Wait until the person stops typing for a moment, then hand over what they typed as the search."
+    },
+    {
+     "id": "filter-sort",
+     "english": "Filter the list by its filters and a search, then sort it by one column."
+    },
+    {
+     "id": "infinite-list",
+     "english": "Load the next page of items when the person reaches the end of the list, one page at a time."
+    },
+    {
+     "id": "multi-step-flow",
+     "english": "Walk through the steps of a flow in order, leaving a step only when its check passes."
+    },
+    {
+     "id": "optimistic-update",
+     "english": "Show the change at once and put the old value back if saving it fails."
+    },
+    {
+     "id": "paginated-query",
+     "english": "Load one page of data from the server and keep the previous page on screen while the next one loads."
+    },
+    {
+     "id": "permission-check",
+     "english": "Allow an action only when the person's roles grant every permission it needs."
+    },
+    {
+     "id": "polling",
+     "english": "Load the data again after each interval until it says the work is done, waiting longer after each failure."
+    },
+    {
+     "id": "undo-history",
+     "english": "Keep the earlier values of something so a change can be undone and redone."
+    },
+    {
+     "id": "validated-submit",
+     "english": "Validate the form values against a schema and submit them only when they pass."
+    }
+   ],
+   "reference": {
+    "case1": {
+     "atoms": [],
+     "needsMissing": true,
+     "gaps": [
+      "Read a list kept in the browser (localStorage), empty when nothing is kept.",
+      "Count the items of a list.",
+      "Show a link whose label is a text followed by a count in brackets."
+     ]
+    },
+    "case2": {
+     "atoms": [
+      "Split the list into pages of a fixed size and show one page at a time."
+     ],
+     "needsMissing": true,
+     "gaps": [
+      "Show each item of a list with its fields and a link to its own page.",
+      "Say \"Available\" or \"On loan\" from a yes/no field."
+     ]
+    }
+   }
+  },
+  "variants": {
+   "V0": {
+    "case": 1,
+    "what": "control: turn-input/12 as sent",
+    "numCtx": 16384
+   },
+   "V1": {
+    "case": 1,
+    "what": "compacted: repeats collapsed + (repeated N times), old tool outputs -> first line, done steps -> count",
+    "numCtx": 32768
+   },
+   "V2": {
+    "case": 1,
+    "what": "V1 + context pack on the latest refusal (current file+hash, ListPage props, picks points, landed BookPage)",
+    "numCtx": 32768
+   },
+   "V3": {
+    "case": 1,
+    "what": "V2 + example fix line in the refusal",
+    "numCtx": 32768
+   },
+   "V4": {
+    "case": 1,
+    "what": "V3 with the refusal shortened to error + example fix + one-line rule",
+    "numCtx": 32768
+   },
+   "V5": {
+    "case": 1,
+    "what": "best of V2-V4 + English (Smith translation) beside each code block of the pack",
+    "numCtx": 32768
+   },
+   "V7": {
+    "case": 1,
+    "what": "best of V2-V4, then compare loop: its code in English beside the PCK-1 text, ask once more (2 calls)",
+    "numCtx": 32768
+   },
+   "V8": {
+    "case": 1,
+    "what": "V1 with every code block replaced by English; raw code only the edited file + error line; English refusal + example fix",
+    "numCtx": 32768
+   },
+   "H1": {
+    "case": 1,
+    "what": "V8 with the hardened Smith's English (TS/TSX fed directly)",
+    "numCtx": 32768
+   },
+   "V8+V7": {
+    "case": 1,
+    "what": "V8, then the compare loop (2 calls)",
+    "numCtx": 32768
+   },
+   "V9a": {
+    "case": 1,
+    "what": "V8 context + ask for PCK-1 as an ordered list of registered atom sentences (prompt only, no tools)",
+    "numCtx": 32768
+   },
+   "V9b": {
+    "case": 1,
+    "what": "V9a with Ollama `format` = JSON Schema enum of the atom sentences (enforced)",
+    "numCtx": 32768
+   },
+   "V10": {
+    "case": 1,
+    "what": "V4 with the trailing repeated plan_status pair dropped (the refusal is the last message)",
+    "numCtx": 32768
+   },
+   "C0": {
+    "case": 2,
+    "what": "control: turn-input/1 as sent (the DetailPage suggestion in place)",
+    "numCtx": 16384
+   },
+   "C1": {
+    "case": 2,
+    "what": "wrong DetailPage suggestion removed + ListPage/DetailPage/FormPage props + BRW-1/BRW-2",
+    "numCtx": 16384
+   },
+   "C2": {
+    "case": 2,
+    "what": "C1 + one worked example of a ListPage-based page",
+    "numCtx": 16384
+   },
+   "C3": {
+    "case": 2,
+    "what": "C2 + English (Smith translation) of each library page",
+    "numCtx": 16384
+   },
+   "C4": {
+    "case": 2,
+    "what": "C1 with the library pages only as English (no code)",
+    "numCtx": 16384
+   },
+   "H2": {
+    "case": 2,
+    "what": "C4 with the hardened Smith's English (TS/TSX fed directly)",
+    "numCtx": 16384
+   },
+   "C9a": {
+    "case": 2,
+    "what": "C4 context + ask for BRW-1/BRW-2 as an ordered list of registered atom sentences (prompt only, no tools)",
+    "numCtx": 16384
+   },
+   "C9b": {
+    "case": 2,
+    "what": "C9a with Ollama `format` = JSON Schema enum of the atom sentences (enforced)",
+    "numCtx": 16384
+   },
+   "L": {
+    "case": 1,
+    "what": "fresh small context: short rules + ledger facts + current step + last refusal (English + example fix) + English pack; plan_add only",
+    "numCtx": 16384
+   },
+   "L+tools": {
+    "case": 1,
+    "what": "L without the pack; read_file/list_dir/plan_status answered from project/ (up to 4 calls)",
+    "numCtx": 16384
+   },
+   "L9a": {
+    "case": 1,
+    "what": "L context + ask for PCK-1 as registered atom sentences (prompt only, no tools)",
+    "numCtx": 16384
+   },
+   "L9b": {
+    "case": 1,
+    "what": "L9a with the `format` JSON Schema enum (enforced)",
+    "numCtx": 16384
+   },
+   "CL": {
+    "case": 2,
+    "what": "fresh small context: short rules + ledger facts (library pages in one sentence each) + current step with BRW-1/BRW-2 + English pack; plan_add only",
+    "numCtx": 16384
+   },
+   "CL+tools": {
+    "case": 2,
+    "what": "CL without the pack; read_file/list_dir/plan_status answered from project/ (up to 4 calls)",
+    "numCtx": 16384
+   },
+   "CL9a": {
+    "case": 2,
+    "what": "CL context + ask for BRW-1/BRW-2 as registered atom sentences (prompt only, no tools)",
+    "numCtx": 16384
+   },
+   "CL9b": {
+    "case": 2,
+    "what": "CL9a with the `format` JSON Schema enum (enforced)",
+    "numCtx": 16384
+   },
+   "CLr1": {
+    "case": 2,
+    "what": "CL replayed with the exact text r1 sent (pinned Smith English pack)",
+    "numCtx": 16384
+   },
+   "F1": {
+    "case": 1,
+    "what": "L+tools with the ledger compiled by facts.mjs (hardened Smith steps + LSP index, no model)",
+    "numCtx": 16384
+   },
+   "F2": {
+    "case": 1,
+    "what": "L+tools with the ledger from the 1.5b translator (glossFacts, guarded; compiler on a drop)",
+    "numCtx": 16384
+   },
+   "CF1": {
+    "case": 2,
+    "what": "CL with the ledger compiled by facts.mjs (hardened Smith steps + LSP index, no model)",
+    "numCtx": 16384
+   },
+   "CF2": {
+    "case": 2,
+    "what": "CL with the ledger from the 1.5b translator (glossFacts, guarded; compiler on a drop)",
+    "numCtx": 16384
+   }
+  },
+  "facts": {
+   "1:false": {
+    "text": "Facts so far (each with where it comes from):\n- Features book, browse, loans, picks and request exist, each with its spec.md. [ls features/*]\n- features/book/pages/BookPage.tsx (book/pages/BookPage) is based on pages/DetailPage, served at /books/:id, reads library/fixtures/books.json, renders <DetailPage title={item.title} back={back}> holding 6 <p> and renders <DetailPage title=\"Book not found\" back={back}> when item is missing. [moduleScope; Smith features/book/pages/BookPage.tsx]\n- features/picks/pages/PicksPage.tsx (picks/pages/PicksPage) is based on pages/ListPage, served at /picks and renders <ListPage title=\"Picks\"> with nothing else. [moduleScope; Smith features/picks/pages/PicksPage.tsx]\n- features/request/pages/RequestPage.tsx (request/pages/RequestPage) is based on pages/ListPage, served at /request and renders <ListPage title=\"Request\"> with nothing else. [moduleScope; Smith features/request/pages/RequestPage.tsx]\n- browse has no page yet; its spec.md is there. [moduleScope browse]\n- loans has no page yet; its spec.md is there. [moduleScope loans]\n- No feature has usecases, services or domains yet. [moduleScope features/*]\n- No feature exports anything (no features/<f>/index.ts). [moduleScope]\n- There is no picks fixture; library/fixtures has only books.json. [ls library/fixtures]\n- The library has components AppLayout, Button, Card, Checkbox, Dialog, Select, TextField and Toast; pages DetailPage, FormPage and ListPage; library/fixtures/books.json with 15 rows {id: string, title: string, author: string, genre: string, year: number, pages: number, summary: string, available: boolean}. [ls library; quickInfo]\n- ListPage (pages/ListPage) takes {title: string, toolbar?, children?, empty?}: title in <h1>, toolbar in <div> when given, children in a grid <div> when given, empty when children is missing. [quickInfo; Smith library/pages/ListPage.tsx]\n- Use exactly: import { ListPage } from '../../../library/pages/ListPage'; import books from '../../../library/fixtures/books.json'. [quickInfo; resolved from features/picks/pages/PicksPage.tsx]\n- Your last 5 attempts at PicksPage.tsx were refused with the same type error (below). [steps refused]\n\nCurrent step: PCK-1: Every page shows a link whose name starts with \"My picks\" followed by the number of picked books in brackets, like \"My picks (2)\"; it opens `/picks`. Write it in features/picks/pages/PicksPage.tsx with plan_add line.setCode (the whole file, contentHash ff457f2700d98d2da13d103e6d47abefc2b6f0dd543509ca3adf7c96fce3e659).\n\nLast result: Refused (TYPE_ERROR, repeated 5 times): line 7 of features/picks/pages/PicksPage.tsx does not type-check: it passes a value that can be null (string | null) where only a string is allowed.\n>7| const pickedBooks = JSON.parse(localStorage.getItem('picks')) || [];\nExample fix for line 7: const pickedBooks = JSON.parse(localStorage.getItem('picks') ?? '[]');\nRule: send line.setCode with the whole file, line 7 changed, and contentHash ff457f2700d98d2da13d103e6d47abefc2b6f0dd543509ca3adf7c96fce3e659; the same code again is refused.\n\nRead a file with read_file when you need its code.",
+    "facts": [
+     "Features book, browse, loans, picks and request exist, each with its spec.md. [ls features/*]",
+     "features/book/pages/BookPage.tsx (book/pages/BookPage) is based on pages/DetailPage, served at /books/:id, reads library/fixtures/books.json, renders <DetailPage title={item.title} back={back}> holding 6 <p> and renders <DetailPage title=\"Book not found\" back={back}> when item is missing. [moduleScope; Smith features/book/pages/BookPage.tsx]",
+     "features/picks/pages/PicksPage.tsx (picks/pages/PicksPage) is based on pages/ListPage, served at /picks and renders <ListPage title=\"Picks\"> with nothing else. [moduleScope; Smith features/picks/pages/PicksPage.tsx]",
+     "features/request/pages/RequestPage.tsx (request/pages/RequestPage) is based on pages/ListPage, served at /request and renders <ListPage title=\"Request\"> with nothing else. [moduleScope; Smith features/request/pages/RequestPage.tsx]",
+     "browse has no page yet; its spec.md is there. [moduleScope browse]",
+     "loans has no page yet; its spec.md is there. [moduleScope loans]",
+     "No feature has usecases, services or domains yet. [moduleScope features/*]",
+     "No feature exports anything (no features/<f>/index.ts). [moduleScope]",
+     "There is no picks fixture; library/fixtures has only books.json. [ls library/fixtures]",
+     "The library has components AppLayout, Button, Card, Checkbox, Dialog, Select, TextField and Toast; pages DetailPage, FormPage and ListPage; library/fixtures/books.json with 15 rows {id: string, title: string, author: string, genre: string, year: number, pages: number, summary: string, available: boolean}. [ls library; quickInfo]",
+     "ListPage (pages/ListPage) takes {title: string, toolbar?, children?, empty?}: title in <h1>, toolbar in <div> when given, children in a grid <div> when given, empty when children is missing. [quickInfo; Smith library/pages/ListPage.tsx]",
+     "Use exactly: import { ListPage } from '../../../library/pages/ListPage'; import books from '../../../library/fixtures/books.json'. [quickInfo; resolved from features/picks/pages/PicksPage.tsx]",
+     "Your last 5 attempts at PicksPage.tsx were refused with the same type error (below). [steps refused]"
+    ],
+    "step": "Current step: PCK-1: Every page shows a link whose name starts with \"My picks\" followed by the number of picked books in brackets, like \"My picks (2)\"; it opens `/picks`. Write it in features/picks/pages/PicksPage.tsx with plan_add line.setCode (the whole file, contentHash ff457f2700d98d2da13d103e6d47abefc2b6f0dd543509ca3adf7c96fce3e659).",
+    "last": "Last result: Refused (TYPE_ERROR, repeated 5 times): line 7 of features/picks/pages/PicksPage.tsx does not type-check: it passes a value that can be null (string | null) where only a string is allowed.\n>7| const pickedBooks = JSON.parse(localStorage.getItem('picks')) || [];\nExample fix for line 7: const pickedBooks = JSON.parse(localStorage.getItem('picks') ?? '[]');\nRule: send line.setCode with the whole file, line 7 changed, and contentHash ff457f2700d98d2da13d103e6d47abefc2b6f0dd543509ca3adf7c96fce3e659; the same code again is refused.",
+    "tokens": 976,
+    "dropped": false,
+    "reason": null
+   },
+   "1:true": {
+    "text": "Facts so far (each with where it comes from):\n- feature book: has spec.md; declares pages; exports nothing\n- feature browse: has spec.md; declares nothing; exports nothing\n- feature loans: has spec.md; declares nothing; exports nothing\n- feature picks: has spec.md; declares pages; exports nothing\n- feature request: has spec.md; declares pages; exports nothing\n- unit features/book/pages/BookPage.tsx id book/pages/BookPage; base pages/DetailPage; route /books/:id; signature function BookPage({ params }: { params: { id: string; }; }): JSX.Element\n- unit features/picks/pages/PicksPage.tsx id picks/pages/PicksPage; base pages/ListPage; route /picks; signature function PicksPage(): JSX.Element\n- unit features/request/pages/RequestPage.tsx id request/pages/RequestPage; base pages/ListPage; route /request; signature function RequestPage(): JSX.Element\n- library page library/pages/ListPage.tsx id pages/ListPage; signature function ListPage({ title, toolbar, children, empty }: ListPageProps): JSX.Element; props type ListPageProps = { title: string; toolbar?: ReactNode; children?: ReactNode; empty?: ReactNode; }\n- library components: AppLayout, Button, Card, Checkbox, Dialog, Select, TextField, Toast\n- fixture library/fixtures/books.json: 15 rows {id: string, title: string, author: string, genre: string, year: number, pages: number, summary: string, available: boolean}\n- Your last 5 attempts at PicksPage.tsx were refused with the same type error (below). [steps refused]\n\nCurrent step: PCK-1: Every page shows a link whose name starts with \"My picks\" followed by the number of picked books in brackets, like \"My picks (2)\"; it opens `/picks`. Write it in features/picks/pages/PicksPage.tsx with plan_add line.setCode (the whole file, contentHash ff457f2700d98d2da13d103e6d47abefc2b6f0dd543509ca3adf7c96fce3e659).\n\nLast result: Refused (TYPE_ERROR, repeated 5 times): line 7 of features/picks/pages/PicksPage.tsx does not type-check: it passes a value that can be null (string | null) where only a string is allowed.\n>7| const pickedBooks = JSON.parse(localStorage.getItem('picks')) || [];\nExample fix for line 7: const pickedBooks = JSON.parse(localStorage.getItem('picks') ?? '[]');\nRule: send line.setCode with the whole file, line 7 changed, and contentHash ff457f2700d98d2da13d103e6d47abefc2b6f0dd543509ca3adf7c96fce3e659; the same code again is refused.\n\nRead a file with read_file when you need its code.",
+    "facts": [
+     "feature book: has spec.md; declares pages; exports nothing",
+     "feature browse: has spec.md; declares nothing; exports nothing",
+     "feature loans: has spec.md; declares nothing; exports nothing",
+     "feature picks: has spec.md; declares pages; exports nothing",
+     "feature request: has spec.md; declares pages; exports nothing",
+     "unit features/book/pages/BookPage.tsx id book/pages/BookPage; base pages/DetailPage; route /books/:id; signature function BookPage({ params }: { params: { id: string; }; }): JSX.Element",
+     "unit features/picks/pages/PicksPage.tsx id picks/pages/PicksPage; base pages/ListPage; route /picks; signature function PicksPage(): JSX.Element",
+     "unit features/request/pages/RequestPage.tsx id request/pages/RequestPage; base pages/ListPage; route /request; signature function RequestPage(): JSX.Element",
+     "library page library/pages/ListPage.tsx id pages/ListPage; signature function ListPage({ title, toolbar, children, empty }: ListPageProps): JSX.Element; props type ListPageProps = { title: string; toolbar?: ReactNode; children?: ReactNode; empty?: ReactNode; }",
+     "library components: AppLayout, Button, Card, Checkbox, Dialog, Select, TextField, Toast",
+     "fixture library/fixtures/books.json: 15 rows {id: string, title: string, author: string, genre: string, year: number, pages: number, summary: string, available: boolean}",
+     "Your last 5 attempts at PicksPage.tsx were refused with the same type error (below). [steps refused]"
+    ],
+    "step": "Current step: PCK-1: Every page shows a link whose name starts with \"My picks\" followed by the number of picked books in brackets, like \"My picks (2)\"; it opens `/picks`. Write it in features/picks/pages/PicksPage.tsx with plan_add line.setCode (the whole file, contentHash ff457f2700d98d2da13d103e6d47abefc2b6f0dd543509ca3adf7c96fce3e659).",
+    "last": "Last result: Refused (TYPE_ERROR, repeated 5 times): line 7 of features/picks/pages/PicksPage.tsx does not type-check: it passes a value that can be null (string | null) where only a string is allowed.\n>7| const pickedBooks = JSON.parse(localStorage.getItem('picks')) || [];\nExample fix for line 7: const pickedBooks = JSON.parse(localStorage.getItem('picks') ?? '[]');\nRule: send line.setCode with the whole file, line 7 changed, and contentHash ff457f2700d98d2da13d103e6d47abefc2b6f0dd543509ca3adf7c96fce3e659; the same code again is refused.",
+    "tokens": 758,
+    "dropped": false,
+    "reason": null,
+    "raw": "- feature book: has spec.md; declares pages; exports nothing\n- feature browse: has spec.md; declares nothing; exports nothing\n- feature loans: has spec.md; declares nothing; exports nothing\n- feature picks: has spec.md; declares pages; exports nothing\n- feature request: has spec.md; declares pages; exports nothing\n- unit features/book/pages/BookPage.tsx id book/pages/BookPage; base pages/DetailPage; route /books/:id; signature function BookPage({ params }: { params: { id: string; }; }): JSX.Element\n- unit features/picks/pages/PicksPage.tsx id picks/pages/PicksPage; base pages/ListPage; route /picks; signature function PicksPage(): JSX.Element\n- unit features/request/pages/RequestPage.tsx id request/pages/RequestPage; base pages/ListPage; route /request; signature function RequestPage(): JSX.Element\n- library page library/pages/ListPage.tsx id pages/ListPage; signature function ListPage({ title, toolbar, children, empty }: ListPageProps): JSX.Element; props type ListPageProps = { title: string; toolbar?: ReactNode; children?: ReactNode; empty?: ReactNode; }\n- library components: AppLayout, Button, Card, Checkbox, Dialog, Select, TextField, Toast\n- fixture library/fixtures/books.json: 15 rows {id: string, title: string, author: string, genre: string, year: number, pages: number, summary: string, available: boolean}"
+   },
+   "2:false": {
+    "text": "Facts so far (each with where it comes from):\n- Features book, browse, loans, picks and request exist, each with its spec.md. [ls features/*]\n- features/book/pages/BookPage.tsx (book/pages/BookPage) is based on pages/DetailPage, served at /books/:id, reads library/fixtures/books.json, renders <DetailPage title={item.title} back={back}> holding 6 <p> and renders <DetailPage title=\"Book not found\" back={back}> when item is missing. [moduleScope; Smith features/book/pages/BookPage.tsx]\n- features/picks/pages/PicksPage.tsx (picks/pages/PicksPage) is based on pages/ListPage, served at /picks and renders <ListPage title=\"Picks\"> with nothing else. [moduleScope; Smith features/picks/pages/PicksPage.tsx]\n- features/request/pages/RequestPage.tsx (request/pages/RequestPage) is based on pages/ListPage, served at /request and renders <ListPage title=\"Request\"> with nothing else. [moduleScope; Smith features/request/pages/RequestPage.tsx]\n- browse has no page yet; its spec.md is there. [moduleScope browse]\n- loans has no page yet; its spec.md is there. [moduleScope loans]\n- No feature has usecases, services or domains yet. [moduleScope features/*]\n- No feature exports anything (no features/<f>/index.ts). [moduleScope]\n- There is no browse fixture; library/fixtures has only books.json. [ls library/fixtures]\n- The library has components AppLayout, Button, Card, Checkbox, Dialog, Select, TextField and Toast; pages DetailPage, FormPage and ListPage; library/fixtures/books.json with 15 rows {id: string, title: string, author: string, genre: string, year: number, pages: number, summary: string, available: boolean}. [ls library; quickInfo]\n- ListPage (pages/ListPage) takes {title: string, toolbar?, children?, empty?}: title in <h1>, toolbar in <div> when given, children in a grid <div> when given, empty when children is missing. [quickInfo; Smith library/pages/ListPage.tsx]\n- DetailPage (pages/DetailPage) takes {title: string, back?, children?, aside?}: title in <h1>, back in <main>, children in <section>, aside in <aside> when given. [quickInfo; Smith library/pages/DetailPage.tsx]\n- FormPage (pages/FormPage) takes {title: string, onSubmit: () => void, submitLabel: string, children?, aside?}: title in <h1>, submitLabel as label of <Button>, children in <form>, aside in <aside> when given. [quickInfo; Smith library/pages/FormPage.tsx]\n- Use exactly: import { ListPage } from '../../../library/pages/ListPage'; import { DetailPage } from '../../../library/pages/DetailPage'; import { FormPage } from '../../../library/pages/FormPage'; import books from '../../../library/fixtures/books.json'. [quickInfo; resolved from features/browse/pages/X.tsx]\n\nCurrent step: browse has no page yet (its spec puts one at /). Create it with plan_add line.baseOn {\"libraryId\": \"pages/<ListPage|DetailPage|FormPage>\", \"feature\": \"browse\", \"name\": \"<Name>\"} on the library page that fits these points, then add its route:\n- BRW-1: The page at `/` has the main heading \"Library catalogue\" and shows the books six at a time, each with its title, its author, its genre, its year and \"Available\" or \"On loan\"; each title is a link to the book's page at `/books/<id>`.\n- BRW-2: Under the list, a line like \"Page 1 of 3\" and two buttons, \"Previous page\" and \"Next page\", move through the pages; \"Previous page\" is disabled on the first page and \"Next page\" on the last.",
+    "facts": [
+     "Features book, browse, loans, picks and request exist, each with its spec.md. [ls features/*]",
+     "features/book/pages/BookPage.tsx (book/pages/BookPage) is based on pages/DetailPage, served at /books/:id, reads library/fixtures/books.json, renders <DetailPage title={item.title} back={back}> holding 6 <p> and renders <DetailPage title=\"Book not found\" back={back}> when item is missing. [moduleScope; Smith features/book/pages/BookPage.tsx]",
+     "features/picks/pages/PicksPage.tsx (picks/pages/PicksPage) is based on pages/ListPage, served at /picks and renders <ListPage title=\"Picks\"> with nothing else. [moduleScope; Smith features/picks/pages/PicksPage.tsx]",
+     "features/request/pages/RequestPage.tsx (request/pages/RequestPage) is based on pages/ListPage, served at /request and renders <ListPage title=\"Request\"> with nothing else. [moduleScope; Smith features/request/pages/RequestPage.tsx]",
+     "browse has no page yet; its spec.md is there. [moduleScope browse]",
+     "loans has no page yet; its spec.md is there. [moduleScope loans]",
+     "No feature has usecases, services or domains yet. [moduleScope features/*]",
+     "No feature exports anything (no features/<f>/index.ts). [moduleScope]",
+     "There is no browse fixture; library/fixtures has only books.json. [ls library/fixtures]",
+     "The library has components AppLayout, Button, Card, Checkbox, Dialog, Select, TextField and Toast; pages DetailPage, FormPage and ListPage; library/fixtures/books.json with 15 rows {id: string, title: string, author: string, genre: string, year: number, pages: number, summary: string, available: boolean}. [ls library; quickInfo]",
+     "ListPage (pages/ListPage) takes {title: string, toolbar?, children?, empty?}: title in <h1>, toolbar in <div> when given, children in a grid <div> when given, empty when children is missing. [quickInfo; Smith library/pages/ListPage.tsx]",
+     "DetailPage (pages/DetailPage) takes {title: string, back?, children?, aside?}: title in <h1>, back in <main>, children in <section>, aside in <aside> when given. [quickInfo; Smith library/pages/DetailPage.tsx]",
+     "FormPage (pages/FormPage) takes {title: string, onSubmit: () => void, submitLabel: string, children?, aside?}: title in <h1>, submitLabel as label of <Button>, children in <form>, aside in <aside> when given. [quickInfo; Smith library/pages/FormPage.tsx]",
+     "Use exactly: import { ListPage } from '../../../library/pages/ListPage'; import { DetailPage } from '../../../library/pages/DetailPage'; import { FormPage } from '../../../library/pages/FormPage'; import books from '../../../library/fixtures/books.json'. [quickInfo; resolved from features/browse/pages/X.tsx]"
+    ],
+    "step": "Current step: browse has no page yet (its spec puts one at /). Create it with plan_add line.baseOn {\"libraryId\": \"pages/<ListPage|DetailPage|FormPage>\", \"feature\": \"browse\", \"name\": \"<Name>\"} on the library page that fits these points, then add its route:\n- BRW-1: The page at `/` has the main heading \"Library catalogue\" and shows the books six at a time, each with its title, its author, its genre, its year and \"Available\" or \"On loan\"; each title is a link to the book's page at `/books/<id>`.\n- BRW-2: Under the list, a line like \"Page 1 of 3\" and two buttons, \"Previous page\" and \"Next page\", move through the pages; \"Previous page\" is disabled on the first page and \"Next page\" on the last.",
+    "last": null,
+    "tokens": 1052,
+    "dropped": false,
+    "reason": null
+   },
+   "2:true": {
+    "text": "Facts so far (each with where it comes from):\n- The feature book has a spec.md file and declares pages.\n- The feature browse has a spec.md file and declares nothing.\n- The feature loans has a spec.md file and declares nothing.\n- The feature picks has a spec.md file and declares pages.\n- The feature request has a spec.md file and declares pages.\n- The unit features/book/pages/BookPage.tsx renders a <DetailPage> with the specified props.\n- The unit features/picks/pages/PicksPage.tsx renders a <ListPage> with the specified props.\n- The unit features/request/pages/RequestPage.tsx renders a <ListPage> with the specified props.\n- The library page library/pages/DetailPage.tsx renders a <main> with the specified props.\n- The library page library/pages/FormPage.tsx renders a <main> with the specified props.\n- The library page library/pages/ListPage.tsx renders a <main> with the specified props.\n- The library components include AppLayout, Button, Card, Checkbox, Dialog, Select, TextField, Toast.\n- The fixture library/fixtures/books.json contains 15 rows of book data.\n\nCurrent step: browse has no page yet (its spec puts one at /). Create it with plan_add line.baseOn {\"libraryId\": \"pages/<ListPage|DetailPage|FormPage>\", \"feature\": \"browse\", \"name\": \"<Name>\"} on the library page that fits these points, then add its route:\n- BRW-1: The page at `/` has the main heading \"Library catalogue\" and shows the books six at a time, each with its title, its author, its genre, its year and \"Available\" or \"On loan\"; each title is a link to the book's page at `/books/<id>`.\n- BRW-2: Under the list, a line like \"Page 1 of 3\" and two buttons, \"Previous page\" and \"Next page\", move through the pages; \"Previous page\" is disabled on the first page and \"Next page\" on the last.",
+    "facts": [
+     "The feature book has a spec.md file and declares pages.",
+     "The feature browse has a spec.md file and declares nothing.",
+     "The feature loans has a spec.md file and declares nothing.",
+     "The feature picks has a spec.md file and declares pages.",
+     "The feature request has a spec.md file and declares pages.",
+     "The unit features/book/pages/BookPage.tsx renders a <DetailPage> with the specified props.",
+     "The unit features/picks/pages/PicksPage.tsx renders a <ListPage> with the specified props.",
+     "The unit features/request/pages/RequestPage.tsx renders a <ListPage> with the specified props.",
+     "The library page library/pages/DetailPage.tsx renders a <main> with the specified props.",
+     "The library page library/pages/FormPage.tsx renders a <main> with the specified props.",
+     "The library page library/pages/ListPage.tsx renders a <main> with the specified props.",
+     "The library components include AppLayout, Button, Card, Checkbox, Dialog, Select, TextField, Toast.",
+     "The fixture library/fixtures/books.json contains 15 rows of book data."
+    ],
+    "step": "Current step: browse has no page yet (its spec puts one at /). Create it with plan_add line.baseOn {\"libraryId\": \"pages/<ListPage|DetailPage|FormPage>\", \"feature\": \"browse\", \"name\": \"<Name>\"} on the library page that fits these points, then add its route:\n- BRW-1: The page at `/` has the main heading \"Library catalogue\" and shows the books six at a time, each with its title, its author, its genre, its year and \"Available\" or \"On loan\"; each title is a link to the book's page at `/books/<id>`.\n- BRW-2: Under the list, a line like \"Page 1 of 3\" and two buttons, \"Previous page\" and \"Next page\", move through the pages; \"Previous page\" is disabled on the first page and \"Next page\" on the last.",
+    "last": null,
+    "tokens": 554,
+    "dropped": false,
+    "reason": null,
+    "raw": "- The feature book has a spec.md file and declares pages.\n- The feature browse has a spec.md file and declares nothing.\n- The feature loans has a spec.md file and declares nothing.\n- The feature picks has a spec.md file and declares pages.\n- The feature request has a spec.md file and declares pages.\n- The unit features/book/pages/BookPage.tsx renders a <DetailPage> with the specified props.\n- The unit features/picks/pages/PicksPage.tsx renders a <ListPage> with the specified props.\n- The unit features/request/pages/RequestPage.tsx renders a <ListPage> with the specified props.\n- The library page library/pages/DetailPage.tsx renders a <main> with the specified props.\n- The library page library/pages/FormPage.tsx renders a <main> with the specified props.\n- The library page library/pages/ListPage.tsx renders a <main> with the specified props.\n- The library components include AppLayout, Button, Card, Checkbox, Dialog, Select, TextField, Toast.\n- The fixture library/fixtures/books.json contains 15 rows of book data."
+   }
+  },
+  "tscSanity": {
+   "skeleton": {
+    "pass": true,
+    "errors": []
+   },
+   "failing": {
+    "pass": false,
+    "errors": [
+     "features/picks/pages/PicksPage.tsx(7,33): error TS2345: Argument of type 'string | null' is not assignable to parameter of type 'string'."
+    ]
+   },
+   "exampleFix": {
+    "pass": true,
+    "errors": []
+   }
+  }
+ },
+ "summary": [
+  {
+   "case": 1,
+   "variant": "L+tools",
+   "model": "qwen2.5-coder:7b",
+   "n": 5,
+   "promptTokens": 1532,
+   "latencyMs": 4755,
+   "errors": 0,
+   "setCode": 5,
+   "repeat": 0,
+   "tscPass": 5,
+   "usefulPass": 4,
+   "lenientUseful": 4,
+   "skeleton": 1,
+   "fetches": 1,
+   "missingImport": 0,
+   "calls": [
+    "pass",
+    "pass",
+    "pass",
+    "pass",
+    "pass"
+   ]
+  },
+  {
+   "case": 1,
+   "variant": "F1",
+   "model": "qwen2.5-coder:7b",
+   "n": 5,
+   "promptTokens": 1721,
+   "latencyMs": 4608,
+   "errors": 0,
+   "setCode": 5,
+   "repeat": 0,
+   "tscPass": 5,
+   "usefulPass": 4,
+   "lenientUseful": 4,
+   "skeleton": 1,
+   "fetches": 1,
+   "missingImport": 0,
+   "calls": [
+    "pass",
+    "pass",
+    "pass",
+    "pass",
+    "pass"
+   ]
+  },
+  {
+   "case": 1,
+   "variant": "F2",
+   "model": "qwen2.5-coder:7b",
+   "n": 5,
+   "promptTokens": 1533,
+   "latencyMs": 4200,
+   "errors": 0,
+   "setCode": 5,
+   "repeat": 0,
+   "tscPass": 5,
+   "usefulPass": 2,
+   "lenientUseful": 2,
+   "skeleton": 3,
+   "fetches": 1,
+   "missingImport": 0,
+   "calls": [
+    "pass",
+    "pass",
+    "pass",
+    "pass",
+    "pass"
+   ]
+  },
+  {
+   "case": 2,
+   "variant": "CLr1",
+   "model": "qwen2.5-coder:7b",
+   "n": 5,
+   "promptTokens": 1106,
+   "latencyMs": 1371,
+   "errors": 0,
+   "listPagePick": 5,
+   "listPageIntent": 5,
+   "picked": [
+    "ListPage",
+    "ListPage",
+    "ListPage",
+    "ListPage",
+    "ListPage"
+   ]
+  },
+  {
+   "case": 2,
+   "variant": "CF1",
+   "model": "qwen2.5-coder:7b",
+   "n": 5,
+   "promptTokens": 1366,
+   "latencyMs": 1535,
+   "errors": 0,
+   "listPagePick": 5,
+   "listPageIntent": 5,
+   "picked": [
+    "ListPage",
+    "ListPage",
+    "ListPage",
+    "ListPage",
+    "ListPage"
+   ]
+  },
+  {
+   "case": 2,
+   "variant": "CF2",
+   "model": "qwen2.5-coder:7b",
+   "n": 5,
+   "promptTokens": 944,
+   "latencyMs": 1381,
+   "errors": 0,
+   "listPagePick": 5,
+   "listPageIntent": 5,
+   "picked": [
+    "ListPage",
+    "ListPage",
+    "ListPage",
+    "ListPage",
+    "ListPage"
+   ]
+  },
+  {
+   "case": 1,
+   "variant": "L+tools",
+   "model": "qwen2.5-coder:1.5b",
+   "n": 5,
+   "promptTokens": 1542,
+   "latencyMs": 1052,
+   "errors": 0,
+   "setCode": 0,
+   "repeat": 0,
+   "tscPass": 0,
+   "usefulPass": 0,
+   "lenientUseful": 0,
+   "skeleton": 0,
+   "fetches": 1,
+   "missingImport": 0,
+   "calls": [
+    "none",
+    "line.setCode",
+    "line.setCode",
+    "line.setCode",
+    "line.setCode"
+   ]
+  },
+  {
+   "case": 1,
+   "variant": "F1",
+   "model": "qwen2.5-coder:1.5b",
+   "n": 5,
+   "promptTokens": 1731,
+   "latencyMs": 1096,
+   "errors": 0,
+   "setCode": 0,
+   "repeat": 0,
+   "tscPass": 0,
+   "usefulPass": 0,
+   "lenientUseful": 0,
+   "skeleton": 0,
+   "fetches": 1,
+   "missingImport": 0,
+   "calls": [
+    "none",
+    "line.setCode",
+    "line.setCode",
+    "line.setCode",
+    "line.setCode"
+   ]
+  },
+  {
+   "case": 1,
+   "variant": "F2",
+   "model": "qwen2.5-coder:1.5b",
+   "n": 5,
+   "promptTokens": 1543,
+   "latencyMs": 1068,
+   "errors": 0,
+   "setCode": 0,
+   "repeat": 0,
+   "tscPass": 0,
+   "usefulPass": 0,
+   "lenientUseful": 0,
+   "skeleton": 0,
+   "fetches": 1,
+   "missingImport": 0,
+   "calls": [
+    "none",
+    "line.setCode",
+    "line.setCode",
+    "line.setCode",
+    "line.setCode"
+   ]
+  },
+  {
+   "case": 2,
+   "variant": "CLr1",
+   "model": "qwen2.5-coder:1.5b",
+   "n": 5,
+   "promptTokens": 1106,
+   "latencyMs": 422,
+   "errors": 0,
+   "listPagePick": 5,
+   "listPageIntent": 5,
+   "picked": [
+    "ListPage",
+    "ListPage",
+    "ListPage",
+    "ListPage",
+    "ListPage"
+   ]
+  },
+  {
+   "case": 2,
+   "variant": "CF1",
+   "model": "qwen2.5-coder:1.5b",
+   "n": 5,
+   "promptTokens": 1366,
+   "latencyMs": 431,
+   "errors": 0,
+   "listPagePick": 5,
+   "listPageIntent": 5,
+   "picked": [
+    "ListPage",
+    "ListPage",
+    "ListPage",
+    "ListPage",
+    "ListPage"
+   ]
+  },
+  {
+   "case": 2,
+   "variant": "CF2",
+   "model": "qwen2.5-coder:1.5b",
+   "n": 5,
+   "promptTokens": 944,
+   "latencyMs": 393,
+   "errors": 0,
+   "listPagePick": 5,
+   "listPageIntent": 5,
+   "picked": [
+    "ListPage",
+    "ListPage",
+    "ListPage",
+    "ListPage",
+    "ListPage"
+   ]
+  }
+ ],
+ "prompts": {
+  "L+tools@qwen2.5-coder:7b": {
+   "last": "Facts so far (each with where it comes from):\n- Features book, picks, request and loans exist, each with its spec.md. [plan steps 2, 5, 8, 11]\n- browse has no page yet; a step basing a DetailPage on it is approved and waits to run. [step 12]\n- features/book/pages/BookPage.tsx is based on DetailPage, served at /books/:id, and shows one book of library/fixtures/books.json by id. [steps 3, 4, 13]\n- features/picks/pages/PicksPage.tsx is based on ListPage, served at /picks, and renders ListPage titled \"Picks\" with nothing else. [steps 6, 7; read]\n- features/request/pages/RequestPage.tsx is based on ListPage, served at /request, and is empty. [steps 9, 10]\n- No feature has usecases, services or domains yet. [ls features/*]\n- The library has components Button, TextField, Card, Dialog, Select, Checkbox, Toast; pages ListPage, DetailPage, FormPage; library/fixtures/books.json with 15 books {id, title, author, genre, year, pages, summary, available}. [system prompt; ls library]\n- ListPage takes {title, toolbar?, children?, empty?}: it shows title as the heading, the toolbar above, the children as a grid, or `empty` when there are no children. [library/pages/ListPage.tsx]\n- Your last 5 attempts at PicksPage.tsx were refused with the same type error (below). [steps refused]\n\nCurrent step: PCK-1: Every page shows a link whose name starts with \"My picks\" followed by the number of picked books in brackets, like \"My picks (2)\"; it opens `/picks`. Write it in features/picks/pages/PicksPage.tsx with plan_add line.setCode (the whole file, contentHash ff457f2700d98d2da13d103e6d47abefc2b6f0dd543509ca3adf7c96fce3e659).\n\nLast result: Refused (TYPE_ERROR, repeated 5 times): line 7 of features/picks/pages/PicksPage.tsx does not type-check: it passes a value that can be null (string | null) where only a string is allowed.\n>7| const pickedBooks = JSON.parse(localStorage.getItem('picks')) || [];\nExample fix for line 7: const pickedBooks = JSON.parse(localStorage.getItem('picks') ?? '[]');\nRule: send line.setCode with the whole file, line 7 changed, and contentHash ff457f2700d98d2da13d103e6d47abefc2b6f0dd543509ca3adf7c96fce3e659; the same code again is refused.\n\nRead a file with read_file when you need its code.",
+   "chars": 3252
+  },
+  "F1@qwen2.5-coder:7b": {
+   "last": "Facts so far (each with where it comes from):\n- Features book, browse, loans, picks and request exist, each with its spec.md. [ls features/*]\n- features/book/pages/BookPage.tsx (book/pages/BookPage) is based on pages/DetailPage, served at /books/:id, reads library/fixtures/books.json, renders <DetailPage title={item.title} back={back}> holding 6 <p> and renders <DetailPage title=\"Book not found\" back={back}> when item is missing. [moduleScope; Smith features/book/pages/BookPage.tsx]\n- features/picks/pages/PicksPage.tsx (picks/pages/PicksPage) is based on pages/ListPage, served at /picks and renders <ListPage title=\"Picks\"> with nothing else. [moduleScope; Smith features/picks/pages/PicksPage.tsx]\n- features/request/pages/RequestPage.tsx (request/pages/RequestPage) is based on pages/ListPage, served at /request and renders <ListPage title=\"Request\"> with nothing else. [moduleScope; Smith features/request/pages/RequestPage.tsx]\n- browse has no page yet; its spec.md is there. [moduleScope browse]\n- loans has no page yet; its spec.md is there. [moduleScope loans]\n- No feature has usecases, services or domains yet. [moduleScope features/*]\n- No feature exports anything (no features/<f>/index.ts). [moduleScope]\n- There is no picks fixture; library/fixtures has only books.json. [ls library/fixtures]\n- The library has components AppLayout, Button, Card, Checkbox, Dialog, Select, TextField and Toast; pages DetailPage, FormPage and ListPage; library/fixtures/books.json with 15 rows {id: string, title: string, author: string, genre: string, year: number, pages: number, summary: string, available: boolean}. [ls library; quickInfo]\n- ListPage (pages/ListPage) takes {title: string, toolbar?, children?, empty?}: title in <h1>, toolbar in <div> when given, children in a grid <div> when given, empty when children is missing. [quickInfo; Smith library/pages/ListPage.tsx]\n- Use exactly: import { ListPage } from '../../../library/pages/ListPage'; import books from '../../../library/fixtures/books.json'. [quickInfo; resolved from features/picks/pages/PicksPage.tsx]\n- Your last 5 attempts at PicksPage.tsx were refused with the same type error (below). [steps refused]\n\nCurrent step: PCK-1: Every page shows a link whose name starts with \"My picks\" followed by the number of picked books in brackets, like \"My picks (2)\"; it opens `/picks`. Write it in features/picks/pages/PicksPage.tsx with plan_add line.setCode (the whole file, contentHash ff457f2700d98d2da13d103e6d47abefc2b6f0dd543509ca3adf7c96fce3e659).\n\nLast result: Refused (TYPE_ERROR, repeated 5 times): line 7 of features/picks/pages/PicksPage.tsx does not type-check: it passes a value that can be null (string | null) where only a string is allowed.\n>7| const pickedBooks = JSON.parse(localStorage.getItem('picks')) || [];\nExample fix for line 7: const pickedBooks = JSON.parse(localStorage.getItem('picks') ?? '[]');\nRule: send line.setCode with the whole file, line 7 changed, and contentHash ff457f2700d98d2da13d103e6d47abefc2b6f0dd543509ca3adf7c96fce3e659; the same code again is refused.\n\nRead a file with read_file when you need its code.",
+   "chars": 4161
+  },
+  "F2@qwen2.5-coder:7b": {
+   "last": "Facts so far (each with where it comes from):\n- feature book: has spec.md; declares pages; exports nothing\n- feature browse: has spec.md; declares nothing; exports nothing\n- feature loans: has spec.md; declares nothing; exports nothing\n- feature picks: has spec.md; declares pages; exports nothing\n- feature request: has spec.md; declares pages; exports nothing\n- unit features/book/pages/BookPage.tsx id book/pages/BookPage; base pages/DetailPage; route /books/:id; signature function BookPage({ params }: { params: { id: string; }; }): JSX.Element\n- unit features/picks/pages/PicksPage.tsx id picks/pages/PicksPage; base pages/ListPage; route /picks; signature function PicksPage(): JSX.Element\n- unit features/request/pages/RequestPage.tsx id request/pages/RequestPage; base pages/ListPage; route /request; signature function RequestPage(): JSX.Element\n- library page library/pages/ListPage.tsx id pages/ListPage; signature function ListPage({ title, toolbar, children, empty }: ListPageProps): JSX.Element; props type ListPageProps = { title: string; toolbar?: ReactNode; children?: ReactNode; empty?: ReactNode; }\n- library components: AppLayout, Button, Card, Checkbox, Dialog, Select, TextField, Toast\n- fixture library/fixtures/books.json: 15 rows {id: string, title: string, author: string, genre: string, year: number, pages: number, summary: string, available: boolean}\n- Your last 5 attempts at PicksPage.tsx were refused with the same type error (below). [steps refused]\n\nCurrent step: PCK-1: Every page shows a link whose name starts with \"My picks\" followed by the number of picked books in brackets, like \"My picks (2)\"; it opens `/picks`. Write it in features/picks/pages/PicksPage.tsx with plan_add line.setCode (the whole file, contentHash ff457f2700d98d2da13d103e6d47abefc2b6f0dd543509ca3adf7c96fce3e659).\n\nLast result: Refused (TYPE_ERROR, repeated 5 times): line 7 of features/picks/pages/PicksPage.tsx does not type-check: it passes a value that can be null (string | null) where only a string is allowed.\n>7| const pickedBooks = JSON.parse(localStorage.getItem('picks')) || [];\nExample fix for line 7: const pickedBooks = JSON.parse(localStorage.getItem('picks') ?? '[]');\nRule: send line.setCode with the whole file, line 7 changed, and contentHash ff457f2700d98d2da13d103e6d47abefc2b6f0dd543509ca3adf7c96fce3e659; the same code again is refused.\n\nRead a file with read_file when you need its code.",
+   "chars": 3454
+  },
+  "CLr1@qwen2.5-coder:7b": {
+   "last": "Facts so far (each with where it comes from):\n- Line seeded features book, picks, request and loans with their specs; BookPage (on DetailPage) at /books/:id, PicksPage (on ListPage) at /picks and RequestPage (on ListPage) at /request exist with no content yet. [seed steps 1-11]\n- browse has its spec (features/browse/spec.md) but no page and no route yet. [seed]\n- Library pages: ListPage {title, toolbar?, children?, empty?} shows a heading, a toolbar and the children as a grid; DetailPage {title, back?, children?, aside?} shows one item with a back link and side actions; FormPage {title, onSubmit, submitLabel, children?, aside?} shows a form with a submit button. [library/pages]\n- library/fixtures/books.json has 15 books {id, title, author, genre, year, pages, summary, available}. [system prompt]\n\nCurrent step: browse has no page yet (its spec puts one at /). Create it with plan_add line.baseOn {\"libraryId\": \"pages/<ListPage|DetailPage|FormPage>\", \"feature\": \"browse\", \"name\": \"<Name>\"} on the library page that fits these points, then add its route:\n- BRW-1: The page at `/` has the main heading \"Library catalogue\" and shows the books six at a time, each with its title, its author, its genre, its year and \"Available\" or \"On loan\"; each title is a link to the book's page at `/books/<id>`.\n- BRW-2: Under the list, a line like \"Page 1 of 3\" and two buttons, \"Previous page\" and \"Next page\", move through the pages; \"Previous page\" is disabled on the first page and \"Next page\" on the last.\n\nContext (English):\n- library/pages/ListPage.tsx: List page using ? works in 1 step. It returns React create element 'main' and (...) and React create element 'h1' and (...) and title and (...) and (...)\n- library/pages/DetailPage.tsx: Detail page using ? works in 1 step. It returns React create element 'main' and (...) and back and React create element 'h1' and (...) and title and React create element 'div' and (...) and React create element 'section' and (...) and children and (...)\n- library/pages/FormPage.tsx: Form page using ? works in 2 steps. Let submit be e prevent default, then on submit of. It returns React create element 'main' and (...) and React create element 'h1' and (...) and title and React create element 'div' and (...) and React create element 'form' and (...) and children and React create element Button and (...) and (...)",
+   "chars": 3407
+  },
+  "CF1@qwen2.5-coder:7b": {
+   "last": "Facts so far (each with where it comes from):\n- Features book, browse, loans, picks and request exist, each with its spec.md. [ls features/*]\n- features/book/pages/BookPage.tsx (book/pages/BookPage) is based on pages/DetailPage, served at /books/:id, reads library/fixtures/books.json, renders <DetailPage title={item.title} back={back}> holding 6 <p> and renders <DetailPage title=\"Book not found\" back={back}> when item is missing. [moduleScope; Smith features/book/pages/BookPage.tsx]\n- features/picks/pages/PicksPage.tsx (picks/pages/PicksPage) is based on pages/ListPage, served at /picks and renders <ListPage title=\"Picks\"> with nothing else. [moduleScope; Smith features/picks/pages/PicksPage.tsx]\n- features/request/pages/RequestPage.tsx (request/pages/RequestPage) is based on pages/ListPage, served at /request and renders <ListPage title=\"Request\"> with nothing else. [moduleScope; Smith features/request/pages/RequestPage.tsx]\n- browse has no page yet; its spec.md is there. [moduleScope browse]\n- loans has no page yet; its spec.md is there. [moduleScope loans]\n- No feature has usecases, services or domains yet. [moduleScope features/*]\n- No feature exports anything (no features/<f>/index.ts). [moduleScope]\n- There is no browse fixture; library/fixtures has only books.json. [ls library/fixtures]\n- The library has components AppLayout, Button, Card, Checkbox, Dialog, Select, TextField and Toast; pages DetailPage, FormPage and ListPage; library/fixtures/books.json with 15 rows {id: string, title: string, author: string, genre: string, year: number, pages: number, summary: string, available: boolean}. [ls library; quickInfo]\n- ListPage (pages/ListPage) takes {title: string, toolbar?, children?, empty?}: title in <h1>, toolbar in <div> when given, children in a grid <div> when given, empty when children is missing. [quickInfo; Smith library/pages/ListPage.tsx]\n- DetailPage (pages/DetailPage) takes {title: string, back?, children?, aside?}: title in <h1>, back in <main>, children in <section>, aside in <aside> when given. [quickInfo; Smith library/pages/DetailPage.tsx]\n- FormPage (pages/FormPage) takes {title: string, onSubmit: () => void, submitLabel: string, children?, aside?}: title in <h1>, submitLabel as label of <Button>, children in <form>, aside in <aside> when given. [quickInfo; Smith library/pages/FormPage.tsx]\n- Use exactly: import { ListPage } from '../../../library/pages/ListPage'; import { DetailPage } from '../../../library/pages/DetailPage'; import { FormPage } from '../../../library/pages/FormPage'; import books from '../../../library/fixtures/books.json'. [quickInfo; resolved from features/browse/pages/X.tsx]\n\nCurrent step: browse has no page yet (its spec puts one at /). Create it with plan_add line.baseOn {\"libraryId\": \"pages/<ListPage|DetailPage|FormPage>\", \"feature\": \"browse\", \"name\": \"<Name>\"} on the library page that fits these points, then add its route:\n- BRW-1: The page at `/` has the main heading \"Library catalogue\" and shows the books six at a time, each with its title, its author, its genre, its year and \"Available\" or \"On loan\"; each title is a link to the book's page at `/books/<id>`.\n- BRW-2: Under the list, a line like \"Page 1 of 3\" and two buttons, \"Previous page\" and \"Next page\", move through the pages; \"Previous page\" is disabled on the first page and \"Next page\" on the last.",
+   "chars": 4424
+  },
+  "CF2@qwen2.5-coder:7b": {
+   "last": "Facts so far (each with where it comes from):\n- The feature book has a spec.md file and declares pages.\n- The feature browse has a spec.md file and declares nothing.\n- The feature loans has a spec.md file and declares nothing.\n- The feature picks has a spec.md file and declares pages.\n- The feature request has a spec.md file and declares pages.\n- The unit features/book/pages/BookPage.tsx renders a <DetailPage> with the specified props.\n- The unit features/picks/pages/PicksPage.tsx renders a <ListPage> with the specified props.\n- The unit features/request/pages/RequestPage.tsx renders a <ListPage> with the specified props.\n- The library page library/pages/DetailPage.tsx renders a <main> with the specified props.\n- The library page library/pages/FormPage.tsx renders a <main> with the specified props.\n- The library page library/pages/ListPage.tsx renders a <main> with the specified props.\n- The library components include AppLayout, Button, Card, Checkbox, Dialog, Select, TextField, Toast.\n- The fixture library/fixtures/books.json contains 15 rows of book data.\n\nCurrent step: browse has no page yet (its spec puts one at /). Create it with plan_add line.baseOn {\"libraryId\": \"pages/<ListPage|DetailPage|FormPage>\", \"feature\": \"browse\", \"name\": \"<Name>\"} on the library page that fits these points, then add its route:\n- BRW-1: The page at `/` has the main heading \"Library catalogue\" and shows the books six at a time, each with its title, its author, its genre, its year and \"Available\" or \"On loan\"; each title is a link to the book's page at `/books/<id>`.\n- BRW-2: Under the list, a line like \"Page 1 of 3\" and two buttons, \"Previous page\" and \"Next page\", move through the pages; \"Previous page\" is disabled on the first page and \"Next page\" on the last.",
+   "chars": 2823
+  },
+  "L+tools@qwen2.5-coder:1.5b": {
+   "last": "Facts so far (each with where it comes from):\n- Features book, picks, request and loans exist, each with its spec.md. [plan steps 2, 5, 8, 11]\n- browse has no page yet; a step basing a DetailPage on it is approved and waits to run. [step 12]\n- features/book/pages/BookPage.tsx is based on DetailPage, served at /books/:id, and shows one book of library/fixtures/books.json by id. [steps 3, 4, 13]\n- features/picks/pages/PicksPage.tsx is based on ListPage, served at /picks, and renders ListPage titled \"Picks\" with nothing else. [steps 6, 7; read]\n- features/request/pages/RequestPage.tsx is based on ListPage, served at /request, and is empty. [steps 9, 10]\n- No feature has usecases, services or domains yet. [ls features/*]\n- The library has components Button, TextField, Card, Dialog, Select, Checkbox, Toast; pages ListPage, DetailPage, FormPage; library/fixtures/books.json with 15 books {id, title, author, genre, year, pages, summary, available}. [system prompt; ls library]\n- ListPage takes {title, toolbar?, children?, empty?}: it shows title as the heading, the toolbar above, the children as a grid, or `empty` when there are no children. [library/pages/ListPage.tsx]\n- Your last 5 attempts at PicksPage.tsx were refused with the same type error (below). [steps refused]\n\nCurrent step: PCK-1: Every page shows a link whose name starts with \"My picks\" followed by the number of picked books in brackets, like \"My picks (2)\"; it opens `/picks`. Write it in features/picks/pages/PicksPage.tsx with plan_add line.setCode (the whole file, contentHash ff457f2700d98d2da13d103e6d47abefc2b6f0dd543509ca3adf7c96fce3e659).\n\nLast result: Refused (TYPE_ERROR, repeated 5 times): line 7 of features/picks/pages/PicksPage.tsx does not type-check: it passes a value that can be null (string | null) where only a string is allowed.\n>7| const pickedBooks = JSON.parse(localStorage.getItem('picks')) || [];\nExample fix for line 7: const pickedBooks = JSON.parse(localStorage.getItem('picks') ?? '[]');\nRule: send line.setCode with the whole file, line 7 changed, and contentHash ff457f2700d98d2da13d103e6d47abefc2b6f0dd543509ca3adf7c96fce3e659; the same code again is refused.\n\nRead a file with read_file when you need its code.",
+   "chars": 3252
+  },
+  "F1@qwen2.5-coder:1.5b": {
+   "last": "Facts so far (each with where it comes from):\n- Features book, browse, loans, picks and request exist, each with its spec.md. [ls features/*]\n- features/book/pages/BookPage.tsx (book/pages/BookPage) is based on pages/DetailPage, served at /books/:id, reads library/fixtures/books.json, renders <DetailPage title={item.title} back={back}> holding 6 <p> and renders <DetailPage title=\"Book not found\" back={back}> when item is missing. [moduleScope; Smith features/book/pages/BookPage.tsx]\n- features/picks/pages/PicksPage.tsx (picks/pages/PicksPage) is based on pages/ListPage, served at /picks and renders <ListPage title=\"Picks\"> with nothing else. [moduleScope; Smith features/picks/pages/PicksPage.tsx]\n- features/request/pages/RequestPage.tsx (request/pages/RequestPage) is based on pages/ListPage, served at /request and renders <ListPage title=\"Request\"> with nothing else. [moduleScope; Smith features/request/pages/RequestPage.tsx]\n- browse has no page yet; its spec.md is there. [moduleScope browse]\n- loans has no page yet; its spec.md is there. [moduleScope loans]\n- No feature has usecases, services or domains yet. [moduleScope features/*]\n- No feature exports anything (no features/<f>/index.ts). [moduleScope]\n- There is no picks fixture; library/fixtures has only books.json. [ls library/fixtures]\n- The library has components AppLayout, Button, Card, Checkbox, Dialog, Select, TextField and Toast; pages DetailPage, FormPage and ListPage; library/fixtures/books.json with 15 rows {id: string, title: string, author: string, genre: string, year: number, pages: number, summary: string, available: boolean}. [ls library; quickInfo]\n- ListPage (pages/ListPage) takes {title: string, toolbar?, children?, empty?}: title in <h1>, toolbar in <div> when given, children in a grid <div> when given, empty when children is missing. [quickInfo; Smith library/pages/ListPage.tsx]\n- Use exactly: import { ListPage } from '../../../library/pages/ListPage'; import books from '../../../library/fixtures/books.json'. [quickInfo; resolved from features/picks/pages/PicksPage.tsx]\n- Your last 5 attempts at PicksPage.tsx were refused with the same type error (below). [steps refused]\n\nCurrent step: PCK-1: Every page shows a link whose name starts with \"My picks\" followed by the number of picked books in brackets, like \"My picks (2)\"; it opens `/picks`. Write it in features/picks/pages/PicksPage.tsx with plan_add line.setCode (the whole file, contentHash ff457f2700d98d2da13d103e6d47abefc2b6f0dd543509ca3adf7c96fce3e659).\n\nLast result: Refused (TYPE_ERROR, repeated 5 times): line 7 of features/picks/pages/PicksPage.tsx does not type-check: it passes a value that can be null (string | null) where only a string is allowed.\n>7| const pickedBooks = JSON.parse(localStorage.getItem('picks')) || [];\nExample fix for line 7: const pickedBooks = JSON.parse(localStorage.getItem('picks') ?? '[]');\nRule: send line.setCode with the whole file, line 7 changed, and contentHash ff457f2700d98d2da13d103e6d47abefc2b6f0dd543509ca3adf7c96fce3e659; the same code again is refused.\n\nRead a file with read_file when you need its code.",
+   "chars": 4161
+  },
+  "F2@qwen2.5-coder:1.5b": {
+   "last": "Facts so far (each with where it comes from):\n- feature book: has spec.md; declares pages; exports nothing\n- feature browse: has spec.md; declares nothing; exports nothing\n- feature loans: has spec.md; declares nothing; exports nothing\n- feature picks: has spec.md; declares pages; exports nothing\n- feature request: has spec.md; declares pages; exports nothing\n- unit features/book/pages/BookPage.tsx id book/pages/BookPage; base pages/DetailPage; route /books/:id; signature function BookPage({ params }: { params: { id: string; }; }): JSX.Element\n- unit features/picks/pages/PicksPage.tsx id picks/pages/PicksPage; base pages/ListPage; route /picks; signature function PicksPage(): JSX.Element\n- unit features/request/pages/RequestPage.tsx id request/pages/RequestPage; base pages/ListPage; route /request; signature function RequestPage(): JSX.Element\n- library page library/pages/ListPage.tsx id pages/ListPage; signature function ListPage({ title, toolbar, children, empty }: ListPageProps): JSX.Element; props type ListPageProps = { title: string; toolbar?: ReactNode; children?: ReactNode; empty?: ReactNode; }\n- library components: AppLayout, Button, Card, Checkbox, Dialog, Select, TextField, Toast\n- fixture library/fixtures/books.json: 15 rows {id: string, title: string, author: string, genre: string, year: number, pages: number, summary: string, available: boolean}\n- Your last 5 attempts at PicksPage.tsx were refused with the same type error (below). [steps refused]\n\nCurrent step: PCK-1: Every page shows a link whose name starts with \"My picks\" followed by the number of picked books in brackets, like \"My picks (2)\"; it opens `/picks`. Write it in features/picks/pages/PicksPage.tsx with plan_add line.setCode (the whole file, contentHash ff457f2700d98d2da13d103e6d47abefc2b6f0dd543509ca3adf7c96fce3e659).\n\nLast result: Refused (TYPE_ERROR, repeated 5 times): line 7 of features/picks/pages/PicksPage.tsx does not type-check: it passes a value that can be null (string | null) where only a string is allowed.\n>7| const pickedBooks = JSON.parse(localStorage.getItem('picks')) || [];\nExample fix for line 7: const pickedBooks = JSON.parse(localStorage.getItem('picks') ?? '[]');\nRule: send line.setCode with the whole file, line 7 changed, and contentHash ff457f2700d98d2da13d103e6d47abefc2b6f0dd543509ca3adf7c96fce3e659; the same code again is refused.\n\nRead a file with read_file when you need its code.",
+   "chars": 3454
+  },
+  "CLr1@qwen2.5-coder:1.5b": {
+   "last": "Facts so far (each with where it comes from):\n- Line seeded features book, picks, request and loans with their specs; BookPage (on DetailPage) at /books/:id, PicksPage (on ListPage) at /picks and RequestPage (on ListPage) at /request exist with no content yet. [seed steps 1-11]\n- browse has its spec (features/browse/spec.md) but no page and no route yet. [seed]\n- Library pages: ListPage {title, toolbar?, children?, empty?} shows a heading, a toolbar and the children as a grid; DetailPage {title, back?, children?, aside?} shows one item with a back link and side actions; FormPage {title, onSubmit, submitLabel, children?, aside?} shows a form with a submit button. [library/pages]\n- library/fixtures/books.json has 15 books {id, title, author, genre, year, pages, summary, available}. [system prompt]\n\nCurrent step: browse has no page yet (its spec puts one at /). Create it with plan_add line.baseOn {\"libraryId\": \"pages/<ListPage|DetailPage|FormPage>\", \"feature\": \"browse\", \"name\": \"<Name>\"} on the library page that fits these points, then add its route:\n- BRW-1: The page at `/` has the main heading \"Library catalogue\" and shows the books six at a time, each with its title, its author, its genre, its year and \"Available\" or \"On loan\"; each title is a link to the book's page at `/books/<id>`.\n- BRW-2: Under the list, a line like \"Page 1 of 3\" and two buttons, \"Previous page\" and \"Next page\", move through the pages; \"Previous page\" is disabled on the first page and \"Next page\" on the last.\n\nContext (English):\n- library/pages/ListPage.tsx: List page using ? works in 1 step. It returns React create element 'main' and (...) and React create element 'h1' and (...) and title and (...) and (...)\n- library/pages/DetailPage.tsx: Detail page using ? works in 1 step. It returns React create element 'main' and (...) and back and React create element 'h1' and (...) and title and React create element 'div' and (...) and React create element 'section' and (...) and children and (...)\n- library/pages/FormPage.tsx: Form page using ? works in 2 steps. Let submit be e prevent default, then on submit of. It returns React create element 'main' and (...) and React create element 'h1' and (...) and title and React create element 'div' and (...) and React create element 'form' and (...) and children and React create element Button and (...) and (...)",
+   "chars": 3407
+  },
+  "CF1@qwen2.5-coder:1.5b": {
+   "last": "Facts so far (each with where it comes from):\n- Features book, browse, loans, picks and request exist, each with its spec.md. [ls features/*]\n- features/book/pages/BookPage.tsx (book/pages/BookPage) is based on pages/DetailPage, served at /books/:id, reads library/fixtures/books.json, renders <DetailPage title={item.title} back={back}> holding 6 <p> and renders <DetailPage title=\"Book not found\" back={back}> when item is missing. [moduleScope; Smith features/book/pages/BookPage.tsx]\n- features/picks/pages/PicksPage.tsx (picks/pages/PicksPage) is based on pages/ListPage, served at /picks and renders <ListPage title=\"Picks\"> with nothing else. [moduleScope; Smith features/picks/pages/PicksPage.tsx]\n- features/request/pages/RequestPage.tsx (request/pages/RequestPage) is based on pages/ListPage, served at /request and renders <ListPage title=\"Request\"> with nothing else. [moduleScope; Smith features/request/pages/RequestPage.tsx]\n- browse has no page yet; its spec.md is there. [moduleScope browse]\n- loans has no page yet; its spec.md is there. [moduleScope loans]\n- No feature has usecases, services or domains yet. [moduleScope features/*]\n- No feature exports anything (no features/<f>/index.ts). [moduleScope]\n- There is no browse fixture; library/fixtures has only books.json. [ls library/fixtures]\n- The library has components AppLayout, Button, Card, Checkbox, Dialog, Select, TextField and Toast; pages DetailPage, FormPage and ListPage; library/fixtures/books.json with 15 rows {id: string, title: string, author: string, genre: string, year: number, pages: number, summary: string, available: boolean}. [ls library; quickInfo]\n- ListPage (pages/ListPage) takes {title: string, toolbar?, children?, empty?}: title in <h1>, toolbar in <div> when given, children in a grid <div> when given, empty when children is missing. [quickInfo; Smith library/pages/ListPage.tsx]\n- DetailPage (pages/DetailPage) takes {title: string, back?, children?, aside?}: title in <h1>, back in <main>, children in <section>, aside in <aside> when given. [quickInfo; Smith library/pages/DetailPage.tsx]\n- FormPage (pages/FormPage) takes {title: string, onSubmit: () => void, submitLabel: string, children?, aside?}: title in <h1>, submitLabel as label of <Button>, children in <form>, aside in <aside> when given. [quickInfo; Smith library/pages/FormPage.tsx]\n- Use exactly: import { ListPage } from '../../../library/pages/ListPage'; import { DetailPage } from '../../../library/pages/DetailPage'; import { FormPage } from '../../../library/pages/FormPage'; import books from '../../../library/fixtures/books.json'. [quickInfo; resolved from features/browse/pages/X.tsx]\n\nCurrent step: browse has no page yet (its spec puts one at /). Create it with plan_add line.baseOn {\"libraryId\": \"pages/<ListPage|DetailPage|FormPage>\", \"feature\": \"browse\", \"name\": \"<Name>\"} on the library page that fits these points, then add its route:\n- BRW-1: The page at `/` has the main heading \"Library catalogue\" and shows the books six at a time, each with its title, its author, its genre, its year and \"Available\" or \"On loan\"; each title is a link to the book's page at `/books/<id>`.\n- BRW-2: Under the list, a line like \"Page 1 of 3\" and two buttons, \"Previous page\" and \"Next page\", move through the pages; \"Previous page\" is disabled on the first page and \"Next page\" on the last.",
+   "chars": 4424
+  },
+  "CF2@qwen2.5-coder:1.5b": {
+   "last": "Facts so far (each with where it comes from):\n- The feature book has a spec.md file and declares pages.\n- The feature browse has a spec.md file and declares nothing.\n- The feature loans has a spec.md file and declares nothing.\n- The feature picks has a spec.md file and declares pages.\n- The feature request has a spec.md file and declares pages.\n- The unit features/book/pages/BookPage.tsx renders a <DetailPage> with the specified props.\n- The unit features/picks/pages/PicksPage.tsx renders a <ListPage> with the specified props.\n- The unit features/request/pages/RequestPage.tsx renders a <ListPage> with the specified props.\n- The library page library/pages/DetailPage.tsx renders a <main> with the specified props.\n- The library page library/pages/FormPage.tsx renders a <main> with the specified props.\n- The library page library/pages/ListPage.tsx renders a <main> with the specified props.\n- The library components include AppLayout, Button, Card, Checkbox, Dialog, Select, TextField, Toast.\n- The fixture library/fixtures/books.json contains 15 rows of book data.\n\nCurrent step: browse has no page yet (its spec puts one at /). Create it with plan_add line.baseOn {\"libraryId\": \"pages/<ListPage|DetailPage|FormPage>\", \"feature\": \"browse\", \"name\": \"<Name>\"} on the library page that fits these points, then add its route:\n- BRW-1: The page at `/` has the main heading \"Library catalogue\" and shows the books six at a time, each with its title, its author, its genre, its year and \"Available\" or \"On loan\"; each title is a link to the book's page at `/books/<id>`.\n- BRW-2: Under the list, a line like \"Page 1 of 3\" and two buttons, \"Previous page\" and \"Next page\", move through the pages; \"Previous page\" is disabled on the first page and \"Next page\" on the last.",
+   "chars": 2823
+  }
+ },
+ "samples": [
+  {
+   "case": 1,
+   "variant": "L+tools",
+   "model": "qwen2.5-coder:7b",
+   "seed": 1,
+   "promptTokens": 1532,
+   "latencyMs": 5805,
+   "fetches": 1,
+   "fetched": [
+    "read_file features/picks/pages/PicksPage.tsx"
+   ],
+   "score": {
+    "call": "plan_add line.setCode PicksPage",
+    "setCode": true,
+    "repeat": false,
+    "tscPass": true,
+    "skeleton": false,
+    "pointShown": true,
+    "usefulPass": true,
+    "tscErrors": [],
+    "hashOk": true,
+    "useClient": false,
+    "code": "// @line-base pages/ListPage\n// @line-route /picks\nimport { ListPage } from '../../../library/pages/ListPage';\n\nexport function PicksPage() {\n  const pickedBooks = JSON.parse(localStorage.getItem('picks') ?? '[]');\n  return <ListPage title=\"Picks\" toolbar={<div>My picks ({pickedBooks.length})</div>} />;\n}\n"
+   },
+   "said": "{\"name\": \"plan_add\", \"arguments\": {\"tool\": \"line.setCode\", \"args\": {\"file\": \"features/picks/pages/PicksPage.tsx\", \"code\": \"// @line-base pages/ListPage\\n// @line-route /picks\\nimport { ListPage } from '../../../library/pages/ListPage';\\n\\nexport function PicksPage() {\\n  const pickedBooks = JSON.parse(localStorage.getItem('picks') ?? '[]');\\n  return <ListPage title=\\\"Picks\\\" toolbar={<div>My picks ({pickedBooks.length})</div>} />;\\n}\\n\", \"contentHash\": \"ff457f2700d98d2da13d103e6d47abefc2b6f0dd543509ca3adf7c96fce3e659\"}, \"why\": \"Adds a toolbar to the PicksPage that shows the number of picked books.\"}}"
+  },
+  {
+   "case": 1,
+   "variant": "L+tools",
+   "model": "qwen2.5-coder:7b",
+   "seed": 2,
+   "promptTokens": 1532,
+   "latencyMs": 4518,
+   "fetches": 1,
+   "fetched": [
+    "read_file features/picks/pages/PicksPage.tsx"
+   ],
+   "score": {
+    "call": "plan_add line.setCode PicksPage",
+    "setCode": true,
+    "repeat": false,
+    "tscPass": true,
+    "skeleton": false,
+    "pointShown": true,
+    "usefulPass": true,
+    "tscErrors": [],
+    "hashOk": true,
+    "useClient": false,
+    "code": "// @line-base pages/ListPage\n// @line-route /picks\nimport { ListPage } from '../../../library/pages/ListPage';\n\nexport function PicksPage() {\n  const pickedBooks = JSON.parse(localStorage.getItem('picks') ?? '[]');\n  return <ListPage title=\"Picks\" toolbar={<div>My picks ({pickedBooks.length})</div>} />;\n}\n"
+   },
+   "said": "{\"name\": \"plan_add\", \"arguments\": {\"tool\": \"line.setCode\", \"args\": {\"file\": \"features/picks/pages/PicksPage.tsx\", \"code\": \"// @line-base pages/ListPage\\n// @line-route /picks\\nimport { ListPage } from '../../../library/pages/ListPage';\\n\\nexport function PicksPage() {\\n  const pickedBooks = JSON.parse(localStorage.getItem('picks') ?? '[]');\\n  return <ListPage title=\\\"Picks\\\" toolbar={<div>My picks ({pickedBooks.length})</div>} />;\\n}\\n\", \"contentHash\": \"ff457f2700d98d2da13d103e6d47abefc2b6f0dd543509ca3adf7c96fce3e659\"}, \"why\": \"Add a toolbar to the PicksPage that shows the number of picked books.\"}}"
+  },
+  {
+   "case": 1,
+   "variant": "L+tools",
+   "model": "qwen2.5-coder:7b",
+   "seed": 3,
+   "promptTokens": 1532,
+   "latencyMs": 4720,
+   "fetches": 1,
+   "fetched": [
+    "read_file features/picks/pages/PicksPage.tsx"
+   ],
+   "score": {
+    "call": "plan_add line.setCode PicksPage",
+    "setCode": true,
+    "repeat": false,
+    "tscPass": true,
+    "skeleton": false,
+    "pointShown": true,
+    "usefulPass": true,
+    "tscErrors": [],
+    "hashOk": true,
+    "useClient": false,
+    "code": "// @line-base pages/ListPage\n// @line-route /picks\nimport { ListPage } from '../../../library/pages/ListPage';\n\nexport function PicksPage() {\n  const pickedBooks = JSON.parse(localStorage.getItem('picks') ?? '[]');\n  return <ListPage title=\"Picks\" toolbar={<div>My picks ({pickedBooks.length})</div>} />;\n}\n"
+   },
+   "said": "{\"name\": \"plan_add\", \"arguments\": {\"tool\": \"line.setCode\", \"args\": {\"file\": \"features/picks/pages/PicksPage.tsx\", \"code\": \"// @line-base pages/ListPage\\n// @line-route /picks\\nimport { ListPage } from '../../../library/pages/ListPage';\\n\\nexport function PicksPage() {\\n  const pickedBooks = JSON.parse(localStorage.getItem('picks') ?? '[]');\\n  return <ListPage title=\\\"Picks\\\" toolbar={<div>My picks ({pickedBooks.length})</div>} />;\\n}\\n\", \"contentHash\": \"ff457f2700d98d2da13d103e6d47abefc2b6f0dd543509ca3adf7c96fce3e659\"}, \"why\": \"Add a toolbar to the PicksPage that shows the number of picked books.\"}}"
+  },
+  {
+   "case": 1,
+   "variant": "L+tools",
+   "model": "qwen2.5-coder:7b",
+   "seed": 4,
+   "promptTokens": 1532,
+   "latencyMs": 4686,
+   "fetches": 1,
+   "fetched": [
+    "read_file features/picks/pages/PicksPage.tsx"
+   ],
+   "score": {
+    "call": "plan_add line.setCode PicksPage",
+    "setCode": true,
+    "repeat": false,
+    "tscPass": true,
+    "skeleton": false,
+    "pointShown": true,
+    "usefulPass": true,
+    "tscErrors": [],
+    "hashOk": true,
+    "useClient": false,
+    "code": "// @line-base pages/ListPage\n// @line-route /picks\nimport { ListPage } from '../../../library/pages/ListPage';\n\nexport function PicksPage() {\n  const pickedBooks = JSON.parse(localStorage.getItem('picks') ?? '[]');\n  return <ListPage title=\"Picks\" toolbar={<div>My picks ({pickedBooks.length})</div>} />;\n}\n"
+   },
+   "said": "{\"name\": \"plan_add\", \"arguments\": {\"tool\": \"line.setCode\", \"args\": {\"file\": \"features/picks/pages/PicksPage.tsx\", \"code\": \"// @line-base pages/ListPage\\n// @line-route /picks\\nimport { ListPage } from '../../../library/pages/ListPage';\\n\\nexport function PicksPage() {\\n  const pickedBooks = JSON.parse(localStorage.getItem('picks') ?? '[]');\\n  return <ListPage title=\\\"Picks\\\" toolbar={<div>My picks ({pickedBooks.length})</div>} />;\\n}\\n\", \"contentHash\": \"ff457f2700d98d2da13d103e6d47abefc2b6f0dd543509ca3adf7c96fce3e659\"}, \"why\": \"Add the link with the number of picked books and open /picks.\"}}"
+  },
+  {
+   "case": 1,
+   "variant": "L+tools",
+   "model": "qwen2.5-coder:7b",
+   "seed": 5,
+   "promptTokens": 1532,
+   "latencyMs": 4044,
+   "fetches": 1,
+   "fetched": [
+    "read_file features/picks/pages/PicksPage.tsx"
+   ],
+   "score": {
+    "call": "plan_add line.setCode PicksPage",
+    "setCode": true,
+    "repeat": false,
+    "tscPass": true,
+    "skeleton": true,
+    "pointShown": false,
+    "usefulPass": false,
+    "tscErrors": [],
+    "hashOk": true,
+    "useClient": false,
+    "code": "// @line-base pages/ListPage\n// @line-route /picks\nimport { ListPage } from '../../../library/pages/ListPage';\n\nexport function PicksPage() {\n  return <ListPage title=\"Picks\" />;\n}\n"
+   },
+   "said": "{\"name\": \"plan_add\", \"arguments\": {\"tool\": \"line.setCode\", \"args\": {\"file\": \"features/picks/pages/PicksPage.tsx\", \"code\": \"// @line-base pages/ListPage\\n// @line-route /picks\\nimport { ListPage } from '../../../library/pages/ListPage';\\n\\nexport function PicksPage() {\\n  return <ListPage title=\\\"Picks\\\" />;\\n}\\n\", \"contentHash\": \"ff457f2700d98d2da13d103e6d47abefc2b6f0dd543509ca3adf7c96fce3e659\"}, \"why\": \"Initial implementation of PicksPage based on ListPage.\"}}"
+  },
+  {
+   "case": 1,
+   "variant": "F1",
+   "model": "qwen2.5-coder:7b",
+   "seed": 1,
+   "promptTokens": 1721,
+   "latencyMs": 5309,
+   "fetches": 1,
+   "fetched": [
+    "read_file features/picks/pages/PicksPage.tsx"
+   ],
+   "score": {
+    "call": "plan_add line.setCode PicksPage",
+    "setCode": true,
+    "repeat": false,
+    "tscPass": true,
+    "skeleton": false,
+    "pointShown": true,
+    "usefulPass": true,
+    "tscErrors": [],
+    "hashOk": true,
+    "useClient": false,
+    "code": "// @line-base pages/ListPage\n// @line-route /picks\nimport { ListPage } from '../../../library/pages/ListPage';\n\nexport function PicksPage() {\n  const pickedBooks = JSON.parse(localStorage.getItem('picks') ?? '[]');\n  return <ListPage title=\"Picks\" toolbar={<div>My picks ({pickedBooks.length})</div>} />;\n}\n"
+   },
+   "said": "{\"name\": \"plan_add\", \"arguments\": {\"tool\": \"line.setCode\", \"args\": {\"file\": \"features/picks/pages/PicksPage.tsx\", \"code\": \"// @line-base pages/ListPage\\n// @line-route /picks\\nimport { ListPage } from '../../../library/pages/ListPage';\\n\\nexport function PicksPage() {\\n  const pickedBooks = JSON.parse(localStorage.getItem('picks') ?? '[]');\\n  return <ListPage title=\\\"Picks\\\" toolbar={<div>My picks ({pickedBooks.length})</div>} />;\\n}\\n\", \"contentHash\": \"ff457f2700d98d2da13d103e6d47abefc2b6f0dd543509ca3adf7c96fce3e659\"}, \"why\": \"Add the link with the number of picked books and open /picks.\"}}"
+  },
+  {
+   "case": 1,
+   "variant": "F1",
+   "model": "qwen2.5-coder:7b",
+   "seed": 2,
+   "promptTokens": 1721,
+   "latencyMs": 4722,
+   "fetches": 1,
+   "fetched": [
+    "read_file features/picks/pages/PicksPage.tsx"
+   ],
+   "score": {
+    "call": "plan_add line.setCode PicksPage",
+    "setCode": true,
+    "repeat": false,
+    "tscPass": true,
+    "skeleton": false,
+    "pointShown": true,
+    "usefulPass": true,
+    "tscErrors": [],
+    "hashOk": true,
+    "useClient": false,
+    "code": "// @line-base pages/ListPage\n// @line-route /picks\nimport { ListPage } from '../../../library/pages/ListPage';\n\nexport function PicksPage() {\n  const pickedBooks = JSON.parse(localStorage.getItem('picks') ?? '[]');\n  const count = pickedBooks.length;\n  return <ListPage title={`My picks (${count})`} />;\n}\n"
+   },
+   "said": "{\"name\": \"plan_add\", \"arguments\": {\"tool\": \"line.setCode\", \"args\": {\"file\": \"features/picks/pages/PicksPage.tsx\", \"code\": \"// @line-base pages/ListPage\\n// @line-route /picks\\nimport { ListPage } from '../../../library/pages/ListPage';\\n\\nexport function PicksPage() {\\n  const pickedBooks = JSON.parse(localStorage.getItem('picks') ?? '[]');\\n  const count = pickedBooks.length;\\n  return <ListPage title={`My picks (${count})`} />;\\n}\\n\", \"contentHash\": \"ff457f2700d98d2da13d103e6d47abefc2b6f0dd543509ca3adf7c96fce3e659\"}, \"why\": \"Add the count of picked books to the title.\"}}"
+  },
+  {
+   "case": 1,
+   "variant": "F1",
+   "model": "qwen2.5-coder:7b",
+   "seed": 3,
+   "promptTokens": 1721,
+   "latencyMs": 4580,
+   "fetches": 1,
+   "fetched": [
+    "read_file features/picks/pages/PicksPage.tsx"
+   ],
+   "score": {
+    "call": "plan_add line.setCode PicksPage",
+    "setCode": true,
+    "repeat": false,
+    "tscPass": true,
+    "skeleton": false,
+    "pointShown": true,
+    "usefulPass": true,
+    "tscErrors": [],
+    "hashOk": true,
+    "useClient": false,
+    "code": "// @line-base pages/ListPage\n// @line-route /picks\nimport { ListPage } from '../../../library/pages/ListPage';\n\nexport function PicksPage() {\n  const pickedBooks = JSON.parse(localStorage.getItem('picks') ?? '[]');\n  return <ListPage title=\"Picks\" toolbar={<div>My picks ({pickedBooks.length})</div>} />;\n}\n"
+   },
+   "said": "{\"name\": \"plan_add\", \"arguments\": {\"tool\": \"line.setCode\", \"args\": {\"file\": \"features/picks/pages/PicksPage.tsx\", \"code\": \"// @line-base pages/ListPage\\n// @line-route /picks\\nimport { ListPage } from '../../../library/pages/ListPage';\\n\\nexport function PicksPage() {\\n  const pickedBooks = JSON.parse(localStorage.getItem('picks') ?? '[]');\\n  return <ListPage title=\\\"Picks\\\" toolbar={<div>My picks ({pickedBooks.length})</div>} />;\\n}\\n\", \"contentHash\": \"ff457f2700d98d2da13d103e6d47abefc2b6f0dd543509ca3adf7c96fce3e659\"}, \"why\": \"Adds the link with the number of picked books and fixes the type error.\"}}"
+  },
+  {
+   "case": 1,
+   "variant": "F1",
+   "model": "qwen2.5-coder:7b",
+   "seed": 4,
+   "promptTokens": 1721,
+   "latencyMs": 4495,
+   "fetches": 1,
+   "fetched": [
+    "read_file features/picks/pages/PicksPage.tsx"
+   ],
+   "score": {
+    "call": "plan_add line.setCode PicksPage",
+    "setCode": true,
+    "repeat": false,
+    "tscPass": true,
+    "skeleton": false,
+    "pointShown": true,
+    "usefulPass": true,
+    "tscErrors": [],
+    "hashOk": true,
+    "useClient": false,
+    "code": "// @line-base pages/ListPage\n// @line-route /picks\nimport { ListPage } from '../../../library/pages/ListPage';\n\nexport function PicksPage() {\n  const pickedBooks = JSON.parse(localStorage.getItem('picks') ?? '[]');\n  const count = pickedBooks.length;\n  return <ListPage title={`My picks (${count})`} />;\n}\n"
+   },
+   "said": "{\"name\": \"plan_add\", \"arguments\": {\"tool\": \"line.setCode\", \"args\": {\"file\": \"features/picks/pages/PicksPage.tsx\", \"code\": \"// @line-base pages/ListPage\\n// @line-route /picks\\nimport { ListPage } from '../../../library/pages/ListPage';\\n\\nexport function PicksPage() {\\n  const pickedBooks = JSON.parse(localStorage.getItem('picks') ?? '[]');\\n  const count = pickedBooks.length;\\n  return <ListPage title={`My picks (${count})`} />;\\n}\\n\", \"contentHash\": \"ff457f2700d98d2da13d103e6d47abefc2b6f0dd543509ca3adf7c96fce3e659\"}, \"why\": \"Adds the count of picked books to the title.\"}}"
+  },
+  {
+   "case": 1,
+   "variant": "F1",
+   "model": "qwen2.5-coder:7b",
+   "seed": 5,
+   "promptTokens": 1721,
+   "latencyMs": 3934,
+   "fetches": 1,
+   "fetched": [
+    "read_file features/picks/pages/PicksPage.tsx"
+   ],
+   "score": {
+    "call": "plan_add line.setCode PicksPage",
+    "setCode": true,
+    "repeat": false,
+    "tscPass": true,
+    "skeleton": true,
+    "pointShown": false,
+    "usefulPass": false,
+    "tscErrors": [],
+    "hashOk": true,
+    "useClient": false,
+    "code": "// @line-base pages/ListPage\n// @line-route /picks\nimport { ListPage } from '../../../library/pages/ListPage';\n\nexport function PicksPage() {\n  return <ListPage title=\"Picks\" />;\n}\n"
+   },
+   "said": "{\"name\": \"plan_add\", \"arguments\": {\"tool\": \"line.setCode\", \"args\": {\"file\": \"features/picks/pages/PicksPage.tsx\", \"code\": \"// @line-base pages/ListPage\\n// @line-route /picks\\nimport { ListPage } from '../../../library/pages/ListPage';\\n\\nexport function PicksPage() {\\n  return <ListPage title=\\\"Picks\\\" />;\\n}\\n\", \"contentHash\": \"ff457f2700d98d2da13d103e6d47abefc2b6f0dd543509ca3adf7c96fce3e659\"}, \"why\": \"Initial implementation of PicksPage using ListPage.\"}}"
+  },
+  {
+   "case": 1,
+   "variant": "F2",
+   "model": "qwen2.5-coder:7b",
+   "seed": 1,
+   "promptTokens": 1533,
+   "latencyMs": 5120,
+   "fetches": 1,
+   "fetched": [
+    "read_file features/picks/pages/PicksPage.tsx"
+   ],
+   "score": {
+    "call": "plan_add line.setCode PicksPage",
+    "setCode": true,
+    "repeat": false,
+    "tscPass": true,
+    "skeleton": false,
+    "pointShown": true,
+    "usefulPass": true,
+    "tscErrors": [],
+    "hashOk": true,
+    "useClient": false,
+    "code": "// @line-base pages/ListPage\n// @line-route /picks\nimport { ListPage } from '../../../library/pages/ListPage';\n\nexport function PicksPage() {\n  const pickedBooks = JSON.parse(localStorage.getItem('picks') ?? '[]');\n  const count = pickedBooks.length;\n  return <ListPage title={`My picks (${count})`} />;\n}\n"
+   },
+   "said": "{\"name\": \"plan_add\", \"arguments\": {\"tool\": \"line.setCode\", \"args\": {\"file\": \"features/picks/pages/PicksPage.tsx\", \"code\": \"// @line-base pages/ListPage\\n// @line-route /picks\\nimport { ListPage } from '../../../library/pages/ListPage';\\n\\nexport function PicksPage() {\\n  const pickedBooks = JSON.parse(localStorage.getItem('picks') ?? '[]');\\n  const count = pickedBooks.length;\\n  return <ListPage title={`My picks (${count})`} />;\\n}\\n\", \"contentHash\": \"ff457f2700d98d2da13d103e6d47abefc2b6f0dd543509ca3adf7c96fce3e659\"}, \"why\": \"Add the link with the number of picked books and update the title accordingly.\"}}"
+  },
+  {
+   "case": 1,
+   "variant": "F2",
+   "model": "qwen2.5-coder:7b",
+   "seed": 2,
+   "promptTokens": 1533,
+   "latencyMs": 3858,
+   "fetches": 1,
+   "fetched": [
+    "read_file features/picks/pages/PicksPage.tsx"
+   ],
+   "score": {
+    "call": "plan_add line.setCode PicksPage",
+    "setCode": true,
+    "repeat": false,
+    "tscPass": true,
+    "skeleton": true,
+    "pointShown": false,
+    "usefulPass": false,
+    "tscErrors": [],
+    "hashOk": true,
+    "useClient": false,
+    "code": "// @line-base pages/ListPage\n// @line-route /picks\nimport { ListPage } from '../../../library/pages/ListPage';\n\nexport function PicksPage() {\n  return <ListPage title=\"Picks\" />;\n}\n"
+   },
+   "said": "{\"name\": \"plan_add\", \"arguments\": {\"tool\": \"line.setCode\", \"args\": {\"file\": \"features/picks/pages/PicksPage.tsx\", \"code\": \"// @line-base pages/ListPage\\n// @line-route /picks\\nimport { ListPage } from '../../../library/pages/ListPage';\\n\\nexport function PicksPage() {\\n  return <ListPage title=\\\"Picks\\\" />;\\n}\\n\", \"contentHash\": \"ff457f2700d98d2da13d103e6d47abefc2b6f0dd543509ca3adf7c96fce3e659\"}, \"why\": \"Initial implementation of PicksPage using ListPage component.\"}}"
+  },
+  {
+   "case": 1,
+   "variant": "F2",
+   "model": "qwen2.5-coder:7b",
+   "seed": 3,
+   "promptTokens": 1533,
+   "latencyMs": 4410,
+   "fetches": 1,
+   "fetched": [
+    "read_file features/picks/pages/PicksPage.tsx"
+   ],
+   "score": {
+    "call": "plan_add line.setCode PicksPage",
+    "setCode": true,
+    "repeat": false,
+    "tscPass": true,
+    "skeleton": false,
+    "pointShown": true,
+    "usefulPass": true,
+    "tscErrors": [],
+    "hashOk": true,
+    "useClient": false,
+    "code": "// @line-base pages/ListPage\n// @line-route /picks\nimport { ListPage } from '../../../library/pages/ListPage';\n\nexport function PicksPage() {\n  const pickedBooks = JSON.parse(localStorage.getItem('picks') ?? '[]');\n  const count = pickedBooks.length;\n  return <ListPage title={`My picks (${count})`} />;\n}\n"
+   },
+   "said": "{\"name\": \"plan_add\", \"arguments\": {\"tool\": \"line.setCode\", \"args\": {\"file\": \"features/picks/pages/PicksPage.tsx\", \"code\": \"// @line-base pages/ListPage\\n// @line-route /picks\\nimport { ListPage } from '../../../library/pages/ListPage';\\n\\nexport function PicksPage() {\\n  const pickedBooks = JSON.parse(localStorage.getItem('picks') ?? '[]');\\n  const count = pickedBooks.length;\\n  return <ListPage title={`My picks (${count})`} />;\\n}\\n\", \"contentHash\": \"ff457f2700d98d2da13d103e6d47abefc2b6f0dd543509ca3adf7c96fce3e659\"}, \"why\": \"Adds the count of picked books to the title.\"}}"
+  },
+  {
+   "case": 1,
+   "variant": "F2",
+   "model": "qwen2.5-coder:7b",
+   "seed": 4,
+   "promptTokens": 1533,
+   "latencyMs": 3783,
+   "fetches": 1,
+   "fetched": [
+    "read_file features/picks/pages/PicksPage.tsx"
+   ],
+   "score": {
+    "call": "plan_add line.setCode PicksPage",
+    "setCode": true,
+    "repeat": false,
+    "tscPass": true,
+    "skeleton": true,
+    "pointShown": false,
+    "usefulPass": false,
+    "tscErrors": [],
+    "hashOk": true,
+    "useClient": false,
+    "code": "// @line-base pages/ListPage\n// @line-route /picks\nimport { ListPage } from '../../../library/pages/ListPage';\n\nexport function PicksPage() {\n  return <ListPage title=\"Picks\" />;\n}\n"
+   },
+   "said": "{\"name\": \"plan_add\", \"arguments\": {\"tool\": \"line.setCode\", \"args\": {\"file\": \"features/picks/pages/PicksPage.tsx\", \"code\": \"// @line-base pages/ListPage\\n// @line-route /picks\\nimport { ListPage } from '../../../library/pages/ListPage';\\n\\nexport function PicksPage() {\\n  return <ListPage title=\\\"Picks\\\" />;\\n}\\n\", \"contentHash\": \"ff457f2700d98d2da13d103e6d47abefc2b6f0dd543509ca3adf7c96fce3e659\"}, \"why\": \"Initial implementation of PicksPage using the ListPage component.\"}}"
+  },
+  {
+   "case": 1,
+   "variant": "F2",
+   "model": "qwen2.5-coder:7b",
+   "seed": 5,
+   "promptTokens": 1533,
+   "latencyMs": 3831,
+   "fetches": 1,
+   "fetched": [
+    "read_file features/picks/pages/PicksPage.tsx"
+   ],
+   "score": {
+    "call": "plan_add line.setCode PicksPage",
+    "setCode": true,
+    "repeat": false,
+    "tscPass": true,
+    "skeleton": true,
+    "pointShown": false,
+    "usefulPass": false,
+    "tscErrors": [],
+    "hashOk": true,
+    "useClient": false,
+    "code": "// @line-base pages/ListPage\n// @line-route /picks\nimport { ListPage } from '../../../library/pages/ListPage';\n\nexport function PicksPage() {\n  return <ListPage title=\"Picks\" />;\n}\n"
+   },
+   "said": "{\"name\": \"plan_add\", \"arguments\": {\"tool\": \"line.setCode\", \"args\": {\"file\": \"features/picks/pages/PicksPage.tsx\", \"code\": \"// @line-base pages/ListPage\\n// @line-route /picks\\nimport { ListPage } from '../../../library/pages/ListPage';\\n\\nexport function PicksPage() {\\n  return <ListPage title=\\\"Picks\\\" />;\\n}\\n\", \"contentHash\": \"ff457f2700d98d2da13d103e6d47abefc2b6f0dd543509ca3adf7c96fce3e659\"}, \"why\": \"Initial implementation of PicksPage using ListPage component.\"}}"
+  },
+  {
+   "case": 2,
+   "variant": "CLr1",
+   "model": "qwen2.5-coder:7b",
+   "seed": 1,
+   "promptTokens": 1106,
+   "evalTokens": 80,
+   "latencyMs": 2193,
+   "wallMs": 2198,
+   "loadMs": 4,
+   "doneReason": "stop",
+   "score": {
+    "call": "plan_add line.baseOn",
+    "libraryId": "pages/ListPage",
+    "intentLibraryId": "pages/ListPage",
+    "feature": "browse",
+    "listPagePick": true,
+    "listPageIntent": true
+   },
+   "said": "```json\n{\n  \"name\": \"plan_add\",\n  \"arguments\": {\n    \"tool\": \"line.baseOn\",\n    \"args\": {\n      \"libraryId\": \"pages/ListPage\",\n      \"feature\": \"browse\",\n      \"name\": \"BrowsePage\"\n    },\n    \"why\": \"The BrowsePage will display a list of books with pagination.\"\n  }\n}\n```"
+  },
+  {
+   "case": 2,
+   "variant": "CLr1",
+   "model": "qwen2.5-coder:7b",
+   "seed": 2,
+   "promptTokens": 1106,
+   "evalTokens": 45,
+   "latencyMs": 838,
+   "wallMs": 844,
+   "loadMs": 4,
+   "doneReason": "stop",
+   "score": {
+    "call": "plan_add line.baseOn",
+    "libraryId": "pages/ListPage",
+    "intentLibraryId": "pages/ListPage",
+    "feature": "browse",
+    "listPagePick": true,
+    "listPageIntent": true
+   },
+   "said": "{\"name\": \"plan_add\", \"arguments\": {\"tool\": \"line.baseOn\", \"args\": {\"libraryId\": \"pages/ListPage\", \"feature\": \"browse\", \"name\": \"BrowsePage\"}}}"
+  },
+  {
+   "case": 2,
+   "variant": "CLr1",
+   "model": "qwen2.5-coder:7b",
+   "seed": 3,
+   "promptTokens": 1106,
+   "evalTokens": 61,
+   "latencyMs": 1143,
+   "wallMs": 1148,
+   "loadMs": 3,
+   "doneReason": "stop",
+   "score": {
+    "call": "plan_add line.baseOn",
+    "libraryId": "pages/ListPage",
+    "intentLibraryId": "pages/ListPage",
+    "feature": "browse",
+    "listPagePick": true,
+    "listPageIntent": true
+   },
+   "said": "{\"name\": \"plan_add\", \"arguments\": {\"tool\": \"line.baseOn\", \"args\": {\"libraryId\": \"pages/ListPage\", \"feature\": \"browse\", \"name\": \"BrowsePage\"}, \"why\": \"The BrowsePage will display a list of books with pagination.\"}}"
+  },
+  {
+   "case": 2,
+   "variant": "CLr1",
+   "model": "qwen2.5-coder:7b",
+   "seed": 4,
+   "promptTokens": 1106,
+   "evalTokens": 61,
+   "latencyMs": 1190,
+   "wallMs": 1195,
+   "loadMs": 2,
+   "doneReason": "stop",
+   "score": {
+    "call": "plan_add line.baseOn",
+    "libraryId": "pages/ListPage",
+    "intentLibraryId": "pages/ListPage",
+    "feature": "browse",
+    "listPagePick": true,
+    "listPageIntent": true
+   },
+   "said": "{\"name\": \"plan_add\", \"arguments\": {\"tool\": \"line.baseOn\", \"args\": {\"libraryId\": \"pages/ListPage\", \"feature\": \"browse\", \"name\": \"BrowsePage\"}, \"why\": \"The BrowsePage should display a list of books with pagination.\"}}"
+  },
+  {
+   "case": 2,
+   "variant": "CLr1",
+   "model": "qwen2.5-coder:7b",
+   "seed": 5,
+   "promptTokens": 1106,
+   "evalTokens": 75,
+   "latencyMs": 1490,
+   "wallMs": 1495,
+   "loadMs": 3,
+   "doneReason": "stop",
+   "score": {
+    "call": "plan_add line.baseOn",
+    "libraryId": "pages/ListPage",
+    "intentLibraryId": "pages/ListPage",
+    "feature": "browse",
+    "listPagePick": true,
+    "listPageIntent": true
+   },
+   "said": "{\"name\": \"plan_add\", \"arguments\": {\"tool\": \"line.baseOn\", \"args\": {\"libraryId\": \"pages/ListPage\", \"feature\": \"browse\", \"name\": \"BrowsePage\"}, \"why\": \"The BrowsePage will display a list of books with pagination, fitting the requirements of BRW-1 and BRW-2.\"}}"
+  },
+  {
+   "case": 2,
+   "variant": "CF1",
+   "model": "qwen2.5-coder:7b",
+   "seed": 1,
+   "promptTokens": 1366,
+   "evalTokens": 71,
+   "latencyMs": 2192,
+   "wallMs": 2197,
+   "loadMs": 3,
+   "doneReason": "stop",
+   "score": {
+    "call": "plan_add line.baseOn",
+    "libraryId": "pages/ListPage",
+    "intentLibraryId": "pages/ListPage",
+    "feature": "browse",
+    "listPagePick": true,
+    "listPageIntent": true
+   },
+   "said": "{\"name\": \"plan_add\", \"arguments\": {\"tool\": \"line.baseOn\", \"args\": {\"libraryId\": \"pages/ListPage\", \"feature\": \"browse\", \"name\": \"BrowsePage\"}, \"why\": \"The ListPage component is suitable for displaying a list of items, which fits the requirements for the browse feature.\"}}"
+  },
+  {
+   "case": 2,
+   "variant": "CF1",
+   "model": "qwen2.5-coder:7b",
+   "seed": 2,
+   "promptTokens": 1366,
+   "evalTokens": 71,
+   "latencyMs": 1436,
+   "wallMs": 1441,
+   "loadMs": 2,
+   "doneReason": "stop",
+   "score": {
+    "call": "plan_add line.baseOn",
+    "libraryId": "pages/ListPage",
+    "intentLibraryId": "pages/ListPage",
+    "feature": "browse",
+    "listPagePick": true,
+    "listPageIntent": true
+   },
+   "said": "{\"name\": \"plan_add\", \"arguments\": {\"tool\": \"line.baseOn\", \"args\": {\"libraryId\": \"pages/ListPage\", \"feature\": \"browse\", \"name\": \"BrowsePage\"}, \"why\": \"The ListPage component is suitable for displaying a list of items, which fits the requirements for the browse feature.\"}}"
+  },
+  {
+   "case": 2,
+   "variant": "CF1",
+   "model": "qwen2.5-coder:7b",
+   "seed": 3,
+   "promptTokens": 1366,
+   "evalTokens": 72,
+   "latencyMs": 1437,
+   "wallMs": 1443,
+   "loadMs": 3,
+   "doneReason": "stop",
+   "score": {
+    "call": "plan_add line.baseOn",
+    "libraryId": "pages/ListPage",
+    "intentLibraryId": "pages/ListPage",
+    "feature": "browse",
+    "listPagePick": true,
+    "listPageIntent": true
+   },
+   "said": "{\"name\": \"plan_add\", \"arguments\": {\"tool\": \"line.baseOn\", \"args\": {\"libraryId\": \"pages/ListPage\", \"feature\": \"browse\", \"name\": \"BrowsePage\"}, \"why\": \"The ListPage component is suitable for displaying a list of items, and it fits the requirements for the browse feature.\"}}"
+  },
+  {
+   "case": 2,
+   "variant": "CF1",
+   "model": "qwen2.5-coder:7b",
+   "seed": 4,
+   "promptTokens": 1366,
+   "evalTokens": 64,
+   "latencyMs": 1245,
+   "wallMs": 1250,
+   "loadMs": 3,
+   "doneReason": "stop",
+   "score": {
+    "call": "plan_add line.baseOn",
+    "libraryId": "pages/ListPage",
+    "intentLibraryId": "pages/ListPage",
+    "feature": "browse",
+    "listPagePick": true,
+    "listPageIntent": true
+   },
+   "said": "{\"name\": \"plan_add\", \"arguments\": {\"tool\": \"line.baseOn\", \"args\": {\"libraryId\": \"pages/ListPage\", \"feature\": \"browse\", \"name\": \"BrowsePage\"}, \"why\": \"The ListPage component is suitable for displaying a list of items with pagination.\"}}"
+  },
+  {
+   "case": 2,
+   "variant": "CF1",
+   "model": "qwen2.5-coder:7b",
+   "seed": 5,
+   "promptTokens": 1366,
+   "evalTokens": 71,
+   "latencyMs": 1364,
+   "wallMs": 1369,
+   "loadMs": 3,
+   "doneReason": "stop",
+   "score": {
+    "call": "plan_add line.baseOn",
+    "libraryId": "pages/ListPage",
+    "intentLibraryId": "pages/ListPage",
+    "feature": "browse",
+    "listPagePick": true,
+    "listPageIntent": true
+   },
+   "said": "{\"name\": \"plan_add\", \"arguments\": {\"tool\": \"line.baseOn\", \"args\": {\"libraryId\": \"pages/ListPage\", \"feature\": \"browse\", \"name\": \"BrowsePage\"}, \"why\": \"The ListPage component is suitable for displaying a list of items, which fits the requirements of the browse feature.\"}}"
+  },
+  {
+   "case": 2,
+   "variant": "CF2",
+   "model": "qwen2.5-coder:7b",
+   "seed": 1,
+   "promptTokens": 944,
+   "evalTokens": 81,
+   "latencyMs": 1960,
+   "wallMs": 1964,
+   "loadMs": 2,
+   "doneReason": "stop",
+   "score": {
+    "call": "plan_add line.baseOn",
+    "libraryId": "pages/ListPage",
+    "intentLibraryId": "pages/ListPage",
+    "feature": "browse",
+    "listPagePick": true,
+    "listPageIntent": true
+   },
+   "said": "{\"name\": \"plan_add\", \"arguments\": {\"tool\": \"line.baseOn\", \"args\": {\"libraryId\": \"pages/ListPage\", \"feature\": \"browse\", \"name\": \"BrowsePage\"}, \"why\": \"The BrowsePage will display a list of books, each with its title, author, genre, year, and availability status. It will also include pagination controls.\"}}"
+  },
+  {
+   "case": 2,
+   "variant": "CF2",
+   "model": "qwen2.5-coder:7b",
+   "seed": 2,
+   "promptTokens": 944,
+   "evalTokens": 59,
+   "latencyMs": 1137,
+   "wallMs": 1143,
+   "loadMs": 3,
+   "doneReason": "stop",
+   "score": {
+    "call": "plan_add line.baseOn",
+    "libraryId": "pages/ListPage",
+    "intentLibraryId": "pages/ListPage",
+    "feature": "browse",
+    "listPagePick": true,
+    "listPageIntent": true
+   },
+   "said": "{\"name\": \"plan_add\", \"arguments\": {\"tool\": \"line.baseOn\", \"args\": {\"libraryId\": \"pages/ListPage\", \"feature\": \"browse\", \"name\": \"BrowsePage\"}, \"why\": \"The BrowsePage should list books and provide pagination.\"}}"
+  },
+  {
+   "case": 2,
+   "variant": "CF2",
+   "model": "qwen2.5-coder:7b",
+   "seed": 3,
+   "promptTokens": 944,
+   "evalTokens": 61,
+   "latencyMs": 1193,
+   "wallMs": 1198,
+   "loadMs": 3,
+   "doneReason": "stop",
+   "score": {
+    "call": "plan_add line.baseOn",
+    "libraryId": "pages/ListPage",
+    "intentLibraryId": "pages/ListPage",
+    "feature": "browse",
+    "listPagePick": true,
+    "listPageIntent": true
+   },
+   "said": "{\"name\": \"plan_add\", \"arguments\": {\"tool\": \"line.baseOn\", \"args\": {\"libraryId\": \"pages/ListPage\", \"feature\": \"browse\", \"name\": \"BrowsePage\"}, \"why\": \"The BrowsePage should render a list of books with pagination.\"}}"
+  },
+  {
+   "case": 2,
+   "variant": "CF2",
+   "model": "qwen2.5-coder:7b",
+   "seed": 4,
+   "promptTokens": 944,
+   "evalTokens": 68,
+   "latencyMs": 1377,
+   "wallMs": 1383,
+   "loadMs": 3,
+   "doneReason": "stop",
+   "score": {
+    "call": "plan_add line.baseOn",
+    "libraryId": "pages/ListPage",
+    "intentLibraryId": "pages/ListPage",
+    "feature": "browse",
+    "listPagePick": true,
+    "listPageIntent": true
+   },
+   "said": "{\"name\": \"plan_add\", \"arguments\": {\"tool\": \"line.baseOn\", \"args\": {\"libraryId\": \"pages/ListPage\", \"feature\": \"browse\", \"name\": \"BrowsePage\"}, \"why\": \"The BrowsePage component from the library fits the requirements for displaying a list of books with pagination.\"}}"
+  },
+  {
+   "case": 2,
+   "variant": "CF2",
+   "model": "qwen2.5-coder:7b",
+   "seed": 5,
+   "promptTokens": 944,
+   "evalTokens": 61,
+   "latencyMs": 1239,
+   "wallMs": 1244,
+   "loadMs": 3,
+   "doneReason": "stop",
+   "score": {
+    "call": "plan_add line.baseOn",
+    "libraryId": "pages/ListPage",
+    "intentLibraryId": "pages/ListPage",
+    "feature": "browse",
+    "listPagePick": true,
+    "listPageIntent": true
+   },
+   "said": "{\"name\": \"plan_add\", \"arguments\": {\"tool\": \"line.baseOn\", \"args\": {\"libraryId\": \"pages/ListPage\", \"feature\": \"browse\", \"name\": \"BrowsePage\"}, \"why\": \"The BrowsePage will display a list of books with pagination.\"}}"
+  },
+  {
+   "case": 1,
+   "variant": "L+tools",
+   "model": "qwen2.5-coder:1.5b",
+   "seed": 1,
+   "promptTokens": 1532,
+   "latencyMs": 637,
+   "fetches": 1,
+   "fetched": [
+    "read_file features/picks/pages/PicksPage.tsx"
+   ],
+   "score": {
+    "call": "none",
+    "setCode": false,
+    "repeat": false,
+    "tscPass": false,
+    "codeRecovered": false,
+    "lenientTscPass": false,
+    "lenientUseful": false
+   },
+   "said": "```json\n{\"tool\": \"read_file\", \"args\": {\"path\": \"features/picks/pages/PicksPage.tsx\"}}\n```"
+  },
+  {
+   "case": 1,
+   "variant": "L+tools",
+   "model": "qwen2.5-coder:1.5b",
+   "seed": 2,
+   "promptTokens": 1544,
+   "latencyMs": 951,
+   "fetches": 1,
+   "fetched": [
+    "read_file features/picks/pages/PicksPage.tsx"
+   ],
+   "score": {
+    "call": "line.setCode",
+    "setCode": false,
+    "repeat": false,
+    "tscPass": false,
+    "codeRecovered": true,
+    "lenientTscPass": false,
+    "lenientUseful": false,
+    "lenientCode": "const pickedBooks = JSON.parse(localStorage.getItem('picks')) || [];"
+   },
+   "said": "```json\n{\n  \"name\": \"line.setCode\",\n  \"arguments\": {\n    \"file\": \"features/picks/pages/PicksPage.tsx\",\n    \"code\": \"const pickedBooks = JSON.parse(localStorage.getItem('picks')) || [];\",\n    \"contentHash\": \"ff457f2700d98d2da13d103e6d47abefc2b6f0dd543509ca3adf7c96fce3e659\"\n  }\n}\n```"
+  },
+  {
+   "case": 1,
+   "variant": "L+tools",
+   "model": "qwen2.5-coder:1.5b",
+   "seed": 3,
+   "promptTokens": 1544,
+   "latencyMs": 1231,
+   "fetches": 1,
+   "fetched": [
+    "read_file features/picks/pages/PicksPage.tsx"
+   ],
+   "score": {
+    "call": "line.setCode",
+    "setCode": false,
+    "repeat": false,
+    "tscPass": false,
+    "codeRecovered": true,
+    "lenientTscPass": true,
+    "lenientUseful": false,
+    "lenientCode": "// @line-base pages/ListPage\n// @line-route /picks\nimport { ListPage } from '../../../library/pages/ListPage';\n\nexport function PicksPage() {\n  return <ListPage title=\"Picks\" />;\n}"
+   },
+   "said": "```json\n{\n  \"name\": \"line.setCode\",\n  \"arguments\": {\n    \"file\": \"features/picks/pages/PicksPage.tsx\",\n    \"code\": \"// @line-base pages/ListPage\\n// @line-route /picks\\nimport { ListPage } from '../../../library/pages/ListPage';\\n\\nexport function PicksPage() {\\n  return <ListPage title=\\\"Picks\\\" />;\\n}\",\n    \"contentHash\": \"ff457f2700d98d2da13d103e6d47abefc2b6f0dd543509ca3adf7c96fce3e659\"\n  }\n}\n```"
+  },
+  {
+   "case": 1,
+   "variant": "L+tools",
+   "model": "qwen2.5-coder:1.5b",
+   "seed": 4,
+   "promptTokens": 1544,
+   "latencyMs": 1239,
+   "fetches": 1,
+   "fetched": [
+    "read_file features/picks/pages/PicksPage.tsx"
+   ],
+   "score": {
+    "call": "line.setCode",
+    "setCode": false,
+    "repeat": false,
+    "tscPass": false,
+    "codeRecovered": true,
+    "lenientTscPass": true,
+    "lenientUseful": false,
+    "lenientCode": "// @line-base pages/ListPage\n// @line-route /picks\nimport { ListPage } from '../../../library/pages/ListPage';\n\nexport function PicksPage() {\n  return <ListPage title=\"Picks\" />;\n}"
+   },
+   "said": "```json\n{\n  \"name\": \"line.setCode\",\n  \"arguments\": {\n    \"file\": \"features/picks/pages/PicksPage.tsx\",\n    \"code\": \"// @line-base pages/ListPage\\n// @line-route /picks\\nimport { ListPage } from '../../../library/pages/ListPage';\\n\\nexport function PicksPage() {\\n  return <ListPage title=\\\"Picks\\\" />;\\n}\",\n    \"contentHash\": \"ff457f2700d98d2da13d103e6d47abefc2b6f0dd543509ca3adf7c96fce3e659\"\n  }\n}\n```"
+  },
+  {
+   "case": 1,
+   "variant": "L+tools",
+   "model": "qwen2.5-coder:1.5b",
+   "seed": 5,
+   "promptTokens": 1544,
+   "latencyMs": 1202,
+   "fetches": 1,
+   "fetched": [
+    "read_file features/picks/pages/PicksPage.tsx"
+   ],
+   "score": {
+    "call": "line.setCode",
+    "setCode": false,
+    "repeat": false,
+    "tscPass": false,
+    "codeRecovered": true,
+    "lenientTscPass": true,
+    "lenientUseful": false,
+    "lenientCode": "// @line-base pages/ListPage\n// @line-route /picks\nimport { ListPage } from '../../../library/pages/ListPage';\n\nexport function PicksPage() {\n  return <ListPage title=\"Picks\" />;\n}"
+   },
+   "said": "```json\n{\n  \"name\": \"line.setCode\",\n  \"arguments\": {\n    \"file\": \"features/picks/pages/PicksPage.tsx\",\n    \"code\": \"// @line-base pages/ListPage\\n// @line-route /picks\\nimport { ListPage } from '../../../library/pages/ListPage';\\n\\nexport function PicksPage() {\\n  return <ListPage title=\\\"Picks\\\" />;\\n}\",\n    \"contentHash\": \"ff457f2700d98d2da13d103e6d47abefc2b6f0dd543509ca3adf7c96fce3e659\"\n  }\n}\n```"
+  },
+  {
+   "case": 1,
+   "variant": "F1",
+   "model": "qwen2.5-coder:1.5b",
+   "seed": 1,
+   "promptTokens": 1721,
+   "latencyMs": 561,
+   "fetches": 1,
+   "fetched": [
+    "read_file features/picks/pages/PicksPage.tsx"
+   ],
+   "score": {
+    "call": "none",
+    "setCode": false,
+    "repeat": false,
+    "tscPass": false,
+    "codeRecovered": false,
+    "lenientTscPass": false,
+    "lenientUseful": false
+   },
+   "said": "```json\n{\"tool\": \"read_file\", \"args\": {\"path\": \"features/picks/pages/PicksPage.tsx\"}}\n```"
+  },
+  {
+   "case": 1,
+   "variant": "F1",
+   "model": "qwen2.5-coder:1.5b",
+   "seed": 2,
+   "promptTokens": 1733,
+   "latencyMs": 1032,
+   "fetches": 1,
+   "fetched": [
+    "read_file features/picks/pages/PicksPage.tsx"
+   ],
+   "score": {
+    "call": "line.setCode",
+    "setCode": false,
+    "repeat": false,
+    "tscPass": false,
+    "codeRecovered": true,
+    "lenientTscPass": false,
+    "lenientUseful": false,
+    "lenientCode": "const pickedBooks = JSON.parse(localStorage.getItem('picks')) || [];"
+   },
+   "said": "```json\n{\n  \"name\": \"line.setCode\",\n  \"arguments\": {\n    \"file\": \"features/picks/pages/PicksPage.tsx\",\n    \"code\": \"const pickedBooks = JSON.parse(localStorage.getItem('picks')) || [];\",\n    \"contentHash\": \"ff457f2700d98d2da13d103e6d47abefc2b6f0dd543509ca3adf7c96fce3e659\"\n  }\n}\n```"
+  },
+  {
+   "case": 1,
+   "variant": "F1",
+   "model": "qwen2.5-coder:1.5b",
+   "seed": 3,
+   "promptTokens": 1733,
+   "latencyMs": 1269,
+   "fetches": 1,
+   "fetched": [
+    "read_file features/picks/pages/PicksPage.tsx"
+   ],
+   "score": {
+    "call": "line.setCode",
+    "setCode": false,
+    "repeat": false,
+    "tscPass": false,
+    "codeRecovered": true,
+    "lenientTscPass": true,
+    "lenientUseful": false,
+    "lenientCode": "// @line-base pages/ListPage\n// @line-route /picks\nimport { ListPage } from '../../../library/pages/ListPage';\n\nexport function PicksPage() {\n  return <ListPage title=\"Picks\" />;\n}"
+   },
+   "said": "```json\n{\n  \"name\": \"line.setCode\",\n  \"arguments\": {\n    \"file\": \"features/picks/pages/PicksPage.tsx\",\n    \"code\": \"// @line-base pages/ListPage\\n// @line-route /picks\\nimport { ListPage } from '../../../library/pages/ListPage';\\n\\nexport function PicksPage() {\\n  return <ListPage title=\\\"Picks\\\" />;\\n}\",\n    \"contentHash\": \"ff457f2700d98d2da13d103e6d47abefc2b6f0dd543509ca3adf7c96fce3e659\"\n  }\n}\n```"
+  },
+  {
+   "case": 1,
+   "variant": "F1",
+   "model": "qwen2.5-coder:1.5b",
+   "seed": 4,
+   "promptTokens": 1733,
+   "latencyMs": 1272,
+   "fetches": 1,
+   "fetched": [
+    "read_file features/picks/pages/PicksPage.tsx"
+   ],
+   "score": {
+    "call": "line.setCode",
+    "setCode": false,
+    "repeat": false,
+    "tscPass": false,
+    "codeRecovered": true,
+    "lenientTscPass": true,
+    "lenientUseful": false,
+    "lenientCode": "// @line-base pages/ListPage\n// @line-route /picks\nimport { ListPage } from '../../../library/pages/ListPage';\n\nexport function PicksPage() {\n  return <ListPage title=\"Picks\" />;\n}"
+   },
+   "said": "```json\n{\n  \"name\": \"line.setCode\",\n  \"arguments\": {\n    \"file\": \"features/picks/pages/PicksPage.tsx\",\n    \"code\": \"// @line-base pages/ListPage\\n// @line-route /picks\\nimport { ListPage } from '../../../library/pages/ListPage';\\n\\nexport function PicksPage() {\\n  return <ListPage title=\\\"Picks\\\" />;\\n}\",\n    \"contentHash\": \"ff457f2700d98d2da13d103e6d47abefc2b6f0dd543509ca3adf7c96fce3e659\"\n  }\n}\n```"
+  },
+  {
+   "case": 1,
+   "variant": "F1",
+   "model": "qwen2.5-coder:1.5b",
+   "seed": 5,
+   "promptTokens": 1733,
+   "latencyMs": 1345,
+   "fetches": 1,
+   "fetched": [
+    "read_file features/picks/pages/PicksPage.tsx"
+   ],
+   "score": {
+    "call": "line.setCode",
+    "setCode": false,
+    "repeat": false,
+    "tscPass": false,
+    "codeRecovered": true,
+    "lenientTscPass": true,
+    "lenientUseful": false,
+    "lenientCode": "// @line-base pages/ListPage\n// @line-route /picks\nimport { ListPage } from '../../../library/pages/ListPage';\n\nexport function PicksPage() {\n  return <ListPage title=\"Picks\" />;\n}"
+   },
+   "said": "```json\n{\n  \"name\": \"line.setCode\",\n  \"arguments\": {\n    \"file\": \"features/picks/pages/PicksPage.tsx\",\n    \"code\": \"// @line-base pages/ListPage\\n// @line-route /picks\\nimport { ListPage } from '../../../library/pages/ListPage';\\n\\nexport function PicksPage() {\\n  return <ListPage title=\\\"Picks\\\" />;\\n}\",\n    \"contentHash\": \"ff457f2700d98d2da13d103e6d47abefc2b6f0dd543509ca3adf7c96fce3e659\"\n  }\n}\n```"
+  },
+  {
+   "case": 1,
+   "variant": "F2",
+   "model": "qwen2.5-coder:1.5b",
+   "seed": 1,
+   "promptTokens": 1533,
+   "latencyMs": 541,
+   "fetches": 1,
+   "fetched": [
+    "read_file features/picks/pages/PicksPage.tsx"
+   ],
+   "score": {
+    "call": "none",
+    "setCode": false,
+    "repeat": false,
+    "tscPass": false,
+    "codeRecovered": false,
+    "lenientTscPass": false,
+    "lenientUseful": false
+   },
+   "said": "```json\n{\"tool\": \"read_file\", \"args\": {\"path\": \"features/picks/pages/PicksPage.tsx\"}}\n```"
+  },
+  {
+   "case": 1,
+   "variant": "F2",
+   "model": "qwen2.5-coder:1.5b",
+   "seed": 2,
+   "promptTokens": 1545,
+   "latencyMs": 955,
+   "fetches": 1,
+   "fetched": [
+    "read_file features/picks/pages/PicksPage.tsx"
+   ],
+   "score": {
+    "call": "line.setCode",
+    "setCode": false,
+    "repeat": false,
+    "tscPass": false,
+    "codeRecovered": true,
+    "lenientTscPass": false,
+    "lenientUseful": false,
+    "lenientCode": "<tool_response>"
+   },
+   "said": "```json\n{\n  \"name\": \"line.setCode\",\n  \"arguments\": {\n    \"file\": \"features/picks/pages/PicksPage.tsx\",\n    \"code\": \"<tool_response>\",\n    \"contentHash\": \"ff457f2700d98d2da13d103e6d47abefc2b6f0dd543509ca3adf7c96fce3e659\"\n  }\n}\n```"
+  },
+  {
+   "case": 1,
+   "variant": "F2",
+   "model": "qwen2.5-coder:1.5b",
+   "seed": 3,
+   "promptTokens": 1545,
+   "latencyMs": 1213,
+   "fetches": 1,
+   "fetched": [
+    "read_file features/picks/pages/PicksPage.tsx"
+   ],
+   "score": {
+    "call": "line.setCode",
+    "setCode": false,
+    "repeat": false,
+    "tscPass": false,
+    "codeRecovered": true,
+    "lenientTscPass": true,
+    "lenientUseful": false,
+    "lenientCode": "// @line-base pages/ListPage\n// @line-route /picks\nimport { ListPage } from '../../../library/pages/ListPage';\n\nexport function PicksPage() {\n  return <ListPage title=\"Picks\" />;\n}"
+   },
+   "said": "```json\n{\n  \"name\": \"line.setCode\",\n  \"arguments\": {\n    \"file\": \"features/picks/pages/PicksPage.tsx\",\n    \"code\": \"// @line-base pages/ListPage\\n// @line-route /picks\\nimport { ListPage } from '../../../library/pages/ListPage';\\n\\nexport function PicksPage() {\\n  return <ListPage title=\\\"Picks\\\" />;\\n}\",\n    \"contentHash\": \"ff457f2700d98d2da13d103e6d47abefc2b6f0dd543509ca3adf7c96fce3e659\"\n  }\n}\n```"
+  },
+  {
+   "case": 1,
+   "variant": "F2",
+   "model": "qwen2.5-coder:1.5b",
+   "seed": 4,
+   "promptTokens": 1545,
+   "latencyMs": 1320,
+   "fetches": 1,
+   "fetched": [
+    "read_file features/picks/pages/PicksPage.tsx"
+   ],
+   "score": {
+    "call": "line.setCode",
+    "setCode": false,
+    "repeat": false,
+    "tscPass": false,
+    "codeRecovered": true,
+    "lenientTscPass": true,
+    "lenientUseful": false,
+    "lenientCode": "// @line-base pages/ListPage\n// @line-route /picks\nimport { ListPage } from '../../../library/pages/ListPage';\n\nexport function PicksPage() {\n  return <ListPage title=\"Picks\" />;\n}"
+   },
+   "said": "```json\n{\n  \"name\": \"line.setCode\",\n  \"arguments\": {\n    \"file\": \"features/picks/pages/PicksPage.tsx\",\n    \"code\": \"// @line-base pages/ListPage\\n// @line-route /picks\\nimport { ListPage } from '../../../library/pages/ListPage';\\n\\nexport function PicksPage() {\\n  return <ListPage title=\\\"Picks\\\" />;\\n}\",\n    \"contentHash\": \"ff457f2700d98d2da13d103e6d47abefc2b6f0dd543509ca3adf7c96fce3e659\"\n  }\n}\n```"
+  },
+  {
+   "case": 1,
+   "variant": "F2",
+   "model": "qwen2.5-coder:1.5b",
+   "seed": 5,
+   "promptTokens": 1545,
+   "latencyMs": 1313,
+   "fetches": 1,
+   "fetched": [
+    "read_file features/picks/pages/PicksPage.tsx"
+   ],
+   "score": {
+    "call": "line.setCode",
+    "setCode": false,
+    "repeat": false,
+    "tscPass": false,
+    "codeRecovered": true,
+    "lenientTscPass": true,
+    "lenientUseful": false,
+    "lenientCode": "// @line-base pages/ListPage\n// @line-route /picks\nimport { ListPage } from '../../../library/pages/ListPage';\n\nexport function PicksPage() {\n  return <ListPage title=\"Picks\" />;\n}"
+   },
+   "said": "```json\n{\n  \"name\": \"line.setCode\",\n  \"arguments\": {\n    \"file\": \"features/picks/pages/PicksPage.tsx\",\n    \"code\": \"// @line-base pages/ListPage\\n// @line-route /picks\\nimport { ListPage } from '../../../library/pages/ListPage';\\n\\nexport function PicksPage() {\\n  return <ListPage title=\\\"Picks\\\" />;\\n}\",\n    \"contentHash\": \"ff457f2700d98d2da13d103e6d47abefc2b6f0dd543509ca3adf7c96fce3e659\"\n  }\n}\n```"
+  },
+  {
+   "case": 2,
+   "variant": "CLr1",
+   "model": "qwen2.5-coder:1.5b",
+   "seed": 1,
+   "promptTokens": 1106,
+   "evalTokens": 62,
+   "latencyMs": 559,
+   "wallMs": 564,
+   "loadMs": 2,
+   "doneReason": "stop",
+   "score": {
+    "call": "plan_add line.baseOn",
+    "libraryId": "pages/ListPage",
+    "intentLibraryId": "pages/ListPage",
+    "feature": "browse",
+    "listPagePick": true,
+    "listPageIntent": true
+   },
+   "said": "```json\n{\n  \"name\": \"plan_add\",\n  \"arguments\": {\n    \"tool\": \"line.baseOn\",\n    \"args\": {\n      \"libraryId\": \"pages/ListPage\",\n      \"feature\": \"browse\",\n      \"name\": \"Browse\"\n    }\n  }\n}\n```"
+  },
+  {
+   "case": 2,
+   "variant": "CLr1",
+   "model": "qwen2.5-coder:1.5b",
+   "seed": 2,
+   "promptTokens": 1106,
+   "evalTokens": 62,
+   "latencyMs": 393,
+   "wallMs": 398,
+   "loadMs": 2,
+   "doneReason": "stop",
+   "score": {
+    "call": "plan_add line.baseOn",
+    "libraryId": "pages/ListPage",
+    "intentLibraryId": "pages/ListPage",
+    "feature": "browse",
+    "listPagePick": true,
+    "listPageIntent": true
+   },
+   "said": "```json\n{\n  \"name\": \"plan_add\",\n  \"arguments\": {\n    \"tool\": \"line.baseOn\",\n    \"args\": {\n      \"libraryId\": \"pages/ListPage\",\n      \"feature\": \"browse\",\n      \"name\": \"Browse\"\n    }\n  }\n}\n```"
+  },
+  {
+   "case": 2,
+   "variant": "CLr1",
+   "model": "qwen2.5-coder:1.5b",
+   "seed": 3,
+   "promptTokens": 1106,
+   "evalTokens": 62,
+   "latencyMs": 387,
+   "wallMs": 393,
+   "loadMs": 3,
+   "doneReason": "stop",
+   "score": {
+    "call": "plan_add line.baseOn",
+    "libraryId": "pages/ListPage",
+    "intentLibraryId": "pages/ListPage",
+    "feature": "browse",
+    "listPagePick": true,
+    "listPageIntent": true
+   },
+   "said": "```json\n{\n  \"name\": \"plan_add\",\n  \"arguments\": {\n    \"tool\": \"line.baseOn\",\n    \"args\": {\n      \"libraryId\": \"pages/ListPage\",\n      \"feature\": \"browse\",\n      \"name\": \"Browse\"\n    }\n  }\n}\n```"
+  },
+  {
+   "case": 2,
+   "variant": "CLr1",
+   "model": "qwen2.5-coder:1.5b",
+   "seed": 4,
+   "promptTokens": 1106,
+   "evalTokens": 62,
+   "latencyMs": 383,
+   "wallMs": 387,
+   "loadMs": 2,
+   "doneReason": "stop",
+   "score": {
+    "call": "plan_add line.baseOn",
+    "libraryId": "pages/ListPage",
+    "intentLibraryId": "pages/ListPage",
+    "feature": "browse",
+    "listPagePick": true,
+    "listPageIntent": true
+   },
+   "said": "```json\n{\n  \"name\": \"plan_add\",\n  \"arguments\": {\n    \"tool\": \"line.baseOn\",\n    \"args\": {\n      \"libraryId\": \"pages/ListPage\",\n      \"feature\": \"browse\",\n      \"name\": \"Browse\"\n    }\n  }\n}\n```"
+  },
+  {
+   "case": 2,
+   "variant": "CLr1",
+   "model": "qwen2.5-coder:1.5b",
+   "seed": 5,
+   "promptTokens": 1106,
+   "evalTokens": 62,
+   "latencyMs": 390,
+   "wallMs": 394,
+   "loadMs": 2,
+   "doneReason": "stop",
+   "score": {
+    "call": "plan_add line.baseOn",
+    "libraryId": "pages/ListPage",
+    "intentLibraryId": "pages/ListPage",
+    "feature": "browse",
+    "listPagePick": true,
+    "listPageIntent": true
+   },
+   "said": "```json\n{\n  \"name\": \"plan_add\",\n  \"arguments\": {\n    \"tool\": \"line.baseOn\",\n    \"args\": {\n      \"libraryId\": \"pages/ListPage\",\n      \"feature\": \"browse\",\n      \"name\": \"Browse\"\n    }\n  }\n}\n```"
+  },
+  {
+   "case": 2,
+   "variant": "CF1",
+   "model": "qwen2.5-coder:1.5b",
+   "seed": 1,
+   "promptTokens": 1366,
+   "evalTokens": 63,
+   "latencyMs": 565,
+   "wallMs": 570,
+   "loadMs": 3,
+   "doneReason": "stop",
+   "score": {
+    "call": "plan_add line.baseOn",
+    "libraryId": "pages/ListPage",
+    "intentLibraryId": "pages/ListPage",
+    "feature": "browse",
+    "listPagePick": true,
+    "listPageIntent": true
+   },
+   "said": "```json\n{\n  \"name\": \"plan_add\",\n  \"arguments\": {\n    \"tool\": \"line.baseOn\",\n    \"args\": {\n      \"libraryId\": \"pages/ListPage\",\n      \"feature\": \"browse\",\n      \"name\": \"BrowsePage\"\n    }\n  }\n}\n```"
+  },
+  {
+   "case": 2,
+   "variant": "CF1",
+   "model": "qwen2.5-coder:1.5b",
+   "seed": 2,
+   "promptTokens": 1366,
+   "evalTokens": 62,
+   "latencyMs": 390,
+   "wallMs": 395,
+   "loadMs": 3,
+   "doneReason": "stop",
+   "score": {
+    "call": "plan_add line.baseOn",
+    "libraryId": "pages/ListPage",
+    "intentLibraryId": "pages/ListPage",
+    "feature": "browse",
+    "listPagePick": true,
+    "listPageIntent": true
+   },
+   "said": "```json\n{\n  \"name\": \"plan_add\",\n  \"arguments\": {\n    \"tool\": \"line.baseOn\",\n    \"args\": {\n      \"libraryId\": \"pages/ListPage\",\n      \"feature\": \"browse\",\n      \"name\": \"Browse\"\n    }\n  }\n}\n```"
+  },
+  {
+   "case": 2,
+   "variant": "CF1",
+   "model": "qwen2.5-coder:1.5b",
+   "seed": 3,
+   "promptTokens": 1366,
+   "evalTokens": 63,
+   "latencyMs": 404,
+   "wallMs": 409,
+   "loadMs": 2,
+   "doneReason": "stop",
+   "score": {
+    "call": "plan_add line.baseOn",
+    "libraryId": "pages/ListPage",
+    "intentLibraryId": "pages/ListPage",
+    "feature": "browse",
+    "listPagePick": true,
+    "listPageIntent": true
+   },
+   "said": "```json\n{\n  \"name\": \"plan_add\",\n  \"arguments\": {\n    \"tool\": \"line.baseOn\",\n    \"args\": {\n      \"libraryId\": \"pages/ListPage\",\n      \"feature\": \"browse\",\n      \"name\": \"BrowsePage\"\n    }\n  }\n}\n```"
+  },
+  {
+   "case": 2,
+   "variant": "CF1",
+   "model": "qwen2.5-coder:1.5b",
+   "seed": 4,
+   "promptTokens": 1366,
+   "evalTokens": 62,
+   "latencyMs": 404,
+   "wallMs": 409,
+   "loadMs": 3,
+   "doneReason": "stop",
+   "score": {
+    "call": "plan_add line.baseOn",
+    "libraryId": "pages/ListPage",
+    "intentLibraryId": "pages/ListPage",
+    "feature": "browse",
+    "listPagePick": true,
+    "listPageIntent": true
+   },
+   "said": "```json\n{\n  \"name\": \"plan_add\",\n  \"arguments\": {\n    \"tool\": \"line.baseOn\",\n    \"args\": {\n      \"libraryId\": \"pages/ListPage\",\n      \"feature\": \"browse\",\n      \"name\": \"Browse\"\n    }\n  }\n}\n```"
+  },
+  {
+   "case": 2,
+   "variant": "CF1",
+   "model": "qwen2.5-coder:1.5b",
+   "seed": 5,
+   "promptTokens": 1366,
+   "evalTokens": 63,
+   "latencyMs": 392,
+   "wallMs": 398,
+   "loadMs": 3,
+   "doneReason": "stop",
+   "score": {
+    "call": "plan_add line.baseOn",
+    "libraryId": "pages/ListPage",
+    "intentLibraryId": "pages/ListPage",
+    "feature": "browse",
+    "listPagePick": true,
+    "listPageIntent": true
+   },
+   "said": "```json\n{\n  \"name\": \"plan_add\",\n  \"arguments\": {\n    \"tool\": \"line.baseOn\",\n    \"args\": {\n      \"libraryId\": \"pages/ListPage\",\n      \"feature\": \"browse\",\n      \"name\": \"BrowsePage\"\n    }\n  }\n}\n```"
+  },
+  {
+   "case": 2,
+   "variant": "CF2",
+   "model": "qwen2.5-coder:1.5b",
+   "seed": 1,
+   "promptTokens": 944,
+   "evalTokens": 63,
+   "latencyMs": 464,
+   "wallMs": 467,
+   "loadMs": 2,
+   "doneReason": "stop",
+   "score": {
+    "call": "plan_add line.baseOn",
+    "libraryId": "pages/ListPage",
+    "intentLibraryId": "pages/ListPage",
+    "feature": "browse",
+    "listPagePick": true,
+    "listPageIntent": true
+   },
+   "said": "```json\n{\n  \"name\": \"plan_add\",\n  \"arguments\": {\n    \"tool\": \"line.baseOn\",\n    \"args\": {\n      \"libraryId\": \"pages/ListPage\",\n      \"feature\": \"browse\",\n      \"name\": \"BrowsePage\"\n    }\n  }\n}\n```"
+  },
+  {
+   "case": 2,
+   "variant": "CF2",
+   "model": "qwen2.5-coder:1.5b",
+   "seed": 2,
+   "promptTokens": 944,
+   "evalTokens": 63,
+   "latencyMs": 377,
+   "wallMs": 381,
+   "loadMs": 2,
+   "doneReason": "stop",
+   "score": {
+    "call": "plan_add line.baseOn",
+    "libraryId": "pages/ListPage",
+    "intentLibraryId": "pages/ListPage",
+    "feature": "browse",
+    "listPagePick": true,
+    "listPageIntent": true
+   },
+   "said": "```json\n{\n  \"name\": \"plan_add\",\n  \"arguments\": {\n    \"tool\": \"line.baseOn\",\n    \"args\": {\n      \"libraryId\": \"pages/ListPage\",\n      \"feature\": \"browse\",\n      \"name\": \"BrowsePage\"\n    }\n  }\n}\n```"
+  },
+  {
+   "case": 2,
+   "variant": "CF2",
+   "model": "qwen2.5-coder:1.5b",
+   "seed": 3,
+   "promptTokens": 944,
+   "evalTokens": 63,
+   "latencyMs": 371,
+   "wallMs": 375,
+   "loadMs": 2,
+   "doneReason": "stop",
+   "score": {
+    "call": "plan_add line.baseOn",
+    "libraryId": "pages/ListPage",
+    "intentLibraryId": "pages/ListPage",
+    "feature": "browse",
+    "listPagePick": true,
+    "listPageIntent": true
+   },
+   "said": "```json\n{\n  \"name\": \"plan_add\",\n  \"arguments\": {\n    \"tool\": \"line.baseOn\",\n    \"args\": {\n      \"libraryId\": \"pages/ListPage\",\n      \"feature\": \"browse\",\n      \"name\": \"BrowsePage\"\n    }\n  }\n}\n```"
+  },
+  {
+   "case": 2,
+   "variant": "CF2",
+   "model": "qwen2.5-coder:1.5b",
+   "seed": 4,
+   "promptTokens": 944,
+   "evalTokens": 63,
+   "latencyMs": 373,
+   "wallMs": 378,
+   "loadMs": 3,
+   "doneReason": "stop",
+   "score": {
+    "call": "plan_add line.baseOn",
+    "libraryId": "pages/ListPage",
+    "intentLibraryId": "pages/ListPage",
+    "feature": "browse",
+    "listPagePick": true,
+    "listPageIntent": true
+   },
+   "said": "```json\n{\n  \"name\": \"plan_add\",\n  \"arguments\": {\n    \"tool\": \"line.baseOn\",\n    \"args\": {\n      \"libraryId\": \"pages/ListPage\",\n      \"feature\": \"browse\",\n      \"name\": \"BrowsePage\"\n    }\n  }\n}\n```"
+  },
+  {
+   "case": 2,
+   "variant": "CF2",
+   "model": "qwen2.5-coder:1.5b",
+   "seed": 5,
+   "promptTokens": 944,
+   "evalTokens": 63,
+   "latencyMs": 378,
+   "wallMs": 384,
+   "loadMs": 4,
+   "doneReason": "stop",
+   "score": {
+    "call": "plan_add line.baseOn",
+    "libraryId": "pages/ListPage",
+    "intentLibraryId": "pages/ListPage",
+    "feature": "browse",
+    "listPagePick": true,
+    "listPageIntent": true
+   },
+   "said": "```json\n{\n  \"name\": \"plan_add\",\n  \"arguments\": {\n    \"tool\": \"line.baseOn\",\n    \"args\": {\n      \"libraryId\": \"pages/ListPage\",\n      \"feature\": \"browse\",\n      \"name\": \"BrowsePage\"\n    }\n  }\n}\n```"
+  }
+ ]
+}

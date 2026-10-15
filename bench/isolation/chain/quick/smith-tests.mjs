@@ -7,6 +7,8 @@ const smithAt = () => ({ smithHead: smithLinks().codemod.head, smithRaw: process
 import { tscGate, unitCheck } from './lib/gates.mjs';
 import { chat, embed, cosine, MODELS } from './lib/ollama.mjs';
 import { replaceBody, stubProblems } from '../../../../packages/engine/line/path/stubs.mjs';
+import { planSchemaFor, planRequestUser, renderLine } from './lib/plan-lines.mjs';
+import { fillBody } from './lib/fill.mjs';
 
 const full = (t, src) => `${t.prelude ?? ''}${src}`;
 const pct = (a, b) => Math.round((100 * a) / Math.max(b, 1));
@@ -58,30 +60,29 @@ async function k1({ write }) {
   console.log('K1', JSON.stringify(summary));
 }
 
-const PLAN_SYSTEM = [
-  'You write the Trace test plan for stub functions: one line per statement of each function body, in order.',
-  'Every line uses only Smith templates:',
+// The plan writer: one function per request (only its signature in the prompt), every line one Smith template
+// (an enum) with its slots, forced through `format` and rendered by lib/plan-lines.mjs.
+export const PLAN_SYSTEM = [
+  'You write the Trace test plan for one stub function: one line per statement of its body, in order.',
+  'Each line picks one Smith template and fills its slots:',
   ...TEMPLATES.map((x) => `- ${x}`),
   'Use the input names of the signature. Answer with JSON only.',
 ].join('\n');
 
-function planUser(t) {
-  const ex = PLAN_EXAMPLES.map((e) => `${e.signature}\n${e.plan.map((l) => `  ${l}`).join('\n')}`).join('\n\n');
-  const sigs = t.stub.split('\n').filter((l) => l.startsWith('export function')).map((l) => l.replace(/^export /, '').replace(/\s*\{$/, ''));
-  return `Examples:\n${ex}\n\nSpec:\n${t.spec}\n\nStubs:\n${sigs.join('\n')}\n\nPlan:`;
+export async function writePlanFor(t, fn, seed, chatImpl = chat) {
+  const r = await chatImpl({ system: PLAN_SYSTEM, user: planRequestUser(t, fn, PLAN_EXAMPLES), format: planSchemaFor(), options: { temperature: 0.7, seed } });
+  const lines = (r.json?.lines ?? []).map(renderLine).filter(Boolean);
+  return { lines, tokens: r.promptTokens + r.evalTokens, ms: r.ms };
 }
 
-const planSchema = (fns) => ({
-  type: 'object',
-  properties: { plans: { type: 'array', items: { type: 'object', properties: { function: { type: 'string', enum: fns }, lines: { type: 'array', items: { type: 'string' } } }, required: ['function', 'lines'] } } },
-  required: ['plans'],
-});
-
-async function writePlan(t, seed) {
-  const r = await chat({ system: PLAN_SYSTEM, user: planUser(t), format: planSchema(t.functions), options: { temperature: 0.7, seed } });
+export async function writePlan(t, seed, chatImpl = chat, fns = t.functions) {
   const plan = {};
-  for (const p of r.json?.plans ?? []) if (t.functions.includes(p.function)) plan[p.function] = (p.lines ?? []).map(String);
-  return { plan, tokens: r.promptTokens + r.evalTokens, ms: r.ms };
+  let tokens = 0, ms = 0;
+  for (const [i, fn] of fns.entries()) {
+    const p = await writePlanFor(t, fn, seed * 10 + i, chatImpl);
+    plan[fn] = p.lines; tokens += p.tokens; ms += p.ms;
+  }
+  return { plan, tokens, ms };
 }
 
 /** Model plan vs reference plan, both in sentence form. */
@@ -104,23 +105,21 @@ async function k2({ write }) {
   console.log('K2', JSON.stringify(summary));
 }
 
-const FILL_SYSTEM = 'You fill the body of one Trace stub. The signature is locked. Follow the test plan: one statement per plan line, in order. Reply with the body only, in one ```ts block.';
-const FILL_EXAMPLE = "Example.\nStub: function dueLabel(loan: Loan): string\nPlan:\n  if loan's renewed: return 'Renewed'\n  return 'Renew'\nBody:\n```ts\nif (loan.renewed) {\n  return 'Renewed';\n}\nreturn 'Renew';\n```";
-
 async function k5({ write }) {
   const t = TASKS.find((x) => x.id === 'availability');
   const fn = 'formatAvailability';
+  const signature = t.stub.split('\n')[0].replace(/^export /, '').replace(/\s*\{$/, '');
   const runs = [];
   for (let r = 0; r < 5; r++) {
-    const p = await writePlan(t, 500 + r);
+    const p = await writePlan(t, 500 + r, chat, [fn]);
     const lines = p.plan[fn] ?? [];
     let tokens = p.tokens, calls = 1, chosen = null;
     const tries = [];
     for (let k = 0; k < 5 && !chosen; k++) {
-      const c = await chat({ system: FILL_SYSTEM, user: `${FILL_EXAMPLE}\n\nStub: ${t.stub.split('\n')[0].replace(/^export /, '').replace(/\s*\{$/, '')}\nPlan:\n${lines.map((l) => `  ${l}`).join('\n')}\nBody:`, options: { temperature: 0.7, seed: 600 + r * 10 + k } });
-      calls++; tokens += c.promptTokens + c.evalTokens;
-      const body = (c.content.match(/```[a-z]*\n([\s\S]*?)```/) ?? [null, c.content])[1];
-      const sp = replaceBody(t.stub, fn, body);
+      // The fill: signature prefilled, stopped at the function's closing brace (lib/fill.mjs).
+      const c = await fillBody({ signature, plan: lines, seed: 600 + r * 10 + k });
+      calls++; tokens += c.tokens;
+      const sp = replaceBody(t.stub, fn, c.body);
       if (!sp.ok) { tries.push({ k, splice: sp.code }); continue; }
       const diags = tscGate(full(t, sp.source));
       const stubs = stubProblems(sp.source, fn).map((x) => x.code);

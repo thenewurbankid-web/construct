@@ -5,8 +5,15 @@
 // prose-wrapped response, refuse anything that doesn't parse as TypeScript/
 // JavaScript, and give a model one bounded chance to correct itself. It
 // never writes files — callers decide what a rejection/failure leaves behind.
+//
+// #948 modelled I/O (the default; requestFileText is the old whole-file path, LINE_LEGACY_IO=1, for one release):
+// fillByFunction fills the file ONE function at a time, each request prefilled with that function's exact signature and
+// stopped at its closing brace, each body checked (parse, locked signature, tsc inside the function) before the next;
+// a refusal is retried once with only its first error as the example, never a growing history.
 import { callLlm, stripCodeFence } from './llm.mjs';
 import { parseToAst } from './parser.mjs';
+import { legacyIo } from './modelled-io.mjs';
+import { fillEach } from '../engine/line/coder/prefill/fill.mjs';
 
 // Appended to every fill prompt. The `claude -p` CLI, unprompted, has replied
 // "I wasn't able to write directly to the file, please apply manually" around
@@ -84,4 +91,44 @@ export async function requestFileText(llm, prompt, llmOptions, { retryOnReject =
     }
     currentPrompt = `${prompt}\n\nYour previous reply was rejected because ${reason}. Start over.\n\n${OUTPUT_CONTRACT}`;
   }
+}
+
+/** #948: a caller's prompt as the unit's facts only (its "return the whole file" line goes; the prefill is the output). */
+export const factsOnly = (prompt) => String(prompt ?? '').split('\n').filter((l) => !/^Return ONLY the new, complete file content/.test(l)).join('\n').trimEnd();
+
+/**
+ * #948 -- the modelled fill: every function of `source` (or only those holding `lines`) filled one request at a time,
+ * its signature prefilled and stopped at its closing brace, each checked by fillEach (parse, locked signature, tsc
+ * inside the function; one retry carrying only the first error). Same outcome shape as requestFileText; anything but
+ * `filled` leaves the caller's file as it was. A file with no function is `rejected` without a model call.
+ * @param {string} llm Provider name.
+ * @param {string} prompt The unit's facts (the caller's prompt; its whole-file output line is dropped).
+ * @param {object|undefined} llmOptions
+ * @param {{source: string, file?: string, lines?: number[]|null}} unit The file to fill, and the lines to aim at.
+ * @returns {Promise<{status: 'filled', code: string, attempts: number, functions: string[]} | {status: 'rejected'|'failed'|'cancelled', reason: string, attempts: number}>}
+ */
+export async function fillByFunction(llm, prompt, llmOptions, { source, file = 'x.tsx', lines = null }) {
+  const generate = ({ system, user, prefill, stop }) => callLlm(llm, user, { ...(llmOptions ?? {}), output: { system, prefill, stop } });
+  let r;
+  try {
+    r = await fillEach({ source: String(source ?? ''), file, lines, generate, user: factsOnly(prompt), maxAttempts: 2 });
+  } catch (e) {
+    if (e?.exitCode === 2) throw e;
+    if (e?.cancelled) return { status: 'cancelled', reason: 'cancelled', attempts: 0 };
+    return { status: 'failed', reason: e?.message || String(e), attempts: 0 };
+  }
+  if (r.ok) return { status: 'filled', code: r.source.replace(/\n+$/, ''), attempts: r.attempts, functions: r.filled };
+  const f = r.failed[0];
+  return { status: 'rejected', reason: `${f.name ? `${f.name}: ` : ''}${f.sentence.split('\n')[0]}`, attempts: r.attempts };
+}
+
+/**
+ * The fill the callers use: fillByFunction (modelled, the default), or requestFileText's whole-file request with
+ * LINE_LEGACY_IO=1.
+ * @param {string} llm @param {string} prompt @param {object|undefined} llmOptions
+ * @param {{source: string, file?: string, lines?: number[]|null}} unit
+ * @returns {Promise<any>} requestFileText's outcome shape.
+ */
+export function fillFile(llm, prompt, llmOptions, unit) {
+  return legacyIo() ? requestFileText(llm, prompt, llmOptions) : fillByFunction(llm, prompt, llmOptions, unit);
 }

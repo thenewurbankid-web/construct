@@ -402,10 +402,11 @@ class ConstructMcpServer extends McpServer {
  * Create the server for one project. The root is checked here (it must be a real directory, not the file system root or the home
  * directory) and never changes; no tool takes a path.
  *
- * @param {{ root?: string, ratePerMinute?: number, maxOutputBytes?: number, allowPlugins?: boolean, now?: () => number, log?: (line: string) => void }} [options]
+ * @param {{ root?: string, ratePerMinute?: number, maxOutputBytes?: number, allowPlugins?: boolean, liveIndex?: boolean, now?: () => number, log?: (line: string) => void }} [options]
  *   `root` the project (default the working directory); `ratePerMinute` the token bucket (default `DEFAULT_RATE_PER_MINUTE`);
  *   `maxOutputBytes` a lower per-call output cap than `LIMITS.outputBytes` (it cannot be raised); `allowPlugins` whether a project's
- *   decision plugin may load (default: `CONSTRUCT_DECISION_PLUGINS=on`); `now` a millisecond clock; `log` where diagnostics go (default stderr).
+ *   decision plugin may load (default: `CONSTRUCT_DECISION_PLUGINS=on`); `liveIndex` whether the session keeps a live Line LSP index
+ *   (#950, default on; LINE_LSP_LIVE=off turns it off); `now` a millisecond clock; `log` where diagnostics go (default stderr).
  * @returns {import('@modelcontextprotocol/server').McpServer} The server, not yet connected to a transport.
  * @throws {Error} When the root is not a usable project directory.
  *
@@ -433,6 +434,7 @@ export function createConstructMcpServer(options = {}) {
   const ctx = {
     root,
     allowPlugins: options.allowPlugins ?? process.env.CONSTRUCT_DECISION_PLUGINS === 'on',
+    liveIndex: options.liveIndex ?? true, // #950: one live Line LSP index per session (liveIndex.mjs)
     clientName: () => {
       const name = server?.server?.getClientVersion?.()?.name;
       return typeof name === 'string' && /^[A-Za-z0-9][A-Za-z0-9._ -]{0,39}$/.test(name) ? name : undefined;

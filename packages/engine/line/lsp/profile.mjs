@@ -6,10 +6,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-export const LSP_CALLS = Object.freeze(['nextSteps', 'completions', 'gatherer', 'smithCheck', 'fixes']);
+export const LSP_CALLS = Object.freeze(['nextSteps', 'completions', 'gatherer', 'smithCheck', 'fixes', 'beam']);
 export const LSP_MODES = Object.freeze(['on', 'shadow', 'off']);
-/** lsp-r1 (bench/isolation/results/lsp-r1.md): nextSteps 8/8 and fixes clear tsc failures; the rest wait for a Line run. */
-export const LSP_DEFAULTS = Object.freeze({ nextSteps: 'on', completions: 'shadow', gatherer: 'shadow', smithCheck: 'shadow', fixes: 'on' });
+/** lsp-r1 (bench/isolation/results/lsp-r1.md): nextSteps 8/8 and fixes clear tsc failures; the rest wait for a Line run.
+ * beam (#949, path/beam/): the candidate-path re-plan after 3 failed fills, shadow until a Line run proves it. */
+export const LSP_DEFAULTS = Object.freeze({ nextSteps: 'on', completions: 'shadow', gatherer: 'shadow', smithCheck: 'shadow', fixes: 'on', beam: 'shadow' });
 export const LSP_PROFILE_FILE = 'line/lsp-profile.json';
 export const LSP_SHADOW_LOG = 'line/log/lsp-shadow.jsonl';
 

@@ -1,0 +1,9 @@
+Write the body of this TypeScript function:
+
+export function removePick(id: string): void
+
+The picked book ids are stored in the browser's localStorage under the key "picks" as a JSON array of strings (in the order they were added).
+- Read localStorage.getItem("picks"); if it is null, or JSON.parse throws, or the parsed value is not an array, start from an empty array [].
+- Remove every entry equal to id (keep the order of the others).
+- Save the result back with localStorage.setItem("picks", JSON.stringify(result)).
+Do not import anything. Do not call any other helper function. Write only the function body.

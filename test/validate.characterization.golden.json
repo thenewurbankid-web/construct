@@ -1157,6 +1157,41 @@
           "@expression (defineExpression)"
         ],
         "suggestedFix": "Move the responsibility to @expression (defineExpression)."
+      },
+      {
+        "rule": "NAME-002",
+        "module": "readability",
+        "severity": "warning",
+        "file": "features/core/domain/Core.tsx",
+        "line": 1,
+        "message": "Core returns boolean (function Core(): boolean) but its name does not start with is, has, can, should, does.",
+        "why": "A boolean answers a yes/no question; an is/has/can/should/does name says so at every call site (`if (isWithinPath(a, b))` reads as the question it asks), without opening the function.",
+        "expected": [
+          "isCore"
+        ],
+        "suggestedFix": "Rename Core to isCore (every reference is renamed with it).",
+        "fixes": [
+          {
+            "id": "NAME-002/rename:isCore",
+            "sentence": "Rename Core to isCore (1 edit: the declaration and every reference).",
+            "step": {
+              "tool": "lsp.rename",
+              "args": {
+                "file": "features/core/domain/Core.tsx",
+                "from": "Core",
+                "to": "isCore"
+              }
+            },
+            "edits": [
+              {
+                "file": "features/core/domain/Core.tsx",
+                "start": 16,
+                "end": 20,
+                "newText": "isCore"
+              }
+            ]
+          }
+        ]
       }
     ]
   }

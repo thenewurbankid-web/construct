@@ -184,6 +184,8 @@ test('queue: research calls run strictly one after another through one model', a
     await new Promise((r) => setTimeout(r, 15));
     active -= 1;
     const q = req.messages[1].content.split('Question: ')[1];
+    // #948: an answer cites a file read for the question, so each question reads it first.
+    if (!req.messages.some((m) => m.role === 'tool')) return { message: { role: 'assistant', content: '', tool_calls: [call('read_file', { path: 'features/orders/spec.md' })] } };
     order.push(q);
     return { message: { role: 'assistant', content: '', tool_calls: [call('answer', { answer: `Answer to ${q}`, cites: ['features/orders/spec.md'] })] } };
   };

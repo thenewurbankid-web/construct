@@ -12,6 +12,9 @@ import { PROVIDERS } from '../packages/core/llm.mjs';
 import { ConstructError } from '../packages/core/diagnostics.mjs';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
+// #948: these tests pin the old whole-file fill (LINE_LEGACY_IO=1) for its one release; the modelled one-function fill is test/modelled-io-llm-fill.test.mjs.
+process.env.LINE_LEGACY_IO = '1';
+
 const tmp = () => makeTempDir('construct-typed-stub-');
 
 async function withFake(responses, fn) {

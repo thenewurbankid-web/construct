@@ -7,7 +7,11 @@ import path from 'node:path';
 import { ToolError, LIMITS } from './limits.mjs';
 import { assertContained } from './guard.mjs';
 
+import { startLiveIndex } from './liveIndex.mjs';
+
 const tools = () => import('@line/construct-engine/line/lsp-tools');
+/** #950: a line_* call starts the session's live index READ-ONLY (it writes nothing; plan_* makes it read-write). */
+const withLive = (ctx) => { startLiveIndex(ctx, 'read'); };
 
 /**
  * A project-relative file a client sent, as the same relative path when it stays inside the root and exists.
@@ -41,6 +45,7 @@ const answer = (r) => {
  * @throws {ToolError} PATH_OUTSIDE_ROOT, NOT_FOUND.
  */
 export async function lineNextSteps(ctx, { need, from }) {
+  withLive(ctx);
   assertContained(ctx.root);
   return answer((await tools()).lspNextSteps(ctx.root, { need, from }));
 }
@@ -53,6 +58,7 @@ export async function lineNextSteps(ctx, { need, from }) {
  * @throws {ToolError} PATH_OUTSIDE_ROOT, NOT_FOUND.
  */
 export async function lineCompletions(ctx, args) {
+  withLive(ctx);
   const file = projectFile(ctx.root, args.file);
   return answer((await tools()).lspCompletions(ctx.root, { ...args, file }));
 }
@@ -65,6 +71,7 @@ export async function lineCompletions(ctx, args) {
  * @throws {ToolError} PATH_OUTSIDE_ROOT, NOT_FOUND.
  */
 export async function lineSymbolInfo(ctx, { file, symbol }) {
+  withLive(ctx);
   return answer((await tools()).lspSymbolInfo(ctx.root, { file: projectFile(ctx.root, file), symbol }));
 }
 
@@ -76,6 +83,7 @@ export async function lineSymbolInfo(ctx, { file, symbol }) {
  * @throws {ToolError} PATH_OUTSIDE_ROOT, NOT_FOUND.
  */
 export async function lineSmithCheck(ctx, { file, fn, plan, text }) {
+  withLive(ctx);
   return answer(await (await tools()).lspSmithCheck(ctx.root, { file: projectFile(ctx.root, file), fn, plan, text }));
 }
 
@@ -87,5 +95,6 @@ export async function lineSmithCheck(ctx, { file, fn, plan, text }) {
  * @throws {ToolError} PATH_OUTSIDE_ROOT, NOT_FOUND.
  */
 export async function lineFixes(ctx, { file, text }) {
+  withLive(ctx);
   return answer((await tools()).lspFixes(ctx.root, { file: projectFile(ctx.root, file), text }));
 }

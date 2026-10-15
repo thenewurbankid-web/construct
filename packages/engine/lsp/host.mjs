@@ -94,7 +94,13 @@ export function readOptions(root) {
  * @returns {string} `mtime:size`, or "0" when the file cannot be read.
  */
 export function mtimeOf(file) { try { const s = fs.statSync(file); return `${s.mtimeMs}:${s.size}`; } catch { return '0'; } }
-const hashOf = (text) => crypto.createHash('sha1').update(text).digest('hex').slice(0, 16);
+/**
+ * The content hash every Line LSP layer keys a file by (sha1, 16 hex characters): the host's version after update(),
+ * the persistent index's key (lsp/store).
+ * @param {string} text
+ * @returns {string}
+ */
+export const hashOf = (text) => crypto.createHash('sha1').update(text).digest('hex').slice(0, 16);
 
 function serviceFor(key, root, files, options, configMtime, extraRoots) {
   let entry = cache.get(key);
@@ -136,18 +142,20 @@ function serviceFor(key, root, files, options, configMtime, extraRoots) {
 /**
  * The cached language service for `root`.
  * @param {string} root Absolute project root (must hold tsconfig.json).
- * @param {{includeDts?: boolean, extraRoots?: string[], extraFiles?: string[]}} [opts]
+ * `rootFiles` (#950, the scoped LSP): the program's root files are exactly these (absolute, or root-relative) instead of
+ * every source file; TypeScript still follows their imports. Scoped and full services are cached apart.
+ * @param {{includeDts?: boolean, extraRoots?: string[], extraFiles?: string[], rootFiles?: string[]|null}} [opts]
  * @returns {{ok:true, entry:object, service:import('typescript').LanguageService, files:string[]} | {ok:false, reason:string}}
  */
-export function openProject(root, { includeDts = false, extraRoots = [], extraFiles = [] } = {}) {
+export function openProject(root, { includeDts = false, extraRoots = [], extraFiles = [], rootFiles = null } = {}) {
   const r = path.resolve(root);
   const cfg = readOptions(r);
   if (!cfg.options) return { ok: false, reason: cfg.reason };
-  const files = sourceFiles(r, { includeDts });
+  const files = rootFiles ? rootFiles.map((f) => (path.isAbsolute(f) ? path.resolve(f) : path.join(r, f))) : sourceFiles(r, { includeDts });
   if (files.length > MAX_FILES) return { ok: false, reason: `the project has more than ${MAX_FILES} source files` };
   for (const f of extraFiles) if (!files.includes(f)) files.push(f);
   const roots = extraRoots.map((x) => path.resolve(x));
-  const key = `${r}|${includeDts ? 1 : 0}|${roots.join(',')}`;
+  const key = `${r}|${includeDts ? 1 : 0}|${roots.join(',')}${rootFiles ? '|scoped' : ''}`;
   const entry = serviceFor(key, r, files, cfg.options, mtimeOf(path.join(r, 'tsconfig.json')), roots);
   return { ok: true, entry, service: entry.service, files };
 }

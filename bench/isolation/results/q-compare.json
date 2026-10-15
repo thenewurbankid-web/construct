@@ -1,0 +1,3707 @@
+{
+  "at": "2026-10-14T00:10:17.360Z",
+  "quickjs": "quickjs-emscripten@0.32.0 (MIT)",
+  "node": "v24.19.0",
+  "reps": 10,
+  "det": 20,
+  "cold": {
+    "vm": {
+      "importMs": 145.773,
+      "callMs": 213.570833
+    },
+    "quickjs": {
+      "importMs": 153.127209,
+      "callMs": 245.210584
+    }
+  },
+  "rows": [
+    {
+      "group": "A tests",
+      "name": "equal pair, relative import",
+      "runsPerCall": null,
+      "vm": {
+        "result": {
+          "layer": "isolated",
+          "outcome": "same-behaviour",
+          "runAs": "function",
+          "coverage": {
+            "before": {
+              "covered": 2,
+              "total": 2
+            },
+            "after": {
+              "covered": 2,
+              "total": 2
+            },
+            "level": "full"
+          }
+        },
+        "warmMs": 48.317042000000015,
+        "distinct": 1,
+        "runs": 20
+      },
+      "quickjs": {
+        "result": {
+          "layer": "isolated",
+          "outcome": "same-behaviour",
+          "runAs": "function",
+          "coverage": {
+            "before": {
+              "covered": 2,
+              "total": 2
+            },
+            "after": {
+              "covered": 2,
+              "total": 2
+            },
+            "level": "full"
+          }
+        },
+        "warmMs": 44.55416700000001,
+        "distinct": 1,
+        "runs": 20
+      },
+      "equal": true
+    },
+    {
+      "group": "A tests",
+      "name": "POST vs PUT",
+      "runsPerCall": null,
+      "vm": {
+        "result": {
+          "layer": "isolated",
+          "outcome": "changed",
+          "input": [
+            "__line_0000002a_0__",
+            0
+          ],
+          "location": {
+            "astPath": "save/FunctionDeclaration.body/BlockStatement.body[1]/VariableDeclaration.declarations[0]/VariableDeclarator.init/AwaitExpression.argument/CallExpression.arguments[1]/ObjectExpression.properties[0]/Property.value",
+            "file": "src/unit.ts",
+            "line": 6,
+            "column": 64
+          },
+          "reason": "effect 2 was fetch POST /api/items/:id?q=(string) before and fetch PUT /api/items/:id?q=(string) after",
+          "runAs": "function",
+          "coverage": {
+            "before": {
+              "covered": 2,
+              "total": 2
+            },
+            "after": {
+              "covered": 2,
+              "total": 2
+            },
+            "level": "full"
+          }
+        },
+        "warmMs": 49.94475000000011,
+        "distinct": 1,
+        "runs": 20
+      },
+      "quickjs": {
+        "result": {
+          "layer": "isolated",
+          "outcome": "changed",
+          "input": [
+            "__line_0000002a_0__",
+            0
+          ],
+          "location": {
+            "astPath": "save/FunctionDeclaration.body/BlockStatement.body[1]/VariableDeclaration.declarations[0]/VariableDeclarator.init/AwaitExpression.argument/CallExpression.arguments[1]/ObjectExpression.properties[0]/Property.value",
+            "file": "src/unit.ts",
+            "line": 6,
+            "column": 64
+          },
+          "reason": "effect 2 was fetch POST /api/items/:id?q=(string) before and fetch PUT /api/items/:id?q=(string) after",
+          "runAs": "function",
+          "coverage": {
+            "before": {
+              "covered": 2,
+              "total": 2
+            },
+            "after": {
+              "covered": 2,
+              "total": 2
+            },
+            "level": "full"
+          }
+        },
+        "warmMs": 43.92787499999986,
+        "distinct": 1,
+        "runs": 20
+      },
+      "equal": true
+    },
+    {
+      "group": "A tests",
+      "name": "a + b vs a - b",
+      "runsPerCall": null,
+      "vm": {
+        "result": {
+          "layer": "isolated",
+          "outcome": "changed",
+          "input": [
+            "__line_0000002a_0__",
+            0
+          ],
+          "location": {
+            "astPath": "save/FunctionDeclaration.body/BlockStatement.body[0]/ReturnStatement.argument/BinaryExpression.operator",
+            "file": "src/unit.ts",
+            "line": 1,
+            "column": 53
+          },
+          "reason": "the output was string before and number after",
+          "runAs": "function",
+          "coverage": {
+            "before": {
+              "covered": 1,
+              "total": 1
+            },
+            "after": {
+              "covered": 1,
+              "total": 1
+            },
+            "level": "full"
+          }
+        },
+        "warmMs": 50.517541999999594,
+        "distinct": 1,
+        "runs": 20
+      },
+      "quickjs": {
+        "result": {
+          "layer": "isolated",
+          "outcome": "changed",
+          "input": [
+            "__line_0000002a_0__",
+            0
+          ],
+          "location": {
+            "astPath": "save/FunctionDeclaration.body/BlockStatement.body[0]/ReturnStatement.argument/BinaryExpression.operator",
+            "file": "src/unit.ts",
+            "line": 1,
+            "column": 53
+          },
+          "reason": "the output was string before and number after",
+          "runAs": "function",
+          "coverage": {
+            "before": {
+              "covered": 1,
+              "total": 1
+            },
+            "after": {
+              "covered": 1,
+              "total": 1
+            },
+            "level": "full"
+          }
+        },
+        "warmMs": 39.06420799999978,
+        "distinct": 1,
+        "runs": 20
+      },
+      "equal": true
+    },
+    {
+      "group": "A tests",
+      "name": "unfaked import node:fs",
+      "runsPerCall": null,
+      "vm": {
+        "result": {
+          "layer": "isolated",
+          "outcome": "cant-tell",
+          "reason": "not faked, so not executed: import node:fs; low branch coverage (before 0 of 1 blocks ran, after 0 of 1)",
+          "runAs": "function",
+          "coverage": {
+            "before": {
+              "covered": 0,
+              "total": 1
+            },
+            "after": {
+              "covered": 0,
+              "total": 1
+            },
+            "level": "low"
+          }
+        },
+        "warmMs": 49.898959000000104,
+        "distinct": 1,
+        "runs": 20
+      },
+      "quickjs": {
+        "result": {
+          "layer": "isolated",
+          "outcome": "cant-tell",
+          "reason": "not faked, so not executed: import node:fs; low branch coverage (before 0 of 1 blocks ran, after 0 of 1)",
+          "runAs": "function",
+          "coverage": {
+            "before": {
+              "covered": 0,
+              "total": 1
+            },
+            "after": {
+              "covered": 0,
+              "total": 1
+            },
+            "level": "low"
+          }
+        },
+        "warmMs": 39.09308299999975,
+        "distinct": 1,
+        "runs": 20
+      },
+      "equal": true
+    },
+    {
+      "group": "A tests",
+      "name": "unfaked WebSocket",
+      "runsPerCall": null,
+      "vm": {
+        "result": {
+          "layer": "isolated",
+          "outcome": "cant-tell",
+          "reason": "not faked, so not executed: WebSocket",
+          "runAs": "function",
+          "coverage": {
+            "before": {
+              "covered": 1,
+              "total": 1
+            },
+            "after": {
+              "covered": 1,
+              "total": 1
+            },
+            "level": "full"
+          }
+        },
+        "warmMs": 49.23316599999998,
+        "distinct": 1,
+        "runs": 20
+      },
+      "quickjs": {
+        "result": {
+          "layer": "isolated",
+          "outcome": "cant-tell",
+          "reason": "not faked, so not executed: WebSocket",
+          "runAs": "function",
+          "coverage": {
+            "before": {
+              "covered": 1,
+              "total": 1
+            },
+            "after": {
+              "covered": 1,
+              "total": 1
+            },
+            "level": "full"
+          }
+        },
+        "warmMs": 41.41362499999923,
+        "distinct": 1,
+        "runs": 20
+      },
+      "equal": true
+    },
+    {
+      "group": "A tests",
+      "name": "unfaked process",
+      "runsPerCall": null,
+      "vm": {
+        "result": {
+          "layer": "isolated",
+          "outcome": "cant-tell",
+          "reason": "not faked, so not executed: process",
+          "runAs": "function",
+          "coverage": {
+            "before": {
+              "covered": 1,
+              "total": 1
+            },
+            "after": {
+              "covered": 1,
+              "total": 1
+            },
+            "level": "full"
+          }
+        },
+        "warmMs": 50.319500000001426,
+        "distinct": 1,
+        "runs": 20
+      },
+      "quickjs": {
+        "result": {
+          "layer": "isolated",
+          "outcome": "cant-tell",
+          "reason": "not faked, so not executed: process",
+          "runAs": "function",
+          "coverage": {
+            "before": {
+              "covered": 1,
+              "total": 1
+            },
+            "after": {
+              "covered": 1,
+              "total": 1
+            },
+            "level": "full"
+          }
+        },
+        "warmMs": 37.87524999999914,
+        "distinct": 1,
+        "runs": 20
+      },
+      "equal": true
+    },
+    {
+      "group": "A tests",
+      "name": "hanging unit (800 ms limit)",
+      "runsPerCall": null,
+      "vm": {
+        "result": {
+          "layer": "isolated",
+          "outcome": "cant-tell",
+          "reason": "the run was killed at the 800 ms time limit"
+        },
+        "warmMs": 804.4460829999989,
+        "distinct": 1,
+        "runs": 2
+      },
+      "quickjs": {
+        "result": {
+          "layer": "isolated",
+          "outcome": "cant-tell",
+          "reason": "the run was killed at the 800 ms time limit"
+        },
+        "warmMs": 802.3076249999995,
+        "distinct": 1,
+        "runs": 2
+      },
+      "equal": true
+    },
+    {
+      "group": "A tests",
+      "name": "fixed time and random",
+      "runsPerCall": null,
+      "vm": {
+        "result": {
+          "layer": "isolated",
+          "outcome": "same-behaviour",
+          "runAs": "function",
+          "coverage": {
+            "before": {
+              "covered": 1,
+              "total": 1
+            },
+            "after": {
+              "covered": 1,
+              "total": 1
+            },
+            "level": "full"
+          }
+        },
+        "warmMs": 46.148583000000144,
+        "distinct": 1,
+        "runs": 20
+      },
+      "quickjs": {
+        "result": {
+          "layer": "isolated",
+          "outcome": "same-behaviour",
+          "runAs": "function",
+          "coverage": {
+            "before": {
+              "covered": 1,
+              "total": 1
+            },
+            "after": {
+              "covered": 1,
+              "total": 1
+            },
+            "level": "full"
+          }
+        },
+        "warmMs": 4.9074170000003505,
+        "distinct": 1,
+        "runs": 20
+      },
+      "equal": true
+    },
+    {
+      "group": "A tests",
+      "name": "planted dropped-effect",
+      "runsPerCall": null,
+      "vm": {
+        "result": {
+          "layer": "isolated",
+          "outcome": "changed",
+          "input": [
+            {
+              "id": "__line_0000002a_0__",
+              "total": 1
+            }
+          ],
+          "location": {
+            "astPath": "saveOrder/FunctionDeclaration.body/BlockStatement.body[1]",
+            "file": "src/orders/saveOrder.ts",
+            "line": 6,
+            "column": 3,
+            "side": "before"
+          },
+          "reason": "effect 2 was toast.success(string) before and nothing after",
+          "runAs": "function",
+          "coverage": {
+            "before": {
+              "covered": 1,
+              "total": 1
+            },
+            "after": {
+              "covered": 1,
+              "total": 1
+            },
+            "level": "full"
+          }
+        },
+        "warmMs": 48.595541000000594,
+        "distinct": 1,
+        "runs": 20
+      },
+      "quickjs": {
+        "result": {
+          "layer": "isolated",
+          "outcome": "changed",
+          "input": [
+            {
+              "id": "__line_0000002a_0__",
+              "total": 1
+            }
+          ],
+          "location": {
+            "astPath": "saveOrder/FunctionDeclaration.body/BlockStatement.body[1]",
+            "file": "src/orders/saveOrder.ts",
+            "line": 6,
+            "column": 3,
+            "side": "before"
+          },
+          "reason": "effect 2 was toast.success(string) before and nothing after",
+          "runAs": "function",
+          "coverage": {
+            "before": {
+              "covered": 1,
+              "total": 1
+            },
+            "after": {
+              "covered": 1,
+              "total": 1
+            },
+            "level": "full"
+          }
+        },
+        "warmMs": 43.92841699999917,
+        "distinct": 1,
+        "runs": 20
+      },
+      "equal": true
+    },
+    {
+      "group": "A tests",
+      "name": "setItem vs removeItem",
+      "runsPerCall": null,
+      "vm": {
+        "result": {
+          "layer": "isolated",
+          "outcome": "changed",
+          "input": [
+            "__line_0000002a_0__"
+          ],
+          "location": {
+            "astPath": "save/FunctionDeclaration.body/BlockStatement.body[0]/ExpressionStatement.expression/CallExpression.callee/MemberExpression.property",
+            "file": "src/unit.ts",
+            "line": 1,
+            "column": 50
+          },
+          "reason": "effect 1 was storage.setItem :sentinel(string) before and storage.removeItem :sentinel after",
+          "runAs": "function",
+          "coverage": {
+            "before": {
+              "covered": 1,
+              "total": 1
+            },
+            "after": {
+              "covered": 1,
+              "total": 1
+            },
+            "level": "full"
+          }
+        },
+        "warmMs": 53.694665999999415,
+        "distinct": 1,
+        "runs": 20
+      },
+      "quickjs": {
+        "result": {
+          "layer": "isolated",
+          "outcome": "changed",
+          "input": [
+            "__line_0000002a_0__"
+          ],
+          "location": {
+            "astPath": "save/FunctionDeclaration.body/BlockStatement.body[0]/ExpressionStatement.expression/CallExpression.callee/MemberExpression.property",
+            "file": "src/unit.ts",
+            "line": 1,
+            "column": 50
+          },
+          "reason": "effect 1 was storage.setItem :sentinel(string) before and storage.removeItem :sentinel after",
+          "runAs": "function",
+          "coverage": {
+            "before": {
+              "covered": 1,
+              "total": 1
+            },
+            "after": {
+              "covered": 1,
+              "total": 1
+            },
+            "level": "full"
+          }
+        },
+        "warmMs": 39.00987499999974,
+        "distinct": 1,
+        "runs": 20
+      },
+      "equal": true
+    },
+    {
+      "group": "A tests",
+      "name": "hook equal",
+      "runsPerCall": null,
+      "vm": {
+        "result": {
+          "layer": "isolated",
+          "outcome": "same-behaviour",
+          "runAs": "hook",
+          "coverage": {
+            "before": {
+              "covered": 6,
+              "total": 6
+            },
+            "after": {
+              "covered": 6,
+              "total": 6
+            },
+            "level": "full"
+          }
+        },
+        "warmMs": 54.213583000000654,
+        "distinct": 1,
+        "runs": 20
+      },
+      "quickjs": {
+        "result": {
+          "layer": "isolated",
+          "outcome": "same-behaviour",
+          "runAs": "hook",
+          "coverage": {
+            "before": {
+              "covered": 6,
+              "total": 6
+            },
+            "after": {
+              "covered": 6,
+              "total": 6
+            },
+            "level": "full"
+          }
+        },
+        "warmMs": 40.35124999999971,
+        "distinct": 1,
+        "runs": 20
+      },
+      "equal": true
+    },
+    {
+      "group": "A tests",
+      "name": "hook state step 1 vs 2",
+      "runsPerCall": null,
+      "vm": {
+        "result": {
+          "layer": "isolated",
+          "outcome": "changed",
+          "input": [
+            "__line_0000002a_0__"
+          ],
+          "location": {
+            "astPath": "useCart/FunctionDeclaration.body/BlockStatement.body[5]/VariableDeclaration.declarations[0]/VariableDeclarator.init/CallExpression.arguments[0]/ArrowFunctionExpression.body/CallExpression.arguments[0]/ArrowFunctionExpression.body/BinaryExpression.right",
+            "file": "src/unit.tsx",
+            "line": 9,
+            "column": 53
+          },
+          "reason": "the output value was {\"count\":1,\"label\":\"__line_0000002a_0__:1\",\"add\":\"fn\"} before and {\"count\":2,\"label\":\"__line_0000002a_0__:2\",\"add\":\"fn\"} after",
+          "runAs": "hook",
+          "coverage": {
+            "before": {
+              "covered": 6,
+              "total": 6
+            },
+            "after": {
+              "covered": 6,
+              "total": 6
+            },
+            "level": "full"
+          }
+        },
+        "warmMs": 49.17175000000134,
+        "distinct": 1,
+        "runs": 20
+      },
+      "quickjs": {
+        "result": {
+          "layer": "isolated",
+          "outcome": "changed",
+          "input": [
+            "__line_0000002a_0__"
+          ],
+          "location": {
+            "astPath": "useCart/FunctionDeclaration.body/BlockStatement.body[5]/VariableDeclaration.declarations[0]/VariableDeclarator.init/CallExpression.arguments[0]/ArrowFunctionExpression.body/CallExpression.arguments[0]/ArrowFunctionExpression.body/BinaryExpression.right",
+            "file": "src/unit.tsx",
+            "line": 9,
+            "column": 53
+          },
+          "reason": "the output value was {\"count\":1,\"label\":\"__line_0000002a_0__:1\",\"add\":\"fn\"} before and {\"count\":2,\"label\":\"__line_0000002a_0__:2\",\"add\":\"fn\"} after",
+          "runAs": "hook",
+          "coverage": {
+            "before": {
+              "covered": 6,
+              "total": 6
+            },
+            "after": {
+              "covered": 6,
+              "total": 6
+            },
+            "level": "full"
+          }
+        },
+        "warmMs": 45.15087499999936,
+        "distinct": 1,
+        "runs": 20
+      },
+      "equal": true
+    },
+    {
+      "group": "A tests",
+      "name": "hook dropped effect",
+      "runsPerCall": null,
+      "vm": {
+        "result": {
+          "layer": "isolated",
+          "outcome": "changed",
+          "input": [
+            "__line_0000002a_0__"
+          ],
+          "location": {
+            "astPath": "useCart/FunctionDeclaration.body/BlockStatement.body[3]/ExpressionStatement.expression/CallExpression.arguments[0]/ArrowFunctionExpression.body/BlockStatement.body[0]",
+            "file": "src/unit.tsx",
+            "line": 7,
+            "column": 21,
+            "side": "before"
+          },
+          "reason": "effect 1 was storage.setItem cart(string) before and storage.removeItem cart after",
+          "runAs": "hook",
+          "coverage": {
+            "before": {
+              "covered": 6,
+              "total": 6
+            },
+            "after": {
+              "covered": 6,
+              "total": 6
+            },
+            "level": "full"
+          }
+        },
+        "warmMs": 47.72383300000001,
+        "distinct": 1,
+        "runs": 20
+      },
+      "quickjs": {
+        "result": {
+          "layer": "isolated",
+          "outcome": "changed",
+          "input": [
+            "__line_0000002a_0__"
+          ],
+          "location": {
+            "astPath": "useCart/FunctionDeclaration.body/BlockStatement.body[3]/ExpressionStatement.expression/CallExpression.arguments[0]/ArrowFunctionExpression.body/BlockStatement.body[0]",
+            "file": "src/unit.tsx",
+            "line": 7,
+            "column": 21,
+            "side": "before"
+          },
+          "reason": "effect 1 was storage.setItem cart(string) before and storage.removeItem cart after",
+          "runAs": "hook",
+          "coverage": {
+            "before": {
+              "covered": 6,
+              "total": 6
+            },
+            "after": {
+              "covered": 6,
+              "total": 6
+            },
+            "level": "full"
+          }
+        },
+        "warmMs": 42.49608299999818,
+        "distinct": 1,
+        "runs": 20
+      },
+      "equal": true
+    },
+    {
+      "group": "A tests",
+      "name": "handler equal",
+      "runsPerCall": null,
+      "vm": {
+        "result": {
+          "layer": "isolated",
+          "outcome": "same-behaviour",
+          "runAs": "handler",
+          "coverage": {
+            "before": {
+              "covered": 3,
+              "total": 3
+            },
+            "after": {
+              "covered": 3,
+              "total": 3
+            },
+            "level": "full"
+          }
+        },
+        "warmMs": 43.528417000001355,
+        "distinct": 1,
+        "runs": 20
+      },
+      "quickjs": {
+        "result": {
+          "layer": "isolated",
+          "outcome": "same-behaviour",
+          "runAs": "handler",
+          "coverage": {
+            "before": {
+              "covered": 3,
+              "total": 3
+            },
+            "after": {
+              "covered": 3,
+              "total": 3
+            },
+            "level": "full"
+          }
+        },
+        "warmMs": 17.26641599999857,
+        "distinct": 1,
+        "runs": 20
+      },
+      "equal": true
+    },
+    {
+      "group": "A tests",
+      "name": "handler dropped preventDefault",
+      "runsPerCall": null,
+      "vm": {
+        "result": {
+          "layer": "isolated",
+          "outcome": "changed",
+          "input": [
+            {
+              "__lineEvent": "keydown",
+              "variant": 0
+            }
+          ],
+          "location": {
+            "astPath": "handleKey/FunctionDeclaration.body/BlockStatement.body[0]",
+            "file": "src/unit.tsx",
+            "line": 4,
+            "column": 3,
+            "side": "before"
+          },
+          "reason": "effect 1 was event.preventDefault before and storage.setItem q(string) after",
+          "runAs": "handler",
+          "coverage": {
+            "before": {
+              "covered": 3,
+              "total": 3
+            },
+            "after": {
+              "covered": 3,
+              "total": 3
+            },
+            "level": "full"
+          }
+        },
+        "warmMs": 42.477749999998196,
+        "distinct": 1,
+        "runs": 20
+      },
+      "quickjs": {
+        "result": {
+          "layer": "isolated",
+          "outcome": "changed",
+          "input": [
+            {
+              "__lineEvent": "keydown",
+              "variant": 0
+            }
+          ],
+          "location": {
+            "astPath": "handleKey/FunctionDeclaration.body/BlockStatement.body[0]",
+            "file": "src/unit.tsx",
+            "line": 4,
+            "column": 3,
+            "side": "before"
+          },
+          "reason": "effect 1 was event.preventDefault before and storage.setItem q(string) after",
+          "runAs": "handler",
+          "coverage": {
+            "before": {
+              "covered": 3,
+              "total": 3
+            },
+            "after": {
+              "covered": 3,
+              "total": 3
+            },
+            "level": "full"
+          }
+        },
+        "warmMs": 18.28587499999776,
+        "distinct": 1,
+        "runs": 20
+      },
+      "equal": true
+    },
+    {
+      "group": "A tests",
+      "name": "coverage full",
+      "runsPerCall": null,
+      "vm": {
+        "result": {
+          "layer": "isolated",
+          "outcome": "same-behaviour",
+          "runAs": "function",
+          "coverage": {
+            "before": {
+              "covered": 3,
+              "total": 3
+            },
+            "after": {
+              "covered": 3,
+              "total": 3
+            },
+            "level": "full"
+          }
+        },
+        "warmMs": 43.17058299999917,
+        "distinct": 1,
+        "runs": 20
+      },
+      "quickjs": {
+        "result": {
+          "layer": "isolated",
+          "outcome": "same-behaviour",
+          "runAs": "function",
+          "coverage": {
+            "before": {
+              "covered": 3,
+              "total": 3
+            },
+            "after": {
+              "covered": 3,
+              "total": 3
+            },
+            "level": "full"
+          }
+        },
+        "warmMs": 37.7257090000021,
+        "distinct": 1,
+        "runs": 20
+      },
+      "equal": true
+    },
+    {
+      "group": "A tests",
+      "name": "coverage low (switch)",
+      "runsPerCall": null,
+      "vm": {
+        "result": {
+          "layer": "isolated",
+          "outcome": "same-behaviour",
+          "reason": "low branch coverage (before 1 of 7 blocks ran, after 1 of 7)",
+          "runAs": "function",
+          "coverage": {
+            "before": {
+              "covered": 1,
+              "total": 7
+            },
+            "after": {
+              "covered": 1,
+              "total": 7
+            },
+            "level": "low"
+          }
+        },
+        "warmMs": 50.66533300000083,
+        "distinct": 1,
+        "runs": 20
+      },
+      "quickjs": {
+        "result": {
+          "layer": "isolated",
+          "outcome": "same-behaviour",
+          "reason": "low branch coverage (before 1 of 7 blocks ran, after 1 of 7)",
+          "runAs": "function",
+          "coverage": {
+            "before": {
+              "covered": 1,
+              "total": 7
+            },
+            "after": {
+              "covered": 1,
+              "total": 7
+            },
+            "level": "low"
+          }
+        },
+        "warmMs": 38.242999999998574,
+        "distinct": 1,
+        "runs": 20
+      },
+      "equal": true
+    },
+    {
+      "group": "A tests",
+      "name": "hook coverage per side",
+      "runsPerCall": null,
+      "vm": {
+        "result": {
+          "layer": "isolated",
+          "outcome": "same-behaviour",
+          "runAs": "hook",
+          "coverage": {
+            "before": {
+              "covered": 2,
+              "total": 2
+            },
+            "after": {
+              "covered": 3,
+              "total": 3
+            },
+            "level": "full"
+          }
+        },
+        "warmMs": 47.28804200000013,
+        "distinct": 1,
+        "runs": 20
+      },
+      "quickjs": {
+        "result": {
+          "layer": "isolated",
+          "outcome": "same-behaviour",
+          "runAs": "hook",
+          "coverage": {
+            "before": {
+              "covered": 2,
+              "total": 2
+            },
+            "after": {
+              "covered": 3,
+              "total": 3
+            },
+            "level": "full"
+          }
+        },
+        "warmMs": 5.024207999998907,
+        "distinct": 1,
+        "runs": 20
+      },
+      "equal": true
+    },
+    {
+      "group": "B tasks (pair)",
+      "name": "t01-book-by-author BookPage: _r2 start -> reference",
+      "runsPerCall": null,
+      "vm": {
+        "result": {
+          "layer": "isolated",
+          "outcome": "same-behaviour",
+          "reason": "low branch coverage (before 1 of 3 blocks ran, after 1 of 3)",
+          "runAs": "function",
+          "coverage": {
+            "before": {
+              "covered": 1,
+              "total": 3
+            },
+            "after": {
+              "covered": 1,
+              "total": 3
+            },
+            "level": "low"
+          }
+        },
+        "warmMs": 72.5177500000027,
+        "distinct": 1,
+        "runs": 20
+      },
+      "quickjs": {
+        "result": {
+          "layer": "isolated",
+          "outcome": "same-behaviour",
+          "reason": "low branch coverage (before 1 of 3 blocks ran, after 1 of 3)",
+          "runAs": "function",
+          "coverage": {
+            "before": {
+              "covered": 1,
+              "total": 3
+            },
+            "after": {
+              "covered": 1,
+              "total": 3
+            },
+            "level": "low"
+          }
+        },
+        "warmMs": 86.75825000000623,
+        "distinct": 1,
+        "runs": 20
+      },
+      "equal": true
+    },
+    {
+      "group": "B tasks (pair)",
+      "name": "t02-book-page-count BookPage: _r2 start -> reference",
+      "runsPerCall": null,
+      "vm": {
+        "result": {
+          "layer": "isolated",
+          "outcome": "same-behaviour",
+          "reason": "low branch coverage (before 1 of 3 blocks ran, after 1 of 3)",
+          "runAs": "function",
+          "coverage": {
+            "before": {
+              "covered": 1,
+              "total": 3
+            },
+            "after": {
+              "covered": 1,
+              "total": 3
+            },
+            "level": "low"
+          }
+        },
+        "warmMs": 70.16704200000095,
+        "distinct": 1,
+        "runs": 20
+      },
+      "quickjs": {
+        "result": {
+          "layer": "isolated",
+          "outcome": "same-behaviour",
+          "reason": "low branch coverage (before 1 of 3 blocks ran, after 1 of 3)",
+          "runAs": "function",
+          "coverage": {
+            "before": {
+              "covered": 1,
+              "total": 3
+            },
+            "after": {
+              "covered": 1,
+              "total": 3
+            },
+            "level": "low"
+          }
+        },
+        "warmMs": 88.7185829999944,
+        "distinct": 1,
+        "runs": 20
+      },
+      "equal": true
+    },
+    {
+      "group": "B tasks (pair)",
+      "name": "t03-book-availability BookPage: _r2 start -> reference",
+      "runsPerCall": null,
+      "vm": {
+        "result": {
+          "layer": "isolated",
+          "outcome": "same-behaviour",
+          "reason": "low branch coverage (before 1 of 3 blocks ran, after 1 of 5)",
+          "runAs": "function",
+          "coverage": {
+            "before": {
+              "covered": 1,
+              "total": 3
+            },
+            "after": {
+              "covered": 1,
+              "total": 5
+            },
+            "level": "low"
+          }
+        },
+        "warmMs": 72.05799999999726,
+        "distinct": 1,
+        "runs": 20
+      },
+      "quickjs": {
+        "result": {
+          "layer": "isolated",
+          "outcome": "same-behaviour",
+          "reason": "low branch coverage (before 1 of 3 blocks ran, after 1 of 5)",
+          "runAs": "function",
+          "coverage": {
+            "before": {
+              "covered": 1,
+              "total": 3
+            },
+            "after": {
+              "covered": 1,
+              "total": 5
+            },
+            "level": "low"
+          }
+        },
+        "warmMs": 84.88704100000177,
+        "distinct": 1,
+        "runs": 20
+      },
+      "equal": true
+    },
+    {
+      "group": "B tasks (pair)",
+      "name": "t04-book-not-found BookPage: _r2 start -> reference",
+      "runsPerCall": null,
+      "vm": {
+        "result": {
+          "layer": "isolated",
+          "outcome": "same-behaviour",
+          "reason": "low branch coverage (before 1 of 3 blocks ran, after 1 of 3)",
+          "runAs": "function",
+          "coverage": {
+            "before": {
+              "covered": 1,
+              "total": 3
+            },
+            "after": {
+              "covered": 1,
+              "total": 3
+            },
+            "level": "low"
+          }
+        },
+        "warmMs": 71.0403340000048,
+        "distinct": 1,
+        "runs": 20
+      },
+      "quickjs": {
+        "result": {
+          "layer": "isolated",
+          "outcome": "same-behaviour",
+          "reason": "low branch coverage (before 1 of 3 blocks ran, after 1 of 3)",
+          "runAs": "function",
+          "coverage": {
+            "before": {
+              "covered": 1,
+              "total": 3
+            },
+            "after": {
+              "covered": 1,
+              "total": 3
+            },
+            "level": "low"
+          }
+        },
+        "warmMs": 90.09204100000352,
+        "distinct": 1,
+        "runs": 20
+      },
+      "equal": true
+    },
+    {
+      "group": "B tasks (pair)",
+      "name": "t05-book-add-to-picks BookPage: _r2 start -> reference",
+      "runsPerCall": null,
+      "vm": {
+        "result": {
+          "layer": "isolated",
+          "outcome": "cant-tell",
+          "reason": "not faked, so not executed: import @radix-ui/react-slot; low branch coverage (before 1 of 3 blocks ran, after 0 of 8)",
+          "runAs": "function",
+          "coverage": {
+            "before": {
+              "covered": 1,
+              "total": 3
+            },
+            "after": {
+              "covered": 0,
+              "total": 8
+            },
+            "level": "low"
+          }
+        },
+        "warmMs": 71.67279199999757,
+        "distinct": 1,
+        "runs": 20
+      },
+      "quickjs": {
+        "result": {
+          "layer": "isolated",
+          "outcome": "cant-tell",
+          "reason": "not faked, so not executed: import @radix-ui/react-slot; low branch coverage (before 1 of 3 blocks ran, after 0 of 8)",
+          "runAs": "function",
+          "coverage": {
+            "before": {
+              "covered": 1,
+              "total": 3
+            },
+            "after": {
+              "covered": 0,
+              "total": 8
+            },
+            "level": "low"
+          }
+        },
+        "warmMs": 85.77379199999996,
+        "distinct": 1,
+        "runs": 20
+      },
+      "equal": true
+    },
+    {
+      "group": "B tasks (pair)",
+      "name": "t06-picks-store listPicks: shared store -> reference",
+      "runsPerCall": null,
+      "vm": {
+        "result": {
+          "layer": "isolated",
+          "outcome": "same-behaviour",
+          "reason": "low branch coverage (before 2 of 7 blocks ran, after 2 of 3)",
+          "runAs": "function",
+          "coverage": {
+            "before": {
+              "covered": 2,
+              "total": 7
+            },
+            "after": {
+              "covered": 2,
+              "total": 3
+            },
+            "level": "low"
+          }
+        },
+        "warmMs": 46.56470800000534,
+        "distinct": 1,
+        "runs": 20
+      },
+      "quickjs": {
+        "result": {
+          "layer": "isolated",
+          "outcome": "same-behaviour",
+          "reason": "low branch coverage (before 2 of 7 blocks ran, after 2 of 3)",
+          "runAs": "function",
+          "coverage": {
+            "before": {
+              "covered": 2,
+              "total": 7
+            },
+            "after": {
+              "covered": 2,
+              "total": 3
+            },
+            "level": "low"
+          }
+        },
+        "warmMs": 5.440249999999651,
+        "distinct": 1,
+        "runs": 20
+      },
+      "equal": true
+    },
+    {
+      "group": "B tasks (pair)",
+      "name": "t06-picks-store addPick: shared store -> reference",
+      "runsPerCall": null,
+      "vm": {
+        "result": {
+          "layer": "isolated",
+          "outcome": "same-behaviour",
+          "runAs": "function",
+          "coverage": {
+            "before": {
+              "covered": 2,
+              "total": 3
+            },
+            "after": {
+              "covered": 2,
+              "total": 3
+            },
+            "level": "partial"
+          }
+        },
+        "warmMs": 44.886124999997264,
+        "distinct": 1,
+        "runs": 20
+      },
+      "quickjs": {
+        "result": {
+          "layer": "isolated",
+          "outcome": "same-behaviour",
+          "runAs": "function",
+          "coverage": {
+            "before": {
+              "covered": 2,
+              "total": 3
+            },
+            "after": {
+              "covered": 2,
+              "total": 3
+            },
+            "level": "partial"
+          }
+        },
+        "warmMs": 38.89633299999696,
+        "distinct": 1,
+        "runs": 20
+      },
+      "equal": true
+    },
+    {
+      "group": "B tasks (pair)",
+      "name": "t06-picks-store removePick: shared store -> reference",
+      "runsPerCall": null,
+      "vm": {
+        "result": {
+          "layer": "isolated",
+          "outcome": "same-behaviour",
+          "runAs": "function",
+          "coverage": {
+            "before": {
+              "covered": 1,
+              "total": 2
+            },
+            "after": {
+              "covered": 1,
+              "total": 2
+            },
+            "level": "partial"
+          }
+        },
+        "warmMs": 51.87412499999482,
+        "distinct": 1,
+        "runs": 20
+      },
+      "quickjs": {
+        "result": {
+          "layer": "isolated",
+          "outcome": "same-behaviour",
+          "runAs": "function",
+          "coverage": {
+            "before": {
+              "covered": 1,
+              "total": 2
+            },
+            "after": {
+              "covered": 1,
+              "total": 2
+            },
+            "level": "partial"
+          }
+        },
+        "warmMs": 37.83887500000128,
+        "distinct": 1,
+        "runs": 20
+      },
+      "equal": true
+    },
+    {
+      "group": "B tasks (pair)",
+      "name": "t07-picks-page-list PicksPage: _r2 start -> reference",
+      "runsPerCall": null,
+      "vm": {
+        "result": {
+          "layer": "isolated",
+          "outcome": "cant-tell",
+          "reason": "not faked, so not executed: import @radix-ui/react-slot; low branch coverage (before 1 of 1 blocks ran, after 0 of 5)",
+          "runAs": "function",
+          "coverage": {
+            "before": {
+              "covered": 1,
+              "total": 1
+            },
+            "after": {
+              "covered": 0,
+              "total": 5
+            },
+            "level": "low"
+          }
+        },
+        "warmMs": 60.86616700000013,
+        "distinct": 1,
+        "runs": 20
+      },
+      "quickjs": {
+        "result": {
+          "layer": "isolated",
+          "outcome": "cant-tell",
+          "reason": "not faked, so not executed: import @radix-ui/react-slot; low branch coverage (before 1 of 1 blocks ran, after 0 of 5)",
+          "runAs": "function",
+          "coverage": {
+            "before": {
+              "covered": 1,
+              "total": 1
+            },
+            "after": {
+              "covered": 0,
+              "total": 5
+            },
+            "level": "low"
+          }
+        },
+        "warmMs": 14.857540999997582,
+        "distinct": 1,
+        "runs": 20
+      },
+      "equal": true
+    },
+    {
+      "group": "B tasks (pair)",
+      "name": "t08-picks-page-empty PicksPage: _r2 start -> reference",
+      "runsPerCall": null,
+      "vm": {
+        "result": {
+          "layer": "isolated",
+          "outcome": "changed",
+          "input": [],
+          "location": {
+            "astPath": "PicksPage/FunctionDeclaration.body/BlockStatement.body[0]",
+            "file": "features/picks/pages/PicksPage.tsx",
+            "line": 10,
+            "column": 3
+          },
+          "reason": "effect 1 was nothing before and storage.getItem picks after",
+          "runAs": "function",
+          "coverage": {
+            "before": {
+              "covered": 1,
+              "total": 1
+            },
+            "after": {
+              "covered": 2,
+              "total": 4
+            },
+            "level": "partial"
+          }
+        },
+        "warmMs": 47.58070800000132,
+        "distinct": 1,
+        "runs": 20
+      },
+      "quickjs": {
+        "result": {
+          "layer": "isolated",
+          "outcome": "changed",
+          "input": [],
+          "location": {
+            "astPath": "PicksPage/FunctionDeclaration.body/BlockStatement.body[0]",
+            "file": "features/picks/pages/PicksPage.tsx",
+            "line": 10,
+            "column": 3
+          },
+          "reason": "effect 1 was nothing before and storage.getItem picks after",
+          "runAs": "function",
+          "coverage": {
+            "before": {
+              "covered": 1,
+              "total": 1
+            },
+            "after": {
+              "covered": 2,
+              "total": 4
+            },
+            "level": "partial"
+          }
+        },
+        "warmMs": 8.338041000002704,
+        "distinct": 1,
+        "runs": 20
+      },
+      "equal": true
+    },
+    {
+      "group": "B tasks (pair)",
+      "name": "t09-browse-heading-availability BrowsePage: _r2 start -> reference",
+      "runsPerCall": null,
+      "vm": {
+        "result": {
+          "layer": "isolated",
+          "outcome": "same-behaviour",
+          "runAs": "function",
+          "coverage": {
+            "before": {
+              "covered": 3,
+              "total": 3
+            },
+            "after": {
+              "covered": 5,
+              "total": 5
+            },
+            "level": "full"
+          }
+        },
+        "warmMs": 65.75983299999643,
+        "distinct": 1,
+        "runs": 20
+      },
+      "quickjs": {
+        "result": {
+          "layer": "isolated",
+          "outcome": "same-behaviour",
+          "runAs": "function",
+          "coverage": {
+            "before": {
+              "covered": 3,
+              "total": 3
+            },
+            "after": {
+              "covered": 5,
+              "total": 5
+            },
+            "level": "full"
+          }
+        },
+        "warmMs": 22.625,
+        "distinct": 1,
+        "runs": 20
+      },
+      "equal": true
+    },
+    {
+      "group": "B tasks (pair)",
+      "name": "t10-browse-paging BrowsePage: _r2 start -> reference",
+      "runsPerCall": null,
+      "vm": {
+        "result": {
+          "layer": "isolated",
+          "outcome": "cant-tell",
+          "reason": "not faked, so not executed: import @radix-ui/react-slot; low branch coverage (before 3 of 3 blocks ran, after 0 of 5)",
+          "runAs": "function",
+          "coverage": {
+            "before": {
+              "covered": 3,
+              "total": 3
+            },
+            "after": {
+              "covered": 0,
+              "total": 5
+            },
+            "level": "low"
+          }
+        },
+        "warmMs": 61.47929199999635,
+        "distinct": 1,
+        "runs": 20
+      },
+      "quickjs": {
+        "result": {
+          "layer": "isolated",
+          "outcome": "cant-tell",
+          "reason": "not faked, so not executed: import @radix-ui/react-slot; low branch coverage (before 3 of 3 blocks ran, after 0 of 5)",
+          "runAs": "function",
+          "coverage": {
+            "before": {
+              "covered": 3,
+              "total": 3
+            },
+            "after": {
+              "covered": 0,
+              "total": 5
+            },
+            "level": "low"
+          }
+        },
+        "warmMs": 23.62325000000419,
+        "distinct": 1,
+        "runs": 20
+      },
+      "equal": true
+    },
+    {
+      "group": "B tasks (pair)",
+      "name": "t11-browse-sort-title BrowsePage: _r2 start -> reference",
+      "runsPerCall": null,
+      "vm": {
+        "result": {
+          "layer": "isolated",
+          "outcome": "same-behaviour",
+          "runAs": "function",
+          "coverage": {
+            "before": {
+              "covered": 3,
+              "total": 3
+            },
+            "after": {
+              "covered": 4,
+              "total": 4
+            },
+            "level": "full"
+          }
+        },
+        "warmMs": 68.39495800000441,
+        "distinct": 1,
+        "runs": 20
+      },
+      "quickjs": {
+        "result": {
+          "layer": "isolated",
+          "outcome": "same-behaviour",
+          "runAs": "function",
+          "coverage": {
+            "before": {
+              "covered": 3,
+              "total": 3
+            },
+            "after": {
+              "covered": 4,
+              "total": 4
+            },
+            "level": "full"
+          }
+        },
+        "warmMs": 23.712167000005138,
+        "distinct": 1,
+        "runs": 20
+      },
+      "equal": true
+    },
+    {
+      "group": "B tasks (pair)",
+      "name": "t12-browse-genre-filter BrowsePage: _r2 start -> reference",
+      "runsPerCall": null,
+      "vm": {
+        "result": {
+          "layer": "isolated",
+          "outcome": "same-behaviour",
+          "runAs": "function",
+          "coverage": {
+            "before": {
+              "covered": 3,
+              "total": 3
+            },
+            "after": {
+              "covered": 4,
+              "total": 6
+            },
+            "level": "partial"
+          }
+        },
+        "warmMs": 65.25112499999523,
+        "distinct": 1,
+        "runs": 20
+      },
+      "quickjs": {
+        "result": {
+          "layer": "isolated",
+          "outcome": "same-behaviour",
+          "runAs": "function",
+          "coverage": {
+            "before": {
+              "covered": 3,
+              "total": 3
+            },
+            "after": {
+              "covered": 4,
+              "total": 6
+            },
+            "level": "partial"
+          }
+        },
+        "warmMs": 26.254583999994793,
+        "distinct": 1,
+        "runs": 20
+      },
+      "equal": true
+    },
+    {
+      "group": "B tasks (unit)",
+      "name": "service findBook",
+      "runsPerCall": 4,
+      "vm": {
+        "result": {
+          "runs": [
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [],
+              "notFaked": []
+            },
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [],
+              "notFaked": []
+            }
+          ]
+        },
+        "warmMs": 55.81350000000384,
+        "distinct": 1,
+        "runs": 20
+      },
+      "quickjs": {
+        "result": {
+          "runs": [
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [],
+              "notFaked": []
+            },
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [],
+              "notFaked": []
+            }
+          ]
+        },
+        "warmMs": 18.406999999999243,
+        "distinct": 1,
+        "runs": 20
+      },
+      "equal": true
+    },
+    {
+      "group": "B tasks (unit)",
+      "name": "service listBooks",
+      "runsPerCall": 2,
+      "vm": {
+        "result": {
+          "runs": [
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [],
+              "notFaked": []
+            }
+          ]
+        },
+        "warmMs": 50.66108299999905,
+        "distinct": 1,
+        "runs": 20
+      },
+      "quickjs": {
+        "result": {
+          "runs": [
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [],
+              "notFaked": []
+            }
+          ]
+        },
+        "warmMs": 11.178082999998878,
+        "distinct": 1,
+        "runs": 20
+      },
+      "equal": true
+    },
+    {
+      "group": "B tasks (unit)",
+      "name": "service pickedBooks",
+      "runsPerCall": 4,
+      "vm": {
+        "result": {
+          "runs": [
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [],
+              "notFaked": []
+            },
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [],
+              "notFaked": []
+            }
+          ]
+        },
+        "warmMs": 52.565207999999984,
+        "distinct": 1,
+        "runs": 20
+      },
+      "quickjs": {
+        "result": {
+          "runs": [
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [],
+              "notFaked": []
+            },
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [],
+              "notFaked": []
+            }
+          ]
+        },
+        "warmMs": 18.037917000008747,
+        "distinct": 1,
+        "runs": 20
+      },
+      "equal": true
+    },
+    {
+      "group": "B tasks (unit)",
+      "name": "store listPicks (shared)",
+      "runsPerCall": 6,
+      "vm": {
+        "result": {
+          "runs": [
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [
+                {
+                  "effect": "storage",
+                  "op": "storage.getItem",
+                  "key": "picks",
+                  "args": [],
+                  "sentinels": []
+                }
+              ],
+              "notFaked": []
+            },
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [
+                {
+                  "effect": "storage",
+                  "op": "storage.getItem",
+                  "key": "picks",
+                  "args": [],
+                  "sentinels": []
+                }
+              ],
+              "notFaked": []
+            },
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [
+                {
+                  "effect": "storage",
+                  "op": "storage.getItem",
+                  "key": "picks",
+                  "args": [],
+                  "sentinels": []
+                }
+              ],
+              "notFaked": []
+            }
+          ]
+        },
+        "warmMs": 47.844834000003175,
+        "distinct": 1,
+        "runs": 20
+      },
+      "quickjs": {
+        "result": {
+          "runs": [
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [
+                {
+                  "effect": "storage",
+                  "op": "storage.getItem",
+                  "key": "picks",
+                  "args": [],
+                  "sentinels": []
+                }
+              ],
+              "notFaked": []
+            },
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [
+                {
+                  "effect": "storage",
+                  "op": "storage.getItem",
+                  "key": "picks",
+                  "args": [],
+                  "sentinels": []
+                }
+              ],
+              "notFaked": []
+            },
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [
+                {
+                  "effect": "storage",
+                  "op": "storage.getItem",
+                  "key": "picks",
+                  "args": [],
+                  "sentinels": []
+                }
+              ],
+              "notFaked": []
+            }
+          ]
+        },
+        "warmMs": 11.813666999994894,
+        "distinct": 1,
+        "runs": 20
+      },
+      "equal": true
+    },
+    {
+      "group": "B tasks (unit)",
+      "name": "store listPicks (t06 reference)",
+      "runsPerCall": 6,
+      "vm": {
+        "result": {
+          "runs": [
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [
+                {
+                  "effect": "storage",
+                  "op": "storage.getItem",
+                  "key": "picks",
+                  "args": [],
+                  "sentinels": []
+                }
+              ],
+              "notFaked": []
+            },
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [
+                {
+                  "effect": "storage",
+                  "op": "storage.getItem",
+                  "key": "picks",
+                  "args": [],
+                  "sentinels": []
+                }
+              ],
+              "notFaked": []
+            },
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [
+                {
+                  "effect": "storage",
+                  "op": "storage.getItem",
+                  "key": "picks",
+                  "args": [],
+                  "sentinels": []
+                }
+              ],
+              "notFaked": []
+            }
+          ]
+        },
+        "warmMs": 41.74712499999441,
+        "distinct": 1,
+        "runs": 20
+      },
+      "quickjs": {
+        "result": {
+          "runs": [
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [
+                {
+                  "effect": "storage",
+                  "op": "storage.getItem",
+                  "key": "picks",
+                  "args": [],
+                  "sentinels": []
+                }
+              ],
+              "notFaked": []
+            },
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [
+                {
+                  "effect": "storage",
+                  "op": "storage.getItem",
+                  "key": "picks",
+                  "args": [],
+                  "sentinels": []
+                }
+              ],
+              "notFaked": []
+            },
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [
+                {
+                  "effect": "storage",
+                  "op": "storage.getItem",
+                  "key": "picks",
+                  "args": [],
+                  "sentinels": []
+                }
+              ],
+              "notFaked": []
+            }
+          ]
+        },
+        "warmMs": 11.722334000005503,
+        "distinct": 1,
+        "runs": 20
+      },
+      "equal": true
+    },
+    {
+      "group": "B tasks (unit)",
+      "name": "store addPick (shared)",
+      "runsPerCall": 6,
+      "vm": {
+        "result": {
+          "runs": [
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [
+                {
+                  "effect": "storage",
+                  "op": "storage.getItem",
+                  "key": "picks",
+                  "args": [],
+                  "sentinels": []
+                },
+                {
+                  "effect": "storage",
+                  "op": "storage.setItem",
+                  "key": "picks",
+                  "args": [
+                    "string"
+                  ],
+                  "sentinels": []
+                }
+              ],
+              "notFaked": []
+            },
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [
+                {
+                  "effect": "storage",
+                  "op": "storage.getItem",
+                  "key": "picks",
+                  "args": [],
+                  "sentinels": []
+                },
+                {
+                  "effect": "storage",
+                  "op": "storage.setItem",
+                  "key": "picks",
+                  "args": [
+                    "string"
+                  ],
+                  "sentinels": []
+                }
+              ],
+              "notFaked": []
+            },
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [
+                {
+                  "effect": "storage",
+                  "op": "storage.getItem",
+                  "key": "picks",
+                  "args": [],
+                  "sentinels": []
+                },
+                {
+                  "effect": "storage",
+                  "op": "storage.setItem",
+                  "key": "picks",
+                  "args": [
+                    "string"
+                  ],
+                  "sentinels": []
+                }
+              ],
+              "notFaked": []
+            }
+          ]
+        },
+        "warmMs": 47.62729200000467,
+        "distinct": 1,
+        "runs": 20
+      },
+      "quickjs": {
+        "result": {
+          "runs": [
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [
+                {
+                  "effect": "storage",
+                  "op": "storage.getItem",
+                  "key": "picks",
+                  "args": [],
+                  "sentinels": []
+                },
+                {
+                  "effect": "storage",
+                  "op": "storage.setItem",
+                  "key": "picks",
+                  "args": [
+                    "string"
+                  ],
+                  "sentinels": []
+                }
+              ],
+              "notFaked": []
+            },
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [
+                {
+                  "effect": "storage",
+                  "op": "storage.getItem",
+                  "key": "picks",
+                  "args": [],
+                  "sentinels": []
+                },
+                {
+                  "effect": "storage",
+                  "op": "storage.setItem",
+                  "key": "picks",
+                  "args": [
+                    "string"
+                  ],
+                  "sentinels": []
+                }
+              ],
+              "notFaked": []
+            },
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [
+                {
+                  "effect": "storage",
+                  "op": "storage.getItem",
+                  "key": "picks",
+                  "args": [],
+                  "sentinels": []
+                },
+                {
+                  "effect": "storage",
+                  "op": "storage.setItem",
+                  "key": "picks",
+                  "args": [
+                    "string"
+                  ],
+                  "sentinels": []
+                }
+              ],
+              "notFaked": []
+            }
+          ]
+        },
+        "warmMs": 11.940583999996306,
+        "distinct": 1,
+        "runs": 20
+      },
+      "equal": true
+    },
+    {
+      "group": "B tasks (unit)",
+      "name": "store addPick (t06 reference)",
+      "runsPerCall": 6,
+      "vm": {
+        "result": {
+          "runs": [
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [
+                {
+                  "effect": "storage",
+                  "op": "storage.getItem",
+                  "key": "picks",
+                  "args": [],
+                  "sentinels": []
+                },
+                {
+                  "effect": "storage",
+                  "op": "storage.setItem",
+                  "key": "picks",
+                  "args": [
+                    "string"
+                  ],
+                  "sentinels": []
+                }
+              ],
+              "notFaked": []
+            },
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [
+                {
+                  "effect": "storage",
+                  "op": "storage.getItem",
+                  "key": "picks",
+                  "args": [],
+                  "sentinels": []
+                },
+                {
+                  "effect": "storage",
+                  "op": "storage.setItem",
+                  "key": "picks",
+                  "args": [
+                    "string"
+                  ],
+                  "sentinels": []
+                }
+              ],
+              "notFaked": []
+            },
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [
+                {
+                  "effect": "storage",
+                  "op": "storage.getItem",
+                  "key": "picks",
+                  "args": [],
+                  "sentinels": []
+                },
+                {
+                  "effect": "storage",
+                  "op": "storage.setItem",
+                  "key": "picks",
+                  "args": [
+                    "string"
+                  ],
+                  "sentinels": []
+                }
+              ],
+              "notFaked": []
+            }
+          ]
+        },
+        "warmMs": 47.58470799999486,
+        "distinct": 1,
+        "runs": 20
+      },
+      "quickjs": {
+        "result": {
+          "runs": [
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [
+                {
+                  "effect": "storage",
+                  "op": "storage.getItem",
+                  "key": "picks",
+                  "args": [],
+                  "sentinels": []
+                },
+                {
+                  "effect": "storage",
+                  "op": "storage.setItem",
+                  "key": "picks",
+                  "args": [
+                    "string"
+                  ],
+                  "sentinels": []
+                }
+              ],
+              "notFaked": []
+            },
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [
+                {
+                  "effect": "storage",
+                  "op": "storage.getItem",
+                  "key": "picks",
+                  "args": [],
+                  "sentinels": []
+                },
+                {
+                  "effect": "storage",
+                  "op": "storage.setItem",
+                  "key": "picks",
+                  "args": [
+                    "string"
+                  ],
+                  "sentinels": []
+                }
+              ],
+              "notFaked": []
+            },
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [
+                {
+                  "effect": "storage",
+                  "op": "storage.getItem",
+                  "key": "picks",
+                  "args": [],
+                  "sentinels": []
+                },
+                {
+                  "effect": "storage",
+                  "op": "storage.setItem",
+                  "key": "picks",
+                  "args": [
+                    "string"
+                  ],
+                  "sentinels": []
+                }
+              ],
+              "notFaked": []
+            }
+          ]
+        },
+        "warmMs": 14.72575000001234,
+        "distinct": 1,
+        "runs": 20
+      },
+      "equal": true
+    },
+    {
+      "group": "B tasks (unit)",
+      "name": "store removePick (shared)",
+      "runsPerCall": 6,
+      "vm": {
+        "result": {
+          "runs": [
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [
+                {
+                  "effect": "storage",
+                  "op": "storage.getItem",
+                  "key": "picks",
+                  "args": [],
+                  "sentinels": []
+                },
+                {
+                  "effect": "storage",
+                  "op": "storage.setItem",
+                  "key": "picks",
+                  "args": [
+                    "string"
+                  ],
+                  "sentinels": []
+                }
+              ],
+              "notFaked": []
+            },
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [
+                {
+                  "effect": "storage",
+                  "op": "storage.getItem",
+                  "key": "picks",
+                  "args": [],
+                  "sentinels": []
+                },
+                {
+                  "effect": "storage",
+                  "op": "storage.setItem",
+                  "key": "picks",
+                  "args": [
+                    "string"
+                  ],
+                  "sentinels": []
+                }
+              ],
+              "notFaked": []
+            },
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [
+                {
+                  "effect": "storage",
+                  "op": "storage.getItem",
+                  "key": "picks",
+                  "args": [],
+                  "sentinels": []
+                },
+                {
+                  "effect": "storage",
+                  "op": "storage.setItem",
+                  "key": "picks",
+                  "args": [
+                    "string"
+                  ],
+                  "sentinels": []
+                }
+              ],
+              "notFaked": []
+            }
+          ]
+        },
+        "warmMs": 44.707709000009345,
+        "distinct": 1,
+        "runs": 20
+      },
+      "quickjs": {
+        "result": {
+          "runs": [
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [
+                {
+                  "effect": "storage",
+                  "op": "storage.getItem",
+                  "key": "picks",
+                  "args": [],
+                  "sentinels": []
+                },
+                {
+                  "effect": "storage",
+                  "op": "storage.setItem",
+                  "key": "picks",
+                  "args": [
+                    "string"
+                  ],
+                  "sentinels": []
+                }
+              ],
+              "notFaked": []
+            },
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [
+                {
+                  "effect": "storage",
+                  "op": "storage.getItem",
+                  "key": "picks",
+                  "args": [],
+                  "sentinels": []
+                },
+                {
+                  "effect": "storage",
+                  "op": "storage.setItem",
+                  "key": "picks",
+                  "args": [
+                    "string"
+                  ],
+                  "sentinels": []
+                }
+              ],
+              "notFaked": []
+            },
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [
+                {
+                  "effect": "storage",
+                  "op": "storage.getItem",
+                  "key": "picks",
+                  "args": [],
+                  "sentinels": []
+                },
+                {
+                  "effect": "storage",
+                  "op": "storage.setItem",
+                  "key": "picks",
+                  "args": [
+                    "string"
+                  ],
+                  "sentinels": []
+                }
+              ],
+              "notFaked": []
+            }
+          ]
+        },
+        "warmMs": 11.905084000012721,
+        "distinct": 1,
+        "runs": 20
+      },
+      "equal": true
+    },
+    {
+      "group": "B tasks (unit)",
+      "name": "store removePick (t06 reference)",
+      "runsPerCall": 6,
+      "vm": {
+        "result": {
+          "runs": [
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [
+                {
+                  "effect": "storage",
+                  "op": "storage.getItem",
+                  "key": "picks",
+                  "args": [],
+                  "sentinels": []
+                },
+                {
+                  "effect": "storage",
+                  "op": "storage.setItem",
+                  "key": "picks",
+                  "args": [
+                    "string"
+                  ],
+                  "sentinels": []
+                }
+              ],
+              "notFaked": []
+            },
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [
+                {
+                  "effect": "storage",
+                  "op": "storage.getItem",
+                  "key": "picks",
+                  "args": [],
+                  "sentinels": []
+                },
+                {
+                  "effect": "storage",
+                  "op": "storage.setItem",
+                  "key": "picks",
+                  "args": [
+                    "string"
+                  ],
+                  "sentinels": []
+                }
+              ],
+              "notFaked": []
+            },
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [
+                {
+                  "effect": "storage",
+                  "op": "storage.getItem",
+                  "key": "picks",
+                  "args": [],
+                  "sentinels": []
+                },
+                {
+                  "effect": "storage",
+                  "op": "storage.setItem",
+                  "key": "picks",
+                  "args": [
+                    "string"
+                  ],
+                  "sentinels": []
+                }
+              ],
+              "notFaked": []
+            }
+          ]
+        },
+        "warmMs": 47.11504199999035,
+        "distinct": 1,
+        "runs": 20
+      },
+      "quickjs": {
+        "result": {
+          "runs": [
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [
+                {
+                  "effect": "storage",
+                  "op": "storage.getItem",
+                  "key": "picks",
+                  "args": [],
+                  "sentinels": []
+                },
+                {
+                  "effect": "storage",
+                  "op": "storage.setItem",
+                  "key": "picks",
+                  "args": [
+                    "string"
+                  ],
+                  "sentinels": []
+                }
+              ],
+              "notFaked": []
+            },
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [
+                {
+                  "effect": "storage",
+                  "op": "storage.getItem",
+                  "key": "picks",
+                  "args": [],
+                  "sentinels": []
+                },
+                {
+                  "effect": "storage",
+                  "op": "storage.setItem",
+                  "key": "picks",
+                  "args": [
+                    "string"
+                  ],
+                  "sentinels": []
+                }
+              ],
+              "notFaked": []
+            },
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [
+                {
+                  "effect": "storage",
+                  "op": "storage.getItem",
+                  "key": "picks",
+                  "args": [],
+                  "sentinels": []
+                },
+                {
+                  "effect": "storage",
+                  "op": "storage.setItem",
+                  "key": "picks",
+                  "args": [
+                    "string"
+                  ],
+                  "sentinels": []
+                }
+              ],
+              "notFaked": []
+            }
+          ]
+        },
+        "warmMs": 11.598666000005323,
+        "distinct": 1,
+        "runs": 20
+      },
+      "equal": true
+    },
+    {
+      "group": "B tasks (unit)",
+      "name": "t01-book-by-author reference BookPage",
+      "runsPerCall": 6,
+      "vm": {
+        "result": {
+          "runs": [
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [],
+              "notFaked": []
+            },
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [],
+              "notFaked": []
+            },
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [],
+              "notFaked": []
+            }
+          ]
+        },
+        "warmMs": 56.0788329999923,
+        "distinct": 1,
+        "runs": 20
+      },
+      "quickjs": {
+        "result": {
+          "runs": [
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [],
+              "notFaked": []
+            },
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [],
+              "notFaked": []
+            },
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [],
+              "notFaked": []
+            }
+          ]
+        },
+        "warmMs": 26.05174999999872,
+        "distinct": 1,
+        "runs": 20
+      },
+      "equal": true
+    },
+    {
+      "group": "B tasks (unit)",
+      "name": "t02-book-page-count reference BookPage",
+      "runsPerCall": 6,
+      "vm": {
+        "result": {
+          "runs": [
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [],
+              "notFaked": []
+            },
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [],
+              "notFaked": []
+            },
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [],
+              "notFaked": []
+            }
+          ]
+        },
+        "warmMs": 57.10074999999779,
+        "distinct": 1,
+        "runs": 20
+      },
+      "quickjs": {
+        "result": {
+          "runs": [
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [],
+              "notFaked": []
+            },
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [],
+              "notFaked": []
+            },
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [],
+              "notFaked": []
+            }
+          ]
+        },
+        "warmMs": 25.23079200000211,
+        "distinct": 1,
+        "runs": 20
+      },
+      "equal": true
+    },
+    {
+      "group": "B tasks (unit)",
+      "name": "t03-book-availability reference BookPage",
+      "runsPerCall": 6,
+      "vm": {
+        "result": {
+          "runs": [
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [],
+              "notFaked": []
+            },
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [],
+              "notFaked": []
+            },
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [],
+              "notFaked": []
+            }
+          ]
+        },
+        "warmMs": 60.46037500000966,
+        "distinct": 1,
+        "runs": 20
+      },
+      "quickjs": {
+        "result": {
+          "runs": [
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [],
+              "notFaked": []
+            },
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [],
+              "notFaked": []
+            },
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [],
+              "notFaked": []
+            }
+          ]
+        },
+        "warmMs": 24.86562500000582,
+        "distinct": 1,
+        "runs": 20
+      },
+      "equal": true
+    },
+    {
+      "group": "B tasks (unit)",
+      "name": "t04-book-not-found reference BookPage",
+      "runsPerCall": 6,
+      "vm": {
+        "result": {
+          "runs": [
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [],
+              "notFaked": []
+            },
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [],
+              "notFaked": []
+            },
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [],
+              "notFaked": []
+            }
+          ]
+        },
+        "warmMs": 55.518708000003244,
+        "distinct": 1,
+        "runs": 20
+      },
+      "quickjs": {
+        "result": {
+          "runs": [
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [],
+              "notFaked": []
+            },
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [],
+              "notFaked": []
+            },
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [],
+              "notFaked": []
+            }
+          ]
+        },
+        "warmMs": 26.2554999999993,
+        "distinct": 1,
+        "runs": 20
+      },
+      "equal": true
+    },
+    {
+      "group": "B tasks (unit)",
+      "name": "t05-book-add-to-picks reference BookPage",
+      "runsPerCall": 6,
+      "vm": {
+        "result": {
+          "runs": [
+            {
+              "value": null,
+              "thrown": "NotFakedError",
+              "effects": [],
+              "notFaked": [
+                "import @radix-ui/react-slot"
+              ]
+            },
+            {
+              "value": null,
+              "thrown": "NotFakedError",
+              "effects": [],
+              "notFaked": [
+                "import @radix-ui/react-slot"
+              ]
+            },
+            {
+              "value": null,
+              "thrown": "NotFakedError",
+              "effects": [],
+              "notFaked": [
+                "import @radix-ui/react-slot"
+              ]
+            }
+          ]
+        },
+        "warmMs": 49.388999999995576,
+        "distinct": 1,
+        "runs": 20
+      },
+      "quickjs": {
+        "result": {
+          "runs": [
+            {
+              "value": null,
+              "thrown": "NotFakedError",
+              "effects": [],
+              "notFaked": [
+                "import @radix-ui/react-slot"
+              ]
+            },
+            {
+              "value": null,
+              "thrown": "NotFakedError",
+              "effects": [],
+              "notFaked": [
+                "import @radix-ui/react-slot"
+              ]
+            },
+            {
+              "value": null,
+              "thrown": "NotFakedError",
+              "effects": [],
+              "notFaked": [
+                "import @radix-ui/react-slot"
+              ]
+            }
+          ]
+        },
+        "warmMs": 28.61791600000288,
+        "distinct": 1,
+        "runs": 20
+      },
+      "equal": true
+    },
+    {
+      "group": "B tasks (unit)",
+      "name": "t07-picks-page-list reference PicksPage",
+      "runsPerCall": 2,
+      "vm": {
+        "result": {
+          "runs": [
+            {
+              "value": null,
+              "thrown": "NotFakedError",
+              "effects": [],
+              "notFaked": [
+                "import @radix-ui/react-slot"
+              ]
+            }
+          ]
+        },
+        "warmMs": 55.55470800001058,
+        "distinct": 1,
+        "runs": 20
+      },
+      "quickjs": {
+        "result": {
+          "runs": [
+            {
+              "value": null,
+              "thrown": "NotFakedError",
+              "effects": [],
+              "notFaked": [
+                "import @radix-ui/react-slot"
+              ]
+            }
+          ]
+        },
+        "warmMs": 13.563959000006435,
+        "distinct": 1,
+        "runs": 20
+      },
+      "equal": true
+    },
+    {
+      "group": "B tasks (unit)",
+      "name": "t08-picks-page-empty reference PicksPage",
+      "runsPerCall": 2,
+      "vm": {
+        "result": {
+          "runs": [
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [
+                {
+                  "effect": "storage",
+                  "op": "storage.getItem",
+                  "key": "picks",
+                  "args": [],
+                  "sentinels": []
+                }
+              ],
+              "notFaked": []
+            }
+          ]
+        },
+        "warmMs": 48.02791600000637,
+        "distinct": 1,
+        "runs": 20
+      },
+      "quickjs": {
+        "result": {
+          "runs": [
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [
+                {
+                  "effect": "storage",
+                  "op": "storage.getItem",
+                  "key": "picks",
+                  "args": [],
+                  "sentinels": []
+                }
+              ],
+              "notFaked": []
+            }
+          ]
+        },
+        "warmMs": 6.203249999991385,
+        "distinct": 1,
+        "runs": 20
+      },
+      "equal": true
+    },
+    {
+      "group": "B tasks (unit)",
+      "name": "t09-browse-heading-availability reference BrowsePage",
+      "runsPerCall": 2,
+      "vm": {
+        "result": {
+          "runs": [
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [],
+              "notFaked": []
+            }
+          ]
+        },
+        "warmMs": 46.75233400000434,
+        "distinct": 1,
+        "runs": 20
+      },
+      "quickjs": {
+        "result": {
+          "runs": [
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [],
+              "notFaked": []
+            }
+          ]
+        },
+        "warmMs": 13.79383300000336,
+        "distinct": 1,
+        "runs": 20
+      },
+      "equal": true
+    },
+    {
+      "group": "B tasks (unit)",
+      "name": "t10-browse-paging reference BrowsePage",
+      "runsPerCall": 2,
+      "vm": {
+        "result": {
+          "runs": [
+            {
+              "value": null,
+              "thrown": "NotFakedError",
+              "effects": [],
+              "notFaked": [
+                "import @radix-ui/react-slot"
+              ]
+            }
+          ]
+        },
+        "warmMs": 49.21462499999325,
+        "distinct": 1,
+        "runs": 20
+      },
+      "quickjs": {
+        "result": {
+          "runs": [
+            {
+              "value": null,
+              "thrown": "NotFakedError",
+              "effects": [],
+              "notFaked": [
+                "import @radix-ui/react-slot"
+              ]
+            }
+          ]
+        },
+        "warmMs": 19.42966599999636,
+        "distinct": 1,
+        "runs": 20
+      },
+      "equal": true
+    },
+    {
+      "group": "B tasks (unit)",
+      "name": "t11-browse-sort-title reference BrowsePage",
+      "runsPerCall": 2,
+      "vm": {
+        "result": {
+          "runs": [
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [],
+              "notFaked": []
+            }
+          ]
+        },
+        "warmMs": 56.695667000007234,
+        "distinct": 1,
+        "runs": 20
+      },
+      "quickjs": {
+        "result": {
+          "runs": [
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [],
+              "notFaked": []
+            }
+          ]
+        },
+        "warmMs": 13.041708999997354,
+        "distinct": 1,
+        "runs": 20
+      },
+      "equal": true
+    },
+    {
+      "group": "B tasks (unit)",
+      "name": "t12-browse-genre-filter reference BrowsePage",
+      "runsPerCall": 2,
+      "vm": {
+        "result": {
+          "runs": [
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [],
+              "notFaked": []
+            }
+          ]
+        },
+        "warmMs": 55.934792000000016,
+        "distinct": 1,
+        "runs": 20
+      },
+      "quickjs": {
+        "result": {
+          "runs": [
+            {
+              "value": null,
+              "thrown": null,
+              "effects": [],
+              "notFaked": []
+            }
+          ]
+        },
+        "warmMs": 13.563791000007768,
+        "distinct": 1,
+        "runs": 20
+      },
+      "equal": true
+    }
+  ],
+  "escapes": [
+    {
+      "id": "process",
+      "what": "process.mainModule.require",
+      "expect": "notFaked",
+      "vm": {
+        "got": "notFaked",
+        "reason": null,
+        "notFaked": [
+          "process"
+        ],
+        "hostClean": true,
+        "afterOk": true,
+        "valueOk": true,
+        "blocked": true,
+        "ms": 54
+      },
+      "quickjs": {
+        "got": "notFaked",
+        "reason": null,
+        "notFaked": [
+          "process"
+        ],
+        "hostClean": true,
+        "afterOk": true,
+        "valueOk": true,
+        "blocked": true,
+        "ms": 5
+      }
+    },
+    {
+      "id": "require",
+      "what": "require('node:fs') inside the module",
+      "expect": "notFaked",
+      "vm": {
+        "got": "notFaked",
+        "reason": null,
+        "notFaked": [
+          "import node:fs"
+        ],
+        "hostClean": true,
+        "afterOk": true,
+        "valueOk": true,
+        "blocked": true,
+        "ms": 52
+      },
+      "quickjs": {
+        "got": "notFaked",
+        "reason": null,
+        "notFaked": [
+          "import node:fs"
+        ],
+        "hostClean": true,
+        "afterOk": true,
+        "valueOk": true,
+        "blocked": true,
+        "ms": 5
+      }
+    },
+    {
+      "id": "import",
+      "what": "import fs from 'node:fs' and dynamic import('node:child_process')",
+      "expect": "notFaked",
+      "vm": {
+        "got": "notFaked",
+        "reason": null,
+        "notFaked": [
+          "import node:fs"
+        ],
+        "hostClean": true,
+        "afterOk": true,
+        "valueOk": true,
+        "blocked": true,
+        "ms": 49
+      },
+      "quickjs": {
+        "got": "notFaked",
+        "reason": null,
+        "notFaked": [
+          "import node:fs"
+        ],
+        "hostClean": true,
+        "afterOk": true,
+        "valueOk": true,
+        "blocked": true,
+        "ms": 5
+      }
+    },
+    {
+      "id": "globalThis.constructor",
+      "what": "globalThis.constructor.constructor('return process')()",
+      "expect": "thrown:EvalError",
+      "vm": {
+        "got": "thrown:EvalError",
+        "reason": null,
+        "notFaked": [],
+        "hostClean": true,
+        "afterOk": true,
+        "valueOk": true,
+        "blocked": true,
+        "ms": 43
+      },
+      "quickjs": {
+        "got": "thrown:EvalError",
+        "reason": null,
+        "notFaked": [],
+        "hostClean": true,
+        "afterOk": true,
+        "valueOk": true,
+        "blocked": true,
+        "ms": 5
+      }
+    },
+    {
+      "id": "Function",
+      "what": "new Function / eval / async-function constructor",
+      "expect": "thrown:EvalError",
+      "vm": {
+        "got": "thrown:EvalError",
+        "reason": null,
+        "notFaked": [],
+        "hostClean": true,
+        "afterOk": true,
+        "valueOk": true,
+        "blocked": true,
+        "ms": 47
+      },
+      "quickjs": {
+        "got": "thrown:EvalError",
+        "reason": null,
+        "notFaked": [],
+        "hostClean": true,
+        "afterOk": true,
+        "valueOk": true,
+        "blocked": true,
+        "ms": 5
+      }
+    },
+    {
+      "id": "fake.constructor",
+      "what": "a fake's own constructor: localStorage.getItem.constructor('return process')()",
+      "expect": "thrown:EvalError",
+      "vm": {
+        "got": "thrown:EvalError",
+        "reason": null,
+        "notFaked": [],
+        "hostClean": true,
+        "afterOk": true,
+        "valueOk": true,
+        "blocked": true,
+        "ms": 48
+      },
+      "quickjs": {
+        "got": "thrown:EvalError",
+        "reason": null,
+        "notFaked": [],
+        "hostClean": true,
+        "afterOk": true,
+        "valueOk": true,
+        "blocked": true,
+        "ms": 4
+      }
+    },
+    {
+      "id": "fake-error.constructor",
+      "what": "the error a refused access throws, then its constructor chain",
+      "expect": "notFaked",
+      "vm": {
+        "got": "notFaked",
+        "reason": null,
+        "notFaked": [
+          "WebSocket"
+        ],
+        "hostClean": true,
+        "afterOk": true,
+        "valueOk": true,
+        "blocked": true,
+        "ms": 46
+      },
+      "quickjs": {
+        "got": "notFaked",
+        "reason": null,
+        "notFaked": [
+          "WebSocket"
+        ],
+        "hostClean": true,
+        "afterOk": true,
+        "valueOk": true,
+        "blocked": true,
+        "ms": 5
+      }
+    },
+    {
+      "id": "prepareStackTrace",
+      "what": "Error.prepareStackTrace call-site objects (a V8 vm escape route)",
+      "expect": "thrown:EvalError",
+      "vm": {
+        "got": "thrown:EvalError",
+        "reason": null,
+        "notFaked": [],
+        "hostClean": true,
+        "afterOk": true,
+        "valueOk": true,
+        "blocked": true,
+        "ms": 42
+      },
+      "quickjs": {
+        "got": "thrown:EvalError",
+        "reason": null,
+        "notFaked": [],
+        "hostClean": true,
+        "afterOk": true,
+        "valueOk": true,
+        "blocked": true,
+        "ms": 5
+      }
+    },
+    {
+      "id": "loop",
+      "what": "an infinite loop",
+      "expect": "error",
+      "vm": {
+        "got": "error",
+        "reason": "the run was killed at the 3000 ms time limit",
+        "notFaked": [],
+        "hostClean": true,
+        "afterOk": true,
+        "valueOk": true,
+        "blocked": true,
+        "ms": 3005
+      },
+      "quickjs": {
+        "got": "error",
+        "reason": "the run was killed at the 3000 ms time limit",
+        "notFaked": [],
+        "hostClean": true,
+        "afterOk": true,
+        "valueOk": true,
+        "blocked": true,
+        "ms": 3002
+      }
+    },
+    {
+      "id": "memory",
+      "what": "a memory blow-up (arrays until the limit)",
+      "expect": "error",
+      "vm": {
+        "got": "error",
+        "reason": "the sandbox exited with code null: <--- Last few GCs --->",
+        "notFaked": [],
+        "hostClean": true,
+        "afterOk": true,
+        "valueOk": true,
+        "blocked": true,
+        "ms": 141
+      },
+      "quickjs": {
+        "got": "error",
+        "reason": "the sandbox exited with code 1: out of memory (QuickJS memory limit)",
+        "notFaked": [],
+        "hostClean": true,
+        "afterOk": true,
+        "valueOk": true,
+        "blocked": true,
+        "ms": 1584
+      }
+    },
+    {
+      "id": "stack",
+      "what": "unbounded recursion",
+      "expect": "thrown:RangeError",
+      "vm": {
+        "got": "thrown:RangeError",
+        "reason": null,
+        "notFaked": [],
+        "hostClean": true,
+        "afterOk": true,
+        "valueOk": true,
+        "blocked": true,
+        "ms": 56
+      },
+      "quickjs": {
+        "got": "thrown:RangeError",
+        "reason": null,
+        "notFaked": [],
+        "hostClean": true,
+        "afterOk": true,
+        "valueOk": true,
+        "blocked": true,
+        "ms": 8
+      }
+    },
+    {
+      "id": "pollution",
+      "what": "prototype pollution (Object.prototype, Array.prototype.map, JSON.parse), then a clean run",
+      "expect": "thrown:none",
+      "vm": {
+        "got": "thrown:none",
+        "reason": null,
+        "notFaked": [],
+        "hostClean": true,
+        "afterOk": true,
+        "valueOk": true,
+        "blocked": true,
+        "ms": 45
+      },
+      "quickjs": {
+        "got": "thrown:none",
+        "reason": null,
+        "notFaked": [],
+        "hostClean": true,
+        "afterOk": true,
+        "valueOk": true,
+        "blocked": true,
+        "ms": 5
+      }
+    },
+    {
+      "id": "timers",
+      "what": "the host clock and timers (Date, setTimeout, Math.random) are fixed fakes",
+      "expect": "thrown:none",
+      "vm": {
+        "got": "thrown:none",
+        "reason": null,
+        "notFaked": [],
+        "hostClean": true,
+        "afterOk": true,
+        "valueOk": true,
+        "blocked": true,
+        "ms": 50
+      },
+      "quickjs": {
+        "got": "thrown:none",
+        "reason": null,
+        "notFaked": [],
+        "hostClean": true,
+        "afterOk": true,
+        "valueOk": true,
+        "blocked": true,
+        "ms": 5
+      }
+    }
+  ],
+  "diffs": [],
+  "table": [
+    "| group | cases | results equal | vm warm (median per call) | quickjs warm | speed-up | deterministic (vm / quickjs, 20 runs each) |",
+    "| --- | --- | --- | --- | --- | --- | --- |",
+    "| A tests | 18 | 18/18 | 49 ms | 39 ms | 1.3x | 18/18 / 18/18 |",
+    "| B tasks (pair) | 14 | 14/14 | 66 ms | 38 ms | 1.7x | 14/14 / 14/14 |",
+    "| B tasks (unit) | 20 | 20/20 | 51 ms | 14 ms | 3.7x | 20/20 / 20/20 |"
+  ],
+  "perCase": [
+    "| group | case | equal | vm ms | quickjs ms | vm outcome | quickjs outcome |",
+    "| --- | --- | --- | --- | --- | --- | --- |",
+    "| A tests | equal pair, relative import | yes | 48 | 45 | same-behaviour | same-behaviour |",
+    "| A tests | POST vs PUT | yes | 50 | 44 | changed | changed |",
+    "| A tests | a + b vs a - b | yes | 51 | 39 | changed | changed |",
+    "| A tests | unfaked import node:fs | yes | 50 | 39 | cant-tell | cant-tell |",
+    "| A tests | unfaked WebSocket | yes | 49 | 41 | cant-tell | cant-tell |",
+    "| A tests | unfaked process | yes | 50 | 38 | cant-tell | cant-tell |",
+    "| A tests | hanging unit (800 ms limit) | yes | 804 | 802 | cant-tell | cant-tell |",
+    "| A tests | fixed time and random | yes | 46 | 4.9 | same-behaviour | same-behaviour |",
+    "| A tests | planted dropped-effect | yes | 49 | 44 | changed | changed |",
+    "| A tests | setItem vs removeItem | yes | 54 | 39 | changed | changed |",
+    "| A tests | hook equal | yes | 54 | 40 | same-behaviour | same-behaviour |",
+    "| A tests | hook state step 1 vs 2 | yes | 49 | 45 | changed | changed |",
+    "| A tests | hook dropped effect | yes | 48 | 42 | changed | changed |",
+    "| A tests | handler equal | yes | 44 | 17 | same-behaviour | same-behaviour |",
+    "| A tests | handler dropped preventDefault | yes | 42 | 18 | changed | changed |",
+    "| A tests | coverage full | yes | 43 | 38 | same-behaviour | same-behaviour |",
+    "| A tests | coverage low (switch) | yes | 51 | 38 | same-behaviour | same-behaviour |",
+    "| A tests | hook coverage per side | yes | 47 | 5.0 | same-behaviour | same-behaviour |",
+    "| B tasks (pair) | t01-book-by-author BookPage: _r2 start -> reference | yes | 73 | 87 | same-behaviour | same-behaviour |",
+    "| B tasks (pair) | t02-book-page-count BookPage: _r2 start -> reference | yes | 70 | 89 | same-behaviour | same-behaviour |",
+    "| B tasks (pair) | t03-book-availability BookPage: _r2 start -> reference | yes | 72 | 85 | same-behaviour | same-behaviour |",
+    "| B tasks (pair) | t04-book-not-found BookPage: _r2 start -> reference | yes | 71 | 90 | same-behaviour | same-behaviour |",
+    "| B tasks (pair) | t05-book-add-to-picks BookPage: _r2 start -> reference | yes | 72 | 86 | cant-tell | cant-tell |",
+    "| B tasks (pair) | t06-picks-store listPicks: shared store -> reference | yes | 47 | 5.4 | same-behaviour | same-behaviour |",
+    "| B tasks (pair) | t06-picks-store addPick: shared store -> reference | yes | 45 | 39 | same-behaviour | same-behaviour |",
+    "| B tasks (pair) | t06-picks-store removePick: shared store -> reference | yes | 52 | 38 | same-behaviour | same-behaviour |",
+    "| B tasks (pair) | t07-picks-page-list PicksPage: _r2 start -> reference | yes | 61 | 15 | cant-tell | cant-tell |",
+    "| B tasks (pair) | t08-picks-page-empty PicksPage: _r2 start -> reference | yes | 48 | 8.3 | changed | changed |",
+    "| B tasks (pair) | t09-browse-heading-availability BrowsePage: _r2 start -> reference | yes | 66 | 23 | same-behaviour | same-behaviour |",
+    "| B tasks (pair) | t10-browse-paging BrowsePage: _r2 start -> reference | yes | 61 | 24 | cant-tell | cant-tell |",
+    "| B tasks (pair) | t11-browse-sort-title BrowsePage: _r2 start -> reference | yes | 68 | 24 | same-behaviour | same-behaviour |",
+    "| B tasks (pair) | t12-browse-genre-filter BrowsePage: _r2 start -> reference | yes | 65 | 26 | same-behaviour | same-behaviour |",
+    "| B tasks (unit) | service findBook | yes | 56 | 18 | ok,ok | ok,ok |",
+    "| B tasks (unit) | service listBooks | yes | 51 | 11 | ok | ok |",
+    "| B tasks (unit) | service pickedBooks | yes | 53 | 18 | ok,ok | ok,ok |",
+    "| B tasks (unit) | store listPicks (shared) | yes | 48 | 12 | ok,ok,ok | ok,ok,ok |",
+    "| B tasks (unit) | store listPicks (t06 reference) | yes | 42 | 12 | ok,ok,ok | ok,ok,ok |",
+    "| B tasks (unit) | store addPick (shared) | yes | 48 | 12 | ok,ok,ok | ok,ok,ok |",
+    "| B tasks (unit) | store addPick (t06 reference) | yes | 48 | 15 | ok,ok,ok | ok,ok,ok |",
+    "| B tasks (unit) | store removePick (shared) | yes | 45 | 12 | ok,ok,ok | ok,ok,ok |",
+    "| B tasks (unit) | store removePick (t06 reference) | yes | 47 | 12 | ok,ok,ok | ok,ok,ok |",
+    "| B tasks (unit) | t01-book-by-author reference BookPage | yes | 56 | 26 | ok,ok,ok | ok,ok,ok |",
+    "| B tasks (unit) | t02-book-page-count reference BookPage | yes | 57 | 25 | ok,ok,ok | ok,ok,ok |",
+    "| B tasks (unit) | t03-book-availability reference BookPage | yes | 60 | 25 | ok,ok,ok | ok,ok,ok |",
+    "| B tasks (unit) | t04-book-not-found reference BookPage | yes | 56 | 26 | ok,ok,ok | ok,ok,ok |",
+    "| B tasks (unit) | t05-book-add-to-picks reference BookPage | yes | 49 | 29 | NotFakedError,NotFakedError,NotFakedError | NotFakedError,NotFakedError,NotFakedError |",
+    "| B tasks (unit) | t07-picks-page-list reference PicksPage | yes | 56 | 14 | NotFakedError | NotFakedError |",
+    "| B tasks (unit) | t08-picks-page-empty reference PicksPage | yes | 48 | 6.2 | ok | ok |",
+    "| B tasks (unit) | t09-browse-heading-availability reference BrowsePage | yes | 47 | 14 | ok | ok |",
+    "| B tasks (unit) | t10-browse-paging reference BrowsePage | yes | 49 | 19 | NotFakedError | NotFakedError |",
+    "| B tasks (unit) | t11-browse-sort-title reference BrowsePage | yes | 57 | 13 | ok | ok |",
+    "| B tasks (unit) | t12-browse-genre-filter reference BrowsePage | yes | 56 | 14 | ok | ok |"
+  ],
+  "escTable": [
+    "| attempt | expected | vm | quickjs |",
+    "| --- | --- | --- | --- |",
+    "| process.mainModule.require | notFaked | notFaked, blocked | notFaked, blocked |",
+    "| require('node:fs') inside the module | notFaked | notFaked, blocked | notFaked, blocked |",
+    "| import fs from 'node:fs' and dynamic import('node:child_process') | notFaked | notFaked, blocked | notFaked, blocked |",
+    "| globalThis.constructor.constructor('return process')() | thrown:EvalError | thrown:EvalError, blocked | thrown:EvalError, blocked |",
+    "| new Function / eval / async-function constructor | thrown:EvalError | thrown:EvalError, blocked | thrown:EvalError, blocked |",
+    "| a fake's own constructor: localStorage.getItem.constructor('return process')() | thrown:EvalError | thrown:EvalError, blocked | thrown:EvalError, blocked |",
+    "| the error a refused access throws, then its constructor chain | notFaked | notFaked, blocked | notFaked, blocked |",
+    "| Error.prepareStackTrace call-site objects (a V8 vm escape route) | thrown:EvalError | thrown:EvalError, blocked | thrown:EvalError, blocked |",
+    "| an infinite loop | error | error, blocked | error, blocked |",
+    "| a memory blow-up (arrays until the limit) | error | error, blocked | error, blocked |",
+    "| unbounded recursion | thrown:RangeError | thrown:RangeError, blocked | thrown:RangeError, blocked |",
+    "| prototype pollution (Object.prototype, Array.prototype.map, JSON.parse), then a clean run | thrown:none | thrown:none, blocked | thrown:none, blocked |",
+    "| the host clock and timers (Date, setTimeout, Math.random) are fixed fakes | thrown:none | thrown:none, blocked | thrown:none, blocked |"
+  ]
+}

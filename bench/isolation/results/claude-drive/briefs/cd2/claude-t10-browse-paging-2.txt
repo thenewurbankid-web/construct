@@ -1,0 +1,22 @@
+Write the body of this React (Next.js, TypeScript) component. The signature is already written:
+export function BrowsePage()
+
+Already imported at the top of the file (do not re-import): Link from 'next/link'; ListPage; books (a JSON array of Book); useState from 'react'; Button.
+Types:
+type Book = { id: string; title: string; author: string; genre: string; year: number; pages: number; available: boolean };
+ListPage props: { title: string; toolbar?: ReactNode; children?: ReactNode; empty?: ReactNode } — it renders `title` as the main heading.
+Button props: normal HTML button attributes (onClick, disabled) plus label?: string (the button text).
+
+What it must do:
+- Keep the current page number in React state with useState, starting at 1.
+- Page size is 6. Total pages = ceiling of books.length divided by 6 (at least 1).
+- Take the slice of books for the current page (6 books).
+- Return a ListPage with title exactly "Library catalogue". Inside it, render a list (ul) with one li per book on the current page (key = book.id). Each li shows: the title as a Link to `/books/${book.id}`, the author, the genre, the year, and the text "Available" if book.available is true, otherwise "On loan".
+- Under the list, a paragraph with text exactly like "Page 1 of 3" (current page, then total pages).
+- Then two Buttons: label "Previous page" which goes back one page and is disabled when on page 1; label "Next page" which goes forward one page and is disabled when on the last page.
+
+Shape example from another domain:
+const [step, setStep] = useState(1);
+<Button label="Back" disabled={step === 1} onClick={() => setStep(step - 1)} />
+
+Write only the function body, ending with the closing brace.

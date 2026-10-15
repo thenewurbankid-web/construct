@@ -1,4 +1,4 @@
-import path from 'node:path'; import fs from 'node:fs'; import {ensureDir,write,rel} from './fs.mjs'; import {loadConfig} from './config.mjs'; import {validateArchitecture} from './architecture-enforcer.mjs'; import {ConstructError,EXIT_CODES} from './diagnostics.mjs'; import {requestFileText} from './llm-fill.mjs'; import {withDeclarations,featureDirOf} from './block-kit.mjs'; import {importLine} from './shape-kit.mjs';
+import path from 'node:path'; import fs from 'node:fs'; import {ensureDir,write,rel} from './fs.mjs'; import {loadConfig} from './config.mjs'; import {validateArchitecture} from './architecture-enforcer.mjs'; import {ConstructError,EXIT_CODES} from './diagnostics.mjs'; import {fillFile} from './llm-fill.mjs'; import {withDeclarations,featureDirOf} from './block-kit.mjs'; import {importLine} from './shape-kit.mjs';
 // The controller template's own composition (importing a same-named Page
 // from the feature's pages/ folder) is Construct's own feature-internal
 // convention, not Next.js's -- it works unchanged for either framework.
@@ -837,7 +837,8 @@ export async function fillGeneratedFile(root,file,layer,{feature,name,llm,llmOpt
  const prompt=buildScaffoldFillPrompt({layer,relFile:rel(root,file),stubContent,name,feature,context});
  // Never write a response that isn't valid code (#144): on rejection or a
  // failed provider call the scaffolded stub stays exactly as generated.
- const outcome=await requestFileText(llm,prompt,llmOptions);
+ // #948: one function of the stub at a time, its signature prefilled (LINE_LEGACY_IO=1: the whole file).
+ const outcome=await fillFile(llm,prompt,llmOptions,{source:stubContent,file:rel(root,file)});
  if(outcome.status==='filled'){
   write(file,outcome.code);
   const fixCommand=extractExpressionHint(root,file,layer);

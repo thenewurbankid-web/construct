@@ -560,6 +560,10 @@ export const DEFAULT_RULES = {
   // Default 'off', same reasoning as TYPE-001/NAME-001/READ-004 above: this repo's own existing
   // layers predate mandatory typing and would need a counted migration pass before turning this
   // on hard anywhere (report the violation count to OG first, per the owner instruction on LIN-148).
+  // NAME-002 (owner rule) -- a function returning boolean (or a boolean type guard) is named is/has/can/should/does.
+  // Read from the TypeScript language service (packages/engine/lsp/booleanNames.mjs), not the name. `severity` is for
+  // existing code (warning: every project predates the rule), `generated` for code Line generates (error; atomicGate).
+  'NAME-002': { severity: 'warning', generated: 'error', name: 'A function that returns boolean (or is a type guard) is named is/has/can/should/does' },
   'TYPE-002': { severity: 'off', name: 'An exported function\'s parameter and return value must each carry an explicit type annotation (no implicit any at a unit boundary)' },
   'IMPORT-001': { severity: 'error', name: 'Relative imports must resolve to a file that exists' },
   // LIN-174 -- a generated file's slot region is a build artifact regenerated FROM the map
