@@ -1042,6 +1042,7 @@ export const LINE_API = Object.freeze([
   { method: 'GET', path: '/api/line/plan', request: null, response: 'PlanView & {approvalToken}' },
   { method: 'GET', path: '/api/line/workflows', request: 'feature (query)', response: 'LineWorkflowList' },
   { method: 'GET', path: '/api/line/component', request: 'file (query)', response: 'LineComponentEditor' },
+  { method: 'GET', path: '/api/line/english', request: 'file (query)', response: 'LineEnglishView' },
   { method: 'POST', path: '/api/line/plan/step', request: 'PlanStepRequest', response: 'PlanView & {stepId}' },
   { method: 'POST', path: '/api/line/plan/approve', request: '{stepId} | {stepIds}', response: 'PlanView' },
   { method: 'POST', path: '/api/line/plan/run', request: '{stepId?}', response: 'PlanView' },

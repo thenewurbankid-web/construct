@@ -28,6 +28,7 @@ export const READ_SKIPPED = Object.freeze({
   'line.memory.records': 'Line\'s per-person decision memory, shown in Cockpit only',
   'line.memory.export': 'exports a file the person keeps; Cockpit only',
   'line.misses': 'needs the Cockpit server\'s miss snapshot',
+  'line.englishView': 'the Cockpit English panel\'s view of a file; agents read the same englishDetail through fluent.english (line_english)',
   'line.graph': 'the knows service lives in the Cockpit session (it holds a writer for proposed changes)',
   'line.graphChanges': 'the knows service lives in the Cockpit session (it holds a writer for proposed changes)',
   'line.graphStats': 'the knows service lives in the Cockpit session (it holds a writer for proposed changes)',
