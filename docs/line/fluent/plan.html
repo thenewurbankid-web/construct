@@ -224,7 +224,7 @@ out: { atom: "flatMapped", kind: "copy", sentence: "every(x).in(xs).is().mapped(
     <div class="num">5</div>
     <div class="body">
       <h3>Generators and tooling, so users do almost nothing <span class="who static">static</span></h3>
-      <p><b>Status:</b> <code>construct english</code> and the page rebuild script are done. The atom generator is merged, with a fix in progress so approved atoms survive catalog rebuilds. The Cockpit English panel is pushed and being merged. The MCP tools are in progress.</p>
+      <p><b>Status:</b> <code>construct english</code> and the page rebuild script are done. The atom generator is merged; approved atoms live in line-smith's <code>approved.json</code> and survive catalog rebuilds. The Cockpit English panel (<code>GET /api/line/english</code>) and the MCP tools <code>line_english</code> and <code>line_atoms</code> are merged.</p>
       <ul>
         <li><code>construct english &lt;file&gt;</code>: prints the read-only English view of any JS or TS file.</li>
         <li><code>construct atoms suggest</code>: lists the functions that can become atoms or molecules, with the fix as a plan step.</li>
