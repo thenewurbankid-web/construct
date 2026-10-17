@@ -62,4 +62,6 @@ the viewer; this note is the record so the idea survives any one session.
   2026-10-17: "no matrix green for controls and text please"): buttons, toggles, sliders, links, selection and focus
   rings take neutral greys and the normal ink colours, so the app reads as professional once it is real. The light
   theme must still read.
+- The dark theme is near-black, not pure black (owner, 2026-10-17: "slightly gray or dark blue that almost looks
+  black"): a cool dark blue-grey such as `#0b0d12` for the page, with surfaces lifted a step each so layers separate.
 - Checked by DOM render and module tests, not Playwright (owner rule for local dev).
