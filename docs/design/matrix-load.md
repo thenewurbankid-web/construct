@@ -58,5 +58,8 @@ the viewer; this note is the record so the idea survives any one session.
 - Short: transitions never block input longer than they run.
 - `prefers-reduced-motion`: a plain fade, no rain.
 - Paused offscreen and while the tab is hidden; no cost when nothing is loading.
-- Colours from the theme tokens (`--accent` is Matrix green in the black theme); the light theme must still read.
+- Matrix green belongs to the effect only (rain, outlines, ASCII stage). Controls and text never use it (owner,
+  2026-10-17: "no matrix green for controls and text please"): buttons, toggles, sliders, links, selection and focus
+  rings take neutral greys and the normal ink colours, so the app reads as professional once it is real. The light
+  theme must still read.
 - Checked by DOM render and module tests, not Playwright (owner rule for local dev).
